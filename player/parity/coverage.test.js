@@ -222,8 +222,8 @@ test("NE-29j/NE-29s: foray-progress and media-session owe nothing, the Foray fam
      foray-progress, foray-structure and media" — every case of the four now
      runs in Swift, so none may sit in swift-pending.json.
      MUTATION: put a foray-progress test back in unported.json -> red; put one
-     foray-clock id back in swift-pending.json (any card) -> red; re-tag one
-     default-voice id away from NE-33 -> red; drop the never-4a case of one
+     foray-clock id back in swift-pending.json (any card) -> red; put one
+     default-voice id back in swift-pending.json (NE-33 ported it) -> red; drop the never-4a case of one
      committed Foray (or un-author it) -> red. */
   const { status } = classify(REPO_ROOT, DATA, FIXTURES);
   for (const [name, st] of Object.entries(status["foray-progress"])) {
@@ -234,13 +234,13 @@ test("NE-29j/NE-29s: foray-progress and media-session owe nothing, the Foray fam
   for (const stem of ["foray-progress", "media-session"]) {
     assert.deepStrictEqual(Object.keys(DATA.unported[stem] ?? {}), [], `${stem} owes unported.json nothing`);
   }
-  const owedTo = { "foray-clock": null, "foray-progress": null, "foray-structure": null, media: null, "default-voice": "NE-33" };
+  const owedTo = { "foray-clock": null, "foray-progress": null, "foray-structure": null, media: null, "default-voice": null };
   for (const [fam, card] of Object.entries(owedTo)) {
     const cases = FIXTURES.filter((f) => f.family === fam).flatMap((f) => f.doc.cases);
     assert.ok(cases.length > 0, `${fam} is recorded`);
     for (const c of cases) {
       if (card) assert.equal(DATA.pending[c.id], card, `${c.id} must be owed to ${card} until the Swift port burns it down`);
-      else assert.equal(DATA.pending[c.id], undefined, `${c.id} is ported by NE-29s and must not be pending`);
+      else assert.equal(DATA.pending[c.id], undefined, `${c.id} is ported (NE-29s; default-voice by NE-33) and must not be pending`);
     }
     assert.ok(DATA.capabilities.foray.includes(fam), `${fam} is charged to the foray capability`);
     const owedHere = Object.values(DATA.unported).flatMap((t) => Object.values(t ?? {})).filter((e) => e?.family === fam);
@@ -308,7 +308,7 @@ test("NE-30j/NE-30s/NE-32: html-audio-backend and foray-playback owe nothing, th
 test("NE-31j/NE-31s: tts-bridge owes nothing, nothing is owed to NE-31j, the narration families are burned down by NE-31s and speech-rate is owed to NE-33, the card's spec cases are authored, and every spoken line is 1x", () => {
   /* NE-31j's acceptance: "the families pass in JS. tts-bridge has zero
      unported entries." MUTATION: put a tts-bridge test back in unported.json ->
-     red; re-tag a speech-rate id to NE-31s in swift-pending.json -> red;
+     red; put a speech-rate id back in swift-pending.json (NE-33 ported it) -> red;
      un-author the stop-never-advances case -> red; record a line at the
      listener's rate (put `rate: this._rate` back into `_speakNarration`) ->
      the authored at-1x cases refuse to record, and the last loop goes red. */
@@ -327,13 +327,13 @@ test("NE-31j/NE-31s: tts-bridge owes nothing, nothing is owed to NE-31j, the nar
   assert.ok(files.some((f) => f.family === "speech-rate"), "speech-rate is recorded");
   assert.ok(DATA.capabilities.foray.includes("speech-rate"), "speech-rate is charged to the foray capability");
   const ids = new Map(files.flatMap((f) => f.doc.cases.map((c) => [c.id, c])));
-  /* speech-rate has no Swift runner until NE-33. NE-31s's acceptance: "the
+  /* speech-rate is burned down by NE-33 (its Swift runner is registered). NE-31s's acceptance: "the
      narration and interlude families pass on both sides with zero pending",
      so no manager-foray narration, jingle or audition id is pending (the
      Swift runner refuses a stale entry, so each one really runs). MUTATION:
      put one of them back in swift-pending.json -> red. */
   for (const [id] of ids) {
-    if (id.startsWith("speech-rate/")) assert.equal(DATA.pending[id], "NE-33", `${id} must be owed to NE-33 until SpeechRules burns it down`);
+    if (id.startsWith("speech-rate/")) assert.equal(DATA.pending[id], undefined, `${id} is owed to ${DATA.pending[id]}; NE-33 burned speech-rate down`);
     else assert.equal(DATA.pending[id], undefined, `${id} is owed to ${DATA.pending[id]}; NE-31s ported the narration overlay`);
   }
   for (const [id, card] of Object.entries(DATA.pending)) assert.notEqual(card, "NE-31s", `${id} is still owed to NE-31s`);
@@ -674,4 +674,25 @@ test("every covered suite still has at least the test count the recorder last sa
     assert.ok(stem in COVERED_SUITES, `${stem} is floored but not covered`);
     assert.ok(suites[stem].tests >= floor, `${stem} has ${suites[stem].tests} top-level tests, below the recorded ${floor}`);
   }
+});
+
+test("NE-33: speech-rate, lexicon and default-voice owe nothing, the lexicon family is recorded from foray-tts.js and charged to the foray capability, and nothing is owed to NE-33", () => {
+  /* NE-33's acceptance: "speech-rate, lexicon and default-voice pass on both
+     sides with zero pending." The Swift runner refuses a stale pending entry,
+     so each burned-down id really runs there (SpeechFamilies.swift).
+     MUTATION: put any lexicon, speech-rate or default-voice id back in
+     swift-pending.json -> red; move the lexicon fixture off foray-tts.js ->
+     red; drop lexicon from the foray capability -> red. */
+  for (const fam of ["speech-rate", "lexicon", "default-voice"]) {
+    const files = FIXTURES.filter((f) => f.family === fam);
+    const cases = files.flatMap((f) => f.doc.cases);
+    assert.ok(cases.length > 0, `${fam} is recorded`);
+    for (const c of cases) assert.equal(DATA.pending[c.id], undefined, `${c.id} is owed to ${DATA.pending[c.id]}; NE-33 ported ${fam}`);
+    assert.ok(DATA.capabilities.foray.includes(fam), `${fam} is charged to the foray capability`);
+  }
+  for (const f of FIXTURES.filter((x) => x.family === "lexicon")) {
+    assert.equal(f.doc.module, "mobile/plugins/foray-tts/web/foray-tts.js", "the lexicon rule is foray-tts.js buildIpaOverrides");
+    for (const c of f.doc.cases) assert.equal(c.call, "buildIpaOverrides");
+  }
+  for (const [id, card] of Object.entries(DATA.pending)) assert.notEqual(card, "NE-33", `${id} is still owed to NE-33`);
 });

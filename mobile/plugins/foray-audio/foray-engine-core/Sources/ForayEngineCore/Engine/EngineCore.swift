@@ -45,12 +45,21 @@ public struct EngineConfig: Equatable {
     /// The listener's narration voice at boot (`voice`), nil for the
     /// synthesiser's own pick.
     public var voiceId: String?
+    /// NE-33's SpeechNarrator path. DV-9 (does the session an
+    /// `AVSpeechSynthesizer` leaves after `didFinish` still play, locked?) has
+    /// no row from the phone yet, and the plan's rule for an unanswered or
+    /// inconclusive DV-9 is the PCM path: `write(_:toBufferCallback:)` into
+    /// the engine's own `AVAudioEngine` player. On, the synthesizer speaks
+    /// directly (`speak`, `pauseSpeaking(at: .word)`) on the application
+    /// session instead. OFF. The core decides nothing on it; the host reads
+    /// it to choose the narrator's output.
+    public var speechDirect: Bool
 
     public init(build: String = "", holdPolicy: SessionPolicy.HoldPolicy = .default, rate: Double? = nil,
                 forayTapeEnabled: Bool = false, seamGapSec: Double = SeamGap.defaultGapSec,
                 narrationFollowsListenerRate: Bool = false, narrationPulse: Bool = true,
                 interludeAvailable: Bool = false, interludeEnabled: Bool = true,
-                silenceNodeEnabled: Bool = false, voiceId: String? = nil,
+                silenceNodeEnabled: Bool = false, voiceId: String? = nil, speechDirect: Bool = false,
                 deckPairEnabled: Bool = false) {
         self.build = build
         self.holdPolicy = holdPolicy
@@ -64,6 +73,7 @@ public struct EngineConfig: Equatable {
         self.interludeEnabled = interludeEnabled
         self.silenceNodeEnabled = silenceNodeEnabled
         self.voiceId = voiceId
+        self.speechDirect = speechDirect
     }
 }
 

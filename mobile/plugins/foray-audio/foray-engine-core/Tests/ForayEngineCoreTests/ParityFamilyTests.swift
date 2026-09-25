@@ -90,6 +90,13 @@ final class ParityFamilyTests: XCTestCase {
     func testManagerForayFamily() { assertParityFamily("manager-foray", requireRunner: true) }
     func testPrepareFamily() { assertParityFamily("prepare", requireRunner: true) }
 
+    /// Ported by NE-33: the default voice (the Samantha ruling) and the
+    /// pronunciation lexicon's matcher (`SpeechRules`), and what reaches the
+    /// synthesiser (1x, the chosen voice) through `EngineCore`. Each must RUN.
+    func testDefaultVoiceFamily() { assertParityFamily("default-voice", requireRunner: true) }
+    func testLexiconFamily() { assertParityFamily("lexicon", requireRunner: true) }
+    func testSpeechRateFamily() { assertParityFamily("speech-rate", requireRunner: true) }
+
     /// Every family in manifest.json, including ones no method above names:
     /// every id executed or owed, no stale pending entry, no whole-tree
     /// problem. And something must have RUN: zero failures from a runner that

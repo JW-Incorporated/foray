@@ -3740,7 +3740,9 @@ test("NE-31s: the overlays ship off, a line is uttered at NARRATION_RATE, and no
   /* MUTATION: default narrationFollowsListenerRate, interludeAvailable or
      silenceNodeEnabled to true; utter a line at `state.rate` unconditionally;
      drop the session guard from speakLine or armInterlude; let the host speak
-     a Foray line through the audition's speaker. Each fails here. */
+     a Foray line through the audition's `speak` (NE-33: narration goes to the
+     one SpeechNarrator's `narrate`, the audition to its `speak`). Each fails
+     here. */
   const core = stripSwiftComments(fs.readFileSync(path.join(CORE_DIR, "Sources/ForayEngineCore/Engine/EngineCore.swift"), "utf8"));
   assert.match(core, /narrationFollowsListenerRate: Bool = false/, "narration rides the listener's rate only behind a flag that defaults OFF");
   assert.match(core, /interludeAvailable: Bool = false/, "no jingle until the host has a player (NE-34)");
@@ -3755,7 +3757,8 @@ test("NE-31s: the overlays ship off, a line is uttered at NARRATION_RATE, and no
   const interpret = swiftFuncBody(host, "interpret") ?? "";
   const narration = interpret.slice(interpret.indexOf("case let .narration("), interpret.indexOf("case let .interlude("));
   assert.ok(narration.length > 0, "the host interprets the narration commands");
-  assert.doesNotMatch(narration, /speaker\./, "a Foray line never goes through the audition's speaker (NE-33's SpeechNarrator owns it)");
+  assert.match(narration, /seams\.speaker\.narrate\(command\)/, "the host hands every narration command to SpeechNarrator (NE-33)");
+  assert.doesNotMatch(narration, /speaker\.speak\(/, "a Foray line never goes through the audition's speak");
 });
 
 test("NE-25c: one synthesizer configuration, a platform-free probe reached only through probeSession, and a smoke on the production pieces", () => {
@@ -3783,7 +3786,7 @@ test("NE-25c: one synthesizer configuration, a platform-free probe reached only 
      pause on every finish; drop the smoke's NE-25c tag. Each fails. */
   const PLATFORM = /\b(AVAudioSession|AVPlayer|AVSpeechSynthesizer|MPRemoteCommandCenter|MPNowPlayingInfoCenter|UIApplication|DispatchSource|NotificationCenter|UserDefaults)\b/;
   const probePath = path.join(ENGINE_DIR, "SessionProbe.swift");
-  const speakerPath = path.join(ENGINE_DIR, "PreviewSpeaker.swift");
+  const speakerPath = path.join(ENGINE_DIR, "SpeechNarrator.swift");
   const smokePath = path.join(PLUGIN_DIR, "ios/Tests/ForayAudioPluginTests/SpeechSessionSmokeTests.swift");
   const probeTestsPath = path.join(PLUGIN_DIR, "ios/Tests/ForayAudioPluginTests/Engine/SessionProbeTests.swift");
 
@@ -3813,19 +3816,26 @@ test("NE-25c: one synthesizer configuration, a platform-free probe reached only 
   assert.match(swiftFuncBody(host, "start"), /seams\.speaker\.onFinish = \{[\s\S]*?probe\?\.speechEnded\(end\)/, "didFinish reaches the probe");
 
   const speaker = stripSwiftComments(fs.readFileSync(speakerPath, "utf8"));
-  assert.match(speaker, /final class PreviewSpeaker: NSObject, Speaking, AVSpeechSynthesizerDelegate \{/);
+  // NE-33: PreviewSpeaker grew into SpeechNarrator; the probe's line is its audition.
+  assert.match(speaker, /final class SpeechNarrator: NSObject, Speaking \{/);
   assert.match(swiftFuncBody(speaker, "makeSynthesizer"), /usesApplicationAudioSession = true/, "the engine's synthesizer speaks through the app's session, said out loud");
-  assert.match(swiftFuncBody(speaker, "utterance"), /\.rate = AVSpeechUtteranceDefaultSpeechRate/, "narration is 1x, Apple's default rate (OQ-3)");
+  assert.match(speaker, /static func utterance\(text: String, voiceId: String\?, rate: Float = AVSpeechUtteranceDefaultSpeechRate,/, "a line is 1x, Apple's default rate, unless told (OQ-3)");
+  assert.match(swiftFuncBody(speaker, "utterance"), /utterance\.rate = rate/);
+  assert.match(swiftFuncBody(speaker, "speechRate"), /multiplier == 1\s*\?\s*AVSpeechUtteranceDefaultSpeechRate/, "1x is AVSpeechUtteranceDefaultSpeechRate (founder 2026-09-24)");
+  assert.match(swiftFuncBody(speaker, "guardSession"), /guard !config\.sessionIsActive\(\) else \{ return \}[\s\S]*?FaultKind\.implicitActivation[\s\S]*?config\.debugFault\(/,
+    "the implicit-activation guard writes the fault row and trips DEBUG");
   const speak = swiftFuncBody(speaker, "speak");
-  const guardAt = speak.search(/if !config\.sessionIsActive\(\) \{[\s\S]*?config\.diag\([\s\S]*?FaultKind\.implicitActivation[\s\S]*?config\.debugFault\(/);
-  assert.ok(guardAt >= 0 && guardAt < speak.indexOf("synthesizer.speak("), "the implicit-activation guard runs before the synthesizer speaks");
+  assert.ok(speak.indexOf("guardSession()") >= 0 && speak.indexOf("guardSession()") < speak.indexOf("begin("), "the guard runs before the line is handed to the output");
+  const narrateBody = swiftFuncBody(speaker, "narrate") ?? "";
+  const narrateSpeak = narrateBody.slice(0, narrateBody.indexOf("case let .pause("));
+  assert.ok(narrateSpeak.indexOf("guardSession()") >= 0 && narrateSpeak.indexOf("guardSession()") < narrateSpeak.indexOf("begin("), "and before a narration line");
   const synthesizers = [...swiftFilesUnder(path.join(PLUGIN_DIR, "ios/Sources")), ...swiftFilesUnder(path.join(CORE_DIR, "Sources"))]
     .flatMap((file) => [...stripSwiftComments(fs.readFileSync(file, "utf8")).matchAll(/\bAVSpeechSynthesizer\(\)/g)].map(() => path.basename(file)));
-  assert.deepEqual(synthesizers, ["PreviewSpeaker.swift"], "one synthesizer configuration in the engine");
-  assert.match(speaker, /init\(config: Config\) \{[^}]*synthesizer = PreviewSpeaker\.makeSynthesizer\(\)/, "the speaker speaks through that configuration");
+  assert.deepEqual(synthesizers, ["SpeechNarrator.swift"], "one synthesizer configuration in the engine");
+  assert.equal([...speaker.matchAll(/speech = SpeechNarrator\.makeSynthesizer\(\)/g)].length, 2, "both outputs speak through that configuration");
 
   const smoke = stripSwiftComments(fs.readFileSync(smokePath, "utf8"));
-  for (const piece of [/AudioSessionOwner\(config:/, /PreviewSpeaker\(config:/, /\bAVDeck\(config:/]) {
+  for (const piece of [/AudioSessionOwner\(config:/, /SpeechNarrator\(config: SpeechNarrator\.Config\(\s*path: \.direct,/, /\bAVDeck\(config:/]) {
     assert.match(smoke, piece, "the smoke runs the production pieces");
   }
   assert.match(smoke, /static let tag = "NE-25c"/);
@@ -4291,4 +4301,86 @@ test("NE-27: ENGINE_DEFAULT says native only when STATE.md records the OQ-9 answ
   const committed = JSON.parse(fs.readFileSync(ENGINE_DEFAULT_JSON, "utf8"));
   const refusal = engineDefaultRefusal(committed, fs.readFileSync(STATE_MD, "utf8").replace(/\r\n/g, "\n"));
   assert.equal(refusal, null, refusal ?? "");
+});
+
+/* ─────────── NE-33: SpeechNarrator, SpeechRules and the bundled lexicon ───────────
+ * docs/native-engine-plan.md §14 NE-33. */
+
+test("NE-33: SpeechRules is byte-identical in the core and foray-tts, the lexicon is bundled with a hash pin, the speech families run, and SpeechNarrator takes the PCM path by default", async () => {
+  /* The card: "Move resolveVoice, bestVoice, candidates, lexicon/IPA
+     application and pickDefaultVoice into core/Policy/SpeechRules.swift.
+     ForayTts keeps a byte-identical copy of the shared code (node test). The
+     lexicon JSON is bundled into foray-audio with a hash pin to foray-tts's
+     hard-terms.json." And DV-9 has no row from the phone, so the narrator's
+     default is the PCM path, the direct synthesizer behind a flag.
+     MUTATION: edit one SpeechRules.swift copy; give ForayTtsPlugin its own
+     bestVoice again; edit hard-terms.json without re-bundling (or change the
+     pin); unregister a speech runner or drop a wrapper's requirement; default
+     `speechDirect` or the narrator's path to direct; map a narration stop to
+     `.finished`. Each fails here. */
+  const { createHash } = await import("node:crypto");
+  const coreRules = path.join(CORE_DIR, "Sources/ForayEngineCore/Policy/SpeechRules.swift");
+  const ttsRules = path.join(MOBILE, "plugins/foray-tts/ios/Sources/ForayTtsPlugin/SpeechRules.swift");
+  const a = fs.readFileSync(coreRules);
+  const b = fs.readFileSync(ttsRules);
+  assert.ok(a.equals(b), "the two SpeechRules.swift copies differ: edit both, or neither");
+  assert.ok(!a.includes(0x0d), "LF line endings, or the byte comparison is a Windows accident");
+  assert.deepEqual(swiftImports(coreRules), ["Foundation"], "SpeechRules builds on Linux and in both plugins");
+  const rules = stripSwiftComments(a.toString("utf8"));
+  for (const fn of ["candidates", "bestVoice", "resolveVoice", "pickDefaultVoice", "ipaOverrides", "narrationVoice", "defaultVoiceIdentifier"]) {
+    assert.ok(swiftFuncBody(rules, fn), `SpeechRules has ${fn}`);
+  }
+  assert.match(rules, /public static let defaultVoiceName = "Samantha"/, "the founder's 2026-09-10 ruling");
+  assert.match(swiftFuncBody(rules, "narrationVoice"), /defaultVoiceIdentifier\(installed: installed\)[\s\S]*?resolveVoice\(/,
+    "no voice asked for: the default rule first, bestVoice only without a Samantha");
+
+  const plugin = stripSwiftComments(fs.readFileSync(path.join(MOBILE, "plugins/foray-tts/ios/Sources/ForayTtsPlugin/ForayTtsPlugin.swift"), "utf8"));
+  assert.doesNotMatch(plugin, /struct VoiceOption\b|struct VoiceResolution\b/, "the plugin's voice types are SpeechRules'");
+  for (const fn of ["candidates", "bestVoice", "resolveVoice", "sortedForListing", "qualityLabel", "primarySubtag"]) {
+    assert.match(swiftFuncBody(plugin, fn) ?? "", new RegExp(`SpeechRules\\.${fn}\\(`), `ForayTtsPlugin.${fn} delegates to SpeechRules`);
+  }
+
+  const lexiconSource = path.join(MOBILE, "plugins/foray-tts/lexicon/hard-terms.json");
+  const bundle = fs.readFileSync(path.join(ENGINE_DIR, "SpeechLexicon.swift"), "utf8");
+  const sha = createHash("sha256").update(fs.readFileSync(lexiconSource)).digest("hex");
+  assert.match(bundle, new RegExp(`static let sourceSHA256 = "${sha}"`), "SpeechLexicon's pin is hard-terms.json's sha256: re-bundle the lexicon");
+  const embedded = bundle.slice(bundle.indexOf('static let json = #"""\n') + 'static let json = #"""\n'.length, bundle.lastIndexOf('\n"""#'));
+  assert.equal(embedded, fs.readFileSync(lexiconSource, "utf8").replace(/\n$/, ""), "SpeechLexicon.json is hard-terms.json byte for byte");
+
+  const registry = stripSwiftComments(fs.readFileSync(path.join(CORE_DIR, "Sources/ForayEngineParity/FamilyRunner.swift"), "utf8"));
+  for (const runner of ["DefaultVoiceFamily.runner", "LexiconFamily.runner", "SpeechRateFamily.runner"]) {
+    assert.ok(registry.includes(runner), `the registry holds ${runner}`);
+  }
+  for (const wrapper of [path.join(CORE_DIR, "Tests/ForayEngineCoreTests/ParityFamilyTests.swift"),
+    path.join(PLUGIN_DIR, "ios/Tests/ForayAudioPluginTests/EngineParityWrapperTests.swift")]) {
+    const code = fs.readFileSync(wrapper, "utf8");
+    for (const fam of ["default-voice", "lexicon", "speech-rate"]) {
+      assert.ok(code.includes(`assertParityFamily("${fam}", requireRunner: true)`), `${path.basename(wrapper)} requires the ${fam} runner`);
+    }
+  }
+
+  const core = stripSwiftComments(fs.readFileSync(path.join(CORE_DIR, "Sources/ForayEngineCore/Engine/EngineCore.swift"), "utf8"));
+  assert.match(core, /speechDirect: Bool = false/, "the direct synthesizer is behind a flag that defaults OFF (DV-9 unanswered)");
+  const boot = stripSwiftComments(fs.readFileSync(path.join(ENGINE_DIR, "EngineBoot.swift"), "utf8"));
+  assert.match(boot, /speaker: SpeechNarrator\(config: SpeechNarrator\.Config\(path: config\.speechDirect \? \.direct : \.pcm,/,
+    "the boot builds the one narrator on the flag's path");
+  const narrator = stripSwiftComments(fs.readFileSync(path.join(ENGINE_DIR, "SpeechNarrator.swift"), "utf8"));
+  assert.match(narrator, /init\(path: Path = \.pcm,/, "the narrator's own default is PCM");
+  assert.match(narrator, /final class PcmOutput[\s\S]*?speech\.write\(utterance\)/, "path B renders with write(_:toBufferCallback:)");
+  assert.match(narrator, /AVAudioPlayerNode\(\)/, "and plays through the engine's own player");
+  assert.doesNotMatch(narrator, /\b(setActive|setCategory)\(/, "the narrator never touches the session");
+  const narrate = swiftFuncBody(narrator, "narrate") ?? "";
+  const stopCase = narrate.slice(narrate.indexOf("case let .stop("), narrate.indexOf("case let .discard("));
+  assert.match(stopCase, /\.cancelled\(seq: seq\)/, "a stop reports cancelled");
+  assert.doesNotMatch(stopCase, /\.finished/, "a stop is never a finish (L-05)");
+
+  const tests = path.join(PLUGIN_DIR, "ios/Tests/ForayAudioPluginTests/Engine/SpeechNarratorTests.swift");
+  for (const name of [
+    "testPauseAndResumeMidUtteranceContinuesTheSameLine",
+    "testStopNeverAdvances",
+    "testAVoiceThatIsNotInstalledFallsBackAndSaysSo",
+    "testWithNoVoiceIdTheColdPathSpeaksTheDefaultVoiceNotTheBestTier",
+  ]) {
+    assert.ok(swiftTestNames(tests).includes(name), `NE-33's ${name} is gone`);
+  }
 });
