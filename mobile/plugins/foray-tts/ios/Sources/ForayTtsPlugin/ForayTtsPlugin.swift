@@ -990,7 +990,19 @@ public class ForayTtsPlugin: CAPPlugin, CAPBridgedPlugin, AVSpeechSynthesizerDel
     /// proper resource phase needs no change here.
     static let RESOURCE_SUBDIR = "public"
 
+    /// The probe's own serial queue (audit round 3, mobile-native-5). Two model
+    /// loads and a synthesis per line used to run on the bridge's serial
+    /// plugin queue, so a probe run mid-Foray held every ForayTts call behind
+    /// it. Serial, so two taps queue rather than load the model twice at once.
+    static let probeQueue = DispatchQueue(label: "ai.jwlabs.foura.tts.kokoroProbe", qos: .userInitiated)
+
     @objc func kokoroProbe(_ call: CAPPluginCall) {
+        Self.probeQueue.async { [weak self] in
+            self?.runKokoroProbe(call)
+        }
+    }
+
+    private func runKokoroProbe(_ call: CAPPluginCall) {
         var result = JSObject()
         result["platform"] = "ios"
 

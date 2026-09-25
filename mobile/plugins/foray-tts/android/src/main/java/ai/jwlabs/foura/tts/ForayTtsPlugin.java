@@ -23,6 +23,8 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 /**
  * The bridge half of `foray-tts` on Android: wraps {@link TextToSpeech}.
@@ -902,7 +904,20 @@ public class ForayTtsPlugin extends Plugin implements TextToSpeech.OnInitListene
          *  {@code "cpu"} reads as a fallback that fired and it is not one: it
          *  is the only path compiled. */
         default boolean acceleratorWired() { return false; }
+
+        /** Free what {@link #load} opened (audit round 3, mobile-native-5):
+         *  an ORT session holds the ~86 MB model in native memory, which a
+         *  dropped Java reference never frees. Called once, after the probe. */
+        default void close() { }
     }
+
+    /** The probe's own thread (audit round 3, mobile-native-5). Two model
+     *  loads and a synthesis per line used to run inside the @PluginMethod,
+     *  on the one plugin thread every Capacitor call shares, so a probe run
+     *  mid-Foray stalled ForayAudio.setNowPlaying, ForayTts.speak/pause and
+     *  the vault for its whole length. One thread, so two taps queue rather
+     *  than load the model twice at once. */
+    private static final ExecutorService PROBE_EXECUTOR = Executors.newSingleThreadExecutor();
 
     /** The seam. Null on every build that ships today; K-04 sets it. */
     public static KokoroProbeEngine probeEngine = null;
@@ -985,8 +1000,38 @@ public class ForayTtsPlugin extends Plugin implements TextToSpeech.OnInitListene
          * method returns. An engine registered at startup would be running
          * ONNX Runtime in every listener's app for a card that measures one
          * phone. */
-        KokoroProbeEngine engine = probeEngine;
-        if (engine == null) engine = KokoroOrtProbeEngine.create(getContext());
+        final List<int[]> lines = idLines;
+        PROBE_EXECUTOR.execute(() -> {
+            KokoroProbeEngine owned = null;
+            try {
+                KokoroProbeEngine engine = probeEngine;
+                if (engine == null) {
+                    engine = KokoroOrtProbeEngine.create(getContext());
+                    owned = engine;
+                }
+                measureProbe(call, result, lines, passage, engine);
+            } catch (Throwable t) {
+                Log.e(TAG, "the Kokoro probe failed", t);
+                JSObject failed = new JSObject();
+                failed.put("platform", "android");
+                failed.put("ok", false);
+                failed.put("reason", "threw");
+                failed.put("detail", t.getClass().getSimpleName());
+                call.resolve(failed);
+            } finally {
+                /* The engine THIS call built is closed here, whatever
+                   happened (mobile-native-5); a test's injected
+                   `probeEngine` belongs to the test. */
+                if (owned != null) {
+                    try { owned.close(); } catch (Throwable ignored) { }
+                }
+            }
+        });
+    }
+
+    /** The measurement itself, on {@link #PROBE_EXECUTOR}. */
+    private void measureProbe(PluginCall call, JSObject result, List<int[]> idLines, JSObject passage,
+                              KokoroProbeEngine engine) {
         if (engine == null) {
             result.put("ok", false);
             result.put("reason", "engine-absent");

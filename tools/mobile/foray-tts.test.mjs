@@ -960,3 +960,21 @@ test("mobile-native-8: Android resumes from the plain line, never from a substri
   assert.ok(!/lastSpokenText = \(androidSsml/.test(java), "the markup is never what resume() re-speaks");
   assert.match(bodyOf(java, "public void resume(PluginCall call) {"), /int from = lastWasSsml \? 0 : lastBoundary;/);
 });
+
+test("mobile-native-5: the Kokoro probe runs off the shared plugin thread and closes the session it opened", () => {
+  /* Each run used to leak one native OrtSession (~86 MB) on Android and block
+     every Capacitor call for its duration on both platforms. MUTATION: call
+     `measureProbe` inline instead of through PROBE_EXECUTOR, drop the finally's
+     close(), or have KokoroOrtProbeEngine.close() leave `session` open. */
+  const java = JAVA_SRC();
+  assert.match(java, /private static final ExecutorService PROBE_EXECUTOR = Executors\.newSingleThreadExecutor\(\);/);
+  const probe = bodyOf(java, "public void kokoroProbe(PluginCall call) {");
+  assert.match(probe, /PROBE_EXECUTOR\.execute\(\(\) -> \{[\s\S]*?measureProbe\(call, result, lines, passage, engine\);[\s\S]*?\} finally \{[\s\S]*?owned\.close\(\);/);
+  assert.equal((java.match(/measureProbe\(/g) ?? []).length, 2, "defined once, called once, from the executor");
+  assert.match(java, /default void close\(\) \{ \}/, "the engine seam can be closed");
+  const engine = readPlugin("android/src/main/java/ai/jwlabs/foura/tts/KokoroOrtProbeEngine.java");
+  assert.match(engine, /public void close\(\) \{\s*OrtSession s = session;\s*session = null;\s*if \(s != null\) \{\s*try \{ s\.close\(\); \}/);
+  const swift = SWIFT_SRC();
+  assert.match(swift, /@objc func kokoroProbe\(_ call: CAPPluginCall\) \{\s*Self\.probeQueue\.async \{ \[weak self\] in\s*self\?\.runKokoroProbe\(call\)/);
+  assert.match(java, /failed\.put\("reason", "threw"\);/, "a throw is reported in the page's closed vocabulary");
+});

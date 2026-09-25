@@ -178,6 +178,17 @@ final class KokoroOrtProbeEngine implements ForayTtsPlugin.KokoroProbeEngine {
         return new double[]{ (t1 - t0) / 1e6, (t2 - t1) / 1e6 };
     }
 
+    /** Close the session {@link #load} kept (audit round 3, mobile-native-5).
+     *  The environment is ORT's process-wide singleton and is left alone. */
+    @Override
+    public void close() {
+        OrtSession s = session;
+        session = null;
+        if (s != null) {
+            try { s.close(); } catch (Throwable ignored) { }
+        }
+    }
+
     private OrtSession makeSession() {
         try {
             if (env == null) env = OrtEnvironment.getEnvironment();
