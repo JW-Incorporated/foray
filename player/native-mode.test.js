@@ -165,12 +165,13 @@ let bootSeq = 0;
  * @param {"answer"|"hold"|"reject"} [opts.hello]  how engineHello behaves
  * @param {object} [opts.ledger]      window.forayEngineLedger (app.js's two appliers)
  * @param {Array} [opts.seed]         localStorage rows present at launch
+ * @param {string} [opts.platform]    Capacitor's platform: "ios" (the shell), "web" or "android"
  */
-async function bootNative(t, { engine = null, hello = "answer", ledger = null, seed = [] } = {}) {
+async function bootNative(t, { engine = null, hello = "answer", ledger = null, seed = [], platform = "ios" } = {}) {
   const order = [];
   const scheduler = manualScheduler();
   const ref = engine ?? createReferenceEngine({ scheduler, now: () => 1_790_000_000_000 });
-  const base = ref.asCapacitor();
+  const base = ref.asCapacitor({ platform });
   let releaseHello = null;
   const speechCalls = [];
   const capacitor = {
@@ -555,4 +556,125 @@ test("NATIVE: a play superseded while the engine loads answers false; the one th
   assert.equal(await first, false, "A never made a sound");
   assert.equal(await second, true, "B did");
   assert.equal(h.client.isCurrent("ep-b"), true);
+});
+
+/* ==================================================================== */
+/* the Developer engine rows' commands (NE-22d)                         */
+/* ==================================================================== */
+
+/* app.js draws the four rows the M1 car test drives; client.js decides which
+   exist (`engineDeveloperStatus`) and is the only sender of their commands
+   (`engineDeveloperSend`). test/engine-developer-rows.test.js pins the drawer
+   half; these pin the half that reaches the bridge. */
+
+const engineCalls = (h) => h.order.filter((o) => o.startsWith("send:") || o === "engineHello" || o.startsWith("read:"));
+
+for (const platform of ["web", "android"]) {
+  test(`DEVELOPER (${platform}): no engine, so no rows and nothing is ever sent`, async (t) => {
+    /* KILLING MUTATION: drop `if (!engine) return null;` from
+       engineDeveloperStatus — it throws on `engine.decision` here, and a
+       guard that answered a status instead would send through an engine
+       client that does not exist. */
+    const h = await bootNative(t, { platform });
+    assert.equal(await h.client.whenEngineReady(), "js");
+    assert.equal(h.client.engineDeveloperStatus(), null, "no rows");
+    for (const [cmd, args] of [["setModeOverride", { mode: "native" }], ["setHoldPolicy", { policy: "none" }],
+      ["simulateTermination", undefined], ["probeSession", undefined]]) {
+      assert.equal(await h.client.engineDeveloperSend(cmd, args), null, `${cmd}: nothing to send it to`);
+    }
+    assert.deepEqual(engineCalls(h), [], "the bridge was never called");
+    assert.equal(cmds(h.ref).length, 0);
+  });
+}
+
+test("DEVELOPER: while engineHello is unanswered there are no rows and nothing is sent", async (t) => {
+  const h = await bootNative(t, { hello: "hold" });
+  await drain();
+  assert.equal(h.client.engineDeveloperStatus(), null);
+  assert.equal(await h.client.engineDeveloperSend("setHoldPolicy", { policy: "none" }), null);
+  assert.equal(cmds(h.ref).length, 0);
+  h.releaseHello();
+  assert.equal(await h.client.whenEngineReady(), "native");
+});
+
+test("DEVELOPER (native lane): all four rows; each command goes out as one engineSend with the right args", async (t) => {
+  /* KILLING MUTATION: send under a different cmd name, or skip `engine.send`
+     — the engine's own command record diverges. */
+  const h = await bootNative(t);
+  assert.equal(await h.client.whenEngineReady(), "native");
+  const st = h.client.engineDeveloperStatus();
+  assert.deepEqual(st.commands, ["setModeOverride", "setHoldPolicy", "simulateTermination", "probeSession"]);
+  assert.equal(st.lane, "native");
+  assert.equal(st.holdPolicy, "forever", "read back from the engine's snapshot");
+  assert.equal(st.override, "auto", "build-default decided this launch: Automatic");
+
+  const r1 = await h.client.engineDeveloperSend("setHoldPolicy", { policy: "none" });
+  assert.equal(r1.ok, true);
+  assert.equal(h.ref.holdPolicy, "none", "the engine holds the new policy");
+  assert.equal(h.client.engineDeveloperStatus().holdPolicy, "none", "and the page reads it back from the reply's snapshot");
+
+  const r2 = await h.client.engineDeveloperSend("setModeOverride", { mode: "web" });
+  assert.equal(r2.ok, true);
+  assert.equal(h.ref.modeOverride, "web");
+  assert.equal(h.client.engineDeveloperStatus().override, "web", "the value the engine confirmed storing");
+  assert.equal(h.client.engineDeveloperStatus().lane, "native", "the running lane is unchanged: it applies after restart");
+
+  const r3 = await h.client.engineDeveloperSend("probeSession");
+  assert.equal(r3.ok, true);
+  const r4 = await h.client.engineDeveloperSend("simulateTermination");
+  assert.equal(r4.ok, false, "nothing loaded: refused, as the Swift core refuses it");
+  assert.equal(r4.reason, "not-loaded");
+
+  const dev = ["setHoldPolicy", "setModeOverride", "probeSession", "simulateTermination"];
+  const sent = h.ref.diagnostics.filter((r) => r.kind === "cmd" && dev.includes(r.cmd));
+  assert.deepEqual(sent.map((r) => r.cmd), dev);
+  assert.ok(sent.every((r) => r.source === "tap"), "a Developer row is a tap");
+});
+
+test("DEVELOPER: only the four commands go through engineDeveloperSend", async (t) => {
+  /* KILLING MUTATION: drop the `commands.includes(cmd)` check — a transport
+     command would reach the engine through a Developer path. */
+  const h = await bootNative(t);
+  await h.client.whenEngineReady();
+  const before = cmds(h.ref).length;
+  assert.equal(await h.client.engineDeveloperSend("play"), null);
+  assert.equal(await h.client.engineDeveloperSend("purge"), null);
+  assert.equal(cmds(h.ref).length, before);
+});
+
+test("DEVELOPER (legacy lane): only the engine setting, read back from the launch's own reason", async (t) => {
+  /* The native side takes setModeOverride in every lane (EngineBridge.send):
+     it is how the web player asks for the native one at the next launch.
+     KILLING MUTATION: in native-engine.js, stop keeping the engine's own
+     {mode, reason} for a legacy hello — the override reads "not known". */
+  const ref = createReferenceEngine({
+    scheduler: manualScheduler(), now: () => 1_790_000_000_000, mode: "legacy", reason: "override",
+  });
+  const h = await bootNative(t, { engine: ref });
+  assert.equal(await h.client.whenEngineReady(), "js");
+  const st = h.client.engineDeveloperStatus();
+  assert.deepEqual(st.commands, ["setModeOverride"], "the three that need a running engine are absent");
+  assert.equal(st.override, "web", "a legacy launch decided by the override: Web");
+  assert.equal(st.holdPolicy, null);
+  assert.equal(await h.client.engineDeveloperSend("setHoldPolicy", { policy: "none" }), null, "not sent");
+  assert.equal(await h.client.engineDeveloperSend("probeSession"), null, "not sent");
+  const reply = await h.client.engineDeveloperSend("setModeOverride", { mode: "native" });
+  assert.equal(reply.ok, true);
+  assert.equal(ref.modeOverride, "native");
+  assert.equal(h.client.engineDeveloperStatus().override, "native");
+  assert.deepEqual(cmds(ref), ["setModeOverride"], "one command reached the engine, and only that one");
+});
+
+const devRef = (reason, mode) => createReferenceEngine({ scheduler: manualScheduler(), now: () => 1_790_000_000_000, reason, mode });
+
+test("DEVELOPER: a native launch decided by the override reads Native", async (t) => {
+  const h = await bootNative(t, { engine: devRef("override", "native") });
+  await h.client.whenEngineReady();
+  assert.equal(h.client.engineDeveloperStatus().override, "native");
+});
+
+test("DEVELOPER: a crash-loop launch reads the setting as not known, never a guess", async (t) => {
+  const h = await bootNative(t, { engine: devRef("crash-loop", "legacy") });
+  await h.client.whenEngineReady();
+  assert.equal(h.client.engineDeveloperStatus().override, null);
 });

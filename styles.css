@@ -655,6 +655,12 @@ body.view-home .topbar h1 .wordmark { display: none; }
   font-family: inherit;
   cursor: pointer;
 }
+/* The engine's Developer rows (app.js § the engine's Developer rows, NE-22d)
+   say what the engine answered ("armed. Lock the phone now ..."), and an
+   ellipsis would cut exactly the instruction the row exists to give. They
+   wrap instead; 44px stays the floor. */
+.drawer-item.drawer-wrap { white-space: normal; overflow: visible; }
+.drawer-item.as-btn:disabled { opacity: 0.6; cursor: default; }
 /* The Developer group (app.js § the Developer group): the founder's field-report
    tools in one collapsed <details> at the bottom of Settings. The summary is an
    ordinary drawer item; its chevron replaces the UA marker, which `.drawer-item`'s

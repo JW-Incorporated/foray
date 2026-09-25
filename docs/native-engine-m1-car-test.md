@@ -29,8 +29,12 @@ none of the first three is met.
    "Playback engine: Automatic / Native / Web (applies after restart)" (NE-17),
    "Pause hold: forever / none" (NE-16), "Simulate system termination" (NE-24)
    and the session probe (NE-25c). The engine answers all four commands
-   (`setModeOverride`, `setHoldPolicy`, `simulateTermination`, `probeSession`);
-   the page does not offer them yet.
+   (`setModeOverride`, `setHoldPolicy`, `simulateTermination`, `probeSession`),
+   and since NE-22d the page offers them, above "Playback diagnostics". Each
+   shows the engine's own answer: the setting it stored ("· now" is the lane
+   running), the hold policy from its snapshot, and "armed" or why it refused
+   for the two one-shot rows. In the web-player lane only "Playback engine"
+   is shown; the other three need the native engine running.
 3. **G-1b**: `engine-parity` and `ios-gate` required on `main`, and the release
    refusing a non-green `engine-parity`/`ios-kit`.
 4. A TestFlight build **from `main`** whose `ios-archive --check` log shows
@@ -73,8 +77,9 @@ none of the first three is met.
 2. AirPods in: play, pause and play from the AirPods. Take one out: playback
    pauses.
 3. Control Center: the same title and controls; pause and play from there.
-4. **Session probe (answers DV-9)**: Developer → the session probe → run it, lock
-   the phone for 30 seconds, unlock. The Copy must show a
+4. **Session probe (answers DV-9)**: play an episode and pause it, then
+   Developer → **Session probe**. The row reads "armed"; lock the phone
+   within 10 seconds and keep it locked for 30 seconds, then unlock. The Copy must show a
    `probe speech-then-play` row.
 5. Copy. Paste as the pre-flight block.
 

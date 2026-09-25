@@ -324,7 +324,7 @@ const FLOORS = {
      hello landing in JS with relinquish sent, an advance applied once and
      acked, and a superseded play answering false (facades.json maps
      transport-reconcile's p-impatient-2 here). Zero slack. */
-  "player/native-mode.test.js": 11,
+  "player/native-mode.test.js": 18, // NE-22d: the Developer engine rows' commands (no engine: nothing sent, web and android in one loop; native: four; legacy: the setting only); 11 -> 18
   /* NE-26: the engine half of Copy — the 2,000-row ring merged by wall clock
      (a merge, never a sort), the engine header line in both modes, the
      per-kind engine lines, every row accounted for (unknown kinds, unreadable
@@ -1061,6 +1061,7 @@ const FLOORS = {
      position. Each is one deleted line from a car that plays the wrong thing,
      or a history that counts a drive twice. */
   "test/engine-continuation.test.js": 6,
+  "test/engine-developer-rows.test.js": 14, // NE-22d: the engine's four Developer rows in the drawer
   "test/up-next-autoadvance.test.js": 20, // founder, 2026-09-24, reversing lane L3's question-9 default: a play from the page moves THAT row to the top and ⏭ drops only the skipped episode (+1: a refused play moves nothing); no wrap-around, previous = restart past the window (p-car-5); 11 -> 19 -> 20 // // 2026-09-22: rewritten for the continuous-playback ruling (on by default, Up Next first, then the chosen list, unplayable rows passed over); 6 -> 11
   /* U-07's Interests page (docs/ui-transition-plan.md D6, kanban card
      t_1cb3688a). Floored for the same reason as up-next-queue.test.js: a
