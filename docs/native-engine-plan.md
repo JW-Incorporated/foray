@@ -734,6 +734,8 @@ Android (J-1), the website apart from behaviour-preserving extractions, CarPlay 
 
 Read first: `CLAUDE.md`, this deck, the Tier 2 requirements, `docs/ios-native-player-gap.md`, `docs/ios-lock-screen.md`, the `html-audio-backend.js`, `queue-manager.js` and `durable-store.js` headers, and `ForayAudioPlugin.swift`'s header.
 
+> **Added 2026-09-25 — NE-38r · Resume on a known car route (founder Q5).** *"Q5 yes move everything in the app to the native engine."* When a route the engine has seen playing (CarPlay or a car's Bluetooth, keyed by port type and UID) comes back **and** the engine's last pause was caused by that route going away (not by a listener press, a call or Siri), the engine resumes on its own; a listener's pause is never resumed. It lives in the engine's route policy (NE-16's AudioSessionOwner route observer and the core's reason for the pause), with parity cases for "route-lost pause → resume" and "listener pause → no resume", and a car-test block. Milestone M3, after NE-38 (it needs the field rows on route change reasons). The web player's dead branch (round-3 finding player-core-10) is deleted rather than wired.
+
 ## 14. The card deck
 
 61 cards. Conventions are §12: the ask, owned files, dependencies, **measured** acceptance, a device check and a size (S ≤ ½ day, M ≤ 2 days, L ≤ 5). A `j` card is JavaScript only and runs on Windows; an `s` card is the Swift port that burns the same families down. Every card touching `mobile/plugins/*/ios/**` or `foray-engine-core/**` opens with the `hold` label (§12). The sequencing is the §7 timeline; `depends_on` below is the hard order.

@@ -2,7 +2,7 @@
 
 <!-- ha-format: 2 -->
 
-> **21 open.** Closed items are in `HUMAN-ACTIONS-DONE.md` — you never need it.
+> **23 open.** Closed items are in `HUMAN-ACTIONS-DONE.md` — you never need it.
 > To close one: reply `done` (or `skip <why>`) to its card in the project's human-action channel.
 > Anything else you reply is forwarded to a thread on the card.
 
@@ -19,13 +19,40 @@
 
 **Worked if:** the next scheduled `nightly-refresh` run is green, a `nightly/<date>` PR opens the same day, and `nightly-watch` is green that evening.
 
+## #115 🔴 [BLOCKING] Put the app-signing and store-upload secrets behind a protected `release` environment (~15 min)
+<!-- ha filed=2026-09-25 kind=default -->
+
+**Why:** Round-3 code audit, finding `ci-release-3` (`docs/audit/round-3-code/`). The signing and upload secrets (the iOS distribution certificate, the App Store Connect key, the Android keystore, the Play service account and their passwords) are **repository** secrets, and there is no tag ruleset. So any branch push can carry a workflow that reads them, and a `v*` tag on a commit that edits `release.yml` or `tools/mobile/release-ci.mjs` passes its own guard. The repo is public, which makes this a real exposure, not a theoretical one. Only an admin can change these settings, and moving the secrets means re-entering them. You asked for this to be your follow-up (2026-09-25). The code side (`environment: release` on the release jobs) is prepared in the round-3 security PR, and it stays inactive until this is done, because switching it on first would break every release.
+
+**Steps:**
+1. GitHub → foray → **Settings → Environments → New environment**, named `release`. Under **Deployment branches and tags**, choose **Selected branches and tags** and add `main` and the tag pattern `v*`.
+2. In that environment, **add each signing and upload secret again** with the same name and value: everything `gh secret list` shows for iOS signing (`IOS_DIST_CERT_P12_BASE64` and its password, the provisioning profile, `APP_STORE_CONNECT_KEY_ID` / `ISSUER_ID` / `PRIVATE_KEY_BASE64`) and Android (`ANDROID_KEYSTORE_B64` and its passwords and alias, `PLAY_SERVICE_ACCOUNT_JSON`). Then **delete the repository-level copies** under Settings → Secrets and variables → Actions.
+3. **Settings → Rules → Rulesets → New tag ruleset**: target `v*`, restrict creation to admins.
+4. Recommended while you're there (security-3 and security-1): **Settings → Actions → General**: set **Workflow permissions** to *Read repository contents*, untick **Allow GitHub Actions to create and approve pull requests**, and set **Fork pull request workflows** to *Require approval for all outside collaborators*.
+5. Reply `done` here. Claude then turns on `environment: release` in `release.yml` and cuts one release to prove signing still works.
+
+**Worked if:** `gh secret list` no longer shows the signing and upload secrets at repo level, `gh api repos/JW-Incorporated/foray/environments/release` exists, and the next release run (with `environment: release`) uploads to both stores.
+
+## #116 🟡 [DECIDE] Apply the round-3 Supabase security migration to the production project (~10 min)
+<!-- ha filed=2026-09-25 kind=default -->
+
+**Why:** Round-3 code audit, question Q3. The fix lane adds a new numbered migration under `backend/migrations/`. It turns on row-level security for the catalogue and pipeline tables, adds per-table policies on `events`, `user_interests` and `taxonomy_nodes` (with event timestamps set by the server), and adds a delete policy on `learning_cursor` so **Delete my data** can remove that table's rows too. The code and the privacy-policy rows describing it land in the round-3 fix PR, but **nothing reaches the live database until you apply it**. You asked for this to be your follow-up (2026-09-25).
+
+**Steps:**
+1. Wait for the round-3 fix PR to merge. Claude will reply here with the migration's file name.
+2. Supabase dashboard → the 4a project → **SQL editor**. Paste the migration file's contents, read it, and run it (or `supabase db push` if you use the CLI).
+3. Check it worked: **Table editor** shows RLS **enabled** on each table the migration names. As an anonymous user, the app still loads Home, and **Developer → Playback diagnostics** shows no `sync` or `events` errors.
+4. Reply `done` (or paste any SQL error) here.
+
+**Worked if:** RLS is on for every table the migration lists, the app still syncs events and interests, and Delete my data removes the `learning_cursor` rows (check in the Table editor after a test deletion).
+
 ## #114 🟡 [DECIDE] Drive the M1 car test on the next TestFlight build after `engine/m1` merges — the native player is its default (~3 drives)
 <!-- ha filed=2026-09-24 kind=default -->
 
 **Why:** On 2026-09-24 your car chose Spotify even though 4a held its audio session for 8 minutes (`docs/field-records/2026-09-24-car-baseline.md`): iOS goes back to the app whose audio last *played*, and in 4a that was the web view's process. The iOS app now plays episodes through its own native player, and card NE-27b made that the build default (`mobile/ENGINE_DEFAULT.json` says `native` with `episode`, `continuation` and `restore`; the Developer group can switch back to the web player). Whether the car now comes back to 4a can only be measured in your car. Nothing here can do it.
 
 **Steps:**
-1. Wait for **the next TestFlight build after `engine/m1` merges into `main`**. Its `ios-archive --check` log must show `ForayEngineDefault=native`. Claude will reply on this card with that build's number. Test **only that build**, and turn TestFlight's Automatic Updates off for 4a so it cannot change mid-drive.
+1. The build is **2026092532** (released 2026-09-25 off `main` c8e7dffb, with the native engine as the default). Test **only that build**, and turn TestFlight's Automatic Updates off for 4a so it cannot change mid-drive.
 2. Follow `docs/native-engine-m1-car-test.md` from **Step 0**: the header check, the 10-minute desk pre-flight, then blocks 0-11 in the car. Each block ends with one **Developer → Playback diagnostics → Copy**, taken while parked.
 3. Blocks **0 and 1** are the two failures from 2026-09-24: paused in the app, phone locked, the car connects and 4a resumes; and paused from the car, a long pause, play, and 4a resumes and stays.
 4. Paste every Copy into this card's thread, one per block, each headed with its block number and the route (CarPlay, car Bluetooth, AirPods or speaker). M1 needs **three drives**.

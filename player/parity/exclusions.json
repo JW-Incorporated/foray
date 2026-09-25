@@ -939,5 +939,111 @@
       "reason": "dom-only",
       "why": "The sheet's ⏭, Up Next (N) and Save read the page's own episode surface. Page painting that client.js does identically in both modes from what the manager surface answers (in native mode, the facades); the engine never draws the page, so there is nothing here for Swift to reimplement."
     }
+  },
+  "tts-bridge": {
+    "inShell: false in a plain browser tab, true when Capacitor injected a bridge": {
+      "reason": "webview-only",
+      "why": "Whether the page runs inside the Capacitor shell (window.Capacitor present), read from the live window. The engine is the shell; it never asks whether it is one."
+    },
+    "inShell: reads the ambient window when called with no argument": {
+      "reason": "webview-only",
+      "why": "Whether the page runs inside the Capacitor shell (window.Capacitor present), read from the live window. The engine is the shell; it never asks whether it is one."
+    },
+    "the shell tries the bundle's flattened copy first; the website tries the plugin's own path first": {
+      "reason": "js-module-shape",
+      "why": "tts-bridge.js is the page's loader for the ForayTts plugin's web module (a dynamic import over candidate paths, memoised per bridge, answering { ok: false } rather than rejecting). The native engine narrates through its own SpeechNarrator in the same binary (plan §4; NE-33): there is no module to find, load, memoise or version-skew, so this is a rule about the JS module, not about narration."
+    },
+    "the candidate order is chosen from the live window, not baked in at import": {
+      "reason": "js-module-shape",
+      "why": "tts-bridge.js is the page's loader for the ForayTts plugin's web module (a dynamic import over candidate paths, memoised per bridge, answering { ok: false } rather than rejecting). The native engine narrates through its own SpeechNarrator in the same binary (plan §4; NE-33): there is no module to find, load, memoise or version-skew, so this is a rule about the JS module, not about narration."
+    },
+    "speak: the module is resolved once per bridge, however many lines it speaks": {
+      "reason": "js-module-shape",
+      "why": "tts-bridge.js is the page's loader for the ForayTts plugin's web module (a dynamic import over candidate paths, memoised per bridge, answering { ok: false } rather than rejecting). The native engine narrates through its own SpeechNarrator in the same binary (plan §4; NE-33): there is no module to find, load, memoise or version-skew, so this is a rule about the JS module, not about narration."
+    },
+    "speak: a candidate that 404s falls through to the next one": {
+      "reason": "js-module-shape",
+      "why": "tts-bridge.js is the page's loader for the ForayTts plugin's web module (a dynamic import over candidate paths, memoised per bridge, answering { ok: false } rather than rejecting). The native engine narrates through its own SpeechNarrator in the same binary (plan §4; NE-33): there is no module to find, load, memoise or version-skew, so this is a rule about the JS module, not about narration."
+    },
+    "speak: nothing loadable at all resolves { ok: false } and never rejects": {
+      "reason": "js-module-shape",
+      "why": "tts-bridge.js is the page's loader for the ForayTts plugin's web module (a dynamic import over candidate paths, memoised per bridge, answering { ok: false } rather than rejecting). The native engine narrates through its own SpeechNarrator in the same binary (plan §4; NE-33): there is no module to find, load, memoise or version-skew, so this is a rule about the JS module, not about narration. What the manager does with a line nothing can speak is fixtured (manager-foray/a-script-with-no-synthesiser-fails-cleanly)."
+    },
+    "speak: a module with no speak() is a miss, not a crash": {
+      "reason": "js-module-shape",
+      "why": "tts-bridge.js is the page's loader for the ForayTts plugin's web module (a dynamic import over candidate paths, memoised per bridge, answering { ok: false } rather than rejecting). The native engine narrates through its own SpeechNarrator in the same binary (plan §4; NE-33): there is no module to find, load, memoise or version-skew, so this is a rule about the JS module, not about narration."
+    },
+    "a throwing logger must not break the failure path": {
+      "reason": "js-module-shape",
+      "why": "tts-bridge.js is the page's loader for the ForayTts plugin's web module (a dynamic import over candidate paths, memoised per bridge, answering { ok: false } rather than rejecting). The native engine narrates through its own SpeechNarrator in the same binary (plan §4; NE-33): there is no module to find, load, memoise or version-skew, so this is a rule about the JS module, not about narration."
+    },
+    "onFinished: returns an unsubscribe function immediately, before the module resolves": {
+      "reason": "js-module-shape",
+      "why": "tts-bridge.js is the page's loader for the ForayTts plugin's web module (a dynamic import over candidate paths, memoised per bridge, answering { ok: false } rather than rejecting). The native engine narrates through its own SpeechNarrator in the same binary (plan §4; NE-33): there is no module to find, load, memoise or version-skew, so this is a rule about the JS module, not about narration. The subscription races the module's load; natively the narrator's delegate is wired at construction."
+    },
+    "onFinished: a module with no onFinished() is a silent miss, not a crash": {
+      "reason": "js-module-shape",
+      "why": "tts-bridge.js is the page's loader for the ForayTts plugin's web module (a dynamic import over candidate paths, memoised per bridge, answering { ok: false } rather than rejecting). The native engine narrates through its own SpeechNarrator in the same binary (plan §4; NE-33): there is no module to find, load, memoise or version-skew, so this is a rule about the JS module, not about narration. What the manager does without a finished event is fixtured (manager-foray/a-bridge-without-finished-never-auto-advances)."
+    },
+    "onFinished: unsubscribing before the module resolves prevents the late subscription": {
+      "reason": "js-module-shape",
+      "why": "tts-bridge.js is the page's loader for the ForayTts plugin's web module (a dynamic import over candidate paths, memoised per bridge, answering { ok: false } rather than rejecting). The native engine narrates through its own SpeechNarrator in the same binary (plan §4; NE-33): there is no module to find, load, memoise or version-skew, so this is a rule about the JS module, not about narration. The subscription races the module's load; natively the narrator's delegate is wired at construction."
+    },
+    "onFinished: unsubscribing after the module resolves removes the real listener": {
+      "reason": "js-module-shape",
+      "why": "tts-bridge.js is the page's loader for the ForayTts plugin's web module (a dynamic import over candidate paths, memoised per bridge, answering { ok: false } rather than rejecting). The native engine narrates through its own SpeechNarrator in the same binary (plan §4; NE-33): there is no module to find, load, memoise or version-skew, so this is a rule about the JS module, not about narration. The subscription races the module's load; natively the narrator's delegate is wired at construction."
+    },
+    "onFinished: a non-function argument is a no-op, not a crash": {
+      "reason": "js-module-shape",
+      "why": "tts-bridge.js is the page's loader for the ForayTts plugin's web module (a dynamic import over candidate paths, memoised per bridge, answering { ok: false } rather than rejecting). The native engine narrates through its own SpeechNarrator in the same binary (plan §4; NE-33): there is no module to find, load, memoise or version-skew, so this is a rule about the JS module, not about narration. A typed Swift callback cannot be a non-function."
+    },
+    "listVoices: forwards options to the module and returns its answer": {
+      "reason": "js-module-shape",
+      "why": "tts-bridge.js is the page's loader for the ForayTts plugin's web module (a dynamic import over candidate paths, memoised per bridge, answering { ok: false } rather than rejecting). The native engine narrates through its own SpeechNarrator in the same binary (plan §4; NE-33): there is no module to find, load, memoise or version-skew, so this is a rule about the JS module, not about narration. The voice list itself is SpeechRules' (NE-33: resolveVoice, bestVoice, candidates) and the default-voice family's."
+    },
+    "listVoices: an older module without the method reports that, rather than throwing": {
+      "reason": "js-module-shape",
+      "why": "tts-bridge.js is the page's loader for the ForayTts plugin's web module (a dynamic import over candidate paths, memoised per bridge, answering { ok: false } rather than rejecting). The native engine narrates through its own SpeechNarrator in the same binary (plan §4; NE-33): there is no module to find, load, memoise or version-skew, so this is a rule about the JS module, not about narration."
+    },
+    "listVoices: an unreachable module resolves { ok: false }, never rejects": {
+      "reason": "js-module-shape",
+      "why": "tts-bridge.js is the page's loader for the ForayTts plugin's web module (a dynamic import over candidate paths, memoised per bridge, answering { ok: false } rather than rejecting). The native engine narrates through its own SpeechNarrator in the same binary (plan §4; NE-33): there is no module to find, load, memoise or version-skew, so this is a rule about the JS module, not about narration."
+    },
+    "client.js actually passes a TTS bridge into the queue manager": {
+      "reason": "js-module-shape",
+      "why": "client.js's wiring of the page's shared bridge instance (into the queue manager, and the Kokoro probe through the same instance). In native mode the engine owns its narrator; the page's wiring is pinned here and by native-mode.test.js, not reimplemented."
+    },
+    "kokoroProbe delegates to the module, through the same memoised load": {
+      "reason": "js-module-shape",
+      "why": "The developer-only Kokoro probe's delegate on the page's bridge (kokoroProbe through the memoised module). It is a ForayTts plugin method the page calls; the engine neither probes nor exposes it."
+    },
+    "an older shell build — a module with no kokoroProbe — answers engine-absent": {
+      "reason": "js-module-shape",
+      "why": "The developer-only Kokoro probe's delegate on the page's bridge (kokoroProbe through the memoised module). It is a ForayTts plugin method the page calls; the engine neither probes nor exposes it."
+    },
+    "no module at all is no-bridge, and the probe still resolves": {
+      "reason": "js-module-shape",
+      "why": "The developer-only Kokoro probe's delegate on the page's bridge (kokoroProbe through the memoised module). It is a ForayTts plugin method the page calls; the engine neither probes nor exposes it."
+    },
+    "client.js runs the probe through the SAME shared bridge instance": {
+      "reason": "js-module-shape",
+      "why": "client.js's wiring of the page's shared bridge instance (into the queue manager, and the Kokoro probe through the same instance). In native mode the engine owns its narrator; the page's wiring is pinned here and by native-mode.test.js, not reimplemented."
+    },
+    "a transport call before anything has spoken does NOT load the module": {
+      "reason": "js-module-shape",
+      "why": "tts-bridge.js is the page's loader for the ForayTts plugin's web module (a dynamic import over candidate paths, memoised per bridge, answering { ok: false } rather than rejecting). The native engine narrates through its own SpeechNarrator in the same binary (plan §4; NE-33): there is no module to find, load, memoise or version-skew, so this is a rule about the JS module, not about narration."
+    },
+    "an older shell's module — a speak() and no pause() — is reported, not thrown": {
+      "reason": "js-module-shape",
+      "why": "tts-bridge.js is the page's loader for the ForayTts plugin's web module (a dynamic import over candidate paths, memoised per bridge, answering { ok: false } rather than rejecting). The native engine narrates through its own SpeechNarrator in the same binary (plan §4; NE-33): there is no module to find, load, memoise or version-skew, so this is a rule about the JS module, not about narration. What the manager does with a bridge that has no transport is fixtured (manager-foray/l05-no-transport-still-pauses)."
+    },
+    "state() is idle, without a fetch, until something has spoken": {
+      "reason": "js-module-shape",
+      "why": "tts-bridge.js is the page's loader for the ForayTts plugin's web module (a dynamic import over candidate paths, memoised per bridge, answering { ok: false } rather than rejecting). The native engine narrates through its own SpeechNarrator in the same binary (plan §4; NE-33): there is no module to find, load, memoise or version-skew, so this is a rule about the JS module, not about narration."
+    },
+    "a module that will not load leaves a transport call resolved, never rejected": {
+      "reason": "js-module-shape",
+      "why": "tts-bridge.js is the page's loader for the ForayTts plugin's web module (a dynamic import over candidate paths, memoised per bridge, answering { ok: false } rather than rejecting). The native engine narrates through its own SpeechNarrator in the same binary (plan §4; NE-33): there is no module to find, load, memoise or version-skew, so this is a rule about the JS module, not about narration."
+    }
   }
 }

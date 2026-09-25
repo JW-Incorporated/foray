@@ -1,0 +1,1082 @@
+{
+  "family": "speech-rate",
+  "note": "What reaches the synthesiser (NE-31j): the text, the listener's chosen voice, and the rate — 1x whatever the listener's speed (founder, 2026-09-24; OQ-3), with the listener's speed kept for the tape. Port card NE-33.",
+  "cases": [
+    {
+      "id": "speech-rate/a-line-is-spoken-at-1x-at-0.75x",
+      "covers": [
+        "queue-manager::a script-only narration item speaks at 1x when the listener is at 0.75x (founder, 2026-09-24)"
+      ],
+      "authored": true,
+      "note": "FOUNDER 2026-09-24 (OQ-3): the utterance is 1x whatever the listener's 0.75x, and the listener's speed is untouched.",
+      "setup": {
+        "target": "manager",
+        "catalogue": {
+          "ep-static": {
+            "id": "ep-static",
+            "audio_url": "https://cdn.example/static.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Static",
+            "show": "Indie"
+          },
+          "ep-other": {
+            "id": "ep-other",
+            "audio_url": "https://cdn.example/other.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Other",
+            "show": "Indie"
+          },
+          "ep-dai": {
+            "id": "ep-dai",
+            "audio_url": "https://cdn.example/dai.mp3",
+            "dai_suspected": true,
+            "duration_sec": 2501,
+            "title": "Stitched",
+            "show": "Big"
+          }
+        },
+        "tts": true,
+        "rate": 0.75
+      },
+      "steps": [
+        {
+          "call": "playForay",
+          "args": [
+            {
+              "id": "foray-1",
+              "title": "Fire",
+              "items": [
+                {
+                  "type": "narration",
+                  "id": "nar-1",
+                  "script": "a script spoken at the narrator's own pace"
+                },
+                {
+                  "type": "segment",
+                  "item_id": "ep-static",
+                  "start_sec": 100,
+                  "end_sec": 210,
+                  "why": "he explains it plainly"
+                }
+              ]
+            }
+          ]
+        },
+        { "checkpoint": "spoken" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "spoken",
+            "ops": ["tts.speak:a script spoken at the narrator's own pace@1"],
+            "playhead": "nar-1",
+            "rate": 0.75,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "end",
+            "ops": [],
+            "playhead": "nar-1",
+            "rate": 0.75,
+            "state": "playing"
+          }
+        ],
+        "ops": ["tts.speak:a script spoken at the narrator's own pace@1"]
+      }
+    },
+    {
+      "id": "speech-rate/a-line-is-spoken-at-1x-at-1.5x",
+      "covers": [
+        "queue-manager::a script-only narration item speaks at 1x when the listener is at 1.5x (founder, 2026-09-24)"
+      ],
+      "authored": true,
+      "note": "FOUNDER 2026-09-24 (OQ-3): the utterance is 1x whatever the listener's 1.5x, and the listener's speed is untouched.",
+      "setup": {
+        "target": "manager",
+        "catalogue": {
+          "ep-static": {
+            "id": "ep-static",
+            "audio_url": "https://cdn.example/static.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Static",
+            "show": "Indie"
+          },
+          "ep-other": {
+            "id": "ep-other",
+            "audio_url": "https://cdn.example/other.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Other",
+            "show": "Indie"
+          },
+          "ep-dai": {
+            "id": "ep-dai",
+            "audio_url": "https://cdn.example/dai.mp3",
+            "dai_suspected": true,
+            "duration_sec": 2501,
+            "title": "Stitched",
+            "show": "Big"
+          }
+        },
+        "tts": true,
+        "rate": 1.5
+      },
+      "steps": [
+        {
+          "call": "playForay",
+          "args": [
+            {
+              "id": "foray-1",
+              "title": "Fire",
+              "items": [
+                {
+                  "type": "narration",
+                  "id": "nar-1",
+                  "script": "a script spoken at the narrator's own pace"
+                },
+                {
+                  "type": "segment",
+                  "item_id": "ep-static",
+                  "start_sec": 100,
+                  "end_sec": 210,
+                  "why": "he explains it plainly"
+                }
+              ]
+            }
+          ]
+        },
+        { "checkpoint": "spoken" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "spoken",
+            "ops": ["tts.speak:a script spoken at the narrator's own pace@1"],
+            "playhead": "nar-1",
+            "rate": 1.5,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "end",
+            "ops": [],
+            "playhead": "nar-1",
+            "rate": 1.5,
+            "state": "playing"
+          }
+        ],
+        "ops": ["tts.speak:a script spoken at the narrator's own pace@1"]
+      }
+    },
+    {
+      "id": "speech-rate/a-line-is-spoken-at-1x-at-2x",
+      "covers": [
+        "queue-manager::a script-only narration item speaks at 1x when the listener is at 2x (founder, 2026-09-24)"
+      ],
+      "authored": true,
+      "note": "FOUNDER 2026-09-24 (OQ-3): the utterance is 1x whatever the listener's 2x, and the listener's speed is untouched.",
+      "setup": {
+        "target": "manager",
+        "catalogue": {
+          "ep-static": {
+            "id": "ep-static",
+            "audio_url": "https://cdn.example/static.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Static",
+            "show": "Indie"
+          },
+          "ep-other": {
+            "id": "ep-other",
+            "audio_url": "https://cdn.example/other.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Other",
+            "show": "Indie"
+          },
+          "ep-dai": {
+            "id": "ep-dai",
+            "audio_url": "https://cdn.example/dai.mp3",
+            "dai_suspected": true,
+            "duration_sec": 2501,
+            "title": "Stitched",
+            "show": "Big"
+          }
+        },
+        "tts": true,
+        "rate": 2
+      },
+      "steps": [
+        {
+          "call": "playForay",
+          "args": [
+            {
+              "id": "foray-1",
+              "title": "Fire",
+              "items": [
+                {
+                  "type": "narration",
+                  "id": "nar-1",
+                  "script": "a script spoken at the narrator's own pace"
+                },
+                {
+                  "type": "segment",
+                  "item_id": "ep-static",
+                  "start_sec": 100,
+                  "end_sec": 210,
+                  "why": "he explains it plainly"
+                }
+              ]
+            }
+          ]
+        },
+        { "checkpoint": "spoken" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "spoken",
+            "ops": ["tts.speak:a script spoken at the narrator's own pace@1"],
+            "playhead": "nar-1",
+            "rate": 2,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "end",
+            "ops": [],
+            "playhead": "nar-1",
+            "rate": 2,
+            "state": "playing"
+          }
+        ],
+        "ops": ["tts.speak:a script spoken at the narrator's own pace@1"]
+      }
+    },
+    {
+      "id": "speech-rate/a-synth-bridge-at-2x-is-spoken-at-1x",
+      "covers": [
+        "queue-manager::a SYNTH bridge mid-Foray at 2x speaks at 1x, and the segment after it comes back at 2x"
+      ],
+      "note": "The transition path: the bridge between two segments is spoken at 1x, and the segment after it is back at the listener's 2x.",
+      "setup": {
+        "target": "manager",
+        "catalogue": {
+          "ep-static": {
+            "id": "ep-static",
+            "audio_url": "https://cdn.example/static.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Static",
+            "show": "Indie"
+          },
+          "ep-other": {
+            "id": "ep-other",
+            "audio_url": "https://cdn.example/other.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Other",
+            "show": "Indie"
+          },
+          "ep-dai": {
+            "id": "ep-dai",
+            "audio_url": "https://cdn.example/dai.mp3",
+            "dai_suspected": true,
+            "duration_sec": 2501,
+            "title": "Stitched",
+            "show": "Big"
+          }
+        },
+        "tts": true,
+        "rate": 2
+      },
+      "steps": [
+        {
+          "call": "playForay",
+          "args": [
+            {
+              "id": "foray-1",
+              "title": "Fire",
+              "items": [
+                {
+                  "type": "segment",
+                  "item_id": "ep-static",
+                  "start_sec": 100,
+                  "end_sec": 210,
+                  "why": "he explains it plainly"
+                },
+                { "type": "narration", "id": "nar-1", "script": "a bridge line" },
+                {
+                  "type": "segment",
+                  "item_id": "ep-static",
+                  "start_sec": 400,
+                  "end_sec": 500,
+                  "why": "he explains it plainly"
+                }
+              ]
+            }
+          ]
+        },
+        { "deck": "time", "sec": 210 },
+        { "deck": "ended", "reason": "outPoint" },
+        { "checkpoint": "bridge" },
+        { "tts": "finish" },
+        { "settle": 1 },
+        { "checkpoint": "after" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "bridge",
+            "ops": [
+              "load:foray-1#0@100",
+              "rate:2",
+              "outPoint:210",
+              "play",
+              "rate:1",
+              "tts.speak:a bridge line@1"
+            ],
+            "playhead": "nar-1",
+            "rate": 2,
+            "state": "transitioning"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 2,
+            "name": "after",
+            "ops": ["load:foray-1#2@400", "rate:2", "outPoint:500", "play"],
+            "playhead": "foray-1#2",
+            "rate": 2,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 2,
+            "name": "end",
+            "ops": [],
+            "playhead": "foray-1#2",
+            "rate": 2,
+            "state": "playing"
+          }
+        ],
+        "ops": [
+          "load:foray-1#0@100",
+          "rate:2",
+          "outPoint:210",
+          "play",
+          "rate:1",
+          "tts.speak:a bridge line@1",
+          "load:foray-1#2@400",
+          "rate:2",
+          "outPoint:500",
+          "play"
+        ]
+      }
+    },
+    {
+      "id": "speech-rate/a-tap-during-a-spoken-line-is-kept-and-the-next-line-is-1x",
+      "covers": [
+        "queue-manager::a speed tap WHILE a synth line is audible is stored, and the next line is still 1x"
+      ],
+      "note": "The listener's tap is theirs, and neither line follows it.",
+      "setup": {
+        "target": "manager",
+        "catalogue": {
+          "ep-static": {
+            "id": "ep-static",
+            "audio_url": "https://cdn.example/static.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Static",
+            "show": "Indie"
+          },
+          "ep-other": {
+            "id": "ep-other",
+            "audio_url": "https://cdn.example/other.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Other",
+            "show": "Indie"
+          },
+          "ep-dai": {
+            "id": "ep-dai",
+            "audio_url": "https://cdn.example/dai.mp3",
+            "dai_suspected": true,
+            "duration_sec": 2501,
+            "title": "Stitched",
+            "show": "Big"
+          }
+        },
+        "tts": true,
+        "rate": 1
+      },
+      "steps": [
+        {
+          "call": "playForay",
+          "args": [
+            {
+              "id": "foray-1",
+              "title": "Fire",
+              "items": [
+                { "type": "narration", "id": "nar-1", "script": "first line" },
+                {
+                  "type": "segment",
+                  "item_id": "ep-static",
+                  "start_sec": 100,
+                  "end_sec": 210,
+                  "why": "he explains it plainly"
+                }
+              ]
+            }
+          ]
+        },
+        { "call": "setRate", "args": [2] },
+        { "checkpoint": "tapped" },
+        {
+          "call": "playForay",
+          "args": [
+            {
+              "id": "foray-1",
+              "title": "Fire",
+              "items": [
+                { "type": "narration", "id": "nar-2", "script": "second line" },
+                {
+                  "type": "segment",
+                  "item_id": "ep-static",
+                  "start_sec": 100,
+                  "end_sec": 210,
+                  "why": "he explains it plainly"
+                }
+              ]
+            },
+            { "allowMultiple": true }
+          ]
+        },
+        { "checkpoint": "second" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "tapped",
+            "ops": ["tts.speak:first line@1"],
+            "playhead": "nar-1",
+            "rate": 2,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "second",
+            "ops": ["tts.pause", "tts.speak:second line@1"],
+            "playhead": "nar-2",
+            "rate": 2,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "end",
+            "ops": [],
+            "playhead": "nar-2",
+            "rate": 2,
+            "state": "playing"
+          }
+        ],
+        "ops": ["tts.speak:first line@1", "tts.pause", "tts.speak:second line@1"]
+      }
+    },
+    {
+      "id": "speech-rate/a-spoken-line-never-sets-the-element-rate",
+      "covers": [
+        "queue-manager::resetRateForTTS/restoreRate never touch backend.setRate for a synth item"
+      ],
+      "note": "No element sounds under a spoken line, so no rate reaches the deck for it; the synthesiser got its rate at speak.",
+      "setup": {
+        "target": "manager",
+        "catalogue": {
+          "ep-static": {
+            "id": "ep-static",
+            "audio_url": "https://cdn.example/static.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Static",
+            "show": "Indie"
+          },
+          "ep-other": {
+            "id": "ep-other",
+            "audio_url": "https://cdn.example/other.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Other",
+            "show": "Indie"
+          },
+          "ep-dai": {
+            "id": "ep-dai",
+            "audio_url": "https://cdn.example/dai.mp3",
+            "dai_suspected": true,
+            "duration_sec": 2501,
+            "title": "Stitched",
+            "show": "Big"
+          }
+        },
+        "tts": true,
+        "rate": 2
+      },
+      "steps": [
+        {
+          "call": "playForay",
+          "args": [
+            {
+              "id": "foray-1",
+              "title": "Fire",
+              "items": [
+                { "type": "narration", "id": "nar-1", "script": "spoken, not played" },
+                {
+                  "type": "segment",
+                  "item_id": "ep-static",
+                  "start_sec": 100,
+                  "end_sec": 210,
+                  "why": "he explains it plainly"
+                }
+              ]
+            }
+          ]
+        },
+        { "checkpoint": "spoken" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "spoken",
+            "ops": ["tts.speak:spoken, not played@1"],
+            "playhead": "nar-1",
+            "rate": 2,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "end",
+            "ops": [],
+            "playhead": "nar-1",
+            "rate": 2,
+            "state": "playing"
+          }
+        ],
+        "ops": ["tts.speak:spoken, not played@1"]
+      }
+    },
+    {
+      "id": "speech-rate/the-constructed-voice-speaks",
+      "covers": ["queue-manager::a script-only narration item speaks with the constructed voice"],
+      "note": "The listener's chosen voice reaches the synthesiser.",
+      "setup": {
+        "target": "manager",
+        "catalogue": {
+          "ep-static": {
+            "id": "ep-static",
+            "audio_url": "https://cdn.example/static.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Static",
+            "show": "Indie"
+          },
+          "ep-other": {
+            "id": "ep-other",
+            "audio_url": "https://cdn.example/other.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Other",
+            "show": "Indie"
+          },
+          "ep-dai": {
+            "id": "ep-dai",
+            "audio_url": "https://cdn.example/dai.mp3",
+            "dai_suspected": true,
+            "duration_sec": 2501,
+            "title": "Stitched",
+            "show": "Big"
+          }
+        },
+        "tts": true,
+        "voice": "com.apple.voice.enhanced.en-US.Ava"
+      },
+      "steps": [
+        {
+          "call": "playForay",
+          "args": [
+            {
+              "id": "foray-1",
+              "title": "Fire",
+              "items": [
+                {
+                  "type": "narration",
+                  "id": "nar-1",
+                  "script": "spoken in a chosen voice"
+                },
+                {
+                  "type": "segment",
+                  "item_id": "ep-static",
+                  "start_sec": 100,
+                  "end_sec": 210,
+                  "why": "he explains it plainly"
+                }
+              ]
+            }
+          ]
+        },
+        { "checkpoint": "spoken" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "spoken",
+            "ops": ["tts.speak:spoken in a chosen voice@1:com.apple.voice.enhanced.en-US.Ava"],
+            "playhead": "nar-1",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "end",
+            "ops": [],
+            "playhead": "nar-1",
+            "rate": 1,
+            "state": "playing"
+          }
+        ],
+        "ops": ["tts.speak:spoken in a chosen voice@1:com.apple.voice.enhanced.en-US.Ava"]
+      }
+    },
+    {
+      "id": "speech-rate/a-new-voice-is-for-the-next-line",
+      "covers": [
+        "queue-manager::setVoice() changes the voice on the NEXT speak() call, not the one already spoken"
+      ],
+      "note": "The line already spoken keeps its voice; the next speak carries the new one.",
+      "setup": {
+        "target": "manager",
+        "catalogue": {
+          "ep-static": {
+            "id": "ep-static",
+            "audio_url": "https://cdn.example/static.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Static",
+            "show": "Indie"
+          },
+          "ep-other": {
+            "id": "ep-other",
+            "audio_url": "https://cdn.example/other.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Other",
+            "show": "Indie"
+          },
+          "ep-dai": {
+            "id": "ep-dai",
+            "audio_url": "https://cdn.example/dai.mp3",
+            "dai_suspected": true,
+            "duration_sec": 2501,
+            "title": "Stitched",
+            "show": "Big"
+          }
+        },
+        "tts": true,
+        "voice": "voice-a"
+      },
+      "steps": [
+        {
+          "call": "playForay",
+          "args": [
+            {
+              "id": "foray-1",
+              "title": "Fire",
+              "items": [
+                { "type": "narration", "id": "nar-1", "script": "first line" },
+                {
+                  "type": "segment",
+                  "item_id": "ep-static",
+                  "start_sec": 100,
+                  "end_sec": 210,
+                  "why": "he explains it plainly"
+                }
+              ]
+            }
+          ]
+        },
+        { "checkpoint": "first" },
+        { "call": "setVoice", "args": ["voice-b"] },
+        {
+          "call": "playForay",
+          "args": [
+            {
+              "id": "foray-1",
+              "title": "Fire",
+              "items": [
+                { "type": "narration", "id": "nar-2", "script": "second line" },
+                {
+                  "type": "segment",
+                  "item_id": "ep-static",
+                  "start_sec": 100,
+                  "end_sec": 210,
+                  "why": "he explains it plainly"
+                }
+              ]
+            },
+            { "allowMultiple": true }
+          ]
+        },
+        { "checkpoint": "second" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "first",
+            "ops": ["tts.speak:first line@1:voice-a"],
+            "playhead": "nar-1",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "second",
+            "ops": ["tts.pause", "tts.speak:second line@1:voice-b"],
+            "playhead": "nar-2",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "end",
+            "ops": [],
+            "playhead": "nar-2",
+            "rate": 1,
+            "state": "playing"
+          }
+        ],
+        "ops": [
+          "tts.speak:first line@1:voice-a",
+          "tts.pause",
+          "tts.speak:second line@1:voice-b"
+        ]
+      }
+    },
+    {
+      "id": "speech-rate/no-voice-lets-the-synthesiser-pick",
+      "covers": [
+        "queue-manager::setVoice(null) clears the choice — the plugin picks its own best tier"
+      ],
+      "note": "A cleared choice sends no voice at all.",
+      "setup": {
+        "target": "manager",
+        "catalogue": {
+          "ep-static": {
+            "id": "ep-static",
+            "audio_url": "https://cdn.example/static.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Static",
+            "show": "Indie"
+          },
+          "ep-other": {
+            "id": "ep-other",
+            "audio_url": "https://cdn.example/other.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Other",
+            "show": "Indie"
+          },
+          "ep-dai": {
+            "id": "ep-dai",
+            "audio_url": "https://cdn.example/dai.mp3",
+            "dai_suspected": true,
+            "duration_sec": 2501,
+            "title": "Stitched",
+            "show": "Big"
+          }
+        },
+        "tts": true,
+        "voice": "voice-a"
+      },
+      "steps": [
+        { "call": "setVoice", "args": [null] },
+        {
+          "call": "playForay",
+          "args": [
+            {
+              "id": "foray-1",
+              "title": "Fire",
+              "items": [
+                { "type": "narration", "id": "nar-1", "script": "no voice requested" },
+                {
+                  "type": "segment",
+                  "item_id": "ep-static",
+                  "start_sec": 100,
+                  "end_sec": 210,
+                  "why": "he explains it plainly"
+                }
+              ]
+            }
+          ]
+        },
+        { "checkpoint": "spoken" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "spoken",
+            "ops": ["tts.speak:no voice requested@1"],
+            "playhead": "nar-1",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "end",
+            "ops": [],
+            "playhead": "nar-1",
+            "rate": 1,
+            "state": "playing"
+          }
+        ],
+        "ops": ["tts.speak:no voice requested@1"]
+      }
+    },
+    {
+      "id": "speech-rate/the-text-voice-and-rate-reach-the-synthesiser",
+      "covers": [
+        "queue-manager::MUTATION GUARD: the voice option reaches speak() alongside rate",
+        "tts-bridge::speak: forwards the text AND the options through to the module, and returns its answer"
+      ],
+      "note": "The line's text, the chosen voice and the 1x rate (not the listener's 1.5x) all reach the synthesiser in one speak.",
+      "setup": {
+        "target": "manager",
+        "catalogue": {
+          "ep-static": {
+            "id": "ep-static",
+            "audio_url": "https://cdn.example/static.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Static",
+            "show": "Indie"
+          },
+          "ep-other": {
+            "id": "ep-other",
+            "audio_url": "https://cdn.example/other.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Other",
+            "show": "Indie"
+          },
+          "ep-dai": {
+            "id": "ep-dai",
+            "audio_url": "https://cdn.example/dai.mp3",
+            "dai_suspected": true,
+            "duration_sec": 2501,
+            "title": "Stitched",
+            "show": "Big"
+          }
+        },
+        "tts": true,
+        "voice": "the-chosen-voice",
+        "rate": 1.5
+      },
+      "steps": [
+        {
+          "call": "playForay",
+          "args": [
+            {
+              "id": "foray-1",
+              "title": "Fire",
+              "items": [
+                { "type": "narration", "id": "nar-1", "script": "line" },
+                {
+                  "type": "segment",
+                  "item_id": "ep-static",
+                  "start_sec": 100,
+                  "end_sec": 210,
+                  "why": "he explains it plainly"
+                }
+              ]
+            }
+          ]
+        },
+        { "checkpoint": "spoken" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "spoken",
+            "ops": ["tts.speak:line@1:the-chosen-voice"],
+            "playhead": "nar-1",
+            "rate": 1.5,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "end",
+            "ops": [],
+            "playhead": "nar-1",
+            "rate": 1.5,
+            "state": "playing"
+          }
+        ],
+        "ops": ["tts.speak:line@1:the-chosen-voice"]
+      }
+    },
+    {
+      "id": "speech-rate/a-voice-fallback-is-reported",
+      "covers": ["queue-manager::lastVoiceFallback reports the plugin's own voiceFallback flag"],
+      "note": "The synthesiser's own flag, surfaced; null until something has spoken.",
+      "setup": {
+        "target": "manager",
+        "catalogue": {
+          "ep-static": {
+            "id": "ep-static",
+            "audio_url": "https://cdn.example/static.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Static",
+            "show": "Indie"
+          },
+          "ep-other": {
+            "id": "ep-other",
+            "audio_url": "https://cdn.example/other.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Other",
+            "show": "Indie"
+          },
+          "ep-dai": {
+            "id": "ep-dai",
+            "audio_url": "https://cdn.example/dai.mp3",
+            "dai_suspected": true,
+            "duration_sec": 2501,
+            "title": "Stitched",
+            "show": "Big"
+          }
+        },
+        "tts": { "voiceFallback": true },
+        "voice": "not-installed",
+        "view": ["lastVoiceFallback"]
+      },
+      "steps": [
+        { "checkpoint": "before" },
+        {
+          "call": "playForay",
+          "args": [
+            {
+              "id": "foray-1",
+              "title": "Fire",
+              "items": [
+                { "type": "narration", "id": "nar-1", "script": "line" },
+                {
+                  "type": "segment",
+                  "item_id": "ep-static",
+                  "start_sec": 100,
+                  "end_sec": 210,
+                  "why": "he explains it plainly"
+                }
+              ]
+            }
+          ]
+        },
+        { "checkpoint": "spoken" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": -1,
+            "lastVoiceFallback": null,
+            "name": "before",
+            "ops": [],
+            "playhead": null,
+            "rate": 1,
+            "state": "idle"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "lastVoiceFallback": true,
+            "name": "spoken",
+            "ops": ["tts.speak:line@1:not-installed"],
+            "playhead": "nar-1",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "lastVoiceFallback": true,
+            "name": "end",
+            "ops": [],
+            "playhead": "nar-1",
+            "rate": 1,
+            "state": "playing"
+          }
+        ],
+        "ops": ["tts.speak:line@1:not-installed"]
+      }
+    }
+  ]
+}

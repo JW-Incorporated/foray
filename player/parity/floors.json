@@ -16,7 +16,7 @@
     "handshake": 17,
     "interlude": 33,
     "manager-episode": 44,
-    "manager-foray": 63,
+    "manager-foray": 117,
     "media": 43,
     "media-episode": 124,
     "number-format": 25,
@@ -31,6 +31,7 @@
     "session": 166,
     "session-invariant": 21,
     "snapshot": 24,
+    "speech-rate": 12,
     "transport": 111
   },
   "suites": {
