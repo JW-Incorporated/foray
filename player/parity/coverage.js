@@ -366,8 +366,9 @@ export function capabilityFamilies(capabilities) {
 /* ---------- the capability gate ---------- */
 
 /** Capabilities advertised by the shipping configuration: `mobile/ENGINE_DEFAULT.json`
-    (absent until NE-27 creates it = none) and the Swift source's
-    `advertisedCapabilities` array literal (absent until NE-20 = none). */
+    (`capabilities`; none while it said js) and the Swift source's
+    `advertisedCapabilities` array literal (EngineBridgeRules.swift). Since
+    NE-27b both say episode, continuation and restore. */
 export function advertisedCapabilities(root) {
   const out = new Map();
   const def = path.join(root, "mobile", "ENGINE_DEFAULT.json");

@@ -269,7 +269,8 @@ final class EngineBridgeTests: XCTestCase {
         accepted(.helloResponse, native)
         XCTAssertEqual(native["mode"], .string("native"))
         XCTAssertEqual(native["reason"], .string("build-default"))
-        XCTAssertEqual(native["capabilities"], .array([.string("continuation")]))
+        XCTAssertEqual(native["capabilities"], .array([.string("episode"), .string("continuation")]),
+                       "the plist's ∩ the advertised: foray is not advertised in M1")
         XCTAssertEqual(native["pendingAdvances"], .array([]))
         XCTAssertEqual(rig.owner.hellos, 1)
 
@@ -288,11 +289,12 @@ final class EngineBridgeTests: XCTestCase {
     }
 
     /// A capability the hello did not grant is refused before the engine
-    /// hears of it: this build advertises no `episode` yet.
+    /// hears of it: the binary advertises `episode` (NE-27b), but a build
+    /// whose plist does not declare it never plays one natively.
     /// TO SEE IT FAIL: drop the `requiredCapability` check.
     @MainActor
     func testPlayEpisodeWithoutTheCapabilityIsRefused() {
-        let rig = Rig()
+        let rig = Rig(capabilities: ["continuation"])
         let reply = rig.send("playEpisode", #"{"item":{"id":"a","audio_url":"https://cdn.example/a.mp3"},"lastEpisodeRow":{"id":"a"}}"#)
         accepted(.sendResponse, reply)
         XCTAssertEqual(reply["reason"], .string("capability-off"))

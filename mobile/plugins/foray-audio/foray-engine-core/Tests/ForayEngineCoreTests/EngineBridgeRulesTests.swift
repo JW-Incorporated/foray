@@ -130,13 +130,20 @@ final class EngineBridgeRulesTests: XCTestCase {
 
     /// The hello's capabilities are the plist's ∩ what the binary may
     /// advertise, in the contract's order; no plist key is none.
-    /// TO SEE IT FAIL: return the plist's list as is, or advertise `episode`
-    /// before its families owe nothing (coverage.test.js is red then too).
+    /// NE-27b: the M1 binary advertises episode, continuation and restore,
+    /// never `foray` (M2); coverage.test.js refuses any of them whose families
+    /// still owe work.
+    /// TO SEE IT FAIL: return the plist's list as is, drop `episode` or
+    /// `restore` from the advertised list, or advertise `foray` before M2.
     func testCapabilitiesAreThePlistsIntersectedWithTheAdvertised() {
         XCTAssertEqual(EngineBridgeRules.capabilities(declared: nil), [])
         XCTAssertEqual(EngineBridgeRules.capabilities(declared: []), [])
-        XCTAssertEqual(EngineBridgeRules.capabilities(declared: ["foray", "bogus", "continuation", "episode"]), [.continuation])
-        XCTAssertEqual(EngineBridgeRules.advertisedCapabilities, ["continuation"])
+        XCTAssertEqual(EngineBridgeRules.capabilities(declared: ["foray", "bogus", "continuation", "episode"]), [.episode, .continuation])
+        XCTAssertEqual(EngineBridgeRules.capabilities(declared: ["restore", "continuation", "episode", "foray"]),
+                       [.episode, .continuation, .restore], "the contract's order, not the plist's; foray is not advertised")
+        XCTAssertEqual(EngineBridgeRules.capabilities(declared: ["continuation"]), [.continuation])
+        XCTAssertEqual(EngineBridgeRules.advertisedCapabilities, ["episode", "continuation", "restore"])
+        XCTAssertFalse(EngineBridgeRules.advertisedCapabilities.contains("foray"), "foray waits for M2 (NE-30s)")
         XCTAssertEqual(EngineBridgeRules.requiredCapability(.probeSession), nil)
         XCTAssertEqual(EngineBridgeRules.requiredCapability(.purge), nil)
     }

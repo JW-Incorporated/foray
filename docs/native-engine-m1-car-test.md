@@ -8,23 +8,24 @@ because the audio that last *played* came from WebKit's process. M1 passes only
 if the engine's own playback session, the one the audio played through, is the
 one the car comes back to.
 
-This file is the script. The HUMAN-ACTIONS item that asks for the drive names
-**one** TestFlight build number and links here; it is filed only once that build
+This file is the script. HUMAN-ACTIONS #114 (filed by NE-27b) asks for the
+drive and links here: it names **the next TestFlight build after `engine/m1`
+merges** into `main`, and its build number is added to that card once the build
 exists (see "Before it can be run").
 
 ## Before it can be run
 
 Each of these is a precondition, not a step for the founder. As of 2026-09-24
-none of the first three is met.
+the first two are met on `engine/m1` (NE-27b, NE-22d); the third is not.
 
-1. **The flip.** `mobile/ENGINE_DEFAULT.json` says
+1. **The flip (met, NE-27b).** `mobile/ENGINE_DEFAULT.json` says
    `{"mode":"native","capabilities":["episode","continuation","restore"]}`, and
    the Swift `EngineBridgeRules.advertisedCapabilities` lists the same three.
-   Both are refused by `player/parity/coverage.test.js` while any family mapped
-   to `episode` owes work: today 42 `transport-reconcile` tests (34
-   `manager-episode`, 8 `deck-episode`) are still in
-   `player/parity/unported.json`. `tools/mobile/shell-invariants.test.mjs` also
-   refuses a native default unless STATE.md carries the dated `OQ-9 answer` line.
+   `player/parity/coverage.test.js` refuses both while any family mapped to
+   them owes work; NE-14k emptied the 42 `transport-reconcile` tests (34
+   `manager-episode`, 8 `deck-episode`) that once held `episode` back.
+   `tools/mobile/shell-invariants.test.mjs` refuses a native default unless
+   STATE.md carries the dated `OQ-9 answer` line, which NE-27 part 1 recorded.
 2. **The Developer rows** the script uses, in the page's Developer group:
    "Playback engine: Automatic / Native / Web (applies after restart)" (NE-17),
    "Pause hold: forever / none" (NE-16), "Simulate system termination" (NE-24)
