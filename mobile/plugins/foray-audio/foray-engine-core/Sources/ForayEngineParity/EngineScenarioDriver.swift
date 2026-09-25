@@ -42,6 +42,17 @@ import ForayEngineCore
 ///   - every grace begin has an end, and none is open when the scenario ends.
 /// A broken one appends a `!...` token to the op log (never stripped), so the
 /// case goes red with the evidence in its diff.
+///
+/// THE NARRATION OVERLAY (NE-31s) runs against two more fakes in the JS
+/// fakes' grammar: a synthesiser (fakes.js `fakeTts`, every NE-31j shape:
+/// refuse, voiceFallback, `onFinished: false`, `transport: false`, a
+/// rejecting pause, a resume answer, `state`) that logs `tts.speak:<text>@<rate>`,
+/// `tts.pause`, `tts.resume` and `tts.stop` and answers the core's commands
+/// by utterance `seq`, and a jingle player (`fakeInterlude`) that logs
+/// `interlude.start` / `.refused` / `.stop` / `.ended:<reason>` / `.release`.
+/// Their answers land when the step settles, before any load, as the JS
+/// awaits resolve. The silence node (flagged off) is checked too: it may
+/// start only while the transport runs with the session active.
 public struct EngineScenarioDriver {
     /// A deliberately broken core, for the mutation tests (card NE-14s): the
     /// fault is injected into the core's OUTPUT, so what is proven is that the
@@ -56,6 +67,17 @@ public struct EngineScenarioDriver {
         /// AFTER the beat instead of inside it (the defect the beat's absolute
         /// deadline exists to prevent: a seam costing gap + load).
         case loadAfterBeat
+        /// NE-31s: the synthesiser reports every `didCancel` as `didFinish`
+        /// (a narrator that maps cancel to finished). A line whose session is
+        /// taken from under it then ADVANCES instead of being interrupted.
+        case cancelAsFinished
+        /// NE-31s: every `didFinish` is taken as the CURRENT line's, whatever
+        /// utterance it was about (the seq check dropped), so a late finish of
+        /// a line already left advances the one after it.
+        case finishedClaimsCurrentLine
+        /// NE-31s: the silence node started at the head of every turn that
+        /// begins with the transport not running.
+        case silenceWhileNotRunning
     }
 
     /// One scenario's outcome.
@@ -126,9 +148,14 @@ final class ScenarioWorld {
     /// The `setup` keys this driver implements; any other is refused, never
     /// ignored, so a case that needs narration or the interlude (NE-31s) says so.
     static let setupKeys: Set<String> = ["target", "positions", "positionEvents", "rate", "backend", "catalogue", "session",
-                                         "seamGapSec", "view", "scheduler", "seamGapEvents", "forayBuild", "capabilities"]
+                                         "seamGapSec", "view", "scheduler", "seamGapEvents", "forayBuild", "capabilities",
+                                         "tts", "interlude", "interludeEnabled", "voice", "narrationTicks"]
     /// runner.js `VIEW_KEYS`: what a Foray scenario may add to its checkpoints.
-    static let viewKeys: Set<String> = ["outPoint", "seamGapRemainingMs", "timersLive", "positionSec"]
+    static let viewKeys: Set<String> = ["outPoint", "seamGapRemainingMs", "timersLive", "positionSec",
+                                        "narrationSec", "narrationPlayhead", "narrationTicks", "lastVoiceFallback", "wasPlaying"]
+    /// The timers the JS manager runs on its injected scheduler (the ones a
+    /// `clock` step moves and `timersLive` counts): the beat and the pulse.
+    static let schedulerTimers: Set<EngineTimer> = [.seamBeat, .narrationTick]
     /// A fixed wall clock (rows are stamped with it) and a monotonic one that
     /// moves a second per step, so nothing in one step is "within 500 ms" of
     /// another unless a case says so.
@@ -165,12 +192,25 @@ final class ScenarioWorld {
     var instantLoads: [(token: DeckToken, itemId: String)] = []
     var heldLoads: [(token: DeckToken, itemId: String)] = []
     var confirmations: [DeckToken] = []
-    var speaking = false
     /// The standby deck (reference-engine.js WarmingBackend), engine target only.
     var warm: DeckPolicy.Warm?
     var currentUrl: String?
-    /// The seam beat's one timer, on the monotonic clock.
-    var seamTimerDue: Double?
+    /// The core's timers that are armed, and when each is due (monotonic).
+    var timerDue: [EngineTimer: Double] = [:]
+    /// The synthesiser and the jingle player (NE-31s), nil when not wired.
+    var narrator: FakeNarrator?
+    var jingle: FakeJingle?
+    /// Their answers, delivered when the step settles, before any load.
+    var answers: [EngineInput] = []
+    /// What is audible besides the deck.
+    var auditionSpeaking = false
+    var narrationSpeaking = false
+    var silenceOn = false
+    /// The narration pulses the surface saw (`narrationTicks`).
+    var pulses = 0
+    let pulseWired: Bool
+    /// A `dispose` in progress: the deck's release is `release`, as FakeBackend logs it.
+    var disposing = false
     /// `loadAfterBeat`'s withheld loads.
     var deferredLoads: [DeckCommand] = []
 
@@ -189,6 +229,8 @@ final class ScenarioWorld {
     /// Refusals the core answered in the current engine command.
     var refusals: [String] = []
     var cmdSeq = 0
+    /// Whether the transport ran when the current turn began.
+    var runningAtEntry = false
 
     init(setup: JSValue, mutation: EngineScenarioDriver.Mutation?, forayTape: Bool, caseId: String,
          context: Codec.Context) throws {
@@ -232,6 +274,22 @@ final class ScenarioWorld {
         default: throw HarnessError("E_BAD_CASE", "setup.view is a list of view keys")
         }
         view = viewList
+        pulseWired = setup["narrationTicks"] == .bool(true)
+        if view.contains("narrationTicks") && !pulseWired {
+            throw HarnessError("E_BAD_CASE", "view \"narrationTicks\" needs setup.narrationTicks = true")
+        }
+        switch setup["tts"] {
+        case .undefined, .null, .bool(false): narrator = nil
+        case .bool(true): narrator = FakeNarrator(shape: .object([:]))
+        case .object: narrator = FakeNarrator(shape: setup["tts"])
+        default: throw HarnessError("E_BAD_CASE", "setup.tts is a boolean or an object")
+        }
+        switch setup["interlude"] {
+        case .undefined, .null, .bool(false): jingle = nil
+        case .bool(true): jingle = FakeJingle(refuse: false)
+        case .object: jingle = FakeJingle(refuse: setup["interlude"]["refuse"] == .bool(true))
+        default: throw HarnessError("E_BAD_CASE", "setup.interlude is a boolean or an object")
+        }
         seamGapEvents = setup["seamGapEvents"] == .bool(true)
         self.caseId = caseId
         self.mutation = mutation
@@ -254,7 +312,10 @@ final class ScenarioWorld {
         case let .number(value): gapSec = value
         default: throw HarnessError("E_BAD_CASE", "setup.seamGapSec must be a number, got \(setup["seamGapSec"])")
         }
-        core = EngineCore(config: EngineConfig(build: "parity", rate: rate, forayTapeEnabled: tape, seamGapSec: gapSec),
+        let voice: String? = setup["voice"].stringValue
+        core = EngineCore(config: EngineConfig(build: "parity", rate: rate, forayTapeEnabled: tape, seamGapSec: gapSec,
+                                               narrationPulse: pulseWired, interludeAvailable: jingle != nil,
+                                               interludeEnabled: setup["interludeEnabled"] != .bool(false), voiceId: voice),
                           positions: positions)
         let backend = setup["backend"]
         holdLoads = backend["holdLoads"] == .bool(true)
@@ -287,9 +348,15 @@ final class ScenarioWorld {
             settle()
         case "clock":
             guard manualClock else { throw HarnessError("E_BAD_CASE", "\"clock\" needs setup.scheduler = \"manual\"") }
-            try advance(fields["clock"])
+            try advance(fields["clock"], every: fields["every"])
         case "deck":
             try deck(fields)
+            settle()
+        case "tts":
+            try tts(fields)
+            settle()
+        case "interlude":
+            try interlude(fields)
             settle()
         case "session":
             try session(fields)
@@ -306,9 +373,64 @@ final class ScenarioWorld {
             }
             checkpoint(name)
         default:
-            // tts and interlude have no Swift driver yet; say which, never skip.
-            throw HarnessError("E_BAD_CASE", "the \"\(verb)\" verb has no Swift scenario driver yet (M2: NE-31s)")
+            throw HarnessError("E_UNKNOWN_VERB", "the \"\(verb)\" verb has no Swift scenario driver")
         }
+    }
+
+    /// The synthesiser's own reports (runner.js `tts`): `finish` is
+    /// `didFinish` for the line it is speaking (only to a bridge that offers
+    /// `onFinished`); `silent` is the session taken from under the line, which
+    /// silences it (natively a `didCancel` at most, never a finish).
+    /// `finishPrevious` is Swift-only (an authored XCTest): a LATE duplicate
+    /// `didFinish` of the utterance before the current one.
+    private func tts(_ fields: [String: JSONValue]) throws {
+        guard var fake = narrator else { throw HarnessError("E_BAD_CASE", "\"tts\" needs setup.tts") }
+        switch fields["tts"]?.stringValue {
+        case "finish":
+            let seq = fake.current ?? 0
+            fake.word = .idle
+            narrationSpeaking = false
+            narrator = fake
+            if fake.onFinished { feed(narratorEnd(.finished(seq: seq))) }
+        case "silent":
+            let seq = fake.current ?? 0
+            fake.word = .idle
+            narrationSpeaking = false
+            narrator = fake
+            feed(narratorEnd(.cancelled(seq: seq)))
+        case "finishPrevious":
+            guard let seq = fake.previous else { throw HarnessError("E_BAD_CASE", "no earlier utterance to finish") }
+            feed(narratorEnd(.finished(seq: seq)))
+        default:
+            throw HarnessError("E_BAD_CASE", "unknown tts event \(fields["tts"] ?? .null) (finish, silent)")
+        }
+    }
+
+    /// An end as the (possibly broken) synthesiser reports it.
+    private func narratorEnd(_ event: NarratorEvent) -> EngineInput {
+        switch (mutation, event) {
+        case let (.cancelAsFinished?, .cancelled(seq)):
+            return .narrator(.finished(seq: seq))
+        case (.finishedClaimsCurrentLine?, .finished):
+            return .narrator(.finished(seq: core.state.narration?.seq ?? 0))
+        default:
+            return .narrator(event)
+        }
+    }
+
+    /// The jingle reporting its own end (runner.js `interlude: "end"`).
+    private func interlude(_ fields: [String: JSONValue]) throws {
+        guard var fake = jingle else { throw HarnessError("E_BAD_CASE", "\"interlude\" needs setup.interlude") }
+        guard fields["interlude"]?.stringValue == "end" else {
+            throw HarnessError("E_BAD_CASE", "unknown interlude event \(fields["interlude"] ?? .null)")
+        }
+        guard fake.active else { return }
+        let reason = fields["reason"]?.stringValue ?? "ended"
+        fake.active = false
+        jingle = fake
+        ops.append("interlude.ended:\(reason)")
+        trackAudible()
+        feed(.interlude(.ended(reason: reason)))
     }
 
     private func call(_ fields: [String: JSONValue], context: Codec.Context) throws {
@@ -354,6 +476,17 @@ final class ScenarioWorld {
             feed(.queue(.seek(sec: seconds, precise: arg(1)["precise"].isTruthy)))
         case "setRate":
             feed(.queue(.setRate(arg(0).numberValue)))
+        case "setVoice":
+            feed(.command(.setVoice(voiceId: arg(0).stringValue), source: .tap))
+        case "setInterludeEnabled":
+            // `on !== false`.
+            feed(.command(.setInterludeEnabled(arg(0) != .bool(false)), source: .tap))
+        case "dispose":
+            // The page tearing the player down; natively the engine's own
+            // teardown. What it silences and releases is the claim.
+            disposing = true
+            feed(.lifecycle(.teardown))
+            disposing = false
         case "playForay", "setQueueFromForay":
             if forayTape {
                 // The PAGE's build (the engine never builds a Foray, plan §3 A-1).
@@ -496,15 +629,34 @@ final class ScenarioWorld {
     }
 
     /// `clock: ms` on the manual scheduler (`advance`): move the clock, run
-    /// what came due (the beat's one timer), then settle.
-    private func advance(_ value: JSONValue?) throws {
+    /// what came due, in due order (the beat's timer, the narration pulse),
+    /// then settle. `every` (NE-31j) moves it in steps of that many ms, as an
+    /// AWAKE page's timers fire; one jump is a suspended page.
+    private func advance(_ value: JSONValue?, every: JSONValue? = nil) throws {
         guard let ms = value?.numberValue, ms.isFinite, ms >= 0, ms.rounded() == ms else {
             throw HarnessError("E_BAD_CASE", "clock takes whole milliseconds")
         }
+        guard let everyValue = every else { return advanceOnce(ms) }
+        guard let step = everyValue.numberValue, step.isFinite, step > 0, step.rounded() == step,
+              ms.truncatingRemainder(dividingBy: step) == 0 else {
+            throw HarnessError("E_BAD_CASE", "clock with `every` takes whole ms, a multiple of `every`")
+        }
+        var moved: Double = 0
+        while moved < ms {
+            advanceOnce(step)
+            moved += step
+        }
+    }
+
+    private func advanceOnce(_ ms: Double) {
         monoMs += ms
-        if let due = seamTimerDue, due <= monoMs {
-            seamTimerDue = nil
-            feed(.timer(.seamBeat))
+        // `manualScheduler.advance`: what is due NOW, in due order; a timer
+        // re-armed while these run is due later and waits for the next move.
+        let due = timerDue.filter { ScenarioWorld.schedulerTimers.contains($0.key) || $0.key == .silenceCap }
+            .filter { $0.value <= monoMs }.sorted { $0.value < $1.value }
+        for (timer, at) in due where timerDue[timer] == at {
+            timerDue[timer] = nil
+            feed(.timer(timer))
         }
         if !deferredLoads.isEmpty, let until = core.state.gapUntilMono, monoMs >= until {
             let withheld = deferredLoads
@@ -697,13 +849,18 @@ final class ScenarioWorld {
 
     // MARK: feeding the core
 
-    private var now: EngineNow { EngineNow(wallMs: ScenarioWorld.wallMs, monoMs: monoMs, deck: reading) }
+    private var now: EngineNow {
+        // The synthesiser's `state()`, only from a bridge that answers it.
+        let word: NarratorReading = (narrator?.stateful ?? false) ? (narrator?.word ?? .unknown) : .unknown
+        return EngineNow(wallMs: ScenarioWorld.wallMs, monoMs: monoMs, deck: reading, narrator: word)
+    }
 
     /// One turn: the input, then (as the host does, before anything else) the
     /// answer to any activation it asked for. The audible-start rule is
     /// checked over the whole turn, from the session the turn began with.
     func feed(_ input: EngineInput) {
         let entry = core.state.session
+        runningAtEntry = core.state.isRunning
         var names: [String] = []
         var output = core.handle(input, now: now)
         output = mutate(output, entry: entry, turnHead: true)
@@ -740,7 +897,10 @@ final class ScenarioWorld {
             }
         case .playWhileLost?:
             return turnHead && entry == .lostToInterruption ? [EngineCommand.deck(.play)] + output : output
-        case .loadAfterBeat?, nil:
+        case .silenceWhileNotRunning?:
+            guard turnHead, !runningAtEntry else { return output }
+            return [EngineCommand.silenceStart(capMs: Interlude.ceilingSec * 1000)] + output
+        case .loadAfterBeat?, .cancelAsFinished?, .finishedClaimsCurrentLine?, nil:
             return output
         }
     }
@@ -785,17 +945,38 @@ final class ScenarioWorld {
                 graceHeld = nil
                 native("n.grace.end:\(outcome.rawValue)")
             case let .timerArm(timer, afterMs, _):
-                if timer == .seamBeat { seamTimerDue = monoMs + afterMs }
+                timerDue[timer] = monoMs + afterMs
                 native("n.timer.arm:\(timer.rawValue)")
             case let .timerCancel(timer):
-                if timer == .seamBeat { seamTimerDue = nil }
+                timerDue[timer] = nil
                 native("n.timer.cancel:\(timer.rawValue)")
             case let .writeRow(row): native("n.row:\(row.key)")
             case let .writeRestore(record): native("n.restore:\(record?.mode.rawValue ?? "removed")")
-            case .speak:
-                speaking = true
+            case let .speak(text, voiceId):
+                // The audition (OQ-5): the synthesiser's own op, at the speed
+                // narration speaks at (`NARRATION_RATE`), as tts.speak logs it.
+                auditionSpeaking = true
                 trackAudible()
-                native("n.speak")
+                ops.append(ScenarioWorld.speakOp(text, rate: EngineConstants.QueueManager.narrationRate, voiceId: voiceId))
+            case let .narration(narration):
+                applyNarration(narration)
+            case let .interlude(interlude):
+                applyInterlude(interlude)
+            case let .silenceStart(capMs):
+                // NE-34's rule: never while the transport is not running or
+                // the session is not active (the audible-start check sees the
+                // session half on its own).
+                if !core.state.isRunning { broke("silence-not-running") }
+                if capMs > Interlude.ceilingSec * 1000 { broke("silence-over-the-cap") }
+                silenceOn = true
+                native("n.silence.start:\(ScenarioWorld.number(capMs))")
+            case .silenceStop:
+                silenceOn = false
+                native("n.silence.stop")
+            case .narrationPulse:
+                // The surface's `onNarrationTick`, counted, not logged: a
+                // repaint is not an act on the outside world.
+                pulses += 1
             case let .emit(event):
                 switch event {
                 case .advanced: native("n.emit:advanced")
@@ -848,7 +1029,7 @@ final class ScenarioWorld {
                 broke("deck-play-before-ready")
             }
             reading.audible = true
-            speaking = false
+            auditionSpeaking = false
             plays.append(deckItemId ?? "?")
             trackAudible()
             ops.append("play")
@@ -870,7 +1051,8 @@ final class ScenarioWorld {
             readyToken = nil
             deckOutPoint = nil
             reading = DeckReading(positionSec: nil, durationSec: nil, audible: false, ended: false)
-            native("n.deck.unload")
+            // FakeBackend's `release()` is the teardown's (`dispose`).
+            if disposing && !engineTarget { ops.append("release") } else { native("n.deck.unload") }
         case let .prepare(itemId, url, startSec):
             guard engineTarget else { return native("n.deck.prepare:\(itemId)") }
             // WarmingBackend `prefetch`: the standby deck's own decision.
@@ -905,13 +1087,17 @@ final class ScenarioWorld {
         var budget = 256
         while budget > 0 {
             budget -= 1
+            if !answers.isEmpty {
+                feed(answers.removeFirst())
+                continue
+            }
             if !instantLoads.isEmpty {
                 let next = instantLoads.removeFirst()
                 land(next.token, itemId: next.itemId, fail: failLoadFor.contains(next.itemId))
                 continue
             }
-            if !manualClock, seamTimerDue != nil {
-                seamTimerDue = nil
+            if !manualClock, timerDue[.seamBeat] != nil {
+                timerDue[.seamBeat] = nil
                 feed(.timer(.seamBeat))
                 continue
             }
@@ -928,7 +1114,8 @@ final class ScenarioWorld {
     }
 
     private func trackAudible() {
-        let sources = (reading.audible ? 1 : 0) + (speaking ? 1 : 0)
+        let sources = (reading.audible ? 1 : 0) + (auditionSpeaking ? 1 : 0) + (narrationSpeaking ? 1 : 0)
+            + ((jingle?.active ?? false) ? 1 : 0)
         if sources > 1 { broke("two-audible-sources") }
         maxAudible = Swift.max(maxAudible, sources)
     }
@@ -946,7 +1133,7 @@ final class ScenarioWorld {
             "name": .string(name),
             "ops": .array(ops[mark...].map { JSONValue.string($0) }),
             "index": .number(Double(state.currentIndex)),
-            "inInterlude": .bool(false),
+            "inInterlude": .bool(state.inInterlude),
             "inSeamGap": .bool(state.inSeamGap),
             "playhead": state.loadedId.map { JSONValue.string($0) } ?? .null,
             "rate": .number(state.rate),
@@ -957,8 +1144,16 @@ final class ScenarioWorld {
             switch key {
             case "outPoint": fields[key] = deckOutPoint.map { JSONValue.number($0) } ?? .null
             case "seamGapRemainingMs": fields[key] = .number(core.seamGapRemainingMs(atMono: monoMs))
-            case "timersLive": fields[key] = .number(seamTimerDue == nil ? 0 : 1)
+            case "timersLive":
+                fields[key] = .number(Double(timerDue.keys.filter { ScenarioWorld.schedulerTimers.contains($0) }.count))
             case "positionSec": fields[key] = .number(reading.positionSec ?? 0)
+            case "narrationSec":
+                fields[key] = core.narrationElapsedSec(atMono: monoMs).map { JSONValue.number($0) } ?? .null
+            case "narrationPlayhead": fields[key] = .bool(state.isNarrationPlayhead)
+            case "narrationTicks": fields[key] = .number(Double(pulses))
+            case "lastVoiceFallback": fields[key] = state.lastVoiceFallback.map { JSONValue.bool($0) } ?? .null
+            case "wasPlaying":
+                if case let .interrupted(_, wasPlaying) = state.player { fields[key] = .bool(wasPlaying) } else { fields[key] = .null }
             default: break
             }
         }
@@ -977,11 +1172,142 @@ final class ScenarioWorld {
         .object(["checkpoints": .array(checkpoints), "ops": .array(ops.map { JSONValue.string($0) })])
     }
 
+    /// `tts.speak:<text>@<rate>[:<voice>]`, fakes.js `fakeTts.speak`.
+    static func speakOp(_ text: String, rate: Double, voiceId: String?) -> String {
+        "tts.speak:\(text)@\(number(rate))" + (voiceId.map { ":" + $0 } ?? "")
+    }
+
+    /// The synthesiser (fakes.js `fakeTts`), command by command. A bridge with
+    /// no transport logs nothing for pause/resume/stop and answers a resume
+    /// with nothing; natively a stop or a drop is followed by `didCancel`.
+    private func applyNarration(_ command: NarrationCommand) {
+        guard var fake = narrator else {
+            // No synthesiser wired: a line cannot be spoken (`_speakNarration`
+            // throws), and there is nothing to pause or stop.
+            if case let .speak(seq, _, _, _) = command {
+                answers.append(.narrator(.failed(seq: seq, reason: "no on-device TTS plugin wired")))
+            }
+            return
+        }
+        switch command {
+        case let .speak(seq, text, voiceId, rate):
+            ops.append(ScenarioWorld.speakOp(text, rate: rate, voiceId: voiceId))
+            if fake.refuse {
+                answers.append(.narrator(.failed(seq: seq, reason: "refused")))
+            } else {
+                if let current = fake.current { fake.previous = current }
+                fake.current = seq
+                fake.word = .speaking
+                narrationSpeaking = true
+                answers.append(.narrator(.started(seq: seq, voiceFallback: fake.voiceFallback)))
+            }
+        case .pause:
+            guard fake.transport else { break }
+            ops.append("tts.pause")
+            if !fake.pauseRejects && fake.word == .speaking { fake.word = .paused }
+            if !fake.pauseRejects { narrationSpeaking = false }
+        case let .resume(seq):
+            guard fake.transport else {
+                answers.append(.narrator(.resumed(seq: seq, answer: .noAnswer)))
+                break
+            }
+            ops.append("tts.resume")
+            let answer: NarrationResumeAnswer
+            if let given = fake.resumeAnswer {
+                if given["accepted"] == .bool(true) {
+                    fake.word = .speaking
+                    answer = given["fromStart"] == .bool(true) ? .fromStart : .continued
+                } else {
+                    answer = .refused(reason: given["reason"].stringValue ?? "?")
+                }
+            } else {
+                if fake.word == .paused { fake.word = .speaking }
+                answer = .continued
+            }
+            if case .refused = answer {} else { narrationSpeaking = true }
+            answers.append(.narrator(.resumed(seq: seq, answer: answer)))
+        case let .stop(seq):
+            guard fake.transport else { break }
+            ops.append("tts.stop")
+            fake.word = .idle
+            narrationSpeaking = false
+            answers.append(narratorEnd(.cancelled(seq: seq)))
+        case let .discard(seq):
+            native("n.narration.discard")
+            if fake.current == seq {
+                fake.word = .idle
+                narrationSpeaking = false
+            }
+        }
+        narrator = fake
+        trackAudible()
+    }
+
+    /// The jingle player (fakes.js `fakeInterlude`).
+    private func applyInterlude(_ command: InterludeCommand) {
+        guard var fake = jingle else { return broke("interlude-without-a-player") }
+        switch command {
+        case .start:
+            if fake.refuse || fake.active {
+                ops.append("interlude.refused")
+                // A refused `start()` is the jingle's end, in the same breath.
+                answers.append(.interlude(.ended(reason: "refused")))
+            } else {
+                fake.active = true
+                ops.append("interlude.start")
+            }
+        case .stop:
+            if fake.active { ops.append("interlude.stop") }
+            fake.active = false
+        case .release:
+            ops.append("interlude.release")
+        }
+        jingle = fake
+        trackAudible()
+    }
+
     /// FakeBackend's `r(s) = Math.round(s)`, printed as JS prints a number.
     static func rounded(_ seconds: Double) -> String { number(JSMath.round(seconds)) }
 
     /// `${n}`: ECMAScript Number::toString.
     static func number(_ value: Double) -> String { JSWriter.numberToString(value) }
+}
+
+/// fakes.js `fakeTts` with NE-31j's opt-in shapes (`setup.tts`).
+struct FakeNarrator {
+    let refuse: Bool
+    let voiceFallback: Bool
+    /// The bridge offers `onFinished` (an older shell does not).
+    let onFinished: Bool
+    /// The bridge offers pause/resume/stop (a shell built before L-05 does not).
+    let transport: Bool
+    let pauseRejects: Bool
+    /// What `resume` answers, when the case says (`{accepted, fromStart, reason}`).
+    let resumeAnswer: JSValue?
+    /// The bridge answers `state()`.
+    let stateful: Bool
+    var word: NarratorReading = .idle
+    /// The utterance it is speaking (or last spoke), and the one before it.
+    var current: Int?
+    var previous: Int?
+
+    init(shape: JSValue) {
+        refuse = shape["refuse"] == .bool(true)
+        voiceFallback = shape["voiceFallback"] == .bool(true)
+        onFinished = shape["onFinished"] != .bool(false)
+        transport = shape["transport"] != .bool(false)
+        pauseRejects = shape["pause"] == .string("rejects")
+        if case .object = shape["resume"] { resumeAnswer = shape["resume"] } else { resumeAnswer = nil }
+        stateful = shape["state"] == .bool(true)
+    }
+}
+
+/// fakes.js `fakeInterlude` (`setup.interlude`).
+struct FakeJingle {
+    let refuse: Bool
+    var active = false
+
+    init(refuse: Bool) { self.refuse = refuse }
 }
 
 /// The page's build of every Foray a scenario plays (NE-30s):

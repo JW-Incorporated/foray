@@ -182,7 +182,9 @@ public enum EngineBridgeRules {
 /// which `SnapshotStamper` adds.
 public enum EngineSnapshot {
 
-    public static func body(core: EngineCore, deck: DeckReading, lastError: String?) -> [JSONMember] {
+    /// `monoMs`: when the snapshot is taken, for a spoken line's clock
+    /// (`narrationElapsedSec`, NE-31s); without it the field is left out.
+    public static func body(core: EngineCore, deck: DeckReading, lastError: String?, monoMs: Double? = nil) -> [JSONMember] {
         let state = core.state
         let type = state.stateType
         // A stopped engine keeps its queue (the reducer is idle); the page
@@ -211,16 +213,15 @@ public enum EngineSnapshot {
         }
         members += [
             JSONMember("running", .bool(state.isRunning)),
-            // The interlude is NE-31s's.
             JSONMember("inSeamGap", .bool(state.inSeamGap)),
-            JSONMember("inInterlude", .bool(false)),
+            JSONMember("inInterlude", .bool(state.inInterlude)),
             JSONMember("buffering", .bool(state.buffering)),
             JSONMember("ended", .bool(type == "ended")),
             JSONMember("positionSec", .number(playhead)),
             JSONMember("durationSec", duration),
             JSONMember("sourceTimeSec", loaded ? .number(playhead) : .null),
             JSONMember("playheadItemId", state.loadedId.map { JSONNode.string($0) } ?? .null),
-            JSONMember("isNarrationPlayhead", .bool(false)),
+            JSONMember("isNarrationPlayhead", .bool(state.isNarrationPlayhead)),
             JSONMember("rate", .number(rate)),
             JSONMember("effectiveRate", .number(effectiveRate)),
             JSONMember("canNext", .bool(core.canNext)),
@@ -238,6 +239,10 @@ public enum EngineSnapshot {
                 JSONMember("album", .string(metadata?.album ?? ""))
             ]))
         ]
+        // reference-engine.js: the spoken line's clock, when there is one.
+        if let monoMs, let elapsed = core.narrationElapsedSec(atMono: monoMs), elapsed.isFinite, elapsed >= 0 {
+            members.append(JSONMember("narrationElapsedSec", .number(elapsed)))
+        }
         return members
     }
 

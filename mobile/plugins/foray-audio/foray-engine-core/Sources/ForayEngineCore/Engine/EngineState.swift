@@ -144,6 +144,47 @@ public struct EngineState: Equatable {
     /// `inSeamGap`: a beat is running.
     public var inSeamGap: Bool { gapUntilMono != nil }
 
+    // MARK: the narrating overlay and the jingle (NE-31s)
+
+    /// `_voice`: the listener's chosen narration voice, or nil for the
+    /// synthesiser's own pick. Read at every `speak`, never cached; kept in
+    /// the restore record so a cold narration speaks in the same voice.
+    public var voiceId: String?
+    /// `lastVoiceFallback`: whether the last line spoke in another voice than
+    /// the one asked for (V-01's notice); nil until a line has spoken, and
+    /// again after a speak that failed.
+    public var lastVoiceFallback: Bool?
+    /// `_loadedIsSynth` and everything the JS keeps beside it: the spoken
+    /// line the loaded item IS, from the synthesiser accepting it until a
+    /// deck item's load lands. Nil while the playhead is a deck item.
+    public var narration: SpokenLine?
+    /// The last utterance `seq` stamped (`_speakSeq`): every `speak` is a new
+    /// one, and every answer names the one it is about.
+    public var speakSeq = 0
+    /// `_advancedSpeakSeq`: the utterance already advanced past, so a finish
+    /// (or the deadline) advances each line at most once.
+    public var advancedSpeakSeq: Int?
+    /// The `.narrationTick` one-shot is armed.
+    public var narrationTickArmed = false
+    /// A speed tap that landed while narration was audible (corner case #18):
+    /// `rate` already holds it; the deck gets it when the narration ends
+    /// (`restoreRate`), never mid-word.
+    public var pendingRate: Double?
+    /// `_interludeEnabled`: the listener's `cp_interlude`.
+    public var interludeEnabled = true
+    /// `_interludeActive`: the jingle is sounding (a subset of `inSeamGap`).
+    public var inInterlude = false
+    /// `_beatUntil`: the BEAT's own deadline while the jingle stretches it,
+    /// so the jingle's end falls back to what the beat still owes.
+    public var beatUntilMono: Double?
+    /// The silence node is running (flagged off; NE-34's).
+    public var silenceActive = false
+    /// `_disposed`: the engine was torn down; the core answers nothing more.
+    public var tornDown = false
+
+    /// `isNarrationPlayhead`: a spoken line is the playhead.
+    public var isNarrationPlayhead: Bool { narration != nil }
+
     // MARK: the app around the engine
 
     public var backgrounded = false
@@ -201,6 +242,40 @@ public struct PendingLoad: Equatable {
     /// the moment it lands, with no `itemLoaded` (the reducer is
     /// `transitioning`, not loading).
     public var bridge = false
+    /// A SPOKEN line (NE-31s): the synthesiser was asked to speak utterance
+    /// `spokenSeq`, and `NarratorEvent.started` / `.failed` for that seq is
+    /// this load landing or failing. Nil for a deck load.
+    public var spokenSeq: Int?
+}
+
+/// A spoken line the playhead is on (NE-31s): queue-manager.js
+/// `_loadedIsSynth`, `_narrationStartedAtMs`, `_narrationPaused` and
+/// `_narrationPausedAtMs`, as one value that exists exactly while they mean
+/// something. Its clock is WALL time since the line started (no deck plays
+/// it), frozen while it is paused and shifted forward by the pause on resume.
+public struct SpokenLine: Equatable {
+    public let seq: Int
+    public let itemId: String
+    public var startedAtMono: Double
+    public var paused = false
+    public var pausedAtMono: Double?
+    /// When the pulse armed last was due, to tell a suspended process from a
+    /// busy one (`_narrationTickDueAtMs`).
+    public var tickDueAtMono: Double?
+    /// The synthesiser said `didFinish` for it (nothing left to drop).
+    public var finished = false
+
+    public init(seq: Int, itemId: String, startedAtMono: Double) {
+        self.seq = seq
+        self.itemId = itemId
+        self.startedAtMono = startedAtMono
+    }
+
+    /// `narrationElapsedSec` at `monoMs`.
+    public func elapsedSec(atMono monoMs: Double) -> Double {
+        let at = paused ? (pausedAtMono ?? monoMs) : monoMs
+        return Swift.max(0, (at - startedAtMono) / 1000)
+    }
 }
 
 /// A play-ish intent waiting for its activation's answer.

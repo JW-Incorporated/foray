@@ -216,7 +216,7 @@ export function positionTickDue(last, id, seconds) {
     250ms matches the ~4Hz cadence `client.js`'s own `timeupdate` handler
     already repaints at, so a narration line does not look smoother or
     choppier than an ordinary segment. */
-const NARRATION_TICK_MS = 250;
+export const NARRATION_TICK_MS = 250;
 
 /** A narration tick that lands this much later than it was due means the page
     was SUSPENDED, not busy (audit round 2 review). `nowMs` is wall clock and
@@ -225,7 +225,7 @@ const NARRATION_TICK_MS = 250;
     tripped the deadline and advanced into the next clip with no press — past
     the 30 s lag bound and `_pausedByListener` that guard every other resume.
     A suspension is asked about as an interruption instead. */
-const NARRATION_SUSPEND_GAP_MS = 5_000;
+export const NARRATION_SUSPEND_GAP_MS = 5_000;
 
 /** The speed every SYNTHESIZED narration line is spoken at, whatever speed the
     listener has chosen for the podcasts around it. Founder ruling, 2026-09-24
@@ -267,8 +267,8 @@ export const NARRATION_RATE = 1;
     plus the margin — generous, because advancing early cuts a slow
     voice off mid-word, and the cost of waiting is only that the stall lasts a
     little longer. */
-const NARRATION_DEADLINE_FACTOR = 1.5;
-const NARRATION_DEADLINE_MARGIN_SEC = 10;
+export const NARRATION_DEADLINE_FACTOR = 1.5;
+export const NARRATION_DEADLINE_MARGIN_SEC = 10;
 
 const nonEmptyStr = (s) => typeof s === "string" && s.trim().length > 0;
 const isNum = (n) => typeof n === "number" && Number.isFinite(n);
