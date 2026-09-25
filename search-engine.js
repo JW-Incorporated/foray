@@ -64,12 +64,17 @@ const isDurationFilter = (f) => typeof f?.type === "string" && f.type.startsWith
    When tokenize stripped one of these and every word left is a modifier, the
    modifiers are the query's content, never a pure filter over the whole pool.
    Question words and praise ("how", "best", "good") are not here: "best new"
-   and "how long" still read as filters. */
+   and "how long" still read as filters.
+
+   FORMAT NOUNS ARE NOT HERE EITHER (round-3 review, L4). "interviews",
+   "talks", "chats", "guide", "intro", "overview", "dive" say what KIND of
+   episode, not what it is about, so "long interviews", "new interviews",
+   "short chats" and "quick intro" are real filters over the pool. With them
+   in this set every one of those became a literal search for "long" or
+   "new". Only words that name the subject itself (learning, understanding,
+   how something works) stay. */
 const SUBJECT_GENERIC_WORDS = new Set([
-  "learn", "learning", "learns", "guide", "guides", "tutorial", "tutorials",
-  "intro", "introduction", "basics", "basic", "beginner", "beginners",
-  "overview", "primer", "talk", "talks", "chat", "chats", "discussion", "discussions",
-  "interview", "interviews", "dive", "dives", "works", "work", "working",
+  "learn", "learning", "learns", "works", "work", "working",
   "explain", "explains", "explained", "understand", "understanding",
 ]);
 

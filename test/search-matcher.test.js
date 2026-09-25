@@ -583,6 +583,20 @@ test("search-api-css-1: 'deep learning' is a topic, not every episode over an ho
   assert.ok(r.results.length < 200, `a topic answer, not the pool: ${r.results.length} results`);
 });
 
+test("search-api-css-1 follow-up: a format noun does not turn a filter query into a content search", () => {
+  /* Round-3 review (L4): SUBJECT_GENERIC_WORDS held format nouns (interview,
+     talk, chat, intro, ...), so "long interviews" dropped its duration filter
+     and searched titles for the word "long".
+     MUTATION: put "interviews", "chats" and "intro" back in
+     SUBJECT_GENERIC_WORDS -- the filters come back empty. */
+  for (const [q, type] of [["long interviews", "duration_min"], ["new interviews", "recency_days"], ["short chats", "duration_max"], ["quick intro", "duration_max"]]) {
+    const r = liveSearch(q);
+    assert.ok(r.interp.filters.some((f) => f.type === type), `${q}: expected a ${type} filter, got ${JSON.stringify(r.interp.filters)}`);
+  }
+  // The subject word the rule was written for still turns modifiers into content.
+  assert.deepEqual(liveSearch("deep learning").interp.filters, []);
+});
+
 test("search-api-css-1: 'story' reaches the storytelling concept instead of becoming the history filter", () => {
   /* MUTATION: drop the conceptOverrides check — "story" is the history branch
      filter again and has no content group. */
