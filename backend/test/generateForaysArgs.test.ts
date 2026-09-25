@@ -116,18 +116,26 @@ describe("report.json is merged across re-runs", () => {
     expect(merged[1]!.publish_refused).toEqual({ gate: "real-data-suites" });
   });
 
-  it("a re-generated prompt replaces its row in place and keeps the publish / publish_refused it carried", () => {
+  /* Round-3 review (L6): a row in this run's report is a candidate built
+     afresh (a skipped one produces no row), so the old build's publish or
+     refusal does not describe it.
+     MUTATION: copy old.publish / old.publish_refused onto the new row again --
+     the rebuilt alpha reports the old refusal and the old PR. */
+  it("a re-generated prompt replaces its row in place and drops the old build's publish / publish_refused", () => {
     const prior = [row("alpha", { detail: "old", publish: { pr_url: "u" }, publish_refused: { gate: "g" } }), row("beta")];
     const merged = mergeReportEntries(prior, [row("alpha", { detail: "new" })]);
     expect(merged).toHaveLength(2);
-    expect(merged[0]).toMatchObject({ prompt: "alpha", detail: "new", publish: { pr_url: "u" }, publish_refused: { gate: "g" } });
+    expect(merged[0]).toMatchObject({ prompt: "alpha", detail: "new" });
+    expect(merged[0]!.publish).toBeUndefined();
+    expect(merged[0]!.publish_refused).toBeUndefined();
   });
 
   it("matches by candidate basename too, and reads an existing report.json (an unreadable one is set aside, not lost)", () => {
     const elsewhere = { file: `/elsewhere/${candidateFilename("delta")}`, publish: { pr_url: "p" } } as unknown as Parameters<typeof mergeReportEntries>[0][number];
     const merged = mergeReportEntries([elsewhere], [row("delta")]);
     expect(merged).toHaveLength(1);
-    expect(merged[0]!.publish).toEqual({ pr_url: "p" });
+    expect(merged[0]!.file).toBe(`/out/${candidateFilename("delta")}`);
+    expect(merged[0]!.publish).toBeUndefined();
 
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "foray-report-"));
     try {

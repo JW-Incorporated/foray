@@ -466,11 +466,17 @@ export function readPriorReportEntries(reportPath: string): PriorReportEntry[] {
 
 /**
  * backend-rest-7: this run's rows merged over an earlier run's. A row matches
- * an earlier one by prompt, or by candidate file basename. A matched earlier
- * row is replaced in place, keeping the `publish` / `publish_refused` records
- * publish-foray wrote onto it unless this run's row has its own; an earlier
- * row this run did not touch (a candidate skipped as already built) is kept
- * as it was; a new row is appended.
+ * an earlier one by prompt, or by candidate file basename. An earlier row this
+ * run did not touch (a candidate skipped as already built) is kept as it was,
+ * with the `publish` / `publish_refused` records publish-foray wrote onto it;
+ * a new row is appended.
+ *
+ * A matched earlier row is replaced in place WITHOUT its publish records.
+ * Every row in `current` is a candidate this run built afresh (a skipped one
+ * produces no row), so the file on disk is a different build from the one
+ * that was published or refused. Carrying the record over reported the new
+ * build as already refused or already published (round-3 review, L6: refuse,
+ * delete the candidate, re-run).
  */
 export function mergeReportEntries(prior: readonly PriorReportEntry[], current: readonly ReportEntry[]): PriorReportEntry[] {
   const base = (f: unknown) => (typeof f === "string" ? path.basename(f) : null);
@@ -483,11 +489,7 @@ export function mergeReportEntries(prior: readonly PriorReportEntry[], current: 
       merged.push({ ...entry });
       continue;
     }
-    const old = merged[i]!;
-    const next: PriorReportEntry = { ...entry };
-    if (next.publish === undefined && old.publish !== undefined) next.publish = old.publish;
-    if (next.publish_refused === undefined && old.publish_refused !== undefined) next.publish_refused = old.publish_refused;
-    merged[i] = next;
+    merged[i] = { ...entry };
   }
   return merged;
 }
@@ -881,7 +883,8 @@ async function main(): Promise<void> {
        design (the skip above is the outer resume), so report.json is MERGED,
        not rewritten from this run alone. Rows for candidates skipped as
        already built, and the publish / publish_refused records publish-foray
-       wrote onto them, survive the re-run. Read once, before this run writes. */
+       wrote onto them, survive the re-run; a rebuilt candidate's row starts
+       clean. Read once, before this run writes. */
     const priorEntries = args.dryRun ? [] : readPriorReportEntries(reportPath);
     const writeReport = (notification: NotificationResult | null): void => {
       if (args.dryRun) return;
