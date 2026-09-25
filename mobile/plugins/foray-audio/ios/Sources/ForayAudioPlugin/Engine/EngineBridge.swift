@@ -25,6 +25,9 @@ protocol EngineRecords: AnyObject {
     var diagnosticRows: [DiagRow] { get }
     /// A ring row the page hears live (`EngineBridgeRules.liveDiagKinds`).
     var onLiveRow: ((DiagRow) -> Void)? { get set }
+    /// Everything the engine stored, gone: every shared engine row, every
+    /// `ForayEngine.*` key and the ring file (`EngineStore.purge`, NE-19).
+    @discardableResult func purge() -> [String]
 }
 
 extension EngineStore: EngineRecords {
@@ -172,6 +175,14 @@ final class EngineBridge {
         } else {
             verdict = engine.handle(.command(command, source: request.source))
         }
+        if case .purge = command {
+            // "Delete my data" (NE-23's order: stop without persisting, then
+            // this). The core stopped and cleared its state; what it stored
+            // (the shared rows, the private keys, the restore record, the
+            // ring) is the store's to remove, now, before the answer the page
+            // waits on to purge its own (NE-24: the ring holds rows from here).
+            records?.purge()
+        }
         if case let .setPageVisible(visible) = command {
             apply(coalescer.setVisible(visible))
         }
@@ -304,8 +315,8 @@ final class EngineBridge {
     // MARK: - Rows
 
     /// The bridge's rows go where the engine's go (its output, the ring).
-    /// With no engine there is nowhere: the owner writes no rows before the
-    /// cold path wires the ring (NE-24), so a deletion cannot miss one.
+    /// With no engine there is nowhere, and a legacy lane writes no rows at
+    /// all (EngineOwnership.shared), so a deletion cannot miss one.
     private func row(_ kind: String, _ fields: [JSONMember]) {
         owner.engine?.seams.output.diag(DiagEntry(kind: kind, fields: fields))
     }

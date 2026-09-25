@@ -94,6 +94,7 @@ export const COMMANDS = Object.freeze([
   "setPageVisible",
   "ackAdvances", "ackEvents", "restoreBar", "purge",
   "relinquish", "audition", "setModeOverride", "setHoldPolicy", "probeSession",
+  "simulateTermination",
 ]);
 
 /** The `type` of every "engine" event (§5.4). Delivery is best effort: a page

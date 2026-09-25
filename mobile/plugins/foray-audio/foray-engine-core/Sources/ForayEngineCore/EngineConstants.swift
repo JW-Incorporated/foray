@@ -66,7 +66,7 @@ public enum EngineConstants {
         /// `CAPABILITIES`
         public static let capabilities: [String] = ["episode", "continuation", "restore", "foray"]
         /// `COMMANDS`
-        public static let commands: [String] = ["playEpisode", "playForay", "setContinuation", "play", "pause", "toggle", "next", "previous", "seekBy", "seekTo", "jump", "stop", "setRate", "setVoice", "setInterludeEnabled", "setPageVisible", "ackAdvances", "ackEvents", "restoreBar", "purge", "relinquish", "audition", "setModeOverride", "setHoldPolicy", "probeSession"]
+        public static let commands: [String] = ["playEpisode", "playForay", "setContinuation", "play", "pause", "toggle", "next", "previous", "seekBy", "seekTo", "jump", "stop", "setRate", "setVoice", "setInterludeEnabled", "setPageVisible", "ackAdvances", "ackEvents", "restoreBar", "purge", "relinquish", "audition", "setModeOverride", "setHoldPolicy", "probeSession", "simulateTermination"]
         /// `CONTRACT_KINDS`
         public static let contractKinds: [String] = ["helloRequest", "helloResponse", "sendRequest", "sendResponse", "readRequest", "rowsResponse", "diagnosticsResponse", "snapshot", "event"]
         /// `DEFAULT_HOLD_POLICY`

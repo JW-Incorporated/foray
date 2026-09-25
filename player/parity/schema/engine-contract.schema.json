@@ -197,7 +197,8 @@
             "audition",
             "setModeOverride",
             "setHoldPolicy",
-            "probeSession"
+            "probeSession",
+            "simulateTermination"
           ]
         },
         "args": { "type": "object" },

@@ -267,4 +267,8 @@ struct EngineSeams {
     var output: EngineOutput
     /// Optional so a world without persistence (most tests) needs no store.
     var holdPolicy: HoldPolicyStoring? = nil
+    /// Ends the process: Developer "Simulate system termination" (NE-24,
+    /// DV-7a) and nothing else. The boot supplies the real one; nil (every
+    /// test world) records the decision in the row and exits nothing.
+    var terminate: (() -> Void)? = nil
 }

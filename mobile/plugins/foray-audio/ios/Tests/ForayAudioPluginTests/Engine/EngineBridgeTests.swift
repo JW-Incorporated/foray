@@ -60,6 +60,15 @@ final class EngineBridgeTests: XCTestCase {
         func sharedRows(prefixes: [String]) -> [String: String] {
             rows.filter { key, _ in prefixes.contains { key.hasPrefix($0) } }
         }
+
+        private(set) var purges = 0
+        func purge() -> [String] {
+            purges += 1
+            let removed = rows.keys.sorted()
+            rows = [:]
+            diagnosticRows = []
+            return removed
+        }
     }
 
     /// One process: the engine on the recording seams, its owner, and the
@@ -375,6 +384,27 @@ final class EngineBridgeTests: XCTestCase {
         XCTAssertEqual(snapshot["mode"], .string("episode"))
         XCTAssertEqual(snapshot["itemId"], .string("a"))
         XCTAssertEqual(snapshot["state"], .string("playing"))
+    }
+
+    /// "Delete my data" in native mode (NE-23's order: stop without
+    /// persisting, then purge): the purge reaches the STORE, so the shared
+    /// rows, the private keys, the restore record and the ring are gone
+    /// before the page is told it may purge its own. Since NE-24 wires the
+    /// ring, a purge that stopped at the core would leave every row behind.
+    /// TO SEE IT FAIL: drop `records?.purge()` from `send`.
+    @MainActor
+    func testPurgeReachesTheStoreAfterTheCoreStops() {
+        let rig = Rig()
+        rig.playing()
+        rig.records.rows = ["cp_pos:a": #"{"s":1}"#]
+        XCTAssertEqual(rig.send("stop", #"{"persist":false}"#)["ok"], .bool(true))
+        XCTAssertEqual(rig.records.purges, 0, "a stop alone deletes nothing")
+        let reply = rig.send("purge")
+        accepted(.sendResponse, reply)
+        XCTAssertEqual(reply["ok"], .bool(true), JSWriter.stringify(reply))
+        XCTAssertEqual(rig.records.purges, 1)
+        XCTAssertEqual(rig.records.rows, [:])
+        XCTAssertTrue(rig.world.output.restores.contains(nil), "the core cleared the restore record first")
     }
 
     /// The core's `error` event and a live fault row reach a visible page,

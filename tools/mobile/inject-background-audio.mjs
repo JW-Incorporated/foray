@@ -6,9 +6,19 @@
  * four hundred lines of care rather than a `sed`: on iOS the ENTIRE
  * background-audio requirement is one Info.plist key. WebKit sets the
  * `AVAudioSession` category itself for an audible `<audio>` element
- * (`MediaSessionManagerCocoa.mm`), so there is no plugin, no `AppDelegate` edit
- * and no Swift. The key is the only missing piece — and Capacitor has no config
+ * (`MediaSessionManagerCocoa.mm`), so for the WEB player there is no plugin and
+ * no Swift. The key is the only missing piece — and Capacitor has no config
  * option for it, so something has to edit the generated project.
+ *
+ * ONE APPDELEGATE LINE SINCE NE-24 (docs/native-engine-plan.md §4.5). The
+ * native playback engine must exist when iOS relaunches a terminated 4a in the
+ * background for a car's play, and on that launch no WebView (so no plugin
+ * `load()`) ever runs. So every run that edits the plist also writes
+ * `ForayEngineColdPath.bootIfNeeded()` as the first statement of the
+ * generated `AppDelegate.swift`'s `didFinishLaunching` (the file BESIDE the
+ * plist it is given), and every `--check` reads it back. In the web lane
+ * (`ForayEngineDefault = js`) that call decides the lane and boots nothing.
+ * See the AppDelegate section below.
  *
  * That "something" used to be a human on a Mac (`HUMAN-ACTIONS.md` #16 step 4).
  * This script is that step, so a CI runner can do it, and so it can be TESTED on
@@ -44,8 +54,9 @@
  *   node tools/mobile/inject-background-audio.mjs <Info.plist> --encryption false
  *   node tools/mobile/inject-background-audio.mjs <Info.plist> --engine-default <file>
  * Every run that edits also writes the native engine's build default (from
- * `mobile/ENGINE_DEFAULT.json` unless `--engine-default` names another file),
- * and every `--check` reads it back; see that section below.
+ * `mobile/ENGINE_DEFAULT.json` unless `--engine-default` names another file)
+ * and the AppDelegate cold path (`AppDelegate.swift` beside the plist), and
+ * every `--check` reads both back; see those sections below.
  * Any other argument is an error, not an ignored flag (same rule as
  * run-suites.mjs and prepare-webdir.mjs).
  *
@@ -650,6 +661,175 @@ export function injectEngineDefault(xml, def) {
     : { xml, changed: false, reason: `already ${summary}` };
 }
 
+/* ------------------------------------------- the AppDelegate cold path (NE-24) */
+
+/* WHY THIS IS HERE (card NE-24, docs/native-engine-plan.md §4.5)
+ * iOS relaunches a TERMINATED app in the background to deliver a car's or a
+ * headset's play (DV-7a). That launch runs `didFinishLaunching` and nothing
+ * else: no scene, no WebView, so no Capacitor plugin `load()`. The native
+ * engine registers its remote targets and paints Now Playing from its restore
+ * record in `EngineOwnership.bootIfNeeded()`; without a call from the
+ * AppDelegate, the car's play reaches an app with no target at all.
+ *
+ * Capacitor generates `AppDelegate.swift` on `cap add ios` and has no hook
+ * for it, and `mobile/ios/` is not committed. So the one line is written
+ * here, beside the plist this script is already given (`ios/App/App/`), in
+ * BOTH CI paths that already run this script with no flag for it (no
+ * `.github` edit). A plist with no `AppDelegate.swift` beside it fails the
+ * run: that is the §2 Assumed row ("in ios-archive, AppDelegate.swift exists
+ * beside Info.plist"), made loud instead of assumed.
+ *
+ * SAME DISCIPLINE AS THE PLIST EDITS: the function is located, not guessed
+ * at (exactly one `didFinishLaunchingWithOptions`, or a throw), the line is
+ * inserted as the FIRST statement of its body, idempotently, and the result
+ * is re-checked before it is returned. `import ForayAudioPlugin` makes the
+ * app target name the plugin's module, so a wrong patch is a compile error
+ * and a lost one is a line `--check` reports, never a silent no-op. */
+export const APP_DELEGATE_FILE = "AppDelegate.swift";
+export const COLD_PATH_IMPORT = "import ForayAudioPlugin";
+export const COLD_PATH_CALL = "ForayEngineColdPath.bootIfNeeded()";
+const COLD_PATH_NOTE =
+  "// NE-24 cold path, written by tools/mobile/inject-background-audio.mjs: the native engine's " +
+  "remote targets must exist on a background launch that never loads the WebView.";
+
+export class AppDelegateError extends Error {}
+
+/** `AppDelegate.swift` beside the plist the script was given. */
+export function appDelegatePathFor(plistPath) {
+  return path.join(path.dirname(plistPath), APP_DELEGATE_FILE);
+}
+
+/** The Swift source with comments and string literals blanked to spaces
+ *  (same length, newlines kept), so a brace or a call inside either is never
+ *  read as code. Nested block comments and escapes are honoured. */
+export function swiftCodeMask(src) {
+  let out = "";
+  let i = 0;
+  while (i < src.length) {
+    if (src.startsWith("//", i)) {
+      const end = src.indexOf("\n", i);
+      const stop = end < 0 ? src.length : end;
+      out += " ".repeat(stop - i);
+      i = stop;
+    } else if (src.startsWith("/*", i)) {
+      let depth = 0;
+      let j = i;
+      while (j < src.length) {
+        if (src.startsWith("/*", j)) { depth++; j += 2; }
+        else if (src.startsWith("*/", j)) { depth--; j += 2; if (depth === 0) break; }
+        else j++;
+      }
+      if (depth !== 0) throw new AppDelegateError("unterminated block comment in AppDelegate.swift");
+      out += src.slice(i, j).replace(/[^\n]/g, " ");
+      i = j;
+    } else if (src[i] === '"') {
+      let j = i + 1;
+      while (j < src.length && src[j] !== '"' && src[j] !== "\n") j += src[j] === "\\" ? 2 : 1;
+      if (src[j] !== '"') throw new AppDelegateError("unterminated string literal in AppDelegate.swift");
+      out += " ".repeat(j + 1 - i);
+      i = j + 1;
+    } else {
+      out += src[i];
+      i++;
+    }
+  }
+  return out;
+}
+
+const DID_FINISH_LAUNCHING =
+  /func\s+application\s*\(\s*_\s+\w+\s*:\s*UIApplication\s*,\s*didFinishLaunchingWithOptions\b/g;
+
+/** The one `application(_:didFinishLaunchingWithOptions:)`: where its body's
+ *  `{` and matching `}` are. Throws on none, two, or a body it cannot close. */
+export function didFinishLaunchingBody(src) {
+  const code = swiftCodeMask(src);
+  const hits = [...code.matchAll(DID_FINISH_LAUNCHING)];
+  if (hits.length !== 1) {
+    throw new AppDelegateError(
+      `AppDelegate.swift must declare application(_:didFinishLaunchingWithOptions:) exactly once, found ${hits.length}`
+    );
+  }
+  const open = code.indexOf("{", hits[0].index);
+  if (open < 0) throw new AppDelegateError("didFinishLaunchingWithOptions has no body");
+  let depth = 0;
+  for (let i = open; i < code.length; i++) {
+    if (code[i] === "{") depth++;
+    else if (code[i] === "}" && --depth === 0) return { funcStart: hits[0].index, open, close: i };
+  }
+  throw new AppDelegateError("didFinishLaunchingWithOptions's body is never closed");
+}
+
+/** What the cold path looks like in this AppDelegate, read, not assumed. */
+export function coldPathState(src) {
+  const code = swiftCodeMask(src);
+  const imports = [...code.matchAll(/^[ \t]*import[ \t]+ForayAudioPlugin[ \t]*$/gm)].length;
+  let calls = 0;
+  for (let at = code.indexOf(COLD_PATH_CALL); at >= 0; at = code.indexOf(COLD_PATH_CALL, at + 1)) calls++;
+  const body = didFinishLaunchingBody(src);
+  const firstStatement = code.slice(body.open + 1, body.close).trim().startsWith(COLD_PATH_CALL);
+  return { imports, calls, firstStatement, body };
+}
+
+/** Throw unless the AppDelegate imports the plugin once and calls the cold
+ *  path once, as the first statement of didFinishLaunching. */
+export function assertAppDelegatePatched(src) {
+  const state = coldPathState(src);
+  if (state.imports !== 1) {
+    throw new AppDelegateError(`AppDelegate.swift must have exactly one "${COLD_PATH_IMPORT}", found ${state.imports}`);
+  }
+  if (state.calls !== 1) {
+    throw new AppDelegateError(`AppDelegate.swift must call ${COLD_PATH_CALL} exactly once, found ${state.calls}`);
+  }
+  if (!state.firstStatement) {
+    throw new AppDelegateError(`${COLD_PATH_CALL} must be the first statement of didFinishLaunchingWithOptions`);
+  }
+  return state;
+}
+
+/**
+ * Write the import and the call: inserted when absent, untouched when both
+ * are already there as `assertAppDelegatePatched` wants them. A half-patched
+ * file (a second import or call, a call somewhere else) is refused rather
+ * than patched again: nothing but this function writes those lines.
+ *
+ * @returns {{swift: string, changed: boolean, reason: string}}
+ * @throws {AppDelegateError}
+ */
+export function injectAppDelegate(src) {
+  if (typeof src !== "string" || src.trim() === "") throw new AppDelegateError("empty AppDelegate.swift");
+  const state = coldPathState(src);
+  if (state.imports === 1 && state.calls === 1 && state.firstStatement) {
+    return { swift: src, changed: false, reason: `already calls ${COLD_PATH_CALL} first in didFinishLaunching` };
+  }
+  if (state.imports > 1 || state.calls > 0) {
+    throw new AppDelegateError(
+      `AppDelegate.swift is half-patched (imports=${state.imports}, calls=${state.calls}, ` +
+        `first=${state.firstStatement}); regenerate it with cap sync`
+    );
+  }
+  let out = src;
+  const changes = [];
+  // The call first, at the body's `{` (an import added above would move it).
+  const { open, funcStart } = state.body;
+  const lineStart = out.lastIndexOf("\n", funcStart) + 1;
+  const funcIndent = /^[ \t]*/.exec(out.slice(lineStart))[0];
+  const nextLine = /\n([ \t]*)\S/.exec(out.slice(open + 1));
+  const indent = nextLine && nextLine[1].length > funcIndent.length ? nextLine[1] : `${funcIndent}    `;
+  out = `${out.slice(0, open + 1)}\n${indent}${COLD_PATH_NOTE}\n${indent}${COLD_PATH_CALL}${out.slice(open + 1)}`;
+  changes.push(`called ${COLD_PATH_CALL} first in didFinishLaunching`);
+  if (state.imports === 0) {
+    const imports = [...swiftCodeMask(out).matchAll(/^[ \t]*import[ \t]+\w[^\n]*$/gm)];
+    if (!imports.length) throw new AppDelegateError("AppDelegate.swift has no import to add the plugin's beside");
+    const last = imports[imports.length - 1];
+    const at = last.index + last[0].length;
+    out = `${out.slice(0, at)}\n${COLD_PATH_IMPORT}${out.slice(at)}`;
+    changes.push(`added ${COLD_PATH_IMPORT}`);
+  }
+  /* THE ANTI-FAILS-GREEN CHECK, as for the plist edits. */
+  assertAppDelegatePatched(out);
+  return { swift: out, changed: true, reason: changes.join(", ") };
+}
+
 /* --------------------------------------------------------------------- main */
 
 const isMain =
@@ -750,6 +930,12 @@ if (isMain) {
       /* The ios-build log's evidence line: `ForayEngineDefault=js`. */
       const engine = assertEngineDefault(src, def);
       console.log(`${file}: ${ENGINE_DEFAULT_KEY}=${engine.mode} ${ENGINE_CAPABILITIES_KEY}=${JSON.stringify(engine.capabilities)}`);
+      /* NE-24's evidence line: the AppDelegate existed beside the plist at
+         injection time, and it calls the cold path first. */
+      const delegate = appDelegatePathFor(file);
+      if (!fs.existsSync(delegate)) throw new AppDelegateError(`${delegate} does not exist beside ${file}`);
+      assertAppDelegatePatched(fs.readFileSync(delegate, "utf8"));
+      console.log(`${delegate}: ${COLD_PATH_CALL} is the first statement of didFinishLaunching (NE-24 cold path)`);
     } else {
       const r = injectBackgroundAudio(src, mode);
       let xml = r.xml;
@@ -762,7 +948,18 @@ if (isMain) {
       const engine = injectEngineDefault(xml, def);
       xml = engine.xml;
       console.log(`${file}: ${engine.reason}`);
+      /* Read and patched BEFORE either file is written: a missing or
+         unreadable AppDelegate fails the run with the plist untouched. */
+      const delegate = appDelegatePathFor(file);
+      if (!fs.existsSync(delegate)) {
+        throw new AppDelegateError(
+          `${delegate} does not exist beside ${file}: the NE-24 cold path needs the generated AppDelegate (run after cap sync)`
+        );
+      }
+      const patched = injectAppDelegate(fs.readFileSync(delegate, "utf8"));
+      console.log(`${delegate}: ${patched.reason}`);
       if (xml !== src) fs.writeFileSync(file, xml);
+      if (patched.changed) fs.writeFileSync(delegate, patched.swift);
     }
   } catch (e) {
     console.error(`inject-background-audio failed: ${e.message}`);

@@ -103,7 +103,7 @@
     },
     "contract": {
       "files": {
-        "player/parity/fixtures/contract/contract.json": "dc344b6f73d5e7d449de800205021a5013665c4bcd8769c37cdafab3cd495673"
+        "player/parity/fixtures/contract/contract.json": "53b83094473eac97c3efea0fcca59dcbb9b7e8a551d1a3b5e7e59e80eaa41a2a"
       },
       "ids": [
         "contract/bridge-methods",

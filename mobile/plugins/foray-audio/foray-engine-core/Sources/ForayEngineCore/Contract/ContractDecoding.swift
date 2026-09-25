@@ -341,6 +341,9 @@ extension EngineContract {
         case setHoldPolicy(SessionPolicy.HoldPolicy)
         /// Developer only (NE-25c).
         case probeSession
+        /// Developer only (NE-24, DV-7a): persist the restore record now, and
+        /// exit at the next background entry while paused.
+        case simulateTermination
 
         public var name: CommandName {
             switch self {
@@ -369,6 +372,7 @@ extension EngineContract {
             case .setModeOverride: return .setModeOverride
             case .setHoldPolicy: return .setHoldPolicy
             case .probeSession: return .probeSession
+            case .simulateTermination: return .simulateTermination
             }
         }
 
@@ -432,6 +436,7 @@ extension EngineContract {
             case .setModeOverride: return .setModeOverride(try a().required("mode", R.token(EngineMode.Override.self)))
             case .setHoldPolicy: return .setHoldPolicy(try a().required("policy", R.holdPolicy))
             case .probeSession: return .probeSession
+            case .simulateTermination: return .simulateTermination
             }
         }
     }

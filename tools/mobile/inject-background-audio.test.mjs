@@ -22,7 +22,14 @@ import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
 import {
+  AppDelegateError,
   BACKGROUND_AUDIO_MODE,
+  COLD_PATH_CALL,
+  COLD_PATH_IMPORT,
+  appDelegatePathFor,
+  assertAppDelegatePatched,
+  coldPathState,
+  injectAppDelegate,
   ENGINE_CAPABILITIES_KEY,
   ENGINE_DEFAULT_FILE,
   ENGINE_DEFAULT_KEY,
@@ -740,6 +747,7 @@ test("the CI invocations write the engine default and --check prints ForayEngine
   try {
     const plist = path.join(dir, "Info.plist");
     fs.writeFileSync(plist, CAPACITOR_PLIST);
+    fs.writeFileSync(path.join(dir, "AppDelegate.swift"), CAPACITOR_APP_DELEGATE);
     assert.equal(run([plist, "--check"]).status, 1, "a plist with no UIBackgroundModes must fail --check");
 
     const write = run([plist]);
@@ -767,6 +775,142 @@ test("the CI invocations write the engine default and --check prints ForayEngine
     assert.equal(run([plist, "--engine-default", nativeFile]).status, 1);
     assert.equal(run([plist, "--engine-default"]).status, 2, "a flag with no value");
     assert.equal(run([plist, "--engine-default", "--check"]).status, 2, "a flag is never a value");
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+/* ─────────── the AppDelegate cold path (card NE-24) ───────────
+
+   iOS relaunches a terminated 4a in the BACKGROUND for a car's play, and that
+   launch loads no WebView, so no plugin `load()` ever runs: the native
+   engine's remote targets exist only if `didFinishLaunching` boots it. The
+   generated AppDelegate is not committed, so the one line is written by this
+   script, beside the plist, in the two CI invocations that already run it. */
+
+/** What Capacitor 8's `cap add ios` writes (`ios/App/App/AppDelegate.swift`),
+    trimmed to the shape that matters: two imports, the attribute, and several
+    `application(...)` overloads, only one of them didFinishLaunching. */
+const CAPACITOR_APP_DELEGATE = `import UIKit
+import Capacitor
+
+@UIApplicationMain
+class AppDelegate: UIResponder, UIApplicationDelegate {
+
+    var window: UIWindow?
+
+    func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
+        // Override point for customization after application launch.
+        return true
+    }
+
+    func applicationWillResignActive(_ application: UIApplication) {
+        // Sent when the application is about to move from active to inactive state. { not a brace
+    }
+
+    func application(_ app: UIApplication, open url: URL, options: [UIApplication.OpenURLOptionsKey: Any] = [:]) -> Bool {
+        // Called when the app was launched with a url.
+        return ApplicationDelegateProxy.shared.application(app, open: url, options: options)
+    }
+
+    func application(_ application: UIApplication, continue userActivity: NSUserActivity, restorationHandler: @escaping ([UIUserActivityRestoring]?) -> Void) -> Bool {
+        return ApplicationDelegateProxy.shared.application(application, continue: userActivity, restorationHandler: restorationHandler)
+    }
+}
+`;
+
+test("the AppDelegate patch imports the plugin and calls the cold path FIRST in didFinishLaunching, and nothing else changes", () => {
+  /* MUTATION: insert the call before `return true` instead of after the `{`;
+     skip the import; patch the first `application(` overload found. Each
+     fails here. */
+  assert.throws(() => assertAppDelegatePatched(CAPACITOR_APP_DELEGATE), AppDelegateError, "a generated AppDelegate is unpatched");
+  const r = injectAppDelegate(CAPACITOR_APP_DELEGATE);
+  assert.equal(r.changed, true);
+  assertAppDelegatePatched(r.swift);
+  const lines = r.swift.split("\n");
+  assert.equal(lines[2], COLD_PATH_IMPORT, "the import lands after the generated ones");
+  const fn = lines.findIndex((l) => l.includes("didFinishLaunchingWithOptions"));
+  assert.match(lines[fn + 1], /^ {8}\/\/ NE-24 cold path/, "a note says who wrote the line, at the body's indentation");
+  assert.equal(lines[fn + 2], `        ${COLD_PATH_CALL}`);
+  assert.equal(lines[fn + 3], "        // Override point for customization after application launch.");
+  // Remove exactly the three inserted lines: the rest is byte-identical.
+  const back = lines.filter((_, i) => i !== 2 && i !== fn + 1 && i !== fn + 2).join("\n");
+  assert.equal(back, CAPACITOR_APP_DELEGATE);
+});
+
+test("the AppDelegate patch is idempotent, and a half-patched file is refused rather than patched twice", () => {
+  /* MUTATION: drop the already-patched early return (a second call lands);
+     drop the half-patched refusal (a second import is written). */
+  const once = injectAppDelegate(CAPACITOR_APP_DELEGATE).swift;
+  const twice = injectAppDelegate(once);
+  assert.equal(twice.changed, false);
+  assert.equal(twice.swift, once);
+  assert.match(twice.reason, /already/);
+
+  // A call inside a comment is not a call: the patched file stays patched.
+  assert.equal(injectAppDelegate(`${once}\n// ${COLD_PATH_CALL}\n`).changed, false);
+
+  const importOnly = CAPACITOR_APP_DELEGATE.replace("import Capacitor\n", `import Capacitor\n${COLD_PATH_IMPORT}\n`);
+  assert.equal(coldPathState(importOnly).imports, 1);
+  const completed = injectAppDelegate(importOnly);
+  assert.ok(completed.changed, "an import without the call gets the call");
+  assert.equal(coldPathState(completed.swift).imports, 1, "and no second import");
+
+  const callElsewhere = once
+    .replace(`        ${COLD_PATH_CALL}\n`, "")
+    .replace("return ApplicationDelegateProxy.shared.application(app", `${COLD_PATH_CALL}\n        return ApplicationDelegateProxy.shared.application(app`);
+  assert.throws(() => assertAppDelegatePatched(callElsewhere), /first statement/);
+  assert.throws(() => injectAppDelegate(callElsewhere), /half-patched/);
+});
+
+test("the patch finds didFinishLaunching exactly once, whatever the attribute, and refuses what it cannot place", () => {
+  /* MUTATION: match the first `func application(` instead of the one with
+     didFinishLaunchingWithOptions; count a brace inside a comment. */
+  const atMain = CAPACITOR_APP_DELEGATE.replace("@UIApplicationMain", "@main");
+  assertAppDelegatePatched(injectAppDelegate(atMain).swift);
+
+  const none = CAPACITOR_APP_DELEGATE.replace("didFinishLaunchingWithOptions", "willFinishLaunchingWithOptions");
+  assert.throws(() => injectAppDelegate(none), /exactly once, found 0/);
+  const start = CAPACITOR_APP_DELEGATE.indexOf("    func application(_ application: UIApplication, didFinishLaunching");
+  const end = CAPACITOR_APP_DELEGATE.indexOf("    }\n", start) + "    }\n".length;
+  const fn = CAPACITOR_APP_DELEGATE.slice(start, end);
+  assert.throws(() => injectAppDelegate(CAPACITOR_APP_DELEGATE.replace(fn, fn + fn)), /exactly once, found 2/);
+  const commented = CAPACITOR_APP_DELEGATE.replace("class AppDelegate", `/* ${fn} */\nclass AppDelegate`);
+  assertAppDelegatePatched(injectAppDelegate(commented).swift);
+  assert.throws(() => injectAppDelegate(""), AppDelegateError);
+  assert.throws(() => injectAppDelegate("class AppDelegate {}\n"), /exactly once, found 0/);
+});
+
+test("the CLI patches the AppDelegate beside the plist, --check quotes it, and a missing AppDelegate fails the run with the plist untouched", () => {
+  /* The §2 Assumed row ("AppDelegate.swift exists beside Info.plist when the
+     script runs") is checked, not assumed: a run without it exits 1.
+     MUTATION: skip the AppDelegate in the write path, or in --check. */
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "inject-app-delegate-"));
+  try {
+    const plist = path.join(dir, "Info.plist");
+    fs.writeFileSync(plist, CAPACITOR_PLIST);
+    const lonely = run([plist]);
+    assert.equal(lonely.status, 1);
+    assert.match(lonely.stderr, /AppDelegate\.swift does not exist/);
+    assert.equal(fs.readFileSync(plist, "utf8"), CAPACITOR_PLIST, "nothing written when the run fails");
+
+    const delegate = appDelegatePathFor(plist);
+    assert.equal(delegate, path.join(dir, "AppDelegate.swift"));
+    fs.writeFileSync(delegate, CAPACITOR_APP_DELEGATE);
+    const write = run([plist]);
+    assert.equal(write.status, 0, write.stderr);
+    assertAppDelegatePatched(fs.readFileSync(delegate, "utf8"));
+    const again = run([plist, "--encryption", "false"]);
+    assert.equal(again.status, 0, again.stderr);
+    assert.match(again.stdout, /AppDelegate\.swift: already calls/);
+    const check = run([plist, "--check", "--encryption", "false"]);
+    assert.equal(check.status, 0, check.stderr);
+    assert.match(check.stdout, /AppDelegate\.swift: ForayEngineColdPath\.bootIfNeeded\(\) is the first statement of didFinishLaunching/);
+
+    fs.writeFileSync(delegate, CAPACITOR_APP_DELEGATE);
+    assert.equal(run([plist, "--check"]).status, 1, "--check fails on an unpatched AppDelegate");
+    fs.rmSync(delegate);
+    assert.equal(run([plist, "--check"]).status, 1, "--check fails with no AppDelegate");
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }

@@ -3939,8 +3939,9 @@ test("NE-17: load() asks EngineOwnership, and today's registration runs only thr
 test("NE-17: the owner is Foundation-only, keeps its keys through EngineStore and its flag through EngineModeFlag, and the host hands it two hooks", () => {
   /* MUTATION: import UIKit into EngineOwnership.swift, or name UserDefaults
      there; declare a second EnginePrivateKey in the plugin; write the flag
-     anywhere but EngineModeFlag; give the shared owner a factory or a row
-     sink before NE-24; drop either host hook. Each fails. */
+     anywhere but EngineModeFlag; give the shared owner a factory other
+     than EngineBoot's, or a row sink that writes in the legacy lane; drop
+     either host hook. Each fails. */
   assert.deepEqual(swiftImports(OWNERSHIP_SWIFT).sort(), ["ForayEngineCore", "Foundation"]);
   const owner = stripSwiftComments(fs.readFileSync(OWNERSHIP_SWIFT, "utf8"));
   assert.doesNotMatch(owner, /\b(AVAudioSession|MPRemoteCommandCenter|MPNowPlayingInfoCenter|UIApplication|NotificationCenter|UserDefaults)\b/,
@@ -3953,8 +3954,10 @@ test("NE-17: the owner is Foundation-only, keeps its keys through EngineStore an
   assert.match(flag[1], /set \{ EngineModeFlag\.sessionOwnedByEngine = newValue \}/);
   const shared = /static var shared: EngineOwnership \{([\s\S]*?)\n    \}/.exec(owner);
   assert.ok(shared, "EngineOwnership.shared is gone");
-  assert.match(shared[1], /engineFactory: nil\)/, "the shared owner boots no engine until NE-24 supplies the real seams");
-  assert.match(shared[1], /diag: \{ _ in \}/, "no ring row outlives Delete my data before the engine's purge is reachable");
+  assert.match(shared[1], /engineFactory: \{ EngineBoot\.makeEngine\(store: store, timing: timing,/,
+    "NE-24: the shared owner boots the real engine, over the one store the owner and the bridge share");
+  assert.match(shared[1], /if decided\?\.mode == \.native \{ store\.diag\(entry\) \}/,
+    "the owner's rows reach the ring only in the native lane, whose Delete my data reaches the engine's purge");
   assert.match(shared[1], /flag: ProcessSessionOwnershipFlag\(\)/);
 
   const host = stripSwiftComments(fs.readFileSync(HOST_SWIFT, "utf8"));
@@ -3963,6 +3966,55 @@ test("NE-17: the owner is Foundation-only, keeps its keys through EngineStore an
   const lifecycle = stripSwiftComments(fs.readFileSync(path.join(ENGINE_DIR, "OwnershipLifecycle.swift"), "utf8"));
   assert.match(lifecycle, /UIApplication\.willResignActiveNotification, UIApplication\.didEnterBackgroundNotification/);
   assert.match(lifecycle, /queue: \.main/);
+});
+
+/* ─────────── NE-24: the cold path (the AppDelegate's line, the boot, the purge) ───────────
+ *
+ * docs/native-engine-plan.md §4.5, card NE-24. ColdPathTests (ios-kit) run the
+ * boot's three calls over the fakes; inject-background-audio.test.mjs runs the
+ * AppDelegate patch. Pinned here is what joins them and a refactor could
+ * quietly undo: the name the patch writes is the plugin's public API in the
+ * module the patch imports; the boot writes the build row first, starts, and
+ * cold-boots from the store's record; the cold launch never autoplays (S-3);
+ * only the boot can end the process; and a purge reaches the store. */
+
+test("NE-24: the AppDelegate's line is the plugin's public cold path, the boot paints without activating, and a purge reaches the store", async () => {
+  /* MUTATION: rename ForayEngineColdPath or make it internal; rename the
+     plugin target; coldLaunch with `autoplay: true`; construct a seam before
+     the build row; skip `coldBoot`; call `exit(` anywhere but EngineBoot;
+     drop `records?.purge()` from the bridge. Each fails here. */
+  const inj = await import("./inject-background-audio.mjs");
+  const boot = stripSwiftComments(fs.readFileSync(path.join(ENGINE_DIR, "EngineBoot.swift"), "utf8"));
+  assert.deepEqual(swiftImports(path.join(ENGINE_DIR, "EngineBoot.swift")).sort(), ["ForayEngineCore", "Foundation"]);
+  assert.doesNotMatch(boot, /\b(AVAudioSession|MPRemoteCommandCenter|MPNowPlayingInfoCenter|UIApplication|NotificationCenter|UserDefaults)\b/,
+    "the boot wires conformers; it reaches no platform API itself");
+  const [callType, callName] = inj.COLD_PATH_CALL.replace("()", "").split(".");
+  assert.match(boot, new RegExp(String.raw`public enum ${callType} \{\s*public static func ${callName}\(\) \{`),
+    "the AppDelegate's call is the plugin's public API, spelled as the injector writes it");
+  assert.match(boot, /EngineOwnership\.shared\.bootIfNeeded\(\)/);
+  const manifest = fs.readFileSync(path.join(PLUGIN_DIR, "Package.swift"), "utf8");
+  assert.match(manifest, new RegExp(String.raw`\.target\(\s*name: "${inj.COLD_PATH_IMPORT.split(" ")[1]}"`),
+    "the AppDelegate imports the plugin target's module by its real name");
+
+  const make = swiftFuncBody(boot, "makeEngine") ?? "";
+  const buildRow = make.indexOf("store.diagnostics.build(");
+  assert.ok(buildRow >= 0 && buildRow < make.indexOf("AudioSessionOwner("), "the build row is written first, before any seam's row");
+  assert.match(make, /engine\.start\(\)\s*engine\.coldBoot\(from: store\.restoreRecord\(\)\)/, "start, then the cold boot from the store's record");
+
+  const host = stripSwiftComments(fs.readFileSync(HOST_SWIFT, "utf8"));
+  const cold = swiftFuncBody(host, "coldBoot") ?? "";
+  assert.match(cold, /\.lifecycle\(\.coldLaunch\(queue: restored\.queue, index: restored\.index, autoplay: false\)\)/,
+    "a cold boot paints; it never plays (S-3)");
+  assert.doesNotMatch(cold, /activate|deck\./, "a cold boot touches no session and no deck itself");
+
+  for (const file of swiftFilesUnder(path.join(PLUGIN_DIR, "ios/Sources"))) {
+    const code = stripSwiftComments(fs.readFileSync(file, "utf8"));
+    if (/\bexit\(/.test(code)) assert.equal(path.basename(file), "EngineBoot.swift", `${path.relative(ROOT, file)} can end the process`);
+  }
+
+  const bridge = stripSwiftComments(fs.readFileSync(path.join(ENGINE_DIR, "EngineBridge.swift"), "utf8"));
+  assert.match(swiftFuncBody(bridge, "send") ?? "", /if case \.purge = command \{\s*records\?\.purge\(\)\s*\}/,
+    "Delete my data reaches the store: rows, private keys, the record and the ring");
 });
 
 /* ─────────── NE-20: the bridge (engineHello, engineSend, engineRead, the "engine" event) ───────────

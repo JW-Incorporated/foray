@@ -39,7 +39,8 @@
           "audition",
           "setModeOverride",
           "setHoldPolicy",
-          "probeSession"
+          "probeSession",
+          "simulateTermination"
         ]
       }
     },

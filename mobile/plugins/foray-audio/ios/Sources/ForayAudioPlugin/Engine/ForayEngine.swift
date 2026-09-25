@@ -82,6 +82,12 @@ final class ForayEngine {
     private var depth = 0
     private(set) var isStarted = false
     private(set) var isTornDown = false
+    /// Whether any input has been handled: a cold boot may replace the core
+    /// only before the first one (NE-24).
+    private var handledAny = false
+    /// `simulateTermination` (Developer only, NE-24, DV-7a) was accepted:
+    /// the next background entry while paused exits the process.
+    private(set) var terminationArmed = false
 
     /// Everything registered at start: session, lifecycle, remote targets.
     private var observations: [EngineObservation] = []
@@ -251,6 +257,7 @@ final class ForayEngine {
             return .queued
         }
         let failures = runTurn(input)
+        if case .command(.simulateTermination, _) = input, failures.isEmpty { terminationArmed = true }
         drain()
         publishSurface()
         onTurnCompleted?()
@@ -282,6 +289,84 @@ final class ForayEngine {
     private func lifecycle(_ event: LifecycleEvent) {
         handle(.lifecycle(event))
         if event == .background || event == .terminating { seams.output.flush() }
+        if event == .background, terminationArmed { simulateTermination() }
+    }
+
+    /// DV-7a's "system termination" (Developer only; plan §10): the core
+    /// wrote the restore record when the command was accepted, and the
+    /// background flush that just ran wrote the playhead into it again. A
+    /// process that exits HERE, paused in the background, is what iOS does to
+    /// a suspended app it needs the memory of; the car's next play then
+    /// launches 4a in the background (`build launch=background`) and the cold
+    /// path must answer it. Never a user force-quit, which is DV-7b's negative
+    /// control. While playing it disarms instead: iOS does not end an app
+    /// that is playing, and a Developer tap must never cut a listener off.
+    private func simulateTermination() {
+        terminationArmed = false
+        let running = core.state.isRunning
+        seams.output.diag(DiagEntry(kind: "restore", fields: [
+            JSONMember("kind", .string(running ? "sim-termination-disarmed" : "sim-termination-exit")),
+            JSONMember("state", .string(core.state.stateType))
+        ]))
+        guard !running else { return }
+        seams.output.flush()
+        seams.terminate?()
+    }
+
+    // MARK: - The cold path (NE-24)
+
+    /// What a cold boot found in the restore record.
+    enum ColdBootOutcome: String {
+        /// A record with a queue: Now Playing is painted at rate 0, nothing
+        /// activated, and a car's play loads, begins grace, activates and plays.
+        case painted
+        /// No record (or one this build cannot trust): a play answers
+        /// `.noActionableNowPlayingItem`.
+        case noRecord = "none"
+        /// `{mode: "relinquished"}` (plan §4.6 step 6): the legacy lane owns
+        /// playback; a play answers `.noActionableNowPlayingItem`.
+        case relinquished
+        /// A Foray record, or a queue whose items this build cannot read.
+        case unplayable
+        /// An input was already handled, or the engine is torn down: the core
+        /// the page is driving is never replaced.
+        case late
+    }
+
+    /// Plan §4.5, the cold path: rebuild the core from the private restore
+    /// record, BEFORE any input, and hand it the queue as
+    /// `.lifecycle(.coldLaunch(autoplay: false))` so the enabled commands and
+    /// the Now Playing entry (rate 0, the recorded position) are published
+    /// with no activation at all (S-3). Called by the boot, right after
+    /// `start()`, whichever entry point booted (NE-24).
+    @discardableResult
+    func coldBoot(from record: RestoreRecord?) -> ColdBootOutcome {
+        let outcome: ColdBootOutcome
+        var restored: EngineCore.ColdRestore?
+        if !isStarted || isTornDown || handledAny || depth > 0 {
+            outcome = .late
+        } else if let record {
+            switch record.mode {
+            case .relinquished:
+                outcome = .relinquished
+            case .episode, .foray:
+                restored = EngineCore.restoring(record, config: core.config)
+                outcome = restored == nil ? .unplayable : .painted
+            }
+        } else {
+            outcome = .noRecord
+        }
+        var fields = [JSONMember("kind", .string("cold-boot")), JSONMember("record", .string(outcome.rawValue))]
+        if let restored {
+            fields.append(JSONMember("index", .number(Double(restored.index))))
+            fields.append(JSONMember("items", .number(Double(restored.queue.count))))
+        }
+        if outcome != .late { seams.output.diag(DiagEntry(kind: "restore", fields: fields)) }
+        if let restored {
+            core = restored.core
+            handle(.lifecycle(.coldLaunch(queue: restored.queue, index: restored.index, autoplay: false)))
+        }
+        return outcome
     }
 
     /// A remote press: the `remote` row, the core's ruling, and its verdict
@@ -318,6 +403,7 @@ final class ForayEngine {
     /// One `core.handle` and the interpretation of everything it returned.
     /// Returns the turn's refusals, including the nested activation answer's.
     private func runTurn(_ input: EngineInput) -> [String] {
+        handledAny = true
         depth += 1
         defer { depth -= 1 }
         let commands = core.handle(input, now: now())
