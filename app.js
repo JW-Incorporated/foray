@@ -2195,11 +2195,22 @@ const ACRONYMS = new Set(["ai", "bbq", "ww2", "ww1", "f1", "nasa", "diy", "cia",
 const TITLE_MAX_WORDS = 8;
 const TITLE_MAX_CHARS = 60;
 
+/* EVERY SCRIPT'S LETTERS ARE LETTERS (audit round 3, app-1-14). The split was
+   `/[^a-z0-9]+/`, so é, ü, ñ and every non-Latin script were separators:
+   "Pokémon lore" was saved as "Pok Mon Lore", "café culture" as "Caf Culture",
+   and a Cyrillic or Japanese query as "Playlist". Now a word is a run of
+   letters, marks and digits in any script (NFC first, so a decomposed accent
+   stays inside its word), and it is capitalised by code point with the
+   locale's rule. The stopword and acronym lists are ASCII and still match. */
+function capitalizeWord(w) {
+  const [first = "", ...rest] = [...w];
+  return first.toLocaleUpperCase() + rest.join("");
+}
 function prettyTitle(query) {
-  const raw = query.toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
+  const raw = String(query).normalize("NFC").toLowerCase().split(/[^\p{L}\p{M}\p{N}]+/u).filter(Boolean);
   let words = raw.filter(w => !SearchEngine.STOPWORDS.has(w));
   if (!words.length) words = raw;
-  words = words.slice(0, TITLE_MAX_WORDS).map(w => ACRONYMS.has(w) ? w.toUpperCase() : w[0].toUpperCase() + w.slice(1));
+  words = words.slice(0, TITLE_MAX_WORDS).map(w => ACRONYMS.has(w) ? w.toUpperCase() : capitalizeWord(w));
 
   // Trim from the end, whole words only, until the title fits the char budget.
   while (words.length > 1 && words.join(" ").length > TITLE_MAX_CHARS) words.pop();

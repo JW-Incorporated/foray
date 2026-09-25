@@ -914,3 +914,16 @@ test("app-1-13: an unparseable release date sorts as the oldest, and the newest 
   const chain = m.ctx.branchChain(items, new Set(), new Set()).map((it) => it.id);
   assert.deepStrictEqual([...chain], ["new", "old", "bad"]);
 });
+
+test("app-1-14: a playlist title keeps accented and non-Latin words whole", () => {
+  /* MUTATION: split on /[^a-z0-9]+/ again -> "Pok Mon Lore"; red. */
+  const m = mount({ fetchImpl: () => new Promise(() => {}) });
+  const t = (q) => m.ctx.prettyTitle(q);
+  assert.strictEqual(t("Pokémon lore"), "Pokémon Lore");
+  assert.strictEqual(t("café culture"), "Café Culture");
+  assert.strictEqual(t("Poke\u0301mon lore"), "Pokémon Lore", "a decomposed accent stays inside its word");
+  assert.strictEqual(t("история москвы"), "История Москвы");
+  assert.strictEqual(t("東京 food"), "東京 Food");
+  assert.strictEqual(t("the history of ai"), "History AI", "ASCII stopwords and acronyms still apply");
+  assert.strictEqual(t("!!!"), "Playlist");
+});
