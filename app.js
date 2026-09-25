@@ -15417,21 +15417,31 @@ function paintVoiceList() {
   }
 }
 
+/* THE NEWEST ASK WINS (audit round 3, app-3-10). openVoiceSheet and the
+   return-to-app refresh can overlap, and whichever listVoices() answered LAST
+   won -- the older one included, so a voice just downloaded in Settings could
+   vanish from the list again. Only the latest call writes. */
+let voiceRefreshSeq = 0;
 async function refreshVoiceList() {
   const player = window.ForayPlayer;
   if (!player || typeof player.listVoices !== "function") return;
+  const seq = ++voiceRefreshSeq;
   voiceState.loading = true;
   paintVoiceList();
   try {
     const out = await player.listVoices({ lang: VOICE_LIST_LANG });
+    if (seq !== voiceRefreshSeq) return;
     voiceState.voices = (out && out.voices) || [];
     voiceState.path = (out && out.path) || "none";
   } catch (_) {
+    if (seq !== voiceRefreshSeq) return;
     voiceState.voices = [];
     voiceState.path = "none";
   } finally {
-    voiceState.loading = false;
-    paintVoiceList();
+    if (seq === voiceRefreshSeq) {
+      voiceState.loading = false;
+      paintVoiceList();
+    }
   }
 }
 
@@ -15474,13 +15484,21 @@ function moveVoiceChoice(id, step) {
     `player/client.js`'s `auditionVoice`, not this function's. Guarded the
     same way every Foray tap is (#225): a rejected promise here must not
     become a console line nobody has open. */
+/* ONLY THE LATEST PREVIEW OWNS THE ROW (audit round 3, app-3-10). A Preview
+   tapped on Daniel while Samantha's was still speaking set auditioning to
+   Daniel; Samantha's promise then settled (or was cut off) and its finally
+   cleared auditioning and repainted, so Daniel's button read "Preview" again
+   while he spoke, and the first run's notice could overwrite the second's. */
+let auditionSeq = 0;
 async function auditionVoiceRow(id) {
   const player = window.ForayPlayer;
   if (!player || typeof player.auditionVoice !== "function") return;
+  const seq = ++auditionSeq;
   voiceState.auditioning = id;
   paintVoiceList();
   try {
     const result = await player.auditionVoice(AUDITION_LINE, id);
+    if (seq !== auditionSeq) return;
     /* Native mode: the engine owns the one audio session and will not speak
        over an episode it is playing (NE-22, OQ-5). */
     if (result && result.ok === false && result.reason === "engine-busy") {
@@ -15491,10 +15509,13 @@ async function auditionVoiceRow(id) {
       paintVoiceNotice("");
     }
   } catch (_) {
+    if (seq !== auditionSeq) return;
     paintVoiceNotice("That voice could not be auditioned. Try again.");
   } finally {
-    voiceState.auditioning = null;
-    paintVoiceList();
+    if (seq === auditionSeq && voiceState.auditioning === id) {
+      voiceState.auditioning = null;
+      paintVoiceList();
+    }
   }
 }
 
