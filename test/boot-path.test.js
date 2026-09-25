@@ -669,3 +669,90 @@ test("app-1-2: five syncs asked for while storage is settling queue ONE waiter, 
   await settle(10);
   assert.strictEqual(posts.length, 1, `the row went out ${posts.length} times`);
 });
+
+/* ==================================================================== */
+/* app-1-1: the listener's own actions before hydration lands             */
+/* ==================================================================== */
+
+test("app-1-1: a star, an Up Next add, a play and a follow before a slow hydration land ON the durable rows, not over them", async () => {
+  /* localStorage swept, IndexedDB holding the listener's library, hydration
+     slower than the five-second bound. toggleStar read {} and wrote {b}, and
+     property 2 kept that over the durable {a} for good; the same for Up Next,
+     History and Followed. MUTATION: make toggleStar (or saveQueueIds, or
+     recordHistory, or toggleShowStar) lsSet its read-modify-write directly
+     again -> the durable row is gone after hydration; red. */
+  const snapA = { id: "a", title: "A", show: "S", audio_url: "https://x.test/a.mp3", topics: [] };
+  const { store, tier } = await storeOver({
+    idb: {
+      cp_saved: JSON.stringify({ a: snapA }),
+      cp_queue: JSON.stringify(["q-durable"]),
+      cp_history: JSON.stringify(["h-durable"]),
+      cp_starred_shows: JSON.stringify({ "show-durable": { show_id: "show-durable", title: "D" } }),
+      cp_episode_snaps: JSON.stringify({ "q-durable": { id: "q-durable", audio_url: "https://x.test/q.mp3" } }),
+    },
+  });
+  const m = mount({ store, storageWaitMs: 20, ceilingMs: 60000 });
+  await m.booted();
+  assert.strictEqual(m.ctx.storageWaiting(), true, "premise: the page painted and hydration has not landed");
+  m.state.itemIndex.b = { id: "b", title: "B", show: "S", audio_url: "https://x.test/b.mp3", topics: [] };
+  m.ctx.toggleStar("b");
+  assert.strictEqual(m.ctx.isSaved("b"), true, "the star paints at once, from the overlay");
+  m.ctx.addToQueue("b");
+  assert.ok(m.ctx.queueIds().includes("b"), "Up Next shows the add at once");
+  m.ctx.recordHistory("b");
+  const show = m.state.catalog && m.state.catalog.shows && m.state.catalog.shows[0];
+  assert.ok(show, "premise: the catalogue is loaded");
+  m.ctx.toggleShowStar(show.show_id);
+
+  tier.release();
+  await store.hydrate();
+  await settle(20);
+  await store.flush();
+  const saved = JSON.parse(store.getItem("cp_saved"));
+  assert.ok(saved.a && saved.b, `Saved after hydration: ${Object.keys(saved)}`);
+  const queue = JSON.parse(store.getItem("cp_queue"));
+  assert.ok(queue.includes("q-durable") && queue.includes("b"), `Up Next after hydration: ${queue}`);
+  const history = JSON.parse(store.getItem("cp_history"));
+  assert.ok(history.includes("h-durable") && history[history.length - 1] === "b", `History after hydration: ${history}`);
+  const snaps = JSON.parse(store.getItem("cp_episode_snaps"));
+  assert.ok(snaps["q-durable"] && snaps.b, `snapshots after hydration: ${Object.keys(snaps)}`);
+  const followed = JSON.parse(store.getItem("cp_starred_shows"));
+  assert.ok(followed["show-durable"] && followed[show.show_id], `Followed after hydration: ${Object.keys(followed)}`);
+  assert.strictEqual(m.ctx.isSaved("a"), true, "the durable star reads back");
+});
+
+test("app-1-1: an un-star before hydration removes the durable row it names, and only that one", async () => {
+  /* MUTATION: resolve the toggle against the stored value at settle time
+     (flip, not the intent the tap painted) -> the tapped row survives; red. */
+  const { store, tier } = await storeOver({ idb: { cp_saved: JSON.stringify({ a: { id: "a" }, c: { id: "c" } }) } });
+  const m = mount({ store, storageWaitMs: 20, ceilingMs: 60000 });
+  await m.booted();
+  m.state.itemIndex.c = { id: "c", title: "C", audio_url: "https://x.test/c.mp3", topics: [] };
+  m.ctx.toggleStar("c");            // unhydrated: not saved yet as far as the page knows -> a star
+  m.ctx.toggleStar("c");            // and off again
+  assert.strictEqual(m.ctx.isSaved("c"), false);
+  tier.release();
+  await store.hydrate();
+  await settle(20);
+  const saved = JSON.parse(store.getItem("cp_saved"));
+  assert.deepStrictEqual(Object.keys(saved).sort(), ["a"], "star-then-unstar of c removes c and keeps a");
+});
+
+test("app-1-1: no first-run sheet is offered while the store has not answered; it is decided once it has", async () => {
+  /* isGenuineFirstTimeUser read an unhydrated cp_history/cp_saved and a
+     returning listener got the Welcome sheet. MUTATION: drop the
+     storageWaiting() return from offerHomeOnboarding -> the sheet opens over a
+     returning listener's Home; red. */
+  const { store, tier } = await storeOver({ idb: { cp_history: JSON.stringify(["h1", "h2"]), cp_intro_dismissed: "true" } });
+  const m = mount({ store, storageWaitMs: 20, ceilingMs: 60000 });
+  await m.booted();
+  assert.strictEqual(m.ctx.storageWaiting(), true, "premise");
+  const sheetUp = () => Boolean(m.ctx.document.querySelector("#first-time-sheet"));
+  assert.strictEqual(m.ctx.isGenuineFirstTimeUser(), true, "premise: unhydrated, the listener looks new");
+  assert.ok(!sheetUp(), "the first-run sheet opened before the store answered");
+  tier.release();
+  await store.hydrate();
+  await settle(20);
+  assert.strictEqual(m.ctx.isGenuineFirstTimeUser(), false);
+  assert.ok(!sheetUp(), "a returning listener got the first-run sheet");
+});

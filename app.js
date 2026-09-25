@@ -305,6 +305,55 @@ function afterStorageSettles(fn) {
   storageSettleWaiters.push(fn);
 }
 
+/* THE LISTENER'S OWN ACTIONS WAIT TOO (audit round 3, app-1-1). The gate above
+   covered boot's writes; a star, an Up Next edit, a follow or a play in the
+   window still did read-modify-write against the unhydrated store. With
+   localStorage swept and IndexedDB slow, toggleStar read `{}` and wrote
+   `{thisOne}` to cp_saved, and the store's property 2 (a write this session is
+   never clobbered by hydration, durable-store.js) then kept that one-row map
+   over the durable Saved list for good. The same held for cp_history,
+   cp_episode_snaps, cp_queue, cp_starred_shows and cp_shard_shows.
+
+   So those writers now state an EDIT -- a function from the stored value to the
+   new one -- through `editStored`. Once storage has settled it runs at once,
+   exactly the old read-modify-write. Before, it is queued (one waiter per key)
+   and re-run over the SETTLED value when hydration lands, so the durable rows
+   and this session's taps both survive; meanwhile `storedValue` answers reads
+   from the unhydrated value with the queued edits applied, so the page paints
+   the tap at once. Nothing here changes hydration or weakens property 2: the
+   fix is to not write early. An edit must be a pure function of its argument
+   (it is re-run on every read of the overlay), and must not assume the stored
+   value has the right shape. */
+const pendingStoredEdits = new Map();
+
+/** The value of `key` with any edits still waiting for storage applied. */
+function storedValue(key, fallback) {
+  const edits = pendingStoredEdits.get(key);
+  const base = lsGet(key, fallback);
+  return edits ? edits.reduce((v, fn) => fn(v), base) : base;
+}
+
+/** Apply `fn` to `key`'s stored value: now, or over the settled store once
+    hydration lands. Returns lsSet's answer now, or true for a queued edit. */
+function editStored(key, fallback, fn) {
+  if (!storageWaiting()) return lsSet(key, fn(lsGet(key, fallback)));
+  let edits = pendingStoredEdits.get(key);
+  if (!edits) {
+    edits = [];
+    pendingStoredEdits.set(key, edits);
+    afterStorageSettles(() => {
+      const list = pendingStoredEdits.get(key) || [];
+      pendingStoredEdits.delete(key);
+      lsSet(key, list.reduce((v, f) => f(v), lsGet(key, fallback)));
+    });
+  }
+  edits.push(fn);
+  return true;
+}
+
+function plainObject(v) { return v && typeof v === "object" && !Array.isArray(v) ? v : {}; }
+function stringList(v) { return Array.isArray(v) ? v.filter(x => typeof x === "string" && x) : []; }
+
 function markStorageSettled() {
   if (storageSettled) return;
   storageSettled = true;
@@ -1549,22 +1598,28 @@ const UP_NEXT_TOGGLE = { offText: "+ Up Next", onText: "✓ Up Next", offLabel: 
 
 /* ---------- stars ---------- */
 
-function savedMap() { return lsGet("cp_saved", {}); }
+function savedMap() { return plainObject(storedValue("cp_saved", {})); }
 function isSaved(id) { return id in savedMap(); }
 
 function toggleStar(id) {
-  const saved = savedMap();
-  if (saved[id]) {
-    delete saved[id];
+  const had = Boolean(savedMap()[id]);
+  let entry = null;
+  if (had) {
     logEvent("unsaved", { episode_id: id });
   } else {
     const snap = state.itemIndex[id];
     if (!snap) return;
-    saved[id] = { ...snap, saved_at: new Date().toISOString() };
+    entry = { ...snap, saved_at: new Date().toISOString() };
     boostTopics(snap.topics, 0.05);
     logEvent("saved", { episode_id: id, topics: snap.topics });
   }
-  lsSet("cp_saved", saved);
+  /* An edit, not a write (app-1-1): before storage settles it waits and is
+     replayed over the durable Saved list. */
+  editStored("cp_saved", {}, (m) => {
+    const out = plainObject(m);
+    if (had) delete out[id]; else out[id] = entry;
+    return out;
+  });
   /* The Now Playing sheet's Save reads `EPISODE_NAVIGATION.isSaved`; a star
      pressed on a row while the sheet is open has to reach it too — AFTER the
      write (audit round 2 review): the sheet paints synchronously from storage,
@@ -1622,18 +1677,18 @@ function upNextBtn(id, item = null) {
    pattern exactly, keyed on show_id instead of episode id. Same "state
    observed, never declared" principle: starring a show changes nothing
    about what the app recommends or fetches. */
-function starredShowsMap() { return lsGet("cp_starred_shows", {}); }
+function starredShowsMap() { return plainObject(storedValue("cp_starred_shows", {})); }
 function isShowStarred(id) { return id in starredShowsMap(); }
 
 function toggleShowStar(id) {
-  const starred = starredShowsMap();
-  if (starred[id]) {
-    delete starred[id];
+  const had = Boolean(starredShowsMap()[id]);
+  let entry = null;
+  if (had) {
     logEvent("show_unstarred", { show_id: id });
   } else {
     const show = showById(id);
     if (!show) return;
-    starred[id] = {
+    entry = {
       show_id: show.show_id,
       title: show.title,
       artwork_url: show.artwork_url || null,
@@ -1641,7 +1696,11 @@ function toggleShowStar(id) {
     };
     logEvent("show_starred", { show_id: id });
   }
-  lsSet("cp_starred_shows", starred);
+  editStored("cp_starred_shows", {}, (m) => {
+    const out = plainObject(m);
+    if (had) delete out[id]; else out[id] = entry;
+    return out;
+  });
   document.querySelectorAll(`[data-show-star="${CSS.escape(id)}"]`).forEach(b => {
     setToggleLabel(b, isShowStarred(id), FOLLOW_TOGGLE);
     b.classList.toggle("on", isShowStarred(id));
@@ -1716,7 +1775,7 @@ function renderStarredShows() {
 
 /* ---------- the four suggestions ---------- */
 
-function pickedHistory() { return lsGet("cp_history", []); }
+function pickedHistory() { return stringList(storedValue("cp_history", [])); }
 
 /** THE ONE WRITER OF `cp_history`. Three call sites (a play button, a picked
     link, a continuous-playback advance) each carried their own copy of this
@@ -1726,7 +1785,6 @@ function pickedHistory() { return lsGet("cp_history", []); }
 function recordHistory(id) {
   if (!id) return;
   rememberEpisode(id);
-  const history = pickedHistory();
   /* LAST-PLAYED ORDER, not first-played (audit round 2, honesty-3). This
      appended only on a first play, so a replay left the episode where it was
      and Library → History — which presents the ring's tail as "most recent" —
@@ -1734,7 +1792,7 @@ function recordHistory(id) {
      off the end. Every other reader of `cp_history` tests membership only
      (`hasOpened`, `branchChain`, the keep set above), so the order is free to
      mean what the page says it means. */
-  lsSet("cp_history", history.filter(x => x !== id).concat(id).slice(-200));
+  editStored("cp_history", [], (h) => stringList(h).filter(x => x !== id).concat(id).slice(-200));
 }
 
 function rememberSeen(ids) {
@@ -2311,7 +2369,7 @@ function savePlaylists(all) { return lsSet("cp_playlists", all.slice(0, 50).map(
    and are fine to say "queue" — nothing here renders to the screen. */
 
 function queueIds() {
-  const ids = lsGet("cp_queue", []);
+  const ids = storedValue("cp_queue", []);
   /* A non-string/empty entry cannot be resolved against itemIndex or savedMap
      (both keyed by real episode ids), so it can only ever render as a
      permanently-broken row — dropping it here is not data loss, it is the
@@ -2328,7 +2386,16 @@ function queueIds() {
     row 1 stayed listed with a ▶ on it and "N queued" one too many until an arrow
     was pressed, at which point the whole list jumped. */
 function saveQueueIds(ids) {
-  const ok = lsSet("cp_queue", ids);
+  /* Before storage settles the new list is stated as the change it makes to
+     the one on screen (app-1-1): what it dropped is dropped, its order is kept,
+     and a queued row only the durable store holds is kept after it, not lost. */
+  const before = storageWaiting() ? queueIds() : null;
+  const ok = before
+    ? editStored("cp_queue", [], (q) => {
+      const was = new Set(before), now = new Set(ids);
+      return ids.concat(stringList(q).filter(x => !was.has(x) && !now.has(x)));
+    })
+    : lsSet("cp_queue", ids);
   refreshEpisodeNavigation();
   repaintQueuePage();
   return ok;
@@ -2477,8 +2544,7 @@ const EPISODE_SNAPS_CAP = 400;
 const EPISODE_SNAP_HOOK_MAX = 280;
 
 function episodeSnaps() {
-  const m = lsGet(EPISODE_SNAPS_KEY, {});
-  return m && typeof m === "object" && !Array.isArray(m) ? m : {};
+  return plainObject(storedValue(EPISODE_SNAPS_KEY, {}));
 }
 
 function storableEpisode(snap) {
@@ -2494,12 +2560,18 @@ function storableEpisode(snap) {
 function rememberEpisode(id) {
   const snap = id ? state.itemIndex[id] : null;
   if (!snap || !snap.audio_url) return;
+  const stored = storableEpisode(snap);
+  /* An edit (app-1-1): the keep set is read when it runs, so over the settled
+     store it keeps what the durable Up Next and History name. */
+  editStored(EPISODE_SNAPS_KEY, {}, (m) => pruneEpisodeSnaps(plainObject(m), id, stored));
+}
+
+function pruneEpisodeSnaps(all, id, stored) {
   const queued = new Set(queueIds());
   const keep = new Set([...queued].concat(pickedHistory(), id));
-  const all = episodeSnaps();
   const next = {};
   for (const k of Object.keys(all)) if (keep.has(k)) next[k] = all[k];
-  next[id] = storableEpisode(snap);
+  next[id] = stored;
   /* THE CAP NEVER TAKES A QUEUED EPISODE (audit round 2, p-impatient-11).
      Deletion is by key insertion order — the oldest remembered first — and the
      oldest remembered are the HEAD of Up Next, the rows about to play. With a
@@ -2509,7 +2581,7 @@ function rememberEpisode(id) {
      key is pruned only by leaving Up Next. */
   const ids = Object.keys(next).filter(k => !queued.has(k) && k !== id);
   for (const k of ids.slice(0, Math.max(0, Object.keys(next).length - EPISODE_SNAPS_CAP))) delete next[k];
-  lsSet(EPISODE_SNAPS_KEY, next);
+  return next;
 }
 
 /** Every snapshot we hold for `id` outside the session cache: a star's first,
@@ -3077,21 +3149,25 @@ const SHARD_SHOWS_CAP = 50;
 
 function rememberShardShow(show) {
   if (!show || typeof show.show_id !== "string" || !show.show_id.startsWith("pi:")) return;
-  const all = lsGet(SHARD_SHOWS_KEY, {});
-  const next = all && typeof all === "object" && !Array.isArray(all) ? all : {};
-  delete next[show.show_id];            // re-insert last, so the cap evicts the oldest visit
-  next[show.show_id] = {
+  const entry = {
     show_id: show.show_id, title: show.title || "", artwork_url: show.artwork_url || null,
     artist_name: show.artist_name || null, editorial_note: null, taxonomy_node_ids: [],
     tier: show.tier || "breadth", source: "shard",
   };
-  const ids = Object.keys(next);
-  for (const k of ids.slice(0, Math.max(0, ids.length - SHARD_SHOWS_CAP))) delete next[k];
-  lsSet(SHARD_SHOWS_KEY, next);
+  /* An edit (app-1-1), so a visit before storage settles is added to the
+     durable list rather than replacing it. */
+  editStored(SHARD_SHOWS_KEY, {}, (all) => {
+    const next = plainObject(all);
+    delete next[show.show_id];            // re-insert last, so the cap evicts the oldest visit
+    next[show.show_id] = entry;
+    const ids = Object.keys(next);
+    for (const k of ids.slice(0, Math.max(0, ids.length - SHARD_SHOWS_CAP))) delete next[k];
+    return next;
+  });
 }
 
 function rememberedShardShow(id) {
-  const all = lsGet(SHARD_SHOWS_KEY, {});
+  const all = storedValue(SHARD_SHOWS_KEY, {});
   const hit = (all && all[id]) || null;
   if (hit) return hit;
   const followed = starredShowsMap()[id];
@@ -5679,7 +5755,19 @@ function forayHoldsOnboarding() {
 
 /** Home's onboarding: the first-run sheet for a genuine newcomer, else the
     returning-user popup — neither while a Foray is playing. */
+let onboardingAfterSettle = false;
 function offerHomeOnboarding() {
+  /* NOT BEFORE THE STORE HAS ANSWERED (app-1-1): "genuine first-time user" is
+     read from cp_history / cp_saved / cp_playlists, and before hydration a
+     returning listener's are simply not in memory yet -- they were offered the
+     first-run sheet. Offered again once it settles, if Home is still up. */
+  if (storageWaiting()) {
+    if (!onboardingAfterSettle) {
+      onboardingAfterSettle = true;
+      afterStorageSettles(() => { onboardingAfterSettle = false; if (currentHash() === "#/") offerHomeOnboarding(); });
+    }
+    return;
+  }
   if (onboardingHeld || forayHoldsOnboarding()) return;
   if (!showFirstTimeExplainerOnce()) showIntroPopupOnce();
 }
