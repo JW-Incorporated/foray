@@ -57,6 +57,7 @@ function loadApp() {
   let nextTimer = 0;
   const store = new Map();
   const win = makeEl("window");
+  const doc = makeEl("document");
   const ctx = {
     console: { log: noop, info: noop, warn: noop, error: noop, debug: noop },
     fetch: () => new Promise(() => {}),
@@ -69,7 +70,7 @@ function loadApp() {
     },
     document: {
       body: makeEl("body"), documentElement: makeEl("html"), readyState: "complete",
-      addEventListener: noop, removeEventListener: noop, createElement: makeEl,
+      addEventListener: doc.addEventListener, removeEventListener: doc.removeEventListener, createElement: makeEl,
       querySelector: () => null, querySelectorAll: () => [], getElementById: () => null,
     },
     navigator: { userAgent: "node", onLine: true },
@@ -94,6 +95,7 @@ function loadApp() {
   return {
     ctx,
     win,
+    doc,
     timers,
     store,
     run: (code) => vm.runInContext(code, ctx),
@@ -148,4 +150,37 @@ test("app-2-15: episodeDedupKey and showIndexFetchCount are gone from the code",
   assert.ok(!/\bepisodeDedupKey\b/.test(code), "episodeDedupKey has no caller");
   assert.ok(!/\bshowIndexFetchCount\b/.test(code), "showIndexFetchCount has no reader");
   assert.match(code, /function episodeDedupKeys\(/, "the live helper stays");
+});
+
+/* ---------- app-1-16 / app-2-13: every route link encodes its id ------------- */
+
+const ODD_ID = "a/b%c#d";
+const ODD_HASH = "a%2Fb%25c%23d";
+
+test("app-1-16: show links go through showRouteHash, and the prefetch parses the route", () => {
+  /* parseShowRoute decodes the segment, so a producer that only HTML-escaped
+     misrouted any id carrying `%`, `/` or `#`; and bindShowPrefetch decoded the
+     whole tail after `#/show/`, so a `/q/<query>` anchor prefetched a
+     nonexistent id.
+     MUTATION: restore `href="#/show/${esc(id)}"` in showNameLink — red. Restore
+     the `href.slice` in bindShowPrefetch — the prefetch assertion goes red. */
+  const m = loadApp();
+  const html = m.ctx.showNameLink("Odd Show", ODD_ID);
+  assert.ok(html.includes(`href="#/show/${ODD_HASH}"`), html);
+  assert.strictEqual(m.ctx.parseShowRoute(`#/show/${ODD_HASH}`).id, ODD_ID, "and it routes back to the same id");
+
+  m.run(`state.catalog = { shows: [{ show_id: ${JSON.stringify(ODD_ID)}, title: "Odd Show" }] };`);
+  const cites = m.ctx.citesHtml({ cites: [{ kind: "tape", show: "Odd Show", show_id: ODD_ID }] });
+  assert.ok(cites.includes(`href="#/show/${ODD_HASH}"`), `a Foray's Sources list encodes too: ${cites}`);
+
+  const prefetched = [];
+  m.ctx.prefetchShowEpisodes = (id) => prefetched.push(id);
+  m.ctx.bindShowPrefetch();
+  const a = { getAttribute: (k) => (k === "href" ? "#/show/lex/q/neuralink" : null) };
+  m.doc.dispatch("pointerdown", { target: { closest: () => a } });
+  assert.deepStrictEqual(prefetched, ["lex"], "the /q/ tail is the show page's search, not part of the id");
+
+  /* And no producer is left that only HTML-escapes a show id into a route
+     (forayCreditHtml and the credit upgrade included). */
+  assert.ok(!/#\/show\/\$\{esc\(/.test(SRC), "every `#/show/` link goes through showRouteHash or encodeURIComponent");
 });

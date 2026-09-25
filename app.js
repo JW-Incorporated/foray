@@ -3199,7 +3199,9 @@ function showIndexIdForTitle(title) {
 function showNameLink(showName, showId = null) {
   const label = esc(showName || "");
   const id = showId || showIdForShowName(showName);
-  return id ? `<a class="show-link" href="#/show/${esc(id)}">${label}</a>` : label;
+  /* Through showRouteHash, which encodes (audit round 3, app-1-16): the router
+     decodes the segment, so an id carrying `%`, `/` or `#` misrouted from here. */
+  return id ? `<a class="show-link" href="${esc(showRouteHash(id))}">${label}</a>` : label;
 }
 
 /* A3.2 — tapping a chip goes to "shows in this category" (renderCategory),
@@ -4131,7 +4133,9 @@ function bindShowPrefetch() {
     const a = e.target && e.target.closest && e.target.closest('a[href^="#/show/"]');
     if (!a) return;
     const href = a.getAttribute("href") || "";
-    const id = safeDecode(href.slice("#/show/".length));
+    /* The route parser, not a slice (app-1-16): a `/q/<query>` tail is not
+       part of the id. */
+    const id = parseShowRoute(href)?.id;
     if (id) prefetchShowEpisodes(id);
   }, { passive: true });
 }
@@ -11344,7 +11348,7 @@ function forayCreditHtml(entry) {
      interactive element inside a button is invalid HTML whose click never
      survives the parent's handler. */
   return showId
-    ? `<a class="fy-credit show-link" href="#/show/${esc(showId)}">${esc(entry.show)}</a>`
+    ? `<a class="fy-credit show-link" href="${esc(showRouteHash(showId))}">${esc(entry.show)}</a>`
     : `<span class="fy-credit" data-credit-show="${esc(entry.show)}">${esc(entry.show)}</span>`;
 }
 
@@ -11432,7 +11436,7 @@ function citesHtml(entry) {
     if (c.kind === "tape") {
       const showId = c.show_id && showById(c.show_id) ? c.show_id : showIdForShowName(c.show);
       const name = showId
-        ? `<a class="show-link" href="#/show/${esc(showId)}">${esc(c.show)}</a>`
+        ? `<a class="show-link" href="${esc(showRouteHash(showId))}">${esc(c.show)}</a>`
         : esc(c.show);
       return `<li>${name}${c.episode_title ? ` — ${esc(c.episode_title)}` : ""}</li>`;
     }
@@ -11737,7 +11741,7 @@ function relinkForayCredits(r, player) {
   view.querySelectorAll(".fy-credit[data-credit-show]").forEach((span) => {
     const show = span.dataset.creditShow;
     const id = showIdForShowName(show);
-    if (id) span.outerHTML = `<a class="fy-credit show-link" href="#/show/${esc(id)}">${esc(show)}</a>`;
+    if (id) span.outerHTML = `<a class="fy-credit show-link" href="${esc(showRouteHash(id))}">${esc(show)}</a>`;
   });
   const src = view.querySelector(".fy-sources");
   if (src) {
