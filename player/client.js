@@ -1986,7 +1986,12 @@ function render() {
   syncMediaSession();
   if (foray) {
     persistForayProgress();
-    notifyForay();
+    /* The Foray page is page too (audit round 3, perf-8): `paintForay` wrote
+       its clock, strip fill, labels and notice four times a second with the
+       screen off for the length of a drive. The resume row above is not paint
+       and keeps running; `reconcileOnReturn` calls `render()` on the way back,
+       which lands here visible and repaints the page once. */
+    if (!(typeof document !== "undefined" && document.hidden === true)) notifyForay();
   } else {
     _announceEpisodeEndedIfNeeded();
   }

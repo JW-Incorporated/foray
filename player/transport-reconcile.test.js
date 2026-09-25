@@ -3633,3 +3633,25 @@ test("a Next clip tap that throws leaves the index where the audio is, and repai
   assert.equal(client.forayStatus().index, 0, "the page is back on the clip that is playing");
   restore();
 });
+
+test("the Foray page is not repainted while the document is hidden, and is repainted on return (audit round 3, perf-8)", async (t) => {
+  /* KILLING MUTATION: drop the `document.hidden` check around `notifyForay()` in
+     `render()` and the hidden ticks each repaint the page. */
+  const { client, doc, audio, restore } = await bootClient(t);
+  let paints = 0;
+  await client.playForay(synthetic(), { startIndex: 0, onChange: () => { paints++; } });
+  await settle();
+  doc.hidden = true;
+  doc.fire("visibilitychange");
+  await settle();
+  paints = 0;
+  for (let i = 0; i < 4; i++) { audio.currentTime = 110 + i; audio.fire("timeupdate"); }
+  await settle();
+  assert.equal(paints, 0, "no Foray-page paint with the screen off");
+  doc.hidden = false;
+  doc.fire("visibilitychange");
+  await settle();
+  await settle();
+  assert.ok(paints >= 1, "the page is repainted once it is visible again");
+  restore();
+});
