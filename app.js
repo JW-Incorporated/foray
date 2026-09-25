@@ -14119,7 +14119,7 @@ function ensureInterestsDrawerLink() {
    without this list failing. */
 const SB_USER_TABLES = [
   "events", "saved_items", "user_interests", "sessions", "session_items",
-  "subscriptions", "taxonomy_nodes", "app_users",
+  "subscriptions", "taxonomy_nodes", "learning_cursor", "app_users",
 ];
 
 /** Three outcomes per table, and the difference between them is the whole
