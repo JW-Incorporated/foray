@@ -368,7 +368,7 @@ test("THE #233 REPRODUCTION: a page served cached code is not handed fresh data"
   const code = await h.fetch(sub("app.js"), { clientId: "page-1" });
   assert.equal(unstampPin(await code.text()), "APP@1", "the page is running last-known code");
   await h.settle();
-  assert.deepEqual(h.posted, [{ id: "page-1", message: { source: "foray-sw", reason: "stale-shell", deployId: "1" } }]);
+  assert.deepEqual(h.posted, [{ id: "page-1", message: { source: "foray-sw", reason: "stale-shell", deployId: "1", pin: true } }]);
 
   /* The page, told it is on generation "1", tags its own data request. */
   const data = await h.fetch(sub(`${FORAYS}?_fdid=1`), { clientId: "page-1" });
@@ -396,14 +396,23 @@ test("a page whose code came from the origin gets today's data", async () => {
   assert.equal(await data.text(), '{"forays":["grilling-history-2"]}');
 });
 
-test("one code file that does not answer pins the whole page, not just itself", async () => {
-  /* app.js and player/client.js are both CODE, both part of the same
-     manifest-verified generation. Here the module fetch fails on this load, so
-     the WHOLE page is pinned to the current generation — its data comes from
-     there too, once the page tags its own request with the id it was told. */
+test("app-3-5: a module that does not answer puts the notice up but does not pin a live app.js", async () => {
+  /* This test used to say the opposite: any code file falling back pinned the
+     whole page. But app.js here answered LIVE (APP@2) and is the reader of
+     data/*.json; pinning it to generation 1 paired new code with old data, the
+     #233 mismatch (round-3 audit, app-3-5). A stale player/client.js is a stale
+     PLAYER (the residual gap sw.js's header names), so the worker says so with
+     `pin: false`: the notice goes up, the pin does not, and the module's bytes
+     carry no pin statement. Its own imports are tagged, so the stale player's
+     module graph at least stays in one generation.
+     MUTATION: send `pin: true` for every code fallback (drop decidesGeneration)
+     — the message assertion goes red. */
   const h = loadWorker({
     generations: {
-      "1": { "player/client.js": "MODULE@1", [FORAYS]: '{"forays":["grilling-history-1"]}' },
+      "1": {
+        "player/client.js": 'import { Q } from "./queue-manager.js";\nexport const V = Q;',
+        [FORAYS]: '{"forays":["grilling-history-1"]}',
+      },
     },
     pointer: "1",
     windows: ["page-1"],
@@ -415,12 +424,17 @@ test("one code file that does not answer pins the whole page, not just itself", 
 
   assert.equal(await (await h.fetch(sub("app.js"), { clientId: "page-1" })).text(), "APP@2");
   const moduleRes = await h.fetch(sub("player/client.js"), { clientId: "page-1" });
-  assert.equal(unstampPin(await moduleRes.text()), "MODULE@1");
+  const moduleText = await moduleRes.text();
+  assert.doesNotMatch(moduleText, /__forayPinnedDeployId/, "only app.js's bytes carry the pin");
+  assert.match(moduleText, /from "\.\/queue-manager\.js\?_fdid=1"/, "the stale module's imports stay in its generation");
   await h.settle();
-  assert.deepEqual(h.posted, [{ id: "page-1", message: { source: "foray-sw", reason: "stale-shell", deployId: "1" } }]);
+  assert.deepEqual(h.posted, [
+    { id: "page-1", message: { source: "foray-sw", reason: "stale-shell", deployId: "1", pin: false } },
+  ]);
 
-  const data = await h.fetch(sub(`${FORAYS}?_fdid=1`), { clientId: "page-1" });
-  assert.equal(await data.text(), '{"forays":["grilling-history-1"]}');
+  /* The page stays unpinned, so its data reads live, matching its live app.js. */
+  const data = await h.fetch(sub(FORAYS), { clientId: "page-1" });
+  assert.equal(await data.text(), '{"forays":["grilling-history-2"]}');
 });
 
 test("a navigation pins the page it creates, not the page that started it", async () => {
@@ -445,7 +459,7 @@ test("a navigation pins the page it creates, not the page that started it", asyn
 
   assert.deepEqual(
     h.posted,
-    [{ id: "new-page", message: { source: "foray-sw", reason: "stale-shell", deployId: "1" } }],
+    [{ id: "new-page", message: { source: "foray-sw", reason: "stale-shell", deployId: "1", pin: true } }],
     "the page that is about to exist is the one told"
   );
   assert.equal(
@@ -529,7 +543,7 @@ test("falling back to cached code tells the page it is a version behind, and whi
   });
   await h.fetch(sub("app.js"), { clientId: "page-1" });
   await h.settle();
-  assert.deepEqual(h.posted, [{ id: "page-1", message: { source: "foray-sw", reason: "stale-shell", deployId: "1" } }]);
+  assert.deepEqual(h.posted, [{ id: "page-1", message: { source: "foray-sw", reason: "stale-shell", deployId: "1", pin: true } }]);
 });
 
 test("refusing data with nothing cached in any retained generation answers 504 and says why", async () => {
@@ -1160,6 +1174,96 @@ test("a cross-origin request is left alone", async () => {
   assert.equal(res, undefined, "episode audio comes from ~41 CDNs and is none of our business");
 });
 
+/* ---------------------- app-3-5: a fallen-back page is ONE generation */
+
+const PAGE_HTML =
+  '<!doctype html><html><head><title>4a</title>\n' +
+  '<link rel="modulepreload" href="player/client.js">\n' +
+  '<link rel="modulepreload" href="player/queue-manager.js">\n' +
+  '<link rel="stylesheet" href="styles.css">\n' +
+  '</head><body>\n' +
+  '<script src="search-engine.js"></script>\n' +
+  '<script src="app.js"></script>\n' +
+  '<script type="module" src="player/client.js"></script>\n' +
+  '<script src="https://cdn.example.com/x.js"></script>\n' +
+  '</body></html>';
+
+test("app-3-5: a fallback document asks for its code from its own generation", async () => {
+  /* The worker's pointer names generation 1 and the origin is on a newer
+     deploy. The navigation falls back, so the document is generation 1's; its
+     script and modulepreload URLs now carry `_fdid=1`, so app.js cannot load
+     live from the newer deploy and then pin itself to generation 1's data.
+     MUTATION: drop tagDocumentCode from stampPin — the URLs stay untagged. */
+  const h = loadWorker({
+    generations: { "1": { "./": PAGE_HTML } },
+    pointer: "1",
+    network: offline,
+  });
+  const html = await (await h.fetch(nav("./"), { resultingClientId: "page-1" })).text();
+  assert.match(html, /<meta name="foray-pin-deploy-id" content="1">/);
+  assert.match(html, /<script src="search-engine\.js\?_fdid=1"><\/script>/);
+  assert.match(html, /<script src="app\.js\?_fdid=1"><\/script>/);
+  assert.match(html, /<script type="module" src="player\/client\.js\?_fdid=1"><\/script>/);
+  assert.match(html, /<link rel="modulepreload" href="player\/client\.js\?_fdid=1">/);
+  assert.match(html, /<link rel="modulepreload" href="player\/queue-manager\.js\?_fdid=1">/);
+  assert.match(html, /<link rel="stylesheet" href="styles\.css">/, "styles do not decide a generation and stay untagged");
+  assert.match(html, /src="https:\/\/cdn\.example\.com\/x\.js"/, "a cross-origin URL is not the worker's to tag");
+});
+
+test("app-3-5: tagged code is served from its generation even when the origin answers with a newer deploy", async () => {
+  /* MUTATION: delete the tagged branch at the top of handleShell — app.js
+     comes back live as APP@2, the exact new-code/old-data pairing. */
+  const h = loadWorker({
+    generations: {
+      "1": {
+        "app.js": "APP@1",
+        "player/client.js": 'import { Q } from "./queue-manager.js";\nexport { R } from "../player/x.js";\nimport "./side.js";\nexport const V = Q;',
+        "player/queue-manager.js": "export const Q = 1;",
+      },
+    },
+    pointer: "1",
+    network: (url) => ok(url.endsWith("app.js") ? "APP@2" : "LIVE@2"),
+  });
+  h.inits.length = 0;
+  const app = await (await h.fetch(sub("app.js?_fdid=1"), { clientId: "page-1" })).text();
+  assert.equal(app, 'self.__forayPinnedDeployId="1";\nAPP@1', "app.js is generation 1's, pinned in its own bytes");
+  const client = await (await h.fetch(sub("player/client.js?_fdid=1"), { clientId: "page-1" })).text();
+  assert.match(client, /from "\.\/queue-manager\.js\?_fdid=1"/);
+  assert.match(client, /from "\.\.\/player\/x\.js\?_fdid=1"/);
+  assert.match(client, /import "\.\/side\.js\?_fdid=1"/);
+  const qm = await (await h.fetch(sub("player/queue-manager.js?_fdid=1"), { clientId: "page-1" })).text();
+  assert.equal(qm, "export const Q = 1;");
+  assert.deepEqual(h.inits, [], "a tagged code request never asks the origin");
+});
+
+test("app-3-5: tagged code whose generation is gone fails visibly, never live", async () => {
+  const h = loadWorker({
+    generations: { "1": { "app.js": "APP@1" } },
+    pointer: "1",
+    network: () => ok("APP@LIVE"),
+  });
+  const res = await h.fetch(sub("app.js?_fdid=aged-out"), { clientId: "page-1" });
+  assert.equal(res.status, 504);
+});
+
+test("app-3-5: a fallen-back search-engine.js does not carry a pin a live app.js would adopt", async () => {
+  /* search-engine.js runs before app.js. Its fallback used to be prepended with
+     `self.__forayPinnedDeployId = "1"`, which a LIVE, newer app.js then read
+     as its own pin. MUTATION: prepend the pin statement to every .js again. */
+  const h = loadWorker({
+    generations: { "1": { "search-engine.js": "ENGINE@1" } },
+    pointer: "1",
+    network: offline,
+    windows: ["page-1"],
+  });
+  const text = await (await h.fetch(sub("search-engine.js"), { clientId: "page-1" })).text();
+  assert.equal(text, "ENGINE@1");
+  await h.settle();
+  assert.deepEqual(h.posted, [
+    { id: "page-1", message: { source: "foray-sw", reason: "stale-shell", deployId: "1", pin: false } },
+  ]);
+});
+
 test("app-3-2: an API request is left to the page, so a slow second search never gets the first search's body", async () => {
   /* On the Vercel origin the page and api/* share an origin. The worker used to
      cache every API answer under its query-stripped URL, so `?q=a` and `?q=b`
@@ -1228,7 +1332,7 @@ test("a non-GET request is left alone", async () => {
 /** Minimal DOM: enough for showShellNotice and nothing more. Honest about it —
     `innerHTML` is scanned for `id="…"` rather than parsed, which is why the
     assertions below check the markup string as well as the elements. */
-function makeDocument() {
+function makeDocument(metas = {}) {
   const mk = (tagName) => {
     const el = {
       tagName, id: "", className: "", textContent: "", hidden: false,
@@ -1285,7 +1389,15 @@ function makeDocument() {
     documentElement: mk("html"),
     addEventListener() {},
     createElement: mk,
-    querySelector: (sel) => (sel.startsWith("#") ? walk(body, sel.slice(1)) : null),
+    /* `metas` maps a meta selector to its content, for the two meta tags
+       app.js reads at the top (the pin, and the page's own deploy id). */
+    querySelector: (sel) => {
+      if (sel.startsWith("#")) return walk(body, sel.slice(1));
+      if (Object.prototype.hasOwnProperty.call(metas, sel)) {
+        return { getAttribute: (name) => (name === "content" ? metas[sel] : null) };
+      }
+      return null;
+    },
     querySelectorAll: () => [],
     _view: view,
   };
@@ -1296,8 +1408,9 @@ function makeDocument() {
     `self.__forayPinnedDeployId = "<id>";` to this file's own bytes before the
     browser ran it — set BEFORE `vm.runInContext` executes APP_SRC, exactly as
     a real prepended statement would run before anything below it. */
-function loadPage({ stampedDeployId = null } = {}) {
-  const document = makeDocument();
+function loadPage({ stampedDeployId = null, metas = {} } = {}) {
+  const document = makeDocument(metas);
+  const dataSourceNotes = [];
   const store = new Map();
   const messages = [];
   let reloads = 0;
@@ -1333,6 +1446,9 @@ function loadPage({ stampedDeployId = null } = {}) {
     encodeURIComponent, decodeURIComponent,
   };
   if (stampedDeployId) ctx.__forayPinnedDeployId = stampedDeployId;
+  /* app.js's noteDataSource hands its row here; the stale-shell handler writes
+     one only when it adopts the pin, which makes the pin observable. */
+  ctx.forayNoteDataSource = (fields) => { dataSourceNotes.push(fields); return true; };
   ctx.window = ctx;
   ctx.globalThis = ctx;
   ctx.self = ctx;
@@ -1347,6 +1463,7 @@ function loadPage({ stampedDeployId = null } = {}) {
     dismissButton: () => document.querySelector("#shell-notice-dismiss"),
     reloads: () => reloads,
     fetchedUrls,
+    dataSourceNotes,
     view: document._view,
     body: document.body,
   };
@@ -1410,6 +1527,21 @@ test("a stale-shell message pins the page's later data fetches to that generatio
      (see the sw-generation tests above) and here only the PIN STATE is
      asserted through the notice contract, which is the page-visible half. */
   assert.ok(page.notice(), "the page acknowledged the pin by showing the notice");
+});
+
+test("app-3-5: a stale-shell that says pin:false shows the notice but does not pin the page", async () => {
+  /* The worker sends `pin: false` when a file that does not read data fell
+     back while app.js may be live. MUTATION: adopt the pin whatever `pin`
+     says — the data-source row for g1 is written. */
+  const page = loadPage();
+  page.send({ source: "foray-sw", reason: "stale-shell", deployId: "g1", pin: false });
+  assert.ok(page.notice(), "the listener is still told something is stale");
+  assert.deepEqual(page.dataSourceNotes, [], "but the page did not adopt generation g1");
+
+  /* A worker from before the field (no `pin`) keeps the old meaning. */
+  page.send({ source: "foray-sw", reason: "stale-shell", deployId: "g1" });
+  assert.equal(page.dataSourceNotes.length, 1);
+  assert.equal(page.dataSourceNotes[0].version, "g1");
 });
 
 test("the generation-changed message says something different and still offers the reload", async () => {

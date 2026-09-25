@@ -23,8 +23,12 @@
  *   2. A `<meta name="foray-pin-deploy-id" content="<id>">` tag sw.js
  *      inserts into `index.html`'s `<head>` when the NAVIGATION fell back
  *      (parsed by the browser before any script tag runs, including this
- *      one) — covers the case where index.html/search-engine.js fell back but
- *      this file's own fetch was fresh.
+ *      one). That fallback document also asks for this file as
+ *      `app.js?_fdid=<id>`, which the worker answers from the same
+ *      generation (round-3 audit, app-3-5), so a meta pin always names the
+ *      generation this very file came from. It used to load live from a
+ *      newer deploy and pin itself to the previous one's data. A fallen-back
+ *      search-engine.js no longer carries a pin statement at all.
  * Either establishes the pin synchronously; no message race is possible for
  * either path. The one residual gap — `player/client.js`, a DEFERRED module
  * that can still be discovered stale after `init()`'s own fetches have
@@ -17336,11 +17340,18 @@ if ("serviceWorker" in navigator && shouldRegisterServiceWorker(window)) {
          have to remember this). A `deployId` of null (an unretained/unknown
          generation on the worker's side) intentionally does not clear an
          already-set pin — see sw.js's `handleData` fail-safe for the matching
-         reasoning. */
-      if (msg.reason === "stale-shell" && msg.deployId) pinnedDeployId = msg.deployId;
+         reasoning.
+
+         `pin: false` (round-3 audit, app-3-5) is a fallback of a file that does
+         not read data (search-engine.js, a player module) while this app.js
+         may well be live: the notice goes up, the pin does not, or new code
+         would be paired with the previous generation's data. A worker from
+         before that field sends none, which keeps the old meaning (pin). */
+      const adoptsPin = msg.reason === "stale-shell" && msg.pin !== false;
+      if (adoptsPin && msg.deployId) pinnedDeployId = msg.deployId;
       /* FD-01: the web's pinned-generation path records the same fact the shell's
          boot row does — where the documents came from, and which deploy id. */
-      if (msg.reason === "stale-shell") {
+      if (adoptsPin) {
         const tag = `sw-cache@${pinnedDeployId || "unknown"}`;
         noteDataSource({
           phase: "stale-shell", source: "sw-cache", version: pinnedDeployId || "unknown",

@@ -28,12 +28,15 @@
         repeat visit costs one round trip and no bytes.
 
      2. A PAGE THAT FELL BACK IS PINNED TO ITS FALLBACK. When the origin does
-        not answer for a page's CODE, that page is running last-known code from
-        a specific retained generation, and it is told which one
-        (`stale-shell`, carrying that generation's `deployId`). The PAGE keeps
-        that id in its own memory — not the worker's — and tags its `data/`
-        requests with it (`?_fdid=`), so they keep reading the SAME generation
-        the code came from, never today's. This is the one rule that keeps
+        not answer for a page's document or app.js, that page is running
+        last-known code from a specific retained generation, and it is told
+        which one (`stale-shell`, carrying that generation's `deployId`). The
+        PAGE keeps that id in its own memory — not the worker's — and tags its
+        `data/` requests with it (`?_fdid=`), so they keep reading the SAME
+        generation the code came from, never today's. A fallback DOCUMENT
+        also tags its own script and module URLs, so the whole page load is
+        one generation (round-3 audit, app-3-5), and a data file that falls
+        back tells the page too (perf-2). This is the one rule that keeps
         offline from becoming a new way to build a mismatched pair.
 
      3. A REFUSAL IS VISIBLE. The worker tells the page (`stale-shell`), and
@@ -73,10 +76,12 @@
        for a load where `index.html` and `app.js` both answer live (untagged,
        no pin — this page IS current) while `client.js`'s OWN request, fired
        in parallel, independently fails and falls back to an OLDER retained
-       generation's cached copy. `handleShell` pins THAT ONE REQUEST'S
-       fallback correctly, but by the time it resolves, `app.js`'s `init()`
-       has already sent its untagged `data/*.json` fetches — there is nothing
-       left to retroactively re-tag. A review asked directly whether this is
+       generation's cached copy. Since round 3 (app-3-5) that fallback no
+       longer pins the page at all (`stale-shell` with `pin: false`): the
+       page's app.js is live and its data must match IT, and by the time the
+       module resolves `init()` has already sent its untagged `data/*.json`
+       fetches anyway. The module's own imports are tagged, so the stale
+       player is at least one generation. A review asked directly whether this is
        closed; it is not, and closing it fully would mean blocking every page
        load on `player/client.js` before starting any data fetch, which
        contradicts the founding "survive a dead zone" constraint the same way
@@ -665,6 +670,22 @@ function unavailable(request) {
  * `pin` is true for the files that decide the generation — see isCode().
  */
 async function handleShell(request, env, pin) {
+  /* A CODE REQUEST THAT CARRIES `_fdid` BELONGS TO THAT GENERATION (round-3
+     audit, app-3-5). A page served a fallback index.html asks for its scripts
+     and modules with the fallback's `_fdid` (stampPin rewrites the URLs), so
+     the whole page load is one generation: the tagged generation's copy is
+     authoritative, exactly as handleData treats a tagged data request, and the
+     origin is never asked. Before this, only the HTML fell back: app.js then
+     loaded live from the NEWER deploy, read the meta pin, and paired new code
+     with the previous generation's data, the #233 mismatch. A tagged file the
+     generation does not hold fails visibly (504) rather than going live. */
+  if (pin && !isNavigation(request)) {
+    const taggedId = new URL(request.url).searchParams.get("_fdid");
+    if (taggedId) {
+      const hit = await matchGeneration(taggedId, request);
+      return hit ? stampPin(request, hit, taggedId) : unavailable(request);
+    }
+  }
   const res = await fromOrigin(request, env);
   /* `opaqueredirect` is a real answer from the origin even though `ok` is false:
      a navigation's redirect mode is "manual", so a redirect arrives as an opaque
@@ -678,51 +699,102 @@ async function handleShell(request, env, pin) {
   /* No answer, or an answer that is not the file — a 404 mid-deploy reads the
      same way here. Serve the last-known copy from whichever generation still
      has it, and if this was code, tell the page which generation it is now
-     running: from here on, ITS data requests must carry that generation's id,
-     never today's.
+     running.
 
      THE PIN MUST NOT DEPEND ON THE `stale-shell` MESSAGE ARRIVING IN TIME. A
      review caught this: `handleShell`'s decision for app.js's OWN fetch is
      made and returned before app.js has executed a single line, so a
      `postMessage` sent from here can race app.js's `addEventListener` and be
      lost — events do not queue for a listener that attaches after they fire.
-     So for a CODE fallback the pin is instead baked directly into the
-     response BYTES the browser is about to execute/parse, synchronously,
-     before any of that file's own code runs: a `self.__forayPinnedDeployId =
-     "<id>";` statement prepended to a `.js` fallback (valid as a top-level
-     statement in both classic scripts and ES modules), or a
-     `<meta name="foray-pin-deploy-id" content="<id>">` tag inserted into a
-     navigation's `<head>` (parsed before any script tag runs). app.js reads
-     `self.__forayPinnedDeployId` — falling back to the meta tag when it is a
-     fresh navigation load — as the FIRST thing it does, before `init()`. The
-     `stale-shell` postMessage is sent too, unchanged, purely for the reload
-     notice; it is no longer what establishes the pin. */
+     So the pin is baked into the response BYTES instead (stampPin): a
+     `<meta name="foray-pin-deploy-id">` in a navigation's `<head>`, with
+     every script and modulepreload URL tagged `_fdid` so the page's code comes
+     from the same generation (see the tagged branch above), or a
+     `self.__forayPinnedDeployId = "<id>";` statement prepended to app.js
+     itself.
+
+     ONLY THE FILES THAT READ DATA DECIDE THE PAGE'S GENERATION (round-3 audit,
+     app-3-5). That is the navigation and app.js. A fallen-back
+     search-engine.js or player module used to pin the page too, so a LIVE,
+     newer app.js was pinned to the previous generation's data. Their
+     `stale-shell` still puts the notice up, but says `pin: false`, and their
+     bytes carry no pin statement. A stale player module is a stale PLAYER,
+     not a stale reader of data/*.json (the residual gap the header names). */
+  const decides = pin && decidesGeneration(request);
   const fallback = await cachedShellFallback(request);
-  if (pin && env.clientId && fallback) {
-    env.waitUntil(tellClient(env.clientId, "stale-shell", { deployId: fallback.deployId }));
-  } else if (pin && env.clientId) {
-    env.waitUntil(tellClient(env.clientId, "stale-shell", { deployId: null }));
+  if (pin && env.clientId) {
+    env.waitUntil(tellClient(env.clientId, "stale-shell", {
+      deployId: fallback ? fallback.deployId : null,
+      pin: decides,
+    }));
   }
   if (!fallback) return res || unavailable(request);
   if (!pin) return fallback.response;
   return stampPin(request, fallback.response, fallback.deployId);
 }
 
+/* The page's own document and app.js: the two files whose generation the
+   page's data must match. */
+const APP_PATH = new URL("app.js", self.location.href).pathname;
+
+function decidesGeneration(request) {
+  if (isNavigation(request)) return true;
+  try { return new URL(request.url).pathname === APP_PATH; } catch (_) { return false; }
+}
+
+/* `u` with `_fdid=<deployId>` added, when it is a same-origin relative URL
+   that does not carry one yet. Absolute and protocol-relative URLs are not
+   this worker's to tag. */
+function tagUrl(u, deployId) {
+  if (/^(?:[a-z][a-z0-9+.-]*:|\/\/|#)/i.test(u) || /[?&]_fdid=/.test(u)) return u;
+  return `${u}${u.includes("?") ? "&" : "?"}_fdid=${encodeURIComponent(deployId)}`;
+}
+
+/* Every `<script src>` and `<link rel="modulepreload" href>` in a fallback
+   document, tagged with its generation, so the page's code is requested from
+   that generation and the module map holds one copy of each module. */
+function tagDocumentCode(html, deployId) {
+  return html
+    .replace(/(<script\b[^>]*?\bsrc=")([^"]*)(")/gi, (m, a, u, b) => a + tagUrl(u, deployId) + b)
+    .replace(/<link\b[^>]*>/gi, (tag) =>
+      /\brel="modulepreload"/i.test(tag)
+        ? tag.replace(/(\bhref=")([^"]*)(")/i, (m, a, u, b) => a + tagUrl(u, deployId) + b)
+        : tag);
+}
+
+/* A module's relative imports, tagged with its generation: the module graph
+   under a tagged player/client.js stays in that generation, and each URL
+   matches the tagged modulepreload the document already asked for. */
+function tagModuleImports(js, deployId) {
+  return js.replace(
+    /(\bfrom\s*|\bimport\s*\(\s*|\bimport\s+)(["'])(\.\.?\/[^"'?#\s]+\.js)\2/g,
+    (m, pre, q, spec) => `${pre}${q}${tagUrl(spec, deployId)}${q}`
+  );
+}
+
 /**
  * Bakes `deployId` into a CODE fallback response's own bytes, synchronously
- * readable by that file's very first statement — see `handleShell`'s header
- * for why this exists instead of relying solely on postMessage timing.
+ * readable before that file's own code runs — see `handleShell`'s header for
+ * why this exists instead of relying solely on postMessage timing.
+ *   - a document: the pin meta right after `<head>`, and every script and
+ *     modulepreload URL tagged with the generation (app-3-5);
+ *   - app.js: `self.__forayPinnedDeployId = "<id>";` as its first statement;
+ *   - any script: its relative module imports tagged with the generation.
  */
 async function stampPin(request, response, deployId) {
   const url = new URL(request.url);
   const isHtml = isNavigation(request) || /\.html$/.test(url.pathname);
   const body = await response.text();
-  const stamped = isHtml
-    ? body.replace(
-        /<head(\s[^>]*)?>/i,
-        (m) => `${m}\n<meta name="foray-pin-deploy-id" content="${escapeHtmlAttr(deployId)}">`
-      )
-    : `self.__forayPinnedDeployId=${JSON.stringify(deployId)};\n${body}`;
+  let stamped;
+  if (isHtml) {
+    stamped = tagDocumentCode(body, deployId).replace(
+      /<head(\s[^>]*)?>/i,
+      (m) => `${m}\n<meta name="foray-pin-deploy-id" content="${escapeHtmlAttr(deployId)}">`
+    );
+  } else {
+    stamped = tagModuleImports(body, deployId);
+    if (url.pathname === APP_PATH) stamped = `self.__forayPinnedDeployId=${JSON.stringify(deployId)};\n${stamped}`;
+  }
   /* Fresh headers, NOT `response.headers` reused verbatim — a review caught
      this: a static host commonly sends `Content-Length` on the cached
      origin response this came from, and prepending/inserting bytes without
