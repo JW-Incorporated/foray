@@ -3957,7 +3957,7 @@ function showEpisodeGuid(ep) {
 }
 
 function fullCatalogueRowToEpRowItem(show, ep) {
-  const id = `${show.show_id}--${ep.guid}`;
+  const id = `${show.show_id}--${showEpisodeGuid(ep)}`;
   return snapshot(id, {
     show: show.title,
     /* THE SHOW'S ID RIDES ON THE SNAPSHOT (audit round 2 review of

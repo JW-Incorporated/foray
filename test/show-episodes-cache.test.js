@@ -167,6 +167,25 @@ test("a same-length page with a NEW episode at the top is a change (real API row
   assert.strictEqual(app.sameEpisodeList([noGuid("A", "d1")], [noGuid("A", "d1")]), true);
 });
 
+test("guid-less show-scoped search rows get distinct ids, matching the list endpoint's fallback", () => {
+  /* Audit round 3, app-1-5. The show-scoped search endpoint passes a null guid
+     straight through, and the row id was `${show_id}--${ep.guid}`: every
+     guid-less row became `<show>--null`, one itemIndex slot, so each row's ▶
+     played the LAST row's audio and stars/Up Next/history shared one id.
+     MUTATION: build the id from `ep.guid` again. This goes red. */
+  const show = { show_id: "noguid-show", title: "No Guid Show" };
+  const a = app.fullCatalogueRowToEpRowItem(show, { guid: null, title: "Part one", published_at: "2026-09-01T00:00:00Z", audio_url: "https://cdn.test/1.mp3" });
+  const b = app.fullCatalogueRowToEpRowItem(show, { guid: null, title: "Part two", published_at: "2026-09-02T00:00:00Z", audio_url: "https://cdn.test/2.mp3" });
+  assert.notStrictEqual(a.id, b.id, "two guid-less rows must not share an id");
+  assert.ok(!/--null$/.test(a.id), "no `<show>--null` ids");
+  /* The same fallback the list endpoint mints (episodes.ts toLiveEpisode), so an
+     episode starred from the list is the same id in search results. */
+  assert.strictEqual(a.id, "noguid-show--noguid:Part one:2026-09-01T00:00:00Z");
+  assert.strictEqual(app._state("state.itemIndex")[a.id].audio_url, "https://cdn.test/1.mp3", "each row keeps its own audio");
+  /* A row with a guid is unchanged. */
+  assert.strictEqual(app.fullCatalogueRowToEpRowItem(show, { guid: "g-1", title: "x" }).id, "noguid-show--g-1");
+});
+
 /* ---------- the load path's shape ---------------------------------------- */
 
 test("a cached list paints before the fetch, and the fetch still goes out", () => {
