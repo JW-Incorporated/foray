@@ -4173,3 +4173,46 @@ test("NE-18: Now Playing writes rate 0 rather than playbackState, is cleared onl
   assert.match(artwork, /scheme\.lowercased\(\) == "https"/);
   assert.match(swiftFuncBody(artwork, "settle") ?? "", /failed\.insert\(src\)/, "a failure is cached");
 });
+
+/* NE-27 (docs/native-engine-plan.md §4.6 "Build default", §9 G-5): the build
+   default is the switch that puts the native engine under the founder's daily
+   listening, so it may say `native` only when STATE.md records the answer to
+   OQ-9 (native default for the M1 build) as a line of its own:
+     OQ-9 answer (<date>): native default ... "<the ruling, quoted>" ...
+   A `js` default needs no record. This reads the RECORD, not a comment in the
+   JSON, so flipping the default and writing the permission are two edits a
+   reviewer sees in two files. */
+const ENGINE_DEFAULT_JSON = path.join(ROOT, "mobile", "ENGINE_DEFAULT.json");
+const STATE_MD = path.join(ROOT, "STATE.md");
+const OQ9_ANSWER_RE = /^OQ-9 answer \(\d{4}-\d{2}-\d{2}\): native default\b.*"[^"]+"/m;
+
+/** Why `engineDefault` may not ship with `stateText`, or null when it may. */
+function engineDefaultRefusal(engineDefault, stateText) {
+  if (engineDefault?.mode !== "native") return null;
+  if (!OQ9_ANSWER_RE.test(stateText)) {
+    return 'mobile/ENGINE_DEFAULT.json says "native", but STATE.md records no line "OQ-9 answer (<date>): native default ..." carrying the ruling in double quotes';
+  }
+  const caps = engineDefault.capabilities ?? [];
+  const allowed = ["episode", "continuation", "restore"];
+  const extra = caps.filter((c) => !allowed.includes(c));
+  if (extra.length) return `the M1 native default may advertise only ${allowed.join(", ")}; it also lists ${extra.join(", ")}`;
+  return null;
+}
+
+test("NE-27: ENGINE_DEFAULT says native only when STATE.md records the OQ-9 answer", () => {
+  /* MUTATIONS: commit {"mode":"native"} with STATE.md's OQ-9 line deleted ->
+     red; keep the line but drop its quoted ruling -> red; add "foray" to a
+     native default in M1 -> red. The synthetic cases below are those mutations,
+     run every time, so the guard cannot go vacuous while the default is js. */
+  const record = 'OQ-9 answer (2026-09-24): native default for the founder\'s builds, "Full native engine".';
+  assert.equal(engineDefaultRefusal({ mode: "js" }, ""), null, "a js default needs no record");
+  assert.match(engineDefaultRefusal({ mode: "native", capabilities: ["episode"] }, "") ?? "", /OQ-9/);
+  assert.match(engineDefaultRefusal({ mode: "native" }, "OQ-9 answer (2026-09-24): native default, unquoted") ?? "", /OQ-9/);
+  assert.match(engineDefaultRefusal({ mode: "native" }, "  " + record) ?? "", /OQ-9/, "the record is a line of its own");
+  assert.equal(engineDefaultRefusal({ mode: "native", capabilities: ["episode", "continuation", "restore"] }, record), null);
+  assert.match(engineDefaultRefusal({ mode: "native", capabilities: ["episode", "foray"] }, record) ?? "", /foray/);
+
+  const committed = JSON.parse(fs.readFileSync(ENGINE_DEFAULT_JSON, "utf8"));
+  const refusal = engineDefaultRefusal(committed, fs.readFileSync(STATE_MD, "utf8").replace(/\r\n/g, "\n"));
+  assert.equal(refusal, null, refusal ?? "");
+});
