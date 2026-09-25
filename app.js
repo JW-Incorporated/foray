@@ -5442,7 +5442,7 @@ function bindPlay(scope) {
    sharing `ctx` are the play list. Answers whether the play was accepted and is
    still the player's own. The caller decides the isCurrent toggle first: a row
    showing ❚❚ pauses, Home's "Play …" never does. */
-async function startEpisodePlay(id, item, { ctx = null, list = [] } = {}) {
+async function startEpisodePlay(id, item, { ctx = null, list = [], startOffset = null } = {}) {
   const listCtx = ctx || null;
   /* UP NEXT IS ITS OWN CONTINUATION (audit round 2 review). Its ▶ carries
      `data-ctx="upnext"` only as the mark that triggers `playedFromUpNext`;
@@ -5462,7 +5462,12 @@ async function startEpisodePlay(id, item, { ctx = null, list = [] } = {}) {
      screen whichever page this button was on. */
   let ok = false;
   try {
-    ok = await window.ForayPlayer.play(item, { why: whyFor(id, item) });
+    /* `startOffset`: a start AT a chapter or timestamp (bindEpisodeSeeks) — the
+       load begins there rather than playing from the resume point and seeking
+       after (races-1). Absent, the options are exactly what they always were. */
+    ok = await window.ForayPlayer.play(item, startOffset == null
+      ? { why: whyFor(id, item) }
+      : { why: whyFor(id, item), startOffset });
   } catch (err) {
     console.warn("[4a] play failed", err);
     try { window.ForayPlayer.reportPlayFailure?.(err); } catch (_) { /* the bar is best-effort */ }
@@ -10460,23 +10465,26 @@ function bindEpisodeSeeks(scope, item) {
         /* Play only when this is not already the current episode — a restart
            would throw away the thing the listener is in the middle of. Then
            seek, always: that is the whole of what the control promises. */
-        if (!window.ForayPlayer.isPlaying(item.id)) {
-          const ok = await window.ForayPlayer.play(item, { why: whyFor(item.id, item), startOffset: secs });
-          /* THE START CARRIES THE STAMP (audit round 2 review; races-1's rule
-             everywhere else): the load begins AT the timestamp, rather than
-             starting at the resume point and seeking after — two steps a
-             second tap or a slow load could race. A refused start says so on
-             the bar, as bindPlay's does — unless a later tap superseded it,
-             which is not a failure. */
-          if (ok === false) {
-            if (typeof window.ForayPlayer.isCurrent === "function" && !window.ForayPlayer.isCurrent(item.id)) return;
-            try { window.ForayPlayer.reportPlayFailure?.(null); } catch (_) { /* the bar is best-effort */ }
-            return;
-          }
-          sendContinuation();
+        /* CURRENT, not playing (audit round 3, app-2-4): a paused current
+           episode is seeked, not restarted — and resumed, because a tap on a
+           stamp asks to hear it. */
+        const current = typeof window.ForayPlayer.isCurrent === "function"
+          ? window.ForayPlayer.isCurrent(item.id)
+          : window.ForayPlayer.isPlaying(item.id);
+        if (!current) {
+          /* THE ONE START PATH (audit round 3, app-2-4). This called
+             ForayPlayer.play() directly, so an episode started from a chapter
+             or a timestamp never reached History, never logged play_started
+             and left the previous list's ⏮/⏭ chain in place. startEpisodePlay
+             does all of that, reports a refused start (not a superseded one),
+             and carries the stamp as the START offset (races-1: the load begins
+             at the timestamp rather than seeking after). A stamp starts this
+             episode alone: no list, no playlist context. */
+          await startEpisodePlay(item.id, item, { ctx: null, list: [], startOffset: secs });
           return;
         }
         await window.ForayPlayer.seekTo(secs);
+        if (!window.ForayPlayer.isPlaying(item.id)) await window.ForayPlayer.togglePlayback?.();
       } catch (err) {
         /* A seek that cannot happen is not a reason to break the page — the
            same rule the rest of this file's playback bindings follow. But a
