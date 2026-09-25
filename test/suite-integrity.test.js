@@ -1430,7 +1430,7 @@ const FLOORS = {
      if it regressed; a run would simply hang, or publish orchestrator latency
      as pipeline latency. The 12 mutations named in the suite header were each
      applied and observed to fail before it landed. */
-  "tools/generation/relay.test.mjs": 27,
+  "tools/generation/relay.test.mjs": 32, // round-3 audit (L5): a leftover reply never answers a new run, web pages and foreign Hosts are refused, /answer and /reset need the run token, header ids cannot escape the queue; 27 -> 32
   /* #703: the corpus-warming launcher. Small on purpose — the work is in
      backend/src/cli/warmTranscriptIndex.ts and pinned by its own suite — but a
      launcher that spawns an entry that no longer exists fails quietly, and a

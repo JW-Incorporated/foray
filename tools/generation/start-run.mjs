@@ -141,7 +141,8 @@ async function main() {
 
   console.log(`[start-run] relay up on http://127.0.0.1:${port}`);
   console.log(`[start-run] parked requests appear in ${relay.dirs.queueDir}`);
-  console.log(`[start-run] answer one by writing <id>.reply.txt beside it, or POST /answer/<id>`);
+  console.log(`[start-run] answer one by writing <id>.reply.txt beside it, or POST /answer/<id> with "Authorization: Bearer ${relay.token}"`);
+  console.log(`[start-run] answer token: ${relay.token} (also in ${relay.dirs.tokenPath})`);
   console.log(`[start-run] kpi.jsonl: ${relay.dirs.kpiPath}`);
 
   if (args.relayOnly) {
