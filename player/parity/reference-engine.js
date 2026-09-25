@@ -51,6 +51,17 @@ import { PlayerQueueManager } from "../queue-manager.js";
 import { PositionStore } from "../position-store.js";
 import { OpLog, FakeBackend, MemoryStore, fakeTts } from "./fakes.js";
 import { warmOffset, prefetchDecision, warmPromotion } from "../deck-policy.js";
+import { structuralCheck } from "../foray-structure.js";
+import { segmentAtElapsed, forayElapsed } from "../foray-resolve.js";
+import { forayRuntimeSec } from "../foray-queue.js";
+import { sourceOffsetFor, scrubTarget, skipTarget } from "../transport-policy.js";
+
+/** A queue `buildForayQueue` already built — what the PAGE sends (plan §3
+    A-1; NE-35): every item has a `kind` and none has an authored `type`. A
+    parity scenario's `playForay` carries authored-shape items instead
+    (`type: "segment"`), which this engine still builds itself. */
+const isBuiltQueue = (items) => Array.isArray(items) && items.length > 0
+  && items.every((i) => i && typeof i === "object" && typeof i.kind === "string" && i.type === undefined);
 
 /** What `engineHello` names this engine. */
 export const REFERENCE_ENGINE_VERSION = "reference-1";
@@ -469,6 +480,7 @@ export class ReferenceEngine {
           if (!this.capabilities.includes("foray")) return "capability-off";
           const failed = this._ensureSession(viaOf(source));
           if (failed) return failed;
+          if (isBuiltQueue(args.items)) return this._playBuiltForay(args);
           this.playing = { kind: "foray", forayId: args.forayId, title: args.title };
           const report = m.setQueueFromForay({ id: args.forayId, title: args.title, items: args.items }, {
             isLocalFile: args.isLocalFile, allowAdPad: args.allowAdPad,
@@ -508,6 +520,7 @@ export class ReferenceEngine {
           return null;
         case "seekBy": case "seekTo": {
           if (!this.playing || !this._currentItem()) return "not-loaded";
+          if (this.playing.kind === "foray" && this.playing.built) return this._forayScrub(cmd, args);
           const at = cmd === "seekTo" ? args.sec : Math.max(0, this.backend.currentTime + args.deltaSec);
           await m.seek(at, { precise: true });
           return null;
@@ -575,6 +588,45 @@ export class ReferenceEngine {
     await this.manager.pause();
     const t = this._session({ kind: "pause" });
     if (t.actions.includes("deactivate")) this._row({ kind: "session", deactivate: true });
+  }
+
+  /**
+   * `playForay` with the page's BUILT queue, as EngineCore.playForay takes it
+   * (NE-30s; the page side is NE-35): re-validate the structure (J-4) and
+   * refuse it whole, load it as built, and start where `startElapsedSec`
+   * lands on the Foray clock (`segmentAtElapsed`, `sourceOffsetFor`).
+   */
+  async _playBuiltForay(args) {
+    const m = this.manager;
+    if (!structuralCheck(args.items).ok) return "refused-structure";
+    this.playing = { kind: "foray", forayId: args.forayId, title: args.title, built: true };
+    // The load-time ladder's options, as setQueueFromForay would have set them.
+    m._forayOptions = { isLocalFile: Boolean(args.isLocalFile), allowAdPad: Boolean(args.allowAdPad) };
+    m.loadQueue(args.items);
+    if (args.voiceId !== undefined) m.setVoice(args.voiceId);
+    const at = Number.isFinite(args.startElapsedSec) && args.startElapsedSec > 0
+      ? segmentAtElapsed(args.items, args.startElapsedSec) : null;
+    const offset = at ? sourceOffsetFor(args.items[at.index], at.into) : null;
+    await m.play(at ? at.index : 0, offset != null ? { startOffset: offset } : undefined);
+    return null;
+  }
+
+  /** `seekTo` / `seekBy` inside a page-built Foray: on the FORAY's clock, as
+      EngineCore.forayScrub / forayNudge read them. */
+  async _forayScrub(cmd, args) {
+    const m = this.manager;
+    const items = m.queue;
+    const target = cmd === "seekTo" ? args.sec : skipTarget({
+      foray: true, offsetSec: args.deltaSec, durationSec: forayRuntimeSec(items),
+      positionSec: forayElapsed(items, m.currentIndex, this.backend.currentTime),
+    });
+    if (target == null) return null;
+    const at = segmentAtElapsed(items, target);
+    const scrub = scrubTarget({ at, item: at ? items[at.index] : null, currentIndex: m.currentIndex, stateType: m.state?.type ?? null });
+    if (!scrub) return "not-loaded";
+    if (scrub.reload) await m.play(scrub.index, scrub.offset != null ? { startOffset: scrub.offset } : undefined);
+    else if (scrub.offset != null) await m.seek(scrub.offset, { precise: true });
+    return null;
   }
 
   async _playEpisode(item, lastEpisodeRow, startSec) {

@@ -3280,6 +3280,54 @@ function engineHoldsItem() {
   return Boolean(s && s.mode === "episode" && s.itemId);
 }
 
+/** Does the engine hold a Foray right now, by its latest snapshot? */
+function engineHoldsForay() {
+  const s = engine?.latest()?.snapshot;
+  return Boolean(s && s.mode === "foray" && s.forayId && s.itemId);
+}
+
+/**
+ * Attach the page to a Foray the ENGINE is playing (NE-35): a page booted, or
+ * a ribbon restored, while the engine already holds it. The page's half is
+ * rebuilt from the resolved document — the running order, the build (so the
+ * facade's clips line up with the engine's), the lock-screen actions — and
+ * the clip is the snapshot's. Nothing is sent: the engine is not asked to do
+ * anything it is not already doing. Returns the painted item.
+ */
+function attachForay(resolved, { discoverDoc = null } = {}) {
+  if (!ensureBooted()) return null;
+  const s = engine.latest()?.snapshot;
+  foray = { resolved, index: -1, pendingFrom: null, onChange: forayWatcher, error: null };
+  setSkipButtonMode(true);
+  artworkByShow = artworkUrlsByShow(discoverDoc);
+  media.setActions(forayMediaSurface);
+  const report = manager.setQueueFromForay(resolved.hydrated, {
+    resolveItem: (itemId) => resolved.sources.get(itemId) ?? null,
+  });
+  setForayIndex(clampIndex(Number.isInteger(s?.index) ? s.index : 0, report.items.length), { pending: false });
+  render();
+  return current;
+}
+
+/** The narration voice a native Foray is handed (NE-35): the listener's
+    `cp_voice`, else the session default — `pickDefaultVoice` over
+    `listVoices()`, resolved now when it has not been yet — else null, the
+    engine's own pick. Bounded: a voice list that never answers must not
+    hold a Foray tap. */
+const VOICE_LOOKUP_BOUND_MS = 1500;
+async function forayVoiceId() {
+  const stored = readVoice(storage);
+  if (stored) return stored;
+  if (sessionDefaultVoice) return sessionDefaultVoice;
+  let timer = null;
+  const bound = new Promise((resolve) => { timer = setTimeout(() => resolve(null), VOICE_LOOKUP_BOUND_MS); });
+  try {
+    return (await Promise.race([resolveDefaultVoice(), bound])) ?? null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 /** Did the engine advertise `cap` in its hello (§5.1)? */
 function engineCan(cap) {
   const caps = engine?.decision?.hello?.capabilities;
@@ -3413,6 +3461,19 @@ function onEngineEvent(ev) {
      page's half of the relinquish, without sending one. */
   if (ev.type === "modeChanged" && ev.mode === "legacy") {
     relinquishToJs(null).catch((err) => console.warn("[player] relinquish failed", err));
+    return;
+  }
+  /* A clip the engine's ladder refused at load (ADR-0007, NE-30s): the same
+     line the JS lane's manager emits, through the same sink, so the Foray
+     page says it in the words it already has — and the record gets the same
+     stage name. */
+  if (ev.type === "skipped") {
+    const id = typeof ev.itemId === "string" ? ev.itemId : "?";
+    const why = typeof ev.reason === "string" ? ev.reason : "refused";
+    /* The stage name alone, then the parts: the queue manager's own line,
+       assembled without a literal the listener-copy scan would read as prose. */
+    const stage = "foray.segment.skipped.atLoad";
+    onTelemetry([stage, " ", id, ": ", why].join(""));
   }
 }
 
@@ -4284,6 +4345,14 @@ const ForayPlayer = {
        then paints the engine's episode. In M1 the Foray bar paints from
        cp_foray only (the adopted rows) and its press relinquishes. */
     if (engineMode === "native" && engineHoldsItem()) return null;
+    /* A FORAY THE ENGINE IS ALREADY HOLDING IS ATTACHED, NOT RESTORED (NE-35,
+       W-8): the bar and the page paint the engine's clip from its snapshot,
+       and the next press is an intent — never a playForay from the stored
+       row. One it holds that is not this Foray is not the page's to paint
+       over; the bar stays the engine's. */
+    if (engineMode === "native" && engineHoldsForay()) {
+      return engine.latest().snapshot.forayId === resolved.id ? attachForay(resolved, { discoverDoc }) : null;
+    }
     ensureBooted();
     const at = segmentAtElapsed(resolved.playable, startElapsedSec);
     const total = resolved.playable.length;
@@ -4304,6 +4373,12 @@ const ForayPlayer = {
     }, null);
     const positionSec = Number.isFinite(startElapsedSec) && startElapsedSec > 0 ? startElapsedSec : 0;
     restoredPending = { item: current, positionSec, foray: { resolved, discoverDoc } };
+    /* Native with 'foray': the engine paints Now Playing for the restored
+       bar at rate 0, WITHOUT activating the session (S-3), so the car shows
+       the Foray the first press will start. */
+    if (engineMode === "native" && engineCan("foray")) {
+      engine.send("restoreBar", undefined, { source: "restore" }).catch(() => {});
+    }
     render();
     return current;
   },
@@ -4361,6 +4436,10 @@ const ForayPlayer = {
         ensureBooted();
         return syncCurrentFromEngine({ force: true });
       }
+      /* An engine playing a Foray is the Foray ribbon's to attach
+         (`restoreForay`); the stored episode pointer must not take the bar
+         and turn the next press into a playEpisode over it (NE-35). */
+      if (engineHoldsForay()) return null;
     }
     const rec = readLastEpisode(storage);
     if (!rec) return null;
@@ -4918,10 +4997,12 @@ const ForayPlayer = {
        anything is awaited. */
     const again = () => ForayPlayer.playForay(resolved, { startIndex, startElapsedSec, onChange, discoverDoc });
     if (engineMode === null) return engineModeReady.then(again);
-    /* M1: THE ENGINE DOES NOT PLAY FORAYS. Without its 'foray' capability the
-       tap runs the ordered relinquish (§4.6) and the Foray plays in today's
-       player — relinquished BEFORE a single element is built, so there is
-       never an engine and an <audio> element producing at once. */
+    /* WITHOUT ITS 'foray' CAPABILITY THE ENGINE DOES NOT PLAY FORAYS (M1, and
+       M2 until NE-37 advertises it). The tap runs the ordered relinquish
+       (§4.6) and the Foray plays in today's player — relinquished BEFORE a
+       single element is built, so there is never an engine and an <audio>
+       element producing at once. WITH it (NE-35) the page builds the Foray
+       and the engine plays it: see the native branch below. */
     if (engineMode === "native" && !engineCan("foray")) return relinquishToJs("foray").then(again);
     ensureBooted();
     /* THE FIRST THING, AND BEFORE EVERY AWAIT BELOW (#225).
@@ -4958,6 +5039,7 @@ const ForayPlayer = {
     // highlights the row once the audio arrives reads as a dead button.
     setForayIndex(clampIndex(at ? at.index : startIndex, report.items.length));
     const offsetAt = at ? sourceOffsetFor(report.items[foray.index], at.into) : null;
+    let nativeForayRefusal = null;
     try {
       /* WHAT WAS READ BACK, AND WHAT IT RESOLVED TO (#264). The page reads the
          row (`forayResume`) and hands the answer down as `startElapsedSec`; this
@@ -4981,11 +5063,36 @@ const ForayPlayer = {
          boundary and free-played a stranger's episode. `_loadItem` spends the
          offset with the load it was armed for; a superseded load takes it with
          it. */
-      await manager.play(foray.index, offsetAt != null ? { startOffset: offsetAt } : undefined);
+      if (engineMode === "native") {
+        /* NATIVE (NE-35): ONE playForay carrying the page's build, the start
+           on the FORAY's clock and the narration voice. The engine resolves
+           the clip and the offset itself (`segmentAtElapsed`,
+           `sourceOffsetFor` — the same rules as above), so there is no second
+           step to race. A running-order row names a clip, not a second, and
+           the protocol carries no index: its start on the Foray clock is the
+           same place, exactly. */
+        const startSec = at ? startElapsedSec
+          : foray.index > 0 ? segmentStarts(report.items)[foray.index] : null;
+        const voiceId = await forayVoiceId();
+        const ok = await manager.playForay({ startElapsedSec: startSec, voiceId });
+        if (!ok) nativeForayRefusal = manager.lastRefusal ?? "refused";
+      } else {
+        await manager.play(foray.index, offsetAt != null ? { startOffset: offsetAt } : undefined);
+      }
     } finally {
       // Even if the load threw, the window has to close or this Foray would
       // never write a position again.
       if (foray) foray.resumeSeekPending = false;
+    }
+    if (nativeForayRefusal) {
+      /* An engine that advertised 'foray' and then refused it as off (a
+         build whose Foray flag is not on) is the M1 case after all: hand the
+         audio back in order and play it the old way. */
+      if (nativeForayRefusal === "capability-off") return relinquishToJs("foray").then(again);
+      /* Anything else (`refused-structure`, a session that would not
+         activate) is a start that got nowhere, and the page says so in the
+         words it already has for one. */
+      if (foray) { foray.error = `player.error engine refused playForay: ${nativeForayRefusal}`; notifyForay(); }
     }
     render();
     return report;
@@ -5185,6 +5292,7 @@ const ForayPlayer = {
     if (!foray) return;
     foray.error = null;
     setForayIndex(clampIndex(index, foray.resolved.playable.length));
+    /* Native: the facade's `play` inside a Foray IS `jump {index}` (NE-35). */
     await manager.play(foray.index);
     render();
   },
@@ -5212,6 +5320,14 @@ const ForayPlayer = {
   async forayPrevious() {
     if (!foray) return;
     foray.error = null;
+    /* NATIVE: AN INTENT (NE-35). The engine applies `previousAction` on its
+       own Foray clock (TransportPolicy), against the playhead it holds rather
+       than the page's extrapolation of it; the bar follows the snapshot. */
+    if (engineMode === "native") {
+      await manager.skipToPrevious();
+      render();
+      return;
+    }
     const index = manager.currentIndex;
     /* Measured on the Foray's clock, not the element's (audit round 2,
        player-4): `previousAction` says why. `forayPlayhead` knows which clock
@@ -5235,6 +5351,15 @@ const ForayPlayer = {
       inside its source episode. */
   async foraySeek(elapsedSec) {
     if (!foray) return;
+    /* NATIVE: `seekTo` on the FORAY's clock (NE-35) — the engine's own
+       `segmentAtElapsed` + `scrubTarget` decide the clip, the offset and
+       whether it reloads, exactly as below. */
+    if (engineMode === "native") {
+      foray.error = null;
+      await manager.seekForay(elapsedSec);
+      render();
+      return;
+    }
     const at = segmentAtElapsed(foray.resolved.playable, elapsedSec);
     /* Where it lands and whether it reloads are `scrubTarget`'s: a FINISHED
        Foray has nothing loaded to seek in, so a scrub back into the last
