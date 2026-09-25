@@ -182,3 +182,32 @@ test("missing show_id is 400", async () => {
     assert.strictEqual(res.statusCode, 400);
   });
 });
+
+/* Round-3 review (L4): the live branch ignored feed.source, so a kept copy the
+   feed cache served because a refresh was refused or failed went out as
+   stale:false and pinned at the edge for an hour.
+   MUTATION: emit `stale: false` and the s-maxage header unconditionally again. */
+test("a kept copy served after a refused or failed refresh says stale:true and is not edge-cached", async () => {
+  await withoutDatabaseUrl(() =>
+    withMockedFetch(
+      async () => new Response(FEED_TWO_EPS, { status: 200, headers: { "content-type": "application/rss+xml" } }),
+      async () => {
+        const realRead = sharedFeedReader.read;
+        const fresh = await realRead(REAL_SHOW_ID, "https://unused.example/feed");
+        assert.ok(fresh.parsed, "premise: the fixture feed parses");
+        sharedFeedReader.read = async () => ({ ...fresh, source: "stale" });
+        try {
+          const res = mockRes();
+          await handler({ method: "GET", query: { show_id: REAL_SHOW_ID }, headers: {} }, res);
+          assert.strictEqual(res.statusCode, 200);
+          assert.strictEqual(res.body.episodes.length, 2, "the kept copy is still served");
+          assert.strictEqual(res.body.stale, true);
+          assert.strictEqual(res.body.degraded, false);
+          assert.strictEqual(res.headers["Cache-Control"], "no-store");
+        } finally {
+          sharedFeedReader.read = realRead;
+        }
+      }
+    )
+  );
+});

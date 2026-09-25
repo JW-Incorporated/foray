@@ -331,7 +331,12 @@ async function serveLive(
 
   const { page, nextCursor } = paginate(episodes, cursor, PAGE_SIZE);
 
-  res.setHeader("Cache-Control", "s-maxage=3600, stale-while-revalidate=86400");
+  /* A KEPT copy served because the refresh was refused (per-show budget) or
+     failed is stale, and says so, like the DB branch's cached_stale (round-3
+     review, L4). It is not pinned at the edge for an hour either: no-store, as
+     the degraded branch above, so the next visitor gets a fresh try. */
+  const stale = feed.source === "stale";
+  res.setHeader("Cache-Control", stale ? "no-store" : "s-maxage=3600, stale-while-revalidate=86400");
   res.status(200).json(listBody({
     show_id: showId,
     show: { ...showHeader, description: parsed.descriptionText || null },
@@ -339,7 +344,7 @@ async function serveLive(
     next_cursor: nextCursor,
     source: "live",
     degraded: false,
-    stale: false,
+    stale,
     error: null,
   }));
 }
