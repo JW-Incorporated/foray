@@ -42,6 +42,11 @@ final class EngineStore: EngineOutput {
     /// ride in the restore record, which the page drains on attach (§5.5).
     var onEmit: ((EngineEvent) -> Void)?
     var onPendingEvent: ((PendingEvent) -> Void)?
+    /// A ring row of a kind the page hears live (`EngineBridgeRules
+    /// .liveDiagKinds`: faults), AFTER the gate and the file took it. Set by
+    /// NE-20's bridge; the row is the ring's own, so the live copy and the
+    /// Copy paste are the same bytes.
+    var onLiveRow: ((DiagRow) -> Void)?
 
     init(defaults: UserDefaults = .standard, diagnostics: EngineDiagnostics) {
         self.defaults = defaults
@@ -167,7 +172,9 @@ final class EngineStore: EngineOutput {
     }
 
     func diag(_ entry: DiagEntry) {
-        diagnostics.record(entry)
+        if let row = diagnostics.record(entry), EngineBridgeRules.liveDiagKinds.contains(row.kind) {
+            onLiveRow?(row)
+        }
     }
 
     // `flush()` above is the protocol's too: the host calls it right after the

@@ -201,6 +201,7 @@ public struct EngineCore {
             state.queue = items
             state.currentIndex = -1
             state.forayId = nil
+            state.closed = false
         case let .playIndex(index, startSec, source): playIndex(index, startSec: startSec, source: source)
         case let .setRate(rate): setRate(rate)
         case let .seek(sec, precise):
@@ -302,6 +303,7 @@ public struct EngineCore {
     private mutating func stop(persist: Bool, source: EngineSource) {
         state.pausedByListener = true
         stopRow(persist ? .close : .dataDeletion, source: source)
+        state.closed = true
         suppressSave = !persist
         dispatch(.stop)
         suppressSave = false
@@ -416,6 +418,9 @@ public struct EngineCore {
     /// (the span is silent from this moment), then `SessionPolicy`: an intent
     /// that needs the session parks behind `.sessionActivate`.
     private mutating func begin(_ intent: DeferredIntent, source: EngineSource) {
+        // A play reopens a closed player; an audition is not a play of the
+        // queue and leaves the lock screen as the close left it (NE-18).
+        if case .audition = intent {} else { state.closed = false }
         if let reason = graceReason(for: intent, source: source) { beginGrace(reason) }
         spanRow(for: intent)
         let via: SessionPolicy.PlayVia
@@ -962,6 +967,7 @@ public struct EngineCore {
             // the load, so nothing is ever audible from the wrong second.
             state.queue = queue
             state.currentIndex = -1
+            state.closed = false
             guard queue.indices.contains(index) else {
                 return diag("restore", [JSONMember("kind", .string("bad-index"))])
             }

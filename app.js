@@ -2816,6 +2816,11 @@ function drainEngineEvents(events) {
   return logged;
 }
 
+/* Handed to the player (a classic script cannot export): in native mode
+   player/client.js's attach applies the engine's pending hops and position
+   events through these two, then acks them (NE-22). */
+window.forayEngineLedger = { applyEngineAdvance, drainEngineEvents };
+
 /** Called from `ForayPlayer.onEpisodeEnded` (player/client.js) with the id of
     the episode that just finished ordinary (non-Foray) playback. The player
     deliberately never reports `ended` for a Foray, which has its own
@@ -13160,8 +13165,20 @@ function restoreNowPlayingRibbon() {
       if ((restored || late) && isHomeRoute()) renderCurrentPage();
     } catch (_) { /* a ribbon that cannot be restored is not a reason to fail boot */ }
   };
-  if (window.ForayPlayer) go(false);
-  else window.addEventListener("forayplayer:ready", () => go(true), { once: true });
+  /* THE LANE FIRST (NE-22). Inside the iOS shell the player cannot restore
+     anything until engineHello has said whether the native engine or the page
+     plays; until then both restores would answer a promise, and a promise is
+     truthy, so the episode fallback below would never run. Everywhere else
+     `engineModePending` answers false at once and this stays synchronous. */
+  const whenLaneKnown = (late) => {
+    const p = window.ForayPlayer;
+    let pending = false;
+    try { pending = typeof p?.engineModePending === "function" && p.engineModePending() === true; } catch (_) { pending = false; }
+    if (!pending) return go(late);
+    Promise.resolve(p.whenEngineReady()).then(() => go(late), () => go(late));
+  };
+  if (window.ForayPlayer) whenLaneKnown(false);
+  else window.addEventListener("forayplayer:ready", () => whenLaneKnown(true), { once: true });
 }
 
 /** The part-played Foray for the bar, when it is the most recent thing played —
@@ -14938,7 +14955,11 @@ async function auditionVoiceRow(id) {
   paintVoiceList();
   try {
     const result = await player.auditionVoice(AUDITION_LINE, id);
-    if (result && result.voiceFallback) {
+    /* Native mode: the engine owns the one audio session and will not speak
+       over an episode it is playing (NE-22, OQ-5). */
+    if (result && result.ok === false && result.reason === "engine-busy") {
+      paintVoiceNotice("Pause playback to preview");
+    } else if (result && result.voiceFallback) {
       paintVoiceNotice("Your chosen voice isn't installed; using the best available.");
     } else {
       paintVoiceNotice("");
@@ -15095,8 +15116,33 @@ function diagText() {
   }
 }
 
+/* NE-26 (docs/native-engine-plan.md): the record WITH the native engine's rows
+   merged in — the page's ring and the engine's 2,000-row file ring, by wall
+   clock, under one header that says which engine played. It needs one bridge
+   call (engineRead 'diagnostics'), so it is a promise, and the synchronous
+   `diagText()` above stays the instant answer and the fallback. Null when the
+   player module has not published it (an older module, or none at all). */
+function diagTextWithEngine() {
+  if (typeof window.forayDiagnosticReportWithEngine !== "function") return null;
+  let pending;
+  try {
+    pending = Promise.resolve(window.forayDiagnosticReportWithEngine());
+  } catch (err) {
+    pending = Promise.reject(err);
+  }
+  /* A merged report that failed is not a blank box either: the page's own
+     record, and its own honest sentence, are what `diagText()` gives. */
+  return pending.then((out) => String(out || "") || diagText(), () => diagText());
+}
+
+/* Which paint of the box is current. A merged report lands a bridge call
+   later, and by then the listener may have pressed Clear or closed the sheet;
+   a late answer must not paint cleared rows back into the box. */
+let diagPaint = 0;
+
 function refreshDiagSheet() {
   const ui = diagSheet();
+  diagPaint++;
   ui.text.value = diagText();
 }
 
@@ -15105,10 +15151,21 @@ function openDiagSheet() {
   refreshDiagSheet();
   ui.status.textContent = "";
   openSheet(ui.root, { panel: ui.panel, onRequestClose: closeDiagSheet });
+  /* The page's record shows at once; the engine's rows join it when the one
+     read answers, so the header a founder reads on screen is the one Copy
+     takes. */
+  const paint = diagPaint;
+  const merged = diagTextWithEngine();
+  if (merged) {
+    merged.then((text) => {
+      if (paint === diagPaint && !ui.root.hidden) ui.text.value = text;
+    });
+  }
 }
 
 function closeDiagSheet() {
   if (!diagUi) return;
+  diagPaint++;
   closeSheet(diagUi.root);
   diagUi.root.hidden = true;
 }
@@ -15124,6 +15181,36 @@ function closeDiagSheet() {
  */
 async function copyDiagnostics() {
   const ui = diagSheet();
+  /* NE-26: Copy takes the record with the engine's rows merged in, read ONCE,
+     now — not whatever the box held when it opened — and shows what it took.
+
+     THE CLIPBOARD IS ASKED INSIDE THE TAP. The merged text is a bridge call
+     away, and WebKit grants clipboard writes only within the user's gesture; a
+     writeText after that await can be refused as outside it. A ClipboardItem
+     whose content is a PROMISE is WebKit's own answer to exactly this: the
+     write is requested synchronously, and the text fills it when it resolves.
+     Where that is missing, the text is awaited and written the old way, and a
+     refusal falls through to selection as it always has. */
+  const merged = diagTextWithEngine();
+  if (merged) {
+    diagPaint++;
+    const paint = diagPaint;
+    const clip = navigator.clipboard;
+    if (clip && typeof clip.write === "function" && typeof ClipboardItem === "function" && typeof Blob === "function") {
+      try {
+        const wrote = clip.write([new ClipboardItem({
+          "text/plain": merged.then((text) => new Blob([text], { type: "text/plain" })),
+        })]);
+        const text = await merged;
+        if (paint === diagPaint) ui.text.value = text;
+        await wrote;
+        ui.status.textContent = "Copied to the clipboard.";
+        return true;
+      } catch (_) { /* fall through: the text is in the box, and writeText or selection takes it */ }
+    }
+    const text = await merged;
+    if (paint === diagPaint) ui.text.value = text;
+  }
   const body = ui.text.value;
   try {
     if (navigator.clipboard && typeof navigator.clipboard.writeText === "function") {

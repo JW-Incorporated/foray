@@ -203,7 +203,7 @@ test("every facades.json mapping names a native-facades test that exists", () =>
   // MUTATION: rename any facade test in native-facades.test.js -> red, naming it.
   assert.deepStrictEqual(facadeProblems(REPO_ROOT, DATA.facades), []);
   assert.deepStrictEqual([...FACADE_MAPPED_SUITES], ["transport-reconcile"]);
-  assert.deepStrictEqual([...FACADE_SUITES], ["native-facades"]);
+  assert.deepStrictEqual([...FACADE_SUITES], ["native-facades", "native-mode"]);
 });
 
 test("a facade mapping is refused for a missing test, a non-facade suite, or a suite whose rules Swift owns", () => {

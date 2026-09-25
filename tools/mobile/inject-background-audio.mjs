@@ -42,6 +42,10 @@
  *   node tools/mobile/inject-background-audio.mjs <Info.plist> --check
  *   node tools/mobile/inject-background-audio.mjs <Info.plist> --mode audio
  *   node tools/mobile/inject-background-audio.mjs <Info.plist> --encryption false
+ *   node tools/mobile/inject-background-audio.mjs <Info.plist> --engine-default <file>
+ * Every run that edits also writes the native engine's build default (from
+ * `mobile/ENGINE_DEFAULT.json` unless `--engine-default` names another file),
+ * and every `--check` reads it back; see that section below.
  * Any other argument is an error, not an ignored flag (same rule as
  * run-suites.mjs and prepare-webdir.mjs).
  *
@@ -179,7 +183,7 @@ export function rootEntries(xml) {
 }
 
 /** The `<string>` members of an `<array>` element, at that array's own depth. */
-function arrayStrings(xml, arrayEl) {
+function arrayStrings(xml, arrayEl, label = "UIBackgroundModes") {
   if (arrayEl.empty) return [];
   const toks = [...tags(xml, arrayEl.openEnd)];
   const out = [];
@@ -190,7 +194,7 @@ function arrayStrings(xml, arrayEl) {
     const el = parseElement(toks, i);
     if (el.name !== "string") {
       throw new PlistError(
-        `UIBackgroundModes contains a <${el.name}>; every member must be a <string>.`
+        `${label} contains a <${el.name}>; every member must be a <string>.`
       );
     }
     const raw = el.empty ? "" : xml.slice(el.openEnd, el.closeStart);
@@ -205,7 +209,7 @@ function arrayStrings(xml, arrayEl) {
        on a device instead of here. */
     if (raw !== raw.trim()) {
       throw new PlistError(
-        `UIBackgroundModes contains <string>${JSON.stringify(raw)}</string> — a mode with ` +
+        `${label} contains <string>${JSON.stringify(raw)}</string> — a value with ` +
           `surrounding whitespace. iOS will not honour it, and treating it as ${JSON.stringify(raw.trim())} ` +
           `would make this script report success while changing nothing. Fix the plist by hand.`
       );
@@ -465,6 +469,187 @@ export function injectNonExemptEncryption(xml, value = false) {
   return { xml: out, changed: true, reason: `added ${NON_EXEMPT_ENCRYPTION_KEY} = ${value}`, value };
 }
 
+/* ------------------------------------------- the native engine's build default */
+
+/* WHY THIS IS HERE (card NE-17, docs/native-engine-plan.md §4.6)
+ * The iOS app decides ONCE per process whether the native playback engine or
+ * today's player owns the audio (`EngineOwnership.decideOnce()`), and the
+ * build's own opinion is an Info.plist key: `ForayEngineDefault`, "native" or
+ * "js". ABSENT MEANS JS (`reason=no-plist-key`, an engine-mode fixture), so a
+ * build that lost this step still plays the way the app always has. That is
+ * the safe direction for the founder's daily listening, and it is also why a
+ * lost step would be invisible: every check stays green and the flip in NE-27
+ * silently does nothing. So the value is written here, from one committed
+ * file, and read back by `--check` on every CI build that makes an app.
+ *
+ * THE SOURCE OF TRUTH is `mobile/ENGINE_DEFAULT.json` ({"mode": "js"} until
+ * NE-27 flips it), next to the capabilities the build advertises
+ * (`ForayEngineCapabilities`; `player/parity/coverage.js` refuses a
+ * capability whose fixtures are still pending). Both CI invocations of this
+ * script (`ios-build.yml`, `.github/actions/ios-archive/action.yml`) already
+ * run with no engine flag, so the write rides on them with no `.github` edit:
+ * every invocation that edits the plist also writes these two keys.
+ *
+ * UNLIKE the encryption declaration, a DIFFERENT existing value is replaced,
+ * not refused: these keys are this script's own, derived from a committed
+ * file, and a plist left over from an earlier build must follow the file. */
+export const ENGINE_DEFAULT_KEY = "ForayEngineDefault";
+export const ENGINE_CAPABILITIES_KEY = "ForayEngineCapabilities";
+/** `EngineMode.BuildDefault` in the Swift; `decideEngineMode`'s buildDefault. */
+export const ENGINE_DEFAULT_MODES = Object.freeze(["js", "native"]);
+
+/** The committed source of truth, beside this script's repo root. */
+export const ENGINE_DEFAULT_FILE = path.resolve(
+  path.dirname(fileURLToPath(import.meta.url)), "..", "..", "mobile", "ENGINE_DEFAULT.json"
+);
+
+/** `mobile/ENGINE_DEFAULT.json`, parsed and validated. STRICT: an unknown
+ *  key, a mode outside the two words, or a capability that is not a plain
+ *  token is a typo, and a typo here is a build that plays through the wrong
+ *  engine with every check green. Keys starting with "//" are comments. */
+export function parseEngineDefault(text) {
+  let doc;
+  try {
+    doc = JSON.parse(text);
+  } catch (e) {
+    throw new PlistError(`ENGINE_DEFAULT.json is not JSON: ${e.message}`);
+  }
+  if (!doc || typeof doc !== "object" || Array.isArray(doc)) {
+    throw new PlistError('ENGINE_DEFAULT.json must be an object like {"mode": "js"}');
+  }
+  for (const key of Object.keys(doc)) {
+    if (key !== "mode" && key !== "capabilities" && !key.startsWith("//")) {
+      throw new PlistError(`ENGINE_DEFAULT.json has an unknown key ${JSON.stringify(key)}`);
+    }
+  }
+  if (!ENGINE_DEFAULT_MODES.includes(doc.mode)) {
+    throw new PlistError(
+      `ENGINE_DEFAULT.json "mode" must be one of ${JSON.stringify(ENGINE_DEFAULT_MODES)}, got ${JSON.stringify(doc.mode)}`
+    );
+  }
+  const capabilities = doc.capabilities ?? [];
+  if (!Array.isArray(capabilities)) {
+    throw new PlistError('ENGINE_DEFAULT.json "capabilities" must be an array of strings');
+  }
+  for (const c of capabilities) {
+    if (typeof c !== "string" || !/^[a-z][a-z0-9-]*$/.test(c)) {
+      throw new PlistError(`ENGINE_DEFAULT.json has an invalid capability ${JSON.stringify(c)}`);
+    }
+  }
+  if (new Set(capabilities).size !== capabilities.length) {
+    throw new PlistError("ENGINE_DEFAULT.json lists a capability twice");
+  }
+  return { mode: doc.mode, capabilities: [...capabilities] };
+}
+
+/** The ONE root entry named `key`, or null. Duplicates throw, for the reason
+ *  `backgroundModesEntry` gives: readers take the last, so an edit to any other
+ *  is invisible. */
+function singleRootEntry(entries, key) {
+  const hits = entries.filter((e) => e.key === key);
+  if (hits.length > 1) {
+    throw new PlistError(
+      `the root dict declares ${key} ${hits.length} times. Plist readers take the last one, ` +
+        `so an edit to any other is invisible. Delete the duplicates by hand first.`
+    );
+  }
+  return hits[0] ?? null;
+}
+
+/** What the plist says: `{mode, capabilities}`, each null when absent. A value
+ *  of the wrong type throws rather than reading as absent. */
+export function engineDefault(xml) {
+  const { entries } = rootEntries(xml);
+  const modeHit = singleRootEntry(entries, ENGINE_DEFAULT_KEY);
+  const capsHit = singleRootEntry(entries, ENGINE_CAPABILITIES_KEY);
+  let mode = null;
+  if (modeHit) {
+    if (modeHit.value.name !== "string") {
+      throw new PlistError(`${ENGINE_DEFAULT_KEY} is a <${modeHit.value.name}>, not a <string>`);
+    }
+    mode = modeHit.value.empty ? "" : xml.slice(modeHit.value.openEnd, modeHit.value.closeStart);
+  }
+  let capabilities = null;
+  if (capsHit) {
+    if (capsHit.value.name !== "array") {
+      throw new PlistError(`${ENGINE_CAPABILITIES_KEY} is a <${capsHit.value.name}>, not an <array>`);
+    }
+    capabilities = arrayStrings(xml, capsHit.value, ENGINE_CAPABILITIES_KEY);
+  }
+  return { mode, capabilities };
+}
+
+/** Assert the plist says exactly `def`, and throw if it does not. The same
+ *  anti-fails-green check as `assertModePresent`, and a named function for
+ *  the same reason: an inline one can be deleted with every test green. */
+export function assertEngineDefault(xml, def) {
+  const got = engineDefault(xml);
+  const same =
+    got.mode === def.mode &&
+    Array.isArray(got.capabilities) &&
+    got.capabilities.length === def.capabilities.length &&
+    got.capabilities.every((c, i) => c === def.capabilities[i]);
+  if (!same) {
+    throw new PlistError(
+      `the plist's engine default reads ${JSON.stringify(got)}, not ${JSON.stringify(def)}. ` +
+        `If this is after an injection, it is a bug in inject-background-audio.mjs.`
+    );
+  }
+  return got;
+}
+
+/** The value element for one key, in the file's own indentation. */
+function engineValueXml(key, def, indent) {
+  if (key === ENGINE_DEFAULT_KEY) return `<string>${def.mode}</string>`;
+  if (!def.capabilities.length) return "<array/>";
+  return (
+    "<array>\n" +
+    def.capabilities.map((c) => `${indent}${indent}<string>${c}</string>\n`).join("") +
+    `${indent}</array>`
+  );
+}
+
+/**
+ * Write `ForayEngineDefault` and `ForayEngineCapabilities` into the root dict:
+ * inserted when absent, replaced when different, untouched when equal.
+ *
+ * @returns {{xml: string, changed: boolean, reason: string}}
+ * @throws {PlistError} on a plist it does not understand, and on an edit that
+ *   did not take effect.
+ */
+export function injectEngineDefault(xml, def) {
+  if (typeof xml !== "string" || xml.trim() === "") throw new PlistError("empty plist source");
+  const checked = parseEngineDefault(JSON.stringify(def));
+  let out = xml;
+  const changes = [];
+  for (const key of [ENGINE_DEFAULT_KEY, ENGINE_CAPABILITIES_KEY]) {
+    const { rootDict, entries } = rootEntries(out);
+    const indent = rootIndent(out, entries);
+    const hit = singleRootEntry(entries, key);
+    const value = engineValueXml(key, checked, indent);
+    if (!hit) {
+      let at = rootDict.closeStart;
+      while (at > 0 && (out[at - 1] === " " || out[at - 1] === "\t")) at--;
+      out = out.slice(0, at) + `${indent}<key>${key}</key>\n${indent}${value}\n` + out.slice(at);
+      changes.push(`added ${key}`);
+      continue;
+    }
+    const current = engineDefault(out);
+    const equal = key === ENGINE_DEFAULT_KEY
+      ? current.mode === checked.mode
+      : JSON.stringify(current.capabilities) === JSON.stringify(checked.capabilities);
+    if (equal) continue;
+    out = out.slice(0, hit.value.start) + value + out.slice(hit.value.end);
+    changes.push(`replaced ${key}`);
+  }
+  /* THE ANTI-FAILS-GREEN CHECK, as for the other two edits. */
+  assertEngineDefault(out, checked);
+  const summary = `${ENGINE_DEFAULT_KEY} = ${checked.mode}, ${ENGINE_CAPABILITIES_KEY} = ${JSON.stringify(checked.capabilities)}`;
+  return changes.length
+    ? { xml: out, changed: true, reason: `${changes.join(", ")}: ${summary}` }
+    : { xml, changed: false, reason: `already ${summary}` };
+}
+
 /* --------------------------------------------------------------------- main */
 
 const isMain =
@@ -484,7 +669,8 @@ export function parseEncryptionFlag(raw) {
 }
 
 const USAGE =
-  "Usage: node tools/mobile/inject-background-audio.mjs <Info.plist> [--check] [--mode audio] [--encryption false]";
+  "Usage: node tools/mobile/inject-background-audio.mjs <Info.plist> [--check] [--mode audio] [--encryption false] " +
+  "[--engine-default <ENGINE_DEFAULT.json>]";
 
 if (isMain) {
   const argv = process.argv.slice(2);
@@ -492,6 +678,7 @@ if (isMain) {
   let checkOnly = false;
   let mode = BACKGROUND_AUDIO_MODE;
   let encryption = null;
+  let engineDefaultFile = ENGINE_DEFAULT_FILE;
   for (let i = 0; i < argv.length; i++) {
     if (argv[i] === "--check") checkOnly = true;
     else if (argv[i] === "--mode") {
@@ -519,6 +706,12 @@ if (isMain) {
         );
         process.exit(2);
       }
+    } else if (argv[i] === "--engine-default") {
+      engineDefaultFile = argv[++i];
+      if (!engineDefaultFile || engineDefaultFile.startsWith("-")) {
+        console.error(`--engine-default needs a file, got ${engineDefaultFile === undefined ? "nothing" : engineDefaultFile}`);
+        process.exit(2);
+      }
     } else if (!argv[i].startsWith("-") && file === null) file = argv[i];
     else {
       console.error(`Unknown argument: ${argv[i]}`);
@@ -533,6 +726,10 @@ if (isMain) {
 
   try {
     const src = fs.readFileSync(file, "utf8");
+    /* Read on EVERY run, check or write: a missing or malformed source of
+       truth fails the step rather than leaving the plist to say "absent",
+       which the app would read as js without a word. */
+    const def = parseEngineDefault(fs.readFileSync(engineDefaultFile, "utf8"));
     if (checkOnly) {
       const modes = backgroundModes(src);
       if (!modes || !modes.includes(mode)) {
@@ -550,6 +747,9 @@ if (isMain) {
         }
         console.log(`${file}: ${NON_EXEMPT_ENCRYPTION_KEY} = ${got}`);
       }
+      /* The ios-build log's evidence line: `ForayEngineDefault=js`. */
+      const engine = assertEngineDefault(src, def);
+      console.log(`${file}: ${ENGINE_DEFAULT_KEY}=${engine.mode} ${ENGINE_CAPABILITIES_KEY}=${JSON.stringify(engine.capabilities)}`);
     } else {
       const r = injectBackgroundAudio(src, mode);
       let xml = r.xml;
@@ -559,6 +759,9 @@ if (isMain) {
         xml = e.xml;
         console.log(`${file}: ${e.reason}`);
       }
+      const engine = injectEngineDefault(xml, def);
+      xml = engine.xml;
+      console.log(`${file}: ${engine.reason}`);
       if (xml !== src) fs.writeFileSync(file, xml);
     }
   } catch (e) {

@@ -113,14 +113,26 @@ enum RemoteVerdict: Equatable, Sendable {
             self = .commandFailed
         }
     }
+
+    /// The status as the `remote` row records it (the `MPRemoteCommandHandlerStatus`
+    /// case name RemoteSurface returns for it).
+    var token: String {
+        switch self {
+        case .success: return "success"
+        case .noActionableNowPlayingItem: return "noActionableNowPlayingItem"
+        case .commandFailed: return "commandFailed"
+        }
+    }
 }
 
 /// `MPRemoteCommandCenter`, one target per command. In native mode the engine
 /// is the only registrant (plan §4.5).
 protocol RemoteCommandRegistering: AnyObject {
     /// The handler is called ON MAIN with the press as the conformer read it
-    /// (route port, whether it arrived off main, the skip interval or scrub
-    /// target), and returns the core's verdict synchronously.
+    /// (route port, whether it arrived off main, the scrub target), and
+    /// returns the core's verdict synchronously. A skip press carries NO
+    /// value: the OS's interval is ignored, and the core steps by the
+    /// founder's pair (`EngineConstants`).
     func addTarget(_ command: MediaMapping.RemoteCommand,
                    handler: @escaping (RemotePress) -> RemoteVerdict) -> EngineObservation
     func setEnabled(_ enabled: Bool, for command: MediaMapping.RemoteCommand)
@@ -131,9 +143,29 @@ protocol RemoteCommandRegistering: AnyObject {
 /// `MPNowPlayingInfoCenter`, fed from `MediaMapping`'s output. Nothing is
 /// cleared on a pause, an unresumed interruption or a relinquish (plan §4.5):
 /// `clear()` is for a finished Foray, a close or a data deletion only.
+///
+/// The host decides WHEN (every transition and every seek, and whenever the
+/// playhead has moved away from where the OS would have extrapolated it); the
+/// conformer decides nothing but the dictionary. The whole `SessionView` is
+/// handed over because the rate the entry carries depends on the playback
+/// state: the true rate while `PLAYING`, 0 otherwise, and `playbackState`
+/// itself is never written (OQ-8: it is macOS-only).
 protocol NowPlayingWriting: AnyObject {
-    func write(_ metadata: MediaMapping.Metadata, position: MediaMapping.PositionState?)
+    func write(_ view: MediaMapping.SessionView)
     func clear()
+}
+
+/// The `MPNowPlayingInfoPropertyPlaybackRate` an entry carries (plan §4.5):
+/// the true rate while `PLAYING` (0 while stalled or loading, which
+/// `MediaMapping.positionState` already says), and 0 while paused,
+/// interrupted or ended. One definition, read by the host's drift check and
+/// by NowPlayingPublisher, so the extrapolation the host expects is the one
+/// the OS runs.
+enum NowPlayingRate {
+    static func of(_ view: MediaMapping.SessionView) -> Double {
+        guard view.playbackState == MediaMapping.playing else { return 0 }
+        return view.positionState?.playbackRate ?? 1
+    }
 }
 
 // MARK: - A deck (AVDeck, NE-15; DeckPair, NE-32)
@@ -157,7 +189,21 @@ protocol DeckDriving: AnyObject {
 
 // MARK: - Speech (the audition in M1; the narrator, NE-33)
 
+/// How an utterance ended, as the synthesizer's delegate said it did.
+enum SpeechEnd: String, Equatable, Sendable {
+    /// `didFinish`: the whole line was spoken.
+    case finished
+    /// `didCancel`: stopped before the end (a `stopSpeaking`, a new line, an
+    /// interruption that took the session).
+    case cancelled
+}
+
 protocol Speaking: AnyObject {
+    /// The end of the utterance in flight, ON MAIN, once per `speak`. The host
+    /// sets it at start and clears it at teardown. NE-25c's session probe
+    /// waits on it (DV-9 is "what happens to the session after `didFinish`");
+    /// NE-33's narrator will turn it into a core input.
+    var onFinish: ((SpeechEnd) -> Void)? { get set }
     /// Audible: the core emits it only after an activation (OQ-5).
     func speak(text: String, voiceId: String?)
     func stopSpeaking()

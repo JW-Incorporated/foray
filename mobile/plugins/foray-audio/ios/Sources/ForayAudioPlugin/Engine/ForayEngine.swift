@@ -102,6 +102,16 @@ final class ForayEngine {
     /// rows; 5 s is about one CDN load that goes wrong.
     static let lowBackgroundRemainingMs: Double = 5_000
 
+    /// The Developer session probe (NE-25c), built by the first
+    /// `probeSession`. Nil on every launch nobody probed.
+    private(set) var probe: SessionProbe?
+
+    /// How many times the host has called `SessionControlling.activate()`,
+    /// and what the last call answered: the probe reads both to say whether
+    /// its play needed an activation and what that cost (`activateMs`).
+    private(set) var activations = 0
+    private(set) var lastActivation: SessionActivation?
+
     /// The pause-hold policy the store last heard (NE-16): a turn that leaves
     /// the core with a different one is persisted, once.
     private var storedHoldPolicy: SessionPolicy.HoldPolicy
@@ -120,10 +130,34 @@ final class ForayEngine {
     /// The core's state, for the bridge's snapshot (NE-20) and the tests.
     var state: EngineState { core.state }
 
+    /// The core itself, as a value: the snapshot reads `canNext` and
+    /// `canPrevious` from it (NE-20). A copy, so nothing outside the host can
+    /// move the engine's state.
+    var coreValue: EngineCore { core }
+
     /// Timers still armed, by kind (diagnostics and tests).
     var liveTimers: Set<EngineTimer> { Set(timers.keys) }
 
     var hasGraceTask: Bool { graceTask != nil }
+
+    /// EngineOwnership's two hooks (NE-17). `onTurnCompleted` runs after every
+    /// input the host handled to the end, on main: the first one is the
+    /// healthy marker that clears the crash-loop sentinel. `onTornDown` runs
+    /// once, at the end of `teardown()`: whatever took the engine down, the
+    /// legacy lane must take the process over, or a JS page would run with no
+    /// remote surface at all.
+    var onTurnCompleted: (() -> Void)?
+    var onTornDown: (() -> Void)?
+
+    /// The bridge's two hooks (NE-20). `onTransition` runs after every input
+    /// the host handled to the end, and once more when the host tears down:
+    /// the bridge re-reads the snapshot there and decides (coalesced, visible
+    /// only) whether the page hears of it. `onEmit` hands on each of the
+    /// core's own events (`advanced`, `error`) after the output has them.
+    /// Unlike `onTurnCompleted`, neither is cleared by teardown: the page must
+    /// still hear that the engine gave the process back.
+    var onTransition: (() -> Void)?
+    var onEmit: ((EngineEvent) -> Void)?
 
     // MARK: - Start and teardown
 
@@ -137,6 +171,11 @@ final class ForayEngine {
         seams.deck.onEvent = { [weak self] event in
             MainActor.assumeIsolated { self?.receive(.deck(event)) }
         }
+        // The end of a spoken line. M1's core has no input for it (narration
+        // is M2's); the only listener is the Developer probe (NE-25c).
+        seams.speaker.onFinish = { [weak self] end in
+            MainActor.assumeIsolated { self?.probe?.speechEnded(end) }
+        }
         observations.append(seams.session.observe { [weak self] event in
             MainActor.assumeIsolated { self?.receive(.session(event)) }
         })
@@ -147,12 +186,13 @@ final class ForayEngine {
             observations.append(seams.remote.addTarget(command) { [weak self] press in
                 MainActor.assumeIsolated { self?.remote(press) ?? .commandFailed }
             })
-            // Plan §4.5 (T-7): `stop` is registered AND disabled; a remote
-            // stop is a pause, and a car's stop must never tear the player
-            // down. Which of the others are enabled at a given moment is
-            // NowPlayingPublisher's `MediaMapping.commandAvailability` (NE-18).
-            seams.remote.setEnabled(command != .stop, for: command)
         }
+        // Every command is registered; which are ENABLED is
+        // `MediaMapping.commandAvailability` of the core's snapshot, applied
+        // now and after every turn (NE-18). `stop` is never in it (plan §4.5,
+        // T-7: a remote stop is a pause, and a car's stop must never tear the
+        // player down), so it is registered AND disabled from the first moment.
+        publishSurface()
     }
 
     /// Remove every observer, remote target, KVO token (through the deck),
@@ -177,7 +217,14 @@ final class ForayEngine {
         graceSpan = nil
         seams.deck.onEvent = nil
         seams.deck.invalidate()
+        seams.speaker.onFinish = nil
+        probe?.cancel()
         inbox = []
+        onTurnCompleted = nil
+        let tornDown = onTornDown
+        onTornDown = nil
+        tornDown?()
+        onTransition?()
     }
 
     // MARK: - Inputs
@@ -189,12 +236,25 @@ final class ForayEngine {
         if isTornDown {
             return EngineVerdict(failures: [EngineContract.Refusal.relinquished.rawValue], deferred: false)
         }
+        if case .command(.probeSession, _) = input {
+            // Developer only (NE-25c). The core leaves it to the host: the
+            // probe is a sequence of ordinary inputs (an audition, a play, a
+            // pause) spread over timers and the synthesizer's didFinish, so it
+            // never needs a rule of its own, and every step it takes goes
+            // through the same audible-start invariant a listener's would.
+            let probe = self.probe ?? SessionProbe(engine: self)
+            self.probe = probe
+            return probe.arm()
+        }
         if depth > 0 {
             inbox.append(input)
             return .queued
         }
         let failures = runTurn(input)
         drain()
+        publishSurface()
+        onTurnCompleted?()
+        onTransition?()
         return EngineVerdict(failures: failures, deferred: false)
     }
 
@@ -207,8 +267,11 @@ final class ForayEngine {
         }
     }
 
+    /// A seam's observation. The probe hears it after the core has: it is
+    /// waiting for the deck's own `.playing` (`timeToPlayingMs`).
     private func receive(_ input: EngineInput) {
         handle(input)
+        probe?.observe(input)
     }
 
     /// The app leaving the foreground or being terminated. The core writes the
@@ -223,9 +286,24 @@ final class ForayEngine {
 
     /// A remote press: the `remote` row, the core's ruling, and its verdict
     /// back to the system, all before the handler returns.
+    ///
+    /// The core's `remote` row is written FIRST, inside the turn (D-4: before
+    /// any no-op return), carrying the command, route, dupCandidate, grace and
+    /// thread. The status the system gets back is known only once the turn is
+    /// over, so it follows as `remote event=status`: a companion row, not an
+    /// amended one, because a row held back until the verdict would be stamped
+    /// after the activation and the load it caused (NE-18).
     private func remote(_ press: RemotePress) -> RemoteVerdict {
-        let verdict = handle(.remote(press))
-        return RemoteVerdict(failures: verdict.failures)
+        let result = handle(.remote(press))
+        let verdict = RemoteVerdict(failures: result.failures)
+        if !isTornDown {
+            var fields = [JSONMember("kind", .string("status")),
+                          JSONMember("cmd", .string(press.command.rawValue)),
+                          JSONMember("status", .string(verdict.token))]
+            if let reason = result.failures.first { fields.append(JSONMember("reason", .string(reason))) }
+            seams.output.diag(DiagEntry(kind: "remote", fields: fields))
+        }
+        return verdict
     }
 
     // MARK: - Turns
@@ -288,10 +366,18 @@ final class ForayEngine {
     private func interpret(_ command: EngineCommand) -> [String] {
         switch command {
         case let .deck(deckCommand):
+            switch deckCommand {
+            // The playhead jumps: Now Playing is rewritten after this turn
+            // whatever the drift check would say (plan §4.5: every seek).
+            case .seek, .load, .unload: surfaceMoved = true
+            case .play, .pause, .setRate, .setOutPoint: break
+            }
             seams.deck.send(deckCommand)
         case let .sessionActivate(requestId):
             // Synchronous, and answered before the next command in this list.
             let answer = seams.session.activate()
+            activations += 1
+            lastActivation = answer
             return runTurn(.sessionResult(SessionResult(
                 requestId: requestId, ok: answer.ok, error: answer.error, activateMs: answer.activateMs)))
         case let .sessionDeactivate(notifyOthers):
@@ -320,12 +406,118 @@ final class ForayEngine {
             seams.speaker.speak(text: text, voiceId: voiceId)
         case let .emit(event):
             seams.output.emit(event)
+            onEmit?(event)
         case let .diag(entry):
             seams.output.diag(entry)
         case let .commandFailed(reason):
             return [reason]
         }
         return []
+    }
+
+    // MARK: - The surface: Now Playing and remote enablement (NE-18)
+
+    /// A published Now Playing entry, and when (monotonic) it was written:
+    /// the OS extrapolates the playhead from it at its rate.
+    private struct PublishedEntry {
+        let view: MediaMapping.SessionView
+        let atMono: Double
+    }
+
+    /// What NowPlayingPublisher last wrote; nil before the first write and
+    /// after a clear. `clear()` runs only on the way from an entry to none.
+    private var published: PublishedEntry?
+    /// The enabled set last applied; nil until `start()` applied one.
+    private var enabledCommands: Set<MediaMapping.RemoteCommand>?
+    /// The turn loaded, unloaded or seeked the deck.
+    private var surfaceMoved = false
+
+    /// How far the deck's playhead may sit from where the lock screen's
+    /// extrapolation has it before the entry is rewritten. The OS counts on
+    /// by itself between writes; a rewrite per position tick would be a write
+    /// every few seconds for nothing (the JS write floor is one second too).
+    static let nowPlayingDriftSec: Double = 1
+
+    /// Whether Now Playing is showing an entry the engine wrote.
+    var isPublishingNowPlaying: Bool { published != nil }
+
+    /// After every input handled to the end (and once at start): the enabled
+    /// set, then the entry. Never after a teardown: a relinquish leaves both
+    /// for the legacy lane to overwrite (plan §4.6).
+    private func publishSurface() {
+        guard !isTornDown else { return }
+        let availability = MediaMapping.commandAvailability(core.commandSnapshot)
+        applyEnablement(availability.enabled)
+        let moved = surfaceMoved
+        surfaceMoved = false
+
+        guard !availability.clearsNowPlaying, let view = core.mediaView(deck: seams.deck.reading) else {
+            // Nil ONLY for a finished Foray, a close or a data deletion, and
+            // only if the engine had written something (a fresh engine does
+            // not wipe an entry it never owned).
+            guard published != nil else { return }
+            published = nil
+            seams.nowPlaying.clear()
+            seams.output.diag(DiagEntry(kind: DiagGate.nowPlayingKind, fields: [JSONMember("via", .string("clear"))]))
+            return
+        }
+        let entry = MediaMapping.sessionView(view)
+        let mono = seams.timing.monoMs
+        let previous = published
+        if let previous, !moved, !Self.needsWrite(entry, since: previous.view, elapsedMs: mono - previous.atMono) {
+            return
+        }
+        published = PublishedEntry(view: entry, atMono: mono)
+        seams.nowPlaying.write(entry)
+
+        // DV-10 / H6: what the lock screen and the car were told, whenever
+        // the words or the state change (not on a drift rewrite).
+        let via: String?
+        if previous?.view.metadata != entry.metadata {
+            via = "metadata"
+        } else if previous?.view.playbackState != entry.playbackState {
+            via = "state"
+        } else {
+            via = nil
+        }
+        if let via {
+            seams.output.diag(DiagEntry(kind: DiagGate.nowPlayingKind, fields: [
+                JSONMember("via", .string(via)),
+                JSONMember("title", .string(entry.metadata.title)),
+                JSONMember("artist", .string(entry.metadata.artist)),
+                JSONMember("album", .string(entry.metadata.album)),
+                JSONMember("artwork", .string(entry.metadata.artwork.isEmpty ? "n" : "y")),
+                JSONMember("state", .string(entry.playbackState)),
+                JSONMember("rate", .number(NowPlayingRate.of(entry)))
+            ]))
+        }
+    }
+
+    /// A transition (words, state, duration or rate changed), or a playhead
+    /// that has drifted from the OS's extrapolation of the last entry.
+    static func needsWrite(_ next: MediaMapping.SessionView, since last: MediaMapping.SessionView,
+                           elapsedMs: Double) -> Bool {
+        if next.metadata != last.metadata || next.playbackState != last.playbackState { return true }
+        guard let now = next.positionState, let then = last.positionState else {
+            return next.positionState != last.positionState
+        }
+        if now.duration != then.duration || NowPlayingRate.of(next) != NowPlayingRate.of(last) { return true }
+        let expected = then.position + Swift.max(0, elapsedMs) / 1000 * NowPlayingRate.of(last)
+        let clamped = Swift.min(Swift.max(0, expected), then.duration)
+        return abs(now.position - clamped) > nowPlayingDriftSec
+    }
+
+    /// Set only what changed: MediaPlayer re-lays the car's buttons on every
+    /// enablement write.
+    private func applyEnablement(_ enabled: Set<MediaMapping.RemoteCommand>) {
+        guard enabled != enabledCommands else { return }
+        let previous = enabledCommands
+        enabledCommands = enabled
+        for command in MediaMapping.RemoteCommand.allCases {
+            let on = enabled.contains(command)
+            if let previous, previous.contains(command) == on { continue }
+            seams.remote.setEnabled(on, for: command)
+        }
     }
 
     // MARK: - BackgroundGrace

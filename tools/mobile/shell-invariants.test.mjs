@@ -2029,12 +2029,12 @@ test("the seek pair has ONE source — the payload — on both natives, and the 
   const availability = swiftFuncBody(swift, "applyCommandAvailability");
   assert.match(availability, /skipBackwardCommand\.preferredIntervals = Self\.preferredIntervals\(ms: payload\.seekBackMs\)/);
   assert.match(availability, /skipForwardCommand\.preferredIntervals = Self\.preferredIntervals\(ms: payload\.seekForwardMs\)/);
-  assert.doesNotMatch(swiftFuncBody(swift, "load"), /preferredIntervals/, "not once at load — per state change");
+  assert.doesNotMatch(swiftFuncBody(swift, "runLegacyRegistration"), /preferredIntervals/, "not once at load — per state change");
   /* And nothing is ENABLED at load: `.empty` is the payload the page has not
      sent yet, so the first real `setNowPlaying` is a change the command centre
      sees, and no lock screen offers a play button for a player with nothing
      loaded (Android's IDLE). MUTATION: delete the call from `load()`. */
-  assert.match(swiftFuncBody(swift, "load"), /applyCommandAvailability\(\.empty\)/, "load() must start every command disabled");
+  assert.match(swiftFuncBody(swift, "runLegacyRegistration"), /applyCommandAvailability\(\.empty\)/, "load() must start every command disabled");
   const payload = stripSwiftComments(fs.readFileSync(
     path.join(PLUGIN_DIR, "ios/Sources/ForayAudioPlugin/NowPlayingPayload.swift"), "utf8"
   ));
@@ -2465,14 +2465,15 @@ test("NE-01: foray-audio links the core by path, keeps ONE product, and its test
   assert.match(fs.readFileSync(wrapper, "utf8"), /ParityRunner\.run\(/, "the Simulator-side parity wrapper runs nothing");
 });
 
-test("NE-01: engineHello is an iOS-only stub that answers from the core and always resolves", () => {
-  /* The first of the engine's three bridge methods (§5.1), stubbed until
-     NE-20: `{mode: "legacy", reason: "not-built"}`, i.e. "play the way the
-     app plays today". Its answer is built by ForayEngineCore, which is what
-     makes the app build prove the plugin links the nested package.
-     Android never gains it (§4.1).
+test("NE-01: engineHello is iOS-only, answers from the core and always resolves", () => {
+  /* The first of the engine's three bridge methods (§5.1). NE-01 stubbed it
+     as `{mode: "legacy", reason: "not-built"}`; since NE-20 the answer is the
+     bridge's, and every answer (legacy or native) is still built by
+     ForayEngineCore (`EngineBridgeRules`), which is what makes the app build
+     prove the plugin links the nested package. Android never gains it (§4.1).
      MUTATION: drop the CAPPluginMethod line, make the body `call.reject(...)`,
-     answer `native`, or add `engineHello` to the Java; each fails. */
+     build the answer in the plugin, or add `engineHello` to the Java; each
+     fails. */
   const swift = fs.readFileSync(AUDIO_SWIFT, "utf8");
   const declared = [...swift.matchAll(/CAPPluginMethod\(name:\s*"(\w+)"/g)].map((m) => m[1]);
   assert.ok(declared.includes("engineHello"), "ForayAudioPlugin.swift does not declare engineHello as a CAPPluginMethod");
@@ -2480,7 +2481,8 @@ test("NE-01: engineHello is an iOS-only stub that answers from the core and alwa
   assert.match(code, /^import ForayEngineCore$/m, "ForayAudioPlugin.swift no longer imports ForayEngineCore");
   const body = swiftFuncBody(code, "engineHello");
   assert.ok(body, "ForayAudioPlugin.swift has no func engineHello");
-  assert.match(body, /EngineHandshake\.notBuiltHello\(\)/, "engineHello no longer answers from the core");
+  assert.match(body, /call\.resolve\(Self\.jsObject\(self\.bridgeOnMain\(\)\.hello\(payload\)\)\)/, "engineHello no longer answers through the bridge");
+  assert.match(body, /EngineBridgeRules\.legacyHello\(reason: \.notBuilt\)/, "engineHello's fallback no longer answers from the core");
   assert.match(body, /call\.resolve\(/, "engineHello must resolve");
   assert.doesNotMatch(body, /\.reject\(/, "engineHello must never reject (the plugin's every-method-resolves rule)");
 
@@ -3431,7 +3433,9 @@ const FLAG_TTS_SWIFT = path.join(PLUGIN_DIR, "../foray-tts/ios/Sources/ForayTtsP
 const GUARDED_SESSION_SITES = [
   ["ForayAudioPlugin.swift", "holdSession", "setActive"],
   ["ForayAudioPlugin.swift", "holdSession", "setCategory"],
-  ["ForayAudioPlugin.swift", "load", "setCategory"],
+  /* NE-17: today's load() body is runLegacyRegistration, which load() reaches
+     through EngineOwnership (the NE-17 tests below). */
+  ["ForayAudioPlugin.swift", "runLegacyRegistration", "setCategory"],
   ["ForayAudioPlugin.swift", "releaseSession", "setActive"],
   ["ForayTtsPlugin.swift", "claimSession", "setActive"],
   ["ForayTtsPlugin.swift", "claimSession", "setCategory"],
@@ -3678,6 +3682,96 @@ test("NE-25b: the two-deck spike measures AVDeck's own gate: two real decks, no 
   for (const file of files) assert.ok(exempt.has(`${CLICK_TRACK_DIR}/${file}`), `${file} is not in the hash-checked exempt set`);
 });
 
+test("NE-25c: one synthesizer configuration, a platform-free probe reached only through probeSession, and a smoke on the production pieces", () => {
+  /* DV-9 (plan §10) is answered on the founder's phone by the Developer
+     session probe, and NE-33 picks SpeechNarrator's path from that one row.
+     The row means something only if:
+       - the probe is a sequence of ORDINARY engine inputs (an audition, a
+         play, a pause), so its speech and its play pass the same
+         audible-start invariant and the same "activate if needed" a
+         listener's would, and it touches no platform API (so the fakes run
+         exactly what the phone runs);
+       - the host hands `probeSession` to it before the core, builds it
+         nowhere else, and drops it at teardown with the synthesizer's
+         callback;
+       - the synthesizer it speaks through is the ONE configuration the
+         engine ships (`usesApplicationAudioSession = true`, Apple's 1x rate),
+         guarded against implicit activation like AVDeck's play;
+       - the Simulator smoke runs those same pieces and says it is a smoke.
+     MUTATION: call `seams.speaker.speak` or `seams.deck.send` from
+     SessionProbe; import AVFoundation there; construct a SessionProbe outside
+     ForayEngine.handle; drop `probe?.cancel()` or `seams.speaker.onFinish =
+     nil` from teardown(); build an AVSpeechSynthesizer anywhere in foray-audio
+     but makeSynthesizer(); drop `usesApplicationAudioSession = true` or the
+     default rate; move the sessionIsActive check below `synthesizer.speak(`;
+     pause on every finish; drop the smoke's NE-25c tag. Each fails. */
+  const PLATFORM = /\b(AVAudioSession|AVPlayer|AVSpeechSynthesizer|MPRemoteCommandCenter|MPNowPlayingInfoCenter|UIApplication|DispatchSource|NotificationCenter|UserDefaults)\b/;
+  const probePath = path.join(ENGINE_DIR, "SessionProbe.swift");
+  const speakerPath = path.join(ENGINE_DIR, "PreviewSpeaker.swift");
+  const smokePath = path.join(PLUGIN_DIR, "ios/Tests/ForayAudioPluginTests/SpeechSessionSmokeTests.swift");
+  const probeTestsPath = path.join(PLUGIN_DIR, "ios/Tests/ForayAudioPluginTests/Engine/SessionProbeTests.swift");
+
+  assert.deepEqual(swiftImports(probePath).sort(), ["ForayEngineCore", "Foundation"], "SessionProbe.swift imports only Foundation and the core");
+  const probe = stripSwiftComments(fs.readFileSync(probePath, "utf8"));
+  assert.doesNotMatch(probe, PLATFORM, "the probe reaches a platform API; it must drive the engine, not the world");
+  assert.doesNotMatch(probe, /seams\.(speaker\.speak|deck|session)\b/, "the probe speaks, plays and activates only through the core");
+  assert.match(probe, /@MainActor\s+final class SessionProbe \{/);
+  assert.match(probe, /static let armDelayMs: Double = 10_000/, "the card's 10 s to lock the phone");
+  assert.match(swiftFuncBody(probe, "speak"), /engine\.handle\(\.command\(\.audition\(text: Self\.line, voiceId: nil\), source: \.audition\)\)/,
+    "the line goes through the core's audition path (OQ-5)");
+  assert.match(swiftFuncBody(probe, "speechEnded"), /engine\.handle\(\.command\(\.play, source: \.tap\)\)/,
+    "the play after didFinish goes through the core, in the same call");
+  assert.match(swiftFuncBody(probe, "finish"), /if probeStartedPlay, engine\.state\.isRunning \{\s*engine\.handle\(\.command\(\.pause, source: \.tap\)\)/,
+    "the probe pauses only a play it started");
+  assert.match(swiftFuncBody(probe, "finish"), /row\("speech-then-play"/, "the DV-9 row plan §10 names");
+
+  const host = stripSwiftComments(fs.readFileSync(HOST_SWIFT, "utf8"));
+  assert.match(swiftFuncBody(host, "handle"), /if case \.command\(\.probeSession, _\) = input \{[\s\S]*?SessionProbe\(engine: self\)[\s\S]*?return probe\.arm\(\)/,
+    "probeSession is the host's: it arms the probe before the core sees it");
+  const builders = [...swiftFilesUnder(path.join(PLUGIN_DIR, "ios/Sources")), ...swiftFilesUnder(path.join(CORE_DIR, "Sources"))]
+    .flatMap((file) => [...stripSwiftComments(fs.readFileSync(file, "utf8")).matchAll(/\bSessionProbe\(/g)].map(() => path.basename(file)));
+  assert.deepEqual(builders, ["ForayEngine.swift"], "the probe is built in one place, the host's probeSession branch");
+  const teardown = swiftFuncBody(host, "teardown");
+  assert.match(teardown, /seams\.speaker\.onFinish = nil/, "teardown drops the synthesizer's callback");
+  assert.match(teardown, /probe\?\.cancel\(\)/, "teardown drops a probe in flight");
+  assert.match(swiftFuncBody(host, "start"), /seams\.speaker\.onFinish = \{[\s\S]*?probe\?\.speechEnded\(end\)/, "didFinish reaches the probe");
+
+  const speaker = stripSwiftComments(fs.readFileSync(speakerPath, "utf8"));
+  assert.match(speaker, /final class PreviewSpeaker: NSObject, Speaking, AVSpeechSynthesizerDelegate \{/);
+  assert.match(swiftFuncBody(speaker, "makeSynthesizer"), /usesApplicationAudioSession = true/, "the engine's synthesizer speaks through the app's session, said out loud");
+  assert.match(swiftFuncBody(speaker, "utterance"), /\.rate = AVSpeechUtteranceDefaultSpeechRate/, "narration is 1x, Apple's default rate (OQ-3)");
+  const speak = swiftFuncBody(speaker, "speak");
+  const guardAt = speak.search(/if !config\.sessionIsActive\(\) \{[\s\S]*?config\.diag\([\s\S]*?FaultKind\.implicitActivation[\s\S]*?config\.debugFault\(/);
+  assert.ok(guardAt >= 0 && guardAt < speak.indexOf("synthesizer.speak("), "the implicit-activation guard runs before the synthesizer speaks");
+  const synthesizers = [...swiftFilesUnder(path.join(PLUGIN_DIR, "ios/Sources")), ...swiftFilesUnder(path.join(CORE_DIR, "Sources"))]
+    .flatMap((file) => [...stripSwiftComments(fs.readFileSync(file, "utf8")).matchAll(/\bAVSpeechSynthesizer\(\)/g)].map(() => path.basename(file)));
+  assert.deepEqual(synthesizers, ["PreviewSpeaker.swift"], "one synthesizer configuration in the engine");
+  assert.match(speaker, /init\(config: Config\) \{[^}]*synthesizer = PreviewSpeaker\.makeSynthesizer\(\)/, "the speaker speaks through that configuration");
+
+  const smoke = stripSwiftComments(fs.readFileSync(smokePath, "utf8"));
+  for (const piece of [/AudioSessionOwner\(config:/, /PreviewSpeaker\(config:/, /\bAVDeck\(config:/]) {
+    assert.match(smoke, piece, "the smoke runs the production pieces");
+  }
+  assert.match(smoke, /static let tag = "NE-25c"/);
+  assert.match(smoke, /title: "NE-25c: [^"]*\(Simulator smoke, not evidence\)"/, "the smoke says what it is in the job summary");
+  assert.match(smoke, /tag: Self\.tag\s*\)/);
+  assert.match(smoke, /MeasurementReport\.json\(trial, tag: Self\.tag\)/);
+  assert.ok(swiftTestNames(smokePath).includes("testADeckStartedInTheSameTurnAsDidFinishPlaysWithinOneSecond"));
+  for (const name of [
+    "testWhileHeldTheProbeSpeaksThenPlaysThenPausesAndRecordsIt",
+    "testAPlayAfterTheLineActivatesWhenTheSessionWasLostAndRecordsTheCost",
+    "testARelinquishCancelsARunInFlight",
+  ]) {
+    assert.ok(swiftTestNames(probeTestsPath).includes(name), `NE-25c's ${name} is gone`);
+  }
+  const doc = fs.readFileSync(path.join(ROOT, "docs/ios-native-engine-measurements.md"), "utf8");
+  const section = doc.slice(doc.indexOf("## 11. NE-25c"));
+  assert.ok(doc.includes("## 11. NE-25c"), "the measurements doc has NE-25c's section");
+  assert.match(section, /\*\*Simulator smoke\. Not evidence\.\*\*/, "the smoke is labelled a smoke");
+  assert.match(section, /\*\*run \d{8,}\*\*/, "the smoke's numbers name the CI run they came from");
+  assert.match(section, /probe kind=speech-then-play/, "the doc tells NE-33 how to read the DV-9 row");
+});
+
 /* ───────────── audit round 2 (2026-09-23): the platform contract, pinned ───────────── */
 
 test("the iOS track pair follows the ROUTE, and the page's track handlers are not mirrored onto WebKit (round 2, p-impatient-3)", () => {
@@ -3701,7 +3795,7 @@ test("the iOS track pair follows the ROUTE, and the page's track handlers are no
   const route = swiftFuncBody(code, "handleRouteChange");
   assert.match(route, /trackRoutePresent = Self\.trackCommandsAllowed\(portTypes: outputs\)/, "re-read on every route change");
   assert.match(route, /applyCommandAvailability\(self\.lastPayload, force: true\)/, "and re-applied when it moved");
-  assert.match(swiftFuncBody(code, "load"), /trackRoutePresent = Self\.trackCommandsAllowed/, "and read at load");
+  assert.match(swiftFuncBody(code, "runLegacyRegistration"), /trackRoutePresent = Self\.trackCommandsAllowed/, "and read at load");
   assert.ok(UNMIRRORED_ACTIONS.includes("nexttrack") && UNMIRRORED_ACTIONS.includes("previoustrack"), "WebKit's session gets no track handlers");
   assert.ok(!UNMIRRORED_ACTIONS.includes("seekforward") && !UNMIRRORED_ACTIONS.includes("seekbackward"), "the skip pair is still mirrored");
 });
@@ -3716,7 +3810,9 @@ test("one audio-session mode, .spokenAudio, in both iOS plugins; category only a
   assert.doesNotMatch(audio, /mode:\s*\.default/, "the audio plugin holds no second mode");
   assert.doesNotMatch(tts, /mode:\s*\.default/, "nor does the TTS plugin");
   assert.match(swiftFuncBody(audio, "holdSession"), /setCategory\(\.playback, mode: \.spokenAudio/);
-  const load = swiftFuncBody(audio, "load");
+  /* Since NE-17 the legacy lane's load() body is `runLegacyRegistration`, run
+     by EngineOwnership from load() (pinned in the NE-17 test below). */
+  const load = swiftFuncBody(audio, "runLegacyRegistration");
   assert.match(load, /setCategory\(\.playback, mode: \.spokenAudio, options: \[\]\)/, "set once for the tape between narration and holds");
   assert.doesNotMatch(load, /setActive/, "category only: the playing path never activates");
   /* NE-16 moved the TTS pair into `claimSession()` so both callers share one
@@ -3798,4 +3894,230 @@ test("the Android shell starts the service for a narration-first Foray from the 
   assert.match(shellSrc, /return \{ install, uninstall, inspect, refresh, setMediaLoaded, noteTransportPlaying, noteServiceRunning, newDocument \};/);
   const shim = stripJsComments(fs.readFileSync(path.join(PLUGIN_DIR, "web/foray-media-session.js"), "utf8"));
   assert.match(shim, /shell\.noteTransportPlaying\(playing\)/, "the shim hands the transition to the shell");
+});
+
+/* ─────────── NE-17: EngineOwnership decides the lane, once ───────────
+ *
+ * docs/native-engine-plan.md §4.6 and card NE-17. The owner's behaviour runs
+ * over the fakes in ForayAudioPluginTests/Engine/EngineOwnershipTests.swift
+ * (ios-kit). Pinned here is what those tests stand on and a refactor could
+ * quietly undo: the plugin's load() goes through the owner and today's
+ * registration is reachable from nowhere else; the owner is Foundation-only;
+ * the private keys are §4.6's six, outside CapacitorStorage.; the session
+ * flag's domain and key are the plan's; and the host hands the owner its two
+ * hooks. */
+
+const OWNERSHIP_SWIFT = path.join(ENGINE_DIR, "EngineOwnership.swift");
+
+test("NE-17: load() asks EngineOwnership, and today's registration runs only through it", () => {
+  /* MUTATION: call registerCommandHandlers() from load() again; call
+     runLegacyRegistration() from anywhere but load()'s closure; drop the
+     legacyLane guard from setNowPlaying. Each fails. */
+  const code = stripSwiftComments(fs.readFileSync(AUDIO_SWIFT, "utf8"));
+  const load = swiftFuncBody(code, "load");
+  assert.match(load, /EngineOwnership\.shared/, "load() must ask the owner");
+  assert.match(load, /pluginDidLoad\(legacyRegistration: register\)/);
+  assert.match(load, /let register: \(\) -> Void = \{ \[weak self\] in self\?\.runLegacyRegistration\(\) \}/);
+  for (const direct of ["registerCommandHandlers", "registerSessionObservers", "setCategory", "applyCommandAvailability"]) {
+    assert.doesNotMatch(load, new RegExp(`\\b${direct}\\(`), `load() must not ${direct}() itself: the owner decides`);
+  }
+  assert.deepEqual(swiftCallersOf(code, "runLegacyRegistration"), ["load"]);
+  assert.deepEqual(swiftCallersOf(code, "registerCommandHandlers"), ["runLegacyRegistration"]);
+  assert.deepEqual(swiftCallersOf(code, "registerSessionObservers"), ["runLegacyRegistration"]);
+  const legacy = swiftFuncBody(code, "runLegacyRegistration");
+  assert.match(legacy, /stateQueue\.sync \{ legacyLane = true \}/);
+  assert.match(swiftFuncBody(code, "setNowPlaying"), /guard let self, self\.legacyLane else \{ return \}\s*self\.apply\(payload\)/,
+    "in the native lane a stale page's payload must not write over the engine's Now Playing");
+  // NE-20: the hello reaches the owner through the bridge, which the plugin
+  // builds over the process's one owner.
+  assert.match(swiftFuncBody(code, "bridgeOnMain"), /let owner = EngineOwnership\.shared[\s\S]*EngineBridge\(\s*owner: owner,/,
+    "the bridge must be built over EngineOwnership.shared");
+  assert.match(swiftFuncBody(stripSwiftComments(fs.readFileSync(path.join(ENGINE_DIR, "EngineBridge.swift"), "utf8")), "hello"),
+    /^\{\s*owner\.helloReceived\(\)/, "a hello stands the watchdog down, first");
+});
+
+test("NE-17: the owner is Foundation-only, keeps its keys through EngineStore and its flag through EngineModeFlag, and the host hands it two hooks", () => {
+  /* MUTATION: import UIKit into EngineOwnership.swift, or name UserDefaults
+     there; declare a second EnginePrivateKey in the plugin; write the flag
+     anywhere but EngineModeFlag; give the shared owner a factory or a row
+     sink before NE-24; drop either host hook. Each fails. */
+  assert.deepEqual(swiftImports(OWNERSHIP_SWIFT).sort(), ["ForayEngineCore", "Foundation"]);
+  const owner = stripSwiftComments(fs.readFileSync(OWNERSHIP_SWIFT, "utf8"));
+  assert.doesNotMatch(owner, /\b(AVAudioSession|MPRemoteCommandCenter|MPNowPlayingInfoCenter|UIApplication|NotificationCenter|UserDefaults)\b/,
+    "the owner reaches a platform API; that belongs in a conformer (OwnershipLifecycle.swift, EngineStore)");
+  assert.doesNotMatch(owner, /enum EnginePrivateKey\b/, "the private keys are the core's EnginePrivateKey (NE-19), not a second list");
+  assert.match(owner, /extension EngineStore: EnginePrivateKeyStoring \{\}/, "the owner's keys go through EngineStore");
+  const flag = /final class ProcessSessionOwnershipFlag: SessionOwnershipFlag \{([\s\S]*?)\n\}/.exec(owner);
+  assert.ok(flag, "the real session flag is gone");
+  assert.match(flag[1], /get \{ EngineModeFlag\.sessionOwnedByEngine \}/);
+  assert.match(flag[1], /set \{ EngineModeFlag\.sessionOwnedByEngine = newValue \}/);
+  const shared = /static var shared: EngineOwnership \{([\s\S]*?)\n    \}/.exec(owner);
+  assert.ok(shared, "EngineOwnership.shared is gone");
+  assert.match(shared[1], /engineFactory: nil\)/, "the shared owner boots no engine until NE-24 supplies the real seams");
+  assert.match(shared[1], /diag: \{ _ in \}/, "no ring row outlives Delete my data before the engine's purge is reachable");
+  assert.match(shared[1], /flag: ProcessSessionOwnershipFlag\(\)/);
+
+  const host = stripSwiftComments(fs.readFileSync(HOST_SWIFT, "utf8"));
+  assert.match(swiftFuncBody(host, "handle"), /drain\(\)\s*publishSurface\(\)\s*onTurnCompleted\?\(\)/, "the first handled input is the healthy marker");
+  assert.match(swiftFuncBody(host, "teardown"), /tornDown\?\(\)/, "whatever tears the engine down, the legacy lane takes over");
+  const lifecycle = stripSwiftComments(fs.readFileSync(path.join(ENGINE_DIR, "OwnershipLifecycle.swift"), "utf8"));
+  assert.match(lifecycle, /UIApplication\.willResignActiveNotification, UIApplication\.didEnterBackgroundNotification/);
+  assert.match(lifecycle, /queue: \.main/);
+});
+
+/* ─────────── NE-20: the bridge (engineHello, engineSend, engineRead, the "engine" event) ───────────
+ *
+ * docs/native-engine-plan.md §5.1-§5.4, card NE-20. The Simulator XCTests
+ * (EngineBridgeTests) prove what the bridge answers; these pin the names the
+ * page and the plugin must agree on, which no Swift test can see. */
+
+test("NE-20: the bridge's method and event names are engine-contract.js's, the plugin hops to main and always resolves, and nothing leaves a hidden page", async () => {
+  /* MUTATION: rename a CAPPluginMethod or drop one; `call.reject(` in any of
+     the three; call the bridge off main; add engineSend to the Java; rename
+     the event (`EngineBridgeRules.eventName`) or ENGINE_EVENT; add an event
+     type the contract does not list; import UIKit into EngineBridge.swift;
+     deliver an engine or diag event without the visibility guard; advertise
+     a capability the contract does not define. Each fails. */
+  const { BRIDGE_METHODS, EVENTS, CAPABILITIES } = await import("../../player/engine-contract.js");
+  const { ENGINE_EVENT } = await import("../../player/native-engine.js");
+
+  const swift = fs.readFileSync(AUDIO_SWIFT, "utf8");
+  const code = stripSwiftComments(swift);
+  const declared = [...swift.matchAll(/CAPPluginMethod\(name:\s*"(\w+)"/g)].map((m) => m[1]);
+  const verbs = { engineHello: "hello", engineSend: "send", engineRead: "read" };
+  assert.deepEqual(Object.keys(verbs), [...BRIDGE_METHODS], "the plugin's three methods are engine-contract.js BRIDGE_METHODS");
+  for (const method of BRIDGE_METHODS) {
+    assert.ok(declared.includes(method), `ForayAudioPlugin.swift does not declare ${method} as a CAPPluginMethod`);
+    const body = swiftFuncBody(code, method);
+    assert.ok(body, `ForayAudioPlugin.swift has no func ${method}`);
+    assert.match(body, /let payload = EngineBridge\.payload\(from: call\.options\)\s*DispatchQueue\.main\.async \{[\s\S]*MainActor\.assumeIsolated \{/,
+      `${method} must decode the options and hop to main before touching the engine`);
+    assert.match(body, new RegExp(String.raw`call\.resolve\(Self\.jsObject\(self\.bridgeOnMain\(\)\.${verbs[method]}\(payload\)\)\)`),
+      `${method} must resolve with the bridge's answer`);
+    assert.doesNotMatch(body, /\.reject\(/, `${method} must never reject (the plugin's every-method-resolves rule)`);
+  }
+  const java = fs.readFileSync(path.join(PLUGIN_DIR, "android/src/main/java/ai/jwlabs/foura/audio/ForayAudioPlugin.java"), "utf8");
+  for (const method of BRIDGE_METHODS) {
+    assert.doesNotMatch(java, new RegExp(String.raw`\b${method}\b`), `${method} is iOS only; Android never gains it`);
+  }
+
+  const contract = stripSwiftComments(fs.readFileSync(path.join(CORE_DIR, "Sources/ForayEngineCore/Contract/EngineContract.swift"), "utf8"));
+  const caseNames = (enumName) => {
+    const at = contract.indexOf(`enum ${enumName}:`);
+    assert.ok(at >= 0, `EngineContract has no enum ${enumName}`);
+    const body = contract.slice(at, contract.indexOf("}", at));
+    return [...body.matchAll(/case (\w+)/g)].map((m) => m[1]);
+  };
+  assert.deepEqual(caseNames("BridgeMethod"), [...BRIDGE_METHODS]);
+  assert.deepEqual(caseNames("EventType"), [...EVENTS]);
+
+  const rulesPath = path.join(CORE_DIR, "Sources/ForayEngineCore/Contract/EngineBridgeRules.swift");
+  const rules = stripSwiftComments(fs.readFileSync(rulesPath, "utf8"));
+  assert.equal(/static let eventName = "(\w+)"/.exec(rules)?.[1], ENGINE_EVENT, "the Swift event name and native-engine.js ENGINE_EVENT disagree");
+  assert.match(swiftFuncBody(code, "notifyEngineEvent"), /notifyListeners\(EngineBridgeRules\.eventName, data:/, "engine events ride on the one event name");
+  const advertised = /static let advertisedCapabilities: \[String\] = \[([^\]]*)\]/.exec(rules);
+  assert.ok(advertised, "EngineBridgeRules must declare the advertisedCapabilities literal coverage.js reads");
+  for (const [, cap] of advertised[1].matchAll(/"([^"]+)"/g)) {
+    assert.ok(CAPABILITIES.includes(cap), `advertisedCapabilities names ${cap}, which engine-contract.js CAPABILITIES does not define`);
+  }
+
+  const bridgePath = path.join(ENGINE_DIR, "EngineBridge.swift");
+  assert.deepEqual(swiftImports(bridgePath).sort(), ["ForayEngineCore", "Foundation"], "the bridge imports only Foundation and the core");
+  const bridge = stripSwiftComments(fs.readFileSync(bridgePath, "utf8"));
+  assert.doesNotMatch(bridge, /\b(AVAudioSession|MPRemoteCommandCenter|MPNowPlayingInfoCenter|UIApplication|UserDefaults|NotificationCenter)\b/,
+    "the bridge reaches a platform API");
+  for (const name of ["engineEmitted", "liveRow"]) {
+    assert.match(swiftFuncBody(bridge, name) ?? "", /guard coalescer\.visible else \{ return \}\s*deliver\(/, `${name} delivers only to a visible page`);
+  }
+  assert.match(swiftFuncBody(bridge, "transitioned") ?? "", /if coalescer\.visible \{ deliver\(EngineBridgeRules\.modeChangedEvent/);
+  assert.match(swiftFuncBody(bridge, "apply") ?? "", /case \.emit:\s*deliver\(EngineBridgeRules\.snapshotEvent\(snapshot\(\)\)\)/,
+    "a snapshot event leaves only on the coalescer's word");
+  assert.equal([...bridge.matchAll(/\bdeliver\(/g)].length, 4, "every deliver( is one of the four above");
+});
+
+/* ─────────── NE-18: RemoteSurface, NowPlayingPublisher and ArtworkCache ───────────
+ *
+ * docs/native-engine-plan.md §4.2 and §4.5, card NE-18. The Simulator XCTests
+ * (RemoteSurfaceTests, NowPlayingPublisherTests) run the truth table and the
+ * real centres; what they cannot see is a SECOND copy of the skip pair, a head
+ * unit's interval quietly read, a receipt returned instead of the verdict, a
+ * `playbackState` write, or a clear on some path other than `clear()`. */
+
+const REMOTE_SURFACE_SWIFT = path.join(ENGINE_DIR, "RemoteSurface.swift");
+const PUBLISHER_SWIFT = path.join(ENGINE_DIR, "NowPlayingPublisher.swift");
+const ARTWORK_SWIFT = path.join(ENGINE_DIR, "ArtworkCache.swift");
+
+test("NE-18: the remote surface steps by the founder's pair and answers with the core's verdict, on main", () => {
+  /* MUTATION: `preferredIntervals = [15]` (or any literal 15/30) in
+     RemoteSurface.swift, NowPlayingPublisher.swift or ArtworkCache.swift; read
+     `(event as? MPSkipIntervalCommandEvent)?.interval`; hand a skip press a
+     value; return `.success` from the target instead of the verdict; call the
+     handler off main or hop with `async`; let `setEnabled` enable `stop`;
+     register an MPRemoteCommandCenter target from any other Engine/ file.
+     Each fails here. */
+  const forbidden = new Set([15, 30, 15000, 30000]);
+  for (const file of [REMOTE_SURFACE_SWIFT, PUBLISHER_SWIFT, ARTWORK_SWIFT]) {
+    const found = swiftDecimalLiterals(stripSwiftComments(fs.readFileSync(file, "utf8")))
+      .filter((lit) => forbidden.has(lit.value)).map((lit) => lit.text);
+    assert.deepEqual(found, [], `${path.relative(ROOT, file)} holds a literal seek step; read MediaMapping / EngineConstants`);
+  }
+  const remote = stripSwiftComments(fs.readFileSync(REMOTE_SURFACE_SWIFT, "utf8"));
+  assert.match(remote, /skipBackwardCommand\.preferredIntervals = \[NSNumber\(value: MediaMapping\.seekBackwardSec\)\]/);
+  assert.match(remote, /skipForwardCommand\.preferredIntervals = \[NSNumber\(value: MediaMapping\.seekForwardSec\)\]/);
+  assert.doesNotMatch(remote, /\.interval\b|MPSkipIntervalCommandEvent/, "the head unit's skip interval is data about the press, never an order");
+  assert.match(swiftFuncBody(remote, "value") ?? "", /guard command == \.changePlaybackPosition else \{ return nil \}/,
+    "only a scrub carries a value into the core");
+  const deliver = swiftFuncBody(remote, "deliver") ?? "";
+  assert.match(deliver, /if Thread\.isMainThread \{[\s\S]*?MainActor\.assumeIsolated[\s\S]*?onMain: true/);
+  assert.match(deliver, /DispatchQueue\.main\.sync \{[\s\S]*?onMain: false/);
+  assert.doesNotMatch(deliver, /\.async\b/, "a press is answered inside the handler, never after it returned");
+  assert.match(swiftFuncBody(remote, "addTarget") ?? "", /return RemoteSurface\.status\(verdict\)/, "the status is the core's verdict, not a receipt");
+  assert.match(swiftFuncBody(remote, "setEnabled") ?? "", /command == \.stop \? false : enabled/, "stop is never enabled (T-7)");
+  assert.doesNotMatch(remote, /\b(setActive|setCategory)\(/, "reading the route is not owning the session");
+
+  for (const file of swiftFilesUnder(ENGINE_DIR)) {
+    const code = stripSwiftComments(fs.readFileSync(file, "utf8"));
+    if (/\bMPRemoteCommandCenter\b/.test(code)) assert.equal(file, REMOTE_SURFACE_SWIFT, `${path.relative(ROOT, file)} registers remote targets`);
+    if (/\bMPNowPlayingInfoCenter\b/.test(code)) assert.equal(file, PUBLISHER_SWIFT, `${path.relative(ROOT, file)} writes Now Playing`);
+  }
+
+  const host = stripSwiftComments(fs.readFileSync(HOST_SWIFT, "utf8"));
+  const pressed = swiftFuncBody(host, "remote") ?? "";
+  assert.match(pressed, /let verdict = RemoteVerdict\(failures: result\.failures\)[\s\S]*DiagEntry\(kind: "remote"[\s\S]*return verdict/,
+    "the status the system gets is the verdict, and it is on record");
+  assert.match(swiftFuncBody(host, "start") ?? "", /publishSurface\(\)/, "enablement is applied from the first moment");
+  assert.doesNotMatch(swiftFuncBody(host, "start") ?? "", /setEnabled\(/, "enablement is commandAvailability's, not a literal");
+});
+
+test("NE-18: Now Playing writes rate 0 rather than playbackState, is cleared only through clear(), and artwork is https-or-bundled and bounded", () => {
+  /* MUTATION: write `center.playbackState`; set `nowPlayingInfo = nil` outside
+     `clear()`; clear or write Now Playing from teardown; publish after a
+     teardown; write the listener's rate instead of NowPlayingRate; let the
+     host call `nowPlaying.clear()` anywhere but publishSurface; accept an
+     `http` artwork; drop the artwork deadline or the cached failure. Each
+     fails here. */
+  const publisher = stripSwiftComments(fs.readFileSync(PUBLISHER_SWIFT, "utf8"));
+  assert.doesNotMatch(publisher, /playbackState\s*=/, "OQ-8: playbackState is macOS-only and never written");
+  assert.equal([...publisher.matchAll(/nowPlayingInfo = nil/g)].length, 1, "one way to nil");
+  assert.match(swiftFuncBody(publisher, "clear") ?? "", /center\.nowPlayingInfo = nil/);
+  const info = swiftFuncBody(publisher, "info") ?? "";
+  assert.match(info, /let rate = NowPlayingRate\.of\(view\)/);
+  assert.match(info, /MPNowPlayingInfoPropertyPlaybackRate: NSNumber\(value: rate\)/);
+  const seams = stripSwiftComments(fs.readFileSync(SEAMS_SWIFT, "utf8"));
+  assert.match(seams, /guard view\.playbackState == MediaMapping\.playing else \{ return 0 \}/, "rate 0 whenever the entry is not playing");
+
+  const host = stripSwiftComments(fs.readFileSync(HOST_SWIFT, "utf8"));
+  assert.equal([...host.matchAll(/seams\.nowPlaying\.clear\(\)/g)].length, 1);
+  assert.equal([...host.matchAll(/seams\.nowPlaying\.write\(/g)].length, 1);
+  const publish = swiftFuncBody(host, "publishSurface") ?? "";
+  assert.match(publish, /^\{\s*guard !isTornDown else \{ return \}/, "a relinquish leaves Now Playing and the targets for the legacy lane");
+  assert.match(publish, /seams\.nowPlaying\.clear\(\)/);
+  assert.match(publish, /availability\.clearsNowPlaying/, "nil only for a finished Foray, a close or a data deletion");
+  assert.doesNotMatch(swiftFuncBody(host, "teardown") ?? "", /publishSurface|nowPlaying/);
+
+  const artwork = stripSwiftComments(fs.readFileSync(ARTWORK_SWIFT, "utf8"));
+  assert.match(artwork, /static let timeoutSec: Double = 10\b/, "plan §4.5: bounded at 10 s");
+  assert.match(artwork, /DispatchQueue\.main\.asyncAfter\(deadline: \.now\(\) \+ timeoutSec\) \{ finish\(nil\) \}/, "the deadline is whole, not per packet");
+  assert.match(artwork, /scheme\.lowercased\(\) == "https"/);
+  assert.match(swiftFuncBody(artwork, "settle") ?? "", /failed\.insert\(src\)/, "a failure is cached");
 });

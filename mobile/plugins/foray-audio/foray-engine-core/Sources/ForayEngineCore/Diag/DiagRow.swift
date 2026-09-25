@@ -45,6 +45,13 @@ public struct DiagRow: Equatable {
     /// LAST of a repeated key, so a field named `seq` would silently rewrite
     /// the ring's order for every reader.
     public func line() -> String {
+        JSWriter.stringify(node)
+    }
+
+    /// The row as one JSON object, header first: what `line()` prints and
+    /// what `engineRead("diagnostics")` hands the page (NE-20), so the page's
+    /// Copy and the file on disk can never disagree about a row.
+    public var node: JSONNode {
         var members = [
             JSONMember("seq", .number(Double(seq))),
             JSONMember("at", .number(wallMs)),
@@ -52,7 +59,7 @@ public struct DiagRow: Equatable {
             JSONMember("kind", .string(kind))
         ]
         members.append(contentsOf: fields.filter { !DiagRow.headerKeys.contains($0.key) })
-        return JSWriter.stringify(.object(members))
+        return .object(members)
     }
 
     /// One line back, or nil for a line that is not a row: a torn write at the

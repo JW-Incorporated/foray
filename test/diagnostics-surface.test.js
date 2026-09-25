@@ -564,3 +564,103 @@ test("the sheet is built with createElement and never assigns innerHTML", () => 
   assert.ok(!/innerHTML/.test(src), "no innerHTML in the diagnostics surface");
   assert.ok(!/insertAdjacentHTML|outerHTML|document\.write/.test(src));
 });
+
+/* ==================================================================== */
+/* 4. the native engine's rows (NE-26, docs/native-engine-plan.md)       */
+/* ==================================================================== */
+
+/** A promise the test settles by hand, for a bridge call still in flight. */
+function deferred() {
+  let resolve;
+  let reject;
+  const promise = new Promise((res, rej) => { resolve = res; reject = rej; });
+  return { promise, resolve, reject };
+}
+const settle = () => new Promise((r) => setTimeout(r, 0));
+
+test("Copy takes the record WITH the engine's rows, read once for the press, and shows what it took", async () => {
+  /* The card: 'Playback diagnostics → Copy' calls engineRead('diagnostics')
+     once and merges. The page publishes that as forayDiagnosticReportWithEngine.
+     MUTATION 1: copy `ui.text.value` without asking for the merged record.
+     The clipboard gets the page-only text and this fails.
+     MUTATION 2: ask twice in one press. The count fails. */
+  const { ctx, ui, copied } = mount({ report: "PAGE ONLY" });
+  let calls = 0;
+  ctx.window.forayDiagnosticReportWithEngine = async () => { calls++; return "PAGE AND ENGINE"; };
+  ui.open.click();
+  await settle();
+  const before = calls;
+  await ui.copy.click();
+  assert.equal(calls - before, 1, "one engine read per Copy");
+  assert.deepStrictEqual(copied, ["PAGE AND ENGINE"]);
+  assert.strictEqual(ui.text.value, "PAGE AND ENGINE", "the box shows what was copied");
+  assert.match(ui.status.textContent, /copied/i);
+});
+
+test("opening shows the page's record at once, then the merged one when the engine answers", async () => {
+  /* So the header a founder reads on screen is the one Copy takes.
+     MUTATION: drop the repaint from openDiagSheet. The second assertion fails. */
+  const { ctx, ui } = mount({ report: "PAGE ONLY" });
+  const d = deferred();
+  ctx.window.forayDiagnosticReportWithEngine = () => d.promise;
+  ui.open.click();
+  assert.strictEqual(ui.text.value, "PAGE ONLY", "never a blank box while the engine is asked");
+  d.resolve("PAGE AND ENGINE");
+  await settle();
+  assert.strictEqual(ui.text.value, "PAGE AND ENGINE");
+});
+
+test("a merged record that lands after a Clear does not paint the cleared rows back", async () => {
+  /* MUTATION: repaint without checking which paint is current. The box shows
+     the stale merged text over the cleared record and this fails. */
+  let text = "OLD ROWS";
+  const { ctx, ui } = mount();
+  ctx.window.forayDiagnosticReport = () => text;
+  ctx.window.forayDiagnosticClear = () => { text = "Nothing recorded yet."; return true; };
+  const d = deferred();
+  ctx.window.forayDiagnosticReportWithEngine = () => d.promise;
+  ui.open.click();
+  ui.clearBtn.click();
+  d.resolve("OLD ROWS AND ENGINE");
+  await settle();
+  assert.match(ui.text.value, /Nothing recorded yet/);
+});
+
+test("a merged record that fails falls back to the page's own, never a blank or a hang", async () => {
+  /* MUTATION: let the rejection through. Copy rejects and nothing is copied. */
+  const { ctx, ui, copied } = mount({ report: "PAGE ONLY" });
+  ctx.window.forayDiagnosticReportWithEngine = () => Promise.reject(new Error("bridge gone"));
+  ui.open.click();
+  await settle();
+  assert.strictEqual(ui.text.value, "PAGE ONLY");
+  await ui.copy.click();
+  assert.deepStrictEqual(copied, ["PAGE ONLY"]);
+});
+
+test("where the platform allows it, the clipboard is asked INSIDE the tap, before the engine answers", async () => {
+  /* WebKit grants a clipboard write within the user's gesture; a writeText
+     after awaiting the bridge can be refused as outside it. A ClipboardItem
+     holding a PROMISE is the write requested now and filled later.
+     MUTATION: await the merged text before calling clipboard.write. The
+     first assertion fails (nothing requested while the read is in flight). */
+  const { ctx, ui } = mount({ report: "PAGE ONLY" });
+  const writes = [];
+  class Blob { constructor(parts, opts) { this.text = parts.join(""); this.type = opts.type; } }
+  class ClipboardItem { constructor(items) { this.items = items; } }
+  ctx.Blob = Blob;
+  ctx.ClipboardItem = ClipboardItem;
+  ctx.navigator.clipboard.write = async (items) => {
+    writes.push(items);
+    const blob = await items[0].items["text/plain"];
+    writes.text = blob.text;
+  };
+  const d = deferred();
+  ctx.window.forayDiagnosticReportWithEngine = () => d.promise;
+  const pressed = ui.copy.click();
+  assert.equal(writes.length, 1, "the write was requested synchronously, inside the tap");
+  d.resolve("PAGE AND ENGINE");
+  await pressed;
+  assert.equal(writes.text, "PAGE AND ENGINE");
+  assert.strictEqual(ui.text.value, "PAGE AND ENGINE");
+  assert.match(ui.status.textContent, /copied/i);
+});

@@ -120,8 +120,11 @@ import {
   bubblePosition, bubbleContentOffset,
 } from "./strip-scrub-gesture.js";
 import { startDrag, moveDrag, endDrag, dragOffset, claimsTouch } from "./sheet-drag-dismiss.js";
-import { createDurableStore, preferencesTier, vaultTier, deferredPrefixesFor } from "./durable-store.js";
+import { createDurableStore, preferencesTier, vaultTier, deferredPrefixesFor, engineDataDeletion } from "./durable-store.js";
 import { OWNED_PREFIXES } from "./engine-contract.js";
+import { createNativeEngine } from "./native-engine.js";
+import { createNativeFacades } from "./native-facades.js";
+import { engineDiagnosticReport, engineBridgePresent, pageEngineView } from "./engine-diagnostics.js";
 import { readBuildStamp, BUILD_STAMP_WAIT_MS } from "./build-stamp.js";
 import { createTtsBridge } from "./tts-bridge.js";
 import { runKokoroProbe, formatProbeReport, probeVerdict } from "./kokoro-probe.js";
@@ -271,16 +274,104 @@ const storage = createDurableStore({
   },
 });
 
-/* THE LANE IS KNOWN ALREADY, IN THIS BUILD OF THE PAGE: it has no native
-   engine client yet (NE-21, NE-22), so it plays with the JS player whatever the
-   binary is, and the page is the writer of every row. Released BEFORE
-   hydration, so hydration runs exactly as it did before the deferral existed —
-   the web and Android never deferred, and on iOS this makes the deferral a
-   no-op rather than a change. NE-22 moves this call behind `engineModeReady`
-   (hello = legacy/js, or after a relinquish), and a native hello calls
-   `storage.externallyOwned` + `adoptOwnedSet` instead. Harmless where nothing
-   was deferred: it answers false. */
-storage.releaseOwnership().catch(() => {});
+/* ---------- which lane plays: the native engine or this page (NE-22) ----------
+
+   Plan §4.6's page boot order. On the iOS shell the page does not know, at this
+   line, whether the native engine or the JS player below owns the audio; only
+   engineHello can say, and it is asked ONCE, here, bounded at 5 s
+   (native-engine.js `HELLO_TIMEOUT_MS`). Until it answers:
+
+     - nothing audible is built. `ensureBooted` answers false while
+       `engineMode` is null, and every entry point that would boot (`play`,
+       `playForay`, the two restores, the audition) awaits `engineModeReady`
+       first. A WebKit <audio> element built "just in case" is the second
+       producer the whole deck exists to remove (§1, R11).
+     - the owned rows stay deferred in the store (NE-23): read, never written.
+
+   The answer then does one of two things, and never both:
+
+     native  the store is told the engine owns `cp_pos:`, `cp_foray:` and
+             `cp_last_episode` for the rest of the process, and the page's copy
+             of them is REPLACED by the engine's (`adoptOwnedSet`). The player
+             is built over the facades (native-facades.js), which send intents
+             and paint from snapshots. The iOS lock-screen shim
+             (foray-media-session.js) is uninstalled: the engine's
+             RemoteSurface owns Now Playing, and two owners of it is the
+             defect.
+     js      the store is released (the deferred migration runs), and the page
+             is today's player. A timeout, a rejection or a protocol mismatch
+             lands here too, after native-engine.js has SENT relinquish{cap:
+             "all"}, so an engine that might be running stops before a single
+             element exists.
+
+   Off the iOS shell (the web, Android) there is no engine and no question: the
+   lane is JS from this line, the store is released before hydration exactly
+   as it was before NE-23, and every path below stays synchronous. */
+const engineCapacitor = typeof window !== "undefined" ? window.Capacitor ?? null : null;
+const engineShell = deferredPrefixesFor(engineCapacitor, OWNED_PREFIXES).length > 0;
+/** "native" | "js", or null while the handshake is in flight (iOS shell only). */
+let engineMode = engineShell ? null : "js";
+/** The page's one engine client (native-engine.js), on the iOS shell only. */
+let engine = null;
+/** `{manager, backend, dispose}` while the native lane is booted. */
+let engineFacades = null;
+/** hello's pending logs, applied by the first attach once app.js is up. */
+let bootPending = null;
+/** The last continuation plan app.js handed over before the mode was known. */
+let pendingPlan = null;
+/** item id -> item, from the plans the page sent: the bar can name the episode
+    the engine advanced to while the page slept. */
+let chainItems = new Map();
+/** A page-started play whose reply has not arrived: an attach must not paint
+    the engine's previous item over the one the listener just tapped. */
+let playsInFlight = 0;
+if (!engineShell) storage.releaseOwnership().catch(() => {});
+const engineModeReady = engineShell ? startEngineHandshake() : Promise.resolve("js");
+
+function startEngineHandshake() {
+  engine = createNativeEngine({
+    capacitor: engineCapacitor,
+    pageBuild: (typeof self !== "undefined" && typeof self.__forayPinnedDeployId === "string" && self.__forayPinnedDeployId) || "",
+  });
+  return engine.hello().then(onEngineDecision, () => onEngineDecision({ mode: "js", reason: "bridge-error" }));
+}
+
+/** hello answered (or did not): commit the lane. Never rejects, and never
+    waits on a durable tier — a WKWebView IndexedDB can hold a read open for
+    good (idb-tier.js, hazard 1), and a page whose lane waited on that would
+    never play. `releaseOwnership` flips the store synchronously; its commit
+    finishes on its own. */
+async function onEngineDecision(decision) {
+  if (decision?.mode === "native" && decision.hello) {
+    try {
+      const hello = decision.hello;
+      storage.externallyOwned(hello.ownedKeyPrefixes, {
+        purge: engineDataDeletion((cmd, args) => engine.send(cmd, args, { source: "tap" })),
+      });
+      const rows = await engine.read("rows", { prefixes: [...OWNED_PREFIXES] });
+      if (rows && rows.rows) storage.adoptOwnedSet(rows.rows);
+      const adv = Array.isArray(hello.pendingAdvances) ? hello.pendingAdvances : [];
+      const evs = Array.isArray(hello.pendingEvents) ? hello.pendingEvents : [];
+      if (adv.length || evs.length) bootPending = { pendingAdvances: adv, pendingEvents: evs };
+      engine.subscribe(onEngineEvent);
+      engineMode = "native";
+    } catch (err) {
+      /* A page that cannot attach must still play: give the audio back to
+         the legacy lane (the engine goes terminal) and run today's player. */
+      console.warn("[player] native attach failed; relinquishing", err);
+      engine.send("relinquish", { cap: "all" }, { source: "restore" });
+    }
+    if (engineMode === "native") {
+      try { if (typeof window !== "undefined") window.ForayMediaSession?.uninstall?.(); } catch (_) { /* the shim is optional */ }
+      if (pendingPlan) { const plan = pendingPlan; pendingPlan = null; sendEnginePlan(plan); }
+      return engineMode;
+    }
+  }
+  storage.releaseOwnership().catch(() => {});
+  engineMode = "js";
+  pendingPlan = null;
+  return engineMode;
+}
 
 /* Started immediately, awaited by app.js before its first write. Rejection is
    impossible by construction (every tier failure is caught into `health()`), but
@@ -497,6 +588,11 @@ storageReady.then((hydrated) => {
  */
 function onNativeSession(detail) {
   if (!manager || !detail || typeof detail !== "object") return;
+  /* NATIVE MODE: THE ENGINE OWNS THE SESSION (§4.4). It saw this interruption
+     or route change through AVAudioSession itself and has already acted; a
+     page acting on the legacy plugin's copy would be a second decision about
+     the same event. Coming back is `attachEngine`, from visibility. */
+  if (engineMode === "native") return;
   const kind = String(detail.kind ?? "");
   if (!["background", "foreground", "routeChange", "interruptionBegan", "interruptionEnded", "mediaServicesReset"].includes(kind)) return;
   flushPositions();
@@ -567,7 +663,39 @@ function recordBuildStamp() {
 /** The record, as text, for the surface app.js builds. Published beside
     `forayStorageHealth` and for the same reason: app.js is a classic script and
     cannot import this module, so anything it needs is handed over on `window`. */
-window.forayDiagnosticReport = () => formatDiagnosticReport(diagLog.read());
+window.forayDiagnosticReport = () => formatDiagnosticReport(
+  diagLog.read(),
+  pageEngineView({ engine: engine ?? diagEngine, capacitor: typeof window !== "undefined" ? window.Capacitor ?? null : null }),
+);
+/**
+ * The same record with the native engine's ring merged in (NE-26): what Copy
+ * copies, and what the sheet repaints with once it has it. ONE
+ * engineRead('diagnostics') per call, bounded, never rejecting on the engine's
+ * account (`engine-diagnostics.js`).
+ *
+ * THE CLIENT IT READS THROUGH. Inside the iOS shell it is the page's own
+ * engine client (NE-22), built at load for the handshake. A page with none —
+ * a Capacitor injected after load — gets a read-only one (no hello, no send,
+ * no listener), and only inside the iOS shell — on the web and Android there is no engine,
+ * and the header says `engine=js reason=not-ios` without a bridge call. Read
+ * from `window.Capacitor` at CALL time, not at module load, because the bridge
+ * is the shell's to inject and the record is read long after boot.
+ */
+let diagEngine = null;
+function engineForDiagnostics() {
+  /* The page's own client when there is one (NE-22): its decision is the
+     header's, and its reads are the ones the engine already expects. */
+  if (engine) return engine;
+  const cap = typeof window !== "undefined" ? window.Capacitor ?? null : null;
+  if (!engineBridgePresent(cap)) return null;
+  if (!diagEngine) diagEngine = createNativeEngine({ capacitor: cap });
+  return diagEngine;
+}
+window.forayDiagnosticReportWithEngine = () => engineDiagnosticReport({
+  record: () => diagLog.read(),
+  engine: engineForDiagnostics(),
+  capacitor: typeof window !== "undefined" ? window.Capacitor ?? null : null,
+});
 /**
  * Empty it — the founder's loop is clear, drive, copy, and three earlier drives in
  * the buffer make the drive under test hard to find.
@@ -1149,6 +1277,10 @@ const _episodeEndedListeners = new Set();
 
 function _announceEpisodeEndedIfNeeded() {
   if (foray || !manager || !current) return;
+  /* Native mode: the ENGINE walks the chain at an end (§5.5), with the page
+     asleep or not, and the page learns of it as an `advanced` hop. Announcing
+     the end to app.js as well would start the next episode twice. */
+  if (engineMode === "native") return;
   if (manager.state?.type !== "ended") return;
   if (_endedAnnouncedFor === current.id) return;
   _endedAnnouncedFor = current.id;
@@ -1427,6 +1559,8 @@ function notifyForay() {
  * `lastPlayedForay` / `forayResume` skip it, so it never offers "0 min left".
  */
 function persistForayProgress({ force = false } = {}) {
+  /* cp_foray: is the engine row in native mode (a Foray relinquishes first, M1). */
+  if (engineMode === "native") return;
   if (!foray || foray.index < 0) return;
   const id = foray.resolved.id;
   /* ── THE RESUME DECISION, RECORDED (#264) ────────────────────────────────
@@ -2604,7 +2738,10 @@ async function stopAndClose({ persist = true } = {}) {
      being LEFT, and nothing writes while paused), so Stop after pause-and-scrub
      lost the scrub. Leaving is a flush, whichever store. */
   if (persist) flushPositions();
-  await manager.stop();
+  /* Native: the engine's stop carries `persist` (§5.2) — `false` is data
+     deletion, and the facade's own stop always persists. */
+  if (engineMode === "native" && engine) await engine.send("stop", { persist }, { source: "tap" });
+  else await manager.stop();
   if (media) media.release();
   lastMediaPositionKey = null;
   /* THE ROOT HIDES FIRST, THEN THE OWNER LETS GO (audit round 2, a11y-6).
@@ -2848,6 +2985,9 @@ function afterShimFlush(read) {
     every media event and the seam-beat hook already drive, so there is no second
     timer and no polling. */
 function syncMediaSession() {
+  /* Native mode: the engine's NowPlayingPublisher is the only writer of Now
+     Playing (§4.5, NE-18). `media` is inert there anyway; this says so. */
+  if (engineMode === "native") return;
   if (!media || !media.supported) return;
   // Nothing loaded: `render()` already returns before this, and closing the
   // player goes through `stopAndClose`, which calls `release()` — clearing here
@@ -2978,6 +3118,10 @@ function publishMediaView(view) {
 // the path that actually matters on mobile — beforeunload is unreliable there.
 function flushPositions() {
   if (!manager) return;
+  /* Native mode: every position row is the engine's (OWNED_PREFIXES), written
+     natively as it plays. The page writes none; the store would refuse them
+     anyway (NE-23), and a refusal is a fault row this skips. */
+  if (engineMode === "native") { storage.flush().catch(() => {}); return; }
   /* ONE RULE, BOTH STORES (#689). This line used to read
      `if (current && isPlaying())`, and the comment below — written for the
      Foray store on the very next line — is the argument against it: an EPISODE
@@ -3026,6 +3170,7 @@ function flushPositions() {
  */
 async function reconcileOnReturn(why = "visible", { interruption = false } = {}) {
   if (!manager) return;
+  if (engineMode === "native") { await attachEngine(why); return; }
   const corrected = await manager.reconcileWithBackend(why, { interruption });
   /* REPAINTED WHETHER OR NOT ANYTHING WAS CORRECTED, and that is not belt and
      braces. Every repaint in this file is driven by a media event, and the last
@@ -3048,6 +3193,190 @@ async function reconcileOnReturn(why = "visible", { interruption = false } = {})
      clock, so it needs saying separately — and it can be said, because the
      element still holds this segment's audio at the moment it stopped. */
   persistForayProgress({ force: true });
+}
+
+/* ---------- the native lane: attach, the plan, the relinquish (NE-22) ---------- */
+
+/** Does the engine hold an episode right now, by its latest snapshot? */
+function engineHoldsItem() {
+  const s = engine?.latest()?.snapshot;
+  return Boolean(s && s.mode === "episode" && s.itemId);
+}
+
+/** Did the engine advertise `cap` in its hello (§5.1)? */
+function engineCan(cap) {
+  const caps = engine?.decision?.hello?.capabilities;
+  return Array.isArray(caps) && caps.includes(cap);
+}
+
+/**
+ * Paint the bar from what the ENGINE holds, when that is not what the page
+ * shows: a page booted over a running engine, or a hop the engine walked while
+ * the page slept. The item is the one the page itself handed over in a plan
+ * (`chainItems`), else the stored pointer (the engine wrote it, verbatim, from
+ * the page's own row), else what the snapshot's Now Playing says. Skipped while
+ * a page-started play is in flight, so the engine's previous item never paints
+ * over the one the listener just tapped. Returns the item painted, or null.
+ */
+function syncCurrentFromEngine({ force = false } = {}) {
+  const s = engine?.latest()?.snapshot;
+  if (!s || s.mode !== "episode" || !s.itemId) return null;
+  if (!force && playsInFlight > 0) return null;
+  if (current?.id === s.itemId) return current;
+  if (foray) return null;
+  if (!ensureBooted()) return null;
+  const stored = readLastEpisode(storage);
+  const item = chainItems.get(s.itemId)
+    ?? (stored?.id === s.itemId ? stored : null)
+    ?? { id: s.itemId, title: s.nowPlaying?.title ?? "", show: s.nowPlaying?.artist ?? "" };
+  setNowPlaying(item, null);
+  reaskEpisodeNeighbours();
+  render();
+  return current;
+}
+
+/**
+ * `reconcileOnReturn`, in native mode (§5.6, W-8): ATTACH. Read the snapshot,
+ * replace the page's copy of the owned rows with the engine's, apply the hops
+ * and position events the engine logged while the page slept (app.js's
+ * `applyEngineAdvance` / `drainEngineEvents`, each idempotent through the
+ * page's own `cp_engine_applied` watermark), ack them, and repaint. Every step
+ * is a read or an ack: coming back to the page can correct its belief and can
+ * never start audio. Concurrent attaches share one run.
+ * @returns {Promise<boolean>} whether the page's belief changed
+ */
+let attaching = null;
+function attachEngine(why = "visible") {
+  if (engineMode !== "native" || !engine) return Promise.resolve(false);
+  if (attaching) return attaching;
+  attaching = (async () => {
+    try {
+      const changed = manager ? await manager.attach(why) : Boolean(await engine.read("snapshot"));
+      const rows = await engine.read("rows", { prefixes: [...OWNED_PREFIXES] });
+      if (engineMode !== "native") return changed;
+      if (rows && rows.rows) storage.adoptOwnedSet(rows.rows);
+      await applyEnginePending();
+      syncCurrentFromEngine();
+      render();
+      return changed;
+    } finally {
+      attaching = null;
+    }
+  })();
+  return attaching;
+}
+
+/** The ack watermark of a pending hop: the engine log's own `seq` when it
+    carries one (the Swift engine's AdvanceEntry), else the hop's `hopSeq`
+    (the reference engine's log). */
+const ackSeqOf = (entry) => (Number.isInteger(entry?.seq) ? entry.seq : Number.isInteger(entry?.hopSeq) ? entry.hopSeq : null);
+
+async function applyEnginePending() {
+  const ledger = typeof window !== "undefined" ? window.forayEngineLedger : null;
+  /* No ledger (an app.js of another vintage): apply nothing and ACK nothing,
+     so the logs wait for a page that can apply them. */
+  if (!ledger || typeof ledger.applyEngineAdvance !== "function" || typeof ledger.drainEngineEvents !== "function") return;
+  let logs = bootPending;
+  bootPending = null;
+  if (!logs) {
+    const s = engine.latest()?.snapshot;
+    if (!s || !(s.pendingAdvances > 0 || s.pendingEvents > 0)) return;
+    logs = await engine.pendingLogs();
+    if (!logs) return;
+  }
+  const advances = logs.pendingAdvances ?? [];
+  const events = logs.pendingEvents ?? [];
+  if (advances.length) {
+    for (const hop of advances) {
+      try { ledger.applyEngineAdvance(hop); } catch (_) { /* one bad hop must not strand the rest */ }
+    }
+    const upTo = Math.max(...advances.map(ackSeqOf).filter((n) => n !== null));
+    if (Number.isFinite(upTo)) await engine.send("ackAdvances", { upToSeq: upTo }, { source: "restore" });
+  }
+  if (events.length) {
+    try { ledger.drainEngineEvents(events); } catch (_) { /* the watermark already moved per row */ }
+    const upTo = Math.max(...events.map((e) => (Number.isInteger(e?.seq) ? e.seq : null)).filter((n) => n !== null));
+    if (Number.isFinite(upTo)) await engine.send("ackEvents", { upToSeq: upTo }, { source: "restore" });
+  }
+}
+
+/** Send a continuation plan (§5.5), remembering the items it names. */
+function sendEnginePlan(plan) {
+  const chain = Array.isArray(plan.chain) ? plan.chain : [];
+  const keep = new Map();
+  if (current?.id && chainItems.has(current.id)) keep.set(current.id, chainItems.get(current.id));
+  for (const hop of chain) if (hop?.item?.id) keep.set(hop.item.id, hop.item);
+  chainItems = keep;
+  const args = { planSeq: plan.planSeq, autoAdvance: plan.autoAdvance !== false, chain };
+  if (plan.previous !== undefined) args.previous = plan.previous;
+  return engine.send("setContinuation", args, { source: "restore" }).then((r) => r.ok === true);
+}
+
+/** The voice preview as an engine command: `{ok: true, voiceFallback}` or
+    `{ok: false, reason}` (`engine-busy` while something plays). The engine
+    speaks at its own 1x (AVSpeechUtteranceDefaultSpeechRate, OQ-3). */
+async function auditionThroughEngine(text, voiceId) {
+  const reply = await engine.send("audition", {
+    text: String(text ?? ""), voiceId: typeof voiceId === "string" && voiceId ? voiceId : null,
+  }, { source: "audition" });
+  if (!reply.ok) return { ok: false, reason: reply.reason ?? null };
+  return { ok: true, voiceFallback: reply.snapshot?.voiceFallback === true };
+}
+
+/** An engine event other than a snapshot (the facades take those). */
+function onEngineEvent(ev) {
+  if (!ev || engineMode !== "native") return;
+  /* A hop the engine walked while the page watched: apply and ack it now,
+     and move the bar to the episode it plays. */
+  if (ev.type === "advanced") {
+    attachEngine("advanced").catch((err) => console.warn("[player] attach failed", err));
+    return;
+  }
+  /* The engine gave up the audio by itself (its hello watchdog, §4.6): the
+     page's half of the relinquish, without sending one. */
+  if (ev.type === "modeChanged" && ev.mode === "legacy") {
+    relinquishToJs(null).catch((err) => console.warn("[player] relinquish failed", err));
+  }
+}
+
+/**
+ * THE ORDERED RELINQUISH (§4.6, page side), one way per process:
+ *   1. await `relinquish{cap}` — the engine stops, persisting, and goes terminal;
+ *   2. `engineRead("rows")` and adopt them: the page's copy of the owned rows
+ *      becomes exactly the engine's last word (replace-set);
+ *   3. `storage.releaseOwnership()`: the page is the writer again;
+ *   4. `engineMode = "js"`, which turns the JS branches of the position
+ *      flushes, persistForayProgress and syncMediaSession back on;
+ *   5. `ensureJsBooted()`: today's player, over the page's DOM.
+ * Nothing audible is built before step 5, so the engine has stopped before the
+ * first <audio> element exists. The price (M1): episodes play the old way
+ * until the next launch.
+ * @param {string|null} cap  the capability the page needed; null when the
+ *   engine relinquished on its own and there is nothing to send
+ */
+let relinquishing = null;
+function relinquishToJs(cap) {
+  if (engineMode !== "native") return relinquishing ?? Promise.resolve();
+  if (relinquishing) return relinquishing;
+  relinquishing = (async () => {
+    if (cap) await engine.send("relinquish", { cap }, { source: "tap" });
+    const rows = await engine.read("rows", { prefixes: [...OWNED_PREFIXES] });
+    if (rows && rows.rows) storage.adoptOwnedSet(rows.rows);
+    /* Not awaited past the flip: `releaseOwnership` makes the page the writer
+       synchronously, and its commit into the tiers finishes on its own — a
+       hung IndexedDB must not hold a Foray tap hostage (idb-tier.js, hazard 1). */
+    storage.releaseOwnership().catch(() => {});
+    engineMode = "js";
+    if (engineFacades) { engineFacades.dispose(); engineFacades = null; }
+    manager = null;
+    backend = null;
+    positions = null;
+    /* The legacy lane's lock-screen shim comes back with the legacy lane. */
+    try { if (typeof window !== "undefined") window.ForayMediaSession?.install?.(); } catch (_) { /* optional */ }
+    ensureJsBooted();
+    if (current) { media.invalidate(); render(); }
+  })();
+  return relinquishing;
 }
 
 /* ---------- wiring ---------- */
@@ -3324,6 +3653,15 @@ function bind() {
   ui.rateBtn.addEventListener("click", () => openRatePicker());
 
   document.addEventListener("visibilitychange", () => {
+    /* Native mode: tell the engine (it gates its events on this, §5.4), and on
+       the way back ATTACH — a read, never a command (W-8). */
+    if (engineMode === "native" && engine) {
+      const visible = !document.hidden;
+      engine.setVisible(visible)
+        .then(() => (visible ? attachEngine("visible") : null))
+        .catch((err) => console.warn("[player] attach failed", err));
+      return;
+    }
     if (document.hidden) { flushPositions(); return; }
     /* Nothing awaits an event handler, so the rejection needs somewhere to land
        other than the console's unhandled bucket — and a reconcile that failed
@@ -3333,7 +3671,114 @@ function bind() {
   window.addEventListener("pagehide", flushPositions);
 }
 
+/* The one sink, for BOTH the manager and the backend (#264). Extracted from the
+   manager's option so it can be handed to the element layer as well — see
+   `HtmlAudioBackend` above.
+
+   THE CONSOLE HALF IS UNCHANGED, and deliberately so: it drives `foray.error`,
+   which is a listener-facing surface, and that is a different job from measuring
+   the seam. The one behavioural consequence of the second caller is that a media
+   error and a refused `play()` now also reach `console.warn`, which is an
+   improvement on reaching nothing — and neither matches the narrower
+   `foray.error` test below, so the Foray page's standing-error rule is untouched
+   (#225's argument still holds exactly as written). */
+function onTelemetry(m) {
+  /* FIRST, AND BEFORE THE FILTER (#264). Everything diagnostic used to be
+     dropped by the regex below — `outPoint.reached … overshoot=0.003s`,
+     `seam.gap.armed`, `load.deadline`, `prefetch.window` — because none of
+     those words is "error", "rejected" or "skipped". The record takes the
+     whole stream and keeps only numbers it matched and stage names from a
+     fixed vocabulary; the message text itself is never stored. */
+  diag.note(m);
+  if (!/error|rejected|skipped/i.test(m)) return;
+  console.warn("[player]", m);
+  /* A Foray that stops on a dead segment must SAY so. Without this the
+     manager pauses, the page keeps its highlight, and the only evidence is
+     a console line nobody has open.
+
+     `.atLoad` and nothing shorter (#225). `setQueueFromForay` emits one
+     `foray.segment.skipped[i]` per segment the BUILD dropped, synchronously
+     inside `playForay` and before any audio is attempted — a property of the
+     running order, which the page already states in its own words ("2
+     segments can't play — listed below"). Catching those here stamped a
+     standing error on a Foray that was about to play perfectly well, and a
+     standing error is indistinguishable from a failed attempt. A skip
+     discovered at LOAD is the other thing: the listener's segment, refused
+     with the audio in hand. */
+  if (foray && /player\.error|segment\.skipped\.atLoad/i.test(m)) {
+    foray.error = m;
+    notifyForay();
+  }
+  /* The ordinary-episode half (persona audit #4): a media error or a refused
+     play() on a single episode reaches the bar and the sheet. The Foray page
+     keeps its own line above; this is for everything else. */
+  if (!foray && current && /player\.error|play\.rejected/i.test(m)) {
+    setPlayFailure(playFailureCopy(m));
+  }
+}
+
+/**
+ * Build the player, in whichever lane the handshake chose. Returns whether a
+ * player exists afterwards.
+ *
+ * FALSE WHILE THE LANE IS UNKNOWN (NE-22), and that is the pin: on the iOS
+ * shell, before engineHello has answered, nothing audible may exist — not an
+ * <audio> element, not the jingle's, not a manager that could make one. Every
+ * public entry point awaits `engineModeReady` before calling this, so in
+ * practice it is only ever called once the answer is in; answering false
+ * rather than building "the JS player for now" is what keeps that true when a
+ * caller forgets.
+ */
 function ensureBooted() {
+  if (manager) return true;
+  if (engineMode === null) return false;
+  if (engineMode === "native") bootNative();
+  else ensureJsBooted();
+  return Boolean(manager);
+}
+
+/**
+ * The native lane (§5.6): the facades stand where the manager and the backend
+ * stand, so every paint and every transport path above reads and sends through
+ * the engine without knowing it. Built: the facades, a READ-ONLY PositionStore
+ * (the rows are the engine's; this reads them for the restored bar), an inert
+ * media session, and the page's own DOM. Not built, ever, in this lane:
+ * HtmlAudioBackend, the interlude element, PlayerQueueManager.
+ */
+function bootNative() {
+  const rate = readRate(storage);
+  const voice = readVoice(storage);
+  positions = new PositionStore({ storage });
+  engineFacades = createNativeFacades({
+    engine,
+    rate,
+    voice,
+    interludeEnabled: readInterludePref(storage),
+    onStateSettled: () => render(),
+    onSeamGapChange: () => render(),
+    onNarrationTick: () => render(),
+  });
+  manager = engineFacades.manager;
+  backend = engineFacades.backend;
+  interlude = null;
+  /* INERT, deliberately: no navigator, so not one write reaches
+     navigator.mediaSession (WebKit's copy of Now Playing). The engine's
+     NowPlayingPublisher and RemoteSurface are the lock screen and the car. */
+  media = buildMediaSession({ nav: null });
+  if (!ui) { ui = buildUI(); bind(); }
+  /* The page still owns cp_rate / cp_voice (§5.2), so the engine is told what
+     they are — non-audible commands, and only when they differ from what the
+     engine already holds, so a page booted over a running engine sends
+     nothing it did not have to. */
+  const s = engine.latest()?.snapshot;
+  if (s && s.rate !== rate) manager.setRate(rate);
+  if (voice) manager.setVoice(voice);
+  paintRate(rate);
+  wireMediaListeners();
+}
+
+/** Today's player: the JS lane, and the lane a relinquish lands in. */
+function ensureJsBooted() {
   if (manager) return;
 
   /* Read BEFORE the manager is built, so `manager.rate` is never momentarily
@@ -3440,52 +3885,6 @@ function ensureBooted() {
     resolveDefaultVoice();
   }
 
-  /* The one sink, for BOTH the manager and the backend (#264). Extracted from the
-     manager's option so it can be handed to the element layer as well — see
-     `HtmlAudioBackend` above.
-
-     THE CONSOLE HALF IS UNCHANGED, and deliberately so: it drives `foray.error`,
-     which is a listener-facing surface, and that is a different job from measuring
-     the seam. The one behavioural consequence of the second caller is that a media
-     error and a refused `play()` now also reach `console.warn`, which is an
-     improvement on reaching nothing — and neither matches the narrower
-     `foray.error` test below, so the Foray page's standing-error rule is untouched
-     (#225's argument still holds exactly as written). */
-  function onTelemetry(m) {
-      /* FIRST, AND BEFORE THE FILTER (#264). Everything diagnostic used to be
-         dropped by the regex below — `outPoint.reached … overshoot=0.003s`,
-         `seam.gap.armed`, `load.deadline`, `prefetch.window` — because none of
-         those words is "error", "rejected" or "skipped". The record takes the
-         whole stream and keeps only numbers it matched and stage names from a
-         fixed vocabulary; the message text itself is never stored. */
-      diag.note(m);
-      if (!/error|rejected|skipped/i.test(m)) return;
-      console.warn("[player]", m);
-      /* A Foray that stops on a dead segment must SAY so. Without this the
-         manager pauses, the page keeps its highlight, and the only evidence is
-         a console line nobody has open.
-
-         `.atLoad` and nothing shorter (#225). `setQueueFromForay` emits one
-         `foray.segment.skipped[i]` per segment the BUILD dropped, synchronously
-         inside `playForay` and before any audio is attempted — a property of the
-         running order, which the page already states in its own words ("2
-         segments can't play — listed below"). Catching those here stamped a
-         standing error on a Foray that was about to play perfectly well, and a
-         standing error is indistinguishable from a failed attempt. A skip
-         discovered at LOAD is the other thing: the listener's segment, refused
-         with the audio in hand. */
-      if (foray && /player\.error|segment\.skipped\.atLoad/i.test(m)) {
-        foray.error = m;
-        notifyForay();
-      }
-      /* The ordinary-episode half (persona audit #4): a media error or a refused
-         play() on a single episode reaches the bar and the sheet. The Foray page
-         keeps its own line above; this is for everything else. */
-      if (!foray && current && /player\.error|play\.rejected/i.test(m)) {
-        setPlayFailure(playFailureCopy(m));
-      }
-  }
-
   /* The lock screen / car / headphone surface (#27). `createMediaSession`
      returns an inert bridge where `navigator.mediaSession` is absent — desktop
      Safari, older browsers — so nothing below ever has to check.
@@ -3496,9 +3895,25 @@ function ensureBooted() {
      TypeError producing a perfect, inert page, which is the exact class of
      failure `player/foray-playback.test.js` exists to catch. Nothing here needs
      the DOM, so nothing here waits for it. */
-  media = createMediaSession({
-    nav: typeof navigator !== "undefined" ? navigator : null,
-    MediaMetadata: typeof window !== "undefined" ? window.MediaMetadata : null,
+  media = buildMediaSession({ nav: typeof navigator !== "undefined" ? navigator : null });
+
+  if (!ui) { ui = buildUI(); bind(); }
+
+  /* Through the durable store, like every other cp_ key: a playback rate is
+     small, but "the app forgot I listen at 1.5x" is the same defect in miniature.
+     `manager.setRate`, not `backend.setRate` — the manager is what re-applies it
+     at every seam, and going round it would restore the old defect exactly. */
+  manager.setRate(rate);
+  paintRate(rate);
+  wireMediaListeners();
+}
+
+/** The ONE place the page's media session is built, for both lanes: over the
+    real navigator in the JS lane, over none (inert) in the native lane. */
+function buildMediaSession({ nav }) {
+  return createMediaSession({
+    nav,
+    MediaMetadata: nav && typeof window !== "undefined" ? window.MediaMetadata : null,
     /* L-06 (founder feedback F15). Every payload that ACTUALLY reaches the
        platform, into the field record — the three strings and whether the
        Capacitor shim got it across. `media-session.js` fires this only on a
@@ -3507,17 +3922,11 @@ function ensureBooted() {
     onWrite: (written) => afterShimFlush(() =>
       diag.nowPlaying({ ...written, native: mediaSessionShimState() })),
   });
+}
 
-  ui = buildUI();
-  bind();
-
-  /* Through the durable store, like every other cp_ key: a playback rate is
-     small, but "the app forgot I listen at 1.5x" is the same defect in miniature.
-     `manager.setRate`, not `backend.setRate` — the manager is what re-applies it
-     at every seam, and going round it would restore the old defect exactly. */
-  manager.setRate(rate);
-  paintRate(rate);
-
+/** The element events the page repaints and records on, for whichever backend
+    the lane built (the facade synthesises the same events from snapshots). */
+function wireMediaListeners() {
   /* `addMediaListener`, NOT `backend.el.addEventListener`, and this is not a
      style preference. The backend now owns two `<audio>` elements and hands the
      player role between them at every cross-episode seam
@@ -3592,7 +4001,12 @@ const ForayPlayer = {
     const startAt = Number(opts?.startOffset);
     const startOffset = Number.isFinite(startAt) && startAt >= 0 ? startAt : null;
     if (!this.canPlay(item)) return false;
-    ensureBooted();
+    /* The lane first (NE-22): on the iOS shell, before engineHello has
+       answered, the call comes back here once it has. Off the shell
+       `engineMode` is "js" from module load and this never happens, so the
+       gesture rule below is untouched — nothing is awaited before it. */
+    if (engineMode === null) return engineModeReady.then(() => ForayPlayer.play(item, opts));
+    if (!ensureBooted()) return false;
     // BEFORE the first await, always. See `notePlayGesture` (#225).
     backend.notePlayGesture();
     // The jingle's element needs the same tap, for the same reason (§13).
@@ -3651,10 +4065,21 @@ const ForayPlayer = {
        really in. Null here means "nothing worth pointing at", which leaves the
        old pointer alone; clearing it is a separate decision for callers that
        mean it. */
-    const lastRec = makeLastEpisode(item);
-    if (lastRec) writeLastEpisode(storage, lastRec);
+    /* NATIVE: THE ENGINE WRITES IT (§5.2). The facade's playEpisode carries
+       `lastEpisodeRow` — `makeLastEpisode(item)` without `updated_at` — and
+       the engine stores it verbatim plus its own time, so the row is the one
+       this line would have written, and the page writes no owned key. */
+    if (engineMode !== "native") {
+      const lastRec = makeLastEpisode(item);
+      if (lastRec) writeLastEpisode(storage, lastRec);
+    }
     manager.setQueueFromPick(item);
-    await manager.play(0, startOffset != null ? { startOffset } : undefined);
+    playsInFlight++;
+    try {
+      await manager.play(0, startOffset != null ? { startOffset } : undefined);
+    } finally {
+      playsInFlight--;
+    }
     render();
     /* THE ANSWER, NOT THE ATTEMPT (audit 2026-09-22). This returned `true`
        whatever happened, so every caller's `if (!ok)` was dead code and a 404
@@ -3770,8 +4195,18 @@ const ForayPlayer = {
    * restored episode bar keeps. Returns the painted row, or null.
    */
   restoreForay(resolved, { startElapsedSec = 0, discoverDoc = null } = {}) {
+    /* Every restore path waits for the lane (NE-22). app.js asks
+       `engineModePending()` first and calls this once the answer is in, so
+       the synchronous return it relies on is kept; this is the backstop. */
+    if (engineMode === null) return engineModeReady.then(() => ForayPlayer.restoreForay(resolved, { startElapsedSec, discoverDoc }));
     if (current) return null; // something is already playing; never stomp it
     if (!resolved || !resolved.playable?.length) return null;
+    /* BOOTING WHILE THE ENGINE IS RUNNING ATTACHES ONLY. An engine that holds
+       an episode is what the bar shows; the Foray ribbon would paint over it
+       and its first press would start something else. `restoreLastEpisode`
+       then paints the engine's episode. In M1 the Foray bar paints from
+       cp_foray only (the adopted rows) and its press relinquishes. */
+    if (engineMode === "native" && engineHoldsItem()) return null;
     ensureBooted();
     const at = segmentAtElapsed(resolved.playable, startElapsedSec);
     const total = resolved.playable.length;
@@ -3836,7 +4271,20 @@ const ForayPlayer = {
   },
 
   restoreLastEpisode() {
+    if (engineMode === null) return engineModeReady.then(() => ForayPlayer.restoreLastEpisode());
     if (current) return null; // something is already playing; never stomp it
+    /* NATIVE: ATTACH, AND WHEN THE ENGINE IS ALREADY PLAYING, ONLY ATTACH
+       (W-8). The pending logs are applied now — app.js has hydrated by the
+       time it asks for the ribbon — and an engine holding an episode paints
+       THAT, with no restoredPending: the next press is an intent to the
+       engine, never a playEpisode from a stored position. */
+    if (engineMode === "native") {
+      attachEngine("boot").catch((err) => console.warn("[player] attach failed", err));
+      if (engineHoldsItem()) {
+        ensureBooted();
+        return syncCurrentFromEngine({ force: true });
+      }
+    }
     const rec = readLastEpisode(storage);
     if (!rec) return null;
     ensureBooted();
@@ -3896,6 +4344,34 @@ const ForayPlayer = {
     if (media && current && !foray) media.setActions(episodeMediaSurface);
     paintEpisodeSurface();
     return true;
+  },
+
+  /**
+   * The page's answer to "what plays next", ahead of time (§5.5): app.js's
+   * `refreshEpisodeNavigation` hands over `{planSeq, autoAdvance, chain}` on
+   * every change, and in native mode it goes to the engine as
+   * `setContinuation`, which walks it at an episode end with the page asleep.
+   * The JS lane asks EPISODE_NAVIGATION at the moment it needs the answer, so
+   * there this is a no-op answering false. A plan handed over before the lane
+   * is known is held and sent once it is native.
+   * @returns {boolean|Promise<boolean>} whether the engine took it
+   */
+  setContinuation(plan) {
+    if (!plan || typeof plan !== "object") return false;
+    if (engineMode === null) { pendingPlan = plan; return false; }
+    if (engineMode !== "native") return false;
+    return sendEnginePlan(plan);
+  },
+
+  /** True while the iOS shell has not yet heard which lane plays. app.js asks
+      this before restoring the ribbon, and awaits `whenEngineReady` if so. */
+  engineModePending() {
+    return engineMode === null;
+  },
+
+  /** Resolves "native" or "js" once the lane is known (at once off iOS). */
+  whenEngineReady() {
+    return engineModeReady.then(() => engineMode);
   },
 
   /**
@@ -4261,6 +4737,12 @@ const ForayPlayer = {
    *   `voiceFallback`, etc. — unchanged, so the caller can show V-01's notice.
    */
   auditionVoice(text, voiceId) {
+    /* THROUGH THE ENGINE IN NATIVE MODE (OQ-5, NE-22): one owner of the audio
+       session, so a preview is an `audition` command and never a second
+       synthesiser on the page. The engine refuses it with `engine-busy` while
+       something plays, and app.js says "Pause playback to preview". */
+    if (engineMode === null) return engineModeReady.then(() => ForayPlayer.auditionVoice(text, voiceId));
+    if (engineMode === "native" && engine) return auditionThroughEngine(text, voiceId);
     return ttsBridge.speak(text, { rate: NARRATION_RATE, voice: voiceId });
   },
 
@@ -4345,6 +4827,16 @@ const ForayPlayer = {
     startIndex = 0, startElapsedSec = null, onChange = null, discoverDoc = null,
   } = {}) {
     if (!resolved || !resolved.playable.length) return null;
+    /* The lane first (NE-22), by re-entry rather than an await, so that on
+       every path that has an element the gesture below is still spent before
+       anything is awaited. */
+    const again = () => ForayPlayer.playForay(resolved, { startIndex, startElapsedSec, onChange, discoverDoc });
+    if (engineMode === null) return engineModeReady.then(again);
+    /* M1: THE ENGINE DOES NOT PLAY FORAYS. Without its 'foray' capability the
+       tap runs the ordered relinquish (§4.6) and the Foray plays in today's
+       player — relinquished BEFORE a single element is built, so there is
+       never an engine and an <audio> element producing at once. */
+    if (engineMode === "native" && !engineCan("foray")) return relinquishToJs("foray").then(again);
     ensureBooted();
     /* THE FIRST THING, AND BEFORE EVERY AWAIT BELOW (#225).
 
