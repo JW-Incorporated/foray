@@ -812,6 +812,15 @@ const MintedSegmentSourceSchema = z.object({
   source: z.literal("generation-tier-2")
 });
 
+/** gen-13: the Foray's identity, banked the first time it is known and
+ * resumed thereafter (see `bankedIdentity` in runForayPipeline). */
+const IdentityCheckpointSchema = z.object({
+  startedAt: z.string().min(1),
+  forayId: z.string().min(1),
+  topic: z.string().min(1),
+  topicDecision: z.object({ topic: z.string().min(1), reason: z.string(), basis: z.string() }).passthrough()
+});
+
 const SourceCheckpointSchema = z.object({
   acts: z.array(SourcedActSchema),
   newSegments: z.array(NewSegmentSchema),
@@ -1086,7 +1095,17 @@ export async function runForayPipeline(
   const preSpineText = [req.prompt, intent.subject, intent.angle].join(" ");
   let topicDecision: PipelineTopicDecision;
   let preSpineCandidates: TopicCandidate[] = [];
-  if (options.topic) {
+  /* gen-13 (round-3 audit): a resumed run takes the Foray's IDENTITY (its
+     topic, start stamp and id) from the checkpoint rather than re-deriving
+     it. Re-deciding the topic against today's supply could gate sourcing on
+     a different node from the one the banked research map and spine were
+     filtered by, and re-reading the clock minted a new Foray id, so the
+     partial a listener was polling changed id mid-run. */
+  const bankedIdentity = checkpoint.resumeSync("identity", (raw) => IdentityCheckpointSchema.parse(raw));
+  if (bankedIdentity) {
+    topicDecision = bankedIdentity.topicDecision as unknown as PipelineTopicDecision;
+    console.log(`  ${topicDecisionLine(topicDecision, basis)} [resumed]`);
+  } else if (options.topic) {
     topicDecision = { ...pinnedTopicDecision(options.topic, measure([options.topic])), basis };
     console.log(`  ${topicDecisionLine(topicDecision, basis)}`);
   } else {
@@ -1248,13 +1267,15 @@ export async function runForayPipeline(
      would mint two ids for one piece of work. Determinism is untouched —
      both stamps are read from the injected clock, so the same request and the
      same clock still produce the same id (`runPipeline.test.ts`). */
-  const startedAt = now().toISOString();
+  const startedAt = bankedIdentity?.startedAt ?? now().toISOString();
   /* G-30 (manual step 25): an id that already sits in `data/forays.json` is
      suffixed `-2`, `-3`, … HERE — before the first partial candidate hands it
      to `finalizeForay`, which would otherwise throw on the duplicate at act 1
      (and again at the end, after the whole run was paid for). The read is the
      same file finalize reads; a checkout without it takes the id as minted. */
-  const forayId = uniqueForayId(forayIdFor(mintedFrom, startedAt), (deps.existingForayIds ?? readExistingForayIds)(options.root));
+  const forayId =
+    bankedIdentity?.forayId ?? uniqueForayId(forayIdFor(mintedFrom, startedAt), (deps.existingForayIds ?? readExistingForayIds)(options.root));
+  if (!bankedIdentity) await checkpoint.save("identity", { startedAt, forayId, topic, topicDecision });
   const slots = slotsFromSpine(spine);
   const allActTitles = spine.acts.map((a) => a.title);
 
