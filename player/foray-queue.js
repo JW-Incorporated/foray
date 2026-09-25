@@ -94,12 +94,22 @@ export const JINGLE = "jingle";
     replaces BOTH the day it is cut. */
 export const JINGLE_ASSET_URL = "https://jw-incorporated.github.io/foray/player/assets/interlude-placeholder.wav";
 
-/** "roughly 1-2 seconds" (§4.8). Fixed rather than measured because the
-    asset is fixed — unlike narration, there is no script to estimate a
-    duration from and no per-Foray variance to carry a `duration_source` for.
-    Update this one constant, once, the day the real asset is cut and its
-    true length is known. */
-export const JINGLE_DURATION_SEC = 1.5;
+/** The asset's MEASURED length: 3.0 s, the same file the seam interlude plays
+    (`player/interlude.js` INTERLUDE_DURATION_SEC). Fixed rather than measured
+    per item because the asset is fixed — unlike narration, there is no script
+    to estimate a duration from and no per-Foray variance to carry a
+    `duration_source` for.
+
+    OQ-6 (docs/native-engine-plan.md §9a, NE-29j, 2026-09-25): this read 1.5 s,
+    §4.8's "roughly 1-2 seconds", while the file that plays is 3.0 s — so every
+    authored jingle put the Foray clock 1.5 s behind the audio from that item
+    on, and the native engine, which counts what it plays, would have disagreed
+    with the page by the same amount. The clock and the audio now agree:
+    `foray-queue.test.js` pins this equal to INTERLUDE_DURATION_SEC (this module
+    cannot import it — interlude.js imports JINGLE from here), and the
+    `foray-clock` parity family pins the value as authored. Change the asset,
+    re-measure, change both. */
+export const JINGLE_DURATION_SEC = 3.0;
 
 const isNum = (n) => typeof n === "number" && Number.isFinite(n);
 const nonEmpty = (s) => typeof s === "string" && s.trim().length > 0;

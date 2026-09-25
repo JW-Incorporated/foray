@@ -500,8 +500,9 @@ export function slotsFromSpine(spine: Spine): ForaySlot[] {
   return slots;
 }
 
-/** A jingle's fixed length, mirroring `player/foray-queue.js`'s own constant. */
-export const JINGLE_DURATION_SEC = 1.5;
+/** A jingle's fixed length, mirroring `player/foray-queue.js`'s own constant:
+ * the asset's measured 3.0 s (OQ-6, docs/native-engine-plan.md §9a, NE-29j). */
+export const JINGLE_DURATION_SEC = 3.0;
 
 /**
  * The Foray's runtime on the LISTENER'S clock, which is what `runtime_sec`

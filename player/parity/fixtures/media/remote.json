@@ -1,0 +1,706 @@
+{
+  "family": "media",
+  "note": "Lock-screen and car presses routed into a real PlayerQueueManager playing a Foray (media-session.test.js §4b), through the runner's `remote` driver: the press goes through media-session.js mediaSessionActions, over the surface that suite's realPlayer builds. A literal three-segment Foray with a catalogue stands in for the committed one the JS suite uses, so the Swift runner needs no resolver: the rule is the routing, not the data. Port: NE-29s (EngineCore's remote handlers answer the same presses, plan §4.5).",
+  "cases": [
+    {
+      "id": "media/remote-nexttrack",
+      "covers": [
+        "media-session::nexttrack from a lock screen really advances the real manager to the next segment",
+        "media-session::nexttrack lands at the segment's in-point, not at 0:00 of somebody's episode",
+        "media-session::an out-point still arms after a lock-screen skip — the Foray cannot run into the next hour"
+      ],
+      "note": "A lock-screen next loads the next segment at its in-point (400, not 0) and arms its out-point (520).",
+      "setup": {
+        "target": "manager",
+        "seamGapSec": 0,
+        "catalogue": {
+          "ep-a": {
+            "id": "ep-a",
+            "title": "Fire",
+            "show": "Origin Stories",
+            "audio_url": "https://example.test/a.mp3",
+            "duration_sec": 3600
+          },
+          "ep-b": {
+            "id": "ep-b",
+            "title": "Smoke",
+            "show": "Food Talk",
+            "audio_url": "https://example.test/b.mp3",
+            "duration_sec": 3600
+          },
+          "ep-c": {
+            "id": "ep-c",
+            "title": "Ash",
+            "show": "Deep Time",
+            "audio_url": "https://example.test/c.mp3",
+            "duration_sec": 3600
+          }
+        }
+      },
+      "steps": [
+        {
+          "call": "setQueueFromForay",
+          "args": [
+            {
+              "$foray": {
+                "id": "foray-1",
+                "title": "Fire",
+                "items": [
+                  {
+                    "type": "segment",
+                    "item_id": "ep-a",
+                    "start_sec": 100,
+                    "end_sec": 210
+                  },
+                  {
+                    "type": "segment",
+                    "item_id": "ep-b",
+                    "start_sec": 400,
+                    "end_sec": 520
+                  },
+                  {
+                    "type": "segment",
+                    "item_id": "ep-c",
+                    "start_sec": 50,
+                    "end_sec": 170
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        { "call": "play", "args": [0] },
+        { "checkpoint": "started" },
+        { "remote": "nexttrack" },
+        { "checkpoint": "next" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "started",
+            "ops": ["load:foray-1#0@100", "rate:1", "outPoint:210", "play"],
+            "playhead": "foray-1#0",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "next",
+            "ops": ["pause", "load:foray-1#1@400", "rate:1", "outPoint:520", "play"],
+            "playhead": "foray-1#1",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "end",
+            "ops": [],
+            "playhead": "foray-1#1",
+            "rate": 1,
+            "state": "playing"
+          }
+        ],
+        "ops": [
+          "load:foray-1#0@100",
+          "rate:1",
+          "outPoint:210",
+          "play",
+          "pause",
+          "load:foray-1#1@400",
+          "rate:1",
+          "outPoint:520",
+          "play"
+        ]
+      }
+    },
+    {
+      "id": "media/remote-two-nexttracks",
+      "covers": ["media-session::two lock-screen nexttracks advance two segments"],
+      "note": "Two presses, two segments.",
+      "setup": {
+        "target": "manager",
+        "seamGapSec": 0,
+        "catalogue": {
+          "ep-a": {
+            "id": "ep-a",
+            "title": "Fire",
+            "show": "Origin Stories",
+            "audio_url": "https://example.test/a.mp3",
+            "duration_sec": 3600
+          },
+          "ep-b": {
+            "id": "ep-b",
+            "title": "Smoke",
+            "show": "Food Talk",
+            "audio_url": "https://example.test/b.mp3",
+            "duration_sec": 3600
+          },
+          "ep-c": {
+            "id": "ep-c",
+            "title": "Ash",
+            "show": "Deep Time",
+            "audio_url": "https://example.test/c.mp3",
+            "duration_sec": 3600
+          }
+        }
+      },
+      "steps": [
+        {
+          "call": "setQueueFromForay",
+          "args": [
+            {
+              "$foray": {
+                "id": "foray-1",
+                "title": "Fire",
+                "items": [
+                  {
+                    "type": "segment",
+                    "item_id": "ep-a",
+                    "start_sec": 100,
+                    "end_sec": 210
+                  },
+                  {
+                    "type": "segment",
+                    "item_id": "ep-b",
+                    "start_sec": 400,
+                    "end_sec": 520
+                  },
+                  {
+                    "type": "segment",
+                    "item_id": "ep-c",
+                    "start_sec": 50,
+                    "end_sec": 170
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        { "call": "play", "args": [0] },
+        { "checkpoint": "started" },
+        { "remote": "nexttrack" },
+        { "remote": "nexttrack" },
+        { "checkpoint": "twice" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "started",
+            "ops": ["load:foray-1#0@100", "rate:1", "outPoint:210", "play"],
+            "playhead": "foray-1#0",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 2,
+            "name": "twice",
+            "ops": [
+              "pause",
+              "load:foray-1#1@400",
+              "rate:1",
+              "outPoint:520",
+              "play",
+              "pause",
+              "load:foray-1#2@50",
+              "rate:1",
+              "outPoint:170",
+              "play"
+            ],
+            "playhead": "foray-1#2",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 2,
+            "name": "end",
+            "ops": [],
+            "playhead": "foray-1#2",
+            "rate": 1,
+            "state": "playing"
+          }
+        ],
+        "ops": [
+          "load:foray-1#0@100",
+          "rate:1",
+          "outPoint:210",
+          "play",
+          "pause",
+          "load:foray-1#1@400",
+          "rate:1",
+          "outPoint:520",
+          "play",
+          "pause",
+          "load:foray-1#2@50",
+          "rate:1",
+          "outPoint:170",
+          "play"
+        ]
+      }
+    },
+    {
+      "id": "media/remote-previoustrack",
+      "covers": [
+        "media-session::previoustrack from a lock screen restarts the segment at its in-point"
+      ],
+      "note": "40 s into the first segment, previous restarts it at its in-point (100), not at 0:00.",
+      "setup": {
+        "target": "manager",
+        "seamGapSec": 0,
+        "catalogue": {
+          "ep-a": {
+            "id": "ep-a",
+            "title": "Fire",
+            "show": "Origin Stories",
+            "audio_url": "https://example.test/a.mp3",
+            "duration_sec": 3600
+          },
+          "ep-b": {
+            "id": "ep-b",
+            "title": "Smoke",
+            "show": "Food Talk",
+            "audio_url": "https://example.test/b.mp3",
+            "duration_sec": 3600
+          },
+          "ep-c": {
+            "id": "ep-c",
+            "title": "Ash",
+            "show": "Deep Time",
+            "audio_url": "https://example.test/c.mp3",
+            "duration_sec": 3600
+          }
+        }
+      },
+      "steps": [
+        {
+          "call": "setQueueFromForay",
+          "args": [
+            {
+              "$foray": {
+                "id": "foray-1",
+                "title": "Fire",
+                "items": [
+                  {
+                    "type": "segment",
+                    "item_id": "ep-a",
+                    "start_sec": 100,
+                    "end_sec": 210
+                  },
+                  {
+                    "type": "segment",
+                    "item_id": "ep-b",
+                    "start_sec": 400,
+                    "end_sec": 520
+                  },
+                  {
+                    "type": "segment",
+                    "item_id": "ep-c",
+                    "start_sec": 50,
+                    "end_sec": 170
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        { "call": "play", "args": [0] },
+        { "checkpoint": "started" },
+        { "deck": "time", "sec": 140 },
+        { "remote": "previoustrack" },
+        { "checkpoint": "restarted" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "started",
+            "ops": ["load:foray-1#0@100", "rate:1", "outPoint:210", "play"],
+            "playhead": "foray-1#0",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "restarted",
+            "ops": ["pause", "load:foray-1#0@100", "rate:1", "outPoint:210", "play"],
+            "playhead": "foray-1#0",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "end",
+            "ops": [],
+            "playhead": "foray-1#0",
+            "rate": 1,
+            "state": "playing"
+          }
+        ],
+        "ops": [
+          "load:foray-1#0@100",
+          "rate:1",
+          "outPoint:210",
+          "play",
+          "pause",
+          "load:foray-1#0@100",
+          "rate:1",
+          "outPoint:210",
+          "play"
+        ]
+      }
+    },
+    {
+      "id": "media/remote-pause",
+      "covers": ["media-session::the hardware pause button really pauses the real backend"],
+      "note": "The hardware pause pauses the element and the manager.",
+      "setup": {
+        "target": "manager",
+        "seamGapSec": 0,
+        "catalogue": {
+          "ep-a": {
+            "id": "ep-a",
+            "title": "Fire",
+            "show": "Origin Stories",
+            "audio_url": "https://example.test/a.mp3",
+            "duration_sec": 3600
+          },
+          "ep-b": {
+            "id": "ep-b",
+            "title": "Smoke",
+            "show": "Food Talk",
+            "audio_url": "https://example.test/b.mp3",
+            "duration_sec": 3600
+          },
+          "ep-c": {
+            "id": "ep-c",
+            "title": "Ash",
+            "show": "Deep Time",
+            "audio_url": "https://example.test/c.mp3",
+            "duration_sec": 3600
+          }
+        }
+      },
+      "steps": [
+        {
+          "call": "setQueueFromForay",
+          "args": [
+            {
+              "$foray": {
+                "id": "foray-1",
+                "title": "Fire",
+                "items": [
+                  {
+                    "type": "segment",
+                    "item_id": "ep-a",
+                    "start_sec": 100,
+                    "end_sec": 210
+                  },
+                  {
+                    "type": "segment",
+                    "item_id": "ep-b",
+                    "start_sec": 400,
+                    "end_sec": 520
+                  },
+                  {
+                    "type": "segment",
+                    "item_id": "ep-c",
+                    "start_sec": 50,
+                    "end_sec": 170
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        { "call": "play", "args": [0] },
+        { "checkpoint": "started" },
+        { "remote": "pause" },
+        { "checkpoint": "paused" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "started",
+            "ops": ["load:foray-1#0@100", "rate:1", "outPoint:210", "play"],
+            "playhead": "foray-1#0",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "paused",
+            "ops": ["pause"],
+            "playhead": "foray-1#0",
+            "rate": 1,
+            "state": "interrupted"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "end",
+            "ops": [],
+            "playhead": "foray-1#0",
+            "rate": 1,
+            "state": "interrupted"
+          }
+        ],
+        "ops": ["load:foray-1#0@100", "rate:1", "outPoint:210", "play", "pause"]
+      }
+    },
+    {
+      "id": "media/remote-play-after-pause",
+      "covers": ["media-session::play after pause resumes through the real manager"],
+      "note": "Play after pause resumes the same segment.",
+      "setup": {
+        "target": "manager",
+        "seamGapSec": 0,
+        "catalogue": {
+          "ep-a": {
+            "id": "ep-a",
+            "title": "Fire",
+            "show": "Origin Stories",
+            "audio_url": "https://example.test/a.mp3",
+            "duration_sec": 3600
+          },
+          "ep-b": {
+            "id": "ep-b",
+            "title": "Smoke",
+            "show": "Food Talk",
+            "audio_url": "https://example.test/b.mp3",
+            "duration_sec": 3600
+          },
+          "ep-c": {
+            "id": "ep-c",
+            "title": "Ash",
+            "show": "Deep Time",
+            "audio_url": "https://example.test/c.mp3",
+            "duration_sec": 3600
+          }
+        }
+      },
+      "steps": [
+        {
+          "call": "setQueueFromForay",
+          "args": [
+            {
+              "$foray": {
+                "id": "foray-1",
+                "title": "Fire",
+                "items": [
+                  {
+                    "type": "segment",
+                    "item_id": "ep-a",
+                    "start_sec": 100,
+                    "end_sec": 210
+                  },
+                  {
+                    "type": "segment",
+                    "item_id": "ep-b",
+                    "start_sec": 400,
+                    "end_sec": 520
+                  },
+                  {
+                    "type": "segment",
+                    "item_id": "ep-c",
+                    "start_sec": 50,
+                    "end_sec": 170
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        { "call": "play", "args": [0] },
+        { "checkpoint": "started" },
+        { "remote": "pause" },
+        { "checkpoint": "paused" },
+        { "remote": "play" },
+        { "checkpoint": "resumed" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "started",
+            "ops": ["load:foray-1#0@100", "rate:1", "outPoint:210", "play"],
+            "playhead": "foray-1#0",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "paused",
+            "ops": ["pause"],
+            "playhead": "foray-1#0",
+            "rate": 1,
+            "state": "interrupted"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "resumed",
+            "ops": ["load:foray-1#0@100", "rate:1", "outPoint:210", "play"],
+            "playhead": "foray-1#0",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "end",
+            "ops": [],
+            "playhead": "foray-1#0",
+            "rate": 1,
+            "state": "playing"
+          }
+        ],
+        "ops": [
+          "load:foray-1#0@100",
+          "rate:1",
+          "outPoint:210",
+          "play",
+          "pause",
+          "load:foray-1#0@100",
+          "rate:1",
+          "outPoint:210",
+          "play"
+        ]
+      }
+    },
+    {
+      "id": "media/remote-seekto",
+      "covers": ["media-session::a car scrub reaches the real backend as a precise seek"],
+      "note": "A car's scrub is a precise seek on the element.",
+      "setup": {
+        "target": "manager",
+        "seamGapSec": 0,
+        "catalogue": {
+          "ep-a": {
+            "id": "ep-a",
+            "title": "Fire",
+            "show": "Origin Stories",
+            "audio_url": "https://example.test/a.mp3",
+            "duration_sec": 3600
+          },
+          "ep-b": {
+            "id": "ep-b",
+            "title": "Smoke",
+            "show": "Food Talk",
+            "audio_url": "https://example.test/b.mp3",
+            "duration_sec": 3600
+          },
+          "ep-c": {
+            "id": "ep-c",
+            "title": "Ash",
+            "show": "Deep Time",
+            "audio_url": "https://example.test/c.mp3",
+            "duration_sec": 3600
+          }
+        }
+      },
+      "steps": [
+        {
+          "call": "setQueueFromForay",
+          "args": [
+            {
+              "$foray": {
+                "id": "foray-1",
+                "title": "Fire",
+                "items": [
+                  {
+                    "type": "segment",
+                    "item_id": "ep-a",
+                    "start_sec": 100,
+                    "end_sec": 210
+                  },
+                  {
+                    "type": "segment",
+                    "item_id": "ep-b",
+                    "start_sec": 400,
+                    "end_sec": 520
+                  },
+                  {
+                    "type": "segment",
+                    "item_id": "ep-c",
+                    "start_sec": 50,
+                    "end_sec": 170
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        { "call": "play", "args": [0] },
+        { "checkpoint": "started" },
+        { "remote": "seekto", "details": { "seekTime": 120 } },
+        { "checkpoint": "scrubbed" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "started",
+            "ops": ["load:foray-1#0@100", "rate:1", "outPoint:210", "play"],
+            "playhead": "foray-1#0",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "scrubbed",
+            "ops": ["seek:120"],
+            "playhead": "foray-1#0",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "end",
+            "ops": [],
+            "playhead": "foray-1#0",
+            "rate": 1,
+            "state": "playing"
+          }
+        ],
+        "ops": ["load:foray-1#0@100", "rate:1", "outPoint:210", "play", "seek:120"]
+      }
+    }
+  ]
+}

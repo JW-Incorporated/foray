@@ -1,0 +1,366 @@
+{
+  "family": "media",
+  "module": "player/parity/forays.js",
+  "note": "The lock-screen rules over every committed Foray, through the page's own build of it (player/parity/forays.js). Authored invariants — zero violations, true — so a publish that edits or adds Forays cannot turn them red, only one that breaks what a car display shows. A Foray deleted from data/ must drop its cases here.",
+  "cases": [
+    {
+      "id": "media/committed-forays-exist",
+      "covers": ["media-session::data/forays.json still has Forays to check this against"],
+      "authored": true,
+      "note": "The precondition of every committed-Foray case below: at least two Forays to run the rules over.",
+      "call": "committedForays",
+      "args": [],
+      "expect": { "return": { "atLeastTwo": true } }
+    },
+    {
+      "id": "media/never-4a-grilling-history-2",
+      "covers": [
+        "media-session::a narration item is credited to the FORAY, never to a publisher and never to us (L-06/F15)",
+        "media-session::F15's own inputs: a narration line with no next item never says 4a in the CREDIT"
+      ],
+      "authored": true,
+      "note": "'4a is never the artist of anything audible' (L-06 / F15), over every playable item of this committed Foray — segment, narration or jingle — through mediaMetadata and narrationCredit. Authored: zero.",
+      "call": "appAsArtist",
+      "args": [{ "$foray": "grilling-history-2" }],
+      "expect": { "return": 0 }
+    },
+    {
+      "id": "media/lock-screen-grilling-history-2",
+      "covers": [
+        "media-session::every segment of every shipped Foray maps to a non-empty title and artist",
+        "media-session::the display CHANGES at a seam where the source changes — a frozen car display is the failure",
+        "media-session::the shipped shows really do come out as the publishers' names"
+      ],
+      "authored": true,
+      "note": "Every playable item has a title and a credit and an album naming the Foray; no join leaves the car display unchanged; every segment is credited to its show; narration and the jingle wear only the app's artwork. Authored: zero violations.",
+      "call": "lockScreenAudit",
+      "args": [{ "$foray": "grilling-history-2" }],
+      "expect": {
+        "return": {
+          "albumMissingForay": 0,
+          "blankArtist": 0,
+          "blankTitle": 0,
+          "frozenDisplays": 0,
+          "narrationArtwork": 0,
+          "segmentNotShow": 0
+        }
+      }
+    },
+    {
+      "id": "media/foray-clock-grilling-history-2",
+      "covers": ["media-session::mediaSessionView reports the FORAY's clock, not the segment's"],
+      "authored": true,
+      "note": "At the tape item past the midpoint, halfway through: the lock screen's duration is the Foray's total (not the segment's length) and its position is the Foray clock. Authored.",
+      "call": "lockScreenClock",
+      "args": [{ "$foray": "grilling-history-2" }],
+      "expect": {
+        "return": {
+          "durationIsForayTotal": true,
+          "durationIsNotSegment": true,
+          "positionIsForayClock": true,
+          "tapeItemFound": true
+        }
+      }
+    },
+    {
+      "id": "media/never-4a-capital-types-1",
+      "covers": [
+        "media-session::a narration item is credited to the FORAY, never to a publisher and never to us (L-06/F15)",
+        "media-session::F15's own inputs: a narration line with no next item never says 4a in the CREDIT"
+      ],
+      "authored": true,
+      "note": "'4a is never the artist of anything audible' (L-06 / F15), over every playable item of this committed Foray — segment, narration or jingle — through mediaMetadata and narrationCredit. Authored: zero.",
+      "call": "appAsArtist",
+      "args": [{ "$foray": "capital-types-1" }],
+      "expect": { "return": 0 }
+    },
+    {
+      "id": "media/lock-screen-capital-types-1",
+      "covers": [
+        "media-session::every segment of every shipped Foray maps to a non-empty title and artist",
+        "media-session::the display CHANGES at a seam where the source changes — a frozen car display is the failure",
+        "media-session::the shipped shows really do come out as the publishers' names"
+      ],
+      "authored": true,
+      "note": "Every playable item has a title and a credit and an album naming the Foray; no join leaves the car display unchanged; every segment is credited to its show; narration and the jingle wear only the app's artwork. Authored: zero violations.",
+      "call": "lockScreenAudit",
+      "args": [{ "$foray": "capital-types-1" }],
+      "expect": {
+        "return": {
+          "albumMissingForay": 0,
+          "blankArtist": 0,
+          "blankTitle": 0,
+          "frozenDisplays": 0,
+          "narrationArtwork": 0,
+          "segmentNotShow": 0
+        }
+      }
+    },
+    {
+      "id": "media/foray-clock-capital-types-1",
+      "covers": ["media-session::mediaSessionView reports the FORAY's clock, not the segment's"],
+      "authored": true,
+      "note": "At the tape item past the midpoint, halfway through: the lock screen's duration is the Foray's total (not the segment's length) and its position is the Foray clock. Authored.",
+      "call": "lockScreenClock",
+      "args": [{ "$foray": "capital-types-1" }],
+      "expect": {
+        "return": {
+          "durationIsForayTotal": true,
+          "durationIsNotSegment": true,
+          "positionIsForayClock": true,
+          "tapeItemFound": true
+        }
+      }
+    },
+    {
+      "id": "media/never-4a-geology-plates-1",
+      "covers": [
+        "media-session::a narration item is credited to the FORAY, never to a publisher and never to us (L-06/F15)",
+        "media-session::F15's own inputs: a narration line with no next item never says 4a in the CREDIT"
+      ],
+      "authored": true,
+      "note": "'4a is never the artist of anything audible' (L-06 / F15), over every playable item of this committed Foray — segment, narration or jingle — through mediaMetadata and narrationCredit. Authored: zero.",
+      "call": "appAsArtist",
+      "args": [{ "$foray": "geology-plates-1" }],
+      "expect": { "return": 0 }
+    },
+    {
+      "id": "media/lock-screen-geology-plates-1",
+      "covers": [
+        "media-session::every segment of every shipped Foray maps to a non-empty title and artist",
+        "media-session::the display CHANGES at a seam where the source changes — a frozen car display is the failure",
+        "media-session::the shipped shows really do come out as the publishers' names"
+      ],
+      "authored": true,
+      "note": "Every playable item has a title and a credit and an album naming the Foray; no join leaves the car display unchanged; every segment is credited to its show; narration and the jingle wear only the app's artwork. Authored: zero violations.",
+      "call": "lockScreenAudit",
+      "args": [{ "$foray": "geology-plates-1" }],
+      "expect": {
+        "return": {
+          "albumMissingForay": 0,
+          "blankArtist": 0,
+          "blankTitle": 0,
+          "frozenDisplays": 0,
+          "narrationArtwork": 0,
+          "segmentNotShow": 0
+        }
+      }
+    },
+    {
+      "id": "media/foray-clock-geology-plates-1",
+      "covers": ["media-session::mediaSessionView reports the FORAY's clock, not the segment's"],
+      "authored": true,
+      "note": "At the tape item past the midpoint, halfway through: the lock screen's duration is the Foray's total (not the segment's length) and its position is the Foray clock. Authored.",
+      "call": "lockScreenClock",
+      "args": [{ "$foray": "geology-plates-1" }],
+      "expect": {
+        "return": {
+          "durationIsForayTotal": true,
+          "durationIsNotSegment": true,
+          "positionIsForayClock": true,
+          "tapeItemFound": true
+        }
+      }
+    },
+    {
+      "id": "media/never-4a-beyond-the-algorithm-engineering-production-ai-s-e6533b",
+      "covers": [
+        "media-session::a narration item is credited to the FORAY, never to a publisher and never to us (L-06/F15)",
+        "media-session::F15's own inputs: a narration line with no next item never says 4a in the CREDIT"
+      ],
+      "authored": true,
+      "note": "'4a is never the artist of anything audible' (L-06 / F15), over every playable item of this committed Foray — segment, narration or jingle — through mediaMetadata and narrationCredit. Authored: zero.",
+      "call": "appAsArtist",
+      "args": [{ "$foray": "beyond-the-algorithm-engineering-production-ai-s-e6533b" }],
+      "expect": { "return": 0 }
+    },
+    {
+      "id": "media/lock-screen-beyond-the-algorithm-engineering-production-ai-s-e6533b",
+      "covers": [
+        "media-session::every segment of every shipped Foray maps to a non-empty title and artist",
+        "media-session::the display CHANGES at a seam where the source changes — a frozen car display is the failure",
+        "media-session::the shipped shows really do come out as the publishers' names"
+      ],
+      "authored": true,
+      "note": "Every playable item has a title and a credit and an album naming the Foray; no join leaves the car display unchanged; every segment is credited to its show; narration and the jingle wear only the app's artwork. Authored: zero violations.",
+      "call": "lockScreenAudit",
+      "args": [{ "$foray": "beyond-the-algorithm-engineering-production-ai-s-e6533b" }],
+      "expect": {
+        "return": {
+          "albumMissingForay": 0,
+          "blankArtist": 0,
+          "blankTitle": 0,
+          "frozenDisplays": 0,
+          "narrationArtwork": 0,
+          "segmentNotShow": 0
+        }
+      }
+    },
+    {
+      "id": "media/foray-clock-beyond-the-algorithm-engineering-production-ai-s-e6533b",
+      "covers": ["media-session::mediaSessionView reports the FORAY's clock, not the segment's"],
+      "authored": true,
+      "note": "At the tape item past the midpoint, halfway through: the lock screen's duration is the Foray's total (not the segment's length) and its position is the Foray clock. Authored.",
+      "call": "lockScreenClock",
+      "args": [{ "$foray": "beyond-the-algorithm-engineering-production-ai-s-e6533b" }],
+      "expect": {
+        "return": {
+          "durationIsForayTotal": true,
+          "durationIsNotSegment": true,
+          "positionIsForayClock": true,
+          "tapeItemFound": true
+        }
+      }
+    },
+    {
+      "id": "media/never-4a-how-ai-actually-gets-built-3b83e1",
+      "covers": [
+        "media-session::a narration item is credited to the FORAY, never to a publisher and never to us (L-06/F15)",
+        "media-session::F15's own inputs: a narration line with no next item never says 4a in the CREDIT"
+      ],
+      "authored": true,
+      "note": "'4a is never the artist of anything audible' (L-06 / F15), over every playable item of this committed Foray — segment, narration or jingle — through mediaMetadata and narrationCredit. Authored: zero.",
+      "call": "appAsArtist",
+      "args": [{ "$foray": "how-ai-actually-gets-built-3b83e1" }],
+      "expect": { "return": 0 }
+    },
+    {
+      "id": "media/lock-screen-how-ai-actually-gets-built-3b83e1",
+      "covers": [
+        "media-session::every segment of every shipped Foray maps to a non-empty title and artist",
+        "media-session::the display CHANGES at a seam where the source changes — a frozen car display is the failure",
+        "media-session::the shipped shows really do come out as the publishers' names"
+      ],
+      "authored": true,
+      "note": "Every playable item has a title and a credit and an album naming the Foray; no join leaves the car display unchanged; every segment is credited to its show; narration and the jingle wear only the app's artwork. Authored: zero violations.",
+      "call": "lockScreenAudit",
+      "args": [{ "$foray": "how-ai-actually-gets-built-3b83e1" }],
+      "expect": {
+        "return": {
+          "albumMissingForay": 0,
+          "blankArtist": 0,
+          "blankTitle": 0,
+          "frozenDisplays": 0,
+          "narrationArtwork": 0,
+          "segmentNotShow": 0
+        }
+      }
+    },
+    {
+      "id": "media/foray-clock-how-ai-actually-gets-built-3b83e1",
+      "covers": ["media-session::mediaSessionView reports the FORAY's clock, not the segment's"],
+      "authored": true,
+      "note": "At the tape item past the midpoint, halfway through: the lock screen's duration is the Foray's total (not the segment's length) and its position is the Foray clock. Authored.",
+      "call": "lockScreenClock",
+      "args": [{ "$foray": "how-ai-actually-gets-built-3b83e1" }],
+      "expect": {
+        "return": {
+          "durationIsForayTotal": true,
+          "durationIsNotSegment": true,
+          "positionIsForayClock": true,
+          "tapeItemFound": true
+        }
+      }
+    },
+    {
+      "id": "media/never-4a-the-chain-reaction-how-engineering-disasters-rea-25f1b7",
+      "covers": [
+        "media-session::a narration item is credited to the FORAY, never to a publisher and never to us (L-06/F15)",
+        "media-session::F15's own inputs: a narration line with no next item never says 4a in the CREDIT"
+      ],
+      "authored": true,
+      "note": "'4a is never the artist of anything audible' (L-06 / F15), over every playable item of this committed Foray — segment, narration or jingle — through mediaMetadata and narrationCredit. Authored: zero.",
+      "call": "appAsArtist",
+      "args": [{ "$foray": "the-chain-reaction-how-engineering-disasters-rea-25f1b7" }],
+      "expect": { "return": 0 }
+    },
+    {
+      "id": "media/lock-screen-the-chain-reaction-how-engineering-disasters-rea-25f1b7",
+      "covers": [
+        "media-session::every segment of every shipped Foray maps to a non-empty title and artist",
+        "media-session::the display CHANGES at a seam where the source changes — a frozen car display is the failure",
+        "media-session::the shipped shows really do come out as the publishers' names"
+      ],
+      "authored": true,
+      "note": "Every playable item has a title and a credit and an album naming the Foray; no join leaves the car display unchanged; every segment is credited to its show; narration and the jingle wear only the app's artwork. Authored: zero violations.",
+      "call": "lockScreenAudit",
+      "args": [{ "$foray": "the-chain-reaction-how-engineering-disasters-rea-25f1b7" }],
+      "expect": {
+        "return": {
+          "albumMissingForay": 0,
+          "blankArtist": 0,
+          "blankTitle": 0,
+          "frozenDisplays": 0,
+          "narrationArtwork": 0,
+          "segmentNotShow": 0
+        }
+      }
+    },
+    {
+      "id": "media/foray-clock-the-chain-reaction-how-engineering-disasters-rea-25f1b7",
+      "covers": ["media-session::mediaSessionView reports the FORAY's clock, not the segment's"],
+      "authored": true,
+      "note": "At the tape item past the midpoint, halfway through: the lock screen's duration is the Foray's total (not the segment's length) and its position is the Foray clock. Authored.",
+      "call": "lockScreenClock",
+      "args": [{ "$foray": "the-chain-reaction-how-engineering-disasters-rea-25f1b7" }],
+      "expect": {
+        "return": {
+          "durationIsForayTotal": true,
+          "durationIsNotSegment": true,
+          "positionIsForayClock": true,
+          "tapeItemFound": true
+        }
+      }
+    },
+    {
+      "id": "media/never-4a-what-engineers-actually-do-all-day-e08236",
+      "covers": [
+        "media-session::a narration item is credited to the FORAY, never to a publisher and never to us (L-06/F15)",
+        "media-session::F15's own inputs: a narration line with no next item never says 4a in the CREDIT"
+      ],
+      "authored": true,
+      "note": "'4a is never the artist of anything audible' (L-06 / F15), over every playable item of this committed Foray — segment, narration or jingle — through mediaMetadata and narrationCredit. Authored: zero.",
+      "call": "appAsArtist",
+      "args": [{ "$foray": "what-engineers-actually-do-all-day-e08236" }],
+      "expect": { "return": 0 }
+    },
+    {
+      "id": "media/lock-screen-what-engineers-actually-do-all-day-e08236",
+      "covers": [
+        "media-session::every segment of every shipped Foray maps to a non-empty title and artist",
+        "media-session::the display CHANGES at a seam where the source changes — a frozen car display is the failure",
+        "media-session::the shipped shows really do come out as the publishers' names"
+      ],
+      "authored": true,
+      "note": "Every playable item has a title and a credit and an album naming the Foray; no join leaves the car display unchanged; every segment is credited to its show; narration and the jingle wear only the app's artwork. Authored: zero violations.",
+      "call": "lockScreenAudit",
+      "args": [{ "$foray": "what-engineers-actually-do-all-day-e08236" }],
+      "expect": {
+        "return": {
+          "albumMissingForay": 0,
+          "blankArtist": 0,
+          "blankTitle": 0,
+          "frozenDisplays": 0,
+          "narrationArtwork": 0,
+          "segmentNotShow": 0
+        }
+      }
+    },
+    {
+      "id": "media/foray-clock-what-engineers-actually-do-all-day-e08236",
+      "covers": ["media-session::mediaSessionView reports the FORAY's clock, not the segment's"],
+      "authored": true,
+      "note": "At the tape item past the midpoint, halfway through: the lock screen's duration is the Foray's total (not the segment's length) and its position is the Foray clock. Authored.",
+      "call": "lockScreenClock",
+      "args": [{ "$foray": "what-engineers-actually-do-all-day-e08236" }],
+      "expect": {
+        "return": {
+          "durationIsForayTotal": true,
+          "durationIsNotSegment": true,
+          "positionIsForayClock": true,
+          "tapeItemFound": true
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,258 @@
+{
+  "family": "media",
+  "module": "player/media-session.js",
+  "note": "The Foray half of the lock-screen mapping NE-12j left to NE-29j: narration and jingle items (the spec's 'Up next: <episode>' title, the Foray's name when nothing follows, the credit ladder narrationCredit walks — Foray title, next episode, next show, then empty, never '4a' — and the app's artwork only), F15's own inputs (authored). Port: NE-29s completes MediaMapping.",
+  "cases": [
+    {
+      "id": "media/narration-up-next",
+      "covers": ["media-session::a narration item takes the spec's title: \"Up next: <episode>\""],
+      "call": "mediaMetadata",
+      "args": [
+        {
+          "item": { "kind": "tts", "title": "bridge-3" },
+          "nextItem": {
+            "kind": "episode",
+            "title": "Fire and the human gut",
+            "show": "Origin Stories"
+          },
+          "forayTitle": "The history of grilling",
+          "index": 3,
+          "total": 32
+        }
+      ],
+      "expect": {
+        "return": {
+          "album": "The history of grilling · clip 4 of 32",
+          "artist": "The history of grilling",
+          "artwork": [{ "sizes": "512x512", "src": "icon-512.png", "type": "image/png" }],
+          "title": "Up next: Fire and the human gut"
+        }
+      }
+    },
+    {
+      "id": "media/narration-last-shows-foray",
+      "covers": [
+        "media-session::a narration item with nothing after it shows the FORAY, never its own slug"
+      ],
+      "call": "mediaMetadata",
+      "args": [
+        {
+          "item": { "kind": "tts", "title": "bridge-3" },
+          "forayTitle": "The history of grilling"
+        }
+      ],
+      "expect": {
+        "return": {
+          "album": "The history of grilling",
+          "artist": "The history of grilling",
+          "artwork": [{ "sizes": "512x512", "src": "icon-512.png", "type": "image/png" }],
+          "title": "The history of grilling"
+        }
+      }
+    },
+    {
+      "id": "media/narration-last-no-foray",
+      "covers": [
+        "media-session::a narration item with nothing after it shows the FORAY, never its own slug"
+      ],
+      "call": "mediaMetadata",
+      "args": [{ "item": { "kind": "tts", "title": "bridge-3" } }],
+      "expect": {
+        "return": {
+          "album": "",
+          "artist": "",
+          "artwork": [{ "sizes": "512x512", "src": "icon-512.png", "type": "image/png" }],
+          "title": "4a"
+        }
+      }
+    },
+    {
+      "id": "media/narration-credit-foray",
+      "covers": [
+        "media-session::a narration item is credited to the FORAY, never to a publisher and never to us (L-06/F15)"
+      ],
+      "call": "mediaMetadata",
+      "args": [
+        {
+          "item": { "kind": "tts", "title": "b", "show": "Origin Stories" },
+          "nextItem": { "kind": "episode", "title": "T", "show": "Origin Stories" },
+          "forayTitle": "The history of grilling",
+          "index": 1,
+          "total": 4
+        }
+      ],
+      "expect": {
+        "return": {
+          "album": "The history of grilling · clip 2 of 4",
+          "artist": "The history of grilling",
+          "artwork": [{ "sizes": "512x512", "src": "icon-512.png", "type": "image/png" }],
+          "title": "Up next: T"
+        }
+      }
+    },
+    {
+      "id": "media/jingle-credit-foray",
+      "covers": [
+        "media-session::a jingle item is credited to its Foray, never to a publisher and never to us (F-89 + L-06)"
+      ],
+      "call": "mediaMetadata",
+      "args": [
+        {
+          "item": { "kind": "jingle", "id": "jingle-cut-act-4-1", "show": "Origin Stories" },
+          "nextItem": { "kind": "episode", "title": "T", "show": "Origin Stories" },
+          "forayTitle": "F",
+          "index": 1,
+          "total": 4,
+          "showArtworkUrl": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts126/v4/ab/mza_124.jpg/600x600bb.jpg"
+        }
+      ],
+      "expect": {
+        "return": {
+          "album": "F · clip 2 of 4",
+          "artist": "F",
+          "artwork": [{ "sizes": "512x512", "src": "icon-512.png", "type": "image/png" }],
+          "title": "F"
+        }
+      }
+    },
+    {
+      "id": "media/jingle-no-foray",
+      "covers": [
+        "media-session::a jingle item is credited to its Foray, never to a publisher and never to us (F-89 + L-06)"
+      ],
+      "call": "mediaMetadata",
+      "args": [{ "item": { "kind": "jingle", "id": "j" } }],
+      "expect": {
+        "return": {
+          "album": "",
+          "artist": "",
+          "artwork": [{ "sizes": "512x512", "src": "icon-512.png", "type": "image/png" }],
+          "title": "4a"
+        }
+      }
+    },
+    {
+      "id": "media/credit-foray-title",
+      "covers": [
+        "media-session::narrationCredit walks Foray title -> next episode -> next show, and never reaches 4a"
+      ],
+      "call": "narrationCredit",
+      "args": [
+        {
+          "forayTitle": "The history of grilling",
+          "nextItem": { "title": "Fire and the human gut", "show": "Origin Stories" }
+        }
+      ],
+      "expect": { "return": "The history of grilling" }
+    },
+    {
+      "id": "media/credit-next-episode",
+      "covers": [
+        "media-session::narrationCredit walks Foray title -> next episode -> next show, and never reaches 4a"
+      ],
+      "call": "narrationCredit",
+      "args": [
+        {
+          "forayTitle": "",
+          "nextItem": { "title": "Fire and the human gut", "show": "Origin Stories" }
+        }
+      ],
+      "expect": { "return": "Fire and the human gut" }
+    },
+    {
+      "id": "media/credit-next-show",
+      "covers": [
+        "media-session::narrationCredit walks Foray title -> next episode -> next show, and never reaches 4a"
+      ],
+      "call": "narrationCredit",
+      "args": [{ "forayTitle": "  ", "nextItem": { "show": "Origin Stories" } }],
+      "expect": { "return": "Origin Stories" }
+    },
+    {
+      "id": "media/credit-nothing",
+      "covers": [
+        "media-session::narrationCredit walks Foray title -> next episode -> next show, and never reaches 4a"
+      ],
+      "call": "narrationCredit",
+      "args": [],
+      "expect": { "return": "" }
+    },
+    {
+      "id": "media/credit-empty-next",
+      "covers": [
+        "media-session::narrationCredit walks Foray title -> next episode -> next show, and never reaches 4a"
+      ],
+      "call": "narrationCredit",
+      "args": [{ "forayTitle": "", "nextItem": {} }],
+      "expect": { "return": "" }
+    },
+    {
+      "id": "media/f15-own-inputs",
+      "covers": [
+        "media-session::F15's own inputs: a narration line with no next item never says 4a in the CREDIT"
+      ],
+      "authored": true,
+      "note": "F15 exactly as the founder met it in the car, the one display that said '4a / 4a': the credit is empty, never the app; the title still falls back to the app's name (a blank lock screen is worse). Authored: 4a is never the artist of anything audible.",
+      "call": "mediaMetadata",
+      "args": [{ "item": { "kind": "tts", "title": "bridge-3" }, "forayTitle": "" }],
+      "expect": {
+        "return": {
+          "album": "",
+          "artist": "",
+          "artwork": [{ "sizes": "512x512", "src": "icon-512.png", "type": "image/png" }],
+          "title": "4a"
+        }
+      }
+    },
+    {
+      "id": "media/narration-no-publisher-artwork",
+      "covers": ["media-session::a narration item never carries a publisher's artwork"],
+      "call": "mediaMetadata",
+      "args": [
+        {
+          "item": { "kind": "tts", "title": "b" },
+          "showArtworkUrl": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts126/v4/ab/mza_124.jpg/600x600bb.jpg"
+        }
+      ],
+      "expect": {
+        "return": {
+          "album": "",
+          "artist": "",
+          "artwork": [{ "sizes": "512x512", "src": "icon-512.png", "type": "image/png" }],
+          "title": "4a"
+        }
+      }
+    },
+    {
+      "id": "media/artwork-miss-falls-back",
+      "covers": [
+        "media-session::artwork coverage over the shipped Forays is THIN, and the fallback carries the rest"
+      ],
+      "note": "The engine's half of the coverage rule: a show with no artwork gets exactly one entry, the app's — never a blank. How many shipped shows have artwork is the page's join over discover.json (artworkUrlsByShow, webview-only).",
+      "call": "mediaArtworkList",
+      "args": [{ "showArtworkUrl": null }],
+      "expect": { "return": [{ "sizes": "512x512", "src": "icon-512.png", "type": "image/png" }] }
+    },
+    {
+      "id": "media/artwork-hit-is-one-entry",
+      "covers": [
+        "media-session::artwork coverage over the shipped Forays is THIN, and the fallback carries the rest"
+      ],
+      "call": "mediaArtworkList",
+      "args": [
+        {
+          "showArtworkUrl": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts126/v4/ab/mza_124.jpg/600x600bb.jpg"
+        }
+      ],
+      "expect": {
+        "return": [
+          {
+            "sizes": "600x600",
+            "src": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts126/v4/ab/mza_124.jpg/600x600bb.jpg",
+            "type": "image/jpeg"
+          }
+        ]
+      }
+    }
+  ]
+}
