@@ -2666,7 +2666,7 @@ function fakeSpeech() {
     speak(u) { this.spoken.push(u.text); this.speaking = true; this.paused = false; },
     pause() { this.transport.push("pause"); this.paused = true; },
     resume() { this.transport.push("resume"); this.paused = false; },
-    cancel() { this.transport.push("cancel"); this.speaking = false; this.paused = false; },
+    cancel() { this.transport.push("cancel"); this.speaking = false; }, // spec: cancel() keeps the paused state
     getVoices() { return []; },
   };
 }
@@ -3672,7 +3672,11 @@ test("a skip from a PAUSED narration line to the next line is heard, not queued 
      a pause and a skip, the next line used to wait silently behind the paused
      one (iOS AVSpeechSynthesizer, and Web Speech). This fake models exactly that
      queue. MUTATION: delete the `cancel()` before `speak()` in foray-tts.js's
-     Web Speech branch and nothing is audible after the skip. */
+     Web Speech branch and nothing is audible after the skip.
+     Round-3 review (L3): the fake's cancel() used to clear `paused`, which the
+     spec says cancel() does not do, so the test passed while Chromium stayed
+     paused. It keeps `paused` now. MUTATION: delete the resume() after
+     cancel() -- the second line is queued behind the pause and not heard. */
   const speech = {
     queue: [], paused: false, transport: [],
     get speaking() { return this.queue.length > 0 && !this.paused; },
@@ -3680,7 +3684,8 @@ test("a skip from a PAUSED narration line to the next line is heard, not queued 
     speak(u) { this.queue.push(u.text); },
     pause() { this.transport.push("pause"); this.paused = true; },
     resume() { this.transport.push("resume"); this.paused = false; },
-    cancel() { this.transport.push("cancel"); this.queue = []; this.paused = false; },
+    // Spec: cancel() empties the queue and does NOT change the paused state.
+    cancel() { this.transport.push("cancel"); this.queue = []; },
     getVoices() { return []; },
     audible() { return this.paused ? null : (this.queue[0] ?? null); },
   };

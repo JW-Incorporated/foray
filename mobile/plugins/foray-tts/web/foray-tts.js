@@ -295,6 +295,12 @@ export async function speak(text, opts = {}) {
          silently behind it. Android always spoke with QUEUE_FLUSH; iOS and
          this path now flush too. */
       if (typeof speechSynth.cancel === "function") speechSynth.cancel();
+      /* AND UN-PAUSE (round-3 review, L3). The Web Speech spec says cancel()
+         "does not change the paused state", and Chromium keeps it: after a
+         pause and a skip the new utterance sat silent behind the global
+         paused flag. The player's own _narrationPaused is reset on a new line,
+         so nothing else resumes the synthesiser. */
+      if (speechSynth.paused && typeof speechSynth.resume === "function") speechSynth.resume();
       speechSynth.speak(utter);
       /* Documented, W3C Web Speech API spec, quoted in on-device-tts.md §3:
          no phoneme/IPA control exists on this path at all -- 0 overrides is
