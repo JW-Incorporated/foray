@@ -503,6 +503,11 @@ export class PlayerQueueManager {
         provably a duplicate rather than merely "already handled once this
         session" — see `_onTtsFinished`. */
     this._advancedSpeakSeq = null;
+    /** How many `speak()` calls this manager has issued (audit round 3,
+        player-core-2/4). A load that finds itself stale after its speak()
+        resolved silences the voice only when no NEWER speak() has replaced it
+        since; otherwise the stop would cut off the line that superseded it. */
+    this._speakIssued = 0;
     /** The listener's chosen narration voice identifier (V-01), or `null` to
         let the plugin pick its own best-installed tier. The one place it
         lives, same discipline as `_rate` immediately above: `voice` getter
@@ -1642,7 +1647,18 @@ export class PlayerQueueManager {
            sets it to 0), the same item, and speech actually paused. */
         const resumingSpeech = forced == null && this._loadedId === item.id && this._narrationPaused;
         if (!resumingSpeech) {
+          const mine = ++this._speakIssued;
           await this._speakNarration(item);
+          /* SUPERSEDED WHILE speak() WAS IN FLIGHT (audit round 3,
+             player-core-4): the voice started on accept, and a skip, a row tap,
+             a pause or a stop moved the player on during the bridge round trip.
+             The backend branch below has had this check since 2026-09-22; the
+             synth branch did not, so the stale call stamped `_loadedIsSynth`
+             and kept talking over the next item. Silence it (unless a newer
+             speak() already replaced it) and leave everything else alone. */
+          if (this._loadSeq !== seq || !(this.state.type === "loadingItem" && sameItemRef(this.state.target, ref))) {
+            return this._abandonSpeech(mine, `load.superseded ${item.id} — the player moved on while speak() was in flight`);
+          }
           this._loadedId = item.id;
           this._beginSynthNarration(item);
         } else {
@@ -1933,6 +1949,15 @@ export class PlayerQueueManager {
     this._narrationPausedAtMs = null;
     this._stopNarrationTicker();
     await this._ttsTransport("stop");
+  }
+
+  /** A speak() whose load went stale while it was in flight (audit round 3,
+      player-core-2/4). The voice started on accept, so it has to be told to
+      stop — unless a newer speak() has been issued since, which already
+      replaced this utterance and must not be cut off. */
+  async _abandonSpeech(mine, why) {
+    if (this._speakIssued === mine) await this._ttsTransport("stop");
+    return this._emit(why);
   }
 
   /** One call into the bridge, reported and never thrown. `_emit` carries the

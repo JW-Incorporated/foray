@@ -3184,3 +3184,63 @@ test("a skip's load that a newer skip already replaced is dropped, not run after
   assert.equal(m.state.item.id, "foray-1#2");
   m.dispose();
 });
+
+/** fakeTts whose next speak() waits until the test releases it. */
+
+function heldSpeakTts() {
+  const t = fakeTts();
+  const speak = t.speak;
+  t.holdNext = false;
+  t.release = null;
+  t.speak = async (text, opts) => {
+    const r = await speak(text, opts);
+    if (t.holdNext) { t.holdNext = false; await new Promise((res) => { t.release = res; }); }
+    return r;
+  };
+  return t;
+}
+
+test("a narration load superseded while speak() is in flight stops talking over the next item (player-core-4)", async () => {
+  /* MUTATION: drop the `_loadSeq !== seq` check after `_speakNarration` in
+     `_loadItem` and the stale call marks itself loaded (`isNarrationPlayhead`)
+     and never stops the voice. */
+  const tts = heldSpeakTts();
+  const { m, backend } = make({ tts });
+  tts.holdNext = true;
+  const starting = m.playForay(foray([
+    { type: "narration", id: "nar-1", script: "the opening line" },
+    fseg(),
+  ]), { resolveItem });
+  await tick();
+  assert.equal(m.state.type, "loadingItem", "precondition: speak() is in flight");
+  await m.skipToNext();
+  await tick();
+  tts.release();
+  await starting;
+  await tick();
+  assert.ok(transportsOf(tts).includes("stop"), `the stale voice is stopped: ${transportsOf(tts)}`);
+  assert.equal(m.isNarrationPlayhead, false, "the newer item owns the player, not the stale line");
+  assert.equal(m.state.type, "playing");
+  assert.ok(backend.loads().includes("load:foray-1#1"), `${backend.loads()}`);
+  m.dispose();
+});
+
+test("a stale speak() does not stop the NEWER line that replaced it (player-core-4)", async () => {
+  const tts = heldSpeakTts();
+  const { m } = make({ tts });
+  tts.holdNext = true;
+  const starting = m.playForay(foray([
+    { type: "narration", id: "nar-1", script: "the opening line" },
+    { type: "narration", id: "nar-2", script: "the second line" },
+    fseg(),
+  ]), { resolveItem });
+  await tick();
+  await m.play(1);
+  await tick();
+  tts.release();
+  await starting;
+  await tick();
+  assert.ok(!transportsOf(tts).includes("stop"), `the newer line keeps its voice: ${transportsOf(tts)}`);
+  assert.equal(m.isNarrationPlayhead, true);
+  m.dispose();
+});
