@@ -541,3 +541,74 @@ test("search-api-css-2: 'constructor theory' with nothing matching answers empty
   const hand = { groups: [], filters: [{ value: 1 }, Object], thinAnchorCount: 0, hasPrimary: false };
   assert.doesNotThrow(() => SE.searchWithRelaxation([], hand, 0, {}, () => 0.5), "a typeless filter never throws");
 });
+
+/* ---------- round-3 audit, search-api-css-1: a modifier word is not always a filter ---------- */
+
+/* The live catalogue, the way app.js's fullPool() builds it (session episodes
+   first, then discover items, deduped) — the same plumbing the battery and
+   test/search-bar-exposure.test.js copy; the matcher itself is never copied. */
+let livePool = null;
+function liveSearch(query) {
+  const SE = require(path.join(ROOT, "search-engine.js"));
+  if (!livePool) {
+    const read = (rel) => JSON.parse(fs.readFileSync(path.join(ROOT, rel), "utf8"));
+    const discover = read("data/discover.json");
+    const itemTags = read("data/item-tags.json");
+    const semantic = read("data/semantic-index.json");
+    const session = read("data/session.json");
+    const pool = [];
+    const seen = new Set();
+    for (const id of Object.keys(session.episodes)) {
+      const ep = session.episodes[id];
+      pool.push({ id, show: ep.show, title: ep.title, duration_min: ep.duration_min ?? null,
+        topics: ep.topics || [], hook: ep.hook || ep.summary || ep.title, release_date: ep.release_date });
+      seen.add(id);
+    }
+    for (const item of discover.items) if (!seen.has(item.id)) pool.push(item);
+    livePool = { pool, ctx: { semantic, itemTags, discover }, itemTags };
+  }
+  const interp = SE.interpretQuery(query, livePool.ctx);
+  const { results, relaxed } = SE.searchWithRelaxation(livePool.pool, interp, 2, livePool.itemTags, () => 0.5);
+  return { interp, results, relaxed, status: SE.classifyResults(results).status };
+}
+
+test("search-api-css-1: 'deep learning' is a topic, not every episode over an hour", () => {
+  /* It returned 805 random long episodes with status "ok": "learning" was
+     stripped as generic and "deep" consumed as duration_min 60, leaving a
+     pure filter over the whole pool. MUTATION: drop the modifiersAreContent
+     rule — the duration filter comes back and the result count explodes. */
+  const r = liveSearch("deep learning");
+  assert.deepEqual(r.interp.filters, [], "no duration filter");
+  assert.ok(r.interp.groups.some((g) => g.token === "deep"), "'deep' is the content");
+  assert.ok(r.results.length < 200, `a topic answer, not the pool: ${r.results.length} results`);
+});
+
+test("search-api-css-1: 'story' reaches the storytelling concept instead of becoming the history filter", () => {
+  /* MUTATION: drop the conceptOverrides check — "story" is the history branch
+     filter again and has no content group. */
+  const r = liveSearch("story");
+  assert.deepEqual(r.interp.filters, []);
+  assert.deepEqual(r.interp.groups.map((g) => g.token), ["story"]);
+  const m = liveSearch("marathon training");
+  assert.ok(m.interp.groups.some((g) => g.token === "marathon"), "'marathon' is the endurance concept, not a 3-hour filter");
+});
+
+test("search-api-css-1: a modifier whose concept IS its own branch is still a filter ('funny history')", () => {
+  /* The rule's other edge: funny/comedy belong to the comedy concept AND
+     filter to the comedy branch; that is one meaning, and the filter stands. */
+  const r = liveSearch("funny history");
+  assert.deepEqual(r.interp.filters, [{ type: "branch", value: ["comedy"] }]);
+  assert.deepEqual(r.interp.groups.map((g) => g.token), ["history"]);
+});
+
+test("search-api-css-1: 'deep sea' and 'speed of light' are never a confident answer made of filler", () => {
+  /* deep sea: "sea" is the content and the answer is short, never "ok" over
+     the pool. speed of light: "light" (comedy branch) matches nothing, so the
+     filter is RELAXED and says so; nothing comes back as comedy. */
+  const sea = liveSearch("deep sea");
+  assert.ok(sea.interp.groups.some((g) => g.token === "sea"));
+  assert.notEqual(sea.status, "ok", `deep sea came back ${sea.status} with ${sea.results.length} results`);
+  const light = liveSearch("speed of light");
+  assert.ok(light.interp.groups.some((g) => g.token === "speed"), "the subject is kept as content");
+  assert.ok(light.results.length === 0 || light.relaxed === "all", "an unmatchable filter is relaxed openly, not silently applied");
+});

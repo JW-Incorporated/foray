@@ -59,6 +59,20 @@ function modifierFor(mods, tok) {
 }
 const isDurationFilter = (f) => typeof f?.type === "string" && f.type.startsWith("duration");
 
+/* GENERIC_WORDS that still name a SUBJECT (round-3 audit, search-api-css-1):
+   "deep learning" is about learning, not about "something 60 minutes long".
+   When tokenize stripped one of these and every word left is a modifier, the
+   modifiers are the query's content, never a pure filter over the whole pool.
+   Question words and praise ("how", "best", "good") are not here: "best new"
+   and "how long" still read as filters. */
+const SUBJECT_GENERIC_WORDS = new Set([
+  "learn", "learning", "learns", "guide", "guides", "tutorial", "tutorials",
+  "intro", "introduction", "basics", "basic", "beginner", "beginners",
+  "overview", "primer", "talk", "talks", "chat", "chats", "discussion", "discussions",
+  "interview", "interviews", "dive", "dives", "works", "work", "working",
+  "explain", "explains", "explained", "understand", "understanding",
+]);
+
 /* A content token whose corpus document-frequency (title+hook+topics+tags,
    see corpusDF) is at/above this fraction of the catalog is a "broad" word
    -- a real topic/genre marker (history, science, comedy) too common to
@@ -734,9 +748,32 @@ function interpretQuery(q, ctx) {
   const mods = ctx.semantic?.modifiers || {};
   const concepts = ctx.semantic?.concepts || {};
 
+  /* A MODIFIER WORD IS A FILTER ONLY WHEN IT MEANS NOTHING ELSE (round-3
+     audit, search-api-css-1). It used to be consumed unconditionally:
+     "story" (a storytelling concept term) became the history branch filter,
+     so the concept could never be reached; "deep learning" (with "learning"
+     stripped as generic) became "every episode over an hour", 805 of them,
+     presented as a confident "ok". Two rules, checked before the filter:
+       1. a token that is also a term of a concept with ANOTHER meaning is
+          content (concept wins): "story" belongs to storytelling, "marathon"
+          to endurance, "epic" to storytelling. Where the concept IS the
+          filter's own branch ("funny"/"comedy" -> the comedy concept and the
+          comedy branch) the filter stands, so "funny history" still means
+          comedy about history;
+       2. when tokenize stripped a subject word and only modifiers are left,
+          every one of them is content. */
+  const conceptOverrides = (tok, mod) => {
+    const sameSense = mod.type === "branch" && Array.isArray(mod.value) ? mod.value : [];
+    return Object.entries(concepts).some(([cid, c]) =>
+      Array.isArray(c?.terms) && c.terms.includes(tok) && !sameSense.includes(cid));
+  };
+  const subjectStripped = String(q).toLowerCase().split(/[^a-z0-9]+/).some(w => SUBJECT_GENERIC_WORDS.has(w));
+  const onlyModifiers = tokens.length > 0 && tokens.every(tok => modifierFor(mods, tok));
+  const modifiersAreContent = subjectStripped && onlyModifiers;
   const contentTokens = tokens.filter(tok => {
+    if (modifiersAreContent) return true;
     const mod = modifierFor(mods, tok);
-    if (mod) { filters.push(mod); return false; }
+    if (mod && !conceptOverrides(tok, mod)) { filters.push(mod); return false; }
     return true;
   });
 
