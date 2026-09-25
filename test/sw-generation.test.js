@@ -486,14 +486,22 @@ test("a data file that answers 404 falls back to the cached copy", async () => {
   assert.equal(await res.text(), '{"session_id":"cached"}');
 });
 
-test("perf-2: an untagged data file that falls back pins the page to that generation and says so", async () => {
+test("perf-2: an untagged data file that falls back says so, and does not pin a page whose code is live", async () => {
   /* Deploy day on a slow link: app.js answered live (a newer deploy than the
      pointer), then a changed data/discover.json crawls past NET_TIMEOUT_MS and
      is served from the pointer generation. That used to be a silent 200 with no
-     pin and no notice. MUTATION: drop the tellClient in handleData's fallback
-     — the page is never told, and h.posted stays empty. */
+     notice. MUTATION: drop the tellClient in handleData's fallback — the page
+     is never told, and h.posted stays empty.
+     Round-3 review (L4): it said `pin: true`, and the page then read the
+     pointer generation's data for its whole life, paired with live code (the
+     pairing app-3-5 removed). MUTATION: send pin: true again — red. */
   const h = loadWorker({
-    generations: { "1": { "data/discover.json": '{"items":["from-generation-1"]}' } },
+    generations: {
+      "1": {
+        "data/discover.json": '{"items":["from-generation-1"]}',
+        "https://foray.invalid/__manifest__": JSON.stringify({ [`${BASE}data/discover.json`]: "sha256:" + sha256Hex('{"items":["from-generation-1"]}') }),
+      },
+    },
     pointer: "1",
     windows: ["page-1"],
     network: (url) => (url.endsWith("app.js") ? ok("APP@2") : new Promise(() => {})),
@@ -504,8 +512,32 @@ test("perf-2: an untagged data file that falls back pins the page to that genera
   assert.equal(await (await pending).text(), '{"items":["from-generation-1"]}');
   await h.settle();
   assert.deepEqual(h.posted, [
-    { id: "page-1", message: { source: "foray-sw", reason: "stale-shell", deployId: "1", pin: true } },
+    { id: "page-1", message: { source: "foray-sw", reason: "stale-shell", deployId: "1", pin: false } },
   ]);
+});
+
+test("round-3 review (L4): a slow UNTRACKED data file (the show index) is served from cache without a notice or a pin", async () => {
+  /* app.js fetches data/show-index.tsv untagged on purpose; it is not in the
+     manifest. A slow 436 KB search index used to pin the whole page and put the
+     "last saved copy" bar up. MUTATION: drop the trackedHash check -- a
+     stale-shell message is posted. */
+  const h = loadWorker({
+    generations: {
+      "1": {
+        "data/show-index.tsv": "id,title",
+        "https://foray.invalid/__manifest__": JSON.stringify({ [`${BASE}data/discover.json`]: "sha256:" + sha256Hex("x") }),
+      },
+    },
+    pointer: "1",
+    windows: ["page-1"],
+    network: (url) => (url.endsWith("app.js") ? ok("APP@2") : new Promise(() => {})),
+  });
+  await h.fetch(sub("app.js"), { clientId: "page-1" });
+  const pending = h.fire(sub("data/show-index.tsv"), { clientId: "page-1" });
+  h.fireTimers();
+  assert.equal(await (await pending).text(), "id,title");
+  await h.settle();
+  assert.deepEqual(h.posted, []);
 });
 
 test("perf-2: a data file that answers live pins nothing and says nothing", async () => {

@@ -863,16 +863,27 @@ async function handleData(request, env) {
   if (res && res.ok) return res;
   const current = await currentDeployId();
   const cached = current ? await matchGeneration(current, request) : undefined;
-  /* A DATA FALLBACK PINS THE PAGE AND SAYS SO (round-3 audit, perf-2). An
-     untagged request comes from a page whose code answered live, possibly
-     from a deploy newer than the pointer (the new worker has not installed
-     yet). Handing it the pointer generation's copy as a plain 200, with no
-     pin and no notice, was the #233 pairing in silence. Now the page is told
-     which generation it was handed (`stale-shell`, pin: true): it tags its
-     later data requests with it, so its data at least stays one generation,
-     and the "showing its last saved copy" bar with its reload control goes up. */
+  /* A DATA FALLBACK SAYS SO, AND DOES NOT PIN (round-3 audit, perf-2; round-3
+     review, L4). An untagged request comes from a page whose code answered
+     live, possibly from a deploy newer than the pointer. Handing it the
+     pointer generation's copy as a plain 200 with no notice was the #233
+     pairing in silence, so the page is told (`stale-shell`) and the "showing
+     its last saved copy" bar with its reload control goes up.
+
+     It is told with `pin: false`. Pinning here (as perf-2 first did) tagged
+     every later data request of a page whose code is LIVE with the pointer
+     generation, for the page's whole life: the new-code/old-data pairing
+     app-3-5 removed for module fallbacks, now for the lifetime of the page and
+     not just for the one file that was slow. Only the files that decide the
+     generation (the navigation and app.js) pin.
+
+     And only a MANIFEST-TRACKED file says anything. An untracked one
+     (data/show-index.tsv, which app.js fetches unpinned on purpose, 436 KB and
+     the likeliest file to cross NET_TIMEOUT_MS on a slow link) is served from
+     cache silently: a slow search index is not "the network didn't answer". */
   if (cached && env.clientId) {
-    env.waitUntil(tellClient(env.clientId, "stale-shell", { deployId: current, pin: true }));
+    const tracked = await trackedHash(await caches.open(CACHE_PREFIX + current), request.url).catch(() => null);
+    if (tracked) env.waitUntil(tellClient(env.clientId, "stale-shell", { deployId: current, pin: false }));
   }
   return cached || res || unavailable(request);
 }
