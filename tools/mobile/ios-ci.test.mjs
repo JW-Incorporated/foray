@@ -2187,7 +2187,11 @@ import { code as yamlCode, step as yamlStep } from "./workflow-yaml.mjs";
 import { pathToFileURL } from "node:url";
 
 const REPO = path.resolve(HERE, "..", "..");
-const NATIVE_PASS = fs.readFileSync(path.join(HERE, "probe", "ios-build-native-pass.yml"), "utf8");
+/* THE LANDED STEP, NOT A STAGED COPY. Until the M2 CI fix this read
+   `probe/ios-build-native-pass.yml`, a snippet nothing executed: every ios-build
+   run said the native pass "did not run" while this suite stayed green. It now
+   reads the workflow GitHub runs, and the snippet is gone so the two cannot drift. */
+const NATIVE_PASS = fs.readFileSync(path.join(REPO, ".github", "workflows", "ios-build.yml"), "utf8");
 const UDID = "0A1B2C3D-4E5F-6789-ABCD-EF0123456789";
 
 test("NE-36 seeding: the exact simctl defaults write, pinned (no launch-argument form exists)", () => {
@@ -2218,8 +2222,12 @@ test("NE-36 seeding: the key and the values are the engine's own, read from the 
   assert.deepEqual(JSON.parse(`[${m[1]}]`), NE36.MODE_OVERRIDES);
 });
 
-test("NE-36 staged step: pinned to the legacy lane with web, the native pass seeded native BEFORE its launch", () => {
-  assert.match(NATIVE_PASS, /seed_js_lane: \|\n\s+node tools\/mobile\/ios-ci\.mjs seed-mode "\$UDID" "\$APP_ID" web >> "\$ART\/lane-seeds\.txt"/);
+test("NE-36 ios-build step: pinned to the legacy lane with web, the native pass seeded native BEFORE its launch", () => {
+  assert.equal(fs.existsSync(path.join(HERE, "probe", "ios-build-native-pass.yml")), false,
+    "the staged snippet is back; the step lives in .github/workflows/ios-build.yml now");
+  const seedWeb = 'node tools/mobile/ios-ci.mjs seed-mode "$UDID" "$APP_ID" web >> "$ART/lane-seeds.txt"';
+  assert.ok(yamlCode(yamlStep(NATIVE_PASS, "Install the probed app")).includes(seedWeb), "pass 1 is not pinned to the JS lane");
+  assert.ok(yamlCode(yamlStep(NATIVE_PASS, "Run the probes")).includes(seedWeb), "pass 2 is not pinned to the JS lane");
   const run = yamlCode(yamlStep(NATIVE_PASS, "Run the native-engine probe"));
   assert.ok(run.length > 0, "the staged native step is missing");
   const at = (needle) => {
@@ -2249,7 +2257,7 @@ test("NE-36 staged step: pinned to the legacy lane with web, the native pass see
   assert.match(run, /simulator-log-native\.txt/);
 });
 
-test("NE-36 staged step: more than 90 s backgrounded, the kill mid-Foray, the finale before the Foray ends", async () => {
+test("NE-36 ios-build step: more than 90 s backgrounded, the kill mid-Foray, the finale before the Foray ends", async () => {
   const run = yamlCode(yamlStep(NATIVE_PASS, "Run the native-engine probe"));
   const sleeps = [...run.matchAll(/^\s*sleep (\d+)/gm)].map((m) => Number(m[1]));
   assert.deepEqual(sleeps.length, 4, `expected four sleeps (play, background, kill, reload), got ${sleeps}`);
@@ -2380,6 +2388,8 @@ test("NE-36 verdict: nothing measured is no-coverage, never a pass", () => {
   assert.equal(n.ran, false);
   assert.match(n.headline, /did not run/);
   assert.equal(byId(n)["legacy-smoke"], "no-coverage");
+  /* A pinned smoke with no native pass is still no-coverage, never a pass. */
+  assert.equal(NE36.nativeProbeVerdict({ bridge: PINNED_BRIDGE }).verdict, "no-coverage");
   /* A log that never saw an engine row proves nothing about forbidden lines. */
   const silent = NE36.nativeProbeVerdict({ record: passingRecord(), rowsAfter: passingRecord().rowsBeforeReload, logText: "Df kernel[0:0] nothing here", steps: PASS_STEPS, bridge: PINNED_BRIDGE });
   const v = byId(silent);
@@ -2396,6 +2406,17 @@ test("NE-36 verdict: every assertion passes on a complete, clean run", () => {
     "no-html-media": "pass", "reload-clobber": "pass",
   });
   assert.equal(n.verdict, "pass");
+});
+
+test("NE-36 verdict: a MEASURED smoke failure fails the section even when the native pass never ran (run 36194671642)", () => {
+  /* That run printed a `fail` row under a section headed `no-coverage`, on a green
+     job: the section verdict is what ios-build's gate step reads. */
+  const n = NE36.nativeProbeVerdict({ bridge: { engineHello: { attempted: true, mode: "native", reason: "build-default", phase: "seam" } } });
+  assert.equal(n.ran, false);
+  assert.equal(byId(n)["legacy-smoke"], "fail");
+  assert.equal(n.verdict, "fail");
+  assert.match(n.headline, /did not run/);
+  assert.match(n.headline, /Failed: legacy-smoke/);
 });
 
 test("NE-36 verdict: each failure is named", () => {
@@ -2474,5 +2495,26 @@ test("NE-36 verdict CLI: reads native-rows.json, native-steps.txt and the native
   const o = fs.readFileSync(out, "utf8");
   assert.match(o, /^native=pass$/m);
   assert.match(o, /^legacy_smoke=pinned$/m);
+  assert.match(o, /^native_failed=$/m, "a clean run names no failed assertion");
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
+test("NE-36 verdict CLI: a failing assertion reaches GITHUB_OUTPUT as native=fail with its id, and the reporter still exits 0", () => {
+  /* The reporter reports; ios-build.yml's "Fail the job on a failing probe
+     assertion" step gates on these two lines. */
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "ne36-verdict-fail-"));
+  const rec = passingRecord();
+  fs.writeFileSync(path.join(dir, "localstorage.json"), JSON.stringify({ foray_probe_bridge: JSON.stringify(PINNED_BRIDGE) }));
+  fs.writeFileSync(path.join(dir, "native-rows.json"), JSON.stringify({ rows: { ...rec.rowsBeforeReload, "cp_pos:probe-native-a": '{"s":0}' }, probe: rec, keysSeen: 9 }));
+  fs.writeFileSync(path.join(dir, "native-steps.txt"), "launch=ai.jwlabs.foura: 4242\nwebcontent_killed=1\nforeground=ai.jwlabs.foura: 4242\n");
+  fs.writeFileSync(path.join(dir, "simulator-log-native.txt"), nativeLog({ seams: 1 }));
+  const out = path.join(dir, "gh-output.txt");
+  const r = spawnSync(process.execPath, [path.join(HERE, "ios-ci.mjs"), "verdict", path.join(dir, "localstorage.json")], {
+    encoding: "utf8", env: { ...process.env, GITHUB_OUTPUT: out, GITHUB_STEP_SUMMARY: "", GITHUB_RUN_ID: "999" },
+  });
+  assert.equal(r.status, 0, r.stderr);
+  const o = fs.readFileSync(out, "utf8");
+  assert.match(o, /^native=fail$/m);
+  assert.match(o, /^native_failed=seams,reload-clobber$/m);
   fs.rmSync(dir, { recursive: true, force: true });
 });

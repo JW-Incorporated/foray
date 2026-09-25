@@ -9,7 +9,7 @@
  * AVPlayer opens the file itself and a `capacitor://` URL means nothing to it.
  *
  * THE LENGTHS ARE THE WORKFLOW'S TIMELINE, not decoration
- * (`ios-build-native-pass.yml`): the Foray starts about 5 s after launch, the app
+ * (ios-build.yml, "Run the native-engine probe"): the Foray starts about 5 s after launch, the app
  * is backgrounded at 15 s, the WebContent process is killed at about 140 s and the
  * app comes back at about 148 s. So:
  *   - both seams (about 55 s and 106 s in) fall inside the hidden window;
