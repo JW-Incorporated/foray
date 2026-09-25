@@ -384,6 +384,9 @@ export class DefaultEvidenceGatherer implements EvidenceGatherer {
   private readonly now: () => Date;
   private catalogue: CatalogueData | null;
   private archive: TranscriptDigestEntry[] | null;
+  /** A budget refusal a losing query met after its race had returned. Held
+   * here and thrown by the next gather, so it is never swallowed (gen-5). */
+  private deferredBudgetError: unknown = undefined;
 
   constructor(options: EvidenceGathererOptions = {}) {
     this.researcher = options.researcher ?? createExternalResearcher();
@@ -399,6 +402,7 @@ export class DefaultEvidenceGatherer implements EvidenceGatherer {
   }
 
   async gather(beat: EvidenceBeat, ctx: ExternalResearchContext): Promise<EvidencePack> {
+    if (this.deferredBudgetError !== undefined) throw this.deferredBudgetError;
     const beatKind = beatKindOf(beat);
     const pack: EvidencePack = { purpose: beat.claim, beatKind, docs: [] };
 
@@ -578,10 +582,29 @@ export class DefaultEvidenceGatherer implements EvidenceGatherer {
     console.log(
       `gatherEvidence: asking two queries at once for "${claim.slice(0, 60)}" — the purpose, and "${retryQuery}" (F-60/F-69, G-35)`
     );
-    const first = this.retrieveFor(claim, ctx).catch((err: unknown): RetrievalOutcome => failedOutcome(claim, err));
-    const second = this.retrieveFor(retryQuery, ctx).catch((err: unknown): RetrievalOutcome => failedOutcome(retryQuery, err));
+    /* Every outcome that has landed, in landing order, so the winner branch can
+       see a budget refusal the other query already met (round-3 review, L5). */
+    const settled: RetrievalOutcome[] = [];
+    const landed = (r: RetrievalOutcome): RetrievalOutcome => {
+      settled.push(r);
+      return r;
+    };
+    const first = this.retrieveFor(claim, ctx).catch((err: unknown): RetrievalOutcome => failedOutcome(claim, err)).then(landed);
+    const second = this.retrieveFor(retryQuery, ctx).catch((err: unknown): RetrievalOutcome => failedOutcome(retryQuery, err)).then(landed);
     const winner = await firstNonEmpty([first, second]);
     if (winner) {
+      /* gen-5 says a budget refusal stops the run at the stage that asked. The
+         winner used to return here and drop a refusal the losing query had
+         already met. A refusal the loser meets AFTER this returns cannot be
+         thrown into a call that has finished, so it is held and thrown by the
+         next gather (deferredBudgetError). */
+      const budgetStop = settled.find((r) => r.budgetError !== undefined);
+      if (budgetStop) throw budgetStop.budgetError;
+      for (const outcome of [first, second]) {
+        void outcome.then((r) => {
+          if (r.budgetError !== undefined && this.deferredBudgetError === undefined) this.deferredBudgetError = r.budgetError;
+        });
+      }
       /* The claim's key holds the claim's evidence, whichever question found
          it. `retrieveFor` has already written it under the winner's own key. */
       if (winner.query !== claim) this.writeCache(claimKey, winner.docs);
@@ -602,8 +625,10 @@ export class DefaultEvidenceGatherer implements EvidenceGatherer {
   }
 
   /** One retrieval, cached by ITS OWN query's hash when it found something.
-   * Never rejects: a thrown retrieval is a `failed` outcome, which the
-   * caller treats as "no verdict" rather than as "nothing exists" (F-77). */
+   * A thrown retrieval is a `failed` outcome, which the caller treats as "no
+   * verdict" rather than as "nothing exists" (F-77). The one exception is a
+   * budget refusal, which REJECTS (gen-5); the two-query race catches it into
+   * the outcome's `budgetError` and re-throws it once it can. */
   private async retrieveFor(query: string, ctx: ExternalResearchContext): Promise<RetrievalOutcome> {
     const hash = claimHash(query);
     const cached = this.readCache(hash);

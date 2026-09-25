@@ -220,6 +220,55 @@ describe("gen-5: a failed retrieval is flagged, not passed off as an answer", ()
   });
 });
 
+/* Round-3 review (L5): in the two-query race, the winner branch returned before
+   the budget check, so a refusal met by the losing query was dropped and the
+   run kept spending after the guard said stop.
+   MUTATION: drop the settled budgetStop check in printEvidenceFor -- the
+   first gather resolves; drop the deferred hold -- the late refusal is lost
+   and the next gather resolves. */
+describe("a budget refusal from the losing query of the two-query race", () => {
+  const found: RetrievedPassage = { docId: "print:1", title: "Bread history", text: "The bakestone came first.", retrievedAt: "2026-09-09T12:00:00.000Z" };
+  class SplitRetriever implements ExternalResearcher {
+    readonly providerName = "split";
+    constructor(private readonly refuseFirst: boolean, private readonly lateRefusal: Promise<void> = Promise.resolve()) {}
+    async research(): Promise<ExternalResearchResult> {
+      return { notes: "", controversies: [] };
+    }
+    async retrievePassages(request: PassageRetrievalRequest): Promise<RetrievedPassage[]> {
+      const isClaim = request.claim === CLAIM;
+      if (isClaim) {
+        if (this.refuseFirst) throw new BudgetExceededError(1, 9.9, 0.2, 10);
+        await new Promise((r) => setTimeout(r, 5));
+        return [found];
+      }
+      if (this.refused) return [found];
+      await this.lateRefusal;
+      this.refused = true;
+      throw new BudgetExceededError(1, 9.9, 0.2, 10);
+    }
+    /** The loser refuses ONCE; any later retrieval would succeed, so only the
+     * held refusal can make the next gather throw. */
+    private refused = false;
+  }
+  const CLAIM = "the bakestone came first before the griddle arrived";
+
+  it("a refusal the loser has already met is thrown, not dropped behind the winner's documents", async () => {
+    await expect(gatherer(new SplitRetriever(false)).gather({ claim: CLAIM, requiresEvidence: true }, ctx)).rejects.toBeInstanceOf(BudgetExceededError);
+  });
+
+  it("a refusal the loser meets after the winner returned is thrown by the next gather", async () => {
+    let release: () => void = () => {};
+    const late = new Promise<void>((r) => (release = r));
+    const g = gatherer(new SplitRetriever(false, late));
+    // The winner lands first (5 ms), while the loser is still waiting.
+    const pack = await g.gather({ claim: CLAIM, requiresEvidence: true }, ctx);
+    expect(pack.docs.map((d) => d.title)).toEqual(["Bread history"]);
+    release();
+    await new Promise((r) => setTimeout(r, 0));
+    await expect(g.gather({ claim: "anything else at all", requiresEvidence: true }, ctx)).rejects.toBeInstanceOf(BudgetExceededError);
+  });
+});
+
 describe("the pack for a tape beat — who is on the tape, and what they said", () => {
   it("carries the show and episode title, so a Frame can attribute the tape instead of citing its slug (F-30)", async () => {
     const pack = await gatherer(new FakeRetriever([])).gather({ claim: "the bakestone came first", tape }, ctx);
