@@ -1,5 +1,8 @@
 {
   "//": "Covered-suite tests (coverage.js COVERED_SUITES) that a named XCTest method stands for: suite stem -> test name -> \"xctest:<Class>/<testMethod>\". coverage.test.js greps the Swift test sources under mobile/plugins for every mapping, so a renamed or deleted XCTest turns it red.",
+  "queue-manager": {
+    "ROUND 2 review: a deadline that lands mid-transition retries on the next tick instead of killing the ticker": "xctest:NarrationOverlayTests/testADeadlineTickNeverLandsMidTransitionAndNeverAdvancesTwice"
+  },
   "html-audio-backend": {
     "a first load that stalls without erroring also degrades rather than hanging": "xctest:AVDeckTests/testANeverReadyUrlHitsTheDeadlineWithNoPreroll",
     "a released backend refuses further work instead of half-operating": "xctest:AVDeckTests/testInvalidateSilencesDetachesAndStopsReporting",

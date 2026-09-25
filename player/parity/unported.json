@@ -2,7 +2,6 @@
   "//": "Burn-down only (plan §6.1). Covered-suite tests with no fixture case and no XCTest yet: suite stem -> test name -> {card, family}. `card` will port it; `family` is the fixture family it will be recorded into, and is what the capability gate charges it to. Filled by record.mjs --classify with each suite's default (coverage.js COVERED_SUITES); later cards re-tag.",
   "queue-manager": {
     "ROUND 2 player-1: onStateSettled fires after EVERY handled event, with the settled state": { "card": "NE-39j", "family": "manager-remainder" },
-    "ROUND 2 review: a deadline that lands mid-transition retries on the next tick instead of killing the ticker": { "card": "NE-31s", "family": "manager-foray" },
     "ROUND 2 review: a play settling mid-skip-back does not wipe the skip's armed restart offset": { "card": "NE-39j", "family": "manager-remainder" },
     "a backend with no prefetch is never asked for one": { "card": "NE-39j", "family": "manager-remainder" },
     "a bridged seam is not warmed — narration is the marker and it is ours": { "card": "NE-39j", "family": "manager-remainder" },

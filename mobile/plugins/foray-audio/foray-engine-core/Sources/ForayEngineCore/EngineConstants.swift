@@ -283,8 +283,16 @@ public enum EngineConstants {
 
     /// `player/queue-manager.js`
     public enum QueueManager {
+        /// `NARRATION_DEADLINE_FACTOR`
+        public static let narrationDeadlineFactor: Double = 1.5
+        /// `NARRATION_DEADLINE_MARGIN_SEC`
+        public static let narrationDeadlineMarginSec: Double = 10
         /// `NARRATION_RATE`
         public static let narrationRate: Double = 1
+        /// `NARRATION_SUSPEND_GAP_MS`
+        public static let narrationSuspendGapMs: Double = 5000
+        /// `NARRATION_TICK_MS`
+        public static let narrationTickMs: Double = 250
         /// `POSITION_INTERVAL_MS`
         public static let positionIntervalMs: Double = 15000
         /// `POSITION_MIN_DELTA_SEC`

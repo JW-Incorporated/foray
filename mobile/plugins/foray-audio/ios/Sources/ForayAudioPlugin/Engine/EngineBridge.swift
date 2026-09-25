@@ -268,7 +268,7 @@ final class EngineBridge {
             // A torn-down engine still answers (its session reads
             // `relinquished`), but its deck is gone: nothing is loaded.
             let deck = engine.isTornDown ? DeckReading.idle : engine.seams.deck.reading
-            body = EngineSnapshot.body(core: engine.coreValue, deck: deck, lastError: lastError)
+            body = EngineSnapshot.body(core: engine.coreValue, deck: deck, lastError: lastError, monoMs: timing.monoMs)
         } else {
             body = EngineSnapshot.body(core: EngineCore(), deck: .idle, lastError: nil)
         }

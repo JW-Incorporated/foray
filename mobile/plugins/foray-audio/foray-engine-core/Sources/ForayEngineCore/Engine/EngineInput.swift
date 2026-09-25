@@ -185,6 +185,12 @@ public enum LifecycleEvent: Equatable {
     /// The app came back: ask the deck what happened while nobody was
     /// listening (#263).
     case foreground
+    /// The engine itself is being torn down (card NE-31s; the page's
+    /// `dispose()` in the JS manager): whatever is speaking or sounding is
+    /// silenced, the deck and the jingle player are released, every timer is
+    /// cancelled, and the core answers nothing from then on. The reducer's
+    /// state is left as it was: a teardown is not a transport action.
+    case teardown
 }
 
 /// The timers the core arms through `.timerArm` and hears back from.
@@ -198,6 +204,61 @@ public enum EngineTimer: String, Equatable, Sendable, CaseIterable {
     /// The seam beat's remainder ran out (NE-30s): the wait parked on it
     /// goes on, and the next segment becomes audible.
     case seamBeat = "seam-beat"
+    /// The narration pulse (NE-31s, queue-manager.js `_tickNarration`): every
+    /// `NARRATION_TICK_MS` while a spoken line is audible, a one-shot the core
+    /// re-arms. It repaints the surface (nothing else moves the clock of a
+    /// line no deck is playing), watches for a suspension, and enforces the
+    /// line's deadline.
+    case narrationTick = "narration-tick"
+    /// The silence node's hard cap (NE-31s; the node is NE-34's, flagged off):
+    /// `INTERLUDE_CEILING_SEC` from the out-point, after which only grace covers.
+    case silenceCap = "silence-cap"
+}
+
+// ── THE NARRATING OVERLAY (card NE-31s) ─────────────────────────────────────
+//
+// A spoken line is not a deck item: the synthesiser speaks it (NE-33's
+// SpeechNarrator), so what the core needs from the world is what the JS
+// manager gets from its narration bridge (player/tts-bridge.js), as inputs
+// keyed by the utterance's `seq`, the identity the core stamped on `speak`.
+
+/// How the synthesiser answered `resume(seq)` (queue-manager.js
+/// `_resumeNarration` reads the bridge's answer, not just its arrival).
+public enum NarrationResumeAnswer: Equatable {
+    /// The line continues from the word it paused on.
+    case continued
+    /// The line restarted from its first word (Android's emulated pause,
+    /// `fromStart: true`): the line's clock restarts with it.
+    case fromStart
+    /// The voice did not resume (an older shell, a synthesiser that refused):
+    /// the line stays paused and its clock stays frozen.
+    case refused(reason: String)
+    /// Nobody answered (no transport at all): the voice never stopped, so the
+    /// clock is not frozen either. The honest reading of no answer.
+    case noAnswer
+}
+
+/// What the synthesiser tells the engine about the utterance `seq`.
+public enum NarratorEvent: Equatable {
+    /// `speak(seq)` was accepted and the line is audible. `voiceFallback`: it
+    /// is being spoken in another voice than the one asked for (V-01).
+    case started(seq: Int, voiceFallback: Bool)
+    /// `speak(seq)` was refused (no synthesiser, nothing it could speak).
+    case failed(seq: Int, reason: String)
+    /// `didFinish`: the whole line was spoken. The only end that advances.
+    case finished(seq: Int)
+    /// `didCancel`: a stop, a replacement, or the session taken from under
+    /// the line. NEVER an advance (L-05: stop never maps to finished).
+    case cancelled(seq: Int)
+    /// The answer to `resume(seq)`.
+    case resumed(seq: Int, answer: NarrationResumeAnswer)
+}
+
+/// The jingle player's reports (InterludePlayer, NE-34).
+public enum InterludeEvent: Equatable {
+    /// The jingle ended on its own (`ended`), failed (`error`), or could not
+    /// start at all (`refused`, reported the moment `start` is refused).
+    case ended(reason: String)
 }
 
 /// Everything `EngineCore.handle` accepts.
@@ -211,4 +272,8 @@ public enum EngineInput: Equatable {
     case session(SessionEvent)
     case lifecycle(LifecycleEvent)
     case timer(EngineTimer)
+    /// The synthesiser speaking a line of the Foray's narration (NE-31s).
+    case narrator(NarratorEvent)
+    /// The interlude jingle (NE-31s).
+    case interlude(InterludeEvent)
 }

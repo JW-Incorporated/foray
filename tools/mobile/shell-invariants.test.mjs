@@ -3728,6 +3728,36 @@ test("NE-32: DeckPair ships off, never touches a player, and the out-point's thr
   assert.doesNotMatch(deck, /repeating:\s*true/, "the watchdog is one-shot timers, never a repeating poll");
 });
 
+/* ─────────── NE-31s: the narration, interlude and jingle overlays ───────────
+ *
+ * docs/native-engine-plan.md §14 NE-31s. The manager-foray narration and
+ * jingle families prove the behaviour; what they cannot see is that every
+ * new switch ships OFF, that a line is uttered at NARRATION_RATE unless the
+ * listener-rate flag is on, and that nothing audible is emitted without the
+ * session (speak, interludeStart, silenceStart). */
+
+test("NE-31s: the overlays ship off, a line is uttered at NARRATION_RATE, and nothing audible starts without the session", () => {
+  /* MUTATION: default narrationFollowsListenerRate, interludeAvailable or
+     silenceNodeEnabled to true; utter a line at `state.rate` unconditionally;
+     drop the session guard from speakLine or armInterlude; let the host speak
+     a Foray line through the audition's speaker. Each fails here. */
+  const core = stripSwiftComments(fs.readFileSync(path.join(CORE_DIR, "Sources/ForayEngineCore/Engine/EngineCore.swift"), "utf8"));
+  assert.match(core, /narrationFollowsListenerRate: Bool = false/, "narration rides the listener's rate only behind a flag that defaults OFF");
+  assert.match(core, /interludeAvailable: Bool = false/, "no jingle until the host has a player (NE-34)");
+  assert.match(core, /silenceNodeEnabled: Bool = false/, "the silence node ships OFF (NE-34)");
+  assert.match(swiftFuncBody(core, "speakLine") ?? "", /guard state\.session == \.active else/, "a line is never spoken without the session");
+  assert.match(swiftFuncBody(core, "armInterlude") ?? "", /guard state\.session == \.active else/, "the jingle never starts without the session");
+  assert.match(core, /config\.narrationFollowsListenerRate \? state\.rate : EngineConstants\.QueueManager\.narrationRate/,
+    "the utterance rate is NARRATION_RATE (OQ-3) unless the flag is on");
+  assert.match(swiftFuncBody(core, "startSilence") ?? "", /Interlude\.silenceNodeSec\(/, "the silence node's cap is the interlude rule's");
+
+  const host = stripSwiftComments(fs.readFileSync(path.join(ENGINE_DIR, "ForayEngine.swift"), "utf8"));
+  const interpret = swiftFuncBody(host, "interpret") ?? "";
+  const narration = interpret.slice(interpret.indexOf("case let .narration("), interpret.indexOf("case let .interlude("));
+  assert.ok(narration.length > 0, "the host interprets the narration commands");
+  assert.doesNotMatch(narration, /speaker\./, "a Foray line never goes through the audition's speaker (NE-33's SpeechNarrator owns it)");
+});
+
 test("NE-25c: one synthesizer configuration, a platform-free probe reached only through probeSession, and a smoke on the production pieces", () => {
   /* DV-9 (plan §10) is answered on the founder's phone by the Developer
      session probe, and NE-33 picks SpeechNarrator's path from that one row.
