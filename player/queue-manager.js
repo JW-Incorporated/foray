@@ -1483,6 +1483,22 @@ export class PlayerQueueManager {
   }
 
   async _loadItem(ref) {
+    /* A NEWER TRANSITION ALREADY CHOSE ANOTHER TARGET (audit round 3,
+       player-core-9). `_handle` sets the state synchronously and then awaits
+       its effects one by one, so a second skip reduced during the first skip's
+       `pausePlayback` (a real bridge round trip on a synth line) runs its own
+       `loadItem(D)` first; this one, for C, would then claim a newer
+       `_loadSeq`, supersede D and land `itemLoaded` into `loadingItem(D)` —
+       `playing(D)` with D's out-point armed on C's timeline. The reducer's
+       target is the authority on what should load: the reducer emits every
+       `loadItem` alongside a state whose item in focus IS that ref, so by the
+       time the effect runs anything else means a newer event moved the player
+       (a newer skip, which may even have finished loading, or a stop). Such a
+       load is dropped before it claims the player. */
+    const focus = focusOf(this.state);
+    if (!sameItemRef(focus, ref)) {
+      return this._emit(`load.stale ${ref?.id} — the player is now on ${focus?.id ?? this.state.type}`);
+    }
     /* Claim this load. A wait that comes back to find this changed has been
        superseded and must not start audio for an item nobody is on — see
        `_transport` for why the comparison cannot be made any earlier. */
@@ -2632,6 +2648,28 @@ function boundsOf(item) {
 
 /** Queue items are plain catalogue-shaped objects; the reducer only needs
     identity, kind, and (for a segment) the slice it occupies. */
+/** `queue-state.js`'s identity rule (id, kind and bounds), for the manager's
+    own staleness checks (audit round 3, player-core-4/9). */
+/** The item a state is about, as queue-state.js's `currentItem` reads it. */
+function focusOf(state) {
+  switch (state?.type) {
+    case "playing": return state.item;
+    case "transitioning": return state.to;
+    case "interrupted": return state.item;
+    case "loadingItem": return state.target;
+    default: return null;
+  }
+}
+
+function sameItemRef(a, b) {
+  if (a === b) return true;
+  if (!a || !b) return false;
+  const ab = a.bounds ?? null;
+  const bb = b.bounds ?? null;
+  const sameBounds = ab === bb || (ab != null && bb != null && ab.startSec === bb.startSec && ab.endSec === bb.endSec);
+  return a.id === b.id && a.kind === b.kind && sameBounds;
+}
+
 function refOf(item) {
   return itemRef(item.id, item.kind ?? "episode", boundsOf(item));
 }
