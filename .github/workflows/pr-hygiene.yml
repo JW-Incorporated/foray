@@ -252,6 +252,10 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
+          # Read again for enable-auto's re-check. Evaluated when THIS step
+          # starts, after the whole gather: as fresh as a repo variable gets
+          # here (GITHUB_TOKEN cannot read variables through the API).
+          FREEZE: ${{ vars.AUTOMERGE_FREEZE }}
         run: |
           set -uo pipefail
           [ -s actions.jsonl ] || { echo "nothing to do"; exit 0; }
@@ -299,23 +303,47 @@ jobs:
               # the PR right back in the same stuck state this action exists to
               # fix. Treat that one rejection as "just merge it" instead of a
               # failure; any other error still fails the job normally.
+              #
+              # RE-DECIDED ON FRESH FACTS FIRST (round-3 review). The plan is a
+              # snapshot gathered PR by PR, minutes old by now: a `hold` added,
+              # or the freeze set, since then would otherwise be overridden here
+              # (re-armed, or on a CLEAN PR merged outright). So this one PR and
+              # its files are re-read and the policy asked again. Exit 1 means
+              # "not any more" and is a skip; any other failure arms nothing.
               enable-auto)
                 sha="$head_sha"
                 if [ -z "$sha" ]; then
                   sha=$(gh api "repos/$REPO/pulls/$pr" --jq '.head.sha')
                 fi
-                out=$(gh pr merge "$pr" --repo "$REPO" --squash --auto --delete-branch \
-                        --match-head-commit "$sha" 2>&1) && echo "$out" || {
-                  if grep -qi "clean status" <<<"$out"; then
-                    echo "$out"
-                    echo "#$pr is already clean — merging directly instead of arming"
-                    gh pr merge "$pr" --repo "$REPO" --squash --delete-branch \
-                      --match-head-commit "$sha"
-                  else
-                    echo "$out" >&2
+                if ! fresh=$(gh api "repos/$REPO/pulls/$pr") \
+                   || ! fresh_files=$(gh api --paginate "repos/$REPO/pulls/$pr/files" \
+                          --jq '[.[] | {filename, previous_filename}]' | jq -s 'add // []'); then
+                  echo "could not re-read #$pr — not arming on a stale snapshot" >&2
+                  false
+                else
+                  jq -n --argjson pr "$fresh" --argjson files "$fresh_files" '$pr + {files: $files}' > recheck.json
+                  node tools/ci/pr-triage.mjs recheck --from recheck.json --freeze "${FREEZE:-}" --head-sha "$sha"
+                  rc=$?
+                  if [ "$rc" -eq 1 ]; then
+                    echo "#$pr is no longer armable — skipping"
+                  elif [ "$rc" -ne 0 ]; then
+                    echo "re-check of #$pr failed (exit $rc) — not arming" >&2
                     false
+                  else
+                    out=$(gh pr merge "$pr" --repo "$REPO" --squash --auto --delete-branch \
+                            --match-head-commit "$sha" 2>&1) && echo "$out" || {
+                      if grep -qi "clean status" <<<"$out"; then
+                        echo "$out"
+                        echo "#$pr is already clean — merging directly instead of arming"
+                        gh pr merge "$pr" --repo "$REPO" --squash --delete-branch \
+                          --match-head-commit "$sha"
+                      else
+                        echo "$out" >&2
+                        false
+                      fi
+                    }
                   fi
-                }
+                fi
                 ;;
               # `PUT .../update-branch` returns 202 Accepted and merges in the
               # BACKGROUND. Dispatching immediately races it and loses two ways:

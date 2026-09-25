@@ -679,6 +679,8 @@ test("both workflows run on a schedule, each in its OWN concurrency group, and w
 
 const CI_RUN_RED = { name: "CI", event: "push", status: "completed", conclusion: "failure", path: ".github/workflows/ci.yml" };
 const check = (name, conclusion, status = "completed", started_at = "2026-09-24T10:00:00Z") => ({ name, status, conclusion, started_at });
+/* ci.yml's push run on the head: the required checks are judged only when it exists. */
+const CI_RAN = [{ name: "CI", event: "push", status: "in_progress", conclusion: null, path: ".github/workflows/ci.yml" }];
 
 test("ci-release-6: an advisory ios-kit failure no longer holds the release", () => {
   /* The measured case: runs 35950411353 and 35900753042 were `failure` with
@@ -698,9 +700,9 @@ test("ci-release-6: a red REQUIRED check still holds it, and names the check", (
 
 test("ci-release-6: a required check still running, or not reported yet, is building", () => {
   const running = [check("backend", null, "in_progress"), check("data-and-site", "success")];
-  assert.equal(mainState([], {}, running).state, "building");
+  assert.equal(mainState(CI_RAN, {}, running).state, "building");
   const missing = [check("backend", "success")];
-  const m = mainState([], {}, missing);
+  const m = mainState(CI_RAN, {}, missing);
   assert.equal(m.state, "building");
   assert.match(m.building.join(), /data-and-site \(not reported yet\)/);
 });
@@ -711,7 +713,7 @@ test("ci-release-6: the newest run of a required check wins (a green re-run clea
     check("backend", "success", "completed", "2026-09-24T11:00:00Z"),
     check("data-and-site", "success"),
   ];
-  assert.equal(mainState([], {}, rerun).state, "green");
+  assert.equal(mainState(CI_RAN, {}, rerun).state, "green");
 });
 
 test("ci-release-6: without check runs (an older caller), ci.yml is still read as a whole run — stricter, never looser", () => {
@@ -721,8 +723,22 @@ test("ci-release-6: without check runs (an older caller), ci.yml is still read a
 test("ci-release-6: the required list IS pr-triage's REQUIRED_CHECKS, and the trigger fetches the head's check runs", async () => {
   const { REQUIRED_CHECKS } = await import("../ci/pr-triage.mjs");
   const all = REQUIRED_CHECKS.map((n) => check(n, "success"));
-  assert.equal(mainState([], {}, all).state, "green");
-  assert.equal(mainState([], {}, all.slice(1)).state, "building", "every required check is consulted");
+  assert.equal(mainState(CI_RAN, {}, all).state, "green");
+  assert.equal(mainState(CI_RAN, {}, all.slice(1)).state, "building", "every required check is consulted");
   assert.match(code(TRIGGER_WF), /commits\/\$HEAD_SHA\/check-runs\?per_page=100" main-checks\.json/);
   assert.match(code(TRIGGER_WF), /--main-checks main-checks\.json/);
+});
+
+test("ci-release-6: a BOT-MERGED head (no ci.yml run, so no required checks at all) still releases", () => {
+  /* Replays f33caadf: merged by the Actions bot with GITHUB_TOKEN, so the push
+     triggered no workflow — no CI:push run and an EMPTY check_runs list, only
+     Pages. Reading the missing checks as "not reported yet" returned
+     HOLD_MAIN_BUILDING on every 2-hourly run until a human merge landed on top.
+     MUTATION: drop `&& ciRan` from mainState's byChecks -> HOLD_MAIN_BUILDING. */
+  const pages = { name: "pages build and deployment", event: "dynamic", status: "completed", conclusion: "success", path: "dynamic/pages/pages-build-deployment" };
+  const d = triggerDecision({ runs: [DONE], commits: WAITING, bundle: BUNDLE, mainRuns: [pages], mainStatus: { state: "success", total_count: 1 }, mainChecks: [] });
+  assert.equal(d.code, "DISPATCH", d.reason);
+  assert.equal(mainState([pages], {}, []).state, "green");
+  // ...and once ci.yml DOES run on the head, a missing required check is building again.
+  assert.equal(mainState([...CI_RAN, pages], {}, []).state, "building");
 });

@@ -130,12 +130,15 @@ test("the ios composite action reuses ios-ci.mjs's existing 3-outcome signing-ga
   assert.match(signingStep, /IOS_DIST_CERT_P12_BASE64/);
 });
 
-test("the ios upload step is gated on signing.outputs.ready and passes the R-02 version pair, not run_number.run_attempt", () => {
-  const uploadStep = actionStep(IOS_ACTION, "Archive, export and upload to TestFlight") ?? "";
+test("the ios archive and upload steps are gated on signing.outputs.ready and the archive passes the R-02 version pair, not run_number.run_attempt", () => {
+  const archiveStep = actionStep(IOS_ACTION, "Archive and sign (certificate and profile; no App Store Connect key)") ?? "";
+  const uploadStep = actionStep(IOS_ACTION, "Export and upload to TestFlight") ?? "";
+  assert.ok(archiveStep, "no archive step found in ios-archive");
   assert.ok(uploadStep, "no TestFlight upload step found in ios-archive");
-  assert.match(uploadStep, /signing\.outputs\.ready == 'true'/);
-  assert.match(uploadStep, /inputs\.build_number/);
-  assert.match(uploadStep, /inputs\.marketing_version/);
+  for (const s of [archiveStep, uploadStep]) assert.match(s, /signing\.outputs\.ready == 'true'/);
+  assert.match(archiveStep, /inputs\.build_number/);
+  assert.match(archiveStep, /inputs\.marketing_version/);
+  assert.match(uploadStep, /^      id: upload$/m, "the `uploaded` output reads steps.upload");
 });
 
 test("ios and android jobs both depend on version and both run the privacy tripwire before anything else", () => {
@@ -239,14 +242,14 @@ test("the ios composite PATCHES the ONNX Runtime plist before it archives — MU
   assert.ok(patch, "the release path does not patch the framework plist at all");
   assert.match(patch, /ios-embedded-frameworks\.mjs patch "\$SPM_DIR" --min-os "\$MIN_OS"/);
   assert.match(patch, /IPHONEOS_DEPLOYMENT_TARGET/, "the deployment target is hardcoded rather than read off the project");
-  const archiveAt = IOS_ACTION.indexOf("- name: Archive, export and upload to TestFlight");
+  const archiveAt = IOS_ACTION.indexOf("- name: Archive and sign (certificate and profile; no App Store Connect key)");
   const patchAt = IOS_ACTION.indexOf("- name: Give the embedded ONNX Runtime framework");
   assert.ok(patchAt > 0 && patchAt < archiveAt, "the patch runs after the archive, when the bundle is already signed");
 });
 
 test("the archive resolves its packages from the PATCHED tree — MUTATION: drop -clonedSourcePackagesDirPath and xcodebuild fetches its own unpatched xcframework into DerivedData", () => {
-  const uploadStep = actionStep(IOS_ACTION, "Archive, export and upload to TestFlight") ?? "";
-  assert.match(uploadStep, /-clonedSourcePackagesDirPath "\$SPM_DIR"/);
+  const archiveStep = actionStep(IOS_ACTION, "Archive and sign (certificate and profile; no App Store Connect key)") ?? "";
+  assert.match(archiveStep, /-clonedSourcePackagesDirPath "\$SPM_DIR"/);
   assert.match(IOS_ACTION, /SPM_DIR=\$RUNNER_TEMP/, "SPM_DIR is never given a value");
 });
 
@@ -254,16 +257,20 @@ test("the ARCHIVE is read back for embedded-framework keys before it is exported
   /* Same reasoning as the two CFBundleVersion read-backs beside it: a build input
      that silently does not reach the bundle is this repo's "green and wrong"
      shape, and for this one the place it surfaces is 90 seconds into an upload. */
-  const uploadStep = actionStep(IOS_ACTION, "Archive, export and upload to TestFlight") ?? "";
-  assert.match(uploadStep, /ios-embedded-frameworks\.mjs verify/, "the archive's frameworks are never checked");
-  assert.match(uploadStep, /Foray\.xcarchive\/Products\/Applications\/App\.app/,
+  const verifyStep = actionStep(IOS_ACTION, "Read the embedded frameworks back out of the archive") ?? "";
+  assert.match(verifyStep, /ios-embedded-frameworks\.mjs verify/, "the archive's frameworks are never checked");
+  assert.match(verifyStep, /Foray\.xcarchive\/Products\/Applications\/App\.app/,
     "the check reads something other than the archived bundle");
-  const verifyAt = uploadStep.indexOf("ios-embedded-frameworks.mjs verify");
-  const exportAt = uploadStep.indexOf("xcodebuild -exportArchive");
-  const uploadAt = uploadStep.indexOf("altool --upload-app");
-  assert.ok(exportAt > 0 && uploadAt > 0, "the export/upload commands moved");
-  assert.ok(verifyAt > 0 && verifyAt < exportAt && verifyAt < uploadAt,
-    "the embedded-framework check does not run before the export and the upload");
+  // Three steps now (round-3 review): archive, then verify, then export+upload.
+  const archiveAt = IOS_ACTION.indexOf("- name: Archive and sign (certificate and profile; no App Store Connect key)");
+  const verifyAt = IOS_ACTION.indexOf("- name: Read the embedded frameworks back out of the archive");
+  const uploadStepAt = IOS_ACTION.indexOf("- name: Export and upload to TestFlight");
+  const uploadStep = actionStep(IOS_ACTION, "Export and upload to TestFlight") ?? "";
+  assert.ok(archiveAt > 0 && uploadStepAt > 0, "the archive/upload steps moved");
+  assert.match(uploadStep, /xcodebuild -exportArchive/);
+  assert.match(uploadStep, /altool --upload-app/);
+  assert.ok(archiveAt < verifyAt && verifyAt < uploadStepAt,
+    "the embedded-framework check does not run between the archive and the export/upload");
 });
 
 test("both iOS build paths run the SAME script, not two copies of the rule — MUTATION: inline the plist edit here and the two paths start disagreeing", () => {
@@ -353,4 +360,54 @@ test("ci-release-13: nothing secret is ever written under $ART, the directory th
   assert.deepEqual(secretish, []);
   assert.match(IOS_ACTION, /"\$RUNNER_TEMP\/cert\.p12"/, "the certificate is decoded outside $ART");
   assert.match(IOS_ACTION, /\$HOME\/\.appstoreconnect\/private_keys/, "the ASC key is written outside $ART");
+});
+
+/* ──────── round-3 review of ci-release-13: no secret-holding step writes into $ART ──────── */
+
+/** Every step of the composite, and which signing inputs its env carries. */
+const SECRET_INPUT = /\$\{\{\s*inputs\.(ios_dist_cert_p12_base64|ios_dist_cert_password|ios_provisioning_profile_base64|app_store_connect_private_key_base64|app_store_connect_key_id|app_store_connect_issuer_id|apple_team_id)\s*\}\}/g;
+function iosSteps() {
+  return IOS_ACTION.split(/\n(?= {4}- (?:name|uses):)/)
+    .filter((c) => /^\s*- (?:name|uses):/.test(c))
+    .map((c) => ({ name: /- (?:name|uses): (.*)/.exec(c)[1], text: c, secrets: [...c.matchAll(SECRET_INPUT)].map((m) => m[1]) }));
+}
+
+test("review: no step whose env holds a signing secret writes anything under $ART (the public artifact)", () => {
+  /* $ART is uploaded `if: always()`, and anyone signed in can download a public
+     repo's artifacts. GitHub masks secrets in the console log, NOT in artifact
+     files, and never a transformed value. A `tee "$ART/..."` inside a step that
+     holds the p12 or the ASC key publishes whatever that process prints.
+     MUTATION: move `| tee "$ART/embedded-frameworks.txt"` back into the archive
+     or upload step, or point UPLOAD_LOG back at "$ART/altool-upload.log". */
+  const steps = iosSteps();
+  const holders = steps.filter((s) => s.secrets.length);
+  assert.ok(holders.length >= 3, `expected the signing gate, the archive and the upload, found ${holders.map((s) => s.name)}`);
+  const leaky = holders.filter((s) => /\$ART\b|\/ios-release\b/.test(code(s.text)));
+  assert.deepEqual(leaky.map((s) => s.name), [], "these secret-holding steps write into the uploaded logs directory");
+});
+
+test("review: each signing step holds only what it uses — no ASC key while archiving, no certificate while uploading", () => {
+  /* MUTATION: put APP_STORE_CONNECT_PRIVATE_KEY_BASE64 back in the archive
+     step's env, or IOS_DIST_CERT_PASSWORD in the upload step's. */
+  const archive = iosSteps().find((s) => s.name.startsWith("Archive and sign"));
+  const upload = iosSteps().find((s) => s.name.startsWith("Export and upload"));
+  assert.ok(archive && upload);
+  assert.deepEqual(archive.secrets.filter((n) => n.startsWith("app_store_connect")), []);
+  assert.deepEqual(upload.secrets.filter((n) => /cert|provisioning|team/.test(n)), []);
+  assert.match(code(upload.text), /UPLOAD_LOG="\$RUNNER_TEMP\/altool-upload\.log"/, "altool's raw log stays outside $ART");
+});
+
+test("review: the altool log reaches $ART only as a redacted copy, from a step with no secrets", () => {
+  /* MUTATION: drop the redaction step -> the upload error's "see altool-upload.log
+     in this job's artifacts" points at nothing; drop the base64 blanking -> a
+     key-shaped run of characters is published verbatim. */
+  const copy = iosSteps().find((s) => s.name.startsWith("Copy a redacted altool log"));
+  assert.ok(copy, "no redacted-copy step");
+  assert.deepEqual(copy.secrets, []);
+  assert.match(copy.text, /if: always\(\) && steps\.signing\.outputs\.ready == 'true'/);
+  assert.match(copy.text, /PRIVATE KEY-----\/d/);
+  assert.match(copy.text, /s#\[A-Za-z0-9\+\/=\]\{40,\}#\[redacted\]#g/);
+  assert.match(copy.text, /> "\$ART\/altool-upload\.log"/);
+  const at = (n) => IOS_ACTION.indexOf(`- name: ${n}`);
+  assert.ok(at("Export and upload") < at("Copy a redacted altool log") && at("Copy a redacted altool log") < at("Keep the release logs"));
 });

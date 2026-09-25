@@ -184,7 +184,13 @@ jobs:
           # The PR object reports the true count — if the two disagree we did not
           # see the whole diff, and "every path I could see is allowlisted" is
           # then worth nothing. Refuse instead.
-          expected=$(gh api "repos/$REPO/pulls/$PR" --jq '.changed_files')
+          pr_json=$(gh api "repos/$REPO/pulls/$PR")
+          expected=$(jq -r '.changed_files' <<<"$pr_json")
+          # WHO ARMED IT, if anyone. A founder's arming of an outside PR they
+          # have read stands when foreign-ness is its only blocker; the bot's
+          # never does (disarmDecision in tools/ci/path-policy.mjs). Filtered to
+          # login characters so it is safe to put in GITHUB_ENV.
+          echo "ARMED_BY=$(jq -r '.auto_merge.enabled_by.login // ""' <<<"$pr_json" | tr -cd 'A-Za-z0-9_.[]/-')" >> "$GITHUB_ENV"
           actual=$(wc -l < file-entries.jsonl | tr -d ' ')
           if [ "$expected" != "$actual" ]; then
             echo "INCOMPLETE changed-file list: API reports $expected, we read $actual"
@@ -235,6 +241,7 @@ jobs:
             --pr "$PR" \
             --base main \
             --author "$AUTHOR" \
+            --armed-by "${ARMED_BY:-}" \
             ${CROSS_REPO:-} \
             ${TRUNCATED:-} \
             --summary "$GITHUB_STEP_SUMMARY" \
@@ -276,7 +283,11 @@ jobs:
           }
 
       - name: Disarm auto-merge
-        if: steps.decide.outputs.armed != 'true'
+        # Not when a FOUNDER armed an outside PR whose only blocker is that it
+        # is outside (founder_armed): they read it, which is the answer
+        # FOREIGN_AUTHOR was waiting for. Fail-safe: an absent output (no
+        # policy on main, or an older one) still disarms.
+        if: steps.decide.outputs.armed != 'true' && steps.decide.outputs.founder_armed != 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR: ${{ github.event.pull_request.number }}

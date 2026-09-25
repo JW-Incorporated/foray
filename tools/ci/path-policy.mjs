@@ -115,7 +115,7 @@ export const DENIED_PREFIXES = [
   "tools/mobile/wire-signing.mjs",
   // ios-build.yml runs this to write 4a's icon into the Capacitor-generated
   // asset catalog, then re-reads it with `--check`. It is DENIED rather than
-  // acknowledged (unlike inject-background-audio.mjs beside it) because of what
+  // acknowledged (as inject-background-audio.mjs was until round 3) because of what
   // its silent failure ships: since Xcode 14 App Store Connect EXTRACTS the
   // PUBLIC LISTING icon from the uploaded binary's asset catalog — there is no
   // manual upload on iOS — so a one-line `process.exit(0)` here neuters the
@@ -193,6 +193,39 @@ export const DENIED_PREFIXES = [
   "mobile/gradle/",
   "mobile/package.json",
   "mobile/package-lock.json",
+  // Round-3 review of ci-release-5: EVERYTHING THE SIGNING JOBS EXECUTE. The
+  // entries above covered the build manifests; these are the scripts and
+  // manifests that also run inside a release job holding the p12, the App Store
+  // Connect key or the keystore. Two routes, and either is enough:
+  //   - directly, in a step whose env holds the secret: ios-ci.mjs runs
+  //     `signing-gate` with every iOS secret in its environment;
+  //   - indirectly, EARLIER in the same job: code that runs in any step can
+  //     append BASH_ENV / NODE_OPTIONS to $GITHUB_ENV (or a directory to
+  //     $GITHUB_PATH) and so run inside every later step, the secret-holding
+  //     ones included. That covers `npm run add:ios` / `add:android` (tools/mobile's
+  //     npm manifests, which `npm ci --prefix` installs with install scripts,
+  //     and prepare-webdir.mjs with what it imports), the plist injector and
+  //     the framework patcher, and the release gate test the jobs run first.
+  // path-policy.test.mjs walks every job that references a signing secret —
+  // its steps, the composite actions it uses, the npm scripts they call and
+  // the modules those import — and requires every file it reaches to be
+  // denied here, or (for app code under player/, which cannot be) listed with
+  // the reason. That list is the honest residual: it closes only by building
+  // the app in a job that holds no signing secret.
+  "tools/mobile/ios-ci.mjs",
+  "tools/mobile/ios-embedded-frameworks.mjs",
+  "tools/mobile/inject-background-audio.mjs",
+  "tools/mobile/prepare-webdir.mjs",
+  "tools/mobile/minify.mjs",
+  "tools/mobile/package.json",
+  "tools/mobile/package-lock.json",
+  "tools/mobile/.npmrc",
+  // Imported by the denied icon and splash injectors.
+  "tools/brand/png.mjs",
+  "tools/brand/build-icons.mjs",
+  // The privacy tripwire (S-08): the first step of both release jobs, and a
+  // gate in its own right.
+  "test/release-gates.test.js",
 ];
 
 /* DENIED by NAME, anywhere under a directory (ci-release-5). A prefix list
@@ -211,6 +244,12 @@ export const DENIED_PATTERNS = [
   { dir: "mobile/", name: /\.podspec$|^Podfile$/i, why: "CocoaPods manifest" },
   // npm manifests: what `npm ci` fetches and which install scripts it runs.
   { dir: "mobile/", name: /^package(-lock)?\.json$/i, why: "npm manifest" },
+  // npm's per-project config: registry, scripts-prepend-node-path, node-options.
+  // Read by `npm ci` in the same job.
+  { dir: "mobile/", name: /^\.npmrc$/i, why: "npm config" },
+  // Capacitor's CLI loads capacitor.config.ts/.js AHEAD of capacitor.config.json
+  // during `cap add`, and a .ts/.js config is code it executes.
+  { dir: "mobile/", name: /^capacitor\.config\.(js|ts|mjs|cjs|mts|cts)$/i, why: "Capacitor config code" },
 ];
 
 /* Paths a bot run may touch, by tier (docs/curation/... § auto-merge):
@@ -605,6 +644,42 @@ export function automergeDecision(input = {}) {
   };
 }
 
+/** Is `login` one of the founder's own (human) accounts on AUTOMERGE_AUTHORS,
+ *  as opposed to the Actions bot? Only a human arming is a founder's decision:
+ *  the bot arms on the policy's say-so and never on a read. */
+export function isFounderLogin(login, authors = AUTOMERGE_AUTHORS) {
+  if (!isTrustedAuthor(login, authors)) return false;
+  const l = login.trim().toLowerCase();
+  return !l.endsWith("[bot]") && !l.startsWith("app/");
+}
+
+/**
+ * Should an ALREADY-ARMED PR be disarmed? -> { disarm, code, decision }
+ *
+ * Almost always `!decision.armed`. The one exception (round-3 review of
+ * security-1): FOREIGN_AUTHOR says "nobody has read this", and a founder who
+ * read an outside contributor's PR and ran `gh pr merge --auto` HAS read it.
+ * Disarming that on the next sweep left the founder no way to auto-merge a
+ * reviewed outside PR at all. So an arming by a founder login (`armedBy`, from
+ * the REST PR's `auto_merge.enabled_by.login`) stands, but ONLY when
+ * foreign-ness is the sole blocker: the same PR, judged as one of ours, must
+ * arm. A freeze, `hold`, a governed path or a truncated diff still disarms it.
+ * GitHub itself drops the arming when someone without write access pushes to
+ * the head, so it stays bound to what the founder read.
+ *
+ * `armedBy` is the Actions bot for every arming the machinery does, so this
+ * cannot let the sweep or automerge-nightly keep an outside PR armed.
+ */
+export function disarmDecision(input = {}) {
+  const decision = automergeDecision(input);
+  if (decision.armed) return { disarm: false, code: "OK", decision };
+  if (decision.code === "FOREIGN_AUTHOR" && isFounderLogin(input.armedBy, input.authors)) {
+    const asOurs = automergeDecision({ ...input, author: input.armedBy, crossRepo: false });
+    if (asOurs.armed) return { disarm: false, code: "FOUNDER_ARMED", decision };
+  }
+  return { disarm: true, code: decision.code, decision };
+}
+
 function foreignReason(author, crossRepo) {
   const who = typeof author === "string" && author.trim() ? `\`${author.trim()}\`` : "an unknown author";
   return crossRepo
@@ -824,6 +899,11 @@ options:
   --author <login>        (decide) the PR author's login. Required to arm:
                           without it the decision is FOREIGN_AUTHOR
   --cross-repo            (decide) the head branch is on a fork
+  --armed-by <login>      (decide) who armed auto-merge, if anyone (the REST
+                          PR's auto_merge.enabled_by.login). A founder's arming
+                          of a PR blocked ONLY by FOREIGN_AUTHOR is kept:
+                          outputs founder_armed=true, and the caller does not
+                          disarm
   --truncated             the changed-file list is incomplete (the caller's line
                           count disagreed with the PR's own changed_files), so
                           refuse rather than judge a diff it cannot fully see
@@ -846,6 +926,7 @@ const FLAGS_WITH_VALUE = new Set([
   "--github-output",
   "--json",
   "--author",
+  "--armed-by",
 ]);
 const BOOL_FLAGS = new Set(["--draft", "--enforce", "--truncated", "--cross-repo"]);
 
@@ -940,7 +1021,7 @@ export function runCli(argv, io = {}) {
   };
 
   if (command === "decide") {
-    const decision = automergeDecision({
+    const input = {
       files,
       labels,
       freeze: opts.freeze,
@@ -949,7 +1030,11 @@ export function runCli(argv, io = {}) {
       baseRef: opts.base ?? "main",
       author: opts.author,
       crossRepo: Boolean(opts.crossRepo),
-    });
+      armedBy: opts.armedBy,
+    };
+    const { decision, code: disarmCode } = disarmDecision(input);
+    const founderArmed = disarmCode === "FOUNDER_ARMED";
+    if (founderArmed) $.log(`Armed by founder \`${opts.armedBy}\`: foreign-ness is the only blocker, so the arming stands.`);
     if (opts.githubOutput) {
       $.append(
         opts.githubOutput,
@@ -957,6 +1042,7 @@ export function runCli(argv, io = {}) {
           `armed=${decision.armed}`,
           `code=${decision.code}`,
           `needs_founder=${decision.needsFounder}`,
+          `founder_armed=${founderArmed}`,
           `reason=${decision.reason.replace(/\r?\n/g, " ")}`,
           "",
         ].join("\n")

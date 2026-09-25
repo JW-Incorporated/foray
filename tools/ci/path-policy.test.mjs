@@ -13,6 +13,7 @@ import assert from "node:assert";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { spawnSync } from "node:child_process";
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 
@@ -35,6 +36,8 @@ import {
   pathProblem,
   runCli as rawRunCli,
   isTrustedAuthor,
+  disarmDecision,
+  isFounderLogin,
   splitList,
 } from "./path-policy.mjs";
 
@@ -202,14 +205,6 @@ const ACKNOWLEDGED_UNDENIED_GATES = {
   // segment-pipeline PR — the friction pointing the wrong way that #167 was
   // about. Revisit if that workstream finishes.
   "tools/segments/merge-segments.mjs": "active workstream; own suite floored at 39",
-  // ios-ci.mjs is a multi-subcommand CLI (xcode-container, pick-simulator,
-  // redact-localstorage, signing-gate, decode-localstorage, verdict) invoked
-  // from ios-build.yml. `signing-gate` decides whether the iOS build proceeds
-  // unsigned, but — unlike wire-signing.mjs — no step in ios-build.yml passes
-  // it a live signing secret; ios-build.yml has no APPLE_* credential env at
-  // all today. Revisit and split/deny the signing-gate path specifically the
-  // day iOS signing secrets are wired in (kanban t_97e1c5f4).
-  "tools/mobile/ios-ci.mjs": "no live signing secret in ios-build.yml today; revisit when iOS signing lands",
   // Issue #701: ci.yml builds dist/ with prepare-dist.mjs so a PR that would
   // break the Vercel build is red before merge. The script was ALREADY the
   // production build (vercel.json's buildCommand) on an allowed path; running it
@@ -223,10 +218,6 @@ const ACKNOWLEDGED_UNDENIED_GATES = {
   // turn a check red, not change what gets built or signed.
   "tools/mobile/webview-probe.mjs": "post-build diagnostic probe; cannot alter build/signing output",
   "tools/mobile/probe/install-probe.mjs": "post-build diagnostic probe; cannot alter build/signing output",
-  // Injects a background-audio capability into Info.plist and verifies with
-  // --check, same shape as wire-signing.mjs's own --check re-read — but this
-  // one has no keystore/credential exposure, only an Info.plist edit.
-  "tools/mobile/inject-background-audio.mjs": "Info.plist capability injection; no credential exposure",
   // nightly-refresh.yml / nightly-watch.yml run with `contents: write` (they
   // commit refreshed data), not a founder-merge decision — an accepted T3
   // trade per the file's own tiering above, bounded by main's branch
@@ -255,32 +246,36 @@ const ACKNOWLEDGED_UNDENIED_GATES = {
   // to a bad build, not an unread security-relevant change. Found while fixing
   // PR #501's gate scan (kanban t_5458c0a2).
   "tools/mobile/version.mjs": "no auth/secret bypass; worst case is a mislabeled version or a failed (red) upload, not a silent bad deploy",
-  // Writes `MinimumOSVersion` into a vendored framework's Info.plist before the
-  // build (`patch`), and asserts the embedded result afterwards (`verify`).
-  // Same risk class as version.mjs directly above, and for the same reason:
-  // neutering either half cannot reach a secret, cannot change which BINARY
-  // ships (fetch-models.mjs / inject-models.mjs are denied for that, two
-  // entries up — this script never touches an executable, only five metadata
-  // keys), and cannot ship anything wrong silently. The ONLY thing a
-  // `process.exit(0)` here buys is the failure we already had: App Store
-  // Connect rejecting the upload with error 90360, a red run at the end of a
-  // release rather than the start of one. That is a worse afternoon, not an
-  // unread security-relevant change. It is the OPPOSITE of the icon/splash
-  // entries in DENIED_PREFIXES, whose silent failure ships a wrong picture to
-  // the store with nothing red anywhere.
-  "tools/mobile/ios-embedded-frameworks.mjs":
-    "framework Info.plist metadata only; no secret, no binary choice, and its silent failure is a RED altool rejection rather than a bad ship",
+  // ios-ci.mjs, inject-background-audio.mjs and ios-embedded-frameworks.mjs
+  // were acknowledged here as "no secret" until the round-3 review showed all
+  // three run inside the release composite that holds the p12 and the App Store
+  // Connect key (ios-ci.mjs `signing-gate` with the secrets in its own env).
+  // They are DENIED now; see "everything a signing job executes" below.
 };
 
 /* Every `.github/workflows/*.yml` file, not just ci.yml — a gate script run
  * from ANY workflow can be neutered the same way; scoping the scan to ci.yml
  * alone only checked one of the repo's workflow files (kanban t_97e1c5f4). */
+function workflowAndActionFiles() {
+  const wf = path.join(REPO, ".github/workflows");
+  const files = fs.readdirSync(wf).filter((f) => f.endsWith(".yml") || f.endsWith(".yaml")).map((f) => `.github/workflows/${f}`);
+  // Composite actions (round-3 review): the release composites run gate
+  // scripts too, and a scan of workflows alone never saw them.
+  const actions = path.join(REPO, ".github/actions");
+  if (fs.existsSync(actions)) {
+    for (const d of fs.readdirSync(actions, { withFileTypes: true })) {
+      for (const n of ["action.yml", "action.yaml"]) {
+        if (d.isDirectory() && fs.existsSync(path.join(actions, d.name, n))) files.push(`.github/actions/${d.name}/${n}`);
+      }
+    }
+  }
+  return files;
+}
+
 function allGateScripts() {
-  const dir = path.join(REPO, ".github/workflows");
-  const files = fs.readdirSync(dir).filter((f) => f.endsWith(".yml") || f.endsWith(".yaml"));
-  const found = new Map(); // script -> Set(workflow files that invoke it)
-  for (const f of files) {
-    const text = fs.readFileSync(path.join(dir, f), "utf8");
+  const found = new Map(); // script -> Set(workflow/action files that invoke it)
+  for (const f of workflowAndActionFiles()) {
+    const text = fs.readFileSync(path.join(REPO, f), "utf8");
     for (const m of text.matchAll(/\bnode\s+(tools\/[\w./-]+\.mjs)/g)) {
       const script = m[1];
       if (!found.has(script)) found.set(script, new Set());
@@ -308,6 +303,14 @@ test("every gate script run by ANY workflow is denied, or explicitly acknowledge
       "ACKNOWLEDGED_UNDENIED_GATES here with the reason:\n" +
       exposed.map((s) => `${s} (invoked by ${[...found.get(s)].join(", ")})`).join("\n")
   );
+});
+
+test("review: the gate scan reads the composite actions as well as the workflows", () => {
+  /* MUTATION: go back to scanning .github/workflows only -> the release
+     composite's own scripts vanish from the scan. */
+  const found = allGateScripts();
+  assert.ok([...found.get("tools/mobile/ios-embedded-frameworks.mjs") ?? []].includes(".github/actions/ios-archive/action.yml"));
+  assert.ok(found.has("tools/release/upload-retry.mjs"), "upload-retry.mjs is run only by the ios-archive composite");
 });
 
 test("the acknowledgement list has not gone stale", () => {
@@ -397,7 +400,7 @@ test("tools/events-server.mjs is denied even though tools/ is allowed", () => {
 
 test("tools/mobile/inject-app-icon.mjs is denied, not merely acknowledged", () => {
   /* IT SITS ON THE OTHER SIDE OF A LINE ITS NEIGHBOUR DOES NOT.
-     `inject-background-audio.mjs` is in ACKNOWLEDGED_UNDENIED_GATES above: an
+     `inject-background-audio.mjs` WAS acknowledged (until round 3 denied it as release-job code): an
      Info.plist capability edit with no credential exposure, whose worst silent
      failure is audio stopping on the lock screen — bad, and fixable in the next
      build. `inject-app-icon.mjs` writes the asset catalog, and since Xcode 14 App
@@ -970,18 +973,78 @@ test("security-1: automerge-nightly passes the PR author and fork-ness to decide
 
 /* ------------------------------------------ ci-release-2: renames are two paths */
 
-test("ci-release-2: a rename OUT of CLAUDE.md is denied once the gatherer reports the old path", () => {
-  // The files API reports `git mv CLAUDE.md docs/CLAUDE-old.md` as ONE entry:
-  // filename docs/CLAUDE-old.md, previous_filename CLAUDE.md. The gatherers now
-  // emit both, so the policy sees the governed side.
-  const d = automergeDecision({ files: ["docs/CLAUDE-old.md", "CLAUDE.md"] });
-  assert.equal(d.code, "DENIED_PATH");
-  assert.equal(governedCheck({ files: ["docs/CLAUDE-old.md", "CLAUDE.md"] }).verdict, "UNAPPROVED");
-});
+/* The files API's shape for `git mv CLAUDE.md docs/CLAUDE-old.md` (ONE entry)
+ * beside an ordinary change. The old tests handed the policy a list that
+ * already contained CLAUDE.md, so they passed with or without the gatherer
+ * fix; these run the gatherers' OWN jq, lifted out of the workflow files. */
+const RENAME_FIXTURE = [
+  { filename: "docs/CLAUDE-old.md", previous_filename: "CLAUDE.md", status: "renamed" },
+  { filename: "tools/old-ci/path-policy.mjs", previous_filename: "tools/ci/path-policy.mjs", status: "renamed" },
+  { filename: "data/discover.json", status: "modified" },
+];
 
-test("ci-release-2: a rename out of tools/ci/ is denied the same way", () => {
-  const d = automergeDecision({ files: ["tools/old-ci/path-policy.mjs", "tools/ci/path-policy.mjs"] });
-  assert.equal(d.code, "DENIED_PATH");
+/** jq, or null. CI's ubuntu runner has it; a dev machine may not. */
+function findJq() {
+  for (const bin of [process.env.JQ, "jq"].filter(Boolean)) {
+    const r = spawnSync(bin, ["--version"], { encoding: "utf8" });
+    if (r.status === 0) return bin;
+  }
+  return null;
+}
+const JQ = findJq();
+function needJq(t) {
+  if (JQ) return true;
+  // Never a silent pass where it matters: on CI a missing jq is a failure.
+  assert.ok(!process.env.CI, "jq is required on CI to execute the workflows' own file gatherers");
+  t.skip("jq not installed here (set JQ=/path/to/jq); CI runs this for real");
+  return false;
+}
+const runJq = (args, input) => {
+  const r = spawnSync(JQ, args, { input, encoding: "utf8" });
+  assert.equal(r.status, 0, r.stderr);
+  return r.stdout;
+};
+
+/** The two jq programs one of the automerge/path-policy gatherers runs: the
+ *  `--jq` on the files API, then the flatten to changed-files.txt. */
+function gathererJq(workflow) {
+  const yml = fs.readFileSync(path.join(REPO, ".github/workflows", workflow), "utf8");
+  const perEntry = /pulls\/\$PR\/files" \\\s*\n\s*--jq '([^']+)' > file-entries\.jsonl/.exec(yml);
+  const flatten = /jq -r '([^']+)' file-entries\.jsonl > changed-files\.txt/.exec(yml);
+  assert.ok(perEntry && flatten, `${workflow}: the file gatherer changed shape; update this test`);
+  return { perEntry: perEntry[1], flatten: flatten[1] };
+}
+
+for (const workflow of ["automerge-nightly.yml", "path-policy.yml"]) {
+  test(`ci-release-2: ${workflow}'s own gatherer turns a rename out of CLAUDE.md or tools/ci/ into a governed path`, (t) => {
+    /* MUTATION: revert the gatherer's --jq to `.[].filename` (the pre-fix
+       shape) -> only the allowlisted destinations reach the policy, the PR
+       arms, and this is red. */
+    if (!needJq(t)) return;
+    const { perEntry, flatten } = gathererJq(workflow);
+    // `gh api --jq` prints strings raw, like `jq -r`.
+    const entries = runJq(["-r", perEntry], JSON.stringify(RENAME_FIXTURE));
+    // A Windows jq writes CRLF; the runner's writes LF.
+    assert.equal(entries.trim().split(/\r?\n/).length, RENAME_FIXTURE.length, "one line per API entry, for the truncation count");
+    const files = runJq(["-r", flatten], entries).split(/\r?\n/).filter(Boolean);
+    assert.ok(files.includes("CLAUDE.md") && files.includes("tools/ci/path-policy.mjs"), files.join(", "));
+    const d = automergeDecision({ files });
+    assert.equal(d.code, "DENIED_PATH");
+    assert.equal(governedCheck({ files }).verdict, "UNAPPROVED");
+  });
+}
+
+test("ci-release-2: pr-hygiene's gatherer shape reaches the sweep's policy with both sides of a rename", async (t) => {
+  /* pr-hygiene keeps entries as objects and pr-triage's normalizePr expands
+     them. MUTATION: drop previous_filename from its --jq -> red. */
+  if (!needJq(t)) return;
+  const yml = fs.readFileSync(path.join(REPO, ".github/workflows/pr-hygiene.yml"), "utf8");
+  const m = /pulls\/\$n\/files" \\\s*\n\s*--jq '([^']+)'/.exec(yml);
+  assert.ok(m, "pr-hygiene's file gatherer changed shape; update this test");
+  const entries = JSON.parse(runJq(["-c", m[1]], JSON.stringify(RENAME_FIXTURE)));
+  const { normalizePr } = await import("./pr-triage.mjs");
+  const files = normalizePr({ files: entries }).files;
+  assert.equal(automergeDecision({ files }).code, "DENIED_PATH", files.join(", "));
 });
 
 /* Every workflow step that lists a PR's changed files. A gatherer that reads
@@ -1063,20 +1126,221 @@ test("ci-release-5: mobile/ APP code still auto-merges (the founder ruling of 20
   }
 });
 
-test("ci-release-5: every build manifest tracked under mobile/ today is denied", () => {
-  /* The gate-script scan's sibling: walk mobile/ on disk and make sure no file
-     a build tool executes is allowlisted. A new kind of manifest (a Podfile,
-     a .gradle.kts) lands here first. */
-  const walk = (dir) =>
-    fs.readdirSync(path.join(REPO, dir), { withFileTypes: true }).flatMap((e) => {
-      if (e.name === "node_modules" || e.name.startsWith(".")) return [];
-      const rel = `${dir}/${e.name}`;
-      return e.isDirectory() ? walk(rel) : [rel];
-    });
-  const BUILD_INPUT = /(\.gradle(\.kts)?|^Package\.swift|\.podspec|^Podfile|^package(-lock)?\.json)$/i;
-  const manifests = walk("mobile").filter((f) => BUILD_INPUT.test(f.slice(f.lastIndexOf("/") + 1)));
-  assert.ok(manifests.length >= 8, `expected the mobile build manifests, found ${manifests.length}`);
-  const exposed = manifests.filter((f) => !pathPolicy([f]).denied.length);
-  assert.deepStrictEqual(exposed, [], "these build inputs would auto-merge into a secret-holding step");
-  assert.ok(DENIED_PATTERNS.length >= 4);
+/* Tracked files under mobile/ that are neither APP SOURCE nor denied, each with
+ * the reason it cannot run on a build machine. App source is a source-file
+ * extension inside a source directory (Sources/, Tests/, src/, web/). Anything
+ * else — a new manifest, a config file, a dotfile — fails the walk below until
+ * it is denied or added here, in a diff someone reads. */
+const ACKNOWLEDGED_MOBILE_NON_SOURCE = {
+  "mobile/.gitignore": "git metadata; no build tool executes it",
+  "mobile/plugins/foray-audio/foray-engine-core/.gitignore": "git metadata; no build tool executes it",
+  "mobile/README.md": "documentation",
+  "mobile/plugins/foray-tts/README.md": "documentation",
+  "mobile/VERSION": "a version string version.mjs validates; a bad one fails the upload, red",
+  "mobile/ENGINE_DEFAULT.json": "JSON data the plist injector writes and --checks; parsed, never executed",
+  "mobile/capacitor.config.json": "JSON config, parsed not executed (a .js/.ts config IS code and is denied by name); its decisions are pinned by shell-invariants.test.mjs",
+  "mobile/plugins/foray-tts/lexicon/hard-terms.json": "pronunciation data bundled into the app",
+  "mobile/plugins/foray-audio/ios/Tests/ForayAudioPluginTests/Fixtures/ClickTracks/click-tracks.json": "XCTest fixture data",
+};
+const APP_SOURCE_DIR = /\/(Sources|Tests|src|web)\//;
+const APP_SOURCE_EXT = /\.(swift|java|kt|js|css|xml|png|jpg|svg|mp3|wav)$/i;
+
+function trackedUnder(dir) {
+  const r = spawnSync("git", ["ls-files", "-z", "--", dir], { cwd: REPO, encoding: "utf8" });
+  assert.equal(r.status, 0, `git ls-files failed: ${r.stderr}`);
+  return r.stdout.split("\0").filter(Boolean);
+}
+
+test("ci-release-5: every tracked file under mobile/ is app source, denied, or acknowledged with a reason", () => {
+  /* The old walk filtered by a regex that duplicated DENIED_PATTERNS and
+     skipped dotfiles, so it could only find what was already denied. This is
+     the inversion: what is NOT app source must be accounted for.
+     MUTATION: remove the Package.swift pattern from DENIED_PATTERNS, or add a
+     tracked mobile/capacitor.config.ts / mobile/.npmrc without its deny entry
+     -> it is listed here. */
+  const files = trackedUnder("mobile");
+  assert.ok(files.length >= 100, `expected the mobile tree, found ${files.length} tracked file(s)`);
+  const unaccounted = files.filter(
+    (f) =>
+      !pathPolicy([f]).denied.length &&
+      !(APP_SOURCE_DIR.test(f) && APP_SOURCE_EXT.test(f)) &&
+      !(f in ACKNOWLEDGED_MOBILE_NON_SOURCE)
+  );
+  assert.deepStrictEqual(unaccounted, [], "not app source, not denied, not acknowledged: a build input nobody has classified");
+  const stale = Object.keys(ACKNOWLEDGED_MOBILE_NON_SOURCE).filter((f) => !files.includes(f));
+  assert.deepStrictEqual(stale, [], "acknowledged but no longer tracked");
+});
+
+test("review: the config files a build tool executes are denied by name under mobile/", () => {
+  /* MUTATION: drop either new DENIED_PATTERNS entry. */
+  for (const f of ["mobile/.npmrc", "mobile/plugins/foray-tts/.npmrc", "mobile/capacitor.config.ts", "mobile/capacitor.config.js", "mobile/capacitor.config.mjs"]) {
+    assert.equal(pathPolicy([f]).denied.length, 1, f);
+  }
+  assert.equal(pathPolicy(["mobile/capacitor.config.json"]).allowed.length, 1, "the JSON config is data and stays app-owned");
+});
+
+/* ------------- round-3 review of ci-release-5: everything a signing job executes ------------- */
+
+/* A job that can read a signing secret: the release jobs (and android-release's
+ * bundle job) pass these to their composite actions or steps. */
+const SIGNING_SECRET = /secrets\.(IOS_DIST_CERT|IOS_PROVISIONING_PROFILE|APP_STORE_CONNECT_|APPLE_TEAM_ID|ANDROID_KEYSTORE|ANDROID_KEY_ALIAS|PLAY_SERVICE_ACCOUNT)/;
+
+/* App code the signing jobs execute at BUILD time that cannot be denied: it is
+ * the app. prepare-webdir.mjs imports it to build the webDir. Listed so a new
+ * one is a visible diff, and because this is the honest residual of the fix:
+ * code here runs in the same job as the signing secrets and can reach later
+ * steps through $GITHUB_ENV. The real closure is building the app in a job
+ * that holds no signing secret, which is a release-pipeline change of its own. */
+const ACKNOWLEDGED_RELEASE_APP_CODE = {
+  "player/build-stamp.js": "app code imported by prepare-webdir.mjs; closes only with a secret-free build job",
+  "player/foray-queue.js": "app code imported by prepare-webdir.mjs; closes only with a secret-free build job",
+  "player/foray-resolve.js": "app code imported by prepare-webdir.mjs; closes only with a secret-free build job",
+  "player/foray-sources.js": "app code imported by prepare-webdir.mjs; closes only with a secret-free build job",
+  "player/seek-policy.js": "app code imported by prepare-webdir.mjs; closes only with a secret-free build job",
+};
+
+const stripComments = (text) => text.split(/\r?\n/).filter((l) => !l.trimStart().startsWith("#")).join("\n");
+const norm = (wd, rel) => path.posix.normalize(path.posix.join(wd, rel)).replace(/^\.\//, "");
+
+/** The jobs of one workflow, as text. */
+function jobsOf(text) {
+  const at = text.search(/^jobs:\s*$/m);
+  if (at < 0) return [];
+  return text.slice(at).split(/\n(?=  [A-Za-z0-9_-]+:\s*$)/m).slice(1);
+}
+
+/** Files one command line executes, run from `wd`. Follows `npm run` into
+ *  `wd`/package.json and `npm ci` (with or without --prefix) to its manifests. */
+function executedBy(cmd, wd, out, seenScripts = new Set()) {
+  for (const m of cmd.matchAll(/\bnode\s+(?:--test\s+)?((?:\.\.?\/)*[\w@./-]+\.(?:mjs|cjs|js))\b/g)) out.add(norm(wd, m[1]));
+  for (const m of cmd.matchAll(/\bnpm\s+ci\b([^\n&;|]*)/g)) {
+    const prefix = /--prefix\s+(\S+)/.exec(m[1]);
+    const dir = prefix ? norm(wd, prefix[1]) : wd;
+    for (const f of ["package.json", "package-lock.json"]) out.add(norm(dir, f));
+  }
+  for (const m of cmd.matchAll(/\bnpm\s+run\s+([\w:.-]+)/g)) {
+    const key = `${wd}:${m[1]}`;
+    if (seenScripts.has(key)) continue;
+    seenScripts.add(key);
+    out.add(norm(wd, "package.json"));
+    const script = JSON.parse(fs.readFileSync(path.join(REPO, wd, "package.json"), "utf8")).scripts?.[m[1]];
+    assert.ok(script, `${wd}/package.json has no "${m[1]}" script`);
+    executedBy(script, wd, out, seenScripts);
+  }
+}
+
+/** Every file a signing job reaches: its steps, the composite actions it uses,
+ *  the npm scripts they call, and (transitively) what those modules import. */
+function signingJobExecutables() {
+  const out = new Set();
+  const jobs = [];
+  for (const f of workflowAndActionFiles().filter((f) => f.startsWith(".github/workflows/"))) {
+    for (const job of jobsOf(fs.readFileSync(path.join(REPO, f), "utf8"))) {
+      if (SIGNING_SECRET.test(job)) jobs.push({ f, job });
+    }
+  }
+  const texts = [];
+  for (const { job } of jobs) {
+    texts.push(job);
+    for (const m of job.matchAll(/uses:\s*\.\/(\.github\/actions\/[\w-]+)/g)) {
+      texts.push(fs.readFileSync(path.join(REPO, m[1], "action.yml"), "utf8"));
+    }
+  }
+  for (const text of texts) {
+    for (const chunk of stripComments(text).split(/\n(?=\s*- (?:name|uses|run):)/)) {
+      const wd = /working-directory:\s*(\S+)/.exec(chunk)?.[1] ?? ".";
+      executedBy(chunk, wd, out);
+    }
+  }
+  // Transitive relative imports of every module reached.
+  const queue = [...out];
+  while (queue.length) {
+    const f = queue.shift();
+    if (!/\.(mjs|cjs|js)$/.test(f) || !fs.existsSync(path.join(REPO, f))) continue;
+    const src = fs.readFileSync(path.join(REPO, f), "utf8");
+    const specs = [
+      ...src.matchAll(/(?:^|\n)\s*(?:import|export)\s[^;]*?from\s*["'](\.{1,2}\/[^"']+)["']/g),
+      ...src.matchAll(/(?:^|\n)\s*import\s*["'](\.{1,2}\/[^"']+)["']/g),
+      ...src.matchAll(/\bimport\(\s*["'](\.{1,2}\/[^"']+)["']\s*\)/g),
+      ...src.matchAll(/\brequire\(\s*["'](\.{1,2}\/[^"']+)["']\s*\)/g),
+    ].map((m) => norm(path.posix.dirname(f), m[1]));
+    for (const dep of specs) {
+      if (!out.has(dep)) {
+        out.add(dep);
+        queue.push(dep);
+      }
+    }
+  }
+  return { files: out, jobs };
+}
+
+test("review: every file a signing job executes is DENIED (or is app code, listed with the residual)", () => {
+  /* The deny list used to be built by hand from the scripts a reviewer thought
+     of, and the gate-script scan never read .github/actions/** or followed an
+     `npm run`. So ios-ci.mjs (signing-gate, with every iOS secret in its env),
+     ios-embedded-frameworks.mjs, prepare-webdir.mjs and tools/mobile's npm
+     manifests all sat on ALLOWED paths inside the job holding the App Store
+     Connect key. An allowlisted file there lands unread and runs at the next
+     2-hourly release.
+     MUTATION: remove any of the round-3 entries from DENIED_PREFIXES (e.g.
+     "tools/mobile/ios-ci.mjs" or "tools/mobile/package.json") -> listed here. */
+  const { files, jobs } = signingJobExecutables();
+  assert.ok(jobs.length >= 3, `expected release.yml's ios and android jobs and android-release's bundle job, found ${jobs.map((j) => j.f)}`);
+  for (const expected of [
+    "tools/mobile/ios-ci.mjs",
+    "tools/mobile/ios-embedded-frameworks.mjs",
+    "tools/mobile/prepare-webdir.mjs",
+    "tools/mobile/package.json",
+    "mobile/package.json",
+    "test/release-gates.test.js",
+    "tools/release/upload-retry.mjs",
+  ]) {
+    assert.ok(files.has(expected), `the walk no longer reaches ${expected}: it has gone blind somewhere`);
+  }
+  const exposed = [...files]
+    .filter((f) => fs.existsSync(path.join(REPO, f)))
+    .filter((f) => !pathPolicy([f]).denied.length && !(f in ACKNOWLEDGED_RELEASE_APP_CODE))
+    .sort();
+  assert.deepStrictEqual(exposed, [], "run by a job that holds a signing secret, and not denied");
+  const stale = Object.keys(ACKNOWLEDGED_RELEASE_APP_CODE).filter((f) => !files.has(f));
+  assert.deepStrictEqual(stale, [], "acknowledged but no longer executed by a signing job");
+});
+
+test("review: nothing a signing job executes may be ACKNOWLEDGED as a gate instead of denied", () => {
+  /* The acknowledgement list is for gates whose worst case is a red run. A
+     script in a job holding a signing key has no such worst case.
+     MUTATION: put "tools/mobile/ios-ci.mjs" back in ACKNOWLEDGED_UNDENIED_GATES. */
+  const { files } = signingJobExecutables();
+  const both = Object.keys(ACKNOWLEDGED_UNDENIED_GATES).filter((s) => files.has(s));
+  assert.deepStrictEqual(both, []);
+});
+
+/* ------------- round-3 review of security-1: a founder's arming of an outside PR ------------- */
+
+test("review: disarmDecision keeps a founder's arming when foreign-ness is the only blocker", () => {
+  /* MUTATION: drop the FOREIGN_AUTHOR exception in disarmDecision -> disarm. */
+  const fork = { files: ["data/x.json"], author: "stranger", crossRepo: true };
+  const kept = disarmDecision({ ...fork, armedBy: "wjduvall-cmd" });
+  assert.deepEqual([kept.disarm, kept.code], [false, "FOUNDER_ARMED"]);
+  // The bot never vouches for a stranger, and nobody unknown does either.
+  for (const armedBy of ["github-actions[bot]", "app/github-actions", "stranger", "", undefined]) {
+    assert.equal(disarmDecision({ ...fork, armedBy }).disarm, true, String(armedBy));
+  }
+  // Every other blocker still wins over a founder's arming.
+  assert.equal(disarmDecision({ ...fork, armedBy: "wjduvall-cmd", freeze: "on" }).disarm, true);
+  assert.equal(disarmDecision({ ...fork, armedBy: "wjduvall-cmd", labels: ["hold"] }).disarm, true);
+  assert.equal(disarmDecision({ ...fork, armedBy: "wjduvall-cmd", files: ["CLAUDE.md"] }).disarm, true);
+  assert.equal(disarmDecision({ ...fork, armedBy: "wjduvall-cmd", truncated: true }).disarm, true);
+  assert.equal(isFounderLogin("SFFAN15-SYS"), true);
+  assert.equal(isFounderLogin("github-actions[bot]"), false);
+});
+
+test("review: CLI decide --armed-by reports founder_armed for the workflow's Disarm step", () => {
+  const h = harness({ f: "data/a.json\n" });
+  rawRunCli(["decide", "--files-from", "f", "--author", "stranger", "--cross-repo", "--armed-by", "wjduvall-cmd", "--github-output", "O"], h.io);
+  assert.match(h.appended.O, /armed=false/);
+  assert.match(h.appended.O, /founder_armed=true/);
+  const h2 = harness({ f: "data/a.json\n" });
+  rawRunCli(["decide", "--files-from", "f", "--author", "stranger", "--armed-by", "github-actions[bot]", "--github-output", "O"], h2.io);
+  assert.match(h2.appended.O, /founder_armed=false/);
 });

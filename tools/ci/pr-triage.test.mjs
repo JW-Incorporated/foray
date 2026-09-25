@@ -32,6 +32,7 @@ import {
   planMergeability,
   planTriage,
   ciDispatchIsRedundant,
+  recheckArm,
   renderWaitingBlock,
   runCli,
   spliceBlock,
@@ -1019,4 +1020,91 @@ test("ci-release-10: a run in flight, or finished with a verdict, is coverage", 
   assert.equal(ciDispatchIsRedundant([{ event: "push", status: "completed", conclusion: "success" }]), true);
   // The older bare-event shape carries no status and still counts.
   assert.equal(ciDispatchIsRedundant(["pull_request"]), true);
+});
+
+/* ------------- round-3 review: a founder's arming of an outside PR stands ------------- */
+
+/* REST's shape: `auto_merge` carries who enabled it. */
+const armedBy = (login) => ({ auto_merge: { enabled_by: { login }, merge_method: "squash" } });
+
+test("review: an outside PR the FOUNDER armed after reading it is NOT disarmed by the sweep", () => {
+  /* security-1 made every outside PR FOREIGN_AUTHOR, and the sweep disarmed any
+     armed PR the policy would not arm, so a founder who read a fork PR and ran
+     `gh pr merge --auto` had it taken back within the hour.
+     MUTATION: in planMergeability, go back to `if (!decide(pr, freeze).armed)`
+     (or drop the FOREIGN_AUTHOR exception in disarmDecision) -> disable-auto. */
+  const raw = pr({ ...FORK, crossRepo: undefined, ...armedBy("wjduvall-cmd") });
+  assert.equal(normalizePr(raw).armedBy, "wjduvall-cmd");
+  const { actions, notes } = planMergeability([raw]);
+  assert.equal(kinds(actions).includes("disable-auto"), false);
+  assert.ok(notes.some((n) => /armed by founder/.test(n)), notes.join("\n"));
+});
+
+test("review: the same outside PR armed by the BOT is still disarmed (the sweep never vouches for strangers)", () => {
+  const raw = pr({ ...FORK, crossRepo: undefined, ...armedBy("github-actions[bot]") });
+  assert.ok(kinds(planMergeability([raw]).actions).includes("disable-auto"));
+});
+
+test("review: a founder's arming does not outlive a freeze, a hold, or a governed path", () => {
+  /* Foreign-ness is the ONLY blocker the founder's read answers. */
+  const base = { ...FORK, crossRepo: undefined, ...armedBy("wjduvall-cmd") };
+  assert.ok(kinds(planMergeability([pr(base)], { freeze: "on" }).actions).includes("disable-auto"), "freeze");
+  assert.ok(kinds(planMergeability([pr({ ...base, labels: ["hold"] })]).actions).includes("disable-auto"), "hold");
+  assert.ok(kinds(planMergeability([pr({ ...base, files: [".github/workflows/ci.yml"] })]).actions).includes("disable-auto"), "governed path");
+});
+
+/* ------------- round-3 review: the sweep re-decides right before it arms ------------- */
+
+const FRESH = { ...pr(), head: { ref: "nightly/x", sha: "abc1234", repo: { full_name: "o/r" } }, base: { ref: "main", repo: { full_name: "o/r" } }, changed_files: 1 };
+
+test("review: recheckArm arms on unchanged fresh facts", () => {
+  assert.equal(recheckArm(FRESH, { headSha: "abc1234" }).arm, true);
+});
+
+test("review: a `hold` added after the plan stops the arming (the stale-snapshot override)", () => {
+  /* The plan said enable-auto; the founder then added `hold`, automerge-nightly
+     disarmed on the label event, and the executor used to re-arm from the old
+     plan. MUTATION: make recheckArm return { arm: true } unconditionally. */
+  const r = recheckArm({ ...FRESH, labels: [{ name: "hold" }] }, { headSha: "abc1234" });
+  assert.equal(r.arm, false);
+  assert.match(r.reason, /BLOCKING_LABEL/);
+});
+
+test("review: the freeze read at execute time, a moved head, or a new governed file stop it too", () => {
+  assert.match(recheckArm(FRESH, { headSha: "abc1234", freeze: "true" }).reason, /FREEZE_ACTIVE/);
+  assert.match(recheckArm(FRESH, { headSha: "0000000" }).reason, /head moved/);
+  const governed = { ...FRESH, files: [{ filename: "tools/ci/path-policy.mjs" }] };
+  assert.equal(recheckArm(governed, { headSha: "abc1234" }).arm, false);
+});
+
+test("review: CLI recheck exits 0 to arm, 1 to skip, 2 on bad input", () => {
+  const io = (text) => ({ readFile: () => text, log: () => {}, err: () => {} });
+  assert.equal(runCli(["recheck", "--from", "p", "--head-sha", "abc1234"], io(JSON.stringify(FRESH))), 0);
+  assert.equal(runCli(["recheck", "--from", "p", "--freeze", "on"], io(JSON.stringify(FRESH))), 1);
+  assert.equal(runCli(["recheck", "--from", "p"], io("{nope")), 2);
+  assert.equal(runCli(["recheck", "--from", "p"], io(JSON.stringify({ number: 1 }))), 2, "no files attached is not a verdict");
+});
+
+test("review: pr-hygiene's enable-auto re-reads the PR and runs recheck BEFORE any merge, with the freeze in its env", () => {
+  /* MUTATION: delete the recheck call from the enable-auto branch, or the
+     FREEZE env line from the Execute step -> red. */
+  const yml = fs.readFileSync(path.join(REPO, ".github/workflows/pr-hygiene.yml"), "utf8");
+  const exec = yml.slice(yml.indexOf("- name: Execute"));
+  assert.match(exec.slice(0, 800), /FREEZE: \$\{\{ vars\.AUTOMERGE_FREEZE \}\}/);
+  const branch = exec.slice(exec.indexOf("enable-auto)"), exec.indexOf(";;", exec.indexOf("enable-auto)")));
+  const recheckAt = branch.indexOf("pr-triage.mjs recheck");
+  assert.ok(recheckAt > 0, "enable-auto no longer re-checks");
+  assert.match(branch, /--freeze "\$\{FREEZE:-\}" --head-sha "\$sha"/);
+  assert.ok(recheckAt < branch.indexOf("gh pr merge"), "the re-check must come before arming or merging");
+  assert.match(branch, /"\$rc" -eq 1[\s\S]*skipping/);
+});
+
+test("review: automerge-nightly reads who armed the PR and keeps a founder's arming", () => {
+  /* MUTATION: drop `--armed-by` from Decide, or the founder_armed clause from
+     Disarm -> a same-repo outside PR the founder armed is disarmed on its next
+     event. */
+  const yml = fs.readFileSync(path.join(REPO, ".github/workflows/automerge-nightly.yml"), "utf8");
+  assert.match(yml, /\.auto_merge\.enabled_by\.login/);
+  assert.match(yml, /--armed-by "\$\{ARMED_BY:-\}"/);
+  assert.match(yml, /- name: Disarm auto-merge[\s\S]{0,400}if: steps\.decide\.outputs\.armed != 'true' && steps\.decide\.outputs\.founder_armed != 'true'/);
 });

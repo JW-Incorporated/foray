@@ -599,11 +599,23 @@ const RED_RUN = new Set(["failure", "timed_out", "startup_failure", "action_requ
  *  run is skipped here and the REQUIRED contexts — pr-triage's REQUIRED_CHECKS,
  *  the same list the merge gate uses — are read instead: a failed one is red,
  *  a running or not-yet-reported one is building. Without check runs (an older
- *  caller), ci.yml is read as a whole run, as before: stricter, never looser. */
+ *  caller), ci.yml is read as a whole run, as before: stricter, never looser.
+ *
+ *  ONLY WHEN ci.yml ACTUALLY RAN ON THIS SHA (round-3 review). A PR the Actions
+ *  bot merged (automerge-nightly, or the pr-hygiene sweep, both arming with
+ *  GITHUB_TOKEN) lands a push that triggers NO workflow, so ci.yml never runs
+ *  on that SHA and no required check is ever reported there. Measured: 5 of 15
+ *  consecutive main commits. Reading "no backend check" as "building" held
+ *  every automatic release until a human-merged commit landed on top. With no
+ *  ci.yml run on the head, the required checks are not applicable, exactly as
+ *  before ci-release-6: the PR's own required checks gated that merge. */
 export function mainState(mainRuns, combinedStatus, checkRuns = null, requiredChecks = REQUIRED_CHECKS) {
   const failing = [];
   const building = [];
-  const byChecks = Array.isArray(checkRuns);
+  const ciRan = (Array.isArray(mainRuns) ? mainRuns : []).some(
+    (r) => r && typeof r === "object" && typeof r.path === "string" && r.path.endsWith("/ci.yml")
+  );
+  const byChecks = Array.isArray(checkRuns) && ciRan;
   for (const r of Array.isArray(mainRuns) ? mainRuns : []) {
     if (!r || typeof r !== "object") continue;
     if (r.event === "schedule" || r.event === "workflow_dispatch") continue;

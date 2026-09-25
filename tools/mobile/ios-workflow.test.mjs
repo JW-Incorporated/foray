@@ -485,11 +485,11 @@ test("R-05: the signing gate and the TestFlight upload are gone from this file, 
      MUTATION: reintroduce either step (or any Apple secret) into this file ->
      fails. */
   assert.equal(step(WF, "Is signing configured?"), null, "the signing-gate step must not come back to this file");
-  assert.equal(
-    step(WF, "Archive, export and upload to TestFlight"),
-    null,
-    "the TestFlight upload step must not come back to this file — that is release.yml's job now"
-  );
+  // The release composite split its one step into these (round-3 review); none
+  // of them, under the old name or the new ones, belongs here.
+  for (const name of ["Archive, export and upload to TestFlight", "Archive and sign", "Export and upload to TestFlight"]) {
+    assert.equal(step(WF, name), null, `"${name}" must not come back to this file — that is release.yml's job now`);
+  }
   assert.equal(
     /secrets\.(IOS_DIST_CERT|IOS_PROVISIONING_PROFILE|APPLE_TEAM_ID|APP_STORE_CONNECT)/.test(YML),
     false,
