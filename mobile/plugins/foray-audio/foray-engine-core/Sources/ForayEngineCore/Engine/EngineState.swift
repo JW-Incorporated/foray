@@ -94,6 +94,12 @@ public struct EngineState: Equatable {
     public var lastEpisodeRow: JSONNode?
     public var lastEpisodeRowWritten = false
     public var forayId: String?
+    /// The listener closed the player, or deleted their data (card NE-18):
+    /// the snapshot's `mode` is `none` from then until something is played
+    /// or loaded again, which is the one moment Now Playing becomes nil and
+    /// every remote command is disabled (plan §4.5). A pause, an interruption
+    /// and a relinquish never set it.
+    public var closed = false
 
     // MARK: the app around the engine
 

@@ -3898,7 +3898,7 @@ test("NE-17: the owner is Foundation-only, keeps its keys through EngineStore an
   assert.match(shared[1], /flag: ProcessSessionOwnershipFlag\(\)/);
 
   const host = stripSwiftComments(fs.readFileSync(HOST_SWIFT, "utf8"));
-  assert.match(swiftFuncBody(host, "handle"), /drain\(\)\s*onTurnCompleted\?\(\)/, "the first handled input is the healthy marker");
+  assert.match(swiftFuncBody(host, "handle"), /drain\(\)\s*publishSurface\(\)\s*onTurnCompleted\?\(\)/, "the first handled input is the healthy marker");
   assert.match(swiftFuncBody(host, "teardown"), /tornDown\?\(\)/, "whatever tears the engine down, the legacy lane takes over");
   const lifecycle = stripSwiftComments(fs.readFileSync(path.join(ENGINE_DIR, "OwnershipLifecycle.swift"), "utf8"));
   assert.match(lifecycle, /UIApplication\.willResignActiveNotification, UIApplication\.didEnterBackgroundNotification/);
@@ -3973,4 +3973,91 @@ test("NE-20: the bridge's method and event names are engine-contract.js's, the p
   assert.match(swiftFuncBody(bridge, "apply") ?? "", /case \.emit:\s*deliver\(EngineBridgeRules\.snapshotEvent\(snapshot\(\)\)\)/,
     "a snapshot event leaves only on the coalescer's word");
   assert.equal([...bridge.matchAll(/\bdeliver\(/g)].length, 4, "every deliver( is one of the four above");
+});
+
+/* ─────────── NE-18: RemoteSurface, NowPlayingPublisher and ArtworkCache ───────────
+ *
+ * docs/native-engine-plan.md §4.2 and §4.5, card NE-18. The Simulator XCTests
+ * (RemoteSurfaceTests, NowPlayingPublisherTests) run the truth table and the
+ * real centres; what they cannot see is a SECOND copy of the skip pair, a head
+ * unit's interval quietly read, a receipt returned instead of the verdict, a
+ * `playbackState` write, or a clear on some path other than `clear()`. */
+
+const REMOTE_SURFACE_SWIFT = path.join(ENGINE_DIR, "RemoteSurface.swift");
+const PUBLISHER_SWIFT = path.join(ENGINE_DIR, "NowPlayingPublisher.swift");
+const ARTWORK_SWIFT = path.join(ENGINE_DIR, "ArtworkCache.swift");
+
+test("NE-18: the remote surface steps by the founder's pair and answers with the core's verdict, on main", () => {
+  /* MUTATION: `preferredIntervals = [15]` (or any literal 15/30) in
+     RemoteSurface.swift, NowPlayingPublisher.swift or ArtworkCache.swift; read
+     `(event as? MPSkipIntervalCommandEvent)?.interval`; hand a skip press a
+     value; return `.success` from the target instead of the verdict; call the
+     handler off main or hop with `async`; let `setEnabled` enable `stop`;
+     register an MPRemoteCommandCenter target from any other Engine/ file.
+     Each fails here. */
+  const forbidden = new Set([15, 30, 15000, 30000]);
+  for (const file of [REMOTE_SURFACE_SWIFT, PUBLISHER_SWIFT, ARTWORK_SWIFT]) {
+    const found = swiftDecimalLiterals(stripSwiftComments(fs.readFileSync(file, "utf8")))
+      .filter((lit) => forbidden.has(lit.value)).map((lit) => lit.text);
+    assert.deepEqual(found, [], `${path.relative(ROOT, file)} holds a literal seek step; read MediaMapping / EngineConstants`);
+  }
+  const remote = stripSwiftComments(fs.readFileSync(REMOTE_SURFACE_SWIFT, "utf8"));
+  assert.match(remote, /skipBackwardCommand\.preferredIntervals = \[NSNumber\(value: MediaMapping\.seekBackwardSec\)\]/);
+  assert.match(remote, /skipForwardCommand\.preferredIntervals = \[NSNumber\(value: MediaMapping\.seekForwardSec\)\]/);
+  assert.doesNotMatch(remote, /\.interval\b|MPSkipIntervalCommandEvent/, "the head unit's skip interval is data about the press, never an order");
+  assert.match(swiftFuncBody(remote, "value") ?? "", /guard command == \.changePlaybackPosition else \{ return nil \}/,
+    "only a scrub carries a value into the core");
+  const deliver = swiftFuncBody(remote, "deliver") ?? "";
+  assert.match(deliver, /if Thread\.isMainThread \{[\s\S]*?MainActor\.assumeIsolated[\s\S]*?onMain: true/);
+  assert.match(deliver, /DispatchQueue\.main\.sync \{[\s\S]*?onMain: false/);
+  assert.doesNotMatch(deliver, /\.async\b/, "a press is answered inside the handler, never after it returned");
+  assert.match(swiftFuncBody(remote, "addTarget") ?? "", /return RemoteSurface\.status\(verdict\)/, "the status is the core's verdict, not a receipt");
+  assert.match(swiftFuncBody(remote, "setEnabled") ?? "", /command == \.stop \? false : enabled/, "stop is never enabled (T-7)");
+  assert.doesNotMatch(remote, /\b(setActive|setCategory)\(/, "reading the route is not owning the session");
+
+  for (const file of swiftFilesUnder(ENGINE_DIR)) {
+    const code = stripSwiftComments(fs.readFileSync(file, "utf8"));
+    if (/\bMPRemoteCommandCenter\b/.test(code)) assert.equal(file, REMOTE_SURFACE_SWIFT, `${path.relative(ROOT, file)} registers remote targets`);
+    if (/\bMPNowPlayingInfoCenter\b/.test(code)) assert.equal(file, PUBLISHER_SWIFT, `${path.relative(ROOT, file)} writes Now Playing`);
+  }
+
+  const host = stripSwiftComments(fs.readFileSync(HOST_SWIFT, "utf8"));
+  const pressed = swiftFuncBody(host, "remote") ?? "";
+  assert.match(pressed, /let verdict = RemoteVerdict\(failures: result\.failures\)[\s\S]*DiagEntry\(kind: "remote"[\s\S]*return verdict/,
+    "the status the system gets is the verdict, and it is on record");
+  assert.match(swiftFuncBody(host, "start") ?? "", /publishSurface\(\)/, "enablement is applied from the first moment");
+  assert.doesNotMatch(swiftFuncBody(host, "start") ?? "", /setEnabled\(/, "enablement is commandAvailability's, not a literal");
+});
+
+test("NE-18: Now Playing writes rate 0 rather than playbackState, is cleared only through clear(), and artwork is https-or-bundled and bounded", () => {
+  /* MUTATION: write `center.playbackState`; set `nowPlayingInfo = nil` outside
+     `clear()`; clear or write Now Playing from teardown; publish after a
+     teardown; write the listener's rate instead of NowPlayingRate; let the
+     host call `nowPlaying.clear()` anywhere but publishSurface; accept an
+     `http` artwork; drop the artwork deadline or the cached failure. Each
+     fails here. */
+  const publisher = stripSwiftComments(fs.readFileSync(PUBLISHER_SWIFT, "utf8"));
+  assert.doesNotMatch(publisher, /playbackState\s*=/, "OQ-8: playbackState is macOS-only and never written");
+  assert.equal([...publisher.matchAll(/nowPlayingInfo = nil/g)].length, 1, "one way to nil");
+  assert.match(swiftFuncBody(publisher, "clear") ?? "", /center\.nowPlayingInfo = nil/);
+  const info = swiftFuncBody(publisher, "info") ?? "";
+  assert.match(info, /let rate = NowPlayingRate\.of\(view\)/);
+  assert.match(info, /MPNowPlayingInfoPropertyPlaybackRate: NSNumber\(value: rate\)/);
+  const seams = stripSwiftComments(fs.readFileSync(SEAMS_SWIFT, "utf8"));
+  assert.match(seams, /guard view\.playbackState == MediaMapping\.playing else \{ return 0 \}/, "rate 0 whenever the entry is not playing");
+
+  const host = stripSwiftComments(fs.readFileSync(HOST_SWIFT, "utf8"));
+  assert.equal([...host.matchAll(/seams\.nowPlaying\.clear\(\)/g)].length, 1);
+  assert.equal([...host.matchAll(/seams\.nowPlaying\.write\(/g)].length, 1);
+  const publish = swiftFuncBody(host, "publishSurface") ?? "";
+  assert.match(publish, /^\{\s*guard !isTornDown else \{ return \}/, "a relinquish leaves Now Playing and the targets for the legacy lane");
+  assert.match(publish, /seams\.nowPlaying\.clear\(\)/);
+  assert.match(publish, /availability\.clearsNowPlaying/, "nil only for a finished Foray, a close or a data deletion");
+  assert.doesNotMatch(swiftFuncBody(host, "teardown") ?? "", /publishSurface|nowPlaying/);
+
+  const artwork = stripSwiftComments(fs.readFileSync(ARTWORK_SWIFT, "utf8"));
+  assert.match(artwork, /static let timeoutSec: Double = 10\b/, "plan §4.5: bounded at 10 s");
+  assert.match(artwork, /DispatchQueue\.main\.asyncAfter\(deadline: \.now\(\) \+ timeoutSec\) \{ finish\(nil\) \}/, "the deadline is whole, not per packet");
+  assert.match(artwork, /scheme\.lowercased\(\) == "https"/);
+  assert.match(swiftFuncBody(artwork, "settle") ?? "", /failed\.insert\(src\)/, "a failure is cached");
 });

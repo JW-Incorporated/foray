@@ -189,16 +189,23 @@ final class FakeNowPlaying: NowPlayingWriting {
     let log: SeamLog
     private(set) var writes = 0
     private(set) var clears = 0
+    /// Every entry written, in order; `last` is what the lock screen shows
+    /// (nil after a clear).
+    private(set) var written: [MediaMapping.SessionView] = []
+    private(set) var last: MediaMapping.SessionView?
 
     init(log: SeamLog) { self.log = log }
 
-    func write(_ metadata: MediaMapping.Metadata, position: MediaMapping.PositionState?) {
+    func write(_ view: MediaMapping.SessionView) {
         writes += 1
+        written.append(view)
+        last = view
         log.add("nowPlaying.write")
     }
 
     func clear() {
         clears += 1
+        last = nil
         log.add("nowPlaying.clear")
     }
 }

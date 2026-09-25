@@ -187,13 +187,17 @@ final class ForayEngineHostTests: XCTestCase {
         let world = FakeWorld()
         let engine = playing(world)
         world.log.clear()
+        let written = world.nowPlaying.writes
+        XCTAssertGreaterThan(written, 0, "the engine published the playing entry (NE-18)")
 
         engine.handle(.command(.relinquish(cap: .foray), source: .tap))
 
         XCTAssertTrue(engine.isTornDown)
         XCTAssertEqual(engine.state.session, .relinquished)
         XCTAssertEqual(world.session.deactivations, [], "a relinquish never deactivates")
-        XCTAssertEqual(world.nowPlaying.writes + world.nowPlaying.clears, 0)
+        XCTAssertEqual(world.nowPlaying.writes, written, "nothing written or cleared by the relinquish: the entry is the legacy lane's to overwrite")
+        XCTAssertEqual(world.nowPlaying.clears, 0)
+        XCTAssertNotNil(world.nowPlaying.last)
         XCTAssertEqual(world.deck.count("pause"), 1, "\(world.log.entries)")
         XCTAssertTrue(world.deck.invalidated)
         XCTAssertEqual(world.session.liveObservers + world.background.liveLifecycleObservers + world.remote.liveTargets, 0)
@@ -273,14 +277,21 @@ final class ForayEngineHostTests: XCTestCase {
     // MARK: - Remote targets
 
     /// Plan §4.5 (T-7): every command gets a target; `stop` is registered AND
-    /// disabled, because a car's stop must never tear the player down.
+    /// disabled, because a car's stop must never tear the player down. With
+    /// nothing to act on every command is disabled (NE-18:
+    /// `commandAvailability` of `mode: none`); a restored item enables all but
+    /// `stop`, which stays disabled.
     /// TO SEE IT FAIL: enable `stop`, or skip registering it.
     @MainActor
     func testEveryRemoteCommandIsRegisteredAndStopIsDisabled() {
         let world = FakeWorld()
-        _ = started(world)
+        let engine = started(world)
         for command in MediaMapping.RemoteCommand.allCases {
             XCTAssertEqual(world.remote.liveTargets(for: command), 1, "\(command)")
+            XCTAssertEqual(world.remote.enabled[command], false, "\(command)")
+        }
+        engine.handle(.lifecycle(.coldLaunch(queue: [Self.item("a"), Self.item("b")], index: 0, autoplay: false)))
+        for command in MediaMapping.RemoteCommand.allCases {
             XCTAssertEqual(world.remote.enabled[command], command != .stop, "\(command)")
         }
     }
