@@ -1,7 +1,7 @@
 import { searchBreadthShows } from "../../backend/src/catalog/searchBreadthShows";
 import { loadBreadthCatalog } from "../../backend/src/catalog/breadthCatalog";
 import { applyCors } from "../_lib/cors";
-import { appleShowSearch, mergeDirectoryShows } from "./appleShowSearch";
+import { appleShowSearch, mergeDirectoryShows } from "../_lib/appleShowSearch";
 
 /**
  * GET /api/shows/search?q=<query>&limit=<n> — the backend half of A3.1/Q3

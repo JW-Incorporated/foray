@@ -3,9 +3,9 @@ import * as path from "path";
 import { applyCors } from "../_lib/cors";
 import { fetchFeedConditional } from "../../backend/src/feeds/conditionalGet";
 import { parseFeed, type ParsedEpisode } from "../../backend/src/feeds/parser";
-import { appleSearchBucket } from "./appleBucket";
-import { loadShowIdMap } from "./showIdMap";
-import { episodeSearchCache, episodeFeedFailureCache, normalizeQueryKey } from "./searchCache";
+import { appleSearchBucket } from "../_lib/appleBucket";
+import { loadShowIdMap } from "../_lib/showIdMap";
+import { episodeSearchCache, episodeFeedFailureCache, normalizeQueryKey } from "../_lib/searchCache";
 
 /**
  * GET /api/episodes/search?q=<query>&show=<show_id> — episode search (S-07,
@@ -251,7 +251,7 @@ async function searchWithinShow(
     if (err instanceof ShowMetaFilesUnavailableError) {
       // Distinct from "unknown show_id" below: the catalog files this
       // lookup depends on could not be read at all (e.g. missing from the
-      // deployed bundle — see vercel.json's includeFiles / api/test/
+      // deployed bundle — see vercel.json's includeFiles / api/_test/
       // vercel-bundle.test.mjs), not merely "this id isn't in them". A
       // caller can't fix a bad show_id, but this IS an operational
       // failure worth surfacing honestly rather than as a false-empty
@@ -419,7 +419,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse): Promis
       source: [],
       /* One shape on every path (audit round 2, honesty-11 added these two to
          the answered paths; a refusal that dropped them would make the client
-         and api/test/episodes-search-degraded-honesty.test.mjs branch on keys). */
+         and api/_test/episodes-search-degraded-honesty.test.mjs branch on keys). */
       total: 0,
       capped: false,
       degraded: true,

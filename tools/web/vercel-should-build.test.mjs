@@ -91,7 +91,7 @@ test("the paths that cannot reach a deploy are skippable", () => {
     "mobile/www/index.html",
     ".github/workflows/ci.yml",
     "backend/test/copyRules.test.ts",
-    "api/test/vercel-bundle.test.mjs",
+    "api/_test/vercel-bundle.test.mjs",
     "tools/foray/check-forays.mjs",
     "tools/ci/path-policy.mjs",
   ]) {

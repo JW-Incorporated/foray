@@ -68,7 +68,7 @@ let showIndex: Map<string, CatalogShowMeta> | null = null; // show_id -> catalog
 // vercel.json's `functions["api/shows/**/*.ts"].includeFiles` glob names
 // them explicitly. If you rename either file, move this function outside
 // api/shows/**, or change how it locates the repo root, update vercel.json's
-// includeFiles glob in the same change — api/test/vercel-bundle.test.mjs
+// includeFiles glob in the same change — api/_test/vercel-bundle.test.mjs
 // checks this pairing but only catches drift that test runs against, not a
 // glob that silently stops matching after a rename.
 function findRepoRoot(startDir: string): string {

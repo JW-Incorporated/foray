@@ -6,7 +6,7 @@
 // a repo-root-relative `readFileSync`/`path.join()` call (`findRepoRoot()` +
 // `loadShowIndex()` in `api/shows/[show_id]/episodes.ts`; `loadShowMeta()` in
 // `api/episodes/search.ts`; `loadCatalogFallback()`/`tryLoadReleaseIdMap()` in
-// `api/episodes/showIdMap.ts`; `readJson()` in
+// `api/_lib/showIdMap.ts`; `readJson()` in
 // `backend/src/catalog/breadthCatalog.ts`, reached transitively from
 // `api/shows/search.ts`). Vercel's bundler does NOT include a file that's
 // only reached via a dynamic `readFileSync`/`join()` call at runtime — it
@@ -114,12 +114,12 @@ function loadVercelConfig() {
 // Handler discovery.
 // ---------------------------------------------------------------------------
 
-/** Every `.ts` file under `dir`, recursively, skipping `test/` and dotdirs/node_modules. */
+/** Every `.ts` file under `dir`, recursively, skipping `_test/` and dotdirs/node_modules. */
 function walkTsFiles(dir) {
   if (!fs.existsSync(dir)) return [];
   const out = [];
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-    if (entry.name === "node_modules" || entry.name === "test" || entry.name.startsWith(".")) continue;
+    if (entry.name === "node_modules" || entry.name === "_test" || entry.name.startsWith(".")) continue;
     const full = path.join(dir, entry.name);
     if (entry.isDirectory()) {
       out.push(...walkTsFiles(full));
@@ -139,7 +139,7 @@ function isHandlerFile(absPath) {
 
 // ---------------------------------------------------------------------------
 // Import-closure walk (relative imports only — same approach as
-// api/test/import-closure.test.mjs, kept independent/duplicated deliberately
+// api/_test/import-closure.test.mjs, kept independent/duplicated deliberately
 // so this suite doesn't depend on that one's internals).
 // ---------------------------------------------------------------------------
 

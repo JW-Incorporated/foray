@@ -133,7 +133,7 @@ function walkClosure(entryFiles) {
 }
 
 test("every bare import reachable from api/** is declared in api/package.json or a Node builtin", () => {
-  const entryFiles = walkFiles(API_DIR).filter((f) => f !== SELF && !f.includes(`${path.sep}test${path.sep}`));
+  const entryFiles = walkFiles(API_DIR).filter((f) => f !== SELF && !f.includes(`${path.sep}_test${path.sep}`));
   assert.ok(entryFiles.length > 0, "no api/**.ts files found — is API_DIR correct?");
 
   const { bareSpecifiers } = walkClosure(entryFiles);

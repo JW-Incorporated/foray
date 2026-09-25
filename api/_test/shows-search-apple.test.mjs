@@ -37,7 +37,7 @@
 //
 // Every test names the mutation that kills it.
 //
-// Harness: the same `mockRes()` + `globalThis.fetch` swap api/test/
+// Harness: the same `mockRes()` + `globalThis.fetch` swap api/_test/
 // episodes-search.test.mjs already uses, so a reader of one can read the
 // other. Bucket and cache are INJECTED into `appleShowSearch` where the test
 // is about them, rather than reaching into module singletons — the singletons
@@ -49,12 +49,12 @@ import * as searchModule from "../shows/search.ts";
 import {
   appleShowSearch, mapAppleShow, appleShowCacheKey, APPLE_SHOW_TIMEOUT_MS,
   mergeDirectoryShows, showTitleDedupStem,
-} from "../shows/appleShowSearch.ts";
+} from "../_lib/appleShowSearch.ts";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { SlidingWindowBucket, APPLE_BUCKET_CAPACITY, APPLE_BUCKET_WINDOW_MS } from "../episodes/appleBucket.ts";
-import { TtlCache } from "../episodes/searchCache.ts";
+import { SlidingWindowBucket, APPLE_BUCKET_CAPACITY, APPLE_BUCKET_WINDOW_MS } from "../_lib/appleBucket.ts";
+import { TtlCache } from "../_lib/searchCache.ts";
 
 const handler = typeof searchModule.default === "function" ? searchModule.default : searchModule.default.default;
 
@@ -556,11 +556,11 @@ test("the show fall-through has its OWN bucket, so it cannot exhaust episode sea
      the episode path's INSTANCE would mean a listener typing in the Shows box
      could starve the Episodes section on the same page, and vice versa.
 
-     MUTATION: import `appleSearchBucket` from `../episodes/appleBucket` and
+     MUTATION: import `appleSearchBucket` from `../_lib/appleBucket` and
      use it here instead of a new instance. The two counts move together and
      the independence assertion fails. */
-  const { appleSearchBucket } = await import("../episodes/appleBucket.ts");
-  const { appleShowBucket } = await import("../shows/appleShowSearch.ts");
+  const { appleSearchBucket } = await import("../_lib/appleBucket.ts");
+  const { appleShowBucket } = await import("../_lib/appleShowSearch.ts");
   assert.notEqual(appleShowBucket, appleSearchBucket, "two instances, not one");
   const before = appleSearchBucket.currentCount();
   appleShowBucket.tryConsume();

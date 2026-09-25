@@ -64,7 +64,7 @@ export const IGNORED_PREFIXES = [
   ".github/",           // CI
   ".claude/",           // agent config
   "backend/test/",      // tests, not the src the functions import
-  "api/test/",
+  "api/_test/",
   "tools/",             // except tools/web/, see EXCEPTIONS — this script included
   "archive/",
   "data-local/",        // gitignored in practice; listed so a stray add is free

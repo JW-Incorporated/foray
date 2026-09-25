@@ -13,7 +13,7 @@
  * inert on a phone while every test stays green. `api/**` handlers set the
  * header in code (`api/_lib/cors.ts`); static files get it ONLY from
  * `vercel.json`, and until this suite existed nothing read that file's
- * `headers` at all (`api/test/vercel-bundle.test.mjs` pins `functions`, not
+ * `headers` at all (`api/_test/vercel-bundle.test.mjs` pins `functions`, not
  * `headers`).
  *
  * WHAT IS PINNED

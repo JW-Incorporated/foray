@@ -1,5 +1,5 @@
-import { SlidingWindowBucket, APPLE_BUCKET_WINDOW_MS, APPLE_BUCKET_CAPACITY } from "../episodes/appleBucket";
-import { TtlCache } from "../episodes/searchCache";
+import { SlidingWindowBucket, APPLE_BUCKET_WINDOW_MS, APPLE_BUCKET_CAPACITY } from "./appleBucket";
+import { TtlCache } from "./searchCache";
 
 /**
  * S-06 (docs/search-plan.md): the Apple fall-through for SHOW search.
@@ -31,7 +31,7 @@ import { TtlCache } from "../episodes/searchCache";
  * (3) NO THIRD RATE LIMITER, NO THIRD CACHE. The card is explicit about this
  * and it is the whole reason this module is thin. `SlidingWindowBucket` and
  * `TtlCache` are imported from `api/episodes/` — the same CLASSES, with their
- * own tests (`api/test/apple-bucket.test.mjs`) — and this file adds only two
+ * own tests (`api/_test/apple-bucket.test.mjs`) — and this file adds only two
  * new INSTANCES of them. Separate instances rather than the shared
  * `appleSearchBucket` singleton, deliberately: episode search and show search
  * hit two different Apple endpoints (`entity=podcastEpisode` vs
@@ -90,7 +90,7 @@ const APPLE_SEARCH_URL = "https://itunes.apple.com/search";
 /** Verbatim from `api/episodes/search.ts` — one User-Agent for this product. */
 const SHOW_USER_AGENT = "Foray/0.1 (personal podcast client; contact wjduvall@gmail.com)";
 /** 2 s, and NOT `api/episodes/search.ts`'s 8 s — see note (6). Exported so
-    `api/test/shows-search-apple.test.mjs` can pin the number rather than the
+    `api/_test/shows-search-apple.test.mjs` can pin the number rather than the
     behaviour, which is untestable without waiting for it. */
 export const APPLE_SHOW_TIMEOUT_MS = 2_000;
 

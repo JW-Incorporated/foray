@@ -548,6 +548,7 @@ const FLOORS = {
      `headers`). Four tests: CORS present on every rule that serves the
      directory, CORS scoped to `/data/`, #606's Cache-Control split intact, rule
      order. Zero slack. */
+  "test/vercel-functions.test.js": 3, // round-3 audit, L4 (search-api-css-5): new -- every file Vercel would deploy under api/ is a handler; helpers live in api/_lib, suites in api/_test
   "test/vercel-headers.test.js": 5, // round-3 audit, L4: every path is sent frame-ancestors none, nosniff and a Referrer-Policy (security-12); 4 -> 5
   /* V-01: the narration voice picker's drawer surface — reachable in the
      drawer, the acceptance fixture's 2 installed + N greyed rows, Web

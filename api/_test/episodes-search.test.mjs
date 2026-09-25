@@ -7,8 +7,8 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import * as searchModule from "../episodes/search.ts";
-import { _resetShowIdMapCacheForTests, loadShowIdMap } from "../episodes/showIdMap.ts";
-import { episodeFeedFailureCache } from "../episodes/searchCache.ts";
+import { _resetShowIdMapCacheForTests, loadShowIdMap } from "../_lib/showIdMap.ts";
+import { episodeFeedFailureCache } from "../_lib/searchCache.ts";
 
 const handler = typeof searchModule.default === "function" ? searchModule.default : searchModule.default.default;
 
