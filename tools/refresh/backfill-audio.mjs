@@ -32,6 +32,7 @@ import { createRequire } from "node:module";
 import { audioFieldsFrom, hostOf, normalizeAudioUrl } from "./enclosure.mjs";
 import { UA, NIGHTLY_UA } from "../segments/politeness.mjs";
 import { minutesFromSeconds } from "../check-durations.mjs";
+import { prepareSessionPatch } from "./session-patch.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const backendRequire = createRequire(join(ROOT, "backend", "package.json"));
@@ -289,48 +290,21 @@ if (unresolved.length) {
    chose on purpose. So we patch its TEXT in place instead, inserting the four
    fields after `"duration_min": N` and leaving every other byte alone.        */
 
-function escapeRe(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); }
-
-function patchSessionText(txt, episodes) {
-  const missed = [];
-  for (const [id, e] of Object.entries(episodes)) {
-    if (!e.audio_url && e.duration_sec == null) continue;
-    // Idempotent: skip a block that already carries the fields.
-    const already = new RegExp(`"${escapeRe(id)}":\\s*\\{[^{}]*"audio_url"\\s*:`);
-    if (already.test(txt)) continue;
-
-    const re = new RegExp(`("${escapeRe(id)}":\\s*\\{[^{}]*?"duration_min":\\s*(?:-?\\d+(?:\\.\\d+)?|null))`);
-    if (!re.test(txt)) { missed.push(id); continue; }
-    const fields =
-      `, "duration_sec": ${JSON.stringify(e.duration_sec ?? null)}` +
-      `, "audio_url": ${JSON.stringify(e.audio_url ?? null)}` +
-      `, "audio_type": ${JSON.stringify(e.audio_type ?? null)}` +
-      `, "audio_bytes": ${JSON.stringify(e.audio_bytes ?? null)}`;
-    txt = txt.replace(re, `$1${fields}`);
-  }
-  return { txt, missed };
-}
+/* The patch itself lives in ./session-patch.mjs, shared with classify-dai. */
 
 if (DRY) {
   console.log("\n--dry-run: no files written.");
 } else {
-  discover.built_at = new Date().toISOString();
-  writeFileSync(join(ROOT, "data", "discover.json"), JSON.stringify(discover, null, 2) + "\n");
-
+  // Never write a session.json we cannot prove is both valid and correct: it
+  // is the document the whole client boots from. And prove it BEFORE writing
+  // discover.json (audit round 3, data-tools-11): a verification that threw
+  // after discover.json was rewritten left the two documents disagreeing.
   const sessionPath = join(ROOT, "data", "session.json");
   const original = readFileSync(sessionPath, "utf8");
-  const { txt, missed } = patchSessionText(original, session.episodes);
+  const { txt, missed } = prepareSessionPatch(original, session.episodes, { kind: "audio" });
 
-  // Never write a session.json we cannot prove is both valid and correct: it
-  // is the document the whole client boots from.
-  const reparsed = JSON.parse(txt);
-  for (const [id, e] of Object.entries(session.episodes)) {
-    const got = reparsed.episodes[id];
-    if (!got) throw new Error(`session patch lost episode ${id}`);
-    if ((got.audio_url ?? null) !== (e.audio_url ?? null)) {
-      throw new Error(`session patch mismatch on ${id}: ${got.audio_url} !== ${e.audio_url}`);
-    }
-  }
+  discover.built_at = new Date().toISOString();
+  writeFileSync(join(ROOT, "data", "discover.json"), JSON.stringify(discover, null, 2) + "\n");
   if (missed.length) console.log(`WARN could not patch ${missed.length} session episode(s): ${missed.join(", ")}`);
   writeFileSync(sessionPath, txt);
 

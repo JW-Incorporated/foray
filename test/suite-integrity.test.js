@@ -1707,6 +1707,10 @@ const FLOORS = {
   /* Review of visual pass 1 (2026-09-23): the one entity decoder the feed scan,
      the show backfill and the classification merge all read. Zero slack. */
   "tools/refresh/entities.test.mjs": 5,
+  /* Audit round 3 (L8, data-tools-11): session.json is patched and verified
+     before backfill-audio / classify-dai write any file, with replacer
+     functions so a `$&` in an audio URL stays literal. Zero slack. */
+  "tools/refresh/session-patch.test.mjs": 4,
   /* Android on a runner (#245). ZERO SLACK, deliberately, and for a reason the iOS
      entry above does not have. Two of these 26 tests are the ONLY thing in the repo
      that notices if the Android job stops checking that `cap sync` still wires
