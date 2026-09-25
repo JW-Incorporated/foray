@@ -1638,6 +1638,14 @@ const FLOORS = {
      plists, so the patcher must touch only what is actually missing the key and
      must never change a vendored plist's format. */
   "tools/mobile/ios-embedded-frameworks.test.mjs": 40,
+  /* NE-26r (docs/native-engine-plan.md §7, §10): tools/mobile/engine-report.mjs,
+     a Copy paste (or the ring file) to the DV-1..DV-13 verdict table — every
+     verdict's pass, fail and no-data paths, an evicted early seam flagged
+     incomplete (never passed), the resume latencies, the remote/route summary,
+     the seam distribution, the fault counts, the M1 exit readings and the CLI;
+     plus the round trip through NE-26's real engineLineFor once it is on the
+     branch. Zero slack. */
+  "tools/mobile/engine-report.test.mjs": 25,
   "tools/mobile/ios-workflow.test.mjs": 45, // NE-17: +1 -- the plist step keeps the bare injector run and its --check, which carry ForayEngineDefault, with no --engine-default override // NE-06: +1 -- the parity fixtures and recorder are negated out of the path filter, below the patterns they narrow // +4 (2026-09-13): the MinimumOSVersion patch runs before both builds, off one resolved SwiftPM tree, with the deployment target READ not written, and the built device bundle is read back
 
   "tools/mobile/probe/install-probe.test.mjs": 39,
