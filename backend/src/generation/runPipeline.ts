@@ -475,29 +475,44 @@ export function forayCopy(intent: { subject: string; angle?: string; title?: str
 }
 
 
-export function slotsFromSpine(spine: Spine): ForaySlot[] {
-  const slots: ForaySlot[] = [];
+/**
+ * gen-4 (round-3 audit): the slot id every slot of the spine DECLARES, per act
+ * and per slot by position, minted ONCE. Two acts may legitimately name a slot
+ * the same thing; the id must still be unique because check-forays joins items
+ * to slots by it, so a numeric suffix is added, keeping the first occurrence's
+ * id stable (a re-run that adds a later duplicate must not renumber an earlier
+ * one). The same map is handed to the stitcher (`StitchForayOptions.slotIds`),
+ * so items carry the declared id instead of re-slugging their slot's title:
+ * before, both "Origins" slots' items said `origins` while `slots` declared
+ * `origins` and `origins-2`, and check-forays refused the Foray.
+ */
+export function slotIdsFromSpine(spine: Spine): string[][] {
   const seen = new Set<string>();
-  for (const act of spine.acts) {
-    for (const slot of act.slots) {
+  return spine.acts.map((act) =>
+    act.slots.map((slot) => {
       const id = slugifySlotTitle(slot.title);
-      /* Two acts may legitimately name a slot the same thing; the id must still
-         be unique because check-forays joins items to slots by it. A numeric
-         suffix keeps the first occurrence's id stable, which matters because a
-         re-run that adds a later duplicate must not renumber the earlier one. */
       let unique = id;
       let n = 2;
       while (seen.has(unique)) unique = `${id}-${n++}`;
       seen.add(unique);
+      return unique;
+    })
+  );
+}
+
+export function slotsFromSpine(spine: Spine): ForaySlot[] {
+  const ids = slotIdsFromSpine(spine);
+  const slots: ForaySlot[] = [];
+  spine.acts.forEach((act, actIndex) => {
+    act.slots.forEach((slot, slotIndex) => {
       /* The TITLE a listener reads gets the listener's words (rules.js
          INTERNAL_VOCABULARY, which check-forays refuses in a slot title); the
-         ID stays the raw title's slug, because stitchAct and partialProjection
-         join items to slots by slugifying the spine's own slot.title. */
+         ID is the declared one above, which items carry by position. */
       const copy = toListenerWords(slot.title);
       if (copy.changed) console.warn(`runPipeline: slot title "${slot.title}" used the pipeline's own words and was rewritten to "${copy.text}" — the spine ignored its slot-title instruction`);
-      slots.push({ id: unique, title: copy.text });
-    }
-  }
+      slots.push({ id: ids[actIndex]![slotIndex]!, title: copy.text });
+    });
+  });
   return slots;
 }
 
@@ -1446,6 +1461,8 @@ export async function runForayPipeline(
     deepened,
     {
       continuity: { builder: continuityBuilder },
+      /* gen-4: items carry the slot ids `slots` declares, by position. */
+      slotIds: slotIdsFromSpine(spine),
       onActReady: deps.onActReady
         ? async ({ actIndex, itemsSoFar }) => {
             if (actIndex === 0) ttlA1Ms = Date.now() - pipelineStartMs;
