@@ -14112,6 +14112,7 @@ function syncVoiceProbeRun() {
      instead. */
   if (toggle && toggle.parentNode) toggle.parentNode.insertBefore(run, toggle.nextSibling);
   else (drawerDevGroup() || drawer).appendChild(run);
+  run.disabled = Boolean(voiceProbeRunning);   // a control rebuilt mid-run is still busy (app-3-11)
   run.addEventListener("click", () => runVoiceProbe());
 }
 
@@ -14304,11 +14305,40 @@ function bindEngineDevRows() {
 
     GUARDED THE SAME WAY EVERY FORAY TAP IS (#225): a rejected promise here
     must not become a console line nobody has open. */
-async function runVoiceProbe() {
+/* ONE PROBE AT A TIME (audit round 3, app-3-11). Nothing guarded a second
+   tap: a founder who reopened the drawer and pressed RUN again (nothing else
+   shows a run is under way for its ~90 s, and reopening the sheet clears its
+   status line) started a second engine load beside the first, both writing
+   the one status line in whatever order they finished. While a run is in
+   flight the control is disabled, and a second call reopens the sheet, says
+   it is running, and hands back the same promise. */
+let voiceProbeRunning = null;
+const VOICE_PROBE_RUNNING_LINE = "Running the voice probe — this takes about 90 seconds.";
+function runVoiceProbe() {
+  if (voiceProbeRunning) {
+    openDiagSheet();
+    diagSheet().status.textContent = VOICE_PROBE_RUNNING_LINE;
+    return voiceProbeRunning;
+  }
+  const run = runVoiceProbeOnce();
+  voiceProbeRunning = run;
+  const btn = $("#voice-probe-run");
+  if (btn) btn.disabled = true;
+  const done = () => {
+    if (voiceProbeRunning !== run) return;
+    voiceProbeRunning = null;
+    const b = $("#voice-probe-run");
+    if (b) b.disabled = false;
+  };
+  run.then(done, done);
+  return run;
+}
+
+async function runVoiceProbeOnce() {
   const player = window.ForayPlayer;
   const ui = diagSheet();
   openDiagSheet();
-  ui.status.textContent = "Running the voice probe — this takes about 90 seconds.";
+  ui.status.textContent = VOICE_PROBE_RUNNING_LINE;
   if (!player || typeof player.runVoiceProbe !== "function") {
     ui.status.textContent = "The player hasn't loaded, so the probe can't run.";
     return null;
