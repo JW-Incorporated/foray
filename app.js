@@ -417,6 +417,7 @@ function profileId() {
    Drained by `flushBufferedEvents()`, called once the module is confirmed
    present (mirroring `storageReady()`'s one-shot handoff). */
 let _bufferedEvents = [];
+const BUFFERED_EVENTS_CAP = 500;
 
 /* True for the length of a "Delete my data" clear (review 2026-09-23). The
    store's purge re-arms a durable tier its breaker had switched off, and every
@@ -466,6 +467,16 @@ function logEvent(type, payload, { ts = null } = {}) {
     window.forayEventLog.append(row);
   } else {
     _bufferedEvents.push(row);
+    /* BOUNDED ONCE NOTHING IS COMING (audit round 3, app-1-12). With the
+       deferred modules run and no event log published, player/client.js
+       failed to load (a 404 from a stale generation, a throw), and nothing will
+       ever drain this: every row of the session stayed in memory. Kept to the
+       newest rows then; before that (a module still loading, storage still
+       settling) the buffer is a real queue and is left whole. */
+    if (_bufferedEvents.length > BUFFERED_EVENTS_CAP && deferredScriptsRan
+        && !(window.forayEventLog && typeof window.forayEventLog.append === "function")) {
+      _bufferedEvents.splice(0, _bufferedEvents.length - BUFFERED_EVENTS_CAP);
+    }
   }
 }
 

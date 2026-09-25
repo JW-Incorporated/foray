@@ -874,3 +874,24 @@ test("perf-3: the Now Playing sheet's per-tick reads parse nothing once Up Next 
   for (let tick = 0; tick < 40; tick++) { void nav.next; void nav.upNextCount; nav.isSaved("cur"); }
   assert.strictEqual(parses.n, 0, `${parses.n} parses over 40 ticks`);
 });
+
+/* ==================================================================== */
+/* app-1-12: a player module that never loads does not grow the buffer    */
+/* ==================================================================== */
+
+test("app-1-12: with the modules run and no event log, the pre-module buffer keeps only the newest 500 rows", () => {
+  /* MUTATION: drop the cap -> 1200 rows sit in memory for the session; red. */
+  const m = mount({ fetchImpl: () => new Promise(() => {}) });
+  for (let i = 0; i < 1200; i++) m.ctx.logEvent("picked", { episode_id: `e${i}` });
+  const buf = vm.runInContext("_bufferedEvents", m.ctx);
+  assert.strictEqual(buf.length, 500);
+  assert.strictEqual(buf[buf.length - 1].payload.episode_id, "e1199", "the newest rows are the ones kept");
+});
+
+test("app-1-12: while the module may still arrive, the buffer is a real queue and is not cut", () => {
+  /* readyState "interactive": the deferred modules have not run, so the log
+     may yet be published and every row must reach it. */
+  const m = mount({ fetchImpl: () => new Promise(() => {}), readyState: "interactive" });
+  for (let i = 0; i < 700; i++) m.ctx.logEvent("picked", { episode_id: `e${i}` });
+  assert.strictEqual(vm.runInContext("_bufferedEvents.length", m.ctx) >= 700, true);
+});
