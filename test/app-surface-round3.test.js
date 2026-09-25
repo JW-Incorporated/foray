@@ -16,6 +16,7 @@ const path = require("node:path");
 
 const ROOT = path.join(__dirname, "..");
 const SRC = fs.readFileSync(path.join(ROOT, "app.js"), "utf8").replace(/\r\n/g, "\n");
+const SEARCH_SRC = fs.readFileSync(path.join(ROOT, "search-engine.js"), "utf8");
 
 function makeEl(tag = "div") {
   const listeners = new Map();
@@ -94,6 +95,7 @@ function loadApp() {
   ctx.window = ctx;
   ctx.globalThis = ctx;
   vm.createContext(ctx);
+  vm.runInContext(SEARCH_SRC, ctx, { filename: "search-engine.js" });
   vm.runInContext(SRC, ctx, { filename: "app.js" });
   return {
     ctx,
@@ -555,4 +557,59 @@ test("app-3-1: play, advance, close the bar, press Play: the Foray resumes from 
   await flush();
   assert.strictEqual(starts.length, 1);
   assert.strictEqual(starts[0].startElapsedSec, 1800, "Play resumes where the listener stopped");
+});
+
+/* ---------- app-2-2: the Shows search paints a page of rows, not thousands ---- */
+
+test("app-2-2: the Shows list paints SHOW_RESULTS_PAINT_STEP rows at a time, and 'Show more shows' reveals the next step", () => {
+  /* paintShowResults turned every match into markup — about 2,500 rows for 't'
+     — and later passes re-rendered the whole list up to six times per query.
+     MUTATION: paint `shows.map(showResultRow)` uncapped again — red. */
+  const m = loadApp();
+  const results = makeEl("div");
+  const note = makeEl("p");
+  const more = makeEl("button");
+  results.querySelector = (sel) => (sel === "[data-sh-more]" && /data-sh-more/.test(results.innerHTML) ? more : null);
+  m.els["#sh-results"] = results;
+  m.els["#sh-note"] = note;
+  const step = m.run("SHOW_RESULTS_PAINT_STEP");
+  assert.ok(step >= 25 && step <= 100, "a screenful or two");
+  const rows = Array.from({ length: step * 2 + 30 }, (_, i) => ({ show_id: `s${i}`, title: `Show ${i}` }));
+  const token = m.run("showSearchToken");
+  const count = () => (results.innerHTML.match(/class="show-result"/g) || []).length;
+  m.ctx.paintShowResults("s", rows, token);
+  assert.strictEqual(count(), step, "the first step is painted");
+  assert.match(results.innerHTML, /data-sh-more/, "with a way to the rest");
+  assert.strictEqual(m.run("showSearchPainted.rows.length"), rows.length, "while the painted record keeps every row for dedupe");
+  more.dispatch("click");
+  assert.strictEqual(count(), step * 2, "Show more reveals the next step");
+  /* A later pass appending beneath keeps what was revealed. */
+  m.ctx.paintShowResults("s", rows.concat([{ show_id: "late", title: "Late Row" }]), token);
+  assert.strictEqual(count(), step * 2);
+  more.dispatch("click");
+  assert.strictEqual(count(), rows.length + 1, "and the last step paints the remainder");
+  assert.doesNotMatch(results.innerHTML, /data-sh-more/, "with no button left once everything is shown");
+  /* A new query starts again from one step. */
+  m.ctx.paintShowResults("sh", rows, token);
+  assert.strictEqual(count(), step);
+});
+
+test("app-2-2: each local pass hands over at most SHOW_PASS_LIMIT rows, and the row caches are bounded", () => {
+  /* prefixSearchShows/scanShowIndex were called with no limit (0 = all), and
+     breadthShowCache/shardShowCache gained an entry for every row every query
+     received, for the session.
+     MUTATION: drop the limit from localShowMatches' prefix call — red; drop the
+     eviction loop in cacheShowRow — red. */
+  const m = loadApp();
+  const limit = m.run("SHOW_PASS_LIMIT");
+  const lines = Array.from({ length: limit * 3 }, (_, i) => `Tea Time ${String(i).padStart(4, "0")}\t${9000 + i}\t${i + 1}\t0`);
+  m.run(`showIndex = SearchEngine.parseShowIndex(${JSON.stringify(lines.join("\n") + "\n")}); state.catalog = { shows: [] };`);
+  assert.strictEqual(m.run("showIndex.rows.length"), limit * 3, "fixture: the index holds three limits' worth of prefix hits");
+  assert.strictEqual(m.ctx.localShowMatches("tea").length, limit, "the prefix pass hands over its best SHOW_PASS_LIMIT");
+
+  const max = m.run("SHOW_ROW_CACHE_MAX");
+  for (let i = 0; i < max + 25; i += 1) m.ctx.cacheShowRow("breadth", { show_id: String(100000 + i), title: `B${i}` });
+  assert.strictEqual(Object.keys(m.run("state.breadthShowCache")).length, max, "never more than the bound");
+  assert.ok(!m.run('state.breadthShowCache["100000"]'), "the oldest go first, even for integer-like Apple ids");
+  assert.ok(m.run(`state.breadthShowCache["${100000 + max + 24}"]`), "the newest stay");
 });

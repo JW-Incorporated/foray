@@ -7155,11 +7155,22 @@ function repaintShowSearchForIndex() {
     `SearchEngine.searchShows` so the two sources cannot produce two orders.
     Curated records win a duplicate id deliberately: they carry `artwork_url`
     and `editorial_note`, which the index's title projection does not. */
+/* BOUNDED WORK PER PASS (audit round 3, app-2-2). Measured on the committed
+   data/show-index.tsv: `t` has 2,497 prefix rows, `the` 2,056 plus 1,099 from
+   the scan, `pod` 2,512 scan rows — and every one was turned into markup, then
+   re-deduped and re-painted on each later pass, up to six times per query. Each
+   pass now hands over at most SHOW_PASS_LIMIT rows (its best, by the same
+   comparator it ranks with), and the list paints SHOW_RESULTS_PAINT_STEP rows
+   at a time behind a "Show more shows" button. Nobody reads row 2,000 of a
+   one-letter query; they type another letter. */
+const SHOW_PASS_LIMIT = 200;
+const SHOW_RESULTS_PAINT_STEP = 50;
+
 function localShowMatches(query) {
   const curated = state.catalog?.shows || [];
   if (!showIndex) return SearchEngine.searchShows(query, curated);
   const seen = new Set(curated.map((s) => s.show_id));
-  const fromIndex = SearchEngine.prefixSearchShows(query, showIndex)
+  const fromIndex = SearchEngine.prefixSearchShows(query, showIndex, SHOW_PASS_LIMIT)
     .filter((s) => !seen.has(s.show_id));
   return SearchEngine.searchShows(query, curated.concat(fromIndex));
 }
@@ -7713,8 +7724,53 @@ function paintShowResults(query, shows, myToken) {
   }
   note.hidden = true;
   paintShowSearchEmptyOffer(null);
-  results.innerHTML = shows.map(showResultRow).join("");
+  /* A PAGE OF ROWS AT A TIME (app-2-2). The cap belongs to this token and
+     query, so a later pass appending beneath keeps whatever the listener
+     already revealed, and a new query starts from one step again. The painted
+     record above stays the whole list, so dedupe and upgrade still see every
+     row. */
+  if (showSearchPaintCap.token !== myToken || showSearchPaintCap.query !== query) {
+    showSearchPaintCap = { token: myToken, query, n: SHOW_RESULTS_PAINT_STEP };
+  }
+  const cap = showSearchPaintCap.n;
+  const more = shows.length - cap;
+  results.innerHTML = shows.slice(0, cap).map(showResultRow).join("")
+    + (more > 0 ? `<button type="button" class="fy-script-more" data-sh-more>Show more shows</button>` : "");
   results.hidden = false;
+  const moreBtn = more > 0 && typeof results.querySelector === "function" ? results.querySelector("[data-sh-more]") : null;
+  if (moreBtn) {
+    moreBtn.addEventListener("click", () => {
+      if (myToken !== showSearchToken) return;
+      showSearchPaintCap = { token: myToken, query, n: cap + SHOW_RESULTS_PAINT_STEP };
+      paintShowResults(query, showSearchPainted.rows, myToken);
+    });
+  }
+}
+
+/** How many of the current query's rows are painted (app-2-2). */
+let showSearchPaintCap = { token: -1, query: "", n: SHOW_RESULTS_PAINT_STEP };
+
+/* THE ROW CACHES ARE BOUNDED TOO (app-2-2). `showById` resolves a tapped
+   directory or shard row from these, so they must hold what is on screen — and
+   they held every row every query had ever received, for the session. Oldest
+   first out past SHOW_ROW_CACHE_MAX; a query hands over at most a few hundred,
+   so the rows of the list on screen are always inside the bound. The order is
+   kept apart from the object because an Apple id is an integer-like key, and
+   an object lists those numerically, not by insertion. */
+const SHOW_ROW_CACHE_MAX = 1000;
+const showRowCacheOrder = { breadth: new Set(), shard: new Set() };
+function cacheShowRow(kind, row) {
+  if (!row || !row.show_id) return;
+  const map = kind === "shard" ? state.shardShowCache : state.breadthShowCache;
+  const order = showRowCacheOrder[kind];
+  map[row.show_id] = row;
+  order.delete(row.show_id);
+  order.add(row.show_id);
+  while (order.size > SHOW_ROW_CACHE_MAX) {
+    const oldest = order.values().next().value;
+    order.delete(oldest);
+    delete map[oldest];
+  }
 }
 
 /** WHAT A SETTLED, EMPTY SHOWS SEARCH OFFERS INSTEAD OF A DEAD END (audit
@@ -8168,7 +8224,7 @@ function runShowSearchCostly(query, myToken, local) {
      `scanShowIndex` returns word-start and substring hits only, so there is
      nothing here to dedupe against the prefix answer beyond the curated rows. */
   if (showIndex && query.trim().length >= SHOW_SCAN_MIN_QUERY_LENGTH) {
-    const scanned = SearchEngine.scanShowIndex(query, showIndex);
+    const scanned = SearchEngine.scanShowIndex(query, showIndex, SHOW_PASS_LIMIT);
     const additions = mergeShowRows(query, shown(), scanned);
     if (additions) appendShowResults(query, additions, myToken);
   }
@@ -8180,7 +8236,7 @@ function runShowSearchCostly(query, myToken, local) {
      (artwork, editorial note) replaces the index's title-only row. It runs for
      every row received, including the ones the dedup then drops. */
   const mergeBreadth = (breadthShows) => {
-    for (const s of breadthShows) state.breadthShowCache[s.show_id] = s;
+    for (const s of breadthShows) cacheShowRow("breadth", s);
     /* THE PAINTED ROW IS UPGRADED, NOT ONLY THE CACHE (audit round 2,
        search-1). The comment above promised that a richer record "replaces
        the index's title-only row", and it did — in the cache `showById` reads
@@ -8345,9 +8401,11 @@ function runShowSearchCostly(query, myToken, local) {
     const shardStart = nowMs();
     fetchShardRows(shardKey).then((rows) => {
       const shardMs = nowMs() - shardStart;
-      const ranked = SearchEngine.rankShardRows(query, rows);
+      /* Its best SHOW_PASS_LIMIT (app-2-2): rankShardRows takes no limit, and a
+         shard can hold thousands of rows. */
+      const ranked = SearchEngine.rankShardRows(query, rows).slice(0, SHOW_PASS_LIMIT);
       const mapped = ranked.map(mapShardRow);
-      for (const s of mapped) state.shardShowCache[s.show_id] = s;
+      for (const s of mapped) cacheShowRow("shard", s);
       if (myToken === showSearchToken && mapped.length) mergeBreadth(mapped);
       settle({ shardMs, shardHits: mapped.length });
       showPassDone(false); // fetchShardRows folds its own failures into [], so it cannot report one
