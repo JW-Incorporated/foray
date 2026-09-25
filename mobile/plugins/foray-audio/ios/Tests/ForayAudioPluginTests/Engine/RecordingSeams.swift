@@ -293,7 +293,10 @@ extension DeckCommand {
 final class FakeSpeaker: Speaking {
     let log: SeamLog
     var onFinish: ((SpeechEnd) -> Void)?
+    var onNarratorEvent: ((NarratorEvent) -> Void)?
     private(set) var spoken: [String] = []
+    /// The narration commands the host handed on (NE-33), in order.
+    private(set) var narrated: [NarrationCommand] = []
 
     init(log: SeamLog) { self.log = log }
 
@@ -304,8 +307,19 @@ final class FakeSpeaker: Speaking {
 
     func stopSpeaking() { log.add("speaker.stop") }
 
+    func narrate(_ command: NarrationCommand) {
+        narrated.append(command)
+        log.add("speaker.narrate")
+    }
+
+    /// The synthesizer reports on a line of narration (on main, as
+    /// SpeechNarrator delivers it).
+    func report(_ event: NarratorEvent) {
+        onNarratorEvent?(event)
+    }
+
     /// The synthesizer's delegate reports the line's end (on main, as
-    /// PreviewSpeaker delivers it).
+    /// SpeechNarrator delivers it).
     func end(_ end: SpeechEnd = .finished) {
         log.add("speaker.\(end.rawValue)")
         onFinish?(end)

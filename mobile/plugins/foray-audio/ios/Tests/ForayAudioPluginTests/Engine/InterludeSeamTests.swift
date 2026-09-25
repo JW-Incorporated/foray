@@ -387,6 +387,50 @@ final class InterludeSeamTests: XCTestCase {
         XCTAssertEqual(ends.map { $0[field: "outcome"] }, [.string("playing"), .string("playing")])
     }
 
+    /// Backgrounded, a spoken line that finishes opens one span (the
+    /// synthesiser has stopped rendering, the next clip is not audible yet)
+    /// and the next clip's confirmed `.playing` closes it: one begin, one end.
+    /// TO SEE IT FAIL: drop the host's `onNarratorEvent` wiring, or ignore
+    /// `.graceEnd` in the host.
+    @MainActor
+    func testGraceBeginAndEndCountsMatchAroundANarrationHandover() throws {
+        let world = FakeWorld()
+        world.deck.answersReady = true
+        let clock = ClockTiming()
+        var seams = world.seams
+        seams.timing = clock
+        let engine = ForayEngine(seams: seams, config: Self.tape(interlude: false))
+        engine.start()
+        let line = try XCTUnwrap(EngineItem(node: .object([
+            JSONMember("id", .string("f1#0")), JSONMember("kind", .string("tts")),
+            JSONMember("type", .string("narration")), JSONMember("script", .string("a line")),
+            JSONMember("audio_url", .null)
+        ])))
+        engine.handle(.queue(.loadForay([line, Self.clip(1, "b", 300, 400)], isLocalFile: false, allowAdPad: false)))
+        engine.handle(.queue(.playIndex(0, startSec: nil, source: .tap)))
+        let seq = try XCTUnwrap(world.speaker.narrated.compactMap { command -> Int? in
+            if case let .speak(seq, _, _, _) = command { return seq }
+            return nil
+        }.last, "no line was spoken: \(world.speaker.narrated)")
+        world.speaker.report(.started(seq: seq, voiceFallback: false))
+        XCTAssertEqual(engine.state.stateType, "playing")
+
+        world.background.backgroundTimeRemainingSec = 29
+        world.background.post(.background)
+        XCTAssertEqual(world.background.liveTasks, 0, "no span while the line is audible")
+        world.speaker.report(.finished(seq: seq))
+        XCTAssertEqual(world.log.count("background.begin ForayEngine.grace.narration-handover"), 1, "\(world.log.entries)")
+        clock.run(forMs: Self.ceilingMs)
+        confirmPlaying(world)
+
+        XCTAssertEqual(world.log.count("background.begin", prefix: true), 1)
+        XCTAssertEqual(world.background.ended.count, 1, "every begin has one end")
+        XCTAssertEqual(world.background.liveTasks, 0)
+        let ends = rows(world, "grace", "end")
+        XCTAssertEqual(ends.map { $0[field: "reason"] }, [.string("narration-handover")])
+        XCTAssertEqual(ends.map { $0[field: "outcome"] }, [.string("playing")])
+    }
+
     /// A pause inside a backgrounded seam ends the span (`not-running`), and
     /// a teardown mid-seam leaves no task, no jingle and no silence.
     /// TO SEE IT FAIL: drop `seams.interlude?.release()` or the grace end

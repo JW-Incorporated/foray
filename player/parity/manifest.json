@@ -757,6 +757,28 @@
         "interlude/silence-node-no-arguments"
       ]
     },
+    "lexicon": {
+      "files": {
+        "player/parity/fixtures/lexicon/ipa-overrides.json": "2b345195ba1539505148a4bd0673231363b3b47166c464aaf75a8799be6100a8"
+      },
+      "ids": [
+        "lexicon/authored-ipa",
+        "lexicon/null-ipa-no-override",
+        "lexicon/case-insensitive-word-boundary",
+        "lexicon/apostrophe-term",
+        "lexicon/sake-homograph",
+        "lexicon/sake-not-inside-a-word",
+        "lexicon/not-inside-a-longer-word",
+        "lexicon/sorted-by-position",
+        "lexicon/empty-lexicon",
+        "lexicon/no-matches",
+        "lexicon/repeated-term",
+        "lexicon/apostrophe-bounds-a-word",
+        "lexicon/digits-bound-a-word",
+        "lexicon/overlapping-entries-keep-lexicon-order-on-a-tie",
+        "lexicon/bundled-lexicon-sake"
+      ]
+    },
     "manager-episode": {
       "files": {
         "player/parity/fixtures/manager-episode/last-episode-row.json": "a21f5bf2c1cc037c4d84285d9d3dbb9f6ad0b5b87a6c3f36c8e2943cfb5fa454",

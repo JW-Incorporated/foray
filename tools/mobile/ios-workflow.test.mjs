@@ -485,11 +485,11 @@ test("R-05: the signing gate and the TestFlight upload are gone from this file, 
      MUTATION: reintroduce either step (or any Apple secret) into this file ->
      fails. */
   assert.equal(step(WF, "Is signing configured?"), null, "the signing-gate step must not come back to this file");
-  assert.equal(
-    step(WF, "Archive, export and upload to TestFlight"),
-    null,
-    "the TestFlight upload step must not come back to this file — that is release.yml's job now"
-  );
+  // The release composite split its one step into these (round-3 review); none
+  // of them, under the old name or the new ones, belongs here.
+  for (const name of ["Archive, export and upload to TestFlight", "Archive and sign", "Export and upload to TestFlight"]) {
+    assert.equal(step(WF, name), null, `"${name}" must not come back to this file — that is release.yml's job now`);
+  }
   assert.equal(
     /secrets\.(IOS_DIST_CERT|IOS_PROVISIONING_PROFILE|APPLE_TEAM_ID|APP_STORE_CONNECT)/.test(YML),
     false,
@@ -1027,4 +1027,18 @@ test("NE-17: the plist step still runs the injector bare and then --check, which
   assert.match(s, /^\s*node tools\/mobile\/inject-background-audio\.mjs "\$INFO_PLIST"\s*$/m, "the bare write is gone");
   assert.match(s, /^\s*node tools\/mobile\/inject-background-audio\.mjs "\$INFO_PLIST" --check\s*$/m, "the read-back is gone");
   assert.doesNotMatch(YML, /--engine-default/, "the build must read the committed mobile/ENGINE_DEFAULT.json");
+});
+
+test("ci-release-12: no iOS path runs `npm install` under mobile/ — both install from the committed lockfile", () => {
+  /* MUTATION: put `npm install` back in either ios-build.yml or the release
+     composite (.github/actions/ios-archive). mobile/package-lock.json is
+     committed; every Android path already uses `npm ci`, and a second,
+     floating tree on iOS is how the two stores ship different dependencies. */
+  const archive = code(fs.readFileSync(path.join(ROOT, ".github/actions/ios-archive/action.yml"), "utf8"));
+  for (const [name, src] of [["ios-build.yml", YML], ["ios-archive/action.yml", archive]]) {
+    assert.doesNotMatch(src, /npm install\b/, `${name} runs npm install`);
+    assert.match(src, /npm ci --no-audit --no-fund/, `${name} must install with npm ci`);
+  }
+  assert.ok(fs.existsSync(path.join(ROOT, "mobile", "package-lock.json")), "npm ci needs the committed lockfile");
+  assert.doesNotMatch(WF, /no committed lockfile/i, "the stale comment must not come back");
 });

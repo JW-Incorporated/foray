@@ -1,0 +1,200 @@
+{
+  "family": "lexicon",
+  "module": "mobile/plugins/foray-tts/web/foray-tts.js",
+  "note": "The pronunciation lexicon's matcher: foray-tts.js buildIpaOverrides (case-insensitive, on a word boundary where an apostrophe, letter or digit counts as inside a word, sorted by position, only authored ipa). The engine's narrator applies the same rule natively (SpeechRules.ipaOverrides) over the lexicon bundled into foray-audio. foray-tts.test.mjs is not a covered suite, so each case names its test in the note. Port: NE-33.",
+  "cases": [
+    {
+      "id": "lexicon/authored-ipa",
+      "covers": [],
+      "note": "foray-tts.test.mjs: 'buildIpaOverrides: matches a term with an authored ipa'.",
+      "call": "buildIpaOverrides",
+      "args": [
+        "The binchōtan burns hot.",
+        [
+          { "term": "binchōtan", "ipa": "biɲtɕoːtaɰ̃" },
+          { "term": "koji", "ipa": null },
+          { "term": "ch'arki", "ipa": "tʃarki" },
+          { "term": "Taíno", "ipa": null }
+        ]
+      ],
+      "expect": {
+        "return": [{ "end": 13, "ipa": "biɲtɕoːtaɰ̃", "start": 4, "term": "binchōtan" }]
+      }
+    },
+    {
+      "id": "lexicon/null-ipa-no-override",
+      "covers": [],
+      "note": "foray-tts.test.mjs: 'buildIpaOverrides: a lexicon entry with ipa:null produces NO override'. Authored: a null ipa must never become a guessed override.",
+      "call": "buildIpaOverrides",
+      "args": [
+        "A dash of koji does the work.",
+        [
+          { "term": "binchōtan", "ipa": "biɲtɕoːtaɰ̃" },
+          { "term": "koji", "ipa": null },
+          { "term": "ch'arki", "ipa": "tʃarki" },
+          { "term": "Taíno", "ipa": null }
+        ]
+      ],
+      "expect": { "return": [] }
+    },
+    {
+      "id": "lexicon/case-insensitive-word-boundary",
+      "covers": [],
+      "note": "foray-tts.test.mjs: 'buildIpaOverrides: case-insensitive, word-boundary match'.",
+      "call": "buildIpaOverrides",
+      "args": ["TAÍNO peoples, not tainoism.", [{ "term": "Taíno", "ipa": "tajˈino" }]],
+      "expect": { "return": [{ "end": 5, "ipa": "tajˈino", "start": 0, "term": "Taíno" }] }
+    },
+    {
+      "id": "lexicon/apostrophe-term",
+      "covers": [],
+      "note": "foray-tts.test.mjs: 'buildIpaOverrides: apostrophe term (ch'arki) matches on its own word boundary'.",
+      "call": "buildIpaOverrides",
+      "args": [
+        "Dried ch'arki was traded widely.",
+        [
+          { "term": "binchōtan", "ipa": "biɲtɕoːtaɰ̃" },
+          { "term": "koji", "ipa": null },
+          { "term": "ch'arki", "ipa": "tʃarki" },
+          { "term": "Taíno", "ipa": null }
+        ]
+      ],
+      "expect": { "return": [{ "end": 13, "ipa": "tʃarki", "start": 6, "term": "ch'arki" }] }
+    },
+    {
+      "id": "lexicon/sake-homograph",
+      "covers": [],
+      "note": "foray-tts.test.mjs: 'buildIpaOverrides: 'sake' (Japanese drink) gets its own override, not the English 'sake' reading'.",
+      "call": "buildIpaOverrides",
+      "args": [
+        "Beer, sake and every grain spirit require an extra step.",
+        [{ "term": "sake", "ipa": "ˈsɑːkeɪ" }]
+      ],
+      "expect": { "return": [{ "end": 10, "ipa": "ˈsɑːkeɪ", "start": 6, "term": "sake" }] }
+    },
+    {
+      "id": "lexicon/sake-not-inside-a-word",
+      "covers": [],
+      "note": "foray-tts.test.mjs: 'buildIpaOverrides: 'sake' does not false-match inside a longer word'.",
+      "call": "buildIpaOverrides",
+      "args": ["sakedom is not a real word, sake is.", [{ "term": "sake", "ipa": "ˈsɑːkeɪ" }]],
+      "expect": { "return": [{ "end": 32, "ipa": "ˈsɑːkeɪ", "start": 28, "term": "sake" }] }
+    },
+    {
+      "id": "lexicon/not-inside-a-longer-word",
+      "covers": [],
+      "note": "foray-tts.test.mjs: 'buildIpaOverrides: does not match a substring inside a longer word'.",
+      "call": "buildIpaOverrides",
+      "args": ["kojima is a surname, not koji.", [{ "term": "koji", "ipa": "koʑi" }]],
+      "expect": { "return": [{ "end": 29, "ipa": "koʑi", "start": 25, "term": "koji" }] }
+    },
+    {
+      "id": "lexicon/sorted-by-position",
+      "covers": [],
+      "note": "foray-tts.test.mjs: 'buildIpaOverrides: multiple distinct terms, sorted by position'.",
+      "call": "buildIpaOverrides",
+      "args": [
+        "ch'arki and binchōtan appear here.",
+        [
+          { "term": "binchōtan", "ipa": "biɲtɕoːtaɰ̃" },
+          { "term": "koji", "ipa": null },
+          { "term": "ch'arki", "ipa": "tʃarki" },
+          { "term": "Taíno", "ipa": null }
+        ]
+      ],
+      "expect": {
+        "return": [
+          { "end": 7, "ipa": "tʃarki", "start": 0, "term": "ch'arki" },
+          { "end": 21, "ipa": "biɲtɕoːtaɰ̃", "start": 12, "term": "binchōtan" }
+        ]
+      }
+    },
+    {
+      "id": "lexicon/empty-lexicon",
+      "covers": [],
+      "note": "foray-tts.test.mjs: 'buildIpaOverrides: empty lexicon or no matches -> empty array'.",
+      "call": "buildIpaOverrides",
+      "args": ["nothing special here", []],
+      "expect": { "return": [] }
+    },
+    {
+      "id": "lexicon/no-matches",
+      "covers": [],
+      "note": "foray-tts.test.mjs: 'buildIpaOverrides: empty lexicon or no matches -> empty array'.",
+      "call": "buildIpaOverrides",
+      "args": [
+        "nothing special here",
+        [
+          { "term": "binchōtan", "ipa": "biɲtɕoːtaɰ̃" },
+          { "term": "koji", "ipa": null },
+          { "term": "ch'arki", "ipa": "tʃarki" },
+          { "term": "Taíno", "ipa": null }
+        ]
+      ],
+      "expect": { "return": [] }
+    },
+    {
+      "id": "lexicon/repeated-term",
+      "covers": [],
+      "note": "Every occurrence is an override, in order (the matcher is global). Authored for the native port.",
+      "call": "buildIpaOverrides",
+      "args": ["Sake, then more sake, then SAKE again.", [{ "term": "sake", "ipa": "ˈsɑːkeɪ" }]],
+      "expect": {
+        "return": [
+          { "end": 4, "ipa": "ˈsɑːkeɪ", "start": 0, "term": "sake" },
+          { "end": 20, "ipa": "ˈsɑːkeɪ", "start": 16, "term": "sake" },
+          { "end": 31, "ipa": "ˈsɑːkeɪ", "start": 27, "term": "sake" }
+        ]
+      }
+    },
+    {
+      "id": "lexicon/apostrophe-bounds-a-word",
+      "covers": [],
+      "note": "An apostrophe on either side means the term is inside a longer word ('koji's' is not 'koji'). Authored for the native port.",
+      "call": "buildIpaOverrides",
+      "args": ["It's the koji's own work, not koji.", [{ "term": "koji", "ipa": "koʑi" }]],
+      "expect": { "return": [{ "end": 34, "ipa": "koʑi", "start": 30, "term": "koji" }] }
+    },
+    {
+      "id": "lexicon/digits-bound-a-word",
+      "covers": [],
+      "note": "A digit on either side means the term is inside a longer token. Authored for the native port.",
+      "call": "buildIpaOverrides",
+      "args": ["sake2 and 2sake are not sake.", [{ "term": "sake", "ipa": "ˈsɑːkeɪ" }]],
+      "expect": { "return": [{ "end": 28, "ipa": "ˈsɑːkeɪ", "start": 24, "term": "sake" }] }
+    },
+    {
+      "id": "lexicon/overlapping-entries-keep-lexicon-order-on-a-tie",
+      "covers": [],
+      "note": "Two entries matching the same span: both are overrides, and on a tie in position the earlier entry comes first (a stable sort). Authored for the native port.",
+      "call": "buildIpaOverrides",
+      "args": [
+        "Sake is sake.",
+        [{ "term": "sake", "ipa": "a" }, { "term": "SAKE", "ipa": "b" }]
+      ],
+      "expect": {
+        "return": [
+          { "end": 4, "ipa": "a", "start": 0, "term": "sake" },
+          { "end": 4, "ipa": "b", "start": 0, "term": "SAKE" },
+          { "end": 12, "ipa": "a", "start": 8, "term": "sake" },
+          { "end": 12, "ipa": "b", "start": 8, "term": "SAKE" }
+        ]
+      }
+    },
+    {
+      "id": "lexicon/bundled-lexicon-sake",
+      "covers": [],
+      "note": "The shipped lexicon's own entries for three terms (hard-terms.json, as bundled into foray-audio): only 'sake' has an authored ipa today, so it is the one override.",
+      "call": "buildIpaOverrides",
+      "args": [
+        "A cup of sake, some koji, and binchōtan.",
+        [
+          { "term": "koji", "ipa": null },
+          { "term": "sake", "ipa": "ˈsɑːkeɪ" },
+          { "term": "binchōtan", "ipa": null }
+        ]
+      ],
+      "expect": { "return": [{ "end": 13, "ipa": "ˈsɑːkeɪ", "start": 9, "term": "sake" }] }
+    }
+  ]
+}

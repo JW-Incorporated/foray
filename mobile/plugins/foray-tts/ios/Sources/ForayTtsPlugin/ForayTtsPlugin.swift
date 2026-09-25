@@ -398,88 +398,41 @@ public class ForayTtsPlugin: CAPPlugin, CAPBridgedPlugin, AVSpeechSynthesizerDel
     // in `static` functions over a plain `VoiceOption` value type that tests can
     // build by hand; `installedVoices()` is the only place that touches the
     // framework's catalogue.
+    // THE RULES THEMSELVES NOW LIVE IN SpeechRules.swift (card NE-33): the
+    // native engine's narrator speaks by the same rules, and this package
+    // keeps a byte-identical copy of that file (the engine's core owns the
+    // original; a node test fails when the two differ). The statics below are
+    // the legacy lane's names for them, unchanged in signature and in
+    // behaviour, so the legacy tests keep pinning exactly what they pinned.
 
-    /// One installed voice, reduced to the four things selection cares about.
-    /// `qualityRank` is `AVSpeechSynthesisVoiceQuality.rawValue` -- deliberately
-    /// the raw integer rather than the enum, because `.premium` is iOS 16+ and
-    /// ranking by rawValue needs no availability check and cannot go stale if
-    /// Apple appends a further tier above premium.
-    struct VoiceOption: Equatable {
-        let identifier: String
-        let name: String
-        let language: String
-        let qualityRank: Int
-    }
+    /// One installed voice, reduced to the four things selection cares about
+    /// (`SpeechRules.VoiceOption`: identifier, name, language, qualityRank).
+    typealias VoiceOption = SpeechRules.VoiceOption
 
-    /// `1` -> "default", `2` -> "enhanced", `3` -> "premium". Anything else is
-    /// reported as "unknown" rather than guessed: a future tier this build has
-    /// never heard of still SORTS correctly (rank is numeric) and is merely
-    /// unlabelled, which is the honest failure direction.
+    /// `1` -> "default", `2` -> "enhanced", `3` -> "premium", else "unknown".
     static func qualityLabel(rank: Int) -> String {
-        switch rank {
-        case 1: return "default"
-        case 2: return "enhanced"
-        case 3: return "premium"
-        default: return "unknown"
-        }
+        SpeechRules.qualityLabel(rank: rank)
     }
 
     /// The primary subtag of a BCP-47 tag, lowercased: `en-US` -> `en`.
     static func primarySubtag(_ tag: String) -> String {
-        let lowered = tag.lowercased()
-        if let cut = lowered.firstIndex(where: { $0 == "-" || $0 == "_" }) {
-            return String(lowered[lowered.startIndex..<cut])
-        }
-        return lowered
+        SpeechRules.primarySubtag(tag)
     }
 
     /// Voices eligible for `language`, EXACT MATCHES FIRST AND ALONE when there
-    /// are any. Only when the exact locale has nothing installed does this widen
-    /// to the primary subtag -- asking for `en-US` on a device that only carries
-    /// `en-GB` should get a British voice rather than silence, but it must never
-    /// get one while an American voice exists.
+    /// are any; only then the primary subtag.
     static func candidates(_ all: [VoiceOption], language: String) -> [VoiceOption] {
-        guard !language.isEmpty else { return [] }
-        let wanted = language.lowercased()
-        let exact = all.filter { $0.language.lowercased() == wanted }
-        if !exact.isEmpty { return exact }
-        let primary = primarySubtag(language)
-        return all.filter { primarySubtag($0.language) == primary }
+        SpeechRules.candidates(all, language: language)
     }
 
-    /// The best INSTALLED voice for `language`: highest `qualityRank` wins.
-    ///
-    /// Ties are broken toward `preferringName` -- the name of the voice the
-    /// system would have used anyway (`AVSpeechSynthesisVoice(language:)?.name`)
-    /// -- so that a device carrying both "Samantha (compact)" and "Samantha
-    /// (enhanced)" upgrades the listener's familiar voice rather than swapping
-    /// them onto a stranger with the same quality tier. Remaining ties fall to
-    /// the lowest identifier, purely so the answer is deterministic and testable
-    /// rather than dependent on the order `speechVoices()` happens to return.
+    /// The best INSTALLED voice for `language`: highest `qualityRank` wins,
+    /// ties toward `preferringName`, then the lowest identifier.
     static func bestVoice(among all: [VoiceOption], language: String, preferringName: String?) -> VoiceOption? {
-        let pool = candidates(all, language: language)
-        guard let topRank = pool.map(\.qualityRank).max() else { return nil }
-        let top = pool.filter { $0.qualityRank == topRank }
-        if let wanted = preferringName?.lowercased(), !wanted.isEmpty,
-           let familiar = top.filter({ $0.name.lowercased() == wanted }).min(by: { $0.identifier < $1.identifier }) {
-            return familiar
-        }
-        return top.min(by: { $0.identifier < $1.identifier })
+        SpeechRules.bestVoice(among: all, language: language, preferringName: preferringName)
     }
 
-    /// What `speak()` decided, INCLUDING why -- so a listening test can tell
-    /// "this voice sounds bad" apart from "this voice was never installed".
-    /// Reporting only the voice that spoke would make those two indistinguishable
-    /// on the device where it matters.
-    struct VoiceResolution: Equatable {
-        let voice: VoiceOption?
-        /// The identifier the caller asked for, `""` if none.
-        let requested: String
-        /// True when a specific identifier was asked for and something else
-        /// (or nothing) was used instead.
-        let didFallBack: Bool
-        let reason: String
-    }
+    /// What `speak()` decided, INCLUDING why (`SpeechRules.VoiceResolution`).
+    typealias VoiceResolution = SpeechRules.VoiceResolution
 
     /// Resolve the voice for one utterance. An identifier that is not installed
     /// is NOT an error: it degrades to `bestVoice`, and says so.
@@ -489,51 +442,13 @@ public class ForayTtsPlugin: CAPPlugin, CAPBridgedPlugin, AVSpeechSynthesizerDel
         language: String,
         preferringName: String?
     ) -> VoiceResolution {
-        let asked = requested?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        let best = bestVoice(among: all, language: language, preferringName: preferringName)
-
-        if !asked.isEmpty {
-            if let exact = all.first(where: { $0.identifier == asked }) {
-                return VoiceResolution(voice: exact, requested: asked, didFallBack: false, reason: "")
-            }
-            if let best = best {
-                return VoiceResolution(
-                    voice: best,
-                    requested: asked,
-                    didFallBack: true,
-                    reason: "requested voice is not installed on this device"
-                )
-            }
-            return VoiceResolution(
-                voice: nil,
-                requested: asked,
-                didFallBack: true,
-                reason: "requested voice is not installed, and no voice is installed for \(language)"
-            )
-        }
-
-        if let best = best {
-            return VoiceResolution(voice: best, requested: "", didFallBack: false, reason: "")
-        }
-        return VoiceResolution(
-            voice: nil,
-            requested: "",
-            didFallBack: false,
-            reason: "no installed voice for \(language)"
-        )
+        SpeechRules.resolveVoice(among: all, requested: requested, language: language, preferringName: preferringName)
     }
 
     /// Listing order: language, then BEST QUALITY FIRST within a language, then
-    /// name. The quality direction is the one that matters -- a human reading
-    /// `listVoices()` output to decide what to download should see the good ones
-    /// at the top of each language, not buried under a dozen compact voices.
+    /// name.
     static func sortedForListing(_ voices: [VoiceOption]) -> [VoiceOption] {
-        voices.sorted {
-            if $0.language != $1.language { return $0.language < $1.language }
-            if $0.qualityRank != $1.qualityRank { return $0.qualityRank > $1.qualityRank }
-            if $0.name != $1.name { return $0.name < $1.name }
-            return $0.identifier < $1.identifier
-        }
+        SpeechRules.sortedForListing(voices)
     }
 
     /// The one place that reads the framework's catalogue.

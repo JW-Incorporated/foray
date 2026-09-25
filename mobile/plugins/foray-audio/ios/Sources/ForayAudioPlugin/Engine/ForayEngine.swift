@@ -177,10 +177,17 @@ final class ForayEngine {
         seams.deck.onEvent = { [weak self] event in
             MainActor.assumeIsolated { self?.receive(.deck(event)) }
         }
-        // The end of a spoken line. M1's core has no input for it (narration
-        // is M2's); the only listener is the Developer probe (NE-25c).
+        // The end of an audition line: the core has no input for it; the only
+        // listener is the Developer probe (NE-25c).
         seams.speaker.onFinish = { [weak self] end in
             MainActor.assumeIsolated { self?.probe?.speechEnded(end) }
+        }
+        // A line of narration (NE-33's SpeechNarrator): started, failed,
+        // finished, cancelled, resumed, each for the utterance `seq` the core
+        // named. An answer given while a turn is running (the narrator answers
+        // `speak` at once) is queued behind that turn by `handle`.
+        seams.speaker.onNarratorEvent = { [weak self] event in
+            MainActor.assumeIsolated { self?.receive(.narrator(event)) }
         }
         // The jingle stopped sounding by itself (`ended`, `error`) or at its
         // ceiling (NE-34): the core shrinks the seam back to the beat.
@@ -229,6 +236,7 @@ final class ForayEngine {
         seams.deck.onEvent = nil
         seams.deck.invalidate()
         seams.speaker.onFinish = nil
+        seams.speaker.onNarratorEvent = nil
         // Nothing sounds past a teardown: the jingle and the silence node are
         // stopped here too, whatever the core's own teardown already asked.
         seams.interlude?.onEnded = nil
@@ -501,15 +509,11 @@ final class ForayEngine {
         case let .speak(text, voiceId):
             seams.speaker.speak(text: text, voiceId: voiceId)
         case let .narration(command):
-            // The narrating overlay's synthesiser is NE-33's SpeechNarrator.
-            // Until it lands this host has none: a line it is asked to speak is
-            // REFUSED, after this turn (the inbox), which the core steps over
-            // for a bridge and reports for a line the listener asked for, so
-            // nothing is ever left waiting on a voice that is not there. The
-            // core asks only with the Foray tape on (off until NE-37).
-            if case let .speak(seq, _, _, _) = command {
-                handle(.narrator(.failed(seq: seq, reason: "no-narrator")))
-            }
+            // The narrating overlay's synthesiser: SpeechNarrator (NE-33), the
+            // same one that speaks an audition. Its answers come back through
+            // `onNarratorEvent`, after this turn (the inbox). The core asks
+            // only with the Foray tape on (off until NE-37).
+            seams.speaker.narrate(command)
         case let .interlude(command):
             interpretInterlude(command)
         case let .silenceStart(capMs):
