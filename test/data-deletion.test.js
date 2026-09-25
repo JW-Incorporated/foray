@@ -791,7 +791,7 @@ test("deleting never signs up a new anonymous account", async () => {
     "creating an account in order to delete one would leave a fresh row behind"
   );
   assert.strictEqual(result.remote.attempted, false, "no token on the device means no rows to reach");
-  assert.match(ui.status.textContent, /never signed in/i);
+  assert.match(ui.status.textContent, /No sign-in remains on this device/);
   assert.strictEqual(result.ok, true);
 });
 
@@ -2130,4 +2130,78 @@ test("app-1-4: a refresh token the server calls dead (400 invalid_grant / refres
     assert.strictEqual(s && s.user_id, "uid-new", JSON.stringify(body));
     assert.strictEqual(log.filter((e) => e.kind === "fetch" && /\/auth\/v1\/signup/.test(e.url)).length, 1);
   }
+});
+
+/* ---------- audit round 3, lane L1: the retry after "device NOT fully clear" ---------- */
+
+const stubbornQueue = () => ({
+  append() {}, async unsynced() { return []; }, async markSynced() {}, async pruneToRetention() {},
+  health() { return { ok: false }; },
+  async purge() { return { ok: false, remaining: 3 }; },
+});
+
+test("app-3-6: a retry after the server step succeeded says the server copy is deleted, not 'never signed in', and asks nothing of the server", async () => {
+  /* Run 1 deleted every row and revoked the sign-in; the queue would not
+     clear. The retry found no cp_sb_session and said the device was "never
+     signed in". MUTATION: drop the ddRemoteDone check in deleteRemoteData ->
+     the retry's message names no deletion; red. */
+  const { arm, ui, ctx, log } = await mount({ seed: { cp_sb_session: sessionRow(), cp_interests: "{}" }, eventLog: stubbornQueue() });
+  await arm();
+  const first = await ctx.deleteMyData();
+  assert.strictEqual(first.state, "local-incomplete", "premise: the server step succeeded and the device did not clear");
+  const requestsAfterRun1 = log.filter((e) => e.kind === "fetch").length;
+  await arm();
+  const retry = await ctx.deleteMyData();
+  assert.strictEqual(retry.state, "local-incomplete");
+  assert.match(ui.status.textContent, /What 4a's server kept about you is deleted\./);
+  assert.doesNotMatch(ui.status.textContent, /never signed in|NOT deleted/);
+  assert.strictEqual(log.filter((e) => e.kind === "fetch").length, requestsAfterRun1, "the retry asked the server again");
+});
+
+test("app-3-6: a token that survived the failed purge, now revoked, does not turn the retry into 'NOT deleted'", async () => {
+  /* Case (b): cp_sb_session survived and expired; its refresh token was
+     revoked by run 1, so the refresh 400'd, every DELETE 401'd, and the sheet
+     said the server copy was NOT deleted and left the device uncleared.
+     MUTATION: drop the ddRemoteDone check -> remote-failed; red. */
+  const { arm, ctx, log, store } = await mount({
+    seed: { cp_sb_session: sessionRow(), cp_interests: "{}" },
+    eventLog: stubbornQueue(),
+    reply: (url, method) => {
+      if (/\/auth\/v1\/token/.test(url)) return { status: 400, json: { error: "invalid_grant" } };
+      if (method === "DELETE" && log.some((e) => e.kind === "fetch" && /logout/.test(e.url))) return { status: 401 };
+      return { status: 204 };
+    },
+  });
+  await arm();
+  assert.strictEqual((await ctx.deleteMyData()).state, "local-incomplete", "premise");
+  store.setItem("cp_sb_session", sessionRow({ expired: true }));   // the copy the failed purge left behind
+  await arm();
+  const retry = await ctx.deleteMyData();
+  assert.notStrictEqual(retry.state, "remote-failed", ctx.deletionMessage(retry));
+  assert.ok(!store.getItem("cp_sb_session"), "the device was left holding the revoked token");
+});
+
+test("app-3-6: the moment the server step succeeds, cp_sb_session is removed on its own, before a purge that throws", async () => {
+  /* MUTATION: drop the removeItem("cp_sb_session") before clearLocalData ->
+     the throwing purge leaves the revoked token for the retry; red. */
+  const { ctx, arm } = await mount({ seed: { cp_sb_session: sessionRow(), cp_interests: "{}" } });
+  const real = ctx.window.forayStorage;
+  const removed = [];
+  ctx.window.forayStorage = {
+    getItem: (k) => real.getItem(k), setItem: (k, v) => real.setItem(k, v),
+    removeItem: (k) => { removed.push(k); real.removeItem(k); },
+    purge: async () => { throw new Error("InvalidStateError"); },
+  };
+  await arm();
+  const result = await ctx.deleteMyData();
+  assert.strictEqual(result.local.reason, "purge-failed", "premise");
+  assert.deepStrictEqual(removed, ["cp_sb_session"]);
+  assert.strictEqual(real.getItem("cp_sb_session"), null);
+});
+
+test("app-3-6: with no token at all the sheet says, neutrally, that nothing on the server is reachable", async () => {
+  const { ctx } = await mount();
+  const msg = ctx.deletionMessage({ state: "done", remote: { ok: true, attempted: false, deleted: 0 }, local: { ok: true } });
+  assert.match(msg, /No sign-in remains on this device, so nothing on 4a's server is reachable from it\./);
+  assert.doesNotMatch(msg, /never signed in/, "a device whose rows a previous run deleted was told it had never signed in");
 });

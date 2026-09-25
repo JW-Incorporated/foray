@@ -14315,7 +14315,28 @@ async function sbRevokeSessions(session) {
  * revocation comes LAST: it needs the token the row DELETEs need, and a retry
  * after a failed table must still be able to reach the rows.
  */
+/* A REMOTE STEP THAT ALREADY SUCCEEDED, remembered for the retry (audit round
+   3, app-3-6). A run whose server step succeeded and whose local clear did not
+   says "Close 4a fully and try again". The retry used to start from scratch:
+   with cp_sb_session gone it said the device was "never signed in" (the rows
+   were deleted a moment ago), and with a surviving expired token it refreshed
+   a token this module had just revoked, every DELETE 401'd, and the sheet said
+   the server copy was NOT deleted and left the device uncleared. So the success
+   is kept here -- in memory, deliberately not a `cp_` key: it names the
+   account the run deleted, and the purge must not have to spare it -- and a
+   retry for that same account (or with no token left) reports it as done
+   without a request. Across a relaunch the memory is gone, and what keeps the
+   retry honest there is that cp_sb_session is removed FIRST, on its own, the
+   moment the server step succeeds (deleteMyData). */
+let ddRemoteDone = null;
+
 async function deleteRemoteData() {
+  if (ddRemoteDone) {
+    const stored = lsGet("cp_sb_session", null);
+    if (!stored || !stored.user_id || stored.user_id === ddRemoteDone.userId) {
+      return { ok: true, attempted: true, alreadyDeleted: true, tables: [], failed: [], deleted: 0, userId: ddRemoteDone.userId };
+    }
+  }
   const session = await existingAnonSession();
   if (!session) return { ok: true, attempted: false, tables: [], deleted: 0 };
   const tables = [];
@@ -14329,6 +14350,7 @@ async function deleteRemoteData() {
     failed,
     revoked,
     deleted: tables.filter(r => r.state === DEL_DELETED).length,
+    userId: session.user_id,
   };
 }
 
@@ -14491,7 +14513,7 @@ function deletionMessage(result) {
   const server = remote && remote.deviceOnly
     ? "What 4a's server kept about you was left in place, as you chose."
     : !remote || !remote.attempted
-      ? "This device was never signed in, so nothing on 4a's server could be reached."
+      ? "No sign-in remains on this device, so nothing on 4a's server is reachable from it."
       : "What 4a's server kept about you is deleted.";
   if (local && local.ok) return `Done. ${server} This device is clear.`;
   return `${server} This device is NOT fully clear. ${deviceNotClearReason(local)}`;
@@ -14714,6 +14736,15 @@ async function deleteMyData({ deviceOnly = false } = {}) {
       const out = { ok: false, state: "remote-failed", remote, local: null };
       paintDeletion(out);
       return out;
+    }
+
+    /* The server rows are gone and the sign-in revoked: remember it for a
+       retry, and drop the now-dead token FIRST and on its own, so a purge
+       that fails part-way can never leave a retry holding it (app-3-6). */
+    if (remote && remote.attempted && remote.ok && !remote.deviceOnly) {
+      ddRemoteDone = { userId: remote.userId || null };
+      rotatedSession = null;
+      try { const st = storageBackend(); if (st) st.removeItem("cp_sb_session"); } catch (_) { /* the purge below tries again */ }
     }
 
     const local = await clearLocalData();
