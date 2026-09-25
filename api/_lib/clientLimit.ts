@@ -26,7 +26,15 @@ export const CLIENT_LIMITED_ERROR = "too many searches from this connection — 
 export const QUERY_TOO_LONG_ERROR = `q must be at most ${QUERY_MAX_CHARS} characters`;
 export const QUERY_TOO_SHORT_ERROR = `q needs at least ${QUERY_MIN_CHARS} letters or digits to search the directory`;
 
+/** Per-client budget for the EPISODE search's Apple calls (api/episodes/search.ts). */
 export const appleCallerBuckets = new KeyedBuckets(PER_CLIENT_APPLE_CALLS_PER_MINUTE, 60_000);
+/** A SEPARATE per-client budget for the SHOW directory fall-through
+    (appleShowSearch). The client asks both endpoints on every query, so one
+    shared budget let a single listener spend two slots per query and be
+    refused after about four fresh queries a minute, and it undid the
+    endpoint separation appleShowSearch.ts's note (3) keeps for the shared
+    buckets (round-3 review, L4). Each endpoint now meters its own calls. */
+export const appleShowCallerBuckets = new KeyedBuckets(PER_CLIENT_APPLE_CALLS_PER_MINUTE, 60_000);
 
 /** Case, width, punctuation and spacing folded: the text a cache keys on. */
 export function normalizeSearchText(q: string): string {

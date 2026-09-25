@@ -8,7 +8,7 @@ import assert from "node:assert/strict";
 import * as searchModule from "../episodes/search.ts";
 import * as showsModule from "../shows/search.ts";
 import {
-  appleCallerBuckets, clientKey, normalizeSearchText, CLIENT_LIMITED_ERROR,
+  appleCallerBuckets, appleShowCallerBuckets, clientKey, normalizeSearchText, CLIENT_LIMITED_ERROR,
   PER_CLIENT_APPLE_CALLS_PER_MINUTE, QUERY_TOO_LONG_ERROR, QUERY_TOO_SHORT_ERROR,
 } from "../_lib/clientLimit.ts";
 import { episodeSearchCache, normalizeQueryKey } from "../_lib/searchCache.ts";
@@ -40,12 +40,14 @@ async function withApple(run) {
     return new Response(JSON.stringify({ results: [] }), { status: 200 });
   };
   appleCallerBuckets.clear();
+  appleShowCallerBuckets.clear();
   episodeSearchCache.clear();
   try {
     return await run(calls);
   } finally {
     globalThis.fetch = originalFetch;
     appleCallerBuckets.clear();
+    appleShowCallerBuckets.clear();
   }
 }
 
@@ -129,5 +131,27 @@ test("show search: the directory pass honours the per-client budget and skips a 
     const long = mockRes();
     await shows({ method: "GET", query: { q: "y".repeat(201) }, headers }, long);
     assert.equal(long.statusCode, 400);
+  });
+});
+
+/* Round-3 review (L4): the episode search and the show fall-through drew on ONE
+   per-client bucket, and the client asks both on every query, so a listener
+   was refused after about four fresh queries a minute.
+   MUTATION: point appleShowSearch back at appleCallerBuckets -- the later
+   queries in this loop come back CLIENT_LIMITED. */
+test("one listener's search asks both endpoints without the two halving each other's budget", async () => {
+  await withApple(async () => {
+    const headers = { "x-forwarded-for": "198.51.100.90" };
+    const limited = [];
+    for (let i = 0; i < PER_CLIENT_APPLE_CALLS_PER_MINUTE; i++) {
+      const q = `both-${Date.now()}-${i}`;
+      const s = mockRes();
+      await shows({ method: "GET", query: { q, fallthrough: "1" }, headers }, s);
+      const e = mockRes();
+      await episodes({ method: "GET", query: { q }, headers }, e);
+      if (s.body.fallthrough.error === CLIENT_LIMITED_ERROR) limited.push(`show ${i}`);
+      if (e.body.error === CLIENT_LIMITED_ERROR) limited.push(`episode ${i}`);
+    }
+    assert.deepEqual(limited, [], "a listener's own budget is per endpoint");
   });
 });

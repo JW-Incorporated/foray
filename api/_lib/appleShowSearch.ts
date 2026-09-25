@@ -2,7 +2,7 @@ import { SlidingWindowBucket, APPLE_BUCKET_WINDOW_MS, APPLE_BUCKET_CAPACITY } fr
 import { TtlCache } from "./searchCache";
 import { DEFAULT_FEED_USER_AGENT } from "../../backend/src/feeds/userAgent";
 import { KeyedBuckets } from "./keyedBuckets";
-import { appleCallerBuckets, normalizeSearchText, CLIENT_LIMITED_ERROR } from "./clientLimit";
+import { appleShowCallerBuckets, normalizeSearchText, CLIENT_LIMITED_ERROR } from "./clientLimit";
 
 /**
  * S-06 (docs/search-plan.md): the Apple fall-through for SHOW search.
@@ -359,7 +359,7 @@ export async function appleShowSearch(
 
   /* The caller's own budget before the shared one (security-10): one client
      cannot drain the directory for every listener on this instance. */
-  if (deps.callerKey !== undefined && !(deps.callerBuckets ?? appleCallerBuckets).tryConsume(deps.callerKey)) {
+  if (deps.callerKey !== undefined && !(deps.callerBuckets ?? appleShowCallerBuckets).tryConsume(deps.callerKey)) {
     return { shows: [], error: CLIENT_LIMITED_ERROR, cached: false };
   }
   if (!bucket.tryConsume()) {
