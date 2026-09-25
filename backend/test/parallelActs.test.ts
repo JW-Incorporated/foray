@@ -526,7 +526,8 @@ describe("runForayPipeline — all acts narrate at once; stitch and continuity s
     expect(out.outcome).toBe("generated");
 
     const s = spine.captured.spine!;
-    const expected = new Set<string>(["understand", "research-shape", "spine", "source"]);
+    /* gen-13 (round-3 audit): the Foray's identity is banked once it is known. */
+    const expected = new Set<string>(["understand", "research-shape", "spine", "identity", "source"]);
     s.acts.forEach((a, i) => {
       expected.add(`deepen:${i}`);
       expected.add(`narrate:${i}`);
