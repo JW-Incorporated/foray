@@ -294,6 +294,11 @@ export class NullTranscriptCueProvider implements TranscriptCueProvider {
  * covers guids the slug rule mangles (URLs, `Buzzsprout-…`). Reads are cached
  * per process; a batch run asks for the same episode from many beats.
  */
+/** gen-15: the cue cache's bound. A batch asks for the same episode from many
+ * beats within one Foray, which a few hundred entries cover; an unbounded map
+ * held a whole corpus after one index rebuild. */
+export const CUE_CACHE_MAX_ENTRIES = 256;
+
 export class FileTranscriptCueProvider implements TranscriptCueProvider {
   private readonly root: string;
   private readonly dirByShow = new Map<string, string | null>();
@@ -310,16 +315,41 @@ export class FileTranscriptCueProvider implements TranscriptCueProvider {
 
   getCues(entry: TranscriptDigestEntry): TranscriptCue[] | null {
     const key = `${entry.show_id}\u0000${entry.guid}`;
-    if (this.cuesByKey.has(key)) return this.cuesByKey.get(key) ?? null;
-    let result: TranscriptCue[] | null = null;
+    if (this.cuesByKey.has(key)) {
+      /* gen-15: an LRU, so a hit moves the entry to the recent end. */
+      const held = this.cuesByKey.get(key) ?? null;
+      this.cuesByKey.delete(key);
+      this.cuesByKey.set(key, held);
+      return held;
+    }
+    const result = this.readCuesUncached(entry);
+    this.cuesByKey.set(key, result);
+    while (this.cuesByKey.size > CUE_CACHE_MAX_ENTRIES) {
+      const oldest = this.cuesByKey.keys().next().value;
+      if (oldest === undefined) break;
+      this.cuesByKey.delete(oldest);
+    }
+    return result;
+  }
+
+  /**
+   * gen-15: the same read, without touching the cache. A text-index rebuild
+   * reads EVERY body of a show once (thousands, for a big show), and used to
+   * pin all of them in `cuesByKey` for the rest of the batch; it reads through
+   * here instead.
+   */
+  readCuesUncached(entry: TranscriptDigestEntry): TranscriptCue[] | null {
     try {
       const file = this.locate(String(entry.show_id), String(entry.guid));
-      if (file) result = readCues(file);
+      return file ? readCues(file) : null;
     } catch {
-      result = null;
+      return null;
     }
-    this.cuesByKey.set(key, result);
-    return result;
+  }
+
+  /** How many parsed cue arrays the provider holds right now (tests). */
+  cachedCueCount(): number {
+    return this.cuesByKey.size;
   }
 
   /**

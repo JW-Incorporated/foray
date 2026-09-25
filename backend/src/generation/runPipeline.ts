@@ -1354,7 +1354,10 @@ export async function runForayPipeline(
      against a pool that has since gained the row. */
   const rowContext = { batchId: generationBatchId(forayId), sources: sourced.newSegmentSources };
   const mintedPool = sourced.newSegments.map((s) => mintedSegmentRow(s, topic, rowContext) as unknown as SegmentRecord);
-  const runtimePool = mintedPool.length ? [...mintedPool, ...loadSegmentPool()] : loadSegmentPool();
+  /* gen-15: the pool the run SOURCED against (injected, or loaded once above),
+     not a fresh read of the repo root's pool, so runtime seconds are measured
+     on the rows the Foray actually references. */
+  const runtimePool = mintedPool.length ? [...mintedPool, ...segmentPool] : segmentPool;
 
   /* §4.7 — write narration, then verify it independently (distinct instances,
      enforced there). Driven ONE CALL PER ACT rather than one call for all, so

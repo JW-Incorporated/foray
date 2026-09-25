@@ -161,6 +161,10 @@ export interface TranscriptBodyStat {
  */
 export interface TranscriptBodySource extends TranscriptCueProvider {
   bodyStat(entry: TranscriptDigestEntry): TranscriptBodyStat | null;
+  /** gen-15: when present, the index build reads through this instead of
+   * `getCues`, so a rebuild does not fill the provider's per-episode cache
+   * with every body of a show. */
+  readCuesUncached?(entry: TranscriptDigestEntry): TranscriptCue[] | null;
 }
 
 interface IndexedDoc {
@@ -416,7 +420,7 @@ export class FileTranscriptTextIndex implements TranscriptTextIndex {
     for (const entry of entries) {
       const stat = this.bodies.bodyStat(entry);
       if (!stat) continue;
-      const cues = this.bodies.getCues(entry);
+      const cues = this.bodies.readCuesUncached ? this.bodies.readCuesUncached(entry) : this.bodies.getCues(entry);
       if (!cues || cues.length === 0) continue;
       const counts = countTerms(cues);
       const docIndex = docs.length;
