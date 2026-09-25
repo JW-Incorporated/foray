@@ -434,6 +434,24 @@ test("no file under tools/ spells out a User-Agent (#316 follow-up)", () => {
   );
 });
 
+/* THE API'S COPIES (round-3 audit, arch-drift-14). api/episodes/search.ts and
+   api/shows/appleShowSearch.ts (now api/_lib/) each restated the client
+   string instead of importing backend's DEFAULT_FEED_USER_AGENT, and this scan
+   walked only tools/, so a drift there was invisible. They import it now, and
+   the same blunt scan covers every tracked source file under api/.
+   MUTATION: put the literal back in api/episodes/search.ts — this goes red
+   naming that file. */
+test("no file under api/ spells out a User-Agent (arch-drift-14)", () => {
+  const files = tracked("api/").filter((f) => /\.(?:ts|mjs|js|cjs)$/.test(f));
+  assert.ok(files.length > 5, "the ls-files call returned a plausible api/ tree, not nothing");
+  const offenders = files.filter((rel) => UA_MENTION.test(readFileSync(join(REPO, rel), "utf8")));
+  assert.deepEqual(
+    offenders,
+    [],
+    `these files under api/ spell out a User-Agent instead of importing backend/src/feeds/userAgent.ts: ${offenders.join(", ")}`
+  );
+});
+
 /* MUTATION: change the literal in `backend/src/config/env.ts` to `Foray/0.2 (...)`.
    Verified failing. Second mutation: add
    `headers: { "User-Agent": "Foray/0.1 (...)" }` to

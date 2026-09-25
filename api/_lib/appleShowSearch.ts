@@ -1,5 +1,6 @@
 import { SlidingWindowBucket, APPLE_BUCKET_WINDOW_MS, APPLE_BUCKET_CAPACITY } from "./appleBucket";
 import { TtlCache } from "./searchCache";
+import { DEFAULT_FEED_USER_AGENT } from "../../backend/src/feeds/userAgent";
 import { KeyedBuckets } from "./keyedBuckets";
 import { appleCallerBuckets, normalizeSearchText, CLIENT_LIMITED_ERROR } from "./clientLimit";
 
@@ -89,8 +90,9 @@ import { appleCallerBuckets, normalizeSearchText, CLIENT_LIMITED_ERROR } from ".
  */
 
 const APPLE_SEARCH_URL = "https://itunes.apple.com/search";
-/** Verbatim from `api/episodes/search.ts` — one User-Agent for this product. */
-const SHOW_USER_AGENT = "Foray/0.1 (personal podcast client; contact wjduvall@gmail.com)";
+/** One User-Agent for this product, imported rather than restated (round-3
+    audit, arch-drift-14; see api/episodes/search.ts). */
+const SHOW_USER_AGENT = DEFAULT_FEED_USER_AGENT;
 /** 2 s, and NOT `api/episodes/search.ts`'s 8 s — see note (6). Exported so
     `api/_test/shows-search-apple.test.mjs` can pin the number rather than the
     behaviour, which is untestable without waiting for it. */

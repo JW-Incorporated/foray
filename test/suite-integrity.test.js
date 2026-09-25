@@ -1926,7 +1926,7 @@ const FLOORS = {
      than asserting a score. */
   "tools/segments/transcript-coverage.test.mjs": 12,
   "tools/segments/fetch-transcripts.test.mjs": 11,
-  "tools/segments/politeness.test.mjs": 7,
+  "tools/segments/politeness.test.mjs": 8, // round-3 audit, L4: the User-Agent scan covers api/ too (arch-drift-14); 7 -> 8
   /* S-04a: the PodcastIndex dump import/shard-build pipeline (kanban
      t_835d1a3c). Six suites because the pipeline is deliberately split into
      independently-testable stages (config, filter, dedupe, shard-build,

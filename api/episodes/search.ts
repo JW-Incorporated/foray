@@ -2,6 +2,7 @@ import * as fs from "fs";
 import * as path from "path";
 import { applyCors } from "../_lib/cors";
 import { type ParsedEpisode } from "../../backend/src/feeds/parser";
+import { DEFAULT_FEED_USER_AGENT } from "../../backend/src/feeds/userAgent";
 import { appleSearchBucket } from "../_lib/appleBucket";
 import { loadShowIdMap } from "../_lib/showIdMap";
 import { episodeSearchCache, episodeFeedFailureCache, normalizeQueryKey } from "../_lib/searchCache";
@@ -59,7 +60,10 @@ import {
  */
 
 const APPLE_SEARCH_URL = "https://itunes.apple.com/search";
-const EPISODE_USER_AGENT = "Foray/0.1 (personal podcast client; contact wjduvall@gmail.com)";
+/* Imported, never restated (round-3 audit, arch-drift-14): one drifted copy of
+   this string was 403'd by a feed host and cost 423 transcripts (#316). The
+   politeness scan in tools/segments/politeness.test.mjs now reads api/ too. */
+const EPISODE_USER_AGENT = DEFAULT_FEED_USER_AGENT;
 const APPLE_TIMEOUT_MS = 8_000; // keeps the <1.5s acceptance target reachable even with cache misses
 const MAX_RESULTS = 25;
 
