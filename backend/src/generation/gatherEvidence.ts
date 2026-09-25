@@ -1,5 +1,6 @@
 import * as crypto from "crypto";
 import * as path from "path";
+import { findBudgetError } from "../cost/budgetGuard";
 import { loadCatalogueData, type CatalogueData } from "./catalogueLookup";
 import { createExternalResearcher } from "./createExternalResearcher";
 import { readEvidenceCache, writeEvidenceCache } from "./evidenceCache";
@@ -139,6 +140,12 @@ export interface EvidencePack {
   beatKind: BeatKind;
   docs: EvidenceDoc[];
   tape?: TapeContext;
+  /** gen-5 (round-3 audit): print retrieval FAILED for this pack (a 429/529,
+   * a network error, a thrown retrieval), as opposed to answering "nothing".
+   * The pack is still usable (it degrades exactly as before), but it is not a
+   * verdict: a memo (PrefetchingEvidenceGatherer) must not keep it, so the
+   * next asker retries. Absent means retrieval answered (or was not asked). */
+  retrievalFailed?: true;
 }
 
 export interface EvidenceBeat {
@@ -324,6 +331,21 @@ interface RetrievalOutcome {
   status: "hit" | "retrieved" | "failed" | "unavailable";
   query: string;
   docs: EvidenceDoc[];
+  /** gen-5: a budget refusal, carried through the two-query race so it can
+   * be re-thrown once the race settles instead of being swallowed. */
+  budgetError?: unknown;
+}
+
+/** gen-5: a failed retrieval is not a verdict, EXCEPT a budget refusal, which
+ * must stop the run at the stage that spent the money. */
+function failedOutcome(query: string, err: unknown): RetrievalOutcome {
+  return findBudgetError(err) ? { status: "failed", query, docs: [], budgetError: err } : { status: "failed", query, docs: [] };
+}
+
+/** What printEvidenceFor found, and whether it was a real answer. */
+interface PrintEvidence {
+  docs: EvidenceDoc[];
+  failed: boolean;
 }
 
 /** Resolves with the FIRST outcome to land holding documents, or `null`
@@ -444,7 +466,9 @@ export class DefaultEvidenceGatherer implements EvidenceGatherer {
      * somewhere, and the retrieval below runs exactly as it did. */
     if (ownWindowHeld) return pack;
 
-    for (const doc of await this.printEvidenceFor(beat.claim, ctx, beat.requiresEvidence === true)) pack.docs.push(doc);
+    const print = await this.printEvidenceFor(beat.claim, ctx, beat.requiresEvidence === true);
+    for (const doc of print.docs) pack.docs.push(doc);
+    if (print.failed) pack.retrievalFailed = true;
     return pack;
   }
 
@@ -531,7 +555,7 @@ export class DefaultEvidenceGatherer implements EvidenceGatherer {
    * `writeNarration.ts` with an empty pack, so that stage can degrade the
    * page instead of paying a model to fail.
    */
-  private async printEvidenceFor(claim: string, ctx: ExternalResearchContext, requiresEvidence: boolean): Promise<EvidenceDoc[]> {
+  private async printEvidenceFor(claim: string, ctx: ExternalResearchContext, requiresEvidence: boolean): Promise<PrintEvidence> {
     const claimKey = claimHash(claim);
     const retryQuery = requiresEvidence ? retryQueryFor(claim) : "";
     const twoQueries = retryQuery.length > 0 && claimHash(retryQuery) !== claimKey;
@@ -540,7 +564,7 @@ export class DefaultEvidenceGatherer implements EvidenceGatherer {
        racing a second query against a cache hit would be the one wasted call
        this design promises never to make. */
     const held = this.readCache(claimKey);
-    if (held && held.length > 0) return held;
+    if (held && held.length > 0) return { docs: held, failed: false };
 
     if (!twoQueries) {
       const only = await this.retrieveFor(claim, ctx);
@@ -548,31 +572,33 @@ export class DefaultEvidenceGatherer implements EvidenceGatherer {
          answered: that is a verdict. A connective page's single question is
          not — it was never pressed — so its emptiness is left unwritten. */
       if (only.status === "retrieved" && only.docs.length === 0 && requiresEvidence) this.writeCache(claimKey, []);
-      return only.docs;
+      return { docs: only.docs, failed: only.status === "failed" };
     }
 
     console.log(
       `gatherEvidence: asking two queries at once for "${claim.slice(0, 60)}" — the purpose, and "${retryQuery}" (F-60/F-69, G-35)`
     );
-    const first = this.retrieveFor(claim, ctx).catch((): RetrievalOutcome => ({ status: "failed", query: claim, docs: [] }));
-    const second = this.retrieveFor(retryQuery, ctx).catch((): RetrievalOutcome => ({ status: "failed", query: retryQuery, docs: [] }));
+    const first = this.retrieveFor(claim, ctx).catch((err: unknown): RetrievalOutcome => failedOutcome(claim, err));
+    const second = this.retrieveFor(retryQuery, ctx).catch((err: unknown): RetrievalOutcome => failedOutcome(retryQuery, err));
     const winner = await firstNonEmpty([first, second]);
     if (winner) {
       /* The claim's key holds the claim's evidence, whichever question found
          it. `retrieveFor` has already written it under the winner's own key. */
       if (winner.query !== claim) this.writeCache(claimKey, winner.docs);
-      return winner.docs;
+      return { docs: winner.docs, failed: false };
     }
 
     /* Both settled, both empty. A verdict only if both were genuine answers. */
     const [a, b] = await Promise.all([first, second]);
+    const budgetStop = [a, b].find((r) => r.budgetError !== undefined);
+    if (budgetStop) throw budgetStop.budgetError;
     const confirmed = [a, b].every((r) => r.status === "retrieved" || r.status === "hit");
     if (confirmed && (a.status === "retrieved" || b.status === "retrieved")) {
       this.writeCache(claimKey, []);
       this.writeCache(claimHash(retryQuery), []);
     }
     console.warn(`gatherEvidence: nothing was retrieved for "${claim.slice(0, 60)}" by either query (F-60/F-69)`);
-    return [];
+    return { docs: [], failed: a.status === "failed" || b.status === "failed" };
   }
 
   /** One retrieval, cached by ITS OWN query's hash when it found something.
@@ -604,6 +630,9 @@ export class DefaultEvidenceGatherer implements EvidenceGatherer {
           text: p.text.slice(0, EVIDENCE_MAX_PASSAGE_CHARS)
         }));
     } catch (err) {
+      /* gen-5: except when the budget refused the spend. That stops the run
+         at the stage that asked, like every other budget stop. */
+      if (findBudgetError(err)) throw err;
       /* Retrieval failing is not the run failing. The page is written
          from whatever evidence DID arrive, and if that is nothing the
          mechanical rules downstream refuse to let it assert anything —

@@ -19,6 +19,7 @@ import {
   titlesForItem
 } from "../src/generation/gatherEvidence";
 import { StubExternalResearcher } from "../src/generation/StubExternalResearcher";
+import { BudgetExceededError } from "../src/cost/budgetGuard";
 import { EMPTY_EVIDENCE_TTL_MS, emptyEvidenceTtlMs, readEvidenceCache } from "../src/generation/evidenceCache";
 import { findHoldingDoc } from "../src/types/narration";
 import { leadingNounPhrase } from "../src/types/spine";
@@ -178,6 +179,44 @@ describe("cueWindowText — the tape a beat is anchored to, ±90 seconds of it",
     expect(text.startsWith("clip1000xx")).toBe(true);
     expect(text).not.toMatch(/\bpre\d+|\bpost\d+/);
     expect(text.endsWith(TAPE_CUT_MARK)).toBe(true);
+  });
+});
+
+describe("gen-5: a failed retrieval is flagged, not passed off as an answer", () => {
+  class ThrowingRetriever implements ExternalResearcher {
+    readonly providerName = "throwing";
+    constructor(private readonly err: Error) {}
+    async research(): Promise<ExternalResearchResult> {
+      return { notes: "", controversies: [] };
+    }
+    async retrievePassages(): Promise<RetrievedPassage[]> {
+      throw this.err;
+    }
+  }
+
+  it("a 529 from retrieval gives an empty pack marked retrievalFailed (one query and two)", async () => {
+    /* MUTATION THAT KILLS THIS: drop `retrievalFailed` — a memo upstream then
+       keeps the empty pack for the whole run. */
+    const g = gatherer(new ThrowingRetriever(new Error("529 overloaded")));
+    const connective = await g.gather({ claim: "the bakestone came first" }, ctx);
+    expect(connective.docs).toEqual([]);
+    expect(connective.retrievalFailed).toBe(true);
+    const content = await g.gather({ claim: "the bakestone came first before the griddle arrived", requiresEvidence: true }, ctx);
+    expect(content.docs).toEqual([]);
+    expect(content.retrievalFailed).toBe(true);
+  });
+
+  it("an answered empty retrieval is a verdict, not a failure", async () => {
+    const pack = await gatherer(new FakeRetriever([])).gather({ claim: "the bakestone came first" }, ctx);
+    expect(pack.retrievalFailed).toBeUndefined();
+  });
+
+  it("a budget refusal propagates instead of degrading to an empty pack (one query and two)", async () => {
+    const g = gatherer(new ThrowingRetriever(new BudgetExceededError(1, 9.9, 0.2, 10)));
+    await expect(g.gather({ claim: "the bakestone came first" }, ctx)).rejects.toBeInstanceOf(BudgetExceededError);
+    await expect(g.gather({ claim: "the bakestone came first before the griddle arrived", requiresEvidence: true }, ctx)).rejects.toBeInstanceOf(
+      BudgetExceededError
+    );
   });
 });
 
