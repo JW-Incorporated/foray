@@ -519,17 +519,28 @@ test("ROUND 2 review (perf-2): an <img> whose width/height attributes CSS resize
 /* perf-3: priming waits for a still listener                             */
 /* ==================================================================== */
 
-test("perf-3: whenQuiet runs nothing while the listener keeps touching the page", async () => {
-  /* MUTATION: make whenQuiet call whenIdle at once, or drop the re-check. */
+test("perf-3: whenQuiet runs nothing while the listener keeps touching the page", (t) => {
+  /* MUTATION: make whenQuiet call whenIdle at once, or drop the re-check.
+     THE CLOCK IS DRIVEN, NOT SLEPT (audit round 3, tests-2): this slept 25/25/60
+     ms of wall clock, and a ~45 ms stall of a loaded runner let the final sleep
+     resolve before the re-armed check's fn, turning unrelated PRs red. The
+     mount's setTimeout forwards to the (mocked) global, and ctx.Date is the
+     mocked Date, so app.js's own timers and Date.now() run on this clock. */
+  t.mock.timers.enable({ apis: ["setTimeout", "Date"], now: 1_000_000 });
   const m = mount({ fetchImpl: () => new Promise(() => {}) });
   let ran = 0;
   m.ctx.whenQuiet(() => { ran += 1; }, 40);
-  await sleep(25);
+  t.mock.timers.tick(25);
   m.ctx.noteInteraction();
-  await sleep(25);
+  t.mock.timers.tick(25);
   assert.strictEqual(ran, 0, "it ran 50 ms in, 25 ms after a tap");
-  await sleep(60);
+  t.mock.timers.tick(14);
+  assert.strictEqual(ran, 0, "39 ms after the tap is not yet 40 ms of stillness");
+  t.mock.timers.tick(2);
+  t.mock.timers.tick(1);
   assert.strictEqual(ran, 1, "and it runs once the listener has been still");
+  t.mock.timers.tick(500);
+  assert.strictEqual(ran, 1, "once");
 });
 
 test("perf-3: init() primes the vocabulary through whenQuiet, and taps are what it listens for", () => {
