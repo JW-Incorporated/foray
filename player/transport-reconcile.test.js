@@ -3330,6 +3330,10 @@ test("ROUND 2 native-3: an interruption during a SPOKEN line pauses the Foray, a
   await settle();
   await settle();
   assert.equal(transport(doc).label, "Pause", "precondition: the line is speaking");
+  /* Every speak() now flushes the synthesizer first (audit round 3,
+     mobile-native-1), so the line's own start recorded a `cancel`. What this
+     test pins is what the interruption does after that. */
+  speech.transport.length = 0;
   // A late event: the line is still speaking — the call was declined.
   nativeSession(win, { kind: "interruptionBegan", reason: "began", producer: "tts", at: Date.now() });
   await settle();
