@@ -303,6 +303,22 @@ final class ForayAudioPluginTests: XCTestCase {
     /// or return `.hold` for `(.playing, .playing)` -- the F11/F13 loop -- or
     /// return `.hold` for a pause inside an interruption -- 4a re-interrupting
     /// the app that interrupted it.
+    /// Audit round 3, mobile-native-6: a failed remote artwork load is retried
+    /// after a window, not cached as "no artwork" for the rest of the item.
+    /// MUTATION: make `artworkLoadAllowed` return false for any recorded
+    /// failure of the URI, and the after-the-window row goes red.
+    func testAFailedArtworkLoadIsRetriedAfterItsWindow() {
+        let t0 = Date(timeIntervalSince1970: 1_000)
+        let failure = (uri: "https://art.test/a.jpg", at: t0.addingTimeInterval(ForayAudioPlugin.artworkRetryAfterSec))
+        XCTAssertTrue(ForayAudioPlugin.artworkLoadAllowed(uri: "https://art.test/a.jpg", lastFailure: nil, now: t0))
+        XCTAssertFalse(ForayAudioPlugin.artworkLoadAllowed(uri: "https://art.test/a.jpg", lastFailure: failure, now: t0))
+        XCTAssertTrue(ForayAudioPlugin.artworkLoadAllowed(uri: "https://art.test/a.jpg", lastFailure: failure,
+                                                          now: t0.addingTimeInterval(ForayAudioPlugin.artworkRetryAfterSec)))
+        XCTAssertTrue(ForayAudioPlugin.artworkLoadAllowed(uri: "https://art.test/b.jpg", lastFailure: failure, now: t0),
+                      "another URI is never held back by this one's failure")
+        XCTAssertTrue(ForayAudioPlugin.artworkRetryAfterSec >= 30 && ForayAudioPlugin.artworkRetryAfterSec <= 60)
+    }
+
     func testSessionMoveTable() {
         typealias S = NowPlayingPayload.State
         XCTAssertEqual(ForayAudioPlugin.sessionMove(from: .playing, to: .paused, holding: false), .hold)

@@ -1895,6 +1895,22 @@ test("the iOS ForayAudioPlugin touches AVAudioSession.setActive from its two ses
   assert.equal((table.match(/\.hold\b/g) ?? []).length, 1, "exactly one transition may take the session");
 });
 
+test("iOS lock-screen artwork caches only a successful load; a failure is retried after a window (audit round 3, mobile-native-6)", () => {
+  /* One failed or timed-out fetch used to cache "no artwork" for that URI for
+     the rest of the item. MUTATION: put `_ = self.rememberArtwork(uri: uri,
+     image: image)` back ahead of the failure check, or drop the retry gate in
+     artworkItem. */
+  const code = stripSwiftComments(fs.readFileSync(AUDIO_SWIFT, "utf8"));
+  const load = swiftFuncBody(code, "loadRemoteArtwork");
+  const fail = load.indexOf("guard image != nil else {");
+  const remember = load.indexOf("rememberArtwork(uri: uri, image: image)");
+  assert.ok(fail >= 0 && remember > fail, "a failure returns before anything is cached");
+  assert.match(load, /self\.artworkRetryAfter = \(uri: uri, at: Date\(\)\.addingTimeInterval\(Self\.artworkRetryAfterSec\)\)/);
+  assert.match(swiftFuncBody(code, "artworkItem"), /guard Self\.artworkLoadAllowed\(uri: uri, lastFailure: artworkRetryAfter, now: Date\(\)\) else \{ return nil \}\s*loadRemoteArtwork\(uri: uri, url: url\)/);
+  const after = /static let artworkRetryAfterSec: Double = (\d+)/.exec(code);
+  assert.ok(after && Number(after[1]) >= 30 && Number(after[1]) <= 60, "a 30-60 s retry window");
+});
+
 test("the iOS end of playback releases and notifies even when the plugin never took the hold (audit round 3, mobile-native-4)", () => {
   /* Every narration line activates the shared session (ForayTtsPlugin), so a
      Foray played through without a pause ended with a non-mixable session
