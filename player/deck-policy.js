@@ -374,3 +374,225 @@ export function recoveryLoadedOps({ superseded, stopped, boundarySec }) {
 export function recoveryFailedOps({ superseded, stopped }) {
   return superseded || stopped ? [] : [RECOVERY.REPORT];
 }
+
+/* ---------- the native out-point: three layers and a windowed watchdog ----------
+
+   NE-28j (docs/native-engine-plan.md §4.3, P-2; the `outpoint` parity family,
+   ported by NE-28s into DeckPolicy). The web deck above has two stages, a
+   coarse `timeupdate` check and a fine timer. The native deck has THREE layers,
+   and the first to fire wins, per load token:
+
+     1. `forwardPlaybackEndTime`: the player item stops itself at the boundary;
+     2. a boundary time observer at the same instant;
+     3. a watchdog: ONE timer at `(end - now) / rate - OUT_POINT_WATCHDOG_WINDOW_SEC`
+        of wall clock, then a poll every `OUT_POINT_WATCHDOG_POLL_MS`, only
+        inside that window. Re-armed on every seek and every rate change. It is
+        for the day layers 1 and 2 both stay quiet (a stall across the boundary,
+        an observer the system dropped), and it costs nothing the rest of the
+        time: one wakeup outside the window instead of four a second for a
+        whole 51-minute Foray (DV-11).
+
+   NEVER EARLY, IN EVERY LAYER. A layer that reports before the playhead has
+   reached the boundary stops nothing: the report is written down
+   (`outPoint.early:`) and the watchdog is re-armed from where the playhead
+   really is. The payoff a segment exists for is never clipped.
+
+   These are JS because JS is the reference (plan §6): the web never runs them,
+   the fixtures pin them, and the Swift DeckPolicy must answer the same. The
+   reducer is pure: every event carries the playhead (`atSec`) and, where time
+   matters, the wall clock (`nowMs`), and every answer is a new state plus a
+   list of op tokens, so the op log a fixture records is exactly what the
+   native deck is commanded to do. */
+
+/** How much WALL CLOCK before the boundary the watchdog starts polling: the
+    plan's "last ~1.5 s" (§4.3). */
+export const OUT_POINT_WATCHDOG_WINDOW_SEC = 1.5;
+/** The watchdog's poll interval inside the window (plan §4.3). */
+export const OUT_POINT_WATCHDOG_POLL_MS = 250;
+
+/** The three layers, as they name themselves in the op log and the `outPoint`
+    row. */
+export const OUT_POINT_LAYER = Object.freeze({
+  END_TIME: "endTime",
+  BOUNDARY: "boundary",
+  WATCHDOG: "watchdog",
+});
+
+/** What a watchdog wake does (`watchdogWakeAction`). */
+export const WATCHDOG_WAKE = Object.freeze({
+  /** The playhead has reached the boundary: stop, attributed to the watchdog. */
+  STOP: "stop",
+  /** Not there yet: arm again for what is left (a poll inside the window, or
+      the one long wait outside it after a slow-down or a stall). */
+  REARM: "rearm",
+});
+
+/**
+ * How long, in WALL-CLOCK milliseconds, to arm the watchdog's one timer for,
+ * or null when there must be no timer at all.
+ *
+ * Null when there is no boundary (an unbounded episode), when it is not armed
+ * (a scrub went past it, so the rest of the episode free-plays), when the deck
+ * is paused (nothing is approaching anything), and when the playhead is already
+ * at or past it (the caller stops instead of waiting). Outside the window: the
+ * wall-clock time until the window opens, rounded UP, so the timer never wakes
+ * before the window. Inside it: one poll interval, but never later than the
+ * predicted crossing and never below `OUT_POINT_MIN_TIMER_MS`.
+ *
+ * @param {object} s
+ * @param {number|null} s.outPointSec  the boundary, in the source's seconds
+ * @param {number} s.atSec             the playhead
+ * @param {*} s.rate                   the deck's rate (see `deckRate`)
+ * @param {boolean} [s.armed=true]     the boundary is ahead of the playhead
+ * @param {boolean} [s.paused=false]   the deck is paused
+ * @returns {number|null}
+ */
+export function watchdogDelayMs({ outPointSec, atSec, rate, armed = true, paused = false }) {
+  if (typeof outPointSec !== "number" || !Number.isFinite(outPointSec) || !armed || paused) return null;
+  if (!(atSec < outPointSec)) return null;
+  const remainingWallSec = (outPointSec - atSec) / deckRate(rate);
+  const untilWindowSec = remainingWallSec - OUT_POINT_WATCHDOG_WINDOW_SEC;
+  if (untilWindowSec > 0) return Math.ceil(untilWindowSec * 1000);
+  return Math.max(OUT_POINT_MIN_TIMER_MS, Math.min(OUT_POINT_WATCHDOG_POLL_MS, Math.ceil(remainingWallSec * 1000)));
+}
+
+/**
+ * What a watchdog wake does, given where the playhead is NOW. The timer was a
+ * prediction, and a stall or a rate change makes predictions wrong, so the wake
+ * re-reads the playhead and stops only on a genuine crossing.
+ *
+ * @param {object} s
+ * @param {number} s.atSec        the playhead now
+ * @param {number} s.outPointSec  the armed boundary
+ * @returns {string} a `WATCHDOG_WAKE` token
+ */
+export function watchdogWakeAction({ atSec, outPointSec }) {
+  return atSec >= outPointSec ? WATCHDOG_WAKE.STOP : WATCHDOG_WAKE.REARM;
+}
+
+/** How far past the boundary a stop landed, in whole milliseconds of CONTENT
+    (the `outPoint` row's overshoot). Never negative: a stop is never early. */
+export function outPointOvershootMs({ atSec, outPointSec }) {
+  return Math.max(0, Math.round((atSec - outPointSec) * 1000));
+}
+
+/** A watch with nothing loaded. */
+export function initialOutPointWatch() {
+  return {
+    token: 0, outPointSec: null, armed: false, fired: false,
+    playing: false, rate: 1, timerDueMs: null,
+  };
+}
+
+const validBoundary = (s) => (typeof s === "number" && Number.isFinite(s) ? s : null);
+
+/** Layers 1 and 2 hold the boundary while it is armed and are cleared when it
+    is not: a scrub past the out-point frees the rest of the episode, and an end
+    time left behind would stop it anyway. */
+function boundaryOps(armed, outPointSec) {
+  const v = armed ? outPointSec : null;
+  return [`endTime:${v ?? "null"}`, `boundary:${v ?? "null"}`];
+}
+
+/** Cancel the one timer (if any), then arm it again from here (if it should
+    be armed at all). */
+function rearmWatchdog(state, { atSec, nowMs }, ops) {
+  let next = state;
+  if (next.timerDueMs !== null) {
+    ops.push("watchdog.cancel");
+    next = { ...next, timerDueMs: null };
+  }
+  if (next.fired) return next;
+  const delay = watchdogDelayMs({
+    outPointSec: next.outPointSec, atSec, rate: next.rate, armed: next.armed, paused: !next.playing,
+  });
+  if (delay === null) return next;
+  ops.push(`watchdog.arm:${delay}`);
+  return { ...next, timerDueMs: nowMs + delay };
+}
+
+function stopAt(state, layer, atSec, ops) {
+  if (state.timerDueMs !== null) ops.push("watchdog.cancel");
+  ops.push(`outPoint.stop:${layer}:${outPointOvershootMs({ atSec, outPointSec: state.outPointSec })}`);
+  return { ...state, fired: true, playing: false, timerDueMs: null };
+}
+
+/**
+ * The native out-point, as a reducer. Every event carries `atSec` (the
+ * playhead) and, where time matters, `nowMs` (the wall clock).
+ *
+ *   {type: "load", token, outPointSec, atSec}   a new item and token; the deck
+ *        is paused after a load. A boundary at or behind the in-point is not
+ *        armed: the item free-plays.
+ *   {type: "play", atSec, nowMs}                arm the watchdog
+ *   {type: "pause", atSec}                      cancel it
+ *   {type: "seek", atSec, nowMs}                re-derive `armed` from the new
+ *        playhead (a scrub past frees the episode; a scrub back re-arms it,
+ *        even after a stop on this token), then re-arm the watchdog
+ *   {type: "rate", rate, atSec, nowMs}          re-arm the watchdog at the new rate
+ *   {type: "timer", atSec, nowMs}               the watchdog's timer came due
+ *   {type: "layer", layer, token, atSec, nowMs} layer 1 or 2 reported the boundary
+ *
+ * Ops: `endTime:<s|null>`, `boundary:<s|null>`, `watchdog.arm:<ms>`,
+ * `watchdog.cancel`, `outPoint.stop:<layer>:<overshootMs>` (pause the deck and
+ * report the item's end), `outPoint.early:<layer>` (a report before the
+ * boundary: nothing stops), `outPoint.stale:<layer>` (a report for another
+ * token, for a boundary no longer armed, or after the stop: nothing happens).
+ *
+ * @param {object} state  from `initialOutPointWatch` or a previous step
+ * @param {object} event
+ * @returns {{state: object, ops: string[]}}
+ */
+export function outPointStep(state, event) {
+  const ops = [];
+  const { atSec = 0, nowMs = 0 } = event ?? {};
+  switch (event?.type) {
+    case "load": {
+      const outPointSec = validBoundary(event.outPointSec);
+      const armed = outPointSec !== null && atSec < outPointSec;
+      if (state.timerDueMs !== null) ops.push("watchdog.cancel");
+      ops.push(...boundaryOps(armed, outPointSec));
+      return {
+        state: { ...state, token: event.token, outPointSec, armed, fired: false, playing: false, timerDueMs: null },
+        ops,
+      };
+    }
+    case "play":
+      if (state.fired) return { state, ops };
+      return { state: rearmWatchdog({ ...state, playing: true }, { atSec, nowMs }, ops), ops };
+    case "pause":
+      if (state.timerDueMs !== null) ops.push("watchdog.cancel");
+      return { state: { ...state, playing: false, timerDueMs: null }, ops };
+    case "seek": {
+      const armed = state.outPointSec !== null && atSec < state.outPointSec;
+      if (armed !== state.armed) ops.push(...boundaryOps(armed, state.outPointSec));
+      const next = { ...state, armed, fired: armed ? false : state.fired };
+      return { state: rearmWatchdog(next, { atSec, nowMs }, ops), ops };
+    }
+    case "rate":
+      return { state: rearmWatchdog({ ...state, rate: deckRate(event.rate) }, { atSec, nowMs }, ops), ops };
+    case "timer": {
+      if (state.timerDueMs === null || nowMs < state.timerDueMs) return { state, ops };
+      const next = { ...state, timerDueMs: null };
+      if (!next.playing || !next.armed || next.fired) return { state: next, ops };
+      if (watchdogWakeAction({ atSec, outPointSec: next.outPointSec }) === WATCHDOG_WAKE.STOP) {
+        return { state: stopAt(next, OUT_POINT_LAYER.WATCHDOG, atSec, ops), ops };
+      }
+      return { state: rearmWatchdog(next, { atSec, nowMs }, ops), ops };
+    }
+    case "layer": {
+      const layer = event.layer;
+      if (event.token !== state.token || !state.armed || state.fired) {
+        ops.push(`outPoint.stale:${layer}`);
+        return { state, ops };
+      }
+      if (atSec < state.outPointSec) {
+        ops.push(`outPoint.early:${layer}`);
+        return { state: rearmWatchdog(state, { atSec, nowMs }, ops), ops };
+      }
+      return { state: stopAt(state, layer, atSec, ops), ops };
+    }
+    default:
+      return { state, ops };
+  }
+}

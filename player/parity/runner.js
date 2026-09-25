@@ -273,8 +273,129 @@ function managerView(m) {
   };
 }
 
+/* ---------- the `deck` target: the native out-point (NE-28j) ----------
+
+   The `outpoint` family drives deck-policy.js `outPointStep`, the native deck's
+   three-layer out-point as a pure reducer, over a DRIVEN CLOCK: this driver owns
+   the wall clock and the playhead, moves the playhead by `elapsed x rate` while
+   the deck plays (and is not stalled), and delivers the watchdog's one timer at
+   the moment it comes due, with the playhead where it really is by then. The
+   op log is the reducer's ops, in order; nothing else writes to it.
+
+   `deck` steps:
+     load      {id?, outPointSec, sec}  a new item at in-point `sec` (a new token)
+     play | pause
+     seek      {sec}
+     rate      {rate}
+     stall | unstall                    the playhead freezes / moves again while
+                                        playing (buffering): time passes, content
+                                        does not
+     endTime | boundary  {token?, sec?} layer 1 / layer 2 reports now, for the
+                                        current token or an older one; `sec` is
+                                        the playhead the report read (an
+                                        observer's own latency or jitter), which
+                                        is where the playhead then is
+   `clock: ms` advances the wall clock. */
+
+export const DECK_EVENTS = Object.freeze([
+  "load", "play", "pause", "seek", "rate", "stall", "unstall", "endTime", "boundary",
+]);
+
+/** Milliseconds of content, kept whole so a long driven clock accumulates no
+    floating-point error. */
+const toMs = (sec) => Math.round(sec * 1000);
+
+async function runDeckScenario(c, setup, ctx) {
+  const policy = await importModule(ctx.root, "player/deck-policy.js");
+  const log = new OpLog();
+  let state = policy.initialOutPointWatch();
+  let nowMs = 0;
+  let atMs = 0;
+  let stalled = false;
+  let loads = 0;
+  const atSec = () => atMs / 1000;
+  const dispatch = (event) => {
+    const r = policy.outPointStep(state, { atSec: atSec(), nowMs, ...event });
+    state = r.state;
+    for (const op of r.ops) log.push(op);
+  };
+  if (setup.rate !== undefined) dispatch({ type: "rate", rate: setup.rate });
+
+  const { verbs } = closedSets();
+  const checkpoints = [];
+  let mark = 0;
+  const checkpoint = (name) => {
+    checkpoints.push({
+      name, ops: log.since(mark),
+      nowMs, atSec: atSec(), armed: state.armed, fired: state.fired, playing: state.playing, rate: state.rate,
+    });
+    mark = log.length;
+  };
+
+  for (const [i, step] of c.steps.entries()) {
+    const verb = Object.keys(step).find((k) => verbs.includes(k));
+    if (!verb) throw new HarnessError("E_UNKNOWN_VERB", `step ${i} of ${c.id} has no known verb`);
+    switch (verb) {
+      case "deck":
+        switch (step.deck) {
+          case "load":
+            loads += 1;
+            atMs = toMs(step.sec ?? 0);
+            dispatch({ type: "load", token: loads, outPointSec: step.outPointSec ?? null });
+            break;
+          case "play":
+          case "pause":
+            dispatch({ type: step.deck });
+            break;
+          case "seek":
+            if (typeof step.sec !== "number") throw new HarnessError("E_BAD_CASE", `deck seek needs a numeric sec`);
+            atMs = toMs(step.sec);
+            dispatch({ type: "seek" });
+            break;
+          case "rate":
+            dispatch({ type: "rate", rate: step.rate });
+            break;
+          case "stall":
+          case "unstall":
+            stalled = step.deck === "stall";
+            break;
+          case "endTime":
+          case "boundary":
+            if (!loads) throw new HarnessError("E_BAD_CASE", `a ${step.deck} report with nothing loaded`);
+            if (step.sec !== undefined) atMs = toMs(step.sec);
+            dispatch({ type: "layer", layer: step.deck, token: step.token ?? loads });
+            break;
+          default:
+            throw new HarnessError("E_BAD_CASE", `unknown deck event "${step.deck}" (one of ${DECK_EVENTS.join(", ")})`);
+        }
+        break;
+      case "clock": {
+        if (!(Number.isInteger(step.clock) && step.clock >= 0)) throw new HarnessError("E_BAD_CASE", `clock takes whole milliseconds`);
+        const until = nowMs + step.clock;
+        for (;;) {
+          const due = state.timerDueMs;
+          const to = due !== null && due <= until ? due : until;
+          if (state.playing && !stalled) atMs += Math.round((to - nowMs) * state.rate);
+          nowMs = to;
+          if (due !== null && due <= until) dispatch({ type: "timer" });
+          else break;
+        }
+        break;
+      }
+      case "checkpoint":
+        checkpoint(step.checkpoint);
+        break;
+      default:
+        throw new HarnessError("E_BAD_CASE", `the deck target takes deck, clock and checkpoint steps, not "${verb}"`);
+    }
+  }
+  checkpoint("end");
+  return encode({ checkpoints, ops: [...log.ops] });
+}
+
 async function runScenario(c, ctx) {
   const setup = expandInputs(c.setup ?? {}, ctx);
+  if (setup.target === "deck") return runDeckScenario(c, setup, ctx);
   if (setup.target !== "manager") throw new HarnessError("E_SCENARIO_TARGET", `no JS driver for target "${setup.target}"`);
   const { PlayerQueueManager, __resetInstanceForTests } = await importModule(ctx.root, "player/queue-manager.js");
 

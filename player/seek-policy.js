@@ -245,6 +245,56 @@ export function canPlaySegment(item, ctx) {
   return seekPrecision(item, ctx).precision !== APPROXIMATE;
 }
 
+/**
+ * ADR-0007's ladder AT LOAD: may this Foray segment play, now that the copy in
+ * hand has reported its duration?
+ *
+ * `buildForayQueue` settles everything it can without audio and marks the rest
+ * `needs_drift_check` (a DAI segment that is not exact at build time: FOREIGN,
+ * with its `reference_duration_sec`, and possibly ADR-0008's `ad_pad_sec`). The
+ * one input it could not have is the duration of the copy this listener was
+ * served, which exists only once the load has settled. This is that last
+ * question. A refusal is a SKIP, never a play at the stale offset (ADR-0007's
+ * "honest failure, never a bad cut").
+ *
+ * Moved out of `PlayerQueueManager#_segmentGate` unchanged (NE-28j), so the
+ * native engine, which receives the built items and loads them itself, can
+ * ask the same question and be pinned to the same answer (the `seek-policy`
+ * parity family).
+ *
+ * @param {object} item  a built queue item: `needs_drift_check`,
+ *   `source_item_id`, `dai_suspected`, `reference_duration_sec`, `ad_pad_sec`
+ * @param {object} [ctx]
+ * @param {*} [ctx.observedDuration]   the loaded copy's duration, whatever the deck says
+ * @param {boolean} [ctx.isLocalFile]  the Foray plays downloaded files
+ * @param {boolean} [ctx.allowAdPad]   the Foray opted in to ADR-0008's pad
+ * @returns {{ok: true, note?: string} | {ok: false, reason: string}}
+ */
+export function segmentLoadGate(item, { observedDuration, isLocalFile = false, allowAdPad = false } = {}) {
+  if (!item?.needs_drift_check) return { ok: true };
+
+  if (typeof observedDuration !== "number" || !Number.isFinite(observedDuration)) {
+    return {
+      ok: false,
+      reason: "the copy in hand reports no duration, so the ad load cannot be compared to the reference",
+    };
+  }
+
+  const { precision, reason } = seekPrecision(
+    { id: item.source_item_id, dai_suspected: item.dai_suspected },
+    {
+      isLocalFile,
+      source: FOREIGN,
+      observedDuration,
+      recordedDuration: item.reference_duration_sec,
+      adPadSec: item.ad_pad_sec ?? undefined,
+      allowAdPad,
+    }
+  );
+  if (precision === APPROXIMATE) return { ok: false, reason };
+  return { ok: true, note: `${precision} — ${reason}` };
+}
+
 /* ---------- rendering ---------- */
 
 function hms(totalSeconds) {

@@ -163,7 +163,7 @@
 
 import { reduce, S, E, itemRef, itemBounds, TTS, END_NATURAL, END_OUT_POINT } from "./queue-state.js";
 import { SINGLE_ITEM, assertStrategy } from "./queue-strategy.js";
-import { seekPrecision, FOREIGN, APPROXIMATE } from "./seek-policy.js";
+import { segmentLoadGate } from "./seek-policy.js";
 import { buildForayQueue } from "./foray-queue.js";
 import { seamGapSec, describeSeam, SEAM_GAP_SEC, AUTO_ADVANCE } from "./seam-gap.js";
 import { normalizeRate, isRate, DEFAULT_RATE } from "./playback-rate.js";
@@ -2324,29 +2324,13 @@ export class PlayerQueueManager {
    * acceptance criterion that the drift case is logged rather than silent.
    */
   _segmentGate(item) {
-    if (!item?.needs_drift_check) return { ok: true };
-
-    const observed = this.backend.duration;
-    if (typeof observed !== "number" || !Number.isFinite(observed)) {
-      return {
-        ok: false,
-        reason: "the copy in hand reports no duration, so the ad load cannot be compared to the reference",
-      };
-    }
-
-    const { precision, reason } = seekPrecision(
-      { id: item.source_item_id, dai_suspected: item.dai_suspected },
-      {
-        isLocalFile: this._forayOptions.isLocalFile,
-        source: FOREIGN,
-        observedDuration: observed,
-        recordedDuration: item.reference_duration_sec,
-        adPadSec: item.ad_pad_sec ?? undefined,
-        allowAdPad: this._forayOptions.allowAdPad,
-      }
-    );
-    if (precision === APPROXIMATE) return { ok: false, reason };
-    return { ok: true, note: `${precision} — ${reason}` };
+    // NE-28j: the rule is seek-policy.js `segmentLoadGate`, unchanged, so the
+    // native engine is pinned to the same answer (the seek-policy family).
+    return segmentLoadGate(item, {
+      observedDuration: this.backend.duration,
+      isLocalFile: this._forayOptions.isLocalFile,
+      allowAdPad: this._forayOptions.allowAdPad,
+    });
   }
 
   /** Leave a segment we refused, without ever making it audible. The state is

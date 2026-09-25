@@ -1,0 +1,250 @@
+{
+  "family": "outpoint",
+  "module": "player/deck-policy.js",
+  "note": "The native out-point's arithmetic (deck-policy.js, NE-28j; plan §4.3 P-2): the windowed watchdog's one timer outside the last 1.5 s and its 250 ms poll inside, the never-early wake, the overshoot the outPoint row carries. The rate falls back to 1x through deckRate, as the web deck's does.",
+  "cases": [
+    {
+      "id": "outpoint/watchdog-window-is-1.5s",
+      "covers": [],
+      "authored": true,
+      "note": "Plan §4.3: the watchdog is armed only for the last ~1.5 s of wall clock before the boundary.",
+      "read": "OUT_POINT_WATCHDOG_WINDOW_SEC",
+      "expect": { "value": 1.5 }
+    },
+    {
+      "id": "outpoint/watchdog-poll-is-250ms",
+      "covers": [],
+      "authored": true,
+      "note": "Plan §4.3: inside the window the watchdog polls every 250 ms, and nowhere else.",
+      "read": "OUT_POINT_WATCHDOG_POLL_MS",
+      "expect": { "value": 250 }
+    },
+    {
+      "id": "outpoint/layers",
+      "covers": [],
+      "read": "OUT_POINT_LAYER",
+      "expect": {
+        "value": { "BOUNDARY": "boundary", "END_TIME": "endTime", "WATCHDOG": "watchdog" }
+      }
+    },
+    {
+      "id": "outpoint/watchdog-wake-tokens",
+      "covers": [],
+      "read": "WATCHDOG_WAKE",
+      "expect": { "value": { "REARM": "rearm", "STOP": "stop" } }
+    },
+    {
+      "id": "outpoint/delay-1x-one-long-wait",
+      "covers": [],
+      "note": "Outside the window: ONE timer, for the wall-clock time until the window opens.",
+      "call": "watchdogDelayMs",
+      "args": [{ "outPointSec": 210, "atSec": 100, "rate": 1 }],
+      "expect": { "return": 108500 }
+    },
+    {
+      "id": "outpoint/delay-2x-halves-the-wait",
+      "covers": [],
+      "call": "watchdogDelayMs",
+      "args": [{ "outPointSec": 210, "atSec": 100, "rate": 2 }],
+      "expect": { "return": 53500 }
+    },
+    {
+      "id": "outpoint/delay-half-speed-doubles-the-wait",
+      "covers": [],
+      "call": "watchdogDelayMs",
+      "args": [{ "outPointSec": 210, "atSec": 100, "rate": 0.5 }],
+      "expect": { "return": 218500 }
+    },
+    {
+      "id": "outpoint/delay-awkward-rate",
+      "covers": [],
+      "call": "watchdogDelayMs",
+      "args": [{ "outPointSec": 210, "atSec": 100.3, "rate": 1.5 }],
+      "expect": { "return": 71634 }
+    },
+    {
+      "id": "outpoint/delay-zero-rate-is-1x",
+      "covers": [],
+      "call": "watchdogDelayMs",
+      "args": [{ "outPointSec": 210, "atSec": 100, "rate": 0 }],
+      "expect": { "return": 108500 }
+    },
+    {
+      "id": "outpoint/delay-string-rate-is-1x",
+      "covers": [],
+      "call": "watchdogDelayMs",
+      "args": [{ "outPointSec": 210, "atSec": 100, "rate": "2" }],
+      "expect": { "return": 108500 }
+    },
+    {
+      "id": "outpoint/delay-nan-rate-is-1x",
+      "covers": [],
+      "call": "watchdogDelayMs",
+      "args": [{ "outPointSec": 210, "atSec": 100, "rate": { "$num": "NaN" } }],
+      "expect": { "return": 108500 }
+    },
+    {
+      "id": "outpoint/delay-window-edge-polls",
+      "covers": [],
+      "note": "Exactly at the window's edge the wait is over: poll.",
+      "call": "watchdogDelayMs",
+      "args": [{ "outPointSec": 210, "atSec": 208.5, "rate": 1 }],
+      "expect": { "return": 250 }
+    },
+    {
+      "id": "outpoint/delay-inside-window-polls",
+      "covers": [],
+      "call": "watchdogDelayMs",
+      "args": [{ "outPointSec": 210, "atSec": 209, "rate": 1 }],
+      "expect": { "return": 250 }
+    },
+    {
+      "id": "outpoint/delay-poll-never-later-than-crossing",
+      "covers": [],
+      "call": "watchdogDelayMs",
+      "args": [{ "outPointSec": 210, "atSec": 209.9, "rate": 1 }],
+      "expect": { "return": 100 }
+    },
+    {
+      "id": "outpoint/delay-timer-floor",
+      "covers": [],
+      "call": "watchdogDelayMs",
+      "args": [{ "outPointSec": 210, "atSec": 209.9995, "rate": 1 }],
+      "expect": { "return": 4 }
+    },
+    {
+      "id": "outpoint/delay-window-is-wall-clock-at-2x",
+      "covers": [],
+      "note": "The window is WALL clock: at 2x it opens 3 s of content before the boundary.",
+      "call": "watchdogDelayMs",
+      "args": [{ "outPointSec": 210, "atSec": 207.5, "rate": 2 }],
+      "expect": { "return": 250 }
+    },
+    {
+      "id": "outpoint/delay-2x-poll-before-crossing",
+      "covers": [],
+      "call": "watchdogDelayMs",
+      "args": [{ "outPointSec": 210, "atSec": 209.8, "rate": 2 }],
+      "expect": { "return": 100 }
+    },
+    {
+      "id": "outpoint/delay-at-the-boundary-no-timer",
+      "covers": [],
+      "call": "watchdogDelayMs",
+      "args": [{ "outPointSec": 210, "atSec": 210, "rate": 1 }],
+      "expect": { "return": null }
+    },
+    {
+      "id": "outpoint/delay-past-the-boundary-no-timer",
+      "covers": [],
+      "call": "watchdogDelayMs",
+      "args": [{ "outPointSec": 210, "atSec": 250, "rate": 1 }],
+      "expect": { "return": null }
+    },
+    {
+      "id": "outpoint/delay-paused-no-timer",
+      "covers": [],
+      "call": "watchdogDelayMs",
+      "args": [{ "outPointSec": 210, "atSec": 100, "rate": 1, "paused": true }],
+      "expect": { "return": null }
+    },
+    {
+      "id": "outpoint/delay-not-armed-no-timer",
+      "covers": [],
+      "call": "watchdogDelayMs",
+      "args": [{ "outPointSec": 210, "atSec": 100, "rate": 1, "armed": false }],
+      "expect": { "return": null }
+    },
+    {
+      "id": "outpoint/delay-no-boundary-no-timer",
+      "covers": [],
+      "call": "watchdogDelayMs",
+      "args": [{ "outPointSec": null, "atSec": 100, "rate": 1 }],
+      "expect": { "return": null }
+    },
+    {
+      "id": "outpoint/delay-junk-boundary-no-timer",
+      "covers": [],
+      "call": "watchdogDelayMs",
+      "args": [{ "outPointSec": { "$num": "NaN" }, "atSec": 100, "rate": 1 }],
+      "expect": { "return": null }
+    },
+    {
+      "id": "outpoint/delay-infinite-boundary-no-timer",
+      "covers": [],
+      "call": "watchdogDelayMs",
+      "args": [{ "outPointSec": { "$num": "Infinity" }, "atSec": 100, "rate": 1 }],
+      "expect": { "return": null }
+    },
+    {
+      "id": "outpoint/wake-at-the-boundary-stops",
+      "covers": [],
+      "authored": true,
+      "note": "Never early: the wake stops on a genuine crossing, and the boundary itself is one.",
+      "call": "watchdogWakeAction",
+      "args": [{ "atSec": 210, "outPointSec": 210 }],
+      "expect": { "return": "stop" }
+    },
+    {
+      "id": "outpoint/wake-a-millisecond-short-rearms",
+      "covers": [],
+      "authored": true,
+      "note": "Never early: a wake a millisecond short of the boundary does not stop; it arms again.",
+      "call": "watchdogWakeAction",
+      "args": [{ "atSec": 209.999, "outPointSec": 210 }],
+      "expect": { "return": "rearm" }
+    },
+    {
+      "id": "outpoint/wake-past-the-boundary-stops",
+      "covers": [],
+      "call": "watchdogWakeAction",
+      "args": [{ "atSec": 210.4, "outPointSec": 210 }],
+      "expect": { "return": "stop" }
+    },
+    {
+      "id": "outpoint/wake-far-short-rearms",
+      "covers": [],
+      "call": "watchdogWakeAction",
+      "args": [{ "atSec": 100, "outPointSec": 210 }],
+      "expect": { "return": "rearm" }
+    },
+    {
+      "id": "outpoint/overshoot-on-the-boundary",
+      "covers": [],
+      "call": "outPointOvershootMs",
+      "args": [{ "atSec": 210, "outPointSec": 210 }],
+      "expect": { "return": 0 }
+    },
+    {
+      "id": "outpoint/overshoot-a-quarter-second",
+      "covers": [],
+      "call": "outPointOvershootMs",
+      "args": [{ "atSec": 210.25, "outPointSec": 210 }],
+      "expect": { "return": 250 }
+    },
+    {
+      "id": "outpoint/overshoot-never-negative",
+      "covers": [],
+      "call": "outPointOvershootMs",
+      "args": [{ "atSec": 209, "outPointSec": 210 }],
+      "expect": { "return": 0 }
+    },
+    {
+      "id": "outpoint/initial-watch",
+      "covers": [],
+      "call": "initialOutPointWatch",
+      "args": [],
+      "expect": {
+        "return": {
+          "armed": false,
+          "fired": false,
+          "outPointSec": null,
+          "playing": false,
+          "rate": 1,
+          "timerDueMs": null,
+          "token": 0
+        }
+      }
+    }
+  ]
+}

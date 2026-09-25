@@ -54,6 +54,64 @@
       "why": "Pins the backend's English `load.deadline Nms (hidden|visible)` telemetry string. Which budget applies is fixtured in deck-episode (deadline-hidden, deadline-visible); the engine's rows carry tokens, not this sentence."
     }
   },
+  "interlude": {
+    "describeInterlude names the decision it made, not one it did not": {
+      "reason": "text-pin",
+      "why": "Pins describeInterlude's English telemetry sentences. The engine's jingle rows carry closed tokens from the diag-tokens vocabulary, not these strings (the same call as describeSeam's two tests)."
+    },
+    "the preference is ON unless the store says the literal 'off', and a broken store is ON": {
+      "reason": "webview-only",
+      "why": "The page owns cp_interlude: client.js reads it with readInterludePref and hands the engine a boolean (setInterludeEnabled, engine-contract.js). The engine never reads the key, so there is no store for it to misread."
+    },
+    "writeInterludePref stores 'on'/'off' under the cp_ key and reports a refusal": {
+      "reason": "webview-only",
+      "why": "The page's Settings switch writes cp_interlude (client.js setInterludeEnabled -> writeInterludePref) and then sends the engine the boolean. The engine persists nothing under that key."
+    },
+    "construction points the element at the asset and asks for it up front": {
+      "reason": "dom-only",
+      "why": "An <audio> element's src and preload attributes. The native jingle is not an <audio> element: it is the engine's InterludePlayer behind the Interlude seam (NE-34), whose start/stop/ended contract is the fakeInterlude the manager-foray scenarios drive (NE-31j) and whose timing NE-34's Simulator tests assert."
+    },
+    "start() rewinds, forces 1.0x whatever the element had, plays, and reports active": {
+      "reason": "dom-only",
+      "why": "The element's currentTime and playbackRate properties. The 1.0x rule itself is fixtured (interlude/rate-is-1x). The native jingle is not an <audio> element: it is the engine's InterludePlayer behind the Interlude seam (NE-34), whose start/stop/ended contract is the fakeInterlude the manager-foray scenarios drive (NE-31j) and whose timing NE-34's Simulator tests assert."
+    },
+    "start() refuses an element that has not buffered, and does not play it": {
+      "reason": "dom-only",
+      "why": "HTMLMediaElement.readyState (HAVE_FUTURE_DATA). The native jingle is not an <audio> element: it is the engine's InterludePlayer behind the Interlude seam (NE-34), whose start/stop/ended contract is the fakeInterlude the manager-foray scenarios drive (NE-31j) and whose timing NE-34's Simulator tests assert."
+    },
+    "the element's `ended` reports once, and a stop is never reported": {
+      "reason": "dom-only",
+      "why": "DOM `ended` event listeners on the element. The native jingle is not an <audio> element: it is the engine's InterludePlayer behind the Interlude seam (NE-34), whose start/stop/ended contract is the fakeInterlude the manager-foray scenarios drive (NE-31j) and whose timing NE-34's Simulator tests assert."
+    },
+    "an `error` reports 'error'; a rejected play() reports 'rejected'; a throwing play() refuses": {
+      "reason": "dom-only",
+      "why": "DOM `error` events and the promise HTMLMediaElement.play() returns. The native jingle is not an <audio> element: it is the engine's InterludePlayer behind the Interlude seam (NE-34), whose start/stop/ended contract is the fakeInterlude the manager-foray scenarios drive (NE-31j) and whose timing NE-34's Simulator tests assert."
+    },
+    "prime() spends the gesture muted, then rewinds and unmutes; once per session": {
+      "reason": "webview-only",
+      "why": "WebKit lifts an <audio> element's autoplay restriction only for a play() made inside a user gesture's task (#225). The native engine starts audio from native code, where there is no gesture to spend."
+    },
+    "no element on this host: every method is inert and start() says so": {
+      "reason": "dom-only",
+      "why": "A host with no Audio constructor (Node, a non-DOM worker). The native jingle is not an <audio> element: it is the engine's InterludePlayer behind the Interlude seam (NE-34), whose start/stop/ended contract is the fakeInterlude the manager-foray scenarios drive (NE-31j) and whose timing NE-34's Simulator tests assert."
+    },
+    "release() silences, drops the source, and refuses to start again": {
+      "reason": "dom-only",
+      "why": "removeAttribute('src') and load() on the element to drop its buffer. The native jingle is not an <audio> element: it is the engine's InterludePlayer behind the Interlude seam (NE-34), whose start/stop/ended contract is the fakeInterlude the manager-foray scenarios drive (NE-31j) and whose timing NE-34's Simulator tests assert."
+    },
+    "the URL satisfies `media-src https:` on every host, including capacitor://localhost": {
+      "reason": "webview-only",
+      "why": "index.html's Content-Security-Policy (media-src https:) applies to the WebView's own media elements. Native playback is not subject to the page's CSP."
+    },
+    "the committed placeholder is 44.1 kHz stereo 16-bit PCM, under 600 KB": {
+      "reason": "js-module-shape",
+      "why": "Reads the committed WAV's bytes with Node's fs. It pins the FILE that every player plays, not a rule a player implements, and it holds whichever engine plays the asset; there is nothing for Swift to reimplement."
+    },
+    "the placeholder peaks at about -6 dBFS, starts from silence and ends in silence": {
+      "reason": "js-module-shape",
+      "why": "Reads the committed WAV's samples with Node's fs. It pins the asset's loudness and clean edges, which no player computes; it holds whichever engine plays the file."
+    }
+  },
   "media-session": {
     "EVERY playForay call site in app.js passes the artwork document": {
       "reason": "js-module-shape",
@@ -408,6 +466,32 @@
     "the beat's log line names both sides and the length": {
       "reason": "text-pin",
       "why": "Pins describeSeam's English telemetry sentence. The engine writes packed seam rows from the diag-tokens vocabulary, not this string."
+    }
+  },
+  "seek-policy": {
+    "formatTimestamp renders exact times to the second": {
+      "reason": "text-pin",
+      "why": "Pins formatTimestamp's clock strings. The page renders every timestamp a listener sees (chapter lists, the scrubber, spoken answers). The engine carries seconds and a precision token (seekPrecision, fixtured) and never formats one, so this wording has no Swift meaning."
+    },
+    "formatTimestamp marks approximate times and rounds away false precision": {
+      "reason": "text-pin",
+      "why": "Pins formatTimestamp's \"~N min\" wording. The page renders every timestamp a listener sees (chapter lists, the scrubber, spoken answers). The engine carries seconds and a precision token (seekPrecision, fixtured) and never formats one, so this wording has no Swift meaning."
+    },
+    "formatTimestamp refuses junk instead of rendering NaN": {
+      "reason": "text-pin",
+      "why": "Pins the \"--:--\" placeholder string. The page renders every timestamp a listener sees (chapter lists, the scrubber, spoken answers). The engine carries seconds and a precision token (seekPrecision, fixtured) and never formats one, so this wording has no Swift meaning."
+    },
+    "describeTimestamp never implies precision it does not have": {
+      "reason": "text-pin",
+      "why": "Pins describeTimestamp's prose (\"at 1:07:30\", \"around minute 68\"). The page renders every timestamp a listener sees (chapter lists, the scrubber, spoken answers). The engine carries seconds and a precision token (seekPrecision, fixtured) and never formats one, so this wording has no Swift meaning."
+    },
+    "approximate rendering contains no banned copy words": {
+      "reason": "text-pin",
+      "why": "A copy-rules scan (CLAUDE.md) over rendered strings. The page renders every timestamp a listener sees (chapter lists, the scrubber, spoken answers). The engine carries seconds and a precision token (seekPrecision, fixtured) and never formats one, so this wording has no Swift meaning."
+    },
+    "a padded timestamp still renders as an estimate, never as a clock time": {
+      "reason": "text-pin",
+      "why": "Pins formatTimestamp's wording for a PADDED time. That a padded segment is playable but never exact is fixtured (seek-policy/can-play-padded-not-exact). The page renders every timestamp a listener sees (chapter lists, the scrubber, spoken answers). The engine carries seconds and a precision token (seekPrecision, fixtured) and never formats one, so this wording has no Swift meaning."
     }
   },
   "transport-policy": {

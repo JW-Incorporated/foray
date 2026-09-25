@@ -1,0 +1,1261 @@
+{
+  "family": "outpoint",
+  "note": "The native out-point on the op log (deck-policy.js outPointStep, driven by runner.js's deck target: a wall clock, a playhead that moves by elapsed x rate while playing and not stalled, and the watchdog's timer delivered when it comes due). Ops: endTime:/boundary: are layers 1 and 2 set or cleared, watchdog.arm:<ms>/watchdog.cancel the one timer, outPoint.stop:<layer>:<overshootMs> the stop, outPoint.early:/outPoint.stale: a report that stops nothing.",
+  "cases": [
+    {
+      "id": "outpoint/driven-clock-watchdog-backstop",
+      "covers": [],
+      "note": "Layers 1 and 2 stay quiet: the watchdog alone stops the segment. One timer until the window, then 250 ms polls, and the stop lands on the boundary.",
+      "setup": { "target": "deck" },
+      "steps": [
+        { "deck": "load", "outPointSec": 210, "sec": 100 },
+        { "deck": "play" },
+        { "checkpoint": "playing" },
+        { "clock": 100000 },
+        { "checkpoint": "outside-the-window" },
+        { "clock": 10000 },
+        { "checkpoint": "end-of-segment" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "armed": true,
+            "atSec": 100,
+            "fired": false,
+            "name": "playing",
+            "nowMs": 0,
+            "ops": ["endTime:210", "boundary:210", "watchdog.arm:108500"],
+            "playing": true,
+            "rate": 1
+          },
+          {
+            "armed": true,
+            "atSec": 200,
+            "fired": false,
+            "name": "outside-the-window",
+            "nowMs": 100000,
+            "ops": [],
+            "playing": true,
+            "rate": 1
+          },
+          {
+            "armed": true,
+            "atSec": 210,
+            "fired": true,
+            "name": "end-of-segment",
+            "nowMs": 110000,
+            "ops": [
+              "watchdog.arm:250",
+              "watchdog.arm:250",
+              "watchdog.arm:250",
+              "watchdog.arm:250",
+              "watchdog.arm:250",
+              "watchdog.arm:250",
+              "outPoint.stop:watchdog:0"
+            ],
+            "playing": false,
+            "rate": 1
+          },
+          {
+            "armed": true,
+            "atSec": 210,
+            "fired": true,
+            "name": "end",
+            "nowMs": 110000,
+            "ops": [],
+            "playing": false,
+            "rate": 1
+          }
+        ],
+        "ops": [
+          "endTime:210",
+          "boundary:210",
+          "watchdog.arm:108500",
+          "watchdog.arm:250",
+          "watchdog.arm:250",
+          "watchdog.arm:250",
+          "watchdog.arm:250",
+          "watchdog.arm:250",
+          "watchdog.arm:250",
+          "outPoint.stop:watchdog:0"
+        ]
+      }
+    },
+    {
+      "id": "outpoint/end-time-wins-first-layer-only",
+      "covers": [],
+      "authored": true,
+      "note": "Never early in EVERY layer: an observer that reports a millisecond short stops nothing and re-arms the watchdog. The first layer to report AT the boundary wins; later reports for the same token are stale.",
+      "setup": { "target": "deck" },
+      "steps": [
+        { "deck": "load", "outPointSec": 210, "sec": 100 },
+        { "deck": "play" },
+        { "clock": 109999 },
+        { "checkpoint": "a-millisecond-short" },
+        { "deck": "boundary" },
+        { "checkpoint": "an-early-report" },
+        { "clock": 1 },
+        { "deck": "endTime" },
+        { "checkpoint": "layer-one-stops" },
+        { "deck": "boundary" },
+        { "clock": 5000 },
+        { "checkpoint": "the-rest-are-stale" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "armed": true,
+            "atSec": 209.999,
+            "fired": false,
+            "name": "a-millisecond-short",
+            "nowMs": 109999,
+            "ops": [
+              "endTime:210",
+              "boundary:210",
+              "watchdog.arm:108500",
+              "watchdog.arm:250",
+              "watchdog.arm:250",
+              "watchdog.arm:250",
+              "watchdog.arm:250",
+              "watchdog.arm:250",
+              "watchdog.arm:250"
+            ],
+            "playing": true,
+            "rate": 1
+          },
+          {
+            "armed": true,
+            "atSec": 209.999,
+            "fired": false,
+            "name": "an-early-report",
+            "nowMs": 109999,
+            "ops": ["outPoint.early:boundary", "watchdog.cancel", "watchdog.arm:4"],
+            "playing": true,
+            "rate": 1
+          },
+          {
+            "armed": true,
+            "atSec": 210,
+            "fired": true,
+            "name": "layer-one-stops",
+            "nowMs": 110000,
+            "ops": ["watchdog.cancel", "outPoint.stop:endTime:0"],
+            "playing": false,
+            "rate": 1
+          },
+          {
+            "armed": true,
+            "atSec": 210,
+            "fired": true,
+            "name": "the-rest-are-stale",
+            "nowMs": 115000,
+            "ops": ["outPoint.stale:boundary"],
+            "playing": false,
+            "rate": 1
+          },
+          {
+            "armed": true,
+            "atSec": 210,
+            "fired": true,
+            "name": "end",
+            "nowMs": 115000,
+            "ops": [],
+            "playing": false,
+            "rate": 1
+          }
+        ],
+        "ops": [
+          "endTime:210",
+          "boundary:210",
+          "watchdog.arm:108500",
+          "watchdog.arm:250",
+          "watchdog.arm:250",
+          "watchdog.arm:250",
+          "watchdog.arm:250",
+          "watchdog.arm:250",
+          "watchdog.arm:250",
+          "outPoint.early:boundary",
+          "watchdog.cancel",
+          "watchdog.arm:4",
+          "watchdog.cancel",
+          "outPoint.stop:endTime:0",
+          "outPoint.stale:boundary"
+        ]
+      }
+    },
+    {
+      "id": "outpoint/boundary-observer-wins",
+      "covers": [],
+      "note": "The boundary observer reports first, with the playhead it read 4 ms past the boundary: it wins, the overshoot is those 4 ms, and the watchdog's pending poll is cancelled rather than left to fire.",
+      "setup": { "target": "deck" },
+      "steps": [
+        { "deck": "load", "outPointSec": 210, "sec": 100 },
+        { "deck": "play" },
+        { "clock": 109990 },
+        { "checkpoint": "ten-milliseconds-short" },
+        { "deck": "boundary", "sec": 210.004 },
+        { "checkpoint": "observer-stops" },
+        { "deck": "endTime" },
+        { "clock": 1000 },
+        { "checkpoint": "the-watchdog-is-gone" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "armed": true,
+            "atSec": 209.99,
+            "fired": false,
+            "name": "ten-milliseconds-short",
+            "nowMs": 109990,
+            "ops": [
+              "endTime:210",
+              "boundary:210",
+              "watchdog.arm:108500",
+              "watchdog.arm:250",
+              "watchdog.arm:250",
+              "watchdog.arm:250",
+              "watchdog.arm:250",
+              "watchdog.arm:250",
+              "watchdog.arm:250"
+            ],
+            "playing": true,
+            "rate": 1
+          },
+          {
+            "armed": true,
+            "atSec": 210.004,
+            "fired": true,
+            "name": "observer-stops",
+            "nowMs": 109990,
+            "ops": ["watchdog.cancel", "outPoint.stop:boundary:4"],
+            "playing": false,
+            "rate": 1
+          },
+          {
+            "armed": true,
+            "atSec": 210.004,
+            "fired": true,
+            "name": "the-watchdog-is-gone",
+            "nowMs": 110990,
+            "ops": ["outPoint.stale:endTime"],
+            "playing": false,
+            "rate": 1
+          },
+          {
+            "armed": true,
+            "atSec": 210.004,
+            "fired": true,
+            "name": "end",
+            "nowMs": 110990,
+            "ops": [],
+            "playing": false,
+            "rate": 1
+          }
+        ],
+        "ops": [
+          "endTime:210",
+          "boundary:210",
+          "watchdog.arm:108500",
+          "watchdog.arm:250",
+          "watchdog.arm:250",
+          "watchdog.arm:250",
+          "watchdog.arm:250",
+          "watchdog.arm:250",
+          "watchdog.arm:250",
+          "watchdog.cancel",
+          "outPoint.stop:boundary:4",
+          "outPoint.stale:endTime"
+        ]
+      }
+    },
+    {
+      "id": "outpoint/scrub-past-frees-the-episode",
+      "covers": [],
+      "setup": { "target": "deck" },
+      "steps": [
+        { "deck": "load", "outPointSec": 210, "sec": 100 },
+        { "deck": "play" },
+        { "deck": "seek", "sec": 250 },
+        { "checkpoint": "scrubbed-past" },
+        { "clock": 60000 },
+        { "deck": "endTime" },
+        { "checkpoint": "free-play" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "armed": false,
+            "atSec": 250,
+            "fired": false,
+            "name": "scrubbed-past",
+            "nowMs": 0,
+            "ops": [
+              "endTime:210",
+              "boundary:210",
+              "watchdog.arm:108500",
+              "endTime:null",
+              "boundary:null",
+              "watchdog.cancel"
+            ],
+            "playing": true,
+            "rate": 1
+          },
+          {
+            "armed": false,
+            "atSec": 310,
+            "fired": false,
+            "name": "free-play",
+            "nowMs": 60000,
+            "ops": ["outPoint.stale:endTime"],
+            "playing": true,
+            "rate": 1
+          },
+          {
+            "armed": false,
+            "atSec": 310,
+            "fired": false,
+            "name": "end",
+            "nowMs": 60000,
+            "ops": [],
+            "playing": true,
+            "rate": 1
+          }
+        ],
+        "ops": [
+          "endTime:210",
+          "boundary:210",
+          "watchdog.arm:108500",
+          "endTime:null",
+          "boundary:null",
+          "watchdog.cancel",
+          "outPoint.stale:endTime"
+        ]
+      }
+    },
+    {
+      "id": "outpoint/scrub-back-rearms",
+      "covers": [],
+      "setup": { "target": "deck" },
+      "steps": [
+        { "deck": "load", "outPointSec": 210, "sec": 100 },
+        { "deck": "play" },
+        { "deck": "seek", "sec": 250 },
+        { "deck": "seek", "sec": 150 },
+        { "checkpoint": "scrubbed-back" },
+        { "clock": 61000 },
+        { "checkpoint": "stops-at-its-boundary" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "armed": true,
+            "atSec": 150,
+            "fired": false,
+            "name": "scrubbed-back",
+            "nowMs": 0,
+            "ops": [
+              "endTime:210",
+              "boundary:210",
+              "watchdog.arm:108500",
+              "endTime:null",
+              "boundary:null",
+              "watchdog.cancel",
+              "endTime:210",
+              "boundary:210",
+              "watchdog.arm:58500"
+            ],
+            "playing": true,
+            "rate": 1
+          },
+          {
+            "armed": true,
+            "atSec": 210,
+            "fired": true,
+            "name": "stops-at-its-boundary",
+            "nowMs": 61000,
+            "ops": [
+              "watchdog.arm:250",
+              "watchdog.arm:250",
+              "watchdog.arm:250",
+              "watchdog.arm:250",
+              "watchdog.arm:250",
+              "watchdog.arm:250",
+              "outPoint.stop:watchdog:0"
+            ],
+            "playing": false,
+            "rate": 1
+          },
+          {
+            "armed": true,
+            "atSec": 210,
+            "fired": true,
+            "name": "end",
+            "nowMs": 61000,
+            "ops": [],
+            "playing": false,
+            "rate": 1
+          }
+        ],
+        "ops": [
+          "endTime:210",
+          "boundary:210",
+          "watchdog.arm:108500",
+          "endTime:null",
+          "boundary:null",
+          "watchdog.cancel",
+          "endTime:210",
+          "boundary:210",
+          "watchdog.arm:58500",
+          "watchdog.arm:250",
+          "watchdog.arm:250",
+          "watchdog.arm:250",
+          "watchdog.arm:250",
+          "watchdog.arm:250",
+          "watchdog.arm:250",
+          "outPoint.stop:watchdog:0"
+        ]
+      }
+    },
+    {
+      "id": "outpoint/seek-inside-rearms",
+      "covers": [],
+      "setup": { "target": "deck" },
+      "steps": [
+        { "deck": "load", "outPointSec": 210, "sec": 100 },
+        { "deck": "play" },
+        { "clock": 5000 },
+        { "deck": "seek", "sec": 200 },
+        { "checkpoint": "seeked-forward" },
+        { "deck": "seek", "sec": 120 },
+        { "checkpoint": "seeked-back" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "armed": true,
+            "atSec": 200,
+            "fired": false,
+            "name": "seeked-forward",
+            "nowMs": 5000,
+            "ops": [
+              "endTime:210",
+              "boundary:210",
+              "watchdog.arm:108500",
+              "watchdog.cancel",
+              "watchdog.arm:8500"
+            ],
+            "playing": true,
+            "rate": 1
+          },
+          {
+            "armed": true,
+            "atSec": 120,
+            "fired": false,
+            "name": "seeked-back",
+            "nowMs": 5000,
+            "ops": ["watchdog.cancel", "watchdog.arm:88500"],
+            "playing": true,
+            "rate": 1
+          },
+          {
+            "armed": true,
+            "atSec": 120,
+            "fired": false,
+            "name": "end",
+            "nowMs": 5000,
+            "ops": [],
+            "playing": true,
+            "rate": 1
+          }
+        ],
+        "ops": [
+          "endTime:210",
+          "boundary:210",
+          "watchdog.arm:108500",
+          "watchdog.cancel",
+          "watchdog.arm:8500",
+          "watchdog.cancel",
+          "watchdog.arm:88500"
+        ]
+      }
+    },
+    {
+      "id": "outpoint/rate-change-rearms",
+      "covers": [],
+      "note": "A rate change re-arms the one timer at the new rate; the window stays 1.5 s of wall clock.",
+      "setup": { "target": "deck" },
+      "steps": [
+        { "deck": "load", "outPointSec": 210, "sec": 100 },
+        { "deck": "play" },
+        { "clock": 10000 },
+        { "deck": "rate", "rate": 2 },
+        { "checkpoint": "sped-up" },
+        { "clock": 60000 },
+        { "checkpoint": "stops-at-2x" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "armed": true,
+            "atSec": 110,
+            "fired": false,
+            "name": "sped-up",
+            "nowMs": 10000,
+            "ops": [
+              "endTime:210",
+              "boundary:210",
+              "watchdog.arm:108500",
+              "watchdog.cancel",
+              "watchdog.arm:48500"
+            ],
+            "playing": true,
+            "rate": 2
+          },
+          {
+            "armed": true,
+            "atSec": 210,
+            "fired": true,
+            "name": "stops-at-2x",
+            "nowMs": 70000,
+            "ops": [
+              "watchdog.arm:250",
+              "watchdog.arm:250",
+              "watchdog.arm:250",
+              "watchdog.arm:250",
+              "watchdog.arm:250",
+              "watchdog.arm:250",
+              "outPoint.stop:watchdog:0"
+            ],
+            "playing": false,
+            "rate": 2
+          },
+          {
+            "armed": true,
+            "atSec": 210,
+            "fired": true,
+            "name": "end",
+            "nowMs": 70000,
+            "ops": [],
+            "playing": false,
+            "rate": 2
+          }
+        ],
+        "ops": [
+          "endTime:210",
+          "boundary:210",
+          "watchdog.arm:108500",
+          "watchdog.cancel",
+          "watchdog.arm:48500",
+          "watchdog.arm:250",
+          "watchdog.arm:250",
+          "watchdog.arm:250",
+          "watchdog.arm:250",
+          "watchdog.arm:250",
+          "watchdog.arm:250",
+          "outPoint.stop:watchdog:0"
+        ]
+      }
+    },
+    {
+      "id": "outpoint/slow-down-inside-window",
+      "covers": [],
+      "setup": { "target": "deck" },
+      "steps": [
+        { "deck": "load", "outPointSec": 210, "sec": 100 },
+        { "deck": "play" },
+        { "clock": 108600 },
+        { "checkpoint": "inside-the-window" },
+        { "deck": "rate", "rate": 0.5 },
+        { "clock": 10000 },
+        { "checkpoint": "stops-at-half-speed" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "armed": true,
+            "atSec": 208.6,
+            "fired": false,
+            "name": "inside-the-window",
+            "nowMs": 108600,
+            "ops": ["endTime:210", "boundary:210", "watchdog.arm:108500", "watchdog.arm:250"],
+            "playing": true,
+            "rate": 1
+          },
+          {
+            "armed": true,
+            "atSec": 210,
+            "fired": true,
+            "name": "stops-at-half-speed",
+            "nowMs": 118600,
+            "ops": [
+              "watchdog.cancel",
+              "watchdog.arm:1301",
+              "watchdog.arm:250",
+              "watchdog.arm:250",
+              "watchdog.arm:250",
+              "watchdog.arm:250",
+              "watchdog.arm:250",
+              "watchdog.arm:248",
+              "outPoint.stop:watchdog:0"
+            ],
+            "playing": false,
+            "rate": 0.5
+          },
+          {
+            "armed": true,
+            "atSec": 210,
+            "fired": true,
+            "name": "end",
+            "nowMs": 118600,
+            "ops": [],
+            "playing": false,
+            "rate": 0.5
+          }
+        ],
+        "ops": [
+          "endTime:210",
+          "boundary:210",
+          "watchdog.arm:108500",
+          "watchdog.arm:250",
+          "watchdog.cancel",
+          "watchdog.arm:1301",
+          "watchdog.arm:250",
+          "watchdog.arm:250",
+          "watchdog.arm:250",
+          "watchdog.arm:250",
+          "watchdog.arm:250",
+          "watchdog.arm:248",
+          "outPoint.stop:watchdog:0"
+        ]
+      }
+    },
+    {
+      "id": "outpoint/speed-up-inside-window",
+      "covers": [],
+      "setup": { "target": "deck" },
+      "steps": [
+        { "deck": "load", "outPointSec": 210, "sec": 100 },
+        { "deck": "play" },
+        { "clock": 108600 },
+        { "deck": "rate", "rate": 2 },
+        { "clock": 5000 },
+        { "checkpoint": "stops-at-2x" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "armed": true,
+            "atSec": 210.002,
+            "fired": true,
+            "name": "stops-at-2x",
+            "nowMs": 113600,
+            "ops": [
+              "endTime:210",
+              "boundary:210",
+              "watchdog.arm:108500",
+              "watchdog.arm:250",
+              "watchdog.cancel",
+              "watchdog.arm:250",
+              "watchdog.arm:250",
+              "watchdog.arm:201",
+              "outPoint.stop:watchdog:2"
+            ],
+            "playing": false,
+            "rate": 2
+          },
+          {
+            "armed": true,
+            "atSec": 210.002,
+            "fired": true,
+            "name": "end",
+            "nowMs": 113600,
+            "ops": [],
+            "playing": false,
+            "rate": 2
+          }
+        ],
+        "ops": [
+          "endTime:210",
+          "boundary:210",
+          "watchdog.arm:108500",
+          "watchdog.arm:250",
+          "watchdog.cancel",
+          "watchdog.arm:250",
+          "watchdog.arm:250",
+          "watchdog.arm:201",
+          "outPoint.stop:watchdog:2"
+        ]
+      }
+    },
+    {
+      "id": "outpoint/setup-rate-slow",
+      "covers": [],
+      "setup": { "target": "deck", "rate": 0.5 },
+      "steps": [
+        { "deck": "load", "outPointSec": 210, "sec": 100 },
+        { "deck": "play" },
+        { "checkpoint": "one-long-wait" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "armed": true,
+            "atSec": 100,
+            "fired": false,
+            "name": "one-long-wait",
+            "nowMs": 0,
+            "ops": ["endTime:210", "boundary:210", "watchdog.arm:218500"],
+            "playing": true,
+            "rate": 0.5
+          },
+          {
+            "armed": true,
+            "atSec": 100,
+            "fired": false,
+            "name": "end",
+            "nowMs": 0,
+            "ops": [],
+            "playing": true,
+            "rate": 0.5
+          }
+        ],
+        "ops": ["endTime:210", "boundary:210", "watchdog.arm:218500"]
+      }
+    },
+    {
+      "id": "outpoint/pause-cancels-play-rearms",
+      "covers": [],
+      "setup": { "target": "deck" },
+      "steps": [
+        { "deck": "load", "outPointSec": 210, "sec": 100 },
+        { "deck": "play" },
+        { "clock": 50000 },
+        { "deck": "pause" },
+        { "checkpoint": "paused" },
+        { "clock": 600000 },
+        { "checkpoint": "time-passes-nothing-fires" },
+        { "deck": "play" },
+        { "checkpoint": "resumed" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "armed": true,
+            "atSec": 150,
+            "fired": false,
+            "name": "paused",
+            "nowMs": 50000,
+            "ops": ["endTime:210", "boundary:210", "watchdog.arm:108500", "watchdog.cancel"],
+            "playing": false,
+            "rate": 1
+          },
+          {
+            "armed": true,
+            "atSec": 150,
+            "fired": false,
+            "name": "time-passes-nothing-fires",
+            "nowMs": 650000,
+            "ops": [],
+            "playing": false,
+            "rate": 1
+          },
+          {
+            "armed": true,
+            "atSec": 150,
+            "fired": false,
+            "name": "resumed",
+            "nowMs": 650000,
+            "ops": ["watchdog.arm:58500"],
+            "playing": true,
+            "rate": 1
+          },
+          {
+            "armed": true,
+            "atSec": 150,
+            "fired": false,
+            "name": "end",
+            "nowMs": 650000,
+            "ops": [],
+            "playing": true,
+            "rate": 1
+          }
+        ],
+        "ops": [
+          "endTime:210",
+          "boundary:210",
+          "watchdog.arm:108500",
+          "watchdog.cancel",
+          "watchdog.arm:58500"
+        ]
+      }
+    },
+    {
+      "id": "outpoint/armed-while-paused",
+      "covers": [],
+      "setup": { "target": "deck" },
+      "steps": [
+        { "deck": "load", "outPointSec": 210, "sec": 100 },
+        { "deck": "seek", "sec": 150 },
+        { "clock": 1000 },
+        { "checkpoint": "paused-no-timer" },
+        { "deck": "play" },
+        { "clock": 60000 },
+        { "checkpoint": "stops-once-playing" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "armed": true,
+            "atSec": 150,
+            "fired": false,
+            "name": "paused-no-timer",
+            "nowMs": 1000,
+            "ops": ["endTime:210", "boundary:210"],
+            "playing": false,
+            "rate": 1
+          },
+          {
+            "armed": true,
+            "atSec": 210,
+            "fired": true,
+            "name": "stops-once-playing",
+            "nowMs": 61000,
+            "ops": [
+              "watchdog.arm:58500",
+              "watchdog.arm:250",
+              "watchdog.arm:250",
+              "watchdog.arm:250",
+              "watchdog.arm:250",
+              "watchdog.arm:250",
+              "watchdog.arm:250",
+              "outPoint.stop:watchdog:0"
+            ],
+            "playing": false,
+            "rate": 1
+          },
+          {
+            "armed": true,
+            "atSec": 210,
+            "fired": true,
+            "name": "end",
+            "nowMs": 61000,
+            "ops": [],
+            "playing": false,
+            "rate": 1
+          }
+        ],
+        "ops": [
+          "endTime:210",
+          "boundary:210",
+          "watchdog.arm:58500",
+          "watchdog.arm:250",
+          "watchdog.arm:250",
+          "watchdog.arm:250",
+          "watchdog.arm:250",
+          "watchdog.arm:250",
+          "watchdog.arm:250",
+          "outPoint.stop:watchdog:0"
+        ]
+      }
+    },
+    {
+      "id": "outpoint/stall-never-early",
+      "covers": [],
+      "authored": true,
+      "note": "A stall inside the window: the playhead stops short and every poll re-arms. Nothing stops until the playhead genuinely reaches the boundary.",
+      "setup": { "target": "deck" },
+      "steps": [
+        { "deck": "load", "outPointSec": 210, "sec": 100 },
+        { "deck": "play" },
+        { "clock": 109000 },
+        { "deck": "stall" },
+        { "clock": 2000 },
+        { "checkpoint": "stalled-inside-the-window" },
+        { "deck": "unstall" },
+        { "clock": 2000 },
+        { "checkpoint": "stops-on-the-crossing" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "armed": true,
+            "atSec": 209,
+            "fired": false,
+            "name": "stalled-inside-the-window",
+            "nowMs": 111000,
+            "ops": [
+              "endTime:210",
+              "boundary:210",
+              "watchdog.arm:108500",
+              "watchdog.arm:250",
+              "watchdog.arm:250",
+              "watchdog.arm:250",
+              "watchdog.arm:250",
+              "watchdog.arm:250",
+              "watchdog.arm:250",
+              "watchdog.arm:250",
+              "watchdog.arm:250",
+              "watchdog.arm:250",
+              "watchdog.arm:250",
+              "watchdog.arm:250"
+            ],
+            "playing": true,
+            "rate": 1
+          },
+          {
+            "armed": true,
+            "atSec": 210,
+            "fired": true,
+            "name": "stops-on-the-crossing",
+            "nowMs": 113000,
+            "ops": [
+              "watchdog.arm:250",
+              "watchdog.arm:250",
+              "watchdog.arm:250",
+              "outPoint.stop:watchdog:0"
+            ],
+            "playing": false,
+            "rate": 1
+          },
+          {
+            "armed": true,
+            "atSec": 210,
+            "fired": true,
+            "name": "end",
+            "nowMs": 113000,
+            "ops": [],
+            "playing": false,
+            "rate": 1
+          }
+        ],
+        "ops": [
+          "endTime:210",
+          "boundary:210",
+          "watchdog.arm:108500",
+          "watchdog.arm:250",
+          "watchdog.arm:250",
+          "watchdog.arm:250",
+          "watchdog.arm:250",
+          "watchdog.arm:250",
+          "watchdog.arm:250",
+          "watchdog.arm:250",
+          "watchdog.arm:250",
+          "watchdog.arm:250",
+          "watchdog.arm:250",
+          "watchdog.arm:250",
+          "watchdog.arm:250",
+          "watchdog.arm:250",
+          "watchdog.arm:250",
+          "outPoint.stop:watchdog:0"
+        ]
+      }
+    },
+    {
+      "id": "outpoint/back-to-back-same-episode",
+      "covers": [],
+      "note": "Two slices of one episode back to back: the second is a new token at the first's out-point. A late report for the first token is stale; each slice stops at its own boundary.",
+      "setup": { "target": "deck" },
+      "steps": [
+        { "deck": "load", "outPointSec": 210, "sec": 100 },
+        { "deck": "play" },
+        { "clock": 110000 },
+        { "checkpoint": "first-slice-stops" },
+        { "deck": "load", "outPointSec": 320, "sec": 210 },
+        { "deck": "play" },
+        { "deck": "endTime", "token": 1 },
+        { "checkpoint": "second-slice-armed" },
+        { "clock": 110000 },
+        { "checkpoint": "second-slice-stops" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "armed": true,
+            "atSec": 210,
+            "fired": true,
+            "name": "first-slice-stops",
+            "nowMs": 110000,
+            "ops": [
+              "endTime:210",
+              "boundary:210",
+              "watchdog.arm:108500",
+              "watchdog.arm:250",
+              "watchdog.arm:250",
+              "watchdog.arm:250",
+              "watchdog.arm:250",
+              "watchdog.arm:250",
+              "watchdog.arm:250",
+              "outPoint.stop:watchdog:0"
+            ],
+            "playing": false,
+            "rate": 1
+          },
+          {
+            "armed": true,
+            "atSec": 210,
+            "fired": false,
+            "name": "second-slice-armed",
+            "nowMs": 110000,
+            "ops": [
+              "endTime:320",
+              "boundary:320",
+              "watchdog.arm:108500",
+              "outPoint.stale:endTime"
+            ],
+            "playing": true,
+            "rate": 1
+          },
+          {
+            "armed": true,
+            "atSec": 320,
+            "fired": true,
+            "name": "second-slice-stops",
+            "nowMs": 220000,
+            "ops": [
+              "watchdog.arm:250",
+              "watchdog.arm:250",
+              "watchdog.arm:250",
+              "watchdog.arm:250",
+              "watchdog.arm:250",
+              "watchdog.arm:250",
+              "outPoint.stop:watchdog:0"
+            ],
+            "playing": false,
+            "rate": 1
+          },
+          {
+            "armed": true,
+            "atSec": 320,
+            "fired": true,
+            "name": "end",
+            "nowMs": 220000,
+            "ops": [],
+            "playing": false,
+            "rate": 1
+          }
+        ],
+        "ops": [
+          "endTime:210",
+          "boundary:210",
+          "watchdog.arm:108500",
+          "watchdog.arm:250",
+          "watchdog.arm:250",
+          "watchdog.arm:250",
+          "watchdog.arm:250",
+          "watchdog.arm:250",
+          "watchdog.arm:250",
+          "outPoint.stop:watchdog:0",
+          "endTime:320",
+          "boundary:320",
+          "watchdog.arm:108500",
+          "outPoint.stale:endTime",
+          "watchdog.arm:250",
+          "watchdog.arm:250",
+          "watchdog.arm:250",
+          "watchdog.arm:250",
+          "watchdog.arm:250",
+          "watchdog.arm:250",
+          "outPoint.stop:watchdog:0"
+        ]
+      }
+    },
+    {
+      "id": "outpoint/out-point-behind-in-point-never-arms",
+      "covers": [],
+      "setup": { "target": "deck" },
+      "steps": [
+        { "deck": "load", "outPointSec": 90, "sec": 100 },
+        { "deck": "play" },
+        { "clock": 30000 },
+        { "deck": "endTime" },
+        { "checkpoint": "free-play" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "armed": false,
+            "atSec": 130,
+            "fired": false,
+            "name": "free-play",
+            "nowMs": 30000,
+            "ops": ["endTime:null", "boundary:null", "outPoint.stale:endTime"],
+            "playing": true,
+            "rate": 1
+          },
+          {
+            "armed": false,
+            "atSec": 130,
+            "fired": false,
+            "name": "end",
+            "nowMs": 30000,
+            "ops": [],
+            "playing": true,
+            "rate": 1
+          }
+        ],
+        "ops": ["endTime:null", "boundary:null", "outPoint.stale:endTime"]
+      }
+    },
+    {
+      "id": "outpoint/unbounded-episode-arms-nothing",
+      "covers": [],
+      "setup": { "target": "deck" },
+      "steps": [
+        { "deck": "load", "outPointSec": null, "sec": 0 },
+        { "deck": "play" },
+        { "deck": "rate", "rate": 2 },
+        { "deck": "seek", "sec": 30 },
+        { "clock": 60000 },
+        { "checkpoint": "nothing" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "armed": false,
+            "atSec": 150,
+            "fired": false,
+            "name": "nothing",
+            "nowMs": 60000,
+            "ops": ["endTime:null", "boundary:null"],
+            "playing": true,
+            "rate": 2
+          },
+          {
+            "armed": false,
+            "atSec": 150,
+            "fired": false,
+            "name": "end",
+            "nowMs": 60000,
+            "ops": [],
+            "playing": true,
+            "rate": 2
+          }
+        ],
+        "ops": ["endTime:null", "boundary:null"]
+      }
+    },
+    {
+      "id": "outpoint/a-load-cancels-the-old-watch",
+      "covers": [],
+      "setup": { "target": "deck" },
+      "steps": [
+        { "deck": "load", "outPointSec": 210, "sec": 100 },
+        { "deck": "play" },
+        { "clock": 1000 },
+        { "deck": "load", "outPointSec": 500, "sec": 400 },
+        { "checkpoint": "reloaded" },
+        { "clock": 200000 },
+        { "checkpoint": "paused-after-load" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "armed": true,
+            "atSec": 400,
+            "fired": false,
+            "name": "reloaded",
+            "nowMs": 1000,
+            "ops": [
+              "endTime:210",
+              "boundary:210",
+              "watchdog.arm:108500",
+              "watchdog.cancel",
+              "endTime:500",
+              "boundary:500"
+            ],
+            "playing": false,
+            "rate": 1
+          },
+          {
+            "armed": true,
+            "atSec": 400,
+            "fired": false,
+            "name": "paused-after-load",
+            "nowMs": 201000,
+            "ops": [],
+            "playing": false,
+            "rate": 1
+          },
+          {
+            "armed": true,
+            "atSec": 400,
+            "fired": false,
+            "name": "end",
+            "nowMs": 201000,
+            "ops": [],
+            "playing": false,
+            "rate": 1
+          }
+        ],
+        "ops": [
+          "endTime:210",
+          "boundary:210",
+          "watchdog.arm:108500",
+          "watchdog.cancel",
+          "endTime:500",
+          "boundary:500"
+        ]
+      }
+    },
+    {
+      "id": "outpoint/play-after-the-stop-does-nothing",
+      "covers": [],
+      "setup": { "target": "deck" },
+      "steps": [
+        { "deck": "load", "outPointSec": 210, "sec": 100 },
+        { "deck": "play" },
+        { "clock": 110000 },
+        { "deck": "play" },
+        { "clock": 1000 },
+        { "checkpoint": "still-stopped" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "armed": true,
+            "atSec": 210,
+            "fired": true,
+            "name": "still-stopped",
+            "nowMs": 111000,
+            "ops": [
+              "endTime:210",
+              "boundary:210",
+              "watchdog.arm:108500",
+              "watchdog.arm:250",
+              "watchdog.arm:250",
+              "watchdog.arm:250",
+              "watchdog.arm:250",
+              "watchdog.arm:250",
+              "watchdog.arm:250",
+              "outPoint.stop:watchdog:0"
+            ],
+            "playing": false,
+            "rate": 1
+          },
+          {
+            "armed": true,
+            "atSec": 210,
+            "fired": true,
+            "name": "end",
+            "nowMs": 111000,
+            "ops": [],
+            "playing": false,
+            "rate": 1
+          }
+        ],
+        "ops": [
+          "endTime:210",
+          "boundary:210",
+          "watchdog.arm:108500",
+          "watchdog.arm:250",
+          "watchdog.arm:250",
+          "watchdog.arm:250",
+          "watchdog.arm:250",
+          "watchdog.arm:250",
+          "watchdog.arm:250",
+          "outPoint.stop:watchdog:0"
+        ]
+      }
+    }
+  ]
+}

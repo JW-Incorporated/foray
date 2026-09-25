@@ -344,6 +344,25 @@ test("scenario: only the manager's public surface is callable", async () => {
   await assert.rejects(runCase({ id: "f/s", covers: [], setup: { target: "engine" }, steps: [] }, { family: "f", doc: {} }), /E_SCENARIO_TARGET/);
 });
 
+const deckScenario = (steps, setup = {}) => runCase({ id: "f/d", covers: [], setup: { target: "deck", ...setup }, steps }, { family: "f", doc: {} });
+
+test("scenario (deck, NE-28j): the driven clock moves the playhead by elapsed x rate and delivers the watchdog when it is due", async () => {
+  const got = await deckScenario([
+    { deck: "load", outPointSec: 210, sec: 100 }, { deck: "play" }, { clock: 100000 }, { checkpoint: "far" },
+    { clock: 10000 }, { checkpoint: "done" },
+  ]);
+  const [far, done] = got.checkpoints;
+  assert.deepEqual(far.ops, ["endTime:210", "boundary:210", "watchdog.arm:108500"], "one timer until the window, nothing while it waits");
+  assert.equal(far.atSec, 200);
+  assert.equal(done.ops.at(-1), "outPoint.stop:watchdog:0", "the stop lands on the boundary, never before it");
+  assert.equal(done.ops.filter((o) => o === "watchdog.arm:250").length, 6, "250 ms polls inside the 1.5 s window only");
+  // A deck event or a verb the deck target cannot read is a harness error.
+  await assert.rejects(deckScenario([{ deck: "explode" }]), /E_BAD_CASE/);
+  await assert.rejects(deckScenario([{ deck: "boundary" }]), /E_BAD_CASE.*nothing loaded/);
+  await assert.rejects(deckScenario([{ call: "play", args: [] }]), /E_BAD_CASE/);
+  await assert.rejects(deckScenario([{ clock: 1.5 }]), /E_BAD_CASE/);
+});
+
 /* ---------- the fakes ---------- */
 
 test("manualScheduler fires nothing until advanced, then in due order", async () => {
