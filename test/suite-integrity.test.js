@@ -93,7 +93,7 @@ const FLOORS = {
      `search` entry kind on PlayerDiagnostics — query length only, never the
      query text, per this suite's own §7. */
   "player/diagnostic-log.test.js": 101, // review 2026-09-23 (fix/founder-reports-2026-09-23): a write before a slow hydration is HELD and written after the adopted ring (real DurableStore), the next write flushes by itself, the give-up force, a Clear drops what was held; the webkit door's skip is a row under the dashed command and the spec action is refused; 96 -> 101 // merge of fix/fr-diag (2026-09-23 founder record: recorded 939, entries 0, no build row): the clear mark, the build kept outside the ring, the MISSING gap line naming key+tiers, the boot row's hydration flag; 89 -> 96 // founder 2026-09-23 (fix/founder-reports-2026-09-23): a dropped duplicate press is a remote row saying dup=y, counted on the header apart from unhandled; the webkit door joins REMOTE_ORIGINS; 88 -> 89 // founder 2026-09-23 ("my car resumed Spotify"): the `remote` row (what the native side received, from which door, handled or not) and its header line; `via=` on a nowplaying row so a pause is a write; the plugin's own session acts are session kinds; 83 -> 88 // 2026-09-22 audit (L2), founder report 3: a `build` row per boot and a `build …` header line; 81 -> 83 // 2026-09-22 audit (L2), founder report 2: an unexplained stop carries hiddenFor + the element's readyState/networkState/error; a stall with no seam is a coalesced `media` row; an external play is a `transport` row; session rows carry hiddenFor; 76 -> 81 // #685 (2026-09-13): the voiceProbe line says rendered-vs-estimated and flags an impossible RTF; a synthesis-failed refusal keeps its numbers; 74 -> 76 // client audit (2026-09-12): the search row's one vocabulary + `hidden`, and the epMs/ctaMs fields; 72 -> 74 // K-01 (2026-09-12): the voiceProbe row — named fields only, null-not-zero on a refusal, and both report lines; 68 -> 72 // L-06 + M-03 (2026-09-12): the `nowplaying`, `session` and `transport` entries; 57 -> 68 // FD-01 (2026-09-10): the `data` entry's vocabulary and its line; 55 -> 57
-  "player/diagnostic-record.test.js": 26, // NE-26 (docs/native-engine-plan.md): the real page's Copy report reads the engine's ring once through ForayAudio, merges it, and the synchronous report carries the engine header line; 25 -> 26 // 2026-09-23 founder record (fix/fr-diag): the bounded wait on hydration (a hung IndexedDB no longer costs the boot and build rows) and a Clear that keeps the build on the header; 23 -> 25
+  "player/diagnostic-record.test.js": 25, // tests-7 (round-3 audit): -1 -- the `assert.ok(true)` placeholder "the stop rows come from the REAL element" is a comment above the three real tests now; 26 -> 25 // NE-26 (docs/native-engine-plan.md): the real page's Copy report reads the engine's ring once through ForayAudio, merges it, and the synchronous report carries the engine header line; 25 -> 26 // 2026-09-23 founder record (fix/fr-diag): the bounded wait on hydration (a hung IndexedDB no longer costs the boot and build rows) and a Clear that keeps the build on the header; 23 -> 25
   "player/episode-link.test.js": 6,
   /* The durable store (#40). Both of these guard against silent DATA LOSS
      rather than a wrong answer on screen, which makes them the two suites in
@@ -1195,7 +1195,7 @@ const FLOORS = {
      that `deploy-manifest.json` and `sw.js` are on ALLOWED_PREFIXES. Removing
      either entry restores the state in which every nightly PR sat green and
      unmerged, and nothing else in the repo would say so. */
-  "tools/ci/path-policy.test.mjs": 90, // 2026-09-22: +1 (and the one-test slack closed) -- tools/release/ is denied; 88 -> 90
+  "tools/ci/path-policy.test.mjs": 105, // round-3 L7: +15 -- security-1 (fork/foreign authors never arm; --author required; automerge-nightly passes it), ci-release-2 (renames out of CLAUDE.md and tools/ci/ denied; every gatherer reads previous_filename; truncation counts entries), ci-release-5 (mobile build manifests denied by prefix and by name); 90 -> 105 // 2026-09-22: +1 (and the one-test slack closed) -- tools/release/ is denied; 88 -> 90
   /* The LF-checkout guard on the deploy manifest. Small, and every test is one
      branch of a function whose whole job is to refuse. The load-bearing one is
      the binary exclusion: both committed icons really do carry `\r\n` bytes, so
@@ -1233,8 +1233,8 @@ const FLOORS = {
      writes reset), and firing only when ALL required checks were missing — plus
      the duplicate-dispatch guard, which 85% of dispatched CI runs needed.
      85 -> 97. */
-  "tools/ci/pr-triage.test.mjs": 97,
-  "tools/ci/run-suites.test.mjs": 36,
+  "tools/ci/pr-triage.test.mjs": 111, // round-3 L7: security-1 (the sweep never arms a fork or foreign author, and disarms one), ci-release-2/-7 (renames and truncation reach the sweep), ci-release-9/-10/-17 (per-PR groups + comment re-read, dispatch guard reads conclusions, open PRs paginated); 97 -> 111
+  "tools/ci/run-suites.test.mjs": 37, // tests-4 (round-3 audit): +1 -- the root group carries --test-timeout; 36 -> 37
   /* NE-25a's click tracks, read without a decoder: the bytes are the ones the
      descriptor names, the WAV is sample-exact, "CBR" and "no TOC" mean what
      the measurements doc says they mean, the Xing TOC points at frames, the
@@ -1261,7 +1261,7 @@ const FLOORS = {
      Text assertions over workflow YAML — the same idiom as
      tools/mobile/ios-workflow.test.mjs, and the same honest limit: it catches a
      step being deleted, not a step that runs and does nothing. */
-  "tools/ci/ci-workflow.test.mjs": 13, // NE-06: +8 -- engine-parity (swift:5.10, parity env, family table, no dispatch skip, step-level short-circuit on an explicit "false" only), engine-paths, ios-gate on every event, and ios-kit running on a Swift dispatch; 5 -> 13
+  "tools/ci/ci-workflow.test.mjs": 18, // round-3 L7: +5 -- security-3 (read-only ci.yml, every workflow declares permissions), tests-4 (timeout-minutes on every job), ci-release-11 (npm ci in the api job), arch-drift-12 (api typecheck before its tests); 13 -> 18 // NE-06: +8 -- engine-parity (swift:5.10, parity env, family table, no dispatch skip, step-level short-circuit on an explicit "false" only), engine-paths, ios-gate on every event, and ios-kit running on a Swift dispatch; 5 -> 13
   /* The native engine's CI gates (NE-06, docs/native-engine-plan.md §6.8):
      the changed-path classifier whose every "could not tell" is "everything
      changed", the parity family table, ios-gate's success-only verdict, and
@@ -1575,7 +1575,8 @@ const FLOORS = {
      unclassified failure still retries, so nothing ever goes red. A deleted cell
      would read as coverage of a list that had quietly stopped discriminating. */
   "tools/release/upload-retry.test.mjs": 14, // 2026-09-22: new -- which store-upload failures are worth trying again
-  "tools/release/watch-release.test.mjs": 38, // 2026-09-22: new -- the release watchdog + trigger (reliability plan pieces 2 and 3), replayed against the real 00:28 partial failure; 2026-09-23: +2, G2 replays the real 09-06 summary log ("not reached" is unknown, the job decides); +1, the Fetch step executed against an expired (404) summary log
+  "tools/release/build-number.test.mjs": 11, // ci-release-4 (round-3 audit): new -- the run-of-day is a count of today's runs, floored above what an earlier run of the day used, and refuses past 99 instead of wrapping
+  "tools/release/watch-release.test.mjs": 44, // round-3 L7: +6 -- ci-release-6 (main judged by its REQUIRED checks, not ci.yml's whole run) and ci-release-9 (separate concurrency groups, pinned in the existing workflow test); 38 -> 44 // 2026-09-22: new -- the release watchdog + trigger (reliability plan pieces 2 and 3), replayed against the real 00:28 partial failure; 2026-09-23: +2, G2 replays the real 09-06 summary log ("not reached" is unknown, the job decides); +1, the Fetch step executed against an expired (404) summary log
   "tools/mobile/foray-media-session.test.mjs": 102, // round-2 sweep (2026-09-23): a network stall reaches native as `stalled` (p-car-8), a finished ordinary episode keeps the service (native-1); 100 -> 102 audit round 2, lane L3 (2026-09-23): onPlayingChange on the transition only, wired to the shell; the track pair is not mirrored (p-impatient-3); 98 -> 100 // // review 2026-09-23: a WebKit-door press and an Android Media3 action are recorded under the record's dashed command (remoteCommandFor at the one seam); 95 -> 98 // founder 2026-09-23 (fix/founder-reports-2026-09-23): a BEHAVING fake WebKit reads what its own Now Playing entry would show (the "4a / unknown / unknown" state on main); the severing mutation test inverted; one press through two doors is applied once (both orders, the third copy, the window's end, a same-surface double tap, Android untouched); a WebKit-delivered press is a foray:remote row; inspect().tee; 88 -> 95 // 2026-09-23 founder report ("On the lock screen, it's 10s in both directions"): the iOS takeover mirrors the page's handlers, metadata and playbackState onto WebKit's own session — never seekto — so a press on WebKit's client reaches the page; wrap-mode reaches the prototype without looping; a refused mirror costs nothing; uninstall takes it all back. The suite stood at 81 against 80; 80 -> 88 // 2026-09-22: `sends` cannot be read in the turn of the write, against the REAL default scheduler; 79 -> 80 // M-03 (2026-09-12): the session event reaches the page; 75 -> 79
   /* iOS on a runner (#38). These four are the only tests in the repo that can be
      run for a macOS-only feature by someone with no Mac, which makes their
@@ -1663,7 +1664,7 @@ const FLOORS = {
      plus the round trip through NE-26's real engineLineFor once it is on the
      branch. Zero slack. */
   "tools/mobile/engine-report.test.mjs": 25,
-  "tools/mobile/ios-workflow.test.mjs": 45, // NE-17: +1 -- the plist step keeps the bare injector run and its --check, which carry ForayEngineDefault, with no --engine-default override // NE-06: +1 -- the parity fixtures and recorder are negated out of the path filter, below the patterns they narrow // +4 (2026-09-13): the MinimumOSVersion patch runs before both builds, off one resolved SwiftPM tree, with the deployment target READ not written, and the built device bundle is read back
+  "tools/mobile/ios-workflow.test.mjs": 46, // ci-release-12 (round-3 audit): +1 -- no npm install under mobile/ on either iOS path; 45 -> 46 // NE-17: +1 -- the plist step keeps the bare injector run and its --check, which carry ForayEngineDefault, with no --engine-default override // NE-06: +1 -- the parity fixtures and recorder are negated out of the path filter, below the patterns they narrow // +4 (2026-09-13): the MinimumOSVersion patch runs before both builds, off one resolved SwiftPM tree, with the deployment target READ not written, and the built device bundle is read back
 
   "tools/mobile/probe/install-probe.test.mjs": 39,
   /* The one-shot that gets a newly curated show's back catalogue into the pipeline
@@ -1793,7 +1794,7 @@ const FLOORS = {
      shared build steps into. Registered the same day both suites were
      written, per R-02's own precedent for this map. */
   "tools/mobile/release-ci.test.mjs": 15,
-  "tools/mobile/release-workflow.test.mjs": 33, // NE-17: +1 -- the release archive keeps the bare injector run and its --check (ForayEngineDefault), with no --engine-default override // NE-06: +3 -- ios needs ios-checks (release-checks on github.sha via env), ios-checks is guarded and reads checks on Linux, and the summary names a refusal // +4 (2026-09-13): the release composite is a THIRD build path — it patches the ONNX Runtime plist before archiving, archives from the patched tree, and reads the archive back before export/upload
+  "tools/mobile/release-workflow.test.mjs": 35, // ci-release-13 (round-3 audit): +2 -- the release composite uploads its logs dir always, and nothing secret is written under it; 33 -> 35 // NE-17: +1 -- the release archive keeps the bare injector run and its --check (ForayEngineDefault), with no --engine-default override // NE-06: +3 -- ios needs ios-checks (release-checks on github.sha via env), ios-checks is guarded and reads checks on Linux, and the summary names a refusal // +4 (2026-09-13): the release composite is a THIRD build path — it patches the ONNX Runtime plist before archiving, archives from the patched tree, and reads the archive back before export/upload
 
   /* The launch verdict (the `android-smoke` job's brain). ZERO SLACK. This is the
      only thing in the repo that can judge a RUNNING Android app, and its risk is
