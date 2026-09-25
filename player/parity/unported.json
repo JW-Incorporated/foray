@@ -395,7 +395,6 @@
     "pausing inside a segment and resuming does not replay the segment": { "card": "NE-30j", "family": "manager-foray" },
     "play() during a beat leaves the out-point ARMED": { "card": "NE-30j", "family": "manager-foray" },
     "playForay reports what it dropped, and why, rather than quietly shortening": { "card": "NE-30j", "family": "manager-foray" },
-    "previous after a failed load reloads the clip, and never ends the queue (player-core-1)": { "card": "NE-39j", "family": "manager-remainder" },
     "reaching an out-point advances exactly like the file running out": { "card": "NE-30j", "family": "manager-foray" },
     "resetRateForTTS/restoreRate never touch backend.setRate for a synth item": { "card": "NE-31j", "family": "manager-foray" },
     "resuming after a pause inside a beat is instant — the beat is not re-served": { "card": "NE-30j", "family": "manager-foray" },

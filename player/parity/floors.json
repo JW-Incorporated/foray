@@ -8,7 +8,7 @@
     "diag-tokens": 30,
     "engine-mode": 31,
     "handshake": 17,
-    "manager-episode": 43,
+    "manager-episode": 44,
     "media-episode": 124,
     "number-format": 25,
     "queue-state": 87,
@@ -30,12 +30,12 @@
     "media-session": 156,
     "playback-rate": 24,
     "position-store": 12,
-    "queue-manager": 172,
+    "queue-manager": 175,
     "queue-state": 58,
     "seam-gap": 17,
     "seek-policy": 33,
     "transport-policy": 20,
-    "transport-reconcile": 123,
+    "transport-reconcile": 127,
     "tts-bridge": 29
   }
 }

@@ -425,6 +425,10 @@
     }
   },
   "transport-reconcile": {
+    "a voice Preview never cuts off the narrator's line, playing or paused (round-3 review, L3)": {
+      "reason": "webview-only",
+      "why": "The web player's own guard in client.js auditionVoice: with no engine, a preview and narration share the page's one synthesiser, so the page refuses a preview while a line is loaded. In native mode the preview is an audition command and the engine already refuses it while it plays (NE-22, engine-busy), so this page branch never runs there."
+    },
     "AUDIT / ROUND 2: a FINISHED episode leaves Jump back in and the ribbon; a part-heard one stays": {
       "reason": "dom-only",
       "why": "Jump back in and the ribbon for a finished episode are the page's decision (plan §3 A-1: the page owns the 'Jump back in' math). Page painting that client.js does identically in both modes from what the manager surface answers (in native mode, the facades); the engine never draws the page, so there is nothing here for Swift to reimplement."

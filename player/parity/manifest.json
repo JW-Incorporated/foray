@@ -331,7 +331,7 @@
     "manager-episode": {
       "files": {
         "player/parity/fixtures/manager-episode/last-episode-row.json": "a21f5bf2c1cc037c4d84285d9d3dbb9f6ad0b5b87a6c3f36c8e2943cfb5fa454",
-        "player/parity/fixtures/manager-episode/scenarios.json": "8f558039215249b53983d8d3b051d6092c3e45cb76d22f5734ad37a086e64c4b"
+        "player/parity/fixtures/manager-episode/scenarios.json": "78634d388f0ac3613cc00ba5ecb50f988ddd12e084d82208588e0f4fe80d2de1"
       },
       "ids": [
         "manager-episode/last-episode-row-full-snapshot",
@@ -360,6 +360,7 @@
         "manager-episode/cold-launch-without-autoplay-is-silent",
         "manager-episode/a-part-heard-episode-resumes-a-fresh-one-starts-at-zero",
         "manager-episode/previous-restarts-at-zero",
+        "manager-episode/previous-after-a-failed-load-reloads-the-clip",
         "manager-episode/a-skip-saves-the-outgoing-position",
         "manager-episode/every-effect-has-a-handler",
         "manager-episode/set-rate-hands-the-deck-only-ladder-values",

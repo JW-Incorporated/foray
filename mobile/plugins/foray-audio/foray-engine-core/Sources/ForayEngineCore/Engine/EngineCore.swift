@@ -616,7 +616,22 @@ public struct EngineCore {
         case .skipPrevious:
             // "Restart" must mean zero, or the save the reducer emits first
             // would make the reload resume exactly where the press left.
-            dispatch(.skipToPrevious(nil), offsets: LoadOffsets(forced: 0))
+            //
+            // From `idle` (a failed load) or `ended` the reducer has no item in
+            // focus, and skipToPrevious(nil) there is its "queue exhausted"
+            // branch: it returns `ended`. Name the item this engine holds and
+            // the reducer takes its fresh-play branch, so the clip reloads at
+            // its in-point (player-core-1, ported from queue-manager.js
+            // skipToPrevious; fixture manager-episode/previous-after-a-failed-
+            // load-reloads-the-clip). Everywhere else nil keeps the reducer's
+            // restart-in-place.
+            switch state.player {
+            case .idle, .ended:
+                guard let held = state.currentItem else { return }
+                dispatch(.skipToPrevious(held.ref), offsets: LoadOffsets(forced: 0))
+            default:
+                dispatch(.skipToPrevious(nil), offsets: LoadOffsets(forced: 0))
+            }
         case .interruptionResume:
             dispatch(.interruptionEnded(shouldResume: true), offsets: LoadOffsets(rewind: true))
         case .routeResume:
