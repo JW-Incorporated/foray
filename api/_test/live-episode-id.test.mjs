@@ -92,3 +92,37 @@ test("the DB ingest and the live paths mint one id for a guid-less episode, and 
   assert.equal(dbEpisodeIdentity(undated), liveEpisodeGuid(undated, 7));
   assert.equal(liveEpisodeGuid(undated, 7), liveEpisodeGuid(undated, 8), "a prepended episode does not move an undated one's id");
 });
+
+/* Round-3 review (L4): the show-scoped cache key folded punctuation
+   (normalizeSearchText) while the matcher is a raw substring test, so
+   "part-2" and "part 2" shared one key but matched different titles, and the
+   first query's answer was served to the second for an hour.
+   MUTATION: key the show-scoped path with normalizeQueryKey again -- the second
+   query gets the first one's hit. */
+test("show-scoped queries that match different titles never share a cached answer", async () => {
+  const feed = `<?xml version="1.0"?><rss version="2.0"><channel><title>Lex</title>
+<item><title>Deep Dive part-2</title><guid>g-dash</guid><enclosure url="https://cdn.example.com/d.mp3" type="audio/mpeg" length="1"/></item>
+<item><title>Deep Dive part 2</title><guid>g-space</guid><enclosure url="https://cdn.example.com/s.mp3" type="audio/mpeg" length="1"/></item>
+</channel></rss>`;
+  const originalFetch = globalThis.fetch;
+  const had = "DATABASE_URL" in process.env;
+  const originalDb = process.env.DATABASE_URL;
+  delete process.env.DATABASE_URL;
+  globalThis.fetch = async () => new Response(feed, { status: 200 });
+  episodeSearchCache.clear();
+  episodeFeedFailureCache.clear();
+  searchModule.sharedFeedReader.clear();
+  try {
+    const ask = async (q) => {
+      const res = mockRes();
+      await search({ method: "GET", query: { q, show: SHOW }, headers: {} }, res);
+      return res.body.episodes.map((e) => e.guid);
+    };
+    assert.deepEqual(await ask("part-2"), ["g-dash"]);
+    assert.deepEqual(await ask("part 2"), ["g-space"]);
+    assert.deepEqual(await ask("Part-2 "), ["g-dash"], "case and outer spaces still share the key");
+  } finally {
+    globalThis.fetch = originalFetch;
+    if (had) process.env.DATABASE_URL = originalDb;
+  }
+});

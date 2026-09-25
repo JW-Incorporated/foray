@@ -5,7 +5,7 @@ import { type ParsedEpisode } from "../../backend/src/feeds/parser";
 import { DEFAULT_FEED_USER_AGENT } from "../../backend/src/feeds/userAgent";
 import { appleSearchBucket } from "../_lib/appleBucket";
 import { loadShowIdMap } from "../_lib/showIdMap";
-import { episodeSearchCache, episodeFeedFailureCache, normalizeQueryKey } from "../_lib/searchCache";
+import { episodeSearchCache, episodeFeedFailureCache, normalizeQueryKey, showScopedQueryKey } from "../_lib/searchCache";
 import { sharedFeedReader, FEED_FETCHES_PER_SHOW_PER_MINUTE, FEED_FETCH_LIMITED_ERROR } from "../_lib/feedCache";
 import { liveEpisodeGuid } from "../_lib/liveEpisodeId";
 import {
@@ -385,7 +385,9 @@ export default async function handler(req: ApiRequest, res: ApiResponse): Promis
   const parsedLimit = limitParam ? Number.parseInt(limitParam, 10) : NaN;
   const limit = Number.isFinite(parsedLimit) && parsedLimit > 0 ? Math.min(parsedLimit, 100) : MAX_RESULTS;
 
-  const cacheKey = normalizeQueryKey(q, showScope, limit);
+  /* The show-scoped matcher compares raw lowercased text, so its key must too
+     (showScopedQueryKey); the Apple path keys on the folded text. */
+  const cacheKey = showScope ? showScopedQueryKey(q, showScope, limit) : normalizeQueryKey(q, showScope, limit);
   const cached = episodeSearchCache.get(cacheKey) as { episodes: EpisodeSearchResult[]; source: string[]; total?: number; capped?: boolean } | undefined;
   if (cached) {
     res.setHeader("Cache-Control", "public, max-age=300, stale-while-revalidate=3600");

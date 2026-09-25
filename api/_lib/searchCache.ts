@@ -91,6 +91,17 @@ export function normalizeQueryKey(q: string, show: string | null, limit: number)
   return `${show ?? ""}::${limit}::${normalizeSearchText(q)}`;
 }
 
+/** The key for a SHOW-SCOPED search: exactly the text its matcher compares
+    (`searchWithinShow`: `q.trim().toLowerCase()` as a substring of each
+    title). The folded key above is wider than that matcher (round-3 review,
+    L4): "part-2" and "part 2", "#12" and "12", and every punctuation-only
+    query shared one key while matching different titles, so whichever ran
+    first answered the other for an hour. The show-scoped path spends no Apple
+    slot, so the folding security-10 wanted buys nothing here. */
+export function showScopedQueryKey(q: string, show: string, limit: number): string {
+  return `${show}::${limit}::=${q.trim().toLowerCase()}`;
+}
+
 export const episodeSearchCache = new TtlCache<unknown>();
 
 /* P-05 piece 3 (docs/search-parity-plan.md §4, 2026-09-12) — THE SHOW PAGE.
