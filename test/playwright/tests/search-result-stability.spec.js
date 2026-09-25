@@ -92,14 +92,20 @@ const row = (id, title, source) => ({
 });
 
 /** Answers the two show-search requests on the reported schedule. `directory`
-    is what the `fallthrough=1` pass returns; `net` is the catalogue pass. */
+    is what the `fallthrough=1` pass returns; `net` is the catalogue pass.
+    Returns `directoryAnswered`, which settles once the directory pass has
+    been answered, so a test can tell "not painted yet" from "painted below
+    the fold". */
 async function stubSearch(page, { net = [], directory = [] } = {}) {
+  let answered;
+  const directoryAnswered = new Promise((resolve) => { answered = resolve; });
   await page.route(/api\/shows\/search.*fallthrough=1/, async (r) => {
     await new Promise((s) => setTimeout(s, DIR_MS));
     await r.fulfill({
       status: 200, contentType: "application/json",
       body: JSON.stringify({ shows: directory, degraded: false, fallthrough: { attempted: true, error: null } }),
     });
+    answered();
   });
   await page.route(/api\/shows\/search(?!.*fallthrough=1)/, async (r) => {
     await new Promise((s) => setTimeout(s, NET_MS));
@@ -110,6 +116,7 @@ async function stubSearch(page, { net = [], directory = [] } = {}) {
      the real origin would make every test here depend on the network. */
   await page.route(/api\/episodes\/search/, (r) =>
     r.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ episodes: [] }) }));
+  return { directoryAnswered };
 }
 
 /** Boots the real app on #/shows and waits for the search field the page owns.
@@ -154,7 +161,7 @@ async function recordRepaints(page) {
 }
 
 test("a row that has been painted never moves again, however late the next pass lands", async ({ page }) => {
-  await stubSearch(page, {
+  const { directoryAnswered } = await stubSearch(page, {
     net: [row("net-1", "Science Matters Daily", "catalog")],
     /* An EXACT title match for the query. Under a whole-list re-rank it sorts
        to the top, above the curated rows already on screen — which is what
@@ -183,6 +190,26 @@ test("a row that has been painted never moves again, however late the next pass 
      MUTATION: restore `page.click("#sh-form button[type=submit]")`. It fails
      with a 180 s timeout, which is how this was found. */
   await page.press("#sh-input", "Enter");
+
+  /* A PAGE OF ROWS AT A TIME (audit round 3, app-2-2). The list paints 50
+     rows and a "Show more shows" button. Over the committed data "science"
+     has 20 local rows and the index scan adds 92, so the list is past 50
+     before the directory answers, and the late rows are appended BELOW the
+     first page, where nothing on screen moves for them. They are revealed
+     only when the listener asks for more. Once the directory pass has answered, reveal
+     page by page until its exact match is on screen. Each reveal is a
+     repaint too, and it must also extend the list.
+     MUTATION: with this loop removed, the wait below times out at 30 s,
+     because "Science" sits behind the button. */
+  await directoryAnswered;
+  for (let i = 0; i < 40; i++) {
+    const shown = await page.evaluate(() =>
+      [...document.querySelectorAll("#sh-results .show-result-title")].some((t) => t.textContent === "Science"));
+    if (shown) break;
+    const more = page.locator("#sh-results [data-sh-more]");
+    if (await more.count()) await more.click();
+    else await page.waitForTimeout(100);
+  }
 
   /* Both endpoints have answered and the last merge has painted. */
   await page.waitForFunction(
