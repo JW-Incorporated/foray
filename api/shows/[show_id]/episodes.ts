@@ -7,6 +7,7 @@ import { fetchFeedConditional } from "../../../backend/src/feeds/conditionalGet"
 import { parseFeed, type ParsedEpisode } from "../../../backend/src/feeds/parser";
 import { applyCors } from "../../_lib/cors";
 import { decodeCursor, paginate } from "../../_lib/episodeCursor";
+import { liveEpisodeGuid } from "../../_lib/liveEpisodeId";
 
 /**
  * Fetch-on-demand per-show episode list (Stage 3b, kanban t_567b570f,
@@ -190,7 +191,7 @@ function toListRow(ep: CatalogShowEpisode) {
 
 function toLiveEpisode(showId: string, ep: ParsedEpisode, idx: number): CatalogShowEpisode | null {
   if (!ep.enclosureUrl) return null;
-  const guid = ep.guid ?? `noguid:${ep.title}:${ep.publishedAt ?? idx}`;
+  const guid = liveEpisodeGuid(ep, idx);
   return {
     show_id: showId,
     guid,

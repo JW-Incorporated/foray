@@ -7,6 +7,7 @@ import { appleSearchBucket } from "../_lib/appleBucket";
 import { loadShowIdMap } from "../_lib/showIdMap";
 import { episodeSearchCache, episodeFeedFailureCache, normalizeQueryKey } from "../_lib/searchCache";
 import { KeyedBuckets } from "../_lib/keyedBuckets";
+import { liveEpisodeGuid } from "../_lib/liveEpisodeId";
 
 /**
  * GET /api/episodes/search?q=<query>&show=<show_id> — episode search (S-07,
@@ -194,14 +195,16 @@ function mapAppleHit(hit: AppleEpisodeHit, idMap: Map<number, string>): EpisodeS
   };
 }
 
-/** Maps a freshly-parsed live-feed episode to our shape (show-scoped path). */
-function mapLiveEpisode(showId: string, showTitle: string | null, ep: ParsedEpisode): EpisodeSearchResult | null {
+/** Maps a freshly-parsed live-feed episode to our shape (show-scoped path).
+ *  `idx` is its position in the whole feed, so a guid-less episode gets the
+ *  same fallback id the per-show list serves it under (liveEpisodeGuid). */
+export function mapLiveEpisode(showId: string, showTitle: string | null, ep: ParsedEpisode, idx: number): EpisodeSearchResult | null {
   if (!ep.enclosureUrl) return null;
   return {
     show_id: showId,
     show_title: showTitle,
     title: ep.title,
-    guid: ep.guid,
+    guid: liveEpisodeGuid(ep, idx),
     description_text: ep.descriptionText || null,
     published_at: ep.publishedAt,
     duration_seconds: ep.duration.seconds,
@@ -288,8 +291,7 @@ async function searchWithinShow(
   const parsed = parseFeed(fetchResult.body);
   const q = query.trim().toLowerCase();
   const results = parsed.episodes
-    .filter((ep) => ep.title.toLowerCase().includes(q))
-    .map((ep) => mapLiveEpisode(showId, meta.title, ep))
+    .map((ep, idx) => (ep.title.toLowerCase().includes(q) ? mapLiveEpisode(showId, meta.title, ep, idx) : null))
     .filter((ep): ep is EpisodeSearchResult => ep !== null);
   return { results, error: null, feedFailed: false };
 }
