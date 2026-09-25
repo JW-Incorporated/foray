@@ -60,6 +60,9 @@ import {
   LOAD_SETTLE_TIMEOUT_HIDDEN_MS, FINE_WAKE, RECOVERY,
   outPointArmed, fineWatchDelayMs, fineWakeAction, loadDeadlineMs, sameSourceIsSeek, settledNear,
   recoveryLoadedOps, recoveryFailedOps,
+  deckRate, deckSeekTarget, deckVolume, deckDuration, deckReportedRate,
+  warmOffset, prefetchDecision, warmSettled, warmPromotion, handoverSteps, discardFreesBuffer,
+  playRefusalAction, unexplainedPauseAction, prefetchWindowOpens,
 } from "./deck-policy.js";
 
 const READY_ENOUGH = 3; // HAVE_FUTURE_DATA
@@ -807,11 +810,18 @@ export class HtmlAudioBackend {
    * finishes, the boundary simply takes the ordinary path.
    */
   prefetch(item, { startOffset = 0 } = {}) {
-    if (!this.canPrefetch) {
+    /* The decision is deck-policy.js `prefetchDecision` (NE-30j), the one the
+       native standby deck makes too; this method keeps the element work. */
+    const offset = warmOffset(startOffset);
+    const decision = prefetchDecision({
+      available: this.canPrefetch, url: item?.audio_url, currentUrl: this._currentUrl,
+      warm: this._warm, offsetSec: offset,
+    });
+    if (decision === "unavailable") {
       this._emit(`prefetch.unavailable ${item?.id ?? "?"}: ${this._prefetchOffReason ?? "released"}`);
       return false;
     }
-    if (!item?.audio_url) {
+    if (decision === "no-url") {
       this._emit(`prefetch.skipped ${item?.id ?? "?"}: no audio_url`);
       return false;
     }
@@ -823,12 +833,11 @@ export class HtmlAudioBackend {
        position we already have, and on an ad-stitched host the refetch can
        return a different stitch — the exact hazard the same-source shortcut
        exists to avoid. */
-    if (item.audio_url === this._currentUrl) {
+    if (decision === "same-episode") {
       this._emit(`prefetch.skipped ${item.id}: same episode — the seek shortcut already covers this seam`);
       return false;
     }
-    const offset = Number.isFinite(startOffset) && startOffset > 0 ? startOffset : 0;
-    if (this._warm && this._warm.url === item.audio_url && this._warm.offset === offset && !this._warm.failed) {
+    if (decision === "already") {
       // Already in flight or already warm for exactly this media. Two queue
       // items can share a URL and an in-point, so re-stamp the id or every
       // later telemetry line names the wrong segment.
@@ -882,8 +891,8 @@ export class HtmlAudioBackend {
   _settleWarm(warm) {
     if (this._warm !== warm || warm.ready || warm.failed) return;
     const el = this._warmEl;
-    const near = warm.offset === 0 || Math.abs((el.currentTime ?? 0) - warm.offset) <= 1;
-    if (!near || (el.readyState ?? 0) < READY_ENOUGH) return;
+    // deck-policy.js `warmSettled` (NE-30j): at the in-point AND able to play.
+    if (!warmSettled({ offsetSec: warm.offset, atSec: el.currentTime ?? 0, canPlay: (el.readyState ?? 0) >= READY_ENOUGH })) return;
     warm.ready = true;
     this._emit(`prefetch.ready ${warm.id} at ${Math.round(el.currentTime ?? 0)}s — the next seam is a beat, not a load`);
   }
@@ -891,8 +900,8 @@ export class HtmlAudioBackend {
   /** The window in which the next segment must start loading if it is going to
       be ready. Fires once per armed boundary. */
   _maybeOpenPrefetchWindow() {
-    if (this._released || !this.canPrefetch) return;
-    if (this._outPoint == null || !this._outArmed) return;
+    // The decision is deck-policy.js `prefetchWindowOpens` (NE-30j); every
+    // guard below is one of its inputs, kept here for the reasons it states.
     /* THE GUARD THAT MAKES THIS WORK AT ALL, not a tidiness check. A warm load
        is only worth starting while the page is AUDIBLE — that is the window
        measured at 3 ms accuracy on the device and 111 ms on Blink, against
@@ -901,12 +910,15 @@ export class HtmlAudioBackend {
        load OUT of. `timeupdate` only fires while playing, so this is belt and
        braces on top of the trigger — and it is the line to keep if anything here
        is ever refactored. */
-    if (this.el.paused) return;
     const key = `${this._currentUrl}@${this._outPoint}`;
-    if (this._prefetchWindowKey === key) return;
-    const rate = typeof this.el.playbackRate === "number" && this.el.playbackRate > 0 ? this.el.playbackRate : 1;
-    const remainingWallSec = (this._outPoint - this.currentTime) / rate;
-    if (remainingWallSec > PREFETCH_LEAD_SEC) return;
+    const opens = prefetchWindowOpens({
+      available: !this._released && this.canPrefetch,
+      outPointSec: this._outPoint, armed: this._outArmed, paused: this.el.paused,
+      atSec: this.currentTime, rate: this.el.playbackRate, leadSec: PREFETCH_LEAD_SEC,
+      alreadyOpened: this._prefetchWindowKey === key,
+    });
+    if (!opens) return;
+    const remainingWallSec = (this._outPoint - this.currentTime) / deckRate(this.el.playbackRate);
     this._prefetchWindowKey = key;
     this._emit(`prefetch.window ${remainingWallSec.toFixed(1)}s of wall clock before the boundary`);
     if (this.onPrefetchWindow) {
@@ -918,11 +930,10 @@ export class HtmlAudioBackend {
 
   /** Is the warm element ready to BE the player for exactly this request? */
   _warmReadyFor(url, startOffset) {
-    if (!this._warm || !this._warm.ready || this._warm.failed) return false;
-    if (this._warm.url !== url) return false;
-    const want = Number.isFinite(startOffset) && startOffset > 0 ? startOffset : 0;
-    if (this._warm.offset !== want) return false;
-    /* RE-ASSERT, DO NOT TRUST THE SNAPSHOT. `ready` can be twelve seconds old,
+    /* deck-policy.js `warmPromotion` (NE-30j): the same verdict the native
+       standby deck reaches, from the same facts.
+
+       RE-ASSERT, DO NOT TRUST THE SNAPSHOT. `ready` can be twelve seconds old,
        and the element can go backwards in that time without ever firing `error`:
        a backgrounded media element whose buffer is evicted drops `readyState`
        and fires `emptied`/`abort`. Promoting in that state resolves `load()` on
@@ -933,8 +944,10 @@ export class HtmlAudioBackend {
        same two facts the cold path resolves on (`onCanPlay` below), asked again
        at the moment the answer is used. */
     const el = this._warmEl;
-    if (!el || (el.readyState ?? 0) < READY_ENOUGH) return false;
-    return Math.abs((el.currentTime ?? 0) - want) <= 1;
+    return warmPromotion({
+      warm: this._warm, url, offsetSec: warmOffset(startOffset),
+      canPlay: Boolean(el) && (el.readyState ?? 0) >= READY_ENOUGH, atSec: el?.currentTime ?? 0,
+    }) === "promote";
   }
 
   /**
@@ -948,47 +961,69 @@ export class HtmlAudioBackend {
   _promoteWarm(item, startOffset) {
     const outgoing = this.el;
     const incoming = this._warmEl;
-
-    /* Detached FIRST, so no `_expectPause` is needed for the pause and the drop
-       below: this element's events no longer reach us at all. Setting the flag
-       here would leave it true with nothing to consume it, and a stale
-       `_expectPause` is not inert — it swallows the next pause, which is the one
-       `_notePause` exists to notice. */
-    this._detach(outgoing);
-    try { outgoing.pause(); } catch (_) { /* already paused */ }
-    /* THE DEMOTED ELEMENT'S BUFFER IS NOT DROPPED HERE, and this is the same
-       lesson as `_discardWarm`, applied on the other side of the boundary.
-       `removeAttribute("src") + load()` queues two media-load-algorithm steps on
-       the queue the element we just promoted needs in order to start playing —
-       ~3 s per step in a hidden page. Pausing is enough to stop it making
-       progress; the buffer is superseded the next time `prefetch()` assigns a
-       src to it, and released for real by `release()`. This path never ran on
-       the device (the promote never fired), so it is reasoned from the same log
-       rather than measured — noted so the next person knows which is which. */
-
-    this.el = incoming;
-    this._warmEl = outgoing;
-    if (this._warmCleanup) { this._warmCleanup(); this._warmCleanup = null; }
-    this._warm = null;
-    this._prefetchWindowKey = null;
-    this._attach(this.el);
-
-    /* IDENTITY BEFORE THE ELEMENT WRITES, and the order is the point. If an
-       element setter throws after the swap but before `_currentUrl` is updated,
-       `this.el` holds episode B while `_currentUrl` still names episode A — and
-       the next `load(A)` then passes the same-source test below and SEEKS INSIDE
-       B, at A's in-point, with A's boundary armed. Wrong-episode audio, from a
-       failed assignment. Setting identity first makes that unreachable however
-       the writes go. */
-    this._currentItem = item;
-    this._currentUrl = item.audio_url;
-    this._handoverUnproven = true;
-
-    // State that lives on the BACKEND has to be re-applied to whatever element
-    // is now the player: neither of these survives the swap on its own. Both are
-    // guarded — Safari refuses some playback rates outright.
-    try { this.el.volume = this._volume; } catch (_) { /* fine */ }
-    try { this.el.playbackRate = this._pendingRate; } catch (_) { /* refused; the rate stays pending */ }
+    /* THE ORDER IS deck-policy.js `handoverSteps()` (NE-30j), the sequence the
+       native DeckPair follows too; each step below is the element work for one
+       token, and a token this switch does not know is a programming error. */
+    for (const step of handoverSteps()) {
+      switch (step) {
+        case "detach-outgoing":
+          /* Detached FIRST, so no `_expectPause` is needed for the pause and the
+             drop below: this element's events no longer reach us at all. Setting
+             the flag here would leave it true with nothing to consume it, and a
+             stale `_expectPause` is not inert — it swallows the next pause,
+             which is the one `_notePause` exists to notice. */
+          this._detach(outgoing);
+          break;
+        case "pause-outgoing":
+          try { outgoing.pause(); } catch (_) { /* already paused */ }
+          /* THE DEMOTED ELEMENT'S BUFFER IS NOT DROPPED HERE, and this is the
+             same lesson as `_discardWarm`, applied on the other side of the
+             boundary. `removeAttribute("src") + load()` queues two
+             media-load-algorithm steps on the queue the element we just
+             promoted needs in order to start playing — ~3 s per step in a
+             hidden page. Pausing is enough to stop it making progress; the
+             buffer is superseded the next time `prefetch()` assigns a src to
+             it, and released for real by `release()`. This path never ran on
+             the device (the promote never fired), so it is reasoned from the
+             same log rather than measured — noted so the next person knows
+             which is which. */
+          break;
+        case "swap-roles":
+          this.el = incoming;
+          this._warmEl = outgoing;
+          if (this._warmCleanup) { this._warmCleanup(); this._warmCleanup = null; }
+          this._warm = null;
+          this._prefetchWindowKey = null;
+          break;
+        case "attach-incoming":
+          this._attach(this.el);
+          break;
+        case "adopt-identity":
+          /* IDENTITY BEFORE THE ELEMENT WRITES, and the order is the point. If
+             an element setter throws after the swap but before `_currentUrl`
+             is updated, `this.el` holds episode B while `_currentUrl` still
+             names episode A — and the next `load(A)` then passes the
+             same-source test below and SEEKS INSIDE B, at A's in-point, with
+             A's boundary armed. Wrong-episode audio, from a failed assignment.
+             Setting identity first makes that unreachable however the writes
+             go. */
+          this._currentItem = item;
+          this._currentUrl = item.audio_url;
+          this._handoverUnproven = true;
+          break;
+        /* State that lives on the BACKEND has to be re-applied to whatever
+           element is now the player: neither of these survives the swap on its
+           own. Both are guarded — Safari refuses some playback rates outright. */
+        case "carry-volume":
+          try { this.el.volume = this._volume; } catch (_) { /* fine */ }
+          break;
+        case "carry-rate":
+          try { this.el.playbackRate = this._pendingRate; } catch (_) { /* refused; the rate stays pending */ }
+          break;
+        default:
+          throw new Error(`handoverSteps() names ${step}, which _promoteWarm cannot perform`);
+      }
+    }
     this._emit(
       `load.handover ${item.id} -> ${Math.round(startOffset)}s ` +
       `(prefetched: no wait at this boundary)`
@@ -999,8 +1034,9 @@ export class HtmlAudioBackend {
   /** Stop warming and let go of whatever the warm element holds. */
   /**
    * @param {string}  why
-   * @param {boolean} [releaseElement] also drop the element's buffer. **Never
-   *   true on a path a boundary can reach** — see below.
+   * @param {string}  [cause] "release" also drops the element's buffer
+   *   (deck-policy.js `discardFreesBuffer`). **Never on a path a boundary can
+   *   reach** — see below.
    *
    * DISCARDING MUST NOT TOUCH THE ELEMENT AT A BOUNDARY, and this is measured,
    * not defensive. `removeAttribute("src") + load()` starts the media load
@@ -1021,12 +1057,13 @@ export class HtmlAudioBackend {
    * bookkeeping is free and is all a boundary needs; the buffer is superseded the
    * next time `prefetch()` assigns a src, and released for real by `release()`.
    */
-  _discardWarm(why, { releaseElement = false } = {}) {
+  _discardWarm(why, { cause = "boundary" } = {}) {
     if (this._warmCleanup) { this._warmCleanup(); this._warmCleanup = null; }
     if (!this._warm) return;
     const id = this._warm.id;
     this._warm = null;
-    if (releaseElement && this._warmEl) {
+    // deck-policy.js `discardFreesBuffer` (NE-30j): only a release drops it.
+    if (discardFreesBuffer(cause) && this._warmEl) {
       try { this._warmEl.removeAttribute("src"); this._warmEl.load(); } catch (_) { /* fine */ }
     }
     this._emit(`prefetch.discarded ${id}: ${why}`);
@@ -1090,7 +1127,13 @@ export class HtmlAudioBackend {
   }
 
   _notePause() {
-    if (this._expectPause) { this._expectPause = false; return; }
+    /* The verdict is deck-policy.js `unexplainedPauseAction` (NE-30j): our own
+       pause, a file that ran out, a report, or a report that stands warming down. */
+    const verdict = unexplainedPauseAction({
+      expected: this._expectPause, ended: Boolean(this.el.ended),
+      warmInFlight: Boolean(this._warm) && !this._warm.ready,
+    });
+    if (verdict === "own") { this._expectPause = false; return; }
     /* A FILE THAT RAN OUT IS NOT A STOLEN SESSION. The end-of-media steps set
        `paused` and fire `pause` BEFORE `ended`, and a segment whose `end_sec`
        runs past the real audio hits that path routinely — `setOutPoint` even
@@ -1098,7 +1141,7 @@ export class HtmlAudioBackend {
        file in a Foray would switch warming off for the whole session AND throw
        away a buffer the very next `load()` was about to promote, making that
        seam slow too. `ended` is positional and is already true here. */
-    if (this.el.ended) return;
+    if (verdict === "ran-out") return;
 
     /* TELL SOMEBODY (#263). Everything below this point is about standing
        warming down; nothing above it ever reached the surface, which is why the
@@ -1137,7 +1180,9 @@ export class HtmlAudioBackend {
        That is deliberate — the cost of being wrong here is the 9.2 s seam that
        shipped before this feature, and the cost of being wrong the other way is
        silence a listener cannot fix from a locked screen. */
-    if (!this._warm || this._warm.ready) return;
+    // Re-asked AFTER the surface ran: its reconcile can change the warm state.
+    const now = unexplainedPauseAction({ expected: false, ended: false, warmInFlight: Boolean(this._warm) && !this._warm.ready });
+    if (now !== "stand-down") return;
     this._emit("audio.pausedUnexpectedly while a prefetch was in flight");
     this._disablePrefetch("playback stopped while a prefetch was in flight — refusing to warm again");
   }
@@ -1161,7 +1206,12 @@ export class HtmlAudioBackend {
    * @returns true if the rejection was handled here.
    */
   _recoverFromRefusedHandover(el, err) {
-    if (this._released || el !== this.el || !this._handoverUnproven) return false;
+    // deck-policy.js `playRefusalAction` (NE-30j) is the whole guard; the two
+    // reasons it has are below.
+    if (playRefusalAction({
+      errorName: err?.name, handoverUnproven: this._handoverUnproven,
+      isPlayer: el === this.el, released: this._released,
+    }) !== "recover") return false;
     /* AN AUTOPLAY REFUSAL, AND NOTHING ELSE. `NotAllowedError` is the only
        rejection this recovery is for, and the check is not belt and braces — it
        is the difference between a recovery and a bug.
@@ -1175,7 +1225,6 @@ export class HtmlAudioBackend {
        paused, and switching warming off permanently on the way. Any rejection
        that is not an autoplay refusal falls through to the reporting path that
        shipped before this feature existed. */
-    if (err?.name !== "NotAllowedError") return false;
     const item = this._currentItem;
     const blessed = this._warmEl;
     if (!item || !blessed) return false;
@@ -1677,7 +1726,7 @@ export class HtmlAudioBackend {
 
   seek(seconds, { precise = false } = {}) {
     if (this._released) return;
-    if (typeof seconds !== "number" || !Number.isFinite(seconds) || seconds < 0) return;
+    if (deckSeekTarget(seconds) === null) return; // deck-policy.js (NE-30j)
     // `precise` comes from seek-policy.js (#30). The element seeks the same
     // way either way — the flag is carried so it can be logged, and so a
     // future backend that supports approximate/fast seeking can use it.
@@ -1702,7 +1751,7 @@ export class HtmlAudioBackend {
    * too). An element is the wrong place to keep this.
    */
   setRate(rate) {
-    const r = typeof rate === "number" && rate > 0 ? rate : 1.0;
+    const r = deckRate(rate); // deck-policy.js: a positive number, else 1x
     this._pendingRate = r;
     if (this._released) return;
     /* GUARDED, like every other element write in this file — `play()` included,
@@ -1734,8 +1783,7 @@ export class HtmlAudioBackend {
       playback is worse than none. Falls back to what we asked for only when the
       element has no usable answer. */
   get rate() {
-    const r = this.el?.playbackRate;
-    return typeof r === "number" && Number.isFinite(r) && r > 0 ? r : this._pendingRate;
+    return deckReportedRate({ elementRate: this.el?.playbackRate, pendingRate: this._pendingRate });
   }
 
   /** 0..1. Ducking for hold-to-talk uses this rather than a Web Audio gain
@@ -1745,7 +1793,7 @@ export class HtmlAudioBackend {
     // Held on the backend as well as written to the element: a handover swaps
     // the element underneath this, and a duck that silently reset to 1.0 on the
     // next segment would be a bug with no visible cause.
-    this._volume = Math.min(1, Math.max(0, Number(v) || 0));
+    this._volume = deckVolume(v);
     this.el.volume = this._volume;
   }
 
@@ -1789,8 +1837,7 @@ export class HtmlAudioBackend {
   get ended() { return this.el?.ended === true; }
 
   get duration() {
-    const d = this.el?.duration;
-    return typeof d === "number" && Number.isFinite(d) ? d : null;
+    return deckDuration(this.el?.duration);
   }
 
   get currentItem() { return this._currentItem; }
@@ -1801,7 +1848,7 @@ export class HtmlAudioBackend {
     this._disarmOutPoint();
     // Before `_released` stops it mattering, and before the listeners go: the
     // warm element is holding a buffer too, and it must not be left decoding.
-    this._discardWarm("released", { releaseElement: true });
+    this._discardWarm("released", { cause: "release" });
     this._detach(this.el);
     this.el.pause();
     this.el.removeAttribute("src");

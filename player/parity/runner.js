@@ -299,6 +299,74 @@ function managerView(m) {
   };
 }
 
+/** NE-30j. What a Foray scenario may ADD to its checkpoints, by naming it in
+    `setup.view`. Opt-in, so no earlier family's checkpoints change shape.
+
+      outPoint            the boundary the deck holds armed now (null: none)
+      seamGapRemainingMs  what is left of the seam beat, in wall-clock ms
+      timersLive          how many timers are alive on the manual clock (0:
+                          nothing left to fire, so no beat can start audio
+                          after a pause, a stop or a skip)
+      positionSec         the deck's playhead */
+export const VIEW_KEYS = Object.freeze(["outPoint", "seamGapRemainingMs", "timersLive", "positionSec"]);
+
+function extraView(keys, { m, backend, scheduler }) {
+  const out = {};
+  for (const k of keys) {
+    if (k === "outPoint") out.outPoint = backend.outPoint ?? null;
+    else if (k === "seamGapRemainingMs") out.seamGapRemainingMs = m.seamGapRemainingMs;
+    else if (k === "timersLive") {
+      if (typeof scheduler.live !== "number") throw new HarnessError("E_BAD_CASE", `view "timersLive" needs setup.scheduler = "manual"`);
+      out.timersLive = scheduler.live;
+    } else if (k === "positionSec") out.positionSec = backend.currentTime;
+    else throw new HarnessError("E_BAD_CASE", `unknown view key ${JSON.stringify(k)} (one of ${VIEW_KEYS.join(", ")})`);
+  }
+  return out;
+}
+
+/** NE-30j. What a `call` step's `returns` may record into the next checkpoint's
+    `returned` list. A closed projection, never the raw value: playForay's
+    report carries whole queue items and English reasons, and a reason is text
+    (a text-pin), not a rule.
+
+      forayReport  {items: [queue ids], skipped: [{index, id, item_id}], warnings: n} */
+export const RETURN_PROJECTIONS = Object.freeze(["forayReport"]);
+
+function project(kind, value) {
+  if (kind === "forayReport") {
+    return {
+      items: (value?.items ?? []).map((i) => i.id),
+      skipped: (value?.skipped ?? []).map((s) => ({ index: s.index, id: s.id ?? null, item_id: s.item_id ?? null })),
+      warnings: (value?.warnings ?? []).length,
+    };
+  }
+  throw new HarnessError("E_BAD_CASE", `unknown returns projection ${JSON.stringify(kind)} (one of ${RETURN_PROJECTIONS.join(", ")})`);
+}
+
+/** NE-30j. `setup.forayBuild`: a REAL curated Foray, built the way the page
+    builds it (foray-resolve.js `resolveForay` over the documents), so a
+    scenario can play the frozen fixture's Forays end to end as
+    foray-playback.test.js does. `{id, data: "frozen" | "committed",
+    dropSources?: [source item ids], segments?: false}`. The build's hydrated
+    document is what a `playForay` / `setQueueFromForay` call with no
+    arguments is handed, and its source index is the resolver.
+
+    WHAT THE SWIFT RUNNER NEEDS (NE-30s): the same build as input, not a Swift
+    resolver — the engine never builds a Foray (plan §3 A-1). The same harness
+    choice NE-29s makes for `$foray` (forays.js). */
+async function forayBuildFor(spec, ctx) {
+  const { resolveForay, indexSegments, indexSources, findForay } = await importModule(ctx.root, "player/foray-resolve.js");
+  const dir = spec?.data === "frozen" ? "tools/foray/fixtures/frozen/data" : spec?.data === "committed" ? "data" : null;
+  if (!dir || typeof spec.id !== "string") throw new HarnessError("E_BAD_CASE", `forayBuild needs {id, data: "frozen" | "committed"}`);
+  const rd = (f) => JSON.parse(fs.readFileSync(path.join(ctx.root, dir, f), "utf8"));
+  const foray = findForay(rd("forays.json"), spec.id, { unlocked: [spec.id] });
+  if (!foray) throw new HarnessError("E_BAD_CASE", `forayBuild: ${spec.id} is not in ${dir}/forays.json`);
+  const sources = indexSources(rd("segment-sources.json"));
+  for (const id of spec.dropSources ?? []) sources.delete(id);
+  const segments = indexSegments(spec.segments === false ? null : rd("segments.json"));
+  return resolveForay(foray, { segments, sources });
+}
+
 /* ---------- the `deck` target: the native out-point (NE-28j) ----------
 
    The `outpoint` family drives deck-policy.js `outPointStep`, the native deck's
@@ -321,10 +389,13 @@ function managerView(m) {
                                         the playhead the report read (an
                                         observer's own latency or jitter), which
                                         is where the playhead then is
+     ended     {sec?}                   NE-30j: the FILE ran out (an authored
+                                        end past the real audio) — the item's
+                                        one, natural, end
    `clock: ms` advances the wall clock. */
 
 export const DECK_EVENTS = Object.freeze([
-  "load", "play", "pause", "seek", "rate", "stall", "unstall", "endTime", "boundary",
+  "load", "play", "pause", "seek", "rate", "stall", "unstall", "endTime", "boundary", "ended",
 ]);
 
 /** Milliseconds of content, kept whole so a long driven clock accumulates no
@@ -385,6 +456,11 @@ async function runDeckScenario(c, setup, ctx) {
           case "unstall":
             stalled = step.deck === "stall";
             break;
+          case "ended":
+            if (!loads) throw new HarnessError("E_BAD_CASE", `an end with nothing loaded`);
+            if (step.sec !== undefined) atMs = toMs(step.sec);
+            dispatch({ type: "ended" });
+            break;
           case "endTime":
           case "boundary":
             if (!loads) throw new HarnessError("E_BAD_CASE", `a ${step.deck} report with nothing loaded`);
@@ -419,9 +495,98 @@ async function runDeckScenario(c, setup, ctx) {
   return encode({ checkpoints, ops: [...log.ops] });
 }
 
+/* ---------- the `engine` target: the prepare family (NE-30j) ----------
+
+   The `prepare` family asserts seams at the AUDIBLE level: "item N+1 starts
+   at wall time T, at offset O" (plan §6), with the native-only `n.prepare:` /
+   `n.handover:` tokens ASSERTED rather than stripped (compare.js keeps `n.*`
+   in this family only). The JS warm handover is parked on the web, so the only
+   JS path that prepares is reference-engine.js — protocol v1 over the REAL
+   manager, with a WarmingBackend — and this target drives it.
+
+   `call` steps are engine COMMANDS (`{call: "<cmd>", args?, source?}`, sent
+   as engineSend payloads with a running cmdSeq; a refused reply is a harness
+   error unless the step says `refused: "<reason>"`). `deck` steps are the
+   engine's deck events (`ended` with `reason`, `error`, `time`/`duration`
+   with `sec`, `window`, `stall`, `flowing`). `clock` moves the manual
+   clock. A checkpoint records the manager view plus `nowMs` — T. */
+
+export const ENGINE_DECK_EVENTS = Object.freeze(["ended", "error", "time", "duration", "window", "stall", "flowing"]);
+
+async function runEngineScenario(c, setup, ctx) {
+  const { ReferenceEngine } = await importModule(ctx.root, "player/parity/reference-engine.js");
+  const log = new OpLog();
+  const scheduler = manualScheduler();
+  const eng = new ReferenceEngine({
+    scheduler, now: () => 0, log,
+    capabilities: setup.capabilities ?? ["episode", "continuation", "restore", "foray"],
+    catalogue: setup.catalogue ?? {}, backend: setup.backend ?? {},
+    ...(setup.seamGapSec !== undefined ? { seamGapSec: setup.seamGapSec } : {}),
+  });
+  const { verbs } = closedSets();
+  const checkpoints = [];
+  let mark = 0;
+  let cmdSeq = 0;
+  const checkpoint = (name) => {
+    checkpoints.push({ name, ops: log.since(mark), nowMs: scheduler.nowMs(), ...managerView(eng.manager) });
+    mark = log.length;
+  };
+  let ops = [];
+  try {
+    for (const [i, step] of c.steps.entries()) {
+      const verb = Object.keys(step).find((k) => verbs.includes(k));
+      if (!verb) throw new HarnessError("E_UNKNOWN_VERB", `step ${i} of ${c.id} has no known verb`);
+      switch (verb) {
+        case "call": {
+          const payload = {
+            v: 1, cmdSeq: ++cmdSeq, cmd: step.call, source: step.source ?? "tap",
+            ...(step.args !== undefined ? { args: expandInputs(step.args, ctx) } : {}),
+          };
+          const reply = await eng.engineSend(payload);
+          const want = step.refused ?? null;
+          if ((reply.ok ? null : reply.reason) !== want) {
+            throw new HarnessError("E_BAD_CASE", `engine ${step.call} answered ${JSON.stringify(reply.ok ? "ok" : reply.reason)}, the step expects ${JSON.stringify(want ?? "ok")}`);
+          }
+          break;
+        }
+        case "deck": {
+          if (!ENGINE_DECK_EVENTS.includes(step.deck)) {
+            throw new HarnessError("E_BAD_CASE", `unknown engine deck event ${JSON.stringify(step.deck)} (one of ${ENGINE_DECK_EVENTS.join(", ")})`);
+          }
+          const arg = step.deck === "ended" ? (step.reason ?? "natural")
+            : step.deck === "error" ? (step.message ?? "error")
+              : step.sec;
+          await eng.deck(step.deck, arg);
+          break;
+        }
+        case "clock":
+          if (!(Number.isInteger(step.clock) && step.clock >= 0)) throw new HarnessError("E_BAD_CASE", "clock takes whole milliseconds");
+          await scheduler.advance(step.clock);
+          await tick();
+          break;
+        case "settle":
+          for (let n = 0; n < (Number.isInteger(step.settle) && step.settle > 0 ? step.settle : 1); n++) await tick();
+          break;
+        case "checkpoint":
+          checkpoint(step.checkpoint);
+          break;
+        default:
+          throw new HarnessError("E_BAD_CASE", `the engine target takes call, deck, clock, settle and checkpoint steps, not "${verb}"`);
+      }
+    }
+    await tick();
+    checkpoint("end");
+  } finally {
+    ops = [...log.ops];
+    eng.dispose();
+  }
+  return encode({ checkpoints, ops });
+}
+
 async function runScenario(c, ctx) {
   const setup = expandInputs(c.setup ?? {}, ctx);
   if (setup.target === "deck") return runDeckScenario(c, setup, ctx);
+  if (setup.target === "engine") return runEngineScenario(c, setup, ctx);
   if (setup.target !== "manager") throw new HarnessError("E_SCENARIO_TARGET", `no JS driver for target "${setup.target}"`);
   const { PlayerQueueManager, __resetInstanceForTests } = await importModule(ctx.root, "player/queue-manager.js");
   const { mediaSessionActions } = await importModule(ctx.root, "player/media-session.js");
@@ -432,11 +597,17 @@ async function runScenario(c, ctx) {
   const scheduler = setup.scheduler === "manual" ? manualScheduler() : instantScheduler();
   const tts = setup.tts ? fakeTts({ log, ...(typeof setup.tts === "object" ? setup.tts : {}) }) : null;
   const interlude = setup.interlude ? fakeInterlude({ log, ...(typeof setup.interlude === "object" ? setup.interlude : {}) }) : null;
-  const catalogue = setup.catalogue ?? {};
+  const built = setup.forayBuild ? await forayBuildFor(setup.forayBuild, ctx) : null;
+  const catalogue = built ? Object.fromEntries(built.sources) : (setup.catalogue ?? {});
+  const view = setup.view ?? [];
+  if (!Array.isArray(view)) throw new HarnessError("E_BAD_CASE", "setup.view is a list of view keys");
 
   __resetInstanceForTests();
   const m = new PlayerQueueManager({
     backend, positionStore: store, scheduler, tts, interlude,
+    /* NE-30j. The surface's beat callback, as an op: the page repaints on it,
+       and the native engine reports the same transition. */
+    ...(setup.seamGapEvents === true ? { onSeamGapChange: (inGap) => log.push(`event.seamGap:${inGap === true}`) } : {}),
     ...(setup.rate !== undefined ? { rate: setup.rate } : {}),
     ...(setup.seamGapSec !== undefined ? { seamGapSec: setup.seamGapSec } : {}),
     ...(setup.interludeEnabled !== undefined ? { interludeEnabled: setup.interludeEnabled } : {}),
@@ -445,9 +616,14 @@ async function runScenario(c, ctx) {
   const { verbs } = closedSets();
   const checkpoints = [];
   let mark = 0;
+  let returned = [];
   const checkpoint = (name) => {
-    checkpoints.push({ name, ops: log.since(mark), ...managerView(m) });
+    checkpoints.push({
+      name, ops: log.since(mark), ...managerView(m), ...extraView(view, { m, backend, scheduler }),
+      ...(returned.length ? { returned } : {}),
+    });
     mark = log.length;
+    returned = [];
   };
   const floating = [];
   let ops = [];
@@ -466,7 +642,8 @@ async function runScenario(c, ctx) {
           // A Foray needs a resolver, and a function cannot live in JSON: the
           // scenario's `catalogue` is that resolver's table.
           if (step.call === "playForay" || step.call === "setQueueFromForay") {
-            args = [args[0], { ...(args[1] ?? {}), resolveItem: (id) => catalogue[id] ?? null }];
+            const doc = args.length === 0 && built ? built.hydrated : args[0];
+            args = [doc, { ...(args[1] ?? {}), resolveItem: (id) => catalogue[id] ?? null }];
           }
           /* NE-14k. `stop` is the ENGINE's stop command (the Swift driver
              sends `.stop(persist: true)`), which is the page's close:
@@ -476,7 +653,10 @@ async function runScenario(c, ctx) {
              manager's own refusals (`_persistPosition`, its one caller's call). */
           if (step.call === "stop") m._persistPosition();
           const p = Promise.resolve(m[step.call](...args));
-          if (step.await === false) floating.push(p.catch(() => {}));
+          if (step.returns !== undefined) {
+            if (step.await === false) throw new HarnessError("E_BAD_CASE", "a call that records what it returns must be awaited");
+            returned.push(project(step.returns, await p));
+          } else if (step.await === false) floating.push(p.catch(() => {}));
           else await p;
           break;
         }

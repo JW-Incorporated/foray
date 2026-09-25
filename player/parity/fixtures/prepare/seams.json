@@ -1,0 +1,815 @@
+{
+  "family": "prepare",
+  "note": "The prepare family (plan §6, NE-30j): seams compared at the AUDIBLE level — 'audible start of item N+1 at T with offset O', T being the checkpoint's nowMs and O the load's offset — with the native-only n.prepare: / n.handover: tokens ASSERTED (compare.js strips n.* everywhere but here). Authored, and checked against player/parity/reference-engine.js with the warm handover ON (the only JS path that prepares). Port card NE-30s; DeckPair's own deck work is NE-32.",
+  "cases": [
+    {
+      "id": "prepare/a-warm-seam-is-audible-at-the-beat",
+      "covers": [],
+      "authored": true,
+      "note": "Audible start of item 1 at T = 500 ms (the 0.5 s beat, from the out-point at T = 0) with offset O = 300. It was prepared inside the window (n.prepare), and at the seam the load is a handover (n.handover) of that same source and in-point.",
+      "setup": { "target": "engine" },
+      "steps": [
+        {
+          "call": "playForay",
+          "args": {
+            "forayId": "f1",
+            "title": "A Foray",
+            "items": [
+              {
+                "type": "segment",
+                "id": "s0",
+                "audio_url": "https://cdn.test/a.mp3",
+                "start_sec": 100,
+                "end_sec": 200,
+                "duration_sec": 3600
+              },
+              {
+                "type": "segment",
+                "id": "s1",
+                "audio_url": "https://cdn.test/b.mp3",
+                "start_sec": 300,
+                "end_sec": 400,
+                "duration_sec": 3600
+              }
+            ],
+            "buildReport": {},
+            "isLocalFile": false,
+            "allowAdPad": false,
+            "voiceId": null
+          }
+        },
+        { "deck": "time", "sec": 190 },
+        { "deck": "window" },
+        { "checkpoint": "warmed" },
+        { "deck": "time", "sec": 200 },
+        { "deck": "ended", "reason": "outPoint" },
+        { "checkpoint": "beat" },
+        { "clock": 499 },
+        { "checkpoint": "silent" },
+        { "clock": 1 },
+        { "checkpoint": "audible" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "warmed",
+            "nowMs": 0,
+            "ops": ["load:f1#0@100", "rate:1", "outPoint:200", "play", "n.prepare:f1#1@300"],
+            "playhead": "f1#0",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": true,
+            "index": 1,
+            "name": "beat",
+            "nowMs": 0,
+            "ops": ["n.handover:f1#1@300", "load:f1#1@300"],
+            "playhead": "f1#1",
+            "rate": 1,
+            "state": "loadingItem"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": true,
+            "index": 1,
+            "name": "silent",
+            "nowMs": 499,
+            "ops": [],
+            "playhead": "f1#1",
+            "rate": 1,
+            "state": "loadingItem"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "audible",
+            "nowMs": 500,
+            "ops": ["rate:1", "outPoint:400", "play"],
+            "playhead": "f1#1",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "end",
+            "nowMs": 500,
+            "ops": [],
+            "playhead": "f1#1",
+            "rate": 1,
+            "state": "playing"
+          }
+        ],
+        "ops": [
+          "load:f1#0@100",
+          "rate:1",
+          "outPoint:200",
+          "play",
+          "n.prepare:f1#1@300",
+          "n.handover:f1#1@300",
+          "load:f1#1@300",
+          "rate:1",
+          "outPoint:400",
+          "play"
+        ]
+      }
+    },
+    {
+      "id": "prepare/an-unwarmed-seam-is-audible-at-the-same-beat",
+      "covers": [],
+      "authored": true,
+      "note": "No window, no preparation: the load runs inside the beat, and item 1 is still audible at T = 500 ms, O = 300 — the handover changes WHEN the bytes arrive, never the audible seam.",
+      "setup": { "target": "engine" },
+      "steps": [
+        {
+          "call": "playForay",
+          "args": {
+            "forayId": "f1",
+            "title": "A Foray",
+            "items": [
+              {
+                "type": "segment",
+                "id": "s0",
+                "audio_url": "https://cdn.test/a.mp3",
+                "start_sec": 100,
+                "end_sec": 200,
+                "duration_sec": 3600
+              },
+              {
+                "type": "segment",
+                "id": "s1",
+                "audio_url": "https://cdn.test/b.mp3",
+                "start_sec": 300,
+                "end_sec": 400,
+                "duration_sec": 3600
+              }
+            ],
+            "buildReport": {},
+            "isLocalFile": false,
+            "allowAdPad": false,
+            "voiceId": null
+          }
+        },
+        { "deck": "time", "sec": 200 },
+        { "deck": "ended", "reason": "outPoint" },
+        { "checkpoint": "beat" },
+        { "clock": 499 },
+        { "checkpoint": "silent" },
+        { "clock": 1 },
+        { "checkpoint": "audible" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": true,
+            "index": 1,
+            "name": "beat",
+            "nowMs": 0,
+            "ops": ["load:f1#0@100", "rate:1", "outPoint:200", "play", "load:f1#1@300"],
+            "playhead": "f1#1",
+            "rate": 1,
+            "state": "loadingItem"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": true,
+            "index": 1,
+            "name": "silent",
+            "nowMs": 499,
+            "ops": [],
+            "playhead": "f1#1",
+            "rate": 1,
+            "state": "loadingItem"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "audible",
+            "nowMs": 500,
+            "ops": ["rate:1", "outPoint:400", "play"],
+            "playhead": "f1#1",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "end",
+            "nowMs": 500,
+            "ops": [],
+            "playhead": "f1#1",
+            "rate": 1,
+            "state": "playing"
+          }
+        ],
+        "ops": [
+          "load:f1#0@100",
+          "rate:1",
+          "outPoint:200",
+          "play",
+          "load:f1#1@300",
+          "rate:1",
+          "outPoint:400",
+          "play"
+        ]
+      }
+    },
+    {
+      "id": "prepare/a-same-episode-seam-is-not-prepared",
+      "covers": [],
+      "authored": true,
+      "note": "The next slice is in the source the deck already holds: nothing is prepared (the same-source seek covers it), and item 1 is audible at T = 500 ms, O = 300 with no handover.",
+      "setup": { "target": "engine" },
+      "steps": [
+        {
+          "call": "playForay",
+          "args": {
+            "forayId": "f1",
+            "title": "A Foray",
+            "items": [
+              {
+                "type": "segment",
+                "id": "s0",
+                "audio_url": "https://cdn.test/a.mp3",
+                "start_sec": 100,
+                "end_sec": 200,
+                "duration_sec": 3600
+              },
+              {
+                "type": "segment",
+                "id": "s1",
+                "audio_url": "https://cdn.test/a.mp3",
+                "start_sec": 300,
+                "end_sec": 400,
+                "duration_sec": 3600
+              }
+            ],
+            "buildReport": {},
+            "isLocalFile": false,
+            "allowAdPad": false,
+            "voiceId": null
+          }
+        },
+        { "deck": "time", "sec": 190 },
+        { "deck": "window" },
+        { "checkpoint": "window" },
+        { "deck": "time", "sec": 200 },
+        { "deck": "ended", "reason": "outPoint" },
+        { "clock": 500 },
+        { "checkpoint": "audible" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "window",
+            "nowMs": 0,
+            "ops": ["load:f1#0@100", "rate:1", "outPoint:200", "play"],
+            "playhead": "f1#0",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "audible",
+            "nowMs": 500,
+            "ops": ["load:f1#1@300", "rate:1", "outPoint:400", "play"],
+            "playhead": "f1#1",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "end",
+            "nowMs": 500,
+            "ops": [],
+            "playhead": "f1#1",
+            "rate": 1,
+            "state": "playing"
+          }
+        ],
+        "ops": [
+          "load:f1#0@100",
+          "rate:1",
+          "outPoint:200",
+          "play",
+          "load:f1#1@300",
+          "rate:1",
+          "outPoint:400",
+          "play"
+        ]
+      }
+    },
+    {
+      "id": "prepare/the-out-point-moves-with-the-handover",
+      "covers": [
+        "html-audio-backend::an out-point armed after a handover still fires — the watch moved with the role"
+      ],
+      "authored": true,
+      "note": "After a handover the next boundary is armed on the promoted deck and still ends the segment: item 2 is prepared in its own window and audible at T = 1000 ms, O = 500.",
+      "setup": { "target": "engine" },
+      "steps": [
+        {
+          "call": "playForay",
+          "args": {
+            "forayId": "f1",
+            "title": "A Foray",
+            "items": [
+              {
+                "type": "segment",
+                "id": "s0",
+                "audio_url": "https://cdn.test/a.mp3",
+                "start_sec": 100,
+                "end_sec": 200,
+                "duration_sec": 3600
+              },
+              {
+                "type": "segment",
+                "id": "s1",
+                "audio_url": "https://cdn.test/b.mp3",
+                "start_sec": 300,
+                "end_sec": 400,
+                "duration_sec": 3600
+              },
+              {
+                "type": "segment",
+                "id": "s2",
+                "audio_url": "https://cdn.test/c.mp3",
+                "start_sec": 500,
+                "end_sec": 600,
+                "duration_sec": 3600
+              }
+            ],
+            "buildReport": {},
+            "isLocalFile": false,
+            "allowAdPad": false,
+            "voiceId": null
+          }
+        },
+        { "deck": "time", "sec": 190 },
+        { "deck": "window" },
+        { "deck": "time", "sec": 200 },
+        { "deck": "ended", "reason": "outPoint" },
+        { "clock": 500 },
+        { "checkpoint": "first-seam" },
+        { "deck": "time", "sec": 390 },
+        { "deck": "window" },
+        { "deck": "time", "sec": 400 },
+        { "deck": "ended", "reason": "outPoint" },
+        { "checkpoint": "beat" },
+        { "clock": 500 },
+        { "checkpoint": "second-seam" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "first-seam",
+            "nowMs": 500,
+            "ops": [
+              "load:f1#0@100",
+              "rate:1",
+              "outPoint:200",
+              "play",
+              "n.prepare:f1#1@300",
+              "n.handover:f1#1@300",
+              "load:f1#1@300",
+              "rate:1",
+              "outPoint:400",
+              "play"
+            ],
+            "playhead": "f1#1",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": true,
+            "index": 2,
+            "name": "beat",
+            "nowMs": 500,
+            "ops": ["n.prepare:f1#2@500", "n.handover:f1#2@500", "load:f1#2@500"],
+            "playhead": "f1#2",
+            "rate": 1,
+            "state": "loadingItem"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 2,
+            "name": "second-seam",
+            "nowMs": 1000,
+            "ops": ["rate:1", "outPoint:600", "play"],
+            "playhead": "f1#2",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 2,
+            "name": "end",
+            "nowMs": 1000,
+            "ops": [],
+            "playhead": "f1#2",
+            "rate": 1,
+            "state": "playing"
+          }
+        ],
+        "ops": [
+          "load:f1#0@100",
+          "rate:1",
+          "outPoint:200",
+          "play",
+          "n.prepare:f1#1@300",
+          "n.handover:f1#1@300",
+          "load:f1#1@300",
+          "rate:1",
+          "outPoint:400",
+          "play",
+          "n.prepare:f1#2@500",
+          "n.handover:f1#2@500",
+          "load:f1#2@500",
+          "rate:1",
+          "outPoint:600",
+          "play"
+        ]
+      }
+    },
+    {
+      "id": "prepare/the-last-item-prepares-nothing",
+      "covers": [],
+      "authored": true,
+      "note": "A Foray never chains: a window on its last item prepares nothing, and its end ends the Foray.",
+      "setup": { "target": "engine" },
+      "steps": [
+        {
+          "call": "playForay",
+          "args": {
+            "forayId": "f1",
+            "title": "A Foray",
+            "items": [
+              {
+                "type": "segment",
+                "id": "s0",
+                "audio_url": "https://cdn.test/a.mp3",
+                "start_sec": 100,
+                "end_sec": 200,
+                "duration_sec": 3600
+              }
+            ],
+            "buildReport": {},
+            "isLocalFile": false,
+            "allowAdPad": false,
+            "voiceId": null
+          }
+        },
+        { "deck": "time", "sec": 190 },
+        { "deck": "window" },
+        { "deck": "time", "sec": 200 },
+        { "deck": "ended", "reason": "outPoint" },
+        { "clock": 1000 },
+        { "checkpoint": "ended" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "ended",
+            "nowMs": 1000,
+            "ops": ["load:f1#0@100", "rate:1", "outPoint:200", "play"],
+            "playhead": "f1#0",
+            "rate": 1,
+            "state": "ended"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "end",
+            "nowMs": 1000,
+            "ops": [],
+            "playhead": "f1#0",
+            "rate": 1,
+            "state": "ended"
+          }
+        ],
+        "ops": ["load:f1#0@100", "rate:1", "outPoint:200", "play"]
+      }
+    },
+    {
+      "id": "prepare/a-paused-deck-opens-no-window",
+      "covers": [],
+      "authored": true,
+      "note": "Nothing is approaching a boundary while paused: no window, nothing prepared.",
+      "setup": { "target": "engine" },
+      "steps": [
+        {
+          "call": "playForay",
+          "args": {
+            "forayId": "f1",
+            "title": "A Foray",
+            "items": [
+              {
+                "type": "segment",
+                "id": "s0",
+                "audio_url": "https://cdn.test/a.mp3",
+                "start_sec": 100,
+                "end_sec": 200,
+                "duration_sec": 3600
+              },
+              {
+                "type": "segment",
+                "id": "s1",
+                "audio_url": "https://cdn.test/b.mp3",
+                "start_sec": 300,
+                "end_sec": 400,
+                "duration_sec": 3600
+              }
+            ],
+            "buildReport": {},
+            "isLocalFile": false,
+            "allowAdPad": false,
+            "voiceId": null
+          }
+        },
+        { "call": "pause" },
+        { "deck": "time", "sec": 190 },
+        { "deck": "window" },
+        { "checkpoint": "paused" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "paused",
+            "nowMs": 0,
+            "ops": ["load:f1#0@100", "rate:1", "outPoint:200", "play", "pause"],
+            "playhead": "f1#0",
+            "rate": 1,
+            "state": "interrupted"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "end",
+            "nowMs": 0,
+            "ops": [],
+            "playhead": "f1#0",
+            "rate": 1,
+            "state": "interrupted"
+          }
+        ],
+        "ops": ["load:f1#0@100", "rate:1", "outPoint:200", "play", "pause"]
+      }
+    },
+    {
+      "id": "prepare/a-skip-to-the-prepared-item-hands-over-and-the-next-loads-cold",
+      "covers": [],
+      "authored": true,
+      "note": "Next during item 0 lands on the prepared item 1 (a handover, no beat: a skip names its destination); Next again reaches item 2, which nobody prepared: a cold load at O = 500.",
+      "setup": { "target": "engine" },
+      "steps": [
+        {
+          "call": "playForay",
+          "args": {
+            "forayId": "f1",
+            "title": "A Foray",
+            "items": [
+              {
+                "type": "segment",
+                "id": "s0",
+                "audio_url": "https://cdn.test/a.mp3",
+                "start_sec": 100,
+                "end_sec": 200,
+                "duration_sec": 3600
+              },
+              {
+                "type": "segment",
+                "id": "s1",
+                "audio_url": "https://cdn.test/b.mp3",
+                "start_sec": 300,
+                "end_sec": 400,
+                "duration_sec": 3600
+              },
+              {
+                "type": "segment",
+                "id": "s2",
+                "audio_url": "https://cdn.test/c.mp3",
+                "start_sec": 500,
+                "end_sec": 600,
+                "duration_sec": 3600
+              }
+            ],
+            "buildReport": {},
+            "isLocalFile": false,
+            "allowAdPad": false,
+            "voiceId": null
+          }
+        },
+        { "deck": "time", "sec": 190 },
+        { "deck": "window" },
+        { "call": "next" },
+        { "checkpoint": "handed-over" },
+        { "call": "next" },
+        { "checkpoint": "cold" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "handed-over",
+            "nowMs": 0,
+            "ops": [
+              "load:f1#0@100",
+              "rate:1",
+              "outPoint:200",
+              "play",
+              "n.prepare:f1#1@300",
+              "pause",
+              "n.handover:f1#1@300",
+              "load:f1#1@300",
+              "rate:1",
+              "outPoint:400",
+              "play"
+            ],
+            "playhead": "f1#1",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 2,
+            "name": "cold",
+            "nowMs": 0,
+            "ops": ["pause", "load:f1#2@500", "rate:1", "outPoint:600", "play"],
+            "playhead": "f1#2",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 2,
+            "name": "end",
+            "nowMs": 0,
+            "ops": [],
+            "playhead": "f1#2",
+            "rate": 1,
+            "state": "playing"
+          }
+        ],
+        "ops": [
+          "load:f1#0@100",
+          "rate:1",
+          "outPoint:200",
+          "play",
+          "n.prepare:f1#1@300",
+          "pause",
+          "n.handover:f1#1@300",
+          "load:f1#1@300",
+          "rate:1",
+          "outPoint:400",
+          "play",
+          "pause",
+          "load:f1#2@500",
+          "rate:1",
+          "outPoint:600",
+          "play"
+        ]
+      }
+    },
+    {
+      "id": "prepare/at-2x-the-beat-is-still-500ms-of-wall-clock",
+      "covers": [],
+      "authored": true,
+      "note": "The beat does not scale with rate: at 2x, item 1 is audible at T = 500 ms, O = 300, exactly as at 1x.",
+      "setup": { "target": "engine" },
+      "steps": [
+        { "call": "setRate", "args": { "rate": 2 } },
+        {
+          "call": "playForay",
+          "args": {
+            "forayId": "f1",
+            "title": "A Foray",
+            "items": [
+              {
+                "type": "segment",
+                "id": "s0",
+                "audio_url": "https://cdn.test/a.mp3",
+                "start_sec": 100,
+                "end_sec": 200,
+                "duration_sec": 3600
+              },
+              {
+                "type": "segment",
+                "id": "s1",
+                "audio_url": "https://cdn.test/b.mp3",
+                "start_sec": 300,
+                "end_sec": 400,
+                "duration_sec": 3600
+              }
+            ],
+            "buildReport": {},
+            "isLocalFile": false,
+            "allowAdPad": false,
+            "voiceId": null
+          }
+        },
+        { "deck": "time", "sec": 190 },
+        { "deck": "window" },
+        { "deck": "time", "sec": 200 },
+        { "deck": "ended", "reason": "outPoint" },
+        { "clock": 499 },
+        { "checkpoint": "silent" },
+        { "clock": 1 },
+        { "checkpoint": "audible" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": true,
+            "index": 1,
+            "name": "silent",
+            "nowMs": 499,
+            "ops": [
+              "rate:2",
+              "load:f1#0@100",
+              "rate:2",
+              "outPoint:200",
+              "play",
+              "n.prepare:f1#1@300",
+              "n.handover:f1#1@300",
+              "load:f1#1@300"
+            ],
+            "playhead": "f1#1",
+            "rate": 2,
+            "state": "loadingItem"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "audible",
+            "nowMs": 500,
+            "ops": ["rate:2", "outPoint:400", "play"],
+            "playhead": "f1#1",
+            "rate": 2,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "end",
+            "nowMs": 500,
+            "ops": [],
+            "playhead": "f1#1",
+            "rate": 2,
+            "state": "playing"
+          }
+        ],
+        "ops": [
+          "rate:2",
+          "load:f1#0@100",
+          "rate:2",
+          "outPoint:200",
+          "play",
+          "n.prepare:f1#1@300",
+          "n.handover:f1#1@300",
+          "load:f1#1@300",
+          "rate:2",
+          "outPoint:400",
+          "play"
+        ]
+      }
+    }
+  ]
+}

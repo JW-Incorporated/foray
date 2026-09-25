@@ -38,8 +38,13 @@ const r = (s) => Math.round(s);
  * FakeBackend, plus a `log` argument so it can share the scenario's log.
  */
 export class FakeBackend {
-  constructor({ log = new OpLog(), failLoadFor = [], durationById = {}, duration = 3600, holdLoads = false } = {}) {
+  constructor({ log = new OpLog(), failLoadFor = [], durationById = {}, duration = 3600, holdLoads = false, loadTurns = 0 } = {}) {
     this.log = log;
+    /** NE-30j. A load that takes a few MICROTASK turns before it starts —
+        queue-manager.test.js's AsyncLoadBackend, "any real network load": the
+        window in which a stale wait could resume and arm a boundary the
+        replacement load then clears. */
+    this.loadTurns = Number.isInteger(loadTurns) && loadTurns > 0 ? loadTurns : 0;
     /** NE-14j. When true a load does not settle until the scenario says so
         (the `deck: "loaded"` / `"loadFailed"` verbs, via `settleLoad`), so a
         superseded load can land AFTER the load that replaced it — the ordering
@@ -66,6 +71,7 @@ export class FakeBackend {
   get duration() { return this.durationById[this._loadedId] ?? this._duration; }
   set duration(v) { this._duration = v; }
   async load(item, { startOffset = 0 } = {}) {
+    for (let i = 0; i < this.loadTurns; i++) await Promise.resolve();
     this._loadedId = item.id;
     this.outPoint = null; // contract: a load drops any armed boundary
     this.paused = true;

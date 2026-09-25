@@ -1,0 +1,221 @@
+{
+  "family": "deck",
+  "module": "player/deck-policy.js",
+  "note": "The deck's guards on what it is handed and what it reports (NE-30j): the rate, a seek target, the duck, the duration, the reported rate, and the in-place seek's deadline. html-audio-backend.js asks these; AVDeck must answer the same. Port card NE-30s.",
+  "cases": [
+    {
+      "id": "deck/rate-junk-is-1x",
+      "covers": [
+        "html-audio-backend::a bad rate falls back to 1.0 rather than muting or reversing playback"
+      ],
+      "note": "The rate a deck is handed: a positive number, else 1x — never muted, never reversed.",
+      "call": "deckRate",
+      "args": ["fast"],
+      "expect": { "return": 1 }
+    },
+    {
+      "id": "deck/rate-zero-is-1x",
+      "covers": [],
+      "call": "deckRate",
+      "args": [0],
+      "expect": { "return": 1 }
+    },
+    {
+      "id": "deck/rate-negative-is-1x",
+      "covers": [],
+      "call": "deckRate",
+      "args": [-1.5],
+      "expect": { "return": 1 }
+    },
+    {
+      "id": "deck/rate-nan-is-1x",
+      "covers": [],
+      "call": "deckRate",
+      "args": [{ "$num": "NaN" }],
+      "expect": { "return": 1 }
+    },
+    {
+      "id": "deck/rate-valid-kept",
+      "covers": [],
+      "call": "deckRate",
+      "args": [1.5],
+      "expect": { "return": 1.5 }
+    },
+    {
+      "id": "deck/seek-target-valid",
+      "covers": ["html-audio-backend::seek moves the playhead and ignores junk"],
+      "note": "A seek goes where it is told, and junk (negative, non-finite, not a number) is ignored: null means the deck does nothing.",
+      "call": "deckSeekTarget",
+      "args": [450],
+      "expect": { "return": 450 }
+    },
+    {
+      "id": "deck/seek-target-zero",
+      "covers": [],
+      "call": "deckSeekTarget",
+      "args": [0],
+      "expect": { "return": 0 }
+    },
+    {
+      "id": "deck/seek-target-negative",
+      "covers": [],
+      "call": "deckSeekTarget",
+      "args": [-3],
+      "expect": { "return": null }
+    },
+    {
+      "id": "deck/seek-target-nan",
+      "covers": [],
+      "call": "deckSeekTarget",
+      "args": [{ "$num": "NaN" }],
+      "expect": { "return": null }
+    },
+    {
+      "id": "deck/seek-target-infinite",
+      "covers": [],
+      "call": "deckSeekTarget",
+      "args": [{ "$num": "Infinity" }],
+      "expect": { "return": null }
+    },
+    {
+      "id": "deck/seek-target-string",
+      "covers": [],
+      "call": "deckSeekTarget",
+      "args": ["90"],
+      "expect": { "return": null }
+    },
+    {
+      "id": "deck/volume-kept",
+      "covers": ["html-audio-backend::volume clamps to 0..1 — ducking uses this, not Web Audio"],
+      "note": "The duck: clamped to 0..1, and junk is silence rather than a throw.",
+      "call": "deckVolume",
+      "args": [0.3],
+      "expect": { "return": 0.3 }
+    },
+    {
+      "id": "deck/volume-above-one",
+      "covers": [],
+      "call": "deckVolume",
+      "args": [1.5],
+      "expect": { "return": 1 }
+    },
+    {
+      "id": "deck/volume-below-zero",
+      "covers": [],
+      "call": "deckVolume",
+      "args": [-0.2],
+      "expect": { "return": 0 }
+    },
+    {
+      "id": "deck/volume-junk",
+      "covers": [],
+      "call": "deckVolume",
+      "args": ["loud"],
+      "expect": { "return": 0 }
+    },
+    {
+      "id": "deck/volume-nan",
+      "covers": [],
+      "call": "deckVolume",
+      "args": [{ "$num": "NaN" }],
+      "expect": { "return": 0 }
+    },
+    {
+      "id": "deck/duration-nan-is-null",
+      "covers": ["html-audio-backend::duration is null rather than NaN when unknown"],
+      "note": "What the deck reports as duration: finite, or null — never NaN.",
+      "call": "deckDuration",
+      "args": [{ "$num": "NaN" }],
+      "expect": { "return": null }
+    },
+    {
+      "id": "deck/duration-infinite-is-null",
+      "covers": [],
+      "call": "deckDuration",
+      "args": [{ "$num": "Infinity" }],
+      "expect": { "return": null }
+    },
+    {
+      "id": "deck/duration-known",
+      "covers": [],
+      "call": "deckDuration",
+      "args": [3600.5],
+      "expect": { "return": 3600.5 }
+    },
+    {
+      "id": "deck/duration-missing-is-null",
+      "covers": [],
+      "call": "deckDuration",
+      "args": [null],
+      "expect": { "return": null }
+    },
+    {
+      "id": "deck/reported-rate-is-the-elements",
+      "covers": [
+        "html-audio-backend::`rate` reports the element's real rate, so the lock screen cannot disagree with the audio"
+      ],
+      "note": "The rate the lock screen extrapolates with is the one in force on the deck, not the one asked for.",
+      "call": "deckReportedRate",
+      "args": [{ "elementRate": 1.75, "pendingRate": 1 }],
+      "expect": { "return": 1.75 }
+    },
+    {
+      "id": "deck/reported-rate-engine-moved-it",
+      "covers": [],
+      "call": "deckReportedRate",
+      "args": [{ "elementRate": 1, "pendingRate": 1.75 }],
+      "expect": { "return": 1 }
+    },
+    {
+      "id": "deck/reported-rate-unknown-falls-back",
+      "covers": [],
+      "call": "deckReportedRate",
+      "args": [{ "elementRate": { "$num": "NaN" }, "pendingRate": 1.5 }],
+      "expect": { "return": 1.5 }
+    },
+    {
+      "id": "deck/reported-rate-zero-falls-back",
+      "covers": [],
+      "call": "deckReportedRate",
+      "args": [{ "elementRate": 0, "pendingRate": 1.25 }],
+      "expect": { "return": 1.25 }
+    },
+    {
+      "id": "deck/seek-path-deadline-visible",
+      "covers": [
+        "html-audio-backend::an in-place seek that never settles rejects rather than wedging the player",
+        "html-audio-backend::the deadline is read once per load, not re-read as visibility changes"
+      ],
+      "note": "The in-place seek (same source) has a deadline, and it is the load's: one call per load or seek, answered from the visibility at that moment and kept for that load — a seek that never settles fails into the degrade path instead of wedging the player.",
+      "call": "loadDeadlineMs",
+      "args": [{ "hidden": false }],
+      "expect": { "return": 10000 }
+    },
+    {
+      "id": "deck/seek-path-deadline-hidden",
+      "covers": [
+        "html-audio-backend::the in-place seek path gets the same treatment",
+        "html-audio-backend::a hidden load that never settles still rejects"
+      ],
+      "note": "Hidden, the same-source seek gets the hidden budget too: a refill waits on the same throttled queue a load does, and it still has a finite deadline.",
+      "call": "loadDeadlineMs",
+      "args": [{ "hidden": true }],
+      "expect": { "return": 20000 }
+    },
+    {
+      "id": "deck/backwards-same-source-is-a-seek",
+      "covers": [],
+      "note": "A later slice EARLIER in the same episode is still a seek in the buffer the deck holds: the rule has no direction (deck/backwards-slices is the op log).",
+      "call": "sameSourceIsSeek",
+      "args": [
+        {
+          "loadedUrl": "https://cdn.test/one.mp3",
+          "url": "https://cdn.test/one.mp3",
+          "hasMetadata": true,
+          "failed": false
+        }
+      ],
+      "expect": { "return": true }
+    }
+  ]
+}

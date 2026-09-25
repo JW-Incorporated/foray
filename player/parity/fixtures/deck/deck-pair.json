@@ -1,0 +1,642 @@
+{
+  "family": "deck",
+  "module": "player/deck-policy.js",
+  "note": "The warm handover's decisions (NE-30j): whether to warm, when a warm load is ready, whether it may be promoted at the boundary, the handover's order, what a discard may do to the buffer, what a refused play may recover, what an unexplained pause means while warming, and when the window opens. HtmlAudioBackend asks these (parked on the web); the native DeckPair's standby deck answers the same. Port card NE-32 (plan §14: the DeckPair ones).",
+  "cases": [
+    {
+      "id": "deck/prefetch-parked-is-unavailable",
+      "covers": [
+        "html-audio-backend::THE HANDOVER IS OFF BY DEFAULT, and off means no second element exists",
+        "html-audio-backend::with no second element prefetch is unavailable and every path is unchanged"
+      ],
+      "note": "No standby deck (parked on the web, absent, released or stood down): nothing is warmed and every other path is the one-deck path.",
+      "call": "prefetchDecision",
+      "args": [
+        {
+          "available": false,
+          "url": "https://cdn.test/b.mp3",
+          "currentUrl": "https://cdn.test/a.mp3",
+          "warm": null,
+          "offsetSec": 12
+        }
+      ],
+      "expect": { "return": "unavailable" }
+    },
+    {
+      "id": "deck/prefetch-starts-on-the-standby-deck",
+      "covers": [
+        "html-audio-backend::prefetch loads the next episode on the OTHER element, leaving the player alone"
+      ],
+      "note": "The next episode warms on the standby deck at its in-point; the player is left alone.",
+      "call": "prefetchDecision",
+      "args": [
+        {
+          "available": true,
+          "url": "https://cdn.test/b.mp3",
+          "currentUrl": "https://cdn.test/a.mp3",
+          "warm": null,
+          "offsetSec": 12
+        }
+      ],
+      "expect": { "return": "start" }
+    },
+    {
+      "id": "deck/prefetch-same-episode-refused",
+      "covers": [
+        "html-audio-backend::a next segment in the SAME episode is refused — the seek shortcut already covers it"
+      ],
+      "note": "The same source is a seek in the buffer the player holds; warming it would refetch a whole episode.",
+      "call": "prefetchDecision",
+      "args": [
+        {
+          "available": true,
+          "url": "https://cdn.test/a.mp3",
+          "currentUrl": "https://cdn.test/a.mp3",
+          "warm": null,
+          "offsetSec": 300
+        }
+      ],
+      "expect": { "return": "same-episode" }
+    },
+    {
+      "id": "deck/prefetch-no-url",
+      "covers": [],
+      "call": "prefetchDecision",
+      "args": [
+        {
+          "available": true,
+          "url": null,
+          "currentUrl": "https://cdn.test/a.mp3",
+          "warm": null,
+          "offsetSec": 0
+        }
+      ],
+      "expect": { "return": "no-url" }
+    },
+    {
+      "id": "deck/prefetch-already-warm",
+      "covers": [],
+      "note": "Already warm for exactly this source and in-point: nothing new is fetched.",
+      "call": "prefetchDecision",
+      "args": [
+        {
+          "available": true,
+          "url": "https://cdn.test/b.mp3",
+          "currentUrl": "https://cdn.test/a.mp3",
+          "warm": {
+            "url": "https://cdn.test/b.mp3",
+            "offset": 12,
+            "ready": true,
+            "failed": false
+          },
+          "offsetSec": 12
+        }
+      ],
+      "expect": { "return": "already" }
+    },
+    {
+      "id": "deck/prefetch-after-a-failed-warm-starts-again",
+      "covers": [
+        "html-audio-backend::a warm load that errors is not fatal and does not stand warming down"
+      ],
+      "note": "A warm load that failed is not a broken mechanism: warming stays available, and the next ask starts again.",
+      "call": "prefetchDecision",
+      "args": [
+        {
+          "available": true,
+          "url": "https://cdn.test/b.mp3",
+          "currentUrl": "https://cdn.test/a.mp3",
+          "warm": {
+            "url": "https://cdn.test/b.mp3",
+            "offset": 12,
+            "ready": false,
+            "failed": true
+          },
+          "offsetSec": 12
+        }
+      ],
+      "expect": { "return": "start" }
+    },
+    {
+      "id": "deck/warm-not-ready-on-canplay-for-the-head",
+      "covers": [
+        "html-audio-backend::a warm element is ready only at the in-point, never on canplay for the file's head"
+      ],
+      "note": "Able to play, but at 0:00 of the file: NOT ready — handing that over would start the next segment in somebody else's episode.",
+      "call": "warmSettled",
+      "args": [{ "offsetSec": 900, "atSec": 0, "canPlay": true }],
+      "expect": { "return": false }
+    },
+    {
+      "id": "deck/warm-ready-at-the-in-point",
+      "covers": [],
+      "call": "warmSettled",
+      "args": [{ "offsetSec": 900, "atSec": 900.2, "canPlay": true }],
+      "expect": { "return": true }
+    },
+    {
+      "id": "deck/warm-not-ready-without-audio",
+      "covers": [],
+      "call": "warmSettled",
+      "args": [{ "offsetSec": 900, "atSec": 900, "canPlay": false }],
+      "expect": { "return": false }
+    },
+    {
+      "id": "deck/warm-at-zero-needs-no-seek",
+      "covers": [],
+      "call": "warmSettled",
+      "args": [{ "offsetSec": 0, "atSec": 0, "canPlay": true }],
+      "expect": { "return": true }
+    },
+    {
+      "id": "deck/promote-the-warm-deck",
+      "covers": [
+        "html-audio-backend::a boundary hands over to the warm element instead of loading anything"
+      ],
+      "note": "The boundary's load finds exactly this warmed: the standby deck becomes the player, and nothing loads.",
+      "call": "warmPromotion",
+      "args": [
+        {
+          "warm": {
+            "url": "https://cdn.test/b.mp3",
+            "offset": 12,
+            "ready": true,
+            "failed": false
+          },
+          "url": "https://cdn.test/b.mp3",
+          "offsetSec": 12,
+          "canPlay": true,
+          "atSec": 12
+        }
+      ],
+      "expect": { "return": "promote" }
+    },
+    {
+      "id": "deck/promote-refused-not-ready",
+      "covers": [
+        "html-audio-backend::a warm load that has not finished by the boundary falls back to the ordinary load"
+      ],
+      "note": "Lost the race: the ordinary load runs, on the player.",
+      "call": "warmPromotion",
+      "args": [
+        {
+          "warm": {
+            "url": "https://cdn.test/b.mp3",
+            "offset": 12,
+            "ready": false,
+            "failed": false
+          },
+          "url": "https://cdn.test/b.mp3",
+          "offsetSec": 12,
+          "canPlay": false,
+          "atSec": 0
+        }
+      ],
+      "expect": { "return": "not-ready" }
+    },
+    {
+      "id": "deck/promote-refused-different-item",
+      "covers": [
+        "html-audio-backend::a warm element ready for a DIFFERENT item is discarded, never promoted"
+      ],
+      "note": "A skip past the warmed segment never inherits its buffer.",
+      "call": "warmPromotion",
+      "args": [
+        {
+          "warm": {
+            "url": "https://cdn.test/b.mp3",
+            "offset": 12,
+            "ready": true,
+            "failed": false
+          },
+          "url": "https://cdn.test/c.mp3",
+          "offsetSec": 40,
+          "canPlay": true,
+          "atSec": 12
+        }
+      ],
+      "expect": { "return": "different-item" }
+    },
+    {
+      "id": "deck/promote-refused-wrong-offset",
+      "covers": [
+        "html-audio-backend::a warm element at the wrong OFFSET of the right episode is not promoted"
+      ],
+      "call": "warmPromotion",
+      "args": [
+        {
+          "warm": {
+            "url": "https://cdn.test/b.mp3",
+            "offset": 12,
+            "ready": true,
+            "failed": false
+          },
+          "url": "https://cdn.test/b.mp3",
+          "offsetSec": 600,
+          "canPlay": true,
+          "atSec": 12
+        }
+      ],
+      "expect": { "return": "wrong-offset" }
+    },
+    {
+      "id": "deck/promote-refused-buffer-gone",
+      "covers": [
+        "html-audio-backend::a warm element whose buffer went away is not promoted on a stale ready flag"
+      ],
+      "note": "Readiness is re-asserted at the boundary: a buffer that went away without an error is not promoted on a stale flag.",
+      "call": "warmPromotion",
+      "args": [
+        {
+          "warm": {
+            "url": "https://cdn.test/b.mp3",
+            "offset": 12,
+            "ready": true,
+            "failed": false
+          },
+          "url": "https://cdn.test/b.mp3",
+          "offsetSec": 12,
+          "canPlay": false,
+          "atSec": 12
+        }
+      ],
+      "expect": { "return": "buffer-gone" }
+    },
+    {
+      "id": "deck/promote-refused-drifted",
+      "covers": [],
+      "note": "Ready enough, but no longer parked at the in-point.",
+      "call": "warmPromotion",
+      "args": [
+        {
+          "warm": {
+            "url": "https://cdn.test/b.mp3",
+            "offset": 12,
+            "ready": true,
+            "failed": false
+          },
+          "url": "https://cdn.test/b.mp3",
+          "offsetSec": 12,
+          "canPlay": true,
+          "atSec": 0
+        }
+      ],
+      "expect": { "return": "drifted" }
+    },
+    {
+      "id": "deck/promote-refused-failed",
+      "covers": [
+        "html-audio-backend::a warm element that errored AFTER becoming ready is not promoted"
+      ],
+      "call": "warmPromotion",
+      "args": [
+        {
+          "warm": {
+            "url": "https://cdn.test/b.mp3",
+            "offset": 12,
+            "ready": true,
+            "failed": true
+          },
+          "url": "https://cdn.test/b.mp3",
+          "offsetSec": 12,
+          "canPlay": true,
+          "atSec": 12
+        }
+      ],
+      "expect": { "return": "failed" }
+    },
+    {
+      "id": "deck/promote-refused-nothing-warm",
+      "covers": [],
+      "call": "warmPromotion",
+      "args": [
+        {
+          "warm": null,
+          "url": "https://cdn.test/b.mp3",
+          "offsetSec": 12,
+          "canPlay": true,
+          "atSec": 12
+        }
+      ],
+      "expect": { "return": "none" }
+    },
+    {
+      "id": "deck/handover-order",
+      "covers": [
+        "html-audio-backend::the outgoing element is paused BEFORE the incoming one plays, never both at once",
+        "html-audio-backend::a handover PAUSES the demoted element but does not drop its buffer at the boundary",
+        "html-audio-backend::a handover carries the rate and the duck onto the element that inherits the role",
+        "html-audio-backend::the warm element is NEVER played — one element owns the audio session"
+      ],
+      "note": "The handover's order: the outgoing deck stops reporting and is paused before the roles swap (never two audible), its buffer is kept (no drop step), identity is adopted before any write, the rate and the duck are carried over — and no step plays: the manager's own play follows.",
+      "call": "handoverSteps",
+      "args": [],
+      "expect": {
+        "return": [
+          "detach-outgoing",
+          "pause-outgoing",
+          "swap-roles",
+          "attach-incoming",
+          "adopt-identity",
+          "carry-volume",
+          "carry-rate"
+        ]
+      }
+    },
+    {
+      "id": "deck/discard-at-a-boundary-keeps-the-buffer",
+      "covers": [
+        "html-audio-backend::a boundary that discards a warm load does NO media work on that element"
+      ],
+      "note": "Forgetting a warm load at a boundary is bookkeeping only: dropping the buffer would queue media work in front of the load the listener waits for.",
+      "call": "discardFreesBuffer",
+      "args": ["boundary"],
+      "expect": { "return": false }
+    },
+    {
+      "id": "deck/discard-on-release-frees-the-buffer",
+      "covers": [
+        "html-audio-backend::release DOES free the warm element's buffer — that is not a boundary",
+        "html-audio-backend::release lets go of the warm element's buffer too"
+      ],
+      "call": "discardFreesBuffer",
+      "args": ["release"],
+      "expect": { "return": true }
+    },
+    {
+      "id": "deck/discard-on-replacement-keeps-the-buffer",
+      "covers": [],
+      "call": "discardFreesBuffer",
+      "args": ["replaced"],
+      "expect": { "return": false }
+    },
+    {
+      "id": "deck/refusal-autoplay-recovers",
+      "covers": [
+        "html-audio-backend::a promoted element that refuses to play falls back to the one holding the gesture"
+      ],
+      "note": "The promoted deck refused to play (autoplay is per element): fall back onto the one holding the gesture, boundary kept.",
+      "call": "playRefusalAction",
+      "args": [
+        {
+          "errorName": "NotAllowedError",
+          "handoverUnproven": true,
+          "isPlayer": true,
+          "released": false
+        }
+      ],
+      "expect": { "return": "recover" }
+    },
+    {
+      "id": "deck/refusal-abort-reports",
+      "covers": [
+        "html-audio-backend::only an autoplay refusal is recovered — a pause mid-handover must not restart audio"
+      ],
+      "note": "An interrupted play (a pause or a skip) is not an autoplay refusal: report, never restart audio.",
+      "call": "playRefusalAction",
+      "args": [
+        {
+          "errorName": "AbortError",
+          "handoverUnproven": true,
+          "isPlayer": true,
+          "released": false
+        }
+      ],
+      "expect": { "return": "report" }
+    },
+    {
+      "id": "deck/refusal-after-a-pause-reports",
+      "covers": [
+        "html-audio-backend::an autoplay refusal that lands after the listener paused must not restart audio"
+      ],
+      "note": "The listener's pause closed the window: nothing restarts.",
+      "call": "playRefusalAction",
+      "args": [
+        {
+          "errorName": "NotAllowedError",
+          "handoverUnproven": false,
+          "isPlayer": true,
+          "released": false
+        }
+      ],
+      "expect": { "return": "report" }
+    },
+    {
+      "id": "deck/refusal-on-the-fallback-reports",
+      "covers": [
+        "html-audio-backend::a refusal on the fallback element is a real error and is reported"
+      ],
+      "note": "Recovery happens once; a second refusal is the ordinary error.",
+      "call": "playRefusalAction",
+      "args": [
+        {
+          "errorName": "NotAllowedError",
+          "handoverUnproven": false,
+          "isPlayer": true,
+          "released": false
+        }
+      ],
+      "expect": { "return": "report" }
+    },
+    {
+      "id": "deck/refusal-released-reports",
+      "covers": [],
+      "call": "playRefusalAction",
+      "args": [
+        {
+          "errorName": "NotAllowedError",
+          "handoverUnproven": true,
+          "isPlayer": true,
+          "released": true
+        }
+      ],
+      "expect": { "return": "report" }
+    },
+    {
+      "id": "deck/refusal-not-the-player-reports",
+      "covers": [],
+      "call": "playRefusalAction",
+      "args": [
+        {
+          "errorName": "NotAllowedError",
+          "handoverUnproven": true,
+          "isPlayer": false,
+          "released": false
+        }
+      ],
+      "expect": { "return": "report" }
+    },
+    {
+      "id": "deck/pause-during-a-warm-load-stands-down",
+      "covers": [
+        "html-audio-backend::playback stopping while a prefetch is in flight stands warming down for good"
+      ],
+      "note": "An unexplained pause while a warm load is IN FLIGHT: reported, and warming stands down for good.",
+      "call": "unexplainedPauseAction",
+      "args": [{ "expected": false, "ended": false, "warmInFlight": true }],
+      "expect": { "return": "stand-down" }
+    },
+    {
+      "id": "deck/pause-after-the-warm-load-reports",
+      "covers": [
+        "html-audio-backend::a warm buffer that is already ready is not evidence of a stolen session"
+      ],
+      "note": "Once the load is done, a pause is an ordinary interruption: reported, warming kept.",
+      "call": "unexplainedPauseAction",
+      "args": [{ "expected": false, "ended": false, "warmInFlight": false }],
+      "expect": { "return": "report" }
+    },
+    {
+      "id": "deck/pause-at-the-end-of-the-file",
+      "covers": ["html-audio-backend::a file that simply ran out does not stand warming down"],
+      "note": "The file ran out (pause fires before ended): not a stolen session.",
+      "call": "unexplainedPauseAction",
+      "args": [{ "expected": false, "ended": true, "warmInFlight": true }],
+      "expect": { "return": "ran-out" }
+    },
+    {
+      "id": "deck/pause-our-own-boundary",
+      "covers": [
+        "html-audio-backend::the player's OWN pause at the boundary does not stand warming down"
+      ],
+      "note": "The boundary's own pause is ours.",
+      "call": "unexplainedPauseAction",
+      "args": [{ "expected": true, "ended": false, "warmInFlight": true }],
+      "expect": { "return": "own" }
+    },
+    {
+      "id": "deck/window-shut-outside-the-lead",
+      "covers": [
+        "html-audio-backend::the window opens inside the lead, stays shut outside it, and fires once per boundary"
+      ],
+      "note": "13 s of wall clock out, with a 12 s lead: shut.",
+      "call": "prefetchWindowOpens",
+      "args": [
+        {
+          "available": true,
+          "outPointSec": 1000,
+          "armed": true,
+          "paused": false,
+          "rate": 1,
+          "leadSec": 12,
+          "alreadyOpened": false,
+          "atSec": 987
+        }
+      ],
+      "expect": { "return": false }
+    },
+    {
+      "id": "deck/window-open-inside-the-lead",
+      "covers": [],
+      "call": "prefetchWindowOpens",
+      "args": [
+        {
+          "available": true,
+          "outPointSec": 1000,
+          "armed": true,
+          "paused": false,
+          "rate": 1,
+          "leadSec": 12,
+          "alreadyOpened": false,
+          "atSec": 989
+        }
+      ],
+      "expect": { "return": true }
+    },
+    {
+      "id": "deck/window-once-per-boundary",
+      "covers": [],
+      "call": "prefetchWindowOpens",
+      "args": [
+        {
+          "available": true,
+          "outPointSec": 1000,
+          "armed": true,
+          "paused": false,
+          "rate": 1,
+          "leadSec": 12,
+          "alreadyOpened": true,
+          "atSec": 990
+        }
+      ],
+      "expect": { "return": false }
+    },
+    {
+      "id": "deck/window-is-wall-clock-at-2x",
+      "covers": [
+        "html-audio-backend::the lead is WALL clock, so a faster rate opens the window earlier in the episode"
+      ],
+      "note": "14 s of content at 2x is 7 s of wall clock: open, earlier in the episode.",
+      "call": "prefetchWindowOpens",
+      "args": [
+        {
+          "available": true,
+          "outPointSec": 1000,
+          "armed": true,
+          "paused": false,
+          "rate": 2,
+          "leadSec": 12,
+          "alreadyOpened": false,
+          "atSec": 986
+        }
+      ],
+      "expect": { "return": true }
+    },
+    {
+      "id": "deck/window-shut-while-paused",
+      "covers": [
+        "html-audio-backend::a paused element opens no window — nothing is approaching a boundary"
+      ],
+      "call": "prefetchWindowOpens",
+      "args": [
+        {
+          "available": true,
+          "outPointSec": 1000,
+          "armed": true,
+          "paused": true,
+          "rate": 1,
+          "leadSec": 12,
+          "alreadyOpened": false,
+          "atSec": 999
+        }
+      ],
+      "expect": { "return": false }
+    },
+    {
+      "id": "deck/window-shut-with-no-boundary",
+      "covers": [],
+      "call": "prefetchWindowOpens",
+      "args": [
+        {
+          "available": true,
+          "outPointSec": null,
+          "armed": true,
+          "paused": false,
+          "rate": 1,
+          "leadSec": 12,
+          "alreadyOpened": false,
+          "atSec": 999
+        }
+      ],
+      "expect": { "return": false }
+    },
+    {
+      "id": "deck/window-shut-when-unavailable",
+      "covers": [],
+      "call": "prefetchWindowOpens",
+      "args": [
+        {
+          "available": false,
+          "outPointSec": 1000,
+          "armed": true,
+          "paused": false,
+          "rate": 1,
+          "leadSec": 12,
+          "alreadyOpened": false,
+          "atSec": 999
+        }
+      ],
+      "expect": { "return": false }
+    }
+  ]
+}

@@ -4,7 +4,10 @@
   "cases": [
     {
       "id": "manager-episode/play-loads-then-starts",
-      "covers": ["queue-manager::play loads then starts, in that order"],
+      "covers": [
+        "queue-manager::play loads then starts, in that order",
+        "html-audio-backend::integration: tapping an item loads it and starts audio"
+      ],
       "note": "The load carries the offset, the listener's rate is applied, then play: nothing audible before the asset is positioned.",
       "setup": { "target": "manager" },
       "steps": [
@@ -41,7 +44,8 @@
     {
       "id": "manager-episode/an-ended-last-item-ends-the-session",
       "covers": [
-        "queue-manager::SINGLE_ITEM ends the session instead of chaining into another episode"
+        "queue-manager::SINGLE_ITEM ends the session instead of chaining into another episode",
+        "html-audio-backend::integration: end of a single-item queue stops cleanly, no autoplay chain"
       ],
       "note": "Nothing follows: the session ends, and nothing more is loaded (product principle 1).",
       "setup": { "target": "manager" },
@@ -215,7 +219,8 @@
       "id": "manager-episode/concurrent-double-skip-starts-one-item",
       "covers": [
         "queue-manager::a fast double-skip loads only the final target",
-        "queue-manager::a concurrent double-skip lands on the final target and starts it once"
+        "queue-manager::a concurrent double-skip lands on the final target and starts it once",
+        "html-audio-backend::integration: a fast double-skip leaves exactly one source loaded"
       ],
       "note": "Corner case #19: two skips in flight at once load the final target (c) and start exactly one item. NE-14j recorded the JS landing on b (each effect was awaited, so the second skip's load(c) went out while the first skip was parked after its save, and the first skip's load(b) then superseded it). NE-14s fixed it JS first: the manager awaits only effects that are really asynchronous, so the first skip's save, pause and load(b) are one step, the second skip replaces the in-flight load, and c plays. That is also the native engine's order: one handle() turn per skip.",
       "setup": { "target": "manager" },
@@ -1253,7 +1258,8 @@
       "id": "manager-episode/a-part-heard-episode-resumes-a-fresh-one-starts-at-zero",
       "covers": [
         "queue-manager::a resumed episode reloads at its saved position; a fresh one starts at zero",
-        "transport-reconcile::A COLD resume still reads the stored row — the fix above is not a mute"
+        "transport-reconcile::A COLD resume still reads the stored row — the fix above is not a mute",
+        "html-audio-backend::integration: a resumed episode starts at its saved position, not 0:00"
       ],
       "setup": { "target": "manager", "positions": { "b": 900 } },
       "steps": [

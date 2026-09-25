@@ -252,6 +252,45 @@ test("NE-29j: foray-progress and media-session owe nothing, the Foray families a
   }
 });
 
+test("NE-30j: html-audio-backend and foray-playback owe nothing, the tape/deck/prepare families are owed to NE-30s and the pair's decisions to NE-32, and prepare is authored with its n.* tokens", () => {
+  /* NE-30j's acceptance: "the families pass in JS (prepare against
+     reference-engine). The guard shows zero unported entries for
+     html-audio-backend and foray-playback, apart from those tagged NE-31j and
+     NE-39j." MUTATION: put a foray-playback test back in unported.json -> red;
+     re-tag a manager-foray id to NE-30j in swift-pending.json -> red; un-author a
+     prepare case, or strip its n.* tokens from the expect -> red; mark foray-data
+     not jsOnly -> red (the page's build is never owed to Swift). */
+  for (const stem of ["html-audio-backend", "foray-playback"]) {
+    const owed = Object.entries(DATA.unported[stem] ?? {}).filter(([, v]) => !["NE-31j", "NE-39j"].includes(v.card));
+    assert.deepStrictEqual(owed, [], `${stem} owes unported.json nothing outside NE-31j / NE-39j`);
+  }
+  for (const [stem, names] of Object.entries(DATA.unported)) {
+    if (stem.startsWith("//")) continue;
+    for (const [name, v] of Object.entries(names)) assert.notEqual(v.card, "NE-30j", `${stem} :: ${name} is still owed to NE-30j, the card that records it`);
+  }
+  const pairFile = "player/parity/fixtures/deck/deck-pair.json";
+  const owedTo = (c, fam, file) => (fam === "deck" && file === pairFile ? "NE-32" : "NE-30s");
+  for (const fam of ["manager-foray", "deck", "prepare"]) {
+    const files = FIXTURES.filter((f) => f.family === fam);
+    assert.ok(files.length > 0, `${fam} is recorded`);
+    assert.ok(DATA.capabilities.foray.includes(fam), `${fam} is charged to the foray capability`);
+    for (const f of files) for (const c of f.doc.cases) {
+      assert.equal(DATA.pending[c.id], owedTo(c, fam, f.file), `${c.id} must be owed to ${owedTo(c, fam, f.file)} until the Swift port burns it down`);
+    }
+  }
+  const prepare = FIXTURES.filter((f) => f.family === "prepare").flatMap((f) => f.doc.cases);
+  for (const c of prepare) {
+    assert.equal(c.authored, true, `${c.id} must be authored (plan §6: the prepare timing)`);
+    assert.equal(c.setup?.target, "engine", `${c.id} runs against reference-engine`);
+    assert.ok(c.expect.checkpoints.every((k) => typeof k.nowMs === "number"), `${c.id}: every checkpoint carries T`);
+  }
+  assert.ok(prepare.some((c) => c.expect.ops.some((o) => o.startsWith("n.handover:"))), "the prepare family asserts the native handover tokens");
+  const data = FIXTURES.filter((f) => f.family === "foray-data");
+  assert.ok(data.length > 0 && data.every((f) => f.doc.jsOnly === true), "foray-data is JS only");
+  assert.ok(DATA.capabilities.foray.includes("foray-data"));
+  for (const f of data) for (const c of f.doc.cases) assert.equal(c.authored, true, `${c.id} must be authored at the rule`);
+});
+
 /* transport-reconcile is NE-21's (plan §6.5): each of its tests is a rule the
    page keeps in native mode (a JS-only facade test in native-facades.test.js,
    facades.json), a rule with no Swift meaning (an exclusion), or a rule the
@@ -280,10 +319,12 @@ test("transport-reconcile is wholly classified: a facade test, an exclusion, or 
   for (const [name, st] of names) {
     const label = `transport-reconcile :: ${JSON.stringify(name)}`;
     if (st.covered.length) {
-      /* Only the episode capability's families: the Foray reconcile rules are
-         NE-30j's to record, into its own families, when that card lands. */
+      /* The episode capability's families, or — for a Foray reconcile rule the
+         manager itself carries — NE-30j's manager-foray. The page-side Foray
+         reconcile rules are owed to NE-35 (native Forays on the page). */
       for (const id of st.covered) {
-        assert.ok(DATA.capabilities.episode.includes(id.split("/")[0]), `${label} is covered by ${id}, outside the episode capability`);
+        const fam = id.split("/")[0];
+        assert.ok(DATA.capabilities.episode.includes(fam) || fam === "manager-foray", `${label} is covered by ${id}, outside the episode capability and manager-foray`);
       }
       tally.fixtured++;
     } else if (st.xctest) tally.xctest++;
@@ -431,13 +472,20 @@ test("every swift-pending id names a recorded case and is tagged with a card", (
    capability's families (M2), NE-39j into manager-remainder (M3). So neither
    suite is a RECORDED_SUITE — they still owe — but what they owe is fixed, and
    none of it is charged to the episode capability, which ships in M1. */
+/* NE-30j recorded the Foray half: queue-manager's tape scenarios into
+   manager-foray, and html-audio-backend's remainder into deck (the pair's
+   decisions and the single deck's slices), prepare (the handover's audible
+   seam) and the manager families (its integration tests). What queue-manager
+   still owes is NE-31j's narration and NE-39j's M3 remainder; html-audio-backend
+   owes nothing. */
 const MANAGER_DECK_OWED = Object.freeze({
-  "queue-manager": { fixtured: "manager-episode", owed: [
-    { card: "NE-30j", family: "manager-foray" },
+  "queue-manager": { fixtured: ["manager-episode", "manager-foray"], mustOwe: true, owed: [
     { card: "NE-31j", family: "manager-foray" },
     { card: "NE-39j", family: "manager-remainder" },
   ] },
-  "html-audio-backend": { fixtured: "deck-episode", owed: [{ card: "NE-30j", family: "deck" }] },
+  "html-audio-backend": {
+    fixtured: ["deck-episode", "deck", "prepare", "manager-episode", "manager-foray"], mustOwe: false, owed: [],
+  },
 });
 
 test("queue-manager and html-audio-backend are wholly classified, and owe the episode capability nothing", () => {
@@ -445,7 +493,7 @@ test("queue-manager and html-audio-backend are wholly classified, and owe the ep
   // NE-14j / manager-episode (what `record.mjs --classify` gives a new test) ->
   // red; add a queue-manager covers[] entry to a deck-episode case -> red.
   const { status } = classify(REPO_ROOT, DATA, FIXTURES);
-  for (const [stem, { fixtured, owed }] of Object.entries(MANAGER_DECK_OWED)) {
+  for (const [stem, { fixtured, owed, mustOwe }] of Object.entries(MANAGER_DECK_OWED)) {
     const names = Object.entries(status[stem]);
     assert.ok(names.length > 0, `${stem} has no tests on disk`);
     const tally = { fixtured: 0, excluded: 0, xctest: 0, owed: 0 };
@@ -453,7 +501,7 @@ test("queue-manager and html-audio-backend are wholly classified, and owe the ep
       const label = `${stem} :: ${JSON.stringify(name)}`;
       if (st.covered.length) {
         tally.fixtured++;
-        for (const id of st.covered) assert.ok(id.startsWith(`${fixtured}/`), `${label} is covered by ${id}, outside ${fixtured}`);
+        for (const id of st.covered) assert.ok(fixtured.includes(id.split("/")[0]), `${label} is covered by ${id}, outside ${fixtured.join(", ")}`);
       } else if (st.excluded) tally.excluded++;
       else if (st.xctest) tally.xctest++;
       else {
@@ -463,7 +511,7 @@ test("queue-manager and html-audio-backend are wholly classified, and owe the ep
         tally.owed++;
       }
     }
-    assert.ok(tally.fixtured > 0 && tally.excluded > 0 && tally.owed > 0, `${stem}: ${JSON.stringify(tally)}`);
+    assert.ok(tally.fixtured > 0 && tally.excluded > 0 && (mustOwe ? tally.owed > 0 : tally.owed === 0), `${stem}: ${JSON.stringify(tally)}`);
   }
   assert.ok(DATA.capabilities.episode.includes("manager-episode") && DATA.capabilities.episode.includes("deck-episode"));
 });

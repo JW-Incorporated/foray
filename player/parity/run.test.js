@@ -359,7 +359,9 @@ test("scenario: positionEvents puts the real PositionStore behind the manager, o
 test("scenario: only the manager's public surface is callable", async () => {
   assert.ok(!MANAGER_CALLS.some((m) => m.startsWith("_")));
   await assert.rejects(scenario([{ call: "_handle", args: [] }]), /E_UNKNOWN_EXPORT/);
-  await assert.rejects(runCase({ id: "f/s", covers: [], setup: { target: "engine" }, steps: [] }, { family: "f", doc: {} }), /E_SCENARIO_TARGET/);
+  // NE-30j gave "engine" its driver (the prepare family); a target outside the
+  // schema's set still has none.
+  await assert.rejects(runCase({ id: "f/s", covers: [], setup: { target: "nowhere" }, steps: [] }, { family: "f", doc: {} }), /E_SCENARIO_TARGET/);
 });
 
 const deckScenario = (steps, setup = {}) => runCase({ id: "f/d", covers: [], setup: { target: "deck", ...setup }, steps }, { family: "f", doc: {} });
@@ -379,6 +381,40 @@ test("scenario (deck, NE-28j): the driven clock moves the playhead by elapsed x 
   await assert.rejects(deckScenario([{ deck: "boundary" }]), /E_BAD_CASE.*nothing loaded/);
   await assert.rejects(deckScenario([{ call: "play", args: [] }]), /E_BAD_CASE/);
   await assert.rejects(deckScenario([{ clock: 1.5 }]), /E_BAD_CASE/);
+});
+
+test("scenario (NE-30j): the engine target stamps T on every checkpoint, the manager's opt-in views and report projection, a real Foray build, and the deck's natural end", async () => {
+  // The engine target: a Foray over reference-engine, its beat on the manual
+  // clock, and a refused command a harness error unless the step expects it.
+  const seg = (id, url, start, end) => ({ type: "segment", id, audio_url: url, start_sec: start, end_sec: end, duration_sec: 3600 });
+  const pf = { call: "playForay", args: { forayId: "f1", title: "F", items: [seg("s0", "https://cdn.test/a.mp3", 100, 200), seg("s1", "https://cdn.test/b.mp3", 300, 400)], buildReport: {}, isLocalFile: false, allowAdPad: false, voiceId: null } };
+  const engine = (steps) => runCase({ id: "f/e", covers: [], setup: { target: "engine" }, steps }, { family: "f", doc: {} });
+  const got = await engine([pf, { deck: "window" }, { deck: "ended", reason: "outPoint" }, { clock: 500 }, { checkpoint: "audible" }]);
+  assert.equal(got.checkpoints[0].nowMs, 500);
+  assert.deepEqual(got.checkpoints[0].ops, [
+    "load:f1#0@100", "rate:1", "outPoint:200", "play", "n.prepare:f1#1@300",
+    "n.handover:f1#1@300", "load:f1#1@300", "rate:1", "outPoint:400", "play",
+  ], "prepared in the window, handed over at the seam, audible at the beat");
+  await assert.rejects(engine([{ call: "play" }]), /E_BAD_CASE.*not-loaded/);
+  await assert.rejects(engine([{ deck: "explode" }]), /E_BAD_CASE/);
+  // The manager's views are opt-in (no earlier family changes shape), closed,
+  // and timersLive needs the manual clock; a report is a closed projection.
+  const mgr = (steps, setup = {}) => runCase({ id: "f/m", covers: [], setup: { target: "manager", ...setup }, steps }, { family: "f", doc: {} });
+  const plain = await mgr([{ call: "loadQueue", args: [[{ $ep: ["a"] }]] }, { checkpoint: "c" }]);
+  assert.equal("outPoint" in plain.checkpoints[0], false);
+  await assert.rejects(mgr([{ checkpoint: "c" }], { view: ["everything"] }), /E_BAD_CASE/);
+  await assert.rejects(mgr([{ checkpoint: "c" }], { view: ["timersLive"] }), /E_BAD_CASE.*manual/);
+  await assert.rejects(mgr([{ call: "loadQueue", args: [[]], returns: "everything" }]), /E_BAD_CASE/);
+  // A real Foray, built as the page builds it, played with no arguments.
+  const real = await mgr([{ call: "playForay", returns: "forayReport" }, { checkpoint: "c" }], { forayBuild: { id: "grilling-history-2", data: "frozen" } });
+  assert.equal(real.checkpoints[0].returned[0].items.length, 10);
+  assert.equal(real.checkpoints[0].ops[0], "load:grilling-history-2#0@147");
+  await assert.rejects(mgr([], { forayBuild: { id: "no-such-foray", data: "frozen" } }), /E_BAD_CASE/);
+  // The deck's natural end spends the watch: a later boundary report is stale.
+  const deck = await runCase({ id: "f/d", covers: [], setup: { target: "deck" }, steps: [
+    { deck: "load", sec: 100, outPointSec: 400 }, { deck: "play" }, { deck: "ended" }, { deck: "boundary", sec: 400 }, { checkpoint: "c" },
+  ] }, { family: "f", doc: {} });
+  assert.deepEqual(deck.checkpoints[0].ops.slice(-3), ["watchdog.cancel", "ended:natural", "outPoint.stale:boundary"]);
 });
 
 /* ---------- the fakes ---------- */
