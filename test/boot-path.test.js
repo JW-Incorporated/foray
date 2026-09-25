@@ -359,7 +359,11 @@ test("ROUND 2 review (races-4): a hydration that NEVER finishes is bounded, and 
      armStorageSettleCeiling from settleOnHydrate -> the gate never opens; red.
      Push `saveInterests` per call again -> the waiter count grows; red. */
   const { store } = await storeOver({ idb: { cp_seen: JSON.stringify(["x"]) } });   // never released
-  const m = mount({ store, storageWaitMs: 20, ceilingMs: 4000 });
+  /* The ceiling is short (audit round 3, tests-11): the claim is that A ceiling
+     opens the gate, not that 4000 ms of wall clock does. It is long enough that
+     the premise asserts below run before it on a slow runner (booted() is at
+     most 600 settle ticks), and the loop polls against a deadline. */
+  const m = mount({ store, storageWaitMs: 20, ceilingMs: 600 });
   await m.booted();
   const tax = JSON.parse(read("data/taxonomy.json"));
   const root = tax.nodes.find((n) => n.parent === null);
@@ -368,7 +372,8 @@ test("ROUND 2 review (races-4): a hydration that NEVER finishes is bounded, and 
   const after = vm.runInContext("storageSettleWaiters.length", m.ctx);
   assert.ok(after - before <= 1, `five nudges queued ${after - before} waiters`);
   assert.strictEqual(m.ctx.storageWaiting(), true, "premise: still hydrating");
-  for (let i = 0; i < 80 && m.ctx.storageWaiting(); i++) await sleep(100);
+  const deadline = Date.now() + 5000;
+  while (m.ctx.storageWaiting() && Date.now() < deadline) await sleep(20);
   assert.strictEqual(m.ctx.storageWaiting(), false, "the ceiling opened the gate");
   const saved = JSON.parse(store.getItem("cp_interests") || "null");
   assert.ok(saved && typeof saved[root.id] === "number", "the interests reached the store's sync tier");
