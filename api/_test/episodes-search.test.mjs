@@ -36,6 +36,9 @@ function resetSharedState() {
      test's setup. Cleared here rather than per-test for the same reason the
      id-map cache is. */
   episodeFeedFailureCache.clear();
+  /* round-3 audit, search-api-css-4: the per-show feed-fetch limiter is module
+     scope too, and this file fetches the same show more than its budget. */
+  searchModule.feedFetchBuckets.clear();
 }
 
 const FEED_TWO_EPS = `<?xml version="1.0"?>

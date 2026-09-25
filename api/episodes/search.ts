@@ -6,6 +6,7 @@ import { parseFeed, type ParsedEpisode } from "../../backend/src/feeds/parser";
 import { appleSearchBucket } from "../_lib/appleBucket";
 import { loadShowIdMap } from "../_lib/showIdMap";
 import { episodeSearchCache, episodeFeedFailureCache, normalizeQueryKey } from "../_lib/searchCache";
+import { KeyedBuckets } from "../_lib/keyedBuckets";
 
 /**
  * GET /api/episodes/search?q=<query>&show=<show_id> — episode search (S-07,
@@ -57,6 +58,17 @@ const APPLE_SEARCH_URL = "https://itunes.apple.com/search";
 const EPISODE_USER_AGENT = "Foray/0.1 (personal podcast client; contact wjduvall@gmail.com)";
 const APPLE_TIMEOUT_MS = 8_000; // keeps the <1.5s acceptance target reachable even with cache misses
 const MAX_RESULTS = 25;
+
+/* OUTBOUND FEED FETCHES ARE LIMITED PER SHOW (round-3 audit, search-api-css-4).
+   The show-scoped path never consulted any limiter: a script looping
+   `?show=<id>&q=<random>` made this function download a multi-MB third-party
+   feed per request, which is function time on a public endpoint and makes 4a a
+   request amplifier against podcast hosts. At most this many feed fetches per
+   show per minute, per warm instance; past it the answer is degraded, never an
+   empty success. */
+export const FEED_FETCHES_PER_SHOW_PER_MINUTE = 6;
+export const feedFetchBuckets = new KeyedBuckets(FEED_FETCHES_PER_SHOW_PER_MINUTE, 60_000);
+export const FEED_FETCH_LIMITED_ERROR = "too many feed fetches for this show — try again shortly";
 
 /* THE APPLE ASK IS NOT THE CALLER'S `limit` (defect 2, 2026-09-13).
  *
@@ -262,6 +274,9 @@ async function searchWithinShow(
   }
   if (!meta) return { results: [], error: `unknown show_id: ${showId}`, feedFailed: false };
 
+  if (!feedFetchBuckets.tryConsume(showId)) {
+    return { results: [], error: FEED_FETCH_LIMITED_ERROR, feedFailed: false };
+  }
   const fetchResult = await fetchFeedConditional(meta.feedUrl, { etag: null, lastModified: null }, {
     fetchImpl,
     userAgent: EPISODE_USER_AGENT
