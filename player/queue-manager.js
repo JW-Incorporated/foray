@@ -934,6 +934,18 @@ export class PlayerQueueManager {
     } finally {
       this._narrationStopping = false;
     }
+    /* THE POSTCONDITION OF `stop()` IS SILENCE TOO (audit round 3,
+       player-core-7), for the reason `pause()` gives: from `interrupted` or
+       `loadingItem` the reducer's stop emits no `pausePlayback`, because it
+       believes nothing is audible, and in the #689 drift the element is. Stop
+       then hid the bar and released the lock screen over sound nothing could
+       stop. Read the element. (A line whose speak() is still in flight when
+       Stop lands is silenced by `_loadItem`'s own staleness check, which sees
+       `idle` when the call returns.) Never in the other direction. */
+    if (this.elementIsAudible) {
+      this._emit("stop.forced — the element was audible while the machine said it was not");
+      await this.backend.pause();
+    }
     if (wasSynth) await this._stopNarration();
     this._stopTimer();
   }

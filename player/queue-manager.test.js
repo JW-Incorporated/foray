@@ -3313,3 +3313,45 @@ test("a skip's load that a newer skip already replaced is dropped, not run after
   assert.equal(m.state.item.id, "foray-1#2");
   m.dispose();
 });
+
+test("stop() is silence even when the machine believed it was already paused (player-core-7)", async () => {
+  /* The #689 drift: the element is audible while the state says `interrupted`,
+     and the reducer's stop from there emits no pausePlayback. MUTATION: delete
+     the `elementIsAudible` check in `stop()` and the element is never paused. */
+  const { m, backend } = make();
+  m.setQueueFromPick(ep("a"));
+  await m.play(0);
+  backend.paused = false;
+  await m.pause();
+  assert.equal(m.state.type, "interrupted", "precondition: paused");
+  backend.paused = false;            // something outside the app made it audible
+  backend.calls.length = 0;
+  backend.pause = function () { this.calls.push("pause"); this.paused = true; };
+  await m.stop();
+  assert.equal(m.state.type, "idle");
+  assert.ok(backend.calls.includes("pause"), `Stop must silence the element: ${backend.calls}`);
+  m.dispose();
+});
+
+test("stop() while a narration line's speak() is in flight leaves no voice behind (player-core-7)", async () => {
+  /* `wasSynth` is false at entry (the line has not been accepted yet), so
+     stop() itself does not reach the TTS; the load's own staleness check does,
+     when speak() returns into `idle`. MUTATION: drop that check in `_loadItem`
+     and the voice is never stopped. */
+  const tts = heldSpeakTts();
+  const { m } = make({ tts });
+  tts.holdNext = true;
+  const starting = m.playForay(foray([
+    { type: "narration", id: "nar-1", script: "the opening line" },
+    fseg(),
+  ]), { resolveItem });
+  await tick();
+  await m.stop();
+  tts.release();
+  await starting;
+  await tick();
+  assert.equal(m.state.type, "idle");
+  assert.ok(transportsOf(tts).includes("stop"), `the voice is stopped: ${transportsOf(tts)}`);
+  assert.equal(m.isNarrationPlayhead, false);
+  m.dispose();
+});
