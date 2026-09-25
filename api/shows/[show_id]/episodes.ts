@@ -230,76 +230,148 @@ export default async function handler(req: ApiRequest, res: ApiResponse): Promis
   }
 
   const showHeader = { title: meta.title, description: null as string | null, image: meta.image };
+  const cursor = decodeCursor(firstParam(req.query.cursor));
 
   const databaseUrl = process.env.DATABASE_URL;
-  if (!databaseUrl) {
-    // No-DB mode (D14): the feed is read through the per-show parsed-feed
-    // cache the show-scoped search shares (round-3 audit, search-api-css-3):
-    // each cursor page used to re-download and re-parse the whole feed. Kept
-    // per warm instance, revalidated with the etag/last-modified it holds.
-    const cursor = decodeCursor(firstParam(req.query.cursor));
-    const feed = await sharedFeedReader.read(showId, meta.feedUrl);
-
-    if (!feed.parsed) {
-      // Never a 500, never blank (repo convention — see ingestShowFeed.ts's
-      // own degrade rule): 200 with an empty list and the error surfaced.
-      // Cache-Control: no-store so a transient feed hiccup is never pinned
-      // at the edge for the next hour of visitors to that show.
-      res.setHeader("Cache-Control", "no-store");
-      res.status(200).json({
+  if (databaseUrl) {
+    /* ONE ENDPOINT, ONE SHAPE (round-3 audit, arch-drift-13). The DB branch
+       had drifted from the live one: it returned every episode unpaginated
+       with no `next_cursor` (which app.js reads as "this is the whole show"),
+       had no `degraded`, and ran `connect()` outside any try, so an
+       unreachable database was a 500. It now paginates with the same cursor
+       and emits the same fields, and a database it cannot use degrades to
+       the live branch instead of failing the request. Dormant in production
+       (no DATABASE_URL today). */
+    let session: DbSession | null = null;
+    try {
+      session = await openDbSession(databaseUrl);
+      const result = await session.refresh(showId, meta.feedUrl);
+      const episodes = await session.episodes(showId);
+      const { page, nextCursor } = paginate(episodes, cursor, PAGE_SIZE);
+      const stale = result.status === "cached_stale";
+      res.setHeader("Cache-Control", "public, max-age=300, stale-while-revalidate=3600");
+      res.status(200).json(listBody({
         show_id: showId,
+        // DB mode has no per-show description without editing the store;
+        // left null rather than guessed.
         show: showHeader,
-        episodes: [],
-        next_cursor: null,
-        source: "live",
-        degraded: true,
-        error: feed.error ?? "feed unavailable"
-      });
+        episodes: page.map(toListRow),
+        next_cursor: nextCursor,
+        source: "db",
+        degraded: false,
+        stale,
+        error: stale || result.status === "no_cache_error" ? result.error ?? null : null,
+      }));
       return;
+    } catch {
+      /* Fall through to the live branch below: the listener still gets the
+         show, the same shape, from the feed. */
+    } finally {
+      if (session) await session.end().catch(() => {});
     }
+  }
 
-    const parsed = feed.parsed;
-    const episodes = parsed.episodes
-      .map((ep, idx) => toLiveEpisode(showId, ep, idx))
-      .filter((ep): ep is CatalogShowEpisode => ep !== null);
+  await serveLive(res, showId, meta, showHeader, cursor);
+}
 
-    const { page, nextCursor } = paginate(episodes, cursor, PAGE_SIZE);
+/** Every list response, both branches, has exactly these keys (the contract
+    test in api/_test/episodes-shape.test.mjs runs both through one assertion). */
+export const LIST_RESPONSE_KEYS = ["show_id", "show", "episodes", "next_cursor", "source", "degraded", "stale", "error"] as const;
 
-    res.setHeader("Cache-Control", "s-maxage=3600, stale-while-revalidate=86400");
-    res.status(200).json({
+function listBody(body: {
+  show_id: string;
+  show: { title: string | null; description: string | null; image: string | null };
+  episodes: unknown[];
+  next_cursor: string | null;
+  source: "live" | "db";
+  degraded: boolean;
+  stale: boolean;
+  error: string | null;
+}) {
+  return body;
+}
+
+/** No-DB mode (D14): the feed, read through the per-show parsed-feed cache. */
+async function serveLive(
+  res: ApiResponse,
+  showId: string,
+  meta: CatalogShowMeta,
+  showHeader: { title: string | null; description: string | null; image: string | null },
+  cursor: ReturnType<typeof decodeCursor>
+): Promise<void> {
+  // No-DB mode (D14): the feed is read through the per-show parsed-feed
+  // cache the show-scoped search shares (round-3 audit, search-api-css-3):
+  // each cursor page used to re-download and re-parse the whole feed. Kept
+  // per warm instance, revalidated with the etag/last-modified it holds.
+  const feed = await sharedFeedReader.read(showId, meta.feedUrl);
+
+  if (!feed.parsed) {
+    // Never a 500, never blank (repo convention — see ingestShowFeed.ts's
+    // own degrade rule): 200 with an empty list and the error surfaced.
+    // Cache-Control: no-store so a transient feed hiccup is never pinned
+    // at the edge for the next hour of visitors to that show.
+    res.setHeader("Cache-Control", "no-store");
+    res.status(200).json(listBody({
       show_id: showId,
-      show: { ...showHeader, description: parsed.descriptionText || null },
-      episodes: page.map(toListRow),
-      next_cursor: nextCursor,
+      show: showHeader,
+      episodes: [],
+      next_cursor: null,
       source: "live",
-      degraded: false,
-      error: null
-    });
+      degraded: true,
+      stale: false,
+      error: feed.error ?? "feed unavailable",
+    }));
     return;
   }
 
-  const client = new Client({ connectionString: databaseUrl });
-  await client.connect();
-  try {
-    const store = new PostgresShowEpisodesStore(client);
-    const result = await ingestShowFeed(showId, meta.feedUrl, store);
-    const episodes = await store.episodesForShow(showId);
+  const parsed = feed.parsed;
+  const episodes = parsed.episodes
+    .map((ep, idx) => toLiveEpisode(showId, ep, idx))
+    .filter((ep): ep is CatalogShowEpisode => ep !== null);
 
-    res.setHeader("Cache-Control", "public, max-age=300, stale-while-revalidate=3600");
-    res.status(200).json({
-      show_id: showId,
-      // DB mode has no per-show description available without editing
-      // ingestShowFeed.ts/showEpisodesStore.ts, which is out of scope for
-      // this card (see the design comment on kanban t_4bd3c0a3) — left
-      // null rather than guessed. Production has no DATABASE_URL today, so
-      // this branch is currently dormant.
-      show: showHeader,
-      episodes: episodes.map(toListRow),
-      source: "db",
-      stale: result.status === "cached_stale",
-      error: result.status === "cached_stale" || result.status === "no_cache_error" ? result.error ?? null : null
-    });
-  } finally {
-    await client.end();
+  const { page, nextCursor } = paginate(episodes, cursor, PAGE_SIZE);
+
+  res.setHeader("Cache-Control", "s-maxage=3600, stale-while-revalidate=86400");
+  res.status(200).json(listBody({
+    show_id: showId,
+    show: { ...showHeader, description: parsed.descriptionText || null },
+    episodes: page.map(toListRow),
+    next_cursor: nextCursor,
+    source: "live",
+    degraded: false,
+    stale: false,
+    error: null,
+  }));
+}
+
+/* The database, behind one small seam so the DB branch can be exercised
+   without a database (its tests inject a session). */
+interface DbSession {
+  refresh(showId: string, feedUrl: string): Promise<{ status: string; error?: string | null }>;
+  episodes(showId: string): Promise<CatalogShowEpisode[]>;
+  end(): Promise<void>;
+}
+
+async function realDbSession(databaseUrl: string): Promise<DbSession> {
+  const client = new Client({ connectionString: databaseUrl });
+  try {
+    await client.connect();
+  } catch (err) {
+    await client.end().catch(() => {});
+    throw err;
   }
+  const store = new PostgresShowEpisodesStore(client);
+  return {
+    refresh: (showId, feedUrl) => ingestShowFeed(showId, feedUrl, store),
+    episodes: (showId) => store.episodesForShow(showId),
+    end: () => client.end(),
+  };
+}
+
+let openDbSession: (databaseUrl: string) => Promise<DbSession> = realDbSession;
+
+/** Test-only: replace how the DB branch opens its session; no argument
+    restores the real Postgres client. */
+export function _setDbSessionForTests(open?: (databaseUrl: string) => Promise<DbSession>): void {
+  openDbSession = open ?? realDbSession;
 }
