@@ -28,6 +28,16 @@ from 18 lenses, 172 unique after dedup, **163 confirmed** (5 high), 2 refuted,
 **Status: not yet worked through.** This directory's own ledger
 (`status.tsv`) and the tables below are round 1 only.
 
+## ROUND 3 (2026-09-25): THE CODE
+
+Rounds 1 and 2 read the listener-facing app. Round 3 is a code audit of the
+whole repository, from the founder's ask: *"deploy a fleet of agents looking
+for issues in the code base. Catalogue them, make a plan, then fix them all."*
+It lives in [`round-3-code/`](round-3-code/README.md): 216 raw findings from
+16 areas, 186 unique after dedup, **174 confirmed** (8 high, 53 medium, 113 low),
+6 refuted, 6 deliberate, 0 uncertain. They group into 13 root causes and an
+8-lane plan. **Status: not yet fixed.** This commit holds the catalogue and the plan.
+
 ## WHY THIS DIRECTORY EXISTS AT ALL
 
 Because the findings were nearly lost. Both fleets reported in-conversation, and
@@ -54,6 +64,7 @@ change that produces it.**
 | `persona-findings-detail.md` | Full JSON per persona finding |
 | `status.tsv` | What became of every finding, one row each (see STATUS below) |
 | `round-2/` | The 2026-09-23 re-run: findings, dedup, synthesis, lane plan ([README](round-2/README.md)) |
+| `round-3-code/` | The 2026-09-25 code audit: findings, dedup, synthesis, lane plan ([README](round-3-code/README.md)) |
 
 `findJL` / `verdictJL` point into the corresponding `-detail.md` by journal line,
 so a TSV row can always be expanded to its evidence.
