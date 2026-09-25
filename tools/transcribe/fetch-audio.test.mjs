@@ -35,6 +35,7 @@ import {
    value whose whole point is that one definition serves every fetcher. */
 import { ACCEPT_LANGUAGE } from "../segments/politeness.mjs";
 import { CLICK_TRACK_CAP_BYTES, CLICK_TRACK_DIR, exemptClickTrackPaths } from "../audio/click-tracks.mjs";
+import { exemptInterludePaths } from "../audio/interlude-asset.mjs";
 import { createHash } from "node:crypto";
 
 const item = (over = {}) => ({ id: "show--ep", audio_url: "https://cdn.example.com/a.mp3", topics: ["science/physics"], ...over });
@@ -650,11 +651,15 @@ test("NOTHING under the download dir is git-tracked", { skip: !isRepo && "not a 
      holds: a 170 MB mp3 under player/assets fails there instead. */
   /* The only other exemption is narrower still: NE-25a's click tracks, each
      named by its descriptor and matching its recorded hash, under 1 MB for the
-     set (tools/audio/click-tracks.mjs; pinned by the click-track test below). */
+     set (tools/audio/click-tracks.mjs; pinned by the click-track test below).
+     And NE-34's bundled jingle: the one path, only while it and the web
+     jingle both hash to the pin (tools/audio/interlude-asset.mjs; its own
+     suite proves the exemption is that narrow). */
   const clickTracks = exemptClickTrackPaths(ROOT);
+  const jingle = exemptInterludePaths(ROOT);
   const anyAudio = git(["ls-files", "--", "*.mp3", "*.m4a", "*.wav", "*.flac", "*.opus"])
     .split("\n")
-    .filter((p) => p && !p.startsWith("player/assets/") && !clickTracks.has(p))
+    .filter((p) => p && !p.startsWith("player/assets/") && !clickTracks.has(p) && !jingle.has(p))
     .join("\n");
   assert.equal(anyAudio, "", `audio committed to the repo outside player/assets/:\n${anyAudio}`);
 });

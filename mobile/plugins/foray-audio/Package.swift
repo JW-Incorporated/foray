@@ -92,7 +92,12 @@ let package = Package(
                 .product(name: "Cordova", package: "capacitor-swift-pm"),
                 .product(name: "ForayEngineCore", package: "foray-engine-core")
             ],
-            path: "ios/Sources/ForayAudioPlugin"),
+            path: "ios/Sources/ForayAudioPlugin",
+            /* NE-34: the seam's jingle, a byte-identical copy of
+               player/assets/interlude-placeholder.wav (529 KB, SHA-256 pinned
+               in InterludePlayer.swift and tools/audio/interlude-asset.mjs).
+               The ONE resource the app carries from this package. */
+            resources: [.copy("Resources/interlude-placeholder.wav")]),
         /* NE-25a's click tracks (tools/audio/make-click-tracks.py) are
            resources of the TEST target only, copied as one directory so the
            descriptor and the audio it describes travel together. Nothing here

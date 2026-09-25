@@ -219,6 +219,43 @@ protocol Speaking: AnyObject {
     func narrate(_ command: NarrationCommand)
 }
 
+// MARK: - The interlude jingle (InterludePlayer, NE-34)
+
+/// The seam's jingle: one short bundled asset at 1.0x (plan §14 NE-34). The
+/// core decides WHEN (`EngineCommand.interlude`); the conformer only plays it
+/// and says when it stopped sounding.
+protocol InterludePlaying: AnyObject {
+    /// The jingle stopped sounding by itself, ON MAIN, at most once per
+    /// accepted `start()`: `ended` (the file ran out), `error` (it failed
+    /// mid-play) or `ceiling` (neither came within `INTERLUDE_CEILING_SEC`,
+    /// so the conformer stopped it). Never for a `stop()` or a `release()`.
+    /// The host sets it at start and clears it at teardown.
+    var onEnded: ((String) -> Void)? { get set }
+    /// Start from the first frame. Audible, so it refuses (false, and a
+    /// `fault` row) unless the engine's session is active; false too when
+    /// the asset cannot play. A start while sounding restarts it.
+    func start() -> Bool
+    /// Silence it without an end report (a transport action cut the beat).
+    func stop()
+    /// Stop and drop the decoded asset (the engine's teardown).
+    func release()
+}
+
+// MARK: - The silence node (SilenceNode, NE-34; behind `silenceNodeEnabled`, OFF)
+
+/// Digital silence rendered through the engine's own session so the process
+/// keeps rendering across a silent seam (timing only, L-3). OFF by default
+/// (`EngineConfig.silenceNodeEnabled`): the boot builds no conformer at all
+/// unless the flag is on.
+protocol SilenceRendering: AnyObject {
+    /// Start rendering, for at most `min(capMs, INTERLUDE_CEILING_SEC)` from
+    /// now: the conformer stops ITSELF at that cap whatever the load does.
+    /// Refuses (false) unless the session is active.
+    func start(capMs: Double) -> Bool
+    func stop()
+    var isRunning: Bool { get }
+}
+
 // MARK: - Clocks and timers (MainQueueTiming)
 
 /// Both clocks the core reads (wall for rows the page reads, monotonic for
@@ -277,6 +314,11 @@ struct EngineSeams {
     var output: EngineOutput
     /// Optional so a world without persistence (most tests) needs no store.
     var holdPolicy: HoldPolicyStoring? = nil
+    /// The seam's jingle (NE-34). Nil: every `interlude(.start)` is answered
+    /// `ended(refused)` at once, and the boot leaves `interludeAvailable` off.
+    var interlude: InterludePlaying? = nil
+    /// The silence node (NE-34), built only when `silenceNodeEnabled` is on.
+    var silence: SilenceRendering? = nil
     /// Ends the process: Developer "Simulate system termination" (NE-24,
     /// DV-7a) and nothing else. The boot supplies the real one; nil (every
     /// test world) records the decision in the row and exits nothing.
