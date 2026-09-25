@@ -284,6 +284,7 @@ extension DeckCommand {
 
 final class FakeSpeaker: Speaking {
     let log: SeamLog
+    var onFinish: ((SpeechEnd) -> Void)?
     private(set) var spoken: [String] = []
 
     init(log: SeamLog) { self.log = log }
@@ -294,6 +295,13 @@ final class FakeSpeaker: Speaking {
     }
 
     func stopSpeaking() { log.add("speaker.stop") }
+
+    /// The synthesizer's delegate reports the line's end (on main, as
+    /// PreviewSpeaker delivers it).
+    func end(_ end: SpeechEnd = .finished) {
+        log.add("speaker.\(end.rawValue)")
+        onFinish?(end)
+    }
 }
 
 // MARK: - EngineTiming

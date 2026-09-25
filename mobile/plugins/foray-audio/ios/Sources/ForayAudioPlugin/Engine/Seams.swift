@@ -157,7 +157,21 @@ protocol DeckDriving: AnyObject {
 
 // MARK: - Speech (the audition in M1; the narrator, NE-33)
 
+/// How an utterance ended, as the synthesizer's delegate said it did.
+enum SpeechEnd: String, Equatable, Sendable {
+    /// `didFinish`: the whole line was spoken.
+    case finished
+    /// `didCancel`: stopped before the end (a `stopSpeaking`, a new line, an
+    /// interruption that took the session).
+    case cancelled
+}
+
 protocol Speaking: AnyObject {
+    /// The end of the utterance in flight, ON MAIN, once per `speak`. The host
+    /// sets it at start and clears it at teardown. NE-25c's session probe
+    /// waits on it (DV-9 is "what happens to the session after `didFinish`");
+    /// NE-33's narrator will turn it into a core input.
+    var onFinish: ((SpeechEnd) -> Void)? { get set }
     /// Audible: the core emits it only after an activation (OQ-5).
     func speak(text: String, voiceId: String?)
     func stopSpeaking()

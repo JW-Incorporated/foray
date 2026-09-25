@@ -2064,6 +2064,8 @@ export const ENGINE_ROW_KINDS = Object.freeze([
   "build", "mode", "session", "remote", "seam", "grace", "probe", "lifecycle",
   "stop", "pause", "rate", "seek", "fault", "deck", "continuation", "reconcile",
   "restore", "position", "diag", "nowplaying", "resume", "outPoint",
+  /* NE-25c: PreviewSpeaker's off-main callback row (speaker kind=<end> thread=bg). */
+  "speaker",
 ]);
 
 const ENGINE_HEADER_KEYS = new Set(["seq", "at", "mono", "kind", "event", "dropped"]);
