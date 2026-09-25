@@ -1435,7 +1435,7 @@ const FLOORS = {
      backend/src/cli/warmTranscriptIndex.ts and pinned by its own suite — but a
      launcher that spawns an entry that no longer exists fails quietly, and a
      run then proceeds on the cold corpus this issue was filed about. */
-  "tools/generation/warm-transcript-index.test.mjs": 5,
+  "tools/generation/warm-transcript-index.test.mjs": 7, // round-3 audit data-tools-8: a child ended by a signal exits 128 + n, and both launchers use exitCodeFor; 5 -> 7
   /* The native shell (#36). `shell-invariants` is the one to be most careful
      with: four of the five things it pins are properties of files OUTSIDE
      tools/ — the root package.json staying dependency-free, index.html's CSP,

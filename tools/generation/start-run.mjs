@@ -63,6 +63,7 @@ import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 
 import { createRelay, DEFAULT_DIR, DEFAULT_PORT } from "./relay.mjs";
+import { describeExit, exitCodeFor } from "./exit-code.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 export const REPO_ROOT = path.resolve(HERE, "..", "..");
@@ -178,10 +179,11 @@ async function main() {
   process.on("SIGINT", stop);
   process.on("SIGTERM", stop);
 
-  const code = await new Promise((resolve) => child.on("exit", resolve));
+  /* data-tools-8: a driver ended by a signal is a failure (128 + n), never exit 0. */
+  const { code, signal } = await new Promise((resolve) => child.on("exit", (c, sig) => resolve({ code: c, signal: sig })));
   await relay.close();
-  console.log(`[start-run] driver exited ${code}; relay stopped. KPI rows: ${relay.dirs.kpiPath}`);
-  process.exitCode = code ?? 0;
+  console.log(`[start-run] driver exited ${describeExit(code, signal)}; relay stopped. KPI rows: ${relay.dirs.kpiPath}`);
+  process.exitCode = exitCodeFor(code, signal);
 }
 
 const isMain = process.argv[1] && path.resolve(process.argv[1]) === path.resolve(fileURLToPath(import.meta.url));
