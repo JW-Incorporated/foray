@@ -880,7 +880,8 @@
     {
       "id": "transport/seek-ended-pends",
       "covers": [
-        "transport-policy::a seek with nothing loaded is written down as the next start; paused, loading and playing seek"
+        "transport-policy::a seek with nothing loaded is written down as the next start; paused, loading and playing seek",
+        "transport-reconcile::AUDIT: an episode that has ENDED can still be scrubbed back into"
       ],
       "call": "seekAction",
       "args": [{ "restored": false, "stateType": "ended" }],

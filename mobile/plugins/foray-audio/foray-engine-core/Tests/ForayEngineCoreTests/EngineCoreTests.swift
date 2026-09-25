@@ -554,6 +554,58 @@ final class EngineCoreTests: XCTestCase {
         XCTAssertNil(index(moved, isPlay), "a seek while paused stays paused")
     }
 
+    /// Audit round 2, p-impatient-1 (transport-reconcile.test.js, xctest.json):
+    /// ↺15 tapped while a resumed episode is still loading steps from the
+    /// second the load will land on, so it is held for the load and lands 15 s
+    /// before the resume point, never at 0:00.
+    /// TO SEE IT FAIL: drop the pending load's `startSec` from `seekBy` (the
+    /// nudge then steps from 0 and the resume point is sent to 0:00).
+    func testANudgeDuringAColdLoadStepsFromWhereTheLoadLands() throws {
+        var host = Host(positions: ["a": ResumeRules.StoredPosition(seconds: 2280, duration: nil)])
+        host.send(.queue(.load([EngineCoreTests.item("a")])))
+        let started = host.send(.queue(.playIndex(0, startSec: nil, source: .tap)))
+        XCTAssertTrue(started.contains {
+            if case let .deck(.load(_, _, _, startSec, _)) = $0 { return startSec == 2280 }
+            return false
+        }, "the cold load resumes: \(started)")
+        let nudged = host.send(try EngineCoreTests.command("seekBy", .object([JSONMember("deltaSec", .number(-15))])))
+        XCTAssertFalse(nudged.contains { if case .deck(.seek) = $0 { return true }; return false }, "held for the load: \(nudged)")
+        let landed = host.land()
+        XCTAssertTrue(landed.contains(.deck(.seek(toSec: 2265))), "15 s before the resume point: \(landed)")
+    }
+
+    /// Audit round 2, player-3 (transport-reconcile.test.js, xctest.json): a
+    /// seek while paused saves the second being LEFT and nothing writes while
+    /// paused, so playing another episode writes where the deck IS for the
+    /// outgoing one first (client.js `play` flushes before the queue changes).
+    /// TO SEE IT FAIL: drop the `flushPosition()` at the top of `playEpisode`.
+    func testPlayingAnotherEpisodeKeepsAScrubMadeWhilePaused() throws {
+        func episode(_ id: String) -> JSONNode {
+            .object([JSONMember("item", .object([JSONMember("id", .string(id)),
+                                                 JSONMember("audio_url", .string("https://cdn.example/\(id).mp3"))]))])
+        }
+        var host = Host()
+        host.send(try EngineCoreTests.command("playEpisode", episode("a")))
+        host.land()
+        host.confirm()
+        host.reading.positionSec = 600
+        host.send(try EngineCoreTests.command("pause"))
+        host.send(try EngineCoreTests.command("seekTo", .object([JSONMember("sec", .number(1800))])))
+        XCTAssertEqual(host.reading.positionSec, 1800, "precondition: the deck moved")
+        let left = host.send(try EngineCoreTests.command("playEpisode", episode("b")))
+        let wrote = left.firstIndex {
+            if case let .writePosition(write) = $0 { return write.itemId == "a" && write.seconds == 1800 }
+            return false
+        }
+        let loadB = left.firstIndex {
+            if case let .deck(.load(_, itemId, _, _, _)) = $0 { return itemId == "b" }
+            return false
+        }
+        XCTAssertNotNil(wrote, "the scrub is what was kept: \(left)")
+        XCTAssertNotNil(loadB, "\(left)")
+        if let wrote, let loadB { XCTAssertLessThan(wrote, loadB, "written before the queue moved on") }
+    }
+
     /// Hold policy `none`: the pause releases the session (without notify),
     /// after the deck is silent, and the next play activates again.
     func testHoldPolicyNoneReleasesAtPause() {

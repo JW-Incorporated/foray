@@ -147,10 +147,13 @@ public struct EngineState: Equatable {
     }
 }
 
-/// A load in flight.
+/// A load in flight, and the second it was asked to land on: until the deck
+/// holds the item, that is where the listener is (client.js
+/// `episodePositionSec`'s `loadingStart`, audit round 2 p-impatient-1).
 public struct PendingLoad: Equatable {
     public let token: DeckToken
     public let itemId: String
+    public let startSec: Double
 }
 
 /// A play-ish intent waiting for its activation's answer.

@@ -186,6 +186,12 @@ public struct EngineCore {
         switch command {
         case let .playEpisode(item, startSec, _, lastEpisodeRow):
             guard let episode = EngineItem(node: item.node) else { return refuse(.notLoaded) }
+            // LEAVING IS A FLUSH (audit round 2, player-3): the outgoing
+            // episode's playhead is written before the queue stops naming it
+            // (client.js `play` calls `flushPositions` before
+            // `setQueueFromPick`), so a scrub made while paused survives
+            // playing something else.
+            flushPosition()
             // `loadQueue([item])` then `play(0, {startOffset})`: the page's own
             // path for an episode, with the row it will read back.
             state.queue = [episode]
@@ -344,9 +350,15 @@ public struct EngineCore {
         dispatch(.seek(seconds: target, precise: false))
     }
 
+    /// A nudge steps from where the listener IS: the deck's playhead once it
+    /// holds the item; WHILE A LOAD OF IT IS IN FLIGHT, the second that load
+    /// will land on, never the fresh item's 0 (audit round 2, p-impatient-1:
+    /// ↺15 during a cold resume must not send the resume point to 0:00);
+    /// otherwise the pended start.
     private mutating func seekBy(_ deltaSec: Double, source: EngineSource) {
         guard let item = state.currentItem else { return refuse(.notLoaded) }
-        let position = (state.loadedId == item.id ? deck.positionSec : nil) ?? state.pendingStartSec ?? 0
+        let loading = state.loadedId != item.id && state.pendingLoad?.itemId == item.id ? state.pendingLoad?.startSec : nil
+        let position = (state.loadedId == item.id ? deck.positionSec : nil) ?? loading ?? state.pendingStartSec ?? 0
         guard let target = TransportPolicy.skipTarget(foray: false, positionSec: position, offsetSec: deltaSec,
                                                       durationSec: deck.durationSec ?? item.durationSec) else { return }
         seekTo(target, source: source)
@@ -358,6 +370,11 @@ public struct EngineCore {
     private mutating func stop(persist: Bool, source: EngineSource) {
         state.pausedByListener = true
         stopRow(persist ? .close : .dataDeletion, source: source)
+        // CLOSING IS A FLUSH (audit round 2, player-3): the reducer's stop
+        // saves nothing, and a scrub made while paused is written by nothing
+        // else, so the playhead is written first (client.js `stopAndClose`).
+        // A data deletion writes nothing.
+        if persist { flushPosition() }
         state.closed = true
         suppressSave = !persist
         dispatch(.stop)
@@ -704,7 +721,7 @@ public struct EngineCore {
         if let index = state.queue.firstIndex(where: { $0.id == item.id }) { state.currentIndex = index }
         state.lastToken += 1
         let token = state.lastToken
-        state.pendingLoad = PendingLoad(token: token, itemId: item.id)
+        state.pendingLoad = PendingLoad(token: token, itemId: item.id, startSec: startSec)
         deckCommand(.load(token: token, itemId: item.id, url: item.audioUrl, startSec: startSec,
                           preciseTiming: bounds != nil))
     }

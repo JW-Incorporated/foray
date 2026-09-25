@@ -245,8 +245,12 @@ export const SESSION_EVENTS = Object.freeze([
       coldLaunch  the process starts with a stored queue and position:
                   `restoreColdLaunchState({ items, index, autoplay })`
       foreground  the page comes back and asks the element what happened
-                  while it was away (`reconcileWithBackend("session:foreground")`) */
-export const LIFECYCLE_EVENTS = Object.freeze(["coldLaunch", "foreground"]);
+                  while it was away (`reconcileWithBackend("session:foreground")`)
+      background  the app leaves the foreground (NE-14k): client.js's
+                  `flushPositions`, which writes the playhead NOW, playing or
+                  paused, through the manager's own refusals
+                  (`manager._persistPosition()`, its one caller's call) */
+export const LIFECYCLE_EVENTS = Object.freeze(["coldLaunch", "foreground", "background"]);
 
 /** The manager methods a `call` step may invoke. A closed list: a scenario is
     a claim about the public surface, and `_private` methods are not one. */
@@ -316,6 +320,13 @@ async function runScenario(c, ctx) {
           if (step.call === "playForay" || step.call === "setQueueFromForay") {
             args = [args[0], { ...(args[1] ?? {}), resolveItem: (id) => catalogue[id] ?? null }];
           }
+          /* NE-14k. `stop` is the ENGINE's stop command (the Swift driver
+             sends `.stop(persist: true)`), which is the page's close:
+             client.js `stopAndClose` flushes the playhead, then stops (audit
+             round 2, player-3: a scrub made while paused is written by nothing
+             else). So the flush the page makes goes first, through the
+             manager's own refusals (`_persistPosition`, its one caller's call). */
+          if (step.call === "stop") m._persistPosition();
           const p = Promise.resolve(m[step.call](...args));
           if (step.await === false) floating.push(p.catch(() => {}));
           else await p;
@@ -329,7 +340,21 @@ async function runScenario(c, ctx) {
           await scheduler.advance(step.clock);
           break;
         case "deck":
-          if (step.deck === "ended") floating.push(Promise.resolve(backend.onItemEnded?.(step.reason ?? "natural")).catch(() => {}));
+          /* The file ran out: the element is paused and `ended` (NE-14k: the
+             flag is now modelled, so what the manager reads off the element
+             after an end is what an <audio> element says), then says so. */
+          if (step.deck === "ended") {
+            backend.paused = true;
+            backend.ended = true;
+            floating.push(Promise.resolve(backend.onItemEnded?.(step.reason ?? "natural")).catch(() => {}));
+          }
+          /* NE-14k. The element reached its end and the `ended` event has not
+             been delivered yet — the window a reconcile can land in, which
+             `pause` firing BEFORE `ended` makes an ordinary one. */
+          else if (step.deck === "ranOut") {
+            backend.paused = true;
+            backend.ended = true;
+          }
           else if (step.deck === "error") floating.push(Promise.resolve(backend.onError?.(step.message ?? "error")).catch(() => {}));
           else if (step.deck === "time") backend.currentTime = step.sec;
           else if (step.deck === "duration") backend.duration = step.sec;
@@ -457,6 +482,8 @@ function lifecycleStep(m, step, ctx) {
       });
     case "foreground":
       return m.reconcileWithBackend("session:foreground");
+    case "background":
+      return Promise.resolve(m._persistPosition());
     default:
       throw new HarnessError("E_BAD_CASE", `unknown lifecycle event "${step.lifecycle}" (one of ${LIFECYCLE_EVENTS.join(", ")})`);
   }

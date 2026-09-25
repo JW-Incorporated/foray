@@ -181,22 +181,39 @@ test("transport-reconcile is wholly classified: a facade test, an exclusion, or 
   // {card: "NE-21"} -> red; map a Foray reconcile test to a facade test -> the
   // family check below goes red only if it was owed, so the tally checks the
   // three routes are all in use.
+  //
+  // NE-14k: the rules the engine reimplements are no longer only OWED. The
+  // episode ones NE-14j was charged with are now fixtured (manager-episode,
+  // or the pure transport-policy rule a page path reads) or mapped to the
+  // XCTest that carries them natively (xctest.json), and what is still owed
+  // must not be owed to the episode capability, which ships in M1.
+  // MUTATION: re-tag one fixtured reconcile test back into unported.json as
+  // {card: "NE-14j", family: "manager-episode"} -> red on the episode check;
+  // cover a reconcile test from a foray-capability family -> red.
   const { status } = classify(REPO_ROOT, DATA, FIXTURES);
   const names = Object.entries(status["transport-reconcile"]);
   assert.ok(names.length > 0, "transport-reconcile has no tests on disk");
-  const tally = { facade: 0, excluded: 0, owed: 0 };
+  const tally = { facade: 0, excluded: 0, owed: 0, fixtured: 0, xctest: 0 };
   for (const [name, st] of names) {
     const label = `transport-reconcile :: ${JSON.stringify(name)}`;
-    assert.equal(st.covered.length, 0, `${label} is fixtured; a reconcile rule is a facade test, an exclusion or owed`);
-    if (st.facade) tally.facade++;
+    if (st.covered.length) {
+      /* Only the episode capability's families: the Foray reconcile rules are
+         NE-30j's to record, into its own families, when that card lands. */
+      for (const id of st.covered) {
+        assert.ok(DATA.capabilities.episode.includes(id.split("/")[0]), `${label} is covered by ${id}, outside the episode capability`);
+      }
+      tally.fixtured++;
+    } else if (st.xctest) tally.xctest++;
+    else if (st.facade) tally.facade++;
     else if (st.excluded) tally.excluded++;
     else {
       assert.ok(st.unported, `${label} is unaccounted for`);
       assert.notEqual(st.unported.card, "NE-21", `${label} is still owed to NE-21, which is the card that classifies it`);
+      assert.ok(!DATA.capabilities.episode.includes(st.unported.family), `${label} is owed to the episode capability (${JSON.stringify(st.unported)})`);
       tally.owed++;
     }
   }
-  assert.ok(tally.facade > 0 && tally.excluded > 0 && tally.owed > 0, JSON.stringify(tally));
+  assert.ok(tally.facade > 0 && tally.excluded > 0 && tally.owed > 0 && tally.fixtured > 0 && tally.xctest > 0, JSON.stringify(tally));
 });
 
 test("every facades.json mapping names a native-facades test that exists", () => {
@@ -400,6 +417,15 @@ test("every capability the engine advertises has zero pending and zero unported 
   // trivially; the synthetic cases below are what prove it has teeth.
   const advertised = advertisedCapabilities(REPO_ROOT);
   assert.deepStrictEqual(capabilityGate(advertised, DATA), []);
+});
+
+test("the episode capability owes nothing: zero swift-pending cases and zero unported tests in every family it lists", () => {
+  // NE-14k (M1 audit gap): NE-27 advertises `episode` from the Swift build, so
+  // its gate has to be clean before that build ships, not when it is flipped.
+  // MUTATION: re-tag one ported transport-reconcile test into unported.json as
+  // {card: "NE-14j", family: "manager-episode"}, or add any manager-episode id
+  // to swift-pending.json -> red, naming it.
+  assert.deepStrictEqual(capabilityGate(new Map([["episode", "NE-14k"]]), DATA), []);
 });
 
 test("advertising a capability with owed work is refused, naming the work", () => {

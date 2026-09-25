@@ -433,6 +433,22 @@
       "reason": "dom-only",
       "why": "The restored ribbon's ↺/↻ nudges move a PENDING position the page holds with nothing loaded in any engine; the press that follows carries it as playEpisode's startSec (native-facades.test.js). Page painting that client.js does identically in both modes from what the manager surface answers (in native mode, the facades); the engine never draws the page, so there is nothing here for Swift to reimplement."
     },
+    "REPORT 1: a LATE interruption never pauses audio the listener has since resumed": {
+      "reason": "webview-only",
+      "why": "A suspended WebView handles the plugin's session event when it wakes, so an interruption can reach the page after the listener resumed, and the page must ask the element rather than obey. The engine observes AVAudioSession.interruptionNotification live (plan §4.4), where began means the session was taken now; the reconcile that does run natively is fixtured in manager-episode (an-unseen-stop-is-corrected-once-and-one-press-resumes)."
+    },
+    "REPORT 1: an element resumed from OUTSIDE the reducer still has its position written": {
+      "reason": "webview-only",
+      "why": "WebKit's own media session can resume an <audio> element without asking the page, so the page writes the position from the element's timeupdate. Natively every lock-screen and car press is an EngineInput (plan §4.5, the remote seams), so the deck never plays behind the core's back; the core's position cadence while playing is fixtured in manager-episode (position-events-*)."
+    },
+    "REPORT 1: the machine is corrected TOWARDS playing when the element plays": {
+      "reason": "webview-only",
+      "why": "The same out-of-band resume: WebKit's media session starting the element with the reducer saying interrupted. Natively no press bypasses the core (plan §4.5), so the deck is only ever started by a core command; the core's foreground reconcile still corrects towards playing on the deck's own word."
+    },
+    "REPORT 2: an unexplained pause says what state the element was in": {
+      "reason": "webview-only",
+      "why": "The fingerprint is HTMLMediaElement's own fields (currentTime, readyState, networkState, error.code). AVPlayer has none of them: the deck reports an uncommanded pause with its playhead (DeckEvent.pausedUncommanded atSec, AVDeckTests' testAnExternalPauseBecomesAReconcileInput) and the core writes the stop row with its cause."
+    },
     "REPORT 3: a booted shell writes BOTH halves of the build into the record it will copy out": {
       "reason": "js-module-shape",
       "why": "The page's diagnostic record stamping both halves of the build (web and CFBundleVersion). The page keeps doing it in native mode; the engine writes its own header line into the Copy (NE-26), so there is no page rule for Swift to reimplement."
@@ -468,6 +484,10 @@
     "ROUND 2 honesty-13: elapsed and remaining add up, and the countdown keeps its sign until it shows nothing": {
       "reason": "dom-only",
       "why": "Elapsed and remaining add up and the countdown keeps its sign. Page painting that client.js does identically in both modes from what the manager surface answers (in native mode, the facades); the engine never draws the page, so there is nothing here for Swift to reimplement."
+    },
+    "ROUND 2 p-car-3: reconciling an interruption does not tell an already-paused element to pause again": {
+      "reason": "webview-only",
+      "why": "WebKit records a script pause() made during an interruption as the state to restore, so the OS's own resume then resumes nothing. AVPlayer keeps no such memory: the engine resumes by its own command after interruptionEnded (manager-episode interruption-resume-steps-back-in-place)."
     },
     "ROUND 2 p-car-6: a finished EPISODE stays on the lock screen paused; a finished Foray still clears it": {
       "reason": "webview-only",
@@ -529,6 +549,10 @@
       "reason": "dom-only",
       "why": "The mini bar reusing the sheet's ↺15 handler is page wiring; the nudge itself is a seekBy the engine performs (manager-foray / transport families). Page painting that client.js does identically in both modes from what the manager surface answers (in native mode, the facades); the engine never draws the page, so there is nothing here for Swift to reimplement."
     },
+    "a transition in flight is not a lie: reconciling mid-effect cannot stop a start": {
+      "reason": "js-module-shape",
+      "why": "JS `_handle` sets the state and then awaits its effects, so a reconcile can arrive between `playing` and startPlayback (the `_applying` guard). EngineCore.handle is one synchronous turn: no input can land between a state and the commands it emits."
+    },
     "an ESTIMATED Foray runtime is hedged in the Now Playing countdown and the slider's 'of' (states-11)": {
       "reason": "dom-only",
       "why": "The hedge on an ESTIMATED Foray runtime in the countdown and the slider's 'of'. Page painting that client.js does identically in both modes from what the manager surface answers (in native mode, the facades); the engine never draws the page, so there is nothing here for Swift to reimplement."
@@ -540,6 +564,14 @@
     "audio must NOT start after that reconcile, and the queue must not strand (#267)": {
       "reason": "webview-only",
       "why": "#267: a reconcile racing the WebKit autoplay-refusal recovery of the two-element HtmlAudioBackend. AVPlayer has no autoplay policy and native mode has no page-side reconcile at all (attach only reads, native-facades.test.js), so the race does not exist there."
+    },
+    "loading an already-paused element arms nothing either": {
+      "reason": "webview-only",
+      "why": "The `_expectPause` token exists because an <audio> element fires `pause` only when it was playing, so a pause() on a paused element (a redundant pause, a load) must arm nothing. AVDeck keeps no token: an uncommanded stop is read from intendsToPlay, readiness, the end and the player's rate (AVDeckTests' testTheUncommandedPauseRule), so there is nothing a redundant pause or a load could leak."
+    },
+    "re-pausing an already-paused element arms nothing, so the NEXT real pause survives": {
+      "reason": "webview-only",
+      "why": "The `_expectPause` token exists because an <audio> element fires `pause` only when it was playing, so a pause() on a paused element (a redundant pause, a load) must arm nothing. AVDeck keeps no token: an uncommanded stop is read from intendsToPlay, readiness, the end and the player's rate (AVDeckTests' testTheUncommandedPauseRule), so there is nothing a redundant pause or a load could leak."
     },
     "the sheet shows ⏭, Up Next (N) and Save from the page's episode surface, and each does the page's own thing (audit round 2, p-impatient-7 / p-switcher-5)": {
       "reason": "dom-only",
