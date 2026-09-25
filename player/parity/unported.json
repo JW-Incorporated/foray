@@ -480,7 +480,6 @@
     "ROUND 2 p-car-3: reconciling an interruption does not tell an already-paused element to pause again": { "card": "NE-14j", "family": "manager-episode" },
     "ROUND 2 p-car-3: should-resume never resumes a pause the LISTENER made before the call": { "card": "NE-14j", "family": "manager-episode" },
     "ROUND 2 p-impatient-1: ↺15 tapped while a resumed episode is still loading keeps the resume point": { "card": "NE-14j", "family": "manager-episode" },
-    "ROUND 2 p-impatient-2: a play superseded mid-load answers false, so the row is never recorded as played": { "card": "NE-22", "family": "manager-episode" },
     "ROUND 2 player-1 / perf-7: with the screen OFF the next episode still starts, and the page is not painted": { "card": "NE-14j", "family": "manager-episode" },
     "ROUND 2 player-11: a nudge inside a SPOKEN line restarts it (back) or skips it (forward), and says so": { "card": "NE-31j", "family": "manager-foray" },
     "ROUND 2 player-3: a scrub made while paused survives Stop": { "card": "NE-14j", "family": "manager-episode" },

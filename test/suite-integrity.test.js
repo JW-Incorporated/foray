@@ -316,6 +316,15 @@ const FLOORS = {
   "player/native-engine.test.js": 18,
   "player/native-facades.test.js": 16,
   "player/parity/reference-engine.test.js": 14,
+  /* NE-22: the real client.js booted in a pretend iOS shell over the
+     reference engine — no <audio> or jingle element (even while hello is
+     slow), no navigator.mediaSession write, no owned key written by the page,
+     attach-only over a running engine, the audition through the engine, the
+     ordered relinquish before any Audio, the adopted rows after it, a failed
+     hello landing in JS with relinquish sent, an advance applied once and
+     acked, and a superseded play answering false (facades.json maps
+     transport-reconcile's p-impatient-2 here). Zero slack. */
+  "player/native-mode.test.js": 11,
   /* NE-26: the engine half of Copy — the 2,000-row ring merged by wall clock
      (a merge, never a sort), the engine header line in both modes, the
      per-kind engine lines, every row accounted for (unknown kinds, unreadable

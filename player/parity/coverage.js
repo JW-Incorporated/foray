@@ -79,7 +79,10 @@ export const COVERED_SUITES = Object.freeze({
 export const FACADE_MAPPED_SUITES = Object.freeze(["transport-reconcile"]);
 
 /** The JS suites a facade mapping may name. */
-export const FACADE_SUITES = Object.freeze(["native-facades"]);
+/* native-mode (NE-22) is the real client.js over the facades: a page-side
+   rule that lives in client.js rather than in a facade (what play() answers)
+   is pinned there. */
+export const FACADE_SUITES = Object.freeze(["native-facades", "native-mode"]);
 
 const FACADE_RE = /^facade:([a-z0-9-]+)::(.+)$/s;
 

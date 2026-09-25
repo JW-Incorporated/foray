@@ -323,6 +323,44 @@ export function createNativeEngine({
     return validateContract(kind, reply).ok ? reply : null;
   }
 
+  /**
+   * The engine's two pending logs, `{pendingAdvances, pendingEvents}`, or null
+   * (NE-22's attach).
+   *
+   * WHY A SECOND engineHello. The snapshot carries only the COUNTS of the hops
+   * the engine walked and the positions it recorded while the page slept
+   * (§5.3), and engineRead has no kind that returns the logs themselves (§5.1):
+   * only engineHello does. A page that stayed alive across a car drive would
+   * otherwise see `pendingAdvances: 3` on attach and have no way to apply them
+   * until the next launch. The native side treats a hello as "a new page" (a
+   * fresh command count, events visible), which is exactly what a page coming
+   * back to the foreground is, so asking again costs a `seqGap`-free restart of
+   * the command count and nothing else. The mode is NOT re-decided: it was
+   * decided once (`hello()`), and an answer that is no longer native, or that
+   * does not validate, is `null` here — the caller applies nothing and acks
+   * nothing, so the logs wait for the next attach.
+   */
+  async function pendingLogs() {
+    if (decided?.mode !== "native") return null;
+    let answer;
+    try {
+      answer = await bridge.call("engineHello", helloRequest(pageBuild));
+    } catch (err) {
+      stats.bridgeErrors++;
+      diag({ kind: "engine", what: "pending-failed", message: String(err?.message ?? err) });
+      return null;
+    }
+    if (!answer || answer.mode !== "native" || !validateContract("helloResponse", answer).ok) {
+      diag({ kind: "engine", what: "pending-invalid" });
+      return null;
+    }
+    if (answer.snapshot) accept(answer.snapshot, "hello");
+    return {
+      pendingAdvances: Array.isArray(answer.pendingAdvances) ? answer.pendingAdvances : [],
+      pendingEvents: Array.isArray(answer.pendingEvents) ? answer.pendingEvents : [],
+    };
+  }
+
   /* ---------- the page's side of visibility ---------- */
 
   /** The page became visible or hidden (visibilitychange, pageshow, resume).
@@ -347,6 +385,7 @@ export function createNativeEngine({
     get decision() { return decided; },
     send,
     read,
+    pendingLogs,
     setVisible,
     get visible() { return visible; },
     /** `{snapshot, receivedAtMs}` or null: the page's current belief. */
