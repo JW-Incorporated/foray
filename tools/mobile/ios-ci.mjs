@@ -2513,7 +2513,7 @@ export function legacySmokeVerdict(bridge) {
       headline:
         `The engine answered \`${h.mode}\` / \`${h.reason}\` in the ${h.phase || "?"} pass, so the JS-lane ` +
         "measurements ran beside an engine that was NOT pinned to legacy. Seed `ForayEngine.modeOverride=web` " +
-        "before the launch (ios-build-native-pass.yml).",
+        "before the launch (ios-build.yml: \"Install the probed app\" and pass 2 of \"Run the probes\").",
     };
   }
   return { verdict: "inconclusive", headline: `engineHello did not answer (${h.error || "no reason recorded"}) — no coverage.` };
@@ -2661,13 +2661,18 @@ export function nativeProbeVerdict({ record = null, rowsAfter = null, logText = 
     smoke.verdict === "pinned" ? "pass" : smoke.verdict === "unpinned" ? "fail" : NC, smoke.headline);
 
   if (!ran) {
+    /* A MEASURED smoke failure still fails the section when nothing else ran:
+       run 36194671642 showed a `fail` row under a section headed `no-coverage`,
+       on a green job. ios-build.yml's gate step reads this verdict. */
+    const smokeFailed = a[0].verdict === "fail";
     return {
-      verdict: NC,
+      verdict: smokeFailed ? "fail" : NC,
       ran: false,
       assertions: a,
       headline:
-        "The native pass did not run in this workflow (its step is the G-1b / G-1c sitting's: " +
-        "tools/mobile/probe/ios-build-native-pass.yml). Nothing below the smoke was measured.",
+        "The native pass did not run in this workflow (ios-build.yml's \"Run the native-engine probe\" " +
+        "step was skipped, or failed before it wrote anything). Nothing below the smoke was measured." +
+        (smokeFailed ? " Failed: legacy-smoke." : ""),
     };
   }
 
@@ -3122,13 +3127,18 @@ if (isMain) {
           process.env.GITHUB_OUTPUT,
           `bridge=${b.verdict}\noutpoint=${o.verdict}\nseam=${s.verdict}\nsuspension=${sus.verdict}\n` +
             `mediasession=${ms.verdict}\nnowplaying=${npc.verdict}\ntakeover=${tk.verdict}\n` +
-            `native=${nativeProbe.verdict}\nlegacy_smoke=${legacySmokeVerdict(bridge).verdict}\n`
+            `native=${nativeProbe.verdict}\nlegacy_smoke=${legacySmokeVerdict(bridge).verdict}\n` +
+            `native_failed=${nativeProbe.assertions.filter((x) => x.verdict === "fail").map((x) => x.id).join(",")}\n`
         );
       }
       /* Deliberately exit 0 for every verdict, INCLUDING the bad ones. This step
          reports a measurement; it is not a gate. A red X here would read as "the
          iOS build is broken" when what happened is that we learned something —
          and #38's own instruction is that the build must keep running.
+         THE GATE IS A SEPARATE STEP (NE-36): ios-build.yml's "Fail the job on a
+         failing probe assertion" reads `native` (and `native_failed`) from the
+         outputs above and fails the job on a measured `fail`, AFTER the evidence
+         has been uploaded. This step still only reports.
          WHERE TO READ THE RESULT: the run's job summary and the `ios-shell-evidence`
          artifact. Nothing here writes to a PR — this workflow holds
          `contents: read` and no token, deliberately — so if a verdict belongs in a

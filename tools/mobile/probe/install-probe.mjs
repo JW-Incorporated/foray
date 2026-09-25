@@ -50,7 +50,7 @@
  * `simctl install` chose. So the workflow installs first, asks
  * `simctl get_app_container … app` where it went, and runs this against
  * `<that>/public` with `--audio-base file://<that>/public/`. See
- * `ios-build-native-pass.yml` beside this file.
+ * the "Run the native-engine probe" step in `.github/workflows/ios-build.yml`.
  */
 
 import fs from "node:fs";
