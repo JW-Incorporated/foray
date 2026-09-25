@@ -101,6 +101,45 @@ public struct EngineState: Equatable {
     /// and a relinquish never set it.
     public var closed = false
 
+    // MARK: the Foray tape (NE-30s)
+
+    /// `_gapUntil`: the seam beat's ABSOLUTE deadline on the monotonic clock,
+    /// stamped at the out-point, so the next load runs INSIDE the beat rather
+    /// than before it. Non-nil exactly while a beat is running (`inSeamGap`),
+    /// which includes the load happening inside it.
+    public var gapUntilMono: Double?
+    /// When the beat was armed (the out-point) and the gap it asked for, for
+    /// the packed seam row.
+    public var gapArmedAtMono: Double?
+    public var gapAskedMs: Double = 0
+    /// `_gapFinish`: the load whose `itemLoaded` waits out the beat's
+    /// remainder, by its token. Compared with `lastToken` when the wait ends:
+    /// a newer load (a skip, a jump, the ladder) means it is abandoned.
+    public var gapParkedToken: DeckToken?
+    /// `_gapCut`: a transport action cut the beat; the parked wait is released
+    /// only once that action has issued whatever load it was going to.
+    public var gapCut = false
+    /// The `.seamBeat` timer is armed.
+    public var seamTimerArmed = false
+    /// `_forayOptions`: what the load-time ladder reads (`setQueueFromForay`).
+    public var forayIsLocalFile = false
+    public var forayAllowAdPad = false
+    /// The Foray's title, for its `cp_foray` row.
+    public var forayTitle: String?
+    /// The item the standby deck was last asked to prepare (a seam that finds
+    /// it there was a prepare hit).
+    public var preparedItemId: String?
+    /// Segments ADR-0007's ladder refused at load (the snapshot's `skippedSegments`).
+    public var skippedSegments = 0
+    /// The `cp_foray` write throttle: foray-progress.js `ForayProgressStore`'s
+    /// gate, its 5 s clock throttle per Foray, and the refused-write count.
+    var forayThrottle = ResumeRules.ForayWriteThrottle()
+    /// A finished Foray's row is marked once (client.js `persistForayProgress`).
+    public var forayFinishedWritten = false
+
+    /// `inSeamGap`: a beat is running.
+    public var inSeamGap: Bool { gapUntilMono != nil }
+
     // MARK: the app around the engine
 
     public var backgrounded = false
@@ -154,6 +193,10 @@ public struct PendingLoad: Equatable {
     public let token: DeckToken
     public let itemId: String
     public let startSec: Double
+    /// A rendered narration bridge (`_playTransitionBridge`, NE-30s): it plays
+    /// the moment it lands, with no `itemLoaded` (the reducer is
+    /// `transitioning`, not loading).
+    public var bridge = false
 }
 
 /// A play-ish intent waiting for its activation's answer.

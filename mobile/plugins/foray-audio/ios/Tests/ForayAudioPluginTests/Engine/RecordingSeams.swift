@@ -245,7 +245,7 @@ final class FakeDeck: DeckDriving {
         case .pause: reading.audible = false
         case let .seek(toSec): reading.positionSec = toSec
         case .unload: reading = DeckReading(positionSec: nil, durationSec: nil, audible: false, ended: false)
-        case .setRate, .setOutPoint: break
+        case .setRate, .setOutPoint, .prepare: break
         }
     }
 
@@ -283,6 +283,7 @@ extension DeckCommand {
         case .setRate: return "setRate"
         case .setOutPoint: return "setOutPoint"
         case .unload: return "unload"
+        case .prepare: return "prepare"
         }
     }
 }

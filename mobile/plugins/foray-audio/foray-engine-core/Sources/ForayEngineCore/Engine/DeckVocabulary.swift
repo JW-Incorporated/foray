@@ -44,6 +44,14 @@ public enum DeckCommand: Equatable, Sendable {
     /// three-layer never-early watch is NE-32's; a load drops the armed one.
     case setOutPoint(sec: Double?)
     case unload
+    /// Warm the NEXT item on the standby deck at its in-point (NE-30s decides
+    /// WHEN, queue-manager.js `_warmNextSegment`; the standby deck decides
+    /// whether, deck-policy.js `prefetchDecision`, and hands it over at the
+    /// boundary only for the same source and in-point, `warmPromotion`). The
+    /// DeckPair that honours it is NE-32's, behind `deckPairEnabled`; a deck
+    /// with no standby ignores it, and the seam then loads cold inside the
+    /// beat, which is the audible seam either way.
+    case prepare(itemId: String, url: String?, startSec: Double)
 }
 
 /// `timeControlStatus`, as the core reads it (P-14: waiting is `buffering`).
@@ -74,6 +82,10 @@ public enum DeckEvent: Equatable, Sendable {
     case stalled(token: DeckToken)
     /// The item played to its end (or to its out-point).
     case ended(token: DeckToken)
+    /// The playhead is the prefetch lead from an armed out-point while
+    /// audible (html-audio-backend.js `_maybeOpenPrefetchWindow`): the
+    /// moment to prepare the next item (NE-30s).
+    case prepareWindow(token: DeckToken)
 }
 
 /// What the deck says RIGHT NOW, read synchronously on main by the host

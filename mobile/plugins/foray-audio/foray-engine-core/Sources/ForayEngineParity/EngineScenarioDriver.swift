@@ -22,6 +22,18 @@ import ForayEngineCore
 /// turns with both loads still in flight, as in JS. `setup.backend.holdLoads`
 /// holds loads until a `deck: "loaded"` step lands them.
 ///
+/// THE SEAM BEAT'S CLOCK (NE-30s) is the JS scheduler's. `setup.scheduler:
+/// "manual"` is fakes.js `manualScheduler`: the monotonic clock moves ONLY on
+/// a `clock` step, and the beat's one timer fires when that step passes it.
+/// Otherwise it is `instantScheduler`: the beat's timer fires as the step
+/// settles (the next microtask), and the clock moves a second per step as
+/// before. The `engine` target (the prepare family, runner.js
+/// `runEngineScenario`) always runs on the manual clock and drives the core
+/// through the CONTRACT (engineSend payloads), with a standby deck that
+/// prepares and hands over as reference-engine.js's WarmingBackend does; its
+/// op log holds only the deck's tokens and `n.prepare:` / `n.handover:`,
+/// which the prepare family asserts rather than strips.
+///
 /// THE DRIVER ALSO CHECKS WHAT NO OP LOG CAN SHOW (plan §4.4, card NE-14s):
 ///   - the audible-start invariant on EVERY turn (`SessionPolicy
 ///     .audibleStartViolations`, the rule the `session-invariant` family pins);
@@ -39,6 +51,11 @@ public struct EngineScenarioDriver {
         case playOnLoad
         /// A `deckPlay` at the head of any turn that begins lostToInterruption.
         case playWhileLost
+        /// NE-30s: a load commanded inside a seam beat reaches the deck only
+        /// once the beat's deadline has passed, i.e. the next item is loaded
+        /// AFTER the beat instead of inside it (the defect the beat's absolute
+        /// deadline exists to prevent: a seam costing gap + load).
+        case loadAfterBeat
     }
 
     /// One scenario's outcome.
@@ -58,9 +75,21 @@ public struct EngineScenarioDriver {
     }
 
     public let mutation: Mutation?
+    /// M2's Foray tape (NE-30s): the core runs with `forayTapeEnabled`, and a
+    /// Foray a scenario plays is the PAGE's build from
+    /// `player/parity/scenario-builds.json`. Off, the driver is M1's exactly
+    /// (the manager-episode family runs so, which is the card's "with the
+    /// flags off, the manager-episode family is unchanged").
+    public let forayTape: Bool
+    /// A test's own page builds, by step index, for a case that is not in a
+    /// fixture file (and so not in scenario-builds.json): the XCTests that
+    /// drive more seams than a fixture does (A-4).
+    public let inlineBuilds: [Int: [JSONNode]]
 
-    public init(mutation: Mutation? = nil) {
+    public init(mutation: Mutation? = nil, forayTape: Bool = false, inlineBuilds: [Int: [JSONNode]] = [:]) {
         self.mutation = mutation
+        self.forayTape = forayTape
+        self.inlineBuilds = inlineBuilds
     }
 
     public func run(_ testCase: FixtureCase, context: Codec.Context) throws -> Run {
@@ -68,7 +97,9 @@ public struct EngineScenarioDriver {
             throw HarnessError("E_BAD_CASE", "case \(testCase.id) is not a scenario")
         }
         let setup = try Codec.expandInputs(rawSetup, context)
-        let world = try ScenarioWorld(setup: setup, mutation: mutation)
+        let world = try ScenarioWorld(setup: setup, mutation: mutation, forayTape: forayTape,
+                                      caseId: testCase.id, context: context)
+        world.inlineBuilds = inlineBuilds
         for (index, rawStep) in rawSteps.enumerated() {
             guard case let .object(fields) = rawStep else {
                 throw HarnessError("E_BAD_CASE", "step \(index) of \(testCase.id) is not an object")
@@ -77,6 +108,7 @@ public struct EngineScenarioDriver {
             guard verbs.count == 1, let verb = verbs.first else {
                 throw HarnessError("E_UNKNOWN_VERB", "step \(index) of \(testCase.id) has no single known verb")
             }
+            world.stepIndex = index
             try world.step(verb: verb, fields: fields, context: context)
         }
         world.settle()
@@ -92,9 +124,11 @@ final class ScenarioWorld {
     static let verbs: Set<String> = ["call", "settle", "clock", "deck", "tts", "interlude", "session",
                                      "lifecycle", "remote", "checkpoint"]
     /// The `setup` keys this driver implements; any other is refused, never
-    /// ignored, so a case that needs the seam beat or narration (M2) says so.
+    /// ignored, so a case that needs narration or the interlude (NE-31s) says so.
     static let setupKeys: Set<String> = ["target", "positions", "positionEvents", "rate", "backend", "catalogue", "session",
-                                         "seamGapSec"]
+                                         "seamGapSec", "view", "scheduler", "seamGapEvents", "forayBuild", "capabilities"]
+    /// runner.js `VIEW_KEYS`: what a Foray scenario may add to its checkpoints.
+    static let viewKeys: Set<String> = ["outPoint", "seamGapRemainingMs", "timersLive", "positionSec"]
     /// A fixed wall clock (rows are stamped with it) and a monotonic one that
     /// moves a second per step, so nothing in one step is "within 500 ms" of
     /// another unless a case says so.
@@ -106,6 +140,16 @@ final class ScenarioWorld {
     let positionEvents: Bool
     let catalogue: JSValue
     let sessionFails: Bool
+    let caseId: String
+    let forayTape: Bool
+    /// runner.js `runEngineScenario`: the contract, the standby deck, T.
+    let engineTarget: Bool
+    /// fakes.js `manualScheduler` (see the driver's header).
+    let manualClock: Bool
+    let view: [String]
+    let seamGapEvents: Bool
+    var stepIndex = 0
+    var inlineBuilds: [Int: [JSONNode]] = [:]
 
     // The fake deck (FakeBackend).
     var reading: DeckReading
@@ -116,10 +160,19 @@ final class ScenarioWorld {
     var deckItemId: String?
     var deckToken: DeckToken?
     var readyToken: DeckToken?
+    /// FakeBackend's `outPoint`: set by `setOutPoint`, dropped by a load.
+    var deckOutPoint: Double?
     var instantLoads: [(token: DeckToken, itemId: String)] = []
     var heldLoads: [(token: DeckToken, itemId: String)] = []
     var confirmations: [DeckToken] = []
     var speaking = false
+    /// The standby deck (reference-engine.js WarmingBackend), engine target only.
+    var warm: DeckPolicy.Warm?
+    var currentUrl: String?
+    /// The seam beat's one timer, on the monotonic clock.
+    var seamTimerDue: Double?
+    /// `loadAfterBeat`'s withheld loads.
+    var deferredLoads: [DeckCommand] = []
 
     // What the scenario saw.
     var ops: [String] = []
@@ -131,21 +184,56 @@ final class ScenarioWorld {
     var maxAudible = 0
     var graceHeld: GraceReason?
     var monoMs: Double = 0
+    /// runner.js `returned`: what `returns` steps recorded for the next checkpoint.
+    var returned: [JSONValue] = []
+    /// Refusals the core answered in the current engine command.
+    var refusals: [String] = []
+    var cmdSeq = 0
 
-    init(setup: JSValue, mutation: EngineScenarioDriver.Mutation?) throws {
+    init(setup: JSValue, mutation: EngineScenarioDriver.Mutation?, forayTape: Bool, caseId: String,
+         context: Codec.Context) throws {
         guard case let .object(fields) = setup else { throw HarnessError("E_BAD_CASE", "setup must be an object") }
         for key in fields.keys where !ScenarioWorld.setupKeys.contains(key) {
-            throw HarnessError("E_BAD_CASE", "setup.\(key) is not implemented by the Swift scenario driver (M2: the seam beat, narration and the interlude are NE-30s/NE-31s)")
-        }
-        // The seam beat is NE-30s's: until then the core has none, which is
-        // exactly a manager built with `seamGapSec: 0` (NE-29s, media/remote).
-        // Any other beat is a case this driver cannot run yet, never a guess.
-        if setup["seamGapSec"] != .undefined && setup["seamGapSec"] != .number(0) {
-            throw HarnessError("E_BAD_CASE", "setup.seamGapSec \(setup["seamGapSec"]) needs the seam beat (NE-30s); the Swift scenario driver runs only 0")
+            throw HarnessError("E_BAD_CASE", "setup.\(key) is not implemented by the Swift scenario driver (M2: narration and the interlude are NE-31s)")
         }
         guard let target = setup["target"].stringValue, target == "manager" || target == "engine" else {
             throw HarnessError("E_SCENARIO_TARGET", "the Swift scenario driver runs target manager or engine, got \(setup["target"])")
         }
+        engineTarget = target == "engine"
+        var tape = forayTape
+        if engineTarget, case let .array(caps) = setup["capabilities"] {
+            tape = tape && caps.contains(.string("foray"))
+        }
+        self.forayTape = tape
+        // Without the tape the core has no beat, which is exactly a manager
+        // built with `seamGapSec: 0` (NE-29s, media/remote). Any other beat
+        // there is a case this driver cannot run, never a guess.
+        if !tape && setup["seamGapSec"] != .undefined && setup["seamGapSec"] != .number(0) {
+            throw HarnessError("E_BAD_CASE", "setup.seamGapSec \(setup["seamGapSec"]) needs the Foray tape (NE-30s); without it the Swift scenario driver runs only 0")
+        }
+        switch setup["scheduler"] {
+        case .undefined, .string("instant"): manualClock = engineTarget
+        case .string("manual"): manualClock = true
+        default: throw HarnessError("E_BAD_CASE", "setup.scheduler is manual or instant, got \(setup["scheduler"])")
+        }
+        var viewList: [String] = []
+        switch setup["view"] {
+        case .undefined: break
+        case let .array(keys):
+            for key in keys {
+                guard let name = key.stringValue, ScenarioWorld.viewKeys.contains(name) else {
+                    throw HarnessError("E_BAD_CASE", "unknown view key \(key) (one of \(ScenarioWorld.viewKeys.sorted().joined(separator: ", ")))")
+                }
+                if name == "timersLive" && !manualClock {
+                    throw HarnessError("E_BAD_CASE", "view \"timersLive\" needs setup.scheduler = \"manual\"")
+                }
+                viewList.append(name)
+            }
+        default: throw HarnessError("E_BAD_CASE", "setup.view is a list of view keys")
+        }
+        view = viewList
+        seamGapEvents = setup["seamGapEvents"] == .bool(true)
+        self.caseId = caseId
         self.mutation = mutation
         positionEvents = setup["positionEvents"] == .bool(true)
         catalogue = setup["catalogue"]
@@ -160,7 +248,14 @@ final class ScenarioWorld {
             }
         }
         let rate: Double? = setup["rate"].numberValue
-        core = EngineCore(config: EngineConfig(build: "parity", rate: rate), positions: positions)
+        let gapSec: Double
+        switch setup["seamGapSec"] {
+        case .undefined: gapSec = SeamGap.defaultGapSec
+        case let .number(value): gapSec = value
+        default: throw HarnessError("E_BAD_CASE", "setup.seamGapSec must be a number, got \(setup["seamGapSec"])")
+        }
+        core = EngineCore(config: EngineConfig(build: "parity", rate: rate, forayTapeEnabled: tape, seamGapSec: gapSec),
+                          positions: positions)
         let backend = setup["backend"]
         holdLoads = backend["holdLoads"] == .bool(true)
         defaultDuration = backend["duration"].numberValue ?? 3600
@@ -180,7 +275,8 @@ final class ScenarioWorld {
     // MARK: steps
 
     func step(verb: String, fields: [String: JSONValue], context: Codec.Context) throws {
-        monoMs += ScenarioWorld.stepMs
+        if !manualClock { monoMs += ScenarioWorld.stepMs }
+        if engineTarget { return try engineStep(verb: verb, fields: fields, context: context) }
         switch verb {
         case "call":
             try call(fields, context: context)
@@ -189,6 +285,9 @@ final class ScenarioWorld {
             if fields["await"] != .bool(false) { settle() }
         case "settle":
             settle()
+        case "clock":
+            guard manualClock else { throw HarnessError("E_BAD_CASE", "\"clock\" needs setup.scheduler = \"manual\"") }
+            try advance(fields["clock"])
         case "deck":
             try deck(fields)
             settle()
@@ -207,9 +306,8 @@ final class ScenarioWorld {
             }
             checkpoint(name)
         default:
-            // clock (the manager's scheduler: the seam beat), tts and
-            // interlude have no Swift driver yet; say which, never skip.
-            throw HarnessError("E_BAD_CASE", "the \"\(verb)\" verb has no Swift scenario driver yet (M2: NE-30s/NE-31s)")
+            // tts and interlude have no Swift driver yet; say which, never skip.
+            throw HarnessError("E_BAD_CASE", "the \"\(verb)\" verb has no Swift scenario driver yet (M2: NE-31s)")
         }
     }
 
@@ -222,9 +320,15 @@ final class ScenarioWorld {
             throw HarnessError("E_BAD_CASE", "a call's args must be an array")
         }
         func arg(_ index: Int) -> JSValue { index < args.count ? args[index] : .undefined }
+        if fields["returns"] != nil && !(forayTape && (name == "playForay" || name == "setQueueFromForay")) {
+            throw HarnessError("E_BAD_CASE", "only a Foray's build report can be recorded (returns: forayReport)")
+        }
         switch name {
         case "loadQueue":
             feed(.queue(.load(try items(arg(0), "loadQueue's items"))))
+        case "setQueueFromPick":
+            // The default strategy, SINGLE_ITEM: `picked ? [picked] : []`.
+            feed(.queue(.load(try items(.array([arg(0)]), "setQueueFromPick's item"))))
         case "play":
             // `play(index = 0, opts = {})`, `Number(opts?.startOffset)`.
             let index: Int
@@ -250,12 +354,28 @@ final class ScenarioWorld {
             feed(.queue(.seek(sec: seconds, precise: arg(1)["precise"].isTruthy)))
         case "setRate":
             feed(.queue(.setRate(arg(0).numberValue)))
-        case "playForay":
-            feed(.queue(.load(try forayQueue(arg(0)))))
-            feed(.queue(.playIndex(0, startSec: nil, source: .tap)))
-        case "setQueueFromForay":
-            // The same page-built queue, loaded and not started (NE-29s).
-            feed(.queue(.load(try forayQueue(arg(0)))))
+        case "playForay", "setQueueFromForay":
+            if forayTape {
+                // The PAGE's build (the engine never builds a Foray, plan §3 A-1).
+                let build = try forayBuild(context)
+                feed(.queue(.loadForay(build.items, isLocalFile: build.isLocalFile, allowAdPad: build.allowAdPad)))
+                if name == "playForay" && !build.items.isEmpty {
+                    feed(.queue(.playIndex(0, startSec: nil, source: .tap)))
+                }
+                if let projection = fields["returns"] {
+                    guard projection == .string("forayReport") else {
+                        throw HarnessError("E_BAD_CASE", "unknown returns projection \(projection) (one of forayReport)")
+                    }
+                    if fields["await"] == .bool(false) {
+                        throw HarnessError("E_BAD_CASE", "a call that records what it returns must be awaited")
+                    }
+                    returned.append(build.report)
+                }
+            } else {
+                feed(.queue(.load(try forayQueue(arg(0)))))
+                // `setQueueFromForay`: the same page-built queue, loaded and not started (NE-29s).
+                if name == "playForay" { feed(.queue(.playIndex(0, startSec: nil, source: .tap))) }
+            }
         default:
             throw HarnessError("E_UNKNOWN_EXPORT", "\"\(name)\" is not a manager call the Swift scenario driver makes")
         }
@@ -297,8 +417,10 @@ final class ScenarioWorld {
         guard let event = fields["deck"]?.stringValue else { throw HarnessError("E_BAD_CASE", "a deck step needs an event") }
         switch event {
         case "ended":
-            // The file ran out: the deck is silent and at its end (NE-14k;
-            // runner.js sets the fake element's `paused` and `ended` first).
+            // The file ran out, or the out-point stopped it (`reason`, which
+            // only telemetry reads: the two are one end). The deck is silent
+            // and at its end (NE-14k; runner.js sets the fake element's
+            // `paused` and `ended` first).
             reading.audible = false
             reading.ended = true
             feed(.deck(.ended(token: deckToken ?? 0)))
@@ -373,6 +495,138 @@ final class ScenarioWorld {
         }
     }
 
+    /// `clock: ms` on the manual scheduler (`advance`): move the clock, run
+    /// what came due (the beat's one timer), then settle.
+    private func advance(_ value: JSONValue?) throws {
+        guard let ms = value?.numberValue, ms.isFinite, ms >= 0, ms.rounded() == ms else {
+            throw HarnessError("E_BAD_CASE", "clock takes whole milliseconds")
+        }
+        monoMs += ms
+        if let due = seamTimerDue, due <= monoMs {
+            seamTimerDue = nil
+            feed(.timer(.seamBeat))
+        }
+        if !deferredLoads.isEmpty, let until = core.state.gapUntilMono, monoMs >= until {
+            let withheld = deferredLoads
+            deferredLoads = []
+            for command in withheld { applyDeck(command) }
+        }
+        settle()
+    }
+
+    // MARK: the engine target (runner.js `runEngineScenario`, NE-30j)
+
+    private func engineStep(verb: String, fields: [String: JSONValue], context: Codec.Context) throws {
+        switch verb {
+        case "call":
+            try engineCall(fields, context: context)
+        case "deck":
+            try engineDeck(fields)
+            settle()
+        case "clock":
+            try advance(fields["clock"])
+        case "settle":
+            settle()
+        case "checkpoint":
+            guard let name = fields["checkpoint"]?.stringValue else {
+                throw HarnessError("E_BAD_CASE", "a checkpoint needs a name")
+            }
+            checkpoint(name)
+        default:
+            throw HarnessError("E_BAD_CASE", "the engine target takes call, deck, clock, settle and checkpoint steps, not \"\(verb)\"")
+        }
+    }
+
+    /// An engine COMMAND: `{call: "<cmd>", args?, source?, refused?}` sent as
+    /// the engineSend payload the page sends, decoded by the contract, and
+    /// answered (the reply's refusal, if any) before the next step. A
+    /// `playForay`'s items are the page's BUILD of the authored ones.
+    private func engineCall(_ fields: [String: JSONValue], context: Codec.Context) throws {
+        guard let name = fields["call"]?.stringValue else { throw HarnessError("E_BAD_CASE", "a call step needs a name") }
+        cmdSeq += 1
+        let source = fields["source"]?.stringValue ?? "tap"
+        var members: [JSONMember] = [
+            JSONMember("v", .number(Double(EngineContract.protocolVersion))),
+            JSONMember("cmdSeq", .number(Double(cmdSeq))),
+            JSONMember("cmd", .string(name)),
+            JSONMember("source", .string(source))
+        ]
+        refusals = []
+        var refusedBeforeSend: String?
+        if let raw = fields["args"] {
+            var args = ScenarioWorld.node(try Codec.expandInputs(raw, context))
+            if name == "playForay", forayTape {
+                let build = try forayBuild(context)
+                if build.items.isEmpty {
+                    // reference-engine.js: nothing playable is refused-structure.
+                    refusedBeforeSend = EngineContract.Refusal.refusedStructure.rawValue
+                } else {
+                    args = ScenarioWorld.replacing("items", in: args, with: .array(build.items.map(\.node)))
+                }
+            }
+            members.append(JSONMember("args", args))
+        }
+        if let refusedBeforeSend {
+            refusals.append(refusedBeforeSend)
+        } else {
+            let request: EngineContract.SendRequest
+            do {
+                request = try EngineContract.SendRequest(contract: .object(members))
+            } catch {
+                throw HarnessError("E_BAD_CASE", "engine \(name) is not a contract command: \(error)")
+            }
+            feed(.command(request.command, source: request.source))
+            settle()
+        }
+        let want = fields["refused"]?.stringValue
+        let got = refusals.first
+        guard got == want else {
+            throw HarnessError("E_BAD_CASE", "engine \(name) answered \(got ?? "ok"), the step expects \(want ?? "ok")")
+        }
+    }
+
+    /// The engine's deck events (runner.js `ENGINE_DECK_EVENTS`).
+    private func engineDeck(_ fields: [String: JSONValue]) throws {
+        guard let event = fields["deck"]?.stringValue else { throw HarnessError("E_BAD_CASE", "a deck step needs an event") }
+        switch event {
+        case "ended", "error", "time", "duration":
+            try deck(fields)
+        case "window":
+            // WarmingBackend `openPrefetchWindow`: only an armed out-point on
+            // an audible deck has a boundary to approach.
+            if deckOutPoint != nil && reading.audible, let token = deckToken {
+                feed(.deck(.prepareWindow(token: token)))
+            }
+        case "stall":
+            if let token = deckToken { feed(.deck(.stalled(token: token))) }
+        case "flowing":
+            if let token = deckToken { feed(.deck(.timeControl(token: token, status: .playing, waitingReason: nil))) }
+        default:
+            throw HarnessError("E_BAD_CASE", "unknown engine deck event \"\(event)\" (one of ended, error, time, duration, window, stall, flowing)")
+        }
+    }
+
+    /// This step's page build: the test's own, else the table's.
+    private func forayBuild(_ context: Codec.Context) throws -> ScenarioBuilds.Build {
+        if let nodes = inlineBuilds[stepIndex] {
+            return try ScenarioBuilds.build(key: "\(caseId)@\(stepIndex)", entry: .object([
+                JSONMember("items", .array(nodes)), JSONMember("skipped", .array([])), JSONMember("warnings", .number(0))
+            ]))
+        }
+        return try ScenarioBuilds.build(caseId: caseId, step: stepIndex, context: context)
+    }
+
+    /// `object` with `key` replaced (or appended).
+    static func replacing(_ key: String, in object: JSONNode, with value: JSONNode) -> JSONNode {
+        guard case var .object(members) = object else { return object }
+        if let at = members.firstIndex(where: { $0.key == key }) {
+            members[at] = JSONMember(key, value)
+        } else {
+            members.append(JSONMember(key, value))
+        }
+        return .object(members)
+    }
+
     // MARK: the page's side of a queue
 
     /// `loadQueue`'s items: `filter(Boolean)`, then each a catalogue row.
@@ -386,13 +640,12 @@ final class ScenarioWorld {
         }
     }
 
-    /// `playForay(foray, {resolveItem})`'s queue. The engine never builds one:
-    /// `buildForayQueue` is the PAGE's (plan §3 A-1), and M2's `playForay`
-    /// hands the engine built items. So this stands in for the page, for the
-    /// one shape it can build faithfully: plain segments of catalogue rows
-    /// with no ad-drift check (`dai_suspected` false), which buildForayQueue
-    /// turns into `{id: "<foray>#<i>", kind, audio_url, start_sec, end_sec}`.
-    /// Anything else is refused, not guessed.
+    /// `playForay(foray, {resolveItem})`'s queue WITHOUT the Foray tape (the
+    /// NE-29s media/remote cases): the one shape it can build faithfully,
+    /// plain segments of catalogue rows with no ad-drift check (`dai_suspected`
+    /// false), which buildForayQueue turns into
+    /// `{id: "<foray>#<i>", kind, audio_url, start_sec, end_sec}`. With the
+    /// tape a Foray is the page's build from scenario-builds.json instead.
     private func forayQueue(_ foray: JSValue) throws -> [EngineItem] {
         guard let forayId = foray["id"].stringValue, case let .array(entries) = foray["items"] else {
             throw HarnessError("E_BAD_CASE", "playForay needs {id, items[]}")
@@ -404,7 +657,7 @@ final class ScenarioWorld {
             guard entry["type"].stringValue == "segment", case .object = row,
                   let start = entry["start_sec"].numberValue, let end = entry["end_sec"].numberValue,
                   row["dai_suspected"] != .bool(true) else {
-                throw HarnessError("E_BAD_CASE", "the Swift driver builds only plain segments of catalogue rows (buildForayQueue is the page's; Forays are NE-30s)")
+                throw HarnessError("E_BAD_CASE", "without the Foray tape the Swift driver builds only plain segments of catalogue rows")
             }
             var members = [
                 JSONMember("id", .string("\(forayId)#\(index)")),
@@ -487,9 +740,16 @@ final class ScenarioWorld {
             }
         case .playWhileLost?:
             return turnHead && entry == .lostToInterruption ? [EngineCommand.deck(.play)] + output : output
-        case nil:
+        case .loadAfterBeat?, nil:
             return output
         }
+    }
+
+    /// A native-only token: logged for the report (and stripped by the
+    /// comparator) on the manager target; the engine target's op log is the
+    /// deck's and the standby deck's only, as reference-engine.js's is.
+    private func native(_ token: String) {
+        if !engineTarget { ops.append(token) }
     }
 
     /// Interpret the core's commands in the fake world, logging each one.
@@ -498,55 +758,85 @@ final class ScenarioWorld {
             commands.append(command)
             names.append(command.turnName)
             switch command {
-            case let .deck(deckCommand): applyDeck(deckCommand)
+            case let .deck(deckCommand):
+                if mutation == .loadAfterBeat, case .load = deckCommand, core.state.inSeamGap {
+                    deferredLoads.append(deckCommand)
+                } else {
+                    applyDeck(deckCommand)
+                }
             case let .writePosition(write):
+                if engineTarget { break }
                 ops.append(positionEvents ? "store.set:\(write.row.key)"
                                           : "store.save:\(write.itemId)@\(ScenarioWorld.rounded(write.seconds))")
             case let .appendEvent(event):
                 let text = "event.position:\(event.episodeId)@\(ScenarioWorld.number(event.seconds)):"
                     + (event.duration.map(ScenarioWorld.number) ?? "null")
-                ops.append(positionEvents ? text : "n.\(text)")
-            case let .sessionActivate(requestId): ops.append("n.session.activate:\(requestId)")
-            case let .sessionDeactivate(notifyOthers): ops.append(notifyOthers ? "n.session.deactivate:notify" : "n.session.deactivate")
-            case .sessionReapplyCategory: ops.append("n.session.category")
-            case .sessionRebuild: ops.append("n.session.rebuild")
+                if positionEvents && !engineTarget { ops.append(text) } else { native("n.\(text)") }
+            case let .sessionActivate(requestId): native("n.session.activate:\(requestId)")
+            case let .sessionDeactivate(notifyOthers): native(notifyOthers ? "n.session.deactivate:notify" : "n.session.deactivate")
+            case .sessionReapplyCategory: native("n.session.category")
+            case .sessionRebuild: native("n.session.rebuild")
             case let .graceBegin(reason):
                 if let open = graceHeld { broke("grace-begun-twice:\(open.rawValue)") }
                 graceHeld = reason
-                ops.append("n.grace.begin:\(reason.rawValue)")
+                native("n.grace.begin:\(reason.rawValue)")
             case let .graceEnd(outcome):
                 if graceHeld == nil { broke("grace-end-without-begin:\(outcome.rawValue)") }
                 graceHeld = nil
-                ops.append("n.grace.end:\(outcome.rawValue)")
-            case let .timerArm(timer, _, _): ops.append("n.timer.arm:\(timer.rawValue)")
-            case let .timerCancel(timer): ops.append("n.timer.cancel:\(timer.rawValue)")
-            case let .writeRow(row): ops.append("n.row:\(row.key)")
-            case let .writeRestore(record): ops.append("n.restore:\(record?.mode.rawValue ?? "removed")")
+                native("n.grace.end:\(outcome.rawValue)")
+            case let .timerArm(timer, afterMs, _):
+                if timer == .seamBeat { seamTimerDue = monoMs + afterMs }
+                native("n.timer.arm:\(timer.rawValue)")
+            case let .timerCancel(timer):
+                if timer == .seamBeat { seamTimerDue = nil }
+                native("n.timer.cancel:\(timer.rawValue)")
+            case let .writeRow(row): native("n.row:\(row.key)")
+            case let .writeRestore(record): native("n.restore:\(record?.mode.rawValue ?? "removed")")
             case .speak:
                 speaking = true
                 trackAudible()
-                ops.append("n.speak")
+                native("n.speak")
             case let .emit(event):
                 switch event {
-                case .advanced: ops.append("n.emit:advanced")
-                case let .error(code, _): ops.append("n.emit:error:\(code)")
+                case .advanced: native("n.emit:advanced")
+                case let .error(code, _): native("n.emit:error:\(code)")
+                case .skipped: native("n.emit:skipped")
                 }
             case let .diag(entry):
-                let cause = entry[field: "cause"]?.stringValue.map { ":\($0)" } ?? ""
-                ops.append("n.diag:\(entry.kind)\(cause)")
-            case let .commandFailed(reason): ops.append("n.failed:\(reason)")
+                let sub = entry[field: "kind"]?.stringValue
+                if entry.kind == "beat", seamGapEvents, !engineTarget, sub == "begin" || sub == "end" {
+                    // The surface's beat callback (`onSeamGapChange`), as an op.
+                    ops.append("event.seamGap:\(sub == "begin")")
+                } else {
+                    let cause = entry[field: "cause"]?.stringValue.map { ":\($0)" } ?? ""
+                    native("n.diag:\(entry.kind)\(cause)")
+                }
+            case let .commandFailed(reason):
+                refusals.append(reason)
+                native("n.failed:\(reason)")
             }
         }
     }
 
-    /// FakeBackend, command by command.
-    private func applyDeck(_ command: DeckCommand) {
+    /// FakeBackend, command by command (and, on the engine target,
+    /// WarmingBackend's standby deck).
+    func applyDeck(_ command: DeckCommand) {
         switch command {
-        case let .load(token, itemId, _, startSec, _):
+        case let .load(token, itemId, url, startSec, _):
+            if engineTarget {
+                // `warmPromotion` at the boundary: a load that finds its source
+                // and in-point warm is a handover, said BEFORE the load.
+                let offset = JSMath.round(DeckPolicy.warmOffset(startSec))
+                let promotion = DeckPolicy.warmPromotion(warm: warm, url: url, offsetSec: offset, canPlay: true, atSec: offset)
+                if promotion == .promote { ops.append("n.handover:\(itemId)@\(ScenarioWorld.number(offset))") }
+                warm = nil
+                currentUrl = url
+            }
             // A load re-points the element: paused, at the offset, no boundary.
             deckItemId = itemId
             deckToken = token
             readyToken = nil
+            deckOutPoint = nil
             reading.positionSec = startSec
             reading.audible = false
             reading.ended = false
@@ -572,13 +862,28 @@ final class ScenarioWorld {
         case let .setRate(rate):
             ops.append("rate:\(ScenarioWorld.number(rate))")
         case let .setOutPoint(sec):
+            deckOutPoint = sec
             ops.append("outPoint:\(sec.map(ScenarioWorld.rounded) ?? "null")")
         case .unload:
             deckItemId = nil
             deckToken = nil
             readyToken = nil
+            deckOutPoint = nil
             reading = DeckReading(positionSec: nil, durationSec: nil, audible: false, ended: false)
-            ops.append("n.deck.unload")
+            native("n.deck.unload")
+        case let .prepare(itemId, url, startSec):
+            guard engineTarget else { return native("n.deck.prepare:\(itemId)") }
+            // WarmingBackend `prefetch`: the standby deck's own decision.
+            let offset = JSMath.round(DeckPolicy.warmOffset(startSec))
+            switch DeckPolicy.prefetchDecision(available: true, url: url, currentUrl: currentUrl, warm: warm, offsetSec: offset) {
+            case .already:
+                warm?.itemId = itemId
+            case .start:
+                warm = DeckPolicy.Warm(itemId: itemId, url: url ?? "", offsetSec: offset, ready: true, failed: false)
+                ops.append("n.prepare:\(itemId)@\(ScenarioWorld.number(offset))")
+            case .unavailable, .noUrl, .sameEpisode:
+                break
+            }
         }
     }
 
@@ -594,8 +899,8 @@ final class ScenarioWorld {
     }
 
     /// Everything in flight that the JS fakes would resolve before the next
-    /// step: instant loads, in issue order, then each started deck saying
-    /// `.playing`.
+    /// step: instant loads, in issue order, then (on the instant scheduler)
+    /// the seam beat's timer, then each started deck saying `.playing`.
     func settle() {
         var budget = 256
         while budget > 0 {
@@ -603,6 +908,11 @@ final class ScenarioWorld {
             if !instantLoads.isEmpty {
                 let next = instantLoads.removeFirst()
                 land(next.token, itemId: next.itemId, fail: failLoadFor.contains(next.itemId))
+                continue
+            }
+            if !manualClock, seamTimerDue != nil {
+                seamTimerDue = nil
+                feed(.timer(.seamBeat))
                 continue
             }
             if !confirmations.isEmpty {
@@ -632,16 +942,29 @@ final class ScenarioWorld {
 
     func checkpoint(_ name: String) {
         let state = core.state
-        checkpoints.append(.object([
+        var fields: [String: JSONValue] = [
             "name": .string(name),
             "ops": .array(ops[mark...].map { JSONValue.string($0) }),
             "index": .number(Double(state.currentIndex)),
             "inInterlude": .bool(false),
-            "inSeamGap": .bool(false),
+            "inSeamGap": .bool(state.inSeamGap),
             "playhead": state.loadedId.map { JSONValue.string($0) } ?? .null,
             "rate": .number(state.rate),
             "state": .string(state.stateType)
-        ]))
+        ]
+        if engineTarget { fields["nowMs"] = .number(monoMs) }
+        for key in view {
+            switch key {
+            case "outPoint": fields[key] = deckOutPoint.map { JSONValue.number($0) } ?? .null
+            case "seamGapRemainingMs": fields[key] = .number(core.seamGapRemainingMs(atMono: monoMs))
+            case "timersLive": fields[key] = .number(seamTimerDue == nil ? 0 : 1)
+            case "positionSec": fields[key] = .number(reading.positionSec ?? 0)
+            default: break
+            }
+        }
+        if !returned.isEmpty { fields["returned"] = .array(returned) }
+        returned = []
+        checkpoints.append(.object(fields))
         mark = ops.count
     }
 
@@ -659,4 +982,77 @@ final class ScenarioWorld {
 
     /// `${n}`: ECMAScript Number::toString.
     static func number(_ value: Double) -> String { JSWriter.numberToString(value) }
+}
+
+/// The page's build of every Foray a scenario plays (NE-30s):
+/// `player/parity/scenario-builds.json`, which
+/// `tools/parity/scenario-builds.mjs --write` emits from the real
+/// `buildForayQueue` and run.test.js holds current. The engine never builds a
+/// Foray (plan §3 A-1), so its input here is exactly what `playForay` carries.
+enum ScenarioBuilds {
+    static let file = "player/parity/scenario-builds.json"
+
+    struct Build {
+        let items: [EngineItem]
+        let isLocalFile: Bool
+        let allowAdPad: Bool
+        /// runner.js `project("forayReport")`: queue ids, skipped entries, the
+        /// warning count.
+        let report: JSONValue
+    }
+
+    private static let lock = NSLock()
+    private static var cache: [String: JSONNode] = [:]
+
+    /// The table, read once per repo root, in key order (item nodes are kept
+    /// verbatim, as the page sends them).
+    static func table(_ context: Codec.Context) throws -> JSONNode {
+        guard let root = context.repoRoot else {
+            throw HarnessError("E_BAD_CASE", "a scenario's Foray build needs the repo root, and this run has none")
+        }
+        lock.lock()
+        defer { lock.unlock() }
+        if let hit = cache[root.path] { return hit }
+        let text: String
+        do {
+            text = try String(contentsOf: root.appendingPathComponent(file), encoding: .utf8)
+        } catch {
+            throw HarnessError("E_BAD_CASE", "cannot read \(file): \(error)")
+        }
+        let doc: JSONNode
+        do {
+            doc = try JSONNode.parse(text)
+        } catch {
+            throw HarnessError("E_BAD_CASE", "cannot parse \(file): \(error)")
+        }
+        let builds = doc["builds"] ?? .object([])
+        cache[root.path] = builds
+        return builds
+    }
+
+    static func build(caseId: String, step: Int, context: Codec.Context) throws -> Build {
+        let key = "\(caseId)@\(step)"
+        guard let entry = try table(context)[key], case .object = entry else {
+            throw HarnessError("E_BAD_CASE", "\(key) has no build in \(file); run node tools/parity/scenario-builds.mjs --write")
+        }
+        return try build(key: key, entry: entry)
+    }
+
+    /// One table entry (`{isLocalFile, allowAdPad, warnings, skipped, items}`).
+    static func build(key: String, entry: JSONNode) throws -> Build {
+        let nodes = entry["items"]?.arrayValue ?? []
+        let items = try nodes.map { (node: JSONNode) throws -> EngineItem in
+            guard let item = EngineItem(node: node) else {
+                throw HarnessError("E_BAD_CASE", "\(key): a built item has no id")
+            }
+            return item
+        }
+        let report: JSONValue = .object([
+            "items": .array(items.map { JSONValue.string($0.id) }),
+            "skipped": Codec.encode(ForayArgs.value(entry["skipped"] ?? .array([]))),
+            "warnings": .number(entry["warnings"]?.numberValue ?? 0)
+        ])
+        return Build(items: items, isLocalFile: entry["isLocalFile"] == .bool(true),
+                     allowAdPad: entry["allowAdPad"] == .bool(true), report: report)
+    }
 }

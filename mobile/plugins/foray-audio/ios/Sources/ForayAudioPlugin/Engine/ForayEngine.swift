@@ -456,7 +456,7 @@ final class ForayEngine {
             // The playhead jumps: Now Playing is rewritten after this turn
             // whatever the drift check would say (plan §4.5: every seek).
             case .seek, .load, .unload: surfaceMoved = true
-            case .play, .pause, .setRate, .setOutPoint: break
+            case .play, .pause, .setRate, .setOutPoint, .prepare: break
             }
             seams.deck.send(deckCommand)
         case let .sessionActivate(requestId):

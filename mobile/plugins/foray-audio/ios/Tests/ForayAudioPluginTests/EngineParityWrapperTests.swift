@@ -78,6 +78,11 @@ final class EngineParityWrapperTests: XCTestCase {
     func testForayStructureFamily() { assertParityFamily("foray-structure", requireRunner: true) }
     func testMediaFamily() { assertParityFamily("media", requireRunner: true) }
 
+    /// NE-30s: the deck's guards, the Foray tape and the prepare seams as the app links them.
+    func testDeckFamily() { assertParityFamily("deck", requireRunner: true) }
+    func testManagerForayFamily() { assertParityFamily("manager-foray", requireRunner: true) }
+    func testPrepareFamily() { assertParityFamily("prepare", requireRunner: true) }
+
     /// Every family in manifest.json, including any recorded after this file
     /// was written: executed or owed, nothing stale, nothing dropped.
     func testEveryManifestFamilyIsExecutedOrPending() throws {

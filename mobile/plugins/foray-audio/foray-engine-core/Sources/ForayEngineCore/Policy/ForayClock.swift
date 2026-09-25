@@ -62,6 +62,24 @@ public struct ForayItem: Equatable {
         self.referenceDurationSec = referenceDurationSec
     }
 
+    /// A built queue item as `playForay` carries it (NE-30s): each field is
+    /// the JS value when it has the type the rules test for (`typeof`), else
+    /// nil, and the two flags are `=== true`, exactly as the parity harness
+    /// reads a fixture's item.
+    public init(node: JSONNode) {
+        self.init(
+            id: node["id"]?.stringValue, kind: node["kind"]?.stringValue, type: node["type"]?.stringValue,
+            title: node["title"]?.stringValue, show: node["show"]?.stringValue,
+            audioUrl: node["audio_url"]?.stringValue, startSec: node["start_sec"]?.numberValue,
+            endSec: node["end_sec"]?.numberValue, authoredEndSec: node["authored_end_sec"]?.numberValue,
+            durationSec: node["duration_sec"]?.numberValue, durationSource: node["duration_source"]?.stringValue,
+            script: node["script"]?.stringValue, sourceItemId: node["source_item_id"]?.stringValue,
+            itemId: node["item_id"]?.stringValue, daiSuspected: node["dai_suspected"] == .bool(true),
+            needsDriftCheck: node["needs_drift_check"] == .bool(true),
+            startAnchor: node["start_anchor"]?.stringValue, endAnchor: node["end_anchor"]?.stringValue,
+            referenceDurationSec: node["reference_duration_sec"]?.numberValue)
+    }
+
     /// The item as the seam rules read it (seam-gap.js `isSegment`).
     public var seam: SeamItem { SeamItem(startSec: startSec, endSec: endSec) }
 

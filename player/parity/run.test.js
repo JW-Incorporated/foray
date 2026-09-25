@@ -18,6 +18,7 @@ import { encode, decodeSpecial, expandInputs, containsMacro, MACROS, SPECIAL_NUM
 import { compare, NATIVE_TOKEN_FAMILIES } from "./compare.js";
 import { manualScheduler, instantScheduler, OpLog, FakeBackend } from "./fakes.js";
 import { BUILDS_FILE, committedIds, overTable } from "./forays.js";
+import { SCENARIO_BUILDS_FILE, SCENARIO_BUILD_FAMILIES, buildKey, expectedScenarioBuilds, currentScenarioBuilds } from "./scenario-builds.js";
 import fs from "node:fs";
 import path from "node:path";
 
@@ -135,6 +136,29 @@ test("NE-29s: foray-builds.json holds the page's build of every committed Foray 
     }
   }
   assert.ok(ran >= 30, `only ${ran} committed cases ran over the table`);
+});
+
+test("NE-30s: scenario-builds.json is the page's current build of every Foray a manager-foray or prepare scenario plays", async () => {
+  /* The Swift scenario drivers read a scenario's Foray from this table (the
+     engine never builds one, plan §3 A-1). It depends on the fixtures and the
+     frozen fixture data only, so it is held CURRENT here: a re-recorded
+     scenario refreshes it in the same PR (node tools/parity/scenario-builds.mjs
+     --write). MUTATION: edit one built item's start_sec, or delete one entry
+     -> red; add a playForay step to a manager-foray case without --write -> red. */
+  assert.equal(currentScenarioBuilds(REPO_ROOT), await expectedScenarioBuilds(FIXTURES),
+    `${SCENARIO_BUILDS_FILE} is stale: node tools/parity/scenario-builds.mjs --write`);
+  const table = JSON.parse(currentScenarioBuilds(REPO_ROOT)).builds;
+  let steps = 0;
+  for (const f of FIXTURES.filter((x) => SCENARIO_BUILD_FAMILIES.includes(x.family))) {
+    for (const c of f.doc.cases) {
+      for (const [i, s] of c.steps.entries()) {
+        if (s.call !== "playForay" && s.call !== "setQueueFromForay") continue;
+        assert.ok(table[buildKey(c.id, i)], `${c.id} step ${i} has no build`);
+        steps += 1;
+      }
+    }
+  }
+  assert.ok(steps >= 60, `only ${steps} Foray plays have a build`);
 });
 
 test("macros are closed, alone in their object, and never legal in an expect", () => {
