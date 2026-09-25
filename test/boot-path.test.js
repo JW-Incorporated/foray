@@ -1022,6 +1022,8 @@ test("data-integrity-4: INVARIANT — with Family mode on, no pool episode witho
     else if (it.explicit !== false) {
       const show = m.ctx.catalogShowForItem(it);
       if (!show || show.explicit !== false) leaks.push(`${it.id}: unrated, show ${show ? show.explicit : "unknown"}`);
+      // Round-3 review (L1): a clean show rating is only trusted when none of the show's pool episodes is rated explicit.
+      else if (m.ctx.showHasExplicitEpisodes(show)) leaks.push(`${it.id}: unrated, show rated clean but has explicit episodes`);
     }
   }
   assert.deepStrictEqual(leaks, [], `${leaks.length} episodes without a clean rating got through`);
@@ -1034,7 +1036,7 @@ test("data-integrity-4: the predicate — an unrated episode inherits its show's
   const m = mount();
   await m.booted();
   const shows = m.state.catalog.shows;
-  const clean = shows.find((s) => s.explicit === false);
+  const clean = shows.find((s) => s.explicit === false && !m.ctx.showHasExplicitEpisodes(s) && !m.ctx.showIsComedy(s));
   const rated = shows.find((s) => s.explicit === true);
   const unratedShow = shows.find((s) => s.explicit == null);
   assert.ok(clean && rated && unratedShow, "premise: the catalogue has all three show ratings");
@@ -1048,6 +1050,34 @@ test("data-integrity-4: the predicate — an unrated episode inherits its show's
   assert.strictEqual(safe(ep(clean, { explicit: true })), false, "an episode's own explicit rating wins over a clean show");
   assert.strictEqual(safe(ep(clean, { topics: ["comedy"] })), false, "comedy stays out, as before");
   assert.strictEqual(safe(ep(null, { show_id: clean.show_id, show: "Renamed" })), true, "joined by show_id first");
+});
+
+test("round-3 review (L1): a show rated clean whose own episodes are rated explicit is not trusted, and a comedy show's catalogue rows stay out", async () => {
+  /* catalog-client.json rates Ancient History Fangirl, 20VC, KILL TONY, Call Her
+     Daddy and Bad Friends clean. An unrated episode inherited that, and the show
+     page's full-catalogue rows (topics: [], so branchOf says "other") never met
+     the comedy rule. MUTATION: drop the showHasExplicitEpisodes check -- the
+     Fangirl row passes; drop the showIsComedy check -- the KILL TONY row passes. */
+  const m = mount();
+  await m.booted();
+  const byId = (id) => m.state.catalog.shows.find((s) => s.show_id === id);
+  const fangirl = byId("ancient-history-fangirl");
+  const killTony = byId("kill-tony");
+  assert.ok(fangirl && fangirl.explicit === false && killTony && killTony.explicit === false, "premise: both shows are rated clean in the catalogue");
+  assert.strictEqual(m.ctx.showHasExplicitEpisodes(fangirl), true, "premise: the Fangirl has explicit-rated episodes in the pool");
+  // A show-page full-catalogue row, exactly as fullCatalogueRowToEpRowItem builds it: no rating, no topics.
+  const row = (show) => ({ id: `${show.show_id}--guid:x`, show_id: show.show_id, show: show.title, title: "An episode", topics: [] });
+  assert.strictEqual(m.ctx.familySafe(row(fangirl)), false, "an unrated row of a clean-rated show with explicit episodes");
+  assert.strictEqual(m.ctx.familySafe(row(killTony)), false, "a comedy show's back-catalogue row");
+  // The comedy rule on its own: a clean-rated comedy show with no explicit pool
+  // episode (none in today's data, so one is added) still keeps its rows out.
+  const standUp = { show_id: "clean-stand-up-fixture", title: "Clean Stand-Up Fixture", explicit: false, taxonomy_node_ids: ["comedy/stand-up"] };
+  m.state.catalog = { ...m.state.catalog, shows: [...m.state.catalog.shows, standUp] };
+  assert.strictEqual(m.ctx.showHasExplicitEpisodes(standUp), false, "premise: nothing explicit in the pool for it");
+  assert.strictEqual(m.ctx.familySafe(row(standUp)), false, "a comedy show's row with no topics is comedy");
+  assert.strictEqual(m.ctx.familySafe({ ...row(fangirl), explicit: false }), true, "an episode's own clean rating still counts");
+  const trusted = m.state.catalog.shows.find((s) => s.explicit === false && !m.ctx.showHasExplicitEpisodes(s) && !m.ctx.showIsComedy(s));
+  assert.strictEqual(m.ctx.familySafe(row(trusted)), true, "a clean show whose episodes agree still vouches for an unrated row");
 });
 
 test("data-integrity-4: a show page and Library go through the same predicate", async () => {

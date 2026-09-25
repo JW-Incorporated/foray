@@ -1452,14 +1452,58 @@ function poolFiltered() {
    and full-catalogue lists, "More from this show", and Library. The backfill of
    the 516 from the refresh pipeline's contentAdvisoryRating is a separate data
    PR; this does not wait for it. test/boot-path.test.js pins that nothing
-   unrated gets through unless its show is rated clean. */
+   unrated gets through unless its show is rated clean.
+
+   A SHOW'S "CLEAN" IS TRUSTED ONLY WHEN ITS OWN EPISODES AGREE (round-3 review,
+   L1). DECISIONS.md 2026-07-09 records show-level flags as unreliable, and the
+   data agrees: catalog-client.json rates Call Her Daddy, KILL TONY, Bad
+   Friends, Ancient History Fangirl and 20VC clean, and 73 of the 196 shows
+   rated clean have explicit-rated episodes in the pool. So an unrated episode
+   inherits "clean" only from a show none of whose pool episodes is rated
+   explicit. And a row that carries no topics (the show page's full-catalogue
+   rows are built with `topics: []`, so branchOf says "other") takes its branch
+   from the show's taxonomy_node_ids: a comedy show's back catalogue stays out,
+   as comedy always has. */
 function familySafe(item) {
   if (!item || typeof item !== "object") return false;
   if (item.explicit === true) return false;
   if (branchOf(item) === "comedy") return false;
-  if (item.explicit === false) return true;
   const show = catalogShowForItem(item);
-  return Boolean(show && show.explicit === false);
+  if (!(Array.isArray(item.topics) && item.topics.length) && showIsComedy(show)) return false;
+  if (item.explicit === false) return true;
+  return Boolean(show && show.explicit === false && !showHasExplicitEpisodes(show));
+}
+
+/** The catalogue show is filed under comedy (its taxonomy nodes). */
+function showIsComedy(show) {
+  const nodes = show && Array.isArray(show.taxonomy_node_ids) ? show.taxonomy_node_ids : [];
+  return nodes.some((n) => typeof n === "string" && n.split("/")[0] === "comedy");
+}
+
+/* The catalogue shows at least one of whose pool episodes is rated explicit.
+   Rebuilt only when the documents it reads change (the same key fullPool's own
+   cache uses, plus the catalogue): fullPool hands back a fresh copy on every
+   call, so its identity cannot be the key, and this runs once per row. */
+let explicitShowsIndex = null;
+function showHasExplicitEpisodes(show) {
+  if (!show) return false;
+  const session = state.session;
+  const discover = state.discover;
+  const shows = state.catalog?.shows;
+  const itemCount = (discover?.items || []).length;
+  const idx = explicitShowsIndex;
+  if (!idx || idx.session !== session || idx.discover !== discover || idx.itemCount !== itemCount || idx.shows !== shows) {
+    let pool;
+    try { pool = session ? fullPool() : (discover?.items || []); } catch (_) { pool = discover?.items || []; }
+    const set = new Set();
+    for (const it of pool) {
+      if (!it || it.explicit !== true) continue;
+      const s = catalogShowForItem(it);
+      if (s) set.add(s);
+    }
+    explicitShowsIndex = { session, discover, itemCount, shows, set };
+  }
+  return explicitShowsIndex.set.has(show);
 }
 
 /** Family Mode's answer for one row: everything when it is off. */
