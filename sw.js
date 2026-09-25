@@ -386,6 +386,11 @@ function isApi(url) {
   return url.pathname.startsWith(API_PATH);
 }
 
+function isRangeOrMedia(request) {
+  if (request.destination === "audio" || request.destination === "video") return true;
+  const headers = request.headers;
+  return Boolean(headers && typeof headers.has === "function" && headers.has("range"));
+}
 
 /* Workers before round 3 cached API answers into the generation caches. The
    ones still retained are scrubbed on activate, so a listener who searched
@@ -800,6 +805,13 @@ self.addEventListener("fetch", (e) => {
      first one's body, and the cached searches outlived Delete my data. The
      page owns its API deadlines and its own shard cache; the worker stays out. */
   if (isApi(url)) return;
+  /* MEDIA GOES STRAIGHT TO THE NETWORK (round-3 audit, app-3-7). networkFetch
+     re-issues a subresource as `fetch(request.url, ...)`, which drops every
+     request header, Range included: the page's <audio> (the interlude jingle
+     is same-origin on Pages) asked for bytes and got a 200 full body, which
+     WebKit's media loader does not expect through a worker. A ranged or
+     media request is left to the browser. */
+  if (isRangeOrMedia(request)) return;
 
   /* Which page asked, and how to keep the worker alive for the writes that
      outlive the response.

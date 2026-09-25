@@ -1201,6 +1201,22 @@ test("app-3-2: activate scrubs API answers an older worker left in the retained 
   assert.equal(h.cachedBody("app.js", "foray-gen-old"), "APP@old", "the retained generation's own files stay");
 });
 
+test("app-3-7: a ranged or media request is left to the browser, so its Range header reaches the origin", async () => {
+  /* networkFetch re-issues a subresource by URL alone, which drops Range: the
+     same-origin interlude jingle got a 200 full body where Safari expects a
+     206. MUTATION: delete the isRangeOrMedia return — all three are
+     intercepted. */
+  const h = loadWorker({ network: () => ok("RIFF....") });
+  const JINGLE = "player/assets/interlude-placeholder.wav";
+  const ranged = { ...sub(JINGLE), headers: new Headers({ Range: "bytes=0-" }) };
+  assert.equal(h.fire(ranged, { clientId: "page-1" }), undefined, "a Range request is not intercepted");
+  assert.equal(h.fire({ ...sub(JINGLE), destination: "audio" }, { clientId: "page-1" }), undefined);
+  assert.equal(h.fire({ ...sub("player/assets/clip.mp4"), destination: "video" }, { clientId: "page-1" }), undefined);
+  /* An ordinary script request, headers and all, is still the worker's. */
+  const script = { ...sub("app.js"), destination: "script", headers: new Headers({ Accept: "*/*" }) };
+  assert.notEqual(h.fire(script, { clientId: "page-1" }), undefined);
+});
+
 test("a non-GET request is left alone", async () => {
   const h = loadWorker({ network: () => ok("nope") });
   const res = h.fire({ url: `${ORIGIN}/rest/v1/events`, method: "POST", mode: "cors" });
