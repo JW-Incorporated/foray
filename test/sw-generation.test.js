@@ -176,6 +176,9 @@ function loadWorker({ network, generations = {}, pointer = null, windows = [] } 
     async delete(request) {
       return bucket(name).delete(keyFor(name, request));
     },
+    async keys() {
+      return [...bucket(name).keys()].map((url) => new Request(url));
+    },
   });
   const POINTER_CACHE_NAME = "foray-pointer";
   const breakPointerPutOnce = { armed: false };
@@ -1123,6 +1126,47 @@ test("a cross-origin request is left alone", async () => {
   const h = loadWorker({ network: () => ok("nope") });
   const res = h.fire({ url: "https://traffic.megaphone.fm/APO3303969728.mp3", method: "GET", mode: "cors" });
   assert.equal(res, undefined, "episode audio comes from ~41 CDNs and is none of our business");
+});
+
+test("app-3-2: an API request is left to the page, so a slow second search never gets the first search's body", async () => {
+  /* On the Vercel origin the page and api/* share an origin. The worker used to
+     cache every API answer under its query-stripped URL, so `?q=a` and `?q=b`
+     shared one key, and a second search that timed out was answered with the
+     first one's results. The worker now declines to intercept at all; the
+     page's own API deadline (and its "couldn't search" copy) answers instead.
+     MUTATION: delete the `isApi(url)` return in the fetch listener — the
+     request is intercepted and, after the timeout, served q=a's body. */
+  const h = loadWorker({
+    generations: { "1": { "api/shows/search": '{"shows":["answer-for-a"]}' } },
+    pointer: "1",
+    network: () => new Promise(() => {}),
+  });
+  const res = h.fire(sub("api/shows/search?q=b"), { clientId: "page-1" });
+  h.fireTimers();
+  assert.equal(res, undefined, "the worker must not answer an API request from any cache");
+  assert.equal(h.fire(sub("api/episodes/search?show=x&q=y"), { clientId: "page-1" }), undefined);
+  assert.equal(h.fire(sub("api/shows/index/manifest.json"), { clientId: "page-1" }), undefined);
+  /* And the rule is scope-relative, not a substring match: a data file whose
+     name merely contains "api" is still the worker's. */
+  assert.notEqual(h.fire(sub("data/api-notes.json"), { clientId: "page-1" }), undefined);
+});
+
+test("app-3-2: activate scrubs API answers an older worker left in the retained generations", async () => {
+  /* Those bodies are the listener's searches, and Delete my data only clears
+     the app's own shard cache. MUTATION: drop the purgeApiEntries call in
+     activate — the old search body survives the deploy. */
+  const h = loadWorker({
+    generations: {
+      "old": { "app.js": "APP@old", "api/shows/search": '{"shows":["a-search-someone-made"]}' },
+    },
+    pointer: "old",
+    network: networkFor(manifestFor("new", { "app.js": "APP@new" }), { "app.js": "APP@new" }),
+  });
+  await h.lifecycle("install");
+  await h.lifecycle("activate");
+  assert.equal(h.pointerDeployId(), "new");
+  assert.equal(h.cachedBody("api/shows/search", "foray-gen-old"), null, "the search trace is gone");
+  assert.equal(h.cachedBody("app.js", "foray-gen-old"), "APP@old", "the retained generation's own files stay");
 });
 
 test("a non-GET request is left alone", async () => {

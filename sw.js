@@ -346,6 +346,7 @@ self.addEventListener("activate", (e) => {
     const keys = await caches.keys();
     const stale = keys.filter((k) => k !== POINTER_CACHE && k !== PENDING_CACHE && !keep.has(k));
     await Promise.all(stale.map((k) => caches.delete(k)));
+    await purgeApiEntries([...keep]);
 
     await self.clients.claim();
 
@@ -366,6 +367,31 @@ function isNavigation(request) {
 
 function isData(url) {
   return url.pathname.includes("/" + DATA_PREFIX);
+}
+
+/* The serverless API, resolved against this worker's own URL (the scope root:
+   `/foray/api/` on Pages, `/api/` on Vercel). Never a generation file — see
+   the fetch listener and `purgeApiEntries`. */
+const API_PATH = new URL("api/", self.location.href).pathname;
+
+function isApi(url) {
+  return url.pathname.startsWith(API_PATH);
+}
+
+/* Workers before round 3 cached API answers into the generation caches. The
+   ones still retained are scrubbed on activate, so a listener who searched
+   before this deploy does not keep that trace (the Delete my data promise,
+   persist-4) and never gets one of those bodies back. */
+async function purgeApiEntries(cacheNames) {
+  await Promise.all(cacheNames.map(async (name) => {
+    try {
+      const cache = await caches.open(name);
+      const keys = await cache.keys();
+      await Promise.all(keys.filter((req) => {
+        try { return isApi(new URL(req.url)); } catch (_) { return false; }
+      }).map((req) => cache.delete(req)));
+    } catch (_) { /* a cache we cannot read has nothing we can scrub */ }
+  }));
 }
 
 /* Which files decide a page's generation. Only CODE can misread data, so
@@ -758,6 +784,13 @@ self.addEventListener("fetch", (e) => {
   let url;
   try { url = new URL(request.url); } catch (_) { return; }
   if (url.origin !== location.origin) return;
+  /* THE API IS NOT PART OF A GENERATION (round-3 audit, app-3-2). On the
+     Vercel origin the page and `api/*` share an origin, and this handler used
+     to cache every answer under its query-stripped URL, so `?q=a` and `?q=b`
+     shared one key: a slow or failing second search was answered with the
+     first one's body, and the cached searches outlived Delete my data. The
+     page owns its API deadlines and its own shard cache; the worker stays out. */
+  if (isApi(url)) return;
 
   /* Which page asked, and how to keep the worker alive for the writes that
      outlive the response.
