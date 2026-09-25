@@ -328,3 +328,29 @@ test("NE-17: the release archive runs the plist injector bare and then --check, 
   assert.match(s, /^\s*node tools\/mobile\/inject-background-audio\.mjs mobile\/ios\/App\/App\/Info\.plist --check\s*$/m, "the read-back is gone");
   assert.doesNotMatch(code(IOS_ACTION), /--engine-default/, "the archive must read the committed mobile/ENGINE_DEFAULT.json");
 });
+
+test("ci-release-13: the release composite keeps its logs as an artifact, always, and only the logs directory", () => {
+  /* MUTATION: delete the upload step, or drop `if: always()` -> the upload
+     error's "see altool-upload.log in this job's artifacts" points at nothing
+     on exactly the runs that need it. */
+  const s = actionStep(IOS_ACTION, "Keep the release logs");
+  assert.ok(s, "no log-upload step in .github/actions/ios-archive/action.yml");
+  assert.match(s, /uses: actions\/upload-artifact@v4/);
+  assert.match(s, /if: always\(\)/);
+  assert.match(s, /path: \$\{\{ runner\.temp \}\}\/ios-release$/m, "upload the logs directory, never runner.temp itself");
+  assert.match(s, /retention-days: \d+/);
+  assert.match(IOS_ACTION, /altool-upload\.log in this job's artifacts/);
+});
+
+test("ci-release-13: nothing secret is ever written under $ART, the directory that is uploaded", () => {
+  /* The upload above is safe only while the signing material lives OUTSIDE
+     $RUNNER_TEMP/ios-release. MUTATION: write the .p12, the keychain, the
+     profile or the .p8 under "$ART/..." -> it would ship in a downloadable
+     artifact. */
+  const lines = IOS_ACTION.split(/\r?\n/).filter((l) => !l.trimStart().startsWith("#"));
+  const writesUnderArt = lines.filter((l) => /\$ART\/|\/ios-release\//.test(l));
+  const secretish = writesUnderArt.filter((l) => /\.p12|\.p8|keychain|mobileprovision|ExportOptions|PRIVATE_KEY|CERT_P12|PASSWORD/i.test(l));
+  assert.deepEqual(secretish, []);
+  assert.match(IOS_ACTION, /"\$RUNNER_TEMP\/cert\.p12"/, "the certificate is decoded outside $ART");
+  assert.match(IOS_ACTION, /\$HOME\/\.appstoreconnect\/private_keys/, "the ASC key is written outside $ART");
+});

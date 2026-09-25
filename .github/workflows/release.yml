@@ -31,11 +31,24 @@
 # MARKETING_VERSION/BUILD_NUMBER pair, computed once and passed as job outputs
 # to `ios` and `android` so a slow iOS build and a fast Android build can never
 # observe two different "today"s if the run crosses midnight UTC. `run-of-day`
-# is `github.run_number` WRAPPED (modulo 99, not clamped) into version.mjs's
-# 1-99 slot — NOT re-derived per platform. Because it comes from the lifetime
-# `run_number`, "Re-run failed jobs" reuses it: the version job does not even
-# re-execute, its cached outputs are replayed, and App Store Connect refuses the
-# duplicate build number. The fix for a failed release is a FRESH dispatch,
+# fills version.mjs's 1-99 slot ONCE, here — NOT re-derived per platform.
+# "Re-run failed jobs" reuses it: the version job does not even re-execute, its
+# cached outputs are replayed, and App Store Connect refuses the duplicate build
+# number.
+#
+# ci-release-4 (round-3 audit, 2026-09-25): run-of-day used to be the lifetime
+# `run_number` WRAPPED modulo 99, so run 99 gave nn=99 and run 100 gave nn=01,
+# and when both fell on one UTC day the second build number was LOWER than one
+# already uploaded — which both stores reject for the rest of that day, and
+# which spent release-trigger's retry budget. It is now the larger of (a) the
+# count of release.yml runs created on this run's own UTC day up to and
+# including this one and (b) one past the highest run-of-day an earlier run of
+# that day printed (tools/release/build-number.mjs, tested). The day is this
+# run's own `created_at`, also passed to version.mjs as --now, so a run created
+# at 23:59 that computes at 00:01 names the day it was counted on. Past 99 in
+# one day the job fails loudly, before any macOS minute is spent.
+#
+# The fix for a failed release is a FRESH dispatch,
 # never a re-run — which is all release-trigger.yml ever does
 # (docs/release-reliability-plan.md, "BUILD NUMBER COLLIDES ON A RE-RUN").
 #
@@ -143,6 +156,10 @@ jobs:
     if: needs.guard.outputs.allowed == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    # actions: read — the run-of-day is counted from this workflow's own runs.
+    permissions:
+      contents: read
+      actions: read
     outputs:
       marketing_version: ${{ steps.pair.outputs.marketing_version }}
       build_number: ${{ steps.pair.outputs.build_number }}
@@ -172,10 +189,31 @@ jobs:
 
       - name: The version pair both platforms will use
         id: pair
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          RUN_ID: ${{ github.run_id }}
         run: |
           set -euo pipefail
-          RUN_OF_DAY=$(( (${{ github.run_number }} - 1) % 99 + 1 ))
-          OUT=$(node tools/mobile/version.mjs pair --run-of-day "$RUN_OF_DAY")
+          # ci-release-4: count, never wrap, and never below what an earlier run
+          # of the same day really used. See the header and
+          # tools/release/build-number.mjs.
+          CREATED_AT=$(gh api "repos/$REPO/actions/runs/$RUN_ID" --jq '.created_at')
+          DAY="${CREATED_AT%%T*}"
+          gh api --paginate "repos/$REPO/actions/workflows/release.yml/runs?created=$DAY&per_page=100"             --jq '.workflow_runs[] | {id, created_at} | @json' > runs-today.jsonl
+          # The build number every EARLIER run of the day printed (its version
+          # job echoes BUILD_NUMBER=...). A log that cannot be read is a warning:
+          # the count still applies, and a collision is a red upload, not a
+          # silent bad ship.
+          : > used-build-numbers.txt
+          for id in $(jq -r --argjson me "$RUN_ID" 'select(.id < $me) | .id' runs-today.jsonl); do
+            for jid in $(gh api "repos/$REPO/actions/runs/$id/jobs?filter=all"                            --jq '.jobs[] | select(.name == "version" and .conclusion == "success") | .id'); do
+              gh api "repos/$REPO/actions/jobs/$jid/logs" >> used-build-numbers.txt                 || echo "::warning::could not read the version log of run $id"
+            done
+          done
+          RUN_OF_DAY=$(node tools/release/build-number.mjs run-of-day             --runs runs-today.jsonl --run-id "$RUN_ID" --day "$DAY"             --used-log used-build-numbers.txt | sed -n 's/^RUN_OF_DAY=//p')
+          if [ -z "$RUN_OF_DAY" ]; then exit 1; fi
+          OUT=$(node tools/mobile/version.mjs pair --run-of-day "$RUN_OF_DAY" --now "$CREATED_AT")
           echo "$OUT"
           MV=$(echo "$OUT" | sed -n 's/^MARKETING_VERSION=//p')
           BN=$(echo "$OUT" | sed -n 's/^BUILD_NUMBER=//p')

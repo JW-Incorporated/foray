@@ -60,11 +60,15 @@ runs:
         { sw_vers; xcodebuild -version; } | tee "$RUNNER_TEMP/ios-release/toolchain.txt"
 
     - name: Install the shell's dependencies
+      # `npm ci`, against the committed mobile/package-lock.json (ci-release-12),
+      # exactly as every Android path already does. `npm install` resolves a
+      # second tree whenever package.json and the lock disagree, and this is the
+      # build a listener installs.
       shell: bash
       working-directory: mobile
       run: |
         set -euo pipefail
-        npm install --no-audit --no-fund
+        npm ci --no-audit --no-fund
 
     - name: Build the webDir and generate the iOS project
       shell: bash
@@ -385,3 +389,21 @@ runs:
       if: steps.signing.outputs.ready != 'true'
       shell: bash
       run: echo "uploaded=false" >> "$GITHUB_OUTPUT"
+
+    # ci-release-13: the upload step's error tells the reader to "see
+    # altool-upload.log in this job's artifacts", and until this step there
+    # were no artifacts. `if: always()` because the failing run is the one
+    # whose logs matter. $ART ($RUNNER_TEMP/ios-release) holds ONLY logs and
+    # text reports: the .p12, the keychain, the provisioning profile, the
+    # ExportOptions plist and the App Store Connect .p8 are all written
+    # elsewhere ($RUNNER_TEMP/*, $HOME/.appstoreconnect) and never into it.
+    # tools/mobile/release-workflow.test.mjs pins that nothing secret is
+    # written under $ART. Short retention: these are for the morning after.
+    - name: Keep the release logs (altool-upload.log, toolchain, SwiftPM resolve)
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: ios-release-logs-${{ github.run_attempt }}
+        path: ${{ runner.temp }}/ios-release
+        if-no-files-found: ignore
+        retention-days: 14

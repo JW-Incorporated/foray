@@ -1028,3 +1028,17 @@ test("NE-17: the plist step still runs the injector bare and then --check, which
   assert.match(s, /^\s*node tools\/mobile\/inject-background-audio\.mjs "\$INFO_PLIST" --check\s*$/m, "the read-back is gone");
   assert.doesNotMatch(YML, /--engine-default/, "the build must read the committed mobile/ENGINE_DEFAULT.json");
 });
+
+test("ci-release-12: no iOS path runs `npm install` under mobile/ — both install from the committed lockfile", () => {
+  /* MUTATION: put `npm install` back in either ios-build.yml or the release
+     composite (.github/actions/ios-archive). mobile/package-lock.json is
+     committed; every Android path already uses `npm ci`, and a second,
+     floating tree on iOS is how the two stores ship different dependencies. */
+  const archive = code(fs.readFileSync(path.join(ROOT, ".github/actions/ios-archive/action.yml"), "utf8"));
+  for (const [name, src] of [["ios-build.yml", YML], ["ios-archive/action.yml", archive]]) {
+    assert.doesNotMatch(src, /npm install\b/, `${name} runs npm install`);
+    assert.match(src, /npm ci --no-audit --no-fund/, `${name} must install with npm ci`);
+  }
+  assert.ok(fs.existsSync(path.join(ROOT, "mobile", "package-lock.json")), "npm ci needs the committed lockfile");
+  assert.doesNotMatch(WF, /no committed lockfile/i, "the stale comment must not come back");
+});

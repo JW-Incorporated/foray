@@ -237,3 +237,81 @@ test("NE-06: ios-kit runs on a dispatch when a Swift path changed, and never ski
   // G-1a's "a macOS swift test of the core in ios-kit" (landed by NE-01; kept).
   assert.match(job, /swift test --package-path mobile\/plugins\/foray-audio\/foray-engine-core/);
 });
+
+/* ───────────── round-3 audit (L7): least privilege, timeouts, and the api job ───────────── */
+
+/** Every job name in ci.yml (the two-space-indented keys under `jobs:`). */
+const jobNames = () => {
+  const after = CI.slice(CI.indexOf("\njobs:\n"));
+  return [...after.matchAll(/^ {2}([\w-]+):\s*$/gm)].map((m) => m[1]);
+};
+
+test("security-3: ci.yml's token is read-only by default, at the top level", () => {
+  /* MUTATION: delete the top-level `permissions:` block. The repository default
+     token is write-all, and this workflow runs PR-authored code and its
+     dependencies on every same-repo PR. */
+  const lines = CI.split(/\r?\n/);
+  const at = lines.findIndex((l) => l === "permissions:");
+  assert.notEqual(at, -1, "ci.yml has no top-level permissions block");
+  assert.equal(lines[at + 1], "  contents: read");
+  assert.ok(!/^ {2}\w[\w-]*: write/m.test(lines.slice(at + 1, at + 6).join("\n")), "the default must not grant a write scope");
+});
+
+test("security-3: EVERY workflow declares its token permissions", () => {
+  /* MUTATION: a new workflow without a `permissions:` key inherits the write-all
+     repository default. */
+  const dir = path.join(ROOT, ".github", "workflows");
+  const missing = fs
+    .readdirSync(dir)
+    .filter((f) => /\.ya?ml$/.test(f))
+    .filter((f) => !/^permissions:/m.test(fs.readFileSync(path.join(dir, f), "utf8")));
+  assert.deepStrictEqual(missing, []);
+});
+
+test("tests-4: every ci.yml job has a timeout-minutes, and none is GitHub's 360-minute default", () => {
+  /* MUTATION: drop `timeout-minutes` from any job. One hung test used to hold a
+     runner (and a required check) for six hours. */
+  const names = jobNames();
+  assert.ok(names.length >= 8, `expected ci.yml's jobs, found ${names.join(", ")}`);
+  for (const name of names) {
+    const m = codeOf(name).match(/^ {4}timeout-minutes: (\d+)$/m);
+    assert.ok(m, `ci.yml job \`${name}\` has no timeout-minutes`);
+    assert.ok(Number(m[1]) <= 90, `\`${name}\` timeout ${m[1]} is not a real bound`);
+  }
+  assert.match(codeOf("ios-kit"), /^ {4}timeout-minutes: 45$/m);
+});
+
+test("ci-release-11: the api job installs with npm ci, mirroring vercel.json's installCommand", () => {
+  /* MUTATION: go back to `npm install` -> a package.json change without its
+     lockfile passes here and fails the production install. */
+  const api = codeOf("api");
+  assert.doesNotMatch(api, /npm install/);
+  assert.match(api, /- run: npm ci --no-audit --no-fund$/m);
+  assert.match(api, /- run: npm ci --omit=dev --prefix \.\.\/backend --no-audit --no-fund$/m);
+  const vercel = JSON.parse(fs.readFileSync(path.join(ROOT, "vercel.json"), "utf8"));
+  assert.match(vercel.installCommand, /npm ci --prefix api/);
+  assert.match(vercel.installCommand, /npm ci --omit=dev --prefix backend/);
+  assert.match(api, /cache: npm/);
+  assert.match(api, /api\/package-lock\.json/);
+  assert.match(api, /backend\/package-lock\.json/);
+});
+
+test("arch-drift-12: the api job type-checks api/ before its tests, with tsc over the typecheck tsconfig", () => {
+  /* MUTATION: delete `- run: npm run typecheck` from the api job, or point the
+     script at something that is not tsc. tsx strips types without checking
+     them, so without this nothing type-checks the Vercel functions. */
+  const api = codeOf("api");
+  const tc = api.indexOf("- run: npm run typecheck");
+  assert.notEqual(tc, -1, "the api job does not run the typecheck");
+  assert.ok(tc < api.indexOf("- run: npm test"), "typecheck must run before the suite");
+  const pkg = JSON.parse(fs.readFileSync(path.join(ROOT, "api", "package.json"), "utf8"));
+  assert.equal(pkg.scripts.typecheck, "tsc -p tsconfig.typecheck.json");
+  assert.ok(pkg.devDependencies.typescript, "typescript must be an api/ devDependency");
+  const tsconfig = JSON.parse(fs.readFileSync(path.join(ROOT, "api", "tsconfig.typecheck.json"), "utf8"));
+  assert.equal(tsconfig.extends, "../backend/tsconfig.json", "api/ is held to backend's strictness");
+  assert.equal(tsconfig.compilerOptions.noEmit, true);
+  assert.deepEqual(tsconfig.include, ["**/*.ts"]);
+  // Not tsconfig.json: @vercel/node compiles each function with the nearest
+  // tsconfig.json, and a type-check config must not change production builds.
+  assert.equal(fs.existsSync(path.join(ROOT, "api", "tsconfig.json")), false);
+});
