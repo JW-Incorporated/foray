@@ -606,6 +606,30 @@ test("app-2-2: the Shows list paints SHOW_RESULTS_PAINT_STEP rows at a time, and
   assert.strictEqual(count(), step);
 });
 
+test("round-3 review (L2): 'Show more shows' puts focus on the first row it revealed, not on <body>", () => {
+  /* The repaint rewrote results.innerHTML, destroying the focused button, and
+     nothing moved focus. MUTATION: drop the focus() after the repaint -- no
+     row is focused. */
+  const m = loadApp();
+  const results = makeEl("div");
+  const note = makeEl("p");
+  const more = makeEl("button");
+  let focused = null;
+  results.querySelector = (sel) => (sel === "[data-sh-more]" && /data-sh-more/.test(results.innerHTML) ? more : null);
+  results.querySelectorAll = (sel) => {
+    if (sel !== ".show-result") return [];
+    const n = (results.innerHTML.match(/class="show-result"/g) || []).length;
+    return Array.from({ length: n }, (_, i) => ({ focus() { focused = i; } }));
+  };
+  m.els["#sh-results"] = results;
+  m.els["#sh-note"] = note;
+  const step = m.run("SHOW_RESULTS_PAINT_STEP");
+  const rows = Array.from({ length: step * 2 + 5 }, (_, i) => ({ show_id: `s${i}`, title: `Show ${i}` }));
+  m.ctx.paintShowResults("s", rows, m.run("showSearchToken"));
+  more.dispatch("click");
+  assert.strictEqual(focused, step, "the first newly revealed row has focus");
+});
+
 test("app-2-2: each local pass hands over at most SHOW_PASS_LIMIT rows, and the row caches are bounded", () => {
   /* prefixSearchShows/scanShowIndex were called with no limit (0 = all), and
      breadthShowCache/shardShowCache gained an entry for every row every query

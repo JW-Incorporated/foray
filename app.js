@@ -8246,6 +8246,14 @@ function paintShowResults(query, shows, myToken) {
       if (myToken !== showSearchToken) return;
       showSearchPaintCap = { token: myToken, query, n: cap + SHOW_RESULTS_PAINT_STEP };
       paintShowResults(query, showSearchPainted.rows, myToken);
+      /* FOCUS LANDS ON WHAT WAS REVEALED (round-3 review, L2; the a11y-6 /
+         nav-3 rule for a replaced control). The repaint destroys the focused
+         button, and focus fell to <body>: a keyboard or VoiceOver user was
+         sent back to the top of the document. The first new row takes it, or
+         the next "Show more shows" when there is no row to take it. */
+      const painted = typeof results.querySelectorAll === "function" ? results.querySelectorAll(".show-result") : [];
+      const target = painted[cap] || (typeof results.querySelector === "function" ? results.querySelector("[data-sh-more]") : null);
+      if (target && typeof target.focus === "function") target.focus();
     });
   }
 }
