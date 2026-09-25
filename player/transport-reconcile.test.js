@@ -3616,3 +3616,20 @@ test("a release followed by a real change still seeks to the thumb (audit round 
   assert.ok(Math.abs(audio.currentTime - 1800) < 1, `the scrub seeks, got ${audio.currentTime}`);
   restore();
 });
+
+test("a Next clip tap that throws leaves the index where the audio is, and repaints (audit round 3, player-rest-5)", async (t) => {
+  /* `setForayIndex` records `pendingFrom` and then paints; a throw after that
+     used to leave the page waiting for a move that never came, with the
+     rejection unhandled. Driven here by a clip whose `why` cannot be read.
+     KILLING MUTATION: drop the catch in `moveForay` and the status stays on 1. */
+  const { client, doc, restore } = await bootClient(t);
+  const resolved = synthetic();
+  await client.playForay(resolved, { startIndex: 0 });
+  await settle();
+  Object.defineProperty(resolved.playable[1], "why", { get() { throw new TypeError("unreadable"); } });
+  const next = findWhere(doc.body, (n) => n.textContent === "Next clip ›");
+  await next.click();                   // must not reject: the guard owns it
+  await settle();
+  assert.equal(client.forayStatus().index, 0, "the page is back on the clip that is playing");
+  restore();
+});
