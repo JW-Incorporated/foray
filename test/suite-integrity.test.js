@@ -1300,7 +1300,7 @@ const FLOORS = {
      network contract, the report validator) -- driven by fakes and an
      injected fetch, no real catalogue/network. See
      test/search-probe-record.test.js for the wiring/mutation-guard half. */
-  "tools/search-probe.test.mjs": 50, // defect 1 (2026-09-13): +5 — the index battery gained REACH columns beside `scan_reached`, which reported only what a skipped scan SAVES; the rank of a named target show with the scan and without it, a null-not-fabricated rank where no target is named, the lowercase/trimmed key lookup, the validator that refuses a report carrying the latency half and not the reach half, and a pin on `daily`/The Daily so the case the audit found cannot quietly leave the list; 45 -> 50 // P-06 (docs/search-parity-plan.md §2.1, 2026-09-13): +15 — the THREE NAMED PARITY CASES (`tim ferriss`, `lex fridman`, `sam harris`) become a battery of their own, asked plain AND with `fallthrough=1` so that "one row" cannot read as a thin catalogue instead of a gate that was never asked; the target show's 1-indexed rank rides along because `tim ferriss` measured 1 -> 14 rows while The Tim Ferriss Show slid from first to third, and a count-only table calls that an unqualified win; the validator now refuses a report that dropped the section, a case, either column, or the titles; 30 -> 45 // S-03/S-08 (2026-09-12): +3 — the index battery reports the prefix and scan passes separately, and the validator refuses a report that lost either p95 or the whole section; 27 -> 30
+  "tools/search-probe.test.mjs": 51, // audit round 3 (L8): +1, NFKD fold in normaliseTitle; 50 -> 51 // defect 1 (2026-09-13): +5 — the index battery gained REACH columns beside `scan_reached`, which reported only what a skipped scan SAVES; the rank of a named target show with the scan and without it, a null-not-fabricated rank where no target is named, the lowercase/trimmed key lookup, the validator that refuses a report carrying the latency half and not the reach half, and a pin on `daily`/The Daily so the case the audit found cannot quietly leave the list; 45 -> 50 // P-06 (docs/search-parity-plan.md §2.1, 2026-09-13): +15 — the THREE NAMED PARITY CASES (`tim ferriss`, `lex fridman`, `sam harris`) become a battery of their own, asked plain AND with `fallthrough=1` so that "one row" cannot read as a thin catalogue instead of a gate that was never asked; the target show's 1-indexed rank rides along because `tim ferriss` measured 1 -> 14 rows while The Tim Ferriss Show slid from first to third, and a count-only table calls that an unqualified win; the validator now refuses a report that dropped the section, a case, either column, or the titles; 30 -> 45 // S-03/S-08 (2026-09-12): +3 — the index battery reports the prefix and scan passes separately, and the validator refuses a report that lost either p95 or the whole section; 27 -> 30
   /* S-03 (docs/search-plan.md): the BUILD half of the show index — the merge,
      the in_curated dedupe, the chart_rank cut, the control-character sanitiser,
      the four-column row shape, and the parity of the committed
@@ -1694,7 +1694,7 @@ const FLOORS = {
      because `main()` fetches over the network and is not exported. Every guard it
      used to hold is now tested; the plumbing between them is not.
      The floor is 24 because that is the count, with no slack. */
-  "tools/refresh/backfill-show.test.mjs": 24,
+  "tools/refresh/backfill-show.test.mjs": 25, // audit round 3 (L8): +1, feed timeout; 24 -> 25
   /* ROSE FROM 8 ON 2026-08-23, when classification stopped reading only the
      last hop of the redirect chain. The eight it had covered the host matcher,
      which was never the bug: `spreaker.com` was on the list the whole time and
@@ -1823,7 +1823,7 @@ const FLOORS = {
      crossed (the chunked/endless-response case that a Content-Length check
      alone cannot catch), and cap the item count after parsing — plus the
      end-to-end wiring through fetchFeedCapped. */
-  "tools/refresh/fetch-limits.test.mjs": 14,
+  "tools/refresh/fetch-limits.test.mjs": 16, // audit round 3 (L8): +2, readResponseCapped, callers pinned; 14 -> 16
   /* S-11: the curated-scan-selection and curation-candidates helpers behind
      scan.mjs --source index (4a-shows-pipeline-plan.md card S-11). The
      fail-OPEN behaviour for a curated show absent from S-04's id-map is the
@@ -1831,9 +1831,9 @@ const FLOORS = {
      gap in the release from silently starving a feed of scans, which is
      the exact "we miss episodes if nothing refreshes them" bug this card
      exists to fix. */
-  "tools/refresh/candidates.test.mjs": 19,
+  "tools/refresh/candidates.test.mjs": 20, // audit round 3 (L8): +1, baseline-less changed.json; 19 -> 20
 
-  "tools/refresh/enclosure.test.mjs": 18,
+  "tools/refresh/enclosure.test.mjs": 21, // audit round 3 (L8): +3, one duration parser, backend fixture parity; 18 -> 21
   /* Per-episode topics (#292). ZERO SLACK. This suite is the only thing between
      the catalogue and a return to show-level labelling — 77 of the 99 shows with
      >= 8 episodes carried one identical topic set on every episode, and the two
@@ -1886,8 +1886,8 @@ const FLOORS = {
      criterion the card asked for. One test, deliberately: this is an
      integration proof of the fix, not a table of unit cases. */
   "tools/refresh/publish-digest.test.mjs": 1,
-  "tools/segments/sweep-transcripts.test.mjs": 38,
-  "tools/segments/transcript-normalize.test.mjs": 24,
+  "tools/segments/sweep-transcripts.test.mjs": 39, // audit round 3 (L8): +1, one entity decoder; 38 -> 39
+  "tools/segments/transcript-normalize.test.mjs": 25, // audit round 3 (L8): +1, one entity decoder; 24 -> 25
   "tools/segments/merge-segments.test.mjs": 39,
   "tools/segments/prepare-segment-batch.test.mjs": 78,
   /* The free-transcript acquisition step (#104 follow-up): the join that
@@ -1930,8 +1930,8 @@ const FLOORS = {
      would think to write, so this comment now names what the suite pins rather
      than asserting a score. */
   "tools/segments/transcript-coverage.test.mjs": 12,
-  "tools/segments/fetch-transcripts.test.mjs": 11,
-  "tools/segments/politeness.test.mjs": 7,
+  "tools/segments/fetch-transcripts.test.mjs": 12, // audit round 3 (L8): +1, streamed byte cap; 11 -> 12
+  "tools/segments/politeness.test.mjs": 10, // audit round 3 (L8): +3, discardBody; 7 -> 10
   /* S-04a: the PodcastIndex dump import/shard-build pipeline (kanban
      t_835d1a3c). Six suites because the pipeline is deliberately split into
      independently-testable stages (config, filter, dedupe, shard-build,
@@ -1940,11 +1940,11 @@ const FLOORS = {
      its own migration+ingest pipeline. Floored individually so a change
      that silently drops, say, the id-map fail-closed test is caught by
      name rather than by a combined count going down by one among many. */
-  "tools/shows/dedupe.test.mjs": 9,
+  "tools/shows/dedupe.test.mjs": 11, // audit round 3 (L8): +2, Unicode dedupe key; 9 -> 11
   "tools/shows/filter.test.mjs": 11,
   "tools/shows/identity.test.mjs": 2,
   "tools/shows/import-dump.test.mjs": 5,
-  "tools/shows/shard-build.test.mjs": 14,
+  "tools/shows/shard-build.test.mjs": 15, // audit round 3 (L8): +1, changed.json baseline; 14 -> 15
   "tools/shows/state.test.mjs": 6,
   /* S-04b: GitHub Release publishing + the run-then-publish orchestration
      (kanban t_3a896057), gated on S-04a above. publish-release.test.mjs
@@ -1957,7 +1957,7 @@ const FLOORS = {
      both idempotency paths (S-04a's own state.json skip, and the
      independent release-already-exists check that catches a lost
      state.json). */
-  "tools/shows/publish-release.test.mjs": 18,
+  "tools/shows/publish-release.test.mjs": 19, // audit round 3 (L8): +1, POINTER_SCHEMA_VERSION; 18 -> 19
   "tools/shows/run-and-publish.test.mjs": 6,
   /* Fresh-context review finding (2026-09-05): runBuild spawns
      import-dump.mjs as a real child process, and Node does NOT
@@ -2024,7 +2024,7 @@ const FLOORS = {
      channel and the App Store rejects one, so the inversion is the whole
      point. */
   "tools/store/play-listing.test.mjs": 21,
-  "tools/transcribe/fetch-audio.test.mjs": 65, // NE-25a: the click-track exemption covers only descriptor-named, hash-matching files under 1 MB; 64 -> 65
+  "tools/transcribe/fetch-audio.test.mjs": 70, // audit round 3 (L8): +5, resume identity, stall timer, overrun cleanup, perHost-2 gap; 65 -> 70 // NE-25a: the click-track exemption covers only descriptor-named, hash-matching files under 1 MB; 64 -> 65
   /* ADR-0008's decode-and-compare: the instrument the cheap ones defer to.
      Floored because everything expensive about it — the download, the PyAV
      demux — is deliberately OUTSIDE CI, so what remains is the arithmetic that
@@ -2050,7 +2050,7 @@ const FLOORS = {
      read the shipped file, and the producer assertion that kills it was added
      for exactly that reason. */
   "tools/transcribe/build-transcription-queue.test.mjs": 26,
-  "tools/corpus/fetcher.test.mjs": 23,
+  "tools/corpus/fetcher.test.mjs": 26, // audit round 3 (L8): +3, body reads fail as results, own deadline; 23 -> 26
   "tools/corpus/extract.test.mjs": 21,
   "tools/corpus/db.test.mjs": 20,
   "tools/corpus/manifest.test.mjs": 24,
@@ -2058,7 +2058,7 @@ const FLOORS = {
   "tools/corpus/chunk.test.mjs": 16,
   "tools/corpus/ftsquery.test.mjs": 21,
   "tools/corpus/eval.test.mjs": 28,
-  "tools/corpus/ingest.test.mjs": 12,
+  "tools/corpus/ingest.test.mjs": 13, // audit round 3 (L8): +1, per-source catch; 12 -> 13
   "tools/corpus/embeddings.test.mjs": 39,
   "tools/corpus/search.test.mjs": 25,
   "tools/corpus/backfill.test.mjs": 26,
