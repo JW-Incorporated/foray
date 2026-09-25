@@ -2066,6 +2066,8 @@ export const ENGINE_ROW_KINDS = Object.freeze([
   "restore", "position", "diag", "nowplaying", "resume", "outPoint",
   /* NE-25c: PreviewSpeaker's off-main callback row (speaker kind=<end> thread=bg). */
   "speaker",
+  /* NE-16g / NE-24: a cold play's span row (grace=, bgRemainingMs), which DV-7a reads. */
+  "cold-play",
 ]);
 
 const ENGINE_HEADER_KEYS = new Set(["seq", "at", "mono", "kind", "event", "dropped"]);
