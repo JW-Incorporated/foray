@@ -9235,15 +9235,20 @@ function homeGreeting() {
 
 /** Home's rails as candidate lists, in render order. Each rail is the data the
     rail itself draws from, so the order cannot drift from what is on screen. */
-function homePlayRails() {
+/* `picks` is renderHomeV2's one computation of the rails' contents (audit round
+   3, app-2-12): computed once per render and handed to the button AND the rail
+   renderers, instead of each of them re-running every pick (generatedPlaylists
+   walks and sorts the whole pool) a second time. Absent, each is computed here,
+   as before. */
+function homePlayRails(picks = homeRailPicks()) {
   const rails = [];
-  rails.push(jumpBackInEntries().map(c =>
+  rails.push(picks.jumpBackIn.map(c =>
     c.kind === "foray" ? { kind: "foray", id: c.id, title: c.title }
       : c.kind === "episode" ? { kind: "episode", item: c.item, title: c.title }
         : { kind: "playlist", playlist: playlistById(c.id) }));
-  const forays = foraysForYouPicks();
+  const forays = picks.forays;
   rails.push(forays ? forays.picks.concat(forays.drafts).map(f => ({ kind: "foray", id: f.id, title: f.title })) : []);
-  const { own, generated } = playlistsForYouPicks();
+  const { own, generated } = picks.playlists;
   rails.push(own.concat(generated).map(p => ({ kind: "playlist", playlist: p })));
   rails.push((state.cardSlots || []).map(slot => ({ kind: "playlist", playlist: subjectQueueById("subject-" + slot.branch) })));
   return rails;
@@ -9274,8 +9279,13 @@ function homePlayable(c) {
 }
 
 /** What Home's play button will play, or null (nothing on Home can). */
-function homePlayTarget() {
-  for (const rail of homePlayRails()) {
+/** Every Home rail's picks, once. */
+function homeRailPicks() {
+  return { jumpBackIn: jumpBackInEntries(), forays: foraysForYouPicks(), playlists: playlistsForYouPicks() };
+}
+
+function homePlayTarget(picks) {
+  for (const rail of homePlayRails(picks)) {
     for (const c of rail) {
       const t = homePlayable(c);
       if (t) return t;
@@ -9288,8 +9298,8 @@ function homePlayTarget() {
    press, so the press plays exactly what the label promised. */
 let homePlayPending = null;
 
-function homePlayHtml() {
-  const t = homePlayTarget();
+function homePlayHtml(picks) {
+  const t = homePlayTarget(picks);
   homePlayPending = t;
   if (!t) return "";
   return `<div class="hv2-play-row">
@@ -9416,8 +9426,7 @@ async function startHomeForay(player, r) {
  * otherwise — deliberately conservative: an unknown time must not out-rank a
  * known one.
  */
-function jumpBackInV2Html() {
-  const cards = jumpBackInEntries();
+function jumpBackInV2Html(cards = jumpBackInEntries()) {
   if (!cards.length) return "";
   return `<section class="hv2-section hv2-jbi">
     <h2 class="hv2-title">Jump back in</h2>
@@ -9634,8 +9643,7 @@ function foraysForYouPicks() {
   return { picks, stretchIndex, drafts };
 }
 
-function foraysForYouHtml() {
-  const pick = foraysForYouPicks();
+function foraysForYouHtml(pick = foraysForYouPicks()) {
   if (!pick) return "";
   const { picks, stretchIndex, drafts } = pick;
   return `<section class="hv2-section hv2-forays">
@@ -9680,8 +9688,7 @@ function playlistsForYouPicks() {
   return { own, generated: generatedPlaylists() };
 }
 
-function playlistsForYouHtml() {
-  const { own, generated } = playlistsForYouPicks();
+function playlistsForYouHtml({ own, generated } = playlistsForYouPicks()) {
   if (!own.length && !generated.length) return "";
   const cards = own.map(p => playlistCardV2Html(p, { generated: false }))
     .concat(generated.map(p => playlistCardV2Html(p, { generated: true })));
@@ -9723,14 +9730,15 @@ function suggestedHtml() {
 function renderHomeV2() {
   setBodyClass("view-home");
   if (!state.cardSlots.length) buildCards();
+  const picks = homeRailPicks();
   $("#view").innerHTML = `
     <div class="home hv2-home">
       ${homeGreeting()}
-      ${homePlayHtml()}
+      ${homePlayHtml(picks)}
       ${testTrackNoticeHtml()}
-      ${jumpBackInV2Html()}
-      ${foraysForYouHtml()}
-      ${playlistsForYouHtml()}
+      ${jumpBackInV2Html(picks.jumpBackIn)}
+      ${foraysForYouHtml(picks.forays)}
+      ${playlistsForYouHtml(picks.playlists)}
       ${suggestedHtml()}
     </div>`;
 

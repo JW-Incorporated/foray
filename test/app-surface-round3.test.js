@@ -343,3 +343,23 @@ test("app-2-1: lastEpisodeCard seeds the player's pointer only when the index ha
   m.ctx.lastEpisodeCard();
   assert.strictEqual(m.run(`state.itemIndex["ep-1"].audio_url`), "https://cdn.test/1.mp3");
 });
+
+/* ---------- app-2-12: Home computes each rail's picks once per render --------- */
+
+test("app-2-12: renderHomeV2 computes every rail's picks once, for the button and the rails alike", () => {
+  /* homePlayHtml -> homePlayTarget -> homePlayRails computed every rail, and then
+     jumpBackInV2Html, foraysForYouHtml and playlistsForYouHtml computed each one
+     again — generatedPlaylists' full-pool scan and sort included.
+     MUTATION: call homePlayHtml() / the rail renderers without `picks` in
+     renderHomeV2 — the counts go to 2, red. */
+  const m = loadApp();
+  const calls = { jbi: 0, forays: 0, playlists: 0 };
+  m.ctx.jumpBackInEntries = () => { calls.jbi += 1; return []; };
+  m.ctx.foraysForYouPicks = () => { calls.forays += 1; return null; };
+  m.ctx.playlistsForYouPicks = () => { calls.playlists += 1; return { own: [], generated: [] }; };
+  for (const name of ["homeGreeting", "testTrackNoticeHtml", "suggestedHtml"]) m.ctx[name] = () => "";
+  for (const name of ["offerHomeOnboarding", "sizeProgressBars", "bindPickLogging", "bindStars", "bindUpNext", "bindPlay", "bindHomePlay", "buildCards"]) m.ctx[name] = () => {};
+  m.run("state.cardSlots = [];");
+  m.ctx.renderHomeV2();
+  assert.deepStrictEqual(calls, { jbi: 1, forays: 1, playlists: 1 }, "each rail's picks are computed once per render");
+});
