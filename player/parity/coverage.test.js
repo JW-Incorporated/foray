@@ -259,6 +259,10 @@ test("NE-29j/NE-29s: foray-progress and media-session owe nothing, the Foray fam
   }
 });
 
+/** NE-31j's manager-foray files: the narration overlay, the jingle's clock
+    and audition, owed to NE-31s rather than NE-30s. */
+const NE31J_NARRATION_FILES = Object.freeze(["narration.json", "jingle.json", "audition.json"].map((f) => `player/parity/fixtures/manager-foray/${f}`));
+
 test("NE-30j: html-audio-backend and foray-playback owe nothing, the tape/deck/prepare families are owed to NE-30s and the pair's decisions to NE-32, and prepare is authored with its n.* tokens", () => {
   /* NE-30j's acceptance: "the families pass in JS (prepare against
      reference-engine). The guard shows zero unported entries for
@@ -278,7 +282,8 @@ test("NE-30j: html-audio-backend and foray-playback owe nothing, the tape/deck/p
   const pairFile = "player/parity/fixtures/deck/deck-pair.json";
   const owedTo = (c, fam, file) => (fam === "deck" && file === pairFile ? "NE-32" : "NE-30s");
   for (const fam of ["manager-foray", "deck", "prepare"]) {
-    const files = FIXTURES.filter((f) => f.family === fam);
+    // NE-31j's narration files are owed to NE-31s (its own test below).
+    const files = FIXTURES.filter((f) => f.family === fam && !NE31J_NARRATION_FILES.includes(f.file));
     assert.ok(files.length > 0, `${fam} is recorded`);
     assert.ok(DATA.capabilities.foray.includes(fam), `${fam} is charged to the foray capability`);
     for (const f of files) for (const c of f.doc.cases) {
@@ -296,6 +301,46 @@ test("NE-30j: html-audio-backend and foray-playback owe nothing, the tape/deck/p
   assert.ok(data.length > 0 && data.every((f) => f.doc.jsOnly === true), "foray-data is JS only");
   assert.ok(DATA.capabilities.foray.includes("foray-data"));
   for (const f of data) for (const c of f.doc.cases) assert.equal(c.authored, true, `${c.id} must be authored at the rule`);
+});
+
+test("NE-31j: tts-bridge owes nothing, nothing is owed to NE-31j, the narration families are owed to NE-31s and speech-rate to NE-33, the card's spec cases are authored, and every spoken line is 1x", () => {
+  /* NE-31j's acceptance: "the families pass in JS. tts-bridge has zero
+     unported entries." MUTATION: put a tts-bridge test back in unported.json ->
+     red; re-tag a speech-rate id to NE-31s in swift-pending.json -> red;
+     un-author the stop-never-advances case -> red; record a line at the
+     listener's rate (put `rate: this._rate` back into `_speakNarration`) ->
+     the authored at-1x cases refuse to record, and the last loop goes red. */
+  const { status } = classify(REPO_ROOT, DATA, FIXTURES);
+  assert.deepStrictEqual(Object.keys(DATA.unported["tts-bridge"] ?? {}), [], "tts-bridge owes unported.json nothing");
+  for (const [name, st] of Object.entries(status["tts-bridge"])) {
+    assert.ok(st.covered.length || st.excluded || st.xctest, `tts-bridge :: ${JSON.stringify(name)} is covered, excluded or mapped`);
+  }
+  for (const [stem, names] of Object.entries(DATA.unported)) {
+    if (stem.startsWith("//")) continue;
+    for (const [name, v] of Object.entries(names)) assert.notEqual(v.card, "NE-31j", `${stem} :: ${name} is still owed to NE-31j, the card that records it`);
+  }
+  const NARRATION_FILES = NE31J_NARRATION_FILES;
+  const files = [...FIXTURES.filter((f) => NARRATION_FILES.includes(f.file)), ...FIXTURES.filter((f) => f.family === "speech-rate")];
+  assert.equal(files.filter((f) => f.family === "manager-foray").length, NARRATION_FILES.length, "the narration, jingle and audition files are recorded");
+  assert.ok(files.some((f) => f.family === "speech-rate"), "speech-rate is recorded");
+  assert.ok(DATA.capabilities.foray.includes("speech-rate"), "speech-rate is charged to the foray capability");
+  const ids = new Map(files.flatMap((f) => f.doc.cases.map((c) => [c.id, c])));
+  for (const [id] of ids) {
+    const want = id.startsWith("speech-rate/") ? "NE-33" : "NE-31s";
+    assert.equal(DATA.pending[id], want, `${id} must be owed to ${want} until the Swift port burns it down`);
+  }
+  const SPEC = [
+    "manager-foray/each-utterance-finishes-at-most-once", "manager-foray/a-pause-holds-the-utterance",
+    "manager-foray/stop-never-advances", "manager-foray/stop-during-a-bridge-never-advances",
+    "manager-foray/a-call-during-a-spoken-bridge-resumes-into-the-next-real-item",
+    "manager-foray/a-call-during-a-rendered-bridge-resumes-into-the-next-real-item",
+    "manager-foray/audition-is-refused-while-running", "speech-rate/narration-rate-is-1x",
+    "speech-rate/a-line-is-spoken-at-1x-at-0.75x", "speech-rate/a-line-is-spoken-at-1x-at-1.5x", "speech-rate/a-line-is-spoken-at-1x-at-2x",
+  ];
+  for (const id of SPEC) assert.equal(ids.get(id)?.authored, true, `${id} is the card's spec and must be authored`);
+  const speaks = [...ids.values()].flatMap((c) => c.expect?.ops ?? []).filter((o) => o.startsWith("tts.speak:"));
+  assert.ok(speaks.length > 20, `the families speak (${speaks.length} lines)`);
+  for (const op of speaks) assert.match(op, /@1(:[^@]*)?$/, `${op}: narration is 1x (founder, 2026-09-24)`);
 });
 
 /* transport-reconcile is NE-21's (plan §6.5): each of its tests is a rule the
@@ -483,11 +528,13 @@ test("every swift-pending id names a recorded case and is tagged with a card", (
    manager-foray, and html-audio-backend's remainder into deck (the pair's
    decisions and the single deck's slices), prepare (the handover's audible
    seam) and the manager families (its integration tests). What queue-manager
-   still owes is NE-31j's narration and NE-39j's M3 remainder; html-audio-backend
-   owes nothing. */
+   still owes is NE-39j's M3 remainder (and one narration rule NE-31s maps to
+   an XCTest); html-audio-backend owes nothing. NE-31j recorded the narration
+   half: manager-foray (the overlay, the jingle's clock) and speech-rate (what
+   reaches the synthesiser). */
 const MANAGER_DECK_OWED = Object.freeze({
-  "queue-manager": { fixtured: ["manager-episode", "manager-foray"], mustOwe: true, owed: [
-    { card: "NE-31j", family: "manager-foray" },
+  "queue-manager": { fixtured: ["manager-episode", "manager-foray", "speech-rate"], mustOwe: true, owed: [
+    { card: "NE-31s", family: "manager-foray" },
     { card: "NE-39j", family: "manager-remainder" },
   ] },
   "html-audio-backend": {

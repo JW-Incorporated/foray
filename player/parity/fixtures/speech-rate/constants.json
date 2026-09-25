@@ -1,0 +1,19 @@
+{
+  "family": "speech-rate",
+  "module": "player/queue-manager.js",
+  "note": "The narration rate as a number (NE-31j). Port card NE-33.",
+  "cases": [
+    {
+      "id": "speech-rate/narration-rate-is-1x",
+      "covers": [
+        "queue-manager::NARRATION_RATE is 1x — the founder's 2026-09-24 ruling, stated as a number"
+      ],
+      "authored": true,
+      "note": "FOUNDER 2026-09-24 (OQ-3): narration speaks at 1x — natively AVSpeechUtteranceDefaultSpeechRate, which is utteranceRate(1) (the rate family).",
+      "read": "NARRATION_RATE",
+      "expect": {
+        "value": 1
+      }
+    }
+  ]
+}

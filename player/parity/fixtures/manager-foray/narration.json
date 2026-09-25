@@ -1,0 +1,4159 @@
+{
+  "family": "manager-foray",
+  "note": "The narration overlay (NE-31j), recorded from the real PlayerQueueManager over the shared fakes: bridges, script-only lines spoken by the synthesiser, L-03's finished event and the line's clock, L-05's pause/resume/stop through the synthesiser, the ROUND 2 deadline and suspension rules, and an interruption during a spoken line; plus the card's authored cases (a finished taken once per utterance, a pause that holds the utterance, stop never advances, a call during a bridge resumes on the next real item). Port card NE-31s.",
+  "cases": [
+    {
+      "id": "manager-foray/an-episode-then-a-bridge-plays-the-bridge",
+      "covers": [
+        "queue-manager::an episode followed by a bridge enters transitioning and plays the bridge"
+      ],
+      "note": "The bridge is forced to 1.0x, loaded from zero and played; the reducer is transitioning.",
+      "setup": { "target": "manager" },
+      "steps": [
+        {
+          "call": "loadQueue",
+          "args": [[{ "$ep": ["a"] }, { "$tts": ["bridge"] }, { "$ep": ["b"] }]]
+        },
+        { "call": "play", "args": [0] },
+        { "checkpoint": "episode" },
+        { "deck": "ended", "reason": "natural" },
+        { "checkpoint": "bridge" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "episode",
+            "ops": ["load:a@0", "rate:1", "play"],
+            "playhead": "a",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "bridge",
+            "ops": ["rate:1", "load:bridge@0", "play"],
+            "playhead": "bridge",
+            "rate": 1,
+            "state": "transitioning"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "end",
+            "ops": [],
+            "playhead": "bridge",
+            "rate": 1,
+            "state": "transitioning"
+          }
+        ],
+        "ops": ["load:a@0", "rate:1", "play", "rate:1", "load:bridge@0", "play"]
+      }
+    },
+    {
+      "id": "manager-foray/a-missing-bridge-never-stalls-the-queue",
+      "covers": ["queue-manager::a missing bridge asset never stalls the queue"],
+      "note": "Corner case #12: a transition line that will not load is stepped over to the real item.",
+      "setup": { "target": "manager", "backend": { "failLoadFor": ["bridge"] } },
+      "steps": [
+        {
+          "call": "loadQueue",
+          "args": [[{ "$ep": ["a"] }, { "$tts": ["bridge"] }, { "$ep": ["b"] }]]
+        },
+        { "call": "play", "args": [0] },
+        { "checkpoint": "episode" },
+        { "deck": "ended", "reason": "natural" },
+        { "settle": 2 },
+        { "checkpoint": "past" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "episode",
+            "ops": ["load:a@0", "rate:1", "play"],
+            "playhead": "a",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 2,
+            "name": "past",
+            "ops": ["rate:1", "load:bridge@0", "rate:1", "load:b@0", "rate:1", "play"],
+            "playhead": "b",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 2,
+            "name": "end",
+            "ops": [],
+            "playhead": "b",
+            "rate": 1,
+            "state": "playing"
+          }
+        ],
+        "ops": [
+          "load:a@0",
+          "rate:1",
+          "play",
+          "rate:1",
+          "load:bridge@0",
+          "rate:1",
+          "load:b@0",
+          "rate:1",
+          "play"
+        ]
+      }
+    },
+    {
+      "id": "manager-foray/next-steps-over-a-bridge",
+      "covers": ["queue-manager::skipToNext steps over a bridge rather than playing it alone"],
+      "note": "A listener's next lands on the real item, never on the transition line alone.",
+      "setup": { "target": "manager" },
+      "steps": [
+        {
+          "call": "loadQueue",
+          "args": [[{ "$ep": ["a"] }, { "$tts": ["bridge"] }, { "$ep": ["b"] }]]
+        },
+        { "call": "play", "args": [0] },
+        { "checkpoint": "episode" },
+        { "call": "skipToNext" },
+        { "checkpoint": "next" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "episode",
+            "ops": ["load:a@0", "rate:1", "play"],
+            "playhead": "a",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 2,
+            "name": "next",
+            "ops": ["store.save:a@0", "pause", "load:b@0", "rate:1", "play"],
+            "playhead": "b",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 2,
+            "name": "end",
+            "ops": [],
+            "playhead": "b",
+            "rate": 1,
+            "state": "playing"
+          }
+        ],
+        "ops": [
+          "load:a@0",
+          "rate:1",
+          "play",
+          "store.save:a@0",
+          "pause",
+          "load:b@0",
+          "rate:1",
+          "play"
+        ]
+      }
+    },
+    {
+      "id": "manager-foray/a-bridge-starts-at-zero",
+      "covers": ["queue-manager::a TTS bridge always starts at zero, never resumes"],
+      "note": "A stale saved position for a one-line transition is ignored.",
+      "setup": { "target": "manager", "positions": { "bridge": 5 } },
+      "steps": [
+        {
+          "call": "loadQueue",
+          "args": [[{ "$ep": ["a"] }, { "$tts": ["bridge"] }, { "$ep": ["b"] }]]
+        },
+        { "call": "play", "args": [0] },
+        { "deck": "ended", "reason": "natural" },
+        { "checkpoint": "bridge" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "bridge",
+            "ops": ["load:a@0", "rate:1", "play", "rate:1", "load:bridge@0", "play"],
+            "playhead": "bridge",
+            "rate": 1,
+            "state": "transitioning"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "end",
+            "ops": [],
+            "playhead": "bridge",
+            "rate": 1,
+            "state": "transitioning"
+          }
+        ],
+        "ops": ["load:a@0", "rate:1", "play", "rate:1", "load:bridge@0", "play"]
+      }
+    },
+    {
+      "id": "manager-foray/rendered-narration-plays-at-1x-with-no-out-point",
+      "covers": [
+        "queue-manager::narration between segments plays as an ordinary TTS item at 1.0x"
+      ],
+      "note": "A rendered line is an ordinary item: loaded, 1.0x, and never given an out-point.",
+      "setup": {
+        "target": "manager",
+        "catalogue": {
+          "ep-static": {
+            "id": "ep-static",
+            "audio_url": "https://cdn.example/static.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Static",
+            "show": "Indie"
+          },
+          "ep-other": {
+            "id": "ep-other",
+            "audio_url": "https://cdn.example/other.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Other",
+            "show": "Indie"
+          },
+          "ep-dai": {
+            "id": "ep-dai",
+            "audio_url": "https://cdn.example/dai.mp3",
+            "dai_suspected": true,
+            "duration_sec": 2501,
+            "title": "Stitched",
+            "show": "Big"
+          }
+        }
+      },
+      "steps": [
+        {
+          "call": "playForay",
+          "args": [
+            {
+              "id": "foray-1",
+              "title": "Fire",
+              "items": [
+                { "type": "narration", "id": "nar-1", "asset": "narration/fire-1.mp3" },
+                {
+                  "type": "segment",
+                  "item_id": "ep-static",
+                  "start_sec": 100,
+                  "end_sec": 210,
+                  "why": "he explains it plainly"
+                }
+              ]
+            }
+          ]
+        },
+        { "checkpoint": "line" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "line",
+            "ops": ["load:nar-1@0", "rate:1", "play"],
+            "playhead": "nar-1",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "end",
+            "ops": [],
+            "playhead": "nar-1",
+            "rate": 1,
+            "state": "playing"
+          }
+        ],
+        "ops": ["load:nar-1@0", "rate:1", "play"]
+      }
+    },
+    {
+      "id": "manager-foray/a-script-only-line-is-spoken-not-loaded",
+      "covers": [
+        "queue-manager::a script-only narration item is not dropped and never reaches backend.load"
+      ],
+      "note": "Spoken through the synthesiser, never loaded into the deck, and reported playing; a listener's next still works.",
+      "setup": {
+        "target": "manager",
+        "catalogue": {
+          "ep-static": {
+            "id": "ep-static",
+            "audio_url": "https://cdn.example/static.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Static",
+            "show": "Indie"
+          },
+          "ep-other": {
+            "id": "ep-other",
+            "audio_url": "https://cdn.example/other.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Other",
+            "show": "Indie"
+          },
+          "ep-dai": {
+            "id": "ep-dai",
+            "audio_url": "https://cdn.example/dai.mp3",
+            "dai_suspected": true,
+            "duration_sec": 2501,
+            "title": "Stitched",
+            "show": "Big"
+          }
+        },
+        "tts": true
+      },
+      "steps": [
+        {
+          "call": "playForay",
+          "args": [
+            {
+              "id": "foray-1",
+              "title": "Fire",
+              "items": [
+                {
+                  "type": "narration",
+                  "id": "nar-1",
+                  "script": "the history of grilling starts with fire"
+                },
+                {
+                  "type": "segment",
+                  "item_id": "ep-static",
+                  "start_sec": 100,
+                  "end_sec": 210,
+                  "why": "he explains it plainly"
+                }
+              ]
+            }
+          ]
+        },
+        { "checkpoint": "speaking" },
+        { "call": "skipToNext" },
+        { "checkpoint": "next" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "speaking",
+            "ops": ["tts.speak:the history of grilling starts with fire@1"],
+            "playhead": "nar-1",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "next",
+            "ops": ["tts.pause", "load:foray-1#1@100", "rate:1", "outPoint:210", "play"],
+            "playhead": "foray-1#1",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "end",
+            "ops": [],
+            "playhead": "foray-1#1",
+            "rate": 1,
+            "state": "playing"
+          }
+        ],
+        "ops": [
+          "tts.speak:the history of grilling starts with fire@1",
+          "tts.pause",
+          "load:foray-1#1@100",
+          "rate:1",
+          "outPoint:210",
+          "play"
+        ]
+      }
+    },
+    {
+      "id": "manager-foray/an-asset-wins-over-a-script",
+      "covers": [
+        "queue-manager::an item with both script and asset still prefers the asset and never calls the plugin"
+      ],
+      "note": "§1.2's precedence: an authored asset is played and the synthesiser is never asked.",
+      "setup": {
+        "target": "manager",
+        "catalogue": {
+          "ep-static": {
+            "id": "ep-static",
+            "audio_url": "https://cdn.example/static.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Static",
+            "show": "Indie"
+          },
+          "ep-other": {
+            "id": "ep-other",
+            "audio_url": "https://cdn.example/other.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Other",
+            "show": "Indie"
+          },
+          "ep-dai": {
+            "id": "ep-dai",
+            "audio_url": "https://cdn.example/dai.mp3",
+            "dai_suspected": true,
+            "duration_sec": 2501,
+            "title": "Stitched",
+            "show": "Big"
+          }
+        },
+        "tts": true
+      },
+      "steps": [
+        {
+          "call": "playForay",
+          "args": [
+            {
+              "id": "foray-1",
+              "title": "Fire",
+              "items": [
+                {
+                  "type": "narration",
+                  "id": "nar-1",
+                  "asset": "narration/fire-1.mp3",
+                  "script": "ignored"
+                },
+                {
+                  "type": "segment",
+                  "item_id": "ep-static",
+                  "start_sec": 100,
+                  "end_sec": 210,
+                  "why": "he explains it plainly"
+                }
+              ]
+            }
+          ]
+        },
+        { "checkpoint": "line" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "line",
+            "ops": ["load:nar-1@0", "rate:1", "play"],
+            "playhead": "nar-1",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "end",
+            "ops": [],
+            "playhead": "nar-1",
+            "rate": 1,
+            "state": "playing"
+          }
+        ],
+        "ops": ["load:nar-1@0", "rate:1", "play"]
+      }
+    },
+    {
+      "id": "manager-foray/a-script-with-no-synthesiser-fails-cleanly",
+      "covers": [
+        "queue-manager::a script-only item with NO plugin wired fails to load and does not stall the Foray"
+      ],
+      "note": "Nothing can speak it: one clean failed load into idle, never a hang. (The telemetry reason is text, pinned by the JS suite.)",
+      "setup": {
+        "target": "manager",
+        "catalogue": {
+          "ep-static": {
+            "id": "ep-static",
+            "audio_url": "https://cdn.example/static.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Static",
+            "show": "Indie"
+          },
+          "ep-other": {
+            "id": "ep-other",
+            "audio_url": "https://cdn.example/other.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Other",
+            "show": "Indie"
+          },
+          "ep-dai": {
+            "id": "ep-dai",
+            "audio_url": "https://cdn.example/dai.mp3",
+            "dai_suspected": true,
+            "duration_sec": 2501,
+            "title": "Stitched",
+            "show": "Big"
+          }
+        }
+      },
+      "steps": [
+        {
+          "call": "playForay",
+          "args": [
+            {
+              "id": "foray-1",
+              "title": "Fire",
+              "items": [
+                {
+                  "type": "narration",
+                  "id": "nar-1",
+                  "script": "nobody can speak this"
+                },
+                {
+                  "type": "segment",
+                  "item_id": "ep-static",
+                  "start_sec": 100,
+                  "end_sec": 210,
+                  "why": "he explains it plainly"
+                }
+              ]
+            }
+          ]
+        },
+        { "checkpoint": "failed" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "failed",
+            "ops": ["pause"],
+            "playhead": null,
+            "rate": 1,
+            "state": "idle"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "end",
+            "ops": [],
+            "playhead": null,
+            "rate": 1,
+            "state": "idle"
+          }
+        ],
+        "ops": ["pause"]
+      }
+    },
+    {
+      "id": "manager-foray/finished-advances-exactly-once",
+      "covers": [
+        "queue-manager::a `finished` event advances the queue to the next item exactly once",
+        "tts-bridge::onFinished: forwards the module's finished event to the caller's callback"
+      ],
+      "note": "The synthesiser's finished reaches the manager and advances once; the same utterance's second finished does nothing.",
+      "setup": {
+        "target": "manager",
+        "catalogue": {
+          "ep-static": {
+            "id": "ep-static",
+            "audio_url": "https://cdn.example/static.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Static",
+            "show": "Indie"
+          },
+          "ep-other": {
+            "id": "ep-other",
+            "audio_url": "https://cdn.example/other.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Other",
+            "show": "Indie"
+          },
+          "ep-dai": {
+            "id": "ep-dai",
+            "audio_url": "https://cdn.example/dai.mp3",
+            "dai_suspected": true,
+            "duration_sec": 2501,
+            "title": "Stitched",
+            "show": "Big"
+          }
+        },
+        "tts": true
+      },
+      "steps": [
+        {
+          "call": "playForay",
+          "args": [
+            {
+              "id": "foray-1",
+              "title": "Fire",
+              "items": [
+                {
+                  "type": "narration",
+                  "id": "nar-1",
+                  "script": "the history of grilling starts with fire"
+                },
+                {
+                  "type": "segment",
+                  "item_id": "ep-static",
+                  "start_sec": 100,
+                  "end_sec": 210,
+                  "why": "he explains it plainly"
+                }
+              ]
+            }
+          ]
+        },
+        { "checkpoint": "speaking" },
+        { "tts": "finish" },
+        { "settle": 1 },
+        { "checkpoint": "advanced" },
+        { "tts": "finish" },
+        { "settle": 1 },
+        { "checkpoint": "duplicate" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "speaking",
+            "ops": ["tts.speak:the history of grilling starts with fire@1"],
+            "playhead": "nar-1",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "advanced",
+            "ops": ["load:foray-1#1@100", "rate:1", "outPoint:210", "play"],
+            "playhead": "foray-1#1",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "duplicate",
+            "ops": [],
+            "playhead": "foray-1#1",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "end",
+            "ops": [],
+            "playhead": "foray-1#1",
+            "rate": 1,
+            "state": "playing"
+          }
+        ],
+        "ops": [
+          "tts.speak:the history of grilling starts with fire@1",
+          "load:foray-1#1@100",
+          "rate:1",
+          "outPoint:210",
+          "play"
+        ]
+      }
+    },
+    {
+      "id": "manager-foray/finished-for-a-bridge-advances-once",
+      "covers": [
+        "queue-manager::a `finished` event for a bridge item (mid-Foray) also advances exactly once"
+      ],
+      "note": "A spoken bridge between two segments: its finished loads the segment after it, once.",
+      "setup": {
+        "target": "manager",
+        "catalogue": {
+          "ep-static": {
+            "id": "ep-static",
+            "audio_url": "https://cdn.example/static.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Static",
+            "show": "Indie"
+          },
+          "ep-other": {
+            "id": "ep-other",
+            "audio_url": "https://cdn.example/other.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Other",
+            "show": "Indie"
+          },
+          "ep-dai": {
+            "id": "ep-dai",
+            "audio_url": "https://cdn.example/dai.mp3",
+            "dai_suspected": true,
+            "duration_sec": 2501,
+            "title": "Stitched",
+            "show": "Big"
+          }
+        },
+        "tts": true
+      },
+      "steps": [
+        {
+          "call": "playForay",
+          "args": [
+            {
+              "id": "foray-1",
+              "title": "Fire",
+              "items": [
+                {
+                  "type": "segment",
+                  "item_id": "ep-static",
+                  "start_sec": 100,
+                  "end_sec": 210,
+                  "why": "he explains it plainly"
+                },
+                { "type": "narration", "id": "nar-1", "script": "a bridge line" },
+                {
+                  "type": "segment",
+                  "item_id": "ep-static",
+                  "start_sec": 400,
+                  "end_sec": 500,
+                  "why": "he explains it plainly"
+                }
+              ]
+            }
+          ]
+        },
+        { "deck": "time", "sec": 210 },
+        { "deck": "ended", "reason": "outPoint" },
+        { "checkpoint": "bridge" },
+        { "tts": "finish" },
+        { "settle": 1 },
+        { "checkpoint": "next" },
+        { "tts": "finish" },
+        { "settle": 1 },
+        { "checkpoint": "duplicate" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "bridge",
+            "ops": [
+              "load:foray-1#0@100",
+              "rate:1",
+              "outPoint:210",
+              "play",
+              "rate:1",
+              "tts.speak:a bridge line@1"
+            ],
+            "playhead": "nar-1",
+            "rate": 1,
+            "state": "transitioning"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 2,
+            "name": "next",
+            "ops": ["load:foray-1#2@400", "rate:1", "outPoint:500", "play"],
+            "playhead": "foray-1#2",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 2,
+            "name": "duplicate",
+            "ops": [],
+            "playhead": "foray-1#2",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 2,
+            "name": "end",
+            "ops": [],
+            "playhead": "foray-1#2",
+            "rate": 1,
+            "state": "playing"
+          }
+        ],
+        "ops": [
+          "load:foray-1#0@100",
+          "rate:1",
+          "outPoint:210",
+          "play",
+          "rate:1",
+          "tts.speak:a bridge line@1",
+          "load:foray-1#2@400",
+          "rate:1",
+          "outPoint:500",
+          "play"
+        ]
+      }
+    },
+    {
+      "id": "manager-foray/a-stray-finished-is-ignored",
+      "covers": [
+        "queue-manager::a `finished` event while nothing is speaking is ignored, not a crash"
+      ],
+      "note": "Nothing is being spoken, so a finished never skips the segment the listener is hearing.",
+      "setup": {
+        "target": "manager",
+        "catalogue": {
+          "ep-static": {
+            "id": "ep-static",
+            "audio_url": "https://cdn.example/static.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Static",
+            "show": "Indie"
+          },
+          "ep-other": {
+            "id": "ep-other",
+            "audio_url": "https://cdn.example/other.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Other",
+            "show": "Indie"
+          },
+          "ep-dai": {
+            "id": "ep-dai",
+            "audio_url": "https://cdn.example/dai.mp3",
+            "dai_suspected": true,
+            "duration_sec": 2501,
+            "title": "Stitched",
+            "show": "Big"
+          }
+        },
+        "tts": true
+      },
+      "steps": [
+        {
+          "call": "playForay",
+          "args": [
+            {
+              "id": "foray-1",
+              "title": "Fire",
+              "items": [
+                {
+                  "type": "segment",
+                  "item_id": "ep-static",
+                  "start_sec": 100,
+                  "end_sec": 210,
+                  "why": "he explains it plainly"
+                },
+                {
+                  "type": "segment",
+                  "item_id": "ep-static",
+                  "start_sec": 400,
+                  "end_sec": 500,
+                  "why": "he explains it plainly"
+                }
+              ]
+            }
+          ]
+        },
+        { "tts": "finish" },
+        { "checkpoint": "still" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "still",
+            "ops": ["load:foray-1#0@100", "rate:1", "outPoint:210", "play"],
+            "playhead": "foray-1#0",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "end",
+            "ops": [],
+            "playhead": "foray-1#0",
+            "rate": 1,
+            "state": "playing"
+          }
+        ],
+        "ops": ["load:foray-1#0@100", "rate:1", "outPoint:210", "play"]
+      }
+    },
+    {
+      "id": "manager-foray/the-narration-pulse-runs-only-while-speaking",
+      "covers": [
+        "queue-manager::the narration position ticker fires while speaking and stops once it is not"
+      ],
+      "note": "Every 250 ms while the line is spoken; nothing once it has finished.",
+      "setup": {
+        "target": "manager",
+        "catalogue": {
+          "ep-static": {
+            "id": "ep-static",
+            "audio_url": "https://cdn.example/static.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Static",
+            "show": "Indie"
+          },
+          "ep-other": {
+            "id": "ep-other",
+            "audio_url": "https://cdn.example/other.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Other",
+            "show": "Indie"
+          },
+          "ep-dai": {
+            "id": "ep-dai",
+            "audio_url": "https://cdn.example/dai.mp3",
+            "dai_suspected": true,
+            "duration_sec": 2501,
+            "title": "Stitched",
+            "show": "Big"
+          }
+        },
+        "tts": true,
+        "scheduler": "manual",
+        "narrationTicks": true,
+        "view": ["narrationTicks"]
+      },
+      "steps": [
+        {
+          "call": "playForay",
+          "args": [
+            {
+              "id": "foray-1",
+              "title": "Fire",
+              "items": [
+                {
+                  "type": "narration",
+                  "id": "nar-1",
+                  "script": "a line long enough to tick a few times"
+                },
+                {
+                  "type": "segment",
+                  "item_id": "ep-static",
+                  "start_sec": 100,
+                  "end_sec": 210,
+                  "why": "he explains it plainly"
+                }
+              ]
+            }
+          ]
+        },
+        { "checkpoint": "start" },
+        { "clock": 750, "every": 250 },
+        { "checkpoint": "three" },
+        { "tts": "finish" },
+        { "settle": 1 },
+        { "checkpoint": "finished" },
+        { "clock": 500, "every": 250 },
+        { "checkpoint": "quiet" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "start",
+            "narrationTicks": 0,
+            "ops": ["tts.speak:a line long enough to tick a few times@1"],
+            "playhead": "nar-1",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "three",
+            "narrationTicks": 3,
+            "ops": [],
+            "playhead": "nar-1",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "finished",
+            "narrationTicks": 3,
+            "ops": ["load:foray-1#1@100", "rate:1", "outPoint:210", "play"],
+            "playhead": "foray-1#1",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "quiet",
+            "narrationTicks": 3,
+            "ops": [],
+            "playhead": "foray-1#1",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "end",
+            "narrationTicks": 3,
+            "ops": [],
+            "playhead": "foray-1#1",
+            "rate": 1,
+            "state": "playing"
+          }
+        ],
+        "ops": [
+          "tts.speak:a line long enough to tick a few times@1",
+          "load:foray-1#1@100",
+          "rate:1",
+          "outPoint:210",
+          "play"
+        ]
+      }
+    },
+    {
+      "id": "manager-foray/l03-a-spoken-line-is-playing-with-a-rising-clock",
+      "covers": [
+        "queue-manager::L-03 acceptance: a narration item reports `playing` AND a position that increases across two ticks"
+      ],
+      "note": "The line's clock is the playhead, in seconds on the manager's clock, and it moves; once finished there is no narration clock.",
+      "setup": {
+        "target": "manager",
+        "catalogue": {
+          "ep-static": {
+            "id": "ep-static",
+            "audio_url": "https://cdn.example/static.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Static",
+            "show": "Indie"
+          },
+          "ep-other": {
+            "id": "ep-other",
+            "audio_url": "https://cdn.example/other.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Other",
+            "show": "Indie"
+          },
+          "ep-dai": {
+            "id": "ep-dai",
+            "audio_url": "https://cdn.example/dai.mp3",
+            "dai_suspected": true,
+            "duration_sec": 2501,
+            "title": "Stitched",
+            "show": "Big"
+          }
+        },
+        "tts": true,
+        "scheduler": "manual",
+        "narrationTicks": true,
+        "view": ["narrationSec", "narrationPlayhead", "narrationTicks"]
+      },
+      "steps": [
+        {
+          "call": "playForay",
+          "args": [
+            {
+              "id": "foray-1",
+              "title": "Fire",
+              "items": [
+                {
+                  "type": "narration",
+                  "id": "nar-1",
+                  "script": "a line long enough for the clock to move"
+                },
+                {
+                  "type": "segment",
+                  "item_id": "ep-static",
+                  "start_sec": 100,
+                  "end_sec": 210,
+                  "why": "he explains it plainly"
+                }
+              ]
+            }
+          ]
+        },
+        { "checkpoint": "speaking" },
+        { "clock": 250 },
+        { "checkpoint": "tick-1" },
+        { "clock": 250 },
+        { "checkpoint": "tick-2" },
+        { "tts": "finish" },
+        { "settle": 1 },
+        { "checkpoint": "finished" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "speaking",
+            "narrationPlayhead": true,
+            "narrationSec": 0,
+            "narrationTicks": 0,
+            "ops": ["tts.speak:a line long enough for the clock to move@1"],
+            "playhead": "nar-1",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "tick-1",
+            "narrationPlayhead": true,
+            "narrationSec": 0.25,
+            "narrationTicks": 1,
+            "ops": [],
+            "playhead": "nar-1",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "tick-2",
+            "narrationPlayhead": true,
+            "narrationSec": 0.5,
+            "narrationTicks": 2,
+            "ops": [],
+            "playhead": "nar-1",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "finished",
+            "narrationPlayhead": false,
+            "narrationSec": null,
+            "narrationTicks": 2,
+            "ops": ["load:foray-1#1@100", "rate:1", "outPoint:210", "play"],
+            "playhead": "foray-1#1",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "end",
+            "narrationPlayhead": false,
+            "narrationSec": null,
+            "narrationTicks": 2,
+            "ops": [],
+            "playhead": "foray-1#1",
+            "rate": 1,
+            "state": "playing"
+          }
+        ],
+        "ops": [
+          "tts.speak:a line long enough for the clock to move@1",
+          "load:foray-1#1@100",
+          "rate:1",
+          "outPoint:210",
+          "play"
+        ]
+      }
+    },
+    {
+      "id": "manager-foray/a-bridge-without-finished-never-auto-advances",
+      "covers": [
+        "queue-manager::a bridge with no onFinished behaves exactly as before — no ticker, no auto-advance"
+      ],
+      "note": "An older shell with no finished event: the line is playing, nothing advances on its own, and a listener's next still works.",
+      "setup": {
+        "target": "manager",
+        "catalogue": {
+          "ep-static": {
+            "id": "ep-static",
+            "audio_url": "https://cdn.example/static.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Static",
+            "show": "Indie"
+          },
+          "ep-other": {
+            "id": "ep-other",
+            "audio_url": "https://cdn.example/other.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Other",
+            "show": "Indie"
+          },
+          "ep-dai": {
+            "id": "ep-dai",
+            "audio_url": "https://cdn.example/dai.mp3",
+            "dai_suspected": true,
+            "duration_sec": 2501,
+            "title": "Stitched",
+            "show": "Big"
+          }
+        },
+        "tts": { "onFinished": false },
+        "scheduler": "manual"
+      },
+      "steps": [
+        {
+          "call": "playForay",
+          "args": [
+            {
+              "id": "foray-1",
+              "title": "Fire",
+              "items": [
+                {
+                  "type": "narration",
+                  "id": "nar-1",
+                  "script": "no finished contract here"
+                },
+                {
+                  "type": "segment",
+                  "item_id": "ep-static",
+                  "start_sec": 100,
+                  "end_sec": 210,
+                  "why": "he explains it plainly"
+                }
+              ]
+            }
+          ]
+        },
+        { "clock": 1000, "every": 250 },
+        { "checkpoint": "speaking" },
+        { "call": "skipToNext" },
+        { "checkpoint": "next" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "speaking",
+            "ops": ["tts.speak:no finished contract here@1"],
+            "playhead": "nar-1",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "next",
+            "ops": ["tts.pause", "load:foray-1#1@100", "rate:1", "outPoint:210", "play"],
+            "playhead": "foray-1#1",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "end",
+            "ops": [],
+            "playhead": "foray-1#1",
+            "rate": 1,
+            "state": "playing"
+          }
+        ],
+        "ops": [
+          "tts.speak:no finished contract here@1",
+          "tts.pause",
+          "load:foray-1#1@100",
+          "rate:1",
+          "outPoint:210",
+          "play"
+        ]
+      }
+    },
+    {
+      "id": "manager-foray/a-rendered-bridge-is-1x-and-the-speed-comes-back",
+      "covers": [
+        "queue-manager::narration still plays at 1.0x, and the listener's speed comes back after it"
+      ],
+      "note": "Corner case #18: the bridge is forced to 1.0x before it is audible, and the listener's 2x returns for the segment after it.",
+      "setup": {
+        "target": "manager",
+        "catalogue": {
+          "ep-static": {
+            "id": "ep-static",
+            "audio_url": "https://cdn.example/static.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Static",
+            "show": "Indie"
+          },
+          "ep-other": {
+            "id": "ep-other",
+            "audio_url": "https://cdn.example/other.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Other",
+            "show": "Indie"
+          },
+          "ep-dai": {
+            "id": "ep-dai",
+            "audio_url": "https://cdn.example/dai.mp3",
+            "dai_suspected": true,
+            "duration_sec": 2501,
+            "title": "Stitched",
+            "show": "Big"
+          }
+        }
+      },
+      "steps": [
+        { "call": "setRate", "args": [2] },
+        {
+          "call": "playForay",
+          "args": [
+            {
+              "id": "foray-1",
+              "title": "Fire",
+              "items": [
+                {
+                  "type": "segment",
+                  "item_id": "ep-static",
+                  "start_sec": 100,
+                  "end_sec": 210,
+                  "why": "he explains it plainly"
+                },
+                { "type": "narration", "id": "nar-1", "asset": "narration/fire-1.mp3" },
+                {
+                  "type": "segment",
+                  "item_id": "ep-static",
+                  "start_sec": 400,
+                  "end_sec": 500,
+                  "why": "he explains it plainly"
+                }
+              ]
+            }
+          ]
+        },
+        { "deck": "time", "sec": 210 },
+        { "deck": "ended", "reason": "outPoint" },
+        { "checkpoint": "bridge" },
+        { "deck": "ended", "reason": "natural" },
+        { "checkpoint": "after" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "bridge",
+            "ops": [
+              "rate:2",
+              "load:foray-1#0@100",
+              "rate:2",
+              "outPoint:210",
+              "play",
+              "rate:1",
+              "load:nar-1@0",
+              "play"
+            ],
+            "playhead": "nar-1",
+            "rate": 2,
+            "state": "transitioning"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 2,
+            "name": "after",
+            "ops": ["rate:2", "load:foray-1#2@400", "rate:2", "outPoint:500", "play"],
+            "playhead": "foray-1#2",
+            "rate": 2,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 2,
+            "name": "end",
+            "ops": [],
+            "playhead": "foray-1#2",
+            "rate": 2,
+            "state": "playing"
+          }
+        ],
+        "ops": [
+          "rate:2",
+          "load:foray-1#0@100",
+          "rate:2",
+          "outPoint:210",
+          "play",
+          "rate:1",
+          "load:nar-1@0",
+          "play",
+          "rate:2",
+          "load:foray-1#2@400",
+          "rate:2",
+          "outPoint:500",
+          "play"
+        ]
+      }
+    },
+    {
+      "id": "manager-foray/a-speed-tap-during-narration-lands-after-it",
+      "covers": [
+        "queue-manager::a tap during narration is deferred, not lost, and lands when the line ends"
+      ],
+      "note": "The value is kept and labelled at once, but nothing reaches the element mid-line; the next segment gets it.",
+      "setup": {
+        "target": "manager",
+        "catalogue": {
+          "ep-static": {
+            "id": "ep-static",
+            "audio_url": "https://cdn.example/static.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Static",
+            "show": "Indie"
+          },
+          "ep-other": {
+            "id": "ep-other",
+            "audio_url": "https://cdn.example/other.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Other",
+            "show": "Indie"
+          },
+          "ep-dai": {
+            "id": "ep-dai",
+            "audio_url": "https://cdn.example/dai.mp3",
+            "dai_suspected": true,
+            "duration_sec": 2501,
+            "title": "Stitched",
+            "show": "Big"
+          }
+        },
+        "view": ["outPoint"]
+      },
+      "steps": [
+        {
+          "call": "playForay",
+          "args": [
+            {
+              "id": "foray-1",
+              "title": "Fire",
+              "items": [
+                {
+                  "type": "segment",
+                  "item_id": "ep-static",
+                  "start_sec": 100,
+                  "end_sec": 210,
+                  "why": "he explains it plainly"
+                },
+                { "type": "narration", "id": "nar-1", "asset": "narration/fire-1.mp3" },
+                {
+                  "type": "segment",
+                  "item_id": "ep-static",
+                  "start_sec": 400,
+                  "end_sec": 500,
+                  "why": "he explains it plainly"
+                }
+              ]
+            }
+          ]
+        },
+        { "deck": "time", "sec": 210 },
+        { "deck": "ended", "reason": "outPoint" },
+        { "checkpoint": "bridge" },
+        { "call": "setRate", "args": [1.5] },
+        { "checkpoint": "tapped" },
+        { "deck": "ended", "reason": "natural" },
+        { "checkpoint": "after" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "bridge",
+            "ops": [
+              "load:foray-1#0@100",
+              "rate:1",
+              "outPoint:210",
+              "play",
+              "rate:1",
+              "load:nar-1@0",
+              "play"
+            ],
+            "outPoint": null,
+            "playhead": "nar-1",
+            "rate": 1,
+            "state": "transitioning"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "tapped",
+            "ops": [],
+            "outPoint": null,
+            "playhead": "nar-1",
+            "rate": 1.5,
+            "state": "transitioning"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 2,
+            "name": "after",
+            "ops": ["rate:1.5", "load:foray-1#2@400", "rate:1.5", "outPoint:500", "play"],
+            "outPoint": 500,
+            "playhead": "foray-1#2",
+            "rate": 1.5,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 2,
+            "name": "end",
+            "ops": [],
+            "outPoint": 500,
+            "playhead": "foray-1#2",
+            "rate": 1.5,
+            "state": "playing"
+          }
+        ],
+        "ops": [
+          "load:foray-1#0@100",
+          "rate:1",
+          "outPoint:210",
+          "play",
+          "rate:1",
+          "load:nar-1@0",
+          "play",
+          "rate:1.5",
+          "load:foray-1#2@400",
+          "rate:1.5",
+          "outPoint:500",
+          "play"
+        ]
+      }
+    },
+    {
+      "id": "manager-foray/l05-pause-during-narration-pauses-the-synthesiser",
+      "covers": [
+        "queue-manager::L-05: pausing during narration calls the TTS bridge and leaves the element alone"
+      ],
+      "note": "F12: the synthesiser is asked to pause; there is no element under a spoken line to touch.",
+      "setup": {
+        "target": "manager",
+        "catalogue": {
+          "ep-static": {
+            "id": "ep-static",
+            "audio_url": "https://cdn.example/static.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Static",
+            "show": "Indie"
+          },
+          "ep-other": {
+            "id": "ep-other",
+            "audio_url": "https://cdn.example/other.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Other",
+            "show": "Indie"
+          },
+          "ep-dai": {
+            "id": "ep-dai",
+            "audio_url": "https://cdn.example/dai.mp3",
+            "dai_suspected": true,
+            "duration_sec": 2501,
+            "title": "Stitched",
+            "show": "Big"
+          }
+        },
+        "tts": true
+      },
+      "steps": [
+        {
+          "call": "playForay",
+          "args": [
+            {
+              "id": "foray-1",
+              "title": "Fire",
+              "items": [
+                {
+                  "type": "narration",
+                  "id": "nar-1",
+                  "script": "a line the listener wants to be able to stop"
+                },
+                {
+                  "type": "segment",
+                  "item_id": "ep-static",
+                  "start_sec": 100,
+                  "end_sec": 210,
+                  "why": "he explains it plainly"
+                }
+              ]
+            }
+          ]
+        },
+        { "checkpoint": "speaking" },
+        { "call": "pause" },
+        { "checkpoint": "paused" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "speaking",
+            "ops": ["tts.speak:a line the listener wants to be able to stop@1"],
+            "playhead": "nar-1",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "paused",
+            "ops": ["tts.pause"],
+            "playhead": "nar-1",
+            "rate": 1,
+            "state": "interrupted"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "end",
+            "ops": [],
+            "playhead": "nar-1",
+            "rate": 1,
+            "state": "interrupted"
+          }
+        ],
+        "ops": ["tts.speak:a line the listener wants to be able to stop@1", "tts.pause"]
+      }
+    },
+    {
+      "id": "manager-foray/l05-resume-continues-the-line",
+      "covers": [
+        "queue-manager::L-05: resume after a narration pause CONTINUES it, and a first start does not",
+        "tts-bridge::pause, resume and stop each reach the MATCHING method on the module"
+      ],
+      "note": "The first start is the speak itself; a resume after a pause continues the same utterance.",
+      "setup": {
+        "target": "manager",
+        "catalogue": {
+          "ep-static": {
+            "id": "ep-static",
+            "audio_url": "https://cdn.example/static.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Static",
+            "show": "Indie"
+          },
+          "ep-other": {
+            "id": "ep-other",
+            "audio_url": "https://cdn.example/other.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Other",
+            "show": "Indie"
+          },
+          "ep-dai": {
+            "id": "ep-dai",
+            "audio_url": "https://cdn.example/dai.mp3",
+            "dai_suspected": true,
+            "duration_sec": 2501,
+            "title": "Stitched",
+            "show": "Big"
+          }
+        },
+        "tts": true
+      },
+      "steps": [
+        {
+          "call": "playForay",
+          "args": [
+            {
+              "id": "foray-1",
+              "title": "Fire",
+              "items": [
+                {
+                  "type": "narration",
+                  "id": "nar-1",
+                  "script": "a line the listener wants to be able to stop"
+                },
+                {
+                  "type": "segment",
+                  "item_id": "ep-static",
+                  "start_sec": 100,
+                  "end_sec": 210,
+                  "why": "he explains it plainly"
+                }
+              ]
+            }
+          ]
+        },
+        { "checkpoint": "started" },
+        { "call": "pause" },
+        { "checkpoint": "paused" },
+        { "call": "resume" },
+        { "checkpoint": "resumed" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "started",
+            "ops": ["tts.speak:a line the listener wants to be able to stop@1"],
+            "playhead": "nar-1",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "paused",
+            "ops": ["tts.pause"],
+            "playhead": "nar-1",
+            "rate": 1,
+            "state": "interrupted"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "resumed",
+            "ops": ["tts.resume"],
+            "playhead": "nar-1",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "end",
+            "ops": [],
+            "playhead": "nar-1",
+            "rate": 1,
+            "state": "playing"
+          }
+        ],
+        "ops": [
+          "tts.speak:a line the listener wants to be able to stop@1",
+          "tts.pause",
+          "tts.resume"
+        ]
+      }
+    },
+    {
+      "id": "manager-foray/l05-a-pause-never-outlives-its-utterance",
+      "covers": ["queue-manager::L-05: a pause flag never survives into the next utterance"],
+      "note": "The second line is a new speak, never a resume of the first; its own pause and resume then work.",
+      "setup": {
+        "target": "manager",
+        "catalogue": {
+          "ep-static": {
+            "id": "ep-static",
+            "audio_url": "https://cdn.example/static.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Static",
+            "show": "Indie"
+          },
+          "ep-other": {
+            "id": "ep-other",
+            "audio_url": "https://cdn.example/other.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Other",
+            "show": "Indie"
+          },
+          "ep-dai": {
+            "id": "ep-dai",
+            "audio_url": "https://cdn.example/dai.mp3",
+            "dai_suspected": true,
+            "duration_sec": 2501,
+            "title": "Stitched",
+            "show": "Big"
+          }
+        },
+        "tts": true
+      },
+      "steps": [
+        {
+          "call": "playForay",
+          "args": [
+            {
+              "id": "foray-1",
+              "title": "Fire",
+              "items": [
+                { "type": "narration", "id": "nar-1", "script": "first line" },
+                { "type": "narration", "id": "nar-2", "script": "second line" },
+                {
+                  "type": "segment",
+                  "item_id": "ep-static",
+                  "start_sec": 100,
+                  "end_sec": 210,
+                  "why": "he explains it plainly"
+                }
+              ]
+            }
+          ]
+        },
+        { "call": "pause" },
+        { "call": "resume" },
+        { "checkpoint": "first" },
+        { "tts": "finish" },
+        { "settle": 1 },
+        { "checkpoint": "second" },
+        { "call": "pause" },
+        { "call": "resume" },
+        { "checkpoint": "second-paused-and-resumed" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "first",
+            "ops": ["tts.speak:first line@1", "tts.pause", "tts.resume"],
+            "playhead": "nar-1",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "second",
+            "ops": ["tts.speak:second line@1"],
+            "playhead": "nar-2",
+            "rate": 1,
+            "state": "transitioning"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "second-paused-and-resumed",
+            "ops": ["tts.pause", "tts.resume"],
+            "playhead": "nar-2",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "end",
+            "ops": [],
+            "playhead": "nar-2",
+            "rate": 1,
+            "state": "playing"
+          }
+        ],
+        "ops": [
+          "tts.speak:first line@1",
+          "tts.pause",
+          "tts.resume",
+          "tts.speak:second line@1",
+          "tts.pause",
+          "tts.resume"
+        ]
+      }
+    },
+    {
+      "id": "manager-foray/l05-stop-stops-the-speech-in-one-call",
+      "covers": [
+        "queue-manager::L-05: stopping the Foray stops the speech, in exactly one bridge call",
+        "queue-manager::L-05: `stop` does not pause first — the guard is what makes it one call"
+      ],
+      "note": "A stop is one stop — never a pause first.",
+      "setup": {
+        "target": "manager",
+        "catalogue": {
+          "ep-static": {
+            "id": "ep-static",
+            "audio_url": "https://cdn.example/static.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Static",
+            "show": "Indie"
+          },
+          "ep-other": {
+            "id": "ep-other",
+            "audio_url": "https://cdn.example/other.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Other",
+            "show": "Indie"
+          },
+          "ep-dai": {
+            "id": "ep-dai",
+            "audio_url": "https://cdn.example/dai.mp3",
+            "dai_suspected": true,
+            "duration_sec": 2501,
+            "title": "Stitched",
+            "show": "Big"
+          }
+        },
+        "tts": true
+      },
+      "steps": [
+        {
+          "call": "playForay",
+          "args": [
+            {
+              "id": "foray-1",
+              "title": "Fire",
+              "items": [
+                {
+                  "type": "narration",
+                  "id": "nar-1",
+                  "script": "a line the listener wants to be able to stop"
+                },
+                {
+                  "type": "segment",
+                  "item_id": "ep-static",
+                  "start_sec": 100,
+                  "end_sec": 210,
+                  "why": "he explains it plainly"
+                }
+              ]
+            }
+          ]
+        },
+        { "checkpoint": "speaking" },
+        { "call": "stop" },
+        { "checkpoint": "stopped" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "speaking",
+            "ops": ["tts.speak:a line the listener wants to be able to stop@1"],
+            "playhead": "nar-1",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "stopped",
+            "ops": ["tts.stop"],
+            "playhead": "nar-1",
+            "rate": 1,
+            "state": "idle"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "end",
+            "ops": [],
+            "playhead": "nar-1",
+            "rate": 1,
+            "state": "idle"
+          }
+        ],
+        "ops": ["tts.speak:a line the listener wants to be able to stop@1", "tts.stop"]
+      }
+    },
+    {
+      "id": "manager-foray/l05-teardown-silences-the-synthesiser",
+      "covers": ["queue-manager::L-05: disposing a manager mid-utterance silences it"],
+      "note": "The synthesiser outlives the page's objects, so a teardown stops it.",
+      "setup": {
+        "target": "manager",
+        "catalogue": {
+          "ep-static": {
+            "id": "ep-static",
+            "audio_url": "https://cdn.example/static.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Static",
+            "show": "Indie"
+          },
+          "ep-other": {
+            "id": "ep-other",
+            "audio_url": "https://cdn.example/other.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Other",
+            "show": "Indie"
+          },
+          "ep-dai": {
+            "id": "ep-dai",
+            "audio_url": "https://cdn.example/dai.mp3",
+            "dai_suspected": true,
+            "duration_sec": 2501,
+            "title": "Stitched",
+            "show": "Big"
+          }
+        },
+        "tts": true
+      },
+      "steps": [
+        {
+          "call": "playForay",
+          "args": [
+            {
+              "id": "foray-1",
+              "title": "Fire",
+              "items": [
+                {
+                  "type": "narration",
+                  "id": "nar-1",
+                  "script": "a line the listener wants to be able to stop"
+                },
+                {
+                  "type": "segment",
+                  "item_id": "ep-static",
+                  "start_sec": 100,
+                  "end_sec": 210,
+                  "why": "he explains it plainly"
+                }
+              ]
+            }
+          ]
+        },
+        { "call": "dispose" },
+        { "settle": 1 },
+        { "checkpoint": "disposed" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "disposed",
+            "ops": [
+              "tts.speak:a line the listener wants to be able to stop@1",
+              "tts.stop",
+              "release"
+            ],
+            "playhead": "nar-1",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "end",
+            "ops": [],
+            "playhead": "nar-1",
+            "rate": 1,
+            "state": "playing"
+          }
+        ],
+        "ops": [
+          "tts.speak:a line the listener wants to be able to stop@1",
+          "tts.stop",
+          "release"
+        ]
+      }
+    },
+    {
+      "id": "manager-foray/l05-the-line-clock-freezes-and-continues",
+      "covers": [
+        "queue-manager::L-05: the narration clock freezes across a pause and CONTINUES on resume"
+      ],
+      "note": "Frozen through the pause, and continuing from where it stopped rather than catching up.",
+      "setup": {
+        "target": "manager",
+        "catalogue": {
+          "ep-static": {
+            "id": "ep-static",
+            "audio_url": "https://cdn.example/static.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Static",
+            "show": "Indie"
+          },
+          "ep-other": {
+            "id": "ep-other",
+            "audio_url": "https://cdn.example/other.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Other",
+            "show": "Indie"
+          },
+          "ep-dai": {
+            "id": "ep-dai",
+            "audio_url": "https://cdn.example/dai.mp3",
+            "dai_suspected": true,
+            "duration_sec": 2501,
+            "title": "Stitched",
+            "show": "Big"
+          }
+        },
+        "tts": true,
+        "scheduler": "manual",
+        "view": ["narrationSec"]
+      },
+      "steps": [
+        {
+          "call": "playForay",
+          "args": [
+            {
+              "id": "foray-1",
+              "title": "Fire",
+              "items": [
+                {
+                  "type": "narration",
+                  "id": "nar-1",
+                  "script": "a line the listener wants to be able to stop"
+                },
+                {
+                  "type": "segment",
+                  "item_id": "ep-static",
+                  "start_sec": 100,
+                  "end_sec": 210,
+                  "why": "he explains it plainly"
+                }
+              ]
+            }
+          ]
+        },
+        { "clock": 250 },
+        { "checkpoint": "before" },
+        { "call": "pause" },
+        { "clock": 500, "every": 250 },
+        { "checkpoint": "paused" },
+        { "call": "resume" },
+        { "clock": 250 },
+        { "checkpoint": "resumed" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "before",
+            "narrationSec": 0.25,
+            "ops": ["tts.speak:a line the listener wants to be able to stop@1"],
+            "playhead": "nar-1",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "paused",
+            "narrationSec": 0.25,
+            "ops": ["tts.pause"],
+            "playhead": "nar-1",
+            "rate": 1,
+            "state": "interrupted"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "resumed",
+            "narrationSec": 0.5,
+            "ops": ["tts.resume"],
+            "playhead": "nar-1",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "end",
+            "narrationSec": 0.5,
+            "ops": [],
+            "playhead": "nar-1",
+            "rate": 1,
+            "state": "playing"
+          }
+        ],
+        "ops": [
+          "tts.speak:a line the listener wants to be able to stop@1",
+          "tts.pause",
+          "tts.resume"
+        ]
+      }
+    },
+    {
+      "id": "manager-foray/l05-no-transport-still-pauses",
+      "covers": [
+        "queue-manager::L-05: a bridge with no transport methods is REPORTED, and the pause still happens"
+      ],
+      "note": "A shell built before L-05: nothing to call, nothing thrown, and the state still leaves playing. (The report is telemetry text, pinned by the JS suite.)",
+      "setup": {
+        "target": "manager",
+        "catalogue": {
+          "ep-static": {
+            "id": "ep-static",
+            "audio_url": "https://cdn.example/static.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Static",
+            "show": "Indie"
+          },
+          "ep-other": {
+            "id": "ep-other",
+            "audio_url": "https://cdn.example/other.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Other",
+            "show": "Indie"
+          },
+          "ep-dai": {
+            "id": "ep-dai",
+            "audio_url": "https://cdn.example/dai.mp3",
+            "dai_suspected": true,
+            "duration_sec": 2501,
+            "title": "Stitched",
+            "show": "Big"
+          }
+        },
+        "tts": { "transport": false }
+      },
+      "steps": [
+        {
+          "call": "playForay",
+          "args": [
+            {
+              "id": "foray-1",
+              "title": "Fire",
+              "items": [
+                {
+                  "type": "narration",
+                  "id": "nar-1",
+                  "script": "an older shell speaks this"
+                },
+                {
+                  "type": "segment",
+                  "item_id": "ep-static",
+                  "start_sec": 100,
+                  "end_sec": 210,
+                  "why": "he explains it plainly"
+                }
+              ]
+            }
+          ]
+        },
+        { "call": "pause" },
+        { "checkpoint": "paused" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "paused",
+            "ops": ["tts.speak:an older shell speaks this@1"],
+            "playhead": "nar-1",
+            "rate": 1,
+            "state": "interrupted"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "end",
+            "ops": [],
+            "playhead": "nar-1",
+            "rate": 1,
+            "state": "interrupted"
+          }
+        ],
+        "ops": ["tts.speak:an older shell speaks this@1"]
+      }
+    },
+    {
+      "id": "manager-foray/l05-a-rejecting-pause-is-never-thrown",
+      "covers": ["queue-manager::L-05: a bridge whose pause REJECTS is recorded, never thrown"],
+      "note": "The pause is asked and fails; the transition the surface already painted is not aborted.",
+      "setup": {
+        "target": "manager",
+        "catalogue": {
+          "ep-static": {
+            "id": "ep-static",
+            "audio_url": "https://cdn.example/static.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Static",
+            "show": "Indie"
+          },
+          "ep-other": {
+            "id": "ep-other",
+            "audio_url": "https://cdn.example/other.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Other",
+            "show": "Indie"
+          },
+          "ep-dai": {
+            "id": "ep-dai",
+            "audio_url": "https://cdn.example/dai.mp3",
+            "dai_suspected": true,
+            "duration_sec": 2501,
+            "title": "Stitched",
+            "show": "Big"
+          }
+        },
+        "tts": { "pause": "rejects" }
+      },
+      "steps": [
+        {
+          "call": "playForay",
+          "args": [
+            {
+              "id": "foray-1",
+              "title": "Fire",
+              "items": [
+                {
+                  "type": "narration",
+                  "id": "nar-1",
+                  "script": "spoken by a bridge about to vanish"
+                },
+                {
+                  "type": "segment",
+                  "item_id": "ep-static",
+                  "start_sec": 100,
+                  "end_sec": 210,
+                  "why": "he explains it plainly"
+                }
+              ]
+            }
+          ]
+        },
+        { "call": "pause" },
+        { "checkpoint": "paused" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "paused",
+            "ops": ["tts.speak:spoken by a bridge about to vanish@1", "tts.pause"],
+            "playhead": "nar-1",
+            "rate": 1,
+            "state": "interrupted"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "end",
+            "ops": [],
+            "playhead": "nar-1",
+            "rate": 1,
+            "state": "interrupted"
+          }
+        ],
+        "ops": ["tts.speak:spoken by a bridge about to vanish@1", "tts.pause"]
+      }
+    },
+    {
+      "id": "manager-foray/l05-a-from-start-resume-restarts-the-clock",
+      "covers": [
+        "queue-manager::L-05 (audit): an Android `fromStart` resume restarts the narration clock with the line"
+      ],
+      "note": "A resume that re-speaks the whole line puts the line's clock back at zero, and it runs from there.",
+      "setup": {
+        "target": "manager",
+        "catalogue": {
+          "ep-static": {
+            "id": "ep-static",
+            "audio_url": "https://cdn.example/static.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Static",
+            "show": "Indie"
+          },
+          "ep-other": {
+            "id": "ep-other",
+            "audio_url": "https://cdn.example/other.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Other",
+            "show": "Indie"
+          },
+          "ep-dai": {
+            "id": "ep-dai",
+            "audio_url": "https://cdn.example/dai.mp3",
+            "dai_suspected": true,
+            "duration_sec": 2501,
+            "title": "Stitched",
+            "show": "Big"
+          }
+        },
+        "tts": {
+          "resume": {
+            "ok": true,
+            "accepted": true,
+            "platform": "android",
+            "emulated": true,
+            "fromStart": true,
+            "state": "speaking"
+          }
+        },
+        "scheduler": "manual",
+        "view": ["narrationSec"]
+      },
+      "steps": [
+        {
+          "call": "playForay",
+          "args": [
+            {
+              "id": "foray-1",
+              "title": "Fire",
+              "items": [
+                {
+                  "type": "narration",
+                  "id": "nar-1",
+                  "script": "a line Android is about to re-speak from the top"
+                },
+                {
+                  "type": "segment",
+                  "item_id": "ep-static",
+                  "start_sec": 100,
+                  "end_sec": 210,
+                  "why": "he explains it plainly"
+                }
+              ]
+            }
+          ]
+        },
+        { "clock": 2000 },
+        { "checkpoint": "spoken" },
+        { "call": "pause" },
+        { "clock": 5000 },
+        { "checkpoint": "paused" },
+        { "call": "resume" },
+        { "checkpoint": "restarted" },
+        { "clock": 1000 },
+        { "checkpoint": "running" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "spoken",
+            "narrationSec": 2,
+            "ops": ["tts.speak:a line Android is about to re-speak from the top@1"],
+            "playhead": "nar-1",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "paused",
+            "narrationSec": 2,
+            "ops": ["tts.pause"],
+            "playhead": "nar-1",
+            "rate": 1,
+            "state": "interrupted"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "restarted",
+            "narrationSec": 0,
+            "ops": ["tts.resume"],
+            "playhead": "nar-1",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "running",
+            "narrationSec": 1,
+            "ops": [],
+            "playhead": "nar-1",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "end",
+            "narrationSec": 1,
+            "ops": [],
+            "playhead": "nar-1",
+            "rate": 1,
+            "state": "playing"
+          }
+        ],
+        "ops": [
+          "tts.speak:a line Android is about to re-speak from the top@1",
+          "tts.pause",
+          "tts.resume"
+        ]
+      }
+    },
+    {
+      "id": "manager-foray/l05-a-refused-resume-stays-paused",
+      "covers": [
+        "queue-manager::L-05 (audit): a REFUSED resume leaves narration paused and its clock stopped"
+      ],
+      "note": "It still asks; a refusal leaves the clock and the pulse stopped for a voice that never resumed.",
+      "setup": {
+        "target": "manager",
+        "catalogue": {
+          "ep-static": {
+            "id": "ep-static",
+            "audio_url": "https://cdn.example/static.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Static",
+            "show": "Indie"
+          },
+          "ep-other": {
+            "id": "ep-other",
+            "audio_url": "https://cdn.example/other.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Other",
+            "show": "Indie"
+          },
+          "ep-dai": {
+            "id": "ep-dai",
+            "audio_url": "https://cdn.example/dai.mp3",
+            "dai_suspected": true,
+            "duration_sec": 2501,
+            "title": "Stitched",
+            "show": "Big"
+          }
+        },
+        "tts": {
+          "resume": {
+            "ok": false,
+            "path": "none",
+            "accepted": false,
+            "reason": "this build of foray-tts has no resume"
+          }
+        },
+        "scheduler": "manual",
+        "narrationTicks": true,
+        "view": ["narrationSec", "narrationTicks"]
+      },
+      "steps": [
+        {
+          "call": "playForay",
+          "args": [
+            {
+              "id": "foray-1",
+              "title": "Fire",
+              "items": [
+                {
+                  "type": "narration",
+                  "id": "nar-1",
+                  "script": "a line an older shell cannot continue"
+                },
+                {
+                  "type": "segment",
+                  "item_id": "ep-static",
+                  "start_sec": 100,
+                  "end_sec": 210,
+                  "why": "he explains it plainly"
+                }
+              ]
+            }
+          ]
+        },
+        { "clock": 2000 },
+        { "call": "pause" },
+        { "checkpoint": "paused" },
+        { "call": "resume" },
+        { "clock": 5000 },
+        { "clock": 5000 },
+        { "checkpoint": "refused" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "paused",
+            "narrationSec": 2,
+            "narrationTicks": 1,
+            "ops": ["tts.speak:a line an older shell cannot continue@1", "tts.pause"],
+            "playhead": "nar-1",
+            "rate": 1,
+            "state": "interrupted"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "refused",
+            "narrationSec": 2,
+            "narrationTicks": 1,
+            "ops": ["tts.resume"],
+            "playhead": "nar-1",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "end",
+            "narrationSec": 2,
+            "narrationTicks": 1,
+            "ops": [],
+            "playhead": "nar-1",
+            "rate": 1,
+            "state": "playing"
+          }
+        ],
+        "ops": ["tts.speak:a line an older shell cannot continue@1", "tts.pause", "tts.resume"]
+      }
+    },
+    {
+      "id": "manager-foray/l05-no-answer-still-resumes-the-clock",
+      "covers": [
+        "queue-manager::L-05 (audit): a bridge that cannot answer at all still resumes the clock"
+      ],
+      "note": "No transport at all: the voice never stopped, so the clock must not freeze either.",
+      "setup": {
+        "target": "manager",
+        "catalogue": {
+          "ep-static": {
+            "id": "ep-static",
+            "audio_url": "https://cdn.example/static.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Static",
+            "show": "Indie"
+          },
+          "ep-other": {
+            "id": "ep-other",
+            "audio_url": "https://cdn.example/other.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Other",
+            "show": "Indie"
+          },
+          "ep-dai": {
+            "id": "ep-dai",
+            "audio_url": "https://cdn.example/dai.mp3",
+            "dai_suspected": true,
+            "duration_sec": 2501,
+            "title": "Stitched",
+            "show": "Big"
+          }
+        },
+        "tts": { "transport": false },
+        "scheduler": "manual",
+        "view": ["narrationSec"]
+      },
+      "steps": [
+        {
+          "call": "playForay",
+          "args": [
+            {
+              "id": "foray-1",
+              "title": "Fire",
+              "items": [
+                {
+                  "type": "narration",
+                  "id": "nar-1",
+                  "script": "an older shell speaks this and cannot stop it"
+                },
+                {
+                  "type": "segment",
+                  "item_id": "ep-static",
+                  "start_sec": 100,
+                  "end_sec": 210,
+                  "why": "he explains it plainly"
+                }
+              ]
+            }
+          ]
+        },
+        { "clock": 2000 },
+        { "checkpoint": "spoken" },
+        { "call": "pause" },
+        { "call": "resume" },
+        { "clock": 1000 },
+        { "checkpoint": "running" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "spoken",
+            "narrationSec": 2,
+            "ops": ["tts.speak:an older shell speaks this and cannot stop it@1"],
+            "playhead": "nar-1",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "running",
+            "narrationSec": 3,
+            "ops": [],
+            "playhead": "nar-1",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "end",
+            "narrationSec": 3,
+            "ops": [],
+            "playhead": "nar-1",
+            "rate": 1,
+            "state": "playing"
+          }
+        ],
+        "ops": ["tts.speak:an older shell speaks this and cannot stop it@1"]
+      }
+    },
+    {
+      "id": "manager-foray/l05-a-segment-pause-goes-to-the-element",
+      "covers": [
+        "queue-manager::L-05: an ordinary segment's pause still goes to the element, never to the plugin"
+      ],
+      "note": "A rendered segment pauses the deck; the synthesiser is never asked.",
+      "setup": {
+        "target": "manager",
+        "catalogue": {
+          "ep-static": {
+            "id": "ep-static",
+            "audio_url": "https://cdn.example/static.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Static",
+            "show": "Indie"
+          },
+          "ep-other": {
+            "id": "ep-other",
+            "audio_url": "https://cdn.example/other.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Other",
+            "show": "Indie"
+          },
+          "ep-dai": {
+            "id": "ep-dai",
+            "audio_url": "https://cdn.example/dai.mp3",
+            "dai_suspected": true,
+            "duration_sec": 2501,
+            "title": "Stitched",
+            "show": "Big"
+          }
+        },
+        "tts": true
+      },
+      "steps": [
+        {
+          "call": "playForay",
+          "args": [
+            {
+              "id": "foray-1",
+              "title": "Fire",
+              "items": [
+                {
+                  "type": "segment",
+                  "item_id": "ep-static",
+                  "start_sec": 100,
+                  "end_sec": 210,
+                  "why": "he explains it plainly"
+                },
+                {
+                  "type": "segment",
+                  "item_id": "ep-static",
+                  "start_sec": 300,
+                  "end_sec": 410,
+                  "why": "he explains it plainly"
+                }
+              ]
+            }
+          ]
+        },
+        { "call": "pause" },
+        { "checkpoint": "paused" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "paused",
+            "ops": ["load:foray-1#0@100", "rate:1", "outPoint:210", "play", "pause"],
+            "playhead": "foray-1#0",
+            "rate": 1,
+            "state": "interrupted"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "end",
+            "ops": [],
+            "playhead": "foray-1#0",
+            "rate": 1,
+            "state": "interrupted"
+          }
+        ],
+        "ops": ["load:foray-1#0@100", "rate:1", "outPoint:210", "play", "pause"]
+      }
+    },
+    {
+      "id": "manager-foray/a-silent-line-is-finished-past-its-deadline",
+      "covers": [
+        "queue-manager::ROUND 2 native-3: a spoken line that never says finished is treated as finished past its deadline"
+      ],
+      "note": "Deadline = runtime x 1.5 + 10 s: a 4 s line is given up on after 16 s on an awake page, and the Foray moves on.",
+      "setup": {
+        "target": "manager",
+        "catalogue": {
+          "ep-static": {
+            "id": "ep-static",
+            "audio_url": "https://cdn.example/static.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Static",
+            "show": "Indie"
+          },
+          "ep-other": {
+            "id": "ep-other",
+            "audio_url": "https://cdn.example/other.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Other",
+            "show": "Indie"
+          },
+          "ep-dai": {
+            "id": "ep-dai",
+            "audio_url": "https://cdn.example/dai.mp3",
+            "dai_suspected": true,
+            "duration_sec": 2501,
+            "title": "Stitched",
+            "show": "Big"
+          }
+        },
+        "tts": true,
+        "scheduler": "manual",
+        "narrationTicks": true
+      },
+      "steps": [
+        {
+          "call": "playForay",
+          "args": [
+            {
+              "id": "foray-1",
+              "title": "Fire",
+              "items": [
+                {
+                  "type": "narration",
+                  "id": "nar-1",
+                  "script": "four seconds of narration",
+                  "duration_sec": 4
+                },
+                {
+                  "type": "segment",
+                  "item_id": "ep-static",
+                  "start_sec": 100,
+                  "end_sec": 210,
+                  "why": "he explains it plainly"
+                }
+              ]
+            }
+          ]
+        },
+        { "clock": 15000, "every": 250 },
+        { "checkpoint": "inside" },
+        { "clock": 2000, "every": 250 },
+        { "settle": 1 },
+        { "checkpoint": "past" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "inside",
+            "ops": ["tts.speak:four seconds of narration@1"],
+            "playhead": "nar-1",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "past",
+            "ops": ["load:foray-1#1@100", "rate:1", "outPoint:210", "play"],
+            "playhead": "foray-1#1",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "end",
+            "ops": [],
+            "playhead": "foray-1#1",
+            "rate": 1,
+            "state": "playing"
+          }
+        ],
+        "ops": [
+          "tts.speak:four seconds of narration@1",
+          "load:foray-1#1@100",
+          "rate:1",
+          "outPoint:210",
+          "play"
+        ]
+      }
+    },
+    {
+      "id": "manager-foray/the-deadline-is-the-1x-runtime-at-0.75x",
+      "covers": [
+        "queue-manager::FOUNDER 2026-09-24: the narration deadline is the line's 1x runtime even when the listener is at 0.75x"
+      ],
+      "note": "The line is spoken at 1x, so the deadline is 16 s, not the 18 s a 0.75x listener's speed would stretch it to.",
+      "setup": {
+        "target": "manager",
+        "catalogue": {
+          "ep-static": {
+            "id": "ep-static",
+            "audio_url": "https://cdn.example/static.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Static",
+            "show": "Indie"
+          },
+          "ep-other": {
+            "id": "ep-other",
+            "audio_url": "https://cdn.example/other.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Other",
+            "show": "Indie"
+          },
+          "ep-dai": {
+            "id": "ep-dai",
+            "audio_url": "https://cdn.example/dai.mp3",
+            "dai_suspected": true,
+            "duration_sec": 2501,
+            "title": "Stitched",
+            "show": "Big"
+          }
+        },
+        "tts": true,
+        "scheduler": "manual",
+        "narrationTicks": true,
+        "rate": 0.75
+      },
+      "steps": [
+        {
+          "call": "playForay",
+          "args": [
+            {
+              "id": "foray-1",
+              "title": "Fire",
+              "items": [
+                {
+                  "type": "narration",
+                  "id": "nar-1",
+                  "script": "four seconds of narration",
+                  "duration_sec": 4
+                },
+                {
+                  "type": "segment",
+                  "item_id": "ep-static",
+                  "start_sec": 100,
+                  "end_sec": 210,
+                  "why": "he explains it plainly"
+                }
+              ]
+            }
+          ]
+        },
+        { "clock": 15000, "every": 250 },
+        { "checkpoint": "inside" },
+        { "clock": 2000, "every": 250 },
+        { "settle": 1 },
+        { "checkpoint": "past" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "inside",
+            "ops": ["tts.speak:four seconds of narration@1"],
+            "playhead": "nar-1",
+            "rate": 0.75,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "past",
+            "ops": ["load:foray-1#1@100", "rate:0.75", "outPoint:210", "play"],
+            "playhead": "foray-1#1",
+            "rate": 0.75,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "end",
+            "ops": [],
+            "playhead": "foray-1#1",
+            "rate": 0.75,
+            "state": "playing"
+          }
+        ],
+        "ops": [
+          "tts.speak:four seconds of narration@1",
+          "load:foray-1#1@100",
+          "rate:0.75",
+          "outPoint:210",
+          "play"
+        ]
+      }
+    },
+    {
+      "id": "manager-foray/a-suspended-line-is-interrupted-not-advanced",
+      "covers": [
+        "queue-manager::ROUND 2 review: a narration line whose page was SUSPENDED through a call is interrupted, never advanced by the deadline"
+      ],
+      "note": "One 60 s jump is a page asleep through a call: the silent synthesiser is an interruption, resumable, never a deadline advance.",
+      "setup": {
+        "target": "manager",
+        "catalogue": {
+          "ep-static": {
+            "id": "ep-static",
+            "audio_url": "https://cdn.example/static.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Static",
+            "show": "Indie"
+          },
+          "ep-other": {
+            "id": "ep-other",
+            "audio_url": "https://cdn.example/other.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Other",
+            "show": "Indie"
+          },
+          "ep-dai": {
+            "id": "ep-dai",
+            "audio_url": "https://cdn.example/dai.mp3",
+            "dai_suspected": true,
+            "duration_sec": 2501,
+            "title": "Stitched",
+            "show": "Big"
+          }
+        },
+        "tts": true,
+        "scheduler": "manual",
+        "narrationTicks": true,
+        "view": ["wasPlaying"]
+      },
+      "steps": [
+        {
+          "call": "playForay",
+          "args": [
+            {
+              "id": "foray-1",
+              "title": "Fire",
+              "items": [
+                {
+                  "type": "narration",
+                  "id": "nar-1",
+                  "script": "four seconds of narration",
+                  "duration_sec": 4
+                },
+                {
+                  "type": "segment",
+                  "item_id": "ep-static",
+                  "start_sec": 100,
+                  "end_sec": 210,
+                  "why": "he explains it plainly"
+                }
+              ]
+            }
+          ]
+        },
+        { "clock": 250 },
+        { "clock": 60000 },
+        { "settle": 2 },
+        { "checkpoint": "woke" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "woke",
+            "ops": ["tts.speak:four seconds of narration@1", "tts.pause"],
+            "playhead": "nar-1",
+            "rate": 1,
+            "state": "interrupted",
+            "wasPlaying": true
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "end",
+            "ops": [],
+            "playhead": "nar-1",
+            "rate": 1,
+            "state": "interrupted",
+            "wasPlaying": true
+          }
+        ],
+        "ops": ["tts.speak:four seconds of narration@1", "tts.pause"]
+      }
+    },
+    {
+      "id": "manager-foray/an-interruption-during-a-spoken-line",
+      "covers": [
+        "transport-reconcile::ROUND 2 native-3: an interruption during a SPOKEN line pauses the Foray, and should-resume continues the line"
+      ],
+      "note": "The synthesiser is asked: still speaking is a late event and nothing is touched; silent is the session taken, so the line pauses, and should-resume continues it.",
+      "setup": {
+        "target": "manager",
+        "catalogue": {
+          "ep-static": {
+            "id": "ep-static",
+            "audio_url": "https://cdn.example/static.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Static",
+            "show": "Indie"
+          },
+          "ep-other": {
+            "id": "ep-other",
+            "audio_url": "https://cdn.example/other.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Other",
+            "show": "Indie"
+          },
+          "ep-dai": {
+            "id": "ep-dai",
+            "audio_url": "https://cdn.example/dai.mp3",
+            "dai_suspected": true,
+            "duration_sec": 2501,
+            "title": "Stitched",
+            "show": "Big"
+          }
+        },
+        "tts": { "state": true },
+        "view": ["wasPlaying"]
+      },
+      "steps": [
+        {
+          "call": "playForay",
+          "args": [
+            {
+              "id": "foray-1",
+              "title": "Fire",
+              "items": [
+                {
+                  "type": "narration",
+                  "id": "nar-1",
+                  "script": "a sixty second line",
+                  "duration_sec": 60
+                },
+                {
+                  "type": "segment",
+                  "item_id": "ep-static",
+                  "start_sec": 100,
+                  "end_sec": 210,
+                  "why": "he explains it plainly"
+                }
+              ]
+            }
+          ]
+        },
+        { "checkpoint": "speaking" },
+        { "session": "interruptionReconciled" },
+        { "checkpoint": "late" },
+        { "tts": "silent" },
+        { "session": "interruptionReconciled" },
+        { "checkpoint": "taken" },
+        { "session": "interruptionEnded", "shouldResume": true },
+        { "checkpoint": "resumed" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "speaking",
+            "ops": ["tts.speak:a sixty second line@1"],
+            "playhead": "nar-1",
+            "rate": 1,
+            "state": "playing",
+            "wasPlaying": null
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "late",
+            "ops": [],
+            "playhead": "nar-1",
+            "rate": 1,
+            "state": "playing",
+            "wasPlaying": null
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "taken",
+            "ops": ["tts.pause"],
+            "playhead": "nar-1",
+            "rate": 1,
+            "state": "interrupted",
+            "wasPlaying": true
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "resumed",
+            "ops": ["tts.resume"],
+            "playhead": "nar-1",
+            "rate": 1,
+            "state": "playing",
+            "wasPlaying": null
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "end",
+            "ops": [],
+            "playhead": "nar-1",
+            "rate": 1,
+            "state": "playing",
+            "wasPlaying": null
+          }
+        ],
+        "ops": ["tts.speak:a sixty second line@1", "tts.pause", "tts.resume"]
+      }
+    },
+    {
+      "id": "manager-foray/each-utterance-finishes-at-most-once",
+      "covers": [],
+      "authored": true,
+      "note": "AUTHORED (NE-31j): finished is taken once per utterance. Two lines and a segment: each line's finished advances once, and a repeated finished for the line already advanced past does nothing. Natively the finished carries the utterance's seq (speak(seq, ...)); JS keys the same rule on its own speak sequence.",
+      "setup": {
+        "target": "manager",
+        "catalogue": {
+          "ep-static": {
+            "id": "ep-static",
+            "audio_url": "https://cdn.example/static.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Static",
+            "show": "Indie"
+          },
+          "ep-other": {
+            "id": "ep-other",
+            "audio_url": "https://cdn.example/other.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Other",
+            "show": "Indie"
+          },
+          "ep-dai": {
+            "id": "ep-dai",
+            "audio_url": "https://cdn.example/dai.mp3",
+            "dai_suspected": true,
+            "duration_sec": 2501,
+            "title": "Stitched",
+            "show": "Big"
+          }
+        },
+        "tts": true
+      },
+      "steps": [
+        {
+          "call": "playForay",
+          "args": [
+            {
+              "id": "foray-1",
+              "title": "Fire",
+              "items": [
+                { "type": "narration", "id": "nar-1", "script": "first line" },
+                { "type": "narration", "id": "nar-2", "script": "second line" },
+                {
+                  "type": "segment",
+                  "item_id": "ep-static",
+                  "start_sec": 100,
+                  "end_sec": 210,
+                  "why": "he explains it plainly"
+                }
+              ]
+            }
+          ]
+        },
+        { "checkpoint": "first" },
+        { "tts": "finish" },
+        { "settle": 1 },
+        { "checkpoint": "second" },
+        { "tts": "finish" },
+        { "settle": 1 },
+        { "checkpoint": "tape" },
+        { "tts": "finish" },
+        { "settle": 1 },
+        { "checkpoint": "repeat" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "first",
+            "ops": ["tts.speak:first line@1"],
+            "playhead": "nar-1",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "second",
+            "ops": ["tts.speak:second line@1"],
+            "playhead": "nar-2",
+            "rate": 1,
+            "state": "transitioning"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 2,
+            "name": "tape",
+            "ops": ["load:foray-1#2@100", "rate:1", "outPoint:210", "play"],
+            "playhead": "foray-1#2",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 2,
+            "name": "repeat",
+            "ops": [],
+            "playhead": "foray-1#2",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 2,
+            "name": "end",
+            "ops": [],
+            "playhead": "foray-1#2",
+            "rate": 1,
+            "state": "playing"
+          }
+        ],
+        "ops": [
+          "tts.speak:first line@1",
+          "tts.speak:second line@1",
+          "load:foray-1#2@100",
+          "rate:1",
+          "outPoint:210",
+          "play"
+        ]
+      }
+    },
+    {
+      "id": "manager-foray/a-pause-holds-the-utterance",
+      "covers": [],
+      "authored": true,
+      "note": "AUTHORED (NE-31j): a pause is a pause of THIS utterance — never a stop, never a re-speak — and resume continues it. Where it stops (pauseSpeaking(at: .word)) is the narrator's, pinned by NE-33's XCTest; what the engine owns is pause-not-stop, continue-not-respeak and the frozen clock.",
+      "setup": {
+        "target": "manager",
+        "catalogue": {
+          "ep-static": {
+            "id": "ep-static",
+            "audio_url": "https://cdn.example/static.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Static",
+            "show": "Indie"
+          },
+          "ep-other": {
+            "id": "ep-other",
+            "audio_url": "https://cdn.example/other.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Other",
+            "show": "Indie"
+          },
+          "ep-dai": {
+            "id": "ep-dai",
+            "audio_url": "https://cdn.example/dai.mp3",
+            "dai_suspected": true,
+            "duration_sec": 2501,
+            "title": "Stitched",
+            "show": "Big"
+          }
+        },
+        "tts": true,
+        "scheduler": "manual",
+        "view": ["narrationSec", "narrationPlayhead"]
+      },
+      "steps": [
+        {
+          "call": "playForay",
+          "args": [
+            {
+              "id": "foray-1",
+              "title": "Fire",
+              "items": [
+                {
+                  "type": "narration",
+                  "id": "nar-1",
+                  "script": "a line the listener wants to be able to stop"
+                },
+                {
+                  "type": "segment",
+                  "item_id": "ep-static",
+                  "start_sec": 100,
+                  "end_sec": 210,
+                  "why": "he explains it plainly"
+                }
+              ]
+            }
+          ]
+        },
+        { "clock": 1000 },
+        { "checkpoint": "speaking" },
+        { "call": "pause" },
+        { "clock": 3000 },
+        { "checkpoint": "paused" },
+        { "call": "resume" },
+        { "clock": 500 },
+        { "checkpoint": "continued" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "speaking",
+            "narrationPlayhead": true,
+            "narrationSec": 1,
+            "ops": ["tts.speak:a line the listener wants to be able to stop@1"],
+            "playhead": "nar-1",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "paused",
+            "narrationPlayhead": true,
+            "narrationSec": 1,
+            "ops": ["tts.pause"],
+            "playhead": "nar-1",
+            "rate": 1,
+            "state": "interrupted"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "continued",
+            "narrationPlayhead": true,
+            "narrationSec": 1.5,
+            "ops": ["tts.resume"],
+            "playhead": "nar-1",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "end",
+            "narrationPlayhead": true,
+            "narrationSec": 1.5,
+            "ops": [],
+            "playhead": "nar-1",
+            "rate": 1,
+            "state": "playing"
+          }
+        ],
+        "ops": [
+          "tts.speak:a line the listener wants to be able to stop@1",
+          "tts.pause",
+          "tts.resume"
+        ]
+      }
+    },
+    {
+      "id": "manager-foray/stop-never-advances",
+      "covers": [],
+      "authored": true,
+      "note": "AUTHORED (NE-31j): a stop ends the line and the Foray; a finished arriving after it advances nothing (natively stop never maps to finished).",
+      "setup": {
+        "target": "manager",
+        "catalogue": {
+          "ep-static": {
+            "id": "ep-static",
+            "audio_url": "https://cdn.example/static.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Static",
+            "show": "Indie"
+          },
+          "ep-other": {
+            "id": "ep-other",
+            "audio_url": "https://cdn.example/other.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Other",
+            "show": "Indie"
+          },
+          "ep-dai": {
+            "id": "ep-dai",
+            "audio_url": "https://cdn.example/dai.mp3",
+            "dai_suspected": true,
+            "duration_sec": 2501,
+            "title": "Stitched",
+            "show": "Big"
+          }
+        },
+        "tts": true
+      },
+      "steps": [
+        {
+          "call": "playForay",
+          "args": [
+            {
+              "id": "foray-1",
+              "title": "Fire",
+              "items": [
+                {
+                  "type": "narration",
+                  "id": "nar-1",
+                  "script": "a line the listener wants to be able to stop"
+                },
+                {
+                  "type": "segment",
+                  "item_id": "ep-static",
+                  "start_sec": 100,
+                  "end_sec": 210,
+                  "why": "he explains it plainly"
+                }
+              ]
+            }
+          ]
+        },
+        { "call": "stop" },
+        { "checkpoint": "stopped" },
+        { "tts": "finish" },
+        { "settle": 1 },
+        { "checkpoint": "late-finished" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "stopped",
+            "ops": ["tts.speak:a line the listener wants to be able to stop@1", "tts.stop"],
+            "playhead": "nar-1",
+            "rate": 1,
+            "state": "idle"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "late-finished",
+            "ops": [],
+            "playhead": "nar-1",
+            "rate": 1,
+            "state": "idle"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "end",
+            "ops": [],
+            "playhead": "nar-1",
+            "rate": 1,
+            "state": "idle"
+          }
+        ],
+        "ops": ["tts.speak:a line the listener wants to be able to stop@1", "tts.stop"]
+      }
+    },
+    {
+      "id": "manager-foray/stop-during-a-bridge-never-advances",
+      "covers": [],
+      "authored": true,
+      "note": "AUTHORED (NE-31j): the same during a spoken bridge between two segments — nothing after the bridge is loaded.",
+      "setup": {
+        "target": "manager",
+        "catalogue": {
+          "ep-static": {
+            "id": "ep-static",
+            "audio_url": "https://cdn.example/static.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Static",
+            "show": "Indie"
+          },
+          "ep-other": {
+            "id": "ep-other",
+            "audio_url": "https://cdn.example/other.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Other",
+            "show": "Indie"
+          },
+          "ep-dai": {
+            "id": "ep-dai",
+            "audio_url": "https://cdn.example/dai.mp3",
+            "dai_suspected": true,
+            "duration_sec": 2501,
+            "title": "Stitched",
+            "show": "Big"
+          }
+        },
+        "tts": true
+      },
+      "steps": [
+        {
+          "call": "playForay",
+          "args": [
+            {
+              "id": "foray-1",
+              "title": "Fire",
+              "items": [
+                {
+                  "type": "segment",
+                  "item_id": "ep-static",
+                  "start_sec": 100,
+                  "end_sec": 210,
+                  "why": "he explains it plainly"
+                },
+                { "type": "narration", "id": "nar-1", "script": "a bridge line" },
+                {
+                  "type": "segment",
+                  "item_id": "ep-static",
+                  "start_sec": 400,
+                  "end_sec": 500,
+                  "why": "he explains it plainly"
+                }
+              ]
+            }
+          ]
+        },
+        { "deck": "time", "sec": 210 },
+        { "deck": "ended", "reason": "outPoint" },
+        { "checkpoint": "bridge" },
+        { "call": "stop" },
+        { "checkpoint": "stopped" },
+        { "tts": "finish" },
+        { "settle": 1 },
+        { "checkpoint": "late-finished" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "bridge",
+            "ops": [
+              "load:foray-1#0@100",
+              "rate:1",
+              "outPoint:210",
+              "play",
+              "rate:1",
+              "tts.speak:a bridge line@1"
+            ],
+            "playhead": "nar-1",
+            "rate": 1,
+            "state": "transitioning"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "stopped",
+            "ops": ["tts.stop"],
+            "playhead": "nar-1",
+            "rate": 1,
+            "state": "idle"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "late-finished",
+            "ops": [],
+            "playhead": "nar-1",
+            "rate": 1,
+            "state": "idle"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "end",
+            "ops": [],
+            "playhead": "nar-1",
+            "rate": 1,
+            "state": "idle"
+          }
+        ],
+        "ops": [
+          "load:foray-1#0@100",
+          "rate:1",
+          "outPoint:210",
+          "play",
+          "rate:1",
+          "tts.speak:a bridge line@1",
+          "tts.stop"
+        ]
+      }
+    },
+    {
+      "id": "manager-foray/a-call-during-a-spoken-bridge-resumes-into-the-next-real-item",
+      "covers": [],
+      "authored": true,
+      "note": "AUTHORED (NE-31j): a call during a spoken bridge between two segments. The bridge is paused with the call (never left talking, never skipped), should-resume continues that same utterance, and its finished takes the Foray to the next real item — the segment after the bridge, at its in-point. JS reading of the plan's 'a call during a bridge resumes on the next real item': the resume lands in the bridge (L-05: a spoken line continues after a call) and the next real item follows it.",
+      "setup": {
+        "target": "manager",
+        "catalogue": {
+          "ep-static": {
+            "id": "ep-static",
+            "audio_url": "https://cdn.example/static.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Static",
+            "show": "Indie"
+          },
+          "ep-other": {
+            "id": "ep-other",
+            "audio_url": "https://cdn.example/other.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Other",
+            "show": "Indie"
+          },
+          "ep-dai": {
+            "id": "ep-dai",
+            "audio_url": "https://cdn.example/dai.mp3",
+            "dai_suspected": true,
+            "duration_sec": 2501,
+            "title": "Stitched",
+            "show": "Big"
+          }
+        },
+        "tts": true,
+        "view": ["wasPlaying"]
+      },
+      "steps": [
+        {
+          "call": "playForay",
+          "args": [
+            {
+              "id": "foray-1",
+              "title": "Fire",
+              "items": [
+                {
+                  "type": "segment",
+                  "item_id": "ep-static",
+                  "start_sec": 100,
+                  "end_sec": 210,
+                  "why": "he explains it plainly"
+                },
+                { "type": "narration", "id": "nar-1", "script": "a bridge line" },
+                {
+                  "type": "segment",
+                  "item_id": "ep-static",
+                  "start_sec": 400,
+                  "end_sec": 500,
+                  "why": "he explains it plainly"
+                }
+              ]
+            }
+          ]
+        },
+        { "deck": "time", "sec": 210 },
+        { "deck": "ended", "reason": "outPoint" },
+        { "checkpoint": "bridge" },
+        { "session": "interruptionBegan" },
+        { "checkpoint": "call" },
+        { "session": "interruptionEnded", "shouldResume": true },
+        { "settle": 1 },
+        { "checkpoint": "resumed" },
+        { "tts": "finish" },
+        { "settle": 1 },
+        { "checkpoint": "next-real-item" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "bridge",
+            "ops": [
+              "load:foray-1#0@100",
+              "rate:1",
+              "outPoint:210",
+              "play",
+              "rate:1",
+              "tts.speak:a bridge line@1"
+            ],
+            "playhead": "nar-1",
+            "rate": 1,
+            "state": "transitioning",
+            "wasPlaying": null
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "call",
+            "ops": ["tts.pause"],
+            "playhead": "nar-1",
+            "rate": 1,
+            "state": "interrupted",
+            "wasPlaying": true
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "resumed",
+            "ops": ["tts.resume"],
+            "playhead": "nar-1",
+            "rate": 1,
+            "state": "playing",
+            "wasPlaying": null
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 2,
+            "name": "next-real-item",
+            "ops": ["load:foray-1#2@400", "rate:1", "outPoint:500", "play"],
+            "playhead": "foray-1#2",
+            "rate": 1,
+            "state": "playing",
+            "wasPlaying": null
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 2,
+            "name": "end",
+            "ops": [],
+            "playhead": "foray-1#2",
+            "rate": 1,
+            "state": "playing",
+            "wasPlaying": null
+          }
+        ],
+        "ops": [
+          "load:foray-1#0@100",
+          "rate:1",
+          "outPoint:210",
+          "play",
+          "rate:1",
+          "tts.speak:a bridge line@1",
+          "tts.pause",
+          "tts.resume",
+          "load:foray-1#2@400",
+          "rate:1",
+          "outPoint:500",
+          "play"
+        ]
+      }
+    },
+    {
+      "id": "manager-foray/a-call-during-a-rendered-bridge-resumes-into-the-next-real-item",
+      "covers": [],
+      "authored": true,
+      "note": "AUTHORED (NE-31j): the same over a rendered bridge. The call pauses the deck; should-resume replays the bridge from zero (a bridge never resumes mid-line: 'a TTS bridge always starts at zero'), and its end takes the Foray to the segment after it.",
+      "setup": {
+        "target": "manager",
+        "catalogue": {
+          "ep-static": {
+            "id": "ep-static",
+            "audio_url": "https://cdn.example/static.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Static",
+            "show": "Indie"
+          },
+          "ep-other": {
+            "id": "ep-other",
+            "audio_url": "https://cdn.example/other.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Other",
+            "show": "Indie"
+          },
+          "ep-dai": {
+            "id": "ep-dai",
+            "audio_url": "https://cdn.example/dai.mp3",
+            "dai_suspected": true,
+            "duration_sec": 2501,
+            "title": "Stitched",
+            "show": "Big"
+          }
+        },
+        "view": ["wasPlaying"]
+      },
+      "steps": [
+        {
+          "call": "playForay",
+          "args": [
+            {
+              "id": "foray-1",
+              "title": "Fire",
+              "items": [
+                {
+                  "type": "segment",
+                  "item_id": "ep-static",
+                  "start_sec": 100,
+                  "end_sec": 210,
+                  "why": "he explains it plainly"
+                },
+                { "type": "narration", "id": "nar-1", "asset": "narration/fire-1.mp3" },
+                {
+                  "type": "segment",
+                  "item_id": "ep-static",
+                  "start_sec": 400,
+                  "end_sec": 500,
+                  "why": "he explains it plainly"
+                }
+              ]
+            }
+          ]
+        },
+        { "deck": "time", "sec": 210 },
+        { "deck": "ended", "reason": "outPoint" },
+        { "checkpoint": "bridge" },
+        { "session": "interruptionBegan" },
+        { "checkpoint": "call" },
+        { "session": "interruptionEnded", "shouldResume": true },
+        { "settle": 1 },
+        { "checkpoint": "resumed" },
+        { "deck": "ended", "reason": "natural" },
+        { "checkpoint": "next-real-item" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "bridge",
+            "ops": [
+              "load:foray-1#0@100",
+              "rate:1",
+              "outPoint:210",
+              "play",
+              "rate:1",
+              "load:nar-1@0",
+              "play"
+            ],
+            "playhead": "nar-1",
+            "rate": 1,
+            "state": "transitioning",
+            "wasPlaying": null
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "call",
+            "ops": ["store.save:nar-1@0", "pause"],
+            "playhead": "nar-1",
+            "rate": 1,
+            "state": "interrupted",
+            "wasPlaying": true
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "resumed",
+            "ops": ["load:nar-1@0", "rate:1", "play"],
+            "playhead": "nar-1",
+            "rate": 1,
+            "state": "playing",
+            "wasPlaying": null
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 2,
+            "name": "next-real-item",
+            "ops": ["load:foray-1#2@400", "rate:1", "outPoint:500", "play"],
+            "playhead": "foray-1#2",
+            "rate": 1,
+            "state": "playing",
+            "wasPlaying": null
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 2,
+            "name": "end",
+            "ops": [],
+            "playhead": "foray-1#2",
+            "rate": 1,
+            "state": "playing",
+            "wasPlaying": null
+          }
+        ],
+        "ops": [
+          "load:foray-1#0@100",
+          "rate:1",
+          "outPoint:210",
+          "play",
+          "rate:1",
+          "load:nar-1@0",
+          "play",
+          "store.save:nar-1@0",
+          "pause",
+          "load:nar-1@0",
+          "rate:1",
+          "play",
+          "load:foray-1#2@400",
+          "rate:1",
+          "outPoint:500",
+          "play"
+        ]
+      }
+    }
+  ]
+}
