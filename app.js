@@ -3309,8 +3309,15 @@ function renderShowIndexPage(title, subtitle, shows, above = "", { tabRoot = fal
     same page repainted from whatever it answered. A second failure lands on the
     same failed state with a fresh button, never on an empty-list claim. */
 async function retryCatalog() {
+  /* THE PAGE THAT ASKED IS THE ONLY PAGE THAT REPAINTS (audit round 3,
+     app-1-15; races-7's rule for retryForayDocs). The fetch is bounded but can
+     take seconds, and a listener who moved on meanwhile had that page re-rendered
+     under them — scroll, an in-progress show-page search and focus all lost. The
+     catalogue is still kept; only the repaint is the asking page's. */
+  const stillHere = renderToken();
   const catalog = await fetchJson("data/catalog-client.json");
   if (catalog) state.catalog = catalog;
+  if (!stillHere()) return;
   renderCurrentPage();
   /* The retried page is the page's real paint (audit round 2, nav-3): its name
      reaches the document, and focus the replaced Retry button took with it

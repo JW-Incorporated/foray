@@ -363,3 +363,29 @@ test("app-2-12: renderHomeV2 computes every rail's picks once, for the button an
   m.ctx.renderHomeV2();
   assert.deepStrictEqual(calls, { jbi: 1, forays: 1, playlists: 1 }, "each rail's picks are computed once per render");
 });
+
+/* ---------- app-1-15: a retried catalogue repaints only the page that asked --- */
+
+test("app-1-15: retryCatalog keeps the catalogue but repaints only if the asking page is still on screen", async () => {
+  /* The listener taps Try again, then goes to Home or a show page before the
+     bounded fetch answers; the retry re-rendered whatever was current and moved
+     focus to its heading.
+     MUTATION: drop the `if (!stillHere()) return;` — red. */
+  const m = loadApp();
+  let answer;
+  m.ctx.fetchJson = () => new Promise((r) => { answer = r; });
+  let painted = 0;
+  m.ctx.renderCurrentPage = () => { painted += 1; };
+  m.ctx.pageDidPaint = () => {};
+  const left = m.ctx.retryCatalog();
+  m.run("renderEpoch += 1;"); // the listener navigated
+  answer({ shows: [{ show_id: "s" }] });
+  await left;
+  assert.strictEqual(painted, 0, "the page the listener moved to is not re-rendered");
+  assert.strictEqual(m.run("state.catalog.shows[0].show_id"), "s", "but the catalogue is kept");
+
+  const stayed = m.ctx.retryCatalog();
+  answer({ shows: [] });
+  await stayed;
+  assert.strictEqual(painted, 1, "the page that asked, still on screen, repaints");
+});
