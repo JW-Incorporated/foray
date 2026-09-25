@@ -32,7 +32,7 @@ import {
   OWNERSHIP_DEFERRED, OWNERSHIP_EXTERNAL, OWNERSHIP_RELEASED,
   PERSIST_GRANTED, PERSIST_DENIED, PERSIST_UNSUPPORTED, PERSIST_ERROR, PERSIST_UNKNOWN,
 } from "./durable-store.js";
-import { ForayProgressStore, makeProgress, readProgress, progressKey } from "./foray-progress.js";
+import { ForayProgressStore, makeProgress, readProgress, progressKey, listProgress } from "./foray-progress.js";
 import { OWNED_PREFIXES } from "./engine-contract.js";
 import { FAULT_KINDS } from "./engine-vocabulary.js";
 
@@ -2275,4 +2275,29 @@ test("player-rest-1: purge behind a queue that will not drain reports unverified
   assert.notEqual(out, "hung", "Delete my data finishes");
   assert.equal(out.ok, false);
   assert.ok(out.unverified.some((u) => u.tier === "queue"), JSON.stringify(out.unverified));
+});
+
+test("player-rest-4: listProgress reads a DurableStore's keys in ONE snapshot, not one rebuild per index", () => {
+  /* `length` and `key(i)` each rebuild the owned-key array, so walking them
+     was O(n²) in every cp_ row (3,000 cp_pos rows: ~210 ms on a desktop).
+     MUTATION: delete the `storage.keys` branch in `listProgress` and the
+     rebuild count is n + 1. */
+  const store = new DurableStore({ tiers: [localStorageTier(new FakeLocal())] });
+  for (let i = 0; i < 300; i++) store.setItem(`cp_pos:ep${i}`, "{\"seconds\":1}");
+  store.setItem(progressKey(ID), JSON.stringify(makeProgress({ forayId: ID, title: "t", elapsedSec: 10, totalSec: 100 })));
+  let rebuilds = 0;
+  const owned = store._ownedKeys.bind(store);
+  store._ownedKeys = () => { rebuilds += 1; return owned(); };
+  const rows = listProgress(store);
+  assert.equal(rows.length, 1, "the one Foray row is found");
+  assert.equal(rows[0].foray_id, ID);
+  assert.ok(rebuilds <= 1, `one snapshot, got ${rebuilds} rebuilds`);
+});
+
+test("player-rest-4: DurableStore.keys(prefix) is the owned keys under that prefix", () => {
+  const store = new DurableStore({ tiers: [localStorageTier(new FakeLocal())] });
+  store.setItem("cp_pos:a", "1");
+  store.setItem("cp_foray:x", "{}");
+  assert.deepEqual(store.keys("cp_foray:"), ["cp_foray:x"]);
+  assert.deepEqual(store.keys().sort(), ["cp_foray:x", "cp_pos:a"]);
 });

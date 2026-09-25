@@ -631,6 +631,16 @@ export class DurableStore {
     return Number.isInteger(i) && i >= 0 && i < keys.length ? keys[i] : null;
   }
 
+  /** Every owned key starting with `prefix`, as ONE snapshot (audit round 3,
+      player-rest-4). `length` and `key(i)` each rebuild the owned-key array,
+      so a walk over them is O(n²) in the number of `cp_` rows, and
+      `cp_pos:<id>` grows with every episode ever opened. `listProgress` asks
+      this instead when the storage offers it. */
+  keys(prefix = "") {
+    const p = typeof prefix === "string" ? prefix : "";
+    return this._ownedKeys().filter((k) => k.startsWith(p));
+  }
+
   /**
    * Reads never touch a tier: memory is hydrated from localStorage before the
    * constructor returns, so the first paint is as fast as it was.
