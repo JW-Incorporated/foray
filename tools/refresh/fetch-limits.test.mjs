@@ -3,10 +3,13 @@
 
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import {
   MAX_FEED_BYTES,
   checkDeclaredLength,
   readBodyCapped,
+  readResponseCapped,
+  BodyTooLargeError,
   fetchFeedCapped,
   capItems,
 } from "./fetch-limits.mjs";
@@ -161,4 +164,55 @@ test("capItems passes a normal-sized list through unchanged", () => {
 
 test("capItems is a no-op for non-array input", () => {
   assert.equal(capItems(null, 2000), null);
+});
+
+/* ---------------------------------------- audit round 3, data-tools-7 ----
+   Only scan.mjs used this module; four other feed/transcript fetchers read
+   unbounded bodies with res.text(). */
+
+/** A streaming body of `total` bytes that counts what was pulled. */
+function countingResponse(total, headers = {}) {
+  const state = { pulled: 0 };
+  const map = new Map(Object.entries(headers));
+  const chunk = 1024 * 1024;
+  const body = new ReadableStream({
+    pull(c) {
+      if (state.pulled >= total) return c.close();
+      const n = Math.min(chunk, total - state.pulled);
+      state.pulled += n;
+      c.enqueue(new Uint8Array(n));
+    },
+  }, { highWaterMark: 0 });
+  return { res: { ok: true, status: 200, headers: { get: (k) => map.get(k.toLowerCase()) ?? null }, body }, state };
+}
+
+test("readResponseCapped refuses a declared oversize before reading, and an undeclared one mid-stream", async () => {
+  const declared = countingResponse(4096, { "content-length": "99999999" });
+  await assert.rejects(() => readResponseCapped(declared.res, new AbortController(), 1000), (e) => e instanceof BodyTooLargeError && e.code === "TOO_LARGE");
+  assert.equal(declared.state.pulled, 0, "nothing read once the declared length was refused");
+
+  const endless = countingResponse(8 * 1024 * 1024);
+  await assert.rejects(() => readResponseCapped(endless.res, new AbortController(), 2 * 1024 * 1024), BodyTooLargeError);
+  assert.ok(endless.state.pulled <= 3 * 1024 * 1024 + 1, `pulled ${endless.state.pulled} bytes past a 2 MB cap`);
+});
+
+/* MUTATION: put `return await res.text();` back in any of these fetchers --
+   the scan below names the file. */
+test("every feed and transcript fetcher in tools/ reads bodies through fetch-limits", () => {
+  const FETCHERS = {
+    "tools/refresh/scan.mjs": /fetchFeedCapped\(/,
+    "tools/refresh/backfill-show.mjs": /readResponseCapped\(/,
+    "tools/classify/prepare-batch.mjs": /readResponseCapped\(/,
+    "tools/segments/sweep-transcripts.mjs": /readResponseCapped\(/,
+    "tools/segments/fetch-transcripts.mjs": /readBodyCapped\(/,
+  };
+  for (const [file, uses] of Object.entries(FETCHERS)) {
+    const src = readFileSync(new URL(`../../${file}`, import.meta.url), "utf8");
+    assert.match(src, /from "(\.\.\/refresh\/|\.\/)fetch-limits\.mjs"/, `${file} does not import fetch-limits`);
+    assert.match(src, uses, `${file} does not bound its body read`);
+    assert.doesNotMatch(src, /(await|return) res\.text\(\)/, `${file} buffers a whole body with res.text()`);
+  }
+  // The header names who uses it, and no longer claims refresh-feeds does.
+  const header = readFileSync(new URL("./fetch-limits.mjs", import.meta.url), "utf8").split("*/")[0];
+  assert.doesNotMatch(header, /Used by both tools\/refresh\/scan\.mjs and tools\/refresh-feeds\.mjs/);
 });

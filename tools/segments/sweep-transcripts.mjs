@@ -92,6 +92,7 @@ import { durationSeconds, enclosureLengthBytes, hostOf } from "../refresh/enclos
 import { classifyShow, isDaiHost } from "../refresh/dai.mjs";
 import { UA, awaitHostSlot, waitBeforeRetry } from "./politeness.mjs";
 import { decodeEntities } from "../refresh/entities.mjs";
+import { BodyTooLargeError, readResponseCapped } from "../refresh/fetch-limits.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 
@@ -270,7 +271,16 @@ export async function fetchFeed(url, { attempts = MAX_ATTEMPTS, timeoutMs = FEED
         redirect: "follow",
         signal: ctl.signal,
       });
-      if (res.ok) return await res.text();
+      if (res.ok) {
+        // Byte-capped (audit round 3, data-tools-7): one endless feed must not
+        // take down a 1,000-feed sweep. Too big is final, not retried.
+        try {
+          return await readResponseCapped(res, ctl);
+        } catch (e) {
+          if (e instanceof BodyTooLargeError) throw new SweepError("TOO_LARGE", `${e.message} for ${url}`);
+          throw e;
+        }
+      }
 
       const err = new SweepError(`HTTP_${res.status}`, `${res.statusText || "request failed"} for ${url}`);
       if (res.status !== 429 && res.status < 500) throw err; // permanent — do not retry
@@ -283,7 +293,7 @@ export async function fetchFeed(url, { attempts = MAX_ATTEMPTS, timeoutMs = FEED
         await sleep(wait);
       }
     } catch (e) {
-      if (e instanceof SweepError && e.code.startsWith("HTTP_") && e.code !== "HTTP_429") throw e;
+      if (e instanceof SweepError && ((e.code.startsWith("HTTP_") && e.code !== "HTTP_429") || e.code === "TOO_LARGE")) throw e;
       // `fetch failed` on its own names nothing — the cause carries the DNS or
       // TLS code that says whether this feed is dead or we are.
       const cause = e?.cause?.code || e?.cause?.message;

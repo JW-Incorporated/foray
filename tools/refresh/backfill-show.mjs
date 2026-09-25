@@ -61,6 +61,7 @@ import { createRequire } from "node:module";
 import { audioFieldsFrom, durationMinutes } from "./enclosure.mjs";
 import { decodeEntities } from "./entities.mjs";
 import { UA } from "../segments/politeness.mjs";
+import { readResponseCapped } from "./fetch-limits.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 
@@ -262,10 +263,27 @@ export function parseArgs(argv) {
   };
 }
 
-async function fetchFeed(url) {
-  const res = await fetch(url, { headers: { "User-Agent": UA }, redirect: "follow" });
-  if (!res.ok) throw new BackfillError(`HTTP_${res.status}`, `${url}: HTTP ${res.status}`);
-  return res.text();
+/** How long one feed fetch may take, headers and body together. */
+export const FEED_TIMEOUT_MS = 30_000;
+
+/** One feed, bounded in time AND bytes (audit round 3, data-tools-7): it had
+    neither, so one hung feed hung the backfill forever and an endless one
+    buffered until memory ran out. */
+export async function fetchFeed(url, { fetchImpl = fetch, timeoutMs = FEED_TIMEOUT_MS } = {}) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetchImpl(url, { headers: { "User-Agent": UA }, redirect: "follow", signal: controller.signal });
+    if (!res.ok) throw new BackfillError(`HTTP_${res.status}`, `${url}: HTTP ${res.status}`);
+    return await readResponseCapped(res, controller);
+  } catch (e) {
+    if (controller.signal.aborted && !(e instanceof BackfillError) && e?.code !== "TOO_LARGE") {
+      throw new BackfillError("TIMEOUT", `${url}: no complete response in ${timeoutMs}ms`);
+    }
+    throw e;
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 async function main() {

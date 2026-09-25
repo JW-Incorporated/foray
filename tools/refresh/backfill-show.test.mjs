@@ -21,7 +21,7 @@ import assert from "node:assert";
 import { readFileSync as _readSelfFile } from "node:fs";
 import {
   titleMatches, selectEpisodes, pendingRecord, resolveShows, parseArgs,
-  BackfillError, DEFAULT_NEWEST,
+  BackfillError, DEFAULT_NEWEST, fetchFeed,
   feedItems, buildPayload, resolveOutPath,
 } from "./backfill-show.mjs";
 
@@ -447,3 +447,18 @@ function readSelf() {
 function codeOnly(src) {
   return src.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/^\s*\/\/.*$/gm, " ");
 }
+
+/* Audit round 3, data-tools-7: backfill-show's feed fetch had no timeout, so
+   one hung feed hung the backfill forever. MUTATION: drop the timer -- the
+   fetch below never settles and the race reports "hung". */
+test("a feed that never answers times out instead of hanging the backfill", async () => {
+  const neverAnswers = (url, init) => new Promise((resolve, reject) => {
+    init.signal.addEventListener("abort", () => reject(Object.assign(new Error("aborted"), { name: "AbortError" })));
+  });
+  const outcome = await Promise.race([
+    fetchFeed("https://feeds.test/hung.xml", { fetchImpl: neverAnswers, timeoutMs: 50 }).then(() => "resolved", (e) => e),
+    new Promise((r) => setTimeout(() => r("hung"), 2000)),
+  ]);
+  assert.ok(outcome instanceof BackfillError, `expected a BackfillError, got ${outcome}`);
+  assert.equal(outcome.code, "TIMEOUT");
+});
