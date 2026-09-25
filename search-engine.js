@@ -258,8 +258,14 @@ function expansionBucket(df) {
    maxlength="120" convention (see H-severity red-team finding, 2026-09-02). */
 const MAX_TOKEN_LENGTH = 64;
 
+/* FOLDED, LIKE SHOW SEARCH (round-3 audit, search-api-css-6). The split keeps
+   [a-z0-9] only, so an unfolded "pokémon" became the thin fragments "pok" and
+   "mon", "naïve bayes" became "na", "ve", "bayes", and "pokemon" never matched a
+   catalogue "Pokémon". The query (here) and the corpus (itemWordSet,
+   scoreMatch) now fold diacritics the same way foldDiacritics does for show
+   search, so the two search modes treat the same input alike. */
 function tokenize(q) {
-  return q.toLowerCase().split(/[^a-z0-9]+/)
+  return foldText(q).split(/[^a-z0-9]+/)
     .filter(w => w.length > 1 && w.length <= MAX_TOKEN_LENGTH && !STOPWORDS.has(w) && !GENERIC_WORDS.has(w));
 }
 
@@ -464,7 +470,7 @@ function tagDF(term, ctx) {
 }
 
 function itemWordSet(item, tagsMap) {
-  const text = [item.title || "", item.hook || "", (item.topics || []).join(" ")].join(" ").toLowerCase();
+  const text = foldText([item.title || "", item.hook || "", (item.topics || []).join(" ")].join(" "));
   const words = new Set(text.split(/[^a-z0-9]+/).filter(Boolean));
   (tagsMap?.[item.id] || []).forEach(tag => tag.split("-").forEach(p => words.add(p)));
   return words;
@@ -767,7 +773,7 @@ function interpretQuery(q, ctx) {
     return Object.entries(concepts).some(([cid, c]) =>
       Array.isArray(c?.terms) && c.terms.includes(tok) && !sameSense.includes(cid));
   };
-  const subjectStripped = String(q).toLowerCase().split(/[^a-z0-9]+/).some(w => SUBJECT_GENERIC_WORDS.has(w));
+  const subjectStripped = foldText(q).split(/[^a-z0-9]+/).some(w => SUBJECT_GENERIC_WORDS.has(w));
   const onlyModifiers = tokens.length > 0 && tokens.every(tok => modifierFor(mods, tok));
   const modifiersAreContent = subjectStripped && onlyModifiers;
   const contentTokens = tokens.filter(tok => {
@@ -1281,10 +1287,9 @@ const hitTag = (tag, t) => {
 };
 
 function scoreMatch(item, interp, itemTags) {
-  const title = item.title.toLowerCase();
-  const hook = (item.hook || "").toLowerCase();
-  const show = item.show.toLowerCase();
-  const topics = (item.topics || []).join(" ").toLowerCase();
+  /* Folded like the query (search-api-css-6; see tokenize), once per item
+     object and not once per query: see foldedItemText. */
+  const { title, hook, show, topics } = foldedItemText(item);
   const tags = itemTags?.tags?.[item.id] || [];
 
   let sum = 0;
@@ -1883,6 +1888,30 @@ const SHOW_MATCH_UNMATCHED = SHOW_MATCH_SUBSTRING + 1;
     behaves identically everywhere `showMatchBucket` decides a bucket —
     folding is the identity transform for plain ASCII, so this is a pure
     widening with no effect on any existing unaccented title. */
+/* foldDiacritics with an ASCII fast path: for pure ASCII the fold IS
+   toLowerCase, and nearly every catalogue string is ASCII, so the NFKD pass
+   is paid only where it changes something (search-api-css-6 made topic
+   search fold, and scoreMatch runs per item per query). */
+function foldText(s) {
+  const str = String(s || "");
+  return /[^ -]/.test(str) ? foldDiacritics(str) : str.toLowerCase();
+}
+
+/* An item's folded title/hook/show/topics, remembered per item OBJECT and
+   reused while the raw strings are unchanged. The pool's items are stable
+   objects across queries, so the second query of a session pays one string
+   compare per field here; an item whose text changed, or a rebuilt item,
+   recomputes. */
+const FOLDED_ITEM_TEXT = typeof WeakMap === "function" ? new WeakMap() : null;
+function foldedItemText(item) {
+  const raw = [String(item.title || ""), String(item.hook || ""), String(item.show || ""), (item.topics || []).join(" ")];
+  const hit = FOLDED_ITEM_TEXT && FOLDED_ITEM_TEXT.get(item);
+  if (hit && hit.raw[0] === raw[0] && hit.raw[1] === raw[1] && hit.raw[2] === raw[2] && hit.raw[3] === raw[3]) return hit;
+  const next = { raw, title: foldText(raw[0]), hook: foldText(raw[1]), show: foldText(raw[2]), topics: foldText(raw[3]) };
+  if (FOLDED_ITEM_TEXT) FOLDED_ITEM_TEXT.set(item, next);
+  return next;
+}
+
 function foldDiacritics(s) {
   /* NORMALISE FIRST, LOWERCASE LAST (audit round 2, search-9). NFKD maps the
      compatibility letters some titles are typed in \u2014 "\ud835\udc01\ud835\udfd1\ud835\udfd2\ud835\udc27\u2019\ud835\udc2c \ud835\udc2d\ud835\udc1e\ud835\udc2b\ud835\udc2b\ud835\udc22\ud835\udc2d\ud835\udc28\ud835\udc2b\ud835\udc22\ud835\udc2e\ud835\udc26" \u2014 to

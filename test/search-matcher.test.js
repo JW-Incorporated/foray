@@ -612,3 +612,31 @@ test("search-api-css-1: 'deep sea' and 'speed of light' are never a confident an
   assert.ok(light.interp.groups.some((g) => g.token === "speed"), "the subject is kept as content");
   assert.ok(light.results.length === 0 || light.relaxed === "all", "an unmatchable filter is relaxed openly, not silently applied");
 });
+
+/* ---------- round-3 audit, search-api-css-6: topic search folds diacritics ---------- */
+
+test("search-api-css-6: an accented query tokenizes to whole words, not thin fragments", () => {
+  /* "pokémon" was ["pok","mon"] and "naïve bayes" ["na","ve","bayes"], every
+     fragment thin and required. MUTATION: drop foldDiacritics from tokenize. */
+  const SE = require(path.join(ROOT, "search-engine.js"));
+  assert.deepEqual(SE.tokenize("pokémon"), ["pokemon"]);
+  assert.deepEqual(SE.tokenize("café racer"), ["cafe", "racer"]);
+  assert.deepEqual(SE.tokenize("naïve bayes"), ["naive", "bayes"]);
+});
+
+test("search-api-css-6: accented and unaccented spellings find each other in the catalogue", () => {
+  /* MUTATION: go back to `.toLowerCase()` on the item text in scoreMatch — a
+     plain "pokemon" query no longer finds "The Pokémon Story". */
+  const SE = require(path.join(ROOT, "search-engine.js"));
+  const pool = [
+    { id: "a", title: "The Pokémon Story", show: "Games Show", hook: "", topics: ["games/culture"] },
+    { id: "b", title: "Pokemon Cards Explained", show: "Café Talk", hook: "", topics: ["games/culture"] },
+    { id: "c", title: "Cooking with fire", show: "Food Show", hook: "", topics: ["food/cooking"] },
+  ];
+  const ctx = { discover: { items: pool }, itemTags: { tags: {} }, semantic: {} };
+  for (const q of ["pokemon", "pokémon", "POKÉMON"]) {
+    const interp = SE.interpretQuery(q, ctx);
+    const ids = SE.searchWithRelaxation(pool, interp, 0, ctx.itemTags, () => 0.5).results.map((r) => r.i.id).sort();
+    assert.deepEqual(ids, ["a", "b"], `${q} -> ${ids.join(",")}`);
+  }
+});
