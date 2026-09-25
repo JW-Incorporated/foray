@@ -714,7 +714,7 @@ The durable output of the whole pipeline. Written only by this script.
       "end_anchor": "and that's why the tokamak won by default for thirty years",
       "why": "Whyte explains the Lawson criterion without hand-waving",
       "confidence": "high",                 // high | medium | low
-      "transcript_source": "publisher",     // publisher | asr-local
+      "transcript_source": "publisher",     // publisher | asr-local | apple-podcasts
       "dai_suspected": true,
       "source": "agent-v1",
       "batch_id": "seg-2026-08-12-a",
@@ -730,7 +730,10 @@ Two fields carry more weight than they look like they do:
 - **`transcript_source`** — an anchor is only verbatim *with respect to one
   transcript*. A record that does not say which one cannot be re-resolved
   later (A13), so provenance is recorded by the merge, never authored by the
-  agent.
+  agent. The prepare stage takes it from the normalized body's own
+  `transcript_source` (foray-db writes `apple-podcasts` on an Apple Podcasts
+  transcript); absent means `publisher`, and a value outside
+  `TRANSCRIPT_SOURCES` stops the run.
 - **`dai_suspected`** — copied from the batch. It is what makes the file
   self-validating: `--check` can enforce ADR-0007's DAI rule offline because
   each record states which rule applied to it.

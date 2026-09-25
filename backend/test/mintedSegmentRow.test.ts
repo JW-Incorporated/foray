@@ -2,11 +2,12 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
+import { pathToFileURL } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { generationBatchId, mintedSegmentRow } from "../src/generation/finalizeForay";
 import { foldToAscii, mintedWhyErrors, whyFromClaim } from "../src/generation/mintedSegmentCopy";
 import { FileTranscriptCueProvider } from "../src/generation/transcriptArchiveLookup";
-import type { NewSegment } from "../src/types/tapeSourcing";
+import { TranscriptSourceSchema, type NewSegment } from "../src/types/tapeSourcing";
 
 /**
  * F-78 (FD-07): a minted tier-2 row passes THE POOL GATE — `tools/segments/
@@ -235,5 +236,80 @@ describe("FileTranscriptCueProvider.transcriptSource — provenance from the bod
     const provider = new FileTranscriptCueProvider(root);
     expect(provider.transcriptSource(entry("missing"))).toBeNull();
     expect(provider.getCues(entry("missing"))).toBeNull();
+  });
+
+  /* An Apple Podcasts body (foray-db's engine) states `transcript_source` AND
+     carries a `source_url`, so the inference alone calls it `publisher` — the
+     relabel these cases exist to kill. */
+  const stated = (guid: string, transcript_source: unknown) =>
+    fs.writeFileSync(
+      path.join(root, "show-a-1234abcd", `${guid}-1.json`),
+      JSON.stringify({ show_id: "show-a", guid, source_url: "https://apple.example/t.ttml", transcript_source, cues: [{ start_sec: 0, end_sec: 1, text: "hello there" }] })
+    );
+
+  it("takes an explicit apple-podcasts over the source_url inference", () => {
+    stated("apple", "apple-podcasts");
+    expect(new FileTranscriptCueProvider(root).transcriptSource(entry("apple"))).toBe("apple-podcasts");
+  });
+
+  it("takes any explicit value in the vocabulary over the inference, and falls back to it on an explicit null", () => {
+    stated("stated-local", "asr-local");
+    stated("stated-null", null);
+    const provider = new FileTranscriptCueProvider(root);
+    expect(provider.transcriptSource(entry("stated-local"))).toBe("asr-local");
+    expect(provider.transcriptSource(entry("stated-null"))).toBe("publisher");
+  });
+
+  /* PINNED ON PURPOSE: with the field absent or null this provider GUESSES, and
+     without source_url / regenerated_from the guess is asr-local, while
+     prepare-segment-batch's transcriptSourceOf says publisher for the same
+     body. The two agree on every body fetch-transcripts wrote (all carry one
+     of the two keys); a new writer (foray-db) states the field on every body,
+     "publisher" included, so it never reaches this rule. Changing either rule
+     must be a decision, and this test is where it shows. */
+  it("guesses asr-local on an absent or null field when the body has neither source_url nor regenerated_from", () => {
+    const bare = (guid: string, extra: Record<string, unknown>) =>
+      fs.writeFileSync(
+        path.join(root, "show-a-1234abcd", `${guid}-1.json`),
+        JSON.stringify({ show_id: "show-a", guid, ...extra, cues: [{ start_sec: 0, end_sec: 1, text: "hello there" }] })
+      );
+    bare("bare-absent", {});
+    bare("bare-null", { transcript_source: null, source_url: null });
+    const provider = new FileTranscriptCueProvider(root);
+    expect(provider.transcriptSource(entry("bare-absent"))).toBe("asr-local");
+    expect(provider.transcriptSource(entry("bare-null"))).toBe("asr-local");
+  });
+
+  it("throws on an explicit value outside the vocabulary instead of inferring publisher", () => {
+    stated("stated-bad", "apple");
+    expect(() => new FileTranscriptCueProvider(root).transcriptSource(entry("stated-bad"))).toThrow(/transcript_source "apple", which is not one of publisher\/asr-local\/apple-podcasts/);
+  });
+});
+
+describe("TranscriptSourceSchema mirrors the pool gate's one list", () => {
+  /* Spawned, not imported: Vitest cannot `import()` the `.mjs` tools on a
+     checkout path containing a space (see this file's header). */
+  it("equals tools/segments/merge-segments.mjs TRANSCRIPT_SOURCES, member for member", () => {
+    const href = pathToFileURL(CHECKER).href;
+    const out = execFileSync(
+      process.execPath,
+      ["-e", `import(${JSON.stringify(href)}).then((m) => process.stdout.write(JSON.stringify([...m.TRANSCRIPT_SOURCES])))`],
+      { cwd: REPO_ROOT, encoding: "utf8" }
+    );
+    expect([...TranscriptSourceSchema.options].sort()).toEqual((JSON.parse(out) as string[]).sort());
+    expect(TranscriptSourceSchema.options).toContain("apple-podcasts");
+  });
+
+  it("an apple-podcasts minted row passes the real pool gate", () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "foray-apple-src-"));
+    try {
+      const minted = mintedSegmentRow({ ...segment, transcriptSource: "apple-podcasts" }, TOPIC, { batchId: generationBatchId(FORAY_ID), sources });
+      expect(minted.transcript_source).toBe("apple-podcasts");
+      const result = runChecker([minted], dir);
+      expect(result.output).toMatch(/ok .*1 segment/);
+      expect(result.ok).toBe(true);
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
   });
 });
