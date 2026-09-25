@@ -7,6 +7,28 @@ docs/. Completed workstreams move to their plan doc's retro section.
 
 ## Active workstreams
 
+### 2026-09-25 — `r3fix/integration`: audit round 3 (code), lanes L1-L6 and L8 in ONE PR
+
+Owned: nothing held. One branch off `main` 5c2c8ea1 with seven round-3 lane
+branches (`r3fix/l1-app-data`, `l2-app-surface`, `l3-player-and-native-tts`,
+`l4-web-platform`, `l5-generation`, `l6-backend-rest`, `l8-data-tools`) merged
+`--no-ff` in that order, resolved hunk by hunk; none has a PR of its own —
+**this PR supersedes them.** L7 (`r3fix/l7-ci-release-security`,
+`r3fix/l7-release-environment`) is not in it: its files are all
+founder-merge and the environment half waits on HUMAN-ACTIONS #115. `api/`,
+`vercel.json`, `backend/src` and `docs/legal/privacy-policy.md` changed, so
+it needs a human merge. Never labelled, never merged by an agent.
+
+**What the integration changed:** HUMAN-ACTIONS numbering (L3's device-check
+card and L5's events-server card had both taken #115, which main had since
+used for the release environment: they are #117 and #118; #116 now names the
+migration file); the politeness/search-probe pins after L4 moved
+`appleShowSearch.ts` into `api/_lib`; and twenty suite floors raised to the
+merged tree's real counts. Parity: `record.mjs --check` 1098/1098 unchanged,
+no re-record. **Q4 is not done here:** the founder ruled "loosen"
+(DECISIONS 2026-09-25) after L5 applied the "no change" default, so `gen-9`
+needs its own follow-up in `backend/src/generation/safetyCheck.ts`.
+
 ### 2026-09-24 — `engine/ne-27`: NE-27 part 1 — the L-2 legal edits, the OQ-9 guard and the M1 car-test script (the flip itself is blocked)
 
 Owned: `docs/native-engine-m1-car-test.md`. Branch off `engine/m1`, PR into it.
