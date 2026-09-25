@@ -94,7 +94,7 @@ import { fileURLToPath } from "node:url";
 import { dirname, join, resolve as resolvePath } from "node:path";
 import copyRules from "../../backend/src/copy/rules.js";
 import { normalize } from "./transcript-normalize.mjs";
-import { canonical } from "./merge-segments.mjs";
+import { canonical, TRANSCRIPT_SOURCES } from "./merge-segments.mjs";
 import { ROLE_MAX_SEC, L4_SOFT_MAX_SEC } from "../foray/check-forays.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
@@ -742,10 +742,31 @@ function transcriptIndex(dir, showId) {
       index.set(String(doc.guid), {
         normalised: join(normalisedRoot, showDir, file),
         raw: join(dir, "raw", showDir, file.replace(/\.json$/, "")),
+        transcript_source: doc.transcript_source,
       });
     }
   }
   return index;
+}
+
+/** The provenance a normalised transcript records about itself, as the value a
+    batch episode (and so every segment merged from it) carries.
+
+    ABSENT MEANS PUBLISHER: every body `fetch-transcripts.mjs` has written is the
+    publisher's own file and none of them carries the field, so an absent (or
+    null) `transcript_source` is exactly what "publisher" has always meant here.
+    PRESENT MUST BE ONE OF `TRANSCRIPT_SOURCES` — merge-segments' own list, not a
+    copy — and anything else THROWS. Coercing an unknown value to "publisher"
+    would put a false provenance on every segment cut from the file, which is
+    the relabelling this function exists to stop. */
+export function transcriptSourceOf(doc, where = "transcript") {
+  const v = doc?.transcript_source;
+  if (v === undefined || v === null) return "publisher";
+  if (typeof v === "string" && TRANSCRIPT_SOURCES.has(v)) return v;
+  throw new Error(
+    `${where}: transcript_source ${JSON.stringify(v)} is not one of ${[...TRANSCRIPT_SOURCES].join("/")} — ` +
+      "refusing to guess the provenance of the words the anchors will be authored against"
+  );
 }
 
 function cuesFor(entry) {
@@ -921,7 +942,9 @@ function runPrepare(args) {
       reference_duration_sec: row.feed_duration_sec,
       /* Already proven boolean above; never coerced. */
       dai_suspected: showMeta.dai,
-      transcript_source: "publisher",
+      /* The body's own provenance (an Apple Podcasts transcript says
+         "apple-podcasts"); absent is "publisher", unknown throws. */
+      transcript_source: transcriptSourceOf(entry, `${row.show_id}/${row.guid}`),
       mime_type: raw.mime,
       body: raw.body,
       enclosure_url: row.enclosure_url,

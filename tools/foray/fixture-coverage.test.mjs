@@ -206,9 +206,21 @@ const KNOWN_UNCOVERED = [
     value: "claim-only",
     why: "as above — 1 of 16 run-8 clips landed here (a clip the floor growth carried past its boundary).",
   },
+  /* feat/apple-podcasts-transcript-source (2026-09-25): the pool gate accepts
+     an Apple Podcasts transcript's provenance before any exists. foray-db's
+     engine is the only writer of the value, and it has not published a body
+     yet; the first segment cut from one is its carrier. Hand-writing a
+     `transcript_source` onto a committed row would be inventing provenance. */
+  {
+    field: "segment.transcript_source",
+    value: "apple-podcasts",
+    why:
+      "no Apple Podcasts transcript has reached the corpus yet (foray-db's engine is its only writer), so no committed " +
+      "segment was cut from one; the first merged segment from such a body carries it and deletes this entry.",
+  },
 ];
 /** Raise this only with a written reason in the same PR. Lowering it is free. */
-const KNOWN_UNCOVERED_CEILING = 12; // 6 (jingle carrier landed with #632, 2026-09-11) + 1 narration.mode=intro (Q-02, 2026-09-12) + 3 segment.boundary values (Q-01, 2026-09-12) + 2 narration.cite_kind values (F-103, 2026-09-12), all until the next generation run lands their carriers
+const KNOWN_UNCOVERED_CEILING = 13; // 12 -> 13: segment.transcript_source=apple-podcasts (2026-09-25), accepted ahead of the first Apple-sourced body foray-db publishes — see its entry above // 6 (jingle carrier landed with #632, 2026-09-11) + 1 narration.mode=intro (Q-02, 2026-09-12) + 3 segment.boundary values (Q-01, 2026-09-12) + 2 narration.cite_kind values (F-103, 2026-09-12), all until the next generation run lands their carriers
 /* RAISED 10 -> 12 by F-103, and the reason it is a raise rather than a fixture
    is the one case this list exists for. Both new shapes are written by the
    GENERATOR and by nothing else, and the four committed Forays were generated

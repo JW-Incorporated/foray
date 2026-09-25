@@ -184,7 +184,8 @@ export function generationBatchId(forayId: string): string {
  *     the gate is refused here, before anything is written.
  *   - `transcript_source` is what the cue provider read the anchors from
  *     (`publisher` for the archive body, `asr-local` for one this machine
- *     transcribed) — carried on the segment from the mint.
+ *     transcribed, `apple-podcasts` for a body that says it is Apple's) —
+ *     carried on the segment from the mint.
  *   - `dai_suspected` is the episode's audio-source verdict, read from the
  *     `MintedSegmentSource` row minted for this `item_id` and NEVER defaulted:
  *     a missing verdict is a thrown Error, because `false` is exactly the value

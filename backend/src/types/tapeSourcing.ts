@@ -151,8 +151,12 @@ export type TranscriptionQueueCandidate = z.infer<typeof TranscriptionQueueCandi
  * provenance, not a choice: an anchor is verbatim with respect to exactly one
  * transcript. `publisher` is the archive body `tools/segments/fetch-transcripts.mjs`
  * fetched from the publisher's own transcript URL; `asr-local` is a body this
- * machine transcribed itself (`tools/transcribe/`). */
-export const TranscriptSourceSchema = z.enum(["publisher", "asr-local"]);
+ * machine transcribed itself (`tools/transcribe/`); `apple-podcasts` is a
+ * transcript Apple Podcasts publishes for the episode, which foray-db's engine
+ * writes into the normalized body as an explicit `transcript_source`. A MIRROR
+ * of that one list, not a second one: `test/mintedSegmentRow.test.ts` imports
+ * `TRANSCRIPT_SOURCES` and fails when the two disagree. */
+export const TranscriptSourceSchema = z.enum(["publisher", "asr-local", "apple-podcasts"]);
 export type TranscriptSource = z.infer<typeof TranscriptSourceSchema>;
 
 /** A segment minted by the tier-2 path. NOT written to

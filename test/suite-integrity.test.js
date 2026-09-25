@@ -1994,6 +1994,12 @@ const FLOORS = {
      itself. That is ADR-0008's HEAD failure restated in a new unit, and it is
      the failure that would silently re-certify shows nothing has measured. */
   "tools/segments/regrid-clean.test.mjs": 25,
+  /* transcript_source end to end (feat/apple-podcasts-transcript-source,
+     2026-09-25): an Apple Podcasts body's `transcript_source: "apple-podcasts"`
+     through the real prepare CLI and the real merge CLI, neither skipped nor
+     relabelled; an absent field still lands as publisher; an unknown value stops
+     prepare. Zero slack. */
+  "tools/segments/transcript-source.test.mjs": 11,
   /* The Google Play submission package in `docs/store/play/` — the banner, the
      four phone screenshots, the two descriptions and the README a founder
      pastes out of. Floored because everything it guards fails LATE and
@@ -2517,7 +2523,7 @@ const BACKEND_FLOORS = {
      committed row. */
   /* FD-07 / F-78: the minted tier-2 row against the real merge-segments --check gate,
      one named mutation per required field. */
-  "test/mintedSegmentRow.test.ts": 18,
+  "test/mintedSegmentRow.test.ts": 23, // apple-podcasts (2026-09-25): an explicit transcript_source beats the source_url inference, an unknown one throws, the schema mirrors merge-segments' TRANSCRIPT_SOURCES, and an apple-podcasts row passes the real gate; 18 -> 23
   /* FD-07 / F-75: the publish branch is cut from origin/main and pushes exactly one commit. */
   /* +7 (G-21c): the written files are gated by the app's real-data suites —
      a red suite refuses (assertion printed, bytes restored, branch abandoned),
