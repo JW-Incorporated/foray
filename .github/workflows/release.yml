@@ -222,6 +222,13 @@ jobs:
   ios:
     needs: [version, ios-checks]
     runs-on: macos-latest
+    # ci-release-3 (round-3 audit): the signing and upload secrets live in the
+    # `release` ENVIRONMENT, whose deployment-branch policy admits only `main`
+    # and `v*` tags. While they were repository secrets, any branch push could
+    # carry an `on: push` workflow that read them, and a `v*` tag on any commit
+    # ran its own copy of the release guard with them in reach. The guard is a
+    # boundary only once the secrets are behind this.
+    environment: release
     timeout-minutes: 60
     outputs:
       state: ${{ steps.ios.outputs.state }}
@@ -257,6 +264,13 @@ jobs:
   android:
     needs: version
     runs-on: ubuntu-latest
+    # ci-release-3 (round-3 audit): the signing and upload secrets live in the
+    # `release` ENVIRONMENT, whose deployment-branch policy admits only `main`
+    # and `v*` tags. While they were repository secrets, any branch push could
+    # carry an `on: push` workflow that read them, and a `v*` tag on any commit
+    # ran its own copy of the release guard with them in reach. The guard is a
+    # boundary only once the secrets are behind this.
+    environment: release
     timeout-minutes: 60
     outputs:
       play_state: ${{ steps.android.outputs.play_state }}
