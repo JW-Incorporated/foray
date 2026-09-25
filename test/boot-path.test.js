@@ -1024,7 +1024,7 @@ test("app-3-13: stored cp_seen / cp_recent_branches / cp_history of the wrong sh
 
 test("app-3-13: any throw between the documents and the first page paints Try again, binds the chrome, and counts the page as painted", async () => {
   /* MUTATION: remove the try/catch around init's post-session body -> the
-     view stays "Loading 4a…" with ☰ disabled and no hashchange; red. */
+     view stays "Loading 4a…" with ☰ disabled; red. */
   const m = mount();
   m.ctx.buildCards = () => { throw new TypeError("boom"); };
   vm.runInContext("firstPagePainted.then(() => { globalThis.__painted = true; })", m.ctx);
@@ -1035,8 +1035,24 @@ test("app-3-13: any throw between the documents and the first page paints Try ag
   assert.doesNotMatch(m.view.innerHTML, /data-boot-loading/);
   assert.strictEqual(m.menu.disabled, false, "☰ was left disabled");
   assert.ok(m.menu.listeners("click") > 0, "☰ was never bound");
-  assert.ok((m.winListeners.get("hashchange") || []).length > 0, "no hashchange: no typed route can recover the page");
   assert.strictEqual(m.ctx.__painted, true, "the service worker waits on a first page that never came");
+  /* Round-3 review (L1): this used to assert only that a hashchange listener
+     was REGISTERED ("no typed route can recover the page"), which passed while
+     recovery by route was impossible: the throw is before state.ready, and
+     route() returns until then. The truth, pinned: a typed route leaves the
+     Try again note in place (never a blank or half-built page), and Try again
+     is a fresh load.
+     MUTATION: bind Try again to route() instead of location.reload -- no
+     reload; set state.ready in the catch -- the hashchange renders over the note. */
+  assert.strictEqual(m.state.ready, false, "a failed boot is not a ready app");
+  m.ctx.location.hash = "#/library";
+  for (const fn of m.winListeners.get("hashchange") || []) fn();
+  await settle(5);
+  assert.match(m.view.innerHTML, /4a couldn't start\./, "a typed route replaced the Try again note");
+  let reloaded = 0;
+  m.ctx.location.reload = () => { reloaded += 1; };
+  m.view.querySelector("[data-retry]").click();
+  assert.strictEqual(reloaded, 1, "Try again is a fresh load");
 });
 
 /* ==================================================================== */

@@ -17862,7 +17862,19 @@ async function init() {
      no hashchange, and no service worker (it waits on firstPagePainted). Now
      the failure paints its own Try again (a fresh document), the wiring below
      still runs, and the first page counts as painted either way. The block is
-     deliberately NOT re-indented, so this change stays a few lines. */
+     deliberately NOT re-indented, so this change stays a few lines.
+
+     RECOVERY IS THE FRESH LOAD, AND ONLY THAT (round-3 review, L1). Every
+     throw this catches happens before `state.ready = true`, and route() and
+     renderCurrentPage() return at once until then, so the hashchange and
+     popstate listeners, the tab links and the drawer bound below do nothing
+     after a failed boot: they are bound so the chrome is not dead, not
+     because a typed route can bring the page back. That is deliberate:
+     `ready` is what says the state a page renders from (cards, interests,
+     the directory) was built, and rendering from half of it would trade an
+     honest "couldn't start" for a page that throws or shows wrong things.
+     Try again (location.reload) is the way out; the Try again note stays on
+     screen whatever route the listener types. */
   try {
   await waitForStorage();
   const directory = forayDirectoryBridge();
