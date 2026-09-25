@@ -27,6 +27,7 @@ import { createReferenceEngine } from "./parity/reference-engine.js";
 import { __resetInstanceForTests } from "./queue-manager.js";
 import { indexSegments, indexSources, resolveForay } from "./foray-resolve.js";
 import { OWNED_PREFIXES } from "./engine-contract.js";
+import { buildForayQueue } from "./foray-queue.js";
 
 /* ==================================================================== */
 /* the stub                                                             */
@@ -166,20 +167,26 @@ let bootSeq = 0;
  * @param {object} [opts.ledger]      window.forayEngineLedger (app.js's two appliers)
  * @param {Array} [opts.seed]         localStorage rows present at launch
  * @param {string} [opts.platform]    Capacitor's platform: "ios" (the shell), "web" or "android"
+ * @param {string[]} [opts.capabilities]  the engine's advertised capabilities (NE-35: with 'foray')
  */
-async function bootNative(t, { engine = null, hello = "answer", ledger = null, seed = [], platform = "ios" } = {}) {
+async function bootNative(t, { engine = null, hello = "answer", ledger = null, seed = [], platform = "ios", capabilities = null } = {}) {
   const order = [];
   const scheduler = manualScheduler();
-  const ref = engine ?? createReferenceEngine({ scheduler, now: () => 1_790_000_000_000 });
+  const ref = engine ?? createReferenceEngine({
+    scheduler, now: () => 1_790_000_000_000, ...(capabilities ? { capabilities } : {}),
+  });
   const base = ref.asCapacitor({ platform });
   let releaseHello = null;
   const speechCalls = [];
+  /** Every engineSend payload the page made, in order. */
+  const sent = [];
   const capacitor = {
     ...base,
     nativePromise(plugin, method, payload) {
       if (plugin === "ForayTts") speechCalls.push(method);
       if (plugin === "ForayAudio") {
         order.push(method === "engineSend" ? `send:${payload?.cmd}` : method === "engineRead" ? `read:${payload?.what}` : method);
+        if (method === "engineSend") sent.push(JSON.parse(JSON.stringify(payload)));
         if (method === "engineHello" && hello === "reject") return Promise.reject(new Error("the bridge fell over"));
         if (method === "engineHello" && hello === "hold") {
           return new Promise((resolve) => { releaseHello = () => resolve(base.nativePromise(plugin, method, payload)); });
@@ -277,7 +284,7 @@ async function bootNative(t, { engine = null, hello = "answer", ledger = null, s
     }
   });
   return {
-    client, ref, doc, win, storage, media, order, elements, scheduler, speechCalls,
+    client, ref, doc, win, storage, media, order, elements, scheduler, speechCalls, sent,
     releaseHello: () => releaseHello?.(),
   };
 }
@@ -753,4 +760,213 @@ test("DEVELOPER: a crash-loop launch reads the setting as not known, never a gue
   const h = await bootNative(t, { engine: devRef("crash-loop", "legacy") });
   await h.client.whenEngineReady();
   assert.equal(h.client.engineDeveloperStatus().override, null);
+});
+
+/* ==================================================================== */
+/* NE-35: native Forays, when hello advertises 'foray'                   */
+/* ==================================================================== */
+
+const WITH_FORAY = ["episode", "continuation", "restore", "foray"];
+const VOICE = "com.apple.voice.enhanced.en-US.Samantha";
+/** The page's own build of a resolved Foray: what the JS lane's manager plays. */
+const pageBuild = (r) => buildForayQueue(r.hydrated, { resolveItem: (id) => r.sources.get(id) ?? null });
+const sentOf = (h, cmd) => h.sent.filter((p) => p.cmd === cmd);
+
+test("NE-35: a Foray tap with 'foray' sends ONE playForay whose payload IS buildForayQueue's — no Audio, no relinquish", async (t) => {
+  /* KILLING MUTATIONS: send `resolved.playable` re-mapped, or the authored
+     `hydrated.items`, as `items` — the deepEqual goes red; drop `engineCan`
+     from the relinquish gate — relinquish is sent and an Audio is built. */
+  const h = await bootNative(t, { capabilities: WITH_FORAY, seed: [["cp_voice", VOICE]] });
+  const r = synthetic();
+  const report = await h.client.playForay(r, { startIndex: 0 });
+  await drain();
+
+  const plays = sentOf(h, "playForay");
+  assert.equal(plays.length, 1, "one command");
+  const args = plays[0].args;
+  const built = pageBuild(r);
+  assert.deepEqual(args.items, built.items, "items: the page's build, verbatim");
+  assert.deepEqual({ ...args.buildReport, items: args.items }, built, "items + buildReport: the whole report, verbatim");
+  assert.deepEqual(report, built, "and the page's own report is the same build");
+  assert.equal(args.forayId, "f22");
+  assert.equal(args.title, "A Foray");
+  assert.equal(args.voiceId, VOICE, "voiceId: cp_voice");
+  assert.equal(args.isLocalFile, false);
+  assert.equal(args.allowAdPad, false);
+  assert.equal("startElapsedSec" in args, false, "a start at the top carries no start");
+
+  assert.deepEqual(h.order.filter((o) => o === "Audio"), [], "no <audio> element, no jingle element");
+  assert.equal(h.elements.length, 0);
+  assert.equal(cmds(h.ref).includes("relinquish"), false, "'foray' is advertised: nothing is relinquished");
+  assert.equal(h.ref.relinquished, false);
+  assert.equal(h.ref.manager.state.type, "playing", "the ENGINE plays the Foray");
+  assert.deepEqual(h.ref.manager.queue.map((i) => i.id), built.items.map((i) => i.id), "the engine holds the page's build");
+  assert.equal(h.ref.manager.voice, VOICE, "and narrates with the voice it was handed");
+  assert.deepEqual(h.media.writes, [], "no navigator.mediaSession write");
+  assert.deepEqual(h.storage.writes.filter(owned), [], "no cp_foray: / cp_pos: from the page: the engine's rows");
+  assert.deepEqual(h.speechCalls.filter((c) => c === "speak" || c === "speechSynthesis.speak"), []);
+});
+
+test("NE-35: a resume rides on playForay as startElapsedSec, and the engine lands inside the clip", async (t) => {
+  /* KILLING MUTATION: send startIndex's clip without its Foray-clock start
+     (or drop startElapsedSec) — the engine starts at clip 0. */
+  const h = await bootNative(t, { capabilities: WITH_FORAY });
+  const r = synthetic();
+  await h.client.playForay(r, { startElapsedSec: 150 });
+  await drain();
+  const args = sentOf(h, "playForay").at(-1).args;
+  assert.equal(args.startElapsedSec, 150, "the resume point, on the Foray clock");
+  assert.equal(h.ref.manager.currentIndex, 1, "150 s is 50 s into the second clip");
+  assert.equal(h.ref.backend.currentTime, 550, "at its in-point + 50 s");
+  assert.equal(args.voiceId, null, "no cp_voice and no Samantha installed: null, the engine's own pick");
+});
+
+test("NE-35: a running-order row names its clip by the clip's start on the Foray clock", async (t) => {
+  const h = await bootNative(t, { capabilities: WITH_FORAY });
+  await h.client.playForay(synthetic(), { startIndex: 1 });
+  await drain();
+  const args = sentOf(h, "playForay").at(-1).args;
+  assert.equal(args.startElapsedSec, 100, "the protocol has no index: clip 1 starts 100 s in");
+  assert.equal(h.ref.manager.currentIndex, 1);
+  assert.equal(h.ref.backend.currentTime, 500, "at the clip's in-point");
+  assert.equal(h.client.forayStatus().index, 1, "and the page paints the clip it asked for");
+});
+
+test("NE-35: forayNext, forayPrevious, forayJump and foraySeek are intents; the page paints from the snapshot", async (t) => {
+  /* KILLING MUTATIONS: leave the facade's play() as playEpisode inside a
+     Foray — forayJump sends playEpisode and the engine drops the Foray;
+     send foraySeek's source offset instead of the Foray-clock second — the
+     engine lands in the wrong clip. */
+  const h = await bootNative(t, { capabilities: WITH_FORAY });
+  const r = synthetic();
+  await h.client.playForay(r, { startIndex: 0 });
+  await drain();
+  assert.equal(find(h.doc.body, "fp-play").getAttribute("aria-label"), "Pause", "the bar paints the engine's word");
+  const before = h.sent.length;
+
+  await h.client.forayNext();
+  await drain();
+  assert.equal(h.ref.manager.currentIndex, 1, "next: the engine moved");
+  assert.equal(h.client.forayStatus().index, 1, "and the page followed");
+
+  await h.client.forayJump(0);
+  await drain();
+  assert.equal(h.ref.manager.currentIndex, 0);
+  assert.equal(h.client.forayStatus().index, 0);
+
+  await h.client.foraySeek(170);
+  await drain();
+  assert.equal(h.ref.manager.currentIndex, 1, "170 s on the Foray clock is the second clip");
+  assert.equal(h.ref.backend.currentTime, 570, "70 s into it");
+  assert.equal(h.client.forayStatus().index, 1, "the page follows the snapshot");
+
+  await h.client.forayPrevious();
+  await drain();
+
+  const intents = h.sent.slice(before).filter((p) => AUDIBLE_OR_TRANSPORT.has(p.cmd));
+  assert.deepEqual(intents.map((p) => p.cmd), ["next", "jump", "seekTo", "previous"], "one intent per press, nothing else audible");
+  assert.deepEqual(intents[1].args, { index: 0 });
+  assert.deepEqual(intents[2].args, { sec: 170 }, "seekTo carries the FORAY's second (the engine's forayScrub)");
+  assert.equal(sentOf(h, "playEpisode").length, 0, "a Foray's clip is never sent as an episode");
+  assert.deepEqual(h.order.filter((o) => o === "Audio"), []);
+  assert.deepEqual(h.storage.writes.filter(owned), []);
+
+  /* The engine moves by itself (the lock screen, an out-point): the page
+     repaints from the snapshot EVENT, with no press of its own. */
+  await h.ref.engineSend({ v: 1, cmdSeq: 900, cmd: "jump", source: "remote", issuedAtWallMs: 1, args: { index: 1 } });
+  h.scheduler.runAll();
+  await drain();
+  assert.equal(h.client.forayStatus().index, 1, "the strip and the page follow the engine");
+  assert.equal(h.client.forayStatus().playing, true);
+});
+
+test("NE-35: the engine's skipped event shows the existing copy", async (t) => {
+  /* KILLING MUTATION: drop the `skipped` branch of onEngineEvent — no state
+     the page is handed carries an error. */
+  const h = await bootNative(t, { capabilities: WITH_FORAY });
+  const states = [];
+  h.client.watchForay((s) => states.push(s));
+  await h.client.playForay(synthetic(), { startIndex: 0 });
+  await drain();
+  h.ref._emit({ type: "skipped", itemId: "f22#0", index: 0, reason: "approximate copy" });
+  await drain();
+  const errs = states.map((s) => s?.error).filter(Boolean);
+  assert.ok(errs.some((e) => /^foray\.segment\.skipped\.atLoad f22#0: approximate copy$/.test(e)),
+    `the JS lane's own line reached the page: ${errs.join(" | ")}`);
+});
+
+test("NE-35: audition is refused while a native Foray is running", async (t) => {
+  const h = await bootNative(t, { capabilities: WITH_FORAY });
+  await h.client.playForay(synthetic(), { startIndex: 0 });
+  await drain();
+  const busy = await h.client.auditionVoice("one, two, three", VOICE);
+  assert.deepEqual(busy, { ok: false, reason: "engine-busy" });
+  assert.equal(h.ref.manager.state.type, "playing", "the Foray was not interrupted");
+  assert.deepEqual(h.speechCalls.filter((c) => c === "speak" || c === "speechSynthesis.speak"), []);
+});
+
+test("NE-35: restoreForay over an idle engine paints the bar, sends restoreBar and nothing audible; the first press is playForay at the row", async (t) => {
+  /* KILLING MUTATION: drop the restoreBar send — the car has no Foray to
+     show until the first press. */
+  const h = await bootNative(t, { capabilities: WITH_FORAY });
+  assert.equal(await h.client.whenEngineReady(), "native");
+  const r = synthetic();
+  const painted = h.client.restoreForay(r, { startElapsedSec: 150 });
+  await drain();
+  assert.equal(painted?.id, "foray:f22");
+  const restoreCmds = h.sent.map((p) => p.cmd);
+  assert.ok(restoreCmds.includes("restoreBar"), "restoreBar: Now Playing at rate 0, no activation");
+  assert.deepEqual(restoreCmds.filter((c) => AUDIBLE_OR_TRANSPORT.has(c)), [], "nothing audible");
+  assert.equal(h.ref.session, "inactive", "the session was not activated");
+
+  await h.client.togglePlayback();
+  await drain();
+  const plays = sentOf(h, "playForay");
+  assert.equal(plays.length, 1, "the first press started the Foray");
+  assert.equal(plays[0].args.startElapsedSec, 150, "at the restored point");
+  assert.equal(h.ref.manager.currentIndex, 1);
+  assert.deepEqual(h.order.filter((o) => o === "Audio"), []);
+});
+
+test("NE-35: a page booted while the engine plays THIS Foray attaches — no command, the engine's clip on the page", async (t) => {
+  /* KILLING MUTATION: drop the engineHoldsForay branch of restoreForay — the
+     page paints a restored bar at the stored point, and its press sends a
+     second playForay over the running one. */
+  const scheduler = manualScheduler();
+  const ref = createReferenceEngine({ scheduler, now: () => 1_790_000_000_000, capabilities: WITH_FORAY });
+  const r = synthetic();
+  const built = pageBuild(r);
+  const { items, ...buildReport } = built;
+  await ref.engineSend({ v: 1, cmdSeq: 1, cmd: "playForay", source: "tap", issuedAtWallMs: 1,
+    args: { forayId: "f22", title: "A Foray", items, buildReport, startElapsedSec: 120, isLocalFile: false, allowAdPad: false, voiceId: null } });
+  assert.equal(ref.manager.currentIndex, 1);
+  const h = await bootNative(t, { engine: ref });
+  assert.equal(await h.client.whenEngineReady(), "native");
+  const painted = h.client.restoreForay(r, { startElapsedSec: 10 });
+  await drain();
+  assert.equal(painted?.id, "f22#1", "the bar is the engine's clip");
+  assert.equal(h.client.restoreLastEpisode(), null, "the episode pointer does not take the bar over a running Foray");
+  await drain();
+  assert.deepEqual(h.sent.map((p) => p.cmd).filter((c) => AUDIBLE_OR_TRANSPORT.has(c) || c === "restoreBar"), [], "attach only");
+  const status = h.client.forayStatus();
+  assert.equal(status.index, 1);
+  assert.equal(status.playing, true, "the page says what the engine is doing");
+  assert.equal(find(h.doc.body, "fp-play").getAttribute("aria-label"), "Pause", "one press pauses");
+
+  await h.client.forayPrevious();
+  await drain();
+  assert.deepEqual(h.sent.filter((p) => AUDIBLE_OR_TRANSPORT.has(p.cmd)).map((p) => p.cmd), ["previous"], "and a press is an intent");
+});
+
+test("NE-35: an engine that advertised 'foray' but refuses it as capability-off hands the audio back in order", async (t) => {
+  const h = await bootNative(t, { capabilities: WITH_FORAY });
+  await h.client.whenEngineReady();
+  // A build whose Foray flag is off: advertised, then refused.
+  h.ref.capabilities = ["episode", "continuation", "restore"];
+  await h.client.playForay(synthetic(), { startIndex: 0 });
+  await drain();
+  const at = (tok) => h.order.indexOf(tok);
+  assert.ok(at("send:playForay") >= 0 && at("send:relinquish") > at("send:playForay"), "refused, then relinquished");
+  assert.ok(at("Audio") > at("send:relinquish"), "no element before the engine let go");
+  assert.ok(h.elements.some((e) => !e.paused), "the Foray plays in today's player");
 });
