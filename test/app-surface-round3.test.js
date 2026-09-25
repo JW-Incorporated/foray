@@ -58,6 +58,7 @@ function loadApp() {
   const store = new Map();
   const win = makeEl("window");
   const doc = makeEl("document");
+  const view = makeEl("main");
   const ctx = {
     console: { log: noop, info: noop, warn: noop, error: noop, debug: noop },
     fetch: () => new Promise(() => {}),
@@ -71,7 +72,7 @@ function loadApp() {
     document: {
       body: makeEl("body"), documentElement: makeEl("html"), readyState: "complete",
       addEventListener: doc.addEventListener, removeEventListener: doc.removeEventListener, createElement: makeEl,
-      querySelector: () => null, querySelectorAll: () => [], getElementById: () => null,
+      querySelector: (sel) => (sel === "#view" ? view : null), querySelectorAll: () => [], getElementById: () => null,
     },
     navigator: { userAgent: "node", onLine: true },
     location: { hash: "#/", href: "https://example.test/", pathname: "/", search: "" },
@@ -96,6 +97,7 @@ function loadApp() {
     ctx,
     win,
     doc,
+    view,
     timers,
     store,
     run: (code) => vm.runInContext(code, ctx),
@@ -257,4 +259,32 @@ test("app-2-7: a chapter stamp in an episode's last half-minute is a control, no
   assert.strictEqual(m.ctx.itemDurationSec({ duration_sec: 3569, duration_min: 59 }), 3569, "duration_sec first");
   assert.strictEqual(m.ctx.itemDurationSec({ duration_min: 59 }), 3540);
   assert.strictEqual(m.ctx.itemDurationSec({}), null);
+});
+
+/* ---------- app-2-6: changing or clearing a thumbs vote undoes its nudge ------ */
+
+test("app-2-6: up, clear, up leaves one nudge, not three; up -> a non-subject down undoes the up", () => {
+  /* setFeedback applied +0.08 on every up and nothing on a clear, so up, clear,
+     up ratcheted a topic to 1.0; changing up to down with a non-subject reason
+     left the +0.08 in place.
+     MUTATION: drop the `undo` term (apply only the new vote's nudge) — red. */
+  const m = loadApp();
+  m.run(`state.interests = { "science": 0.5 };`);
+  const entry = { segment_id: "seg-1", topic: "science", item_id: "ep" };
+  const interest = () => m.run(`state.interests["science"]`);
+  const near = (a, b, msg) => assert.ok(Math.abs(a - b) < 1e-9, `${msg}: ${a} vs ${b}`);
+  m.ctx.setFeedback(entry, "up");
+  near(interest(), 0.58, "an up nudges once");
+  m.ctx.setFeedback(entry, null);
+  near(interest(), 0.5, "clearing it takes the nudge back");
+  m.ctx.setFeedback(entry, "up");
+  m.ctx.setFeedback(entry, null);
+  m.ctx.setFeedback(entry, "up");
+  near(interest(), 0.58, "up, clear, up, clear, up is ONE up");
+  m.ctx.setFeedback(entry, "down", { reasons: ["Bad audio quality"] });
+  near(interest(), 0.5, "a down about the audio undoes the up and moves nothing else");
+  m.ctx.setFeedback(entry, "down", { reasons: ["Not my subject"] });
+  near(interest(), 0.42, "a subject down moves the subject");
+  m.ctx.setFeedback(entry, "up");
+  near(interest(), 0.58, "and flipping it to up undoes the down first");
 });

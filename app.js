@@ -11239,10 +11239,23 @@ function feedbackFor(segmentId) { return forayFeedback()[segmentId] || null; }
 
 /** Record (or clear) a vote and emit the event. `reasons`/`note` only ever ride
     a down-vote — an up-vote has nothing to explain. */
+/** The interest nudge a stored vote applied: +0.08 for an up, -0.08 for a down
+    with a subject-shaped reason, 0 for anything else (p-foray-6). */
+function voteNudge(vote) {
+  if (!vote || !vote.direction) return 0;
+  if (vote.direction === "up") return 0.08;
+  return (vote.reasons || []).some(r => TOPIC_REASONS.has(r)) ? -0.08 : 0;
+}
+
 function setFeedback(entry, direction, { reasons = [], note = "" } = {}) {
   const all = forayFeedback();
   const segId = entry.segment_id;
   if (!segId) return;
+  /* A VOTE REPLACES THE ONE BEFORE IT, nudge included (audit round 3, app-2-6).
+     Clearing a vote, or changing it, used to leave the old nudge in place, so
+     up, clear, up drove a topic to 1.0 in about thirteen taps. The previous
+     vote's nudge is undone in the same step that applies the new one. */
+  const undo = -voteNudge(all[segId]);
   if (!direction) delete all[segId];
   else all[segId] = { direction, reasons, note, ts: new Date().toISOString() };
   lsSet("cp_foray_feedback", all);
@@ -11265,10 +11278,15 @@ function setFeedback(entry, direction, { reasons = [], note = "" } = {}) {
        complaining about one host's microphone made Home show fewer startup
        episodes. The sheet promises specificity; the reasons now mean it. A
        down-vote with no subject-shaped reason is recorded as an event only. */
-    if (direction === "up" || reasons.some(r => TOPIC_REASONS.has(r))) {
-      nudgeTopics([entry.topic], direction === "up" ? 0.08 : -0.08);
-    }
+    const net = undo + voteNudge({ direction, reasons });
+    if (net) nudgeTopics([entry.topic], net);
     trySyncEvents();
+  } else if (undo) {
+    /* A cleared vote logs nothing yet: the events contract only knows
+       up/down (backend/src/types/events.ts ThumbsPayloadSchema), and a row the
+       learning job cannot parse is worse than a missing retraction. The
+       server-side half is recorded as a follow-up. */
+    nudgeTopics([entry.topic], undo);
   }
   paintFeedback(segId);
 }
