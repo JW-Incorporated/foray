@@ -468,8 +468,24 @@ function sessionKeepable() {
 
 /* Establish/restore the anonymous session. Refresh a stored token (same user)
    when possible; only create a NEW anonymous user when there's no token or the
-   refresh fails — re-signing-up every load would orphan a user per visit. */
-async function ensureAnonSession(epoch = deletionEpoch) {
+   refresh fails — re-signing-up every load would orphan a user per visit.
+
+   ONE AT A TIME (audit round 3, app-1-2). Two callers that overlapped each
+   read "no cp_sb_session" and each called /auth/v1/signup: N anonymous users,
+   the last lsSet won, and the rows posted under the others were orphaned where
+   Delete my data cannot reach them. Every caller now shares the one in-flight
+   answer. */
+let anonSessionInFlight = null;
+function ensureAnonSession(epoch = deletionEpoch) {
+  if (anonSessionInFlight) return anonSessionInFlight;
+  const p = ensureAnonSessionOnce(epoch);
+  anonSessionInFlight = p;
+  const clear = () => { if (anonSessionInFlight === p) anonSessionInFlight = null; };
+  p.then(clear, clear);
+  return p;
+}
+
+async function ensureAnonSessionOnce(epoch) {
   if (syncOutlived(epoch)) return null;
   const now = Math.floor(Date.now() / 1000);
   let s = lsGet("cp_sb_session", null);
@@ -555,16 +571,42 @@ function toEventRow(e, userId) {
    writes (the session, a batch) asks `syncOutlived()` first. */
 const syncsInFlight = new Set();
 
+/* SINGLE-FLIGHT (audit round 3, app-1-2). Every call used to start its own
+   syncEventsOnce(): `unsynced()` hands out rows without claiming them, so two
+   overlapping runs POSTed the same rows and the events table (no client id, no
+   unique key) stored each one twice -- and every action taken while storage was
+   settling queued one more waiter, all of which fired together. Now: at most
+   one run (`syncRun`), at most ONE follow-up behind it however many callers
+   asked meanwhile (`syncFollowUp`, so a row logged mid-run still goes out), and
+   at most one pre-settle waiter (`syncSettleWaiter`, the saveInterestsPending
+   pattern). */
+let syncRun = null;
+let syncFollowUp = null;
+let syncSettleWaiter = null;
+
 function trySyncEvents() {
   const epoch = deletionEpoch;
   if (syncOutlived(epoch)) return Promise.resolve();
   /* An unread `cp_sb_session` reads as "no account", and `ensureAnonSession`
      answers that by signing up a new one (races-4). Before storage settles
      there is nothing to sync that cannot wait for it. */
-  if (storageWaiting()) return new Promise(resolve => afterStorageSettles(() => resolve(trySyncEvents())));
+  if (storageWaiting()) {
+    if (!syncSettleWaiter) {
+      syncSettleWaiter = new Promise(resolve => afterStorageSettles(() => { syncSettleWaiter = null; resolve(trySyncEvents()); }));
+    }
+    return syncSettleWaiter;
+  }
+  if (syncRun) {
+    if (!syncFollowUp) {
+      syncFollowUp = syncRun.then(() => { syncFollowUp = null; return trySyncEvents(); });
+    }
+    return syncFollowUp;
+  }
   const run = syncEventsOnce(epoch);
+  syncRun = run;
   syncsInFlight.add(run);
-  run.finally(() => syncsInFlight.delete(run));
+  /* Registered before any follow-up's `then`, so the slot is free when it runs. */
+  run.finally(() => { syncsInFlight.delete(run); if (syncRun === run) syncRun = null; });
   return run;
 }
 

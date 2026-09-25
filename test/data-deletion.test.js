@@ -2009,3 +2009,50 @@ test("NATIVE ENGINE: an engine that refuses its purge makes the device NOT clear
   assert.match(ui.status.textContent, /NOT/);
   assert.deepStrictEqual(cpKeys(), { local: [], idb: [] }, "the page's own purge still ran");
 });
+
+/* ---------- audit round 3, lane L1: one sync at a time, one account ----------
+
+   app-1-2: overlapping syncs each read the same unsynced rows (unsynced() does
+   not claim them) and POSTed them, and the events table has no client id, so
+   the server kept every row twice; on a fresh device each overlapping sync
+   signed up its own anonymous account. */
+
+const eventPosts = (log) => log.filter((e) => e.kind === "fetch" && e.method === "POST" && e.url.includes("/rest/v1/events"));
+
+test("app-1-2: three overlapping syncs POST the queued rows once, and a row logged mid-run still goes out after it", async () => {
+  /* MUTATION: start a fresh syncEventsOnce per call again (drop the `syncRun`
+     branch) -> the same batch is POSTed three times; red. Drop the follow-up
+     (`return syncRun` alone) -> the row logged mid-run is never sent; red. */
+  const { ctx, log, queue } = await mount({ seed: { cp_sb_session: sessionRow(), cp_interests: "{}" }, events: QUEUED });
+  const real = ctx.fetch;
+  ctx.fetch = (url, opts) => (opts && opts.method === "POST" && String(url).includes("/rest/v1/events")
+    ? new Promise((r) => setTimeout(r, 20)).then(() => real(url, opts))
+    : real(url, opts));
+  const a = ctx.trySyncEvents();
+  await new Promise((r) => setTimeout(r, 0));
+  queue.append({ type: "picked", payload: { episode_id: "ep-2", topics: [] } });
+  const b = ctx.trySyncEvents();
+  const c = ctx.trySyncEvents();
+  assert.strictEqual(b, c, "callers during a run share ONE follow-up");
+  await Promise.all([a, b, c]);
+  const posts = eventPosts(log);
+  const slugs = posts.flatMap((p) => JSON.parse(p.body).map((r) => r.payload.episode_slug));
+  assert.deepStrictEqual(slugs.sort(), ["ep-1", "ep-2"], `each row once: ${JSON.stringify(slugs)}`);
+  assert.deepStrictEqual(await queue.unsynced(), []);
+});
+
+test("app-1-2: two syncs on a fresh device create ONE anonymous account, not two", async () => {
+  /* MUTATION: make ensureAnonSession call ensureAnonSessionOnce directly (no
+     shared in-flight promise) -> two signups; red. */
+  const { ctx, log } = await mount({
+    seed: { cp_interests: "{}" },
+    reply: (url) => (/\/auth\/v1\/signup/.test(url)
+      ? { status: 200, json: { access_token: "at-9", refresh_token: "rt-9", expires_at: 4102444800, user: { id: `uid-${log.length}` } } }
+      : { status: 204 }),
+  });
+  const [s1, s2] = await Promise.all([ctx.ensureAnonSession(), ctx.ensureAnonSession()]);
+  const signups = log.filter((e) => e.kind === "fetch" && /\/auth\/v1\/signup/.test(e.url));
+  assert.strictEqual(signups.length, 1, "a second account was minted");
+  assert.strictEqual(s1.user_id, s2.user_id);
+  assert.strictEqual(JSON.parse(ctx.localStorage.getItem("cp_sb_session")).user_id, s1.user_id);
+});

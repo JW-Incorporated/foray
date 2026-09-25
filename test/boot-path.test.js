@@ -633,3 +633,39 @@ test("tests-10: [name=\"value\"] matches only the element with that value, in bo
     assert.ok(src.includes('require("./helpers/fake-dom.js")'), `${f} does not use the shared DOM`);
   }
 });
+
+/* ==================================================================== */
+/* app-1-2: syncs asked for before storage settles share one waiter       */
+/* ==================================================================== */
+
+test("app-1-2: five syncs asked for while storage is settling queue ONE waiter, and it runs one sync", async () => {
+  /* Each call pushed its own afterStorageSettles closure and markStorageSettled
+     ran them all at once: N syncs POSTing the same rows. MUTATION: push a
+     waiter per call again -> the count grows by five; red. */
+  const { store, tier } = await storeOver({
+    idb: { cp_sb_session: JSON.stringify({ user_id: "uid-old", access_token: "at-old", refresh_token: "rt-old", expires_at: Math.floor(Date.now() / 1000) + 3600 }) },
+  });
+  const log = fakeEventLog();
+  log.append({ ts: "2026-09-22T10:00:00Z", type: "picked", builder: "t", profile: "p", payload: { episode_id: "e1" } });
+  const posts = [];
+  const m = mount({
+    store, eventLog: log, storageWaitMs: 20, ceilingMs: 60000,
+    fetchImpl: (url, opts) => {
+      if (/rest\/v1\/events/.test(url)) { posts.push(opts.body); return Promise.resolve({ ok: true, status: 201, json: async () => ({}) }); }
+      if (/supabase\.co/.test(url)) return Promise.resolve({ ok: true, status: 200, json: async () => ({}) });
+      return new Promise(() => {});
+    },
+  });
+  await settle(20);
+  assert.strictEqual(m.ctx.storageWaiting(), true, "premise: still hydrating");
+  const before = vm.runInContext("storageSettleWaiters.length", m.ctx);
+  const calls = [];
+  for (let i = 0; i < 5; i++) calls.push(m.ctx.trySyncEvents());
+  const after = vm.runInContext("storageSettleWaiters.length", m.ctx);
+  assert.ok(after - before <= 1, `five syncs queued ${after - before} waiters`);
+  tier.release();
+  await store.hydrate();
+  await Promise.all(calls);
+  await settle(10);
+  assert.strictEqual(posts.length, 1, `the row went out ${posts.length} times`);
+});
