@@ -6252,6 +6252,11 @@ function bindPanelDrag(entry) {
     const fromHandle = !!(t && typeof t.closest === "function" && t.closest(".fy-grab"));
     drag = g.start(e.clientY, e.timeStamp, { fromHandle, atTop: (panel.scrollTop || 0) <= 0 });
     pointer = e.pointerId;
+    /* CAPTURED (audit round 3, app-2-10), as the Foray strip's is: a mouse has
+       no implicit capture, so a release over the scrim or outside the window
+       never reached this panel and left the drag stuck — displaced, and
+       ignoring every later press. */
+    try { panel.setPointerCapture?.(e.pointerId); } catch (_) { /* capture is best-effort */ }
   });
   panel.addEventListener("pointermove", (e) => {
     const g = gest();
@@ -6282,12 +6287,17 @@ function bindPanelDrag(entry) {
     const finish = () => { entry.requestClose(); paint(0); };
     if (!slideOut(panel, "--fy-panel-dy", panelHeightPx(panel), finish)) finish();
   });
-  panel.addEventListener("pointercancel", (e) => {
+  const cancel = (e) => {
     if (!drag || e.pointerId !== pointer) return;
     drag = null;
     pointer = null;
     paint(0);
-  });
+  };
+  panel.addEventListener("pointercancel", cancel);
+  /* Capture lost without a pointerup (the window lost focus, the element was
+     hidden) is a cancel. After a pointerup the drag is already over, so the
+     implicit release that follows it finds nothing to undo. */
+  panel.addEventListener("lostpointercapture", cancel);
 }
 
 /** Close `wrap` if the owner holds it: lift what open did, hide it, hand focus

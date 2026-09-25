@@ -288,3 +288,34 @@ test("app-2-6: up, clear, up leaves one nudge, not three; up -> a non-subject do
   m.ctx.setFeedback(entry, "up");
   near(interest(), 0.58, "and flipping it to up undoes the down first");
 });
+
+/* ---------- app-2-10: a panel drag captures its pointer ----------------------- */
+
+test("app-2-10: panel drag-to-dismiss captures the pointer, and a lost capture ends the drag", () => {
+  /* With a mouse there is no implicit capture: a release off the panel never
+     reached it, so `drag`/`pointer` stayed set, the panel stayed displaced, and
+     every later pointerdown was ignored.
+     MUTATION: drop the setPointerCapture call — red. Drop the
+     lostpointercapture listener — the second press is ignored, red. */
+  const m = loadApp();
+  const panel = makeEl("section");
+  panel.classList.add("fy-panel");
+  const captured = [];
+  panel.setPointerCapture = (id) => captured.push(id);
+  m.ctx.ForayPlayer = {
+    sheetDrag: {
+      start: () => ({ y: 0 }), move: (d) => d, offset: () => 40,
+      end: () => ({ dismiss: false }), claimsTouch: () => true,
+    },
+  };
+  m.ctx.bindPanelDrag({ panel, requestClose() {} });
+  const target = { closest: () => null };
+  panel.dispatch("pointerdown", { pointerId: 1, pointerType: "mouse", button: 0, clientY: 10, timeStamp: 1, target });
+  assert.deepStrictEqual(captured, [1], "the press captures its pointer");
+  panel.dispatch("pointermove", { pointerId: 1, clientY: 60, timeStamp: 2 });
+  assert.ok(panel.classList.contains("fy-panel-dragging"), "dragging");
+  panel.dispatch("lostpointercapture", { pointerId: 1 });
+  assert.ok(!panel.classList.contains("fy-panel-dragging"), "a lost capture springs the panel back");
+  panel.dispatch("pointerdown", { pointerId: 2, pointerType: "mouse", button: 0, clientY: 10, timeStamp: 3, target });
+  assert.deepStrictEqual(captured, [1, 2], "and the next press is not ignored");
+});
