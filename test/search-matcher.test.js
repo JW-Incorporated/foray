@@ -640,3 +640,18 @@ test("search-api-css-6: accented and unaccented spellings find each other in the
     assert.deepEqual(ids, ["a", "b"], `${q} -> ${ids.join(",")}`);
   }
 });
+
+/* ---------- round-3 audit, search-api-css-11: an unknown date is never recent ---------- */
+
+test("search-api-css-11: a recency filter refuses an unparseable release_date, like a missing one", () => {
+  /* MUTATION: go back to `new Date(item.release_date || 0)` — the malformed
+     date gives NaN, `NaN > 90` is false, and the item passes "new". */
+  const SE = require(path.join(ROOT, "search-engine.js"));
+  const recent = [{ type: "recency_days", value: 90 }];
+  const today = new Date().toISOString().slice(0, 10);
+  assert.equal(SE.passesFilters({ release_date: today }, recent), true, "premise: a real recent date passes");
+  assert.equal(SE.passesFilters({ release_date: "2001-01-01" }, recent), false);
+  assert.equal(SE.passesFilters({}, recent), false, "no date");
+  assert.equal(SE.passesFilters({ release_date: "not a date" }, recent), false, "an unparseable date");
+  assert.equal(SE.passesFilters({ release_date: "Tuesday-ish" }, [{ type: "recency_days", value: 7 }]), false);
+});

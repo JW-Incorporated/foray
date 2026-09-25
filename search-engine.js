@@ -1019,8 +1019,11 @@ function passesFilters(item, filters) {
     if (f.type === "duration_min" && !(item.duration_min && item.duration_min >= f.value)) return false;
     if (f.type === "branch" && !(Array.isArray(f.value) && f.value.includes(branchOf(item)))) return false;
     if (f.type === "recency_days") {
-      const d = new Date(item.release_date || 0);
-      if ((Date.now() - d.getTime()) / 86400000 > f.value) return false;
+      /* An unknown date is never "new" (round-3 audit, search-api-css-11). A
+         missing one read as the epoch and failed, but an UNPARSEABLE one gave
+         NaN, `NaN > value` is false, and the item passed "new"/"today". */
+      const t = Date.parse(item.release_date);
+      if (!Number.isFinite(t) || (Date.now() - t) / 86400000 > f.value) return false;
     }
   }
   return true;
