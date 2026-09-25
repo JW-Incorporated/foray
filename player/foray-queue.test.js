@@ -14,7 +14,7 @@ import {
   SEGMENT, NARRATION, JINGLE, JINGLE_ASSET_URL, JINGLE_DURATION_SEC,
 } from "./foray-queue.js";
 import { AD_PAD_CEILING_SEC } from "./seek-policy.js";
-import { INTERLUDE_ASSET_URL } from "./interlude.js";
+import { INTERLUDE_ASSET_URL, INTERLUDE_DURATION_SEC } from "./interlude.js";
 
 /** 85 characters, which is 5.0 s at narration-craft.md §0's 17 chars/s — a
     Hinge, the commonest and shortest real narration item. Exact so that a test
@@ -470,6 +470,14 @@ test("a jingle needs no start_sec/end_sec — it is not a segment for seam purpo
   const { items } = build([{ type: JINGLE, id: "jingle-1" }]);
   assert.equal(items[0].start_sec, undefined);
   assert.equal(items[0].end_sec, undefined);
+});
+
+test("arch-drift-4: a jingle item lasts exactly as long as the file it plays", () => {
+  /* The jingle item said 1.5 s while the interlude WAV it plays is 3.0 s
+     (interlude.test.js measures the header), so every jingle undercounted the
+     Foray clock by 1.5 s under a DURATION_MEASURED label. MUTATION: set
+     JINGLE_DURATION_SEC back to 1.5. */
+  assert.equal(JINGLE_DURATION_SEC, INTERLUDE_DURATION_SEC);
 });
 
 test("F-90: an authored jingle item plays the same asset the seam interlude plays — never a TBD URL", () => {

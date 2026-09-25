@@ -398,6 +398,7 @@ const FLOORS = {
      episodes a show" silently, with a green suite and no error anywhere. Seven
      mutations named in the file's header; all seven were run and are red. */
   "test/api-origin.test.js": 5,
+  "test/jingle-duration.test.js": 1, // audit round 3, arch-drift-4 (2026-09-25): the generator's jingle length is the player's, which is the interlude file's
   "test/app-security.test.js": 26,
   "test/episode-page.test.js": 8,
   /* 2026-09-18, founder: "Only forays are in the jump back in section, podcasts
