@@ -287,6 +287,10 @@ export const MANAGER_CALLS = Object.freeze([
   "reconcileWithBackend",
 ]);
 
+/** How many macrotask turns a scenario waits, at its end, for what it floated
+    to settle (NE-30j; see runScenario). */
+const FLOAT_SETTLE_TURNS = 50;
+
 /** What a checkpoint records about the manager. Plain data only. */
 function managerView(m) {
   return {
@@ -747,7 +751,21 @@ async function runScenario(c, ctx) {
           break;
       }
     }
-    await Promise.all(floating);
+    /* NE-30j. Wait for what the scenario floated (an end at a seam, a held
+       load) — but never forever. A scenario that ENDS inside a seam beat on
+       the manual clock leaves the end's handler waiting on a timer only a
+       `clock` step could fire; so does any case under a mutant that lengthens
+       the beat (record.test.mjs records the whole tree with SEAM_GAP_SEC
+       changed). Awaited outright, that is a promise the event loop can never
+       settle, and node cancels the whole run instead of failing one case.
+       Bounded, the case records the state it really ended in, which --check
+       then reports as a difference. Every recorded case settles long before
+       the bound. */
+    {
+      let settled = false;
+      Promise.all(floating).then(() => { settled = true; }, () => { settled = true; });
+      for (let n = 0; n < FLOAT_SETTLE_TURNS && !settled; n++) await tick();
+    }
     await tick();
     checkpoint("end");
   } finally {
