@@ -19,9 +19,11 @@ const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", ".
 import {
   ALLOWED_PREFIXES,
   APPROVAL_LABEL,
+  AUTOMERGE_AUTHORS,
   BLOCKING_LABELS,
+  DENIED_PATTERNS,
   DENIED_PREFIXES,
-  automergeDecision,
+  automergeDecision as rawAutomergeDecision,
   formatDecision,
   formatGovernedCheck,
   formatPolicy,
@@ -31,9 +33,18 @@ import {
   parseArgs,
   pathPolicy,
   pathProblem,
-  runCli,
+  runCli as rawRunCli,
+  isTrustedAuthor,
   splitList,
 } from "./path-policy.mjs";
+
+/* security-1 made `author` a required input: an unknown author is refused.
+ * Most tests below are about PATHS, so they decide as one of our own agents;
+ * the tests about authors call rawAutomergeDecision / rawRunCli directly. */
+const OURS = "github-actions[bot]";
+const automergeDecision = (input = {}) => rawAutomergeDecision({ author: OURS, ...input });
+const runCli = (argv, io) =>
+  rawRunCli(argv[0] === "decide" && !argv.includes("--author") ? [...argv, "--author", OURS] : argv, io);
 
 /* ------------------------------------------------------------ the matcher */
 
@@ -886,4 +897,186 @@ test("CLI treats a filename containing a comma as one path", () => {
     JSON.parse(h.written.J).policy.allowed.map((a) => a.file),
     ["data/a,b.json"]
   );
+});
+
+/* ------------------------------------------ security-1: who may merge unread */
+
+test("security-1: a clean fork PR touching only data/ is NOT armed, and goes to a founder", () => {
+  /* The live hole (round-3 audit): the repo is public, protect-main needs zero
+     approvals, and the hourly sweep armed any green PR whose paths were
+     allowlisted - including a returning outside contributor's fork PR.
+     MUTATION: delete the `if (foreign) return not("FOREIGN_AUTHOR", ...)` line
+     in automergeDecision -> this is ARMED / OK and the test fails. */
+  const d = rawAutomergeDecision({ files: ["data/discover.json"], author: "stranger", crossRepo: true });
+  assert.equal(d.armed, false);
+  assert.equal(d.code, "FOREIGN_AUTHOR");
+  assert.equal(d.needsFounder, true);
+  assert.match(d.reason, /fork/);
+});
+
+test("security-1: a fork PR is refused even when its author's login is on the list", () => {
+  // A fork's head branch is code nobody here pushed, whoever opened the PR.
+  const d = rawAutomergeDecision({ files: ["data/x.json"], author: "wjduvall-cmd", crossRepo: true });
+  assert.equal(d.code, "FOREIGN_AUTHOR");
+});
+
+test("security-1: a same-repo PR from an author not on AUTOMERGE_AUTHORS is refused", () => {
+  const d = rawAutomergeDecision({ files: ["sw.js"], author: "someone-else" });
+  assert.equal(d.armed, false);
+  assert.equal(d.code, "FOREIGN_AUTHOR");
+  assert.ok(d.findings.some((f) => /AUTOMERGE_AUTHORS/.test(f)));
+});
+
+test("security-1: an unknown author is refused, never assumed to be ours", () => {
+  // MUTATION: make isTrustedAuthor return true for an empty/undefined login.
+  for (const author of [undefined, null, "", "   "]) {
+    assert.equal(rawAutomergeDecision({ files: ["data/x.json"], author }).code, "FOREIGN_AUTHOR", String(author));
+  }
+});
+
+test("security-1: our own agents still arm, under either spelling of the Actions bot and any case", () => {
+  for (const author of AUTOMERGE_AUTHORS) {
+    assert.equal(rawAutomergeDecision({ files: ["data/x.json"], author }).armed, true, author);
+  }
+  assert.equal(isTrustedAuthor("WJDuvall-CMD"), true, "logins compare case-insensitively, as GitHub does");
+  assert.equal(isTrustedAuthor("wjduvall-cmd-evil"), false, "exact login, not a prefix");
+});
+
+test("security-1: CLI decide without --author is FOREIGN_AUTHOR; with it, it arms", () => {
+  const h = harness({ f: "data/a.json\n" });
+  rawRunCli(["decide", "--files-from", "f", "--github-output", "O"], h.io);
+  assert.match(h.appended.O, /code=FOREIGN_AUTHOR/);
+  assert.match(h.appended.O, /needs_founder=true/);
+
+  const h2 = harness({ f: "data/a.json\n" });
+  rawRunCli(["decide", "--files-from", "f", "--author", "github-actions[bot]", "--github-output", "O"], h2.io);
+  assert.match(h2.appended.O, /armed=true/);
+
+  const h3 = harness({ f: "data/a.json\n" });
+  rawRunCli(["decide", "--files-from", "f", "--author", "github-actions[bot]", "--cross-repo", "--github-output", "O"], h3.io);
+  assert.match(h3.appended.O, /code=FOREIGN_AUTHOR/);
+});
+
+test("security-1: automerge-nightly passes the PR author and fork-ness to decide", () => {
+  /* The CLI refuses without --author, so a workflow that stopped passing it
+     would silently arm nothing - fail-safe, but the pin says it on purpose.
+     MUTATION: drop `--author "$AUTHOR"` from the Decide step. */
+  const yml = fs.readFileSync(path.join(REPO, ".github/workflows/automerge-nightly.yml"), "utf8");
+  const decide = yml.slice(yml.indexOf("node tools/ci/path-policy.mjs decide"));
+  assert.match(decide.slice(0, 600), /--author "\$AUTHOR"/);
+  assert.match(yml, /AUTHOR: \$\{\{ github\.event\.pull_request\.user\.login \}\}/);
+  assert.match(decide.slice(0, 600), /\$\{CROSS_REPO:-\}/);
+});
+
+/* ------------------------------------------ ci-release-2: renames are two paths */
+
+test("ci-release-2: a rename OUT of CLAUDE.md is denied once the gatherer reports the old path", () => {
+  // The files API reports `git mv CLAUDE.md docs/CLAUDE-old.md` as ONE entry:
+  // filename docs/CLAUDE-old.md, previous_filename CLAUDE.md. The gatherers now
+  // emit both, so the policy sees the governed side.
+  const d = automergeDecision({ files: ["docs/CLAUDE-old.md", "CLAUDE.md"] });
+  assert.equal(d.code, "DENIED_PATH");
+  assert.equal(governedCheck({ files: ["docs/CLAUDE-old.md", "CLAUDE.md"] }).verdict, "UNAPPROVED");
+});
+
+test("ci-release-2: a rename out of tools/ci/ is denied the same way", () => {
+  const d = automergeDecision({ files: ["tools/old-ci/path-policy.mjs", "tools/ci/path-policy.mjs"] });
+  assert.equal(d.code, "DENIED_PATH");
+});
+
+/* Every workflow step that lists a PR's changed files. A gatherer that reads
+ * only `.filename` shows the policy the DESTINATION of a rename and never the
+ * governed path it came from. */
+function fileGatherers() {
+  const dir = path.join(REPO, ".github/workflows");
+  const out = [];
+  for (const f of fs.readdirSync(dir).filter((n) => /\.ya?ml$/.test(n))) {
+    const lines = fs.readFileSync(path.join(dir, f), "utf8").split(/\r?\n/);
+    lines.forEach((l, i) => {
+      if (!(/pulls\/\$\{?\w+\}?\/files/.test(l) && /gh api/.test(l))) return;
+      // A command continued with a trailing backslash is one command.
+      let text = l;
+      for (let j = i; /\\\s*$/.test(lines[j]) && j + 1 < lines.length; j++) text += "\n" + lines[j + 1];
+      out.push({ f, line: i + 1, text });
+    });
+  }
+  return out;
+}
+
+test("ci-release-2: every workflow gatherer of a PR's files reads previous_filename too", () => {
+  /* MUTATION: revert any one gatherer to `--jq '.[].filename'` -> it is listed
+     here. automerge-nightly, path-policy and pr-hygiene each have one. */
+  const gatherers = fileGatherers();
+  assert.ok(gatherers.length >= 3, `expected the three gatherers, found ${gatherers.length}`);
+  const blind = gatherers.filter((g) => !/previous_filename/.test(g.text));
+  assert.deepStrictEqual(blind.map((g) => `${g.f}:${g.line}`), [], "these gatherers cannot see the old side of a rename");
+});
+
+test("ci-release-2: the truncation check counts file ENTRIES, not the expanded path list", () => {
+  /* With renames expanded to two paths, comparing the path list's length with
+     changed_files would call every rename a truncation (fail-safe but wrong),
+     and a check that counts the wrong thing can be wrong the other way too.
+     MUTATION: go back to `wc -l < changed-files.txt` in either workflow. */
+  for (const f of ["automerge-nightly.yml", "path-policy.yml"]) {
+    const yml = fs.readFileSync(path.join(REPO, ".github/workflows", f), "utf8");
+    assert.doesNotMatch(yml, /actual=\$\(wc -l < changed-files\.txt/, `${f} still counts expanded paths`);
+    assert.match(yml, /actual=\$\(wc -l < file-entries\.jsonl/, `${f} must count one line per API entry`);
+  }
+});
+
+/* ------------------------------------------ ci-release-5: mobile/ build inputs */
+
+test("ci-release-5: the signing Gradle include and mobile's npm manifests are denied", () => {
+  /* MUTATION: remove any of the three new DENIED_PREFIXES entries. */
+  for (const f of ["mobile/gradle/foray-signing.gradle", "mobile/package.json", "mobile/package-lock.json"]) {
+    assert.equal(pathPolicy([f]).denied.length, 1, f);
+  }
+  // The directory is denied whole, not just its .gradle files: anything the
+  // signing include reads beside it (a properties file) is the same exposure.
+  assert.equal(pathPolicy(["mobile/gradle/signing.properties"]).denied.length, 1);
+  for (const p of ["mobile/gradle/", "mobile/package.json", "mobile/package-lock.json"]) {
+    assert.ok(DENIED_PREFIXES.includes(p), `${p} is named in DENIED_PREFIXES, not only caught by a pattern`);
+  }
+});
+
+test("ci-release-5: every plugin build manifest is denied by name, at any depth", () => {
+  /* MUTATION: empty DENIED_PATTERNS -> every one of these is allowlisted under
+     `mobile/` again and would auto-merge into a keystore-holding build step. */
+  const manifests = [
+    "mobile/plugins/foray-audio/android/build.gradle",
+    "mobile/plugins/foray-audio/Package.swift",
+    "mobile/plugins/foray-audio/foray-engine-core/Package.swift",
+    "mobile/plugins/foray-tts/package.json",
+    "mobile/plugins/new-plugin/android/settings.gradle.kts",
+    "mobile/plugins/new-plugin/NewPlugin.podspec",
+  ];
+  for (const f of manifests) assert.equal(pathPolicy([f]).denied.length, 1, f);
+});
+
+test("ci-release-5: mobile/ APP code still auto-merges (the founder ruling of 2026-09-05 stands)", () => {
+  for (const f of [
+    "mobile/plugins/foray-audio/ios/Sources/ForayAudioPlugin/ForayAudioPlugin.swift",
+    "mobile/plugins/foray-tts/web/foray-tts.js",
+    "mobile/web/foray-type-scale.js",
+  ]) {
+    assert.equal(pathPolicy([f]).allowed.length, 1, f);
+  }
+});
+
+test("ci-release-5: every build manifest tracked under mobile/ today is denied", () => {
+  /* The gate-script scan's sibling: walk mobile/ on disk and make sure no file
+     a build tool executes is allowlisted. A new kind of manifest (a Podfile,
+     a .gradle.kts) lands here first. */
+  const walk = (dir) =>
+    fs.readdirSync(path.join(REPO, dir), { withFileTypes: true }).flatMap((e) => {
+      if (e.name === "node_modules" || e.name.startsWith(".")) return [];
+      const rel = `${dir}/${e.name}`;
+      return e.isDirectory() ? walk(rel) : [rel];
+    });
+  const BUILD_INPUT = /(\.gradle(\.kts)?|^Package\.swift|\.podspec|^Podfile|^package(-lock)?\.json)$/i;
+  const manifests = walk("mobile").filter((f) => BUILD_INPUT.test(f.slice(f.lastIndexOf("/") + 1)));
+  assert.ok(manifests.length >= 8, `expected the mobile build manifests, found ${manifests.length}`);
+  const exposed = manifests.filter((f) => !pathPolicy([f]).denied.length);
+  assert.deepStrictEqual(exposed, [], "these build inputs would auto-merge into a secret-holding step");
+  assert.ok(DENIED_PATTERNS.length >= 4);
 });

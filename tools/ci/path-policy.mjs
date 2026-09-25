@@ -179,6 +179,38 @@ export const DENIED_PREFIXES = [
   // Denied as a directory so the next file placed beside them is governed from
   // birth. Change frequency: a handful of commits a month at most.
   "tools/release/",
+  // ci-release-5 (round-3 audit, 2026-09-25). `mobile/` is allowlisted for its
+  // APP code (founder ruling 2026-09-05, which this keeps). These are not app
+  // code: they are build inputs that Gradle, SwiftPM and npm EXECUTE inside the
+  // release steps that hold the keystore password and the App Store Connect
+  // key. `foray-signing.gradle` reads the signing secrets through
+  // System.getenv; a plugin's build.gradle is arbitrary Groovy evaluated by the
+  // same `./gradlew bundleRelease`; package.json/package-lock.json decide what
+  // `npm ci` fetches and runs (install scripts included) in the same job. A
+  // one-line exfiltration in any of them would have auto-merged unread. The
+  // plugin manifests are matched by DENIED_PATTERNS below (by file name, at any
+  // depth under mobile/), so a new plugin is governed from birth.
+  "mobile/gradle/",
+  "mobile/package.json",
+  "mobile/package-lock.json",
+];
+
+/* DENIED by NAME, anywhere under a directory (ci-release-5). A prefix list
+ * cannot say "every plugin's build.gradle": plugins arrive one directory at a
+ * time, and an explicit file entry would leave the next one exposed. Each entry
+ * is { dir, name, why }: `name` is tested against the path's last segment, and
+ * like every deny match it is case-insensitive. Checked right after
+ * DENIED_PREFIXES and, like it, before ALLOWED. */
+export const DENIED_PATTERNS = [
+  // Gradle scripts (Groovy or Kotlin DSL): evaluated by the bundleRelease step
+  // that has FORAY_KEYSTORE_PASSWORD in its environment.
+  { dir: "mobile/", name: /\.gradle(\.kts)?$/i, why: "Gradle build script" },
+  // SwiftPM manifests are Swift code run by xcodebuild's package resolution,
+  // in the archive step that holds the decoded App Store Connect key.
+  { dir: "mobile/", name: /^Package\.swift$/i, why: "SwiftPM manifest" },
+  { dir: "mobile/", name: /\.podspec$|^Podfile$/i, why: "CocoaPods manifest" },
+  // npm manifests: what `npm ci` fetches and which install scripts it runs.
+  { dir: "mobile/", name: /^package(-lock)?\.json$/i, why: "npm manifest" },
 ];
 
 /* Paths a bot run may touch, by tier (docs/curation/... § auto-merge):
@@ -309,6 +341,35 @@ export const APPROVAL_LABEL = "founder-approved";
  * something a founder has to notice. See tools/ci/pr-triage.mjs. */
 export const FOUNDER_QUEUE_LABEL = "needs-founder";
 
+/* security-1 (round-3 audit, 2026-09-25). WHO may have a PR merged unread.
+ *
+ * The repo is PUBLIC and protect-main requires zero approvals, so the path
+ * allowlist alone let a returning outside contributor's green fork PR that
+ * touches only sw.js or app.js be armed by the hourly pr-hygiene sweep and
+ * land on main - and in every listener's browser - with nobody reading it.
+ * Every argument for the allowlist ("bot-authored", "the CTO has merge
+ * authority here") is an argument about OUR agents, never about strangers.
+ *
+ * So auto-merge is for this list and nobody else: the Actions bot (both
+ * spellings - REST says `github-actions[bot]`, `gh pr list` says
+ * `app/github-actions`) and the founder's own accounts, which the agents push
+ * as. Anyone else's PR is NOT ARMED / FOREIGN_AUTHOR and goes to the founder
+ * queue. This file is under tools/ci/, a DENIED path, so widening the list is
+ * itself a founder merge. Logins compare case-insensitively, as GitHub does. */
+export const AUTOMERGE_AUTHORS = [
+  "github-actions[bot]",
+  "app/github-actions",
+  "wjduvall-cmd",
+  "sffan15-sys",
+];
+
+/** Is `author` (a GitHub login) allowed to have a PR merged unread? */
+export function isTrustedAuthor(author, authors = AUTOMERGE_AUTHORS) {
+  if (typeof author !== "string" || author.trim() === "") return false;
+  const a = author.trim().toLowerCase();
+  return authors.some((t) => t.toLowerCase() === a);
+}
+
 /* ----------------------------------------------------------------- matching */
 
 /**
@@ -374,6 +435,7 @@ export function pathProblem(file) {
  */
 export function pathPolicy(files, opts = {}) {
   const denied = opts.denied ?? DENIED_PREFIXES;
+  const deniedPatterns = opts.deniedPatterns ?? DENIED_PATTERNS;
   const allowed = opts.allowed ?? ALLOWED_PREFIXES;
   const out = { malformed: [], denied: [], allowed: [], unlisted: [] };
 
@@ -387,6 +449,12 @@ export function pathPolicy(files, opts = {}) {
     const hit = denied.find((p) => matchesPrefix(lower, p.toLowerCase()));
     if (hit) {
       out.denied.push({ file, prefix: hit });
+      continue;
+    }
+    const base = file.slice(file.lastIndexOf("/") + 1);
+    const byName = deniedPatterns.find((d) => lower.startsWith(d.dir.toLowerCase()) && d.name.test(base));
+    if (byName) {
+      out.denied.push({ file, prefix: `${byName.dir}**/${byName.why}` });
       continue;
     }
     const ok = allowed.find((p) => matchesPrefix(file, p));
@@ -428,12 +496,19 @@ export function automergeDecision(input = {}) {
     draft = false,
     baseRef = "main",
     truncated = false,
+    // security-1: WHO opened it, and from WHERE. `author` is REQUIRED: an
+    // unknown author is refused, never assumed to be one of ours, and every
+    // caller (the decide CLI, pr-triage) passes it.
+    author,
+    crossRepo = false,
+    authors = AUTOMERGE_AUTHORS,
     denied,
     allowed,
     blockingLabels = BLOCKING_LABELS,
   } = input;
 
   const policy = pathPolicy(files, { denied, allowed });
+  const foreign = Boolean(crossRepo) || !isTrustedAuthor(author, authors);
   const findings = [];
   const labelSet = labels.map((l) => (typeof l === "string" ? l : l?.name)).filter(Boolean);
   const blocking = blockingLabels.filter((l) => labelSet.includes(l));
@@ -442,6 +517,7 @@ export function automergeDecision(input = {}) {
     findings.push(`AUTOMERGE_FREEZE is set ("${String(freeze).trim()}") — all auto-merge is halted`);
   }
   for (const l of blocking) findings.push(`carries the \`${l}\` label`);
+  if (foreign) findings.push(foreignReason(author, crossRepo));
   for (const m of policy.malformed) findings.push(`unreasonable path \`${m.file}\` (${m.problem})`);
   for (const d of policy.denied) {
     findings.push(`touches governed path \`${d.file}\` (matched DENIED \`${d.prefix}\`)`);
@@ -477,6 +553,10 @@ export function automergeDecision(input = {}) {
       blocking.includes("founder-decision")
     );
   }
+  // security-1. Before any path reasoning: the path allowlist describes what
+  // OUR agents may land unread and says nothing about anyone else. A founder
+  // reads it (needsFounder), exactly as for a governed path.
+  if (foreign) return not("FOREIGN_AUTHOR", foreignReason(author, crossRepo), true);
   if (!files.length) {
     return not("NO_FILES", "No changed files were reported for this PR — refusing to guess.", true);
   }
@@ -523,6 +603,13 @@ export function automergeDecision(input = {}) {
     needsFounder: false,
     policy,
   };
+}
+
+function foreignReason(author, crossRepo) {
+  const who = typeof author === "string" && author.trim() ? `\`${author.trim()}\`` : "an unknown author";
+  return crossRepo
+    ? `Opened from a fork (by ${who}) - outside contributions are never merged unread.`
+    : `Opened by ${who}, who is not on AUTOMERGE_AUTHORS - only our own agents' PRs merge unread.`;
 }
 
 /**
@@ -704,6 +791,12 @@ export function formatPolicy() {
     "DENIED_PREFIXES (checked first, always wins):",
     ...DENIED_PREFIXES.map((p) => `  ${p}`),
     "",
+    "DENIED_PATTERNS (by file name, anywhere under the directory):",
+    ...DENIED_PATTERNS.map((d) => `  ${d.dir}**/${d.name.source}  (${d.why})`),
+    "",
+    "AUTOMERGE_AUTHORS (the only authors whose PRs can arm):",
+    ...AUTOMERGE_AUTHORS.map((a) => `  ${a}`),
+    "",
     "ALLOWED_PREFIXES:",
     ...ALLOWED_PREFIXES.map((p) => `  ${p}`),
     "",
@@ -728,6 +821,9 @@ options:
   --base <ref>            PR base ref (default: main)
   --pr <number>           PR number, for the report headline only
   --draft                 PR is a draft
+  --author <login>        (decide) the PR author's login. Required to arm:
+                          without it the decision is FOREIGN_AUTHOR
+  --cross-repo            (decide) the head branch is on a fork
   --truncated             the changed-file list is incomplete (the caller's line
                           count disagreed with the PR's own changed_files), so
                           refuse rather than judge a diff it cannot fully see
@@ -749,8 +845,9 @@ const FLAGS_WITH_VALUE = new Set([
   "--summary",
   "--github-output",
   "--json",
+  "--author",
 ]);
-const BOOL_FLAGS = new Set(["--draft", "--enforce", "--truncated"]);
+const BOOL_FLAGS = new Set(["--draft", "--enforce", "--truncated", "--cross-repo"]);
 
 /** Parse argv into { command, opts } or throw. Exported for the test suite. */
 export function parseArgs(argv) {
@@ -762,7 +859,7 @@ export function parseArgs(argv) {
   for (let i = 0; i < rest.length; i++) {
     const a = rest[i];
     if (BOOL_FLAGS.has(a)) {
-      opts[a.slice(2)] = true;
+      opts[a.slice(2).replace(/-([a-z])/g, (_, c) => c.toUpperCase())] = true;
       continue;
     }
     if (!FLAGS_WITH_VALUE.has(a)) throw new Error(`unknown option: ${a}`);
@@ -850,6 +947,8 @@ export function runCli(argv, io = {}) {
       draft: Boolean(opts.draft),
       truncated: Boolean(opts.truncated),
       baseRef: opts.base ?? "main",
+      author: opts.author,
+      crossRepo: Boolean(opts.crossRepo),
     });
     if (opts.githubOutput) {
       $.append(

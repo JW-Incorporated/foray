@@ -167,7 +167,16 @@ jobs:
           # a truncated list and this job could arm on a diff whose 101st file
           # is `.github/workflows/ci.yml`. Truncation that fails OPEN is the one
           # failure mode a path allowlist cannot survive.
-          gh api --paginate "repos/$REPO/pulls/$PR/files" --jq '.[].filename' > changed-files.txt
+          #
+          # BOTH SIDES OF A RENAME (ci-release-2). The API reports `git mv
+          # CLAUDE.md docs/old.md` as ONE entry whose `filename` is the
+          # allowlisted destination and whose `previous_filename` is the
+          # governed source. Reading only `.filename` let a governed file leave
+          # its path unread. One JSON array per entry, so the truncation check
+          # below can count ENTRIES while the policy sees every path.
+          gh api --paginate "repos/$REPO/pulls/$PR/files" \
+            --jq '.[] | [.filename, (.previous_filename // empty)] | @json' > file-entries.jsonl
+          jq -r '.[]' file-entries.jsonl > changed-files.txt
           gh pr view "$PR" --repo "$REPO" --json labels --jq '.labels[].name' > pr-labels.txt
 
           # The REST endpoint has its OWN cap: 3000 files including pagination,
@@ -176,14 +185,14 @@ jobs:
           # see the whole diff, and "every path I could see is allowlisted" is
           # then worth nothing. Refuse instead.
           expected=$(gh api "repos/$REPO/pulls/$PR" --jq '.changed_files')
-          actual=$(wc -l < changed-files.txt | tr -d ' ')
+          actual=$(wc -l < file-entries.jsonl | tr -d ' ')
           if [ "$expected" != "$actual" ]; then
             echo "INCOMPLETE changed-file list: API reports $expected, we read $actual"
             echo "TRUNCATED=--truncated" >> "$GITHUB_ENV"
           else
             echo "TRUNCATED=" >> "$GITHUB_ENV"
           fi
-          echo "changed files: $actual of $expected"
+          echo "changed files: $actual of $expected ($(wc -l < changed-files.txt | tr -d ' ') path(s) incl. rename sources)"
 
       - name: No policy to apply
         if: steps.policy.outputs.installed != 'true'
@@ -206,16 +215,27 @@ jobs:
         env:
           FREEZE: ${{ vars.AUTOMERGE_FREEZE }}
           PR: ${{ github.event.pull_request.number }}
+          # security-1: WHO opened it. The policy arms only AUTOMERGE_AUTHORS
+          # (tools/ci/path-policy.mjs) and refuses an unknown author, so this is
+          # required, not decoration. The job's `if` already skips forks; the
+          # --cross-repo flag is the policy's own copy of that rule.
+          AUTHOR: ${{ github.event.pull_request.user.login }}
+          HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+          REPO: ${{ github.repository }}
         # Exits 0 whether or not it arms: "not armed" is a decision, and a red
         # check here would be indistinguishable from CI actually failing.
         run: |
           set -uo pipefail
+          CROSS_REPO=""
+          if [ "${HEAD_REPO:-}" != "$REPO" ]; then CROSS_REPO="--cross-repo"; fi
           node tools/ci/path-policy.mjs decide \
             --files-from changed-files.txt \
             --labels-from pr-labels.txt \
             --freeze "${FREEZE:-}" \
             --pr "$PR" \
             --base main \
+            --author "$AUTHOR" \
+            ${CROSS_REPO:-} \
             ${TRUNCATED:-} \
             --summary "$GITHUB_STEP_SUMMARY" \
             --github-output "$GITHUB_OUTPUT"

@@ -83,23 +83,31 @@ permissions:
   statuses: read # older integrations report as commit statuses, not check runs
 
 concurrency:
-  # ONE global group, deliberately not per-PR. "Exactly one comment, ever" is
-  # enforced in the planner, which reads the PR's existing comments — so it is
-  # only sound if no two runs can be between "read comments" and "post comment"
-  # at the same time. Per-PR and sweep groups do not exclude each other: a
-  # `synchronize` on a conflicting PR landing at :23 would run alongside the
-  # sweep, both would see no marker, and both would comment. Serialising every
-  # run costs a little queueing (runs are ~30s) and buys the invariant.
-  group: pr-hygiene
+  # ci-release-9 (round-3 audit): ONE GROUP FOR THE SWEEP, ONE PER PR.
+  # This used to be a single global `pr-hygiene` group, on the belief that
+  # serialising cost "a little queueing". It cost runs: GitHub keeps at most one
+  # RUNNING and one PENDING run per group and cancels the older pending one when
+  # another arrives — `cancel-in-progress: false` protects only the running one.
+  # Three PR events in half a minute dropped a whole hourly sweep (its disarm,
+  # freeze and arm pass) or another PR's event outright.
+  #
+  # Per-PR groups only ever replace a pending run with a NEWER run for the same
+  # PR, which re-reads everything anyway; the sweep's group only ever replaces
+  # a pending sweep with a newer sweep. "Exactly one comment, ever" no longer
+  # rests on serialisation: the executor re-reads the PR's comments for the
+  # marker immediately before posting (see `comment)` below), which leaves a
+  # window of one API round-trip, not the length of a run.
+  group: ${{ github.event_name == 'pull_request' && format('pr-hygiene-pr-{0}', github.event.pull_request.number) || 'pr-hygiene-sweep' }}
   cancel-in-progress: false
 
 jobs:
   triage:
     # Every action here needs a write token, and a `pull_request` event from a
     # fork gets a read-only one. Skipping is honest (a red job on every fork PR
-    # would say "CI is broken" when it means "not applicable"); the 6-hourly
-    # sweep runs with a write token and picks fork PRs up for everything that
-    # does not require pushing to their branch.
+    # would say "CI is broken" when it means "not applicable"); the hourly
+    # sweep runs with a write token and picks fork PRs up for labelling and the
+    # founder queue. It never ARMS or merges one: pr-triage's decision refuses
+    # a fork or any author not on AUTOMERGE_AUTHORS (security-1).
     if: >-
       github.event_name != 'pull_request' ||
       github.event.pull_request.head.repo.full_name == github.repository
@@ -140,7 +148,12 @@ jobs:
           if [ -n "${ONE_PR:-}" ]; then
             numbers="$ONE_PR"
           else
-            numbers=$(gh pr list --repo "$REPO" --state open --limit 100 --json number --jq '.[].number')
+            # EVERY open PR (ci-release-17). This was `gh pr list` capped at 100,
+            # newest first, so an armed PR past the hundredth was never reached
+            # by the sweep — and the sweep is the ONLY path by which
+            # AUTOMERGE_FREEZE disarms an already-armed PR.
+            numbers=$(gh api --paginate "repos/$REPO/pulls?state=open&per_page=100" --jq '.[].number')
+            echo "open PRs: $(wc -w <<<"$numbers" | tr -d ' ')"
           fi
 
           echo "[]" > prs.json
@@ -158,7 +171,13 @@ jobs:
               if [ "$(jq -r '.mergeable' <<<"$pr")" != "null" ]; then break; fi
               sleep 4
             done
-            files=$(gh api --paginate "repos/$REPO/pulls/$n/files" --jq '[.[].filename]' | jq -s 'add // []')
+            # ENTRIES, not bare names (ci-release-2/-7): each carries
+            # previous_filename, so pr-triage sees BOTH sides of a rename (a
+            # move out of CLAUDE.md is a change to CLAUDE.md), and counts the
+            # entries against the PR's own `changed_files` to notice a list the
+            # API truncated at 3000.
+            files=$(gh api --paginate "repos/$REPO/pulls/$n/files" \
+                      --jq '[.[] | {filename, previous_filename}]' | jq -s 'add // []')
             comments=$(gh api --paginate "repos/$REPO/issues/$n/comments" --jq '[.[].body]' | jq -s 'add // []')
             # Check-run names on the CURRENT head SHA. Used only to notice a head
             # that has none of the required checks — a lost CI dispatch after an
@@ -253,7 +272,21 @@ jobs:
             case "$kind" in
               add-label)     gh pr edit "$pr" --repo "$REPO" --add-label "$label" ;;
               remove-label)  gh pr edit "$pr" --repo "$REPO" --remove-label "$label" ;;
-              comment)       jq -r '.body' <<<"$line" | gh pr comment "$pr" --repo "$REPO" --body-file - ;;
+              # Re-read the PR's comments for the marker right before posting
+              # (ci-release-9): runs are no longer serialised in one global
+              # group, so the planner's read can be a run old. The marker is the
+              # body's first line (CONFLICT_MARKER in pr-triage.mjs).
+              comment)
+                marker=$(jq -r '.body' <<<"$line" | head -n 1)
+                if ! existing=$(gh api --paginate "repos/$REPO/issues/$pr/comments" --jq '.[].body'); then
+                  echo "could not re-read #$pr's comments — not risking a second comment" >&2
+                  false
+                elif grep -qF "$marker" <<<"$existing"; then
+                  echo "#$pr already carries this comment — not posting a second"
+                else
+                  jq -r '.body' <<<"$line" | gh pr comment "$pr" --repo "$REPO" --body-file -
+                fi
+                ;;
               disable-auto)  gh pr merge "$pr" --repo "$REPO" --disable-auto ;;
               # The symmetric half of disable-auto (t_a25ea475): the sweep now
               # arms a PR the policy approves even when nothing else ever asked
