@@ -1,6 +1,6 @@
 # App Review note: what 4a's background audio mode plays
 
-**For NE-37** (docs/native-engine-plan.md §14): paste the note below into the App Review Information "Notes" field of any external TestFlight or App Store submission once the native engine plays Forays (the M2 flip). Written by NE-34, which added the last two sounds the engine can make with the screen locked: the seam jingle and the capped silence node.
+**Since NE-37** (docs/native-engine-plan.md §14, the M2 flip) the native engine plays Forays, so paste the note below into the App Review Information "Notes" field of any external TestFlight or App Store submission (HUMAN-ACTIONS #119 and `docs/native-engine-m2-drive-test.md` carry this step). Written by NE-34, which added the last two sounds the engine can make with the screen locked: the seam jingle and the capped silence node.
 
 Keep it true. If the engine gains a sound, or the silence node's flag or cap changes, change this note in the same PR; `tools/audio/interlude-asset.test.mjs` pins the facts it states against the code.
 

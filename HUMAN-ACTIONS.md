@@ -2,7 +2,7 @@
 
 <!-- ha-format: 2 -->
 
-> **23 open.** Closed items are in `HUMAN-ACTIONS-DONE.md` — you never need it.
+> **24 open.** Closed items are in `HUMAN-ACTIONS-DONE.md` — you never need it.
 > To close one: reply `done` (or `skip <why>`) to its card in the project's human-action channel.
 > Anything else you reply is forwarded to a thread on the card.
 
@@ -18,6 +18,19 @@
    - **Keep them:** tell Claude "recover the 2026-09-14 nightly digest". It re-cuts the scan back to the 14th and opens `nightly/2026-09-14-recovery`, which is the branch name the guard looks for.
 
 **Worked if:** the next scheduled `nightly-refresh` run is green, a `nightly/<date>` PR opens the same day, and `nightly-watch` is green that evening.
+
+## #119 🟡 [DECIDE] Drive the M2 Foray test on the next TestFlight build after `engine/m2` merges — Forays now play natively (~2 drives)
+<!-- ha filed=2026-09-25 kind=default -->
+
+**Why:** Card NE-37 switched Forays onto the iPhone's own player: clips, narration and the jingle keep playing with the screen off. Whether a 51-minute locked Foray drive holds every seam, and whether narration resumes mid-sentence, can only be measured on your phone in your car.
+
+**Steps:**
+1. Test **only** the first TestFlight build released off `main` after `engine/m2` merges; Claude adds its number here. Turn TestFlight's Automatic Updates off for 4a.
+2. Follow `docs/native-engine-m2-drive-test.md`: Step 0, the desk pre-flight, then blocks 0-5 (H-2 51-min drive, H5, H6). One parked Developer → Playback diagnostics → Copy per block.
+3. Paste each Copy into this card's thread, headed with its block number and route.
+4. External TestFlight or App Store only: paste the note in `docs/store/app-review-background-audio.md` into App Review Notes.
+
+**Worked if:** `engine-report.mjs` shows H-2 with no `stop cause=unknown`, seam 1 to the last present, DV-4/5/9/10 pass, and narration resumed mid-sentence.
 
 ## #115 🔴 [BLOCKING] Put the app-signing and store-upload secrets behind a protected `release` environment (~15 min)
 <!-- ha filed=2026-09-25 kind=default -->

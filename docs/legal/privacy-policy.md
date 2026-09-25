@@ -4,7 +4,7 @@
 Every `TODO(founder)` below is a fact only a founder can supply. Do not publish
 this to a store listing with any of them unresolved.
 
-Last updated: 2026-09-24 · Applies to: the **4a** web app
+Last updated: 2026-09-25 · Applies to: the **4a** web app
 (https://jw-incorporated.github.io/foray/) and the iOS/Android app built from the
 same code. The app was formerly Foray. That is why the word is still in this URL
 and in the names of the local database and the cache bucket §1 describes:
@@ -157,10 +157,11 @@ The app also asks the browser to mark its storage as persistent
 | `cp_storage_stale` | The names (never the values) of any of the keys above that this device's `localStorage` refused to update while a durable copy accepted the change, so the next launch reads the newer durable copy instead of the stale one. Usually absent; kept only in the durable copies — IndexedDB, and in the iOS and Android app its preferences store too — never in `localStorage` | **No** |
 | `cp_diag` | A playback diagnostic record, capped at the most recent 200 entries: how long each seam between two segments took, the load deadline in force, out-point overshoot, stops (a lost audio route, an interruption), which resume point was written and read back, when the app went to the background and for how long, and any press of a play or transport control that failed — with the *class* of the error (for example `NotAllowedError`, meaning your browser held the audio back), never its message, and with a count when the same press fails repeatedly. It also keeps search rows (query length, local hit counts, timings), now-playing, remote-command and native-session rows. It holds no audio, no URLs, no account id and no device names — when it records that a known audio route came back, it records only *that* one was recognised, never which | **No** — it is never transmitted; the menu's **Developer** → **Playback diagnostics** shows it and lets you copy or clear it |
 
-**The iOS app's native audio player.** In the iOS app, episodes can be played
-by the app's own audio player, built on Apple's AVFoundation, instead of by the
-web view, so that listening carries on with the screen locked and a car's play
-button reaches it after a long pause. A build decides which player it starts
+**The iOS app's native audio player.** In the iOS app, episodes and forays
+(their clips, the narration between them and the short jingle between two
+shows) can be played by the app's own audio player, built on Apple's
+AVFoundation, instead of by the web view, so that listening carries on with the
+screen locked and a car's play button reaches it after a long pause. A build decides which player it starts
 with (`mobile/ENGINE_DEFAULT.json`); the menu's **Developer** group can switch
 back to the web view's player, and the app switches back by itself if the
 native player fails to start cleanly three launches in a row. The native player

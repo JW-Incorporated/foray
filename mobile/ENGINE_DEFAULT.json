@@ -1,4 +1,4 @@
 {
   "mode": "native",
-  "capabilities": ["episode", "continuation", "restore"]
+  "capabilities": ["episode", "continuation", "restore", "foray"]
 }

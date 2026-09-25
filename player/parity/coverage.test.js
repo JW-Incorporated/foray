@@ -376,6 +376,14 @@ test("transport-reconcile is wholly classified: a facade test, an exclusion, or 
   // MUTATION: re-tag one fixtured reconcile test back into unported.json as
   // {card: "NE-14j", family: "manager-episode"} -> red on the episode check;
   // cover a reconcile test from a foray-capability family -> red.
+  //
+  // NE-37 (the M2 flip): the 20 Foray reconcile rules NE-35 held are now
+  // fixtured (transport's pure rules the Foray transport reads, and
+  // manager-foray), mapped to the ForayTapeTests XCTest that carries them
+  // natively, mapped to the page's native facade, or excluded as page
+  // painting, and nothing may be owed to the foray capability either: it
+  // ships in M2. MUTATION: re-tag one into unported.json as
+  // {card: "NE-35", family: "manager-foray"} -> red on the foray check.
   const { status } = classify(REPO_ROOT, DATA, FIXTURES);
   const names = Object.entries(status["transport-reconcile"]);
   assert.ok(names.length > 0, "transport-reconcile has no tests on disk");
@@ -398,10 +406,11 @@ test("transport-reconcile is wholly classified: a facade test, an exclusion, or 
       assert.ok(st.unported, `${label} is unaccounted for`);
       assert.notEqual(st.unported.card, "NE-21", `${label} is still owed to NE-21, which is the card that classifies it`);
       assert.ok(!DATA.capabilities.episode.includes(st.unported.family), `${label} is owed to the episode capability (${JSON.stringify(st.unported)})`);
+      assert.ok(!DATA.capabilities.foray.includes(st.unported.family), `${label} is owed to the foray capability (${JSON.stringify(st.unported)})`);
       tally.owed++;
     }
   }
-  assert.ok(tally.facade > 0 && tally.excluded > 0 && tally.owed > 0 && tally.fixtured > 0 && tally.xctest > 0, JSON.stringify(tally));
+  assert.ok(tally.facade > 0 && tally.excluded > 0 && tally.fixtured > 0 && tally.xctest > 0, JSON.stringify(tally));
 });
 
 test("every facades.json mapping names a native-facades test that exists", () => {
@@ -611,14 +620,20 @@ test("capabilities.json holds the plan §6.6 map", () => {
 test("every capability the engine advertises has zero pending and zero unported entries", () => {
   // Read from mobile/ENGINE_DEFAULT.json and the Swift `advertisedCapabilities`
   // literal. Since NE-27b (the M1 flip) both name episode, continuation and
-  // restore, so this is the live gate on the shipping build; the synthetic
-  // cases below are what prove it has teeth.
-  // MUTATION: add one manager-episode id to swift-pending.json -> red, naming
+  // restore, and since NE-37 (the M2 flip) foray too, so this is the live gate
+  // on the shipping build; the synthetic cases below are what prove it has
+  // teeth. Narration and the interlude are families of `foray`
+  // (capabilities.json), not capabilities of their own.
+  // MUTATION: add one manager-episode or manager-foray id to
+  // swift-pending.json, or put one transport-reconcile Foray test back in
+  // unported.json as {card: "NE-35", family: "manager-foray"} -> red, naming
   // mobile/ENGINE_DEFAULT.json (or the Swift file) and the case.
   const advertised = advertisedCapabilities(REPO_ROOT);
-  assert.deepStrictEqual([...advertised.keys()].sort(), ["continuation", "episode", "restore"],
-    "NE-27b: the M1 build advertises exactly episode, continuation and restore");
+  assert.deepStrictEqual([...advertised.keys()].sort(), ["continuation", "episode", "foray", "restore"],
+    "NE-37: the M2 build advertises exactly episode, continuation, restore and foray");
   assert.deepStrictEqual(capabilityGate(advertised, DATA), []);
+  assert.deepStrictEqual(capabilityGate(new Map([["foray", "NE-37"]]), DATA), [],
+    "NE-37: every family mapped to foray owes zero swift-pending cases and zero unported tests");
 });
 
 test("the episode capability owes nothing: zero swift-pending cases and zero unported tests in every family it lists", () => {

@@ -134,16 +134,17 @@ final class EngineBridgeRulesTests: XCTestCase {
     /// never `foray` (M2); coverage.test.js refuses any of them whose families
     /// still owe work.
     /// TO SEE IT FAIL: return the plist's list as is, drop `episode` or
-    /// `restore` from the advertised list, or advertise `foray` before M2.
+    /// `restore` or `foray` (NE-37) from the advertised list.
     func testCapabilitiesAreThePlistsIntersectedWithTheAdvertised() {
         XCTAssertEqual(EngineBridgeRules.capabilities(declared: nil), [])
         XCTAssertEqual(EngineBridgeRules.capabilities(declared: []), [])
-        XCTAssertEqual(EngineBridgeRules.capabilities(declared: ["foray", "bogus", "continuation", "episode"]), [.episode, .continuation])
-        XCTAssertEqual(EngineBridgeRules.capabilities(declared: ["restore", "continuation", "episode", "foray"]),
-                       [.episode, .continuation, .restore], "the contract's order, not the plist's; foray is not advertised")
+        XCTAssertEqual(EngineBridgeRules.capabilities(declared: ["foray", "bogus", "continuation", "episode"]),
+                       [.episode, .continuation, .foray], "an undeclared or unknown capability is never granted")
+        XCTAssertEqual(EngineBridgeRules.capabilities(declared: ["foray", "restore", "continuation", "episode"]),
+                       [.episode, .continuation, .restore, .foray], "the contract's order, not the plist's")
         XCTAssertEqual(EngineBridgeRules.capabilities(declared: ["continuation"]), [.continuation])
-        XCTAssertEqual(EngineBridgeRules.advertisedCapabilities, ["episode", "continuation", "restore"])
-        XCTAssertFalse(EngineBridgeRules.advertisedCapabilities.contains("foray"), "foray waits for M2 (NE-30s)")
+        XCTAssertEqual(EngineBridgeRules.advertisedCapabilities, ["episode", "continuation", "restore", "foray"],
+                       "NE-37, the M2 flip: the binary advertises foray")
         XCTAssertEqual(EngineBridgeRules.requiredCapability(.probeSession), nil)
         XCTAssertEqual(EngineBridgeRules.requiredCapability(.purge), nil)
     }

@@ -69,8 +69,9 @@ final class ForayTapeTests: XCTestCase {
 
     // MARK: - playForay
 
-    /// The flag is OFF by default (plan §12, until NE-37): a Foray is refused
-    /// `capability-off` and nothing loads, exactly M1's answer.
+    /// The core's flag is OFF by default (plan §12; the shipping boot turns
+    /// it on since NE-37): a Foray is refused `capability-off` and nothing
+    /// loads, exactly M1's answer.
     func testWithTheTapeOffPlayForayIsRefusedAndNothingLoads() throws {
         var host = Host()
         let out = host.send(try EngineCoreTests.command("playForay", ForayTapeTests.forayArgs(ForayTapeTests.twoClips)))
@@ -284,6 +285,73 @@ final class ForayTapeTests: XCTestCase {
         let finished = ForayTapeTests.foraysRows(end(&host))
         XCTAssertEqual(finished.count, 1)
         XCTAssertTrue(finished.first?.value.contains("\"elapsed_sec\":100") ?? false, finished.first?.value ?? "")
+    }
+
+    // MARK: - transport-reconcile's Foray rules (NE-37)
+
+    /// transport-reconcile "A FAILED SEAM MUST NOT REWRITE THE RESUME ROW WITH
+    /// THE FAILED SEGMENT'S IN-POINT" and "THE STORE IS NEVER HANDED A
+    /// POSITION NOBODY READ": the row is written only from a playhead the deck
+    /// read on the clip it holds. Clip 1 writes 95 s in; the seam's load of
+    /// clip 2 FAILS; a tick, a pause, a play and another tick after it write
+    /// nothing about clip 2, so its in-point never reaches the store.
+    /// TO SEE IT FAIL: drop `state.loadedId == item.id` from `persistForay`'s
+    /// guard, or read the pending load's start as the playhead there.
+    func testAFailedSeamLoadNeverWritesTheClipThatNeverLoaded() throws {
+        var host = try playing()
+        host.reading.positionSec = 195
+        let good = ForayTapeTests.foraysRows(host.send(.timer(.positionTick)))
+        XCTAssertEqual(good.count, 1)
+        XCTAssertTrue(good.first?.value.contains("\"elapsed_sec\":95") ?? false, good.first?.value ?? "")
+        host.reading.positionSec = 200
+        var after = end(&host)
+        XCTAssertEqual(ForayTapeTests.loads(after), ["f1#1@300"], "the seam loads clip 2")
+        after += host.send(.deck(.failed(token: host.lastLoad ?? 0, message: "load-error")), after: 0)
+        after += host.send(.timer(.positionTick))
+        after += host.send(try EngineCoreTests.command("pause"))
+        after += host.send(try EngineCoreTests.command("play"))
+        after += host.send(.timer(.positionTick))
+        for row in ForayTapeTests.foraysRows(after) {
+            XCTAssertFalse(row.value.contains("\"index\":1"), "a row named the clip whose audio never arrived: \(row.value)")
+        }
+    }
+
+    /// transport-reconcile "THE POSITION THE ROUTE DIED AT IS WRITTEN, past
+    /// the save throttle": a row at 50 s in, a tick at 52 s the throttle
+    /// refuses, then the route goes (the car switched off). The clock never
+    /// moves again, so the route's loss is itself a forced write, at 52 s.
+    /// TO SEE IT FAIL: drop `persistForay(force: true)` from `onRoute`.
+    func testALostRouteWritesWhereItDiedPastTheThrottle() throws {
+        var host = try playing()
+        host.reading.positionSec = 150
+        XCTAssertEqual(ForayTapeTests.foraysRows(host.send(.timer(.positionTick))).count, 1)
+        host.reading.positionSec = 152
+        XCTAssertEqual(ForayTapeTests.foraysRows(host.send(.timer(.positionTick))).count, 0, "inside the throttle")
+        host.reading.audible = false
+        let lost = ForayTapeTests.foraysRows(host.send(.session(.route(RouteChange(oldDeviceUnavailable: true)))))
+        XCTAssertEqual(lost.count, 1, "the route's death is a forced write")
+        XCTAssertTrue(lost.first?.value.contains("\"elapsed_sec\":52") ?? false, lost.first?.value ?? "")
+    }
+
+    /// transport-reconcile "ROUND 2 races-1: a resume superseded by Next clip
+    /// inside its load window never seeks the new clip": the resume's offset
+    /// rides on its own load (`LoadOffsets`), so a `next` inside that load's
+    /// window loads clip 2 at its own in-point and nothing ever seeks.
+    /// TO SEE IT FAIL: apply `startElapsedSec` as a seek after the load.
+    func testAResumeSupersededByNextNeverSeeksTheNewClip() throws {
+        var host = Host(config: ForayTapeTests.tape)
+        var all = host.send(try EngineCoreTests.command(
+            "playForay", ForayTapeTests.forayArgs(ForayTapeTests.twoClips, startElapsedSec: 50)))
+        let first = host.lastLoad ?? 0
+        all += host.send(try EngineCoreTests.command("next"), after: 50)
+        all += host.send(.deck(.ready(token: first, landedSec: 150, prerolled: true, elapsedMs: 5)), after: 50)
+        all += host.land()
+        all += host.confirm()
+        XCTAssertEqual(ForayTapeTests.loads(all), ["f1#0@150", "f1#1@300"], "\(all)")
+        XCTAssertFalse(all.contains { if case .deck(.seek(_)) = $0 { return true }; return false },
+                       "the old clip's offset never lands on the new one: \(all)")
+        XCTAssertEqual(host.core.state.currentIndex, 1)
+        XCTAssertEqual(host.core.state.loadedId, "f1#1")
     }
 }
 

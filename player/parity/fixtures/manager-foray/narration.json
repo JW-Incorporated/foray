@@ -5,7 +5,8 @@
     {
       "id": "manager-foray/an-episode-then-a-bridge-plays-the-bridge",
       "covers": [
-        "queue-manager::an episode followed by a bridge enters transitioning and plays the bridge"
+        "queue-manager::an episode followed by a bridge enters transitioning and plays the bridge",
+        "transport-reconcile::A NARRATION BRIDGE IS ALSO SOMETHING THE ELEMENT IS HOLDING"
       ],
       "note": "The bridge is forced to 1.0x, loaded from zero and played; the reducer is transitioning.",
       "setup": { "target": "manager" },

@@ -17,27 +17,5 @@
     "the rate getter reports the CHOSEN speed, which is what a label is painted from": { "card": "NE-39j", "family": "manager-remainder" },
     "the window warms the next segment, at its own in-point": { "card": "NE-39j", "family": "manager-remainder" },
     "warming follows the SAME rule as the beat, so the two cannot drift": { "card": "NE-39j", "family": "manager-remainder" }
-  },
-  "transport-reconcile": {
-    "A FAILED SEAM MUST NOT REWRITE THE RESUME ROW WITH THE FAILED SEGMENT'S IN-POINT": { "card": "NE-35", "family": "manager-foray" },
-    "A NARRATION BRIDGE IS ALSO SOMETHING THE ELEMENT IS HOLDING": { "card": "NE-35", "family": "manager-foray" },
-    "AUDIT: \"Next clip\" is disabled on the last segment instead of silently doing nothing": { "card": "NE-35", "family": "manager-foray" },
-    "AUDIT: a FINISHED Foray can be scrubbed back into its last segment": { "card": "NE-35", "family": "manager-foray" },
-    "AUDIT: a scrub into a narration bridge lands where it was aimed, not at its first word": { "card": "NE-35", "family": "manager-foray" },
-    "AUDIT: a scrub to the very END of a Foray lands inside the last segment, so the boundary still fires": { "card": "NE-35", "family": "manager-foray" },
-    "AUDIT: play on a FINISHED Foray starts it over instead of replaying its last segment": { "card": "NE-35", "family": "manager-foray" },
-    "PERSONA: a Foray played after an episode takes the bar, and one press resumes it where it was": { "card": "NE-35", "family": "manager-foray" },
-    "PERSONA: an episode played AFTER the Foray keeps the bar": { "card": "NE-35", "family": "manager-foray" },
-    "ROUND 2 player-11: a nudge inside a SPOKEN line restarts it (back) or skips it (forward), and says so": { "card": "NE-35", "family": "manager-foray" },
-    "ROUND 2 player-4: Previous clip pressed just into a narration line goes back PAST the narrator": { "card": "NE-35", "family": "manager-foray" },
-    "ROUND 2 player-5: 30↻ near the end of a Foray stops short of the end instead of finishing it": { "card": "NE-35", "family": "manager-foray" },
-    "ROUND 2 races-1: a resume superseded by Next clip inside its load window never seeks the new clip": { "card": "NE-35", "family": "manager-foray" },
-    "ROUND 2 review: 30↻ inside the Foray's LAST spoken line does not claim to have skipped it": { "card": "NE-35", "family": "manager-foray" },
-    "THE POSITION THE ROUTE DIED AT IS WRITTEN, past the save throttle": { "card": "NE-35", "family": "manager-foray" },
-    "THE STORE IS NEVER HANDED A POSITION NOBODY READ": { "card": "NE-35", "family": "manager-foray" },
-    "VISUAL PASS: inside a Foray the sheet's ↺15 nudges within the clip — it does not restart it": { "card": "NE-35", "family": "manager-foray" },
-    "a Foray played to the end is MARKED 'Played', not wiped back to unplayed (honesty-2)": { "card": "NE-35", "family": "manager-foray" },
-    "a finished Foray does not come back looking mid-listen": { "card": "NE-35", "family": "manager-foray" },
-    "a position that CAN be read is still written, so the refusal is not a mute": { "card": "NE-35", "family": "manager-foray" }
   }
 }

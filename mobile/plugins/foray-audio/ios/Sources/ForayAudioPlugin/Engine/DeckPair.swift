@@ -18,8 +18,9 @@ extension AVDeck: PairableDeck {}
 /// Two decks, at most one audible, the standby one prepared at the next
 /// segment's in-point while the other plays (card NE-32;
 /// docs/native-engine-plan.md §4.3, P-10). Behind `EngineConfig
-/// .deckPairEnabled`, OFF until NE-37: with it off the engine plays through
-/// one AVDeck exactly as in M1.
+/// .deckPairEnabled`, which the shipping boot turns on since NE-37 (the core's
+/// default stays off): with it off the engine plays through one AVDeck
+/// exactly as in M1.
 ///
 /// IT SITS BEHIND THE SAME SEAM AS ONE DECK. The core speaks `DeckCommand`s
 /// to "the deck" and hears `DeckEvent`s; the pair routes them:
