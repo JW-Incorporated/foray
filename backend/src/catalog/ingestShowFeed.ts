@@ -36,18 +36,37 @@ export interface IngestShowFeedResult {
  *  accumulates. */
 const DEFAULT_TTL_MS = 24 * 60 * 60 * 1000;
 
-function episodeIdentity(ep: ParsedEpisode, idx: number): string {
-  // Composite fallback mirrors ADR-0002's spirit (guid is unreliable alone) —
-  // a feed with zero guids still gets stable, order-based identity within a
-  // single ingest pass rather than every item colliding on an empty string.
-  return ep.guid ?? `noguid:${ep.title}:${ep.publishedAt ?? idx}`;
+/** First back-off window after a failed fetch; doubles per consecutive
+ *  failure and is capped at the TTL (backend-rest-12). */
+export const FAILURE_BACKOFF_BASE_MS = 5 * 60 * 1000;
+
+/**
+ * How long a failed feed is left alone before the next fetch attempt:
+ * min(ttl, base * 2^consecutive_failures). Without it a dead feed was
+ * refetched (and waited on for up to the 15 s timeout) on every request.
+ */
+export function failureBackoffMs(consecutiveFailures: number, ttlMs: number): number {
+  const n = Math.max(0, Math.min(consecutiveFailures, 30));
+  return Math.min(ttlMs, FAILURE_BACKOFF_BASE_MS * 2 ** n);
 }
 
-function toCatalogEpisode(showId: string, ep: ParsedEpisode, idx: number): CatalogShowEpisode | null {
+/**
+ * Stable per-episode identity. Composite fallback mirrors ADR-0002's spirit
+ * (guid is unreliable alone). `||` rather than `??` so an empty guid can
+ * never become the identity "" (backend-rest-10), and no positional index:
+ * an index shifts when the publisher prepends a new episode, which minted a
+ * duplicate row on every ingest. The enclosure URL is always present here
+ * (toCatalogEpisode drops items without one).
+ */
+export function episodeIdentity(ep: ParsedEpisode): string {
+  return ep.guid || `noguid:${ep.enclosureUrl ?? ""}:${ep.title}:${ep.publishedAt ?? ""}`;
+}
+
+function toCatalogEpisode(showId: string, ep: ParsedEpisode): CatalogShowEpisode | null {
   if (!ep.enclosureUrl) return null; // no real audio_url -> not a playable episode, drop it (never a fabricated pointer)
   return {
     show_id: showId,
-    guid: episodeIdentity(ep, idx),
+    guid: episodeIdentity(ep),
     title: ep.title,
     description_html: ep.descriptionHtml,
     description_text: ep.descriptionText || null,
@@ -68,8 +87,37 @@ function toCatalogEpisode(showId: string, ep: ParsedEpisode, idx: number): Catal
  * `status: "cached_stale"`, or `"no_cache_error"` with an empty episode
  * list when there is nothing cached to fall back to — the endpoint layer
  * turns that into the "couldn't load" UI state, never a blank page.
+ *
+ * A parse or store failure on a fresh body is recorded as a failed fetch
+ * (last_fetch_ok=false, consecutive_failures+1) and falls back the same way
+ * (backend-rest-9). After a failure the feed is not refetched until
+ * failureBackoffMs() has passed (backend-rest-12).
+ *
+ * Politeness gap (recorded here rather than in the applied 0016 comment,
+ * which must not be edited): 0016 says this path "mirrors ADR-0001's ...
+ * per-host politeness discipline", but feeds/politeness.ts PolitenessBudget
+ * is NOT wired in. The only backoff is the per-show one above.
  */
 export async function ingestShowFeed(
+  showId: string,
+  feedUrl: string,
+  store: ShowEpisodesStore,
+  opts: { ttlMs?: number; fetchImpl?: typeof fetch; now?: () => number } = {}
+): Promise<IngestShowFeedResult> {
+  try {
+    return await ingestShowFeedUnsafe(showId, feedUrl, store, opts);
+  } catch (err) {
+    // Last resort: the store itself failed (e.g. the database is down), so
+    // there is no cache to fall back to either.
+    return { showId, status: "no_cache_error", episodeCount: 0, error: errorMessage(err) };
+  }
+}
+
+function errorMessage(err: unknown): string {
+  return err instanceof Error ? err.message : String(err);
+}
+
+async function ingestShowFeedUnsafe(
   showId: string,
   feedUrl: string,
   store: ShowEpisodesStore,
@@ -88,6 +136,19 @@ export async function ingestShowFeed(
   if (freshEnough) {
     const cached = await store.episodesForShow(showId);
     return { showId, status: "not_modified", episodeCount: cached.length };
+  }
+
+  const backingOff =
+    prior !== null &&
+    prior.last_fetch_ok === false &&
+    prior.last_fetched_at !== null &&
+    now() - new Date(prior.last_fetched_at).getTime() < failureBackoffMs(prior.consecutive_failures, ttlMs);
+
+  if (backingOff) {
+    const cached = await store.episodesForShow(showId);
+    const error = prior.last_error ?? "feed failing; backing off";
+    if (cached.length > 0) return { showId, status: "cached_stale", episodeCount: cached.length, error };
+    return { showId, status: "no_cache_error", episodeCount: 0, error };
   }
 
   const fetchResult = await fetchFeedConditional(
@@ -134,12 +195,27 @@ export async function ingestShowFeed(
     return { showId, status: "no_cache_error", episodeCount: 0, error: fetchResult.error };
   }
 
-  const parsed = parseFeed(fetchResult.body);
-  const episodes = parsed.episodes
-    .map((ep, idx) => toCatalogEpisode(showId, ep, idx))
-    .filter((ep): ep is CatalogShowEpisode => ep !== null);
+  let parsed: ReturnType<typeof parseFeed>;
+  let episodes: CatalogShowEpisode[];
+  try {
+    parsed = parseFeed(fetchResult.body);
+    episodes = parsed.episodes
+      .map((ep) => toCatalogEpisode(showId, ep))
+      .filter((ep): ep is CatalogShowEpisode => ep !== null);
+    await store.upsertEpisodes(episodes);
+  } catch (err) {
+    const error = `ingest failed: ${errorMessage(err)}`;
+    await store.recordFeedFetch({
+      ...baseState,
+      last_fetch_ok: false,
+      last_error: error,
+      consecutive_failures: (prior?.consecutive_failures ?? 0) + 1
+    });
+    const cached = await store.episodesForShow(showId);
+    if (cached.length > 0) return { showId, status: "cached_stale", episodeCount: cached.length, error };
+    return { showId, status: "no_cache_error", episodeCount: 0, error };
+  }
 
-  await store.upsertEpisodes(episodes);
   await store.recordFeedFetch({
     ...baseState,
     etag: fetchResult.etag ?? baseState.etag,

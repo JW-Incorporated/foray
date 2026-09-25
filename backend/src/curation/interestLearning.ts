@@ -174,7 +174,11 @@ export function deriveInterestDeltas(event: PersistedEvent, ctx: DeriveContext =
 
     case "card_shown": {
       const p = event.payload;
-      if ((ctx.ignoredCardShownCount ?? 0) < IGNORED_CARD_SHOWN_THRESHOLD) return [];
+      // "x5 -> gentle -": once per THRESHOLD showings, not on every showing
+      // after the 5th (backend-rest-17: a card shown 25 times was penalised
+      // 21 times rather than 5).
+      const streak = ctx.ignoredCardShownCount ?? 0;
+      if (streak < IGNORED_CARD_SHOWN_THRESHOLD || streak % IGNORED_CARD_SHOWN_THRESHOLD !== 0) return [];
       const shownSlot = slot ?? p.archetype ?? null;
       return p.topics.map((nodeId) => ({ nodeId, reason: "card_ignored_repeatedly" as const, delta: -CARD_IGNORED, durable: true, archetypeSlot: shownSlot }));
     }
@@ -324,11 +328,43 @@ export async function applyEvent(event: PersistedEvent, deps: ApplyDeps, ctx: De
  */
 export async function applyEventBatch(events: PersistedEvent[], deps: ApplyDeps): Promise<ApplyEventOutcome[]> {
   const outcomes: ApplyEventOutcome[] = [];
-  for (let i = 0; i < events.length; i++) {
-    const event = events[i]!;
-    const ctx: DeriveContext =
-      event.type === "card_shown" ? { ignoredCardShownCount: computeCardIgnoredStreak(events.slice(0, i), event) } : {};
+  const streaks = new CardShownStreaks();
+  for (const event of events) {
+    const ctx: DeriveContext = event.type === "card_shown" ? { ignoredCardShownCount: streaks.observe(event) } : {};
+    if (event.type === "picked") streaks.observe(event);
     outcomes.push(await applyEvent(event, deps, ctx));
   }
   return outcomes;
+}
+
+/**
+ * Running per-user, per-topic count of card_shown events since that topic was
+ * last picked: one pass over the batch instead of slicing and rescanning it
+ * for every card_shown (backend-rest-17, which was O(n^2) copying). A
+ * card_shown's streak is the highest count among its topics; a pick resets
+ * the counts of the topics it carries.
+ */
+export class CardShownStreaks {
+  private readonly counts = new Map<string, Map<string, number>>();
+
+  /** Records a card_shown or picked event; returns a card_shown's streak (0 for anything else). */
+  observe(event: PersistedEvent): number {
+    let perTopic = this.counts.get(event.user_id);
+    if (!perTopic) {
+      perTopic = new Map();
+      this.counts.set(event.user_id, perTopic);
+    }
+    if (event.type === "picked") {
+      for (const t of event.payload.topics) perTopic.delete(t);
+      return 0;
+    }
+    if (event.type !== "card_shown") return 0;
+    let streak = 0;
+    for (const t of new Set(event.payload.topics)) {
+      const n = (perTopic.get(t) ?? 0) + 1;
+      perTopic.set(t, n);
+      streak = Math.max(streak, n);
+    }
+    return streak;
+  }
 }

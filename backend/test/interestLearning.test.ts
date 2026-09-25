@@ -8,6 +8,7 @@ import {
   buildKnownNodeMap,
   applyEvent,
   applyEventBatch,
+  CardShownStreaks,
   IGNORED_CARD_SHOWN_THRESHOLD,
   STRETCH_NEGATIVE_DAMPING,
   type ApplyDeps
@@ -305,5 +306,49 @@ describe("applyEvent — orchestration against in-memory repositories", () => {
     expect(outcomes.slice(0, 4).every((o) => o.applied.length === 0)).toBe(true);
     expect(outcomes[4]!.applied).toHaveLength(1);
     expect(outcomes[4]!.applied[0]).toMatchObject({ reason: "card_ignored_repeatedly" });
+  });
+});
+
+/* Round-3 audit, lane L6 (backend-rest-17): "card shown, never picked x5 ->
+   gentle -" fires once per five showings, not on every showing after the
+   fifth; the streak is a running per-topic count, not an O(n^2) rescan. */
+describe("card_ignored_repeatedly fires once per threshold (round 3)", () => {
+  const shown = (n: number, topics = [FUSION]) =>
+    evt({ type: "card_shown", payload: { episode_slug: `e${n}`, topics, archetype: "deep-learn" } });
+  const newDeps = (): ApplyDeps => ({
+    taxonomyRepo: new InMemoryTaxonomyRepository(),
+    auditRepo: new InMemoryInterestAuditRepository(),
+    knownNodes: new Map([
+      [FUSION, { label: "Fusion" }],
+      [POLITICS, { label: "Politics" }]
+    ])
+  });
+
+  it("a streak of 6..9 is silent; 10 fires again", () => {
+    for (const n of [6, 7, 8, 9]) expect(deriveInterestDeltas(shown(1), { ignoredCardShownCount: n })).toEqual([]);
+    expect(deriveInterestDeltas(shown(1), { ignoredCardShownCount: 2 * IGNORED_CARD_SHOWN_THRESHOLD })).toHaveLength(1);
+  });
+
+  it("twelve showings in one batch penalise twice (the 5th and the 10th), not eight times", async () => {
+    const outcomes = await applyEventBatch(Array.from({ length: 12 }, (_, i) => shown(i)), newDeps());
+    const fired = outcomes.map((o, i) => (o.applied.length > 0 ? i : -1)).filter((i) => i >= 0);
+    expect(fired).toEqual([4, 9]);
+  });
+
+  it("a pick of the topic resets its streak; another topic's pick does not", async () => {
+    const pick = (topics: string[]) => evt({ type: "picked", payload: { episode_slug: "p", topics, archetype: "deep-learn" } });
+    const events = [shown(1), shown(2), shown(3), pick([POLITICS]), shown(4), pick([FUSION]), shown(5), shown(6), shown(7), shown(8), shown(9)];
+    const outcomes = await applyEventBatch(events, newDeps());
+    const firedSlugs = outcomes.flatMap((o, i) => (o.applied.some((a) => a.reason === "card_ignored_repeatedly") ? [events[i]!.payload] : []));
+    expect(firedSlugs).toEqual([{ episode_slug: "e9", topics: [FUSION], archetype: "deep-learn" }]);
+  });
+
+  it("CardShownStreaks counts per topic and reports the highest", () => {
+    const s = new CardShownStreaks();
+    expect(s.observe(shown(1, [FUSION]))).toBe(1);
+    expect(s.observe(shown(2, [POLITICS]))).toBe(1);
+    expect(s.observe(shown(3, [FUSION, POLITICS]))).toBe(2);
+    expect(s.observe(evt({ type: "picked", payload: { episode_slug: "p", topics: [FUSION], archetype: "comfort" } }))).toBe(0);
+    expect(s.observe(shown(4, [FUSION]))).toBe(1);
   });
 });

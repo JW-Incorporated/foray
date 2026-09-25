@@ -685,23 +685,36 @@ test("with no durable store published, the control says so instead of claiming s
 
 /* ================= 3. the server rows ================= */
 
-test("the table list is the RLS migration's list of per-user tables", () => {
-  /* Pinned against the migration so a new per-user table cannot appear there
-     without this failing — the deletion has to grow with the schema, and nothing
-     else in CI would notice. */
-  const sql = read("backend/migrations/supabase/0001_auth_and_rls.sql");
-  const block = /foreach t in array array\[([\s\S]*?)\]/.exec(sql);
-  assert.ok(block, "the RLS migration's table array could not be parsed");
-  const inSql = [...block[1].matchAll(/'([a-z_]+)'/g)].map((m) => m[1]).sort();
+test("the table list is every table with a user_id column, across ALL migrations", () => {
+  /* Enumerated from the schema itself, not from one migration's list (round-3
+     audit, data-integrity-10): 0001's RLS array had no `learning_cursor`, so a
+     per-user row survived every "successful" deletion and nothing noticed. Every
+     `create table` in backend/migrations/*.sql with a `user_id` column must be
+     in app.js's SB_USER_TABLES, or in SERVICE_ROLE_ONLY below with a reason. */
+  const dir = path.join(ROOT, "backend", "migrations");
+  const withUserId = [];
+  for (const f of fs.readdirSync(dir).filter((n) => n.endsWith(".sql")).sort()) {
+    const sql = read(`backend/migrations/${f}`).replace(/--[^\n]*/g, "");
+    for (const m of sql.matchAll(/create table if not exists\s+([a-z_]+)\s*\(([\s\S]*?)\n\);/g)) {
+      if (/^\s*user_id\s/m.test(m[2])) withUserId.push(m[1]);
+    }
+  }
+  /* Offline-pipeline tables: their user_id is the pipeline operator's, never a
+     listener's auth.uid(), no client path writes them, and supabase/0003 makes
+     them deny-all. Deleting from them with a listener's token would be a 204
+     that deleted nothing, i.e. a false success. */
+  const SERVICE_ROLE_ONLY = ["cost_events", "episode_enrichment", "episodes", "shows"];
   const inApp = [...codeOnly(APP_SRC).matchAll(/const SB_USER_TABLES = \[([\s\S]*?)\];/g)]
-    .flatMap((m) => [...m[1].matchAll(/"([a-z_]+)"/g)].map((x) => x[1]))
-    .sort();
+    .flatMap((m) => [...m[1].matchAll(/"([a-z_]+)"/g)].map((x) => x[1]));
+  assert.ok(withUserId.includes("learning_cursor") && withUserId.includes("events"), "the schema scan found nothing");
   assert.deepStrictEqual(
-    inApp, inSql,
-    "app.js's SB_USER_TABLES and the RLS migration disagree about which tables " +
-      "hold per-user rows. A table in the migration and not in app.js is data a " +
+    [...inApp].sort(),
+    withUserId.filter((t) => !SERVICE_ROLE_ONLY.includes(t)).sort(),
+    "app.js's SB_USER_TABLES and the schema disagree about which tables hold " +
+      "per-user rows. A table in the schema and not in app.js is data a " +
       "deletion silently leaves behind."
   );
+  assert.strictEqual(inApp[inApp.length - 1], "app_users", "app_users goes last: everything else keys to it");
 });
 
 test("one authenticated DELETE per table, filtered to this account's own uid", async () => {
@@ -710,7 +723,7 @@ test("one authenticated DELETE per table, filtered to this account's own uid", a
   await ui.go.click();
 
   const calls = deletes();
-  assert.strictEqual(calls.length, 8, "every per-user table must be asked");
+  assert.strictEqual(calls.length, 9, "every per-user table must be asked");
   for (const c of calls) {
     assert.ok(c.url.startsWith(`${SB_URL}/rest/v1/`), c.url);
     assert.ok(c.url.includes("user_id=eq.uid-abc"), `unfiltered delete: ${c.url}`);
@@ -774,7 +787,7 @@ test("a 401 is a refusal, not a success", async () => {
   await arm();
   const result = await ctx.deleteMyData();
   assert.strictEqual(result.state, "remote-failed");
-  assert.strictEqual(result.remote.failed.length, 8);
+  assert.strictEqual(result.remote.failed.length, 9);
 });
 
 test("a 404 means the table is not in this project — no rows of ours, not a failure", async () => {
@@ -1001,7 +1014,7 @@ test("a second click while a deletion is in flight is refused", async () => {
   const second = await ctx.deleteMyData();
   await first;
   assert.strictEqual(second.state, "busy", "two purges and two DELETE sweeps must not race one token");
-  assert.strictEqual(deletes().length, 8, "exactly one sweep of the tables");
+  assert.strictEqual(deletes().length, 9, "exactly one sweep of the tables");
 });
 
 /* ================= 6. what the listener reads ================= */
@@ -1202,7 +1215,7 @@ test("a refresh response with no user object does not throw the deletion away", 
   const result = await ctx.deleteMyData();
   assert.strictEqual(result.ok, true, JSON.stringify(result));
   const dels = log.filter((e) => e.kind === "fetch" && e.method === "DELETE");
-  assert.strictEqual(dels.length, 8);
+  assert.strictEqual(dels.length, 9);
   assert.ok(dels.every((d) => d.url.includes("user_id=eq.uid-abc")), "the id we already held is the right one");
   assert.ok(dels.every((d) => d.headers.Authorization === "Bearer at-9"));
 });
@@ -1840,7 +1853,7 @@ test("VAULT: Delete my data uses the token from the device-only vault, then empt
   await arm();
   await ui.go.click();
   const calls = deletes();
-  assert.strictEqual(calls.length, 8, "the account in the vault was not reached");
+  assert.strictEqual(calls.length, 9, "the account in the vault was not reached");
   assert.strictEqual(calls[0].headers.Authorization, "Bearer at-1");
   assert.deepStrictEqual([...vault.data.keys()], [], "the token survived the deletion in the vault");
   assert.deepStrictEqual(cpKeys(), { local: [], idb: [] });

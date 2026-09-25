@@ -8,7 +8,7 @@ import { buildKnownNodeMap } from "../curation/interestLearning";
 import { PostgresEventStore } from "../curation/eventStore";
 import { PostgresLearningCursorStore } from "../curation/learningCursor";
 import { PostgresTaxonomyRepository, PostgresInterestAuditRepository } from "../curation/learningRepository";
-import { runLearningJobForUser } from "../curation/learningJob";
+import { runLearningJobForUsers, type RunInTransaction } from "../curation/learningJob";
 
 /**
  * `npm run learn-interests` — the interest-learning job's CLI entry point
@@ -75,21 +75,40 @@ async function main(): Promise<void> {
     const taxonomyRepo = new PostgresTaxonomyRepository(client);
     const auditRepo = new PostgresInterestAuditRepository(client);
 
-    for (const userId of users) {
-      const result = await runLearningJobForUser(userId, {
-        eventStore,
-        cursorStore,
-        applyDeps: { taxonomyRepo, auditRepo, knownNodes }
-      });
+    // One user's apply + cursor move is one transaction on the shared client.
+    const transaction: RunInTransaction = async (fn) => {
+      await client.query("begin");
+      try {
+        const out = await fn();
+        await client.query("commit");
+        return out;
+      } catch (err) {
+        await client.query("rollback").catch(() => undefined);
+        throw err;
+      }
+    };
 
+    const summary = await runLearningJobForUsers(users, {
+      eventStore,
+      cursorStore,
+      applyDeps: { taxonomyRepo, auditRepo, knownNodes },
+      transaction
+    });
+
+    for (const result of summary.results) {
       const appliedDurable = result.outcomes.flatMap((o) => o.applied).filter((a) => a.durable).length;
       const audited = result.outcomes.flatMap((o) => o.applied).filter((a) => !a.durable).length;
       const skipped = result.outcomes.flatMap((o) => o.skipped).length;
 
       console.log(
-        `  user ${userId}: ${result.eventsProcessed} event(s) processed, ${appliedDurable} durable weight update(s), ${audited} context-only audit row(s), ${skipped} skipped (unknown node)`
+        `  user ${result.userId}: ${result.eventsProcessed} event(s) processed, ${appliedDurable} durable weight update(s), ${audited} context-only audit row(s), ${skipped} skipped (unknown node), ${result.invalidEvents.length} malformed row(s) skipped`
       );
+      for (const bad of result.invalidEvents) console.warn(`    malformed event ${bad.id} (${bad.ts}): ${bad.reason}`);
     }
+    for (const failure of summary.failures) {
+      console.error(`  user ${failure.userId}: FAILED, rolled back: ${failure.error}`);
+    }
+    if (summary.failures.length > 0) process.exitCode = 1;
   } finally {
     await client.end();
   }
