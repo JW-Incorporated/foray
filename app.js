@@ -7784,7 +7784,7 @@ async function fetchShardRows(shardKey) {
 /** Maps one shard row (`{ id, t, a, i, u, img, n, c }`,
     `tools/shows/shard-build.mjs:toShardRow`'s shape) to the show record
     shape every other search source already produces — the same fields
-    `mapAppleShow` (`api/shows/appleShowSearch.ts`) and the catalogue
+    `mapAppleShow` (`api/_lib/appleShowSearch.ts`) and the catalogue
     endpoint answer with, so `mergeShowRows`/`showResultRow`/`showById` need
     no shard-specific branch anywhere else in this file. `show_id` is
     `pi:<id>` — a PodcastIndex row id, deliberately namespaced so it can
@@ -7863,7 +7863,7 @@ function showBreadthCacheKey(query) {
     non-letter/non-digit to one space, trim.
 
     MUST STAY CHARACTER FOR CHARACTER IDENTICAL to
-    `api/shows/appleShowSearch.ts:normaliseShowTitle`, and it is not left to
+    `api/_lib/appleShowSearch.ts:normaliseShowTitle`, and it is not left to
     discipline: `test/show-search-fallthrough.test.js` reads both files and
     compares the two expressions, the same way `test/show-search-ranking.test.js`
     pins the bucket table against `backend/src/catalog/searchBreadthShows.ts`.
@@ -7943,7 +7943,7 @@ function normaliseShowTitle(title) {
    Zero gain against three named losses is not a close call.
 
    MUST STAY CHARACTER FOR CHARACTER IDENTICAL to
-   `api/shows/appleShowSearch.ts:showTitleDedupStem`, pinned the same way
+   `api/_lib/appleShowSearch.ts:showTitleDedupStem`, pinned the same way
    `normaliseShowTitle` is — `test/show-search-fallthrough.test.js` reads both
    files and compares the expressions. */
 const SHOW_TITLE_SUBTITLE_SEPARATOR = /\s[–—]\s|\s-\s|:|\s\(|\s\[/u;

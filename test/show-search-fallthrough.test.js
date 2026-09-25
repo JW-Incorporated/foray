@@ -3,7 +3,7 @@
  *
  * TWO HALVES OF ONE CARD, and they share a card because they share one
  * endpoint change (`api/shows/search.ts`). This suite is the CLIENT side of
- * both; the server side is `api/test/shows-search-apple.test.mjs`.
+ * both; the server side is `api/_test/shows-search-apple.test.mjs`.
  *
  * (a) THE DIRECTORY PASS. S-06 shipped this as a LAST RESORT behind two gates:
  *     the client asked only when its own local pass found nothing, and the
@@ -589,7 +589,7 @@ test("an Apple directory result is rendered and cached like any other breadth ro
 /* ---------- S-06, the client audit's finding 1: the ORDER survives ---------- */
 
 const APPLE_THREE = ["Zebra Talks", "Morning Brief", "Acquired"].map((title, i) => ({
-  /* Exactly what `api/shows/appleShowSearch.ts`'s `mapAppleShow` stamps: a
+  /* Exactly what `api/_lib/appleShowSearch.ts`'s `mapAppleShow` stamps: a
      `tier: "breadth"` row with NO `chart_rank` — Apple's ranking is the array
      order and nothing else. */
   show_id: `90000${i}`,

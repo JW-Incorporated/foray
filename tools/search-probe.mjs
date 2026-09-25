@@ -367,7 +367,7 @@ export const PARITY_CASES = [
   { query: "sam harris", target: "Making Sense with Sam Harris" },
 ];
 
-/** The normalised-title rule, verbatim from `api/shows/appleShowSearch.ts`'s
+/** The normalised-title rule, verbatim from `api/_lib/appleShowSearch.ts`'s
     `normaliseShowTitle` and `app.js`'s copy of it, NFKD fold included (audit
     round 3, arch-drift-6: this copy had missed it, so a `Café` target or a
     compatibility-font result never matched). test/show-search-fallthrough.test.js

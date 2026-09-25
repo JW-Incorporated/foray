@@ -10,7 +10,7 @@
  * every request (module-load failure, before routing even runs).
  *
  * Zero imports, deliberately: this file must never grow a dependency that
- * would need to be added to `api/package.json`. `api/test/import-closure.test.mjs`
+ * would need to be added to `api/package.json`. `api/_test/import-closure.test.mjs`
  * pins the whole `api/**` import graph against that package's declared deps;
  * this constant exists so `conditionalGet.ts` can sit on the safe side of
  * that boundary without behavior changing for its non-`api/` callers, which

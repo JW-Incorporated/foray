@@ -2085,7 +2085,7 @@ function compareShowMatches(a, b) {
      `Acquired | Morning Brief | Zebra Talks`.
 
      A stable no-op rather than a `serverRank` field carried down from
-     `api/shows/appleShowSearch.ts`, because the endpoint's order IS the rank —
+     `api/_lib/appleShowSearch.ts`, because the endpoint's order IS the rank —
      a number restating the array index would have to be produced, plumbed and
      kept in step by every endpoint that ever feeds this comparator, and the
      first one that forgot would silently be back to A-Z with nothing to see.
