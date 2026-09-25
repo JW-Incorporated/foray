@@ -514,3 +514,45 @@ test("app-2-3: the deferred playlist-CTA scan is skipped for a section no longer
   assert.strictEqual(scans, 0, "no scan for a section nobody can see");
   assert.deepStrictEqual(reported, [null], "and the diagnostics entry is still closed");
 });
+
+/* ---------- app-3-1: Play after closing the bar resumes where the listener was  */
+
+test("app-3-1: play, advance, close the bar, press Play: the Foray resumes from the stored position, not the render-time one", async () => {
+  /* The resume point was read once at render (state.forayResume and the
+     bindForayTransport closure). After playing on to 30:00 and closing the mini
+     bar, the cold page read 0:00 (or the old 10:00), Play restarted there, and
+     the player's next save overwrote the real position.
+     MUTATIONS: have startOrResume read the bind-time `resume` again — red; drop
+     the live->cold refreshForayResume() — red. */
+  const m = loadApp();
+  for (const sel of ["#fy-play", "#fy-next", "#fy-prev", "#fy-back", "#fy-fwd", "#fy-now", "#fy-strip", "#fy-list"]) m.els[sel] = makeEl("button");
+  const at = makeEl("span");
+  m.els["#fy-resume .fy-resume-at"] = at;
+  const r = { id: "f1", title: "A Foray", playable: [{ id: "s1" }, { id: "s2" }, { id: "s3" }], totalSec: 3600, foray: {} };
+  let stored = { elapsedSec: 600, index: 0, label: "50 min left" }; // "Jump back in at 10:00" at render
+  const starts = [];
+  const player = {
+    forayResume: () => stored,
+    fmtClock: (sec) => `${Math.floor(sec / 60)}:${String(Math.floor(sec % 60)).padStart(2, "0")}`,
+    playForay: async (_r, opts) => { starts.push(opts); return true; },
+    forayToggle: async () => {},
+    watchForay: () => {},
+  };
+  m.ctx.ForayPlayer = player;
+  m.ctx.logEvent = () => {};
+  m.run(`state.foray = ${JSON.stringify(r)}; state.forayResume = ${JSON.stringify(stored)};`);
+  m.ctx.bindForayTransport(m.run("state.foray"), player, stored);
+
+  /* Play on to 30:00: live ticks. The player saves as it goes. */
+  m.ctx.paintForay({ forayId: "f1", index: 1, playing: true, running: true, elapsedSec: 1800 });
+  stored = { elapsedSec: 1800, index: 1, label: "30 min left" };
+  /* Close the mini bar: the player sends index -1. */
+  m.ctx.paintForay({ forayId: "f1", index: -1, playing: false, running: false, elapsedSec: 0 });
+  assert.strictEqual(m.run("state.forayResume.elapsedSec"), 1800, "the cold page holds the stored point");
+  assert.strictEqual(at.textContent, "Jump back in at 30:00", "and the banner says so");
+
+  m.els["#fy-play"].dispatch("click");
+  await flush();
+  assert.strictEqual(starts.length, 1);
+  assert.strictEqual(starts[0].startElapsedSec, 1800, "Play resumes where the listener stopped");
+});

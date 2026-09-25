@@ -12035,6 +12035,7 @@ async function renderForay(id) {
   const played = point && point.finished ? point : null;
   const resume = played ? null : point;
   state.forayResume = resume;
+  forayPaintedLive = null;
   /* The document changed under a stored position. Nothing user-facing — the
      resume already degraded correctly — but it is the one signal that says how
      often real listeners hit it, and #40 is explicit that a stale-data event must
@@ -12790,11 +12791,16 @@ function bindForayTransport(r, player, resume = null) {
   /* The main button, pressed cold. With a stored position that means RESUME —
      the whole point of the feature — and an explicit index (a row, the strip)
      always wins, because the listener just named a segment. */
-  const startOrResume = () => resume ? startAt(resume.elapsedSec) : start(0);
+  /* FROM `state.forayResume`, NOT THE BIND-TIME `resume` (audit round 3,
+     app-3-1). The closure was the point captured when the page rendered, so
+     after play -> advance -> close the bar, Play restarted from that old point
+     (or 0) and the player's next save overwrote the real one. paintForay
+     re-reads the stored point when this Foray goes from live to cold. */
+  const startOrResume = () => state.forayResume ? startAt(state.forayResume.elapsedSec) : start(0);
 
   $("#fy-restart")?.addEventListener("click", async () => {
     if (typeof player.clearForayResume === "function") player.clearForayResume(r.id);
-    logEvent("foray_restart", { foray_id: r.id, from_sec: Math.round(resume?.elapsedSec || 0) });
+    logEvent("foray_restart", { foray_id: r.id, from_sec: Math.round(state.forayResume?.elapsedSec || resume?.elapsedSec || 0) });
     resume = null;
     state.forayResume = null;
     $("#fy-resume")?.remove();
@@ -12843,7 +12849,7 @@ function bindForayTransport(r, player, resume = null) {
     // small lie that makes a metric useless six months later.
     logEvent("foray_play", {
       foray_id: r.id, segments: r.playable.length,
-      resumed_from_sec: resume ? Math.round(resume.elapsedSec) : null,
+      resumed_from_sec: state.forayResume ? Math.round(state.forayResume.elapsedSec) : null,
     });
     await startOrResume();
   });
@@ -13024,6 +13030,29 @@ function openRateMenu(player, onChange) {
 /** The only thing that changes 4x a second. Deliberately not a re-render: the
     running order is 32 rows and rebuilding it would fight the scroll position
     and drop focus. */
+/** Which Foray the page last painted LIVE (app-3-1), so a cold tick can tell
+    "just stopped" from "never started". Reset by every renderForay. */
+let forayPaintedLive = null;
+
+/** Re-read this Foray's stored resume point into `state.forayResume` and repaint
+    the banner's words from it (app-3-1). A finished Foray has no resume point. */
+function refreshForayResume() {
+  const r = state.foray;
+  const player = window.ForayPlayer;
+  if (!r || !player || typeof player.forayResume !== "function") return;
+  let point = null;
+  try {
+    point = player.forayResume(r.id, { totalSec: r.totalSec, itemCount: (r.playable || []).length, resolved: r, includeFinished: true });
+  } catch (_) { point = null; }
+  state.forayResume = point && !point.finished ? point : null;
+  const at = $("#fy-resume .fy-resume-at");
+  const left = $("#fy-resume .fy-resume-left");
+  if (state.forayResume && typeof player.fmtClock === "function") {
+    if (at) at.textContent = `Jump back in at ${player.fmtClock(state.forayResume.elapsedSec)}`;
+    if (left && state.forayResume.label) left.textContent = state.forayResume.label;
+  }
+}
+
 function paintForay(s) {
   if (!state.foray) return;
   /* SOMEBODY ELSE'S FORAY IS NOT THIS PAGE'S NEWS. `watchForay` points the live
@@ -13051,6 +13080,15 @@ function paintForay(s) {
   const failed = Boolean(s.error) && !s.playing && !s.loading && !s.gap;
   const live = s.index >= 0 && !failed;
   state.forayPlaying = live ? state.foray.id : null;
+  /* LIVE -> COLD RE-READS THE STORED POINT (audit round 3, app-3-1). The resume
+     point was read once, at render; after the listener played on and closed
+     the bar, the cold page (clock, banner, and the Play the next press runs)
+     fell back to that stale point, or to 0. */
+  if (live) forayPaintedLive = state.foray.id;
+  else if (forayPaintedLive === state.foray.id) {
+    forayPaintedLive = null;
+    refreshForayResume();
+  }
 
   /* Nothing loaded — cold, or the mini bar was just closed. Fall back to the
      stored resume point rather than repainting the page as untouched: the
