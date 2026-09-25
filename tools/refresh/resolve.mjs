@@ -18,11 +18,15 @@
    MATCHING (audit round 3, data-tools-2). An episode is matched to an iTunes
    track by something that cannot collide, in this order:
      1. the RSS guid against iTunes `episodeGuid`;
-     2. the enclosure URL against iTunes `episodeUrl` (scheme, query and
-        fragment ignored);
-     3. the exact normalised title.
+     2. the enclosure URL against iTunes `episodeUrl` (scheme, fragment and
+        known tracking parameters ignored, the rest of the query kept -- some
+        hosts name the episode only there, `download.php?id=N`), and only when
+        no other track in the lookup shares that key;
+     3. the exact normalised title, on a release date within one day of the
+        episode's when both dates are known.
    The substring and word-overlap fallbacks survive only with a release date
-   within one day of the episode's. Without that guard "How to Build a
+   within one day of the episode's. A show that reuses a title ("Mailbag",
+   "Best Of") would otherwise match last week's track (round-3 review, L8). Without that guard "How to Build a
    Startup, Part 3" matched Part 2 (every long word overlaps) and "Episode 12"
    matched "Episode 120" (substring), so a new episode was dropped as a
    `dup trackId`, or published with another episode's Apple id and audio.
@@ -73,13 +77,24 @@ export function matchKey(s) {
     .trim();
 }
 
-/** An audio URL reduced to what identifies the file: host (lowercased) and
-    path. Scheme, query (tracking tokens) and fragment are ignored. */
+/** Query parameters that track the listener or the referrer rather than name
+    the file. Dropped from the URL key; every other parameter is kept. */
+const TRACKING_PARAM = /^(utm(_.*)?|aid|feed|updated|source|from|ref|referrer|awcollectionid|awepisodeid|awgenre|awregion|awparams|fbclid|gclid|_ga)$/i;
+
+/** An audio URL reduced to what identifies the file: host (lowercased), path,
+    and the query minus tracking parameters (sorted). Scheme and fragment are
+    ignored. The query is NOT ignored wholesale: a host that serves every
+    episode from one path (`download.php?id=N`) names the episode only there,
+    and dropping it gave every episode of that show the same key (round-3
+    review, L8). */
 export function urlKey(u) {
   if (!u) return null;
   try {
     const x = new URL(String(u).trim());
-    return `${x.host.toLowerCase()}${x.pathname}`;
+    const kept = [...x.searchParams].filter(([k]) => !TRACKING_PARAM.test(k))
+      .sort(([a, av], [b, bv]) => (a < b ? -1 : a > b ? 1 : av < bv ? -1 : av > bv ? 1 : 0));
+    const q = kept.length ? `?${new URLSearchParams(kept).toString()}` : "";
+    return `${x.host.toLowerCase()}${x.pathname}${q}`;
   } catch (_) {
     return null;
   }
@@ -92,6 +107,13 @@ function daysApart(isoA, isoB) {
   return Math.abs(a - b) / 86_400_000;
 }
 
+/** Both dates known and more than the fuzzy window apart. An unknown date on
+    either side is not a disagreement. */
+function datesDisagree(isoA, isoB) {
+  const d = daysApart(isoA, isoB);
+  return Number.isFinite(d) && d > FUZZY_DATE_WINDOW_DAYS;
+}
+
 /** Picks the iTunes track for one pending episode, or null. Returns
     `{ track, by }` so the digest can say how each match was made. */
 export function matchTrack(eps, ep) {
@@ -102,12 +124,15 @@ export function matchTrack(eps, ep) {
   }
   const uk = urlKey(ep.audio_url);
   if (uk) {
-    const hit = eps.find((e) => urlKey(e.episodeUrl) === uk);
-    if (hit) return { track: hit, by: "url" };
+    // A key two tracks share names a path, not an episode: no URL match.
+    const hits = eps.filter((e) => urlKey(e.episodeUrl) === uk);
+    if (hits.length === 1) return { track: hits[0], by: "url" };
   }
   const nt = matchKey(ep.title);
   if (!nt) return null;
-  const exact = eps.find((e) => matchKey(e.trackName) === nt);
+  // Exact title, on the same release date when both dates are known: a reused
+  // title ("Mailbag") on another day is another episode.
+  const exact = eps.find((e) => matchKey(e.trackName) === nt && !datesDisagree(e.releaseDate, ep.release_date));
   if (exact) return { track: exact, by: "title" };
 
   // Fuzzy only on the same release date (±1 day): a sequel with the same
@@ -221,7 +246,15 @@ export async function resolveEpisodes({ pending, discover, session, taxonomy, lo
     const track = m.track;
     const trackId = track.trackId;
     if (existingTrackIds.has(trackId) || seenTrackThisRun.has(trackId)) {
-      dropped.push({ show: ep.show, title: ep.title, reason: `dup trackId ${trackId}` });
+      // A guid or URL match on a known track is a true duplicate. A match made
+      // by TITLE is only a guess, and a same-titled older track is the likely
+      // cause: carry it (iTunes may not have indexed the new one yet) rather
+      // than drop it for good -- scan.mjs has already marked the guid seen.
+      if (m.by === "guid" || m.by === "url") {
+        dropped.push({ show: ep.show, title: ep.title, reason: `dup trackId ${trackId}` });
+      } else {
+        carry(ep, `title matched known trackId ${trackId}`);
+      }
       continue;
     }
     const validTopics = (ep.topics || []).filter((t) => nodeIds.has(t));

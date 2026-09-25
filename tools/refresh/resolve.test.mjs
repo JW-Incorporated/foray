@@ -62,15 +62,43 @@ test("guid, then enclosure URL, are matched before any title", () => {
   assert.deepEqual(matchTrack([rerun, real], ep({ title: "Best Of" })), { track: real, by: "guid" });
   const byUrl = track({ trackId: 7, trackName: "Different Title", episodeGuid: "zzz", episodeUrl: "http://CDN.example.com/new.mp3?utm=itunes" });
   assert.deepEqual(matchTrack([rerun, byUrl], ep({ title: "Best Of", guid: "nope" })), { track: byUrl, by: "url" });
-  assert.equal(urlKey("https://cdn.example.com/a.mp3?x=1#t"), "cdn.example.com/a.mp3");
+  assert.equal(urlKey("https://cdn.example.com/a.mp3?utm_source=x&aid=2#t"), "cdn.example.com/a.mp3");
 });
 
-test("an exact title match does not need a date; an empty or non-Latin title only matches itself", () => {
-  assert.equal(matchTrack([track({ trackName: "Some Episode!", episodeGuid: "x", episodeUrl: null })], ep({ guid: "y", audio_url: null }))?.by, "title");
+/* Round-3 review (L8): urlKey dropped the whole query, so every episode of a
+   host that names the file only there (download.php?id=N) had one key and
+   matched the first track in the lookup.
+   MUTATION: return `${host}${pathname}` again -- Ep 2 matches track 1 by url. */
+test("an audio URL that names the episode in its query matches only that episode", () => {
+  const one = track({ trackId: 1, trackName: "Totally different", episodeGuid: "g1", episodeUrl: "https://host.example/download.php?id=1", releaseDate: "2026-08-01T00:00:00Z" });
+  assert.equal(matchTrack([one], ep({ title: "Ep 2", guid: "g2", audio_url: "https://host.example/download.php?id=2" })), null);
+  assert.equal(matchTrack([one], ep({ title: "Ep 1", guid: "g9", audio_url: "https://host.example/download.php?utm_medium=rss&id=1" }))?.by, "url");
+  assert.equal(urlKey("https://h/a.mp3?b=2&a=1"), urlKey("https://h/a.mp3?a=1&b=2"), "parameter order does not matter");
+});
+
+/* MUTATION: accept the first URL hit (`eps.find`) -- the ambiguous key matches. */
+test("a URL key two tracks share is not a match", () => {
+  const a = track({ trackId: 1, trackName: "A", episodeGuid: "ga", episodeUrl: "https://host.example/stream.mp3", releaseDate: "2026-08-01T00:00:00Z" });
+  const b = track({ trackId: 2, trackName: "B", episodeGuid: "gb", episodeUrl: "https://host.example/stream.mp3", releaseDate: "2026-08-02T00:00:00Z" });
+  assert.equal(matchTrack([a, b], ep({ title: "C", guid: "gc", audio_url: "https://host.example/stream.mp3" })), null);
+});
+
+test("an exact title match needs no date when one is unknown; an empty or non-Latin title only matches itself", () => {
+  assert.equal(matchTrack([track({ trackName: "Some Episode!", episodeGuid: "x", episodeUrl: null, releaseDate: undefined })], ep({ guid: "y", audio_url: null }))?.by, "title");
+  assert.equal(matchTrack([track({ trackName: "Some Episode!", episodeGuid: "x", episodeUrl: null, releaseDate: "2026-09-10T08:00:00Z" })], ep({ guid: "y", audio_url: null }))?.by, "title");
   assert.equal(matchKey("Radio: Свобода"), "radio свобода");
   const jp = track({ trackId: 3, trackName: "東京の話", episodeGuid: "x", episodeUrl: null });
   assert.equal(matchTrack([jp], ep({ title: "大阪の話", guid: "y", audio_url: null })), null, "two different CJK titles do not both normalise to ''");
   assert.equal(matchTrack([track({ trackName: "!!!" })], ep({ title: "???", guid: "y", audio_url: null })), null);
+});
+
+/* Round-3 review (L8): the exact-title step had no date guard, so a reused
+   title matched last week's track.
+   MUTATION: drop the datesDisagree check from the exact step -- the new
+   Mailbag matches the old one. */
+test("a reused title on another day is not an exact-title match", () => {
+  const old = track({ trackId: 77, trackName: "Mailbag", releaseDate: "2026-09-03T00:00:00Z", episodeGuid: "g-old", episodeUrl: "https://cdn.example.com/old.mp3" });
+  assert.equal(matchTrack([old], ep({ title: "Mailbag", release_date: "2026-09-10" })), null);
 });
 
 /* ------------------------------------------------------- the resolve pass */
@@ -107,6 +135,22 @@ test("an episode iTunes has not indexed yet is carried, then dropped after MAX_R
   assert.equal(last.retry.length, 0);
   assert.equal(last.dropped.length, 1);
   assert.match(last.dropped[0].reason, /no trackId match; gave up after 3 night/);
+});
+
+/* Round-3 review (L8): a match made by title that lands on a track already in
+   the pool was dropped for good as 'dup trackId'. It is carried instead; a
+   guid match on a known track is still a true duplicate.
+   MUTATION: push every known-trackId hit to `dropped` again -- the retry list
+   is empty and the episode is lost. */
+test("a title match on a known trackId is carried, a guid match on one is dropped", async () => {
+  const lookup = async () => ({ ok: true, eps: [track({ trackId: 999, trackName: "Mailbag", releaseDate: "2026-09-10T00:00:00Z", episodeGuid: "g-old", episodeUrl: "https://cdn.example.com/old.mp3" })] });
+  const byTitle = await resolveEpisodes({ ...pool(), pending: { episodes: [ep({ title: "Mailbag" })] }, lookup });
+  assert.deepEqual(byTitle.dropped, []);
+  assert.equal(byTitle.retry.length, 1);
+  assert.match(byTitle.retry[0].reason, /title matched known trackId 999/);
+  const byGuid = await resolveEpisodes({ ...pool(), pending: { episodes: [ep({ title: "Mailbag", guid: "g-old" })] }, lookup });
+  assert.equal(byGuid.retry.length, 0);
+  assert.match(byGuid.dropped[0].reason, /^dup trackId 999$/);
 });
 
 test("lookupEpisodes returns ok:false after three failures instead of an empty list", async () => {
