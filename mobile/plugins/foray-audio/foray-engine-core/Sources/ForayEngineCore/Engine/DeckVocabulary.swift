@@ -133,11 +133,27 @@ public struct EngineNow: Equatable, Sendable {
     /// `cold-play` rows, so a Copy after a drive shows how close each silent
     /// span came to the suspension it was covering (plan §4.4).
     public var bgRemainingMs: Double?
+    /// The synthesiser's own word on whether it is speaking (NE-31s), read by
+    /// the host at the moment the input is handled, as the deck's reading is:
+    /// what `foray-tts.js`'s `state()` answers the JS manager.
+    public var narrator: NarratorReading
 
-    public init(wallMs: Double, monoMs: Double, deck: DeckReading = .idle, bgRemainingMs: Double? = nil) {
+    public init(wallMs: Double, monoMs: Double, deck: DeckReading = .idle, bgRemainingMs: Double? = nil,
+                narrator: NarratorReading = .unknown) {
         self.wallMs = wallMs
         self.monoMs = monoMs
         self.deck = deck
         self.bgRemainingMs = bgRemainingMs
+        self.narrator = narrator
     }
+}
+
+/// `speaking | paused | idle` from whoever is actually speaking, or `unknown`
+/// when nothing can say (a bridge with no `state()`): an interruption is then
+/// taken at its word (queue-manager.js `_reconcileNarrationInterrupted`).
+public enum NarratorReading: String, Equatable, Sendable {
+    case unknown
+    case speaking
+    case paused
+    case idle
 }

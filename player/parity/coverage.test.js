@@ -260,7 +260,7 @@ test("NE-29j/NE-29s: foray-progress and media-session owe nothing, the Foray fam
 });
 
 /** NE-31j's manager-foray files: the narration overlay, the jingle's clock
-    and audition, owed to NE-31s rather than NE-30s. */
+    and audition, ported by NE-31s rather than NE-30s. */
 const NE31J_NARRATION_FILES = Object.freeze(["narration.json", "jingle.json", "audition.json"].map((f) => `player/parity/fixtures/manager-foray/${f}`));
 
 test("NE-30j/NE-30s: html-audio-backend and foray-playback owe nothing, the tape/deck/prepare families are burned down by NE-30s leaving only the pair's decisions owed to NE-32, and prepare is authored with its n.* tokens", () => {
@@ -283,7 +283,7 @@ test("NE-30j/NE-30s: html-audio-backend and foray-playback owe nothing, the tape
   const pairFile = "player/parity/fixtures/deck/deck-pair.json";
   const owedTo = (c, fam, file) => (fam === "deck" && file === pairFile ? "NE-32" : undefined);
   for (const fam of ["manager-foray", "deck", "prepare"]) {
-    // NE-31j's narration files are owed to NE-31s (its own test below).
+    // NE-31j's narration files are NE-31s's (its own test below).
     const files = FIXTURES.filter((f) => f.family === fam && !NE31J_NARRATION_FILES.includes(f.file));
     assert.ok(files.length > 0, `${fam} is recorded`);
     assert.ok(DATA.capabilities.foray.includes(fam), `${fam} is charged to the foray capability`);
@@ -304,7 +304,7 @@ test("NE-30j/NE-30s: html-audio-backend and foray-playback owe nothing, the tape
   for (const f of data) for (const c of f.doc.cases) assert.equal(c.authored, true, `${c.id} must be authored at the rule`);
 });
 
-test("NE-31j: tts-bridge owes nothing, nothing is owed to NE-31j, the narration families are owed to NE-31s and speech-rate to NE-33, the card's spec cases are authored, and every spoken line is 1x", () => {
+test("NE-31j/NE-31s: tts-bridge owes nothing, nothing is owed to NE-31j, the narration families are burned down by NE-31s and speech-rate is owed to NE-33, the card's spec cases are authored, and every spoken line is 1x", () => {
   /* NE-31j's acceptance: "the families pass in JS. tts-bridge has zero
      unported entries." MUTATION: put a tts-bridge test back in unported.json ->
      red; re-tag a speech-rate id to NE-31s in swift-pending.json -> red;
@@ -326,19 +326,20 @@ test("NE-31j: tts-bridge owes nothing, nothing is owed to NE-31j, the narration 
   assert.ok(files.some((f) => f.family === "speech-rate"), "speech-rate is recorded");
   assert.ok(DATA.capabilities.foray.includes("speech-rate"), "speech-rate is charged to the foray capability");
   const ids = new Map(files.flatMap((f) => f.doc.cases.map((c) => [c.id, c])));
-  /* speech-rate has no Swift runner until NE-33. A manager-foray case the
-     NE-30s EngineCore already passes (a rendered bridge is an ordinary item)
-     is not pending — the Swift runner refuses a stale pending entry — and
-     every other one is owed to NE-31s. */
-  let owed31s = 0;
+  /* speech-rate has no Swift runner until NE-33. NE-31s's acceptance: "the
+     narration and interlude families pass on both sides with zero pending",
+     so no manager-foray narration, jingle or audition id is pending (the
+     Swift runner refuses a stale entry, so each one really runs). MUTATION:
+     put one of them back in swift-pending.json -> red. */
   for (const [id] of ids) {
     if (id.startsWith("speech-rate/")) assert.equal(DATA.pending[id], "NE-33", `${id} must be owed to NE-33 until SpeechRules burns it down`);
-    else {
-      assert.ok([undefined, "NE-31s"].includes(DATA.pending[id]), `${id} is owed to ${DATA.pending[id]}, not NE-31s`);
-      if (DATA.pending[id] === "NE-31s") owed31s++;
-    }
+    else assert.equal(DATA.pending[id], undefined, `${id} is owed to ${DATA.pending[id]}; NE-31s ported the narration overlay`);
   }
-  assert.ok(owed31s >= 40, `the narration overlay is owed to NE-31s (${owed31s} ids)`);
+  for (const [id, card] of Object.entries(DATA.pending)) assert.notEqual(card, "NE-31s", `${id} is still owed to NE-31s`);
+  for (const [stem, names] of Object.entries(DATA.unported)) {
+    if (stem.startsWith("//")) continue;
+    for (const [name, v] of Object.entries(names)) assert.notEqual(v.card, "NE-31s", `${stem} :: ${name} is still owed to NE-31s`);
+  }
   const SPEC = [
     "manager-foray/each-utterance-finishes-at-most-once", "manager-foray/a-pause-holds-the-utterance",
     "manager-foray/stop-never-advances", "manager-foray/stop-during-a-bridge-never-advances",
@@ -538,13 +539,13 @@ test("every swift-pending id names a recorded case and is tagged with a card", (
    manager-foray, and html-audio-backend's remainder into deck (the pair's
    decisions and the single deck's slices), prepare (the handover's audible
    seam) and the manager families (its integration tests). What queue-manager
-   still owes is NE-39j's M3 remainder (and one narration rule NE-31s maps to
-   an XCTest); html-audio-backend owes nothing. NE-31j recorded the narration
+   still owes is NE-39j's M3 remainder (the one narration rule no scenario can
+   reach, a deadline mid-transition, NE-31s mapped to an XCTest);
+   html-audio-backend owes nothing. NE-31j recorded the narration
    half: manager-foray (the overlay, the jingle's clock) and speech-rate (what
    reaches the synthesiser). */
 const MANAGER_DECK_OWED = Object.freeze({
   "queue-manager": { fixtured: ["manager-episode", "manager-foray", "speech-rate"], mustOwe: true, owed: [
-    { card: "NE-31s", family: "manager-foray" },
     { card: "NE-39j", family: "manager-remainder" },
   ] },
   "html-audio-backend": {

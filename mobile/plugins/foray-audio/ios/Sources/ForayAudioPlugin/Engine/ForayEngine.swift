@@ -490,6 +490,27 @@ final class ForayEngine {
             seams.output.writeRestore(record)
         case let .speak(text, voiceId):
             seams.speaker.speak(text: text, voiceId: voiceId)
+        case let .narration(command):
+            // The narrating overlay's synthesiser is NE-33's SpeechNarrator.
+            // Until it lands this host has none: a line it is asked to speak is
+            // REFUSED, after this turn (the inbox), which the core steps over
+            // for a bridge and reports for a line the listener asked for, so
+            // nothing is ever left waiting on a voice that is not there. The
+            // core asks only with the Foray tape on (off until NE-37).
+            if case let .speak(seq, _, _, _) = command {
+                handle(.narrator(.failed(seq: seq, reason: "no-narrator")))
+            }
+        case let .interlude(command):
+            // The jingle player is NE-34's InterludePlayer; the core asks only
+            // when `interludeAvailable` is on. A start this host cannot honour
+            // is reported the way a refused `start()` is: an immediate end.
+            if command == .start { handle(.interlude(.ended(reason: "refused"))) }
+        case .silenceStart, .silenceStop:
+            // NE-34's silence node, behind `silenceNodeEnabled` (off).
+            break
+        case .narrationPulse:
+            // A spoken line's clock moved with no deck event to say so.
+            surfaceMoved = true
         case let .emit(event):
             seams.output.emit(event)
             onEmit?(event)
