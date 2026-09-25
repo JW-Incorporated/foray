@@ -2232,7 +2232,7 @@ const BACKEND_FLOORS = {
   /* Generation pipeline §4.1's safety-first module: forbidden-topics
      checker, unit-tested and committed rather than a system prompt, per
      the doc's own explicit requirement. */
-  "test/safetyCheck.test.ts": 12, // round-3 audit (L5-generation): gen-9 today's rejection of the four documentary prompts pinned pending founder Q4 (their must-pass cases are skipped, not counted); 11 -> 12
+  "test/safetyCheck.test.ts": 13, // round-3 completeness sweep: gen-9 founder Q4 "loosen" applied — the pin of today's rejection is gone; two table-driven blocks (16 framings that must pass, 19 harmful requests that must be refused, 35 runtime cases) count 2 here; 12 -> 13 // round-3 audit (L5-generation): gen-9 today's rejection of the four documentary prompts pinned pending founder Q4 (their must-pass cases are skipped, not counted); 11 -> 12
   /* Generation pipeline §4.1 end to end: safety, then clarity, then intent,
      in that order, with no retry loop on rejection and never more than one
      clarify round. */
