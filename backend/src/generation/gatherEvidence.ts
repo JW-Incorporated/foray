@@ -69,9 +69,10 @@ export const EVIDENCE_TAPE_WINDOW_SEC = 90;
  * few enough that the claim-selection prompt stays short. */
 export const EVIDENCE_MAX_PRINT_PASSAGES = 3;
 export const EVIDENCE_MAX_PASSAGE_CHARS = 1500;
-/** The tape window's own cap. A 180-second window of speech is ~450
- * words; this bounds the pathological case (a densely-cued episode)
- * without truncating a normal window at all. */
+/** The tape window's own cap. Speech runs ~15 chars/s, so 3,000 chars is
+ * ~190 s: less than a normal padded window since clips became 60-1,800 s
+ * (F-94/Q-01). `cueWindowText` therefore keeps the clip whole and shrinks
+ * the padding to fit (gen-2); only a clip over the cap by itself is cut. */
 export const EVIDENCE_MAX_TAPE_CHARS = 3000;
 
 const REPO_ROOT = path.resolve(__dirname, "..", "..", "..");
@@ -644,22 +645,48 @@ export function cueWindowText(
   endSec: number,
   windowSec: number = EVIDENCE_TAPE_WINDOW_SEC
 ): string {
-  const from = startSec - windowSec;
-  const to = endSec + windowSec;
-  const parts: string[] = [];
-  for (const cue of cues) {
-    if (cue.end_sec < from || cue.start_sec > to) continue;
-    const text = String(cue.text ?? "").trim();
-    if (text) parts.push(text);
-  }
-  const joined = parts.join(" ").replace(/\s+/g, " ").trim();
+  /* gen-2 (round-3 audit): the CLIP [startSec, endSec] is always kept whole.
+     The cap used to cut the joined window from the end, so on a clip longer
+     than about 100 s (most of them since F-94/Q-01) the verifier and the
+     writer saw the pre-roll and only the start of the clip. Now, when the
+     padded window is over the cap, the padding shrinks symmetrically (the
+     widest padding in whole seconds that fits, the same on both sides), and
+     only a clip that is over the cap by itself is cut, with a visible mark. */
+  const textOf = (padSec: number): string => {
+    const from = startSec - padSec;
+    const to = endSec + padSec;
+    const parts: string[] = [];
+    for (const cue of cues) {
+      if (cue.end_sec < from || cue.start_sec > to) continue;
+      const text = String(cue.text ?? "").trim();
+      if (text) parts.push(text);
+    }
+    return parts.join(" ").replace(/\s+/g, " ").trim();
+  };
+  const joined = textOf(windowSec);
   if (joined.length <= EVIDENCE_MAX_TAPE_CHARS) return joined;
-  // Trim on a word boundary: a half-word would make a legitimate quote
-  // at the end of the window unmatchable.
-  const cut = joined.slice(0, EVIDENCE_MAX_TAPE_CHARS);
+  let lo = 0;
+  let hi = Math.max(0, Math.floor(windowSec));
+  if (textOf(0).length <= EVIDENCE_MAX_TAPE_CHARS) {
+    while (lo < hi) {
+      const mid = Math.ceil((lo + hi) / 2);
+      if (textOf(mid).length <= EVIDENCE_MAX_TAPE_CHARS) lo = mid;
+      else hi = mid - 1;
+    }
+    return textOf(lo);
+  }
+  // The clip alone is over the cap: no padding, and the clip itself is cut on
+  // a word boundary (a half-word would make a legitimate quote at the end
+  // unmatchable), with a mark so no reader takes the cut for the clip's end.
+  const clip = textOf(0);
+  const cut = clip.slice(0, EVIDENCE_MAX_TAPE_CHARS - TAPE_CUT_MARK.length);
   const lastSpace = cut.lastIndexOf(" ");
-  return lastSpace > 0 ? cut.slice(0, lastSpace) : cut;
+  return `${lastSpace > 0 ? cut.slice(0, lastSpace) : cut}${TAPE_CUT_MARK}`;
 }
+
+/** Appended when a clip's own transcript is longer than the tape cap and had
+ * to be cut (gen-2). */
+export const TAPE_CUT_MARK = " [transcript cut: the clip runs on]";
 
 /**
  * Finds the transcript digest entry for a tape item id. Two id families

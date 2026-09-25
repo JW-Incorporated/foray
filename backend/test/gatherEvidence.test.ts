@@ -5,6 +5,8 @@ import * as path from "path";
 import {
   DefaultEvidenceGatherer,
   EVIDENCE_MAX_PASSAGE_CHARS,
+  EVIDENCE_MAX_TAPE_CHARS,
+  TAPE_CUT_MARK,
   EVIDENCE_MAX_PRINT_PASSAGES,
   EVIDENCE_TAPE_WINDOW_SEC,
   beatKindOf,
@@ -146,6 +148,36 @@ describe("cueWindowText — the tape a beat is anchored to, ±90 seconds of it",
     const justOutside: TranscriptCue[] = [{ text: "just outside", start_sec: 0, end_sec: tape.startSec - EVIDENCE_TAPE_WINDOW_SEC - 1 }];
     expect(cueWindowText(justInside, tape.startSec, tape.endSec)).toBe("just inside");
     expect(cueWindowText(justOutside, tape.startSec, tape.endSec)).toBe("");
+  });
+
+  /* gen-2 (round-3 audit): one cue per second of ~15 chars, like measured
+     speech. A 180 s clip padded by 90 s each side is ~5,400 chars, over the
+     3,000 cap. The old cut kept the pre-roll and dropped the clip's tail. */
+  const perSecond = (from: number, to: number, label: string): TranscriptCue[] =>
+    Array.from({ length: to - from }, (_, i) => ({ text: `${label}${from + i}xx`.padEnd(14, "x"), start_sec: from + i, end_sec: from + i + 0.9 }));
+
+  it("gen-2: keeps a long clip whole, shrinking the padding symmetrically to fit the cap", () => {
+    /* MUTATION THAT KILLS THIS: go back to cutting the joined window from
+       the end — "clip1179" (the clip's last second) is then missing. */
+    const cues = [...perSecond(1000 - 90, 1000, "pre"), ...perSecond(1000, 1180, "clip"), ...perSecond(1180, 1270, "post")];
+    const text = cueWindowText(cues, 1000, 1180);
+    expect(text.length).toBeLessThanOrEqual(EVIDENCE_MAX_TAPE_CHARS);
+    expect(text).toContain("clip1000xx");
+    expect(text).toContain("clip1179xx");
+    const pre = (text.match(/\bpre\d+/g) ?? []).length;
+    const post = (text.match(/\bpost\d+/g) ?? []).length;
+    expect(pre).toBeGreaterThan(0);
+    expect(Math.abs(pre - post)).toBeLessThanOrEqual(1);
+    expect(text).not.toContain(TAPE_CUT_MARK.trim());
+  });
+
+  it("gen-2: a clip over the cap by itself loses all padding and is cut with a visible mark", () => {
+    const cues = [...perSecond(900, 1000, "pre"), ...perSecond(1000, 1300, "clip"), ...perSecond(1300, 1400, "post")];
+    const text = cueWindowText(cues, 1000, 1300);
+    expect(text.length).toBeLessThanOrEqual(EVIDENCE_MAX_TAPE_CHARS);
+    expect(text.startsWith("clip1000xx")).toBe(true);
+    expect(text).not.toMatch(/\bpre\d+|\bpost\d+/);
+    expect(text.endsWith(TAPE_CUT_MARK)).toBe(true);
   });
 });
 
