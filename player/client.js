@@ -1352,13 +1352,23 @@ let loadingStart = null;
    below), so the next episode's own end is reportable again. */
 let _endedAnnouncedFor = null;
 const _episodeEndedListeners = new Set();
+/** Native mode: whether the last continuation plan sent to the engine lets it
+    walk to the next item at an end (`autoAdvance`). True until a plan says
+    otherwise, which is the engine's own default. */
+let engineWalksAtEnd = true;
 
 function _announceEpisodeEndedIfNeeded() {
   if (foray || !manager || !current) return;
   /* Native mode: the ENGINE walks the chain at an end (§5.5), with the page
      asleep or not, and the page learns of it as an `advanced` hop. Announcing
-     the end to app.js as well would start the next episode twice. */
-  if (engineMode === "native") return;
+     the end to app.js as well would start the next episode twice.
+     BUT ONLY WHEN IT WALKS (round-3 review, L1). With Continuous playback off
+     the plan says autoAdvance:false, the engine walks no hop, and no
+     `advanced` ever reaches the page: the finished row stayed at the top of
+     Up Next with its play button on iOS, the bug app-1-9 fixed for the web
+     player. Then the end IS announced, and app.js's advanceQueueOnEnded, which
+     with the switch off only removes the finished row, does the rest. */
+  if (engineMode === "native" && engineWalksAtEnd) return;
   if (manager.state?.type !== "ended") return;
   if (_endedAnnouncedFor === current.id) return;
   _endedAnnouncedFor = current.id;
@@ -3432,6 +3442,7 @@ function sendEnginePlan(plan) {
   chainItems = keep;
   const args = { planSeq: plan.planSeq, autoAdvance: plan.autoAdvance !== false, chain };
   if (plan.previous !== undefined) args.previous = plan.previous;
+  engineWalksAtEnd = args.autoAdvance;
   return engine.send("setContinuation", args, { source: "restore" }).then((r) => r.ok === true);
 }
 
