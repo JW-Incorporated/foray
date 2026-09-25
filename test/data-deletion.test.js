@@ -2172,7 +2172,17 @@ test("app-1-4: a refresh that fails TRANSIENTLY keeps the account — no signup,
 test("app-1-4: a refresh token the server calls dead (400 invalid_grant / refresh_token_not_found) is replaced by a new account", async () => {
   /* MUTATION: never sign up after a refresh failure -> a device whose token is
      truly gone never syncs again; red. */
-  for (const body of [{ error: "invalid_grant", error_description: "Invalid Refresh Token" }, { code: 400, error_code: "refresh_token_not_found" }]) {
+  /* Round-3 review (L1): current GoTrue answers a reused, rotated-out token
+     with error_code refresh_token_already_used, and a dead session with
+     session_not_found / session_expired. MUTATION: drop them from
+     DEAD_REFRESH_CODES -- those bodies return null and never sign up. */
+  for (const body of [
+    { error: "invalid_grant", error_description: "Invalid Refresh Token" },
+    { code: 400, error_code: "refresh_token_not_found" },
+    { code: 400, error_code: "refresh_token_already_used", msg: "Invalid Refresh Token: Already Used" },
+    { code: 400, error_code: "session_not_found" },
+    { code: 400, error_code: "session_expired" },
+  ]) {
     const { ctx, log } = await mount({
       seed: { cp_sb_session: sessionRow({ expired: true }), cp_interests: "{}" },
       reply: (url) => (/\/auth\/v1\/token/.test(url) ? { status: 400, json: body }

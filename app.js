@@ -569,11 +569,19 @@ async function sbAuth(path, body) {
 
 /** Did a refresh fail because the refresh token itself is dead? Only then may
     a sync give up on the account and sign up a new one. GoTrue answers a dead
-    token with 400 (401 on some versions) and `error: "invalid_grant"` or
-    `error_code: "refresh_token_not_found"`. Anything else -- a 429, a 5xx, no
-    answer, a body it did not recognise -- is transient: keep the account and
-    let the queued rows retry. */
-const DEAD_REFRESH_CODES = new Set(["invalid_grant", "refresh_token_not_found"]);
+    token with 400 (401 on some versions) and `error: "invalid_grant"` or an
+    `error_code` naming the token or its session: `refresh_token_not_found`,
+    `refresh_token_already_used` (a rotated-out token reused: the app killed
+    between the refresh answer and lsSet, or a store that refused the write,
+    leaves exactly that token stored), `session_not_found`, `session_expired`,
+    `user_not_found`. Without the already-used code such a device returned
+    null on every sync from then on and never signed up again (round-3
+    review, L1). Anything else -- a 429, a 5xx, no answer, a body it did not
+    recognise -- is transient: keep the account and let the queued rows retry. */
+const DEAD_REFRESH_CODES = new Set([
+  "invalid_grant", "refresh_token_not_found", "refresh_token_already_used",
+  "session_not_found", "session_expired", "user_not_found",
+]);
 function refreshTokenDead(r) {
   if (!r || (r.status !== 400 && r.status !== 401)) return false;
   const b = r.body && typeof r.body === "object" ? r.body : {};
