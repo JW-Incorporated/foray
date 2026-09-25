@@ -758,6 +758,22 @@ export class DurableStore {
   }
 
   /**
+   * The engine's half of Delete my data in a lane where the engine does NOT
+   * own the rows: the web-view player on an iPhone build that has the native
+   * engine (its hello answered legacy, or the page could not attach). The
+   * engine may still hold what earlier native launches stored — its private
+   * keys, its restore record, its diagnostics file — which no tier here can
+   * see, so `purge()` must still ask it first. Ownership is untouched.
+   * (In the native lane `externallyOwned` installs the same hook, and a
+   * relinquish keeps it: the engine's store outlives its player.)
+   *
+   * @param {Function|null} purge  `engineDataDeletion(send)`, or null to clear
+   */
+  setEnginePurge(purge) {
+    this._ownerPurge = typeof purge === "function" ? purge : null;
+  }
+
+  /**
    * Replace the page's copy of the engine's rows with the engine's own
    * (`engineRead("rows")` on attach, and once more before a relinquish).
    *

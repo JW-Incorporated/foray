@@ -431,7 +431,13 @@ export class ReferenceEngine {
     const gap = this.lastCmdSeq !== null && cmdSeq !== this.lastCmdSeq + 1;
     this.lastCmdSeq = cmdSeq;
     this._row({ kind: "cmd", cmd, source, cmdSeq, ...(gap ? { seqGap: true } : {}) });
-    if (this.relinquished) return refuse("relinquished");
+    if (this.relinquished) {
+      /* As EngineBridge.send: "Delete my data" still reaches the store after
+         the engine is gone (every Foray tap in M1 relinquishes), because what
+         it stored is still on the device. Nothing else is honoured. */
+      if (cmd === "purge") { this._purge(); return okReply(); }
+      return refuse("relinquished");
+    }
 
     const m = this.manager;
     const result = await (async () => {
@@ -628,7 +634,10 @@ export class ReferenceEngine {
     this.relinquished = true;
     this.playing = null;
     this._row({ kind: "mode", reason: "downgrade", cap });
-    this._emit({ type: "modeChanged", mode: "legacy", reason: "downgrade" });
+    /* Said once, and only to a visible page, as EngineBridge.transitioned
+       says it: a hidden page never hears it, and learns it from the next
+       reply or snapshot instead (native-engine.js `handBack`). */
+    if (this.visible) this._emit({ type: "modeChanged", mode: "legacy", reason: "downgrade" });
   }
 }
 

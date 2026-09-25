@@ -161,6 +161,15 @@ final class EngineBridge {
             return reply(nil)
         }
         guard let engine = liveEngine else {
+            // "Delete my data" works in every lane too. With no live engine
+            // (the web-player lane, or after any relinquish: every Foray tap
+            // in M1) there is nothing to stop, but what earlier native
+            // launches stored (the private keys, the restore record, the
+            // ring) is still on the device, and the store is still here.
+            if case .purge = command, let records {
+                records.purge()
+                return reply(nil)
+            }
             return reply(owner.engine?.isTornDown == true ? .relinquished : .capabilityOff)
         }
         if let needed = EngineBridgeRules.requiredCapability(command), !capabilities.contains(needed) {

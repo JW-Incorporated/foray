@@ -409,6 +409,41 @@ final class EngineBridgeTests: XCTestCase {
         XCTAssertTrue(rig.world.output.restores.contains(nil), "the core cleared the restore record first")
     }
 
+    /// "Delete my data" with NO live engine still reaches the store: after
+    /// any relinquish (every Foray tap in M1 tears the engine down) and in
+    /// the web-player lane, what earlier native launches stored (the private
+    /// keys, the restore record, the ring) is still on the device. Before
+    /// the fix the purge was refused `relinquished` / `capability-off` ahead
+    /// of the store, and the listener was told the device was not clear with
+    /// no retry that could ever clear it.
+    /// TO SEE IT FAIL: drop the `.purge` branch inside the `liveEngine`
+    /// guard in `send`.
+    @MainActor
+    func testPurgeReachesTheStoreWithNoLiveEngine() {
+        let rig = Rig()
+        _ = rig.bridge.hello(Self.hello)
+        XCTAssertEqual(rig.send("relinquish", #"{"cap":"foray"}"#)["ok"], .bool(true))
+        XCTAssertEqual(rig.engine?.isTornDown, true)
+        rig.records.rows = ["cp_pos:a": #"{"s":1}"#]
+        XCTAssertEqual(rig.send("stop", #"{"persist":false}"#)["reason"], .string("relinquished"),
+                       "nothing to stop: the transport stays refused")
+        let reply = rig.send("purge")
+        accepted(.sendResponse, reply)
+        XCTAssertEqual(reply["ok"], .bool(true), JSWriter.stringify(reply))
+        XCTAssertEqual(rig.records.purges, 1)
+        XCTAssertEqual(rig.records.rows, [:])
+
+        let legacy = Rig(native: false)
+        _ = legacy.bridge.hello(Self.hello)
+        legacy.records.rows = ["cp_pos:b": #"{"s":2}"#]
+        let answer = legacy.send("purge")
+        accepted(.sendResponse, answer)
+        XCTAssertEqual(answer["ok"], .bool(true), JSWriter.stringify(answer))
+        XCTAssertEqual(legacy.records.purges, 1)
+        XCTAssertEqual(legacy.records.rows, [:])
+        XCTAssertEqual(legacy.send("play")["reason"], .string("capability-off"), "only the purge is let through")
+    }
+
     /// The core's `error` event and a live fault row reach a visible page,
     /// and neither reaches a hidden one; the error is the snapshot's
     /// `lastError` either way.

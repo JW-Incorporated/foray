@@ -342,12 +342,17 @@ function startEngineHandshake() {
     never play. `releaseOwnership` flips the store synchronously; its commit
     finishes on its own. */
 async function onEngineDecision(decision) {
+  /* "Delete my data" reaches the engine's store in EVERY lane whose bridge
+     answered hello (native, or a well-formed legacy answer): a web-player
+     launch on a build with the engine can still hold the private keys, the
+     restore record and the ring an earlier native launch left, and no tier
+     of the page's can see them. The native lane installs it with the
+     ownership below; a relinquish keeps it. */
+  const enginePurge = () => engineDataDeletion((cmd, args) => engine.send(cmd, args, { source: "tap" }));
   if (decision?.mode === "native" && decision.hello) {
     try {
       const hello = decision.hello;
-      storage.externallyOwned(hello.ownedKeyPrefixes, {
-        purge: engineDataDeletion((cmd, args) => engine.send(cmd, args, { source: "tap" })),
-      });
+      storage.externallyOwned(hello.ownedKeyPrefixes, { purge: enginePurge() });
       const rows = await engine.read("rows", { prefixes: [...OWNED_PREFIXES] });
       if (rows && rows.rows) storage.adoptOwnedSet(rows.rows);
       const adv = Array.isArray(hello.pendingAdvances) ? hello.pendingAdvances : [];
@@ -367,6 +372,7 @@ async function onEngineDecision(decision) {
       return engineMode;
     }
   }
+  if (decision?.engine) storage.setEnginePurge(enginePurge());
   storage.releaseOwnership().catch(() => {});
   engineMode = "js";
   pendingPlan = null;
