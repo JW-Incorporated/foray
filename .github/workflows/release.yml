@@ -182,8 +182,45 @@ jobs:
           echo "marketing_version=$MV" >> "$GITHUB_OUTPUT"
           echo "build_number=$BN" >> "$GITHUB_OUTPUT"
 
+  ios-checks:
+    # NE-06, G-1b (docs/native-engine-plan.md §6.8): NO TESTFLIGHT FROM A SHA
+    # WHOSE engine-parity OR ios-kit IS NOT GREEN. The native engine moves
+    # playback into Swift that only CI compiles; a build whose parity run or
+    # Swift tests are red is a build nobody has shown plays the way the JS
+    # reference does, and the founder's phone is where that would be found.
+    #
+    # Its own job on ubuntu-latest, parallel with `version`, so the wait costs
+    # no macOS time. It waits for checks still running on this SHA (a manual
+    # dispatch minutes after a merge is the ordinary case) and REFUSES on
+    # anything but success: red, cancelled, skipped, missing after a grace, or
+    # still running at the timeout. Only the iOS upload depends on it; the
+    # Android bundle does not ship Swift.
+    #
+    # The decision is tools/ci/engine-ci.mjs `release-checks` (a DENIED path,
+    # tested in engine-ci.test.mjs). github.sha goes through env:, the same
+    # hygiene as the guard step above.
+    needs: guard
+    if: needs.guard.outputs.allowed == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    permissions:
+      contents: read
+      checks: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: engine-parity and ios-kit are green on this exact SHA
+        env:
+          SHA: ${{ github.sha }}
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node tools/ci/engine-ci.mjs release-checks "$SHA"
+
   ios:
-    needs: version
+    needs: [version, ios-checks]
     runs-on: macos-latest
     timeout-minutes: 60
     outputs:
@@ -249,7 +286,7 @@ jobs:
           play_service_account_json: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
 
   summary:
-    needs: [version, ios, android]
+    needs: [version, ios-checks, ios, android]
     if: always() && needs.version.result == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -262,6 +299,7 @@ jobs:
           IOS_UPLOADED: ${{ needs.ios.outputs.uploaded }}
           ANDROID_STATE: ${{ needs.android.outputs.play_state }}
           ANDROID_UPLOADED: ${{ needs.android.outputs.uploaded }}
+          IOS_CHECKS: ${{ needs.ios-checks.result }}
         run: |
           set -euo pipefail
           {
@@ -272,6 +310,12 @@ jobs:
             echo "| iOS / TestFlight | ${IOS_STATE:-not reached} | ${IOS_UPLOADED:-false} |"
             echo "| Android / Play (internal) | ${ANDROID_STATE:-not reached} | ${ANDROID_UPLOADED:-false} |"
             echo
+            # NE-06: when iOS is "not reached", say whether the reason is the
+            # engine-parity / ios-kit refusal, so nobody hunts for a credential.
+            if [ "${IOS_CHECKS:-}" != "success" ]; then
+              echo "**iOS was refused before building:** engine-parity or ios-kit is not green on this SHA (ios-checks: ${IOS_CHECKS:-not run})."
+              echo
+            fi
           } >> "$GITHUB_STEP_SUMMARY"
 
           # ONE LINE FOR THE WATCHDOG, to the LOG, before anything below can exit.

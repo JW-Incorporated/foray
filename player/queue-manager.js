@@ -168,13 +168,44 @@ import { buildForayQueue } from "./foray-queue.js";
 import { seamGapSec, describeSeam, SEAM_GAP_SEC, AUTO_ADVANCE } from "./seam-gap.js";
 import { normalizeRate, isRate, DEFAULT_RATE } from "./playback-rate.js";
 import { interludeEligible, describeInterlude, INTERLUDE_CEILING_SEC } from "./interlude.js";
+import { interruptionResumeOffset } from "./transport-policy.js";
 
-const POSITION_INTERVAL_MS = 15_000;
+/** The periodic position write's cadence. Exported (NE-08) so the native
+    engine's generated constants (NE-04) and its ResumeRules port read this
+    number rather than restating it; the `resume-rules` fixtures pin it. */
+export const POSITION_INTERVAL_MS = 15_000;
 /** How far the playhead must have moved since the last write before a TICK
     writes again (2026-09-22). Media seconds, not wall: at 2x a listener covers
     ground twice as fast and loses twice as much to a missed write. Under the
-    15 s corner case #17 allows, with room for a tick to be late. */
-const POSITION_MIN_DELTA_SEC = 10;
+    15 s corner case #17 allows, with room for a tick to be late. Exported
+    (NE-09) with the rule below, so the native engine's ResumeRules port reads
+    the number from the generated constants and the rule from the fixtures. */
+export const POSITION_MIN_DELTA_SEC = 10;
+
+/**
+ * Whether a periodic TICK (the 15 s interval or the element's `timeupdate`)
+ * should write the playhead now: the tail of `_persistIfDue`, lifted out as a
+ * pure function in NE-09 so the native engine's ResumeRules can be checked
+ * against it (`resume-rules` fixtures, cadence.json). No behaviour change: the
+ * method asks this with exactly the values it used to test inline.
+ *
+ *  - AN UNKNOWN POSITION NEVER OVERWRITES A KNOWN ONE. A clock that is not a
+ *    finite number (no element, a NaN mid-load) writes nothing; the last good
+ *    row stands.
+ *  - The playhead must have moved POSITION_MIN_DELTA_SEC media seconds since
+ *    the last write of THIS item (by anyone). A different item, or no write
+ *    yet, is due at once.
+ *
+ * @param {{id: string, seconds: number}|null|undefined} last  the last write
+ * @param {string} id        the item the element holds
+ * @param {*} seconds        the element's clock
+ * @returns {boolean}
+ */
+export function positionTickDue(last, id, seconds) {
+  if (typeof seconds !== "number" || !Number.isFinite(seconds)) return false;
+  if (last && last.id === id && Math.abs(seconds - last.seconds) < POSITION_MIN_DELTA_SEC) return false;
+  return true;
+}
 
 /** How often the narration ticker fires `onNarrationTick` while a script-only
     line is speaking (L-03, generation-architecture.md §7 item 3's position
@@ -405,6 +436,9 @@ export class PlayerQueueManager {
         `loadItem`, and a blind clear there turned the restart into a resume.
         The finally clears only what its OWN action armed. */
     this._offsetArmedBy = null;
+    /** True only while `interruptionEnded` dispatches an OS should-resume, so
+        the load it causes steps back INTERRUPTION_REWIND_SEC (NE-14j). */
+    this._rewindNextResume = false;
     this._transportInFlight = null;
     /** Whether the last pause was the LISTENER's (a press, a stop) rather than
         the OS's (a call, Siri, another app taking the session). Audit round 2
@@ -1018,7 +1052,17 @@ export class PlayerQueueManager {
         ? "interruption.ended.routeLost — not resumed (corner case #13)"
         : "interruption.ended.listenerPaused — not resumed");
     }
-    await this._handle(E.interruptionEnded(resume));
+    /* THE RESUME STEPS BACK INTERRUPTION_REWIND_SEC (NE-14j, plan §4.4;
+       `interruptionResumeOffset`). Held for exactly this dispatch: the reducer's
+       resume is `loadItem`, and `_loadItem` reads the flag synchronously at its
+       top, before any await — so no other transport's load can spend it, and a
+       listener's own play after a pause never sees it. */
+    this._rewindNextResume = resume;
+    try {
+      await this._handle(E.interruptionEnded(resume));
+    } finally {
+      this._rewindNextResume = false;
+    }
   }
 
   /** Corner case #13. The reducer never auto-resumes; that policy lives here.
@@ -1083,7 +1127,21 @@ export class PlayerQueueManager {
        the rest of the session. */
     this._applying++;
     try {
-      for (const effect of effects) await this._perform(effect);
+      /* ONLY AN EFFECT THAT IS ACTUALLY ASYNCHRONOUS IS AWAITED (NE-14s). A
+         save, a pause, a rate or an out-point is done when `_perform` returns,
+         and awaiting its `undefined` still yielded a microtask, so two
+         transport actions in flight at once interleaved BETWEEN one action's
+         effects: a fast double skip's second skip issued load(c) while the
+         first was parked after its save, and the first skip's load(b) then
+         superseded it, landing on b (NE-14j's finding, recorded in
+         manager-episode). Run back to back, one action's effects up to its
+         first real wait (a load) are one step, as the native engine's
+         `handle()` turn is, so the second skip replaces the first's in-flight
+         load and the destination is the final target. */
+      for (const effect of effects) {
+        const pending = this._perform(effect);
+        if (pending && typeof pending.then === "function") await pending;
+      }
     } finally {
       this._applying--;
     }
@@ -1295,8 +1353,11 @@ export class PlayerQueueManager {
 
   /** Every effect gets an explicit case. An unhandled one throws rather than
       silently doing nothing — a missed effect is a stuck player, and that is
-      far harder to diagnose later than a loud failure now. */
-  async _perform(effect) {
+      far harder to diagnose later than a loud failure now.
+      NOT `async` (NE-14s): it returns the effect's own promise when there is
+      one and nothing otherwise, so `_handle` waits only for real work. A
+      refusal still throws, now synchronously, into `_handle`'s loop. */
+  _perform(effect) {
     switch (effect.type) {
       case "loadItem":
         return this._loadItem(effect.item);
@@ -1438,6 +1499,10 @@ export class PlayerQueueManager {
        `forced`, so a superseded load cannot hand it to its successor. */
     const explicit = this._startOffsetNext;
     this._startOffsetNext = null;
+    /* An OS interruption's should-resume (see `interruptionEnded`). Spent here
+       like the two above, so it can only ever shape the load it was armed for. */
+    const rewind = this._rewindNextResume === true;
+    this._rewindNextResume = false;
     // A segment's in-point OVERRIDES any saved position, always (#65 §4).
     // Resuming to where the listener last left this episode would drop them
     // outside the segment entirely — usually into a different story.
@@ -1499,10 +1564,18 @@ export class PlayerQueueManager {
        the ordinary rule rather than being trusted. */
     const explicitInside = explicit != null
       && (!bounds || (explicit >= bounds.startSec && explicit < bounds.endSec));
+    /* In place after an OS interruption: step back INTERRUPTION_REWIND_SEC, never
+       before this item's own start (NE-14j). Only the in-place resume, which
+       is plan §4.4's healthy item: an element that no longer holds the item is
+       the rebuild path, and that starts from the stored row the way every
+       cold resume does. */
+    const inPlaceAt = resumingInPlace && rewind
+      ? (interruptionResumeOffset({ playheadSec: playhead, startSec: bounds ? bounds.startSec : null }) ?? playhead)
+      : playhead;
     const startOffset = explicitInside
       ? explicit
       : (resumingInPlace
-        ? playhead
+        ? inPlaceAt
         : (bounds
           ? bounds.startSec
           : (forced ?? (item.kind === TTS ? 0 : this._savedPositionFor(item)))));
@@ -2462,10 +2535,7 @@ export class PlayerQueueManager {
     if (!(this.state.type === "playing" || this.elementIsAudible)) return;
     const item = this._currentItem();
     if (!item || boundsOf(item) || this._loadedIsSynth || this._loadedId !== item.id) return;
-    const t = this.backend.currentTime;
-    if (typeof t !== "number" || !Number.isFinite(t)) return;
-    const last = this._lastPersisted;
-    if (last && last.id === item.id && Math.abs(t - last.seconds) < POSITION_MIN_DELTA_SEC) return;
+    if (!positionTickDue(this._lastPersisted, item.id, this.backend.currentTime)) return;
     this._persistPosition();
   }
 

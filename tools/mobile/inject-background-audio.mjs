@@ -6,9 +6,19 @@
  * four hundred lines of care rather than a `sed`: on iOS the ENTIRE
  * background-audio requirement is one Info.plist key. WebKit sets the
  * `AVAudioSession` category itself for an audible `<audio>` element
- * (`MediaSessionManagerCocoa.mm`), so there is no plugin, no `AppDelegate` edit
- * and no Swift. The key is the only missing piece — and Capacitor has no config
+ * (`MediaSessionManagerCocoa.mm`), so for the WEB player there is no plugin and
+ * no Swift. The key is the only missing piece — and Capacitor has no config
  * option for it, so something has to edit the generated project.
+ *
+ * ONE APPDELEGATE LINE SINCE NE-24 (docs/native-engine-plan.md §4.5). The
+ * native playback engine must exist when iOS relaunches a terminated 4a in the
+ * background for a car's play, and on that launch no WebView (so no plugin
+ * `load()`) ever runs. So every run that edits the plist also writes
+ * `ForayEngineColdPath.bootIfNeeded()` as the first statement of the
+ * generated `AppDelegate.swift`'s `didFinishLaunching` (the file BESIDE the
+ * plist it is given), and every `--check` reads it back. In the web lane
+ * (`ForayEngineDefault = js`) that call decides the lane and boots nothing.
+ * See the AppDelegate section below.
  *
  * That "something" used to be a human on a Mac (`HUMAN-ACTIONS.md` #16 step 4).
  * This script is that step, so a CI runner can do it, and so it can be TESTED on
@@ -42,6 +52,11 @@
  *   node tools/mobile/inject-background-audio.mjs <Info.plist> --check
  *   node tools/mobile/inject-background-audio.mjs <Info.plist> --mode audio
  *   node tools/mobile/inject-background-audio.mjs <Info.plist> --encryption false
+ *   node tools/mobile/inject-background-audio.mjs <Info.plist> --engine-default <file>
+ * Every run that edits also writes the native engine's build default (from
+ * `mobile/ENGINE_DEFAULT.json` unless `--engine-default` names another file)
+ * and the AppDelegate cold path (`AppDelegate.swift` beside the plist), and
+ * every `--check` reads both back; see those sections below.
  * Any other argument is an error, not an ignored flag (same rule as
  * run-suites.mjs and prepare-webdir.mjs).
  *
@@ -179,7 +194,7 @@ export function rootEntries(xml) {
 }
 
 /** The `<string>` members of an `<array>` element, at that array's own depth. */
-function arrayStrings(xml, arrayEl) {
+function arrayStrings(xml, arrayEl, label = "UIBackgroundModes") {
   if (arrayEl.empty) return [];
   const toks = [...tags(xml, arrayEl.openEnd)];
   const out = [];
@@ -190,7 +205,7 @@ function arrayStrings(xml, arrayEl) {
     const el = parseElement(toks, i);
     if (el.name !== "string") {
       throw new PlistError(
-        `UIBackgroundModes contains a <${el.name}>; every member must be a <string>.`
+        `${label} contains a <${el.name}>; every member must be a <string>.`
       );
     }
     const raw = el.empty ? "" : xml.slice(el.openEnd, el.closeStart);
@@ -205,7 +220,7 @@ function arrayStrings(xml, arrayEl) {
        on a device instead of here. */
     if (raw !== raw.trim()) {
       throw new PlistError(
-        `UIBackgroundModes contains <string>${JSON.stringify(raw)}</string> — a mode with ` +
+        `${label} contains <string>${JSON.stringify(raw)}</string> — a value with ` +
           `surrounding whitespace. iOS will not honour it, and treating it as ${JSON.stringify(raw.trim())} ` +
           `would make this script report success while changing nothing. Fix the plist by hand.`
       );
@@ -465,6 +480,356 @@ export function injectNonExemptEncryption(xml, value = false) {
   return { xml: out, changed: true, reason: `added ${NON_EXEMPT_ENCRYPTION_KEY} = ${value}`, value };
 }
 
+/* ------------------------------------------- the native engine's build default */
+
+/* WHY THIS IS HERE (card NE-17, docs/native-engine-plan.md §4.6)
+ * The iOS app decides ONCE per process whether the native playback engine or
+ * today's player owns the audio (`EngineOwnership.decideOnce()`), and the
+ * build's own opinion is an Info.plist key: `ForayEngineDefault`, "native" or
+ * "js". ABSENT MEANS JS (`reason=no-plist-key`, an engine-mode fixture), so a
+ * build that lost this step still plays the way the app always has. That is
+ * the safe direction for the founder's daily listening, and it is also why a
+ * lost step would be invisible: every check stays green and the flip in NE-27
+ * silently does nothing. So the value is written here, from one committed
+ * file, and read back by `--check` on every CI build that makes an app.
+ *
+ * THE SOURCE OF TRUTH is `mobile/ENGINE_DEFAULT.json` ({"mode": "js"} until
+ * NE-27 flips it), next to the capabilities the build advertises
+ * (`ForayEngineCapabilities`; `player/parity/coverage.js` refuses a
+ * capability whose fixtures are still pending). Both CI invocations of this
+ * script (`ios-build.yml`, `.github/actions/ios-archive/action.yml`) already
+ * run with no engine flag, so the write rides on them with no `.github` edit:
+ * every invocation that edits the plist also writes these two keys.
+ *
+ * UNLIKE the encryption declaration, a DIFFERENT existing value is replaced,
+ * not refused: these keys are this script's own, derived from a committed
+ * file, and a plist left over from an earlier build must follow the file. */
+export const ENGINE_DEFAULT_KEY = "ForayEngineDefault";
+export const ENGINE_CAPABILITIES_KEY = "ForayEngineCapabilities";
+/** `EngineMode.BuildDefault` in the Swift; `decideEngineMode`'s buildDefault. */
+export const ENGINE_DEFAULT_MODES = Object.freeze(["js", "native"]);
+
+/** The committed source of truth, beside this script's repo root. */
+export const ENGINE_DEFAULT_FILE = path.resolve(
+  path.dirname(fileURLToPath(import.meta.url)), "..", "..", "mobile", "ENGINE_DEFAULT.json"
+);
+
+/** `mobile/ENGINE_DEFAULT.json`, parsed and validated. STRICT: an unknown
+ *  key, a mode outside the two words, or a capability that is not a plain
+ *  token is a typo, and a typo here is a build that plays through the wrong
+ *  engine with every check green. Keys starting with "//" are comments. */
+export function parseEngineDefault(text) {
+  let doc;
+  try {
+    doc = JSON.parse(text);
+  } catch (e) {
+    throw new PlistError(`ENGINE_DEFAULT.json is not JSON: ${e.message}`);
+  }
+  if (!doc || typeof doc !== "object" || Array.isArray(doc)) {
+    throw new PlistError('ENGINE_DEFAULT.json must be an object like {"mode": "js"}');
+  }
+  for (const key of Object.keys(doc)) {
+    if (key !== "mode" && key !== "capabilities" && !key.startsWith("//")) {
+      throw new PlistError(`ENGINE_DEFAULT.json has an unknown key ${JSON.stringify(key)}`);
+    }
+  }
+  if (!ENGINE_DEFAULT_MODES.includes(doc.mode)) {
+    throw new PlistError(
+      `ENGINE_DEFAULT.json "mode" must be one of ${JSON.stringify(ENGINE_DEFAULT_MODES)}, got ${JSON.stringify(doc.mode)}`
+    );
+  }
+  const capabilities = doc.capabilities ?? [];
+  if (!Array.isArray(capabilities)) {
+    throw new PlistError('ENGINE_DEFAULT.json "capabilities" must be an array of strings');
+  }
+  for (const c of capabilities) {
+    if (typeof c !== "string" || !/^[a-z][a-z0-9-]*$/.test(c)) {
+      throw new PlistError(`ENGINE_DEFAULT.json has an invalid capability ${JSON.stringify(c)}`);
+    }
+  }
+  if (new Set(capabilities).size !== capabilities.length) {
+    throw new PlistError("ENGINE_DEFAULT.json lists a capability twice");
+  }
+  return { mode: doc.mode, capabilities: [...capabilities] };
+}
+
+/** The ONE root entry named `key`, or null. Duplicates throw, for the reason
+ *  `backgroundModesEntry` gives: readers take the last, so an edit to any other
+ *  is invisible. */
+function singleRootEntry(entries, key) {
+  const hits = entries.filter((e) => e.key === key);
+  if (hits.length > 1) {
+    throw new PlistError(
+      `the root dict declares ${key} ${hits.length} times. Plist readers take the last one, ` +
+        `so an edit to any other is invisible. Delete the duplicates by hand first.`
+    );
+  }
+  return hits[0] ?? null;
+}
+
+/** What the plist says: `{mode, capabilities}`, each null when absent. A value
+ *  of the wrong type throws rather than reading as absent. */
+export function engineDefault(xml) {
+  const { entries } = rootEntries(xml);
+  const modeHit = singleRootEntry(entries, ENGINE_DEFAULT_KEY);
+  const capsHit = singleRootEntry(entries, ENGINE_CAPABILITIES_KEY);
+  let mode = null;
+  if (modeHit) {
+    if (modeHit.value.name !== "string") {
+      throw new PlistError(`${ENGINE_DEFAULT_KEY} is a <${modeHit.value.name}>, not a <string>`);
+    }
+    mode = modeHit.value.empty ? "" : xml.slice(modeHit.value.openEnd, modeHit.value.closeStart);
+  }
+  let capabilities = null;
+  if (capsHit) {
+    if (capsHit.value.name !== "array") {
+      throw new PlistError(`${ENGINE_CAPABILITIES_KEY} is a <${capsHit.value.name}>, not an <array>`);
+    }
+    capabilities = arrayStrings(xml, capsHit.value, ENGINE_CAPABILITIES_KEY);
+  }
+  return { mode, capabilities };
+}
+
+/** Assert the plist says exactly `def`, and throw if it does not. The same
+ *  anti-fails-green check as `assertModePresent`, and a named function for
+ *  the same reason: an inline one can be deleted with every test green. */
+export function assertEngineDefault(xml, def) {
+  const got = engineDefault(xml);
+  const same =
+    got.mode === def.mode &&
+    Array.isArray(got.capabilities) &&
+    got.capabilities.length === def.capabilities.length &&
+    got.capabilities.every((c, i) => c === def.capabilities[i]);
+  if (!same) {
+    throw new PlistError(
+      `the plist's engine default reads ${JSON.stringify(got)}, not ${JSON.stringify(def)}. ` +
+        `If this is after an injection, it is a bug in inject-background-audio.mjs.`
+    );
+  }
+  return got;
+}
+
+/** The value element for one key, in the file's own indentation. */
+function engineValueXml(key, def, indent) {
+  if (key === ENGINE_DEFAULT_KEY) return `<string>${def.mode}</string>`;
+  if (!def.capabilities.length) return "<array/>";
+  return (
+    "<array>\n" +
+    def.capabilities.map((c) => `${indent}${indent}<string>${c}</string>\n`).join("") +
+    `${indent}</array>`
+  );
+}
+
+/**
+ * Write `ForayEngineDefault` and `ForayEngineCapabilities` into the root dict:
+ * inserted when absent, replaced when different, untouched when equal.
+ *
+ * @returns {{xml: string, changed: boolean, reason: string}}
+ * @throws {PlistError} on a plist it does not understand, and on an edit that
+ *   did not take effect.
+ */
+export function injectEngineDefault(xml, def) {
+  if (typeof xml !== "string" || xml.trim() === "") throw new PlistError("empty plist source");
+  const checked = parseEngineDefault(JSON.stringify(def));
+  let out = xml;
+  const changes = [];
+  for (const key of [ENGINE_DEFAULT_KEY, ENGINE_CAPABILITIES_KEY]) {
+    const { rootDict, entries } = rootEntries(out);
+    const indent = rootIndent(out, entries);
+    const hit = singleRootEntry(entries, key);
+    const value = engineValueXml(key, checked, indent);
+    if (!hit) {
+      let at = rootDict.closeStart;
+      while (at > 0 && (out[at - 1] === " " || out[at - 1] === "\t")) at--;
+      out = out.slice(0, at) + `${indent}<key>${key}</key>\n${indent}${value}\n` + out.slice(at);
+      changes.push(`added ${key}`);
+      continue;
+    }
+    const current = engineDefault(out);
+    const equal = key === ENGINE_DEFAULT_KEY
+      ? current.mode === checked.mode
+      : JSON.stringify(current.capabilities) === JSON.stringify(checked.capabilities);
+    if (equal) continue;
+    out = out.slice(0, hit.value.start) + value + out.slice(hit.value.end);
+    changes.push(`replaced ${key}`);
+  }
+  /* THE ANTI-FAILS-GREEN CHECK, as for the other two edits. */
+  assertEngineDefault(out, checked);
+  const summary = `${ENGINE_DEFAULT_KEY} = ${checked.mode}, ${ENGINE_CAPABILITIES_KEY} = ${JSON.stringify(checked.capabilities)}`;
+  return changes.length
+    ? { xml: out, changed: true, reason: `${changes.join(", ")}: ${summary}` }
+    : { xml, changed: false, reason: `already ${summary}` };
+}
+
+/* ------------------------------------------- the AppDelegate cold path (NE-24) */
+
+/* WHY THIS IS HERE (card NE-24, docs/native-engine-plan.md §4.5)
+ * iOS relaunches a TERMINATED app in the background to deliver a car's or a
+ * headset's play (DV-7a). That launch runs `didFinishLaunching` and nothing
+ * else: no scene, no WebView, so no Capacitor plugin `load()`. The native
+ * engine registers its remote targets and paints Now Playing from its restore
+ * record in `EngineOwnership.bootIfNeeded()`; without a call from the
+ * AppDelegate, the car's play reaches an app with no target at all.
+ *
+ * Capacitor generates `AppDelegate.swift` on `cap add ios` and has no hook
+ * for it, and `mobile/ios/` is not committed. So the one line is written
+ * here, beside the plist this script is already given (`ios/App/App/`), in
+ * BOTH CI paths that already run this script with no flag for it (no
+ * `.github` edit). A plist with no `AppDelegate.swift` beside it fails the
+ * run: that is the §2 Assumed row ("in ios-archive, AppDelegate.swift exists
+ * beside Info.plist"), made loud instead of assumed.
+ *
+ * SAME DISCIPLINE AS THE PLIST EDITS: the function is located, not guessed
+ * at (exactly one `didFinishLaunchingWithOptions`, or a throw), the line is
+ * inserted as the FIRST statement of its body, idempotently, and the result
+ * is re-checked before it is returned. `import ForayAudioPlugin` makes the
+ * app target name the plugin's module, so a wrong patch is a compile error
+ * and a lost one is a line `--check` reports, never a silent no-op. */
+export const APP_DELEGATE_FILE = "AppDelegate.swift";
+export const COLD_PATH_IMPORT = "import ForayAudioPlugin";
+export const COLD_PATH_CALL = "ForayEngineColdPath.bootIfNeeded()";
+const COLD_PATH_NOTE =
+  "// NE-24 cold path, written by tools/mobile/inject-background-audio.mjs: the native engine's " +
+  "remote targets must exist on a background launch that never loads the WebView.";
+
+export class AppDelegateError extends Error {}
+
+/** `AppDelegate.swift` beside the plist the script was given. */
+export function appDelegatePathFor(plistPath) {
+  return path.join(path.dirname(plistPath), APP_DELEGATE_FILE);
+}
+
+/** The Swift source with comments and string literals blanked to spaces
+ *  (same length, newlines kept), so a brace or a call inside either is never
+ *  read as code. Nested block comments and escapes are honoured. */
+export function swiftCodeMask(src) {
+  let out = "";
+  let i = 0;
+  while (i < src.length) {
+    if (src.startsWith("//", i)) {
+      const end = src.indexOf("\n", i);
+      const stop = end < 0 ? src.length : end;
+      out += " ".repeat(stop - i);
+      i = stop;
+    } else if (src.startsWith("/*", i)) {
+      let depth = 0;
+      let j = i;
+      while (j < src.length) {
+        if (src.startsWith("/*", j)) { depth++; j += 2; }
+        else if (src.startsWith("*/", j)) { depth--; j += 2; if (depth === 0) break; }
+        else j++;
+      }
+      if (depth !== 0) throw new AppDelegateError("unterminated block comment in AppDelegate.swift");
+      out += src.slice(i, j).replace(/[^\n]/g, " ");
+      i = j;
+    } else if (src[i] === '"') {
+      let j = i + 1;
+      while (j < src.length && src[j] !== '"' && src[j] !== "\n") j += src[j] === "\\" ? 2 : 1;
+      if (src[j] !== '"') throw new AppDelegateError("unterminated string literal in AppDelegate.swift");
+      out += " ".repeat(j + 1 - i);
+      i = j + 1;
+    } else {
+      out += src[i];
+      i++;
+    }
+  }
+  return out;
+}
+
+const DID_FINISH_LAUNCHING =
+  /func\s+application\s*\(\s*_\s+\w+\s*:\s*UIApplication\s*,\s*didFinishLaunchingWithOptions\b/g;
+
+/** The one `application(_:didFinishLaunchingWithOptions:)`: where its body's
+ *  `{` and matching `}` are. Throws on none, two, or a body it cannot close. */
+export function didFinishLaunchingBody(src) {
+  const code = swiftCodeMask(src);
+  const hits = [...code.matchAll(DID_FINISH_LAUNCHING)];
+  if (hits.length !== 1) {
+    throw new AppDelegateError(
+      `AppDelegate.swift must declare application(_:didFinishLaunchingWithOptions:) exactly once, found ${hits.length}`
+    );
+  }
+  const open = code.indexOf("{", hits[0].index);
+  if (open < 0) throw new AppDelegateError("didFinishLaunchingWithOptions has no body");
+  let depth = 0;
+  for (let i = open; i < code.length; i++) {
+    if (code[i] === "{") depth++;
+    else if (code[i] === "}" && --depth === 0) return { funcStart: hits[0].index, open, close: i };
+  }
+  throw new AppDelegateError("didFinishLaunchingWithOptions's body is never closed");
+}
+
+/** What the cold path looks like in this AppDelegate, read, not assumed. */
+export function coldPathState(src) {
+  const code = swiftCodeMask(src);
+  const imports = [...code.matchAll(/^[ \t]*import[ \t]+ForayAudioPlugin[ \t]*$/gm)].length;
+  let calls = 0;
+  for (let at = code.indexOf(COLD_PATH_CALL); at >= 0; at = code.indexOf(COLD_PATH_CALL, at + 1)) calls++;
+  const body = didFinishLaunchingBody(src);
+  const firstStatement = code.slice(body.open + 1, body.close).trim().startsWith(COLD_PATH_CALL);
+  return { imports, calls, firstStatement, body };
+}
+
+/** Throw unless the AppDelegate imports the plugin once and calls the cold
+ *  path once, as the first statement of didFinishLaunching. */
+export function assertAppDelegatePatched(src) {
+  const state = coldPathState(src);
+  if (state.imports !== 1) {
+    throw new AppDelegateError(`AppDelegate.swift must have exactly one "${COLD_PATH_IMPORT}", found ${state.imports}`);
+  }
+  if (state.calls !== 1) {
+    throw new AppDelegateError(`AppDelegate.swift must call ${COLD_PATH_CALL} exactly once, found ${state.calls}`);
+  }
+  if (!state.firstStatement) {
+    throw new AppDelegateError(`${COLD_PATH_CALL} must be the first statement of didFinishLaunchingWithOptions`);
+  }
+  return state;
+}
+
+/**
+ * Write the import and the call: inserted when absent, untouched when both
+ * are already there as `assertAppDelegatePatched` wants them. A half-patched
+ * file (a second import or call, a call somewhere else) is refused rather
+ * than patched again: nothing but this function writes those lines.
+ *
+ * @returns {{swift: string, changed: boolean, reason: string}}
+ * @throws {AppDelegateError}
+ */
+export function injectAppDelegate(src) {
+  if (typeof src !== "string" || src.trim() === "") throw new AppDelegateError("empty AppDelegate.swift");
+  const state = coldPathState(src);
+  if (state.imports === 1 && state.calls === 1 && state.firstStatement) {
+    return { swift: src, changed: false, reason: `already calls ${COLD_PATH_CALL} first in didFinishLaunching` };
+  }
+  if (state.imports > 1 || state.calls > 0) {
+    throw new AppDelegateError(
+      `AppDelegate.swift is half-patched (imports=${state.imports}, calls=${state.calls}, ` +
+        `first=${state.firstStatement}); regenerate it with cap sync`
+    );
+  }
+  let out = src;
+  const changes = [];
+  // The call first, at the body's `{` (an import added above would move it).
+  const { open, funcStart } = state.body;
+  const lineStart = out.lastIndexOf("\n", funcStart) + 1;
+  const funcIndent = /^[ \t]*/.exec(out.slice(lineStart))[0];
+  const nextLine = /\n([ \t]*)\S/.exec(out.slice(open + 1));
+  const indent = nextLine && nextLine[1].length > funcIndent.length ? nextLine[1] : `${funcIndent}    `;
+  out = `${out.slice(0, open + 1)}\n${indent}${COLD_PATH_NOTE}\n${indent}${COLD_PATH_CALL}${out.slice(open + 1)}`;
+  changes.push(`called ${COLD_PATH_CALL} first in didFinishLaunching`);
+  if (state.imports === 0) {
+    const imports = [...swiftCodeMask(out).matchAll(/^[ \t]*import[ \t]+\w[^\n]*$/gm)];
+    if (!imports.length) throw new AppDelegateError("AppDelegate.swift has no import to add the plugin's beside");
+    const last = imports[imports.length - 1];
+    const at = last.index + last[0].length;
+    out = `${out.slice(0, at)}\n${COLD_PATH_IMPORT}${out.slice(at)}`;
+    changes.push(`added ${COLD_PATH_IMPORT}`);
+  }
+  /* THE ANTI-FAILS-GREEN CHECK, as for the plist edits. */
+  assertAppDelegatePatched(out);
+  return { swift: out, changed: true, reason: changes.join(", ") };
+}
+
 /* --------------------------------------------------------------------- main */
 
 const isMain =
@@ -484,7 +849,8 @@ export function parseEncryptionFlag(raw) {
 }
 
 const USAGE =
-  "Usage: node tools/mobile/inject-background-audio.mjs <Info.plist> [--check] [--mode audio] [--encryption false]";
+  "Usage: node tools/mobile/inject-background-audio.mjs <Info.plist> [--check] [--mode audio] [--encryption false] " +
+  "[--engine-default <ENGINE_DEFAULT.json>]";
 
 if (isMain) {
   const argv = process.argv.slice(2);
@@ -492,6 +858,7 @@ if (isMain) {
   let checkOnly = false;
   let mode = BACKGROUND_AUDIO_MODE;
   let encryption = null;
+  let engineDefaultFile = ENGINE_DEFAULT_FILE;
   for (let i = 0; i < argv.length; i++) {
     if (argv[i] === "--check") checkOnly = true;
     else if (argv[i] === "--mode") {
@@ -519,6 +886,12 @@ if (isMain) {
         );
         process.exit(2);
       }
+    } else if (argv[i] === "--engine-default") {
+      engineDefaultFile = argv[++i];
+      if (!engineDefaultFile || engineDefaultFile.startsWith("-")) {
+        console.error(`--engine-default needs a file, got ${engineDefaultFile === undefined ? "nothing" : engineDefaultFile}`);
+        process.exit(2);
+      }
     } else if (!argv[i].startsWith("-") && file === null) file = argv[i];
     else {
       console.error(`Unknown argument: ${argv[i]}`);
@@ -533,6 +906,10 @@ if (isMain) {
 
   try {
     const src = fs.readFileSync(file, "utf8");
+    /* Read on EVERY run, check or write: a missing or malformed source of
+       truth fails the step rather than leaving the plist to say "absent",
+       which the app would read as js without a word. */
+    const def = parseEngineDefault(fs.readFileSync(engineDefaultFile, "utf8"));
     if (checkOnly) {
       const modes = backgroundModes(src);
       if (!modes || !modes.includes(mode)) {
@@ -550,6 +927,15 @@ if (isMain) {
         }
         console.log(`${file}: ${NON_EXEMPT_ENCRYPTION_KEY} = ${got}`);
       }
+      /* The ios-build log's evidence line: `ForayEngineDefault=js`. */
+      const engine = assertEngineDefault(src, def);
+      console.log(`${file}: ${ENGINE_DEFAULT_KEY}=${engine.mode} ${ENGINE_CAPABILITIES_KEY}=${JSON.stringify(engine.capabilities)}`);
+      /* NE-24's evidence line: the AppDelegate existed beside the plist at
+         injection time, and it calls the cold path first. */
+      const delegate = appDelegatePathFor(file);
+      if (!fs.existsSync(delegate)) throw new AppDelegateError(`${delegate} does not exist beside ${file}`);
+      assertAppDelegatePatched(fs.readFileSync(delegate, "utf8"));
+      console.log(`${delegate}: ${COLD_PATH_CALL} is the first statement of didFinishLaunching (NE-24 cold path)`);
     } else {
       const r = injectBackgroundAudio(src, mode);
       let xml = r.xml;
@@ -559,7 +945,21 @@ if (isMain) {
         xml = e.xml;
         console.log(`${file}: ${e.reason}`);
       }
+      const engine = injectEngineDefault(xml, def);
+      xml = engine.xml;
+      console.log(`${file}: ${engine.reason}`);
+      /* Read and patched BEFORE either file is written: a missing or
+         unreadable AppDelegate fails the run with the plist untouched. */
+      const delegate = appDelegatePathFor(file);
+      if (!fs.existsSync(delegate)) {
+        throw new AppDelegateError(
+          `${delegate} does not exist beside ${file}: the NE-24 cold path needs the generated AppDelegate (run after cap sync)`
+        );
+      }
+      const patched = injectAppDelegate(fs.readFileSync(delegate, "utf8"));
+      console.log(`${delegate}: ${patched.reason}`);
       if (xml !== src) fs.writeFileSync(file, xml);
+      if (patched.changed) fs.writeFileSync(delegate, patched.swift);
     }
   } catch (e) {
     console.error(`inject-background-audio failed: ${e.message}`);

@@ -1,0 +1,137 @@
+{
+  "family": "resume-rules",
+  "module": "player/foray-progress.js",
+  "note": "A Foray's playhead-write throttle (forayWriteDue, lifted out of ForayProgressStore.save in NE-09 with no behaviour change): on the CLOCK value, every SAVE_EVERY_SEC, bypassed by force, and never for an unknown position (#263). Its own file because a fixture file names one module.",
+  "cases": [
+    {
+      "id": "resume-rules/foray-save-every-5s",
+      "covers": [
+        "position-store::a Foray's playhead is written every 5 s of its clock unless forced, and an unknown one never"
+      ],
+      "authored": true,
+      "note": "Far inside corner case #17's 15 s bar. Authored.",
+      "read": "SAVE_EVERY_SEC",
+      "expect": { "value": 5 }
+    },
+    {
+      "id": "resume-rules/foray-first-write",
+      "covers": [
+        "position-store::a Foray's playhead is written every 5 s of its clock unless forced, and an unknown one never"
+      ],
+      "call": "forayWriteDue",
+      "args": [null, 12],
+      "expect": { "return": true }
+    },
+    {
+      "id": "resume-rules/foray-first-write-undefined",
+      "covers": [
+        "position-store::a Foray's playhead is written every 5 s of its clock unless forced, and an unknown one never"
+      ],
+      "call": "forayWriteDue",
+      "args": [{ "$undefined": true }, 12],
+      "expect": { "return": true }
+    },
+    {
+      "id": "resume-rules/foray-under-5s",
+      "covers": [
+        "position-store::a Foray's playhead is written every 5 s of its clock unless forced, and an unknown one never"
+      ],
+      "call": "forayWriteDue",
+      "args": [10, 14.9],
+      "expect": { "return": false }
+    },
+    {
+      "id": "resume-rules/foray-5s-on",
+      "covers": [
+        "position-store::a Foray's playhead is written every 5 s of its clock unless forced, and an unknown one never"
+      ],
+      "call": "forayWriteDue",
+      "args": [10, 15],
+      "expect": { "return": true }
+    },
+    {
+      "id": "resume-rules/foray-back-5s",
+      "covers": [
+        "position-store::a Foray's playhead is written every 5 s of its clock unless forced, and an unknown one never"
+      ],
+      "note": "The throttle is on the clock value, so a seek back of 5 s is due.",
+      "call": "forayWriteDue",
+      "args": [10, 5],
+      "expect": { "return": true }
+    },
+    {
+      "id": "resume-rules/foray-back-under-5s",
+      "covers": [
+        "position-store::a Foray's playhead is written every 5 s of its clock unless forced, and an unknown one never"
+      ],
+      "call": "forayWriteDue",
+      "args": [10, 6],
+      "expect": { "return": false }
+    },
+    {
+      "id": "resume-rules/foray-force",
+      "covers": [
+        "position-store::a Foray's playhead is written every 5 s of its clock unless forced, and an unknown one never"
+      ],
+      "note": "Pause and page-hide: the next tick may never come.",
+      "call": "forayWriteDue",
+      "args": [10, 11, { "force": true }],
+      "expect": { "return": true }
+    },
+    {
+      "id": "resume-rules/foray-force-first",
+      "covers": [
+        "position-store::a Foray's playhead is written every 5 s of its clock unless forced, and an unknown one never"
+      ],
+      "call": "forayWriteDue",
+      "args": [null, 11, { "force": true }],
+      "expect": { "return": true }
+    },
+    {
+      "id": "resume-rules/foray-unknown-null",
+      "covers": [
+        "position-store::a Foray's playhead is written every 5 s of its clock unless forced, and an unknown one never"
+      ],
+      "note": "#263: nobody knows where the listener is, so the last row stands.",
+      "call": "forayWriteDue",
+      "args": [10, null],
+      "expect": { "return": false }
+    },
+    {
+      "id": "resume-rules/foray-unknown-nan-even-forced",
+      "covers": [
+        "position-store::a Foray's playhead is written every 5 s of its clock unless forced, and an unknown one never"
+      ],
+      "call": "forayWriteDue",
+      "args": [10, { "$num": "NaN" }, { "force": true }],
+      "expect": { "return": false }
+    },
+    {
+      "id": "resume-rules/foray-unknown-string",
+      "covers": [
+        "position-store::a Foray's playhead is written every 5 s of its clock unless forced, and an unknown one never"
+      ],
+      "call": "forayWriteDue",
+      "args": [null, "20"],
+      "expect": { "return": false }
+    },
+    {
+      "id": "resume-rules/foray-custom-interval-due",
+      "covers": [
+        "position-store::a Foray's playhead is written every 5 s of its clock unless forced, and an unknown one never"
+      ],
+      "call": "forayWriteDue",
+      "args": [10, 12, { "everySec": 2 }],
+      "expect": { "return": true }
+    },
+    {
+      "id": "resume-rules/foray-custom-interval-not-due",
+      "covers": [
+        "position-store::a Foray's playhead is written every 5 s of its clock unless forced, and an unknown one never"
+      ],
+      "call": "forayWriteDue",
+      "args": [10, 11, { "everySec": 2 }],
+      "expect": { "return": false }
+    }
+  ]
+}

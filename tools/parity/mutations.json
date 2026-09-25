@@ -1,0 +1,49 @@
+{
+  "//": "record.mjs --mutate (NE-03, plan §6.3). Each rule is flipped in a child process's module loader only (mutate-hooks.mjs; the working tree is never edited), then BOTH the original JS test and the rule's fixture family must fail. A family with no fixtures yet reports PENDING and names the card that records it; once that card records it, the fixture half is enforced with no edit here. `find` must occur exactly once in `file`.",
+  "rules": {
+    "seam-gap": {
+      "why": "An unbridged seam gets 0.5 s of silence (seam-gap.js; the founder's ruling of 2026-09-24, docs/DECISIONS.md; docs/curation/segment-length-rules.md §6b). The mutant is the 2.0 s audiobook section-break beat the ruling replaced.",
+      "patch": {
+        "file": "player/seam-gap.js",
+        "find": "export const SEAM_GAP_SEC = 0.5;",
+        "replace": "export const SEAM_GAP_SEC = 2.0;"
+      },
+      "jsTest": { "suite": "seam-gap", "name": "the seam silence is the founder's 0.5 s — one number in both specs" },
+      "family": "seam-gap",
+      "recordedBy": "NE-03"
+    },
+    "never-early": {
+      "why": "An out-point never stops a segment before its boundary: a fine wake re-reads the playhead and only stops once it is reached (deck-policy.js fineWakeAction, which HtmlAudioBackend asks since NE-14j). The mutant stops half a second short, clipping the payoff.",
+      "patch": {
+        "file": "player/deck-policy.js",
+        "find": "  if (atSec >= outPointSec) return FINE_WAKE.STOP;",
+        "replace": "  if (atSec >= outPointSec - 0.5) return FINE_WAKE.STOP;"
+      },
+      "jsTest": { "suite": "html-audio-backend", "name": "an early fine wake reschedules instead of stopping short" },
+      "family": "deck-episode",
+      "recordedBy": "NE-14j"
+    },
+    "15/30": {
+      "why": "Every skip surface steps back 15 s and forward 30 s (media-session.js; the founder's numbers). The mutant is WebKit's 10.",
+      "patch": {
+        "file": "player/media-session.js",
+        "find": "export const SEEK_FORWARD_SEC = 30;",
+        "replace": "export const SEEK_FORWARD_SEC = 10;"
+      },
+      "jsTest": { "suite": "media-session", "name": "seekforward asks for a positive 30 seconds by default" },
+      "family": "media-episode",
+      "recordedBy": "NE-12j"
+    },
+    "pause-silence": {
+      "why": "The postcondition of pause() is silence (#689 report 3): an element audible while the machine says paused is paused anyway. The mutant trusts the reducer and leaves it playing.",
+      "patch": {
+        "file": "player/queue-manager.js",
+        "find": "        this._emit(\"pause.forced — the element was audible while the machine said paused\");\n        await this.backend.pause();",
+        "replace": "        this._emit(\"pause.forced — the element was audible while the machine said paused\");"
+      },
+      "jsTest": { "suite": "transport-reconcile", "name": "pause() is a postcondition, not a state transition: an audible element is silenced" },
+      "family": "manager-episode",
+      "recordedBy": "NE-14j"
+    }
+  }
+}

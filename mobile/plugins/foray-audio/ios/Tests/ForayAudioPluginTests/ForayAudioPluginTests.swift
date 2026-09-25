@@ -309,6 +309,16 @@ final class ForayAudioPluginTests: XCTestCase {
         XCTAssertEqual(ForayAudioPlugin.sessionMove(from: .none, to: .paused, holding: false), .none)
         XCTAssertEqual(ForayAudioPlugin.sessionMove(from: .paused, to: .paused, holding: true), .none)
         XCTAssertEqual(ForayAudioPlugin.sessionMove(from: .playing, to: .playing, holding: false), .none)
+        /* PLAYING -> PLAYING is a position write, not a resume: `.none`, even
+           holding. This row turned ios-kit red on main from 9730b5b8 (#746),
+           and it was fixed twice, in opposite directions: NE-01 on engine/m1
+           changed this assertion to the table's `.supersede`, and main's audit
+           round 2 (#749) gave the table its own `(.playing, .playing)` case
+           returning `.none` — nothing started sounding, so there is no new
+           activation for a hold to be superseded by. The merge of main into
+           engine/m1 took each side's untouched half, and ios-kit went red
+           again; main's reading is the shipping one, so it is the one pinned.
+           Neither answer calls `setActive`. */
         XCTAssertEqual(ForayAudioPlugin.sessionMove(from: .playing, to: .playing, holding: true), .none,
                        "a position write while playing never touches the session")
         XCTAssertEqual(ForayAudioPlugin.sessionMove(from: .paused, to: .playing, holding: true), .supersede)

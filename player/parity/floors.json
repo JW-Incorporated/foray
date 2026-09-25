@@ -1,0 +1,41 @@
+{
+  "//": "Written by tools/parity/record.mjs; no card types a count. families: the minimum case count of each fixture family (raise-only; --lower-floors lowers it, visibly). suites: the top-level test count of each covered suite when last recorded. test/suite-integrity.test.js enforces both against the tree.",
+  "families": {
+    "compare": 37,
+    "continuation": 49,
+    "contract": 56,
+    "deck-episode": 58,
+    "diag-tokens": 30,
+    "engine-mode": 31,
+    "handshake": 17,
+    "manager-episode": 44,
+    "media-episode": 124,
+    "number-format": 25,
+    "queue-state": 87,
+    "rate": 77,
+    "resume-rules": 68,
+    "rows": 44,
+    "seam-gap": 30,
+    "session": 166,
+    "session-invariant": 21,
+    "snapshot": 24,
+    "transport": 111
+  },
+  "suites": {
+    "continuation": 11,
+    "foray-playback": 91,
+    "foray-progress": 62,
+    "html-audio-backend": 112,
+    "interlude": 18,
+    "media-session": 156,
+    "playback-rate": 24,
+    "position-store": 12,
+    "queue-manager": 163,
+    "queue-state": 58,
+    "seam-gap": 17,
+    "seek-policy": 33,
+    "transport-policy": 20,
+    "transport-reconcile": 117,
+    "tts-bridge": 29
+  }
+}

@@ -63,6 +63,8 @@ const REQUIRED_PLAYER_FILES = [
   "seam-gap.js",
   "seek-policy.js",
   "foray-queue.js",
+  "deck-policy.js",
+  "transport-policy.js",
 ];
 
 function tmpBundle(page = PAGE) {

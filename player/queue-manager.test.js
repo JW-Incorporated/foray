@@ -10,6 +10,7 @@ import { PlayerQueueManager, NARRATION_RATE, __resetInstanceForTests } from "./q
 import { SINGLE_ITEM, PICKED_FIRST, CONTINUE_TAIL } from "./queue-strategy.js";
 import { forayRuntimeSec } from "./foray-queue.js";
 import { INTERLUDE_CEILING_SEC } from "./interlude.js";
+import { INTERRUPTION_REWIND_SEC } from "./transport-policy.js";
 import { SEAM_GAP_SEC } from "./seam-gap.js";
 
 /** The shipped beat in ms — the founder's 0.5 s (2026-09-24). Read from the
@@ -239,6 +240,27 @@ test("a fast double-skip loads only the final target", async () => {
     "must not stack concurrent loads into overlapping playback");
 });
 
+/* NE-14s: the weaker test above only asks that c was LOADED. With both skips
+   in flight at once the destination has to be c too, started exactly once. It
+   was b: each effect was awaited, so the first skip parked after its save, the
+   second skip's load(c) went out first, and the first skip's load(b) then
+   superseded it (NE-14j's finding). The native engine takes each skip as one
+   turn, and the manager-episode fixture that pins this is its contract. */
+test("a concurrent double-skip lands on the final target and starts it once", async () => {
+  const { m, backend } = make({ strategy: PICKED_FIRST });
+  m.setQueueFromPick(ep("a"), { others: [ep("b"), ep("c")] });
+  await m.play(0);
+  backend.calls.length = 0;
+
+  await Promise.all([m.skipToNext(), m.skipToNext()]);
+
+  assert.equal(m.currentIndex, 2, "the second skip is the destination");
+  assert.equal(m.playheadItemId, "c");
+  assert.deepStrictEqual(backend.calls.filter((c) => c === "play"), ["play"], "exactly one start");
+  assert.equal(backend.calls.at(-1), "play");
+  assert.equal(backend.calls.filter((c) => c.startsWith("load:")).at(-1), "load:c@0");
+});
+
 /* ---------- bridge TTS (corner case #12) ---------- */
 
 test("an episode followed by a bridge enters transitioning and plays the bridge", async () => {
@@ -300,6 +322,54 @@ test("declined call resumes; answered call stays paused but ready", async () => 
   await m.interruptionEnded(false);
   assert.equal(m.state.type, "interrupted", "answered -> paused but ready");
   assert.equal(m.state.wasPlaying, false);
+});
+
+/* ---------- the interruption rewind (NE-14j, plan §4.4) ----------
+
+   An OS interruption that ends with should-resume (a declined call, Siri, a
+   navigation prompt) picks the audio up INTERRUPTION_REWIND_SEC before where it
+   stopped, on the item the element still holds. JS is the reference, so the
+   web and Android players take the same step back the native engine will; the
+   number is an authored transport fixture. Offsets here are chosen so the
+   rounding in `load:<id>@<s>` tells the two answers apart: 42.5 s is `@43` in
+   place and `@41` stepped back. */
+
+test("an OS should-resume steps back INTERRUPTION_REWIND_SEC on the item the element still holds", async () => {
+  // KILLING MUTATION: drop `rewind` from `_loadItem`'s in-place offset (the
+  // resume lands @43). The next test is the other direction: arm
+  // `_rewindNextResume` in `resume()` and a listener's own play steps back.
+  const { m, backend } = make();
+  m.setQueueFromPick(ep("a"));
+  await m.play(0);
+  backend.currentTime = 42.5;
+  await m.interruptionBegan();
+  backend.calls.length = 0;
+
+  await m.interruptionEnded(true);
+  assert.equal(INTERRUPTION_REWIND_SEC, 1.5);
+  assert.equal(m.state.type, "playing");
+  assert.deepStrictEqual(backend.calls, ["load:a@41", "rate:1", "play"], "in place, 1.5 s back, and no seek after");
+});
+
+test("the step back is the interruption's only: a listener's own resume lands where they paused", async () => {
+  const { m, backend } = make();
+  m.setQueueFromPick(ep("a"));
+  await m.play(0);
+  backend.currentTime = 42.5;
+  await m.pause();
+  backend.calls.length = 0;
+
+  await m.resume();
+  assert.deepStrictEqual(backend.calls, ["load:a@43", "rate:1", "play"]);
+
+  // ...and a should-resume that the manager declines (the listener had paused)
+  // arms nothing for the NEXT load either.
+  await m.pause();
+  await m.interruptionEnded(true);
+  assert.equal(m.state.type, "interrupted");
+  backend.calls.length = 0;
+  await m.resume();
+  assert.deepStrictEqual(backend.calls, ["load:a@43", "rate:1", "play"]);
 });
 
 /* ---------- route policy (corner case #13) ---------- */
@@ -640,6 +710,25 @@ test("pausing inside a segment and resuming does not replay the segment", async 
   await m.resume();
   assert.equal(m.state.type, "playing");
   assert.ok(backend.calls.includes("load:foray-1#0@172"), `expected a resume at 172, got ${backend.calls}`);
+  assert.ok(backend.calls.includes("outPoint:210"), "and the boundary is re-armed");
+});
+
+test("an interruption's step back never crosses a segment's in-point (NE-14j)", async () => {
+  // Stepping back past start_sec would play the tail of whatever the episode
+  // said before the slice — the stranger's-episode failure #65 §4 exists for.
+  const { m, backend } = make();
+  await m.playForay(foray([fseg({ start_sec: 100, end_sec: 210 })]), { resolveItem });
+  backend.currentTime = 100.75;
+  await m.interruptionBegan();
+  backend.calls.length = 0;
+  await m.interruptionEnded(true);
+  assert.ok(backend.calls.includes("load:foray-1#0@100"), `expected the in-point, got ${backend.calls}`);
+
+  backend.currentTime = 172.5;
+  await m.interruptionBegan();
+  backend.calls.length = 0;
+  await m.interruptionEnded(true);
+  assert.ok(backend.calls.includes("load:foray-1#0@171"), `expected 1.5 s back inside the slice, got ${backend.calls}`);
   assert.ok(backend.calls.includes("outPoint:210"), "and the boundary is re-armed");
 });
 

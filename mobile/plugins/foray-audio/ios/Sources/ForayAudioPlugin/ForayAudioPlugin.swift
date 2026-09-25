@@ -2,7 +2,9 @@ import Foundation
 import AVFAudio
 import MediaPlayer
 import UIKit
+import WebKit
 import Capacitor
+import ForayEngineCore
 import os
 
 /// The iOS half of `foray-audio`'s Now Playing / remote-command story (L-01).
@@ -125,7 +127,14 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
     public let identifier = "ForayAudioPlugin"
     public let jsName = "ForayAudio"
     public let pluginMethods: [CAPPluginMethod] = [
-        CAPPluginMethod(name: "setNowPlaying", returnType: CAPPluginReturnPromise)
+        CAPPluginMethod(name: "setNowPlaying", returnType: CAPPluginReturnPromise),
+        /* NE-20: the native engine's three bridge methods. iOS only:
+           Android's `ForayAudioPlugin.java` never gains them
+           (docs/native-engine-plan.md §4.1, "three bridge methods on the
+           existing plugin"); a new command never needs a new method. */
+        CAPPluginMethod(name: "engineHello", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "engineSend", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "engineRead", returnType: CAPPluginReturnPromise)
     ]
 
     /// The event this plugin raises when the OS, a Bluetooth button or a car
@@ -243,7 +252,45 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
     /// every route change, on `stateQueue`. See `applyCommandAvailability`.
     private var trackRoutePresent = false
 
+    /// Whether today's registration has run in this process: at `load()` in
+    /// the legacy lane, or after the engine's one-way relinquish (NE-17).
+    /// Written on main, read on `stateQueue`: set through `stateQueue.sync`.
+    private var legacyLane = false
+
+    /// NE-17: the WebView whose page loads start the engine's hello
+    /// watchdog. Observed only in the native lane, by string KVO on
+    /// `loading`: a Swift key path to `WKWebView.isLoading` is a key path to
+    /// a main-actor-isolated property, which this nonisolated plugin cannot
+    /// form without a concurrency diagnostic.
+    private weak var observedWebView: WKWebView?
+    private static let pageLoadContext = UnsafeMutableRawPointer.allocate(byteCount: 1, alignment: 1)
+
+    /// WHICH LANE PLAYS THIS PROCESS IS DECIDED ONCE, BY `EngineOwnership`
+    /// (docs/native-engine-plan.md §4.6, card NE-17), whichever of this and
+    /// the AppDelegate cold path runs first. Legacy: today's registration
+    /// runs right here, unchanged. Native: it is parked, and runs only after
+    /// the engine's one-way relinquish, so the process never has two
+    /// registrants on `MPRemoteCommandCenter` or two owners of the session.
+    ///
+    /// Capacitor loads plugins on main (the bridge view controller builds
+    /// them); the hop is for the day it does not, because the owner is
+    /// main-confined and a legacy registration off main would be a new race.
     override public func load() {
+        let register: () -> Void = { [weak self] in self?.runLegacyRegistration() }
+        let decide = { [weak self] in
+            MainActor.assumeIsolated {
+                let owner = EngineOwnership.shared
+                owner.pluginDidLoad(legacyRegistration: register)
+                if owner.mode == .native { self?.observePageLoads() }
+            }
+        }
+        if Thread.isMainThread { decide() } else { DispatchQueue.main.sync(execute: decide) }
+    }
+
+    /// Today's `load()`, verbatim: the legacy lane's registration. Runs at
+    /// most once per process (`EngineOwnership.runLegacy`).
+    private func runLegacyRegistration() {
+        stateQueue.sync { legacyLane = true }
         registerCommandHandlers()
         /* ONE SESSION MODE FOR THE WHOLE APP: `.spokenAudio` (the platform
            contract, `docs/DECISIONS.md` 2026-09-23; audit round 2, native-10).
@@ -256,8 +303,15 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
            that `setActive` lives in `holdSession`/`releaseSession` alone.
            `try?`: a failure here costs the mode, never the launch. DEVICE
            CHECK, open: whether WebKit resets the mode when its element starts
-           (`docs/ios-lock-screen.md` §8.5). */
-        try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .spokenAudio, options: [])
+           (`docs/ios-lock-screen.md` §8.5).
+           GUARDED ON `EngineModeFlag` (NE-16): when the native engine owns
+           the session, its `AudioSessionOwner` set the category at boot and
+           is the only writer; a second writer is the two-owner defect the
+           engine exists to remove. Legacy mode leaves the flag false, so
+           this line runs exactly as it did in build 2026092327. */
+        if !EngineModeFlag.sessionOwnedByEngine {
+            try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .spokenAudio, options: [])
+        }
         // NOTHING IS PLAYING AT LOAD, so nothing is enabled -- the same answer
         // `NowPlaying.acceptsTransport()` gives for IDLE on Android. Without
         // this, every command sits at `MPRemoteCommand`'s default (enabled)
@@ -272,8 +326,44 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
         registerSessionObservers()
     }
 
+    /// The hello watchdog's start (plan §4.6): every finished page load must
+    /// say engineHello within 15 s, or an idle engine relinquishes by itself.
+    /// `loading` going false is the load finishing. KVO is delivered on the
+    /// thread that changed the value (main, for a WKWebView, in practice);
+    /// the hop makes main a rule rather than an observation.
+    private func observePageLoads() {
+        guard observedWebView == nil, let webView = bridge?.webView else { return }
+        observedWebView = webView
+        webView.addObserver(self, forKeyPath: "loading", options: [.new], context: Self.pageLoadContext)
+    }
+
+    override public func observeValue(forKeyPath keyPath: String?, of object: Any?,
+                                      change: [NSKeyValueChangeKey: Any]?, context: UnsafeMutableRawPointer?) {
+        guard context == Self.pageLoadContext else {
+            super.observeValue(forKeyPath: keyPath, of: object, change: change, context: context)
+            return
+        }
+        // `loading` went true: a navigation started, and its page has not
+        // said hello yet. `loading` went false: the page finished loading.
+        // Both hop to main in the order KVO saw them, and the start is seen
+        // before the page's scripts run, so it is on main before that page's
+        // engineHello (which hops to main too).
+        guard let loading = change?[.newKey] as? Bool else { return }
+        DispatchQueue.main.async {
+            MainActor.assumeIsolated {
+                if loading {
+                    EngineOwnership.shared.pageDidStartLoad()
+                } else {
+                    EngineOwnership.shared.pageDidFinishLoad(
+                        foreground: UIApplication.shared.applicationState == .active)
+                }
+            }
+        }
+    }
+
     deinit {
         NotificationCenter.default.removeObserver(self)
+        observedWebView?.removeObserver(self, forKeyPath: "loading", context: Self.pageLoadContext)
     }
 
     // MARK: - M-03: native interruption and lifecycle events
@@ -481,6 +571,115 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
         return event
     }
 
+    // MARK: - The engine's bridge (NE-20)
+
+    /// The bridge, built on main at the first engine call. Touched on main
+    /// only (every method below hops there first).
+    private var engineBridge: EngineBridge?
+
+    @MainActor
+    private func bridgeOnMain() -> EngineBridge {
+        if let engineBridge { return engineBridge }
+        let owner = EngineOwnership.shared
+        let bridge = EngineBridge(
+            owner: owner,
+            // The owner's store IS the engine's (EngineStore, NE-19): the
+            // shared rows and the diagnostics ring the page reads.
+            records: owner.store.keys as? EngineRecords,
+            timing: MainQueueTiming(),
+            declaredCapabilities: Bundle.main.infoDictionary?[EngineBridge.capabilitiesKey] as? [String],
+            deliver: { [weak self] event in self?.notifyEngineEvent(event) })
+        engineBridge = bridge
+        return bridge
+    }
+
+    /// The page's first question to the native engine (docs/native-engine-plan.md
+    /// §5.1): which lane plays this process, and, when it is the engine's,
+    /// everything the page needs to attach. The answer is built by
+    /// `ForayEngineCore` (`EngineBridgeRules`), which is also what proves the
+    /// plugin links the nested core package in the app build.
+    ///
+    /// RESOLVES ALWAYS, like every method on this plugin (class header).
+    /// Bridge calls arrive off main; the engine and its owner are
+    /// main-confined, so each call hops there and resolves from there.
+    @objc func engineHello(_ call: CAPPluginCall) {
+        let payload = EngineBridge.payload(from: call.options)
+        DispatchQueue.main.async { [weak self] in
+            MainActor.assumeIsolated {
+                guard let self else {
+                    return call.resolve(Self.jsObject(EngineBridgeRules.legacyHello(reason: .notBuilt)))
+                }
+                call.resolve(Self.jsObject(self.bridgeOnMain().hello(payload)))
+            }
+        }
+    }
+
+    /// One command (§5.2): `{v, cmdSeq, cmd, args, source}` in, `{ok,
+    /// reason?, snapshot}` out, dispatched on main. RESOLVES ALWAYS: a
+    /// payload the contract refuses is `{ok: false, reason: "unknown-cmd"}`.
+    @objc func engineSend(_ call: CAPPluginCall) {
+        let payload = EngineBridge.payload(from: call.options)
+        DispatchQueue.main.async { [weak self] in
+            MainActor.assumeIsolated {
+                guard let self else {
+                    return call.resolve(Self.jsObject(EngineBridgeRules.sendResponse(
+                        refusal: .relinquished, snapshot: EngineBridge.emptySnapshot())))
+                }
+                call.resolve(Self.jsObject(self.bridgeOnMain().send(payload)))
+            }
+        }
+    }
+
+    /// The snapshot, the shared rows by prefix, or the whole diagnostics
+    /// ring in one call (§5.1). RESOLVES ALWAYS: an unowned prefix reads
+    /// nothing.
+    @objc func engineRead(_ call: CAPPluginCall) {
+        let payload = EngineBridge.payload(from: call.options)
+        DispatchQueue.main.async { [weak self] in
+            MainActor.assumeIsolated {
+                guard let self else {
+                    return call.resolve(Self.jsObject(EngineBridgeRules.rowsResponse([:])))
+                }
+                call.resolve(Self.jsObject(self.bridgeOnMain().read(payload)))
+            }
+        }
+    }
+
+    /// The `engine` event (native-engine.js `ENGINE_EVENT`). Best effort: a
+    /// page with no listener drops it, and the page reads on visible anyway.
+    private func notifyEngineEvent(_ event: JSONNode) {
+        notifyListeners(EngineBridgeRules.eventName, data: Self.jsObject(event))
+    }
+
+    /// The core's JSON as Capacitor carries it. A non-finite number cannot
+    /// cross (JSON has none), so it crosses as null, as `JSON.stringify`
+    /// writes it.
+    static func jsObject(_ node: JSONNode) -> JSObject {
+        guard case let .object(members) = node else { return [:] }
+        var object = JSObject()
+        for member in members { object[member.key] = jsValue(member.value) }
+        return object
+    }
+
+    private static func jsValue(_ node: JSONNode) -> JSValue {
+        switch node {
+        case .null:
+            return NSNull()
+        case let .bool(flag):
+            return flag
+        case let .number(number):
+            if number.isFinite { return number }
+            return NSNull()
+        case let .string(text):
+            return text
+        case let .array(items):
+            let array: JSArray = items.map { jsValue($0) }
+            return array
+        case .object:
+            return jsObject(node)
+        }
+    }
+
     // MARK: - setNowPlaying
 
     /// Everything the lock screen / Control Center should say, from the
@@ -500,7 +699,11 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
     @objc func setNowPlaying(_ call: CAPPluginCall) {
         let payload = NowPlayingPayload.from(call.options as? [String: Any] ?? [:])
         stateQueue.async { [weak self] in
-            self?.apply(payload)
+            /* NE-17: in the native lane the engine owns Now Playing, the
+               command centre and the session; a stale page's payload must not
+               write over them. Resolved all the same (class header). */
+            guard let self, self.legacyLane else { return }
+            self.apply(payload)
         }
 
         var result = JSObject()
@@ -632,6 +835,17 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
     /// so (`sessionActivated` with `failed`), which is the whole point of the
     /// row. The mode is the app's one mode, `.spokenAudio` -- see `load()`.
     private func holdSession(reason: String) {
+        /* NE-16: the native engine's `AudioSessionOwner` is the one owner
+           while `sessionOwnedByEngine` is true, and a legacy hold then would
+           activate behind its back (and, re-held from a route change, over a
+           session the engine deliberately released). Nothing is held, and
+           the log says why; a relinquish flips the flag back to false, after
+           which this runs exactly as before. */
+        guard !EngineModeFlag.sessionOwnedByEngine else {
+            holdsSession = false
+            Self.logger.notice("ForayAudio.session hold skipped: engine-owned reason=\(reason, privacy: .public)")
+            return
+        }
         let session = AVAudioSession.sharedInstance()
         var ok = true
         do {
@@ -656,6 +870,14 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
     /// `notifyOthersOnDeactivation` so the interrupted app may resume -- see
     /// `SessionMove`. Never on the resume transition; that is `supersedeSession`.
     private func releaseSession(reason: String, notifyOthers: Bool) {
+        /* NE-16: never deactivate a session the engine owns. A legacy release
+           with `notifyOthers` would hand the car back to the app 4a
+           interrupted while the engine is mid-episode. */
+        guard !EngineModeFlag.sessionOwnedByEngine else {
+            holdsSession = false
+            Self.logger.notice("ForayAudio.session release skipped: engine-owned reason=\(reason, privacy: .public)")
+            return
+        }
         let session = AVAudioSession.sharedInstance()
         var ok = true
         do {

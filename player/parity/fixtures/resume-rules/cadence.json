@@ -1,0 +1,128 @@
+{
+  "family": "resume-rules",
+  "module": "player/queue-manager.js",
+  "note": "The periodic position write's cadence, from the manager that runs it: the 15 s interval, and the 10-media-second delta a tick must see before it writes (positionTickDue, NE-09). Its own file because a fixture file names one module; exported by NE-08/NE-09 for NE-04's generated constants.",
+  "cases": [
+    {
+      "id": "resume-rules/position-interval-15s",
+      "covers": [
+        "position-store::the numbers: nothing under 10 s, finished inside 30 s of the end, one event a minute, a write every 15 s"
+      ],
+      "authored": true,
+      "note": "Corner case #17: yanking the phone off Bluetooth and pocketing it loses at most 15 s. Authored.",
+      "read": "POSITION_INTERVAL_MS",
+      "expect": { "value": 15000 }
+    },
+    {
+      "id": "resume-rules/tick-delta-10s",
+      "covers": [
+        "position-store::a tick writes once the playhead has moved 10 media seconds on the same item, and an unknown clock never writes"
+      ],
+      "authored": true,
+      "note": "Media seconds, not wall: under the 15 s corner case #17 allows, with room for a late tick. Authored.",
+      "read": "POSITION_MIN_DELTA_SEC",
+      "expect": { "value": 10 }
+    },
+    {
+      "id": "resume-rules/tick-first-write",
+      "covers": [
+        "position-store::a tick writes once the playhead has moved 10 media seconds on the same item, and an unknown clock never writes"
+      ],
+      "call": "positionTickDue",
+      "args": [null, "a", 5],
+      "expect": { "return": true }
+    },
+    {
+      "id": "resume-rules/tick-first-write-undefined",
+      "covers": [
+        "position-store::a tick writes once the playhead has moved 10 media seconds on the same item, and an unknown clock never writes"
+      ],
+      "call": "positionTickDue",
+      "args": [{ "$undefined": true }, "a", 5],
+      "expect": { "return": true }
+    },
+    {
+      "id": "resume-rules/tick-same-item-under-10s",
+      "covers": [
+        "position-store::a tick writes once the playhead has moved 10 media seconds on the same item, and an unknown clock never writes"
+      ],
+      "call": "positionTickDue",
+      "args": [{ "id": "a", "seconds": 100 }, "a", 109.9],
+      "expect": { "return": false }
+    },
+    {
+      "id": "resume-rules/tick-same-item-10s-on",
+      "covers": [
+        "position-store::a tick writes once the playhead has moved 10 media seconds on the same item, and an unknown clock never writes"
+      ],
+      "call": "positionTickDue",
+      "args": [{ "id": "a", "seconds": 100 }, "a", 110],
+      "expect": { "return": true }
+    },
+    {
+      "id": "resume-rules/tick-same-item-back-10s",
+      "covers": [
+        "position-store::a tick writes once the playhead has moved 10 media seconds on the same item, and an unknown clock never writes"
+      ],
+      "note": "A backwards move counts too (Math.abs): a seek back is a new place to remember.",
+      "call": "positionTickDue",
+      "args": [{ "id": "a", "seconds": 100 }, "a", 90],
+      "expect": { "return": true }
+    },
+    {
+      "id": "resume-rules/tick-same-item-back-under-10s",
+      "covers": [
+        "position-store::a tick writes once the playhead has moved 10 media seconds on the same item, and an unknown clock never writes"
+      ],
+      "call": "positionTickDue",
+      "args": [{ "id": "a", "seconds": 100 }, "a", 95],
+      "expect": { "return": false }
+    },
+    {
+      "id": "resume-rules/tick-other-item",
+      "covers": [
+        "position-store::a tick writes once the playhead has moved 10 media seconds on the same item, and an unknown clock never writes"
+      ],
+      "call": "positionTickDue",
+      "args": [{ "id": "b", "seconds": 100 }, "a", 101],
+      "expect": { "return": true }
+    },
+    {
+      "id": "resume-rules/tick-unknown-nan",
+      "covers": [
+        "position-store::a tick writes once the playhead has moved 10 media seconds on the same item, and an unknown clock never writes"
+      ],
+      "note": "An unknown position never overwrites a known one.",
+      "call": "positionTickDue",
+      "args": [{ "id": "a", "seconds": 100 }, "a", { "$num": "NaN" }],
+      "expect": { "return": false }
+    },
+    {
+      "id": "resume-rules/tick-unknown-null",
+      "covers": [
+        "position-store::a tick writes once the playhead has moved 10 media seconds on the same item, and an unknown clock never writes"
+      ],
+      "call": "positionTickDue",
+      "args": [{ "id": "a", "seconds": 100 }, "a", null],
+      "expect": { "return": false }
+    },
+    {
+      "id": "resume-rules/tick-unknown-infinity",
+      "covers": [
+        "position-store::a tick writes once the playhead has moved 10 media seconds on the same item, and an unknown clock never writes"
+      ],
+      "call": "positionTickDue",
+      "args": [null, "a", { "$num": "Infinity" }],
+      "expect": { "return": false }
+    },
+    {
+      "id": "resume-rules/tick-unknown-string",
+      "covers": [
+        "position-store::a tick writes once the playhead has moved 10 media seconds on the same item, and an unknown clock never writes"
+      ],
+      "call": "positionTickDue",
+      "args": [null, "a", "120"],
+      "expect": { "return": false }
+    }
+  ]
+}

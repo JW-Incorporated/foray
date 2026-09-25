@@ -93,13 +93,13 @@ const FLOORS = {
      `search` entry kind on PlayerDiagnostics — query length only, never the
      query text, per this suite's own §7. */
   "player/diagnostic-log.test.js": 101, // review 2026-09-23 (fix/founder-reports-2026-09-23): a write before a slow hydration is HELD and written after the adopted ring (real DurableStore), the next write flushes by itself, the give-up force, a Clear drops what was held; the webkit door's skip is a row under the dashed command and the spec action is refused; 96 -> 101 // merge of fix/fr-diag (2026-09-23 founder record: recorded 939, entries 0, no build row): the clear mark, the build kept outside the ring, the MISSING gap line naming key+tiers, the boot row's hydration flag; 89 -> 96 // founder 2026-09-23 (fix/founder-reports-2026-09-23): a dropped duplicate press is a remote row saying dup=y, counted on the header apart from unhandled; the webkit door joins REMOTE_ORIGINS; 88 -> 89 // founder 2026-09-23 ("my car resumed Spotify"): the `remote` row (what the native side received, from which door, handled or not) and its header line; `via=` on a nowplaying row so a pause is a write; the plugin's own session acts are session kinds; 83 -> 88 // 2026-09-22 audit (L2), founder report 3: a `build` row per boot and a `build …` header line; 81 -> 83 // 2026-09-22 audit (L2), founder report 2: an unexplained stop carries hiddenFor + the element's readyState/networkState/error; a stall with no seam is a coalesced `media` row; an external play is a `transport` row; session rows carry hiddenFor; 76 -> 81 // #685 (2026-09-13): the voiceProbe line says rendered-vs-estimated and flags an impossible RTF; a synthesis-failed refusal keeps its numbers; 74 -> 76 // client audit (2026-09-12): the search row's one vocabulary + `hidden`, and the epMs/ctaMs fields; 72 -> 74 // K-01 (2026-09-12): the voiceProbe row — named fields only, null-not-zero on a refusal, and both report lines; 68 -> 72 // L-06 + M-03 (2026-09-12): the `nowplaying`, `session` and `transport` entries; 57 -> 68 // FD-01 (2026-09-10): the `data` entry's vocabulary and its line; 55 -> 57
-  "player/diagnostic-record.test.js": 25, // 2026-09-23 founder record (fix/fr-diag): the bounded wait on hydration (a hung IndexedDB no longer costs the boot and build rows) and a Clear that keeps the build on the header; 23 -> 25
+  "player/diagnostic-record.test.js": 26, // NE-26 (docs/native-engine-plan.md): the real page's Copy report reads the engine's ring once through ForayAudio, merges it, and the synchronous report carries the engine header line; 25 -> 26 // 2026-09-23 founder record (fix/fr-diag): the bounded wait on hydration (a hung IndexedDB no longer costs the boot and build rows) and a Clear that keeps the build on the header; 23 -> 25
   "player/episode-link.test.js": 6,
   /* The durable store (#40). Both of these guard against silent DATA LOSS
      rather than a wrong answer on screen, which makes them the two suites in
      `player/` whose deletion would be hardest to notice: everything keeps
      rendering, and a listener's place quietly stops surviving the week. */
-  "player/durable-store.test.js": 107, // persist-6, founder ruling 2026-09-24 "Option A": the device-only vault — the token goes to the vault and to no backed-up tier, other rows never enter it, the account is read back from it, an earlier build's copy is moved in and only then out (a refused or unread vault moves nothing, an unread tier keeps what it may hold), the vault wins, removal and purge reach it, canKeep, the breaker, the old ledger entry, health(), client.js wiring; 87 -> 107 // 2026-09-22 audit (theme J, R10): the native Preferences tier the header had promised since #40 — absent on the web, survives a WebView sweep, first word in hydration, owned keys only, purge reaches it, and client.js wires it; 81 -> 87 // 2026-09-22 audit (theme J): a key localStorage refused while IndexedDB took it is not reverted next launch, nor pushed down over the good copy — three keys, the mark clearing, a refused removal, the ledger as bookkeeping, purge, a corrupt ledger; 74 -> 81
+  "player/durable-store.test.js": 127, // NE-23 (native-engine plan §4.6): single writer for the engine's rows on the iOS shell — iOS-only deferral and its client.js wiring, a stale mirror never reaches Preferences, replace-set on attach (and against a late read), a deleted row not resurrected, a refused write untouched and faulted, held writes, the release migration once (and mid-hydration, twice over), the ledger ghost, one-way relinquish, the sweep, native Delete my data; 112 tests -> 127, floor 107 -> 127 // persist-6, founder ruling 2026-09-24 "Option A": the device-only vault — the token goes to the vault and to no backed-up tier, other rows never enter it, the account is read back from it, an earlier build's copy is moved in and only then out (a refused or unread vault moves nothing, an unread tier keeps what it may hold), the vault wins, removal and purge reach it, canKeep, the breaker, the old ledger entry, health(), client.js wiring; 87 -> 107 // 2026-09-22 audit (theme J, R10): the native Preferences tier the header had promised since #40 — absent on the web, survives a WebView sweep, first word in hydration, owned keys only, purge reaches it, and client.js wires it; 81 -> 87 // 2026-09-22 audit (theme J): a key localStorage refused while IndexedDB took it is not reverted next launch, nor pushed down over the good copy — three keys, the mark clearing, a refused removal, the ledger as bookkeeping, purge, a corrupt ledger; 74 -> 81
   "player/idb-tier.test.js": 23,
   /* New with M3 (kanban card t_c7199b13): the event queue moved off a
      synchronous `cp_events` localStorage rewrite into its own IndexedDB
@@ -200,14 +200,21 @@ const FLOORS = {
      key is `cp_rate`, whose rename would forget every listener's speed; and that a
      stale stored value SNAPS onto the ladder rather than resetting to 1x. Raise it
      when the suite grows. */
-  "player/playback-rate.test.js": 22,
+  "player/playback-rate.test.js": 24, // NE-09: utteranceRate, ForayTts's curve read from the rate fixtures (every ladder stop; the non-positive edges); 22 -> 24
   /* The default narration voice (founder decision 2026-09-10: Samantha).
      One pure rule read by two surfaces — `client.js` for what narration
      speaks with, `app.js` for which row is selected — so a deleted test here
      is a default that can silently drift back to #491's "best installed
      voice of any name", the exact behaviour the founder overruled. */
   "player/default-voice.test.js": 10,
-  "player/queue-manager.test.js": 159, // fix/narration-1x (2026-09-24, founder: "1x for now"): synthesized narration speaks at NARRATION_RATE whatever the listener's rate, on both call paths, and its deadline follows; 147 -> 159 // audit round 2 (2026-09-23, L1): onStateSettled fires after every handled event, a spoken line past its deadline is treated as finished, should-resume never resumes a listener's pause; 144 -> 147 // 2026-09-22 audit (L2): the position timer arms on the ELEMENT playing too (founder report 1); the suite was already at 143 against 132, so this also closes that slack; 132 -> 144 // client audit (2026-09-12): `_resumeNarration` reads the transport — fromStart, refused, and no-answer; 129 -> 132 // L-05 (2026-09-12): pause/resume/stop for spoken narration; 115 -> 129 // +1: L-03 position-increases acceptance (2026-09-10)
+  /* Continuous playback's rules (NE-13, docs/native-engine-plan.md §5.5): what
+     plays after an episode, the eight hops the page plans for the native
+     engine, and the once-only ledger for what that engine played while the
+     page slept. The suite READS its fixtures (player/parity/fixtures/continuation,
+     whose case count is floored in player/parity/floors.json), so a deleted test
+     here is a rule nothing asserts any more. */
+  "player/continuation.test.js": 11,
+  "player/queue-manager.test.js": 163, // NE-14s: a concurrent double skip lands on the final target and starts it once (the manager awaits only effects that are really asynchronous); 162 -> 163 // NE-14j: an OS should-resume steps back INTERRUPTION_REWIND_SEC in place, a listener's own resume does not, and the step back never crosses a segment's in-point; 159 -> 162 // fix/narration-1x (2026-09-24, founder: "1x for now"): synthesized narration speaks at NARRATION_RATE whatever the listener's rate, on both call paths, and its deadline follows; 147 -> 159 // audit round 2 (2026-09-23, L1): onStateSettled fires after every handled event, a spoken line past its deadline is treated as finished, should-resume never resumes a listener's pause; 144 -> 147 // 2026-09-22 audit (L2): the position timer arms on the ELEMENT playing too (founder report 1); the suite was already at 143 against 132, so this also closes that slack; 132 -> 144 // client audit (2026-09-12): `_resumeNarration` reads the transport — fromStart, refused, and no-answer; 129 -> 132 // L-05 (2026-09-12): pause/resume/stop for spoken narration; 115 -> 129 // +1: L-03 position-increases acceptance (2026-09-10)
   "player/queue-state.test.js": 58, // 2026-09-22 audit (L2): `elementResumed` — interrupted -> playing with no audio effect, and nothing from any other state; 56 -> 58
   "player/seam-gap.test.js": 16,
   /* The SegmentStrip (#128) — the element that makes a Foray legible as
@@ -266,6 +273,73 @@ const FLOORS = {
      locked screen fine" because nothing ran is a record that gets pasted into a
      decision, and every one of those tests is one edit from allowing it. */
   "player/kokoro-probe.test.js": 41, // #685 (2026-09-13): the zero-is-not-a-pass floor, the rendered-vs-estimated divisor, the three copies of the synthesis vocabulary, and CPU-is-the-whole-path; 30 -> 41 // K-01 (2026-09-12): the passage is phonemized, so "refuses before the bridge" and "reaches the bridge" are two tests; 29 -> 30
+  /* The native engine's parity harness (NE-03, docs/native-engine-plan.md §6).
+     Zero slack. `run.test.js` is one test per fixture case (a loop, counted
+     once here) plus the codec, comparator, schema and scenario-driver rules
+     the Swift ForayEngineParity library is ported from; `coverage.test.js` is
+     the guard that every rule in fifteen player suites is fixtured, mapped to
+     an XCTest, excluded with a reason, or owed with a card. The fixture
+     families' own case counts are floored in player/parity/floors.json and
+     enforced by "parity fixture families hold their floors" below, so deleting
+     fixture cases is loud here too, not only in the suite that reads them. */
+  "player/parity/run.test.js": 36, // NE-14j: the session and lifecycle drivers (interruption, route, cold launch, foreground), their refusals, held loads that land late, and positionEvents over the real PositionStore; 32 -> 36 // NE-12j: the media-actions adapter records real arity and refuses a press the OS could never deliver; 31 -> 32
+  "player/parity/coverage.test.js": 28, // NE-21: transport-reconcile is wholly classified (a facade test, an exclusion, or owed to the engine's own cards), every facades.json mapping names a native-facades test that exists, and a mapping that could hide a Swift rule is refused; 25 -> 28 // NE-14j: queue-manager and html-audio-backend are wholly classified — manager-episode / deck-episode, an exclusion, an XCTest, or owed to NE-30j/NE-31j/NE-39j outside the episode capability; 24 -> 25 // NE-13: the continuation capability owes nothing, because its family is JS-only (plan C-2); 23 -> 24 // NE-12j: media-session is wholly classified — media-episode, an exclusion, or NE-29j's Foray half in the foray capability's family; 22 -> 23 // NE-07j: a suite whose recording card has landed (queue-state, playback-rate) owes nothing and is fixtured into its own family only; 21 -> 22
+  /* NE-10j: the rows and number-format families. rows.test.js is what makes
+     them a RECORDING — every recorded row is rebuilt from the real builders,
+     and the page's own PositionStore, on the wall clock, writes the recorded
+     bytes. engine-contract.test.js pins OWNED_PREFIXES against both the rows
+     the family records and every cp_ key the app spells, in both directions:
+     a missed row is a clobber, an extra one is a store that stops saving. */
+  "player/parity/rows.test.js": 7, // NE-14j: the engine's lastEpisodeRow pass-through writes the page's own cp_last_episode bytes for every recorded row; 6 -> 7 // NE-10s: the page's own readers accept every recorded row (the bytes the Swift engine must write) and re-save it unchanged, and the page's isNewer orders them by updated_at; 4 -> 6
+  /* NE-11j: the rest of the contract. Beside the recorded families (checked
+     case by case by record.mjs --check), this suite states each RULE across
+     every case at once: the schema file is current and its examples are the
+     contract/snapshot cases one-to-one; SessionPolicy never notifies but on
+     close/finalEnd/dataDeletion, relinquish carries nothing, only an ok
+     sessionResult activates, and composed with the audible-start invariant
+     no audible command follows a failed activation; the strike rules; and the
+     six families owed to NE-11s. Zero slack. 3 -> 15 */
+  "player/engine-contract.test.js": 15,
+  /* NE-04: the engine's closed vocabularies. The diag-tokens family records
+     the sets for Swift; this suite holds what is about the sets themselves —
+     the plan's named tokens, every page transport source admissible, the NE-01
+     stub's reason admissible, and exact admission for every token. Zero slack. */
+  "player/engine-vocabulary.test.js": 4,
+  /* NE-21: the page side of the native engine. native-engine.test.js is the
+     client — the bounded handshake that relinquishes before the page may build
+     audio, snapshot ordering and coalescing, validation, extrapolation.
+     native-facades.test.js is the surface client.js reads, over the reference
+     engine, and it is what facades.json maps 22 transport-reconcile tests to,
+     so a deleted test there is a reconcile rule the guard still counts as
+     ported. reference-engine.test.js is protocol v1 over the real manager: the
+     contract family, the 1 Hz / hidden event rule, the warm handover. Zero slack. */
+  "player/native-engine.test.js": 18,
+  "player/native-facades.test.js": 16,
+  "player/parity/reference-engine.test.js": 14,
+  /* NE-22: the real client.js booted in a pretend iOS shell over the
+     reference engine — no <audio> or jingle element (even while hello is
+     slow), no navigator.mediaSession write, no owned key written by the page,
+     attach-only over a running engine, the audition through the engine, the
+     ordered relinquish before any Audio, the adopted rows after it, a failed
+     hello landing in JS with relinquish sent, an advance applied once and
+     acked, and a superseded play answering false (facades.json maps
+     transport-reconcile's p-impatient-2 here). Zero slack. */
+  "player/native-mode.test.js": 18, // NE-22d: the Developer engine rows' commands (no engine: nothing sent, web and android in one loop; native: four; legacy: the setting only); 11 -> 18
+  /* NE-26: the engine half of Copy — the 2,000-row ring merged by wall clock
+     (a merge, never a sort), the engine header line in both modes, the
+     per-kind engine lines, every row accounted for (unknown kinds, unreadable
+     rows, evicted and missing seqs, rows from before a Clear), the one bounded
+     engineRead through the real client, and the pin of ENGINE_ROW_KINDS to the
+     Swift emitters. Zero slack. */
+  "player/engine-diagnostics.test.js": 20,
+  /* NE-08: the suites that READ their fixtures (plan §6.3). Each test runs the
+     `transport` / `resume-rules` cases that name it, so the one file is the JS
+     assertion and the Swift port's case list (NE-09). Zero slack: a deleted
+     test here is a rule whose cases no JS test asserts any more, and the
+     coverage guard would still count those cases as fixtured. The families'
+     case counts are floored separately in player/parity/floors.json. */
+  "player/transport-policy.test.js": 20, // NE-14j: interruptionResumeOffset, the authored 1.5 s step back and its in-point floor, read from the transport fixtures; 19 -> 20 // merge of main into engine/m1 (2026-09-24): audit round 2's rule changes reached the policy module — the Foray nudge's end guard (player-5), a nudge inside a spoken line (player-11), an episode's previous (p-car-5); 16 -> 19
+  "player/position-store.test.js": 12, // NE-09: the write cadence read from the resume-rules fixtures (the 10-media-second tick, the Foray's 5 s throttle; an unknown position never writes); 10 -> 12
   "player/tts-bridge.test.js": 29, // K-01 (2026-09-12): the kokoroProbe delegate — one memoised load, an older shell build, and the shared-instance pin; 25 -> 29 // L-05 (2026-09-12): the transport half of the bridge; 20 -> 25
   /* The app's name on the surfaces users read (#302), 6 -> 8 when the two
      published legal documents were added, 8 -> 21 when the shipped UI copy that
@@ -422,10 +496,10 @@ const FLOORS = {
      stray tap cannot satisfy. Every one of those is one edit from its opposite,
      and the published privacy policy and Play declaration both now rest on them.
      A deleted test here is a false statement in a store submission. */
-  "test/data-deletion.test.js": 73, // persist-6: Delete my data finds the token in the vault and empties it, a sync signs up into the vault only, and never refreshes or signs up against a vault it could not read; 68 -> 73 // audit round 2 (L5): the deletion as a transaction — refreshed token saved (persist-1 x2), in-flight sync gated and waited out (persist-8 x2), no cp_playlists/onboarding after the re-render (persist-2), shard cache cleared (persist-4), diagnostics forgotten (persist-5), device-only cost stated (persist-7); 60 -> 68 // 2026-09-22 audit: "Delete everything" is red under ui-v2 and the drawer item is not gold; 57 -> 58 // 2026-09-22 audit (theme J, R11): the foray_events queue is purged with everything else, a queue that will not clear is not called clear, a store with no queue is not a success, no status line speaks storage jargon or a count, every store the code opens sits in a deleted-or-kept ledger, and the policy says so; 51 -> 57
+  "test/data-deletion.test.js": 79, // NE-23: in native mode the deletion stops and purges the engine before the page's own purge (its private keys go, cp_engine_applied is the page's to clear), and an engine that refuses is not a clear device; 77 -> 79 // persist-6: Delete my data finds the token in the vault and empties it, a sync signs up into the vault only, and never refreshes or signs up against a vault it could not read; 68 -> 73 // audit round 2 (L5): the deletion as a transaction — refreshed token saved (persist-1 x2), in-flight sync gated and waited out (persist-8 x2), no cp_playlists/onboarding after the re-render (persist-2), shard cache cleared (persist-4), diagnostics forgotten (persist-5), device-only cost stated (persist-7); 60 -> 68 // 2026-09-22 audit: "Delete everything" is red under ui-v2 and the drawer item is not gold; 57 -> 58 // 2026-09-22 audit (theme J, R11): the foray_events queue is purged with everything else, a queue that will not clear is not called clear, a store with no queue is not a success, no status line speaks storage jargon or a count, every store the code opens sits in a deleted-or-kept ledger, and the policy says so; 51 -> 57
   /** The field record's surface (#264) — see the note beside the two `player/`
       halves above. */
-  "test/diagnostics-surface.test.js": 19,
+  "test/diagnostics-surface.test.js": 24, // NE-26 (docs/native-engine-plan.md): Copy takes the merged record, one engine read per press, and shows it; opening repaints with it; a late merge never paints over a Clear; a failed merge falls back to the page's own; the clipboard is asked inside the tap (ClipboardItem with a promise); 19 -> 24
   /* The Foray directory AT THE PAGE (FD-03/04/05/01, 2026-09-10): the real app.js
      mounted over the real directory module, resolver, resume store and field
      record. What only this suite can see is the ORDER in init() — cache read
@@ -462,7 +536,7 @@ const FLOORS = {
      also the suite most tempting to delete, because it is the only one that goes
      red for a reason in a `.md` file — the 27 line numbers it replaced went stale
      precisely because correcting them was somebody's optional courtesy. */
-  "test/legal-citations.test.js": 17, // founder-approved persist-3 wording (2026-09-24): the policy's stated connect-src count is the CSP's, Vercel named, no "miss-only"; 15 -> 17
+  "test/legal-citations.test.js": 20, // NE-27 (docs/native-engine-plan.md L-2): +3 -- both documents name exactly EngineKeys.swift's private keys and the diagnostics file, the ring's cap and backup exclusion are the shipped ones, the deletion and ownership claims are cited; 17 -> 20 // founder-approved persist-3 wording (2026-09-24): the policy's stated connect-src count is the CSP's, Vercel named, no "miss-only"; 15 -> 17
   /* FD-06 (docs/foray-directory-plan.md): `vercel.json`'s `headers` block. The
      phone path lives or dies on one line of it — `Access-Control-Allow-Origin: *`
      on `/data/` — and a missing header fails SILENTLY on a phone (the shell's
@@ -981,6 +1055,13 @@ const FLOORS = {
      of silent-wrong-behavior this repo's floors exist to catch, not a crash
      path any other suite would notice going missing. Every test names its
      mutation; see the suite header for the full list of what each pins. */
+  /* The page's wiring around those rules (NE-13): app.js delegates to them,
+     re-sends the plan when the Continuous playback switch moves mid-episode,
+     and writes `cp_engine_applied` before logging a replayed advance or
+     position. Each is one deleted line from a car that plays the wrong thing,
+     or a history that counts a drive twice. */
+  "test/engine-continuation.test.js": 6,
+  "test/engine-developer-rows.test.js": 14, // NE-22d: the engine's four Developer rows in the drawer
   "test/up-next-autoadvance.test.js": 20, // founder, 2026-09-24, reversing lane L3's question-9 default: a play from the page moves THAT row to the top and ⏭ drops only the skipped episode (+1: a refused play moves nothing); no wrap-around, previous = restart past the window (p-car-5); 11 -> 19 -> 20 // // 2026-09-22: rewritten for the continuous-playback ruling (on by default, Up Next first, then the chosen list, unplayable rows passed over); 6 -> 11
   /* U-07's Interests page (docs/ui-transition-plan.md D6, kanban card
      t_1cb3688a). Floored for the same reason as up-next-queue.test.js: a
@@ -1154,6 +1235,23 @@ const FLOORS = {
      85 -> 97. */
   "tools/ci/pr-triage.test.mjs": 97,
   "tools/ci/run-suites.test.mjs": 36,
+  /* NE-25a's click tracks, read without a decoder: the bytes are the ones the
+     descriptor names, the WAV is sample-exact, "CBR" and "no TOC" mean what
+     the measurements doc says they mean, the Xing TOC points at frames, the
+     audio never reaches the app target, and the never-early tolerance is not
+     widened in silence. Zero slack. */
+  "tools/audio/click-tracks.test.mjs": 7,
+  /* The parity recorder (NE-03): --check in npm test, authored cases never
+     overwritten, every new or changed case handed to swift-pending.json with
+     its port card, and --mutate's kill/survive/pending verdicts with a no-op
+     control. Zero slack. */
+  "tools/parity/record.test.mjs": 19, // NE-14j: --mutate on never-early and on pause-silence is killed by the deck-episode and manager-episode fixtures as well as the JS tests, now that both families are recorded; 17 -> 19 // NE-13: a jsOnly family (the continuation hops, plan C-2) records with no port card and owes swift-pending nothing; 16 -> 17 // NE-12j: --mutate on the 15/30 rule is killed by the media-episode fixtures as well as the JS test, now that the family is recorded; 15 -> 16 // NE-07j: a --family record never vouches for another family's unrecorded ids, so that family's authored cases still reach swift-pending; 14 -> 15
+  /* NE-04: EngineConstants.swift, Diag/Vocabulary.swift and vocabulary.json
+     are GENERATED from the JS, and this is what makes them unable to drift:
+     stale on disk, a duplicate export name, both DRIFT_TOLERANCE_SEC values in
+     distinct namespaces, every export emitted or omitted with a reason, the
+     Swift escaping rules, and the CLI. Zero slack. */
+  "tools/parity/gen-constants.test.mjs": 9,
   /* THE TYPE GATE, and the reason it is floored at all. Until 2026-09-12 no CI
      job in this repo had ever run `tsc` or `eslint`: `backend/package.json`
      defined `typecheck` and nothing called it, so the TypeScript backend was
@@ -1163,7 +1261,13 @@ const FLOORS = {
      Text assertions over workflow YAML — the same idiom as
      tools/mobile/ios-workflow.test.mjs, and the same honest limit: it catches a
      step being deleted, not a step that runs and does nothing. */
-  "tools/ci/ci-workflow.test.mjs": 5,
+  "tools/ci/ci-workflow.test.mjs": 13, // NE-06: +8 -- engine-parity (swift:5.10, parity env, family table, no dispatch skip, step-level short-circuit on an explicit "false" only), engine-paths, ios-gate on every event, and ios-kit running on a Swift dispatch; 5 -> 13
+  /* The native engine's CI gates (NE-06, docs/native-engine-plan.md §6.8):
+     the changed-path classifier whose every "could not tell" is "everything
+     changed", the parity family table, ios-gate's success-only verdict, and
+     release refusal on a red engine-parity or ios-kit. Every test names its
+     mutation; each was run. Zero slack: these become required checks. */
+  "tools/ci/engine-ci.test.mjs": 35,
   /* The deck-drift rule (machinery audit finding 6). Decks whose PRs edit the
      deck in the same commit had a 0% false-claim rate; the drift is all in the
      ones where the marker floats free of the merge, and it runs both ways — one
@@ -1386,7 +1490,7 @@ const FLOORS = {
      `shell-invariants` gained one: the same slice against TODAY'S real documents,
      independently of the fixture suite. */
   "tools/mobile/prepare-webdir.test.mjs": 85, // issue #701 (2026-09-24): the seed's pointer and build stamp are the web's stamp for this tree, computed rather than read off disk; 84 -> 85 // 2026-09-22 audit (L2), founder report 3: the bundle carries build-stamp.json with the committed deploy_id; 83 -> 84 // +1 audit finding E (2026-09-12): seedCarries is exactly the negation of the one `isGeneratedDraft`; 82 -> 83 // K-01/K-06 (2026-09-12): the probe passage ships into the shell and a model never does; 78 -> 82 // FD-04 (2026-09-10): the seed is a subset of the directory's files; the seed pointer is optional; 72 -> 74. F-92 (2026-09-12): the seed leaves generated drafts to the directory — the rule on the fixture, the verifier as a reached guard, and the real repo's draft absent from the real bundle; 74 -> 77. S-03 (2026-09-12): the unpinned show index is named, bundled and budgeted; 77 -> 78
-  "tools/mobile/shell-invariants.test.mjs": 72, // round-2 sweep (2026-09-23): a stall stops the lock-screen clock on both natives (p-car-8); 71 -> 72 | audit round 2, lane L3 (2026-09-23): the route-gated track pair and the unmirrored track handlers, one .spokenAudio mode, the Android seek pair + custom buttons, no re-post on a press, the narration-first start; 66 -> 71 // // review 2026-09-23 (fix/founder-reports-2026-09-23): every command the shim and the Java can emit is in REMOTE_COMMANDS; the resume supersedes (no setActive), a pause inside an interruption takes no hold, a lost hold is retaken; the re-assert generation moves with the state and nothing on stateQueue waits on the network (two suites; the runtime count is 70, the static one 66); 64 -> 66 // founder 2026-09-23 (fix/founder-reports-2026-09-23): the shim's webkit door is in the record's vocabulary, and the Swift header + docs state the two-publisher tee model rather than same-tick ordering; fr-ui's two literal-interval pins deleted with the mechanism they pinned; 62 -> 64 // founder 2026-09-23: setActive only from holdSession/releaseSession off the pause transition; a paused transport stays on the lock screen and re-asserts on background; the seek pair has one source on both natives; the toggle resolves from state; every transport event names its door; Android stays READY while paused; 57 -> 62 // +4: the L-05 plugin methods and the M-03 session needle/event name (2026-09-12) // +1: iOS plugin never calls setActive (F11/F13, 2026-09-09); +1: Swift writes the L-02 log needle (2026-09-10)
+  "tools/mobile/shell-invariants.test.mjs": 109, // NE-27: +1 -- ENGINE_DEFAULT says native only when STATE.md records the OQ-9 answer (a dated "OQ-9 answer" line with the ruling quoted), and an M1 native default advertises only episode, continuation and restore // NE-24 (docs/native-engine-plan.md §4.5): +1 -- the AppDelegate's call is the plugin's public ForayEngineColdPath in the module the patch imports, the boot writes the build row first and cold-boots without autoplay, only the boot can exit, and a purge reaches the store // merge of engine/m1 into NE-16g (2026-09-24): engine/m1 106, NE-16g +1 = 107 static (111 at runtime) // // merge of engine/m1 (NE-18) into NE-20 (2026-09-24): both sides added tests, 104 + 2 = 106 // NE-20 (docs/native-engine-plan.md §5.1-§5.4): the bridge's three methods and its event name are engine-contract.js's and native-engine.js's, each method decodes, hops to main and always resolves through EngineBridge, Android never gains them, and no engine or diag event leaves a hidden page; 103 -> 104 // merge of engine/m1 into NE-25c (2026-09-24): engine/m1 stands at a static 102 after NE-17 (NE-19 at 100, NE-17 two more), NE-25c adds one, so the static count is 103 and the floor meets it // NE-25c (docs/native-engine-plan.md): the Developer session probe imports only Foundation and the core, speaks and plays only through the core (an audition, a play) and pauses only a play it started, is built only in the host's probeSession branch and dropped at teardown with the synthesizer's callback; one AVSpeechSynthesizer configuration (application session, Apple's 1x rate) with the implicit-activation guard before it speaks; the smoke runs AudioSessionOwner, PreviewSpeaker and AVDeck and is tagged NE-25c; engine/m1 stood at 100 after NE-19, so 100 -> 101 // NE-17 (docs/native-engine-plan.md): load() asks EngineOwnership and today's registration (registerCommandHandlers, registerSessionObservers) runs only through runLegacyRegistration; setNowPlaying stands down outside the legacy lane; the owner is Foundation-only, keeps its keys through EngineStore (the core's EnginePrivateKey) and its flag through EngineModeFlag, boots nothing and writes no row until NE-24, and the host hands it its two hooks // NE-19 (docs/native-engine-plan.md): one os.Logger (ai.jwlabs.foura / engine) whose only .public line is DiagGate.loggerText, and nothing else under Engine/ logs but NE-15 AVDeck and NE-16 AudioSessionOwner, named; only EngineStore (and NE-16 one-key HoldPolicyStore, named) touches UserDefaults, writeShared refuses unowned rows, the purge enumerates every ForayEngine.* key and the ring, the host flushes after the core lifecycle flush; the private keys are the six data-deletion.test.js purges and the ring is a 2,000-row file in Application Support; 97 -> 100 // NE-16 (docs/native-engine-plan.md): setActive( / setCategory( live only in AudioSessionOwner.swift and the six legacy sites, each guarded on EngineModeFlag.sessionOwnedByEngine (an unguarded or new site is red); the owner sets the category at boot without activating, notifies only when asked, observes its three notifications on the main queue with the interruption reason, and every owner row carries the silence hint; the host persists setHoldPolicy to ForayEngine.holdPolicy and reads it back; EngineModeFlag.swift is byte-identical (LF) in foray-audio and foray-tts, volatile, and read by both plugins; 94 -> 97 // NE-15h (docs/native-engine-plan.md): ForayEngine.swift and Seams.swift import only Foundation and the core and name no platform API, all eight seams are declared in Seams.swift with a recording fake each, DeckStub.swift stays deleted and DeckDriving is declared once, the activation answer is a nested turn inside the .sessionActivate case, teardown releases observers, timers, the grace task and the deck, a relinquish tears down by itself, and the timers are main-queue DispatchSourceTimers; 93 -> 94 // NE-14s (docs/native-engine-plan.md): both parity wrappers REQUIRE the deck-episode and manager-episode runners, the registry holds both, swift-pending owes none of manager-episode / deck-episode / session-invariant / transport, and EngineCore commands the deck to play in exactly one place, after startPlayback's active-session guard; 92 -> 93 // merge of engine/m1 into NE-11s (2026-09-24): engine/m1 stood at a static 91 (the floor 90 one behind), NE-11s adds one, so the static count is 92 and the floor meets it // NE-11s (docs/native-engine-plan.md): both parity wrappers REQUIRE the session / session-invariant / engine-mode / contract / snapshot / handshake runners, the registry holds all six, and nothing under the core's Contract/ decodes through Foundation's JSON or Codable; the static count stood at 88 on engine/m1 (the runtime count 92, the floor 87 behind both), so 88 -> 89 // merge of engine/m1 into NE-25b (2026-09-24): NE-25b added one test off 84, engine/m1 five (NE-12s two, NE-10s one, NE-09 one, NE-07s one), so 89 + 1 = 90 // NE-25b (docs/native-engine-plan.md): the two-deck spike measures AVDeck's own gate (two real decks, no preroll( in the test file, the primitive records the statuses it read, every table tagged NE-25b, the exempt click tracks); 84 -> 85 // merge of engine/m1 into NE-12s (2026-09-24): NE-12s added two tests off 75 (the literal-15/30 scan and the media-episode runner pin), engine/m1 twelve (NE-10s one, NE-09 one, NE-15 three, NE-07s one, main six), so 87 + 2 = 89 // NE-12s (docs/native-engine-plan.md): no literal 15 or 30 (nor 15_000 / 30_000) in the engine core's Swift outside the generated EngineConstants, and MediaMapping reads the pair from it; both XCTest wrappers require the media-episode runner, the registry holds it, and swift-pending owes none of the family; 75 -> 77 // merge of engine/m1 into NE-10s (2026-09-24): NE-10s added one test off 75, engine/m1 eleven (NE-09 one, NE-15 three, NE-07s one, main six), so 86 + 1 = 87 // NE-10s (docs/native-engine-plan.md): nothing under the core's Persist/ or Diag/ writes through Foundation's JSON or date formatters, the rows / number-format / diag-tokens runners are registered and REQUIRED by both wrappers, and admission stays out of the generated Vocabulary.swift; 75 -> 76 // merge of engine/m1 into NE-09 (2026-09-24): NE-09 added one test off 75, engine/m1 ten (NE-15 three, NE-07s one, main six), so 85 + 1 = 86 // NE-09 (docs/native-engine-plan.md): both parity wrappers REQUIRE runners for rate, resume-rules and transport, and the registry holds all three; 75 -> 76 // NE-07s (docs/native-engine-plan.md): the queue-state runner is registered and both XCTest wrappers require it to have run, so the burned-down family cannot fall back to "owed" quietly; 84 -> 85 // NE-15 (docs/native-engine-plan.md), merged onto engine/m1 2026-09-24: preroll( only in AVDeck.prerollWhenReady behind both statuses and rate 0; the deck settings, zero-tolerance seeks, the 20 s MEASURE deadline, the iOS 16 rate branch and the implicit-activation fault; AVDeckTests play NE-25a's CBR MP3 and WAV (the one exempt click-track set) and report through the one FORAY_MEASURE_SUMMARY hand-off; 81 -> 84 // merge of main into engine/m1 (2026-09-24): both sides grew the file off 66 — engine/m1 by nine (NE-01/02/05, 66 -> 75), main by six (audit round 2, 66 -> 72) — so 75 + 6 = 81 // main: round-2 sweep (2026-09-23): a stall stops the lock-screen clock on both natives (p-car-8); 71 -> 72 | audit round 2, lane L3 (2026-09-23): the route-gated track pair and the unmirrored track handlers, one .spokenAudio mode, the Android seek pair + custom buttons, no re-post on a press, the narration-first start; 66 -> 71 // NE-05 (docs/native-engine-plan.md): the Swift parity library imports no XCTest, reads player/parity in place (no .json copy under the core) and keeps the FORAY_PARITY_DIR / PARITY_REPORT / family-line interface; both XCTest wrappers run the compare and seam-gap families and the whole manifest, and the registry holds both runners; 73 -> 75 // NE-02 (docs/native-engine-plan.md): the core's reducer and its tests are copies whose headers name the ios/ source @ adde5e12 and say ios/ is frozen reference; every one of the 34 original reducer tests survives in the copy, by name; 71 -> 73 // NE-01 (docs/native-engine-plan.md): foray-engine-core is pure (no deps, Foundation-only sources, no XCTest in the parity library); foray-audio links it by path and keeps one product (the scheme list); engineHello is an iOS-only stub that answers from the core; the Preferences pin is test-only and cannot compile out; the page never configures a Preferences group; 66 -> 71 // review 2026-09-23 (fix/founder-reports-2026-09-23): every command the shim and the Java can emit is in REMOTE_COMMANDS; the resume supersedes (no setActive), a pause inside an interruption takes no hold, a lost hold is retaken; the re-assert generation moves with the state and nothing on stateQueue waits on the network (two suites; the runtime count is 70, the static one 66); 64 -> 66 // founder 2026-09-23 (fix/founder-reports-2026-09-23): the shim's webkit door is in the record's vocabulary, and the Swift header + docs state the two-publisher tee model rather than same-tick ordering; fr-ui's two literal-interval pins deleted with the mechanism they pinned; 62 -> 64 // founder 2026-09-23: setActive only from holdSession/releaseSession off the pause transition; a paused transport stays on the lock screen and re-asserts on background; the seek pair has one source on both natives; the toggle resolves from state; every transport event names its door; Android stays READY while paused; 57 -> 62 // +4: the L-05 plugin methods and the M-03 session needle/event name (2026-09-12) // +1: iOS plugin never calls setActive (F11/F13, 2026-09-09); +1: Swift writes the L-02 log needle (2026-09-10) // NE-18 (docs/native-engine-plan.md): the remote surface steps by the founder's pair and answers with the core's verdict on main; Now Playing writes rate 0 rather than playbackState, clears only through clear(), and artwork is https-or-bundled and bounded; engine/m1 stood at a static 103, so 103 -> 105 // merge of engine/m1 into NE-25c (2026-09-24): engine/m1 stands at a static 102 after NE-17 (NE-19 at 100, NE-17 two more), NE-25c adds one, so the static count is 103 and the floor meets it // NE-25c (docs/native-engine-plan.md): the Developer session probe imports only Foundation and the core, speaks and plays only through the core (an audition, a play) and pauses only a play it started, is built only in the host's probeSession branch and dropped at teardown with the synthesizer's callback; one AVSpeechSynthesizer configuration (application session, Apple's 1x rate) with the implicit-activation guard before it speaks; the smoke runs AudioSessionOwner, PreviewSpeaker and AVDeck and is tagged NE-25c; engine/m1 stood at 100 after NE-19, so 100 -> 101 // NE-17 (docs/native-engine-plan.md): load() asks EngineOwnership and today's registration (registerCommandHandlers, registerSessionObservers) runs only through runLegacyRegistration; setNowPlaying stands down outside the legacy lane; the owner is Foundation-only, keeps its keys through EngineStore (the core's EnginePrivateKey) and its flag through EngineModeFlag, boots nothing and writes no row until NE-24, and the host hands it its two hooks // NE-19 (docs/native-engine-plan.md): one os.Logger (ai.jwlabs.foura / engine) whose only .public line is DiagGate.loggerText, and nothing else under Engine/ logs but NE-15 AVDeck and NE-16 AudioSessionOwner, named; only EngineStore (and NE-16 one-key HoldPolicyStore, named) touches UserDefaults, writeShared refuses unowned rows, the purge enumerates every ForayEngine.* key and the ring, the host flushes after the core lifecycle flush; the private keys are the six data-deletion.test.js purges and the ring is a 2,000-row file in Application Support; 97 -> 100 // NE-16 (docs/native-engine-plan.md): setActive( / setCategory( live only in AudioSessionOwner.swift and the six legacy sites, each guarded on EngineModeFlag.sessionOwnedByEngine (an unguarded or new site is red); the owner sets the category at boot without activating, notifies only when asked, observes its three notifications on the main queue with the interruption reason, and every owner row carries the silence hint; the host persists setHoldPolicy to ForayEngine.holdPolicy and reads it back; EngineModeFlag.swift is byte-identical (LF) in foray-audio and foray-tts, volatile, and read by both plugins; 94 -> 97 // NE-15h (docs/native-engine-plan.md): ForayEngine.swift and Seams.swift import only Foundation and the core and name no platform API, all eight seams are declared in Seams.swift with a recording fake each, DeckStub.swift stays deleted and DeckDriving is declared once, the activation answer is a nested turn inside the .sessionActivate case, teardown releases observers, timers, the grace task and the deck, a relinquish tears down by itself, and the timers are main-queue DispatchSourceTimers; 93 -> 94 // NE-14s (docs/native-engine-plan.md): both parity wrappers REQUIRE the deck-episode and manager-episode runners, the registry holds both, swift-pending owes none of manager-episode / deck-episode / session-invariant / transport, and EngineCore commands the deck to play in exactly one place, after startPlayback's active-session guard; 92 -> 93 // merge of engine/m1 into NE-11s (2026-09-24): engine/m1 stood at a static 91 (the floor 90 one behind), NE-11s adds one, so the static count is 92 and the floor meets it // NE-11s (docs/native-engine-plan.md): both parity wrappers REQUIRE the session / session-invariant / engine-mode / contract / snapshot / handshake runners, the registry holds all six, and nothing under the core's Contract/ decodes through Foundation's JSON or Codable; the static count stood at 88 on engine/m1 (the runtime count 92, the floor 87 behind both), so 88 -> 89 // merge of engine/m1 into NE-25b (2026-09-24): NE-25b added one test off 84, engine/m1 five (NE-12s two, NE-10s one, NE-09 one, NE-07s one), so 89 + 1 = 90 // NE-25b (docs/native-engine-plan.md): the two-deck spike measures AVDeck's own gate (two real decks, no preroll( in the test file, the primitive records the statuses it read, every table tagged NE-25b, the exempt click tracks); 84 -> 85 // merge of engine/m1 into NE-12s (2026-09-24): NE-12s added two tests off 75 (the literal-15/30 scan and the media-episode runner pin), engine/m1 twelve (NE-10s one, NE-09 one, NE-15 three, NE-07s one, main six), so 87 + 2 = 89 // NE-12s (docs/native-engine-plan.md): no literal 15 or 30 (nor 15_000 / 30_000) in the engine core's Swift outside the generated EngineConstants, and MediaMapping reads the pair from it; both XCTest wrappers require the media-episode runner, the registry holds it, and swift-pending owes none of the family; 75 -> 77 // merge of engine/m1 into NE-10s (2026-09-24): NE-10s added one test off 75, engine/m1 eleven (NE-09 one, NE-15 three, NE-07s one, main six), so 86 + 1 = 87 // NE-10s (docs/native-engine-plan.md): nothing under the core's Persist/ or Diag/ writes through Foundation's JSON or date formatters, the rows / number-format / diag-tokens runners are registered and REQUIRED by both wrappers, and admission stays out of the generated Vocabulary.swift; 75 -> 76 // merge of engine/m1 into NE-09 (2026-09-24): NE-09 added one test off 75, engine/m1 ten (NE-15 three, NE-07s one, main six), so 85 + 1 = 86 // NE-09 (docs/native-engine-plan.md): both parity wrappers REQUIRE runners for rate, resume-rules and transport, and the registry holds all three; 75 -> 76 // NE-07s (docs/native-engine-plan.md): the queue-state runner is registered and both XCTest wrappers require it to have run, so the burned-down family cannot fall back to "owed" quietly; 84 -> 85 // NE-15 (docs/native-engine-plan.md), merged onto engine/m1 2026-09-24: preroll( only in AVDeck.prerollWhenReady behind both statuses and rate 0; the deck settings, zero-tolerance seeks, the 20 s MEASURE deadline, the iOS 16 rate branch and the implicit-activation fault; AVDeckTests play NE-25a's CBR MP3 and WAV (the one exempt click-track set) and report through the one FORAY_MEASURE_SUMMARY hand-off; 81 -> 84 // merge of main into engine/m1 (2026-09-24): both sides grew the file off 66 — engine/m1 by nine (NE-01/02/05, 66 -> 75), main by six (audit round 2, 66 -> 72) — so 75 + 6 = 81 // main: round-2 sweep (2026-09-23): a stall stops the lock-screen clock on both natives (p-car-8); 71 -> 72 | audit round 2, lane L3 (2026-09-23): the route-gated track pair and the unmirrored track handlers, one .spokenAudio mode, the Android seek pair + custom buttons, no re-post on a press, the narration-first start; 66 -> 71 // NE-05 (docs/native-engine-plan.md): the Swift parity library imports no XCTest, reads player/parity in place (no .json copy under the core) and keeps the FORAY_PARITY_DIR / PARITY_REPORT / family-line interface; both XCTest wrappers run the compare and seam-gap families and the whole manifest, and the registry holds both runners; 73 -> 75 // NE-02 (docs/native-engine-plan.md): the core's reducer and its tests are copies whose headers name the ios/ source @ adde5e12 and say ios/ is frozen reference; every one of the 34 original reducer tests survives in the copy, by name; 71 -> 73 // NE-01 (docs/native-engine-plan.md): foray-engine-core is pure (no deps, Foundation-only sources, no XCTest in the parity library); foray-audio links it by path and keeps one product (the scheme list); engineHello is an iOS-only stub that answers from the core; the Preferences pin is test-only and cannot compile out; the page never configures a Preferences group; 66 -> 71 // review 2026-09-23 (fix/founder-reports-2026-09-23): every command the shim and the Java can emit is in REMOTE_COMMANDS; the resume supersedes (no setActive), a pause inside an interruption takes no hold, a lost hold is retaken; the re-assert generation moves with the state and nothing on stateQueue waits on the network (two suites; the runtime count is 70, the static one 66); 64 -> 66 // founder 2026-09-23 (fix/founder-reports-2026-09-23): the shim's webkit door is in the record's vocabulary, and the Swift header + docs state the two-publisher tee model rather than same-tick ordering; fr-ui's two literal-interval pins deleted with the mechanism they pinned; 62 -> 64 // founder 2026-09-23: setActive only from holdSession/releaseSession off the pause transition; a paused transport stays on the lock screen and re-asserts on background; the seek pair has one source on both natives; the toggle resolves from state; every transport event names its door; Android stays READY while paused; 57 -> 62 // +4: the L-05 plugin methods and the M-03 session needle/event name (2026-09-12) // +1: iOS plugin never calls setActive (F11/F13, 2026-09-09); +1: Swift writes the L-02 log needle (2026-09-10)
   /* 2026-09-04: the bundle's JS/CSS is minified (comments + whitespace, identifiers
      kept) and its JSON re-serialised on the way in — docs/mobile-shell.md §3.4.
      `minify.test.mjs` pins the transform (nothing renamed, nothing rewritten, only
@@ -1535,7 +1639,7 @@ const FLOORS = {
      Capacitor's placeholders on every build to 2026090603. Same rules as
      inject-app-icon: byte-level --check, refuse a half fix. Floored exact. */
   "tools/mobile/inject-splash.test.mjs": 19,
-  "tools/mobile/inject-background-audio.test.mjs": 41,
+  "tools/mobile/inject-background-audio.test.mjs": 54, // NE-24: +4 -- the AppDelegate cold path (the import and ForayEngineColdPath.bootIfNeeded() as the first statement of didFinishLaunching, byte-identical elsewhere; idempotent, half-patched refused; exactly one didFinishLaunching, @main or @UIApplicationMain; the CLI patches beside the plist, --check quotes it, a missing AppDelegate fails with the plist untouched) // NE-17: +9 -- ForayEngineDefault / ForayEngineCapabilities from mobile/ENGINE_DEFAULT.json (committed js; absent reads js; written at the root, replaced not refused, byte-identical elsewhere; strict parse; the re-read is a real function; the CLI writes on every edit and --check prints ForayEngineDefault=js)
   "tools/mobile/ios-ci.test.mjs": 137, // founder 2026-09-23: section 3d reads taken-over-severed for a live object taken over with no tee onto WebKit's MediaSession — the state that shipped as "4a / unknown / unknown"; 136 -> 137 // +7: L-02 takeover verdict + reached needle (2026-09-10); +4: M-03 session needle (2026-09-12)
   /* The embedded-framework plist rules (2026-09-13). Release run 34739630705
      archived, exported, and was REJECTED by App Store Connect: the ONNX Runtime
@@ -1551,7 +1655,15 @@ const FLOORS = {
      plists, so the patcher must touch only what is actually missing the key and
      must never change a vendored plist's format. */
   "tools/mobile/ios-embedded-frameworks.test.mjs": 40,
-  "tools/mobile/ios-workflow.test.mjs": 43, // +4 (2026-09-13): the MinimumOSVersion patch runs before both builds, off one resolved SwiftPM tree, with the deployment target READ not written, and the built device bundle is read back
+  /* NE-26r (docs/native-engine-plan.md §7, §10): tools/mobile/engine-report.mjs,
+     a Copy paste (or the ring file) to the DV-1..DV-13 verdict table — every
+     verdict's pass, fail and no-data paths, an evicted early seam flagged
+     incomplete (never passed), the resume latencies, the remote/route summary,
+     the seam distribution, the fault counts, the M1 exit readings and the CLI;
+     plus the round trip through NE-26's real engineLineFor once it is on the
+     branch. Zero slack. */
+  "tools/mobile/engine-report.test.mjs": 25,
+  "tools/mobile/ios-workflow.test.mjs": 45, // NE-17: +1 -- the plist step keeps the bare injector run and its --check, which carry ForayEngineDefault, with no --engine-default override // NE-06: +1 -- the parity fixtures and recorder are negated out of the path filter, below the patterns they narrow // +4 (2026-09-13): the MinimumOSVersion patch runs before both builds, off one resolved SwiftPM tree, with the deployment target READ not written, and the built device bundle is read back
 
   "tools/mobile/probe/install-probe.test.mjs": 39,
   /* The one-shot that gets a newly curated show's back catalogue into the pipeline
@@ -1681,7 +1793,7 @@ const FLOORS = {
      shared build steps into. Registered the same day both suites were
      written, per R-02's own precedent for this map. */
   "tools/mobile/release-ci.test.mjs": 15,
-  "tools/mobile/release-workflow.test.mjs": 29, // +4 (2026-09-13): the release composite is a THIRD build path — it patches the ONNX Runtime plist before archiving, archives from the patched tree, and reads the archive back before export/upload
+  "tools/mobile/release-workflow.test.mjs": 33, // NE-17: +1 -- the release archive keeps the bare injector run and its --check (ForayEngineDefault), with no --engine-default override // NE-06: +3 -- ios needs ios-checks (release-checks on github.sha via env), ios-checks is guarded and reads checks on Linux, and the summary names a refusal // +4 (2026-09-13): the release composite is a THIRD build path — it patches the ONNX Runtime plist before archiving, archives from the patched tree, and reads the archive back before export/upload
 
   /* The launch verdict (the `android-smoke` job's brain). ZERO SLACK. This is the
      only thing in the repo that can judge a RUNNING Android app, and its risk is
@@ -1903,7 +2015,7 @@ const FLOORS = {
      channel and the App Store rejects one, so the inversion is the whole
      point. */
   "tools/store/play-listing.test.mjs": 21,
-  "tools/transcribe/fetch-audio.test.mjs": 64,
+  "tools/transcribe/fetch-audio.test.mjs": 65, // NE-25a: the click-track exemption covers only descriptor-named, hash-matching files under 1 MB; 64 -> 65
   /* ADR-0008's decode-and-compare: the instrument the cheap ones defer to.
      Floored because everything expensive about it — the download, the PyAV
      demux — is deliberately OUTSIDE CI, so what remains is the arithmetic that
@@ -2749,6 +2861,127 @@ test("every suite on disk is covered by a floor", () => {
       "test/suite-integrity.test.js with the suite's current test count:\n" +
       unfloored.join("\n")
   );
+});
+
+/* SWIFT FLOORS (NE-02). The native engine's pure core,
+ * mobile/plugins/foray-audio/foray-engine-core, is compiled and tested only on
+ * a CI Mac (ci.yml's ios-kit, `swift test` on the core): nobody who writes
+ * this repo can run it, so a PR that deletes XCTests there reads as green to
+ * everyone. mobile/ is not auto-merge territory the way test/ and tools/ are,
+ * but the reason for a floor is the same: deletion should take an edit to two
+ * files. Counted as `func test…(` in the code with comments stripped, so a
+ * commented-out test does not count.
+ *
+ * Named files only, with no "every Swift file has a floor" closure: the
+ * core's parity wrappers run one XCTest over a whole fixture family, and
+ * those families are floored in player/parity/floors.json instead.
+ *
+ * MUTATION: delete testStopWhileIdleIsNoOp from the core's
+ * PlayerQueueStateTests.swift, or wrap it in a block comment -> red. */
+const SWIFT_FLOORS = {
+  /* Copied with the reducer from ios/ForayKit @ adde5e12 (NE-02). NE-07s adds
+     parity cases beside them and must never drop one: they are the proof the
+     extension kept the behaviour the scaffold already had.
+     tools/mobile/shell-invariants.test.mjs also pins them BY NAME against the
+     frozen ios/ original, which a count cannot do. */
+  "mobile/plugins/foray-audio/foray-engine-core/Tests/ForayEngineCoreTests/PlayerQueueStateTests.swift": 34,
+  "mobile/plugins/foray-audio/foray-engine-core/Tests/ForayEngineCoreTests/ParityStubTests.swift": 6,
+  /* NE-04: the generated constants and vocabularies compile, and mean what
+     the generator says (distinct drift tolerances, keyword-named tokens). */
+  "mobile/plugins/foray-audio/foray-engine-core/Tests/ForayEngineCoreTests/EngineConstantsTests.swift": 6,
+  /* NE-07s: the card's mutation (swap two itemLoaded effects -> a named
+     queue-state case red) kept as a test, plus the telemetry spellings no
+     fixture reaches. */
+  "mobile/plugins/foray-audio/foray-engine-core/Tests/ForayEngineCoreTests/QueueStateParityTests.swift": 4,
+  /* NE-09: the ground the rate / resume-rules / transport ports stand on
+     (JSMath, ToNumber, the snap, the generated tokens), the framework's speech
+     scale against the core's copy, and the shipping plugin's utteranceRate
+     against the same fixture the core answers to. */
+  "mobile/plugins/foray-audio/foray-engine-core/Tests/ForayEngineCoreTests/PolicyPortTests.swift": 6,
+  "mobile/plugins/foray-audio/ios/Tests/ForayAudioPluginTests/EnginePolicyFrameworkTests.swift": 2,
+  "mobile/plugins/foray-tts/ios/Tests/ForayTtsPluginTests/UtteranceRateParityTests.swift": 1,
+  /* NE-10s: JSON.stringify / JSON.parse / toISOString / Date.parse, from Node's
+     own answers, past what the number-format family names; and the shared
+     rows at the UTF-8 byte level (Swift String equality is canonical
+     equivalence, which the comparator inherits), read-back, isNewer, the
+     restore record and the packed seam row. */
+  "mobile/plugins/foray-audio/foray-engine-core/Tests/ForayEngineCoreTests/JSWriterTests.swift": 8,
+  "mobile/plugins/foray-audio/foray-engine-core/Tests/ForayEngineCoreTests/RowsTests.swift": 10,
+  /* NE-11s: the card's mutations (a deactivate on pause, notify on
+     relinquish, an unrequested activation counted) kept as tests over the real
+     fixture tree, the token enums against the generated constants, the hold
+     policy's spelling at its edges, and the contract's decoding past accept /
+     refuse (typed commands, required-but-null keys, no coercion). */
+  "mobile/plugins/foray-audio/foray-engine-core/Tests/ForayEngineCoreTests/SessionPolicyTests.swift": 11,
+  /* NE-15h: the host over recording fakes (a failed activation plays
+     nothing, a remote play activates and plays inside its handler, teardown
+     and relinquish leave nothing live, grace expiry ends its task inside the
+     handler, timers, off-main results, one engine per process) and the real
+     main-queue timers. AVDeck's Simulator suite is floored with it: NE-15h
+     swapped the deck onto the core's vocabulary and added its reading,
+     invalidate, out-point and bad-URL tests. */
+  "mobile/plugins/foray-audio/ios/Tests/ForayAudioPluginTests/Engine/ForayEngineHostTests.swift": 15,
+  "mobile/plugins/foray-audio/ios/Tests/ForayAudioPluginTests/AVDeckTests.swift": 18,
+  /* NE-19: the diagnostics ring and its gate on the host (durable across a
+     relaunch, monotonic seq, capped at 2,000, the 51-minute retention budget,
+     a torn tail, purge, dropped tokens, no URLs / route names / free text,
+     the capped Now Playing text kept out of os.Logger, the sub-kind as
+     event, the build row, the private keys); the position flush at
+     background / terminate; and on the Simulator the real EngineStore under
+     the host (cp_pos read back through @capacitor/preferences), the refused
+     unowned row, the private-key prefix, the enumerated purge, the ring in
+     Application Support and the one-row seam. */
+  "mobile/plugins/foray-audio/foray-engine-core/Tests/ForayEngineCoreTests/DiagRingTests.swift": 12,
+  "mobile/plugins/foray-audio/foray-engine-core/Tests/ForayEngineCoreTests/PositionFlushTests.swift": 3,
+  "mobile/plugins/foray-audio/ios/Tests/ForayAudioPluginTests/Engine/EngineStoreTests.swift": 7,
+};
+
+for (const [rel, floor] of Object.entries(SWIFT_FLOORS)) {
+  test(`${rel} still exists and has >= ${floor} XCTest methods`, () => {
+    const full = path.join(ROOT, rel);
+    assert.ok(fs.existsSync(full), `${rel} is missing. Deleting a Swift suite is not a valid way to make CI pass.`);
+    const code = fs.readFileSync(full, "utf8")
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .replace(/\/\/.*$/gm, "");
+    const count = (code.match(/\bfunc\s+test\w*\s*\(/g) || []).length;
+    assert.ok(
+      count >= floor,
+      `${rel} has ${count} XCTest methods but the committed floor is ${floor}. ` +
+        `If you removed tests on purpose, lower SWIFT_FLOORS in test/suite-integrity.test.js ` +
+        `in the same PR and say why.`
+    );
+  });
+}
+
+/* PARITY FIXTURE FLOORS (NE-03). The native engine's fixtures live as data in
+ * player/parity/fixtures/<family>/*.json, not as test() calls, so the FLOORS
+ * table above cannot see a deleted case: the suite that reads them runs one
+ * test per case and would simply run fewer. player/parity/floors.json holds a
+ * minimum per family, written by tools/parity/record.mjs (raise-only unless
+ * --lower-floors is passed, visibly), and this reads it against the fixtures on
+ * disk — the same two-file friction as FLOORS: gutting a family now takes an
+ * edit to floors.json AND the fixture, in a diff the merge audit shows.
+ * MUTATION: delete one case from fixtures/seam-gap/seam-gap.json -> red. */
+test("parity fixture families hold their floors, and every family has one", () => {
+  const PARITY = path.join(ROOT, "player", "parity");
+  const floorsFile = path.join(PARITY, "floors.json");
+  assert.ok(fs.existsSync(floorsFile), "player/parity/floors.json is missing");
+  const floors = JSON.parse(fs.readFileSync(floorsFile, "utf8")).families || {};
+  const base = path.join(PARITY, "fixtures");
+  const onDisk = {};
+  for (const fam of fs.existsSync(base) ? fs.readdirSync(base) : []) {
+    const dir = path.join(base, fam);
+    if (!fs.statSync(dir).isDirectory()) continue;
+    onDisk[fam] = fs.readdirSync(dir).filter((f) => f.endsWith(".json"))
+      .reduce((n, f) => n + JSON.parse(fs.readFileSync(path.join(dir, f), "utf8")).cases.length, 0);
+  }
+  for (const [fam, floor] of Object.entries(floors)) {
+    assert.ok(fam in onDisk, `parity family ${fam} is floored at ${floor} but has no fixtures on disk`);
+    assert.ok(onDisk[fam] >= floor, `parity family ${fam} has ${onDisk[fam]} cases but its floor is ${floor}`);
+  }
+  const unfloored = Object.keys(onDisk).filter((f) => !(f in floors));
+  assert.deepStrictEqual(unfloored, [], "parity families with no floor (run tools/parity/record.mjs)");
+  assert.ok(Object.keys(onDisk).length > 0, "no parity fixtures at all: the seam-gap family is seeded by NE-03");
 });
 
 /* Node's own default test discovery matches more spellings than this repo's

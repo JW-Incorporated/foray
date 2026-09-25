@@ -28,7 +28,7 @@
  * `querySelectorAll` for click-driven binding tests) are its own.
  */
 
-const { test } = require("node:test");
+const { test, before } = require("node:test");
 const assert = require("node:assert");
 const vm = require("node:vm");
 const fs = require("node:fs");
@@ -40,6 +40,14 @@ const SEARCH_SRC = fs.readFileSync(path.join(ROOT, "search-engine.js"), "utf8");
 const readJson = (rel) => JSON.parse(fs.readFileSync(path.join(ROOT, rel), "utf8"));
 
 process.on("unhandledRejection", () => {});
+
+/* What plays after an episode is player/continuation.js's since NE-13, published
+   to the page by player/client.js as `window.forayContinuation`. This harness
+   has no client.js, so it publishes the REAL rules the same way — without them
+   `advanceQueueOnEnded` finds no rules and, correctly, plays and removes
+   nothing (test/up-next-autoadvance.test.js does the same). */
+let CONTINUATION = null;
+before(async () => { CONTINUATION = await import("../player/continuation.js"); });
 
 function makeEl(tag) {
   return {
@@ -140,6 +148,7 @@ function mount({ seed = {}, boot = false } = {}) {
   };
   ctx.window = ctx;
   ctx.globalThis = ctx;
+  ctx.forayContinuation = CONTINUATION;
   vm.createContext(ctx);
   vm.runInContext(SEARCH_SRC, ctx, { filename: "search-engine.js" });
   vm.runInContext(APP_SRC, ctx, { filename: "app.js" });

@@ -1,0 +1,3 @@
+{
+  "//": "Burn-down only (plan §6). Fixture case id -> the Swift card that owes it. record.mjs adds every new or changed id with --port-card, so a JS rule change never turns the Swift runner red; the Swift card removes ids as it makes them pass. The Swift runner fails if a pending case PASSES (stale entry) and if a manifest id is neither executed nor pending."
+}

@@ -1,0 +1,161 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jw-incorporated.github.io/foray/player/parity/schema/fixture.schema.json",
+  "title": "Foray engine parity fixture (plan §6.2)",
+  "description": "One file under player/parity/fixtures/<family>/. Read in place by the JS runner (player/parity/runner.js) and by the Swift ForayEngineParity library. JS is the reference: record.mjs writes every non-authored `expect` from the real JS module. The enums in $defs are the CLOSED sets both runners check; runner.js reads them from this file rather than restating them.",
+  "type": "object",
+  "required": ["family", "cases"],
+  "additionalProperties": false,
+  "properties": {
+    "family": { "$ref": "#/$defs/family" },
+    "module": {
+      "description": "Repo-relative path of the JS module every read/call case in this file targets. Required when the file has read or call cases.",
+      "type": "string",
+      "pattern": "^player/[a-z0-9/-]+\\.js$"
+    },
+    "note": { "description": "Free text for a human reader. Never read by a runner.", "type": "string" },
+    "jsOnly": {
+      "description": "true: the family pins a JS rule that is deliberately never ported to Swift (plan §5.5 C-2: continuation hops are computed by the page, and the engine only walks them). record.mjs records it without a --port-card and never adds its ids to swift-pending.json; a pending entry naming one is a --check problem. The Swift runner skips these files by this flag rather than counting their ids as owed. Every file of a family must agree.",
+      "type": "boolean"
+    },
+    "cases": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/case" } }
+  },
+  "$defs": {
+    "family": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
+    "caseId": {
+      "description": "<family>/<slug>. Unique across every fixture file. Never reused for a different rule: swift-pending.json and parity-report.json refer to cases by id.",
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*/[a-z0-9][a-z0-9.-]*$"
+    },
+    "coversEntry": {
+      "description": "<suite stem>::<exact top-level test() name> — the JS test this case stands for in coverage.test.js.",
+      "type": "string",
+      "pattern": "^[a-z0-9-]+::.+$"
+    },
+    "case": {
+      "type": "object",
+      "required": ["id", "covers"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "#/$defs/caseId" },
+        "covers": { "type": "array", "items": { "$ref": "#/$defs/coversEntry" } },
+        "authored": {
+          "description": "true: the expect was written by a person from the spec, and record.mjs refuses to overwrite it. A JS change that disagrees with an authored case is refused, not re-recorded.",
+          "type": "boolean"
+        },
+        "note": { "type": "string" },
+        "read": { "description": "An exported constant of the file's module.", "type": "string" },
+        "call": { "description": "An exported function of the file's module.", "type": "string" },
+        "args": { "type": "array", "items": { "$ref": "#/$defs/input" } },
+        "setup": { "$ref": "#/$defs/setup" },
+        "steps": { "type": "array", "items": { "$ref": "#/$defs/step" } },
+        "tolerance": {
+          "description": "Absolute tolerance for finite numbers in the comparison. Absent = exact. Never applies to $num tags.",
+          "type": "number",
+          "minimum": 0
+        },
+        "expect": { "$ref": "#/$defs/expect" }
+      },
+      "oneOf": [
+        { "required": ["read"], "not": { "anyOf": [{ "required": ["call"] }, { "required": ["steps"] }] } },
+        { "required": ["call"], "not": { "anyOf": [{ "required": ["read"] }, { "required": ["steps"] }] } },
+        { "required": ["steps", "setup"], "not": { "anyOf": [{ "required": ["read"] }, { "required": ["call"] }] } }
+      ]
+    },
+    "expect": {
+      "oneOf": [
+        { "type": "object", "required": ["value"], "additionalProperties": false, "properties": { "value": { "$ref": "#/$defs/encoded" } } },
+        { "type": "object", "required": ["return"], "additionalProperties": false, "properties": { "return": { "$ref": "#/$defs/encoded" } } },
+        { "type": "object", "required": ["throws"], "additionalProperties": false, "properties": { "throws": { "$ref": "#/$defs/thrown" } } },
+        {
+          "type": "object",
+          "required": ["checkpoints", "ops"],
+          "additionalProperties": false,
+          "properties": {
+            "checkpoints": { "type": "array", "items": { "$ref": "#/$defs/checkpoint" } },
+            "ops": { "$ref": "#/$defs/opLog" }
+          }
+        }
+      ]
+    },
+    "thrown": {
+      "description": "The rule under test threw. Only the class is compared: a message is text, and text is pinned by the JS suites (exclusion reason text-pin), not by parity.",
+      "type": "object",
+      "required": ["name"],
+      "additionalProperties": false,
+      "properties": { "name": { "enum": ["Error", "TypeError", "RangeError"] } }
+    },
+    "checkpoint": {
+      "type": "object",
+      "required": ["name", "ops", "state"],
+      "properties": {
+        "name": { "type": "string" },
+        "ops": { "$ref": "#/$defs/opLog" },
+        "state": { "type": ["string", "null"] },
+        "index": { "type": "integer" },
+        "playhead": { "type": ["string", "null"] },
+        "inSeamGap": { "type": "boolean" },
+        "inInterlude": { "type": "boolean" },
+        "rate": { "type": "number" }
+      }
+    },
+    "opLog": {
+      "description": "Ordered op tokens. Backend tokens are queue-manager.test.js's FakeBackend grammar, unchanged: load:<id>@<s>, play, pause, seek:<s>, outPoint:<s|null>, rate:<r>, release. Other adapters are prefixed: tts.*, interlude.*, store.*. Native-only tokens are n.* and are stripped before comparison except in the prepare family.",
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "setup": {
+      "type": "object",
+      "required": ["target"],
+      "properties": {
+        "target": { "description": "What the scenario drives. JS drivers exist for: manager.", "enum": ["manager", "deck", "engine"] },
+        "positionEvents": { "description": "NE-14j: the manager's position store is the real PositionStore, and its onSave writes event.position:<id>@<seconds>:<duration> into the op log (plan §5.5 pendingEvents).", "type": "boolean" },
+        "scheduler": { "enum": ["instant", "manual"] },
+        "backend": { "type": "object" },
+        "catalogue": { "description": "The Foray resolver's table: item_id -> episode row.", "type": "object" },
+        "positions": { "description": "Seed saved positions: id -> seconds.", "type": "object" },
+        "rate": { "type": "number" },
+        "seamGapSec": { "$ref": "#/$defs/input" },
+        "tts": { "type": ["boolean", "object"] },
+        "interlude": { "type": ["boolean", "object"] },
+        "interludeEnabled": { "type": "boolean" }
+      }
+    },
+    "verb": {
+      "description": "The closed scenario verbs (plan §6.2). remote has no JS driver yet; a JS case using it fails with E_NO_JS_DRIVER naming the card that adds it (runner.js PENDING_DRIVERS). session and lifecycle (NE-14j) take the values in runner.js SESSION_EVENTS and LIFECYCLE_EVENTS.",
+      "enum": ["call", "settle", "clock", "deck", "tts", "interlude", "session", "lifecycle", "remote", "checkpoint"]
+    },
+    "step": {
+      "description": "Exactly one verb key, plus that verb's own fields (args, await, reason, message, sec, audible, id, shouldResume, routeName, isCarRoute, items, index, autoplay).",
+      "type": "object",
+      "minProperties": 1
+    },
+    "macro": {
+      "description": "Input-only shorthands, each the ONLY key of its object. $seg: [id, start=100, end=210, extra?] -> {id, kind:'episode', start_sec, end_sec, ...extra}. $ep: [id, extra?] -> {id, kind:'episode', ...extra}. $tts: [id, extra?] -> {id, kind:'tts', ...extra}. $foray: '<committed id in data/forays.json>' | {id, title?, items[]}.",
+      "enum": ["$seg", "$ep", "$tts", "$foray"]
+    },
+    "special": {
+      "description": "Values JSON cannot carry, each the ONLY key of its object. Legal in inputs and in expects.",
+      "oneOf": [
+        { "type": "object", "required": ["$num"], "additionalProperties": false, "properties": { "$num": { "enum": ["NaN", "Infinity", "-Infinity", "-0"] } } },
+        { "type": "object", "required": ["$undefined"], "additionalProperties": false, "properties": { "$undefined": { "const": true } } }
+      ]
+    },
+    "input": { "description": "Any JSON, with macros and specials expanded by the runner." },
+    "encoded": { "description": "Any JSON, with specials as $num/$undefined tags and object keys sorted. Never a macro." },
+    "harnessError": {
+      "description": "Codes a runner raises when a CASE is malformed, as opposed to the rule under test throwing. Both runners use these codes.",
+      "enum": [
+        "E_BAD_CASE",
+        "E_BAD_MACRO",
+        "E_BAD_SPECIAL",
+        "E_UNENCODABLE",
+        "E_UNKNOWN_EXPORT",
+        "E_NOT_A_FUNCTION",
+        "E_UNKNOWN_VERB",
+        "E_NO_JS_DRIVER",
+        "E_SCENARIO_TARGET"
+      ]
+    }
+  }
+}

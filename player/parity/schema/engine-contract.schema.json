@@ -1,0 +1,1408 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jw-incorporated.github.io/foray/player/parity/schema/engine-contract.schema.json",
+  "title": "Foray web <-> native engine contract, protocol v1 (docs/native-engine-plan.md §5)",
+  "description": "GENERATED from player/engine-contract.js by `node tools/parity/contract-schema.mjs --write` - do not edit. Every payload that crosses the engineHello / engineSend / engineRead bridge and the 'engine' event. Each public $def carries x-examples {valid, invalid}; each example is one case of the contract (or snapshot) parity family, so the page's validator and Swift's decoding give the same accept/reject answers. Unknown keys are allowed everywhere: an additive field is not a protocol change.",
+  "x-kinds": [
+    "helloRequest",
+    "helloResponse",
+    "sendRequest",
+    "sendResponse",
+    "readRequest",
+    "rowsResponse",
+    "diagnosticsResponse",
+    "snapshot",
+    "event"
+  ],
+  "$defs": {
+    "helloRequest": {
+      "type": "object",
+      "required": ["pageBuild", "protocol"],
+      "properties": {
+        "pageBuild": { "type": "string" },
+        "protocol": { "type": "integer", "minimum": 1 }
+      },
+      "x-examples": {
+        "valid": { "page-v1": { "pageBuild": "2026.09.24-1", "protocol": 1 } },
+        "invalid": {
+          "missing-protocol": { "pageBuild": "2026.09.24-1" },
+          "protocol-string": { "pageBuild": "2026.09.24-1", "protocol": "1" }
+        }
+      }
+    },
+    "helloResponse": {
+      "type": "object",
+      "required": ["mode", "reason"],
+      "properties": {
+        "mode": { "enum": ["native", "legacy"] },
+        "reason": {
+          "enum": [
+            "build-default",
+            "override",
+            "no-plist-key",
+            "not-built",
+            "crash-loop",
+            "page-health",
+            "downgrade"
+          ]
+        },
+        "engineVersion": { "type": "string" },
+        "protocol": { "type": "integer", "minimum": 1 },
+        "capabilities": {
+          "type": "array",
+          "items": { "enum": ["episode", "continuation", "restore", "foray"] }
+        },
+        "ownedKeyPrefixes": { "type": "array", "items": { "type": "string" } },
+        "snapshot": { "$ref": "#/$defs/snapshot" },
+        "pendingAdvances": { "type": "array", "items": { "$ref": "#/$defs/hop" } },
+        "pendingEvents": { "type": "array", "items": { "$ref": "#/$defs/pendingEvent" } }
+      },
+      "if": { "properties": { "mode": { "const": "native" } }, "required": ["mode"] },
+      "then": {
+        "required": ["engineVersion", "protocol", "capabilities", "ownedKeyPrefixes", "snapshot"]
+      },
+      "x-examples": {
+        "valid": {
+          "not-built-stub": { "mode": "legacy", "reason": "not-built" },
+          "native": {
+            "mode": "native",
+            "reason": "build-default",
+            "engineVersion": "1.0.0",
+            "protocol": 1,
+            "capabilities": ["episode", "restore"],
+            "ownedKeyPrefixes": ["cp_pos:", "cp_foray:", "cp_last_episode"],
+            "snapshot": {
+              "v": 1,
+              "seq": 0,
+              "capturedAtWallMs": 1790000000000,
+              "capturedAtMonotonicMs": 0,
+              "mode": "none",
+              "state": "idle",
+              "running": false,
+              "inSeamGap": false,
+              "inInterlude": false,
+              "buffering": false,
+              "ended": false,
+              "positionSec": 0,
+              "durationSec": null,
+              "sourceTimeSec": null,
+              "playheadItemId": null,
+              "isNarrationPlayhead": false,
+              "rate": 1,
+              "effectiveRate": 0,
+              "canNext": false,
+              "canPrevious": false,
+              "autoAdvance": true,
+              "skippedSegments": 0,
+              "pendingAdvances": 0,
+              "pendingEvents": 0,
+              "session": "inactive",
+              "holdPolicy": "forever",
+              "nowPlaying": { "title": "", "artist": "", "album": "" }
+            },
+            "pendingAdvances": [{ "planSeq": 3, "hopSeq": 1, "nextId": "ep-2", "at": 1790000000000 }],
+            "pendingEvents": [
+              {
+                "seq": 7,
+                "kind": "position",
+                "episode_id": "ep-1",
+                "seconds": 60,
+                "duration": 3600,
+                "at": 1790000000000
+              }
+            ]
+          },
+          "crash-loop-legacy": { "mode": "legacy", "reason": "crash-loop", "protocol": 1 }
+        },
+        "invalid": {
+          "mode-js": { "mode": "js", "reason": "build-default" },
+          "reason-free-text": { "mode": "legacy", "reason": "the engine felt unwell" },
+          "native-without-snapshot": {
+            "mode": "native",
+            "reason": "override",
+            "engineVersion": "1.0.0",
+            "protocol": 1,
+            "capabilities": ["episode"],
+            "ownedKeyPrefixes": ["cp_pos:", "cp_foray:", "cp_last_episode"]
+          },
+          "unknown-capability": {
+            "mode": "native",
+            "reason": "override",
+            "engineVersion": "1.0.0",
+            "protocol": 1,
+            "capabilities": ["carplay"],
+            "ownedKeyPrefixes": ["cp_pos:", "cp_foray:", "cp_last_episode"],
+            "snapshot": {
+              "v": 1,
+              "seq": 0,
+              "capturedAtWallMs": 1790000000000,
+              "capturedAtMonotonicMs": 0,
+              "mode": "none",
+              "state": "idle",
+              "running": false,
+              "inSeamGap": false,
+              "inInterlude": false,
+              "buffering": false,
+              "ended": false,
+              "positionSec": 0,
+              "durationSec": null,
+              "sourceTimeSec": null,
+              "playheadItemId": null,
+              "isNarrationPlayhead": false,
+              "rate": 1,
+              "effectiveRate": 0,
+              "canNext": false,
+              "canPrevious": false,
+              "autoAdvance": true,
+              "skippedSegments": 0,
+              "pendingAdvances": 0,
+              "pendingEvents": 0,
+              "session": "inactive",
+              "holdPolicy": "forever",
+              "nowPlaying": { "title": "", "artist": "", "album": "" }
+            }
+          }
+        }
+      }
+    },
+    "sendRequest": {
+      "type": "object",
+      "required": ["v", "cmdSeq", "cmd", "source"],
+      "properties": {
+        "v": { "const": 1 },
+        "cmdSeq": { "type": "integer", "minimum": 0 },
+        "cmd": {
+          "enum": [
+            "playEpisode",
+            "playForay",
+            "setContinuation",
+            "play",
+            "pause",
+            "toggle",
+            "next",
+            "previous",
+            "seekBy",
+            "seekTo",
+            "jump",
+            "stop",
+            "setRate",
+            "setVoice",
+            "setInterludeEnabled",
+            "setPageVisible",
+            "ackAdvances",
+            "ackEvents",
+            "restoreBar",
+            "purge",
+            "relinquish",
+            "audition",
+            "setModeOverride",
+            "setHoldPolicy",
+            "probeSession",
+            "simulateTermination"
+          ]
+        },
+        "args": { "type": "object" },
+        "source": {
+          "enum": [
+            "tap",
+            "remote",
+            "reconcile",
+            "session",
+            "restore",
+            "autoadvance",
+            "autoresume",
+            "audition"
+          ]
+        },
+        "issuedAtWallMs": { "type": "number", "minimum": 0 }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "cmd": { "const": "playEpisode" } }, "required": ["cmd"] },
+          "then": {
+            "required": ["args"],
+            "properties": {
+              "args": {
+                "type": "object",
+                "required": ["item", "lastEpisodeRow"],
+                "properties": {
+                  "item": { "$ref": "#/$defs/item" },
+                  "startSec": { "type": "number", "minimum": 0 },
+                  "moved": { "type": "boolean" },
+                  "lastEpisodeRow": {
+                    "type": "object",
+                    "required": ["id"],
+                    "properties": { "id": { "type": "string", "minLength": 1 } }
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "cmd": { "const": "playForay" } }, "required": ["cmd"] },
+          "then": {
+            "required": ["args"],
+            "properties": {
+              "args": {
+                "type": "object",
+                "required": [
+                  "forayId",
+                  "title",
+                  "items",
+                  "buildReport",
+                  "isLocalFile",
+                  "allowAdPad",
+                  "voiceId"
+                ],
+                "properties": {
+                  "forayId": { "type": "string", "minLength": 1 },
+                  "title": { "type": "string" },
+                  "items": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": { "$ref": "#/$defs/item" }
+                  },
+                  "buildReport": { "type": "object" },
+                  "startElapsedSec": { "type": "number", "minimum": 0 },
+                  "isLocalFile": { "type": "boolean" },
+                  "allowAdPad": { "type": "boolean" },
+                  "voiceId": { "type": ["string", "null"] }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": { "cmd": { "const": "setContinuation" } },
+            "required": ["cmd"]
+          },
+          "then": {
+            "required": ["args"],
+            "properties": {
+              "args": {
+                "type": "object",
+                "required": ["planSeq", "autoAdvance", "chain"],
+                "properties": {
+                  "planSeq": { "type": "integer", "minimum": 0 },
+                  "autoAdvance": { "type": "boolean" },
+                  "chain": { "type": "array", "items": { "$ref": "#/$defs/hop" } },
+                  "previous": { "anyOf": [{ "$ref": "#/$defs/hop" }, { "type": "null" }] }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "cmd": { "const": "seekBy" } }, "required": ["cmd"] },
+          "then": {
+            "required": ["args"],
+            "properties": {
+              "args": {
+                "type": "object",
+                "required": ["deltaSec"],
+                "properties": { "deltaSec": { "type": "number" } }
+              }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "cmd": { "const": "seekTo" } }, "required": ["cmd"] },
+          "then": {
+            "required": ["args"],
+            "properties": {
+              "args": {
+                "type": "object",
+                "required": ["sec"],
+                "properties": { "sec": { "type": "number", "minimum": 0 } }
+              }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "cmd": { "const": "jump" } }, "required": ["cmd"] },
+          "then": {
+            "required": ["args"],
+            "properties": {
+              "args": {
+                "type": "object",
+                "required": ["index"],
+                "properties": { "index": { "type": "integer", "minimum": 0 } }
+              }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "cmd": { "const": "stop" } }, "required": ["cmd"] },
+          "then": {
+            "required": ["args"],
+            "properties": {
+              "args": {
+                "type": "object",
+                "required": ["persist"],
+                "properties": { "persist": { "type": "boolean" } }
+              }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "cmd": { "const": "setRate" } }, "required": ["cmd"] },
+          "then": {
+            "required": ["args"],
+            "properties": {
+              "args": {
+                "type": "object",
+                "required": ["rate"],
+                "properties": { "rate": { "type": "number", "exclusiveMinimum": 0 } }
+              }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "cmd": { "const": "setVoice" } }, "required": ["cmd"] },
+          "then": {
+            "required": ["args"],
+            "properties": {
+              "args": {
+                "type": "object",
+                "required": ["voiceId"],
+                "properties": { "voiceId": { "type": ["string", "null"] } }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": { "cmd": { "const": "setInterludeEnabled" } },
+            "required": ["cmd"]
+          },
+          "then": {
+            "required": ["args"],
+            "properties": {
+              "args": {
+                "type": "object",
+                "required": ["enabled"],
+                "properties": { "enabled": { "type": "boolean" } }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": { "cmd": { "const": "setPageVisible" } },
+            "required": ["cmd"]
+          },
+          "then": {
+            "required": ["args"],
+            "properties": {
+              "args": {
+                "type": "object",
+                "required": ["visible"],
+                "properties": { "visible": { "type": "boolean" } }
+              }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "cmd": { "const": "ackAdvances" } }, "required": ["cmd"] },
+          "then": {
+            "required": ["args"],
+            "properties": {
+              "args": {
+                "type": "object",
+                "required": ["upToSeq"],
+                "properties": { "upToSeq": { "type": "integer", "minimum": 0 } }
+              }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "cmd": { "const": "ackEvents" } }, "required": ["cmd"] },
+          "then": {
+            "required": ["args"],
+            "properties": {
+              "args": {
+                "type": "object",
+                "required": ["upToSeq"],
+                "properties": { "upToSeq": { "type": "integer", "minimum": 0 } }
+              }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "cmd": { "const": "relinquish" } }, "required": ["cmd"] },
+          "then": {
+            "required": ["args"],
+            "properties": {
+              "args": {
+                "type": "object",
+                "required": ["cap"],
+                "properties": {
+                  "cap": { "enum": ["episode", "continuation", "restore", "foray", "all"] }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "cmd": { "const": "audition" } }, "required": ["cmd"] },
+          "then": {
+            "required": ["args"],
+            "properties": {
+              "args": {
+                "type": "object",
+                "required": ["text", "voiceId"],
+                "properties": {
+                  "text": { "type": "string", "minLength": 1 },
+                  "voiceId": { "type": ["string", "null"] }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": { "cmd": { "const": "setModeOverride" } },
+            "required": ["cmd"]
+          },
+          "then": {
+            "required": ["args"],
+            "properties": {
+              "args": {
+                "type": "object",
+                "required": ["mode"],
+                "properties": { "mode": { "enum": ["auto", "native", "web"] } }
+              }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "cmd": { "const": "setHoldPolicy" } }, "required": ["cmd"] },
+          "then": {
+            "required": ["args"],
+            "properties": {
+              "args": {
+                "type": "object",
+                "required": ["policy"],
+                "properties": {
+                  "policy": {
+                    "type": "string",
+                    "pattern": "^(forever|none|until:[1-9][0-9]{0,5})$"
+                  }
+                }
+              }
+            }
+          }
+        }
+      ],
+      "x-examples": {
+        "valid": {
+          "play-tap": {
+            "v": 1,
+            "cmdSeq": 5,
+            "cmd": "play",
+            "source": "tap",
+            "issuedAtWallMs": 1790000000000
+          },
+          "play-episode": {
+            "v": 1,
+            "cmdSeq": 6,
+            "cmd": "playEpisode",
+            "source": "tap",
+            "args": {
+              "item": {
+                "id": "ep-1",
+                "kind": "episode",
+                "audio_url": "https://example.com/a.mp3"
+              },
+              "startSec": 30,
+              "lastEpisodeRow": { "id": "ep-1", "title": "An Episode" }
+            }
+          },
+          "relinquish-foray": {
+            "v": 1,
+            "cmdSeq": 7,
+            "cmd": "relinquish",
+            "source": "tap",
+            "args": { "cap": "foray" }
+          },
+          "set-hold-until": {
+            "v": 1,
+            "cmdSeq": 8,
+            "cmd": "setHoldPolicy",
+            "source": "tap",
+            "args": { "policy": "until:60" }
+          },
+          "set-continuation": {
+            "v": 1,
+            "cmdSeq": 9,
+            "cmd": "setContinuation",
+            "source": "restore",
+            "args": {
+              "planSeq": 3,
+              "autoAdvance": false,
+              "chain": [{ "planSeq": 3, "hopSeq": 1, "nextId": "ep-2" }]
+            }
+          },
+          "stop-data-deletion": {
+            "v": 1,
+            "cmdSeq": 10,
+            "cmd": "stop",
+            "source": "tap",
+            "args": { "persist": false }
+          }
+        },
+        "invalid": {
+          "unknown-cmd": { "v": 1, "cmdSeq": 5, "cmd": "fastForward", "source": "tap" },
+          "wrong-version": { "v": 2, "cmdSeq": 5, "cmd": "play", "source": "tap" },
+          "unknown-source": { "v": 1, "cmdSeq": 5, "cmd": "play", "source": "siri" },
+          "relinquish-without-cap": { "v": 1, "cmdSeq": 5, "cmd": "relinquish", "source": "tap", "args": {} },
+          "relinquish-unknown-cap": {
+            "v": 1,
+            "cmdSeq": 5,
+            "cmd": "relinquish",
+            "source": "tap",
+            "args": { "cap": "everything" }
+          },
+          "hold-until-zero": {
+            "v": 1,
+            "cmdSeq": 5,
+            "cmd": "setHoldPolicy",
+            "source": "tap",
+            "args": { "policy": "until:0" }
+          },
+          "play-episode-without-row": {
+            "v": 1,
+            "cmdSeq": 5,
+            "cmd": "playEpisode",
+            "source": "tap",
+            "args": { "item": { "id": "ep-1" } }
+          },
+          "negative-seq": { "v": 1, "cmdSeq": -1, "cmd": "play", "source": "tap" },
+          "override-unknown-mode": {
+            "v": 1,
+            "cmdSeq": 5,
+            "cmd": "setModeOverride",
+            "source": "tap",
+            "args": { "mode": "legacy" }
+          }
+        }
+      }
+    },
+    "sendResponse": {
+      "type": "object",
+      "required": ["ok", "snapshot"],
+      "properties": {
+        "ok": { "type": "boolean" },
+        "reason": {
+          "enum": [
+            "not-loaded",
+            "no-next",
+            "no-previous",
+            "ended",
+            "refused-structure",
+            "capability-off",
+            "session-failed:cannot-interrupt-others",
+            "session-failed:cannot-start-playing",
+            "session-failed:other",
+            "engine-busy",
+            "relinquished",
+            "unknown-cmd"
+          ]
+        },
+        "snapshot": { "$ref": "#/$defs/snapshot" }
+      },
+      "if": { "properties": { "ok": { "const": false } }, "required": ["ok"] },
+      "then": { "required": ["reason"] },
+      "x-examples": {
+        "valid": {
+          "ok": {
+            "ok": true,
+            "snapshot": {
+              "v": 1,
+              "seq": 42,
+              "capturedAtWallMs": 1790000000000,
+              "capturedAtMonotonicMs": 523000,
+              "mode": "episode",
+              "index": 0,
+              "itemId": "ep-1",
+              "itemKind": "episode",
+              "state": "playing",
+              "running": true,
+              "inSeamGap": false,
+              "inInterlude": false,
+              "buffering": false,
+              "ended": false,
+              "positionSec": 120.5,
+              "durationSec": 3600,
+              "sourceTimeSec": 120.5,
+              "playheadItemId": "ep-1",
+              "isNarrationPlayhead": false,
+              "rate": 1.5,
+              "effectiveRate": 1.5,
+              "canNext": true,
+              "canPrevious": true,
+              "autoAdvance": true,
+              "skippedSegments": 0,
+              "pendingAdvances": 0,
+              "pendingEvents": 0,
+              "session": "active",
+              "holdPolicy": "forever",
+              "nowPlaying": { "title": "The Long Drive", "artist": "A Show", "album": "Foray" }
+            }
+          },
+          "refused-no-next": {
+            "ok": false,
+            "reason": "no-next",
+            "snapshot": {
+              "v": 1,
+              "seq": 42,
+              "capturedAtWallMs": 1790000000000,
+              "capturedAtMonotonicMs": 523000,
+              "mode": "episode",
+              "index": 0,
+              "itemId": "ep-1",
+              "itemKind": "episode",
+              "state": "playing",
+              "running": true,
+              "inSeamGap": false,
+              "inInterlude": false,
+              "buffering": false,
+              "ended": false,
+              "positionSec": 120.5,
+              "durationSec": 3600,
+              "sourceTimeSec": 120.5,
+              "playheadItemId": "ep-1",
+              "isNarrationPlayhead": false,
+              "rate": 1.5,
+              "effectiveRate": 1.5,
+              "canNext": true,
+              "canPrevious": true,
+              "autoAdvance": true,
+              "skippedSegments": 0,
+              "pendingAdvances": 0,
+              "pendingEvents": 0,
+              "session": "active",
+              "holdPolicy": "forever",
+              "nowPlaying": { "title": "The Long Drive", "artist": "A Show", "album": "Foray" }
+            }
+          },
+          "session-failed": {
+            "ok": false,
+            "reason": "session-failed:cannot-interrupt-others",
+            "snapshot": {
+              "v": 1,
+              "seq": 0,
+              "capturedAtWallMs": 1790000000000,
+              "capturedAtMonotonicMs": 0,
+              "mode": "none",
+              "state": "idle",
+              "running": false,
+              "inSeamGap": false,
+              "inInterlude": false,
+              "buffering": false,
+              "ended": false,
+              "positionSec": 0,
+              "durationSec": null,
+              "sourceTimeSec": null,
+              "playheadItemId": null,
+              "isNarrationPlayhead": false,
+              "rate": 1,
+              "effectiveRate": 0,
+              "canNext": false,
+              "canPrevious": false,
+              "autoAdvance": true,
+              "skippedSegments": 0,
+              "pendingAdvances": 0,
+              "pendingEvents": 0,
+              "session": "inactive",
+              "holdPolicy": "forever",
+              "nowPlaying": { "title": "", "artist": "", "album": "" }
+            }
+          }
+        },
+        "invalid": {
+          "refused-without-reason": {
+            "ok": false,
+            "snapshot": {
+              "v": 1,
+              "seq": 0,
+              "capturedAtWallMs": 1790000000000,
+              "capturedAtMonotonicMs": 0,
+              "mode": "none",
+              "state": "idle",
+              "running": false,
+              "inSeamGap": false,
+              "inInterlude": false,
+              "buffering": false,
+              "ended": false,
+              "positionSec": 0,
+              "durationSec": null,
+              "sourceTimeSec": null,
+              "playheadItemId": null,
+              "isNarrationPlayhead": false,
+              "rate": 1,
+              "effectiveRate": 0,
+              "canNext": false,
+              "canPrevious": false,
+              "autoAdvance": true,
+              "skippedSegments": 0,
+              "pendingAdvances": 0,
+              "pendingEvents": 0,
+              "session": "inactive",
+              "holdPolicy": "forever",
+              "nowPlaying": { "title": "", "artist": "", "album": "" }
+            }
+          },
+          "session-failed-unknown-token": {
+            "ok": false,
+            "reason": "session-failed:busy",
+            "snapshot": {
+              "v": 1,
+              "seq": 0,
+              "capturedAtWallMs": 1790000000000,
+              "capturedAtMonotonicMs": 0,
+              "mode": "none",
+              "state": "idle",
+              "running": false,
+              "inSeamGap": false,
+              "inInterlude": false,
+              "buffering": false,
+              "ended": false,
+              "positionSec": 0,
+              "durationSec": null,
+              "sourceTimeSec": null,
+              "playheadItemId": null,
+              "isNarrationPlayhead": false,
+              "rate": 1,
+              "effectiveRate": 0,
+              "canNext": false,
+              "canPrevious": false,
+              "autoAdvance": true,
+              "skippedSegments": 0,
+              "pendingAdvances": 0,
+              "pendingEvents": 0,
+              "session": "inactive",
+              "holdPolicy": "forever",
+              "nowPlaying": { "title": "", "artist": "", "album": "" }
+            }
+          },
+          "without-snapshot": { "ok": true }
+        }
+      }
+    },
+    "readRequest": {
+      "type": "object",
+      "required": ["what"],
+      "properties": {
+        "what": { "enum": ["snapshot", "rows", "diagnostics"] },
+        "prefixes": {
+          "type": "array",
+          "items": { "enum": ["cp_pos:", "cp_foray:", "cp_last_episode"] }
+        }
+      },
+      "x-examples": {
+        "valid": {
+          "snapshot": { "what": "snapshot" },
+          "rows-owned": { "what": "rows", "prefixes": ["cp_pos:", "cp_foray:", "cp_last_episode"] },
+          "diagnostics": { "what": "diagnostics" }
+        },
+        "invalid": {
+          "rows-unowned-prefix": { "what": "rows", "prefixes": ["cp_queue"] },
+          "unknown-what": { "what": "everything" }
+        }
+      }
+    },
+    "rowsResponse": {
+      "type": "object",
+      "required": ["rows"],
+      "properties": { "rows": { "type": "object", "additionalProperties": { "type": "string" } } },
+      "x-examples": {
+        "valid": {
+          "one-row": {
+            "rows": {
+              "cp_pos:ep-1": "{\"seconds\":60,\"updated_at\":\"2026-09-24T00:00:00.000Z\"}"
+            }
+          }
+        },
+        "invalid": { "row-not-a-string": { "rows": { "cp_pos:ep-1": { "seconds": 60 } } } }
+      }
+    },
+    "diagnosticsResponse": {
+      "type": "object",
+      "required": ["rows"],
+      "properties": { "rows": { "type": "array", "items": { "type": "object" } } },
+      "x-examples": {
+        "valid": {
+          "one-row": {
+            "rows": [
+              {
+                "seq": 1,
+                "at": 1790000000000,
+                "kind": "mode",
+                "reason": "build-default"
+              }
+            ]
+          }
+        },
+        "invalid": { "rows-not-an-array": { "rows": { "seq": 1 } } }
+      }
+    },
+    "snapshot": {
+      "type": "object",
+      "required": [
+        "v",
+        "seq",
+        "capturedAtWallMs",
+        "capturedAtMonotonicMs",
+        "mode",
+        "state",
+        "running",
+        "inSeamGap",
+        "inInterlude",
+        "buffering",
+        "ended",
+        "positionSec",
+        "durationSec",
+        "sourceTimeSec",
+        "playheadItemId",
+        "isNarrationPlayhead",
+        "rate",
+        "effectiveRate",
+        "canNext",
+        "canPrevious",
+        "autoAdvance",
+        "skippedSegments",
+        "pendingAdvances",
+        "pendingEvents",
+        "session",
+        "holdPolicy",
+        "nowPlaying"
+      ],
+      "properties": {
+        "v": { "const": 1 },
+        "seq": { "type": "integer", "minimum": 0 },
+        "capturedAtWallMs": { "type": "number", "minimum": 0 },
+        "capturedAtMonotonicMs": { "type": "number", "minimum": 0 },
+        "mode": { "enum": ["none", "episode", "foray"] },
+        "forayId": { "type": ["string", "null"] },
+        "index": { "type": ["integer", "null"], "minimum": 0 },
+        "itemId": { "type": ["string", "null"] },
+        "itemKind": { "type": ["string", "null"] },
+        "state": {
+          "enum": ["idle", "loadingItem", "playing", "transitioning", "interrupted", "ended"]
+        },
+        "wasPlaying": { "type": "boolean" },
+        "running": { "type": "boolean" },
+        "inSeamGap": { "type": "boolean" },
+        "inInterlude": { "type": "boolean" },
+        "buffering": { "type": "boolean" },
+        "ended": { "type": "boolean" },
+        "positionSec": { "type": "number", "minimum": 0 },
+        "durationSec": { "type": ["number", "null"], "minimum": 0 },
+        "sourceTimeSec": { "type": ["number", "null"], "minimum": 0 },
+        "playheadItemId": { "type": ["string", "null"] },
+        "isNarrationPlayhead": { "type": "boolean" },
+        "narrationElapsedSec": { "type": "number", "minimum": 0 },
+        "rate": { "type": "number", "exclusiveMinimum": 0 },
+        "effectiveRate": { "type": "number", "minimum": 0 },
+        "canNext": { "type": "boolean" },
+        "canPrevious": { "type": "boolean" },
+        "autoAdvance": { "type": "boolean" },
+        "lastError": { "type": ["string", "null"] },
+        "voiceFallback": { "type": ["string", "null"] },
+        "skippedSegments": { "type": "integer", "minimum": 0 },
+        "pendingAdvances": { "type": "integer", "minimum": 0 },
+        "pendingEvents": { "type": "integer", "minimum": 0 },
+        "session": { "enum": ["inactive", "active", "lostToInterruption", "relinquished"] },
+        "holdPolicy": { "type": "string", "pattern": "^(forever|none|until:[1-9][0-9]{0,5})$" },
+        "nowPlaying": { "$ref": "#/$defs/nowPlaying" }
+      },
+      "x-examples": {
+        "valid": {
+          "playing": {
+            "v": 1,
+            "seq": 42,
+            "capturedAtWallMs": 1790000000000,
+            "capturedAtMonotonicMs": 523000,
+            "mode": "episode",
+            "index": 0,
+            "itemId": "ep-1",
+            "itemKind": "episode",
+            "state": "playing",
+            "running": true,
+            "inSeamGap": false,
+            "inInterlude": false,
+            "buffering": false,
+            "ended": false,
+            "positionSec": 120.5,
+            "durationSec": 3600,
+            "sourceTimeSec": 120.5,
+            "playheadItemId": "ep-1",
+            "isNarrationPlayhead": false,
+            "rate": 1.5,
+            "effectiveRate": 1.5,
+            "canNext": true,
+            "canPrevious": true,
+            "autoAdvance": true,
+            "skippedSegments": 0,
+            "pendingAdvances": 0,
+            "pendingEvents": 0,
+            "session": "active",
+            "holdPolicy": "forever",
+            "nowPlaying": { "title": "The Long Drive", "artist": "A Show", "album": "Foray" }
+          },
+          "idle": {
+            "v": 1,
+            "seq": 0,
+            "capturedAtWallMs": 1790000000000,
+            "capturedAtMonotonicMs": 0,
+            "mode": "none",
+            "state": "idle",
+            "running": false,
+            "inSeamGap": false,
+            "inInterlude": false,
+            "buffering": false,
+            "ended": false,
+            "positionSec": 0,
+            "durationSec": null,
+            "sourceTimeSec": null,
+            "playheadItemId": null,
+            "isNarrationPlayhead": false,
+            "rate": 1,
+            "effectiveRate": 0,
+            "canNext": false,
+            "canPrevious": false,
+            "autoAdvance": true,
+            "skippedSegments": 0,
+            "pendingAdvances": 0,
+            "pendingEvents": 0,
+            "session": "inactive",
+            "holdPolicy": "forever",
+            "nowPlaying": { "title": "", "artist": "", "album": "" }
+          },
+          "foray-narration": {
+            "v": 1,
+            "seq": 42,
+            "capturedAtWallMs": 1790000000000,
+            "capturedAtMonotonicMs": 523000,
+            "mode": "foray",
+            "index": 3,
+            "itemId": "n-3",
+            "itemKind": "tts",
+            "state": "playing",
+            "running": true,
+            "inSeamGap": false,
+            "inInterlude": false,
+            "buffering": false,
+            "ended": false,
+            "positionSec": 120.5,
+            "durationSec": 3600,
+            "sourceTimeSec": 120.5,
+            "playheadItemId": "n-3",
+            "isNarrationPlayhead": true,
+            "rate": 1.5,
+            "effectiveRate": 1.5,
+            "canNext": true,
+            "canPrevious": true,
+            "autoAdvance": true,
+            "skippedSegments": 0,
+            "pendingAdvances": 0,
+            "pendingEvents": 0,
+            "session": "active",
+            "holdPolicy": "until:60",
+            "nowPlaying": { "title": "The Long Drive", "artist": "A Show", "album": "Foray" },
+            "forayId": "foray-1",
+            "narrationElapsedSec": 4.2
+          },
+          "interrupted": {
+            "v": 1,
+            "seq": 42,
+            "capturedAtWallMs": 1790000000000,
+            "capturedAtMonotonicMs": 523000,
+            "mode": "episode",
+            "index": 0,
+            "itemId": "ep-1",
+            "itemKind": "episode",
+            "state": "interrupted",
+            "running": false,
+            "inSeamGap": false,
+            "inInterlude": false,
+            "buffering": false,
+            "ended": false,
+            "positionSec": 120.5,
+            "durationSec": 3600,
+            "sourceTimeSec": 120.5,
+            "playheadItemId": "ep-1",
+            "isNarrationPlayhead": false,
+            "rate": 1.5,
+            "effectiveRate": 0,
+            "canNext": true,
+            "canPrevious": true,
+            "autoAdvance": true,
+            "skippedSegments": 0,
+            "pendingAdvances": 0,
+            "pendingEvents": 0,
+            "session": "lostToInterruption",
+            "holdPolicy": "forever",
+            "nowPlaying": { "title": "The Long Drive", "artist": "A Show", "album": "Foray" },
+            "wasPlaying": true
+          }
+        },
+        "invalid": {
+          "missing-session": {
+            "v": 1,
+            "seq": 42,
+            "capturedAtWallMs": 1790000000000,
+            "capturedAtMonotonicMs": 523000,
+            "mode": "episode",
+            "index": 0,
+            "itemId": "ep-1",
+            "itemKind": "episode",
+            "state": "playing",
+            "running": true,
+            "inSeamGap": false,
+            "inInterlude": false,
+            "buffering": false,
+            "ended": false,
+            "positionSec": 120.5,
+            "durationSec": 3600,
+            "sourceTimeSec": 120.5,
+            "playheadItemId": "ep-1",
+            "isNarrationPlayhead": false,
+            "rate": 1.5,
+            "effectiveRate": 1.5,
+            "canNext": true,
+            "canPrevious": true,
+            "autoAdvance": true,
+            "skippedSegments": 0,
+            "pendingAdvances": 0,
+            "pendingEvents": 0,
+            "holdPolicy": "forever",
+            "nowPlaying": { "title": "The Long Drive", "artist": "A Show", "album": "Foray" }
+          },
+          "unknown-state": {
+            "v": 1,
+            "seq": 42,
+            "capturedAtWallMs": 1790000000000,
+            "capturedAtMonotonicMs": 523000,
+            "mode": "episode",
+            "index": 0,
+            "itemId": "ep-1",
+            "itemKind": "episode",
+            "state": "paused",
+            "running": true,
+            "inSeamGap": false,
+            "inInterlude": false,
+            "buffering": false,
+            "ended": false,
+            "positionSec": 120.5,
+            "durationSec": 3600,
+            "sourceTimeSec": 120.5,
+            "playheadItemId": "ep-1",
+            "isNarrationPlayhead": false,
+            "rate": 1.5,
+            "effectiveRate": 1.5,
+            "canNext": true,
+            "canPrevious": true,
+            "autoAdvance": true,
+            "skippedSegments": 0,
+            "pendingAdvances": 0,
+            "pendingEvents": 0,
+            "session": "active",
+            "holdPolicy": "forever",
+            "nowPlaying": { "title": "The Long Drive", "artist": "A Show", "album": "Foray" }
+          },
+          "negative-position": {
+            "v": 1,
+            "seq": 42,
+            "capturedAtWallMs": 1790000000000,
+            "capturedAtMonotonicMs": 523000,
+            "mode": "episode",
+            "index": 0,
+            "itemId": "ep-1",
+            "itemKind": "episode",
+            "state": "playing",
+            "running": true,
+            "inSeamGap": false,
+            "inInterlude": false,
+            "buffering": false,
+            "ended": false,
+            "positionSec": -1,
+            "durationSec": 3600,
+            "sourceTimeSec": 120.5,
+            "playheadItemId": "ep-1",
+            "isNarrationPlayhead": false,
+            "rate": 1.5,
+            "effectiveRate": 1.5,
+            "canNext": true,
+            "canPrevious": true,
+            "autoAdvance": true,
+            "skippedSegments": 0,
+            "pendingAdvances": 0,
+            "pendingEvents": 0,
+            "session": "active",
+            "holdPolicy": "forever",
+            "nowPlaying": { "title": "The Long Drive", "artist": "A Show", "album": "Foray" }
+          },
+          "zero-rate": {
+            "v": 1,
+            "seq": 42,
+            "capturedAtWallMs": 1790000000000,
+            "capturedAtMonotonicMs": 523000,
+            "mode": "episode",
+            "index": 0,
+            "itemId": "ep-1",
+            "itemKind": "episode",
+            "state": "playing",
+            "running": true,
+            "inSeamGap": false,
+            "inInterlude": false,
+            "buffering": false,
+            "ended": false,
+            "positionSec": 120.5,
+            "durationSec": 3600,
+            "sourceTimeSec": 120.5,
+            "playheadItemId": "ep-1",
+            "isNarrationPlayhead": false,
+            "rate": 0,
+            "effectiveRate": 1.5,
+            "canNext": true,
+            "canPrevious": true,
+            "autoAdvance": true,
+            "skippedSegments": 0,
+            "pendingAdvances": 0,
+            "pendingEvents": 0,
+            "session": "active",
+            "holdPolicy": "forever",
+            "nowPlaying": { "title": "The Long Drive", "artist": "A Show", "album": "Foray" }
+          },
+          "bad-hold-policy": {
+            "v": 1,
+            "seq": 42,
+            "capturedAtWallMs": 1790000000000,
+            "capturedAtMonotonicMs": 523000,
+            "mode": "episode",
+            "index": 0,
+            "itemId": "ep-1",
+            "itemKind": "episode",
+            "state": "playing",
+            "running": true,
+            "inSeamGap": false,
+            "inInterlude": false,
+            "buffering": false,
+            "ended": false,
+            "positionSec": 120.5,
+            "durationSec": 3600,
+            "sourceTimeSec": 120.5,
+            "playheadItemId": "ep-1",
+            "isNarrationPlayhead": false,
+            "rate": 1.5,
+            "effectiveRate": 1.5,
+            "canNext": true,
+            "canPrevious": true,
+            "autoAdvance": true,
+            "skippedSegments": 0,
+            "pendingAdvances": 0,
+            "pendingEvents": 0,
+            "session": "active",
+            "holdPolicy": "until:forever",
+            "nowPlaying": { "title": "The Long Drive", "artist": "A Show", "album": "Foray" }
+          },
+          "wrong-version": {
+            "v": 2,
+            "seq": 42,
+            "capturedAtWallMs": 1790000000000,
+            "capturedAtMonotonicMs": 523000,
+            "mode": "episode",
+            "index": 0,
+            "itemId": "ep-1",
+            "itemKind": "episode",
+            "state": "playing",
+            "running": true,
+            "inSeamGap": false,
+            "inInterlude": false,
+            "buffering": false,
+            "ended": false,
+            "positionSec": 120.5,
+            "durationSec": 3600,
+            "sourceTimeSec": 120.5,
+            "playheadItemId": "ep-1",
+            "isNarrationPlayhead": false,
+            "rate": 1.5,
+            "effectiveRate": 1.5,
+            "canNext": true,
+            "canPrevious": true,
+            "autoAdvance": true,
+            "skippedSegments": 0,
+            "pendingAdvances": 0,
+            "pendingEvents": 0,
+            "session": "active",
+            "holdPolicy": "forever",
+            "nowPlaying": { "title": "The Long Drive", "artist": "A Show", "album": "Foray" }
+          },
+          "now-playing-missing-album": {
+            "v": 1,
+            "seq": 42,
+            "capturedAtWallMs": 1790000000000,
+            "capturedAtMonotonicMs": 523000,
+            "mode": "episode",
+            "index": 0,
+            "itemId": "ep-1",
+            "itemKind": "episode",
+            "state": "playing",
+            "running": true,
+            "inSeamGap": false,
+            "inInterlude": false,
+            "buffering": false,
+            "ended": false,
+            "positionSec": 120.5,
+            "durationSec": 3600,
+            "sourceTimeSec": 120.5,
+            "playheadItemId": "ep-1",
+            "isNarrationPlayhead": false,
+            "rate": 1.5,
+            "effectiveRate": 1.5,
+            "canNext": true,
+            "canPrevious": true,
+            "autoAdvance": true,
+            "skippedSegments": 0,
+            "pendingAdvances": 0,
+            "pendingEvents": 0,
+            "session": "active",
+            "holdPolicy": "forever",
+            "nowPlaying": { "title": "t", "artist": "a" }
+          }
+        }
+      }
+    },
+    "event": {
+      "type": "object",
+      "required": ["type"],
+      "properties": {
+        "type": {
+          "enum": [
+            "snapshot",
+            "advanced",
+            "skipped",
+            "error",
+            "voiceFallback",
+            "diag",
+            "modeChanged"
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "type": { "const": "snapshot" } }, "required": ["type"] },
+          "then": {
+            "required": ["snapshot"],
+            "properties": { "snapshot": { "$ref": "#/$defs/snapshot" } }
+          }
+        },
+        {
+          "if": { "properties": { "type": { "const": "error" } }, "required": ["type"] },
+          "then": {
+            "required": ["code"],
+            "properties": { "code": { "type": "string", "minLength": 1 } }
+          }
+        },
+        {
+          "if": { "properties": { "type": { "const": "modeChanged" } }, "required": ["type"] },
+          "then": {
+            "required": ["mode", "reason"],
+            "properties": {
+              "mode": { "enum": ["native", "legacy"] },
+              "reason": {
+                "enum": [
+                  "build-default",
+                  "override",
+                  "no-plist-key",
+                  "not-built",
+                  "crash-loop",
+                  "page-health",
+                  "downgrade"
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "x-examples": {
+        "valid": {
+          "snapshot": {
+            "type": "snapshot",
+            "snapshot": {
+              "v": 1,
+              "seq": 42,
+              "capturedAtWallMs": 1790000000000,
+              "capturedAtMonotonicMs": 523000,
+              "mode": "episode",
+              "index": 0,
+              "itemId": "ep-1",
+              "itemKind": "episode",
+              "state": "playing",
+              "running": true,
+              "inSeamGap": false,
+              "inInterlude": false,
+              "buffering": false,
+              "ended": false,
+              "positionSec": 120.5,
+              "durationSec": 3600,
+              "sourceTimeSec": 120.5,
+              "playheadItemId": "ep-1",
+              "isNarrationPlayhead": false,
+              "rate": 1.5,
+              "effectiveRate": 1.5,
+              "canNext": true,
+              "canPrevious": true,
+              "autoAdvance": true,
+              "skippedSegments": 0,
+              "pendingAdvances": 0,
+              "pendingEvents": 0,
+              "session": "active",
+              "holdPolicy": "forever",
+              "nowPlaying": { "title": "The Long Drive", "artist": "A Show", "album": "Foray" }
+            }
+          },
+          "error-chain-start": { "type": "error", "code": "chain-start" },
+          "mode-changed": { "type": "modeChanged", "mode": "legacy", "reason": "downgrade" }
+        },
+        "invalid": {
+          "unknown-type": { "type": "tick" },
+          "snapshot-without-snapshot": { "type": "snapshot" },
+          "error-without-code": { "type": "error" }
+        }
+      }
+    },
+    "nowPlaying": {
+      "type": "object",
+      "required": ["title", "artist", "album"],
+      "properties": {
+        "title": { "type": "string" },
+        "artist": { "type": "string" },
+        "album": { "type": "string" }
+      }
+    },
+    "item": {
+      "type": "object",
+      "required": ["id"],
+      "properties": { "id": { "type": "string", "minLength": 1 } }
+    },
+    "hop": {
+      "type": "object",
+      "required": ["planSeq", "hopSeq", "nextId"],
+      "properties": {
+        "planSeq": { "type": "integer", "minimum": 0 },
+        "hopSeq": { "type": "integer", "minimum": 0 },
+        "nextId": { "type": "string", "minLength": 1 }
+      }
+    },
+    "pendingEvent": {
+      "type": "object",
+      "required": ["seq", "kind"],
+      "properties": { "seq": { "type": "integer", "minimum": 0 }, "kind": { "type": "string" } }
+    }
+  }
+}

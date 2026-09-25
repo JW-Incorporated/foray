@@ -1425,11 +1425,18 @@ test("a lock-screen press is recorded as `remote` and an in-page tap as `tap`", 
      player already believes it is in that state does nothing — which is exactly
      what F5 reported — so a record that only logged state CHANGES would be
      silent for the presses being complained about. */
+  /* NE-08: the no-op rule is `resolveToggle`'s (player/transport-policy.js,
+     fixture-pinned by the `transport` family); `setRunning` acts on its
+     `TOGGLE.NONE` answer, and `toggleInputs` feeds it `transportIsRunning()` —
+     the same authority the toggle above reads. */
   const body = CLIENT.slice(CLIENT.indexOf("async function setRunning("));
   const diagAt = body.indexOf("diag.transport(source");
-  const returnAt = body.indexOf("if (want === transportIsRunning())");
+  const returnAt = body.indexOf("if (action === TOGGLE.NONE) { render(); return; }");
   assert.ok(diagAt > 0 && returnAt > 0, "setRunning must record the source and keep its early return");
   assert.ok(diagAt < returnAt, "the source is recorded BEFORE the no-op early return, or F5 leaves no row");
+  const inputs = /function toggleInputs\(want, \{ restored \}\) \{[\s\S]*?\n\}/.exec(CLIENT_CODE);
+  assert.ok(inputs, "player/client.js must define toggleInputs");
+  assert.match(inputs[0], /running: transportIsRunning\(\),/, "the no-op compares against the belief OR the element (#689)");
 });
 
 test("an episode's next/previous are the PAGE's, and absent until the page offers them", () => {
@@ -1465,8 +1472,13 @@ test("a REMOTE stop pauses and keeps the session; only the in-page Stop and the 
   }
   const remote = /function remoteStop\(details\) \{[\s\S]*?\n\}/.exec(CLIENT_CODE);
   assert.ok(remote, "player/client.js must define remoteStop");
-  assert.match(remote[0], /if \(details\?\.close === true\) return stopAndClose\(\);/);
+  /* NE-08: the close-or-pause rule is `remoteStopAction`'s
+     (player/transport-policy.js, fixture-pinned by the `transport` family);
+     `remoteStop` acts on its answer. Both halves are pinned here. */
+  assert.match(remote[0], /if \(remoteStopAction\(details\) === REMOTE_STOP\.CLOSE\) return stopAndClose\(\);/);
   assert.match(remote[0], /return setRunning\(false, ""\);/);
+  const policy = codeOnly(readText("player/transport-policy.js"));
+  assert.match(policy, /return details\?\.close === true \? REMOTE_STOP\.CLOSE : REMOTE_STOP\.PAUSE;/, "only an explicit close: true closes");
   assert.match(CLIENT_CODE, /ui\.stopBtn\.addEventListener\("", \(\) => stopAndClose\(\)\)/);
 });
 

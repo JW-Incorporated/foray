@@ -1,0 +1,1293 @@
+{
+  "family": "transport",
+  "module": "player/transport-policy.js",
+  "note": "The client layer's transport rules (player/transport-policy.js, NE-08), lifted out of client.js closures with no behaviour change. player/transport-policy.test.js reads these cases, so one file is both the JS assertion and the Swift case (TransportPolicy.swift, NE-09). Quirks of the old inline code are recorded as they are, not tidied. Audit round 2 (main, merged into engine/m1) changed previousAction (player-4: the Foray clock) and skipTarget (player-5: a Foray nudge's end guard), and added nudgeAction (player-11) and episodePreviousRestarts (p-car-5); those cases are re-recorded and owed to NE-09.",
+  "cases": [
+    {
+      "id": "transport/restart-window-4s",
+      "covers": [
+        "transport-policy::the restart window is 4 s, a Foray scrub lands 0.25 s inside the end, and an episode seek stops 1 s short"
+      ],
+      "authored": true,
+      "note": "forayPrevious's convention: under 4 s into a clip, previous means the clip before. Authored: the number is the rule.",
+      "read": "RESTART_WINDOW_SEC",
+      "expect": { "value": 4 }
+    },
+    {
+      "id": "transport/seek-inside-end-0.25s",
+      "covers": [
+        "transport-policy::the restart window is 4 s, a Foray scrub lands 0.25 s inside the end, and an episode seek stops 1 s short"
+      ],
+      "authored": true,
+      "note": "A Foray-clock seek lands a quarter second inside the item, so the out-point stays armed (audit 2026-09-22). Authored.",
+      "read": "SEEK_INSIDE_END_SEC",
+      "expect": { "value": 0.25 }
+    },
+    {
+      "id": "transport/seek-end-guard-1s",
+      "covers": [
+        "transport-policy::the restart window is 4 s, a Foray scrub lands 0.25 s inside the end, and an episode seek stops 1 s short"
+      ],
+      "authored": true,
+      "note": "An episode seek stops 1 s short of the end, so a nudge never fires `ended`. Authored.",
+      "read": "SEEK_END_GUARD_SEC",
+      "expect": { "value": 1 }
+    },
+    {
+      "id": "transport/toggle-restored",
+      "covers": [
+        "transport-policy::play on a restored bar starts the restored item, whatever else is true"
+      ],
+      "call": "resolveToggle",
+      "args": [
+        {
+          "want": true,
+          "restored": true,
+          "foray": false,
+          "stateType": "idle",
+          "running": false,
+          "hasCurrent": true,
+          "queueLength": 0
+        }
+      ],
+      "expect": { "return": "play-restored" }
+    },
+    {
+      "id": "transport/toggle-restored-while-running",
+      "covers": [
+        "transport-policy::play on a restored bar starts the restored item, whatever else is true"
+      ],
+      "call": "resolveToggle",
+      "args": [
+        {
+          "want": true,
+          "restored": true,
+          "foray": false,
+          "stateType": "playing",
+          "running": true,
+          "hasCurrent": true,
+          "queueLength": 1
+        }
+      ],
+      "expect": { "return": "play-restored" }
+    },
+    {
+      "id": "transport/toggle-restored-beats-finished-foray",
+      "covers": [
+        "transport-policy::play on a restored bar starts the restored item, whatever else is true"
+      ],
+      "call": "resolveToggle",
+      "args": [
+        {
+          "want": true,
+          "restored": true,
+          "foray": true,
+          "stateType": "ended",
+          "running": false,
+          "hasCurrent": true,
+          "queueLength": 1
+        }
+      ],
+      "expect": { "return": "play-restored" }
+    },
+    {
+      "id": "transport/toggle-restored-pause-is-a-pause",
+      "covers": [
+        "transport-policy::play on a restored bar starts the restored item, whatever else is true"
+      ],
+      "call": "resolveToggle",
+      "args": [
+        {
+          "want": false,
+          "restored": true,
+          "foray": false,
+          "stateType": "playing",
+          "running": true,
+          "hasCurrent": true,
+          "queueLength": 1
+        }
+      ],
+      "expect": { "return": "pause" }
+    },
+    {
+      "id": "transport/toggle-finished-foray-starts-over",
+      "covers": [
+        "transport-policy::play on a finished Foray starts it over; a finished episode resumes"
+      ],
+      "call": "resolveToggle",
+      "args": [
+        {
+          "want": true,
+          "restored": false,
+          "foray": true,
+          "stateType": "ended",
+          "running": false,
+          "hasCurrent": true,
+          "queueLength": 5
+        }
+      ],
+      "expect": { "return": "start-over" }
+    },
+    {
+      "id": "transport/toggle-finished-foray-starts-over-even-if-audible",
+      "covers": [
+        "transport-policy::play on a finished Foray starts it over; a finished episode resumes"
+      ],
+      "note": "The ended rule is asked before the no-op rule.",
+      "call": "resolveToggle",
+      "args": [
+        {
+          "want": true,
+          "restored": false,
+          "foray": true,
+          "stateType": "ended",
+          "running": true,
+          "hasCurrent": true,
+          "queueLength": 5
+        }
+      ],
+      "expect": { "return": "start-over" }
+    },
+    {
+      "id": "transport/toggle-finished-episode-resumes",
+      "covers": [
+        "transport-policy::play on a finished Foray starts it over; a finished episode resumes"
+      ],
+      "call": "resolveToggle",
+      "args": [
+        {
+          "want": true,
+          "restored": false,
+          "foray": false,
+          "stateType": "ended",
+          "running": false,
+          "hasCurrent": true,
+          "queueLength": 1
+        }
+      ],
+      "expect": { "return": "resume" }
+    },
+    {
+      "id": "transport/toggle-finished-foray-pause-is-nothing",
+      "covers": [
+        "transport-policy::play on a finished Foray starts it over; a finished episode resumes"
+      ],
+      "call": "resolveToggle",
+      "args": [
+        {
+          "want": false,
+          "restored": false,
+          "foray": true,
+          "stateType": "ended",
+          "running": false,
+          "hasCurrent": true,
+          "queueLength": 5
+        }
+      ],
+      "expect": { "return": "none" }
+    },
+    {
+      "id": "transport/ended-play-foray",
+      "covers": [
+        "transport-policy::play on a finished Foray starts it over; a finished episode resumes"
+      ],
+      "call": "endedPlayAction",
+      "args": [{ "foray": true, "stateType": "ended" }],
+      "expect": { "return": "start-over" }
+    },
+    {
+      "id": "transport/ended-play-episode",
+      "covers": [
+        "transport-policy::play on a finished Foray starts it over; a finished episode resumes"
+      ],
+      "call": "endedPlayAction",
+      "args": [{ "foray": false, "stateType": "ended" }],
+      "expect": { "return": null }
+    },
+    {
+      "id": "transport/ended-play-foray-not-ended",
+      "covers": [
+        "transport-policy::play on a finished Foray starts it over; a finished episode resumes"
+      ],
+      "call": "endedPlayAction",
+      "args": [{ "foray": true, "stateType": "paused" }],
+      "expect": { "return": null }
+    },
+    {
+      "id": "transport/toggle-play-while-running",
+      "covers": [
+        "transport-policy::a press that asks for what the transport already is only repaints"
+      ],
+      "call": "resolveToggle",
+      "args": [
+        {
+          "want": true,
+          "restored": false,
+          "foray": false,
+          "stateType": "playing",
+          "running": true,
+          "hasCurrent": true,
+          "queueLength": 1
+        }
+      ],
+      "expect": { "return": "none" }
+    },
+    {
+      "id": "transport/toggle-pause-while-paused",
+      "covers": [
+        "transport-policy::a press that asks for what the transport already is only repaints"
+      ],
+      "call": "resolveToggle",
+      "args": [
+        {
+          "want": false,
+          "restored": false,
+          "foray": false,
+          "stateType": "paused",
+          "running": false,
+          "hasCurrent": true,
+          "queueLength": 1
+        }
+      ],
+      "expect": { "return": "none" }
+    },
+    {
+      "id": "transport/toggle-play-while-element-audible",
+      "covers": [
+        "transport-policy::a press that asks for what the transport already is only repaints"
+      ],
+      "note": "`running` is transportIsRunning(): the belief OR the element (#689). Audible while the machine says paused is running.",
+      "call": "resolveToggle",
+      "args": [
+        {
+          "want": true,
+          "restored": false,
+          "foray": false,
+          "stateType": "paused",
+          "running": true,
+          "hasCurrent": true,
+          "queueLength": 1
+        }
+      ],
+      "expect": { "return": "none" }
+    },
+    {
+      "id": "transport/toggle-play-in-seam-beat",
+      "covers": [
+        "transport-policy::a press that asks for what the transport already is only repaints"
+      ],
+      "note": "The 2.0 s seam beat is loadingItem, and the transport is running through it.",
+      "call": "resolveToggle",
+      "args": [
+        {
+          "want": true,
+          "restored": false,
+          "foray": true,
+          "stateType": "loadingItem",
+          "running": true,
+          "hasCurrent": true,
+          "queueLength": 5
+        }
+      ],
+      "expect": { "return": "none" }
+    },
+    {
+      "id": "transport/toggle-load-empty-queue",
+      "covers": [
+        "transport-policy::play with something showing and nothing queued loads it; otherwise play resumes and pause pauses"
+      ],
+      "call": "resolveToggle",
+      "args": [
+        {
+          "want": true,
+          "restored": false,
+          "foray": false,
+          "stateType": "idle",
+          "running": false,
+          "hasCurrent": true,
+          "queueLength": 0
+        }
+      ],
+      "expect": { "return": "load" }
+    },
+    {
+      "id": "transport/toggle-empty-queue-nothing-showing-resumes",
+      "covers": [
+        "transport-policy::play with something showing and nothing queued loads it; otherwise play resumes and pause pauses"
+      ],
+      "call": "resolveToggle",
+      "args": [
+        {
+          "want": true,
+          "restored": false,
+          "foray": false,
+          "stateType": "idle",
+          "running": false,
+          "hasCurrent": false,
+          "queueLength": 0
+        }
+      ],
+      "expect": { "return": "resume" }
+    },
+    {
+      "id": "transport/toggle-resume-paused",
+      "covers": [
+        "transport-policy::play with something showing and nothing queued loads it; otherwise play resumes and pause pauses"
+      ],
+      "call": "resolveToggle",
+      "args": [
+        {
+          "want": true,
+          "restored": false,
+          "foray": false,
+          "stateType": "paused",
+          "running": false,
+          "hasCurrent": true,
+          "queueLength": 1
+        }
+      ],
+      "expect": { "return": "resume" }
+    },
+    {
+      "id": "transport/toggle-resume-interrupted",
+      "covers": [
+        "transport-policy::play with something showing and nothing queued loads it; otherwise play resumes and pause pauses"
+      ],
+      "call": "resolveToggle",
+      "args": [
+        {
+          "want": true,
+          "restored": false,
+          "foray": false,
+          "stateType": "interrupted",
+          "running": false,
+          "hasCurrent": true,
+          "queueLength": 1
+        }
+      ],
+      "expect": { "return": "resume" }
+    },
+    {
+      "id": "transport/toggle-pause-playing",
+      "covers": [
+        "transport-policy::play with something showing and nothing queued loads it; otherwise play resumes and pause pauses"
+      ],
+      "call": "resolveToggle",
+      "args": [
+        {
+          "want": false,
+          "restored": false,
+          "foray": false,
+          "stateType": "playing",
+          "running": true,
+          "hasCurrent": true,
+          "queueLength": 1
+        }
+      ],
+      "expect": { "return": "pause" }
+    },
+    {
+      "id": "transport/toggle-pause-empty-queue",
+      "covers": [
+        "transport-policy::play with something showing and nothing queued loads it; otherwise play resumes and pause pauses"
+      ],
+      "note": "Pause never loads.",
+      "call": "resolveToggle",
+      "args": [
+        {
+          "want": false,
+          "restored": false,
+          "foray": false,
+          "stateType": "playing",
+          "running": true,
+          "hasCurrent": true,
+          "queueLength": 0
+        }
+      ],
+      "expect": { "return": "pause" }
+    },
+    {
+      "id": "transport/previous-just-started",
+      "covers": [
+        "transport-policy::previous inside the first 4 s of a clip goes to the clip before; later, or on the first clip, it is the manager's"
+      ],
+      "call": "previousAction",
+      "args": [{ "index": 2, "positionSec": 302, "segmentStartSec": 300 }],
+      "expect": { "return": "item-before" }
+    },
+    {
+      "id": "transport/previous-just-inside-window",
+      "covers": [
+        "transport-policy::previous inside the first 4 s of a clip goes to the clip before; later, or on the first clip, it is the manager's"
+      ],
+      "call": "previousAction",
+      "args": [{ "index": 2, "positionSec": 303.9, "segmentStartSec": 300 }],
+      "expect": { "return": "item-before" }
+    },
+    {
+      "id": "transport/previous-at-window-edge",
+      "covers": [
+        "transport-policy::previous inside the first 4 s of a clip goes to the clip before; later, or on the first clip, it is the manager's"
+      ],
+      "call": "previousAction",
+      "args": [{ "index": 2, "positionSec": 304, "segmentStartSec": 300 }],
+      "expect": { "return": "skip-to-previous" }
+    },
+    {
+      "id": "transport/previous-well-in",
+      "covers": [
+        "transport-policy::previous inside the first 4 s of a clip goes to the clip before; later, or on the first clip, it is the manager's"
+      ],
+      "call": "previousAction",
+      "args": [{ "index": 2, "positionSec": 350, "segmentStartSec": 300 }],
+      "expect": { "return": "skip-to-previous" }
+    },
+    {
+      "id": "transport/previous-first-clip",
+      "covers": [
+        "transport-policy::previous inside the first 4 s of a clip goes to the clip before; later, or on the first clip, it is the manager's"
+      ],
+      "call": "previousAction",
+      "args": [{ "index": 0, "positionSec": 1, "segmentStartSec": 0 }],
+      "expect": { "return": "skip-to-previous" }
+    },
+    {
+      "id": "transport/previous-narration-just-started-goes-back-past-it",
+      "covers": [
+        "transport-policy::previous is measured on the Foray clock, so it goes back past a narration line too; a jump in flight restarts"
+      ],
+      "note": "Audit round 2, player-4: measured on the element's clock this was NaN (a narration line has no start_sec) and always restarted the line.",
+      "call": "previousAction",
+      "args": [{ "index": 1, "positionSec": 181, "segmentStartSec": 180 }],
+      "expect": { "return": "item-before" }
+    },
+    {
+      "id": "transport/previous-narration-at-its-start",
+      "covers": [
+        "transport-policy::previous is measured on the Foray clock, so it goes back past a narration line too; a jump in flight restarts"
+      ],
+      "call": "previousAction",
+      "args": [{ "index": 1, "positionSec": 180, "segmentStartSec": 180 }],
+      "expect": { "return": "item-before" }
+    },
+    {
+      "id": "transport/previous-narration-well-in-restarts-it",
+      "covers": [
+        "transport-policy::previous is measured on the Foray clock, so it goes back past a narration line too; a jump in flight restarts"
+      ],
+      "call": "previousAction",
+      "args": [{ "index": 1, "positionSec": 190, "segmentStartSec": 180 }],
+      "expect": { "return": "skip-to-previous" }
+    },
+    {
+      "id": "transport/previous-jump-in-flight-restarts",
+      "covers": [
+        "transport-policy::previous is measured on the Foray clock, so it goes back past a narration line too; a jump in flight restarts"
+      ],
+      "note": "No playhead (a jump still in flight) reads as deep inside: the restart is the safe answer.",
+      "call": "previousAction",
+      "args": [{ "index": 1, "positionSec": null, "segmentStartSec": 180 }],
+      "expect": { "return": "skip-to-previous" }
+    },
+    {
+      "id": "transport/skip-foray-forward",
+      "covers": ["transport-policy::a Foray nudge moves on the Foray clock and never below zero"],
+      "call": "skipTarget",
+      "args": [{ "foray": true, "positionSec": 100, "offsetSec": 30, "durationSec": 900 }],
+      "expect": { "return": 130 }
+    },
+    {
+      "id": "transport/skip-foray-back",
+      "covers": ["transport-policy::a Foray nudge moves on the Foray clock and never below zero"],
+      "call": "skipTarget",
+      "args": [{ "foray": true, "positionSec": 100, "offsetSec": -15, "durationSec": 900 }],
+      "expect": { "return": 85 }
+    },
+    {
+      "id": "transport/skip-foray-back-below-zero",
+      "covers": ["transport-policy::a Foray nudge moves on the Foray clock and never below zero"],
+      "call": "skipTarget",
+      "args": [{ "foray": true, "positionSec": 10, "offsetSec": -15, "durationSec": 900 }],
+      "expect": { "return": 0 }
+    },
+    {
+      "id": "transport/skip-foray-past-total-stops-short",
+      "covers": [
+        "transport-policy::a Foray nudge given the Foray's total stops 1 s short of its end; with none it is only floored"
+      ],
+      "call": "skipTarget",
+      "args": [{ "foray": true, "positionSec": 1000, "offsetSec": 30, "durationSec": 900 }],
+      "expect": { "return": 899 }
+    },
+    {
+      "id": "transport/skip-foray-near-end-stops-short",
+      "covers": [
+        "transport-policy::a Foray nudge given the Foray's total stops 1 s short of its end; with none it is only floored"
+      ],
+      "call": "skipTarget",
+      "args": [{ "foray": true, "positionSec": 880, "offsetSec": 30, "durationSec": 900 }],
+      "expect": { "return": 899 }
+    },
+    {
+      "id": "transport/skip-foray-back-near-end-is-untouched",
+      "covers": [
+        "transport-policy::a Foray nudge given the Foray's total stops 1 s short of its end; with none it is only floored"
+      ],
+      "call": "skipTarget",
+      "args": [{ "foray": true, "positionSec": 895, "offsetSec": -15, "durationSec": 900 }],
+      "expect": { "return": 880 }
+    },
+    {
+      "id": "transport/skip-foray-no-total-is-only-floored",
+      "covers": [
+        "transport-policy::a Foray nudge given the Foray's total stops 1 s short of its end; with none it is only floored"
+      ],
+      "call": "skipTarget",
+      "args": [{ "foray": true, "positionSec": 1000, "offsetSec": 30, "durationSec": null }],
+      "expect": { "return": 1030 }
+    },
+    {
+      "id": "transport/skip-foray-total-shorter-than-guard",
+      "covers": [
+        "transport-policy::a Foray nudge given the Foray's total stops 1 s short of its end; with none it is only floored"
+      ],
+      "call": "skipTarget",
+      "args": [{ "foray": true, "positionSec": 0, "offsetSec": 30, "durationSec": 0.5 }],
+      "expect": { "return": 0 }
+    },
+    {
+      "id": "transport/skip-foray-string-offset",
+      "covers": ["transport-policy::a Foray nudge moves on the Foray clock and never below zero"],
+      "call": "skipTarget",
+      "args": [{ "foray": true, "positionSec": 100, "offsetSec": "15", "durationSec": 900 }],
+      "expect": { "return": 115 }
+    },
+    {
+      "id": "transport/skip-foray-nan-offset",
+      "covers": ["transport-policy::a Foray nudge moves on the Foray clock and never below zero"],
+      "call": "skipTarget",
+      "args": [
+        {
+          "foray": true,
+          "positionSec": 100,
+          "offsetSec": { "$num": "NaN" },
+          "durationSec": 900
+        }
+      ],
+      "expect": { "return": 100 }
+    },
+    {
+      "id": "transport/skip-foray-missing-offset",
+      "covers": ["transport-policy::a Foray nudge moves on the Foray clock and never below zero"],
+      "call": "skipTarget",
+      "args": [
+        {
+          "foray": true,
+          "positionSec": 100,
+          "offsetSec": { "$undefined": true },
+          "durationSec": 900
+        }
+      ],
+      "expect": { "return": 100 }
+    },
+    {
+      "id": "transport/skip-episode-forward",
+      "covers": ["transport-policy::an episode nudge is clamped between 0 and 1 s before the end"],
+      "call": "skipTarget",
+      "args": [{ "foray": false, "positionSec": 100, "offsetSec": 30, "durationSec": 3600 }],
+      "expect": { "return": 130 }
+    },
+    {
+      "id": "transport/skip-episode-back",
+      "covers": ["transport-policy::an episode nudge is clamped between 0 and 1 s before the end"],
+      "call": "skipTarget",
+      "args": [{ "foray": false, "positionSec": 100, "offsetSec": -15, "durationSec": 3600 }],
+      "expect": { "return": 85 }
+    },
+    {
+      "id": "transport/skip-episode-near-end",
+      "covers": ["transport-policy::an episode nudge is clamped between 0 and 1 s before the end"],
+      "call": "skipTarget",
+      "args": [{ "foray": false, "positionSec": 3590, "offsetSec": 30, "durationSec": 3600 }],
+      "expect": { "return": 3599 }
+    },
+    {
+      "id": "transport/skip-episode-below-zero",
+      "covers": ["transport-policy::an episode nudge is clamped between 0 and 1 s before the end"],
+      "call": "skipTarget",
+      "args": [{ "foray": false, "positionSec": 5, "offsetSec": -15, "durationSec": 3600 }],
+      "expect": { "return": 0 }
+    },
+    {
+      "id": "transport/skip-episode-unknown-duration",
+      "covers": ["transport-policy::an episode nudge is clamped between 0 and 1 s before the end"],
+      "call": "skipTarget",
+      "args": [{ "foray": false, "positionSec": 100, "offsetSec": 30, "durationSec": null }],
+      "expect": { "return": 130 }
+    },
+    {
+      "id": "transport/skip-episode-shorter-than-guard",
+      "covers": ["transport-policy::an episode nudge is clamped between 0 and 1 s before the end"],
+      "call": "skipTarget",
+      "args": [{ "foray": false, "positionSec": 0, "offsetSec": 30, "durationSec": 0.5 }],
+      "expect": { "return": 0 }
+    },
+    {
+      "id": "transport/skip-episode-missing-offset",
+      "covers": ["transport-policy::an episode nudge is clamped between 0 and 1 s before the end"],
+      "call": "skipTarget",
+      "args": [
+        {
+          "foray": false,
+          "positionSec": 100,
+          "offsetSec": { "$undefined": true },
+          "durationSec": 3600
+        }
+      ],
+      "expect": { "return": 100 }
+    },
+    {
+      "id": "transport/nudge-in-a-clip-seeks",
+      "covers": [
+        "transport-policy::a nudge inside a spoken line re-speaks it back and skips it forward, but not past the last; anywhere else it seeks"
+      ],
+      "call": "nudgeAction",
+      "args": [
+        {
+          "offsetSec": 30,
+          "landsInCurrentItem": true,
+          "narrationPlayhead": false,
+          "onLastItem": false
+        }
+      ],
+      "expect": { "return": "seek" }
+    },
+    {
+      "id": "transport/nudge-out-of-a-line-seeks",
+      "covers": [
+        "transport-policy::a nudge inside a spoken line re-speaks it back and skips it forward, but not past the last; anywhere else it seeks"
+      ],
+      "call": "nudgeAction",
+      "args": [
+        {
+          "offsetSec": 30,
+          "landsInCurrentItem": false,
+          "narrationPlayhead": true,
+          "onLastItem": false
+        }
+      ],
+      "expect": { "return": "seek" }
+    },
+    {
+      "id": "transport/nudge-back-in-a-line-restarts-it",
+      "covers": [
+        "transport-policy::a nudge inside a spoken line re-speaks it back and skips it forward, but not past the last; anywhere else it seeks"
+      ],
+      "call": "nudgeAction",
+      "args": [
+        {
+          "offsetSec": -15,
+          "landsInCurrentItem": true,
+          "narrationPlayhead": true,
+          "onLastItem": false
+        }
+      ],
+      "expect": { "return": "restart-line" }
+    },
+    {
+      "id": "transport/nudge-back-in-the-last-line-restarts-it",
+      "covers": [
+        "transport-policy::a nudge inside a spoken line re-speaks it back and skips it forward, but not past the last; anywhere else it seeks"
+      ],
+      "call": "nudgeAction",
+      "args": [
+        {
+          "offsetSec": -15,
+          "landsInCurrentItem": true,
+          "narrationPlayhead": true,
+          "onLastItem": true
+        }
+      ],
+      "expect": { "return": "restart-line" }
+    },
+    {
+      "id": "transport/nudge-forward-in-a-line-skips-it",
+      "covers": [
+        "transport-policy::a nudge inside a spoken line re-speaks it back and skips it forward, but not past the last; anywhere else it seeks"
+      ],
+      "call": "nudgeAction",
+      "args": [
+        {
+          "offsetSec": 30,
+          "landsInCurrentItem": true,
+          "narrationPlayhead": true,
+          "onLastItem": false
+        }
+      ],
+      "expect": { "return": "skip-line" }
+    },
+    {
+      "id": "transport/nudge-forward-in-the-last-line-does-nothing",
+      "covers": [
+        "transport-policy::a nudge inside a spoken line re-speaks it back and skips it forward, but not past the last; anywhere else it seeks"
+      ],
+      "call": "nudgeAction",
+      "args": [
+        {
+          "offsetSec": 30,
+          "landsInCurrentItem": true,
+          "narrationPlayhead": true,
+          "onLastItem": true
+        }
+      ],
+      "expect": { "return": "none" }
+    },
+    {
+      "id": "transport/episode-previous-at-start",
+      "covers": [
+        "transport-policy::an episode's previous restarts from 4 s in; before that the page may go to the row before"
+      ],
+      "call": "episodePreviousRestarts",
+      "args": [{ "positionSec": 0 }],
+      "expect": { "return": false }
+    },
+    {
+      "id": "transport/episode-previous-inside-window",
+      "covers": [
+        "transport-policy::an episode's previous restarts from 4 s in; before that the page may go to the row before"
+      ],
+      "call": "episodePreviousRestarts",
+      "args": [{ "positionSec": 3.9 }],
+      "expect": { "return": false }
+    },
+    {
+      "id": "transport/episode-previous-at-window-edge",
+      "covers": [
+        "transport-policy::an episode's previous restarts from 4 s in; before that the page may go to the row before"
+      ],
+      "call": "episodePreviousRestarts",
+      "args": [{ "positionSec": 4 }],
+      "expect": { "return": true }
+    },
+    {
+      "id": "transport/episode-previous-well-in",
+      "covers": [
+        "transport-policy::an episode's previous restarts from 4 s in; before that the page may go to the row before"
+      ],
+      "call": "episodePreviousRestarts",
+      "args": [{ "positionSec": 1800 }],
+      "expect": { "return": true }
+    },
+    {
+      "id": "transport/clamp-nan",
+      "covers": [
+        "transport-policy::an episode target that is not a number is refused, and only a known duration caps it"
+      ],
+      "call": "clampEpisodeTarget",
+      "args": [{ "$num": "NaN" }, 3600],
+      "expect": { "return": null }
+    },
+    {
+      "id": "transport/clamp-infinity",
+      "covers": [
+        "transport-policy::an episode target that is not a number is refused, and only a known duration caps it"
+      ],
+      "call": "clampEpisodeTarget",
+      "args": [{ "$num": "Infinity" }, 3600],
+      "expect": { "return": null }
+    },
+    {
+      "id": "transport/clamp-junk-string",
+      "covers": [
+        "transport-policy::an episode target that is not a number is refused, and only a known duration caps it"
+      ],
+      "call": "clampEpisodeTarget",
+      "args": ["later", 3600],
+      "expect": { "return": null }
+    },
+    {
+      "id": "transport/clamp-numeric-string",
+      "covers": [
+        "transport-policy::an episode target that is not a number is refused, and only a known duration caps it"
+      ],
+      "call": "clampEpisodeTarget",
+      "args": ["42", 3600],
+      "expect": { "return": 42 }
+    },
+    {
+      "id": "transport/clamp-null-is-zero",
+      "covers": [
+        "transport-policy::an episode target that is not a number is refused, and only a known duration caps it"
+      ],
+      "call": "clampEpisodeTarget",
+      "args": [null, 3600],
+      "expect": { "return": 0 }
+    },
+    {
+      "id": "transport/clamp-past-end",
+      "covers": [
+        "transport-policy::an episode target that is not a number is refused, and only a known duration caps it"
+      ],
+      "call": "clampEpisodeTarget",
+      "args": [5000, 3600],
+      "expect": { "return": 3599 }
+    },
+    {
+      "id": "transport/clamp-no-duration",
+      "covers": [
+        "transport-policy::an episode target that is not a number is refused, and only a known duration caps it"
+      ],
+      "call": "clampEpisodeTarget",
+      "args": [5000, null],
+      "expect": { "return": 5000 }
+    },
+    {
+      "id": "transport/clamp-zero-duration-is-unknown",
+      "covers": [
+        "transport-policy::an episode target that is not a number is refused, and only a known duration caps it"
+      ],
+      "call": "clampEpisodeTarget",
+      "args": [5000, 0],
+      "expect": { "return": 5000 }
+    },
+    {
+      "id": "transport/clamp-negative",
+      "covers": [
+        "transport-policy::an episode target that is not a number is refused, and only a known duration caps it"
+      ],
+      "call": "clampEpisodeTarget",
+      "args": [-3, 3600],
+      "expect": { "return": 0 }
+    },
+    {
+      "id": "transport/seek-restored-pends",
+      "covers": [
+        "transport-policy::a seek with nothing loaded is written down as the next start; paused, loading and playing seek"
+      ],
+      "call": "seekAction",
+      "args": [{ "restored": true, "stateType": "paused" }],
+      "expect": { "return": "pend" }
+    },
+    {
+      "id": "transport/seek-idle-pends",
+      "covers": [
+        "transport-policy::a seek with nothing loaded is written down as the next start; paused, loading and playing seek"
+      ],
+      "call": "seekAction",
+      "args": [{ "restored": false, "stateType": "idle" }],
+      "expect": { "return": "pend" }
+    },
+    {
+      "id": "transport/seek-ended-pends",
+      "covers": [
+        "transport-policy::a seek with nothing loaded is written down as the next start; paused, loading and playing seek",
+        "transport-reconcile::AUDIT: an episode that has ENDED can still be scrubbed back into"
+      ],
+      "call": "seekAction",
+      "args": [{ "restored": false, "stateType": "ended" }],
+      "expect": { "return": "pend" }
+    },
+    {
+      "id": "transport/seek-paused-seeks",
+      "covers": [
+        "transport-policy::a seek with nothing loaded is written down as the next start; paused, loading and playing seek"
+      ],
+      "call": "seekAction",
+      "args": [{ "restored": false, "stateType": "paused" }],
+      "expect": { "return": "seek" }
+    },
+    {
+      "id": "transport/seek-loading-seeks",
+      "covers": [
+        "transport-policy::a seek with nothing loaded is written down as the next start; paused, loading and playing seek"
+      ],
+      "call": "seekAction",
+      "args": [{ "restored": false, "stateType": "loadingItem" }],
+      "expect": { "return": "seek" }
+    },
+    {
+      "id": "transport/seek-playing-seeks",
+      "covers": [
+        "transport-policy::a seek with nothing loaded is written down as the next start; paused, loading and playing seek"
+      ],
+      "call": "seekAction",
+      "args": [{ "restored": false, "stateType": "playing" }],
+      "expect": { "return": "seek" }
+    },
+    {
+      "id": "transport/seek-interrupted-seeks",
+      "covers": [
+        "transport-policy::a seek with nothing loaded is written down as the next start; paused, loading and playing seek"
+      ],
+      "call": "seekAction",
+      "args": [{ "restored": false, "stateType": "interrupted" }],
+      "expect": { "return": "seek" }
+    },
+    {
+      "id": "transport/seek-no-state-seeks",
+      "covers": [
+        "transport-policy::a seek with nothing loaded is written down as the next start; paused, loading and playing seek"
+      ],
+      "call": "seekAction",
+      "args": [{ "restored": false, "stateType": null }],
+      "expect": { "return": "seek" }
+    },
+    {
+      "id": "transport/scrub-same-clip",
+      "covers": [
+        "transport-policy::a Foray scrub reloads when it changes clip or nothing is loaded, and lands inside the item"
+      ],
+      "call": "scrubTarget",
+      "args": [
+        {
+          "at": { "index": 1, "into": 30 },
+          "item": { "$seg": ["b", 100, 210] },
+          "currentIndex": 1,
+          "stateType": "playing"
+        }
+      ],
+      "expect": { "return": { "index": 1, "offset": 130, "reload": false } }
+    },
+    {
+      "id": "transport/scrub-other-clip-reloads",
+      "covers": [
+        "transport-policy::a Foray scrub reloads when it changes clip or nothing is loaded, and lands inside the item"
+      ],
+      "call": "scrubTarget",
+      "args": [
+        {
+          "at": { "index": 1, "into": 30 },
+          "item": { "$seg": ["b", 100, 210] },
+          "currentIndex": 0,
+          "stateType": "playing"
+        }
+      ],
+      "expect": { "return": { "index": 1, "offset": 130, "reload": true } }
+    },
+    {
+      "id": "transport/scrub-finished-foray-reloads",
+      "covers": [
+        "transport-policy::a Foray scrub reloads when it changes clip or nothing is loaded, and lands inside the item"
+      ],
+      "call": "scrubTarget",
+      "args": [
+        {
+          "at": { "index": 1, "into": 30 },
+          "item": { "$seg": ["b", 100, 210] },
+          "currentIndex": 1,
+          "stateType": "ended"
+        }
+      ],
+      "expect": { "return": { "index": 1, "offset": 130, "reload": true } }
+    },
+    {
+      "id": "transport/scrub-idle-reloads",
+      "covers": [
+        "transport-policy::a Foray scrub reloads when it changes clip or nothing is loaded, and lands inside the item"
+      ],
+      "call": "scrubTarget",
+      "args": [
+        {
+          "at": { "index": 1, "into": 30 },
+          "item": { "$seg": ["b", 100, 210] },
+          "currentIndex": 1,
+          "stateType": "idle"
+        }
+      ],
+      "expect": { "return": { "index": 1, "offset": 130, "reload": true } }
+    },
+    {
+      "id": "transport/scrub-paused-same-clip",
+      "covers": [
+        "transport-policy::a Foray scrub reloads when it changes clip or nothing is loaded, and lands inside the item"
+      ],
+      "call": "scrubTarget",
+      "args": [
+        {
+          "at": { "index": 1, "into": 30 },
+          "item": { "$seg": ["b", 100, 210] },
+          "currentIndex": 1,
+          "stateType": "paused"
+        }
+      ],
+      "expect": { "return": { "index": 1, "offset": 130, "reload": false } }
+    },
+    {
+      "id": "transport/scrub-to-the-end-lands-inside",
+      "covers": [
+        "transport-policy::a Foray scrub reloads when it changes clip or nothing is loaded, and lands inside the item"
+      ],
+      "call": "scrubTarget",
+      "args": [
+        {
+          "at": { "index": 1, "into": 110 },
+          "item": { "$seg": ["b", 100, 210] },
+          "currentIndex": 1,
+          "stateType": "playing"
+        }
+      ],
+      "expect": { "return": { "index": 1, "offset": 209.75, "reload": false } }
+    },
+    {
+      "id": "transport/scrub-into-spoken-narration",
+      "covers": [
+        "transport-policy::a Foray scrub reloads when it changes clip or nothing is loaded, and lands inside the item"
+      ],
+      "call": "scrubTarget",
+      "args": [
+        {
+          "at": { "index": 1, "into": 3 },
+          "item": { "$tts": ["n1", { "duration_sec": 12 }] },
+          "currentIndex": 1,
+          "stateType": "playing"
+        }
+      ],
+      "expect": { "return": { "index": 1, "offset": null, "reload": false } }
+    },
+    {
+      "id": "transport/scrub-nowhere",
+      "covers": [
+        "transport-policy::a Foray scrub reloads when it changes clip or nothing is loaded, and lands inside the item"
+      ],
+      "call": "scrubTarget",
+      "args": [{ "at": null, "item": null, "currentIndex": 1, "stateType": "playing" }],
+      "expect": { "return": null }
+    },
+    {
+      "id": "transport/offset-inside",
+      "covers": [
+        "transport-policy::a Foray-clock offset lands inside the item, never on its out-point"
+      ],
+      "call": "sourceOffsetFor",
+      "args": [{ "$seg": ["b", 100, 210] }, 50],
+      "expect": { "return": 150 }
+    },
+    {
+      "id": "transport/offset-at-the-end",
+      "covers": [
+        "transport-policy::a Foray-clock offset lands inside the item, never on its out-point"
+      ],
+      "call": "sourceOffsetFor",
+      "args": [{ "$seg": ["b", 100, 210] }, 110],
+      "expect": { "return": 209.75 }
+    },
+    {
+      "id": "transport/offset-past-the-end",
+      "covers": [
+        "transport-policy::a Foray-clock offset lands inside the item, never on its out-point"
+      ],
+      "call": "sourceOffsetFor",
+      "args": [{ "$seg": ["b", 100, 210] }, 500],
+      "expect": { "return": 209.75 }
+    },
+    {
+      "id": "transport/offset-negative",
+      "covers": [
+        "transport-policy::a Foray-clock offset lands inside the item, never on its out-point"
+      ],
+      "call": "sourceOffsetFor",
+      "args": [{ "$seg": ["b", 100, 210] }, -5],
+      "expect": { "return": 100 }
+    },
+    {
+      "id": "transport/offset-nan",
+      "covers": [
+        "transport-policy::a Foray-clock offset lands inside the item, never on its out-point"
+      ],
+      "call": "sourceOffsetFor",
+      "args": [{ "$seg": ["b", 100, 210] }, { "$num": "NaN" }],
+      "expect": { "return": null }
+    },
+    {
+      "id": "transport/offset-no-item",
+      "covers": [
+        "transport-policy::a Foray-clock offset lands inside the item, never on its out-point"
+      ],
+      "call": "sourceOffsetFor",
+      "args": [null, 5],
+      "expect": { "return": null }
+    },
+    {
+      "id": "transport/offset-shorter-than-the-margin",
+      "covers": [
+        "transport-policy::a Foray-clock offset lands inside the item, never on its out-point"
+      ],
+      "call": "sourceOffsetFor",
+      "args": [{ "$seg": ["t", 100, 100.1] }, 5],
+      "expect": { "return": 100 }
+    },
+    {
+      "id": "transport/offset-authored-end",
+      "covers": [
+        "transport-policy::a Foray-clock offset lands inside the item, never on its out-point"
+      ],
+      "call": "sourceOffsetFor",
+      "args": [{ "$seg": ["a", 100, 210, { "authored_end_sec": 200 }] }, 150],
+      "expect": { "return": 199.75 }
+    },
+    {
+      "id": "transport/offset-spoken-narration",
+      "covers": [
+        "transport-policy::a spoken narration item has nothing to seek; a rendered one seeks in its own file"
+      ],
+      "call": "sourceOffsetFor",
+      "args": [{ "$tts": ["n1", { "duration_sec": 12 }] }, 5],
+      "expect": { "return": null }
+    },
+    {
+      "id": "transport/offset-rendered-narration",
+      "covers": [
+        "transport-policy::a spoken narration item has nothing to seek; a rendered one seeks in its own file"
+      ],
+      "call": "sourceOffsetFor",
+      "args": [
+        {
+          "$tts": ["n1", { "audio_url": "https://example.invalid/n1.mp3", "duration_sec": 12 }]
+        },
+        5
+      ],
+      "expect": { "return": 5 }
+    },
+    {
+      "id": "transport/offset-rendered-narration-past-end",
+      "covers": [
+        "transport-policy::a spoken narration item has nothing to seek; a rendered one seeks in its own file"
+      ],
+      "call": "sourceOffsetFor",
+      "args": [
+        {
+          "$tts": ["n1", { "audio_url": "https://example.invalid/n1.mp3", "duration_sec": 12 }]
+        },
+        20
+      ],
+      "expect": { "return": 11.75 }
+    },
+    {
+      "id": "transport/offset-rendered-narration-no-length",
+      "covers": [
+        "transport-policy::a spoken narration item has nothing to seek; a rendered one seeks in its own file"
+      ],
+      "call": "sourceOffsetFor",
+      "args": [{ "$tts": ["n1", { "audio_url": "https://example.invalid/n1.mp3" }] }, 5],
+      "expect": { "return": 5 }
+    },
+    {
+      "id": "transport/remote-stop-close",
+      "covers": ["transport-policy::a remote stop pauses unless it is the notification's close"],
+      "call": "remoteStopAction",
+      "args": [{ "close": true }],
+      "expect": { "return": "close" }
+    },
+    {
+      "id": "transport/remote-stop-plain",
+      "covers": ["transport-policy::a remote stop pauses unless it is the notification's close"],
+      "call": "remoteStopAction",
+      "args": [{}],
+      "expect": { "return": "pause" }
+    },
+    {
+      "id": "transport/remote-stop-no-details",
+      "covers": ["transport-policy::a remote stop pauses unless it is the notification's close"],
+      "call": "remoteStopAction",
+      "args": [],
+      "expect": { "return": "pause" }
+    },
+    {
+      "id": "transport/remote-stop-null-details",
+      "covers": ["transport-policy::a remote stop pauses unless it is the notification's close"],
+      "call": "remoteStopAction",
+      "args": [null],
+      "expect": { "return": "pause" }
+    },
+    {
+      "id": "transport/remote-stop-close-must-be-true",
+      "covers": ["transport-policy::a remote stop pauses unless it is the notification's close"],
+      "call": "remoteStopAction",
+      "args": [{ "close": "true" }],
+      "expect": { "return": "pause" }
+    },
+    {
+      "id": "transport/remote-stop-close-false",
+      "covers": ["transport-policy::a remote stop pauses unless it is the notification's close"],
+      "call": "remoteStopAction",
+      "args": [{ "close": false }],
+      "expect": { "return": "pause" }
+    },
+    {
+      "id": "transport/interruption-rewind-1.5s",
+      "covers": [
+        "transport-policy::an OS interruption's should-resume steps back 1.5 s, never before the item's own start"
+      ],
+      "authored": true,
+      "note": "Plan §4.4 (NE-14j): an OS interruption's should-resume picks the audio up 1.5 s back. Authored: the number is the rule.",
+      "read": "INTERRUPTION_REWIND_SEC",
+      "expect": { "value": 1.5 }
+    },
+    {
+      "id": "transport/interruption-resume-episode-steps-back",
+      "covers": [
+        "transport-policy::an OS interruption's should-resume steps back 1.5 s, never before the item's own start"
+      ],
+      "authored": true,
+      "note": "An unbounded episode parked at 42.5 s resumes at 41 s.",
+      "call": "interruptionResumeOffset",
+      "args": [{ "playheadSec": 42.5 }],
+      "expect": { "return": 41 }
+    },
+    {
+      "id": "transport/interruption-resume-episode-floor-is-zero",
+      "covers": [
+        "transport-policy::an OS interruption's should-resume steps back 1.5 s, never before the item's own start"
+      ],
+      "authored": true,
+      "note": "Inside the first 1.5 s of an episode the step back stops at 0:00.",
+      "call": "interruptionResumeOffset",
+      "args": [{ "playheadSec": 1, "startSec": null }],
+      "expect": { "return": 0 }
+    },
+    {
+      "id": "transport/interruption-resume-segment-steps-back-inside",
+      "covers": [
+        "transport-policy::an OS interruption's should-resume steps back 1.5 s, never before the item's own start"
+      ],
+      "authored": true,
+      "note": "A segment [100, 210] parked at 172.5 s resumes at 171 s, inside its slice.",
+      "call": "interruptionResumeOffset",
+      "args": [{ "playheadSec": 172.5, "startSec": 100 }],
+      "expect": { "return": 171 }
+    },
+    {
+      "id": "transport/interruption-resume-segment-never-before-in-point",
+      "covers": [
+        "transport-policy::an OS interruption's should-resume steps back 1.5 s, never before the item's own start"
+      ],
+      "authored": true,
+      "note": "Never before the slice's own start_sec: 100.75 s back 1.5 s would be the stranger's episode before the slice (#65 §4).",
+      "call": "interruptionResumeOffset",
+      "args": [{ "playheadSec": 100.75, "startSec": 100 }],
+      "expect": { "return": 100 }
+    },
+    {
+      "id": "transport/interruption-resume-unknown-playhead",
+      "covers": [
+        "transport-policy::an OS interruption's should-resume steps back 1.5 s, never before the item's own start"
+      ],
+      "authored": true,
+      "note": "A playhead that is not a finite number gives no offset; the caller keeps its own.",
+      "call": "interruptionResumeOffset",
+      "args": [{ "playheadSec": null, "startSec": 100 }],
+      "expect": { "return": null }
+    },
+    {
+      "id": "transport/interruption-resume-nan-playhead",
+      "covers": [
+        "transport-policy::an OS interruption's should-resume steps back 1.5 s, never before the item's own start"
+      ],
+      "authored": true,
+      "note": "NaN (an element mid-load) is not a playhead either.",
+      "call": "interruptionResumeOffset",
+      "args": [{ "playheadSec": { "$num": "NaN" } }],
+      "expect": { "return": null }
+    }
+  ]
+}

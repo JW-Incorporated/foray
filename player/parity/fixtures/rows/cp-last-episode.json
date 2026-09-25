@@ -1,0 +1,173 @@
+{
+  "family": "rows",
+  "module": "player/parity/rows.js",
+  "note": "cp_last_episode, written the way client.js writes it: makeLastEpisode(item) (player/episode-progress.js SNAPSHOT_FIELDS id, title, show, artwork_url, audio_url, duration_min, duration_sec, then updated_at), then writeLastEpisode, and only when there is a record. On iOS the page sends makeLastEpisode(item) without updated_at as playEpisode's lastEpisodeRow and the engine stores it verbatim plus updated_at (plan §5.2); these are the bytes that must come out.",
+  "cases": [
+    {
+      "id": "rows/cp-last-episode-snapshot-order-and-extras-dropped",
+      "covers": [],
+      "note": "The item's own key order is scrambled and it carries topics, score and provenance: the row is SNAPSHOT_FIELDS order, then updated_at, and nothing else",
+      "call": "cpLastEpisodeRow",
+      "args": [
+        {
+          "duration_sec": 2550,
+          "topics": ["ai"],
+          "audio_url": "https://cdn.example.com/a/ep-1.mp3?x=1&y=2",
+          "score": 0.93,
+          "show": "The Show",
+          "artwork_url": "https://img.example.com/s/600x600.jpg",
+          "duration_min": 42.5,
+          "title": "Episode One",
+          "id": "ep-1",
+          "provenance": { "from": "search" }
+        },
+        1790000000123
+      ],
+      "expect": {
+        "return": [
+          {
+            "key": "cp_last_episode",
+            "value": "{\"id\":\"ep-1\",\"title\":\"Episode One\",\"show\":\"The Show\",\"artwork_url\":\"https://img.example.com/s/600x600.jpg\",\"audio_url\":\"https://cdn.example.com/a/ep-1.mp3?x=1&y=2\",\"duration_min\":42.5,\"duration_sec\":2550,\"updated_at\":\"2026-09-21T14:13:20.123Z\"}"
+          }
+        ]
+      }
+    },
+    {
+      "id": "rows/cp-last-episode-minimal",
+      "covers": [],
+      "call": "cpLastEpisodeRow",
+      "args": [{ "id": "ep-2" }, 1790000000000],
+      "expect": {
+        "return": [
+          {
+            "key": "cp_last_episode",
+            "value": "{\"id\":\"ep-2\",\"updated_at\":\"2026-09-21T14:13:20.000Z\"}"
+          }
+        ]
+      }
+    },
+    {
+      "id": "rows/cp-last-episode-null-and-absent-fields-dropped",
+      "covers": [],
+      "call": "cpLastEpisodeRow",
+      "args": [
+        {
+          "id": "ep-3",
+          "title": "T",
+          "show": null,
+          "artwork_url": { "$undefined": true },
+          "audio_url": "https://cdn.example.com/3.mp3",
+          "duration_min": null
+        },
+        1790000000123
+      ],
+      "expect": {
+        "return": [
+          {
+            "key": "cp_last_episode",
+            "value": "{\"id\":\"ep-3\",\"title\":\"T\",\"audio_url\":\"https://cdn.example.com/3.mp3\",\"updated_at\":\"2026-09-21T14:13:20.123Z\"}"
+          }
+        ]
+      }
+    },
+    {
+      "id": "rows/cp-last-episode-falsy-values-kept",
+      "covers": [],
+      "note": "Only null and undefined are dropped; an empty title and a zero duration are stored",
+      "call": "cpLastEpisodeRow",
+      "args": [
+        { "id": "ep-4", "title": "", "duration_sec": 0, "duration_min": 0 },
+        1790000000123
+      ],
+      "expect": {
+        "return": [
+          {
+            "key": "cp_last_episode",
+            "value": "{\"id\":\"ep-4\",\"title\":\"\",\"duration_min\":0,\"duration_sec\":0,\"updated_at\":\"2026-09-21T14:13:20.123Z\"}"
+          }
+        ]
+      }
+    },
+    {
+      "id": "rows/cp-last-episode-numeric-id",
+      "covers": [],
+      "call": "cpLastEpisodeRow",
+      "args": [{ "id": 1234567, "title": "Numeric id" }, 1790000000123],
+      "expect": {
+        "return": [
+          {
+            "key": "cp_last_episode",
+            "value": "{\"id\":1234567,\"title\":\"Numeric id\",\"updated_at\":\"2026-09-21T14:13:20.123Z\"}"
+          }
+        ]
+      }
+    },
+    {
+      "id": "rows/cp-last-episode-escaped-text",
+      "covers": [],
+      "call": "cpLastEpisodeRow",
+      "args": [
+        {
+          "id": "ep-5",
+          "title": "Ain't \"it\" a \\ / </script>\u0001\t\n é — 🎧  end",
+          "show": "Show / \"quoted\"",
+          "audio_url": "https://cdn.example.com/a b/é.mp3"
+        },
+        1790000000123
+      ],
+      "expect": {
+        "return": [
+          {
+            "key": "cp_last_episode",
+            "value": "{\"id\":\"ep-5\",\"title\":\"Ain't \\\"it\\\" a \\\\ / </script>\\u0001\\t\\n é — 🎧  end\",\"show\":\"Show / \\\"quoted\\\"\",\"audio_url\":\"https://cdn.example.com/a b/é.mp3\",\"updated_at\":\"2026-09-21T14:13:20.123Z\"}"
+          }
+        ]
+      }
+    },
+    {
+      "id": "rows/cp-last-episode-float-durations",
+      "covers": [],
+      "call": "cpLastEpisodeRow",
+      "args": [
+        {
+          "id": "ep-6",
+          "duration_min": 0.30000000000000004,
+          "duration_sec": 3599.9999999999995
+        },
+        1790000000123
+      ],
+      "expect": {
+        "return": [
+          {
+            "key": "cp_last_episode",
+            "value": "{\"id\":\"ep-6\",\"duration_min\":0.30000000000000004,\"duration_sec\":3599.9999999999995,\"updated_at\":\"2026-09-21T14:13:20.123Z\"}"
+          }
+        ]
+      }
+    },
+    {
+      "id": "rows/cp-last-episode-no-id-writes-nothing",
+      "covers": [],
+      "call": "cpLastEpisodeRow",
+      "args": [
+        { "title": "No id", "audio_url": "https://cdn.example.com/x.mp3" },
+        1790000000123
+      ],
+      "expect": { "return": [] }
+    },
+    {
+      "id": "rows/cp-last-episode-empty-id-writes-nothing",
+      "covers": [],
+      "call": "cpLastEpisodeRow",
+      "args": [{ "id": "", "title": "Empty id" }, 1790000000123],
+      "expect": { "return": [] }
+    },
+    {
+      "id": "rows/cp-last-episode-null-item-writes-nothing",
+      "covers": [],
+      "call": "cpLastEpisodeRow",
+      "args": [null, 1790000000123],
+      "expect": { "return": [] }
+    }
+  ]
+}

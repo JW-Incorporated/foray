@@ -7,6 +7,24 @@ docs/. Completed workstreams move to their plan doc's retro section.
 
 ## Active workstreams
 
+### 2026-09-24 — `engine/ne-27`: NE-27 part 1 — the L-2 legal edits, the OQ-9 guard and the M1 car-test script (the flip itself is blocked)
+
+Owned: `docs/native-engine-m1-car-test.md`. Branch off `engine/m1`, PR into it.
+Lands the privacy policy §1 native-player paragraph and table (the six
+`ForayEngine.` keys and `Application Support/foray-engine/diag.jsonl`), the
+shared-row notes, §7's engine purge, data-safety Part C's row, three
+`test/legal-citations.test.js` tests that read the names from `EngineKeys.swift`,
+and a `shell-invariants` guard: `mobile/ENGINE_DEFAULT.json` may say `native`
+only when this file carries the line below. **`ENGINE_DEFAULT.json` stays
+`js`**: `player/parity/coverage.test.js` refuses `episode` while 42
+`transport-reconcile` tests (34 `manager-episode`, 8 `deck-episode`, tagged
+NE-14j) sit in `unported.json`, and the page has none of the four Developer rows
+the script needs (Playback engine, Pause hold, Simulate system termination, the
+session probe). G-1b is also a prerequisite. No DECISIONS edit (NE-27d); no
+HUMAN-ACTIONS item until a build exists to name.
+
+OQ-9 answer (2026-09-24): native default for the founder's builds, with the Developer toggle back to the web player — plan §9a's default, applied by the orchestrator under the founder's "Full native engine" (2026-09-23) and "keep chugging through all the engine building milestones" (2026-09-24); a founder ruling overrides it.
+
 ### 2026-09-23 — `r2fix/integration`: audit round 2, the 163 confirmed findings, lanes L1-L8 in ONE PR
 
 Owned: nothing held. One branch off `main` adde5e12 with the eight round-2 lane

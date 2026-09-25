@@ -1,0 +1,28 @@
+{
+  "//": "Covered-suite tests whose native-mode rule lives on the PAGE side of the bridge, mapped to the JS-only facade test that pins it (plan §6.5; NE-21): suite stem -> test name -> \"facade:<suite>::<test name>\". Counted as ported. Only coverage.js FACADE_MAPPED_SUITES may be mapped (transport-reconcile), only FACADE_SUITES may be named (native-facades), and coverage.test.js checks every named test exists. A rule the Swift engine reimplements is owed in unported.json, never mapped here.",
+  "transport-reconcile": {
+    "AUDIT: a network stall paints Buffering, and the sound coming back clears it": "facade:native-facades::a stall synthesises waiting, and audio flowing again synthesises playing",
+    "AUDIT: a scrub on a RESTORED ribbon is where the next press starts": "facade:native-facades::a play carries its own start into playEpisode — one command, never play-then-seek — and 0:00 is a start",
+    "AUDIT: an episode whose audio will not load says so, and play() reports it": "facade:native-facades::a refused play answers false and keeps the engine's reason for the bar",
+    "AUDIT: an episode with no known duration paints an EMPTY bar, not the last episode's": "facade:native-facades::the playhead and the duration are the snapshot's: extrapolated while flowing, frozen otherwise, null while unknown",
+    "AUDIT: the Foray page is handed the answer its press is decided by": "facade:native-facades::one authority: state, elementIsAudible and the media events all read the same snapshot",
+    "AUDIT: the card's glyph comes from the same answer as the bar's": "facade:native-facades::one authority: state, elementIsAudible and the media events all read the same snapshot",
+    "AUDIT: the steering wheel's next/previous appear when the page offers them, and not before": "facade:native-facades::next and previous are offered exactly when the engine says so, and not before the page's chain",
+    "REPORT 1 (invariant): nothing on the boot or visible path starts audio": "facade:native-facades::attach only READS: returning to the page sends no command, so it can never start audio",
+    "REPORT 3 / #688: one press does what the listener meant when the belief is stale": "facade:native-facades::one authority: state, elementIsAudible and the media events all read the same snapshot",
+    "REVIEW 2026-09-23: a speed that arrives AFTER the record's five-second bound still reaches the booted player": "facade:native-facades::a rate set at any moment reaches the engine, and the label reads it back before the engine answers",
+    "REVIEW: a scrub to 0:00 on a restored ribbon starts at 0:00, not at the stored position": "facade:native-facades::a play carries its own start into playEpisode — one command, never play-then-seek — and 0:00 is a start",
+    "ROUND 2 honesty-4: a row's progress is measured against the duration the player MEASURED, not the catalogue's": "facade:native-facades::the playhead and the duration are the snapshot's: extrapolated while flowing, frozen otherwise, null while unknown",
+    "ROUND 2 p-impatient-2: a play superseded mid-load answers false, so the row is never recorded as played": "facade:native-mode::NATIVE: a play superseded while the engine loads answers false; the one that replaced it answers true",
+    "ROUND 2 p-impatient-4: a cold load says Loading, keeps ▶, and shows the resume point rather than 0:00": "facade:native-facades::the playhead and the duration are the snapshot's: extrapolated while flowing, frozen otherwise, null while unknown",
+    "ROUND 2 player-1: the natural end of an episode repaints the transport and fires onEpisodeEnded with NO other event": "facade:native-facades::the natural end reaches the page as pause then ended with no command sent, and repaints through onStateSettled",
+    "ROUND 2 races-1: a restored bar's press superseded by another row's ▶ does not seek the new episode": "facade:native-facades::a play carries its own start into playEpisode — one command, never play-then-seek — and 0:00 is a start",
+    "ROUND 2 review: a step on a FOCUSED (frozen) slider moves from where the audio is, not from where the value froze": "facade:native-facades::the playhead and the duration are the snapshot's: extrapolated while flowing, frozen otherwise, null while unknown",
+    "SWEEP: a speed that arrives with late hydration reaches a player that already booted": "facade:native-facades::a rate set at any moment reaches the engine, and the label reads it back before the engine answers",
+    "SWEEP: playing an item with no id leaves the last-episode pointer alone": "facade:native-facades::an item with no id sends nothing and moves no pointer",
+    "THE FOUNDER'S PRESS: after a stop the page never saw, the transport says Play": "facade:native-facades::attach replaces a stale belief with the engine's word, says it corrected, and one press then sends one intent",
+    "and the press resumes — the reconcile did not start anything itself": "facade:native-facades::attach only READS: returning to the page sends no command, so it can never start audio",
+    "previousMeansRestart is the player's own window: false at the start, true once past it, null with nothing current (audit round 2, p-car-5)": "facade:native-facades::the playhead and the duration are the snapshot's: extrapolated while flowing, frozen otherwise, null while unknown",
+    "the button says what the AUDIO is doing, not what we last believed": "facade:native-facades::one authority: state, elementIsAudible and the media events all read the same snapshot"
+  }
+}

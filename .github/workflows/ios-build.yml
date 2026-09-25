@@ -114,6 +114,17 @@ on:
       - "index.html"
       - "app.js"
       - "player/**"
+      # NE-06 (docs/native-engine-plan.md §6.8, G-1a): the native engine's
+      # parity fixtures and their recorder are not what the shell is built
+      # from. They are read by `swift test` on the engine core, which
+      # ci.yml's `engine-parity` (Linux) and `ios-kit` (macOS) run on every
+      # PR; a 15-minute Simulator build per re-record would learn nothing.
+      # A NEGATION ONLY WORKS AFTER THE PATTERN IT NARROWS, so these stay
+      # below `player/**`. `tools/parity/**` matches nothing above today; it
+      # is listed so that a later widening (to `tools/**`, say) cannot pull
+      # the recorder in without deleting a line that says why not.
+      - "!player/parity/**"
+      - "!tools/parity/**"
       - ".github/workflows/ios-build.yml"
 
 concurrency:

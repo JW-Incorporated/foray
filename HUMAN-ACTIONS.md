@@ -2,7 +2,7 @@
 
 <!-- ha-format: 2 -->
 
-> **20 open.** Closed items are in `HUMAN-ACTIONS-DONE.md` — you never need it.
+> **21 open.** Closed items are in `HUMAN-ACTIONS-DONE.md` — you never need it.
 > To close one: reply `done` (or `skip <why>`) to its card in the project's human-action channel.
 > Anything else you reply is forwarded to a thread on the card.
 
@@ -18,6 +18,20 @@
    - **Keep them:** tell Claude "recover the 2026-09-14 nightly digest". It re-cuts the scan back to the 14th and opens `nightly/2026-09-14-recovery`, which is the branch name the guard looks for.
 
 **Worked if:** the next scheduled `nightly-refresh` run is green, a `nightly/<date>` PR opens the same day, and `nightly-watch` is green that evening.
+
+## #114 🟡 [DECIDE] Drive the M1 car test on the next TestFlight build after `engine/m1` merges — the native player is its default (~3 drives)
+<!-- ha filed=2026-09-24 kind=default -->
+
+**Why:** On 2026-09-24 your car chose Spotify even though 4a held its audio session for 8 minutes (`docs/field-records/2026-09-24-car-baseline.md`): iOS goes back to the app whose audio last *played*, and in 4a that was the web view's process. The iOS app now plays episodes through its own native player, and card NE-27b made that the build default (`mobile/ENGINE_DEFAULT.json` says `native` with `episode`, `continuation` and `restore`; the Developer group can switch back to the web player). Whether the car now comes back to 4a can only be measured in your car. Nothing here can do it.
+
+**Steps:**
+1. Wait for **the next TestFlight build after `engine/m1` merges into `main`**. Its `ios-archive --check` log must show `ForayEngineDefault=native`. Claude will reply on this card with that build's number. Test **only that build**, and turn TestFlight's Automatic Updates off for 4a so it cannot change mid-drive.
+2. Follow `docs/native-engine-m1-car-test.md` from **Step 0**: the header check, the 10-minute desk pre-flight, then blocks 0-11 in the car. Each block ends with one **Developer → Playback diagnostics → Copy**, taken while parked.
+3. Blocks **0 and 1** are the two failures from 2026-09-24: paused in the app, phone locked, the car connects and 4a resumes; and paused from the car, a long pause, play, and 4a resumes and stays.
+4. Paste every Copy into this card's thread, one per block, each headed with its block number and the route (CarPlay, car Bluetooth, AirPods or speaker). M1 needs **three drives**.
+5. If the build is unusable for daily listening, TestFlight → 4a → **Previous Builds** puts the old one back. You do not need Claude for that. Say so here.
+
+**Worked if:** across three drives, `node tools/mobile/engine-report.mjs` over the Copies shows no `sessionActivated failed`, no `remote play handled=y` without audio, and no takeover except the negative control (block 7, which should go to Spotify). DV-12 and DV-13 pass, and blocks 0 and 1 play 4a.
 
 ## #109 🟡 [DECIDE] Mirror the approved privacy wording in the store listings, if they carry it (~10 min)
 <!-- ha filed=2026-09-24 kind=default -->

@@ -959,3 +959,82 @@ test("the two input length caps the documents quote are the shipped ones", () =>
     );
   }
 });
+
+/* ================= 5. the iOS native audio player's storage (NE-27) =========
+
+   The native engine keeps state no `cp_` inventory can see: engine-private
+   `UserDefaults` values under `ForayEngine.` (deliberately outside the
+   Preferences prefix the page enumerates) and a diagnostics FILE. Nothing in
+   `test/data-deletion.test.js`'s `cp_` enumeration reaches them, so without this
+   section a key a later card adds to `EnginePrivateKey` would be written on
+   every phone and named in neither document. The truth is read from the Swift
+   source that declares the names, in both directions, the way §2 reads the
+   event inventory from the code rather than restating it. */
+
+const ENGINE_KEYS_SWIFT =
+  "mobile/plugins/foray-audio/foray-engine-core/Sources/ForayEngineCore/Persist/EngineKeys.swift";
+const DIAG_RING_SWIFT =
+  "mobile/plugins/foray-audio/foray-engine-core/Sources/ForayEngineCore/Diag/DiagRing.swift";
+const ENGINE_DIAGNOSTICS_SWIFT =
+  "mobile/plugins/foray-audio/ios/Sources/ForayAudioPlugin/Engine/EngineDiagnostics.swift";
+
+/** The engine's private key names and its diagnostics file, from the Swift. */
+function enginePrivateStorage() {
+  const src = read(ENGINE_KEYS_SWIFT).replace(/\/\/.*$/gm, "");
+  const keys = [...src.matchAll(/case \w+ = "(ForayEngine\.\w+)"/g)].map((m) => m[1]);
+  const dir = /diagDirectoryName = "([^"]+)"/.exec(src);
+  const file = /diagFileName = "([^"]+)"/.exec(src);
+  assert.ok(keys.length > 0 && dir && file, `${ENGINE_KEYS_SWIFT} no longer declares its keys the way this test reads them`);
+  return { keys, diagFile: `Application Support/${dir[1]}/${file[1]}` };
+}
+
+/** Every `ForayEngine.<name>` code span in a document. */
+const engineNamesIn = (rel) =>
+  [...new Set(codeSpans(rel).map((s) => s.span).filter((s) => /^ForayEngine\.\w+$/.test(s)))].sort();
+
+test("both legal documents name exactly the native player's private keys and its diagnostics file", () => {
+  /* MUTATIONS: add a case to EnginePrivateKey (a key written and never
+     disclosed) -> red, naming it; delete the `ForayEngine.restore` row from the
+     policy -> red; name a `ForayEngine.` key the Swift does not declare -> red
+     from the other direction; move the ring out of `foray-engine/diag.jsonl`
+     -> red on the file name. */
+  const { keys, diagFile } = enginePrivateStorage();
+  for (const doc of DOCS) {
+    assert.deepStrictEqual(engineNamesIn(doc), [...keys].sort(),
+      `${doc} must name every engine-private key EngineKeys.swift declares, and no other`);
+    assert.ok(read(doc).includes(`\`${diagFile}\``), `${doc} does not name the diagnostics file ${diagFile}`);
+  }
+  const policy = read("docs/legal/privacy-policy.md");
+  const lines = policy.split("\n");
+  for (const key of keys) {
+    const row = lines.find((l) => l.startsWith("| `" + key + "` | "));
+    assert.ok(row && row.endsWith(" | **No** |"),
+      `privacy policy §1 has no table row for ${key} saying whether it leaves the device`);
+  }
+});
+
+test("the policy's numbers and backup claim for the native player's diagnostics file are the shipped ones", () => {
+  /* MUTATIONS: DiagRing.capacity 2_000 -> 5_000 -> red on the cap; delete
+     `isExcludedFromBackup = true` from EngineDiagnostics.swift -> red, because
+     both documents promise the file is left out of backups. */
+  const cap = /public static let capacity = ([\d_]+)\b/.exec(read(DIAG_RING_SWIFT));
+  assert.ok(cap, "DiagRing.capacity is not where this test reads it");
+  const rows = Number(cap[1].replace(/_/g, "")).toLocaleString("en-US");
+  const policy = read("docs/legal/privacy-policy.md");
+  assert.ok(policy.includes(`capped at the most recent ${rows} rows`), `the policy must state the ring's cap, ${rows} rows`);
+  assert.match(read(ENGINE_DIAGNOSTICS_SWIFT).replace(/\/\/.*$/gm, ""), /isExcludedFromBackup = true/,
+    "the documents say the diagnostics file is left out of backups; the code must still mark it");
+  for (const doc of DOCS) assert.match(read(doc), /left out of (phone )?backups/, `${doc} must state the backup exclusion`);
+});
+
+test("the policy's native-player deletion and ownership claims cite the code that makes them", () => {
+  /* MUTATION: replace "(`player/durable-store.js:engineDataDeletion()`, §7)" in
+     §1 with "(§7)" and delete the Part C citation -> red. The anchors resolve
+     through §1's resolution test, so a rename of either symbol is caught there. */
+  const cited = new Set(allSpans().filter((s) => ANCHORED_RE.test(s.span)).map((s) => s.span));
+  for (const a of ["player/durable-store.js:engineDataDeletion()", "player/engine-contract.js:OWNED_PREFIXES"]) {
+    assert.ok(cited.has(a), `${a} is no longer cited by either document`);
+  }
+  assert.ok(read("docs/legal/privacy-policy.md").includes("`mobile/ENGINE_DEFAULT.json`"),
+    "the policy must name the file a build's default player comes from");
+});

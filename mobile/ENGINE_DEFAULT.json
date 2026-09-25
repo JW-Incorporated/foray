@@ -1,0 +1,4 @@
+{
+  "mode": "native",
+  "capabilities": ["episode", "continuation", "restore"]
+}

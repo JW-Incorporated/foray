@@ -1,0 +1,19 @@
+{
+  "//": "Covered-suite tests (coverage.js COVERED_SUITES) that a named XCTest method stands for: suite stem -> test name -> \"xctest:<Class>/<testMethod>\". coverage.test.js greps the Swift test sources under mobile/plugins for every mapping, so a renamed or deleted XCTest turns it red.",
+  "html-audio-backend": {
+    "a first load that stalls without erroring also degrades rather than hanging": "xctest:AVDeckTests/testANeverReadyUrlHitsTheDeadlineWithNoPreroll",
+    "on a real clock the boundary fires and never clips at 2x either": "xctest:InOutPointMeasurementTests/testOutPointOvershootAtOneAndTwoTimesAndNeverEarly",
+    "on a real clock the boundary fires and never clips, at every phase of a tick": "xctest:InOutPointMeasurementTests/testOutPointOvershootAtOneAndTwoTimesAndNeverEarly",
+    "rate set before play survives the load that reset it": "xctest:AVDeckTests/testRateIsHeldAcrossThreeLoads"
+  },
+  "transport-reconcile": {
+    "AUDIT: a superseded load's listeners do not touch its successor's playhead": "xctest:AVDeckTests/testASupersededLoadIsSilent",
+    "ROUND 2 p-impatient-1: ↺15 tapped while a resumed episode is still loading keeps the resume point": "xctest:EngineCoreTests/testANudgeDuringAColdLoadStepsFromWhereTheLoadLands",
+    "ROUND 2 player-1 / perf-7: with the screen OFF the next episode still starts, and the page is not painted": "xctest:EngineCoreTests/testAnEndWalksTheChainOnlyWithAutoAdvance",
+    "ROUND 2 player-3: a scrub made while paused survives playing something else": "xctest:EngineCoreTests/testPlayingAnotherEpisodeKeepsAScrubMadeWhilePaused",
+    "a file that simply ran out is not an interruption": "xctest:AVDeckTests/testTheEndIsEndedNotAnUncommandedPause",
+    "a pause nobody asked for is reported; one we caused is not": "xctest:AVDeckTests/testAnExternalPauseBecomesAReconcileInput",
+    "paused and ended are read off the element, not off what we believe": "xctest:AVDeckTests/testTheReadingFollowsTheLoadAndThePlay",
+    "the out-point's own pause is not an unexplained one": "xctest:AVDeckTests/testTheUncommandedPauseRule"
+  }
+}

@@ -16,18 +16,36 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 
 import {
+  AppDelegateError,
   BACKGROUND_AUDIO_MODE,
+  COLD_PATH_CALL,
+  COLD_PATH_IMPORT,
+  appDelegatePathFor,
+  assertAppDelegatePatched,
+  coldPathState,
+  injectAppDelegate,
+  ENGINE_CAPABILITIES_KEY,
+  ENGINE_DEFAULT_FILE,
+  ENGINE_DEFAULT_KEY,
   NON_EXEMPT_ENCRYPTION_KEY,
   PlistError,
   assertEncryptionDeclared,
+  assertEngineDefault,
   assertModePresent,
   backgroundModes,
+  engineDefault,
   injectBackgroundAudio,
+  injectEngineDefault,
   injectNonExemptEncryption,
   nonExemptEncryption,
   parseEncryptionFlag,
+  parseEngineDefault,
   rootEntries,
 } from "./inject-background-audio.mjs";
 
@@ -598,4 +616,306 @@ test("the reason the answer is `false` is written down beside the key", () => {
     /REVISIT IT IF THE APP GAINS REAL CRYPTO/,
     "nothing tells the next reader when this declaration stops being true"
   );
+});
+
+/* ─────────── the native engine's build default (card NE-17) ───────────
+
+   `ForayEngineDefault` is what `EngineOwnership.decideOnce()` reads to pick the
+   lane a process plays through; ABSENT MEANS JS (the Swift's `no-plist-key`).
+   So a lost write is a silent no-op: the build still plays, the NE-27 flip
+   does nothing, and nothing is red. These tests are what keep it loud. */
+
+const JS_DEFAULT = Object.freeze({ mode: "js", capabilities: [] });
+/** NE-27b, the M1 flip: what mobile/ENGINE_DEFAULT.json commits (plan §9a,
+    OQ-9's default, recorded in STATE.md; shell-invariants holds the record). */
+const M1_DEFAULT = Object.freeze({ mode: "native", capabilities: ["episode", "continuation", "restore"] });
+
+test("the committed ENGINE_DEFAULT.json is the M1 native default NE-27b flipped, and the script reads THAT file", () => {
+  /* MUTATION: point ENGINE_DEFAULT_FILE anywhere else, commit "js" again, or
+     drop / add a capability. */
+  const repoFile = fileURLToPath(new URL("../../mobile/ENGINE_DEFAULT.json", import.meta.url));
+  assert.equal(path.resolve(ENGINE_DEFAULT_FILE), path.resolve(repoFile));
+  assert.deepEqual(parseEngineDefault(fs.readFileSync(repoFile, "utf8")), M1_DEFAULT);
+});
+
+test("a generated plist has no engine default: the app reads that as js (no-plist-key)", () => {
+  assert.deepEqual(engineDefault(CAPACITOR_PLIST), { mode: null, capabilities: null });
+});
+
+test("injecting writes ForayEngineDefault and ForayEngineCapabilities at the root, and nothing else changes", () => {
+  /* MUTATION: skip the capabilities key, or write the mode as <true/>. */
+  const r = injectEngineDefault(CAPACITOR_PLIST, JS_DEFAULT);
+  assert.equal(r.changed, true);
+  assert.deepEqual(engineDefault(r.xml), { mode: "js", capabilities: [] });
+  const keys = rootEntries(r.xml).entries.map((e) => e.key);
+  assert.deepEqual(keys.slice(-2), [ENGINE_DEFAULT_KEY, ENGINE_CAPABILITIES_KEY]);
+  const block = `\t<key>${ENGINE_DEFAULT_KEY}</key>\n\t<string>js</string>\n\t<key>${ENGINE_CAPABILITIES_KEY}</key>\n\t<array/>\n`;
+  assert.equal(r.xml.replace(block, ""), CAPACITOR_PLIST, "an edit outside the two keys");
+  assert.match(r.reason, /ForayEngineDefault = js/);
+});
+
+test("a second injection of the same default changes nothing; a different one REPLACES the value", () => {
+  /* The keys are this script's own, derived from a committed file: a plist left
+     from an earlier build must follow the file, not refuse it (unlike the
+     encryption declaration). MUTATION: return early when the key exists. */
+  const once = injectEngineDefault(CAPACITOR_PLIST, JS_DEFAULT).xml;
+  const twice = injectEngineDefault(once, JS_DEFAULT);
+  assert.equal(twice.changed, false);
+  assert.equal(twice.xml, once);
+
+  const native = injectEngineDefault(once, { mode: "native", capabilities: ["episode", "restore"] });
+  assert.equal(native.changed, true);
+  assert.deepEqual(engineDefault(native.xml), { mode: "native", capabilities: ["episode", "restore"] });
+  assert.equal(rootEntries(native.xml).entries.filter((e) => e.key === ENGINE_DEFAULT_KEY).length, 1, "replaced, not appended");
+  assert.match(native.xml, /\t<array>\n\t\t<string>episode<\/string>\n\t\t<string>restore<\/string>\n\t<\/array>/);
+
+  const back = injectEngineDefault(native.xml, JS_DEFAULT);
+  assert.equal(back.xml, once, "flipping back restores the exact bytes");
+});
+
+test("a nested ForayEngineDefault is NOT mistaken for the root one", () => {
+  const nested = CAPACITOR_PLIST.replace(
+    "\t<key>UIViewControllerBasedStatusBarAppearance</key>",
+    "\t<key>NSAppTransportSecurity</key>\n\t<dict>\n\t\t<key>ForayEngineDefault</key>\n\t\t<string>js</string>\n\t</dict>\n" +
+      "\t<key>UIViewControllerBasedStatusBarAppearance</key>"
+  );
+  assert.deepEqual(engineDefault(nested), { mode: null, capabilities: null });
+  const r = injectEngineDefault(nested, JS_DEFAULT);
+  assert.equal(r.changed, true);
+  assert.ok(rootEntries(r.xml).entries.some((e) => e.key === ENGINE_DEFAULT_KEY));
+});
+
+test("a wrong type, a padded value or a duplicate root key is refused, not read", () => {
+  const at = "\t<key>UIViewControllerBasedStatusBarAppearance</key>";
+  const withKeys = (block) => CAPACITOR_PLIST.replace(at, block + at);
+  assert.throws(() => engineDefault(withKeys("\t<key>ForayEngineDefault</key>\n\t<true/>\n")), /not a <string>/);
+  assert.throws(() => engineDefault(withKeys("\t<key>ForayEngineCapabilities</key>\n\t<string>episode</string>\n")), /not an <array>/);
+  assert.throws(
+    () => engineDefault(withKeys("\t<key>ForayEngineCapabilities</key>\n\t<array>\n\t\t<string> episode </string>\n\t</array>\n")),
+    /ForayEngineCapabilities contains <string>/
+  );
+  assert.throws(
+    () => injectEngineDefault(
+      withKeys("\t<key>ForayEngineDefault</key>\n\t<string>js</string>\n\t<key>ForayEngineDefault</key>\n\t<string>native</string>\n"),
+      JS_DEFAULT
+    ),
+    /declares ForayEngineDefault 2 times/
+  );
+});
+
+test("ENGINE_DEFAULT.json is parsed strictly: two modes, plain capability tokens, no unknown keys", () => {
+  /* A typo here is a build that plays through the wrong engine with every check
+     green. MUTATION: lowercase the mode before checking it, or drop the
+     unknown-key refusal. */
+  assert.deepEqual(parseEngineDefault('{"mode":"js"}'), JS_DEFAULT);
+  assert.deepEqual(parseEngineDefault('{"mode":"native","capabilities":["episode"],"//":"why"}'),
+    { mode: "native", capabilities: ["episode"] });
+  for (const bad of [
+    "", "not json", "[]", "null", '{"mode":"Native"}', '{"mode":"native "}', '{"mode":"legacy"}', "{}",
+    '{"mdoe":"js","mode":"js"}', '{"mode":"js","capabilities":"episode"}', '{"mode":"js","capabilities":["Episode"]}',
+    '{"mode":"js","capabilities":["episode","episode"]}', '{"mode":"js","capabilities":[1]}',
+    '{"mode":"js","capabilities":["<x>"]}',
+  ]) {
+    assert.throws(() => parseEngineDefault(bad), PlistError, `accepted ${bad}`);
+  }
+  assert.throws(() => injectEngineDefault(CAPACITOR_PLIST, { mode: "Native", capabilities: [] }), PlistError);
+});
+
+test("assertEngineDefault is a real function, and it rejects what it should", () => {
+  /* The anti-fails-green re-read. MUTATION: make it return unconditionally. */
+  const def = { mode: "native", capabilities: ["episode", "restore"] };
+  const good = injectEngineDefault(CAPACITOR_PLIST, def).xml;
+  assert.deepEqual(assertEngineDefault(good, def).capabilities, ["episode", "restore"]);
+  assert.throws(() => assertEngineDefault(CAPACITOR_PLIST, JS_DEFAULT), PlistError, "an absent key passed");
+  assert.throws(() => assertEngineDefault(good, { mode: "js", capabilities: ["episode", "restore"] }), PlistError);
+  assert.throws(() => assertEngineDefault(good, { mode: "native", capabilities: ["restore", "episode"] }), PlistError);
+  assert.throws(() => assertEngineDefault(good, { mode: "native", capabilities: ["episode"] }), PlistError);
+});
+
+/* ─────────── the CLI, as both CI invocations run it ─────────── */
+
+const SCRIPT = fileURLToPath(new URL("./inject-background-audio.mjs", import.meta.url));
+
+function run(args) {
+  return spawnSync(process.execPath, [SCRIPT, ...args], { encoding: "utf8" });
+}
+
+test("the CI invocations write the engine default and --check prints ForayEngineDefault=native", () => {
+  /* ios-build.yml and ios-archive/action.yml run exactly these lines (pinned by
+     ios-workflow.test.mjs and release-workflow.test.mjs), so the write needs no
+     .github edit, and the ios-build log carries the evidence line.
+     MUTATION: drop the injectEngineDefault call from the CLI -> the --check
+     below exits 1; drop the check's assertEngineDefault -> the tampered plist
+     passes. */
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "inject-engine-default-"));
+  try {
+    const plist = path.join(dir, "Info.plist");
+    fs.writeFileSync(plist, CAPACITOR_PLIST);
+    fs.writeFileSync(path.join(dir, "AppDelegate.swift"), CAPACITOR_APP_DELEGATE);
+    assert.equal(run([plist, "--check"]).status, 1, "a plist with no UIBackgroundModes must fail --check");
+
+    const write = run([plist]);
+    assert.equal(write.status, 0, write.stderr);
+    const encryption = run([plist, "--encryption", "false"]);
+    assert.equal(encryption.status, 0, encryption.stderr);
+    const check = run([plist, "--check", "--encryption", "false"]);
+    assert.equal(check.status, 0, check.stderr);
+    assert.match(check.stdout, /ForayEngineDefault=native ForayEngineCapabilities=\["episode","continuation","restore"\]/);
+    assert.deepEqual(engineDefault(fs.readFileSync(plist, "utf8")), M1_DEFAULT);
+
+    // A plist whose engine default was changed by hand fails --check.
+    fs.writeFileSync(plist, fs.readFileSync(plist, "utf8").replace("<string>native</string>", "<string>js</string>"));
+    const tampered = run([plist, "--check"]);
+    assert.equal(tampered.status, 1);
+    assert.match(tampered.stderr, /engine default/);
+
+    // --engine-default names another source of truth; a bad one fails the run.
+    const nativeFile = path.join(dir, "ENGINE_DEFAULT.json");
+    fs.writeFileSync(nativeFile, '{"mode":"native","capabilities":["episode"]}');
+    assert.equal(run([plist, "--engine-default", nativeFile]).status, 0);
+    assert.deepEqual(engineDefault(fs.readFileSync(plist, "utf8")), { mode: "native", capabilities: ["episode"] });
+    assert.equal(run([plist, "--check", "--engine-default", nativeFile]).status, 0);
+    fs.writeFileSync(nativeFile, '{"mode":"Native"}');
+    assert.equal(run([plist, "--engine-default", nativeFile]).status, 1);
+    assert.equal(run([plist, "--engine-default"]).status, 2, "a flag with no value");
+    assert.equal(run([plist, "--engine-default", "--check"]).status, 2, "a flag is never a value");
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+/* ─────────── the AppDelegate cold path (card NE-24) ───────────
+
+   iOS relaunches a terminated 4a in the BACKGROUND for a car's play, and that
+   launch loads no WebView, so no plugin `load()` ever runs: the native
+   engine's remote targets exist only if `didFinishLaunching` boots it. The
+   generated AppDelegate is not committed, so the one line is written by this
+   script, beside the plist, in the two CI invocations that already run it. */
+
+/** What Capacitor 8's `cap add ios` writes (`ios/App/App/AppDelegate.swift`),
+    trimmed to the shape that matters: two imports, the attribute, and several
+    `application(...)` overloads, only one of them didFinishLaunching. */
+const CAPACITOR_APP_DELEGATE = `import UIKit
+import Capacitor
+
+@UIApplicationMain
+class AppDelegate: UIResponder, UIApplicationDelegate {
+
+    var window: UIWindow?
+
+    func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
+        // Override point for customization after application launch.
+        return true
+    }
+
+    func applicationWillResignActive(_ application: UIApplication) {
+        // Sent when the application is about to move from active to inactive state. { not a brace
+    }
+
+    func application(_ app: UIApplication, open url: URL, options: [UIApplication.OpenURLOptionsKey: Any] = [:]) -> Bool {
+        // Called when the app was launched with a url.
+        return ApplicationDelegateProxy.shared.application(app, open: url, options: options)
+    }
+
+    func application(_ application: UIApplication, continue userActivity: NSUserActivity, restorationHandler: @escaping ([UIUserActivityRestoring]?) -> Void) -> Bool {
+        return ApplicationDelegateProxy.shared.application(application, continue: userActivity, restorationHandler: restorationHandler)
+    }
+}
+`;
+
+test("the AppDelegate patch imports the plugin and calls the cold path FIRST in didFinishLaunching, and nothing else changes", () => {
+  /* MUTATION: insert the call before `return true` instead of after the `{`;
+     skip the import; patch the first `application(` overload found. Each
+     fails here. */
+  assert.throws(() => assertAppDelegatePatched(CAPACITOR_APP_DELEGATE), AppDelegateError, "a generated AppDelegate is unpatched");
+  const r = injectAppDelegate(CAPACITOR_APP_DELEGATE);
+  assert.equal(r.changed, true);
+  assertAppDelegatePatched(r.swift);
+  const lines = r.swift.split("\n");
+  assert.equal(lines[2], COLD_PATH_IMPORT, "the import lands after the generated ones");
+  const fn = lines.findIndex((l) => l.includes("didFinishLaunchingWithOptions"));
+  assert.match(lines[fn + 1], /^ {8}\/\/ NE-24 cold path/, "a note says who wrote the line, at the body's indentation");
+  assert.equal(lines[fn + 2], `        ${COLD_PATH_CALL}`);
+  assert.equal(lines[fn + 3], "        // Override point for customization after application launch.");
+  // Remove exactly the three inserted lines: the rest is byte-identical.
+  const back = lines.filter((_, i) => i !== 2 && i !== fn + 1 && i !== fn + 2).join("\n");
+  assert.equal(back, CAPACITOR_APP_DELEGATE);
+});
+
+test("the AppDelegate patch is idempotent, and a half-patched file is refused rather than patched twice", () => {
+  /* MUTATION: drop the already-patched early return (a second call lands);
+     drop the half-patched refusal (a second import is written). */
+  const once = injectAppDelegate(CAPACITOR_APP_DELEGATE).swift;
+  const twice = injectAppDelegate(once);
+  assert.equal(twice.changed, false);
+  assert.equal(twice.swift, once);
+  assert.match(twice.reason, /already/);
+
+  // A call inside a comment is not a call: the patched file stays patched.
+  assert.equal(injectAppDelegate(`${once}\n// ${COLD_PATH_CALL}\n`).changed, false);
+
+  const importOnly = CAPACITOR_APP_DELEGATE.replace("import Capacitor\n", `import Capacitor\n${COLD_PATH_IMPORT}\n`);
+  assert.equal(coldPathState(importOnly).imports, 1);
+  const completed = injectAppDelegate(importOnly);
+  assert.ok(completed.changed, "an import without the call gets the call");
+  assert.equal(coldPathState(completed.swift).imports, 1, "and no second import");
+
+  const callElsewhere = once
+    .replace(`        ${COLD_PATH_CALL}\n`, "")
+    .replace("return ApplicationDelegateProxy.shared.application(app", `${COLD_PATH_CALL}\n        return ApplicationDelegateProxy.shared.application(app`);
+  assert.throws(() => assertAppDelegatePatched(callElsewhere), /first statement/);
+  assert.throws(() => injectAppDelegate(callElsewhere), /half-patched/);
+});
+
+test("the patch finds didFinishLaunching exactly once, whatever the attribute, and refuses what it cannot place", () => {
+  /* MUTATION: match the first `func application(` instead of the one with
+     didFinishLaunchingWithOptions; count a brace inside a comment. */
+  const atMain = CAPACITOR_APP_DELEGATE.replace("@UIApplicationMain", "@main");
+  assertAppDelegatePatched(injectAppDelegate(atMain).swift);
+
+  const none = CAPACITOR_APP_DELEGATE.replace("didFinishLaunchingWithOptions", "willFinishLaunchingWithOptions");
+  assert.throws(() => injectAppDelegate(none), /exactly once, found 0/);
+  const start = CAPACITOR_APP_DELEGATE.indexOf("    func application(_ application: UIApplication, didFinishLaunching");
+  const end = CAPACITOR_APP_DELEGATE.indexOf("    }\n", start) + "    }\n".length;
+  const fn = CAPACITOR_APP_DELEGATE.slice(start, end);
+  assert.throws(() => injectAppDelegate(CAPACITOR_APP_DELEGATE.replace(fn, fn + fn)), /exactly once, found 2/);
+  const commented = CAPACITOR_APP_DELEGATE.replace("class AppDelegate", `/* ${fn} */\nclass AppDelegate`);
+  assertAppDelegatePatched(injectAppDelegate(commented).swift);
+  assert.throws(() => injectAppDelegate(""), AppDelegateError);
+  assert.throws(() => injectAppDelegate("class AppDelegate {}\n"), /exactly once, found 0/);
+});
+
+test("the CLI patches the AppDelegate beside the plist, --check quotes it, and a missing AppDelegate fails the run with the plist untouched", () => {
+  /* The §2 Assumed row ("AppDelegate.swift exists beside Info.plist when the
+     script runs") is checked, not assumed: a run without it exits 1.
+     MUTATION: skip the AppDelegate in the write path, or in --check. */
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "inject-app-delegate-"));
+  try {
+    const plist = path.join(dir, "Info.plist");
+    fs.writeFileSync(plist, CAPACITOR_PLIST);
+    const lonely = run([plist]);
+    assert.equal(lonely.status, 1);
+    assert.match(lonely.stderr, /AppDelegate\.swift does not exist/);
+    assert.equal(fs.readFileSync(plist, "utf8"), CAPACITOR_PLIST, "nothing written when the run fails");
+
+    const delegate = appDelegatePathFor(plist);
+    assert.equal(delegate, path.join(dir, "AppDelegate.swift"));
+    fs.writeFileSync(delegate, CAPACITOR_APP_DELEGATE);
+    const write = run([plist]);
+    assert.equal(write.status, 0, write.stderr);
+    assertAppDelegatePatched(fs.readFileSync(delegate, "utf8"));
+    const again = run([plist, "--encryption", "false"]);
+    assert.equal(again.status, 0, again.stderr);
+    assert.match(again.stdout, /AppDelegate\.swift: already calls/);
+    const check = run([plist, "--check", "--encryption", "false"]);
+    assert.equal(check.status, 0, check.stderr);
+    assert.match(check.stdout, /AppDelegate\.swift: ForayEngineColdPath\.bootIfNeeded\(\) is the first statement of didFinishLaunching/);
+
+    fs.writeFileSync(delegate, CAPACITOR_APP_DELEGATE);
+    assert.equal(run([plist, "--check"]).status, 1, "--check fails on an unpatched AppDelegate");
+    fs.rmSync(delegate);
+    assert.equal(run([plist, "--check"]).status, 1, "--check fails with no AppDelegate");
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
 });

@@ -2025,6 +2025,304 @@ function buildLabel(e) {
   return `${web} · native ${e.native ?? "?"}${e.version ? ` (${e.version})` : ""}`;
 }
 
+/* ---------- the engine's rows, merged into Copy (NE-26) ----------
+
+   WHY ONE PASTE AND NOT TWO. On the iOS native engine (docs/native-engine-plan.md
+   §4.1, NE-19) the rows that answer the car questions — session, remote, seam,
+   grace — are written by Swift, into a 2,000-row file ring the page cannot see.
+   A founder who has to copy two records from two places, and a reader who has
+   to interleave them by hand, is how a drive's evidence gets lost. So Copy asks
+   the engine for its whole ring once (engineRead 'diagnostics', NE-20) and this
+   block merges it into the same text, by wall clock, each engine line marked
+   `src=engine` so no reader mistakes whose clock or whose code wrote it.
+
+   AN ENGINE ROW IS NOT A PAGE ENTRY, and it is never turned into one. The page
+   rows carry `type` and `wall`; the engine's carry `kind` and `at` (DiagRow.swift)
+   and fields the page's line formatters would misread (an engine `seam` has no
+   `cutBy`, so the page's formatter would call every one of them NEVER STARTED).
+   Engine rows are wrapped, formatted by their own table, and left out of the
+   page's own header counts; they get their own summary lines.
+
+   NOTHING IS DROPPED SILENTLY (the card's acceptance, and DiagGate's rule on the
+   Swift side). A kind this table does not know is COUNTED on the header by name,
+   a row that is not a row at all (no seq, no clock, no kind) is counted as
+   unreadable, a gap in the ring's seq is counted as missing, the oldest rows
+   the ring evicted are counted, and rows from before the page's Clear are
+   counted rather than shown — the founder's loop is clear, drive, copy, and the
+   engine ring outlives a Clear. Every field a formatter does not name is still
+   printed as key=value after the ones it does. */
+
+/** DiagRing.capacity (NE-19). */
+export const ENGINE_RING_CAP = 2000;
+
+/** Every row kind the native engine writes, which is every kind Copy prints.
+    The first eight have their own line shape (card NE-26); the rest print their
+    sub-kind and fields. `engine-diagnostics.test.js` scans the Swift emitters and
+    fails when the engine writes a kind that is not here — such a row would
+    otherwise reach a paste only as a count. */
+export const ENGINE_ROW_KINDS = Object.freeze([
+  "build", "mode", "session", "remote", "seam", "grace", "probe", "lifecycle",
+  "stop", "pause", "rate", "seek", "fault", "deck", "continuation", "reconcile",
+  "restore", "position", "diag", "nowplaying", "resume", "outPoint",
+  /* NE-25c: PreviewSpeaker's off-main callback row (speaker kind=<end> thread=bg). */
+  "speaker",
+  /* NE-16g / NE-24: a cold play's span row (grace=, bgRemainingMs), which DV-7a reads. */
+  "cold-play",
+]);
+
+const ENGINE_HEADER_KEYS = new Set(["seq", "at", "mono", "kind", "event", "dropped"]);
+
+/** The engine's ring as the page can use it: well-formed rows in seq order, and
+    a count of everything that was not a row. `seq` is the ring's monotonic
+    counter and `at` its wall clock (DiagRow.swift); without both, a row cannot
+    be placed, so it is counted, not guessed at. */
+export function normalizeEngineRows(rows) {
+  const list = Array.isArray(rows) ? rows : [];
+  const good = [];
+  let unreadable = 0;
+  for (const row of list) {
+    const ok = row !== null && typeof row === "object" && !Array.isArray(row)
+      && Number.isInteger(row.seq) && row.seq >= 0
+      && Number.isFinite(row.at)
+      && typeof row.kind === "string" && row.kind !== "";
+    if (ok) good.push(row); else unreadable++;
+  }
+  /* Stable, so two rows with one seq (a ring the engine purged and restarted
+     inside one read cannot produce them, but a foreign file line could) keep
+     the order the engine served them in. */
+  good.sort((a, b) => a.seq - b.seq);
+  return { rows: good, unreadable };
+}
+
+/**
+ * The page's entries and the engine's rows as one list, oldest first.
+ *
+ * A MERGE, NOT A SORT. Each side is already in its own order (the page's by its
+ * seq, the engine's by the ring's), and that order is the truth when a wall
+ * clock is not: the clock can step under a drive (a time-zone change, a network
+ * time correction), and sorting by it would put an engine row before the row
+ * that caused it. Two sorted runs merged by their heads never reorder either
+ * run, whatever the clock did. At an equal millisecond the page's row goes
+ * first. Engine rows come back wrapped as `{src: "engine", wall, row}`.
+ */
+export function mergeEngineRows(entries, engineRows) {
+  const page = Array.isArray(entries) ? entries : [];
+  const engine = Array.isArray(engineRows) ? engineRows : [];
+  const out = [];
+  let i = 0;
+  let j = 0;
+  while (i < page.length || j < engine.length) {
+    const takeEngine = i >= page.length
+      || (j < engine.length && engine[j].at < page[i].wall);
+    if (takeEngine) {
+      out.push({ src: "engine", wall: engine[j].at, row: engine[j] });
+      j++;
+    } else {
+      out.push(page[i]);
+      i++;
+    }
+  }
+  return out;
+}
+
+/** A field's value on an engine line. `…Ms` numbers read as durations, the way
+    the page's own lines print them; a seam's stage list reads as a trail. */
+function engineValue(key, v) {
+  if (v === null || v === undefined) return "—";
+  if (typeof v === "boolean") return v ? "y" : "n";
+  if (typeof v === "number") return /Ms$/.test(key) ? ms(v) : String(v);
+  if (Array.isArray(v)) {
+    const parts = v.map((x) => (typeof x === "string" ? x : JSON.stringify(x)));
+    return parts.length ? parts.join(key === "stages" ? ">" : ",") : "—";
+  }
+  if (typeof v === "object") return JSON.stringify(v);
+  return String(v);
+}
+
+/** `key=value` for the named keys that are present, in that order, then every
+    other field the row carries: a formatter names what a reader looks for
+    first, and never decides what a reader may not see. */
+function engineFields(r, lead = [], skip = []) {
+  const own = (k) => Object.prototype.hasOwnProperty.call(r, k);
+  const named = lead.filter(own);
+  const rest = Object.keys(r).filter((k) => !ENGINE_HEADER_KEYS.has(k) && !lead.includes(k) && !skip.includes(k));
+  return [...named, ...rest].map((k) => `${k}=${engineValue(k, r[k])}`);
+}
+
+/** The body of one engine line, per kind (card NE-26: session, remote, mode, the
+    packed seam row, grace, probe and lifecycle, plus the build row the header
+    reads). `event` is the row's sub-kind: DiagGate writes a row's own `kind`
+    field as `event`, because `kind` is the row header's. */
+const ENGINE_LINES = {
+  build: (r) => [`v${r.engineVersion ?? "?"}`, ...engineFields(r,
+    ["protocol", "bundleVersion", "launch", "pitch", "hold"], ["engineVersion"])],
+  /* `strikes` next to the reason: a downgrade is a count reaching STRIKE_LIMIT,
+     and the one without the other is half a finding. */
+  mode: (r) => engineFields(r, ["mode", "reason", "strikes", "cap"]),
+  /* activateMs first: DV-3's reading is how long setActive(true) took, and the
+     silence hint is on every session row (plan §4.4). */
+  session: (r) => [r.event ?? "?", ...engineFields(r, ["activateMs", "ok", "token", "reason", "hint", "phase"])],
+  /* status (the MPRemoteCommandHandlerStatus the engine answered), the route's
+     PORT TYPE, the thread the press arrived on, and T-8's duplicate candidate. */
+  remote: (r) => [r.cmd ?? "?", ...engineFields(r, ["status", "route", "thread", "dupCandidate", "grace", "state"], ["cmd"])],
+  /* The PACKED seam row (DiagRow.swift SeamRow): one row per seam. A null gap is
+     a next item that never became audible, said in words as the page's own seam
+     line says NEVER STARTED, because a dash reads as "not measured". */
+  seam: (r) => [
+    r.observedGapMs == null ? "NEVER AUDIBLE" : `gap ${ms(r.observedGapMs)}`,
+    `asked ${ms(r.askedGapMs)}`,
+    ...engineFields(r, ["prepared", "grace", "bgRemainingMs", "stages"], ["observedGapMs", "askedGapMs"]),
+  ],
+  grace: (r) => [r.event ?? "?", ...engineFields(r, ["reason", "task", "bgRemainingMs"])],
+  probe: (r) => [r.event ?? "?", ...engineFields(r)],
+  lifecycle: (r) => [r.event ?? "?", ...engineFields(r)],
+  /* The three Now Playing strings are the only free text a row may hold
+     (DiagGate rule 5), quoted as the page's own nowplaying line quotes them. */
+  nowplaying: (r) => {
+    const f = (v) => (v == null || v === "" ? "—" : v);
+    return [`"${f(r.title)}" / "${f(r.artist)}" / "${f(r.album)}"`,
+      ...engineFields(r, [], ["title", "artist", "album"])];
+  },
+};
+
+/** One engine row as one line, headed like a page line plus `src=engine`. */
+export function engineLineFor(r) {
+  const head = `#${pad(r.seq, 4)} ${clockOf(r.at)} ${pad(r.kind, 10)} src=engine`;
+  const body = ENGINE_LINES[r.kind]
+    ? ENGINE_LINES[r.kind](r)
+    : [r.event ?? null, ...engineFields(r)].filter((p) => p != null);
+  /* DiagGate's own record of what it withheld from this row. */
+  const withheld = Array.isArray(r.dropped) && r.dropped.length ? [`withheld=${r.dropped.join(",")}`] : [];
+  return [head, ...body, ...withheld].join(" ");
+}
+
+/** The newest row of a kind that satisfies `pick`, or null. */
+function newestEngineRow(rows, kind, pick = () => true) {
+  for (let i = rows.length - 1; i >= 0; i--) {
+    if (rows[i].kind === kind && pick(rows[i])) return rows[i];
+  }
+  return null;
+}
+
+/**
+ * The engine header line (card NE-26):
+ *
+ *   engine=native v<ver> proto=<n> caps=<list> reason=<r> strikes=<n> hold=<policy> build=<CFBundleVersion> | web=<build-stamp>
+ *   engine=js reason=<r> [strikes=<n>] build=<CFBundleVersion> | web=<build-stamp>
+ *
+ * ONE LINE, key=value, because it is read twice: by a founder on a phone, and by
+ * tools/mobile/engine-report.mjs (NE-26r), whose header check is exactly
+ * "engine=native, strikes=0, which build". Each value comes from the freshest
+ * source that has it — the handshake the page decided on, then the snapshot,
+ * then the engine's own newest rows, then the page's build stamp — and a value
+ * nobody could supply is `?`, never a guess. The JS line leaves out what only a
+ * running engine has, and keeps `strikes` when the engine's rows carry them:
+ * a crash-loop downgrade is a JS page with three strikes behind it.
+ *
+ * @param {object|null} engine  `{decision, snapshot, rows}` (see formatDiagnosticReport)
+ * @param {object|null} running the page's build stamp ({web, native, …})
+ */
+export function engineHeaderLine(engine, running = null) {
+  const e = engine ?? {};
+  const rows = Array.isArray(e.rows) ? e.rows : [];
+  const decision = e.decision && typeof e.decision === "object" ? e.decision : null;
+  const mode = decision?.mode === "native" ? "native" : "js";
+  const hello = decision?.hello && typeof decision.hello === "object" ? decision.hello : null;
+  const buildRow = newestEngineRow(rows, "build");
+  /* The engine's own decideOnce row (NE-17): `mode kind` carries mode, reason,
+     strikes and the CFBundleVersion it decided for. */
+  const decidedRow = newestEngineRow(rows, "mode", (r) => typeof r.mode === "string" && typeof r.reason === "string");
+  /* No page verdict yet (before NE-22 the page never asks): when the engine
+     itself chose its legacy lane — a crash-loop, a sticky legacy build, an
+     override — that reason IS why this page plays JS, so it is printed rather
+     than `undecided`. An engine that chose native says nothing about a page
+     that is not listening to it, so that case stays `undecided`. */
+  const pageReason = decision?.reason ?? "undecided";
+  const reason = mode === "js" && pageReason === "undecided" && decidedRow?.mode === "legacy"
+    ? decidedRow.reason
+    : pageReason;
+  const strikesRow = newestEngineRow(rows, "mode", (r) => Number.isInteger(r.strikes));
+  const strikes = Number.isInteger(hello?.strikes) ? hello.strikes : strikesRow ? strikesRow.strikes : null;
+  const bundle = buildRow?.bundleVersion ?? decidedRow?.build ?? running?.native ?? "?";
+  const web = `web=${running?.web ?? "?"}`;
+  if (mode === "js") {
+    return `engine=js reason=${reason}${strikes == null ? "" : ` strikes=${strikes}`} build=${bundle} | ${web}`;
+  }
+  /* The policy in force: the live snapshot's, else whichever of the engine's
+     rows set it last — a hold-policy change or the boot's build row. */
+  const holdRow = newestEngineRow(rows, "session", (r) => r.event === "hold-policy" && typeof r.policy === "string");
+  const holdFromRows = holdRow && (!buildRow || holdRow.seq > buildRow.seq) ? holdRow.policy : buildRow?.hold;
+  const hold = e.snapshot?.holdPolicy ?? holdFromRows ?? "?";
+  /* The ENGINE's reason when it answered native (build-default, override):
+     the page's own verdict is just "native" again, which says nothing. */
+  const why = typeof hello?.reason === "string" ? hello.reason : reason;
+  const ver = hello?.engineVersion ?? buildRow?.engineVersion ?? "?";
+  const proto = hello?.protocol ?? buildRow?.protocol ?? "?";
+  const caps = Array.isArray(hello?.capabilities)
+    ? (hello.capabilities.length ? hello.capabilities.join(",") : "none")
+    : "?";
+  return `engine=native v${ver} proto=${proto} caps=${caps} reason=${why}` +
+    ` strikes=${strikes ?? "?"} hold=${hold} build=${bundle} | ${web}`;
+}
+
+/** The median of a sorted list, or null. */
+function medianOf(sorted) {
+  if (!sorted.length) return null;
+  const h = sorted.length >> 1;
+  return sorted.length % 2 ? sorted[h] : (sorted[h - 1] + sorted[h]) / 2;
+}
+
+/**
+ * What of the engine's ring this paste shows, and what it does not.
+ *
+ * Returns `{shown, lines}`: the rows to merge (known kinds, since the page's
+ * Clear) and the header lines that account for every other row.
+ */
+function engineSection(engine, cleared) {
+  if (!engine || engine.rows === undefined) return { shown: [], lines: [] };
+  if (!Array.isArray(engine.rows)) {
+    /* Asked and not answered: an older binary without engineRead, a bridge
+       that threw, a read that outlived its bound. Said, with why. */
+    return { shown: [], lines: [`engine rows not read (${engine.readError ?? "no answer"})`] };
+  }
+  const { rows, unreadable } = normalizeEngineRows(engine.rows);
+  const lines = [];
+  if (!rows.length) {
+    lines.push(`engine rows 0 of ${ENGINE_RING_CAP}`);
+  } else {
+    /* The ring's seq starts at 1 and only climbs (DiagRing.swift), so the first
+       row's seq says how many older rows were evicted, and the span against the
+       count says how many in between are gone. NE-26r reads an evicted early
+       seam as an incomplete drive, not a passed one. */
+    const first = rows[0].seq;
+    const last = rows[rows.length - 1].seq;
+    const missing = last - first + 1 - new Set(rows.map((r) => r.seq)).size;
+    lines.push(`engine rows ${rows.length} of ${ENGINE_RING_CAP}, #${first}..#${last}`
+      + (first > 1 ? `, ${first - 1} older evicted` : "")
+      + (missing > 0 ? `, ${missing} MISSING (seq gaps)` : ""));
+  }
+  if (unreadable) lines.push(`engine rows unreadable ${unreadable}`);
+
+  const known = new Set(ENGINE_ROW_KINDS);
+  const since = cleared && Number.isFinite(cleared.wall) ? cleared.wall : null;
+  const beforeClear = since == null ? [] : rows.filter((r) => r.at < since);
+  const current = since == null ? rows : rows.filter((r) => r.at >= since);
+  if (beforeClear.length) lines.push(`engine rows before the Clear ${beforeClear.length}, not shown`);
+  const unknown = new Map();
+  for (const r of current) if (!known.has(r.kind)) unknown.set(r.kind, (unknown.get(r.kind) ?? 0) + 1);
+  if (unknown.size) {
+    lines.push(`engine rows of unknown kinds, not shown: ${[...unknown].map(([k, n]) => `${k} x${n}`).join(", ")}`);
+  }
+  const shown = current.filter((r) => known.has(r.kind));
+  const seams = shown.filter((r) => r.kind === "seam");
+  if (seams.length) {
+    const gaps = seams.filter((r) => typeof r.observedGapMs === "number").map((r) => r.observedGapMs).sort((a, b) => a - b);
+    lines.push(`engine seams ${seams.length}: ${gaps.length} audible, ${seams.filter((r) => r.prepared === true).length} prepared`
+      + `, gap median ${ms(medianOf(gaps))}, worst ${ms(gaps.length ? gaps[gaps.length - 1] : null)}`);
+  }
+  return { shown, lines };
+}
+
 /**
  * The whole record as copyable text.
  *
@@ -2032,8 +2330,18 @@ function buildLabel(e) {
  * possibly by someone who is going to paste it into a message. The header states
  * the cap and the eviction rule on its own face, so a reader is never left
  * wondering whether a short log means a quiet drive or a full ring.
+ *
+ * `engine` (NE-26) is the native engine's half, when the page has one to give:
+ *   decision  the page's engine decision ({mode, reason, hello}), or null
+ *   snapshot  the page's latest engine snapshot, or null
+ *   rows      the engine's ring (engineRead 'diagnostics'); `null` when it was
+ *             asked for and not read, absent when it was not asked for
+ *   readError why `rows` is null
+ * Without it the header still carries the engine line (`engine=js
+ * reason=undecided`): which engine played is the question every other line in
+ * a paste depends on.
  */
-export function formatDiagnosticReport(record) {
+export function formatDiagnosticReport(record, engine = null) {
   const r = record ?? {};
   const entries = Array.isArray(r.entries) ? r.entries : [];
   const seams = entries.filter((e) => e.type === "seam");
@@ -2107,10 +2415,16 @@ export function formatDiagnosticReport(record) {
     : missing < 0
       ? `INCONSISTENT: ${entries.length} rows exceed the ${since} recorded — ${where}`
       : null;
+  /* NE-26: the engine's rows to merge, and the lines accounting for the rest.
+     The page's Clear mark bounds them too: the founder's loop is clear, drive,
+     copy, and the engine's ring is not emptied by the page's Clear. */
+  const engineRows = engineSection(engine, cleared);
 
   const head = [
     `4a playback diagnostics — v${r.v ?? "?"}`,
     `build ${running ? buildLabel(running) : "unknown (no build row yet)"}`,
+    /* NE-26: which engine played, as one parseable line (engineHeaderLine). */
+    engineHeaderLine(engine, running),
     `Local only. Nothing here is sent anywhere.`,
     "",
     `entries ${entries.length} of ${r.cap ?? DIAG_CAP} (oldest dropped first)`,
@@ -2142,6 +2456,7 @@ export function formatDiagnosticReport(record) {
          its job; one that moved twice with none is the window missing it. */
       + (deduped ? `, ${deduped} duplicate${deduped === 1 ? "" : "s"} dropped` : ""),
     r.loadError ? `earlier record unreadable: ${r.loadError}` : null,
+    ...engineRows.lines,
     `updated ${r.updatedAt ?? "—"}`,
     "",
   ].filter((l) => l != null);
@@ -2149,12 +2464,15 @@ export function formatDiagnosticReport(record) {
   /* An empty ring after a Clear is not "nothing happened yet": the words say
      which it is, because the founder read the first sentence as the instrument
      having recorded nothing during a drive it had in fact recorded. */
-  if (!entries.length && cleared) {
+  /* Engine rows below are something recorded, so neither sentence is said over
+     them: "nothing recorded" above 2,000 engine rows would be false. */
+  if (!entries.length && !engineRows.shown.length && cleared) {
     head.push(`Nothing recorded yet since the record was cleared at #${cleared.seq}. Play a foray and come back.`);
-  } else if (!entries.length) {
+  } else if (!entries.length && !engineRows.shown.length) {
     /* A literal, not a template: `test/app-name.test.js` reads this sentence out
        of the push call below to keep it in step with app.js's fallback. */
     head.push("Nothing recorded yet. Play a foray and come back.");
   }
-  return head.concat(entries.map(lineFor)).join("\n");
+  const merged = mergeEngineRows(entries, engineRows.shown);
+  return head.concat(merged.map((e) => (e.src === "engine" ? engineLineFor(e.row) : lineFor(e)))).join("\n");
 }

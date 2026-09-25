@@ -1,0 +1,2153 @@
+{
+  "family": "continuation",
+  "module": "player/continuation.js",
+  "note": "Continuous playback's decisions (player/continuation.js, NE-13, plan §5.5): what plays after an episode, the K = 8 hops the page plans for the engine, canNext regardless of autoAdvance, and the page's at-most-once ledger for hops and position events the engine walked while the page slept. JS ONLY (C-2): the page computes the chain and the engine only walks it, so no Swift card owes these ids. player/continuation.test.js reads this file.",
+  "jsOnly": true,
+  "cases": [
+    {
+      "id": "continuation/plan-queue-head-not-row-after-finished",
+      "covers": [
+        "continuation::Up Next first: its head, once the finished one has left (the played row sits at the top)"
+      ],
+      "call": "planAfterEnded",
+      "args": [
+        {
+          "queue": ["a", "b", "c"],
+          "playList": null,
+          "playChainId": null,
+          "playListCursor": null,
+          "isPlayable": ["a", "b", "c"]
+        },
+        "b"
+      ],
+      "expect": { "return": { "fromList": false, "nextId": "a", "rest": ["a", "c"] } }
+    },
+    {
+      "id": "continuation/plan-queue-last-row-finished-plays-head",
+      "covers": [
+        "continuation::Up Next first: its head, once the finished one has left (the played row sits at the top)"
+      ],
+      "call": "planAfterEnded",
+      "args": [
+        {
+          "queue": ["a", "b", "c"],
+          "playList": null,
+          "playChainId": null,
+          "playListCursor": null,
+          "isPlayable": ["a", "b", "c"]
+        },
+        "c"
+      ],
+      "expect": { "return": { "fromList": false, "nextId": "a", "rest": ["a", "b"] } }
+    },
+    {
+      "id": "continuation/plan-queue-finished-head-leaves-for-the-next-row",
+      "covers": [
+        "continuation::Up Next first: its head, once the finished one has left (the played row sits at the top)"
+      ],
+      "note": "The row a play from Up Next moved to the top ends: the head is looked for in what is LEFT, so it is not played again.",
+      "call": "planAfterEnded",
+      "args": [
+        {
+          "queue": ["a", "b", "c"],
+          "playList": null,
+          "playChainId": null,
+          "playListCursor": null,
+          "isPlayable": ["a", "b", "c"]
+        },
+        "a"
+      ],
+      "expect": { "return": { "fromList": false, "nextId": "b", "rest": ["b", "c"] } }
+    },
+    {
+      "id": "continuation/plan-finish-elsewhere-plays-queue-head",
+      "covers": [
+        "continuation::Up Next first: its head, once the finished one has left (the played row sits at the top)"
+      ],
+      "call": "planAfterEnded",
+      "args": [
+        {
+          "queue": ["a", "b"],
+          "playList": null,
+          "playChainId": null,
+          "playListCursor": null,
+          "isPlayable": ["a", "b"]
+        },
+        "unrelated"
+      ],
+      "expect": { "return": { "fromList": false, "nextId": "a", "rest": null } }
+    },
+    {
+      "id": "continuation/plan-queue-removed-while-playing",
+      "covers": [
+        "continuation::Up Next first: its head, once the finished one has left (the played row sits at the top)"
+      ],
+      "call": "planAfterEnded",
+      "args": [
+        {
+          "queue": ["a", "c"],
+          "playList": null,
+          "playChainId": null,
+          "playListCursor": null,
+          "isPlayable": ["a", "c"]
+        },
+        "b"
+      ],
+      "expect": { "return": { "fromList": false, "nextId": "a", "rest": null } }
+    },
+    {
+      "id": "continuation/plan-list-next-row",
+      "covers": [
+        "continuation::then the chosen list, after the last row that played, only while the chain is on it"
+      ],
+      "call": "planAfterEnded",
+      "args": [
+        {
+          "queue": [],
+          "playList": ["a", "b", "c"],
+          "playChainId": "a",
+          "playListCursor": "a",
+          "isPlayable": ["a", "b", "c"]
+        },
+        "a"
+      ],
+      "expect": { "return": { "fromList": true, "nextId": "b", "rest": null } }
+    },
+    {
+      "id": "continuation/plan-list-resumes-after-cursor",
+      "covers": [
+        "continuation::then the chosen list, after the last row that played, only while the chain is on it"
+      ],
+      "call": "planAfterEnded",
+      "args": [
+        {
+          "queue": ["x"],
+          "playList": ["e1", "e2", "e3"],
+          "playChainId": "x",
+          "playListCursor": "e1",
+          "isPlayable": ["x", "e1", "e2", "e3"]
+        },
+        "x"
+      ],
+      "expect": { "return": { "fromList": true, "nextId": "e2", "rest": [] } }
+    },
+    {
+      "id": "continuation/plan-off-chain-does-not-resume-list",
+      "covers": [
+        "continuation::then the chosen list, after the last row that played, only while the chain is on it"
+      ],
+      "call": "planAfterEnded",
+      "args": [
+        {
+          "queue": [],
+          "playList": ["e1", "e2"],
+          "playChainId": "e1",
+          "playListCursor": "e1",
+          "isPlayable": ["e1", "e2"]
+        },
+        "from-a-timestamp"
+      ],
+      "expect": { "return": { "fromList": false, "nextId": null, "rest": null } }
+    },
+    {
+      "id": "continuation/plan-queue-unplayable-falls-to-list",
+      "covers": [
+        "continuation::then the chosen list, after the last row that played, only while the chain is on it"
+      ],
+      "call": "planAfterEnded",
+      "args": [
+        {
+          "queue": ["silent"],
+          "playList": ["e1", "e2"],
+          "playChainId": "e1",
+          "playListCursor": "e1",
+          "isPlayable": ["e1", "e2"]
+        },
+        "e1"
+      ],
+      "expect": { "return": { "fromList": true, "nextId": "e2", "rest": null } }
+    },
+    {
+      "id": "continuation/plan-unplayable-list-row-passed-over",
+      "covers": ["continuation::an unplayable row is passed over, and the end of both is the end"],
+      "call": "planAfterEnded",
+      "args": [
+        {
+          "queue": [],
+          "playList": ["a", "silent", "b"],
+          "playChainId": "a",
+          "playListCursor": "a",
+          "isPlayable": ["a", "b"]
+        },
+        "a"
+      ],
+      "expect": { "return": { "fromList": true, "nextId": "b", "rest": null } }
+    },
+    {
+      "id": "continuation/plan-last-queued-stops",
+      "covers": ["continuation::an unplayable row is passed over, and the end of both is the end"],
+      "call": "planAfterEnded",
+      "args": [
+        {
+          "queue": ["a"],
+          "playList": null,
+          "playChainId": null,
+          "playListCursor": null,
+          "isPlayable": ["a"]
+        },
+        "a"
+      ],
+      "expect": { "return": { "fromList": false, "nextId": null, "rest": [] } }
+    },
+    {
+      "id": "continuation/plan-last-list-row-stops",
+      "covers": ["continuation::an unplayable row is passed over, and the end of both is the end"],
+      "call": "planAfterEnded",
+      "args": [
+        {
+          "queue": [],
+          "playList": ["a", "b"],
+          "playChainId": "b",
+          "playListCursor": "b",
+          "isPlayable": ["a", "b"]
+        },
+        "b"
+      ],
+      "expect": { "return": { "fromList": false, "nextId": null, "rest": null } }
+    },
+    {
+      "id": "continuation/plan-empty-state",
+      "covers": ["continuation::an unplayable row is passed over, and the end of both is the end"],
+      "call": "planAfterEnded",
+      "args": [{}, "a"],
+      "expect": { "return": { "fromList": false, "nextId": null, "rest": null } }
+    },
+    {
+      "id": "continuation/next-queue-pick-moves-chain-not-cursor",
+      "covers": [
+        "continuation::nextAfterEnded moves the chain on to the pick, and the cursor only for a list row"
+      ],
+      "call": "nextAfterEnded",
+      "args": [
+        {
+          "queue": ["x"],
+          "playList": ["e1", "e2"],
+          "playChainId": "e1",
+          "playListCursor": "e1",
+          "isPlayable": ["x", "e1", "e2"]
+        },
+        "e1"
+      ],
+      "expect": {
+        "return": {
+          "fromList": false,
+          "nextId": "x",
+          "rest": null,
+          "state": {
+            "playChainId": "x",
+            "playList": ["e1", "e2"],
+            "playListCursor": "e1",
+            "queue": ["x"]
+          }
+        }
+      }
+    },
+    {
+      "id": "continuation/next-list-pick-moves-both",
+      "covers": [
+        "continuation::nextAfterEnded moves the chain on to the pick, and the cursor only for a list row"
+      ],
+      "call": "nextAfterEnded",
+      "args": [
+        {
+          "queue": [],
+          "playList": ["e1", "e2"],
+          "playChainId": "e1",
+          "playListCursor": "e1",
+          "isPlayable": ["e1", "e2"]
+        },
+        "e1"
+      ],
+      "expect": {
+        "return": {
+          "fromList": true,
+          "nextId": "e2",
+          "rest": null,
+          "state": {
+            "playChainId": "e2",
+            "playList": ["e1", "e2"],
+            "playListCursor": "e2",
+            "queue": []
+          }
+        }
+      }
+    },
+    {
+      "id": "continuation/next-queued-finish-leaves-queue",
+      "covers": [
+        "continuation::nextAfterEnded moves the chain on to the pick, and the cursor only for a list row"
+      ],
+      "call": "nextAfterEnded",
+      "args": [
+        {
+          "queue": ["a", "b"],
+          "playList": null,
+          "playChainId": null,
+          "playListCursor": null,
+          "isPlayable": ["a", "b"]
+        },
+        "a"
+      ],
+      "expect": {
+        "return": {
+          "fromList": false,
+          "nextId": "b",
+          "rest": ["b"],
+          "state": {
+            "playChainId": "b",
+            "playList": null,
+            "playListCursor": null,
+            "queue": ["b"]
+          }
+        }
+      }
+    },
+    {
+      "id": "continuation/next-nothing-leaves-chain",
+      "covers": [
+        "continuation::nextAfterEnded moves the chain on to the pick, and the cursor only for a list row"
+      ],
+      "call": "nextAfterEnded",
+      "args": [
+        {
+          "queue": ["e2"],
+          "playList": ["e1", "e2"],
+          "playChainId": "e2",
+          "playListCursor": "e2",
+          "isPlayable": ["e1", "e2"]
+        },
+        "e2"
+      ],
+      "expect": {
+        "return": {
+          "fromList": false,
+          "nextId": null,
+          "rest": [],
+          "state": {
+            "playChainId": "e2",
+            "playList": ["e1", "e2"],
+            "playListCursor": "e2",
+            "queue": []
+          }
+        }
+      }
+    },
+    {
+      "id": "continuation/chain-queue-then-list",
+      "covers": [
+        "continuation::the chain is nextAfterEnded applied K times, in the order the ends would play"
+      ],
+      "call": "continuationChain",
+      "args": [
+        {
+          "queue": ["x", "y"],
+          "playList": ["e1", "e2", "e3"],
+          "playChainId": "e1",
+          "playListCursor": "e1",
+          "isPlayable": ["x", "y", "e1", "e2", "e3"],
+          "items": {
+            "x": {
+              "id": "x",
+              "title": "Episode x",
+              "show": "A Show",
+              "artwork_url": "https://img.test/x.jpg",
+              "audio_url": "https://audio.test/x.mp3",
+              "duration_min": 42,
+              "topics": ["history"]
+            },
+            "y": {
+              "id": "y",
+              "title": "Episode y",
+              "show": "A Show",
+              "artwork_url": "https://img.test/y.jpg",
+              "audio_url": "https://audio.test/y.mp3",
+              "duration_min": 42,
+              "topics": ["history"]
+            },
+            "e1": {
+              "id": "e1",
+              "title": "Episode e1",
+              "show": "A Show",
+              "artwork_url": "https://img.test/e1.jpg",
+              "audio_url": "https://audio.test/e1.mp3",
+              "duration_min": 42,
+              "topics": ["history"]
+            },
+            "e2": {
+              "id": "e2",
+              "title": "Episode e2",
+              "show": "A Show",
+              "artwork_url": "https://img.test/e2.jpg",
+              "audio_url": "https://audio.test/e2.mp3",
+              "duration_min": 42,
+              "topics": ["history"]
+            },
+            "e3": {
+              "id": "e3",
+              "title": "Episode e3",
+              "show": "A Show",
+              "artwork_url": "https://img.test/e3.jpg",
+              "audio_url": "https://audio.test/e3.mp3",
+              "duration_min": 42,
+              "topics": ["history"]
+            }
+          },
+          "currentId": "e1"
+        }
+      ],
+      "expect": {
+        "return": [
+          {
+            "finishedId": "e1",
+            "fromList": false,
+            "hopSeq": 1,
+            "item": {
+              "artwork_url": "https://img.test/x.jpg",
+              "audio_url": "https://audio.test/x.mp3",
+              "duration_min": 42,
+              "id": "x",
+              "show": "A Show",
+              "title": "Episode x",
+              "topics": ["history"]
+            },
+            "lastEpisodeRow": {
+              "artwork_url": "https://img.test/x.jpg",
+              "audio_url": "https://audio.test/x.mp3",
+              "duration_min": 42,
+              "id": "x",
+              "show": "A Show",
+              "title": "Episode x"
+            },
+            "nextId": "x",
+            "queueAfter": ["x", "y"]
+          },
+          {
+            "finishedId": "x",
+            "fromList": false,
+            "hopSeq": 2,
+            "item": {
+              "artwork_url": "https://img.test/y.jpg",
+              "audio_url": "https://audio.test/y.mp3",
+              "duration_min": 42,
+              "id": "y",
+              "show": "A Show",
+              "title": "Episode y",
+              "topics": ["history"]
+            },
+            "lastEpisodeRow": {
+              "artwork_url": "https://img.test/y.jpg",
+              "audio_url": "https://audio.test/y.mp3",
+              "duration_min": 42,
+              "id": "y",
+              "show": "A Show",
+              "title": "Episode y"
+            },
+            "nextId": "y",
+            "queueAfter": ["y"]
+          },
+          {
+            "finishedId": "y",
+            "fromList": true,
+            "hopSeq": 3,
+            "item": {
+              "artwork_url": "https://img.test/e2.jpg",
+              "audio_url": "https://audio.test/e2.mp3",
+              "duration_min": 42,
+              "id": "e2",
+              "show": "A Show",
+              "title": "Episode e2",
+              "topics": ["history"]
+            },
+            "lastEpisodeRow": {
+              "artwork_url": "https://img.test/e2.jpg",
+              "audio_url": "https://audio.test/e2.mp3",
+              "duration_min": 42,
+              "id": "e2",
+              "show": "A Show",
+              "title": "Episode e2"
+            },
+            "nextId": "e2",
+            "queueAfter": []
+          },
+          {
+            "finishedId": "e2",
+            "fromList": true,
+            "hopSeq": 4,
+            "item": {
+              "artwork_url": "https://img.test/e3.jpg",
+              "audio_url": "https://audio.test/e3.mp3",
+              "duration_min": 42,
+              "id": "e3",
+              "show": "A Show",
+              "title": "Episode e3",
+              "topics": ["history"]
+            },
+            "lastEpisodeRow": {
+              "artwork_url": "https://img.test/e3.jpg",
+              "audio_url": "https://audio.test/e3.mp3",
+              "duration_min": 42,
+              "id": "e3",
+              "show": "A Show",
+              "title": "Episode e3"
+            },
+            "nextId": "e3",
+            "queueAfter": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "continuation/chain-passes-over-unplayable",
+      "covers": [
+        "continuation::the chain is nextAfterEnded applied K times, in the order the ends would play"
+      ],
+      "call": "continuationChain",
+      "args": [
+        {
+          "queue": [],
+          "playList": ["e1", "s1", "e2", "s2", "e3"],
+          "playChainId": "e1",
+          "playListCursor": "e1",
+          "isPlayable": ["e1", "e2", "e3"],
+          "items": {
+            "e1": {
+              "id": "e1",
+              "title": "Episode e1",
+              "show": "A Show",
+              "artwork_url": "https://img.test/e1.jpg",
+              "audio_url": "https://audio.test/e1.mp3",
+              "duration_min": 42,
+              "topics": ["history"]
+            },
+            "e2": {
+              "id": "e2",
+              "title": "Episode e2",
+              "show": "A Show",
+              "artwork_url": "https://img.test/e2.jpg",
+              "audio_url": "https://audio.test/e2.mp3",
+              "duration_min": 42,
+              "topics": ["history"]
+            },
+            "e3": {
+              "id": "e3",
+              "title": "Episode e3",
+              "show": "A Show",
+              "artwork_url": "https://img.test/e3.jpg",
+              "audio_url": "https://audio.test/e3.mp3",
+              "duration_min": 42,
+              "topics": ["history"]
+            }
+          },
+          "currentId": "e1"
+        }
+      ],
+      "expect": {
+        "return": [
+          {
+            "finishedId": "e1",
+            "fromList": true,
+            "hopSeq": 1,
+            "item": {
+              "artwork_url": "https://img.test/e2.jpg",
+              "audio_url": "https://audio.test/e2.mp3",
+              "duration_min": 42,
+              "id": "e2",
+              "show": "A Show",
+              "title": "Episode e2",
+              "topics": ["history"]
+            },
+            "lastEpisodeRow": {
+              "artwork_url": "https://img.test/e2.jpg",
+              "audio_url": "https://audio.test/e2.mp3",
+              "duration_min": 42,
+              "id": "e2",
+              "show": "A Show",
+              "title": "Episode e2"
+            },
+            "nextId": "e2",
+            "queueAfter": []
+          },
+          {
+            "finishedId": "e2",
+            "fromList": true,
+            "hopSeq": 2,
+            "item": {
+              "artwork_url": "https://img.test/e3.jpg",
+              "audio_url": "https://audio.test/e3.mp3",
+              "duration_min": 42,
+              "id": "e3",
+              "show": "A Show",
+              "title": "Episode e3",
+              "topics": ["history"]
+            },
+            "lastEpisodeRow": {
+              "artwork_url": "https://img.test/e3.jpg",
+              "audio_url": "https://audio.test/e3.mp3",
+              "duration_min": 42,
+              "id": "e3",
+              "show": "A Show",
+              "title": "Episode e3"
+            },
+            "nextId": "e3",
+            "queueAfter": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "continuation/chain-queued-current-leaves-up-next",
+      "covers": [
+        "continuation::the chain is nextAfterEnded applied K times, in the order the ends would play"
+      ],
+      "call": "continuationChain",
+      "args": [
+        {
+          "queue": ["a", "b", "c"],
+          "playList": null,
+          "playChainId": null,
+          "playListCursor": null,
+          "isPlayable": ["a", "b", "c"],
+          "items": {
+            "a": {
+              "id": "a",
+              "title": "Episode a",
+              "show": "A Show",
+              "artwork_url": "https://img.test/a.jpg",
+              "audio_url": "https://audio.test/a.mp3",
+              "duration_min": 42,
+              "topics": ["history"]
+            },
+            "b": {
+              "id": "b",
+              "title": "Episode b",
+              "show": "A Show",
+              "artwork_url": "https://img.test/b.jpg",
+              "audio_url": "https://audio.test/b.mp3",
+              "duration_min": 42,
+              "topics": ["history"]
+            },
+            "c": {
+              "id": "c",
+              "title": "Episode c",
+              "show": "A Show",
+              "artwork_url": "https://img.test/c.jpg",
+              "audio_url": "https://audio.test/c.mp3",
+              "duration_min": 42,
+              "topics": ["history"]
+            }
+          },
+          "currentId": "b"
+        }
+      ],
+      "expect": {
+        "return": [
+          {
+            "finishedId": "b",
+            "fromList": false,
+            "hopSeq": 1,
+            "item": {
+              "artwork_url": "https://img.test/a.jpg",
+              "audio_url": "https://audio.test/a.mp3",
+              "duration_min": 42,
+              "id": "a",
+              "show": "A Show",
+              "title": "Episode a",
+              "topics": ["history"]
+            },
+            "lastEpisodeRow": {
+              "artwork_url": "https://img.test/a.jpg",
+              "audio_url": "https://audio.test/a.mp3",
+              "duration_min": 42,
+              "id": "a",
+              "show": "A Show",
+              "title": "Episode a"
+            },
+            "nextId": "a",
+            "queueAfter": ["a", "c"]
+          },
+          {
+            "finishedId": "a",
+            "fromList": false,
+            "hopSeq": 2,
+            "item": {
+              "artwork_url": "https://img.test/c.jpg",
+              "audio_url": "https://audio.test/c.mp3",
+              "duration_min": 42,
+              "id": "c",
+              "show": "A Show",
+              "title": "Episode c",
+              "topics": ["history"]
+            },
+            "lastEpisodeRow": {
+              "artwork_url": "https://img.test/c.jpg",
+              "audio_url": "https://audio.test/c.mp3",
+              "duration_min": 42,
+              "id": "c",
+              "show": "A Show",
+              "title": "Episode c"
+            },
+            "nextId": "c",
+            "queueAfter": ["c"]
+          }
+        ]
+      }
+    },
+    {
+      "id": "continuation/chain-stops-at-k",
+      "covers": [
+        "continuation::the chain stops at K, at an item the engine was not given, and with nothing playing"
+      ],
+      "call": "continuationChain",
+      "args": [
+        {
+          "queue": [],
+          "playList": ["p0", "p1", "p2", "p3", "p4", "p5", "p6", "p7", "p8", "p9", "p10"],
+          "playChainId": "p0",
+          "playListCursor": "p0",
+          "isPlayable": ["p0", "p1", "p2", "p3", "p4", "p5", "p6", "p7", "p8", "p9", "p10"],
+          "items": {
+            "p0": {
+              "id": "p0",
+              "title": "Episode p0",
+              "show": "A Show",
+              "artwork_url": "https://img.test/p0.jpg",
+              "audio_url": "https://audio.test/p0.mp3",
+              "duration_min": 42,
+              "topics": ["history"]
+            },
+            "p1": {
+              "id": "p1",
+              "title": "Episode p1",
+              "show": "A Show",
+              "artwork_url": "https://img.test/p1.jpg",
+              "audio_url": "https://audio.test/p1.mp3",
+              "duration_min": 42,
+              "topics": ["history"]
+            },
+            "p2": {
+              "id": "p2",
+              "title": "Episode p2",
+              "show": "A Show",
+              "artwork_url": "https://img.test/p2.jpg",
+              "audio_url": "https://audio.test/p2.mp3",
+              "duration_min": 42,
+              "topics": ["history"]
+            },
+            "p3": {
+              "id": "p3",
+              "title": "Episode p3",
+              "show": "A Show",
+              "artwork_url": "https://img.test/p3.jpg",
+              "audio_url": "https://audio.test/p3.mp3",
+              "duration_min": 42,
+              "topics": ["history"]
+            },
+            "p4": {
+              "id": "p4",
+              "title": "Episode p4",
+              "show": "A Show",
+              "artwork_url": "https://img.test/p4.jpg",
+              "audio_url": "https://audio.test/p4.mp3",
+              "duration_min": 42,
+              "topics": ["history"]
+            },
+            "p5": {
+              "id": "p5",
+              "title": "Episode p5",
+              "show": "A Show",
+              "artwork_url": "https://img.test/p5.jpg",
+              "audio_url": "https://audio.test/p5.mp3",
+              "duration_min": 42,
+              "topics": ["history"]
+            },
+            "p6": {
+              "id": "p6",
+              "title": "Episode p6",
+              "show": "A Show",
+              "artwork_url": "https://img.test/p6.jpg",
+              "audio_url": "https://audio.test/p6.mp3",
+              "duration_min": 42,
+              "topics": ["history"]
+            },
+            "p7": {
+              "id": "p7",
+              "title": "Episode p7",
+              "show": "A Show",
+              "artwork_url": "https://img.test/p7.jpg",
+              "audio_url": "https://audio.test/p7.mp3",
+              "duration_min": 42,
+              "topics": ["history"]
+            },
+            "p8": {
+              "id": "p8",
+              "title": "Episode p8",
+              "show": "A Show",
+              "artwork_url": "https://img.test/p8.jpg",
+              "audio_url": "https://audio.test/p8.mp3",
+              "duration_min": 42,
+              "topics": ["history"]
+            },
+            "p9": {
+              "id": "p9",
+              "title": "Episode p9",
+              "show": "A Show",
+              "artwork_url": "https://img.test/p9.jpg",
+              "audio_url": "https://audio.test/p9.mp3",
+              "duration_min": 42,
+              "topics": ["history"]
+            },
+            "p10": {
+              "id": "p10",
+              "title": "Episode p10",
+              "show": "A Show",
+              "artwork_url": "https://img.test/p10.jpg",
+              "audio_url": "https://audio.test/p10.mp3",
+              "duration_min": 42,
+              "topics": ["history"]
+            }
+          },
+          "currentId": "p0"
+        }
+      ],
+      "expect": {
+        "return": [
+          {
+            "finishedId": "p0",
+            "fromList": true,
+            "hopSeq": 1,
+            "item": {
+              "artwork_url": "https://img.test/p1.jpg",
+              "audio_url": "https://audio.test/p1.mp3",
+              "duration_min": 42,
+              "id": "p1",
+              "show": "A Show",
+              "title": "Episode p1",
+              "topics": ["history"]
+            },
+            "lastEpisodeRow": {
+              "artwork_url": "https://img.test/p1.jpg",
+              "audio_url": "https://audio.test/p1.mp3",
+              "duration_min": 42,
+              "id": "p1",
+              "show": "A Show",
+              "title": "Episode p1"
+            },
+            "nextId": "p1",
+            "queueAfter": []
+          },
+          {
+            "finishedId": "p1",
+            "fromList": true,
+            "hopSeq": 2,
+            "item": {
+              "artwork_url": "https://img.test/p2.jpg",
+              "audio_url": "https://audio.test/p2.mp3",
+              "duration_min": 42,
+              "id": "p2",
+              "show": "A Show",
+              "title": "Episode p2",
+              "topics": ["history"]
+            },
+            "lastEpisodeRow": {
+              "artwork_url": "https://img.test/p2.jpg",
+              "audio_url": "https://audio.test/p2.mp3",
+              "duration_min": 42,
+              "id": "p2",
+              "show": "A Show",
+              "title": "Episode p2"
+            },
+            "nextId": "p2",
+            "queueAfter": []
+          },
+          {
+            "finishedId": "p2",
+            "fromList": true,
+            "hopSeq": 3,
+            "item": {
+              "artwork_url": "https://img.test/p3.jpg",
+              "audio_url": "https://audio.test/p3.mp3",
+              "duration_min": 42,
+              "id": "p3",
+              "show": "A Show",
+              "title": "Episode p3",
+              "topics": ["history"]
+            },
+            "lastEpisodeRow": {
+              "artwork_url": "https://img.test/p3.jpg",
+              "audio_url": "https://audio.test/p3.mp3",
+              "duration_min": 42,
+              "id": "p3",
+              "show": "A Show",
+              "title": "Episode p3"
+            },
+            "nextId": "p3",
+            "queueAfter": []
+          },
+          {
+            "finishedId": "p3",
+            "fromList": true,
+            "hopSeq": 4,
+            "item": {
+              "artwork_url": "https://img.test/p4.jpg",
+              "audio_url": "https://audio.test/p4.mp3",
+              "duration_min": 42,
+              "id": "p4",
+              "show": "A Show",
+              "title": "Episode p4",
+              "topics": ["history"]
+            },
+            "lastEpisodeRow": {
+              "artwork_url": "https://img.test/p4.jpg",
+              "audio_url": "https://audio.test/p4.mp3",
+              "duration_min": 42,
+              "id": "p4",
+              "show": "A Show",
+              "title": "Episode p4"
+            },
+            "nextId": "p4",
+            "queueAfter": []
+          },
+          {
+            "finishedId": "p4",
+            "fromList": true,
+            "hopSeq": 5,
+            "item": {
+              "artwork_url": "https://img.test/p5.jpg",
+              "audio_url": "https://audio.test/p5.mp3",
+              "duration_min": 42,
+              "id": "p5",
+              "show": "A Show",
+              "title": "Episode p5",
+              "topics": ["history"]
+            },
+            "lastEpisodeRow": {
+              "artwork_url": "https://img.test/p5.jpg",
+              "audio_url": "https://audio.test/p5.mp3",
+              "duration_min": 42,
+              "id": "p5",
+              "show": "A Show",
+              "title": "Episode p5"
+            },
+            "nextId": "p5",
+            "queueAfter": []
+          },
+          {
+            "finishedId": "p5",
+            "fromList": true,
+            "hopSeq": 6,
+            "item": {
+              "artwork_url": "https://img.test/p6.jpg",
+              "audio_url": "https://audio.test/p6.mp3",
+              "duration_min": 42,
+              "id": "p6",
+              "show": "A Show",
+              "title": "Episode p6",
+              "topics": ["history"]
+            },
+            "lastEpisodeRow": {
+              "artwork_url": "https://img.test/p6.jpg",
+              "audio_url": "https://audio.test/p6.mp3",
+              "duration_min": 42,
+              "id": "p6",
+              "show": "A Show",
+              "title": "Episode p6"
+            },
+            "nextId": "p6",
+            "queueAfter": []
+          },
+          {
+            "finishedId": "p6",
+            "fromList": true,
+            "hopSeq": 7,
+            "item": {
+              "artwork_url": "https://img.test/p7.jpg",
+              "audio_url": "https://audio.test/p7.mp3",
+              "duration_min": 42,
+              "id": "p7",
+              "show": "A Show",
+              "title": "Episode p7",
+              "topics": ["history"]
+            },
+            "lastEpisodeRow": {
+              "artwork_url": "https://img.test/p7.jpg",
+              "audio_url": "https://audio.test/p7.mp3",
+              "duration_min": 42,
+              "id": "p7",
+              "show": "A Show",
+              "title": "Episode p7"
+            },
+            "nextId": "p7",
+            "queueAfter": []
+          },
+          {
+            "finishedId": "p7",
+            "fromList": true,
+            "hopSeq": 8,
+            "item": {
+              "artwork_url": "https://img.test/p8.jpg",
+              "audio_url": "https://audio.test/p8.mp3",
+              "duration_min": 42,
+              "id": "p8",
+              "show": "A Show",
+              "title": "Episode p8",
+              "topics": ["history"]
+            },
+            "lastEpisodeRow": {
+              "artwork_url": "https://img.test/p8.jpg",
+              "audio_url": "https://audio.test/p8.mp3",
+              "duration_min": 42,
+              "id": "p8",
+              "show": "A Show",
+              "title": "Episode p8"
+            },
+            "nextId": "p8",
+            "queueAfter": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "continuation/chain-explicit-k",
+      "covers": [
+        "continuation::the chain stops at K, at an item the engine was not given, and with nothing playing"
+      ],
+      "call": "continuationChain",
+      "args": [
+        {
+          "queue": [],
+          "playList": ["p0", "p1", "p2", "p3"],
+          "playChainId": "p0",
+          "playListCursor": "p0",
+          "isPlayable": ["p0", "p1", "p2", "p3"],
+          "items": {
+            "p0": {
+              "id": "p0",
+              "title": "Episode p0",
+              "show": "A Show",
+              "artwork_url": "https://img.test/p0.jpg",
+              "audio_url": "https://audio.test/p0.mp3",
+              "duration_min": 42,
+              "topics": ["history"]
+            },
+            "p1": {
+              "id": "p1",
+              "title": "Episode p1",
+              "show": "A Show",
+              "artwork_url": "https://img.test/p1.jpg",
+              "audio_url": "https://audio.test/p1.mp3",
+              "duration_min": 42,
+              "topics": ["history"]
+            },
+            "p2": {
+              "id": "p2",
+              "title": "Episode p2",
+              "show": "A Show",
+              "artwork_url": "https://img.test/p2.jpg",
+              "audio_url": "https://audio.test/p2.mp3",
+              "duration_min": 42,
+              "topics": ["history"]
+            },
+            "p3": {
+              "id": "p3",
+              "title": "Episode p3",
+              "show": "A Show",
+              "artwork_url": "https://img.test/p3.jpg",
+              "audio_url": "https://audio.test/p3.mp3",
+              "duration_min": 42,
+              "topics": ["history"]
+            }
+          },
+          "currentId": "p0"
+        },
+        2
+      ],
+      "expect": {
+        "return": [
+          {
+            "finishedId": "p0",
+            "fromList": true,
+            "hopSeq": 1,
+            "item": {
+              "artwork_url": "https://img.test/p1.jpg",
+              "audio_url": "https://audio.test/p1.mp3",
+              "duration_min": 42,
+              "id": "p1",
+              "show": "A Show",
+              "title": "Episode p1",
+              "topics": ["history"]
+            },
+            "lastEpisodeRow": {
+              "artwork_url": "https://img.test/p1.jpg",
+              "audio_url": "https://audio.test/p1.mp3",
+              "duration_min": 42,
+              "id": "p1",
+              "show": "A Show",
+              "title": "Episode p1"
+            },
+            "nextId": "p1",
+            "queueAfter": []
+          },
+          {
+            "finishedId": "p1",
+            "fromList": true,
+            "hopSeq": 2,
+            "item": {
+              "artwork_url": "https://img.test/p2.jpg",
+              "audio_url": "https://audio.test/p2.mp3",
+              "duration_min": 42,
+              "id": "p2",
+              "show": "A Show",
+              "title": "Episode p2",
+              "topics": ["history"]
+            },
+            "lastEpisodeRow": {
+              "artwork_url": "https://img.test/p2.jpg",
+              "audio_url": "https://audio.test/p2.mp3",
+              "duration_min": 42,
+              "id": "p2",
+              "show": "A Show",
+              "title": "Episode p2"
+            },
+            "nextId": "p2",
+            "queueAfter": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "continuation/chain-stops-at-missing-item",
+      "covers": [
+        "continuation::the chain stops at K, at an item the engine was not given, and with nothing playing"
+      ],
+      "call": "continuationChain",
+      "args": [
+        {
+          "queue": [],
+          "playList": ["e1", "e2", "e3"],
+          "playChainId": "e1",
+          "playListCursor": "e1",
+          "isPlayable": ["e1", "e2", "e3"],
+          "items": {
+            "e1": {
+              "id": "e1",
+              "title": "Episode e1",
+              "show": "A Show",
+              "artwork_url": "https://img.test/e1.jpg",
+              "audio_url": "https://audio.test/e1.mp3",
+              "duration_min": 42,
+              "topics": ["history"]
+            },
+            "e2": {
+              "id": "e2",
+              "title": "Episode e2",
+              "show": "A Show",
+              "artwork_url": "https://img.test/e2.jpg",
+              "audio_url": "https://audio.test/e2.mp3",
+              "duration_min": 42,
+              "topics": ["history"]
+            }
+          },
+          "currentId": "e1"
+        }
+      ],
+      "expect": {
+        "return": [
+          {
+            "finishedId": "e1",
+            "fromList": true,
+            "hopSeq": 1,
+            "item": {
+              "artwork_url": "https://img.test/e2.jpg",
+              "audio_url": "https://audio.test/e2.mp3",
+              "duration_min": 42,
+              "id": "e2",
+              "show": "A Show",
+              "title": "Episode e2",
+              "topics": ["history"]
+            },
+            "lastEpisodeRow": {
+              "artwork_url": "https://img.test/e2.jpg",
+              "audio_url": "https://audio.test/e2.mp3",
+              "duration_min": 42,
+              "id": "e2",
+              "show": "A Show",
+              "title": "Episode e2"
+            },
+            "nextId": "e2",
+            "queueAfter": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "continuation/chain-nothing-playing",
+      "covers": [
+        "continuation::the chain stops at K, at an item the engine was not given, and with nothing playing"
+      ],
+      "call": "continuationChain",
+      "args": [
+        {
+          "queue": ["a"],
+          "playList": null,
+          "playChainId": null,
+          "playListCursor": null,
+          "isPlayable": ["a"],
+          "items": {
+            "a": {
+              "id": "a",
+              "title": "Episode a",
+              "show": "A Show",
+              "artwork_url": "https://img.test/a.jpg",
+              "audio_url": "https://audio.test/a.mp3",
+              "duration_min": 42,
+              "topics": ["history"]
+            }
+          },
+          "currentId": null
+        }
+      ],
+      "expect": { "return": [] }
+    },
+    {
+      "id": "continuation/chain-k-zero",
+      "covers": [
+        "continuation::the chain stops at K, at an item the engine was not given, and with nothing playing"
+      ],
+      "call": "continuationChain",
+      "args": [
+        {
+          "queue": ["a"],
+          "playList": null,
+          "playChainId": null,
+          "playListCursor": null,
+          "isPlayable": ["a"],
+          "items": {
+            "a": {
+              "id": "a",
+              "title": "Episode a",
+              "show": "A Show",
+              "artwork_url": "https://img.test/a.jpg",
+              "audio_url": "https://audio.test/a.mp3",
+              "duration_min": 42,
+              "topics": ["history"]
+            }
+          },
+          "currentId": "z"
+        },
+        0
+      ],
+      "expect": { "return": [] }
+    },
+    {
+      "id": "continuation/chain-hops-is-eight",
+      "covers": [
+        "continuation::the chain stops at K, at an item the engine was not given, and with nothing playing"
+      ],
+      "authored": true,
+      "note": "Authored: K = 8 is the plan's number (docs/native-engine-plan.md §3, C-2); eight episodes outlast any one sleep of the page. Moving it is a decision, not a re-record.",
+      "read": "CHAIN_HOPS",
+      "expect": { "value": 8 }
+    },
+    {
+      "id": "continuation/last-episode-row-drops-updated-at",
+      "covers": ["continuation::a hop carries its item and a lastEpisodeRow without updated_at"],
+      "call": "lastEpisodeRow",
+      "args": [
+        {
+          "id": "e1",
+          "title": "Episode e1",
+          "show": "A Show",
+          "artwork_url": "https://img.test/e1.jpg",
+          "audio_url": "https://audio.test/e1.mp3",
+          "duration_min": 42,
+          "topics": ["history"]
+        }
+      ],
+      "expect": {
+        "return": {
+          "artwork_url": "https://img.test/e1.jpg",
+          "audio_url": "https://audio.test/e1.mp3",
+          "duration_min": 42,
+          "id": "e1",
+          "show": "A Show",
+          "title": "Episode e1"
+        }
+      }
+    },
+    {
+      "id": "continuation/last-episode-row-no-item",
+      "covers": ["continuation::a hop carries its item and a lastEpisodeRow without updated_at"],
+      "call": "lastEpisodeRow",
+      "args": [null],
+      "expect": { "return": null }
+    },
+    {
+      "id": "continuation/plan-autoadvance-off-keeps-chain",
+      "covers": [
+        "continuation::with Continuous playback off the chain is still planned, so skip-next is still offered"
+      ],
+      "call": "continuationPlan",
+      "args": [
+        {
+          "queue": ["a", "b"],
+          "playList": null,
+          "playChainId": null,
+          "playListCursor": null,
+          "isPlayable": ["a", "b"],
+          "items": {
+            "a": {
+              "id": "a",
+              "title": "Episode a",
+              "show": "A Show",
+              "artwork_url": "https://img.test/a.jpg",
+              "audio_url": "https://audio.test/a.mp3",
+              "duration_min": 42,
+              "topics": ["history"]
+            },
+            "b": {
+              "id": "b",
+              "title": "Episode b",
+              "show": "A Show",
+              "artwork_url": "https://img.test/b.jpg",
+              "audio_url": "https://audio.test/b.mp3",
+              "duration_min": 42,
+              "topics": ["history"]
+            }
+          },
+          "currentId": "z"
+        },
+        { "planSeq": 7, "autoAdvance": false }
+      ],
+      "expect": {
+        "return": {
+          "autoAdvance": false,
+          "chain": [
+            {
+              "finishedId": "z",
+              "fromList": false,
+              "hopSeq": 1,
+              "item": {
+                "artwork_url": "https://img.test/a.jpg",
+                "audio_url": "https://audio.test/a.mp3",
+                "duration_min": 42,
+                "id": "a",
+                "show": "A Show",
+                "title": "Episode a",
+                "topics": ["history"]
+              },
+              "lastEpisodeRow": {
+                "artwork_url": "https://img.test/a.jpg",
+                "audio_url": "https://audio.test/a.mp3",
+                "duration_min": 42,
+                "id": "a",
+                "show": "A Show",
+                "title": "Episode a"
+              },
+              "nextId": "a",
+              "planSeq": 7,
+              "queueAfter": ["a", "b"]
+            },
+            {
+              "finishedId": "a",
+              "fromList": false,
+              "hopSeq": 2,
+              "item": {
+                "artwork_url": "https://img.test/b.jpg",
+                "audio_url": "https://audio.test/b.mp3",
+                "duration_min": 42,
+                "id": "b",
+                "show": "A Show",
+                "title": "Episode b",
+                "topics": ["history"]
+              },
+              "lastEpisodeRow": {
+                "artwork_url": "https://img.test/b.jpg",
+                "audio_url": "https://audio.test/b.mp3",
+                "duration_min": 42,
+                "id": "b",
+                "show": "A Show",
+                "title": "Episode b"
+              },
+              "nextId": "b",
+              "planSeq": 7,
+              "queueAfter": ["b"]
+            }
+          ],
+          "planSeq": 7
+        }
+      }
+    },
+    {
+      "id": "continuation/plan-autoadvance-on",
+      "covers": [
+        "continuation::with Continuous playback off the chain is still planned, so skip-next is still offered"
+      ],
+      "call": "continuationPlan",
+      "args": [
+        {
+          "queue": ["a", "b"],
+          "playList": null,
+          "playChainId": null,
+          "playListCursor": null,
+          "isPlayable": ["a", "b"],
+          "items": {
+            "a": {
+              "id": "a",
+              "title": "Episode a",
+              "show": "A Show",
+              "artwork_url": "https://img.test/a.jpg",
+              "audio_url": "https://audio.test/a.mp3",
+              "duration_min": 42,
+              "topics": ["history"]
+            },
+            "b": {
+              "id": "b",
+              "title": "Episode b",
+              "show": "A Show",
+              "artwork_url": "https://img.test/b.jpg",
+              "audio_url": "https://audio.test/b.mp3",
+              "duration_min": 42,
+              "topics": ["history"]
+            }
+          },
+          "currentId": "z"
+        },
+        { "planSeq": 8, "autoAdvance": true }
+      ],
+      "expect": {
+        "return": {
+          "autoAdvance": true,
+          "chain": [
+            {
+              "finishedId": "z",
+              "fromList": false,
+              "hopSeq": 1,
+              "item": {
+                "artwork_url": "https://img.test/a.jpg",
+                "audio_url": "https://audio.test/a.mp3",
+                "duration_min": 42,
+                "id": "a",
+                "show": "A Show",
+                "title": "Episode a",
+                "topics": ["history"]
+              },
+              "lastEpisodeRow": {
+                "artwork_url": "https://img.test/a.jpg",
+                "audio_url": "https://audio.test/a.mp3",
+                "duration_min": 42,
+                "id": "a",
+                "show": "A Show",
+                "title": "Episode a"
+              },
+              "nextId": "a",
+              "planSeq": 8,
+              "queueAfter": ["a", "b"]
+            },
+            {
+              "finishedId": "a",
+              "fromList": false,
+              "hopSeq": 2,
+              "item": {
+                "artwork_url": "https://img.test/b.jpg",
+                "audio_url": "https://audio.test/b.mp3",
+                "duration_min": 42,
+                "id": "b",
+                "show": "A Show",
+                "title": "Episode b",
+                "topics": ["history"]
+              },
+              "lastEpisodeRow": {
+                "artwork_url": "https://img.test/b.jpg",
+                "audio_url": "https://audio.test/b.mp3",
+                "duration_min": 42,
+                "id": "b",
+                "show": "A Show",
+                "title": "Episode b"
+              },
+              "nextId": "b",
+              "planSeq": 8,
+              "queueAfter": ["b"]
+            }
+          ],
+          "planSeq": 8
+        }
+      }
+    },
+    {
+      "id": "continuation/plan-autoadvance-defaults-on",
+      "covers": [
+        "continuation::with Continuous playback off the chain is still planned, so skip-next is still offered"
+      ],
+      "call": "continuationPlan",
+      "args": [
+        {
+          "queue": ["a"],
+          "playList": null,
+          "playChainId": null,
+          "playListCursor": null,
+          "isPlayable": ["a"],
+          "items": {
+            "a": {
+              "id": "a",
+              "title": "Episode a",
+              "show": "A Show",
+              "artwork_url": "https://img.test/a.jpg",
+              "audio_url": "https://audio.test/a.mp3",
+              "duration_min": 42,
+              "topics": ["history"]
+            }
+          },
+          "currentId": "z"
+        },
+        { "planSeq": 9 }
+      ],
+      "expect": {
+        "return": {
+          "autoAdvance": true,
+          "chain": [
+            {
+              "finishedId": "z",
+              "fromList": false,
+              "hopSeq": 1,
+              "item": {
+                "artwork_url": "https://img.test/a.jpg",
+                "audio_url": "https://audio.test/a.mp3",
+                "duration_min": 42,
+                "id": "a",
+                "show": "A Show",
+                "title": "Episode a",
+                "topics": ["history"]
+              },
+              "lastEpisodeRow": {
+                "artwork_url": "https://img.test/a.jpg",
+                "audio_url": "https://audio.test/a.mp3",
+                "duration_min": 42,
+                "id": "a",
+                "show": "A Show",
+                "title": "Episode a"
+              },
+              "nextId": "a",
+              "planSeq": 9,
+              "queueAfter": ["a"]
+            }
+          ],
+          "planSeq": 9
+        }
+      }
+    },
+    {
+      "id": "continuation/can-next-with-autoadvance-off",
+      "covers": [
+        "continuation::with Continuous playback off the chain is still planned, so skip-next is still offered"
+      ],
+      "authored": true,
+      "note": "Authored: plan §5.5, canNext = the chain is non-empty REGARDLESS of autoAdvance, which is what EPISODE_NAVIGATION.next has always done. A listener who turns Continuous playback off still skips.",
+      "call": "canNext",
+      "args": [
+        {
+          "planSeq": 1,
+          "autoAdvance": false,
+          "chain": [
+            {
+              "planSeq": 1,
+              "hopSeq": 1,
+              "finishedId": "prev",
+              "nextId": "a",
+              "fromList": false,
+              "queueAfter": []
+            }
+          ]
+        }
+      ],
+      "expect": { "return": true }
+    },
+    {
+      "id": "continuation/can-next-empty-chain",
+      "covers": [
+        "continuation::with Continuous playback off the chain is still planned, so skip-next is still offered"
+      ],
+      "call": "canNext",
+      "args": [{ "planSeq": 1, "autoAdvance": true, "chain": [] }],
+      "expect": { "return": false }
+    },
+    {
+      "id": "continuation/can-next-no-plan",
+      "covers": [
+        "continuation::with Continuous playback off the chain is still planned, so skip-next is still offered"
+      ],
+      "call": "canNext",
+      "args": [null],
+      "expect": { "return": false }
+    },
+    {
+      "id": "continuation/advance-replay-twice-applies-once",
+      "covers": [
+        "continuation::replaying the advance log twice applies each hop once, in plan order"
+      ],
+      "call": "planAdvanceApply",
+      "args": [
+        null,
+        [
+          {
+            "planSeq": 5,
+            "hopSeq": 1,
+            "finishedId": "prev",
+            "nextId": "a",
+            "fromList": false,
+            "queueAfter": []
+          },
+          {
+            "planSeq": 5,
+            "hopSeq": 2,
+            "finishedId": "prev",
+            "nextId": "b",
+            "fromList": false,
+            "queueAfter": []
+          },
+          {
+            "planSeq": 5,
+            "hopSeq": 1,
+            "finishedId": "prev",
+            "nextId": "a",
+            "fromList": false,
+            "queueAfter": []
+          },
+          {
+            "planSeq": 5,
+            "hopSeq": 2,
+            "finishedId": "prev",
+            "nextId": "b",
+            "fromList": false,
+            "queueAfter": []
+          }
+        ]
+      ],
+      "expect": {
+        "return": {
+          "applied": { "advance": { "hopSeq": 2, "planSeq": 5 }, "event": null },
+          "steps": [
+            {
+              "applied": { "advance": { "hopSeq": 1, "planSeq": 5 }, "event": null },
+              "hop": {
+                "finishedId": "prev",
+                "fromList": false,
+                "hopSeq": 1,
+                "nextId": "a",
+                "planSeq": 5,
+                "queueAfter": []
+              },
+              "ts": null
+            },
+            {
+              "applied": { "advance": { "hopSeq": 2, "planSeq": 5 }, "event": null },
+              "hop": {
+                "finishedId": "prev",
+                "fromList": false,
+                "hopSeq": 2,
+                "nextId": "b",
+                "planSeq": 5,
+                "queueAfter": []
+              },
+              "ts": null
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "continuation/advance-below-watermark-skipped",
+      "covers": [
+        "continuation::replaying the advance log twice applies each hop once, in plan order"
+      ],
+      "call": "planAdvanceApply",
+      "args": [
+        { "advance": { "planSeq": 5, "hopSeq": 2 }, "event": 3 },
+        [
+          {
+            "planSeq": 5,
+            "hopSeq": 1,
+            "finishedId": "prev",
+            "nextId": "a",
+            "fromList": false,
+            "queueAfter": []
+          },
+          {
+            "planSeq": 5,
+            "hopSeq": 2,
+            "finishedId": "prev",
+            "nextId": "b",
+            "fromList": false,
+            "queueAfter": []
+          },
+          {
+            "planSeq": 5,
+            "hopSeq": 3,
+            "finishedId": "prev",
+            "nextId": "c",
+            "fromList": false,
+            "queueAfter": []
+          },
+          {
+            "planSeq": 6,
+            "hopSeq": 1,
+            "finishedId": "prev",
+            "nextId": "d",
+            "fromList": false,
+            "queueAfter": []
+          }
+        ]
+      ],
+      "expect": {
+        "return": {
+          "applied": { "advance": { "hopSeq": 1, "planSeq": 6 }, "event": 3 },
+          "steps": [
+            {
+              "applied": { "advance": { "hopSeq": 3, "planSeq": 5 }, "event": 3 },
+              "hop": {
+                "finishedId": "prev",
+                "fromList": false,
+                "hopSeq": 3,
+                "nextId": "c",
+                "planSeq": 5,
+                "queueAfter": []
+              },
+              "ts": null
+            },
+            {
+              "applied": { "advance": { "hopSeq": 1, "planSeq": 6 }, "event": 3 },
+              "hop": {
+                "finishedId": "prev",
+                "fromList": false,
+                "hopSeq": 1,
+                "nextId": "d",
+                "planSeq": 6,
+                "queueAfter": []
+              },
+              "ts": null
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "continuation/advance-sorted-into-plan-order",
+      "covers": [
+        "continuation::replaying the advance log twice applies each hop once, in plan order"
+      ],
+      "call": "planAdvanceApply",
+      "args": [
+        null,
+        [
+          {
+            "planSeq": 6,
+            "hopSeq": 1,
+            "finishedId": "prev",
+            "nextId": "d",
+            "fromList": false,
+            "queueAfter": []
+          },
+          {
+            "planSeq": 5,
+            "hopSeq": 3,
+            "finishedId": "prev",
+            "nextId": "c",
+            "fromList": false,
+            "queueAfter": []
+          }
+        ]
+      ],
+      "expect": {
+        "return": {
+          "applied": { "advance": { "hopSeq": 1, "planSeq": 6 }, "event": null },
+          "steps": [
+            {
+              "applied": { "advance": { "hopSeq": 3, "planSeq": 5 }, "event": null },
+              "hop": {
+                "finishedId": "prev",
+                "fromList": false,
+                "hopSeq": 3,
+                "nextId": "c",
+                "planSeq": 5,
+                "queueAfter": []
+              },
+              "ts": null
+            },
+            {
+              "applied": { "advance": { "hopSeq": 1, "planSeq": 6 }, "event": null },
+              "hop": {
+                "finishedId": "prev",
+                "fromList": false,
+                "hopSeq": 1,
+                "nextId": "d",
+                "planSeq": 6,
+                "queueAfter": []
+              },
+              "ts": null
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "continuation/advance-malformed-skipped",
+      "covers": [
+        "continuation::replaying the advance log twice applies each hop once, in plan order"
+      ],
+      "call": "planAdvanceApply",
+      "args": [
+        null,
+        [
+          { "hopSeq": 1, "nextId": "a" },
+          {
+            "planSeq": 2,
+            "hopSeq": 1,
+            "finishedId": "prev",
+            "nextId": "",
+            "fromList": false,
+            "queueAfter": []
+          },
+          {
+            "planSeq": 2,
+            "hopSeq": 2,
+            "finishedId": "prev",
+            "nextId": "b",
+            "fromList": false,
+            "queueAfter": []
+          }
+        ]
+      ],
+      "expect": {
+        "return": {
+          "applied": { "advance": { "hopSeq": 2, "planSeq": 2 }, "event": null },
+          "steps": [
+            {
+              "applied": { "advance": { "hopSeq": 2, "planSeq": 2 }, "event": null },
+              "hop": {
+                "finishedId": "prev",
+                "fromList": false,
+                "hopSeq": 2,
+                "nextId": "b",
+                "planSeq": 2,
+                "queueAfter": []
+              },
+              "ts": null
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "continuation/advance-at-is-the-row-time",
+      "covers": [
+        "continuation::replaying the advance log twice applies each hop once, in plan order"
+      ],
+      "call": "planAdvanceApply",
+      "args": [
+        null,
+        [
+          {
+            "planSeq": 3,
+            "hopSeq": 1,
+            "finishedId": "prev",
+            "nextId": "a",
+            "fromList": false,
+            "queueAfter": [],
+            "at": 1790000000000
+          }
+        ]
+      ],
+      "expect": {
+        "return": {
+          "applied": { "advance": { "hopSeq": 1, "planSeq": 3 }, "event": null },
+          "steps": [
+            {
+              "applied": { "advance": { "hopSeq": 1, "planSeq": 3 }, "event": null },
+              "hop": {
+                "at": 1790000000000,
+                "finishedId": "prev",
+                "fromList": false,
+                "hopSeq": 1,
+                "nextId": "a",
+                "planSeq": 3,
+                "queueAfter": []
+              },
+              "ts": "2026-09-21T14:13:20.000Z"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "continuation/advance-nothing-new",
+      "covers": [
+        "continuation::replaying the advance log twice applies each hop once, in plan order"
+      ],
+      "call": "planAdvanceApply",
+      "args": [
+        { "advance": { "planSeq": 9, "hopSeq": 1 } },
+        [
+          {
+            "planSeq": 5,
+            "hopSeq": 1,
+            "finishedId": "prev",
+            "nextId": "a",
+            "fromList": false,
+            "queueAfter": []
+          }
+        ]
+      ],
+      "expect": {
+        "return": {
+          "applied": { "advance": { "hopSeq": 1, "planSeq": 9 }, "event": null },
+          "steps": []
+        }
+      }
+    },
+    {
+      "id": "continuation/drain-twice-logs-once",
+      "covers": ["continuation::the event drain logs each position once, at its original time"],
+      "call": "planEventDrain",
+      "args": [
+        null,
+        [
+          {
+            "seq": 1,
+            "kind": "position",
+            "episode_id": "a",
+            "seconds": 60,
+            "duration": 3600,
+            "at": 1790000000000
+          },
+          {
+            "seq": 2,
+            "kind": "position",
+            "episode_id": "a",
+            "seconds": 120,
+            "duration": 3600,
+            "at": 1790000060000
+          },
+          {
+            "seq": 1,
+            "kind": "position",
+            "episode_id": "a",
+            "seconds": 60,
+            "duration": 3600,
+            "at": 1790000000000
+          },
+          {
+            "seq": 2,
+            "kind": "position",
+            "episode_id": "a",
+            "seconds": 120,
+            "duration": 3600,
+            "at": 1790000060000
+          }
+        ]
+      ],
+      "expect": {
+        "return": {
+          "applied": { "advance": null, "event": 2 },
+          "steps": [
+            {
+              "applied": { "advance": null, "event": 1 },
+              "row": {
+                "payload": { "duration": 3600, "episode_id": "a", "seconds": 60 },
+                "ts": "2026-09-21T14:13:20.000Z",
+                "type": "position"
+              }
+            },
+            {
+              "applied": { "advance": null, "event": 2 },
+              "row": {
+                "payload": { "duration": 3600, "episode_id": "a", "seconds": 120 },
+                "ts": "2026-09-21T14:14:20.000Z",
+                "type": "position"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "continuation/drain-below-watermark-skipped",
+      "covers": ["continuation::the event drain logs each position once, at its original time"],
+      "call": "planEventDrain",
+      "args": [
+        { "advance": null, "event": 4 },
+        [
+          {
+            "seq": 4,
+            "kind": "position",
+            "episode_id": "a",
+            "seconds": 60,
+            "duration": null,
+            "at": 1790000000000
+          },
+          {
+            "seq": 5,
+            "kind": "position",
+            "episode_id": "b",
+            "seconds": 30,
+            "at": "2026-09-24T08:00:00.000Z"
+          }
+        ]
+      ],
+      "expect": {
+        "return": {
+          "applied": { "advance": null, "event": 5 },
+          "steps": [
+            {
+              "applied": { "advance": null, "event": 5 },
+              "row": {
+                "payload": { "duration": null, "episode_id": "b", "seconds": 30 },
+                "ts": "2026-09-24T08:00:00.000Z",
+                "type": "position"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "continuation/drain-unknown-kind-acked-not-logged",
+      "covers": ["continuation::the event drain logs each position once, at its original time"],
+      "call": "planEventDrain",
+      "args": [null, [{ "seq": 1, "kind": "future-kind", "at": 1790000000000 }]],
+      "expect": {
+        "return": {
+          "applied": { "advance": null, "event": 1 },
+          "steps": [{ "applied": { "advance": null, "event": 1 }, "row": null }]
+        }
+      }
+    },
+    {
+      "id": "continuation/drain-malformed-position-acked-not-logged",
+      "covers": ["continuation::the event drain logs each position once, at its original time"],
+      "call": "planEventDrain",
+      "args": [
+        null,
+        [
+          { "seq": 1, "kind": "position", "seconds": 60, "at": 1790000000000 },
+          {
+            "seq": 2,
+            "kind": "position",
+            "episode_id": "a",
+            "seconds": "60",
+            "at": 1790000000000
+          },
+          {
+            "seq": 3,
+            "kind": "position",
+            "episode_id": "a",
+            "seconds": 60,
+            "at": "not a time"
+          },
+          {
+            "seq": "4",
+            "kind": "position",
+            "episode_id": "a",
+            "seconds": 60,
+            "at": 1790000000000
+          }
+        ]
+      ],
+      "expect": {
+        "return": {
+          "applied": { "advance": null, "event": 3 },
+          "steps": [
+            { "applied": { "advance": null, "event": 1 }, "row": null },
+            { "applied": { "advance": null, "event": 2 }, "row": null },
+            { "applied": { "advance": null, "event": 3 }, "row": null }
+          ]
+        }
+      }
+    },
+    {
+      "id": "continuation/drain-sorted-by-seq",
+      "covers": ["continuation::the event drain logs each position once, at its original time"],
+      "call": "planEventDrain",
+      "args": [
+        null,
+        [
+          {
+            "seq": 9,
+            "kind": "position",
+            "episode_id": "a",
+            "seconds": 180,
+            "duration": 3600,
+            "at": 1790000120000
+          },
+          {
+            "seq": 8,
+            "kind": "position",
+            "episode_id": "a",
+            "seconds": 120,
+            "duration": 3600,
+            "at": 1790000060000
+          }
+        ]
+      ],
+      "expect": {
+        "return": {
+          "applied": { "advance": null, "event": 9 },
+          "steps": [
+            {
+              "applied": { "advance": null, "event": 8 },
+              "row": {
+                "payload": { "duration": 3600, "episode_id": "a", "seconds": 120 },
+                "ts": "2026-09-21T14:14:20.000Z",
+                "type": "position"
+              }
+            },
+            {
+              "applied": { "advance": null, "event": 9 },
+              "row": {
+                "payload": { "duration": 3600, "episode_id": "a", "seconds": 180 },
+                "ts": "2026-09-21T14:15:20.000Z",
+                "type": "position"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "continuation/applied-null-is-empty",
+      "covers": ["continuation::a missing or corrupt watermark reads as empty"],
+      "call": "normalizeApplied",
+      "args": [null],
+      "expect": { "return": { "advance": null, "event": null } }
+    },
+    {
+      "id": "continuation/applied-corrupt-is-empty",
+      "covers": ["continuation::a missing or corrupt watermark reads as empty"],
+      "call": "normalizeApplied",
+      "args": [{ "advance": { "planSeq": "5", "hopSeq": 1 }, "event": "3" }],
+      "expect": { "return": { "advance": null, "event": null } }
+    },
+    {
+      "id": "continuation/applied-string-is-empty",
+      "covers": ["continuation::a missing or corrupt watermark reads as empty"],
+      "call": "normalizeApplied",
+      "args": ["{\"event\":3}"],
+      "expect": { "return": { "advance": null, "event": null } }
+    },
+    {
+      "id": "continuation/applied-valid-kept",
+      "covers": ["continuation::a missing or corrupt watermark reads as empty"],
+      "call": "normalizeApplied",
+      "args": [{ "advance": { "planSeq": 5, "hopSeq": 2 }, "event": 3, "extra": true }],
+      "expect": { "return": { "advance": { "hopSeq": 2, "planSeq": 5 }, "event": 3 } }
+    }
+  ]
+}

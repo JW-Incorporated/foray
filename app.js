@@ -375,12 +375,16 @@ function syncOutlived(epoch) {
    stored every one twice. */
 let localClears = 0;
 
-function logEvent(type, payload) {
+/* `ts` is for a row that HAPPENED EARLIER than it is logged: an advance or a
+   position the native engine recorded while this page slept, replayed on the
+   next wake (`applyEngineAdvance`, `drainEngineEvents`). Stamping those "now"
+   would put a drive's positions at the moment the phone was unlocked. */
+function logEvent(type, payload, { ts = null } = {}) {
   if (dataDeletionInProgress) return;
   /* `profile` is stamped when the row leaves the buffer, not here: minting it
      before hydration wrote a fresh `cp_profile_id` over the durable one
      (races-4). A row logged before storage settles waits in the buffer. */
-  const row = { ts: new Date().toISOString(), type, builder: state.session?.builder || "unknown", profile: null, payload };
+  const row = { ts: typeof ts === "string" && ts ? ts : new Date().toISOString(), type, builder: state.session?.builder || "unknown", profile: null, payload };
   if (!storageWaiting() && window.forayEventLog && typeof window.forayEventLog.append === "function") {
     flushBufferedEvents();
     row.profile = profileId();
@@ -2585,42 +2589,58 @@ function isPlayableId(id) { return Boolean(liveEpisode(id)?.audio_url); }
    the top, "next" is always the head, so neither can happen.)
    `docs/DECISIONS.md` (2026-09-24, founder rulings) records the ruling. */
 
-/**
- * What plays after `finishedId`, with no writes: `{ nextId, rest, fromList }`.
- * `rest` is Up Next with the finished episode removed (or null when it was not
- * queued) — the caller saves it. Shared by the end of an episode and by the
- * steering wheel's and the sheet's ⏭, which mean the same thing: a skip is the
- * end reached early (the model above), so it drops the skipped episode and
- * nothing else.
- *
- * UP NEXT FIRST, THEN THE LIST. The list continues only when the episode that
- * ended belongs to this chain (`state.playChainId`: started by bindPlay from the
- * list, or by an advance), so an episode started from somewhere with no list
- * (a timestamp, the restored bar) does not resume a list from an earlier visit.
- */
+/* THE RULES LIVE IN `player/continuation.js` (NE-13, docs/native-engine-plan.md
+   §5.5) — Up Next first, then the list, the chain and its cursor, all of it.
+   They moved so the native engine can be handed the next eight hops as data
+   while this page sleeps; this file gathers the inputs and does the writes.
+   `player/client.js` publishes the module as `window.forayContinuation`, the
+   same bridge `forayStorage` uses, because this classic script cannot import.
+
+   No player module means no rules — and nothing to play with them: every
+   caller below is reached from `window.ForayPlayer`, which the same module
+   graph publishes after the rules, so "no rules" answers "nothing next"
+   exactly when there is no player to ask. */
+function continuationRules() {
+  const rules = window.forayContinuation;
+  return rules && typeof rules.planAfterEnded === "function" ? rules : null;
+}
+
+/** The injected state `player/continuation.js` reads, from this page's own. */
+function continuationState(currentId = null) {
+  return {
+    queue: queueIds(),
+    playList: state.playList,
+    playChainId: state.playChainId,
+    playListCursor: state.playListCursor,
+    isPlayable: isPlayableId,
+    items: liveEpisode,
+    currentId,
+  };
+}
+
+/** What plays after `finishedId`, with no writes: `{ nextId, rest, fromList }`
+    — see `planAfterEnded` in player/continuation.js, which holds the Up Next
+    model above. Shared by the end of an episode and by the steering wheel's
+    and the sheet's ⏭, which mean the same thing: a skip is the end reached
+    early. */
 function planAfterEnded(finishedId) {
-  const queued = queueIds();
-  const rest = queued.includes(finishedId) ? queued.filter(x => x !== finishedId) : null;
-  const queuedNext = (rest || queued).find(isPlayableId);
-  if (queuedNext) return { nextId: queuedNext, rest, fromList: false };
-  const list = state.playList || [];
-  const onChain = Boolean(finishedId) && finishedId === state.playChainId;
-  const anchor = list.includes(finishedId) ? finishedId : (onChain ? state.playListCursor : null);
-  const i = anchor ? list.indexOf(anchor) : -1;
-  const listNext = i >= 0 ? list.slice(i + 1).find(isPlayableId) : null;
-  return { nextId: listNext || null, rest, fromList: Boolean(listNext) };
+  const rules = continuationRules();
+  if (!rules) return { nextId: null, rest: null, fromList: false };
+  return rules.planAfterEnded(continuationState(), finishedId);
 }
 
 /** What plays after `finishedId`, or null. Applies the plan's one write (the
     finished episode leaves Up Next) and moves the chain on to the pick. */
 function nextAfterEnded(finishedId) {
-  const plan = planAfterEnded(finishedId);
-  if (plan.rest) saveQueueIds(plan.rest);
-  if (plan.nextId) {
-    state.playChainId = plan.nextId;
-    if (plan.fromList) state.playListCursor = plan.nextId;
+  const rules = continuationRules();
+  if (!rules) return null;
+  const step = rules.nextAfterEnded(continuationState(), finishedId);
+  if (step.rest) saveQueueIds(step.rest);
+  if (step.nextId) {
+    state.playChainId = step.state.playChainId;
+    if (step.fromList) state.playListCursor = step.state.playListCursor;
   }
-  return plan.nextId;
+  return step.nextId;
 }
 
 /** A tap on row k of the Up Next page started playing: row k jumps to the
@@ -2657,7 +2677,8 @@ const UP_NEXT_CTX = "upnext";
  * previous row or nothing, so forty minutes into episode 3 a driver's ◀◀ landed
  * at the start of episode 2, and an episode started from the mini bar or Jump
  * back in had a dead button. The window is the player's (`RESTART_WINDOW_SEC`
- * in player/client.js, read through `previousMeansRestart`), not a second copy.
+ * in player/transport-policy.js, read through `previousMeansRestart`), not a
+ * second copy.
  */
 const EPISODE_NAVIGATION = {
   get next() {
@@ -2691,7 +2712,114 @@ const EPISODE_NAVIGATION = {
     re-reads EPISODE_NAVIGATION now rather than at the next play. */
 function refreshEpisodeNavigation() {
   try { window.ForayPlayer?.setEpisodeNavigation?.(EPISODE_NAVIGATION); } catch (_) { /* best-effort */ }
+  sendContinuation();
 }
+
+/* ---------- the native engine's half of continuous playback (NE-13) ----------
+
+   Under the native engine (docs/native-engine-plan.md §5.5) the page is not
+   awake when an episode ends in a car, so it cannot answer "what next" then.
+   It answers AHEAD: every time the answer could change — a play, an Up Next
+   edit, the Continuous playback switch — `refreshEpisodeNavigation` above also
+   hands the player `setContinuation({planSeq, autoAdvance, chain})`, the next
+   eight hops `player/continuation.js` plans from this page's own state. The
+   engine walks them only while `autoAdvance` is on, and offers "next" whenever
+   the chain is non-empty, switch or no switch, as EPISODE_NAVIGATION does.
+
+   The JS player has no `setContinuation` (it asks EPISODE_NAVIGATION at the
+   moment it needs the answer), so on the web and Android this is a no-op;
+   NE-22 gives the native branch of `player/client.js` one that forwards it. */
+
+/** Plans are ordered by `planSeq`, and a hop the engine walked names its plan,
+    so the number must keep rising across page loads too — the engine may still
+    hold a plan from before a reload. Wall-clock ms, bumped past the last one. */
+let lastPlanSeq = 0;
+function nextPlanSeq() {
+  lastPlanSeq = Math.max(lastPlanSeq + 1, Date.now());
+  return lastPlanSeq;
+}
+
+/* Also called straight after each play this page starts: the plan starts from
+   the episode now playing, and until `play()` resolves the player is still on
+   the one before (setPlayList's refresh runs ahead of the tap's play). Only
+   the plan, not setEpisodeNavigation: the JS player installs its own
+   lock-screen actions at play time, and this must change nothing there. */
+function sendContinuation() {
+  const player = window.ForayPlayer;
+  if (!player || typeof player.setContinuation !== "function") return;
+  const rules = continuationRules();
+  if (!rules) return;
+  try {
+    const current = player.currentEpisodeId?.() || null;
+    player.setContinuation(rules.continuationPlan(continuationState(current), {
+      planSeq: nextPlanSeq(),
+      autoAdvance: autoAdvanceOn(),
+    }));
+  } catch (_) { /* best-effort, like the navigation above: a plan is re-sent on the next change */ }
+}
+
+/* THE LEDGER: `cp_engine_applied`, page-owned. When the engine walked hops or
+   recorded positions while this page slept, the next attach hands them over
+   and this page applies each ONCE — it logs `play_started` and `position`
+   rows, and those leave the device. The watermark is written BEFORE each
+   row: a crash in between costs one row, where the other order would repeat
+   it on every attach until the engine's ack landed. The decisions (what is
+   new, in what order, at what time) are `planAdvanceApply`/`planEventDrain`
+   in player/continuation.js; this only executes their steps. */
+const ENGINE_APPLIED_KEY = "cp_engine_applied";
+
+/** Apply one hop the engine played: Up Next as it stood after it, the chain
+    and cursor, `play_started` (ctx `autoadvance`, at the time the engine
+    played it) and history. Returns whether it applied — false for a hop at or
+    below the watermark, so a log delivered twice is a no-op the second time. */
+function applyEngineAdvance(hop) {
+  const rules = continuationRules();
+  if (!rules) return false;
+  const { steps } = rules.planAdvanceApply(lsGet(ENGINE_APPLIED_KEY, null), [hop]);
+  for (const step of steps) {
+    lsSet(ENGINE_APPLIED_KEY, step.applied);
+    const h = step.hop;
+    const id = h.nextId;
+    /* The page handed the engine this item itself; seed it back the way
+       liveEpisode caches a stored snapshot, so history keeps a nameable row
+       after a reload that emptied the pool. */
+    if (!state.itemIndex[id] && h.item && h.item.audio_url) state.itemIndex[id] = h.item;
+    /* The chain first: saving Up Next re-plans (refreshEpisodeNavigation), and
+       the plan must start from where the engine now is. */
+    state.playChainId = id;
+    if (h.fromList) state.playListCursor = id;
+    if (Array.isArray(h.queueAfter)) saveQueueIds(h.queueAfter.filter(x => typeof x === "string" && x));
+    else refreshEpisodeNavigation();
+    const item = liveEpisode(id) || h.item || {};
+    logEvent("play_started", { episode_id: id, topics: item.topics || [], ctx: "autoadvance" }, { ts: step.ts });
+    recordHistory(id);
+  }
+  if (steps.length) trySyncEvents();
+  return steps.length > 0;
+}
+
+/** Replay the engine's `pendingEvents` through `logEvent` with their original
+    timestamps (plan §5.5: the `position` event type is unchanged, so the
+    privacy disclosure is too). Returns how many rows were logged. */
+function drainEngineEvents(events) {
+  const rules = continuationRules();
+  if (!rules) return 0;
+  const { steps } = rules.planEventDrain(lsGet(ENGINE_APPLIED_KEY, null), events);
+  let logged = 0;
+  for (const step of steps) {
+    lsSet(ENGINE_APPLIED_KEY, step.applied);
+    if (!step.row) continue;
+    logEvent(step.row.type, step.row.payload, { ts: step.row.ts });
+    logged++;
+  }
+  if (logged) trySyncEvents();
+  return logged;
+}
+
+/* Handed to the player (a classic script cannot export): in native mode
+   player/client.js's attach applies the engine's pending hops and position
+   events through these two, then acks them (NE-22). */
+window.forayEngineLedger = { applyEngineAdvance, drainEngineEvents };
 
 /** Called from `ForayPlayer.onEpisodeEnded` (player/client.js) with the id of
     the episode that just finished ordinary (non-Foray) playback. The player
@@ -2738,6 +2866,7 @@ function startChained(nextId, ctx) {
       if (!ok) return;
       logEvent("play_started", { episode_id: nextId, topics: nextItem.topics || [], ctx });
       recordHistory(nextId);
+      sendContinuation();
       /* The Up Next page, if showing, marks the row that is now current. */
       noteQueuePlaybackMoved();
       trySyncEvents();
@@ -5281,6 +5410,9 @@ async function startEpisodePlay(id, item, { ctx = null, list = [] } = {}) {
   /* A play from the Up Next page moves that row to the top (the Up Next
      model, § continuous playback); every other row stays put. */
   if (listCtx === UP_NEXT_CTX) playedFromUpNext(id);
+  /* The plan starts from the episode that is now playing (see
+     `sendContinuation`), so it is re-sent once the play is the player's own. */
+  sendContinuation();
   /* Same "playlist-<id>" convention and the same regex bindPickLogging
      already applies to a picked link's data-ctx — bindPlay is the in-app
      play button, the PRIMARY control on every live playlist row, and it
@@ -10219,6 +10351,7 @@ function bindEpisodeSeeks(scope, item) {
             try { window.ForayPlayer.reportPlayFailure?.(null); } catch (_) { /* the bar is best-effort */ }
             return;
           }
+          sendContinuation();
           return;
         }
         await window.ForayPlayer.seekTo(secs);
@@ -13032,8 +13165,20 @@ function restoreNowPlayingRibbon() {
       if ((restored || late) && isHomeRoute()) renderCurrentPage();
     } catch (_) { /* a ribbon that cannot be restored is not a reason to fail boot */ }
   };
-  if (window.ForayPlayer) go(false);
-  else window.addEventListener("forayplayer:ready", () => go(true), { once: true });
+  /* THE LANE FIRST (NE-22). Inside the iOS shell the player cannot restore
+     anything until engineHello has said whether the native engine or the page
+     plays; until then both restores would answer a promise, and a promise is
+     truthy, so the episode fallback below would never run. Everywhere else
+     `engineModePending` answers false at once and this stays synchronous. */
+  const whenLaneKnown = (late) => {
+    const p = window.ForayPlayer;
+    let pending = false;
+    try { pending = typeof p?.engineModePending === "function" && p.engineModePending() === true; } catch (_) { pending = false; }
+    if (!pending) return go(late);
+    Promise.resolve(p.whenEngineReady()).then(() => go(late), () => go(late));
+  };
+  if (window.ForayPlayer) whenLaneKnown(false);
+  else window.addEventListener("forayplayer:ready", () => whenLaneKnown(true), { once: true });
 }
 
 /** The part-played Foray for the bar, when it is the most recent thing played —
@@ -13132,6 +13277,9 @@ function renderDrawer() {
      painted above with the others; this is the control that appears and
      disappears with it, which no label line can express. */
   syncVoiceProbeRun();
+  /* NE-22d: the engine's Developer rows, which exist only where an engine
+     answered (see § the engine's Developer rows). */
+  syncEngineDevRows();
 }
 
 /* ---------- THE DRAWER IS A MODAL, WITH THE SAME CONTRACT AS A SHEET ----------
@@ -13577,6 +13725,10 @@ function bindDrawerToggles() {
   drawerToggle("autoadvance-toggle", "Continuous playback", autoAdvanceOn, (on) => {
     lsSet("cp_autoadvance", on);
     logEvent("autoadvance_pref", { on });
+    /* The switch changes what the END of the playing episode does, so a
+       player that was handed the plan ahead (the native engine's
+       setContinuation) must hear it now, not at the next play (NE-13). */
+    refreshEpisodeNavigation();
   });
 
   /* §13's jingle (player/interlude.js). THE CONTROL THE PRIVACY POLICY ALREADY
@@ -13654,6 +13806,186 @@ function syncVoiceProbeRun() {
   if (toggle && toggle.parentNode) toggle.parentNode.insertBefore(run, toggle.nextSibling);
   else (drawerDevGroup() || drawer).appendChild(run);
   run.addEventListener("click", () => runVoiceProbe());
+}
+
+/* ---------- the engine's Developer rows (NE-22d) ----------
+
+   The four rows the M1 car test drives (docs/native-engine-m1-car-test.md,
+   "Before it can be run" item 2), in the Developer group above "Playback
+   diagnostics":
+
+     Playback engine: Automatic / Native / Web (applies after restart)  NE-17
+     Pause hold: forever / none                                          NE-16
+     Simulate system termination                                         NE-24
+     Session probe                                                       NE-25c
+
+   THE PLAYER DECIDES WHICH EXIST AND SENDS THEIR COMMANDS. app.js is a classic
+   script with no engine client of its own, so every row reads
+   `ForayPlayer.engineDeveloperStatus()` (null: no rows at all, which is the
+   web, Android and a shell with no engine) and sends through
+   `ForayPlayer.engineDeveloperSend()` (player/client.js, over the NE-21 engine
+   client's engineSend). Nothing here reaches the bridge directly, so a page
+   with no engine cannot send one of these by any path.
+
+   APPENDED AND REMOVED, NEVER `hidden` (the reason `syncVoiceProbeRun` gives).
+   Painted by `renderDrawer` like every other drawer label, from the ENGINE's
+   answer: the pause hold is its snapshot, the engine setting is what it
+   confirmed storing, and a one-shot row says what the engine replied to the
+   last tap ("armed", or why it refused). A row with a send in flight is
+   disabled, so a double tap is one command. */
+const ENGINE_OVERRIDE_ORDER = ["auto", "native", "web"];
+const ENGINE_OVERRIDE_WORDS = { auto: "Automatic", native: "Native", web: "Web" };
+
+/** Why the engine refused, in words (engine-contract.js REFUSALS, plus the
+    page-side `bridge-error`). An unlisted reason is shown as sent. */
+const ENGINE_REFUSAL_WORDS = {
+  "not-loaded": "play and pause an episode first",
+  "engine-busy": "pause playback first",
+  "capability-off": "not available on this build",
+  relinquished: "the web player has playback until the app restarts",
+  "unknown-cmd": "this build does not know that command",
+  "bridge-error": "the app did not answer",
+};
+
+/** The last reply to each one-shot row, this page load. */
+const engineDevOutcome = {};
+const engineDevInFlight = new Set();
+
+function engineDevStatus() {
+  const p = window.ForayPlayer;
+  if (!p || typeof p.engineDeveloperStatus !== "function" || typeof p.engineDeveloperSend !== "function") return null;
+  try { return p.engineDeveloperStatus() || null; } catch (_) { return null; }
+}
+
+function engineRefusalWords(reply) {
+  const reason = reply && reply.reason ? String(reply.reason) : "bridge-error";
+  return ENGINE_REFUSAL_WORDS[reason] || reason;
+}
+
+/** The word after "Pause hold:" for a snapshot holdPolicy ("forever" | "none"
+    | "until:<minutes>"), or "not known" before the engine has said. */
+function holdPolicyWord(policy) {
+  if (policy === "forever" || policy === "none") return policy;
+  const m = /^until:(\d+)$/.exec(policy || "");
+  return m ? `${m[1]} min` : "not known";
+}
+
+const ENGINE_DEV_ROWS = [
+  {
+    id: "engine-mode-override", cmd: "setModeOverride",
+    paint(btn, st) {
+      const word = ENGINE_OVERRIDE_WORDS[st.override] || "not known";
+      const now = st.lane === "native" ? "Native" : "Web";
+      setControlLabel(btn, `Playback engine: ${word} (applies after restart) · now ${now}`,
+        `Playback engine: ${word}, applies after restart. Running now: ${now}`);
+    },
+    next(st) {
+      const i = ENGINE_OVERRIDE_ORDER.indexOf(st.override);
+      return { mode: ENGINE_OVERRIDE_ORDER[(i + 1) % ENGINE_OVERRIDE_ORDER.length] };
+    },
+  },
+  {
+    id: "engine-hold-policy", cmd: "setHoldPolicy", role: "switch",
+    paint(btn, st) {
+      setControlLabel(btn, `Pause hold: ${holdPolicyWord(st.holdPolicy)}`, "Pause hold forever");
+      btn.setAttribute("aria-checked", String(st.holdPolicy === "forever"));
+    },
+    next(st) { return { policy: st.holdPolicy === "forever" ? "none" : "forever" }; },
+  },
+  {
+    id: "engine-simulate-termination", cmd: "simulateTermination", oneShot: true,
+    title: "Simulate system termination",
+    armed: "armed. Lock the phone: the app saves its place and closes",
+  },
+  {
+    id: "engine-session-probe", cmd: "probeSession", oneShot: true,
+    title: "Session probe",
+    armed: "armed. Lock the phone now; it speaks in 10 seconds",
+  },
+];
+
+function paintEngineDevRow(row, btn, st) {
+  btn.disabled = engineDevInFlight.has(row.id);
+  if (!row.oneShot) { row.paint(btn, st); return; }
+  const out = engineDevOutcome[row.id];
+  const text = !out ? row.title
+    : out.ok ? `${row.title}: ${row.armed}`
+      : `${row.title}: refused, ${engineRefusalWords(out)}`;
+  setControlLabel(btn, text, text);
+}
+
+async function tapEngineDevRow(row) {
+  if (engineDevInFlight.has(row.id)) return null;
+  const st = engineDevStatus();
+  if (!st || !Array.isArray(st.commands) || !st.commands.includes(row.cmd)) { renderDrawer(); return null; }
+  const args = row.next ? row.next(st) : undefined;
+  engineDevInFlight.add(row.id);
+  renderDrawer();
+  let reply = null;
+  try {
+    reply = await window.ForayPlayer.engineDeveloperSend(row.cmd, args);
+  } catch (_) {
+    reply = null;
+  } finally {
+    engineDevInFlight.delete(row.id);
+  }
+  const answer = reply || { ok: false, reason: "bridge-error" };
+  if (row.oneShot) engineDevOutcome[row.id] = { ok: !!answer.ok, reason: answer.reason };
+  renderDrawer();
+  /* The one-shot rows change their words in place, which a screen reader
+     does not re-read on a focused button; the switch and the setting are
+     said by their own state. */
+  if (row.oneShot) {
+    const btn = $("#" + row.id);
+    if (btn) announce(btn.textContent);
+  }
+  return answer;
+}
+
+/** Create, paint or remove the engine rows. Called from `renderDrawer`, and
+    once the player module has said which lane plays. */
+function syncEngineDevRows() {
+  const drawer = $("#drawer");
+  if (!drawer) return;
+  const st = engineDevStatus();
+  const cmds = st && Array.isArray(st.commands) ? st.commands : [];
+  const want = ENGINE_DEV_ROWS.filter((row) => cmds.includes(row.cmd));
+  for (const row of ENGINE_DEV_ROWS) {
+    if (want.includes(row)) continue;
+    const gone = $("#" + row.id);
+    if (gone) gone.remove();
+  }
+  if (!want.length) return;
+  const group = drawerDevGroup() || drawer;
+  const diag = $("#diag-open");
+  const before = diag && diag.parentNode === group ? diag : null;
+  for (const row of want) {
+    let btn = $("#" + row.id);
+    if (!btn) {
+      btn = ddEl("button", "drawer-item as-btn drawer-wrap", "");
+      btn.type = "button";
+      btn.id = row.id;
+      /* A setting changes IN the drawer (the switches' rule, Joey 2026-08-31). */
+      btn.dataset.drawerStay = "1";
+      if (row.role) btn.setAttribute("role", row.role);
+      if (before) group.insertBefore(btn, before);
+      else group.appendChild(btn);
+      btn.addEventListener("click", () => tapEngineDevRow(row));
+    }
+    paintEngineDevRow(row, btn, st);
+  }
+}
+
+/** The rows appear only once the lane is known: engineHello answers up to 5 s
+    after launch, so a drawer painted before then has no engine to ask. */
+function bindEngineDevRows() {
+  const whenLane = () => {
+    const p = window.ForayPlayer;
+    const ready = p && typeof p.whenEngineReady === "function" ? p.whenEngineReady() : null;
+    Promise.resolve(ready).then(syncEngineDevRows, syncEngineDevRows);
+  };
+  if (window.ForayPlayer) whenLane();
+  else window.addEventListener("forayplayer:ready", whenLane, { once: true });
 }
 
 /** Run the probe and show its numbers where the founder can copy them: the
@@ -14806,7 +15138,11 @@ async function auditionVoiceRow(id) {
   paintVoiceList();
   try {
     const result = await player.auditionVoice(AUDITION_LINE, id);
-    if (result && result.voiceFallback) {
+    /* Native mode: the engine owns the one audio session and will not speak
+       over an episode it is playing (NE-22, OQ-5). */
+    if (result && result.ok === false && result.reason === "engine-busy") {
+      paintVoiceNotice("Pause playback to preview");
+    } else if (result && result.voiceFallback) {
       paintVoiceNotice("Your chosen voice isn't installed; using the best available.");
     } else {
       paintVoiceNotice("");
@@ -14963,8 +15299,33 @@ function diagText() {
   }
 }
 
+/* NE-26 (docs/native-engine-plan.md): the record WITH the native engine's rows
+   merged in — the page's ring and the engine's 2,000-row file ring, by wall
+   clock, under one header that says which engine played. It needs one bridge
+   call (engineRead 'diagnostics'), so it is a promise, and the synchronous
+   `diagText()` above stays the instant answer and the fallback. Null when the
+   player module has not published it (an older module, or none at all). */
+function diagTextWithEngine() {
+  if (typeof window.forayDiagnosticReportWithEngine !== "function") return null;
+  let pending;
+  try {
+    pending = Promise.resolve(window.forayDiagnosticReportWithEngine());
+  } catch (err) {
+    pending = Promise.reject(err);
+  }
+  /* A merged report that failed is not a blank box either: the page's own
+     record, and its own honest sentence, are what `diagText()` gives. */
+  return pending.then((out) => String(out || "") || diagText(), () => diagText());
+}
+
+/* Which paint of the box is current. A merged report lands a bridge call
+   later, and by then the listener may have pressed Clear or closed the sheet;
+   a late answer must not paint cleared rows back into the box. */
+let diagPaint = 0;
+
 function refreshDiagSheet() {
   const ui = diagSheet();
+  diagPaint++;
   ui.text.value = diagText();
 }
 
@@ -14973,10 +15334,21 @@ function openDiagSheet() {
   refreshDiagSheet();
   ui.status.textContent = "";
   openSheet(ui.root, { panel: ui.panel, onRequestClose: closeDiagSheet });
+  /* The page's record shows at once; the engine's rows join it when the one
+     read answers, so the header a founder reads on screen is the one Copy
+     takes. */
+  const paint = diagPaint;
+  const merged = diagTextWithEngine();
+  if (merged) {
+    merged.then((text) => {
+      if (paint === diagPaint && !ui.root.hidden) ui.text.value = text;
+    });
+  }
 }
 
 function closeDiagSheet() {
   if (!diagUi) return;
+  diagPaint++;
   closeSheet(diagUi.root);
   diagUi.root.hidden = true;
 }
@@ -14992,6 +15364,36 @@ function closeDiagSheet() {
  */
 async function copyDiagnostics() {
   const ui = diagSheet();
+  /* NE-26: Copy takes the record with the engine's rows merged in, read ONCE,
+     now — not whatever the box held when it opened — and shows what it took.
+
+     THE CLIPBOARD IS ASKED INSIDE THE TAP. The merged text is a bridge call
+     away, and WebKit grants clipboard writes only within the user's gesture; a
+     writeText after that await can be refused as outside it. A ClipboardItem
+     whose content is a PROMISE is WebKit's own answer to exactly this: the
+     write is requested synchronously, and the text fills it when it resolves.
+     Where that is missing, the text is awaited and written the old way, and a
+     refusal falls through to selection as it always has. */
+  const merged = diagTextWithEngine();
+  if (merged) {
+    diagPaint++;
+    const paint = diagPaint;
+    const clip = navigator.clipboard;
+    if (clip && typeof clip.write === "function" && typeof ClipboardItem === "function" && typeof Blob === "function") {
+      try {
+        const wrote = clip.write([new ClipboardItem({
+          "text/plain": merged.then((text) => new Blob([text], { type: "text/plain" })),
+        })]);
+        const text = await merged;
+        if (paint === diagPaint) ui.text.value = text;
+        await wrote;
+        ui.status.textContent = "Copied to the clipboard.";
+        return true;
+      } catch (_) { /* fall through: the text is in the box, and writeText or selection takes it */ }
+    }
+    const text = await merged;
+    if (paint === diagPaint) ui.text.value = text;
+  }
   const body = ui.text.value;
   try {
     if (navigator.clipboard && typeof navigator.clipboard.writeText === "function") {
@@ -16698,6 +17100,9 @@ async function init() {
      item is where a scrolled thumb lands. */
   bindDeveloperToggles();
   bindDiagnosticsControl();
+  /* The engine's four rows land above "Playback diagnostics", once the player
+     says which lane plays (NE-22d). */
+  bindEngineDevRows();
   /* The drawer's last item, appended rather than written into index.html — see
      the § delete my data header for why, and note it is deliberately BELOW the
      two settings toggles: it is the one control in there that cannot be undone. */

@@ -1,0 +1,891 @@
+{
+  "family": "contract",
+  "module": "player/engine-contract.js",
+  "note": "The web <-> native contract, protocol v1 (docs/native-engine-plan.md §5; player/engine-contract.js, NE-11j): the closed names, and every valid and invalid example of player/parity/schema/engine-contract.schema.json except the snapshot's, as contractAccepts(kind, payload). Swift's decoding (NE-11s, NE-20) must accept and refuse the same payloads.",
+  "cases": [
+    {
+      "id": "contract/bridge-methods",
+      "covers": [],
+      "read": "BRIDGE_METHODS",
+      "expect": { "value": ["engineHello", "engineSend", "engineRead"] }
+    },
+    {
+      "id": "contract/commands",
+      "covers": [],
+      "read": "COMMANDS",
+      "expect": {
+        "value": [
+          "playEpisode",
+          "playForay",
+          "setContinuation",
+          "play",
+          "pause",
+          "toggle",
+          "next",
+          "previous",
+          "seekBy",
+          "seekTo",
+          "jump",
+          "stop",
+          "setRate",
+          "setVoice",
+          "setInterludeEnabled",
+          "setPageVisible",
+          "ackAdvances",
+          "ackEvents",
+          "restoreBar",
+          "purge",
+          "relinquish",
+          "audition",
+          "setModeOverride",
+          "setHoldPolicy",
+          "probeSession",
+          "simulateTermination"
+        ]
+      }
+    },
+    {
+      "id": "contract/events",
+      "covers": [],
+      "read": "EVENTS",
+      "expect": {
+        "value": [
+          "snapshot",
+          "advanced",
+          "skipped",
+          "error",
+          "voiceFallback",
+          "diag",
+          "modeChanged"
+        ]
+      }
+    },
+    {
+      "id": "contract/refusals",
+      "covers": [],
+      "read": "REFUSALS",
+      "expect": {
+        "value": [
+          "not-loaded",
+          "no-next",
+          "no-previous",
+          "ended",
+          "refused-structure",
+          "capability-off",
+          "session-failed:cannot-interrupt-others",
+          "session-failed:cannot-start-playing",
+          "session-failed:other",
+          "engine-busy",
+          "relinquished",
+          "unknown-cmd"
+        ]
+      }
+    },
+    {
+      "id": "contract/read-kinds",
+      "covers": [],
+      "read": "READ_KINDS",
+      "expect": { "value": ["snapshot", "rows", "diagnostics"] }
+    },
+    {
+      "id": "contract/capabilities",
+      "covers": [],
+      "read": "CAPABILITIES",
+      "expect": { "value": ["episode", "continuation", "restore", "foray"] }
+    },
+    {
+      "id": "contract/relinquish-caps",
+      "covers": [],
+      "read": "RELINQUISH_CAPS",
+      "expect": { "value": ["episode", "continuation", "restore", "foray", "all"] }
+    },
+    {
+      "id": "contract/owned-prefixes",
+      "covers": [],
+      "read": "OWNED_PREFIXES",
+      "expect": { "value": ["cp_pos:", "cp_foray:", "cp_last_episode"] }
+    },
+    {
+      "id": "contract/contract-kinds",
+      "covers": [],
+      "read": "CONTRACT_KINDS",
+      "expect": {
+        "value": [
+          "helloRequest",
+          "helloResponse",
+          "sendRequest",
+          "sendResponse",
+          "readRequest",
+          "rowsResponse",
+          "diagnosticsResponse",
+          "snapshot",
+          "event"
+        ]
+      }
+    },
+    {
+      "id": "contract/hello-request-valid-page-v1",
+      "covers": [],
+      "call": "contractAccepts",
+      "args": ["helloRequest", { "pageBuild": "2026.09.24-1", "protocol": 1 }],
+      "expect": { "return": true }
+    },
+    {
+      "id": "contract/hello-request-invalid-missing-protocol",
+      "covers": [],
+      "call": "contractAccepts",
+      "args": ["helloRequest", { "pageBuild": "2026.09.24-1" }],
+      "expect": { "return": false }
+    },
+    {
+      "id": "contract/hello-request-invalid-protocol-string",
+      "covers": [],
+      "call": "contractAccepts",
+      "args": ["helloRequest", { "pageBuild": "2026.09.24-1", "protocol": "1" }],
+      "expect": { "return": false }
+    },
+    {
+      "id": "contract/hello-response-valid-not-built-stub",
+      "covers": [],
+      "call": "contractAccepts",
+      "args": ["helloResponse", { "mode": "legacy", "reason": "not-built" }],
+      "expect": { "return": true }
+    },
+    {
+      "id": "contract/hello-response-valid-native",
+      "covers": [],
+      "call": "contractAccepts",
+      "args": [
+        "helloResponse",
+        {
+          "mode": "native",
+          "reason": "build-default",
+          "engineVersion": "1.0.0",
+          "protocol": 1,
+          "capabilities": ["episode", "restore"],
+          "ownedKeyPrefixes": ["cp_pos:", "cp_foray:", "cp_last_episode"],
+          "snapshot": {
+            "v": 1,
+            "seq": 0,
+            "capturedAtWallMs": 1790000000000,
+            "capturedAtMonotonicMs": 0,
+            "mode": "none",
+            "state": "idle",
+            "running": false,
+            "inSeamGap": false,
+            "inInterlude": false,
+            "buffering": false,
+            "ended": false,
+            "positionSec": 0,
+            "durationSec": null,
+            "sourceTimeSec": null,
+            "playheadItemId": null,
+            "isNarrationPlayhead": false,
+            "rate": 1,
+            "effectiveRate": 0,
+            "canNext": false,
+            "canPrevious": false,
+            "autoAdvance": true,
+            "skippedSegments": 0,
+            "pendingAdvances": 0,
+            "pendingEvents": 0,
+            "session": "inactive",
+            "holdPolicy": "forever",
+            "nowPlaying": { "title": "", "artist": "", "album": "" }
+          },
+          "pendingAdvances": [{ "planSeq": 3, "hopSeq": 1, "nextId": "ep-2", "at": 1790000000000 }],
+          "pendingEvents": [
+            {
+              "seq": 7,
+              "kind": "position",
+              "episode_id": "ep-1",
+              "seconds": 60,
+              "duration": 3600,
+              "at": 1790000000000
+            }
+          ]
+        }
+      ],
+      "expect": { "return": true }
+    },
+    {
+      "id": "contract/hello-response-valid-crash-loop-legacy",
+      "covers": [],
+      "call": "contractAccepts",
+      "args": ["helloResponse", { "mode": "legacy", "reason": "crash-loop", "protocol": 1 }],
+      "expect": { "return": true }
+    },
+    {
+      "id": "contract/hello-response-invalid-mode-js",
+      "covers": [],
+      "call": "contractAccepts",
+      "args": ["helloResponse", { "mode": "js", "reason": "build-default" }],
+      "expect": { "return": false }
+    },
+    {
+      "id": "contract/hello-response-invalid-reason-free-text",
+      "covers": [],
+      "call": "contractAccepts",
+      "args": ["helloResponse", { "mode": "legacy", "reason": "the engine felt unwell" }],
+      "expect": { "return": false }
+    },
+    {
+      "id": "contract/hello-response-invalid-native-without-snapshot",
+      "covers": [],
+      "call": "contractAccepts",
+      "args": [
+        "helloResponse",
+        {
+          "mode": "native",
+          "reason": "override",
+          "engineVersion": "1.0.0",
+          "protocol": 1,
+          "capabilities": ["episode"],
+          "ownedKeyPrefixes": ["cp_pos:", "cp_foray:", "cp_last_episode"]
+        }
+      ],
+      "expect": { "return": false }
+    },
+    {
+      "id": "contract/hello-response-invalid-unknown-capability",
+      "covers": [],
+      "call": "contractAccepts",
+      "args": [
+        "helloResponse",
+        {
+          "mode": "native",
+          "reason": "override",
+          "engineVersion": "1.0.0",
+          "protocol": 1,
+          "capabilities": ["carplay"],
+          "ownedKeyPrefixes": ["cp_pos:", "cp_foray:", "cp_last_episode"],
+          "snapshot": {
+            "v": 1,
+            "seq": 0,
+            "capturedAtWallMs": 1790000000000,
+            "capturedAtMonotonicMs": 0,
+            "mode": "none",
+            "state": "idle",
+            "running": false,
+            "inSeamGap": false,
+            "inInterlude": false,
+            "buffering": false,
+            "ended": false,
+            "positionSec": 0,
+            "durationSec": null,
+            "sourceTimeSec": null,
+            "playheadItemId": null,
+            "isNarrationPlayhead": false,
+            "rate": 1,
+            "effectiveRate": 0,
+            "canNext": false,
+            "canPrevious": false,
+            "autoAdvance": true,
+            "skippedSegments": 0,
+            "pendingAdvances": 0,
+            "pendingEvents": 0,
+            "session": "inactive",
+            "holdPolicy": "forever",
+            "nowPlaying": { "title": "", "artist": "", "album": "" }
+          }
+        }
+      ],
+      "expect": { "return": false }
+    },
+    {
+      "id": "contract/send-request-valid-play-tap",
+      "covers": [],
+      "call": "contractAccepts",
+      "args": [
+        "sendRequest",
+        {
+          "v": 1,
+          "cmdSeq": 5,
+          "cmd": "play",
+          "source": "tap",
+          "issuedAtWallMs": 1790000000000
+        }
+      ],
+      "expect": { "return": true }
+    },
+    {
+      "id": "contract/send-request-valid-play-episode",
+      "covers": [],
+      "call": "contractAccepts",
+      "args": [
+        "sendRequest",
+        {
+          "v": 1,
+          "cmdSeq": 6,
+          "cmd": "playEpisode",
+          "source": "tap",
+          "args": {
+            "item": {
+              "id": "ep-1",
+              "kind": "episode",
+              "audio_url": "https://example.com/a.mp3"
+            },
+            "startSec": 30,
+            "lastEpisodeRow": { "id": "ep-1", "title": "An Episode" }
+          }
+        }
+      ],
+      "expect": { "return": true }
+    },
+    {
+      "id": "contract/send-request-valid-relinquish-foray",
+      "covers": [],
+      "call": "contractAccepts",
+      "args": [
+        "sendRequest",
+        {
+          "v": 1,
+          "cmdSeq": 7,
+          "cmd": "relinquish",
+          "source": "tap",
+          "args": { "cap": "foray" }
+        }
+      ],
+      "expect": { "return": true }
+    },
+    {
+      "id": "contract/send-request-valid-set-hold-until",
+      "covers": [],
+      "call": "contractAccepts",
+      "args": [
+        "sendRequest",
+        {
+          "v": 1,
+          "cmdSeq": 8,
+          "cmd": "setHoldPolicy",
+          "source": "tap",
+          "args": { "policy": "until:60" }
+        }
+      ],
+      "expect": { "return": true }
+    },
+    {
+      "id": "contract/send-request-valid-set-continuation",
+      "covers": [],
+      "call": "contractAccepts",
+      "args": [
+        "sendRequest",
+        {
+          "v": 1,
+          "cmdSeq": 9,
+          "cmd": "setContinuation",
+          "source": "restore",
+          "args": {
+            "planSeq": 3,
+            "autoAdvance": false,
+            "chain": [{ "planSeq": 3, "hopSeq": 1, "nextId": "ep-2" }]
+          }
+        }
+      ],
+      "expect": { "return": true }
+    },
+    {
+      "id": "contract/send-request-valid-stop-data-deletion",
+      "covers": [],
+      "call": "contractAccepts",
+      "args": [
+        "sendRequest",
+        {
+          "v": 1,
+          "cmdSeq": 10,
+          "cmd": "stop",
+          "source": "tap",
+          "args": { "persist": false }
+        }
+      ],
+      "expect": { "return": true }
+    },
+    {
+      "id": "contract/send-request-invalid-unknown-cmd",
+      "covers": [],
+      "call": "contractAccepts",
+      "args": ["sendRequest", { "v": 1, "cmdSeq": 5, "cmd": "fastForward", "source": "tap" }],
+      "expect": { "return": false }
+    },
+    {
+      "id": "contract/send-request-invalid-wrong-version",
+      "covers": [],
+      "call": "contractAccepts",
+      "args": ["sendRequest", { "v": 2, "cmdSeq": 5, "cmd": "play", "source": "tap" }],
+      "expect": { "return": false }
+    },
+    {
+      "id": "contract/send-request-invalid-unknown-source",
+      "covers": [],
+      "call": "contractAccepts",
+      "args": ["sendRequest", { "v": 1, "cmdSeq": 5, "cmd": "play", "source": "siri" }],
+      "expect": { "return": false }
+    },
+    {
+      "id": "contract/send-request-invalid-relinquish-without-cap",
+      "covers": [],
+      "call": "contractAccepts",
+      "args": [
+        "sendRequest",
+        { "v": 1, "cmdSeq": 5, "cmd": "relinquish", "source": "tap", "args": {} }
+      ],
+      "expect": { "return": false }
+    },
+    {
+      "id": "contract/send-request-invalid-relinquish-unknown-cap",
+      "covers": [],
+      "call": "contractAccepts",
+      "args": [
+        "sendRequest",
+        {
+          "v": 1,
+          "cmdSeq": 5,
+          "cmd": "relinquish",
+          "source": "tap",
+          "args": { "cap": "everything" }
+        }
+      ],
+      "expect": { "return": false }
+    },
+    {
+      "id": "contract/send-request-invalid-hold-until-zero",
+      "covers": [],
+      "call": "contractAccepts",
+      "args": [
+        "sendRequest",
+        {
+          "v": 1,
+          "cmdSeq": 5,
+          "cmd": "setHoldPolicy",
+          "source": "tap",
+          "args": { "policy": "until:0" }
+        }
+      ],
+      "expect": { "return": false }
+    },
+    {
+      "id": "contract/send-request-invalid-play-episode-without-row",
+      "covers": [],
+      "call": "contractAccepts",
+      "args": [
+        "sendRequest",
+        {
+          "v": 1,
+          "cmdSeq": 5,
+          "cmd": "playEpisode",
+          "source": "tap",
+          "args": { "item": { "id": "ep-1" } }
+        }
+      ],
+      "expect": { "return": false }
+    },
+    {
+      "id": "contract/send-request-invalid-negative-seq",
+      "covers": [],
+      "call": "contractAccepts",
+      "args": ["sendRequest", { "v": 1, "cmdSeq": -1, "cmd": "play", "source": "tap" }],
+      "expect": { "return": false }
+    },
+    {
+      "id": "contract/send-request-invalid-override-unknown-mode",
+      "covers": [],
+      "call": "contractAccepts",
+      "args": [
+        "sendRequest",
+        {
+          "v": 1,
+          "cmdSeq": 5,
+          "cmd": "setModeOverride",
+          "source": "tap",
+          "args": { "mode": "legacy" }
+        }
+      ],
+      "expect": { "return": false }
+    },
+    {
+      "id": "contract/send-response-valid-ok",
+      "covers": [],
+      "call": "contractAccepts",
+      "args": [
+        "sendResponse",
+        {
+          "ok": true,
+          "snapshot": {
+            "v": 1,
+            "seq": 42,
+            "capturedAtWallMs": 1790000000000,
+            "capturedAtMonotonicMs": 523000,
+            "mode": "episode",
+            "index": 0,
+            "itemId": "ep-1",
+            "itemKind": "episode",
+            "state": "playing",
+            "running": true,
+            "inSeamGap": false,
+            "inInterlude": false,
+            "buffering": false,
+            "ended": false,
+            "positionSec": 120.5,
+            "durationSec": 3600,
+            "sourceTimeSec": 120.5,
+            "playheadItemId": "ep-1",
+            "isNarrationPlayhead": false,
+            "rate": 1.5,
+            "effectiveRate": 1.5,
+            "canNext": true,
+            "canPrevious": true,
+            "autoAdvance": true,
+            "skippedSegments": 0,
+            "pendingAdvances": 0,
+            "pendingEvents": 0,
+            "session": "active",
+            "holdPolicy": "forever",
+            "nowPlaying": { "title": "The Long Drive", "artist": "A Show", "album": "Foray" }
+          }
+        }
+      ],
+      "expect": { "return": true }
+    },
+    {
+      "id": "contract/send-response-valid-refused-no-next",
+      "covers": [],
+      "call": "contractAccepts",
+      "args": [
+        "sendResponse",
+        {
+          "ok": false,
+          "reason": "no-next",
+          "snapshot": {
+            "v": 1,
+            "seq": 42,
+            "capturedAtWallMs": 1790000000000,
+            "capturedAtMonotonicMs": 523000,
+            "mode": "episode",
+            "index": 0,
+            "itemId": "ep-1",
+            "itemKind": "episode",
+            "state": "playing",
+            "running": true,
+            "inSeamGap": false,
+            "inInterlude": false,
+            "buffering": false,
+            "ended": false,
+            "positionSec": 120.5,
+            "durationSec": 3600,
+            "sourceTimeSec": 120.5,
+            "playheadItemId": "ep-1",
+            "isNarrationPlayhead": false,
+            "rate": 1.5,
+            "effectiveRate": 1.5,
+            "canNext": true,
+            "canPrevious": true,
+            "autoAdvance": true,
+            "skippedSegments": 0,
+            "pendingAdvances": 0,
+            "pendingEvents": 0,
+            "session": "active",
+            "holdPolicy": "forever",
+            "nowPlaying": { "title": "The Long Drive", "artist": "A Show", "album": "Foray" }
+          }
+        }
+      ],
+      "expect": { "return": true }
+    },
+    {
+      "id": "contract/send-response-valid-session-failed",
+      "covers": [],
+      "call": "contractAccepts",
+      "args": [
+        "sendResponse",
+        {
+          "ok": false,
+          "reason": "session-failed:cannot-interrupt-others",
+          "snapshot": {
+            "v": 1,
+            "seq": 0,
+            "capturedAtWallMs": 1790000000000,
+            "capturedAtMonotonicMs": 0,
+            "mode": "none",
+            "state": "idle",
+            "running": false,
+            "inSeamGap": false,
+            "inInterlude": false,
+            "buffering": false,
+            "ended": false,
+            "positionSec": 0,
+            "durationSec": null,
+            "sourceTimeSec": null,
+            "playheadItemId": null,
+            "isNarrationPlayhead": false,
+            "rate": 1,
+            "effectiveRate": 0,
+            "canNext": false,
+            "canPrevious": false,
+            "autoAdvance": true,
+            "skippedSegments": 0,
+            "pendingAdvances": 0,
+            "pendingEvents": 0,
+            "session": "inactive",
+            "holdPolicy": "forever",
+            "nowPlaying": { "title": "", "artist": "", "album": "" }
+          }
+        }
+      ],
+      "expect": { "return": true }
+    },
+    {
+      "id": "contract/send-response-invalid-refused-without-reason",
+      "covers": [],
+      "call": "contractAccepts",
+      "args": [
+        "sendResponse",
+        {
+          "ok": false,
+          "snapshot": {
+            "v": 1,
+            "seq": 0,
+            "capturedAtWallMs": 1790000000000,
+            "capturedAtMonotonicMs": 0,
+            "mode": "none",
+            "state": "idle",
+            "running": false,
+            "inSeamGap": false,
+            "inInterlude": false,
+            "buffering": false,
+            "ended": false,
+            "positionSec": 0,
+            "durationSec": null,
+            "sourceTimeSec": null,
+            "playheadItemId": null,
+            "isNarrationPlayhead": false,
+            "rate": 1,
+            "effectiveRate": 0,
+            "canNext": false,
+            "canPrevious": false,
+            "autoAdvance": true,
+            "skippedSegments": 0,
+            "pendingAdvances": 0,
+            "pendingEvents": 0,
+            "session": "inactive",
+            "holdPolicy": "forever",
+            "nowPlaying": { "title": "", "artist": "", "album": "" }
+          }
+        }
+      ],
+      "expect": { "return": false }
+    },
+    {
+      "id": "contract/send-response-invalid-session-failed-unknown-token",
+      "covers": [],
+      "call": "contractAccepts",
+      "args": [
+        "sendResponse",
+        {
+          "ok": false,
+          "reason": "session-failed:busy",
+          "snapshot": {
+            "v": 1,
+            "seq": 0,
+            "capturedAtWallMs": 1790000000000,
+            "capturedAtMonotonicMs": 0,
+            "mode": "none",
+            "state": "idle",
+            "running": false,
+            "inSeamGap": false,
+            "inInterlude": false,
+            "buffering": false,
+            "ended": false,
+            "positionSec": 0,
+            "durationSec": null,
+            "sourceTimeSec": null,
+            "playheadItemId": null,
+            "isNarrationPlayhead": false,
+            "rate": 1,
+            "effectiveRate": 0,
+            "canNext": false,
+            "canPrevious": false,
+            "autoAdvance": true,
+            "skippedSegments": 0,
+            "pendingAdvances": 0,
+            "pendingEvents": 0,
+            "session": "inactive",
+            "holdPolicy": "forever",
+            "nowPlaying": { "title": "", "artist": "", "album": "" }
+          }
+        }
+      ],
+      "expect": { "return": false }
+    },
+    {
+      "id": "contract/send-response-invalid-without-snapshot",
+      "covers": [],
+      "call": "contractAccepts",
+      "args": ["sendResponse", { "ok": true }],
+      "expect": { "return": false }
+    },
+    {
+      "id": "contract/read-request-valid-snapshot",
+      "covers": [],
+      "call": "contractAccepts",
+      "args": ["readRequest", { "what": "snapshot" }],
+      "expect": { "return": true }
+    },
+    {
+      "id": "contract/read-request-valid-rows-owned",
+      "covers": [],
+      "call": "contractAccepts",
+      "args": [
+        "readRequest",
+        { "what": "rows", "prefixes": ["cp_pos:", "cp_foray:", "cp_last_episode"] }
+      ],
+      "expect": { "return": true }
+    },
+    {
+      "id": "contract/read-request-valid-diagnostics",
+      "covers": [],
+      "call": "contractAccepts",
+      "args": ["readRequest", { "what": "diagnostics" }],
+      "expect": { "return": true }
+    },
+    {
+      "id": "contract/read-request-invalid-rows-unowned-prefix",
+      "covers": [],
+      "call": "contractAccepts",
+      "args": ["readRequest", { "what": "rows", "prefixes": ["cp_queue"] }],
+      "expect": { "return": false }
+    },
+    {
+      "id": "contract/read-request-invalid-unknown-what",
+      "covers": [],
+      "call": "contractAccepts",
+      "args": ["readRequest", { "what": "everything" }],
+      "expect": { "return": false }
+    },
+    {
+      "id": "contract/rows-response-valid-one-row",
+      "covers": [],
+      "call": "contractAccepts",
+      "args": [
+        "rowsResponse",
+        {
+          "rows": {
+            "cp_pos:ep-1": "{\"seconds\":60,\"updated_at\":\"2026-09-24T00:00:00.000Z\"}"
+          }
+        }
+      ],
+      "expect": { "return": true }
+    },
+    {
+      "id": "contract/rows-response-invalid-row-not-a-string",
+      "covers": [],
+      "call": "contractAccepts",
+      "args": ["rowsResponse", { "rows": { "cp_pos:ep-1": { "seconds": 60 } } }],
+      "expect": { "return": false }
+    },
+    {
+      "id": "contract/diagnostics-response-valid-one-row",
+      "covers": [],
+      "call": "contractAccepts",
+      "args": [
+        "diagnosticsResponse",
+        {
+          "rows": [{ "seq": 1, "at": 1790000000000, "kind": "mode", "reason": "build-default" }]
+        }
+      ],
+      "expect": { "return": true }
+    },
+    {
+      "id": "contract/diagnostics-response-invalid-rows-not-an-array",
+      "covers": [],
+      "call": "contractAccepts",
+      "args": ["diagnosticsResponse", { "rows": { "seq": 1 } }],
+      "expect": { "return": false }
+    },
+    {
+      "id": "contract/event-valid-snapshot",
+      "covers": [],
+      "call": "contractAccepts",
+      "args": [
+        "event",
+        {
+          "type": "snapshot",
+          "snapshot": {
+            "v": 1,
+            "seq": 42,
+            "capturedAtWallMs": 1790000000000,
+            "capturedAtMonotonicMs": 523000,
+            "mode": "episode",
+            "index": 0,
+            "itemId": "ep-1",
+            "itemKind": "episode",
+            "state": "playing",
+            "running": true,
+            "inSeamGap": false,
+            "inInterlude": false,
+            "buffering": false,
+            "ended": false,
+            "positionSec": 120.5,
+            "durationSec": 3600,
+            "sourceTimeSec": 120.5,
+            "playheadItemId": "ep-1",
+            "isNarrationPlayhead": false,
+            "rate": 1.5,
+            "effectiveRate": 1.5,
+            "canNext": true,
+            "canPrevious": true,
+            "autoAdvance": true,
+            "skippedSegments": 0,
+            "pendingAdvances": 0,
+            "pendingEvents": 0,
+            "session": "active",
+            "holdPolicy": "forever",
+            "nowPlaying": { "title": "The Long Drive", "artist": "A Show", "album": "Foray" }
+          }
+        }
+      ],
+      "expect": { "return": true }
+    },
+    {
+      "id": "contract/event-valid-error-chain-start",
+      "covers": [],
+      "call": "contractAccepts",
+      "args": ["event", { "type": "error", "code": "chain-start" }],
+      "expect": { "return": true }
+    },
+    {
+      "id": "contract/event-valid-mode-changed",
+      "covers": [],
+      "call": "contractAccepts",
+      "args": ["event", { "type": "modeChanged", "mode": "legacy", "reason": "downgrade" }],
+      "expect": { "return": true }
+    },
+    {
+      "id": "contract/event-invalid-unknown-type",
+      "covers": [],
+      "call": "contractAccepts",
+      "args": ["event", { "type": "tick" }],
+      "expect": { "return": false }
+    },
+    {
+      "id": "contract/event-invalid-snapshot-without-snapshot",
+      "covers": [],
+      "call": "contractAccepts",
+      "args": ["event", { "type": "snapshot" }],
+      "expect": { "return": false }
+    },
+    {
+      "id": "contract/event-invalid-error-without-code",
+      "covers": [],
+      "call": "contractAccepts",
+      "args": ["event", { "type": "error" }],
+      "expect": { "return": false }
+    },
+    {
+      "id": "contract/throws-unknown-kind",
+      "covers": [],
+      "call": "contractAccepts",
+      "args": ["handshake", {}],
+      "expect": { "throws": { "name": "RangeError" } }
+    }
+  ]
+}

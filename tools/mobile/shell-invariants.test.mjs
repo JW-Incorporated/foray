@@ -101,6 +101,7 @@ import {
 } from "../../mobile/plugins/foray-audio/web/foray-media-session.js";
 import { FORAY_AUDIO_REACHED_NEEDLE, FORAY_SESSION_NEEDLE } from "./ios-ci.mjs";
 import { REMOTE_ORIGINS, REMOTE_COMMANDS } from "../../player/diagnostic-log.js";
+import { CLICK_TRACK_DIR, exemptClickTrackPaths } from "../audio/click-tracks.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, "..", "..");
@@ -2028,12 +2029,12 @@ test("the seek pair has ONE source — the payload — on both natives, and the 
   const availability = swiftFuncBody(swift, "applyCommandAvailability");
   assert.match(availability, /skipBackwardCommand\.preferredIntervals = Self\.preferredIntervals\(ms: payload\.seekBackMs\)/);
   assert.match(availability, /skipForwardCommand\.preferredIntervals = Self\.preferredIntervals\(ms: payload\.seekForwardMs\)/);
-  assert.doesNotMatch(swiftFuncBody(swift, "load"), /preferredIntervals/, "not once at load — per state change");
+  assert.doesNotMatch(swiftFuncBody(swift, "runLegacyRegistration"), /preferredIntervals/, "not once at load — per state change");
   /* And nothing is ENABLED at load: `.empty` is the payload the page has not
      sent yet, so the first real `setNowPlaying` is a change the command centre
      sees, and no lock screen offers a play button for a player with nothing
      loaded (Android's IDLE). MUTATION: delete the call from `load()`. */
-  assert.match(swiftFuncBody(swift, "load"), /applyCommandAvailability\(\.empty\)/, "load() must start every command disabled");
+  assert.match(swiftFuncBody(swift, "runLegacyRegistration"), /applyCommandAvailability\(\.empty\)/, "load() must start every command disabled");
   const payload = stripSwiftComments(fs.readFileSync(
     path.join(PLUGIN_DIR, "ios/Sources/ForayAudioPlugin/NowPlayingPayload.swift"), "utf8"
   ));
@@ -2367,6 +2368,1410 @@ test("the session event name is one string across the Swift and the web half (M-
   );
 });
 
+/* ─────────── NE-01: the native engine's core, folded into foray-audio ───────────
+ *
+ * docs/native-engine-plan.md §4.1 and card NE-01. The engine's pure core is a
+ * nested SwiftPM package, `foray-audio/foray-engine-core`, that the plugin
+ * links by path. None of it compiles on the Windows machine this repo is
+ * written on, so everything that CAN be read without a compiler is pinned
+ * here, and every Swift claim is executed by CI (`ci.yml`'s ios-kit:
+ * `swift test` on the core, `xcodebuild test -scheme ForayAudio`; and
+ * ios-build's app build). These pins are what keep a later edit from quietly
+ * undoing the properties those runs proved. */
+
+const CORE_DIR = path.join(PLUGIN_DIR, "foray-engine-core");
+const CORE_MANIFEST = path.join(CORE_DIR, "Package.swift");
+const AUDIO_MANIFEST = path.join(PLUGIN_DIR, "Package.swift");
+
+/** Every .swift file under `dir`, recursively, as absolute paths. */
+function swiftFilesUnder(dir) {
+  const out = [];
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    const abs = path.join(dir, entry.name);
+    if (entry.isDirectory()) out.push(...swiftFilesUnder(abs));
+    else if (entry.name.endsWith(".swift")) out.push(abs);
+  }
+  return out;
+}
+
+const swiftImports = (file) =>
+  [...stripSwiftComments(fs.readFileSync(file, "utf8")).matchAll(/^\s*(?:@testable\s+)?import\s+(\w+)/gm)].map((m) => m[1]);
+
+test("NE-01: foray-engine-core is a pure package: no dependencies, Foundation-only sources, and no XCTest in the parity library", () => {
+  /* THE PROPERTY THE WHOLE CORE EXISTS FOR. Every playback decision the engine
+     takes lives here so it can run on a host `swift test` (macOS now, Linux in
+     G-1a's container), and one `import AVFoundation` or one Capacitor
+     dependency makes that impossible: the package would then build only for an
+     iOS Simulator, like the plugin around it. The parity library also runs
+     inside the plugin's test target, which is why it must not import XCTest
+     itself (SwiftPM test targets cannot share sources across packages).
+     MUTATION: add `import AVFoundation` to EngineHandshake.swift, or
+     `import XCTest` to ParityRunner.swift, or a `.package(url:)` to the
+     core manifest; each fails here. */
+  assert.ok(fs.existsSync(CORE_MANIFEST), "mobile/plugins/foray-audio/foray-engine-core/Package.swift is missing");
+  const manifest = stripSwiftComments(fs.readFileSync(CORE_MANIFEST, "utf8"));
+  assert.doesNotMatch(manifest, /\.package\s*\(/, "foray-engine-core declares a package dependency; the core is Foundation-only");
+  assert.match(manifest, /\.iOS\(\.v15\)/, "the core must build for iOS 15, the app's floor");
+  assert.match(manifest, /\.macOS\(\.v12\)/, "the core must build for macOS 12, so ios-kit can host-test it");
+  const products = [...manifest.matchAll(/\.library\(\s*name:\s*"(\w+)"/g)].map((m) => m[1]).sort();
+  assert.deepEqual(products, ["ForayEngineCore", "ForayEngineParity"]);
+
+  const sources = swiftFilesUnder(path.join(CORE_DIR, "Sources"));
+  assert.ok(sources.length >= 2, "expected sources in both ForayEngineCore and ForayEngineParity");
+  const allowed = new Set(["Foundation", "ForayEngineCore"]);
+  for (const file of sources) {
+    for (const mod of swiftImports(file)) {
+      assert.ok(allowed.has(mod), `${path.relative(ROOT, file)} imports ${mod}; the core may import Foundation only`);
+    }
+  }
+  for (const file of swiftFilesUnder(path.join(CORE_DIR, "Sources", "ForayEngineCore"))) {
+    assert.ok(!swiftImports(file).includes("ForayEngineCore"), `${path.relative(ROOT, file)} imports its own module`);
+  }
+  /* And the host wrapper exists, or `swift test` on the core runs nothing. */
+  const hostTests = swiftFilesUnder(path.join(CORE_DIR, "Tests"));
+  assert.ok(
+    hostTests.some((f) => /ParityRunner\.run\(/.test(fs.readFileSync(f, "utf8"))),
+    "foray-engine-core/Tests has no wrapper that runs ForayEngineParity"
+  );
+});
+
+test("NE-01: foray-audio links the core by path, keeps ONE product, and its tests wrap the parity library", () => {
+  /* THE SCHEME-LIST PIN. `ci.yml` runs `xcodebuild test -scheme ForayAudio`
+     here, and Xcode names a package's schemes from its products: one product
+     gives the scheme `ForayAudio`, a second adds `ForayAudio-Package` and
+     changes what that step builds. The core's two products belong to the
+     NESTED package, so this one keeps exactly one.
+     The directory name is pinned because a path dependency's identity is its
+     last path component, and the manifest refers to it by that identity.
+     MUTATION: rename the directory, drop the ForayEngineCore product from the
+     plugin target, or add a second `.library` here; each fails. */
+  const manifest = stripSwiftComments(fs.readFileSync(AUDIO_MANIFEST, "utf8"));
+  assert.match(manifest, /\.package\(\s*path:\s*"foray-engine-core"\s*\)/, "foray-audio no longer depends on ./foray-engine-core by path");
+  assert.ok(fs.statSync(CORE_DIR).isDirectory());
+  const products = [...manifest.matchAll(/\.library\(\s*name:\s*"(\w+)"/g)].map((m) => m[1]);
+  assert.deepEqual(products, ["ForayAudio"], "foray-audio must keep exactly one product, or its scheme list changes");
+
+  const pluginTarget = /\.target\(\s*name:\s*"ForayAudioPlugin"[\s\S]*?path:\s*"ios\/Sources\/ForayAudioPlugin"\)/.exec(manifest);
+  assert.ok(pluginTarget, "the ForayAudioPlugin target is missing");
+  assert.match(pluginTarget[0], /\.product\(\s*name:\s*"ForayEngineCore",\s*package:\s*"foray-engine-core"\s*\)/);
+  assert.match(
+    manifest,
+    /var pluginTestDependencies[\s\S]*?\.product\(\s*name:\s*"ForayEngineParity",\s*package:\s*"foray-engine-core"\s*\)/,
+    "ForayAudioPluginTests must link ForayEngineParity, the zero-.github parity fallback"
+  );
+  assert.match(manifest, /name:\s*"ForayAudioPluginTests",\s*dependencies:\s*pluginTestDependencies/);
+
+  const wrapper = path.join(PLUGIN_DIR, "ios/Tests/ForayAudioPluginTests/EngineParityWrapperTests.swift");
+  assert.match(fs.readFileSync(wrapper, "utf8"), /ParityRunner\.run\(/, "the Simulator-side parity wrapper runs nothing");
+});
+
+test("NE-01: engineHello is iOS-only, answers from the core and always resolves", () => {
+  /* The first of the engine's three bridge methods (§5.1). NE-01 stubbed it
+     as `{mode: "legacy", reason: "not-built"}`; since NE-20 the answer is the
+     bridge's, and every answer (legacy or native) is still built by
+     ForayEngineCore (`EngineBridgeRules`), which is what makes the app build
+     prove the plugin links the nested package. Android never gains it (§4.1).
+     MUTATION: drop the CAPPluginMethod line, make the body `call.reject(...)`,
+     build the answer in the plugin, or add `engineHello` to the Java; each
+     fails. */
+  const swift = fs.readFileSync(AUDIO_SWIFT, "utf8");
+  const declared = [...swift.matchAll(/CAPPluginMethod\(name:\s*"(\w+)"/g)].map((m) => m[1]);
+  assert.ok(declared.includes("engineHello"), "ForayAudioPlugin.swift does not declare engineHello as a CAPPluginMethod");
+  const code = stripSwiftComments(swift);
+  assert.match(code, /^import ForayEngineCore$/m, "ForayAudioPlugin.swift no longer imports ForayEngineCore");
+  const body = swiftFuncBody(code, "engineHello");
+  assert.ok(body, "ForayAudioPlugin.swift has no func engineHello");
+  assert.match(body, /call\.resolve\(Self\.jsObject\(self\.bridgeOnMain\(\)\.hello\(payload\)\)\)/, "engineHello no longer answers through the bridge");
+  assert.match(body, /EngineBridgeRules\.legacyHello\(reason: \.notBuilt\)/, "engineHello's fallback no longer answers from the core");
+  assert.match(body, /call\.resolve\(/, "engineHello must resolve");
+  assert.doesNotMatch(body, /\.reject\(/, "engineHello must never reject (the plugin's every-method-resolves rule)");
+
+  const core = stripSwiftComments(fs.readFileSync(path.join(CORE_DIR, "Sources/ForayEngineCore/EngineHandshake.swift"), "utf8"));
+  assert.match(core, /notBuiltMode\s*=\s*"legacy"/);
+  assert.match(core, /notBuiltReason\s*=\s*"not-built"/);
+
+  const java = fs.readFileSync(
+    path.join(PLUGIN_DIR, "android/src/main/java/ai/jwlabs/foura/audio/ForayAudioPlugin.java"),
+    "utf8"
+  );
+  assert.doesNotMatch(java, /\bengineHello\b/, "the engine's bridge methods are iOS only; Android never gains them");
+});
+
+test("NE-01: the Preferences pin is test-only, cannot reach the app's package graph, and cannot compile out in silence", () => {
+  /* `@capacitor/preferences` has no SwiftPM URL, so foray-audio's manifest
+     adds it from `mobile/node_modules` for the TEST TARGET, and only under
+     FORAY_PREFERENCES_PIN=1, which only ios-kit sets. Three halves:
+       1. the dependency lives inside the env-gated block and nowhere else, so
+          the app's CapApp-SPM graph (which evaluates this manifest with the
+          variable absent) is exactly the graph without it;
+       2. no app-building workflow or action sets the variable;
+       3. ios-kit sets it AND the runner-side requirement, and the test fails
+          (not skips) when the requirement arrives without the module.
+     MUTATION: move the `.package(path: "../../node_modules/@capacitor/preferences")`
+     line into the unconditional list; set FORAY_PREFERENCES_PIN in
+     ios-build.yml; drop TEST_RUNNER_FORAY_REQUIRE_PREFERENCES_PIN from ci.yml;
+     or turn the XCTFail into a skip. Each fails. */
+  const manifest = stripSwiftComments(fs.readFileSync(AUDIO_MANIFEST, "utf8"));
+  assert.match(manifest, /let preferencesPin = Context\.environment\["FORAY_PREFERENCES_PIN"\] == "1"/);
+  const gated = /if preferencesPin \{([\s\S]*?)\n\}/.exec(manifest);
+  assert.ok(gated, "the env-gated block is missing from foray-audio's Package.swift");
+  assert.match(gated[1], /@capacitor\/preferences/);
+  const outside = manifest.replace(gated[0], "");
+  assert.doesNotMatch(outside, /@capacitor\/preferences|CapacitorPreferences/, "the Preferences package is reachable outside the FORAY_PREFERENCES_PIN gate");
+
+  const appBuilders = [
+    ".github/workflows/ios-build.yml",
+    ".github/workflows/release.yml",
+    ".github/actions/ios-archive/action.yml",
+  ];
+  for (const rel of appBuilders) {
+    const abs = path.join(ROOT, rel);
+    assert.ok(fs.existsSync(abs), `${rel} is gone; update this list to whatever builds the app now`);
+    assert.doesNotMatch(fs.readFileSync(abs, "utf8"), /FORAY_PREFERENCES_PIN/, `${rel} builds the app and must not set FORAY_PREFERENCES_PIN`);
+  }
+
+  const ci = fs.readFileSync(path.join(ROOT, ".github/workflows/ci.yml"), "utf8");
+  assert.match(ci, /FORAY_PREFERENCES_PIN=1/, "ci.yml's ios-kit no longer switches the Preferences pin on");
+  assert.match(ci, /TEST_RUNNER_FORAY_REQUIRE_PREFERENCES_PIN=1/, "ci.yml's ios-kit no longer requires the pin at runtime");
+
+  const pin = fs.readFileSync(path.join(PLUGIN_DIR, "ios/Tests/ForayAudioPluginTests/CapacitorStoragePrefixTests.swift"), "utf8");
+  assert.match(pin, /#else[\s\S]*FORAY_REQUIRE_PREFERENCES_PIN"\] == "1"[\s\S]*XCTFail\(/, "the pin must FAIL when required but compiled out");
+  assert.match(pin, /Preferences\(with: PreferencesConfiguration\(\)\)/, "the pin must write through the plugin's own default configuration");
+});
+
+test("NE-01: the page never configures a Preferences group, so the engine's CapacitorStorage. prefix is the page's", async () => {
+  /* The prefix pin above is against Preferences' DEFAULT group. A page that
+     called `configure({group})` would move every row to another prefix and
+     the native engine would read a store the page no longer writes. So: the
+     page's one Preferences client uses only get/set/remove/keys (executed,
+     through a recording bridge), and no other shipped file talks to the
+     plugin at all.
+     MUTATION: add `call("configure", { group: "x" })` to preferencesTier, or
+     a second `nativePromise("Preferences", ...)` caller in player/. */
+  const { preferencesTier, PREFERENCES_PLUGIN } = await import("../../player/durable-store.js");
+  const calls = [];
+  const bridge = {
+    isNativePlatform: () => true,
+    isPluginAvailable: () => true,
+    nativePromise: async (plugin, method, options) => {
+      calls.push([plugin, method, options]);
+      if (method === "keys") return { keys: ["cp_pos:a"] };
+      if (method === "get") return { value: "1" };
+      return {};
+    },
+  };
+  const tier = preferencesTier(bridge);
+  await tier.readAll("cp_");
+  await tier.write("cp_pos:a", "2");
+  await tier.remove("cp_pos:a");
+  assert.ok(calls.length >= 4);
+  for (const [plugin, method, options] of calls) {
+    assert.equal(plugin, PREFERENCES_PLUGIN);
+    assert.ok(["keys", "get", "set", "remove"].includes(method), `the page calls Preferences.${method}`);
+    assert.equal(options && "group" in options, false, "a Preferences call carries a group");
+  }
+
+  const shipped = [path.join(ROOT, "app.js")];
+  const walk = (dir) => {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const abs = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        if (entry.name !== "node_modules") walk(abs);
+      } else if (/\.m?js$/.test(entry.name) && !/\.test\.m?js$/.test(entry.name)) {
+        shipped.push(abs);
+      }
+    }
+  };
+  walk(path.join(ROOT, "player"));
+  walk(path.join(PLUGIN_DIR, "web"));
+  walk(path.join(MOBILE, "plugins", "foray-tts", "web"));
+  const talkers = shipped
+    .filter((f) => /PREFERENCES_PLUGIN|["']Preferences["']/.test(stripJsComments(fs.readFileSync(f, "utf8"))))
+    .map((f) => path.relative(ROOT, f).split(path.sep).join("/"));
+  assert.deepEqual(talkers, ["player/durable-store.js"], "only durable-store.js may talk to the Preferences plugin");
+});
+
+/* ─────────── NE-05: the Swift parity runner and its two wrappers ───────────
+ *
+ * docs/native-engine-plan.md §6.4 and card NE-05. `ForayEngineParity` reads
+ * `player/parity/` IN PLACE, runs each family through its FamilyRunner, keeps
+ * the swift-pending books and writes parity-report.json; a thin XCTest wrapper
+ * in the core's own tests and another in ForayAudioPluginTests (the step
+ * ios-kit already runs, the zero-.github fallback) turn the results into one
+ * XCTFail per case. The Swift is executed by CI only; these pins keep what
+ * those runs proved from being quietly undone by an edit made on Windows. */
+
+test("NE-05: the parity library imports no XCTest, reads the fixtures in place, and honours FORAY_PARITY_DIR / PARITY_REPORT", () => {
+  /* WHY EACH HALF.
+       - No XCTest in ForayEngineParity: the library is linked by TWO test
+         targets in two packages, and SwiftPM test targets cannot share
+         sources; a library that imports XCTest also drags it into anything
+         else that ever links the library.
+       - No .json under foray-engine-core: plan §6 says fixtures are read in
+         place. A copy would be a second contract that drifts from the one JS
+         records, and every Swift green would then be about the copy.
+       - The two environment variables are the interface G-1a's engine-parity
+         job (NE-06) drives; renaming one would make that job read the walk's
+         tree and write no report, silently.
+     MUTATION: add `import XCTest` to ParitySuite.swift; drop a fixture copy
+     into foray-engine-core/Tests; rename "PARITY_REPORT" in ParitySuite.swift;
+     each fails here. */
+  const parityDir = path.join(CORE_DIR, "Sources", "ForayEngineParity");
+  const librarySources = swiftFilesUnder(parityDir);
+  assert.ok(librarySources.length >= 5, "ForayEngineParity should hold the runner, codec, comparator, fixtures and families");
+  for (const file of librarySources) {
+    assert.ok(!swiftImports(file).includes("XCTest"), `${path.relative(ROOT, file)} imports XCTest`);
+  }
+
+  const jsonCopies = [];
+  const walk = (dir) => {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      if (entry.name.startsWith(".")) continue; // .build/.swiftpm on a Mac
+      const abs = path.join(dir, entry.name);
+      if (entry.isDirectory()) walk(abs);
+      else if (entry.name.endsWith(".json")) jsonCopies.push(path.relative(ROOT, abs));
+    }
+  };
+  walk(CORE_DIR);
+  assert.deepEqual(jsonCopies, [], "fixtures are read in place from player/parity, never copied into the core");
+
+  const code = librarySources.map((f) => stripSwiftComments(fs.readFileSync(f, "utf8"))).join("\n");
+  assert.match(code, /environmentKey\s*=\s*"FORAY_PARITY_DIR"/);
+  assert.match(code, /reportKey\s*=\s*"PARITY_REPORT"/);
+  assert.ok(code.includes('"parity family=\\(family) cases=\\(cases)'),"the family log line the plan names (parity family=<f> cases=<n>)");
+  assert.match(code, /#filePath/, "the runner must be able to find player/parity without any environment");
+  /* NE-13: the schema promises "the Swift runner skips these files by this
+     flag". Without it, every id of a jsOnly family (continuation) is
+     "unaccounted" on macOS while JS stays green, and record.mjs refuses the
+     swift-pending entries that would quiet it. MUTATION: drop the
+     `document["jsOnly"]` read from Fixtures.swift; this fails here. */
+  assert.match(code, /document\["jsOnly"\]/, "FixtureFile must read the schema's jsOnly flag");
+  assert.match(code, /case jsOnly = "js-only"/, "the books need a js-only outcome: never run, never owed");
+});
+
+test("NE-05: both wrappers run the seam-gap and compare families and the whole manifest, and the registry holds both runners", () => {
+  /* THE ZERO-.github FALLBACK IS ONLY AS GOOD AS ITS WRAPPER. ios-kit's
+     `xcodebuild test -scheme ForayAudio` executes whatever
+     ForayAudioPluginTests declares; if the plugin-side wrapper lost its
+     seam-gap method or its catch-all, parity would stop running there with
+     every step still green. The host wrapper is pinned the same way for
+     G-1a's Linux run.
+     MUTATION: delete testSeamGapFamily from EngineParityWrapperTests.swift, or
+     SeamGapFamily.runner from ParityFamilies.all; each fails here. */
+  const wrappers = [
+    path.join(PLUGIN_DIR, "ios/Tests/ForayAudioPluginTests/EngineParityWrapperTests.swift"),
+    path.join(CORE_DIR, "Tests/ForayEngineCoreTests/ParityFamilyTests.swift"),
+  ];
+  for (const file of wrappers) {
+    const src = stripSwiftComments(fs.readFileSync(file, "utf8"));
+    const where = path.relative(ROOT, file);
+    for (const method of ["testCompareFamily", "testSeamGapFamily", "testEveryManifestFamilyIsExecutedOrPending"]) {
+      assert.match(src, new RegExp(`func ${method}\\(`), `${where} has no ${method}`);
+    }
+    assert.match(src, /assertParityFamily\("seam-gap", requireRunner: true\)/, `${where} must require a seam-gap runner`);
+    assert.match(src, /SharedParityRun\.report\(/, `${where} does not run the parity suite`);
+    assert.match(src, /XCTFail\(/, `${where} reports no per-case failure`);
+  }
+
+  const registry = stripSwiftComments(fs.readFileSync(path.join(CORE_DIR, "Sources/ForayEngineParity/FamilyRunner.swift"), "utf8"));
+  const all = /static var all: \[FamilyRunner\] \{\s*\[([^\]]*)\]/.exec(registry);
+  assert.ok(all, "ParityFamilies.all is missing");
+  assert.match(all[1], /SeamGapFamily\.runner/);
+  assert.match(all[1], /CompareFamily\.runner/);
+});
+
+test("NE-09: both wrappers require the rate, resume-rules and transport runners, and the registry holds them", () => {
+  /* NE-09 burned these three families out of swift-pending.json, so from here
+     on their cases must EXECUTE in Swift. A wrapper that lost its method, or a
+     `requireRunner: true` quietly dropped, would let a deregistered runner
+     read as "owed" for zero ids and stay green; the registry line is what
+     makes them run at all.
+     MUTATION: drop `requireRunner: true` from testTransportFamily in either
+     wrapper, or TransportFamily.runner from ParityFamilies.all; each fails here. */
+  const wrappers = [
+    path.join(PLUGIN_DIR, "ios/Tests/ForayAudioPluginTests/EngineParityWrapperTests.swift"),
+    path.join(CORE_DIR, "Tests/ForayEngineCoreTests/ParityFamilyTests.swift"),
+  ];
+  const families = { rate: "testRateFamily", "resume-rules": "testResumeRulesFamily", transport: "testTransportFamily" };
+  for (const file of wrappers) {
+    const src = stripSwiftComments(fs.readFileSync(file, "utf8"));
+    const where = path.relative(ROOT, file);
+    for (const [family, method] of Object.entries(families)) {
+      assert.match(src, new RegExp(String.raw`func ${method}\(\)\s*\{\s*assertParityFamily\("${family}", requireRunner: true\)`),
+        `${where}: ${method} must require a ${family} runner`);
+    }
+  }
+  const registry = stripSwiftComments(fs.readFileSync(path.join(CORE_DIR, "Sources/ForayEngineParity/FamilyRunner.swift"), "utf8"));
+  const all = /static var all: \[FamilyRunner\] \{\s*\[([^\]]*)\]/.exec(registry);
+  assert.ok(all, "ParityFamilies.all is missing");
+  for (const runner of ["RateFamily.runner", "ResumeRulesFamily.runner", "TransportFamily.runner"]) {
+    assert.ok(all[1].includes(runner), `ParityFamilies.all has no ${runner}`);
+  }
+});
+
+test("NE-07s: the queue-state runner is registered and both wrappers require it to have run", () => {
+  /* NE-07s burned the queue-state family out of swift-pending.json. From then
+     on the ids are owed by nobody, so if the runner fell out of the registry
+     the Swift books would call each id "unaccounted" and go red, which is
+     right; but a wrapper that only says assertParityFamily("queue-state")
+     would also accept a family that is ENTIRELY pending again (a re-record
+     with --port-card), and the reducer would stop being checked with every
+     step green. requireRunner makes "it ran" part of the assertion.
+     MUTATION: drop QueueStateFamily.runner from ParityFamilies.all, or
+     `requireRunner: true` from either wrapper's testQueueStateFamily; each
+     fails here. */
+  const registry = stripSwiftComments(fs.readFileSync(path.join(CORE_DIR, "Sources/ForayEngineParity/FamilyRunner.swift"), "utf8"));
+  const all = /static var all: \[FamilyRunner\] \{\s*\[([^\]]*)\]/.exec(registry);
+  assert.ok(all, "ParityFamilies.all is missing");
+  assert.match(all[1], /QueueStateFamily\.runner/, "ParityFamilies.all must hold the queue-state runner (NE-07s)");
+  for (const file of [
+    path.join(PLUGIN_DIR, "ios/Tests/ForayAudioPluginTests/EngineParityWrapperTests.swift"),
+    path.join(CORE_DIR, "Tests/ForayEngineCoreTests/ParityFamilyTests.swift"),
+  ]) {
+    const src = stripSwiftComments(fs.readFileSync(file, "utf8"));
+    assert.match(src, /assertParityFamily\("queue-state", requireRunner: true\)/,
+      `${path.relative(ROOT, file)} must require the queue-state runner to have run`);
+  }
+});
+
+/* ─────────── NE-12s: MediaMapping, the lock screen's rules in Swift ───────────
+ *
+ * docs/native-engine-plan.md §4.5 and card NE-12s. `Policy/MediaMapping.swift`
+ * ports player/media-session.js; the `media-episode` fixtures (NE-12j) are the
+ * contract and run in both XCTest wrappers. What the fixtures cannot see is
+ * where a NUMBER comes from, and the seek pair is the number that has already
+ * been wrong once: the founder's "In the app, I can jump back 15s and forward
+ * 30s. On the lock screen, it's 10s in both directions. Both should be 15/30"
+ * (2026-09-23) was a second copy of the pair drifting from the first. */
+
+/** A Swift numeric literal's value, or NaN for anything that is not a plain
+ *  decimal literal (hex, binary and octal forms are skipped, not guessed). */
+function swiftDecimalLiterals(code) {
+  return [...code.matchAll(/(?<![\w.])\d[\d_]*(?:\.\d[\d_]*)?(?:[eE][+-]?\d[\d_]*)?(?![\w.])/g)]
+    .map((m) => ({ text: m[0], value: Number(m[0].replace(/_/g, "")) }));
+}
+
+test("NE-12s: no literal 15 or 30 (nor 15_000 / 30_000) anywhere in the engine core's Swift but the generated constants", () => {
+  /* The pair lives ONCE, in EngineConstants.swift, which NE-04 generates from
+     media-session.js and gen-constants.test.mjs keeps in step. Every other
+     file reads `EngineConstants.MediaSession.seekBackwardSec` /
+     `seekForwardSec` (MediaMapping re-exports them). A literal anywhere else
+     in the core is a second copy, however innocent its purpose, and the pin
+     does not try to tell a seek step from a coincidence: a real 30 that is
+     not the seek pair belongs in the JS it comes from, and then in the
+     generated file too (plan §6.7). Comments are stripped; a WHY paragraph
+     may say "15/30".
+     MUTATION: `case .seekForward: return .seekBy(30)` in MediaMapping.swift,
+     or `let step = 15_000` in any core source; each fails here. */
+  const sources = swiftFilesUnder(path.join(CORE_DIR, "Sources/ForayEngineCore"))
+    .filter((file) => path.basename(file) !== "EngineConstants.swift");
+  assert.ok(sources.some((f) => f.endsWith(path.join("Policy", "MediaMapping.swift"))), "MediaMapping.swift is missing from the core");
+  const forbidden = new Set([15, 30, 15000, 30000]);
+  const found = [];
+  for (const file of sources) {
+    for (const lit of swiftDecimalLiterals(stripSwiftComments(fs.readFileSync(file, "utf8")))) {
+      if (forbidden.has(lit.value)) found.push(`${path.relative(ROOT, file)}: ${lit.text}`);
+    }
+  }
+  assert.deepEqual(found, [], "a literal seek step in the core; read EngineConstants.MediaSession instead");
+
+  // Not vacuous: the port does read the pair from the generated file.
+  const mapping = stripSwiftComments(fs.readFileSync(path.join(CORE_DIR, "Sources/ForayEngineCore/Policy/MediaMapping.swift"), "utf8"));
+  assert.match(mapping, /seekBackwardSec = EngineConstants\.MediaSession\.seekBackwardSec/);
+  assert.match(mapping, /seekForwardSec = EngineConstants\.MediaSession\.seekForwardSec/);
+  // And the scanner itself sees every spelling it claims to.
+  assert.deepEqual(swiftDecimalLiterals("a(15) b = 30.0; c = 15_000; d = 3e1; e = 0x1E; f = x15; g = 1.5")
+    .filter((l) => forbidden.has(l.value)).map((l) => l.text), ["15", "30.0", "15_000", "3e1"]);
+});
+
+test("NE-12s: both wrappers require the media-episode runner, the registry holds it, and nothing in the family is still owed", () => {
+  /* NE-12s burned media-episode out of swift-pending.json, so from here on its
+     cases must EXECUTE in Swift. A wrapper that lost its method, or a
+     `requireRunner: true` quietly dropped, would let a deregistered runner
+     read as "owed" for zero ids and stay green; the registry line is what
+     makes them run at all; and one pending id put back would hand the Swift
+     side a case it may fail without anyone noticing until the capability gate.
+     MUTATION: drop `requireRunner: true` from testMediaEpisodeFamily in either
+     wrapper, MediaEpisodeFamily.runner from ParityFamilies.all, or re-add
+     "media-episode/state-playing": "NE-12s" to swift-pending.json; each fails. */
+  const wrappers = [
+    path.join(PLUGIN_DIR, "ios/Tests/ForayAudioPluginTests/EngineParityWrapperTests.swift"),
+    path.join(CORE_DIR, "Tests/ForayEngineCoreTests/ParityFamilyTests.swift"),
+  ];
+  for (const file of wrappers) {
+    const src = stripSwiftComments(fs.readFileSync(file, "utf8"));
+    assert.match(src, /func testMediaEpisodeFamily\(\)\s*\{\s*assertParityFamily\("media-episode", requireRunner: true\)/,
+      `${path.relative(ROOT, file)}: testMediaEpisodeFamily must require a media-episode runner`);
+  }
+  const registry = stripSwiftComments(fs.readFileSync(path.join(CORE_DIR, "Sources/ForayEngineParity/FamilyRunner.swift"), "utf8"));
+  const all = /static var all: \[FamilyRunner\] \{\s*\[([^\]]*)\]/.exec(registry);
+  assert.ok(all, "ParityFamilies.all is missing");
+  assert.ok(all[1].includes("MediaEpisodeFamily.runner"), "ParityFamilies.all has no MediaEpisodeFamily.runner");
+
+  const pending = JSON.parse(fs.readFileSync(path.join(ROOT, "player/parity/swift-pending.json"), "utf8"));
+  assert.deepEqual(Object.keys(pending).filter((id) => id.startsWith("media-episode/")), [],
+    "media-episode is ported (NE-12s): no id of it may be pending");
+  const manifest = JSON.parse(fs.readFileSync(path.join(ROOT, "player/parity/manifest.json"), "utf8"));
+  assert.ok((manifest.families["media-episode"]?.ids ?? []).length >= 118, "the media-episode family shrank below NE-12j's 118 cases");
+});
+
+/* ─────────── NE-14s: EngineCore for episodes, and the audible-start invariant ───────────
+ *
+ * docs/native-engine-plan.md §4.2/§4.4 and card NE-14s. The manager-episode
+ * scenarios run through `EngineCore` in both XCTest wrappers, and the scenario
+ * driver checks the audible-start rule on every turn. What neither can see is
+ * the SHAPE that makes the rule structural: one place in the core commands the
+ * deck to play, and that place refuses without an active session. */
+
+test("NE-14s: both wrappers require the deck-episode and manager-episode runners, nothing in the episode families is owed, and the core plays from one guarded place", () => {
+  /* The two families NE-14s burned down must EXECUTE in Swift from here on:
+     a wrapper that lost its method or its `requireRunner: true`, or a runner
+     dropped from the registry, would let them read as "owed" for zero ids and
+     stay green; one pending id put back would hand the Swift side a case it
+     may fail unseen until the episode capability's gate.
+     And `deckCommand(.play)` appears ONCE in EngineCore.swift, inside
+     `startPlayback`, after its `state.session == .active` guard: a second
+     call site is a second way to be audible that the session guard does not
+     cover, which is the bug the invariant exists to make impossible.
+     MUTATION: drop `requireRunner: true` from testManagerEpisodeFamily in
+     either wrapper; drop ManagerEpisodeFamily.runner from ParityFamilies.all;
+     re-add "manager-episode/play-loads-then-starts": "NE-14s" to
+     swift-pending.json; or add `deckCommand(.play)` to `run`; each fails here. */
+  const wrappers = [
+    path.join(PLUGIN_DIR, "ios/Tests/ForayAudioPluginTests/EngineParityWrapperTests.swift"),
+    path.join(CORE_DIR, "Tests/ForayEngineCoreTests/ParityFamilyTests.swift"),
+  ];
+  const families = { "deck-episode": "testDeckEpisodeFamily", "manager-episode": "testManagerEpisodeFamily" };
+  for (const file of wrappers) {
+    const src = stripSwiftComments(fs.readFileSync(file, "utf8"));
+    for (const [family, method] of Object.entries(families)) {
+      assert.match(src, new RegExp(String.raw`func ${method}\(\)\s*\{\s*assertParityFamily\("${family}", requireRunner: true\)`),
+        `${path.relative(ROOT, file)}: ${method} must require a ${family} runner`);
+    }
+  }
+  const registry = stripSwiftComments(fs.readFileSync(path.join(CORE_DIR, "Sources/ForayEngineParity/FamilyRunner.swift"), "utf8"));
+  const all = /static var all: \[FamilyRunner\] \{\s*\[([^\]]*)\]/.exec(registry);
+  assert.ok(all, "ParityFamilies.all is missing");
+  for (const runner of ["DeckEpisodeFamily.runner", "ManagerEpisodeFamily.runner"]) {
+    assert.ok(all[1].includes(runner), `ParityFamilies.all has no ${runner}`);
+  }
+
+  const pending = JSON.parse(fs.readFileSync(path.join(ROOT, "player/parity/swift-pending.json"), "utf8"));
+  const owed = Object.keys(pending).filter((id) =>
+    ["manager-episode/", "deck-episode/", "session-invariant/", "transport/"].some((prefix) => id.startsWith(prefix)));
+  assert.deepEqual(owed, [], "manager-episode, deck-episode, session-invariant and transport are ported (NE-14s): none may be pending");
+
+  const core = stripSwiftComments(fs.readFileSync(path.join(CORE_DIR, "Sources/ForayEngineCore/Engine/EngineCore.swift"), "utf8"));
+  const plays = core.match(/deckCommand\(\.play\)/g) ?? [];
+  assert.equal(plays.length, 1, "EngineCore commands the deck to play in exactly one place");
+  const start = core.indexOf("func startPlayback()");
+  assert.ok(start >= 0, "EngineCore has no startPlayback()");
+  const body = core.slice(start, core.indexOf("\n    }\n", start));
+  const guardAt = body.indexOf("guard state.session == .active else");
+  const playAt = body.indexOf("deckCommand(.play)");
+  assert.ok(guardAt >= 0 && playAt > guardAt, "startPlayback plays only after its active-session guard");
+  assert.doesNotMatch(core, /\.deck\(\.play\)/, "the core emits a play only through deckCommand(.play)");
+});
+
+/* ─────────── NE-02: the reducer, copied into the core with its tests ───────────
+ *
+ * docs/native-engine-plan.md §4.1 and card NE-02. PlayerQueueState.swift and
+ * its 34 XCTests were COPIED from ios/ForayKit into foray-engine-core, and the
+ * ios/ originals are frozen reference (ios/ is the dead SwiftUI scaffold; the
+ * existing test "the SwiftUI scaffold and ForayKit are still intact at ios/"
+ * keeps it on disk). The copies compile and pass only in CI (ci.yml's ios-kit,
+ * `swift test` on the core); what can be read without a compiler is pinned
+ * here. */
+
+const CORE_REDUCER = path.join(CORE_DIR, "Sources/ForayEngineCore/Reducer/PlayerQueueState.swift");
+const CORE_REDUCER_TESTS = path.join(CORE_DIR, "Tests/ForayEngineCoreTests/PlayerQueueStateTests.swift");
+const IOS_REDUCER_TESTS = path.join(ROOT, "ios/ForayKit/Tests/ForayKitTests/PlayerQueueStateTests.swift");
+
+/** The leading `//` comment block of a Swift file: its header. */
+const swiftHeader = (file) => {
+  const lines = fs.readFileSync(file, "utf8").split(/\r?\n/);
+  const end = lines.findIndex((l) => !l.startsWith("//"));
+  return lines.slice(0, end < 0 ? lines.length : end).join("\n");
+};
+
+/** Every `func test…(` declared in the code (comments stripped) of a Swift file. */
+const swiftTestNames = (file) =>
+  [...stripSwiftComments(fs.readFileSync(file, "utf8")).matchAll(/\bfunc\s+(test\w*)\s*\(/g)].map((m) => m[1]);
+
+test("NE-02: the core's reducer and its tests are copies that name their ios/ source and commit", () => {
+  /* The header is the provenance: NE-07s extends this copy toward
+     player/queue-state.js, so the two files are meant to drift, and the only
+     way a reader can tell the engine's reducer from the scaffold's is the
+     line that says which one was copied from which, at what commit, and which
+     is frozen. MUTATION: drop "adde5e12" or "FROZEN REFERENCE" from either
+     header, or move the reducer out of Reducer/; each fails. */
+  for (const [copy, source] of [
+    [CORE_REDUCER, "ios/ForayKit/Sources/ForayKit/PlayerQueueState.swift"],
+    [CORE_REDUCER_TESTS, "ios/ForayKit/Tests/ForayKitTests/PlayerQueueStateTests.swift"],
+  ]) {
+    const rel = path.relative(ROOT, copy).split(path.sep).join("/");
+    assert.ok(fs.existsSync(copy), `${rel} is missing (NE-02 copies it into foray-engine-core)`);
+    const header = swiftHeader(copy);
+    assert.ok(header.includes(`${source} @ adde5e12`), `${rel}'s header must name its source as "${source} @ adde5e12"`);
+    assert.match(header, /FROZEN REFERENCE/, `${rel}'s header must say the ios/ copy is frozen reference`);
+  }
+  /* The engine's copy is public API of ForayEngineCore, which the plugin
+     links; the tests reach it with a plain import (release-buildable). */
+  const reducer = stripSwiftComments(fs.readFileSync(CORE_REDUCER, "utf8"));
+  assert.match(reducer, /public enum PlayerQueueState\b/);
+  assert.match(reducer, /public static func reduce\(/);
+  const tests = stripSwiftComments(fs.readFileSync(CORE_REDUCER_TESTS, "utf8"));
+  assert.match(tests, /^import ForayEngineCore$/m, "the copied tests must import this package's module");
+  assert.doesNotMatch(tests, /\bForayKit\b/, "the copied tests still reference ForayKit");
+});
+
+test("NE-02: every one of the original reducer tests survives in the core's copy", () => {
+  /* The 34 scaffold tests are the proof that NE-07s's extension kept the
+     behaviour the reducer already had, so the copy may GAIN tests and never
+     lose one. Compared by name against the frozen ios/ original rather than
+     by count alone: deleting a real test and adding a trivial one keeps the
+     count (the floor in test/suite-integrity.test.js) and fails here.
+     MUTATION: delete or rename testStopWhileIdleIsNoOp in the core's copy, or
+     comment it out; each fails. */
+  const original = swiftTestNames(IOS_REDUCER_TESTS);
+  assert.equal(original.length, 34, "the frozen ios/ PlayerQueueStateTests no longer declares 34 tests; ios/ is frozen reference (NE-02)");
+  const copied = new Set(swiftTestNames(CORE_REDUCER_TESTS));
+  const lost = original.filter((n) => !copied.has(n));
+  assert.deepEqual(lost, [], `the core's PlayerQueueStateTests lost these original tests: ${lost.join(", ")}`);
+  assert.match(
+    stripSwiftComments(fs.readFileSync(CORE_REDUCER_TESTS, "utf8")),
+    /final class PlayerQueueStateTests: XCTestCase/,
+    "the copied tests must stay an XCTestCase, or `swift test` runs none of them"
+  );
+});
+
+/* ─────────── NE-10s: JSWriter and Rows, byte-identical shared rows ───────────
+ *
+ * docs/native-engine-plan.md §4.6 and card NE-10s. The engine writes
+ * cp_pos:<id>, cp_foray:<id> and cp_last_episode into the rows the page reads,
+ * so the Swift bytes must be JSON.stringify's. The rows, number-format and
+ * diag-tokens families (executed by both XCTest wrappers in CI) prove the
+ * port; these pins keep the proof from being quietly switched off. */
+
+test("NE-10s: the shared rows are written by JSWriter only, and both wrappers require the rows, number-format and diag-tokens runners", () => {
+  /* FOUNDATION'S JSON IS THE DRIFT THIS CARD REMOVES. JSONSerialization and
+     JSONEncoder print `3600.0`/`1e-07`, escape `/` as `\/`, and order keys by
+     a dictionary (or alphabetically), so a row they wrote would read back as
+     the same VALUE and differ in BYTES, which only a byte comparison sees. No
+     file under Persist/ or Diag/ may reach for them, so a later "simpler"
+     writer cannot land without editing this pin.
+     A family whose runner is merely "optional" turns "owed" the moment the
+     runner is unregistered, and swift-pending then hides it; requireRunner
+     makes that red instead.
+     MUTATION: use JSONEncoder in Rows.swift; drop RowsFamily.runner from
+     ParityFamilies.all; or drop `requireRunner: true` from either wrapper's
+     testRowsFamily; each fails here. */
+  for (const sub of ["Sources/ForayEngineCore/Persist", "Sources/ForayEngineCore/Diag"]) {
+    for (const file of swiftFilesUnder(path.join(CORE_DIR, sub))) {
+      const code = stripSwiftComments(fs.readFileSync(file, "utf8"));
+      const rel = path.relative(ROOT, file).split(path.sep).join("/");
+      assert.doesNotMatch(code, /\b(JSONSerialization|JSONEncoder|JSONDecoder|DateFormatter|ISO8601DateFormatter)\b/,
+        `${rel} uses Foundation's JSON or date formatting; the shared rows go through JSWriter (NE-10s)`);
+    }
+  }
+  const persist = path.join(CORE_DIR, "Sources/ForayEngineCore/Persist");
+  for (const name of ["JSWriter.swift", "Rows.swift"]) {
+    assert.ok(fs.existsSync(path.join(persist, name)), `foray-engine-core Persist/${name} is missing (plan §4.1)`);
+  }
+  const rows = stripSwiftComments(fs.readFileSync(path.join(persist, "Rows.swift"), "utf8"));
+  assert.match(rows, /JSWriter\.stringify\(/, "Rows.swift must print its rows through JSWriter");
+
+  const registry = stripSwiftComments(fs.readFileSync(path.join(CORE_DIR, "Sources/ForayEngineParity/FamilyRunner.swift"), "utf8"));
+  const all = /static var all: \[FamilyRunner\] \{\s*\[([^\]]*)\]/.exec(registry);
+  assert.ok(all, "ParityFamilies.all is missing");
+  for (const runner of ["RowsFamily.runner", "NumberFormatFamily.runner", "DiagTokensFamily.runner"]) {
+    assert.ok(all[1].includes(runner), `ParityFamilies.all no longer registers ${runner}`);
+  }
+  const wrappers = [
+    path.join(PLUGIN_DIR, "ios/Tests/ForayAudioPluginTests/EngineParityWrapperTests.swift"),
+    path.join(CORE_DIR, "Tests/ForayEngineCoreTests/ParityFamilyTests.swift"),
+  ];
+  for (const file of wrappers) {
+    const src = stripSwiftComments(fs.readFileSync(file, "utf8"));
+    const where = path.relative(ROOT, file);
+    for (const family of ["rows", "number-format", "diag-tokens"]) {
+      assert.match(src, new RegExp(`assertParityFamily\\("${family}", requireRunner: true\\)`),
+        `${where} must require a ${family} runner (NE-10s ported it)`);
+    }
+  }
+  /* The generated vocabulary stays generated: admission is hand-written beside it. */
+  const vocabulary = fs.readFileSync(path.join(CORE_DIR, "Sources/ForayEngineCore/Diag/Vocabulary.swift"), "utf8");
+  assert.doesNotMatch(vocabulary, /func admit\(/, "admission belongs in VocabularyAdmission.swift, not the generated file");
+});
+
+/* ─────────── NE-11s: SessionPolicy, EngineMode and the contract's decoding ───────────
+ *
+ * docs/native-engine-plan.md §4.4, §4.6, §5 and card NE-11s. The session
+ * policy, the lane decision and the contract's decoding are ported to Swift and
+ * the six NE-11j families burned out of swift-pending.json; from here on their
+ * cases must EXECUTE in both XCTest wrappers (ios-kit, and G-1a's Linux job). */
+
+test("NE-11s: both wrappers require the six contract families, the registry holds their runners, and the contract is decoded without Foundation's JSON", () => {
+  /* A family whose runner is merely "optional" turns "owed" the moment the
+     runner is unregistered, and a re-record with --port-card would then hide
+     the whole session table in swift-pending with every step green;
+     requireRunner makes that red instead.
+     The decoding reads JSONNode (JSON.parse semantics) ON PURPOSE: JSONDecoder
+     cannot tell a required-but-null key from a missing one, and reads `1` /
+     `true` through NSNumber differently on Linux, where engine-parity runs. A
+     "simpler" Codable decoder would accept or refuse payloads the page does
+     not, which only a case nobody wrote would see.
+     MUTATION: drop SessionFamily.runner from ParityFamilies.all; drop
+     `requireRunner: true` from either wrapper's testContractFamily; or use
+     JSONDecoder in ContractDecoding.swift; each fails here. */
+  const registry = stripSwiftComments(fs.readFileSync(path.join(CORE_DIR, "Sources/ForayEngineParity/FamilyRunner.swift"), "utf8"));
+  const all = /static var all: \[FamilyRunner\] \{\s*\[([^\]]*)\]/.exec(registry);
+  assert.ok(all, "ParityFamilies.all is missing");
+  const families = {
+    session: ["SessionFamily.runner", "testSessionFamily"],
+    "session-invariant": ["SessionInvariantFamily.runner", "testSessionInvariantFamily"],
+    "engine-mode": ["EngineModeFamily.runner", "testEngineModeFamily"],
+    contract: ["ContractFamily.runner", "testContractFamily"],
+    snapshot: ["SnapshotFamily.runner", "testSnapshotFamily"],
+    handshake: ["HandshakeFamily.runner", "testHandshakeFamily"],
+  };
+  for (const [family, [runner]] of Object.entries(families)) {
+    assert.ok(all[1].includes(runner), `ParityFamilies.all no longer registers ${runner} (the ${family} family)`);
+  }
+  for (const file of [
+    path.join(PLUGIN_DIR, "ios/Tests/ForayAudioPluginTests/EngineParityWrapperTests.swift"),
+    path.join(CORE_DIR, "Tests/ForayEngineCoreTests/ParityFamilyTests.swift"),
+  ]) {
+    const src = stripSwiftComments(fs.readFileSync(file, "utf8"));
+    const where = path.relative(ROOT, file);
+    for (const [family, [, method]] of Object.entries(families)) {
+      assert.match(src, new RegExp(String.raw`func ${method}\(\)\s*\{\s*assertParityFamily\("${family}", requireRunner: true\)`),
+        `${where}: ${method} must require a ${family} runner (NE-11s ported it)`);
+    }
+  }
+  for (const rel of ["Policy/SessionPolicy.swift", "Policy/EngineMode.swift", "Contract/EngineContract.swift", "Contract/ContractDecoding.swift"]) {
+    assert.ok(fs.existsSync(path.join(CORE_DIR, "Sources/ForayEngineCore", rel)), `foray-engine-core ${rel} is missing (plan §4.1)`);
+  }
+  for (const file of swiftFilesUnder(path.join(CORE_DIR, "Sources/ForayEngineCore/Contract"))) {
+    const code = stripSwiftComments(fs.readFileSync(file, "utf8"));
+    assert.doesNotMatch(code, /(JSONSerialization|JSONEncoder|JSONDecoder|Codable|Decodable)/,
+      `${path.relative(ROOT, file)} decodes the contract with Foundation's JSON; it reads JSONNode (NE-11s)`);
+  }
+});
+
+/* ─────────── NE-15: AVDeck, the readiness-gated deck adapter ───────────
+ *
+ * docs/native-engine-plan.md §4.3 and card NE-15. AVDeck wraps one AVPlayer
+ * behind the DeckDriving seam. Its behaviour is executed by the Simulator
+ * XCTests in `ForayAudioPluginTests/AVDeckTests.swift` (ios-kit); what is
+ * pinned here is what a later edit could quietly undo without any of those
+ * tests noticing, above all the one call that CRASHES rather than fails:
+ * `preroll` on a player that is not `.readyToPlay` raises an Objective-C
+ * exception Swift cannot catch. */
+
+const ENGINE_DIR = path.join(PLUGIN_DIR, "ios/Sources/ForayAudioPlugin/Engine");
+const AVDECK_SWIFT = path.join(ENGINE_DIR, "AVDeck.swift");
+
+test("NE-15: preroll( is called from exactly one place, AVDeck.prerollWhenReady, which re-checks both statuses and the rate first", () => {
+  /* Every Swift source the app or the core compiles, not just AVDeck: a
+     second deck (NE-32's DeckPair) or a probe that prerolls on its own is the
+     likeliest way the gate gets bypassed.
+     MUTATION: add `player.preroll(atRate: 1) { _ in }` to `play()` or to any
+     other file; drop the `item.status == .readyToPlay` or `player.rate == 0`
+     guard; call `prerollWhenReady()` from `advanceIfReady` (skipping the
+     zero-tolerance seek). Each fails. */
+  const sources = [
+    ...swiftFilesUnder(path.join(PLUGIN_DIR, "ios/Sources")),
+    ...swiftFilesUnder(path.join(MOBILE, "plugins/foray-tts/ios/Sources")),
+    ...swiftFilesUnder(path.join(CORE_DIR, "Sources")),
+  ];
+  const callers = [];
+  for (const file of sources) {
+    const code = stripSwiftComments(fs.readFileSync(file, "utf8"));
+    for (const m of code.matchAll(/\bpreroll\s*\(/g)) callers.push(path.relative(ROOT, file).split(path.sep).join("/"));
+  }
+  assert.deepEqual(
+    callers,
+    ["mobile/plugins/foray-audio/ios/Sources/ForayAudioPlugin/Engine/AVDeck.swift"],
+    "expected exactly one preroll( call, in AVDeck.swift"
+  );
+
+  const code = stripSwiftComments(fs.readFileSync(AVDECK_SWIFT, "utf8"));
+  const body = swiftFuncBody(code, "prerollWhenReady");
+  assert.ok(body, "AVDeck.swift has no func prerollWhenReady");
+  const call = body.search(/\bpreroll\s*\(/);
+  assert.ok(call > 0, "the one preroll( call is not inside prerollWhenReady");
+  const before = body.slice(0, call);
+  assert.match(before, /player\.status\s*==\s*\.readyToPlay/, "prerollWhenReady must re-check player.status right before preroll");
+  assert.match(before, /item\.status\s*==\s*\.readyToPlay/, "prerollWhenReady must re-check item.status right before preroll");
+  assert.match(before, /player\.rate\s*==\s*0/, "prerollWhenReady must preroll only while the player's rate is 0");
+
+  /* The gate's order: prerollWhenReady runs only after a FINISHED seek, and
+     that seek is issued only by advanceIfReady once the duration and both
+     statuses are in. */
+  assert.deepEqual(swiftCallersOf(code, "prerollWhenReady"), ["gateSeekCompleted"]);
+  const completed = swiftFuncBody(code, "gateSeekCompleted");
+  const finishedGuard = completed.search(/guard finished else/);
+  assert.ok(finishedGuard > 0 && finishedGuard < completed.search(/prerollWhenReady\(/), "prerollWhenReady must follow the finished check");
+  assert.deepEqual(swiftCallersOf(code, "gateSeek"), ["advanceIfReady", "gateSeekCompleted", "notReady", "prerollCompleted"]);
+  const advance = swiftFuncBody(code, "advanceIfReady");
+  assert.match(advance, /durationKnown/);
+  assert.match(advance, /player\.status\s*==\s*\.readyToPlay/);
+  assert.match(advance, /item\.status\s*==\s*\.readyToPlay/);
+});
+
+test("NE-15: AVDeck's settings, zero-tolerance seeks, the 20 s MEASURE deadline, the iOS 16 rate branch, and the implicit-activation fault", () => {
+  /* The plan's deck settings are decisions (§4.3), and each one is a single
+     line a refactor could drop:
+       - `.pause` at the item's end, so the CORE picks what plays next;
+       - stall-waiting on; `.timeDomain` for speech at 1.25-2x;
+       - every seek zero-tolerance (the start offset IS the resume point);
+       - the deadline is the provisional 20 s and says MEASURE (OQ-4: NE-38
+         replaces it from field rows, so it must stay findable);
+       - `defaultRate` only behind `#available(iOS 16`, since the floor is 15;
+       - audio starts in ONE function, called only from play(), which checks
+         the session owner first (§4.4: AVPlayer.play() activates an inactive
+         session implicitly).
+     MUTATION: drop any setting; give one seek a tolerance; change 20 or drop
+     the MEASURE marker; move `defaultRate` out of the availability branch;
+     call `player.play()` from `setRate`; drop the sessionIsActive check. Each
+     fails. */
+  const raw = fs.readFileSync(AVDECK_SWIFT, "utf8");
+  const code = stripSwiftComments(raw);
+  assert.match(code, /player\.actionAtItemEnd\s*=\s*\.pause/);
+  assert.match(code, /player\.automaticallyWaitsToMinimizeStalling\s*=\s*true/);
+  assert.match(code, /audioTimePitchAlgorithm\s*=\s*\.timeDomain/);
+
+  const seeks = [...code.matchAll(/player\.seek\(([^{]*)\{/g)];
+  assert.ok(seeks.length >= 3, `expected the gate, fallback and transport seeks, found ${seeks.length}`);
+  for (const [, args] of seeks) {
+    assert.match(args, /toleranceBefore:\s*\.zero,\s*toleranceAfter:\s*\.zero/, `a seek without zero tolerance: player.seek(${args}`);
+  }
+
+  assert.match(raw, /static let defaultLoadDeadlineSec: Double = 20 \/\/ MEASURE:/, "the load deadline must stay the provisional 20 s, marked MEASURE");
+
+  const rateBranches = [...code.matchAll(/if #available\(iOS 16\.0, \*\) \{([\s\S]*?)\}/g)].map((m) => m[1]);
+  const outside = rateBranches.reduce((rest, branch) => rest.replace(branch, ""), code);
+  assert.doesNotMatch(outside, /defaultRate/, "defaultRate is iOS 16+; the plugin's floor is iOS 15");
+  assert.ok(rateBranches.some((b) => /defaultRate\s*=\s*rate\b/.test(b)), "play must re-apply the held rate through defaultRate on iOS 16+");
+
+  assert.deepEqual(swiftCallersOf(code, "player\\.play"), ["applyRateAndPlay"], "audio must start from applyRateAndPlay only");
+  assert.deepEqual(swiftCallersOf(code, "applyRateAndPlay"), ["play"]);
+  const play = swiftFuncBody(code, "play");
+  const check = play.search(/config\.sessionIsActive\(\)/);
+  assert.ok(check > 0, "play() no longer checks the session owner before starting audio");
+  assert.ok(check < play.search(/applyRateAndPlay\(/), "the session check must come before the audible call");
+  assert.match(play, /"fault implicit-activation/);
+  assert.match(play, /config\.writeRow\(/);
+  assert.match(play, /config\.debugFault\(/);
+  assert.match(code, /debugFault:[^=]*=\s*\{\s*assertionFailure\(\$0\)\s*\}/, "the production fault must assert in DEBUG");
+});
+
+test("NE-15: AVDeck's Simulator tests play NE-25a's CBR MP3 and PCM WAV, the one exempt click-track set, and report through the one summary hand-off", () => {
+  /* NE-15 first carried two 20 s tracks of its own. NE-25a landed a set of
+     the same shape first, and the repo's two audio guards exempt exactly ONE
+     descriptor-named, hash-checked set under 1 MB (tools/audio/click-tracks.mjs),
+     so the deck plays NE-25a's files. What click-tracks.test.mjs does not know
+     is which of them AVDeck's tests rely on, and why: "CBR" is the property
+     the landing check is about (an MP3 whose frames change bitrate seeks by a
+     different mechanism, NE-25a's VBR rows), and PCM is the exact control. The
+     frame walk and the test-target-only resources are click-tracks.test.mjs's.
+     The summary hand-off is pinned here too, or the card's measurement would
+     vanish from the job summary with every test green.
+     MUTATION: point a test at click-vbr-notoc.mp3; commit a second set beside
+     ClickTracks/; bundle "Fixtures" whole again; read GITHUB_STEP_SUMMARY in
+     DeckMeasurements; drop TEST_RUNNER_FORAY_MEASURE_SUMMARY from ci.yml. Each
+     fails. */
+  const testsPath = path.join(PLUGIN_DIR, "ios/Tests/ForayAudioPluginTests/AVDeckTests.swift");
+  const tests = stripSwiftComments(fs.readFileSync(testsPath, "utf8"));
+  const used = [...new Set([...tests.matchAll(/fixture\("([^"]+)",\s*"([^"]+)"\)/g)].map((x) => `${x[1]}.${x[2]}`))].sort();
+  assert.deepEqual(used, ["click-cbr.mp3", "click.wav"], "AVDeckTests' fixtures");
+  assert.match(swiftFuncBody(tests, "fixture"), /subdirectory:\s*"ClickTracks"/);
+  assert.match(tests, /forResource:\s*"click",\s*withExtension:\s*"wav",\s*subdirectory:\s*"ClickTracks"/, "the warm-up loads the same WAV");
+
+  const descriptor = JSON.parse(fs.readFileSync(path.join(ROOT, CLICK_TRACK_DIR, "click-tracks.json"), "utf8"));
+  const byFile = new Map(descriptor.fixtures.map((x) => [x.file, x]));
+  assert.equal(byFile.get("click-cbr.mp3")?.kind, "mp3-cbr");
+  assert.equal(byFile.get("click-cbr.mp3")?.header, "none", "the CBR fixture carries no Xing/Info header frame");
+  assert.match(byFile.get("click.wav")?.kind ?? "", /^wav-pcm/);
+  const exempt = exemptClickTrackPaths(ROOT);
+  for (const file of used) assert.ok(exempt.has(`${CLICK_TRACK_DIR}/${file}`), `${file} is not in the hash-checked exempt set`);
+  const fixturesRoot = path.dirname(path.join(ROOT, CLICK_TRACK_DIR));
+  assert.deepEqual(fs.readdirSync(fixturesRoot), [path.basename(CLICK_TRACK_DIR)], "one click-track set, not two");
+
+  const manifest = stripSwiftComments(fs.readFileSync(AUDIO_MANIFEST, "utf8"));
+  const testTarget = /\.testTarget\(\s*name:\s*"ForayAudioPluginTests"[\s\S]*?\)\s*\]\s*\)/.exec(manifest);
+  assert.ok(testTarget, "the ForayAudioPluginTests target is missing");
+  assert.match(testTarget[0], /resources:\s*\[\s*\.copy\("Fixtures\/ClickTracks"\)\s*\]/);
+
+  const ci = fs.readFileSync(path.join(ROOT, ".github/workflows/ci.yml"), "utf8");
+  assert.match(ci, /TEST_RUNNER_FORAY_MEASURE_SUMMARY="\$GITHUB_STEP_SUMMARY"/, "ios-kit no longer hands the job summary to the Simulator tests");
+  assert.doesNotMatch(ci, /TEST_RUNNER_GITHUB_STEP_SUMMARY/, "one hand-off, not two");
+  assert.match(tests, /environment\["FORAY_MEASURE_SUMMARY"\]/, "DeckMeasurements writes through the hand-off ci.yml passes");
+  assert.match(tests, /CBR MP3, precise/);
+});
+
+/* ─────────── NE-15h: the ForayEngine host and its seams ───────────
+ *
+ * docs/native-engine-plan.md §4.1-§4.2 and card NE-15h. The host's behaviour
+ * is executed over recording fakes by ForayAudioPluginTests/Engine/
+ * ForayEngineHostTests.swift (ios-kit). What is pinned here is the shape
+ * those tests stand on and a refactor could quietly undo: the host and the
+ * seam declarations touch no platform API (only the real conformers do), all
+ * six seams the plan names live in Seams.swift with a recording fake each, the
+ * week-1 deck stub is gone, the activation answer is fed back inside the same
+ * case that asked for it, and teardown releases every kind of registration. */
+
+const SEAMS_SWIFT = path.join(ENGINE_DIR, "Seams.swift");
+const HOST_SWIFT = path.join(ENGINE_DIR, "ForayEngine.swift");
+const TIMING_SWIFT = path.join(ENGINE_DIR, "MainQueueTiming.swift");
+const FAKES_SWIFT = path.join(PLUGIN_DIR, "ios/Tests/ForayAudioPluginTests/Engine/RecordingSeams.swift");
+
+test("NE-15h: the host and its seams touch no platform API, every seam has a recording fake, and activation is answered inside the turn that asked", () => {
+  /* MUTATION: add `import AVFoundation` (or a UIApplication / AVAudioSession /
+     MPRemoteCommandCenter / DispatchSource use) to ForayEngine.swift or
+     Seams.swift; restore DeckStub.swift; declare DeckDriving anywhere else;
+     delete a fake; answer .sessionActivate without runTurn(.sessionResult;
+     drop a line of teardown(); make MainQueueTiming's source queue a global
+     one. Each fails. */
+  const PLATFORM = /\b(AVAudioSession|AVPlayer|AVSpeechSynthesizer|MPRemoteCommandCenter|MPNowPlayingInfoCenter|UIApplication|DispatchSource|NotificationCenter|UserDefaults)\b/;
+  for (const file of [SEAMS_SWIFT, HOST_SWIFT]) {
+    const where = path.relative(ROOT, file);
+    assert.deepEqual(swiftImports(file).sort(), ["ForayEngineCore", "Foundation"], `${where} imports only Foundation and the core`);
+    const code = stripSwiftComments(fs.readFileSync(file, "utf8"));
+    assert.doesNotMatch(code, PLATFORM, `${where} reaches a platform API; that belongs in the seam's real conformer`);
+  }
+
+  assert.ok(!fs.existsSync(path.join(ENGINE_DIR, "DeckStub.swift")), "NE-15's deck stub must stay deleted: the deck speaks the core's vocabulary");
+  const seams = stripSwiftComments(fs.readFileSync(SEAMS_SWIFT, "utf8"));
+  const fakes = stripSwiftComments(fs.readFileSync(FAKES_SWIFT, "utf8"));
+  for (const seam of ["SessionControlling", "BackgroundTasking", "RemoteCommandRegistering", "NowPlayingWriting", "DeckDriving", "Speaking", "EngineTiming", "EngineOutput", "HoldPolicyStoring"]) {
+    assert.match(seams, new RegExp(String.raw`protocol ${seam}: AnyObject \{`), `Seams.swift must declare ${seam}`);
+    assert.match(fakes, new RegExp(String.raw`final class \w+: ${seam} \{`), `${seam} has no recording fake`);
+  }
+  const declarations = [...swiftFilesUnder(path.join(PLUGIN_DIR, "ios/Sources")), ...swiftFilesUnder(path.join(CORE_DIR, "Sources"))]
+    .filter((file) => /protocol DeckDriving\b/.test(stripSwiftComments(fs.readFileSync(file, "utf8"))))
+    .map((file) => path.basename(file));
+  assert.deepEqual(declarations, ["Seams.swift"], "DeckDriving is declared once, in Seams.swift");
+  assert.match(stripSwiftComments(fs.readFileSync(AVDECK_SWIFT, "utf8")), /^import ForayEngineCore$/m, "AVDeck speaks the core's DeckCommand / DeckEvent");
+
+  const host = stripSwiftComments(fs.readFileSync(HOST_SWIFT, "utf8"));
+  assert.match(host, /@MainActor\s+final class ForayEngine \{/, "the host is main-confined");
+  const interpret = swiftFuncBody(host, "interpret");
+  const activate = /case let \.sessionActivate\(requestId\):([\s\S]*?)case /.exec(interpret ?? "");
+  assert.ok(activate, "interpret has no .sessionActivate case");
+  assert.match(activate[1], /seams\.session\.activate\(\)[\s\S]*return runTurn\(\.sessionResult\(/,
+    "the activation is answered synchronously, as a nested turn, before the next command");
+
+  const teardown = swiftFuncBody(host, "teardown");
+  for (const [what, re] of [
+    ["observers and remote targets", /observations\.forEach \{ \$0\.cancel\(\) \}/],
+    ["timers", /timers\.values\.forEach \{ \$0\.cancel\(\) \}/],
+    ["the grace task", /seams\.background\.endTask\(/],
+    ["the deck's KVO", /seams\.deck\.invalidate\(\)/],
+  ]) {
+    assert.match(teardown ?? "", re, `teardown() no longer releases ${what}`);
+  }
+  assert.doesNotMatch(teardown ?? "", /deactivate|nowPlaying/, "teardown keeps the session and Now Playing (plan §4.6)");
+  assert.match(swiftFuncBody(host, "runTurn") ?? "", /session == \.relinquished \{ teardown\(\) \}/, "a relinquish tears the host down by itself");
+
+  const timing = stripSwiftComments(fs.readFileSync(TIMING_SWIFT, "utf8"));
+  assert.match(timing, /DispatchSource\.makeTimerSource\(queue: \.main\)/, "the engine's timers are DispatchSourceTimers on main");
+});
+
+/* ─────────── NE-19: EngineStore, private keys, the diagnostics ring, os.Logger ───────────
+ *
+ * docs/native-engine-plan.md §4.6 and §10, card NE-19. What the Simulator
+ * XCTests cannot see: which FILE reaches for UserDefaults or the unified log,
+ * and whether the private key names are the ones Delete-my-data purges. */
+
+const STORE_SWIFT = path.join(ENGINE_DIR, "EngineStore.swift");
+const DIAGNOSTICS_SWIFT = path.join(ENGINE_DIR, "EngineDiagnostics.swift");
+const ENGINE_KEYS_SWIFT = path.join(CORE_DIR, "Sources/ForayEngineCore/Persist/EngineKeys.swift");
+const DIAG_RING_SWIFT = path.join(CORE_DIR, "Sources/ForayEngineCore/Diag/DiagRing.swift");
+/** The engine files allowed a logger of their own, and its one category (see the NE-19 logger test). */
+const PRE_RING_LOGGERS = new Map([
+  [path.resolve(AVDECK_SWIFT), "ForayEngine.AVDeck"],
+  [path.resolve(ENGINE_DIR, "AudioSessionOwner.swift"), "ForayEngine.AudioSessionOwner"],
+]);
+/** NE-16's HoldPolicyStore: the one engine file besides EngineStore that names UserDefaults (see the NE-19 store test). */
+const HOLD_POLICY_STORE_SWIFT = path.join(ENGINE_DIR, "HoldPolicyStore.swift");
+
+test("NE-19: one os.Logger (ai.jwlabs.foura / engine), whose only .public line is the gated DiagGate.loggerText, and nothing else in the engine logs", () => {
+  /* The ring's gate keeps URLs, route names and sentences out of a paste; a
+     second logger, a print( or a .public interpolation of anything but the
+     gated text would carry them into a sysdiagnose instead.
+     MUTATION: log `\(row.line(), privacy: .public)`; add a second `.public`;
+     change the subsystem or the category; add `print(` or `NSLog(` to any
+     file under Engine/. Each fails here. */
+  const diagnostics = stripSwiftComments(fs.readFileSync(DIAGNOSTICS_SWIFT, "utf8"));
+  assert.deepEqual(swiftImports(DIAGNOSTICS_SWIFT).sort(), ["ForayEngineCore", "Foundation", "os"]);
+  const loggers = [...diagnostics.matchAll(/Logger\(([^)]*)\)/g)].map((m) => m[1]);
+  assert.deepEqual(loggers, ['subsystem: "ai.jwlabs.foura", category: "engine"'], "exactly one engine logger, by its needle");
+  const privacies = [...diagnostics.matchAll(/privacy:\s*\.(\w+)/g)].map((m) => m[1]);
+  assert.deepEqual(privacies, ["public"], "one interpolation, and it is the one marked public");
+  const mirror = swiftFuncBody(diagnostics, "mirror") ?? "";
+  assert.match(mirror, /let text = DiagGate\.loggerText\(row\)\s*logger\.log\("\\\(text, privacy: \.public\)"\)/,
+    "the public line is the gate's logger text and nothing else");
+  assert.equal([...diagnostics.matchAll(/logger\.\w+\(/g)].length, 1, "one call site writes to the logger");
+  assert.match(swiftFuncBody(diagnostics, "record") ?? "", /ring\.append\([\s\S]*mirror\(/, "a row reaches the logger only after the ring (and its gate) took it");
+
+  for (const file of swiftFilesUnder(ENGINE_DIR)) {
+    const code = stripSwiftComments(fs.readFileSync(file, "utf8"));
+    const where = path.relative(ROOT, file);
+    assert.doesNotMatch(code, /\b(print|NSLog|os_log|debugPrint)\(/, `${where} logs around the gate`);
+    if (file === DIAGNOSTICS_SWIFT) continue;
+    /* THE TWO EXCEPTIONS, NAMED: NE-15's AVDeck (category ForayEngine.AVDeck,
+       the deck-level trace the NE-25a/b spikes read off the Simulator) and
+       NE-16's AudioSessionOwner (category ForayEngine.AudioSessionOwner) each
+       keep a DEFAULT os.Logger sink behind an injectable row closure
+       (`Config.writeRow`, `Config.diag`). Both cards landed beside NE-19, not
+       on it, so neither default writes into the ring yet; the boot path
+       (NE-17/NE-24) hands them EngineOutput.diag. Routing them through
+       DiagGate is a follow-up, not a licence for a third. */
+    const preRing = PRE_RING_LOGGERS.get(path.resolve(file));
+    if (preRing) {
+      assert.deepEqual([...code.matchAll(/Logger\(\s*subsystem:[^,]*,\s*category:\s*"([^"]*)"/g)].map((m) => m[1]), [preRing]);
+      continue;
+    }
+    assert.doesNotMatch(code, /\bLogger\(|^import os$/m, `${where} opens a second logger`);
+  }
+});
+
+test("NE-19: only EngineStore touches UserDefaults in the engine, its shared writes are owned rows under the Preferences prefix, and the purge covers every private key and the ring", () => {
+  /* MUTATION: drop the isOwnedRow guard from writeShared; write
+     `defaults.set(` of a shared row outside writeShared; purge only
+     EnginePrivateKey.allCases; forget the ring file in purge; name
+     UserDefaults in any other Engine/ file; drop the host's flush or the
+     core's lifecycle flush. Each fails here. */
+  for (const file of swiftFilesUnder(ENGINE_DIR)) {
+    if (file === STORE_SWIFT) continue;
+    /* THE ONE EXCEPTION, NAMED: NE-16's HoldPolicyStore landed beside NE-19
+       with its own UserDefaults. It may keep it only while its whole reach is
+       the one private key §4.6 lists, which the purge (every ForayEngine.*
+       key) and test/data-deletion.test.js both already cover; folding it into
+       EngineStore is a follow-up. A second key, or any other file, is red.
+       MUTATION: key it `CapacitorStorage.holdPolicy`, or add a second
+       `forKey:` of another name. */
+    if (file === HOLD_POLICY_STORE_SWIFT) {
+      const hold = stripSwiftComments(fs.readFileSync(file, "utf8"));
+      assert.deepEqual([...hold.matchAll(/static let \w+ = "([^"]*)"/g)].map((m) => m[1]), ["ForayEngine.holdPolicy"]);
+      assert.deepEqual([...hold.matchAll(/forKey: ([\w.]+)/g)].map((m) => m[1]), ["Self.key", "Self.key"],
+        "HoldPolicyStore reads and writes its one key and nothing else");
+      assert.match(stripSwiftComments(fs.readFileSync(ENGINE_KEYS_SWIFT, "utf8")), /case holdPolicy = "ForayEngine\.holdPolicy"/,
+        "the hold policy's key is one of EnginePrivateKey's, so the purge and the deletion list cover it");
+      continue;
+    }
+    assert.doesNotMatch(stripSwiftComments(fs.readFileSync(file, "utf8")), /\bUserDefaults\b/,
+      `${path.relative(ROOT, file)} reaches UserDefaults; engine storage goes through EngineStore`);
+  }
+  const store = stripSwiftComments(fs.readFileSync(STORE_SWIFT, "utf8"));
+  assert.match(store, /final class EngineStore: EngineOutput \{/, "EngineStore is the real EngineOutput");
+  const writeShared = swiftFuncBody(store, "writeShared") ?? "";
+  assert.match(writeShared, /guard EngineKeys\.isOwnedRow\(row\.key\) else \{[\s\S]*return false[\s\S]*\}\s*defaults\.set\(row\.value, forKey: SharedRowStore\.userDefaultsKey\(for: row\.key\)\)/,
+    "a shared row is written verbatim, under the Preferences prefix, and only when the engine owns it");
+  assert.deepEqual(swiftCallersOf(store, "writeShared"), ["writePosition", "writeRow"], "the core's rows reach UserDefaults through writeShared only");
+  assert.equal([...store.matchAll(/SharedRowStore\.userDefaultsKey\(/g)].length, 2, "writeShared and readShared, nowhere else");
+  const purge = swiftFuncBody(store, "purge") ?? "";
+  assert.match(purge, /EngineKeys\.sharedRowKey\(rawKey: rawKey\) != nil \|\| EngineKeys\.isPrivate\(rawKey: rawKey\)/,
+    "the purge enumerates the defaults: shared engine rows and EVERY ForayEngine.* key");
+  assert.match(purge, /diagnostics\.purge\(\)/, "the purge removes the ring file");
+  for (const name of ["writePosition", "writeRow", "writeRestore", "appendEvent", "emit", "diag", "flush"]) {
+    assert.ok(swiftFuncBody(store, name), `EngineStore has no ${name}`);
+  }
+  // Written synchronously: nothing in the store defers a write.
+  assert.doesNotMatch(store, /DispatchQueue|asyncAfter|\.async\b|Task\s*\{|OperationQueue/, "EngineStore defers a write");
+
+  // The host makes the flush durable right after the core handled the lifecycle.
+  const host = stripSwiftComments(fs.readFileSync(HOST_SWIFT, "utf8"));
+  assert.match(swiftFuncBody(host, "lifecycle") ?? "", /handle\(\.lifecycle\(event\)\)\s*if event == \.background \|\| event == \.terminating \{ seams\.output\.flush\(\) \}/);
+  const core = stripSwiftComments(fs.readFileSync(path.join(CORE_DIR, "Sources/ForayEngineCore/Engine/EngineCore.swift"), "utf8"));
+  const lifecycle = swiftFuncBody(core, "onLifecycle") ?? "";
+  assert.match(lifecycle, /case \.background:\s*state\.backgrounded = true\s*flushPosition\(\)/, "backgrounding flushes the playhead (client.js flushPositions)");
+  assert.match(lifecycle, /case \.terminating:\s*flushPosition\(\)/, "willTerminate flushes the playhead");
+});
+
+test("NE-19: the engine's private keys are §4.6's six, outside CapacitorStorage., the ones Delete my data purges, and the ring is a capped file in Application Support", () => {
+  /* NE-27's privacy text will enumerate these keys, and test/data-deletion
+     .test.js purges them BY NAME; a key the Swift writes that the deletion
+     list does not name is a key a deletion forgets.
+     MUTATION: rename or add an EnginePrivateKey case; move the ring out of
+     foray-engine/diag.jsonl; change DiagRing.capacity from 2_000. Each fails. */
+  const keys = stripSwiftComments(fs.readFileSync(ENGINE_KEYS_SWIFT, "utf8"));
+  const swiftKeys = [...keys.matchAll(/case \w+ = "(ForayEngine\.\w+)"/g)].map((m) => m[1]);
+  const deletion = fs.readFileSync(path.join(ROOT, "test/data-deletion.test.js"), "utf8");
+  const fake = /function fakeEngine\([\s\S]*?private: new Map\(\[([\s\S]*?)\]\),/.exec(deletion);
+  assert.ok(fake, "test/data-deletion.test.js's fakeEngine private map is missing");
+  const jsKeys = [...fake[1].matchAll(/\["(ForayEngine\.\w+)"/g)].map((m) => m[1]);
+  assert.deepEqual(swiftKeys, ["ForayEngine.modeOverride", "ForayEngine.strikes", "ForayEngine.sentinel",
+    "ForayEngine.stickyLegacyBuild", "ForayEngine.restore", "ForayEngine.holdPolicy"], "plan §4.6's list");
+  assert.deepEqual(swiftKeys, jsKeys, "the Swift private keys and the deletion test's list differ");
+  for (const key of swiftKeys) assert.ok(!key.startsWith("CapacitorStorage."), key);
+  assert.match(keys, /privatePrefix = "ForayEngine\."/);
+  assert.match(keys, /diagDirectoryName = "foray-engine"/);
+  assert.match(keys, /diagFileName = "diag\.jsonl"/);
+  assert.match(fake[1], /"Application Support\/foray-engine\/diag\.jsonl"/, "the deletion test names the ring file where it lives");
+  assert.match(stripSwiftComments(fs.readFileSync(DIAGNOSTICS_SWIFT, "utf8")), /\.applicationSupportDirectory/, "the ring lives in Application Support");
+
+  const ring = stripSwiftComments(fs.readFileSync(DIAG_RING_SWIFT, "utf8"));
+  assert.match(ring, /public static let capacity = 2_000\b/, "the ring holds 2,000 rows (plan §13 item 37)");
+  assert.match(swiftFuncBody(ring, "append") ?? "", /DiagGate\.admit\(entry\)/, "every row passes the gate");
+});
+
+const OWNER_SWIFT = path.join(ENGINE_DIR, "AudioSessionOwner.swift");
+const HOLD_STORE_SWIFT = path.join(ENGINE_DIR, "HoldPolicyStore.swift");
+const TTS_SWIFT = path.join(PLUGIN_DIR, "../foray-tts/ios/Sources/ForayTtsPlugin/ForayTtsPlugin.swift");
+const FLAG_AUDIO_SWIFT = path.join(PLUGIN_DIR, "ios/Sources/ForayAudioPlugin/EngineModeFlag.swift");
+const FLAG_TTS_SWIFT = path.join(PLUGIN_DIR, "../foray-tts/ios/Sources/ForayTtsPlugin/EngineModeFlag.swift");
+
+/* NE-16's legacy session sites: every `setActive(` / `setCategory(` in the two
+   plugins' Swift outside AudioSessionOwner.swift, as [file, func, call]. The
+   plan counted seven (four setActive, three setCategory) before NE-16 moved
+   ForayTts's two copies of the pair (speak, resume) into one guarded
+   `claimSession()`, and load()'s category write is a fourth setCategory the
+   count missed; the rule is the same, and this table is the whole list. */
+const GUARDED_SESSION_SITES = [
+  ["ForayAudioPlugin.swift", "holdSession", "setActive"],
+  ["ForayAudioPlugin.swift", "holdSession", "setCategory"],
+  /* NE-17: today's load() body is runLegacyRegistration, which load() reaches
+     through EngineOwnership (the NE-17 tests below). */
+  ["ForayAudioPlugin.swift", "runLegacyRegistration", "setCategory"],
+  ["ForayAudioPlugin.swift", "releaseSession", "setActive"],
+  ["ForayTtsPlugin.swift", "claimSession", "setActive"],
+  ["ForayTtsPlugin.swift", "claimSession", "setCategory"],
+];
+
+/** The start offset and name of the Swift func whose body encloses offset `at`. */
+function enclosingSwiftFunc(code, at) {
+  let found = null;
+  for (const m of code.matchAll(/func\s+(\w+)\s*\(/g)) {
+    if (m.index > at) break;
+    const decl = swiftFuncDecl(code.slice(m.index), m[1]);
+    if (decl && m.index + decl.length > at) found = { name: m[1], start: m.index };
+  }
+  return found;
+}
+
+/** Whether the text of a func up to a session call has already been guarded
+    on the engine's ownership: a `guard !EngineModeFlag.sessionOwnedByEngine
+    else { ... return }` before it, or the call still inside an
+    `if !EngineModeFlag.sessionOwnedByEngine {` block. */
+function guardedOnEngineFlag(prefix) {
+  if (/guard !EngineModeFlag\.sessionOwnedByEngine else \{[^{}]*\breturn\b[^{}]*\}/.test(prefix)) return true;
+  const at = prefix.lastIndexOf("if !EngineModeFlag.sessionOwnedByEngine {");
+  return at >= 0 && !prefix.slice(at).includes("}");
+}
+
+test("NE-16: setActive( and setCategory( live only in AudioSessionOwner.swift and the six guarded legacy sites", () => {
+  /* ONE OWNER (plan §4.4). In native mode the engine's AudioSessionOwner is
+     the only code that may touch the session; the legacy hold (ForayAudio)
+     and ForayTts keep their sites for legacy mode and after a relinquish, but
+     each is guarded on `EngineModeFlag.sessionOwnedByEngine`, so with the flag
+     true they touch nothing and with it false they run exactly as build
+     2026092327. A session call anywhere else is a second owner.
+     MUTATION: add `try? AVAudioSession.sharedInstance().setActive(true)` to
+     ForayTtsPlugin's stop() or to AVDeck -> the site list goes red; delete the
+     guard from holdSession, releaseSession or claimSession, or move load()'s
+     setCategory out of its `if` -> the guard assertion goes red. */
+  const roots = [
+    path.join(PLUGIN_DIR, "ios/Sources"),
+    path.join(PLUGIN_DIR, "../foray-tts/ios/Sources"),
+    path.join(CORE_DIR, "Sources"),
+  ];
+  const sites = [];
+  for (const file of roots.flatMap((dir) => swiftFilesUnder(dir))) {
+    if (path.resolve(file) === path.resolve(OWNER_SWIFT)) continue;
+    const code = stripSwiftComments(fs.readFileSync(file, "utf8"));
+    for (const m of code.matchAll(/\b(setActive|setCategory)\s*\(/g)) {
+      const fn = enclosingSwiftFunc(code, m.index);
+      assert.ok(fn, `${path.relative(ROOT, file)}: a ${m[1]}( outside any func`);
+      sites.push([path.basename(file), fn.name, m[1]]);
+      assert.ok(guardedOnEngineFlag(code.slice(fn.start, m.index)),
+        `${path.basename(file)} ${fn.name}(): ${m[1]}( is not guarded on EngineModeFlag.sessionOwnedByEngine — a second session owner in native mode`);
+    }
+  }
+  const key = (site) => site.join(" ");
+  assert.deepEqual(sites.map(key).sort(), GUARDED_SESSION_SITES.map(key).sort(),
+    "the legacy session sites changed; a new one needs the guard and a line in GUARDED_SESSION_SITES");
+
+  // The owner: category at boot with no activation, notify only when asked.
+  const owner = stripSwiftComments(fs.readFileSync(OWNER_SWIFT, "utf8"));
+  assert.match(owner, /final class AudioSessionOwner: SessionControlling \{/);
+  const init = /init\(api: AudioSessionAPI[\s\S]*?\n    \}/.exec(owner)?.[0] ?? "";
+  assert.match(init, /applyCategory\(why: "boot"\)/, "the category is set at boot");
+  assert.doesNotMatch(init, /setActive|activate\(\)/, "boot never activates (S-3)");
+  assert.match(swiftFuncBody(owner, "applyCategory"),
+    /setCategory\(\.playback, mode: \.spokenAudio,\s*policy: config\.longFormAudio \? \.longFormAudio : \.default, options: \[\]\)/);
+  assert.match(owner, /longFormAudio: Bool = false/, ".longFormAudio stays behind an off flag until DV-8");
+  const calls = [...owner.matchAll(/api\.setActive\((\w+)/g)].map((m) => m[1]);
+  assert.deepEqual(calls, ["true", "false"], "one activation, one deactivation");
+  assert.match(swiftFuncBody(owner, "activate"), /api\.setActive\(true, options: \[\]\)/);
+  assert.match(swiftFuncBody(owner, "deactivate"), /api\.setActive\(false, options: notifyOthers \? \[\.notifyOthersOnDeactivation\] : \[\]\)/,
+    "notify only when the core asks (close, final end, data deletion)");
+  assert.equal((owner.match(/notifyOthersOnDeactivation/g) ?? []).length, 1);
+});
+
+test("NE-16: the owner observes its three notifications on the main queue, reads the interruption reason, and the host persists the hold policy", () => {
+  /* Route changes are posted on a secondary thread, and the core's 500 ms
+     route attribution needs them ordered on main (plan §4.2); the reason key
+     is what separates a stale appWasSuspended and a muted mic from a real
+     interruption.
+     MUTATION: `queue: nil` on any observer; `addObserver(self, selector:`;
+     drop the reason key; drop persistHoldPolicyIfChanged() from runTurn; key
+     the store under `CapacitorStorage.`. */
+  const owner = stripSwiftComments(fs.readFileSync(OWNER_SWIFT, "utf8"));
+  const observe = swiftFuncBody(owner, "observe");
+  for (const name of ["interruptionNotification", "routeChangeNotification", "mediaServicesWereResetNotification"]) {
+    assert.match(observe, new RegExp(String.raw`addObserver\(forName: AVAudioSession\.${name}, object: object, queue: \.main\)`),
+      `${name} is observed on the main queue`);
+  }
+  assert.equal((owner.match(/addObserver\(/g) ?? []).length, 3, "exactly three observers");
+  assert.doesNotMatch(owner, /queue:\s*nil|addObserver\(self/);
+  assert.match(owner, /AVAudioSessionInterruptionReasonKey/, "the interruption reason is read");
+  assert.match(swiftFuncBody(owner, "row"), /secondaryAudioShouldBeSilencedHint/, "every owner row carries the silence hint");
+
+  const store = stripSwiftComments(fs.readFileSync(HOLD_STORE_SWIFT, "utf8"));
+  assert.match(store, /static let key = "ForayEngine\.holdPolicy"/, "the private key the plan names, outside CapacitorStorage.");
+  const host = stripSwiftComments(fs.readFileSync(HOST_SWIFT, "utf8"));
+  assert.match(swiftFuncBody(host, "runTurn"), /persistHoldPolicyIfChanged\(\)/, "every turn that changes the policy persists it");
+  assert.match(swiftFuncBody(host, "persistHoldPolicyIfChanged"), /seams\.holdPolicy\?\.save\(policy\)/);
+  assert.match(host, /if let stored = seams\.holdPolicy\?\.load\(\) \{ config\.holdPolicy = stored \}/, "the stored policy is read at construction");
+});
+
+test("NE-16: EngineModeFlag.swift is byte-identical in foray-audio and foray-tts, volatile, and read by both plugins", () => {
+  /* foray-tts reads the engine's ownership without depending on foray-audio:
+     two copies of one small file, compared here byte for byte (one source of
+     truth, a test instead of a dependency). The VOLATILE domain is
+     process-scoped, so a relaunch always starts legacy until decideOnce()
+     says otherwise (plan §4.4).
+     MUTATION: change the domain in one copy, write with `.set(` (persistent),
+     or delete one plugin's read of the flag. */
+  const audio = fs.readFileSync(FLAG_AUDIO_SWIFT);
+  const tts = fs.readFileSync(FLAG_TTS_SWIFT);
+  assert.ok(audio.equals(tts), "the two EngineModeFlag.swift copies differ");
+  assert.ok(!audio.includes(0x0d), "LF line endings, or the byte comparison is a Windows accident");
+  assert.deepEqual(swiftImports(FLAG_AUDIO_SWIFT), ["Foundation"]);
+  const code = stripSwiftComments(audio.toString("utf8"));
+  assert.match(code, /static let domain = "ai\.jwlabs\.foura\.engine"/);
+  assert.match(code, /static let key = "sessionOwnedByEngine"/);
+  assert.match(code, /volatileDomain\(forName: domain\)/);
+  assert.match(code, /setVolatileDomain\(\[key: newValue\], forName: domain\)/);
+  assert.doesNotMatch(code, /\.set\(|setValue|synchronize|persistentDomain|CapacitorStorage/, "never persisted");
+  const lines = code.split("\n").filter((l) => l.trim()).length;
+  assert.ok(lines <= 12, `EngineModeFlag.swift is meant to stay about ten lines of code, not ${lines}`);
+  assert.match(stripSwiftComments(fs.readFileSync(AUDIO_SWIFT, "utf8")), /EngineModeFlag\.sessionOwnedByEngine/);
+  assert.match(stripSwiftComments(fs.readFileSync(TTS_SWIFT, "utf8")), /EngineModeFlag\.sessionOwnedByEngine/);
+});
+
+const GRACE_SWIFT = path.join(ENGINE_DIR, "BackgroundGrace.swift");
+const CORE_ENGINE_SWIFT = path.join(CORE_DIR, "Sources/ForayEngineCore/Engine/EngineCore.swift");
+
+test("NE-16g: BackgroundGrace is the one place background time is begun, every begin carries an expiration handler, no task outlives it, and grace= reaches the remote, resume and cold-play rows", () => {
+  /* plan §4.4: UIBackgroundModes audio keeps the app alive only while audio
+     renders, so the silent span between a car's play and the first audible
+     frame is held by a background task. A begin with no expiration handler,
+     or a handler that returns with its task still open, gets the app killed
+     by UIKit in exactly the drive the task was meant to cover. The behaviour
+     is executed over fakes in ForayAudioPluginTests/Engine/
+     BackgroundGraceTests.swift (ios-kit) and EngineCoreTests (engine-parity);
+     what is pinned here is the shape a refactor could quietly undo.
+     MUTATION: call UIApplication's beginBackgroundTask( anywhere else in the
+     plugins' Swift, or pass `expirationHandler: nil`; drop the backstop
+     `endTask(id)` after the host's handler in expired(); drop the
+     `live.remove` guard in endTask (a second end); observe the lifecycle with
+     `queue: nil`, or drop its willTerminate observer (NE-19's flush); drop
+     `bgRemainingMs:` from the host's now(); make the host's
+     expiry feed the core before ending the task; drop the defer that fills
+     the remote row's grace fields, or spanRow(for:) from begin. Each fails. */
+  const roots = [
+    path.join(PLUGIN_DIR, "ios/Sources"),
+    path.join(PLUGIN_DIR, "../foray-tts/ios/Sources"),
+    path.join(CORE_DIR, "Sources"),
+  ];
+  const begins = [];
+  for (const file of roots.flatMap((dir) => swiftFilesUnder(dir))) {
+    const code = stripSwiftComments(fs.readFileSync(file, "utf8"));
+    for (const m of code.matchAll(/beginBackgroundTask\(withName:[^\n]*/g)) begins.push([path.basename(file), m[0]]);
+    assert.doesNotMatch(code, /expirationHandler:\s*nil/, `${path.basename(file)} begins background time with no expiration handler`);
+  }
+  assert.deepEqual(begins.map(([file]) => file), ["BackgroundGrace.swift"], "UIApplication's beginBackgroundTask( is called once, in BackgroundGrace.swift");
+  assert.match(begins[0][1], /beginBackgroundTask\(withName: name\) \{ expiration\(\) \}/, "the one begin always hands UIKit the engine's expiration handler");
+
+  const grace = stripSwiftComments(fs.readFileSync(GRACE_SWIFT, "utf8"));
+  assert.match(grace, /final class BackgroundGrace: BackgroundTasking \{/);
+  assert.match(swiftFuncBody(grace, "expired") ?? "", /handler\(\)\s*endTask\(id\)/, "the task is ended after the host's handler, whatever the handler did");
+  assert.match(swiftFuncBody(grace, "endTask") ?? "", /guard live\.remove\(id\) != nil else \{ return \}\s*api\.endBackgroundTask\(id\)/, "a task is ended at most once");
+  const lifecycle = swiftFuncBody(grace, "observeLifecycle") ?? "";
+  assert.equal((lifecycle.match(/addObserver\(forName: UIApplication\.\w+Notification,\s*object: nil, queue: \.main\)/g) ?? []).length, 3,
+    "didEnterBackground, willEnterForeground and willTerminate, all on the main queue");
+  assert.match(lifecycle, /UIApplication\.willTerminateNotification,\s*object: nil, queue: \.main\) \{ _ in handler\(\.terminating\) \}/,
+    "willTerminate reaches the core as .terminating (NE-19's last position flush)");
+  assert.doesNotMatch(grace, /queue:\s*nil|addObserver\(self/);
+
+  const host = stripSwiftComments(fs.readFileSync(HOST_SWIFT, "utf8"));
+  assert.match(swiftFuncBody(host, "now") ?? "", /bgRemainingMs: backgroundRemainingMs\(\)/, "every input carries the background budget into the core's rows");
+  assert.match(swiftFuncBody(host, "graceExpired") ?? "", /endGrace\(outcome: \.expired\)\s*handle\(\.timer\(\.graceExpired\)\)/,
+    "the expired task ends (with its row) before the core hears of it");
+
+  const core = stripSwiftComments(fs.readFileSync(CORE_ENGINE_SWIFT, "utf8"));
+  assert.match(swiftFuncBody(core, "onRemote") ?? "", /defer \{ out\[rowAt\] = \.diag\(DiagEntry\(kind: "remote", fields: fields \+ graceFields\(\)\)\) \}/,
+    "the remote row's grace= says whether THIS press is covered");
+  assert.match(swiftFuncBody(core, "begin") ?? "", /beginGrace\(reason\) \}\s*spanRow\(for: intent\)/, "resume and cold-play rows are written as their span opens");
+  const graceFields = swiftFuncBody(core, "graceFields") ?? "";
+  for (const field of ["grace", "graceReason", "bgRemainingMs"]) {
+    assert.match(graceFields, new RegExp(String.raw`JSONMember\("${field}"`), `the rows carry ${field}`);
+  }
+});
+
+test("NE-25b: the two-deck spike measures AVDeck's own gate: two real decks, no preroll( of its own, a live status reading, the exempt click tracks", () => {
+  /* NE-25b measures what NE-32's DeckPair rests on: a standby deck seeked and
+     prerolled while the other is audible, its time to ready, and how often a
+     preroll finishes `false` under a forced seek. Its readiness assertion is
+     only worth anything if the gate it watches is the PRODUCTION one:
+       - both decks are `AVDeck(config:)`, and the test target file issues no
+         `preroll(` itself (the NE-15 pin above scans Sources only, so a rig
+         that prerolled on its own would pass there and measure itself);
+       - the evidence is the primitive `prerollWhenReady` writes from
+         `player.status`, `item.status` and `player.rate` read on the line
+         before the call. If that string were ever a literal, every
+         "preroll player=1 item=1 rate=0.0" assertion would be vacuous;
+       - the forced seek goes around the deck, on the standby's own player;
+       - the numbers go through the one summary hand-off, tagged NE-25b;
+       - it plays only the descriptor-named, hash-checked click tracks.
+     MUTATION: add `player.preroll(atRate: 0) { _ in }` to the test file;
+     make AVDeck record the literal "preroll player=1 item=1 rate=0.0"; change
+     gatePrimitive's rate to 1.0; drop the tag from a table; point a trial at
+     a file outside the exempt set. Each fails. */
+  const testsPath = path.join(PLUGIN_DIR, "ios/Tests/ForayAudioPluginTests/TwoDeckPrerollTests.swift");
+  assert.ok(fs.existsSync(testsPath), "NE-25b's TwoDeckPrerollTests.swift is missing");
+  const tests = stripSwiftComments(fs.readFileSync(testsPath, "utf8"));
+  assert.doesNotMatch(tests, /\bpreroll\s*\(/, "the spike must measure AVDeck's preroll, not issue its own");
+  assert.match(tests, /\bAVDeck\(config:/, "the spike drives real AVDecks");
+  assert.match(tests, /static let gatePrimitive = "preroll player=1 item=1 rate=0\.0"/);
+  for (const name of [
+    "testTheStandbyDeckPrerollsWhileTheOtherDeckIsAudible",
+    "testTheStandbyWaitsForReadinessFromASlowSource",
+    "testPrerollFinishedFalseUnderAForcedSeek",
+  ]) {
+    assert.ok(swiftTestNames(testsPath).includes(name), `NE-25b's ${name} is gone`);
+  }
+  assert.match(swiftFuncBody(tests, "forcedSeekTrial"), /player\.seek\(to:/, "the forced seek is on the standby's player");
+  assert.match(swiftFuncBody(tests, "assertGateHeld"), /Self\.gatePrimitive/);
+  /* A forced-seek run in which no preroll was interrupted tested no recovery. */
+  assert.match(
+    swiftFuncBody(tests, "testPrerollFinishedFalseUnderAForcedSeek"),
+    /XCTAssertGreaterThan\(trials\.filter \{ \$0\.outcome == "preroll-unfinished" \}\.count, 0,/,
+    "the forced-seek test must fail when no preroll was interrupted"
+  );
+
+  const deck = stripSwiftComments(fs.readFileSync(AVDECK_SWIFT, "utf8"));
+  assert.match(
+    swiftFuncBody(deck, "prerollWhenReady"),
+    /record\("preroll player=\\\(player\.status\.rawValue\) item=\\\(item\.status\.rawValue\) rate=\\\(player\.rate\)"\)/,
+    "prerollWhenReady must record the statuses and rate it READ, or NE-25b's gate assertion proves nothing"
+  );
+
+  const tables = [...tests.matchAll(/MeasurementReport\.table\(/g)].length;
+  const tagged = [...tests.matchAll(/tag:\s*"NE-25b"\s*\)/g)].length;
+  assert.equal(tables, 3, "three NE-25b tables");
+  assert.equal(tagged, tables + [...tests.matchAll(/MeasurementReport\.json\(/g)].length, "every table and json line is tagged NE-25b");
+
+  const exempt = exemptClickTrackPaths(ROOT);
+  const files = [...new Set([...tests.matchAll(/"(click[\w-]*\.(?:mp3|wav))"/g)].map((m) => m[1]))];
+  assert.ok(files.length >= 2, `expected the spike's fixtures by name, found ${files}`);
+  for (const file of files) assert.ok(exempt.has(`${CLICK_TRACK_DIR}/${file}`), `${file} is not in the hash-checked exempt set`);
+});
+
+test("NE-25c: one synthesizer configuration, a platform-free probe reached only through probeSession, and a smoke on the production pieces", () => {
+  /* DV-9 (plan §10) is answered on the founder's phone by the Developer
+     session probe, and NE-33 picks SpeechNarrator's path from that one row.
+     The row means something only if:
+       - the probe is a sequence of ORDINARY engine inputs (an audition, a
+         play, a pause), so its speech and its play pass the same
+         audible-start invariant and the same "activate if needed" a
+         listener's would, and it touches no platform API (so the fakes run
+         exactly what the phone runs);
+       - the host hands `probeSession` to it before the core, builds it
+         nowhere else, and drops it at teardown with the synthesizer's
+         callback;
+       - the synthesizer it speaks through is the ONE configuration the
+         engine ships (`usesApplicationAudioSession = true`, Apple's 1x rate),
+         guarded against implicit activation like AVDeck's play;
+       - the Simulator smoke runs those same pieces and says it is a smoke.
+     MUTATION: call `seams.speaker.speak` or `seams.deck.send` from
+     SessionProbe; import AVFoundation there; construct a SessionProbe outside
+     ForayEngine.handle; drop `probe?.cancel()` or `seams.speaker.onFinish =
+     nil` from teardown(); build an AVSpeechSynthesizer anywhere in foray-audio
+     but makeSynthesizer(); drop `usesApplicationAudioSession = true` or the
+     default rate; move the sessionIsActive check below `synthesizer.speak(`;
+     pause on every finish; drop the smoke's NE-25c tag. Each fails. */
+  const PLATFORM = /\b(AVAudioSession|AVPlayer|AVSpeechSynthesizer|MPRemoteCommandCenter|MPNowPlayingInfoCenter|UIApplication|DispatchSource|NotificationCenter|UserDefaults)\b/;
+  const probePath = path.join(ENGINE_DIR, "SessionProbe.swift");
+  const speakerPath = path.join(ENGINE_DIR, "PreviewSpeaker.swift");
+  const smokePath = path.join(PLUGIN_DIR, "ios/Tests/ForayAudioPluginTests/SpeechSessionSmokeTests.swift");
+  const probeTestsPath = path.join(PLUGIN_DIR, "ios/Tests/ForayAudioPluginTests/Engine/SessionProbeTests.swift");
+
+  assert.deepEqual(swiftImports(probePath).sort(), ["ForayEngineCore", "Foundation"], "SessionProbe.swift imports only Foundation and the core");
+  const probe = stripSwiftComments(fs.readFileSync(probePath, "utf8"));
+  assert.doesNotMatch(probe, PLATFORM, "the probe reaches a platform API; it must drive the engine, not the world");
+  assert.doesNotMatch(probe, /seams\.(speaker\.speak|deck|session)\b/, "the probe speaks, plays and activates only through the core");
+  assert.match(probe, /@MainActor\s+final class SessionProbe \{/);
+  assert.match(probe, /static let armDelayMs: Double = 10_000/, "the card's 10 s to lock the phone");
+  assert.match(swiftFuncBody(probe, "speak"), /engine\.handle\(\.command\(\.audition\(text: Self\.line, voiceId: nil\), source: \.audition\)\)/,
+    "the line goes through the core's audition path (OQ-5)");
+  assert.match(swiftFuncBody(probe, "speechEnded"), /engine\.handle\(\.command\(\.play, source: \.tap\)\)/,
+    "the play after didFinish goes through the core, in the same call");
+  assert.match(swiftFuncBody(probe, "finish"), /if probeStartedPlay, engine\.state\.isRunning \{\s*engine\.handle\(\.command\(\.pause, source: \.tap\)\)/,
+    "the probe pauses only a play it started");
+  assert.match(swiftFuncBody(probe, "finish"), /row\("speech-then-play"/, "the DV-9 row plan §10 names");
+
+  const host = stripSwiftComments(fs.readFileSync(HOST_SWIFT, "utf8"));
+  assert.match(swiftFuncBody(host, "handle"), /if case \.command\(\.probeSession, _\) = input \{[\s\S]*?SessionProbe\(engine: self\)[\s\S]*?return probe\.arm\(\)/,
+    "probeSession is the host's: it arms the probe before the core sees it");
+  const builders = [...swiftFilesUnder(path.join(PLUGIN_DIR, "ios/Sources")), ...swiftFilesUnder(path.join(CORE_DIR, "Sources"))]
+    .flatMap((file) => [...stripSwiftComments(fs.readFileSync(file, "utf8")).matchAll(/\bSessionProbe\(/g)].map(() => path.basename(file)));
+  assert.deepEqual(builders, ["ForayEngine.swift"], "the probe is built in one place, the host's probeSession branch");
+  const teardown = swiftFuncBody(host, "teardown");
+  assert.match(teardown, /seams\.speaker\.onFinish = nil/, "teardown drops the synthesizer's callback");
+  assert.match(teardown, /probe\?\.cancel\(\)/, "teardown drops a probe in flight");
+  assert.match(swiftFuncBody(host, "start"), /seams\.speaker\.onFinish = \{[\s\S]*?probe\?\.speechEnded\(end\)/, "didFinish reaches the probe");
+
+  const speaker = stripSwiftComments(fs.readFileSync(speakerPath, "utf8"));
+  assert.match(speaker, /final class PreviewSpeaker: NSObject, Speaking, AVSpeechSynthesizerDelegate \{/);
+  assert.match(swiftFuncBody(speaker, "makeSynthesizer"), /usesApplicationAudioSession = true/, "the engine's synthesizer speaks through the app's session, said out loud");
+  assert.match(swiftFuncBody(speaker, "utterance"), /\.rate = AVSpeechUtteranceDefaultSpeechRate/, "narration is 1x, Apple's default rate (OQ-3)");
+  const speak = swiftFuncBody(speaker, "speak");
+  const guardAt = speak.search(/if !config\.sessionIsActive\(\) \{[\s\S]*?config\.diag\([\s\S]*?FaultKind\.implicitActivation[\s\S]*?config\.debugFault\(/);
+  assert.ok(guardAt >= 0 && guardAt < speak.indexOf("synthesizer.speak("), "the implicit-activation guard runs before the synthesizer speaks");
+  const synthesizers = [...swiftFilesUnder(path.join(PLUGIN_DIR, "ios/Sources")), ...swiftFilesUnder(path.join(CORE_DIR, "Sources"))]
+    .flatMap((file) => [...stripSwiftComments(fs.readFileSync(file, "utf8")).matchAll(/\bAVSpeechSynthesizer\(\)/g)].map(() => path.basename(file)));
+  assert.deepEqual(synthesizers, ["PreviewSpeaker.swift"], "one synthesizer configuration in the engine");
+  assert.match(speaker, /init\(config: Config\) \{[^}]*synthesizer = PreviewSpeaker\.makeSynthesizer\(\)/, "the speaker speaks through that configuration");
+
+  const smoke = stripSwiftComments(fs.readFileSync(smokePath, "utf8"));
+  for (const piece of [/AudioSessionOwner\(config:/, /PreviewSpeaker\(config:/, /\bAVDeck\(config:/]) {
+    assert.match(smoke, piece, "the smoke runs the production pieces");
+  }
+  assert.match(smoke, /static let tag = "NE-25c"/);
+  assert.match(smoke, /title: "NE-25c: [^"]*\(Simulator smoke, not evidence\)"/, "the smoke says what it is in the job summary");
+  assert.match(smoke, /tag: Self\.tag\s*\)/);
+  assert.match(smoke, /MeasurementReport\.json\(trial, tag: Self\.tag\)/);
+  assert.ok(swiftTestNames(smokePath).includes("testADeckStartedInTheSameTurnAsDidFinishPlaysWithinOneSecond"));
+  for (const name of [
+    "testWhileHeldTheProbeSpeaksThenPlaysThenPausesAndRecordsIt",
+    "testAPlayAfterTheLineActivatesWhenTheSessionWasLostAndRecordsTheCost",
+    "testARelinquishCancelsARunInFlight",
+  ]) {
+    assert.ok(swiftTestNames(probeTestsPath).includes(name), `NE-25c's ${name} is gone`);
+  }
+  const doc = fs.readFileSync(path.join(ROOT, "docs/ios-native-engine-measurements.md"), "utf8");
+  const section = doc.slice(doc.indexOf("## 11. NE-25c"));
+  assert.ok(doc.includes("## 11. NE-25c"), "the measurements doc has NE-25c's section");
+  assert.match(section, /\*\*Simulator smoke\. Not evidence\.\*\*/, "the smoke is labelled a smoke");
+  assert.match(section, /\*\*run \d{8,}\*\*/, "the smoke's numbers name the CI run they came from");
+  assert.match(section, /probe kind=speech-then-play/, "the doc tells NE-33 how to read the DV-9 row");
+});
+
 /* ───────────── audit round 2 (2026-09-23): the platform contract, pinned ───────────── */
 
 test("the iOS track pair follows the ROUTE, and the page's track handlers are not mirrored onto WebKit (round 2, p-impatient-3)", () => {
@@ -2390,7 +3795,7 @@ test("the iOS track pair follows the ROUTE, and the page's track handlers are no
   const route = swiftFuncBody(code, "handleRouteChange");
   assert.match(route, /trackRoutePresent = Self\.trackCommandsAllowed\(portTypes: outputs\)/, "re-read on every route change");
   assert.match(route, /applyCommandAvailability\(self\.lastPayload, force: true\)/, "and re-applied when it moved");
-  assert.match(swiftFuncBody(code, "load"), /trackRoutePresent = Self\.trackCommandsAllowed/, "and read at load");
+  assert.match(swiftFuncBody(code, "runLegacyRegistration"), /trackRoutePresent = Self\.trackCommandsAllowed/, "and read at load");
   assert.ok(UNMIRRORED_ACTIONS.includes("nexttrack") && UNMIRRORED_ACTIONS.includes("previoustrack"), "WebKit's session gets no track handlers");
   assert.ok(!UNMIRRORED_ACTIONS.includes("seekforward") && !UNMIRRORED_ACTIONS.includes("seekbackward"), "the skip pair is still mirrored");
 });
@@ -2405,10 +3810,18 @@ test("one audio-session mode, .spokenAudio, in both iOS plugins; category only a
   assert.doesNotMatch(audio, /mode:\s*\.default/, "the audio plugin holds no second mode");
   assert.doesNotMatch(tts, /mode:\s*\.default/, "nor does the TTS plugin");
   assert.match(swiftFuncBody(audio, "holdSession"), /setCategory\(\.playback, mode: \.spokenAudio/);
-  const load = swiftFuncBody(audio, "load");
+  /* Since NE-17 the legacy lane's load() body is `runLegacyRegistration`, run
+     by EngineOwnership from load() (pinned in the NE-17 test below). */
+  const load = swiftFuncBody(audio, "runLegacyRegistration");
   assert.match(load, /setCategory\(\.playback, mode: \.spokenAudio, options: \[\]\)/, "set once for the tape between narration and holds");
   assert.doesNotMatch(load, /setActive/, "category only: the playing path never activates");
-  assert.ok((tts.match(/mode:\s*\.spokenAudio/g) ?? []).length >= 2, "speak() and resume() both set the app's one mode");
+  /* NE-16 moved the TTS pair into `claimSession()` so both callers share one
+     guarded site; the rule is unchanged: speak() and resume() each claim the
+     app's one mode before sounding. MUTATION: drop either call -> red. */
+  assert.match(swiftFuncBody(tts, "claimSession"), /setCategory\(\.playback, mode: \.spokenAudio, options: \[\]\)/, "the TTS claim sets the app's one mode");
+  for (const fn of ["speak", "resume"]) {
+    assert.match(swiftFuncBody(tts, fn), /Self\.claimSession\(\)/, `${fn}() claims the app's one mode before sounding`);
+  }
 });
 
 test("the Android notification carries the seek pair and the session its custom buttons (round 2, native-7)", () => {
@@ -2481,4 +3894,325 @@ test("the Android shell starts the service for a narration-first Foray from the 
   assert.match(shellSrc, /return \{ install, uninstall, inspect, refresh, setMediaLoaded, noteTransportPlaying, noteServiceRunning, newDocument \};/);
   const shim = stripJsComments(fs.readFileSync(path.join(PLUGIN_DIR, "web/foray-media-session.js"), "utf8"));
   assert.match(shim, /shell\.noteTransportPlaying\(playing\)/, "the shim hands the transition to the shell");
+});
+
+/* ─────────── NE-17: EngineOwnership decides the lane, once ───────────
+ *
+ * docs/native-engine-plan.md §4.6 and card NE-17. The owner's behaviour runs
+ * over the fakes in ForayAudioPluginTests/Engine/EngineOwnershipTests.swift
+ * (ios-kit). Pinned here is what those tests stand on and a refactor could
+ * quietly undo: the plugin's load() goes through the owner and today's
+ * registration is reachable from nowhere else; the owner is Foundation-only;
+ * the private keys are §4.6's six, outside CapacitorStorage.; the session
+ * flag's domain and key are the plan's; and the host hands the owner its two
+ * hooks. */
+
+const OWNERSHIP_SWIFT = path.join(ENGINE_DIR, "EngineOwnership.swift");
+
+test("NE-17: load() asks EngineOwnership, and today's registration runs only through it", () => {
+  /* MUTATION: call registerCommandHandlers() from load() again; call
+     runLegacyRegistration() from anywhere but load()'s closure; drop the
+     legacyLane guard from setNowPlaying. Each fails. */
+  const code = stripSwiftComments(fs.readFileSync(AUDIO_SWIFT, "utf8"));
+  const load = swiftFuncBody(code, "load");
+  assert.match(load, /EngineOwnership\.shared/, "load() must ask the owner");
+  assert.match(load, /pluginDidLoad\(legacyRegistration: register\)/);
+  assert.match(load, /let register: \(\) -> Void = \{ \[weak self\] in self\?\.runLegacyRegistration\(\) \}/);
+  for (const direct of ["registerCommandHandlers", "registerSessionObservers", "setCategory", "applyCommandAvailability"]) {
+    assert.doesNotMatch(load, new RegExp(`\\b${direct}\\(`), `load() must not ${direct}() itself: the owner decides`);
+  }
+  assert.deepEqual(swiftCallersOf(code, "runLegacyRegistration"), ["load"]);
+  assert.deepEqual(swiftCallersOf(code, "registerCommandHandlers"), ["runLegacyRegistration"]);
+  assert.deepEqual(swiftCallersOf(code, "registerSessionObservers"), ["runLegacyRegistration"]);
+  const legacy = swiftFuncBody(code, "runLegacyRegistration");
+  assert.match(legacy, /stateQueue\.sync \{ legacyLane = true \}/);
+  assert.match(swiftFuncBody(code, "setNowPlaying"), /guard let self, self\.legacyLane else \{ return \}\s*self\.apply\(payload\)/,
+    "in the native lane a stale page's payload must not write over the engine's Now Playing");
+  // NE-20: the hello reaches the owner through the bridge, which the plugin
+  // builds over the process's one owner.
+  assert.match(swiftFuncBody(code, "bridgeOnMain"), /let owner = EngineOwnership\.shared[\s\S]*EngineBridge\(\s*owner: owner,/,
+    "the bridge must be built over EngineOwnership.shared");
+  assert.match(swiftFuncBody(stripSwiftComments(fs.readFileSync(path.join(ENGINE_DIR, "EngineBridge.swift"), "utf8")), "hello"),
+    /^\{\s*owner\.helloReceived\(\)/, "a hello stands the watchdog down, first");
+});
+
+test("NE-17: the owner is Foundation-only, keeps its keys through EngineStore and its flag through EngineModeFlag, and the host hands it two hooks", () => {
+  /* MUTATION: import UIKit into EngineOwnership.swift, or name UserDefaults
+     there; declare a second EnginePrivateKey in the plugin; write the flag
+     anywhere but EngineModeFlag; give the shared owner a factory other
+     than EngineBoot's, or a row sink that writes in the legacy lane; drop
+     either host hook. Each fails. */
+  assert.deepEqual(swiftImports(OWNERSHIP_SWIFT).sort(), ["ForayEngineCore", "Foundation"]);
+  const owner = stripSwiftComments(fs.readFileSync(OWNERSHIP_SWIFT, "utf8"));
+  assert.doesNotMatch(owner, /\b(AVAudioSession|MPRemoteCommandCenter|MPNowPlayingInfoCenter|UIApplication|NotificationCenter|UserDefaults)\b/,
+    "the owner reaches a platform API; that belongs in a conformer (OwnershipLifecycle.swift, EngineStore)");
+  assert.doesNotMatch(owner, /enum EnginePrivateKey\b/, "the private keys are the core's EnginePrivateKey (NE-19), not a second list");
+  assert.match(owner, /extension EngineStore: EnginePrivateKeyStoring \{\}/, "the owner's keys go through EngineStore");
+  const flag = /final class ProcessSessionOwnershipFlag: SessionOwnershipFlag \{([\s\S]*?)\n\}/.exec(owner);
+  assert.ok(flag, "the real session flag is gone");
+  assert.match(flag[1], /get \{ EngineModeFlag\.sessionOwnedByEngine \}/);
+  assert.match(flag[1], /set \{ EngineModeFlag\.sessionOwnedByEngine = newValue \}/);
+  const shared = /static var shared: EngineOwnership \{([\s\S]*?)\n    \}/.exec(owner);
+  assert.ok(shared, "EngineOwnership.shared is gone");
+  assert.match(shared[1], /engineFactory: \{ EngineBoot\.makeEngine\(store: store, timing: timing,/,
+    "NE-24: the shared owner boots the real engine, over the one store the owner and the bridge share");
+  assert.match(shared[1], /if decided\?\.mode == \.native \{ store\.diag\(entry\) \}/,
+    "the owner's rows reach the ring only in the native lane, whose Delete my data reaches the engine's purge");
+  assert.match(shared[1], /flag: ProcessSessionOwnershipFlag\(\)/);
+
+  const host = stripSwiftComments(fs.readFileSync(HOST_SWIFT, "utf8"));
+  assert.match(swiftFuncBody(host, "handle"), /drain\(\)\s*publishSurface\(\)\s*onTurnCompleted\?\(\)/, "the first handled input is the healthy marker");
+  assert.match(swiftFuncBody(host, "teardown"), /tornDown\?\(\)/, "whatever tears the engine down, the legacy lane takes over");
+  const lifecycle = stripSwiftComments(fs.readFileSync(path.join(ENGINE_DIR, "OwnershipLifecycle.swift"), "utf8"));
+  assert.match(lifecycle, /UIApplication\.willResignActiveNotification, UIApplication\.didEnterBackgroundNotification/);
+  assert.match(lifecycle, /queue: \.main/);
+});
+
+/* ─────────── NE-24: the cold path (the AppDelegate's line, the boot, the purge) ───────────
+ *
+ * docs/native-engine-plan.md §4.5, card NE-24. ColdPathTests (ios-kit) run the
+ * boot's three calls over the fakes; inject-background-audio.test.mjs runs the
+ * AppDelegate patch. Pinned here is what joins them and a refactor could
+ * quietly undo: the name the patch writes is the plugin's public API in the
+ * module the patch imports; the boot writes the build row first, starts, and
+ * cold-boots from the store's record; the cold launch never autoplays (S-3);
+ * only the boot can end the process; and a purge reaches the store. */
+
+test("NE-24: the AppDelegate's line is the plugin's public cold path, the boot paints without activating, and a purge reaches the store", async () => {
+  /* MUTATION: rename ForayEngineColdPath or make it internal; rename the
+     plugin target; coldLaunch with `autoplay: true`; construct a seam before
+     the build row; skip `coldBoot`; call `exit(` anywhere but EngineBoot;
+     drop `records?.purge()` from the bridge. Each fails here. */
+  const inj = await import("./inject-background-audio.mjs");
+  const boot = stripSwiftComments(fs.readFileSync(path.join(ENGINE_DIR, "EngineBoot.swift"), "utf8"));
+  assert.deepEqual(swiftImports(path.join(ENGINE_DIR, "EngineBoot.swift")).sort(), ["ForayEngineCore", "Foundation"]);
+  assert.doesNotMatch(boot, /\b(AVAudioSession|MPRemoteCommandCenter|MPNowPlayingInfoCenter|UIApplication|NotificationCenter|UserDefaults)\b/,
+    "the boot wires conformers; it reaches no platform API itself");
+  const [callType, callName] = inj.COLD_PATH_CALL.replace("()", "").split(".");
+  assert.match(boot, new RegExp(String.raw`public enum ${callType} \{\s*public static func ${callName}\(\) \{`),
+    "the AppDelegate's call is the plugin's public API, spelled as the injector writes it");
+  assert.match(boot, /EngineOwnership\.shared\.bootIfNeeded\(\)/);
+  const manifest = fs.readFileSync(path.join(PLUGIN_DIR, "Package.swift"), "utf8");
+  assert.match(manifest, new RegExp(String.raw`\.target\(\s*name: "${inj.COLD_PATH_IMPORT.split(" ")[1]}"`),
+    "the AppDelegate imports the plugin target's module by its real name");
+
+  const make = swiftFuncBody(boot, "makeEngine") ?? "";
+  const buildRow = make.indexOf("store.diagnostics.build(");
+  assert.ok(buildRow >= 0 && buildRow < make.indexOf("AudioSessionOwner("), "the build row is written first, before any seam's row");
+  assert.match(make, /engine\.start\(\)\s*engine\.coldBoot\(from: store\.restoreRecord\(\)\)/, "start, then the cold boot from the store's record");
+
+  const host = stripSwiftComments(fs.readFileSync(HOST_SWIFT, "utf8"));
+  const cold = swiftFuncBody(host, "coldBoot") ?? "";
+  assert.match(cold, /\.lifecycle\(\.coldLaunch\(queue: restored\.queue, index: restored\.index, autoplay: false\)\)/,
+    "a cold boot paints; it never plays (S-3)");
+  assert.doesNotMatch(cold, /activate|deck\./, "a cold boot touches no session and no deck itself");
+
+  for (const file of swiftFilesUnder(path.join(PLUGIN_DIR, "ios/Sources"))) {
+    const code = stripSwiftComments(fs.readFileSync(file, "utf8"));
+    if (/\bexit\(/.test(code)) assert.equal(path.basename(file), "EngineBoot.swift", `${path.relative(ROOT, file)} can end the process`);
+  }
+
+  const bridge = stripSwiftComments(fs.readFileSync(path.join(ENGINE_DIR, "EngineBridge.swift"), "utf8"));
+  assert.match(swiftFuncBody(bridge, "send") ?? "", /if case \.purge = command \{\s*records\?\.purge\(\)\s*\}/,
+    "Delete my data reaches the store: rows, private keys, the record and the ring");
+});
+
+/* ─────────── NE-20: the bridge (engineHello, engineSend, engineRead, the "engine" event) ───────────
+ *
+ * docs/native-engine-plan.md §5.1-§5.4, card NE-20. The Simulator XCTests
+ * (EngineBridgeTests) prove what the bridge answers; these pin the names the
+ * page and the plugin must agree on, which no Swift test can see. */
+
+test("NE-20: the bridge's method and event names are engine-contract.js's, the plugin hops to main and always resolves, and nothing leaves a hidden page", async () => {
+  /* MUTATION: rename a CAPPluginMethod or drop one; `call.reject(` in any of
+     the three; call the bridge off main; add engineSend to the Java; rename
+     the event (`EngineBridgeRules.eventName`) or ENGINE_EVENT; add an event
+     type the contract does not list; import UIKit into EngineBridge.swift;
+     deliver an engine or diag event without the visibility guard; advertise
+     a capability the contract does not define. Each fails. */
+  const { BRIDGE_METHODS, EVENTS, CAPABILITIES } = await import("../../player/engine-contract.js");
+  const { ENGINE_EVENT } = await import("../../player/native-engine.js");
+
+  const swift = fs.readFileSync(AUDIO_SWIFT, "utf8");
+  const code = stripSwiftComments(swift);
+  const declared = [...swift.matchAll(/CAPPluginMethod\(name:\s*"(\w+)"/g)].map((m) => m[1]);
+  const verbs = { engineHello: "hello", engineSend: "send", engineRead: "read" };
+  assert.deepEqual(Object.keys(verbs), [...BRIDGE_METHODS], "the plugin's three methods are engine-contract.js BRIDGE_METHODS");
+  for (const method of BRIDGE_METHODS) {
+    assert.ok(declared.includes(method), `ForayAudioPlugin.swift does not declare ${method} as a CAPPluginMethod`);
+    const body = swiftFuncBody(code, method);
+    assert.ok(body, `ForayAudioPlugin.swift has no func ${method}`);
+    assert.match(body, /let payload = EngineBridge\.payload\(from: call\.options\)\s*DispatchQueue\.main\.async \{[\s\S]*MainActor\.assumeIsolated \{/,
+      `${method} must decode the options and hop to main before touching the engine`);
+    assert.match(body, new RegExp(String.raw`call\.resolve\(Self\.jsObject\(self\.bridgeOnMain\(\)\.${verbs[method]}\(payload\)\)\)`),
+      `${method} must resolve with the bridge's answer`);
+    assert.doesNotMatch(body, /\.reject\(/, `${method} must never reject (the plugin's every-method-resolves rule)`);
+  }
+  const java = fs.readFileSync(path.join(PLUGIN_DIR, "android/src/main/java/ai/jwlabs/foura/audio/ForayAudioPlugin.java"), "utf8");
+  for (const method of BRIDGE_METHODS) {
+    assert.doesNotMatch(java, new RegExp(String.raw`\b${method}\b`), `${method} is iOS only; Android never gains it`);
+  }
+
+  const contract = stripSwiftComments(fs.readFileSync(path.join(CORE_DIR, "Sources/ForayEngineCore/Contract/EngineContract.swift"), "utf8"));
+  const caseNames = (enumName) => {
+    const at = contract.indexOf(`enum ${enumName}:`);
+    assert.ok(at >= 0, `EngineContract has no enum ${enumName}`);
+    const body = contract.slice(at, contract.indexOf("}", at));
+    return [...body.matchAll(/case (\w+)/g)].map((m) => m[1]);
+  };
+  assert.deepEqual(caseNames("BridgeMethod"), [...BRIDGE_METHODS]);
+  assert.deepEqual(caseNames("EventType"), [...EVENTS]);
+
+  const rulesPath = path.join(CORE_DIR, "Sources/ForayEngineCore/Contract/EngineBridgeRules.swift");
+  const rules = stripSwiftComments(fs.readFileSync(rulesPath, "utf8"));
+  assert.equal(/static let eventName = "(\w+)"/.exec(rules)?.[1], ENGINE_EVENT, "the Swift event name and native-engine.js ENGINE_EVENT disagree");
+  assert.match(swiftFuncBody(code, "notifyEngineEvent"), /notifyListeners\(EngineBridgeRules\.eventName, data:/, "engine events ride on the one event name");
+  const advertised = /static let advertisedCapabilities: \[String\] = \[([^\]]*)\]/.exec(rules);
+  assert.ok(advertised, "EngineBridgeRules must declare the advertisedCapabilities literal coverage.js reads");
+  for (const [, cap] of advertised[1].matchAll(/"([^"]+)"/g)) {
+    assert.ok(CAPABILITIES.includes(cap), `advertisedCapabilities names ${cap}, which engine-contract.js CAPABILITIES does not define`);
+  }
+
+  const bridgePath = path.join(ENGINE_DIR, "EngineBridge.swift");
+  assert.deepEqual(swiftImports(bridgePath).sort(), ["ForayEngineCore", "Foundation"], "the bridge imports only Foundation and the core");
+  const bridge = stripSwiftComments(fs.readFileSync(bridgePath, "utf8"));
+  assert.doesNotMatch(bridge, /\b(AVAudioSession|MPRemoteCommandCenter|MPNowPlayingInfoCenter|UIApplication|UserDefaults|NotificationCenter)\b/,
+    "the bridge reaches a platform API");
+  for (const name of ["engineEmitted", "liveRow"]) {
+    assert.match(swiftFuncBody(bridge, name) ?? "", /guard coalescer\.visible else \{ return \}\s*deliver\(/, `${name} delivers only to a visible page`);
+  }
+  assert.match(swiftFuncBody(bridge, "transitioned") ?? "", /if coalescer\.visible \{ deliver\(EngineBridgeRules\.modeChangedEvent/);
+  assert.match(swiftFuncBody(bridge, "apply") ?? "", /case \.emit:\s*deliver\(EngineBridgeRules\.snapshotEvent\(snapshot\(\)\)\)/,
+    "a snapshot event leaves only on the coalescer's word");
+  assert.equal([...bridge.matchAll(/\bdeliver\(/g)].length, 4, "every deliver( is one of the four above");
+});
+
+/* ─────────── NE-18: RemoteSurface, NowPlayingPublisher and ArtworkCache ───────────
+ *
+ * docs/native-engine-plan.md §4.2 and §4.5, card NE-18. The Simulator XCTests
+ * (RemoteSurfaceTests, NowPlayingPublisherTests) run the truth table and the
+ * real centres; what they cannot see is a SECOND copy of the skip pair, a head
+ * unit's interval quietly read, a receipt returned instead of the verdict, a
+ * `playbackState` write, or a clear on some path other than `clear()`. */
+
+const REMOTE_SURFACE_SWIFT = path.join(ENGINE_DIR, "RemoteSurface.swift");
+const PUBLISHER_SWIFT = path.join(ENGINE_DIR, "NowPlayingPublisher.swift");
+const ARTWORK_SWIFT = path.join(ENGINE_DIR, "ArtworkCache.swift");
+
+test("NE-18: the remote surface steps by the founder's pair and answers with the core's verdict, on main", () => {
+  /* MUTATION: `preferredIntervals = [15]` (or any literal 15/30) in
+     RemoteSurface.swift, NowPlayingPublisher.swift or ArtworkCache.swift; read
+     `(event as? MPSkipIntervalCommandEvent)?.interval`; hand a skip press a
+     value; return `.success` from the target instead of the verdict; call the
+     handler off main or hop with `async`; let `setEnabled` enable `stop`;
+     register an MPRemoteCommandCenter target from any other Engine/ file.
+     Each fails here. */
+  const forbidden = new Set([15, 30, 15000, 30000]);
+  for (const file of [REMOTE_SURFACE_SWIFT, PUBLISHER_SWIFT, ARTWORK_SWIFT]) {
+    const found = swiftDecimalLiterals(stripSwiftComments(fs.readFileSync(file, "utf8")))
+      .filter((lit) => forbidden.has(lit.value)).map((lit) => lit.text);
+    assert.deepEqual(found, [], `${path.relative(ROOT, file)} holds a literal seek step; read MediaMapping / EngineConstants`);
+  }
+  const remote = stripSwiftComments(fs.readFileSync(REMOTE_SURFACE_SWIFT, "utf8"));
+  assert.match(remote, /skipBackwardCommand\.preferredIntervals = \[NSNumber\(value: MediaMapping\.seekBackwardSec\)\]/);
+  assert.match(remote, /skipForwardCommand\.preferredIntervals = \[NSNumber\(value: MediaMapping\.seekForwardSec\)\]/);
+  assert.doesNotMatch(remote, /\.interval\b|MPSkipIntervalCommandEvent/, "the head unit's skip interval is data about the press, never an order");
+  assert.match(swiftFuncBody(remote, "value") ?? "", /guard command == \.changePlaybackPosition else \{ return nil \}/,
+    "only a scrub carries a value into the core");
+  const deliver = swiftFuncBody(remote, "deliver") ?? "";
+  assert.match(deliver, /if Thread\.isMainThread \{[\s\S]*?MainActor\.assumeIsolated[\s\S]*?onMain: true/);
+  assert.match(deliver, /DispatchQueue\.main\.sync \{[\s\S]*?onMain: false/);
+  assert.doesNotMatch(deliver, /\.async\b/, "a press is answered inside the handler, never after it returned");
+  assert.match(swiftFuncBody(remote, "addTarget") ?? "", /return RemoteSurface\.status\(verdict\)/, "the status is the core's verdict, not a receipt");
+  assert.match(swiftFuncBody(remote, "setEnabled") ?? "", /command == \.stop \? false : enabled/, "stop is never enabled (T-7)");
+  assert.doesNotMatch(remote, /\b(setActive|setCategory)\(/, "reading the route is not owning the session");
+
+  for (const file of swiftFilesUnder(ENGINE_DIR)) {
+    const code = stripSwiftComments(fs.readFileSync(file, "utf8"));
+    if (/\bMPRemoteCommandCenter\b/.test(code)) assert.equal(file, REMOTE_SURFACE_SWIFT, `${path.relative(ROOT, file)} registers remote targets`);
+    if (/\bMPNowPlayingInfoCenter\b/.test(code)) assert.equal(file, PUBLISHER_SWIFT, `${path.relative(ROOT, file)} writes Now Playing`);
+  }
+
+  const host = stripSwiftComments(fs.readFileSync(HOST_SWIFT, "utf8"));
+  const pressed = swiftFuncBody(host, "remote") ?? "";
+  assert.match(pressed, /let verdict = RemoteVerdict\(failures: result\.failures\)[\s\S]*DiagEntry\(kind: "remote"[\s\S]*return verdict/,
+    "the status the system gets is the verdict, and it is on record");
+  assert.match(swiftFuncBody(host, "start") ?? "", /publishSurface\(\)/, "enablement is applied from the first moment");
+  assert.doesNotMatch(swiftFuncBody(host, "start") ?? "", /setEnabled\(/, "enablement is commandAvailability's, not a literal");
+});
+
+test("NE-18: Now Playing writes rate 0 rather than playbackState, is cleared only through clear(), and artwork is https-or-bundled and bounded", () => {
+  /* MUTATION: write `center.playbackState`; set `nowPlayingInfo = nil` outside
+     `clear()`; clear or write Now Playing from teardown; publish after a
+     teardown; write the listener's rate instead of NowPlayingRate; let the
+     host call `nowPlaying.clear()` anywhere but publishSurface; accept an
+     `http` artwork; drop the artwork deadline or the cached failure. Each
+     fails here. */
+  const publisher = stripSwiftComments(fs.readFileSync(PUBLISHER_SWIFT, "utf8"));
+  assert.doesNotMatch(publisher, /playbackState\s*=/, "OQ-8: playbackState is macOS-only and never written");
+  assert.equal([...publisher.matchAll(/nowPlayingInfo = nil/g)].length, 1, "one way to nil");
+  assert.match(swiftFuncBody(publisher, "clear") ?? "", /center\.nowPlayingInfo = nil/);
+  const info = swiftFuncBody(publisher, "info") ?? "";
+  assert.match(info, /let rate = NowPlayingRate\.of\(view\)/);
+  assert.match(info, /MPNowPlayingInfoPropertyPlaybackRate: NSNumber\(value: rate\)/);
+  const seams = stripSwiftComments(fs.readFileSync(SEAMS_SWIFT, "utf8"));
+  assert.match(seams, /guard view\.playbackState == MediaMapping\.playing else \{ return 0 \}/, "rate 0 whenever the entry is not playing");
+
+  const host = stripSwiftComments(fs.readFileSync(HOST_SWIFT, "utf8"));
+  assert.equal([...host.matchAll(/seams\.nowPlaying\.clear\(\)/g)].length, 1);
+  assert.equal([...host.matchAll(/seams\.nowPlaying\.write\(/g)].length, 1);
+  const publish = swiftFuncBody(host, "publishSurface") ?? "";
+  assert.match(publish, /^\{\s*guard !isTornDown else \{ return \}/, "a relinquish leaves Now Playing and the targets for the legacy lane");
+  assert.match(publish, /seams\.nowPlaying\.clear\(\)/);
+  assert.match(publish, /availability\.clearsNowPlaying/, "nil only for a finished Foray, a close or a data deletion");
+  assert.doesNotMatch(swiftFuncBody(host, "teardown") ?? "", /publishSurface|nowPlaying/);
+
+  const artwork = stripSwiftComments(fs.readFileSync(ARTWORK_SWIFT, "utf8"));
+  assert.match(artwork, /static let timeoutSec: Double = 10\b/, "plan §4.5: bounded at 10 s");
+  assert.match(artwork, /DispatchQueue\.main\.asyncAfter\(deadline: \.now\(\) \+ timeoutSec\) \{ finish\(nil\) \}/, "the deadline is whole, not per packet");
+  assert.match(artwork, /scheme\.lowercased\(\) == "https"/);
+  assert.match(swiftFuncBody(artwork, "settle") ?? "", /failed\.insert\(src\)/, "a failure is cached");
+});
+
+/* NE-27 (docs/native-engine-plan.md §4.6 "Build default", §9 G-5): the build
+   default is the switch that puts the native engine under the founder's daily
+   listening, so it may say `native` only when STATE.md records the answer to
+   OQ-9 (native default for the M1 build) as a line of its own:
+     OQ-9 answer (<date>): native default ... "<the ruling, quoted>" ...
+   A `js` default needs no record. This reads the RECORD, not a comment in the
+   JSON, so flipping the default and writing the permission are two edits a
+   reviewer sees in two files. */
+const ENGINE_DEFAULT_JSON = path.join(ROOT, "mobile", "ENGINE_DEFAULT.json");
+const STATE_MD = path.join(ROOT, "STATE.md");
+const OQ9_ANSWER_RE = /^OQ-9 answer \(\d{4}-\d{2}-\d{2}\): native default\b.*"[^"]+"/m;
+
+/** Why `engineDefault` may not ship with `stateText`, or null when it may. */
+function engineDefaultRefusal(engineDefault, stateText) {
+  if (engineDefault?.mode !== "native") return null;
+  if (!OQ9_ANSWER_RE.test(stateText)) {
+    return 'mobile/ENGINE_DEFAULT.json says "native", but STATE.md records no line "OQ-9 answer (<date>): native default ..." carrying the ruling in double quotes';
+  }
+  const caps = engineDefault.capabilities ?? [];
+  const allowed = ["episode", "continuation", "restore"];
+  const extra = caps.filter((c) => !allowed.includes(c));
+  if (extra.length) return `the M1 native default may advertise only ${allowed.join(", ")}; it also lists ${extra.join(", ")}`;
+  return null;
+}
+
+test("NE-27: ENGINE_DEFAULT says native only when STATE.md records the OQ-9 answer", () => {
+  /* MUTATIONS: commit {"mode":"native"} with STATE.md's OQ-9 line deleted ->
+     red; keep the line but drop its quoted ruling -> red; add "foray" to a
+     native default in M1 -> red. The synthetic cases below are those mutations,
+     run every time, so the guard cannot go vacuous while the default is js. */
+  const record = 'OQ-9 answer (2026-09-24): native default for the founder\'s builds, "Full native engine".';
+  assert.equal(engineDefaultRefusal({ mode: "js" }, ""), null, "a js default needs no record");
+  assert.match(engineDefaultRefusal({ mode: "native", capabilities: ["episode"] }, "") ?? "", /OQ-9/);
+  assert.match(engineDefaultRefusal({ mode: "native" }, "OQ-9 answer (2026-09-24): native default, unquoted") ?? "", /OQ-9/);
+  assert.match(engineDefaultRefusal({ mode: "native" }, "  " + record) ?? "", /OQ-9/, "the record is a line of its own");
+  assert.equal(engineDefaultRefusal({ mode: "native", capabilities: ["episode", "continuation", "restore"] }, record), null);
+  assert.match(engineDefaultRefusal({ mode: "native", capabilities: ["episode", "foray"] }, record) ?? "", /foray/);
+
+  const committed = JSON.parse(fs.readFileSync(ENGINE_DEFAULT_JSON, "utf8"));
+  const refusal = engineDefaultRefusal(committed, fs.readFileSync(STATE_MD, "utf8").replace(/\r\n/g, "\n"));
+  assert.equal(refusal, null, refusal ?? "");
 });

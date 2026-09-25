@@ -1,0 +1,581 @@
+{
+  "//": "Covered-suite tests with no Swift meaning. Each has one closed reason (webview-only, dom-only, text-pin, js-module-shape) and a sentence of why. An entry claims the engine need never reimplement this rule; a reviewer should be able to check that claim from the sentence alone.",
+  "html-audio-backend": {
+    "A TELEMETRY SINK THAT THROWS CANNOT BREAK THE PLAYER (#264)": {
+      "reason": "js-module-shape",
+      "why": "A JS telemetry callback that throws. The engine writes diagnostics rows through EngineDiagnostics (plan §4.1), a typed seam with its own recording fake, not an injected callback."
+    },
+    "THE SEEK PATH'S deadline is ref'd too — the half of the seams nothing covered": {
+      "reason": "js-module-shape",
+      "why": "Node's timer ref/unref semantics on the in-place seek's deadline. The native deadline is a main-queue timer with no such mode."
+    },
+    "a prime whose play() rejects does not become an unhandled rejection": {
+      "reason": "webview-only",
+      "why": "WebKit lifts an <audio> element's autoplay restriction only for a play() made inside a user gesture's task (#225). The native engine starts AVPlayer from native code, where there is no autoplay gesture to spend."
+    },
+    "a released backend does not spend a gesture on a dead element": {
+      "reason": "webview-only",
+      "why": "WebKit lifts an <audio> element's autoplay restriction only for a play() made inside a user gesture's task (#225). The native engine starts AVPlayer from native code, where there is no autoplay gesture to spend."
+    },
+    "a throwing isHidden cannot stop a load, and falls back to the visible budget": {
+      "reason": "webview-only",
+      "why": "A page-supplied isHidden() callback (document.hidden) that throws. The native engine reads application state natively; an unknown visibility getting the visible budget is fixtured in deck-episode (deadline-unknown-visibility-is-visible)."
+    },
+    "every deadline is ref'd, so it fires whether or not anything else is running": {
+      "reason": "js-module-shape",
+      "why": "Node's timer ref/unref semantics (an unref'd timer only fires while something else holds the event loop). The native deadline is a main-queue timer with no such mode; its firing is AVDeckTests' testANeverReadyUrlHitsTheDeadlineWithNoPreroll."
+    },
+    "notePlayGesture is one-shot — the restriction is only ever lifted once": {
+      "reason": "webview-only",
+      "why": "WebKit lifts an <audio> element's autoplay restriction only for a play() made inside a user gesture's task (#225). The native engine starts AVPlayer from native code, where there is no autoplay gesture to spend."
+    },
+    "notePlayGesture never touches an element that already holds audio": {
+      "reason": "webview-only",
+      "why": "WebKit lifts an <audio> element's autoplay restriction only for a play() made inside a user gesture's task (#225). The native engine starts AVPlayer from native code, where there is no autoplay gesture to spend."
+    },
+    "notePlayGesture spends the tap on the element, before there is anything to load": {
+      "reason": "webview-only",
+      "why": "WebKit lifts an <audio> element's autoplay restriction only for a play() made inside a user gesture's task (#225). The native engine starts AVPlayer from native code, where there is no autoplay gesture to spend."
+    },
+    "seek carries the precise flag into telemetry without changing behaviour": {
+      "reason": "text-pin",
+      "why": "Pins that the backend's English telemetry line names the precise flag. The engine's rows use the diag-tokens vocabulary (NE-04), not this string."
+    },
+    "the SECOND load of one source settles without yielding — why the second tap worked": {
+      "reason": "webview-only",
+      "why": "WebKit lifts an <audio> element's autoplay restriction only for a play() made inside a user gesture's task (#225). The native engine starts AVPlayer from native code, where there is no autoplay gesture to spend. What this pins is that the same-source path resolves inside the tap's task; the same-source rule itself is fixtured in deck-episode (same-source-is-a-seek)."
+    },
+    "the element is never given a crossorigin attribute": {
+      "reason": "webview-only",
+      "why": "An <audio> element's crossorigin attribute turns a working no-cors podcast load into a hard failure. AVPlayer has no CORS; the engine's deck never sees this attribute."
+    },
+    "the hidden deadline says which budget it used, so an artifact can be read": {
+      "reason": "text-pin",
+      "why": "Pins the backend's English `load.deadline Nms (hidden|visible)` telemetry string. Which budget applies is fixtured in deck-episode (deadline-hidden, deadline-visible); the engine's rows carry tokens, not this sentence."
+    }
+  },
+  "media-session": {
+    "EVERY playForay call site in app.js passes the artwork document": {
+      "reason": "js-module-shape",
+      "why": "Text scan: every app.js playForay call site passes discoverDoc; native mode replaces this page wiring wholesale (plan §5.6: syncMediaSession returns early and the lock-screen surfaces are not installed), so there is no rule here for the engine to reimplement."
+    },
+    "MediaMetadata is used when the engine provides it": {
+      "reason": "webview-only",
+      "why": "The WebView's MediaMetadata constructor. createMediaSession wraps navigator.mediaSession inside the WebView; in native mode the page writes no navigator.mediaSession (plan §3 A-2) and NowPlayingPublisher/RemoteSurface talk to MPNowPlayingInfoCenter and MPRemoteCommandCenter through the NE-18 seams, whose recording fakes carry their own XCTests."
+    },
+    "a MediaMetadata constructor that throws does not take the page with it": {
+      "reason": "webview-only",
+      "why": "A throwing MediaMetadata constructor in a WebKit build. createMediaSession wraps navigator.mediaSession inside the WebView; in native mode the page writes no navigator.mediaSession (plan §3 A-2) and NowPlayingPublisher/RemoteSurface talk to MPNowPlayingInfoCenter and MPRemoteCommandCenter through the NE-18 seams, whose recording fakes carry their own XCTests."
+    },
+    "a REMOTE stop pauses and keeps the session; only the in-page Stop and the notification's close tear it down": {
+      "reason": "js-module-shape",
+      "why": "Text scan: client.js's remoteStop pauses and only a close tears down; the engine's stop is registered-and-disabled with a remote stop as a pause (plan §4.5, T-7), which is NE-12s's commandAvailability and NE-18's XCTest; native mode replaces this page wiring wholesale (plan §5.6: syncMediaSession returns early and the lock-screen surfaces are not installed), so there is no rule here for the engine to reimplement."
+    },
+    "a RESTORED Foray is described to the OS as a Foray, and its clip follows the thumb (player-10)": {
+      "reason": "js-module-shape",
+      "why": "Text scan: mediaViewFields reads the restored Foray and the clip under the pending position; native mode replaces this page wiring wholesale (plan §5.6: syncMediaSession returns early and the lock-screen surfaces are not installed), so there is no rule here for the engine to reimplement."
+    },
+    "a handler installed BY THE BRIDGE actually calls the surface — all eight of them": {
+      "reason": "webview-only",
+      "why": "The WebView bridge's installed handler really calls the surface; the press-to-intent table it exercises is fixtured in media-episode through media-actions. createMediaSession wraps navigator.mediaSession inside the WebView; in native mode the page writes no navigator.mediaSession (plan §3 A-2) and NowPlayingPublisher/RemoteSurface talk to MPNowPlayingInfoCenter and MPRemoteCommandCenter through the NE-18 seams, whose recording fakes carry their own XCTests."
+    },
+    "a handler installed by the bridge reaches a REAL manager": {
+      "reason": "webview-only",
+      "why": "The WebView bridge end to end into a manager; a remote press into the engine is NE-14j/NE-29j's manager scenarios. createMediaSession wraps navigator.mediaSession inside the WebView; in native mode the page writes no navigator.mediaSession (plan §3 A-2) and NowPlayingPublisher/RemoteSurface talk to MPNowPlayingInfoCenter and MPRemoteCommandCenter through the NE-18 seams, whose recording fakes carry their own XCTests."
+    },
+    "a lock-screen press is recorded as `remote` and an in-page tap as `tap`": {
+      "reason": "js-module-shape",
+      "why": "Text scan: client.js passes source \"remote\" from the lock-screen surfaces; the engine records `source` on every command itself (plan §5.2, D-4); native mode replaces this page wiring wholesale (plan §5.6: syncMediaSession returns early and the lock-screen surfaces are not installed), so there is no rule here for the engine to reimplement."
+    },
+    "a metadata setter that throws is swallowed": {
+      "reason": "webview-only",
+      "why": "A throwing metadata setter in a WebKit build. createMediaSession wraps navigator.mediaSession inside the WebView; in native mode the page writes no navigator.mediaSession (plan §3 A-2) and NowPlayingPublisher/RemoteSurface talk to MPNowPlayingInfoCenter and MPRemoteCommandCenter through the NE-18 seams, whose recording fakes carry their own XCTests."
+    },
+    "a metadata write that SUCCEEDS reports writeOk true": {
+      "reason": "webview-only",
+      "why": "writeOk for a successful navigator.mediaSession.metadata assignment. createMediaSession wraps navigator.mediaSession inside the WebView; in native mode the page writes no navigator.mediaSession (plan §3 A-2) and NowPlayingPublisher/RemoteSurface talk to MPNowPlayingInfoCenter and MPRemoteCommandCenter through the NE-18 seams, whose recording fakes carry their own XCTests."
+    },
+    "a metadata write that THROWS is reported as failed, not as written": {
+      "reason": "webview-only",
+      "why": "writeOk for a throwing navigator.mediaSession.metadata assignment (founder record 2026-09-21). createMediaSession wraps navigator.mediaSession inside the WebView; in native mode the page writes no navigator.mediaSession (plan §3 A-2) and NowPlayingPublisher/RemoteSurface talk to MPNowPlayingInfoCenter and MPRemoteCommandCenter through the NE-18 seams, whose recording fakes carry their own XCTests."
+    },
+    "a moving playhead writes position, a still one stops writing": {
+      "reason": "webview-only",
+      "why": "The bridge's tenth-of-a-second setPositionState dedupe. createMediaSession wraps navigator.mediaSession inside the WebView; in native mode the page writes no navigator.mediaSession (plan §3 A-2) and NowPlayingPublisher/RemoteSurface talk to MPNowPlayingInfoCenter and MPRemoteCommandCenter through the NE-18 seams, whose recording fakes carry their own XCTests."
+    },
+    "a navigator with no mediaSession — desktop Safari, older browsers — never throws": {
+      "reason": "webview-only",
+      "why": "Desktop Safari and older browsers with no navigator.mediaSession. createMediaSession wraps navigator.mediaSession inside the WebView; in native mode the page writes no navigator.mediaSession (plan §3 A-2) and NowPlayingPublisher/RemoteSurface talk to MPNowPlayingInfoCenter and MPRemoteCommandCenter through the NE-18 seams, whose recording fakes carry their own XCTests."
+    },
+    "a new segment DOES rewrite metadata": {
+      "reason": "webview-only",
+      "why": "The WebView bridge's dedupe letting a changed segment through. createMediaSession wraps navigator.mediaSession inside the WebView; in native mode the page writes no navigator.mediaSession (plan §3 A-2) and NowPlayingPublisher/RemoteSurface talk to MPNowPlayingInfoCenter and MPRemoteCommandCenter through the NE-18 seams, whose recording fakes carry their own XCTests."
+    },
+    "a play RE-ASSERTS the metadata even when it has not changed": {
+      "reason": "webview-only",
+      "why": "invalidate() re-asserting the WebView metadata on play (founder record 2026-09-21); native NowPlayingPublisher writes at every transition, so there is no dedupe to invalidate (plan §4.5). createMediaSession wraps navigator.mediaSession inside the WebView; in native mode the page writes no navigator.mediaSession (plan §3 A-2) and NowPlayingPublisher/RemoteSurface talk to MPNowPlayingInfoCenter and MPRemoteCommandCenter through the NE-18 seams, whose recording fakes carry their own XCTests."
+    },
+    "a playbackState setter that throws is swallowed": {
+      "reason": "webview-only",
+      "why": "A throwing playbackState setter in a WebKit build; native mode never uses playbackState (plan §4.5, OQ-8). createMediaSession wraps navigator.mediaSession inside the WebView; in native mode the page writes no navigator.mediaSession (plan §3 A-2) and NowPlayingPublisher/RemoteSurface talk to MPNowPlayingInfoCenter and MPRemoteCommandCenter through the NE-18 seams, whose recording fakes carry their own XCTests."
+    },
+    "a real mediaSession is detected and reports itself supported": {
+      "reason": "webview-only",
+      "why": "Feature detection of navigator.mediaSession. createMediaSession wraps navigator.mediaSession inside the WebView; in native mode the page writes no navigator.mediaSession (plan §3 A-2) and NowPlayingPublisher/RemoteSurface talk to MPNowPlayingInfoCenter and MPRemoteCommandCenter through the NE-18 seams, whose recording fakes carry their own XCTests."
+    },
+    "a setPositionState that throws is swallowed, and the render loop survives": {
+      "reason": "webview-only",
+      "why": "A throwing setPositionState in a WebKit build. createMediaSession wraps navigator.mediaSession inside the WebView; in native mode the page writes no navigator.mediaSession (plan §3 A-2) and NowPlayingPublisher/RemoteSurface talk to MPNowPlayingInfoCenter and MPRemoteCommandCenter through the NE-18 seams, whose recording fakes carry their own XCTests."
+    },
+    "a stall reaches the OS view from both branches (p-car-8)": {
+      "reason": "js-module-shape",
+      "why": "Text scan: both mediaViewFields branches pass `buffering`; the mapping's stall rule is fixtured in media-episode (position-stall-reports-rate-zero); native mode replaces this page wiring wholesale (plan §5.6: syncMediaSession returns early and the lock-screen surfaces are not installed), so there is no rule here for the engine to reimplement."
+    },
+    "a throw does not poison the dedupe — the next identical render retries": {
+      "reason": "webview-only",
+      "why": "The WebView bridge's dedupe key stamped only on a successful write. createMediaSession wraps navigator.mediaSession inside the WebView; in native mode the page writes no navigator.mediaSession (plan §3 A-2) and NowPlayingPublisher/RemoteSurface talk to MPNowPlayingInfoCenter and MPRemoteCommandCenter through the NE-18 seams, whose recording fakes carry their own XCTests."
+    },
+    "a throwing onWrite cannot stop the lock screen from being written": {
+      "reason": "webview-only",
+      "why": "A throwing diagnostics sink inside the WebView bridge. createMediaSession wraps navigator.mediaSession inside the WebView; in native mode the page writes no navigator.mediaSession (plan §3 A-2) and NowPlayingPublisher/RemoteSurface talk to MPNowPlayingInfoCenter and MPRemoteCommandCenter through the NE-18 seams, whose recording fakes carry their own XCTests."
+    },
+    "a throwing onWrite on the state row still writes the state": {
+      "reason": "webview-only",
+      "why": "A throwing diagnostics sink inside the WebView bridge. createMediaSession wraps navigator.mediaSession inside the WebView; in native mode the page writes no navigator.mediaSession (plan §3 A-2) and NowPlayingPublisher/RemoteSurface talk to MPNowPlayingInfoCenter and MPRemoteCommandCenter through the NE-18 seams, whose recording fakes carry their own XCTests."
+    },
+    "after clear(), the next identical update writes again rather than being deduped away": {
+      "reason": "webview-only",
+      "why": "The WebView bridge's dedupe reset after clear(). createMediaSession wraps navigator.mediaSession inside the WebView; in native mode the page writes no navigator.mediaSession (plan §3 A-2) and NowPlayingPublisher/RemoteSurface talk to MPNowPlayingInfoCenter and MPRemoteCommandCenter through the NE-18 seams, whose recording fakes carry their own XCTests."
+    },
+    "an action whose surface rejects does not become an unhandled rejection": {
+      "reason": "webview-only",
+      "why": "A rejecting surface must not become an unhandled promise rejection in the WebView. createMediaSession wraps navigator.mediaSession inside the WebView; in native mode the page writes no navigator.mediaSession (plan §3 A-2) and NowPlayingPublisher/RemoteSurface talk to MPNowPlayingInfoCenter and MPRemoteCommandCenter through the NE-18 seams, whose recording fakes carry their own XCTests."
+    },
+    "an action whose surface throws does not propagate into the platform": {
+      "reason": "webview-only",
+      "why": "A throwing surface must not reject into the WebView's action dispatch. createMediaSession wraps navigator.mediaSession inside the WebView; in native mode the page writes no navigator.mediaSession (plan §3 A-2) and NowPlayingPublisher/RemoteSurface talk to MPNowPlayingInfoCenter and MPRemoteCommandCenter through the NE-18 seams, whose recording fakes carry their own XCTests."
+    },
+    "an engine that throws on one unsupported action still gets the other seven": {
+      "reason": "webview-only",
+      "why": "Chromium throws from setActionHandler for an unsupported action; MPRemoteCommandCenter has no such failure mode. createMediaSession wraps navigator.mediaSession inside the WebView; in native mode the page writes no navigator.mediaSession (plan §3 A-2) and NowPlayingPublisher/RemoteSurface talk to MPNowPlayingInfoCenter and MPRemoteCommandCenter through the NE-18 seams, whose recording fakes carry their own XCTests."
+    },
+    "an engine with no setPositionState is not a failure — older Safari": {
+      "reason": "webview-only",
+      "why": "Older Safari with no setPositionState. createMediaSession wraps navigator.mediaSession inside the WebView; in native mode the page writes no navigator.mediaSession (plan §3 A-2) and NowPlayingPublisher/RemoteSurface talk to MPNowPlayingInfoCenter and MPRemoteCommandCenter through the NE-18 seams, whose recording fakes carry their own XCTests."
+    },
+    "an episode's next/previous are the PAGE's, and absent until the page offers them": {
+      "reason": "js-module-shape",
+      "why": "Text scan of client.js's episodeMediaSurface getters, plus a mediaSessionActions call whose null-neighbour rule is fixtured in media-episode (actions-absent-next-previous); native mode replaces this page wiring wholesale (plan §5.6: syncMediaSession returns early and the lock-screen surfaces are not installed), so there is no rule here for the engine to reimplement."
+    },
+    "an unchanged view does NOT rewrite metadata — a 4 Hz redraw flickers the notification": {
+      "reason": "webview-only",
+      "why": "The bridge's 4 Hz redraw dedupe against Android notification flicker; native NowPlayingPublisher writes on transitions and seeks, not from a render loop (plan §4.5). createMediaSession wraps navigator.mediaSession inside the WebView; in native mode the page writes no navigator.mediaSession (plan §3 A-2) and NowPlayingPublisher/RemoteSurface talk to MPNowPlayingInfoCenter and MPRemoteCommandCenter through the NE-18 seams, whose recording fakes carry their own XCTests."
+    },
+    "app.js hands over the discover pool it already fetched, not a new request": {
+      "reason": "js-module-shape",
+      "why": "Text scan: app.js reuses the discover pool it already fetched; native mode replaces this page wiring wholesale (plan §5.6: syncMediaSession returns early and the lock-screen surfaces are not installed), so there is no rule here for the engine to reimplement."
+    },
+    "clear() empties the OS slot and reports none": {
+      "reason": "webview-only",
+      "why": "clear() emptying the WebView session; native nil-on-finish is NowPlayingPublisher's (NE-18). createMediaSession wraps navigator.mediaSession inside the WebView; in native mode the page writes no navigator.mediaSession (plan §3 A-2) and NowPlayingPublisher/RemoteSurface talk to MPNowPlayingInfoCenter and MPRemoteCommandCenter through the NE-18 seams, whose recording fakes carry their own XCTests."
+    },
+    "clearing the session is reported as a write, via=clear, state none": {
+      "reason": "webview-only",
+      "why": "Pins the bridge's via=clear diagnostics row. createMediaSession wraps navigator.mediaSession inside the WebView; in native mode the page writes no navigator.mediaSession (plan §3 A-2) and NowPlayingPublisher/RemoteSurface talk to MPNowPlayingInfoCenter and MPRemoteCommandCenter through the NE-18 seams, whose recording fakes carry their own XCTests."
+    },
+    "client.js declares no second copy of the ±15/30 numbers": {
+      "reason": "js-module-shape",
+      "why": "Text scan: client.js imports the ±15/30 pair rather than restating it; the Swift side is pinned by NE-04's generated EngineConstants and NE-12s's no-literal-15/30 grep; native mode replaces this page wiring wholesale (plan §5.6: syncMediaSession returns early and the lock-screen surfaces are not installed), so there is no rule here for the engine to reimplement."
+    },
+    "client.js hands the real navigator over at exactly one place": {
+      "reason": "js-module-shape",
+      "why": "Text scan: client.js hands the real navigator over at exactly one call site; native mode replaces this page wiring wholesale (plan §5.6: syncMediaSession returns early and the lock-screen surfaces are not installed), so there is no rule here for the engine to reimplement."
+    },
+    "client.js reads the shim's counter AFTER its flush, not in the turn of the write": {
+      "reason": "js-module-shape",
+      "why": "Text scan: client.js reads the Capacitor shim's counter after the shim's flush; native mode replaces this page wiring wholesale (plan §5.6: syncMediaSession returns early and the lock-screen surfaces are not installed), so there is no rule here for the engine to reimplement."
+    },
+    "client.js records what the NATIVE side received: foray:remote -> diag.remoteCommand": {
+      "reason": "js-module-shape",
+      "why": "Text scan: client.js listens for foray:remote from the native shim; native mode replaces this page wiring wholesale (plan §5.6: syncMediaSession returns early and the lock-screen surfaces are not installed), so there is no rule here for the engine to reimplement."
+    },
+    "codeOnly does not blind itself on a regex literal — it is the scanner's own guard": {
+      "reason": "js-module-shape",
+      "why": "Self-test of codeOnly, this suite's own comment and string stripper. native mode replaces this page wiring wholesale (plan §5.6: syncMediaSession returns early and the lock-screen surfaces are not installed), so there is no rule here for the engine to reimplement."
+    },
+    "createMediaSession with no arguments at all is inert, not an exception": {
+      "reason": "webview-only",
+      "why": "createMediaSession's no-argument default. createMediaSession wraps navigator.mediaSession inside the WebView; in native mode the page writes no navigator.mediaSession (plan §3 A-2) and NowPlayingPublisher/RemoteSurface talk to MPNowPlayingInfoCenter and MPRemoteCommandCenter through the NE-18 seams, whose recording fakes carry their own XCTests."
+    },
+    "handlers keep their surface as `this`, so a method form works too": {
+      "reason": "js-module-shape",
+      "why": "Pins that a surface method keeps its object as `this` (Function.prototype.bind); a Swift closure has no receiver to lose, and the remote table itself is fixtured in media-episode."
+    },
+    "index.html's CSP already permits https artwork, so nothing here widened it": {
+      "reason": "webview-only",
+      "why": "index.html's Content-Security-Policy governs what the WebView may fetch for artwork; the native ArtworkCache fetches https itself, off-main (plan §4.5), under no CSP."
+    },
+    "liveLines ignores a commented-out call, which is the whole reason it exists": {
+      "reason": "js-module-shape",
+      "why": "Self-test of liveLines, this suite's own commented-out-line scanner. native mode replaces this page wiring wholesale (plan §5.6: syncMediaSession returns early and the lock-screen surfaces are not installed), so there is no rule here for the engine to reimplement."
+    },
+    "no file under player/ touches navigator.mediaSession in code": {
+      "reason": "js-module-shape",
+      "why": "Text scan: no player/*.js touches navigator.mediaSession except through the bridge; native mode replaces this page wiring wholesale (plan §5.6: syncMediaSession returns early and the lock-screen surfaces are not installed), so there is no rule here for the engine to reimplement."
+    },
+    "no navigator at all yields an inert bridge that answers every call": {
+      "reason": "webview-only",
+      "why": "The inert stand-in for a browser with no navigator at all. createMediaSession wraps navigator.mediaSession inside the WebView; in native mode the page writes no navigator.mediaSession (plan §3 A-2) and NowPlayingPublisher/RemoteSurface talk to MPNowPlayingInfoCenter and MPRemoteCommandCenter through the NE-18 seams, whose recording fakes carry their own XCTests."
+    },
+    "onWrite fires exactly when metadata is really written, and not on an unchanged view": {
+      "reason": "webview-only",
+      "why": "The bridge's onWrite diagnostics hook fires on a navigator.mediaSession assignment. createMediaSession wraps navigator.mediaSession inside the WebView; in native mode the page writes no navigator.mediaSession (plan §3 A-2) and NowPlayingPublisher/RemoteSurface talk to MPNowPlayingInfoCenter and MPRemoteCommandCenter through the NE-18 seams, whose recording fakes carry their own XCTests."
+    },
+    "play() calls invalidate before setNowPlaying": {
+      "reason": "js-module-shape",
+      "why": "Text scan: ForayPlayer.play calls media.invalidate() before setNowPlaying; native mode replaces this page wiring wholesale (plan §5.6: syncMediaSession returns early and the lock-screen surfaces are not installed), so there is no rule here for the engine to reimplement."
+    },
+    "player/client.js drives the lock screen through this module and nothing else": {
+      "reason": "js-module-shape",
+      "why": "Text scan: player/client.js imports createMediaSession and calls mediaSessionView; native mode replaces this page wiring wholesale (plan §5.6: syncMediaSession returns early and the lock-screen surfaces are not installed), so there is no rule here for the engine to reimplement."
+    },
+    "release() removes every handler it installed": {
+      "reason": "webview-only",
+      "why": "release() unregistering WebView action handlers; native relinquish tears down its own targets (NE-17's XCTest). createMediaSession wraps navigator.mediaSession inside the WebView; in native mode the page writes no navigator.mediaSession (plan §3 A-2) and NowPlayingPublisher/RemoteSurface talk to MPNowPlayingInfoCenter and MPRemoteCommandCenter through the NE-18 seams, whose recording fakes carry their own XCTests."
+    },
+    "switching from a Foray to one episode REMOVES nexttrack instead of leaving it stale": {
+      "reason": "webview-only",
+      "why": "A stale setActionHandler left bound to a Foray. The native command set is recomputed from the snapshot (commandAvailability, NE-12s), so there is no installed-handler set to go stale. createMediaSession wraps navigator.mediaSession inside the WebView; in native mode the page writes no navigator.mediaSession (plan §3 A-2) and NowPlayingPublisher/RemoteSurface talk to MPNowPlayingInfoCenter and MPRemoteCommandCenter through the NE-18 seams, whose recording fakes carry their own XCTests."
+    },
+    "the FORAY's clock is what client.js reports — the whole thing, not the segment": {
+      "reason": "js-module-shape",
+      "why": "Text scan: client.js's syncMediaSession reports the Foray clock; the mapping's own clock rule is NE-29j's (media family); native mode replaces this page wiring wholesale (plan §5.6: syncMediaSession returns early and the lock-screen surfaces are not installed), so there is no rule here for the engine to reimplement."
+    },
+    "the Foray surface is installed INSIDE playForay, not merely defined somewhere": {
+      "reason": "js-module-shape",
+      "why": "Text scan: the Foray surface is installed inside ForayPlayer.playForay; native mode replaces this page wiring wholesale (plan §5.6: syncMediaSession returns early and the lock-screen surfaces are not installed), so there is no rule here for the engine to reimplement."
+    },
+    "the PAUSE is reported as a write, marked via=state, with the strings as they were": {
+      "reason": "webview-only",
+      "why": "Pins the bridge's via=state diagnostics row for a playbackState write, a property native mode never writes (plan §4.5). createMediaSession wraps navigator.mediaSession inside the WebView; in native mode the page writes no navigator.mediaSession (plan §3 A-2) and NowPlayingPublisher/RemoteSurface talk to MPNowPlayingInfoCenter and MPRemoteCommandCenter through the NE-18 seams, whose recording fakes carry their own XCTests."
+    },
+    "the PUBLISHER's name is what actually reaches the platform, not ours": {
+      "reason": "webview-only",
+      "why": "Asserts on the object the WebView bridge assigned to navigator.mediaSession.metadata; what the mapping produces is fixtured in media-episode, and what NowPlayingPublisher writes is NE-18's XCTest. createMediaSession wraps navigator.mediaSession inside the WebView; in native mode the page writes no navigator.mediaSession (plan §3 A-2) and NowPlayingPublisher/RemoteSurface talk to MPNowPlayingInfoCenter and MPRemoteCommandCenter through the NE-18 seams, whose recording fakes carry their own XCTests."
+    },
+    "the artwork really reaches the platform, and falls back to ours when it must": {
+      "reason": "webview-only",
+      "why": "Asserts on the artwork the WebView bridge assigned; the artwork choice itself is fixtured in media-episode. createMediaSession wraps navigator.mediaSession inside the WebView; in native mode the page writes no navigator.mediaSession (plan §3 A-2) and NowPlayingPublisher/RemoteSurface talk to MPNowPlayingInfoCenter and MPRemoteCommandCenter through the NE-18 seams, whose recording fakes carry their own XCTests."
+    },
+    "the backend really does read the element for `rate` — the other half of #242's honesty": {
+      "reason": "js-module-shape",
+      "why": "Text scan of html-audio-backend.js's `get rate()` reading the HTMLAudioElement; AVDeck has no element (NE-15); native mode replaces this page wiring wholesale (plan §5.6: syncMediaSession returns early and the lock-screen surfaces are not installed), so there is no rule here for the engine to reimplement."
+    },
+    "the bridge forwards the platform's details, it does not swallow them": {
+      "reason": "webview-only",
+      "why": "The WebView bridge forwards MediaSession action details; the details' meaning is fixtured in media-episode through media-actions. createMediaSession wraps navigator.mediaSession inside the WebView; in native mode the page writes no navigator.mediaSession (plan §3 A-2) and NowPlayingPublisher/RemoteSurface talk to MPNowPlayingInfoCenter and MPRemoteCommandCenter through the NE-18 seams, whose recording fakes carry their own XCTests."
+    },
+    "the bridge installs handlers and reports which ones landed": {
+      "reason": "webview-only",
+      "why": "setActionHandler registration on the WebView session; the native command set is commandAvailability (NE-12s), fixtured through media-actions. createMediaSession wraps navigator.mediaSession inside the WebView; in native mode the page writes no navigator.mediaSession (plan §3 A-2) and NowPlayingPublisher/RemoteSurface talk to MPNowPlayingInfoCenter and MPRemoteCommandCenter through the NE-18 seams, whose recording fakes carry their own XCTests."
+    },
+    "the episode surface is installed INSIDE play(), for the same reason": {
+      "reason": "js-module-shape",
+      "why": "Text scan: the episode surface is installed inside ForayPlayer.play; native mode replaces this page wiring wholesale (plan §5.6: syncMediaSession returns early and the lock-screen surfaces are not installed), so there is no rule here for the engine to reimplement."
+    },
+    "the finished state reaches the bridge too, so a done Foray clears the slot": {
+      "reason": "js-module-shape",
+      "why": "Text scan: both syncMediaSession branches pass `ended`; the mapping's ended rule is fixtured in media-episode; native mode replaces this page wiring wholesale (plan §5.6: syncMediaSession returns early and the lock-screen surfaces are not installed), so there is no rule here for the engine to reimplement."
+    },
+    "the lock screen is repainted from the same render tick the page is": {
+      "reason": "js-module-shape",
+      "why": "Text scan: syncMediaSession runs on the page's render tick; native mode replaces this page wiring wholesale (plan §5.6: syncMediaSession returns early and the lock-screen surfaces are not installed), so there is no rule here for the engine to reimplement."
+    },
+    "the lock screen's play/pause is the same call the in-page button makes": {
+      "reason": "js-module-shape",
+      "why": "Text scan: client.js's lock-screen play/pause call the same setRunning the in-page button does; native mode replaces this page wiring wholesale (plan §5.6: syncMediaSession returns early and the lock-screen surfaces are not installed), so there is no rule here for the engine to reimplement."
+    },
+    "the lock screen's previous/next are the page's own segment controls": {
+      "reason": "js-module-shape",
+      "why": "Text scan: client.js's forayMediaSurface calls forayNext/forayPrevious/foraySeek; native mode replaces this page wiring wholesale (plan §5.6: syncMediaSession returns early and the lock-screen surfaces are not installed), so there is no rule here for the engine to reimplement."
+    },
+    "the module itself never reads a global — it is pure, and that is what makes it testable": {
+      "reason": "js-module-shape",
+      "why": "Text scan: media-session.js reads no browser global; the Swift core's purity is pinned by shell-invariants (NE-01), not by this; native mode replaces this page wiring wholesale (plan §5.6: syncMediaSession returns early and the lock-screen surfaces are not installed), so there is no rule here for the engine to reimplement."
+    },
+    "the rate client.js reports is the ELEMENT's, not the speed the listener chose": {
+      "reason": "js-module-shape",
+      "why": "Text scan: client.js reports the element's rate, not the chosen one; the engine reports its true rate (plan §4.5) through the snapshot the media-episode cases take as input; native mode replaces this page wiring wholesale (plan §5.6: syncMediaSession returns early and the lock-screen surfaces are not installed), so there is no rule here for the engine to reimplement."
+    },
+    "the seam-beat state reaches the bridge from the manager, not from a guess": {
+      "reason": "js-module-shape",
+      "why": "Text scan: client.js reads inSeamGap from the manager; native mode replaces this page wiring wholesale (plan §5.6: syncMediaSession returns early and the lock-screen surfaces are not installed), so there is no rule here for the engine to reimplement."
+    },
+    "this module is TEXT to every search tool: no raw NUL byte anywhere in it": {
+      "reason": "js-module-shape",
+      "why": "Byte scan: no player/*.js carries a raw NUL, which makes grep treat a source file as binary; native mode replaces this page wiring wholesale (plan §5.6: syncMediaSession returns early and the lock-screen surfaces are not installed), so there is no rule here for the engine to reimplement."
+    },
+    "update writes metadata, playback state and position": {
+      "reason": "webview-only",
+      "why": "The bridge's write of metadata, playbackState and setPositionState to navigator.mediaSession. createMediaSession wraps navigator.mediaSession inside the WebView; in native mode the page writes no navigator.mediaSession (plan §3 A-2) and NowPlayingPublisher/RemoteSurface talk to MPNowPlayingInfoCenter and MPRemoteCommandCenter through the NE-18 seams, whose recording fakes carry their own XCTests."
+    }
+  },
+  "playback-rate": {
+    "the label is written the way podcast apps write it": {
+      "reason": "dom-only",
+      "why": "The rate button's text is page DOM in both engine modes (plan §3 A-1: the page owns the UI); the engine carries the rate as a number, never this label."
+    },
+    "no label ever reads 1.5000000000000002×, or 'undefined×'": {
+      "reason": "dom-only",
+      "why": "The rate button's text is page DOM in both engine modes (plan §3 A-1: the page owns the UI); the engine carries the rate as a number, never this label. The snap a junk value labels as is normalizeRate's, which the rate family pins."
+    },
+    "the accessible name says the value, because aria-label REPLACES the button text": {
+      "reason": "dom-only",
+      "why": "Pins the rate button's aria-label sentence; an attribute of page DOM, drawn by the page in both engine modes."
+    },
+    "the key is exactly cp_rate — renaming it wipes user state": {
+      "reason": "webview-only",
+      "why": "cp_rate is read and written by the page through readRate/writeRate (plan §5.2: setRate — the page still writes cp_rate); the engine receives the rate as a number through setRate, and the snap it applies is the rate family's normalizeRate cases."
+    },
+    "a stored speed round-trips": {
+      "reason": "webview-only",
+      "why": "cp_rate is read and written by the page through readRate/writeRate (plan §5.2: setRate — the page still writes cp_rate); the engine receives the rate as a number through setRate, and the snap it applies is the rate family's normalizeRate cases."
+    },
+    "nothing stored is normal speed, not zero": {
+      "reason": "webview-only",
+      "why": "cp_rate is read and written by the page through readRate/writeRate (plan §5.2: setRate — the page still writes cp_rate); the engine receives the rate as a number through setRate, and the snap it applies is the rate family's normalizeRate cases."
+    },
+    "a junk or stale stored row is snapped on the way OUT, not trusted": {
+      "reason": "webview-only",
+      "why": "cp_rate is read and written by the page through readRate/writeRate (plan §5.2: setRate — the page still writes cp_rate); the engine receives the rate as a number through setRate, and the snap it applies is the rate family's normalizeRate cases."
+    },
+    "an off-ladder value is snapped on the way IN too, so no junk is ever stored": {
+      "reason": "webview-only",
+      "why": "cp_rate is read and written by the page through readRate/writeRate (plan §5.2: setRate — the page still writes cp_rate); the engine receives the rate as a number through setRate, and the snap it applies is the rate family's normalizeRate cases."
+    },
+    "a store that throws is reported, never thrown out of — a refused write is not a refused speed": {
+      "reason": "webview-only",
+      "why": "cp_rate is read and written by the page through readRate/writeRate (plan §5.2: setRate — the page still writes cp_rate); the engine receives the rate as a number through setRate, and the snap it applies is the rate family's normalizeRate cases."
+    }
+  },
+  "position-store": {
+    "PositionStore writes positionRow, emits by positionEvent per item, and resumes by resumeOffsetFor": {
+      "reason": "js-module-shape",
+      "why": "Pins that the JS PositionStore class routes its storage writes, per-item event marks and resume reads through the pure rules; the Swift engine has its own store (EngineStore, NE-19) and shares only the rules, which the resume-rules family carries."
+    }
+  },
+  "queue-manager": {
+    "CONTINUE_TAIL appends the part-heard item": {
+      "reason": "js-module-shape",
+      "why": "queue-strategy.js builds the queue in the page; the engine is handed a built queue and the page's continuation hops (plan §3 A-1: the page owns decisions; §5.5), so there is no strategy for it to reimplement."
+    },
+    "PICKED_FIRST puts the pick ahead of the other cards, without duplicating it": {
+      "reason": "js-module-shape",
+      "why": "queue-strategy.js builds the queue in the page; the engine is handed a built queue and the page's continuation hops (plan §3 A-1: the page owns decisions; §5.5), so there is no strategy for it to reimplement."
+    },
+    "SINGLE_ITEM is the default and yields a one-episode queue": {
+      "reason": "js-module-shape",
+      "why": "queue-strategy.js builds the queue in the page; the engine is handed a built queue and the page's continuation hops (plan §3 A-1: the page owns decisions; §5.5), so there is no strategy for it to reimplement."
+    },
+    "a malformed strategy is rejected at construction, not at play time": {
+      "reason": "js-module-shape",
+      "why": "queue-strategy.js builds the queue in the page; the engine is handed a built queue and the page's continuation hops (plan §3 A-1: the page owns decisions; §5.5), so there is no strategy for it to reimplement."
+    },
+    "a second manager cannot be constructed while one is alive": {
+      "reason": "js-module-shape",
+      "why": "PlayerQueueManager's module-level singleton guard (corner case #19's first layer). The engine is one @MainActor ForayEngine per process by construction (plan §4.2, A-4); the single-audible half of #19 is fixtured in manager-episode (double-skip-with-slow-loads-plays-once)."
+    },
+    "the manager adds no macrotask between a settled load and play()": {
+      "reason": "webview-only",
+      "why": "WebKit's user-gesture indicator is task-scoped, so a timer between the load and play() strands an autoplay start. The native engine starts audio from native code, where no autoplay gesture exists to lose."
+    }
+  },
+  "queue-state": {
+    "reduce never mutates the state it is given": {
+      "reason": "js-module-shape",
+      "why": "Pins that the JS reducer leaves its argument object untouched. The Swift PlayerQueueState is an enum value type passed by value, so a reducer that mutates its input cannot be written; every transition's output is pinned by the queue-state family instead."
+    },
+    "an unknown event is ignored with telemetry rather than throwing": {
+      "reason": "js-module-shape",
+      "why": "Pins reduce()'s default branch for an event object whose type is outside the closed set. Swift's Event is a closed enum switched exhaustively, so an unknown event is unrepresentable; the engine's own unknown-input path is the contract family's unknown-cmd (NE-11j)."
+    }
+  },
+  "seam-gap": {
+    "every refusal explains itself differently": {
+      "reason": "text-pin",
+      "why": "Pins that describeSeam's four refusal sentences are distinct English strings; the engine's refusal reasons are closed tokens (the diag-tokens family, NE-04)."
+    },
+    "the beat's log line names both sides and the length": {
+      "reason": "text-pin",
+      "why": "Pins describeSeam's English telemetry sentence. The engine writes packed seam rows from the diag-tokens vocabulary, not this string."
+    }
+  },
+  "transport-policy": {
+    "client.js asks these rules and keeps no private copy of one": {
+      "reason": "js-module-shape",
+      "why": "Pins that player/client.js imports the transport rules and declares no copy of them; the Swift engine has no client.js, and its TransportPolicy port is checked by the transport family instead."
+    }
+  },
+  "transport-reconcile": {
+    "AUDIT / ROUND 2: a FINISHED episode leaves Jump back in and the ribbon; a part-heard one stays": {
+      "reason": "dom-only",
+      "why": "Jump back in and the ribbon for a finished episode are the page's decision (plan §3 A-1: the page owns the 'Jump back in' math). Page painting that client.js does identically in both modes from what the manager surface answers (in native mode, the facades); the engine never draws the page, so there is nothing here for Swift to reimplement."
+    },
+    "AUDIT: the head unit's STOP pauses and leaves every other control working": {
+      "reason": "webview-only",
+      "why": "The head unit's STOP reaching client.js's remoteStop through navigator.mediaSession; natively stopCommand is registered and disabled and a remote stop is a pause (plan §4.5, T-7), NE-12s's commandAvailability. In native mode the page writes no navigator.mediaSession (plan §3 A-2); NowPlayingPublisher and RemoteSurface write from the engine's own state through the NE-18 seams, whose recording fakes carry their own XCTests, and the mapping rule itself is fixtured in media-episode."
+    },
+    "AUDIT: the lock screen says PLAYING while sound is coming out": {
+      "reason": "webview-only",
+      "why": "The lock screen's playbackState/rate while sound is coming out, as the page writes it. In native mode the page writes no navigator.mediaSession (plan §3 A-2); NowPlayingPublisher and RemoteSurface write from the engine's own state through the NE-18 seams, whose recording fakes carry their own XCTests, and the mapping rule itself is fixtured in media-episode."
+    },
+    "AUDIT: ↺ and ↻ move a restored ribbon too, and ↻ never crosses the end": {
+      "reason": "dom-only",
+      "why": "The restored ribbon's ↺/↻ nudges move a PENDING position the page holds with nothing loaded in any engine; the press that follows carries it as playEpisode's startSec (native-facades.test.js). Page painting that client.js does identically in both modes from what the manager surface answers (in native mode, the facades); the engine never draws the page, so there is nothing here for Swift to reimplement."
+    },
+    "REPORT 1: a LATE interruption never pauses audio the listener has since resumed": {
+      "reason": "webview-only",
+      "why": "A suspended WebView handles the plugin's session event when it wakes, so an interruption can reach the page after the listener resumed, and the page must ask the element rather than obey. The engine observes AVAudioSession.interruptionNotification live (plan §4.4), where began means the session was taken now; the reconcile that does run natively is fixtured in manager-episode (an-unseen-stop-is-corrected-once-and-one-press-resumes)."
+    },
+    "REPORT 1: an element resumed from OUTSIDE the reducer still has its position written": {
+      "reason": "webview-only",
+      "why": "WebKit's own media session can resume an <audio> element without asking the page, so the page writes the position from the element's timeupdate. Natively every lock-screen and car press is an EngineInput (plan §4.5, the remote seams), so the deck never plays behind the core's back; the core's position cadence while playing is fixtured in manager-episode (position-events-*)."
+    },
+    "REPORT 1: the machine is corrected TOWARDS playing when the element plays": {
+      "reason": "webview-only",
+      "why": "The same out-of-band resume: WebKit's media session starting the element with the reducer saying interrupted. Natively no press bypasses the core (plan §4.5), so the deck is only ever started by a core command; the core's foreground reconcile still corrects towards playing on the deck's own word."
+    },
+    "REPORT 2: an unexplained pause says what state the element was in": {
+      "reason": "webview-only",
+      "why": "The fingerprint is HTMLMediaElement's own fields (currentTime, readyState, networkState, error.code). AVPlayer has none of them: the deck reports an uncommanded pause with its playhead (DeckEvent.pausedUncommanded atSec, AVDeckTests' testAnExternalPauseBecomesAReconcileInput) and the core writes the stop row with its cause."
+    },
+    "REPORT 3: a booted shell writes BOTH halves of the build into the record it will copy out": {
+      "reason": "js-module-shape",
+      "why": "The page's diagnostic record stamping both halves of the build (web and CFBundleVersion). The page keeps doing it in native mode; the engine writes its own header line into the Copy (NE-26), so there is no page rule for Swift to reimplement."
+    },
+    "REVIEW: a Foray page opened over the restored bar hears the bar's press": {
+      "reason": "dom-only",
+      "why": "A Foray page opened over the restored bar hearing the bar's press is page wiring between two page surfaces. Page painting that client.js does identically in both modes from what the manager surface answers (in native mode, the facades); the engine never draws the page, so there is nothing here for Swift to reimplement."
+    },
+    "REVIEW: a play the browser held back keeps its 'Press play again' line after app.js reports the refusal": {
+      "reason": "webview-only",
+      "why": "Safari holding back a play() for want of a gesture ('Press play again'). An AVPlayer needs no gesture — the backend facade's notePlayGesture is a no-op — so native mode has no held-back play to keep a line for."
+    },
+    "REVIEW: the Android notification's own Stop (`close`) still closes a PAUSED player": {
+      "reason": "webview-only",
+      "why": "Android's notification close. Android keeps the JS player and the native engine is iOS only (plan §11, J-1), so there is no Swift rule here."
+    },
+    "REVIEW: the page's neighbours are asked about the episode that is NOW current": {
+      "reason": "js-module-shape",
+      "why": "Which episode client.js asks its continuation neighbours about. In native mode the page still computes the chain itself (continuation.js, a JS-only family, plan §5.5 C-2) and hands it over as setContinuation; the engine only walks it, so it has no neighbour rule to reimplement."
+    },
+    "ROUND 2 a11y-7: a slider that has FOCUS is not rewritten every tick": {
+      "reason": "dom-only",
+      "why": "A focused slider is not rewritten every tick (a11y). Page painting that client.js does identically in both modes from what the manager surface answers (in native mode, the facades); the engine never draws the page, so there is nothing here for Swift to reimplement."
+    },
+    "ROUND 2 copy-5 / player-10: a RESTORED Foray reads the same on the bar and the lock screen, and its clip follows a scrub": {
+      "reason": "js-module-shape",
+      "why": "Text scan: the page's mediaViewFields reads the restored Foray and the clip under the pending position; native mode replaces this page wiring wholesale (plan §5.6: syncMediaSession returns early and the lock-screen surfaces are not installed), so there is no rule here for the engine to reimplement."
+    },
+    "ROUND 2 copy-5: the live Foray bar's second line is the show and the clip, with no 'Now:'": {
+      "reason": "dom-only",
+      "why": "The live Foray bar's second line. Page painting that client.js does identically in both modes from what the manager surface answers (in native mode, the facades); the engine never draws the page, so there is nothing here for Swift to reimplement."
+    },
+    "ROUND 2 honesty-13: elapsed and remaining add up, and the countdown keeps its sign until it shows nothing": {
+      "reason": "dom-only",
+      "why": "Elapsed and remaining add up and the countdown keeps its sign. Page painting that client.js does identically in both modes from what the manager surface answers (in native mode, the facades); the engine never draws the page, so there is nothing here for Swift to reimplement."
+    },
+    "ROUND 2 p-car-3: reconciling an interruption does not tell an already-paused element to pause again": {
+      "reason": "webview-only",
+      "why": "WebKit records a script pause() made during an interruption as the state to restore, so the OS's own resume then resumes nothing. AVPlayer keeps no such memory: the engine resumes by its own command after interruptionEnded (manager-episode interruption-resume-steps-back-in-place)."
+    },
+    "ROUND 2 p-car-6: a finished EPISODE stays on the lock screen paused; a finished Foray still clears it": {
+      "reason": "webview-only",
+      "why": "A finished episode left on the lock screen paused and a finished Foray cleared, as the page writes it; natively NowPlayingPublisher clears only on a finished Foray, close or data deletion (plan §4.5). In native mode the page writes no navigator.mediaSession (plan §3 A-2); NowPlayingPublisher and RemoteSurface write from the engine's own state through the NE-18 seams, whose recording fakes carry their own XCTests, and the mapping rule itself is fixtured in media-episode."
+    },
+    "ROUND 2 p-car-8: a stall is reported to the OS at rate 0, with the state still playing": {
+      "reason": "webview-only",
+      "why": "A stall reported to the OS at rate 0 with the state still playing, as the page writes it. In native mode the page writes no navigator.mediaSession (plan §3 A-2); NowPlayingPublisher and RemoteSurface write from the engine's own state through the NE-18 seams, whose recording fakes carry their own XCTests, and the mapping rule itself is fixtured in media-episode."
+    },
+    "ROUND 2 perf-7: a control's accessible name is not rewritten to itself on every tick": {
+      "reason": "dom-only",
+      "why": "A control's accessible name is not rewritten to itself every tick. Page painting that client.js does identically in both modes from what the manager surface answers (in native mode, the facades); the engine never draws the page, so there is nothing here for Swift to reimplement."
+    },
+    "ROUND 2 perf-7: the OS position is written once a second, not four times": {
+      "reason": "webview-only",
+      "why": "The OS position written once a second by the page's dedupe. In native mode the page writes no navigator.mediaSession (plan §3 A-2); NowPlayingPublisher and RemoteSurface write from the engine's own state through the NE-18 seams, whose recording fakes carry their own XCTests, and the mapping rule itself is fixtured in media-episode."
+    },
+    "ROUND 2 player-6: dragging the scrubber moves the clocks with the thumb, not the audio": {
+      "reason": "dom-only",
+      "why": "Dragging the scrubber moves the clocks with the thumb. Page painting that client.js does identically in both modes from what the manager surface answers (in native mode, the facades); the engine never draws the page, so there is nothing here for Swift to reimplement."
+    },
+    "ROUND 2 player-7: a Foray clip that will not load says so on the bar and in the sheet": {
+      "reason": "dom-only",
+      "why": "The copy on the bar and in the sheet for a Foray clip that will not load; the engine's side is its skipped event and lastError (manager-foray). Page painting that client.js does identically in both modes from what the manager surface answers (in native mode, the facades); the engine never draws the page, so there is nothing here for Swift to reimplement."
+    },
+    "ROUND 2 player-9: the speed button is named for the menu it opens": {
+      "reason": "dom-only",
+      "why": "The speed button's accessible name. Page painting that client.js does identically in both modes from what the manager surface answers (in native mode, the facades); the engine never draws the page, so there is nothing here for Swift to reimplement."
+    },
+    "ROUND 2 review (touch-10): the sheet draws a chapter token as a 44px .ep-chapter-row that seeks, not an inline stamp": {
+      "reason": "dom-only",
+      "why": "The sheet's chapter token drawn as a 44px row. Page painting that client.js does identically in both modes from what the manager surface answers (in native mode, the facades); the engine never draws the page, so there is nothing here for Swift to reimplement."
+    },
+    "ROUND 2 review: a slider focused by a POINTER keeps following the audio": {
+      "reason": "dom-only",
+      "why": "A slider focused by a pointer keeps following the audio. Page painting that client.js does identically in both modes from what the manager surface answers (in native mode, the facades); the engine never draws the page, so there is nothing here for Swift to reimplement."
+    },
+    "SWEEP: Jump back in's Foray rows read the LIVE runtime, as the Foray page's resume does": {
+      "reason": "dom-only",
+      "why": "Jump back in's Foray rows read the live runtime: the page's A-1 math (plan §3), fed by the page's own resolve. Page painting that client.js does identically in both modes from what the manager surface answers (in native mode, the facades); the engine never draws the page, so there is nothing here for Swift to reimplement."
+    },
+    "SWEEP: a speed the listener chose before hydration landed is not overruled by the store": {
+      "reason": "js-module-shape",
+      "why": "Which speed wins when the listener chose one before cp_rate hydrated. The page still owns cp_rate (plan §5.2) and sends setRate with the winner; the engine has no store of its own to be overruled by."
+    },
+    "SWEEP: the lock screen shows a RESTORED bar's position, not the empty element's 0:00": {
+      "reason": "webview-only",
+      "why": "The lock screen's position for a RESTORED bar as the page writes it; natively the cold path paints Now Playing from the engine's restore record without activation (plan §4.5, NE-24). In native mode the page writes no navigator.mediaSession (plan §3 A-2); NowPlayingPublisher and RemoteSurface write from the engine's own state through the NE-18 seams, whose recording fakes carry their own XCTests, and the mapping rule itself is fixtured in media-episode."
+    },
+    "THE #267 WINDOW IS REAL: every reconcile guard passes inside the refusal recovery": {
+      "reason": "webview-only",
+      "why": "#267: the two-element HtmlAudioBackend's autoplay-refusal recovery (a WebKit per-element NotAllowedError) with the parked prefetch on. AVPlayer has no autoplay policy, so native mode has no refusal recovery for a reconcile to fall inside (plan §4.3); the engine's own prepare is DeckPair's (NE-32)."
+    },
+    "VISUAL PASS: previous/next clip are their own labelled row, shown only while a Foray is loaded": {
+      "reason": "dom-only",
+      "why": "The previous/next clip row's label and visibility. Page painting that client.js does identically in both modes from what the manager surface answers (in native mode, the facades); the engine never draws the page, so there is nothing here for Swift to reimplement."
+    },
+    "VISUAL PASS: the mini bar's ↺15 is the same nudge, for an episode and for a Foray": {
+      "reason": "dom-only",
+      "why": "The mini bar reusing the sheet's ↺15 handler is page wiring; the nudge itself is a seekBy the engine performs (manager-foray / transport families). Page painting that client.js does identically in both modes from what the manager surface answers (in native mode, the facades); the engine never draws the page, so there is nothing here for Swift to reimplement."
+    },
+    "a transition in flight is not a lie: reconciling mid-effect cannot stop a start": {
+      "reason": "js-module-shape",
+      "why": "JS `_handle` sets the state and then awaits its effects, so a reconcile can arrive between `playing` and startPlayback (the `_applying` guard). EngineCore.handle is one synchronous turn: no input can land between a state and the commands it emits."
+    },
+    "an ESTIMATED Foray runtime is hedged in the Now Playing countdown and the slider's 'of' (states-11)": {
+      "reason": "dom-only",
+      "why": "The hedge on an ESTIMATED Foray runtime in the countdown and the slider's 'of'. Page painting that client.js does identically in both modes from what the manager surface answers (in native mode, the facades); the engine never draws the page, so there is nothing here for Swift to reimplement."
+    },
+    "an element that does not model paused reads as NOT paused, never as paused": {
+      "reason": "webview-only",
+      "why": "Duck-typing an HTMLMediaElement that does not model `paused`. The native deck is an AVPlayer whose timeControlStatus always answers (NE-15), so there is no element that can fail to model it."
+    },
+    "audio must NOT start after that reconcile, and the queue must not strand (#267)": {
+      "reason": "webview-only",
+      "why": "#267: a reconcile racing the WebKit autoplay-refusal recovery of the two-element HtmlAudioBackend. AVPlayer has no autoplay policy and native mode has no page-side reconcile at all (attach only reads, native-facades.test.js), so the race does not exist there."
+    },
+    "loading an already-paused element arms nothing either": {
+      "reason": "webview-only",
+      "why": "The `_expectPause` token exists because an <audio> element fires `pause` only when it was playing, so a pause() on a paused element (a redundant pause, a load) must arm nothing. AVDeck keeps no token: an uncommanded stop is read from intendsToPlay, readiness, the end and the player's rate (AVDeckTests' testTheUncommandedPauseRule), so there is nothing a redundant pause or a load could leak."
+    },
+    "re-pausing an already-paused element arms nothing, so the NEXT real pause survives": {
+      "reason": "webview-only",
+      "why": "The `_expectPause` token exists because an <audio> element fires `pause` only when it was playing, so a pause() on a paused element (a redundant pause, a load) must arm nothing. AVDeck keeps no token: an uncommanded stop is read from intendsToPlay, readiness, the end and the player's rate (AVDeckTests' testTheUncommandedPauseRule), so there is nothing a redundant pause or a load could leak."
+    },
+    "the sheet shows ⏭, Up Next (N) and Save from the page's episode surface, and each does the page's own thing (audit round 2, p-impatient-7 / p-switcher-5)": {
+      "reason": "dom-only",
+      "why": "The sheet's ⏭, Up Next (N) and Save read the page's own episode surface. Page painting that client.js does identically in both modes from what the manager surface answers (in native mode, the facades); the engine never draws the page, so there is nothing here for Swift to reimplement."
+    }
+  }
+}

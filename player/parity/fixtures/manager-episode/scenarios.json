@@ -1,0 +1,2505 @@
+{
+  "family": "manager-episode",
+  "note": "The manager's episode scenarios (NE-14j), recorded from the real PlayerQueueManager over the shared fakes: interruptions (and the INTERRUPTION_REWIND_SEC step back), routes, corner case #19's single audible start, cold launch, superseded loads, the double skip, pause silence, and position events. A step is a command, a deck event (DeckEvent), a session notification or a lifecycle moment; the op log is what the engine must command. Queue strategies stay in the page (plan §3 A-1): these scenarios hand the manager its queue. Port card NE-14s.",
+  "cases": [
+    {
+      "id": "manager-episode/play-loads-then-starts",
+      "covers": ["queue-manager::play loads then starts, in that order"],
+      "note": "The load carries the offset, the listener's rate is applied, then play: nothing audible before the asset is positioned.",
+      "setup": { "target": "manager" },
+      "steps": [
+        { "call": "loadQueue", "args": [[{ "$ep": ["a"] }]] },
+        { "call": "play", "args": [0] },
+        { "checkpoint": "played" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "played",
+            "ops": ["load:a@0", "rate:1", "play"],
+            "playhead": "a",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "end",
+            "ops": [],
+            "playhead": "a",
+            "rate": 1,
+            "state": "playing"
+          }
+        ],
+        "ops": ["load:a@0", "rate:1", "play"]
+      }
+    },
+    {
+      "id": "manager-episode/an-ended-last-item-ends-the-session",
+      "covers": [
+        "queue-manager::SINGLE_ITEM ends the session instead of chaining into another episode"
+      ],
+      "note": "Nothing follows: the session ends, and nothing more is loaded (product principle 1).",
+      "setup": { "target": "manager" },
+      "steps": [
+        { "call": "loadQueue", "args": [[{ "$ep": ["a"] }]] },
+        { "call": "play", "args": [0] },
+        { "checkpoint": "playing" },
+        { "deck": "ended" },
+        { "checkpoint": "ended" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "playing",
+            "ops": ["load:a@0", "rate:1", "play"],
+            "playhead": "a",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "ended",
+            "ops": [],
+            "playhead": "a",
+            "rate": 1,
+            "state": "ended"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "end",
+            "ops": [],
+            "playhead": "a",
+            "rate": 1,
+            "state": "ended"
+          }
+        ],
+        "ops": ["load:a@0", "rate:1", "play"]
+      }
+    },
+    {
+      "id": "manager-episode/an-ended-item-advances-to-the-next",
+      "covers": ["queue-manager::PICKED_FIRST advances to the next episode when one ends"],
+      "setup": { "target": "manager" },
+      "steps": [
+        { "call": "loadQueue", "args": [[{ "$ep": ["a"] }, { "$ep": ["b"] }]] },
+        { "call": "play", "args": [0] },
+        { "checkpoint": "playing" },
+        { "deck": "ended" },
+        { "checkpoint": "advanced" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "playing",
+            "ops": ["load:a@0", "rate:1", "play"],
+            "playhead": "a",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "advanced",
+            "ops": ["load:b@0", "rate:1", "play"],
+            "playhead": "b",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "end",
+            "ops": [],
+            "playhead": "b",
+            "rate": 1,
+            "state": "playing"
+          }
+        ],
+        "ops": ["load:a@0", "rate:1", "play", "load:b@0", "rate:1", "play"]
+      }
+    },
+    {
+      "id": "manager-episode/two-skips-land-two-items-along",
+      "covers": ["queue-manager::a fast double-skip advances two items, not one"],
+      "setup": { "target": "manager" },
+      "steps": [
+        {
+          "call": "loadQueue",
+          "args": [[{ "$ep": ["a"] }, { "$ep": ["b"] }, { "$ep": ["c"] }]]
+        },
+        { "call": "play", "args": [0] },
+        { "checkpoint": "playing" },
+        { "call": "skipToNext" },
+        { "call": "skipToNext" },
+        { "checkpoint": "skipped" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "playing",
+            "ops": ["load:a@0", "rate:1", "play"],
+            "playhead": "a",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 2,
+            "name": "skipped",
+            "ops": [
+              "store.save:a@0",
+              "pause",
+              "load:b@0",
+              "rate:1",
+              "play",
+              "store.save:b@0",
+              "pause",
+              "load:c@0",
+              "rate:1",
+              "play"
+            ],
+            "playhead": "c",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 2,
+            "name": "end",
+            "ops": [],
+            "playhead": "c",
+            "rate": 1,
+            "state": "playing"
+          }
+        ],
+        "ops": [
+          "load:a@0",
+          "rate:1",
+          "play",
+          "store.save:a@0",
+          "pause",
+          "load:b@0",
+          "rate:1",
+          "play",
+          "store.save:b@0",
+          "pause",
+          "load:c@0",
+          "rate:1",
+          "play"
+        ]
+      }
+    },
+    {
+      "id": "manager-episode/concurrent-double-skip-starts-one-item",
+      "covers": [
+        "queue-manager::a fast double-skip loads only the final target",
+        "queue-manager::a concurrent double-skip lands on the final target and starts it once"
+      ],
+      "note": "Corner case #19: two skips in flight at once load the final target (c) and start exactly one item. NE-14j recorded the JS landing on b (each effect was awaited, so the second skip's load(c) went out while the first skip was parked after its save, and the first skip's load(b) then superseded it). NE-14s fixed it JS first: the manager awaits only effects that are really asynchronous, so the first skip's save, pause and load(b) are one step, the second skip replaces the in-flight load, and c plays. That is also the native engine's order: one handle() turn per skip.",
+      "setup": { "target": "manager" },
+      "steps": [
+        {
+          "call": "loadQueue",
+          "args": [[{ "$ep": ["a"] }, { "$ep": ["b"] }, { "$ep": ["c"] }]]
+        },
+        { "call": "play", "args": [0] },
+        { "checkpoint": "playing" },
+        { "call": "skipToNext", "await": false },
+        { "call": "skipToNext", "await": false },
+        { "settle": 4 },
+        { "checkpoint": "skipped" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "playing",
+            "ops": ["load:a@0", "rate:1", "play"],
+            "playhead": "a",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 2,
+            "name": "skipped",
+            "ops": ["store.save:a@0", "pause", "load:b@0", "load:c@0", "rate:1", "play"],
+            "playhead": "c",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 2,
+            "name": "end",
+            "ops": [],
+            "playhead": "c",
+            "rate": 1,
+            "state": "playing"
+          }
+        ],
+        "ops": [
+          "load:a@0",
+          "rate:1",
+          "play",
+          "store.save:a@0",
+          "pause",
+          "load:b@0",
+          "load:c@0",
+          "rate:1",
+          "play"
+        ]
+      }
+    },
+    {
+      "id": "manager-episode/double-skip-with-slow-loads-plays-once",
+      "covers": ["queue-manager::a fast double-skip loads only the final target"],
+      "note": "Corner case #19, single audible: with both skips' loads in flight, only the load that owns the deck starts audio; the other lands and plays nothing. Since NE-14s's JS fix (see the concurrent case above) b's load goes out first and c's replaces it, so c owns the deck: b landing is the silent one, and c's landing starts the one item.",
+      "setup": { "target": "manager", "backend": { "holdLoads": true } },
+      "steps": [
+        {
+          "call": "loadQueue",
+          "args": [[{ "$ep": ["a"] }, { "$ep": ["b"] }, { "$ep": ["c"] }]]
+        },
+        { "call": "play", "args": [0], "await": false },
+        { "deck": "loaded", "id": "a" },
+        { "checkpoint": "playing" },
+        { "call": "skipToNext", "await": false },
+        { "call": "skipToNext", "await": false },
+        { "settle": 2 },
+        { "checkpoint": "both-in-flight" },
+        { "deck": "loaded", "id": "b" },
+        { "checkpoint": "b-landed-superseded" },
+        { "deck": "loaded", "id": "c" },
+        { "checkpoint": "c-landed" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "playing",
+            "ops": ["load:a@0", "rate:1", "play"],
+            "playhead": "a",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 2,
+            "name": "both-in-flight",
+            "ops": ["store.save:a@0", "pause", "load:b@0", "load:c@0"],
+            "playhead": "a",
+            "rate": 1,
+            "state": "loadingItem"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 2,
+            "name": "b-landed-superseded",
+            "ops": [],
+            "playhead": "a",
+            "rate": 1,
+            "state": "loadingItem"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 2,
+            "name": "c-landed",
+            "ops": ["rate:1", "play"],
+            "playhead": "c",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 2,
+            "name": "end",
+            "ops": [],
+            "playhead": "c",
+            "rate": 1,
+            "state": "playing"
+          }
+        ],
+        "ops": [
+          "load:a@0",
+          "rate:1",
+          "play",
+          "store.save:a@0",
+          "pause",
+          "load:b@0",
+          "load:c@0",
+          "rate:1",
+          "play"
+        ]
+      }
+    },
+    {
+      "id": "manager-episode/a-superseded-load-never-plays",
+      "covers": [
+        "transport-reconcile::AUDIT: a load that lands after a newer one never claims the playhead"
+      ],
+      "note": "A tap on a second episode while the first is still loading: the first load landing late plays nothing and stamps nothing (audit 2026-09-22).",
+      "setup": { "target": "manager", "backend": { "holdLoads": true } },
+      "steps": [
+        { "call": "loadQueue", "args": [[{ "$ep": ["a"] }, { "$ep": ["b"] }]] },
+        { "call": "play", "args": [0], "await": false },
+        { "call": "play", "args": [1], "await": false },
+        { "settle": 2 },
+        { "checkpoint": "both-in-flight" },
+        { "deck": "loaded", "id": "b" },
+        { "checkpoint": "b-landed" },
+        { "deck": "loaded", "id": "a" },
+        { "checkpoint": "a-landed-late" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "both-in-flight",
+            "ops": ["load:a@0", "load:b@0"],
+            "playhead": null,
+            "rate": 1,
+            "state": "loadingItem"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "b-landed",
+            "ops": ["rate:1", "play"],
+            "playhead": "b",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "a-landed-late",
+            "ops": [],
+            "playhead": "b",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "end",
+            "ops": [],
+            "playhead": "b",
+            "rate": 1,
+            "state": "playing"
+          }
+        ],
+        "ops": ["load:a@0", "load:b@0", "rate:1", "play"]
+      }
+    },
+    {
+      "id": "manager-episode/an-interruption-saves-and-pauses",
+      "covers": ["queue-manager::an interruption saves position and pauses"],
+      "setup": { "target": "manager" },
+      "steps": [
+        { "call": "loadQueue", "args": [[{ "$ep": ["a"] }]] },
+        { "call": "play", "args": [0] },
+        { "deck": "time", "sec": 42 },
+        { "session": "interruptionBegan" },
+        { "checkpoint": "interrupted" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "interrupted",
+            "ops": ["load:a@0", "rate:1", "play", "store.save:a@42", "pause"],
+            "playhead": "a",
+            "rate": 1,
+            "state": "interrupted"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "end",
+            "ops": [],
+            "playhead": "a",
+            "rate": 1,
+            "state": "interrupted"
+          }
+        ],
+        "ops": ["load:a@0", "rate:1", "play", "store.save:a@42", "pause"]
+      }
+    },
+    {
+      "id": "manager-episode/declined-call-resumes-answered-call-stays-paused",
+      "covers": ["queue-manager::declined call resumes; answered call stays paused but ready"],
+      "setup": { "target": "manager" },
+      "steps": [
+        { "call": "loadQueue", "args": [[{ "$ep": ["a"] }]] },
+        { "call": "play", "args": [0] },
+        { "session": "interruptionBegan" },
+        { "session": "interruptionEnded", "shouldResume": true },
+        { "checkpoint": "declined" },
+        { "session": "interruptionBegan" },
+        { "session": "interruptionEnded", "shouldResume": false },
+        { "checkpoint": "answered" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "declined",
+            "ops": [
+              "load:a@0",
+              "rate:1",
+              "play",
+              "store.save:a@0",
+              "pause",
+              "load:a@0",
+              "rate:1",
+              "play"
+            ],
+            "playhead": "a",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "answered",
+            "ops": ["store.save:a@0", "pause"],
+            "playhead": "a",
+            "rate": 1,
+            "state": "interrupted"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "end",
+            "ops": [],
+            "playhead": "a",
+            "rate": 1,
+            "state": "interrupted"
+          }
+        ],
+        "ops": [
+          "load:a@0",
+          "rate:1",
+          "play",
+          "store.save:a@0",
+          "pause",
+          "load:a@0",
+          "rate:1",
+          "play",
+          "store.save:a@0",
+          "pause"
+        ]
+      }
+    },
+    {
+      "id": "manager-episode/interruption-resume-steps-back-in-place",
+      "covers": [
+        "queue-manager::an OS should-resume steps back INTERRUPTION_REWIND_SEC on the item the element still holds"
+      ],
+      "authored": true,
+      "note": "INTERRUPTION_REWIND_SEC (plan §4.4, NE-14j): parked at 42.5 s, an OS should-resume reloads IN PLACE at 41 s (the backend's same-source seek), then rate, then play. Authored.",
+      "setup": { "target": "manager" },
+      "steps": [
+        { "call": "loadQueue", "args": [[{ "$ep": ["a"] }]] },
+        { "call": "play", "args": [0] },
+        { "deck": "time", "sec": 42.5 },
+        { "session": "interruptionBegan" },
+        { "checkpoint": "interrupted" },
+        { "session": "interruptionEnded", "shouldResume": true },
+        { "checkpoint": "resumed" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "interrupted",
+            "ops": ["load:a@0", "rate:1", "play", "store.save:a@43", "pause"],
+            "playhead": "a",
+            "rate": 1,
+            "state": "interrupted"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "resumed",
+            "ops": ["load:a@41", "rate:1", "play"],
+            "playhead": "a",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "end",
+            "ops": [],
+            "playhead": "a",
+            "rate": 1,
+            "state": "playing"
+          }
+        ],
+        "ops": [
+          "load:a@0",
+          "rate:1",
+          "play",
+          "store.save:a@43",
+          "pause",
+          "load:a@41",
+          "rate:1",
+          "play"
+        ]
+      }
+    },
+    {
+      "id": "manager-episode/a-listeners-resume-does-not-step-back",
+      "covers": [
+        "queue-manager::the step back is the interruption's only: a listener's own resume lands where they paused"
+      ],
+      "authored": true,
+      "note": "Only an OS interruption steps back. The listener's own pause/play resumes at 42.5 s (@43), and a should-resume the manager declines (the listener had paused) arms nothing for the next load. Authored.",
+      "setup": { "target": "manager" },
+      "steps": [
+        { "call": "loadQueue", "args": [[{ "$ep": ["a"] }]] },
+        { "call": "play", "args": [0] },
+        { "deck": "time", "sec": 42.5 },
+        { "call": "pause" },
+        { "checkpoint": "paused" },
+        { "call": "resume" },
+        { "checkpoint": "resumed" },
+        { "call": "pause" },
+        { "session": "interruptionEnded", "shouldResume": true },
+        { "checkpoint": "declined" },
+        { "call": "resume" },
+        { "checkpoint": "resumed-again" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "paused",
+            "ops": ["load:a@0", "rate:1", "play", "store.save:a@43", "pause"],
+            "playhead": "a",
+            "rate": 1,
+            "state": "interrupted"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "resumed",
+            "ops": ["load:a@43", "rate:1", "play"],
+            "playhead": "a",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "declined",
+            "ops": ["store.save:a@43", "pause"],
+            "playhead": "a",
+            "rate": 1,
+            "state": "interrupted"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "resumed-again",
+            "ops": ["load:a@43", "rate:1", "play"],
+            "playhead": "a",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "end",
+            "ops": [],
+            "playhead": "a",
+            "rate": 1,
+            "state": "playing"
+          }
+        ],
+        "ops": [
+          "load:a@0",
+          "rate:1",
+          "play",
+          "store.save:a@43",
+          "pause",
+          "load:a@43",
+          "rate:1",
+          "play",
+          "store.save:a@43",
+          "pause",
+          "load:a@43",
+          "rate:1",
+          "play"
+        ]
+      }
+    },
+    {
+      "id": "manager-episode/interruption-step-back-stops-at-the-in-point",
+      "covers": [
+        "queue-manager::an interruption's step back never crosses a segment's in-point (NE-14j)"
+      ],
+      "authored": true,
+      "note": "A segment [100, 210]: at 100.75 s the step back stops at the in-point (100), never in the stranger's episode before it; at 172.5 s it lands at 171 inside the slice, and the boundary is re-armed. Authored.",
+      "setup": {
+        "target": "manager",
+        "catalogue": {
+          "ep-static": {
+            "id": "ep-static",
+            "title": "Static",
+            "show": "Indie",
+            "audio_url": "https://cdn.example/static.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600
+          }
+        }
+      },
+      "steps": [
+        {
+          "call": "playForay",
+          "args": [
+            {
+              "$foray": {
+                "id": "foray-1",
+                "title": "Fire",
+                "items": [
+                  {
+                    "type": "segment",
+                    "item_id": "ep-static",
+                    "start_sec": 100,
+                    "end_sec": 210
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        { "checkpoint": "playing" },
+        { "deck": "time", "sec": 100.75 },
+        { "session": "interruptionBegan" },
+        { "session": "interruptionEnded", "shouldResume": true },
+        { "checkpoint": "near-the-in-point" },
+        { "deck": "time", "sec": 172.5 },
+        { "session": "interruptionBegan" },
+        { "session": "interruptionEnded", "shouldResume": true },
+        { "checkpoint": "inside-the-slice" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "playing",
+            "ops": ["load:foray-1#0@100", "rate:1", "outPoint:210", "play"],
+            "playhead": "foray-1#0",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "near-the-in-point",
+            "ops": ["pause", "load:foray-1#0@100", "rate:1", "outPoint:210", "play"],
+            "playhead": "foray-1#0",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "inside-the-slice",
+            "ops": ["pause", "load:foray-1#0@171", "rate:1", "outPoint:210", "play"],
+            "playhead": "foray-1#0",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "end",
+            "ops": [],
+            "playhead": "foray-1#0",
+            "rate": 1,
+            "state": "playing"
+          }
+        ],
+        "ops": [
+          "load:foray-1#0@100",
+          "rate:1",
+          "outPoint:210",
+          "play",
+          "pause",
+          "load:foray-1#0@100",
+          "rate:1",
+          "outPoint:210",
+          "play",
+          "pause",
+          "load:foray-1#0@171",
+          "rate:1",
+          "outPoint:210",
+          "play"
+        ]
+      }
+    },
+    {
+      "id": "manager-episode/a-lost-route-pauses",
+      "covers": ["queue-manager::a route disappearing pauses immediately"],
+      "setup": { "target": "manager" },
+      "steps": [
+        { "call": "loadQueue", "args": [[{ "$ep": ["a"] }]] },
+        { "call": "play", "args": [0] },
+        { "session": "routeLost" },
+        { "checkpoint": "route-lost" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "route-lost",
+            "ops": ["load:a@0", "rate:1", "play", "store.save:a@0", "pause"],
+            "playhead": "a",
+            "rate": 1,
+            "state": "interrupted"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "end",
+            "ops": [],
+            "playhead": "a",
+            "rate": 1,
+            "state": "interrupted"
+          }
+        ],
+        "ops": ["load:a@0", "rate:1", "play", "store.save:a@0", "pause"]
+      }
+    },
+    {
+      "id": "manager-episode/only-a-known-car-route-resumes",
+      "covers": ["queue-manager::auto-resume happens only for a route already known as a car"],
+      "note": "Corner case #13: headphones reappearing never start audio; a route already seen as a car does.",
+      "setup": { "target": "manager" },
+      "steps": [
+        { "call": "loadQueue", "args": [[{ "$ep": ["a"] }]] },
+        { "call": "play", "args": [0] },
+        { "session": "routeLost", "routeName": "Some Headphones" },
+        { "session": "routeAvailable", "routeName": "Some Headphones" },
+        { "checkpoint": "headphones" },
+        { "session": "routeLost", "routeName": "Civic", "isCarRoute": true },
+        { "session": "routeAvailable", "routeName": "Civic" },
+        { "checkpoint": "car" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "headphones",
+            "ops": ["load:a@0", "rate:1", "play", "store.save:a@0", "pause"],
+            "playhead": "a",
+            "rate": 1,
+            "state": "interrupted"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "car",
+            "ops": ["load:a@0", "rate:1", "play"],
+            "playhead": "a",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "end",
+            "ops": [],
+            "playhead": "a",
+            "rate": 1,
+            "state": "playing"
+          }
+        ],
+        "ops": [
+          "load:a@0",
+          "rate:1",
+          "play",
+          "store.save:a@0",
+          "pause",
+          "load:a@0",
+          "rate:1",
+          "play"
+        ]
+      }
+    },
+    {
+      "id": "manager-episode/a-lost-route-is-not-resumed-by-a-later-call",
+      "covers": [
+        "queue-manager::ROUND 2 review: a ROUTE LOSS is never resumed by a later call's should-resume (corner case #13)"
+      ],
+      "setup": { "target": "manager" },
+      "steps": [
+        { "call": "loadQueue", "args": [[{ "$ep": ["a"] }]] },
+        { "call": "play", "args": [0] },
+        { "session": "routeLost" },
+        { "session": "interruptionEnded", "shouldResume": true },
+        { "checkpoint": "still-paused" },
+        { "call": "resume" },
+        { "checkpoint": "pressed" },
+        { "deck": "audible", "audible": false },
+        { "session": "interruptionReconciled" },
+        { "session": "interruptionEnded", "shouldResume": true },
+        { "checkpoint": "call-resumed" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "still-paused",
+            "ops": ["load:a@0", "rate:1", "play", "store.save:a@0", "pause"],
+            "playhead": "a",
+            "rate": 1,
+            "state": "interrupted"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "pressed",
+            "ops": ["load:a@0", "rate:1", "play"],
+            "playhead": "a",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "call-resumed",
+            "ops": ["store.save:a@0", "pause", "load:a@0", "rate:1", "play"],
+            "playhead": "a",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "end",
+            "ops": [],
+            "playhead": "a",
+            "rate": 1,
+            "state": "playing"
+          }
+        ],
+        "ops": [
+          "load:a@0",
+          "rate:1",
+          "play",
+          "store.save:a@0",
+          "pause",
+          "load:a@0",
+          "rate:1",
+          "play",
+          "store.save:a@0",
+          "pause",
+          "load:a@0",
+          "rate:1",
+          "play"
+        ]
+      }
+    },
+    {
+      "id": "manager-episode/a-listeners-pause-is-not-resumed-by-a-call",
+      "covers": [
+        "queue-manager::ROUND 2 p-car-3: interruptionEnded(should-resume) resumes an OS interruption, never a listener's pause",
+        "transport-reconcile::ROUND 2 p-car-3: should-resume never resumes a pause the LISTENER made before the call"
+      ],
+      "setup": { "target": "manager" },
+      "steps": [
+        { "call": "loadQueue", "args": [[{ "$ep": ["a"] }]] },
+        { "call": "play", "args": [0] },
+        { "call": "pause" },
+        { "session": "interruptionEnded", "shouldResume": true },
+        { "checkpoint": "listener-paused" },
+        { "call": "resume" },
+        { "deck": "audible", "audible": false },
+        { "session": "interruptionReconciled" },
+        { "session": "interruptionEnded", "shouldResume": true },
+        { "checkpoint": "os-interruption-resumed" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "listener-paused",
+            "ops": ["load:a@0", "rate:1", "play", "store.save:a@0", "pause"],
+            "playhead": "a",
+            "rate": 1,
+            "state": "interrupted"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "os-interruption-resumed",
+            "ops": [
+              "load:a@0",
+              "rate:1",
+              "play",
+              "store.save:a@0",
+              "pause",
+              "load:a@0",
+              "rate:1",
+              "play"
+            ],
+            "playhead": "a",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "end",
+            "ops": [],
+            "playhead": "a",
+            "rate": 1,
+            "state": "playing"
+          }
+        ],
+        "ops": [
+          "load:a@0",
+          "rate:1",
+          "play",
+          "store.save:a@0",
+          "pause",
+          "load:a@0",
+          "rate:1",
+          "play",
+          "store.save:a@0",
+          "pause",
+          "load:a@0",
+          "rate:1",
+          "play"
+        ]
+      }
+    },
+    {
+      "id": "manager-episode/a-foreground-reconcile-is-not-resumable",
+      "covers": [
+        "queue-manager::ROUND 2 review: a foreground reconcile of an external stop (#263, route gone while suspended) is not resumable"
+      ],
+      "setup": { "target": "manager" },
+      "steps": [
+        { "call": "loadQueue", "args": [[{ "$ep": ["a"] }]] },
+        { "call": "play", "args": [0] },
+        { "deck": "audible", "audible": false },
+        { "lifecycle": "foreground" },
+        { "checkpoint": "reconciled" },
+        { "session": "interruptionEnded", "shouldResume": true },
+        { "checkpoint": "not-resumed" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "reconciled",
+            "ops": ["load:a@0", "rate:1", "play", "store.save:a@0", "pause"],
+            "playhead": "a",
+            "rate": 1,
+            "state": "interrupted"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "not-resumed",
+            "ops": [],
+            "playhead": "a",
+            "rate": 1,
+            "state": "interrupted"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "end",
+            "ops": [],
+            "playhead": "a",
+            "rate": 1,
+            "state": "interrupted"
+          }
+        ],
+        "ops": ["load:a@0", "rate:1", "play", "store.save:a@0", "pause"]
+      }
+    },
+    {
+      "id": "manager-episode/an-observed-pause-stays-resumable",
+      "covers": [
+        "queue-manager::ROUND 2 review: the element's own unexplained pause (a call on an awake page) stays resumable",
+        "transport-reconcile::the backend's unexplained pause is wired to the reconcile",
+        "transport-reconcile::ROUND 2 p-car-3 (founder question 2): the call ends with should-resume, and 4a comes back on its own"
+      ],
+      "setup": { "target": "manager" },
+      "steps": [
+        { "call": "loadQueue", "args": [[{ "$ep": ["a"] }]] },
+        { "call": "play", "args": [0] },
+        { "deck": "observedPause" },
+        { "settle": 2 },
+        { "checkpoint": "reconciled" },
+        { "session": "interruptionEnded", "shouldResume": true },
+        { "checkpoint": "resumed" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "reconciled",
+            "ops": ["load:a@0", "rate:1", "play", "store.save:a@0", "pause"],
+            "playhead": "a",
+            "rate": 1,
+            "state": "interrupted"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "resumed",
+            "ops": ["load:a@0", "rate:1", "play"],
+            "playhead": "a",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "end",
+            "ops": [],
+            "playhead": "a",
+            "rate": 1,
+            "state": "playing"
+          }
+        ],
+        "ops": [
+          "load:a@0",
+          "rate:1",
+          "play",
+          "store.save:a@0",
+          "pause",
+          "load:a@0",
+          "rate:1",
+          "play"
+        ]
+      }
+    },
+    {
+      "id": "manager-episode/cold-launch-loads-at-the-saved-position",
+      "covers": [
+        "queue-manager::cold launch prepares the asset AT the saved position, never seeking after play"
+      ],
+      "setup": { "target": "manager", "positions": { "a": 1800 } },
+      "steps": [
+        {
+          "lifecycle": "coldLaunch",
+          "items": [{ "$ep": ["a"] }],
+          "index": 0,
+          "autoplay": true
+        },
+        { "checkpoint": "launched" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "launched",
+            "ops": ["load:a@1800", "rate:1", "play"],
+            "playhead": "a",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "end",
+            "ops": [],
+            "playhead": "a",
+            "rate": 1,
+            "state": "playing"
+          }
+        ],
+        "ops": ["load:a@1800", "rate:1", "play"]
+      }
+    },
+    {
+      "id": "manager-episode/cold-launch-without-autoplay-is-silent",
+      "covers": [
+        "queue-manager::cold launch without autoplay restores position without making noise"
+      ],
+      "setup": { "target": "manager", "positions": { "a": 600 } },
+      "steps": [
+        {
+          "lifecycle": "coldLaunch",
+          "items": [{ "$ep": ["a"] }],
+          "index": 0,
+          "autoplay": false
+        },
+        { "checkpoint": "launched" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "launched",
+            "ops": [],
+            "playhead": null,
+            "rate": 1,
+            "state": "idle"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "end",
+            "ops": [],
+            "playhead": null,
+            "rate": 1,
+            "state": "idle"
+          }
+        ],
+        "ops": []
+      }
+    },
+    {
+      "id": "manager-episode/a-part-heard-episode-resumes-a-fresh-one-starts-at-zero",
+      "covers": [
+        "queue-manager::a resumed episode reloads at its saved position; a fresh one starts at zero",
+        "transport-reconcile::A COLD resume still reads the stored row — the fix above is not a mute"
+      ],
+      "setup": { "target": "manager", "positions": { "b": 900 } },
+      "steps": [
+        { "call": "loadQueue", "args": [[{ "$ep": ["a"] }, { "$ep": ["b"] }]] },
+        { "call": "play", "args": [0] },
+        { "checkpoint": "fresh" },
+        { "call": "skipToNext" },
+        { "checkpoint": "part-heard" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "fresh",
+            "ops": ["load:a@0", "rate:1", "play"],
+            "playhead": "a",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "part-heard",
+            "ops": ["store.save:a@0", "pause", "load:b@900", "rate:1", "play"],
+            "playhead": "b",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "end",
+            "ops": [],
+            "playhead": "b",
+            "rate": 1,
+            "state": "playing"
+          }
+        ],
+        "ops": [
+          "load:a@0",
+          "rate:1",
+          "play",
+          "store.save:a@0",
+          "pause",
+          "load:b@900",
+          "rate:1",
+          "play"
+        ]
+      }
+    },
+    {
+      "id": "manager-episode/previous-restarts-at-zero",
+      "covers": ["queue-manager::skipToPrevious restarts at zero, not at the playhead just saved"],
+      "setup": { "target": "manager" },
+      "steps": [
+        { "call": "loadQueue", "args": [[{ "$ep": ["a"] }]] },
+        { "call": "play", "args": [0] },
+        { "deck": "time", "sec": 1234 },
+        { "call": "skipToPrevious" },
+        { "checkpoint": "restarted" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "restarted",
+            "ops": [
+              "load:a@0",
+              "rate:1",
+              "play",
+              "store.save:a@1234",
+              "pause",
+              "load:a@0",
+              "rate:1",
+              "play"
+            ],
+            "playhead": "a",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "end",
+            "ops": [],
+            "playhead": "a",
+            "rate": 1,
+            "state": "playing"
+          }
+        ],
+        "ops": [
+          "load:a@0",
+          "rate:1",
+          "play",
+          "store.save:a@1234",
+          "pause",
+          "load:a@0",
+          "rate:1",
+          "play"
+        ]
+      }
+    },
+    {
+      "id": "manager-episode/a-skip-saves-the-outgoing-position",
+      "covers": [
+        "queue-manager::a skip saves the OUTGOING episode's position, never the incoming one's"
+      ],
+      "setup": { "target": "manager", "positions": { "b": 900 } },
+      "steps": [
+        { "call": "loadQueue", "args": [[{ "$ep": ["a"] }, { "$ep": ["b"] }]] },
+        { "call": "play", "args": [0] },
+        { "deck": "time", "sec": 77 },
+        { "call": "skipToNext" },
+        { "checkpoint": "skipped" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "skipped",
+            "ops": [
+              "load:a@0",
+              "rate:1",
+              "play",
+              "store.save:a@77",
+              "pause",
+              "load:b@900",
+              "rate:1",
+              "play"
+            ],
+            "playhead": "b",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "end",
+            "ops": [],
+            "playhead": "b",
+            "rate": 1,
+            "state": "playing"
+          }
+        ],
+        "ops": [
+          "load:a@0",
+          "rate:1",
+          "play",
+          "store.save:a@77",
+          "pause",
+          "load:b@900",
+          "rate:1",
+          "play"
+        ]
+      }
+    },
+    {
+      "id": "manager-episode/every-effect-has-a-handler",
+      "covers": ["queue-manager::every effect the reducer can emit has a handler"],
+      "setup": { "target": "manager" },
+      "steps": [
+        {
+          "call": "loadQueue",
+          "args": [[{ "$ep": ["a"] }, { "$tts": ["bridge"] }, { "$ep": ["b"] }]]
+        },
+        { "call": "play", "args": [0] },
+        { "call": "seek", "args": [30, { "precise": true }] },
+        { "call": "pause" },
+        { "session": "interruptionEnded", "shouldResume": true },
+        { "call": "skipToNext" },
+        { "call": "skipToPrevious" },
+        { "deck": "ended" },
+        { "call": "stop" },
+        { "checkpoint": "done" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 2,
+            "name": "done",
+            "ops": [
+              "load:a@0",
+              "rate:1",
+              "play",
+              "store.save:a@0",
+              "seek:30",
+              "store.save:a@30",
+              "pause",
+              "store.save:a@30",
+              "pause",
+              "load:b@0",
+              "rate:1",
+              "play",
+              "store.save:b@0",
+              "pause",
+              "load:b@0",
+              "rate:1",
+              "play",
+              "store.save:b@0"
+            ],
+            "playhead": "b",
+            "rate": 1,
+            "state": "idle"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 2,
+            "name": "end",
+            "ops": [],
+            "playhead": "b",
+            "rate": 1,
+            "state": "idle"
+          }
+        ],
+        "ops": [
+          "load:a@0",
+          "rate:1",
+          "play",
+          "store.save:a@0",
+          "seek:30",
+          "store.save:a@30",
+          "pause",
+          "store.save:a@30",
+          "pause",
+          "load:b@0",
+          "rate:1",
+          "play",
+          "store.save:b@0",
+          "pause",
+          "load:b@0",
+          "rate:1",
+          "play",
+          "store.save:b@0"
+        ]
+      }
+    },
+    {
+      "id": "manager-episode/set-rate-hands-the-deck-only-ladder-values",
+      "covers": [
+        "queue-manager::setRate snaps a junk or off-ladder value instead of handing it to the element"
+      ],
+      "setup": { "target": "manager" },
+      "steps": [
+        { "call": "setRate", "args": [0] },
+        { "call": "setRate", "args": [-1] },
+        { "call": "setRate", "args": [{ "$num": "NaN" }] },
+        { "call": "setRate", "args": [{ "$num": "Infinity" }] },
+        { "call": "setRate", "args": [null] },
+        { "call": "setRate", "args": ["1.5"] },
+        { "call": "setRate", "args": [{}] },
+        { "call": "setRate", "args": [1.6] },
+        { "call": "setRate", "args": [9] },
+        { "checkpoint": "rated" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": -1,
+            "name": "rated",
+            "ops": [
+              "rate:1",
+              "rate:1",
+              "rate:1",
+              "rate:1",
+              "rate:1",
+              "rate:1",
+              "rate:1",
+              "rate:1.5",
+              "rate:2"
+            ],
+            "playhead": null,
+            "rate": 2,
+            "state": "idle"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": -1,
+            "name": "end",
+            "ops": [],
+            "playhead": null,
+            "rate": 2,
+            "state": "idle"
+          }
+        ],
+        "ops": [
+          "rate:1",
+          "rate:1",
+          "rate:1",
+          "rate:1",
+          "rate:1",
+          "rate:1",
+          "rate:1",
+          "rate:1.5",
+          "rate:2"
+        ]
+      }
+    },
+    {
+      "id": "manager-episode/pause-silences-an-audible-element",
+      "covers": [
+        "transport-reconcile::pause() is a postcondition, not a state transition: an audible element is silenced"
+      ],
+      "note": "The postcondition of pause() is SILENCE (#689 report 3): paused already, the element audible again behind the machine, a second pause still reaches the element. The fixture half of record.mjs --mutate pause-silence.",
+      "setup": { "target": "manager" },
+      "steps": [
+        { "call": "loadQueue", "args": [[{ "$ep": ["a"] }]] },
+        { "call": "play", "args": [0] },
+        { "call": "pause" },
+        { "checkpoint": "paused" },
+        { "deck": "audible", "audible": true },
+        { "call": "pause" },
+        { "checkpoint": "silenced" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "paused",
+            "ops": ["load:a@0", "rate:1", "play", "store.save:a@0", "pause"],
+            "playhead": "a",
+            "rate": 1,
+            "state": "interrupted"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "silenced",
+            "ops": ["pause"],
+            "playhead": "a",
+            "rate": 1,
+            "state": "interrupted"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "end",
+            "ops": [],
+            "playhead": "a",
+            "rate": 1,
+            "state": "interrupted"
+          }
+        ],
+        "ops": ["load:a@0", "rate:1", "play", "store.save:a@0", "pause", "pause"]
+      }
+    },
+    {
+      "id": "manager-episode/position-events-at-most-once-a-minute",
+      "covers": [],
+      "authored": true,
+      "note": "Plan §5.5: every position write goes to cp_pos:<id>, and a position EVENT (the page's logEvent, the engine's pendingEvents row) goes out at most once per 60 media seconds per item — first save at 30 s (event), 75 s (no event: 45 s on), 95 s (event: 65 s on). Authored.",
+      "setup": { "target": "manager", "positionEvents": true },
+      "steps": [
+        { "call": "loadQueue", "args": [[{ "$ep": ["a"] }]] },
+        { "call": "play", "args": [0] },
+        { "deck": "time", "sec": 30 },
+        { "call": "pause" },
+        { "checkpoint": "first-save" },
+        { "call": "resume" },
+        { "deck": "time", "sec": 75 },
+        { "call": "pause" },
+        { "checkpoint": "inside-a-minute" },
+        { "call": "resume" },
+        { "deck": "time", "sec": 95 },
+        { "call": "pause" },
+        { "checkpoint": "a-minute-on" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "first-save",
+            "ops": [
+              "load:a@0",
+              "rate:1",
+              "play",
+              "store.set:cp_pos:a",
+              "event.position:a@30:3600",
+              "pause"
+            ],
+            "playhead": "a",
+            "rate": 1,
+            "state": "interrupted"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "inside-a-minute",
+            "ops": ["load:a@30", "rate:1", "play", "store.set:cp_pos:a", "pause"],
+            "playhead": "a",
+            "rate": 1,
+            "state": "interrupted"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "a-minute-on",
+            "ops": [
+              "load:a@75",
+              "rate:1",
+              "play",
+              "store.set:cp_pos:a",
+              "event.position:a@95:3600",
+              "pause"
+            ],
+            "playhead": "a",
+            "rate": 1,
+            "state": "interrupted"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "end",
+            "ops": [],
+            "playhead": "a",
+            "rate": 1,
+            "state": "interrupted"
+          }
+        ],
+        "ops": [
+          "load:a@0",
+          "rate:1",
+          "play",
+          "store.set:cp_pos:a",
+          "event.position:a@30:3600",
+          "pause",
+          "load:a@30",
+          "rate:1",
+          "play",
+          "store.set:cp_pos:a",
+          "pause",
+          "load:a@75",
+          "rate:1",
+          "play",
+          "store.set:cp_pos:a",
+          "event.position:a@95:3600",
+          "pause"
+        ]
+      }
+    },
+    {
+      "id": "manager-episode/position-events-are-per-item",
+      "covers": [],
+      "authored": true,
+      "note": "The once-a-minute mark is per item: skipping from a (saved at 40 s, its first event) to b and pausing b at 20 s emits b's own first event. Authored.",
+      "setup": { "target": "manager", "positionEvents": true },
+      "steps": [
+        { "call": "loadQueue", "args": [[{ "$ep": ["a"] }, { "$ep": ["b"] }]] },
+        { "call": "play", "args": [0] },
+        { "deck": "time", "sec": 40 },
+        { "call": "skipToNext" },
+        { "checkpoint": "skipped" },
+        { "deck": "time", "sec": 20 },
+        { "call": "pause" },
+        { "checkpoint": "b-paused" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "skipped",
+            "ops": [
+              "load:a@0",
+              "rate:1",
+              "play",
+              "store.set:cp_pos:a",
+              "event.position:a@40:3600",
+              "pause",
+              "load:b@0",
+              "rate:1",
+              "play"
+            ],
+            "playhead": "b",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "b-paused",
+            "ops": ["store.set:cp_pos:b", "event.position:b@20:3600", "pause"],
+            "playhead": "b",
+            "rate": 1,
+            "state": "interrupted"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "end",
+            "ops": [],
+            "playhead": "b",
+            "rate": 1,
+            "state": "interrupted"
+          }
+        ],
+        "ops": [
+          "load:a@0",
+          "rate:1",
+          "play",
+          "store.set:cp_pos:a",
+          "event.position:a@40:3600",
+          "pause",
+          "load:b@0",
+          "rate:1",
+          "play",
+          "store.set:cp_pos:b",
+          "event.position:b@20:3600",
+          "pause"
+        ]
+      }
+    },
+    {
+      "id": "manager-episode/an-unseen-stop-is-corrected-once-and-one-press-resumes",
+      "covers": [
+        "transport-reconcile::REPRODUCTION: a stop the page never saw leaves the machine saying playing",
+        "transport-reconcile::reconciling corrects it, and ONE press then resumes where it stopped",
+        "transport-reconcile::the reconcile itself never starts audio",
+        "transport-reconcile::reconciling twice corrects once",
+        "transport-reconcile::an element that agrees with us is left alone"
+      ],
+      "note": "#263, the founder's car: a deck that agrees is left alone; a stop nobody saw leaves the machine saying playing until it is asked; asking corrects it towards paused with no play, once however many triggers fire; and ONE press resumes where the deck stopped.",
+      "setup": { "target": "manager" },
+      "steps": [
+        { "call": "loadQueue", "args": [[{ "$ep": ["a"] }]] },
+        { "call": "play", "args": [0] },
+        { "deck": "time", "sec": 61 },
+        { "lifecycle": "foreground" },
+        { "checkpoint": "agrees" },
+        { "deck": "audible", "audible": false },
+        { "checkpoint": "unseen-stop" },
+        { "lifecycle": "foreground" },
+        { "checkpoint": "corrected" },
+        { "lifecycle": "foreground" },
+        { "deck": "observedPause" },
+        { "checkpoint": "corrected-once" },
+        { "call": "resume" },
+        { "checkpoint": "one-press" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "agrees",
+            "ops": ["load:a@0", "rate:1", "play"],
+            "playhead": "a",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "unseen-stop",
+            "ops": [],
+            "playhead": "a",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "corrected",
+            "ops": ["store.save:a@61", "pause"],
+            "playhead": "a",
+            "rate": 1,
+            "state": "interrupted"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "corrected-once",
+            "ops": [],
+            "playhead": "a",
+            "rate": 1,
+            "state": "interrupted"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "one-press",
+            "ops": ["load:a@61", "rate:1", "play"],
+            "playhead": "a",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "end",
+            "ops": [],
+            "playhead": "a",
+            "rate": 1,
+            "state": "playing"
+          }
+        ],
+        "ops": [
+          "load:a@0",
+          "rate:1",
+          "play",
+          "store.save:a@61",
+          "pause",
+          "load:a@61",
+          "rate:1",
+          "play"
+        ]
+      }
+    },
+    {
+      "id": "manager-episode/a-file-that-ran-out-is-not-an-external-stop",
+      "covers": ["transport-reconcile::a finished file is not an external stop"],
+      "note": "Paused AND ended, with the end on its way: the reconcile leaves it to the end path, which then ends the session.",
+      "setup": { "target": "manager" },
+      "steps": [
+        { "call": "loadQueue", "args": [[{ "$ep": ["a"] }]] },
+        { "call": "play", "args": [0] },
+        { "deck": "time", "sec": 3600 },
+        { "deck": "ranOut" },
+        { "lifecycle": "foreground" },
+        { "checkpoint": "not-a-stop" },
+        { "deck": "ended" },
+        { "checkpoint": "ended" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "not-a-stop",
+            "ops": ["load:a@0", "rate:1", "play"],
+            "playhead": "a",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "ended",
+            "ops": [],
+            "playhead": "a",
+            "rate": 1,
+            "state": "ended"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "end",
+            "ops": [],
+            "playhead": "a",
+            "rate": 1,
+            "state": "ended"
+          }
+        ],
+        "ops": ["load:a@0", "rate:1", "play"]
+      }
+    },
+    {
+      "id": "manager-episode/a-failed-skip-leaves-the-playhead-on-the-held-item",
+      "covers": [
+        "transport-reconcile::playheadItemId names the item the element is holding, not the one we intend",
+        "transport-reconcile::a position is never written against an item the element is not holding"
+      ],
+      "note": "The index moves before the load; the playhead only when a load lands. After a failed skip the deck still holds a, so a flush writes nothing for b and leaves a's row alone.",
+      "setup": { "target": "manager", "backend": { "failLoadFor": ["b"] } },
+      "steps": [
+        { "call": "loadQueue", "args": [[{ "$ep": ["a"] }, { "$ep": ["b"] }]] },
+        { "call": "play", "args": [0] },
+        { "deck": "time", "sec": 1200 },
+        { "lifecycle": "background" },
+        { "checkpoint": "flushed" },
+        { "call": "skipToNext" },
+        { "checkpoint": "skip-failed" },
+        { "lifecycle": "background" },
+        { "checkpoint": "nothing-fabricated" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "flushed",
+            "ops": ["load:a@0", "rate:1", "play", "store.save:a@1200"],
+            "playhead": "a",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "skip-failed",
+            "ops": ["store.save:a@1200", "pause", "load:b@0", "pause"],
+            "playhead": "a",
+            "rate": 1,
+            "state": "idle"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "nothing-fabricated",
+            "ops": [],
+            "playhead": "a",
+            "rate": 1,
+            "state": "idle"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "end",
+            "ops": [],
+            "playhead": "a",
+            "rate": 1,
+            "state": "idle"
+          }
+        ],
+        "ops": [
+          "load:a@0",
+          "rate:1",
+          "play",
+          "store.save:a@1200",
+          "store.save:a@1200",
+          "pause",
+          "load:b@0",
+          "pause"
+        ]
+      }
+    },
+    {
+      "id": "manager-episode/a-lost-route-writes-where-it-stopped",
+      "covers": [
+        "transport-reconcile::REPORT 1: a route that DISAPPEARED pauses the transport and writes where it stopped"
+      ],
+      "setup": { "target": "manager" },
+      "steps": [
+        { "call": "loadQueue", "args": [[{ "$ep": ["a"] }]] },
+        { "call": "play", "args": [0] },
+        { "deck": "time", "sec": 1800 },
+        { "session": "routeLost" },
+        { "checkpoint": "route-lost" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "route-lost",
+            "ops": ["load:a@0", "rate:1", "play", "store.save:a@1800", "pause"],
+            "playhead": "a",
+            "rate": 1,
+            "state": "interrupted"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "end",
+            "ops": [],
+            "playhead": "a",
+            "rate": 1,
+            "state": "interrupted"
+          }
+        ],
+        "ops": ["load:a@0", "rate:1", "play", "store.save:a@1800", "pause"]
+      }
+    },
+    {
+      "id": "manager-episode/background-keeps-a-scrub-made-while-paused",
+      "covers": [
+        "transport-reconcile::REPORT 2: an episode backgrounded while PAUSED remembers where it was paused",
+        "transport-reconcile::REPORT 1: the native BACKGROUND event flushes the position, with no visibilitychange"
+      ],
+      "note": "A seek while paused saves the second being LEFT; leaving the foreground writes where the deck IS, paused or not.",
+      "setup": { "target": "manager" },
+      "steps": [
+        { "call": "loadQueue", "args": [[{ "$ep": ["a"] }]] },
+        { "call": "play", "args": [0] },
+        { "deck": "time", "sec": 1200 },
+        { "call": "pause" },
+        { "checkpoint": "paused" },
+        { "call": "seek", "args": [2400, { "precise": true }] },
+        { "checkpoint": "scrubbed" },
+        { "lifecycle": "background" },
+        { "checkpoint": "backgrounded" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "paused",
+            "ops": ["load:a@0", "rate:1", "play", "store.save:a@1200", "pause"],
+            "playhead": "a",
+            "rate": 1,
+            "state": "interrupted"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "scrubbed",
+            "ops": ["store.save:a@1200", "seek:2400"],
+            "playhead": "a",
+            "rate": 1,
+            "state": "interrupted"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "backgrounded",
+            "ops": ["store.save:a@2400"],
+            "playhead": "a",
+            "rate": 1,
+            "state": "interrupted"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "end",
+            "ops": [],
+            "playhead": "a",
+            "rate": 1,
+            "state": "interrupted"
+          }
+        ],
+        "ops": [
+          "load:a@0",
+          "rate:1",
+          "play",
+          "store.save:a@1200",
+          "pause",
+          "store.save:a@1200",
+          "seek:2400",
+          "store.save:a@2400"
+        ]
+      }
+    },
+    {
+      "id": "manager-episode/a-press-resumes-where-the-deck-is",
+      "covers": [
+        "transport-reconcile::REPORT 4: pressing play resumes where the audio IS, not where the row says"
+      ],
+      "note": "Re-entering the item the deck holds is a resume in place, from the scrub, not from the stale row.",
+      "setup": { "target": "manager" },
+      "steps": [
+        { "call": "loadQueue", "args": [[{ "$ep": ["a"] }]] },
+        { "call": "play", "args": [0] },
+        { "deck": "time", "sec": 1200 },
+        { "call": "pause" },
+        { "call": "seek", "args": [2400, { "precise": true }] },
+        { "checkpoint": "scrubbed" },
+        { "call": "resume" },
+        { "checkpoint": "resumed" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "scrubbed",
+            "ops": [
+              "load:a@0",
+              "rate:1",
+              "play",
+              "store.save:a@1200",
+              "pause",
+              "store.save:a@1200",
+              "seek:2400"
+            ],
+            "playhead": "a",
+            "rate": 1,
+            "state": "interrupted"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "resumed",
+            "ops": ["load:a@2400", "rate:1", "play"],
+            "playhead": "a",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "end",
+            "ops": [],
+            "playhead": "a",
+            "rate": 1,
+            "state": "playing"
+          }
+        ],
+        "ops": [
+          "load:a@0",
+          "rate:1",
+          "play",
+          "store.save:a@1200",
+          "pause",
+          "store.save:a@1200",
+          "seek:2400",
+          "load:a@2400",
+          "rate:1",
+          "play"
+        ]
+      }
+    },
+    {
+      "id": "manager-episode/a-superseded-load-that-fails-stops-nothing",
+      "covers": [
+        "transport-reconcile::AUDIT: a superseded load that FAILS does not stop the load that replaced it"
+      ],
+      "setup": { "target": "manager", "backend": { "holdLoads": true } },
+      "steps": [
+        { "call": "loadQueue", "args": [[{ "$ep": ["a"] }, { "$ep": ["b"] }]] },
+        { "call": "play", "args": [0], "await": false },
+        { "call": "play", "args": [1], "await": false },
+        { "settle": 2 },
+        { "deck": "loaded", "id": "b" },
+        { "checkpoint": "b-playing" },
+        { "deck": "loadFailed", "id": "a" },
+        { "checkpoint": "a-failed-late" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "b-playing",
+            "ops": ["load:a@0", "load:b@0", "rate:1", "play"],
+            "playhead": "b",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "a-failed-late",
+            "ops": [],
+            "playhead": "b",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "end",
+            "ops": [],
+            "playhead": "b",
+            "rate": 1,
+            "state": "playing"
+          }
+        ],
+        "ops": ["load:a@0", "load:b@0", "rate:1", "play"]
+      }
+    },
+    {
+      "id": "manager-episode/a-finished-episode-starts-cold-from-the-top",
+      "covers": [
+        "transport-reconcile::AUDIT: a cold start on a FINISHED episode begins at the top, not at the outro"
+      ],
+      "note": "The stored second goes through the resume rule: inside the last 30 s is finished, and a finished episode starts at 0.",
+      "setup": { "target": "manager", "positionEvents": true, "positions": { "a": 3590 } },
+      "steps": [
+        { "call": "loadQueue", "args": [[{ "$ep": ["a", { "duration_sec": 3600 }] }]] },
+        { "call": "play", "args": [0] },
+        { "checkpoint": "started" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "started",
+            "ops": ["load:a@0", "rate:1", "play"],
+            "playhead": "a",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "end",
+            "ops": [],
+            "playhead": "a",
+            "rate": 1,
+            "state": "playing"
+          }
+        ],
+        "ops": ["load:a@0", "rate:1", "play"]
+      }
+    },
+    {
+      "id": "manager-episode/play-after-the-end-starts-from-the-top",
+      "covers": [
+        "transport-reconcile::AUDIT: play after an episode RAN OUT starts it again from the top"
+      ],
+      "note": "The deck still holds the item at its last second, but it has ENDED, so a press is not a resume in place.",
+      "setup": { "target": "manager", "positionEvents": true },
+      "steps": [
+        { "call": "loadQueue", "args": [[{ "$ep": ["a", { "duration_sec": 3600 }] }]] },
+        { "call": "play", "args": [0] },
+        { "deck": "time", "sec": 3600 },
+        { "deck": "ended" },
+        { "checkpoint": "ended" },
+        { "call": "resume" },
+        { "checkpoint": "replayed" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "ended",
+            "ops": ["load:a@0", "rate:1", "play"],
+            "playhead": "a",
+            "rate": 1,
+            "state": "ended"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "replayed",
+            "ops": ["load:a@0", "rate:1", "play"],
+            "playhead": "a",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "end",
+            "ops": [],
+            "playhead": "a",
+            "rate": 1,
+            "state": "playing"
+          }
+        ],
+        "ops": ["load:a@0", "rate:1", "play", "load:a@0", "rate:1", "play"]
+      }
+    },
+    {
+      "id": "manager-episode/no-resume-and-a-late-should-resume-change-nothing",
+      "covers": [
+        "transport-reconcile::ROUND 2 p-car-3: a STALE should-resume, a no-resume, and a resume the listener already did all change nothing"
+      ],
+      "note": "The OS saying not to resume leaves it paused; once the listener has resumed it, a should-resume arriving after touches nothing. (The page's lag guard for a minute-old event is the WebView's: the engine hears the session live.)",
+      "setup": { "target": "manager" },
+      "steps": [
+        { "call": "loadQueue", "args": [[{ "$ep": ["a"] }]] },
+        { "call": "play", "args": [0] },
+        { "deck": "time", "sec": 900 },
+        { "deck": "observedPause" },
+        { "settle": 2 },
+        { "checkpoint": "call" },
+        { "session": "interruptionEnded", "shouldResume": false },
+        { "checkpoint": "no-resume" },
+        { "call": "resume" },
+        { "checkpoint": "listener-resumed" },
+        { "session": "interruptionEnded", "shouldResume": true },
+        { "checkpoint": "late-should-resume" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "call",
+            "ops": ["load:a@0", "rate:1", "play", "store.save:a@900", "pause"],
+            "playhead": "a",
+            "rate": 1,
+            "state": "interrupted"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "no-resume",
+            "ops": [],
+            "playhead": "a",
+            "rate": 1,
+            "state": "interrupted"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "listener-resumed",
+            "ops": ["load:a@900", "rate:1", "play"],
+            "playhead": "a",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "late-should-resume",
+            "ops": [],
+            "playhead": "a",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "end",
+            "ops": [],
+            "playhead": "a",
+            "rate": 1,
+            "state": "playing"
+          }
+        ],
+        "ops": [
+          "load:a@0",
+          "rate:1",
+          "play",
+          "store.save:a@900",
+          "pause",
+          "load:a@900",
+          "rate:1",
+          "play"
+        ]
+      }
+    },
+    {
+      "id": "manager-episode/a-scrub-made-while-paused-survives-stop",
+      "covers": ["transport-reconcile::ROUND 2 player-3: a scrub made while paused survives Stop"],
+      "note": "A seek while paused saves the second being LEFT and nothing writes while paused, so Stop (the page closing the bar, persist) writes where the deck IS before it stops.",
+      "setup": { "target": "manager" },
+      "steps": [
+        { "call": "loadQueue", "args": [[{ "$ep": ["a"] }]] },
+        { "call": "play", "args": [0] },
+        { "deck": "time", "sec": 600 },
+        { "call": "pause" },
+        { "call": "seek", "args": [1800, { "precise": true }] },
+        { "checkpoint": "scrubbed" },
+        { "call": "stop" },
+        { "checkpoint": "stopped" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "scrubbed",
+            "ops": [
+              "load:a@0",
+              "rate:1",
+              "play",
+              "store.save:a@600",
+              "pause",
+              "store.save:a@600",
+              "seek:1800"
+            ],
+            "playhead": "a",
+            "rate": 1,
+            "state": "interrupted"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "stopped",
+            "ops": ["store.save:a@1800"],
+            "playhead": "a",
+            "rate": 1,
+            "state": "idle"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "end",
+            "ops": [],
+            "playhead": "a",
+            "rate": 1,
+            "state": "idle"
+          }
+        ],
+        "ops": [
+          "load:a@0",
+          "rate:1",
+          "play",
+          "store.save:a@600",
+          "pause",
+          "store.save:a@600",
+          "seek:1800",
+          "store.save:a@1800"
+        ]
+      }
+    }
+  ]
+}

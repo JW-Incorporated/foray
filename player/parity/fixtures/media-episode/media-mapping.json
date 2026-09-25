@@ -1,0 +1,1402 @@
+{
+  "family": "media-episode",
+  "module": "player/media-session.js",
+  "note": "The lock-screen mapping (player/media-session.js) that NE-12s ports as MediaMapping: the artwork gate, mediaMetadata with albumOf, mediaPositionState, mediaPlaybackState and mediaSessionView, one case per assertion of media-session.test.js. A test whose assertions are pure calls into these functions is fixtured here even when its inputs are Foray-shaped (a title and a part counter, a seam beat): NE-12s ports each function whole, and a branch left out would ship untested for a milestone. Narration and jingle items, narrationCredit, the committed Forays and a Foray-loaded manager are NE-29j's (unported.json, family media); the navigator.mediaSession bridge and the client.js text scans are excluded (exclusions.json).",
+  "cases": [
+    {
+      "id": "media-episode/artwork-url-https-apple",
+      "covers": ["media-session::artworkUrl passes https through unchanged"],
+      "call": "artworkUrl",
+      "args": [
+        "https://is1-ssl.mzstatic.com/image/thumb/Podcasts126/v4/ab/mza_124.jpg/600x600bb.jpg"
+      ],
+      "expect": {
+        "return": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts126/v4/ab/mza_124.jpg/600x600bb.jpg"
+      }
+    },
+    {
+      "id": "media-episode/artwork-url-https-query-fragment",
+      "covers": ["media-session::artworkUrl passes https through unchanged"],
+      "call": "artworkUrl",
+      "args": ["https://example.com/a.png?x=1#y"],
+      "expect": { "return": "https://example.com/a.png?x=1#y" }
+    },
+    {
+      "id": "media-episode/artwork-url-data-image",
+      "covers": ["media-session::artworkUrl passes a data:image URI"],
+      "call": "artworkUrl",
+      "args": ["data:image/png;base64,iVBORw0KGgo="],
+      "expect": { "return": "data:image/png;base64,iVBORw0KGgo=" }
+    },
+    {
+      "id": "media-episode/artwork-url-refuses-javascript",
+      "covers": [
+        "media-session::artworkUrl refuses every scheme that can execute or that the CSP blocks"
+      ],
+      "call": "artworkUrl",
+      "args": ["javascript:alert(1)"],
+      "expect": { "return": null }
+    },
+    {
+      "id": "media-episode/artwork-url-refuses-javascript-mixed-case",
+      "covers": [
+        "media-session::artworkUrl refuses every scheme that can execute or that the CSP blocks"
+      ],
+      "call": "artworkUrl",
+      "args": ["JavaScript:alert(1)"],
+      "expect": { "return": null }
+    },
+    {
+      "id": "media-episode/artwork-url-refuses-vbscript",
+      "covers": [
+        "media-session::artworkUrl refuses every scheme that can execute or that the CSP blocks"
+      ],
+      "call": "artworkUrl",
+      "args": ["vbscript:msgbox"],
+      "expect": { "return": null }
+    },
+    {
+      "id": "media-episode/artwork-url-refuses-data-text-html",
+      "covers": [
+        "media-session::artworkUrl refuses every scheme that can execute or that the CSP blocks"
+      ],
+      "call": "artworkUrl",
+      "args": ["data:text/html,<b>"],
+      "expect": { "return": null }
+    },
+    {
+      "id": "media-episode/artwork-url-refuses-blob",
+      "covers": [
+        "media-session::artworkUrl refuses every scheme that can execute or that the CSP blocks"
+      ],
+      "call": "artworkUrl",
+      "args": ["blob:https://x/y"],
+      "expect": { "return": null }
+    },
+    {
+      "id": "media-episode/artwork-url-refuses-file",
+      "covers": [
+        "media-session::artworkUrl refuses every scheme that can execute or that the CSP blocks"
+      ],
+      "call": "artworkUrl",
+      "args": ["file:///etc/passwd"],
+      "expect": { "return": null }
+    },
+    {
+      "id": "media-episode/artwork-url-refuses-about",
+      "covers": [
+        "media-session::artworkUrl refuses every scheme that can execute or that the CSP blocks"
+      ],
+      "call": "artworkUrl",
+      "args": ["about:blank"],
+      "expect": { "return": null }
+    },
+    {
+      "id": "media-episode/artwork-url-refuses-http-in-list",
+      "covers": [
+        "media-session::artworkUrl refuses every scheme that can execute or that the CSP blocks"
+      ],
+      "call": "artworkUrl",
+      "args": ["http://example.com/a.png"],
+      "expect": { "return": null }
+    },
+    {
+      "id": "media-episode/artwork-url-refuses-http",
+      "covers": [
+        "media-session::artworkUrl refuses http even though it is not executable — the CSP is img-src https: data:"
+      ],
+      "call": "artworkUrl",
+      "args": ["http://example.com/a.png"],
+      "expect": { "return": null }
+    },
+    {
+      "id": "media-episode/artwork-url-refuses-protocol-relative",
+      "covers": ["media-session::artworkUrl refuses a protocol-relative URL"],
+      "call": "artworkUrl",
+      "args": ["//evil.example/x.png"],
+      "expect": { "return": null }
+    },
+    {
+      "id": "media-episode/artwork-url-refuses-newline",
+      "covers": ["media-session::artworkUrl refuses a URL carrying a control character"],
+      "call": "artworkUrl",
+      "args": ["java\nscript:alert(1)"],
+      "expect": { "return": null }
+    },
+    {
+      "id": "media-episode/artwork-url-refuses-nul",
+      "covers": ["media-session::artworkUrl refuses a URL carrying a control character"],
+      "call": "artworkUrl",
+      "args": ["java\u0000script:alert(1)"],
+      "expect": { "return": null }
+    },
+    {
+      "id": "media-episode/artwork-url-refuses-bell",
+      "covers": ["media-session::artworkUrl refuses a URL carrying a control character"],
+      "call": "artworkUrl",
+      "args": ["https://example.com/a\u0007.png"],
+      "expect": { "return": null }
+    },
+    {
+      "id": "media-episode/artwork-url-refuses-space",
+      "covers": ["media-session::artworkUrl refuses a URL carrying a control character"],
+      "call": "artworkUrl",
+      "args": ["java script:alert(1)"],
+      "expect": { "return": null }
+    },
+    {
+      "id": "media-episode/artwork-url-relative-icon",
+      "covers": [
+        "media-session::artworkUrl allows a relative path, which is how our own icon reaches the OS"
+      ],
+      "call": "artworkUrl",
+      "args": ["icon-512.png"],
+      "expect": { "return": "icon-512.png" }
+    },
+    {
+      "id": "media-episode/artwork-url-relative-rooted",
+      "covers": [
+        "media-session::artworkUrl allows a relative path, which is how our own icon reaches the OS"
+      ],
+      "call": "artworkUrl",
+      "args": ["/foray/icon-512.png"],
+      "expect": { "return": "/foray/icon-512.png" }
+    },
+    {
+      "id": "media-episode/artwork-url-refuses-empty",
+      "covers": [
+        "media-session::artworkUrl refuses empty, blank and non-string input rather than passing it on"
+      ],
+      "call": "artworkUrl",
+      "args": [""],
+      "expect": { "return": null }
+    },
+    {
+      "id": "media-episode/artwork-url-refuses-blank",
+      "covers": [
+        "media-session::artworkUrl refuses empty, blank and non-string input rather than passing it on"
+      ],
+      "call": "artworkUrl",
+      "args": ["   "],
+      "expect": { "return": null }
+    },
+    {
+      "id": "media-episode/artwork-url-refuses-null",
+      "covers": [
+        "media-session::artworkUrl refuses empty, blank and non-string input rather than passing it on"
+      ],
+      "call": "artworkUrl",
+      "args": [null],
+      "expect": { "return": null }
+    },
+    {
+      "id": "media-episode/artwork-url-refuses-undefined",
+      "covers": [
+        "media-session::artworkUrl refuses empty, blank and non-string input rather than passing it on"
+      ],
+      "call": "artworkUrl",
+      "args": [{ "$undefined": true }],
+      "expect": { "return": null }
+    },
+    {
+      "id": "media-episode/artwork-url-refuses-number",
+      "covers": [
+        "media-session::artworkUrl refuses empty, blank and non-string input rather than passing it on"
+      ],
+      "call": "artworkUrl",
+      "args": [7],
+      "expect": { "return": null }
+    },
+    {
+      "id": "media-episode/artwork-url-refuses-object",
+      "covers": [
+        "media-session::artworkUrl refuses empty, blank and non-string input rather than passing it on"
+      ],
+      "call": "artworkUrl",
+      "args": [{}],
+      "expect": { "return": null }
+    },
+    {
+      "id": "media-episode/artwork-url-refuses-array",
+      "covers": [
+        "media-session::artworkUrl refuses empty, blank and non-string input rather than passing it on"
+      ],
+      "call": "artworkUrl",
+      "args": [[]],
+      "expect": { "return": null }
+    },
+    {
+      "id": "media-episode/artwork-apple-size-and-type",
+      "covers": [
+        "media-session::mediaArtwork reads the size off the URL Apple already encodes it in"
+      ],
+      "call": "mediaArtwork",
+      "args": [
+        "https://is1-ssl.mzstatic.com/image/thumb/Podcasts126/v4/ab/mza_124.jpg/600x600bb.jpg"
+      ],
+      "expect": {
+        "return": {
+          "sizes": "600x600",
+          "src": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts126/v4/ab/mza_124.jpg/600x600bb.jpg",
+          "type": "image/jpeg"
+        }
+      }
+    },
+    {
+      "id": "media-episode/artwork-type-png",
+      "covers": [
+        "media-session::mediaArtwork infers the MIME type from the extension, and omits it when unknown"
+      ],
+      "call": "mediaArtwork",
+      "args": ["https://x/y.png"],
+      "expect": { "return": { "src": "https://x/y.png", "type": "image/png" } }
+    },
+    {
+      "id": "media-episode/artwork-type-webp",
+      "covers": [
+        "media-session::mediaArtwork infers the MIME type from the extension, and omits it when unknown"
+      ],
+      "call": "mediaArtwork",
+      "args": ["https://x/y.webp"],
+      "expect": { "return": { "src": "https://x/y.webp", "type": "image/webp" } }
+    },
+    {
+      "id": "media-episode/artwork-no-extension-no-type-no-size",
+      "covers": [
+        "media-session::mediaArtwork infers the MIME type from the extension, and omits it when unknown"
+      ],
+      "call": "mediaArtwork",
+      "args": ["https://x/y"],
+      "expect": { "return": { "src": "https://x/y" } }
+    },
+    {
+      "id": "media-episode/artwork-caller-override",
+      "covers": ["media-session::mediaArtwork lets the caller override size and type"],
+      "call": "mediaArtwork",
+      "args": ["icon-512.png", { "sizes": "512x512", "type": "image/png" }],
+      "expect": { "return": { "sizes": "512x512", "src": "icon-512.png", "type": "image/png" } }
+    },
+    {
+      "id": "media-episode/artwork-refused-url-is-null",
+      "covers": [
+        "media-session::mediaArtwork returns null for a refused URL rather than an entry with no src"
+      ],
+      "call": "mediaArtwork",
+      "args": ["javascript:alert(1)"],
+      "expect": { "return": null }
+    },
+    {
+      "id": "media-episode/artwork-null-url-is-null",
+      "covers": [
+        "media-session::mediaArtwork returns null for a refused URL rather than an entry with no src"
+      ],
+      "call": "mediaArtwork",
+      "args": [null],
+      "expect": { "return": null }
+    },
+    {
+      "id": "media-episode/artwork-list-prefers-show",
+      "covers": [
+        "media-session::mediaArtworkList prefers the publisher's square when we have one",
+        "media-session::mediaArtworkList never offers both — the OS picks by size, not by preference"
+      ],
+      "call": "mediaArtworkList",
+      "args": [
+        {
+          "showArtworkUrl": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts126/v4/ab/mza_124.jpg/600x600bb.jpg"
+        }
+      ],
+      "expect": {
+        "return": [
+          {
+            "sizes": "600x600",
+            "src": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts126/v4/ab/mza_124.jpg/600x600bb.jpg",
+            "type": "image/jpeg"
+          }
+        ]
+      }
+    },
+    {
+      "id": "media-episode/artwork-list-falls-back-to-app-icon",
+      "covers": [
+        "media-session::mediaArtworkList falls back to the app icon, so the lock screen is never blank"
+      ],
+      "call": "mediaArtworkList",
+      "args": [{ "showArtworkUrl": null }],
+      "expect": { "return": [{ "sizes": "512x512", "src": "icon-512.png", "type": "image/png" }] }
+    },
+    {
+      "id": "media-episode/artwork-list-empty-options-one-entry",
+      "covers": [
+        "media-session::mediaArtworkList never offers both — the OS picks by size, not by preference"
+      ],
+      "call": "mediaArtworkList",
+      "args": [{}],
+      "expect": { "return": [{ "sizes": "512x512", "src": "icon-512.png", "type": "image/png" }] }
+    },
+    {
+      "id": "media-episode/artwork-list-empty-when-nothing-usable",
+      "covers": [
+        "media-session::mediaArtworkList is empty when neither the show's square nor the app icon is usable"
+      ],
+      "call": "mediaArtworkList",
+      "args": [{ "showArtworkUrl": "javascript:x", "appArtworkUrl": "http://x/y.png" }],
+      "expect": { "return": [] }
+    },
+    {
+      "id": "media-episode/artwork-list-refused-show-degrades-to-icon",
+      "covers": [
+        "media-session::a refused show artwork URL degrades to the app icon rather than to nothing"
+      ],
+      "call": "mediaArtworkList",
+      "args": [{ "showArtworkUrl": "javascript:alert(1)" }],
+      "expect": { "return": [{ "sizes": "512x512", "src": "icon-512.png", "type": "image/png" }] }
+    },
+    {
+      "id": "media-episode/read-app-artwork-url",
+      "covers": [
+        "media-session::mediaArtworkList falls back to the app icon, so the lock screen is never blank"
+      ],
+      "read": "APP_ARTWORK_URL",
+      "expect": { "value": "icon-512.png" }
+    },
+    {
+      "id": "media-episode/segment-title-episode-artist-show",
+      "covers": ["media-session::a segment puts the episode in title and the SHOW in artist"],
+      "call": "mediaMetadata",
+      "args": [
+        {
+          "item": {
+            "kind": "episode",
+            "title": "Episode 09: Did Cooking Make Us Human?",
+            "show": "Origin Stories",
+            "start_sec": 10,
+            "end_sec": 120
+          },
+          "forayTitle": "The history of grilling",
+          "index": 0,
+          "total": 32
+        }
+      ],
+      "expect": {
+        "return": {
+          "album": "The history of grilling · clip 1 of 32",
+          "artist": "Origin Stories",
+          "artwork": [{ "sizes": "512x512", "src": "icon-512.png", "type": "image/png" }],
+          "title": "Episode 09: Did Cooking Make Us Human?"
+        }
+      }
+    },
+    {
+      "id": "media-episode/album-foray-title-and-counter",
+      "covers": [
+        "media-session::the Foray's title lives in album, with the part counter",
+        "media-session::a SEGMENT keeps Apple Podcasts parity untouched: title=episode, artist=show, album=foray+part"
+      ],
+      "call": "mediaMetadata",
+      "args": [
+        {
+          "item": {
+            "kind": "episode",
+            "title": "Episode 09: Did Cooking Make Us Human?",
+            "show": "Origin Stories",
+            "start_sec": 10,
+            "end_sec": 120
+          },
+          "forayTitle": "The history of grilling",
+          "index": 11,
+          "total": 32
+        }
+      ],
+      "expect": {
+        "return": {
+          "album": "The history of grilling · clip 12 of 32",
+          "artist": "Origin Stories",
+          "artwork": [{ "sizes": "512x512", "src": "icon-512.png", "type": "image/png" }],
+          "title": "Episode 09: Did Cooking Make Us Human?"
+        }
+      }
+    },
+    {
+      "id": "media-episode/counter-first",
+      "covers": [
+        "media-session::the part counter is 1-based, and worded exactly as the mini bar words it"
+      ],
+      "call": "mediaMetadata",
+      "args": [
+        {
+          "item": {
+            "kind": "episode",
+            "title": "Episode 09: Did Cooking Make Us Human?",
+            "show": "Origin Stories",
+            "start_sec": 10,
+            "end_sec": 120
+          },
+          "forayTitle": "F",
+          "index": 0,
+          "total": 9
+        }
+      ],
+      "expect": {
+        "return": {
+          "album": "F · clip 1 of 9",
+          "artist": "Origin Stories",
+          "artwork": [{ "sizes": "512x512", "src": "icon-512.png", "type": "image/png" }],
+          "title": "Episode 09: Did Cooking Make Us Human?"
+        }
+      }
+    },
+    {
+      "id": "media-episode/counter-last",
+      "covers": [
+        "media-session::the part counter is 1-based, and worded exactly as the mini bar words it"
+      ],
+      "call": "mediaMetadata",
+      "args": [
+        {
+          "item": {
+            "kind": "episode",
+            "title": "Episode 09: Did Cooking Make Us Human?",
+            "show": "Origin Stories",
+            "start_sec": 10,
+            "end_sec": 120
+          },
+          "forayTitle": "F",
+          "index": 8,
+          "total": 9
+        }
+      ],
+      "expect": {
+        "return": {
+          "album": "F · clip 9 of 9",
+          "artist": "Origin Stories",
+          "artwork": [{ "sizes": "512x512", "src": "icon-512.png", "type": "image/png" }],
+          "title": "Episode 09: Did Cooking Make Us Human?"
+        }
+      }
+    },
+    {
+      "id": "media-episode/counter-index-past-end-clamped",
+      "covers": [
+        "media-session::an index past the end is clamped rather than reported as clip 40 of 32"
+      ],
+      "call": "mediaMetadata",
+      "args": [
+        {
+          "item": {
+            "kind": "episode",
+            "title": "Episode 09: Did Cooking Make Us Human?",
+            "show": "Origin Stories",
+            "start_sec": 10,
+            "end_sec": 120
+          },
+          "forayTitle": "F",
+          "index": 99,
+          "total": 32
+        }
+      ],
+      "expect": {
+        "return": {
+          "album": "F · clip 32 of 32",
+          "artist": "Origin Stories",
+          "artwork": [{ "sizes": "512x512", "src": "icon-512.png", "type": "image/png" }],
+          "title": "Episode 09: Did Cooking Make Us Human?"
+        }
+      }
+    },
+    {
+      "id": "media-episode/zero-total-no-title-empty-album",
+      "covers": [
+        "media-session::a zero total suppresses the counter — single-episode playback has no parts",
+        "media-session::single-episode play keeps an empty album (L-06)"
+      ],
+      "call": "mediaMetadata",
+      "args": [
+        {
+          "item": {
+            "kind": "episode",
+            "title": "Episode 09: Did Cooking Make Us Human?",
+            "show": "Origin Stories",
+            "start_sec": 10,
+            "end_sec": 120
+          },
+          "forayTitle": "",
+          "index": 0,
+          "total": 0
+        }
+      ],
+      "expect": {
+        "return": {
+          "album": "",
+          "artist": "Origin Stories",
+          "artwork": [{ "sizes": "512x512", "src": "icon-512.png", "type": "image/png" }],
+          "title": "Episode 09: Did Cooking Make Us Human?"
+        }
+      }
+    },
+    {
+      "id": "media-episode/zero-total-with-title-album-is-title",
+      "covers": [
+        "media-session::a zero total suppresses the counter — single-episode playback has no parts"
+      ],
+      "call": "mediaMetadata",
+      "args": [
+        {
+          "item": {
+            "kind": "episode",
+            "title": "Episode 09: Did Cooking Make Us Human?",
+            "show": "Origin Stories",
+            "start_sec": 10,
+            "end_sec": 120
+          },
+          "forayTitle": "A Foray",
+          "index": 0,
+          "total": 0
+        }
+      ],
+      "expect": {
+        "return": {
+          "album": "A Foray",
+          "artist": "Origin Stories",
+          "artwork": [{ "sizes": "512x512", "src": "icon-512.png", "type": "image/png" }],
+          "title": "Episode 09: Did Cooking Make Us Human?"
+        }
+      }
+    },
+    {
+      "id": "media-episode/counter-without-title-is-a-sentence",
+      "covers": ["media-session::a counter with no Foray title still reads as a sentence"],
+      "call": "mediaMetadata",
+      "args": [
+        {
+          "item": {
+            "kind": "episode",
+            "title": "Episode 09: Did Cooking Make Us Human?",
+            "show": "Origin Stories",
+            "start_sec": 10,
+            "end_sec": 120
+          },
+          "forayTitle": "",
+          "index": 2,
+          "total": 9
+        }
+      ],
+      "expect": {
+        "return": {
+          "album": "Clip 3 of 9",
+          "artist": "Origin Stories",
+          "artwork": [{ "sizes": "512x512", "src": "icon-512.png", "type": "image/png" }],
+          "title": "Episode 09: Did Cooking Make Us Human?"
+        }
+      }
+    },
+    {
+      "id": "media-episode/missing-show-empty-artist",
+      "covers": [
+        "media-session::a missing show yields an EMPTY artist — a credit is never invented"
+      ],
+      "call": "mediaMetadata",
+      "args": [
+        {
+          "item": { "kind": "episode", "title": "T", "show": "" },
+          "forayTitle": "F",
+          "index": 0,
+          "total": 2
+        }
+      ],
+      "expect": {
+        "return": {
+          "album": "F · clip 1 of 2",
+          "artist": "",
+          "artwork": [{ "sizes": "512x512", "src": "icon-512.png", "type": "image/png" }],
+          "title": "T"
+        }
+      }
+    },
+    {
+      "id": "media-episode/missing-title-falls-back-to-foray",
+      "covers": [
+        "media-session::a missing episode title falls back to the Foray, never to an empty display"
+      ],
+      "call": "mediaMetadata",
+      "args": [
+        {
+          "item": { "kind": "episode", "show": "S" },
+          "forayTitle": "The history of grilling"
+        }
+      ],
+      "expect": {
+        "return": {
+          "album": "The history of grilling",
+          "artist": "S",
+          "artwork": [{ "sizes": "512x512", "src": "icon-512.png", "type": "image/png" }],
+          "title": "The history of grilling"
+        }
+      }
+    },
+    {
+      "id": "media-episode/nothing-at-all",
+      "covers": ["media-session::with nothing at all the display still says something true"],
+      "call": "mediaMetadata",
+      "args": [],
+      "expect": {
+        "return": {
+          "album": "",
+          "artist": "",
+          "artwork": [{ "sizes": "512x512", "src": "icon-512.png", "type": "image/png" }],
+          "title": "4a"
+        }
+      }
+    },
+    {
+      "id": "media-episode/whitespace-only-is-missing",
+      "covers": ["media-session::whitespace-only strings count as missing, not as content"],
+      "call": "mediaMetadata",
+      "args": [
+        {
+          "item": { "kind": "episode", "title": "   ", "show": "\t" },
+          "forayTitle": "  F  ",
+          "index": 0,
+          "total": 3
+        }
+      ],
+      "expect": {
+        "return": {
+          "album": "F · clip 1 of 3",
+          "artist": "",
+          "artwork": [{ "sizes": "512x512", "src": "icon-512.png", "type": "image/png" }],
+          "title": "F"
+        }
+      }
+    },
+    {
+      "id": "media-episode/total-for-shape-undefined",
+      "covers": [
+        "media-session::every field is a string and artwork is an array, for every input shape"
+      ],
+      "call": "mediaMetadata",
+      "args": [{ "$undefined": true }],
+      "expect": {
+        "return": {
+          "album": "",
+          "artist": "",
+          "artwork": [{ "sizes": "512x512", "src": "icon-512.png", "type": "image/png" }],
+          "title": "4a"
+        }
+      }
+    },
+    {
+      "id": "media-episode/total-for-shape-empty",
+      "covers": [
+        "media-session::every field is a string and artwork is an array, for every input shape"
+      ],
+      "call": "mediaMetadata",
+      "args": [{}],
+      "expect": {
+        "return": {
+          "album": "",
+          "artist": "",
+          "artwork": [{ "sizes": "512x512", "src": "icon-512.png", "type": "image/png" }],
+          "title": "4a"
+        }
+      }
+    },
+    {
+      "id": "media-episode/total-for-shape-null-item",
+      "covers": [
+        "media-session::every field is a string and artwork is an array, for every input shape"
+      ],
+      "call": "mediaMetadata",
+      "args": [{ "item": null }],
+      "expect": {
+        "return": {
+          "album": "",
+          "artist": "",
+          "artwork": [{ "sizes": "512x512", "src": "icon-512.png", "type": "image/png" }],
+          "title": "4a"
+        }
+      }
+    },
+    {
+      "id": "media-episode/total-for-shape-empty-item",
+      "covers": [
+        "media-session::every field is a string and artwork is an array, for every input shape"
+      ],
+      "call": "mediaMetadata",
+      "args": [{ "item": {} }],
+      "expect": {
+        "return": {
+          "album": "",
+          "artist": "",
+          "artwork": [{ "sizes": "512x512", "src": "icon-512.png", "type": "image/png" }],
+          "title": "4a"
+        }
+      }
+    },
+    {
+      "id": "media-episode/total-for-shape-tts-item",
+      "covers": [
+        "media-session::every field is a string and artwork is an array, for every input shape"
+      ],
+      "call": "mediaMetadata",
+      "args": [{ "item": { "kind": "tts" } }],
+      "expect": {
+        "return": {
+          "album": "",
+          "artist": "",
+          "artwork": [{ "sizes": "512x512", "src": "icon-512.png", "type": "image/png" }],
+          "title": "4a"
+        }
+      }
+    },
+    {
+      "id": "media-episode/segment-carries-publisher-artwork",
+      "covers": ["media-session::a segment carries the publisher's artwork when the show has one"],
+      "call": "mediaMetadata",
+      "args": [
+        {
+          "item": {
+            "kind": "episode",
+            "title": "Episode 09: Did Cooking Make Us Human?",
+            "show": "Origin Stories",
+            "start_sec": 10,
+            "end_sec": 120
+          },
+          "showArtworkUrl": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts126/v4/ab/mza_124.jpg/600x600bb.jpg"
+        }
+      ],
+      "expect": {
+        "return": {
+          "album": "",
+          "artist": "Origin Stories",
+          "artwork": [
+            {
+              "sizes": "600x600",
+              "src": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts126/v4/ab/mza_124.jpg/600x600bb.jpg",
+              "type": "image/jpeg"
+            }
+          ],
+          "title": "Episode 09: Did Cooking Make Us Human?"
+        }
+      }
+    },
+    {
+      "id": "media-episode/read-app-name",
+      "covers": [],
+      "read": "APP_NAME",
+      "expect": { "value": "4a" }
+    },
+    {
+      "id": "media-episode/position-reports-what-it-is-given",
+      "covers": ["media-session::mediaPositionState reports what it is given, validated"],
+      "call": "mediaPositionState",
+      "args": [{ "durationSec": 3082, "positionSec": 1200, "playbackRate": 1.5 }],
+      "expect": { "return": { "duration": 3082, "playbackRate": 1.5, "position": 1200 } }
+    },
+    {
+      "id": "media-episode/position-past-duration-clamped",
+      "covers": [
+        "media-session::a position past the duration is clamped, because the spec throws on it"
+      ],
+      "call": "mediaPositionState",
+      "args": [{ "durationSec": 100, "positionSec": 140 }],
+      "expect": { "return": { "duration": 100, "playbackRate": 1, "position": 100 } }
+    },
+    {
+      "id": "media-episode/position-negative-clamped",
+      "covers": ["media-session::a negative position is clamped to zero"],
+      "call": "mediaPositionState",
+      "args": [{ "durationSec": 100, "positionSec": -5 }],
+      "expect": { "return": { "duration": 100, "playbackRate": 1, "position": 0 } }
+    },
+    {
+      "id": "media-episode/position-nan-is-zero",
+      "covers": ["media-session::a negative position is clamped to zero"],
+      "call": "mediaPositionState",
+      "args": [{ "durationSec": 100, "positionSec": { "$num": "NaN" } }],
+      "expect": { "return": { "duration": 100, "playbackRate": 1, "position": 0 } }
+    },
+    {
+      "id": "media-episode/no-duration-null-no-report",
+      "covers": ["media-session::no duration means no report — never a report of zero"],
+      "call": "mediaPositionState",
+      "args": [{ "durationSec": null, "positionSec": 5 }],
+      "expect": { "return": null }
+    },
+    {
+      "id": "media-episode/no-duration-undefined-no-report",
+      "covers": ["media-session::no duration means no report — never a report of zero"],
+      "call": "mediaPositionState",
+      "args": [{ "durationSec": { "$undefined": true }, "positionSec": 5 }],
+      "expect": { "return": null }
+    },
+    {
+      "id": "media-episode/no-duration-zero-no-report",
+      "covers": ["media-session::no duration means no report — never a report of zero"],
+      "call": "mediaPositionState",
+      "args": [{ "durationSec": 0, "positionSec": 5 }],
+      "expect": { "return": null }
+    },
+    {
+      "id": "media-episode/no-duration-negative-no-report",
+      "covers": ["media-session::no duration means no report — never a report of zero"],
+      "call": "mediaPositionState",
+      "args": [{ "durationSec": -1, "positionSec": 5 }],
+      "expect": { "return": null }
+    },
+    {
+      "id": "media-episode/no-duration-nan-no-report",
+      "covers": ["media-session::no duration means no report — never a report of zero"],
+      "call": "mediaPositionState",
+      "args": [{ "durationSec": { "$num": "NaN" }, "positionSec": 5 }],
+      "expect": { "return": null }
+    },
+    {
+      "id": "media-episode/no-duration-infinity-no-report",
+      "covers": ["media-session::no duration means no report — never a report of zero"],
+      "call": "mediaPositionState",
+      "args": [{ "durationSec": { "$num": "Infinity" }, "positionSec": 5 }],
+      "expect": { "return": null }
+    },
+    {
+      "id": "media-episode/no-duration-string-no-report",
+      "covers": ["media-session::no duration means no report — never a report of zero"],
+      "call": "mediaPositionState",
+      "args": [{ "durationSec": "60", "positionSec": 5 }],
+      "expect": { "return": null }
+    },
+    {
+      "id": "media-episode/rate-zero-becomes-1",
+      "covers": [
+        "media-session::a zero playback rate becomes 1, because zero is a TypeError in the spec"
+      ],
+      "call": "mediaPositionState",
+      "args": [{ "durationSec": 10, "playbackRate": 0 }],
+      "expect": { "return": { "duration": 10, "playbackRate": 1, "position": 0 } }
+    },
+    {
+      "id": "media-episode/rate-negative-becomes-1",
+      "covers": [
+        "media-session::a negative or nonsense playback rate becomes 1 — we never play backwards"
+      ],
+      "call": "mediaPositionState",
+      "args": [{ "durationSec": 10, "playbackRate": -1 }],
+      "expect": { "return": { "duration": 10, "playbackRate": 1, "position": 0 } }
+    },
+    {
+      "id": "media-episode/rate-nan-becomes-1",
+      "covers": [
+        "media-session::a negative or nonsense playback rate becomes 1 — we never play backwards"
+      ],
+      "call": "mediaPositionState",
+      "args": [{ "durationSec": 10, "playbackRate": { "$num": "NaN" } }],
+      "expect": { "return": { "duration": 10, "playbackRate": 1, "position": 0 } }
+    },
+    {
+      "id": "media-episode/rate-infinity-becomes-1",
+      "covers": [
+        "media-session::a negative or nonsense playback rate becomes 1 — we never play backwards"
+      ],
+      "call": "mediaPositionState",
+      "args": [{ "durationSec": 10, "playbackRate": { "$num": "Infinity" } }],
+      "expect": { "return": { "duration": 10, "playbackRate": 1, "position": 0 } }
+    },
+    {
+      "id": "media-episode/rate-null-becomes-1",
+      "covers": [
+        "media-session::a negative or nonsense playback rate becomes 1 — we never play backwards"
+      ],
+      "call": "mediaPositionState",
+      "args": [{ "durationSec": 10, "playbackRate": null }],
+      "expect": { "return": { "duration": 10, "playbackRate": 1, "position": 0 } }
+    },
+    {
+      "id": "media-episode/rate-string-becomes-1",
+      "covers": [
+        "media-session::a negative or nonsense playback rate becomes 1 — we never play backwards"
+      ],
+      "call": "mediaPositionState",
+      "args": [{ "durationSec": 10, "playbackRate": "1.5" }],
+      "expect": { "return": { "duration": 10, "playbackRate": 1, "position": 0 } }
+    },
+    {
+      "id": "media-episode/rate-undefined-becomes-1",
+      "covers": [
+        "media-session::a negative or nonsense playback rate becomes 1 — we never play backwards"
+      ],
+      "call": "mediaPositionState",
+      "args": [{ "durationSec": 10, "playbackRate": { "$undefined": true } }],
+      "expect": { "return": { "duration": 10, "playbackRate": 1, "position": 0 } }
+    },
+    {
+      "id": "media-episode/rate-real-passes-through",
+      "covers": [
+        "media-session::a real playback rate is passed through, so the OS extrapolates at the right speed"
+      ],
+      "call": "mediaPositionState",
+      "args": [{ "durationSec": 10, "playbackRate": 1.75 }],
+      "expect": { "return": { "duration": 10, "playbackRate": 1.75, "position": 0 } }
+    },
+    {
+      "id": "media-episode/position-stall-reports-rate-zero",
+      "covers": [
+        "media-session::a stall reports rate 0, so the OS clock stops counting over silence (p-car-8)"
+      ],
+      "call": "mediaPositionState",
+      "args": [
+        {
+          "durationSec": 100,
+          "positionSec": 10,
+          "playbackRate": 1.5,
+          "buffering": true
+        }
+      ],
+      "expect": { "return": { "duration": 100, "playbackRate": 0, "position": 10 } }
+    },
+    {
+      "id": "media-episode/position-no-stall-keeps-the-rate",
+      "covers": [
+        "media-session::a stall reports rate 0, so the OS clock stops counting over silence (p-car-8)"
+      ],
+      "call": "mediaPositionState",
+      "args": [
+        {
+          "durationSec": 100,
+          "positionSec": 10,
+          "playbackRate": 1.5,
+          "buffering": false
+        }
+      ],
+      "expect": { "return": { "duration": 100, "playbackRate": 1.5, "position": 10 } }
+    },
+    {
+      "id": "media-episode/state-nothing-loaded-playing",
+      "covers": ["media-session::nothing loaded reports no transport state at all"],
+      "call": "mediaPlaybackState",
+      "args": [{ "hasItem": false, "playing": true }],
+      "expect": { "return": "none" }
+    },
+    {
+      "id": "media-episode/state-no-arguments",
+      "covers": ["media-session::nothing loaded reports no transport state at all"],
+      "call": "mediaPlaybackState",
+      "args": [],
+      "expect": { "return": "none" }
+    },
+    {
+      "id": "media-episode/state-playing",
+      "covers": ["media-session::playing reports playing, and paused reports paused"],
+      "call": "mediaPlaybackState",
+      "args": [{ "hasItem": true, "playing": true }],
+      "expect": { "return": "playing" }
+    },
+    {
+      "id": "media-episode/state-paused",
+      "covers": ["media-session::playing reports playing, and paused reports paused"],
+      "call": "mediaPlaybackState",
+      "args": [{ "hasItem": true, "playing": false }],
+      "expect": { "return": "paused" }
+    },
+    {
+      "id": "media-episode/state-seam-beat-reports-playing",
+      "covers": [
+        "media-session::THE SEAM BEAT REPORTS PLAYING — 0.5 s of authored silence is not a pause"
+      ],
+      "call": "mediaPlaybackState",
+      "args": [{ "hasItem": true, "playing": false, "inSeamGap": true }],
+      "expect": { "return": "playing" }
+    },
+    {
+      "id": "media-episode/state-seam-beat-while-playing",
+      "covers": [
+        "media-session::the seam-gap widening is exactly the one `isRunning()` applies in the page"
+      ],
+      "call": "mediaPlaybackState",
+      "args": [{ "hasItem": true, "playing": true, "inSeamGap": true }],
+      "expect": { "return": "playing" }
+    },
+    {
+      "id": "media-episode/state-no-beat-not-playing-is-paused",
+      "covers": [
+        "media-session::the seam-gap widening is exactly the one `isRunning()` applies in the page"
+      ],
+      "call": "mediaPlaybackState",
+      "args": [{ "hasItem": true, "playing": false, "inSeamGap": false }],
+      "expect": { "return": "paused" }
+    },
+    {
+      "id": "media-episode/state-beat-with-nothing-loaded",
+      "covers": ["media-session::a beat with nothing loaded is still nothing loaded"],
+      "call": "mediaPlaybackState",
+      "args": [{ "hasItem": false, "inSeamGap": true }],
+      "expect": { "return": "none" }
+    },
+    {
+      "id": "media-episode/state-finished-while-playing-is-none",
+      "covers": [
+        "media-session::a FINISHED Foray reports none, not paused — a dead play button is worse than no button"
+      ],
+      "call": "mediaPlaybackState",
+      "args": [{ "hasItem": true, "playing": true, "ended": true, "foray": true }],
+      "expect": { "return": "none" }
+    },
+    {
+      "id": "media-episode/state-finished-in-beat-is-none",
+      "covers": [
+        "media-session::a FINISHED Foray reports none, not paused — a dead play button is worse than no button"
+      ],
+      "call": "mediaPlaybackState",
+      "args": [{ "hasItem": true, "inSeamGap": true, "ended": true, "foray": true }],
+      "expect": { "return": "none" }
+    },
+    {
+      "id": "media-episode/state-finished-episode-is-paused",
+      "covers": [
+        "media-session::a FINISHED ordinary episode reports PAUSED, not none — its play button starts it over (p-car-6)"
+      ],
+      "call": "mediaPlaybackState",
+      "args": [{ "hasItem": true, "playing": false, "ended": true }],
+      "expect": { "return": "paused" }
+    },
+    {
+      "id": "media-episode/state-finished-episode-while-playing-is-paused",
+      "covers": [
+        "media-session::a FINISHED ordinary episode reports PAUSED, not none — its play button starts it over (p-car-6)"
+      ],
+      "call": "mediaPlaybackState",
+      "args": [{ "hasItem": true, "playing": true, "ended": true, "foray": false }],
+      "expect": { "return": "paused" }
+    },
+    {
+      "id": "media-episode/read-state-none",
+      "covers": [],
+      "read": "NONE",
+      "expect": { "value": "none" }
+    },
+    {
+      "id": "media-episode/read-state-paused",
+      "covers": [],
+      "read": "PAUSED",
+      "expect": { "value": "paused" }
+    },
+    {
+      "id": "media-episode/read-state-playing",
+      "covers": [],
+      "read": "PLAYING",
+      "expect": { "value": "playing" }
+    },
+    {
+      "id": "media-episode/view-carries-seam-beat",
+      "covers": [
+        "media-session::mediaSessionView carries the seam-gap flag THROUGH — not just mediaPlaybackState"
+      ],
+      "call": "mediaSessionView",
+      "args": [
+        {
+          "item": {
+            "kind": "episode",
+            "title": "Episode 09: Did Cooking Make Us Human?",
+            "show": "Origin Stories",
+            "start_sec": 10,
+            "end_sec": 120
+          },
+          "playing": false,
+          "inSeamGap": true
+        }
+      ],
+      "expect": {
+        "return": {
+          "metadata": {
+            "album": "",
+            "artist": "Origin Stories",
+            "artwork": [{ "sizes": "512x512", "src": "icon-512.png", "type": "image/png" }],
+            "title": "Episode 09: Did Cooking Make Us Human?"
+          },
+          "playbackState": "playing",
+          "positionState": null
+        }
+      }
+    },
+    {
+      "id": "media-episode/view-no-beat-is-paused",
+      "covers": [
+        "media-session::mediaSessionView carries the seam-gap flag THROUGH — not just mediaPlaybackState"
+      ],
+      "call": "mediaSessionView",
+      "args": [
+        {
+          "item": {
+            "kind": "episode",
+            "title": "Episode 09: Did Cooking Make Us Human?",
+            "show": "Origin Stories",
+            "start_sec": 10,
+            "end_sec": 120
+          },
+          "playing": false,
+          "inSeamGap": false
+        }
+      ],
+      "expect": {
+        "return": {
+          "metadata": {
+            "album": "",
+            "artist": "Origin Stories",
+            "artwork": [{ "sizes": "512x512", "src": "icon-512.png", "type": "image/png" }],
+            "title": "Episode 09: Did Cooking Make Us Human?"
+          },
+          "playbackState": "paused",
+          "positionState": null
+        }
+      }
+    },
+    {
+      "id": "media-episode/view-carries-ended",
+      "covers": [
+        "media-session::mediaSessionView carries the ended flag through, so a finished Foray still clears the slot"
+      ],
+      "call": "mediaSessionView",
+      "args": [
+        {
+          "item": {
+            "kind": "episode",
+            "title": "Episode 09: Did Cooking Make Us Human?",
+            "show": "Origin Stories",
+            "start_sec": 10,
+            "end_sec": 120
+          },
+          "playing": true,
+          "ended": true,
+          "foray": true
+        }
+      ],
+      "expect": {
+        "return": {
+          "metadata": {
+            "album": "",
+            "artist": "Origin Stories",
+            "artwork": [{ "sizes": "512x512", "src": "icon-512.png", "type": "image/png" }],
+            "title": "Episode 09: Did Cooking Make Us Human?"
+          },
+          "playbackState": "none",
+          "positionState": null
+        }
+      }
+    },
+    {
+      "id": "media-episode/view-carries-ended-episode-is-paused",
+      "covers": [
+        "media-session::a FINISHED ordinary episode reports PAUSED, not none — its play button starts it over (p-car-6)"
+      ],
+      "call": "mediaSessionView",
+      "args": [
+        {
+          "item": {
+            "kind": "episode",
+            "title": "Episode 09: Did Cooking Make Us Human?",
+            "show": "Origin Stories",
+            "start_sec": 10,
+            "end_sec": 120
+          },
+          "playing": false,
+          "ended": true,
+          "foray": false
+        }
+      ],
+      "expect": {
+        "return": {
+          "metadata": {
+            "album": "",
+            "artist": "Origin Stories",
+            "artwork": [{ "sizes": "512x512", "src": "icon-512.png", "type": "image/png" }],
+            "title": "Episode 09: Did Cooking Make Us Human?"
+          },
+          "playbackState": "paused",
+          "positionState": null
+        }
+      }
+    },
+    {
+      "id": "media-episode/view-stall-stays-playing-at-rate-zero",
+      "covers": [
+        "media-session::a stall reports rate 0, so the OS clock stops counting over silence (p-car-8)"
+      ],
+      "call": "mediaSessionView",
+      "args": [
+        {
+          "item": {
+            "kind": "episode",
+            "title": "Episode 09: Did Cooking Make Us Human?",
+            "show": "Origin Stories",
+            "start_sec": 10,
+            "end_sec": 120
+          },
+          "playing": true,
+          "durationSec": 100,
+          "positionSec": 10,
+          "buffering": true
+        }
+      ],
+      "expect": {
+        "return": {
+          "metadata": {
+            "album": "",
+            "artist": "Origin Stories",
+            "artwork": [{ "sizes": "512x512", "src": "icon-512.png", "type": "image/png" }],
+            "title": "Episode 09: Did Cooking Make Us Human?"
+          },
+          "playbackState": "playing",
+          "positionState": { "duration": 100, "playbackRate": 0, "position": 10 }
+        }
+      }
+    },
+    {
+      "id": "media-episode/view-not-ended-is-playing",
+      "covers": [
+        "media-session::mediaSessionView carries the ended flag through, so a finished Foray still clears the slot"
+      ],
+      "call": "mediaSessionView",
+      "args": [
+        {
+          "item": {
+            "kind": "episode",
+            "title": "Episode 09: Did Cooking Make Us Human?",
+            "show": "Origin Stories",
+            "start_sec": 10,
+            "end_sec": 120
+          },
+          "playing": true,
+          "ended": false
+        }
+      ],
+      "expect": {
+        "return": {
+          "metadata": {
+            "album": "",
+            "artist": "Origin Stories",
+            "artwork": [{ "sizes": "512x512", "src": "icon-512.png", "type": "image/png" }],
+            "title": "Episode 09: Did Cooking Make Us Human?"
+          },
+          "playbackState": "playing",
+          "positionState": null
+        }
+      }
+    },
+    {
+      "id": "media-episode/view-carries-item",
+      "covers": [
+        "media-session::mediaSessionView carries the item through to both the metadata and hasItem"
+      ],
+      "call": "mediaSessionView",
+      "args": [
+        {
+          "item": {
+            "kind": "episode",
+            "title": "Episode 09: Did Cooking Make Us Human?",
+            "show": "Origin Stories",
+            "start_sec": 10,
+            "end_sec": 120
+          },
+          "forayTitle": "F",
+          "index": 0,
+          "total": 2,
+          "playing": true
+        }
+      ],
+      "expect": {
+        "return": {
+          "metadata": {
+            "album": "F · clip 1 of 2",
+            "artist": "Origin Stories",
+            "artwork": [{ "sizes": "512x512", "src": "icon-512.png", "type": "image/png" }],
+            "title": "Episode 09: Did Cooking Make Us Human?"
+          },
+          "playbackState": "playing",
+          "positionState": null
+        }
+      }
+    },
+    {
+      "id": "media-episode/view-no-item-is-none",
+      "covers": [
+        "media-session::mediaSessionView carries the item through to both the metadata and hasItem"
+      ],
+      "call": "mediaSessionView",
+      "args": [{ "item": null, "playing": true }],
+      "expect": {
+        "return": {
+          "metadata": {
+            "album": "",
+            "artist": "",
+            "artwork": [{ "sizes": "512x512", "src": "icon-512.png", "type": "image/png" }],
+            "title": "4a"
+          },
+          "playbackState": "none",
+          "positionState": null
+        }
+      }
+    },
+    {
+      "id": "media-episode/view-empty",
+      "covers": [
+        "media-session::mediaSessionView hands back all three pieces, and none of them throws on an empty view"
+      ],
+      "call": "mediaSessionView",
+      "args": [],
+      "expect": {
+        "return": {
+          "metadata": {
+            "album": "",
+            "artist": "",
+            "artwork": [{ "sizes": "512x512", "src": "icon-512.png", "type": "image/png" }],
+            "title": "4a"
+          },
+          "playbackState": "none",
+          "positionState": null
+        }
+      }
+    },
+    {
+      "id": "media-episode/seek-backward-is-15",
+      "covers": [
+        "media-session::seekbackward asks for a NEGATIVE 15 seconds by default",
+        "media-session::THE PLATFORM'S OWN seekOffset IS IGNORED: the lock screen steps ±15/30 like the in-page buttons"
+      ],
+      "authored": true,
+      "note": "Authored: the founder's numbers (2026-09-23, \"Both should be 15/30\") and 04_VOICE_AUDIO_SPEC's. record.mjs refuses to overwrite this; a change is a product decision made here by hand.",
+      "read": "SEEK_BACKWARD_SEC",
+      "expect": { "value": 15 }
+    },
+    {
+      "id": "media-episode/seek-forward-is-30",
+      "covers": [
+        "media-session::seekforward asks for a positive 30 seconds by default",
+        "media-session::THE PLATFORM'S OWN seekOffset IS IGNORED: the lock screen steps ±15/30 like the in-page buttons",
+        "media-session::the ±15/30 defaults are overridable in one place, and default to the spec's numbers"
+      ],
+      "authored": true,
+      "note": "Authored: the founder's numbers (2026-09-23, \"Both should be 15/30\") and 04_VOICE_AUDIO_SPEC's. record.mjs refuses to overwrite this; a change is a product decision made here by hand.",
+      "read": "SEEK_FORWARD_SEC",
+      "expect": { "value": 30 }
+    },
+    {
+      "id": "media-episode/media-actions-vocabulary",
+      "covers": [
+        "media-session::MEDIA_ACTIONS is the full set and is frozen, so the list cannot drift from the map"
+      ],
+      "note": "The closed set of OS commands, in install order. Object.isFrozen is the JS half of the test and has no Swift meaning; a Swift enum is closed by construction.",
+      "read": "MEDIA_ACTIONS",
+      "expect": {
+        "value": [
+          "play",
+          "pause",
+          "stop",
+          "previoustrack",
+          "nexttrack",
+          "seekbackward",
+          "seekforward",
+          "seekto"
+        ]
+      }
+    }
+  ]
+}

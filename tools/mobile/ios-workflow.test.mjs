@@ -120,6 +120,21 @@ test("the path filter covers what the shell is built from, and nothing broader",
   }
 });
 
+test("NE-06: the parity fixtures and their recorder do not trigger an iOS shell build", () => {
+  /* MUTATION: delete "!player/parity/**", or move it ABOVE "player/**" (where
+     GitHub's last-match-wins reading lets the positive pattern re-include it)
+     -> every fixture re-record — most JS engine cards — costs a 15-minute
+     Simulator build that learns nothing ci.yml's engine-parity and ios-kit
+     did not already check. */
+  const lines = block(WF, "on").split(/\r?\n/).map((l) => l.trim());
+  const at = (p) => lines.indexOf(`- ${p}`);
+  for (const neg of ['"!player/parity/**"', '"!tools/parity/**"']) {
+    assert.ok(at(neg) > 0, `the path filter is missing ${neg}`);
+  }
+  assert.ok(at('"!player/parity/**"') > at('"player/**"'), "a negation must come after the pattern it narrows");
+  assert.ok(at('"!tools/parity/**"') > at('"tools/mobile/**"'), "a negation must come after the patterns above it");
+});
+
 test("concurrency cancels superseded runs", () => {
   /* Three pushes to a PR branch in five minutes would otherwise be three
      15-minute macOS jobs, two of them for code nobody will merge. */
@@ -621,12 +636,19 @@ test("ci.yml still declares exactly its five jobs, and #38 added none", () => {
 
      Raised from four to five jobs by S-02 (kanban t_4bd3c0a3): a new `api` job
      (install + test for the newly-dependency-carrying `api/` directory), also
-     not required — see android-workflow.test.mjs's matching assertion. */
+     not required — see android-workflow.test.mjs's matching assertion.
+
+     Raised from five to eight by NE-06 (docs/native-engine-plan.md §6.8):
+     `engine-paths` (the one changed-path classifier), `engine-parity` (the
+     Linux parity run, G-1a) and `ios-gate` (G-1b). The last two are MEANT to
+     become required contexts, at G-1b's founder sitting — which is exactly why
+     they are named here, where adding one is a reviewed diff, and why none of
+     them is named `backend` or `data-and-site`. */
   const jobs = block(CI, "jobs")
     .split(/\r?\n/)
     .filter((l) => /^ {2}[a-z][\w-]*:/.test(l))
     .map((l) => l.trim().replace(":", ""));
-  assert.deepEqual(jobs.sort(), ["api", "backend", "data-and-site", "ios-kit", "playwright"]);
+  assert.deepEqual(jobs.sort(), ["api", "backend", "data-and-site", "engine-parity", "engine-paths", "ios-gate", "ios-kit", "playwright"]);
 });
 
 /* ───────────────────────────── the cost claim ────────────────────────────── */
@@ -990,4 +1012,19 @@ test("the BUILT device bundle is checked for the keys App Store Connect requires
     false,
     "the embedded-framework check carries continue-on-error, so a rejectable bundle would not fail the job"
   );
+});
+
+test("NE-17: the plist step still runs the injector bare and then --check, which carries ForayEngineDefault", () => {
+  /* The native engine's build default (`ForayEngineDefault`, from
+     mobile/ENGINE_DEFAULT.json) rides on these two lines: a bare run writes it,
+     and `--check` reads it back and prints `ForayEngineDefault=js` into this
+     job's log. NE-17 needs no .github edit only because both lines exist and
+     neither names another source of truth.
+     MUTATION: drop the bare invocation, drop the `--check` line, or add
+     `--engine-default` to either -> red. */
+  const s = code(step(WF, "Add UIBackgroundModes") ?? "");
+  assert.ok(s, "the plist step is gone");
+  assert.match(s, /^\s*node tools\/mobile\/inject-background-audio\.mjs "\$INFO_PLIST"\s*$/m, "the bare write is gone");
+  assert.match(s, /^\s*node tools\/mobile\/inject-background-audio\.mjs "\$INFO_PLIST" --check\s*$/m, "the read-back is gone");
+  assert.doesNotMatch(YML, /--engine-default/, "the build must read the committed mobile/ENGINE_DEFAULT.json");
 });
