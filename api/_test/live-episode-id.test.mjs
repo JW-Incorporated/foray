@@ -42,7 +42,7 @@ async function withFeed(run) {
   globalThis.fetch = async () => new Response(FEED, { status: 200 });
   episodeSearchCache.clear();
   episodeFeedFailureCache.clear();
-  searchModule.feedFetchBuckets.clear();
+  searchModule.sharedFeedReader.clear();
   try {
     return await run();
   } finally {

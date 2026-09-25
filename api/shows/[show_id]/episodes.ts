@@ -3,11 +3,11 @@ import { readFileSync, existsSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { ingestShowFeed } from "../../../backend/src/catalog/ingestShowFeed";
 import { PostgresShowEpisodesStore, type CatalogShowEpisode } from "../../../backend/src/catalog/showEpisodesStore";
-import { fetchFeedConditional } from "../../../backend/src/feeds/conditionalGet";
-import { parseFeed, type ParsedEpisode } from "../../../backend/src/feeds/parser";
+import { type ParsedEpisode } from "../../../backend/src/feeds/parser";
 import { applyCors } from "../../_lib/cors";
 import { decodeCursor, paginate } from "../../_lib/episodeCursor";
 import { liveEpisodeGuid } from "../../_lib/liveEpisodeId";
+import { sharedFeedReader } from "../../_lib/feedCache";
 
 /**
  * Fetch-on-demand per-show episode list (Stage 3b, kanban t_567b570f,
@@ -31,10 +31,11 @@ import { liveEpisodeGuid } from "../../_lib/liveEpisodeId";
  * (conditional GET, capped body size — see conditionalGet.ts), parse it
  * with the same parser the DB-backed ingest path uses, and paginate the
  * result in memory (100/page, keyset cursor on published_at+guid — see
- * episodeCursor.ts). Nothing is persisted between invocations: this is a
- * plain GET dressed as conditional (no prior etag/last-modified to send),
- * and the CDN edge cache (`s-maxage=3600`) is what actually saves repeat
- * fetches, not the conditional-GET mechanism itself.
+ * episodeCursor.ts). The parsed feed is kept per show in the warm instance
+ * for a few minutes and then revalidated with the etag/last-modified it holds
+ * (api/_lib/feedCache.ts, shared with the show-scoped search; round-3 audit,
+ * search-api-css-3), so the pages of one show cost one fetch, not one each.
+ * The CDN edge cache (`s-maxage=3600`) still saves repeat URLs.
  *
  * DB mode (when DATABASE_URL IS set — currently dormant in production) is
  * unchanged from Stage 3b's original behavior.
@@ -232,13 +233,14 @@ export default async function handler(req: ApiRequest, res: ApiResponse): Promis
 
   const databaseUrl = process.env.DATABASE_URL;
   if (!databaseUrl) {
-    // No-DB mode (D14): fetch the feed live, no persisted cache between
-    // invocations. See this file's header for why the conditional-GET
-    // mechanism doesn't buy anything here without stored etag state.
+    // No-DB mode (D14): the feed is read through the per-show parsed-feed
+    // cache the show-scoped search shares (round-3 audit, search-api-css-3):
+    // each cursor page used to re-download and re-parse the whole feed. Kept
+    // per warm instance, revalidated with the etag/last-modified it holds.
     const cursor = decodeCursor(firstParam(req.query.cursor));
-    const fetchResult = await fetchFeedConditional(meta.feedUrl, { etag: null, lastModified: null });
+    const feed = await sharedFeedReader.read(showId, meta.feedUrl);
 
-    if (fetchResult.error || fetchResult.body === null) {
+    if (!feed.parsed) {
       // Never a 500, never blank (repo convention — see ingestShowFeed.ts's
       // own degrade rule): 200 with an empty list and the error surfaced.
       // Cache-Control: no-store so a transient feed hiccup is never pinned
@@ -251,12 +253,12 @@ export default async function handler(req: ApiRequest, res: ApiResponse): Promis
         next_cursor: null,
         source: "live",
         degraded: true,
-        error: fetchResult.error ?? `unexpected empty body (status ${fetchResult.status})`
+        error: feed.error ?? "feed unavailable"
       });
       return;
     }
 
-    const parsed = parseFeed(fetchResult.body);
+    const parsed = feed.parsed;
     const episodes = parsed.episodes
       .map((ep, idx) => toLiveEpisode(showId, ep, idx))
       .filter((ep): ep is CatalogShowEpisode => ep !== null);

@@ -1,12 +1,11 @@
 import * as fs from "fs";
 import * as path from "path";
 import { applyCors } from "../_lib/cors";
-import { fetchFeedConditional } from "../../backend/src/feeds/conditionalGet";
-import { parseFeed, type ParsedEpisode } from "../../backend/src/feeds/parser";
+import { type ParsedEpisode } from "../../backend/src/feeds/parser";
 import { appleSearchBucket } from "../_lib/appleBucket";
 import { loadShowIdMap } from "../_lib/showIdMap";
 import { episodeSearchCache, episodeFeedFailureCache, normalizeQueryKey } from "../_lib/searchCache";
-import { KeyedBuckets } from "../_lib/keyedBuckets";
+import { sharedFeedReader, FEED_FETCHES_PER_SHOW_PER_MINUTE, FEED_FETCH_LIMITED_ERROR } from "../_lib/feedCache";
 import { liveEpisodeGuid } from "../_lib/liveEpisodeId";
 
 /**
@@ -29,9 +28,9 @@ import { liveEpisodeGuid } from "../_lib/liveEpisodeId";
  *      loadCatalogFallback() for the measurement.
  *
  *   2. SHOW-SCOPED SEARCH (`show=<show_id>`): no Apple call at all. Fetches
- *      that show's live feed (S-02's exact path: fetchFeedConditional +
- *      parseFeed, no persisted state between invocations — same no-DB-mode
- *      shape as `api/shows/[show_id]/episodes.ts`) and filters episodes by
+ *      that show's live feed (through api/_lib/feedCache.ts, the parsed feed
+ *      kept per show and shared with `api/shows/[show_id]/episodes.ts`;
+ *      round-3 audit, search-api-css-3) and filters episodes by
  *      a case-insensitive substring match on title. It doesn't touch the
  *      rate-limited Apple endpoint and gives an exact answer for a show 4a
  *      already knows about — but it is NOT cheap, and S-07's "this is cheap"
@@ -60,16 +59,15 @@ const EPISODE_USER_AGENT = "Foray/0.1 (personal podcast client; contact wjduvall
 const APPLE_TIMEOUT_MS = 8_000; // keeps the <1.5s acceptance target reachable even with cache misses
 const MAX_RESULTS = 25;
 
-/* OUTBOUND FEED FETCHES ARE LIMITED PER SHOW (round-3 audit, search-api-css-4).
-   The show-scoped path never consulted any limiter: a script looping
-   `?show=<id>&q=<random>` made this function download a multi-MB third-party
-   feed per request, which is function time on a public endpoint and makes 4a a
-   request amplifier against podcast hosts. At most this many feed fetches per
-   show per minute, per warm instance; past it the answer is degraded, never an
-   empty success. */
-export const FEED_FETCHES_PER_SHOW_PER_MINUTE = 6;
-export const feedFetchBuckets = new KeyedBuckets(FEED_FETCHES_PER_SHOW_PER_MINUTE, 60_000);
-export const FEED_FETCH_LIMITED_ERROR = "too many feed fetches for this show — try again shortly";
+/* OUTBOUND FEED FETCHES ARE LIMITED PER SHOW (round-3 audit, search-api-css-4),
+   and the parsed feed is kept per show (search-api-css-3): both live in
+   api/_lib/feedCache.ts, shared with the per-show list. A script looping
+   `?show=<id>&q=<random>` used to download a multi-MB third-party feed per
+   request; now a new `q` reads the kept parse, and a refetch past the per-show
+   budget is refused (degraded, never an empty success). Re-exported for tests. */
+export { FEED_FETCHES_PER_SHOW_PER_MINUTE, FEED_FETCH_LIMITED_ERROR };
+export const feedFetchBuckets = sharedFeedReader.buckets;
+export { sharedFeedReader };
 
 /* THE APPLE ASK IS NOT THE CALLER'S `limit` (defect 2, 2026-09-13).
  *
@@ -277,18 +275,10 @@ async function searchWithinShow(
   }
   if (!meta) return { results: [], error: `unknown show_id: ${showId}`, feedFailed: false };
 
-  if (!feedFetchBuckets.tryConsume(showId)) {
-    return { results: [], error: FEED_FETCH_LIMITED_ERROR, feedFailed: false };
-  }
-  const fetchResult = await fetchFeedConditional(meta.feedUrl, { etag: null, lastModified: null }, {
-    fetchImpl,
-    userAgent: EPISODE_USER_AGENT
-  });
-  if (fetchResult.error || fetchResult.body === null) {
-    return { results: [], error: fetchResult.error ?? `unexpected empty body (status ${fetchResult.status})`, feedFailed: true };
-  }
+  const feed = await sharedFeedReader.read(showId, meta.feedUrl, { fetchImpl, userAgent: EPISODE_USER_AGENT });
+  if (!feed.parsed) return { results: [], error: feed.error ?? "feed unavailable", feedFailed: feed.feedFailed };
 
-  const parsed = parseFeed(fetchResult.body);
+  const parsed = feed.parsed;
   const q = query.trim().toLowerCase();
   const results = parsed.episodes
     .map((ep, idx) => (ep.title.toLowerCase().includes(q) ? mapLiveEpisode(showId, meta.title, ep, idx) : null))

@@ -38,7 +38,7 @@ function resetSharedState() {
   episodeFeedFailureCache.clear();
   /* round-3 audit, search-api-css-4: the per-show feed-fetch limiter is module
      scope too, and this file fetches the same show more than its budget. */
-  searchModule.feedFetchBuckets.clear();
+  searchModule.sharedFeedReader.clear();
 }
 
 const FEED_TWO_EPS = `<?xml version="1.0"?>

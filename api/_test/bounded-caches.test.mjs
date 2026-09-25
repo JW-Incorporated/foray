@@ -78,9 +78,12 @@ function mockRes() {
 }
 
 test("the show-scoped path stops fetching a show's feed past its per-minute budget, and says so", async () => {
-  /* MUTATION: drop the feedFetchBuckets.tryConsume check in searchWithinShow —
-     every random query downloads the feed again. */
-  searchModule.feedFetchBuckets.clear();
+  /* The parsed feed is cached per show (search-api-css-3), so the budget only
+     bites when that copy is gone: the loop drops it before every request, as
+     an evicted or expired entry would be. MUTATION: drop the
+     buckets.tryConsume check in feedCache.ts read() — every request
+     downloads the feed again. */
+  searchModule.sharedFeedReader.clear();
   episodeFeedFailureCache.clear();
   episodeSearchCache.clear();
   let feedFetches = 0;
@@ -89,6 +92,7 @@ test("the show-scoped path stops fetching a show's feed past its per-minute budg
   try {
     const answers = [];
     for (let i = 0; i < searchModule.FEED_FETCHES_PER_SHOW_PER_MINUTE + 3; i++) {
+      searchModule.sharedFeedReader.cache.clear();
       const res = mockRes();
       await handler({ method: "GET", query: { q: `random-${i}`, show: "lex-fridman-podcast" }, headers: {} }, res);
       answers.push(res.body);
@@ -99,7 +103,7 @@ test("the show-scoped path stops fetching a show's feed past its per-minute budg
     assert.equal(last.error, searchModule.FEED_FETCH_LIMITED_ERROR);
   } finally {
     globalThis.fetch = originalFetch;
-    searchModule.feedFetchBuckets.clear();
+    searchModule.sharedFeedReader.clear();
     episodeSearchCache.clear();
   }
 });
