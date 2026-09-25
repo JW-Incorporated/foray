@@ -2672,10 +2672,16 @@ export function nativeProbeVerdict({ record = null, rowsAfter = null, logText = 
   }
 
   // 1. the lane
+  /* The page's decision (`mode`, and its own handshake `reason`, which is
+     `native` for any native answer) and the ENGINE's answer (`engine`: the mode
+     and the reason it decided the process with). The seed shows only in the
+     second: trial run 36178473547 read `native / native` off the first. */
   const h = rec?.hello;
+  const eng = h && h.engine && typeof h.engine === "object" ? h.engine : null;
   if (!h) add("native-lane", "engineHello answered native / override", NC, "no probe record reached UserDefaults");
-  else if (h.mode === "native" && h.reason === "override") add("native-lane", "engineHello answered native / override", "pass", "native / override (the seed took)");
-  else add("native-lane", "engineHello answered native / override", "fail", `answered ${h.mode} / ${h.reason}: the seed did not take, or the engine refused the lane`);
+  else if (h.mode === "native" && eng?.mode === "native" && eng?.reason === "override") add("native-lane", "engineHello answered native / override", "pass", "the page decided native; the engine answered native / override (the seed took)");
+  else add("native-lane", "engineHello answered native / override", "fail",
+    `the page decided ${h.mode}; the engine answered ${eng ? `${eng.mode} / ${eng.reason}` : "nothing readable"}: the seed did not take, or the lane was refused`);
 
   // 2. the play
   const forayOff = rec?.play?.reason === "capability-off";

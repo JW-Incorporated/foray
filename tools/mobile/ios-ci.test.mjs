@@ -2288,7 +2288,8 @@ function nativeLog({ seams = 2, nowplaying = true, extra = [] } = {}) {
 function passingRecord() {
   return {
     phase: "native", v: 1, stage: "done",
-    hello: { mode: "native", reason: "override" },
+    // The shape probe-native.js records (helloOf): the page's decision, then the engine's answer.
+    hello: { mode: "native", reason: "native", engine: { mode: "native", reason: "override" } },
     play: { cmd: "playForay", ok: true, reason: null }, forayItems: 3,
     hiddenAt: 1_000_000, visibleAt: 1_000_000 + 120_000,
     restarts: 1, helloAfterRestart: { mode: "native", reason: "override" },
@@ -2411,7 +2412,9 @@ test("NE-36 verdict: each failure is named", () => {
   const reached = nativeLog({ extra: [`Df App[1:2] ${FORAY_AUDIO_REACHED_NEEDLE} state=none`] });
   assert.equal(byId(NE36.nativeProbeVerdict({ ...base, logText: reached }))["no-setnowplaying"], "fail");
   assert.equal(byId(NE36.nativeProbeVerdict({ ...base, record: { ...rec, mediaElementsRealApp: 1 } }))["no-html-media"], "fail");
-  assert.equal(byId(NE36.nativeProbeVerdict({ ...base, record: { ...rec, hello: { mode: "native", reason: "build-default" } } }))["native-lane"], "fail");
+  assert.equal(byId(NE36.nativeProbeVerdict({ ...base, record: { ...rec, hello: { mode: "native", reason: "native", engine: { mode: "native", reason: "build-default" } } } }))["native-lane"], "fail", "native by build default is not the seed");
+  assert.equal(byId(NE36.nativeProbeVerdict({ ...base, record: { ...rec, hello: { mode: "native", reason: "native" } } }))["native-lane"], "fail", "no engine answer recorded");
+  assert.equal(byId(NE36.nativeProbeVerdict({ ...base, record: { ...rec, hello: { mode: "legacy", reason: "engine-legacy", engine: { mode: "legacy", reason: "crash-loop" } } } }))["native-lane"], "fail");
   assert.equal(byId(NE36.nativeProbeVerdict({ ...base, record: { ...rec, snapshotAfterRestart: { state: "idle", running: false } } }))["webcontent-kill"], "fail");
   assert.equal(byId(NE36.nativeProbeVerdict({ ...base, bridge: { engineHello: { attempted: true, mode: "native", reason: "build-default" } } }))["legacy-smoke"], "fail");
   assert.equal(NE36.nativeProbeVerdict({ ...base, rowsAfter: {} }).verdict, "fail");
