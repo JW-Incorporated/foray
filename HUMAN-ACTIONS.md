@@ -2,7 +2,7 @@
 
 <!-- ha-format: 2 -->
 
-> **21 open.** Closed items are in `HUMAN-ACTIONS-DONE.md` — you never need it.
+> **22 open.** Closed items are in `HUMAN-ACTIONS-DONE.md` — you never need it.
 > To close one: reply `done` (or `skip <why>`) to its card in the project's human-action channel.
 > Anything else you reply is forwarded to a thread on the card.
 
@@ -18,6 +18,21 @@
    - **Keep them:** tell Claude "recover the 2026-09-14 nightly digest". It re-cuts the scan back to the 14th and opens `nightly/2026-09-14-recovery`, which is the branch name the guard looks for.
 
 **Worked if:** the next scheduled `nightly-refresh` run is green, a `nightly/<date>` PR opens the same day, and `nightly-watch` is green that evening.
+
+## #115 🟢 [UPGRADE] On a phone, check six player fixes from audit round 3 that no machine here can hear (~20 min)
+<!-- ha filed=2026-09-25 kind=default -->
+
+**Why:** Branch `r3fix/l3-player-and-native-tts` fixes narration and transport bugs that only a real speaker proves; unit tests carry the logic. Use a Foray with spoken narration, on the web player (Developer → web player on iOS).
+
+**Steps:**
+1. iOS: during a narration line press pause, then Next clip onto another line. The new line must be heard (mobile-native-1).
+2. Android: open the voice picker mid-narration and Preview. The Foray must not skip the line (mobile-native-2).
+3. Android, airplane mode, a network-only voice: narration must move on at once, not after a long silence (mobile-native-3).
+4. iOS over Spotify: play a Foray to its end without pausing. Spotify must offer to resume (mobile-native-4).
+5. Pause, or press Stop, while a rendered bridge line is still loading: nothing may start playing (player-core-2).
+6. Screen locked, press Next during a slow start: the next clip must play, not stop (player-core-3).
+
+**Worked if:** all six behave as written; paste Developer → Playback diagnostics → Copy into the card thread for any that do not.
 
 ## #114 🟡 [DECIDE] Drive the M1 car test on the next TestFlight build after `engine/m1` merges — the native player is its default (~3 drives)
 <!-- ha filed=2026-09-24 kind=default -->
