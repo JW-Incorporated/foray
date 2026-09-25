@@ -1107,3 +1107,22 @@ test("data-integrity-4: a show page and Library go through the same predicate", 
   m.ctx.renderLibrary();
   assert.ok(m.view.innerHTML.includes(`data-star="${explicitEp.id}"`), "premise: with Family mode off Library shows it");
 });
+
+test("round-3 review (L1): Library says Family mode hid a saved episode, never 'Nothing saved yet'", async () => {
+  /* With every star filtered out, Library said "Nothing saved yet": false, the
+     stars exist and are only hidden. MUTATION: drop the savedHidden branch in
+     renderLibrary -- the empty-state copy comes back. */
+  const m = mount();
+  await m.booted();
+  const explicitEp = m.state.discover.items.find((it) => it.explicit === true);
+  assert.ok(explicitEp, "premise: the pool has an explicit episode");
+  m.state.itemIndex[explicitEp.id] = m.ctx.snapshot(explicitEp.id, explicitEp);
+  m.ctx.localStorage.setItem("cp_family", "false");
+  m.ctx.toggleStar(explicitEp.id);
+  m.ctx.localStorage.setItem("cp_family", "true");
+  m.ctx.renderLibrary();
+  const html = m.view.innerHTML;
+  assert.ok(!html.includes(`data-star="${explicitEp.id}"`), "premise: the row is hidden");
+  assert.doesNotMatch(html, /Nothing saved yet/, "Library denies a star it only hid");
+  assert.match(html, /Family mode is on, so 1 saved episode is hidden\./);
+});

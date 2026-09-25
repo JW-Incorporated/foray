@@ -445,3 +445,31 @@ test("data-integrity-4: in Family mode the full-catalogue list shows a show's un
     if (!listed) assert.match(html, /Family mode is on, so this show(?:'|&#39;)s episodes are hidden\./);
   }
 });
+
+test("round-3 review (L1): with Family mode hiding the loaded rows, the count does not claim them", async () => {
+  /* paintCount passed loaded.length, so "1 episode" stood over the Family mode
+     note and no rows. MUTATION: pass loadedCount: loaded.length again -- the
+     hidden show's label reads "1 episode". */
+  const episodes = [
+    { guid: "g1", title: "Full Ep One", description_text: "d", audio_url: "https://cdn.example.com/full1.mp3", duration_seconds: 600, published_at: "2026-01-02T00:00:00.000Z" },
+  ];
+  const fetchImpl = () => Promise.resolve({ ok: true, json: async () => ({ show_id: "show-a", stale: false, error: null, episodes }) });
+  const labels = {};
+  for (const rating of [null, false]) {
+    const m = mount({ fetchImpl });
+    m.ctx.localStorage.getItem = (k) => (k === "cp_family" ? "true" : null);
+    seedShowAndPool(m.ctx, { show: { show_id: "show-a", title: "Show A", taxonomy_node_ids: [], explicit: rating } });
+    m.ctx.renderShow("show-a");
+    await flushMicrotasks();
+    labels[rating] = m.viewEl._countLabelRef.textContent;
+  }
+  assert.doesNotMatch(labels[null], /1 episode/, `the hidden show's label claims its rows: "${labels[null]}"`);
+  assert.match(labels[false], /^1 episode/, `a clean show's rows are still counted: "${labels[false]}"`);
+});
+
+test("round-3 review (L1): the count label says how many rows Family mode hid", () => {
+  const m = mount({});
+  const label = m.ctx.showEpisodeCountLabel({ loadedCount: 3, familyHidden: 2, fullyLoaded: true, curatedCount: 0, isBreadthTier: false, stale: false, loadError: null, loadState: "loaded" });
+  assert.strictEqual(label, "3 episodes (2 hidden by Family mode)");
+  assert.strictEqual(m.ctx.showEpisodeCountLabel({ loadedCount: 0, familyHidden: 4, fullyLoaded: true, curatedCount: 7, isBreadthTier: false, stale: false, loadError: null, loadState: "loaded" }), "");
+});

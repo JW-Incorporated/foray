@@ -4748,7 +4748,7 @@ function showForaysHtml(show) {
        refresh" is a failure the listener can act on (come back on a
        better connection); silence about it would be a
        different lie from the one we just deleted. */
-function showEpisodeCountLabel({ loadedCount, fullyLoaded, curatedCount, isBreadthTier, stale, loadError, loadState }) {
+function showEpisodeCountLabel({ loadedCount, familyHidden = 0, fullyLoaded, curatedCount, isBreadthTier, stale, loadError, loadState }) {
   /* THE LOADING BRANCH MOVED IN HERE (issue #687). It used to be written by
      hand, inline, into renderShow's initial `innerHTML` — a second author for
      this one label, with its own phrasing, that the fetch's terminal paths
@@ -4791,14 +4791,18 @@ function showEpisodeCountLabel({ loadedCount, fullyLoaded, curatedCount, isBread
        lives under those rows beside its Try again (paintBody). */
     return "";
   }
+  /* Every loaded row hidden by Family mode: the body says so
+     (FAMILY_HIDES_NOTE), and one sentence per outcome means this says nothing. */
+  if (loadedCount === 0 && familyHidden > 0) return "";
   if (loadedCount === 0) {
     return curatedCount
       ? `${curatedCount} episode${curatedCount === 1 ? "" : "s"} in 4a's catalogue`
       : "";
   }
   const staleNote = stale ? " (showing the last saved list — couldn't refresh just now)" : "";
+  const familyNote = familyHidden > 0 ? ` (${familyHidden} hidden by Family mode)` : "";
   if (fullyLoaded) {
-    return `${loadedCount} episode${loadedCount === 1 ? "" : "s"}${staleNote}`;
+    return `${loadedCount} episode${loadedCount === 1 ? "" : "s"}${familyNote}${staleNote}`;
   }
   // Partial load: no count, because any count we could state here would
   // either hedge uselessly or claim a completeness we do not have.
@@ -5275,8 +5279,15 @@ function renderShow(show_id, initialQuery = "") {
   function paintCount() {
     const el = countLabelEl();
     if (!el) return;
+    /* The count is of the rows on screen (round-3 review, L1): with Family
+       mode on, paintList hides rows, and "120 episodes" above fewer rows, or
+       above FAMILY_HIDES_NOTE, is the count/row disagreement #276/#687 name. */
+    const shownCount = familyMode()
+      ? loaded.filter((ep) => familyAllows(fullCatalogueRowToEpRowItem(show, ep))).length
+      : loaded.length;
     el.textContent = showEpisodeCountLabel({
-      loadedCount: loaded.length,
+      loadedCount: shownCount,
+      familyHidden: loaded.length - shownCount,
       fullyLoaded,
       curatedCount: curatedEps.length,
       isBreadthTier,
@@ -11332,9 +11343,20 @@ function renderLibrary() {
   /* Family Mode reaches Library too (data-integrity-4). An "unnamed" row has
      nothing in it to hide. */
   const family = (r) => r.state === "unnamed" || familyAllows(r.item);
-  const savedRows = rowsForIds(Object.keys(savedMap())).filter(family);
+  const allSavedRows = rowsForIds(Object.keys(savedMap()));
+  const savedRows = allSavedRows.filter(family);
   const historyIds = pickedHistory().slice().reverse().slice(0, 20);
-  const historyRows = rowsForIds(historyIds).filter(family);
+  const allHistoryRows = rowsForIds(historyIds);
+  const historyRows = allHistoryRows.filter(family);
+  /* WHAT FAMILY MODE HID IS SAID, NOT DENIED (round-3 review, L1). With every
+     star filtered out the section said "Nothing saved yet", which is false:
+     the stars exist and are only hidden. The show page says so
+     (FAMILY_HIDES_NOTE); Library now does too, and counts a partial hide. */
+  const familyHidNote = (hidden, what) => hidden > 0
+    ? `<p class="note">Family mode is on, so ${hidden} ${what}${hidden === 1 ? " is" : "s are"} hidden.</p>`
+    : "";
+  const savedHidden = allSavedRows.length - savedRows.length;
+  const historyHidden = allHistoryRows.length - historyRows.length;
   const allPlaylists = playlists();
   const queued = queueIds();
 
@@ -11350,12 +11372,16 @@ function renderLibrary() {
     : rowHtml(r, i, "library-history");
 
   const savedHtml = savedRows.length
-    ? savedRows.map((r, i) => rowHtml(r, i, "library-saved")).join("")
-    : `<p class="note">Nothing saved yet — tap ☆ on an episode to keep it here.</p>`;
+    ? savedRows.map((r, i) => rowHtml(r, i, "library-saved")).join("") + familyHidNote(savedHidden, "saved episode")
+    : savedHidden > 0
+      ? familyHidNote(savedHidden, "saved episode")
+      : `<p class="note">Nothing saved yet — tap ☆ on an episode to keep it here.</p>`;
 
   const historyHtml = historyRows.length
-    ? historyRows.map((r, i) => historyRowHtml(r, i)).join("")
-    : `<p class="note">No listening history yet — episodes you play show up here.</p>`;
+    ? historyRows.map((r, i) => historyRowHtml(r, i)).join("") + familyHidNote(historyHidden, "played episode")
+    : historyHidden > 0
+      ? familyHidNote(historyHidden, "played episode")
+      : `<p class="note">No listening history yet — episodes you play show up here.</p>`;
 
   const playlistsHtml = allPlaylists.length
     ? allPlaylists.slice(0, 5).map(p =>
