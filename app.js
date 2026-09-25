@@ -305,6 +305,81 @@ function afterStorageSettles(fn) {
   storageSettleWaiters.push(fn);
 }
 
+/* THE LISTENER'S OWN ACTIONS WAIT TOO (audit round 3, app-1-1). The gate above
+   covered boot's writes; a star, an Up Next edit, a follow or a play in the
+   window still did read-modify-write against the unhydrated store. With
+   localStorage swept and IndexedDB slow, toggleStar read `{}` and wrote
+   `{thisOne}` to cp_saved, and the store's property 2 (a write this session is
+   never clobbered by hydration, durable-store.js) then kept that one-row map
+   over the durable Saved list for good. The same held for cp_history,
+   cp_episode_snaps, cp_queue, cp_starred_shows and cp_shard_shows.
+
+   So those writers now state an EDIT -- a function from the stored value to the
+   new one -- through `editStored`. Once storage has settled it runs at once,
+   exactly the old read-modify-write. Before, it is queued (one waiter per key)
+   and re-run over the SETTLED value when hydration lands, so the durable rows
+   and this session's taps both survive; meanwhile `storedValue` answers reads
+   from the unhydrated value with the queued edits applied, so the page paints
+   the tap at once. Nothing here changes hydration or weakens property 2: the
+   fix is to not write early. An edit must be a pure function of its argument
+   (it is re-run on every read of the overlay), and must not assume the stored
+   value has the right shape. */
+const pendingStoredEdits = new Map();
+
+/** The value of `key` with any edits still waiting for storage applied.
+    With none waiting it is the SHARED parse (`lsGetShared`): callers read it
+    and never mutate it -- every writer goes through `editStored`, whose edit
+    is handed a fresh parse. */
+function storedValue(key, fallback) {
+  const edits = pendingStoredEdits.get(key);
+  if (!edits) return lsGetShared(key, fallback);
+  return edits.reduce((v, fn) => fn(v), lsGet(key, fallback));
+}
+
+/* ONE PARSE PER STORED STRING (audit round 3, app-1-8 and perf-3). `lsGet`
+   JSON.parses on every call, and the hot readers call it per row and per tick:
+   every epRow's star asked isSaved -> savedMap -> a parse of the whole of
+   cp_saved (a 100-row show page parsed it 100 times per paint), and the Now
+   Playing sheet's row2 reads EPISODE_NAVIGATION's getters on every 4 Hz
+   timeupdate, each re-parsing cp_queue and cp_saved. The parsed value is kept
+   against the exact string the store returned; a write stores a new string,
+   so the next read re-parses and nothing needs invalidating by hand. The
+   value is SHARED: read-only for every caller. */
+const lsParseMemo = new Map();
+function lsGetShared(key, fallback) {
+  const store = storageBackend();
+  if (!store) return fallback;
+  let raw;
+  try { raw = store.getItem(key); } catch (_) { return fallback; }
+  const hit = lsParseMemo.get(key);
+  if (hit && hit.raw === raw && hit.store === store) return hit.value ?? fallback;
+  let value = null;
+  try { value = JSON.parse(raw); } catch (_) { value = null; }
+  lsParseMemo.set(key, { raw, store, value });
+  return value ?? fallback;
+}
+
+/** Apply `fn` to `key`'s stored value: now, or over the settled store once
+    hydration lands. Returns lsSet's answer now, or true for a queued edit. */
+function editStored(key, fallback, fn) {
+  if (!storageWaiting()) return lsSet(key, fn(lsGet(key, fallback)));
+  let edits = pendingStoredEdits.get(key);
+  if (!edits) {
+    edits = [];
+    pendingStoredEdits.set(key, edits);
+    afterStorageSettles(() => {
+      const list = pendingStoredEdits.get(key) || [];
+      pendingStoredEdits.delete(key);
+      lsSet(key, list.reduce((v, f) => f(v), lsGet(key, fallback)));
+    });
+  }
+  edits.push(fn);
+  return true;
+}
+
+function plainObject(v) { return v && typeof v === "object" && !Array.isArray(v) ? v : {}; }
+function stringList(v) { return Array.isArray(v) ? v.filter(x => typeof x === "string" && x) : []; }
+
 function markStorageSettled() {
   if (storageSettled) return;
   storageSettled = true;
@@ -342,6 +417,7 @@ function profileId() {
    Drained by `flushBufferedEvents()`, called once the module is confirmed
    present (mirroring `storageReady()`'s one-shot handoff). */
 let _bufferedEvents = [];
+const BUFFERED_EVENTS_CAP = 500;
 
 /* True for the length of a "Delete my data" clear (review 2026-09-23). The
    store's purge re-arms a durable tier its breaker had switched off, and every
@@ -391,6 +467,16 @@ function logEvent(type, payload, { ts = null } = {}) {
     window.forayEventLog.append(row);
   } else {
     _bufferedEvents.push(row);
+    /* BOUNDED ONCE NOTHING IS COMING (audit round 3, app-1-12). With the
+       deferred modules run and no event log published, player/client.js
+       failed to load (a 404 from a stale generation, a throw), and nothing will
+       ever drain this: every row of the session stayed in memory. Kept to the
+       newest rows then; before that (a module still loading, storage still
+       settling) the buffer is a real queue and is left whole. */
+    if (_bufferedEvents.length > BUFFERED_EVENTS_CAP && deferredScriptsRan
+        && !(window.forayEventLog && typeof window.forayEventLog.append === "function")) {
+      _bufferedEvents.splice(0, _bufferedEvents.length - BUFFERED_EVENTS_CAP);
+    }
   }
 }
 
@@ -446,6 +532,11 @@ function apiUrl(path) {
   return `${API_ORIGIN}/${String(path).replace(/^\/+/, "")}`;
 }
 
+/** One auth call, answered as `{ ok, status, body }` (audit round 3, app-1-4).
+    It used to answer null for EVERYTHING that was not a 2xx, so "this refresh
+    token is dead" (a 400 invalid_grant) and "the token endpoint hiccupped" (a
+    429, a 5xx, a timeout) looked the same -- and the second one signed the
+    device up as a new user. `status` is 0 when no answer arrived at all. */
 async function sbAuth(path, body) {
   try {
     const res = await fetch(SB_URL + path, {
@@ -453,8 +544,23 @@ async function sbAuth(path, body) {
       headers: { apikey: SB_KEY, "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
-    return res.ok ? await res.json() : null;
-  } catch (_) { return null; }
+    let parsed = null;
+    try { parsed = await res.json(); } catch (_) { parsed = null; }
+    return { ok: Boolean(res.ok), status: Number(res.status) || 0, body: parsed };
+  } catch (_) { return { ok: false, status: 0, body: null }; }
+}
+
+/** Did a refresh fail because the refresh token itself is dead? Only then may
+    a sync give up on the account and sign up a new one. GoTrue answers a dead
+    token with 400 (401 on some versions) and `error: "invalid_grant"` or
+    `error_code: "refresh_token_not_found"`. Anything else -- a 429, a 5xx, no
+    answer, a body it did not recognise -- is transient: keep the account and
+    let the queued rows retry. */
+const DEAD_REFRESH_CODES = new Set(["invalid_grant", "refresh_token_not_found"]);
+function refreshTokenDead(r) {
+  if (!r || (r.status !== 400 && r.status !== 401)) return false;
+  const b = r.body && typeof r.body === "object" ? r.body : {};
+  return [b.error, b.error_code, b.code].some(c => typeof c === "string" && DEAD_REFRESH_CODES.has(c));
 }
 
 /** Can a new `cp_sb_session` be kept? Asks the durable store (`canKeep`); a
@@ -468,8 +574,24 @@ function sessionKeepable() {
 
 /* Establish/restore the anonymous session. Refresh a stored token (same user)
    when possible; only create a NEW anonymous user when there's no token or the
-   refresh fails — re-signing-up every load would orphan a user per visit. */
-async function ensureAnonSession(epoch = deletionEpoch) {
+   refresh fails — re-signing-up every load would orphan a user per visit.
+
+   ONE AT A TIME (audit round 3, app-1-2). Two callers that overlapped each
+   read "no cp_sb_session" and each called /auth/v1/signup: N anonymous users,
+   the last lsSet won, and the rows posted under the others were orphaned where
+   Delete my data cannot reach them. Every caller now shares the one in-flight
+   answer. */
+let anonSessionInFlight = null;
+function ensureAnonSession(epoch = deletionEpoch) {
+  if (anonSessionInFlight) return anonSessionInFlight;
+  const p = ensureAnonSessionOnce(epoch);
+  anonSessionInFlight = p;
+  const clear = () => { if (anonSessionInFlight === p) anonSessionInFlight = null; };
+  p.then(clear, clear);
+  return p;
+}
+
+async function ensureAnonSessionOnce(epoch) {
   if (syncOutlived(epoch)) return null;
   const now = Math.floor(Date.now() / 1000);
   let s = lsGet("cp_sb_session", null);
@@ -481,21 +603,26 @@ async function ensureAnonSession(epoch = deletionEpoch) {
      failed to read. The events wait in their queue for a launch that can. */
   if (!sessionKeepable()) return null;
   if (s && s.refresh_token) {
-    const r = await sbAuth("/auth/v1/token?grant_type=refresh_token", { refresh_token: s.refresh_token });
+    const res = await sbAuth("/auth/v1/token?grant_type=refresh_token", { refresh_token: s.refresh_token });
     /* Asked again AFTER the await: a refresh that was already in flight when
        Delete was tapped must not write the old account's token back onto a
        device the deletion emptied (persist-8). */
     if (syncOutlived(epoch)) return null;
+    const r = res.ok ? res.body : null;
     if (r && r.access_token) {
-      s = { user_id: r.user.id, access_token: r.access_token, refresh_token: r.refresh_token, expires_at: r.expires_at || now + 3600 };
+      s = { user_id: (r.user && r.user.id) || s.user_id, access_token: r.access_token, refresh_token: r.refresh_token, expires_at: r.expires_at || now + 3600 };
       lsSet("cp_sb_session", s);
       return s;
     }
+    /* A transient failure keeps the account (app-1-4): a new user here would
+       split the listener's history across two accounts for good. */
+    if (!refreshTokenDead(res)) return null;
   }
   if (syncOutlived(epoch)) return null;
-  const r = await sbAuth("/auth/v1/signup", {});
+  const res = await sbAuth("/auth/v1/signup", {});
   if (syncOutlived(epoch)) return null;
-  if (r && r.access_token) {
+  const r = res.ok ? res.body : null;
+  if (r && r.access_token && r.user && r.user.id) {
     s = { user_id: r.user.id, access_token: r.access_token, refresh_token: r.refresh_token, expires_at: r.expires_at || now + 3600 };
     lsSet("cp_sb_session", s);
     return s;
@@ -555,16 +682,42 @@ function toEventRow(e, userId) {
    writes (the session, a batch) asks `syncOutlived()` first. */
 const syncsInFlight = new Set();
 
+/* SINGLE-FLIGHT (audit round 3, app-1-2). Every call used to start its own
+   syncEventsOnce(): `unsynced()` hands out rows without claiming them, so two
+   overlapping runs POSTed the same rows and the events table (no client id, no
+   unique key) stored each one twice -- and every action taken while storage was
+   settling queued one more waiter, all of which fired together. Now: at most
+   one run (`syncRun`), at most ONE follow-up behind it however many callers
+   asked meanwhile (`syncFollowUp`, so a row logged mid-run still goes out), and
+   at most one pre-settle waiter (`syncSettleWaiter`, the saveInterestsPending
+   pattern). */
+let syncRun = null;
+let syncFollowUp = null;
+let syncSettleWaiter = null;
+
 function trySyncEvents() {
   const epoch = deletionEpoch;
   if (syncOutlived(epoch)) return Promise.resolve();
   /* An unread `cp_sb_session` reads as "no account", and `ensureAnonSession`
      answers that by signing up a new one (races-4). Before storage settles
      there is nothing to sync that cannot wait for it. */
-  if (storageWaiting()) return new Promise(resolve => afterStorageSettles(() => resolve(trySyncEvents())));
+  if (storageWaiting()) {
+    if (!syncSettleWaiter) {
+      syncSettleWaiter = new Promise(resolve => afterStorageSettles(() => { syncSettleWaiter = null; resolve(trySyncEvents()); }));
+    }
+    return syncSettleWaiter;
+  }
+  if (syncRun) {
+    if (!syncFollowUp) {
+      syncFollowUp = syncRun.then(() => { syncFollowUp = null; return trySyncEvents(); });
+    }
+    return syncFollowUp;
+  }
   const run = syncEventsOnce(epoch);
+  syncRun = run;
   syncsInFlight.add(run);
-  run.finally(() => syncsInFlight.delete(run));
+  /* Registered before any follow-up's `then`, so the slot is free when it runs. */
+  run.finally(() => { syncsInFlight.delete(run); if (syncRun === run) syncRun = null; });
   return run;
 }
 
@@ -577,32 +730,43 @@ async function syncEventsOnce(epoch) {
     if (!unsynced.length) return;
     const s = await ensureAnonSession(epoch);
     if (!s) return; // offline / auth unavailable — buffer persists, retry next time
-    const rows = unsynced.map(e => toEventRow(e, s.user_id)).filter(Boolean);
-    const syncedIds = unsynced.map(e => e.id);
-    if (!rows.length) {
-      await window.forayEventLog.markSynced(syncedIds); // all local-only
-      await window.forayEventLog.pruneToRetention(5000);
-      return;
+    /* CHUNKS, EACH MARKED AS IT LANDS (audit round 3, app-1-10). Rows go up
+       500 at a time, and ids used to be marked synced only after the LAST
+       chunk: chunk 1 accepted, chunk 2 a 5xx, and the next sync POSTed chunk 1
+       again -- stored twice, since the table has no client id. Each chunk now
+       carries the ids it covers, the local-only rows between its rows
+       included, and they are marked the moment its POST succeeds. */
+    const chunks = [];
+    let cur = { rows: [], ids: [] };
+    for (const e of unsynced) {
+      const row = toEventRow(e, s.user_id);
+      if (row && cur.rows.length === 500) { chunks.push(cur); cur = { rows: [], ids: [] }; }
+      if (row) cur.rows.push(row);
+      cur.ids.push(e.id);
     }
-    for (let i = 0; i < rows.length; i += 500) {
-      if (syncOutlived(epoch)) return;
-      const res = await fetch(SB_URL + "/rest/v1/events", {
-        method: "POST",
-        headers: {
-          apikey: SB_KEY,
-          Authorization: "Bearer " + s.access_token,
-          "Content-Type": "application/json",
-          Prefer: "return=minimal",
-        },
-        body: JSON.stringify(rows.slice(i, i + 500)),
-      });
-      if (!res.ok) return; // don't advance the cursor — retry the whole batch next time
+    chunks.push(cur);
+    for (const chunk of chunks) {
+      if (chunk.rows.length) {
+        if (syncOutlived(epoch)) return;
+        const res = await fetch(SB_URL + "/rest/v1/events", {
+          method: "POST",
+          headers: {
+            apikey: SB_KEY,
+            Authorization: "Bearer " + s.access_token,
+            "Content-Type": "application/json",
+            Prefer: "return=minimal",
+          },
+          body: JSON.stringify(chunk.rows),
+        });
+        if (!res.ok) return; // this chunk and the rest retry next time; the ones before are marked
+      }
+      /* This chunk landed (or was all local-only). Only a purge that reached
+         the queue (or is reaching it now) makes these ids meaningless; a
+         deletion merely started — which may yet fail remotely and leave the
+         device as it is — does not. */
+      if (dataDeletionInProgress || localClears !== clearsAtStart) return;
+      await window.forayEventLog.markSynced(chunk.ids);
     }
-    /* Every batch landed. Only a purge that reached the queue (or is reaching
-       it now) makes these ids meaningless; a deletion merely started — which
-       may yet fail remotely and leave the device as it is — does not. */
-    if (dataDeletionInProgress || localClears !== clearsAtStart) return;
-    await window.forayEventLog.markSynced(syncedIds);
     await window.forayEventLog.pruneToRetention(5000);
   } catch (_) { /* buffer persists, retry next time */ }
 }
@@ -1244,7 +1408,62 @@ function bindRetry(scope, run) {
 function poolFiltered() {
   const pool = fullPool();
   if (!familyMode()) return pool;
-  return pool.filter(i => i.explicit !== true && branchOf(i) !== "comedy");
+  return pool.filter(familySafe);
+}
+
+/* FAMILY MODE FAILS CLOSED (audit round 3, data-integrity-4; founder Q1,
+   default ruling pending his word). The filter hid only `explicit === true`,
+   and 516 of the pool's 2,167 episodes carry no `explicit` at all -- 157 of
+   them outside comedy, from shows with explicit-rated episodes beside them
+   (Lex Fridman, Ancient History Fangirl, 20VC...), plus every one of
+   session.json's. The rule now, in this one predicate:
+     - explicit === true            -> hidden (as before)
+     - comedy                       -> hidden (as before: older items predate ratings)
+     - explicit === false           -> shown
+     - no rating on the episode     -> the SHOW's catalogue rating decides: shown
+                                       only when catalog.json rates the show clean,
+                                       hidden when it is rated explicit or unrated.
+   And every list goes through it, not only the pool: the show page's curated
+   and full-catalogue lists, "More from this show", and Library. The backfill of
+   the 516 from the refresh pipeline's contentAdvisoryRating is a separate data
+   PR; this does not wait for it. test/boot-path.test.js pins that nothing
+   unrated gets through unless its show is rated clean. */
+function familySafe(item) {
+  if (!item || typeof item !== "object") return false;
+  if (item.explicit === true) return false;
+  if (branchOf(item) === "comedy") return false;
+  if (item.explicit === false) return true;
+  const show = catalogShowForItem(item);
+  return Boolean(show && show.explicit === false);
+}
+
+/** Family Mode's answer for one row: everything when it is off. */
+function familyAllows(item) {
+  return !familyMode() || familySafe(item);
+}
+
+/* The catalogue record an episode belongs to: by show_id when it carries one,
+   else by title (and the one alias), the join episodesForShow uses. Indexed
+   once per loaded catalogue. */
+let catalogShowIndex = null;
+function catalogShowForItem(item) {
+  const shows = state.catalog?.shows;
+  if (!Array.isArray(shows)) return null;
+  if (!catalogShowIndex || catalogShowIndex.shows !== shows) {
+    const byId = new Map(), byTitle = new Map();
+    for (const s of shows) {
+      if (!s) continue;
+      if (s.show_id) byId.set(s.show_id, s);
+      if (s.title) byTitle.set(s.title, s);
+    }
+    for (const [title, alias] of Object.entries(TITLE_ALIASES)) {
+      if (byTitle.has(title) && !byTitle.has(alias)) byTitle.set(alias, byTitle.get(title));
+    }
+    catalogShowIndex = { shows, byId, byTitle };
+  }
+  return (item.show_id && catalogShowIndex.byId.get(item.show_id))
+    || (item.show && catalogShowIndex.byTitle.get(item.show))
+    || null;
 }
 
 /* The visible half of the same flag Family Mode has quietly filtered on since
@@ -1260,6 +1479,8 @@ function poolFiltered() {
    screen readers (ARIA forbids it on the generic role), so VoiceOver read the
    badge as "E" (audit round 2, a11y-11). No `title=`: a tooltip a phone never
    shows is not an explanation, and the label already says the word. */
+const FAMILY_HIDES_NOTE = "Family mode is on, so this show's episodes are hidden.";
+
 function explicitBadge(isExplicit) {
   return isExplicit === true ? `<span class="explicit-badge" role="img" aria-label="Explicit">E</span>` : "";
 }
@@ -1471,22 +1692,43 @@ const UP_NEXT_TOGGLE = { offText: "+ Up Next", onText: "✓ Up Next", offLabel: 
 
 /* ---------- stars ---------- */
 
-function savedMap() { return lsGet("cp_saved", {}); }
+function savedMap() { return plainObject(storedValue("cp_saved", {})); }
 function isSaved(id) { return id in savedMap(); }
 
 function toggleStar(id) {
-  const saved = savedMap();
-  if (saved[id]) {
-    delete saved[id];
-    logEvent("unsaved", { episode_id: id });
-  } else {
+  const had = Boolean(savedMap()[id]);
+  let entry = null;
+  if (!had) {
     const snap = state.itemIndex[id];
     if (!snap) return;
-    saved[id] = { ...snap, saved_at: new Date().toISOString() };
-    boostTopics(snap.topics, 0.05);
-    logEvent("saved", { episode_id: id, topics: snap.topics });
+    /* TRIMMED LIKE EVERY OTHER STORED SNAPSHOT (app-1-8): `{ ...snap }` kept
+       a breadth episode's whole publisher description twice (as `hook` and
+       as `description`) plus its chapters, so a heavy Saved list reached
+       hundreds of KB of the localStorage mirror's 5 MB. */
+    entry = savableEpisode({ ...snap, saved_at: new Date().toISOString() });
   }
-  lsSet("cp_saved", saved);
+  /* An edit, not a write (app-1-1): before storage settles it waits and is
+     replayed over the durable Saved list. Every entry is brought to the
+     trimmed shape as it passes (app-1-8), so an old untrimmed list shrinks on
+     the next star. */
+  const ok = editStored("cp_saved", {}, (m) => {
+    const out = plainObject(m);
+    for (const k of Object.keys(out)) out[k] = savableEpisode(out[k]);
+    if (had) delete out[id]; else out[id] = entry;
+    return out;
+  });
+  /* A REFUSED WRITE LEAVES THE STAR AS IT WAS (app-1-8): lsSet's answer used
+     to be ignored, so a full store showed a star that the next reload lost.
+     The buttons below repaint from storage, so they show what was kept; the
+     save is logged and nudges interests only once it is. */
+  if (ok) {
+    if (had) {
+      logEvent("unsaved", { episode_id: id });
+    } else {
+      boostTopics(entry.topics, 0.05);
+      logEvent("saved", { episode_id: id, topics: entry.topics });
+    }
+  }
   /* The Now Playing sheet's Save reads `EPISODE_NAVIGATION.isSaved`; a star
      pressed on a row while the sheet is open has to reach it too — AFTER the
      write (audit round 2 review): the sheet paints synchronously from storage,
@@ -1544,18 +1786,18 @@ function upNextBtn(id, item = null) {
    pattern exactly, keyed on show_id instead of episode id. Same "state
    observed, never declared" principle: starring a show changes nothing
    about what the app recommends or fetches. */
-function starredShowsMap() { return lsGet("cp_starred_shows", {}); }
+function starredShowsMap() { return plainObject(storedValue("cp_starred_shows", {})); }
 function isShowStarred(id) { return id in starredShowsMap(); }
 
 function toggleShowStar(id) {
-  const starred = starredShowsMap();
-  if (starred[id]) {
-    delete starred[id];
+  const had = Boolean(starredShowsMap()[id]);
+  let entry = null;
+  if (had) {
     logEvent("show_unstarred", { show_id: id });
   } else {
     const show = showById(id);
     if (!show) return;
-    starred[id] = {
+    entry = {
       show_id: show.show_id,
       title: show.title,
       artwork_url: show.artwork_url || null,
@@ -1563,7 +1805,11 @@ function toggleShowStar(id) {
     };
     logEvent("show_starred", { show_id: id });
   }
-  lsSet("cp_starred_shows", starred);
+  editStored("cp_starred_shows", {}, (m) => {
+    const out = plainObject(m);
+    if (had) delete out[id]; else out[id] = entry;
+    return out;
+  });
   document.querySelectorAll(`[data-show-star="${CSS.escape(id)}"]`).forEach(b => {
     setToggleLabel(b, isShowStarred(id), FOLLOW_TOGGLE);
     b.classList.toggle("on", isShowStarred(id));
@@ -1638,7 +1884,7 @@ function renderStarredShows() {
 
 /* ---------- the four suggestions ---------- */
 
-function pickedHistory() { return lsGet("cp_history", []); }
+function pickedHistory() { return stringList(storedValue("cp_history", [])); }
 
 /** THE ONE WRITER OF `cp_history`. Three call sites (a play button, a picked
     link, a continuous-playback advance) each carried their own copy of this
@@ -1648,7 +1894,6 @@ function pickedHistory() { return lsGet("cp_history", []); }
 function recordHistory(id) {
   if (!id) return;
   rememberEpisode(id);
-  const history = pickedHistory();
   /* LAST-PLAYED ORDER, not first-played (audit round 2, honesty-3). This
      appended only on a first play, so a replay left the episode where it was
      and Library → History — which presents the ring's tail as "most recent" —
@@ -1656,11 +1901,11 @@ function recordHistory(id) {
      off the end. Every other reader of `cp_history` tests membership only
      (`hasOpened`, `branchChain`, the keep set above), so the order is free to
      mean what the page says it means. */
-  lsSet("cp_history", history.filter(x => x !== id).concat(id).slice(-200));
+  editStored("cp_history", [], (h) => stringList(h).filter(x => x !== id).concat(id).slice(-200));
 }
 
 function rememberSeen(ids) {
-  const seen = lsGet("cp_seen", []).filter(id => !ids.includes(id)).concat(ids);
+  const seen = stringList(lsGet("cp_seen", [])).filter(id => !ids.includes(id)).concat(ids);
   lsSet("cp_seen", seen.slice(-SEEN_WINDOW));
 }
 
@@ -1671,7 +1916,11 @@ function rememberSeen(ids) {
    format/evergreen only exist on the ~27-episode curated set, not the
    1000+-item discover pool — see docs/DECISIONS.md 2026-07-30). */
 function branchChain(items, history, seen) {
-  const byRecency = (a, b) => new Date(b.release_date || 0) - new Date(a.release_date || 0);
+  /* dateValue, not `new Date(x || 0)` (audit round 3, app-1-13): an
+     unparseable date made the comparator NaN, and a sort over an inconsistent
+     comparator leaves the order to the engine, so a branch's lead episode
+     could be arbitrary. dateValue reads it as 0, the oldest. */
+  const byRecency = (a, b) => dateValue(b.release_date) - dateValue(a.release_date);
   const unseen = items.filter(it => !history.has(it.id) && !seen.has(it.id)).sort(byRecency);
   const seenNotPlayed = items.filter(it => !history.has(it.id) && seen.has(it.id)).sort(byRecency);
   const played = items.filter(it => history.has(it.id)).sort(byRecency);
@@ -1701,11 +1950,14 @@ function branchChain(items, history, seen) {
 function buildCards({ reserve = [] } = {}) {
   const pool = poolFiltered();
   const history = new Set(pickedHistory());
-  const seen = new Set(lsGet("cp_seen", []));
+  /* stringList: a stored value of the wrong shape (older-build data, a
+     corrupt restore) threw here, inside init, on every launch (audit round 3,
+     app-3-13). */
+  const seen = new Set(stringList(lsGet("cp_seen", [])));
   const byBranch = {};
   pool.forEach(i => { (byBranch[branchOf(i)] = byBranch[branchOf(i)] || []).push(i); });
 
-  const recentBranches = lsGet("cp_recent_branches", []);
+  const recentBranches = stringList(lsGet("cp_recent_branches", []));
   const branches = Object.keys(byBranch)
     .map(b => ({
       b,
@@ -1751,11 +2003,22 @@ function buildCards({ reserve = [] } = {}) {
      durable ones for good and the seen window started over (races-4). */
   const dealtBranches = state.cardSlots.map(sl => sl.branch);
   const dealtIds = state.cardSlots.flatMap(sl => sl.items.map(it => it.id));
+  /* EACH DEAL HAS AN EPOCH (audit round 3, app-1-7). A deal made while storage
+     is settling is recorded later; if a newer deal replaces it first (the
+     first-run picks re-deal), its recorder stands down, so the pre-pick deal is
+     never counted as seen after all. `lastDealRecorded` tells the re-deal
+     whether there is anything of this deal to undo. */
+  const epoch = ++dealEpoch;
+  lastDealRecorded = false;
   afterStorageSettles(() => {
-    lsSet("cp_recent_branches", lsGet("cp_recent_branches", []).concat(dealtBranches).slice(-BRANCH_MEMORY));
+    if (epoch !== dealEpoch) return;
+    lsSet("cp_recent_branches", stringList(lsGet("cp_recent_branches", [])).concat(dealtBranches).slice(-BRANCH_MEMORY));
     rememberSeen(dealtIds);
+    lastDealRecorded = true;
   });
 }
+let dealEpoch = 0;
+let lastDealRecorded = false;
 
 function subjectLabel(branch) {
   return (state.taxonomy?.nodes || []).find(n => n.id === branch && n.parent === null)?.label || branch;
@@ -1850,9 +2113,33 @@ function generatedPlaylists() {
   }
   return out;
 }
+/* ANY REAL LEAF IS ANSWERABLE (audit round 3, app-1-6; qa 116's rule for
+   #/subject/). This used to look the id up in generatedPlaylists(), whose top-3
+   cut and slot-parent filter exist only to choose what HOME shows -- and the
+   card slots are re-dealt at random every boot. So a reload, a relaunch
+   (relaunchRoute), a Jump back in card or a shared link said "Playlist not
+   found" whenever the leaf's root was dealt this time or interests had moved it
+   out of the top three. Now the id resolves from the catalogue alone: the leaf
+   exists and holds at least GENERATED_PLAYLIST_MIN pool episodes, newest first,
+   leaving out the episodes the card slots show where enough remain (so the
+   page matches Home's card whenever Home shows it). */
 function generatedPlaylistById(id) {
-  if (!/^gen-/.test(String(id || ""))) return null;
-  return generatedPlaylists().find(p => p.id === id) || null;
+  const m = /^gen-(.+)$/.exec(String(id || ""));
+  if (!m) return null;
+  const node = nodeById(m[1]);
+  if (!node || node.parent === null) return null;
+  const onLeaf = poolFiltered().filter(it => (it.topics || []).includes(node.id));
+  const slots = state.cardSlots || [];
+  const slotItemIds = new Set(slots.flatMap(sl => (sl.items || []).map(it => it.id)).concat(slots.map(sl => sl.item?.id)).filter(Boolean));
+  const unslotted = onLeaf.filter(it => !slotItemIds.has(it.id));
+  const items = (unslotted.length >= GENERATED_PLAYLIST_MIN ? unslotted : onLeaf)
+    .sort((a, b) => String(b.release_date || "").localeCompare(String(a.release_date || "")) || String(a.id).localeCompare(String(b.id)))
+    .slice(0, GENERATED_PLAYLIST_SIZE);
+  if (items.length < GENERATED_PLAYLIST_MIN) return null;
+  return withMirror({
+    id: "gen-" + node.id, branch: node.id, title: node.label || node.id,
+    items: items.map(playlistPart), sparse: false, isSubject: false, isGenerated: true,
+  });
 }
 
 /* U-05 (docs/ui-transition-plan.md D7): does one of the listener's OWN
@@ -1992,11 +2279,22 @@ const ACRONYMS = new Set(["ai", "bbq", "ww2", "ww1", "f1", "nasa", "diy", "cia",
 const TITLE_MAX_WORDS = 8;
 const TITLE_MAX_CHARS = 60;
 
+/* EVERY SCRIPT'S LETTERS ARE LETTERS (audit round 3, app-1-14). The split was
+   `/[^a-z0-9]+/`, so é, ü, ñ and every non-Latin script were separators:
+   "Pokémon lore" was saved as "Pok Mon Lore", "café culture" as "Caf Culture",
+   and a Cyrillic or Japanese query as "Playlist". Now a word is a run of
+   letters, marks and digits in any script (NFC first, so a decomposed accent
+   stays inside its word), and it is capitalised by code point with the
+   locale's rule. The stopword and acronym lists are ASCII and still match. */
+function capitalizeWord(w) {
+  const [first = "", ...rest] = [...w];
+  return first.toLocaleUpperCase() + rest.join("");
+}
 function prettyTitle(query) {
-  const raw = query.toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
+  const raw = String(query).normalize("NFC").toLowerCase().split(/[^\p{L}\p{M}\p{N}]+/u).filter(Boolean);
   let words = raw.filter(w => !SearchEngine.STOPWORDS.has(w));
   if (!words.length) words = raw;
-  words = words.slice(0, TITLE_MAX_WORDS).map(w => ACRONYMS.has(w) ? w.toUpperCase() : w[0].toUpperCase() + w.slice(1));
+  words = words.slice(0, TITLE_MAX_WORDS).map(w => ACRONYMS.has(w) ? w.toUpperCase() : capitalizeWord(w));
 
   // Trim from the end, whole words only, until the title fits the char budget.
   while (words.length > 1 && words.join(" ").length > TITLE_MAX_CHARS) words.pop();
@@ -2233,7 +2531,7 @@ function savePlaylists(all) { return lsSet("cp_playlists", all.slice(0, 50).map(
    and are fine to say "queue" — nothing here renders to the screen. */
 
 function queueIds() {
-  const ids = lsGet("cp_queue", []);
+  const ids = storedValue("cp_queue", []);
   /* A non-string/empty entry cannot be resolved against itemIndex or savedMap
      (both keyed by real episode ids), so it can only ever render as a
      permanently-broken row — dropping it here is not data loss, it is the
@@ -2250,7 +2548,16 @@ function queueIds() {
     row 1 stayed listed with a ▶ on it and "N queued" one too many until an arrow
     was pressed, at which point the whole list jumped. */
 function saveQueueIds(ids) {
-  const ok = lsSet("cp_queue", ids);
+  /* Before storage settles the new list is stated as the change it makes to
+     the one on screen (app-1-1): what it dropped is dropped, its order is kept,
+     and a queued row only the durable store holds is kept after it, not lost. */
+  const before = storageWaiting() ? queueIds() : null;
+  const ok = before
+    ? editStored("cp_queue", [], (q) => {
+      const was = new Set(before), now = new Set(ids);
+      return ids.concat(stringList(q).filter(x => !was.has(x) && !now.has(x)));
+    })
+    : lsSet("cp_queue", ids);
   refreshEpisodeNavigation();
   repaintQueuePage();
   return ok;
@@ -2399,8 +2706,25 @@ const EPISODE_SNAPS_CAP = 400;
 const EPISODE_SNAP_HOOK_MAX = 280;
 
 function episodeSnaps() {
-  const m = lsGet(EPISODE_SNAPS_KEY, {});
-  return m && typeof m === "object" && !Array.isArray(m) ? m : {};
+  return plainObject(storedValue(EPISODE_SNAPS_KEY, {}));
+}
+
+/* A SAVED snapshot keeps more than an add-side one (app-1-8): the episode
+   page reads a star's description first (storedEpisode), and for a breadth
+   episode nothing else holds it after a reload. So the hook is trimmed as
+   storableEpisode trims it, and the description and chapters are kept, each
+   bounded, instead of dropped. */
+const SAVED_DESCRIPTION_MAX = 4000;
+const SAVED_CHAPTERS_MAX = 100;
+function savableEpisode(snap) {
+  if (!snap || typeof snap !== "object") return snap;
+  const out = storableEpisode(snap);
+  const d = snap.description;
+  out.description = typeof d === "string" && d.length > SAVED_DESCRIPTION_MAX
+    ? d.slice(0, SAVED_DESCRIPTION_MAX - 1) + "…"
+    : (d ?? null);
+  out.chapters = Array.isArray(snap.chapters) ? snap.chapters.slice(0, SAVED_CHAPTERS_MAX) : (snap.chapters ?? null);
+  return out;
 }
 
 function storableEpisode(snap) {
@@ -2416,12 +2740,18 @@ function storableEpisode(snap) {
 function rememberEpisode(id) {
   const snap = id ? state.itemIndex[id] : null;
   if (!snap || !snap.audio_url) return;
+  const stored = storableEpisode(snap);
+  /* An edit (app-1-1): the keep set is read when it runs, so over the settled
+     store it keeps what the durable Up Next and History name. */
+  editStored(EPISODE_SNAPS_KEY, {}, (m) => pruneEpisodeSnaps(plainObject(m), id, stored));
+}
+
+function pruneEpisodeSnaps(all, id, stored) {
   const queued = new Set(queueIds());
   const keep = new Set([...queued].concat(pickedHistory(), id));
-  const all = episodeSnaps();
   const next = {};
   for (const k of Object.keys(all)) if (keep.has(k)) next[k] = all[k];
-  next[id] = storableEpisode(snap);
+  next[id] = stored;
   /* THE CAP NEVER TAKES A QUEUED EPISODE (audit round 2, p-impatient-11).
      Deletion is by key insertion order — the oldest remembered first — and the
      oldest remembered are the HEAD of Up Next, the rows about to play. With a
@@ -2431,7 +2761,7 @@ function rememberEpisode(id) {
      key is pruned only by leaving Up Next. */
   const ids = Object.keys(next).filter(k => !queued.has(k) && k !== id);
   for (const k of ids.slice(0, Math.max(0, Object.keys(next).length - EPISODE_SNAPS_CAP))) delete next[k];
-  lsSet(EPISODE_SNAPS_KEY, next);
+  return next;
 }
 
 /** Every snapshot we hold for `id` outside the session cache: a star's first,
@@ -2451,8 +2781,10 @@ function liveEpisode(id) {
   if (cached && cached.audio_url) return cached;
   const stored = storedEpisode(id);
   if (stored && stored.audio_url) {
-    state.itemIndex[id] = stored;
-    return stored;
+    /* A copy: the stored value is the shared parse (lsGetShared, app-1-8). */
+    const seeded = { ...stored };
+    state.itemIndex[id] = seeded;
+    return seeded;
   }
   return null;
 }
@@ -2831,7 +3163,17 @@ window.forayEngineLedger = { applyEngineAdvance, drainEngineEvents };
     about Up Next or lists; it only reports "this finished playing" once per
     episode. */
 function advanceQueueOnEnded(id) {
-  if (!autoAdvanceOn()) return;
+  /* THE FINISHED EPISODE LEAVES UP NEXT WITH THE SWITCH OFF TOO (audit round
+     3, app-1-9). The removal lived only inside the advance, so with continuous
+     playback off a finished row stayed at the top of Up Next with its ▶, and
+     the next advance (the switch turned on, a later episode ending) replayed
+     it. The switch decides whether anything PLAYS, not whether the finished
+     row leaves. saveQueueIds tells the car's skip and repaints the page. */
+  if (!autoAdvanceOn()) {
+    const plan = planAfterEnded(id);
+    if (plan.rest) saveQueueIds(plan.rest);
+    return;
+  }
   return playNextAfter(id, "autoadvance");
 }
 
@@ -2999,21 +3341,25 @@ const SHARD_SHOWS_CAP = 50;
 
 function rememberShardShow(show) {
   if (!show || typeof show.show_id !== "string" || !show.show_id.startsWith("pi:")) return;
-  const all = lsGet(SHARD_SHOWS_KEY, {});
-  const next = all && typeof all === "object" && !Array.isArray(all) ? all : {};
-  delete next[show.show_id];            // re-insert last, so the cap evicts the oldest visit
-  next[show.show_id] = {
+  const entry = {
     show_id: show.show_id, title: show.title || "", artwork_url: show.artwork_url || null,
     artist_name: show.artist_name || null, editorial_note: null, taxonomy_node_ids: [],
     tier: show.tier || "breadth", source: "shard",
   };
-  const ids = Object.keys(next);
-  for (const k of ids.slice(0, Math.max(0, ids.length - SHARD_SHOWS_CAP))) delete next[k];
-  lsSet(SHARD_SHOWS_KEY, next);
+  /* An edit (app-1-1), so a visit before storage settles is added to the
+     durable list rather than replacing it. */
+  editStored(SHARD_SHOWS_KEY, {}, (all) => {
+    const next = plainObject(all);
+    delete next[show.show_id];            // re-insert last, so the cap evicts the oldest visit
+    next[show.show_id] = entry;
+    const ids = Object.keys(next);
+    for (const k of ids.slice(0, Math.max(0, ids.length - SHARD_SHOWS_CAP))) delete next[k];
+    return next;
+  });
 }
 
 function rememberedShardShow(id) {
-  const all = lsGet(SHARD_SHOWS_KEY, {});
+  const all = storedValue(SHARD_SHOWS_KEY, {});
   const hit = (all && all[id]) || null;
   if (hit) return hit;
   const followed = starredShowsMap()[id];
@@ -3043,7 +3389,8 @@ function episodesForShow(show) {
   if (!show) return [];
   const pool = (state.discover?.items || []);
   const wanted = new Set([show.title, TITLE_ALIASES[show.title]].filter(Boolean));
-  return pool.filter(it => wanted.has(it.show))
+  /* familyAllows: a show page skipped Family Mode entirely (data-integrity-4). */
+  return pool.filter(it => wanted.has(it.show) && familyAllows(it))
     .sort((a, b) => dateValue(b.release_date) - dateValue(a.release_date));
 }
 
@@ -4671,7 +5018,10 @@ function renderShow(show_id, initialQuery = "") {
       c.innerHTML = `<p class="note">No episodes match ${quoteQuery(esc(searchQuery.trim()))}.</p>`;
       return;
     }
-    const rows = visible.map((ep) => fullCatalogueRowToEpRowItem(show, ep));
+    /* Family Mode's one predicate here too (data-integrity-4): these rows carry
+       no rating of their own, so the show's catalogue rating decides. */
+    const rows = visible.map((ep) => fullCatalogueRowToEpRowItem(show, ep)).filter(familyAllows);
+    if (!rows.length && visible.length) { c.innerHTML = `<p class="note">${esc(FAMILY_HIDES_NOTE)}</p>`; return; }
     c.innerHTML = rows.map((item, i) => epRow(item, i, ctx, -1)).join("");
     bindRows(c);
   }
@@ -5601,7 +5951,19 @@ function forayHoldsOnboarding() {
 
 /** Home's onboarding: the first-run sheet for a genuine newcomer, else the
     returning-user popup — neither while a Foray is playing. */
+let onboardingAfterSettle = false;
 function offerHomeOnboarding() {
+  /* NOT BEFORE THE STORE HAS ANSWERED (app-1-1): "genuine first-time user" is
+     read from cp_history / cp_saved / cp_playlists, and before hydration a
+     returning listener's are simply not in memory yet -- they were offered the
+     first-run sheet. Offered again once it settles, if Home is still up. */
+  if (storageWaiting()) {
+    if (!onboardingAfterSettle) {
+      onboardingAfterSettle = true;
+      afterStorageSettles(() => { onboardingAfterSettle = false; if (currentHash() === "#/") offerHomeOnboarding(); });
+    }
+    return;
+  }
   if (onboardingHeld || forayHoldsOnboarding()) return;
   if (!showFirstTimeExplainerOnce()) showIntroPopupOnce();
 }
@@ -5705,10 +6067,16 @@ function applyOnboardingPicks(pickedRootIds, typedSubject) {
 function redealAfterOnboardingPicks(pickedRoots = []) {
   const dealt = state.cardSlots || [];
   if (!dealt.length) return;
-  const dealtIds = new Set(dealt.flatMap(sl => (sl.items || []).map(it => it.id)));
-  lsSet("cp_seen", lsGet("cp_seen", []).filter(id => !dealtIds.has(id)));
-  const recent = lsGet("cp_recent_branches", []);
-  lsSet("cp_recent_branches", recent.slice(0, Math.max(0, recent.length - dealt.length)));
+  /* Undo only a deal that was RECORDED (app-1-7). Recording waits for storage
+     to settle, so a deal still waiting has written nothing: undoing it used to
+     cut the previous session's entries off cp_recent_branches, and then its
+     recorder fired anyway. The re-deal below supersedes it instead. */
+  if (lastDealRecorded) {
+    const dealtIds = new Set(dealt.flatMap(sl => (sl.items || []).map(it => it.id)));
+    lsSet("cp_seen", stringList(lsGet("cp_seen", [])).filter(id => !dealtIds.has(id)));
+    const recent = stringList(lsGet("cp_recent_branches", []));
+    lsSet("cp_recent_branches", recent.slice(0, Math.max(0, recent.length - dealt.length)));
+  }
   buildCards({ reserve: Array.isArray(pickedRoots) ? pickedRoots : [] });
 }
 
@@ -10689,9 +11057,12 @@ function renderLibrary() {
   setBodyClass("view-page");
   fullPool(); // populate itemIndex/poolIds so saved/history rows can play in-app
 
-  const savedRows = rowsForIds(Object.keys(savedMap()));
+  /* Family Mode reaches Library too (data-integrity-4). An "unnamed" row has
+     nothing in it to hide. */
+  const family = (r) => r.state === "unnamed" || familyAllows(r.item);
+  const savedRows = rowsForIds(Object.keys(savedMap())).filter(family);
   const historyIds = pickedHistory().slice().reverse().slice(0, 20);
-  const historyRows = rowsForIds(historyIds);
+  const historyRows = rowsForIds(historyIds).filter(family);
   const allPlaylists = playlists();
   const queued = queueIds();
 
@@ -13805,6 +14176,7 @@ function syncVoiceProbeRun() {
      instead. */
   if (toggle && toggle.parentNode) toggle.parentNode.insertBefore(run, toggle.nextSibling);
   else (drawerDevGroup() || drawer).appendChild(run);
+  run.disabled = Boolean(voiceProbeRunning);   // a control rebuilt mid-run is still busy (app-3-11)
   run.addEventListener("click", () => runVoiceProbe());
 }
 
@@ -13997,11 +14369,41 @@ function bindEngineDevRows() {
 
     GUARDED THE SAME WAY EVERY FORAY TAP IS (#225): a rejected promise here
     must not become a console line nobody has open. */
-async function runVoiceProbe() {
+/* ONE PROBE AT A TIME (audit round 3, app-3-11). Nothing guarded a second
+   tap: a founder who reopened the drawer and pressed RUN again (nothing else
+   shows a run is under way for its ~90 s, and reopening the sheet clears its
+   status line) started a second engine load beside the first, both writing
+   the one status line in whatever order they finished. While a run is in
+   flight the control is disabled, and a second call reopens the sheet, says
+   it is running, and hands back the same promise. */
+let voiceProbeRunning = null;
+const VOICE_PROBE_RUNNING_LINE = "Running the voice probe — this takes about 90 seconds.";
+function runVoiceProbe() {
+  if (voiceProbeRunning) {
+    const ui = diagSheet();
+    openDiagSheet();
+    ui.status.textContent = VOICE_PROBE_RUNNING_LINE;
+    return voiceProbeRunning;
+  }
+  const run = runVoiceProbeOnce();
+  voiceProbeRunning = run;
+  const btn = $("#voice-probe-run");
+  if (btn) btn.disabled = true;
+  const done = () => {
+    if (voiceProbeRunning !== run) return;
+    voiceProbeRunning = null;
+    const b = $("#voice-probe-run");
+    if (b) b.disabled = false;
+  };
+  run.then(done, done);
+  return run;
+}
+
+async function runVoiceProbeOnce() {
   const player = window.ForayPlayer;
   const ui = diagSheet();
   openDiagSheet();
-  ui.status.textContent = "Running the voice probe — this takes about 90 seconds.";
+  ui.status.textContent = VOICE_PROBE_RUNNING_LINE;
   if (!player || typeof player.runVoiceProbe !== "function") {
     ui.status.textContent = "The player hasn't loaded, so the probe can't run.";
     return null;
@@ -14161,7 +14563,8 @@ async function existingAnonSession() {
   if (!s || !s.access_token || !s.user_id) return null;
   if (s.expires_at && s.expires_at - 60 > now) return s;
   if (s.refresh_token) {
-    const r = await sbAuth("/auth/v1/token?grant_type=refresh_token", { refresh_token: s.refresh_token });
+    const res = await sbAuth("/auth/v1/token?grant_type=refresh_token", { refresh_token: s.refresh_token });
+    const r = res.ok ? res.body : null;
     if (r && r.access_token) {
       /* `r.user.id` is not assumed to exist. A refresh response without a `user`
          object is not a shape we have seen, but reading through it would throw a
@@ -14236,7 +14639,28 @@ async function sbRevokeSessions(session) {
  * revocation comes LAST: it needs the token the row DELETEs need, and a retry
  * after a failed table must still be able to reach the rows.
  */
+/* A REMOTE STEP THAT ALREADY SUCCEEDED, remembered for the retry (audit round
+   3, app-3-6). A run whose server step succeeded and whose local clear did not
+   says "Close 4a fully and try again". The retry used to start from scratch:
+   with cp_sb_session gone it said the device was "never signed in" (the rows
+   were deleted a moment ago), and with a surviving expired token it refreshed
+   a token this module had just revoked, every DELETE 401'd, and the sheet said
+   the server copy was NOT deleted and left the device uncleared. So the success
+   is kept here -- in memory, deliberately not a `cp_` key: it names the
+   account the run deleted, and the purge must not have to spare it -- and a
+   retry for that same account (or with no token left) reports it as done
+   without a request. Across a relaunch the memory is gone, and what keeps the
+   retry honest there is that cp_sb_session is removed FIRST, on its own, the
+   moment the server step succeeds (deleteMyData). */
+let ddRemoteDone = null;
+
 async function deleteRemoteData() {
+  if (ddRemoteDone) {
+    const stored = lsGet("cp_sb_session", null);
+    if (!stored || !stored.user_id || stored.user_id === ddRemoteDone.userId) {
+      return { ok: true, attempted: true, alreadyDeleted: true, tables: [], failed: [], deleted: 0, userId: ddRemoteDone.userId };
+    }
+  }
   const session = await existingAnonSession();
   if (!session) return { ok: true, attempted: false, tables: [], deleted: 0 };
   const tables = [];
@@ -14250,6 +14674,7 @@ async function deleteRemoteData() {
     failed,
     revoked,
     deleted: tables.filter(r => r.state === DEL_DELETED).length,
+    userId: session.user_id,
   };
 }
 
@@ -14412,7 +14837,7 @@ function deletionMessage(result) {
   const server = remote && remote.deviceOnly
     ? "What 4a's server kept about you was left in place, as you chose."
     : !remote || !remote.attempted
-      ? "This device was never signed in, so nothing on 4a's server could be reached."
+      ? "No sign-in remains on this device, so nothing on 4a's server is reachable from it."
       : "What 4a's server kept about you is deleted.";
   if (local && local.ok) return `Done. ${server} This device is clear.`;
   return `${server} This device is NOT fully clear. ${deviceNotClearReason(local)}`;
@@ -14637,6 +15062,15 @@ async function deleteMyData({ deviceOnly = false } = {}) {
       return out;
     }
 
+    /* The server rows are gone and the sign-in revoked: remember it for a
+       retry, and drop the now-dead token FIRST and on its own, so a purge
+       that fails part-way can never leave a retry holding it (app-3-6). */
+    if (remote && remote.attempted && remote.ok && !remote.deviceOnly) {
+      ddRemoteDone = { userId: remote.userId || null };
+      rotatedSession = null;
+      try { const st = storageBackend(); if (st) st.removeItem("cp_sb_session"); } catch (_) { /* the purge below tries again */ }
+    }
+
     const local = await clearLocalData();
     const out = { ok: Boolean(local.ok), state: local.ok ? "done" : "local-incomplete", remote, local };
 
@@ -14844,6 +15278,7 @@ const AUDITION_LINE = "one, two, three, four, five, six, seven, eight, nine, ten
 
 let voiceUi = null;
 let voiceState = { voices: [], path: "none", loading: false, selected: null, auditioning: null, notice: "" };
+const VOICE_SHEET_SUB = "Pick which voice reads 4a's narration. Tap Preview to hear it count to ten, at the speed narration uses.";
 
 /** Quality label from `listVoices()`'s own `quality` field — never re-derived,
     per the card ("quality label from `qualityRank`"): the plugin already
@@ -14869,8 +15304,11 @@ function buildVoiceSheet() {
   title.id = "voice-title";
   panel.setAttribute("aria-labelledby", "voice-title");
 
-  const sub = ddEl("p", "fy-sheet-sub",
-    "Pick which voice reads 4a's narration. Tap Preview to hear it count to ten at your playback speed.");
+  /* "at the speed narration uses", not "at your playback speed" (audit round
+     3, app-3-8): a Preview has spoken at NARRATION_RATE (1x) since the
+     2026-09-24 ruling, whatever the listener's speed. listener-copy pins this
+     sentence against auditionVoice's rate. */
+  const sub = ddEl("p", "fy-sheet-sub", VOICE_SHEET_SUB);
   /* ONLY WHEN THERE ARE DIMMED VOICES (review 2026-09-23). This sentence was
      part of the fixed subtitle, and the sheet also opens on the Web Speech path
      in a desktop browser, which never shows a dimmed row — so a desktop listener
@@ -15074,21 +15512,31 @@ function paintVoiceList() {
   }
 }
 
+/* THE NEWEST ASK WINS (audit round 3, app-3-10). openVoiceSheet and the
+   return-to-app refresh can overlap, and whichever listVoices() answered LAST
+   won -- the older one included, so a voice just downloaded in Settings could
+   vanish from the list again. Only the latest call writes. */
+let voiceRefreshSeq = 0;
 async function refreshVoiceList() {
   const player = window.ForayPlayer;
   if (!player || typeof player.listVoices !== "function") return;
+  const seq = ++voiceRefreshSeq;
   voiceState.loading = true;
   paintVoiceList();
   try {
     const out = await player.listVoices({ lang: VOICE_LIST_LANG });
+    if (seq !== voiceRefreshSeq) return;
     voiceState.voices = (out && out.voices) || [];
     voiceState.path = (out && out.path) || "none";
   } catch (_) {
+    if (seq !== voiceRefreshSeq) return;
     voiceState.voices = [];
     voiceState.path = "none";
   } finally {
-    voiceState.loading = false;
-    paintVoiceList();
+    if (seq === voiceRefreshSeq) {
+      voiceState.loading = false;
+      paintVoiceList();
+    }
   }
 }
 
@@ -15131,13 +15579,21 @@ function moveVoiceChoice(id, step) {
     `player/client.js`'s `auditionVoice`, not this function's. Guarded the
     same way every Foray tap is (#225): a rejected promise here must not
     become a console line nobody has open. */
+/* ONLY THE LATEST PREVIEW OWNS THE ROW (audit round 3, app-3-10). A Preview
+   tapped on Daniel while Samantha's was still speaking set auditioning to
+   Daniel; Samantha's promise then settled (or was cut off) and its finally
+   cleared auditioning and repainted, so Daniel's button read "Preview" again
+   while he spoke, and the first run's notice could overwrite the second's. */
+let auditionSeq = 0;
 async function auditionVoiceRow(id) {
   const player = window.ForayPlayer;
   if (!player || typeof player.auditionVoice !== "function") return;
+  const seq = ++auditionSeq;
   voiceState.auditioning = id;
   paintVoiceList();
   try {
     const result = await player.auditionVoice(AUDITION_LINE, id);
+    if (seq !== auditionSeq) return;
     /* Native mode: the engine owns the one audio session and will not speak
        over an episode it is playing (NE-22, OQ-5). */
     if (result && result.ok === false && result.reason === "engine-busy") {
@@ -15148,10 +15604,13 @@ async function auditionVoiceRow(id) {
       paintVoiceNotice("");
     }
   } catch (_) {
+    if (seq !== auditionSeq) return;
     paintVoiceNotice("That voice could not be auditioned. Try again.");
   } finally {
-    voiceState.auditioning = null;
-    paintVoiceList();
+    if (seq === auditionSeq && voiceState.auditioning === id) {
+      voiceState.auditioning = null;
+      paintVoiceList();
+    }
   }
 }
 
@@ -16877,6 +17336,9 @@ function setBootChrome(ready) {
 let markFirstPagePainted = () => {};
 const firstPagePainted = new Promise(resolve => { markFirstPagePainted = resolve; });
 
+/** What a boot that threw says (app-3-13); its Try again loads a fresh page. */
+const BOOT_FAILED_NOTE = "4a couldn't start.";
+
 /** What `#view` holds between app.js starting and the first `route()`. */
 const BOOT_LOADING_HTML = `<div class="page" data-boot-loading><p class="note">Loading 4a…</p></div>`;
 
@@ -16951,6 +17413,15 @@ async function init() {
      module: a hung IndexedDB costs the cache, never the paint.
      The bridge arrives with the player module, so that much is waited for
      here — with the documents already on the wire, which is the point. */
+  /* A THROW FROM HERE TO THE FIRST PAGE IS CAUGHT (audit round 3, app-3-13).
+     Only route() was wrapped: a throw in the directory bookkeeping,
+     loadInterests, buildCards or the ribbon rejected init() unhandled, and the
+     screen stayed on "Loading 4a…" for good -- ☰ and ↻ disabled, no Try again,
+     no hashchange, and no service worker (it waits on firstPagePainted). Now
+     the failure paints its own Try again (a fresh document), the wiring below
+     still runs, and the first page counts as painted either way. The block is
+     deliberately NOT re-indented, so this change stays a few lines. */
+  try {
   await waitForStorage();
   const directory = forayDirectoryBridge();
   if (directory && !pinnedDeployId) {
@@ -17010,7 +17481,6 @@ async function init() {
     console.error("first route failed", err);
     try { renderHome(); renderTabBar(); } catch (_) { /* nothing left to try; the wiring below still runs */ }
   }
-  markFirstPagePainted();
   /* THE RIBBON COMES BACK (founder, 2026-09-18: "When I come back to 4a after a
      day, the podcast I was listening to should still be in the now playing
      ribbon at the bottom.")
@@ -17030,6 +17500,16 @@ async function init() {
   bindShowPrefetch();
   logEvent("session_shown", { session_id: state.session.session_id });
   trySyncEvents();   // waits for storage to settle itself — see trySyncEvents
+  } catch (err) {
+    console.error("boot failed", err);
+    const failed = $("#view");
+    if (failed) {
+      failed.innerHTML = `<div class="page">${failedNoteHtml(BOOT_FAILED_NOTE)}</div>`;
+      bindRetry(failed, () => location.reload());
+    }
+  } finally {
+    markFirstPagePainted();
+  }
 
   /* FD-03, the other half: NOW ask the live origin whether there is a newer set.
      Fire-and-forget, deliberately after `route()` — the first paint is on

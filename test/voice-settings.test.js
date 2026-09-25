@@ -701,3 +701,47 @@ test("after Audition, focus is back on that voice's Audition button", async () =
   assert.strictEqual(ctx.document.activeElement, rebuilt,
     "once it plays out, focus is back on the (rebuilt) Audition button — never on <body>");
 });
+
+/* ==================================================================== */
+/* audit round 3, app-3-10: overlapping Previews and list refreshes       */
+/* ==================================================================== */
+
+test("app-3-10: a Preview that ends while a newer one speaks does not hand the newer voice's button back", async () => {
+  /* MUTATION: clear `voiceState.auditioning` unconditionally in the finally
+     again -> the second voice reads as idle while it speaks; red. */
+  const pending = [];
+  const { ctx, ui } = mount({ onAudition: () => new Promise((resolve) => pending.push(resolve)) });
+  await ui.open.click();
+  await tick();
+  const [first, second] = installedRows(ui);
+  const secondId = choiceOf(second).dataset.voiceId;
+  findIn(first, ".voice-row-audition").click();
+  await tick();
+  findIn(second, ".voice-row-audition").click();
+  await tick();
+  assert.strictEqual(pending.length, 2, "premise: two Previews in flight");
+  pending[0]({ ok: true, voiceFallback: true });   // the first one ends, with a notice of its own
+  await tick();
+  assert.strictEqual(vm.runInContext("voiceState.auditioning", ctx), secondId, "the speaking voice was handed back as idle");
+  assert.ok(!(ui.notice.hidden === false && /isn't installed/.test(ui.notice.textContent)), "the older Preview's notice was painted over the newer one");
+  pending[1]({ ok: true });
+  await tick();
+  assert.strictEqual(vm.runInContext("voiceState.auditioning", ctx), null, "the latest Preview clears it when it ends");
+});
+
+test("app-3-10: an older voice list that answers last does not overwrite the newer one", async () => {
+  /* MUTATION: drop the voiceRefreshSeq check -> the stale list wins; red. */
+  const answers = [];
+  const { ctx, ui } = mount();
+  ctx.window.ForayPlayer.listVoices = () => new Promise((resolve) => answers.push(resolve));
+  const a = ctx.refreshVoiceList();
+  const b = ctx.refreshVoiceList();
+  const fresh = PHONE.slice(0, 2);
+  answers[1]({ ok: true, path: "native", voices: fresh });
+  await b;
+  answers[0]({ ok: true, path: "native", voices: [] });   // the older call answers last
+  await a;
+  assert.strictEqual(vm.runInContext("voiceState.voices.length", ctx), fresh.length);
+  assert.strictEqual(vm.runInContext("voiceState.loading", ctx), false);
+  void ui;
+});

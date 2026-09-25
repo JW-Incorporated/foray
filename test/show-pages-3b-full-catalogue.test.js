@@ -424,3 +424,24 @@ test("fetchShowEpisodes requests the show's own endpoint path", async () => {
   await m.ctx.fetchShowEpisodes("my-show-id");
   assert.match(capturedUrl, /api\/shows\/my-show-id\/episodes$/, `expected the per-show episodes endpoint, got: ${capturedUrl}`);
 });
+
+test("data-integrity-4: in Family mode the full-catalogue list shows a show's unrated episodes only when the show is rated clean", async () => {
+  /* The rows the endpoint returns carry no rating, and the show page never
+     asked Family mode at all. MUTATION: drop `.filter(familyAllows)` from
+     paintList -> the unrated show's rows are listed in Family mode; red. */
+  const episodes = [
+    { guid: "g1", title: "Full Ep One", description_text: "d", audio_url: "https://cdn.example.com/full1.mp3", duration_seconds: 600, published_at: "2026-01-02T00:00:00.000Z" },
+  ];
+  const fetchImpl = () => Promise.resolve({ ok: true, json: async () => ({ show_id: "show-a", stale: false, error: null, episodes }) });
+  for (const [rating, listed] of [[null, false], [true, false], [false, true]]) {
+    const m = mount({ fetchImpl });
+    m.ctx.localStorage.getItem = (k) => (k === "cp_family" ? "true" : null);
+    const show = { show_id: "show-a", title: "Show A", taxonomy_node_ids: [], explicit: rating };
+    seedShowAndPool(m.ctx, { show });
+    m.ctx.renderShow("show-a");
+    await flushMicrotasks();
+    const html = m.viewEl._episodesContainerRef.innerHTML;
+    assert.strictEqual(html.includes("Full Ep One"), listed, `show rated ${rating}: listed=${!listed}`);
+    if (!listed) assert.match(html, /Family mode is on, so this show(?:'|&#39;)s episodes are hidden\./);
+  }
+});

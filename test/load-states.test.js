@@ -49,86 +49,9 @@ process.on("unhandledRejection", () => {});
 
 /* ---------- a DOM whose innerHTML becomes a real (small) tree ---------- */
 
-const VOID = new Set(["img", "input", "br", "hr", "meta", "link", "source", "wbr"]);
-
-class El {
-  constructor(tag) {
-    this.tagName = String(tag || "div").toUpperCase();
-    this.children = [];
-    this.parent = null;
-    this.id = null;
-    this.className = "";
-    this.textContent = "";
-    this.value = "";
-    this.hidden = false;
-    this.disabled = false;
-    this.attrs = {};
-    this.dataset = {};
-    this.style = { setProperty() {} };
-    this._html = "";
-    this._on = new Map();
-    const cls = () => new Set(String(this.className).split(/\s+/).filter(Boolean));
-    this.classList = {
-      add: (...c) => { const s = cls(); c.forEach((x) => s.add(x)); this.className = [...s].join(" "); },
-      remove: (...c) => { const s = cls(); c.forEach((x) => s.delete(x)); this.className = [...s].join(" "); },
-      contains: (c) => cls().has(c),
-      toggle: (c, on) => { const want = on ?? !cls().has(c); if (want) this.classList.add(c); else this.classList.remove(c); return want; },
-    };
-  }
-  get innerHTML() { return this._html; }
-  set innerHTML(html) {
-    this._html = String(html);
-    this.children = [];
-    const stack = [this];
-    const re = /<(\/?)([a-zA-Z][a-zA-Z0-9-]*)([^>]*)>/g;
-    let m;
-    while ((m = re.exec(this._html))) {
-      const [, closing, tag, rest] = m;
-      if (closing) { if (stack.length > 1) stack.pop(); continue; }
-      const kid = new El(tag);
-      for (const a of rest.matchAll(/([a-zA-Z_:][\w:.-]*)(?:="([^"]*)")?/g)) {
-        const [, name, val = ""] = a;
-        kid.attrs[name] = val;
-        if (name === "id") kid.id = val;
-        if (name === "class") kid.className = val;
-        if (name === "hidden") kid.hidden = true;
-        if (name.startsWith("data-")) kid.dataset[name.slice(5).replace(/-([a-z])/g, (_, c) => c.toUpperCase())] = val;
-      }
-      stack[stack.length - 1].appendChild(kid);
-      if (!VOID.has(tag.toLowerCase()) && !/\/\s*$/.test(rest)) stack.push(kid);
-    }
-  }
-  appendChild(k) { k.parent = this; this.children.push(k); return k; }
-  append(...ks) { ks.forEach((k) => this.appendChild(k)); }
-  remove() { if (this.parent) this.parent.children = this.parent.children.filter((c) => c !== this); }
-  setAttribute(k, v) { this.attrs[k] = String(v); }
-  getAttribute(k) { return k in this.attrs ? this.attrs[k] : null; }
-  removeAttribute(k) { delete this.attrs[k]; }
-  addEventListener(t, fn) { if (!this._on.has(t)) this._on.set(t, []); this._on.get(t).push(fn); }
-  removeEventListener() {}
-
-  /** Fire this element's click listeners, once-listeners included. */
-  click() { const fns = this._on.get("click") || []; this._on.set("click", []); for (const fn of fns) fn({ target: this, preventDefault() {}, stopPropagation() {} }); }
-  focus() {} blur() {} select() {}
-  closest() { return null; }
-  getBoundingClientRect() { return { top: 0, left: 0, width: 0, height: 0 }; }
-  descendants() { return this.children.flatMap((c) => [c, ...c.descendants()]); }
-  querySelector(sel) { return this.querySelectorAll(sel)[0] || null; }
-  querySelectorAll(sel) {
-    const parts = String(sel).trim().split(/\s+/);
-    let scopes = [this];
-    for (const p of parts) scopes = scopes.flatMap((s) => s.descendants().filter((e) => matches(e, p)));
-    return [...new Set(scopes)];
-  }
-}
-function matches(el, sel) {
-  return sel.split(/(?=[#.[])/).every((tok) => {
-    if (tok.startsWith("#")) return el.id === tok.slice(1);
-    if (tok.startsWith(".")) return el.classList.contains(tok.slice(1));
-    if (tok.startsWith("[")) { const name = tok.slice(1, -1).split("=")[0]; return name in el.attrs; }
-    return el.tagName === tok.toUpperCase();
-  });
-}
+/* The shared small DOM (audit round 3, tests-10): one copy, and a
+   `[name="value"]` selector compares the value. */
+const { El } = require("./helpers/fake-dom.js");
 
 /* ---------- the mount ---------- */
 

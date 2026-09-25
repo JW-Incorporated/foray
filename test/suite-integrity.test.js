@@ -358,7 +358,7 @@ const FLOORS = {
      cold open like any other -- two more journeys added to the list this
      suite already existed to protect. */
   "test/back-navigation.test.js": 17, // audit round 2 (L6): nav-1 — a traversal onto a same-hash neighbour routes from popstate, once per step, and never on a load-time popstate; init binds it; 13 -> 17 // 2026-09-22: the step comes from the real history entry (a forward tap onto the page two back; a reload keeps ‹) and a removed playlist is not one ‹ away; 11 -> 13
-  "test/boot-path.test.js": 18, // round-2 sweep (2026-09-23): every <img> below hero size asks for its drawn size, Home's card too (perf-2); 17 -> 18 | audit round 2 (2026-09-23, lane L5): new suite — boot documents before storage (perf-1), no boot write shadows a late hydration (races-4), ☰/↻ disabled until bound (nav-9), ui-v2 from the first byte (p-first-2), row art at drawn size (perf-2), priming waits for a still listener (perf-3), SW registers after the first page (perf-4), fonts in every generation (perf-5)
+  "test/boot-path.test.js": 43, // audit round 3 (lane L1): tests-10 shared fake DOM, app-1-1 listener edits wait for hydration (x3), app-1-2 one pre-settle sync waiter, app-1-6 gen- playlists resolve from the catalogue, app-1-7 deal epoch, app-1-8 trimmed stars + one parse (x3), perf-3 no per-tick parse, app-1-12 buffer cap (x2), app-1-13 dateValue, app-1-14 Unicode titles, app-3-13 boot catch + shape guards (x2), data-integrity-4 Family mode fails closed (x3); main already stood at 23 against a floor of 18; 18 -> 43 // round-2 sweep (2026-09-23): every <img> below hero size asks for its drawn size, Home's card too (perf-2); 17 -> 18 | audit round 2 (2026-09-23, lane L5): new suite — boot documents before storage (perf-1), no boot write shadows a late hydration (races-4), ☰/↻ disabled until bound (nav-9), ui-v2 from the first byte (p-first-2), row art at drawn size (perf-2), priming waits for a still listener (perf-3), SW registers after the first page (perf-4), fonts in every generation (perf-5)
   /* Collapsing page header reappears on scroll-up (kanban t_0faae03f, same
      report): the header must un-hide on any upward scroll, not only at the
      literal top of the page. */
@@ -450,7 +450,7 @@ const FLOORS = {
      its cause (pull to refresh, the home-screen builder, browser copy in the
      shell, the four-queue popup, raw resolver reasons) stays gone, with the
      behaviour behind the copy. ZERO SLACK. */
-  "test/listener-copy.test.js": 20, // round-2 integration (2026-09-23): the counts of both lanes; -> 20 // audit round 2 (L6): copy-11/7/1/6, a11y-11, p-foray-6 — 4a never 'we', 'subject' not 'topic', no browser words, one failure sentence pair, no tooltip-only explanation, and a down-vote moves the subject only for a subject reason; 13 -> 20 // audit round 2 (2026-09-23, lane L4): no new test; the 'Starts with' pin reads the typographic pair (copy-8) and the stale-note pin follows the builder to Create (p-first-6) — the count was already 14, the floor said 13; 13 -> 14 // // 2026-09-22: new
+  "test/listener-copy.test.js": 22, // audit round 3 (lane L1): app-3-8 the voice subtitle pinned to NARRATION_RATE; main already stood at 21; 20 -> 22 // round-2 integration (2026-09-23): the counts of both lanes; -> 20 // audit round 2 (L6): copy-11/7/1/6, a11y-11, p-foray-6 — 4a never 'we', 'subject' not 'topic', no browser words, one failure sentence pair, no tooltip-only explanation, and a down-vote moves the subject only for a subject reason; 13 -> 20 // audit round 2 (2026-09-23, lane L4): no new test; the 'Starts with' pin reads the typographic pair (copy-8) and the stale-note pin follows the builder to Create (p-first-6) — the count was already 14, the floor said 13; 13 -> 14 // // 2026-09-22: new
   /* 2026-09-18, founder: Lex's episode list reloading from the network on every
      visit. Most of this suite is the three ways a cache goes subtly wrong. */
   "test/show-episodes-cache.test.js": 10,
@@ -496,7 +496,7 @@ const FLOORS = {
      stray tap cannot satisfy. Every one of those is one edit from its opposite,
      and the published privacy policy and Play declaration both now rest on them.
      A deleted test here is a false statement in a store submission. */
-  "test/data-deletion.test.js": 79, // NE-23: in native mode the deletion stops and purges the engine before the page's own purge (its private keys go, cp_engine_applied is the page's to clear), and an engine that refuses is not a clear device; 77 -> 79 // persist-6: Delete my data finds the token in the vault and empties it, a sync signs up into the vault only, and never refreshes or signs up against a vault it could not read; 68 -> 73 // audit round 2 (L5): the deletion as a transaction — refreshed token saved (persist-1 x2), in-flight sync gated and waited out (persist-8 x2), no cp_playlists/onboarding after the re-render (persist-2), shard cache cleared (persist-4), diagnostics forgotten (persist-5), device-only cost stated (persist-7); 60 -> 68 // 2026-09-22 audit: "Delete everything" is red under ui-v2 and the drawer item is not gold; 57 -> 58 // 2026-09-22 audit (theme J, R11): the foray_events queue is purged with everything else, a queue that will not clear is not called clear, a store with no queue is not a success, no status line speaks storage jargon or a count, every store the code opens sits in a deleted-or-kept ledger, and the policy says so; 51 -> 57
+  "test/data-deletion.test.js": 88, // audit round 3 (lane L1): app-1-2 single-flight sync and signup (x2), app-1-10 per-chunk markSynced, app-1-4 transient refresh keeps the account (x2), app-3-6 the retry after a local-incomplete run (x4); 79 -> 88 // NE-23: in native mode the deletion stops and purges the engine before the page's own purge (its private keys go, cp_engine_applied is the page's to clear), and an engine that refuses is not a clear device; 77 -> 79 // persist-6: Delete my data finds the token in the vault and empties it, a sync signs up into the vault only, and never refreshes or signs up against a vault it could not read; 68 -> 73 // audit round 2 (L5): the deletion as a transaction — refreshed token saved (persist-1 x2), in-flight sync gated and waited out (persist-8 x2), no cp_playlists/onboarding after the re-render (persist-2), shard cache cleared (persist-4), diagnostics forgotten (persist-5), device-only cost stated (persist-7); 60 -> 68 // 2026-09-22 audit: "Delete everything" is red under ui-v2 and the drawer item is not gold; 57 -> 58 // 2026-09-22 audit (theme J, R11): the foray_events queue is purged with everything else, a queue that will not clear is not called clear, a store with no queue is not a success, no status line speaks storage jargon or a count, every store the code opens sits in a deleted-or-kept ledger, and the policy says so; 51 -> 57
   /** The field record's surface (#264) — see the note beside the two `player/`
       halves above. */
   "test/diagnostics-surface.test.js": 24, // NE-26 (docs/native-engine-plan.md): Copy takes the merged record, one engine read per press, and shows it; opening repaints with it; a late merge never paints over a Clear; a failed merge falls back to the page's own; the clipboard is asked inside the tap (ClipboardItem with a promise); 19 -> 24
@@ -523,7 +523,7 @@ const FLOORS = {
      that a listener's drawer is byte-identical to one with no switch in it, and
      the ON half is a 90-second CPU burn behind two deliberate taps. Both are one
      edit from their opposite. */
-  "test/voice-probe-switch.test.js": 14,
+  "test/voice-probe-switch.test.js": 15, // audit round 3 (lane L1): app-3-11 one probe at a time; 14 -> 15
   "test/draft-forays-switch.test.js": 10,
   /* The standing gate on topic ids in `data/*.json`. Floored because the metric
      it protects is gameable in exactly one direction: a misspelled `food/bakin`
@@ -557,7 +557,7 @@ const FLOORS = {
      a nineteen-test suite; L4 added the one-radio-group cell (qa row 81) and L3
      the two "a rebuild must not throw focus out of the sheet" cells. Set to the
      post-merge count. */
-  "test/voice-settings.test.js": 24, // fix/narration-1x (2026-09-24): the Preview speaks at NARRATION_RATE, never the listener's speed; 22 -> 24
+  "test/voice-settings.test.js": 26, // audit round 3 (lane L1): app-3-10 the latest Preview and the latest list refresh win (x2); 24 -> 26 // fix/narration-1x (2026-09-24): the Preview speaks at NARRATION_RATE, never the listener's speed; 22 -> 24
   /* Theme F of the 2026-09-22 audit: tap targets sized by a RULE. Enumerates
      every control the audit measured below 44px and requires a 44px hit area
      by size or by the one `:where(...)::after` rule, checks that rule's shape,
@@ -778,7 +778,7 @@ const FLOORS = {
      a stale-cache note rather than hiding it. Client wiring only — see
      backend/test/showEpisodesStore.test.ts and ingestShowFeed.test.ts for
      the ingestion/storage side. */
-  "test/show-pages-3b-full-catalogue.test.js": 7,
+  "test/show-pages-3b-full-catalogue.test.js": 8, // audit round 3 (lane L1): data-integrity-4 the full-catalogue list in Family mode; 7 -> 8
 
   /* Issue #687: the show page's episode region has four states and ONE
      WRITER. Founder screenshot, 2026-09-14, with "Couldn't load this show's
@@ -1062,7 +1062,7 @@ const FLOORS = {
      or a history that counts a drive twice. */
   "test/engine-continuation.test.js": 6,
   "test/engine-developer-rows.test.js": 14, // NE-22d: the engine's four Developer rows in the drawer
-  "test/up-next-autoadvance.test.js": 20, // founder, 2026-09-24, reversing lane L3's question-9 default: a play from the page moves THAT row to the top and ⏭ drops only the skipped episode (+1: a refused play moves nothing); no wrap-around, previous = restart past the window (p-car-5); 11 -> 19 -> 20 // // 2026-09-22: rewritten for the continuous-playback ruling (on by default, Up Next first, then the chosen list, unplayable rows passed over); 6 -> 11
+  "test/up-next-autoadvance.test.js": 21, // audit round 3 (lane L1): app-1-9 the finished row leaves Up Next with the switch off; 20 -> 21 // founder, 2026-09-24, reversing lane L3's question-9 default: a play from the page moves THAT row to the top and ⏭ drops only the skipped episode (+1: a refused play moves nothing); no wrap-around, previous = restart past the window (p-car-5); 11 -> 19 -> 20 // // 2026-09-22: rewritten for the continuous-playback ruling (on by default, Up Next first, then the chosen list, unplayable rows passed over); 6 -> 11
   /* U-07's Interests page (docs/ui-transition-plan.md D6, kanban card
      t_1cb3688a). Floored for the same reason as up-next-queue.test.js: a
      wrong row set, a wrong slider range, or a drag that silently fails to
