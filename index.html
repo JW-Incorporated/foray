@@ -38,6 +38,11 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="4a">
+<!-- This page's deploy id. Committed as "unstamped"; the deploy build stamps it
+     (tools/ci/generate-manifest.mjs, next to sw.js's BUILD_ID) so app.js can
+     tell whether the worker's "4a updated" names the deploy it already runs
+     (round-3 audit, app-3-3). -->
+<meta name="foray-deploy-id" content="unstamped">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon-180.png">
 <!-- THE FIRST PAINT IS ALREADY THE DESIGN (round-2 audit, perf-5 / perf-1).

@@ -50,6 +50,19 @@ if (!pinnedDeployId && typeof document !== "undefined" && typeof document.queryS
     pinnedDeployId = metaPin.getAttribute("content") || null;
   }
 }
+/* THE DEPLOY THIS PAGE IS RUNNING (round-3 audit, app-3-3). The deploy build
+   stamps it into index.html's `<meta name="foray-deploy-id">` (committed as
+   "unstamped"; tools/ci/generate-manifest.mjs). The worker announces every
+   promotion to every open page as "generation-changed"; a page that already
+   loaded that deploy live is not "one version behind", and the message
+   handler below compares against this. null when it cannot be known (an
+   unstamped checkout, a stub document), which keeps the old behaviour. */
+let pageDeployId = null;
+if (typeof document !== "undefined" && typeof document.querySelector === "function") {
+  const metaDeploy = document.querySelector('meta[name="foray-deploy-id"]');
+  const content = metaDeploy && typeof metaDeploy.getAttribute === "function" ? metaDeploy.getAttribute("content") : null;
+  if (content && content !== "unstamped") pageDeployId = content;
+}
 
 const state = {
   session: null,
@@ -17347,6 +17360,13 @@ if ("serviceWorker" in navigator && shouldRegisterServiceWorker(window)) {
          may well be live: the notice goes up, the pin does not, or new code
          would be paired with the previous generation's data. A worker from
          before that field sends none, which keeps the old meaning (pin). */
+      /* "generation-changed" is broadcast to every open page on each
+         promotion (round-3 audit, app-3-3). A page that is not pinned and
+         already runs the announced deploy loaded it live and is current:
+         telling it "one version behind" was false after every deploy, and the
+         bar covers the Foray transport. A pinned page, or one that cannot
+         name its own deploy, is still told. */
+      if (msg.reason === "generation-changed" && !pinnedDeployId && pageDeployId && msg.deployId === pageDeployId) return;
       const adoptsPin = msg.reason === "stale-shell" && msg.pin !== false;
       if (adoptsPin && msg.deployId) pinnedDeployId = msg.deployId;
       /* FD-01: the web's pinned-generation path records the same fact the shell's

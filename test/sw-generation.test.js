@@ -1578,6 +1578,35 @@ test("app-3-5: a stale-shell that says pin:false shows the notice but does not p
   assert.equal(page.dataSourceNotes[0].version, "g1");
 });
 
+const DEPLOY_META = 'meta[name="foray-deploy-id"]';
+
+test("app-3-3: a page that already runs the announced deploy is not told it is a version behind", async () => {
+  /* The worker broadcasts generation-changed to every window on promotion. A
+     returning visitor's page usually loaded the new deploy live (network
+     first), so "one version behind" was false after every deploy, and the bar
+     covered the Foray transport. MUTATION: drop the generation-changed
+     early return in the message handler — the bar appears. */
+  const page = loadPage({ metas: { [DEPLOY_META]: "d2" } });
+  page.send({ source: "foray-sw", reason: "generation-changed", deployId: "d2" });
+  assert.equal(page.notice(), null);
+});
+
+test("app-3-3: a page on an older deploy, a pinned page, or one that cannot name its deploy is still told", async () => {
+  const older = loadPage({ metas: { [DEPLOY_META]: "d1" } });
+  older.send({ source: "foray-sw", reason: "generation-changed", deployId: "d2" });
+  assert.match(older.notice().innerHTML, /updated in the background/);
+
+  /* Pinned: its code is a retained generation's, whatever its document says. */
+  const pinned = loadPage({ stampedDeployId: "d1", metas: { [DEPLOY_META]: "d2" } });
+  pinned.send({ source: "foray-sw", reason: "generation-changed", deployId: "d2" });
+  assert.ok(pinned.notice(), "a pinned page is behind the announced deploy");
+
+  /* An unstamped checkout (or a document with no meta) keeps the old behaviour. */
+  const unstamped = loadPage({ metas: { [DEPLOY_META]: "unstamped" } });
+  unstamped.send({ source: "foray-sw", reason: "generation-changed", deployId: "unstamped" });
+  assert.ok(unstamped.notice());
+});
+
 test("the generation-changed message says something different and still offers the reload", async () => {
   const page = loadPage();
   page.send({ source: "foray-sw", reason: "generation-changed", deployId: "2" });

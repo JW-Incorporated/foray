@@ -186,7 +186,9 @@ self.addEventListener("install", (e) => {
      not save that load — it only delays the fix by one more visit. Given that
      this file exists to stop a stale-code load, taking effect a visit later is
      the wrong trade. The straddle it does create is handled: `activate` claims
-     the open pages and then tells them they are a version behind. */
+     the open pages and announces the new deploy id to them; each page compares
+     it with the deploy id its own index.html was stamped with, and only a page
+     that is really behind (or pinned) says so (round-3 audit, app-3-3). */
   e.waitUntil(precache().then(() => self.skipWaiting()));
 });
 
