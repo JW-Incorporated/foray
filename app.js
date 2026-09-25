@@ -1848,7 +1848,7 @@ function recordHistory(id) {
 }
 
 function rememberSeen(ids) {
-  const seen = lsGet("cp_seen", []).filter(id => !ids.includes(id)).concat(ids);
+  const seen = stringList(lsGet("cp_seen", [])).filter(id => !ids.includes(id)).concat(ids);
   lsSet("cp_seen", seen.slice(-SEEN_WINDOW));
 }
 
@@ -1893,11 +1893,14 @@ function branchChain(items, history, seen) {
 function buildCards({ reserve = [] } = {}) {
   const pool = poolFiltered();
   const history = new Set(pickedHistory());
-  const seen = new Set(lsGet("cp_seen", []));
+  /* stringList: a stored value of the wrong shape (older-build data, a
+     corrupt restore) threw here, inside init, on every launch (audit round 3,
+     app-3-13). */
+  const seen = new Set(stringList(lsGet("cp_seen", [])));
   const byBranch = {};
   pool.forEach(i => { (byBranch[branchOf(i)] = byBranch[branchOf(i)] || []).push(i); });
 
-  const recentBranches = lsGet("cp_recent_branches", []);
+  const recentBranches = stringList(lsGet("cp_recent_branches", []));
   const branches = Object.keys(byBranch)
     .map(b => ({
       b,
@@ -17213,6 +17216,9 @@ function setBootChrome(ready) {
 let markFirstPagePainted = () => {};
 const firstPagePainted = new Promise(resolve => { markFirstPagePainted = resolve; });
 
+/** What a boot that threw says (app-3-13); its Try again loads a fresh page. */
+const BOOT_FAILED_NOTE = "4a couldn't start.";
+
 /** What `#view` holds between app.js starting and the first `route()`. */
 const BOOT_LOADING_HTML = `<div class="page" data-boot-loading><p class="note">Loading 4a…</p></div>`;
 
@@ -17287,6 +17293,15 @@ async function init() {
      module: a hung IndexedDB costs the cache, never the paint.
      The bridge arrives with the player module, so that much is waited for
      here — with the documents already on the wire, which is the point. */
+  /* A THROW FROM HERE TO THE FIRST PAGE IS CAUGHT (audit round 3, app-3-13).
+     Only route() was wrapped: a throw in the directory bookkeeping,
+     loadInterests, buildCards or the ribbon rejected init() unhandled, and the
+     screen stayed on "Loading 4a…" for good -- ☰ and ↻ disabled, no Try again,
+     no hashchange, and no service worker (it waits on firstPagePainted). Now
+     the failure paints its own Try again (a fresh document), the wiring below
+     still runs, and the first page counts as painted either way. The block is
+     deliberately NOT re-indented, so this change stays a few lines. */
+  try {
   await waitForStorage();
   const directory = forayDirectoryBridge();
   if (directory && !pinnedDeployId) {
@@ -17346,7 +17361,6 @@ async function init() {
     console.error("first route failed", err);
     try { renderHome(); renderTabBar(); } catch (_) { /* nothing left to try; the wiring below still runs */ }
   }
-  markFirstPagePainted();
   /* THE RIBBON COMES BACK (founder, 2026-09-18: "When I come back to 4a after a
      day, the podcast I was listening to should still be in the now playing
      ribbon at the bottom.")
@@ -17366,6 +17380,16 @@ async function init() {
   bindShowPrefetch();
   logEvent("session_shown", { session_id: state.session.session_id });
   trySyncEvents();   // waits for storage to settle itself — see trySyncEvents
+  } catch (err) {
+    console.error("boot failed", err);
+    const failed = $("#view");
+    if (failed) {
+      failed.innerHTML = `<div class="page">${failedNoteHtml(BOOT_FAILED_NOTE)}</div>`;
+      bindRetry(failed, () => location.reload());
+    }
+  } finally {
+    markFirstPagePainted();
+  }
 
   /* FD-03, the other half: NOW ask the live origin whether there is a newer set.
      Fire-and-forget, deliberately after `route()` — the first paint is on

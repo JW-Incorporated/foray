@@ -961,3 +961,41 @@ test("app-1-6: #/playlist/gen-<leaf> resolves from the catalogue after a re-deal
   const root = m.state.taxonomy.nodes.find((n) => n.parent === null);
   assert.strictEqual(m.ctx.generatedPlaylistById(`gen-${root.id}`), null, "a root is a subject, not a generated playlist");
 });
+
+/* ==================================================================== */
+/* app-3-13: a throw in boot is a page with Try again, not a dead screen  */
+/* ==================================================================== */
+
+test("app-3-13: stored cp_seen / cp_recent_branches / cp_history of the wrong shape do not stop the boot", async () => {
+  /* `new Set({})` and `(5).includes` threw inside buildCards on every launch.
+     MUTATION: drop the stringList guard on cp_seen in buildCards -> the boot
+     never reaches Home; red. */
+  const m = mount({
+    fetchImpl: null,
+  });
+  // The mount's localStorage is its own; seed it before the boot reads it.
+  m.ctx.localStorage.setItem("cp_seen", JSON.stringify({ a: 1 }));
+  m.ctx.localStorage.setItem("cp_recent_branches", JSON.stringify(5));
+  m.ctx.localStorage.setItem("cp_history", JSON.stringify({ b: 2 }));
+  await m.booted();
+  assert.strictEqual(m.state.ready, true, "the boot stopped on a stored value of the wrong shape");
+  assert.ok(m.state.cardSlots.length > 0, "Home was dealt");
+  assert.doesNotMatch(m.view.innerHTML, /data-boot-loading|couldn't start/);
+});
+
+test("app-3-13: any throw between the documents and the first page paints Try again, binds the chrome, and counts the page as painted", async () => {
+  /* MUTATION: remove the try/catch around init's post-session body -> the
+     view stays "Loading 4a…" with ☰ disabled and no hashchange; red. */
+  const m = mount();
+  m.ctx.buildCards = () => { throw new TypeError("boom"); };
+  vm.runInContext("firstPagePainted.then(() => { globalThis.__painted = true; })", m.ctx);
+  for (let i = 0; i < 600 && !/couldn't start/.test(m.view.innerHTML); i++) await settle(1);
+  await settle(5);
+  assert.match(m.view.innerHTML, /4a couldn't start\./);
+  assert.ok(m.view.querySelector("[data-retry]"), "the failure offers Try again");
+  assert.doesNotMatch(m.view.innerHTML, /data-boot-loading/);
+  assert.strictEqual(m.menu.disabled, false, "☰ was left disabled");
+  assert.ok(m.menu.listeners("click") > 0, "☰ was never bound");
+  assert.ok((m.winListeners.get("hashchange") || []).length > 0, "no hashchange: no typed route can recover the page");
+  assert.strictEqual(m.ctx.__painted, true, "the service worker waits on a first page that never came");
+});
