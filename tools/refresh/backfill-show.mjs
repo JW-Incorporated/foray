@@ -58,7 +58,7 @@ import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { dirname, join, resolve as resolvePath } from "node:path";
 import { createRequire } from "node:module";
-import { audioFieldsFrom } from "./enclosure.mjs";
+import { audioFieldsFrom, durationMinutes } from "./enclosure.mjs";
 import { decodeEntities } from "./entities.mjs";
 import { UA } from "../segments/politeness.mjs";
 
@@ -71,18 +71,6 @@ const THROTTLE_MS = 1500;
 export const DEFAULT_NEWEST = 25;
 
 const text = (v) => (v == null ? null : typeof v === "object" ? (v["#text"] ?? null) : String(v));
-
-/** itunes:duration -> whole minutes. Same three shapes scan.mjs accepts. */
-export function normDuration(raw) {
-  if (raw == null) return null;
-  const s = String(raw).trim();
-  if (/^\d+$/.test(s)) return Math.round(Number(s) / 60);
-  const parts = s.split(":").map(Number);
-  if (parts.some(isNaN)) return null;
-  if (parts.length === 3) return Math.round(parts[0] * 60 + parts[1] + parts[2] / 60);
-  if (parts.length === 2) return Math.round(parts[0] + parts[1] / 60);
-  return null;
-}
 
 export class BackfillError extends Error {
   constructor(code, message) {
@@ -205,7 +193,7 @@ export function pendingRecord(show, it) {
       topics: show.taxonomy_node_ids || [],
       guid, title,
       release_date: pub.toISOString().slice(0, 10),
-      duration_min: normDuration(it["itunes:duration"]),
+      duration_min: durationMinutes(it["itunes:duration"]),   // one parser (arch-drift-5)
       duration_sec: audio.duration_sec,
       audio_url: audio.audio_url,
       audio_type: audio.audio_type,

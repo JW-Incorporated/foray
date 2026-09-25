@@ -21,7 +21,7 @@ import assert from "node:assert";
 import { readFileSync as _readSelfFile } from "node:fs";
 import {
   titleMatches, selectEpisodes, pendingRecord, resolveShows, parseArgs,
-  normDuration, BackfillError, DEFAULT_NEWEST,
+  BackfillError, DEFAULT_NEWEST,
   feedItems, buildPayload, resolveOutPath,
 } from "./backfill-show.mjs";
 
@@ -240,12 +240,15 @@ test("a tokened or non-audio enclosure is withheld with a reason rather than pub
 });
 
 test("duration parses all three itunes:duration spellings", () => {
-  // KILLED BY: deleting the `parts.length === 2` branch (mm:ss feeds read as null).
-  assert.equal(normDuration("01:10:53"), 71);
-  assert.equal(normDuration("23:20"), 23);
-  assert.equal(normDuration("3600"), 60);
-  assert.equal(normDuration("nonsense"), null);
-  assert.equal(normDuration(null), null);
+  // KILLED BY: deleting the MM:SS branch of enclosure.mjs durationSeconds (mm:ss feeds read as null).
+  // The minutes come from the ONE parser now (arch-drift-5); this pins what backfill writes.
+  const dur = (raw) => pendingRecord(show(), item({ "itunes:duration": raw })).record.duration_min;
+  assert.equal(dur("01:10:53"), 71);
+  assert.equal(dur("23:20"), 23);
+  assert.equal(dur("3600"), 60);
+  assert.equal(dur("1834.5"), 31, "decimal seconds, as the backend parses them");
+  assert.equal(dur("nonsense"), null);
+  assert.equal(dur(null), null);
 });
 
 // ------------------------------------------------------------ show resolution --
