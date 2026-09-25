@@ -2541,7 +2541,11 @@ function playlistSpine(p) {
 }
 
 function playlists() {
-  let all = lsGet("cp_playlists", null);
+  /* Through the pending-edit overlay (round-3 review, L1, app-1-1's
+     remainder): a playlist built, removed or played before hydration lands
+     shows at once, and lands on the durable list rather than over it. A FRESH
+     parse either way: this function backfills the records it returns. */
+  let all = pendingStoredEdits.has("cp_playlists") ? storedValue("cp_playlists", null) : lsGet("cp_playlists", null);
   let touched = false;
   if (all === null) {
     all = lsGet("cp_quests", []);   // migrate the old key once
@@ -2577,12 +2581,33 @@ function playlists() {
     if (hydratePlaylistParts(p, sources)) touched = true;
   }
   /* Deliberately not through savePlaylists(): a read must not be the thing that
-     enforces the 50 cap on a store that already holds more. */
-  if (touched) lsSet("cp_playlists", all);
+     enforces the 50 cap on a store that already holds more. And never before
+     hydration has answered: a read-path write then is exactly the early write
+     property 2 of durable-store.js keeps over the durable list for good
+     (offerHomeOnboarding: cp_playlists is not in memory before hydration). The
+     backfill is recomputed on every read, so nothing is lost by waiting. */
+  if (touched && !storageWaiting()) lsSet("cp_playlists", all);
   return all;
 }
 
 function savePlaylists(all) { return lsSet("cp_playlists", all.slice(0, 50).map(withMirror)); }
+
+/** Change the stored playlists by `fn` (list -> list), through editStored: now,
+    or over the hydrated store once it settles, never over it (app-1-1). `fn`
+    must be pure: it is re-run on every read of the overlay. A key never written
+    starts from the legacy cp_quests list, as playlists() does. Returns lsSet's
+    answer now, or true for a queued edit. */
+function editPlaylists(fn) {
+  return editStored("cp_playlists", null, (v) => {
+    let base = v;
+    if (base === null) {
+      const legacy = lsGet("cp_quests", []);
+      base = Array.isArray(legacy) ? legacy : [];
+    }
+    const list = Array.isArray(base) ? base.filter(x => x && typeof x === "object") : [];
+    return fn(list).slice(0, 50).map(withMirror);
+  });
+}
 
 /* ---------- Up Next (cp_queue) ----------
 
@@ -5630,9 +5655,9 @@ function sameEpisodeList(a, b) {
 }
 
 function touchPlaylistPlayed(id) {
-  const all = playlists();
-  const p = all.find(x => x.id === id);
-  if (p) { p.last_played_at = new Date().toISOString(); savePlaylists(all); }
+  if (!playlists().some(x => x.id === id)) return;
+  const at = new Date().toISOString();   // fixed once: the edit is re-run on every overlay read
+  editPlaylists(list => list.map(x => (x.id === id ? { ...x, last_played_at: at } : x)));
 }
 
 /* Honest rich/sparse/empty contract (product principle #1: an honest
@@ -5767,7 +5792,7 @@ function buildPlaylist(query) {
      rendered as "Playlist not found." — a dead end with no explanation. Pre-#276
      that was hard to reach; taking a full store from ~33 KB to ~168 KB is what
      makes it worth handling. */
-  if (!savePlaylists([playlist, ...playlists()])) {
+  if (!editPlaylists(list => [playlist, ...list.filter(x => x.id !== playlist.id)])) {
     return { status: "unsaved", suggestions: [] };
   }
   return { status, playlist };
@@ -10610,7 +10635,7 @@ function renderPlaylistDetail(id) {
     </div>`;
 
   if (!p.isSubject && !p.isGenerated) $("#pl-remove")?.addEventListener("click", () => {
-    savePlaylists(playlists().filter(x => x.id !== p.id));
+    editPlaylists(list => list.filter(x => x.id !== p.id));
     logEvent("playlist_removed", { playlist_id: p.id });
     leaveRemovedPlaylist();
   });
@@ -11837,7 +11862,10 @@ const FB_CHIPS = [
     "heard this already" say nothing about the subject at all. */
 const TOPIC_REASONS = new Set(["Not my subject", "Too surface-level", "Too in-the-weeds"]);
 
-function forayFeedback() { return lsGet("cp_foray_feedback", {}); }
+/* Read through the pending-edit overlay and written through editStored
+   (round-3 review, L1): a thumb given before hydration lands shows at once and
+   lands on the durable votes rather than replacing them. Read-only. */
+function forayFeedback() { return plainObject(storedValue("cp_foray_feedback", {})); }
 
 function feedbackFor(segmentId) { return forayFeedback()[segmentId] || null; }
 
@@ -11860,9 +11888,13 @@ function setFeedback(entry, direction, { reasons = [], note = "" } = {}) {
      up, clear, up drove a topic to 1.0 in about thirteen taps. The previous
      vote's nudge is undone in the same step that applies the new one. */
   const undo = -voteNudge(all[segId]);
-  if (!direction) delete all[segId];
-  else all[segId] = { direction, reasons, note, ts: new Date().toISOString() };
-  lsSet("cp_foray_feedback", all);
+  const vote = direction ? { direction, reasons, note, ts: new Date().toISOString() } : null;
+  editStored("cp_foray_feedback", {}, (v) => {
+    const next = { ...plainObject(v) };
+    if (vote) next[segId] = vote;
+    else delete next[segId];
+    return next;
+  });
 
   if (direction) {
     logEvent("thumbs", {

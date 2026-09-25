@@ -727,6 +727,45 @@ test("app-1-1: a star, an Up Next add, a play and a follow before a slow hydrati
   assert.strictEqual(m.ctx.isSaved("a"), true, "the durable star reads back");
 });
 
+test("app-1-1 (round-3 review, L1): a playlist built, a playlist played and a Foray thumb before a slow hydration land ON the durable rows", async () => {
+  /* The first app-1-1 fix covered stars, Up Next, History and follows; the
+     playlist writers (build, remove, touch) and the Foray thumb still read the
+     unhydrated store and lsSet over it, and property 2 kept that write over the
+     durable list for good. MUTATION: make buildPlaylist call
+     savePlaylists([playlist, ...playlists()]) again (or setFeedback lsSet its
+     read-modify-write) -> the durable playlist (or vote) is gone. */
+  const durable = { id: "p-durable", title: "Durable", query: "durable", created: "2026-09-01T00:00:00.000Z", items: [] };
+  const other = { id: "p-other", title: "Other", query: "other", created: "2026-09-02T00:00:00.000Z", items: [] };
+  const { store, tier } = await storeOver({
+    idb: {
+      cp_playlists: JSON.stringify([durable, other]),
+      cp_foray_feedback: JSON.stringify({ "seg-durable": { direction: "up", reasons: [], note: "", ts: "2026-09-01T00:00:00.000Z" } }),
+    },
+  });
+  const m = mount({ store, storageWaitMs: 20, ceilingMs: 60000 });
+  await m.booted();
+  assert.strictEqual(m.ctx.storageWaiting(), true, "premise: the page painted and hydration has not landed");
+  const built = m.ctx.buildPlaylist("history");
+  assert.ok(built.playlist, `premise: the build made a playlist (${built.status})`);
+  assert.ok(m.ctx.playlists().some((p) => p.id === built.playlist.id), "the new playlist shows at once, from the overlay");
+  m.ctx.setFeedback({ segment_id: "seg-new", topic: null, item_id: null }, "down", { reasons: ["Bad audio quality"] });
+  assert.strictEqual(m.ctx.feedbackFor("seg-new").direction, "down", "the thumb paints at once");
+  assert.strictEqual(store.getItem("cp_playlists"), null, "nothing was written over the unhydrated store");
+
+  tier.release();
+  await store.hydrate();
+  await settle(20);
+  await store.flush();
+  const ids = JSON.parse(store.getItem("cp_playlists")).map((p) => p.id);
+  assert.deepStrictEqual(ids, [built.playlist.id, "p-durable", "p-other"], `playlists after hydration: ${ids}`);
+  const votes = JSON.parse(store.getItem("cp_foray_feedback"));
+  assert.ok(votes["seg-durable"] && votes["seg-new"], `votes after hydration: ${Object.keys(votes)}`);
+
+  // After settle, a play and a removal are plain edits of the durable list.
+  m.ctx.touchPlaylistPlayed("p-other");
+  assert.ok(JSON.parse(store.getItem("cp_playlists")).find((p) => p.id === "p-other").last_played_at);
+});
+
 test("app-1-1: an un-star before hydration removes the durable row it names, and only that one", async () => {
   /* MUTATION: resolve the toggle against the stored value at settle time
      (flip, not the intent the tap painted) -> the tapped row survives; red. */
