@@ -67,6 +67,11 @@ final class EngineParityWrapperTests: XCTestCase {
     func testDeckEpisodeFamily() { assertParityFamily("deck-episode", requireRunner: true) }
     func testManagerEpisodeFamily() { assertParityFamily("manager-episode", requireRunner: true) }
 
+    /// NE-28s: the Foray seam policies as the app links them.
+    func testInterludeFamily() { assertParityFamily("interlude", requireRunner: true) }
+    func testSeekPolicyFamily() { assertParityFamily("seek-policy", requireRunner: true) }
+    func testOutpointFamily() { assertParityFamily("outpoint", requireRunner: true) }
+
     /// Every family in manifest.json, including any recorded after this file
     /// was written: executed or owed, nothing stale, nothing dropped.
     func testEveryManifestFamilyIsExecutedOrPending() throws {
