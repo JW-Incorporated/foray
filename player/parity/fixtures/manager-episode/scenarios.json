@@ -838,66 +838,6 @@
       }
     },
     {
-      "id": "manager-episode/only-a-known-car-route-resumes",
-      "covers": ["queue-manager::auto-resume happens only for a route already known as a car"],
-      "note": "Corner case #13: headphones reappearing never start audio; a route already seen as a car does.",
-      "setup": { "target": "manager" },
-      "steps": [
-        { "call": "loadQueue", "args": [[{ "$ep": ["a"] }]] },
-        { "call": "play", "args": [0] },
-        { "session": "routeLost", "routeName": "Some Headphones" },
-        { "session": "routeAvailable", "routeName": "Some Headphones" },
-        { "checkpoint": "headphones" },
-        { "session": "routeLost", "routeName": "Civic", "isCarRoute": true },
-        { "session": "routeAvailable", "routeName": "Civic" },
-        { "checkpoint": "car" }
-      ],
-      "expect": {
-        "checkpoints": [
-          {
-            "inInterlude": false,
-            "inSeamGap": false,
-            "index": 0,
-            "name": "headphones",
-            "ops": ["load:a@0", "rate:1", "play", "store.save:a@0", "pause"],
-            "playhead": "a",
-            "rate": 1,
-            "state": "interrupted"
-          },
-          {
-            "inInterlude": false,
-            "inSeamGap": false,
-            "index": 0,
-            "name": "car",
-            "ops": ["load:a@0", "rate:1", "play"],
-            "playhead": "a",
-            "rate": 1,
-            "state": "playing"
-          },
-          {
-            "inInterlude": false,
-            "inSeamGap": false,
-            "index": 0,
-            "name": "end",
-            "ops": [],
-            "playhead": "a",
-            "rate": 1,
-            "state": "playing"
-          }
-        ],
-        "ops": [
-          "load:a@0",
-          "rate:1",
-          "play",
-          "store.save:a@0",
-          "pause",
-          "load:a@0",
-          "rate:1",
-          "play"
-        ]
-      }
-    },
-    {
       "id": "manager-episode/a-lost-route-is-not-resumed-by-a-later-call",
       "covers": [
         "queue-manager::ROUND 2 review: a ROUTE LOSS is never resumed by a later call's should-resume (corner case #13)"

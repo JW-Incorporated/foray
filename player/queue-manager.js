@@ -9,7 +9,9 @@
      3. interpreting every PlayerEffect into a backend call
      4. the 15s position timer, which the reducer explicitly does not model
      5. cold-launch restore, before any network (corner case #15)
-     6. route policy (auto-resume only on known car routes, corner case #13)
+     6. route policy (corner case #13: a lost route pauses; on this web and
+        Android path reconnecting never resumes, audit round 3 player-core-10 —
+        the native iOS engine owns its own route policy)
      7. the single-instance invariant (corner case #19)
 
    Nothing here mutates player state directly. Every transition goes through
@@ -417,7 +419,6 @@ export class PlayerQueueManager {
     this.queue = [];
     this.currentIndex = -1;
     this._timer = null;
-    this._knownCarRoutes = new Set();
     this._forceNextOffset = null;
     /** A start position the SURFACE asked for, in the source's own seconds —
         `play(index, { startOffset })`. Audit round 2 (races-1, p-impatient-1):
@@ -454,8 +455,8 @@ export class PlayerQueueManager {
         2 review). Corner case #13 says a lost route never comes back on its
         own; since 2026-09-23 the paused app keeps its session, so iOS can send
         `shouldResume` at the end of a LATER call or Siri, and without this the
-        phone speaker in a parked car would start talking. Only a press, or a
-        known car route reappearing, clears it. */
+        phone speaker in a parked car would start talking. Only a press clears
+        it: a route reappearing never resumes on this path (player-core-10). */
     this._pausedByRoute = false;
     // Two distinct notions of "where we are", conflated in the Swift:
     //   currentIndex  what is actually LOADED — savePosition writes against it
@@ -1097,11 +1098,16 @@ export class PlayerQueueManager {
     }
   }
 
-  /** Corner case #13. The reducer never auto-resumes; that policy lives here.
-      A route reappearing only resumes if we have seen it before as a car route
-      — otherwise plugging in headphones would blast audio unasked. */
-  async routeChanged({ oldDeviceUnavailable, routeName = null, isCarRoute = false }) {
-    if (isCarRoute && routeName) this._knownCarRoutes.add(routeName);
+  /** Corner case #13. A lost route pauses. RECONNECTING NEVER RESUMES on this
+      path (audit round 3, player-core-10; founder Q5 default). A known-car-route
+      auto-resume used to live here, but the only production caller
+      (`client.js` `onNativeSession`) reports route LOSS alone, with no name
+      and no car flag, so the set it read was never filled and the branch never
+      ran — and it would have resumed a pause the listener made themselves. The
+      native iOS engine owns route policy (EngineCore's `knownCarRoutes`, pinned
+      by its own XCTests). `routeName`/`isCarRoute` are accepted and ignored,
+      so an older caller is not an error. */
+  async routeChanged({ oldDeviceUnavailable }) {
     // Losing the output device mid-beat is not the beat's business to finish:
     // the next thing that happens is a pause, and a beat that outlived it would
     // start audio into a dead route the moment the timer fired. A route
@@ -1113,15 +1119,6 @@ export class PlayerQueueManager {
       await this._transport("routeLost", () => this._handle(E.routeChanged(true)));
     } else {
       await this._handle(E.routeChanged(false));
-    }
-
-    if (!oldDeviceUnavailable && routeName && this._knownCarRoutes.has(routeName)) {
-      const item = this._currentItem();
-      if (item && this.state.type === "interrupted" && this.state.wasPlaying) {
-        this._emit(`route.autoResume.knownCar=${routeName}`);
-        this._pausedByRoute = false;
-        await this._handle(E.play(refOf(item)));
-      }
     }
   }
 

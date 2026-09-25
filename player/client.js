@@ -642,7 +642,8 @@ storageReady.then((hydrated) => {
  *     goes away.
  *   - `routeChange` / `old-device-gone` is the car switched off or headphones
  *     out: `manager.routeChanged`, corner case #13, which pauses. It can only
- *     stop audio, never start it.
+ *     stop audio, never start it: reconnecting never resumes on this path
+ *     (audit round 3, player-core-10); the native engine owns route policy.
  *   - `interruptionBegan`, `foreground` and `mediaServicesReset` RECONCILE
  *     rather than command. These can be delivered LATE — a suspended page
  *     handles them when it wakes (`lagMs` in the record measures it) — and an

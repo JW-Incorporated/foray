@@ -331,7 +331,7 @@
     "manager-episode": {
       "files": {
         "player/parity/fixtures/manager-episode/last-episode-row.json": "a21f5bf2c1cc037c4d84285d9d3dbb9f6ad0b5b87a6c3f36c8e2943cfb5fa454",
-        "player/parity/fixtures/manager-episode/scenarios.json": "26cd0da639b02fe1666e190ab0378c10262d2ec98593dd5efd0fd9941d8af724"
+        "player/parity/fixtures/manager-episode/scenarios.json": "8f558039215249b53983d8d3b051d6092c3e45cb76d22f5734ad37a086e64c4b"
       },
       "ids": [
         "manager-episode/last-episode-row-full-snapshot",
@@ -352,7 +352,6 @@
         "manager-episode/a-listeners-resume-does-not-step-back",
         "manager-episode/interruption-step-back-stops-at-the-in-point",
         "manager-episode/a-lost-route-pauses",
-        "manager-episode/only-a-known-car-route-resumes",
         "manager-episode/a-lost-route-is-not-resumed-by-a-later-call",
         "manager-episode/a-listeners-pause-is-not-resumed-by-a-call",
         "manager-episode/a-foreground-reconcile-is-not-resumable",
