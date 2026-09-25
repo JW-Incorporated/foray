@@ -7032,12 +7032,10 @@ function nowMs() {
 const SHOW_INDEX_PATH = "data/show-index.tsv";
 let showIndex = null;          // { keys, rows } once decoded
 let showIndexPromise = null;   // the in-flight load, so N focuses cost one fetch
-let showIndexFetchCount = 0;   // test-visible: the index is fetched at most once
 
 function loadShowIndex() {
   if (showIndex) return Promise.resolve(showIndex);
   if (showIndexPromise) return showIndexPromise;
-  showIndexFetchCount++;
   showIndexPromise = (async () => {
     try {
       /* BOUNDED (audit round 2, states-4): a hung fetch here never reached the
@@ -8618,7 +8616,9 @@ function episodeDedupScopes(ep) {
   return out.length ? out : [""];
 }
 
-/** Dedup key shared by both tiers. `guid` when the row has one — the closest
+/* The dedup keys shared by both tiers (`episodeDedupKeys` below; the single-key
+    `episodeDedupKey` it grew out of had no caller and was deleted in audit round
+    3, app-2-15). `guid` when the row has one — the closest
     thing to a stable episode identity either side supplies — falling back to
     the normalised title. BOTH forms are scoped by the show, and the guid form
     is scoped for a reason that is not symmetry:
@@ -8633,12 +8633,6 @@ function episodeDedupScopes(ep) {
     Show was already part of the title key, for the older version of the same
     problem: episode titles collide hard across shows ("Episode 1",
     "Introduction"). */
-function episodeDedupKey(ep) {
-  const guid = ep && ep.guid ? String(ep.guid).trim() : "";
-  const scope = episodeDedupScopes(ep)[0];
-  if (guid) return "g:" + scope + "|" + guid;
-  return "t:" + normaliseShowTitle(ep && ep.title) + "|" + scope;
-}
 
 /** EVERY key a row can be recognised by, because one is never enough here, and
     two rows are the same episode when their key SETS INTERSECT.

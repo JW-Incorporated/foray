@@ -135,3 +135,17 @@ test("app-2-14: a timed-out playerBridge wait removes its listener and its timer
   assert.ok(![...m.timers.values()].some((t) => t.ms === wait), "the timeout is cleared once the player arrived");
 });
 
+
+/* ---------- app-2-15: no dead search helpers ---------------------------------- */
+
+test("app-2-15: episodeDedupKey and showIndexFetchCount are gone from the code", () => {
+  /* Both suggested behaviour that no longer existed: a single-key dedup nothing
+     called (everything uses episodeDedupKeys) and a "test-visible" fetch counter
+     no test read. Comments are stripped first — prose that records the deletion
+     is not a code path.
+     MUTATION: restore either declaration — red. */
+  const code = SRC.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/(^|[^:/])\/\/[^\n]*/g, "$1");
+  assert.ok(!/\bepisodeDedupKey\b/.test(code), "episodeDedupKey has no caller");
+  assert.ok(!/\bshowIndexFetchCount\b/.test(code), "showIndexFetchCount has no reader");
+  assert.match(code, /function episodeDedupKeys\(/, "the live helper stays");
+});
