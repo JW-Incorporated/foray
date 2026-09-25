@@ -102,7 +102,7 @@ function manifestFor(deployId, filesMap) {
  * retained generation caches (as if an earlier install/activate already ran);
  * `pointer` pre-populates which of them is current.
  */
-function loadWorker({ network, generations = {}, pointer = null, windows = [] } = {}) {
+function loadWorker({ network, generations = {}, pointer = null, windows = [], otherCaches = {} } = {}) {
   const listeners = {};
   const timers = [];
   const posted = [];
@@ -126,6 +126,10 @@ function loadWorker({ network, generations = {}, pointer = null, windows = [] } 
     for (const [url, body] of Object.entries(files)) {
       bucket(name).set(abs(url), { body, status: 200 });
     }
+  }
+  /* Caches this worker does not own, by exact name (app-3-4). */
+  for (const [name, files] of Object.entries(otherCaches)) {
+    for (const [url, body] of Object.entries(files)) bucket(name).set(abs(url), { body, status: 200 });
   }
   const POINTER_KEY = "https://foray.invalid/__generation-pointer__";
   if (pointer) {
@@ -604,6 +608,34 @@ test("PROMOTION ORDERING: the pending marker survives a failed pointer write, so
 });
 
 /* --------------------------------------------------- retention and rollback */
+
+test("app-3-4: activate deletes only this worker's own caches, never the app's shard cache or a neighbour's", async () => {
+  /* CacheStorage is per-origin, not per-scope. activate used to delete every
+     name that was not the pointer, the pending marker or a kept generation,
+     which wiped app.js's own Shows-search shard tier (foray-shows-index-v1) on
+     every deploy, and any other site's caches on the same github.io origin.
+     MUTATION: go back to `k !== POINTER_CACHE && k !== PENDING_CACHE &&
+     !keep.has(k)` — both foreign caches are deleted. */
+  const filesB = { "app.js": "APP@B" };
+  const h = loadWorker({
+    generations: { "A": { "app.js": "APP@A" }, "older": { "app.js": "APP@older" } },
+    pointer: "A",
+    otherCaches: {
+      "foray-shows-index-v1": { "api/shows/index/shards/ab.json": "[]" },
+      "someone-else": { "https://jw-incorporated.github.io/other-site/x": "theirs" },
+      "foray-v4": { "app.js": "APP@v4" },
+    },
+    network: networkFor(manifestFor("B", filesB), filesB),
+  });
+  await h.lifecycle("install");
+  await h.lifecycle("activate");
+  const names = h.cacheNames();
+  assert.ok(names.includes("foray-shows-index-v1"), "the app's own shard cache survives a deploy");
+  assert.ok(names.includes("someone-else"), "a cache this worker never made is not its to delete");
+  assert.ok(!names.includes("foray-v4"), "a named legacy cache of this worker's own is still cleaned up");
+  assert.ok(!names.includes("foray-gen-older"), "an aged-out generation is still deleted");
+  assert.deepEqual(names.filter((k) => k.startsWith("foray-gen-")).sort(), ["foray-gen-A", "foray-gen-B"]);
+});
 
 test("retention keeps exactly the current and previous generation, deletes older", async () => {
   const filesB = { "app.js": "APP@B" };

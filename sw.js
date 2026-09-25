@@ -135,6 +135,10 @@ const CACHE_PREFIX = "foray-gen-";
 const BUILD_ID = "unstamped";
 const POINTER_CACHE = "foray-pointer";
 const PENDING_CACHE = "foray-pending";
+/* The single-bucket caches of this worker's v1-v5 (cache-first) era, by name.
+   activate deletes these and older `foray-gen-*` generations, and nothing
+   else — see activate. */
+const LEGACY_CACHES = ["foray-v1", "foray-v2", "foray-v3", "foray-v4", "foray-v5"];
 /* Cache keys are Requests/URLs, so a plain string needs a URL of its own to be
    stored under. Neither of these is ever fetched — they exist only as cache
    keys for a one-line Response body. */
@@ -336,15 +340,19 @@ self.addEventListener("activate", (e) => {
        promotion retryable on the next activate instead of silently stuck. */
     await pendingCache.delete(PENDING_KEY);
 
-    /* Bounded retention: current + previous. Anything older, and any
-       non-generation cache name (a prior architecture's leftovers), is
-       deleted. */
+    /* Bounded retention: current + previous. Older generations, and the
+       caches this worker's own earlier architectures left (LEGACY_CACHES), are
+       deleted. NOTHING ELSE IS (round-3 audit, app-3-4): CacheStorage is
+       per-origin, not per-scope, so a name this worker does not own may be the
+       app's own Shows-search shard cache (`foray-shows-index-v1`, app.js) or
+       another site's on the same github.io origin. */
     const keep = new Set([CACHE_PREFIX + newDeployId]);
     if (previousDeployId && previousDeployId !== newDeployId) {
       keep.add(CACHE_PREFIX + previousDeployId);
     }
     const keys = await caches.keys();
-    const stale = keys.filter((k) => k !== POINTER_CACHE && k !== PENDING_CACHE && !keep.has(k));
+    const stale = keys.filter((k) =>
+      (k.startsWith(CACHE_PREFIX) && !keep.has(k)) || LEGACY_CACHES.includes(k));
     await Promise.all(stale.map((k) => caches.delete(k)));
     await purgeApiEntries([...keep]);
 
@@ -377,6 +385,7 @@ const API_PATH = new URL("api/", self.location.href).pathname;
 function isApi(url) {
   return url.pathname.startsWith(API_PATH);
 }
+
 
 /* Workers before round 3 cached API answers into the generation caches. The
    ones still retained are scrubbed on activate, so a listener who searched
