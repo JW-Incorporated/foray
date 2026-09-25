@@ -17,10 +17,11 @@ import { deepenActs } from "./deepenActs";
 import { sourceBeats, summarizeSourcing } from "./sourceBeats";
 import { summarizeSeeding } from "./spineSeeding";
 import { createDigestAudioSourceResolver, type AudioSourceResolver } from "./audioSourceLookup";
-import { createActGate, narrationActConcurrency, writeNarration } from "./writeNarration";
+import { createActGate, narrationActConcurrency, showsHeardBeforeEachAct, writeNarration } from "./writeNarration";
 import { verifiedPageSummaries } from "./synthesisVerify";
 import { PrefetchingEvidenceGatherer } from "./evidencePrefetch";
-import { createEvidenceGatherer, type EvidenceGatherer } from "./gatherEvidence";
+import { createEvidenceGatherer, findDigestForItem, titlesForItem, type EvidenceGatherer } from "./gatherEvidence";
+import { loadCatalogueData } from "./catalogueLookup";
 import { ForayStitcher } from "./stitchForay";
 import {
   finalizeForay,
@@ -1574,6 +1575,15 @@ export async function runForayPipeline(
      reports its error when it reaches it. Declared BEFORE the acts start
      because F-97 reads it from inside them too (`ground`). */
   const settledActs: Array<WrittenAct | undefined> = [];
+  /* gen-8 (round-3 audit): Q-09's cross-act show memory. Every act gets the
+     shows introduced in the acts before it, computed once from sourcing, so a
+     show named in act 1 is not re-introduced by name in act 3. The show is
+     named the way the act's own clip brief names it (`titlesForClip`). */
+  const showCatalogue = loadCatalogueData();
+  const showsBeforeAct = showsHeardBeforeEachAct(sourced.acts, (tape) => {
+    const titles = titlesForItem(tape.itemId, showCatalogue, findDigestForItem(tape.itemId, archive, showCatalogue));
+    return titles?.showTitle ?? sourced.newSegmentSources.find((s) => s.id === tape.itemId)?.show ?? "";
+  });
   const narrations: Array<Promise<WrittenAct>> = sourced.acts.map((act, i) => {
     const p = gate.run(() =>
       stage(
@@ -1605,7 +1615,8 @@ export async function runForayPipeline(
                  the acts that have already landed when THIS act starts. With
                  `actConcurrency` acts starting together the first wave sees
                  none; a later act's thesis seam may rest on them. */
-              ground: () => verifiedPageSummaries(settledActs)
+              ground: () => verifiedPageSummaries(settledActs),
+              showsIntroduced: [showsBeforeAct[i] ?? []]
             },
             spine.voice,
             ctx
