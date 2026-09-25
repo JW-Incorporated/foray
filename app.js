@@ -446,6 +446,11 @@ function apiUrl(path) {
   return `${API_ORIGIN}/${String(path).replace(/^\/+/, "")}`;
 }
 
+/** One auth call, answered as `{ ok, status, body }` (audit round 3, app-1-4).
+    It used to answer null for EVERYTHING that was not a 2xx, so "this refresh
+    token is dead" (a 400 invalid_grant) and "the token endpoint hiccupped" (a
+    429, a 5xx, a timeout) looked the same -- and the second one signed the
+    device up as a new user. `status` is 0 when no answer arrived at all. */
 async function sbAuth(path, body) {
   try {
     const res = await fetch(SB_URL + path, {
@@ -453,8 +458,23 @@ async function sbAuth(path, body) {
       headers: { apikey: SB_KEY, "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
-    return res.ok ? await res.json() : null;
-  } catch (_) { return null; }
+    let parsed = null;
+    try { parsed = await res.json(); } catch (_) { parsed = null; }
+    return { ok: Boolean(res.ok), status: Number(res.status) || 0, body: parsed };
+  } catch (_) { return { ok: false, status: 0, body: null }; }
+}
+
+/** Did a refresh fail because the refresh token itself is dead? Only then may
+    a sync give up on the account and sign up a new one. GoTrue answers a dead
+    token with 400 (401 on some versions) and `error: "invalid_grant"` or
+    `error_code: "refresh_token_not_found"`. Anything else -- a 429, a 5xx, no
+    answer, a body it did not recognise -- is transient: keep the account and
+    let the queued rows retry. */
+const DEAD_REFRESH_CODES = new Set(["invalid_grant", "refresh_token_not_found"]);
+function refreshTokenDead(r) {
+  if (!r || (r.status !== 400 && r.status !== 401)) return false;
+  const b = r.body && typeof r.body === "object" ? r.body : {};
+  return [b.error, b.error_code, b.code].some(c => typeof c === "string" && DEAD_REFRESH_CODES.has(c));
 }
 
 /** Can a new `cp_sb_session` be kept? Asks the durable store (`canKeep`); a
@@ -497,21 +517,26 @@ async function ensureAnonSessionOnce(epoch) {
      failed to read. The events wait in their queue for a launch that can. */
   if (!sessionKeepable()) return null;
   if (s && s.refresh_token) {
-    const r = await sbAuth("/auth/v1/token?grant_type=refresh_token", { refresh_token: s.refresh_token });
+    const res = await sbAuth("/auth/v1/token?grant_type=refresh_token", { refresh_token: s.refresh_token });
     /* Asked again AFTER the await: a refresh that was already in flight when
        Delete was tapped must not write the old account's token back onto a
        device the deletion emptied (persist-8). */
     if (syncOutlived(epoch)) return null;
+    const r = res.ok ? res.body : null;
     if (r && r.access_token) {
-      s = { user_id: r.user.id, access_token: r.access_token, refresh_token: r.refresh_token, expires_at: r.expires_at || now + 3600 };
+      s = { user_id: (r.user && r.user.id) || s.user_id, access_token: r.access_token, refresh_token: r.refresh_token, expires_at: r.expires_at || now + 3600 };
       lsSet("cp_sb_session", s);
       return s;
     }
+    /* A transient failure keeps the account (app-1-4): a new user here would
+       split the listener's history across two accounts for good. */
+    if (!refreshTokenDead(res)) return null;
   }
   if (syncOutlived(epoch)) return null;
-  const r = await sbAuth("/auth/v1/signup", {});
+  const res = await sbAuth("/auth/v1/signup", {});
   if (syncOutlived(epoch)) return null;
-  if (r && r.access_token) {
+  const r = res.ok ? res.body : null;
+  if (r && r.access_token && r.user && r.user.id) {
     s = { user_id: r.user.id, access_token: r.access_token, refresh_token: r.refresh_token, expires_at: r.expires_at || now + 3600 };
     lsSet("cp_sb_session", s);
     return s;
@@ -14214,7 +14239,8 @@ async function existingAnonSession() {
   if (!s || !s.access_token || !s.user_id) return null;
   if (s.expires_at && s.expires_at - 60 > now) return s;
   if (s.refresh_token) {
-    const r = await sbAuth("/auth/v1/token?grant_type=refresh_token", { refresh_token: s.refresh_token });
+    const res = await sbAuth("/auth/v1/token?grant_type=refresh_token", { refresh_token: s.refresh_token });
+    const r = res.ok ? res.body : null;
     if (r && r.access_token) {
       /* `r.user.id` is not assumed to exist. A refresh response without a `user`
          object is not a shape we have seen, but reading through it would throw a

@@ -2093,3 +2093,41 @@ test("app-1-10: a backlog over 500 rows whose second chunk fails re-sends only w
   assert.ok(!sent.slice(1000).includes("ep-0"), "chunk 1 was sent again");
   assert.deepStrictEqual(await queue.unsynced(), []);
 });
+
+test("app-1-4: a refresh that fails TRANSIENTLY keeps the account — no signup, the token untouched, the rows wait", async () => {
+  /* sbAuth answered null for every non-2xx and every network error, so a 503
+     from the token endpoint signed the device up as a new user and split its
+     history across two accounts. MUTATION: drop `if (!refreshTokenDead(res))
+     return null;` -> a signup goes out; red. */
+  for (const answer of [{ status: 503 }, { status: 429 }, new Error("Failed to fetch"), { status: 400, json: { error: "something_else" } }]) {
+    const { ctx, log } = await mount({
+      seed: { cp_sb_session: sessionRow({ expired: true }), cp_interests: "{}" },
+      events: QUEUED,
+      reply: (url) => (/\/auth\/v1\/token/.test(url) ? answer
+        : /\/auth\/v1\/signup/.test(url) ? { status: 200, json: { access_token: "at-new", refresh_token: "rt-new", user: { id: "uid-new" } } }
+          : { status: 201 }),
+    });
+    const label = answer instanceof Error ? "a network error" : `a ${answer.status}`;
+    assert.strictEqual(await ctx.ensureAnonSession(), null, `${label} still produced a session`);
+    assert.ok(!log.some((e) => e.kind === "fetch" && /\/auth\/v1\/signup/.test(e.url)), `${label} signed up a new account`);
+    assert.strictEqual(JSON.parse(ctx.localStorage.getItem("cp_sb_session")).user_id, "uid-abc");
+    await ctx.trySyncEvents();
+    assert.strictEqual(eventPosts(log).length, 0, "nothing is posted without the account");
+  }
+});
+
+test("app-1-4: a refresh token the server calls dead (400 invalid_grant / refresh_token_not_found) is replaced by a new account", async () => {
+  /* MUTATION: never sign up after a refresh failure -> a device whose token is
+     truly gone never syncs again; red. */
+  for (const body of [{ error: "invalid_grant", error_description: "Invalid Refresh Token" }, { code: 400, error_code: "refresh_token_not_found" }]) {
+    const { ctx, log } = await mount({
+      seed: { cp_sb_session: sessionRow({ expired: true }), cp_interests: "{}" },
+      reply: (url) => (/\/auth\/v1\/token/.test(url) ? { status: 400, json: body }
+        : /\/auth\/v1\/signup/.test(url) ? { status: 200, json: { access_token: "at-new", refresh_token: "rt-new", expires_at: 4102444800, user: { id: "uid-new" } } }
+          : { status: 201 }),
+    });
+    const s = await ctx.ensureAnonSession();
+    assert.strictEqual(s && s.user_id, "uid-new", JSON.stringify(body));
+    assert.strictEqual(log.filter((e) => e.kind === "fetch" && /\/auth\/v1\/signup/.test(e.url)).length, 1);
+  }
+});
