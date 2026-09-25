@@ -3147,46 +3147,20 @@ test("ROUND 2 review: the element's own unexplained pause (a call on an awake pa
   await m.interruptionEnded(true);
   assert.equal(m.state.type, "playing");
 });
+
 /* ---------- audit round 3: every await re-checks who owns the player ---------- */
 
-test("a skip's load that a newer skip already replaced is dropped, not run after it (player-core-9)", async () => {
-  /* Two skips from a playing synth line: the first skip's pausePlayback awaits
-     the bridge, the second's loadItem(D) runs meanwhile, and the first's
-     loadItem(C) used to run after it, supersede D and land itemLoaded into
-     loadingItem(D). MUTATION: drop the stale-target check at the top of
-     `_loadItem` and C is loaded last. */
-  const tts = fakeTts();
-  let releasePause = null;
-  tts.pause = async () => {
-    tts.transport.push("pause");
-    await new Promise((r) => { releasePause = r; });
-    return { ok: true, accepted: true, path: "native" };
-  };
-  const { m, backend } = make({ tts });
-  await m.playForay(foray([
-    { type: "narration", id: "nar-1", script: "the opening line" },
-    fseg(),
-    fseg({ start_sec: 400, end_sec: 500 }),
-  ]), { resolveItem });
-  assert.equal(m.isNarrationPlayhead, true, "precondition: a synth line is playing");
-  const first = m.skipToNext();
-  await tick();
-  assert.ok(releasePause, "precondition: the first skip is waiting on the pause");
-  await m.skipToNext();
-  await tick();
-  releasePause();
-  await first;
-  await tick();
-  const loads = backend.loads();
-  assert.equal(loads[loads.length - 1], "load:foray-1#2", `the newest target is the last load: ${loads}`);
-  assert.equal(m.currentIndex, 2, "the index agrees with the state");
-  assert.equal(m.state.type, "playing");
-  assert.equal(m.state.item.id, "foray-1#2");
-  m.dispose();
-});
+/** A backend whose load of the named ids waits until the test releases it. */
+class HeldLoadBackend extends FakeBackend {
+  constructor(o = {}) { super(o); this.holdFor = new Set(o.holdFor ?? []); this.release = null; }
+  async load(item, opts) {
+    const p = super.load(item, opts);
+    if (this.holdFor.has(item.id)) await new Promise((r) => { this.release = r; });
+    return p;
+  }
+}
 
 /** fakeTts whose next speak() waits until the test releases it. */
-
 function heldSpeakTts() {
   const t = fakeTts();
   const speak = t.speak;
@@ -3199,6 +3173,65 @@ function heldSpeakTts() {
   };
   return t;
 }
+
+async function intoHeldBridgeLoad() {
+  const { m, backend } = make({ strategy: PICKED_FIRST, backendClass: HeldLoadBackend, backend: { holdFor: ["bridge"] } });
+  m.setQueueFromPick(ep("a"), { others: [tts("bridge"), ep("b")] });
+  await m.play(0);
+  backend.calls.length = 0;
+  const ending = backend.onItemEnded();
+  await tick();
+  assert.equal(m.state.type, "transitioning", "precondition: the bridge is loading");
+  assert.ok(backend.release, "precondition: its load is in flight");
+  return { m, backend, ending };
+}
+
+test("a pause during a rendered bridge's load is not undone when the load lands (player-core-2)", async () => {
+  /* MUTATION: drop the `stillOurs()` check after `backend.load(bridge)` and the
+     bridge's `play` runs under a listener's pause. */
+  const { m, backend, ending } = await intoHeldBridgeLoad();
+  await m.pause();
+  backend.calls.length = 0;
+  backend.release();
+  await ending;
+  await tick();
+  assert.ok(!backend.calls.includes("play"), `nothing may start under a pause: ${backend.calls}`);
+  assert.equal(m.state.type, "interrupted");
+  m.dispose();
+});
+
+test("a stop during a rendered bridge's load leaves no audio behind a closed player (player-core-2)", async () => {
+  const { m, backend, ending } = await intoHeldBridgeLoad();
+  await m.stop();
+  backend.calls.length = 0;
+  backend.release();
+  await ending;
+  await tick();
+  assert.ok(!backend.calls.includes("play"), `nothing may start after Stop: ${backend.calls}`);
+  assert.equal(m.state.type, "idle");
+  m.dispose();
+});
+
+test("a pause while a SYNTH bridge's speak() is in flight silences the voice (player-core-2)", async () => {
+  const tts = heldSpeakTts();
+  const { m } = make({ tts });
+  await m.playForay(foray([
+    fseg(),
+    { type: "narration", id: "nar-1", asset: undefined, script: "a bridge line" },
+    fseg({ start_sec: 400, end_sec: 500 }),
+  ]), { resolveItem });
+  tts.holdNext = true;
+  const ending = m._handleBackendItemEnded(END_OUT_POINT);
+  await tick();
+  assert.equal(m.state.type, "transitioning", "precondition: the bridge is being spoken");
+  await m.pause();
+  tts.release();
+  await ending;
+  await tick();
+  assert.ok(transportsOf(tts).includes("stop"), `the voice is told to stop: ${transportsOf(tts)}`);
+  assert.equal(m.isNarrationPlayhead, false, "and it is not marked as the playhead");
+  m.dispose();
+});
 
 test("a narration load superseded while speak() is in flight stops talking over the next item (player-core-4)", async () => {
   /* MUTATION: drop the `_loadSeq !== seq` check after `_speakNarration` in
@@ -3242,5 +3275,41 @@ test("a stale speak() does not stop the NEWER line that replaced it (player-core
   await tick();
   assert.ok(!transportsOf(tts).includes("stop"), `the newer line keeps its voice: ${transportsOf(tts)}`);
   assert.equal(m.isNarrationPlayhead, true);
+  m.dispose();
+});
+
+test("a skip's load that a newer skip already replaced is dropped, not run after it (player-core-9)", async () => {
+  /* Two skips from a playing synth line: the first skip's pausePlayback awaits
+     the bridge, the second's loadItem(D) runs meanwhile, and the first's
+     loadItem(C) used to run after it, supersede D and land itemLoaded into
+     loadingItem(D). MUTATION: drop the stale-target check at the top of
+     `_loadItem` and C is loaded last. */
+  const tts = fakeTts();
+  let releasePause = null;
+  tts.pause = async () => {
+    tts.transport.push("pause");
+    await new Promise((r) => { releasePause = r; });
+    return { ok: true, accepted: true, path: "native" };
+  };
+  const { m, backend } = make({ tts });
+  await m.playForay(foray([
+    { type: "narration", id: "nar-1", script: "the opening line" },
+    fseg(),
+    fseg({ start_sec: 400, end_sec: 500 }),
+  ]), { resolveItem });
+  assert.equal(m.isNarrationPlayhead, true, "precondition: a synth line is playing");
+  const first = m.skipToNext();
+  await tick();
+  assert.ok(releasePause, "precondition: the first skip is waiting on the pause");
+  await m.skipToNext();
+  await tick();
+  releasePause();
+  await first;
+  await tick();
+  const loads = backend.loads();
+  assert.equal(loads[loads.length - 1], "load:foray-1#2", `the newest target is the last load: ${loads}`);
+  assert.equal(m.currentIndex, 2, "the index agrees with the state");
+  assert.equal(m.state.type, "playing");
+  assert.equal(m.state.item.id, "foray-1#2");
   m.dispose();
 });

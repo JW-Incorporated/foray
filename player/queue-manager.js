@@ -2460,6 +2460,16 @@ export class PlayerQueueManager {
     if (!bridge) return this._advancePastBridgeFailure();
     const bIdx = this.queue.findIndex((i) => i.id === bridge.id);
     if (bIdx >= 0) this.currentIndex = bIdx;
+    /* THE LISTENER CAN MOVE DURING THE BRIDGE'S LOAD (audit round 3,
+       player-core-2). A rendered bridge loads from a URL, 5-11 s on a hidden
+       page, and a pause or a stop in that window changes the state but not the
+       load, so `backend.play()` used to start the bridge anyway: a pause
+       undone from the car, or a line playing after Stop closed the player.
+       After the await, the bridge plays only if nothing newer loaded and the
+       machine is still transitioning to it. */
+    const seq = this._loadSeq;
+    const stillOurs = () => this._loadSeq === seq
+      && this.state.type === "transitioning" && this.state.to?.id === bridge.id;
     try {
       /* §7 item 1: a mid-Foray bridge is EXACTLY the shape a script-only
          narration item takes today (`next.item.kind === TTS` is what makes
@@ -2471,10 +2481,17 @@ export class PlayerQueueManager {
          `_targetIndex`, the bridge-specific "always starts at zero" — exactly
          as each already had it. */
       if (this._isSynthNarration(bridge)) {
+        const mine = ++this._speakIssued;
         await this._speakNarration(bridge);
+        if (!stillOurs()) {
+          return this._abandonSpeech(mine, `transitionTTS.superseded ${bridge.id} — the player moved on while speak() was in flight`);
+        }
         this._beginSynthNarration(bridge);
       } else {
         await this.backend.load(bridge, { startOffset: 0 });
+        if (!stillOurs()) {
+          return this._emit(`transitionTTS.superseded ${bridge.id} — loaded, but the player moved on; not started`);
+        }
         this._endSynthNarration();
         this.backend.play();
       }
