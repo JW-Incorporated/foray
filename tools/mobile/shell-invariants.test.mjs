@@ -2451,7 +2451,8 @@ test("NE-01: foray-audio links the core by path, keeps ONE product, and its test
   const products = [...manifest.matchAll(/\.library\(\s*name:\s*"(\w+)"/g)].map((m) => m[1]);
   assert.deepEqual(products, ["ForayAudio"], "foray-audio must keep exactly one product, or its scheme list changes");
 
-  const pluginTarget = /\.target\(\s*name:\s*"ForayAudioPlugin"[\s\S]*?path:\s*"ios\/Sources\/ForayAudioPlugin"\)/.exec(manifest);
+  // NE-34: the path may be followed by the target's one resource (the jingle).
+  const pluginTarget = /\.target\(\s*name:\s*"ForayAudioPlugin"[\s\S]*?path:\s*"ios\/Sources\/ForayAudioPlugin"\s*[,)]/.exec(manifest);
   assert.ok(pluginTarget, "the ForayAudioPlugin target is missing");
   assert.match(pluginTarget[0], /\.product\(\s*name:\s*"ForayEngineCore",\s*package:\s*"foray-engine-core"\s*\)/);
   assert.match(
@@ -3756,6 +3757,80 @@ test("NE-31s: the overlays ship off, a line is uttered at NARRATION_RATE, and no
   const narration = interpret.slice(interpret.indexOf("case let .narration("), interpret.indexOf("case let .interlude("));
   assert.ok(narration.length > 0, "the host interprets the narration commands");
   assert.doesNotMatch(narration, /speaker\./, "a Foray line never goes through the audition's speaker (NE-33's SpeechNarrator owns it)");
+});
+
+/* ─────────── NE-34: InterludePlayer, seam grace, the capped silence node ───────────
+ *
+ * docs/native-engine-plan.md §14 NE-34. The behaviour is executed over fakes
+ * by ForayAudioPluginTests/Engine/InterludeSeamTests.swift (ios-kit) and the
+ * hash pin by tools/audio/interlude-asset.test.mjs. What is pinned here is the
+ * shape those stand on: the jingle and the silence node are the only engine
+ * files that build an AVAudioPlayer or an AVAudioEngine, each checks the
+ * session BEFORE it can sound, the jingle's ceiling and the node's cap are
+ * engine timers, the node ships unbuilt behind its flag, and the host wires,
+ * refuses and tears down both. */
+
+test("NE-34: the jingle and the silence node sound only with the session, stop themselves on engine timers, and ship behind their flags", () => {
+  /* MUTATION: build an AVAudioPlayer or AVAudioEngine in any other Engine/
+     file; move the sessionIsActive check below playFromStart / engine.start;
+     drop the ceiling or cap schedule; clamp the node to capMs alone; build the
+     SilenceNode without `config.silenceNodeEnabled ?`; hard-code
+     interludeAvailable; drop the host's refused answer, its running/session
+     guard, or the teardown release. Each fails here. */
+  const playerPath = path.join(ENGINE_DIR, "InterludePlayer.swift");
+  const nodePath = path.join(ENGINE_DIR, "SilenceNode.swift");
+  for (const file of [playerPath, nodePath]) {
+    assert.deepEqual(swiftImports(file).sort(), ["AVFoundation", "ForayEngineCore", "Foundation"], `${path.basename(file)} imports`);
+  }
+  for (const file of swiftFilesUnder(ENGINE_DIR)) {
+    const code = stripSwiftComments(fs.readFileSync(file, "utf8"));
+    if (/\bAVAudioPlayer\(/.test(code)) assert.equal(file, playerPath, `${path.relative(ROOT, file)} builds an AVAudioPlayer`);
+    if (/\bAVAudioEngine\(|\bAVAudioSourceNode\(/.test(code)) assert.equal(file, nodePath, `${path.relative(ROOT, file)} builds an AVAudioEngine`);
+  }
+
+  const player = stripSwiftComments(fs.readFileSync(playerPath, "utf8"));
+  const interlude = player.slice(player.indexOf("final class InterludePlayer"));
+  const start = swiftFuncBody(interlude, "start") ?? "";
+  assert.ok(start.indexOf("config.sessionIsActive()") >= 0 && start.indexOf("config.sessionIsActive()") < start.indexOf("playFromStart()"),
+    "the jingle checks the session before it can sound");
+  assert.match(start, /implicitActivation[\s\S]*"interlude"/, "a start without the session is a fault row");
+  assert.match(start, /config\.timing\.schedule\(afterMs: config\.ceilingMs, repeating: false\)/, "the ceiling is an engine timer");
+  assert.match(interlude, /var ceilingMs: Double = Interlude\.ceilingSec \* 1000/);
+  assert.match(swiftFuncBody(interlude, "finish") ?? "", /guard this == sounding else \{ return \}/, "one end per start");
+  assert.match(player, /made\.enableRate = false\s*made\.rate = Float\(Interlude\.rate\)\s*made\.numberOfLoops = 0/, "1.0x, never looped");
+  assert.doesNotMatch(player, /Bundle\.module/, "a missing resource bundle costs the jingle, never the app");
+
+  const nodeCode = stripSwiftComments(fs.readFileSync(nodePath, "utf8"));
+  const node = nodeCode.slice(nodeCode.indexOf("final class SilenceNode"));
+  const nodeStart = swiftFuncBody(node, "start") ?? "";
+  assert.ok(nodeStart.indexOf("config.sessionIsActive()") >= 0 && nodeStart.indexOf("config.sessionIsActive()") < nodeStart.indexOf("engine.start()"),
+    "the node checks the session before it renders");
+  assert.match(nodeStart, /let cap = Swift\.min\(capMs, config\.ceilingMs\)/, "the node's cap is clamped to the ceiling");
+  assert.match(nodeStart, /config\.timing\.schedule\(afterMs: cap, repeating: false\)/, "the cap is an engine timer");
+  assert.match(node, /var ceilingMs: Double = Interlude\.ceilingSec \* 1000/);
+
+  const seams = stripSwiftComments(fs.readFileSync(SEAMS_SWIFT, "utf8"));
+  const fakes = stripSwiftComments(fs.readFileSync(FAKES_SWIFT, "utf8"));
+  for (const seam of ["InterludePlaying", "SilenceRendering"]) {
+    assert.match(seams, new RegExp(String.raw`protocol ${seam}: AnyObject \{`), `Seams.swift must declare ${seam}`);
+    assert.match(fakes, new RegExp(String.raw`final class \w+: ${seam} \{`), `${seam} has no recording fake`);
+  }
+
+  const boot = stripSwiftComments(fs.readFileSync(path.join(ENGINE_DIR, "EngineBoot.swift"), "utf8"));
+  assert.match(boot, /config\.interludeAvailable = interlude != nil/, "the jingle is available exactly when the asset shipped");
+  assert.match(boot, /config\.silenceNodeEnabled\s*\?\s*SilenceNode\(/, "the silence node is built only behind its flag");
+
+  const host = stripSwiftComments(fs.readFileSync(HOST_SWIFT, "utf8"));
+  assert.match(swiftFuncBody(host, "interpretInterlude") ?? "",
+    /if seams\.interlude\?\.start\(\) != true \{ handle\(\.interlude\(\.ended\(reason: "refused"\)\)\) \}/,
+    "a jingle start the host cannot honour is an immediate end");
+  assert.match(swiftFuncBody(host, "startSilence") ?? "", /guard core\.state\.isRunning, core\.state\.session == \.active else/,
+    "the host never renders silence for a transport that is not running, or without the session");
+  assert.match(swiftFuncBody(host, "start") ?? "", /seams\.interlude\?\.onEnded = \{[\s\S]*?receive\(\.interlude\(\.ended\(reason: reason\)\)\)/,
+    "the jingle's end reaches the core");
+  const teardown = swiftFuncBody(host, "teardown") ?? "";
+  assert.match(teardown, /seams\.interlude\?\.release\(\)/);
+  assert.match(teardown, /seams\.silence\?\.stop\(\)/);
 });
 
 test("NE-25c: one synthesizer configuration, a platform-free probe reached only through probeSession, and a smoke on the production pieces", () => {

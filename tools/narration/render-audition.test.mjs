@@ -25,6 +25,7 @@ import fs from "node:fs";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { exemptClickTrackPaths } from "../audio/click-tracks.mjs";
+import { exemptInterludePaths } from "../audio/interlude-asset.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, "..", "..");
@@ -198,8 +199,10 @@ test("no audition audio is committed to the repository", () => {
      file. Twelve ~90-second 24 kHz WAVs are ~130 MB.
      MUTATION: commit one — this goes red.
      The one exemption is NE-25a's click tracks: named by their descriptor,
-     matching its hashes, under 1 MB (tools/audio/click-tracks.mjs). */
-  const clickTracks = exemptClickTrackPaths(ROOT);
+     matching its hashes, under 1 MB (tools/audio/click-tracks.mjs); and
+     NE-34's bundled jingle, a hash-pinned copy of the web's
+     (tools/audio/interlude-asset.mjs). */
+  const clickTracks = new Set([...exemptClickTrackPaths(ROOT), ...exemptInterludePaths(ROOT)]);
   const offenders = [];
   const walk = (rel) => {
     const abs = path.join(ROOT, rel);

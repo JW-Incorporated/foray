@@ -36,8 +36,18 @@ enum EngineBoot {
             holdPolicy: holdPolicy.load() ?? .default))
 
         let session = AudioSessionOwner(config: AudioSessionOwner.Config(diag: { store.diag($0) }))
-        let config = EngineConfig(build: bundleVersion)
+        var config = EngineConfig(build: bundleVersion)
         let sessionIsActive = { session.phase == .active }
+        // NE-34: the seam's jingle on the bundled asset (nil, and no jingle,
+        // if the asset did not ship), and the silence node only behind its
+        // flag (OFF). Neither sounds until the Foray tape is on (NE-37).
+        let interlude = InterludePlayer.make(sessionIsActive: sessionIsActive, diag: { store.diag($0) },
+                                             timing: timing)
+        config.interludeAvailable = interlude != nil
+        let silence: SilenceRendering? = config.silenceNodeEnabled
+            ? SilenceNode(config: SilenceNode.Config(sessionIsActive: sessionIsActive, diag: { store.diag($0) },
+                                                     timing: timing))
+            : nil
         // NE-32: two decks with a prepared standby, behind `deckPairEnabled`
         // (off until NE-37); otherwise M1's one deck. Either way the deck's
         // `outPoint` rows go into the ring.
@@ -55,6 +65,8 @@ enum EngineBoot {
             timing: timing,
             output: store,
             holdPolicy: holdPolicy,
+            interlude: interlude,
+            silence: silence,
             // Developer "Simulate system termination" only (DV-7a).
             terminate: { exit(0) })
         let engine = ForayEngine(seams: seams, config: config)

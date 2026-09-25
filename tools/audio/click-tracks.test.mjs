@@ -177,12 +177,17 @@ test("the click tracks ship in the plugin's TEST target only, and the Swift side
      ForayAudioPluginTests, never to ForayAudioPlugin. And the Swift tests must
      take the ruler (double period, gap, first click) from click-tracks.json,
      not from a second copy of the numbers.
-     MUTATION: add `resources:` to the ForayAudioPlugin target; hard-code
-     `doubleEverySec: 10` in the measurement test. */
-  const manifest = fs.readFileSync(path.join(PLUGIN_DIR, "Package.swift"), "utf8");
-  const pluginTarget = /\.target\(\s*name:\s*"ForayAudioPlugin"[\s\S]*?path:\s*"ios\/Sources\/ForayAudioPlugin"\)/.exec(manifest);
+     The plugin target carries exactly ONE resource since NE-34, the seam
+     jingle (tools/audio/interlude-asset.test.mjs pins it), and never these.
+     MUTATION: add `.copy("Fixtures/ClickTracks")` (or any second resource) to
+     the ForayAudioPlugin target; hard-code `doubleEverySec: 10` in the
+     measurement test. */
+  const manifest = fs.readFileSync(path.join(PLUGIN_DIR, "Package.swift"), "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
+  const pluginTarget = /\.target\(\s*name:\s*"ForayAudioPlugin"[\s\S]*?path:\s*"ios\/Sources\/ForayAudioPlugin"[\s\S]*?\)\s*,\s*\.testTarget/.exec(manifest);
   assert.ok(pluginTarget, "the ForayAudioPlugin target is missing");
-  assert.doesNotMatch(pluginTarget[0], /resources:/, "the plugin target (which ships in the app) must carry no resources");
+  assert.doesNotMatch(pluginTarget[0], /ClickTracks/, "the click tracks must never reach the plugin target (which ships in the app)");
+  assert.deepEqual([...pluginTarget[0].matchAll(/\.(?:copy|process)\("([^"]*)"\)/g)].map((m) => m[1]), ["Resources/interlude-placeholder.wav"],
+    "the plugin target's one resource is the jingle");
   const testTarget = /\.testTarget\(\s*name:\s*"ForayAudioPluginTests"[\s\S]*?\)\s*\]\s*\)/.exec(manifest);
   assert.ok(testTarget, "the ForayAudioPluginTests target is missing");
   assert.match(testTarget[0], /resources:\s*\[\s*\.copy\("Fixtures\/ClickTracks"\)\s*\]/);
