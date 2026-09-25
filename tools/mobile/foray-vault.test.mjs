@@ -182,3 +182,23 @@ test("the shell declares the plugin, so cap sync links it on both platforms", ()
   assert.equal(own.name, "foray-vault");
   assert.deepEqual(own.capacitor, { ios: { src: "ios" }, android: { src: "android" } });
 });
+
+test("Android: a corrupt vault file is overwritten by set/remove, while get/keys still report 'could not look' (audit round 3, mobile-native-7)", () => {
+  /* set() and remove() parsed the file first, so one unparseable file made every
+     write and removal throw for good. MUTATION: put `JSONObject rows = read();`
+     back in set(), or drop the `unreadable` write in remove(). */
+  const java = read(PLUGIN, "android", "src", "main", "java", "ai", "jwlabs", "foura", "vault", "DeviceOnlyVault.java");
+  const body = (sig) => {
+    const at = java.indexOf(sig);
+    assert.ok(at >= 0, `${sig} is still where this test looks`);
+    return java.slice(at, java.indexOf("\n    }\n", at));
+  };
+  assert.match(body("synchronized void set(String key, String value)"), /JSONObject rows = readForWrite\(\);/);
+  const remove = body("synchronized void remove(String key)");
+  assert.match(remove, /catch \(JSONException e\) \{\s*unreadable = true;\s*rows = unreadableStore\(e\);/);
+  assert.match(remove, /if \(rows\.remove\(key\) != null \|\| unreadable\) write\(rows\);/);
+  assert.match(body("private JSONObject readForWrite()"), /catch \(JSONException e\) \{\s*return unreadableStore\(e\);/);
+  assert.match(body("synchronized String get(String key)"), /JSONObject rows = read\(\);/, "a read still rejects on a corrupt file");
+  assert.match(body("synchronized List<String> keys()"), /JSONObject rows = read\(\);/);
+  assert.doesNotMatch(java, /Log\.[a-z]\(/, "the recovery logs nothing: the file may hold a token");
+});
