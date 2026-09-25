@@ -202,6 +202,47 @@ final class ForayTapeTests: XCTestCase {
         XCTAssertTrue(end(&cold).contains(.graceBegin(.prepareMiss)))
     }
 
+    /// NE-32's packed seam row: the DeckPair's `.prepared` report on the
+    /// seam's load is the truth about the standby deck. A prepare that was
+    /// ASKED but degraded to an ordinary load is `prepared: false`, and the row
+    /// carries the stages the standby reached; with no report (one deck) the
+    /// row is exactly what it was before NE-32.
+    func testThePackedSeamRowCarriesTheDeckPairsReport() throws {
+        func seamRow(_ out: [EngineCommand]) -> SeamRow? {
+            for command in out {
+                if case let .diag(entry) = command, entry.kind == SeamRow.kind {
+                    return SeamRow(DiagRow(seq: 0, wallMs: 0, monoMs: 0, kind: entry.kind, fields: entry.fields))
+                }
+            }
+            return nil
+        }
+        func seam(_ report: DeckEvent?) throws -> SeamRow? {
+            var host = try playing()
+            host.send(.deck(.prepareWindow(token: host.lastLoad ?? 0)))
+            end(&host)
+            let token = host.lastLoad ?? 0
+            if let report { host.send(.deck(report.retokened(token)), after: 0) }
+            host.send(.deck(.ready(token: token, landedSec: 300, prerolled: true, elapsedMs: 5)), after: 0)
+            return seamRow(host.send(.timer(.seamBeat), after: 500))
+        }
+
+        let hit = try XCTUnwrap(seam(.prepared(token: 0, hit: true, stages: [.attach, .duration, .readiness, .seek, .preroll, .ready])))
+        XCTAssertTrue(hit.prepared)
+        XCTAssertEqual(hit.stages, [.attach, .duration, .readiness, .seek, .preroll, .ready, .play])
+
+        let miss = try XCTUnwrap(seam(.prepared(token: 0, hit: false, stages: [.attach])))
+        XCTAssertFalse(miss.prepared, "a prepare asked is not a prepare hit")
+        XCTAssertEqual(miss.stages, [.attach, .play])
+
+        let single = try XCTUnwrap(seam(nil))
+        XCTAssertTrue(single.prepared, "one deck: the row keeps its pre-NE-32 meaning (the item was asked for)")
+        XCTAssertEqual(single.stages, [.ready, .play])
+
+        // A report about another load is dropped.
+        let stale = try XCTUnwrap(seam(.prepared(token: -7, hit: false, stages: [.deadline])))
+        XCTAssertEqual(stale.stages, [.ready, .play])
+    }
+
     /// ADR-0007 at load: an APPROXIMATE copy is never audible. The segment is
     /// skipped with a `skipped` event and row, and the Foray goes on.
     func testALadderRefusalSkipsWithAnEventAndARow() throws {
@@ -319,5 +360,14 @@ final class ForayTapeScenarioTests: XCTestCase {
             }
         }
         XCTAssertGreaterThan(ran, 30)
+    }
+}
+
+private extension DeckEvent {
+    /// The same `.prepared` report, about `token` (a negative token stays: it
+    /// stands for a stale report).
+    func retokened(_ token: DeckToken) -> DeckEvent {
+        guard case let .prepared(old, hit, stages) = self else { return self }
+        return .prepared(token: old < 0 ? old : token, hit: hit, stages: stages)
     }
 }

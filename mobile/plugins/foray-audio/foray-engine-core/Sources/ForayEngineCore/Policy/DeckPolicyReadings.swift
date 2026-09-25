@@ -12,8 +12,10 @@ import Foundation
 // on (`warmOffset`, `prefetchDecision`, `warmPromotion`). They live in the
 // core because the parity driver's standby deck asks them exactly as
 // reference-engine.js's WarmingBackend does, and the native DeckPair (NE-32)
-// asks the same functions; the `deck-pair` fixtures that pin them case by
-// case stay owed to NE-32, which registers them.
+// asks the same functions. NE-32 ported the rest of the pair's decisions
+// (`warmSettled`, `handoverSteps`, `discardFreesBuffer`, `playRefusalAction`,
+// `unexplainedPauseAction`, `prefetchWindowOpens`) and registered the
+// `deck-pair` fixtures that pin them case by case.
 extension DeckPolicy {
 
     // MARK: readings (deck-readings)
@@ -49,7 +51,7 @@ extension DeckPolicy {
         return pendingRate
     }
 
-    // MARK: the standby deck (deck-pair; the family is NE-32's)
+    // MARK: the standby deck (deck-pair, NE-32)
 
     /// `warmOffset(startOffset)`: the in-point a warm load is parked at: a
     /// positive finite offset, else 0.
@@ -126,5 +128,104 @@ extension DeckPolicy {
         if !canPlay { return .bufferGone }
         if Swift.abs((atSec ?? 0) - offsetSec) > settleNearSec { return .drifted }
         return .promote
+    }
+
+    /// `warmSettled({offsetSec, atSec, canPlay})`: a warm load is READY only
+    /// once the playhead is at its in-point AND the deck can produce audio,
+    /// never on readiness for the file's head, which would hand over 0:00 of
+    /// somebody else's episode. An in-point of 0 needs no seek.
+    public static func warmSettled(offsetSec: Double, atSec: Double?, canPlay: Bool) -> Bool {
+        let near = offsetSec == 0 || Swift.abs((atSec ?? 0) - offsetSec) <= settleNearSec
+        return near && canPlay
+    }
+
+    /// One step of the handover (`handoverSteps()`), as the op log spells it.
+    public enum HandoverStep: String, CaseIterable, Sendable {
+        case detachOutgoing = "detach-outgoing"
+        case pauseOutgoing = "pause-outgoing"
+        case swapRoles = "swap-roles"
+        case attachIncoming = "attach-incoming"
+        case adoptIdentity = "adopt-identity"
+        case carryVolume = "carry-volume"
+        case carryRate = "carry-rate"
+    }
+
+    /// `handoverSteps()`: THE ORDER IS THE SAFETY PROPERTY. The outgoing deck
+    /// stops reporting and is paused BEFORE the roles swap, so no instant has
+    /// two decks un-paused; its buffer is not dropped; identity is adopted
+    /// before anything else is written; the rate and the duck are carried
+    /// onto the deck that inherits the role. No step plays.
+    public static func handoverSteps() -> [HandoverStep] {
+        [.detachOutgoing, .pauseOutgoing, .swapRoles, .attachIncoming, .adoptIdentity, .carryVolume, .carryRate]
+    }
+
+    /// `discardFreesBuffer(cause)`: forgetting a warm load drops its buffer
+    /// only at `release`. At a boundary, a replacement or a stand-down, the
+    /// media work would queue in front of the load the listener waits for.
+    public static func discardFreesBuffer(_ cause: String?) -> Bool {
+        cause == "release"
+    }
+
+    /// `playRefusalAction(...)`'s answers.
+    public enum RefusalAction: String, CaseIterable, Sendable {
+        case recover
+        case report
+    }
+
+    /// `playRefusalAction({errorName, handoverUnproven, isPlayer = true,
+    /// released = false})`: recover only an autoplay refusal of a handover not
+    /// yet proven by a `playing`, on the live player of an unreleased deck.
+    /// (AVPlayer has no autoplay policy, so the native pair never meets one;
+    /// the rule is ported so the family is whole.)
+    public static func playRefusalAction(errorName: String?, handoverUnproven: Bool, isPlayer: Bool = true,
+                                         released: Bool = false) -> RefusalAction {
+        if released || !isPlayer || !handoverUnproven { return .report }
+        return errorName == "NotAllowedError" ? .recover : .report
+    }
+
+    /// `unexplainedPauseAction(...)`'s answers.
+    public enum UnexplainedPause: String, CaseIterable, Sendable {
+        /// The pause we caused (the boundary's, a transport pause).
+        case own
+        /// The file ran out.
+        case ranOut = "ran-out"
+        /// Tell the core (it reconciles).
+        case report
+        /// Report AND stop warming for good: a warm load was in flight, the
+        /// one window in which a second deck could have taken the session.
+        case standDown = "stand-down"
+    }
+
+    /// `unexplainedPauseAction({expected, ended, warmInFlight})`.
+    public static func unexplainedPauseAction(expected: Bool, ended: Bool, warmInFlight: Bool) -> UnexplainedPause {
+        if expected { return .own }
+        if ended { return .ranOut }
+        return warmInFlight ? .standDown : .report
+    }
+
+    /// `prefetchWindowOpens({available, outPointSec, armed, paused, atSec,
+    /// rate, leadSec, alreadyOpened = false})`: only while the player is
+    /// AUDIBLE, with an armed boundary, once per boundary, and within
+    /// `leadSec` of WALL clock (so a faster rate opens it earlier in the
+    /// episode).
+    public static func prefetchWindowOpens(available: Bool, outPointSec: Double?, armed: Bool, paused: Bool,
+                                           atSec: Double, rate: Double?, leadSec: Double,
+                                           alreadyOpened: Bool = false) -> Bool {
+        guard available, let outPointSec, armed, !paused, !alreadyOpened else { return false }
+        return !((outPointSec - atSec) / deckRate(rate) > leadSec)
+    }
+
+    /// When, in WALL-CLOCK ms from now, the prefetch window will open for a
+    /// deck playing toward `outPointSec`: 0 when it is open already, nil when
+    /// it cannot open (the same guards as `prefetchWindowOpens`). The native
+    /// deck arms ONE timer for it instead of asking on every tick. Rounded up,
+    /// so the timer never fires before the window is open.
+    public static func prefetchWindowDelayMs(available: Bool, outPointSec: Double?, armed: Bool, paused: Bool,
+                                             atSec: Double, rate: Double?, leadSec: Double,
+                                             alreadyOpened: Bool = false) -> Double? {
+        guard available, let outPointSec, outPointSec.isFinite, armed, !paused, !alreadyOpened,
+              atSec < outPointSec else { return nil }
+        let untilSec = (outPointSec - atSec) / deckRate(rate) - leadSec
+        return untilSec <= 0 ? 0 : (untilSec * 1000).rounded(.up)
     }
 }
