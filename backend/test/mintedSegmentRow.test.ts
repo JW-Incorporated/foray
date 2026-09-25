@@ -260,6 +260,26 @@ describe("FileTranscriptCueProvider.transcriptSource — provenance from the bod
     expect(provider.transcriptSource(entry("stated-null"))).toBe("publisher");
   });
 
+  /* PINNED ON PURPOSE: with the field absent or null this provider GUESSES, and
+     without source_url / regenerated_from the guess is asr-local, while
+     prepare-segment-batch's transcriptSourceOf says publisher for the same
+     body. The two agree on every body fetch-transcripts wrote (all carry one
+     of the two keys); a new writer (foray-db) states the field on every body,
+     "publisher" included, so it never reaches this rule. Changing either rule
+     must be a decision, and this test is where it shows. */
+  it("guesses asr-local on an absent or null field when the body has neither source_url nor regenerated_from", () => {
+    const bare = (guid: string, extra: Record<string, unknown>) =>
+      fs.writeFileSync(
+        path.join(root, "show-a-1234abcd", `${guid}-1.json`),
+        JSON.stringify({ show_id: "show-a", guid, ...extra, cues: [{ start_sec: 0, end_sec: 1, text: "hello there" }] })
+      );
+    bare("bare-absent", {});
+    bare("bare-null", { transcript_source: null, source_url: null });
+    const provider = new FileTranscriptCueProvider(root);
+    expect(provider.transcriptSource(entry("bare-absent"))).toBe("asr-local");
+    expect(provider.transcriptSource(entry("bare-null"))).toBe("asr-local");
+  });
+
   it("throws on an explicit value outside the vocabulary instead of inferring publisher", () => {
     stated("stated-bad", "apple");
     expect(() => new FileTranscriptCueProvider(root).transcriptSource(entry("stated-bad"))).toThrow(/transcript_source "apple", which is not one of publisher\/asr-local\/apple-podcasts/);

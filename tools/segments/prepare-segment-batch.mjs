@@ -729,7 +729,17 @@ function digestPaths() {
     THE CUES ARE NOT RETAINED HERE. Every file of the show has to be opened to
     learn its guid, but a 120-episode show is ~50 MB of cue arrays and a run
     typically wants 31 of them; `cuesFor` re-reads only the ones that survive
-    `--select`/`--limit`. */
+    `--select`/`--limit`.
+
+    ONE BODY PER GUID, OR THE RUN STOPS. Two normalised files claiming the same
+    guid (a publisher body and an Apple one side by side, or the same episode in
+    a second `<show>-<hash>` dir) used to resolve as "last file in readdir order
+    wins". The backend's `FileTranscriptCueProvider.locate` resolves the same
+    collision by a different rule (the `corpusSafeKey(guid).json` name first, in
+    ONE show dir), and provenance is now read per file, so the two paths could
+    record different `transcript_source` values and check anchors against
+    different texts for one episode. There is no right file to guess, so this
+    throws and names both. */
 function transcriptIndex(dir, showId) {
   const index = new Map();
   const normalisedRoot = join(dir, "normalized");
@@ -739,6 +749,15 @@ function transcriptIndex(dir, showId) {
     for (const file of readdirSync(join(normalisedRoot, showDir))) {
       if (!file.endsWith(".json")) continue;
       const doc = readJson(join(normalisedRoot, showDir, file));
+      const prior = index.get(String(doc.guid));
+      if (prior) {
+        throw new Error(
+          `${showId}: guid ${JSON.stringify(String(doc.guid))} has two normalised transcripts, ` +
+            `${prior.normalised} (transcript_source ${JSON.stringify(prior.transcript_source ?? null)}) and ` +
+            `${join(normalisedRoot, showDir, file)} (transcript_source ${JSON.stringify(doc.transcript_source ?? null)}) — ` +
+            "keep exactly one body per episode; refusing to pick one"
+        );
+      }
       index.set(String(doc.guid), {
         normalised: join(normalisedRoot, showDir, file),
         raw: join(dir, "raw", showDir, file.replace(/\.json$/, "")),
@@ -755,6 +774,15 @@ function transcriptIndex(dir, showId) {
     ABSENT MEANS PUBLISHER: every body `fetch-transcripts.mjs` has written is the
     publisher's own file and none of them carries the field, so an absent (or
     null) `transcript_source` is exactly what "publisher" has always meant here.
+    The backend's `FileTranscriptCueProvider.transcriptSource` does NOT share
+    this rule for an absent field (it infers from `source_url` /
+    `regenerated_from`, and says `asr-local` without either), so a NEW writer
+    (foray-db) states the field on every body, `"publisher"` included; absent is
+    kept for the bodies `fetch-transcripts.mjs` already wrote, which all carry
+    `source_url` or `regenerated_from: raw/…` and so read `publisher` on both
+    paths. transcript-farm's ASR bodies state `"asr-local"` (with the enclosure
+    as `source_url`), and now read `asr-local` here and in the backend, where
+    before this function both labelled them `publisher`.
     PRESENT MUST BE ONE OF `TRANSCRIPT_SOURCES` — merge-segments' own list, not a
     copy — and anything else THROWS. Coercing an unknown value to "publisher"
     would put a false provenance on every segment cut from the file, which is

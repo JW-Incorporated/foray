@@ -38,6 +38,7 @@ import { ACCEPTED_SHAPES } from "../foray/check-forays.mjs";
 
 const PREPARE = fileURLToPath(new URL("./prepare-segment-batch.mjs", import.meta.url));
 const MERGE = fileURLToPath(new URL("./merge-segments.mjs", import.meta.url));
+const CHECK_FORAYS = fileURLToPath(new URL("../foray/check-forays.mjs", import.meta.url));
 
 const TOPIC = "engineering/energy-fusion";
 
@@ -47,8 +48,18 @@ test("TRANSCRIPT_SOURCES is exactly publisher, asr-local and apple-podcasts", ()
   assert.deepEqual([...TRANSCRIPT_SOURCES].sort(), ["apple-podcasts", "asr-local", "publisher"]);
 });
 
-test("check-forays enumerates the merge's own list, not a copy of it", () => {
+test("check-forays enumerates the merge's own list: same members today, and built from the import, not a literal", () => {
   assert.deepEqual([...ACCEPTED_SHAPES["segment.transcript_source"]], [...TRANSCRIPT_SOURCES]);
+  /* Equal values alone cannot tell the import from a hard-coded copy that
+     happens to match today and drifts tomorrow, so read the source: the list
+     must be imported from merge-segments and spread into the shape, and no
+     source value may appear as a literal anywhere in the file. */
+  const src = readFileSync(CHECK_FORAYS, "utf8");
+  assert.match(src, /import\s*\{[^}]*TRANSCRIPT_SOURCES[^}]*\}\s*from\s*["']\.\.\/segments\/merge-segments\.mjs["']/);
+  assert.match(src, /"segment\.transcript_source":\s*Object\.freeze\(\[\.\.\.TRANSCRIPT_SOURCES\]\)/);
+  for (const v of TRANSCRIPT_SOURCES) {
+    assert.equal(src.includes(`"${v}"`) || src.includes(`'${v}'`), false, `check-forays.mjs must not spell ${v} itself`);
+  }
 });
 
 /* -------------------------------------------------- prepare: read, not set */
@@ -144,7 +155,7 @@ test("--check: a pool row with apple-podcasts is valid; a near miss is not", () 
     prepare CLI refuses a show without one), and an on-disk corpus laid out the
     way `fetch-transcripts.mjs` and foray-db both write it: `normalized/<show>/
     <stem>.json` beside `raw/<show>/<stem>.<ext>`. */
-function corpus({ statedSource } = {}) {
+function corpus({ statedSource, sourceUrl = "https://example.test/apple/transcript.ttml", twin } = {}) {
   const dir = mkdtempSync(join(tmpdir(), "apple-src-"));
   const digest = join(dir, "digest.json");
   writeFileSync(
@@ -173,7 +184,7 @@ function corpus({ statedSource } = {}) {
   const body = {
     show_id: "geology-bites",
     guid: "apple-g-1",
-    source_url: "https://example.test/apple/transcript.ttml",
+    source_url: sourceUrl,
     ...(statedSource === undefined ? {} : { transcript_source: statedSource }),
     cues: [
       { start_sec: 10, end_sec: 16, text: "Snowball Earth is the idea that the whole planet froze over", speaker: null },
@@ -183,6 +194,15 @@ function corpus({ statedSource } = {}) {
   };
   writeFileSync(join(tdir, "normalized", showDir, "apple-g-1-abcd.json"), JSON.stringify(body));
   writeFileSync(join(tdir, "raw", showDir, "apple-g-1-abcd.vtt"), VTT);
+  if (twin) {
+    /* A second body for the SAME guid, under another stem in another dir of
+       the same show: the collision prepare must refuse rather than resolve. */
+    const twinDir = "geology-bites-ffff";
+    mkdirSync(join(tdir, "normalized", twinDir), { recursive: true });
+    mkdirSync(join(tdir, "raw", twinDir), { recursive: true });
+    writeFileSync(join(tdir, "normalized", twinDir, "apple-g-1-ffff.json"), JSON.stringify({ ...body, transcript_source: twin }));
+    writeFileSync(join(tdir, "raw", twinDir, "apple-g-1-ffff.vtt"), VTT);
+  }
   return { dir, digest, tdir };
 }
 
@@ -218,18 +238,43 @@ function mergeCli({ dir }, batchPath) {
     encoding: "utf8",
     stdio: "pipe",
   });
-  return { batch, stdout, pool: JSON.parse(readFileSync(poolPath, "utf8")) };
+  return { batch, stdout, pool: JSON.parse(readFileSync(poolPath, "utf8")), poolPath };
+}
+
+/** The exact command ci.yml runs over data/segments.json, spawned over the pool
+    the merge CLI just wrote, with a one-node taxonomy. Throws (non-zero exit)
+    on an invalid pool. */
+function checkCli({ dir }, poolPath) {
+  const taxonomyPath = join(dir, "taxonomy.json");
+  writeFileSync(taxonomyPath, JSON.stringify({ nodes: [{ id: TOPIC }] }));
+  return execFileSync(process.execPath, [MERGE, "--check", poolPath], {
+    env: { ...process.env, TAXONOMY_PATH: taxonomyPath },
+    encoding: "utf8",
+    stdio: "pipe",
+  });
 }
 
 test("end to end: an Apple-sourced normalized transcript goes prepare -> merge as apple-podcasts, merged, not relabelled", () => {
   const c = corpus({ statedSource: "apple-podcasts" });
-  const { batch, stdout, pool } = mergeCli(c, prepare(c));
+  const { batch, stdout, pool, poolPath } = mergeCli(c, prepare(c));
   assert.equal(batch.episodes.length, 1, "prepare must not skip the Apple episode");
   assert.equal(batch.episodes[0].transcript_source, "apple-podcasts", "prepare must carry the body's own provenance");
   assert.match(stdout, /merged=1 rejected=0/);
   assert.equal(pool.segments.length, 1);
   assert.equal(pool.segments[0].transcript_source, "apple-podcasts");
-  assert.deepEqual(validateSegmentsDocument(pool, new Set([TOPIC])), []);
+  assert.match(checkCli(c, poolPath), /ok .*1 segment/, "the pool must pass the real merge-segments --check CLI");
+});
+
+test("end to end: a transcript-farm ASR body (enclosure as source_url, stated asr-local) stays asr-local, not publisher", () => {
+  /* The shape transcript-farm's forayfmt.py writes. Before prepare read the
+     field, this body became publisher (the hard-coded value); it must now be
+     asr-local all the way to a pool row that passes --check. */
+  const c = corpus({ statedSource: "asr-local", sourceUrl: "https://example.test/a/episode.mp3" });
+  const { batch, stdout, pool, poolPath } = mergeCli(c, prepare(c));
+  assert.equal(batch.episodes[0].transcript_source, "asr-local");
+  assert.match(stdout, /merged=1 rejected=0/);
+  assert.equal(pool.segments[0].transcript_source, "asr-local");
+  assert.match(checkCli(c, poolPath), /ok .*1 segment/);
 });
 
 test("end to end: a body with no transcript_source still lands as publisher", () => {
@@ -245,6 +290,19 @@ test("end to end: a body stating an unknown transcript_source stops prepare and 
   assert.throws(
     () => prepare(c),
     (e) => e.status !== 0 && /transcript_source "apple" is not one of/.test(String(e.stderr))
+  );
+  assert.equal(existsSync(join(c.dir, "batch.json")), false);
+});
+
+test("end to end: two normalised bodies for one guid stop prepare, naming both, and write no batch", () => {
+  const c = corpus({ statedSource: "publisher", twin: "apple-podcasts" });
+  assert.throws(
+    () => prepare(c),
+    (e) =>
+      e.status !== 0 &&
+      /guid "apple-g-1" has two normalised transcripts/.test(String(e.stderr)) &&
+      /apple-g-1-abcd\.json/.test(String(e.stderr)) &&
+      /apple-g-1-ffff\.json/.test(String(e.stderr))
   );
   assert.equal(existsSync(join(c.dir, "batch.json")), false);
 });
