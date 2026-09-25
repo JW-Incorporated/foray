@@ -1711,6 +1711,11 @@ const FLOORS = {
      before backfill-audio / classify-dai write any file, with replacer
      functions so a `$&` in an audio URL stays literal. Zero slack. */
   "tools/refresh/session-patch.test.mjs": 4,
+  /* Audit round 3 (L8, data-tools-2/-15): the nightly resolve matches on guid,
+     enclosure URL, exact title, and fuzzy only on the same release date; a
+     failed lookup or a not-yet-indexed episode is carried in the scan state
+     rather than dropped. Zero slack. */
+  "tools/refresh/resolve.test.mjs": 9,
   /* Android on a runner (#245). ZERO SLACK, deliberately, and for a reason the iOS
      entry above does not have. Two of these 26 tests are the ONLY thing in the repo
      that notices if the Android job stops checking that `cap sync` still wires

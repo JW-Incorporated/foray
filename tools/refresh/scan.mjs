@@ -28,13 +28,14 @@
 
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { dirname, join } from "node:path";
+import { dirname, join, resolve as resolvePath } from "node:path";
 import { createRequire } from "node:module";
 import { audioFieldsFrom, durationMinutes } from "./enclosure.mjs";
 import { decodeEntities } from "./entities.mjs";
 import { UA } from "../segments/politeness.mjs";
 import { fetchFeedCapped, capItems } from "./fetch-limits.mjs";
 import { loadChangeIndex, selectChangedCuratedShows, curationCandidates } from "./candidates.mjs";
+import { retryItems } from "./resolve.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const backendRequire = createRequire(join(ROOT, "backend", "package.json"));
@@ -89,7 +90,11 @@ async function main() {
   if (SOURCE === "index" && indexMode === null) {
     indexMode = { used: true, changed: shows.length, total: curatedFeedShows.length };
   }
-  const pending = [];
+  /* Last night's unresolved episodes first (audit round 3, data-tools-2):
+     resolve.mjs carries an episode iTunes had not indexed yet, or whose lookup
+     failed, in state.retry, because this scan already marked its guid seen. */
+  const pending = retryItems(state, knownTitles);
+  if (pending.length) console.log(`retrying ${pending.length} episode(s) resolve could not match last night`);
   const withheld = [];
   let polled = 0, failed = 0;
 
@@ -152,6 +157,8 @@ async function main() {
   writeFileSync(STATE_PATH, JSON.stringify(state));
   writeFileSync(OUT_PATH, JSON.stringify({
     generated_at: state.last_run,
+    // Where resolve.mjs carries tonight's unresolved episodes (state.retry).
+    state_path: resolvePath(STATE_PATH),
     window_hours: WINDOW_H,
     source: SOURCE,
     ...(indexMode ? { index: indexMode } : {}),
