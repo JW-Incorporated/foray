@@ -187,13 +187,17 @@ final class ForayEngineHostTests: XCTestCase {
         let world = FakeWorld()
         let engine = playing(world)
         world.log.clear()
+        let written = world.nowPlaying.writes
+        XCTAssertGreaterThan(written, 0, "the engine published the playing entry (NE-18)")
 
         engine.handle(.command(.relinquish(cap: .foray), source: .tap))
 
         XCTAssertTrue(engine.isTornDown)
         XCTAssertEqual(engine.state.session, .relinquished)
         XCTAssertEqual(world.session.deactivations, [], "a relinquish never deactivates")
-        XCTAssertEqual(world.nowPlaying.writes + world.nowPlaying.clears, 0)
+        XCTAssertEqual(world.nowPlaying.writes, written, "nothing written or cleared by the relinquish: the entry is the legacy lane's to overwrite")
+        XCTAssertEqual(world.nowPlaying.clears, 0)
+        XCTAssertNotNil(world.nowPlaying.last)
         XCTAssertEqual(world.deck.count("pause"), 1, "\(world.log.entries)")
         XCTAssertTrue(world.deck.invalidated)
         XCTAssertEqual(world.session.liveObservers + world.background.liveLifecycleObservers + world.remote.liveTargets, 0)
