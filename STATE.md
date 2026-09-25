@@ -25,9 +25,12 @@ used for the release environment: they are #117 and #118; #116 now names the
 migration file); the politeness/search-probe pins after L4 moved
 `appleShowSearch.ts` into `api/_lib`; and twenty suite floors raised to the
 merged tree's real counts. Parity: `record.mjs --check` 1098/1098 unchanged,
-no re-record. **Q4 is not done here:** the founder ruled "loosen"
-(DECISIONS 2026-09-25) after L5 applied the "no change" default, so `gen-9`
-needs its own follow-up in `backend/src/generation/safetyCheck.ts`.
+no re-record. **Completeness sweep (same branch):** Q4 is done: the founder
+ruled "loosen" after L5 applied the "no change" default, and the safety check
+now keys on intent (`gen-9`, `cf0161c1`); `app-2-6`'s event half (a changed or
+withdrawn thumbs vote carries the vote it replaces to the learning job) landed
+in `0b3ea310`; `docs/audit/round-3-code/status.tsv` is the ledger (172 fixed
+of 186, 16 of them in #821; `ci-release-3` founder-held, `tests-6` lands last).
 
 ### 2026-09-24 — `engine/ne-27`: NE-27 part 1 — the L-2 legal edits, the OQ-9 guard and the M1 car-test script (the flip itself is blocked)
 
