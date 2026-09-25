@@ -524,6 +524,11 @@ test("Home repaints once when the player module lands after its first paint, res
 /* ==================================================================== */
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+/* Positive outcomes are WAITED FOR, not slept past (audit round 3, tests-3):
+   the passes run behind the product's own 250 ms debounce, and a fixed sleep a
+   little longer than that flaked the moment a runner fired the debounce late.
+   `sleep` stays only for the stub's own simulated latency. */
+const { waitFor } = require("./helpers/wait-for.js");
 
 /** The Shows page with its search endpoints routed. `catalogue` answers the
     fast pass, `directory` the fall-through, `directoryError` models the
@@ -573,7 +578,7 @@ test("a keystroke with no local match says it is searching — never 'not found'
   const m = mountSearch({ catalogue: [{ show_id: "hub", title: "Huberman Lab" }], catalogueDelayMs: 50 });
   m.ctx.onShowSearchInput("huberman");
   assert.match(m.note.textContent, /Searching for \u201chuberman\u201d/, `the keystroke must not claim an answer: "${m.note.textContent}"`);
-  await sleep(450);
+  await waitFor(() => /Huberman Lab/.test(m.view.querySelector("#sh-results").innerHTML) && m.note.hidden);
   assert.match(m.view.querySelector("#sh-results").innerHTML, /Huberman Lab/, "the catalogue's row lands");
   assert.ok(m.note.hidden, "and the note steps aside for it");
   assert.ok(!m.said.some((s) => /not found|No results|No shows found/i.test(s)),
@@ -587,7 +592,7 @@ test("a search that every pass answered with nothing says 'No shows found' — s
      count never reaches zero, the note stays "Searching…", red. */
   const m = mountSearch();
   m.ctx.renderShowSearchResults("zzqx");
-  await sleep(150);
+  await waitFor(() => /No shows found/.test(m.note.textContent));
   assert.strictEqual(m.note.textContent, "No shows found for \u201czzqx\u201d.");
   assert.ok(!m.note.hidden);
   assert.ok(m.offer().hidden, "every pass answered, and there is nothing else to offer");
@@ -602,12 +607,12 @@ test("an empty answer behind a pass that FAILED says part of the search did not 
      showPassDone. The failure is not reported, and this goes red. */
   const m = mountSearch({ directoryError: "rate-limited" });
   m.ctx.renderShowSearchResults("zzqx");
-  await sleep(150);
+  await waitFor(() => /No shows found/.test(m.note.textContent) && /Part of this search didn't load/.test(m.partial().innerHTML));
   assert.match(m.note.textContent, /No shows found/);
   assert.match(m.partial().innerHTML, /Part of this search didn't load\./);
   const before = m.calls.filter((u) => u.includes("fallthrough=1")).length;
   assert.ok(m.retry(m.partial()), "the failure offers Try again");
-  await sleep(150);
+  await waitFor(() => m.calls.filter((u) => u.includes("fallthrough=1")).length > before);
   assert.ok(m.calls.filter((u) => u.includes("fallthrough=1")).length > before, "Try again asks the directory again");
 });
 
@@ -620,7 +625,7 @@ test("REVIEW: a search whose requests never answer ends as a failed search with 
   vm.runInContext("API_DEADLINE_MS = 30", m.ctx);
   m.ctx.renderShowSearchResults("zzqx");
   assert.match(m.note.textContent, /Searching for \u201czzqx\u201d/, "precondition: it starts out searching");
-  await sleep(250);
+  await waitFor(() => !/Searching/.test(m.note.textContent));
   assert.doesNotMatch(m.note.textContent, /Searching/, `the note must end: "${m.note.textContent}"`);
   assert.match(m.partial().innerHTML, /Part of this search didn't load\./, "and say the search did not load, with Try again");
 });
@@ -636,7 +641,7 @@ test("REVIEW: a playlist build whose search documents never arrive still runs, a
   m.ctx.loadSearchData();
   let ran = false;
   m.ctx.whenSearchDataReady(() => { ran = true; });
-  await sleep(150);
+  await waitFor(() => ran);
   assert.strictEqual(ran, true, "the build runs with the degraded scorer once the deadline passes");
 });
 
@@ -655,7 +660,7 @@ test("a subject's own name that finds no show by title offers that subject's cat
   const catalog = { shows: [{ show_id: "s1", title: "Alpha Show", taxonomy_node_ids: ["science/physics"] }] };
   const m = mountSearch({ taxonomy, catalog });
   m.ctx.renderShowSearchResults("Science");
-  await sleep(150);
+  await waitFor(() => /No shows found/.test(m.note.textContent) && /category/.test(m.offer().innerHTML));
   assert.match(m.note.textContent, /No shows found for \u201cScience\u201d/);
   const html = m.offer().innerHTML;
   assert.match(html, /href="#\/category\/science%2Fphysics"/, `the category that holds a show is offered: ${html}`);
@@ -675,7 +680,7 @@ test("while the playlist check behind the results is still owed, the page says s
   assert.ok(!pl.hidden && /data-cta-pending/.test(pl.innerHTML),
     `the section says it is still looking before the scan runs: hidden=${pl.hidden} ${pl.innerHTML}`);
   assert.doesNotMatch(pl.innerHTML, /Create a playlist|No /, "and claims no outcome while it does");
-  await sleep(150);
+  await waitFor(() => !/data-cta-pending/.test(pl.innerHTML));
   assert.doesNotMatch(pl.innerHTML, /data-cta-pending/, `the scan answered, so "still looking" is gone: ${pl.innerHTML}`);
 });
 
@@ -688,7 +693,7 @@ test("a playlist check that throws still ends 'Still looking' — it is not a sp
   console.warn = () => {};
   try {
     m.ctx.renderShowSearchResults("zzqx");
-    await sleep(150);
+    await waitFor(() => !/data-cta-pending/.test(m.view.querySelector("#pl-search-results").innerHTML));
   } finally { console.warn = warn; }
   const pl = m.view.querySelector("#pl-search-results");
   assert.doesNotMatch(pl.innerHTML, /data-cta-pending/, `a failed scan must not leave the line up: ${pl.innerHTML}`);

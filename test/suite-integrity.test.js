@@ -399,6 +399,7 @@ const FLOORS = {
      mutations named in the file's header; all seven were run and are red. */
   "test/api-origin.test.js": 5,
   "test/app-security.test.js": 26,
+  "test/app-surface-round3.test.js": 20, // audit round 3 (2026-09-25, lane L2): the app-surface fixes with no better-fitting suite (app-2-14/15, app-1-15/16, app-2-1/2/3/5/6/7/8/9/10/11/12/13, app-3-1, data-integrity-8), each test naming its id and the mutation that kills it; zero slack; new
   "test/episode-page.test.js": 8,
   /* 2026-09-18, founder: "Only forays are in the jump back in section, podcasts
      and playlists should be there too." The episode card existed but was
@@ -453,7 +454,7 @@ const FLOORS = {
   "test/listener-copy.test.js": 22, // audit round 3 (lane L1): app-3-8 the voice subtitle pinned to NARRATION_RATE; main already stood at 21; 20 -> 22 // round-2 integration (2026-09-23): the counts of both lanes; -> 20 // audit round 2 (L6): copy-11/7/1/6, a11y-11, p-foray-6 — 4a never 'we', 'subject' not 'topic', no browser words, one failure sentence pair, no tooltip-only explanation, and a down-vote moves the subject only for a subject reason; 13 -> 20 // audit round 2 (2026-09-23, lane L4): no new test; the 'Starts with' pin reads the typographic pair (copy-8) and the stale-note pin follows the builder to Create (p-first-6) — the count was already 14, the floor said 13; 13 -> 14 // // 2026-09-22: new
   /* 2026-09-18, founder: Lex's episode list reloading from the network on every
      visit. Most of this suite is the three ways a cache goes subtly wrong. */
-  "test/show-episodes-cache.test.js": 10,
+  "test/show-episodes-cache.test.js": 14, // audit round 3 (lane L2): real API rows (guid, no id) and a new head episode repaints (app-1-3), guid-less rows get distinct ids (app-1-5), the LRU + sweep and the eviction trim (app-1-11); 10 -> 14
   /* 2026-09-21, founder: "the show description looks like it's something we
      generated. Is there a field from the show's host that we can pull instead?"
      There was, and the API had been returning it all along — fetchShowEpisodes
@@ -463,7 +464,7 @@ const FLOORS = {
   /* 2026-09-17, founder: episode descriptions carry clickable links and clickable
      timestamps that seek. This is the one function in app.js that turns untrusted
      publisher text into markup, so about half of it is injection cases. */
-  "test/episode-description-links.test.js": 31, // round-2 integration (2026-09-23): L2 +1 and L7 +4 on a base of 26 -> 31 // L7: audit round 2 (2026-09-23): a stamp-led line is a 44px chapter row, keeps no stray newline, stays inline beside a link or a second stamp, and stays text past the end; 25 -> 30 // audit round 2, L2 (2026-09-23): one tokeniser, published for the sheet (p-switcher-2); 25 -> 27 // // +3 (2026-09-18): the notes collapse into a closed <details> so artwork leads the page, the timestamps still bind inside it, and chapters stay out of it
+  "test/episode-description-links.test.js": 34, // audit round 3 (lane L2, app-2-4): a stamp tap starts through startEpisodePlay and a paused current episode is seeked; 31 -> 34 (the suite already stood at 33) // round-2 integration (2026-09-23): L2 +1 and L7 +4 on a base of 26 -> 31 // L7: audit round 2 (2026-09-23): a stamp-led line is a 44px chapter row, keeps no stray newline, stays inline beside a link or a second stamp, and stays text past the end; 25 -> 30 // audit round 2, L2 (2026-09-23): one tokeniser, published for the sheet (p-switcher-2); 25 -> 27 // // +3 (2026-09-18): the notes collapse into a closed <details> so artwork leads the page, the timestamps still bind inside it, and chapters stay out of it
   /* Stage 3 of docs/episode-pages-plan.md — epRow/archivedRow/bannerHtml
      title links to #/episode/:id (kanban card t_51e5d7bc). Floored at its
      exact current count: this is a small, deliberately-scoped regression

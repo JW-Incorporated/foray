@@ -82,7 +82,12 @@ function loadApp() {
 }
 
 const app = loadApp();
-const EPS = (...ids) => ids.map((id) => ({ id, title: id }));
+/* REAL API ROWS (audit round 3, app-1-3). `api/shows/:id/episodes` returns
+   CatalogShowEpisode rows — `guid`, `title`, `published_at` — and NO `id`. This
+   fixture used to build `{ id, title }`, a shape production never sends, which is
+   exactly why it could not see sameEpisodeList comparing `undefined` to
+   `undefined` on every real row. */
+const EPS = (...ids) => ids.map((id) => ({ show_id: "s", guid: id, title: id, published_at: "2026-09-01T00:00:00Z" }));
 
 /* ---------- the fetch no longer defeats the HTTP cache ------------------- */
 
@@ -124,6 +129,51 @@ test("a page past its TTL is not served, and is dropped", () => {
   assert.strictEqual(app._state('showEpisodesCache.has("old")'), false, "and the dead row is evicted");
 });
 
+test("the cache is an LRU of SHOW_EPISODES_CACHE_MAX shows, and expired pages are swept on insert", () => {
+  /* Audit round 3, app-1-11. Unbounded, every show visited kept its whole first
+     page (descriptions and all) alive for the session.
+     MUTATION: drop the size loop in cacheShowEpisodes — the first assertion goes
+     red. Drop the expiry sweep — the `stale` assertion goes red. Drop the
+     recency move in cachedShowEpisodes — "lru-0 survives" goes red. */
+  app._state("showEpisodesCache.clear()");
+  const max = app._state("SHOW_EPISODES_CACHE_MAX");
+  assert.ok(max >= 5 && max <= 50, "a handful of shows, not the session");
+  for (let i = 0; i < max; i += 1) app.cacheShowEpisodes(`lru-${i}`, { episodes: EPS("a"), nextCursor: null, stale: false });
+  assert.ok(app.cachedShowEpisodes("lru-0"), "a read makes lru-0 the most recent");
+  app.cacheShowEpisodes("lru-new", { episodes: EPS("a"), nextCursor: null, stale: false });
+  assert.strictEqual(app._state("showEpisodesCache.size"), max, "never more than the cap");
+  assert.ok(app._state('showEpisodesCache.has("lru-0")'), "lru-0 survives: it was read most recently");
+  assert.ok(!app._state('showEpisodesCache.has("lru-1")'), "the least recently used show is the one dropped");
+  const ttl = app._state("SHOW_EPISODES_TTL_MS");
+  /* The MOST recent entry expires, so the LRU bound alone would keep it: only
+     the sweep removes it (and then nothing else needs evicting). */
+  app._state(`showEpisodesCache.get("lru-new").at -= ${ttl + 1000};`);
+  app.cacheShowEpisodes("lru-newer", { episodes: EPS("a"), nextCursor: null, stale: false });
+  assert.ok(!app._state('showEpisodesCache.has("lru-new")'), "an expired page is swept on insert, not only when read");
+  assert.ok(app._state('showEpisodesCache.has("lru-2")'), "and the sweep made the room, so no live page was evicted");
+  app._state("showEpisodesCache.clear()");
+});
+
+test("an evicted show's rows keep their ids in itemIndex but drop the publisher text", () => {
+  /* Audit round 3, app-1-11 (perf-7): every painted row snapshotted its full
+     description into state.itemIndex, which nothing ever cleared. On eviction the
+     row is trimmed to what the durable tier keeps; the id still resolves.
+     MUTATION: make dropShowEpisodes only delete the cache entry — red. */
+  app._state("showEpisodesCache.clear()");
+  const show = { show_id: "evict-me", title: "Evict Me" };
+  const long = "x".repeat(5000);
+  const row = app.fullCatalogueRowToEpRowItem(show, { guid: "g1", title: "T", description_text: long, audio_url: "https://cdn.test/e.mp3" });
+  app.cacheShowEpisodes("evict-me", { episodes: [{ guid: "g1", title: "T" }], nextCursor: null, stale: false });
+  const max = app._state("SHOW_EPISODES_CACHE_MAX");
+  for (let i = 0; i < max; i += 1) app.cacheShowEpisodes(`other-${i}`, { episodes: EPS("a"), nextCursor: null, stale: false });
+  const snap = app._state("state.itemIndex")[row.id];
+  assert.ok(snap, "the id still resolves");
+  assert.strictEqual(snap.description, null, "the full description is released");
+  assert.ok(snap.hook.length <= app._state("EPISODE_SNAP_HOOK_MAX"), "the hook is trimmed");
+  assert.strictEqual(snap.audio_url, "https://cdn.test/e.mp3", "and it still plays");
+  app._state("showEpisodesCache.clear()");
+});
+
 test("the TTL is a bound on staleness, not a day", () => {
   /* A podcast gains episodes. Half an hour is the order of magnitude that makes
      a repeat visit instant without making the list wrong. */
@@ -140,11 +190,45 @@ test("sameEpisodeList compares ids and order, not contents", () => {
      MUTATION: compare with JSON.stringify — the title change below then reads
      as a change and the list repaints for nothing. */
   assert.strictEqual(app.sameEpisodeList(EPS("a", "b"), EPS("a", "b")), true);
-  assert.strictEqual(app.sameEpisodeList(EPS("a", "b"), [{ id: "a", title: "EDITED" }, { id: "b", title: "b" }]), true);
+  assert.strictEqual(app.sameEpisodeList(EPS("a", "b"), [{ ...EPS("a")[0], title: "EDITED" }, EPS("b")[0]]), true);
   assert.strictEqual(app.sameEpisodeList(EPS("a", "b"), EPS("b", "a")), false, "order is part of it");
   assert.strictEqual(app.sameEpisodeList(EPS("a"), EPS("a", "b")), false, "a new episode is a change");
   assert.strictEqual(app.sameEpisodeList(null, EPS("a")), false);
   assert.strictEqual(app.sameEpisodeList(EPS("a"), null), false);
+});
+
+test("a same-length page with a NEW episode at the top is a change (real API rows)", () => {
+  /* Audit round 3, app-1-3. Every show with 100+ episodes returns exactly
+     PAGE_SIZE rows, so a new episode keeps the page the same length: the head
+     changes and the tail drops one. Compared by `id`, which these rows do not
+     carry, that read as "unchanged" and the refresh never repainted.
+     MUTATION: compare `a[i].id !== b[i].id` again. This goes red. */
+  const yesterday = EPS("e3", "e2", "e1");
+  const today = EPS("e4", "e3", "e2");
+  assert.strictEqual(app.sameEpisodeList(yesterday, today), false, "a new head episode must repaint");
+  /* Guid-less rows fall back to title + date, like the list endpoint does. */
+  const noGuid = (title, published_at) => ({ show_id: "s", guid: null, title, published_at });
+  assert.strictEqual(app.sameEpisodeList([noGuid("A", "d1")], [noGuid("B", "d2")]), false);
+  assert.strictEqual(app.sameEpisodeList([noGuid("A", "d1")], [noGuid("A", "d1")]), true);
+});
+
+test("guid-less show-scoped search rows get distinct ids, matching the list endpoint's fallback", () => {
+  /* Audit round 3, app-1-5. The show-scoped search endpoint passes a null guid
+     straight through, and the row id was `${show_id}--${ep.guid}`: every
+     guid-less row became `<show>--null`, one itemIndex slot, so each row's ▶
+     played the LAST row's audio and stars/Up Next/history shared one id.
+     MUTATION: build the id from `ep.guid` again. This goes red. */
+  const show = { show_id: "noguid-show", title: "No Guid Show" };
+  const a = app.fullCatalogueRowToEpRowItem(show, { guid: null, title: "Part one", published_at: "2026-09-01T00:00:00Z", audio_url: "https://cdn.test/1.mp3" });
+  const b = app.fullCatalogueRowToEpRowItem(show, { guid: null, title: "Part two", published_at: "2026-09-02T00:00:00Z", audio_url: "https://cdn.test/2.mp3" });
+  assert.notStrictEqual(a.id, b.id, "two guid-less rows must not share an id");
+  assert.ok(!/--null$/.test(a.id), "no `<show>--null` ids");
+  /* The same fallback the list endpoint mints (episodes.ts toLiveEpisode), so an
+     episode starred from the list is the same id in search results. */
+  assert.strictEqual(a.id, "noguid-show--noguid:Part one:2026-09-01T00:00:00Z");
+  assert.strictEqual(app._state("state.itemIndex")[a.id].audio_url, "https://cdn.test/1.mp3", "each row keeps its own audio");
+  /* A row with a guid is unchanged. */
+  assert.strictEqual(app.fullCatalogueRowToEpRowItem(show, { guid: "g-1", title: "x" }).id, "noguid-show--g-1");
 });
 
 /* ---------- the load path's shape ---------------------------------------- */

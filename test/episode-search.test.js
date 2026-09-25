@@ -642,7 +642,7 @@ test("the guid recovered from an id is a candidate, not an answer: the curated p
      worse, a guid key carries no show, so `show-a--intro` and `show-b--intro`
      would both derive `g:intro` and collapse two unrelated episodes into one.
 
-     MUTATION: make `episodeDedupKeys` return `[episodeDedupKey(ep)]`. The
+     MUTATION: make `episodeDedupKeys` return one key (`keys.slice(0, 1)`). The
      first assertion goes red — the curated row and the endpoint row stop
      agreeing on anything. */
   const m = mount();

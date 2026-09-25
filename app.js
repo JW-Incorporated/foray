@@ -3546,7 +3546,9 @@ function showIndexIdForTitle(title) {
 function showNameLink(showName, showId = null) {
   const label = esc(showName || "");
   const id = showId || showIdForShowName(showName);
-  return id ? `<a class="show-link" href="#/show/${esc(id)}">${label}</a>` : label;
+  /* Through showRoutePath (showRouteHash without its #), which encodes (audit round 3, app-1-16): the router
+     decodes the segment, so an id carrying `%`, `/` or `#` misrouted from here. */
+  return id ? `<a class="show-link" href="#${esc(showRoutePath(id))}">${label}</a>` : label;
 }
 
 /* A3.2 — tapping a chip goes to "shows in this category" (renderCategory),
@@ -3654,8 +3656,15 @@ function renderShowIndexPage(title, subtitle, shows, above = "", { tabRoot = fal
     same page repainted from whatever it answered. A second failure lands on the
     same failed state with a fresh button, never on an empty-list claim. */
 async function retryCatalog() {
+  /* THE PAGE THAT ASKED IS THE ONLY PAGE THAT REPAINTS (audit round 3,
+     app-1-15; races-7's rule for retryForayDocs). The fetch is bounded but can
+     take seconds, and a listener who moved on meanwhile had that page re-rendered
+     under them — scroll, an in-progress show-page search and focus all lost. The
+     catalogue is still kept; only the repaint is the asking page's. */
+  const stillHere = renderToken();
   const catalog = await fetchJson("data/catalog-client.json");
   if (catalog) state.catalog = catalog;
+  if (!stillHere()) return;
   renderCurrentPage();
   /* The retried page is the page's real paint (audit round 2, nav-3): its name
      reaches the document, and focus the replaced Retry button took with it
@@ -4289,8 +4298,22 @@ function renderAllShows(initialQuery = "") {
    `state.itemIndex[id]` first, so a full-catalogue row plays and stars
    exactly like a curated one. No new row UI needed; every episode gets a
    real, playable audio_url straight from the endpoint, never a link-out. */
+/** THE ONE IDENTITY OF A SHOW-EPISODE ROW (audit round 3, app-1-3/app-1-5).
+    The feed's guid when it has one; otherwise the SAME fallback the list
+    endpoint mints (api/shows/[show_id]/episodes.ts toLiveEpisode:
+    `noguid:<title>:<published_at>`). The show-scoped search endpoint passes a
+    null guid straight through, and building the id as `${show}--${ep.guid}`
+    made every guid-less row `<show>--null`: one itemIndex slot, so each row's
+    ▶ played the last row's audio. Rows from the endpoints carry `guid`, never
+    `id`, so this is also what two fetched pages are compared by. */
+function showEpisodeGuid(ep) {
+  if (!ep) return "";
+  if (ep.guid != null && String(ep.guid) !== "") return String(ep.guid);
+  return `noguid:${ep.title ?? ""}:${ep.published_at ?? ""}`;
+}
+
 function fullCatalogueRowToEpRowItem(show, ep) {
-  const id = `${show.show_id}--${ep.guid}`;
+  const id = `${show.show_id}--${showEpisodeGuid(ep)}`;
   return snapshot(id, {
     show: show.title,
     /* THE SHOW'S ID RIDES ON THE SNAPSHOT (audit round 2 review of
@@ -4370,19 +4393,46 @@ function fullCatalogueRowToEpRowItem(show, ep) {
    add an eviction policy and a schema for no gain the founder asked about. */
 const SHOW_EPISODES_TTL_MS = 30 * 60 * 1000;
 
-/** Cached first pages, `show_id -> { at, episodes, nextCursor, stale }`. */
+/** Cached first pages, `show_id -> { at, episodes, nextCursor, stale }`.
+    BOUNDED (audit round 3, app-1-11): an LRU of SHOW_EPISODES_CACHE_MAX shows —
+    Map insertion order is the recency order, a hit moves to the end — with the
+    expired entries swept on every insert. Unbounded, every show visited kept its
+    whole first page (descriptions included) alive for the session. */
 const showEpisodesCache = new Map();
+const SHOW_EPISODES_CACHE_MAX = 10;
 
 /** The cached first page, or null when absent or past its TTL. */
 function cachedShowEpisodes(show_id) {
   const hit = showEpisodesCache.get(show_id);
   if (!hit) return null;
-  if (Date.now() - hit.at > SHOW_EPISODES_TTL_MS) { showEpisodesCache.delete(show_id); return null; }
+  if (Date.now() - hit.at > SHOW_EPISODES_TTL_MS) { dropShowEpisodes(show_id); return null; }
+  showEpisodesCache.delete(show_id);
+  showEpisodesCache.set(show_id, hit);
   return hit;
 }
 
 function cacheShowEpisodes(show_id, payload) {
-  showEpisodesCache.set(show_id, { ...payload, at: Date.now() });
+  const now = Date.now();
+  for (const [k, v] of showEpisodesCache) if (now - v.at > SHOW_EPISODES_TTL_MS) dropShowEpisodes(k);
+  showEpisodesCache.delete(show_id);
+  showEpisodesCache.set(show_id, { ...payload, at: now });
+  while (showEpisodesCache.size > SHOW_EPISODES_CACHE_MAX) dropShowEpisodes(showEpisodesCache.keys().next().value);
+}
+
+/** Forget a show's cached page AND the publisher text its rows put in
+    `state.itemIndex` (app-1-11). The row snapshots stay — ids must keep
+    resolving for stars, Up Next and history — but trimmed the way the durable
+    tier stores them (`storableEpisode`: a short hook, no description), which is
+    what the episode page already shows for such an episode after a reload. A
+    catalogue episode is never touched. */
+function dropShowEpisodes(show_id) {
+  showEpisodesCache.delete(show_id);
+  const prefix = `${show_id}--`;
+  for (const id of Object.keys(state.itemIndex)) {
+    if (!id.startsWith(prefix) || state.poolIds.has(id)) continue;
+    const snap = state.itemIndex[id];
+    if (snap && snap.description != null) state.itemIndex[id] = { ...storableEpisode(snap), chapters: snap.chapters ?? null };
+  }
 }
 
 /** First-page fetches currently in flight, by show id.
@@ -4437,7 +4487,9 @@ function bindShowPrefetch() {
     const a = e.target && e.target.closest && e.target.closest('a[href^="#/show/"]');
     if (!a) return;
     const href = a.getAttribute("href") || "";
-    const id = safeDecode(href.slice("#/show/".length));
+    /* The route parser, not a slice (app-1-16): a `/q/<query>` tail is not
+       part of the id. */
+    const id = parseShowRoute(href)?.id;
     if (id) prefetchShowEpisodes(id);
   }, { passive: true });
 }
@@ -4595,7 +4647,7 @@ function showForaysHtml(show) {
   return `<footer class="show-forays">
     <h3 class="show-forays-h">Used in the following forays</h3>
     <p class="show-forays-note">Not part of ${esc(show.title)}'s own catalogue — each of these forays plays a moment from one of its episodes.</p>
-    ${forays.map(f => `<a class="show-forays-row" href="#/foray/${esc(f.id)}">
+    ${forays.map(f => `<a class="show-forays-row" href="#${esc(forayRoutePath(f.id))}">
       <span class="show-forays-title">${esc(f.title)}</span>${f.status === "published" ? "" : `<span class="show-forays-draft">draft</span>`}
     </a>`).join("")}
   </footer>`;
@@ -4762,8 +4814,29 @@ function parseShowRoute(hash = currentHash()) {
 }
 
 function showRouteHash(show_id, query = "") {
+  return `#${showRoutePath(show_id, query)}`;
+}
+
+/** The same route without its `#`, for an href template (`href="#${…}"`): the
+    app-security census reads an href that OPENS with an interpolation as an
+    outside URL owed to safeUrl, and an in-app route is not one (the way
+    playlistRoute is written into `href="#/${…}"`). */
+function showRoutePath(show_id, query = "") {
   const q = String(query || "").trim();
-  return `#/show/${encodeURIComponent(show_id)}${q ? "/q/" + encodeURIComponent(q) : ""}`;
+  return `/show/${encodeURIComponent(show_id)}${q ? "/q/" + encodeURIComponent(q) : ""}`;
+}
+
+/** `#/foray/<id>`, encoded (audit round 3, app-2-13) — the one producer of a
+    Foray route, as showRouteHash is of a show's and playlistRoute of a
+    playlist's. The router decodes the segment (forayRouteId), so an id carrying
+    `/`, `#`, `?` or `%` broke routing from every surface that only HTML-escaped. */
+function forayRouteHash(id) {
+  return `#${forayRoutePath(id)}`;
+}
+
+/** Without its `#`, for an href template (see showRoutePath). */
+function forayRoutePath(id) {
+  return `/foray/${encodeURIComponent(id)}`;
 }
 
 /** Whether the page on screen is `show_id`'s — compared DECODED: the hash
@@ -5463,12 +5536,16 @@ function paintShowDescription(header) {
   el.hidden = false;
 }
 
-/** Do two fetched pages hold the same episodes, in the same order? Ids only —
-    a description edit upstream is not a reason to yank the list out from under
-    someone who is reading it. */
+/** Do two fetched pages hold the same episodes, in the same order? Identity
+    only — a description edit upstream is not a reason to yank the list out from
+    under someone who is reading it.
+    BY GUID, NOT `id` (audit round 3, app-1-3): endpoint rows carry `guid` and no
+    `id`, so comparing `id` was `undefined !== undefined` on every row and any
+    two pages of the same length (every 100-row first page) read as unchanged —
+    a new episode at the top never repainted. */
 function sameEpisodeList(a, b) {
   if (!Array.isArray(a) || !Array.isArray(b) || a.length !== b.length) return false;
-  for (let i = 0; i < a.length; i += 1) if (a[i].id !== b[i].id) return false;
+  for (let i = 0; i < a.length; i += 1) if (showEpisodeGuid(a[i]) !== showEpisodeGuid(b[i])) return false;
   return true;
 }
 
@@ -5642,26 +5719,37 @@ function bindPickLogging(scope) {
       const m = /^playlist-(.+)$/.exec(a.dataset.ctx || "");
       if (m) touchPlaylistPlayed(m[1]);
 
-      /* Only a part the catalogue still holds is recorded as the last pick
-         (`cp_lastpick`, named in docs/legal/privacy-policy.md). An archived
-         playlist part has a snapshot in `state.itemIndex` (seeded by
-         renderPlaylistDetail so this handler can report its topics), but that
-         snapshot is a PARTIAL one — no audio_url, no hook, no artwork — and a
-         record of something the app cannot play is worth nothing. liveEpisode()
-         is that rule (a partial part has no audio_url), without the
-         curated-pool restriction that kept every show-page episode out.
-         Nothing renders this record any more: the Continue banner that read it
-         (`bannerHtml`) lost its caller at the U-11 cutover and was deleted in
-         visual pass 1 (2026-09-23); "Jump back in" reads the player's own
-         position store instead (see jumpBackInHtml). */
-      const snap = liveEpisode(id);
-      if (snap) {
-        lsSet("cp_lastpick", { ...snap, ts: new Date().toISOString() });
-      }
+      /* NO "LAST PICK" RECORD (audit round 3, data-integrity-8). This used to
+         store a full, untrimmed snapshot of every picked episode in
+         `cp_lastpick`, which nothing has read since the Continue banner
+         (`bannerHtml`) was deleted in visual pass 1 (2026-09-23) — "Jump back
+         in" reads the player's own position store. A record kept for no
+         purpose fails data minimisation, so the write is gone and the stored
+         key is removed once (forgetRetiredKeys below). */
       trySyncEvents();
     });
   });
 }
+
+/* Keys the app no longer writes, removed from every storage tier once the
+   durable store has hydrated — before that, a removal from the localStorage
+   mirror would be undone by the IndexedDB copy migrating back. The privacy
+   policy's row for each says it is retired. */
+const RETIRED_STORAGE_KEYS = ["cp_lastpick"];
+function forgetRetiredKeys() {
+  const store = storageBackend();
+  if (!store) return;
+  for (const key of RETIRED_STORAGE_KEYS) {
+    /* Only when present: a removal is a durable-tier write, and a device that
+       never held the key has nothing to forget. */
+    try { if (store.getItem(key) !== null) store.removeItem(key); } catch (_) { /* best-effort: nothing reads it */ }
+  }
+}
+/* Queued straight onto the settle waiters, not through afterStorageSettles():
+   at script evaluation the store has not been published yet, so that would run
+   it at once against the bare mirror. markStorageSettled() runs every waiter
+   exactly once, on hydration or at the ceiling. */
+storageSettleWaiters.push(forgetRetiredKeys);
 
 /* Every in-app play button. A tap on one also records the LIST it sat in — the
    other play buttons in `scope` carrying the same `data-ctx` (a show page's
@@ -5717,7 +5805,7 @@ function bindPlay(scope) {
    sharing `ctx` are the play list. Answers whether the play was accepted and is
    still the player's own. The caller decides the isCurrent toggle first: a row
    showing ❚❚ pauses, Home's "Play …" never does. */
-async function startEpisodePlay(id, item, { ctx = null, list = [] } = {}) {
+async function startEpisodePlay(id, item, { ctx = null, list = [], startOffset = null } = {}) {
   const listCtx = ctx || null;
   /* UP NEXT IS ITS OWN CONTINUATION (audit round 2 review). Its ▶ carries
      `data-ctx="upnext"` only as the mark that triggers `playedFromUpNext`;
@@ -5737,7 +5825,12 @@ async function startEpisodePlay(id, item, { ctx = null, list = [] } = {}) {
      screen whichever page this button was on. */
   let ok = false;
   try {
-    ok = await window.ForayPlayer.play(item, { why: whyFor(id, item) });
+    /* `startOffset`: a start AT a chapter or timestamp (bindEpisodeSeeks) — the
+       load begins there rather than playing from the resume point and seeking
+       after (races-1). Absent, the options are exactly what they always were. */
+    ok = await window.ForayPlayer.play(item, startOffset == null
+      ? { why: whyFor(id, item) }
+      : { why: whyFor(id, item), startOffset });
   } catch (err) {
     console.warn("[4a] play failed", err);
     try { window.ForayPlayer.reportPlayFailure?.(err); } catch (_) { /* the bar is best-effort */ }
@@ -6563,6 +6656,11 @@ function bindPanelDrag(entry) {
     const fromHandle = !!(t && typeof t.closest === "function" && t.closest(".fy-grab"));
     drag = g.start(e.clientY, e.timeStamp, { fromHandle, atTop: (panel.scrollTop || 0) <= 0 });
     pointer = e.pointerId;
+    /* CAPTURED (audit round 3, app-2-10), as the Foray strip's is: a mouse has
+       no implicit capture, so a release over the scrim or outside the window
+       never reached this panel and left the drag stuck — displaced, and
+       ignoring every later press. */
+    try { panel.setPointerCapture?.(e.pointerId); } catch (_) { /* capture is best-effort */ }
   });
   panel.addEventListener("pointermove", (e) => {
     const g = gest();
@@ -6593,12 +6691,17 @@ function bindPanelDrag(entry) {
     const finish = () => { entry.requestClose(); paint(0); };
     if (!slideOut(panel, "--fy-panel-dy", panelHeightPx(panel), finish)) finish();
   });
-  panel.addEventListener("pointercancel", (e) => {
+  const cancel = (e) => {
     if (!drag || e.pointerId !== pointer) return;
     drag = null;
     pointer = null;
     paint(0);
-  });
+  };
+  panel.addEventListener("pointercancel", cancel);
+  /* Capture lost without a pointerup (the window lost focus, the element was
+     hidden) is a cancel. After a pointerup the drag is already over, so the
+     implicit release that follows it finds nothing to undo. */
+  panel.addEventListener("lostpointercapture", cancel);
 }
 
 /** Close `wrap` if the owner holds it: lift what open did, hide it, hand focus
@@ -7156,7 +7259,11 @@ function showsWeVouchFor(limit = 8, now = new Date()) {
   const shows = (state.catalog?.shows || [])
     .filter(s => s.editorial_note && s.editorial_note.trim())
     .slice()
-    .sort((a, b) => a.show_id.localeCompare(b.show_id));
+    /* CODEPOINT order, not localeCompare (audit round 3, app-2-9): with no
+       locale argument that collates in the DEVICE's locale, and under lt, et,
+       cs and sk the committed ids sort differently — so the seeded shuffle
+       picked a different "same set for every visitor" there. */
+    .sort((a, b) => (a.show_id < b.show_id ? -1 : a.show_id > b.show_id ? 1 : 0));
   if (!shows.length) return [];
   return seededShuffle(shows, dayOfYearSeed(now)).slice(0, limit);
 }
@@ -7355,12 +7462,10 @@ function nowMs() {
 const SHOW_INDEX_PATH = "data/show-index.tsv";
 let showIndex = null;          // { keys, rows } once decoded
 let showIndexPromise = null;   // the in-flight load, so N focuses cost one fetch
-let showIndexFetchCount = 0;   // test-visible: the index is fetched at most once
 
 function loadShowIndex() {
   if (showIndex) return Promise.resolve(showIndex);
   if (showIndexPromise) return showIndexPromise;
-  showIndexFetchCount++;
   showIndexPromise = (async () => {
     try {
       /* BOUNDED (audit round 2, states-4): a hung fetch here never reached the
@@ -7369,14 +7474,20 @@ function loadShowIndex() {
          of the session — the opposite of this header's "a later focus
          retries". Past the bound it answers null like a failure, the promise
          clears, and the next focus asks again. */
+      /* THE BODY IS INSIDE THE DEADLINE TOO (audit round 3, app-2-5), as in
+         fetchApiJson: headers inside the bound and then a stalled body left
+         `await res.text()` — and so this promise — pending for the session. */
       const ctl = typeof AbortController === "function" ? new AbortController() : null;
-      const res = await withDeadline(
-        fetch(SHOW_INDEX_PATH, ctl ? { cache: "no-cache", signal: ctl.signal } : { cache: "no-cache" }),
+      const text = await withDeadline(
+        (async () => {
+          const res = await fetch(SHOW_INDEX_PATH, ctl ? { cache: "no-cache", signal: ctl.signal } : { cache: "no-cache" });
+          return res && res.ok ? await res.text() : null;
+        })(),
         DATA_DEADLINE_MS,
         () => { try { if (ctl) ctl.abort(); } catch (_) { /* nothing left to free */ } return null; }
       );
-      if (!res || !res.ok) return null;
-      const parsed = SearchEngine.parseShowIndex(await res.text());
+      if (text == null) return null;
+      const parsed = SearchEngine.parseShowIndex(text);
       /* An empty parse is a failure, not an empty index: it means the file
          arrived truncated or in a shape `parseShowIndex` does not read, and
          adopting it would permanently shadow the curated pass with nothing. */
@@ -7425,11 +7536,22 @@ function repaintShowSearchForIndex() {
     `SearchEngine.searchShows` so the two sources cannot produce two orders.
     Curated records win a duplicate id deliberately: they carry `artwork_url`
     and `editorial_note`, which the index's title projection does not. */
+/* BOUNDED WORK PER PASS (audit round 3, app-2-2). Measured on the committed
+   data/show-index.tsv: `t` has 2,497 prefix rows, `the` 2,056 plus 1,099 from
+   the scan, `pod` 2,512 scan rows — and every one was turned into markup, then
+   re-deduped and re-painted on each later pass, up to six times per query. Each
+   pass now hands over at most SHOW_PASS_LIMIT rows (its best, by the same
+   comparator it ranks with), and the list paints SHOW_RESULTS_PAINT_STEP rows
+   at a time behind a "Show more shows" button. Nobody reads row 2,000 of a
+   one-letter query; they type another letter. */
+const SHOW_PASS_LIMIT = 200;
+const SHOW_RESULTS_PAINT_STEP = 50;
+
 function localShowMatches(query) {
   const curated = state.catalog?.shows || [];
   if (!showIndex) return SearchEngine.searchShows(query, curated);
   const seen = new Set(curated.map((s) => s.show_id));
-  const fromIndex = SearchEngine.prefixSearchShows(query, showIndex)
+  const fromIndex = SearchEngine.prefixSearchShows(query, showIndex, SHOW_PASS_LIMIT)
     .filter((s) => !seen.has(s.show_id));
   return SearchEngine.searchShows(query, curated.concat(fromIndex));
 }
@@ -7983,8 +8105,53 @@ function paintShowResults(query, shows, myToken) {
   }
   note.hidden = true;
   paintShowSearchEmptyOffer(null);
-  results.innerHTML = shows.map(showResultRow).join("");
+  /* A PAGE OF ROWS AT A TIME (app-2-2). The cap belongs to this token and
+     query, so a later pass appending beneath keeps whatever the listener
+     already revealed, and a new query starts from one step again. The painted
+     record above stays the whole list, so dedupe and upgrade still see every
+     row. */
+  if (showSearchPaintCap.token !== myToken || showSearchPaintCap.query !== query) {
+    showSearchPaintCap = { token: myToken, query, n: SHOW_RESULTS_PAINT_STEP };
+  }
+  const cap = showSearchPaintCap.n;
+  const more = shows.length - cap;
+  results.innerHTML = shows.slice(0, cap).map(showResultRow).join("")
+    + (more > 0 ? `<button type="button" class="fy-script-more" data-sh-more>Show more shows</button>` : "");
   results.hidden = false;
+  const moreBtn = more > 0 && typeof results.querySelector === "function" ? results.querySelector("[data-sh-more]") : null;
+  if (moreBtn) {
+    moreBtn.addEventListener("click", () => {
+      if (myToken !== showSearchToken) return;
+      showSearchPaintCap = { token: myToken, query, n: cap + SHOW_RESULTS_PAINT_STEP };
+      paintShowResults(query, showSearchPainted.rows, myToken);
+    });
+  }
+}
+
+/** How many of the current query's rows are painted (app-2-2). */
+let showSearchPaintCap = { token: -1, query: "", n: SHOW_RESULTS_PAINT_STEP };
+
+/* THE ROW CACHES ARE BOUNDED TOO (app-2-2). `showById` resolves a tapped
+   directory or shard row from these, so they must hold what is on screen — and
+   they held every row every query had ever received, for the session. Oldest
+   first out past SHOW_ROW_CACHE_MAX; a query hands over at most a few hundred,
+   so the rows of the list on screen are always inside the bound. The order is
+   kept apart from the object because an Apple id is an integer-like key, and
+   an object lists those numerically, not by insertion. */
+const SHOW_ROW_CACHE_MAX = 1000;
+const showRowCacheOrder = { breadth: new Set(), shard: new Set() };
+function cacheShowRow(kind, row) {
+  if (!row || !row.show_id) return;
+  const map = kind === "shard" ? state.shardShowCache : state.breadthShowCache;
+  const order = showRowCacheOrder[kind];
+  map[row.show_id] = row;
+  order.delete(row.show_id);
+  order.add(row.show_id);
+  while (order.size > SHOW_ROW_CACHE_MAX) {
+    const oldest = order.values().next().value;
+    order.delete(oldest);
+    delete map[oldest];
+  }
 }
 
 /** WHAT A SETTLED, EMPTY SHOWS SEARCH OFFERS INSTEAD OF A DEAD END (audit
@@ -8438,7 +8605,7 @@ function runShowSearchCostly(query, myToken, local) {
      `scanShowIndex` returns word-start and substring hits only, so there is
      nothing here to dedupe against the prefix answer beyond the curated rows. */
   if (showIndex && query.trim().length >= SHOW_SCAN_MIN_QUERY_LENGTH) {
-    const scanned = SearchEngine.scanShowIndex(query, showIndex);
+    const scanned = SearchEngine.scanShowIndex(query, showIndex, SHOW_PASS_LIMIT);
     const additions = mergeShowRows(query, shown(), scanned);
     if (additions) appendShowResults(query, additions, myToken);
   }
@@ -8450,7 +8617,7 @@ function runShowSearchCostly(query, myToken, local) {
      (artwork, editorial note) replaces the index's title-only row. It runs for
      every row received, including the ones the dedup then drops. */
   const mergeBreadth = (breadthShows) => {
-    for (const s of breadthShows) state.breadthShowCache[s.show_id] = s;
+    for (const s of breadthShows) cacheShowRow("breadth", s);
     /* THE PAINTED ROW IS UPGRADED, NOT ONLY THE CACHE (audit round 2,
        search-1). The comment above promised that a richer record "replaces
        the index's title-only row", and it did — in the cache `showById` reads
@@ -8615,9 +8782,11 @@ function runShowSearchCostly(query, myToken, local) {
     const shardStart = nowMs();
     fetchShardRows(shardKey).then((rows) => {
       const shardMs = nowMs() - shardStart;
-      const ranked = SearchEngine.rankShardRows(query, rows);
+      /* Its best SHOW_PASS_LIMIT (app-2-2): rankShardRows takes no limit, and a
+         shard can hold thousands of rows. */
+      const ranked = SearchEngine.rankShardRows(query, rows).slice(0, SHOW_PASS_LIMIT);
       const mapped = ranked.map(mapShardRow);
-      for (const s of mapped) state.shardShowCache[s.show_id] = s;
+      for (const s of mapped) cacheShowRow("shard", s);
       if (myToken === showSearchToken && mapped.length) mergeBreadth(mapped);
       settle({ shardMs, shardHits: mapped.length });
       showPassDone(false); // fetchShardRows folds its own failures into [], so it cannot report one
@@ -8767,6 +8936,9 @@ function renderPlaylistSearchResults(query, myToken, reportCtaMs = () => {}) {
     container.hidden = false;
     whenIdle(() => searchDataSettled().then(() => {
       if (myToken !== showSearchToken) { reportCtaMs(null); return; } // a newer query already superseded this one
+      /* Belt to the router's supersede (app-2-3): a section no longer in the
+         document is nobody's, so the multi-second scan is not run for it. */
+      if (container.isConnected === false) { reportCtaMs(null); return; }
       const ctaStart = nowMs();
       /* A scan that throws must not leave "Still looking" up for good: the
          pending line is a promise that this callback always ends it. */
@@ -8833,25 +9005,24 @@ function createPlaylistCtaHtml(query) {
 /* Hands off to Create's own, single creation path (#cr-form's
    bindCreateFormSubmit) rather than calling buildPlaylist() from here --
    see createPlaylistCtaHtml's header for why a second creation path is out
-   of scope. Navigates first so #cr-form exists, then prefills and submits
-   it on the next task-queue turn (route() replaces #view synchronously on
-   the hashchange handler, which runs after this click handler returns —
-   same "let the browser get a paint/task turn" idiom bindCreateFormSubmit
-   itself already documents for its own setTimeout(0)). It used to hand off
-   to #/playlists' form; that builder is gone (p-first-6). */
+   of scope. It used to hand off to #/playlists' form; that builder is gone
+   (p-first-6).
+
+   THE QUERY RIDES IN MODULE STATE, NOT ON A TIMER (audit round 3, app-2-11).
+   This navigated and then prefilled on a setTimeout(0), assuming the
+   hashchange render would run first. The spec does not order a timer task
+   against a hashchange task, so on a slow WebView the timer could win, find no
+   #cr-form and land the listener on an empty Create page. Now the query waits
+   in `pendingCreateQuery` and renderCreate consumes it once its form is bound —
+   whenever that render happens. */
+let pendingCreateQuery = null;
+
 function bindCreatePlaylistCta(scope) {
   const btn = scope.querySelector("[data-create-playlist]");
   if (!btn) return;
   btn.addEventListener("click", () => {
-    const query = btn.dataset.createPlaylist || "";
+    pendingCreateQuery = btn.dataset.createPlaylist || "";
     location.hash = "#/create";
-    setTimeout(() => {
-      const input = $("#cr-input");
-      const form = $("#cr-form");
-      if (!input || !form) return; // route() failed to land on #/create — nothing to prefill
-      input.value = query;
-      form.dispatchEvent(new Event("submit", { cancelable: true }));
-    }, 0);
   });
 }
 
@@ -8941,7 +9112,9 @@ function episodeDedupScopes(ep) {
   return out.length ? out : [""];
 }
 
-/** Dedup key shared by both tiers. `guid` when the row has one — the closest
+/* The dedup keys shared by both tiers (`episodeDedupKeys` below; the single-key
+    `episodeDedupKey` it grew out of had no caller and was deleted in audit round
+    3, app-2-15). `guid` when the row has one — the closest
     thing to a stable episode identity either side supplies — falling back to
     the normalised title. BOTH forms are scoped by the show, and the guid form
     is scoped for a reason that is not symmetry:
@@ -8956,12 +9129,6 @@ function episodeDedupScopes(ep) {
     Show was already part of the title key, for the older version of the same
     problem: episode titles collide hard across shows ("Episode 1",
     "Introduction"). */
-function episodeDedupKey(ep) {
-  const guid = ep && ep.guid ? String(ep.guid).trim() : "";
-  const scope = episodeDedupScopes(ep)[0];
-  if (guid) return "g:" + scope + "|" + guid;
-  return "t:" + normaliseShowTitle(ep && ep.title) + "|" + scope;
-}
 
 /** EVERY key a row can be recognised by, because one is never enough here, and
     two rows are the same episode when their key SETS INTERSECT.
@@ -9538,15 +9705,20 @@ function homeGreeting() {
 
 /** Home's rails as candidate lists, in render order. Each rail is the data the
     rail itself draws from, so the order cannot drift from what is on screen. */
-function homePlayRails() {
+/* `picks` is renderHomeV2's one computation of the rails' contents (audit round
+   3, app-2-12): computed once per render and handed to the button AND the rail
+   renderers, instead of each of them re-running every pick (generatedPlaylists
+   walks and sorts the whole pool) a second time. Absent, each is computed here,
+   as before. */
+function homePlayRails(picks = homeRailPicks()) {
   const rails = [];
-  rails.push(jumpBackInEntries().map(c =>
+  rails.push(picks.jumpBackIn.map(c =>
     c.kind === "foray" ? { kind: "foray", id: c.id, title: c.title }
       : c.kind === "episode" ? { kind: "episode", item: c.item, title: c.title }
         : { kind: "playlist", playlist: playlistById(c.id) }));
-  const forays = foraysForYouPicks();
+  const forays = picks.forays;
   rails.push(forays ? forays.picks.concat(forays.drafts).map(f => ({ kind: "foray", id: f.id, title: f.title })) : []);
-  const { own, generated } = playlistsForYouPicks();
+  const { own, generated } = picks.playlists;
   rails.push(own.concat(generated).map(p => ({ kind: "playlist", playlist: p })));
   rails.push((state.cardSlots || []).map(slot => ({ kind: "playlist", playlist: subjectQueueById("subject-" + slot.branch) })));
   return rails;
@@ -9577,8 +9749,13 @@ function homePlayable(c) {
 }
 
 /** What Home's play button will play, or null (nothing on Home can). */
-function homePlayTarget() {
-  for (const rail of homePlayRails()) {
+/** Every Home rail's picks, once. */
+function homeRailPicks() {
+  return { jumpBackIn: jumpBackInEntries(), forays: foraysForYouPicks(), playlists: playlistsForYouPicks() };
+}
+
+function homePlayTarget(picks) {
+  for (const rail of homePlayRails(picks)) {
     for (const c of rail) {
       const t = homePlayable(c);
       if (t) return t;
@@ -9591,8 +9768,8 @@ function homePlayTarget() {
    press, so the press plays exactly what the label promised. */
 let homePlayPending = null;
 
-function homePlayHtml() {
-  const t = homePlayTarget();
+function homePlayHtml(picks) {
+  const t = homePlayTarget(picks);
   homePlayPending = t;
   if (!t) return "";
   return `<div class="hv2-play-row">
@@ -9719,8 +9896,7 @@ async function startHomeForay(player, r) {
  * otherwise — deliberately conservative: an unknown time must not out-rank a
  * known one.
  */
-function jumpBackInV2Html() {
-  const cards = jumpBackInEntries();
+function jumpBackInV2Html(cards = jumpBackInEntries()) {
   if (!cards.length) return "";
   return `<section class="hv2-section hv2-jbi">
     <h2 class="hv2-title">Jump back in</h2>
@@ -9789,8 +9965,13 @@ function lastEpisodeCard() {
     if (!r) return null;
     /* Seeded into the item index so a tap can play it without waiting for a
        catalogue that may not hold it at all — the pointer's snapshot carries
-       `audio_url` precisely so this is possible. */
-    snapshot(r.id, r);
+       `audio_url` precisely so this is possible.
+       NEVER OVER A RICHER ENTRY (audit round 3, app-2-1), exactly as
+       playerPointerEpisode seeds it: the pointer carries seven fields, and
+       Home renders on every open, so an unguarded snapshot replaced the played
+       episode's pool or show-page entry — notes, chapters, date, topics — with
+       the thin pointer for the rest of the session. */
+    if (!state.itemIndex[r.id]) snapshot(r.id, r);
     return {
       /* `item` is the snapshot itself, carried so the card can render a play
          button: `playBtn` needs `audio_url` to decide whether to render at all,
@@ -9893,7 +10074,7 @@ function forayCardV2Html(foray, { stretch = false, draft = false } = {}) {
      a title and a strip, and the strip's length is only in its aria-label. */
   const facts = forayFactsLabel(r, player);
   const subject = subjectLabel((foray.topic || "").split("/")[0]);
-  return `<a class="hv2-foray-card${stretch ? " hv2-stretch" : ""}" href="#/foray/${esc(foray.id)}">
+  return `<a class="hv2-foray-card${stretch ? " hv2-stretch" : ""}" href="#${esc(forayRoutePath(foray.id))}">
     ${stretch ? `<span class="hv2-stretch-tag">Stretch</span>` : ""}
     ${draft ? `<span class="hv2-draft-tag">draft</span>` : ""}
     <span class="hv2-foray-title">${esc(foray.title)}</span>
@@ -9932,8 +10113,7 @@ function foraysForYouPicks() {
   return { picks, stretchIndex, drafts };
 }
 
-function foraysForYouHtml() {
-  const pick = foraysForYouPicks();
+function foraysForYouHtml(pick = foraysForYouPicks()) {
   if (!pick) return "";
   const { picks, stretchIndex, drafts } = pick;
   return `<section class="hv2-section hv2-forays">
@@ -9978,8 +10158,7 @@ function playlistsForYouPicks() {
   return { own, generated: generatedPlaylists() };
 }
 
-function playlistsForYouHtml() {
-  const { own, generated } = playlistsForYouPicks();
+function playlistsForYouHtml({ own, generated } = playlistsForYouPicks()) {
   if (!own.length && !generated.length) return "";
   const cards = own.map(p => playlistCardV2Html(p, { generated: false }))
     .concat(generated.map(p => playlistCardV2Html(p, { generated: true })));
@@ -10021,14 +10200,15 @@ function suggestedHtml() {
 function renderHomeV2() {
   setBodyClass("view-home");
   if (!state.cardSlots.length) buildCards();
+  const picks = homeRailPicks();
   $("#view").innerHTML = `
     <div class="home hv2-home">
       ${homeGreeting()}
-      ${homePlayHtml()}
+      ${homePlayHtml(picks)}
       ${testTrackNoticeHtml()}
-      ${jumpBackInV2Html()}
-      ${foraysForYouHtml()}
-      ${playlistsForYouHtml()}
+      ${jumpBackInV2Html(picks.jumpBackIn)}
+      ${foraysForYouHtml(picks.forays)}
+      ${playlistsForYouHtml(picks.playlists)}
       ${suggestedHtml()}
     </div>`;
 
@@ -10146,11 +10326,22 @@ function renderForays() {
     "what counts as finished" here is how the two would come to disagree.
     `null` when the bridge has not arrived: a row then shows no mark, which
     claims nothing, rather than a guess. */
+/** An episode's length in seconds: its `duration_sec` when it has one, else
+    its minutes (docs/DECISIONS.md 2026-09-23, "One duration dialect"), else
+    null. ONE helper for every reader (audit round 3, app-2-7): the notes'
+    timestamp guard used the rounded minutes alone and turned real stamps in
+    the last half-minute into dead text. `upperBound` is for a guard: minutes
+    are ROUNDED, so the true length can be up to 29 s past `min * 60`. */
+function itemDurationSec(item, { upperBound = false } = {}) {
+  if (Number(item?.duration_sec) > 0) return Number(item.duration_sec);
+  const min = Number(item?.duration_min);
+  return min > 0 ? min * 60 + (upperBound ? 29 : 0) : null;
+}
+
 function rowProgress(item) {
   const bridge = window.ForayPlayer;
   if (!item?.id || typeof bridge?.episodeProgress !== "function") return null;
-  const durSec = Number(item.duration_sec) > 0 ? Number(item.duration_sec)
-    : (Number(item.duration_min) > 0 ? Number(item.duration_min) * 60 : null);
+  const durSec = itemDurationSec(item);
   try { return bridge.episodeProgress(item.id, durSec); } catch (_) { return null; }
 }
 
@@ -10595,8 +10786,17 @@ function episodeDescriptionTokens(text, durationSec = null) {
   let m;
   while ((m = DESC_TOKEN_RE.exec(src)) !== null) {
     if (m.index > last) out.push({ kind: "text", text: src.slice(last, m.index) });
-    const [whole, url, stamp] = m;
+    let [whole, url, stamp] = m;
     if (url) {
+      /* BALANCED PARENTHESES STAY IN THE URL (audit round 3, app-2-8; the GFM
+         autolink rule). The pattern leaves a trailing `)` to the sentence, which
+         cut `…/wiki/Mercury_(planet)` to `…/wiki/Mercury_(planet`. A `)` right
+         after the match is taken back while the URL has an unclosed `(`. */
+      const opens = (u) => u.split("(").length - 1;
+      const closes = (u) => u.split(")").length - 1;
+      while (src[m.index + url.length] === ")" && opens(url) > closes(url)) url += ")";
+      whole = url;
+      DESC_TOKEN_RE.lastIndex = m.index + url.length;
       out.push({ kind: "link", text: url, href: safeUrl(url) });
     } else {
       const secs = parseTimestampSeconds(stamp);
@@ -10641,7 +10841,7 @@ if (typeof window !== "undefined") {
    of the notes that does something would be the wrong half to hide. */
 function episodeDescriptionSectionHtml(item) {
   if (!item.description) return "";
-  const durationSec = item.duration_min ? item.duration_min * 60 : null;
+  const durationSec = itemDurationSec(item, { upperBound: true });
   return `<details class="ep-description">
       <summary class="ep-description-toggle">Episode notes</summary>
       <p class="ep-description-text">${episodeDescriptionHtml(item.description, durationSec)}</p>
@@ -10706,23 +10906,26 @@ function bindEpisodeSeeks(scope, item) {
         /* Play only when this is not already the current episode — a restart
            would throw away the thing the listener is in the middle of. Then
            seek, always: that is the whole of what the control promises. */
-        if (!window.ForayPlayer.isPlaying(item.id)) {
-          const ok = await window.ForayPlayer.play(item, { why: whyFor(item.id, item), startOffset: secs });
-          /* THE START CARRIES THE STAMP (audit round 2 review; races-1's rule
-             everywhere else): the load begins AT the timestamp, rather than
-             starting at the resume point and seeking after — two steps a
-             second tap or a slow load could race. A refused start says so on
-             the bar, as bindPlay's does — unless a later tap superseded it,
-             which is not a failure. */
-          if (ok === false) {
-            if (typeof window.ForayPlayer.isCurrent === "function" && !window.ForayPlayer.isCurrent(item.id)) return;
-            try { window.ForayPlayer.reportPlayFailure?.(null); } catch (_) { /* the bar is best-effort */ }
-            return;
-          }
-          sendContinuation();
+        /* CURRENT, not playing (audit round 3, app-2-4): a paused current
+           episode is seeked, not restarted — and resumed, because a tap on a
+           stamp asks to hear it. */
+        const current = typeof window.ForayPlayer.isCurrent === "function"
+          ? window.ForayPlayer.isCurrent(item.id)
+          : window.ForayPlayer.isPlaying(item.id);
+        if (!current) {
+          /* THE ONE START PATH (audit round 3, app-2-4). This called
+             ForayPlayer.play() directly, so an episode started from a chapter
+             or a timestamp never reached History, never logged play_started
+             and left the previous list's ⏮/⏭ chain in place. startEpisodePlay
+             does all of that, reports a refused start (not a superseded one),
+             and carries the stamp as the START offset (races-1: the load begins
+             at the timestamp rather than seeking after). A stamp starts this
+             episode alone: no list, no playlist context. */
+          await startEpisodePlay(item.id, item, { ctx: null, list: [], startOffset: secs });
           return;
         }
         await window.ForayPlayer.seekTo(secs);
+        if (!window.ForayPlayer.isPlaying(item.id)) await window.ForayPlayer.togglePlayback?.();
       } catch (err) {
         /* A seek that cannot happen is not a reason to break the page — the
            same rule the rest of this file's playback bindings follow. But a
@@ -11314,6 +11517,16 @@ function renderCreate() {
       if (form) bindCreateFormSubmit({ preventDefault() {}, currentTarget: form });
     });
   });
+  /* A Search CTA's hand-off (app-2-11): prefilled and submitted through the
+     same path, now that the form exists. Consumed once. */
+  if (pendingCreateQuery !== null) {
+    const query = pendingCreateQuery;
+    pendingCreateQuery = null;
+    const form = $("#cr-form");
+    const input = $("#cr-input");
+    if (input) input.value = query;
+    if (form && !createBuildPending) bindCreateFormSubmit({ preventDefault() {}, currentTarget: form });
+  }
 }
 
 /* ---------- Forays (#128) ----------
@@ -11466,11 +11679,22 @@ const PLAYER_WAIT_MS = 5000;
 
 function playerBridge() {
   if (window.ForayPlayer) return Promise.resolve(window.ForayPlayer);
+  /* EACH WAIT CLEANS UP AFTER ITSELF (audit round 3, app-2-14). On the broken-
+     deploy path the event never fires, and every visit to #/forays, Library or
+     a Try again used to leave one listener and its closure attached for the
+     session: finish() resolved but removed nothing. */
   return new Promise(resolve => {
     let done = false;
-    const finish = () => { if (!done) { done = true; resolve(window.ForayPlayer || null); } };
+    let timer = null;
+    const finish = () => {
+      if (done) return;
+      done = true;
+      window.removeEventListener("forayplayer:ready", finish);
+      clearTimeout(timer);
+      resolve(window.ForayPlayer || null);
+    };
     window.addEventListener("forayplayer:ready", finish, { once: true });
-    setTimeout(finish, PLAYER_WAIT_MS);
+    timer = setTimeout(finish, PLAYER_WAIT_MS);
   });
 }
 
@@ -11524,10 +11748,23 @@ function feedbackFor(segmentId) { return forayFeedback()[segmentId] || null; }
 
 /** Record (or clear) a vote and emit the event. `reasons`/`note` only ever ride
     a down-vote — an up-vote has nothing to explain. */
+/** The interest nudge a stored vote applied: +0.08 for an up, -0.08 for a down
+    with a subject-shaped reason, 0 for anything else (p-foray-6). */
+function voteNudge(vote) {
+  if (!vote || !vote.direction) return 0;
+  if (vote.direction === "up") return 0.08;
+  return (vote.reasons || []).some(r => TOPIC_REASONS.has(r)) ? -0.08 : 0;
+}
+
 function setFeedback(entry, direction, { reasons = [], note = "" } = {}) {
   const all = forayFeedback();
   const segId = entry.segment_id;
   if (!segId) return;
+  /* A VOTE REPLACES THE ONE BEFORE IT, nudge included (audit round 3, app-2-6).
+     Clearing a vote, or changing it, used to leave the old nudge in place, so
+     up, clear, up drove a topic to 1.0 in about thirteen taps. The previous
+     vote's nudge is undone in the same step that applies the new one. */
+  const undo = -voteNudge(all[segId]);
   if (!direction) delete all[segId];
   else all[segId] = { direction, reasons, note, ts: new Date().toISOString() };
   lsSet("cp_foray_feedback", all);
@@ -11550,10 +11787,15 @@ function setFeedback(entry, direction, { reasons = [], note = "" } = {}) {
        complaining about one host's microphone made Home show fewer startup
        episodes. The sheet promises specificity; the reasons now mean it. A
        down-vote with no subject-shaped reason is recorded as an event only. */
-    if (direction === "up" || reasons.some(r => TOPIC_REASONS.has(r))) {
-      nudgeTopics([entry.topic], direction === "up" ? 0.08 : -0.08);
-    }
+    const net = undo + voteNudge({ direction, reasons });
+    if (net) nudgeTopics([entry.topic], net);
     trySyncEvents();
+  } else if (undo) {
+    /* A cleared vote logs nothing yet: the events contract only knows
+       up/down (backend/src/types/events.ts ThumbsPayloadSchema), and a row the
+       learning job cannot parse is worse than a missing retraction. The
+       server-side half is recorded as a follow-up. */
+    nudgeTopics([entry.topic], undo);
   }
   paintFeedback(segId);
 }
@@ -11665,7 +11907,7 @@ function forayCreditHtml(entry) {
      interactive element inside a button is invalid HTML whose click never
      survives the parent's handler. */
   return showId
-    ? `<a class="fy-credit show-link" href="#/show/${esc(showId)}">${esc(entry.show)}</a>`
+    ? `<a class="fy-credit show-link" href="#${esc(showRoutePath(showId))}">${esc(entry.show)}</a>`
     : `<span class="fy-credit" data-credit-show="${esc(entry.show)}">${esc(entry.show)}</span>`;
 }
 
@@ -11753,7 +11995,7 @@ function citesHtml(entry) {
     if (c.kind === "tape") {
       const showId = c.show_id && showById(c.show_id) ? c.show_id : showIdForShowName(c.show);
       const name = showId
-        ? `<a class="show-link" href="#/show/${esc(showId)}">${esc(c.show)}</a>`
+        ? `<a class="show-link" href="#${esc(showRoutePath(showId))}">${esc(c.show)}</a>`
         : esc(c.show);
       return `<li>${name}${c.episode_title ? ` — ${esc(c.episode_title)}` : ""}</li>`;
     }
@@ -12058,7 +12300,7 @@ function relinkForayCredits(r, player) {
   view.querySelectorAll(".fy-credit[data-credit-show]").forEach((span) => {
     const show = span.dataset.creditShow;
     const id = showIdForShowName(show);
-    if (id) span.outerHTML = `<a class="fy-credit show-link" href="#/show/${esc(id)}">${esc(show)}</a>`;
+    if (id) span.outerHTML = `<a class="fy-credit show-link" href="#${esc(showRoutePath(id))}">${esc(show)}</a>`;
   });
   const src = view.querySelector(".fy-sources");
   if (src) {
@@ -12235,6 +12477,7 @@ async function renderForay(id) {
   const played = point && point.finished ? point : null;
   const resume = played ? null : point;
   state.forayResume = resume;
+  forayPaintedLive = null;
   /* The document changed under a stored position. Nothing user-facing — the
      resume already degraded correctly — but it is the one signal that says how
      often real listeners hit it, and #40 is explicit that a stale-data event must
@@ -12990,11 +13233,16 @@ function bindForayTransport(r, player, resume = null) {
   /* The main button, pressed cold. With a stored position that means RESUME —
      the whole point of the feature — and an explicit index (a row, the strip)
      always wins, because the listener just named a segment. */
-  const startOrResume = () => resume ? startAt(resume.elapsedSec) : start(0);
+  /* FROM `state.forayResume`, NOT THE BIND-TIME `resume` (audit round 3,
+     app-3-1). The closure was the point captured when the page rendered, so
+     after play -> advance -> close the bar, Play restarted from that old point
+     (or 0) and the player's next save overwrote the real one. paintForay
+     re-reads the stored point when this Foray goes from live to cold. */
+  const startOrResume = () => state.forayResume ? startAt(state.forayResume.elapsedSec) : start(0);
 
   $("#fy-restart")?.addEventListener("click", async () => {
     if (typeof player.clearForayResume === "function") player.clearForayResume(r.id);
-    logEvent("foray_restart", { foray_id: r.id, from_sec: Math.round(resume?.elapsedSec || 0) });
+    logEvent("foray_restart", { foray_id: r.id, from_sec: Math.round(state.forayResume?.elapsedSec || resume?.elapsedSec || 0) });
     resume = null;
     state.forayResume = null;
     $("#fy-resume")?.remove();
@@ -13043,7 +13291,7 @@ function bindForayTransport(r, player, resume = null) {
     // small lie that makes a metric useless six months later.
     logEvent("foray_play", {
       foray_id: r.id, segments: r.playable.length,
-      resumed_from_sec: resume ? Math.round(resume.elapsedSec) : null,
+      resumed_from_sec: state.forayResume ? Math.round(state.forayResume.elapsedSec) : null,
     });
     await startOrResume();
   });
@@ -13224,6 +13472,29 @@ function openRateMenu(player, onChange) {
 /** The only thing that changes 4x a second. Deliberately not a re-render: the
     running order is 32 rows and rebuilding it would fight the scroll position
     and drop focus. */
+/** Which Foray the page last painted LIVE (app-3-1), so a cold tick can tell
+    "just stopped" from "never started". Reset by every renderForay. */
+let forayPaintedLive = null;
+
+/** Re-read this Foray's stored resume point into `state.forayResume` and repaint
+    the banner's words from it (app-3-1). A finished Foray has no resume point. */
+function refreshForayResume() {
+  const r = state.foray;
+  const player = window.ForayPlayer;
+  if (!r || !player || typeof player.forayResume !== "function") return;
+  let point = null;
+  try {
+    point = player.forayResume(r.id, { totalSec: r.totalSec, itemCount: (r.playable || []).length, resolved: r, includeFinished: true });
+  } catch (_) { point = null; }
+  state.forayResume = point && !point.finished ? point : null;
+  const at = $("#fy-resume .fy-resume-at");
+  const left = $("#fy-resume .fy-resume-left");
+  if (state.forayResume && typeof player.fmtClock === "function") {
+    setStatusText(at, `Jump back in at ${player.fmtClock(state.forayResume.elapsedSec)}`);
+    if (state.forayResume.label) setStatusText(left, state.forayResume.label);
+  }
+}
+
 function paintForay(s) {
   if (!state.foray) return;
   /* SOMEBODY ELSE'S FORAY IS NOT THIS PAGE'S NEWS. `watchForay` points the live
@@ -13251,6 +13522,15 @@ function paintForay(s) {
   const failed = Boolean(s.error) && !s.playing && !s.loading && !s.gap;
   const live = s.index >= 0 && !failed;
   state.forayPlaying = live ? state.foray.id : null;
+  /* LIVE -> COLD RE-READS THE STORED POINT (audit round 3, app-3-1). The resume
+     point was read once, at render; after the listener played on and closed
+     the bar, the cold page (clock, banner, and the Play the next press runs)
+     fell back to that stale point, or to 0. */
+  if (live) forayPaintedLive = state.foray.id;
+  else if (forayPaintedLive === state.foray.id) {
+    forayPaintedLive = null;
+    refreshForayResume();
+  }
 
   /* Nothing loaded — cold, or the mini bar was just closed. Fall back to the
      stored resume point rather than repainting the page as untouched: the
@@ -13477,7 +13757,7 @@ function forayRowsHtml(list, { inSection = false } = {}) {
   return `<div class="fy-home">${list.map(f => {
     const sub = forayListSubLabel(f, progress, { draftTag: false });
     return `
-    <a class="fy-home-row" href="#/foray/${esc(f.id)}">
+    <a class="fy-home-row" href="#${esc(forayRoutePath(f.id))}">
       ${inSection && f.status === "published" ? "" : `<span class="fy-home-kicker">foray${f.status === "published" ? "" : " · draft"}</span>`}
       <span class="fy-home-title">${esc(f.title)}</span>
       ${sub ? `<span class="fy-home-sub">${esc(sub)}</span>` : ""}
@@ -13607,7 +13887,7 @@ function forayResumeRows({ limit = 3, includeFinished = false } = {}) {
 function jumpBackInHtml(rows) {
   if (!rows.length) return "";
   return `<div class="fy-home fy-jbi">${rows.map(p => `
-    <a class="fy-home-row fy-jbi-row" href="#/foray/${esc(p.id)}">
+    <a class="fy-home-row fy-jbi-row" href="#${esc(forayRoutePath(p.id))}">
       <span class="fy-home-kicker">Jump back in</span>
       <span class="fy-home-title">${esc(p.title || p.id)}</span>
       <span class="fy-bar"><span class="fy-bar-fill" data-pct="${esc(String(p.percent))}"></span></span>
@@ -15981,6 +16261,12 @@ function renderCurrentPage() {
   resetPageHeadScrollState();
   renderEpoch++;
   const h = currentHash();
+  /* LEAVING SEARCH ENDS ITS SEARCH (audit round 3, app-2-3). The Search page's
+     passes were superseded only by a keystroke, a new Search mount or ✕ — never
+     by navigating away — so a pending debounce tick still fired its fetches and
+     index scan, and the playlist-CTA scan (1.3-8 s cold, main thread) ran over
+     the show page the listener had just opened. */
+  if (!/^#\/shows($|\/)/.test(h)) supersedeShowSearch();
   /* A repaint of the page already on screen keeps its shelves where the
      listener left them (audit round 2, perf-8) — a settings switch, the late
      ribbon and ↻ all come through here without a navigation. */

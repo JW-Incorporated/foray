@@ -129,7 +129,7 @@ The app also asks the browser to mark its storage as persistent
 | `cp_history` | The last 200 episode ids you picked or played in the app | **No** (but see `picked` in §2) |
 | `cp_seen` | Episode ids already shown to you, so they are not repeated | **No** |
 | `cp_saved` | The episodes you saved | **No** (but see `saved` in §2) |
-| `cp_lastpick` | A snapshot of the last episode you picked | **No** (but marking it Done sends `finished` — §2) |
+| `cp_lastpick` | Retired (2026-09-25): it used to hold a snapshot of the last episode you picked, which nothing in the app read any more. It is no longer written, and a copy left from an earlier version is deleted the next time the app starts | **No** |
 | `cp_playlists` | Playlists you built, including the text you typed to build them. Since 2026-08-19 each part also keeps a copy of the episode's own details — its id, title, show name, length, Apple Podcasts ids and topic ids — so a playlist still lists what is in it after the episode leaves 4a's catalogue. It deliberately does **not** copy the audio URL or the artwork URL | **No** |
 | `cp_quests` | A legacy key, migrated once into `cp_playlists` | **No** |
 | `cp_queue` | Your Up Next list — an ordered array of episode ids you added from any episode row's "+ Up Next" control. Separate from `cp_playlists`; holds only the ids — the details it shows are in `cp_episode_snaps` | **No** |

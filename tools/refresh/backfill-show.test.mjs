@@ -16,6 +16,7 @@
  *
  * The floor for this suite lives in test/suite-integrity.test.js.            */
 
+process.env.TZ = "America/Los_Angeles"; // audit round 3, tests-5: off UTC, so the local-formatter mutation below now fails in CI too
 import { test } from "node:test";
 import assert from "node:assert";
 import { readFileSync as _readSelfFile } from "node:fs";

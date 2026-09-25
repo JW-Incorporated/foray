@@ -64,6 +64,8 @@ const SEARCH_SRC = fs.readFileSync(path.join(ROOT, "search-engine.js"), "utf8");
 process.on("unhandledRejection", () => {});
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+/* audit round 3, tests-3: where a test waits for a known outcome it waits for the CONDITION. */
+const { waitFor } = require("./helpers/wait-for.js");
 
 function makeEl(tag) {
   const handlers = new Map();
@@ -317,7 +319,7 @@ test("an index-only hit no longer closes the gate: the seam S-03 opened is now a
      suppresses the directory and the `directoryCalls()` assertion goes red. */
   const m = mount();
   m.input.fire("focus");
-  await sleep(10);
+  await waitFor(() => m.evalIn("showIndex !== null")); // the focus loaded the index (tests-3: a condition, not a guess)
   m.input.value = "deep history";
   m.byId.get("sh-form").fire("submit");
   assert.ok(m.results().innerHTML.includes("Deep History Hour"),
@@ -355,14 +357,14 @@ test("TEN strong local matches still ask the directory: the `tim` case, which ev
     }],
   });
   m.input.fire("focus");
-  await sleep(10);
+  await waitFor(() => m.evalIn("showIndex !== null"));
   m.input.value = "tim";
   m.byId.get("sh-form").fire("submit");
   const localRows = (m.results().innerHTML.match(/href="#\/show\//g) || []).length;
   assert.ok(localRows >= 10, `fixture assumption: ten strong local matches, got ${localRows}`);
   assert.strictEqual(m.directoryCalls().length, 1,
     "ten strong local matches must not buy the listener a suppressed directory");
-  await sleep(20);
+  await waitFor(() => m.results().innerHTML.includes("The Tim Ferriss Show"));
   assert.ok(m.results().innerHTML.includes("The Tim Ferriss Show"),
     "and the show the listener actually meant must arrive");
 });

@@ -98,8 +98,15 @@ function keyFamiliesInPolicy() {
   return found;
 }
 
+/** Keys app.js no longer writes and removes once storage settles
+    (`RETIRED_STORAGE_KEYS`; audit round 3, data-integrity-8). A seeded one is
+    gone after boot on every path, so "nothing was touched" excludes it. */
+const RETIRED_KEYS = new Set(
+  JSON.parse((/const RETIRED_STORAGE_KEYS = (\[[^\]]*\]);/.exec(read("app.js")) || [null, "[]"])[1])
+);
+
 /** The `cp_` keys a fixture seeded, for "nothing was touched" assertions. */
-const seededKeys = (seed) => Object.keys(seed).filter((k) => k.startsWith("cp_"));
+const seededKeys = (seed) => Object.keys(seed).filter((k) => k.startsWith("cp_") && !RETIRED_KEYS.has(k));
 
 /** One concrete key per family, so a patterned family is exercised with real
     instances rather than with its own stem. */
