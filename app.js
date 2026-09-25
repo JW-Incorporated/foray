@@ -9833,11 +9833,22 @@ function renderForays() {
     "what counts as finished" here is how the two would come to disagree.
     `null` when the bridge has not arrived: a row then shows no mark, which
     claims nothing, rather than a guess. */
+/** An episode's length in seconds: its `duration_sec` when it has one, else
+    its minutes (docs/DECISIONS.md 2026-09-23, "One duration dialect"), else
+    null. ONE helper for every reader (audit round 3, app-2-7): the notes'
+    timestamp guard used the rounded minutes alone and turned real stamps in
+    the last half-minute into dead text. `upperBound` is for a guard: minutes
+    are ROUNDED, so the true length can be up to 29 s past `min * 60`. */
+function itemDurationSec(item, { upperBound = false } = {}) {
+  if (Number(item?.duration_sec) > 0) return Number(item.duration_sec);
+  const min = Number(item?.duration_min);
+  return min > 0 ? min * 60 + (upperBound ? 29 : 0) : null;
+}
+
 function rowProgress(item) {
   const bridge = window.ForayPlayer;
   if (!item?.id || typeof bridge?.episodeProgress !== "function") return null;
-  const durSec = Number(item.duration_sec) > 0 ? Number(item.duration_sec)
-    : (Number(item.duration_min) > 0 ? Number(item.duration_min) * 60 : null);
+  const durSec = itemDurationSec(item);
   try { return bridge.episodeProgress(item.id, durSec); } catch (_) { return null; }
 }
 
@@ -10337,7 +10348,7 @@ if (typeof window !== "undefined") {
    of the notes that does something would be the wrong half to hide. */
 function episodeDescriptionSectionHtml(item) {
   if (!item.description) return "";
-  const durationSec = item.duration_min ? item.duration_min * 60 : null;
+  const durationSec = itemDurationSec(item, { upperBound: true });
   return `<details class="ep-description">
       <summary class="ep-description-toggle">Episode notes</summary>
       <p class="ep-description-text">${episodeDescriptionHtml(item.description, durationSec)}</p>

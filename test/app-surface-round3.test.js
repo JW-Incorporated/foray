@@ -235,3 +235,26 @@ test("app-2-8: the notes linkifier keeps a balanced closing paren and still drop
   assert.deepStrictEqual(tokens("(see https://x.test/a)"), ["(see ", "https://x.test/a", ")"], "and it stays in the text, nothing lost");
   assert.deepStrictEqual(tokens("(https://w.test/F_(x)) 1:02"), ["(", "https://w.test/F_(x)", ") ", "1:02"], "only the balanced one is taken back, and scanning resumes after it");
 });
+
+/* ---------- app-2-7: the notes' timestamp guard reads duration_sec ------------ */
+
+test("app-2-7: a chapter stamp in an episode's last half-minute is a control, not dead text", () => {
+  /* The guard was `duration_min * 60`, and every producer ROUNDS the minutes:
+     3569 s -> 59 min -> a 3540 s guard, so "59:10 Outro" (3550 s) rendered as
+     plain text. rowProgress already preferred duration_sec; both now share one
+     helper.
+     MUTATION: restore `item.duration_min ? item.duration_min * 60 : null` in
+     episodeDescriptionSectionHtml — red. */
+  const m = loadApp();
+  const item = { id: "e", description: "59:10 Outro", duration_sec: 3569, duration_min: 59 };
+  const html = m.ctx.episodeDescriptionSectionHtml(item);
+  assert.match(html, /data-ts="3550"/, `the stamp is a seek control: ${html}`);
+  const past = m.ctx.episodeDescriptionSectionHtml({ ...item, description: "59:40 Nothing" });
+  assert.doesNotMatch(past, /data-ts=/, "a stamp past the real end is still plain text");
+  /* Minutes only: rounded, so the guard allows the rounding's half-minute. */
+  const minsOnly = m.ctx.episodeDescriptionSectionHtml({ id: "e", description: "59:20 Outro", duration_min: 59 });
+  assert.match(minsOnly, /data-ts="3560"/);
+  assert.strictEqual(m.ctx.itemDurationSec({ duration_sec: 3569, duration_min: 59 }), 3569, "duration_sec first");
+  assert.strictEqual(m.ctx.itemDurationSec({ duration_min: 59 }), 3540);
+  assert.strictEqual(m.ctx.itemDurationSec({}), null);
+});
