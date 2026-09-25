@@ -8,6 +8,7 @@ import {
   phonemizeItems,
   phonemizedCount,
   phonemizedSummary,
+  phonemizeStage,
   runPhonemizer,
   PHONEMIZER_SCRIPT,
   type Phonemizer
@@ -198,6 +199,21 @@ describe("runPhonemizer", () => {
     const withTts = phonemizeItem(page({ id: "p1" }), ok);
     const without = page({ id: "p2" });
     expect(phonemizedSummary([withTts, without])).toBe("phonemized 1 of 2 pages");
+  });
+
+  /* Round-3 review (L5): phonemizedSummary had no caller, so the "visible
+     total miss" gen-16 promised reached no output. The stage's entry point
+     now reports the count itself.
+     MUTATION: drop the log(summary) call in phonemizeStage -- no line. */
+  it("phonemizeStage reports the count every time, a total miss included", () => {
+    const lines: string[] = [];
+    const nothing: Phonemizer = () => null;
+    const out = phonemizeStage([page({ id: "p1" }), page({ id: "p2" })], nothing, (l) => lines.push(l));
+    expect(lines).toEqual(["phonemized 0 of 2 pages"]);
+    expect(out.summary).toBe("phonemized 0 of 2 pages");
+    const done = phonemizeStage([page({ id: "p1" })], ok, (l) => lines.push(l));
+    expect(done.summary).toBe("phonemized 1 of 1 pages");
+    expect(lines).toHaveLength(2);
   });
 
   it("names the script the repository actually carries", () => {

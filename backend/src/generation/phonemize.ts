@@ -126,6 +126,27 @@ export function phonemizedSummary(items: ForayItem[]): string {
   return `phonemized ${phonemizedCount(items)} of ${pages} pages`;
 }
 
+/**
+ * THE STAGE'S ONE ENTRY POINT: phonemize every page and ALWAYS report the
+ * count (gen-16). The summary used to be a separate function a caller had to
+ * remember to print, and nothing did (round-3 review, L5), so a total miss
+ * could still reach a listener unannounced. Folding the report into the stage
+ * means whoever wires K-02 into the pipeline driver gets it with no second
+ * step. NOT WIRED YET: runPipeline.ts has no phonemize stage
+ * (docs/bundled-voice-plan.md, K-02 "STILL PARTIAL"), so today no run prints
+ * this line; call this, not phonemizeItems, when it is wired.
+ */
+export function phonemizeStage(
+  items: ForayItem[],
+  phonemize: Phonemizer,
+  log: (line: string) => void = (line) => console.log(`  ${line}`)
+): { items: ForayItem[]; summary: string } {
+  const out = phonemizeItems(items, phonemize);
+  const summary = phonemizedSummary(out);
+  log(summary);
+  return { items: out, summary };
+}
+
 /** The phoneme JSON for a long Foray can pass spawnSync's 1 MiB default, which
  *  kills the child with ENOBUFS and used to look exactly like "no phonemes". */
 export const PHONEMIZER_MAX_BUFFER = 64 * 1024 * 1024;
