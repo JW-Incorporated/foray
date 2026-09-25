@@ -149,6 +149,17 @@ public enum Rows {
         guard let forayId = p.forayId, nonEmpty(forayId),
               let elapsed = p.elapsedSec, elapsed.isFinite,
               let total = p.totalSec, total.isFinite, total > 0 else { return nil }
+        return StoredRow(key: forayKey(forayId), value: JSWriter.stringify(makeForayProgress(p, updatedAt: updatedAt)))
+    }
+
+    /// `makeProgress(p)`: the stored shape, with NO gate (NE-29s; the gate is
+    /// `forayProgress`'s, which is `save`'s). Every clamp is makeProgress's:
+    /// a blank title is "", a clock that is not a finite number above 0 is 0,
+    /// an index that is not a non-negative integer is -1, a blank segment id
+    /// is null (not absent: the row round-trips through JSON), an offset that
+    /// is not a finite number above 0 is 0. A nil `forayId` is the JS
+    /// `undefined`, which the row then does not carry.
+    public static func makeForayProgress(_ p: ForayProgressInput, updatedAt: String) -> JSONNode {
         let index: Double
         if let value = p.index, value.isFinite, value.rounded(.towardZero) == value, value >= 0 {
             index = value // Number.isInteger(index) && index >= 0 (-0 included; it prints 0)
@@ -163,17 +174,18 @@ public enum Rows {
             segment = .null // null, not absent: the row round-trips through JSON (makeProgress)
         }
         let into = p.intoSec.flatMap { $0.isFinite && $0 > 0 ? $0 : nil } ?? 0
-        let row: JSONNode = .object([
-            JSONMember("foray_id", .string(forayId)),
+        var members: [JSONMember] = []
+        if let forayId = p.forayId { members.append(JSONMember("foray_id", .string(forayId))) }
+        members += [
             JSONMember("title", .string(title)),
-            JSONMember("elapsed_sec", .number(clampNum(elapsed))),
-            JSONMember("total_sec", .number(clampNum(total))),
+            JSONMember("elapsed_sec", .number(clampNum(p.elapsedSec ?? .nan))),
+            JSONMember("total_sec", .number(clampNum(p.totalSec ?? .nan))),
             JSONMember("index", .number(index)),
             JSONMember("segment_id", segment),
             JSONMember("into_sec", .number(into)),
             JSONMember("updated_at", .string(updatedAt))
-        ])
-        return StoredRow(key: forayKey(forayId), value: JSWriter.stringify(row))
+        ]
+        return .object(members)
     }
 
     /// A `cp_foray` row as `readProgress` accepts it (`isProgressRecord`).

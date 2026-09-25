@@ -17,6 +17,9 @@ import { REPO_ROOT, loadFixtures, validateFixtures, runCase, closedSets, loadSch
 import { encode, decodeSpecial, expandInputs, containsMacro, MACROS, SPECIAL_NUMBERS } from "./codec.js";
 import { compare, NATIVE_TOKEN_FAMILIES } from "./compare.js";
 import { manualScheduler, instantScheduler, OpLog, FakeBackend } from "./fakes.js";
+import { BUILDS_FILE, committedIds, overTable } from "./forays.js";
+import fs from "node:fs";
+import path from "node:path";
 
 const FIXTURES = loadFixtures(REPO_ROOT);
 
@@ -104,6 +107,33 @@ test("$foray reads a committed Foray by id, and a literal one as given", () => {
   assert.ok(Array.isArray(f.items) && f.items.length > 0, "the committed Foray has items");
   assert.deepStrictEqual(expandInputs({ $foray: { id: "x", items: [{ $seg: ["s"] }] } }).items[0].start_sec, 100);
   assert.throws(() => expandInputs({ $foray: "no-such-foray" }, { root: REPO_ROOT }), /E_BAD_MACRO/);
+});
+
+test("NE-29s: foray-builds.json holds the page's build of every committed Foray a Swift case names, and each build passes the same authored expects", () => {
+  /* The Swift half of the committed-Foray cases reads its INPUT from this table
+     (the engine never builds a Foray, plan §3 A-1), so the table must hold a
+     build for every Foray a case names, and every build in it must satisfy the
+     case's authored expect when the JS rules run over it — which is exactly
+     what the Swift runner computes. It is deliberately NOT required to be
+     byte-fresh (a data publish must not turn npm test red; `node
+     tools/parity/foray-builds.mjs --check` says when to refresh).
+     MUTATION: delete one Foray's entry from foray-builds.json, or give one of
+     its segments to "4a" as show, or drop an item's audio_url -> red here. */
+  const table = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, BUILDS_FILE), "utf8"));
+  const ids = committedIds(FIXTURES);
+  assert.ok(ids.data.length >= 2 && ids.frozen.length >= 1, "the committed cases name Forays");
+  for (const id of ids.data) assert.ok(Array.isArray(table.data?.[id]) && table.data[id].length > 0, `${id} has no build in ${BUILDS_FILE}`);
+  for (const id of ids.frozen) assert.ok(Array.isArray(table.frozen?.[id]) && table.frozen[id].length > 0, `${id} has no frozen build`);
+  let ran = 0;
+  for (const fx of FIXTURES.filter((f) => f.doc.module === "player/parity/forays.js")) {
+    for (const c of fx.doc.cases) {
+      const args = expandInputs(c.args ?? [], { root: REPO_ROOT });
+      const diffs = compare(c.expect, { return: encode(overTable(c.call, args, table)) }, { family: fx.family });
+      assert.deepStrictEqual(diffs, [], `${c.id} over the table's build`);
+      ran += 1;
+    }
+  }
+  assert.ok(ran >= 30, `only ${ran} committed cases ran over the table`);
 });
 
 test("macros are closed, alone in their object, and never legal in an expect", () => {
