@@ -22,6 +22,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import path from "node:path";
 import fs from "node:fs";
+import os from "node:os";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { exemptClickTrackPaths } from "../audio/click-tracks.mjs";
@@ -92,8 +93,17 @@ test("the labels are blind: twelve labels, and the key is a separate artefact", 
   const key = pyJson("print(json.dumps(R.label_key()))");
   assert.equal(Object.keys(key).length, 12);
   assert.equal(key.A, "af_heart");
+  /* SCOPED to the sealed round's `clip_path` from 2026-09-26. The local
+     audition (`--local`) names its files after their voices ON PURPOSE — it is
+     one founder's wide first listen, with a Blind toggle on screen, not the
+     sealed ranking — so a whole-file scan would now forbid the right thing.
+     What must stay true is that the SEALED round's clips carry only a label. */
   const py = fs.readFileSync(SCRIPT, "utf8");
-  assert.ok(!py.includes('f"{voice}.wav"'), "a clip must never be named after its voice");
+  const sealed = py.slice(py.indexOf("def clip_path("), py.indexOf("def label_key("));
+  assert.ok(sealed.length > 0, "clip_path is still where the sealed round names its clips");
+  assert.ok(!/\{voice\}/.test(sealed), "a sealed-round clip must never be named after its voice");
+  const out = pyJson("print(json.dumps(str(R.clip_path('C', 1.0, 'abc123'))))");
+  assert.ok(!/[ab][fm]_[a-z]+/.test(out), "the sealed path carries a label, not a voice id");
 });
 
 test("a slate and a label list of different lengths is a hard error, not a silent truncation", () => {
@@ -224,4 +234,229 @@ test("the audition doc seals the key and states the decision rule", () => {
   assert.match(doc, /combined rank/i, "the doc must say how twelve become three");
   assert.match(doc, /1\.5|2\.0/, "the confirm round at speed is part of the rule");
   assert.ok(!doc.includes("af_heart is A"), "the doc must not reveal the key before ranking");
+});
+
+/* ================================================================
+ * The local audition (2026-09-26): every English voice, one published
+ * Foray passage, rendered on the founder's own machine, and a page to star
+ * and annotate. `--local` in render-audition.py; docs/bundled-voice-plan.md
+ * K-03. The audio cannot be tested here (no runtime, no weights, and the
+ * weights must never be committed); what can be is everything that decides
+ * WHICH voices, WHICH weights, WHICH words, and what the page hands back.
+ * ================================================================ */
+
+test("the local audition covers every English Kokoro v1.0 voice, grouped and labelled from the id", () => {
+  /* Wyatt: "test out many of the kokoro voices". A voice missing from this list
+     is a voice nobody hears, and nothing else would notice it was absent.
+     MUTATION: drop `bm_lewis`, or map `bf` to "American". */
+  const out = pyJson(
+    "print(json.dumps({'voices': R.ENGLISH_VOICES, 'slate': R.SLATE, " +
+    "'meta': [R.voice_meta(v) for v in ['af_heart','am_puck','bf_emma','bm_george']]}))"
+  );
+  assert.equal(out.voices.length, 28);
+  assert.equal(new Set(out.voices).size, 28, "no voice listed twice");
+  const count = (p) => out.voices.filter((v) => v.startsWith(p + "_")).length;
+  assert.deepEqual([count("af"), count("am"), count("bf"), count("bm")], [11, 9, 4, 4]);
+  for (const v of out.slate) assert.ok(out.voices.includes(v), `${v} is on the sealed slate but not in the wide listen`);
+  assert.deepEqual(out.meta, [
+    { id: "af_heart", name: "Heart", accent: "American", gender: "female" },
+    { id: "am_puck", name: "Puck", accent: "American", gender: "male" },
+    { id: "bf_emma", name: "Emma", accent: "British", gender: "female" },
+    { id: "bm_george", name: "George", accent: "British", gender: "male" },
+  ]);
+});
+
+test("the local audition verifies against fetch-models.mjs's pins, read from that file, not a copy", async () => {
+  /* The whole point: the founder judges the q8f16 graph the app bundles. The
+     pins are parsed out of fetch-models.mjs so there is one hash table in the
+     repo; this checks the parse against the module's own exported PINS.
+     MUTATION: hard-code a model sha in the .py, or loosen the voice regex so
+     it misses one. */
+  const { PINS } = await import("../mobile/fetch-models.mjs");
+  const out = pyJson("print(json.dumps(R.read_pins()))");
+  const model = PINS.find((p) => p.kind === "model");
+  assert.equal(out.model.sha256, model.sha256);
+  assert.equal(out.model.url, model.url);
+  assert.equal(out.model.bytes, model.bytes);
+  const voices = PINS.filter((p) => p.kind === "voice");
+  assert.equal(Object.keys(out.voices).length, voices.length);
+  for (const p of voices) {
+    assert.equal(out.voices[p.name.replace(/\.bin$/, "")].sha256, p.sha256, `${p.name} parsed with the wrong hash`);
+  }
+});
+
+test("a local clip is out/<voice>.wav, and a voice id that is not one cannot become a path", () => {
+  /* The id is interpolated into a filename, so `..` or a separator must refuse.
+     MUTATION: drop the voice_meta() validation from local_clip_path. */
+  const out = pyJson("from pathlib import Path\nprint(json.dumps(str(R.local_clip_path('af_heart', Path('out')))))");
+  assert.match(out.replace(/\\/g, "/"), /^out\/af_heart\.wav$/);
+  for (const bad of ["../af_heart", "af_heart/../x", "xx_heart", "af_Heart"]) {
+    const r = spawnSync(PYTHON, ["-c",
+      `import importlib.util\nfrom pathlib import Path\n` +
+      `spec=importlib.util.spec_from_file_location("ra", ${JSON.stringify(SCRIPT)})\n` +
+      `R=importlib.util.module_from_spec(spec); spec.loader.exec_module(R)\n` +
+      `R.local_clip_path(${JSON.stringify(bad)}, Path('out'))\n`,
+    ], { encoding: "utf8", cwd: ROOT });
+    assert.notEqual(r.status, 0, `${bad} was accepted as a voice id`);
+  }
+});
+
+test("the passage is four real lines of a published Foray: prelude, clip intro, bridge, closing", () => {
+  /* The founder picks a voice for what it will actually say. The lines are read
+     from data/forays.json at render time, so a hand-written "nice" passage
+     cannot creep in, and their length is the 60-90 s the audition asked for
+     at narration-craft.md's 17 characters/second.
+     MUTATION: point AUDITION_FORAY_ID at a Foray without these items, or add a
+     fifth long line. */
+  const lines = pyJson("print(json.dumps(R.load_audition_lines()))");
+  assert.deepEqual(lines.map((l) => l.role), ["prelude", "clip-intro", "bridge", "closing"]);
+  const data = JSON.parse(fs.readFileSync(path.join(ROOT, "data/forays.json"), "utf8"));
+  const foray = data.forays.find((f) => f.id === "how-ai-actually-gets-built-3b83e1");
+  assert.equal(foray.status, "published");
+  for (const l of lines) {
+    const item = foray.items.find((i) => i.id === l.id);
+    assert.equal(item.type, "narration");
+    assert.equal(l.text, item.script.trim(), `${l.id} is the Foray's own words`);
+  }
+  const chars = lines.reduce((n, l) => n + l.text.length, 0);
+  assert.ok(chars >= 60 * 17 && chars <= 90 * 17, `${chars} chars is outside 60-90 s`);
+  assert.match(lines[2].text, /TSMC/, "the bridge carries a proper noun / initialism");
+});
+
+test("a long line is split at sentence ends, every chunk fits the graph, and nothing is dropped", () => {
+  /* The style matrix has 510 rows; a line longer than that cannot be sung in
+     one call. A splitter that dropped a fragment would drop a word.
+     MUTATION: return pieces[:1], or split mid-word. */
+  const sentence = "ðə mˈɑdəl ʃˈɪps wˈʌns ænd ɹˈɛsts.";
+  const long = Array.from({ length: 30 }, () => sentence).join(" ");
+  const out = pyJson(
+    `s=${JSON.stringify(long)}\nprint(json.dumps({'chunks': R.split_phonemes(s), 'limit': R.MAX_CHUNK_PHONEMES, ` +
+    `'short': R.split_phonemes('hˈɛlO.'), 'huge': R.split_phonemes('a'*50 + ' ' + 'b'*50, 30)}))`
+  );
+  assert.ok(out.chunks.length > 1);
+  for (const c of out.chunks) {
+    assert.ok(c.length <= out.limit, `chunk of ${c.length} over ${out.limit}`);
+    assert.ok(c.endsWith("."), "split at a sentence end");
+  }
+  assert.equal(out.chunks.join(" "), long);
+  assert.deepEqual(out.short, ["hˈɛlO."]);
+  assert.ok(out.huge.every((c) => c.length <= 30), "an over-long sentence is still split to the limit");
+  assert.equal(out.huge.join("").length, 100, "and loses nothing but the space it was cut at");
+});
+
+/* ---------- the page ---------- */
+
+const FAKE_MANIFEST = {
+  kind: "foray-voice-audition", version: 1, foray_id: "how-ai-actually-gets-built-3b83e1",
+  passage_fingerprint: "abc123abc123", speed: 1.0,
+  model: { name: "kokoro-v1_0-q8f16.onnx", sha256: "0".repeat(64) },
+  phonemizer: { g2p: "misaki en-US 0.9.4", fallback: "espeak-ng 1.52.0", vocab: "sha256:x" },
+  passage: [{ id: "l1", role: "prelude", text: "A line with </script><script>alert(1)</script> in it." }],
+  voices: [
+    { id: "af_heart", name: "Heart", accent: "American", gender: "female", file: "af_heart.wav", render_sec: 280.5, audio_sec: 95.5 },
+    { id: "bm_george", name: "George", accent: "British", gender: "male", file: "bm_george.wav", render_sec: 290.1, audio_sec: 97.0 },
+    { id: "am_puck", name: "Puck", accent: "American", gender: "male", file: "am_puck.wav", render_sec: 281.0, audio_sec: 93.2 },
+  ],
+  failed: [],
+};
+
+function pageFor(manifest) {
+  return pyJson(`print(json.dumps(R.audition_page_html(json.loads(${JSON.stringify(JSON.stringify(manifest))}))))`);
+}
+
+function pureBlock(html) {
+  const m = html.match(/\/\*<pure>\*\/([\s\S]*?)\/\*<\/pure>\*\//);
+  assert.ok(m, "the page keeps its pure functions between the /*<pure>*/ markers");
+  return new Function(`${m[1]}; return { letterFor, shuffled, blindLetters, favouritesDoc };`)();
+}
+
+test("the page opens from disk: no network, relative audio, and the manifest cannot break out of its tag", () => {
+  /* It is opened as file:// on the founder's PC. Any http(s) reference is a
+     request that fails offline or leaks; a `</script>` in a narration line
+     would otherwise end the JSON tag and run as code.
+     MUTATION: link a web font, or drop the `<` escape in audition_page_html. */
+  const html = pageFor(FAKE_MANIFEST);
+  assert.ok(!/https?:\/\//.test(html), "no network URL anywhere in the page");
+  assert.ok(!/<script[^>]+src=/i.test(html) && !/<link[^>]+href=/i.test(html), "no external script or stylesheet");
+  assert.equal((html.match(/<\/script>/g) || []).length, 2, "only the two real closing tags");
+  const json = html.match(/<script type="application\/json" id="manifest">([\s\S]*?)<\/script>/)[1];
+  assert.deepEqual(JSON.parse(json), FAKE_MANIFEST, "the manifest round-trips exactly");
+  assert.match(html, /audio\.src = v\.file/, "each card plays its own relative <voice>.wav");
+  for (const needle of ['id="blind"', 'id="playfavs"', 'id="export"', "favourites.json", "foray-voice-audition:v1", "prefers-color-scheme: dark"]) {
+    assert.ok(html.includes(needle), `the page carries ${needle}`);
+  }
+});
+
+test("blind letters run A..Z then AA, and a shuffle is a permutation", () => {
+  /* 28 voices is more than 26 letters. A letterFor that wrapped to "A" again
+     would give two voices the same blind name.
+     MUTATION: letterFor = i => String.fromCharCode(65 + i % 26). */
+  const P = pureBlock(pageFor(FAKE_MANIFEST));
+  assert.deepEqual([0, 1, 25, 26, 27, 51, 52].map(P.letterFor), ["A", "B", "Z", "AA", "AB", "AZ", "BA"]);
+  let seed = 7;
+  const rand = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+  const ids = Array.from({ length: 28 }, (_, i) => `v${i}`);
+  const s = P.shuffled(ids, rand);
+  assert.deepEqual([...s].sort(), [...ids].sort());
+  assert.notDeepEqual(s, ids);
+  assert.equal(new Set(Object.values(P.blindLetters(s))).size, 28);
+});
+
+test("Export favourites produces the documented favourites.json shape", () => {
+  /* The hand-off to the next step (finalists over a whole Foray, then the
+     in-app A/B): voice ids, notes and the blind letter each was heard under.
+     MUTATION: drop blind_letter, or export notes that were cleared to spaces. */
+  const P = pureBlock(pageFor(FAKE_MANIFEST));
+  const doc = P.favouritesDoc(FAKE_MANIFEST, {
+    favs: { bm_george: true, af_heart: true },
+    notes: { af_heart: "  warm, clear on TSMC ", am_puck: "too bright", bm_george: "   " },
+    order: ["am_puck", "bm_george", "af_heart"],
+  }, "2026-09-26T00:00:00.000Z");
+  assert.deepEqual(doc, {
+    kind: "foray-voice-audition-favourites", version: 1, exported_at: "2026-09-26T00:00:00.000Z",
+    foray_id: "how-ai-actually-gets-built-3b83e1", passage_fingerprint: "abc123abc123",
+    model: "kokoro-v1_0-q8f16.onnx", speed: 1, blind_round: true,
+    favourites: [
+      { voice: "af_heart", name: "Heart", accent: "American", gender: "female", notes: "warm, clear on TSMC", blind_letter: "C" },
+      { voice: "bm_george", name: "George", accent: "British", gender: "male", notes: "", blind_letter: "B" },
+    ],
+    other_notes: [{ voice: "am_puck", notes: "too bright", blind_letter: "A" }],
+  });
+  const none = P.favouritesDoc(FAKE_MANIFEST, {}, "t");
+  assert.equal(none.blind_round, false);
+  assert.deepEqual([none.favourites, none.other_notes], [[], []]);
+});
+
+test("--local --page-only rebuilds the page from audition.json, and refuses with none", () => {
+  /* The page can be regenerated without re-rendering 28 voices (hours on the
+     audition PC). With no manifest there is nothing honest to show.
+     MUTATION: write an empty page when audition.json is missing. */
+  const dir = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "audition-"));
+  try {
+    let r = spawnSync(PYTHON, [SCRIPT, "--local", "--page-only", "--work-dir", dir], { encoding: "utf8", cwd: ROOT });
+    assert.equal(r.status, 1);
+    assert.match(r.stderr, /no manifest/);
+    assert.ok(!fs.existsSync(path.join(dir, "out", "index.html")));
+    fs.mkdirSync(path.join(dir, "out"));
+    fs.writeFileSync(path.join(dir, "out", "audition.json"), JSON.stringify(FAKE_MANIFEST));
+    r = spawnSync(PYTHON, [SCRIPT, "--local", "--page-only", "--work-dir", dir], { encoding: "utf8", cwd: ROOT });
+    assert.equal(r.status, 0, r.stderr);
+    assert.ok(fs.readFileSync(path.join(dir, "out", "index.html"), "utf8").includes("af_heart.wav"));
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("--local refuses a voice that is not an English Kokoro voice before fetching anything", () => {
+  /* A typo must not become a download of whatever URL it spells.
+     MUTATION: remove the ENGLISH_VOICES membership check in main_local. */
+  const dir = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "audition-"));
+  try {
+    const r = spawnSync(PYTHON, [SCRIPT, "--local", "--voices", "af_heart,zf_xiaobei", "--work-dir", dir], { encoding: "utf8", cwd: ROOT });
+    assert.equal(r.status, 2);
+    assert.match(r.stderr, /zf_xiaobei/);
+    assert.deepEqual(fs.readdirSync(dir), [], "nothing was fetched or written");
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
 });
