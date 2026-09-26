@@ -1,0 +1,22 @@
+name: probe-kokoro-arm64 (throwaway)
+on:
+  push:
+    branches: [probe/kokoro-arm64]
+permissions:
+  contents: read
+jobs:
+  arm64:
+    strategy:
+      fail-fast: false
+      matrix:
+        ort: ["1.20.1", "1.22.0"]
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: node tools/mobile/fetch-models.mjs
+      - run: pip install "onnxruntime==${{ matrix.ort }}" numpy
+      - run: uname -m && python tools/probe-tmp/kokoro_arm64.py
