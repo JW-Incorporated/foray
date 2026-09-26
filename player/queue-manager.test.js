@@ -384,20 +384,25 @@ test("a route disappearing pauses immediately", async () => {
   assert.ok(backend.calls.includes("pause"));
 });
 
-test("auto-resume happens only for a route already known as a car", async () => {
-  const { m } = make();
+test("reconnecting a route never resumes on the web and Android path, even one reported as a car (player-core-10)", async () => {
+  /* Founder Q5 default (audit round 3): the known-car-route auto-resume was
+     dead code here (no caller ever named a route) and is deleted; the native
+     iOS engine owns route policy. MUTATION: restore the auto-resume block and
+     the car reconnect goes to `playing`. */
+  const { m, backend } = make();
   m.setQueueFromPick(ep("a"));
   await m.play(0);
 
-  // Unknown route reappearing must NOT start audio unasked.
   await m.routeChanged({ oldDeviceUnavailable: true, routeName: "Some Headphones" });
   await m.routeChanged({ oldDeviceUnavailable: false, routeName: "Some Headphones" });
-  assert.equal(m.state.type, "interrupted", "unknown route must not auto-resume");
+  assert.equal(m.state.type, "interrupted", "headphones reappearing start nothing");
 
-  // A route we have seen as a car does resume.
+  await m.resume();
   await m.routeChanged({ oldDeviceUnavailable: true, routeName: "Civic", isCarRoute: true });
-  await m.routeChanged({ oldDeviceUnavailable: false, routeName: "Civic" });
-  assert.equal(m.state.type, "playing", "known car route resumes");
+  backend.calls.length = 0;
+  await m.routeChanged({ oldDeviceUnavailable: false, routeName: "Civic", isCarRoute: true });
+  assert.equal(m.state.type, "interrupted", "a car reappearing starts nothing either");
+  assert.ok(!backend.calls.includes("play"), `${backend.calls}`);
 });
 
 /* ---------- cold launch (corner case #15) ---------- */
@@ -519,6 +524,28 @@ test("skipToPrevious restarts at zero, not at the playhead just saved", async ()
 
   await m.skipToPrevious();
   assert.ok(backend.calls.includes("load:a@0"), `expected restart at 0, got ${backend.calls}`);
+});
+
+test("previous after a failed load reloads the clip, and never ends the queue (player-core-1)", async () => {
+  /* A failed load leaves the machine `idle`. ‹‹ from there used to reach the
+     reducer as `skipToPrevious(null)`, which returned `ended` — the state a Foray
+     reads as "Played". MUTATION: pass `null` again from `skipToPrevious` and the
+     state goes to `ended` with no reload. */
+  const { m, backend } = make({ backend: { failLoadFor: ["b"] } });
+  m.loadQueue([ep("a"), ep("b"), ep("c")]);
+  await m.play(1);
+  await tick();
+  assert.equal(m.state.type, "idle", "precondition: the load failed");
+  backend.failLoadFor.clear();
+  backend.calls.length = 0;
+
+  await m.skipToPrevious();
+  await tick();
+  assert.notEqual(m.state.type, "ended", "previous never finishes the queue");
+  assert.equal(m.state.type, "playing", "the failed clip is retried");
+  assert.equal(m.currentIndex, 1);
+  assert.ok(backend.calls.includes("load:b@0"), `reloaded at the top, got ${backend.calls}`);
+  m.dispose();
 });
 
 test("ROUND 2 review: a play settling mid-skip-back does not wipe the skip's armed restart offset", async () => {
@@ -3124,4 +3151,277 @@ test("ROUND 2 review: the element's own unexplained pause (a call on an awake pa
   assert.equal(await m.reconcileWithBackend("unexplainedPause"), true);
   await m.interruptionEnded(true);
   assert.equal(m.state.type, "playing");
+});
+
+/* ---------- audit round 3: every await re-checks who owns the player ---------- */
+
+/** A backend whose load of the named ids waits until the test releases it. */
+class HeldLoadBackend extends FakeBackend {
+  constructor(o = {}) { super(o); this.holdFor = new Set(o.holdFor ?? []); this.release = null; }
+  async load(item, opts) {
+    const p = super.load(item, opts);
+    if (this.holdFor.has(item.id)) await new Promise((r) => { this.release = r; });
+    return p;
+  }
+}
+
+/** fakeTts whose next speak() waits until the test releases it. */
+function heldSpeakTts() {
+  const t = fakeTts();
+  const speak = t.speak;
+  t.holdNext = false;
+  t.release = null;
+  t.speak = async (text, opts) => {
+    const r = await speak(text, opts);
+    if (t.holdNext) { t.holdNext = false; await new Promise((res) => { t.release = res; }); }
+    return r;
+  };
+  return t;
+}
+
+async function intoHeldBridgeLoad() {
+  const { m, backend } = make({ strategy: PICKED_FIRST, backendClass: HeldLoadBackend, backend: { holdFor: ["bridge"] } });
+  m.setQueueFromPick(ep("a"), { others: [tts("bridge"), ep("b")] });
+  await m.play(0);
+  backend.calls.length = 0;
+  const ending = backend.onItemEnded();
+  await tick();
+  assert.equal(m.state.type, "transitioning", "precondition: the bridge is loading");
+  assert.ok(backend.release, "precondition: its load is in flight");
+  return { m, backend, ending };
+}
+
+test("a pause during a rendered bridge's load is not undone when the load lands (player-core-2)", async () => {
+  /* MUTATION: drop the `stillOurs()` check after `backend.load(bridge)` and the
+     bridge's `play` runs under a listener's pause. */
+  const { m, backend, ending } = await intoHeldBridgeLoad();
+  await m.pause();
+  backend.calls.length = 0;
+  backend.release();
+  await ending;
+  await tick();
+  assert.ok(!backend.calls.includes("play"), `nothing may start under a pause: ${backend.calls}`);
+  assert.equal(m.state.type, "interrupted");
+  m.dispose();
+});
+
+test("a stop during a rendered bridge's load leaves no audio behind a closed player (player-core-2)", async () => {
+  const { m, backend, ending } = await intoHeldBridgeLoad();
+  await m.stop();
+  backend.calls.length = 0;
+  backend.release();
+  await ending;
+  await tick();
+  assert.ok(!backend.calls.includes("play"), `nothing may start after Stop: ${backend.calls}`);
+  assert.equal(m.state.type, "idle");
+  m.dispose();
+});
+
+test("a pause while a SYNTH bridge's speak() is in flight silences the voice (player-core-2)", async () => {
+  const tts = heldSpeakTts();
+  const { m } = make({ tts });
+  await m.playForay(foray([
+    fseg(),
+    { type: "narration", id: "nar-1", asset: undefined, script: "a bridge line" },
+    fseg({ start_sec: 400, end_sec: 500 }),
+  ]), { resolveItem });
+  tts.holdNext = true;
+  const ending = m._handleBackendItemEnded(END_OUT_POINT);
+  await tick();
+  assert.equal(m.state.type, "transitioning", "precondition: the bridge is being spoken");
+  await m.pause();
+  tts.release();
+  await ending;
+  await tick();
+  assert.ok(transportsOf(tts).includes("stop"), `the voice is told to stop: ${transportsOf(tts)}`);
+  assert.equal(m.isNarrationPlayhead, false, "and it is not marked as the playhead");
+  m.dispose();
+});
+
+test("a narration load superseded while speak() is in flight stops talking over the next item (player-core-4)", async () => {
+  /* MUTATION: drop the `_loadSeq !== seq` check after `_speakNarration` in
+     `_loadItem` and the stale call marks itself loaded (`isNarrationPlayhead`)
+     and never stops the voice. */
+  const tts = heldSpeakTts();
+  const { m, backend } = make({ tts });
+  tts.holdNext = true;
+  const starting = m.playForay(foray([
+    { type: "narration", id: "nar-1", script: "the opening line" },
+    fseg(),
+  ]), { resolveItem });
+  await tick();
+  assert.equal(m.state.type, "loadingItem", "precondition: speak() is in flight");
+  await m.skipToNext();
+  await tick();
+  tts.release();
+  await starting;
+  await tick();
+  assert.ok(transportsOf(tts).includes("stop"), `the stale voice is stopped: ${transportsOf(tts)}`);
+  assert.equal(m.isNarrationPlayhead, false, "the newer item owns the player, not the stale line");
+  assert.equal(m.state.type, "playing");
+  assert.ok(backend.loads().includes("load:foray-1#1"), `${backend.loads()}`);
+  m.dispose();
+});
+
+test("a stale speak() does not stop the NEWER line that replaced it (player-core-4)", async () => {
+  const tts = heldSpeakTts();
+  const { m } = make({ tts });
+  tts.holdNext = true;
+  const starting = m.playForay(foray([
+    { type: "narration", id: "nar-1", script: "the opening line" },
+    { type: "narration", id: "nar-2", script: "the second line" },
+    fseg(),
+  ]), { resolveItem });
+  await tick();
+  await m.play(1);
+  await tick();
+  tts.release();
+  await starting;
+  await tick();
+  assert.ok(!transportsOf(tts).includes("stop"), `the newer line keeps its voice: ${transportsOf(tts)}`);
+  assert.equal(m.isNarrationPlayhead, true);
+  m.dispose();
+});
+
+test("a skip's load that a newer skip already replaced is dropped, not run after it (player-core-9)", async () => {
+  /* Two skips from a playing synth line: the first skip's pausePlayback awaits
+     the bridge, the second's loadItem(D) runs meanwhile, and the first's
+     loadItem(C) used to run after it, supersede D and land itemLoaded into
+     loadingItem(D). MUTATION: drop the stale-target check at the top of
+     `_loadItem` and C is loaded last. */
+  const tts = fakeTts();
+  let releasePause = null;
+  tts.pause = async () => {
+    tts.transport.push("pause");
+    await new Promise((r) => { releasePause = r; });
+    return { ok: true, accepted: true, path: "native" };
+  };
+  const { m, backend } = make({ tts });
+  await m.playForay(foray([
+    { type: "narration", id: "nar-1", script: "the opening line" },
+    fseg(),
+    fseg({ start_sec: 400, end_sec: 500 }),
+  ]), { resolveItem });
+  assert.equal(m.isNarrationPlayhead, true, "precondition: a synth line is playing");
+  const first = m.skipToNext();
+  await tick();
+  assert.ok(releasePause, "precondition: the first skip is waiting on the pause");
+  await m.skipToNext();
+  await tick();
+  releasePause();
+  await first;
+  await tick();
+  const loads = backend.loads();
+  assert.equal(loads[loads.length - 1], "load:foray-1#2", `the newest target is the last load: ${loads}`);
+  assert.equal(m.currentIndex, 2, "the index agrees with the state");
+  assert.equal(m.state.type, "playing");
+  assert.equal(m.state.item.id, "foray-1#2");
+  m.dispose();
+});
+
+test("stop() is silence even when the machine believed it was already paused (player-core-7)", async () => {
+  /* The #689 drift: the element is audible while the state says `interrupted`,
+     and the reducer's stop from there emits no pausePlayback. MUTATION: delete
+     the `elementIsAudible` check in `stop()` and the element is never paused. */
+  const { m, backend } = make();
+  m.setQueueFromPick(ep("a"));
+  await m.play(0);
+  backend.paused = false;
+  await m.pause();
+  assert.equal(m.state.type, "interrupted", "precondition: paused");
+  backend.paused = false;            // something outside the app made it audible
+  backend.calls.length = 0;
+  backend.pause = function () { this.calls.push("pause"); this.paused = true; };
+  await m.stop();
+  assert.equal(m.state.type, "idle");
+  assert.ok(backend.calls.includes("pause"), `Stop must silence the element: ${backend.calls}`);
+  m.dispose();
+});
+
+test("stop() while a narration line's speak() is in flight leaves no voice behind (player-core-7)", async () => {
+  /* `wasSynth` is false at entry (the line has not been accepted yet), so
+     stop() itself does not reach the TTS; the load's own staleness check does,
+     when speak() returns into `idle`. MUTATION: drop that check in `_loadItem`
+     and the voice is never stopped. */
+  const tts = heldSpeakTts();
+  const { m } = make({ tts });
+  tts.holdNext = true;
+  const starting = m.playForay(foray([
+    { type: "narration", id: "nar-1", script: "the opening line" },
+    fseg(),
+  ]), { resolveItem });
+  await tick();
+  await m.stop();
+  tts.release();
+  await starting;
+  await tick();
+  assert.equal(m.state.type, "idle");
+  assert.ok(transportsOf(tts).includes("stop"), `the voice is stopped: ${transportsOf(tts)}`);
+  assert.equal(m.isNarrationPlayhead, false);
+  m.dispose();
+});
+
+/* ---------- audit round 3: a `finished` says which utterance it is ---------- */
+
+/** fakeTts whose speak() names each utterance, and whose finish() can carry a payload. */
+function namedTts() {
+  const t = fakeTts();
+  let n = 0;
+  const speak = t.speak;
+  const listeners = new Set();
+  t.speak = async (text, opts) => { await speak(text, opts); n += 1; return { ok: true, utteranceId: `u${n}` }; };
+  t.onFinished = (fn) => { listeners.add(fn); return () => listeners.delete(fn); };
+  t.finishWith = (payload) => { for (const fn of [...listeners]) fn(payload); };
+  return t;
+}
+
+async function onANarrationLine(tts) {
+  const made = make({ tts });
+  await made.m.playForay(foray([
+    { type: "narration", id: "nar-1", script: "the opening line" },
+    fseg(),
+  ]), { resolveItem });
+  assert.equal(made.m.isNarrationPlayhead, true, "precondition: the line is speaking");
+  return made;
+}
+
+test("a preview's `finished` never advances past narration (mobile-native-2)", async () => {
+  /* MUTATION: drop the `audition` check in `_onTtsFinished` and the Foray moves
+     on past a line the listener did not hear. */
+  const tts = namedTts();
+  const { m, backend } = await onANarrationLine(tts);
+  tts.finishWith({ audition: true });   // no id to compare: the flag alone must stop it
+  await tick();
+  await tick();
+  assert.equal(m.isNarrationPlayhead, true, "still on the line");
+  assert.ok(!backend.loads().includes("load:foray-1#1"), `${backend.loads()}`);
+  m.dispose();
+});
+
+test("a `finished` naming another utterance is stale and is dropped; this line's own advances (mobile-native-2)", async () => {
+  /* MUTATION: drop the utterance-id comparison in `_onTtsFinished`. */
+  const tts = namedTts();
+  const { m, backend } = await onANarrationLine(tts);
+  tts.finishWith({ utteranceId: "u0-an-older-line" });
+  await tick();
+  await tick();
+  assert.equal(m.isNarrationPlayhead, true, "a stale finish advances nothing");
+  tts.finishWith({ utteranceId: "u1" });
+  await tick();
+  await tick();
+  assert.ok(backend.loads().includes("load:foray-1#1"), `this line's own finish advances: ${backend.loads()}`);
+  m.dispose();
+});
+
+test("an engine error reported on `finished` moves on at once (mobile-native-3)", async () => {
+  /* The Android plugin now reports onError as `finished` with `error`, instead
+     of leaving the line 'speaking' in silence until the narration deadline. */
+  const tts = namedTts();
+  const { m, backend, log } = await onANarrationLine(tts);
+  tts.finishWith({ utteranceId: "u1", error: -4 });
+  await tick();
+  await tick();
+  assert.ok(backend.loads().includes("load:foray-1#1"), `the queue moved on: ${backend.loads()}`);
+  assert.ok(log.some((l) => /tts\.finished\.error code=-4/.test(l)), JSON.stringify(log.filter((l) => /tts/.test(l))));
+  m.dispose();
 });

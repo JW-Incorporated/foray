@@ -607,28 +607,22 @@ test("a rotated-out part does not become live for a DIFFERENT playlist that also
   assert.ok(m.view().includes("not available right now"));
 });
 
-test("an archived pick never becomes the continue banner, and cannot degrade a live snapshot", () => {
-  /* The other half of the same root cause. `bindPickLogging` writes
-     `state.itemIndex[id]` into `cp_lastpick`, and `bannerHtml()` later re-runs
-     `snapshot()` over it — so a PARTIAL archived snapshot stored there would
-     overwrite the pool's full entry on a later page load where the episode is back,
-     leaving a live episode with a play button that does nothing (`bindPlay` resolves
-     through `state.itemIndex`). Banner-wise it would also offer to resume something
-     the app cannot play.
+test("a pick records no last-pick snapshot at all, archived or live", () => {
+  /* HISTORY. `bindPickLogging` used to write `state.itemIndex[id]` into
+     `cp_lastpick` for the Continue banner, and an archived part's PARTIAL
+     snapshot stored there could overwrite the pool's full entry later — so a
+     guard kept archived parts out. The banner was deleted in visual pass 1 and
+     nothing read the key any more, so audit round 3 (data-integrity-8) deleted
+     the write itself: the strongest form of the guard. The key is removed from
+     storage once after hydration (test/app-surface-round3.test.js).
 
-     MUTATION: revert the guard to `const snap = state.itemIndex[id]`. cp_lastpick
-     gains the archived part and the first assertion fails. */
+     MUTATION: restore `lsSet("cp_lastpick", …)` in bindPickLogging — red. */
   const m = mount();
   withArchivedPart(m);                  // ep2 archived, ep1 live, both rendered
   clickPick(m, { ep: "show-2--episode-2", ctx: "playlist-q1" });
-  assert.strictEqual(m.store.get("cp_lastpick") ?? null, null,
-    "an episode the catalogue no longer has must not become the continue banner");
-
-  /* A live pick still does, unchanged — the guard must not cost the feature. */
+  assert.strictEqual(m.store.get("cp_lastpick") ?? null, null, "an archived pick stores nothing");
   clickPick(m, { ep: "show-1--episode-1", ctx: "playlist-q1" });
-  const last = JSON.parse(m.store.get("cp_lastpick"));
-  assert.strictEqual(last.id, "show-1--episode-1");
-  assert.strictEqual(last.audio_url, "https://audio.test/1/episode.mp3", "and it keeps its audio");
+  assert.strictEqual(m.store.get("cp_lastpick") ?? null, null, "and neither does a live one");
 });
 
 test("an archived part offers no in-app play button — the audio URL was deliberately not kept", () => {

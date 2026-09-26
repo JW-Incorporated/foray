@@ -573,4 +573,14 @@ final class ForayTtsPluginTests: XCTestCase {
         }
     }
 
+    /// Audit round 3, mobile-native-1: a new line replaces a paused or
+    /// still-speaking one instead of queueing silently behind it. MUTATION:
+    /// return `isSpeaking` alone and the paused row goes red.
+    func testSpeakFlushesAPausedOrSpeakingSynthesizer() {
+        XCTAssertTrue(ForayTtsPlugin.mustFlushBeforeSpeaking(isSpeaking: true, isPaused: true))
+        XCTAssertTrue(ForayTtsPlugin.mustFlushBeforeSpeaking(isSpeaking: false, isPaused: true))
+        XCTAssertTrue(ForayTtsPlugin.mustFlushBeforeSpeaking(isSpeaking: true, isPaused: false))
+        XCTAssertFalse(ForayTtsPlugin.mustFlushBeforeSpeaking(isSpeaking: false, isPaused: false))
+    }
+
 }

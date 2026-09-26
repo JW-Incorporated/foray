@@ -176,6 +176,18 @@ export const MAX_FAULTS = 20;
  */
 export const MAX_CONSECUTIVE_TIER_FAILURES = 5;
 
+/** How long one queued tier operation may take before it counts as a fault
+    (audit round 3, player-rest-1). Every durable write, including the vault's
+    copy of `cp_sb_session`, runs on one serial queue, so a single tier call
+    that never settles (WKWebView's IndexedDB does this after the app has been
+    in the background, client.js) used to stall every write behind it and
+    make Delete my data hang. Longer than idb-tier.js's own transaction
+    deadline, so that one (which also aborts the transaction) answers first. */
+export const OP_DEADLINE_MS = 8000;
+/** How long `purge()` waits for the queue before it reports the deletion as
+    unverified rather than hanging on "Deleting…" (player-rest-1). */
+export const PURGE_QUEUE_DEADLINE_MS = 20000;
+
 /* ---------- persistence: a request, not a setting ---------- */
 
 export const PERSIST_GRANTED = "granted";
@@ -496,9 +508,13 @@ export class DurableStore {
    */
   constructor({
     tiers = [], prefix = DEFAULT_PREFIX, onFault = null, now = null, deviceOnlyKeys = DEVICE_ONLY_KEYS,
-    deferredPrefixes = [],
+    deferredPrefixes = [], opDeadlineMs = OP_DEADLINE_MS, purgeDeadlineMs = PURGE_QUEUE_DEADLINE_MS,
   } = {}) {
     this.prefix = typeof prefix === "string" && prefix ? prefix : DEFAULT_PREFIX;
+    /* player-rest-1: see OP_DEADLINE_MS / PURGE_QUEUE_DEADLINE_MS. 0 turns a
+       bound off. */
+    this._opDeadlineMs = opDeadlineMs;
+    this._purgeDeadlineMs = purgeDeadlineMs;
     this._now = typeof now === "function" ? now : () => Date.now();
     this._onFault = typeof onFault === "function" ? onFault : null;
 
@@ -615,6 +631,16 @@ export class DurableStore {
     return Number.isInteger(i) && i >= 0 && i < keys.length ? keys[i] : null;
   }
 
+  /** Every owned key starting with `prefix`, as ONE snapshot (audit round 3,
+      player-rest-4). `length` and `key(i)` each rebuild the owned-key array,
+      so a walk over them is O(n²) in the number of `cp_` rows, and
+      `cp_pos:<id>` grows with every episode ever opened. `listProgress` asks
+      this instead when the storage offers it. */
+  keys(prefix = "") {
+    const p = typeof prefix === "string" ? prefix : "";
+    return this._ownedKeys().filter((k) => k.startsWith(p));
+  }
+
   /**
    * Reads never touch a tier: memory is hydrated from localStorage before the
    * constructor returns, so the first paint is as fast as it was.
@@ -723,6 +749,11 @@ export class DurableStore {
        until the retry lands: the vault still holds the token a refresh would
        spend, so refreshing now could leave the next launch with a dead one. */
     if (this._unsaved.has(k)) { this._retryUnsaved(); return false; }
+    /* A write or removal of this key still on the queue has not landed, and
+       has not failed either (audit round 3, player-rest-1): the vault still
+       holds whatever it held before. Refreshing now would spend that token for
+       a value that may never reach the vault. Ask again once the queue drains. */
+    if (this._confinedInFlight.get(k)) return false;
     return this._vaultRead && !this._disabled.has(this._vault.name);
   }
 
@@ -968,14 +999,14 @@ export class DurableStore {
     }
     this._legacy.clear();
     this._legacySync.clear();
-    await this._queue;
+    await this._queueSettled(unverified);
 
     /* Belt to the `_purging` braces: a health record written by an EARLIER
        session (or before this call) is user-visible storage like any other row and
        must go, and `keys` only covers what the tiers admitted to holding. */
     if (this._mem.has(HEALTH_KEY)) {
       this.removeItem(HEALTH_KEY);
-      await this._queue;
+      await this._queueSettled(unverified);
     }
 
     const remaining = new Set(await this._readTiers(unverified, "after"));
@@ -1029,7 +1060,7 @@ export class DurableStore {
          rows, and being unable to clear them is exactly what the caller has to
          be told rather than have hidden behind a healthy-looking summary. */
       if (typeof t.readAll !== "function") { cannot(t.name, "tier cannot be enumerated"); continue; }
-      try { take(await t.readAll(this.prefix)); }
+      try { take(await this._timed(t.readAll(this.prefix), t.name)); }
       catch (err) { this._fault(t.name, "read", err); cannot(t.name, errText(err)); }
     }
     /* The vault is asked like every other tier: "Delete my data" has to reach
@@ -1037,7 +1068,7 @@ export class DurableStore {
     const v = this._vault;
     if (v) {
       try {
-        const rows = await v.readAll(this.prefix);
+        const rows = await this._timed(v.readAll(this.prefix), v.name);
         take(rows);
         if (vaultHeld) for (const k of rows.keys()) if (this.owns(k)) vaultHeld.add(k);
       } catch (err) { this._fault(v.name, "read", err); cannot(v.name, vaultErrText(err)); }
@@ -1239,12 +1270,12 @@ export class DurableStore {
     this._queue = this._queue.then(async () => {
       for (const t of tiers) {
         let rows = null;
-        try { rows = typeof t.readAll === "function" ? await t.readAll(this.prefix) : null; }
+        try { rows = typeof t.readAll === "function" ? await this._timed(t.readAll(this.prefix), t.name) : null; }
         catch (err) { this._fault(t.name, "read", err); continue; }
         if (!rows) continue;
         for (const k of rows.keys()) {
           if (typeof k !== "string" || !this._ownerKey(k) || this._mem.has(k)) continue;
-          try { await t.remove(k); this._ok(t.name); }
+          try { await this._timed(t.remove(k), t.name); this._ok(t.name); }
           catch (err) { this._fault(t.name, "remove", err, k); }
         }
       }
@@ -1261,6 +1292,34 @@ export class DurableStore {
     if (only.size) await this._migrateUp(only);
   }
 
+  /** One tier call, bounded (audit round 3, player-rest-1). A call that has not
+      answered within `_opDeadlineMs` rejects with a `TimeoutError`, which the
+      caller's catch records as that tier's fault (and the circuit breaker
+      counts), so the serial queue moves on instead of waiting forever behind it. */
+  _timed(p, tierName) {
+    const ms = this._opDeadlineMs;
+    if (!(ms > 0)) return p;
+    let timer = null;
+    const deadline = new Promise((_, reject) => {
+      timer = setTimeout(() => reject(Object.assign(
+        new Error(`${tierName} did not answer within ${ms} ms`), { name: "TimeoutError" })), ms);
+    });
+    return Promise.race([Promise.resolve(p), deadline]).finally(() => clearTimeout(timer));
+  }
+
+  /** `await this._queue` for `purge()`, bounded: a queue still busy at the
+      deadline is reported in `unverified` (so the purge is not ok) instead of
+      leaving Delete my data on "Deleting…" (player-rest-1). */
+  async _queueSettled(unverified) {
+    const ms = this._purgeDeadlineMs;
+    if (!(ms > 0)) { await this._queue; return true; }
+    let timer = null;
+    const deadline = new Promise((resolve) => { timer = setTimeout(() => resolve(false), ms); });
+    const settled = await Promise.race([this._queue.then(() => true), deadline]).finally(() => clearTimeout(timer));
+    if (!settled) unverified.push({ tier: "queue", phase: "write", reason: `durable writes still pending after ${ms} ms` });
+    return settled;
+  }
+
   /** One queued operation on one tier, on the same serial queue as every other
       durable write, so it is ordered against them. */
   _queueOn(tier, op, key, kind) {
@@ -1268,7 +1327,7 @@ export class DurableStore {
     this._pending += 1;
     const done = () => { this._pending -= 1; };
     this._queue = this._queue.then(async () => {
-      try { await op(tier); this._ok(tier.name); }
+      try { await this._timed(op(tier), tier.name); this._ok(tier.name); }
       catch (err) { this._fault(tier.name, kind, err, key); }
     }).then(done, done);
     return true;
@@ -1295,7 +1354,7 @@ export class DurableStore {
       const done = this._confinedQueued(key);
       this._queue = this._queue.then(async () => {
         if (vault) {
-          try { await vault.remove(key); this._ok(vault.name); this._unsaved.delete(key); }
+          try { await this._timed(vault.remove(key), vault.name); this._ok(vault.name); this._unsaved.delete(key); }
           catch (err) { this._fault(vault.name, "remove", err, key); this._unsaved.add(key); }
         }
         await this._evictAsync(key);
@@ -1306,7 +1365,7 @@ export class DurableStore {
     if (!vault) { this._unsaved.add(key); return false; }
     const done = this._confinedQueued(key);
     this._queue = this._queue.then(async () => {
-      try { await vault.write(key, value); this._ok(vault.name); }
+      try { await this._timed(vault.write(key, value), vault.name); this._ok(vault.name); }
       catch (err) {
         /* NOT the end of it. This key has no other durable copy now, so a
            refusal left alone would lose a refreshed token at the next app kill
@@ -1363,7 +1422,7 @@ export class DurableStore {
     if (!this._stale.delete(key) || this._purging) return;
     const op = this._staleOp();
     for (const t of this._liveAsync()) {
-      try { await op(t); this._ok(t.name); }
+      try { await this._timed(op(t), t.name); this._ok(t.name); }
       catch (err) { this._fault(t.name, "write", err, LOCAL_STALE_KEY); }
     }
   }
@@ -1382,7 +1441,7 @@ export class DurableStore {
   async _evictAsync(key) {
     let clean = true;
     for (const t of this._liveAsync()) {
-      try { await t.remove(key); this._ok(t.name); }
+      try { await this._timed(t.remove(key), t.name); this._ok(t.name); }
       catch (err) { clean = false; this._fault(t.name, "remove", err, key); }
     }
     return clean;
@@ -1425,7 +1484,7 @@ export class DurableStore {
     const done = () => { this._pending -= 1; };
     this._queue = this._queue.then(async () => {
       for (const t of this._liveAsync()) {
-        try { await op(t); this._ok(t.name); }
+        try { await this._timed(op(t), t.name); this._ok(t.name); }
         catch (err) { this._fault(t.name, kind, err, key); }
       }
     }).then(done, done);
@@ -1661,7 +1720,7 @@ export class DurableStore {
            NOT read may still hold the account, so it is not touched. */
         if (typeof v !== "string") return;
         if (vaultRows.get(k) !== v) {
-          try { await vault.write(k, v); this._ok(vault.name); this._stat(vault.name).migrated += 1; }
+          try { await this._timed(vault.write(k, v), vault.name); this._ok(vault.name); this._stat(vault.name).migrated += 1; }
           catch (err) { this._fault(vault.name, "migrate", err, k); return; }
         }
         const syncClean = this._evictSync(k);
@@ -1760,7 +1819,7 @@ export class DurableStore {
         if (unread && !this._dirty.has(k)) continue;
         if (seen.has(k) && !this._dirty.has(k)) continue;
         try {
-          await t.write(k, this._mem.get(k));
+          await this._timed(t.write(k, this._mem.get(k)), t.name);
           this._ok(t.name);
           this._stat(t.name).migrated += 1;
           seen.add(k);

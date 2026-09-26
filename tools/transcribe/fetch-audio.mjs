@@ -116,6 +116,10 @@ export const DEFAULT_GAP_MS = 1000;
 export const MAX_ATTEMPTS = 5;
 export const MAX_BACKOFF_MS = 120_000;
 
+/** How long a body may go without a single byte before the attempt is aborted.
+    This, not a whole-download deadline, is what bounds a stalled stream. */
+export const DEFAULT_STALL_MS = 30_000;
+
 /** Used only when a feed declares neither length nor duration. 128 kbps mono. */
 export const BYTES_PER_SEC_ESTIMATE = 16_000;
 export const FALLBACK_ESTIMATE_BYTES = 120 * 1024 * 1024;
@@ -470,15 +474,22 @@ export class HostGate {
     this.minGapMs = Math.max(0, minGapMs);
     this.active = new Map();
     this.queues = new Map();
-    this.lastStart = new Map();
+    this.nextStart = new Map();
   }
   async run(host, fn) {
     const key = String(host || "unknown").toLowerCase();
     await this.#acquire(key);
     try {
-      const gap = this.minGapMs - (Date.now() - (this.lastStart.get(key) ?? -Infinity));
-      if (gap > 0) await sleep(gap);
-      this.lastStart.set(key, Date.now());
+      /* The start slot is RESERVED at the moment it is read (audit round 3,
+         data-tools-10), the way politeness.awaitHostSlot does it. Reading a
+         `lastStart`, sleeping, then writing it let two slots freed together
+         (or the first perHost=2 jobs of a run) read the same value, sleep the
+         same amount and start in the same millisecond: the burst the gap
+         exists to stop. */
+      const now = Date.now();
+      const at = Math.max(now, this.nextStart.get(key) ?? 0);
+      this.nextStart.set(key, at + this.minGapMs);
+      if (at > now) await sleep(at - now);
       return await fn();
     } finally {
       this.#release(key);
@@ -613,6 +624,7 @@ export async function fetchEpisode(item, opts = {}) {
     userAgent = UA,
     minFreeBytes = DEFAULT_MIN_FREE_BYTES,
     timeoutMs = 120_000,
+    stallMs = DEFAULT_STALL_MS,
     onProgress = null,
   } = opts;
 
@@ -651,7 +663,12 @@ export async function fetchEpisode(item, opts = {}) {
       // (or our own uncleaned files) can eat the margin mid-run.
       assertFreeSpace({ freeBytes: await freeBytesFor(dir), minFreeBytes });
 
-      let plan = resumePlan({ partialBytes: await fileSize(part), expectedBytes: prev?.bytes_expected ?? null });
+      /* Re-read every attempt (audit round 3, data-tools-4): the entry written
+         when the previous attempt's headers were accepted is what makes this
+         attempt's resume checkable. The `prev` read above the loop is from
+         before this run started and never carries it. */
+      const entry = (await loadCheckpoint(checkpointPath)).episodes[item.id] || null;
+      let plan = resumePlan({ partialBytes: await fileSize(part), expectedBytes: entry?.bytes_expected ?? null });
       if (plan.action === "complete") {
         await fsp.rename(part, final);
         const bytes = await fileSize(final);
@@ -660,11 +677,21 @@ export async function fetchEpisode(item, opts = {}) {
       }
       if (plan.action === "restart") { await rm(part, { force: true }); plan = resumePlan({}); }
 
+      /* Two clocks, not one (audit round 3, data-tools-5). `timeoutMs` bounds
+         time-to-headers only, and starts when the gate hands us the slot, so
+         queueing behind a sibling on the same host does not count. Once the
+         headers arrive it is replaced by a STALL timer that every chunk resets:
+         a three-hour episode on a slow CDN is fine for as long as bytes keep
+         arriving, and a host that goes quiet for `stallMs` is aborted. The old
+         single 120 s timer covered the whole body, so a long episode could not
+         finish and a DAI one (which restarts on every resume) never did. */
       const ctl = new AbortController();
-      const timer = setTimeout(() => ctl.abort(), timeoutMs);
+      let timer = null;
+      const arm = (ms) => { clearTimeout(timer); timer = setTimeout(() => ctl.abort(), ms); };
       try {
-        const res = await gate.run(host, () =>
-          fetch(url, {
+        const res = await gate.run(host, () => {
+          arm(timeoutMs);
+          return fetch(url, {
             headers: {
               "User-Agent": userAgent,
               "Accept-Language": ACCEPT_LANGUAGE,   // see the import — Captivate 404s without it
@@ -672,7 +699,9 @@ export async function fetchEpisode(item, opts = {}) {
             },
             redirect: "follow",     // resolve only to look — see the header
             signal: ctl.signal,
-          }));
+          });
+        });
+        arm(stallMs);
 
         if (!res.ok && res.status !== 206) {
           const delay = backoffDelayMs(attempt, { status: res.status, retryAfter: res.headers.get("retry-after") });
@@ -692,7 +721,7 @@ export async function fetchEpisode(item, opts = {}) {
             contentRange: res.headers.get("content-range"),
             etag: identity,
             from: plan.from,
-            prevIdentity: prev?.identity ?? null,
+            prevIdentity: entry?.identity ?? null,
             dai: item.dai_suspected === true,
           });
           if (v.ok) { append = true; identity = v.identity; }
@@ -705,11 +734,22 @@ export async function fetchEpisode(item, opts = {}) {
         if (Number.isFinite(total) && total > 0) ledger.resize(item.id, total);
         if (!identity && Number.isFinite(total) && total > 0) identity = `len:${total}`;
 
+        /* Record what a resume needs BEFORE streaming (data-tools-4). identity
+           and bytes_expected used to be written only on "complete", and a
+           complete file never resumes, so every real resume ran with no
+           identity to compare: a non-DAI file that changed between attempts
+           was spliced with a seam, and a DAI one could never resume at all. */
+        await updateCheckpoint(item.id, {
+          status: "partial", path: final, url, identity: identity ?? null,
+          bytes_expected: Number.isFinite(total) && total > 0 ? total : null,
+        }, checkpointPath);
+
         const ceiling = Math.round(Math.max(reserved, total || 0) * SIZE_OVERRUN_FACTOR);
         let written = append ? plan.from : 0;
         const sink = createWriteStream(part, { flags: append ? "a" : "w" });
         const meter = async function* (src) {
           for await (const chunk of src) {
+            timer.refresh();                 // bytes arrived: the stall clock restarts
             written += chunk.length;
             if (written > ceiling) {
               ctl.abort();
@@ -733,6 +773,18 @@ export async function fetchEpisode(item, opts = {}) {
         return { ...provenance(item, { resolvedUrl: res.url, bytes: written, status: "complete" }), path: final, resumed: append };
       } catch (e) {
         clearTimeout(timer);
+        if (e instanceof SizeOverrunError || e instanceof DiskBudgetError) {
+          /* A runaway or unaffordable partial is deleted here, not left for a
+             cleanup() nobody calls (audit round 3, data-tools-9): the finally
+             below releases this episode's ledger bytes, so a .part left on
+             disk would be bytes the resident cap no longer counts. */
+          await rm(part, { force: true });
+          await updateCheckpoint(item.id, {
+            status: "discarded", url, error: e.message, bytes_done: 0, bytes_expected: null,
+            discarded_at: new Date().toISOString(), bump_attempt: true,
+          }, checkpointPath);
+          throw e;
+        }
         if (e instanceof FetchAudioError) {
           await updateCheckpoint(item.id, { status: "failed", url, error: e.message, bump_attempt: true }, checkpointPath);
           throw e;
@@ -754,8 +806,8 @@ export async function fetchEpisode(item, opts = {}) {
   }
 }
 
-/** Fetch a selection. Sequential per host by construction (the gate), parallel
-    across hosts. Returns a report; throws only when *nothing* succeeded — a
+/** Fetch a selection. At most `perHost` in flight per host, with request starts
+    spaced by the gate's minimum gap, and parallel across hosts. Returns a report; throws only when *nothing* succeeded — a
     partial success is a result, a total failure is an error. */
 export async function fetchAll(items, opts = {}) {
   const ledger = opts.ledger || new ResidentLedger({ maxResidentBytes: opts.maxResidentBytes ?? DEFAULT_MAX_RESIDENT_BYTES });

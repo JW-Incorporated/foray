@@ -7,8 +7,9 @@ repository, not just the app. It exists because the founder asked for it:
 
 > "deploy a fleet of agents looking for issues in the code base. Catalogue them, make a plan, then fix them all." (2026-09-25)
 
-This directory is the **catalogue and the plan**. The fixing has not started
-(see STATUS). Every finding went to an adversarial verifier that read the code
+This directory is the **catalogue, the plan and the ledger**. The fixes are in
+PR #835 (lanes L1-L6 and L8) and PR #821 (L7); `status.tsv` records what became
+of every finding (see STATUS). Every finding went to an adversarial verifier that read the code
 on origin/main. The directory is committed in the same run that produced it, per
 `../README.md` § "WHY THIS DIRECTORY EXISTS AT ALL": round 1's findings were
 nearly lost by living only in a temporary directory.
@@ -170,8 +171,69 @@ default in its lane brief.
 
 ## STATUS
 
-**Not yet fixed.** This commit is the catalogue and the plan. No lane has
-started, and no finding has a status ledger yet. When the lanes run, add
-`status.tsv` (`id, title, disposition, where, note`, one row per
-`findings.tsv` row, verdicts kept as in round 2) and extend
-`test/audit-status.test.js` to hold it.
+**Worked through, 2026-09-25.** Every row of `findings.tsv` has one row in
+[`status.tsv`](status.tsv) (`id, title, disposition, where, note`), including
+the refuted and deliberate ones, which keep the verifier's verdict. `where`
+names the lane, its merge into `r3fix/integration` and the commits;
+`test/audit-status.test.js` holds the ledger to one row per finding, the kept
+verdicts, and this table.
+
+Lanes L1-L6 and L8 merged into `r3fix/integration` (PR #835) in that order,
+followed by a review round of fixes on the merged tree. L7 (CI, release,
+security) is its own PR, #821, because every file it touches is a
+founder-merge path; its release-environment half is the held draft PR #822. A
+completeness sweep then checked every row a lane reported as not done or left
+to a founder ruling, and every row no lane reported (there were none). Two
+were still live and were finished on the integration branch:
+
+- `gen-9`: L5 applied the "no change" default before the founder ruled
+  **loosen** on Q4. The safety check now keys on intent, not topic words
+  (`cf0161c1`).
+- `app-2-6`: L2 fixed the device half. The sweep did the event half: a changed
+  or withdrawn thumbs vote reaches the learning job with the vote it replaces
+  (`0b3ea310`). The privacy policy's `thumbs` row names the new field.
+
+| disposition | rows | of which L7 (#821 / #822) |
+|---|---:|---:|
+| fixed | 172 | 16 |
+| already-fixed | 0 | 0 |
+| refuted (verifier) | 6 | 0 |
+| deliberate (verifier) | 6 | 0 |
+| refuted-now | 0 | 0 |
+| deferred-founder | 1 | 1 |
+| deferred-device | 0 | 0 |
+| open | 1 | 1 |
+| **all rows** | **186** | **18** |
+
+The two L7 rows that are not fixed: `ci-release-3` waits for the founder to
+create the `release` environment (HUMAN-ACTIONS #115; the code is held in
+#822), and `tests-6` (ratchet every floor to its exact count) lands last by
+design, once #835 and #821 have merged. #821 needs a rebase over #835:
+`arch-drift-12` edits `api/episodes/appleBucket.ts`, which L4 moved to
+`api/_lib/`.
+
+"Fixed" means fixed in code with a test that fails without the fix (each new
+rule mutation-checked, each new suite floored in `test/suite-integrity.test.js`),
+not verified on a phone or in production. Steps only a person can take:
+
+- HUMAN-ACTIONS #117: six phone checks (`mobile-native-1` to `-4`,
+  `player-core-2`, `player-core-3`). The Swift and the Java compile only in CI.
+- HUMAN-ACTIONS #118: remove the retired events server from the Windows
+  Startup folder (`data-tools-12`, `security-9`).
+- HUMAN-ACTIONS #116: apply `backend/migrations/supabase/0003_rls_least_privilege.sql`
+  to production (`backend-rest-4`, `backend-rest-5`, `data-integrity-10`).
+  Until then the new policies exist only in the repo.
+- `app-3-7`: one iOS Safari check that the jingle still plays now that ranged
+  and media requests bypass the service worker.
+- `search-api-css-5`: a Vercel preview's Functions list should show only the
+  four handlers.
+
+### The founder questions
+
+| question | outcome |
+|---|---|
+| Q1 Family mode and unrated episodes (`data-integrity-4`) | **Default applied, no ruling yet.** An unrated episode inherits its show's catalogue rating (trusted only when the show's own episodes agree); with none it is hidden. He can overrule it. The 516-item `explicit` backfill is a separate data PR. |
+| Q2 signing secrets behind a `release` environment (`ci-release-3`, `security-3`) | **Ruled 2026-09-25: a founder follow-up**, HUMAN-ACTIONS #115. The code is held in #822 until the environment exists. |
+| Q3 the Supabase RLS migration and two privacy-policy rows | **Ruled: a founder follow-up**, HUMAN-ACTIONS #116. The migration file and the `cp_lastpick` row landed; production is untouched until he applies it. |
+| Q4 the generation safety check (`gen-9`) | **Ruled: loosen.** Done in the sweep: documentary, history, education and survival framings pass; sexual content involving minors and operational instructions for weapons or attacks stay refused whatever the framing. |
+| Q5 resume when a known car route reconnects (`player-core-10`) | **Ruled: yes, and the native engine owns it.** The dead web-player branch is deleted; the engine's side is card NE-38r. |

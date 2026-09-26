@@ -17,6 +17,8 @@
                   copy and fit-lines depend on it.
 */
 
+import { minutesFromSeconds } from "../check-durations.mjs";
+
 /** The `length` attribute of an `<enclosure>`, as bytes or null.
 
     Split out of `pickEnclosure` so the SECOND feed parser in this repo can
@@ -47,17 +49,39 @@ export function pickEnclosure(item) {
 }
 
 /** itunes:duration is wildly inconsistent (corner case #5): HH:MM:SS, MM:SS,
-    bare seconds, or garbage. Returns whole seconds, or null when unrecoverable. */
+    bare seconds, decimal seconds, or garbage. Returns whole seconds, or null
+    when unrecoverable.
+
+    THE ONE PARSER IN tools/ (audit round 3, arch-drift-5), and the same rules
+    as backend/src/feeds/duration.ts `normalizeDuration`, which is pinned to it
+    by enclosure.test.mjs reading the backend's own fixture table. Three minute-
+    returning copies (`normDuration` in scan, backfill-show and harvest-episodes)
+    rejected the decimal seconds the backend accepts ("1834.5") and accepted
+    out-of-range components it refuses ("12:75" -> 13 min). Minutes are derived
+    from this through `durationMinutes` below, never parsed a second time. */
 export function durationSeconds(raw) {
   if (raw == null) return null;
+  if (typeof raw === "number") return Number.isFinite(raw) && raw >= 0 ? Math.round(raw) : null;
   const s = String(raw).trim();
   if (!s) return null;
-  if (/^\d+$/.test(s)) return Number(s);
-  const parts = s.split(":").map(Number);
-  if (parts.some((n) => Number.isNaN(n))) return null;
-  if (parts.length === 3) return Math.round(parts[0] * 3600 + parts[1] * 60 + parts[2]);
-  if (parts.length === 2) return Math.round(parts[0] * 60 + parts[1]);
+  if (/^\d+$/.test(s)) return parseInt(s, 10);
+  const colon = /^(\d{1,3}):(\d{1,2})(?::(\d{1,2}))?$/.exec(s);
+  if (colon) {
+    const a = parseInt(colon[1], 10);
+    const b = parseInt(colon[2], 10);
+    const c = colon[3] !== undefined ? parseInt(colon[3], 10) : undefined;
+    if (b >= 60 || (c !== undefined && c >= 60)) return null;   // "12:75" is garbage, not 13 min
+    return c !== undefined ? a * 3600 + b * 60 + c : a * 60 + b;
+  }
+  if (/^\d+\.\d+$/.test(s)) return Math.round(parseFloat(s));   // "1834.5"
   return null;
+}
+
+/** itunes:duration as whole minutes, for the `duration_min` field: the seconds
+    above through the one minutes rule (tools/check-durations.mjs), which
+    tools/refresh/merge.mjs writes with too. Null when nothing usable. */
+export function durationMinutes(raw) {
+  return minutesFromSeconds(durationSeconds(raw));
 }
 
 /** Corner case #6: feeds declare video enclosures in nominally-audio feeds.

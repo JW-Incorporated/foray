@@ -130,7 +130,10 @@ test("a recognised top-level file is fetched from asset_base_url and returned as
         await handler(req, res);
         assert.strictEqual(res.statusCode, 200);
         assert.deepStrictEqual(res.body, manifest);
-        assert.strictEqual(res.headers["Cache-Control"], "public, max-age=3600, immutable");
+        /* search-api-css-7: the URL does not carry the release tag, so it is
+           never immutable. MUTATION: put `immutable` back. */
+        assert.strictEqual(res.headers["Cache-Control"], "public, max-age=300");
+        assert.doesNotMatch(res.headers["Cache-Control"], /immutable/);
       }
     )
   );
@@ -367,4 +370,94 @@ test("X-Shows-Index-Version is exposed via Access-Control-Expose-Headers — oth
     await handler(req, res);
     assert.strictEqual(res.headers["Access-Control-Expose-Headers"], "X-Shows-Index-Version");
   });
+});
+
+/* ==================================================================== */
+/* search-api-css-7: the upstream fetch is bounded                       */
+/* ==================================================================== */
+
+const TOP = { asset_base_url: "https://example.test/rel" };
+const manifestReq = () => ({ method: "GET", query: { path: ["manifest.json"] }, headers: {} });
+
+test("a hung upstream is abandoned at the deadline as a 502, never held until the platform kills it", async () => {
+  /* MUTATION: drop the AbortController signal from the upstream fetch — the
+     request never settles and this test times out. */
+  indexModule._setUpstreamTimeoutMsForTests(30);
+  try {
+    await withPointerFile(TOP, () =>
+      withMockedFetch(
+        (url, init) => new Promise((_, reject) => {
+          init?.signal?.addEventListener("abort", () => reject(new Error("aborted")));
+        }),
+        async () => {
+          const res = mockRes();
+          let guard;
+          const hung = new Promise((_, reject) => { guard = setTimeout(() => reject(new Error("the handler is still waiting on a hung upstream")), 2_000); });
+          try {
+            await Promise.race([handler(manifestReq(), res), hung]);
+          } finally {
+            clearTimeout(guard);
+          }
+          assert.strictEqual(res.statusCode, 502);
+          assert.strictEqual(res.headers["Cache-Control"], "no-store");
+        }
+      )
+    );
+  } finally {
+    indexModule._setUpstreamTimeoutMsForTests();
+  }
+});
+
+test("a body that fails mid-read is the endpoint's 502, not an unhandled 500", async () => {
+  /* MUTATION: move the body read back outside the try — the handler throws. */
+  await withPointerFile(TOP, () =>
+    withMockedFetch(
+      async () => {
+        const body = new ReadableStream({
+          pull(controller) { controller.error(new Error("connection reset mid-body")); },
+        });
+        return new Response(body, { status: 200 });
+      },
+      async () => {
+        const res = mockRes();
+        await handler(manifestReq(), res);
+        assert.strictEqual(res.statusCode, 502);
+        assert.match(res.body.error, /connection reset mid-body/);
+      }
+    )
+  );
+});
+
+test("an upstream body over the byte cap, or one that declares it, is refused as a 502", async () => {
+  await withPointerFile(TOP, () =>
+    withMockedFetch(
+      async () => new Response("{}", { status: 200, headers: { "content-length": String(indexModule.MAX_UPSTREAM_BYTES + 1) } }),
+      async () => {
+        const res = mockRes();
+        await handler(manifestReq(), res);
+        assert.strictEqual(res.statusCode, 502);
+        assert.match(res.body.error, /cap/);
+      }
+    )
+  );
+});
+
+test("a shard that inflates past the decompression cap is refused as a 502", async () => {
+  /* MUTATION: drop maxOutputLength from gunzipSync — the bomb inflates. */
+  const bomb = zlib.gzipSync(Buffer.alloc(indexModule.MAX_DECOMPRESSED_BYTES + 1024, 0x20));
+  const pointer = {
+    asset_base_url: "https://example.test/rel",
+    shard_releases: [{ tag: "t", asset_base_url: "https://example.test/rel", first_key: "aa", last_key: "zz", count: 1 }],
+  };
+  await withPointerFile(pointer, () =>
+    withMockedFetch(
+      async () => new Response(bomb, { status: 200 }),
+      async () => {
+        const res = mockRes();
+        await handler({ method: "GET", query: { path: ["shards", "fr.json"] }, headers: {} }, res);
+        assert.strictEqual(res.statusCode, 502);
+        assert.match(res.body.error, /decompress/);
+      }
+    )
+  );
 });

@@ -139,7 +139,7 @@ async function main() {
           /* P-03a (docs/search-parity-plan.md). THE ONLY LINE IN THIS CARD THAT
              CHANGES WHAT WE HOLD. `lookup` has always returned `artistName` in
              this very response object and this projection has always dropped it,
-             so the repo re-fetches at query time (`api/shows/appleShowSearch.ts`)
+             so the repo re-fetches at query time (`api/_lib/appleShowSearch.ts`)
              a field it threw away at harvest. Measured 2026-09-12 on a 20-id
              `lookup` of shows taken from the committed index: 20/20 carried a
              non-empty `artistName`. Zero new calls, zero new quota — same URL,

@@ -37,6 +37,19 @@ export interface ShowIdMap {
 }
 
 let cached: ShowIdMap | null = null;
+/* When the cached map is the catalogue fallback BECAUSE a release fetch
+   failed, the time to try the release again (round-3 audit,
+   search-api-css-8). null means "nothing to retry": the map came from the
+   release, or the pointer names no release at all. */
+let retryReleaseAt: number | null = null;
+
+/* The release id-map fetch runs inside a search request, after a bucket slot
+   was spent, so it gets a short deadline of its own; a failure is retried
+   after RELEASE_RETRY_MS rather than pinning the fallback for the instance's
+   life. */
+export const RELEASE_ID_MAP_TIMEOUT_MS = 2_000;
+export const RELEASE_RETRY_MS = 10 * 60_000;
+let pointerPath = path.join(REPO_ROOT, "data", "shows-index-pointer.json");
 
 interface ShowsIndexPointer {
   id_map_url?: string;
@@ -141,19 +154,21 @@ function loadCatalogFallback(): Map<number, string> {
  * failure of any kind degrades to `null` so the caller falls back to the
  * catalog-derived map rather than erroring the whole search request.
  */
-async function tryLoadReleaseIdMap(fetchImpl: typeof fetch): Promise<Map<number, string> | null> {
+async function tryLoadReleaseIdMap(fetchImpl: typeof fetch): Promise<{ map: Map<number, string> | null; failed: boolean }> {
   let pointer: ShowsIndexPointer;
   try {
-    const raw = fs.readFileSync(path.join(REPO_ROOT, "data", "shows-index-pointer.json"), "utf8");
+    const raw = fs.readFileSync(pointerPath, "utf8");
     pointer = JSON.parse(raw) as ShowsIndexPointer;
   } catch {
-    return null; // S-04 hasn't shipped a pointer yet — expected today
+    return { map: null, failed: false }; // S-04 hasn't shipped a pointer yet — expected today
   }
-  if (!pointer.id_map_url) return null;
+  if (!pointer.id_map_url) return { map: null, failed: false };
 
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), RELEASE_ID_MAP_TIMEOUT_MS);
   try {
-    const res = await fetchImpl(pointer.id_map_url);
-    if (!res.ok) return null;
+    const res = await fetchImpl(pointer.id_map_url, { signal: controller.signal });
+    if (!res.ok) return { map: null, failed: true };
     const body = (await res.json()) as Record<string, string> | Array<{ itunes_id: number; show_id: string }>;
     const map = new Map<number, string>();
     if (Array.isArray(body)) {
@@ -168,28 +183,47 @@ async function tryLoadReleaseIdMap(fetchImpl: typeof fetch): Promise<Map<number,
         if (Number.isFinite(id) && typeof v === "string") map.set(id, v);
       }
     }
-    return map.size > 0 ? map : null;
+    return map.size > 0 ? { map, failed: false } : { map: null, failed: true };
   } catch {
-    return null;
+    return { map: null, failed: true };
+  } finally {
+    clearTimeout(timer);
   }
 }
 
-export async function loadShowIdMap(opts: { fetchImpl?: typeof fetch; forceReload?: boolean } = {}): Promise<ShowIdMap> {
-  if (cached && !opts.forceReload) return cached;
+export async function loadShowIdMap(
+  opts: { fetchImpl?: typeof fetch; forceReload?: boolean; now?: () => number } = {}
+): Promise<ShowIdMap> {
+  const now = opts.now ?? Date.now;
+  const retryDue = retryReleaseAt !== null && now() >= retryReleaseAt;
+  if (cached && !opts.forceReload && !retryDue) return cached;
 
   const fetchImpl = opts.fetchImpl ?? fetch;
   const fromRelease = await tryLoadReleaseIdMap(fetchImpl);
-  if (fromRelease) {
-    cached = { byCollectionId: fromRelease, source: "release" };
+  if (fromRelease.map) {
+    cached = { byCollectionId: fromRelease.map, source: "release" };
+    retryReleaseAt = null;
     return cached;
   }
 
-  const fallback = loadCatalogFallback();
-  cached = { byCollectionId: fallback, source: fallback.size > 0 ? "catalog-fallback" : "none" };
+  /* The fallback map is rebuilt only when there is none yet; a retry that
+     fails again keeps it and just moves the next attempt. */
+  if (!cached || cached.source === "release" || opts.forceReload) {
+    const fallback = loadCatalogFallback();
+    cached = { byCollectionId: fallback, source: fallback.size > 0 ? "catalog-fallback" : "none" };
+  }
+  retryReleaseAt = fromRelease.failed ? now() + RELEASE_RETRY_MS : null;
   return cached;
 }
 
 /** Test-only: clears the module-level cache between test files. */
 export function _resetShowIdMapCacheForTests(): void {
   cached = null;
+  retryReleaseAt = null;
+}
+
+/** Test-only: read the shows-index pointer from elsewhere; no argument
+    restores the repo's own. */
+export function _setShowIdMapPointerPathForTests(p?: string): void {
+  pointerPath = p ?? path.join(REPO_ROOT, "data", "shows-index-pointer.json");
 }

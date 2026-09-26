@@ -353,7 +353,7 @@ export function toForayItem(item: StitchedItem): ForayItem {
     const segment: ForaySegmentItem = {
       type: "segment",
       segment_id: item.segmentId,
-      slot: slugifySlotTitle(item.slotTitle)
+      slot: item.slotId ?? slugifySlotTitle(item.slotTitle)
     };
     if (item.label !== undefined) segment.label = item.label;
     return ForaySegmentItemSchema.parse(segment);
@@ -366,7 +366,8 @@ export function toForayItem(item: StitchedItem): ForayItem {
       script: spokenScript(item),
       mode: lowercaseMode(item.mode)
     };
-    if (item.slotTitle !== undefined) narration.slot = slugifySlotTitle(item.slotTitle);
+    if (item.slotId !== undefined) narration.slot = item.slotId;
+    else if (item.slotTitle !== undefined) narration.slot = slugifySlotTitle(item.slotTitle);
     /* F-103. Set only when non-empty — see `ForayNarrationItemSchema.cites`
        for why an empty array is not a legal published value. */
     const cites = citesFor(item);

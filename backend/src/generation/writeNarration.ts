@@ -24,6 +24,7 @@ import { beatKindOf, createEvidenceGatherer, type AdjacentTape, type EvidenceBea
 import type { GroundPageBrief, NarrationBuildContext, NarrationWriterBuilder, SelectedClaim } from "./NarrationWriterBuilder";
 import type { NarrationVerifierBuilder } from "./NarrationVerifierBuilder";
 import { writeActNarration } from "./writeAct";
+import { planActSeams } from "./actSeams";
 
 /**
  * §4.7 end to end (docs/curation/generation-architecture.md §4.7): takes
@@ -213,6 +214,14 @@ export interface WriteNarrationOptions {
    * may rest on them. Absent (and empty for the acts that start together)
    * means the act rests on its own clips and documents, as before. */
   ground?: () => ReadonlyArray<GroundPageBrief>;
+  /**
+   * Q-09 across acts (round-3 audit gen-8): for each act in `acts` (by
+   * position), the shows the listener already heard in EARLIER acts of the
+   * Foray. Computed once from sourcing (`showsHeardBeforeEachAct`): clip order
+   * is fixed there, so the set is deterministic and safe under G-32's
+   * concurrent acts. Omitted means "none", which is act 1's answer.
+   */
+  showsIntroduced?: ReadonlyArray<ReadonlyArray<string>>;
 }
 
 /** What `writeNarration` counts that a request proxy cannot (G-34). */
@@ -486,6 +495,32 @@ export function looksLikeSlug(text: string): boolean {
   return (t.match(/[-#]/g) ?? []).length >= 2;
 }
 
+/**
+ * gen-8 (round-3 audit): Q-09's Foray-wide show memory, computed where it can
+ * be computed deterministically. For each act, the shows of every clip that
+ * INTRODUCES tape in the acts before it, in play order (`planActSeams`, the
+ * same layout `writeActNarration` uses). Acts are narrated concurrently
+ * (G-32), so a set carried from one act's narration to the next cannot exist;
+ * clip order is fixed at sourcing time, so this one can.
+ *
+ * `showOf` names a clip's show the way the act's own brief will
+ * (`titlesForClip`: the catalogue/digest titles, else the minted row's show).
+ * An empty name is not recorded.
+ */
+export function showsHeardBeforeEachAct(acts: ReadonlyArray<SourcedAct>, showOf: (tape: TapePointer) => string): string[][] {
+  const before: string[][] = [];
+  const heard: string[] = [];
+  for (const act of acts) {
+    before.push([...heard]);
+    for (const plan of planActSeams(act)) {
+      if (!plan.introduces) continue;
+      const show = showOf(plan.introduces.tape).trim();
+      if (show) heard.push(show);
+    }
+  }
+  return before;
+}
+
 export async function writeNarration(acts: SourcedAct[], options: WriteNarrationOptions, voice: Voice, ctx: NarrationBuildContext): Promise<WrittenAct[]> {
   const { writer, verifier } = options;
   if (writer === (verifier as unknown as NarrationWriterBuilder)) {
@@ -524,7 +559,17 @@ export async function writeNarration(acts: SourcedAct[], options: WriteNarration
           if (banked.length > 0 && banked.every((s): s is WrittenSlot => s !== undefined)) return { title: act.title, slots: banked };
           return writeActNarration(
             act,
-            { writer, verifier, evidence, stats: options.stats, segmentSources: options.segmentSources, ground: options.ground?.() ?? [] },
+            {
+              writer,
+              verifier,
+              evidence,
+              stats: options.stats,
+              segmentSources: options.segmentSources,
+              ground: options.ground?.() ?? [],
+              /* gen-8: the shows earlier acts introduced, so this act does not
+                 re-introduce them by name (Q-09). */
+              ...(options.showsIntroduced?.[actIndex] ? { showsIntroduced: options.showsIntroduced[actIndex] } : {})
+            },
             voice,
             ctx
           );

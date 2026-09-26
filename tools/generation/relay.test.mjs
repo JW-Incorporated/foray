@@ -19,6 +19,12 @@
  *   I-23  identity is the request, not the body;
  *         /reset clears map and queue TOGETHER           tests 17, 20, 21
  *   P-01  concurrent requests are answered concurrently  test 22
+ *   round-3 audit (data-tools-1, security-8, security-9):
+ *         a leftover reply never answers a new run        test 28
+ *         web pages and foreign Hosts are refused          tests 29, 30
+ *         /answer and /reset need the run's token          test 31
+ *         a header-derived id cannot escape the queue      test 32
+ *         the default port is not the events server's      test 33
  *
  * THE HTTP TESTS GO OVER REAL HTTP, on 127.0.0.1 with an ephemeral port, and
  * the file tests write real files into a real temp directory. Nothing about
@@ -36,6 +42,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
+import http from "node:http";
 import os from "node:os";
 import path from "node:path";
 
@@ -49,6 +56,8 @@ import {
   messageResponse,
   CHARS_PER_TOKEN,
   RETRY_COUNT_HEADER,
+  DEFAULT_PORT,
+  safeHeaderId,
 } from "./relay.mjs";
 import { splitArgs, driverEnv, driverEntryFromPackage, PLACEHOLDER_KEY, REPO_ROOT } from "./start-run.mjs";
 
@@ -462,7 +471,7 @@ test("20. /reset clears the in-memory map and the queue TOGETHER (I-23)", async 
     await waitFor(() => [...relay.pending.values()][0], "a parked request");
     assert.ok(fs.readdirSync(path.join(dir, "queue")).length > 0);
 
-    const out = await (await fetch(`${base}/reset`, { method: "POST" })).json();
+    const out = await (await fetch(`${base}/reset`, { method: "POST", headers: { authorization: `Bearer ${relay.token}` } })).json();
     assert.equal(out.cleared, 1);
     assert.ok(out.files >= 2, "both the .json and the .txt request files are swept");
     assert.equal(relay.pending.size, 0);
@@ -570,4 +579,113 @@ test("26. bodyFingerprint distinguishes the prompts a retry must not confuse", (
   const b = { model: "claude-sonnet-4-5", max_tokens: 4000, messages: [{ role: "user", content: "deepen act 2" }] };
   assert.notEqual(bodyFingerprint(a), bodyFingerprint(b));
   assert.equal(bodyFingerprint(a), bodyFingerprint({ ...a }));
+});
+
+/* ------------------------------ 28-33: round-3 audit (local and authenticated) */
+
+/** A raw request with headers fetch() will not let a test set (Host). */
+function rawRequest(port, { method = "GET", pathName = "/health", headers = {}, body } = {}) {
+  return new Promise((resolve, reject) => {
+    const req = http.request({ host: "127.0.0.1", port, method, path: pathName, headers }, (res) => {
+      const chunks = [];
+      res.on("data", (c) => chunks.push(c));
+      res.on("end", () => resolve({ status: res.statusCode, body: Buffer.concat(chunks).toString("utf8") }));
+    });
+    req.on("error", reject);
+    if (body !== undefined) req.write(body);
+    req.end();
+  });
+}
+
+test("28. a reply file left by an earlier run never answers this run's call (data-tools-1)", async () => {
+  // MUTATION: mint ids as r0001, r0002, ... again, or drop the start-up sweep.
+  // The seeded reply then answers the new call within one poll, and the
+  // pipeline parses the previous run's answer as a real model reply.
+  const dir = scratchDir();
+  fs.mkdirSync(path.join(dir, "queue"), { recursive: true });
+  for (const stale of ["r0001.reply.txt", "rstale1-0001.reply.txt", "r0001.request.json"]) {
+    fs.writeFileSync(path.join(dir, "queue", stale), "STALE ANSWER FROM LAST RUN");
+  }
+  const relay = createRelay({ dir, quiet: true, runStamp: "stale1" });
+  try {
+    assert.deepEqual(fs.readdirSync(path.join(dir, "queue")), [], "leftovers are moved out of queue/ at start");
+    const staleDirs = fs.readdirSync(path.join(dir, "done")).filter((n) => n.startsWith("stale-"));
+    assert.equal(staleDirs.length, 1);
+    assert.equal(fs.readdirSync(path.join(dir, "done", staleDirs[0])).length, 3, "kept for the audit trail");
+    const entry = relay.park(SPINE_BODY, {});
+    assert.match(entry.id, /^r[0-9a-z]+-\d{4}$/);
+    relay.sweepReplies();
+    assert.equal(entry.answered, false);
+    /* And two relays never mint the same id for their first call. */
+    const other = createRelay({ dir: scratchDir(), quiet: true });
+    assert.notEqual(other.park(SPINE_BODY, {}).id, createRelay({ dir: scratchDir(), quiet: true }).park(SPINE_BODY, {}).id);
+  } finally {
+    await relay.close().catch(() => {});
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("29. a request from a web page (Origin header) is refused, whatever the route (security-8)", async () => {
+  // MUTATION: drop the Origin check. A page in the founder's browser can then
+  // POST a text/plain answer into a parked call with no preflight.
+  await withRelay(async ({ relay, base }) => {
+    const entry = relay.park(SPINE_BODY, {});
+    const res = await fetch(`${base}/answer/${entry.id}`, {
+      method: "POST",
+      headers: { origin: "https://evil.example", "content-type": "text/plain", authorization: `Bearer ${relay.token}` },
+      body: "injected"
+    });
+    assert.equal(res.status, 403);
+    assert.equal(entry.answered, false);
+  });
+});
+
+test("30. a request whose Host is not this relay is refused (DNS rebinding, security-8)", async () => {
+  // MUTATION: drop the Host check. A rebinding page could then read GET
+  // /pending/:id, which returns the full prompt.
+  await withRelay(async ({ relay, port }) => {
+    const entry = relay.park(SPINE_BODY, {});
+    const foreign = await rawRequest(port, { pathName: `/pending/${entry.id}`, headers: { host: `attacker.example:${port}` } });
+    assert.equal(foreign.status, 403);
+    const local = await rawRequest(port, { pathName: `/pending/${entry.id}`, headers: { host: `localhost:${port}` } });
+    assert.equal(local.status, 200);
+  });
+});
+
+test("31. POST /answer/:id and POST /reset need the run's bearer token (security-8)", async () => {
+  // MUTATION: drop the authorized() check. Any local caller that can guess an
+  // id then answers a parked call, and /reset wipes the queue.
+  await withRelay(async ({ relay, base, dir }) => {
+    assert.equal(fs.readFileSync(path.join(dir, "token"), "utf8").trim(), relay.token, "the token is where a local answerer can read it");
+    const inFlight = post(base, SPINE_BODY);
+    const entry = await waitFor(() => [...relay.pending.values()][0], "a parked request");
+    const noToken = await fetch(`${base}/answer/${entry.id}`, { method: "POST", body: "no token" });
+    assert.equal(noToken.status, 401);
+    const wrong = await fetch(`${base}/answer/${entry.id}`, { method: "POST", headers: { authorization: "Bearer nope" }, body: "wrong" });
+    assert.equal(wrong.status, 401);
+    assert.equal((await fetch(`${base}/reset`, { method: "POST" })).status, 401);
+    assert.equal(relay.pending.size, 1, "an unauthorised /reset cleared nothing");
+    const ok = await fetch(`${base}/answer/${entry.id}`, { method: "POST", headers: { authorization: `Bearer ${relay.token}` }, body: "the real answer" });
+    assert.equal(ok.status, 200);
+    assert.equal((await (await inFlight).json()).content[0].text, "the real answer");
+  });
+});
+
+test("32. a header-derived id is reduced to a safe file name before it names a file (data-tools-1)", async () => {
+  // MUTATION: use the idempotency header's value verbatim again. "../x" then
+  // writes the request files outside queue/.
+  assert.equal(safeHeaderId("call-42"), "call-42");
+  assert.match(safeHeaderId("../../evil"), /^h[0-9a-f]{16}$/);
+  await withRelay(async ({ relay, dir }) => {
+    const entry = relay.park(SPINE_BODY, { "idempotency-key": "../../evil" });
+    assert.match(entry.id, /^h[0-9a-f]{16}$/);
+    assert.ok(fs.existsSync(path.join(dir, "queue", `${entry.id}.request.json`)));
+    assert.equal(fs.existsSync(path.join(dir, "..", "evil.request.json")), false);
+  });
+});
+
+test("33. the relay's default port is 8788, not the retired events server's 8787 (security-9)", () => {
+  // MUTATION: put DEFAULT_PORT back to 8787, where a stale events-server
+  // launcher bound every interface and a relay on 127.0.0.1 answered beside it.
+  assert.equal(DEFAULT_PORT, 8788);
 });

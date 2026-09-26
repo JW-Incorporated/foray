@@ -171,7 +171,25 @@ export class BudgetGuard {
    * `sessionId`, or a sink that doesn't implement `sumUsdBySession`, see
    * no behavior change from before this check existed.
    */
-  async checkAndRecord(input: CostEventInput) {
+  checkAndRecord(input: CostEventInput): ReturnType<CostEventSink["record"]> {
+    /* backend-rest-13: check and record are serialised per guard. They are
+       separate awaited steps, so N concurrent callers (narration acts run
+       NARRATION_ACT_CONCURRENCY at once) all read the same `spent`, all
+       passed the cap, and all recorded: spend overshot by (N-1) estimates. A
+       promise chain makes each call see every earlier call's record. A
+       rejected call does not poison the chain. */
+    const run = this.lock.then(() => this.checkAndRecordNow(input));
+    this.lock = run.then(
+      () => undefined,
+      () => undefined
+    );
+    return run;
+  }
+
+  /** Tail of the check-and-record chain (see checkAndRecord). */
+  private lock: Promise<void> = Promise.resolve();
+
+  private async checkAndRecordNow(input: CostEventInput) {
     const tier = this.tierOf(input.operation);
     const cap = this.dailyBudgetUsd * TIER_CUTOFF_FRACTION[tier];
     const since = startOfLocalDayIso();

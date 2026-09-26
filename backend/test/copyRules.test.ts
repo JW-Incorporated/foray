@@ -335,3 +335,37 @@ describe("Foray title house style", () => {
     expect(houseStyleTitle("eBay and the auction economy")).toBe("eBay and the auction economy");
   });
 });
+
+/* Round-3 audit, lane L6 (backend-rest-18): the numbered-act shape catches
+   the capitalised number word too, so "Act Two" cannot pass the title and
+   summary gate while "act two" is caught; a statute followed by a span of
+   time is still plain English. */
+describe("INTERNAL_VOCABULARY: Act Two / Act Three", () => {
+  const caught = (s: string) => INTERNAL_VOCABULARY.some((re) => re.test(s));
+
+  it("catches the capitalised number word, and rewrites it", () => {
+    for (const s of ["In Act Two, the reactor fails", "Act Three begins at dawn", "act two", "Act 2"]) expect(caught(s), s).toBe(true);
+    expect(toListenerWords("In Act Two, the reactor fails").text).toBe("In Part Two, the reactor fails");
+    expect(toListenerWords("Act Three begins").text).toBe("Part Three begins");
+  });
+
+  it("leaves a statute's name alone when a span of time follows it", () => {
+    for (const s of ["the No Surprises Act Four Years Later", "Affordable Care Act Two Years On", "the Clean Air Act 1956"]) {
+      expect(caught(s), s).toBe(false);
+      expect(toListenerWords(s).changed).toBe(false);
+    }
+  });
+
+  /* Round-3 review (L6): the span list covered years to decades only, so a
+     statute followed by any other span was rewritten to "Part" and refused.
+     MUTATION: drop NOT_A_STATUTE_NAME from both patterns -- the Stamp Act
+     becomes "The Stamp Part Two Centuries Later". */
+  it("leaves a Title Case statute name alone whatever follows it", () => {
+    for (const s of ["The Stamp Act Two Centuries Later", "the Wagner Act Three Generations On", "The Voting Rights Act Four Rulings In", "Sherman Act 2 Revisited"]) {
+      expect(caught(s), s).toBe(false);
+      expect(toListenerWords(s).text, s).toBe(s);
+    }
+    // Sentence-opening function words are not a statute's name.
+    for (const s of ["Then Act Two opens on the river", "The Act Two twist", "And Act 3 lands"]) expect(caught(s), s).toBe(true);
+  });
+});

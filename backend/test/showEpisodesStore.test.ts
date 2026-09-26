@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { InMemoryShowEpisodesStore, type CatalogShowEpisode } from "../src/catalog/showEpisodesStore";
+import type { Client } from "pg";
+import { InMemoryShowEpisodesStore, PostgresShowEpisodesStore, buildEpisodeUpsert, type CatalogShowEpisode } from "../src/catalog/showEpisodesStore";
 
 function ep(overrides: Partial<CatalogShowEpisode> = {}): CatalogShowEpisode {
   return {
@@ -69,5 +70,54 @@ describe("InMemoryShowEpisodesStore", () => {
     const state = await store.getFeedState("show-a");
     expect(state?.etag).toBe('"abc"');
     expect(state?.last_fetch_ok).toBe(true);
+  });
+});
+
+/* Round-3 audit, lane L6 (backend-rest-9): the Postgres upsert is one batched
+   statement per chunk inside BEGIN/COMMIT, and a failure rolls back. */
+describe("PostgresShowEpisodesStore.upsertEpisodes", () => {
+  function fakeClient(failOn?: RegExp) {
+    const calls: Array<{ sql: string; params?: unknown[] }> = [];
+    const client = {
+      query: async (sql: string, params?: unknown[]) => {
+        calls.push({ sql, params });
+        if (failOn && failOn.test(sql)) throw new Error("invalid byte sequence");
+        return { rows: [] };
+      }
+    };
+    return { client: client as unknown as Client, calls };
+  }
+  const verbs = (calls: Array<{ sql: string }>) => calls.map((c) => c.sql.trim().split(/\s+/)[0]);
+
+  it("upserts a whole show in one statement inside a transaction", async () => {
+    const { client, calls } = fakeClient();
+    const store = new PostgresShowEpisodesStore(client);
+    await store.upsertEpisodes([ep({ guid: "g1" }), ep({ guid: "g2" }), ep({ guid: "g3" })]);
+    expect(verbs(calls)).toEqual(["begin", "insert", "commit"]);
+    expect(calls[1]!.params).toHaveLength(36);
+  });
+
+  it("rolls back and rethrows when the insert fails, so no half-ingested show is committed", async () => {
+    const { client, calls } = fakeClient(/^\s*insert/);
+    const store = new PostgresShowEpisodesStore(client);
+    await expect(store.upsertEpisodes([ep({ guid: "g1" }), ep({ guid: "g2" })])).rejects.toThrow(/invalid byte/);
+    expect(verbs(calls)).toEqual(["begin", "insert", "rollback"]);
+  });
+
+  it("de-duplicates by guid (last wins) so ON CONFLICT never touches a row twice", async () => {
+    const { client, calls } = fakeClient();
+    const store = new PostgresShowEpisodesStore(client);
+    await store.upsertEpisodes([ep({ guid: "g1", title: "old" }), ep({ guid: "g1", title: "new" })]);
+    const insert = calls[1]!;
+    expect(insert.params).toHaveLength(12);
+    expect(insert.params![2]).toBe("new");
+  });
+
+  it("buildEpisodeUpsert numbers placeholders per row", () => {
+    const { sql, params } = buildEpisodeUpsert([ep({ guid: "a" }), ep({ guid: "b" })]);
+    expect(sql).toContain("$13");
+    expect(sql).toContain("$24");
+    expect(sql).not.toContain("$25");
+    expect(params[13]).toBe("b");
   });
 });

@@ -23,7 +23,13 @@
    2. A FAILED OPEN IS NOT CACHED AS A SUCCESS. Private-mode Safari, a blocked
       upgrade and a corrupted database all reject `open()`. The memoised promise
       is cleared on rejection so a later write can try again, rather than every
-      subsequent call inheriting one dead promise.
+      subsequent call inheriting one dead promise. NOR IS A CLOSED ONE (audit
+      round 3, player-rest-2): the browser can close a connection it opened
+      successfully (WebKit's "Connection to Indexed Database server lost" after
+      a background, "Clear site data"), after which every `transaction()` throws
+      InvalidStateError. `idbConnection` forgets the handle on `close` and
+      `versionchange`, and `withStore` retries once on a fresh connection.
+      `event-log.js` shares both rather than keeping a copy.
 
    ── What is verified and what is not ──────────────────────────────────────
    `idb-tier.test.js` drives this against a hand-rolled fake `indexedDB` (no
@@ -37,6 +43,15 @@
 export const DB_NAME = "foray";
 export const DB_VERSION = 1;
 export const STORE_NAME = "kv";
+/** How long one transaction may stay open before it is abandoned (audit round
+    3, player-rest-1). WKWebView can leave a transaction that never fires
+    complete, error or abort after the app has been backgrounded (client.js
+    records it), and DurableStore runs every durable write on one serial queue,
+    so one silent transaction used to stall them all, the vault's copy of the
+    auth token included. On the deadline the transaction is aborted, the call
+    rejects with a TimeoutError (a fault the store records), and the connection
+    is dropped so the next call opens a fresh one. */
+export const IDB_TX_DEADLINE_MS = 5000;
 
 /**
  * Build an async DurableStore tier over IndexedDB, or return `null` when
@@ -59,20 +74,13 @@ export function makeIdbTier({
   dbName = DB_NAME,
   storeName = STORE_NAME,
   version = DB_VERSION,
+  txDeadlineMs = IDB_TX_DEADLINE_MS,
 } = {}) {
   const factory = factoryIn ?? (typeof indexedDB !== "undefined" ? indexedDB : null);
   if (!factory || typeof factory.open !== "function") return null;
 
-  let dbPromise = null;
-  const open = () => {
-    if (!dbPromise) {
-      dbPromise = openDb(factory, dbName, version, storeName).catch((err) => {
-        dbPromise = null;   // hazard 2: never cache a failure as the answer
-        throw err;
-      });
-    }
-    return dbPromise;
-  };
+  const open = idbConnection(() => openDb(factory, dbName, version, storeName));
+  const txOpts = { deadlineMs: txDeadlineMs };
 
   return {
     name: "idb",
@@ -82,7 +90,7 @@ export function makeIdbTier({
     /** Every owned row, as a Map. The filter is in JS because the namespace is
         tiny and a key range would be one more thing to get subtly wrong. */
     async readAll(prefix) {
-      const rows = await withStore(open, storeName, "readonly", (s) => s.getAll());
+      const rows = await withStore(open, storeName, "readonly", (s) => s.getAll(), txOpts);
       const out = new Map();
       for (const row of rows ?? []) {
         if (!row || typeof row.key !== "string") continue;
@@ -98,11 +106,11 @@ export function makeIdbTier({
         reads. This one is for a human looking at the database. */
     async write(key, value) {
       await withStore(open, storeName, "readwrite", (s) =>
-        s.put({ key, value, updated_at: new Date().toISOString() }));
+        s.put({ key, value, updated_at: new Date().toISOString() }), txOpts);
     },
 
     async remove(key) {
-      await withStore(open, storeName, "readwrite", (s) => s.delete(key));
+      await withStore(open, storeName, "readwrite", (s) => s.delete(key), txOpts);
     },
   };
 }
@@ -127,20 +135,87 @@ function openDb(factory, name, version, storeName) {
 }
 
 /**
- * Run one request inside one transaction and resolve with its result AFTER the
- * transaction commits — see hazard 1 in the header for why the handlers are
- * wired before `fn` runs.
+ * A memoised connection (hazard 2): `open()` resolves the one live IDBDatabase,
+ * and `open.drop()` forgets it. A failed open is never cached, and neither is a
+ * connection the browser has since closed: `close` and `versionchange` drop it,
+ * so the next call opens a fresh one instead of every call throwing
+ * InvalidStateError for the rest of the page's life (audit round 3,
+ * player-rest-2). Shared with `event-log.js`.
+ *
+ * @param {() => Promise<IDBDatabase>} openDb
+ * @returns {(() => Promise<IDBDatabase>) & {drop: () => void}}
  */
-function withStore(open, storeName, mode, fn) {
+export function idbConnection(openDb) {
+  let dbPromise = null;
+  const forget = (p) => { if (dbPromise === p) dbPromise = null; };
+  const open = () => {
+    if (!dbPromise) {
+      const p = openDb().then((db) => {
+        try {
+          db.onclose = () => forget(p);
+          db.onversionchange = () => {
+            try { db.close(); } catch (_) { /* already closing */ }
+            forget(p);
+          };
+        } catch (_) { /* a handle that refuses handlers is still a handle */ }
+        return db;
+      }, (err) => {
+        forget(p);   // hazard 2: never cache a failure as the answer
+        throw err;
+      });
+      dbPromise = p;
+    }
+    return dbPromise;
+  };
+  open.drop = () => { dbPromise = null; };
+  return open;
+}
+
+/**
+ * Run one transaction and resolve with its (last) request's result AFTER the
+ * transaction commits — see hazard 1 in the header for why the handlers are
+ * wired before `fn` runs. `open` is an `idbConnection`.
+ *
+ * Bounded by `deadlineMs` (player-rest-1): a transaction that has not settled
+ * by then is aborted and the connection dropped. A connection the browser
+ * closed (`transaction()` throws InvalidStateError) is dropped and the call
+ * retried ONCE on a fresh one (player-rest-2).
+ */
+export function withStore(open, storeName, mode, fn, { deadlineMs = IDB_TX_DEADLINE_MS } = {}, retried = false) {
   return open().then((db) => new Promise((resolve, reject) => {
     let tx;
-    try { tx = db.transaction(storeName, mode); } catch (err) { reject(err); return; }
+    try { tx = db.transaction(storeName, mode); } catch (err) {
+      if (err?.name === "InvalidStateError" && typeof open.drop === "function") {
+        open.drop();
+        if (!retried) { withStore(open, storeName, mode, fn, { deadlineMs }, true).then(resolve, reject); return; }
+      }
+      reject(err);
+      return;
+    }
     let result;
-    tx.oncomplete = () => resolve(result);
-    tx.onerror = () => reject(tx.error || new Error("indexedDB transaction failed"));
-    tx.onabort = () => reject(tx.error || new Error("indexedDB transaction aborted"));
+    /* One settlement, whichever comes first: the transaction's own events or
+       the deadline (player-rest-1). */
+    let timer = null;
+    let settled = false;
+    const settle = (fn2, v) => {
+      if (settled) return;
+      settled = true;
+      if (timer) clearTimeout(timer);
+      fn2(v);
+    };
+    tx.oncomplete = () => settle(resolve, result);
+    tx.onerror = () => settle(reject, tx.error || new Error("indexedDB transaction failed"));
+    tx.onabort = () => settle(reject, tx.error || new Error("indexedDB transaction aborted"));
+    if (deadlineMs > 0) {
+      timer = setTimeout(() => {
+        if (settled) return;
+        settle(reject, Object.assign(new Error(`indexedDB transaction did not settle within ${deadlineMs} ms`), { name: "TimeoutError" }));
+        try { tx.abort(); } catch (_) { /* already finished, or the connection is gone */ }
+        if (typeof open.drop === "function") open.drop();
+      }, deadlineMs);
+    }
     let req;
-    try { req = fn(tx.objectStore(storeName)); } catch (err) { reject(err); return; }
+    try { req = fn(tx.objectStore(storeName)); } catch (err) { settle(reject, err); return; }
     if (req) req.onsuccess = () => { result = req.result; };
     // No per-request onerror: a failed request aborts the transaction, and
     // tx.onabort/onerror is the single place that rejection belongs.

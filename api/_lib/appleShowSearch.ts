@@ -1,5 +1,8 @@
-import { SlidingWindowBucket, APPLE_BUCKET_WINDOW_MS, APPLE_BUCKET_CAPACITY } from "../episodes/appleBucket";
-import { TtlCache } from "../episodes/searchCache";
+import { SlidingWindowBucket, APPLE_BUCKET_WINDOW_MS, APPLE_BUCKET_CAPACITY } from "./appleBucket";
+import { TtlCache } from "./searchCache";
+import { DEFAULT_FEED_USER_AGENT } from "../../backend/src/feeds/userAgent";
+import { KeyedBuckets } from "./keyedBuckets";
+import { appleShowCallerBuckets, normalizeSearchText, CLIENT_LIMITED_ERROR } from "./clientLimit";
 
 /**
  * S-06 (docs/search-plan.md): the Apple fall-through for SHOW search.
@@ -31,7 +34,7 @@ import { TtlCache } from "../episodes/searchCache";
  * (3) NO THIRD RATE LIMITER, NO THIRD CACHE. The card is explicit about this
  * and it is the whole reason this module is thin. `SlidingWindowBucket` and
  * `TtlCache` are imported from `api/episodes/` — the same CLASSES, with their
- * own tests (`api/test/apple-bucket.test.mjs`) — and this file adds only two
+ * own tests (`api/_test/apple-bucket.test.mjs`) — and this file adds only two
  * new INSTANCES of them. Separate instances rather than the shared
  * `appleSearchBucket` singleton, deliberately: episode search and show search
  * hit two different Apple endpoints (`entity=podcastEpisode` vs
@@ -87,10 +90,11 @@ import { TtlCache } from "../episodes/searchCache";
  */
 
 const APPLE_SEARCH_URL = "https://itunes.apple.com/search";
-/** Verbatim from `api/episodes/search.ts` — one User-Agent for this product. */
-const SHOW_USER_AGENT = "Foray/0.1 (personal podcast client; contact wjduvall@gmail.com)";
+/** One User-Agent for this product, imported rather than restated (round-3
+    audit, arch-drift-14; see api/episodes/search.ts). */
+const SHOW_USER_AGENT = DEFAULT_FEED_USER_AGENT;
 /** 2 s, and NOT `api/episodes/search.ts`'s 8 s — see note (6). Exported so
-    `api/test/shows-search-apple.test.mjs` can pin the number rather than the
+    `api/_test/shows-search-apple.test.mjs` can pin the number rather than the
     behaviour, which is untestable without waiting for it. */
 export const APPLE_SHOW_TIMEOUT_MS = 2_000;
 
@@ -127,7 +131,7 @@ export interface AppleShowResult {
     `searchBreadthShows` does to the same query, so "Radiolab" and " radiolab "
     are one question here too. */
 export function appleShowCacheKey(query: string, limit: number): string {
-  return `${limit}::${String(query || "").trim().toLowerCase()}`;
+  return `${limit}::${normalizeSearchText(query)}`;
 }
 
 /** One Apple hit -> one client-shaped row, or `null` if it cannot be mapped.
@@ -337,7 +341,14 @@ export async function appleShowSearch(
   query: string,
   limit: number,
   fetchImpl: typeof fetch = fetch,
-  deps: { bucket?: SlidingWindowBucket; cache?: TtlCache<AppleShowResult[]> } = {}
+  deps: {
+    bucket?: SlidingWindowBucket;
+    cache?: TtlCache<AppleShowResult[]>;
+    /** The caller's key (clientLimit.ts clientKey) and its per-client bucket
+        (security-10). Without a key, no per-client limit applies. */
+    callerKey?: string;
+    callerBuckets?: KeyedBuckets;
+  } = {}
 ): Promise<AppleShowSearchOutcome> {
   const bucket = deps.bucket ?? appleShowBucket;
   const cache = deps.cache ?? appleShowCache;
@@ -346,6 +357,11 @@ export async function appleShowSearch(
   const cached = cache.get(key);
   if (cached) return { shows: cached, error: null, cached: true };
 
+  /* The caller's own budget before the shared one (security-10): one client
+     cannot drain the directory for every listener on this instance. */
+  if (deps.callerKey !== undefined && !(deps.callerBuckets ?? appleShowCallerBuckets).tryConsume(deps.callerKey)) {
+    return { shows: [], error: CLIENT_LIMITED_ERROR, cached: false };
+  }
   if (!bucket.tryConsume()) {
     return { shows: [], error: "rate limit exceeded — try again shortly", cached: false };
   }

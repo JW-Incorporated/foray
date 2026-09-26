@@ -121,7 +121,7 @@ test("buildPointer: shapes the config-value payload the client reads", () => {
     publishedAt: "2026-09-05T00:00:00.000Z",
   });
   assert.deepEqual(pointer, {
-    version: 1,
+    version: 2,
     export_version: "local:abc123",
     release_tag: "shows-index-v1",
     asset_base_url: "https://github.com/org/repo/releases/download/shows-index-v1",
@@ -131,6 +131,18 @@ test("buildPointer: shapes the config-value payload the client reads", () => {
     shards_published: false,
     shard_releases: [],
   });
+});
+
+/* Audit round 3, arch-drift-7: POINTER_SCHEMA_VERSION was exported and never
+   read while buildPointer wrote a literal 1, so the S-04c shard shape carried
+   the same version as the pointer before it. MUTATION: put `version: 1` back
+   in buildPointer -- both assertions fail. */
+test("buildPointer: writes POINTER_SCHEMA_VERSION, which is 2 for the shard-range shape", async () => {
+  const { POINTER_SCHEMA_VERSION } = await import("./config.mjs");
+  assert.equal(POINTER_SCHEMA_VERSION, 2);
+  const pointer = buildPointer({ tag: "t", assetBaseUrl: "https://x", exportVersion: "v", manifest: {}, shardReleases: [{ tag: "t-1" }], shardsPublished: true });
+  assert.equal(pointer.version, POINTER_SCHEMA_VERSION);
+  assert.ok("shard_releases" in pointer && "shards_published" in pointer);
 });
 
 /* ==================================================================== */

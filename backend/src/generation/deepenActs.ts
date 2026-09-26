@@ -139,6 +139,35 @@ export function capArgumentBeats(act: DeepenedAct): DeepenedAct {
  * so an act from a spine with no seeds is byte-identical to what the builder
  * returned. Idempotent, like `capArgumentBeats`, and applied on the same path.
  */
+/**
+ * gen-3 (round-3 audit): a deepened slot keeps the SPINE's title.
+ *
+ * The §4.4 prompt says "refine this act's slots" and the schema re-emits every
+ * slot title, so a model could reword one ("Origins" -> "Origins of the
+ * practice"). The Foray's `slots` are built from the spine's titles
+ * (`slotsFromSpine`), and the items were keyed by the title that travelled
+ * through deepen, source, write and stitch, so a reworded title declared a slot
+ * id that is not in `slots` and check-forays refused the Foray after the whole
+ * narration spend. The slot's title is the spine's by definition (§4.4 refines
+ * beats; it does not add, remove or rename slots), so it is put back here, on
+ * the same seam as the seeded-claim restore, and logged once per slot. Items
+ * now also carry the declared slot id by position (`slotIdsFromSpine`), so
+ * this is the second of two guarantees, not the only one.
+ *
+ * Returns the act unchanged (the same object) when every title already matches.
+ */
+export function pinSlotTitles(original: Act, deepened: DeepenedAct): DeepenedAct {
+  let changed = false;
+  const slots = deepened.slots.map((slot, slotIndex) => {
+    const spineTitle = original.slots[slotIndex]?.title;
+    if (spineTitle === undefined || slot.title === spineTitle) return slot;
+    changed = true;
+    console.warn(`[deepen] Slot ${slotIndex + 1} of act "${original.title}" was retitled and has been restored to the spine's title: "${slot.title}" -> "${spineTitle}"`);
+    return { ...slot, title: spineTitle };
+  });
+  return changed ? { ...deepened, slots } : deepened;
+}
+
 export function carryBeatSeeds(original: Act, deepened: DeepenedAct): DeepenedAct {
   let restoredAnywhere = 0;
   const slots: Slot[] = deepened.slots.map((slot, slotIndex) => {
@@ -276,7 +305,7 @@ async function deepenOneActWithRetry(
          its claim and its seed — rides the same seam for the same reason
          (WS-L, F-63/F-68): it runs AFTER validation, so a builder that ignored
          the freeze is corrected rather than retried. */
-      return capArgumentBeats(carryBeatSeeds(act, deepened));
+      return capArgumentBeats(carryBeatSeeds(act, pinSlotTitles(act, deepened)));
     } catch (err) {
       lastError = err;
     }
@@ -323,7 +352,7 @@ export async function deepenActs(
        beats) is corrected on resume, rather than the resume faithfully
        replaying the defect it exists to avoid re-paying for. A checkpoint
        written before beats carried seeds gets them restored the same way. */
-    if (resumed) return capArgumentBeats(carryBeatSeeds(act, resumed));
+    if (resumed) return capArgumentBeats(carryBeatSeeds(act, pinSlotTitles(act, resumed)));
     const deepened = await deepenOneActWithRetry(spine, act, index, builder, ctx);
     /* Persisted BEFORE `Promise.all` settles, so an act that succeeded is
        banked even when a sibling act's retry budget runs out and fails the

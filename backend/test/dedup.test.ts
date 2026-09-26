@@ -15,6 +15,18 @@ describe("normalizeTitle", () => {
     expect(normalizeTitle("Café Society")).toBe(normalizeTitle("Cafe Society"));
   });
 
+  /* Round-3 review (L6): lowercasing ran before NFKD, so a compatibility
+     letter decomposed to an uppercase one that survived, and "™" became the
+     letters "TM".
+     MUTATION: lowercase first again -- "ℌello" keeps its capital H; drop the
+     symbol strip -- "Hard Fork™" gains "tm". */
+  it("folds letterlike symbols and compatibility letters the way plain titles fold", () => {
+    expect(normalizeTitle("Hard Fork™")).toBe(normalizeTitle("Hard Fork"));
+    expect(normalizeTitle("Brand® Talk")).toBe("brand talk");
+    expect(normalizeTitle("ℌello")).toBe("hello");
+    expect(normalizeTitle("Ｆｕｌｌ Ｗｉｄｔｈ")).toBe("full width");
+  });
+
   it("collapses internal whitespace", () => {
     expect(normalizeTitle("Too    many     spaces")).toBe("too many spaces");
   });
@@ -110,5 +122,30 @@ describe("groupDuplicates", () => {
       { id: "b", title: "Unique Two", publishedAt: "2024-02-01T00:00:00Z", durationSeconds: 200 }
     ];
     expect(groupDuplicates(candidates).size).toBe(0);
+  });
+});
+
+/* Round-3 audit, lane L6 (backend-rest-22): letters and digits in any script
+   survive normalisation, so non-Latin titles dedup and key distinctly. */
+describe("normalizeTitle keeps non-Latin letters", () => {
+  it("keeps CJK, Cyrillic, Greek and Arabic letters", () => {
+    expect(normalizeTitle("伊藤洋一のRound Up World Now")).toBe("伊藤洋一のround up world now");
+    expect(normalizeTitle("Новости: выпуск 5")).toBe("новости выпуск 5");
+    expect(normalizeTitle("Ελληνικά!")).toBe("ελληνικα");
+    expect(normalizeTitle("حلقة ٣")).not.toBe("");
+  });
+
+  it("still strips diacritics in any script and punctuation", () => {
+    expect(normalizeTitle("Café — Society")).toBe("cafe society");
+    expect(normalizeTitle("Ÿöü")).toBe("you");
+  });
+
+  it("two fully non-Latin audio/video twins now match, and two different ones do not share a key", () => {
+    const a = { title: "第五回 宇宙の話", publishedAt: "2026-01-01T00:00:00Z", durationSeconds: 1800 };
+    const b = { title: "第五回 宇宙の話 (Video)", publishedAt: "2026-01-01T06:00:00Z", durationSeconds: 1830 };
+    const c = { title: "第六回 海の話", publishedAt: "2026-01-01T00:00:00Z", durationSeconds: 1800 };
+    expect(isSameEpisode(a, b)).toBe(true);
+    expect(isSameEpisode(a, c)).toBe(false);
+    expect(computeIdentityKey(a)).not.toBe(computeIdentityKey(c));
   });
 });

@@ -135,7 +135,7 @@ function jingleItemId(actLabel: string, beatIndex: number, reason: "cut" | "cade
  * four rules above. `actLabel` is used only to build stable, readable
  * item ids (e.g. "act-2") and never affects ordering or content.
  */
-export function stitchAct(act: WrittenAct, actLabel: string): StitchedAct {
+export function stitchAct(act: WrittenAct, actLabel: string, slotIds?: readonly string[]): StitchedAct {
   const items: StitchedItem[] = [];
   const coverage: CoverageEntry[] = [];
 
@@ -150,7 +150,13 @@ export function stitchAct(act: WrittenAct, actLabel: string): StitchedAct {
   /** Segment ids this act has already emitted (F-96). */
   const emittedSegments = new Set<string>();
 
-  for (const slot of act.slots) {
+  for (const [slotIndex, slot] of act.slots.entries()) {
+    /* gen-4 (round-3 audit): the id the Foray's `slots` declares for this
+       slot, by position. Re-slugging the title instead gave two slots that
+       share a title (across acts) one id, while `slotsFromSpine` declared the
+       second one `-2`. */
+    const slotId = slotIds?.[slotIndex];
+    const slotKey = slotId !== undefined ? { slotId } : {};
     for (const beat of slot.beats) {
       const myIndex = beatIndex++;
       coverage.push({ status: "present", beatIndex: myIndex, claim: beat.claim });
@@ -179,6 +185,7 @@ export function stitchAct(act: WrittenAct, actLabel: string): StitchedAct {
           narrationKind: "beat",
           beatIndex: myIndex,
           slotTitle: slot.title,
+          ...slotKey,
           mode: beat.narration.mode,
           script: beat.narration.script,
           id: narrationItemId(actLabel, myIndex, "beat"),
@@ -197,6 +204,7 @@ export function stitchAct(act: WrittenAct, actLabel: string): StitchedAct {
           narrationKind: "beat",
           beatIndex: myIndex,
           slotTitle: slot.title,
+          ...slotKey,
           mode: beat.connectiveNarration.mode,
           script: beat.connectiveNarration.script,
           id: narrationItemId(actLabel, myIndex, "connective"),
@@ -230,6 +238,7 @@ export function stitchAct(act: WrittenAct, actLabel: string): StitchedAct {
         kind: "tape",
         beatIndex: myIndex,
         slotTitle: slot.title,
+        ...slotKey,
         segmentId: beat.tape.segmentId,
         itemId: beat.tape.itemId,
         startSec: beat.tape.startSec,

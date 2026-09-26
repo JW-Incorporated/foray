@@ -2,7 +2,7 @@
 
 <!-- ha-format: 2 -->
 
-> **23 open.** Closed items are in `HUMAN-ACTIONS-DONE.md` — you never need it.
+> **25 open.** Closed items are in `HUMAN-ACTIONS-DONE.md` — you never need it.
 > To close one: reply `done` (or `skip <why>`) to its card in the project's human-action channel.
 > Anything else you reply is forwarded to a thread on the card.
 
@@ -18,6 +18,33 @@
    - **Keep them:** tell Claude "recover the 2026-09-14 nightly digest". It re-cuts the scan back to the 14th and opens `nightly/2026-09-14-recovery`, which is the branch name the guard looks for.
 
 **Worked if:** the next scheduled `nightly-refresh` run is green, a `nightly/<date>` PR opens the same day, and `nightly-watch` is green that evening.
+
+## #118 🟢 [UPGRADE] Remove the retired events server from your Windows Startup folder (~2 min)
+<!-- ha filed=2026-09-25 kind=default -->
+
+**Why:** `ForayEventsServer.vbs` in your Startup folder starts `tools/events-server.mjs` from the old `commute-curator` checkout at every login. Nothing uses it (events go to Supabase), it listens on every network interface on port 8787 with no auth, and the repo copy has now been deleted (round-3 audit security-9). Only you can remove the Startup entry.
+
+**Steps:**
+1. Press Win+R, type `shell:startup`, press Enter.
+2. Delete `ForayEventsServer.vbs`.
+3. In Task Manager → Details, end the `node.exe` whose command line is `node tools\events-server.mjs` (or just sign out and back in).
+
+**Worked if:** `netstat -ano | findstr :8787` prints nothing after your next login.
+
+## #117 🟢 [UPGRADE] On a phone, check six player fixes from audit round 3 that no machine here can hear (~20 min)
+<!-- ha filed=2026-09-25 kind=default -->
+
+**Why:** Branch `r3fix/l3-player-and-native-tts` fixes narration and transport bugs that only a real speaker proves; unit tests carry the logic. Use a Foray with spoken narration, on the web player (Developer → web player on iOS).
+
+**Steps:**
+1. iOS: during a narration line press pause, then Next clip onto another line. The new line must be heard (mobile-native-1).
+2. Android: open the voice picker mid-narration and tap Preview. The picker must say "Preview is unavailable while the narrator is on a line." and the Foray must keep speaking that line, not skip it (mobile-native-2; a preview would cut the line off, so it is refused).
+3. Android, airplane mode, a network-only voice: narration must move on at once, not after a long silence (mobile-native-3).
+4. iOS over Spotify: play a Foray to its end without pausing. Spotify must offer to resume (mobile-native-4).
+5. Pause, or press Stop, while a rendered bridge line is still loading: nothing may start playing (player-core-2).
+6. Screen locked, press Next during a slow start: the next clip must play, not stop (player-core-3).
+
+**Worked if:** all six behave as written; paste Developer → Playback diagnostics → Copy into the card thread for any that do not.
 
 ## #115 🔴 [BLOCKING] Put the app-signing and store-upload secrets behind a protected `release` environment (~15 min)
 <!-- ha filed=2026-09-25 kind=default -->
@@ -39,8 +66,8 @@
 **Why:** Round-3 code audit, question Q3. The fix lane adds a new numbered migration under `backend/migrations/`. It turns on row-level security for the catalogue and pipeline tables, adds per-table policies on `events`, `user_interests` and `taxonomy_nodes` (with event timestamps set by the server), and adds a delete policy on `learning_cursor` so **Delete my data** can remove that table's rows too. The code and the privacy-policy rows describing it land in the round-3 fix PR, but **nothing reaches the live database until you apply it**. You asked for this to be your follow-up (2026-09-25).
 
 **Steps:**
-1. Wait for the round-3 fix PR to merge. Claude will reply here with the migration's file name.
-2. Supabase dashboard → the 4a project → **SQL editor**. Paste the migration file's contents, read it, and run it (or `supabase db push` if you use the CLI).
+1. Wait for the round-3 fix PR to merge. The migration is `backend/migrations/supabase/0003_rls_least_privilege.sql`.
+2. Supabase dashboard → the 4a project → **SQL editor**. Paste that file's contents, read it, and run it (or `supabase db push` if you use the CLI).
 3. Check it worked: **Table editor** shows RLS **enabled** on each table the migration names. As an anonymous user, the app still loads Home, and **Developer → Playback diagnostics** shows no `sync` or `events` errors.
 4. Reply `done` (or paste any SQL error) here.
 

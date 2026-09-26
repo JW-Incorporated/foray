@@ -7,8 +7,9 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import * as searchModule from "../episodes/search.ts";
-import { _resetShowIdMapCacheForTests, loadShowIdMap } from "../episodes/showIdMap.ts";
-import { episodeFeedFailureCache } from "../episodes/searchCache.ts";
+import { _resetShowIdMapCacheForTests, loadShowIdMap } from "../_lib/showIdMap.ts";
+import { episodeFeedFailureCache } from "../_lib/searchCache.ts";
+import { appleCallerBuckets } from "../_lib/clientLimit.ts";
 
 const handler = typeof searchModule.default === "function" ? searchModule.default : searchModule.default.default;
 
@@ -36,6 +37,12 @@ function resetSharedState() {
      test's setup. Cleared here rather than per-test for the same reason the
      id-map cache is. */
   episodeFeedFailureCache.clear();
+  /* round-3 audit, search-api-css-4: the per-show feed-fetch limiter is module
+     scope too, and this file fetches the same show more than its budget. */
+  searchModule.sharedFeedReader.clear();
+  /* security-10: the per-client Apple budget is module scope; these requests
+     carry no x-forwarded-for, so they all share the "unknown" client. */
+  appleCallerBuckets.clear();
 }
 
 const FEED_TWO_EPS = `<?xml version="1.0"?>
@@ -739,9 +746,11 @@ test("rate limit: the 21st distinct general search within the same instant is re
   const prefix = `burst-${Date.now()}`;
   try {
     const results = [];
-    // 25 distinct (uncached) queries fired as fast as this loop can go.
+    // 25 distinct (uncached) queries fired as fast as this loop can go, each
+    // from its own client, so the SHARED bucket is what refuses (the
+    // per-client budget, security-10, has its own test).
     for (let i = 0; i < 25; i++) {
-      const req = { method: "GET", query: { q: `${prefix}-${i}` }, headers: {} };
+      const req = { method: "GET", query: { q: `${prefix}-${i}` }, headers: { "x-forwarded-for": `203.0.113.${i}` } };
       const res = mockRes();
       await handler(req, res);
       results.push(res.body);

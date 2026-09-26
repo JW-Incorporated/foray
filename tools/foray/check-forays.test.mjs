@@ -44,6 +44,7 @@ import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
+import { JINGLE_DURATION_SEC } from "../../player/foray-queue.js";
 import copyRules from "../../backend/src/copy/rules.js";
 import {
   checkForays,
@@ -2673,7 +2674,7 @@ test("a jingle item is accepted with just a type and passes through untouched", 
   const f = fx();
   const foray = boundary(f);
   foray.items.splice(1, 0, { type: "jingle", id: "jingle-1" });
-  if (typeof foray.runtime_sec === "number") foray.runtime_sec = +(foray.runtime_sec + 1.5).toFixed(2);
+  if (typeof foray.runtime_sec === "number") foray.runtime_sec = +(foray.runtime_sec + JINGLE_DURATION_SEC).toFixed(2);
   assert.deepEqual(errorsFor(f), []);
 });
 
@@ -2681,7 +2682,7 @@ test("a jingle needs no id at all", () => {
   const f = fx();
   const foray = boundary(f);
   foray.items.splice(1, 0, { type: "jingle" });
-  if (typeof foray.runtime_sec === "number") foray.runtime_sec = +(foray.runtime_sec + 1.5).toFixed(2);
+  if (typeof foray.runtime_sec === "number") foray.runtime_sec = +(foray.runtime_sec + JINGLE_DURATION_SEC).toFixed(2);
   assert.deepEqual(errorsFor(f), []);
 });
 
@@ -2693,7 +2694,7 @@ test("a jingle is not a segment start for D1 purposes", () => {
   const f = fx();
   const foray = boundary(f);
   foray.items.splice(1, 0, { type: "jingle", id: "jingle-1" });
-  if (typeof foray.runtime_sec === "number") foray.runtime_sec = +(foray.runtime_sec + 1.5).toFixed(2);
+  if (typeof foray.runtime_sec === "number") foray.runtime_sec = +(foray.runtime_sec + JINGLE_DURATION_SEC).toFixed(2);
   const after = checkForays(f).report.forays[0];
   assert.equal(after.d1_max_starts_in_window, before.d1_max_starts_in_window);
 });

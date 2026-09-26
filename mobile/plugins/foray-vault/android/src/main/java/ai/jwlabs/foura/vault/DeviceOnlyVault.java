@@ -53,14 +53,48 @@ final class DeviceOnlyVault {
     }
 
     synchronized void set(String key, String value) throws IOException, JSONException {
-        JSONObject rows = read();
+        JSONObject rows = readForWrite();
         rows.put(key, value);
         write(rows);
     }
 
     synchronized void remove(String key) throws IOException, JSONException {
-        JSONObject rows = read();
-        if (rows.remove(key) != null) write(rows);
+        JSONObject rows;
+        boolean unreadable = false;
+        try {
+            rows = read();
+        } catch (JSONException e) {
+            unreadable = true;
+            rows = unreadableStore(e);
+        }
+        /* An unreadable file is REPLACED by the empty store even when it held
+           no such key that we could see: "Delete my data" must leave nothing
+           the next read could choke on or recover. */
+        if (rows.remove(key) != null || unreadable) write(rows);
+    }
+
+    /** For a WRITE (audit round 3, mobile-native-7): a file that no longer
+     *  parses is treated as an empty store and overwritten. {@link AtomicFile}
+     *  only guards against a torn write; storage corruption or a hand edit
+     *  used to make {@code set} and {@code remove} throw on every call, so the
+     *  listener's account could never be saved again and Delete my data could
+     *  not clear the row, until an uninstall. {@code get}/{@code keys} still
+     *  reject, so the store keeps saying "could not look" rather than "no
+     *  account". */
+    private JSONObject readForWrite() throws IOException {
+        try {
+            return read();
+        } catch (JSONException e) {
+            return unreadableStore(e);
+        }
+    }
+
+    /** The empty store an unreadable file is replaced by. Deliberately NOT
+     *  logged: this plugin writes nothing to the log (the file may hold a
+     *  token, and a parser's message can quote it). The recovery is visible
+     *  instead as the next write succeeding. */
+    private static JSONObject unreadableStore(JSONException e) {
+        return new JSONObject();
     }
 
     private JSONObject read() throws IOException, JSONException {

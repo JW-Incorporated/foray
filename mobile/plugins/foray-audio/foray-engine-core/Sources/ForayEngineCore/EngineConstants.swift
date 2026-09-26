@@ -157,12 +157,14 @@ public enum EngineConstants {
         public static let durationFallback: String = "fallback"
         /// `DURATION_MEASURED`
         public static let durationMeasured: String = "measured"
+        /// `INTERLUDE_ASSET_DURATION_SEC`
+        public static let interludeAssetDurationSec: Double = 3
         /// `JINGLE`
         public static let jingle: String = "jingle"
         /// `JINGLE_ASSET_URL`
         public static let jingleAssetUrl: String = "https://jw-incorporated.github.io/foray/player/assets/interlude-placeholder.wav"
         /// `JINGLE_DURATION_SEC`
-        public static let jingleDurationSec: Double = 1.5
+        public static let jingleDurationSec: Double = 3
         /// `NARRATION`
         public static let narration: String = "narration"
         /// `NARRATION_CHARS_PER_SEC`

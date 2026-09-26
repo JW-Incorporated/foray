@@ -497,6 +497,30 @@ export function supersededAddedSec(minted: ReadonlyArray<NewSegment>): Map<strin
  * Exported so a test can assert the merge without loading the `.mjs` checkers,
  * which a Vitest run on a path containing a space cannot do (see
  * `RunPipelineDeps.finalize`). */
+/**
+ * gen-12 (round-3 audit): a candidate that CANNOT be assembled for validation
+ * (a duplicate Foray id, a minted row that collides with the committed pool,
+ * a minted row the pool gate would refuse). Thrown by `buildCandidateFiles`
+ * so a direct caller still stops, and turned by `finalizeForay` into
+ * `checkForaysErrors` (validation.ok = false), so the partial gate and the
+ * final gate report it the way they report any other refusal, and
+ * `--continue-on-refused-partial` and `refusedAtAct` work for it.
+ */
+export class CandidateRefusedError extends Error {
+  constructor(readonly errors: string[]) {
+    super(errors.join("; "));
+    this.name = "CandidateRefusedError";
+  }
+}
+
+/** The prefix every minted-pool collision error carries in `checkForaysErrors`,
+ * so the pipeline can recognise one (and drop a stale `source` checkpoint). */
+export const MINTED_POOL_COLLISION_PREFIX = "finalizeForay: minted pool collision: ";
+
+export function isMintedPoolCollisionError(message: string): boolean {
+  return message.startsWith(MINTED_POOL_COLLISION_PREFIX);
+}
+
 export function buildCandidateFiles(
   candidateRecord: Record<string, unknown>,
   root: string,
@@ -506,7 +530,7 @@ export function buildCandidateFiles(
   const live = readJson("data/forays.json") as { forays: unknown[] };
   const existingIds = readExistingForayIds(root);
   if (typeof candidateRecord.id === "string" && existingIds.has(candidateRecord.id)) {
-    throw new Error(`finalizeForay: a Foray with id "${String(candidateRecord.id)}" already exists in data/forays.json — choose a new id or supersede it explicitly (mark the old one with superseded_by/superseded_note, a rule tools/foray/check-forays.mjs enforces)`);
+    throw new CandidateRefusedError([`finalizeForay: a Foray with id "${String(candidateRecord.id)}" already exists in data/forays.json — choose a new id or supersede it explicitly (mark the old one with superseded_by/superseded_note, a rule tools/foray/check-forays.mjs enforces)`]);
   }
 
   const pool = readJson("data/segments.json") as { segments?: unknown[] };
@@ -516,7 +540,7 @@ export function buildCandidateFiles(
      And a minted row that would sit BESIDE a committed row at the same start is
      refused outright (F-84) — see `mintedPoolCollisions`. */
   const collisions = mintedPoolCollisions(minted.segments ?? [], (pool.segments ?? []) as PoolRowLike[]);
-  if (collisions.length > 0) throw new Error(`finalizeForay: ${collisions.join("; ")}`);
+  if (collisions.length > 0) throw new CandidateRefusedError(collisions.map((c) => `${MINTED_POOL_COLLISION_PREFIX}${c}`));
   const poolIds = new Set((pool.segments ?? []).map((s) => (s as { id?: unknown }).id));
   const registryIds = new Set((registry.sources ?? []).map((s) => (s as { id?: unknown }).id));
   const rowContext: MintedRowContext = {
@@ -535,12 +559,21 @@ export function buildCandidateFiles(
   const superseding = new Map(
     (minted.segments ?? []).filter((s) => s.supersedesEndSec !== undefined && poolIds.has(s.id)).map((s) => [s.id, s])
   );
+  /* gen-12: a minted row the pool gate refuses is a refusal of THIS
+     candidate, reported like one, not an exception out of finalize. */
+  const rowOf = (s: NewSegment): unknown => {
+    try {
+      return mintedSegmentRow(s, minted.topic, rowContext);
+    } catch (err) {
+      throw new CandidateRefusedError([`finalizeForay: ${err instanceof Error ? err.message : String(err)}`]);
+    }
+  };
   const mergedPool = [
     ...(pool.segments ?? []).map((row) => {
       const replacement = superseding.get(String((row as { id?: unknown }).id));
-      return replacement ? mintedSegmentRow(replacement, minted.topic, rowContext) : row;
+      return replacement ? rowOf(replacement) : row;
     }),
-    ...(minted.segments ?? []).filter((s) => !poolIds.has(s.id)).map((s) => mintedSegmentRow(s, minted.topic, rowContext))
+    ...(minted.segments ?? []).filter((s) => !poolIds.has(s.id)).map(rowOf)
   ];
 
   /* And the drafts that were timed on the old cut, restated in the same breath:
@@ -575,14 +608,21 @@ export async function finalizeForay(input: FinalizeForayInput, root: string = RE
   const candidateRecord = await timings.run("build-record", () => buildForayRecord(input));
 
   const checkForaysResult = await timings.run("check-forays", async () => {
+    let files: ReturnType<typeof buildCandidateFiles>;
+    try {
+      files = buildCandidateFiles(candidateRecord, root, {
+        segments: input.segments,
+        sources: input.segmentSources,
+        topic: input.topic
+      });
+    } catch (err) {
+      /* gen-12: reported as validation errors, never thrown past the gate. */
+      if (err instanceof CandidateRefusedError) return { errors: err.errors, warnings: [] };
+      throw err;
+    }
     const mod = (await import("../../../tools/foray/check-forays.mjs")) as unknown as {
       checkForays: (files: unknown) => { errors: string[]; warnings: string[] };
     };
-    const files = buildCandidateFiles(candidateRecord, root, {
-      segments: input.segments,
-      sources: input.segmentSources,
-      topic: input.topic
-    });
     return mod.checkForays(files);
   });
 

@@ -35,16 +35,42 @@ const NAMED_ENTITIES: Record<string, string> = {
 export function decodeEntities(input: string): string {
   return input.replace(/&(#x?[0-9a-fA-F]+|[a-zA-Z]+);/g, (match, entity: string) => {
     if (entity.startsWith("#x") || entity.startsWith("#X")) {
-      const code = parseInt(entity.slice(2), 16);
-      return Number.isFinite(code) ? String.fromCodePoint(code) : match;
+      return decodeCodePoint(parseInt(entity.slice(2), 16), match);
     }
     if (entity.startsWith("#")) {
-      const code = parseInt(entity.slice(1), 10);
-      return Number.isFinite(code) ? String.fromCodePoint(code) : match;
+      // "#1f" is not a decimal reference; leave it as written.
+      if (!/^#\d+$/.test(entity)) return match;
+      return decodeCodePoint(parseInt(entity.slice(1), 10), match);
     }
-    return NAMED_ENTITIES[entity] ?? match;
+    // Own-property lookup only: a plain object literal would otherwise hand
+    // back Object.prototype members for "&constructor;" / "&toString;".
+    return Object.hasOwn(NAMED_ENTITIES, entity) ? (NAMED_ENTITIES[entity] as string) : match;
   });
 }
+
+/** U+FFFD, the Unicode replacement character. */
+const REPLACEMENT_CHARACTER = "\uFFFD";
+
+/**
+ * One never-throwing, range-checked decoder for a numeric character
+ * reference. String.fromCodePoint throws RangeError above U+10FFFF, which
+ * used to take the whole of parseFeed (and a show's episode page) down on a
+ * single malformed `&#99999999;`. Rules:
+ *   - NUL and the C0 controls other than tab/LF/CR decode to nothing
+ *     (Postgres text rejects 0x00, and XML 1.0 forbids the rest);
+ *   - surrogates, anything above U+10FFFF, and non-numbers become U+FFFD;
+ *   - everything else decodes normally.
+ */
+function decodeCodePoint(code: number, match: string): string {
+  if (!Number.isFinite(code)) return match;
+  if (code >= 0 && code < 0x20 && code !== 0x09 && code !== 0x0a && code !== 0x0d) return "";
+  if (code < 0 || code > 0x10ffff || (code >= 0xd800 && code <= 0xdfff)) return REPLACEMENT_CHARACTER;
+  return String.fromCodePoint(code);
+}
+
+/** Raw C0 control characters other than tab, LF and CR. */
+// eslint-disable-next-line no-control-regex
+const DISALLOWED_CONTROLS = /[\x00-\x08\x0B\x0C\x0E-\x1F]/g;
 
 export function sanitizeHtmlToText(input: string | null | undefined): string {
   if (!input) return "";
@@ -78,6 +104,9 @@ export function sanitizeHtmlToText(input: string | null | undefined): string {
     text = stripped;
     if (stripped === prev) break;
   }
+  // Drop raw C0 controls (NUL above all: Postgres text rejects 0x00).
+  text = text.replace(DISALLOWED_CONTROLS, "");
+
   // Safety net: never let a bare angle bracket (one that didn't form a full
   // <tag> above, e.g. a lone "&lt;" with no matching "&gt;") reach output.
   text = text.replace(/[<>]/g, "");

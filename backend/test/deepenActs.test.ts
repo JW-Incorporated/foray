@@ -769,3 +769,30 @@ describe("deepenActs — F-68: a seeded beat's CLAIM is frozen through deepening
     }
   });
 });
+
+describe("gen-3: a deepened slot keeps the spine's slot title", () => {
+  it("restores a retitled slot to the spine's title (on the built path and the resumed path)", async () => {
+    /* MUTATION THAT KILLS THIS: drop pinSlotTitles from the return path —
+       the reworded title then travels into items whose slot id is not in the
+       Foray's `slots` (built from the spine), and check-forays refuses it. */
+    const spine = makeSpine();
+    const stub = new StubDeepenActBuilder();
+    const retitler: DeepenActBuilder = {
+      providerName: "retitler",
+      async deepenAct(s, act, index, c) {
+        const deepened = await stub.deepenAct(s, act, index, c);
+        return { ...deepened, slots: deepened.slots.map((slot) => ({ ...slot, title: `${slot.title} of the practice` })) };
+      }
+    };
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      const built = await deepenActs(spine, retitler, ctx);
+      built.forEach((act, i) => expect(act.slots.map((s) => s.title)).toEqual(spine.acts[i]!.slots.map((s) => s.title)));
+      const retitledCheckpoint = await retitler.deepenAct(spine, spine.acts[0]!, 0, ctx);
+      const resumed = await deepenActs(spine, retitler, ctx, { resume: (i) => (i === 0 ? retitledCheckpoint : undefined) });
+      expect(resumed[0]!.slots.map((s) => s.title)).toEqual(spine.acts[0]!.slots.map((s) => s.title));
+    } finally {
+      warn.mockRestore();
+    }
+  });
+});
