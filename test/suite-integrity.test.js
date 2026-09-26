@@ -1013,6 +1013,7 @@ const FLOORS = {
      feed slowly stopped surprising anyone. Every test names its mutation;
      see the suite header. */
   "test/home-v2.test.js": 10, // founder, 2026-09-24: "Rename it 'Suggested'" — the card-slot heading; 9 -> 10 // F14 (2026-09-08): generated playlists are interest leaves, not card slots // F14 (2026-09-08): generated playlists are interest leaves, not card slots
+  "test/save-playlist.test.js": 21, // founder, 2026-09-25: "we should add a feature to save playlists" — save a generated playlist or a Suggested queue as your own: shape + provenance, subject, frozen copy, idempotence + no-navigate second tap, remove-and-resave, changed source not "Saved", the 50 cap said not applied x2 (Save; Create + no slice), own everywhere x2 (no duplicate card/result), Family Mode x2 (on-then-saved; saved-then-on leak), playable snapshot, playing it, the app-1-1 writer x5 (provisional, full at settle, exists at settle, remove and play-stamp while pending), Delete my data, copy rules; new suite
   "test/home-play.test.js": 14, // founder, 2026-09-24: Home's one play button — each first-rail kind, passed-over rails, the empty case, loading / failure / superseded / isCurrent; new suite
   "test/home-v2-real-data.test.js": 5, // U-03 audit fix (2026-09-10): Home v2 over the committed data/*.json at insets 0/59; the Forays-for-you floor's documented fallback with one published Foray
   /* Starred shows (follow-lite), requirement A2.4 / Joey's Q2 answer.
