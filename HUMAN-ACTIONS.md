@@ -99,55 +99,23 @@
 
 **Worked if:** no store-facing text says "two origins" or "miss-only", and the published policy names Vercel.
 
-## #45 🟡 [DECIDE] Run the voice-engine probe on your phone — the one measurement no machine here can take (K-01 → KV-R2)
+## #45 🟡 [DECIDE] Run the voice probe on your phone twice (unlocked, then locked), and optionally the 30-minute soak — it picks the voice engine for 1.5x (KV-R3)
 <!-- ha filed=2026-09-12 kind=default -->
 
-**Re-issued 2026-09-26 for a NEW build (KV-R2, probe v2). Your last run was not wasted — it is why this version exists.**
+**Re-issued 2026-09-27 for a NEW build (KV-R3, probe v3).** Your earlier runs are why this version exists.
 
-**Why:** the platform voices came back "all so bad" (2026-09-11), and the fix is our own
-neural voice (Kokoro) bundled in the app (`docs/kokoro-voices-in-app-plan.md`). Whether it
-can speak Forays live on your phone — which model, which chip path, how much lead it needs —
-waits on ONE reading no machine here can take: how fast your phone renders it, in how much
-memory, with the screen locked, and whether the sound it makes is real.
-
-**What your 2026-09-26 run told us:** on build 2026092602 every line failed
-(`could not measure: synthesis-failed/inference-threw`). Two things came out of that. First,
-the probe now records *why* ORT failed (#848). Second, a test on Apple-silicon machines showed
-the small model we shipped (q8f16) produces broken audio (NaN) on Apple chips — so did every
-half-precision variant. The full-size model (fp32, 325.5 MB) is the only one that sounds right
-there and runs near real time. **The new build carries fp32 on iPhone** (TestFlight only: it is
-over Apple's cellular download size, so install it on wi-fi) and runs the passage **twice**:
-once on the CPU and once on Apple's CoreML (which can use the Neural Engine). The two readings
-decide which one the app uses.
+**Why:** you want to listen to Forays at 1.5x, and today our own voice (Kokoro) renders slower than that. The research (`docs/voice/kokoro-speed-1.5x.md`) found other apps run Kokoro on iPhones about 17 times faster than real time by putting most of it on Apple's Neural Engine. This build carries **that** version beside the one we have, and times both on your phone at normal speed and at 1.5x, with the screen on and with it locked. One run of this decides which engine the app uses. Nothing else here can take the reading.
 
 **Steps:**
-1. **Wait for the overlord's note on this card naming the build to install** (it will be
-   numbered 2026092701 or higher), then install that build or a newer one from the TestFlight
-   app. The build number is the number in brackets after the version, for example
-   `1.0.0 (2026092703)`. It is a big download (~330 MB), so use wi-fi. You can confirm you have
-   the right build after the run: every new `voiceProbe` line says `[pass cpu]` or
-   `[pass coreml]`. A line without `[pass …]` means an older build: update and run again.
-2. Open the menu, open **Developer** at the bottom of Settings, turn on **"Voice engine probe"**,
-   and tap **"Run the voice engine probe"**.
-3. **Lock the phone immediately, and leave it locked while it runs.** It takes about **five
-   minutes** now (two passes, and the CoreML pass first compiles the model). Whether synthesis
-   survives the lock screen is part of the answer, and the app can only prove it if the phone
-   was locked when each pass ended. Wait at least five minutes before unlocking; if the sheet
-   still says "Running the voice probe", lock it again and give it another two minutes.
-4. When it has finished, unlock, tap **Copy** in the sheet that is already open, and **paste the
-   whole diagnostics record here**. It should carry two `voiceProbe` lines, one per pass.
-5. **If the app closes or restarts during the run**, that is a finding, not a failure on your
-   part: open the app, run the probe once more (steps 2–4), and paste that record. It will say
-   `LAST-RUN-KILLED` with the pass and the memory it had reached when the phone stopped it.
-6. If a line says `could not measure …`, paste it anyway and stop there — the words after the
-   colon name a build problem that is ours to fix. `coreml-unavailable` on the CoreML line alone
-   is also a real answer: that path could not start on this build, and the CPU line still counts.
+1. Install the newest 4a build from the TestFlight app — **the build that contains PR "probe v3 (KV-R3)" or any later one**. The overlord will note the exact build number on this card. It is a big download (about 420 MB), so use wi-fi. The build number is the number in brackets after the version, for example `1.0.0 (2026092801)`.
+2. Open the menu, open **Developer** at the bottom of Settings, turn on **Voice engine probe**, and tap **Run the voice engine probe**. **Leave the app open with the screen on** until the sheet shows a table (about five to ten minutes).
+3. Tap **Run the voice engine probe** again, and **lock the phone straight away**. Leave it locked for ten minutes, then unlock. If the sheet still says "Running the voice probe", lock it again for five more minutes.
+4. Optional, but it is the strongest evidence: tap **Start the 30-minute soak (then lock the phone)**, lock the phone at once, and leave it locked for 30 minutes (charging is fine). If you need the phone sooner, unlock it and tap **Stop the soak now** (the same button): it keeps every loop it finished.
+5. Unlock, tap **Copy** in the Playback diagnostics sheet, and **paste the whole record here**.
+6. If you like, tap the **Play … at 1.5x** buttons under the table to hear each engine at 1.5x, and say which ones sound wrong.
+7. If the app closes or restarts during any run, that is a finding, not a mistake: open the app, run the same step once more, then Copy and paste. The record will say `LAST-RUN-KILLED` and where.
 
-**Worked if:** a pasted diagnostics record with two `voiceProbe` lines from build 2026092701 or
-later, each carrying warm RTF, peak memory, `finite=y` or `finite=n`, and the ORT error
-tokens if a pass failed. The CoreML line reads `coreml(requested)`: the phone was asked to use
-CoreML, and ORT 1.20 cannot say how much of the model CoreML actually took. The overlord applies the plan's §6a table to it before the synthesizer
-(KV-03a) locks a model and provider. Pixel and older phones are not needed for this run.
+**Worked if:** the pasted record has twelve `voiceProbe` lines from the unlocked run and twelve from the locked run, each tagged like `[pass ane-cputail @1.5x]` with a `content` figure and a `screen=` word (`unlocked` for the first run, `locked` or `background` for the second), plus one `voiceSoak` line if you ran the soak. A `could not measure: coreml-requires-ios17` line means the phone is below iOS 17 (yours is on 18.6, so it should not appear). The overlord applies the doc's §4 rule: if a lock-safe Core ML line (`ane-cputail` or `cml-cpu`) reads content ≤ 0.4 at 1.0x and the soak survives, Core ML becomes the iPhone engine; otherwise the app stays on the current engine with the speed fixes.
 
 ## #44 🟡 [DECIDE] Add the founders as Play testers, so Play actually emails you (R-08)
 <!-- ha filed=2026-09-11 kind=default -->

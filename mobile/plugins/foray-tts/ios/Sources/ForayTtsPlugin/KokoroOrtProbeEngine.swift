@@ -55,6 +55,16 @@ import os
  * Each pass loads its own session and CLOSES it before the next engine is
  * built (`ForayTtsPlugin.measurePasses`), so two 325 MB sessions never
  * coexist — and neither do a pass's cold and warm loads (see `load()`).
+ *
+ * ── Probe v3 (KV-R3, docs/voice/kokoro-speed-1.5x.md §5) ──────────────────
+ * The CoreML EP pass is GONE: the research found it a dead end (129
+ * partitions, 2.2 GB peak; option 8), and the Core ML route is now the
+ * seven-stage chain in `KokoroCoreMLEngine.swift`. What this engine measures
+ * instead is the THREAD COUNT, which was the one input probe v2 could not
+ * vary: passes `ort-cpu-t2`, `-t3` and `-t4` (`KokoroProbePass.ortThreads`).
+ * ORT on Apple resolves `threads=0` to half the cores, and the research
+ * found 2 threads cost the fewest CPU-seconds per content second at speed
+ * 1.5 — the figure the locked-screen CPU monitor counts.
  */
 
 /// Whether this build can even try. `false` on any build that did not fetch
@@ -93,15 +103,8 @@ enum KokoroModelFiles {
     }
 }
 
-/// Which execution provider a probe pass runs on (KV-R2). The raw value is
-/// the `pass` key of that pass's record, and `player/kokoro-probe.js`'s
-/// `PROBE_PASSES` holds the same two words.
-public enum KokoroProbePass: String, CaseIterable {
-    case cpu
-    case coreml
-}
-
-/// The probe's ONNX Runtime engine. One instance per PASS (KV-R2).
+/// The probe's ONNX Runtime engine. One instance per PASS (KV-R2), and since
+/// KV-R3 one per THREAD COUNT (`ort-cpu-t2`/`-t3`/`-t4`), CPU provider only.
 final class KokoroOrtProbeEngine: KokoroProbeEngine {
     /// Kokoro v1.0 emits 24 kHz. Hard-coded rather than read from the graph
     /// because the graph does not carry it — it is a property of the model
@@ -117,13 +120,13 @@ final class KokoroOrtProbeEngine: KokoroProbeEngine {
 
     private static let log = Logger(subsystem: "ai.jwlabs.foura", category: "kokoro-probe")
 
-    /// The value handed to `setIntraOpNumThreads`, and reported as
-    /// `intraThreads` (L09). 4, the card's number for pass A (KV-R2): the
-    /// PC's measured winner, which does not stand for the phone — this pass is
-    /// where the phone says. It used to be 0 ("ORT picks"), which made the
-    /// thread count the one input the record could not name. The CoreML pass
-    /// uses the same count for the nodes CoreML leaves to the CPU.
-    static let INTRA_OP_THREADS: Int32 = 4
+    /// The thread count when no pass names one (`init?()`): 2, the research's
+    /// winner per CPU-second (docs/voice/kokoro-speed-1.5x.md §3 option 3).
+    /// Each v3 pass names its own (`KokoroProbePass.ortThreads`), handed to
+    /// `setIntraOpNumThreads` and reported as `intraThreads` (L09). Never 0
+    /// ("ORT picks"): that made the thread count the one input the record
+    /// could not name, and on Apple it silently meant half the cores.
+    static let DEFAULT_INTRA_OP_THREADS: Int32 = 2
 
     /// A line whose every finite sample is quieter than this is `silent`
     /// (L04): a buffer of the right length that says nothing.
@@ -139,32 +142,23 @@ final class KokoroOrtProbeEngine: KokoroProbeEngine {
 
     private let modelPath: String
     private let style: [Float]
-    private let pass: KokoroProbePass
+    private let threads: Int32
     private var session: ORTSession?
     private var env: ORTEnv?
     private var loadColdMs: Double = 0
     private var loadWarmMs: Double = 0
     private var lastSessionError: String?
-    /// Whether `appendCoreMLExecutionProvider` succeeded on the last session
-    /// built. Only the `coreml` pass ever sets it.
-    private var coreMLAppended = false
+    /// KV-R3: keep the last chunk's samples for the pass's WAV
+    /// (`setCaptureSamples`). Off unless the probe asks, per chunk.
+    private var captureSamples = false
+    private var lastSamples: [Float]?
 
     /// The fp32 export (D13). `fetch-models.mjs`'s iOS model pin.
     let modelName = "kokoro-82m-v1.0-fp32"
-    var provider: String { pass.rawValue }
-    /// `coreml` IS ONLY WHAT WAS ASKED FOR. ORT 1.20.0's Objective-C API has
-    /// no call that says which nodes an EP took: the CoreML EP claims the
-    /// nodes it supports and ORT runs the rest on the CPU without a word, so a
-    /// `coreml` pass can be mostly, partly or not at all on CoreML. The record
-    /// says `requested` rather than letting `coreml` read as a fact. The CPU
-    /// pass registers no other EP, so its `cpu` is what ran: no basis needed.
-    var providerBasis: String? { pass == .coreml ? "requested" : nil }
-    /// The pass's CoreML EP could not be registered: this ORT build has none
-    /// (`ORTIsCoreMLExecutionProviderAvailable()` is false) or the append
-    /// threw. The pass then records `coreml-unavailable`, and the CPU pass is
-    /// untouched by it.
-    private(set) var providerUnavailable = false
-    var intraThreads: Int? { Int(Self.INTRA_OP_THREADS) }
+    /// ORT's CPU provider is the only one this engine registers (KV-R3 dropped
+    /// the CoreML EP pass), so `cpu` is what ran: no basis needed.
+    var provider: String { "cpu" }
+    var intraThreads: Int? { Int(threads) }
     /// Why the LAST `synthesize` threw, as tokens only. Reset on every call.
     private(set) var lastFailure: KokoroProbeFailure?
     /// Why the COLD session did not open, or nil when it did. A failed load
@@ -178,8 +172,10 @@ final class KokoroOrtProbeEngine: KokoroProbeEngine {
     /// CONSTRUCTION IS NOT A CRASH and not a zero: the plugin reports
     /// `engine-absent`, which is one of the four closed reason codes a founder
     /// reads off the screen.
-    init?(pass: KokoroProbePass = .cpu) {
-        self.pass = pass
+    init?(pass: KokoroProbePass = .ortCpuT2) {
+        /* A Core ML pass is not this engine's: `KokoroCoreMLEngine` runs it. */
+        guard let count = pass.ortThreads else { return nil }
+        self.threads = Int32(count)
         guard let model = KokoroModelFiles.modelURL(), let voice = KokoroModelFiles.voiceURL() else {
             return nil
         }
@@ -212,7 +208,7 @@ final class KokoroOrtProbeEngine: KokoroProbeEngine {
     func load() -> (coldMs: Double, warmMs: Double) {
         lastSessionError = nil
         loadColdMs = timed { self.session = self.makeSession() }
-        if session == nil || providerUnavailable {
+        if session == nil {
             session = nil
             loadError = lastSessionError ?? "other"
             return (loadColdMs, 0)
@@ -247,41 +243,10 @@ final class KokoroOrtProbeEngine: KokoroProbeEngine {
         do {
             guard let env = environment() else { return nil }
             let options = try ORTSessionOptions()
-            try options.setIntraOpNumThreads(Self.INTRA_OP_THREADS)
+            try options.setIntraOpNumThreads(threads)
             try options.setGraphOptimizationLevel(ORTGraphOptimizationLevel.all)
-            coreMLAppended = false
-            if pass == .coreml {
-                /* PASS B: THE CoreML EP, AS AN MLProgram ON ALL COMPUTE UNITS.
-                   ORT stays pinned at exactly 1.20.0 (Package.swift), whose
-                   Objective-C API has no dictionary-options call (the V2
-                   `ModelFormat`/`MLComputeUnits` keys arrived later) but does
-                   carry the flags the same two settings map to:
-                   `createMLProgram` is ModelFormat=MLProgram, and leaving
-                   `useCPUOnly` and `useCPUAndGPU` off is MLComputeUnits=ALL
-                   (`COREML_FLAG_USE_NONE`: CPU, GPU and the Neural Engine).
-                   Nothing else is set: no static-shape restriction (Kokoro's
-                   input length varies per chunk) and no ANE-only gate. */
-                guard ORTIsCoreMLExecutionProviderAvailable() else {
-                    providerUnavailable = true
-                    lastSessionError = "ep-fail"
-                    return nil
-                }
-                let coreml = ORTCoreMLExecutionProviderOptions()
-                coreml.createMLProgram = true
-                coreml.useCPUOnly = false
-                coreml.useCPUAndGPU = false
-                do {
-                    try options.appendCoreMLExecutionProvider(with: coreml)
-                } catch {
-                    Self.log.error("could not append the CoreML EP: \(error.localizedDescription)")
-                    providerUnavailable = true
-                    lastSessionError = Self.ortCodeToken(error)
-                    return nil
-                }
-                coreMLAppended = true
-            }
-            /* The CPU pass appends nothing: ORT's CPU provider is what runs
-               when no other is registered. */
+            /* ORT's CPU provider is what runs when no other is registered;
+               KV-R3 registers none. */
             return try ORTSession(env: env, modelPath: modelPath, sessionOptions: options)
         } catch {
             Self.log.error("could not open the Kokoro session: \(error.localizedDescription)")
@@ -291,9 +256,21 @@ final class KokoroOrtProbeEngine: KokoroProbeEngine {
         }
     }
 
-    /// Whether an accelerator EP is registered on this pass's session: the
-    /// CoreML pass once its append succeeded, and never the CPU pass.
-    var acceleratorWired: Bool { coreMLAppended }
+    /// KV-R3: capture (or stop capturing) each chunk's samples for the WAV.
+    func setCaptureSamples(_ on: Bool) {
+        captureSamples = on
+        if !on { lastSamples = nil }
+    }
+
+    /// The last captured chunk's samples, handed over once.
+    func takeLastSamples() -> [Float]? {
+        defer { lastSamples = nil }
+        return lastSamples
+    }
+
+    /// No accelerator is registered on any ORT pass since KV-R3: the CoreML
+    /// EP pass was dropped, and the Core ML route is `KokoroCoreMLEngine`.
+    var acceleratorWired: Bool { false }
 
     /// One line. On failure the audio seconds are 0 AND the reason is named —
     /// `player/kokoro-probe.js`'s `SYNTH_REASONS`, which the plugin carries
@@ -307,6 +284,7 @@ final class KokoroOrtProbeEngine: KokoroProbeEngine {
     /// ceiling in the card. A failure has to arrive as a failure, by name.
     func synthesize(ids: [Int], speed: Double) -> (synthMs: Double, audioSec: Double, reason: String?) {
         lastFailure = nil
+        lastSamples = nil
         guard let session else { return (0, 0, "session-absent") }
         guard ids.count > 2 else { return (0, 0, "zero-samples") }
         var samples = 0
@@ -428,6 +406,13 @@ final class KokoroOrtProbeEngine: KokoroProbeEngine {
                count alone called that audio. One pass, nothing kept. */
             let verdict = data.withUnsafeBytes { raw in
                 Self.sampleVerdict(raw.bindMemory(to: Float.self))
+            }
+            /* KV-R3: the pass's WAV. Copied only on a chunk the matrix asked
+               for (one speed of each chunk), and only when it is real audio;
+               `tensorData()` references the output tensor, which dies with
+               `outputs`, so the samples are copied, not referenced. */
+            if captureSamples, verdict == nil {
+                lastSamples = data.withUnsafeBytes { Array($0.bindMemory(to: Float.self)) }
             }
             return (samples, verdict)
         } catch {

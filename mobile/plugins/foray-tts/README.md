@@ -308,6 +308,27 @@ this plugin owns only the transport and the readings. The reason codes are a clo
 set shared with that file's `PROBE_REASONS` — a code invented on one side and not
 the other degrades to `refused`, which loses the diagnosis.
 
+### Probe v3 (KV-R3): Core ML vs ORT, speed 1.0 and 1.5, locked, soak
+
+`docs/voice/kokoro-speed-1.5x.md` §5. On iOS one run is six passes, in this
+interleaved order, each loading and releasing its own models: `ane`,
+`ort-cpu-t2`, `ane-cputail`, `ort-cpu-t3`, `cml-cpu`, `ort-cpu-t4`. The `ane*`
+and `cml-cpu` passes run the seven-stage Core ML chain
+(`KokoroCoreMLEngine.swift`, vendored from laishere/kokoro-coreml, iOS 17+;
+below 17 the pass answers `coreml-requires-ios17`); the `ort-cpu-t*` passes run
+fp32 ONNX Runtime at 2, 3 and 4 threads. Every chunk renders at Kokoro speed
+1.0 and 1.5, so the answer is `{ ok, passes: [one record per pass x speed] }`,
+each with the content-basis seconds (`contentWarmSec`: the same text at 1.0),
+CPU seconds, per-stage Core ML milliseconds and the screen samples
+(`bgChunks`, `lockedChunks`). The probe plays silent audio while it runs, so a
+locked phone keeps running it the way it keeps running narration.
+`KokoroProbeMatrix.swift` holds the loop and its pure arithmetic.
+
+Two more modes on the same method: `mode: "soak"` (the best lock-safe pass,
+speed 1.5, in a loop for 30 minutes; one record with a per-minute series) and
+`mode: "listen", pass` (play that pass's speed-1.5 WAV from the last run,
+natively — no path crosses the bridge).
+
 ### It is inert on every build that ships today, in four independent ways
 
 1. **No ONNX Runtime dependency.** Neither `Package.swift` nor `android/build.gradle`

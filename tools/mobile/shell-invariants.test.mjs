@@ -3516,6 +3516,14 @@ const GUARDED_SESSION_SITES = [
   ["ForayAudioPlugin.swift", "releaseSession", "setActive"],
   ["ForayTtsPlugin.swift", "claimSession", "setActive"],
   ["ForayTtsPlugin.swift", "claimSession", "setCategory"],
+  /* KV-R3: the voice probe's silent keep-alive and its WAV player, both
+     legacy-mode only (with the engine owning the session they play inside
+     the owner's category and touch nothing). */
+  ["KokoroProbeMatrix.swift", "start", "setCategory"],
+  ["KokoroProbeMatrix.swift", "start", "setActive"],
+  ["KokoroProbeMatrix.swift", "stop", "setCategory"],
+  ["KokoroProbeMatrix.swift", "playProbeWav", "setCategory"],
+  ["KokoroProbeMatrix.swift", "playProbeWav", "setActive"],
 ];
 
 /** The start offset and name of the Swift func whose body encloses offset `at`. */

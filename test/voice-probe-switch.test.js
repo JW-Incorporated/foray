@@ -425,3 +425,115 @@ test("app-3-11: a second tap while a probe runs starts no second probe, and the 
   await third;
   assert.strictEqual(h.probeCalls.length, 2, "a run after the first has ended is a new run");
 });
+
+/* ==================================================================== */
+/* KV-R3: probe v3 — the table, the WAV buttons, the soak                */
+/* ==================================================================== */
+
+test("KV-R3: the soak control exists only on iOS, under the run control, and goes with the switch", async () => {
+  /* MUTATION: offer the soak everywhere — Android's plugin has no soak and a
+     tap would run the matrix again under a soak's label. */
+  const h = await mount({ seed: { cp_voice_probe: true } });
+  h.openDrawer();
+  assert.strictEqual(findIn(h.body, "#voice-probe-soak"), null, "no soak off iOS");
+  const g = await mount({ seed: { cp_voice_probe: true } });
+  g.ctx.Capacitor = { getPlatform: () => "ios" };
+  g.openDrawer();
+  const ids = g.drawerIds();
+  assert.strictEqual(ids[ids.indexOf("voice-probe-run") + 1], "voice-probe-soak");
+  assert.strictEqual(ids[ids.length - 1], "delete-data", "Delete my data stays last");
+  await g.toggle().click();
+  assert.strictEqual(findIn(g.body, "#voice-probe-soak"), null, "switch off: the soak control is gone too");
+});
+
+test("KV-R3: a v3 run shows the table and one Play button per pass that kept a WAV", async () => {
+  const h = await mount({ seed: { cp_voice_probe: true } });
+  const records = [
+    { engine: "kokoro-probe", ok: true, pass: "ane", speed: 1, hasWav: false },
+    { engine: "kokoro-probe", ok: true, pass: "ane", speed: 1.5, hasWav: true },
+  ];
+  const played = [];
+  Object.assign(h.ctx.window.ForayPlayer, {
+    runVoiceProbe: async () => records,
+    formatVoiceProbeTable: () => "voice probe v3 — TABLE",
+    voiceProbeWavPasses: () => ["ane"],
+    playVoiceProbeWav: async (pass) => { played.push(pass); return { ok: true }; },
+  });
+  h.openDrawer();
+  await h.run().click();
+  await h.settle();
+  assert.match(h.status().textContent, /^voice probe v3 — TABLE\nCopy the record above/);
+  assert.ok(h.status().classList.contains("dd-status-report"), "the table keeps its columns");
+  assert.ok(!/go\/no-go/.test(h.status().textContent), "K-01's 0.8 go/no-go is not this card's question");
+  const box = findIn(h.body, "#voice-probe-listen");
+  assert.ok(box, "the Play buttons are under the status line");
+  const buttons = box.children;
+  assert.strictEqual(buttons.length, 1);
+  assert.strictEqual(buttons[0].textContent, "Play ane at 1.5x");
+  await buttons[0].click();
+  await h.settle();
+  assert.deepStrictEqual(played, ["ane"]);
+  /* A second run replaces the buttons, never stacks them. */
+  await h.run().click();
+  await h.settle();
+  /* Counted among the status line's siblings: the fake DOM can reach one
+     node by two paths, so a tree-wide count would say 2 for one box. */
+  const boxes = () => h.status().parentNode.children.filter((c) => c.id === "voice-probe-listen");
+  assert.strictEqual(boxes().length, 1);
+});
+
+test("KV-R3: the soak runs through runVoiceSoak, shows its report, and blocks a second run meanwhile", async () => {
+  /* MUTATION: let the matrix start beside a running soak — two engines load
+     at once on a locked phone. */
+  const h = await mount({ seed: { cp_voice_probe: true } });
+  h.ctx.Capacitor = { getPlatform: () => "ios" };
+  let finish;
+  Object.assign(h.ctx.window.ForayPlayer, {
+    runVoiceSoak: () => new Promise((r) => { finish = r; }),
+    formatVoiceSoak: () => "voice soak [ane-cputail @1.5x]: 412 loops",
+  });
+  h.openDrawer();
+  const soak = findIn(h.body, "#voice-probe-soak");
+  soak.click();
+  await h.settle(3);
+  assert.match(h.status().textContent, /Running the 30-minute soak\. Lock the phone now/);
+  assert.strictEqual(h.run().disabled, true);
+  /* KV-R3 review: while a soak runs, its control is the STOP. */
+  assert.strictEqual(soak.disabled, false, "the soak control stays live, as its stop");
+  assert.strictEqual(soak.textContent, "Stop the soak now (keeps what it measured)");
+  h.fn("runVoiceProbe")();
+  await h.settle(3);
+  assert.strictEqual(h.probeCalls.length, 0, "the matrix never started beside the soak");
+  assert.match(h.status().textContent, /Running the 30-minute soak/);
+  finish([{ kind: "soak", ok: true }]);
+  await h.settle();
+  assert.match(h.status().textContent, /^voice soak \[ane-cputail @1\.5x\]: 412 loops\nCopy the record above/);
+  assert.strictEqual(h.run().disabled, false);
+  assert.strictEqual(soak.textContent, "Start the 30-minute soak (then lock the phone)", "back to Start once it ends");
+});
+
+test("KV-R3 review: tapping the soak control mid-soak STOPS it, and the soak's report still lands", async () => {
+  /* MUTATION: leave the control disabled during a soak, or have it start a
+     second soak — the founder has no way to get his phone back early. */
+  const h = await mount({ seed: { cp_voice_probe: true } });
+  h.ctx.Capacitor = { getPlatform: () => "ios" };
+  let finish;
+  let stops = 0;
+  let soaks = 0;
+  Object.assign(h.ctx.window.ForayPlayer, {
+    runVoiceSoak: () => { soaks += 1; return new Promise((r) => { finish = r; }); },
+    stopVoiceSoak: async () => { stops += 1; finish([{ kind: "soak", ok: true, stopped: true }]); return { ok: true }; },
+    formatVoiceSoak: () => "voice soak [ane-cputail @1.5x]: 3 loops over 4.0 min (stopped early by you)",
+  });
+  h.openDrawer();
+  const soak = findIn(h.body, "#voice-probe-soak");
+  soak.click();
+  await h.settle(3);
+  soak.click();
+  await h.settle();
+  assert.strictEqual(stops, 1, "the second tap stopped the soak");
+  assert.strictEqual(soaks, 1, "and started no second one");
+  assert.match(h.status().textContent, /stopped early by you/);
+  assert.strictEqual(soak.disabled, false);
+  assert.strictEqual(soak.textContent, "Start the 30-minute soak (then lock the phone)");
+});

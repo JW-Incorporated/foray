@@ -667,6 +667,26 @@ test("kokoroProbe: calls the native method by the name the plugin declares", asy
   assert.deepEqual(calls[0].payload.passage, passage);
   assert.equal(out.ok, true);
   assert.equal(out.path, "native");
+  assert.equal(calls[0].payload.mode, undefined, "the matrix carries no mode");
+});
+
+test("kokoroProbe: KV-R3's soak, stop and listen modes travel, and nothing else does", async () => {
+  /* The soak (30-minute locked loop) and listen (play one pass's WAV) are
+     the same native method with a mode. Only the two known modes, a real
+     number of minutes and a pass-shaped token cross the bridge.
+     TO SEE IT FAIL: spread `opts` into the payload. */
+  const calls = [];
+  const bridge = { nativePromise: async (plugin, method, payload) => { calls.push(payload); return { ok: true }; } };
+  await kokoroProbe({ bridge, mode: "soak", soakMinutes: 30 });
+  await kokoroProbe({ bridge, mode: "listen", pass: "ane-cputail" });
+  await kokoroProbe({ bridge, mode: "wipe", pass: "../../etc", soakMinutes: "30" });
+  await kokoroProbe({ bridge, mode: "stop" });
+  assert.equal(calls[3].mode, "stop", "the soak's stop travels (KV-R3 review)");
+  assert.equal(calls[0].mode, "soak");
+  assert.equal(calls[0].soakMinutes, 30);
+  assert.equal(calls[1].mode, "listen");
+  assert.equal(calls[1].pass, "ane-cputail");
+  assert.deepEqual(Object.keys(calls[2]).sort(), ["engine", "passage"], "an unknown mode, path or string is dropped");
 });
 
 test("kokoroProbe: an answer without `ok` is a refusal, never a success", async () => {
@@ -1039,6 +1059,13 @@ test("mobile-native-5: the Kokoro probe runs off the shared plugin thread and cl
   const engine = readPlugin("android/src/main/java/ai/jwlabs/foura/tts/KokoroOrtProbeEngine.java");
   assert.match(engine, /public void close\(\) \{\s*OrtSession s = session;\s*session = null;\s*if \(s != null\) \{\s*try \{ s\.close\(\); \}/);
   const swift = SWIFT_SRC();
-  assert.match(swift, /@objc func kokoroProbe\(_ call: CAPPluginCall\) \{\s*Self\.probeQueue\.async \{ \[weak self\] in\s*self\?\.runKokoroProbe\(call\)/);
+  /* KV-R3 review: the ONE thing answered before the queue is the soak's
+     stop, which only flips a flag — it must not wait behind the soak it
+     stops. Everything that loads a model still goes through the queue. */
+  const entry = swift.match(/@objc func kokoroProbe\(_ call: CAPPluginCall\) \{([\s\S]*?)Self\.probeQueue\.async \{ \[weak self\] in\s*self\?\.runKokoroProbe\(call\)/);
+  assert.ok(entry, "kokoroProbe hands the run to probeQueue");
+  const beforeQueue = entry[1].replace(/\/\*[\s\S]*?\*\//g, "");
+  assert.match(beforeQueue, /^\s*if call\.getString\("mode"\) == "stop" \{\s*ProbeSoakStop\.shared\.request\(\)[\s\S]*?call\.resolve\(stop\)\s*return\s*\}\s*$/,
+    "nothing but the stop runs off the probe queue");
   assert.match(java, /failed\.put\("reason", "threw"\);/, "a throw is reported in the page's closed vocabulary");
 });

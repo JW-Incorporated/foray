@@ -46,6 +46,12 @@
  * have shipped all thirteen, which is why the copy list comes from the pin
  * table instead of from a glob.
  *
+ * NESTED FILES (KV-R3): the Core ML chain's seven compiled stages are
+ * directories, pinned file by file as `kokoro-coreml/<Stage>.mlmodelc/<file>`,
+ * so on iOS they land at `App.app/public/kokoro-coreml/…` — the folder
+ * reference copies directories as they are, compiled models included, and
+ * `KokoroCoreMLEngine.swift` loads each `.mlmodelc` from there.
+ *
  * USAGE
  *     node tools/mobile/inject-models.mjs ios      mobile/ios/App/App/public
  *     node tools/mobile/inject-models.mjs android  mobile/android/app/src/main/assets
@@ -95,7 +101,11 @@ export function inject({ dest, platform, root = REPO_ROOT, pins = PINS } = {}) {
     const buf = fs.readFileSync(src);
     const ok = verifyBuffer(pin, buf);
     if (!ok.ok) { problems.push(ok.reason); continue; }
-    fs.writeFileSync(path.join(dest, pin.name), buf);
+    /* A Core ML stage file (KV-R3) is nested — `kokoro-coreml/<Stage>.mlmodelc/…`
+       — so its directory is made first; every other pin is flat. */
+    const out = path.join(dest, pin.name);
+    fs.mkdirSync(path.dirname(out), { recursive: true });
+    fs.writeFileSync(out, buf);
     copied.push({ name: pin.name, bytes: buf.length });
   }
   return { copied, problems };
@@ -133,10 +143,27 @@ export function check({ dest, platform, pins = PINS } = {}) {
     .filter((pin) => !names.has(pin.name) && Array.isArray(pin.bundle) && pin.bundle.length > 0)
     .map((pin) => [pin.name, pin]));
   for (const abs of filesUnder(dest)) {
-    const pin = foreign.get(path.basename(abs));
+    const pin = foreignPinFor(foreign, path.relative(dest, abs).split(path.sep).join("/"));
     if (pin) problems.push(`${path.relative(dest, abs) || pin.name}: present in ${dest}, but it is bundled for ${pin.bundle.join("/")} only`);
   }
   return problems;
+}
+
+/** The other platform's pin a file under `dest` IS, or undefined. A flat
+    pin (a model, a voice) is matched by its file name at any depth, as
+    before. A NESTED pin (a Core ML stage file, KV-R3) is matched by its whole
+    relative path, at the top or under any directory: its own file names
+    (`weight.bin`, `metadata.json`, `model.mil`) are far too common to
+    flag on a name alone — Android's assets hold the whole web bundle. */
+export function foreignPinFor(foreign, rel) {
+  for (const [name, pin] of foreign) {
+    if (name.includes("/")) {
+      if (rel === name || rel.endsWith(`/${name}`)) return pin;
+    } else if (path.posix.basename(rel) === name) {
+      return pin;
+    }
+  }
+  return undefined;
 }
 
 /** Every regular file under `dir`, at any depth. Symlinks are not followed
@@ -174,9 +201,19 @@ if (isMain) {
     }
     /* ONE LINE PER FILE, naming the platform: KV-R2's CI evidence is "fp32 in
        the iOS app, q8f16 in the APK", read straight off these lines. */
-    for (const pin of bundledPins(platform)) {
+    const pins = bundledPins(platform);
+    for (const pin of pins.filter((p) => p.kind !== "coreml")) {
       console.log(`  ${platform}: ${pin.name}  ${pin.bytes} bytes  sha256 ${pin.sha256.slice(0, 8)}  ok`);
     }
+    /* KV-R3: the 34 Core ML stage files as one line per STAGE directory. */
+    const stages = new Map();
+    for (const pin of pins.filter((p) => p.kind === "coreml")) {
+      const dir = pin.name.split("/").slice(0, 2).join("/");
+      const st = stages.get(dir) ?? { files: 0, bytes: 0 };
+      st.files += 1; st.bytes += pin.bytes;
+      stages.set(dir, st);
+    }
+    for (const [dir, st] of stages) console.log(`  ${platform}: ${dir}  ${st.files} files  ${st.bytes} bytes  ok`);
     console.log(`${dest}: every model file the ${platform} app bundles is present and matches its pin, and no other platform's is.`);
     process.exit(0);
   }

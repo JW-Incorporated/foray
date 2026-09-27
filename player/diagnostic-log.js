@@ -875,10 +875,20 @@ export const PROBE_ORT_CODES = new Set([
 export const PROBE_ORT_STAGES = new Set(["input", "run", "output"]);
 /** KV-R2's probe passes, the same two words as `kokoro-probe.js`'s
     `PROBE_PASSES` (a test holds them in step: this module imports nothing). */
-export const PROBE_PASSES = new Set(["cpu", "coreml"]);
+export const PROBE_PASSES = new Set([
+  "cpu", "coreml",
+  "ane", "ort-cpu-t2", "ane-cputail", "ort-cpu-t3", "cml-cpu", "ort-cpu-t4",
+]);
 /** `kokoro-probe.js`'s `KILLED_STAGES` and `PROVIDER_BASES`, held in step by
     the same test. */
-export const PROBE_KILLED_STAGES = new Set(["load", "synth"]);
+export const PROBE_KILLED_STAGES = new Set(["load", "synth", "soak"]);
+/** KV-R3 (probe v3): `kokoro-probe.js`'s CML_CODES, CML_STAGES, SCREEN_STATES,
+    KEEP_ALIVE_STATES and SPEED_VERDICTS, held in step by the same test. */
+export const PROBE_CML_CODES = new Set(["cml-load", "cml-input", "cml-predict", "cml-output", "cml-nan-duration", "cml-frames-cap"]);
+export const PROBE_CML_STAGES = new Set(["albert", "postAlbert", "alignment", "prosody", "noise", "vocoder", "tail"]);
+export const PROBE_SCREENS = new Set(["unlocked", "locked", "background", "mixed"]);
+export const PROBE_KEEP_ALIVE = new Set(["audio", "failed"]);
+export const PROBE_SPEED_VERDICTS = new Set(["go", "marginal", "no", "unmeasured"]);
 export const PROBE_PROVIDER_BASES = new Set(["requested"]);
 /** What each line of the passage did (L05). */
 export const PROBE_LINE_OUTCOMES = new Set(["ok", "threw", "no-output", "zero", "nan", "silent", "skip"]);
@@ -1949,8 +1959,90 @@ export class PlayerDiagnostics {
       /* `requested`: the provider was asked for, not confirmed (ORT 1.20
          cannot say which nodes CoreML took). Printed after the provider. */
       ["providerBasis", oneOf(PROBE_PROVIDER_BASES, r.providerBasis)],
+      /* KV-R3 (probe v3): ONE ROW PER PASS x SPEED. The Kokoro speed this
+         row rendered at, the CONTENT-basis RTF (synthesis over the seconds the
+         same text lasts at speed 1.0 — the 1.5x decision number, beside the
+         wall `rtfWarm` above), CPU-seconds per content second, the Core ML
+         stage times and route, and what the screen was doing. */
+      ["speed", Number.isFinite(r.speed) && r.speed >= 0.5 && r.speed <= 2 ? r.speed : null],
+      ["rtfContentCold", num(r.rtfContentCold)],
+      ["rtfContentWarm", num(r.rtfContentWarm)],
+      ["cpuPerContentSec", num(r.cpuPerContentSec)],
+      ["stageMs", Array.isArray(r.stageMs) && r.stageMs.length === 7 && r.stageMs.every((x) => Number.isFinite(x) && x >= 0)
+        ? r.stageMs.map((x) => Math.round(x)).join("/") : null],
+      ["route", shaped(/^(?:ane|all|cpu)(?:,(?:ane|all|cpu)){6}$/, r.route)],
+      ["bgChunks", nonNegIntOr(r.bgChunks)],
+      ["lockedChunks", nonNegIntOr(r.lockedChunks)],
+      ["screen", oneOf(PROBE_SCREENS, r.screen)],
+      ["keepAlive", oneOf(PROBE_KEEP_ALIVE, r.keepAlive)],
+      ["cmlCode", oneOf(PROBE_CML_CODES, r.cmlCode)],
+      ["cmlStage", oneOf(PROBE_CML_STAGES, r.cmlStage)],
     ]);
     return this.log.record("voiceProbe", row);
+  }
+
+  /**
+   * KV-R3's SOAK, as ONE row: the best background-safe pass rendering the
+   * passage at speed 1.5 in a loop for 30 minutes, locked. The per-minute
+   * content RTFs travel as one string (`0.05n 0.05n 0.06f …`, the letter
+   * the minute's worst heat), so a 30-minute run is one line a founder can
+   * read aloud, not thirty rows pushing the rest of the record out of the
+   * ring. Taken, not spread, like `voiceProbe`.
+   */
+  voiceSoak(record = {}, ctx = {}) {
+    const r = record && typeof record === "object" ? record : {};
+    const c = ctx && typeof ctx === "object" ? ctx : {};
+    const num = (v) => (Number.isFinite(v) ? v : null);
+    const heat = (t) => (THERMAL_STATES.has(t) ? t[0] : "?");
+    const series = Array.isArray(r.rtfSeries)
+      ? r.rtfSeries.slice(0, 90).map((v, i) => `${Number.isFinite(v) ? v.toFixed(2) : "—"}${heat(Array.isArray(r.thermalSeries) ? r.thermalSeries[i] : null)}`).join(" ")
+      : null;
+    const row = {
+      engine: typeof r.engine === "string" ? r.engine : null,
+      probeOk: r.ok === true,
+      reason: typeof r.reason === "string" ? r.reason : null,
+      hidden: this._isHidden(),
+    };
+    putPresent(row, [
+      ["pass", oneOf(PROBE_PASSES, r.pass)],
+      ["speed", Number.isFinite(r.speed) && r.speed >= 0.5 && r.speed <= 2 ? r.speed : null],
+      ["minutes", num(r.soakMinutes)],
+      ["loops", nonNegIntOr(r.loops)],
+      ["elapsedSec", num(r.elapsedSec)],
+      ["series", series],
+      ["rtfMin", num(r.rtfMin)],
+      ["rtfMedian", num(r.rtfMedian)],
+      ["rtfMax", num(r.rtfMax)],
+      ["peakMb", num(r.peakMb)],
+      ["peakFirstMb", num(r.peakFirstMb)],
+      ["peakLastMb", num(r.peakLastMb)],
+      ["bgLoops", nonNegIntOr(r.bgLoops)],
+      ["lockedLoops", nonNegIntOr(r.lockedLoops)],
+      ["failures", nonNegIntOr(r.failures)],
+      ["nonFinite", nonNegIntOr(r.nonFinite)],
+      ["cpuPerContentSec", num(r.cpuPerContentSec)],
+      ["verdict", oneOf(PROBE_SPEED_VERDICTS, r.verdict)],
+      /* KV-R3 review: ended early by the founder, and the first failure's
+         engine code (the matrix's keys, #848/#850). */
+      ["stopped", r.stopped === true ? true : null],
+      ["cmlCode", oneOf(PROBE_CML_CODES, r.cmlCode)],
+      ["cmlStage", oneOf(PROBE_CML_STAGES, r.cmlStage)],
+      ["ortCode", oneOf(PROBE_ORT_CODES, r.ortCode)],
+      ["ortStage", oneOf(PROBE_ORT_STAGES, r.ortStage)],
+      ["loadErr", oneOf(PROBE_ORT_CODES, r.loadErr)],
+      ["thermalStart", oneOf(THERMAL_STATES, r.thermalStart)],
+      ["thermalEnd", oneOf(THERMAL_STATES, r.thermalEnd)],
+      ["keepAlive", oneOf(PROBE_KEEP_ALIVE, r.keepAlive)],
+      ["synthReason", typeof r.synthReason === "string" && /^[A-Za-z][A-Za-z0-9_-]{0,39}$/.test(r.synthReason) ? r.synthReason : null],
+      ["device", typeof r.device === "string" && /^[A-Za-z0-9._-]{1,32}$/.test(r.device) ? r.device : null],
+      ["os", typeof r.os === "string" && /^[A-Za-z0-9._-]{1,32}$/.test(r.os) ? r.os : null],
+      ["killedPass", oneOf(PROBE_PASSES, r.prevKilledPass)],
+      ["killedStage", oneOf(PROBE_KILLED_STAGES, r.prevKilledStage)],
+      ["killedChunksDone", nonNegIntOr(r.prevKilledChunksDone)],
+      ["killedPeakMb", num(r.prevKilledPeakMb)],
+      ["playing", boolOr(c.playing)],
+    ]);
+    return this.log.record("voiceSoak", row);
   }
 
   /**
@@ -2194,7 +2286,8 @@ const ms = (v) => (v == null ? "—" : `${Math.round(v)}ms`);
 /** KV-R2: ` [pass cpu]` on a probe-v2 row, nothing on an older one — so a row
     written before probe v2 prints exactly what it printed then. */
 function probePassTag(e) {
-  return e.pass ? ` [pass ${e.pass}]` : "";
+  if (!e.pass) return "";
+  return e.speed != null ? ` [pass ${e.pass} @${e.speed}x]` : ` [pass ${e.pass}]`;
 }
 
 /** KV-R2: `/coreml(requested)` — the CoreML pass's provider was ASKED for,
@@ -2385,6 +2478,8 @@ function lineFor(e) {
       return `${head} ${e.engine ?? "?"}${probeProvider(e)}${probePassTag(e)}` +
         (e.acceleratorWired ? "" : "(cpu-only)") +
         `  rtf cold ${f2(e.rtfCold)}${floor(e.rtfCold)} warm ${f2(e.rtfWarm)}${floor(e.rtfWarm)}` +
+        /* KV-R3: the content-basis RTF, the one the 1.5x verdict reads. */
+        (e.rtfContentWarm != null ? `  content ${f2(e.rtfContentWarm)}` : "") +
         `  load ${ms(e.loadColdMs)}/${ms(e.loadWarmMs)}` +
         `  peak ${e.peakMemoryMb == null ? "—" : `${e.peakMemoryMb}MB`}` +
         `  locked=${e.lockedOk ? "y" : "n"}` +
@@ -2392,6 +2487,35 @@ function lineFor(e) {
         `  over ${e.audioSec == null ? "—" : `${e.audioSec.toFixed(1)}s`}` +
         `(${e.audioFrom === "rendered" ? "rendered" : "est"})` +
         (e.synthFailures ? `  failed ${e.synthFailures}/${e.synthReason ?? "?"}` : "") + tail;
+    }
+    /* KV-R3: the 30-minute locked soak, one line:
+       `voiceSoak kokoro-probe [pass ane-cputail @1.5x] 412 loops 30.0min verdict=go
+       rtf 0.04/0.05/0.07 series 0.05n 0.05n … peak 214MB (212>214) locked 412/412 …` */
+    case "voiceSoak": {
+      const f2 = (v) => (Number.isFinite(v) ? v.toFixed(2) : "—");
+      const mb = (v) => (v == null ? "—" : `${v}MB`);
+      const head2 = `${head} ${e.engine ?? "?"}${probePassTag(e)}`;
+      const killed = e.killedPass
+        ? `  LAST-RUN-KILLED ${e.killedPass} ${e.killedStage ?? "?"}${e.killedStage === "soak" ? ` after ${e.killedChunksDone ?? "?"} loops` : ""} peak ${mb(e.killedPeakMb)}`
+        : "";
+      const err = (e.cmlCode ? `  cml=${e.cmlCode}${e.cmlStage ? ` at=${e.cmlStage}` : ""}` : "") +
+        (e.ortCode ? `  ort=${e.ortCode}${e.ortStage ? ` at=${e.ortStage}` : ""}` : "") +
+        (e.loadErr ? `  load FAILED(${e.loadErr})` : "");
+      if (e.probeOk !== true) {
+        return `${head2} could not soak: ${e.reason ?? "unknown"}${e.synthReason ? `/${e.synthReason}` : ""}${err}${killed}  hidden=${e.hidden ? "y" : "n"}`;
+      }
+      return `${head2} ${e.loops ?? "?"} loops ${Number.isFinite(e.elapsedSec) ? (e.elapsedSec / 60).toFixed(1) : "?"}min` +
+        (e.stopped ? " STOPPED-EARLY" : "") +
+        ` verdict=${e.verdict ?? "?"}  rtf ${f2(e.rtfMin)}/${f2(e.rtfMedian)}/${f2(e.rtfMax)}` +
+        `  series ${e.series ?? "—"}` +
+        `  peak ${mb(e.peakMb)} (${e.peakFirstMb ?? "?"}>${e.peakLastMb ?? "?"})` +
+        `  locked ${e.lockedLoops ?? "?"}/${e.loops ?? "?"} bg ${e.bgLoops ?? "?"}` +
+        `  thermal ${e.thermalStart ?? "?"}>${e.thermalEnd ?? "?"}` +
+        (e.cpuPerContentSec != null ? `  cpu ${e.cpuPerContentSec.toFixed(2)}s/s` : "") +
+        `  failed ${e.failures ?? "?"} nan ${e.nonFinite ?? "?"}` + err +
+        (e.keepAlive ? `  keepAlive=${e.keepAlive}` : "") +
+        (e.device ? `  ${e.device} iOS ${e.os ?? "?"}` : "") + killed +
+        `  hidden=${e.hidden ? "y" : "n"}`;
     }
     /* L22: where the page's engine decision landed, in the timeline. */
     case "engineMode":
@@ -2533,6 +2657,16 @@ function voiceProbeTail(e, failed) {
     parts.push(`  LAST-RUN-KILLED ${e.killedPass} ${where} peak ${e.killedPeakMb == null ? "—" : `${e.killedPeakMb}MB`}`);
   }
   if (e.silentLines > 0) parts.push(`  silent ${e.silentLines}/${e.lines ?? "?"}`);
+  /* KV-R3: the Core ML chain's own failure, route, stage times, CPU cost and
+     the screen, each only when the row carries it. */
+  if (e.cmlCode) parts.push(`  cml=${e.cmlCode}${e.cmlStage ? ` at=${e.cmlStage}` : ""}`);
+  if (e.route) parts.push(`  route ${e.route}`);
+  if (e.stageMs) parts.push(`  stages ${e.stageMs}ms`);
+  if (e.cpuPerContentSec != null) parts.push(`  cpu ${e.cpuPerContentSec.toFixed(2)}s/s`);
+  if (e.screen) {
+    parts.push(`  screen=${e.screen}${e.bgChunks != null ? ` bg ${e.bgChunks}/${e.lines ?? "?"}` : ""}` +
+      `${e.lockedChunks != null ? ` locked ${e.lockedChunks}` : ""}${e.keepAlive ? ` keepAlive=${e.keepAlive}` : ""}`);
+  }
   if (e.playing != null) parts.push(`  playing=${yn(e.playing)}`);
   if (e.bgAtFail != null) parts.push(`${e.playing != null ? " " : "  "}bgAtFail=${yn(e.bgAtFail)}`);
   parts.push(`  hidden=${e.hidden ? "y" : "n"}`);
