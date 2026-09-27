@@ -1,4 +1,5 @@
 import AVFAudio
+import Capacitor
 import Foundation
 import UIKit
 import os
