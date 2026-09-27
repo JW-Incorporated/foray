@@ -2,6 +2,7 @@
 // misaki phoneme chunks, at speed 1.0 and 1.5, per compute-unit route. RTF on CONTENT basis.
 import Foundation
 import FluidAudio
+setvbuf(stdout, nil, _IOLBF, 0)
 
 func maxRssMB() -> Double {
     var u = rusage(); getrusage(RUSAGE_SELF, &u); return Double(u.ru_maxrss) / 1e6

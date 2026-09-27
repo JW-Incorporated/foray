@@ -10,9 +10,6 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { os: macos-15, route: cpuOnly }
-          - { os: macos-15, route: cpuAndGpu }
-          - { os: macos-15, route: default }
           - { os: macos-26, route: cpuOnly }
     runs-on: ${{ matrix.os }}
     timeout-minutes: 45
@@ -25,7 +22,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        threads: [0, 3]
+        include:
+          - { ort: "1.20.1", threads: 0, fastmath: 0 }
+          - { ort: "1.20.1", threads: 3, fastmath: 0 }
+          - { ort: "1.30.0", threads: 3, fastmath: 0 }
+          - { ort: "1.30.0", threads: 3, fastmath: 1 }
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
@@ -35,5 +36,5 @@ jobs:
         with: { python-version: "3.12" }
       - run: node tools/mobile/fetch-models.mjs
       - run: mkdir -p models && curl -fsSL -o models/model.onnx "https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX/resolve/main/onnx/model.onnx"
-      - run: pip install "onnxruntime==1.20.1" numpy
-      - run: python -u tools/probe-tmp/ort_speed.py ${{ matrix.threads }}
+      - run: pip install "onnxruntime==${{ matrix.ort }}" numpy; sysctl hw.optional.arm.FEAT_BF16 hw.optional.arm.FEAT_SME hw.optional.arm.FEAT_SME2 || true
+      - run: python -u tools/probe-tmp/ort_speed.py ${{ matrix.threads }} ${{ matrix.fastmath }}

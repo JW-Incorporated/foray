@@ -1,12 +1,15 @@
 # THROWAWAY: ORT CPU fp32 model.onnx on the passage's sentence CHUNKS at speed 1.0 vs 1.5, same VM, content-basis RTF.
 import json, sys, time, glob, os, numpy as np, onnxruntime as ort
 threads = int(sys.argv[1]) if len(sys.argv) > 1 else 0
+fastmath = len(sys.argv) > 2 and sys.argv[2] == "1"
 print("ort", ort.__version__, "cpus", os.cpu_count(), "threads", threads)
 voice = glob.glob("mobile/models/**/af_heart.bin", recursive=True)[0]
 style = np.fromfile(voice, dtype=np.float32).reshape(510, 256)
 p = json.load(open("tools/mobile/kokoro-probe-passage.json", encoding="utf8"))
 so = ort.SessionOptions()
 if threads: so.intra_op_num_threads = threads
+if fastmath: so.add_session_config_entry("mlas.enable_gemm_fastmath_arm64_bfloat16", "1")
+print("fastmath", fastmath)
 s = ort.InferenceSession("models/model.onnx", so, providers=["CPUExecutionProvider"])
 chunks = [c for ln in p["lines"] for c in ln["chunks"]]
 def run(c, sp):
@@ -23,4 +26,4 @@ for i, c in enumerate(chunks):
         if sp == 1.0: a1 += a; s1 += dt
         else: a15 += a; s15 += dt
 import resource
-print(f"SUMMARY ort-fp32 threads={threads} speed1.0 RTF {s1/a1:.3f} (audio {a1:.1f}s synth {s1:.2f}s) | speed1.5 audio {a15:.1f}s synth {s15:.2f}s RTF(own) {s15/a15:.3f} RTF(content) {s15/a1:.3f} | maxrss MB {resource.getrusage(resource.RUSAGE_SELF).ru_maxrss/1e6:.0f}")
+print(f"SUMMARY ort-fp32 {ort.__version__} fastmath={fastmath} threads={threads} speed1.0 RTF {s1/a1:.3f} (audio {a1:.1f}s synth {s1:.2f}s) | speed1.5 audio {a15:.1f}s synth {s15:.2f}s RTF(own) {s15/a15:.3f} RTF(content) {s15/a1:.3f} | maxrss MB {resource.getrusage(resource.RUSAGE_SELF).ru_maxrss/1e6:.0f}")
