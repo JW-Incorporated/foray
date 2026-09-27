@@ -187,6 +187,17 @@ export const SESSION_DOM_EVENT = "foray:session";
  *  channel and same reasons as `SESSION_DOM_EVENT`. */
 export const REMOTE_DOM_EVENT = "foray:remote";
 
+/** The facts the iOS plugin door adds to a `transport` event, carried onto the
+ *  `REMOTE_DOM_EVENT` row as they arrived (docs/diagnostics/log-gaps-2026-09-26.md,
+ *  Lane B): `nseq`/`nboot` (L20, a per-process event counter and the process's
+ *  start, so the record can count presses that left the plugin and never
+ *  arrived) and `route`/`app` (L19, the output the press came in on and the
+ *  app's state). Each is forwarded only as its type (a finite number, or a
+ *  string); any other value, and any other key, is not. Judged nowhere else
+ *  here: `player/diagnostic-log.js` owns the vocabulary, as it does for the
+ *  rest of the row. */
+export const NATIVE_TRANSPORT_FACTS = Object.freeze({ nseq: "number", nboot: "number", route: "string", app: "string" });
+
 /** The origin a press carries when it came through WEBKIT'S OWN `MediaSession`
  *  rather than through the plugin -- the tee's door (see `captureLiveSession`).
  *  One of `REMOTE_ORIGINS` in `player/diagnostic-log.js`; `shell-invariants`
@@ -888,7 +899,7 @@ export function createForayMediaSession(env) {
    * whether or not one exists -- see that constant. Returns whether the handler
    * ran, for `dispatch`'s callers and the suite.
    */
-  function deliver({ action, details, command, origin, at }) {
+  function deliver({ action, details, command, origin, at, native }) {
     const handler = handlers.get(action);
     const t = now();
     const previous = lastDelivered.get(action);
@@ -896,6 +907,7 @@ export function createForayMediaSession(env) {
       previous && previous.origin !== origin && t - previous.at >= 0 && t - previous.at < REMOTE_DUPLICATE_WINDOW_MS
     );
     dispatchRemote({
+      ...native,
       command: command,
       action: action,
       origin: origin,
@@ -975,7 +987,18 @@ export function createForayMediaSession(env) {
       command: remoteCommandFor(str(event?.command) || (closing ? CLOSE_ACTION : action)),
       origin: str(event?.origin),
       at: event?.at,
+      native: nativeFacts(event),
     });
+  }
+
+  /** `NATIVE_TRANSPORT_FACTS` present on a plugin event, by type only. */
+  function nativeFacts(event) {
+    const facts = {};
+    for (const [key, type] of Object.entries(NATIVE_TRANSPORT_FACTS)) {
+      const value = event?.[key];
+      if (typeof value === type && (type !== "number" || Number.isFinite(value))) facts[key] = value;
+    }
+    return facts;
   }
 
   function subscribe() {

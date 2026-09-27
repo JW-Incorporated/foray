@@ -6,12 +6,13 @@
     {
       "id": "diag-tokens/set-names",
       "covers": [],
-      "note": "The seven closed sets, by the name admitToken takes, in declaration order.",
+      "note": "The eight closed sets, by the name admitToken takes, in declaration order.",
       "read": "VOCABULARY_SETS",
       "expect": {
         "value": [
           "stage",
           "sessionError",
+          "sessionErrorDetail",
           "interruptionReason",
           "stopCause",
           "source",

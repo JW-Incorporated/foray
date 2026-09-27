@@ -33,7 +33,14 @@ enum EngineBoot {
         store.diagnostics.build(BuildRow(
             engineVersion: EngineBridgeRules.engineVersion, bundleVersion: bundleVersion,
             launch: UIKitOwnershipLifecycle.launchedInBackground ? .background : .foreground,
-            holdPolicy: holdPolicy.load() ?? .default))
+            holdPolicy: holdPolicy.load() ?? .default,
+            // L09/L28: which phone, which iOS, and how it was at boot
+            // (DeviceFacts, ForayAudioPlugin.swift: the platform reads).
+            hw: DeviceFacts.machine(),
+            os: DeviceFacts.osVersion(),
+            lowPower: DeviceFacts.lowPowerMode(),
+            thermal: DeviceFacts.thermalToken(ProcessInfo.processInfo.thermalState),
+            availMb: DeviceFacts.availableMemoryMb()))
 
         let session = AudioSessionOwner(config: AudioSessionOwner.Config(diag: { store.diag($0) }))
         let seams = EngineSeams(
