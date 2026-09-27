@@ -56,6 +56,11 @@ final class ArtworkCache {
     typealias Fetcher = (_ url: URL, _ timeoutSec: Double, _ done: @escaping (Data?) -> Void) -> (() -> Void)
     /// Read a bundled image by its path under `public/`, on the utility queue.
     typealias BundleReader = (_ path: String) -> UIImage?
+    /// Run `fire` on main `sec` seconds from now: the deadline's only clock.
+    /// Production is `mainQueueDeadline`; a test injects a manual one so the
+    /// deadline fires when the test says, not when a loaded runner's wall
+    /// clock happens to get there first (NowPlayingPublisherTests).
+    typealias DeadlineTimer = (_ sec: Double, _ fire: @escaping () -> Void) -> Void
 
     /// Plan §4.5: "bounded at 10 s".
     static let timeoutSec: Double = 10
@@ -68,6 +73,7 @@ final class ArtworkCache {
     private let timeoutSec: Double
     private let fetcher: Fetcher
     private let bundleReader: BundleReader
+    private let deadline: DeadlineTimer
     private let work = DispatchQueue(label: "ai.jwlabs.foura.engine.artwork", qos: .utility)
 
     private var images: [String: UIImage] = [:]
@@ -78,10 +84,12 @@ final class ArtworkCache {
 
     init(timeoutSec: Double = ArtworkCache.timeoutSec,
          fetcher: @escaping Fetcher = ArtworkCache.urlSessionFetch,
-         bundleReader: @escaping BundleReader = ArtworkCache.readBundled) {
+         bundleReader: @escaping BundleReader = ArtworkCache.readBundled,
+         deadline: @escaping DeadlineTimer = ArtworkCache.mainQueueDeadline) {
         self.timeoutSec = timeoutSec
         self.fetcher = fetcher
         self.bundleReader = bundleReader
+        self.deadline = deadline
     }
 
     /// The source a `MediaMapping.Artwork.src` is read from, or nil when it
@@ -133,7 +141,7 @@ final class ArtworkCache {
             pending.cancel = nil
             self?.settle(src, image)
         }
-        DispatchQueue.main.asyncAfter(deadline: .now() + timeoutSec) { finish(nil) }
+        deadline(timeoutSec) { finish(nil) }
 
         switch source {
         case let .remote(url):
@@ -176,7 +184,12 @@ final class ArtworkCache {
         completions.forEach { $0(image) }
     }
 
-    // MARK: - The real fetch and bundle read
+    // MARK: - The real deadline, fetch and bundle read
+
+    /// The whole-load deadline on main, by the wall clock.
+    static func mainQueueDeadline(_ sec: Double, _ fire: @escaping () -> Void) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + sec, execute: fire)
+    }
 
     /// URLSession, honouring the HTTP cache, a non-2xx answer read as none.
     static func urlSessionFetch(_ url: URL, _ timeoutSec: Double, _ done: @escaping (Data?) -> Void) -> (() -> Void) {

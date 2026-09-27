@@ -4246,7 +4246,11 @@ test("NE-18: Now Playing writes rate 0 rather than playbackState, is cleared onl
 
   const artwork = stripSwiftComments(fs.readFileSync(ARTWORK_SWIFT, "utf8"));
   assert.match(artwork, /static let timeoutSec: Double = 10\b/, "plan §4.5: bounded at 10 s");
-  assert.match(artwork, /DispatchQueue\.main\.asyncAfter\(deadline: \.now\(\) \+ timeoutSec\) \{ finish\(nil\) \}/, "the deadline is whole, not per packet");
+  assert.match(swiftFuncBody(artwork, "load") ?? "", /deadline\(timeoutSec\) \{ finish\(nil\) \}/, "the deadline is whole, not per packet");
+  /* The deadline's clock is a seam (a test fires it by hand); production's is
+     main's wall clock, and it is the init's default. */
+  assert.match(swiftFuncBody(artwork, "mainQueueDeadline") ?? "", /DispatchQueue\.main\.asyncAfter\(deadline: \.now\(\) \+ sec, execute: fire\)/);
+  assert.match(artwork, /deadline: @escaping DeadlineTimer = ArtworkCache\.mainQueueDeadline\)/, "production's deadline is the wall clock");
   assert.match(artwork, /scheme\.lowercased\(\) == "https"/);
   assert.match(swiftFuncBody(artwork, "settle") ?? "", /failed\.insert\(src\)/, "a failure is cached");
 });
