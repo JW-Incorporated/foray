@@ -147,7 +147,15 @@ final class KokoroCoreMLEngine: KokoroProbeEngine {
     /// longest chunk is ~490 frames at speed 1.0.
     static let MAX_FRAMES = 2_000
     /// The closed failure codes, also `player/kokoro-probe.js`'s `CML_CODES`.
-    static let CODES = ["cml-load", "cml-input", "cml-predict", "cml-output", "cml-nan-duration", "cml-frames-cap"]
+    ///
+    /// `cml-shape` (probe v3.1): an input whose shape the stage model does not
+    /// DECLARE (outside its enumerated shapes or its size range). The founder's
+    /// A19 crash (build 2026092705) was libBNNS writing one byte past a 5.45 MB
+    /// buffer inside `-[MLModel predictionFromFeatures:error:]`; FluidAudio
+    /// #844/#889 put that on Apple's side, but an out-of-range flexible
+    /// dimension is another way to get there, so such an input is refused by
+    /// name before Core ML is handed it.
+    static let CODES = ["cml-load", "cml-input", "cml-predict", "cml-output", "cml-nan-duration", "cml-frames-cap", "cml-shape"]
 
     private static let log = Logger(subsystem: "ai.jwlabs.foura", category: "kokoro-probe")
 
@@ -169,6 +177,15 @@ final class KokoroCoreMLEngine: KokoroProbeEngine {
     private(set) var loadError: String?
     private(set) var lastFailure: KokoroProbeFailure?
     private(set) var lastStageMs: [Double]?
+    /// Crash resilience: the largest input per stage and the frame count of
+    /// the last chunk (`KokoroProbeEngine.lastStageInputs`/`lastFrames`).
+    private(set) var lastStageInputs: [String]?
+    private(set) var lastFrames: Int?
+    /// Time spent in the breadcrumb during the chunk being timed (its fsyncs),
+    /// taken out of the chunk's synthesis time.
+    private var crumbMs = 0.0
+    private var stageInputs: [String] = []
+    private var frames: Int?
 
     /// nil when a stage or the voice is missing or malformed; the plugin then
     /// records `model-absent`/`engine-absent` for the pass.
@@ -204,23 +221,41 @@ final class KokoroCoreMLEngine: KokoroProbeEngine {
     func load() -> (coldMs: Double, warmMs: Double) {
         loadError = nil
         lastFailure = nil
-        let cold = timed { self.models = self.loadAll() }
+        crumbMs = 0
+        let cold = timed { self.models = self.loadAll(cold: true) } - takeCrumbMs()
         guard models.count == KokoroCoreMLStage.allCases.count else {
             models = [:]
             return (cold, 0)
         }
         models = [:]
-        let warm = timed { self.models = self.loadAll() }
+        let warm = timed { self.models = self.loadAll(cold: false) } - takeCrumbMs()
         if models.count != KokoroCoreMLStage.allCases.count { models = [:] }
         return (cold, warm)
     }
 
-    private func loadAll() -> [KokoroCoreMLStage: MLModel] {
+    /// The breadcrumb (`ProbeStageHook`, fsync'd by the pass in flight),
+    /// timed so the caller can leave its cost out of what it measured.
+    private func crumb(_ stage: String, _ model: KokoroCoreMLStage, frames: Int? = nil, inputs: String? = nil) {
+        let start = DispatchTime.now().uptimeNanoseconds
+        ProbeStageHook.note(stage, model.rawValue, frames: frames, inputs: inputs)
+        crumbMs += Double(DispatchTime.now().uptimeNanoseconds - start) / 1_000_000
+    }
+
+    private func takeCrumbMs() -> Double {
+        defer { crumbMs = 0 }
+        return crumbMs
+    }
+
+    /// `compile` on the COLD load (the Neural Engine compile happens inside
+    /// `MLModel(contentsOf:)` the first time), `load-warm` on the warm one;
+    /// each stage model's crumb is written before its load begins.
+    private func loadAll(cold: Bool) -> [KokoroCoreMLStage: MLModel] {
         var out: [KokoroCoreMLStage: MLModel] = [:]
         for stage in KokoroCoreMLStage.allCases {
             guard let url = stageURLs[stage] else { return [:] }
             let config = MLModelConfiguration()
             config.computeUnits = units(for: stage)
+            crumb(cold ? "compile" : "load-warm", stage)
             do {
                 out[stage] = try MLModel(contentsOf: url, configuration: config)
             } catch {
@@ -251,12 +286,17 @@ final class KokoroCoreMLEngine: KokoroProbeEngine {
     func synthesize(ids: [Int], speed: Double) -> (synthMs: Double, audioSec: Double, reason: String?) {
         lastFailure = nil
         lastStageMs = nil
+        lastStageInputs = nil
+        lastFrames = nil
+        crumbMs = 0
+        stageInputs = [String](repeating: "-", count: KokoroCoreMLStage.allCases.count)
+        frames = nil
         guard models.count == KokoroCoreMLStage.allCases.count else { return (0, 0, "session-absent") }
         guard ids.count > 2 else { return (0, 0, "zero-samples") }
         var stageMs = [Double](repeating: 0, count: KokoroCoreMLStage.allCases.count)
         var sampleCount = 0
         var reason: String?
-        let ms = timed {
+        let wall = timed {
             do {
                 let samples = try self.chain(ids: ids, speed: Float(speed), stageMs: &stageMs)
                 sampleCount = samples.count
@@ -270,7 +310,11 @@ final class KokoroCoreMLEngine: KokoroProbeEngine {
                 reason = "inference-threw"
             }
         }
+        /* The breadcrumbs' fsyncs are not synthesis. */
+        let ms = max(0, wall - takeCrumbMs())
         lastStageMs = stageMs
+        lastStageInputs = stageInputs
+        lastFrames = frames
         if let reason { return (ms, 0, reason) }
         return (ms, Double(sampleCount) / Self.SAMPLE_RATE, nil)
     }
@@ -314,6 +358,7 @@ final class KokoroCoreMLEngine: KokoroProbeEngine {
         }
         let cap = Float(Self.MAX_FRAMES)
         let predDur = durations.map { Int32(min(max($0.rounded(), 1), cap)) }
+        frames = predDur.reduce(0, { $0 + Int($1) })
         guard predDur.reduce(0, { $0 + Int($1) }) <= Self.MAX_FRAMES else {
             throw KokoroCoreMLChainError(code: "cml-frames-cap", stage: .postAlbert)
         }
@@ -354,6 +399,23 @@ final class KokoroCoreMLEngine: KokoroProbeEngine {
     private func predict(_ stage: KokoroCoreMLStage, _ inputs: [String: MLMultiArray],
                          _ stageMs: inout [Double]) throws -> MLFeatureProvider {
         guard let model = models[stage] else { throw KokoroCoreMLChainError(code: "cml-predict", stage: stage) }
+        /* CRASH RESILIENCE: what this stage is about to be handed, by shape,
+           kept for the record (the largest input per stage) and written to
+           the breadcrumb BEFORE the predict, so a SIGSEGV inside it leaves
+           the stage, the chunk and every input's shape on disk. */
+        let shapes = inputs.mapValues { $0.shape.map(\.intValue) }
+        if let index = KokoroCoreMLStage.allCases.firstIndex(of: stage), index < stageInputs.count,
+           let largest = shapes.values.max(by: { $0.reduce(1, *) < $1.reduce(1, *) }) {
+            stageInputs[index] = largest.map(String.init).joined(separator: "x")
+        }
+        for (name, shape) in shapes {
+            if let declared = Self.declaredShape(model, input: name),
+               !Self.shapeAllowed(shape, enumerated: declared.enumerated, ranges: declared.ranges) {
+                Self.log.error("\(stage.bundleName) input \(name) shape \(shape) is outside the model's declared shapes")
+                throw KokoroCoreMLChainError(code: "cml-shape", stage: stage)
+            }
+        }
+        crumb("predict", stage, frames: frames, inputs: ProbeBreadcrumb.inputsToken(shapes))
         let provider: MLDictionaryFeatureProvider
         do {
             provider = try MLDictionaryFeatureProvider(dictionary: inputs.mapValues { MLFeatureValue(multiArray: $0) })
@@ -372,6 +434,40 @@ final class KokoroCoreMLEngine: KokoroProbeEngine {
             Self.log.error("\(stage.bundleName) prediction failed: \(error.localizedDescription)")
             throw KokoroCoreMLChainError(code: "cml-predict", stage: stage)
         }
+    }
+
+    /// The shapes a stage model DECLARES for one input: its enumerated shapes,
+    /// or its per-dimension size ranges, or nil when it declares neither (a
+    /// fixed shape, which Core ML checks itself).
+    static func declaredShape(_ model: MLModel, input: String) -> (enumerated: [[Int]], ranges: [ClosedRange<Int>])? {
+        guard let constraint = model.modelDescription.inputDescriptionsByName[input]?.multiArrayConstraint else { return nil }
+        let shape = constraint.shapeConstraint
+        switch shape.type {
+        case .enumerated:
+            return (shape.enumeratedShapes.map { $0.map(\.intValue) }, [])
+        case .range:
+            /* NSRange(location: lower, length: upper - lower). LENIENT on
+               purpose: an unbounded or oddly encoded upper bound admits, so
+               this guard can only refuse a shape that is plainly outside. */
+            let ranges = shape.sizeRangeForDimension.map { value -> ClosedRange<Int> in
+                let r = value.rangeValue
+                let lower = max(0, r.location)
+                let span = r.length >= 0 && r.length < Int(Int32.max) ? r.length : Int(Int32.max)
+                return lower...(lower + span)
+            }
+            return ([], ranges)
+        default:
+            return nil
+        }
+    }
+
+    /// Whether `shape` is one a stage model declares (PURE, for XCTest): in
+    /// its enumerated list when it has one, else inside every dimension's
+    /// range. A rank the ranges do not describe is left to Core ML.
+    static func shapeAllowed(_ shape: [Int], enumerated: [[Int]], ranges: [ClosedRange<Int>]) -> Bool {
+        if !enumerated.isEmpty { return enumerated.contains(shape) }
+        guard !ranges.isEmpty, ranges.count == shape.count else { return true }
+        return zip(shape, ranges).allSatisfy { $1.contains($0) }
     }
 
     private func output(_ provider: MLFeatureProvider, _ key: String, _ stage: KokoroCoreMLStage) throws -> MLMultiArray {

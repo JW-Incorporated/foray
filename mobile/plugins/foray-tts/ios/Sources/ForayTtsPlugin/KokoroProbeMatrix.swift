@@ -11,18 +11,28 @@ import os
  * Six passes, each loading its own models and releasing them before the next
  * (`KokoroProbePass`, in run order):
  *
- *   ane          Core ML chain, Neural Engine + ALL for the fp32 tail
  *   ort-cpu-t2   fp32 ONNX Runtime, 2 intra-op threads
+ *   ort-cpu-t3   fp32 ORT, 3 threads
+ *   ort-cpu-t4   fp32 ORT, 4 threads
+ *   cml-cpu      Core ML chain, every stage CPU-only
  *   ane-cputail  Core ML chain, Neural Engine + CPU-only tail (no GPU: the
  *                route iOS lets run while the phone is locked)
- *   ort-cpu-t3   fp32 ORT, 3 threads
- *   cml-cpu      Core ML chain, every stage CPU-only
- *   ort-cpu-t4   fp32 ORT, 4 threads
+ *   ane          Core ML chain, Neural Engine + ALL for the fp32 tail
  *
- * INTERLEAVED (§5: "ort-cpu-t{2,3,4} … interleaved"), so no engine family has
- * the phone all to itself while it is cool and the other all to itself once
- * it is warm. Within a pass every sentence chunk is rendered at Kokoro speed
- * 1.0 AND 1.5, one after the other, so the two speeds share the same heat.
+ * SAFE PASSES FIRST (probe v3.1, after build 2026092705 died twice on its
+ * first pass, `ane`, and left nothing). ORT fails by THROWING — probe v2 on
+ * build 2602 threw cleanly and the run went on — while a Core ML fault inside
+ * Apple's libBNNS takes the whole process down (FluidAudio #844: A19 phones,
+ * iOS 26.4+, every compute unit). So ORT runs first, then Core ML from the
+ * least to the most exotic placement (CPU-only, the Neural Engine, then the
+ * GPU tail). The v3 order interleaved the two families so neither had the
+ * phone all to itself while cool (§5); that is given up on purpose: a thermal
+ * skew is a caveat on a number, a crash in pass 1 is no numbers at all. Each
+ * pass breadcrumbs every step (`ProbeLedger.swift`), and a pass that killed
+ * 4a is reported at the next launch and skipped by every later run. On iOS
+ * 26.4+ the Core ML passes are refused (`coreml-bnns-os`) unless armed.
+ * Within a pass every sentence chunk is rendered at Kokoro speed 1.0 AND 1.5,
+ * one after the other, so the two speeds share the same heat.
  *
  * ── The content basis (§1) ────────────────────────────────────────────────
  * A render at speed 1.5 is ~2/3 as long as the same text at 1.0. Dividing its
@@ -53,15 +63,16 @@ import os
 
 /// Which engine and placement a probe pass runs (KV-R3). The raw value is
 /// the record's `pass`, and `player/kokoro-probe.js`'s `PROBE_PASSES` holds
-/// the same words. DECLARATION ORDER IS RUN ORDER (`allCases`): interleaved,
-/// Core ML and ORT alternating.
+/// the same words. DECLARATION ORDER IS RUN ORDER (`allCases`): the ORT
+/// passes first (they fail by throwing), then Core ML CPU-only, then the
+/// Neural Engine, the GPU-tail `ane` last (probe v3.1, header).
 public enum KokoroProbePass: String, CaseIterable {
-    case ane
     case ortCpuT2 = "ort-cpu-t2"
-    case aneCputail = "ane-cputail"
     case ortCpuT3 = "ort-cpu-t3"
-    case cmlCpu = "cml-cpu"
     case ortCpuT4 = "ort-cpu-t4"
+    case cmlCpu = "cml-cpu"
+    case aneCputail = "ane-cputail"
+    case ane
 
     /// The ORT intra-op thread count, or nil for a Core ML pass.
     var ortThreads: Int? {
@@ -80,9 +91,10 @@ public enum KokoroProbePass: String, CaseIterable {
     var backgroundSafe: Bool { !KokoroCoreMLPlacement.usesGPU(pass: self) }
 
     /// The soak's pass (card KV-R3 item 3): `ane-cputail` if the Core ML chain
-    /// can run on this phone, else ORT at 2 threads.
-    static func soakPass(coreMLAvailable: Bool) -> KokoroProbePass {
-        coreMLAvailable ? .aneCputail : .ortCpuT2
+    /// can run on this phone AND is not on the skip list (a Core ML kill puts
+    /// every Core ML pass there), else ORT at 2 threads.
+    static func soakPass(coreMLAvailable: Bool, skipped: Set<KokoroProbePass> = []) -> KokoroProbePass {
+        coreMLAvailable && !skipped.contains(.aneCputail) ? .aneCputail : .ortCpuT2
     }
 }
 
@@ -249,6 +261,18 @@ enum ProbeMath {
         }
     }
 
+    /// The larger of two `x`-joined shapes by element count (`-` is a stage
+    /// the chunk never reached, smaller than any shape): what a record's
+    /// `stageIn` keeps per Core ML stage across its chunks.
+    static func widerShape(_ a: String, _ b: String) -> String {
+        func elements(_ s: String) -> Int {
+            guard s != "-" else { return -1 }
+            let dims = s.split(separator: "x").compactMap { Int($0) }
+            return dims.isEmpty ? -1 : dims.reduce(1, *)
+        }
+        return elements(b) > elements(a) ? b : a
+    }
+
     /// The median of the finite values, or nil.
     static func median(_ values: [Double]) -> Double? {
         let sorted = values.filter { $0.isFinite }.sorted()
@@ -382,19 +406,23 @@ extension ForayTtsPlugin {
         onMain { !UIApplication.shared.isProtectedDataAvailable }
     }
 
-    /// Why a Core ML pass cannot run here, or nil when it can.
-    static func coreMLRefusal() -> String? {
+    /// Why a Core ML pass cannot run here, or nil when it can. On iOS 26.4
+    /// and later the chain crashes inside Apple's libBNNS (`ProbeCoreMLGuard`),
+    /// so it is refused there as `coreml-bnns-os` unless `armed` — the
+    /// drawer's "arm Core ML (may crash)" switch.
+    static func coreMLRefusal(armed: Bool = false) -> String? {
         guard #available(iOS 17.0, *) else { return "coreml-requires-ios17" }
-        return KokoroCoreMLFiles.allStageURLs() == nil ? "model-absent" : nil
+        if KokoroCoreMLFiles.allStageURLs() == nil { return "model-absent" }
+        return ProbeCoreMLGuard.refusal(armed: armed)
     }
 
     /// The real engine for `pass`, or why there is none. The XCTest target's
     /// fake (`probeEngine`) wins when set.
-    static func buildEngine(_ pass: KokoroProbePass) -> ProbeEngineBuild {
+    static func buildEngine(_ pass: KokoroProbePass, armed: Bool = false) -> ProbeEngineBuild {
         if let fake = probeEngine { return .engine(fake) }
         if pass.isCoreML {
             guard #available(iOS 17.0, *) else { return .refused("coreml-requires-ios17") }
-            if let refusal = coreMLRefusal() { return .refused(refusal) }
+            if let refusal = coreMLRefusal(armed: armed) { return .refused(refusal) }
             guard let engine = KokoroCoreMLEngine(pass: pass) else { return .refused("engine-absent") }
             return .engine(engine)
         }
@@ -410,57 +438,120 @@ extension ForayTtsPlugin {
     /// (`hasWav`); the drawer plays it through `mode: "listen"`, so no path
     /// ever crosses the bridge.
     ///
-    /// IF THE APP IS KILLED MID-PASS nothing here returns; the marker
-    /// (`ProbeInFlight`, noted before each load and after each chunk) is read
-    /// by the next run and lands on its first record as `prevKilled*`.
+    /// PROBE v3.1 — CRASH-RESILIENT AND SELF-REPORTING:
+    ///   - every step that can take the process down is breadcrumbed first
+    ///     (`ProbeInFlight`, fsync'd), and `onPassStart` puts a row in the
+    ///     native engine's durable ring;
+    ///   - a pass on the ledger's skip list (it killed 4a on an earlier run)
+    ///     is not run: its records say `skipped-killed-last-run` and where;
+    ///   - each pass's records are journaled to disk and handed to
+    ///     `onPassDone` THE MOMENT THE PASS ENDS (the plugin sends them to the
+    ///     page as a `probePass` event), so a kill in pass 4 still leaves 1–3;
+    ///   - a breadcrumb left by a killed run is promoted to a report
+    ///     (`ProbeLedger.promoteLeftover`) — never just deleted — and the
+    ///     first record says so too.
     static func measurePasses(passes: [KokoroProbePass] = KokoroProbePass.allCases,
                               idLines: [[Int]], speeds: [Double] = ProbeMath.SPEEDS, modelURL: URL?,
                               makeEngine: (KokoroProbePass) -> ProbeEngineBuild,
                               isForeground: () -> Bool = { ForayTtsPlugin.isForeground() },
                               isLocked: () -> Bool = { ForayTtsPlugin.isLocked() },
                               inFlight: ProbeInFlight = ProbeInFlight(),
-                              wavDirectory: URL? = nil) -> JSObject {
+                              ledger: ProbeLedger? = nil,
+                              run: Int64 = probeNowMs(),
+                              wavDirectory: URL? = nil,
+                              onPassStart: (KokoroProbePass, Int) -> Void = { _, _ in },
+                              onPassDone: (KokoroProbePass, [JSObject]) -> Void = { _, _ in }) -> JSObject {
         var result = JSObject()
         result["platform"] = "ios"
         result["speeds"] = speeds
+        result["probeRun"] = Double(run)
+        let marker = ledger?.inFlight ?? inFlight
         /* THE fp32 MODEL IS HASHED ONCE (325 MB), for the ORT passes only. */
         let facts = passes.contains(where: { !$0.isCoreML }) ? modelURL.flatMap { modelFileFacts($0) } : nil
-        let killed = inFlight.takeLeftover()
+        /* A breadcrumb the launch did not promote (it normally has): promoted
+           now, into a report and the skip list, BEFORE this run writes its own. */
+        let promoted = ledger?.promoteLeftover()
+        var skipList: [KokoroProbePass: ProbeBreadcrumb] = [:]
+        for entry in ledger?.quarantine.entries() ?? [] { skipList[entry.pass] = entry.crumb }
         var records: [JSObject] = []
-        for pass in passes {
-            let wavURL = wavDirectory?.appendingPathComponent("\(pass.rawValue).wav")
-            if let wavURL { try? FileManager.default.removeItem(at: wavURL) }
-            let outcome: (records: [JSObject], wav: Bool) = autoreleasepool {
-                switch makeEngine(pass) {
-                case .refused(let reason):
-                    return (speeds.map { refusalRecord(pass: pass, speed: $0, reason: reason) }, false)
-                case .engine(let engine):
-                    /* `defer`: a pass that returns early still releases its
-                       models before the next pass builds any. */
-                    defer { engine.close() }
-                    return measurePass(engine: engine, pass: pass, idLines: idLines, speeds: speeds,
-                                       modelFacts: pass.isCoreML ? nil : facts,
-                                       isForeground: isForeground, isLocked: isLocked,
-                                       onProgress: { stage, done, peak in
-                                           inFlight.note(pass: pass, stage: stage, chunksDone: done, peakBytes: peak)
-                                       },
-                                       wavURL: wavURL)
+        for (order, pass) in passes.enumerated() {
+            var passRecords: [JSObject]
+            if let crumb = skipList[pass] {
+                passRecords = speeds.map { speed -> JSObject in
+                    skippedRecord(pass: pass, speed: speed, crumb: crumb)
                 }
+            } else {
+                onPassStart(pass, order)
+                marker.note(ProbeBreadcrumb(pass: pass.rawValue, stage: "load", chunk: 0,
+                                            peakBytes: taskFootprint().current, run: run))
+                let wavURL = wavDirectory?.appendingPathComponent("\(pass.rawValue).wav")
+                if let wavURL { try? FileManager.default.removeItem(at: wavURL) }
+                let outcome: (records: [JSObject], wav: Bool) = autoreleasepool {
+                    switch makeEngine(pass) {
+                    case .refused(let reason):
+                        return (speeds.map { refusalRecord(pass: pass, speed: $0, reason: reason) }, false)
+                    case .engine(let engine):
+                        /* `defer`: a pass that returns early still releases its
+                           models before the next pass builds any — and the
+                           release is breadcrumbed, because it can fault too. */
+                        defer {
+                            marker.note(ProbeBreadcrumb(pass: pass.rawValue, stage: "close", chunk: idLines.count,
+                                                        peakBytes: taskFootprint().current, run: run))
+                            engine.close()
+                        }
+                        return measurePass(engine: engine, pass: pass, idLines: idLines, speeds: speeds,
+                                           modelFacts: pass.isCoreML ? nil : facts,
+                                           isForeground: isForeground, isLocked: isLocked,
+                                           onProgress: { p in
+                                               marker.note(ProbeBreadcrumb(pass: pass.rawValue, stage: p.stage,
+                                                                           chunk: p.chunk, peakBytes: p.peak,
+                                                                           speed: p.speed, sub: p.sub, run: run,
+                                                                           tokens: p.tokens, frames: p.frames,
+                                                                           inputs: p.inputs))
+                                           },
+                                           wavURL: wavURL)
+                    }
+                }
+                /* Between passes nothing is in flight: a kill now is neither
+                   this pass's nor the next one's. */
+                marker.clear()
+                passRecords = outcome.records
             }
-            var passRecords = outcome.records
-            if records.isEmpty, !passRecords.isEmpty, let killed {
-                passRecords[0]["prevKilledPass"] = killed.pass
-                passRecords[0]["prevKilledStage"] = killed.stage
-                passRecords[0]["prevKilledChunksDone"] = killed.chunksDone
-                passRecords[0]["prevKilledPeakBytes"] = Double(killed.peakBytes)
+            for i in passRecords.indices { passRecords[i]["probeRun"] = Double(run) }
+            if records.isEmpty, !passRecords.isEmpty, let promoted {
+                if let v = promoted["killedPass"] as? String { passRecords[0]["prevKilledPass"] = v }
+                if let v = promoted["killedStage"] as? String { passRecords[0]["prevKilledStage"] = v }
+                if let v = promoted["killedChunksDone"] as? Int { passRecords[0]["prevKilledChunksDone"] = v }
+                if let v = promoted["killedPeakBytes"] as? Double { passRecords[0]["prevKilledPeakBytes"] = v }
             }
             records.append(contentsOf: passRecords)
+            ledger?.journal(run: run, records: passRecords.map { $0 as [String: Any] })
+            onPassDone(pass, passRecords)
         }
-        inFlight.clear()
+        marker.clear()
+        ledger?.clearJournal()
         result["passes"] = records
         result["ok"] = true
         result["reason"] = ""
         return result
+    }
+
+    /// A pass on the skip list (it killed 4a on an earlier run, or a Core ML
+    /// pass did): not run, once per speed, naming the kill that skipped it.
+    static func skippedRecord(pass: KokoroProbePass, speed: Double, crumb: ProbeBreadcrumb) -> JSObject {
+        var skipped = refusalRecord(pass: pass, speed: speed, reason: "skipped-killed-last-run")
+        skipped["prevKilledPass"] = crumb.pass
+        skipped["prevKilledStage"] = crumb.stage
+        skipped["prevKilledChunksDone"] = crumb.chunk
+        skipped["prevKilledPeakBytes"] = Double(crumb.peakBytes)
+        if let speed = crumb.speed { skipped["prevKilledSpeed"] = speed }
+        if let sub = crumb.sub { skipped["prevKilledSub"] = sub }
+        if let tokens = crumb.tokens { skipped["prevKilledTokens"] = tokens }
+        if let frames = crumb.frames { skipped["prevKilledFrames"] = frames }
+        if let inputs = crumb.inputs { skipped["prevKilledIn"] = inputs }
+        /* WHERE, as the row's sub-reason: `first-predict-vocoder`, `compile-albert`. */
+        skipped["detail"] = crumb.sub.map { "\(crumb.stage)-\($0)" } ?? crumb.stage
+        return skipped
     }
 
     /// The founder's ear (§5 item 10): play one pass's speed-1.5 WAV from the
@@ -530,7 +621,7 @@ extension ForayTtsPlugin {
     static func measurePass(engine: KokoroProbeEngine, pass: KokoroProbePass, idLines: [[Int]], speeds: [Double],
                             modelFacts: (bytes: Int, sha8: String)?,
                             isForeground: () -> Bool, isLocked: () -> Bool,
-                            onProgress: (String, Int, UInt64) -> Void = { _, _, _ in },
+                            onProgress: @escaping (ProbeProgress) -> Void = { _ in },
                             wavURL: URL? = nil) -> (records: [JSObject], wav: Bool) {
         /* WHAT RAN, AND ON WHAT — read before any stopwatch starts. */
         var common = JSObject()
@@ -567,9 +658,25 @@ extension ForayTtsPlugin {
            chunk (the kernel's own peak is the process's and cannot be reset). */
         let sampler = FootprintSampler()
         sampler.start()
-        onProgress("load", 0, sampler.peak)
+        /* THE BREADCRUMBS (probe v3.1). The Core ML engine reports each
+           stage's cold load (`compile`), warm load and prediction through
+           `ProbeStageHook`; this pass turns each into a breadcrumb naming the
+           chunk and speed in flight, so a kill inside libBNNS says
+           `first-predict`/`synth` AND which of the seven stages. */
+        let firstSpeed = speeds.first
+        var chunkInFlight = 0
+        var speedInFlight: Double?
+        var tokensInFlight: Int?
+        ProbeStageHook.set { step in
+            let first = chunkInFlight == 0 && speedInFlight != nil && speedInFlight == firstSpeed
+            let mapped = step.stage == "predict" ? (first ? "first-predict" : "synth") : step.stage
+            onProgress(ProbeProgress(stage: mapped, chunk: chunkInFlight, speed: speedInFlight, sub: step.sub,
+                                     peak: sampler.peak, tokens: tokensInFlight, frames: step.frames,
+                                     inputs: step.inputs))
+        }
+        defer { ProbeStageHook.set(nil) }
+        onProgress(ProbeProgress(stage: "load", chunk: 0, speed: nil, sub: nil, peak: sampler.peak))
         let load = engine.load()
-        onProgress("synth", 0, sampler.peak)
         common["provider"] = engine.provider
         if let basis = engine.providerBasis { common["providerBasis"] = basis }
         common["model"] = engine.modelName
@@ -606,9 +713,20 @@ extension ForayTtsPlugin {
         var bgAtFail = [Bool?](repeating: nil, count: speeds.count)
         let wavIndex = wavURL == nil ? nil : speeds.firstIndex(of: ProbeMath.WAV_SPEED)
         var pcm: [Int16] = []
+        var maxTokens = [Int](repeating: 0, count: speeds.count)
+        var maxFrames = [Int?](repeating: nil, count: speeds.count)
+        var stageIn = [[String]?](repeating: nil, count: speeds.count)
         for (index, ids) in idLines.enumerated() {
             for (k, speed) in speeds.enumerated() {
                 let capture = k == wavIndex
+                chunkInFlight = index
+                speedInFlight = speed
+                tokensInFlight = ids.count
+                /* THE ORT RUN'S BREADCRUMB (and the Core ML chunk's, before
+                   its per-stage ones): pass, speed, chunk, tokens. */
+                onProgress(ProbeProgress(stage: index == 0 && k == 0 ? "first-predict" : "synth", chunk: index,
+                                         speed: speed, sub: nil, peak: sampler.peak, tokens: ids.count))
+                maxTokens[k] = max(maxTokens[k], ids.count)
                 engine.setCaptureSamples(capture)
                 let cpuStart = processCPUSeconds()
                 let out = engine.synthesize(ids: ids, speed: speed)
@@ -623,8 +741,12 @@ extension ForayTtsPlugin {
                 }
                 if capture, let samples = engine.takeLastSamples() { pcm.append(contentsOf: ProbeWav.pcm16(samples)) }
                 readings[k].append(reading)
+                if let frames = engine.lastFrames { maxFrames[k] = max(maxFrames[k] ?? 0, frames) }
+                if let shapes = engine.lastStageInputs {
+                    let before = stageIn[k] ?? [String](repeating: "-", count: shapes.count)
+                    stageIn[k] = before.count == shapes.count ? zip(before, shapes).map { ProbeMath.widerShape($0, $1) } : shapes
+                }
             }
-            onProgress("synth", index + 1, sampler.peak)
         }
         engine.setCaptureSamples(false)
 
@@ -646,6 +768,7 @@ extension ForayTtsPlugin {
 
         var wrote = false
         if let wavURL, !pcm.isEmpty {
+            onProgress(ProbeProgress(stage: "wav", chunk: idLines.count, speed: ProbeMath.WAV_SPEED, sub: nil, peak: sampler.peak))
             wrote = (try? ProbeWav.wav(pcm).write(to: wavURL, options: .atomic)) != nil
         }
 
@@ -681,6 +804,13 @@ extension ForayTtsPlugin {
             /* "Not frontmost when this speed's last chunk finished" — the
                honest weaker fact; `bgChunks`/`lockedChunks` say the rest. */
             record["lockedScreenCompleted"] = readings[k].last?.background ?? false
+            /* WHAT THE ENGINE WAS HANDED (probe v3.1, after the .ips): the
+               longest chunk in tokens and frames, and per Core ML stage the
+               largest input shape — `stageIn[i]` for stage i, `-` when no
+               chunk reached it. */
+            record["maxTokens"] = maxTokens[k]
+            if let frames = maxFrames[k] { record["maxFrames"] = frames }
+            if let shapes = stageIn[k] { record["stageIn"] = shapes }
             record["hasWav"] = k == wavIndex && wrote
             if summary.audioColdSec + summary.audioWarmSec <= 0 {
                 record["ok"] = false
@@ -713,6 +843,8 @@ extension ForayTtsPlugin {
                         isForeground: () -> Bool = { ForayTtsPlugin.isForeground() },
                         isLocked: () -> Bool = { ForayTtsPlugin.isLocked() },
                         inFlight: ProbeInFlight = ProbeInFlight(),
+                        ledger: ProbeLedger? = nil,
+                        run: Int64 = probeNowMs(),
                         clock: () -> Double = { Double(DispatchTime.now().uptimeNanoseconds) / 1_000_000_000 },
                         maxLoops: Int = Int.max,
                         shouldStop: () -> Bool = { ProbeSoakStop.shared.isRequested }) -> JSObject {
@@ -727,17 +859,28 @@ extension ForayTtsPlugin {
         if let os = machineToken(onMain { UIDevice.current.systemVersion }) { result["os"] = os }
         if let threads = engine.intraThreads { result["intraThreads"] = threads }
         if let route = engine.route { result["route"] = route }
-        if let killed = inFlight.takeLeftover() {
-            result["prevKilledPass"] = killed.pass
-            result["prevKilledStage"] = killed.stage
-            result["prevKilledChunksDone"] = killed.chunksDone
-            result["prevKilledPeakBytes"] = Double(killed.peakBytes)
+        /* A killed run's breadcrumb is PROMOTED to a report (and so to its own
+           row at the page), never just read and deleted (probe v3.1). */
+        let marker = ledger?.inFlight ?? inFlight
+        if let promoted = ledger?.promoteLeftover() {
+            if let v = promoted["killedPass"] as? String { result["prevKilledPass"] = v }
+            if let v = promoted["killedStage"] as? String { result["prevKilledStage"] = v }
+            if let v = promoted["killedChunksDone"] as? Int { result["prevKilledChunksDone"] = v }
+            if let v = promoted["killedPeakBytes"] as? Double { result["prevKilledPeakBytes"] = v }
         }
+        result["probeRun"] = Double(run)
+        var loopsDone = 0
+        ProbeStageHook.set { step in
+            marker.note(pass: pass, stage: step.stage == "predict" ? "soak" : step.stage, chunksDone: loopsDone,
+                        peakBytes: ForayTtsPlugin.taskFootprint().current, speed: ProbeMath.WAV_SPEED, sub: step.sub,
+                        mode: "soak", run: run, frames: step.frames, inputs: step.inputs)
+        }
+        defer { ProbeStageHook.set(nil) }
         result["thermalStart"] = thermalToken(ProcessInfo.processInfo.thermalState)
         result["lowPower"] = ProcessInfo.processInfo.isLowPowerModeEnabled
         result["baseMemoryBytes"] = Double(taskFootprint().current)
 
-        inFlight.note(pass: pass, stage: "load", chunksDone: 0, peakBytes: taskFootprint().current)
+        marker.note(pass: pass, stage: "load", chunksDone: 0, peakBytes: taskFootprint().current, mode: "soak", run: run)
         let load = engine.load()
         result["provider"] = engine.provider
         result["model"] = engine.modelName
@@ -781,7 +924,7 @@ extension ForayTtsPlugin {
         }
         guard content.contains(where: { $0 > 0 }) else {
             engine.close()
-            inFlight.clear()
+            marker.clear()
             result["ok"] = false
             result["reason"] = "synthesis-failed"
             result["detail"] = "calibration"
@@ -825,10 +968,12 @@ extension ForayTtsPlugin {
             loop.locked = isLocked()
             loop.endSec = clock() - start
             loops.append(loop)
-            inFlight.note(pass: pass, stage: "soak", chunksDone: loops.count, peakBytes: loop.peakBytes)
+            loopsDone = loops.count
+            marker.note(pass: pass, stage: "soak", chunksDone: loops.count, peakBytes: loop.peakBytes,
+                        speed: ProbeMath.WAV_SPEED, mode: "soak", run: run)
         }
         engine.close()
-        inFlight.clear()
+        marker.clear()
         result["soakStopped"] = stopped
         return soakRecord(result, loops: loops)
     }
@@ -871,4 +1016,16 @@ extension ForayTtsPlugin {
         }
         return result
     }
+}
+
+/// One step of a pass, as the breadcrumb names it (probe v3.1).
+struct ProbeProgress {
+    var stage: String
+    var chunk: Int
+    var speed: Double?
+    var sub: String?
+    var peak: UInt64
+    var tokens: Int? = nil
+    var frames: Int? = nil
+    var inputs: String? = nil
 }

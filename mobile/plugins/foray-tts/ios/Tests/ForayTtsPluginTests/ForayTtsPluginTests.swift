@@ -750,15 +750,21 @@ final class ForayTtsPluginTests: XCTestCase {
 
     // MARK: - KV-R3: probe v3 — the pass matrix, both speeds, the content basis
 
-    /// **The passes, their order, and what each one is** (docs/voice/
-    /// kokoro-speed-1.5x.md §5). Interleaved: Core ML and ORT alternate so
-    /// neither family gets the cool phone. MUTATION: reorder the cases, or
+    /// **The passes, their order, and what each one is** (probe v3.1): the
+    /// ORT passes FIRST — they fail by throwing — then Core ML CPU-only, then
+    /// the Neural Engine, `ane` last. Build 2026092705 ran `ane` first and
+    /// died before writing a row. MUTATION: put a Core ML case back first, or
     /// let `ane` count as background-safe.
-    func testPassOrderIsInterleavedAndEachPassSaysWhatItIs() {
+    func testPassOrderRunsTheSafePassesFirstAndEachPassSaysWhatItIs() {
         XCTAssertEqual(KokoroProbePass.allCases.map(\.rawValue),
-                       ["ane", "ort-cpu-t2", "ane-cputail", "ort-cpu-t3", "cml-cpu", "ort-cpu-t4"])
-        XCTAssertEqual(KokoroProbePass.allCases.map(\.ortThreads), [nil, 2, nil, 3, nil, 4])
-        XCTAssertEqual(KokoroProbePass.allCases.filter(\.isCoreML), [.ane, .aneCputail, .cmlCpu])
+                       ["ort-cpu-t2", "ort-cpu-t3", "ort-cpu-t4", "cml-cpu", "ane-cputail", "ane"])
+        XCTAssertEqual(KokoroProbePass.allCases.map(\.ortThreads), [2, 3, 4, nil, nil, nil])
+        XCTAssertEqual(KokoroProbePass.allCases.filter(\.isCoreML), [.cmlCpu, .aneCputail, .ane])
+        let firstCoreML = KokoroProbePass.allCases.firstIndex(where: \.isCoreML) ?? 0
+        XCTAssertTrue(KokoroProbePass.allCases.prefix(firstCoreML).allSatisfy { !$0.isCoreML })
+        XCTAssertEqual(firstCoreML, 3, "every ORT pass runs before any Core ML pass")
+        XCTAssertEqual(KokoroProbePass.soakPass(coreMLAvailable: true, skipped: [.aneCputail]), .ortCpuT2,
+                       "a skipped pass is never soaked")
         XCTAssertEqual(KokoroProbePass.allCases.filter { !$0.backgroundSafe }, [.ane],
                        "only `ane` may touch the GPU, which iOS blocks while locked")
         XCTAssertEqual(KokoroProbePass.soakPass(coreMLAvailable: true), .aneCputail)
@@ -893,8 +899,8 @@ final class ForayTtsPluginTests: XCTestCase {
         XCTAssertEqual(passes.count, order.count * 2, "one record per pass per speed")
         XCTAssertEqual(passes.map { $0["pass"] as? String }, order.flatMap { [$0, $0] })
         XCTAssertEqual(passes.map { $0["speed"] as? Double }, order.flatMap { _ in [1.0, 1.5] })
-        XCTAssertEqual(passes.first?["provider"] as? String, "coreml")
-        XCTAssertEqual(passes[2]["provider"] as? String, "cpu")
+        XCTAssertEqual(passes.first?["provider"] as? String, "cpu", "ORT first")
+        XCTAssertEqual(passes[6]["provider"] as? String, "coreml")
         XCTAssertEqual(passes.first?["lines"] as? Int, 2, "one inference per chunk per speed")
     }
 
@@ -948,17 +954,21 @@ final class ForayTtsPluginTests: XCTestCase {
         XCTAssertNil(ForayTtsPlugin.chunkIds([["text": "no ids"]]))
     }
 
-    /// **A run the system killed is reported by the next one's first record.**
-    /// MUTATION: clear the marker at the start of a run instead of reading it.
+    /// **A run the system killed is reported by the next one's first record**
+    /// (when the launch did not already promote it). MUTATION: clear the
+    /// marker at the start of a run instead of promoting it.
     func testAKilledRunsLastPassChunkAndPeakReachTheNextRunsFirstRecord() {
-        let url = tempURL()
-        ProbeInFlight(url: url).note(pass: .aneCputail, stage: "synth", chunksDone: 6, peakBytes: 1_400_000_000)
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent("kvr31-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let ledger = ProbeLedger(directory: dir, legacyMarker: nil)
+        let url = ledger.inFlight.url
+        ProbeInFlight(url: url).note(pass: .ortCpuT3, stage: "synth", chunksDone: 6, peakBytes: 1_400_000_000)
         let result = ForayTtsPlugin.measurePasses(
             passes: [.ortCpuT2], idLines: [[0, 1, 2, 0]], modelURL: nil,
             makeEngine: { pass in .engine(LoggingProbeEngine(pass: pass, log: EventLog())) },
-            isForeground: { false }, isLocked: { false }, inFlight: ProbeInFlight(url: url))
+            isForeground: { false }, isLocked: { false }, ledger: ledger)
         let passes = result["passes"] as? [[String: Any]] ?? []
-        XCTAssertEqual(passes.first?["prevKilledPass"] as? String, "ane-cputail")
+        XCTAssertEqual(passes.first?["prevKilledPass"] as? String, "ort-cpu-t3")
         XCTAssertEqual(passes.first?["prevKilledStage"] as? String, "synth")
         XCTAssertEqual(passes.first?["prevKilledChunksDone"] as? Int, 6)
         XCTAssertEqual(passes.first?["prevKilledPeakBytes"] as? Double, 1_400_000_000)
@@ -980,7 +990,7 @@ final class ForayTtsPluginTests: XCTestCase {
                 if pass == .aneCputail {
                     engine.onLoad = {
                         let marker = (try? String(contentsOf: url, encoding: .utf8)) ?? ""
-                        XCTAssertTrue(marker.hasPrefix("ane-cputail load 0 "), "the marker during the load reads '\(marker)'")
+                        XCTAssertTrue(marker.hasPrefix("v2 matrix ane-cputail load 0 "), "the marker during the load reads '\(marker)'")
                     }
                 }
                 return .engine(engine)
@@ -1029,7 +1039,7 @@ final class ForayTtsPluginTests: XCTestCase {
             if engine.calls.count == 7 {
                 // The first chunk of loop 2: loop 1's marker is on disk.
                 let marker = (try? String(contentsOf: url, encoding: .utf8)) ?? ""
-                XCTAssertTrue(marker.hasPrefix("ane-cputail soak 1 "), "after loop 1: '\(marker)'")
+                XCTAssertTrue(marker.hasPrefix("v2 soak ane-cputail soak 1 "), "after loop 1: '\(marker)'")
             }
         }
         let result = ForayTtsPlugin.runSoak(engine: engine, pass: .aneCputail, idLines: [[0, 1, 0], [0, 2, 0], [0, 3, 0]],

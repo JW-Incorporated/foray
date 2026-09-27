@@ -29,7 +29,7 @@ import {
   V3_PASSES, BACKGROUND_SAFE_PASSES, COREML_PASSES, PROBE_SPEEDS, TARGET_CONTENT_RTF, BREAK_EVEN_CONTENT_RTF,
   COREML_DECISION_RTF, CML_CODES, CML_STAGES, KEEP_ALIVE_STATES, SCREEN_STATES, SPEED_VERDICTS,
   screenOf, speedVerdict, passVerdicts, formatProbeTable, wavPasses, playProbeWav, summarizeSoak, formatSoakReport,
-  stopProbeSoak,
+  stopProbeSoak, summarizeKill, readProbeKills, ackProbeKills, resetProbeSkips, INPUTS_RE,
 } from "./kokoro-probe.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -1076,13 +1076,15 @@ function v3Record(pass, speed, { rtf, ok = true, reason = "", nonFinite = 0, fai
 
 const V3_ANSWER = {
   ok: true, platform: "ios", speeds: [1, 1.5],
+  /* Probe v3.1's run order: ORT first, then Core ML CPU-only, then the
+     Neural Engine, `ane` last. */
   passes: [
-    v3Record("ane", 1, { rtf: 0.05 }), v3Record("ane", 1.5, { rtf: 0.04 }),
     v3Record("ort-cpu-t2", 1, { rtf: 0.4, cpu: 0.7 }), v3Record("ort-cpu-t2", 1.5, { rtf: 0.3, cpu: 0.5 }),
-    v3Record("ane-cputail", 1, { rtf: 0.08, cpu: 0.05 }), v3Record("ane-cputail", 1.5, { rtf: 0.06, cpu: 0.04 }),
     v3Record("ort-cpu-t3", 1, { rtf: 0.38, cpu: 0.9 }), v3Record("ort-cpu-t3", 1.5, { rtf: 0.6, cpu: 0.8 }),
-    v3Record("cml-cpu", 1, { rtf: 0.3 }), v3Record("cml-cpu", 1.5, { rtf: 0.25, nonFinite: 1, failures: 1 }),
     v3Record("ort-cpu-t4", 1, { rtf: 0.9 }), v3Record("ort-cpu-t4", 1.5, { rtf: 0.8 }),
+    v3Record("cml-cpu", 1, { rtf: 0.3 }), v3Record("cml-cpu", 1.5, { rtf: 0.25, nonFinite: 1, failures: 1 }),
+    v3Record("ane-cputail", 1, { rtf: 0.08, cpu: 0.05 }), v3Record("ane-cputail", 1.5, { rtf: 0.06, cpu: 0.04 }),
+    v3Record("ane", 1, { rtf: 0.05 }), v3Record("ane", 1.5, { rtf: 0.04 }),
   ],
 };
 
@@ -1096,7 +1098,7 @@ test("v3: twelve records, one per pass x speed, each with the content AND wall R
   assert.equal(records.length, 12);
   assert.deepEqual(records.map((r) => r.pass), V3_PASSES.flatMap((p) => [p, p]));
   assert.deepEqual(records.map((r) => r.speed), V3_PASSES.flatMap(() => [...PROBE_SPEEDS]));
-  const ane15 = records[1];
+  const ane15 = records[11];
   assert.ok(Math.abs(ane15.rtfContentWarm - 0.04) < 1e-9);
   assert.ok(Math.abs(ane15.rtfWarm - 0.06) < 1e-9, "the wall RTF is over the speed-1.5 audio");
   assert.ok(Math.abs(ane15.cpuPerContentSec - 1) < 1e-9);
@@ -1105,8 +1107,8 @@ test("v3: twelve records, one per pass x speed, each with the content AND wall R
   assert.equal(ane15.screen, "locked");
   assert.equal(ane15.keepAlive, "audio");
   assert.equal(ane15.providerBasis, "requested");
-  assert.equal(records[2].intraThreads, 2);
-  assert.equal(records[2].route, null, "an ORT pass has no Core ML route");
+  assert.equal(records[0].intraThreads, 2, "ORT runs first (probe v3.1)");
+  assert.equal(records[0].route, null, "an ORT pass has no Core ML route");
   /* The WAVs are named by PASS only (§5 item 10); the drawer plays them
      natively, so no path is ever on the wire. MUTATION: read `hasWav` from
      the 1.0 record — no pass offers a play button. */
@@ -1155,7 +1157,7 @@ test("v3: the verdict per pass against the 1.5x target, with the doc's margin", 
   assert.equal(speedVerdict({ ok: true, rtfContentWarm: 0.001 }).verdict, "unmeasured", "below the floor nothing rendered");
   assert.equal(speedVerdict({ ok: true, rtfContentWarm: 0.2, synthFailures: 1, nonFiniteLines: 0, lines: 15 }).verdict, "no");
   assert.deepEqual([...BACKGROUND_SAFE_PASSES], V3_PASSES.filter((p) => p !== "ane"));
-  assert.deepEqual([...COREML_PASSES], ["ane", "ane-cputail", "cml-cpu"]);
+  assert.deepEqual([...COREML_PASSES], ["cml-cpu", "ane-cputail", "ane"]);
   assert.equal(COREML_DECISION_RTF, 0.4);
 });
 
@@ -1182,8 +1184,8 @@ test("v3: the drawer's table, one verdict per pass, and the decision rule, reada
   assert.match(formatProbeTable(refused), /^ane .* could not run: coreml-requires-ios17$/m);
   assert.equal(formatProbeTable([]), "");
   /* The per-record report says which speed and prints the content RTF. */
-  assert.match(formatProbeReport(summarizePasses({ native: V3_ANSWER })[1]), /^voice probe \[ane @1\.5x\]: /m);
-  assert.match(formatProbeReport(summarizePasses({ native: V3_ANSWER })[1]), /^  content RTF   cold 0\.33  warm 0\.04 /m);
+  assert.match(formatProbeReport(summarizePasses({ native: V3_ANSWER })[11]), /^voice probe \[ane @1\.5x\]: /m);
+  assert.match(formatProbeReport(summarizePasses({ native: V3_ANSWER })[11]), /^  content RTF   cold 0\.33  warm 0\.04 /m);
 });
 
 test("v3: the screen a record ran under, from its per-chunk samples", () => {
@@ -1196,7 +1198,8 @@ test("v3: the screen a record ran under, from its per-chunk samples", () => {
   assert.equal(screenOf(7, 0, 15), "mixed");
   assert.equal(screenOf(null, null, 15), null);
   assert.deepEqual([...SCREEN_STATES], ["unlocked", "locked", "background", "mixed"]);
-  assert.deepEqual([...KILLED_STAGES], ["load", "synth", "soak"]);
+  assert.deepEqual([...KILLED_STAGES], ["load", "compile", "load-warm", "first-predict", "synth", "wav", "close", "soak"],
+    "iOS ProbeBreadcrumb.STAGES, in order (probe v3.1)");
 });
 
 test("v3: a Core ML failure is named by code and stage, by closed set", () => {
@@ -1322,4 +1325,210 @@ test("v3 review: the soak can be STOPPED, and a stopped or failed soak says so a
   assert.ok(IOS_PLUGIN.indexOf('call.getString("mode") == "stop"') < IOS_PLUGIN.indexOf("Self.probeQueue.async"),
     "the stop is answered BEFORE the probe queue, where the soak itself runs");
   assert.match(IOS_MATRIX, /shouldStop: \(\) -> Bool = \{ ProbeSoakStop\.shared\.isRequested \}/);
+});
+
+/* ==================================================================== */
+/* probe v3.1: crash-resilient and self-reporting (2026-09-27)           */
+/* ==================================================================== */
+
+/** A diagnostics ring in memory, and its formatted lines. */
+async function ringWith(write) {
+  const { DiagnosticLog, PlayerDiagnostics, formatDiagnosticReport } = await import("./diagnostic-log.js");
+  const map = new Map();
+  const storage = { getItem: (k) => (map.has(k) ? map.get(k) : null), setItem: (k, v) => map.set(k, String(v)), removeItem: (k) => map.delete(k) };
+  let t = Date.UTC(2026, 8, 27, 14, 30, 0);
+  const now = () => (t += 1000);
+  const log = new DiagnosticLog({ storage, now });
+  const diag = new PlayerDiagnostics({ log, now, isHidden: () => false });
+  await write(diag);
+  return { entries: log.read().entries, text: formatDiagnosticReport(log.read()) };
+}
+
+/** The founder's crash as the native ledger reports it at the next launch:
+    the `ane` pass, speed 1.0, the vocoder's first predict, with shapes. */
+const KILL_REPORT = {
+  platform: "ios", id: "1790000000000-1790000000500-1790000100000", reportedAt: 1790000100000,
+  killedPass: "ane", killedStage: "first-predict", killedChunksDone: 0, killedPeakBytes: 812 * MiB,
+  killedMode: "matrix", killedSpeed: 1, killedSub: "vocoder", killedTokens: 42, killedFrames: 310,
+  killedIn: "asr:1x512x310,x_source_0:1x22x7440", killedRun: 1790000000000,
+  skipped: ["cml-cpu", "ane-cputail", "ane"],
+  completed: [v3Record("ort-cpu-t2", 1, { rtf: 0.4 }), v3Record("ort-cpu-t2", 1.5, { rtf: 0.3 })],
+};
+
+test("v3.1: the ORT passes run first, Core ML after, and `ane` last — on both halves", () => {
+  /* Build 2026092705 ran `ane` first and died before a single row. MUTATION:
+     put a Core ML pass back ahead of an ORT one in either file. */
+  const firstCoreML = V3_PASSES.findIndex((p) => COREML_PASSES.includes(p));
+  assert.equal(firstCoreML, 3);
+  assert.ok(V3_PASSES.slice(0, firstCoreML).every((p) => p.startsWith("ort-")));
+  assert.equal(V3_PASSES.at(-1), "ane");
+  assert.ok(V3_PASSES.indexOf("cml-cpu") < V3_PASSES.indexOf("ane-cputail"), "CPU-only Core ML before the Neural Engine");
+  const swiftOrder = [...IOS_MATRIX.matchAll(/^\s+case (\w+)(?: = "([a-z0-9-]+)")?$/gm)]
+    .map((m) => m[2] ?? m[1]).filter((c) => V3_PASSES.includes(c));
+  assert.deepEqual(swiftOrder, V3_PASSES);
+});
+
+test("v3.1: each pass's rows are written THE MOMENT THE PASS ENDS, once each, even if the run never answers", async () => {
+  /* The founder's crash in pass 1 wrote nothing because rows were only written
+     when the whole matrix answered. MUTATION: emit only after
+     `tts.kokoroProbe` resolves — the rows below are not there while the run
+     is still in flight. MUTATION: drop the de-duplication — ort-cpu-t2 is
+     written twice. */
+  let passListener = null;
+  let resolveRun;
+  const written = [];
+  let sent = null;
+  const tts = {
+    onProbePass: async (fn) => { passListener = fn; return () => { passListener = null; }; },
+    kokoroProbe: (opts) => { sent = opts; return new Promise((r) => { resolveRun = r; }); },
+  };
+  const run = runKokoroProbe({ tts, passage: PASSAGE, onRecord: (r) => written.push(`${r.pass}@${r.speed}`), armCoreML: true });
+  for (let i = 0; i < 50 && !resolveRun; i++) await Promise.resolve();
+  assert.equal(typeof passListener, "function", "subscribed before the run starts");
+  assert.equal(typeof resolveRun, "function", "the run is in flight");
+  passListener({ platform: "ios", pass: "ort-cpu-t2", passes: V3_ANSWER.passes.slice(0, 2) });
+  passListener({ platform: "ios", pass: "ort-cpu-t3", passes: V3_ANSWER.passes.slice(2, 4) });
+  assert.deepEqual(written, ["ort-cpu-t2@1", "ort-cpu-t2@1.5", "ort-cpu-t3@1", "ort-cpu-t3@1.5"],
+    "two passes' rows are in the record while the run is still going");
+  assert.equal(sent.armCoreML, true, "the arm switch travels");
+  resolveRun(V3_ANSWER);
+  const records = await run;
+  assert.equal(records.length, 12);
+  assert.equal(written.length, 12, "every record written exactly once");
+  assert.deepEqual(written.slice(4), V3_PASSES.slice(2).flatMap((p) => [`${p}@1`, `${p}@1.5`]));
+  assert.equal(passListener, null, "unsubscribed when the run answers");
+  /* No live event (an older shell): every row still lands, once. */
+  const late = [];
+  await runKokoroProbe({ tts: fakeTts(V3_ANSWER), passage: PASSAGE, onRecord: (r) => late.push(r.pass) });
+  assert.equal(late.length, 12);
+  /* A refusal is written too. */
+  const refusal = [];
+  await runKokoroProbe({ tts: null, passage: PASSAGE, onRecord: (r) => refusal.push(r.reason) });
+  assert.deepEqual(refusal, ["no-bridge"]);
+  /* An unarmed call sends no arm flag. */
+  let unarmed = null;
+  await runKokoroProbe({ tts: { kokoroProbe: async (o) => { unarmed = o; return V3_ANSWER; } }, passage: PASSAGE });
+  assert.equal(unarmed.armCoreML, undefined);
+});
+
+test("v3.1: a crash is read at the NEXT LAUNCH as its own row, with the finished passes, then acknowledged", async () => {
+  /* MUTATION: drop `readProbeKills`'s `completed` — passes 1-3 of a run that
+     died in pass 4 vanish. MUTATION: ack before the rows are written
+     (client.js, pinned in test/voice-probe-switch.test.js). */
+  const calls = [];
+  const tts = { kokoroProbe: async (o) => {
+    calls.push(o);
+    if (o.mode === "status") {
+      return { ok: true, mode: "status", platform: "ios", bnnsAffected: true,
+        reportsJson: JSON.stringify([KILL_REPORT]),
+        skippedJson: JSON.stringify([{ pass: "cml-cpu", killedStage: "first-predict", killedSub: "vocoder" }, { pass: "../x" }]) };
+    }
+    if (o.mode === "killed-ack") return { ok: true, mode: "killed-ack", removed: o.ids.length };
+    if (o.mode === "reset") return { ok: true, mode: "reset", cleared: 3 };
+    return { ok: false };
+  } };
+  const status = await readProbeKills({ tts });
+  assert.equal(status.bnnsAffected, true);
+  assert.equal(status.kills.length, 1);
+  const [kill, ...completed] = status.kills[0].records;
+  assert.equal(status.kills[0].id, KILL_REPORT.id);
+  assert.equal(kill.reason, "killed-app");
+  assert.equal(kill.pass, "ane");
+  assert.equal(kill.speed, 1);
+  assert.equal(kill.prevKilledStage, "first-predict");
+  assert.equal(kill.prevKilledSub, "vocoder");
+  assert.equal(kill.prevKilledTokens, 42);
+  assert.equal(kill.prevKilledFrames, 310);
+  assert.equal(kill.prevKilledIn, "asr:1x512x310,x_source_0:1x22x7440");
+  assert.equal(kill.prevKilledPeakMb, 812);
+  assert.deepEqual(kill.skippedPasses, ["cml-cpu", "ane-cputail", "ane"]);
+  assert.deepEqual(completed.map((r) => `${r.pass}@${r.speed}`), ["ort-cpu-t2@1", "ort-cpu-t2@1.5"]);
+  assert.deepEqual(status.skipped, [{ pass: "cml-cpu", stage: "first-predict", sub: "vocoder" }], "an unknown pass is dropped");
+  assert.deepEqual(await ackProbeKills({ tts, ids: [KILL_REPORT.id, "../../x"] }), { ok: true, removed: 1 });
+  assert.deepEqual(calls.find((c) => c.mode === "killed-ack").ids, [KILL_REPORT.id], "only id-shaped ids travel");
+  assert.deepEqual(await resetProbeSkips({ tts }), { ok: true, cleared: 3 });
+  /* An older shell (no status mode) and no bridge: nothing, never a throw. */
+  assert.deepEqual((await readProbeKills({ tts: fakeTts({ ok: false, reason: "passage-empty" }) })).kills, []);
+  assert.deepEqual((await readProbeKills({ tts: null })).kills, []);
+  assert.deepEqual((await readProbeKills({ tts: { kokoroProbe: async () => { throw new Error("x"); } } })).kills, []);
+  assert.deepEqual((await readProbeKills({ tts: fakeTts({ ok: true, mode: "status", reportsJson: "{not json" }) })).kills, []);
+
+  /* THE ROW the next paste shows, whether or not he re-runs the probe. */
+  const { text } = await ringWith((diag) => { for (const r of status.kills[0].records) diag.voiceProbe(r, {}); });
+  assert.match(text, /voiceProbe +kokoro-probe PROBE KILLED 4A: pass ane speed 1 stage first-predict model vocoder chunk 0 tokens 42 frames 310 in asr:1x512x310,x_source_0:1x22x7440 peak 812MB {2}next run skips cml-cpu,ane-cputail,ane/);
+  assert.match(text, /voiceProbe +kokoro-probe.*\[pass ort-cpu-t2 @1\.5x\]/, "the pass that finished before the crash is in the paste");
+  /* And the drawer's words. */
+  assert.match(formatProbeReport(kill), /^  4A WAS KILLED in the ane pass, in the vocoder predict of chunk 0 @1x \(tokens 42 frames 310 in asr:1x512x310,x_source_0:1x22x7440\), peak 812 MB$/m);
+  assert.match(formatProbeReport(kill), /^  next runs skip cml-cpu, ane-cputail, ane until "Reset skipped passes"$/m);
+});
+
+test("v3.1: a skipped pass and a gated Core ML pass say so, and where the skipped one died", async () => {
+  /* MUTATION: drop `skipped-killed-last-run` or `coreml-bnns-os` from
+     PROBE_REASONS — the row degrades to `refused` and the why is lost. */
+  for (const reason of ["skipped-killed-last-run", "coreml-bnns-os", "killed-app"]) {
+    assert.ok(PROBE_REASONS.includes(reason), reason);
+  }
+  assert.ok(IOS_MATRIX.includes('"skipped-killed-last-run"'));
+  const ledger = fs.readFileSync(path.join(REPO, "mobile/plugins/foray-tts/ios/Sources/ForayTtsPlugin/ProbeLedger.swift"), "utf8");
+  assert.match(ledger, /static let REASON = "coreml-bnns-os"/);
+  assert.match(ledger, /\(version\.majorVersion, version\.minorVersion\) >= \(26, 4\)/, "gated from iOS 26.4");
+  const records = summarizePasses({ native: { ok: true, platform: "ios", passes: [
+    { pass: "cml-cpu", speed: 1, ok: false, reason: "skipped-killed-last-run", detail: "first-predict-vocoder",
+      prevKilledPass: "ane", prevKilledStage: "first-predict", prevKilledChunksDone: 0, prevKilledPeakBytes: 812 * MiB,
+      prevKilledSpeed: 1, prevKilledSub: "vocoder", prevKilledTokens: 42 },
+    { pass: "ane", speed: 1, ok: false, reason: "coreml-bnns-os" },
+  ] } });
+  assert.equal(records[0].reason, "skipped-killed-last-run");
+  assert.equal(records[0].synthReason, "first-predict-vocoder");
+  assert.equal(records[1].reason, "coreml-bnns-os");
+  assert.match(formatProbeReport(records[0]), /SKIPPED: it killed 4a in the ane pass, in the vocoder predict of chunk 0 @1x \(tokens 42\)/);
+  assert.match(formatProbeTable(records), /^ane .* could not run: coreml-bnns-os$/m);
+  const { text } = await ringWith((diag) => { for (const r of records) diag.voiceProbe(r, {}); });
+  assert.match(text, /could not measure: skipped-killed-last-run\/first-predict-vocoder.*SKIPPED-IT-KILLED-4A ane first-predict vocoder chunk 0 @1x tokens 42 peak 812MB/);
+  assert.match(text, /could not measure: coreml-bnns-os/);
+});
+
+test("v3.1: what the engine was handed travels per record and reaches the row", async () => {
+  /* The coordinator's ask after the .ips: input shapes per stage in the pass
+     rows. MUTATION: drop `stageIn` from v3Fields or the ring's row. */
+  const [r] = summarizePasses({ native: { ok: true, platform: "ios", passes: [
+    { ...v3Record("ane-cputail", 1.5, { rtf: 0.06 }), maxTokens: 58, maxFrames: 490,
+      stageIn: ["1x58", "1x58", "1x640x490", "1x512x490", "1x980", "1x512x490", "1x512x7201"] },
+  ] } });
+  assert.equal(r.maxTokens, 58);
+  assert.equal(r.maxFrames, 490);
+  assert.deepEqual(r.stageIn, ["1x58", "1x58", "1x640x490", "1x512x490", "1x980", "1x512x490", "1x512x7201"]);
+  assert.equal(summarizePasses({ native: { ok: true, platform: "ios", passes: [
+    { ...v3Record("ane", 1, { rtf: 0.1 }), stageIn: ["1x58", "/etc", "-", "-", "-", "-", "-"] }] } })[0].stageIn, null);
+  const { text } = await ringWith((diag) => diag.voiceProbe(r, {}));
+  assert.match(text, / in tok<=58 frames<=490 stages 1x58\/1x58\/1x640x490\/1x512x490\/1x980\/1x512x490\/1x512x7201/);
+  /* One shape rule on both sides of the import boundary. */
+  const diagMod = await import("./diagnostic-log.js");
+  assert.equal(String(diagMod.PROBE_INPUTS_RE), String(INPUTS_RE));
+  assert.ok(INPUTS_RE.test("asr:1x512x310,x_pre:1x512x7201"));
+  assert.ok(!INPUTS_RE.test("asr:1x512 x310"));
+  assert.ok(!INPUTS_RE.test("/private/var:1"));
+});
+
+test("v3.1: the native half breadcrumbs every Core ML predict and every ORT run BEFORE it starts", () => {
+  /* Source pins for what XCTest executes on the Simulator (ProbeLedgerTests):
+     MUTATION: move the Core ML crumb after `model.prediction`, or the chunk's
+     crumb after `engine.synthesize`. */
+  const coreml = IOS_COREML;
+  const predict = coreml.slice(coreml.indexOf("private func predict("));
+  assert.ok(predict.indexOf('crumb("predict"') > 0 && predict.indexOf('crumb("predict"') < predict.indexOf("model.prediction(from:"),
+    "the stage's crumb is written before its prediction");
+  const load = coreml.slice(coreml.indexOf("private func loadAll("));
+  assert.ok(load.indexOf('crumb(cold ? "compile" : "load-warm"') < load.indexOf("MLModel(contentsOf:"));
+  const pass = IOS_MATRIX.slice(IOS_MATRIX.indexOf("static func measurePass("));
+  const chunkCrumb = pass.indexOf('onProgress(ProbeProgress(stage: index == 0 && k == 0 ? "first-predict" : "synth"');
+  assert.ok(chunkCrumb > 0 && chunkCrumb < pass.indexOf("engine.synthesize(ids: ids, speed: speed)"));
+  const ledger = fs.readFileSync(path.join(REPO, "mobile/plugins/foray-tts/ios/Sources/ForayTtsPlugin/ProbeLedger.swift"), "utf8");
+  assert.match(ledger, /Darwin\.fsync\(fd\)/, "the breadcrumb is fsync'd");
+  assert.match(ledger, /Darwin\.rename\(tmp\.path, url\.path\)/, "and renamed over, atomically");
+  /* The launch promotes; nothing reads-and-deletes (the v3 takeLeftover bug). */
+  assert.match(IOS_PLUGIN, /override public func load\(\) \{[\s\S]*?ProbeLedger\.shared\.promoteLeftover\(\)/);
+  const promote = ledger.slice(ledger.indexOf("func promoteLeftover("), ledger.indexOf("static func killReport("));
+  assert.ok(promote.indexOf("writeJSONArray(reports, to: killedURL)") < promote.lastIndexOf("marker.clear()"),
+    "the report is on disk before the breadcrumb is cleared");
 });

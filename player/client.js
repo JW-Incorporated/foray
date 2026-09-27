@@ -129,7 +129,7 @@ import { readBuildStamp, BUILD_STAMP_WAIT_MS } from "./build-stamp.js";
 import { createTtsBridge } from "./tts-bridge.js";
 import {
   runKokoroProbe, formatProbeReport, probeVerdict, formatProbeTable, formatSoakReport, wavPasses, playProbeWav,
-  stopProbeSoak,
+  stopProbeSoak, readProbeKills, ackProbeKills, resetProbeSkips,
 } from "./kokoro-probe.js";
 import { createInterludePlayer, readInterludePref, writeInterludePref } from "./interlude.js";
 import { makeIdbTier } from "./idb-tier.js";
@@ -607,6 +607,22 @@ if (engineShell) {
    `storageReady` never rejects (every tier failure is caught into `health()`), but
    the catch is attached anyway. It resolves with whether hydration landed inside
    the bound — see `HYDRATE_WAIT_MS` — and the boot row records that. */
+/** Probe v3.1: write each unacknowledged kill report's rows, then ack them.
+    Never throws; a web page or an older shell has nothing to report. */
+async function recordVoiceProbeKills() {
+  try {
+    const status = await readProbeKills({ tts: ttsBridge });
+    const written = [];
+    for (const kill of status.kills) {
+      for (const record of kill.records) {
+        try { diag.voiceProbe(record, {}); } catch (_) { /* the instrument must never be the outage */ }
+      }
+      if (kill.id) written.push(kill.id);
+    }
+    if (written.length) await ackProbeKills({ tts: ttsBridge, ids: written });
+  } catch (_) { /* never the outage */ }
+}
+
 storageReady.then((hydrated) => {
   diag.boot({ hydrated: hydrated === true });
   if (hydrated !== true) {
@@ -623,6 +639,14 @@ storageReady.then((hydrated) => {
      it is a write into the durable record. Asynchronous, so it lands a moment
      after the boot row; never rejects. */
   recordBuildStamp();
+  /* PROBE v3.1: a voice-probe run 4a did NOT survive is reported HERE, at
+     the next launch, as its own `voiceProbe` row (`killed-app`) — plus the
+     rows of the passes that finished before it — whether or not the founder
+     ever taps the probe again. Build 2026092705 died twice on its first pass
+     and the paste held nothing; the old kill marker only surfaced inside a
+     later COMPLETED run. After hydration like every other write; the native
+     half forgets a report only once its rows are written (`killed-ack`). */
+  recordVoiceProbeKills();
   if (typeof document !== "undefined") {
     document.addEventListener("visibilitychange", () => diag.visibility(document.hidden === true));
   }
@@ -4999,23 +5023,35 @@ const ForayPlayer = {
      NOTHING ABOUT NARRATION IS TOUCHED. No manager, no queue, no `this._voice`
      — a measurement that could change what the next narration item sounds like
      would not be a measurement. */
-  async runVoiceProbe() {
+  async runVoiceProbe({ armCoreML = false } = {}) {
     const passage = await loadProbePassage();
     /* L34 (log-gaps 2026-09-26): whether 4a was playing when the probe
        STARTED — a probe that shares the phone with a playing episode is not
        measuring the same thing as one on a quiet phone. */
     const playing = transportIsRunning();
-    /* KV-R3: the matrix — one `voiceProbe` row per pass x speed. */
-    const records = await runKokoroProbe({ tts: ttsBridge, passage, now: () => Date.now() });
-    /* Recorded WHETHER OR NOT it succeeded. "This build has no model in it" is
+    /* KV-R3: the matrix — one `voiceProbe` row per pass x speed.
+       Recorded WHETHER OR NOT it succeeded. "This build has no model in it" is
        the single most useful thing the first run can tell us, and a record
        that only kept successes would answer every failed run with silence.
-       ONE ROW PER PASS (KV-R2): the CPU pass and the CoreML pass are two
-       readings of the same passage, and §6a compares them row against row. */
-    for (const record of records) {
-      try { diag.voiceProbe(record, { playing }); } catch (_) { /* the instrument must never be the outage */ }
-    }
-    return records;
+       PROBE v3.1: each row is written AS ITS PASS ENDS (`onRecord`, from the
+       native `probePass` event), not when the whole matrix answers, so a pass
+       that kills 4a leaves every earlier pass's rows in the record.
+       `armCoreML` is the drawer's per-session "arm Core ML (may crash)"
+       switch: on iOS 26.4+ Core ML is refused without it. */
+    return runKokoroProbe({
+      tts: ttsBridge, passage, now: () => Date.now(), armCoreML: armCoreML === true,
+      onRecord: (record) => diag.voiceProbe(record, { playing }),
+    });
+  },
+
+  /* PROBE v3.1: "Reset skipped passes" — the passes that killed 4a run again
+     on the next probe. And the skip list itself, for the drawer's label. */
+  async resetVoiceProbeSkips() {
+    return resetProbeSkips({ tts: ttsBridge });
+  },
+  async voiceProbeStatus() {
+    const status = await readProbeKills({ tts: ttsBridge });
+    return { skipped: status.skipped, bnnsAffected: status.bnnsAffected };
   },
 
   /* KV-R3: THE SOAK — the best background-safe pass rendering the passage at
