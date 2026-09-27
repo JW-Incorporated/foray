@@ -1,6 +1,8 @@
 # Assessment: all Foray generation and narration rendering on the DGX Spark, narration streamed to the app
 
-Status: **assessment for founder review (2026-09-27). Nothing here is decided until the founder rules on §6/§7.**
+Status: **DRAFT assessment for founder review (2026-09-27). Nothing here is decided until the founder rules on §6/§7.**
+A completeness pass (same day) added §3.7, the prompt-injection, queue-spend, auto-merge and legal rows,
+the R2-operations and data-use cost rows, and the Phase 1 fast path.
 Read on `origin/main` @ 5645fce6 plus `origin/engine/m2`. Synthesized from six lens reviews
 (generation, narration audio, app/player, data/publish/CI, ops/roadmap, on-demand). Where the lenses
 disagreed, §3.0 records how it was resolved.
@@ -58,8 +60,10 @@ rendered, it is uploaded to a public R2 bucket, and one data PR stamps the file 
 
 | | 1,000 Forays | 10,000 Forays |
 |---|---|---|
-| Narration storage (Heart + Echo, ~14 MB per Foray) | ~14 GB, about $0.10–0.20/month | ~140 GB, about $2/month |
+| Narration storage (Heart + Echo, ~14 MB per Foray) | ~14 GB, about $0.06/month after the 10 GB free tier ($0.21 without it) | ~140 GB, about $2/month |
 | Downloads (R2 egress) | $0 | $0 |
+| R2 read operations (≈ 40 narration files per listen, ×2–3 for AVPlayer range requests; cache hits at the custom domain are not billed) | inside the 10 M/month free tier up to roughly 80–125k uncached listens a month | about $0.36 per extra million reads: up to ~$30/month at 1 M fully uncached listens (~100 M reads). The cache rule in §6 item 3 keeps most reads off R2. |
+| Listener data use | ~7 MB of narration per Foray on top of the clips (roughly 15–30% more data per Foray than today) | same |
 | Render compute on the Spark | seconds to minutes per Foray, fractions of a cent | ~$5–10 of electricity in total |
 | Spark electricity (always on) | about $4–9/month | same |
 | **Claude calls to write the Forays** | **about $1–4k in total** (~$1–4 per Foray) | **about $10–40k in total** |
@@ -105,6 +109,13 @@ it cannot serve on-demand requests.
 **Smallest first step** (Phase 1, §5). Create the bucket, domain and token. Render the three narrated
 draft Forays in Heart. Land one data PR. Listen through the drafts switch. The render tool is
 host-agnostic (CPU fp32), so this does not have to wait for the Spark to be racked.
+
+**Time to the first Heart Foray on your phone: about 2–4 working days**, if you do the Cloudflare step
+(about 30 minutes) on day 1. Most of that is the render script. `tools/narration/render-audition.py`
+(1,013 lines) already renders Kokoro, so Phase 1 adapts it rather than writing it fresh (see the "Phase 1
+fast path" in §5). The current TestFlight build plays Forays in the **JS lane**:
+`mobile/ENGINE_DEFAULT.json` gives native mode only `episode`, `continuation` and `restore`. So the JS
+`_isSynthNarration` path is what decides, and it plays a file when one is present.
 
 ---
 
@@ -301,6 +312,10 @@ Effort: S (hours), M (a day or two), L (several days), XL (a multi-card package)
 | **Drop model bundling:** `fetch-models.mjs` pins to `bundle:[]`, `inject-models.mjs`, the CI steps in `.github/actions/ios-archive` / `android-bundle`, and the size budgets in `test/release-gates.test.js`. All DENIED. | as listed | delete | S | Keep the GPL/espeak needle scan in release-gates. |
 | **M2 (engine/m2): no scope added before the car test.** The rendered path already exists (`EngineInput.swift` `isSynthNarration`). The car test exercises speech, which remains the fallback. Afterwards, one re-drive of H5/H6 on a rendered Foray. | `docs/native-engine-plan.md` | unchanged-but-verify | S | Adding scope would invalidate the build under test. |
 | **Append + waiting state** (on-demand S2/S3): `buildForayQueue({startIndex})` or rebuild-and-diff, and "Building the next part…" on the lock screen. Swift `appendForayItems` after M2. | `player/foray-queue.js`, `player/queue-manager.js`, `player/media-session.js`, `EngineCore.swift`, `ContractDecoding.swift` | change | L | iOS may throttle background polling while locked (unexamined). |
+| **Migrate stored `cp_voice`.** Phones that picked an Apple voice store an Apple identifier. `player/default-voice.js` deliberately never writes the default, so a phone with *no* stored voice follows the new default for free. A stored Apple id needs a rule: map any non-`kokoro:` value to Heart for rendered lines, and keep it as the fallback voice. | `player/client.js`, `player/default-voice.js`, `test/voice-settings.test.js` | change | S | Without it, a founder phone that once chose Samantha may keep asking for a voice that has no files. |
+| **Keep the `foray-tts` plugin, minus Kokoro.** The system-voice fallback still runs through `player/tts-bridge.js` → `mobile/plugins/foray-tts/web/foray-tts.js` → `ForayTtsPlugin.swift`/`.java`. The pronunciation lexicon the renderer reads also lives in that plugin: `tools/narration/phonemize.py` `LEXICON_PATH` = `mobile/plugins/foray-tts/lexicon/hard-terms.json`. It is shared with `ForayTtsPlugin.swift` and `check-forays.mjs` `LEXICON_PATH`. Delete only the Kokoro files, never the plugin directory. | `mobile/plugins/foray-tts/**` | unchanged-but-verify | — | Deleting the directory would break the renderer, CI and the fallback in one go. |
+| **Other speech paths the inventory must cover:** `PreviewSpeaker.swift` (the M1 engine's audition and the NE-25c session probe) and `SessionProbe.swift`. The audition becomes `preview.m4a`; the probe's DV-9 question ("does the session survive the synthesizer?") matters only for the fallback. `player/parity/reference-engine.js` also speaks, and it must learn the fallback rule with the parity fixtures. The `narrationPulse` elapsed-time pulse on `engine/m2` (`EngineCommand.swift`) exists because speech has no position; a file does, so it is not needed on rendered lines. | `mobile/plugins/foray-audio/ios/Sources/ForayAudioPlugin/Engine/PreviewSpeaker.swift`, `SessionProbe.swift`, `player/parity/reference-engine.js` | change (after M2) | S | Parity must be re-recorded (JS first). |
+| **Test floors move with deletions.** `test/suite-integrity.test.js` floors `player/kokoro-probe.test.js` at 58, `player/tts-bridge.test.js` at 29 (it includes the kokoroProbe delegate tests) and `tools/mobile/kokoro-vocab.test.mjs` at 7. `tools/mobile/shell-invariants.test.mjs` pins `foray-tts` as a registered plugin. The deletion PR must lower or remove those floors, each with its reason. Keep `kokoro-vocab` (the renderer uses `tools/narration/kokoro-vocab.json`). | `test/suite-integrity.test.js`, `tools/mobile/shell-invariants.test.mjs` | change | S | A floor lowered without a reason is how suites silently lose coverage. |
 
 ### 3.4 Data, publish and CI
 
@@ -311,6 +326,10 @@ Effort: S (hours), M (a day or two), L (several days), XL (a multi-card package)
 | **Zod schema:** `ForayNarrationItemSchema` is `.strict()` and has no `audio_url`/`duration_sec`/`voices`/`render` (read in `backend/src/generation/forayItems.ts`). Needed only when the *pipeline* emits audio (on-demand). Phase 1 stamps audio after the pipeline, so it does not need this. | `backend/src/generation/forayItems.ts` | change (DENIED) | S | Every candidate fails if emitted before the schema changes. |
 | **Real-data suites against a backfilled `data/`** before the first render PR: `publishSuites.ts`, `prepare-webdir` seed cap (44 KB; rendered fields add ~4–8 KB per narrated Foray, only published Forays go in the seed), `foray-playback.test.js` runtime within 1 s. | `backend/src/cli/publishSuites.ts`, `tools/mobile/prepare-webdir.mjs` (DENIED), `player/foray-playback.test.js` | unchanged-but-verify | S | `runtime_sec` must be restated in the same PR as the durations. |
 | **No audio in git:** a guard that fails on `.mp3/.m4a/.wav/...` outside an allowlist (the interlude placeholder and the ClickTracks fixtures). | `test/` (new) | add | S | — |
+| **Make the Phase 2 gate machine-enforced.** `data/` is in `ALLOWED_PREFIXES` (`tools/ci/path-policy.mjs`), so a green data PR auto-merges. Nothing but a person stops a render PR from stamping `audio_url` on a *published* Foray before the fallback ships. Make that a check-forays **error** (not a warning) until a one-line constant (e.g. `RENDERED_NARRATION_ON_PUBLISHED = true`) flips in the Phase 2 PR. | `tools/foray/check-forays.mjs` | add | S | Without it, the risk-1 stop reaches listeners through an ordinary auto-merge. |
+| **The first data PR must also delete two `KNOWN_UNCOVERED` entries.** `tools/foray/fixture-coverage.test.mjs` asserts that each entry "still has no committed carrier", so the first committed `audio_url` / `duration_source:"measured"` narration line turns that test red unless the same PR deletes `narration.voice = audio_url` and `narration.duration_source = measured`. | `tools/foray/fixture-coverage.test.mjs` | change | S | Lowers the ceiling at the same time (it can only shrink). |
+| **Stale renders after a lexicon edit.** The object key hashes phonemes, but CI cannot re-phonemize (no Python in `check-forays`). So a pronunciation fix in `hard-terms.json` leaves every committed `script_sha` valid while the audio is stale. Stamp `render.lexicon_sha` (sha256 of `hard-terms.json`) and have check-forays **warn** when it differs from the committed lexicon. The Spark queues a re-render. | `tools/foray/check-forays.mjs`, render tool | add | S | `mobile/` is ALLOWED, so lexicon edits auto-merge; the re-render is the only follow-up. |
+| **Retire the on-device `tts` block rules.** check-forays already validates a `tts` block (`TTS_ENGINES = ["kokoro"]`, the lexicon-IPA-in-phonemes check) that was designed for phonemes shipped in `data/forays.json` for on-device Kokoro. With central render that shape is never emitted. Mark it unused, or move the lexicon rule to the render tool's own QA. | `tools/foray/check-forays.mjs` | change | S | Leaving it half-live invites an agent to emit phonemes again (KV-02). |
 | Publish-time network verifier, run on the Spark, never in required CI: 200 status, content type, bytes/sha, decoded duration within 50 ms, loudness, CORS. It also runs as a nightly canary. | `tools/foray/verify-narration-audio.mjs` (new, modelled on `verify-source-audio.mjs`) | add | M | Call it from a Spark wrapper, not from inside `publishForay.ts` (DENIED). |
 | **CSP / service worker:** no change. `index.html` already has `media-src https:`, and `sw.js` ignores cross-origin and media requests. `connect-src` needs the narration origin only if audio is ever `fetch()`ed (download/cache on web). | `index.html`, `sw.js` | unchanged-but-verify | S | `index.html` is unlisted (human merge). |
 
@@ -325,7 +344,12 @@ Effort: S (hours), M (a day or two), L (several days), XL (a multi-card package)
 | **Heartbeat + `spark-watch.yml`:** the Spark writes a secret-free heartbeat (build tag, last jobs, queue depth, disk, GPU temperature, render failures). An hourly keyless Action reuses `watch-release.mjs`'s sticky-issue logic: red if the heartbeat is older than 2 h, disk is under 15%, or a queued Foray has had no PR for 24 h. | `.github/workflows/spark-watch.yml` (DENIED), `tools/ops/spark-watch.mjs` (new) | add | S | — |
 | **Backups:** nightly rclone of candidates, checkpoints and logs to a private `foray-ops` bucket. Secrets are escrowed in your password manager. | `tools/spark/backup.sh` (new) | add | S | — |
 | **Docs of record:** DECISIONS entry (D1, D2), amendments to generation-architecture §1.2/§1.4/§4.7a/§6.3, a STATE workstream entry, Spark rows in `runners.md`, superseded banners on the KV, speed and bundled-voice decks. | `docs/DECISIONS.md` (DENIED), `docs/curation/generation-architecture.md`, `STATE.md`, `docs/agents/runners.md`, the voice decks | change | S | Until this merges, agents following the KV deck keep building on-device. |
-| **Legal:** privacy-policy sentence that 4a's own narration is served through Cloudflare (IP and user agent, like any host). Update third-party notices: ORT, FluidAudio and the Core ML chain leave the app; Kokoro stays credited as a server-side model. espeak-ng (GPL) stays server-only, but the licence check required by generation-architecture §1.2.1 is still owed. | `docs/legal/privacy-policy.md`, `data-safety.md`, `third-party-notices.md`, `test/legal-citations.test.js` | change | S | Wording needs your approval. |
+| **Legal: more than one sentence.** Central narration makes several current statements false: (1) `data-safety.md` §A6 reason 1 says "There is no 4a server in the audio path **and there cannot be**", and that is the reason the stores' "collect/share" answer rests on. With `audio.jwlabs.ai`, 4a runs a host in the audio path, so A6 needs a new narration paragraph. The answer can stay "not collected" only if nothing retains per-request IP/UA: Cloudflare's default analytics are aggregate, and Logpush must never be enabled on that zone without revisiting this. (2) The privacy-policy summary bullet "Audio plays straight from each publisher's own servers … **We never see it**" needs a narration carve-out. (3) Its storage table describes `cp_voice` as "an identifier the device's own voice list reported" (it becomes `kokoro:af_heart`), and `cp_voice_probe` goes away with the probe. (4) `third-party-notices.md` says Kokoro is "shipped" in the app (ONNX q8f16 on Android, ~86 MB); it becomes a server-side model. ONNX Runtime, FluidAudio and the Core ML chain leave the app. | `docs/legal/privacy-policy.md`, `data-safety.md`, `third-party-notices.md`, `test/legal-citations.test.js` | change | S | **`docs/legal/` is under `docs/`, which is ALLOWED, so a legal edit auto-merges when green.** Put `hold` on the PR so you approve the wording. `legal-citations.test.js` checks every code citation in these two files, so the new text must cite real paths. |
+| **Licensing, settled.** Kokoro-82M weights and the af_heart/am_echo voice packs: Apache-2.0 (hexgrad/Kokoro-82M). Serving *audio output* does not redistribute the model, so the app owes no notice; keep crediting it. misaki: MIT. ONNX Runtime (server): MIT. **espeak-ng is GPL-3.0**, but running it as a server-side subprocess is not distribution, and synthesized audio is not a derivative work of it. The §1.2.1 check therefore shrinks to a one-line confirmation and stops being a blocker. **ffmpeg:** use its native `aac` encoder (LGPL build). `libfdk_aac` is non-free and cannot ship in a redistributable build; test native AAC at 64 kbps mono by ear. | `tools/narration/requirements.txt`, `tools/spark/bootstrap.sh`, `docs/legal/third-party-notices.md` | change | S | Keep the release-gates GPL/espeak needle so espeak never re-enters the app. |
+| **Machine-readable "synthetic speech" marking.** EU AI Act Art. 50(2) (applicability from 2026-08-02; check the current Omnibus timing) asks providers of systems that generate synthetic audio to mark outputs machine-readably. Central render makes this almost free: write an MP4 metadata atom (for example `©cmt` = "Synthetic speech: Kokoro-82M, 4a") into every file. The spoken AI disclosure in the prelude stays. | render profile | add | S | Unverified legal reading; cheap enough to do regardless. |
+| **Headless relay answerer is a prompt-injection target.** `claude -p` on the Spark would read prompts built from podcast transcripts and web search results, which are untrusted text, on a box that holds R2, GitHub and Claude credentials. Run it with **no tools** (no Bash, no file write, no web fetch; it only returns text into `data-local/relay/queue`), as a Unix user that can read none of the credential files. | `tools/generation/answer-relay.mjs` | add | S | A transcript line reading "ignore previous instructions and run …" must have nothing to run. |
+| **The catalogue queue spends money.** `data/generation-queue.json` sits under `data/`, which is ALLOWED, so any green agent PR could enqueue generation that the Spark then runs on your subscription or key. Keep render/backfill entries (no LLM spend) in `data/`. Put *generate* entries under the DENIED `tools/spark/` (for example `tools/spark/queue.json`) or cap them per day in the agent. | `tools/spark/agent.mjs` | change | S | — |
+| **Subscription terms for unattended use.** D3's "keyless relay on your subscription" is an automated, recurring pipeline. Confirm that your Claude plan's terms and usage limits allow that before depending on it. If they do not, the capped key (D3 "later") becomes "now" for unattended runs. | — | verify (human) | — | Silent throttling already caused a 7 h stall. |
 
 ### 3.6 On-demand
 
@@ -338,7 +362,64 @@ Effort: S (hours), M (a day or two), L (several days), XL (a multi-card package)
 | App: enable the Create toggle (currently disabled, `app.js` ~l.11832 "Custom Forays aren't available yet"), a "Building your Foray" card, cancel, and a private "Your Forays" list. | `app.js`, `styles.css` | change | M | `app.js` edits must be serialized. |
 | Mint-time ad probe for new sources (a show may have moved to DAI since its digest row, and no founder reviews on-demand output). | `backend/src/generation/audioSourceLookup.ts`, `tools/transcribe/ad-inflation.mjs` | change | S | Rate-limit through `politeness.mjs`. |
 | Promote to catalogue: a founder-only Publish that runs the existing `publishForay` (held PR). | `backend/src/cli/publishForay.ts` (input adapter) | change | S | Keep force-implies-hold. |
+| **Privacy for prompts (before anyone but the founders uses Create).** A typed prompt is new *user content* that leaves the device (to Supabase) and goes to a third-party AI (Anthropic). That is a new row in `data-safety.md` and both store labels (App Store "User Content → Other", Play "Other user-generated content"), plus a privacy-policy section. App Store Guideline 5.1.2(i) (Nov 2025) requires clear disclosure and explicit permission before sharing personal data with third-party AI, so show a one-time consent sheet before the first Create. Today the only free text that leaves the device is the Shows search (`data-safety.md` row "In-app search history"). | `docs/legal/*`, `app.js` (consent sheet) | add | S | Founder-only use needs no store change. S4 does. |
 | **Parked:** local LLM on the Spark (estimated ttlA1 45–90 min at 70B dense, ~5–8 min for 8B/MoE with quality risk; web_search lost); G-38 act-1 fast path; push notifications (#761). | `tools/generation-bench/run.mjs`, `backend/src/config/models.ts` | park | L–XL | — |
+
+### 3.7 Completeness sweep: everything else that speaks or reads narration
+
+A grep of `player/`, `app.js`, `mobile/`, `backend/`, `tools/` and `test/` for `speechSynthesis`,
+`AVSpeech`, `TextToSpeech`, `.speak(`, `tts` and `script`. Each hit either is already in §3.3/§3.4 or has a
+verdict here.
+
+**Code that speaks narration today**
+
+| Path | What it does | Verdict |
+|---|---|---|
+| `player/queue-manager.js` `_speakNarration` / `_isSynthNarration` | Speaks a script-only line | Becomes the fallback (§3.3). |
+| `player/tts-bridge.js` → `mobile/plugins/foray-tts/web/foray-tts.js` | The page's wire to device speech (web `speechSynthesis`, or the native plugin) | **Stays**, for the fallback. Remove only its kokoroProbe delegate. |
+| `ForayTtsPlugin.swift`, `ForayTtsPlugin.java` | Native speech (AVSpeechSynthesizer / Android TextToSpeech) plus the Kokoro probe | Keep the speech half; delete the probe (§3.3). |
+| `PreviewSpeaker.swift`, `SessionProbe.swift` (foray-audio, M1 on main) | Voice-picker audition in native mode; the DV-9 session probe | Audition → `preview.m4a`; probe is fallback-only (§3.3). |
+| `EngineCore.swift` / `PlaybackRate.swift` (engine core) | Synth rate and the `speak` command | Fallback path only after M2. |
+| `player/parity/reference-engine.js` | The parity reference speaks | Learns the fallback rule (§3.3). |
+| `player/interlude.js` | The jingle, an audio **file** already | No change. Its rule ("never into narration") is unaffected. |
+
+**Code that reads narration text; the text must stay in `data/forays.json`**
+
+| Consumer | Why the text still matters |
+|---|---|
+| `app.js` `narrationScriptHtml` (+ `citesHtml`) | The Foray page shows every script in full as the **transcript**: always in the DOM, reachable by screen readers and find-in-page. This is the accessibility caption for rendered audio, so `render.script_sha` is what keeps text and audio in step. |
+| `player/foray-queue.js` `narrationDuration` | Falls back to `script.length / NARRATION_CHARS_PER_SEC` (17) when there is no `duration_sec`. |
+| `player/queue-manager.js` fallback | Speaks the script when the file fails. |
+| `backend/src/generation/*` (writeAct, stitchAct, synthesisVerify, AnthropicNarrationVerifierBuilder, veracityMetrics) | The script is what is verified; audio is derived from it. |
+| `tools/foray/check-forays.mjs` | `script` is still required, and the D1 clock is checked. |
+| `player/media-session.js` `narrationCredit` | Uses the Foray title and next item, never the script, so the lock screen is unchanged. |
+| `search-engine.js` | Does **not** index narration (0 matches). No change. There are no share cards and no `navigator.share` in `app.js`, so neither needs a change. |
+
+**Platform and behaviour checks**
+
+- **Offline.** Nothing regresses: clips already need the network, so a Foray cannot play offline today.
+  What changes is a *mid-drive* dropout. Today speech keeps talking; tomorrow an un-prefetched narration
+  file fails, and after Phase 2 falls back to the system voice. That argues for making `NarrationCache`
+  (download a Foray's ~7 MB of narration when it starts) a planned card rather than "optional". In the JS
+  lane that is a `fetch()` into IndexedDB, which needs the narration origin in `index.html` `connect-src`
+  (a human-merge file) and the bucket's CORS. In native it is `NarrationCache.swift` after M2.
+- **First launch / bundle seed.** `tools/mobile/prepare-webdir.mjs` seeds only published Forays. A seeded
+  `audio_url` points at R2, so a first launch with no network behaves as above. The only seed cost is the
+  size (§3.4).
+- **Web / PWA (Pages and Vercel).** It uses the same `html-audio-backend.js` `<audio>` path as clips, with
+  no `crossorigin` attribute (by design, header of that file), so CORS is not needed to *play*. It is
+  needed only for the verifier or for future downloads. Web listeners gain Heart too; today they get
+  whatever `speechSynthesis` offers. One caveat: Firefox on Linux decodes AAC only through system codecs.
+  If that audience matters, the MP3 profile (§3.0) is the escape hatch.
+- **Android.** Android plays Forays through the same WebView `<audio>` path, and AAC-LC `.m4a` plays on
+  every Android version. Gains: the ~86 MB q8f16 bundle and the `onnxruntime-android` dependency leave
+  (§3.3), and old Android phones stop synthesizing.
+- **Old iPhones.** The shell targets iOS 17 (`ios/project.yml` `IPHONEOS_DEPLOYMENT_TARGET`), and AAC
+  playback is universal there. This is the founder's core worry, and it is fully answered: the phone only
+  decodes a file.
+- **App Review.** Streaming our own audio from our own domain needs nothing new, and it is not downloaded
+  code (data only). The build gets ~400 MB smaller. The only new review surface is on-demand prompts
+  (Guideline 1.2 for UGC, 5.1.2(i) for third-party AI; §3.6).
 
 ---
 
@@ -401,6 +482,22 @@ runs on CPU fp32 on the PC too. That keeps the first listen from waiting on hard
 | **6. On-demand, founder-only** | You type a prompt in the app and get a private Foray. | G-20 keyed batch run; Supabase migration; worker (S1: whole Foray); pipeline render stage; Create toggle for the allowlist; then S2 act-by-act in the JS player; S3 native append after M2. | Disable the allowlist / origin gate (PH2-21). Jobs stop being claimed. |
 | **7. Consolidate** | The transcript farm runs on the Spark, and Joey's rig retires. | whisper.cpp with CUDA on sm_121; self-benchmark; GPU/CPU priority below render and generation. | Joey's rig resumes. The R2 layout is unchanged. |
 
+**Phase 1 fast path (the no-spinning-wheels version).** The full render tool in §3.2 is L-sized. For
+the first listen it can be smaller:
+
+1. **Day 1 (you, ~30 min):** bucket, domain, CORS, and a write token placed on the **PC** (see §6 item 4).
+2. **Days 1–2 (agent):** a thin `tools/narration/render-foray.mjs` that calls the renderer already in
+   `render-audition.py` per narration item. It keeps the fp32 pin, the NaN/silence rejects, the loudness
+   step and the AAC encode, and uploads with `rclone copy --immutable`. Skip `--backfill` and the Spark
+   wrapper for now.
+3. **Day 2–3:** one data PR stamps the 3 drafts (`audio_url`, `duration_sec`, `duration_source`,
+   restated `runtime_sec`). Include the two `KNOWN_UNCOVERED` deletions and the "no audio on *published*
+   Forays yet" error rule (§3.4). The stricter `render.*` rules can follow in Phase 2.
+4. **Listen** through the drafts switch.
+
+The Spark, the pull agent, Echo and the picker all wait until after this listen, and none of them
+blocks it.
+
 ---
 
 ## 6. HUMAN ACTIONS (founder-only)
@@ -415,6 +512,8 @@ runs on CPU fp32 on the PC too. That keeps the first listen from waiting on hard
    `https://foray-web-seven.vercel.app`). Add a cache rule honouring `immutable`.
 4. **Cloudflare, tokens,** each scoped to one bucket and placed on the Spark by you (never in the repo,
    GitHub Actions or Vercel):
+   - **Phase 1 only:** Object Read & Write on `foray-narration`, placed on the **PC** (the first render
+     runs there, before the Spark is up). Revoke it when the Spark takes over.
    - Object Read & Write on `foray-narration`
    - Object **Read** on `foray-transcriptions` (not Joey's read/write farm token)
    - Object Read & Write on a private `foray-ops` backup bucket
@@ -441,9 +540,14 @@ runs on CPU fp32 on the PC too. That keeps the first listen from waiting on hard
     - `fetch-models.mjs`, `inject-models.mjs`, `release-gates.test.js`
     - `Package.swift`, `build.gradle`, `.github/actions/*`
     - `prepare-webdir.mjs` (if the budget binds)
-11. **Approve the privacy-policy / data-safety sentence** naming Cloudflare as the host of 4a's narration,
-    and mirror it in the store listings if they quote that section. Commission the espeak-ng GPL check
-    (generation-architecture §1.2.1).
+11. **Approve the privacy-policy / data-safety rewrite** (§3.5 "Legal"). It covers the A6 "no 4a
+    server in the audio path" argument, the "we never see it" bullet, and the `cp_voice`/`cp_voice_probe`
+    rows. Mirror it in the store listings if they quote that section. `docs/legal/` auto-merges, so
+    the PR must carry `hold`. Never turn on Cloudflare Logpush for `audio.jwlabs.ai` without revisiting
+    A6. The espeak-ng GPL check (generation-architecture §1.2.1) shrinks to a confirmation that it runs
+    server-side only.
+11b. **Confirm that your Claude plan's terms allow an unattended headless pipeline** (the D3 relay). If
+    they do not, the capped key moves from "later" to "now" for Phase 5.
 12. **Tell Joey:** the Spark benchmark, #760 nightly and (in Phase 7) the transcript farm converge on the
     Spark. His rig and the AMD path (HA #28) eventually retire. foray-db's Apple-transcript engine (#831)
     could run there too.
@@ -451,7 +555,8 @@ runs on CPU fp32 on the PC too. That keeps the first listen from waiting on hard
 14. **On-demand (Phase 6):**
     - apply the `generation_jobs` migration to production
     - create the least-privilege worker role
-    - rule whether on-demand is ever listener-facing (Guideline 1.2 obligations)
+    - rule whether on-demand is ever listener-facing (Guideline 1.2 obligations; 5.1.2(i) consent
+      before prompts go to Anthropic; new "user content" rows in both store privacy labels)
     - later, pick a push provider (#761)
 
 ---
@@ -496,6 +601,13 @@ runs on CPU fp32 on the PC too. That keeps the first listen from waiting on hard
 | **Legal boundary:** only our own narration is hosted, publisher audio stays transient (ADR-0008), and the transcripts bucket stays private. | Separate buckets; no audio in git (guard); the loudness survey discards audio. |
 | **Engine parity:** rate, fallback and prepare rules must go JS, then re-record, then Swift. | Hold all Swift changes until M2 merges. |
 | **Decision debt:** DECISIONS says the opposite today (2026-09-12 "on-device stays"; the 2026-09-26 brief). | Phase 0 first, parking the cards in the same PR. |
+| **Auto-merge carries audio to listeners early:** `data/` is ALLOWED, so a green render PR on a published Foray merges before the fallback ships. | check-forays error until the Phase 2 constant flips (§3.4). |
+| **Legal wording auto-merges:** `docs/legal/` is under ALLOWED `docs/`. | `hold` on the legal PR; A6 rewritten, not patched (§3.5). |
+| **Prompt injection into the headless relay** (transcripts and web results are untrusted). | `claude -p` with no tools, under a user with no credentials (§3.5). |
+| **Queue-driven spend:** an auto-merged `data/` queue entry triggers LLM work. | Generate entries under DENIED `tools/spark/`, or a per-day cap (§3.5). |
+| **Stale audio after a lexicon fix** (the script is unchanged, so `script_sha` still passes). | `render.lexicon_sha` warning + re-render (§3.4). |
+| **Stored Apple `cp_voice`** on phones that chose a voice. | Migration rule (§3.3). |
+| **Mid-drive dropouts** now hit narration, which speech never did. | Prefetch; `NarrationCache` in Phase 2 for iOS (§3.7). |
 
 ---
 
@@ -517,3 +629,17 @@ runs on CPU fp32 on the PC too. That keeps the first listen from waiting on hard
 - `docs/curation/latency-model-2026-09-10.md`, `generation-kpis.md`
 - `data/forays.json` (7 Forays, 157 narration items, 55,538 chars, 0 with audio)
 - `origin/engine/m2`: `EngineInput.swift` `isSynthNarration`, `EngineCore.swift` `onLoadFailure` / `warmNextSegment` / `narrationFollowsListenerRate`
+- Completeness pass (2026-09-27):
+  - `tools/ci/path-policy.mjs` `ALLOWED_PREFIXES` (`data/`, `docs/`, `mobile/`) and `DENIED_PATTERNS`
+  - `mobile/ENGINE_DEFAULT.json`
+  - `app.js` `narrationScriptHtml` / `citesHtml`
+  - `player/tts-bridge.js`, `player/default-voice.js`, `player/media-session.js` `narrationCredit`, `player/html-audio-backend.js` (no `crossorigin`)
+  - `player/foray-queue.js` `NARRATION_CHARS_PER_SEC`
+  - `PreviewSpeaker.swift`, `SessionProbe.swift`, `PlaybackRate.swift`
+  - `tools/narration/phonemize.py` `LEXICON_PATH`
+  - `tools/foray/check-forays.mjs` `TTS_ENGINES` / `LEXICON_PATH`
+  - `tools/foray/fixture-coverage.test.mjs` `KNOWN_UNCOVERED`
+  - `test/suite-integrity.test.js` floors
+  - `docs/legal/privacy-policy.md`, `data-safety.md` §A6, `third-party-notices.md`
+  - `ios/project.yml`
+  - Android `WebViewPlayer.java`
