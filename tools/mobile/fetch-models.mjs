@@ -371,6 +371,10 @@ if (isMain) { main(); }
 /* Wrapped in a function rather than run at module scope so this file carries NO
    top-level await: `test/release-gates.test.js` is a CommonJS suite and imports
    the pin table, and a module with top-level await cannot be required. */
+/** Download attempts per pin, and the linear backoff step between them. */
+export const FETCH_ATTEMPTS = 4;
+const FETCH_BACKOFF_MS = 10_000;
+
 async function main() {
   const mode = process.argv[2] ?? "--fetch";
   const problems = pinProblems();
@@ -426,19 +430,47 @@ async function main() {
   }
   if (mode !== "--fetch") {
     console.error(`Unknown argument: ${mode}`);
-    console.error("Usage: node tools/mobile/fetch-models.mjs [--fetch|--verify|--check|--bundled <ios|android>]");
+    console.error("Usage: node tools/mobile/fetch-models.mjs [--fetch [ios|android]|--verify|--check|--bundled <ios|android>]");
     process.exit(2);
   }
+  /* `--fetch <ios|android>` fetches only what that platform bundles. A shell
+     or release build needs two files, not the audition's twelve voices — and
+     every extra download is one more chance for Hugging Face to answer 504,
+     which is what failed release 36295569334 (2026-09-27). Bare `--fetch`
+     still fetches every pin, for a workstation. */
+  const platform = process.argv[3];
+  if (platform !== undefined && !BUNDLE_PLATFORMS.includes(platform)) {
+    console.error(`--fetch takes an optional platform (${BUNDLE_PLATFORMS.join("|")}), not ${JSON.stringify(platform)}`);
+    process.exit(2);
+  }
+  const wanted = platform === undefined ? PINS : bundledPins(platform);
   const dir = path.join(REPO_ROOT, MODELS_DIR);
   let failed = 0;
-  for (const pin of PINS) {
+  for (const pin of wanted) {
     const abs = path.join(dir, pin.name);
     if (fs.existsSync(abs) && verifyBuffer(pin, fs.readFileSync(abs)).ok) continue;
-    const res = await fetch(pin.url);
-    if (!res.ok) { console.error(`  ${pin.name}: HTTP ${res.status}`); failed++; continue; }
-    const buf = Buffer.from(await res.arrayBuffer());
-    const check = verifyBuffer(pin, buf);
-    if (!check.ok) { console.error(`  ${check.reason}`); failed++; continue; }
+    /* RETRIED: a 5xx or a dropped connection is the CDN, not the pin. A hash
+       mismatch is retried too (a truncated body), but never accepted. */
+    let last = "";
+    let buf = null;
+    for (let attempt = 1; attempt <= FETCH_ATTEMPTS && !buf; attempt++) {
+      try {
+        const res = await fetch(pin.url);
+        if (!res.ok) { last = `HTTP ${res.status}`; }
+        else {
+          const got = Buffer.from(await res.arrayBuffer());
+          const check = verifyBuffer(pin, got);
+          if (check.ok) buf = got; else last = check.reason;
+        }
+      } catch (e) {
+        last = `network: ${e?.message ?? e}`;
+      }
+      if (!buf && attempt < FETCH_ATTEMPTS) {
+        console.error(`  ${pin.name}: ${last} (attempt ${attempt} of ${FETCH_ATTEMPTS}); retrying`);
+        await new Promise((r) => setTimeout(r, FETCH_BACKOFF_MS * attempt));
+      }
+    }
+    if (!buf) { console.error(`  ${pin.name}: ${last}`); failed++; continue; }
     fs.writeFileSync(abs, buf);
     console.log(`  ${pin.name}  ${buf.length} bytes  ok`);
   }

@@ -86,7 +86,7 @@ runs:
       run: |
         set -euo pipefail
         node tools/mobile/fetch-models.mjs --check
-        node tools/mobile/fetch-models.mjs --fetch
+        node tools/mobile/fetch-models.mjs --fetch ios
         node tools/mobile/inject-models.mjs ios mobile/ios/App/App/public
         node tools/mobile/inject-models.mjs ios mobile/ios/App/App/public --check
     - name: Which Xcode container did Capacitor generate?
