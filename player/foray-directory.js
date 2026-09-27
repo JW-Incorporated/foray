@@ -307,6 +307,8 @@ export function createForayDirectory({
   let started = null;
   let inflight = null;
   let lastAttemptAt = null;
+  /** Which request the refresh in flight is on, for an outcome that throws. */
+  let runStage = null;
   let last = null;
 
   /* ---- reading what is already here ---- */
@@ -402,7 +404,7 @@ export function createForayDirectory({
    * @returns {Promise<{status: string, version?: string, set?: object, code?: string}>}
    */
   async function refresh({ origin = null, reason = "manual" } = {}) {
-    if (!nonEmpty(origin)) return outcome({ status: STATUS.NO_ORIGIN, reason });
+    if (!nonEmpty(origin)) return outcome({ status: STATUS.NO_ORIGIN, reason, ms: 0, stage: "pointer", limitMs: null, held: held?.version ?? null });
     if (inflight) return { status: STATUS.BUSY, reason };
     const t = now();
     if (lastAttemptAt != null && t - lastAttemptAt < minRefreshIntervalMs) {
@@ -411,6 +413,7 @@ export function createForayDirectory({
     lastAttemptAt = t;
     inflight = run(origin, reason).catch((err) => outcome({
       status: STATUS.OFFLINE, reason, code: "threw", version: null,
+      ms: now() - t, stage: runStage, limitMs: null, held: held?.version ?? null,
     }));
     try {
       return await inflight;
@@ -421,25 +424,34 @@ export function createForayDirectory({
 
   async function run(origin, reason) {
     const t0 = now();
+    /* L26 (log-gaps 2026-09-26): EVERY outcome says how long it took, which
+       request it came from and the bound that applied, and which set was held
+       going in — `offline why=timeout` right after a resume could not be told
+       from a phone that was really offline. Only `adopted` carried `ms`. */
+    let stage = "pointer";
+    runStage = stage;
+    let limitMs = pointerTimeoutMs;
+    const heldVersion = held?.version ?? null;
+    const done = (o) => outcome({ ...o, ms: now() - t0, stage, limitMs, held: heldVersion });
     const pointerUrl = resolveFileUrl(origin, POINTER_PATH);
-    if (!pointerUrl) return outcome({ status: STATUS.NO_ORIGIN, reason });
+    if (!pointerUrl) return done({ status: STATUS.NO_ORIGIN, reason });
 
     const got = await fetchBytes(pointerUrl, pointerTimeoutMs);
-    if (!got.ok) return outcome({ status: STATUS.OFFLINE, reason, code: got.code });
+    if (!got.ok) return done({ status: STATUS.OFFLINE, reason, code: got.code });
     const doc = parseJson(got.bytes);
-    if (!doc) return outcome({ status: STATUS.BAD_POINTER, reason, code: "parse" });
+    if (!doc) return done({ status: STATUS.BAD_POINTER, reason, code: "parse" });
     const v = validatePointer(doc);
-    if (!v.ok) return outcome({ status: STATUS.BAD_POINTER, reason, code: v.code });
+    if (!v.ok) return done({ status: STATUS.BAD_POINTER, reason, code: v.code });
     const ptr = v.pointer;
 
     /* `current` only for a WHOLE held set (F-92): a partial seed at the live
        version still has the rest of the set to fetch, once. The older-than guard
        below is unchanged for it — a partial seed is still never walked backwards. */
     if (held && held.version && held.version === ptr.version && held.partial !== true) {
-      return outcome({ status: STATUS.CURRENT, reason, version: ptr.version });
+      return done({ status: STATUS.CURRENT, reason, version: ptr.version });
     }
     if (held && isOlderThan(ptr.built_at, held.built_at)) {
-      return outcome({ status: STATUS.OLDER, reason, version: ptr.version });
+      return done({ status: STATUS.OLDER, reason, version: ptr.version });
     }
 
     /* The three files, in parallel. Any one not arriving is `offline` — the held
@@ -447,33 +459,36 @@ export function createForayDirectory({
     const urls = {};
     for (const k of FILE_KEYS) {
       urls[k] = resolveFileUrl(origin, ptr.files[k]);
-      if (!urls[k]) return outcome({ status: STATUS.BAD_POINTER, reason, code: `foreign-${k}`, version: ptr.version });
+      if (!urls[k]) return done({ status: STATUS.BAD_POINTER, reason, code: `foreign-${k}`, version: ptr.version });
     }
+    stage = "files";
+    runStage = stage;
+    limitMs = filesTimeoutMs;
     const fetched = await Promise.all(FILE_KEYS.map((k) => fetchBytes(urls[k], filesTimeoutMs)));
     const docs = {};
     let unverified = 0;
     for (let i = 0; i < FILE_KEYS.length; i++) {
       const k = FILE_KEYS[i];
       const f = fetched[i];
-      if (!f.ok) return outcome({ status: STATUS.OFFLINE, reason, code: `${f.code}-${k}`, version: ptr.version });
+      if (!f.ok) return done({ status: STATUS.OFFLINE, reason, code: `${f.code}-${k}`, version: ptr.version });
       if (ptr.bytes[k] != null && f.bytes.byteLength !== ptr.bytes[k]) {
-        return outcome({ status: STATUS.TORN, reason, code: `bytes-${k}`, version: ptr.version });
+        return done({ status: STATUS.TORN, reason, code: `bytes-${k}`, version: ptr.version });
       }
       if (ptr.sha256[k]) {
         let hex = null;
         try { hex = await sha256Hex(f.bytes, subtleOf()); } catch (_) { hex = null; }
         if (hex && hex !== ptr.sha256[k]) {
-          return outcome({ status: STATUS.TORN, reason, code: `sha256-${k}`, version: ptr.version });
+          return done({ status: STATUS.TORN, reason, code: `sha256-${k}`, version: ptr.version });
         }
         if (!hex) unverified += 1;
       }
       docs[k] = parseJson(f.bytes);
-      if (!docs[k]) return outcome({ status: STATUS.TORN, reason, code: `parse-${k}`, version: ptr.version });
+      if (!docs[k]) return done({ status: STATUS.TORN, reason, code: `parse-${k}`, version: ptr.version });
     }
 
     const check = safeValidate(docs);
     if (!check.ok) {
-      return outcome({
+      return done({
         status: STATUS.INVALID, reason, code: check.code, forayId: check.forayId ?? null, version: ptr.version,
       });
     }
@@ -492,10 +507,10 @@ export function createForayDirectory({
     if (cache && typeof cache.write === "function") {
       try { await cache.write(CACHE_KEY, serializeSet(set)); } catch (_) { cacheWrite = "write-failed"; }
     }
-    return outcome({
+    return done({
       status: STATUS.ADOPTED, reason, version: set.version, set,
       forays: check.forays, playable: check.playable,
-      code: unverified ? "sha256-unverified" : null, cacheWrite, ms: now() - t0,
+      code: unverified ? "sha256-unverified" : null, cacheWrite,
     });
   }
 
@@ -507,6 +522,7 @@ export function createForayDirectory({
       code: rest.code ?? null, forayId: rest.forayId ?? null,
       forays: rest.forays ?? null, playable: rest.playable ?? null, ms: rest.ms ?? null,
       files: set ? filesOf(set) : null,
+      stage: rest.stage ?? null, limitMs: rest.limitMs ?? null, held: rest.held ?? null,
     });
     return o;
   }

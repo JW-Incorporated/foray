@@ -204,6 +204,17 @@ export class DiagnosticLog {
        user data. */
     this._cleared = null;
     this._build = null;
+    /* TWO MORE COUNTERS A CLEAR MUST NOT ERASE (log-gaps 2026-09-26, L22 and
+       L33). `_boots` numbers the page's boots, so a paste can say which boot
+       wrote a row (`== page boot 7 ==`) the way `seq` says which row it is.
+       `_refused` counts what the vocabularies below turned away, by door:
+       `sessionEvent`, `remoteCommand` and `transport` return null for a word
+       this build cannot name, and until now nothing said so — a quiet ring and
+       a ring whose native side spoke a newer vocabulary read the same. Only
+       the COUNT is kept, never the refused text. Both ride in the blob beside
+       `dropped` and survive `clear()` like `seq`; `forget()` resets them. */
+    this._boots = 0;
+    this._refused = { session: 0, remote: 0, transport: 0 };
     /* WRITES BEFORE HYDRATION ARE HELD IN MEMORY (review, 2026-09-23). The
        store behind this ring adopts the durable tier's copy of a key only if
        nothing wrote that key first (`durable-store.js`, property 2), and
@@ -256,11 +267,16 @@ export class DiagnosticLog {
     if (this._loadedUnhydrated && this._buffered.length) {
       const buffered = this._buffered;
       const build = this._build;
+      const boots = this._boots;
+      const refused = { ...this._refused };
       this._entries = null;
       this._buffered = [];
       this._loadedUnhydrated = false;
       const entries = this._load();
       if (build) this._build = build;
+      /* The counters only climb, so the larger of the two copies is the truth. */
+      this._boots = Math.max(this._boots, boots);
+      for (const k of Object.keys(this._refused)) this._refused[k] = Math.max(this._refused[k], refused[k]);
       for (const e of buffered) {
         e.seq = ++this._seq;
         entries.push(e);
@@ -331,6 +347,23 @@ export class DiagnosticLog {
       let top = Number.isInteger(parsed?.seq) ? parsed.seq : 0;
       for (const e of this._entries) if (Number.isInteger(e.seq) && e.seq > top) top = e.seq;
       this._seq = top;
+      if (Number.isInteger(parsed?.boots) && parsed.boots >= 0) this._boots = parsed.boots;
+      this._refused = refusedOf(parsed?.refused);
+      /* L32 (log-gaps 2026-09-26): A CLEAR FROM BEFORE THE MARK EXISTED. A build
+         older than #746 emptied the ring without writing `cleared`, and every
+         paste since has called those rows MISSING — the founder's 2026-09-26
+         record said `MISSING 939 of 1208` about his own Clear of 2026-09-23.
+         When the ring is whole from its first kept row to `seq` (the only gap
+         is BEFORE the oldest dropped row), that arithmetic is exactly an
+         unmarked Clear at `entries[0].seq - 1 - dropped`, so the mark is
+         written back ONCE, flagged `inferred` and with no time, because the
+         time is not known. A gap anywhere else still reads as MISSING. */
+      if (!this._cleared && this._entries.length) {
+        const missing = this._seq - this._dropped - this._entries.length;
+        if (missing > 0 && this._entries[0].seq - 1 - this._dropped === missing) {
+          this._cleared = { seq: missing, wall: null, inferred: true };
+        }
+      }
     } catch (err) {
       /* A corrupt blob is not a reason to lose the instrument. Start clean and
          SAY SO in the record, so a reader is never left wondering whether an
@@ -348,6 +381,26 @@ export class DiagnosticLog {
   get cleared() { this._load(); return this._cleared; }
   /** The running build's stamp, or null until `setBuild` has been told it. */
   get build() { this._load(); return this._build; }
+  /** How many page boots this record has numbered (L22). */
+  get boots() { this._load(); return this._boots; }
+  /** What the vocabularies refused, by door (L33) — counts, never text. */
+  get refused() { this._load(); return { ...this._refused }; }
+
+  /** The next page boot's number. Persisted with the boot row it is written on. */
+  nextBoot() {
+    this._load();
+    this._boots += 1;
+    return this._boots;
+  }
+
+  /** One refusal at `door` (`session`, `remote`, `transport`). Held in memory
+      and persisted by the next write rather than now: a refusal alone must not
+      put a `cp_` key on a device whose ring is empty (see `clear()`), and the
+      next row is never far behind the event that was refused. */
+  countRefused(door) {
+    this._load();
+    if (Object.prototype.hasOwnProperty.call(this._refused, door)) this._refused[door] += 1;
+  }
 
   /**
    * Remember which build this is, outside the ring.
@@ -413,6 +466,9 @@ export class DiagnosticLog {
       cleared: this._cleared,
       /* The running build, kept across `clear()` — see the constructor. */
       build: this._build,
+      /* L22 / L33, kept across `clear()` like `seq` — see the constructor. */
+      boots: this._boots,
+      refused: { ...this._refused },
       saveErrors: this.saveErrors,
       loadError: this.loadError,
       /* An ISO stamp at the TOP LEVEL, and it is load-bearing rather than
@@ -524,6 +580,8 @@ export class DiagnosticLog {
     this._seq = 0;
     this._dropped = 0;
     this._cleared = null;
+    this._boots = 0;
+    this._refused = { session: 0, remote: 0, transport: 0 };
     this.loadError = null;
   }
 }
@@ -679,6 +737,9 @@ export const DATA_PHASES = new Set(["boot", "refresh", "stale-shell"]);
 export const DATA_SOURCES = new Set(["bundle", "cache", "network", "sw-cache"]);
 /** The three documents, in the pointer's own vocabulary. */
 export const DATA_FILE_KEYS = ["forays", "segments", "sources"];
+/** Which request of a refresh an outcome came from (L26): the pointer, or the
+    three files it names. */
+export const DATA_STAGES = new Set(["pointer", "files"]);
 
 /* ---------- L-06: what was sent to the lock screen ----------
 
@@ -756,7 +817,96 @@ export const SESSION_KINDS = new Set([
   "interruptionBegan", "interruptionEnded", "routeChange", "mediaServicesReset",
   "background", "foreground",
   "sessionActivated", "sessionReleased", "nowPlayingReasserted",
+  /* L27 (log-gaps 2026-09-26): the phone's own pressure, from the legacy
+     plugin's observers — a thermal state change (reason nominal|fair|serious|
+     critical), Low Power Mode (on|off) and a memory warning (with `availMb`),
+     so a stall or a failed hold can be lined up against them. */
+  "thermal", "lowPower", "memoryWarning",
 ]);
+
+/* ---------- Lane B's session facts (log-gaps 2026-09-26) ----------
+
+   The wire contract `ForayAudioPlugin.swift` writes onto a session or
+   transport event, admitted here field by field: a closed set, a number, or a
+   boolean, and anything else is dropped. PORT TYPES ONLY — a route's
+   `portName` is often a person's name ("Wyatt's Car") and never enters. */
+
+/** An audio route's port type (L14, L19). */
+export const SESSION_PORTS = new Set([
+  "carplay", "a2dp", "hfp", "ble", "speaker", "receiver", "wired", "airplay", "usb", "hdmi", "other", "none",
+]);
+/** AVAudioSession's category (L15). */
+export const SESSION_CATEGORIES = new Set([
+  "playback", "ambient", "solo-ambient", "play-and-record", "record", "multi-route", "other",
+]);
+/** AVAudioSession's mode (L15). */
+export const SESSION_MODES = new Set(["spoken-audio", "default", "other"]);
+/** Why a hold or a release failed: AVAudioSession.ErrorCode, named (L13). */
+export const SESSION_ERRORS = new Set([
+  "cannot-interrupt-others", "cannot-start-playing", "insufficient-priority", "is-busy",
+  "siri-is-recording", "media-services-failed", "expired-session", "missing-entitlement",
+  "resource-not-available", "incompatible-category", "session-not-active", "other",
+]);
+/** UIApplication's state when it happened (L13, L19). */
+export const SESSION_APP_STATES = new Set(["active", "inactive", "bg"]);
+/** Why an interruption began (L16). */
+export const SESSION_INTERRUPT_WHY = new Set([
+  "default", "app-suspended", "mic-muted", "route-disconnected", "unknown",
+]);
+/** What MPNowPlayingInfoCenter held when Now Playing was re-asserted (L18). */
+export const SESSION_NP_STATES = new Set(["playing", "paused", "stopped", "interrupted", "unknown"]);
+/** The remote commands that can be enabled, in the plugin's fixed order (L18). */
+export const SESSION_NP_COMMANDS = new Set(["play", "pause", "toggle", "next", "prev", "skipf", "skipb", "seek"]);
+/** The lanes an `engineMode` row can name (L22). */
+export const ENGINE_MODES = new Set(["native", "js", "undecided"]);
+
+/* ---------- Lane A's probe facts (log-gaps 2026-09-26) ----------
+   The `summarizeProbe` keys `kokoro-probe.js` hands `voiceProbe()`, by the
+   same closed sets and shapes that file admits them with. Kept as a second
+   copy on purpose: this module imports nothing (its header), so the two are
+   pinned to each other by a test instead. */
+
+/** ORT's error code, named (L03, L36). */
+export const PROBE_ORT_CODES = new Set([
+  "fail", "invalid-argument", "no-such-file", "no-model", "engine-error", "runtime-exception",
+  "invalid-protobuf", "model-loaded", "not-implemented", "invalid-graph", "ep-fail", "oom", "other",
+]);
+/** Where in one line's inference ORT failed (L03). */
+export const PROBE_ORT_STAGES = new Set(["input", "run", "output"]);
+/** What each line of the passage did (L05). */
+export const PROBE_LINE_OUTCOMES = new Set(["ok", "threw", "no-output", "zero", "nan", "silent", "skip"]);
+/** Whether the loaded model file is the pinned one (L08). */
+export const PROBE_MODEL_PINS = new Set(["ok", "mismatch"]);
+/** ProcessInfo.thermalState, named (L09, L10). */
+export const THERMAL_STATES = new Set(["nominal", "fair", "serious", "critical"]);
+
+/** `ok,threw,…`: at most 16 outcome tokens, every one in the set, or null. */
+function probeLineOutcomesOf(v) {
+  if (typeof v !== "string" || !v) return null;
+  const items = v.split(",");
+  if (items.length > 16) return null;
+  return items.every((t) => PROBE_LINE_OUTCOMES.has(t)) ? items.join(",") : null;
+}
+
+/** A member of `set`, or null. */
+function oneOf(set, v) {
+  return typeof v === "string" && set.has(v) ? v : null;
+}
+/** A comma list whose EVERY item is an enabled-command token, or null. */
+function npCommandsOf(v) {
+  if (typeof v !== "string" || !v || v.length > 64) return null;
+  const items = v.split(",");
+  return items.every((c) => SESSION_NP_COMMANDS.has(c)) ? items.join(",") : null;
+}
+const finiteOr = (v) => (typeof v === "number" && Number.isFinite(v) ? v : null);
+const nonNegIntOr = (v) => (Number.isInteger(v) && v >= 0 ? v : null);
+const boolOr = (v) => (v === true || v === false ? v : null);
+/** Copies each `[key, value]` whose value is not null — so a row from an older
+    native build keeps exactly the shape it always had. */
+function putPresent(row, pairs) {
+  for (const [k, v] of pairs) if (v != null) row[k] = v;
+  return row;
+}
 
 /** Where a remote command physically arrived (founder, 2026-09-23). One token
     per door: iOS has two — the plugin's `MPRemoteCommandCenter` (`command-center`;
@@ -826,21 +976,43 @@ const deployTokenOf = (v) => {
     class comes before its helpers. */
 function buildStampOf(v) {
   if (!v || typeof v !== "object") return null;
-  return {
+  const out = {
     shell: v.shell === true,
     web: deployTokenOf(v.web),
     native: buildTokenOf(v.native),
     version: buildTokenOf(v.version),
   };
+  /* L09 (log-gaps 2026-09-26): the OS version from the WebView's user agent
+     (`build-stamp.js`), by the deploy-id shape, and which OS it is. Added only
+     when known, so a stamp from an older build keeps its four keys. */
+  const os = dataVersionOf(v.os);
+  if (os && os !== "unknown") out.os = os;
+  if (PLATFORMS.has(v.platform)) out.platform = v.platform;
+  return out;
 }
+
+/** The two platforms an OS version can belong to. */
+const PLATFORMS = new Set(["ios", "android"]);
 
 /** The clear mark `clear()` writes, by shape: a non-negative integer `seq` and
     a finite wall clock, or null. A corrupt mark reads as "never cleared", which
-    is the direction that makes the header's gap line FIRE rather than hide. */
+    is the direction that makes the header's gap line FIRE rather than hide.
+    The one mark with no clock is the one `_load` INFERRED for a Clear from
+    before the mark existed (L32), and it must say `inferred: true`. */
 function clearedMarkOf(v) {
   if (!v || typeof v !== "object") return null;
-  if (!Number.isInteger(v.seq) || v.seq < 0 || !Number.isFinite(v.wall)) return null;
+  if (!Number.isInteger(v.seq) || v.seq < 0) return null;
+  if (v.inferred === true && v.wall === null) return { seq: v.seq, wall: null, inferred: true };
+  if (!Number.isFinite(v.wall)) return null;
   return { seq: v.seq, wall: v.wall };
+}
+
+/** The refusal counters by shape: three non-negative integers, zero for
+    anything else. */
+function refusedOf(v) {
+  const o = v && typeof v === "object" ? v : {};
+  const n = (x) => (Number.isInteger(x) && x >= 0 ? x : 0);
+  return { session: n(o.session), remote: n(o.remote), transport: n(o.transport) };
 }
 
 export function dataTokenOf(v) {
@@ -883,13 +1055,18 @@ export function dataFileTagOf(v) {
  * else is recorded and forgotten.
  */
 export class PlayerDiagnostics {
-  constructor({ log, now = () => Date.now(), isHidden = () => false } = {}) {
+  constructor({ log, now = () => Date.now(), isHidden = () => false, getState = () => null } = {}) {
     this.log = log;
     this._now = now;
     /* Wrapped, because a surface's throwing `isHidden` must not be able to stop
        the record — `html-audio-backend.js`'s `_loadDeadlineMs` guards the same
        call for the same reason. */
     this._hidden = isHidden;
+    /* L24 (log-gaps 2026-09-26): what the player believed at an unexplained
+       stop — `{ state, item }` from the queue manager. `state=?` on every
+       `pausedUnexpectedly` row was a hard-coded null, not an unknown. Wrapped
+       like `isHidden`. */
+    this._getState = getState;
     /** The open seam entry, or null. */
     this._seam = null;
     /** The reconcile stop awaiting its landed state — see `reconciled()`. */
@@ -909,10 +1086,43 @@ export class PlayerDiagnostics {
         window would otherwise get a transition with no duration on it. Recording
         nothing yet costs nothing — this is a clock, not a write. */
     this._visSince = now();
+    /** When the page last became visible (L26), or null. */
+    this._visibleAt = null;
   }
 
   _isHidden() {
     try { return this._hidden() === true; } catch (_) { return false; }
+  }
+
+  /** L24: the player's own state and item at this instant, plus how long ago
+      the newest `remote` and `session` rows landed — the two things that can
+      explain a pause the page did not make. Each null when unknown. The state
+      is the reducer's type (`playing`, `loadingItem`), admitted by an
+      identifier shape; the item is an authored id (`dataIdOf`). */
+  _stateFacts() {
+    let s = null;
+    try { s = this._getState(); } catch (_) { s = null; }
+    const o = s && typeof s === "object" ? s : {};
+    const stateText = asText(o.state).trim();
+    const since = (type) => {
+      const wall = this._newestWall(type);
+      return wall == null ? null : Math.max(0, this._now() - wall);
+    };
+    return {
+      state: /^[A-Za-z][A-Za-z0-9-]{0,31}$/.test(stateText) ? stateText : null,
+      item: dataIdOf(o.item),
+      sinceRemoteMs: since("remote"),
+      sinceSessionMs: since("session"),
+    };
+  }
+
+  /** The page clock of the newest ring entry of `type`, or null. */
+  _newestWall(type) {
+    const entries = this.log.entries;
+    for (let i = entries.length - 1; i >= 0; i--) {
+      if (entries[i].type === type) return entries[i].wall;
+    }
+    return null;
   }
 
   /** Write what the ring held for hydration -- `DiagnosticLog.flush`. `client.js`
@@ -935,7 +1145,23 @@ export class PlayerDiagnostics {
        ring can have been superseded; null is a caller that did not say. */
     const row = { hidden: this._isHidden() };
     if (typeof hydrated === "boolean") row.hydrated = hydrated;
+    /* L22: which boot this is, numbered by the log so the count survives a
+       Clear. The report prints `== page boot N ==` above this row. */
+    if (typeof this.log.nextBoot === "function") row.bootN = this.log.nextBoot();
     return this.log.record("boot", row);
+  }
+
+  /**
+   * Where the engine decision landed (L22): `native`, `js` or `undecided`,
+   * and the reason it gave (`build-default`, `override`, `bridge-error` …),
+   * as a row in the ring — so a paste says WHEN in the timeline this page
+   * committed to a lane, not only which lane the header's snapshot shows.
+   * An unrecognised mode is dropped.
+   */
+  engineMode({ mode = null, reason = null } = {}) {
+    const m = oneOf(ENGINE_MODES, mode);
+    if (!m) return null;
+    return this.log.record("engineMode", { mode: m, reason: dataTokenOf(reason), hidden: this._isHidden() });
   }
 
   /**
@@ -947,12 +1173,12 @@ export class PlayerDiagnostics {
    * even when both are unknown, because "this build could not say" is itself
    * the finding a reader needs.
    */
-  build({ web = null, native = null, version = null, shell = false } = {}) {
+  build({ web = null, native = null, version = null, shell = false, os = null, platform = null } = {}) {
     /* Kept on the log as well as in the ring (2026-09-23): the row is history —
        which rows came from which build — and the log's copy is the running
        build, which a `clear()` must not take with the rows. The header reads
        the log's copy first, so it can name the build on a record with no rows. */
-    const stamp = this.log.setBuild({ shell, web, native, version });
+    const stamp = this.log.setBuild({ shell, web, native, version, os, platform });
     return this.log.record("build", { ...stamp });
   }
 
@@ -1091,7 +1317,10 @@ export class PlayerDiagnostics {
          pause (see `html-audio-backend.js`'s `_elementFingerprint`). Absent
          fields are null, never zero — zero is a real `readyState`. */
       this.log.record("stop", {
-        source: "element", why: "pausedUnexpectedly", state: null, hidden: this._isHidden(),
+        source: "element", why: "pausedUnexpectedly", hidden: this._isHidden(),
+        /* L24: the player's belief, its item and the distance to the newest
+           remote and session rows, instead of a hard-coded `state: null`. */
+        ...this._stateFacts(),
         hiddenForMs: this._hiddenForMs(),
         atSec: num(RE.elementTime.exec(m)?.[1]),
         readyState: num(RE.elementReady.exec(m)?.[1]),
@@ -1107,7 +1336,7 @@ export class PlayerDiagnostics {
          but cannot promise those 60 carry no query token, and this record is
          copied out of the app by hand. */
       this.log.record("stop", {
-        source: "element", why: `audio.error.code=${hit[1]}`, state: null, hidden: this._isHidden(),
+        source: "element", why: `audio.error.code=${hit[1]}`, hidden: this._isHidden(), ...this._stateFacts(),
       });
       handled = true;
     }
@@ -1115,7 +1344,7 @@ export class PlayerDiagnostics {
     hit = RE.playRejected.exec(m);
     if (hit) {
       this.log.record("stop", {
-        source: "autoplay", why: `play.rejected.${hit[1]}`, state: null, hidden: this._isHidden(),
+        source: "autoplay", why: `play.rejected.${hit[1]}`, hidden: this._isHidden(), ...this._stateFacts(),
       });
       handled = true;
     }
@@ -1168,7 +1397,7 @@ export class PlayerDiagnostics {
    * before its authored `end_sec` produces no `outPoint.reached` at all, and that
    * seam is measured exactly like any other.
    */
-  mediaEvent(name) {
+  mediaEvent(name, facts = null) {
     const n = String(name ?? "");
     if (!MEDIA_STAGES.has(n)) return false;
     if (n === "ended") this._openSeam("ended");
@@ -1179,7 +1408,7 @@ export class PlayerDiagnostics {
        `waiting` and `stalled` was dropped, and a starvation that ended in the
        page being suspended left no trace before its `stop` row. */
     if (!this._seam && (n === "waiting" || n === "stalled")) {
-      this._mediaRow(n);
+      this._mediaRow(n, facts);
       return true;
     }
     this._stage(n);
@@ -1190,7 +1419,7 @@ export class PlayerDiagnostics {
       zone fires `waiting` again and again, and uncoalesced it would evict the
       very rows that explain it. Identity, never shape, and only while it is
       still the tail. */
-  _mediaRow(name) {
+  _mediaRow(name, facts = null) {
     const entries = this.log.entries;
     if (this._lastMedia && this._lastMedia === entries[entries.length - 1] && this._lastMedia.name === name) {
       this._lastMedia.repeated += 1;
@@ -1198,9 +1427,26 @@ export class PlayerDiagnostics {
       this.log.save();
       return this._lastMedia;
     }
-    this._lastMedia = this.log.record("media", {
-      name, repeated: 1, lastWall: null, hidden: this._isHidden(), hiddenForMs: this._hiddenForMs(),
-    });
+    const row = { name, repeated: 1, lastWall: null, hidden: this._isHidden(), hiddenForMs: this._hiddenForMs() };
+    /* L25 (log-gaps 2026-09-26): the element's own state on the FIRST row of a
+       run — paused, where, readyState/networkState, how much was buffered ahead
+       of the playhead — and whether the browser thought it was online. A
+       `stalled` on a paused element being throttled in the background and one
+       on a starving playing element are different bugs. Numbers and booleans
+       only; absent on a caller that passes nothing, so the row keeps its
+       shape. */
+    const f = facts && typeof facts === "object" ? facts : null;
+    if (f) {
+      putPresent(row, [
+        ["paused", boolOr(f.paused)],
+        ["atSec", finiteOr(f.atSec)],
+        ["readyState", nonNegIntOr(f.rs)],
+        ["networkState", nonNegIntOr(f.ns)],
+        ["aheadSec", finiteOr(f.aheadSec)],
+        ["online", boolOr(f.online)],
+      ]);
+    }
+    this._lastMedia = this.log.record("media", row);
     return this._lastMedia;
   }
 
@@ -1318,7 +1564,16 @@ export class PlayerDiagnostics {
     const now = this._now();
     const forMs = this._visSince == null ? null : now - this._visSince;
     this._visSince = now;
+    if (hidden !== true) this._visibleAt = now;
     return this.log.record("visibility", { to: hidden === true ? "hidden" : "visible", forMs });
+  }
+
+  /** L26: ms since the last `visibility -> visible` transition this page saw,
+      or null when there was none (or the page is hidden now). A clock, not a
+      ring read, so a caller may ask before hydration. */
+  sinceForegroundMs() {
+    if (this._visibleAt == null || this._isHidden()) return null;
+    return Math.max(0, this._now() - this._visibleAt);
   }
 
   /**
@@ -1430,9 +1685,18 @@ export class PlayerDiagnostics {
    * @param {object} event `{ kind, reason, producer, at }` — the wire shape
    *   `ForayAudioPlugin.swift`'s `sessionEvent(kind:reason:)` writes.
    */
-  sessionEvent({ kind = null, reason = null, producer = null, at = null } = {}) {
+  sessionEvent({
+    kind = null, reason = null, producer = null, at = null,
+    to = null, from = null, rawReason = null, cat = null, mode = null, mix = null,
+    err = null, app = null, why = null, durMs = null, np = null, cmds = null, info = null,
+    other = null, hint = null, availMb = null, nseq = null, nboot = null,
+  } = {}) {
     const k = asText(kind).trim();
-    if (!SESSION_KINDS.has(k)) return null;
+    if (!SESSION_KINDS.has(k)) {
+      /* L33: refused, and COUNTED — never stored as text. */
+      this.log.countRefused?.("session");
+      return null;
+    }
     const who = asText(producer).trim();
     /* THE NATIVE CLOCK, KEPT SEPARATELY FROM `wall`. `record()` stamps `wall`
        with the PAGE's clock at the moment the event was handled, and a page
@@ -1441,7 +1705,7 @@ export class PlayerDiagnostics {
        stamp from the moment the notification fired, so the pair is the
        delivery lag, and the lag is itself a finding. */
     const nativeAt = Number.isFinite(at) && at > 0 ? at : null;
-    return this.log.record("session", {
+    const row = {
       kind: k,
       reason: dataTokenOf(reason) ?? "",
       producer: SESSION_PRODUCERS.has(who) ? who : "audio",
@@ -1449,7 +1713,33 @@ export class PlayerDiagnostics {
       lagMs: nativeAt == null ? null : this._now() - nativeAt,
       hidden: this._isHidden(),
       hiddenForMs: this._hiddenForMs(),
-    });
+    };
+    /* Lane B's facts (log-gaps 2026-09-26, L13-L20, L27), each admitted by
+       its own closed set, number or boolean and otherwise left off the row.
+       TAKEN, NOT SPREAD, for `voiceProbe`'s reason: a native addition must not
+       enter a ring that re-serialises itself on every write. */
+    putPresent(row, [
+      ["to", oneOf(SESSION_PORTS, to)],
+      ["from", oneOf(SESSION_PORTS, from)],
+      ["rawReason", Number.isInteger(rawReason) ? rawReason : null],
+      ["cat", oneOf(SESSION_CATEGORIES, cat)],
+      ["mode", oneOf(SESSION_MODES, mode)],
+      ["mix", boolOr(mix)],
+      ["err", oneOf(SESSION_ERRORS, err)],
+      ["app", oneOf(SESSION_APP_STATES, app)],
+      ["why", oneOf(SESSION_INTERRUPT_WHY, why)],
+      ["durMs", finiteOr(durMs) != null && durMs >= 0 ? durMs : null],
+      ["np", oneOf(SESSION_NP_STATES, np)],
+      ["cmds", npCommandsOf(cmds)],
+      ["info", boolOr(info)],
+      ["other", boolOr(other)],
+      ["hint", boolOr(hint)],
+      ["availMb", finiteOr(availMb) != null && availMb >= 0 ? availMb : null],
+      /* L20: stored, not printed — the header counts the gaps. */
+      ["nseq", nonNegIntOr(nseq)],
+      ["nboot", finiteOr(nboot) != null && nboot > 0 ? nboot : null],
+    ]);
+    return this.log.record("session", row);
   }
 
   /**
@@ -1468,7 +1758,10 @@ export class PlayerDiagnostics {
   transport(source, action) {
     const s = asText(source).trim();
     const a = asText(action).trim();
-    if (!TRANSPORT_SOURCES.has(s) || !TRANSPORT_ACTIONS.has(a)) return null;
+    if (!TRANSPORT_SOURCES.has(s) || !TRANSPORT_ACTIONS.has(a)) {
+      this.log.countRefused?.("transport");
+      return null;
+    }
     return this.log.record("transport", { source: s, action: a, hidden: this._isHidden() });
   }
 
@@ -1499,12 +1792,28 @@ export class PlayerDiagnostics {
    *
    * @param {object} event `{ command, action, origin, handled, deduped, at }`
    */
-  remoteCommand({ command = null, action = null, origin = null, handled = null, deduped = null, at = null } = {}) {
+  remoteCommand({
+    command = null, action = null, origin = null, handled = null, deduped = null, at = null,
+    route = null, app = null, nseq = null, nboot = null,
+  } = {}) {
     const c = asText(command).trim();
     const o = asText(origin).trim();
-    if (!REMOTE_COMMANDS.has(c) || !REMOTE_ORIGINS.has(o)) return null;
+    if (!REMOTE_COMMANDS.has(c) || !REMOTE_ORIGINS.has(o)) {
+      this.log.countRefused?.("remote");
+      return null;
+    }
     const nativeAt = Number.isFinite(at) && at > 0 ? at : null;
+    /* L19/L20 (log-gaps 2026-09-26): which route the press came over (a PORT
+       TYPE, never its name), the app's state, and the plugin's own event
+       counter. Left off the row when absent, so older rows keep their shape. */
+    const extra = putPresent({}, [
+      ["route", oneOf(SESSION_PORTS, route)],
+      ["app", oneOf(SESSION_APP_STATES, app)],
+      ["nseq", nonNegIntOr(nseq)],
+      ["nboot", finiteOr(nboot) != null && nboot > 0 ? nboot : null],
+    ]);
     return this.log.record("remote", {
+      ...extra,
       command: c,
       /* The page action is a spec word (`ROUTABLE_ACTIONS`), lower-case letters
          only; anything else is stored as empty rather than as a string from
@@ -1554,33 +1863,73 @@ export class PlayerDiagnostics {
    * native addition from silently entering a ring that re-serialises itself
    * on every one of its next 200 writes (see this file's cost note).
    */
-  voiceProbe(record = {}) {
+  voiceProbe(record = {}, ctx = {}) {
+    const r = record && typeof record === "object" ? record : {};
+    const c = ctx && typeof ctx === "object" ? ctx : {};
     const num = (v) => (Number.isFinite(v) ? v : null);
-    return this.log.record("voiceProbe", {
-      engine: typeof record.engine === "string" ? record.engine : null,
-      probeOk: record.ok === true,
-      reason: typeof record.reason === "string" ? record.reason : null,
-      provider: typeof record.provider === "string" ? record.provider : null,
-      model: typeof record.model === "string" ? record.model : null,
-      loadColdMs: num(record.modelLoadColdMs),
-      loadWarmMs: num(record.modelLoadWarmMs),
-      rtfCold: num(record.rtfCold),
-      rtfWarm: num(record.rtfWarm),
-      audioSec: num(record.audioSec),
+    const row = {
+      engine: typeof r.engine === "string" ? r.engine : null,
+      probeOk: r.ok === true,
+      reason: typeof r.reason === "string" ? r.reason : null,
+      provider: typeof r.provider === "string" ? r.provider : null,
+      model: typeof r.model === "string" ? r.model : null,
+      loadColdMs: num(r.modelLoadColdMs),
+      loadWarmMs: num(r.modelLoadWarmMs),
+      rtfCold: num(r.rtfCold),
+      rtfWarm: num(r.rtfWarm),
+      audioSec: num(r.audioSec),
       /* #685. `over 77.4s` read as a measured length and was a planning
          estimate; the RTFs were divided by it while the phone rendered
          nothing. Which of the two it is now travels WITH the number, and the
          synthesis sub-reason with it, because "could not measure" and "could
          not measure because there was no ONNX session" are one re-run apart. */
-      audioFrom: typeof record.audioFrom === "string" ? record.audioFrom : null,
-      synthReason: typeof record.synthReason === "string" ? record.synthReason : null,
-      synthFailures: num(record.synthFailures),
-      acceleratorWired: record.acceleratorWired === true,
-      peakMemoryMb: num(record.peakMemoryMb),
-      lockedOk: record.lockedScreenCompleted === true,
-      batteryPct: num(record.batteryDeltaPct),
+      audioFrom: typeof r.audioFrom === "string" ? r.audioFrom : null,
+      synthReason: typeof r.synthReason === "string" ? r.synthReason : null,
+      synthFailures: num(r.synthFailures),
+      acceleratorWired: r.acceleratorWired === true,
+      peakMemoryMb: num(r.peakMemoryMb),
+      lockedOk: r.lockedScreenCompleted === true,
+      batteryPct: num(r.batteryDeltaPct),
       hidden: this._isHidden(),
-    });
+    };
+    /* L06 + Lane A (log-gaps 2026-09-26): WHY a probe failed and ON WHAT.
+       `kokoro-probe.js`'s summarizeProbe already sanitised these; they are
+       RE-VALIDATED here by the same shapes, because this file imports nothing
+       and a ring is not the place to trust a caller. Each is added only when
+       present, so a row from an older build keeps its shape. `playing` is the
+       page's own fact (L34): whether 4a was playing when the probe started. */
+    const shaped = (re, v) => (typeof v === "string" && re.test(v) ? v : null);
+    putPresent(row, [
+      ["synthColdMs", num(r.synthColdMs)],
+      ["synthWarmMs", num(r.synthWarmMs)],
+      ["availMb", num(r.availableMemoryMb)],
+      ["lines", nonNegIntOr(r.lines)],
+      ["elapsedMs", num(r.elapsedMs)],
+      ["platform", oneOf(PLATFORMS, r.platform)],
+      ["ortCode", oneOf(PROBE_ORT_CODES, r.ortCode)],
+      ["ortOp", shaped(/^[A-Za-z][A-Za-z0-9_]{0,31}$/, r.ortOp)],
+      ["ortStage", oneOf(PROBE_ORT_STAGES, r.ortStage)],
+      ["loadErr", oneOf(PROBE_ORT_CODES, r.loadErr)],
+      ["lineOutcomes", probeLineOutcomesOf(r.lineOutcomes)],
+      ["nonFiniteLines", nonNegIntOr(r.nonFiniteLines)],
+      ["silentLines", nonNegIntOr(r.silentLines)],
+      ["ortVersion", shaped(/^[0-9][0-9.]{0,15}$/, r.ortVersion)],
+      ["intraThreads", nonNegIntOr(r.intraThreads)],
+      ["cores", nonNegIntOr(r.cores)],
+      ["modelBytes", nonNegIntOr(r.modelBytes)],
+      ["modelSha8", shaped(/^[0-9a-f]{8}$/, r.modelSha8)],
+      ["modelPin", oneOf(PROBE_MODEL_PINS, r.modelPin)],
+      ["device", shaped(/^[A-Za-z0-9._-]{1,32}$/, r.device)],
+      ["os", shaped(/^[A-Za-z0-9._-]{1,32}$/, r.os)],
+      ["thermalStart", oneOf(THERMAL_STATES, r.thermalStart)],
+      ["thermalEnd", oneOf(THERMAL_STATES, r.thermalEnd)],
+      ["lowPower", boolOr(r.lowPower)],
+      ["memWarn", boolOr(r.memWarn)],
+      ["bgAtFail", boolOr(r.bgAtFail)],
+      ["baseMemoryMb", num(r.baseMemoryMb)],
+      ["playing", boolOr(c.playing)],
+    ]);
+    return this.log.record("voiceProbe", row);
   }
 
   /**
@@ -1689,6 +2038,7 @@ export class PlayerDiagnostics {
   dataSource({
     phase = null, trigger = null, status = null, source = null, version = null,
     code = null, forayId = null, forays = null, playable = null, ms = null, files = null,
+    stage = null, limitMs = null, held = null, online = null, sinceFgMs = null,
   } = {}) {
     const n = (v) => (Number.isFinite(v) ? v : null);
     const tagged = {};
@@ -1698,7 +2048,7 @@ export class PlayerDiagnostics {
         if (t) tagged[k] = t;
       }
     }
-    return this.log.record("data", {
+    const row = {
       phase: DATA_PHASES.has(phase) ? phase : null,
       trigger: dataTokenOf(trigger),
       status: dataTokenOf(status),
@@ -1711,7 +2061,20 @@ export class PlayerDiagnostics {
       ms: n(ms),
       files: Object.keys(tagged).length ? tagged : null,
       hidden: this._isHidden(),
-    });
+    };
+    /* L26 (log-gaps 2026-09-26): `refresh(foreground) offline why=timeout`
+       could not say whether it was the 4 s bound right after a resume or a
+       phone that was really offline. So: which request the bound applied to
+       (`stage`), the bound itself, the set already held, whether the browser
+       thought it was online, and how long after the page came back. */
+    putPresent(row, [
+      ["stage", oneOf(DATA_STAGES, stage)],
+      ["limitMs", n(limitMs)],
+      ["held", dataVersionOf(held)],
+      ["online", boolOr(online)],
+      ["sinceFgMs", n(sinceFgMs) != null && sinceFgMs >= 0 ? sinceFgMs : null],
+    ]);
+    return this.log.record("data", row);
   }
 
   /**
@@ -1852,13 +2215,32 @@ function lineFor(e) {
       if (e.readyState != null) extra.push(`rs=${e.readyState}`);
       if (e.networkState != null) extra.push(`ns=${e.networkState}`);
       if (e.errorCode) extra.push(`err=${e.errorCode}`);
-      return `${head} ${e.source} ${e.why}  state=${e.state ?? "?"}  hidden=${e.hidden ? "y" : "n"}` +
+      /* L24: the item the player was on and how long since the newest remote
+         press and session event, each only when the row carries it. */
+      const belief = (e.item != null ? ` item=${e.item}` : "") +
+        (e.sinceRemoteMs != null ? ` sinceRemote ${(e.sinceRemoteMs / 1000).toFixed(1)}s` : "") +
+        (e.sinceSessionMs != null ? ` sinceSession ${ms(e.sinceSessionMs)}` : "");
+      return `${head} ${e.source} ${e.why}  state=${e.state ?? "?"}${belief}  hidden=${e.hidden ? "y" : "n"}` +
         (extra.length ? `  ${extra.join(" ")}` : "");
     }
-    case "media":
+    case "media": {
+      /* L25: the element's own state on the first row of a run, before
+         hidden=, only when the row carries it. */
+      const f = (v, dp) => (typeof v === "number" ? v.toFixed(dp) : "?");
+      const yn = (v) => (v === true ? "y" : v === false ? "n" : "?");
+      /* The element block only when the row carries an element fact: the
+         native lane's facade has no `elementFacts`, and a row with only
+         `online` must not print five `?`s for an element it does not have. */
+      const hasElement = e.paused != null || e.atSec != null || e.readyState != null ||
+        e.networkState != null || e.aheadSec != null;
+      const facts = (hasElement
+        ? ` paused=${yn(e.paused)} at ${f(e.atSec, 1)}s rs=${e.readyState ?? "?"} ns=${e.networkState ?? "?"}` +
+          ` ahead ${f(e.aheadSec, 1)}s`
+        : "") + (e.online != null ? ` online=${yn(e.online)}` : "");
       return `${head} ${e.name}` + (e.repeated > 1 ? ` x${e.repeated}` : "") +
-        (e.repeated > 1 && e.lastWall != null ? ` over ${ms(e.lastWall - e.wall)}` : "") +
+        (e.repeated > 1 && e.lastWall != null ? ` over ${ms(e.lastWall - e.wall)}` : "") + facts +
         `  hidden=${e.hidden ? "y" : "n"}` + (e.hiddenForMs != null ? `  hiddenFor ${ms(e.hiddenForMs)}` : "");
+    }
     case "visibility":
       return `${head} -> ${e.to}  after ${ms(e.forMs)}`;
     case "resume": {
@@ -1890,7 +2272,14 @@ function lineFor(e) {
       if (e.forayId) parts.push(`foray=${e.forayId}`);
       if (e.forays != null) parts.push(`n=${e.forays}`);
       if (e.playable != null) parts.push(`playable=${e.playable}`);
-      if (e.ms != null) parts.push(`took ${ms(e.ms)}`);
+      /* L26: `took 4001ms/4000` — the time against the bound that applied —
+         then which request, the set held, the browser's online flag and how
+         long after the page came back. Each only when present. */
+      if (e.ms != null) parts.push(`took ${ms(e.ms)}${e.limitMs != null ? `/${Math.round(e.limitMs)}` : ""}`);
+      if (e.stage) parts.push(`stage=${e.stage}`);
+      if (e.held) parts.push(`held=v${e.held}`);
+      if (e.online != null) parts.push(`online=${e.online ? "y" : "n"}`);
+      if (e.sinceFgMs != null) parts.push(`sinceFg ${ms(e.sinceFgMs)}`);
       return `${head} ${parts.join(" ")}  hidden=${e.hidden ? "y" : "n"}`;
     }
     case "search": {
@@ -1932,19 +2321,23 @@ function lineFor(e) {
        made from 77 seconds a planner guessed, and printed the zero that
        distinction was hiding as a triumph. */
     case "voiceProbe": {
-      if (e.probeOk !== true) {
+      const failed = e.probeOk !== true;
+      const tail = voiceProbeTail(e, failed);
+      if (failed) {
         /* A refusal used to print its code and NOTHING else, because every
            field was null on that path. `synthesis-failed` broke that premise:
            it is a refusal from a phone that loaded the model, so the load and
            memory figures are real and are the numbers #675 fought for. They
            are appended only when they exist, so `model-absent` still prints
-           the one thing that matters and no dashes. */
-        const got = (e.loadColdMs != null || e.peakMemoryMb != null)
-          ? `  load ${ms(e.loadColdMs)}/${ms(e.loadWarmMs)}` +
-            `  peak ${e.peakMemoryMb == null ? "—" : `${e.peakMemoryMb}MB`}`
-          : "";
-        return `${head} ${e.engine ?? "?"} could not measure: ${e.reason ?? "unknown"}` +
-          (e.synthReason ? `/${e.synthReason}` : "") + got;
+           the one thing that matters and no dashes — and, since 2026-09-26,
+           `hidden=` like every other line (L06). ORT's own code, the op and
+           the stage follow the reason (L03), then how many lines failed. */
+        return `${head} ${e.engine ?? "?"}${e.provider ? `/${e.provider}` : ""}` +
+          ` could not measure: ${e.reason ?? "unknown"}` +
+          (e.synthReason ? `/${e.synthReason}` : "") +
+          (e.ortCode ? ` ort=${e.ortCode}` : "") + (e.ortOp ? ` op=${e.ortOp}` : "") +
+          (e.ortStage ? ` at=${e.ortStage}` : "") +
+          (e.synthFailures ? `  failed ${e.synthFailures}/${e.lines ?? "?"}` : "") + tail;
       }
       const f2 = (v) => (Number.isFinite(v) ? v.toFixed(2) : "—");
       /* `(est)` vs `(rendered)` — #685. The zero that started that issue was a
@@ -1963,8 +2356,11 @@ function lineFor(e) {
         `  batt ${e.batteryPct == null ? "—" : `${e.batteryPct}%`}` +
         `  over ${e.audioSec == null ? "—" : `${e.audioSec.toFixed(1)}s`}` +
         `(${e.audioFrom === "rendered" ? "rendered" : "est"})` +
-        (e.synthFailures ? `  failed ${e.synthFailures}/${e.synthReason ?? "?"}` : "");
+        (e.synthFailures ? `  failed ${e.synthFailures}/${e.synthReason ?? "?"}` : "") + tail;
     }
+    /* L22: where the page's engine decision landed, in the timeline. */
+    case "engineMode":
+      return `${head} ${e.mode ?? "?"} (${e.reason ?? "?"})`;
     /* L-06. The three fields, in the order the lock screen stacks them, with
        `—` for an empty one — because "empty" is the whole finding for F15 and
        a blank between two pipes would read as a formatting accident. `sent=`
@@ -1996,14 +2392,33 @@ function lineFor(e) {
        nothing to give it to, which is its own finding. */
     case "remote":
       return `${head} ${e.command ?? "?"} -> ${e.action || "—"} from ${e.origin ?? "?"}` +
+        (e.route ? ` route=${e.route}` : "") + (e.app ? ` app=${e.app}` : "") +
         `  handled=${e.handled ? "y" : "n"}${e.deduped ? "  dup=y" : ""}  lag ${ms(e.lagMs)}  hidden=${e.hidden ? "y" : "n"}`;
     /* M-03. `lag` is the delivery lag between the plugin's own stamp and the
        page handling the event — on a suspended WebView it is the length of
-       the suspension, which is the measurement the F16 drive could not make. */
-    case "session":
-      return `${head} ${e.producer ?? "?"} ${e.kind}${e.reason ? ` (${e.reason})` : ""}` +
+       the suspension, which is the measurement the F16 drive could not make.
+       L30: when that lag is over a second, `@` is WHEN IT HAPPENED (the
+       plugin's clock) — #1032's route change printed 38 s after the fact.
+       Then Lane B's facts (L13-L18, L27), each only when the row carries it. */
+    case "session": {
+      const yn = (v) => (v ? "y" : "n");
+      return `${head} ${e.producer ?? "?"} ${e.kind}` +
+        (e.lagMs > 1000 && Number.isFinite(e.at) ? ` @${clockOf(e.at)}` : "") +
+        (e.reason ? ` (${e.reason})` : "") +
+        (e.to || e.from ? ` ${e.from ?? "?"}->${e.to ?? "?"}` : "") +
+        (e.rawReason != null ? ` raw=${e.rawReason}` : "") +
+        (e.err ? ` err=${e.err}` : "") +
+        (e.app ? ` app=${e.app}` : "") +
+        (e.why ? ` why=${e.why}` : "") +
+        (e.durMs != null ? ` dur ${(e.durMs / 1000).toFixed(1)}s` : "") +
+        (e.cat ? ` cat=${e.cat}/${e.mode ?? "?"} mix=${yn(e.mix)}` : "") +
+        (e.np ? ` np=${e.np} cmds=${e.cmds ?? "—"} info=${yn(e.info)}` : "") +
+        (e.other === true ? " other=y" : "") +
+        (e.hint === true ? " hint=y" : "") +
+        (e.availMb != null ? ` avail ${e.availMb}MB` : "") +
         `  lag ${ms(e.lagMs)}  hidden=${e.hidden ? "y" : "n"}` +
         (e.hiddenForMs != null ? `  hiddenFor ${ms(e.hiddenForMs)}` : "");
+    }
     case "transport":
       return `${head} ${e.action} from ${e.source}  hidden=${e.hidden ? "y" : "n"}`;
     case "tapFail":
@@ -2014,6 +2429,68 @@ function lineFor(e) {
     default:
       return `${head} ${JSON.stringify(e)}`;
   }
+}
+
+/**
+ * The shared end of a `voiceProbe` line (L06 + Lane A, log-gaps 2026-09-26):
+ * WHY it failed and ON WHAT, in the order a reader asks. Each part appears
+ * only when the row carries its data, so a row from an older build reads as it
+ * always did — except `hidden=`, which every probe line now ends with (it was
+ * the only line type without one).
+ *
+ *   ` lines ok,threw,…`             what each line did (reads on from `failed 4/4`)
+ *   `  load [FAILED(code) ]a/b`     failure path; success prints its own load
+ *   `  synth a/b`                   failure path; success prints its rtf block
+ *   `  mem base B peak P MB avail A MB warn=y|n`, or today's `  peak P MB`
+ *   `  ort 1.20.0 t=auto/6c`        the runtime and its threads
+ *   `  model q8f16 86033585B sha 04c658ae pin=ok`
+ *   `  iPhone15.2 iOS 18.6.2`       the phone
+ *   `  thermal nominal>fair lowPower=n`
+ *   `  nan 2/4`, `  silent 1/4`     output that was not audio (only when > 0)
+ *   `  playing=n bgAtFail=y`        whether 4a was playing; app hidden at the failure
+ *   `  hidden=y|n`                  ALWAYS
+ */
+function voiceProbeTail(e, failed) {
+  const yn = (v) => (v === true ? "y" : v === false ? "n" : "?");
+  const parts = [];
+  if (e.lineOutcomes) parts.push(` lines ${e.lineOutcomes}`);
+  if (failed) {
+    if (e.loadColdMs != null || e.peakMemoryMb != null || e.loadErr) {
+      parts.push(`  load ${e.loadErr ? `FAILED(${e.loadErr}) ` : ""}${ms(e.loadColdMs)}/${ms(e.loadWarmMs)}`);
+    }
+    if (e.synthColdMs != null || e.synthWarmMs != null) parts.push(`  synth ${ms(e.synthColdMs)}/${ms(e.synthWarmMs)}`);
+  }
+  const peak = e.peakMemoryMb == null ? "—" : `${e.peakMemoryMb}MB`;
+  if (e.baseMemoryMb != null || e.availMb != null || e.memWarn != null) {
+    /* The success line already printed `peak`, so its mem block leaves it out. */
+    parts.push("  mem" + (e.baseMemoryMb != null ? ` base ${e.baseMemoryMb}` : "") +
+      (failed ? ` peak ${peak}` : "") +
+      (e.availMb != null ? ` avail ${e.availMb}MB` : "") +
+      (e.memWarn != null ? ` warn=${yn(e.memWarn)}` : ""));
+  } else if (failed && (e.loadColdMs != null || e.peakMemoryMb != null)) {
+    parts.push(`  peak ${peak}`);
+  }
+  if (e.ortVersion != null || e.intraThreads != null || e.cores != null) {
+    const t = e.intraThreads === 0 ? "auto" : e.intraThreads ?? "?";
+    parts.push(`  ort ${e.ortVersion ?? "?"} t=${t}/${e.cores ?? "?"}c`);
+  }
+  if (e.modelBytes != null || e.modelSha8 != null || e.modelPin != null) {
+    const model = typeof e.model === "string" ? e.model.replace(/^kokoro-82m-v1\.0-/, "") : "?";
+    parts.push(`  model ${model}` + (e.modelBytes != null ? ` ${e.modelBytes}B` : "") +
+      (e.modelSha8 != null ? ` sha ${e.modelSha8}` : "") + (e.modelPin != null ? ` pin=${e.modelPin}` : ""));
+  }
+  if (e.device != null || e.os != null) {
+    parts.push(`  ${e.device ?? "?"} ${e.platform === "android" ? "Android" : "iOS"} ${e.os ?? "?"}`);
+  }
+  if (e.thermalStart != null || e.thermalEnd != null || e.lowPower != null) {
+    parts.push(`  thermal ${e.thermalStart ?? "?"}>${e.thermalEnd ?? "?"} lowPower=${yn(e.lowPower)}`);
+  }
+  if (e.nonFiniteLines > 0) parts.push(`  nan ${e.nonFiniteLines}/${e.lines ?? "?"}`);
+  if (e.silentLines > 0) parts.push(`  silent ${e.silentLines}/${e.lines ?? "?"}`);
+  if (e.playing != null) parts.push(`  playing=${yn(e.playing)}`);
+  if (e.bgAtFail != null) parts.push(`${e.playing != null ? " " : "  "}bgAtFail=${yn(e.bgAtFail)}`);
+  parts.push(`  hidden=${e.hidden ? "y" : "n"}`);
+  return parts.join("");
 }
 
 /** `web 2b808ec9d50c5b98 · native 2026092224 (1.4.0)`, with `?` for a half the
@@ -2068,6 +2545,11 @@ export const ENGINE_ROW_KINDS = Object.freeze([
   "speaker",
   /* NE-16g / NE-24: a cold play's span row (grace=, bgRemainingMs), which DV-7a reads. */
   "cold-play",
+  /* L01 (log-gaps 2026-09-26): EngineBridge's own rows — every command the page
+     sent (`cmd`: name, source, cmdSeq, a seqGap, and on a refusal a second row
+     with `result=`) and a malformed hello. The 2026-09-26 paste showed
+     `cmd x15` as a count, because the scan below never matched `row("cmd"`. */
+  "cmd", "hello",
 ]);
 
 const ENGINE_HEADER_KEYS = new Set(["seq", "at", "mono", "kind", "event", "dropped"]);
@@ -2111,9 +2593,15 @@ export function mergeEngineRows(entries, engineRows) {
   const out = [];
   let i = 0;
   let j = 0;
+  /* L30 (log-gaps 2026-09-26): a native event the page handled more than a
+     second late is placed by WHEN IT HAPPENED (its `at`), not when the page
+     woke to it — #1032's route change was handled 38 s after the fact, and
+     every engine row of those 38 s printed above its cause. Still a merge of
+     two runs: only the engine rows move relative to it, never page order. */
+  const pageKey = (e) => (Number.isFinite(e.at) && e.lagMs > 1000 ? e.at : e.wall);
   while (i < page.length || j < engine.length) {
     const takeEngine = i >= page.length
-      || (j < engine.length && engine[j].at < page[i].wall);
+      || (j < engine.length && engine[j].at < pageKey(page[i]));
     if (takeEngine) {
       out.push({ src: "engine", wall: engine[j].at, row: engine[j] });
       j++;
@@ -2174,6 +2662,12 @@ const ENGINE_LINES = {
     ...engineFields(r, ["prepared", "grace", "bgRemainingMs", "stages"], ["observedGapMs", "askedGapMs"]),
   ],
   grace: (r) => [r.event ?? "?", ...engineFields(r, ["reason", "task", "bgRemainingMs"])],
+  /* L01: the command's name first, then who sent it and its place in the
+     page's count; `result=` is the engine's refusal (Lane B writes a second
+     row only then) and `seqGap` a count that skipped. An unparseable payload
+     says INVALID in words. */
+  cmd: (r) => [r.cmd ?? "?", ...(r.invalid ? ["INVALID"] : []),
+    ...engineFields(r, ["source", "cmdSeq", "result", "seqGap"], ["cmd", "invalid"])],
   probe: (r) => [r.event ?? "?", ...engineFields(r)],
   lifecycle: (r) => [r.event ?? "?", ...engineFields(r)],
   /* The three Now Playing strings are the only free text a row may hold
@@ -2185,9 +2679,11 @@ const ENGINE_LINES = {
   },
 };
 
-/** One engine row as one line, headed like a page line plus `src=engine`. */
+/** One engine row as one line, headed like a page line plus `src=engine`.
+    `e#` since 2026-09-26 (L22): the page's ring and the engine's each count
+    from 1, and a paste that headed both `#1` could not say whose row it was. */
 export function engineLineFor(r) {
-  const head = `#${pad(r.seq, 4)} ${clockOf(r.at)} ${pad(r.kind, 10)} src=engine`;
+  const head = `e#${pad(r.seq, 4)} ${clockOf(r.at)} ${pad(r.kind, 10)} src=engine`;
   const body = ENGINE_LINES[r.kind]
     ? ENGINE_LINES[r.kind](r)
     : [r.event ?? null, ...engineFields(r)].filter((p) => p != null);
@@ -2279,11 +2775,11 @@ function medianOf(sorted) {
  * Clear) and the header lines that account for every other row.
  */
 function engineSection(engine, cleared) {
-  if (!engine || engine.rows === undefined) return { shown: [], lines: [] };
+  if (!engine || engine.rows === undefined) return { shown: [], lines: [], all: [] };
   if (!Array.isArray(engine.rows)) {
     /* Asked and not answered: an older binary without engineRead, a bridge
        that threw, a read that outlived its bound. Said, with why. */
-    return { shown: [], lines: [`engine rows not read (${engine.readError ?? "no answer"})`] };
+    return { shown: [], all: [], lines: [`engine rows not read (${engine.readError ?? "no answer"})`] };
   }
   const { rows, unreadable } = normalizeEngineRows(engine.rows);
   const lines = [];
@@ -2314,13 +2810,88 @@ function engineSection(engine, cleared) {
     lines.push(`engine rows of unknown kinds, not shown: ${[...unknown].map(([k, n]) => `${k} x${n}`).join(", ")}`);
   }
   const shown = current.filter((r) => known.has(r.kind));
+  /* L22: which engine boots the ring holds, and the span of rows each wrote —
+     one span per `build` row, up to the next one. Two builds interleave in a
+     ring that outlives an update, and the rows cannot say which wrote them. */
+  const boots = [];
+  rows.forEach((r, i) => {
+    if (r.kind !== "build") return;
+    let end = rows.length - 1;
+    for (let k = i + 1; k < rows.length; k++) if (rows[k].kind === "build") { end = k - 1; break; }
+    boots.push(`${r.bundleVersion ?? "?"} e#${r.seq}..e#${rows[end].seq}`);
+  });
+  if (boots.length) lines.push(...packHeader(`engine boots in ring ${boots.length}:`, boots));
+  /* L01: what the page asked the engine, by name and count, since the Clear.
+     A `cmd` row carrying `result` is the engine's refusal of the command
+     before it (Lane B), so it is counted as a refusal, not a second command. */
+  const cmds = shown.filter((r) => r.kind === "cmd");
+  if (cmds.length) {
+    const asked = cmds.filter((r) => r.result == null);
+    const byName = new Map();
+    for (const r of asked) {
+      const name = typeof r.cmd === "string" && r.cmd ? r.cmd : "?";
+      byName.set(name, (byName.get(name) ?? 0) + 1);
+    }
+    const names = [...byName].sort((a, b) => b[1] - a[1]).map(([k, n]) => `${k} x${n}`);
+    const refused = cmds.length - asked.length;
+    const gaps = cmds.filter((r) => r.seqGap != null && r.seqGap !== false && r.seqGap !== "n").length;
+    lines.push(...packHeader(`engine commands ${asked.length}:`, names,
+      `· ${refused} refused · ${gaps} seq gap${gaps === 1 ? "" : "s"}`));
+  }
   const seams = shown.filter((r) => r.kind === "seam");
   if (seams.length) {
     const gaps = seams.filter((r) => typeof r.observedGapMs === "number").map((r) => r.observedGapMs).sort((a, b) => a - b);
     lines.push(`engine seams ${seams.length}: ${gaps.length} audible, ${seams.filter((r) => r.prepared === true).length} prepared`
       + `, gap median ${ms(medianOf(gaps))}, worst ${ms(gaps.length ? gaps[gaps.length - 1] : null)}`);
   }
-  return { shown, lines };
+  return { shown, lines, all: rows };
+}
+
+/** The header's phone width (see formatDiagnosticReport). */
+const HEADER_WIDTH = 44;
+
+/**
+ * `lead item, item,` / `  item, item tail` — a list packed into header lines
+ * of about `HEADER_WIDTH` characters, continuation lines indented two spaces.
+ * An item is never split. `tail` (a short `· n refused` note) rides on the last
+ * line when that stays near the width, and gets a line of its own otherwise.
+ */
+function packHeader(lead, items, tail = "") {
+  const out = [];
+  let line = lead;
+  let fresh = true;
+  items.forEach((item, i) => {
+    const piece = i < items.length - 1 ? `${item},` : item;
+    const candidate = `${line} ${piece}`;
+    if (!fresh && candidate.length > HEADER_WIDTH) {
+      out.push(line);
+      line = `  ${piece}`;
+    } else {
+      line = candidate;
+    }
+    fresh = false;
+  });
+  if (tail) {
+    if (`${line} ${tail}`.length <= HEADER_WIDTH + 8) line = `${line} ${tail}`;
+    else { out.push(line); line = `  ${tail}`; }
+  }
+  out.push(line);
+  return out;
+}
+
+/** `  item, item,` / `  item` — a list packed under a header line that ends
+    in a colon, every line indented two spaces (L31). */
+function packList(items) {
+  const out = [];
+  let line = "";
+  items.forEach((item, i) => {
+    const piece = i < items.length - 1 ? `${item},` : item;
+    if (!line) { line = `  ${piece}`; return; }
+    const candidate = `${line} ${piece}`;
+    if (candidate.length > HEADER_WIDTH) { out.push(line); line = `  ${piece}`; } else line = candidate;
+  });
+  if (line) out.push(line);
+  return out;
 }
 
 /**
@@ -2340,8 +2911,13 @@ function engineSection(engine, cleared) {
  * Without it the header still carries the engine line (`engine=js
  * reason=undecided`): which engine played is the question every other line in
  * a paste depends on.
+ *
+ * `opts.tzOffsetMin` (log-gaps 2026-09-26, L21) is the phone's
+ * `Date.getTimezoneOffset()`, for the header's `clock UTC (device UTC-07:00)`
+ * line — a zone, never a place. Injected like every clock in this file; the
+ * default reads the running page's, and tests pin it.
  */
-export function formatDiagnosticReport(record, engine = null) {
+export function formatDiagnosticReport(record, engine = null, { tzOffsetMin = new Date().getTimezoneOffset() } = {}) {
   const r = record ?? {};
   const entries = Array.isArray(r.entries) ? r.entries : [];
   const seams = entries.filter((e) => e.type === "seam");
@@ -2410,27 +2986,94 @@ export function formatDiagnosticReport(record, engine = null) {
   const tiers = Array.isArray(r.store?.tiers) && r.store.tiers.length ? r.store.tiers.join("+") : "no store";
   const hydrated = r.store?.hydrated == null ? "" : `, hydrated=${r.store.hydrated ? "y" : "n"}`;
   const where = `${key} (${tiers}${hydrated})`;
-  const gapLine = missing > 0
-    ? `MISSING ${missing} of ${since} recorded rows: not in this ring, not dropped — ${where} was cleared or lost`
-    : missing < 0
-      ? `INCONSISTENT: ${entries.length} rows exceed the ${since} recorded — ${where}`
-      : null;
+  /* L32 (log-gaps 2026-09-26): NOT EVERY GAP IS A LOSS. When the ring is whole
+     from its oldest kept row up to `seq`, the only rows unaccounted for come
+     before everything the ring ever dropped — which is exactly what a Clear
+     from a build older than the clear mark (#746) leaves behind. The
+     2026-09-26 paste said `MISSING 939 of 1208` about the founder's own Clear
+     of 2026-09-23 (1208 − 69 − 200 = 939, and the oldest row is #1009 =
+     939 + 69 + 1). A gap anywhere else is still MISSING. (`DiagnosticLog`
+     writes this mark back as `inferred`, so a live record prints it as a
+     clear; this is the same reading for a record that has not been re-saved.) */
+  const unmarkedClear = cleared == null && entries.length > 0 && missing > 0
+    && Number.isFinite(entries[0].seq) && entries[0].seq - 1 - dropped === missing;
+  const gapLines = unmarkedClear
+    ? [`${missing} row${missing === 1 ? "" : "s"} before an unmarked Clear`, "  (pre-#746 build), not lost"]
+    : missing > 0
+      ? [`MISSING ${missing} of ${since} recorded rows: not in this ring, not dropped — ${where} was cleared or lost`]
+      : missing < 0
+        ? [`INCONSISTENT: ${entries.length} rows exceed the ${since} recorded — ${where}`]
+        : [];
   /* NE-26: the engine's rows to merge, and the lines accounting for the rest.
      The page's Clear mark bounds them too: the founder's loop is clear, drive,
      copy, and the engine's ring is not emptied by the page's Clear. */
   const engineRows = engineSection(engine, cleared);
+  const merged = mergeEngineRows(entries, engineRows.shown);
+  /* The UTC clock of a merged row: a page row's `wall`, an engine row's `at`. */
+  const rowWall = (e) => (e.src === "engine" ? e.row.at : e.wall);
+
+  /* L21 (log-gaps 2026-09-26): WHICH DAY, AND WHOSE CLOCK. Every row's time is
+     UTC and carried no date, so a drive across midnight read backwards and
+     `00:41` could be either side of it. The header says the clock is UTC,
+     what the phone's own zone is (a zone, never a place), and which UTC days
+     the rows span; the rows below get a divider wherever the day changes. */
+  const walls = merged.map(rowWall).filter((w) => Number.isFinite(w));
+  const days = walls.length ? [dateOf(walls[0]), dateOf(walls[walls.length - 1])] : null;
+  const clockLines = [`clock UTC (device ${zoneOf(tzOffsetMin)})`];
+  if (days) clockLines.push(days[0] === days[1] ? `  ${days[0]}` : `  ${days[0]}..${days[1]}`);
+
+  /* L31: every kind with its count, and how many of each failed or were
+     skipped because the engine owns the session — `session events 62 (kinds)`
+     named the kinds and counted none of them. */
+  const sessionLines = [];
+  if (!sessions.length) {
+    sessionLines.push("session events 0");
+  } else {
+    const byKind = new Map();
+    for (const e of sessions) {
+      const k = byKind.get(e.kind) ?? { n: 0, failed: 0, skipped: 0 };
+      k.n += 1;
+      if (e.reason === "failed") k.failed += 1;
+      if (e.reason === "skipped-engine-owned") k.skipped += 1;
+      byKind.set(e.kind, k);
+    }
+    const items = [...byKind].map(([kind, k]) => {
+      const notes = [k.failed ? `${k.failed} failed` : null, k.skipped ? `${k.skipped} skipped` : null].filter(Boolean);
+      return `${kind} ${k.n}${notes.length ? ` (${notes.join(", ")})` : ""}`;
+    });
+    sessionLines.push(`session events ${sessions.length}:`, ...packList(items));
+  }
+
+  /* L20: events the native side numbered and the page never recorded — a
+     press or a session event that died on the bridge to a sleeping WebView.
+     Counted per process (`nboot`), since the counter restarts with it. */
+  const lost = nativeEventsLost(entries);
+  /* L33: what the vocabularies turned away, counted by door. */
+  const refused = r.refused && typeof r.refused === "object" ? r.refused : {};
+  const refusedParts = ["session", "remote", "transport"]
+    .filter((k) => Number.isInteger(refused[k]) && refused[k] > 0)
+    .map((k) => `${k} x${refused[k]}`);
+
+  /* L32: the clear mark, with its DATE (L21) — and an inferred one says so. */
+  const clearedLines = !cleared ? []
+    : cleared.inferred === true && cleared.wall == null
+      ? [`cleared at #${cleared.seq} (inferred, time unknown)`, `  · ${since} recorded since`]
+      : [`cleared at #${cleared.seq} ${stampOf(cleared.wall)}`, `  · ${since} recorded since`];
 
   const head = [
     `4a playback diagnostics — v${r.v ?? "?"}`,
     `build ${running ? buildLabel(running) : "unknown (no build row yet)"}`,
     /* NE-26: which engine played, as one parseable line (engineHeaderLine). */
     engineHeaderLine(engine, running),
+    /* L09: which phone, which OS, and its power state. */
+    ...deviceLines(engineRows.all, entries, running),
+    ...clockLines,
     `Local only. Nothing here is sent anywhere.`,
     "",
     `entries ${entries.length} of ${r.cap ?? DIAG_CAP} (oldest dropped first)`,
     `dropped ${r.dropped ?? 0} · recorded ${r.seq ?? 0} · writeErrors ${r.saveErrors ?? 0}`,
-    cleared ? `cleared at #${cleared.seq} ${clockOf(cleared.wall)} · ${since} recorded since` : null,
-    gapLine,
+    ...clearedLines,
+    ...gapLines,
     `seams ${seams.length}: ${measured.length} measured, ${open.length} never started`
       + (cut.length ? `, ${cut.length} cut short` : ""),
     `gap median ${ms(mid)}, worst ${ms(worst)}`,
@@ -2442,8 +3085,7 @@ export function formatDiagnosticReport(record, engine = null) {
       + (nowPlaying.length ? `, ${blankCredit} with an empty credit` : ""),
     /* M-03. `0` here against a `stop` row below is itself the finding the card
        asks for: the stop was preceded by nothing the plugins could see. */
-    `session events ${sessions.length}`
-      + (sessions.length ? ` (${[...new Set(sessions.map((e) => e.kind))].join(", ")})` : ""),
+    ...sessionLines,
     /* Founder 2026-09-23. `0` here against a car that resumed Spotify says the
        car's play never reached 4a's native side at all — the OS gave it to
        somebody else — which is a different bug from a play that arrived and
@@ -2455,6 +3097,10 @@ export function formatDiagnosticReport(record, engine = null) {
          that moved once with `1 duplicate dropped` is the de-duplication doing
          its job; one that moved twice with none is the window missing it. */
       + (deduped ? `, ${deduped} duplicate${deduped === 1 ? "" : "s"} dropped` : ""),
+    lost > 0 ? `native events lost ${lost} (nseq gaps)` : null,
+    /* Packed like every list in the header, so three doors wrap rather than
+       run past the phone's width. */
+    ...(refusedParts.length ? packHeader("refused by vocabulary:", refusedParts) : []),
     r.loadError ? `earlier record unreadable: ${r.loadError}` : null,
     ...engineRows.lines,
     `updated ${r.updatedAt ?? "—"}`,
@@ -2473,6 +3119,120 @@ export function formatDiagnosticReport(record, engine = null) {
        of the push call below to keep it in step with app.js's fallback. */
     head.push("Nothing recorded yet. Play a foray and come back.");
   }
-  const merged = mergeEngineRows(entries, engineRows.shown);
-  return head.concat(merged.map((e) => (e.src === "engine" ? engineLineFor(e.row) : lineFor(e)))).join("\n");
+
+  /* THE ROWS, WITH THEIR DIVIDERS (L21, L22). A `-- day (UTC) --` line before
+     the first row and wherever the UTC day changes; `== page boot N ==` above
+     each page boot and `== engine boot … ==` above each engine build row, so a
+     reader can see which boot — and which BUILD — wrote the rows under it. */
+  const body = [];
+  let day = null;
+  for (const e of merged) {
+    const w = rowWall(e);
+    const d = Number.isFinite(w) ? dateOf(w) : null;
+    if (d && d !== day) { body.push(`-- ${d} (UTC) --`); day = d; }
+    if (e.src === "engine") {
+      if (e.row.kind === "build") body.push(engineBootDivider(e.row, running));
+      body.push(engineLineFor(e.row));
+    } else {
+      if (e.type === "boot") body.push(`== page boot ${Number.isInteger(e.bootN) ? e.bootN : "?"} ==`);
+      body.push(lineFor(e));
+    }
+  }
+  return head.concat(body).join("\n");
+}
+
+/** `2026-09-26`, the UTC day of a wall clock, or null. */
+function dateOf(wall) {
+  try { return new Date(wall).toISOString().slice(0, 10); } catch (_) { return null; }
+}
+
+/** `2026-09-26 23:44:42.684Z` — a whole UTC stamp, for the clear mark. */
+function stampOf(wall) {
+  try { return new Date(wall).toISOString().replace("T", " "); } catch (_) { return "????-??-?? ??:??:??.???Z"; }
+}
+
+/** `UTC-07:00` from `Date.getTimezoneOffset()` minutes (which are positive
+    WEST of UTC, hence the sign flip). A zone, never a place. */
+function zoneOf(tzOffsetMin) {
+  if (!Number.isFinite(tzOffsetMin)) return "zone unknown";
+  const east = -Math.round(tzOffsetMin);
+  const abs = Math.abs(east);
+  const hh = String(Math.floor(abs / 60)).padStart(2, "0");
+  const mm = String(abs % 60).padStart(2, "0");
+  return `UTC${east < 0 ? "-" : "+"}${hh}:${mm}`;
+}
+
+/** `== engine boot 2026092532 v1.0.0 launch=foreground (older build) ==`.
+    "Older" is a build row whose CFBundleVersion is not the running binary's,
+    said only when both are known. */
+function engineBootDivider(r, running) {
+  const older = running?.native != null && r.bundleVersion != null && String(r.bundleVersion) !== String(running.native);
+  return `== engine boot ${r.bundleVersion ?? "?"} v${r.engineVersion ?? "?"} launch=${r.launch ?? "?"}` +
+    `${older ? " (older build)" : ""} ==`;
+}
+
+/**
+ * L09: `device iPhone15.2 · iOS 18.6.2 · lowPower=n`. From the freshest source
+ * that knows the phone: the newest engine `build` row with a hardware model
+ * (Lane B), else the newest `voiceProbe` row naming the device or OS (Lane A),
+ * else the page's own OS from its user agent. The model identifier is the
+ * hardware's (`iPhone15.2`), never the name a person gave the phone.
+ */
+function deviceLines(engineRows, entries, running) {
+  const rows = Array.isArray(engineRows) ? engineRows : [];
+  const eb = newestEngineRow(rows, "build", (x) => typeof x.hw === "string" && x.hw !== "");
+  let hw = null;
+  let os = null;
+  let platform = null;
+  let lowPower = null;
+  let thermal = null;
+  if (eb) {
+    hw = eb.hw;
+    os = typeof eb.os === "string" ? eb.os : null;
+    platform = "ios";
+    lowPower = typeof eb.lowPower === "boolean" ? eb.lowPower : null;
+    thermal = typeof eb.thermal === "string" ? eb.thermal : null;
+  } else {
+    let vp = null;
+    for (let i = entries.length - 1; i >= 0; i--) {
+      const e = entries[i];
+      if (e.type === "voiceProbe" && (e.device != null || e.os != null)) { vp = e; break; }
+    }
+    if (vp) {
+      hw = vp.device ?? null;
+      os = vp.os ?? null;
+      platform = vp.platform ?? null;
+      lowPower = typeof vp.lowPower === "boolean" ? vp.lowPower : null;
+    } else if (running && typeof running.os === "string") {
+      os = running.os;
+      platform = running.platform ?? null;
+    }
+  }
+  if (hw == null && os == null) return ["device unknown"];
+  const name = platform === "android" ? "Android" : platform === "ios" ? "iOS" : "OS";
+  const lines = [`device ${hw ?? "?"} · ${name} ${os ?? "?"}` +
+    (lowPower != null ? ` · lowPower=${lowPower ? "y" : "n"}` : "")];
+  if (thermal) lines.push(`  thermal=${thermal}`);
+  return lines;
+}
+
+/**
+ * L20: rows the native side numbered (`nseq`, one counter per process `nboot`)
+ * that never became a page row. Per process, the span of numbers seen minus
+ * the rows that carry them. 0 when no row carries `nseq`.
+ */
+function nativeEventsLost(entries) {
+  const groups = new Map();
+  for (const e of entries) {
+    if ((e.type !== "session" && e.type !== "remote") || !Number.isInteger(e.nseq)) continue;
+    const key = e.nboot ?? "?";
+    if (!groups.has(key)) groups.set(key, new Set());
+    groups.get(key).add(e.nseq);
+  }
+  let lost = 0;
+  for (const seqs of groups.values()) {
+    const list = [...seqs];
+    lost += Math.max(...list) - Math.min(...list) + 1 - list.length;
+  }
+  return lost;
 }

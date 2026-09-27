@@ -70,6 +70,27 @@ export function nativeBuildOf(info) {
   };
 }
 
+/**
+ * The OS version from a user agent, and which OS it is (log-gaps 2026-09-26,
+ * L09): `{ os: "18.6.2", platform: "ios" }`, or nulls. The WKWebView UA says
+ * `iPhone OS 18_6_2` (an iPad says `CPU OS 18_6`); Android's says
+ * `Android 14`. Only the digits are kept — never the rest of the string,
+ * which carries the device and browser build.
+ */
+export function osFromUserAgent(ua) {
+  const s = typeof ua === "string" ? ua : "";
+  const ios = /(?:iPhone|CPU) OS (\d+)_(\d+)(?:_(\d+))?/.exec(s);
+  if (ios) return { os: [ios[1], ios[2], ios[3]].filter((p) => p != null).join("."), platform: "ios" };
+  const android = /Android (\d+(?:\.\d+){0,2})/.exec(s);
+  if (android) return { os: android[1], platform: "android" };
+  return { os: null, platform: null };
+}
+
+/** The running page's user agent, or "" — total. */
+function defaultUserAgent() {
+  try { return typeof navigator !== "undefined" && typeof navigator.userAgent === "string" ? navigator.userAgent : ""; } catch (_) { return ""; }
+}
+
 /** How long either half may take before the row is written with what is known.
     Five seconds, the same bound `app.js` puts on storage hydration: a file read
     from the bundle or a bridge call that has not answered in that long is not
@@ -108,12 +129,17 @@ function withinMs(promise, ms) {
  * @param {string|null} env.pinned     the deploy id the service worker pinned this
  *                                     page to, when it did (app.js's `pinnedDeployId`)
  * @param {number} env.timeoutMs       per-half bound; `Infinity` for none
- * @returns {Promise<{ shell: boolean, web: string|null, native: string|null, version: string|null }>}
+ * @param {string} [env.userAgent]     the WebView's user agent (L09); read
+ *                                     from `navigator` when not given
+ * @returns {Promise<{ shell: boolean, web: string|null, native: string|null, version: string|null,
+ *   os: string|null, platform: "ios"|"android"|null }>}
  */
 export async function readBuildStamp({
   inShell = false, fetchJson = null, capacitor = null, pinned = null, timeoutMs = BUILD_STAMP_WAIT_MS,
+  userAgent = defaultUserAgent(),
 } = {}) {
-  const out = { shell: inShell === true, web: null, native: null, version: null };
+  const { os, platform } = osFromUserAgent(userAgent);
+  const out = { shell: inShell === true, web: null, native: null, version: null, os, platform };
   const get = async (url) => {
     if (typeof fetchJson !== "function") return null;
     try { return await withinMs(Promise.resolve().then(() => fetchJson(url)), timeoutMs); } catch (_) { return null; }

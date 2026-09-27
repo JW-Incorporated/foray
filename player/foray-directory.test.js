@@ -645,3 +645,60 @@ test("validateForayDocuments: shapes, ids, and the vocabulary of codes", () => {
   }
   assert.equal(DIRECTORY_DB_NAME, "foray-directory");
 });
+
+test("L26: EVERY refresh outcome carries how long it took, which request it came from, the bound and the held set", async () => {
+  /* log-gaps 2026-09-26: `refresh(foreground) offline why=timeout` could not
+     say whether it was the pointer's 4 s bound right after a resume or a phone
+     that was really offline — only `adopted` carried `ms`.
+     KILLING MUTATION 1: pass `ms` on `adopted` only. The offline and current
+     events lose it and this fails.
+     KILLING MUTATION 2: never move `stage` to "files". The file failure reads
+     stage=pointer with the pointer's bound. */
+  let t = 5000;
+  const clock = () => t;
+  // A pointer that never answers: stage pointer, the pointer's bound.
+  {
+    const { d, events } = make({ fetch: fakeFetch({}, { never: true }), pointerTimeoutMs: 20, filesTimeoutMs: 70, now: clock });
+    await d.boot({ seed: makeSet(1) });
+    const out = await d.refresh({ origin: ORIGIN, reason: "foreground" });
+    assert.equal(out.status, STATUS.OFFLINE);
+    const ev = events.at(-1);
+    assert.equal(ev.stage, "pointer");
+    assert.equal(ev.limitMs, 20);
+    assert.equal(typeof ev.ms, "number");
+  }
+  // One file missing: stage files, the files' bound, the held set named.
+  {
+    const seed = makeSet(1);
+    const next = makeSet(1, { prefix: "n" });
+    const ptr = await pointerFor(next, "v2");
+    const routes = remote(ptr, next);
+    delete routes[`${ORIGIN}/data/segment-sources.json`];
+    const tier = fakeTier();
+    tier.rows.set(CACHE_KEY, serializeSet({ ...seed, version: "v1" }));
+    const { d, events } = make({ fetch: fakeFetch(routes), cache: tier, pointerTimeoutMs: 20, filesTimeoutMs: 70, now: clock });
+    await d.boot({ seed });
+    const out = await d.refresh({ origin: ORIGIN });
+    assert.equal(out.status, STATUS.OFFLINE);
+    const ev = events.at(-1);
+    assert.equal(ev.stage, "files");
+    assert.equal(ev.limitMs, 70);
+    assert.equal(ev.held, "v1");
+    assert.equal(ev.ms, 0, "the injected clock did not move");
+  }
+  // Current and adopted, and a missing origin: each has ms and stage.
+  {
+    const seed = makeSet(1);
+    const ptr = await pointerFor(seed, "v1");
+    const { d, events } = make({ fetch: fakeFetch(remote(ptr, seed)), now: clock, minRefreshIntervalMs: 0 });
+    await d.boot({ seed });
+    assert.equal((await d.refresh({ origin: ORIGIN })).status, STATUS.ADOPTED);
+    assert.equal((await d.refresh({ origin: ORIGIN })).status, STATUS.CURRENT);
+    assert.equal((await d.refresh({})).status, STATUS.NO_ORIGIN);
+    const refreshes = events.filter((e) => e.phase === "refresh");
+    assert.deepEqual(refreshes.map((e) => [e.status, e.stage, typeof e.ms]), [
+      ["adopted", "files", "number"], ["current", "pointer", "number"], ["no-origin", "pointer", "number"],
+    ]);
+    assert.equal(refreshes[1].held, "v1", "the held set going into the second refresh");
+  }
+});

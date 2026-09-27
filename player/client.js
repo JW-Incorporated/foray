@@ -551,7 +551,40 @@ const diagLog = new DiagnosticLog({ storage });
 const diag = new PlayerDiagnostics({
   log: diagLog,
   isHidden: () => typeof document !== "undefined" && document.hidden === true,
+  /* L24 (log-gaps 2026-09-26): what the player believed at an unexplained
+     stop — the reducer's state and the item the playhead is on, the same two
+     facts `reconcileOnReturn` reads — instead of a hard-coded `state=?`. */
+  getState: () => ({ state: manager?.state?.type ?? null, item: manager?.playheadItemId ?? null }),
 });
+
+/** `navigator.onLine` when the browser says, else null — never a guess (L25, L26). */
+function browserOnline() {
+  try { return typeof navigator !== "undefined" && typeof navigator.onLine === "boolean" ? navigator.onLine : null; } catch (_) { return null; }
+}
+
+/** L25: the playing element's own state for a media row, plus `online`. Total:
+    a backend without `elementFacts` (the engine's facade) gives only `online`. */
+function mediaFacts() {
+  let facts = null;
+  try { facts = typeof backend?.elementFacts === "function" ? backend.elementFacts() : null; } catch (_) { facts = null; }
+  return { ...(facts && typeof facts === "object" ? facts : {}), online: browserOnline() };
+}
+
+/* L22 (log-gaps 2026-09-26): WHERE THE ENGINE DECISION LANDED, as a row in
+   the timeline — the header's `engine=` line says which lane this page is in
+   NOW, and nothing said when it committed. iOS shell only (elsewhere the lane
+   is JS from the first line and there is no decision to record), and after
+   hydration like every other write. The reason is the engine's own when it
+   answered native (`build-default`, `override`), the page's otherwise. */
+if (engineShell) {
+  engineModeReady.then((mode) => storageReady.then(() => {
+    const d = engine?.decision ?? null;
+    const reason = mode === "native"
+      ? (typeof d?.hello?.reason === "string" ? d.hello.reason : d?.reason ?? null)
+      : d?.mode === "native" ? "attach-failed" : d?.reason ?? null;
+    diag.engineMode({ mode, reason });
+  })).catch(() => {});
+}
 /* EVERY WRITER WAITS FOR HYDRATION, and it is the LISTENER — not just the boot row
    — that has to wait. This ordering is load-bearing rather than tidy.
 
@@ -892,7 +925,11 @@ const directory = createForayDirectory({
   fetch: (url, opts) => fetch(url, opts),
   cache: makeIdbTier({ dbName: DIRECTORY_DB_NAME }),
   onEvent: (fields) => {
-    storageReady.then(() => diag.dataSource(fields)).catch(() => {});
+    /* L26: read at the moment of the outcome, not after the hydration wait —
+       whether the browser thought it was online, and how long after the page
+       came back to the foreground this refresh ended. */
+    const at = { online: browserOnline(), sinceFgMs: diag.sinceForegroundMs() };
+    storageReady.then(() => diag.dataSource({ ...fields, ...at })).catch(() => {});
   },
 });
 window.forayDirectory = directory;
@@ -3501,6 +3538,8 @@ function relinquishToJs(cap) {
        hung IndexedDB must not hold a Foray tap hostage (idb-tier.js, hazard 1). */
     storage.releaseOwnership().catch(() => {});
     engineMode = "js";
+    /* L22: the lane changed mid-process; the timeline says when. */
+    try { diag.engineMode({ mode: "js", reason: "relinquished" }); } catch (_) { /* the instrument must never be the outage */ }
     if (engineFacades) { engineFacades.dispose(); engineFacades = null; }
     manager = null;
     backend = null;
@@ -4113,7 +4152,10 @@ function wireMediaListeners() {
      `addMediaListener`, like the repaints above, so these survive the handover
      to the second element at a cross-episode seam. */
   for (const type of ["playing", "waiting", "stalled", "ended"]) {
-    backend.addMediaListener(type, () => diag.mediaEvent(type));
+    /* L25: the element's own state rides with a stall (paused, where, how much
+       is buffered ahead) plus the browser's online flag, so a starving element
+       and a throttled paused one no longer print the same row. */
+    backend.addMediaListener(type, () => diag.mediaEvent(type, mediaFacts()));
   }
   /* The SECOND consumer of `waiting` (audit 2026-09-22): the listener, not only
      the record. See `setBuffering` for why `stalled` is not one of them. */
@@ -4956,11 +4998,15 @@ const ForayPlayer = {
      would not be a measurement. */
   async runVoiceProbe() {
     const passage = await loadProbePassage();
+    /* L34 (log-gaps 2026-09-26): whether 4a was playing when the probe
+       STARTED — a probe that shares the phone with a playing episode is not
+       measuring the same thing as one on a quiet phone. */
+    const playing = transportIsRunning();
     const record = await runKokoroProbe({ tts: ttsBridge, passage, now: () => Date.now() });
     /* Recorded WHETHER OR NOT it succeeded. "This build has no model in it" is
        the single most useful thing the first run can tell us, and a record
        that only kept successes would answer every failed run with silence. */
-    try { diag.voiceProbe(record); } catch (_) { /* the instrument must never be the outage */ }
+    try { diag.voiceProbe(record, { playing }); } catch (_) { /* the instrument must never be the outage */ }
     return record;
   },
 
