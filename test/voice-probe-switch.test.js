@@ -498,7 +498,9 @@ test("KV-R3: the soak runs through runVoiceSoak, shows its report, and blocks a 
   await h.settle(3);
   assert.match(h.status().textContent, /Running the 30-minute soak\. Lock the phone now/);
   assert.strictEqual(h.run().disabled, true);
-  assert.strictEqual(soak.disabled, true);
+  /* KV-R3 review: while a soak runs, its control is the STOP. */
+  assert.strictEqual(soak.disabled, false, "the soak control stays live, as its stop");
+  assert.strictEqual(soak.textContent, "Stop the soak now (keeps what it measured)");
   h.fn("runVoiceProbe")();
   await h.settle(3);
   assert.strictEqual(h.probeCalls.length, 0, "the matrix never started beside the soak");
@@ -507,4 +509,31 @@ test("KV-R3: the soak runs through runVoiceSoak, shows its report, and blocks a 
   await h.settle();
   assert.match(h.status().textContent, /^voice soak \[ane-cputail @1\.5x\]: 412 loops\nCopy the record above/);
   assert.strictEqual(h.run().disabled, false);
+  assert.strictEqual(soak.textContent, "Start the 30-minute soak (then lock the phone)", "back to Start once it ends");
+});
+
+test("KV-R3 review: tapping the soak control mid-soak STOPS it, and the soak's report still lands", async () => {
+  /* MUTATION: leave the control disabled during a soak, or have it start a
+     second soak — the founder has no way to get his phone back early. */
+  const h = await mount({ seed: { cp_voice_probe: true } });
+  h.ctx.Capacitor = { getPlatform: () => "ios" };
+  let finish;
+  let stops = 0;
+  let soaks = 0;
+  Object.assign(h.ctx.window.ForayPlayer, {
+    runVoiceSoak: () => { soaks += 1; return new Promise((r) => { finish = r; }); },
+    stopVoiceSoak: async () => { stops += 1; finish([{ kind: "soak", ok: true, stopped: true }]); return { ok: true }; },
+    formatVoiceSoak: () => "voice soak [ane-cputail @1.5x]: 3 loops over 4.0 min (stopped early by you)",
+  });
+  h.openDrawer();
+  const soak = findIn(h.body, "#voice-probe-soak");
+  soak.click();
+  await h.settle(3);
+  soak.click();
+  await h.settle();
+  assert.strictEqual(stops, 1, "the second tap stopped the soak");
+  assert.strictEqual(soaks, 1, "and started no second one");
+  assert.match(h.status().textContent, /stopped early by you/);
+  assert.strictEqual(soak.disabled, false);
+  assert.strictEqual(soak.textContent, "Start the 30-minute soak (then lock the phone)");
 });

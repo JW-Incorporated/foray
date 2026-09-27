@@ -129,6 +129,7 @@ import { readBuildStamp, BUILD_STAMP_WAIT_MS } from "./build-stamp.js";
 import { createTtsBridge } from "./tts-bridge.js";
 import {
   runKokoroProbe, formatProbeReport, probeVerdict, formatProbeTable, formatSoakReport, wavPasses, playProbeWav,
+  stopProbeSoak,
 } from "./kokoro-probe.js";
 import { createInterludePlayer, readInterludePref, writeInterludePref } from "./interlude.js";
 import { makeIdbTier } from "./idb-tier.js";
@@ -5031,6 +5032,13 @@ const ForayPlayer = {
       try { diag.voiceSoak(record, { playing }); } catch (_) { /* the instrument must never be the outage */ }
     }
     return records;
+  },
+
+  /* KV-R3 review: END THE SOAK EARLY. The native half answers at once; the
+     `runVoiceSoak` call above then resolves with the loops it finished and
+     writes its row as usual. */
+  async stopVoiceSoak() {
+    return stopProbeSoak({ tts: ttsBridge });
   },
 
   /** ONE pass's record as the several lines the drawer shows, plus K-01's

@@ -1,5 +1,6 @@
 import XCTest
 import AVFAudio
+import CoreML
 @testable import ForayTtsPlugin
 
 /// Test target for the plugin, same shape @capacitor/app@8.1.1's own
@@ -1070,6 +1071,65 @@ final class ForayTtsPluginTests: XCTestCase {
         XCTAssertEqual(record["soakThermalSeries"] as? [String], ["nominal", "", "serious"])
         XCTAssertEqual(record["thermalEnd"] as? String, "serious")
         XCTAssertEqual(ForayTtsPlugin.soakRecord([:], loops: [])["ok"] as? Bool, false)
+    }
+
+    /// **The soak STOPS when asked, keeps its finished loops, drops the one
+    /// it interrupted, and says so.** MUTATION: ignore `shouldStop` — the
+    /// soak runs out its two minutes and `soakLoops` reads 2.
+    func testTheSoakStopsWhenAskedAndKeepsItsFinishedLoops() {
+        let url = tempURL()
+        var now = 0.0
+        let engine = SpeedProbeEngine()
+        engine.onSynth = { now += 20 }
+        // Calibration is 3 calls; loop 1 is calls 4-6; the stop lands after
+        // the first chunk of loop 2 (call 7).
+        let result = ForayTtsPlugin.runSoak(engine: engine, pass: .aneCputail, idLines: [[0, 1, 0], [0, 2, 0], [0, 3, 0]],
+                                            minutes: 2, isForeground: { false }, isLocked: { true },
+                                            inFlight: ProbeInFlight(url: url), clock: { now },
+                                            shouldStop: { engine.calls.count >= 7 })
+        XCTAssertEqual(engine.calls.count, 7, "nothing is rendered after the stop")
+        XCTAssertEqual(result["soakStopped"] as? Bool, true)
+        XCTAssertEqual(result["soakLoops"] as? Int, 1, "loop 2 was interrupted, so only loop 1 is kept")
+        XCTAssertEqual(result["ok"] as? Bool, true)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: url.path), "a stopped soak leaves no kill marker")
+        // A soak that ran its time out says it was not stopped.
+        let full = ForayTtsPlugin.runSoak(engine: SpeedProbeEngine(), pass: .aneCputail, idLines: [[0, 1, 0]],
+                                          minutes: 1, isForeground: { false }, isLocked: { true },
+                                          inFlight: ProbeInFlight(url: tempURL()), maxLoops: 1, shouldStop: { false })
+        XCTAssertEqual(full["soakStopped"] as? Bool, false)
+        // The switch itself: set, read, reset.
+        let stop = ProbeSoakStop()
+        XCTAssertFalse(stop.isRequested)
+        stop.request()
+        XCTAssertTrue(stop.isRequested)
+        stop.reset()
+        XCTAssertFalse(stop.isRequested)
+    }
+
+    /// **A strided Core ML output is read by its strides, in row-major
+    /// order.** The Neural Engine pads rows; reading the raw buffer linearly
+    /// would splice the padding into the audio. MUTATION: gather with the
+    /// compact strides — the result carries the pad values.
+    func testAStridedOutputIsGatheredByStride() throws {
+        guard #available(iOS 17.0, *) else { throw XCTSkip("the Core ML chain is iOS 17+") }
+        // shape [2, 3], row stride 4: element (r, c) lives at r*4 + c; slot 3 and 7 are padding.
+        var raw: [Float] = [0, 1, 2, -9, 3, 4, 5, -9]
+        let floats: [Float] = try raw.withUnsafeMutableBytes { buf -> [Float] in
+            let array = try MLMultiArray(dataPointer: buf.baseAddress!, shape: [2, 3], dataType: .float32,
+                                         strides: [4, 1], deallocator: nil)
+            XCTAssertFalse(KokoroCoreMLArrays.isContiguous(array))
+            return KokoroCoreMLArrays.floats(array)
+        }
+        XCTAssertEqual(floats, [0, 1, 2, 3, 4, 5])
+        // Three dimensions, padded in the middle one too.
+        var raw3 = [UInt16](repeating: 999, count: 2 * 3 * 4)
+        for a in 0..<2 { for b in 0..<2 { for c in 0..<3 { raw3[a * 12 + b * 4 + c] = UInt16(a * 6 + b * 3 + c) } } }
+        let gathered: [UInt16] = try raw3.withUnsafeMutableBytes { buf -> [UInt16] in
+            let array = try MLMultiArray(dataPointer: buf.baseAddress!, shape: [2, 2, 3], dataType: .float16,
+                                         strides: [12, 4, 1], deallocator: nil)
+            return KokoroCoreMLArrays.gather(array, as: UInt16.self)
+        }
+        XCTAssertEqual(gathered, (0..<12).map { UInt16($0) })
     }
 
     private func tempURL() -> URL {

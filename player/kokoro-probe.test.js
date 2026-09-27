@@ -29,6 +29,7 @@ import {
   V3_PASSES, BACKGROUND_SAFE_PASSES, COREML_PASSES, PROBE_SPEEDS, TARGET_CONTENT_RTF, BREAK_EVEN_CONTENT_RTF,
   COREML_DECISION_RTF, CML_CODES, CML_STAGES, KEEP_ALIVE_STATES, SCREEN_STATES, SPEED_VERDICTS,
   screenOf, speedVerdict, passVerdicts, formatProbeTable, wavPasses, playProbeWav, summarizeSoak, formatSoakReport,
+  stopProbeSoak,
 } from "./kokoro-probe.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -1280,4 +1281,45 @@ test("v3: the Swift half and this module hold the same passes, target and codes"
     assert.ok(IOS_MATRIX.includes(`"${reason}"`) || IOS_PLUGIN.includes(`"${reason}"`), `Swift never sends ${reason}`);
     assert.ok(PROBE_REASONS.includes(reason), `${reason} is not in PROBE_REASONS`);
   }
+});
+
+test("v3 review: the soak can be STOPPED, and a stopped or failed soak says so and why", async () => {
+  /* A 30-minute locked loop the founder cannot end is a phone he cannot use.
+     MUTATION: drop `stopped` from summarizeSoak — a four-minute soak reads
+     like one iOS cut short. MUTATION: drop the engine code — a soak that
+     failed at the vocoder says only "failed 15". */
+  let sent = null;
+  const tts = { kokoroProbe: async (opts) => { sent = opts; return { ok: true, mode: "stop" }; } };
+  assert.deepEqual(await stopProbeSoak({ tts }), { ok: true });
+  assert.deepEqual(sent, { engine: PROBE_ENGINE, mode: "stop" });
+  assert.deepEqual(await stopProbeSoak({ tts: null }), { ok: false, reason: "no-bridge" });
+  assert.deepEqual(await stopProbeSoak({ tts: fakeTts({ ok: false }) }), { ok: false, reason: "refused" });
+  assert.deepEqual(await stopProbeSoak({ tts: { kokoroProbe: async () => { throw new TypeError("x"); } } }),
+    { ok: false, reason: "threw", detail: "TypeError" });
+
+  const stopped = summarizeSoak({ native: {
+    ok: true, mode: "soak", platform: "ios", pass: "ane-cputail", speed: 1.5, soakMinutes: 30, soakLoops: 3,
+    soakElapsedSec: 240, soakStopped: true, soakRtfMedian: 0.05, soakVerdict: "go", soakFailures: 2, soakNonFinite: 0,
+    detail: "inference-threw", cmlCode: "cml-predict", cmlStage: "vocoder", cpuPerContentSec: 0.03, keepAlive: "audio",
+  } });
+  assert.equal(stopped.stopped, true);
+  assert.equal(stopped.cmlCode, "cml-predict");
+  assert.equal(stopped.cmlStage, "vocoder");
+  assert.equal(stopped.cpuPerContentSec, 0.03);
+  const text = formatSoakReport(stopped);
+  assert.match(text, /^voice soak \[ane-cputail @1\.5x\]: 3 loops over 4\.0 min, verdict GO \(stopped early by you\)$/m);
+  assert.match(text, /^  failures      2 \(non-finite 0\) — Core ML cml-predict at vocoder$/m);
+  assert.match(text, /CPU 0\.03 CPU-s per content second/);
+  assert.equal(summarizeSoak({ native: { ok: true, soakLoops: 1 } }).stopped, false, "not stopped unless the phone says so");
+  const ort = summarizeSoak({ native: { ok: false, mode: "soak", reason: "synthesis-failed", detail: "calibration",
+    loadErr: "ep-fail", ortCode: "made-up", cmlCode: "cml-nope" } });
+  assert.equal(ort.loadErr, "ep-fail");
+  assert.equal(ort.ortCode, null, "an ORT code outside the set is dropped");
+  assert.equal(ort.cmlCode, null);
+  assert.match(formatSoakReport(ort), /could not run \(synthesis-failed\/calibration\) — ORT load ep-fail$/);
+  /* The Swift half answers `stop` off the probe queue, and the soak reads it. */
+  assert.match(IOS_PLUGIN, /if call\.getString\("mode"\) == "stop" \{\s+ProbeSoakStop\.shared\.request\(\)/);
+  assert.ok(IOS_PLUGIN.indexOf('call.getString("mode") == "stop"') < IOS_PLUGIN.indexOf("Self.probeQueue.async"),
+    "the stop is answered BEFORE the probe queue, where the soak itself runs");
+  assert.match(IOS_MATRIX, /shouldStop: \(\) -> Bool = \{ ProbeSoakStop\.shared\.isRequested \}/);
 });

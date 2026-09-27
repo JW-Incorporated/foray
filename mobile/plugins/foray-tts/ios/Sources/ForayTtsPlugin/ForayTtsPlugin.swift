@@ -1072,6 +1072,19 @@ public class ForayTtsPlugin: CAPPlugin, CAPBridgedPlugin, AVSpeechSynthesizerDel
     static let probeQueue = DispatchQueue(label: "ai.jwlabs.foura.tts.kokoroProbe", qos: .userInitiated)
 
     @objc func kokoroProbe(_ call: CAPPluginCall) {
+        /* KV-R3: STOP THE SOAK. Answered HERE, on the bridge's thread, and
+           never queued: the soak is running on `probeQueue`, and a stop sent
+           there would wait out the whole 30 minutes behind it. */
+        if call.getString("mode") == "stop" {
+            ProbeSoakStop.shared.request()
+            var stop = JSObject()
+            stop["platform"] = "ios"
+            stop["mode"] = "stop"
+            stop["ok"] = true
+            stop["reason"] = ""
+            call.resolve(stop)
+            return
+        }
         Self.probeQueue.async { [weak self] in
             self?.runKokoroProbe(call)
         }
@@ -1148,6 +1161,8 @@ public class ForayTtsPlugin: CAPPlugin, CAPBridgedPlugin, AVSpeechSynthesizerDel
                 answer["mode"] = "soak"
             case .engine(let engine):
                 defer { engine.close() }
+                /* A stop tapped before this soak began is not this soak's. */
+                ProbeSoakStop.shared.reset()
                 answer = Self.runSoak(engine: engine, pass: pass, idLines: idLines, minutes: minutes)
             }
             answer["keepAlive"] = keepAliveState

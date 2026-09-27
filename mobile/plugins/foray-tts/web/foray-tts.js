@@ -466,7 +466,7 @@ export const PROBE_ENGINE = "kokoro-probe";
  * @param {object} [opts]
  * @param {object} [opts.passage] the parsed `tools/mobile/kokoro-probe-passage.json`
  * @param {string} [opts.mode]    `soak` for KV-R3's 30-minute locked loop, `listen` to play a
- *   pass's WAV (with `opts.pass`); anything else is the matrix
+ *   pass's WAV (with `opts.pass`), `stop` to end a running soak early; anything else is the matrix
  * @param {string} [opts.pass]    the pass whose WAV `listen` plays
  * @param {number} [opts.soakMinutes] the soak's length (the native half clamps it to 1..60)
  * @param {object} [opts.bridge]  injected `window.Capacitor` (or a fake, for tests)
@@ -493,7 +493,7 @@ export async function kokoroProbe(opts = {}) {
       engine: PROBE_ENGINE,
       passage: passage ?? null,
       /* KV-R3: only a known mode and a real number travel. */
-      ...(mode === "soak" || mode === "listen" ? { mode } : {}),
+      ...(mode === "soak" || mode === "listen" || mode === "stop" ? { mode } : {}),
       ...(typeof pass === "string" && /^[a-z0-9-]{1,16}$/.test(pass) ? { pass } : {}),
       ...(Number.isFinite(soakMinutes) ? { soakMinutes } : {}),
     });

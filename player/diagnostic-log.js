@@ -2022,6 +2022,14 @@ export class PlayerDiagnostics {
       ["nonFinite", nonNegIntOr(r.nonFinite)],
       ["cpuPerContentSec", num(r.cpuPerContentSec)],
       ["verdict", oneOf(PROBE_SPEED_VERDICTS, r.verdict)],
+      /* KV-R3 review: ended early by the founder, and the first failure's
+         engine code (the matrix's keys, #848/#850). */
+      ["stopped", r.stopped === true ? true : null],
+      ["cmlCode", oneOf(PROBE_CML_CODES, r.cmlCode)],
+      ["cmlStage", oneOf(PROBE_CML_STAGES, r.cmlStage)],
+      ["ortCode", oneOf(PROBE_ORT_CODES, r.ortCode)],
+      ["ortStage", oneOf(PROBE_ORT_STAGES, r.ortStage)],
+      ["loadErr", oneOf(PROBE_ORT_CODES, r.loadErr)],
       ["thermalStart", oneOf(THERMAL_STATES, r.thermalStart)],
       ["thermalEnd", oneOf(THERMAL_STATES, r.thermalEnd)],
       ["keepAlive", oneOf(PROBE_KEEP_ALIVE, r.keepAlive)],
@@ -2490,17 +2498,21 @@ function lineFor(e) {
       const killed = e.killedPass
         ? `  LAST-RUN-KILLED ${e.killedPass} ${e.killedStage ?? "?"}${e.killedStage === "soak" ? ` after ${e.killedChunksDone ?? "?"} loops` : ""} peak ${mb(e.killedPeakMb)}`
         : "";
+      const err = (e.cmlCode ? `  cml=${e.cmlCode}${e.cmlStage ? ` at=${e.cmlStage}` : ""}` : "") +
+        (e.ortCode ? `  ort=${e.ortCode}${e.ortStage ? ` at=${e.ortStage}` : ""}` : "") +
+        (e.loadErr ? `  load FAILED(${e.loadErr})` : "");
       if (e.probeOk !== true) {
-        return `${head2} could not soak: ${e.reason ?? "unknown"}${e.synthReason ? `/${e.synthReason}` : ""}${killed}  hidden=${e.hidden ? "y" : "n"}`;
+        return `${head2} could not soak: ${e.reason ?? "unknown"}${e.synthReason ? `/${e.synthReason}` : ""}${err}${killed}  hidden=${e.hidden ? "y" : "n"}`;
       }
       return `${head2} ${e.loops ?? "?"} loops ${Number.isFinite(e.elapsedSec) ? (e.elapsedSec / 60).toFixed(1) : "?"}min` +
+        (e.stopped ? " STOPPED-EARLY" : "") +
         ` verdict=${e.verdict ?? "?"}  rtf ${f2(e.rtfMin)}/${f2(e.rtfMedian)}/${f2(e.rtfMax)}` +
         `  series ${e.series ?? "—"}` +
         `  peak ${mb(e.peakMb)} (${e.peakFirstMb ?? "?"}>${e.peakLastMb ?? "?"})` +
         `  locked ${e.lockedLoops ?? "?"}/${e.loops ?? "?"} bg ${e.bgLoops ?? "?"}` +
         `  thermal ${e.thermalStart ?? "?"}>${e.thermalEnd ?? "?"}` +
         (e.cpuPerContentSec != null ? `  cpu ${e.cpuPerContentSec.toFixed(2)}s/s` : "") +
-        `  failed ${e.failures ?? "?"} nan ${e.nonFinite ?? "?"}` +
+        `  failed ${e.failures ?? "?"} nan ${e.nonFinite ?? "?"}` + err +
         (e.keepAlive ? `  keepAlive=${e.keepAlive}` : "") +
         (e.device ? `  ${e.device} iOS ${e.os ?? "?"}` : "") + killed +
         `  hidden=${e.hidden ? "y" : "n"}`;

@@ -14933,12 +14933,45 @@ function syncVoiceProbeRun() {
      item 9), iPhone only — Android's probe has no soak. Directly under the
      run control, for the reason that one sits under its switch. */
   if (!voiceSoakOffered() || !run.parentNode) return;
-  const soak = ddEl("button", "drawer-item as-btn", "Start the 30-minute soak (then lock the phone)");
+  const soak = ddEl("button", "drawer-item as-btn", VOICE_SOAK_START_LABEL);
   soak.type = "button";
   soak.id = "voice-probe-soak";
   run.parentNode.insertBefore(soak, run.nextSibling);
-  soak.disabled = Boolean(voiceProbeRunning);
-  soak.addEventListener("click", () => runVoiceProbe("soak"));
+  paintVoiceSoakControl(soak);
+  /* KV-R3 review: WHILE A SOAK RUNS this control STOPS it — thirty minutes
+     is too long to hold a phone hostage to an instrument. */
+  soak.addEventListener("click", () => (voiceProbeRunning && voiceProbeRunningSoak ? stopVoiceSoak() : runVoiceProbe("soak")));
+}
+
+const VOICE_SOAK_START_LABEL = "Start the 30-minute soak (then lock the phone)";
+const VOICE_SOAK_STOP_LABEL = "Stop the soak now (keeps what it measured)";
+
+/** The soak control's state: "Start" when idle, disabled while the matrix
+    runs, and "Stop" (enabled) while a soak runs. */
+function paintVoiceSoakControl(btn) {
+  if (!btn) return;
+  const soaking = Boolean(voiceProbeRunning) && voiceProbeRunningSoak;
+  btn.disabled = Boolean(voiceProbeRunning) && !soaking;
+  setControlLabel(btn, soaking ? VOICE_SOAK_STOP_LABEL : VOICE_SOAK_START_LABEL);
+}
+
+/** End a running soak early. The soak's own promise then resolves with the
+    loops it finished and paints its report as usual. */
+function stopVoiceSoak() {
+  const player = window.ForayPlayer;
+  const ui = diagSheet();
+  openDiagSheet();
+  if (!player || typeof player.stopVoiceSoak !== "function") {
+    ui.status.textContent = "This build cannot stop the soak early. It ends on its own after 30 minutes.";
+    return Promise.resolve(null);
+  }
+  ui.status.textContent = "Stopping the soak — the record will show the loops it finished.";
+  const btn = $("#voice-probe-soak");
+  if (btn) btn.disabled = true;
+  return Promise.resolve(player.stopVoiceSoak()).then((out) => {
+    if (!out || !out.ok) ui.status.textContent = `Could not stop the soak (${(out && out.reason) || "unknown"}). It ends on its own after 30 minutes.`;
+    return out;
+  }, () => null);
 }
 
 /** Whether this shell can soak: the iOS app (Android's plugin has no soak
@@ -15156,7 +15189,8 @@ let voiceProbeRunning = null;
 const VOICE_PROBE_RUNNING_LINE = "Running the voice probe — six passes at two speeds on iPhone, about five to ten minutes. "
   + "For the locked run, lock the phone now; otherwise leave the app open.";
 /* The soak: one pass, speed 1.5, in a loop for 30 minutes. */
-const VOICE_SOAK_RUNNING_LINE = "Running the 30-minute soak. Lock the phone now and leave it locked for 30 minutes.";
+const VOICE_SOAK_RUNNING_LINE = "Running the 30-minute soak. Lock the phone now and leave it locked for 30 minutes. "
+  + "To end it early, unlock and tap \"Stop the soak now\".";
 /** ONE probe or soak at a time (app-3-11): both controls are disabled while
     either runs, and a second tap reopens the sheet and hands back the run
     already under way. */
@@ -15172,18 +15206,16 @@ function runVoiceProbe(mode = "matrix") {
   const run = soak ? runVoiceSoakOnce() : runVoiceProbeOnce();
   voiceProbeRunning = run;
   voiceProbeRunningSoak = soak;
-  for (const id of ["#voice-probe-run", "#voice-probe-soak"]) {
-    const btn = $(id);
-    if (btn) btn.disabled = true;
-  }
+  const runBtn = $("#voice-probe-run");
+  if (runBtn) runBtn.disabled = true;
+  paintVoiceSoakControl($("#voice-probe-soak"));
   const done = () => {
     if (voiceProbeRunning !== run) return;
     voiceProbeRunning = null;
     voiceProbeRunningSoak = false;
-    for (const id of ["#voice-probe-run", "#voice-probe-soak"]) {
-      const b = $(id);
-      if (b) b.disabled = false;
-    }
+    const b = $("#voice-probe-run");
+    if (b) b.disabled = false;
+    paintVoiceSoakControl($("#voice-probe-soak"));
   };
   run.then(done, done);
   return run;

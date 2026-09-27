@@ -292,6 +292,35 @@ enum ProbeWav {
     }
 }
 
+/// The soak's STOP switch (KV-R3 review): a 30-minute loop the founder cannot
+/// end is a phone he cannot use for half an hour. `mode: "stop"` sets it from
+/// the plugin's own method — NOT on `probeQueue`, where the soak itself is
+/// running and a stop would queue behind it until the time was up — and the
+/// soak reads it between chunks. Locked: two threads touch it.
+final class ProbeSoakStop {
+    static let shared = ProbeSoakStop()
+    private let lock = NSLock()
+    private var requested = false
+
+    func request() {
+        lock.lock()
+        requested = true
+        lock.unlock()
+    }
+
+    func reset() {
+        lock.lock()
+        requested = false
+        lock.unlock()
+    }
+
+    var isRequested: Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        return requested
+    }
+}
+
 /// Silent audio for the length of a probe run, so iOS keeps the app running
 /// when the founder locks the phone — the condition narration synthesizes
 /// under (an app playing audio in the background). Mixes with other audio and
@@ -676,12 +705,17 @@ extension ForayTtsPlugin {
     /// passage once at speed 1.0 (the content basis, and the warm-up), then
     /// loops until the time is up. Each loop notes the kill marker, so if iOS
     /// ends the app the next run says `soak` and how many loops it finished.
+    ///
+    /// STOPPABLE (`shouldStop`, read between chunks): a stop ends the soak
+    /// at once, drops the loop it interrupted (a part-loop is not "the
+    /// passage once"), keeps every finished loop, and says `soakStopped`.
     static func runSoak(engine: KokoroProbeEngine, pass: KokoroProbePass, idLines: [[Int]], minutes: Double,
                         isForeground: () -> Bool = { ForayTtsPlugin.isForeground() },
                         isLocked: () -> Bool = { ForayTtsPlugin.isLocked() },
                         inFlight: ProbeInFlight = ProbeInFlight(),
                         clock: () -> Double = { Double(DispatchTime.now().uptimeNanoseconds) / 1_000_000_000 },
-                        maxLoops: Int = Int.max) -> JSObject {
+                        maxLoops: Int = Int.max,
+                        shouldStop: () -> Bool = { ProbeSoakStop.shared.isRequested }) -> JSObject {
         var result = JSObject()
         result["platform"] = "ios"
         result["mode"] = "soak"
@@ -709,23 +743,57 @@ extension ForayTtsPlugin {
         result["model"] = engine.modelName
         result["modelLoadColdMs"] = load.coldMs
         result["modelLoadWarmMs"] = load.warmMs
+        /* The load's own failure, in the same keys the matrix uses (#848/#850),
+           so a soak that could not start says why. */
+        if let loadError = engine.loadError {
+            if engine.provider == "coreml" {
+                result["cmlCode"] = loadError
+                if let stage = engine.lastFailure?.stage { result["cmlStage"] = stage }
+            } else {
+                result["loadErr"] = loadError
+            }
+        }
+
+        /* THE FIRST FAILURE, calibration or loop, in closed tokens: its reason
+           travels as `detail`, the engine's code as `cmlCode`/`ortCode`. */
+        var firstReason: String?
+        func noteFailure(_ reason: String) {
+            guard firstReason == nil else { return }
+            firstReason = reason
+            result["detail"] = reason
+            if let failure = engine.lastFailure {
+                if engine.provider == "coreml" {
+                    result["cmlCode"] = failure.code
+                    result["cmlStage"] = failure.stage
+                } else {
+                    result["ortCode"] = failure.code
+                    result["ortStage"] = failure.stage
+                    if let op = failure.op { result["ortOp"] = op }
+                }
+            }
+        }
 
         /* The content basis: every chunk once at speed 1.0. */
         let content: [Double] = idLines.map { ids -> Double in
             let out = engine.synthesize(ids: ids, speed: 1.0)
+            if let reason = out.reason { noteFailure(reason) }
             return out.reason == nil ? out.audioSec : 0
         }
         guard content.contains(where: { $0 > 0 }) else {
+            engine.close()
             inFlight.clear()
             result["ok"] = false
             result["reason"] = "synthesis-failed"
             result["detail"] = "calibration"
+            result["soakStopped"] = false
             return result
         }
 
         var loops: [ProbeSoakLoop] = []
+        var stopped = false
         let start = clock()
         while clock() - start < minutes * 60, loops.count < maxLoops {
+            if shouldStop() { stopped = true; break }
             let sampler = FootprintSampler()
             sampler.start()
             var loop = ProbeSoakLoop(endSec: 0, synthMs: 0, contentSec: 0, audioSec: 0, cpuSec: 0, peakBytes: 0,
@@ -733,8 +801,10 @@ extension ForayTtsPlugin {
             let cpuStart = processCPUSeconds()
             autoreleasepool {
                 for (index, ids) in idLines.enumerated() {
+                    if shouldStop() { stopped = true; break }
                     let out = engine.synthesize(ids: ids, speed: ProbeMath.WAV_SPEED)
                     if let reason = out.reason {
+                        noteFailure(reason)
                         loop.failures += 1
                         if reason == "non-finite" { loop.nonFinite += 1 }
                     } else if content[index] > 0 {
@@ -744,8 +814,12 @@ extension ForayTtsPlugin {
                     }
                 }
             }
+            let peak = sampler.stop()
+            /* A loop the stop interrupted is dropped: its figures are over
+               part of the passage, and every kept loop is the whole one. */
+            if stopped { break }
             loop.cpuSec = processCPUSeconds() - cpuStart
-            loop.peakBytes = sampler.stop()
+            loop.peakBytes = peak
             loop.thermal = thermalToken(ProcessInfo.processInfo.thermalState)
             loop.background = !isForeground()
             loop.locked = isLocked()
@@ -755,6 +829,7 @@ extension ForayTtsPlugin {
         }
         engine.close()
         inFlight.clear()
+        result["soakStopped"] = stopped
         return soakRecord(result, loops: loops)
     }
 

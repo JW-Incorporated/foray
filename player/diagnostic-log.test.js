@@ -1541,6 +1541,33 @@ test("the soak is ONE row: loops, the per-minute series with heat, memory drift,
   assert.match(lines[0], /series 0\.05n 0\.05f —\? 0\.07s  peak 214MB \(212>214\)  locked 410\/412 bg 412  thermal nominal>serious/);
   assert.match(lines[0], /iPhone15\.2 iOS 18\.6\.2  hidden=n$/);
   assert.match(lines[1], /could not soak: synthesis-failed\/calibration  LAST-RUN-KILLED ane-cputail soak after 97 loops peak 230MB/);
+  /* KV-R3 review: every field the line prints is asserted, so deleting one
+     from the row fails here. */
+  assert.match(lines[0], /  cpu 0\.03s\/s  failed 0 nan 0  keepAlive=audio  /);
+  assert.equal(rows[0].minutes, 30);
+  assert.equal(rows[0].rtfMedian, 0.05);
+  assert.equal(rows[0].cpuPerContentSec, 0.03);
+  assert.equal(rows[0].verdict, "go");
+  assert.equal(rows[0].stopped, undefined, "not stopped: the key is absent, not false");
+});
+
+test("a stopped soak and a soak's engine error print on its line (KV-R3 review)", () => {
+  /* MUTATION: drop `stopped` or `cmlCode` from the picked fields — a soak the
+     founder ended early reads like a full one, and a failing stage is lost. */
+  const { diag, log, store } = mk();
+  diag.voiceSoak({ engine: "kokoro-probe", kind: "soak", ok: true, pass: "ane-cputail", speed: 1.5, loops: 3,
+    elapsedSec: 240, stopped: true, failures: 2, nonFinite: 0, cmlCode: "cml-predict", cmlStage: "vocoder" });
+  diag.voiceSoak({ engine: "kokoro-probe", kind: "soak", ok: false, pass: "ort-cpu-t2", reason: "synthesis-failed",
+    synthReason: "calibration", loadErr: "ep-fail", ortCode: "not-a-code", cmlCode: "cml-nope" });
+  const rows = parse(store).entries.filter((e) => e.type === "voiceSoak");
+  assert.equal(rows[0].stopped, true);
+  assert.equal(rows[0].cmlStage, "vocoder");
+  assert.equal(rows[1].ortCode, undefined, "an ORT code outside the set is dropped");
+  assert.equal(rows[1].cmlCode, undefined);
+  const lines = formatDiagnosticReport(log.read()).split("\n").filter((l) => l.includes("voiceSoak"));
+  assert.match(lines[0], /\[pass ane-cputail @1\.5x\] 3 loops 4\.0min STOPPED-EARLY verdict=/);
+  assert.match(lines[0], /failed 2 nan 0  cml=cml-predict at=vocoder/);
+  assert.match(lines[1], /could not soak: synthesis-failed\/calibration  load FAILED\(ep-fail\)  hidden=n$/);
 });
 /* L-06: what the lock screen was actually told (founder feedback F15)  */
 /* ==================================================================== */

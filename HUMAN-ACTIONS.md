@@ -110,7 +110,7 @@
 1. Install the newest 4a build from the TestFlight app — **the build that contains PR "probe v3 (KV-R3)" or any later one**. The overlord will note the exact build number on this card. It is a big download (about 420 MB), so use wi-fi. The build number is the number in brackets after the version, for example `1.0.0 (2026092801)`.
 2. Open the menu, open **Developer** at the bottom of Settings, turn on **Voice engine probe**, and tap **Run the voice engine probe**. **Leave the app open with the screen on** until the sheet shows a table (about five to ten minutes).
 3. Tap **Run the voice engine probe** again, and **lock the phone straight away**. Leave it locked for ten minutes, then unlock. If the sheet still says "Running the voice probe", lock it again for five more minutes.
-4. Optional, but it is the strongest evidence: tap **Start the 30-minute soak (then lock the phone)**, lock the phone at once, and leave it locked for 30 minutes (charging is fine).
+4. Optional, but it is the strongest evidence: tap **Start the 30-minute soak (then lock the phone)**, lock the phone at once, and leave it locked for 30 minutes (charging is fine). If you need the phone sooner, unlock it and tap **Stop the soak now** (the same button): it keeps every loop it finished.
 5. Unlock, tap **Copy** in the Playback diagnostics sheet, and **paste the whole record here**.
 6. If you like, tap the **Play … at 1.5x** buttons under the table to hear each engine at 1.5x, and say which ones sound wrong.
 7. If the app closes or restarts during any run, that is a finding, not a mistake: open the app, run the same step once more, then Copy and paste. The record will say `LAST-RUN-KILLED` and where.

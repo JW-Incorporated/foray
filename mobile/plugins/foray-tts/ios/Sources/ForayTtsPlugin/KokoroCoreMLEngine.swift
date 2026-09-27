@@ -472,21 +472,70 @@ enum KokoroCoreMLArrays {
     }
 
     /// Any output as flat fp32 values, in logical (row-major) order.
+    ///
+    /// A STRIDED output (the Neural Engine pads rows to its alignment, which
+    /// is why FluidAudio reads by stride) is gathered by stride here, raw,
+    /// then converted — not read through `array[i]`, whose linear index is
+    /// not documented to honour strides, and which boxes one NSNumber per
+    /// element: ~1.8 M of them for the vocoder's input, inside the timed
+    /// synthesis, would be measuring Foundation rather than the engine.
     static func floats(_ array: MLMultiArray) -> [Float] {
         let count = array.count
-        if isContiguous(array) {
-            if array.dataType == .float32 {
+        let contiguous = isContiguous(array)
+        switch array.dataType {
+        case .float32:
+            if contiguous {
                 let p = array.dataPointer.bindMemory(to: Float.self, capacity: count)
                 return Array(UnsafeBufferPointer(start: p, count: count))
             }
-            if array.dataType == .float16 {
-                var out = [Float](repeating: 0, count: count)
+            return gather(array, as: Float.self)
+        case .float16:
+            let raw: [UInt16]
+            if contiguous {
                 let p = array.dataPointer.bindMemory(to: UInt16.self, capacity: count)
-                out.withUnsafeMutableBufferPointer { convertF16toF32(p, $0.baseAddress!, count) }
-                return out
+                raw = Array(UnsafeBufferPointer(start: p, count: count))
+            } else {
+                raw = gather(array, as: UInt16.self)
+            }
+            guard !raw.isEmpty else { return [] }
+            var out = [Float](repeating: 0, count: raw.count)
+            raw.withUnsafeBufferPointer { src in
+                out.withUnsafeMutableBufferPointer { convertF16toF32(src.baseAddress!, $0.baseAddress!, raw.count) }
+            }
+            return out
+        default:
+            return (0..<count).map { array[$0].floatValue }
+        }
+    }
+
+    /// The elements of a (possibly strided) array in logical row-major order,
+    /// as raw `T`, walking the shape and adding up each index × its stride.
+    static func gather<T>(_ array: MLMultiArray, as _: T.Type) -> [T] {
+        let shape = array.shape.map(\.intValue)
+        let strides = array.strides.map(\.intValue)
+        let count = array.count
+        guard count > 0, shape.count == strides.count, !shape.isEmpty else { return [] }
+        var maxOffset = 0
+        for d in shape.indices { maxOffset += (shape[d] - 1) * strides[d] }
+        let src = array.dataPointer.bindMemory(to: T.self, capacity: maxOffset + 1)
+        var out: [T] = []
+        out.reserveCapacity(count)
+        var index = [Int](repeating: 0, count: shape.count)
+        var offset = 0
+        for _ in 0..<count {
+            out.append(src[offset])
+            /* Odometer: bump the last dimension, carrying left. */
+            var d = shape.count - 1
+            while d >= 0 {
+                index[d] += 1
+                offset += strides[d]
+                if index[d] < shape[d] { break }
+                offset -= strides[d] * index[d]
+                index[d] = 0
+                d -= 1
             }
         }
-        return (0..<count).map { array[$0].floatValue }
+        return out
     }
 
     /// Whether linear indexing matches the raw buffer (Core ML may hand back

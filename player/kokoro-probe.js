@@ -1000,6 +1000,15 @@ export function summarizeSoak({ native = null, elapsedMs = null, reason = null }
     nonFinite: count(n.soakNonFinite),
     cpuPerContentSec: num(n.cpuPerContentSec),
     verdict: oneOf(SPEED_VERDICTS, n.soakVerdict),
+    /* KV-R3 review: the founder ended it early (`mode: "stop"`); every loop
+       it kept is a whole passage. */
+    stopped: n.soakStopped === true,
+    /* The first failure's engine code, the matrix's own keys (#848/#850). */
+    cmlCode: oneOf(CML_CODES, n.cmlCode),
+    cmlStage: oneOf(CML_STAGES, n.cmlStage),
+    ortCode: oneOf(ORT_CODES, n.ortCode),
+    ortStage: oneOf(ORT_STAGES, n.ortStage),
+    loadErr: oneOf(ORT_CODES, n.loadErr),
     thermalStart: oneOf(THERMAL_STATES, n.thermalStart),
     thermalEnd: oneOf(THERMAL_STATES, n.thermalEnd),
     keepAlive: oneOf(KEEP_ALIVE_STATES, n.keepAlive),
@@ -1025,24 +1034,50 @@ export function formatSoakReport(record) {
         (r.prevKilledStage === "soak" ? ` after ${r.prevKilledChunksDone ?? "?"} loops` : "") +
         `, peak ${r.prevKilledPeakMb ?? "—"} MB`
       : "";
-    return `voice soak: could not run (${r.reason ?? "unknown"}${r.synthReason ? `/${r.synthReason}` : ""})${killed}`;
+    return `voice soak: could not run (${r.reason ?? "unknown"}${r.synthReason ? `/${r.synthReason}` : ""})`
+      + `${soakErrorText(r)}${killed}`;
   }
   const minutes = Number.isFinite(r.elapsedSec) ? (r.elapsedSec / 60).toFixed(1) : "—";
   const series = (r.rtfSeries ?? []).map((v, i) => `${f2(v)}${(r.thermalSeries?.[i] ?? "?")[0]}`).join(" ");
   const lines = [
-    `voice soak [${r.pass ?? "?"} @${r.speed ?? "?"}x]: ${r.loops ?? "?"} loops over ${minutes} min, verdict ${(r.verdict ?? "unmeasured").toUpperCase()}`,
+    `voice soak [${r.pass ?? "?"} @${r.speed ?? "?"}x]: ${r.loops ?? "?"} loops over ${minutes} min, verdict ${(r.verdict ?? "unmeasured").toUpperCase()}`
+      + (r.stopped ? " (stopped early by you)" : ""),
     `  content RTF   min ${f2(r.rtfMin)}  median ${f2(r.rtfMedian)}  max ${f2(r.rtfMax)}  (target ≤ ${TARGET_CONTENT_RTF})`,
     `  per minute    ${series || "—"}  (letter = heat: n/f/s/c)`,
     `  memory        peak ${r.peakMb ?? "—"} MB  first loop ${r.peakFirstMb ?? "—"} MB  last loop ${r.peakLastMb ?? "—"} MB  headroom ${r.availableMemoryMb ?? "—"} MB`,
     `  screen        ${r.lockedLoops ?? "?"} of ${r.loops ?? "?"} loops locked, ${r.bgLoops ?? "?"} in the background  keep-alive ${r.keepAlive ?? "—"}`,
     `  heat          ${r.thermalStart ?? "—"} > ${r.thermalEnd ?? "—"}  CPU ${f2(r.cpuPerContentSec)} CPU-s per content second`,
-    `  failures      ${r.failures ?? "—"} (non-finite ${r.nonFinite ?? "—"})`,
+    `  failures      ${r.failures ?? "—"} (non-finite ${r.nonFinite ?? "—"})${soakErrorText(r)}`,
   ];
   if (r.prevKilledPass) {
     lines.push(`  LAST RUN KILLED in the ${r.prevKilledPass} ${r.prevKilledStage ?? "?"}` +
       (r.prevKilledStage === "soak" ? ` after ${r.prevKilledChunksDone ?? "?"} loops` : "") + `, peak ${r.prevKilledPeakMb ?? "—"} MB`);
   }
   return lines.join("\n");
+}
+
+/** ` — Core ML cml-predict at vocoder` / ` — ORT ...` after a soak line, or "". */
+function soakErrorText(r) {
+  if (r.cmlCode) return ` — Core ML ${r.cmlCode}${r.cmlStage ? ` at ${r.cmlStage}` : ""}`;
+  if (r.ortCode) return ` — ORT ${r.ortCode}${r.ortStage ? ` at ${r.ortStage}` : ""}`;
+  if (r.loadErr) return ` — ORT load ${r.loadErr}`;
+  return "";
+}
+
+/**
+ * End a running soak early (KV-R3 review): the founder needs his phone back
+ * before 30 minutes are up. The native half answers at once and the soak's
+ * own call then resolves with every loop it finished (`stopped: true`).
+ * Never throws; answers `{ ok, reason? }`.
+ */
+export async function stopProbeSoak({ tts = null } = {}) {
+  if (!tts || typeof tts.kokoroProbe !== "function") return { ok: false, reason: "no-bridge" };
+  try {
+    const out = await tts.kokoroProbe({ engine: PROBE_ENGINE, mode: "stop" });
+    return out && out.ok === true ? { ok: true } : { ok: false, reason: "refused" };
+  } catch (e) {
+    return { ok: false, reason: "threw", detail: nameOf(e) };
+  }
 }
 
 /* ---------- the run ---------- */
