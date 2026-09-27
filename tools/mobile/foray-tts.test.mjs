@@ -23,6 +23,7 @@ import {
   createForayTtsShell,
   onFinished,
   kokoroProbe,
+  probeErrorName,
   PROBE_ENGINE,
   pause,
   resume,
@@ -717,14 +718,61 @@ test("kokoroProbe: a native `ok: true` in the payload cannot override a refusal"
   assert.equal(out.reason, "model-absent");
 });
 
-test("kokoroProbe: a rejecting bridge is `engine-absent`, not a throw", async () => {
-  /* Capacitor rejects an unknown method, which is exactly what an older shell
-     build — one whose flattened `foray-tts.js` predates this card — does.
-     TO SEE IT FAIL: drop the try/catch; the call rejects into a drawer handler. */
-  const bridge = { nativePromise: async () => { throw new Error("no such method"); } };
+test("kokoroProbe: Capacitor's UNIMPLEMENTED rejection is `engine-absent`, not a throw", async () => {
+  /* Capacitor rejects an unknown method with code `UNIMPLEMENTED`, which is
+     exactly what an older shell build — one whose plugin predates this card —
+     does, and what a rename on one side of the bridge looks like.
+     TO SEE IT FAIL: drop the try/catch (the call rejects into a drawer
+     handler), or drop the UNIMPLEMENTED branch (it reads as `threw`). */
+  const err = Object.assign(new Error("\"ForayTts.kokoroProbe()\" is not implemented on ios"), { code: "UNIMPLEMENTED" });
+  const bridge = { nativePromise: async () => { throw err; } };
   const out = await kokoroProbe({ bridge, log: () => {} });
   assert.equal(out.ok, false);
   assert.equal(out.reason, "engine-absent");
+  assert.equal(out.path, "native");
+});
+
+test("kokoroProbe: any other rejection is `threw` with the error's NAME and never its message (L12)", async () => {
+  /* Every rejection used to report `engine-absent`, which reads as "no
+     runtime in this build" and sends the next reader to the wrong place.
+     MUTATION: report every rejection as `engine-absent` again (reason is
+     wrong), or put `e.message` in `detail` (the path leaks into the paste). */
+  const secret = "/var/mobile/Containers/Data/Application/ABCD-1234/model.onnx";
+  const bridge = { nativePromise: async () => { throw new TypeError(`cannot read ${secret}`); } };
+  const out = await kokoroProbe({ bridge, log: () => {} });
+  assert.deepEqual(out, { ok: false, path: "native", reason: "threw", detail: "TypeError" });
+  assert.ok(!JSON.stringify(out).includes("/var/mobile"), "no message text reaches the record");
+});
+
+test("kokoroProbe: a rejection's code wins over its name, and neither is admitted unless identifier-shaped", async () => {
+  /* MUTATION: drop the shape check — a code with spaces or a path in it
+     would ride into `detail`. */
+  const cases = [
+    [Object.assign(new Error("x"), { code: "UNAVAILABLE" }), "UNAVAILABLE"],
+    [Object.assign(new Error("x"), { code: "not a code", name: "RangeError" }), "RangeError"],
+    [Object.assign(new Error("x"), { code: "/var/mobile/x", name: "has space" }), null],
+    ["a bare string rejection", null],
+    [null, null],
+  ];
+  for (const [err, want] of cases) {
+    const bridge = { nativePromise: async () => { throw err; } };
+    const out = await kokoroProbe({ bridge, log: () => {} });
+    assert.equal(out.reason, "threw");
+    assert.equal(out.detail, want);
+  }
+  assert.equal(probeErrorName({ code: "A".repeat(40) }), "A".repeat(40));
+  assert.equal(probeErrorName({ code: "A".repeat(41) }), null, "40 characters at most");
+});
+
+test("kokoroProbe: the web half's error-name rule is the player's `nameOf`, written twice and held in step", async () => {
+  /* The two files cannot import each other (see PROBE_ENGINE). MUTATION:
+     loosen either regex. */
+  const { nameOf } = await import("../../player/kokoro-probe.js");
+  const probes = [
+    new TypeError("m"), { code: "UNIMPLEMENTED" }, { code: "x y", name: "Error" }, { name: "9lives" },
+    { code: "a".repeat(40) }, { code: "a".repeat(41) }, null, "str", { code: "has-hyphen" },
+  ];
+  for (const p of probes) assert.equal(probeErrorName(p), nameOf(p), JSON.stringify(p));
 });
 
 test("kokoroProbe: `speak()` is untouched by the probe engine", async () => {

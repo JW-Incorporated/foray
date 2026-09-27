@@ -24,6 +24,7 @@ import {
   GO_RTF_NEWEST, GO_RTF_OLDEST, GO_PEAK_MEMORY_MB,
   passageSeconds, passageProblem, realTimeFactor, rtfIsPlausible, toMegabytes,
   probeVerdict, summarizeProbe, formatProbeReport, runKokoroProbe,
+  ORT_CODES, ORT_STAGES, LINE_OUTCOMES, KOKORO_MODEL_PIN, nameOf,
 } from "./kokoro-probe.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -441,11 +442,76 @@ test("every synthesis failure the phones can name is one the page knows", () => 
      string in a record somebody has to interpret over a phone call.
      MUTATION: write `"session-missing"` in either engine — this is red. */
   const quoted = (src) => (src.match(/"[a-z]+-[a-z]+"/g) ?? []).map((s) => s.slice(1, -1));
+  /* `no-model` is an ORT error token (ORT_CODES), not a synthesis reason; it
+     shares the `no-` prefix and is pinned by its own test below. */
   const suspects = new Set([...quoted(IOS_ENGINE), ...quoted(AND_ENGINE)]
-    .filter((s) => /^(session|inference|no|zero)-/.test(s)));
-  assert.ok(suspects.size >= 4, `expected the four synthesis codes, saw ${[...suspects]}`);
+    .filter((s) => /^(session|inference|no|zero|non)-/.test(s))
+    .filter((s) => !ORT_CODES.includes(s)));
+  assert.ok(suspects.size >= 5, `expected the five hyphenated synthesis codes, saw ${[...suspects]}`);
   for (const s of suspects) {
     assert.ok(SYNTH_REASONS.includes(s), `${s} is not in SYNTH_REASONS`);
+  }
+  /* L04: both engines can say the two new ones, and the page knows them.
+     MUTATION: drop the finite/silence pass from either engine. */
+  for (const [name, src] of [["ios", IOS_ENGINE], ["android", AND_ENGINE]]) {
+    assert.match(src, /"non-finite"/, `${name} engine must be able to report non-finite output`);
+    assert.match(src, /"silent"/, `${name} engine must be able to report silent output`);
+  }
+  assert.ok(SYNTH_REASONS.includes("non-finite") && SYNTH_REASONS.includes("silent"));
+});
+
+test("every ORT error token either phone can send is one the page knows (L03)", () => {
+  /* The C API's OrtErrorCode 1..11 in order, then oom and other. Both engines
+     spell the tokens out; a token only one side knows arrives as `null`.
+     MUTATION: renumber the table in either engine, or add a token to one. */
+  assert.deepEqual([...ORT_CODES], [
+    "fail", "invalid-argument", "no-such-file", "no-model", "engine-error", "runtime-exception",
+    "invalid-protobuf", "model-loaded", "not-implemented", "invalid-graph", "ep-fail", "oom", "other",
+  ]);
+  for (const [name, src] of [["ios", IOS_ENGINE], ["android", AND_ENGINE]]) {
+    for (const code of ORT_CODES) {
+      if (name === "ios" && code === "oom") continue; // no OutOfMemoryError to catch on iOS
+      assert.ok(src.includes(`"${code}"`), `${name} engine never names "${code}"`);
+    }
+    for (const stage of ORT_STAGES) {
+      assert.ok(src.includes(`"${stage}"`), `${name} engine never names stage "${stage}"`);
+    }
+  }
+  /* iOS maps by the C API number; the 1..11 order IS the table. */
+  const iosTable = IOS_ENGINE.match(/static let ORT_CODE_TOKENS[^[]*\[([^\]]+)\]/);
+  assert.ok(iosTable, "the iOS engine keeps its code table as one array");
+  const tokens = (iosTable[1].match(/"[a-z-]+"/g) ?? []).map((t) => t.slice(1, -1));
+  assert.deepEqual(tokens, ORT_CODES.slice(0, 11), "index i is OrtErrorCode i+1");
+});
+
+test("both plugins put every Lane A key on the wire", () => {
+  /* The keys `summarizeProbe` reads. Present in the source is the floor; the
+     XCTest pins the iOS failure path end to end. MUTATION: drop any key. */
+  const keys = ["ortCode", "ortOp", "ortStage", "loadErr", "lineOutcomes", "nonFiniteLines", "silentLines",
+    "ortVersion", "intraThreads", "cores", "modelBytes", "modelSha8", "device", "os",
+    "thermalStart", "thermalEnd", "lowPower", "memWarn", "bgAtFail", "baseMemoryBytes",
+    "availableMemoryBytes", "lockedScreenCompleted", "batteryDeltaPct", "batteryWindowSec"];
+  for (const [name, src] of [["ios", IOS_PLUGIN], ["android", AND_PLUGIN]]) {
+    for (const k of keys) assert.ok(src.includes(`"${k}"`), `${name} plugin never sends ${k}`);
+  }
+  /* The DEFECT the brief names: phys_footprint and the native heap are
+     CURRENT readings, not peaks. */
+  assert.match(IOS_PLUGIN, /ledger_phys_footprint_peak/);
+  assert.match(AND_PLUGIN, /getTotalPss\(\)/);
+});
+
+test("no plugin reads a device NAME, a vendor id or an error message into the result", () => {
+  /* Rules 2 and 3 of the catalogue. MUTATION: record UIDevice.name, or put
+     `localizedDescription` / `getMessage()` into a result key. */
+  /* The probe's half of each plugin (the narration half is not this card's). */
+  const iosProbe = IOS_PLUGIN.slice(IOS_PLUGIN.indexOf("// MARK: - K-01"));
+  const andProbe = AND_PLUGIN.slice(AND_PLUGIN.indexOf("public void kokoroProbe(PluginCall call)"));
+  assert.ok(iosProbe.length > 1000 && andProbe.length > 1000, "the probe sections are where this test looks");
+  for (const [name, src] of [["ios", iosProbe + IOS_ENGINE], ["android", andProbe + AND_ENGINE]]) {
+    assert.ok(!/UIDevice\.current\.name\b/.test(src), `${name}: UIDevice.name`);
+    assert.ok(!/identifierForVendor|Build\.SERIAL|getSerial\(|ANDROID_ID/.test(src), `${name}: a device identifier`);
+    assert.ok(!/result\[[^\]]+\]\s*=\s*[^\n]*(localizedDescription|getMessage\(\))/.test(src), `${name}: a message on the wire`);
+    assert.ok(!/\.put\("[A-Za-z]+",[^\n]*getMessage\(\)/.test(src), `${name}: a message on the wire`);
   }
 });
 
@@ -566,6 +632,160 @@ test("a throwing bridge resolves `threw` — the run never rejects", async () =>
   const rec = await runKokoroProbe({ tts, passage: phonemized() });
   assert.equal(rec.reason, "threw");
   assert.equal(rec.ok, false);
+});
+
+test("`threw` carries the error's NAME, never its message (L12)", async () => {
+  /* MUTATION: pass `e.message` as detail, or drop `nameOf(e)` — the first
+     leaks the path into the paste, the second leaves a bare `threw`. */
+  const path = "/var/mobile/Containers/Data/Application/0000/Library/model.onnx";
+  const tts = { kokoroProbe: async () => { throw new TypeError(`cannot open ${path}`); } };
+  const rec = await runKokoroProbe({ tts, passage: phonemized() });
+  assert.equal(rec.reason, "threw");
+  assert.equal(rec.synthReason, "TypeError");
+  assert.ok(!JSON.stringify(rec).includes("/var/mobile"));
+  assert.match(formatProbeReport(rec), /could not measure \(threw\/TypeError\)/);
+  /* A code wins over a name; neither is admitted unless identifier-shaped. */
+  assert.equal(nameOf({ code: "UNAVAILABLE", name: "Error" }), "UNAVAILABLE");
+  assert.equal(nameOf({ code: "has space", name: "RangeError" }), "RangeError");
+  assert.equal(nameOf({ code: "/a/b", name: "a b" }), null);
+  assert.equal(nameOf("string"), null);
+  /* And a native `detail` that is a sentence is refused by shape. */
+  assert.equal(summarizeProbe({ native: { detail: `cannot open ${path}` }, reason: "threw" }).synthReason, null);
+});
+
+/* ==================================================================== */
+/* Lane A: why it failed, and on what (docs/diagnostics/log-gaps-2026-09-26.md) */
+/* ==================================================================== */
+
+/** The 2026-09-26 paste's failure as a Lane A phone would send it. The values
+    are illustrative; the shapes are the contract. */
+const LANE_A_FAILURE = Object.freeze({
+  ok: false, reason: "synthesis-failed", detail: "inference-threw", platform: "ios",
+  provider: "cpu", model: "kokoro-82m-v1.0-q8f16", modelLoadColdMs: 457, modelLoadWarmMs: 374,
+  synthColdMs: 812, synthWarmMs: 2210, synthFailures: 4, lines: 4, audioColdSec: 0, audioWarmSec: 0,
+  ortCode: "not-implemented", ortOp: "ConvTranspose", ortStage: "run",
+  lineOutcomes: ["threw", "threw", "threw", "threw"], nonFiniteLines: 0, silentLines: 0,
+  ortVersion: "1.20.0", intraThreads: 0, cores: 6, modelBytes: 86033585, modelSha8: "04c658ae",
+  device: "iPhone15.2", os: "18.6.2", thermalStart: "nominal", thermalEnd: "fair",
+  lowPower: false, memWarn: false, bgAtFail: true,
+  baseMemoryBytes: 142 * 1024 * 1024, peakMemoryBytes: 312 * 1024 * 1024, availableMemoryBytes: 1104 * 1024 * 1024,
+  lockedScreenCompleted: false,
+});
+
+test("summarizeProbe passes every Lane A key through by name", () => {
+  /* The output contract Lane C's `voiceProbe()` reads. MUTATION: drop any
+     key from summarizeProbe — its assertion goes red by name. */
+  const rec = summarizeProbe({ native: LANE_A_FAILURE, reason: "synthesis-failed" });
+  const want = {
+    platform: "ios", ortCode: "not-implemented", ortOp: "ConvTranspose", ortStage: "run", loadErr: null,
+    lineOutcomes: "threw,threw,threw,threw", nonFiniteLines: 0, silentLines: 0,
+    ortVersion: "1.20.0", intraThreads: 0, cores: 6, modelBytes: 86033585, modelSha8: "04c658ae", modelPin: "ok",
+    device: "iPhone15.2", os: "18.6.2", thermalStart: "nominal", thermalEnd: "fair",
+    lowPower: false, memWarn: false, bgAtFail: true, baseMemoryMb: 142, peakMemoryMb: 312, availableMemoryMb: 1104,
+  };
+  for (const [k, v] of Object.entries(want)) assert.deepEqual(rec[k], v, k);
+  assert.equal(summarizeProbe({ native: { loadErr: "no-such-file" } }).loadErr, "no-such-file");
+  assert.equal(summarizeProbe({ native: { platform: "android" } }).platform, "android");
+  /* The existing keys are untouched. */
+  assert.equal(rec.synthReason, "inference-threw");
+  assert.equal(rec.synthFailures, 4);
+  assert.equal(rec.rtfWarm, null);
+});
+
+test("an older shell's record has every Lane A key, and every one is null", () => {
+  /* MUTATION: default a boolean to false or a count to 0 — the record would
+     then claim "no memory warning" for a phone that never said. */
+  const rec = summarizeProbe({ native: READING_685, audioSec: 77.4 });
+  for (const k of ["platform", "ortCode", "ortOp", "ortStage", "loadErr", "lineOutcomes", "nonFiniteLines",
+    "silentLines", "ortVersion", "intraThreads", "cores", "modelBytes", "modelSha8", "modelPin", "device", "os",
+    "thermalStart", "thermalEnd", "lowPower", "memWarn", "bgAtFail", "baseMemoryMb"]) {
+    assert.ok(k in rec, `${k} is part of the record`);
+    assert.equal(rec[k], null, k);
+  }
+});
+
+test("summarizeProbe drops malformed Lane A values instead of storing them", () => {
+  /* Admitted BY SHAPE or from a closed set, or not at all. MUTATION: relax
+     any one sanitiser — the path, the comma, the ninth hex digit gets in. */
+  const bad = summarizeProbe({ native: {
+    ortCode: "segfault", ortOp: "/var/mobile/Containers/Data/model.onnx", ortStage: "load",
+    loadErr: "Error: could not open", lineOutcomes: ["ok", "exploded", "ok"], nonFiniteLines: -1, silentLines: 1.5,
+    ortVersion: "v1.20", intraThreads: "0", cores: NaN, modelBytes: -5, modelSha8: "04c658aec",
+    device: "iPhone15,2", os: "18.6 beta", thermalStart: "hot", thermalEnd: "Nominal",
+    lowPower: "false", memWarn: 1, bgAtFail: null, baseMemoryBytes: -1, platform: "windows",
+  } });
+  for (const k of ["ortCode", "ortOp", "ortStage", "loadErr", "lineOutcomes", "nonFiniteLines", "silentLines",
+    "ortVersion", "intraThreads", "cores", "modelBytes", "modelSha8", "device", "os", "thermalStart",
+    "thermalEnd", "lowPower", "memWarn", "bgAtFail", "baseMemoryMb", "platform"]) {
+    assert.equal(bad[k], null, `${k} must be refused`);
+  }
+  assert.equal(summarizeProbe({ native: { ortOp: "A".repeat(32) } }).ortOp, "A".repeat(32));
+  assert.equal(summarizeProbe({ native: { ortOp: "A".repeat(33) } }).ortOp, null, "32 characters at most");
+  assert.equal(summarizeProbe({ native: { device: "Pixel-8a" } }).device, "Pixel-8a");
+  assert.equal(summarizeProbe({ native: { device: "x".repeat(33) } }).device, null);
+  /* The list is capped at 16 lines and never partially admitted. */
+  const many = summarizeProbe({ native: { lineOutcomes: Array(20).fill("ok") } }).lineOutcomes;
+  assert.equal(many.split(",").length, 16);
+  assert.equal(summarizeProbe({ native: { lineOutcomes: [] } }).lineOutcomes, null);
+  for (const t of LINE_OUTCOMES) assert.equal(summarizeProbe({ native: { lineOutcomes: [t] } }).lineOutcomes, t);
+});
+
+test("modelPin is ok, mismatch, or null — never a guess (L08)", () => {
+  /* MUTATION: read "ok" when only the length matches — a stale Android
+     extraction of the same size then passes. */
+  const pin = (native) => summarizeProbe({ native }).modelPin;
+  assert.equal(pin({ modelBytes: 86033585, modelSha8: "04c658ae" }), "ok");
+  assert.equal(pin({ modelBytes: 86033585, modelSha8: "deadbeef" }), "mismatch");
+  assert.equal(pin({ modelBytes: 1234, modelSha8: "04c658ae" }), "mismatch");
+  assert.equal(pin({ modelBytes: 1234 }), "mismatch");
+  assert.equal(pin({ modelSha8: "deadbeef" }), "mismatch");
+  assert.equal(pin({ modelBytes: 86033585 }), null, "half a match proves nothing");
+  assert.equal(pin({}), null);
+  assert.equal(pin({ modelBytes: 86033585, modelSha8: "04C658AE" }), null, "an unshaped sha is absent, not a match");
+});
+
+test("KOKORO_MODEL_PIN is fetch-models.mjs's first pin, not a copy that can drift", async () => {
+  /* MUTATION: re-pin the model in fetch-models.mjs without moving this — the
+     phone would then report `pin MISMATCH` for the right file. */
+  const { PINS } = await import("../tools/mobile/fetch-models.mjs");
+  assert.equal(PINS[0].bytes, KOKORO_MODEL_PIN.bytes);
+  assert.equal(PINS[0].sha256.slice(0, 8), KOKORO_MODEL_PIN.sha8);
+});
+
+test("the drawer report says why it failed and on what (Lane A)", () => {
+  /* Each line fails by name if its field is dropped from the formatter.
+     MUTATION: drop any line of probeContextLines. */
+  const text = formatProbeReport(summarizeProbe({ native: LANE_A_FAILURE, reason: "synthesis-failed" }));
+  assert.match(text, /^voice probe: could not measure \(synthesis-failed\/inference-threw\)$/m);
+  assert.match(text, /^  ORT           1\.20\.0 cpu threads=auto cores=6$/m);
+  assert.match(text, /^  failure       not-implemented op=ConvTranspose at=run background=y$/m);
+  assert.match(text, /^  lines         threw,threw,threw,threw$/m);
+  assert.match(text, /^  model file    86033585 B sha 04c658ae \(pin ok\)$/m);
+  assert.match(text, /^  device        iPhone15\.2 iOS 18\.6\.2  thermal nominal>fair  low power n$/m);
+  assert.match(text, /^  memory        base 142 MB  peak 312 MB  headroom 1104 MB  warning n$/m);
+  const mism = formatProbeReport(summarizeProbe({
+    native: { ...LANE_A_FAILURE, modelSha8: "deadbeef", loadErr: "no-model" }, reason: "synthesis-failed" }));
+  assert.match(mism, /\(pin MISMATCH\)/);
+  assert.match(mism, / load=no-model/);
+});
+
+test("the drawer report on a success carries the same lines, garbage counts included", () => {
+  /* MUTATION: print the Lane A lines only on a refusal. */
+  const native = { ...LANE_A_FAILURE, ok: true, reason: "", detail: "non-finite", ortCode: undefined,
+    ortOp: undefined, ortStage: undefined, bgAtFail: undefined, synthFailures: 2, audioColdSec: 3, audioWarmSec: 6,
+    lineOutcomes: ["ok", "nan", "silent", "ok"], nonFiniteLines: 1, silentLines: 1, intraThreads: 4 };
+  const text = formatProbeReport(summarizeProbe({ native }));
+  assert.match(text, /^  lines         ok,nan,silent,ok \(non-finite 1, silent 1\)$/m);
+  assert.match(text, /threads=4 cores=6/);
+  assert.doesNotMatch(text, /^  failure/m, "no failure line when nothing named one");
+  assert.match(text, /^  device        iPhone15\.2 iOS 18\.6\.2/m);
+});
+
+test("an older shell's drawer report is unchanged: no Lane A line appears", () => {
+  /* MUTATION: print the new lines with dashes when their data is absent. */
+  const text = formatProbeReport(summarizeProbe({ native: READING_685, audioSec: 77.4 }));
+  assert.doesNotMatch(text, /^  (ORT|failure|lines {9}|model file|device|memory) /m);
+  assert.equal(formatProbeReport(summarizeProbe({ reason: "engine-absent" })).split("\n").length, 1);
 });
 
 test("a successful run computes RTF against the passage's own duration", async () => {
