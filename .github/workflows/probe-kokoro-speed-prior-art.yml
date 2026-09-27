@@ -1,0 +1,39 @@
+name: probe-kokoro-speed-prior-art (throwaway)
+on:
+  push:
+    branches: [probe/kokoro-speed-prior-art]
+permissions:
+  contents: read
+jobs:
+  fluidaudio:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: macos-15, route: cpuOnly }
+          - { os: macos-15, route: cpuAndGpu }
+          - { os: macos-15, route: default }
+          - { os: macos-26, route: cpuOnly }
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - run: sw_vers; uname -m; sysctl -n hw.ncpu machdep.cpu.brand_string; xcodebuild -version; swift --version
+      - run: swift build -c release --package-path tools/probe-tmp/faprobe 2>&1 | tail -30
+      - run: tools/probe-tmp/faprobe/.build/release/FaProbe ${{ matrix.route }} tools/mobile/kokoro-probe-passage.json
+  ort-fp32:
+    strategy:
+      fail-fast: false
+      matrix:
+        threads: [0, 3]
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: node tools/mobile/fetch-models.mjs
+      - run: mkdir -p models && curl -fsSL -o models/model.onnx "https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX/resolve/main/onnx/model.onnx"
+      - run: pip install "onnxruntime==1.20.1" numpy
+      - run: python -u tools/probe-tmp/ort_speed.py ${{ matrix.threads }}
