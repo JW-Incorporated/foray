@@ -60,20 +60,48 @@ def ort_engine(speed, tag):
     run_all(synth, tag, speed)
 
 
+def torch_engine(speed, tag):
+    import torch
+    from kokoro import KModel
+    torch.set_num_threads(3)
+    km = KModel(repo_id="hexgrad/Kokoro-82M").eval()
+    print("torch", torch.__version__)
+    def synth(ids):
+        with torch.no_grad():
+            a, _ = km.forward_with_tokens(torch.LongTensor([ids]), torch.from_numpy(VOICE[row(ids)][None, :].copy()), speed)
+        return a.numpy()
+    run_all(synth, tag, speed)
+
+
+def load_stage(ct, mdir, k, cu, v2):
+    names = [f"Kokoro{k}_v2.mlpackage", f"Kokoro{k}_v2.mlmodelc"] if v2 and k in ("Noise", "Prosody", "Tail") else []
+    names += [f"Kokoro{k}.mlpackage"]
+    for n in names:
+        p = os.path.join(mdir, n)
+        if os.path.exists(p):
+            if n.endswith(".mlmodelc"):
+                return p, ct.models.CompiledMLModel(p, compute_units=cu)
+            return p, ct.models.MLModel(p, compute_units=cu)
+    raise FileNotFoundError(names)
+
+
 def coreml_engine(speed, tag, mdir, cu_name):
     import coremltools as ct
     CU = {"cpu": ct.ComputeUnit.CPU_ONLY, "ne": ct.ComputeUnit.CPU_AND_NE, "all": ct.ComputeUnit.ALL}
-    # "mixed" = laishere's iOSDemo placement (ANE for the fp16 stages, ALL for the fp32 ones)
-    plan = {k: (CU[cu_name] if cu_name != "mixed" else CU[v]) for k, v in
-            dict(Albert="ne", PostAlbert="ne", Alignment="ne", Prosody="all", Noise="all", Vocoder="ne", Tail="all").items()}
+    # "mixed" = laishere's iOSDemo placement (ANE for the fp16 stages, ALL for the fp32 ones); "-v2" = FluidInference v2 Noise/Prosody/Tail
     m, total_mb = {}, 0
     t0 = time.perf_counter()
+    v2 = cu_name.endswith("-v2"); cu_name = cu_name.replace("-v2", "")
+    plan = {k: (CU[cu_name] if cu_name != "mixed" else CU[v]) for k, v in
+            dict(Albert="ne", PostAlbert="ne", Alignment="ne", Prosody="all", Noise="all", Vocoder="ne", Tail="all").items()}
     for k in plan:
-        p = os.path.join(mdir, f"Kokoro{k}.mlpackage")
+        t = time.perf_counter(); p, m[k] = load_stage(ct, mdir, k, plan[k], v2)
         total_mb += sum(os.path.getsize(os.path.join(dp, f)) for dp, _, fs in os.walk(p) for f in fs) / 1e6
-        t = time.perf_counter(); m[k] = ct.models.MLModel(p, compute_units=plan[k])
-        spec = m[k].get_spec()
-        print(f"  load {k:10s} {time.perf_counter()-t:6.2f}s in={[i.name for i in spec.description.input]} out={[o.name for o in spec.description.output]}")
+        try:
+            spec = m[k].get_spec(); io = f"in={[i.name for i in spec.description.input]} out={[o.name for o in spec.description.output]}"
+        except Exception:
+            io = "(compiled)"
+        print(f"  load {k:10s} {os.path.basename(p)} {time.perf_counter()-t:6.2f}s {io}")
     print(f"coreml models {mdir} total {total_mb:.1f} MB, load(compile) {time.perf_counter()-t0:.1f}s cu={cu_name}")
     f16, f32 = np.float16, np.float32
     spd = np.array([speed], dtype=f16)
@@ -109,11 +137,16 @@ def mel(x, n_fft=1024, hop=256, n_mels=80):
     return np.log1p(fb @ (np.abs(Z) ** 2))
 
 
-def compare():
-    ref = np.load(f"{OUT}/ort_s1.npz")
+def compare(reftag="ort_s1"):
+    import soundfile as sf
+    ref = np.load(f"{OUT}/{reftag}.npz")
+    os.makedirs("wav", exist_ok=True)
     for f in sorted(glob.glob(f"{OUT}/*.npz")):
         tag = os.path.basename(f)[:-4]
-        if tag == "ort_s1": continue
+        z0 = np.load(f)
+        gap = np.zeros(int(0.08 * SR), dtype=np.float32)
+        sf.write(f"wav/{tag}.wav", np.concatenate([np.concatenate([np.nan_to_num(z0[f"a{i}"]), gap]) for i in range(len(CHUNKS))]), SR, subtype="PCM_16")
+        if tag == reftag: continue
         z = np.load(f); corrs, lens = [], []
         for i in range(len(CHUNKS)):
             a, b = ref[f"a{i}"], z[f"a{i}"]
@@ -123,7 +156,8 @@ def compare():
                 n = min(a.size, b.size); A, B = mel(a[:n]), mel(b[:n])
                 corrs.append(float(np.corrcoef(A.flatten(), B.flatten())[0, 1]))
         c = [x for x in corrs if x == x]
-        print(f"COMPARE {tag:24s} vs ort_s1: len_ratio mean={np.mean(lens):.3f} min={min(lens):.3f} max={max(lens):.3f}"
+        if corrs: print(f"  per-chunk {tag} vs {reftag}: " + " ".join(f"{i}:{x:.3f}" for i, x in enumerate(corrs)))
+        print(f"COMPARE {tag:24s} vs {reftag}: len_ratio mean={np.mean(lens):.3f} min={min(lens):.3f} max={max(lens):.3f}"
               + (f"  mel_corr mean={np.mean(c):.4f} min={min(c):.4f} nan_chunks={len(corrs)-len(c)}" if corrs else ""))
 
 
@@ -131,4 +165,5 @@ if __name__ == "__main__":
     kind = sys.argv[1]
     if kind == "ort": ort_engine(float(sys.argv[2]), sys.argv[3])
     elif kind == "coreml": coreml_engine(float(sys.argv[2]), sys.argv[3], sys.argv[4], sys.argv[5])
-    elif kind == "compare": compare()
+    elif kind == "torch": torch_engine(float(sys.argv[2]), sys.argv[3])
+    elif kind == "compare": compare(sys.argv[2] if len(sys.argv) > 2 else "ort_s1")
