@@ -17,6 +17,15 @@ marked superseded and keeps the British roadmap entry (KV-11). First moves: KV-R
 (founder runs HA #45 as written), KV-01 and KV-03a in parallel. Draft PR; never
 labelled or merged by an agent.
 
+**Amended 2026-09-26 (rev 3.1, deck §10):** KV-R0 is done and could not measure
+(build 2026092602: `synthesis-failed/inference-threw`, `load 457ms/374ms peak
+280.3MB`; the ORT error text is only in `os_log`). An ARM64 sweep (`probe/kokoro-arm64`,
+runs 36280828928 / 36281480135 / 36282008323) found q8f16 and fp16 produce NaN on
+Apple silicon; only fp32 (325.5 MB) is finite, at CPU RTF 0.78–0.98. So iOS bundles
+fp32 (TestFlight only), Android stays on q8f16 (fp32 there is KV-14, LATER), and
+**KV-R2** (probe v2: fp32, CPU vs CoreML passes, finiteness, sentence chunks; after
+the `diag/` voice-probe lane) replaces KV-R1 and gates KV-03a.
+
 ### 2026-09-25 — `r3fix/integration`: audit round 3 (code), lanes L1-L6 and L8 in ONE PR
 
 Owned: nothing held. One branch off `main` 5c2c8ea1 with seven round-3 lane
