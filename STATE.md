@@ -7,6 +7,16 @@ docs/. Completed workstreams move to their plan doc's retro section.
 
 ## Active workstreams
 
+### 2026-09-26 — `docs/kokoro-voices-plan`: Kokoro deck revision 3 (Heart + Echo; British later)
+
+Owned: nothing held (docs only). Lands `docs/kokoro-voices-in-app-plan.md`, the
+hand-off deck for bundling 4a's own voices: two American voices, Heart (default)
+and Echo, per the founder's 2026-09-26 cut ("put british on the roadmap… get this
+operational and upgrade it later"). Revision 2 (`docs/roadmap/kokoro-voice.md`) is
+marked superseded and keeps the British roadmap entry (KV-11). First moves: KV-R0
+(founder runs HA #45 as written), KV-01 and KV-03a in parallel. Draft PR; never
+labelled or merged by an agent.
+
 ### 2026-09-25 — `r3fix/integration`: audit round 3 (code), lanes L1-L6 and L8 in ONE PR
 
 Owned: nothing held. One branch off `main` 5c2c8ea1 with seven round-3 lane
