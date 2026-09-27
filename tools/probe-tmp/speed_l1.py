@@ -538,10 +538,136 @@ def mode_verchild2():
     log(f"VER ort {ort.__version__} load {lt:.2f}s RTF_CONTENT {tot/aud:.3f} nonfinite {nf} peak_rss {rss_mb():.0f}MB")
 
 
+# ---------------------------------------------------------------- round 3
+def _conv_model(path, C, K, dil, T, elem):
+    import onnx
+    from onnx import helper, TensorProto, numpy_helper
+    dt = np.float16 if elem == TensorProto.FLOAT16 else np.float32
+    W = numpy_helper.from_array((np.random.randn(C, C, K) * 0.05).astype(dt), "W")
+    B = numpy_helper.from_array(np.zeros(C, dt), "B")
+    pad = dil * (K - 1) // 2
+    n = helper.make_node("Conv", ["x", "W", "B"], ["y"], dilations=[dil], pads=[pad, pad], kernel_shape=[K])
+    g = helper.make_graph([n], "c", [helper.make_tensor_value_info("x", elem, [1, C, T])],
+                          [helper.make_tensor_value_info("y", elem, [1, C, T])], [W, B])
+    onnx.save(helper.make_model(g, opset_imports=[helper.make_opsetid("", 17)]), path)
+
+
+def mode_convbench():
+    from onnx import TensorProto
+    try:
+        np.show_config()
+    except Exception:
+        pass
+    T = 24000  # 5 s of audio at the generator's 4800 Hz rate
+    for C, K, dil in [(128, 11, 1), (128, 11, 5), (256, 11, 1)]:
+        flop = 2 * C * C * K * T
+        for label, elem in (("fp32", TensorProto.FLOAT), ("fp16", TensorProto.FLOAT16)):
+            path = f"conv_{C}_{K}_{dil}_{label}.onnx"
+            _conv_model(path, C, K, dil, T, elem)
+            for th in (1, 3):
+                try:
+                    s = ort.InferenceSession(path, sess_opts(threads=th), providers=["CPUExecutionProvider"])
+                    x = np.random.randn(1, C, T).astype(np.float16 if label == "fp16" else np.float32)
+                    s.run(None, {"x": x})
+                    ts = []
+                    for _ in range(5):
+                        t = time.perf_counter(); s.run(None, {"x": x}); ts.append(time.perf_counter() - t)
+                    m = min(ts)
+                    log(f"CONV ORT {label} C={C} K={K} d={dil} threads={th}: {m*1e3:.1f} ms  {flop/m/1e9:.0f} GFLOP/s")
+                except Exception as e:
+                    log(f"CONV ORT {label} C={C} K={K} threads={th} threw {str(e)[:200]}")
+        x = np.random.randn(C, T + 2 * dil * (K // 2)).astype(np.float32)
+        W = (np.random.randn(K, C, C) * 0.05).astype(np.float32)
+        ts = []
+        for _ in range(5):
+            t = time.perf_counter()
+            y = np.zeros((C, T), np.float32)
+            for k in range(K):
+                y += W[k] @ x[:, k * dil:k * dil + T]
+            ts.append(time.perf_counter() - t)
+        log(f"CONV numpy(Accelerate) K-shifted-GEMMs fp32 C={C} K={K} d={dil}: {min(ts)*1e3:.1f} ms  {flop/min(ts)/1e9:.0f} GFLOP/s")
+        col = np.random.randn(C * K, T).astype(np.float32)
+        Wm = W.transpose(1, 0, 2).reshape(C, C * K).copy()
+        ts = []
+        for _ in range(5):
+            t = time.perf_counter(); Wm @ col; ts.append(time.perf_counter() - t)
+        log(f"CONV numpy(Accelerate) single GEMM fp32 C={C} K={K}: {min(ts)*1e3:.1f} ms  {flop/min(ts)/1e9:.0f} GFLOP/s")
+        try:
+            import coremltools as ct
+            from coremltools.converters.mil import Builder as mb
+            wconst = (np.random.randn(C, C, K) * 0.05).astype(np.float32)
+            for prec in ("fp32", "fp16"):
+                @mb.program(input_specs=[mb.TensorSpec(shape=(1, C, T))])
+                def prog(x):
+                    return mb.conv(x=x, weight=wconst, dilations=[dil], pad_type="same")
+                for cu_name, cu in (("CPU_ONLY", ct.ComputeUnit.CPU_ONLY), ("CPU_AND_GPU", ct.ComputeUnit.CPU_AND_GPU), ("ALL", ct.ComputeUnit.ALL)):
+                    try:
+                        mlm = ct.convert(prog, convert_to="mlprogram", compute_units=cu,
+                                         compute_precision=ct.precision.FLOAT32 if prec == "fp32" else ct.precision.FLOAT16,
+                                         minimum_deployment_target=ct.target.macOS13)
+                        xin = {"x": np.random.randn(1, C, T).astype(np.float32)}
+                        mlm.predict(xin)
+                        ts = []
+                        for _ in range(5):
+                            t = time.perf_counter(); mlm.predict(xin); ts.append(time.perf_counter() - t)
+                        log(f"CONV CoreML {prec} {cu_name} C={C} K={K} d={dil}: {min(ts)*1e3:.1f} ms  {flop/min(ts)/1e9:.0f} GFLOP/s")
+                    except Exception as e:
+                        log(f"CONV CoreML {prec} {cu_name} threw {str(e)[:200]}")
+        except Exception as e:
+            log("coremltools unavailable", str(e)[:200])
+
+
+def mode_coremlep():
+    us = units("sent")
+    cfgs = [("CPU EP t3", ["CPUExecutionProvider"], dict(threads=3))]
+    for fmt in ("MLProgram", "NeuralNetwork"):
+        for cu in ("CPUOnly", "CPUAndGPU", "ALL"):
+            cfgs.append((f"CoreML {fmt} {cu}", [("CoreMLExecutionProvider", {"ModelFormat": fmt, "MLComputeUnits": cu}), "CPUExecutionProvider"], dict(threads=3)))
+    for name, prov, kw in cfgs:
+        try:
+            ort.set_default_logger_severity(2)
+            s, lt = make(providers=prov, **kw)
+            ort.set_default_logger_severity(3)
+            run(s, us[0])
+            tot = aud = 0.0; nf = 0
+            for u in us:
+                dt, w = run(s, u); tot += dt; aud += w.shape[-1] / SR; nf += int(not np.isfinite(w).all())
+            log(f"COREMLEP {name}: load {lt:.1f}s RTF_CONTENT {tot/aud:.3f} nonfinite {nf} peak_rss {rss_mb():.0f}MB")
+            del s
+        except Exception as e:
+            log(f"COREMLEP {name} threw {str(e)[:300]}")
+
+
+def mode_mem_child(v):
+    so = sess_opts(threads=3)
+    if v in ("noprepack", "noprepack+noarena"):
+        so.add_session_config_entry("session.disable_prepacking", "1")
+    if v in ("noarena", "noprepack+noarena"):
+        so.enable_cpu_mem_arena = False
+    t = time.perf_counter()
+    s = ort.InferenceSession(MODEL, so, providers=["CPUExecutionProvider"])
+    lt = time.perf_counter() - t
+    after = cur_rss_mb()
+    us = units("sent"); run(s, us[0])
+    tot = aud = 0.0
+    for u in us:
+        dt, w = run(s, u); tot += dt; aud += w.shape[-1] / SR
+    log(f"MEM ort {ort.__version__} {v}: load {lt:.2f}s rss_after_load {after:.0f}MB RTF_CONTENT {tot/aud:.3f} peak_rss {rss_mb():.0f}MB")
+
+
+def mode_mem():
+    for py in ("python", "venv1.30.0/bin/python"):
+        for v in ("default", "noprepack", "noarena", "noprepack+noarena"):
+            out = subprocess.run([py, "-u", __file__, "memchild", v], capture_output=True, text=True)
+            log(([l for l in out.stdout.splitlines() if l.startswith("MEM")] or [out.stderr[-400:]])[0])
+
+
 if __name__ == "__main__":
     log("ort", ort.__version__, "cpus", os.cpu_count(), "mode", sys.argv[1:])
     m = sys.argv[1]
-    if m == "chunkchild":
+    if m == "memchild":
+        mode_mem_child(sys.argv[2])
+    elif m == "chunkchild":
         mode_chunk_child(sys.argv[2], sys.argv[3])
     else:
         globals()["mode_" + m]()
