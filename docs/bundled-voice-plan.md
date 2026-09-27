@@ -402,6 +402,84 @@ The passage records this per line (`espeak_fallback`) and at the top
 - **Acceptance:** twelve clips exist and are bit-identical on re-render; the decision
   entry names three voice ids and a default.
 
+##### K-03 local route: the wide first listen on a founder's PC (2026-09-26)
+
+Wyatt, 2026-09-26: *"How do we decide on a voice? Ideally on my computer we can test
+out many of the kokoro voices, find a couple favorites, ship those to the app, test
+there, then send it."* This is **step 1** of that route. It comes before the sealed A–L
+ranking above and feeds it. It is a listening aid for one person, so it is not the
+sealed round: its files are named after their voices, and its Blind toggle only hides
+names on screen.
+
+- **What it renders.** All **28 English Kokoro v1.0 voices** (`af_*` 11, `am_*` 9,
+  `bf_*` 4, `bm_*` 4), at 1.0×, speaking four narration lines read at render time from
+  the published generated Foray `how-ai-actually-gets-built-3b83e1`: the disclosure
+  prelude, a clip introduction ("a former U.S. policymaker… Taiwan's chip factories"), a
+  mid-Foray bridge with a proper noun and an initialism ("TSMC"), and the closing exit.
+  That is 1,502 characters, about 95 s of audio per voice with the line gaps.
+- **Same graph, same phonemes.** The model's sha256 must equal the q8f16 pin in
+  `tools/mobile/fetch-models.mjs` and the twelve pinned voices must equal theirs, or the
+  run refuses. The pins are parsed out of that file, so the repo holds one hash table.
+  The other sixteen voices have no pin yet. Their sha256 is recorded in
+  `voices/manifest.json` on first download and re-checked on every later run.
+  The text goes through K-02's own stage (`phonemize.py`: lexicon first, misaki
+  0.9.4 en-US, espeak-ng 1.52.0 fallback via `espeakng_loader`). The style row is picked
+  by unpadded id count, as in both native engines. The sealed `--render` path used to
+  take row 0 for every line; it now shares the same helper.
+- **Where it lives.** Everything it writes is under `data-local/voice-audition/`, which
+  is gitignored: a Python 3.12 venv (`uv venv --python 3.12`, because the system Python
+  3.14 is too new for onnxruntime 1.20.1), the weights, `out/<voice>.wav`,
+  `out/audition.json` and `out/index.html`. The page opens straight from disk with no
+  server and no network. It has one card per voice (player, name, accent, gender,
+  render time), a **Blind** toggle that shuffles and letters the cards A, B … AB,
+  stars and per-voice notes kept in `localStorage`, **Play favourites** back to back,
+  and **Export favourites**, which downloads `favourites.json`
+  (`{kind: "foray-voice-audition-favourites", favourites: [{voice, name, accent, gender, notes, blind_letter}], other_notes, …}`).
+- **Run it again:**
+
+  ```
+  uv venv --python 3.12 data-local/voice-audition/.venv
+  uv pip install --python data-local/voice-audition/.venv/Scripts/python.exe -r tools/narration/requirements.txt \
+    "en_core_web_sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl"
+  data-local/voice-audition/.venv/Scripts/python.exe tools/narration/render-audition.py --local
+  data-local/voice-audition/.venv/Scripts/python.exe tools/narration/render-audition.py --local --voices af_heart,bm_george
+  data-local/voice-audition/.venv/Scripts/python.exe tools/narration/render-audition.py --local --page-only
+  ```
+
+  misaki needs spaCy's `en_core_web_sm` and tries to pip-install it at first use. A uv
+  venv has no pip, so the model is installed explicitly above.
+- **Measured while doing it (not a phone number).** On the audition PC (16-thread x86,
+  ORT 1.20.1, CPU EP) the q8f16 graph runs about **3× slower than real time**, and
+  **~84% of that is `ConvInteger`**, ORT's int8 dynamic-quantized convolution in the
+  decoder's resblocks. Four intra-op threads beat both the default and eight. A full
+  28-voice pass therefore takes a couple of hours. That is why the run is sequential, writes
+  `audition.json` after every voice (an interrupted run keeps what it rendered, and
+  `--voices` re-renders only what is missing without dropping the rest from the page), and
+  why `--page-only` exists. What this says about a phone is
+  unknown: ARM has different int8 kernels. K-01/K-08 measure that. It is worth
+  checking there first if the probe's RTF comes back high.
+- **British voices speak en-US phonemes.** The pipeline phonemizes en-US only
+  (`phonemize.py` runs `british=False`), and a phone would receive the same phonemes, so
+  the audition renders `bf_*`/`bm_*` from them too. That is what a listener would hear
+  today. A British pick would also need an en-GB phonemize path.
+
+**Next steps**, in order:
+
+1. **Finalists over a whole Foray.** Take the two to four starred voices from
+   `favourites.json` and render one entire published Foray's narration in each
+   (`--voices` plus a whole-Foray passage). Voices that sound good for 90 s can
+   still tire the ear over 20 minutes. These renders are also the sealed round's
+   1.5×/2.0× check.
+2. **In-app A/B with pre-rendered audio behind a Developer switch.** Before K-04 exists,
+   ship the finalists' renders of one Foray's narration as ordinary audio files. A
+   Developer-drawer switch plays that Foray's narration beats from the pre-rendered
+   file for the chosen voice instead of the system voice. Wyatt then hears each
+   finalist on his phone, in the real player, between real clips. Nothing about
+   on-device synthesis has to work yet.
+3. **K-04 on device.** The winner (and the runners-up that become selectable) go into
+   `mobile/plugins/foray-tts/voices.json` and the bundle. The pick is recorded in
+   `docs/DECISIONS.md` as this card's acceptance requires.
+
 #### K-04 · The engine: Kokoro inside `foray-tts`, both platforms — **L** — *design comment first*
 - **Ask:** promote K-01's probe into a real engine. Native API on both platforms:
   `speak({ phonemes | ids, voice, speed, utteranceId })` → resolves on accept (as today),

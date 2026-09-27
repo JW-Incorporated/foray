@@ -100,7 +100,12 @@ export const REAL_DATA_SUITES: readonly string[] = [
      (`readData("data/forays.json")` and the two pool files), so a publish that
      adds a Foray whose shape a painter mishandles must be refused here, not
      found on a phone. */
-  "test/load-states.test.js"
+  "test/load-states.test.js",
+  /* Added 2026-09-26 with the suite itself (PR #844). It picks the audition
+     passage from the REAL `data/forays.json` (the page reads live narration
+     at render time), so a publish that changes a narration shape the picker
+     mishandles is refused here rather than found on the founder's PC. */
+  "tools/narration/render-audition.test.mjs"
 ];
 
 /**
