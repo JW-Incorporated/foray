@@ -10,31 +10,11 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { os: macos-26, route: cpuOnly }
+          - { os: macos-15, route: cpuOnly }
     runs-on: ${{ matrix.os }}
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
       - run: sw_vers; uname -m; sysctl -n hw.ncpu machdep.cpu.brand_string; xcodebuild -version; swift --version
       - run: swift build -c release --package-path tools/probe-tmp/faprobe 2>&1 | tail -30
-      - run: tools/probe-tmp/faprobe/.build/release/FaProbe ${{ matrix.route }} tools/mobile/kokoro-probe-passage.json
-  ort-fp32:
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - { ort: "1.20.1", threads: 0, fastmath: 0 }
-          - { ort: "1.20.1", threads: 3, fastmath: 0 }
-          - { ort: "1.30.0", threads: 3, fastmath: 0 }
-          - { ort: "1.30.0", threads: 3, fastmath: 1 }
-    runs-on: macos-15
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with: { node-version: 22 }
-      - uses: actions/setup-python@v5
-        with: { python-version: "3.12" }
-      - run: node tools/mobile/fetch-models.mjs
-      - run: mkdir -p models && curl -fsSL -o models/model.onnx "https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX/resolve/main/onnx/model.onnx"
-      - run: pip install "onnxruntime==${{ matrix.ort }}" numpy; sysctl hw.optional.arm.FEAT_BF16 hw.optional.arm.FEAT_SME hw.optional.arm.FEAT_SME2 || true
-      - run: python -u tools/probe-tmp/ort_speed.py ${{ matrix.threads }} ${{ matrix.fastmath }}
+      - run: tools/probe-tmp/faprobe/.build/release/FaProbe ${{ matrix.route }} tools/mobile/kokoro-probe-passage.json || (ls -t ~/Library/Logs/DiagnosticReports/ | head; f=$(ls -t ~/Library/Logs/DiagnosticReports/*FaProbe* 2>/dev/null | head -1); [ -n "$f" ] && head -c 6000 "$f"; exit 1)
