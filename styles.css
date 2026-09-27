@@ -3461,6 +3461,11 @@ body.fy-sheet-keeps-player.fp-open .fy-sheet .fy-panel {
   cursor: pointer;
 }
 .dd-status { margin: 12px 0 0; font-size: var(--fs-sm); color: var(--text); line-height: 1.45; }
+/* KV-R3: the voice probe's table and the soak's report keep their lines
+   (app.js runVoiceProbeOnce / runVoiceSoakOnce), with tabular figures, and
+   scroll sideways rather than wrap a row. The two face tokens only. */
+.dd-status.dd-status-report { white-space: pre; overflow-x: auto; font-size: var(--fs-2xs); line-height: 1.35; font-variant-numeric: tabular-nums; }
+.diag-listen { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; }
 
 /* ===========================================================================
    U-05: Search restyle + Playlists results section

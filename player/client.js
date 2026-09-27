@@ -127,7 +127,9 @@ import { createNativeFacades } from "./native-facades.js";
 import { engineDiagnosticReport, engineBridgePresent, pageEngineView } from "./engine-diagnostics.js";
 import { readBuildStamp, BUILD_STAMP_WAIT_MS } from "./build-stamp.js";
 import { createTtsBridge } from "./tts-bridge.js";
-import { runKokoroProbe, formatProbeReport, probeVerdict } from "./kokoro-probe.js";
+import {
+  runKokoroProbe, formatProbeReport, probeVerdict, formatProbeTable, formatSoakReport, wavPasses, playProbeWav,
+} from "./kokoro-probe.js";
 import { createInterludePlayer, readInterludePref, writeInterludePref } from "./interlude.js";
 import { makeIdbTier } from "./idb-tier.js";
 import { createEventLog } from "./event-log.js";
@@ -5002,6 +5004,7 @@ const ForayPlayer = {
        STARTED — a probe that shares the phone with a playing episode is not
        measuring the same thing as one on a quiet phone. */
     const playing = transportIsRunning();
+    /* KV-R3: the matrix — one `voiceProbe` row per pass x speed. */
     const records = await runKokoroProbe({ tts: ttsBridge, passage, now: () => Date.now() });
     /* Recorded WHETHER OR NOT it succeeded. "This build has no model in it" is
        the single most useful thing the first run can tell us, and a record
@@ -5014,6 +5017,22 @@ const ForayPlayer = {
     return records;
   },
 
+  /* KV-R3: THE SOAK — the best background-safe pass rendering the passage at
+     speed 1.5 in a loop for 30 minutes with the phone locked (docs/voice/
+     kokoro-speed-1.5x.md §5 item 9). Its own entry point rather than a flag on
+     `runVoiceProbe`, for the reason that one takes none: the page decides
+     what to OFFER. ONE `voiceSoak` row, written whatever the outcome — a
+     soak iOS ended is reported by the next run's `prevKilled*`. */
+  async runVoiceSoak() {
+    const passage = await loadProbePassage();
+    const playing = transportIsRunning();
+    const records = await runKokoroProbe({ tts: ttsBridge, passage, now: () => Date.now(), mode: "soak" });
+    for (const record of records) {
+      try { diag.voiceSoak(record, { playing }); } catch (_) { /* the instrument must never be the outage */ }
+    }
+    return records;
+  },
+
   /** ONE pass's record as the several lines the drawer shows, plus K-01's
       go/no-go verdict applied to it (the page calls this once per pass). Re-exported for the same reason
       `defaultVoice` is: `app.js` is a classic script and must not carry a
@@ -5022,6 +5041,27 @@ const ForayPlayer = {
       card's ceiling differs between them. */
   formatVoiceProbe(record, age = "oldest") {
     return { text: formatProbeReport(record), verdict: probeVerdict(record, age) };
+  },
+
+  /** KV-R3: the whole v3 run as the drawer's compact table and one 1.5x
+      verdict per pass (empty for a run with no v3 records), and the soak's
+      report. Re-exported for the reason `formatVoiceProbe` is. */
+  formatVoiceProbeTable(records) {
+    return formatProbeTable(records);
+  },
+  formatVoiceSoak(record) {
+    return formatSoakReport(record);
+  },
+
+  /** KV-R3: the passes the last run kept a speed-1.5 WAV for, and a play
+      for one of them — through the SAME `ttsBridge` the probe used, played
+      natively by pass name (the page's CSP admits no local media, and no
+      path crosses the bridge). */
+  voiceProbeWavPasses(records) {
+    return wavPasses(records);
+  },
+  async playVoiceProbeWav(pass) {
+    return playProbeWav({ tts: ttsBridge, pass });
   },
 
   /** Which segment `elapsedSec` lands in, and how far into it — re-exported so

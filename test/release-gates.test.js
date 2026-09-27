@@ -675,13 +675,22 @@ test("K-06: the measured app sizes plus the model still fit under the ceiling", 
    scope for the deck. A PUBLIC STORE LAUNCH REOPENS THIS BUDGET: on-demand
    resources, a first-run download, or a smaller finite export, decided then.
 
-   360 MiB, not 330: headroom for the ORT slice's uncertainty (the ~11 MiB is
-   a quarter of Android's four-ABI share, inferred, not measured on iOS), and
-   no more — a second fp32-sized file would cross it. The first REAL iOS
-   figure with fp32 is KV-R2's ios-shell/ios-archive run, and it replaces the
-   projection here when it exists. */
-const IOS_TESTFLIGHT_BUDGET_MB = 360;
-const IOS_BUDGET_REASON = "TestFlight only: the fp32 model is over Apple's 200 MB cellular cap by design (D13); a public store launch reopens this budget";
+   360 MiB was the KV-R2 budget: headroom for the ORT slice's uncertainty (the
+   ~11 MiB is a quarter of Android's four-ABI share, inferred, not measured on
+   iOS), and no more — a second fp32-sized file would cross it. The first REAL
+   iOS figure with fp32 is KV-R2's ios-shell/ios-archive run, and it replaces
+   the projection here when it exists.
+
+   KV-R3 (PROBE v3) RAISES IT TO 440 MiB, FOR THE PROBE BUILD ONLY. Probe v3
+   measures the seven-stage Core ML chain (docs/voice/kokoro-speed-1.5x.md
+   §4 S5) against fp32 ORT on the founder's phone, so this build carries BOTH:
+   the 34 compiled Core ML stage files (82,270,465 bytes, 78.5 MiB) beside
+   fp32 — a projection of ~409 MiB. Once the probe decides, one engine leaves
+   the bundle: Core ML alone is ~87 MiB of models (325 MB -> 82 MB, the doc's
+   S5), ORT alone is back under 360. Android is untouched (its bytes are
+   asserted exactly above). */
+const IOS_TESTFLIGHT_BUDGET_MB = 440;
+const IOS_BUDGET_REASON = "TestFlight only: the fp32 model is over Apple's 200 MB cellular cap by design (D13), and the probe v3 build carries the Core ML chain beside it (KV-R3) until the probe picks one engine; a public store launch reopens this budget";
 
 test("K-06: Android's bundled bytes are still q8f16's", async () => {
   /* D13 moved iOS to fp32 and left Android alone, on purpose: Play's
@@ -713,8 +722,12 @@ test("K-06: iOS's budget is its own, with the TestFlight reason in the file", as
   const iosAppMb = 8.3;                  // deck §2, measured, simulator, before any model
   const ortSliceMb = 11;                 // one arm64 slice: ~a quarter of the APK's 42.8 MiB four-ABI share
   const iosProjectedMb = iosAppMb + bundledBytes("ios") / MiB + ortSliceMb;
-  assert.ok(iosProjectedMb > 320 && iosProjectedMb < 340,
-    `the iOS projection is ${iosProjectedMb.toFixed(1)} MiB; the deck says about 330 — re-read the budget if this moved`);
+  /* KV-R3: fp32 (~330 projected) plus the Core ML chain's 78.5 MiB. */
+  const coremlMb = bundledPins("ios").filter((p) => p.kind === "coreml").reduce((n, p) => n + p.bytes, 0) / MiB;
+  assert.ok(coremlMb > 75 && coremlMb < 82, `the Core ML chain is ${coremlMb.toFixed(1)} MiB; the doc says ~82 MB`);
+  assert.ok(!bundledPins("android").some((p) => p.kind === "coreml"), "the Core ML chain never reaches the APK");
+  assert.ok(iosProjectedMb > 395 && iosProjectedMb < 420,
+    `the iOS projection is ${iosProjectedMb.toFixed(1)} MiB; KV-R3 says about 409 — re-read the budget if this moved`);
   assert.ok(iosProjectedMb < IOS_TESTFLIGHT_BUDGET_MB,
     `the iOS app projects to ${iosProjectedMb.toFixed(1)} MiB, over its ${IOS_TESTFLIGHT_BUDGET_MB} MiB TestFlight budget`);
   assert.ok(iosProjectedMb > APPLE_CELLULAR_CAP_MB,

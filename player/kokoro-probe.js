@@ -44,6 +44,17 @@
  * `summarizeProbe` always returned plus `pass` and `finite`; each becomes its
  * own `voiceProbe` row. Android runs one pass (`cpu`, q8f16) and says so.
  * A pass with a non-finite chunk is never a pass (`probeVerdict`).
+ *
+ * ── Probe v3 (KV-R3, docs/voice/kokoro-speed-1.5x.md §5) ──────────────────
+ * The question is now "which engine lets the founder listen at 1.5x". iOS
+ * runs SIX passes (`V3_PASSES`: the seven-stage Core ML chain on three
+ * placements, fp32 ORT at 2/3/4 threads), each at Kokoro speed 1.0 AND 1.5,
+ * so a run is TWELVE records, one `voiceProbe` row each. Every speed's record
+ * carries the CONTENT-basis RTF — synthesis seconds over the seconds the same
+ * text lasts at speed 1.0 — beside the wall RTF, and `speedVerdict` judges
+ * the 1.5 record against ≤ 0.55 (the doc's margin under 1/1.5).
+ * `formatProbeTable` is the drawer's compact table and one verdict per pass.
+ * The optional SOAK (`mode: "soak"`) is one record, `summarizeSoak`.
  */
 
 /** The engine name the probe asks `foray-tts.js` for. One string, exported,
@@ -140,18 +151,61 @@ export const RTF_FLOOR = 0.01;
 export const PROBE_REASONS = Object.freeze([
   "no-bridge", "passage-missing", "passage-empty", "passage-unphonemized",
   "model-absent", "engine-absent", "synthesis-failed", "refused", "threw",
-  "coreml-unavailable",
+  "coreml-unavailable", "coreml-requires-ios17",
 ]);
+/* `coreml-requires-ios17` (KV-R3): a Core ML pass on a phone below iOS 17 —
+   the seven-stage models are built for 17 — so that pass did not run and the
+   ORT passes beside it still did. */
 
 /** KV-R2's passes, in the order a run makes them: ORT's CPU provider, then
     the CoreML EP (MLProgram, all compute units). Each record's `pass` is one
     of these; iOS's `KokoroProbePass` holds the same two words. */
-export const PROBE_PASSES = Object.freeze(["cpu", "coreml"]);
+export const PROBE_PASSES = Object.freeze([
+  "cpu", "coreml",
+  "ane", "ort-cpu-t2", "ane-cputail", "ort-cpu-t3", "cml-cpu", "ort-cpu-t4",
+]);
+
+/** KV-R3's six iOS passes IN RUN ORDER (interleaved Core ML / ORT), the same
+    words and order as iOS's `KokoroProbePass.allCases`. `cpu`/`coreml` above
+    stay admitted for Android's one pass and for rows written by probe v2. */
+export const V3_PASSES = Object.freeze(["ane", "ort-cpu-t2", "ane-cputail", "ort-cpu-t3", "cml-cpu", "ort-cpu-t4"]);
+
+/** The v3 passes iOS lets run with the phone locked: no GPU anywhere. Only
+    `ane` (its fp32 tail on ALL compute units) may touch the GPU, which iOS
+    blocks in the background (§1). */
+export const BACKGROUND_SAFE_PASSES = Object.freeze(["ort-cpu-t2", "ane-cputail", "ort-cpu-t3", "cml-cpu", "ort-cpu-t4"]);
+
+/** The Core ML passes (the rest of `V3_PASSES` are ORT). */
+export const COREML_PASSES = Object.freeze(["ane", "ane-cputail", "cml-cpu"]);
+
+/** Kokoro's `speed` values every v3 pass renders, 1.0 first (the content basis). */
+export const PROBE_SPEEDS = Object.freeze([1, 1.5]);
+
+/** THE 1.5x TARGET, on the content basis (docs/voice/kokoro-speed-1.5x.md §1):
+    live synthesis keeps up with a listener at 1.5x at content RTF ≤ 1/1.5
+    (0.667), and the doc sets ≤ 0.55 as the target WITH MARGIN. iOS's
+    `ProbeMath.TARGET_CONTENT_RTF` holds the same number. */
+export const TARGET_CONTENT_RTF = 0.55;
+export const BREAK_EVEN_CONTENT_RTF = 1 / 1.5;
+/** §4's decision rule: a background-safe Core ML pass at content RTF ≤ 0.4
+    at speed 1.0 (and a clean soak) makes Core ML the iOS engine. */
+export const COREML_DECISION_RTF = 0.4;
+
+/** A Core ML chain failure, as `KokoroCoreMLEngine.CODES` names it. */
+export const CML_CODES = Object.freeze(["cml-load", "cml-input", "cml-predict", "cml-output", "cml-nan-duration", "cml-frames-cap"]);
+/** The Core ML stage a failure names (`KokoroCoreMLStage`), in chain order. */
+export const CML_STAGES = Object.freeze(["albert", "postAlbert", "alignment", "prosody", "noise", "vocoder", "tail"]);
+/** How the probe kept the app alive while locked (`ProbeKeepAlive`). */
+export const KEEP_ALIVE_STATES = Object.freeze(["audio", "failed"]);
+/** Which screen a v3 record ran under, from its per-chunk samples. */
+export const SCREEN_STATES = Object.freeze(["unlocked", "locked", "background", "mixed"]);
+/** `speedVerdict`'s answers. */
+export const SPEED_VERDICTS = Object.freeze(["go", "marginal", "no", "unmeasured"]);
 
 /** Where a run the system KILLED had got to (KV-R2's stop rule), as the next
     run reports it: `load` while the pass's session was being built (the
     CoreML pass compiles the graph there), `synth` once it was open. */
-export const KILLED_STAGES = Object.freeze(["load", "synth"]);
+export const KILLED_STAGES = Object.freeze(["load", "synth", "soak"]);
 
 /** How much a record's `provider` knows. `requested`: the EP was asked for
     and the runtime cannot report which nodes it took (iOS's `coreml` pass on
@@ -303,10 +357,33 @@ const ORT_VERSION_RE = /^[0-9][0-9.]{0,15}$/;
 const SHA8_RE = /^[0-9a-f]{8}$/;
 const SYNTH_REASON_RE = /^[A-Za-z][A-Za-z0-9_-]{0,39}$/;
 const MAX_LINE_OUTCOMES = 32; // fifteen chunks on the KV-R2 passage, with room
+/** A Core ML route: seven compute-unit tokens, chain order (KV-R3). */
+const ROUTE_RE = /^(?:ane|all|cpu)(?:,(?:ane|all|cpu)){6}$/;
 
 const oneOf = (set, v) => (typeof v === "string" && set.includes(v) ? v : null);
 const shaped = (re, v) => (typeof v === "string" && re.test(v) ? v : null);
 const count = (v) => (Number.isInteger(v) && v >= 0 ? v : null);
+const num = (v) => (Number.isFinite(v) ? v : null);
+/** A Kokoro speed the probe renders at, or null. */
+const speedOf = (v) => (Number.isFinite(v) && v >= 0.5 && v <= 2 ? v : null);
+/** Seven per-stage milliseconds (KV-R3), rounded, or null. */
+function stageMsOf(v) {
+  if (!Array.isArray(v) || v.length !== CML_STAGES.length) return null;
+  if (!v.every((x) => Number.isFinite(x) && x >= 0)) return null;
+  return v.map((x) => Math.round(x));
+}
+
+/** The screen a record ran under, from how many of its chunks finished with
+    the app in the background and how many with the lock screen up (KV-R3):
+    `unlocked` (none in the background), `locked` (all, with protected data
+    unavailable), `background` (all, but the phone never said "locked" — a
+    phone with no passcode cannot), `mixed`. Null when not reported. */
+export function screenOf(bgChunks, lockedChunks, lines) {
+  if (!Number.isInteger(bgChunks) || !Number.isInteger(lines) || lines <= 0) return null;
+  if (bgChunks === 0) return "unlocked";
+  if (bgChunks >= lines) return Number.isInteger(lockedChunks) && lockedChunks > 0 ? "locked" : "background";
+  return "mixed";
+}
 const bool = (v) => (typeof v === "boolean" ? v : null);
 
 /** The per-line outcomes as one comma-joined string, or `null`. The WHOLE
@@ -580,6 +657,41 @@ export function summarizeProbe({ native = null, elapsedMs = null, audioSec = nul
        cannot say which nodes the CoreML EP actually took, and ORT runs the
        rest on the CPU without a word. Null when the provider is what ran. */
     providerBasis: oneOf(PROVIDER_BASES, n.providerBasis),
+
+    /* ── KV-R3 (probe v3): the speed this record rendered at, the CONTENT
+       basis (the seconds the same chunks last at speed 1.0, from the same
+       pass), and what the phone was doing. `rtfWarm`/`rtfCold` above stay
+       the WALL RTF (over this speed's own audio); `rtfContentWarm` is the
+       decision number. All null on a record from an older shell. */
+    ...v3Fields(n, synthColdMs, synthWarmMs),
+  };
+}
+
+/** Probe v3's keys of one record, each admitted by shape or closed set. */
+function v3Fields(n, synthColdMs, synthWarmMs) {
+  const contentColdSec = num(n.contentColdSec);
+  const contentWarmSec = num(n.contentWarmSec);
+  const cpuWarmSec = num(n.cpuWarmSec);
+  const bgChunks = count(n.bgChunks);
+  const lockedChunks = count(n.lockedChunks);
+  return {
+    speed: speedOf(n.speed),
+    contentColdSec,
+    contentWarmSec,
+    rtfContentCold: realTimeFactor(synthColdMs, contentColdSec),
+    rtfContentWarm: realTimeFactor(synthWarmMs, contentWarmSec),
+    /* CPU-seconds per content second: what iOS's locked-screen CPU monitor
+       counts (§1: more than ~0.8 of one core over 60 s gets the app killed). */
+    cpuPerContentSec: cpuWarmSec != null && contentWarmSec > 0 ? cpuWarmSec / contentWarmSec : null,
+    stageMs: stageMsOf(n.stageMs),
+    route: shaped(ROUTE_RE, n.route),
+    bgChunks,
+    lockedChunks,
+    screen: screenOf(bgChunks, lockedChunks, count(n.lines)),
+    keepAlive: oneOf(KEEP_ALIVE_STATES, n.keepAlive),
+    cmlCode: oneOf(CML_CODES, n.cmlCode),
+    cmlStage: oneOf(CML_STAGES, n.cmlStage),
+    hasWav: n.hasWav === true,
   };
 }
 
@@ -640,6 +752,9 @@ export function formatProbeReport(record) {
     `  synthesis     cold ${n(r.synthColdMs, " ms")}  warm ${n(r.synthWarmMs, " ms")}  over ${n(r.audioSec, " s")} of ${from} audio`,
     `  RTF           cold ${f2(r.rtfCold)}  warm ${f2(r.rtfWarm)}` +
       (rtfIsPlausible(r.rtfWarm) ? "" : `  — BELOW THE ${RTF_FLOOR} FLOOR, not a measurement`),
+    ...(r.rtfContentWarm != null
+      ? [`  content RTF   cold ${f2(r.rtfContentCold)}  warm ${f2(r.rtfContentWarm)}  (over the speed-1.0 seconds of the same text)`]
+      : []),
     `  peak memory   ${n(r.peakMemoryMb, " MB")}  (headroom ${n(r.availableMemoryMb, " MB")})`,
     `  locked screen ${r.lockedScreenCompleted ? "completed the passage" : "did NOT complete"}`,
     `  battery       ${n(r.batteryDeltaPct, "%")} over ${n(r.batteryWindowSec, " s")}`,
@@ -650,7 +765,8 @@ export function formatProbeReport(record) {
 
 /** ` [cpu]` / ` [coreml]` after "voice probe", or nothing for a one-pass shell. */
 function passTag(r) {
-  return r.pass ? ` [${r.pass}]` : "";
+  if (!r.pass) return "";
+  return r.speed != null ? ` [${r.pass} @${r.speed}x]` : ` [${r.pass}]`;
 }
 
 /** ` (requested — …)` after a provider the runtime could not confirm. */
@@ -716,7 +832,217 @@ function probeContextLines(r) {
   if (r.baseMemoryMb != null || r.memWarn != null) {
     out.push(`  memory        base ${mb(r.baseMemoryMb)}  peak ${mb(r.peakMemoryMb)}  headroom ${mb(r.availableMemoryMb)}  warning ${yn(r.memWarn)}`);
   }
+  /* KV-R3. */
+  if (r.route != null) out.push(`  route         ${r.route} (albert,postAlbert,alignment,prosody,noise,vocoder,tail)`);
+  if (r.stageMs != null) out.push(`  stage ms      ${r.stageMs.join("/")}`);
+  if (r.cpuPerContentSec != null) out.push(`  CPU           ${r.cpuPerContentSec.toFixed(2)} CPU-s per content second`);
+  if (r.screen != null) {
+    out.push(`  screen        ${r.screen} (${r.bgChunks ?? "?"} of ${r.lines ?? "?"} chunks in the background, ${r.lockedChunks ?? "?"} locked)`
+      + (r.keepAlive ? `  keep-alive ${r.keepAlive}` : ""));
+  }
+  if (r.cmlCode != null) out.push(`  Core ML       ${r.cmlCode}${r.cmlStage ? ` at ${r.cmlStage}` : ""}`);
   return out;
+}
+
+/* ---------- probe v3: the verdict per pass, the table, the soak ---------- */
+
+/**
+ * One v3 record against the 1.5x target (KV-R3), on the CONTENT basis:
+ * `go` at content RTF ≤ 0.55 (the doc's margin), `marginal` at ≤ 0.667 (keeps
+ * up at 1.5x with nothing to spare), `no` above that, and `unmeasured` when
+ * there is no plausible reading. A voice that dropped or garbled a chunk is
+ * `no` whatever its speed — it skips a sentence. iOS's `ProbeMath.verdict`
+ * is the same rule.
+ */
+export function speedVerdict(record) {
+  const r = record || {};
+  const rtf = r.rtfContentWarm;
+  const reasons = [];
+  if (!r.ok || !rtfIsPlausible(rtf)) {
+    reasons.push(r.ok ? "content-rtf-not-measured" : `could-not-measure ${r.reason ?? "unknown"}`);
+    return { verdict: "unmeasured", reasons };
+  }
+  const dropped = (Number.isInteger(r.synthFailures) ? r.synthFailures : 0)
+    - (Number.isInteger(r.nonFiniteLines) ? r.nonFiniteLines : 0);
+  if (r.finite === false) reasons.push(`non-finite ${r.nonFiniteLines ?? "some"} of ${r.lines ?? "?"} chunks`);
+  if (dropped > 0) reasons.push(`chunks-failed ${dropped} of ${r.lines ?? "?"}`);
+  if (reasons.length) return { verdict: "no", reasons };
+  if (rtf <= TARGET_CONTENT_RTF) return { verdict: "go", reasons };
+  if (rtf <= BREAK_EVEN_CONTENT_RTF) {
+    return { verdict: "marginal", reasons: [`content-rtf ${rtf.toFixed(2)} > ${TARGET_CONTENT_RTF} (no margin)`] };
+  }
+  return { verdict: "no", reasons: [`content-rtf ${rtf.toFixed(2)} > ${BREAK_EVEN_CONTENT_RTF.toFixed(3)} (cannot keep up at 1.5x)`] };
+}
+
+/**
+ * The v3 records grouped by pass, in run order, each with its speed-1.0 and
+ * speed-1.5 record, its 1.5x verdict, whether iOS lets it run locked, and
+ * whether it meets §4's Core ML decision rule (a background-safe Core ML pass
+ * at content RTF ≤ 0.4 at speed 1.0 — the soak is the rule's other half).
+ */
+export function passVerdicts(records) {
+  const list = Array.isArray(records) ? records : [];
+  const out = [];
+  for (const pass of V3_PASSES) {
+    const mine = list.filter((r) => r && r.pass === pass);
+    if (!mine.length) continue;
+    const at = (speed) => mine.find((r) => r.speed === speed) ?? null;
+    const one = at(1);
+    const fast = at(1.5);
+    const backgroundSafe = BACKGROUND_SAFE_PASSES.includes(pass);
+    const coreml = COREML_PASSES.includes(pass);
+    const oneOk = one && one.ok && one.finite !== false && rtfIsPlausible(one.rtfContentWarm);
+    out.push({
+      pass,
+      one,
+      fast,
+      backgroundSafe,
+      coreml,
+      ...speedVerdict(fast),
+      meetsCoreMLRule: Boolean(coreml && backgroundSafe && oneOk && one.rtfContentWarm <= COREML_DECISION_RTF),
+    });
+  }
+  return out;
+}
+
+/**
+ * The drawer's compact table and one verdict line per pass (KV-R3), readable
+ * aloud: content RTF at 1.0 and 1.5, the wall RTF at 1.5, CPU-seconds per
+ * content second, this pass's peak, finiteness, the screen, the verdict.
+ * Then §4's decision rule applied, stated as what the numbers say and no more.
+ */
+export function formatProbeTable(records) {
+  const rows = passVerdicts(records);
+  if (!rows.length) return "";
+  const f2 = (v) => (Number.isFinite(v) ? v.toFixed(2) : "—");
+  const col = (s, n) => String(s).padEnd(n, " ");
+  const yn = (v) => (v === true ? "y" : v === false ? "n" : "—");
+  const lines = [
+    `voice probe v3 — content RTF = synthesis ÷ the text's length at speed 1.0; 1.5x target ≤ ${TARGET_CONTENT_RTF}`,
+    `${col("pass", 12)} ${col("@1.0", 5)} ${col("@1.5", 5)} ${col("wall", 5)} ${col("cpu/s", 5)} ${col("MB", 5)} ${col("fin", 3)} ${col("screen", 10)} verdict`,
+  ];
+  for (const row of rows) {
+    const any = row.fast || row.one || {};
+    const refused = !(row.one && row.one.ok) && !(row.fast && row.fast.ok);
+    lines.push(`${col(row.pass, 12)} ${col(f2(row.one?.rtfContentWarm), 5)} ${col(f2(row.fast?.rtfContentWarm), 5)} `
+      + `${col(f2(row.fast?.rtfWarm), 5)} ${col(f2(row.fast?.cpuPerContentSec), 5)} ${col(any.peakMemoryMb ?? "—", 5)} `
+      + `${col(yn(row.fast?.finite ?? row.one?.finite), 3)} ${col(any.screen ?? "—", 10)} `
+      + (refused ? `could not run: ${any.reason ?? "unknown"}` : row.verdict.toUpperCase()));
+  }
+  lines.push("");
+  for (const row of rows) {
+    const where = row.backgroundSafe ? "runs locked" : "GPU route, may stall locked";
+    const why = row.reasons.length ? ` — ${row.reasons.join("; ")}` : "";
+    lines.push(`  ${row.pass}: ${row.verdict.toUpperCase()} at 1.5x (${where})${why}`
+      + (row.meetsCoreMLRule ? `; meets the Core ML rule (≤ ${COREML_DECISION_RTF} at 1.0) — soak it` : ""));
+  }
+  const coremlWinner = rows.find((r) => r.meetsCoreMLRule);
+  const ortGo = rows.filter((r) => !r.coreml && (r.verdict === "go" || r.verdict === "marginal"))
+    .sort((a, b) => (a.fast?.cpuPerContentSec ?? Infinity) - (b.fast?.cpuPerContentSec ?? Infinity))[0];
+  lines.push(coremlWinner
+    ? `  decision (doc §4): ${coremlWinner.pass} qualifies for Core ML as the iOS engine if the soak survives.`
+    : ortGo
+      ? `  decision (doc §4): no background-safe Core ML pass met ≤ ${COREML_DECISION_RTF} at 1.0; ORT stays — ${ortGo.pass} is the cheapest that keeps up.`
+      : "  decision (doc §4): no pass keeps up at 1.5x on this run.");
+  return lines.join("\n");
+}
+
+/** The passes whose speed-1.5 WAV the last matrix run kept (`hasWav`), in
+    run order — the drawer's play buttons. The WAV is played NATIVELY by pass
+    name (`mode: "listen"`): the page's CSP admits no local media, and a path
+    never crosses the bridge or enters a record. */
+export function wavPasses(records) {
+  const list = Array.isArray(records) ? records : [];
+  return V3_PASSES.filter((pass) => list.some((r) => r && r.pass === pass && r.hasWav === true));
+}
+
+/** Thermal words, in the order a soak can only climb through. */
+const THERMAL_ORDER = ["nominal", "fair", "serious", "critical"];
+
+/**
+ * The SOAK's native answer as ONE record (KV-R3, §5 item 9): the best
+ * background-safe pass rendering the passage at speed 1.5 for 30 minutes with
+ * the phone locked. `rtfSeries` is one mean content RTF per minute (null for a
+ * minute in which no loop ended — which is itself the finding), `thermalSeries`
+ * the worst heat per minute. Everything by shape or closed set.
+ */
+export function summarizeSoak({ native = null, elapsedMs = null, reason = null } = {}) {
+  const n = native || {};
+  const rtfOrNull = (v) => (Number.isFinite(v) && v >= 0 ? v : null);
+  const series = Array.isArray(n.soakRtfSeries) ? n.soakRtfSeries.slice(0, 90).map(rtfOrNull) : null;
+  const heat = Array.isArray(n.soakThermalSeries)
+    ? n.soakThermalSeries.slice(0, 90).map((t) => (THERMAL_ORDER.includes(t) ? t : null))
+    : null;
+  return {
+    engine: PROBE_ENGINE,
+    kind: "soak",
+    ok: reason == null && n.ok === true,
+    reason: reason ?? (n.ok === true ? null : (PROBE_REASONS.includes(n.reason) ? n.reason : "refused")),
+    synthReason: shaped(SYNTH_REASON_RE, n.detail),
+    platform: oneOf(["ios", "android"], n.platform),
+    pass: oneOf(PROBE_PASSES, n.pass),
+    speed: speedOf(n.speed),
+    route: shaped(ROUTE_RE, n.route),
+    soakMinutes: num(n.soakMinutes),
+    loops: count(n.soakLoops),
+    elapsedSec: num(n.soakElapsedSec),
+    rtfSeries: series,
+    thermalSeries: heat,
+    rtfMin: rtfOrNull(n.soakRtfMin),
+    rtfMedian: rtfOrNull(n.soakRtfMedian),
+    rtfMax: rtfOrNull(n.soakRtfMax),
+    peakMb: toMegabytes(n.soakPeakBytes),
+    peakFirstMb: toMegabytes(n.soakPeakFirstBytes),
+    peakLastMb: toMegabytes(n.soakPeakLastBytes),
+    bgLoops: count(n.soakBgLoops),
+    lockedLoops: count(n.soakLockedLoops),
+    failures: count(n.soakFailures),
+    nonFinite: count(n.soakNonFinite),
+    cpuPerContentSec: num(n.cpuPerContentSec),
+    verdict: oneOf(SPEED_VERDICTS, n.soakVerdict),
+    thermalStart: oneOf(THERMAL_STATES, n.thermalStart),
+    thermalEnd: oneOf(THERMAL_STATES, n.thermalEnd),
+    keepAlive: oneOf(KEEP_ALIVE_STATES, n.keepAlive),
+    modelLoadColdMs: num(n.modelLoadColdMs),
+    availableMemoryMb: toMegabytes(n.availableMemoryBytes),
+    device: shaped(TOKEN_RE, n.device),
+    os: shaped(TOKEN_RE, n.os),
+    prevKilledPass: oneOf(PROBE_PASSES, n.prevKilledPass),
+    prevKilledStage: oneOf(KILLED_STAGES, n.prevKilledStage),
+    prevKilledChunksDone: count(n.prevKilledChunksDone),
+    prevKilledPeakMb: toMegabytes(n.prevKilledPeakBytes),
+    elapsedMs: num(elapsedMs),
+  };
+}
+
+/** The soak in the drawer, readable aloud. */
+export function formatSoakReport(record) {
+  const r = record || {};
+  const f2 = (v) => (Number.isFinite(v) ? v.toFixed(2) : "—");
+  if (!r.ok) {
+    const killed = r.prevKilledPass
+      ? `\n  LAST RUN KILLED in the ${r.prevKilledPass} ${r.prevKilledStage ?? "?"}` +
+        (r.prevKilledStage === "soak" ? ` after ${r.prevKilledChunksDone ?? "?"} loops` : "") +
+        `, peak ${r.prevKilledPeakMb ?? "—"} MB`
+      : "";
+    return `voice soak: could not run (${r.reason ?? "unknown"}${r.synthReason ? `/${r.synthReason}` : ""})${killed}`;
+  }
+  const minutes = Number.isFinite(r.elapsedSec) ? (r.elapsedSec / 60).toFixed(1) : "—";
+  const series = (r.rtfSeries ?? []).map((v, i) => `${f2(v)}${(r.thermalSeries?.[i] ?? "?")[0]}`).join(" ");
+  const lines = [
+    `voice soak [${r.pass ?? "?"} @${r.speed ?? "?"}x]: ${r.loops ?? "?"} loops over ${minutes} min, verdict ${(r.verdict ?? "unmeasured").toUpperCase()}`,
+    `  content RTF   min ${f2(r.rtfMin)}  median ${f2(r.rtfMedian)}  max ${f2(r.rtfMax)}  (target ≤ ${TARGET_CONTENT_RTF})`,
+    `  per minute    ${series || "—"}  (letter = heat: n/f/s/c)`,
+    `  memory        peak ${r.peakMb ?? "—"} MB  first loop ${r.peakFirstMb ?? "—"} MB  last loop ${r.peakLastMb ?? "—"} MB  headroom ${r.availableMemoryMb ?? "—"} MB`,
+    `  screen        ${r.lockedLoops ?? "?"} of ${r.loops ?? "?"} loops locked, ${r.bgLoops ?? "?"} in the background  keep-alive ${r.keepAlive ?? "—"}`,
+    `  heat          ${r.thermalStart ?? "—"} > ${r.thermalEnd ?? "—"}  CPU ${f2(r.cpuPerContentSec)} CPU-s per content second`,
+    `  failures      ${r.failures ?? "—"} (non-finite ${r.nonFinite ?? "—"})`,
+  ];
+  if (r.prevKilledPass) {
+    lines.push(`  LAST RUN KILLED in the ${r.prevKilledPass} ${r.prevKilledStage ?? "?"}` +
+      (r.prevKilledStage === "soak" ? ` after ${r.prevKilledChunksDone ?? "?"} loops` : "") + `, peak ${r.prevKilledPeakMb ?? "—"} MB`);
+  }
+  return lines.join("\n");
 }
 
 /* ---------- the run ---------- */
@@ -734,26 +1060,45 @@ function probeContextLines(r) {
  * @param {object} opts.passage               the parsed passage JSON
  * @param {() => number} [opts.now]           injected clock (ms)
  */
-export async function runKokoroProbe({ tts = null, passage = null, now = null } = {}) {
+export async function runKokoroProbe({ tts = null, passage = null, now = null, mode = "matrix", soakMinutes = null } = {}) {
   const clock = typeof now === "function" ? now : () => 0;
   const audioSec = passageSeconds(passage);
+  /* KV-R3: `soak` asks the native half for the 30-minute locked loop and
+     answers ONE soak record; anything else is the matrix. */
+  const soak = mode === "soak";
 
   const bad = passageProblem(passage);
-  if (bad) return [summarizeProbe({ reason: bad, audioSec })];
+  if (bad) return [soak ? summarizeSoak({ reason: bad }) : summarizeProbe({ reason: bad, audioSec })];
   if (!tts || typeof tts.kokoroProbe !== "function") {
-    return [summarizeProbe({ reason: "no-bridge", audioSec })];
+    return [soak ? summarizeSoak({ reason: "no-bridge" }) : summarizeProbe({ reason: "no-bridge", audioSec })];
   }
 
   const startedAt = clock();
   let native = null;
   try {
-    native = await tts.kokoroProbe({ passage, engine: PROBE_ENGINE });
+    const opts = { passage, engine: PROBE_ENGINE };
+    if (soak) {
+      opts.mode = "soak";
+      if (Number.isFinite(soakMinutes)) opts.soakMinutes = soakMinutes;
+    }
+    native = await tts.kokoroProbe(opts);
   } catch (e) {
+    if (soak) return [summarizeSoak({ native: { detail: nameOf(e) }, reason: "threw", elapsedMs: clock() - startedAt })];
     /* The error's NAME travels, never its message (L12): `synthReason` then
        reads `threw/TypeError` instead of a bare `threw`. */
     return [summarizeProbe({ native: { detail: nameOf(e) }, reason: "threw", audioSec, elapsedMs: clock() - startedAt })];
   }
   const elapsedMs = clock() - startedAt;
+
+  if (soak) {
+    /* The web half answers a refused soak with `ok: false` and the native
+       half's own reason spread in; a soak the phone ran is `ok: true`. */
+    const refused = !native || (native.ok !== true && native.mode !== "soak");
+    const code = refused
+      ? (typeof native?.reason === "string" && PROBE_REASONS.includes(native.reason) ? native.reason : "refused")
+      : null;
+    return [summarizeSoak({ native, elapsedMs, reason: code })];
+  }
 
   if (!native || native.ok !== true) {
     /* The native side's OWN code wins over a generic `refused`, because
@@ -766,4 +1111,21 @@ export async function runKokoroProbe({ tts = null, passage = null, now = null } 
     return [summarizeProbe({ native, reason: code, audioSec, elapsedMs })];
   }
   return summarizePasses({ native, audioSec, elapsedMs });
+}
+
+/**
+ * Play one pass's speed-1.5 WAV from the last matrix run (§5 item 10: the
+ * founder's ear), natively. Never throws; answers `{ ok, reason?, durationSec? }`.
+ */
+export async function playProbeWav({ tts = null, pass = null } = {}) {
+  if (!V3_PASSES.includes(pass)) return { ok: false, reason: "refused" };
+  if (!tts || typeof tts.kokoroProbe !== "function") return { ok: false, reason: "no-bridge" };
+  try {
+    const out = await tts.kokoroProbe({ engine: PROBE_ENGINE, mode: "listen", pass });
+    return out && out.ok === true
+      ? { ok: true, durationSec: Number.isFinite(out.durationSec) ? out.durationSec : null }
+      : { ok: false, reason: shaped(SYNTH_REASON_RE, out?.detail) ?? "refused" };
+  } catch (e) {
+    return { ok: false, reason: "threw", detail: nameOf(e) };
+  }
 }

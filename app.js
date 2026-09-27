@@ -14912,6 +14912,8 @@ function syncVoiceProbeRun() {
   const existing = $("#voice-probe-run");
   if (!voiceProbeOn()) {
     if (existing) existing.remove();
+    const soak = $("#voice-probe-soak");
+    if (soak) soak.remove();
     return;
   }
   if (existing) return;
@@ -14926,6 +14928,28 @@ function syncVoiceProbeRun() {
   else (drawerDevGroup() || drawer).appendChild(run);
   run.disabled = Boolean(voiceProbeRunning);   // a control rebuilt mid-run is still busy (app-3-11)
   run.addEventListener("click", () => runVoiceProbe());
+
+  /* KV-R3: the optional 30-minute SOAK (docs/voice/kokoro-speed-1.5x.md §5
+     item 9), iPhone only — Android's probe has no soak. Directly under the
+     run control, for the reason that one sits under its switch. */
+  if (!voiceSoakOffered() || !run.parentNode) return;
+  const soak = ddEl("button", "drawer-item as-btn", "Start the 30-minute soak (then lock the phone)");
+  soak.type = "button";
+  soak.id = "voice-probe-soak";
+  run.parentNode.insertBefore(soak, run.nextSibling);
+  soak.disabled = Boolean(voiceProbeRunning);
+  soak.addEventListener("click", () => runVoiceProbe("soak"));
+}
+
+/** Whether this shell can soak: the iOS app (Android's plugin has no soak
+    mode, and a browser has no probe at all). */
+function voiceSoakOffered() {
+  try {
+    const cap = window.Capacitor;
+    return Boolean(cap && typeof cap.getPlatform === "function" && cap.getPlatform() === "ios");
+  } catch (_) {
+    return false;
+  }
 }
 
 /* ---------- the engine's Developer rows (NE-22d) ----------
@@ -15125,35 +15149,104 @@ function bindEngineDevRows() {
    flight the control is disabled, and a second call reopens the sheet, says
    it is running, and hands back the same promise. */
 let voiceProbeRunning = null;
-/* KV-R2: an iPhone runs the passage twice (CPU, then CoreML) on the 325 MB
-   fp32 model, and the CoreML pass compiles the model first — minutes, not
-   the one pass's ~90 s. */
-const VOICE_PROBE_RUNNING_LINE = "Running the voice probe — two passes on iPhone, about five minutes. Lock the phone now.";
-function runVoiceProbe() {
+/* KV-R3: an iPhone runs SIX passes (the Core ML chain three ways, fp32 ORT
+   at 2/3/4 threads), each at speed 1.0 and 1.5; the Core ML passes compile
+   first. The founder runs it twice — unlocked, then locked right after the
+   tap — and the record says which run was which. */
+const VOICE_PROBE_RUNNING_LINE = "Running the voice probe — six passes at two speeds on iPhone, about five to ten minutes. "
+  + "For the locked run, lock the phone now; otherwise leave the app open.";
+/* The soak: one pass, speed 1.5, in a loop for 30 minutes. */
+const VOICE_SOAK_RUNNING_LINE = "Running the 30-minute soak. Lock the phone now and leave it locked for 30 minutes.";
+/** ONE probe or soak at a time (app-3-11): both controls are disabled while
+    either runs, and a second tap reopens the sheet and hands back the run
+    already under way. */
+let voiceProbeRunningSoak = false;
+function runVoiceProbe(mode = "matrix") {
   if (voiceProbeRunning) {
     const ui = diagSheet();
     openDiagSheet();
-    ui.status.textContent = VOICE_PROBE_RUNNING_LINE;
+    ui.status.textContent = voiceProbeRunningSoak ? VOICE_SOAK_RUNNING_LINE : VOICE_PROBE_RUNNING_LINE;
     return voiceProbeRunning;
   }
-  const run = runVoiceProbeOnce();
+  const soak = mode === "soak";
+  const run = soak ? runVoiceSoakOnce() : runVoiceProbeOnce();
   voiceProbeRunning = run;
-  const btn = $("#voice-probe-run");
-  if (btn) btn.disabled = true;
+  voiceProbeRunningSoak = soak;
+  for (const id of ["#voice-probe-run", "#voice-probe-soak"]) {
+    const btn = $(id);
+    if (btn) btn.disabled = true;
+  }
   const done = () => {
     if (voiceProbeRunning !== run) return;
     voiceProbeRunning = null;
-    const b = $("#voice-probe-run");
-    if (b) b.disabled = false;
+    voiceProbeRunningSoak = false;
+    for (const id of ["#voice-probe-run", "#voice-probe-soak"]) {
+      const b = $(id);
+      if (b) b.disabled = false;
+    }
   };
   run.then(done, done);
   return run;
+}
+
+/** KV-R3: the soak, reported the way the matrix is — into the record by the
+    player, and its readable summary into the sheet's status line. */
+async function runVoiceSoakOnce() {
+  const player = window.ForayPlayer;
+  const ui = diagSheet();
+  openDiagSheet();
+  ui.status.classList.remove("dd-status-report");
+  ui.status.textContent = VOICE_SOAK_RUNNING_LINE;
+  if (!player || typeof player.runVoiceSoak !== "function") {
+    ui.status.textContent = "This build has no soak. Update the app and try again.";
+    return null;
+  }
+  try {
+    const result = await player.runVoiceSoak();
+    const record = Array.isArray(result) ? result[0] : result;
+    refreshDiagSheet();
+    ui.status.classList.add("dd-status-report");
+    ui.status.textContent = typeof player.formatVoiceSoak === "function" && record
+      ? `${player.formatVoiceSoak(record)}\nCopy the record above and paste it into the card.`
+      : "The soak finished. Copy the record above.";
+    return result;
+  } catch (_) {
+    ui.status.textContent = "The soak failed to run. Copy the record above and say what build this is.";
+    return null;
+  }
+}
+
+/** KV-R3: one "Play" button per pass whose speed-1.5 WAV the run kept, under
+    the sheet's status line — the founder's ear on each engine at 1.5x (§5
+    item 10). The phone plays it natively; nothing here holds a path.
+    Replaced on every run, never stacked. */
+function paintVoiceProbeListen(ui, player, records) {
+  const old = $("#voice-probe-listen");
+  if (old) old.remove();
+  if (!player || typeof player.voiceProbeWavPasses !== "function" || typeof player.playVoiceProbeWav !== "function") return;
+  const passes = player.voiceProbeWavPasses(records);
+  if (!passes.length || !ui.status || !ui.status.parentNode) return;
+  const box = ddEl("div", "diag-listen");
+  box.id = "voice-probe-listen";
+  for (const pass of passes) {
+    const label = `Play ${pass} at 1.5x`;
+    const btn = ddEl("button", "drawer-item as-btn", label);
+    btn.type = "button";
+    btn.addEventListener("click", () => {
+      Promise.resolve(player.playVoiceProbeWav(pass)).then((out) => {
+        setControlLabel(btn, out && out.ok ? label : `${label} (could not play: ${(out && out.reason) || "unknown"})`);
+      }, () => {});
+    });
+    box.appendChild(btn);
+  }
+  ui.status.parentNode.insertBefore(box, ui.status.nextSibling);
 }
 
 async function runVoiceProbeOnce() {
   const player = window.ForayPlayer;
   const ui = diagSheet();
   openDiagSheet();
+  ui.status.classList.remove("dd-status-report");
   ui.status.textContent = VOICE_PROBE_RUNNING_LINE;
   if (!player || typeof player.runVoiceProbe !== "function") {
     ui.status.textContent = "The player hasn't loaded, so the probe can't run.";
@@ -15165,6 +15258,16 @@ async function runVoiceProbeOnce() {
     const result = await player.runVoiceProbe();
     const records = Array.isArray(result) ? result : (result ? [result] : []);
     refreshDiagSheet();
+    /* KV-R3: a v3 run (records carry a speed) is one compact TABLE with a
+       1.5x verdict per pass and §4's decision rule, not twelve blocks of
+       K-01's go/no-go (whose 0.8 ceiling is not this card's question). */
+    const table = typeof player.formatVoiceProbeTable === "function" ? player.formatVoiceProbeTable(records) : "";
+    if (table && records.some((r) => r && r.speed != null)) {
+      ui.status.classList.add("dd-status-report");   // a table: kept lines, fixed-width columns
+      ui.status.textContent = `${table}\nCopy the record above and paste it into the card.`;
+      paintVoiceProbeListen(ui, player, records);
+      return result;
+    }
     const format = (record) => (typeof player.formatVoiceProbe === "function"
       ? player.formatVoiceProbe(record)
       : { text: "", verdict: { go: false, failures: ["no verdict available"] } });

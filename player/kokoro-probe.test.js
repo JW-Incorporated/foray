@@ -26,6 +26,9 @@ import {
   probeVerdict, summarizeProbe, formatProbeReport, runKokoroProbe,
   ORT_CODES, ORT_STAGES, LINE_OUTCOMES, KOKORO_MODEL_PINS, nameOf,
   PROBE_PASSES, KILLED_STAGES, PROVIDER_BASES, summarizePasses, finiteOf,
+  V3_PASSES, BACKGROUND_SAFE_PASSES, COREML_PASSES, PROBE_SPEEDS, TARGET_CONTENT_RTF, BREAK_EVEN_CONTENT_RTF,
+  COREML_DECISION_RTF, CML_CODES, CML_STAGES, KEEP_ALIVE_STATES, SCREEN_STATES, SPEED_VERDICTS,
+  screenOf, speedVerdict, passVerdicts, formatProbeTable, wavPasses, playProbeWav, summarizeSoak, formatSoakReport,
 } from "./kokoro-probe.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -423,8 +426,15 @@ test("the report SAYS a below-floor RTF is not a measurement, in words", () => {
 
 /* ---------- the three copies of one contract ---------- */
 
+/* KV-R3 moved the pass loop, the matrix and the soak into
+   KokoroProbeMatrix.swift, so "the iOS plugin" is both files, in that order
+   (the probe section of the first runs on into the second). */
 const IOS_PLUGIN = fs.readFileSync(
-  path.join(REPO, "mobile/plugins/foray-tts/ios/Sources/ForayTtsPlugin/ForayTtsPlugin.swift"), "utf8");
+  path.join(REPO, "mobile/plugins/foray-tts/ios/Sources/ForayTtsPlugin/ForayTtsPlugin.swift"), "utf8")
+  + "\n" + fs.readFileSync(
+  path.join(REPO, "mobile/plugins/foray-tts/ios/Sources/ForayTtsPlugin/KokoroProbeMatrix.swift"), "utf8");
+const IOS_COREML = fs.readFileSync(
+  path.join(REPO, "mobile/plugins/foray-tts/ios/Sources/ForayTtsPlugin/KokoroCoreMLEngine.swift"), "utf8");
 const IOS_ENGINE = fs.readFileSync(
   path.join(REPO, "mobile/plugins/foray-tts/ios/Sources/ForayTtsPlugin/KokoroOrtProbeEngine.swift"), "utf8");
 const AND_PLUGIN = fs.readFileSync(
@@ -526,7 +536,7 @@ test("no plugin reads a device NAME, a vendor id or an error message into the re
   }
 });
 
-test("`acceleratorWired` tells the truth: CoreML only on iOS's coreml pass, nothing on Android", () => {
+test("`acceleratorWired` tells the truth: the Core ML chain's ANE passes only, never ORT, nothing on Android", () => {
   /* #685's `kokoro-probe/cpu` was never a CoreML attempt that fell back: no
      execution provider was appended anywhere, and the record said so as a
      FACT (`acceleratorWired`) rather than leaving a reader to infer it from a
@@ -538,11 +548,15 @@ test("`acceleratorWired` tells the truth: CoreML only on iOS's coreml pass, noth
   const appends = /appendCoreML|appendNnapi|addNnapi|NNAPIExecutionProvider/;
   assert.ok(!appends.test(AND_ENGINE), "android: no accelerator is appended");
   assert.ok(!/acceleratorWired[^\n]*\n?[^\n]*\btrue\b/.test(AND_ENGINE), "android: the flag never claims one");
-  assert.match(IOS_ENGINE, /try options\.appendCoreMLExecutionProvider\(with: coreml\)/, "ios: the coreml pass appends the EP");
-  assert.match(IOS_ENGINE, /coreml\.createMLProgram = true/, "ios: as an MLProgram");
-  assert.match(IOS_ENGINE, /coreml\.useCPUOnly = false\s+coreml\.useCPUAndGPU = false/, "ios: on ALL compute units");
-  assert.match(IOS_ENGINE, /var acceleratorWired: Bool \{ coreMLAppended \}/, "ios: the flag is the append's own result");
-  assert.match(IOS_ENGINE, /if pass == \.coreml \{/, "ios: only the coreml pass appends");
+  /* KV-R3: the ORT CoreML-EP pass is gone (a dead end, doc §3 option 8), so
+     iOS's ORT engine appends nothing and says so; the Core ML chain asks for
+     the Neural Engine on `ane`/`ane-cputail` and not on `cml-cpu`.
+     MUTATION: hard-code the Core ML engine's flag to `true`. */
+  assert.ok(!appends.test(IOS_ENGINE), "ios ORT: no accelerator is appended");
+  assert.match(IOS_ENGINE, /var acceleratorWired: Bool \{ false \}/, "ios ORT: the flag never claims one");
+  assert.match(IOS_COREML, /var acceleratorWired: Bool \{ pass != \.cmlCpu \}/, "ios Core ML: ANE asked for on the ANE passes only");
+  assert.match(IOS_COREML, /var providerBasis: String\? \{ pass == \.cmlCpu \? nil : "requested" \}/,
+    "ios Core ML: ANE placement is requested, not confirmed");
   assert.equal(summarizeProbe({ native: READING_685, audioSec: 10 }).acceleratorWired, false);
 });
 
@@ -893,7 +907,7 @@ test("one row per pass, carrying provider, warm RTF, peak, finite and error text
   assert.match(text, /^voice probe \[coreml\]: kokoro-probe model \S+ provider coreml \(requested — /m);
   assert.doesNotMatch(text, /provider cpu \(requested/);
   assert.match(text, /^  finite        NO — 2 of 15 chunks held NaN\/Infinity$/m);
-  assert.deepEqual([...PROBE_PASSES], ["cpu", "coreml"]);
+  assert.deepEqual([...PROBE_PASSES], ["cpu", "coreml", ...V3_PASSES]);
   /* diagnostic-log.js imports nothing, so it carries its own copy of the
      pass words; the two are held in step here. MUTATION: rename a pass in
      either — the ring then drops the pass of every row. */
@@ -901,6 +915,12 @@ test("one row per pass, carrying provider, warm RTF, peak, finite and error text
   assert.deepEqual([...diag.PROBE_PASSES], [...PROBE_PASSES]);
   assert.deepEqual([...diag.PROBE_KILLED_STAGES], [...KILLED_STAGES]);
   assert.deepEqual([...diag.PROBE_PROVIDER_BASES], [...PROVIDER_BASES]);
+  /* KV-R3's closed sets, held in step the same way. */
+  assert.deepEqual([...diag.PROBE_CML_CODES], [...CML_CODES]);
+  assert.deepEqual([...diag.PROBE_CML_STAGES], [...CML_STAGES]);
+  assert.deepEqual([...diag.PROBE_SCREENS], [...SCREEN_STATES]);
+  assert.deepEqual([...diag.PROBE_KEEP_ALIVE], [...KEEP_ALIVE_STATES]);
+  assert.deepEqual([...diag.PROBE_SPEED_VERDICTS], [...SPEED_VERDICTS]);
 });
 
 test("a pass with a non-finite chunk is never a pass", () => {
@@ -1025,4 +1045,239 @@ test("the probe never reaches the narration path", () => {
   const qm = fs.readFileSync(path.join(REPO, "player/queue-manager.js"), "utf8");
   assert.ok(!qm.includes("kokoro"), "queue-manager.js must not mention kokoro at all");
   assert.ok(qm.includes("this._tts.speak(item.script,"), "narration is still spoken from `script`");
+});
+
+/* ---------- KV-R3: probe v3 — Core ML vs ORT, speed 1.0 and 1.5, locked, soak ---------- */
+
+const IOS_MATRIX = fs.readFileSync(
+  path.join(REPO, "mobile/plugins/foray-tts/ios/Sources/ForayTtsPlugin/KokoroProbeMatrix.swift"), "utf8");
+
+/** One pass x speed as iOS's `measurePass` sends it. `synthWarmMs` over
+    `contentWarmSec` is the content RTF; over `audioWarmSec`, the wall RTF. */
+function v3Record(pass, speed, { rtf, ok = true, reason = "", nonFinite = 0, failures = 0, bg = 15, locked = 15, cpu = 1 } = {}) {
+  const content = 60;
+  const audio = content / speed;
+  const coreml = ["ane", "ane-cputail", "cml-cpu"].includes(pass);
+  return {
+    platform: "ios", pass, speed, provider: coreml ? "coreml" : "cpu", ok, reason, detail: "",
+    model: coreml ? "kokoro-82m-v1.0-coreml7" : "kokoro-82m-v1.0-fp32",
+    modelLoadColdMs: 20000, modelLoadWarmMs: 300,
+    synthColdMs: 1000, synthWarmMs: rtf * content * 1000, audioColdSec: 3 / speed, audioWarmSec: ok ? audio : 0,
+    contentColdSec: 3, contentWarmSec: ok ? content : 0, cpuWarmSec: cpu * content,
+    synthFailures: failures, nonFiniteLines: nonFinite, silentLines: 0, lines: 15,
+    lineOutcomes: Array(15).fill("ok"), bgChunks: bg, lockedChunks: locked, keepAlive: "audio",
+    peakMemoryBytes: (coreml ? 210 : 1100) * MiB, lockedScreenCompleted: bg === 15, hasWav: speed === 1.5 && ok,
+    ...(coreml ? { route: pass === "ane" ? "ane,ane,ane,all,all,ane,all" : pass === "cml-cpu" ? "cpu,cpu,cpu,cpu,cpu,cpu,cpu" : "ane,ane,ane,cpu,cpu,ane,cpu",
+      stageMs: [70, 40, 5, 60, 120, 300, 20], providerBasis: pass === "cml-cpu" ? undefined : "requested" }
+      : { intraThreads: Number(pass.slice(-1)) }),
+  };
+}
+
+const V3_ANSWER = {
+  ok: true, platform: "ios", speeds: [1, 1.5],
+  passes: [
+    v3Record("ane", 1, { rtf: 0.05 }), v3Record("ane", 1.5, { rtf: 0.04 }),
+    v3Record("ort-cpu-t2", 1, { rtf: 0.4, cpu: 0.7 }), v3Record("ort-cpu-t2", 1.5, { rtf: 0.3, cpu: 0.5 }),
+    v3Record("ane-cputail", 1, { rtf: 0.08, cpu: 0.05 }), v3Record("ane-cputail", 1.5, { rtf: 0.06, cpu: 0.04 }),
+    v3Record("ort-cpu-t3", 1, { rtf: 0.38, cpu: 0.9 }), v3Record("ort-cpu-t3", 1.5, { rtf: 0.6, cpu: 0.8 }),
+    v3Record("cml-cpu", 1, { rtf: 0.3 }), v3Record("cml-cpu", 1.5, { rtf: 0.25, nonFinite: 1, failures: 1 }),
+    v3Record("ort-cpu-t4", 1, { rtf: 0.9 }), v3Record("ort-cpu-t4", 1.5, { rtf: 0.8 }),
+  ],
+};
+
+test("v3: twelve records, one per pass x speed, each with the content AND wall RTF (KV-R3)", async () => {
+  /* The founder's run is the matrix: six passes, speed 1.0 and 1.5. The 1.5
+     record's content RTF divides by the seconds the SAME text lasts at 1.0
+     (60 s here), the wall RTF by its own 40 s.
+     MUTATION: compute `rtfContentWarm` over `audioWarmSec` — the ane @1.5
+     content reads 0.06, not 0.04. */
+  const records = await runKokoroProbe({ tts: fakeTts(V3_ANSWER), passage: PASSAGE, now: () => 0 });
+  assert.equal(records.length, 12);
+  assert.deepEqual(records.map((r) => r.pass), V3_PASSES.flatMap((p) => [p, p]));
+  assert.deepEqual(records.map((r) => r.speed), V3_PASSES.flatMap(() => [...PROBE_SPEEDS]));
+  const ane15 = records[1];
+  assert.ok(Math.abs(ane15.rtfContentWarm - 0.04) < 1e-9);
+  assert.ok(Math.abs(ane15.rtfWarm - 0.06) < 1e-9, "the wall RTF is over the speed-1.5 audio");
+  assert.ok(Math.abs(ane15.cpuPerContentSec - 1) < 1e-9);
+  assert.deepEqual(ane15.stageMs, [70, 40, 5, 60, 120, 300, 20]);
+  assert.equal(ane15.route, "ane,ane,ane,all,all,ane,all");
+  assert.equal(ane15.screen, "locked");
+  assert.equal(ane15.keepAlive, "audio");
+  assert.equal(ane15.providerBasis, "requested");
+  assert.equal(records[2].intraThreads, 2);
+  assert.equal(records[2].route, null, "an ORT pass has no Core ML route");
+  /* The WAVs are named by PASS only (§5 item 10); the drawer plays them
+     natively, so no path is ever on the wire. MUTATION: read `hasWav` from
+     the 1.0 record — no pass offers a play button. */
+  assert.deepEqual(wavPasses(records), V3_PASSES);
+  assert.deepEqual(wavPasses([{ pass: "ane", hasWav: "yes" }, { pass: "made-up", hasWav: true }]), []);
+});
+
+test("v3: a pass's WAV is played natively by NAME, never by path", async () => {
+  /* MUTATION: send a path, or let an unknown pass through — the call below
+     carries it. */
+  let sent = null;
+  const tts = { kokoroProbe: async (opts) => { sent = opts; return { ok: true, mode: "listen", durationSec: 51.2 }; } };
+  assert.deepEqual(await playProbeWav({ tts, pass: "ane-cputail" }), { ok: true, durationSec: 51.2 });
+  assert.deepEqual(sent, { engine: PROBE_ENGINE, mode: "listen", pass: "ane-cputail" });
+  sent = null;
+  assert.deepEqual(await playProbeWav({ tts, pass: "../etc" }), { ok: false, reason: "refused" });
+  assert.equal(sent, null, "an unknown pass never reaches the bridge");
+  assert.deepEqual(await playProbeWav({ tts: fakeTts({ ok: false, detail: "no-wav" }), pass: "ane" }), { ok: false, reason: "no-wav" });
+  assert.deepEqual(await playProbeWav({ tts: null, pass: "ane" }), { ok: false, reason: "no-bridge" });
+  const threw = await playProbeWav({ tts: { kokoroProbe: async () => { throw new TypeError("/a/path"); } }, pass: "ane" });
+  assert.deepEqual(threw, { ok: false, reason: "threw", detail: "TypeError" });
+});
+
+test("v3: the verdict per pass against the 1.5x target, with the doc's margin", () => {
+  /* ≤ 0.55 GO, ≤ 0.667 MARGINAL, above NO; a pass that garbled a chunk is NO
+     whatever its speed. MUTATION: judge the 1.0 record instead of the 1.5 —
+     ort-cpu-t3 reads GO on its 0.38. */
+  assert.equal(TARGET_CONTENT_RTF, 0.55);
+  assert.ok(Math.abs(BREAK_EVEN_CONTENT_RTF - 2 / 3) < 1e-12);
+  const records = summarizePasses({ native: V3_ANSWER });
+  const rows = passVerdicts(records);
+  assert.deepEqual(rows.map((r) => r.pass), V3_PASSES);
+  const by = Object.fromEntries(rows.map((r) => [r.pass, r]));
+  assert.equal(by.ane.verdict, "go");
+  assert.equal(by.ane.backgroundSafe, false, "ane may use the GPU, which iOS blocks while locked");
+  assert.equal(by["ane-cputail"].verdict, "go");
+  assert.equal(by["ane-cputail"].meetsCoreMLRule, true, "background-safe Core ML at ≤ 0.4 on speed 1.0");
+  assert.equal(by.ane.meetsCoreMLRule, false, "fast, but not background-safe");
+  assert.equal(by["ort-cpu-t2"].verdict, "go");
+  assert.equal(by["ort-cpu-t2"].meetsCoreMLRule, false, "ORT is never the Core ML rule");
+  assert.equal(by["ort-cpu-t3"].verdict, "marginal");
+  assert.equal(by["cml-cpu"].verdict, "no");
+  assert.match(by["cml-cpu"].reasons.join(";"), /non-finite 1 of 15 chunks/);
+  assert.equal(by["ort-cpu-t4"].verdict, "no");
+  assert.equal(speedVerdict({ ok: false, reason: "coreml-requires-ios17" }).verdict, "unmeasured");
+  assert.equal(speedVerdict({ ok: true, rtfContentWarm: 0.001 }).verdict, "unmeasured", "below the floor nothing rendered");
+  assert.equal(speedVerdict({ ok: true, rtfContentWarm: 0.2, synthFailures: 1, nonFiniteLines: 0, lines: 15 }).verdict, "no");
+  assert.deepEqual([...BACKGROUND_SAFE_PASSES], V3_PASSES.filter((p) => p !== "ane"));
+  assert.deepEqual([...COREML_PASSES], ["ane", "ane-cputail", "cml-cpu"]);
+  assert.equal(COREML_DECISION_RTF, 0.4);
+});
+
+test("v3: the drawer's table, one verdict per pass, and the decision rule, readable aloud", () => {
+  /* MUTATION: drop the decision line — the founder is left to apply §4 by hand. */
+  const text = formatProbeTable(summarizePasses({ native: V3_ANSWER }));
+  const lines = text.split("\n");
+  assert.match(lines[0], /content RTF = synthesis ÷ the text's length at speed 1\.0; 1\.5x target ≤ 0\.55/);
+  assert.match(text, /^ane-cputail +0\.08 +0\.06 +0\.09 +0\.04 +210 +y +locked +GO$/m);
+  assert.match(text, /^ort-cpu-t3 +0\.38 +0\.60 +0\.90 +0\.80 +1100 +y +locked +MARGINAL$/m);
+  assert.match(text, /^cml-cpu .* NO$/m);
+  assert.match(text, /^  ane: GO at 1\.5x \(GPU route, may stall locked\)$/m);
+  assert.match(text, /^  ane-cputail: GO at 1\.5x \(runs locked\); meets the Core ML rule \(≤ 0\.4 at 1\.0\) — soak it$/m);
+  assert.match(text, /decision \(doc §4\): ane-cputail qualifies for Core ML as the iOS engine if the soak survives\./);
+  /* No Core ML pass qualifying: the cheapest ORT pass that keeps up is named. */
+  const ortOnly = summarizePasses({ native: { ...V3_ANSWER, passes: V3_ANSWER.passes.filter((p) => !p.route) } });
+  assert.match(formatProbeTable(ortOnly), /ORT stays — ort-cpu-t2 is the cheapest that keeps up\./);
+  /* A refused pass says why on its row. */
+  const refused = summarizePasses({ native: { ok: true, platform: "ios", passes: [
+    { pass: "ane", speed: 1, ok: false, reason: "coreml-requires-ios17", route: "ane,ane,ane,all,all,ane,all" },
+    { pass: "ane", speed: 1.5, ok: false, reason: "coreml-requires-ios17" },
+  ] } });
+  assert.equal(refused[0].reason, "coreml-requires-ios17", "a v3 reason is admitted, not `refused`");
+  assert.match(formatProbeTable(refused), /^ane .* could not run: coreml-requires-ios17$/m);
+  assert.equal(formatProbeTable([]), "");
+  /* The per-record report says which speed and prints the content RTF. */
+  assert.match(formatProbeReport(summarizePasses({ native: V3_ANSWER })[1]), /^voice probe \[ane @1\.5x\]: /m);
+  assert.match(formatProbeReport(summarizePasses({ native: V3_ANSWER })[1]), /^  content RTF   cold 0\.33  warm 0\.04 /m);
+});
+
+test("v3: the screen a record ran under, from its per-chunk samples", () => {
+  /* The founder runs the matrix twice (unlocked, then locked); the record,
+     not his memory, says which. A phone with no passcode never reads
+     "locked", so all-background without it is `background`. */
+  assert.equal(screenOf(0, 0, 15), "unlocked");
+  assert.equal(screenOf(15, 15, 15), "locked");
+  assert.equal(screenOf(15, 0, 15), "background");
+  assert.equal(screenOf(7, 0, 15), "mixed");
+  assert.equal(screenOf(null, null, 15), null);
+  assert.deepEqual([...SCREEN_STATES], ["unlocked", "locked", "background", "mixed"]);
+  assert.deepEqual([...KILLED_STAGES], ["load", "synth", "soak"]);
+});
+
+test("v3: a Core ML failure is named by code and stage, by closed set", () => {
+  const [r] = summarizePasses({ native: { ok: true, platform: "ios", passes: [
+    { ...v3Record("ane", 1, { rtf: 0.05 }), cmlCode: "cml-nan-duration", cmlStage: "postAlbert" },
+    { ...v3Record("ane", 1.5, { rtf: 0.05 }), cmlCode: "cml-anything", cmlStage: "somewhere", route: "gpu,gpu" },
+  ] } });
+  assert.equal(r.cmlCode, "cml-nan-duration");
+  assert.equal(r.cmlStage, "postAlbert");
+  const second = summarizePasses({ native: { ok: true, platform: "ios", passes: [
+    { ...v3Record("ane", 1.5, { rtf: 0.05 }), cmlCode: "cml-anything", cmlStage: "somewhere", route: "gpu,gpu" },
+  ] } })[0];
+  assert.equal(second.cmlCode, null);
+  assert.equal(second.cmlStage, null);
+  assert.equal(second.route, null);
+  assert.match(formatProbeReport(r), /^  Core ML       cml-nan-duration at postAlbert$/m);
+});
+
+test("v3: the soak asks for `mode: soak`, and answers ONE record with its per-minute series", async () => {
+  /* MUTATION: drop `mode` from the bridge call — the phone runs the matrix
+     again instead of the 30-minute loop. */
+  let sent = null;
+  const tts = { kokoroProbe: async (opts) => { sent = opts; return {
+    ok: true, mode: "soak", platform: "ios", pass: "ane-cputail", speed: 1.5, route: "ane,ane,ane,cpu,cpu,ane,cpu",
+    soakMinutes: 30, soakLoops: 412, soakElapsedSec: 1805, soakRtfSeries: [0.05, -1, 0.07], soakThermalSeries: ["nominal", "", "serious"],
+    soakRtfMin: 0.04, soakRtfMedian: 0.05, soakRtfMax: 0.07, soakPeakBytes: 214 * MiB, soakPeakFirstBytes: 212 * MiB,
+    soakPeakLastBytes: 214 * MiB, soakBgLoops: 412, soakLockedLoops: 410, soakFailures: 0, soakNonFinite: 0,
+    cpuPerContentSec: 0.03, soakVerdict: "go", thermalStart: "nominal", thermalEnd: "serious", keepAlive: "audio",
+  }; } };
+  const [soak, ...rest] = await runKokoroProbe({ tts, passage: PASSAGE, mode: "soak", soakMinutes: 30 });
+  assert.equal(rest.length, 0);
+  assert.equal(sent.mode, "soak");
+  assert.equal(sent.soakMinutes, 30);
+  assert.equal(soak.kind, "soak");
+  assert.equal(soak.ok, true);
+  assert.equal(soak.loops, 412);
+  assert.deepEqual(soak.rtfSeries, [0.05, null, 0.07], "-1 is a minute with no loop: null, not a number");
+  assert.deepEqual(soak.thermalSeries, ["nominal", null, "serious"]);
+  assert.equal(soak.peakFirstMb, 212);
+  assert.equal(soak.verdict, "go");
+  const text = formatSoakReport(soak);
+  assert.match(text, /^voice soak \[ane-cputail @1\.5x\]: 412 loops over 30\.1 min, verdict GO$/m);
+  assert.match(text, /^  per minute    0\.05n —\? 0\.07s /m);
+  assert.match(text, /^  screen        410 of 412 loops locked, 412 in the background  keep-alive audio$/m);
+  /* A matrix call never carries a mode. */
+  let matrixOpts = null;
+  await runKokoroProbe({ tts: { kokoroProbe: async (o) => { matrixOpts = o; return V3_ANSWER; } }, passage: PASSAGE });
+  assert.equal(matrixOpts.mode, undefined);
+});
+
+test("v3: a soak iOS ended is reported by the next run, and a refused soak says why", async () => {
+  const killed = summarizeSoak({ native: { ok: false, mode: "soak", reason: "synthesis-failed", detail: "calibration",
+    prevKilledPass: "ane-cputail", prevKilledStage: "soak", prevKilledChunksDone: 97, prevKilledPeakBytes: 230 * MiB } });
+  assert.equal(killed.ok, false);
+  assert.equal(killed.reason, "synthesis-failed");
+  assert.match(formatSoakReport(killed), /could not run \(synthesis-failed\/calibration\)\n  LAST RUN KILLED in the ane-cputail soak after 97 loops, peak 230 MB$/);
+  const [noBridge] = await runKokoroProbe({ tts: null, passage: PASSAGE, mode: "soak" });
+  assert.equal(noBridge.kind, "soak");
+  assert.equal(noBridge.reason, "no-bridge");
+  const [threw] = await runKokoroProbe({ tts: { kokoroProbe: async () => { throw new TypeError("x /private/path"); } }, passage: PASSAGE, mode: "soak" });
+  assert.equal(threw.reason, "threw");
+  assert.equal(threw.synthReason, "TypeError");
+  const [refused] = await runKokoroProbe({ tts: fakeTts({ ok: false, reason: "model-absent" }), passage: PASSAGE, mode: "soak" });
+  assert.equal(refused.reason, "model-absent");
+});
+
+test("v3: the Swift half and this module hold the same passes, target and codes", () => {
+  /* Two languages, one contract. MUTATION: reorder a Swift case, change the
+     Swift target, or rename a Core ML code in either file. */
+  const cases = [...IOS_MATRIX.matchAll(/^\s+case (\w+)(?: = "([a-z0-9-]+)")?$/gm)]
+    .map((m) => m[2] ?? m[1])
+    .filter((c) => V3_PASSES.includes(c));
+  assert.deepEqual(cases, V3_PASSES, "KokoroProbePass's cases, in run order");
+  assert.match(IOS_MATRIX, /static let TARGET_CONTENT_RTF = 0\.55\b/);
+  assert.match(IOS_MATRIX, /static let SPEEDS: \[Double\] = \[1\.0, 1\.5\]/);
+  const codes = IOS_COREML.match(/static let CODES = \[([^\]]+)\]/);
+  assert.ok(codes, "the Core ML engine keeps its codes as one array");
+  assert.deepEqual((codes[1].match(/"[a-z-]+"/g) ?? []).map((t) => t.slice(1, -1)), [...CML_CODES]);
+  for (const stage of CML_STAGES) assert.ok(IOS_COREML.includes(stage), `Swift never names stage ${stage}`);
+  /* Every refusal the matrix can write is one this module admits. */
+  for (const reason of ["coreml-requires-ios17", "model-absent", "engine-absent", "coreml-unavailable", "synthesis-failed"]) {
+    assert.ok(IOS_MATRIX.includes(`"${reason}"`) || IOS_PLUGIN.includes(`"${reason}"`), `Swift never sends ${reason}`);
+    assert.ok(PROBE_REASONS.includes(reason), `${reason} is not in PROBE_REASONS`);
+  }
 });

@@ -63,6 +63,20 @@
  *
  * Two, because the card's stop rule is "two stream-hashes disagree": one
  * download proves only that one response was self-consistent.
+ *
+ * ── The Core ML pins were filled on 2026-09-27 (KV-R3), the same way, twice ─
+ * The seven compiled stages of the laishere 7-stage Core ML chain
+ * (`FluidInference/kokoro-82m-coreml`, folder `ANE/`, 34 files, 82,270,465
+ * bytes) were stream-hashed on the founder's Windows PC by two independent
+ * downloads, nothing written to disk, and all 34 pairs agreed:
+ *
+ *     run 1 2026-09-27T06:43:33Z .. 06:45:46Z  34 files  82270465 bytes
+ *     run 2 2026-09-27T06:45:54Z .. 06:48:10Z  34 files  82270465 bytes, 0 disagreements
+ *
+ * The URLs name the repository's COMMIT (`COREML_REVISION`), not `main`, so
+ * a re-upload upstream cannot change what a URL serves; the hash would catch it
+ * anyway. The weight files' sha256 also equals the LFS sha256 Hugging Face
+ * publishes for them.
  */
 
 import fs from "node:fs";
@@ -141,6 +155,24 @@ const FETCH_BACKOFF_MS = 10_000;
     `PLATFORMS` keys. */
 export const BUNDLE_PLATFORMS = Object.freeze(["ios", "android"]);
 
+/** KV-R3: where the Core ML chain's stages live, under `mobile/models/` and
+    under the iOS app's `public/` — `KokoroCoreMLEngine.swift`'s
+    `KokoroCoreMLFiles.DIR`. */
+export const COREML_DIR = "kokoro-coreml";
+/** The Hugging Face commit the Core ML pins are fetched at (never `main`). */
+export const COREML_REVISION = "006395f65025af251858b1ab0a7178a6a1e73f9f";
+/** The seven stage directories, in chain order — `KokoroCoreMLStage`'s
+    bundle names in Swift. */
+export const COREML_STAGES = Object.freeze([
+  "KokoroAlbert", "KokoroPostAlbert", "KokoroAlignment", "KokoroProsody_v2",
+  "KokoroNoise_v2", "KokoroVocoder", "KokoroTail_v2",
+]);
+/** The ONLY shape a pin name with a `/` may take: one file of one compiled
+    stage, under `COREML_DIR`. Anything else with a separator is refused,
+    because a name is a path on disk and this file is the one place a remote
+    URL decides what lands there. */
+export const COREML_NAME_RE = /^kokoro-coreml\/Kokoro[A-Za-z]+(?:_v2)?\.mlmodelc\/(?:analytics\/coremldata\.bin|coremldata\.bin|metadata\.json|model\.mil|weights\/weight\.bin)$/;
+
 export const PINS = Object.freeze([
   /* ANDROID's model (D13). Kept FIRST, and kept in this exact field order:
      `render-audition.py`'s `read_pins` parses this pin out of this file's
@@ -212,6 +244,65 @@ export const PINS = Object.freeze([
     source: "https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX",
     bundle: Object.freeze([]),
   }),
+  /* KV-R3 (probe v3, docs/voice/kokoro-speed-1.5x.md §4 S5 and §5): THE CORE ML
+     CHAIN'S SEVEN COMPILED STAGES, iOS only. Kokoro split into seven Core ML
+     models so most of it runs on the Neural Engine (laishere/kokoro-coreml,
+     Apache-2.0), as FluidInference repackaged them for FluidAudio. They are
+     `.mlmodelc` directories — already compiled, so no build step compiles
+     anything — and a directory is five files, so each FILE is a pin: `name`
+     is its path under `mobile/models/` and under the app's `public/`
+     (`kokoro-coreml/<Stage>.mlmodelc/<file>`), the one pin kind allowed a
+     `/` (`COREML_NAME_RE`). `KokoroCoreMLEngine.swift` loads them from there.
+
+     WHICH STAGE FILES: the three `_v2` ones (Prosody, Noise, Tail) are what
+     FluidAudio's shipping pipeline loads — a long-utterance onset fix, a noise
+     phase fix and a level fix over the originals. The other four have one
+     version. For the probe build only (card KV-R3); ~78.5 MiB beside fp32. */
+  ...[
+    ["KokoroAlbert.mlmodelc/analytics/coremldata.bin", "14a61873d8759a38b79c93f9021ae865f408f56301209a0168dbfc2283265ccd", 243],
+    ["KokoroAlbert.mlmodelc/coremldata.bin", "70b6d2f8429229f6800dda9480341669f7ac0eabf05a82934d8632ab2b4b63a6", 433],
+    ["KokoroAlbert.mlmodelc/metadata.json", "fe1d005481f646707a948267ac089dfb2cd2ccea7d5827a14c28587eb4c89930", 2480],
+    ["KokoroAlbert.mlmodelc/model.mil", "2038154d06a20e399a8ae35ec5c9242702cb23db8dd24dde7679cd53708e4eae", 101485],
+    ["KokoroAlbert.mlmodelc/weights/weight.bin", "36089a39359b800d3e2c60e5e8ac9217d8f2d1010a8b9273192290e621f1fabc", 5718848],
+    ["KokoroAlignment.mlmodelc/analytics/coremldata.bin", "f6074d1039a9151d0f97dc6ec9ee0cd9c7b865f1af646d718ab38b659fa84f3f", 243],
+    ["KokoroAlignment.mlmodelc/coremldata.bin", "9a0fb4a536f665a052914d7f17b0e6ac80a3614f702e4be87ac0302c1143a4ea", 484],
+    ["KokoroAlignment.mlmodelc/metadata.json", "6f610d23b9f93c7f1a968d6a861efa99725a191de696bf1c3be334ead39b7f00", 3021],
+    ["KokoroAlignment.mlmodelc/model.mil", "eb3a618bda0cdf95cdffab586ef5c76333d0d0a1dcb881190b3ef414f3421b3e", 8194],
+    ["KokoroAlignment.mlmodelc/weights/weight.bin", "2e7d69128b59d615fc3d3cf85637a687235fc086b1eb136359adb11a61615f6b", 4128],
+    ["KokoroNoise_v2.mlmodelc/analytics/coremldata.bin", "53af6bf61482f6002bdb6e3a62f30774cde6e96411aebd888222a34b369f3d04", 243],
+    ["KokoroNoise_v2.mlmodelc/coremldata.bin", "9911047f924b41f8b92811c32c50b7c718bd7b0c14842b3bc1b66b9ffe341a19", 440],
+    ["KokoroNoise_v2.mlmodelc/metadata.json", "eb3102217532d952479c6f1b04d26d7ac4cdbc59875b6a23e8aae86e5e02c2bc", 3020],
+    ["KokoroNoise_v2.mlmodelc/model.mil", "60233949d896f15ef38aea19afda558935d7569fa77a3ca4babddd3ffe845a36", 93152],
+    ["KokoroNoise_v2.mlmodelc/weights/weight.bin", "1102fc2d31dfcfe3de3978a4c78b65202ff8b0a4d55a9304213bd4e8bda66bc2", 4580160],
+    ["KokoroPostAlbert.mlmodelc/analytics/coremldata.bin", "6640044c875505382edbc361cdd56f3f1c30f082953e0f9473a31ae3f71e6c43", 243],
+    ["KokoroPostAlbert.mlmodelc/coremldata.bin", "86de3ab0c1e8c6f8842b57bc24695a5099590c49b864e3fa2737b1fb5b15ba3b", 556],
+    ["KokoroPostAlbert.mlmodelc/metadata.json", "2e3be1af412a76e340120a01cd04a502666371ada86b1fdaf5a622896e0bf979", 4171],
+    ["KokoroPostAlbert.mlmodelc/model.mil", "450b73a3b179e1702e7b2210bad008eac20d58b2d6076e3c2de76290a66e5fef", 60047],
+    ["KokoroPostAlbert.mlmodelc/weights/weight.bin", "e4f300a23cc2e05d38680d9fc94681cc722d445076d1d248f83255122ba091c8", 13806464],
+    ["KokoroProsody_v2.mlmodelc/analytics/coremldata.bin", "804d7d2e9a8fed345cedb57da61bd27fdd95db22a070cfa7d42ccd4f8e80a443", 243],
+    ["KokoroProsody_v2.mlmodelc/coremldata.bin", "db8776a4896f690fd254cdb68a4551c168411c9b3fb98219630215bc3c357986", 421],
+    ["KokoroProsody_v2.mlmodelc/model.mil", "e6acad9f44d70b1dba0aea6a5d25ee4edf68fe8f2933399ee81f70ace61cbc8b", 73353],
+    ["KokoroProsody_v2.mlmodelc/weights/weight.bin", "70eea4cd2523992fa1fea840e31ab6f4fdd69c1598e220985a2ae6ea5da1e944", 8513664],
+    ["KokoroTail_v2.mlmodelc/analytics/coremldata.bin", "a06e4b91c2b8a8be3ff701558a5f1f6484921f948202663fe6df78f248d42222", 243],
+    ["KokoroTail_v2.mlmodelc/coremldata.bin", "527271f6df56cc308a5f89374c92108aef7b837ab15f0ba4900d555588dbd905", 392],
+    ["KokoroTail_v2.mlmodelc/metadata.json", "7708ecc145eecf8e3ef5ef8979ea7a4f77d04c8da787454c6d9190e5300fc50b", 1872],
+    ["KokoroTail_v2.mlmodelc/model.mil", "b0b8fd573bac76ba7eb85730eeb25538fc7f1c666ecbf939fd4b3a4ad4495ad7", 7014],
+    ["KokoroTail_v2.mlmodelc/weights/weight.bin", "8ede31ec20df7d86a124287ac12d13507651e2a693e9d4f35f0e7f92cba422c7", 81088],
+    ["KokoroVocoder.mlmodelc/analytics/coremldata.bin", "1cc4f1e6436597c6d458a845570d9d0ace458813ff90f225d08e0e713496b463", 243],
+    ["KokoroVocoder.mlmodelc/coremldata.bin", "71bac80d2f2f077fefc0d66cdc39c0faaa96540b3a6149093ef29de01b1f8764", 626],
+    ["KokoroVocoder.mlmodelc/metadata.json", "a8e768f151225a52476d35f6ab90805ae00f1f78b83be4ca21327029c800c183", 4331],
+    ["KokoroVocoder.mlmodelc/model.mil", "52f2febec45094e78a5948a3a47f023be8fc57cfd48cc99e8d4c358a13674ef2", 309000],
+    ["KokoroVocoder.mlmodelc/weights/weight.bin", "6d1f96eb50218ab687b12d6d862d2ae854c12b7165c3cd9b6b5cef261ef02ff1", 48889920],
+  ].map(([file, sha256, bytes]) => Object.freeze({
+    kind: "coreml",
+    name: `${COREML_DIR}/${file}`,
+    url: `https://huggingface.co/FluidInference/kokoro-82m-coreml/resolve/${COREML_REVISION}/ANE/${file}`,
+    sha256,
+    bytes,
+    licence: "Apache-2.0",
+    source: "https://huggingface.co/FluidInference/kokoro-82m-coreml",
+    bundle: Object.freeze(["ios"]),
+  })),
 ]);
 
 /** The pins ONE PLATFORM's shell build copies into its app. Everything else is
@@ -263,12 +354,14 @@ export function pinProblems(pins = PINS) {
     if (typeof p.name !== "string" || !p.name) problems.push(`${at}: no name`);
     if (seen.has(p.name)) problems.push(`${at}: named twice — a second pin would overwrite the first on disk`);
     seen.add(p.name);
-    if (p.name && (p.name.includes("/") || p.name.includes("\\") || p.name.includes(".."))) {
+    const nested = p.kind === "coreml" && typeof p.name === "string" && COREML_NAME_RE.test(p.name);
+    if (p.name && ((p.name.includes("/") && !nested) || p.name.includes("\\") || p.name.includes(".."))) {
       /* A pin's name becomes a path under `mobile/models/`. A `..` in it writes
          outside the directory, and this file's whole job is to be the one place
          a remote URL is allowed to decide what lands on disk. */
-      problems.push(`${at}: a name may not contain a path separator or ".."`);
+      problems.push(`${at}: a name may not contain a path separator or ".." (only a Core ML stage file may be nested, as kokoro-coreml/<Stage>.mlmodelc/<file>)`);
     }
+    if (p.kind === "coreml" && !nested) problems.push(`${at}: a Core ML pin must be named kokoro-coreml/<Stage>.mlmodelc/<file>`);
     if (typeof p.url !== "string" || !/^https:\/\//.test(p.url)) {
       problems.push(`${at}: url must be https (got ${JSON.stringify(p.url)})`);
     }
@@ -370,11 +463,11 @@ export function verifyOnDisk(pins = PINS, root = REPO_ROOT) {
 
 const isMain = process.argv[1] && path.resolve(process.argv[1]) === path.resolve(fileURLToPath(import.meta.url));
 
-if (isMain) { main(); }
-
 /* Wrapped in a function rather than run at module scope so this file carries NO
    top-level await: `test/release-gates.test.js` is a CommonJS suite and imports
    the pin table, and a module with top-level await cannot be required. */
+if (isMain) { main(); }
+
 async function main() {
   const mode = process.argv[2] ?? "--fetch";
   const problems = pinProblems();
@@ -405,8 +498,12 @@ async function main() {
     /* One line PER PLATFORM (KV-R2's CI evidence): the iOS app carries fp32,
        the APK q8f16, and a log that summed them would describe neither. */
     for (const platform of BUNDLE_PLATFORMS) {
-      const names = bundledPins(platform).map((p) => p.name);
-      console.log(`${platform}: ${names.length} bundled (${names.join(", ")}): `
+      const pins = bundledPins(platform);
+      /* The 34 Core ML stage files (KV-R3) print as one count, not 34 names. */
+      const coreml = pins.filter((p) => p.kind === "coreml");
+      const names = pins.filter((p) => p.kind !== "coreml").map((p) => p.name);
+      if (coreml.length) names.push(`${coreml.length} Core ML stage files under ${COREML_DIR}/`);
+      console.log(`${platform}: ${pins.length} bundled (${names.join(", ")}): `
         + `${(bundledBytes(platform) / (1024 * 1024)).toFixed(1)} MiB.`);
     }
     if (missing.length) {
@@ -471,6 +568,7 @@ async function main() {
       }
     }
     if (!buf) { console.error(`  ${pin.name}: ${last}`); failed++; continue; }
+    fs.mkdirSync(path.dirname(abs), { recursive: true });   // a Core ML stage file is nested (KV-R3)
     fs.writeFileSync(abs, buf);
     console.log(`  ${pin.name}  ${buf.length} bytes  ok`);
   }

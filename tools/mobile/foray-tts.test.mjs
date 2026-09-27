@@ -667,6 +667,24 @@ test("kokoroProbe: calls the native method by the name the plugin declares", asy
   assert.deepEqual(calls[0].payload.passage, passage);
   assert.equal(out.ok, true);
   assert.equal(out.path, "native");
+  assert.equal(calls[0].payload.mode, undefined, "the matrix carries no mode");
+});
+
+test("kokoroProbe: KV-R3's soak and listen modes travel, and nothing else does", async () => {
+  /* The soak (30-minute locked loop) and listen (play one pass's WAV) are
+     the same native method with a mode. Only the two known modes, a real
+     number of minutes and a pass-shaped token cross the bridge.
+     TO SEE IT FAIL: spread `opts` into the payload. */
+  const calls = [];
+  const bridge = { nativePromise: async (plugin, method, payload) => { calls.push(payload); return { ok: true }; } };
+  await kokoroProbe({ bridge, mode: "soak", soakMinutes: 30 });
+  await kokoroProbe({ bridge, mode: "listen", pass: "ane-cputail" });
+  await kokoroProbe({ bridge, mode: "wipe", pass: "../../etc", soakMinutes: "30" });
+  assert.equal(calls[0].mode, "soak");
+  assert.equal(calls[0].soakMinutes, 30);
+  assert.equal(calls[1].mode, "listen");
+  assert.equal(calls[1].pass, "ane-cputail");
+  assert.deepEqual(Object.keys(calls[2]).sort(), ["engine", "passage"], "an unknown mode, path or string is dropped");
 });
 
 test("kokoroProbe: an answer without `ok` is a refusal, never a success", async () => {

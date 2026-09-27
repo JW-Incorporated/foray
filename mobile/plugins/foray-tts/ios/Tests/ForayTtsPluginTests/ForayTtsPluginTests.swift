@@ -684,15 +684,17 @@ final class ForayTtsPluginTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(ForayTtsPlugin.peakResidentBytes(), now.current)
     }
 
-    /// **Every line throws: the failure path says so line by line, and keeps
-    /// the readings it used to drop (L05, L34, L35).** The failure path used
-    /// to omit `availableMemoryBytes` and `lockedScreenCompleted`, and kept
-    /// only the FIRST failure's code. MUTATION: build `lineOutcomes` from
-    /// `firstFailure`, or move either reading back into the success branch.
+    /// **Every chunk throws: the failure path says so chunk by chunk, and
+    /// keeps the readings it used to drop (L05, L34, L35).** MUTATION: build
+    /// `lineOutcomes` from the first failure only, or move a reading into the
+    /// success branch.
     func testAFailingPassageReportsEveryLineAndTheFullContext() {
-        let result = ForayTtsPlugin.measure(engine: ThrowingProbeEngine(),
-                                            idLines: [[0, 1, 2, 0], [0, 3, 4, 0], [0, 5, 6, 0], [0, 7, 8, 0]],
-                                            speed: 1, modelURL: nil, isForeground: { false })
+        let out = ForayTtsPlugin.measurePass(engine: ThrowingProbeEngine(), pass: .ortCpuT2,
+                                             idLines: [[0, 1, 2, 0], [0, 3, 4, 0], [0, 5, 6, 0], [0, 7, 8, 0]],
+                                             speeds: [1.0], modelFacts: nil,
+                                             isForeground: { false }, isLocked: { true })
+        XCTAssertEqual(out.records.count, 1)
+        let result = out.records[0]
         XCTAssertEqual(result["ok"] as? Bool, false)
         XCTAssertEqual(result["reason"] as? String, "synthesis-failed")
         XCTAssertEqual(result["detail"] as? String, "inference-threw")
@@ -701,11 +703,15 @@ final class ForayTtsPluginTests: XCTestCase {
         XCTAssertNotNil(result["availableMemoryBytes"] as? Double)
         XCTAssertEqual(result["lockedScreenCompleted"] as? Bool, true)
         XCTAssertEqual(result["bgAtFail"] as? Bool, true)
+        XCTAssertEqual(result["bgChunks"] as? Int, 4)
+        XCTAssertEqual(result["lockedChunks"] as? Int, 4)
         XCTAssertEqual(result["ortCode"] as? String, "not-implemented")
         XCTAssertEqual(result["ortOp"] as? String, "ConvTranspose")
         XCTAssertEqual(result["ortStage"] as? String, "run")
         XCTAssertEqual(result["loadErr"] as? String, "no-model")
         XCTAssertEqual(result["platform"] as? String, "ios")
+        XCTAssertEqual(result["pass"] as? String, "ort-cpu-t2")
+        XCTAssertEqual(result["speed"] as? Double, 1.0)
         XCTAssertNotNil(result["thermalStart"] as? String)
         XCTAssertNotNil(result["thermalEnd"] as? String)
         XCTAssertNotNil(result["lowPower"] as? Bool)
@@ -718,66 +724,218 @@ final class ForayTtsPluginTests: XCTestCase {
     }
 
     /// **NaN and silence are failures with zero seconds, never audio (L04).**
-    /// MUTATION: add a failed line's `audioSec` to the total — the RTF is then
-    /// computed over garbage and the probe reports `ok`.
+    /// MUTATION: add a failed chunk's `audioSec` to the total — the RTF is
+    /// then computed over garbage and the probe reports `ok`.
     func testGarbageLinesCountAsFailuresAndContributeNoAudio() {
-        let result = ForayTtsPlugin.measure(engine: ScriptedProbeEngine(reasons: [nil, "non-finite", "silent", nil]),
-                                            idLines: [[0, 1, 2, 0], [0, 3, 4, 0], [0, 5, 6, 0], [0, 7, 8, 0]],
-                                            speed: 1, modelURL: nil, isForeground: { true })
+        let out = ForayTtsPlugin.measurePass(engine: ScriptedProbeEngine(reasons: [nil, "non-finite", "silent", nil]),
+                                             pass: .ortCpuT2,
+                                             idLines: [[0, 1, 2, 0], [0, 3, 4, 0], [0, 5, 6, 0], [0, 7, 8, 0]],
+                                             speeds: [1.0], modelFacts: nil,
+                                             isForeground: { true }, isLocked: { false })
+        let result = out.records[0]
         XCTAssertEqual(result["ok"] as? Bool, true)
         XCTAssertEqual(result["lineOutcomes"] as? [String], ["ok", "nan", "silent", "ok"])
         XCTAssertEqual(result["nonFiniteLines"] as? Int, 1)
         XCTAssertEqual(result["silentLines"] as? Int, 1)
         XCTAssertEqual(result["synthFailures"] as? Int, 2)
         XCTAssertEqual(result["audioColdSec"] as? Double, 2)
-        XCTAssertEqual(result["audioWarmSec"] as? Double, 2, "only the one good warm line counts")
+        XCTAssertEqual(result["audioWarmSec"] as? Double, 2, "only the one good warm chunk counts")
+        XCTAssertEqual(result["synthWarmMs"] as? Double, 100, "and only its synthesis time")
         XCTAssertEqual(result["bgAtFail"] as? Bool, false)
         XCTAssertNil(result["ortCode"], "no ORT failure was named")
         XCTAssertEqual(result["lockedScreenCompleted"] as? Bool, false)
+        XCTAssertEqual(result["bgChunks"] as? Int, 0)
     }
 
-    // MARK: - KV-R2: two passes, sentence chunks, the kill marker
+    // MARK: - KV-R3: probe v3 — the pass matrix, both speeds, the content basis
+
+    /// **The passes, their order, and what each one is** (docs/voice/
+    /// kokoro-speed-1.5x.md §5). Interleaved: Core ML and ORT alternate so
+    /// neither family gets the cool phone. MUTATION: reorder the cases, or
+    /// let `ane` count as background-safe.
+    func testPassOrderIsInterleavedAndEachPassSaysWhatItIs() {
+        XCTAssertEqual(KokoroProbePass.allCases.map(\.rawValue),
+                       ["ane", "ort-cpu-t2", "ane-cputail", "ort-cpu-t3", "cml-cpu", "ort-cpu-t4"])
+        XCTAssertEqual(KokoroProbePass.allCases.map(\.ortThreads), [nil, 2, nil, 3, nil, 4])
+        XCTAssertEqual(KokoroProbePass.allCases.filter(\.isCoreML), [.ane, .aneCputail, .cmlCpu])
+        XCTAssertEqual(KokoroProbePass.allCases.filter { !$0.backgroundSafe }, [.ane],
+                       "only `ane` may touch the GPU, which iOS blocks while locked")
+        XCTAssertEqual(KokoroProbePass.soakPass(coreMLAvailable: true), .aneCputail)
+        XCTAssertEqual(KokoroProbePass.soakPass(coreMLAvailable: false), .ortCpuT2)
+        XCTAssertEqual(KokoroProbePass.ortCpuT2.ortThreads, Int(KokoroOrtProbeEngine.DEFAULT_INTRA_OP_THREADS))
+        XCTAssertEqual(ProbeMath.SPEEDS, [1.0, 1.5], "1.0 first: it is every other speed's content basis")
+    }
+
+    /// **Each Core ML pass asks for the placement the doc names.** MUTATION:
+    /// put the tail on ALL in `ane-cputail` — it becomes a GPU route that iOS
+    /// suspends when the phone locks.
+    func testCoreMLPlacementPerPass() {
+        XCTAssertEqual(KokoroCoreMLPlacement.route(pass: .ane), "ane,ane,ane,all,all,ane,all")
+        XCTAssertEqual(KokoroCoreMLPlacement.route(pass: .aneCputail), "ane,ane,ane,cpu,cpu,ane,cpu")
+        XCTAssertEqual(KokoroCoreMLPlacement.route(pass: .cmlCpu), "cpu,cpu,cpu,cpu,cpu,cpu,cpu")
+        XCTAssertNil(KokoroCoreMLPlacement.route(pass: .ortCpuT3))
+        XCTAssertTrue(KokoroCoreMLPlacement.usesGPU(pass: .ane))
+        XCTAssertFalse(KokoroCoreMLPlacement.usesGPU(pass: .aneCputail))
+        XCTAssertEqual(KokoroCoreMLStage.allCases.map(\.bundleName),
+                       ["KokoroAlbert", "KokoroPostAlbert", "KokoroAlignment", "KokoroProsody_v2",
+                        "KokoroNoise_v2", "KokoroVocoder", "KokoroTail_v2"])
+        XCTAssertEqual(KokoroCoreMLFiles.DIR, "kokoro-coreml")
+    }
+
+    /// **The content basis: speed 1.5 is divided by the seconds the SAME text
+    /// lasts at speed 1.0.** A chunk of 3 s at 1.0 lasts 2 s at 1.5; rendering
+    /// it in 0.6 s is a wall RTF of 0.30 and a content RTF of 0.20. A warm
+    /// chunk that failed at EITHER speed leaves both sums. MUTATION: divide by
+    /// the speed-1.5 audio — `rtfContentWarm` reads 0.30.
+    func testContentBasisDividesBySpeedOneSeconds() throws {
+        let base = [ProbeChunkReading(synthMs: 900, audioSec: 3, reason: nil),
+                    ProbeChunkReading(synthMs: 900, audioSec: 3, reason: nil),
+                    ProbeChunkReading(synthMs: 900, audioSec: 3, reason: nil),
+                    ProbeChunkReading(synthMs: 900, audioSec: 0, reason: "non-finite")]
+        let fast = [ProbeChunkReading(synthMs: 1500, audioSec: 2, reason: nil, cpuSec: 1),
+                    ProbeChunkReading(synthMs: 600, audioSec: 2, reason: nil, cpuSec: 0.3, background: true),
+                    ProbeChunkReading(synthMs: 600, audioSec: 2, reason: nil, cpuSec: 0.3, locked: true),
+                    ProbeChunkReading(synthMs: 600, audioSec: 2, reason: nil, cpuSec: 0.3)]
+        let s = ProbeMath.summarize(fast, base: base)
+        XCTAssertEqual(s.synthColdMs, 1500)
+        XCTAssertEqual(s.contentColdSec, 3)
+        XCTAssertEqual(s.synthWarmMs, 1200, "chunk 3 failed at 1.0, so it has no content basis and is left out")
+        XCTAssertEqual(s.contentWarmSec, 6)
+        XCTAssertEqual(s.audioWarmSec, 4)
+        XCTAssertEqual(try XCTUnwrap(s.rtfContentWarm), 0.2, accuracy: 1e-9)
+        XCTAssertEqual(try XCTUnwrap(s.rtfWallWarm), 0.3, accuracy: 1e-9)
+        XCTAssertEqual(try XCTUnwrap(s.rtfContentCold), 0.5, accuracy: 1e-9)
+        XCTAssertEqual(try XCTUnwrap(s.cpuPerContentSec), 0.1, accuracy: 1e-9)
+        XCTAssertEqual(s.bgChunks, 1)
+        XCTAssertEqual(s.lockedChunks, 1)
+        XCTAssertEqual(s.failures, 0, "a failure at 1.0 is speed 1.0's failure, not this speed's")
+        let one = ProbeMath.summarize(base, base: base)
+        XCTAssertEqual(one.failures, 1)
+        XCTAssertEqual(one.nonFinite, 1)
+        XCTAssertEqual(one.rtfContentWarm, one.rtfWallWarm, "at speed 1.0 the two bases are the same seconds")
+        XCTAssertNil(ProbeMath.ratio(1, 0), "no seconds is no RTF, never infinity")
+    }
+
+    /// **The verdict against the 1.5x target, with the doc's margin.** ≤ 0.55
+    /// is GO, ≤ 0.667 keeps up with no margin (MARGINAL), and a voice that
+    /// drops or garbles a chunk is NO at any speed. MUTATION: test against
+    /// 0.667 only — 0.6 reads GO.
+    func testVerdictAgainstTheOnePointFiveTarget() {
+        XCTAssertEqual(ProbeMath.verdict(contentRtf: 0.20, finite: true, dropped: 0), "go")
+        XCTAssertEqual(ProbeMath.verdict(contentRtf: 0.55, finite: true, dropped: 0), "go")
+        XCTAssertEqual(ProbeMath.verdict(contentRtf: 0.60, finite: true, dropped: 0), "marginal")
+        XCTAssertEqual(ProbeMath.verdict(contentRtf: 0.70, finite: true, dropped: 0), "no")
+        XCTAssertEqual(ProbeMath.verdict(contentRtf: 0.20, finite: false, dropped: 0), "no")
+        XCTAssertEqual(ProbeMath.verdict(contentRtf: 0.20, finite: true, dropped: 1), "no")
+        XCTAssertEqual(ProbeMath.verdict(contentRtf: nil, finite: true, dropped: 0), "unmeasured")
+        XCTAssertEqual(ProbeMath.verdict(contentRtf: 0.001, finite: true, dropped: 0), "unmeasured",
+                       "below the floor nothing rendered")
+    }
+
+    /// **Every chunk renders at BOTH speeds, 1.0 first, and each speed gets
+    /// its own record.** A fake whose audio is `3 / speed` seconds: the 1.5
+    /// record's content seconds are the 1.0 record's audio seconds.
+    func testTheMatrixRendersEveryChunkAtBothSpeeds() {
+        let engine = SpeedProbeEngine()
+        let out = ForayTtsPlugin.measurePass(engine: engine, pass: .ane,
+                                             idLines: [[0, 1, 0], [0, 2, 0], [0, 3, 0]],
+                                             speeds: [1.0, 1.5], modelFacts: nil,
+                                             isForeground: { true }, isLocked: { false })
+        XCTAssertEqual(engine.calls, [1.0, 1.5, 1.0, 1.5, 1.0, 1.5], "chunk by chunk, both speeds each")
+        XCTAssertEqual(out.records.map { $0["speed"] as? Double }, [1.0, 1.5])
+        let one = out.records[0], fast = out.records[1]
+        XCTAssertEqual(one["audioWarmSec"] as? Double, 6)
+        XCTAssertEqual(one["contentWarmSec"] as? Double, 6)
+        XCTAssertEqual(fast["audioWarmSec"] as? Double, 4)
+        XCTAssertEqual(fast["contentWarmSec"] as? Double, 6, "the 1.5 record is divided by the 1.0 seconds")
+        XCTAssertEqual(fast["route"] as? String, "fake-route")
+        XCTAssertEqual(fast["stageMs"] as? [Double], [2, 2, 2, 2, 2, 2, 2], "per-stage ms, summed over the warm chunks")
+        XCTAssertEqual(fast["pass"] as? String, "ane")
+        XCTAssertEqual(fast["hasWav"] as? Bool, false, "no WAV was asked for")
+    }
+
+    /// **The WAV is the speed-1.5 render, and a valid 16-bit mono file.**
+    func testThePassWavIsTheListeningRateRender() throws {
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent("kvr3-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let wav = dir.appendingPathComponent("ane.wav")
+        let engine = SpeedProbeEngine()
+        let out = ForayTtsPlugin.measurePass(engine: engine, pass: .ane, idLines: [[0, 1, 0], [0, 2, 0]],
+                                             speeds: [1.0, 1.5], modelFacts: nil,
+                                             isForeground: { true }, isLocked: { false }, wavURL: wav)
+        XCTAssertTrue(out.wav)
+        XCTAssertEqual(out.records[1]["hasWav"] as? Bool, true)
+        XCTAssertEqual(out.records[0]["hasWav"] as? Bool, false)
+        XCTAssertEqual(engine.captured, [false, true, false, true], "samples are kept for the 1.5 render only")
+        let data = try Data(contentsOf: wav)
+        XCTAssertEqual(data.count, 44 + 2 * 2 * SpeedProbeEngine.SAMPLES)
+        XCTAssertEqual(String(decoding: data.prefix(4), as: UTF8.self), "RIFF")
+        XCTAssertEqual(String(decoding: data[8..<12], as: UTF8.self), "WAVE")
+        XCTAssertEqual(ProbeWav.wav([1, 2, 3]).count, 50)
+        XCTAssertEqual(ProbeWav.pcm16([2, -2, .nan, 0.5]), [32_767, -32_767, 0, 16_383])
+    }
 
     /// **The passes run in order, and each engine is CLOSED before the next
-    /// is built** — so two 325 MB fp32 sessions never coexist. MUTATION: move
-    /// `engine.close()` after the loop, or build both engines up front.
+    /// is built** — so two sets of weights never coexist. One record per pass
+    /// per speed. MUTATION: move `engine.close()` after the loop.
     func testPassesRunInOrderAndEachEngineIsClosedBeforeTheNextIsBuilt() {
         let log = EventLog()
         let result = ForayTtsPlugin.measurePasses(
-            idLines: [[0, 1, 2, 0], [0, 3, 4, 0]], speed: 1, modelURL: nil,
-            makeEngine: { pass in log.add("make \(pass.rawValue)"); return LoggingProbeEngine(pass: pass, log: log) },
-            isForeground: { false }, inFlight: ProbeInFlight(url: tempURL()))
-        XCTAssertEqual(log.events, ["make cpu", "load cpu", "close cpu", "make coreml", "load coreml", "close coreml"])
+            idLines: [[0, 1, 2, 0], [0, 3, 4, 0]], modelURL: nil,
+            makeEngine: { pass in log.add("make \(pass.rawValue)"); return .engine(LoggingProbeEngine(pass: pass, log: log)) },
+            isForeground: { false }, isLocked: { false }, inFlight: ProbeInFlight(url: tempURL()))
+        let order = KokoroProbePass.allCases.map(\.rawValue)
+        XCTAssertEqual(log.events, order.flatMap { ["make \($0)", "load \($0)", "close \($0)"] })
         XCTAssertEqual(result["ok"] as? Bool, true)
         let passes = result["passes"] as? [[String: Any]] ?? []
-        XCTAssertEqual(passes.map { $0["pass"] as? String }, ["cpu", "coreml"])
-        XCTAssertEqual(passes.map { $0["provider"] as? String }, ["cpu", "coreml"])
-        XCTAssertEqual(passes.first?["lines"] as? Int, 2, "one inference per chunk")
+        XCTAssertEqual(passes.count, order.count * 2, "one record per pass per speed")
+        XCTAssertEqual(passes.map { $0["pass"] as? String }, order.flatMap { [$0, $0] })
+        XCTAssertEqual(passes.map { $0["speed"] as? Double }, order.flatMap { _ in [1.0, 1.5] })
+        XCTAssertEqual(passes.first?["provider"] as? String, "coreml")
+        XCTAssertEqual(passes[2]["provider"] as? String, "cpu")
+        XCTAssertEqual(passes.first?["lines"] as? Int, 2, "one inference per chunk per speed")
     }
 
-    /// **An unavailable CoreML EP is `coreml-unavailable`, and the CPU pass
-    /// still measures.** MUTATION: let an unregistered EP fall through to
-    /// the chunk loop — it reads `synthesis-failed/session-absent`, which
-    /// names an inference fault that never happened.
-    func testAnUnavailableCoreMLPassIsNamedAndTheCPUPassStillRuns() {
+    /// **A pass that cannot run is named, per speed, and the others still
+    /// run** — a phone below iOS 17 gets `coreml-requires-ios17` on the Core
+    /// ML passes and real numbers from ORT. MUTATION: stop the run at the
+    /// first refusal.
+    func testARefusedPassIsNamedAndTheOthersStillRun() {
+        let result = ForayTtsPlugin.measurePasses(
+            idLines: [[0, 1, 2, 0]], modelURL: nil,
+            makeEngine: { pass in
+                pass.isCoreML ? .refused("coreml-requires-ios17") : .engine(LoggingProbeEngine(pass: pass, log: EventLog()))
+            },
+            isForeground: { true }, isLocked: { false }, inFlight: ProbeInFlight(url: tempURL()))
+        let passes = result["passes"] as? [[String: Any]] ?? []
+        XCTAssertEqual(passes.count, 12)
+        let ane = passes.filter { $0["pass"] as? String == "ane" }
+        XCTAssertEqual(ane.map { $0["reason"] as? String }, ["coreml-requires-ios17", "coreml-requires-ios17"])
+        XCTAssertEqual(ane.first?["route"] as? String, "ane,ane,ane,all,all,ane,all")
+        let ort = passes.filter { $0["pass"] as? String == "ort-cpu-t3" }
+        XCTAssertEqual(ort.map { $0["ok"] as? Bool }, [true, true])
+    }
+
+    /// **An unregistered provider is `coreml-unavailable`, per speed, and
+    /// nothing is claimed to have run.**
+    func testAnUnavailableProviderIsNamedAndClaimsNoChunks() {
         let log = EventLog()
         let result = ForayTtsPlugin.measurePasses(
-            idLines: [[0, 1, 2, 0], [0, 3, 4, 0]], speed: 1, modelURL: nil,
-            makeEngine: { pass in LoggingProbeEngine(pass: pass, log: log, unavailable: pass == .coreml) },
-            isForeground: { false }, inFlight: ProbeInFlight(url: tempURL()))
+            passes: [.ane, .ortCpuT2], idLines: [[0, 1, 2, 0], [0, 3, 4, 0]], modelURL: nil,
+            makeEngine: { pass in .engine(LoggingProbeEngine(pass: pass, log: log, unavailable: pass == .ane)) },
+            isForeground: { false }, isLocked: { false }, inFlight: ProbeInFlight(url: tempURL()))
         let passes = result["passes"] as? [[String: Any]] ?? []
-        XCTAssertEqual(passes.count, 2)
-        XCTAssertEqual(passes[0]["ok"] as? Bool, true)
-        XCTAssertEqual(passes[1]["ok"] as? Bool, false)
+        XCTAssertEqual(passes.count, 4)
+        XCTAssertEqual(passes[0]["reason"] as? String, "coreml-unavailable")
         XCTAssertEqual(passes[1]["reason"] as? String, "coreml-unavailable")
-        XCTAssertEqual(passes[1]["pass"] as? String, "coreml")
-        XCTAssertNil(passes[1]["lineOutcomes"], "nothing ran, so no chunk outcome is claimed")
-        XCTAssertTrue(log.events.contains("close coreml"), "even a pass that never ran releases what it built")
+        XCTAssertNil(passes[0]["lineOutcomes"], "nothing ran, so no chunk outcome is claimed")
+        XCTAssertEqual(passes[2]["ok"] as? Bool, true)
+        XCTAssertTrue(log.events.contains("close ane"), "even a pass that never ran releases what it built")
     }
 
     /// **Chunks are flattened in passage order; a line with no chunk ids is
-    /// unphonemized.** MUTATION: read only line-level `ids` — the chunked
-    /// passage this build ships is refused as `passage-unphonemized`.
+    /// unphonemized.**
     func testChunkIdsFlattensEveryLinesChunksInOrder() {
         let lines: [[String: Any]] = [
             ["chunks": [["ids": [0, 1, 0]], ["ids": [0, 2, 0]]]],
@@ -789,63 +947,133 @@ final class ForayTtsPluginTests: XCTestCase {
         XCTAssertNil(ForayTtsPlugin.chunkIds([["text": "no ids"]]))
     }
 
-    /// **A run the system killed is reported by the next one** (the card's
-    /// stop rule: "report the last logged peak"). MUTATION: clear the marker
-    /// at the start of a run instead of reading it first.
+    /// **A run the system killed is reported by the next one's first record.**
+    /// MUTATION: clear the marker at the start of a run instead of reading it.
     func testAKilledRunsLastPassChunkAndPeakReachTheNextRunsFirstRecord() {
         let url = tempURL()
-        ProbeInFlight(url: url).note(pass: .coreml, stage: "synth", chunksDone: 6, peakBytes: 1_400_000_000)
+        ProbeInFlight(url: url).note(pass: .aneCputail, stage: "synth", chunksDone: 6, peakBytes: 1_400_000_000)
         let result = ForayTtsPlugin.measurePasses(
-            passes: [.cpu], idLines: [[0, 1, 2, 0]], speed: 1, modelURL: nil,
-            makeEngine: { pass in LoggingProbeEngine(pass: pass, log: EventLog()) },
-            isForeground: { false }, inFlight: ProbeInFlight(url: url))
-        let first = (result["passes"] as? [[String: Any]] ?? []).first ?? [:]
-        XCTAssertEqual(first["prevKilledPass"] as? String, "coreml")
-        XCTAssertEqual(first["prevKilledStage"] as? String, "synth")
-        XCTAssertEqual(first["prevKilledChunksDone"] as? Int, 6)
-        XCTAssertEqual(first["prevKilledPeakBytes"] as? Double, 1_400_000_000)
+            passes: [.ortCpuT2], idLines: [[0, 1, 2, 0]], modelURL: nil,
+            makeEngine: { pass in .engine(LoggingProbeEngine(pass: pass, log: EventLog())) },
+            isForeground: { false }, isLocked: { false }, inFlight: ProbeInFlight(url: url))
+        let passes = result["passes"] as? [[String: Any]] ?? []
+        XCTAssertEqual(passes.first?["prevKilledPass"] as? String, "ane-cputail")
+        XCTAssertEqual(passes.first?["prevKilledStage"] as? String, "synth")
+        XCTAssertEqual(passes.first?["prevKilledChunksDone"] as? Int, 6)
+        XCTAssertEqual(passes.first?["prevKilledPeakBytes"] as? Double, 1_400_000_000)
+        XCTAssertNil(passes.last?["prevKilledPass"], "only the first record carries it")
         XCTAssertFalse(FileManager.default.fileExists(atPath: url.path), "a run that finished leaves no marker")
+        /* The soak's stage parses too. */
+        ProbeInFlight(url: url).note(pass: .aneCputail, stage: "soak", chunksDone: 41, peakBytes: 300_000_000)
+        XCTAssertEqual(ProbeInFlight(url: url).takeLeftover()?.stage, "soak")
     }
 
-    /// **A kill DURING a pass's load is that pass's, not the last chunk of
-    /// the pass before it.** The CoreML pass compiles the graph inside
-    /// `load()`; the marker is written before the load, so a kill there reads
-    /// `coreml load`. MUTATION: drop the note before `engine.load()` — the
-    /// marker still says `cpu synth 2`, and the CPU pass takes the blame.
-    func testAKillDuringTheCoreMLLoadIsBlamedOnTheCoreMLLoad() {
+    /// **A kill DURING a pass's load is that pass's**, not the last chunk of
+    /// the pass before it: the marker is written before the load.
+    func testAKillDuringACoreMLLoadIsBlamedOnThatLoad() {
         let url = tempURL()
         _ = ForayTtsPlugin.measurePasses(
-            idLines: [[0, 1, 2, 0], [0, 3, 4, 0]], speed: 1, modelURL: nil,
+            passes: [.ortCpuT2, .aneCputail], idLines: [[0, 1, 2, 0], [0, 3, 4, 0]], modelURL: nil,
             makeEngine: { pass in
                 let engine = LoggingProbeEngine(pass: pass, log: EventLog())
-                if pass == .coreml {
-                    // Read the marker the moment the CoreML load starts: that
-                    // is what a kill inside the compile would leave on disk.
+                if pass == .aneCputail {
                     engine.onLoad = {
                         let marker = (try? String(contentsOf: url, encoding: .utf8)) ?? ""
-                        XCTAssertTrue(marker.hasPrefix("coreml load 0 "), "the marker during the CoreML load reads '\(marker)'")
+                        XCTAssertTrue(marker.hasPrefix("ane-cputail load 0 "), "the marker during the load reads '\(marker)'")
                     }
                 }
-                return engine
+                return .engine(engine)
             },
-            isForeground: { false }, inFlight: ProbeInFlight(url: url))
+            isForeground: { false }, isLocked: { false }, inFlight: ProbeInFlight(url: url))
     }
 
-    /// **The CoreML pass says its provider was REQUESTED, not confirmed**:
-    /// ORT 1.20.0 cannot report which nodes CoreML took. MUTATION: drop
-    /// `providerBasis` from the record — `coreml` reads as a fact.
-    func testTheCoreMLPassSaysItsProviderWasRequested() {
+    /// **ANE placement is only requested; the CPU-only routes are what ran.**
+    func testProviderBasisTravelsWithEachRecord() {
         let result = ForayTtsPlugin.measurePasses(
-            idLines: [[0, 1, 2, 0]], speed: 1, modelURL: nil,
-            makeEngine: { pass in LoggingProbeEngine(pass: pass, log: EventLog()) },
-            isForeground: { false }, inFlight: ProbeInFlight(url: tempURL()))
+            passes: [.ane, .ortCpuT2], idLines: [[0, 1, 2, 0]], modelURL: nil,
+            makeEngine: { pass in .engine(LoggingProbeEngine(pass: pass, log: EventLog())) },
+            isForeground: { false }, isLocked: { false }, inFlight: ProbeInFlight(url: tempURL()))
         let passes = result["passes"] as? [[String: Any]] ?? []
-        XCTAssertNil(passes.first?["providerBasis"], "the CPU pass registers no other EP: `cpu` is what ran")
-        XCTAssertEqual(passes.last?["providerBasis"] as? String, "requested")
+        XCTAssertEqual(passes.first?["providerBasis"] as? String, "requested")
+        XCTAssertNil(passes.last?["providerBasis"])
+    }
+
+    /// **A test bundle has no models, so every real engine is refused by
+    /// name** — ORT's `model-absent`, Core ML's `model-absent` (or
+    /// `coreml-requires-ios17` on an older simulator), never a crash.
+    func testRealEnginesAreRefusedByNameWithoutModels() {
+        for pass in KokoroProbePass.allCases {
+            guard case .refused(let reason) = ForayTtsPlugin.buildEngine(pass) else {
+                return XCTFail("\(pass.rawValue) built an engine with no models")
+            }
+            XCTAssertTrue(["model-absent", "coreml-requires-ios17"].contains(reason), "\(pass.rawValue): \(reason)")
+        }
+        XCTAssertNil(KokoroOrtProbeEngine(pass: .ane), "a Core ML pass is not ORT's")
+        if #available(iOS 17.0, *) {
+            XCTAssertNil(KokoroCoreMLEngine(pass: .ortCpuT2), "an ORT pass is not Core ML's")
+            XCTAssertNil(KokoroCoreMLEngine(pass: .ane), "no compiled stages in a test bundle")
+        }
+        XCTAssertNil(KokoroCoreMLFiles.allStageURLs())
+    }
+
+    /// **The soak loops until its time is up, notes the marker after every
+    /// loop, and folds the loops into a per-minute series.** MUTATION: note
+    /// the marker only at the end — a kill mid-soak leaves nothing.
+    func testTheSoakLoopsUntilTimeIsUpAndLeavesAMarkerPerLoop() {
+        let url = tempURL()
+        var now = 0.0
+        let engine = SpeedProbeEngine()
+        engine.onSynth = {
+            now += 20
+            if engine.calls.count == 7 {
+                // The first chunk of loop 2: loop 1's marker is on disk.
+                let marker = (try? String(contentsOf: url, encoding: .utf8)) ?? ""
+                XCTAssertTrue(marker.hasPrefix("ane-cputail soak 1 "), "after loop 1: '\(marker)'")
+            }
+        }
+        let result = ForayTtsPlugin.runSoak(engine: engine, pass: .aneCputail, idLines: [[0, 1, 0], [0, 2, 0], [0, 3, 0]],
+                                            minutes: 2, isForeground: { false }, isLocked: { true },
+                                            inFlight: ProbeInFlight(url: url), clock: { now })
+        XCTAssertEqual(result["mode"] as? String, "soak")
+        XCTAssertEqual(result["ok"] as? Bool, true)
+        XCTAssertEqual(Array(engine.calls.prefix(3)), [1.0, 1.0, 1.0], "the content basis first")
+        XCTAssertTrue(engine.calls.dropFirst(3).allSatisfy { $0 == 1.5 })
+        // The clock reads 60 s when the loops begin and each loop costs 60 s,
+        // so two loops end inside the two minutes: at 60 s and 120 s of soak.
+        XCTAssertEqual(result["soakLoops"] as? Int, 2)
+        XCTAssertEqual(result["soakLockedLoops"] as? Int, 2)
+        XCTAssertEqual(result["soakBgLoops"] as? Int, 2)
+        XCTAssertEqual(result["soakFailures"] as? Int, 0)
+        XCTAssertEqual(result["soakVerdict"] as? String, "go")
+        XCTAssertFalse(FileManager.default.fileExists(atPath: url.path), "a soak that finished leaves no marker")
+    }
+
+    /// **The per-minute series: the mean content RTF of the loops that ended
+    /// in each minute, and the worst heat.** A minute with no loop is nil.
+    func testTheSoakMinuteSeries() throws {
+        func loop(_ end: Double, _ synth: Double, _ thermal: String) -> ProbeSoakLoop {
+            ProbeSoakLoop(endSec: end, synthMs: synth, contentSec: 10, audioSec: 6.7, cpuSec: 1, peakBytes: 1,
+                          thermal: thermal, background: true, locked: true, failures: 0, nonFinite: 0)
+        }
+        let series = ProbeMath.minuteSeries([loop(10, 1000, "nominal"), loop(50, 3000, "fair"), loop(130, 2000, "nominal")])
+        XCTAssertEqual(series.count, 3)
+        XCTAssertEqual(try XCTUnwrap(series[0].rtf), 0.2, accuracy: 1e-9)
+        XCTAssertEqual(series[0].thermal, "fair")
+        XCTAssertNil(series[1].rtf)
+        XCTAssertNil(series[1].thermal)
+        XCTAssertEqual(try XCTUnwrap(series[2].rtf), 0.2, accuracy: 1e-9)
+        XCTAssertEqual(ProbeMath.median([3, 1, 2]), 2)
+        XCTAssertEqual(ProbeMath.median([4, 1, 2, 3]), 2.5)
+        XCTAssertNil(ProbeMath.median([]))
+        let record = ForayTtsPlugin.soakRecord([:], loops: [loop(10, 1000, "nominal"), loop(130, 2000, "serious")])
+        XCTAssertEqual(record["soakRtfSeries"] as? [Double], [0.1, -1, 0.2])
+        XCTAssertEqual(record["soakThermalSeries"] as? [String], ["nominal", "", "serious"])
+        XCTAssertEqual(record["thermalEnd"] as? String, "serious")
+        XCTAssertEqual(ForayTtsPlugin.soakRecord([:], loops: [])["ok"] as? Bool, false)
     }
 
     private func tempURL() -> URL {
-        URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("kvr2-\(UUID().uuidString).txt")
+        URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("kvr3-\(UUID().uuidString).txt")
     }
 
     /// **Every SYNTH_REASONS code has a line token.**
@@ -867,26 +1095,28 @@ private final class EventLog {
 }
 
 /// A fake engine per pass that logs load and close, renders 2 s per chunk,
-/// and can play an unregistered CoreML EP.
+/// and can play an unregistered provider.
 private final class LoggingProbeEngine: KokoroProbeEngine {
     let modelName = "fake"
     let provider: String
     let providerUnavailable: Bool
     let providerBasis: String?
+    private let label: String
     private let log: EventLog
     var onLoad: (() -> Void)?
     init(pass: KokoroProbePass, log: EventLog, unavailable: Bool = false) {
-        provider = pass.rawValue
+        provider = pass.isCoreML ? "coreml" : "cpu"
+        label = pass.rawValue
         providerUnavailable = unavailable
-        providerBasis = pass == .coreml ? "requested" : nil
+        providerBasis = pass.isCoreML && pass != .cmlCpu ? "requested" : nil
         self.log = log
     }
-    func load() -> (coldMs: Double, warmMs: Double) { onLoad?(); log.add("load \(provider)"); return (1, 1) }
+    func load() -> (coldMs: Double, warmMs: Double) { onLoad?(); log.add("load \(label)"); return (1, 1) }
     func synthesize(ids: [Int], speed: Double) -> (synthMs: Double, audioSec: Double, reason: String?) { (100, 2, nil) }
-    func close() { log.add("close \(provider)") }
+    func close() { log.add("close \(label)") }
 }
 
-/// Every line throws, the way the 2026-09-26 paste's phone did.
+/// Every chunk throws, the way the 2026-09-26 paste's phone did.
 private final class ThrowingProbeEngine: KokoroProbeEngine {
     let modelName = "fake"
     let provider = "cpu"
@@ -898,8 +1128,8 @@ private final class ThrowingProbeEngine: KokoroProbeEngine {
     var loadError: String? { "no-model" }
 }
 
-/// Answers each line with the next scripted reason; a nil reason is 2 s of
-/// audio, and a failed line CLAIMS 2 s too, which the plugin must ignore.
+/// Answers each chunk with the next scripted reason; a nil reason is 2 s of
+/// audio, and a failed chunk CLAIMS 2 s too, which the plugin must ignore.
 private final class ScriptedProbeEngine: KokoroProbeEngine {
     let modelName = "fake"
     let provider = "cpu"
@@ -909,5 +1139,33 @@ private final class ScriptedProbeEngine: KokoroProbeEngine {
     func synthesize(ids: [Int], speed: Double) -> (synthMs: Double, audioSec: Double, reason: String?) {
         let reason = reasons.isEmpty ? nil : reasons.removeFirst()
         return (100, 2, reason)
+    }
+}
+
+/// Renders `3 / speed` seconds in 600 ms, with seven 1 ms stages, and keeps
+/// `SAMPLES` samples when asked — the matrix's speed-aware fake.
+private final class SpeedProbeEngine: KokoroProbeEngine {
+    static let SAMPLES = 4
+    let modelName = "fake"
+    let provider = "coreml"
+    var route: String? { "fake-route" }
+    private(set) var calls: [Double] = []
+    private(set) var captured: [Bool] = []
+    private var capture = false
+    private var samples: [Float]?
+    var onSynth: (() -> Void)?
+    var lastStageMs: [Double]? { [Double](repeating: 1, count: 7) }
+    func load() -> (coldMs: Double, warmMs: Double) { (1, 1) }
+    func setCaptureSamples(_ on: Bool) { capture = on }
+    func takeLastSamples() -> [Float]? {
+        defer { samples = nil }
+        return samples
+    }
+    func synthesize(ids: [Int], speed: Double) -> (synthMs: Double, audioSec: Double, reason: String?) {
+        calls.append(speed)
+        captured.append(capture)
+        samples = capture ? [Float](repeating: 0.1, count: Self.SAMPLES) : nil
+        onSynth?()
+        return (600, 3 / speed, nil)
     }
 }

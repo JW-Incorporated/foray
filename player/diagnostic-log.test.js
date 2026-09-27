@@ -1481,6 +1481,67 @@ test("a probe-v2 row names its pass, whether it was finite, and ORT's error toke
   assert.match(lines[1], /  nan 2\/15  finite=n  ort=ep-fail op=Conv at=run  LAST-RUN-KILLED coreml after 6 chunks peak 1400MB  hidden=n$/);
   assert.match(lines[2], /voiceProbe kokoro-probe\/coreml \[pass coreml\] could not measure: coreml-unavailable  load FAILED\(ep-fail\) —\/—  hidden=n$/);
 });
+
+test("a probe-v3 row names its pass AND speed, the content RTF, the route, stages and screen (KV-R3)", () => {
+  /* One row per pass x speed, read aloud off the paste: which pass at which
+     Kokoro speed, the content-basis RTF (the 1.5x decision number) beside the
+     wall one, what the Core ML chain spent per stage, CPU-s per content
+     second, and whether the screen was locked. MUTATION: drop `speed` from
+     the picked fields — the two speeds of a pass print identically. */
+  const { diag, log, store } = mk();
+  diag.voiceProbe({
+    engine: "kokoro-probe", ok: true, pass: "ane-cputail", speed: 1.5, provider: "coreml", providerBasis: "requested",
+    acceleratorWired: true, modelLoadColdMs: 21000, modelLoadWarmMs: 300, rtfCold: 0.2, rtfWarm: 0.06,
+    rtfContentWarm: 0.04, rtfContentCold: 0.13, cpuPerContentSec: 0.021, audioSec: 51, audioFrom: "rendered",
+    peakMemoryMb: 210, lockedScreenCompleted: true, finite: true, nonFiniteLines: 0, lines: 15,
+    route: "ane,ane,ane,cpu,cpu,ane,cpu", stageMs: [70.4, 40, 5, 60, 120, 300, 20], bgChunks: 15, lockedChunks: 14,
+    screen: "locked", keepAlive: "audio",
+  });
+  diag.voiceProbe({
+    engine: "kokoro-probe", ok: false, pass: "ane", speed: 1, provider: "coreml", reason: "synthesis-failed",
+    synthReason: "inference-threw", cmlCode: "cml-predict", cmlStage: "vocoder", synthFailures: 15, lines: 15,
+  });
+  diag.voiceProbe({ engine: "kokoro-probe", ok: false, pass: "cml-cpu", speed: 1.5, reason: "coreml-requires-ios17",
+    route: "not,a,route", cmlCode: "cml-made-up", screen: "sideways", stageMs: [1, 2] });
+  const rows = parse(store).entries.filter((e) => e.type === "voiceProbe");
+  assert.equal(rows[0].speed, 1.5);
+  assert.equal(rows[0].rtfContentWarm, 0.04);
+  assert.equal(rows[0].stageMs, "70/40/5/60/120/300/20");
+  assert.equal(rows[2].route, undefined, "a route outside the shape is dropped");
+  assert.equal(rows[2].cmlCode, undefined, "a Core ML code outside the set is dropped");
+  assert.equal(rows[2].screen, undefined);
+  assert.equal(rows[2].stageMs, undefined, "seven stages or nothing");
+  const lines = formatDiagnosticReport(log.read()).split("\n").filter((l) => l.includes("voiceProbe"));
+  assert.match(lines[0], /kokoro-probe\/coreml\(requested\) \[pass ane-cputail @1\.5x\]  rtf cold 0\.20 warm 0\.06  content 0\.04  load/);
+  assert.match(lines[0], /  route ane,ane,ane,cpu,cpu,ane,cpu  stages 70\/40\/5\/60\/120\/300\/20ms  cpu 0\.02s\/s  screen=locked bg 15\/15 locked 14 keepAlive=audio  hidden=n$/);
+  assert.match(lines[1], /\[pass ane @1x\] could not measure: synthesis-failed\/inference-threw  failed 15\/15/);
+  assert.match(lines[1], /  cml=cml-predict at=vocoder/);
+  assert.match(lines[2], /\[pass cml-cpu @1\.5x\] could not measure: coreml-requires-ios17/);
+});
+
+test("the soak is ONE row: loops, the per-minute series with heat, memory drift, the screen (KV-R3)", () => {
+  /* Thirty minutes as one line a founder can read aloud. MUTATION: write a
+     row per loop — the ring's 200 rows fill with one soak. MUTATION: drop the
+     heat letter from the series — a throttling phone reads like a steady one. */
+  const { diag, log, store } = mk();
+  diag.voiceSoak({
+    engine: "kokoro-probe", kind: "soak", ok: true, pass: "ane-cputail", speed: 1.5, soakMinutes: 30, loops: 412,
+    elapsedSec: 1805, rtfSeries: [0.05, 0.051, null, 0.07], thermalSeries: ["nominal", "fair", null, "serious"],
+    rtfMin: 0.04, rtfMedian: 0.05, rtfMax: 0.07, peakMb: 214, peakFirstMb: 212, peakLastMb: 214,
+    bgLoops: 412, lockedLoops: 410, failures: 0, nonFinite: 0, cpuPerContentSec: 0.03, verdict: "go",
+    thermalStart: "nominal", thermalEnd: "serious", keepAlive: "audio", device: "iPhone15.2", os: "18.6.2",
+  });
+  diag.voiceSoak({ engine: "kokoro-probe", kind: "soak", ok: false, reason: "synthesis-failed", synthReason: "calibration",
+    prevKilledPass: "ane-cputail", prevKilledStage: "soak", prevKilledChunksDone: 97, prevKilledPeakMb: 230 });
+  const rows = parse(store).entries.filter((e) => e.type === "voiceSoak");
+  assert.equal(rows.length, 2);
+  assert.equal(rows[0].series, "0.05n 0.05f —? 0.07s");
+  const lines = formatDiagnosticReport(log.read()).split("\n").filter((l) => l.includes("voiceSoak"));
+  assert.match(lines[0], /voiceSoak +kokoro-probe \[pass ane-cputail @1\.5x\] 412 loops 30\.1min verdict=go  rtf 0\.04\/0\.05\/0\.07/);
+  assert.match(lines[0], /series 0\.05n 0\.05f —\? 0\.07s  peak 214MB \(212>214\)  locked 410\/412 bg 412  thermal nominal>serious/);
+  assert.match(lines[0], /iPhone15\.2 iOS 18\.6\.2  hidden=n$/);
+  assert.match(lines[1], /could not soak: synthesis-failed\/calibration  LAST-RUN-KILLED ane-cputail soak after 97 loops peak 230MB/);
+});
 /* L-06: what the lock screen was actually told (founder feedback F15)  */
 /* ==================================================================== */
 

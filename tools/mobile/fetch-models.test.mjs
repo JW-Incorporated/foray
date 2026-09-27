@@ -26,6 +26,7 @@ import { fileURLToPath } from "node:url";
 import {
   PINS, MODELS_DIR, pinProblems, unfilled, verifyBuffer, verifyOnDisk,
   digest, ensureIgnored, fillPinCommand, bundledPins, bundledBytes, PROBE_VOICE, BUNDLE_PLATFORMS,
+  COREML_DIR, COREML_REVISION, COREML_STAGES, COREML_NAME_RE,
 } from "./fetch-models.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -141,6 +142,73 @@ test("each platform's model filename matches what that platform's native half lo
   assert.ok(java.includes(`MODEL_ASSET = "${android.name}"`), `Java must look for ${android.name}`);
 });
 
+/* ---------- KV-R3: the Core ML chain's compiled stages ---------- */
+
+test("the Core ML chain is 34 pinned files: seven compiled stages, iOS only, at a fixed commit", () => {
+  /* Probe v3's second backend (docs/voice/kokoro-speed-1.5x.md §4 S5). Each
+     `.mlmodelc` is a directory, so each FILE is a pin; the two stream-hashes
+     that filled them are in fetch-models.mjs's header.
+     MUTATION: point a URL at `main` instead of the commit — red. Drop a
+     stage — red. Bundle one on Android — red. */
+  const coreml = PINS.filter((p) => p.kind === "coreml");
+  assert.equal(coreml.length, 34, "7 stages x 5 files, less Prosody_v2's absent metadata.json");
+  assert.equal(coreml.reduce((n, p) => n + p.bytes, 0), 82270465);
+  const stages = [...new Set(coreml.map((p) => p.name.split("/")[1].replace(/\.mlmodelc$/, "")))].sort();
+  assert.deepEqual(stages, [...COREML_STAGES].sort());
+  for (const p of coreml) {
+    assert.match(p.name, COREML_NAME_RE);
+    assert.ok(p.name.startsWith(`${COREML_DIR}/`));
+    assert.equal(p.url, `https://huggingface.co/FluidInference/kokoro-82m-coreml/resolve/${COREML_REVISION}/ANE/${p.name.slice(COREML_DIR.length + 1)}`);
+    assert.deepEqual([...p.bundle], ["ios"], `${p.name} is for the iOS probe build only`);
+    assert.equal(p.licence, "Apache-2.0");
+  }
+  for (const stage of COREML_STAGES) {
+    assert.ok(coreml.some((p) => p.name === `${COREML_DIR}/${stage}.mlmodelc/weights/weight.bin`), `${stage} has its weights`);
+    assert.ok(coreml.some((p) => p.name === `${COREML_DIR}/${stage}.mlmodelc/model.mil`), `${stage} has its program`);
+  }
+  assert.match(COREML_REVISION, /^[0-9a-f]{40}$/, "a commit, never a branch");
+});
+
+test("the Swift engine looks for exactly the stage directories the pins create", () => {
+  /* THE CROSS-TREE PIN for Core ML, as the model-filename test above is for
+     ORT: `KokoroCoreMLEngine.swift`'s bundle names and directory must be the
+     ones this table writes, or every Core ML pass reads `model-absent`.
+     MUTATION: rename a `_v2` stage in either file. */
+  const swift = fs.readFileSync(
+    path.join(REPO, "mobile/plugins/foray-tts/ios/Sources/ForayTtsPlugin/KokoroCoreMLEngine.swift"), "utf8");
+  for (const stage of COREML_STAGES) assert.ok(swift.includes(`return "${stage}"`), `Swift must name ${stage}`);
+  assert.ok(swift.includes(`static let DIR = "${COREML_DIR}"`));
+});
+
+test("only a Core ML stage file may carry a path, and only in its one shape", () => {
+  /* The separator rule still holds for every other kind, and a Core ML pin
+     cannot use its exemption to write anywhere else.
+     MUTATION: exempt any name containing `kokoro-coreml/` — the `..` case
+     goes green and a remote file can land outside mobile/models. */
+  const coreml = PINS.find((p) => p.kind === "coreml");
+  assert.deepEqual(pinProblems([coreml]), []);
+  for (const name of ["kokoro-coreml/../../app.js", "kokoro-coreml/KokoroAlbert.mlmodelc/../x.bin",
+    "kokoro-coreml/KokoroAlbert.mlmodelc/extra/weight.bin", "other/KokoroAlbert.mlmodelc/model.mil", "kokoro-coreml\\x"]) {
+    assert.notDeepEqual(pinProblems([{ ...coreml, name }]), [], `"${name}" must be refused`);
+  }
+  assert.match(pinProblems([{ ...PINS[0], name: coreml.name }]).join("\n"), /path separator/,
+    "a model pin may not borrow the Core ML shape");
+});
+
+test("main() runs only after the constants it reads exist", () => {
+  /* The TDZ trap (#854, also hit running `--fetch ios` for KV-R3): `if
+     (isMain) main()` sat ABOVE `FETCH_ATTEMPTS`, and `main` reads it before
+     its first `await`, so every CLI fetch threw a ReferenceError while this
+     suite (which imports and never runs main) stayed green.
+     MUTATION: move the `if (isMain)` line back above the constants. */
+  const src = fs.readFileSync(path.join(HERE, "fetch-models.mjs"), "utf8");
+  const call = src.indexOf("if (isMain) { main(); }");
+  assert.ok(call > 0);
+  for (const name of ["export const FETCH_ATTEMPTS", "const FETCH_BACKOFF_MS"]) {
+    assert.ok(src.indexOf(name) >= 0 && src.indexOf(name) < call, `${name} is declared before main() is called`);
+  }
+});
+
 /* ---------- the refusal ---------- */
 
 test("an unpinned entry NEVER verifies, however right the bytes are", () => {
@@ -204,9 +272,12 @@ test("each app bundles its own model and ONE voice, and nothing else", () => {
      text front end on the device).
      MUTATION: add a platform to a second voice's `bundle` — that platform's
      byte count moves and this goes red before the .ipa does. */
-  assert.deepEqual(bundledPins("ios").map((p) => p.name), ["kokoro-v1_0-fp32.onnx", `${PROBE_VOICE}.bin`]);
+  /* KV-R3: iOS also carries the Core ML chain's 34 stage files (82,270,465
+     bytes) for the probe v3 build; they are asserted file by file below. */
+  const iosFlat = bundledPins("ios").filter((p) => p.kind !== "coreml");
+  assert.deepEqual(iosFlat.map((p) => p.name), ["kokoro-v1_0-fp32.onnx", `${PROBE_VOICE}.bin`]);
   assert.deepEqual(bundledPins("android").map((p) => p.name), ["kokoro-v1_0-q8f16.onnx", `${PROBE_VOICE}.bin`]);
-  assert.equal(bundledBytes("ios"), 325532232 + 522240);
+  assert.equal(bundledBytes("ios"), 325532232 + 522240 + 82270465);
   assert.equal(bundledBytes("android"), 86033585 + 522240);
   for (const p of PINS.filter((p) => p.kind === "tokenizer")) {
     assert.deepEqual([...p.bundle], [], "the id table never ships to a phone");

@@ -17,7 +17,7 @@ import os from "node:os";
 import path from "node:path";
 
 import { PINS, MODELS_DIR, bundledPins } from "./fetch-models.mjs";
-import { inject, check, defaultDestFor, PLATFORMS } from "./inject-models.mjs";
+import { inject, check, defaultDestFor, PLATFORMS, foreignPinFor } from "./inject-models.mjs";
 
 const tmp = () => fs.mkdtempSync(path.join(os.tmpdir(), "foray-inject-models-"));
 
@@ -215,7 +215,11 @@ test("the real table bundles exactly the files each native half names", () => {
      are pinned against each other elsewhere; this is the fourth. Per platform
      since D13: fp32 in the iOS app, q8f16 in the APK, af_heart in both.
      MUTATION: rename the voice pin without renaming `VOICE_RESOURCE`. */
-  assert.deepEqual(bundledPins("ios", PINS).map((p) => p.name), ["kokoro-v1_0-fp32.onnx", "af_heart.bin"]);
+  /* KV-R3: plus the Core ML chain's 34 stage files, all under kokoro-coreml/. */
+  const ios = bundledPins("ios", PINS);
+  assert.deepEqual(ios.filter((p) => p.kind !== "coreml").map((p) => p.name), ["kokoro-v1_0-fp32.onnx", "af_heart.bin"]);
+  assert.equal(ios.filter((p) => p.kind === "coreml").length, 34);
+  assert.ok(ios.filter((p) => p.kind === "coreml").every((p) => p.name.startsWith("kokoro-coreml/")));
   assert.deepEqual(bundledPins("android", PINS).map((p) => p.name), ["kokoro-v1_0-q8f16.onnx", "af_heart.bin"]);
   const root = path.join(import.meta.dirname, "..", "..");
   const swift = fs.readFileSync(
@@ -225,4 +229,46 @@ test("the real table bundles exactly the files each native half names", () => {
     path.join(root, "mobile/plugins/foray-tts/android/src/main/java/ai/jwlabs/foura/tts/KokoroOrtProbeEngine.java"),
     "utf8");
   assert.match(java, /VOICE_ASSET\s*=\s*"af_heart\.bin"/);
+});
+
+test("a nested Core ML stage file lands at its path, and only its whole path is foreign", () => {
+  /* KV-R3: a compiled Core ML stage is a DIRECTORY, pinned file by file as
+     `kokoro-coreml/<Stage>.mlmodelc/<file>`. The copy must recreate the
+     path (the Swift engine loads the directory), and the other-platform scan
+     must match the whole path: `weight.bin` or `metadata.json` alone is a
+     name the Android web bundle may well carry.
+     MUTATION: match nested pins by basename — the web bundle's own
+     `public/weights/weight.bin` below is reported as a Core ML file. */
+  const crypto = require("node:crypto");
+  const body = Buffer.from("compiled stage, pretend");
+  const name = "kokoro-coreml/KokoroAlbert.mlmodelc/weights/weight.bin";
+  const pins = [{
+    kind: "coreml", name, url: "https://example.invalid/w", bytes: body.length,
+    sha256: crypto.createHash("sha256").update(body).digest("hex"),
+    licence: "Apache-2.0", source: "https://example.invalid/", bundle: ["ios"],
+  }];
+  const root = tmp();
+  fs.mkdirSync(path.join(root, MODELS_DIR, path.dirname(name)), { recursive: true });
+  fs.writeFileSync(path.join(root, MODELS_DIR, name), body);
+  const ios = path.join(tmp(), "ios");
+  const { copied, problems } = inject({ dest: ios, platform: "ios", root, pins });
+  assert.deepEqual(problems, []);
+  assert.deepEqual(copied.map((c) => c.name), [name]);
+  assert.ok(fs.existsSync(path.join(ios, ...name.split("/"))), "the stage directory is recreated");
+  assert.deepEqual(check({ dest: ios, platform: "ios", pins }), []);
+
+  const android = path.join(tmp(), "android");
+  fs.mkdirSync(path.join(android, "public", "weights"), { recursive: true });
+  fs.writeFileSync(path.join(android, "public", "weights", "weight.bin"), "a web asset");
+  assert.deepEqual(check({ dest: android, platform: "android", pins }), [], "a same-named web file is not the stage");
+  fs.cpSync(path.join(ios, "kokoro-coreml"), path.join(android, "kokoro-coreml"), { recursive: true });
+  const foreign = check({ dest: android, platform: "android", pins });
+  assert.equal(foreign.length, 1);
+  assert.match(foreign[0], /bundled for ios only/);
+
+  const map = new Map(pins.map((p) => [p.name, p]));
+  assert.equal(foreignPinFor(map, name), pins[0]);
+  assert.equal(foreignPinFor(map, `public/${name}`), pins[0]);
+  assert.equal(foreignPinFor(map, "public/weights/weight.bin"), undefined);
+  assert.equal(foreignPinFor(new Map([["model.onnx", pins[0]]]), "public/deep/model.onnx"), pins[0], "flat pins still match by name");
 });
