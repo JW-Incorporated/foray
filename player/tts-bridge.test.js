@@ -427,9 +427,9 @@ test("client.js runs the probe through the SAME shared bridge instance", () => {
      in the repo would notice.
      MUTATION: build a fresh bridge inside `runVoiceProbe`. */
   const src = fs.readFileSync(path.join(HERE, "client.js"), "utf8");
-  const fn = src.slice(src.indexOf("async runVoiceProbe()"));
+  const fn = src.slice(src.indexOf("async runVoiceProbe("));
   const body = fn.slice(0, fn.indexOf("\n  },"));
-  assert.match(body, /runKokoroProbe\(\{ tts: ttsBridge,/,
+  assert.match(body, /runKokoroProbe\(\{\s*tts: ttsBridge,/,
     "runVoiceProbe must use the shared ttsBridge");
   assert.ok(!body.includes("createTtsBridge("), "and must not build a second one");
 });

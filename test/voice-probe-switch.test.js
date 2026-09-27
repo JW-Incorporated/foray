@@ -382,14 +382,17 @@ test("player/ never reads the key — the page decides whether to OFFER a run", 
     .filter((f) => f.endsWith(".js"))
     .filter((f) => fs.readFileSync(path.join(ROOT, "player", f), "utf8").includes("cp_voice_probe"));
   assert.deepStrictEqual(offenders, []);
-  assert.ok(/async runVoiceProbe\(\) \{/.test(CLIENT_SRC), "the player's entry point takes no arguments");
+  /* Probe v3.1: the ONE argument is the drawer's per-session "arm Core ML
+     (may crash)" choice, handed in by the page — still no storage read. */
+  assert.ok(/async runVoiceProbe\(\{ armCoreML = false \} = \{\}\) \{/.test(CLIENT_SRC),
+    "the player's entry point takes only the page's arm choice");
 });
 
 test("nothing in the probe path touches how narration is spoken", async () => {
   /* THE INERTNESS CLAIM, from the page's side. `client.js`'s `runVoiceProbe`
      must not reach the manager, set a voice, or change the rate.
      MUTATION: route the probe through `manager`/`applyVoice` — this goes red. */
-  const fn = CLIENT_SRC.slice(CLIENT_SRC.indexOf("async runVoiceProbe()"));
+  const fn = CLIENT_SRC.slice(CLIENT_SRC.indexOf("async runVoiceProbe("));
   const body = fn.slice(0, fn.indexOf("\n  },"));
   for (const forbidden of ["manager", "applyVoice", "applyRate", "setNarrationVoice"]) {
     assert.ok(!body.includes(forbidden), `runVoiceProbe must not mention ${forbidden}`);
@@ -536,4 +539,85 @@ test("KV-R3 review: tapping the soak control mid-soak STOPS it, and the soak's r
   assert.match(h.status().textContent, /stopped early by you/);
   assert.strictEqual(soak.disabled, false);
   assert.strictEqual(soak.textContent, "Start the 30-minute soak (then lock the phone)");
+});
+
+/* ==================================================================== */
+/* probe v3.1: crash-resilient and self-reporting                       */
+/* ==================================================================== */
+
+test("probe v3.1: iPhone gets Arm Core ML and Reset skipped passes under the soak, and they go with the switch", async () => {
+  /* MUTATION: drop either control — the founder cannot arm Core ML on iOS
+     26.4+ or bring back a pass that crashed once. */
+  const g = await mount({ seed: { cp_voice_probe: true } });
+  g.ctx.Capacitor = { getPlatform: () => "ios" };
+  g.openDrawer();
+  const ids = g.drawerIds();
+  const at = ids.indexOf("voice-probe-soak");
+  assert.deepStrictEqual(ids.slice(at, at + 3), ["voice-probe-soak", "voice-probe-arm", "voice-probe-reset"]);
+  assert.strictEqual(ids[ids.length - 1], "delete-data", "Delete my data stays last");
+  assert.match(findIn(g.body, "#voice-probe-arm").textContent, /^Arm Core ML \(may crash\): off$/);
+  assert.strictEqual(findIn(g.body, "#voice-probe-reset").textContent, "Reset skipped passes");
+  await g.toggle().click();
+  assert.strictEqual(findIn(g.body, "#voice-probe-arm"), null);
+  assert.strictEqual(findIn(g.body, "#voice-probe-reset"), null);
+  const h = await mount({ seed: { cp_voice_probe: true } });
+  h.openDrawer();
+  assert.strictEqual(findIn(h.body, "#voice-probe-arm"), null, "not off iOS");
+});
+
+test("probe v3.1: arming reaches the next run, and is never stored (a crash relaunches disarmed)", async () => {
+  /* MUTATION: persist the arm switch — a crash would relaunch armed and the
+     next tap would crash again. MUTATION: drop the argument — Core ML is
+     refused on the founder's iOS 26.6 whatever he taps. */
+  const h = await mount({ seed: { cp_voice_probe: true } });
+  h.ctx.Capacitor = { getPlatform: () => "ios" };
+  const seen = [];
+  h.ctx.window.ForayPlayer.runVoiceProbe = async (opts) => { seen.push(opts); return { engine: "kokoro-probe", ok: false, reason: "model-absent" }; };
+  h.openDrawer();
+  const before = [...h.store.map.keys()].sort();
+  await h.run().click();
+  await h.settle();
+  const arm = findIn(h.body, "#voice-probe-arm");
+  await arm.click();
+  assert.match(arm.textContent, /ON for the next run/);
+  await h.run().click();
+  await h.settle();
+  assert.deepStrictEqual(seen.map((o) => o && o.armCoreML), [false, true]);
+  assert.deepStrictEqual([...h.store.map.keys()].sort(), before, "the arm switch writes nothing to storage");
+});
+
+test("probe v3.1: Reset skipped passes calls the player and says what it did", async () => {
+  const h = await mount({ seed: { cp_voice_probe: true } });
+  h.ctx.Capacitor = { getPlatform: () => "ios" };
+  let resets = 0;
+  h.ctx.window.ForayPlayer.resetVoiceProbeSkips = async () => { resets += 1; return { ok: true, cleared: 3 }; };
+  h.openDrawer();
+  await findIn(h.body, "#voice-probe-reset").click();
+  await h.settle();
+  assert.strictEqual(resets, 1);
+  assert.match(h.status().textContent, /3 skipped pass\(es\) will run again/);
+});
+
+test("probe v3.1: the running line tells the founder a crash is expected and survivable", async () => {
+  /* HUMAN-ACTIONS #45 says the same words. */
+  assert.ok(APP_SRC.includes("If 4a closes, just reopen it and tap the probe again; each run skips what crashed."));
+  const card = fs.readFileSync(path.join(ROOT, "HUMAN-ACTIONS.md"), "utf8");
+  assert.ok(card.includes("if 4a closes, just reopen it and tap the probe again; each run skips what crashed"),
+    "HUMAN-ACTIONS #45 carries the re-tap instruction");
+});
+
+test("probe v3.1: the player writes each pass's rows as the pass ends, and reports a crash at boot", async () => {
+  /* MUTATION: write the rows only after `runKokoroProbe` resolves, or drop
+     the boot-time report — a pass that kills 4a leaves no row at all, which
+     is exactly what build 2026092705 did twice. */
+  const fn = CLIENT_SRC.slice(CLIENT_SRC.indexOf("async runVoiceProbe("));
+  const body = fn.slice(0, fn.indexOf("\n  },"));
+  assert.match(body, /onRecord: \(record\) => diag\.voiceProbe\(record, \{ playing \}\)/);
+  assert.ok(!/for \(const record of records\)/.test(body), "no end-of-run write loop");
+  const boot = CLIENT_SRC.slice(CLIENT_SRC.indexOf("storageReady.then((hydrated) => {"));
+  assert.ok(boot.slice(0, 2000).includes("recordVoiceProbeKills();"), "the kill report is written at boot, after hydration");
+  const report = CLIENT_SRC.slice(CLIENT_SRC.indexOf("async function recordVoiceProbeKills()"));
+  const reportBody = report.slice(0, report.indexOf("\n}\n"));
+  assert.ok(reportBody.indexOf("diag.voiceProbe(record") < reportBody.indexOf("ackProbeKills("),
+    "rows are written BEFORE the native half is told it may forget them");
 });

@@ -86,6 +86,11 @@ export const PLUGIN_NAME = "ForayTts";
  *  a rename on one side without the other, once either side needs it. */
 export const FINISHED_EVENT = "finished";
 
+/** Probe v3.1: the event each finished probe pass's records travel on, the
+ *  moment the pass ends (iOS's `ForayTtsPlugin.PROBE_PASS_EVENT`), so a pass
+ *  that later kills 4a cannot take the passes before it down with it. */
+export const PROBE_PASS_EVENT = "probePass";
+
 /** True when an installed voice's BCP-47 tag is RELEVANT to a requested one:
  *  exact locale, or the same primary subtag (`en-US` ~ `en-GB`, never `fr-FR`).
  *
@@ -466,7 +471,12 @@ export const PROBE_ENGINE = "kokoro-probe";
  * @param {object} [opts]
  * @param {object} [opts.passage] the parsed `tools/mobile/kokoro-probe-passage.json`
  * @param {string} [opts.mode]    `soak` for KV-R3's 30-minute locked loop, `listen` to play a
- *   pass's WAV (with `opts.pass`), `stop` to end a running soak early; anything else is the matrix
+ *   pass's WAV (with `opts.pass`), `stop` to end a running soak early; probe v3.1's `status`
+ *   (unacknowledged kill reports and the skip list), `killed-ack` (with `opts.ids`) and
+ *   `reset` (empty the skip list); anything else is the matrix
+ * @param {string[]} [opts.ids]   the kill reports `killed-ack` acknowledges
+ * @param {boolean} [opts.armCoreML] probe v3.1: run Core ML on iOS 26.4+ although Apple's
+ *   libBNNS may crash it (FluidAudio #844/#889); only a literal `true` travels
  * @param {string} [opts.pass]    the pass whose WAV `listen` plays
  * @param {number} [opts.soakMinutes] the soak's length (the native half clamps it to 1..60)
  * @param {object} [opts.bridge]  injected `window.Capacitor` (or a fake, for tests)
@@ -475,12 +485,17 @@ export const PROBE_ENGINE = "kokoro-probe";
  *   verbatim on success, so `player/kokoro-probe.js` owns the arithmetic and
  *   this file owns only the transport.
  */
+/** The probe modes that cross the bridge; anything else is the matrix. */
+export const PROBE_MODES = Object.freeze(["soak", "listen", "stop", "status", "killed-ack", "reset"]);
+
 export async function kokoroProbe(opts = {}) {
   const {
     passage = null,
     mode = null,
     soakMinutes = null,
     pass = null,
+    ids = null,
+    armCoreML = false,
     bridge = (typeof window !== "undefined" ? window.Capacitor : undefined),
     log = (typeof console !== "undefined" ? console.warn.bind(console) : () => {}),
   } = opts;
@@ -493,9 +508,13 @@ export async function kokoroProbe(opts = {}) {
       engine: PROBE_ENGINE,
       passage: passage ?? null,
       /* KV-R3: only a known mode and a real number travel. */
-      ...(mode === "soak" || mode === "listen" || mode === "stop" ? { mode } : {}),
+      ...(PROBE_MODES.includes(mode) ? { mode } : {}),
       ...(typeof pass === "string" && /^[a-z0-9-]{1,16}$/.test(pass) ? { pass } : {}),
       ...(Number.isFinite(soakMinutes) ? { soakMinutes } : {}),
+      /* Probe v3.1: report ids (`run-at-reportedAt`, digits and dashes) and
+         the arm switch, each only in its one admitted shape. */
+      ...(Array.isArray(ids) ? { ids: ids.filter((id) => typeof id === "string" && /^[0-9-]{1,64}$/.test(id)).slice(0, 16) } : {}),
+      ...(armCoreML === true ? { armCoreML: true } : {}),
     });
     /* `ok` is the native side's to give. An older shell build whose plugin has
        no `kokoroProbe` method REJECTS (Capacitor's own behaviour for an
@@ -712,6 +731,7 @@ export function createForayTtsShell(defaults = {}) {
     speak: (text, opts = {}) => speak(text, { ...defaults, ...opts }),
     listVoices: (opts = {}) => listVoices({ ...defaults, ...opts }),
     kokoroProbe: (opts = {}) => kokoroProbe({ ...defaults, ...opts }),
+    onProbePass: (fn) => onProbePass(fn, defaults),
     pause: (opts = {}) => pause({ ...defaults, ...opts }),
     resume: (opts = {}) => resume({ ...defaults, ...opts }),
     stop: (opts = {}) => stop({ ...defaults, ...opts }),
@@ -750,6 +770,26 @@ export function createForayTtsShell(defaults = {}) {
  * @param {Function} [opts.log] injected logger
  * @returns {Function} unsubscribe
  */
+export function onProbePass(fn, opts = {}) {
+  /* Probe v3.1: each finished pass's records, as the native half sends them
+     (`{platform, pass, probeRun, passes}`). Same subscription shape and the
+     same no-op rules as `onFinished` below. */
+  const {
+    bridge = (typeof window !== "undefined" ? window.Capacitor : undefined),
+    log = (typeof console !== "undefined" ? console.warn.bind(console) : () => {}),
+  } = opts;
+  if (typeof fn !== "function" || !shellApplies(bridge)) return () => {};
+  try {
+    if (typeof bridge.addListener === "function") {
+      const handle = bridge.addListener(PLUGIN_NAME, PROBE_PASS_EVENT, fn);
+      return () => { try { handle?.remove?.(); } catch (_e) { /* never throw on teardown */ } };
+    }
+  } catch (e) {
+    try { log("foray-tts: could not subscribe to " + PROBE_PASS_EVENT, e); } catch (_e) { /* never throw */ }
+  }
+  return () => {};
+}
+
 export function onFinished(fn, opts = {}) {
   const {
     bridge = (typeof window !== "undefined" ? window.Capacitor : undefined),

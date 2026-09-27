@@ -86,6 +86,19 @@ public protocol KokoroProbeEngine {
 
     /// The last captured chunk's samples, handed over once, or nil.
     func takeLastSamples() -> [Float]?
+
+    /* Probe v3.1: the Core ML engine breadcrumbs each stage's compile, load
+       and predict through `ProbeStageHook` (ProbeLedger.swift), not through
+       this protocol, which the XCTest fakes implement. */
+
+    /// The last `synthesize`'s input shape per Core ML stage, in chain order:
+    /// the largest input handed to that stage (`1x512x310`), `-` for a stage
+    /// the chunk never reached. Nil for an engine with no stages.
+    var lastStageInputs: [String]? { get }
+
+    /// The last `synthesize`'s predicted frame count (the Core ML durations'
+    /// sum), or nil.
+    var lastFrames: Int? { get }
 }
 
 public extension KokoroProbeEngine {
@@ -102,6 +115,8 @@ public extension KokoroProbeEngine {
     var lastStageMs: [Double]? { nil }
     func setCaptureSamples(_ on: Bool) {}
     func takeLastSamples() -> [Float]? { nil }
+    var lastStageInputs: [String]? { nil }
+    var lastFrames: Int? { nil }
 }
 
 /// One inference failure in closed tokens (`player/kokoro-probe.js`'s
@@ -213,6 +228,14 @@ public class ForayTtsPlugin: CAPPlugin, CAPBridgedPlugin, AVSpeechSynthesizerDel
     override public func load() {
         synthesizer.delegate = self
         registerSessionObservers()
+        /* PROBE v3.1: a breadcrumb on disk now can only be a probe run the
+           PREVIOUS process did not finish (this runs once per process, before
+           any probe can start). It becomes a kill report at once — durably,
+           before the breadcrumb is cleared — and the page writes it as its own
+           `voiceProbe` row at boot (`mode: "status"`), whether or not the
+           founder ever taps the probe again. File I/O of a few hundred bytes:
+           no runtime is touched here. */
+        ProbeLedger.shared.promoteLeftover()
     }
 
     deinit {
@@ -1085,6 +1108,35 @@ public class ForayTtsPlugin: CAPPlugin, CAPBridgedPlugin, AVSpeechSynthesizerDel
             call.resolve(stop)
             return
         }
+        /* PROBE v3.1: the ledger's three questions, answered HERE for the same
+           reason `stop` is — a running matrix holds `probeQueue`, and the
+           drawer's "Reset skipped passes" must not wait ten minutes. */
+        switch call.getString("mode") {
+        case "status":
+            call.resolve(Self.probeStatus(ProbeLedger.shared))
+            return
+        case "killed-ack":
+            let ids = (call.getArray("ids") as? [String]) ?? []
+            var ack = JSObject()
+            ack["platform"] = "ios"
+            ack["mode"] = "killed-ack"
+            ack["ok"] = true
+            ack["reason"] = ""
+            ack["removed"] = ProbeLedger.shared.acknowledge(ids: ids)
+            call.resolve(ack)
+            return
+        case "reset":
+            var reset = JSObject()
+            reset["platform"] = "ios"
+            reset["mode"] = "reset"
+            reset["ok"] = true
+            reset["reason"] = ""
+            reset["cleared"] = ProbeLedger.shared.quarantine.reset()
+            call.resolve(reset)
+            return
+        default:
+            break
+        }
         Self.probeQueue.async { [weak self] in
             self?.runKokoroProbe(call)
         }
@@ -1128,7 +1180,12 @@ public class ForayTtsPlugin: CAPPlugin, CAPBridgedPlugin, AVSpeechSynthesizerDel
            Core ML pass on a phone below iOS 17 (`coreml-requires-ios17`) or
            with no compiled stages, is that pass's refusal, and the passes that
            can run still do. */
-        let coreMLRefusal = Self.coreMLRefusal()
+        /* PROBE v3.1: on iOS 26.4+ Core ML is refused (`coreml-bnns-os`,
+           FluidAudio #844/#889) unless the drawer's "arm Core ML (may crash)"
+           switch sent `armCoreML: true`. */
+        let armed = call.getBool("armCoreML") ?? false
+        let coreMLRefusal = Self.coreMLRefusal(armed: armed)
+        let ledger = ProbeLedger.shared
         if KokoroModelFiles.modelURL() == nil, coreMLRefusal != nil, Self.probeEngine == nil {
             result["ok"] = false
             result["reason"] = "model-absent"
@@ -1153,9 +1210,10 @@ public class ForayTtsPlugin: CAPPlugin, CAPBridgedPlugin, AVSpeechSynthesizerDel
         if call.getString("mode") == "soak" {
             /* THE SOAK: the best background-safe pass, speed 1.5, in a loop. */
             let minutes = min(max(call.getDouble("soakMinutes") ?? Self.SOAK_MINUTES, 1), 60)
-            let pass = KokoroProbePass.soakPass(coreMLAvailable: coreMLRefusal == nil)
+            let skipped = Set(ledger.quarantine.entries().map { $0.pass })
+            let pass = KokoroProbePass.soakPass(coreMLAvailable: coreMLRefusal == nil, skipped: skipped)
             var answer: JSObject
-            switch Self.buildEngine(pass) {
+            switch Self.buildEngine(pass, armed: armed) {
             case .refused(let reason):
                 answer = Self.refusalRecord(pass: pass, speed: ProbeMath.WAV_SPEED, reason: reason)
                 answer["mode"] = "soak"
@@ -1163,21 +1221,65 @@ public class ForayTtsPlugin: CAPPlugin, CAPBridgedPlugin, AVSpeechSynthesizerDel
                 defer { engine.close() }
                 /* A stop tapped before this soak began is not this soak's. */
                 ProbeSoakStop.shared.reset()
-                answer = Self.runSoak(engine: engine, pass: pass, idLines: idLines, minutes: minutes)
+                answer = Self.runSoak(engine: engine, pass: pass, idLines: idLines, minutes: minutes, ledger: ledger)
             }
             answer["keepAlive"] = keepAliveState
             call.resolve(answer)
             return
         }
 
+        /* PER-PASS FLUSH: each pass's records go to the page (`probePass`)
+           the moment the pass ends — the ledger's journal has them on disk
+           already — and each pass start is a row in the engine's own ring. */
+        let run = probeNowMs()
         var answer = Self.measurePasses(idLines: idLines, modelURL: KokoroModelFiles.modelURL(),
-                                        makeEngine: { Self.buildEngine($0) },
-                                        wavDirectory: ProbeWav.directory())
+                                        makeEngine: { Self.buildEngine($0, armed: armed) },
+                                        ledger: ledger, run: run,
+                                        wavDirectory: ProbeWav.directory(),
+                                        onPassStart: { pass, order in
+                                            ProbeEngineRow.post(event: "voice-pass", pass: pass, order: order, run: run)
+                                        },
+                                        onPassDone: { [weak self] pass, records in
+                                            let stamped = records.map { r -> [String: Any] in
+                                                var r = r
+                                                r["keepAlive"] = keepAliveState
+                                                return r as [String: Any]
+                                            }
+                                            self?.notifyListeners(Self.PROBE_PASS_EVENT, data: [
+                                                "platform": "ios", "pass": pass.rawValue,
+                                                "probeRun": Double(run), "passes": stamped,
+                                            ])
+                                        })
         if var records = answer["passes"] as? [JSObject] {
             for i in records.indices { records[i]["keepAlive"] = keepAliveState }
             answer["passes"] = records
         }
         call.resolve(answer)
+    }
+
+    /// The event each finished pass's records travel on (probe v3.1), the
+    /// same word as `web/foray-tts.js`'s `PROBE_PASS_EVENT`.
+    static let PROBE_PASS_EVENT = "probePass"
+
+    /// `mode: "status"`: the unacknowledged kill reports (JSON text the page
+    /// parses), the skip list, and whether this OS is one Core ML is gated on.
+    static func probeStatus(_ ledger: ProbeLedger,
+                            version: OperatingSystemVersion = ProcessInfo.processInfo.operatingSystemVersion) -> JSObject {
+        var status = JSObject()
+        status["platform"] = "ios"
+        status["mode"] = "status"
+        status["ok"] = true
+        status["reason"] = ""
+        status["reportsJson"] = ledger.pendingReportsJSON()
+        let skipped: [[String: Any]] = ledger.quarantine.entries().map { entry in
+            var o = entry.crumb.fields(prefix: "killed")
+            o["pass"] = entry.pass.rawValue
+            return o
+        }
+        status["skippedJson"] = (try? JSONSerialization.data(withJSONObject: skipped))
+            .flatMap { String(data: $0, encoding: .utf8) } ?? "[]"
+        status["bnnsAffected"] = ProbeCoreMLGuard.bnnsAffected(version)
+        return status
     }
 
     /// The soak's default length (card KV-R3: "a loop for 30 minutes").
@@ -1376,51 +1478,8 @@ final class FootprintSampler {
     }
 }
 
-/// Where a probe pass had got to, kept on disk as each chunk finishes, so a
-/// run the system KILLS (jetsam, with a locked phone and a 325 MB model) still
-/// says where it died on the next run (KV-R2's stop rule: "report the last
-/// logged peak"). A tiny text file in the app's temporary directory — four
-/// tokens (pass, stage, chunks finished, peak bytes), no content — cleared
-/// when a run finishes normally. `stage` is `load` while the session is being
-/// built (the CoreML compile lives there) and `synth` once it is open.
-final class ProbeInFlight {
-    /// `soak` (KV-R3): a soak loop had finished; `chunksDone` is then loops.
-    static let STAGES: Set<String> = ["load", "synth", "soak"]
-
-    struct Leftover {
-        let pass: String
-        let stage: String
-        let chunksDone: Int
-        let peakBytes: UInt64
-    }
-
-    private let url: URL
-
-    init(url: URL = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("kokoro-probe-inflight.txt")) {
-        self.url = url
-    }
-
-    func note(pass: KokoroProbePass, stage: String, chunksDone: Int, peakBytes: UInt64) {
-        try? "\(pass.rawValue) \(stage) \(chunksDone) \(peakBytes)".write(to: url, atomically: true, encoding: .utf8)
-    }
-
-    /// What a killed run left behind, if anything, and forget it.
-    func takeLeftover() -> Leftover? {
-        defer { clear() }
-        guard let text = try? String(contentsOf: url, encoding: .utf8) else { return nil }
-        let parts = text.split(separator: " ")
-        guard parts.count == 4,
-              let pass = KokoroProbePass(rawValue: String(parts[0])),
-              Self.STAGES.contains(String(parts[1])),
-              let done = Int(parts[2]), done >= 0,
-              let peak = UInt64(parts[3]) else { return nil }
-        return Leftover(pass: pass.rawValue, stage: String(parts[1]), chunksDone: done, peakBytes: peak)
-    }
-
-    func clear() {
-        try? FileManager.default.removeItem(at: url)
-    }
-}
+/* `ProbeInFlight` (the kill marker) moved to ProbeLedger.swift, with the
+   launch-time report and the quarantine that read it (probe v3.1). */
 
 /// A flag set from a notification block and read once by the probe; locked
 /// because the two run on different queues.

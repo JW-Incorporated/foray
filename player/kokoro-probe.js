@@ -55,6 +55,19 @@
  * the 1.5 record against ≤ 0.55 (the doc's margin under 1/1.5).
  * `formatProbeTable` is the drawer's compact table and one verdict per pass.
  * The optional SOAK (`mode: "soak"`) is one record, `summarizeSoak`.
+ *
+ * ── Probe v3.1: crash-resilient and self-reporting (2026-09-27) ───────────
+ * Build 2026092705 died twice on the founder's iPhone 17 (A19, iOS 26.6.2)
+ * inside Core ML's predict — a SIGSEGV in Apple's libBNNS on the probe's
+ * queue, the fault FluidAudio tracked as #844 and closed in #889 as Apple's
+ * — on the FIRST pass, `ane`, and no row was written. Now: the ORT passes run
+ * first (`V3_PASSES`); Core ML is refused on iOS 26.4+ (`coreml-bnns-os`)
+ * unless armed; the native half breadcrumbs every risky step and turns a
+ * leftover breadcrumb into a KILL REPORT at the next launch, which the page
+ * writes at boot (`readProbeKills` → one `killed-app` row, plus the passes
+ * that finished before it); a pass that killed 4a is skipped next time
+ * (`skipped-killed-last-run`) until "Reset skipped passes"; and each pass's
+ * rows reach the record as the pass ends (`runKokoroProbe`'s `onRecord`).
  */
 
 /** The engine name the probe asks `foray-tts.js` for. One string, exported,
@@ -152,7 +165,16 @@ export const PROBE_REASONS = Object.freeze([
   "no-bridge", "passage-missing", "passage-empty", "passage-unphonemized",
   "model-absent", "engine-absent", "synthesis-failed", "refused", "threw",
   "coreml-unavailable", "coreml-requires-ios17",
+  "coreml-bnns-os", "skipped-killed-last-run", "killed-app",
 ]);
+/* Probe v3.1: `coreml-bnns-os` — a Core ML pass on iOS 26.4 or later, where
+   Apple's libBNNS crashes the Kokoro chain on A19 phones on every compute
+   unit (FluidAudio #844/#889), refused unless the drawer's "arm Core ML (may
+   crash)" was on. `skipped-killed-last-run` — the pass (or, after a Core ML
+   kill, every Core ML pass) took 4a down on an earlier run and is skipped
+   until "Reset skipped passes"; `synthReason` says where it died.
+   `killed-app` — the launch-time report of a run the process did not
+   survive (`summarizeKill`). */
 /* `coreml-requires-ios17` (KV-R3): a Core ML pass on a phone below iOS 17 —
    the seven-stage models are built for 17 — so that pass did not run and the
    ORT passes beside it still did. */
@@ -162,21 +184,23 @@ export const PROBE_REASONS = Object.freeze([
     of these; iOS's `KokoroProbePass` holds the same two words. */
 export const PROBE_PASSES = Object.freeze([
   "cpu", "coreml",
-  "ane", "ort-cpu-t2", "ane-cputail", "ort-cpu-t3", "cml-cpu", "ort-cpu-t4",
+  "ort-cpu-t2", "ort-cpu-t3", "ort-cpu-t4", "cml-cpu", "ane-cputail", "ane",
 ]);
 
-/** KV-R3's six iOS passes IN RUN ORDER (interleaved Core ML / ORT), the same
-    words and order as iOS's `KokoroProbePass.allCases`. `cpu`/`coreml` above
-    stay admitted for Android's one pass and for rows written by probe v2. */
-export const V3_PASSES = Object.freeze(["ane", "ort-cpu-t2", "ane-cputail", "ort-cpu-t3", "cml-cpu", "ort-cpu-t4"]);
+/** KV-R3's six iOS passes IN RUN ORDER, the same words and order as iOS's
+    `KokoroProbePass.allCases`: since probe v3.1 the ORT passes FIRST (they
+    fail by throwing), then Core ML CPU-only, then the Neural Engine, `ane`
+    last — build 2026092705 ran `ane` first and died before any row. `cpu`/
+    `coreml` above stay admitted for Android's one pass and probe v2's rows. */
+export const V3_PASSES = Object.freeze(["ort-cpu-t2", "ort-cpu-t3", "ort-cpu-t4", "cml-cpu", "ane-cputail", "ane"]);
 
 /** The v3 passes iOS lets run with the phone locked: no GPU anywhere. Only
     `ane` (its fp32 tail on ALL compute units) may touch the GPU, which iOS
     blocks in the background (§1). */
-export const BACKGROUND_SAFE_PASSES = Object.freeze(["ort-cpu-t2", "ane-cputail", "ort-cpu-t3", "cml-cpu", "ort-cpu-t4"]);
+export const BACKGROUND_SAFE_PASSES = Object.freeze(["ort-cpu-t2", "ort-cpu-t3", "ort-cpu-t4", "cml-cpu", "ane-cputail"]);
 
 /** The Core ML passes (the rest of `V3_PASSES` are ORT). */
-export const COREML_PASSES = Object.freeze(["ane", "ane-cputail", "cml-cpu"]);
+export const COREML_PASSES = Object.freeze(["cml-cpu", "ane-cputail", "ane"]);
 
 /** Kokoro's `speed` values every v3 pass renders, 1.0 first (the content basis). */
 export const PROBE_SPEEDS = Object.freeze([1, 1.5]);
@@ -192,7 +216,7 @@ export const BREAK_EVEN_CONTENT_RTF = 1 / 1.5;
 export const COREML_DECISION_RTF = 0.4;
 
 /** A Core ML chain failure, as `KokoroCoreMLEngine.CODES` names it. */
-export const CML_CODES = Object.freeze(["cml-load", "cml-input", "cml-predict", "cml-output", "cml-nan-duration", "cml-frames-cap"]);
+export const CML_CODES = Object.freeze(["cml-load", "cml-input", "cml-predict", "cml-output", "cml-nan-duration", "cml-frames-cap", "cml-shape"]);
 /** The Core ML stage a failure names (`KokoroCoreMLStage`), in chain order. */
 export const CML_STAGES = Object.freeze(["albert", "postAlbert", "alignment", "prosody", "noise", "vocoder", "tail"]);
 /** How the probe kept the app alive while locked (`ProbeKeepAlive`). */
@@ -202,10 +226,17 @@ export const SCREEN_STATES = Object.freeze(["unlocked", "locked", "background", 
 /** `speedVerdict`'s answers. */
 export const SPEED_VERDICTS = Object.freeze(["go", "marginal", "no", "unmeasured"]);
 
-/** Where a run the system KILLED had got to (KV-R2's stop rule), as the next
-    run reports it: `load` while the pass's session was being built (the
-    CoreML pass compiles the graph there), `synth` once it was open. */
-export const KILLED_STAGES = Object.freeze(["load", "synth", "soak"]);
+/** Where a run the system KILLED had got to, as its breadcrumb says
+    (iOS `ProbeBreadcrumb.STAGES`, probe v3.1): `load` the pass's engine being
+    built, `compile` a Core ML stage's cold load (the Neural Engine compile),
+    `load-warm` its warm load, `first-predict` the first chunk's inference,
+    `synth` a later chunk, `wav` writing the WAV, `close` releasing the
+    models, `soak` a soak loop. KV-R2's `load`/`synth`/`soak` are among them. */
+export const KILLED_STAGES = Object.freeze(["load", "compile", "load-warm", "first-predict", "synth", "wav", "close", "soak"]);
+/** A breadcrumb's input shapes: `name:1x42,name:1x512x310` (probe v3.1). */
+export const INPUTS_RE = /^[A-Za-z0-9_]{1,24}:[0-9]{1,7}(?:x[0-9]{1,7})*(?:,[A-Za-z0-9_]{1,24}:[0-9]{1,7}(?:x[0-9]{1,7})*){0,15}$/;
+/** One stage's largest input shape in a record's `stageIn`, or `-`. */
+const SHAPE_RE = /^(?:-|[0-9]{1,7}(?:x[0-9]{1,7}){0,5})$/;
 
 /** How much a record's `provider` knows. `requested`: the EP was asked for
     and the runtime cannot report which nodes it took (iOS's `coreml` pass on
@@ -653,6 +684,14 @@ export function summarizeProbe({ native = null, elapsedMs = null, audioSec = nul
     prevKilledStage: oneOf(KILLED_STAGES, n.prevKilledStage),
     prevKilledChunksDone: count(n.prevKilledChunksDone),
     prevKilledPeakMb: toMegabytes(n.prevKilledPeakBytes),
+    /* Probe v3.1: the breadcrumb's detail — the speed in flight, the Core ML
+       stage model, the chunk's tokens and frames, and every input's shape. */
+    prevKilledSpeed: speedOf(n.prevKilledSpeed),
+    prevKilledSub: oneOf(CML_STAGES, n.prevKilledSub),
+    prevKilledTokens: count(n.prevKilledTokens),
+    prevKilledFrames: count(n.prevKilledFrames),
+    prevKilledIn: shaped(INPUTS_RE, n.prevKilledIn),
+    probeRun: count(n.probeRun),
     /* `requested` when the record's provider was only ASKED for: ORT 1.20.0
        cannot say which nodes the CoreML EP actually took, and ORT runs the
        rest on the CPU without a word. Null when the provider is what ran. */
@@ -692,6 +731,12 @@ function v3Fields(n, synthColdMs, synthWarmMs) {
     cmlCode: oneOf(CML_CODES, n.cmlCode),
     cmlStage: oneOf(CML_STAGES, n.cmlStage),
     hasWav: n.hasWav === true,
+    /* Probe v3.1: what the engine was handed — the longest chunk's tokens
+       and frames, and per Core ML stage the largest input shape. */
+    maxTokens: count(n.maxTokens),
+    maxFrames: count(n.maxFrames),
+    stageIn: Array.isArray(n.stageIn) && n.stageIn.length === CML_STAGES.length && n.stageIn.every((s) => shaped(SHAPE_RE, s))
+      ? [...n.stageIn] : null,
   };
 }
 
@@ -776,11 +821,21 @@ function basisTag(r) {
     : "";
 }
 
-/** Where a killed run died, in words: `load` (the session was being built —
-    the CoreML compile) or `after N chunks`. */
-function killedWhere(stage, done) {
-  if (stage === "load") return "during its load";
-  return `after ${done ?? "?"} chunks`;
+/** Where a killed run died, in words (probe v3.1: the breadcrumb's stage,
+    Core ML stage model, chunk, speed and shapes). */
+function killedWhere(stage, done, r = {}) {
+  const sub = r.prevKilledSub ? ` ${r.prevKilledSub}` : "";
+  const speed = r.prevKilledSpeed != null ? ` @${r.prevKilledSpeed}x` : "";
+  const shape = [r.prevKilledTokens != null ? `tokens ${r.prevKilledTokens}` : null,
+    r.prevKilledFrames != null ? `frames ${r.prevKilledFrames}` : null,
+    r.prevKilledIn ? `in ${r.prevKilledIn}` : null].filter(Boolean).join(" ");
+  const tail = shape ? ` (${shape})` : "";
+  if (stage === "load") return `during its load${tail}`;
+  /* A probe v2 marker (no stage model, no speed) keeps its v2 wording. */
+  if (stage === "synth" && !r.prevKilledSub && r.prevKilledSpeed == null) return `after ${done ?? "?"} chunks${tail}`;
+  if (stage === "compile" || stage === "load-warm") return `during the ${stage} of${sub || " a stage"}${tail}`;
+  if (stage === "first-predict" || stage === "synth") return `in the${sub ? `${sub}` : ""} predict of chunk ${done ?? "?"}${speed}${tail}`;
+  return `at ${stage ?? "?"} after ${done ?? "?"} chunks${tail}`;
 }
 
 /** Lane A's lines for the drawer, each printed ONLY when its data arrived, so
@@ -797,7 +852,11 @@ function probeContextLines(r) {
       : `  finite        NO — ${r.nonFiniteLines ?? "?"} of ${r.lines ?? "?"} chunks held NaN/Infinity`);
   }
   if (r.prevKilledPass != null) {
-    out.push(`  LAST RUN KILLED in the ${r.prevKilledPass} pass, ${killedWhere(r.prevKilledStage, r.prevKilledChunksDone)}, peak ${mb(r.prevKilledPeakMb)}`);
+    const what = r.reason === "killed-app" ? "4A WAS KILLED" : r.reason === "skipped-killed-last-run" ? "SKIPPED: it killed 4a" : "LAST RUN KILLED";
+    out.push(`  ${what} in the ${r.prevKilledPass} pass, ${killedWhere(r.prevKilledStage, r.prevKilledChunksDone, r)}, peak ${mb(r.prevKilledPeakMb)}`);
+  }
+  if (Array.isArray(r.skippedPasses) && r.skippedPasses.length) {
+    out.push(`  next runs skip ${r.skippedPasses.join(", ")} until "Reset skipped passes"`);
   }
   if (r.ortVersion != null || r.cores != null || r.intraThreads != null) {
     const threads = r.intraThreads == null ? "—" : r.intraThreads === 0 ? "auto" : r.intraThreads;
@@ -841,6 +900,10 @@ function probeContextLines(r) {
       + (r.keepAlive ? `  keep-alive ${r.keepAlive}` : ""));
   }
   if (r.cmlCode != null) out.push(`  Core ML       ${r.cmlCode}${r.cmlStage ? ` at ${r.cmlStage}` : ""}`);
+  if (r.maxTokens != null || r.stageIn != null) {
+    out.push(`  inputs        tokens ≤ ${r.maxTokens ?? "—"}  frames ≤ ${r.maxFrames ?? "—"}`
+      + (r.stageIn ? `  stages ${r.stageIn.join("/")}` : ""));
+  }
   return out;
 }
 
@@ -891,7 +954,10 @@ export function passVerdicts(records) {
     const fast = at(1.5);
     const backgroundSafe = BACKGROUND_SAFE_PASSES.includes(pass);
     const coreml = COREML_PASSES.includes(pass);
-    const oneOk = one && one.ok && one.finite !== false && rtfIsPlausible(one.rtfContentWarm);
+    /* A voice that garbled a chunk at EITHER speed never qualifies, whatever
+       its speed — and the rule no longer depends on which qualifying pass
+       happens to run first (probe v3.1 reordered them). */
+    const oneOk = one && one.ok && one.finite !== false && fast?.finite !== false && rtfIsPlausible(one.rtfContentWarm);
     out.push({
       pass,
       one,
@@ -1080,6 +1146,108 @@ export async function stopProbeSoak({ tts = null } = {}) {
   }
 }
 
+/* ---------- probe v3.1: the kill reports, the skip list ---------- */
+
+/**
+ * A launch-time KILL REPORT (the native ledger's `killed.json` entry) as a
+ * `voiceProbe` record: `reason: "killed-app"`, the pass and speed it died
+ * in, and the breadcrumb's detail in the `prevKilled*` keys every reader
+ * already renders. `skippedPasses` is what the next run will skip.
+ */
+export function summarizeKill(report) {
+  const k = report && typeof report === "object" ? report : {};
+  const record = summarizeProbe({
+    native: {
+      platform: k.platform ?? "ios",
+      pass: k.killedPass,
+      speed: k.killedSpeed,
+      prevKilledPass: k.killedPass,
+      prevKilledStage: k.killedStage,
+      prevKilledChunksDone: k.killedChunksDone,
+      prevKilledPeakBytes: k.killedPeakBytes,
+      prevKilledSpeed: k.killedSpeed,
+      prevKilledSub: k.killedSub,
+      prevKilledTokens: k.killedTokens,
+      prevKilledFrames: k.killedFrames,
+      prevKilledIn: k.killedIn,
+      probeRun: k.killedRun,
+    },
+    reason: "killed-app",
+  });
+  record.killedMode = oneOf(["matrix", "soak"], k.killedMode);
+  record.skippedPasses = Array.isArray(k.skipped) ? k.skipped.filter((p) => V3_PASSES.includes(p)) : [];
+  record.reportId = typeof k.id === "string" && /^[0-9-]{1,64}$/.test(k.id) ? k.id : null;
+  return record;
+}
+
+/**
+ * Ask the native half for the kill reports it has not had acknowledged and
+ * for the skip list (probe v3.1, `mode: "status"`). Each report becomes its
+ * `killed-app` record FOLLOWED BY the records of the passes that finished
+ * before it (the ledger's journal), so a crash in pass 4 still lands passes
+ * 1-3. Never throws; an older shell answers `{ kills: [], skipped: [] }`.
+ */
+export async function readProbeKills({ tts = null } = {}) {
+  const empty = { ok: false, kills: [], skipped: [], bnnsAffected: null };
+  if (!tts || typeof tts.kokoroProbe !== "function") return empty;
+  let out;
+  try {
+    out = await tts.kokoroProbe({ engine: PROBE_ENGINE, mode: "status" });
+  } catch (_) {
+    return empty;
+  }
+  if (!out || out.ok !== true || out.mode !== "status") return empty;
+  const parse = (text) => {
+    try {
+      const v = JSON.parse(typeof text === "string" ? text : "[]");
+      return Array.isArray(v) ? v : [];
+    } catch (_) {
+      return [];
+    }
+  };
+  const kills = parse(out.reportsJson).filter((r) => r && typeof r === "object").map((report) => {
+    const kill = summarizeKill(report);
+    const completed = Array.isArray(report.completed) && report.completed.length
+      ? summarizePasses({ native: { ok: true, platform: kill.platform ?? "ios", passes: report.completed } })
+      : [];
+    return { id: kill.reportId, records: [kill, ...completed] };
+  });
+  const skipped = parse(out.skippedJson).filter((s) => s && V3_PASSES.includes(s.pass)).map((s) => ({
+    pass: s.pass,
+    stage: oneOf(KILLED_STAGES, s.killedStage),
+    sub: oneOf(CML_STAGES, s.killedSub),
+  }));
+  return { ok: true, kills, skipped, bnnsAffected: out.bnnsAffected === true };
+}
+
+/** The page wrote these reports' rows: the native half may forget them. */
+export async function ackProbeKills({ tts = null, ids = [] } = {}) {
+  const list = (Array.isArray(ids) ? ids : []).filter((id) => typeof id === "string" && /^[0-9-]{1,64}$/.test(id));
+  if (!list.length || !tts || typeof tts.kokoroProbe !== "function") return { ok: false, removed: 0 };
+  try {
+    const out = await tts.kokoroProbe({ engine: PROBE_ENGINE, mode: "killed-ack", ids: list });
+    return { ok: out?.ok === true, removed: Number.isInteger(out?.removed) ? out.removed : 0 };
+  } catch (_) {
+    return { ok: false, removed: 0 };
+  }
+}
+
+/** "Reset skipped passes": empty the native skip list. */
+export async function resetProbeSkips({ tts = null } = {}) {
+  if (!tts || typeof tts.kokoroProbe !== "function") return { ok: false, reason: "no-bridge" };
+  try {
+    const out = await tts.kokoroProbe({ engine: PROBE_ENGINE, mode: "reset" });
+    return out && out.ok === true && out.mode === "reset"
+      ? { ok: true, cleared: Number.isInteger(out.cleared) ? out.cleared : 0 }
+      : { ok: false, reason: "refused" };
+  } catch (e) {
+    return { ok: false, reason: "threw", detail: nameOf(e) };
+  }
+}
+
+/** One record's identity within a run: which pass, at which speed. */
+const recordKey = (r) => `${r?.pass ?? "?"}@${r?.speed ?? "?"}`;
+
 /* ---------- the run ---------- */
 
 /**
@@ -1095,17 +1263,49 @@ export async function stopProbeSoak({ tts = null } = {}) {
  * @param {object} opts.passage               the parsed passage JSON
  * @param {() => number} [opts.now]           injected clock (ms)
  */
-export async function runKokoroProbe({ tts = null, passage = null, now = null, mode = "matrix", soakMinutes = null } = {}) {
+export async function runKokoroProbe({
+  tts = null, passage = null, now = null, mode = "matrix", soakMinutes = null, onRecord = null, armCoreML = false,
+} = {}) {
   const clock = typeof now === "function" ? now : () => 0;
   const audioSec = passageSeconds(passage);
   /* KV-R3: `soak` asks the native half for the 30-minute locked loop and
      answers ONE soak record; anything else is the matrix. */
   const soak = mode === "soak";
+  /* PROBE v3.1, PER-PASS FLUSH: `onRecord` is called ONCE PER RECORD — as
+     its pass ends (the native `probePass` event) when the shell sends one,
+     else when the run answers — so a pass that later kills 4a cannot take
+     the finished passes' rows down with it. */
+  const emitted = new Set();
+  const emit = (records) => {
+    if (typeof onRecord !== "function") return;
+    for (const r of records) {
+      const key = recordKey(r);
+      if (r && r.pass && emitted.has(key)) continue;
+      if (r && r.pass) emitted.add(key);
+      try { onRecord(r); } catch (_) { /* the instrument must never be the outage */ }
+    }
+  };
+  const answer = (records) => {
+    if (!soak) emit(records);
+    return records;
+  };
 
   const bad = passageProblem(passage);
-  if (bad) return [soak ? summarizeSoak({ reason: bad }) : summarizeProbe({ reason: bad, audioSec })];
+  if (bad) return answer([soak ? summarizeSoak({ reason: bad }) : summarizeProbe({ reason: bad, audioSec })]);
   if (!tts || typeof tts.kokoroProbe !== "function") {
-    return [soak ? summarizeSoak({ reason: "no-bridge" }) : summarizeProbe({ reason: "no-bridge", audioSec })];
+    return answer([soak ? summarizeSoak({ reason: "no-bridge" }) : summarizeProbe({ reason: "no-bridge", audioSec })]);
+  }
+
+  let unsubscribe = () => {};
+  if (!soak && typeof onRecord === "function" && typeof tts.onProbePass === "function") {
+    try {
+      const off = await tts.onProbePass((event) => {
+        const e = event && typeof event === "object" ? event : {};
+        if (!Array.isArray(e.passes) || !e.passes.length) return;
+        emit(summarizePasses({ native: { ok: true, platform: e.platform, passes: e.passes }, audioSec }));
+      });
+      if (typeof off === "function") unsubscribe = off;
+    } catch (_) { /* no live flush: the rows still land when the run answers */ }
   }
 
   const startedAt = clock();
@@ -1116,13 +1316,16 @@ export async function runKokoroProbe({ tts = null, passage = null, now = null, m
       opts.mode = "soak";
       if (Number.isFinite(soakMinutes)) opts.soakMinutes = soakMinutes;
     }
+    if (armCoreML === true) opts.armCoreML = true;
     native = await tts.kokoroProbe(opts);
   } catch (e) {
+    try { unsubscribe(); } catch (_) { /* never throw */ }
     if (soak) return [summarizeSoak({ native: { detail: nameOf(e) }, reason: "threw", elapsedMs: clock() - startedAt })];
     /* The error's NAME travels, never its message (L12): `synthReason` then
        reads `threw/TypeError` instead of a bare `threw`. */
-    return [summarizeProbe({ native: { detail: nameOf(e) }, reason: "threw", audioSec, elapsedMs: clock() - startedAt })];
+    return answer([summarizeProbe({ native: { detail: nameOf(e) }, reason: "threw", audioSec, elapsedMs: clock() - startedAt })]);
   }
+  try { unsubscribe(); } catch (_) { /* never throw */ }
   const elapsedMs = clock() - startedAt;
 
   if (soak) {
@@ -1143,9 +1346,9 @@ export async function runKokoroProbe({ tts = null, passage = null, now = null, m
     const code = typeof native?.reason === "string" && PROBE_REASONS.includes(native.reason)
       ? native.reason
       : "refused";
-    return [summarizeProbe({ native, reason: code, audioSec, elapsedMs })];
+    return answer([summarizeProbe({ native, reason: code, audioSec, elapsedMs })]);
   }
-  return summarizePasses({ native, audioSec, elapsedMs });
+  return answer(summarizePasses({ native, audioSec, elapsedMs }));
 }
 
 /**

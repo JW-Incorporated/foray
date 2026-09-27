@@ -14912,8 +14912,10 @@ function syncVoiceProbeRun() {
   const existing = $("#voice-probe-run");
   if (!voiceProbeOn()) {
     if (existing) existing.remove();
-    const soak = $("#voice-probe-soak");
-    if (soak) soak.remove();
+    for (const id of ["#voice-probe-soak", "#voice-probe-arm", "#voice-probe-reset"]) {
+      const el = $(id);
+      if (el) el.remove();
+    }
     return;
   }
   if (existing) return;
@@ -14941,6 +14943,59 @@ function syncVoiceProbeRun() {
   /* KV-R3 review: WHILE A SOAK RUNS this control STOPS it — thirty minutes
      is too long to hold a phone hostage to an instrument. */
   soak.addEventListener("click", () => (voiceProbeRunning && voiceProbeRunningSoak ? stopVoiceSoak() : runVoiceProbe("soak")));
+
+  /* PROBE v3.1, iPhone only, under the soak. "Arm Core ML (may crash)": on
+     iOS 26.4+ Apple's libBNNS crashes the Kokoro Core ML chain (FluidAudio
+     #844/#889; the founder's two crashes on build 2026092705), so the probe
+     refuses Core ML there (`coreml-bnns-os`) unless this is on. IN MEMORY
+     ONLY, never stored: a crash relaunches the app disarmed, so it can never
+     crash-loop. "Reset skipped passes": a pass that killed 4a is skipped by
+     every later run until this is tapped. */
+  const arm = ddEl("button", "drawer-item as-btn", "");
+  arm.type = "button";
+  arm.id = "voice-probe-arm";
+  soak.parentNode.insertBefore(arm, soak.nextSibling);
+  paintVoiceProbeArm(arm);
+  arm.addEventListener("click", () => {
+    voiceProbeArmCoreML = !voiceProbeArmCoreML;
+    paintVoiceProbeArm(arm);
+  });
+  const reset = ddEl("button", "drawer-item as-btn", VOICE_PROBE_RESET_LABEL);
+  reset.type = "button";
+  reset.id = "voice-probe-reset";
+  arm.parentNode.insertBefore(reset, arm.nextSibling);
+  reset.addEventListener("click", () => resetVoiceProbeSkips());
+}
+
+/* PROBE v3.1: whether the NEXT matrix run may run Core ML on iOS 26.4+.
+   Per app session, never persisted (see syncVoiceProbeRun). */
+let voiceProbeArmCoreML = false;
+const VOICE_PROBE_RESET_LABEL = "Reset skipped passes";
+
+function paintVoiceProbeArm(btn) {
+  setControlLabel(btn, voiceProbeArmCoreML
+    ? "Arm Core ML (may crash): ON for the next run"
+    : "Arm Core ML (may crash): off");
+}
+
+/** "Reset skipped passes": the passes that killed 4a run again next time. */
+function resetVoiceProbeSkips() {
+  const player = window.ForayPlayer;
+  const ui = diagSheet();
+  openDiagSheet();
+  if (!player || typeof player.resetVoiceProbeSkips !== "function") {
+    ui.status.textContent = "This build has no skipped passes to reset.";
+    return Promise.resolve(null);
+  }
+  return Promise.resolve(player.resetVoiceProbeSkips()).then((out) => {
+    ui.status.textContent = out && out.ok
+      ? `Reset: ${out.cleared ?? 0} skipped pass(es) will run again on the next probe.`
+      : "Could not reset the skipped passes.";
+    return out;
+  }, () => {
+    ui.status.textContent = "Could not reset the skipped passes.";
+    return null;
+  });
 }
 
 const VOICE_SOAK_START_LABEL = "Start the 30-minute soak (then lock the phone)";
@@ -15187,7 +15242,8 @@ let voiceProbeRunning = null;
    first. The founder runs it twice — unlocked, then locked right after the
    tap — and the record says which run was which. */
 const VOICE_PROBE_RUNNING_LINE = "Running the voice probe — six passes at two speeds on iPhone, about five to ten minutes. "
-  + "For the locked run, lock the phone now; otherwise leave the app open.";
+  + "For the locked run, lock the phone now; otherwise leave the app open. "
+  + "If 4a closes, just reopen it and tap the probe again; each run skips what crashed.";
 /* The soak: one pass, speed 1.5, in a loop for 30 minutes. */
 const VOICE_SOAK_RUNNING_LINE = "Running the 30-minute soak. Lock the phone now and leave it locked for 30 minutes. "
   + "To end it early, unlock and tap \"Stop the soak now\".";
@@ -15287,7 +15343,7 @@ async function runVoiceProbeOnce() {
   try {
     /* ONE RECORD PER PASS since KV-R2 (`cpu`, then `coreml` on iPhone); an
        older player answers one record, which is a list of one. */
-    const result = await player.runVoiceProbe();
+    const result = await player.runVoiceProbe({ armCoreML: voiceProbeArmCoreML });
     const records = Array.isArray(result) ? result : (result ? [result] : []);
     refreshDiagSheet();
     /* KV-R3: a v3 run (records carry a speed) is one compact TABLE with a
@@ -15296,7 +15352,14 @@ async function runVoiceProbeOnce() {
     const table = typeof player.formatVoiceProbeTable === "function" ? player.formatVoiceProbeTable(records) : "";
     if (table && records.some((r) => r && r.speed != null)) {
       ui.status.classList.add("dd-status-report");   // a table: kept lines, fixed-width columns
-      ui.status.textContent = `${table}\nCopy the record above and paste it into the card.`;
+      /* PROBE v3.1: say, in words, why Core ML did not run or was skipped. */
+      const why = records.some((r) => r && r.reason === "coreml-bnns-os")
+        ? "\nCore ML did not run: iOS 26.4 and later crash it (an Apple bug). Tap \"Arm Core ML (may crash)\" first to try it anyway."
+        : "";
+      const skipped = records.some((r) => r && r.reason === "skipped-killed-last-run")
+        ? "\nSome passes were skipped because they closed 4a last time. \"Reset skipped passes\" runs them again."
+        : "";
+      ui.status.textContent = `${table}${why}${skipped}\nCopy the record above and paste it into the card.`;
       paintVoiceProbeListen(ui, player, records);
       return result;
     }

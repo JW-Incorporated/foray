@@ -877,19 +877,22 @@ export const PROBE_ORT_STAGES = new Set(["input", "run", "output"]);
     `PROBE_PASSES` (a test holds them in step: this module imports nothing). */
 export const PROBE_PASSES = new Set([
   "cpu", "coreml",
-  "ane", "ort-cpu-t2", "ane-cputail", "ort-cpu-t3", "cml-cpu", "ort-cpu-t4",
+  "ort-cpu-t2", "ort-cpu-t3", "ort-cpu-t4", "cml-cpu", "ane-cputail", "ane",
 ]);
 /** `kokoro-probe.js`'s `KILLED_STAGES` and `PROVIDER_BASES`, held in step by
     the same test. */
-export const PROBE_KILLED_STAGES = new Set(["load", "synth", "soak"]);
+export const PROBE_KILLED_STAGES = new Set(["load", "compile", "load-warm", "first-predict", "synth", "wav", "close", "soak"]);
 /** KV-R3 (probe v3): `kokoro-probe.js`'s CML_CODES, CML_STAGES, SCREEN_STATES,
     KEEP_ALIVE_STATES and SPEED_VERDICTS, held in step by the same test. */
-export const PROBE_CML_CODES = new Set(["cml-load", "cml-input", "cml-predict", "cml-output", "cml-nan-duration", "cml-frames-cap"]);
+export const PROBE_CML_CODES = new Set(["cml-load", "cml-input", "cml-predict", "cml-output", "cml-nan-duration", "cml-frames-cap", "cml-shape"]);
 export const PROBE_CML_STAGES = new Set(["albert", "postAlbert", "alignment", "prosody", "noise", "vocoder", "tail"]);
 export const PROBE_SCREENS = new Set(["unlocked", "locked", "background", "mixed"]);
 export const PROBE_KEEP_ALIVE = new Set(["audio", "failed"]);
 export const PROBE_SPEED_VERDICTS = new Set(["go", "marginal", "no", "unmeasured"]);
 export const PROBE_PROVIDER_BASES = new Set(["requested"]);
+/** A probe breadcrumb's input shapes (`name:1x42,name:1x512x310`), the same
+    shape as `kokoro-probe.js`'s `INPUTS_RE` (held in step by its test). */
+export const PROBE_INPUTS_RE = /^[A-Za-z0-9_]{1,24}:[0-9]{1,7}(?:x[0-9]{1,7})*(?:,[A-Za-z0-9_]{1,24}:[0-9]{1,7}(?:x[0-9]{1,7})*){0,15}$/;
 /** What each line of the passage did (L05). */
 export const PROBE_LINE_OUTCOMES = new Set(["ok", "threw", "no-output", "zero", "nan", "silent", "skip"]);
 /** Whether the loaded model file is the pinned one (L08). */
@@ -1977,6 +1980,21 @@ export class PlayerDiagnostics {
       ["keepAlive", oneOf(PROBE_KEEP_ALIVE, r.keepAlive)],
       ["cmlCode", oneOf(PROBE_CML_CODES, r.cmlCode)],
       ["cmlStage", oneOf(PROBE_CML_STAGES, r.cmlStage)],
+      /* Probe v3.1 (the founder's two crashes on build 2026092705, no row):
+         a kill's breadcrumb detail — the speed in flight, the Core ML stage
+         model, the chunk's tokens and frames, every input's shape — the
+         passes the next run skips, and what each pass handed its engine. */
+      ["killedSpeed", Number.isFinite(r.prevKilledSpeed) && r.prevKilledSpeed >= 0.5 && r.prevKilledSpeed <= 2 ? r.prevKilledSpeed : null],
+      ["killedSub", oneOf(PROBE_CML_STAGES, r.prevKilledSub)],
+      ["killedTokens", nonNegIntOr(r.prevKilledTokens)],
+      ["killedFrames", nonNegIntOr(r.prevKilledFrames)],
+      ["killedIn", shaped(PROBE_INPUTS_RE, r.prevKilledIn)],
+      ["skippedPasses", Array.isArray(r.skippedPasses) && r.skippedPasses.length && r.skippedPasses.every((p) => PROBE_PASSES.has(p))
+        ? r.skippedPasses.join(",") : null],
+      ["maxTokens", nonNegIntOr(r.maxTokens)],
+      ["maxFrames", nonNegIntOr(r.maxFrames)],
+      ["stageIn", Array.isArray(r.stageIn) && r.stageIn.length === 7 && r.stageIn.every((x) => typeof x === "string" && /^(?:-|[0-9]{1,7}(?:x[0-9]{1,7}){0,5})$/.test(x))
+        ? r.stageIn.join("/") : null],
     ]);
     return this.log.record("voiceProbe", row);
   }
@@ -2450,6 +2468,24 @@ function lineFor(e) {
        distinction was hiding as a triumph. */
     case "voiceProbe": {
       const failed = e.probeOk !== true;
+      /* PROBE v3.1: the launch-time report of a probe run 4a did not
+         survive, in words a founder reads aloud — which pass, speed, stage,
+         Core ML stage model, chunk and input shapes, and what the next run
+         skips — written at the NEXT LAUNCH, whether or not he re-runs it. */
+      if (e.reason === "killed-app") {
+        const mbk = e.killedPeakMb == null ? "—" : `${e.killedPeakMb}MB`;
+        return `${head} ${e.engine ?? "?"} PROBE KILLED 4A: pass ${e.killedPass ?? "?"}` +
+          ` speed ${e.killedSpeed ?? "?"} stage ${e.killedStage ?? "?"}` +
+          (e.killedSub ? ` model ${e.killedSub}` : "") +
+          ` chunk ${e.killedChunksDone ?? "?"}` +
+          (e.killedTokens != null ? ` tokens ${e.killedTokens}` : "") +
+          (e.killedFrames != null ? ` frames ${e.killedFrames}` : "") +
+          (e.killedIn ? ` in ${e.killedIn}` : "") +
+          ` peak ${mbk}` +
+          (e.skippedPasses ? `  next run skips ${e.skippedPasses}` : "") +
+          (e.device ? `  ${e.device} iOS ${e.os ?? "?"}` : "") +
+          `  hidden=${e.hidden ? "y" : "n"}`;
+      }
       const tail = voiceProbeTail(e, failed);
       if (failed) {
         /* A refusal used to print its code and NOTHING else, because every
@@ -2653,8 +2689,21 @@ function voiceProbeTail(e, failed) {
     parts.push(`  ort=${e.ortCode}${e.ortOp ? ` op=${e.ortOp}` : ""}${e.ortStage ? ` at=${e.ortStage}` : ""}`);
   }
   if (e.killedPass != null) {
-    const where = e.killedStage === "load" ? "load" : `after ${e.killedChunksDone ?? "?"} chunks`;
-    parts.push(`  LAST-RUN-KILLED ${e.killedPass} ${where} peak ${e.killedPeakMb == null ? "—" : `${e.killedPeakMb}MB`}`);
+    /* Probe v3.1: a v2 marker keeps its v2 words; a breadcrumb says the
+       stage, the Core ML stage model, the chunk, speed and shapes. */
+    const v2 = e.killedSub == null && e.killedSpeed == null && (e.killedStage === "load" || e.killedStage === "synth");
+    const where = v2
+      ? (e.killedStage === "load" ? "load" : `after ${e.killedChunksDone ?? "?"} chunks`)
+      : `${e.killedStage ?? "?"}${e.killedSub ? ` ${e.killedSub}` : ""} chunk ${e.killedChunksDone ?? "?"}` +
+        (e.killedSpeed != null ? ` @${e.killedSpeed}x` : "") +
+        (e.killedTokens != null ? ` tokens ${e.killedTokens}` : "") +
+        (e.killedFrames != null ? ` frames ${e.killedFrames}` : "") +
+        (e.killedIn ? ` in ${e.killedIn}` : "");
+    const label = e.reason === "skipped-killed-last-run" ? "SKIPPED-IT-KILLED-4A" : "LAST-RUN-KILLED";
+    parts.push(`  ${label} ${e.killedPass} ${where} peak ${e.killedPeakMb == null ? "—" : `${e.killedPeakMb}MB`}`);
+  }
+  if (e.maxTokens != null || e.stageIn) {
+    parts.push(`  in tok<=${e.maxTokens ?? "?"}${e.maxFrames != null ? ` frames<=${e.maxFrames}` : ""}${e.stageIn ? ` stages ${e.stageIn}` : ""}`);
   }
   if (e.silentLines > 0) parts.push(`  silent ${e.silentLines}/${e.lines ?? "?"}`);
   /* KV-R3: the Core ML chain's own failure, route, stage times, CPU cost and

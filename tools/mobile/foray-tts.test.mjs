@@ -23,6 +23,9 @@ import {
   createForayTtsShell,
   onFinished,
   kokoroProbe,
+  onProbePass,
+  PROBE_PASS_EVENT,
+  PROBE_MODES,
   probeErrorName,
   isUnimplementedRejection,
   PROBE_ENGINE,
@@ -1065,7 +1068,81 @@ test("mobile-native-5: the Kokoro probe runs off the shared plugin thread and cl
   const entry = swift.match(/@objc func kokoroProbe\(_ call: CAPPluginCall\) \{([\s\S]*?)Self\.probeQueue\.async \{ \[weak self\] in\s*self\?\.runKokoroProbe\(call\)/);
   assert.ok(entry, "kokoroProbe hands the run to probeQueue");
   const beforeQueue = entry[1].replace(/\/\*[\s\S]*?\*\//g, "");
-  assert.match(beforeQueue, /^\s*if call\.getString\("mode"\) == "stop" \{\s*ProbeSoakStop\.shared\.request\(\)[\s\S]*?call\.resolve\(stop\)\s*return\s*\}\s*$/,
-    "nothing but the stop runs off the probe queue");
+  /* Probe v3.1 adds the ledger's three answers (`status`, `killed-ack`,
+     `reset`), which read and write a few small files and touch no model: the
+     drawer's "Reset skipped passes" must not wait out a running matrix. */
+  assert.match(beforeQueue, /^\s*if call\.getString\("mode"\) == "stop" \{\s*ProbeSoakStop\.shared\.request\(\)[\s\S]*?call\.resolve\(stop\)\s*return\s*\}\s*switch call\.getString\("mode"\) \{[\s\S]*\}\s*$/,
+    "only the stop and the ledger's answers run off the probe queue");
+  for (const heavy of ["buildEngine", "measurePasses", "runSoak", ".load()", "synthesize", "ProbeKeepAlive"]) {
+    assert.ok(!beforeQueue.includes(heavy), `${heavy} must stay on the probe queue`);
+  }
+  assert.deepEqual([...beforeQueue.matchAll(/case "([a-z-]+)":/g)].map((m) => m[1]), ["status", "killed-ack", "reset"]);
   assert.match(java, /failed\.put\("reason", "threw"\);/, "a throw is reported in the page's closed vocabulary");
+});
+
+/* ---------- probe v3.1: crash-resilient and self-reporting ---------- */
+
+test("probe v3.1: the ledger's modes, report ids and the arm switch travel; nothing else does", async () => {
+  /* MUTATION: drop `status` from PROBE_MODES — an iPhone that crashed never
+     gets its kill report read at boot (the native half answers the matrix's
+     `passage-empty` instead). */
+  const calls = [];
+  const bridge = { nativePromise: async (plugin, method, payload) => { calls.push(payload); return { ok: true }; } };
+  await kokoroProbe({ bridge, mode: "status" });
+  await kokoroProbe({ bridge, mode: "killed-ack", ids: ["1790000000000-1-2", "../etc/passwd", 7] });
+  await kokoroProbe({ bridge, mode: "reset" });
+  await kokoroProbe({ bridge, armCoreML: true });
+  await kokoroProbe({ bridge, armCoreML: "yes" });
+  assert.deepEqual([...PROBE_MODES], ["soak", "listen", "stop", "status", "killed-ack", "reset"]);
+  assert.equal(calls[0].mode, "status");
+  assert.equal(calls[0].passage, null, "no passage: an older native half answers passage-empty, never a matrix run");
+  assert.deepEqual(calls[1].ids, ["1790000000000-1-2"], "only id-shaped report ids travel");
+  assert.equal(calls[2].mode, "reset");
+  assert.equal(calls[3].armCoreML, true);
+  assert.equal(calls[4].armCoreML, undefined, "only a literal true arms Core ML");
+});
+
+test("probe v3.1: each finished pass arrives on `probePass`, the same word the Swift half raises", () => {
+  /* MUTATION: rename the event on either side — the rows only land when the
+     whole matrix answers, and a crash in pass 4 loses passes 1-3's rows. */
+  const listeners = new Map();
+  const bridge = {
+    getPlatform: () => "ios",
+    isNativePlatform: () => true,
+    nativePromise: async () => ({}),
+    addListener: (plugin, event, fn) => {
+      const key = `${plugin}:${event}`;
+      if (!listeners.has(key)) listeners.set(key, new Set());
+      listeners.get(key).add(fn);
+      return { remove: () => listeners.get(key).delete(fn) };
+    },
+  };
+  const seen = [];
+  const off = onProbePass((e) => seen.push(e.pass), { bridge });
+  const key = `${PLUGIN_NAME}:${PROBE_PASS_EVENT}`;
+  assert.equal(listeners.get(key)?.size, 1);
+  for (const fn of listeners.get(key)) fn({ pass: "ort-cpu-t2", passes: [] });
+  assert.deepEqual(seen, ["ort-cpu-t2"]);
+  off();
+  assert.equal(listeners.get(key).size, 0);
+  assert.equal(typeof onProbePass(() => {}, { bridge: undefined }), "function", "no bridge: a no-op unsubscribe");
+  const swift = SWIFT_SRC();
+  assert.match(swift, new RegExp(`static let PROBE_PASS_EVENT = "${PROBE_PASS_EVENT}"`));
+  assert.match(swift, /notifyListeners\(Self\.PROBE_PASS_EVENT, data:/);
+});
+
+test("probe v3.1: a pass start is a row in the engine's ring, over ONE notification name on both plugins", () => {
+  /* ForayTts cannot import ForayAudio, so it posts and ForayAudio writes the
+     `probe` row. MUTATION: rename either side — the ring never sees a pass
+     start, and a pass that kills 4a has no `e#` row. */
+  const ledger = readPlugin("ios/Sources/ForayTtsPlugin/ProbeLedger.swift");
+  const audio = fs.readFileSync(new URL("../../mobile/plugins/foray-audio/ios/Sources/ForayAudioPlugin/ForayAudioPlugin.swift", import.meta.url), "utf8");
+  const owner = fs.readFileSync(new URL("../../mobile/plugins/foray-audio/ios/Sources/ForayAudioPlugin/Engine/EngineOwnership.swift", import.meta.url), "utf8");
+  const tts = ledger.match(/static let NOTIFICATION = "([^"]+)"/);
+  const aud = audio.match(/static let VOICE_PROBE_ROW_NOTIFICATION = "([^"]+)"/);
+  assert.ok(tts && aud);
+  assert.equal(tts[1], aud[1]);
+  assert.match(audio, /override public func load\(\) \{[\s\S]*?Self\.relayVoiceProbeRows\(\)/, "registered at plugin load");
+  assert.match(owner, /func voiceProbeRow\(_ info: \[AnyHashable: Any\]\) \{[\s\S]*?row\("probe", fields\)/, "filed as a `probe` row");
+  assert.match(SWIFT_SRC(), /onPassStart: \{ pass, order in\s*ProbeEngineRow\.post\(event: "voice-pass"/);
 });

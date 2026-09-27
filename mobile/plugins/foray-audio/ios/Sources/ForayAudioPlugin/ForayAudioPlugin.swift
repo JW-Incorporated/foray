@@ -315,6 +315,29 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
             }
         }
         if Thread.isMainThread { decide() } else { DispatchQueue.main.sync(execute: decide) }
+        Self.relayVoiceProbeRows()
+    }
+
+    /// VOICE-PROBE ROWS IN THE ENGINE'S RING (probe v3.1). ForayTts is a
+    /// separate Swift package and cannot reach the ring, so it POSTS this
+    /// notification, on the main thread and synchronously, at each probe pass
+    /// start; the row is appended to `diag.jsonl` before the post returns,
+    /// i.e. before the pass's (possibly fatal) load begins. The ring's append
+    /// is one `FileHandle.write` per row (DiagRing.swift), which a process
+    /// killed a moment later does not undo — so a pass that takes 4a down is
+    /// still an `e#` row in the next paste. The name is ForayTts's
+    /// `ProbeEngineRow.NOTIFICATION`, pinned equal by foray-tts.test.mjs.
+    static let VOICE_PROBE_ROW_NOTIFICATION = "ai.jwlabs.foura.voiceProbeRow"
+    private static var voiceProbeRelay: NSObjectProtocol?
+
+    private static func relayVoiceProbeRows() {
+        guard voiceProbeRelay == nil else { return }
+        voiceProbeRelay = NotificationCenter.default.addObserver(
+            forName: Notification.Name(VOICE_PROBE_ROW_NOTIFICATION), object: nil, queue: nil) { note in
+            let info = note.userInfo ?? [:]
+            let write = { MainActor.assumeIsolated { EngineOwnership.shared.voiceProbeRow(info) } }
+            if Thread.isMainThread { write() } else { DispatchQueue.main.sync(execute: write) }
+        }
     }
 
     /// Today's `load()`, verbatim: the legacy lane's registration. Runs at
