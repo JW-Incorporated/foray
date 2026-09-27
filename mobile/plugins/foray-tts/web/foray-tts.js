@@ -523,11 +523,25 @@ export async function kokoroProbe(opts = {}) {
        place. It is `threw`, and it carries the error's NAME — never its
        message, which is free text from native code and can carry a path. */
     try { log("foray-tts: kokoroProbe rejected", e); } catch (_e) { /* logging must never throw */ }
-    if (e && e.code === "UNIMPLEMENTED") {
+    if (isUnimplementedRejection(e)) {
       return { ok: false, path: "native", reason: "engine-absent" };
     }
     return { ok: false, path: "native", reason: "threw", detail: probeErrorName(e) };
   }
+}
+
+/** Is `e` Capacitor's "this binary has no such method/plugin" rejection?
+    Capacitor spells it `code: "UNIMPLEMENTED"`; older bridges only WORD it
+    ("… is not implemented on ios", "plugin not implemented"). The same rule as
+    `player/native-engine.js`'s `isUnimplemented`, written again for the
+    reason `probeErrorName` is. The message is READ to classify and never
+    kept: only the closed `engine-absent` leaves this function's caller. */
+export function isUnimplementedRejection(e) {
+  if (!e) return false;
+  if (e.code === "UNIMPLEMENTED") return true;
+  let text = "";
+  try { text = String(typeof e === "object" && "message" in e ? e.message : e); } catch (_e) { return false; }
+  return /not implemented|unimplemented/i.test(text);
 }
 
 /** An error's code or name, admitted only as a bare ASCII identifier of at

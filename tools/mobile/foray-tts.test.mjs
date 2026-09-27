@@ -24,6 +24,7 @@ import {
   onFinished,
   kokoroProbe,
   probeErrorName,
+  isUnimplementedRejection,
   PROBE_ENGINE,
   pause,
   resume,
@@ -730,6 +731,21 @@ test("kokoroProbe: Capacitor's UNIMPLEMENTED rejection is `engine-absent`, not a
   assert.equal(out.ok, false);
   assert.equal(out.reason, "engine-absent");
   assert.equal(out.path, "native");
+});
+
+test("kokoroProbe: an older bridge that only WORDS the missing method is still `engine-absent`", async () => {
+  /* `player/native-engine.js`'s `isUnimplemented` rule: Capacitor spells it
+     `code: "UNIMPLEMENTED"`, older bridges only word it. Without this an
+     older shell's missing method would read `threw/Error` and send the next
+     reader hunting for a crash that never happened. MUTATION: drop the
+     wording branch. */
+  for (const err of [new Error("plugin not implemented"), new Error("\"ForayTts\" plugin is not implemented on android"), "UNIMPLEMENTED"]) {
+    const bridge = { nativePromise: async () => { throw err; } };
+    const out = await kokoroProbe({ bridge, log: () => {} });
+    assert.deepEqual(out, { ok: false, path: "native", reason: "engine-absent" }, String(err));
+  }
+  assert.equal(isUnimplementedRejection(new TypeError("x is undefined")), false);
+  assert.equal(isUnimplementedRejection(null), false);
 });
 
 test("kokoroProbe: any other rejection is `threw` with the error's NAME and never its message (L12)", async () => {

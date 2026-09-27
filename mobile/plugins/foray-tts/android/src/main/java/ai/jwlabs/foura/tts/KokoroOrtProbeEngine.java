@@ -346,10 +346,12 @@ final class KokoroOrtProbeEngine implements ForayTtsPlugin.KokoroProbeEngine {
      */
     @Override
     public double[] synthesize(int[] ids, double speed) {
+        // Reset FIRST, as iOS does: a line that returns early must not carry
+        // the previous line's ORT failure as if it were its own.
+        lastFailure = null;
         if (session == null) { lastSynthReason = "session-absent"; return new double[]{0, 0}; }
         if (ids == null || ids.length <= 2) { lastSynthReason = "zero-samples"; return new double[]{0, 0}; }
         lastSynthReason = null;
-        lastFailure = null;
         long t0 = System.nanoTime();
         int samples = run(ids, speed);
         long t1 = System.nanoTime();

@@ -1344,7 +1344,10 @@ public class ForayTtsPlugin: CAPPlugin, CAPBridgedPlugin, AVSpeechSynthesizerDel
     /// footprint: read after the last line, it said how much was held at the
     /// end, not the high-water mark the 400 MB ceiling is about. The kernel
     /// keeps the peak in the same `TASK_VM_INFO` answer; an older kernel that
-    /// leaves it 0 falls back to the current figure.
+    /// leaves it 0 falls back to the current figure. The peak is the
+    /// PROCESS's since launch and cannot be reset, so a second probe run in
+    /// the same app session reports the larger of the two; `baseMemoryBytes`
+    /// (read before `load()`) is what tells a reader how much was already held.
     static func peakResidentBytes() -> UInt64 {
         let footprint = taskFootprint()
         return footprint.peak > 0 ? footprint.peak : footprint.current
