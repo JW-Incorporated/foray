@@ -56,6 +56,14 @@
     "an interrupted play() (AbortError) is telemetry, never onError (audit round 3, player-core-3)": {
       "reason": "webview-only",
       "why": "An HTMLMediaElement play() promise rejected with AbortError because a pause() or a new src cut it off. AVPlayer has no play() promise to interrupt, so the native deck has no such rejection to classify."
+    },
+    "elementFacts reports the element's state as numbers, and how much is buffered AHEAD of the playhead": {
+      "reason": "webview-only",
+      "why": "HTMLMediaElement's own fields (paused, currentTime, readyState, networkState, buffered) read for a page `media` diagnostics row at a waiting/stalled event (log-gaps 2026-09-26, L25). AVPlayer has no element and no such events: the deck reports its own stalls and the engine writes its own rows, so there is no rule here for Swift to reimplement."
+    },
+    "elementFacts never throws: an element whose reads throw reports nulls": {
+      "reason": "webview-only",
+      "why": "The same HTMLMediaElement read, guarded against a DOM getter that throws. The engine reads no element (NE-15), so there is nothing here for Swift to reimplement."
     }
   },
   "media-session": {

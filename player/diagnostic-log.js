@@ -2228,12 +2228,15 @@ function lineFor(e) {
          hidden=, only when the row carries it. */
       const f = (v, dp) => (typeof v === "number" ? v.toFixed(dp) : "?");
       const yn = (v) => (v === true ? "y" : v === false ? "n" : "?");
-      const hasFacts = e.paused != null || e.atSec != null || e.readyState != null ||
-        e.networkState != null || e.aheadSec != null || e.online != null;
-      const facts = hasFacts
+      /* The element block only when the row carries an element fact: the
+         native lane's facade has no `elementFacts`, and a row with only
+         `online` must not print five `?`s for an element it does not have. */
+      const hasElement = e.paused != null || e.atSec != null || e.readyState != null ||
+        e.networkState != null || e.aheadSec != null;
+      const facts = (hasElement
         ? ` paused=${yn(e.paused)} at ${f(e.atSec, 1)}s rs=${e.readyState ?? "?"} ns=${e.networkState ?? "?"}` +
-          ` ahead ${f(e.aheadSec, 1)}s online=${yn(e.online)}`
-        : "";
+          ` ahead ${f(e.aheadSec, 1)}s`
+        : "") + (e.online != null ? ` online=${yn(e.online)}` : "");
       return `${head} ${e.name}` + (e.repeated > 1 ? ` x${e.repeated}` : "") +
         (e.repeated > 1 && e.lastWall != null ? ` over ${ms(e.lastWall - e.wall)}` : "") + facts +
         `  hidden=${e.hidden ? "y" : "n"}` + (e.hiddenForMs != null ? `  hiddenFor ${ms(e.hiddenForMs)}` : "");
@@ -2995,7 +2998,7 @@ export function formatDiagnosticReport(record, engine = null, { tzOffsetMin = ne
   const unmarkedClear = cleared == null && entries.length > 0 && missing > 0
     && Number.isFinite(entries[0].seq) && entries[0].seq - 1 - dropped === missing;
   const gapLines = unmarkedClear
-    ? [`${missing} rows before an unmarked Clear`, "  (pre-#746 build), not lost"]
+    ? [`${missing} row${missing === 1 ? "" : "s"} before an unmarked Clear`, "  (pre-#746 build), not lost"]
     : missing > 0
       ? [`MISSING ${missing} of ${since} recorded rows: not in this ring, not dropped — ${where} was cleared or lost`]
       : missing < 0
@@ -3095,7 +3098,9 @@ export function formatDiagnosticReport(record, engine = null, { tzOffsetMin = ne
          its job; one that moved twice with none is the window missing it. */
       + (deduped ? `, ${deduped} duplicate${deduped === 1 ? "" : "s"} dropped` : ""),
     lost > 0 ? `native events lost ${lost} (nseq gaps)` : null,
-    refusedParts.length ? `refused by vocabulary: ${refusedParts.join(", ")}` : null,
+    /* Packed like every list in the header, so three doors wrap rather than
+       run past the phone's width. */
+    ...(refusedParts.length ? packHeader("refused by vocabulary:", refusedParts) : []),
     r.loadError ? `earlier record unreadable: ${r.loadError}` : null,
     ...engineRows.lines,
     `updated ${r.updatedAt ?? "—"}`,

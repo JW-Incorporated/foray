@@ -2588,7 +2588,7 @@ test("GAPS L33: what a vocabulary refuses is COUNTED by door, persisted, and sur
   assert.deepEqual(parse(store).refused, { session: 2, remote: 1, transport: 1 }, "persisted with the next write");
   assert.doesNotMatch(store.getItem(DIAG_KEY), /carPlayConnected|Wyatt|like|siri/);
   assert.match(formatDiagnosticReport(log.read(), null, { tzOffsetMin: 0 }),
-    /^refused by vocabulary: session x2, remote x1, transport x1$/m);
+    /^refused by vocabulary: session x2,\n {2}remote x1, transport x1$/m);
   log.clear();
   assert.deepEqual(log.refused, { session: 2, remote: 1, transport: 1 });
   log.forget();
@@ -2644,6 +2644,11 @@ test("GAPS L25: a stall row carries the element's own state on the FIRST row of 
   /* A fact of the wrong type is dropped, never stringified. */
   diag.mediaEvent("waiting", { paused: "no", atSec: "312", rs: 2.5, ns: -1, aheadSec: Infinity, online: "y" });
   assert.equal(lineOf(log, "media"), "#2    00:46:00.551 media      waiting  hidden=n");
+  /* The native lane's facade has no element to describe: `online` alone
+     prints alone, never beside five `?`s.
+     MUTATION: gate the element block on `online` too — `paused=?` returns. */
+  diag.mediaEvent("stalled", { online: false });
+  assert.equal(lineOf(log, "media"), "#3    00:46:00.551 media      stalled online=n  hidden=n");
 });
 
 /* ---------- L26: a refresh's bound and stage ---------- */
