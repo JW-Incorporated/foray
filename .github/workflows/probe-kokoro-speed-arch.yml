@@ -9,7 +9,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        threads: [0, 1, 2]
+        threads: [2, 3, 4]
     runs-on: macos-14
     steps:
       - uses: actions/checkout@v4
@@ -25,40 +25,3 @@ jobs:
       - if: matrix.threads == 0
         uses: actions/upload-artifact@v4
         with: { name: kokoro-wavs, path: out/*.wav }
-  timepitch:
-    needs: kokoro
-    runs-on: macos-14
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
-        with: { name: kokoro-wavs, path: in }
-      - run: |
-          mkdir -p out
-          python3 -c "import json;p=json.load(open('tools/mobile/kokoro-probe-passage.json'));open('passage.txt','w').write(' '.join(l['text'] for l in p['lines']))"
-          swiftc -O tools/probe-tmp/timepitch.swift -o tp
-          ./tp in/kokoro_speed1.0.wav passage.txt
-          cp in/kokoro_speed1.5.wav out/ && cp in/kokoro_speed1.0.wav out/
-      - uses: actions/upload-artifact@v4
-        with: { name: ab-listen-kokoro-speed1.5-vs-timepitch1.5, path: out/*.wav }
-  small:
-    strategy:
-      fail-fast: false
-      matrix:
-        model: [kitten-nano, kitten-mini, piper]
-    runs-on: macos-14
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with: { python-version: "3.12" }
-      - if: startsWith(matrix.model, 'kitten')
-        run: |
-          brew install espeak-ng
-          pip install https://github.com/KittenML/KittenTTS/releases/download/0.8.1/kittentts-0.8.1-py3-none-any.whl
-      - if: matrix.model == 'piper'
-        run: |
-          pip install piper-tts numpy
-          mkdir -p models
-          curl -fsSL -o models/en_US-lessac-medium.onnx "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/lessac/medium/en_US-lessac-medium.onnx"
-          curl -fsSL -o models/en_US-lessac-medium.onnx.json "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/lessac/medium/en_US-lessac-medium.onnx.json"
-          ls -la models
-      - run: python -u tools/probe-tmp/small_models.py ${{ matrix.model }}
