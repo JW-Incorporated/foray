@@ -1068,7 +1068,9 @@ test("a Clear on the real page keeps the build on the header and says the record
   assert.equal(storage.getItem(DIAG_KEY), null, "a Clear still leaves the key absent");
   const after = globalThis.window.forayDiagnosticReport().split("\n");
   assert.equal(after[1], "build web 2b808ec9d50c5b98 · website", "the build survived the Clear");
-  assert.match(after.join("\n"), new RegExp(`^cleared at #${recorded} .* · 0 recorded since$`, "m"));
+  /* The clear mark carries its date and wraps to the header's phone width
+     since 2026-09-26 (log-gaps L21). */
+  assert.match(after.join("\n"), new RegExp(`^cleared at #${recorded} .*Z\\n  · 0 recorded since$`, "m"));
   assert.match(after.join("\n"), /entries 0 of 200/);
   assert.doesNotMatch(after.join("\n"), /MISSING/, "an emptied ring is not a lost one");
   assert.match(after.join("\n"), new RegExp(`Nothing recorded yet since the record was cleared at #${recorded}`));

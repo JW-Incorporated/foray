@@ -35,6 +35,7 @@ import {
   dataTokenOf, dataVersionOf, dataFileTagOf, dataIdOf, DATA_PHASES, DATA_SOURCES,
   nowPlayingFieldOf, NOWPLAYING_FIELD_MAX, NOWPLAYING_VIA, SESSION_KINDS, SESSION_PRODUCERS,
   TRANSPORT_SOURCES, TRANSPORT_ACTIONS, REMOTE_COMMANDS, REMOTE_ORIGINS,
+  PROBE_ORT_CODES, PROBE_ORT_STAGES, PROBE_LINE_OUTCOMES, THERMAL_STATES,
 } from "./diagnostic-log.js";
 /* The REAL store for the held-write tests below: whether a row written before a
    slow hydration overwrites the durable ring is a fact about `DurableStore`'s
@@ -1435,10 +1436,12 @@ test("a synthesis-failed refusal keeps the load and memory numbers it DID produc
   assert.match(line, /could not measure: synthesis-failed\/session-absent/);
   assert.match(line, /load 467ms\/388ms/);
   assert.match(line, /peak 290\.9MB/);
-  /* And a refusal that truly has no numbers still prints no dashes. */
+  /* And a refusal that truly has no numbers still prints no dashes — only
+     `hidden=`, which every probe line ends with since 2026-09-26 (L06: it was
+     the only line type without one). */
   diag.voiceProbe({ engine: "kokoro-probe", ok: false, reason: "model-absent" });
   const bare = formatDiagnosticReport(log.read()).split("\n").filter((l) => l.includes("voiceProbe")).at(-1);
-  assert.match(bare, /could not measure: model-absent$/);
+  assert.match(bare, /voiceProbe kokoro-probe could not measure: model-absent {2}hidden=n$/);
 });
 /* L-06: what the lock screen was actually told (founder feedback F15)  */
 /* ==================================================================== */
@@ -1604,7 +1607,9 @@ test("the record can answer \"why did it stop?\" — the cause sits one row abov
   const types = log.read().entries.map((e) => e.type);
   assert.deepEqual(types, ["transport", "session", "stop"]);
   const text = formatDiagnosticReport(log.read());
-  assert.match(text, /session events 1 \(interruptionBegan\)/);
+  /* Since 2026-09-26 (L31) the header counts each kind rather than listing
+     the kinds it saw. */
+  assert.match(text, /^session events 1:\n {2}interruptionBegan 1$/m);
   assert.match(text, /session\s+audio interruptionBegan \(began\)/);
   assert.match(text, /transport\s+play from tap/);
 });
@@ -1932,12 +1937,14 @@ test("a Clear is WRITTEN DOWN: the header says cleared at #N and how many rows s
   c.tick(1000);
   log.clear();
   let text = formatDiagnosticReport(log.read());
-  assert.match(text, /^cleared at #5 \d\d:\d\d:\d\d\.\d{3} · 0 recorded since$/m);
+  /* With its DATE and a Z since 2026-09-26 (L21): a time of day alone could
+     not say which day the Clear was. */
+  assert.match(text, /^cleared at #5 \d{4}-\d\d-\d\d \d\d:\d\d:\d\d\.\d{3}Z\n {2}· 0 recorded since$/m);
   assert.match(text, /Nothing recorded yet since the record was cleared at #5\./);
   assert.doesNotMatch(text, /MISSING/, "a cleared ring is empty on purpose, not lost");
   diag.boot();
   text = formatDiagnosticReport(log.read());
-  assert.match(text, /cleared at #5 .* · 1 recorded since/);
+  assert.match(text, /cleared at #5 .*\n {2}· 1 recorded since/);
   assert.match(text, /entries 1 of 200/);
   assert.doesNotMatch(text, /MISSING/);
 });
@@ -2220,4 +2227,532 @@ test("REVIEW 2026-09-23: a Clear while writes are held drops them, and a plain S
   plain.log.record("boot", { hidden: false });
   assert.ok(plain.store.map.get(DIAG_KEY), "no hydration state: written on record(), as before");
   assert.equal(plain.log.flush(), false);
+});
+
+/* ==================================================================== */
+/* log-gaps 2026-09-26 (docs/diagnostics/log-gaps-2026-09-26.md): what   */
+/* the paste itself has to say — which day, which boot, which build,     */
+/* which phone — and every fact Lanes A and B now send.                  */
+/* ==================================================================== */
+
+/** A clock at the founder's #1032, 2026-09-25 00:46:00.551 UTC. */
+const AT_1032 = Date.UTC(2026, 8, 25, 0, 46, 0, 551);
+
+/** The line of the newest entry of `type`, from a report at a fixed zone. */
+function lineOf(log, type) {
+  const re = new RegExp(`^#\\d+\\s+\\S+ ${type}\\b`);
+  return formatDiagnosticReport(log.read(), null, { tzOffsetMin: 420 }).split("\n").filter((l) => re.test(l)).at(-1);
+}
+
+test("GAPS: a record with NONE of the new fields renders exactly as before, except the intended changes", () => {
+  /* The contract that lets the lanes merge in any order: every new field is
+     optional, and a row from an older build prints the line it always did.
+     The intended changes, and only these: the device and clock lines under
+     the engine line, the `session events N:` count list, the `-- day --` and
+     `== page boot ==` dividers, and `hidden=` on every voiceProbe line. Every
+     row line below was diffed against origin/main's formatter byte for byte.
+     MUTATION: print any new field unconditionally (e.g. `state=? item=—`) and
+     a row here changes. */
+  const T = Date.UTC(2026, 8, 24, 12, 0, 0);
+  let seq = 0;
+  const row = (dt, type, f) => ({ ...f, seq: ++seq, wall: T + dt, type });
+  const entries = [
+    row(0, "boot", { hidden: false, hydrated: true }),
+    row(10, "build", { shell: true, web: "2b808ec9d50c5b98", native: "2026092401", version: "1.4.0" }),
+    row(20, "data", { phase: "boot", trigger: null, status: null, source: "bundle", version: "seed-9fc92a61", code: null, forayId: null, forays: 6, playable: 40, ms: null, files: { forays: "bundle@seed-9fc92a61" }, hidden: false }),
+    row(30, "data", { phase: "refresh", trigger: "foreground", status: "offline", source: null, version: null, code: "timeout", forayId: null, forays: null, playable: null, ms: 4001, files: null, hidden: false }),
+    row(40, "transport", { source: "tap", action: "play", hidden: false }),
+    row(50, "outPoint", { targetSec: 200, atSec: 200.1, overshootSec: 0.1, hidden: false }),
+    row(60, "seam", { openedBy: "outPoint", fromId: "a", toId: "b", crossEpisode: true, askedGapMs: 500, holdMs: null, deadlineMs: 20000, deadlineFor: "hidden", observedGapMs: 812, lastStage: "playing", hiddenAtBoundary: true, hiddenAtStart: true, endOfQueue: false, stages: [] }),
+    row(70, "media", { name: "stalled", repeated: 3, lastWall: T + 1070, hidden: true, hiddenForMs: 1616 }),
+    row(80, "session", { kind: "interruptionBegan", reason: "began-while-held", producer: "audio", at: T + 66, lagMs: 14, hidden: false, hiddenForMs: null }),
+    row(90, "remote", { command: "play", action: "play", origin: "command-center", handled: true, deduped: false, at: T + 85, lagMs: 5, hidden: true }),
+    row(100, "stop", { source: "element", why: "pausedUnexpectedly", state: null, hidden: false, hiddenForMs: null, atSec: 494.4, readyState: 4, networkState: 2, errorCode: 0 }),
+    row(110, "stop", { source: "reconcile", why: "visible", state: "interrupted", hidden: false }),
+    row(120, "visibility", { to: "hidden", forMs: 38472 }),
+    row(130, "resume", { phase: "write", wrote: true, forayId: "f1", index: 3, elapsedSec: 812 }),
+    row(140, "nowplaying", { via: "metadata", title: "Ep", artist: "Show", album: "Foray", artworkCount: 1, state: "playing", writeOk: true, writeError: "", native: { installed: true, sends: 4, reason: null }, hidden: true }),
+    row(150, "tapFail", { phase: "start", error: "NotAllowedError", repeated: 2, lastWall: T + 950, hidden: false }),
+    row(160, "search", { qLen: 4, localMs: 1, localHits: 3, netMs: 118, netHits: 7, dirMs: null, dirHits: null, epMs: 300, epHits: 12, ctaMs: null, paintedMs: 2, path: "shows", hidden: false }),
+    row(170, "voiceProbe", { engine: "kokoro-probe", probeOk: true, reason: null, provider: "cpu", model: "kokoro-82m-v1.0-q8f16", loadColdMs: 1840, loadWarmMs: 120, rtfCold: 0.94, rtfWarm: 0.61, audioSec: 77.4, audioFrom: "rendered", synthReason: null, synthFailures: 0, acceleratorWired: false, peakMemoryMb: 312, lockedOk: true, batteryPct: -3, hidden: false }),
+    row(180, "voiceProbe", { engine: "kokoro-probe", probeOk: false, reason: "synthesis-failed", provider: null, model: null, loadColdMs: 457, loadWarmMs: 374, rtfCold: null, rtfWarm: null, audioSec: null, audioFrom: null, synthReason: "inference-threw", synthFailures: null, acceleratorWired: false, peakMemoryMb: 280.3, lockedOk: false, batteryPct: null, hidden: false }),
+    row(190, "voiceProbe", { engine: "kokoro-probe", probeOk: false, reason: "model-absent", provider: null, model: null, loadColdMs: null, loadWarmMs: null, rtfCold: null, rtfWarm: null, audioSec: null, audioFrom: null, synthReason: null, synthFailures: null, acceleratorWired: false, peakMemoryMb: null, lockedOk: false, batteryPct: null, hidden: false }),
+  ];
+  const record = {
+    v: 1, cap: 200, seq, dropped: 0, entries, saveErrors: 0, updatedAt: "2026-09-24T12:00:01.000Z",
+    build: { shell: true, web: "2b808ec9d50c5b98", native: "2026092401", version: "1.4.0" },
+    key: "cp_diag", store: { tiers: ["local"], hydrated: true },
+  };
+  assert.equal(formatDiagnosticReport(record, null, { tzOffsetMin: 420 }), [
+    "4a playback diagnostics — v1",
+    "build web 2b808ec9d50c5b98 · native 2026092401 (1.4.0)",
+    "engine=js reason=undecided build=2026092401 | web=2b808ec9d50c5b98",
+    "device unknown",
+    "clock UTC (device UTC-07:00)",
+    "  2026-09-24",
+    "Local only. Nothing here is sent anywhere.",
+    "",
+    "entries 20 of 200 (oldest dropped first)",
+    "dropped 0 · recorded 20 · writeErrors 0",
+    "seams 1: 1 measured, 0 never started",
+    "gap median 812ms, worst 812ms",
+    "now playing 1 written, 0 with an empty credit",
+    "session events 1:",
+    "  interruptionBegan 1",
+    "remote commands 1",
+    "updated 2026-09-24T12:00:01.000Z",
+    "",
+    "-- 2026-09-24 (UTC) --",
+    "== page boot ? ==",
+    "#1    12:00:00.000 boot       hidden=n",
+    "#2    12:00:00.010 build      web 2b808ec9d50c5b98 · native 2026092401 (1.4.0)",
+    "#3    12:00:00.020 data       boot source=bundle v=seed-9fc92a61 forays=bundle@seed-9fc92a61 n=6 playable=40  hidden=n",
+    "#4    12:00:00.030 data       refresh(foreground) offline why=timeout took 4001ms  hidden=n",
+    "#5    12:00:00.040 transport  play from tap  hidden=n",
+    "#6    12:00:00.050 outPoint   overshoot 0.100s  target 200s  at 200.1s  hidden=n",
+    "#7    12:00:00.060 seam       a -> b  gap 812ms  asked 500ms  deadline 20000ms (hidden)  cross-episode  last=playing  hidden=y->y",
+    "#8    12:00:00.070 media      stalled x3 over 1000ms  hidden=y  hiddenFor 1616ms",
+    "#9    12:00:00.080 session    audio interruptionBegan (began-while-held)  lag 14ms  hidden=n",
+    "#10   12:00:00.090 remote     play -> play from command-center  handled=y  lag 5ms  hidden=y",
+    "#11   12:00:00.100 stop       element pausedUnexpectedly  state=?  hidden=n  at 494.4s rs=4 ns=2",
+    "#12   12:00:00.110 stop       reconcile visible  state=interrupted  hidden=n",
+    "#13   12:00:00.120 visibility -> hidden  after 38472ms",
+    "#14   12:00:00.130 resume     write wrote=true forayId=f1 index=3 elapsedSec=812",
+    "#15   12:00:00.140 nowplaying \"Ep\" / \"Show\" / \"Foray\"  art=1  state=playing  native=on/sent=4  hidden=y",
+    "#16   12:00:00.150 tapFail    start failed  error=NotAllowedError  x2 over 800ms  hidden=n",
+    "#17   12:00:00.160 search     qLen=4 local=1ms/3h net=118ms/7h dir=—/—h ep=300ms/12h cta=— painted=2ms path=shows  hidden=n",
+    "#18   12:00:00.170 voiceProbe kokoro-probe/cpu(cpu-only)  rtf cold 0.94 warm 0.61  load 1840ms/120ms  peak 312MB  locked=y  batt -3%  over 77.4s(rendered)  hidden=n",
+    "#19   12:00:00.180 voiceProbe kokoro-probe could not measure: synthesis-failed/inference-threw  load 457ms/374ms  peak 280.3MB  hidden=n",
+    "#20   12:00:00.190 voiceProbe kokoro-probe could not measure: model-absent  hidden=n",
+  ].join("\n"));
+});
+
+/* ---------- L21: which day, whose clock ---------- */
+
+test("GAPS L21: the header says the clock is UTC, the phone's zone, and the days the rows span; a divider marks each new UTC day", () => {
+  /* The paste's rows ran 00:41, 15:29, 23:44 with no date on any of them.
+     MUTATION 1: drop the divider when the day changes — the second
+     `-- 2026-09-25 (UTC) --` goes missing.
+     MUTATION 2: flip the zone's sign — the header reads UTC+07:00. */
+  const { log, diag, clock: c } = mk();
+  c.set(Date.UTC(2026, 8, 24, 23, 59, 59, 900));
+  diag.transport("tap", "play");
+  c.set(Date.UTC(2026, 8, 25, 0, 0, 0, 100));
+  diag.transport("tap", "pause");
+  const text = formatDiagnosticReport(log.read(), null, { tzOffsetMin: 420 });
+  assert.match(text, /^clock UTC \(device UTC-07:00\)\n {2}2026-09-24\.\.2026-09-25$/m);
+  const rows = text.split("\n").slice(text.split("\n").indexOf("-- 2026-09-24 (UTC) --"));
+  assert.deepEqual(rows, [
+    "-- 2026-09-24 (UTC) --",
+    "#1    23:59:59.900 transport  play from tap  hidden=n",
+    "-- 2026-09-25 (UTC) --",
+    "#2    00:00:00.100 transport  pause from tap  hidden=n",
+  ]);
+  /* East of UTC, a half-hour zone, and a zone nobody could read. */
+  assert.match(formatDiagnosticReport(log.read(), null, { tzOffsetMin: -330 }), /^clock UTC \(device UTC\+05:30\)$/m);
+  assert.match(formatDiagnosticReport(log.read(), null, { tzOffsetMin: NaN }), /^clock UTC \(device zone unknown\)$/m);
+});
+
+test("GAPS L21: the clear mark prints its DATE, not only a time of day", () => {
+  /* MUTATION: go back to `clockOf(cleared.wall)` — the date and the Z vanish. */
+  const { log, diag, clock: c } = mk();
+  c.set(Date.UTC(2026, 8, 23, 18, 4, 5, 6));
+  diag.boot();
+  log.clear();
+  assert.match(formatDiagnosticReport(log.read(), null, { tzOffsetMin: 420 }),
+    /^cleared at #1 2026-09-23 18:04:05\.006Z\n {2}· 0 recorded since$/m);
+});
+
+/* ---------- L32: a Clear from before the mark is not a loss ---------- */
+
+/** The founder's 2026-09-26 ring: seq 1208, 69 dropped, 200 rows #1009..#1208. */
+function ringOf2026_09_26({ skip = null } = {}) {
+  const entries = [];
+  for (let s = 1009; s <= 1208; s++) {
+    if (s === skip) continue;
+    entries.push({ seq: s, wall: AT_1032 + s, type: "visibility", to: "hidden", forMs: 1 });
+  }
+  return { v: 1, cap: 200, seq: 1208, dropped: 69, entries, cleared: null, build: null, saveErrors: 0 };
+}
+
+test("GAPS L32: the 2026-09-26 MISSING 939 was the founder's own Clear from a pre-#746 build, and says so", () => {
+  /* 1208 − 69 − 200 = 939, and the oldest kept row is #1009 = 939 + 69 + 1:
+     the ring is whole from its first row up, so the only rows unaccounted for
+     come before everything it ever dropped — an unmarked Clear.
+     MUTATION 1: drop the unmarked-Clear branch. MISSING 939 comes back.
+     MUTATION 2: take it for ANY gap. The mid-ring case below stops saying
+     MISSING, and a real loss is hidden. */
+  const text = formatDiagnosticReport(ringOf2026_09_26(), null, { tzOffsetMin: 420 });
+  assert.match(text, /^939 rows before an unmarked Clear\n {2}\(pre-#746 build\), not lost$/m);
+  assert.doesNotMatch(text, /MISSING/);
+  /* A gap INSIDE the ring is still a loss, said as one. */
+  const gap = formatDiagnosticReport(ringOf2026_09_26({ skip: 1100 }), null, { tzOffsetMin: 420 });
+  assert.match(gap, /^MISSING 940 of 1208 recorded rows: not in this ring, not dropped/m);
+  assert.doesNotMatch(gap, /unmarked Clear/);
+});
+
+test("GAPS L32: the log writes the inferred mark back ONCE, and the header names it as inferred", () => {
+  /* MUTATION 1: skip the back-fill in `_load` — `cleared` reads null.
+     MUTATION 2: let `clearedMarkOf` refuse `wall: null` — the mark is lost on
+     the next load and the header goes back to the unmarked-Clear reading. */
+  const store = fakeStore();
+  store.setItem(DIAG_KEY, JSON.stringify(ringOf2026_09_26()));
+  const c = clock(AT_1032 + 5000);
+  const log = new DiagnosticLog({ storage: store, now: c.now });
+  assert.deepEqual(log.cleared, { seq: 939, wall: null, inferred: true });
+  let text = formatDiagnosticReport(log.read(), null, { tzOffsetMin: 420 });
+  assert.match(text, /^cleared at #939 \(inferred, time unknown\)\n {2}· 269 recorded since$/m);
+  assert.doesNotMatch(text, /MISSING|unmarked/);
+  log.save();
+  const again = new DiagnosticLog({ storage: store, now: c.now });
+  assert.deepEqual(again.cleared, { seq: 939, wall: null, inferred: true }, "the mark round-trips");
+  /* A real mid-ring gap is never back-filled. */
+  const lossy = fakeStore();
+  lossy.setItem(DIAG_KEY, JSON.stringify(ringOf2026_09_26({ skip: 1100 })));
+  assert.equal(new DiagnosticLog({ storage: lossy, now: c.now }).cleared, null);
+  /* And a clock-less mark that does NOT say inferred is not a mark. */
+  const forged = fakeStore();
+  forged.setItem(DIAG_KEY, JSON.stringify({ ...ringOf2026_09_26({ skip: 1100 }), cleared: { seq: 5, wall: null } }));
+  assert.equal(new DiagnosticLog({ storage: forged, now: c.now }).cleared, null);
+  text = formatDiagnosticReport(again.read(), null, { tzOffsetMin: 420 });
+  assert.match(text, /entries 200 of 200/);
+});
+
+/* ---------- L22: which page boot ---------- */
+
+test("GAPS L22: every page boot is numbered, survives a Clear, and heads its rows with a divider", () => {
+  /* MUTATION 1: reset `_boots` in `clear()` — the third boot reads 1.
+     MUTATION 2: drop the divider — `== page boot 3 ==` is gone. */
+  const { log, diag, store } = mk();
+  diag.boot();
+  diag.boot();
+  log.clear();
+  diag.boot();
+  assert.equal(parse(store).boots, 3);
+  assert.equal(log.entries.at(-1).bootN, 3);
+  const text = formatDiagnosticReport(log.read(), null, { tzOffsetMin: 420 });
+  assert.match(text, /^== page boot 3 ==\n#3 {4}\S+ boot {7}hidden=n$/m);
+  /* A reload continues the count; "Delete my data" resets it. */
+  const next = new PlayerDiagnostics({ log: new DiagnosticLog({ storage: store }), now: () => 1 });
+  assert.equal(next.boot().bootN, 4);
+  log.forget();
+  assert.equal(log.boots, 0);
+});
+
+test("GAPS L22: where the engine decision landed is a row, from a closed set of lanes", () => {
+  /* MUTATION: store the mode unchecked — `legacy` becomes a row. */
+  const { log, diag } = mk();
+  diag.engineMode({ mode: "native", reason: "build-default" });
+  assert.equal(diag.engineMode({ mode: "legacy", reason: "x" }), null);
+  diag.engineMode({ mode: "js", reason: "Bridge Error!" });
+  const text = formatDiagnosticReport(log.read(), null, { tzOffsetMin: 420 });
+  assert.match(text, /^#1 {4}\S+ engineMode native \(build-default\)$/m);
+  assert.match(text, /^#2 {4}\S+ engineMode js \(\?\)$/m, "prose is not a reason");
+});
+
+/* ---------- L09: which phone ---------- */
+
+test("GAPS L09: the header names the phone and its OS from the freshest source, and never guesses", () => {
+  /* MUTATION 1: skip the page's own OS — the first reading is `device unknown`.
+     MUTATION 2: prefer the page's UA over the probe's device — iPhone15.2 is lost. */
+  const { log, diag } = mk();
+  assert.match(formatDiagnosticReport(log.read(), null, { tzOffsetMin: 0 }), /^device unknown$/m);
+  diag.build({ shell: true, web: "2b808ec9d50c5b98", native: "2026092602", version: "1.0", os: "18.6.2", platform: "ios" });
+  assert.equal(log.build.os, "18.6.2", "the running stamp keeps the OS across a Clear");
+  assert.match(formatDiagnosticReport(log.read(), null, { tzOffsetMin: 0 }), /^device \? · iOS 18\.6\.2$/m);
+  diag.voiceProbe({ engine: "kokoro-probe", ok: false, reason: "model-absent", device: "iPhone15.2", os: "18.6.2", platform: "ios", lowPower: false });
+  const text = formatDiagnosticReport(log.read(), null, { tzOffsetMin: 0 });
+  assert.match(text, /^device iPhone15\.2 · iOS 18\.6\.2 · lowPower=n$/m);
+  /* The device line sits right under the engine line, inside the phone width. */
+  const lines = text.split("\n");
+  assert.ok(lines[3].startsWith("device "));
+  assert.ok(lines[3].length <= 44, lines[3]);
+  /* An OS that is not a version is not stored. */
+  diag.build({ shell: false, web: "2b808ec9d50c5b98", os: "18.6.2; rm -rf" });
+  assert.equal(log.build.os, undefined);
+});
+
+/* ---------- Lane B: session and remote facts (L13-L20, L27) ---------- */
+
+test("GAPS Lane B: a session row prints every fact the plugin sends, in the contract's order", () => {
+  /* One exact line per fact. MUTATION: drop any one part from the session
+     line (e.g. `raw=`) — its line here changes. */
+  const { log, diag, clock: c } = mk();
+  c.set(AT_1032);
+  diag.sessionEvent({
+    kind: "routeChange", reason: "unknown", producer: "audio", at: AT_1032 - 38041,
+    from: "speaker", to: "carplay", rawReason: 8, cat: "playback", mode: "spoken-audio", mix: false,
+    other: true, hint: true, nseq: 12, nboot: 1_758_000_000_000,
+  });
+  assert.equal(lineOf(log, "session"),
+    "#1    00:46:00.551 session    audio routeChange @00:45:22.510 (unknown) speaker->carplay raw=8 cat=playback/spoken-audio mix=n other=y hint=y  lag 38041ms  hidden=n");
+  diag.sessionEvent({ kind: "sessionActivated", reason: "failed", at: AT_1032 - 1, err: "insufficient-priority", app: "bg", cat: "ambient", mode: "default", mix: true, other: true });
+  assert.equal(lineOf(log, "session"),
+    "#2    00:46:00.551 session    audio sessionActivated (failed) err=insufficient-priority app=bg cat=ambient/default mix=y other=y  lag 1ms  hidden=n");
+  diag.sessionEvent({ kind: "interruptionBegan", reason: "began-while-held", at: AT_1032, why: "app-suspended" });
+  assert.match(lineOf(log, "session"), / interruptionBegan \(began-while-held\) why=app-suspended {2}lag 0ms/);
+  diag.sessionEvent({ kind: "interruptionEnded", reason: "should-resume", at: AT_1032, durMs: 41_234 });
+  assert.match(lineOf(log, "session"), / interruptionEnded \(should-resume\) dur 41\.2s {2}lag/);
+  diag.sessionEvent({ kind: "nowPlayingReasserted", reason: "background", at: AT_1032, np: "paused", cmds: "play,pause,toggle,skipf,skipb", info: true });
+  assert.match(lineOf(log, "session"), / nowPlayingReasserted \(background\) np=paused cmds=play,pause,toggle,skipf,skipb info=y {2}lag/);
+  /* L27: the phone's pressure is admitted as session kinds. */
+  diag.sessionEvent({ kind: "memoryWarning", reason: "warning", at: AT_1032, availMb: 212 });
+  assert.match(lineOf(log, "session"), / memoryWarning \(warning\) avail 212MB {2}lag/);
+  assert.ok(diag.sessionEvent({ kind: "thermal", reason: "serious", at: AT_1032 }));
+  assert.ok(diag.sessionEvent({ kind: "lowPower", reason: "on", at: AT_1032 }));
+  assert.ok(SESSION_KINDS.has("thermal") && SESSION_KINDS.has("lowPower") && SESSION_KINDS.has("memoryWarning"));
+  /* nseq/nboot are stored, never printed. */
+  assert.equal(log.entries[0].nseq, 12);
+  assert.doesNotMatch(formatDiagnosticReport(log.read(), null, { tzOffsetMin: 0 }), /nseq|nboot|1758000000000/);
+  /* L31: the header counts each kind, and the failed ones, packed to the
+     phone's width — no item is split across lines. */
+  const text = formatDiagnosticReport(log.read(), null, { tzOffsetMin: 0 });
+  const at = text.split("\n").indexOf("session events 8:");
+  assert.deepEqual(text.split("\n").slice(at, at + 6), [
+    "session events 8:",
+    "  routeChange 1,",
+    "  sessionActivated 1 (1 failed),",
+    "  interruptionBegan 1, interruptionEnded 1,",
+    "  nowPlayingReasserted 1, memoryWarning 1,",
+    "  thermal 1, lowPower 1",
+  ]);
+  /* An engine-owned skip is counted as one, beside the failures. */
+  diag.sessionEvent({ kind: "sessionActivated", reason: "skipped-engine-owned", at: AT_1032 });
+  assert.match(formatDiagnosticReport(log.read(), null, { tzOffsetMin: 0 }), /^ {2}sessionActivated 2 \(1 failed, 1 skipped\),$/m);
+});
+
+test("GAPS Lane B: every fact outside its vocabulary is dropped — a car's NAME never enters the record", () => {
+  /* PORT TYPES ONLY: `portName` is often a person's name.
+     MUTATION: admit `to` by a token shape instead of the closed port set —
+     `Wyatt's Car` fails the shape, but `bluetoothA2DP` would get in. */
+  const { log, diag, store } = mk();
+  const e = diag.sessionEvent({
+    kind: "routeChange", reason: "new-device", at: 1,
+    to: "Wyatt's Car", from: "bluetoothA2DP", rawReason: "8", cat: "Playback", mode: "voiceChat",
+    mix: "y", err: "failed: busy", app: "background", why: "Siri", durMs: -5, np: "Playing",
+    cmds: "play,volume", info: 1, other: "yes", hint: null, availMb: NaN, nseq: 1.5, nboot: -1,
+  });
+  for (const k of ["to", "from", "rawReason", "cat", "mode", "mix", "err", "app", "why", "durMs", "np", "cmds", "info", "other", "hint", "availMb", "nseq", "nboot"]) {
+    assert.ok(!(k in e), `${k} was admitted off-vocabulary`);
+  }
+  assert.doesNotMatch(store.getItem(DIAG_KEY), /Wyatt|bluetoothA2DP|volume|Siri/);
+  assert.doesNotMatch(formatDiagnosticReport(log.read(), null, { tzOffsetMin: 0 }), /Wyatt|->/);
+  const r = diag.remoteCommand({ command: "play", action: "play", origin: "command-center", handled: true, at: 1, route: "Wyatt's Car", app: "fg" });
+  assert.ok(!("route" in r) && !("app" in r));
+});
+
+test("GAPS L19: a remote row names the route TYPE and the app's state before handled=", () => {
+  /* MUTATION: drop ` route=` from the remote line. */
+  const { log, diag, clock: c } = mk();
+  c.set(AT_1032);
+  diag.remoteCommand({ command: "play", action: "play", origin: "command-center", handled: true, at: AT_1032 - 5, route: "carplay", app: "bg", nseq: 3, nboot: 7 });
+  assert.equal(lineOf(log, "remote"),
+    "#1    00:46:00.551 remote     play -> play from command-center route=carplay app=bg  handled=y  lag 5ms  hidden=n");
+});
+
+test("GAPS L20: native events lost are counted per process from the plugin's own numbers", () => {
+  /* Process A numbered 1,2,3,5 (one lost), process B 1 and 4 (two lost).
+     MUTATION 1: pool the processes — {1..5} reads as nothing lost.
+     MUTATION 2: count remote rows out — A reads 2 lost. */
+  const { log, diag } = mk();
+  assert.doesNotMatch(formatDiagnosticReport(log.read(), null, { tzOffsetMin: 0 }), /native events lost/, "silent with no nseq");
+  const A = 1_758_000_000_000;
+  const B = A + 3_600_000;
+  diag.sessionEvent({ kind: "background", at: 1, nseq: 1, nboot: A });
+  diag.sessionEvent({ kind: "foreground", at: 1, nseq: 2, nboot: A });
+  diag.remoteCommand({ command: "play", origin: "command-center", at: 1, nseq: 3, nboot: A });
+  diag.sessionEvent({ kind: "background", at: 1, nseq: 5, nboot: A });
+  diag.sessionEvent({ kind: "background", at: 1, nseq: 1, nboot: B });
+  diag.sessionEvent({ kind: "foreground", at: 1, nseq: 4, nboot: B });
+  diag.sessionEvent({ kind: "foreground", at: 1 });
+  assert.match(formatDiagnosticReport(log.read(), null, { tzOffsetMin: 0 }), /^native events lost 3 \(nseq gaps\)$/m);
+  /* Whole numbering prints nothing: the line is a finding, not a status. */
+  const whole = mk();
+  whole.diag.sessionEvent({ kind: "background", at: 1, nseq: 7, nboot: A });
+  whole.diag.sessionEvent({ kind: "foreground", at: 1, nseq: 8, nboot: A });
+  assert.doesNotMatch(formatDiagnosticReport(whole.log.read(), null, { tzOffsetMin: 0 }), /native events lost/);
+});
+
+test("GAPS L33: what a vocabulary refuses is COUNTED by door, persisted, and survives a Clear — the text never is", () => {
+  /* The log's own rule is "nothing is dropped silently"; these three returned
+     null and said nothing.
+     MUTATION 1: return null without counting — the header line is missing.
+     MUTATION 2: reset `_refused` in `clear()` — the counts after the Clear are 0. */
+  const { log, diag, store } = mk();
+  assert.equal(diag.sessionEvent({ kind: "carPlayConnected", reason: "Wyatt's Car" }), null);
+  assert.equal(diag.sessionEvent({ kind: "siri" }), null);
+  assert.equal(diag.remoteCommand({ command: "like", origin: "webkit" }), null);
+  assert.equal(diag.transport("siri", "play"), null);
+  assert.deepEqual(log.refused, { session: 2, remote: 1, transport: 1 });
+  diag.boot();
+  assert.deepEqual(parse(store).refused, { session: 2, remote: 1, transport: 1 }, "persisted with the next write");
+  assert.doesNotMatch(store.getItem(DIAG_KEY), /carPlayConnected|Wyatt|like|siri/);
+  assert.match(formatDiagnosticReport(log.read(), null, { tzOffsetMin: 0 }),
+    /^refused by vocabulary: session x2, remote x1, transport x1$/m);
+  log.clear();
+  assert.deepEqual(log.refused, { session: 2, remote: 1, transport: 1 });
+  log.forget();
+  assert.deepEqual(log.refused, { session: 0, remote: 0, transport: 0 });
+  assert.doesNotMatch(formatDiagnosticReport(log.read(), null, { tzOffsetMin: 0 }), /refused by vocabulary/);
+});
+
+/* ---------- L24: what the player believed at a stop ---------- */
+
+test("GAPS L24: an unexplained stop says the player's state, its item, and how long since the last remote and session rows", () => {
+  /* `state=?` on every pausedUnexpectedly row was a hard-coded null.
+     MUTATION 1: go back to `state: null` — `state=playing` is gone.
+     MUTATION 2: measure since the OLDEST remote row — sinceRemote reads 3.2s. */
+  const store = fakeStore();
+  const c = clock(AT_1032);
+  const log = new DiagnosticLog({ storage: store, now: c.now });
+  let belief = { state: "playing", item: "seg-12" };
+  const diag = new PlayerDiagnostics({ log, now: c.now, getState: () => belief });
+  diag.remoteCommand({ command: "play", origin: "command-center", at: c.now() });
+  c.tick(2000);
+  diag.remoteCommand({ command: "pause", origin: "command-center", at: c.now() });
+  c.tick(1160);
+  diag.sessionEvent({ kind: "routeChange", reason: "new-device", at: c.now() });
+  c.tick(40);
+  diag.note("audio.pausedUnexpectedly t=494.4 rs=4 ns=2 err=0 — nobody asked for this pause");
+  assert.equal(lineOf(log, "stop"),
+    "#4    00:46:03.751 stop       element pausedUnexpectedly  state=playing item=seg-12 sinceRemote 1.2s sinceSession 40ms  hidden=n  at 494.4s rs=4 ns=2");
+  /* The audio.error and play.rejected stops carry it too. */
+  diag.note("audio.error code=4 src=https://cdn.example/x.mp3?token=abc");
+  assert.match(lineOf(log, "stop"), /audio\.error\.code=4 {2}state=playing item=seg-12 sinceRemote 1\.2s sinceSession 40ms/);
+  diag.note("play.rejected NotAllowedError");
+  assert.match(lineOf(log, "stop"), /play\.rejected\.NotAllowedError {2}state=playing item=seg-12/);
+  /* A belief that is not a token or an id is dropped; a throwing one is not the outage. */
+  belief = { state: "playing now", item: "https://cdn.example/x?y" };
+  diag.note("audio.pausedUnexpectedly");
+  assert.match(lineOf(log, "stop"), /pausedUnexpectedly {2}state=\? sinceRemote/);
+  const boom = new PlayerDiagnostics({ log, now: c.now, getState: () => { throw new Error("no manager"); } });
+  assert.doesNotThrow(() => boom.note("audio.pausedUnexpectedly"));
+  assert.doesNotMatch(store.getItem(DIAG_KEY), /cdn\.example|token=abc/);
+});
+
+/* ---------- L25: what the element was doing at a stall ---------- */
+
+test("GAPS L25: a stall row carries the element's own state on the FIRST row of a run", () => {
+  /* MUTATION 1: drop `ahead` — a starving element and a throttled paused one
+     read the same again. MUTATION 2: overwrite the facts on a repeat. */
+  const { log, diag, clock: c } = mk();
+  c.set(AT_1032);
+  diag.mediaEvent("stalled", { paused: true, atSec: 312.43, rs: 2, ns: 2, aheadSec: 0, online: true });
+  diag.mediaEvent("stalled", { paused: false, atSec: 999, rs: 4, ns: 1, aheadSec: 60, online: false });
+  assert.equal(lineOf(log, "media"),
+    "#1    00:46:00.551 media      stalled x2 over 0ms paused=y at 312.4s rs=2 ns=2 ahead 0.0s online=y  hidden=n");
+  /* A fact of the wrong type is dropped, never stringified. */
+  diag.mediaEvent("waiting", { paused: "no", atSec: "312", rs: 2.5, ns: -1, aheadSec: Infinity, online: "y" });
+  assert.equal(lineOf(log, "media"), "#2    00:46:00.551 media      waiting  hidden=n");
+});
+
+/* ---------- L26: a refresh's bound and stage ---------- */
+
+test("GAPS L26: a data row says the bound its time was held to, which request, the held set, online, and time since foreground", () => {
+  /* MUTATION: print `took` without `/limit` — `took 4001ms/4000` reads as a
+     plain 4 s, which is exactly the ambiguity the founder's paste had. */
+  const { log, diag, clock: c } = mk();
+  c.set(AT_1032);
+  diag.visibility(true);
+  c.tick(5000);
+  diag.visibility(false);
+  c.tick(120);
+  assert.equal(diag.sinceForegroundMs(), 120);
+  diag.dataSource({
+    phase: "refresh", trigger: "foreground", status: "offline", code: "timeout", ms: 4001,
+    stage: "pointer", limitMs: 4000, held: "123", online: true, sinceFgMs: diag.sinceForegroundMs(),
+  });
+  assert.equal(lineOf(log, "data"),
+    "#3    00:46:05.671 data       refresh(foreground) offline why=timeout took 4001ms/4000 stage=pointer held=v123 online=y sinceFg 120ms  hidden=n");
+  diag.dataSource({ phase: "refresh", status: "offline", stage: "dns", held: "../a b", online: "yes", sinceFgMs: -1, limitMs: "4000" });
+  assert.equal(lineOf(log, "data"), "#4    00:46:05.671 data       refresh offline  hidden=n");
+});
+
+/* ---------- L06 + Lane A: the voice probe says why, and on what ---------- */
+
+/** The 2026-09-26 probe, as Lane A's summarizeProbe would hand it over. */
+const PROBE_2026_09_26 = Object.freeze({
+  engine: "kokoro-probe", ok: false, reason: "synthesis-failed", synthReason: "inference-threw",
+  provider: "cpu", model: "kokoro-82m-v1.0-q8f16", modelLoadColdMs: 457, modelLoadWarmMs: 374,
+  synthColdMs: 812, synthWarmMs: 2210, elapsedMs: 9000, synthFailures: 4, lines: 4,
+  peakMemoryMb: 312, availableMemoryMb: 1104, baseMemoryMb: 142, memWarn: false,
+  platform: "ios", ortCode: "not-implemented", ortOp: "ConvTranspose", ortStage: "run", loadErr: null,
+  lineOutcomes: "threw,threw,threw,threw", nonFiniteLines: 0, silentLines: 0,
+  ortVersion: "1.20.0", intraThreads: 0, cores: 6, modelBytes: 86033585, modelSha8: "04c658ae", modelPin: "ok",
+  device: "iPhone15.2", os: "18.6.2", thermalStart: "nominal", thermalEnd: "nominal", lowPower: false, bgAtFail: true,
+});
+
+test("GAPS L06/Lane A: the 2026-09-26 probe failure says WHY and ON WHAT, on one line", () => {
+  /* The paste said `could not measure: synthesis-failed/inference-threw load
+     457ms/374ms peak 280.3MB`. Pinned exactly, so dropping ANY part fails.
+     MUTATION: drop any one tail part (ort=, lines, synth, mem, ort, model,
+     device, thermal, playing, bgAtFail, hidden=). */
+  const { log, diag, store, clock: c } = mk();
+  c.set(Date.UTC(2026, 8, 26, 23, 44, 42, 684));
+  store.hidden = true;
+  diag.voiceProbe(PROBE_2026_09_26, { playing: false });
+  assert.equal(lineOf(log, "voiceProbe"),
+    "#1    23:44:42.684 voiceProbe kokoro-probe/cpu could not measure: synthesis-failed/inference-threw" +
+    " ort=not-implemented op=ConvTranspose at=run  failed 4/4 lines threw,threw,threw,threw" +
+    "  load 457ms/374ms  synth 812ms/2210ms  mem base 142 peak 312MB avail 1104MB warn=n" +
+    "  ort 1.20.0 t=auto/6c  model q8f16 86033585B sha 04c658ae pin=ok  iPhone15.2 iOS 18.6.2" +
+    "  thermal nominal>nominal lowPower=n  playing=n bgAtFail=y  hidden=y");
+  /* NaN and silent lines, a failed load, a fixed thread count, Android. */
+  diag.voiceProbe({
+    ...PROBE_2026_09_26, loadErr: "invalid-protobuf", nonFiniteLines: 2, silentLines: 1,
+    intraThreads: 4, platform: "android", device: "Pixel-8", os: "14", bgAtFail: null,
+  });
+  const line = lineOf(log, "voiceProbe");
+  assert.match(line, / {2}load FAILED\(invalid-protobuf\) 457ms\/374ms /);
+  assert.match(line, / {2}ort 1\.20\.0 t=4\/6c /);
+  assert.match(line, / {2}Pixel-8 Android 14 /);
+  assert.match(line, / {2}nan 2\/4 {2}silent 1\/4 {2}hidden=y$/);
+});
+
+test("GAPS L06/Lane A: a success line keeps its K-01 numbers and appends the same tail", () => {
+  /* MUTATION: build the tail only on the failure path. */
+  const { log, diag } = mk();
+  diag.voiceProbe({
+    ...PROBE_2026_09_26, ok: true, reason: null, synthReason: null, synthFailures: 0, ortCode: null,
+    ortOp: null, ortStage: null, lineOutcomes: "ok,ok,ok,ok", rtfCold: 0.94, rtfWarm: 0.61,
+    audioSec: 77.4, audioFrom: "rendered", lockedScreenCompleted: true, batteryDeltaPct: -3,
+    thermalEnd: "fair", bgAtFail: null,
+  }, { playing: true });
+  assert.equal(lineOf(log, "voiceProbe").replace(/^#1 {4}\S+ /, ""),
+    "voiceProbe kokoro-probe/cpu(cpu-only)  rtf cold 0.94 warm 0.61  load 457ms/374ms  peak 312MB  locked=y" +
+    "  batt -3%  over 77.4s(rendered) lines ok,ok,ok,ok  mem base 142 avail 1104MB warn=n  ort 1.20.0 t=auto/6c" +
+    "  model q8f16 86033585B sha 04c658ae pin=ok  iPhone15.2 iOS 18.6.2  thermal nominal>fair lowPower=n" +
+    "  playing=y  hidden=n");
+});
+
+test("GAPS Lane A: a probe value in the wrong shape is dropped, never stored — a path, a comma, a ninth hex digit", () => {
+  /* voiceProbe re-validates what summarizeProbe already sanitised: this file
+     imports nothing and does not trust a caller.
+     MUTATION: store `ortOp` or `device` unchecked — the path or the comma
+     reaches the blob. */
+  const { log, diag, store } = mk();
+  const e = diag.voiceProbe({
+    engine: "kokoro-probe", ok: false, reason: "synthesis-failed",
+    ortOp: "/var/mobile/Containers/Data/Application/X/model.onnx", ortCode: "segfault", ortStage: "load",
+    device: "iPhone15,2", os: "18.6.2 beta", modelSha8: "04c658ae1", modelPin: "yes",
+    lineOutcomes: "ok,boom", thermalStart: "hot", lowPower: "n", intraThreads: -1, cores: 6.5,
+  });
+  for (const k of ["ortOp", "ortCode", "ortStage", "device", "os", "modelSha8", "modelPin", "lineOutcomes", "thermalStart", "lowPower", "intraThreads", "cores"]) {
+    assert.ok(!(k in e), `${k} was admitted in a wrong shape`);
+  }
+  assert.doesNotMatch(store.getItem(DIAG_KEY), /var\/mobile|iPhone15,2|04c658ae1|boom/);
+  assert.equal(lineOf(log, "voiceProbe").replace(/^#1 {4}\S+ /, ""),
+    "voiceProbe kokoro-probe could not measure: synthesis-failed  hidden=n");
+});
+
+test("GAPS Lane A: this file's probe vocabularies are the ones kokoro-probe.js admits (when it exports them)", async (t) => {
+  /* This module imports nothing, so the two copies are pinned here instead.
+     Skipped until Lane A's kokoro-probe.js exports its sets. */
+  const kp = await import("./kokoro-probe.js");
+  if (!Array.isArray(kp.ORT_CODES)) { t.skip("kokoro-probe.js does not export ORT_CODES yet (Lane A)"); return; }
+  const same = (a, b) => assert.deepEqual([...a].sort(), [...b].sort());
+  same(PROBE_ORT_CODES, kp.ORT_CODES);
+  same(PROBE_ORT_STAGES, kp.ORT_STAGES);
+  same(PROBE_LINE_OUTCOMES, kp.LINE_OUTCOMES);
+  same(THERMAL_STATES, kp.THERMAL_STATES);
 });

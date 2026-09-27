@@ -78,7 +78,10 @@ export const DV_TITLES = Object.freeze({
 
 // ───────────────────────────── parsing ─────────────────────────────
 
-const ENGINE_LINE = /^#(\d+)\s+(\d{2}):(\d{2}):(\d{2})\.(\d{3})\s+(\S+)\s+src=engine(?:\s+(.*))?$/;
+/* `e#0012` since 2026-09-26 (log-gaps L22: the page's ring and the engine's
+   both count from 1, so the engine's rows took an `e`); `#0012` before it.
+   Both are read, so a paste from either side of the change still parses. */
+const ENGINE_LINE = /^e?#(\d+)\s+(\d{2}):(\d{2}):(\d{2})\.(\d{3})\s+(\S+)\s+src=engine(?:\s+(.*))?$/;
 const PAGE_LINE = /^(?:#(\d+)\s+)?(\d{2}):(\d{2}):(\d{2})\.(\d{3})\s+(\S+)\s*(.*)$/;
 const HEADER_LINE = /^engine=(native|js)\b(.*)$/;
 const RING_LINE = /^engine rows (\d+) of (\d+)(?:, #(\d+)\.\.#(\d+))?(?:, (\d+) older evicted)?(?:, (\d+) MISSING)?/;

@@ -2915,3 +2915,43 @@ test("THE SEEK PATH'S deadline is ref'd too — the half of the seams nothing co
     assert.ok(t?.hasRef?.() !== false, "the seek deadline must never be unref'd either");
   }
 });
+
+/* ---------- elementFacts (log-gaps 2026-09-26, L25) ---------- */
+
+test("elementFacts reports the element's state as numbers, and how much is buffered AHEAD of the playhead", () => {
+  /* A `stalled` row could not say whether the element was starving or paused
+     and throttled in the background. KILLING MUTATION: measure `ahead` from the
+     first buffered range instead of the one holding the playhead — this reads
+     0.0 (or negative) instead of 30. */
+  const { el, b } = mk();
+  el.paused = false;
+  el.currentTime = 312.4;
+  el.readyState = 2;
+  el.networkState = 2;
+  const ranges = [[0, 10], [300, 342.4]];
+  el.buffered = { length: ranges.length, start: (i) => ranges[i][0], end: (i) => ranges[i][1] };
+  const f = b.elementFacts();
+  assert.equal(f.paused, false);
+  assert.equal(f.atSec, 312.4);
+  assert.equal(f.rs, 2);
+  assert.equal(f.ns, 2);
+  assert.ok(Math.abs(f.aheadSec - 30) < 1e-9, `ahead ${f.aheadSec}`);
+  // A playhead in no buffered range has nothing ahead of it.
+  el.currentTime = 100;
+  assert.equal(b.elementFacts().aheadSec, 0);
+});
+
+test("elementFacts never throws: an element whose reads throw reports nulls", () => {
+  /* It is called from a media listener on the seam-critical path; a throw
+     there would be the instrument becoming the outage.
+     KILLING MUTATION: drop the `read()` guard around `buffered`. */
+  const { el, b } = mk();
+  Object.defineProperty(el, "buffered", { get() { throw new Error("detached"); } });
+  Object.defineProperty(el, "readyState", { get() { throw new Error("detached"); } });
+  let f;
+  assert.doesNotThrow(() => { f = b.elementFacts(); });
+  assert.equal(f.aheadSec, null);
+  assert.equal(f.rs, null);
+  assert.equal(f.paused, null, "a fake without `paused` reports it unknown, never false");
+  assert.deepEqual(Object.keys(f).sort(), ["aheadSec", "atSec", "ns", "paused", "rs"], "numbers only — no source, no URL");
+});

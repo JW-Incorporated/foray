@@ -1089,6 +1089,41 @@ export class HtmlAudioBackend {
     return `t=${n(t, 1)} rs=${n(rs)} ns=${n(ns)} err=${n(err)}`;
   }
 
+  /**
+   * The element's state as numbers, for a `waiting`/`stalled` row in the field
+   * record (log-gaps 2026-09-26, L25): `{ paused, atSec, rs, ns, aheadSec }`.
+   * `aheadSec` is how much is buffered past the playhead — the end of the
+   * buffered range that contains `currentTime`, minus `currentTime`, or 0 when
+   * no range contains it. It separates a starving element (nothing ahead) from
+   * a paused one the OS is throttling in the background (plenty ahead). TOTAL,
+   * like `_elementFingerprint`: a read that throws yields null for that field,
+   * and the method itself never throws. No URL, no source — numbers only.
+   */
+  elementFacts() {
+    const el = this.el;
+    const read = (fn) => { try { return fn(); } catch (_) { return null; } };
+    const numOr = (v) => (typeof v === "number" && Number.isFinite(v) ? v : null);
+    const paused = read(() => el.paused);
+    const atSec = numOr(read(() => el.currentTime));
+    const aheadSec = read(() => {
+      const b = el.buffered;
+      if (atSec == null || !b || typeof b.length !== "number") return null;
+      for (let i = 0; i < b.length; i++) {
+        const start = b.start(i);
+        const end = b.end(i);
+        if (atSec >= start && atSec <= end) return Math.max(0, end - atSec);
+      }
+      return 0;
+    });
+    return {
+      paused: typeof paused === "boolean" ? paused : null,
+      atSec,
+      rs: numOr(read(() => el.readyState)),
+      ns: numOr(read(() => el.networkState)),
+      aheadSec: numOr(aheadSec),
+    };
+  }
+
   _notePause() {
     if (this._expectPause) { this._expectPause = false; return; }
     /* A FILE THAT RAN OUT IS NOT A STOLEN SESSION. The end-of-media steps set
