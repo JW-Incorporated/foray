@@ -1,0 +1,38 @@
+name: probe-kokoro-speed-l1 (throwaway, not for merge)
+on:
+  push:
+    branches: [probe/kokoro-speed-l1]
+permissions:
+  contents: read
+jobs:
+  arm64:
+    strategy:
+      fail-fast: false
+      matrix:
+        mode: [speed, chunks, threads, profile, fp16, ortver]
+    runs-on: macos-14
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: node tools/mobile/fetch-models.mjs
+      - run: pip install "onnxruntime==1.20.1" numpy onnx psutil packaging
+      - run: sysctl -n machdep.cpu.brand_string hw.memsize hw.ncpu || true
+      - if: matrix.mode == 'ortver'
+        run: |
+          for v in 1.20.1 1.24.4 1.30.0; do
+            python -m venv venv$v && venv$v/bin/pip -q install "onnxruntime==$v" numpy psutil
+          done
+      - if: matrix.mode != 'ortver'
+        run: python -u tools/probe-tmp/speed_l1.py ${{ matrix.mode }}
+      - if: matrix.mode == 'ortver'
+        run: python -u tools/probe-tmp/speed_l1.py ortver 1.20.1,1.24.4,1.30.0
+      - if: matrix.mode == 'fp16' && always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fp16-wavs
+          path: wavs/
+          if-no-files-found: ignore
