@@ -15125,7 +15125,10 @@ function bindEngineDevRows() {
    flight the control is disabled, and a second call reopens the sheet, says
    it is running, and hands back the same promise. */
 let voiceProbeRunning = null;
-const VOICE_PROBE_RUNNING_LINE = "Running the voice probe — this takes about 90 seconds.";
+/* KV-R2: an iPhone runs the passage twice (CPU, then CoreML) on the 325 MB
+   fp32 model, and the CoreML pass compiles the model first — minutes, not
+   the one pass's ~90 s. */
+const VOICE_PROBE_RUNNING_LINE = "Running the voice probe — two passes on iPhone, about five minutes. Lock the phone now.";
 function runVoiceProbe() {
   if (voiceProbeRunning) {
     const ui = diagSheet();
@@ -15157,16 +15160,27 @@ async function runVoiceProbeOnce() {
     return null;
   }
   try {
-    const record = await player.runVoiceProbe();
+    /* ONE RECORD PER PASS since KV-R2 (`cpu`, then `coreml` on iPhone); an
+       older player answers one record, which is a list of one. */
+    const result = await player.runVoiceProbe();
+    const records = Array.isArray(result) ? result : (result ? [result] : []);
     refreshDiagSheet();
-    const out = typeof player.formatVoiceProbe === "function"
+    const format = (record) => (typeof player.formatVoiceProbe === "function"
       ? player.formatVoiceProbe(record)
-      : { text: "", verdict: { go: false, failures: ["no verdict available"] } };
-    ui.status.textContent = record && record.ok
-      ? `${out.text}\n  go/no-go: ${out.verdict.go ? "GO" : `NO — ${out.verdict.failures.join("; ")}`}`
-      : `The probe could not measure anything: ${record && record.reason ? record.reason : "unknown"}. `
+      : { text: "", verdict: { go: false, failures: ["no verdict available"] } });
+    /* A pass that measured shows its numbers and its verdict; a pass that
+       could not says why, beside the one that could. Only when NO pass
+       measured does the line collapse to the reason. */
+    ui.status.textContent = records.some((r) => r && r.ok)
+      ? records.map((r) => {
+        const out = format(r);
+        return r && r.ok
+          ? `${out.text}\n  go/no-go: ${out.verdict.go ? "GO" : `NO — ${out.verdict.failures.join("; ")}`}`
+          : out.text;
+      }).join("\n\n")
+      : `The probe could not measure anything: ${records.map((r) => (r && r.reason) || "unknown").join(", ") || "unknown"}. `
         + `The record above says the same thing — copy it.`;
-    return record;
+    return result;
   } catch (_) {
     ui.status.textContent = "The probe failed to run. Copy the record above and say what build this is.";
     return null;

@@ -70,7 +70,8 @@ USAGE
 `--json` reads `{"items": [{"id": ..., "script": ...}, ...]}` and writes
 `{"items": [{"id": ..., "phonemes": ..., "tts": {...}, "est_sec": ...}, ...]}`
 — the shape `backend/src/generation/phonemize.ts` consumes. `--passage` fills
-`phonemes` and `ids` in the probe/audition passage in place.
+`phonemes` (sentence chunks joined by a newline, D3) and `chunks` (each chunk's
+`ids`, `style_row` and `est_sec`) in the probe/audition passage in place.
 """
 
 from __future__ import annotations
@@ -164,6 +165,99 @@ def plan_overrides(script: str, entries: list[dict]) -> list[dict]:
 def estimate_seconds(script: str) -> float:
     """`est_sec` until K-04 can record a real rendered length (deck K-02)."""
     return round(len(script) / CHARS_PER_SEC, 3)
+
+
+# ------------------------------------------------------------- the chunk rule
+#
+# `docs/kokoro-voices-in-app-plan.md` D3: chunks are AUTHORED, here, and never
+# computed on a phone. THIS IS THE RULE'S ONE IMPLEMENTATION. KV-R2 added it for
+# the probe passage; KV-02 wires it into `phonemize_script` and
+# `render-audition.py` imports it, rather than either growing a second chunker.
+# The phone only ever splits on "\n", so there is no Swift, Java or JS copy to
+# keep in parity with this one.
+#
+# WHY SENTENCE-SIZED. The style row is chosen by the chunk's own length, so a
+# chunk IS a unit of voice as well as of latency. And on ARM64 fp32's peak RSS
+# reached ~1.3-1.4 GB on the passage's 417-token line (deck §10b): activation
+# memory scales with the length of what one inference is handed, so the chunk
+# length is also the first memory lever (`max_chunk_phonemes`, §6a).
+
+#: A sentence shorter than this (in code points) merges into the next one: a
+#: two-word chunk is sung from a style row for a two-word input, which sounds it.
+MIN_CHUNK_PHONEMES = 24
+#: No chunk is longer than this (in code points), so no inference is handed a
+#: line the graph's 512-id limit (510 unpadded, less the pads) cannot take.
+MAX_CHUNK_PHONEMES = 460
+
+_SENTENCE_END = re.compile(r"(?<=[.!?;])\s+")
+
+
+def sentence_chunks(
+    phonemes: str,
+    min_len: int = MIN_CHUNK_PHONEMES,
+    max_len: int = MAX_CHUNK_PHONEMES,
+) -> list[str]:
+    """A phoneme string -> its sentence chunks, by D3's rule.
+
+    1. Split after ``.``, ``!``, ``?`` or ``;`` followed by whitespace.
+    2. A sentence under ``min_len`` merges FORWARD into the next one. The last
+       sentence has no next one, so a short last sentence merges backward into
+       the chunk before it (a lone "Yes." chunk would be the same fault at the
+       other end).
+    3. A chunk over ``max_len`` splits at its last space at or before
+       ``max_len`` (a hard cut only when there is no space at all).
+
+    There is no other merging: two ordinary sentences are two chunks, which is
+    what keeps time-to-first-audio short.
+
+    LENGTHS COUNT CODE POINTS, which is what Python's ``len`` counts and what
+    the phone's id mapping iterates. A combining mark such as U+0303 (the
+    nasal tilde misaki writes after a vowel) is one code point, one id, and one
+    unit of length here. Not a grapheme (it would count zero) and not a UTF-16
+    unit.
+
+    Joining the chunks with single spaces gives back the input with its
+    whitespace runs collapsed: nothing is dropped, because a dropped phoneme is
+    a missing word.
+    """
+    text = " ".join(phonemes.split())
+    if not text:
+        return []
+    sentences = [s for s in _SENTENCE_END.split(text) if s]
+
+    merged: list[str] = []
+    carry = ""
+    for i, sentence in enumerate(sentences):
+        s = f"{carry} {sentence}" if carry else sentence
+        carry = ""
+        last = i == len(sentences) - 1
+        if len(s) < min_len and not last:
+            carry = s
+            continue
+        if len(s) < min_len and last and merged:
+            merged[-1] = f"{merged[-1]} {s}"
+            continue
+        merged.append(s)
+
+    chunks: list[str] = []
+    for s in merged:
+        while len(s) > max_len:
+            cut = s.rfind(" ", 1, max_len + 1)
+            if cut <= 0:
+                chunks.append(s[:max_len])
+                s = s[max_len:].lstrip()
+            else:
+                chunks.append(s[:cut])
+                s = s[cut + 1:]
+        if s:
+            chunks.append(s)
+    return chunks
+
+
+def style_row(ids: list[int], rows: int = 510) -> int:
+    """D3: the style row is ``min(padded - 2, rows - 1)``, the unpadded length
+    clamped to the voice matrix. The same arithmetic both native engines do."""
+    return max(0, min(len(ids) - 2, rows - 1))
 
 
 # ----------------------------------------------------------------- the backend
@@ -382,7 +476,7 @@ def main(argv: list[str]) -> int:
     ap.add_argument("--check", action="store_true", help="report what is installed and exit")
     ap.add_argument("--text", help="phonemize one string and print the result as JSON")
     ap.add_argument("--json", dest="json_in", help='read {"items":[{"id","script"}]} and write the phonemized items')
-    ap.add_argument("--passage", help="fill `phonemes`/`ids` in a probe/audition passage")
+    ap.add_argument("--passage", help="fill `phonemes`/`chunks` in a probe/audition passage")
     ap.add_argument("--out", help="where to write (default: stdout)")
     ap.add_argument("--in-place", action="store_true", help="rewrite --passage in place")
     args = ap.parse_args(argv)
@@ -430,15 +524,33 @@ def main(argv: list[str]) -> int:
         fallback_terms: list[str] = []
         for line in doc.get("lines", []):
             res = phonemize_script(line.get("text", ""), entries, g2p)
-            line["phonemes"] = res["phonemes"]
+            # KV-R2: ONE INFERENCE PER SENTENCE CHUNK (D3), so the probe times
+            # what the app will run and not a 417-token line it never will.
+            # `phonemes` is the chunks joined by "\n" (D3's wire shape) and
+            # each chunk carries its own ids, style row and share of the line's
+            # estimated seconds. The line-level `ids` is gone: a whole-line id
+            # array is exactly the inference nothing should run any more.
+            pieces = sentence_chunks(res["phonemes"])
+            line["phonemes"] = "\n".join(pieces)
+            line.pop("ids", None)
+            total = sum(len(p) for p in pieces) or 1
+            chunks = []
             try:
-                line["ids"] = ids_for(res["phonemes"], vocab_doc)
+                for piece in pieces:
+                    ids = ids_for(piece, vocab_doc)
+                    chunks.append({
+                        "phonemes": piece,
+                        "ids": ids,
+                        "style_row": style_row(ids),
+                        "est_sec": round(float(line.get("est_sec") or res["est_sec"]) * len(piece) / total, 3),
+                    })
             except UnsingablePhoneme as exc:
                 # REFUSE THE WHOLE PASSAGE, not just the line. A passage with
                 # three good lines and one absent one still produces an RTF,
                 # and that number would be quoted as the measurement.
                 print(f"{line.get('id')}: {exc}", file=sys.stderr)
                 return 1
+            line["chunks"] = chunks
             line["espeak_fallback"] = res["espeak_fallback"]
             for term in res["espeak_fallback"]:
                 if term not in fallback_terms:

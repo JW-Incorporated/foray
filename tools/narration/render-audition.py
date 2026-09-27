@@ -151,9 +151,21 @@ def missing_dependencies() -> list[str]:
     if not MODEL_FILE.exists():
         missing.append(f"{MODEL_FILE.relative_to(REPO_ROOT)} (fetched, never committed)")
     passage = load_passage()
-    if any(not line.get("ids") for line in passage.get("lines", [])):
+    if any(not line_chunk_ids(line) for line in passage.get("lines", [])):
         missing.append("phonemized passage (run tools/narration/phonemize.py --passage ... --in-place)")
     return missing
+
+
+def line_chunk_ids(line: dict) -> list[list[int]]:
+    """A passage line's inferences: its sentence chunks' ids since KV-R2
+    (`phonemize.py`'s `sentence_chunks`), or a pre-KV-R2 whole-line `ids`
+    as one. Empty when the line is unphonemized, including when any chunk has
+    no ids — a line with a hole in it is not a line to render."""
+    chunks = line.get("chunks")
+    if chunks:
+        ids = [c.get("ids") for c in chunks]
+        return ids if all(ids) else []
+    return [line["ids"]] if line.get("ids") else []
 
 
 STYLE_DIM = 256
@@ -212,7 +224,11 @@ def render(voices: list[str], speeds: list[float], out_dir: Path = OUT_DIR) -> l
     for voice in voices:
         style = np.fromfile(MODELS_DIR / f"{voice}.bin", dtype=np.float32)
         for speed in speeds:
-            chunks = [synth_ids(session, style, line["ids"], speed) for line in passage["lines"]]
+            chunks = [
+                synth_ids(session, style, ids, speed)
+                for line in passage["lines"]
+                for ids in line_chunk_ids(line)
+            ]
             audio = np.concatenate(chunks)
             path = clip_path(inverse[voice], speed, fingerprint, out_dir)
             path.parent.mkdir(parents=True, exist_ok=True)

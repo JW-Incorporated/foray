@@ -38,6 +38,23 @@ import os
  * count — the voice file is 510 rows of 256 floats, one per possible length —
  * which is why `ids.count - 2` appears below and why dropping a single phoneme
  * would change the voice as well as the word.
+ *
+ * ── Probe v2 (KV-R2, docs/kokoro-voices-in-app-plan.md §6a, D13) ──────────
+ * THE MODEL IS fp32 NOW. On Apple-silicon ORT every Kokoro export with fp16
+ * activations (q8f16, which this file ran until KV-R2, and fp16) returns NaN
+ * on some lines; fp32 `model.onnx` (325.5 MB) is finite on every line, at a
+ * CPU RTF of 0.78–0.98 on a 3-vCPU M1 VM and a peak RSS of ~1.3 GB on a
+ * 417-token line (GitHub runs 36280828928, 36281480135, 36282008323). The
+ * phone is the only place the rest can be measured, so ONE engine is built
+ * PER PASS:
+ *   - pass `cpu`: ORT's CPU provider, 4 intra-op threads;
+ *   - pass `coreml`: the CoreML EP as an MLProgram on ALL compute units
+ *     (CPU, GPU and the Neural Engine), same threads for whatever CoreML
+ *     leaves to the CPU. A VM has no Neural Engine, so no VM number means
+ *     anything here.
+ * Each pass loads its own session and CLOSES it before the next engine is
+ * built (`ForayTtsPlugin.measurePasses`), so two 325 MB sessions never
+ * coexist — and neither do a pass's cold and warm loads (see `load()`).
  */
 
 /// Whether this build can even try. `false` on any build that did not fetch
@@ -76,7 +93,15 @@ enum KokoroModelFiles {
     }
 }
 
-/// The probe's ONNX Runtime engine. One instance per probe run.
+/// Which execution provider a probe pass runs on (KV-R2). The raw value is
+/// the `pass` key of that pass's record, and `player/kokoro-probe.js`'s
+/// `PROBE_PASSES` holds the same two words.
+public enum KokoroProbePass: String, CaseIterable {
+    case cpu
+    case coreml
+}
+
+/// The probe's ONNX Runtime engine. One instance per PASS (KV-R2).
 final class KokoroOrtProbeEngine: KokoroProbeEngine {
     /// Kokoro v1.0 emits 24 kHz. Hard-coded rather than read from the graph
     /// because the graph does not carry it — it is a property of the model
@@ -93,8 +118,12 @@ final class KokoroOrtProbeEngine: KokoroProbeEngine {
     private static let log = Logger(subsystem: "ai.jwlabs.foura", category: "kokoro-probe")
 
     /// The value handed to `setIntraOpNumThreads`, and reported as
-    /// `intraThreads` (L09): 0 is "ORT picks", per the C API.
-    static let INTRA_OP_THREADS: Int32 = 0
+    /// `intraThreads` (L09). 4, the card's number for pass A (KV-R2): the
+    /// PC's measured winner, which does not stand for the phone — this pass is
+    /// where the phone says. It used to be 0 ("ORT picks"), which made the
+    /// thread count the one input the record could not name. The CoreML pass
+    /// uses the same count for the nodes CoreML leaves to the CPU.
+    static let INTRA_OP_THREADS: Int32 = 4
 
     /// A line whose every finite sample is quieter than this is `silent`
     /// (L04): a buffer of the right length that says nothing.
@@ -110,15 +139,32 @@ final class KokoroOrtProbeEngine: KokoroProbeEngine {
 
     private let modelPath: String
     private let style: [Float]
+    private let pass: KokoroProbePass
     private var session: ORTSession?
     private var env: ORTEnv?
     private var loadColdMs: Double = 0
     private var loadWarmMs: Double = 0
-    private var providerName = "cpu"
     private var lastSessionError: String?
+    /// Whether `appendCoreMLExecutionProvider` succeeded on the last session
+    /// built. Only the `coreml` pass ever sets it.
+    private var coreMLAppended = false
 
-    let modelName = "kokoro-82m-v1.0-q8f16"
-    var provider: String { providerName }
+    /// The fp32 export (D13). `fetch-models.mjs`'s iOS model pin.
+    let modelName = "kokoro-82m-v1.0-fp32"
+    var provider: String { pass.rawValue }
+    /// `coreml` IS ONLY WHAT WAS ASKED FOR. ORT 1.20.0's Objective-C API has
+    /// no call that says which nodes an EP took: the CoreML EP claims the
+    /// nodes it supports and ORT runs the rest on the CPU without a word, so a
+    /// `coreml` pass can be mostly, partly or not at all on CoreML. The record
+    /// says `requested` rather than letting `coreml` read as a fact. The CPU
+    /// pass registers no other EP, so its `cpu` is what ran: no basis needed.
+    var providerBasis: String? { pass == .coreml ? "requested" : nil }
+    /// The pass's CoreML EP could not be registered: this ORT build has none
+    /// (`ORTIsCoreMLExecutionProviderAvailable()` is false) or the append
+    /// threw. The pass then records `coreml-unavailable`, and the CPU pass is
+    /// untouched by it.
+    private(set) var providerUnavailable = false
+    var intraThreads: Int? { Int(Self.INTRA_OP_THREADS) }
     /// Why the LAST `synthesize` threw, as tokens only. Reset on every call.
     private(set) var lastFailure: KokoroProbeFailure?
     /// Why the COLD session did not open, or nil when it did. A failed load
@@ -132,7 +178,8 @@ final class KokoroOrtProbeEngine: KokoroProbeEngine {
     /// CONSTRUCTION IS NOT A CRASH and not a zero: the plugin reports
     /// `engine-absent`, which is one of the four closed reason codes a founder
     /// reads off the screen.
-    init?() {
+    init?(pass: KokoroProbePass = .cpu) {
+        self.pass = pass
         guard let model = KokoroModelFiles.modelURL(), let voice = KokoroModelFiles.voiceURL() else {
             return nil
         }
@@ -156,12 +203,30 @@ final class KokoroOrtProbeEngine: KokoroProbeEngine {
     /// first use; the second is what warm re-entry costs, which is the number
     /// deck §5 item 6's "load at app start and keep the session warm"
     /// mitigation actually turns on.
+    ///
+    /// THE COLD SESSION IS RELEASED BEFORE THE WARM ONE OPENS (KV-R2). The
+    /// warm load used to build a second session while the first was still
+    /// held and then drop it: harmless at 86 MB, two copies of 325 MB of fp32
+    /// weights now, and a peak-memory reading that measured the probe rather
+    /// than the model. The warm session is the one kept and run on.
     func load() -> (coldMs: Double, warmMs: Double) {
         lastSessionError = nil
         loadColdMs = timed { self.session = self.makeSession() }
+        if session == nil || providerUnavailable {
+            session = nil
+            loadError = lastSessionError ?? "other"
+            return (loadColdMs, 0)
+        }
+        session = nil
+        loadWarmMs = timed { self.session = self.makeSession() }
         loadError = session == nil ? (lastSessionError ?? "other") : nil
-        loadWarmMs = timed { _ = self.makeSession() }
         return (loadColdMs, loadWarmMs)
+    }
+
+    /// Release the session (KV-R2): the next pass's engine is not built until
+    /// this has run, so two fp32 sessions never share the process.
+    func close() {
+        session = nil
     }
 
     /// ORT's environment, MADE ONCE AND KEPT. It used to be constructed inside
@@ -182,17 +247,41 @@ final class KokoroOrtProbeEngine: KokoroProbeEngine {
         do {
             guard let env = environment() else { return nil }
             let options = try ORTSessionOptions()
-            try options.setIntraOpNumThreads(Self.INTRA_OP_THREADS)   // 0 = ORT picks, per the C API
+            try options.setIntraOpNumThreads(Self.INTRA_OP_THREADS)
             try options.setGraphOptimizationLevel(ORTGraphOptimizationLevel.all)
-            /* NO EXECUTION PROVIDER IS APPENDED, and `acceleratorWired` says so
-               rather than leaving a reader to infer it from `provider: "cpu"`.
-               ORT runs the CPU provider when nothing else is registered, so the
-               `cpu` in #685's reading was NOT a CoreML attempt that fell back —
-               CoreML was never wired at all. Wiring it means linking an ORT
-               build that carries the CoreML EP and appending it here, which is
-               a change to the one binary dependency `ios-shell` compiles and
-               therefore its own card (K-08), not a line smuggled into a fix. */
-            providerName = "cpu"
+            coreMLAppended = false
+            if pass == .coreml {
+                /* PASS B: THE CoreML EP, AS AN MLProgram ON ALL COMPUTE UNITS.
+                   ORT stays pinned at exactly 1.20.0 (Package.swift), whose
+                   Objective-C API has no dictionary-options call (the V2
+                   `ModelFormat`/`MLComputeUnits` keys arrived later) but does
+                   carry the flags the same two settings map to:
+                   `createMLProgram` is ModelFormat=MLProgram, and leaving
+                   `useCPUOnly` and `useCPUAndGPU` off is MLComputeUnits=ALL
+                   (`COREML_FLAG_USE_NONE`: CPU, GPU and the Neural Engine).
+                   Nothing else is set: no static-shape restriction (Kokoro's
+                   input length varies per chunk) and no ANE-only gate. */
+                guard ORTIsCoreMLExecutionProviderAvailable() else {
+                    providerUnavailable = true
+                    lastSessionError = "ep-fail"
+                    return nil
+                }
+                let coreml = ORTCoreMLExecutionProviderOptions()
+                coreml.createMLProgram = true
+                coreml.useCPUOnly = false
+                coreml.useCPUAndGPU = false
+                do {
+                    try options.appendCoreMLExecutionProvider(with: coreml)
+                } catch {
+                    Self.log.error("could not append the CoreML EP: \(error.localizedDescription)")
+                    providerUnavailable = true
+                    lastSessionError = Self.ortCodeToken(error)
+                    return nil
+                }
+                coreMLAppended = true
+            }
+            /* The CPU pass appends nothing: ORT's CPU provider is what runs
+               when no other is registered. */
             return try ORTSession(env: env, modelPath: modelPath, sessionOptions: options)
         } catch {
             Self.log.error("could not open the Kokoro session: \(error.localizedDescription)")
@@ -202,8 +291,9 @@ final class KokoroOrtProbeEngine: KokoroProbeEngine {
         }
     }
 
-    /// No accelerator EP is registered on any build today. See `makeSession`.
-    var acceleratorWired: Bool { false }
+    /// Whether an accelerator EP is registered on this pass's session: the
+    /// CoreML pass once its append succeeded, and never the CPU pass.
+    var acceleratorWired: Bool { coreMLAppended }
 
     /// One line. On failure the audio seconds are 0 AND the reason is named —
     /// `player/kokoro-probe.js`'s `SYNTH_REASONS`, which the plugin carries
@@ -292,7 +382,9 @@ final class KokoroOrtProbeEngine: KokoroProbeEngine {
                with a pad at each end (`tools/narration/kokoro-vocab.json`
                documents the encoding), so the row is `count - 2`, clamped
                because a line longer than the matrix has no row of its own and
-               the last row is the least wrong answer. K-04 chunks instead. */
+               the last row is the least wrong answer. Since KV-R2 every
+               inference is one sentence chunk (≤ 460 phonemes), so the clamp
+               no longer fires on the probe passage. */
             let row = min(max(ids.count - 2, 0), Self.STYLE_ROWS - 1)
             var styleRow = Array(style[(row * Self.STYLE_DIM)..<((row + 1) * Self.STYLE_DIM)])
             let styleData = NSMutableData(bytes: &styleRow, length: styleRow.count * MemoryLayout<Float>.size)

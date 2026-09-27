@@ -34,6 +34,16 @@
  * diagnostic row is written by `diagnostic-log.js`'s `voiceProbe()`. This file
  * owns the arithmetic and the vocabulary, which is what makes both testable in
  * Node with no phone.
+ *
+ * ── Probe v2 (KV-R2, docs/kokoro-voices-in-app-plan.md §6a, D13) ──────────
+ * One run is now TWO PASSES on iOS — `cpu` (ORT's CPU provider, 4 threads)
+ * and `coreml` (the CoreML EP, MLProgram on all compute units) — over the fp32
+ * model, each over the passage cut into sentence chunks (one inference per
+ * chunk). The native half answers `{ ok: true, passes: [record, record] }`
+ * and `summarizePasses` turns it into ONE RECORD PER PASS, each the shape
+ * `summarizeProbe` always returned plus `pass` and `finite`; each becomes its
+ * own `voiceProbe` row. Android runs one pass (`cpu`, q8f16) and says so.
+ * A pass with a non-finite chunk is never a pass (`probeVerdict`).
  */
 
 /** The engine name the probe asks `foray-tts.js` for. One string, exported,
@@ -121,11 +131,32 @@ export const RTF_FLOOR = 0.01;
                              never its message. A Capacitor `UNIMPLEMENTED`
                              is not `threw`: it is an older shell with no
                              probe method, which `foray-tts.js` reports as
-                             `engine-absent`. */
+                             `engine-absent`.
+      coreml-unavailable     KV-R2's pass B only: this ORT build could not
+                             register the CoreML execution provider at all
+                             (none compiled in, or the append threw), so the
+                             pass did not run. `loadErr` carries ORT's code
+                             when the append threw. The CPU pass is unaffected. */
 export const PROBE_REASONS = Object.freeze([
   "no-bridge", "passage-missing", "passage-empty", "passage-unphonemized",
   "model-absent", "engine-absent", "synthesis-failed", "refused", "threw",
+  "coreml-unavailable",
 ]);
+
+/** KV-R2's passes, in the order a run makes them: ORT's CPU provider, then
+    the CoreML EP (MLProgram, all compute units). Each record's `pass` is one
+    of these; iOS's `KokoroProbePass` holds the same two words. */
+export const PROBE_PASSES = Object.freeze(["cpu", "coreml"]);
+
+/** Where a run the system KILLED had got to (KV-R2's stop rule), as the next
+    run reports it: `load` while the pass's session was being built (the
+    CoreML pass compiles the graph there), `synth` once it was open. */
+export const KILLED_STAGES = Object.freeze(["load", "synth"]);
+
+/** How much a record's `provider` knows. `requested`: the EP was asked for
+    and the runtime cannot report which nodes it took (iOS's `coreml` pass on
+    ORT 1.20.0). A provider with no basis is the one that ran. */
+export const PROVIDER_BASES = Object.freeze(["requested"]);
 
 /** Why ONE line produced no audio, as the native halves name it. A closed set
     for the same reason `PROBE_REASONS` is one — it is read off a screen — but
@@ -171,23 +202,29 @@ export const ORT_CODES = Object.freeze([
     three input tensors, `session.run`, or reading the output tensor back. */
 export const ORT_STAGES = Object.freeze(["input", "run", "output"]);
 
-/** One token per line, in passage order (L05). `threw` is `inference-threw`,
-    `zero` is `zero-samples`, `nan` is `non-finite`, `skip` is
-    `session-absent`; the others are their own reason. Short on purpose — the
-    ring line prints them comma-joined, four of them to a passage. */
+/** One token per CHUNK since KV-R2 (per line before it), in passage order
+    (L05). `threw` is `inference-threw`, `zero` is `zero-samples`, `nan` is
+    `non-finite`, `skip` is `session-absent`; the others are their own
+    reason. Short on purpose — the ring line prints them comma-joined, fifteen
+    of them to the chunked passage. The native key keeps its name
+    (`lineOutcomes`, `nonFiniteLines`, `lines`): each "line" is now a chunk. */
 export const LINE_OUTCOMES = Object.freeze(["ok", "threw", "no-output", "zero", "nan", "silent", "skip"]);
 
 /** `ProcessInfo.thermalState` / `PowerManager.getCurrentThermalStatus()`,
     folded to iOS's four words (L10). */
 export const THERMAL_STATES = Object.freeze(["nominal", "fair", "serious", "critical"]);
 
-/** The one model the probe bundles, as `tools/mobile/fetch-models.mjs`'s
-    first pin records it: the streamed length and the first 8 hex digits of
-    its SHA-256 (L08). A phone that reports anything else loaded a different
-    file than the one every other number here was measured against — the
-    Android cache check is length-only, so this is where a stale extraction
-    would first show. A test reads `PINS[0]` and holds the two in step. */
-export const KOKORO_MODEL_PIN = Object.freeze({ bytes: 86033585, sha8: "04c658ae" });
+/** The model each platform's probe bundles, as `tools/mobile/fetch-models.mjs`
+    pins it (D13): the streamed length and the first 8 hex digits of its
+    SHA-256 (L08). iOS carries the fp32 export since KV-R2, Android q8f16. A
+    phone that reports anything else loaded a different file than the one
+    every other number here was measured against — the Android cache check is
+    length-only, so this is where a stale extraction would first show. A test
+    reads each platform's bundled model pin and holds the two in step. */
+export const KOKORO_MODEL_PINS = Object.freeze({
+  ios: Object.freeze({ bytes: 325532232, sha8: "8fbea51e" }),
+  android: Object.freeze({ bytes: 86033585, sha8: "04c658ae" }),
+});
 
 /** An error's NAME, never its message (L12). Takes `e.code` (Capacitor's
     `UNIMPLEMENTED`, `UNAVAILABLE`) and then `e.name` (`TypeError`), and
@@ -240,7 +277,15 @@ export function passageProblem(passage) {
   const lines = Array.isArray(passage.lines) ? passage.lines : null;
   if (!lines || lines.length === 0) return "passage-empty";
   for (const l of lines) {
-    if (!l || !Array.isArray(l.ids) || l.ids.length === 0) return "passage-unphonemized";
+    if (!l) return "passage-unphonemized";
+    /* KV-R2: a line is phonemized when it carries sentence `chunks`, every
+       one with ids (the shipped passage), or, from before KV-R2, a whole-line
+       `ids` — the same two shapes both native halves accept. */
+    if (Array.isArray(l.chunks) && l.chunks.length > 0) {
+      if (!l.chunks.every((c) => c && Array.isArray(c.ids) && c.ids.length > 0)) return "passage-unphonemized";
+      continue;
+    }
+    if (!Array.isArray(l.ids) || l.ids.length === 0) return "passage-unphonemized";
   }
   return null;
 }
@@ -257,7 +302,7 @@ const ORT_OP_RE = /^[A-Za-z][A-Za-z0-9_]{0,31}$/;
 const ORT_VERSION_RE = /^[0-9][0-9.]{0,15}$/;
 const SHA8_RE = /^[0-9a-f]{8}$/;
 const SYNTH_REASON_RE = /^[A-Za-z][A-Za-z0-9_-]{0,39}$/;
-const MAX_LINE_OUTCOMES = 16;
+const MAX_LINE_OUTCOMES = 32; // fifteen chunks on the KV-R2 passage, with room
 
 const oneOf = (set, v) => (typeof v === "string" && set.includes(v) ? v : null);
 const shaped = (re, v) => (typeof v === "string" && re.test(v) ? v : null);
@@ -274,15 +319,28 @@ function lineOutcomesOf(v) {
   return list.join(",");
 }
 
-/** `ok` when both halves of the pin match, `mismatch` when either one was
-    reported and differs, `null` when neither was reported (an older shell). */
-export function modelPinOf(modelBytes, modelSha8) {
+/** `ok` when both halves of the platform's pin match, `mismatch` when either
+    one was reported and differs, `null` when neither was reported (an older
+    shell). A record that names no platform is held to whichever pin it
+    matches — it cannot say which it should have loaded. */
+export function modelPinOf(modelBytes, modelSha8, platform = null) {
   const haveBytes = modelBytes != null;
   const haveSha = modelSha8 != null;
   if (!haveBytes && !haveSha) return null;
-  if ((haveBytes && modelBytes !== KOKORO_MODEL_PIN.bytes) ||
-      (haveSha && modelSha8 !== KOKORO_MODEL_PIN.sha8)) return "mismatch";
+  const pins = KOKORO_MODEL_PINS[platform] ? [KOKORO_MODEL_PINS[platform]] : Object.values(KOKORO_MODEL_PINS);
+  const matches = (pin) => (!haveBytes || modelBytes === pin.bytes) && (!haveSha || modelSha8 === pin.sha8);
+  if (!pins.some(matches)) return "mismatch";
   return haveBytes && haveSha ? "ok" : null;
+}
+
+/** Whether a pass's audio was finite (KV-R2): `false` when any chunk held a
+    NaN or an Infinity, `true` when audio was rendered and none did, `null`
+    when nothing rendered or the shell did not count — "we could not tell" is
+    never "yes". */
+export function finiteOf(nonFiniteChunks, renderedSec) {
+  if (Number.isInteger(nonFiniteChunks) && nonFiniteChunks > 0) return false;
+  if (Number.isInteger(nonFiniteChunks) && Number.isFinite(renderedSec) && renderedSec > 0) return true;
+  return null;
 }
 
 /* ---------- the arithmetic ---------- */
@@ -352,8 +410,28 @@ export function probeVerdict(record, age = "oldest") {
   else if (!rtfIsPlausible(r.rtfWarm)) failures.push(`rtf-below-floor ${r.rtfWarm.toFixed(2)} <= ${RTF_FLOOR} — nothing rendered`);
   else if (r.rtfWarm > ceiling) failures.push(`rtf-warm ${r.rtfWarm.toFixed(2)} > ${ceiling}`);
   if (!Number.isFinite(r.peakMemoryMb)) failures.push("peak-memory-not-measured");
-  else if (r.peakMemoryMb > GO_PEAK_MEMORY_MB) failures.push(`peak-memory ${r.peakMemoryMb} MB > ${GO_PEAK_MEMORY_MB} MB`);
+  /* The 400 MB ceiling is the q8f16 era's (K-01). A probe-v2 PASS record is
+     judged by §6a instead, where peak memory is RECORDED, NOT GATED: fp32's
+     325 MB of weights alone would fail it, and the reading sets KV-05's memory
+     bound rather than being held to the old one. It still has to be measured. */
+  else if (r.pass == null && r.peakMemoryMb > GO_PEAK_MEMORY_MB) failures.push(`peak-memory ${r.peakMemoryMb} MB > ${GO_PEAK_MEMORY_MB} MB`);
   if (r.lockedScreenCompleted !== true) failures.push("locked-screen-not-proven");
+  /* KV-R2: A PASS WITH A NON-FINITE CHUNK IS NEVER A PASS, whatever its RTF.
+     The finite chunks' RTF is real, but a voice that goes NaN on one sentence
+     in fifteen is a voice that drops a sentence in fifteen (§6a: "only a
+     finite pass counts"). */
+  if (r.finite === false) {
+    const k = Number.isInteger(r.nonFiniteLines) ? r.nonFiniteLines : "some";
+    failures.push(`non-finite ${k} of ${r.lines ?? "?"} chunks`);
+  }
+  /* AND NEITHER IS A PASS THAT DROPPED A CHUNK ANY OTHER WAY. A chunk that
+     threw, came back silent or empty is a sentence the listener would not
+     hear; its audio is never counted (the natives zero it), so the RTF over
+     the rest can look fine while the voice skips. Non-finite chunks are
+     already named above and are not counted twice. */
+  const dropped = (Number.isInteger(r.synthFailures) ? r.synthFailures : 0)
+    - (Number.isInteger(r.nonFiniteLines) ? r.nonFiniteLines : 0);
+  if (dropped > 0) failures.push(`chunks-failed ${dropped} of ${r.lines ?? "?"} (threw, silent or empty)`);
   return { go: failures.length === 0, ceiling, failures };
 }
 
@@ -401,6 +479,7 @@ export function probeVerdict(record, age = "oldest") {
  */
 export function summarizeProbe({ native = null, elapsedMs = null, audioSec = null, reason = null } = {}) {
   const n = native || {};
+  const platform = oneOf(["ios", "android"], n.platform);
   const synthWarmMs = Number.isFinite(n.synthWarmMs) ? n.synthWarmMs : null;
   const synthColdMs = Number.isFinite(n.synthColdMs) ? n.synthColdMs : null;
   const passageSec = Number.isFinite(audioSec) ? audioSec : null;
@@ -443,11 +522,12 @@ export function summarizeProbe({ native = null, elapsedMs = null, audioSec = nul
     peakMemoryMb: toMegabytes(n.peakMemoryBytes),
     availableMemoryMb: toMegabytes(n.availableMemoryBytes),
     lockedScreenCompleted: n.lockedScreenCompleted === true,
-    /* K-01's estimates assumed an accelerator. `false` on every build today —
-       neither native half appends a CoreML or NNAPI execution provider, so
-       `provider: "cpu"` is NOT a fallback that fired, it is the only path
-       compiled. Reported rather than inferred so nobody reads a CPU number as
-       an accelerated one; K-08 is where the EP gets wired and flips this. */
+    /* K-01's estimates assumed an accelerator. `true` only on iOS's `coreml`
+       pass (KV-R2), once its EP was appended — and even then `providerBasis`
+       says `requested`, because ORT 1.20 cannot report how much of the graph
+       CoreML took. Android appends no NNAPI EP, so its `provider: "cpu"` is
+       NOT a fallback that fired, it is the only path compiled. Reported
+       rather than inferred so nobody reads a CPU number as an accelerated one. */
     acceleratorWired: n.acceleratorWired === true,
     batteryDeltaPct: Number.isFinite(n.batteryDeltaPct) ? n.batteryDeltaPct : null,
     batteryWindowSec: Number.isFinite(n.batteryWindowSec) ? n.batteryWindowSec : null,
@@ -457,7 +537,7 @@ export function summarizeProbe({ native = null, elapsedMs = null, audioSec = nul
        ON WHAT. Every key is optional to the reader and `null` when an older
        shell did not send it or sent it in a shape this file does not admit.
        `diagnostic-log.js`'s `voiceProbe()` renders these by name. */
-    platform: oneOf(["ios", "android"], n.platform),
+    platform,
     // L03/L36: ORT's own code for the FIRST failing line, and where it failed.
     ortCode: oneOf(ORT_CODES, n.ortCode),
     ortOp: shaped(ORT_OP_RE, n.ortOp),
@@ -473,7 +553,7 @@ export function summarizeProbe({ native = null, elapsedMs = null, audioSec = nul
     cores: count(n.cores),
     modelBytes: count(n.modelBytes),
     modelSha8: shaped(SHA8_RE, n.modelSha8),
-    modelPin: modelPinOf(count(n.modelBytes), shaped(SHA8_RE, n.modelSha8)),
+    modelPin: modelPinOf(count(n.modelBytes), shaped(SHA8_RE, n.modelSha8), platform),
     device: shaped(TOKEN_RE, n.device),
     os: shaped(TOKEN_RE, n.os),
     // L10/L11/L35: heat, power and memory pressure over the run.
@@ -483,7 +563,50 @@ export function summarizeProbe({ native = null, elapsedMs = null, audioSec = nul
     memWarn: bool(n.memWarn),
     bgAtFail: bool(n.bgAtFail),
     baseMemoryMb: toMegabytes(n.baseMemoryBytes),
+
+    /* ── KV-R2: which pass, and whether its audio was finite. `finite` is
+       derived here from the chunk count, not taken from the native side, so
+       both platforms answer it by the same rule. `processPeakMb` is the
+       kernel's since-launch peak; `peakMemoryMb` is THIS pass's own. A run
+       the system killed is reported by the next one's first record. */
+    pass: oneOf(PROBE_PASSES, n.pass),
+    finite: finiteOf(count(n.nonFiniteLines), rendered ? totalSec : null),
+    processPeakMb: toMegabytes(n.processPeakBytes),
+    prevKilledPass: oneOf(PROBE_PASSES, n.prevKilledPass),
+    prevKilledStage: oneOf(KILLED_STAGES, n.prevKilledStage),
+    prevKilledChunksDone: count(n.prevKilledChunksDone),
+    prevKilledPeakMb: toMegabytes(n.prevKilledPeakBytes),
+    /* `requested` when the record's provider was only ASKED for: ORT 1.20.0
+       cannot say which nodes the CoreML EP actually took, and ORT runs the
+       rest on the CPU without a word. Null when the provider is what ran. */
+    providerBasis: oneOf(PROVIDER_BASES, n.providerBasis),
   };
+}
+
+/**
+ * KV-R2: the native answer as ONE RECORD PER PASS, each the shape
+ * `summarizeProbe` returns plus `pass`. A shell that ran passes answers
+ * `{ ok: true, passes: [...] }`; each pass is summarized on its own, its own
+ * `ok`/`reason` deciding whether it measured. A refusal before any pass ran
+ * (`model-absent`, a passage problem) and an older shell with no `passes`
+ * are ONE record, exactly as before.
+ *
+ * A pass's reason is admitted from `PROBE_REASONS` or becomes `refused`, the
+ * rule `runKokoroProbe` applies to a whole answer. `elapsedMs` is the page's
+ * clock around the whole call, so it is shared by every pass it covered.
+ */
+export function summarizePasses({ native = null, elapsedMs = null, audioSec = null, reason = null } = {}) {
+  const passes = reason == null && native && Array.isArray(native.passes) ? native.passes : null;
+  if (!passes || passes.length === 0) {
+    return [summarizeProbe({ native, elapsedMs, audioSec, reason })];
+  }
+  return passes.map((p) => {
+    const pass = p && typeof p === "object" ? p : {};
+    const code = pass.ok === true
+      ? null
+      : (typeof pass.reason === "string" && PROBE_REASONS.includes(pass.reason) ? pass.reason : "refused");
+    return summarizeProbe({ native: { platform: native.platform, ...pass }, elapsedMs, audioSec, reason: code });
+  });
 }
 
 /** One line per field, in the order a founder reads them out. Used by the
@@ -491,6 +614,7 @@ export function summarizeProbe({ native = null, elapsedMs = null, audioSec = nul
     `voiceProbe` case in `diagnostic-log.js`, which is deliberately terser
     because it shares a screen with 199 other rows. */
 export function formatProbeReport(record) {
+  if (Array.isArray(record)) return record.map((r) => formatProbeReport(r)).join("\n\n");
   const r = record || {};
   const n = (v, unit = "") => (v == null ? "—" : `${v}${unit}`);
   const f2 = (v) => (Number.isFinite(v) ? v.toFixed(2) : "—");
@@ -503,14 +627,14 @@ export function formatProbeReport(record) {
        the model DOES have more to say — what ORT said, what each line did,
        on what hardware — and the 2026-09-26 paste's bare `inference-threw`
        with none of it is the reading Lane A exists for. */
-    return [`voice probe: could not measure (${r.reason ?? "unknown"}${detail})`, ...probeContextLines(r)].join("\n");
+    return [`voice probe${passTag(r)}: could not measure (${r.reason ?? "unknown"}${detail})`, ...probeContextLines(r)].join("\n");
   }
   /* "rendered" vs "estimated" is the difference between an RTF and a ratio
      (see `summarizeProbe`), so it is printed next to the seconds it qualifies
      rather than left for the reader to assume. */
   const from = r.audioFrom === "rendered" ? "rendered" : "estimated";
   return [
-    `voice probe: ${r.engine} model ${n(r.model)} provider ${n(r.provider)}` +
+    `voice probe${passTag(r)}: ${r.engine} model ${n(r.model)} provider ${n(r.provider)}${basisTag(r)}` +
       (r.acceleratorWired ? "" : " (CPU only — no accelerator wired)"),
     `  model load    cold ${n(r.modelLoadColdMs, " ms")}  warm ${n(r.modelLoadWarmMs, " ms")}`,
     `  synthesis     cold ${n(r.synthColdMs, " ms")}  warm ${n(r.synthWarmMs, " ms")}  over ${n(r.audioSec, " s")} of ${from} audio`,
@@ -524,12 +648,41 @@ export function formatProbeReport(record) {
   ].join("\n");
 }
 
+/** ` [cpu]` / ` [coreml]` after "voice probe", or nothing for a one-pass shell. */
+function passTag(r) {
+  return r.pass ? ` [${r.pass}]` : "";
+}
+
+/** ` (requested — …)` after a provider the runtime could not confirm. */
+function basisTag(r) {
+  return r.providerBasis === "requested"
+    ? " (requested — ORT 1.20 cannot say which nodes it took; the rest ran on the CPU)"
+    : "";
+}
+
+/** Where a killed run died, in words: `load` (the session was being built —
+    the CoreML compile) or `after N chunks`. */
+function killedWhere(stage, done) {
+  if (stage === "load") return "during its load";
+  return `after ${done ?? "?"} chunks`;
+}
+
 /** Lane A's lines for the drawer, each printed ONLY when its data arrived, so
     a record from an older shell prints exactly what it printed before. */
 function probeContextLines(r) {
   const yn = (v) => (v === true ? "y" : v === false ? "n" : "—");
   const mb = (v) => (v == null ? "—" : `${v} MB`);
   const out = [];
+  /* KV-R2: finiteness first — a non-finite pass is not a pass, whatever the
+     numbers above it say. */
+  if (r.finite != null) {
+    out.push(r.finite
+      ? `  finite        yes (no rendered chunk held NaN/Infinity)`
+      : `  finite        NO — ${r.nonFiniteLines ?? "?"} of ${r.lines ?? "?"} chunks held NaN/Infinity`);
+  }
+  if (r.prevKilledPass != null) {
+    out.push(`  LAST RUN KILLED in the ${r.prevKilledPass} pass, ${killedWhere(r.prevKilledStage, r.prevKilledChunksDone)}, peak ${mb(r.prevKilledPeakMb)}`);
+  }
   if (r.ortVersion != null || r.cores != null || r.intraThreads != null) {
     const threads = r.intraThreads == null ? "—" : r.intraThreads === 0 ? "auto" : r.intraThreads;
     out.push(`  ORT           ${r.ortVersion ?? "—"} ${r.provider ?? "cpu"} threads=${threads} cores=${r.cores ?? "—"}`);
@@ -569,7 +722,9 @@ function probeContextLines(r) {
 /* ---------- the run ---------- */
 
 /**
- * Run the probe once and return its record. Never throws and never rejects —
+ * Run the probe once and return ITS RECORDS, one per pass (KV-R2): two on an
+ * iOS build that ran `cpu` and `coreml`, one on Android, and one for any
+ * refusal that stopped the run before a pass began. Never throws and never rejects —
  * the same contract `foray-tts.js`'s `speak()` states, for the same reason:
  * this is driven from a drawer button, and an unhandled rejection there is a
  * console line nobody has open.
@@ -584,9 +739,9 @@ export async function runKokoroProbe({ tts = null, passage = null, now = null } 
   const audioSec = passageSeconds(passage);
 
   const bad = passageProblem(passage);
-  if (bad) return summarizeProbe({ reason: bad, audioSec });
+  if (bad) return [summarizeProbe({ reason: bad, audioSec })];
   if (!tts || typeof tts.kokoroProbe !== "function") {
-    return summarizeProbe({ reason: "no-bridge", audioSec });
+    return [summarizeProbe({ reason: "no-bridge", audioSec })];
   }
 
   const startedAt = clock();
@@ -596,7 +751,7 @@ export async function runKokoroProbe({ tts = null, passage = null, now = null } 
   } catch (e) {
     /* The error's NAME travels, never its message (L12): `synthReason` then
        reads `threw/TypeError` instead of a bare `threw`. */
-    return summarizeProbe({ native: { detail: nameOf(e) }, reason: "threw", audioSec, elapsedMs: clock() - startedAt });
+    return [summarizeProbe({ native: { detail: nameOf(e) }, reason: "threw", audioSec, elapsedMs: clock() - startedAt })];
   }
   const elapsedMs = clock() - startedAt;
 
@@ -608,7 +763,7 @@ export async function runKokoroProbe({ tts = null, passage = null, now = null } 
     const code = typeof native?.reason === "string" && PROBE_REASONS.includes(native.reason)
       ? native.reason
       : "refused";
-    return summarizeProbe({ native, reason: code, audioSec, elapsedMs });
+    return [summarizeProbe({ native, reason: code, audioSec, elapsedMs })];
   }
-  return summarizeProbe({ native, audioSec, elapsedMs });
+  return summarizePasses({ native, audioSec, elapsedMs });
 }

@@ -477,7 +477,8 @@ final class ForayTtsPluginTests: XCTestCase {
     /// TO SEE IT FAIL: change `MODEL_RESOURCE` without changing the pin in
     /// `tools/mobile/fetch-models.mjs`.
     func testModelResourceName() {
-        XCTAssertEqual(ForayTtsPlugin.MODEL_RESOURCE, "kokoro-v1_0-q8f16")
+        // fp32 since KV-R2 (deck D13): the only export finite on Apple silicon.
+        XCTAssertEqual(ForayTtsPlugin.MODEL_RESOURCE, "kokoro-v1_0-fp32")
         XCTAssertEqual(ForayTtsPlugin.MODEL_EXTENSION, "onnx")
     }
 
@@ -735,6 +736,118 @@ final class ForayTtsPluginTests: XCTestCase {
         XCTAssertEqual(result["lockedScreenCompleted"] as? Bool, false)
     }
 
+    // MARK: - KV-R2: two passes, sentence chunks, the kill marker
+
+    /// **The passes run in order, and each engine is CLOSED before the next
+    /// is built** — so two 325 MB fp32 sessions never coexist. MUTATION: move
+    /// `engine.close()` after the loop, or build both engines up front.
+    func testPassesRunInOrderAndEachEngineIsClosedBeforeTheNextIsBuilt() {
+        let log = EventLog()
+        let result = ForayTtsPlugin.measurePasses(
+            idLines: [[0, 1, 2, 0], [0, 3, 4, 0]], speed: 1, modelURL: nil,
+            makeEngine: { pass in log.add("make \(pass.rawValue)"); return LoggingProbeEngine(pass: pass, log: log) },
+            isForeground: { false }, inFlight: ProbeInFlight(url: tempURL()))
+        XCTAssertEqual(log.events, ["make cpu", "load cpu", "close cpu", "make coreml", "load coreml", "close coreml"])
+        XCTAssertEqual(result["ok"] as? Bool, true)
+        let passes = result["passes"] as? [[String: Any]] ?? []
+        XCTAssertEqual(passes.map { $0["pass"] as? String }, ["cpu", "coreml"])
+        XCTAssertEqual(passes.map { $0["provider"] as? String }, ["cpu", "coreml"])
+        XCTAssertEqual(passes.first?["lines"] as? Int, 2, "one inference per chunk")
+    }
+
+    /// **An unavailable CoreML EP is `coreml-unavailable`, and the CPU pass
+    /// still measures.** MUTATION: let an unregistered EP fall through to
+    /// the chunk loop — it reads `synthesis-failed/session-absent`, which
+    /// names an inference fault that never happened.
+    func testAnUnavailableCoreMLPassIsNamedAndTheCPUPassStillRuns() {
+        let log = EventLog()
+        let result = ForayTtsPlugin.measurePasses(
+            idLines: [[0, 1, 2, 0], [0, 3, 4, 0]], speed: 1, modelURL: nil,
+            makeEngine: { pass in LoggingProbeEngine(pass: pass, log: log, unavailable: pass == .coreml) },
+            isForeground: { false }, inFlight: ProbeInFlight(url: tempURL()))
+        let passes = result["passes"] as? [[String: Any]] ?? []
+        XCTAssertEqual(passes.count, 2)
+        XCTAssertEqual(passes[0]["ok"] as? Bool, true)
+        XCTAssertEqual(passes[1]["ok"] as? Bool, false)
+        XCTAssertEqual(passes[1]["reason"] as? String, "coreml-unavailable")
+        XCTAssertEqual(passes[1]["pass"] as? String, "coreml")
+        XCTAssertNil(passes[1]["lineOutcomes"], "nothing ran, so no chunk outcome is claimed")
+        XCTAssertTrue(log.events.contains("close coreml"), "even a pass that never ran releases what it built")
+    }
+
+    /// **Chunks are flattened in passage order; a line with no chunk ids is
+    /// unphonemized.** MUTATION: read only line-level `ids` — the chunked
+    /// passage this build ships is refused as `passage-unphonemized`.
+    func testChunkIdsFlattensEveryLinesChunksInOrder() {
+        let lines: [[String: Any]] = [
+            ["chunks": [["ids": [0, 1, 0]], ["ids": [0, 2, 0]]]],
+            ["chunks": [["ids": [0, 3, 0]]]],
+        ]
+        XCTAssertEqual(ForayTtsPlugin.chunkIds(lines), [[0, 1, 0], [0, 2, 0], [0, 3, 0]])
+        XCTAssertEqual(ForayTtsPlugin.chunkIds([["ids": [0, 9, 0]]]), [[0, 9, 0]], "an older whole-line passage is one chunk")
+        XCTAssertNil(ForayTtsPlugin.chunkIds([["chunks": [["ids": [Int]()]]]]))
+        XCTAssertNil(ForayTtsPlugin.chunkIds([["text": "no ids"]]))
+    }
+
+    /// **A run the system killed is reported by the next one** (the card's
+    /// stop rule: "report the last logged peak"). MUTATION: clear the marker
+    /// at the start of a run instead of reading it first.
+    func testAKilledRunsLastPassChunkAndPeakReachTheNextRunsFirstRecord() {
+        let url = tempURL()
+        ProbeInFlight(url: url).note(pass: .coreml, stage: "synth", chunksDone: 6, peakBytes: 1_400_000_000)
+        let result = ForayTtsPlugin.measurePasses(
+            passes: [.cpu], idLines: [[0, 1, 2, 0]], speed: 1, modelURL: nil,
+            makeEngine: { pass in LoggingProbeEngine(pass: pass, log: EventLog()) },
+            isForeground: { false }, inFlight: ProbeInFlight(url: url))
+        let first = (result["passes"] as? [[String: Any]] ?? []).first ?? [:]
+        XCTAssertEqual(first["prevKilledPass"] as? String, "coreml")
+        XCTAssertEqual(first["prevKilledStage"] as? String, "synth")
+        XCTAssertEqual(first["prevKilledChunksDone"] as? Int, 6)
+        XCTAssertEqual(first["prevKilledPeakBytes"] as? Double, 1_400_000_000)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: url.path), "a run that finished leaves no marker")
+    }
+
+    /// **A kill DURING a pass's load is that pass's, not the last chunk of
+    /// the pass before it.** The CoreML pass compiles the graph inside
+    /// `load()`; the marker is written before the load, so a kill there reads
+    /// `coreml load`. MUTATION: drop the note before `engine.load()` — the
+    /// marker still says `cpu synth 2`, and the CPU pass takes the blame.
+    func testAKillDuringTheCoreMLLoadIsBlamedOnTheCoreMLLoad() {
+        let url = tempURL()
+        _ = ForayTtsPlugin.measurePasses(
+            idLines: [[0, 1, 2, 0], [0, 3, 4, 0]], speed: 1, modelURL: nil,
+            makeEngine: { pass in
+                let engine = LoggingProbeEngine(pass: pass, log: EventLog())
+                if pass == .coreml {
+                    // Read the marker the moment the CoreML load starts: that
+                    // is what a kill inside the compile would leave on disk.
+                    engine.onLoad = {
+                        let marker = (try? String(contentsOf: url, encoding: .utf8)) ?? ""
+                        XCTAssertTrue(marker.hasPrefix("coreml load 0 "), "the marker during the CoreML load reads '\(marker)'")
+                    }
+                }
+                return engine
+            },
+            isForeground: { false }, inFlight: ProbeInFlight(url: url))
+    }
+
+    /// **The CoreML pass says its provider was REQUESTED, not confirmed**:
+    /// ORT 1.20.0 cannot report which nodes CoreML took. MUTATION: drop
+    /// `providerBasis` from the record — `coreml` reads as a fact.
+    func testTheCoreMLPassSaysItsProviderWasRequested() {
+        let result = ForayTtsPlugin.measurePasses(
+            idLines: [[0, 1, 2, 0]], speed: 1, modelURL: nil,
+            makeEngine: { pass in LoggingProbeEngine(pass: pass, log: EventLog()) },
+            isForeground: { false }, inFlight: ProbeInFlight(url: tempURL()))
+        let passes = result["passes"] as? [[String: Any]] ?? []
+        XCTAssertNil(passes.first?["providerBasis"], "the CPU pass registers no other EP: `cpu` is what ran")
+        XCTAssertEqual(passes.last?["providerBasis"] as? String, "requested")
+    }
+
+    private func tempURL() -> URL {
+        URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("kvr2-\(UUID().uuidString).txt")
+    }
+
     /// **Every SYNTH_REASONS code has a line token.**
     func testLineOutcomeTokens() {
         XCTAssertEqual(ForayTtsPlugin.lineOutcome(nil), "ok")
@@ -745,6 +858,32 @@ final class ForayTtsPluginTests: XCTestCase {
         XCTAssertEqual(ForayTtsPlugin.lineOutcome("silent"), "silent")
         XCTAssertEqual(ForayTtsPlugin.lineOutcome("session-absent"), "skip")
     }
+}
+
+/// An ordered record of what the pass loop did to its engines.
+private final class EventLog {
+    private(set) var events: [String] = []
+    func add(_ event: String) { events.append(event) }
+}
+
+/// A fake engine per pass that logs load and close, renders 2 s per chunk,
+/// and can play an unregistered CoreML EP.
+private final class LoggingProbeEngine: KokoroProbeEngine {
+    let modelName = "fake"
+    let provider: String
+    let providerUnavailable: Bool
+    let providerBasis: String?
+    private let log: EventLog
+    var onLoad: (() -> Void)?
+    init(pass: KokoroProbePass, log: EventLog, unavailable: Bool = false) {
+        provider = pass.rawValue
+        providerUnavailable = unavailable
+        providerBasis = pass == .coreml ? "requested" : nil
+        self.log = log
+    }
+    func load() -> (coldMs: Double, warmMs: Double) { onLoad?(); log.add("load \(provider)"); return (1, 1) }
+    func synthesize(ids: [Int], speed: Double) -> (synthMs: Double, audioSec: Double, reason: String?) { (100, 2, nil) }
+    func close() { log.add("close \(provider)") }
 }
 
 /// Every line throws, the way the 2026-09-26 paste's phone did.

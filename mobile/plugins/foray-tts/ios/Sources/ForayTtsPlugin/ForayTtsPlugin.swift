@@ -38,7 +38,8 @@ public protocol KokoroProbeEngine {
 
     /// Whether an accelerator execution provider (CoreML on iOS, NNAPI on
     /// Android) is registered on the session, as opposed to ORT's CPU
-    /// provider. `false` on every build today — see `KokoroOrtProbeEngine`.
+    /// provider. `true` only on the KV-R2 `coreml` pass once its EP was
+    /// appended (see `providerBasis` for what that does NOT prove).
     /// Reported rather than inferred from `provider`, because `"cpu"` reads as
     /// a fallback that fired and it is not one: it is the only path compiled.
     var acceleratorWired: Bool { get }
@@ -49,6 +50,27 @@ public protocol KokoroProbeEngine {
 
     /// Why the cold session did not open, from the same token set, or nil.
     var loadError: String? { get }
+
+    /// KV-R2: the pass's execution provider could not be registered at all
+    /// (the CoreML EP is absent from this ORT build, or its append threw).
+    /// The pass records `coreml-unavailable` instead of pretending to run.
+    var providerUnavailable: Bool { get }
+
+    /// How much `provider` KNOWS (KV-R2): `"requested"` when the EP was only
+    /// asked for and the runtime cannot say which nodes it actually took (the
+    /// CoreML pass on ORT 1.20.0, whose API reports no per-node placement, so
+    /// CoreML may have taken all of the graph, part of it, or none, with the
+    /// rest silently on the CPU), nil when `provider` is simply what ran.
+    var providerBasis: String? { get }
+
+    /// The intra-op thread count the session was built with, or nil when the
+    /// engine does not say (a fake). Reported as `intraThreads` (L09).
+    var intraThreads: Int? { get }
+
+    /// Release the session `load()` opened. KV-R2 calls it at the end of
+    /// every pass, BEFORE the next pass's engine is built, so two 325 MB fp32
+    /// sessions never share the process.
+    func close()
 }
 
 public extension KokoroProbeEngine {
@@ -57,6 +79,10 @@ public extension KokoroProbeEngine {
     /// An engine that does not say why it failed says nothing, not "ok".
     var lastFailure: KokoroProbeFailure? { nil }
     var loadError: String? { nil }
+    var providerUnavailable: Bool { false }
+    var providerBasis: String? { nil }
+    var intraThreads: Int? { nil }
+    func close() {}
 }
 
 /// One inference failure in closed tokens (`player/kokoro-probe.js`'s
@@ -999,7 +1025,10 @@ public class ForayTtsPlugin: CAPPlugin, CAPBridgedPlugin, AVSpeechSynthesizerDel
     /// (`tools/mobile/fetch-models.mjs`). Looked up by name rather than
     /// assumed present: a build that skipped the fetch step must say
     /// `model-absent`, not crash.
-    static let MODEL_RESOURCE = "kokoro-v1_0-q8f16"
+    ///
+    /// fp32 SINCE KV-R2 (deck D13): the only Kokoro export that is finite on
+    /// Apple silicon. `fetch-models.mjs`'s iOS model pin; Android keeps q8f16.
+    static let MODEL_RESOURCE = "kokoro-v1_0-fp32"
     static let MODEL_EXTENSION = "onnx"
     /// The one voice the probe bundles — `fetch-models.mjs`'s `PROBE_VOICE`.
     /// One, not three: K-01 times the graph, and the graph takes the same time
@@ -1039,14 +1068,17 @@ public class ForayTtsPlugin: CAPPlugin, CAPBridgedPlugin, AVSpeechSynthesizerDel
         // never falls back to one.
         let passage = call.getObject("passage")
         let lines = (passage?["lines"] as? [[String: Any]]) ?? []
-        let idLines: [[Int]] = lines.compactMap { $0["ids"] as? [Int] }
         if lines.isEmpty {
             result["ok"] = false
             result["reason"] = "passage-empty"
             call.resolve(result)
             return
         }
-        if idLines.count != lines.count {
+        /* KV-R2: ONE INFERENCE PER SENTENCE CHUNK, in passage order. Each
+           line carries `chunks` (`phonemize.py`'s `sentence_chunks`, each
+           with its own ids); a line with none is unphonemized, whatever else
+           it holds. The phone never cuts a chunk itself (D3). */
+        guard let idLines = Self.chunkIds(lines) else {
             result["ok"] = false
             result["reason"] = "passage-unphonemized"
             call.resolve(result)
@@ -1070,7 +1102,7 @@ public class ForayTtsPlugin: CAPPlugin, CAPBridgedPlugin, AVSpeechSynthesizerDel
            the weights, and released when this method returns. An engine
            registered at startup would be running ONNX Runtime in every
            listener's app for a card that measures one phone. */
-        guard let engine = Self.probeEngine ?? KokoroOrtProbeEngine() else {
+        guard KokoroOrtProbeEngine() != nil || Self.probeEngine != nil else {
             result["ok"] = false
             result["reason"] = "engine-absent"
             call.resolve(result)
@@ -1078,8 +1110,99 @@ public class ForayTtsPlugin: CAPPlugin, CAPBridgedPlugin, AVSpeechSynthesizerDel
         }
 
         let speed = passage?["speed"] as? Double ?? 1.0
-        call.resolve(Self.measure(engine: engine, idLines: idLines, speed: speed,
-                                  modelURL: KokoroModelFiles.modelURL()))
+        call.resolve(Self.measurePasses(idLines: idLines, speed: speed, modelURL: KokoroModelFiles.modelURL(),
+                                        makeEngine: { pass in Self.probeEngine ?? KokoroOrtProbeEngine(pass: pass) }))
+    }
+
+    /// Every chunk's ids, in passage order, or nil when any line has no
+    /// chunk ids. A line from before KV-R2 that carries only a whole-line
+    /// `ids` still counts as one chunk, so an older passage measures rather
+    /// than refusing — but the passage this build ships is chunked.
+    static func chunkIds(_ lines: [[String: Any]]) -> [[Int]]? {
+        var out: [[Int]] = []
+        for line in lines {
+            if let chunks = line["chunks"] as? [[String: Any]], !chunks.isEmpty {
+                for chunk in chunks {
+                    guard let ids = chunk["ids"] as? [Int], !ids.isEmpty else { return nil }
+                    out.append(ids)
+                }
+            } else if let ids = line["ids"] as? [Int], !ids.isEmpty {
+                out.append(ids)
+            } else {
+                return nil
+            }
+        }
+        return out.isEmpty ? nil : out
+    }
+
+    /// KV-R2's two passes, one after the other, in ONE run: `cpu` then
+    /// `coreml` (`KokoroProbePass.allCases`). Each pass builds its own
+    /// engine, measures the whole chunked passage (a cold chunk, then the warm
+    /// ones), and CLOSES the engine before the next pass builds one — so the
+    /// two fp32 sessions never coexist, and the second pass's peak is not the
+    /// first pass's weights still resident.
+    ///
+    /// The answer is `{ ok: true, platform, passes: [record, record] }`: each
+    /// record is `measure`'s shape plus `pass`, and `player/kokoro-probe.js`
+    /// turns each into its own `voiceProbe` row. `ok` is true because the
+    /// probe RAN; whether a pass measured anything is that pass's own `ok`.
+    ///
+    /// THE MODEL HASH IS READ ONCE. 325 MB of fp32 streamed through SHA-256
+    /// is a few seconds a founder waits; both passes load the same file.
+    ///
+    /// IF THE APP IS KILLED MID-PASS (jetsam, most likely, with a locked
+    /// screen and a 325 MB model), nothing here returns. So the pass in
+    /// flight, its stage (`load` before the session opens, `synth` once it
+    /// has), the chunks it had finished and the peak so far are written to a
+    /// small file before the load and after every chunk (`ProbeInFlight`), and
+    /// the NEXT run reports them on its first record as `prevKilled*` — the
+    /// "last logged peak" the card's stop rule asks for, readable from a
+    /// paste. The note BEFORE the load matters: the CoreML pass compiles the
+    /// graph there, and without it a kill in that compile would be blamed on
+    /// the CPU pass's last chunk.
+    static func measurePasses(passes: [KokoroProbePass] = KokoroProbePass.allCases,
+                              idLines: [[Int]], speed: Double, modelURL: URL?,
+                              makeEngine: (KokoroProbePass) -> KokoroProbeEngine?,
+                              isForeground: () -> Bool = { ForayTtsPlugin.isForeground() },
+                              inFlight: ProbeInFlight = ProbeInFlight()) -> JSObject {
+        var result = JSObject()
+        result["platform"] = "ios"
+        let facts = modelURL.flatMap { modelFileFacts($0) }
+        let killed = inFlight.takeLeftover()
+        var records: [JSObject] = []
+        for pass in passes {
+            var record: JSObject = autoreleasepool {
+                guard let engine = makeEngine(pass) else {
+                    var refused = JSObject()
+                    refused["platform"] = "ios"
+                    refused["pass"] = pass.rawValue
+                    refused["provider"] = pass.rawValue
+                    refused["ok"] = false
+                    refused["reason"] = "engine-absent"
+                    return refused
+                }
+                /* `defer`, so a pass that returns early still releases its
+                   session before the next pass builds one. */
+                defer { engine.close() }
+                return measure(engine: engine, idLines: idLines, speed: speed, modelURL: nil,
+                               isForeground: isForeground, pass: pass, modelFacts: facts,
+                               onProgress: { stage, done, peak in
+                                   inFlight.note(pass: pass, stage: stage, chunksDone: done, peakBytes: peak)
+                               })
+            }
+            if records.isEmpty, let killed {
+                record["prevKilledPass"] = killed.pass
+                record["prevKilledStage"] = killed.stage
+                record["prevKilledChunksDone"] = killed.chunksDone
+                record["prevKilledPeakBytes"] = Double(killed.peakBytes)
+            }
+            records.append(record)
+        }
+        inFlight.clear()
+        result["passes"] = records
+        result["ok"] = true
+        result["reason"] = ""
+        return result
     }
 
     /// The measurement itself, over ANY engine. Split out of
@@ -1093,13 +1216,24 @@ public class ForayTtsPlugin: CAPPlugin, CAPBridgedPlugin, AVSpeechSynthesizerDel
     /// the runtime, file and phone (L07-L09), and heat, power and memory
     /// over the run (L10/L11/L34/L35). Local only: every value lands in
     /// this JSObject and nowhere else.
+    ///
+    /// KV-R2: `pass` names the provider pass this record belongs to (nil for
+    /// a caller that runs one), `modelFacts` lets `measurePasses` hash the
+    /// 325 MB model once for both passes, and `onProgress` hears the stage
+    /// (`load` just before the session opens, `synth` after it and after every
+    /// chunk), the chunks finished so far and the pass's peak so far, outside
+    /// every timed section.
     static func measure(engine: KokoroProbeEngine, idLines: [[Int]], speed: Double, modelURL: URL?,
-                        isForeground: () -> Bool = { ForayTtsPlugin.isForeground() }) -> JSObject {
+                        isForeground: () -> Bool = { ForayTtsPlugin.isForeground() },
+                        pass: KokoroProbePass? = nil,
+                        modelFacts: (bytes: Int, sha8: String)? = nil,
+                        onProgress: (String, Int, UInt64) -> Void = { _, _, _ in }) -> JSObject {
         var result = JSObject()
         result["platform"] = "ios"
+        if let pass { result["pass"] = pass.rawValue }
 
         /* WHAT RAN, AND ON WHAT (L07-L09). Read before any stopwatch starts —
-           the model hash reads 86 MB and must not land in a timed section.
+           the model hash reads 325 MB and must not land in a timed section.
            The hardware MODEL identifier, never `UIDevice.name` (often a
            person's name) and never the per-vendor device id. */
         result["cores"] = ProcessInfo.processInfo.activeProcessorCount
@@ -1107,9 +1241,9 @@ public class ForayTtsPlugin: CAPPlugin, CAPBridgedPlugin, AVSpeechSynthesizerDel
         if let os = machineToken(onMain { UIDevice.current.systemVersion }) { result["os"] = os }
         if engine is KokoroOrtProbeEngine {
             if let version = KokoroOrtProbeEngine.runtimeVersion() { result["ortVersion"] = version }
-            result["intraThreads"] = Int(KokoroOrtProbeEngine.INTRA_OP_THREADS)
         }
-        if let url = modelURL, let facts = modelFileFacts(url) {
+        if let threads = engine.intraThreads { result["intraThreads"] = threads }
+        if let facts = modelFacts ?? modelURL.flatMap({ modelFileFacts($0) }) {
             result["modelBytes"] = facts.bytes
             result["modelSha8"] = facts.sha8
         }
@@ -1131,8 +1265,35 @@ public class ForayTtsPlugin: CAPPlugin, CAPBridgedPlugin, AVSpeechSynthesizerDel
         result["lowPower"] = ProcessInfo.processInfo.isLowPowerModeEnabled
         result["baseMemoryBytes"] = Double(taskFootprint().current)
 
+        /* THIS PASS'S PEAK (KV-R2). The kernel's `ledger_phys_footprint_peak`
+           is the PROCESS's since launch and cannot be reset, so after the CPU
+           pass it would hand the CoreML pass the CPU pass's figure. A sampler
+           polls the current footprint every 10 ms from the load to the last
+           chunk, on its own queue, and keeps the high-water mark: a peak that
+           belongs to this pass alone. The process-wide figure is still
+           reported, as `processPeakBytes`. */
+        let sampler = FootprintSampler()
+        sampler.start()
+        onProgress("load", 0, sampler.peak)
         let load = engine.load()
+        onProgress("synth", 0, sampler.peak)
         if let loadError = engine.loadError { result["loadErr"] = loadError }
+        result["provider"] = engine.provider
+        if let basis = engine.providerBasis { result["providerBasis"] = basis }
+        if engine.providerUnavailable {
+            /* The EP never registered, so nothing ran: no chunk outcomes, no
+               RTF, and no "synthesis-failed" that would read as an inference
+               fault. The CPU pass is not affected by this one. */
+            result["peakMemoryBytes"] = Double(sampler.stop())
+            onMain { UIDevice.current.isBatteryMonitoringEnabled = batteryWasMonitored }
+            result["model"] = engine.modelName
+            result["acceleratorWired"] = false
+            result["modelLoadColdMs"] = load.coldMs
+            result["ok"] = false
+            result["reason"] = "coreml-unavailable"
+            result["detail"] = ""
+            return result
+        }
         var synthColdMs: Double = 0
         var synthWarmMs: Double = 0
         // THE RENDERED SECONDS, AND #685's WHOLE STORY. This pair used to be
@@ -1172,6 +1333,7 @@ public class ForayTtsPlugin: CAPPlugin, CAPBridgedPlugin, AVSpeechSynthesizerDel
                 if reason == "silent" { silentLines += 1 }
             }
             lineOutcomes.append(lineOutcome(out.reason))
+            onProgress("synth", index + 1, sampler.peak)
             // FIRST LINE IS THE COLD NUMBER, the rest are the warm one. They
             // are reported separately rather than averaged because the deck's
             // go rule is stated on the WARM figure alone (§K-01 acceptance),
@@ -1210,6 +1372,7 @@ public class ForayTtsPlugin: CAPPlugin, CAPBridgedPlugin, AVSpeechSynthesizerDel
             if let op = failure.op { result["ortOp"] = op }
         }
         result["provider"] = engine.provider
+        if let basis = engine.providerBasis { result["providerBasis"] = basis }
         result["model"] = engine.modelName
         result["acceleratorWired"] = engine.acceleratorWired
         result["modelLoadColdMs"] = load.coldMs
@@ -1223,7 +1386,8 @@ public class ForayTtsPlugin: CAPPlugin, CAPBridgedPlugin, AVSpeechSynthesizerDel
         // number that decides whether narration survives a locked screen —
         // deck §5 item 3. The peak is the task's own high-water mark.
         result["availableMemoryBytes"] = Double(os_proc_available_memory())
-        result["peakMemoryBytes"] = Double(peakResidentBytes())
+        result["peakMemoryBytes"] = Double(sampler.stop())
+        result["processPeakBytes"] = Double(peakResidentBytes())
         // The card asks whether synthesis completed WITH THE SCREEN LOCKED for
         // the whole passage. This reports the honest weaker fact: the app was
         // NOT frontmost at the moment the last line finished. The founder
@@ -1383,6 +1547,94 @@ public class ForayTtsPlugin: CAPPlugin, CAPBridgedPlugin, AVSpeechSynthesizerDel
         let read: () -> Bool = { UIApplication.shared.applicationState == .active }
         if Thread.isMainThread { return read() }
         return DispatchQueue.main.sync(execute: read)
+    }
+}
+
+/// One pass's memory high-water mark (KV-R2): the current `phys_footprint`,
+/// polled every 10 ms on its own queue from `start()` to `stop()`. The
+/// kernel's own peak cannot be reset between passes, and sampling only
+/// between chunks would miss the activations that exist only DURING one —
+/// which is where fp32's ~1.3 GB lived on the ARM64 VM.
+final class FootprintSampler {
+    private let queue = DispatchQueue(label: "ai.jwlabs.foura.tts.kokoroProbe.footprint", qos: .utility)
+    private let lock = NSLock()
+    private var highWater: UInt64 = 0
+    private var timer: DispatchSourceTimer?
+
+    func start(everyMs: Int = 10) {
+        sample()
+        let timer = DispatchSource.makeTimerSource(queue: queue)
+        timer.schedule(deadline: .now(), repeating: .milliseconds(everyMs), leeway: .milliseconds(2))
+        timer.setEventHandler { [weak self] in self?.sample() }
+        timer.resume()
+        self.timer = timer
+    }
+
+    /// The high-water mark so far.
+    var peak: UInt64 {
+        lock.lock()
+        defer { lock.unlock() }
+        return highWater
+    }
+
+    /// Stop polling and return the high-water mark, one last reading included.
+    func stop() -> UInt64 {
+        timer?.cancel()
+        timer = nil
+        sample()
+        return peak
+    }
+
+    private func sample() {
+        let now = ForayTtsPlugin.taskFootprint().current
+        lock.lock()
+        if now > highWater { highWater = now }
+        lock.unlock()
+    }
+}
+
+/// Where a probe pass had got to, kept on disk as each chunk finishes, so a
+/// run the system KILLS (jetsam, with a locked phone and a 325 MB model) still
+/// says where it died on the next run (KV-R2's stop rule: "report the last
+/// logged peak"). A tiny text file in the app's temporary directory — four
+/// tokens (pass, stage, chunks finished, peak bytes), no content — cleared
+/// when a run finishes normally. `stage` is `load` while the session is being
+/// built (the CoreML compile lives there) and `synth` once it is open.
+final class ProbeInFlight {
+    static let STAGES: Set<String> = ["load", "synth"]
+
+    struct Leftover {
+        let pass: String
+        let stage: String
+        let chunksDone: Int
+        let peakBytes: UInt64
+    }
+
+    private let url: URL
+
+    init(url: URL = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("kokoro-probe-inflight.txt")) {
+        self.url = url
+    }
+
+    func note(pass: KokoroProbePass, stage: String, chunksDone: Int, peakBytes: UInt64) {
+        try? "\(pass.rawValue) \(stage) \(chunksDone) \(peakBytes)".write(to: url, atomically: true, encoding: .utf8)
+    }
+
+    /// What a killed run left behind, if anything, and forget it.
+    func takeLeftover() -> Leftover? {
+        defer { clear() }
+        guard let text = try? String(contentsOf: url, encoding: .utf8) else { return nil }
+        let parts = text.split(separator: " ")
+        guard parts.count == 4,
+              let pass = KokoroProbePass(rawValue: String(parts[0])),
+              Self.STAGES.contains(String(parts[1])),
+              let done = Int(parts[2]), done >= 0,
+              let peak = UInt64(parts[3]) else { return nil }
+        return Leftover(pass: pass.rawValue, stage: String(parts[1]), chunksDone: done, peakBytes: peak)
+    }
+
+    func clear() {
+        try? FileManager.default.removeItem(at: url)
     }
 }
 

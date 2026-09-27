@@ -99,53 +99,56 @@
 
 **Worked if:** no store-facing text says "two origins" or "miss-only", and the published policy names Vercel.
 
-## #45 🟡 [DECIDE] Run the voice-engine probe on your phone — the one measurement no machine here can take (K-01)
+## #45 🟡 [DECIDE] Run the voice-engine probe on your phone — the one measurement no machine here can take (K-01 → KV-R2)
 <!-- ha filed=2026-09-12 kind=default -->
 
-**Why:** the platform voices came back "all so bad" (2026-09-11) and the picker is
-cut down to Samantha as a stopgap. The real fix is our own neural voice bundled in
-the app (`docs/bundled-voice-plan.md`). Everything downstream of that — the engine,
-the player, which three voices ship — waits on ONE number nobody here can produce:
-how fast a real phone synthesizes it, in how much memory, with the screen locked.
-The go/no-go rule was written before the run so it cannot be read generously
-afterwards: RTF ≤ 0.8 warm on the newest phone, ≤ 1.5 on the oldest tried, peak
-memory ≤ 400 MB, and the passage completes with the screen locked.
+**Re-issued 2026-09-26 for a NEW build (KV-R2, probe v2). Your last run was not wasted — it is why this version exists.**
 
-**Status, 2026-09-13 (third attempt — most of the way there):** you ran this on
-build **2026091316** and got
+**Why:** the platform voices came back "all so bad" (2026-09-11), and the fix is our own
+neural voice (Kokoro) bundled in the app (`docs/kokoro-voices-in-app-plan.md`). Whether it
+can speak Forays live on your phone — which model, which chip path, how much lead it needs —
+waits on ONE reading no machine here can take: how fast your phone renders it, in how much
+memory, with the screen locked, and whether the sound it makes is real.
 
-```
-voiceProbe kokoro-probe/cpu  rtf cold 0.00 warm 0.00  load 467ms/388ms  peak 290.9MB  locked=n  batt —  over 77.4s
-```
-
-**Most of that is real and it is the first time any of it existed.** The weights
-reached your phone, the model loaded in 467 ms cold / 388 ms warm, and it peaked at
-290.9 MB — comfortably under the 400 MB ceiling. **Nothing you did was wrong.**
-
-The two RTF zeroes were ours, not yours: the app was dividing the synthesis time by
-an audio length it had **estimated** rather than one the phone had **rendered**, so
-a synthesis that produced nothing came out as `0.00` — which happens to beat every
-ceiling in the go rule. That is fixed (#685): the phone now reports the audio it
-actually made, an impossibly fast RTF is rejected as a failed measurement instead of
-celebrated, and if synthesis produces nothing the line says
-`could not measure: synthesis-failed/<which failure>` in plain words. **A `could not
-measure` line on the next run is a useful result, not a wasted trip — paste it.**
-
-One clause is still completely untested: `locked=n` means the phone was never
-locked, so we do not know whether our voice keeps speaking with the screen off.
-That is one of the four go/no-go conditions.
+**What your 2026-09-26 run told us:** on build 2026092602 every line failed
+(`could not measure: synthesis-failed/inference-threw`). Two things came out of that. First,
+the probe now records *why* ORT failed (#848). Second, a test on Apple-silicon machines showed
+the small model we shipped (q8f16) produces broken audio (NaN) on Apple chips — so did every
+half-precision variant. The full-size model (fp32, 325.5 MB) is the only one that sounds right
+there and runs near real time. **The new build carries fp32 on iPhone** (TestFlight only: it is
+over Apple's cellular download size, so install it on wi-fi) and runs the passage **twice**:
+once on the CPU and once on Apple's CoreML (which can use the Neural Engine). The two readings
+decide which one the app uses.
 
 **Steps:**
-1. Install the first TestFlight (or Play internal) build numbered **higher than 2026091316**. Nothing at or below that number can produce a trustworthy measurement — 2026091316 is the build that reported the two zeroes — so check the build number before you start.
-2. Open the menu, tap **Developer** at the bottom of Settings, turn on **"Voice engine probe"**, and tap **"Run the voice engine probe"**.
-3. **Lock the phone immediately — within a second or two, and in any case BEFORE the passage finishes.** It runs about 78 seconds. This is not tidiness: whether synthesis survives the lock screen is one of the four go/no-go clauses, the app can only report the weaker fact that it was not frontmost when the last line ended, and locking in time is what turns that into the real answer. Locking late reads as a FAILURE, not as a missing number — so if you mistime it, say so and run it again rather than sending the record.
-4. When the passage stops, unlock, tap **Copy** in the sheet that is already open, and paste the whole record here.
-5. Do the same on Joey's Pixel 10 Pro, and on the oldest phone either of you can find — say which record is which phone and which OS version.
-6. If a record says "could not measure" rather than giving numbers, paste it anyway and stop there. `model-absent` means the build did not fetch the weights; `engine-absent` means it fetched them but the runtime did not load; `synthesis-failed/…` means both worked and the inference itself did not, and the part after the slash names which. All three are build problems, not phone ones, and all three are ours to fix. Likewise an `rtf … 0.00!` with an exclamation mark, or `over 0.0s` — those mean the run measured nothing and we need the line, not a re-run.
+1. **Wait for the overlord's note on this card naming the build to install** (it will be
+   numbered 2026092701 or higher), then install that build or a newer one from the TestFlight
+   app. The build number is the number in brackets after the version, for example
+   `1.0.0 (2026092703)`. It is a big download (~330 MB), so use wi-fi. You can confirm you have
+   the right build after the run: every new `voiceProbe` line says `[pass cpu]` or
+   `[pass coreml]`. A line without `[pass …]` means an older build: update and run again.
+2. Open the menu, open **Developer** at the bottom of Settings, turn on **"Voice engine probe"**,
+   and tap **"Run the voice engine probe"**.
+3. **Lock the phone immediately, and leave it locked while it runs.** It takes about **five
+   minutes** now (two passes, and the CoreML pass first compiles the model). Whether synthesis
+   survives the lock screen is part of the answer, and the app can only prove it if the phone
+   was locked when each pass ended. Wait at least five minutes before unlocking; if the sheet
+   still says "Running the voice probe", lock it again and give it another two minutes.
+4. When it has finished, unlock, tap **Copy** in the sheet that is already open, and **paste the
+   whole diagnostics record here**. It should carry two `voiceProbe` lines, one per pass.
+5. **If the app closes or restarts during the run**, that is a finding, not a failure on your
+   part: open the app, run the probe once more (steps 2–4), and paste that record. It will say
+   `LAST-RUN-KILLED` with the pass and the memory it had reached when the phone stopped it.
+6. If a line says `could not measure …`, paste it anyway and stop there — the words after the
+   colon name a build problem that is ours to fix. `coreml-unavailable` on the CoreML line alone
+   is also a real answer: that path could not start on this build, and the CPU line still counts.
 
-**Worked if:** a pasted diagnostics record carrying a `voiceProbe` line with real
-numbers on it, one per phone, each labelled with the device and OS version. Those
-numbers go into `docs/research/on-device-tts.md` §10 and decide K-04.
+**Worked if:** a pasted diagnostics record with two `voiceProbe` lines from build 2026092701 or
+later, each carrying warm RTF, peak memory, `finite=y` or `finite=n`, and the ORT error
+tokens if a pass failed. The CoreML line reads `coreml(requested)`: the phone was asked to use
+CoreML, and ORT 1.20 cannot say how much of the model CoreML actually took. The overlord applies the plan's §6a table to it before the synthesizer
+(KV-03a) locks a model and provider. Pixel and older phones are not needed for this run.
+
 ## #44 🟡 [DECIDE] Add the founders as Play testers, so Play actually emails you (R-08)
 <!-- ha filed=2026-09-11 kind=default -->
 

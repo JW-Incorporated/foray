@@ -176,6 +176,57 @@ test("est_sec is narration-craft's 17 characters per second, and nothing else", 
   assert.match(queue, /NARRATION_CHARS_PER_SEC\s*=\s*17/, "the player must use the same rate");
 });
 
+/* ---------- the chunk rule (KV-R2, D3) ---------- */
+
+test("sentence_chunks: split after . ! ? ; + space; <24 merges forward; >460 splits at the last space; a chunk with U+0303 counts it as one", () => {
+  /* D3's rule has ONE implementation, this one: the phone only splits on "\n",
+     so a second chunker anywhere would be a second rule. Lengths count CODE
+     POINTS — what the phone's id mapping iterates.
+     MUTATION: split on "." alone (no whitespace) — the abbreviation case
+     splits. MUTATION: drop the forward merge — "Yes." is its own chunk.
+     MUTATION: cut at 460 exactly instead of the last space — a word breaks.
+     MUTATION: count graphemes (NFC-normalise, or strip combining marks) — the
+     459-letter-plus-tilde sentence stops splitting. */
+  const long = (n) => "a".repeat(n);
+  const cases = {
+    // 1. split after . ! ? ; followed by whitespace, and only then
+    split: ("ðɪs ɪz ə sˈɛntəns wʌn hɪɹ. ænd ðɪs ɪz ə sˈɛkənd wʌn! ɪz ðɪs ðə θˈɜɹd wʌn? jˈɛs; ðə fˈɔɹθ ɪz hɪɹ."),
+    noSpace: ("ðə vˈæljuː ɪz 3.5 mˈaɪlz lˈɔŋ ænd ɪt ɪz fˈaɪn"),
+    // 2. a sentence under 24 merges into the NEXT one
+    shortFirst: ("jˈɛs. ðɪs ɪz ə lˈɔŋɚ sˈɛntəns ðæt fˈɑloʊz ɪt."),
+    // ... and a short LAST sentence has no next, so it joins the one before
+    shortLast: ("ðɪs ɪz ə lˈɔŋɚ sˈɛntəns ðæt kˈʌmz fˈɜɹst. jˈɛs."),
+    // 3. over 460 splits at the last space at or before 460
+    tooLong: (`${long(300)} ${long(200)}.`),
+    // 4. U+0303 is one code point: 459 letters + a + U+0303 = 461 > 460
+    tilde: (`${long(200)} ${long(258)}ã.`),
+    tildeFits: (`${long(200)} ${long(256)}ã.`),
+  };
+  /* Built here, in JS, so the Python side counts the code points JS's spread counts. */
+  const out = pyJson(`
+cases = ${lit(cases)}
+print(json.dumps({k: P.sentence_chunks(v) for k, v in cases.items()}))`);
+  assert.deepEqual(out.split, [
+    "ðɪs ɪz ə sˈɛntəns wʌn hɪɹ.",
+    "ænd ðɪs ɪz ə sˈɛkənd wʌn!",
+    "ɪz ðɪs ðə θˈɜɹd wʌn? jˈɛs; ðə fˈɔɹθ ɪz hɪɹ.",
+  ], "each sentence end followed by a space is a cut; the 20-point question merges FORWARD into 'jˈɛs;', and the short last sentence joins the chunk before it");
+  assert.equal(out.noSpace.length, 1, "a '.' with no whitespace after it is not a sentence end");
+  assert.deepEqual(out.shortFirst, ["jˈɛs. ðɪs ɪz ə lˈɔŋɚ sˈɛntəns ðæt fˈɑloʊz ɪt."]);
+  assert.deepEqual(out.shortLast, ["ðɪs ɪz ə lˈɔŋɚ sˈɛntəns ðæt kˈʌmz fˈɜɹst. jˈɛs."]);
+  assert.deepEqual(out.tooLong, [long(300), `${long(200)}.`], "cut at the last space, the space dropped");
+  assert.equal(out.tilde.length, 2, "461 code points, counting U+0303 as one, is over 460");
+  assert.equal(out.tildeFits.length, 1, "459 code points with the tilde counted as one fits");
+  for (const [name, chunks] of Object.entries(out)) {
+    for (const c of chunks) assert.ok([...c].length <= 460, `${name}: a chunk over 460 code points`);
+    /* Nothing dropped: the chunks rejoin to the input, whitespace collapsed. */
+    assert.equal(chunks.join(" "), cases[name].split(/\s+/).filter(Boolean).join(" "), `${name}: a phoneme went missing`);
+  }
+  /* D3's constants are the card's numbers, and the style row is min(padded-2, 509). */
+  const k = pyJson("print(json.dumps([P.MIN_CHUNK_PHONEMES, P.MAX_CHUNK_PHONEMES, P.style_row([0]*7), P.style_row([0]*600)]))");
+  assert.deepEqual(k, [24, 460, 5, 509]);
+});
+
 /* ---------- the refusal ---------- */
 
 test("with no backend installed, --check reports what is missing and exits non-zero", () => {

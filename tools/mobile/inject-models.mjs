@@ -34,9 +34,13 @@
  * never sees. `--check` below asserts the source webdir is still clean, so the
  * distinction is enforced rather than merely described.
  *
- * ── Only what `bundle: true` says ─────────────────────────────────────────
- * Twelve voices are pinned because K-03's audition renders twelve; ONE is
- * bundled. The tokenizer is pinned because the committed id table was
+ * ── Only what `bundle` says, for THIS platform ────────────────────────────
+ * Since D13 (KV-R2) the two apps carry different models: iOS the fp32 export,
+ * Android q8f16, and `af_heart` both. So the platform argument is not only a
+ * destination, it picks the pins: an iOS copy never carries q8f16, and
+ * `--check` fails an app that carries the OTHER platform's model as well as
+ * one missing its own. Twelve voices are pinned because K-03's audition
+ * renders twelve; ONE is bundled. The tokenizer is pinned because the committed id table was
  * extracted from it; NONE of it ships — deck §4's whole argument is that no
  * text front end reaches the phone. A `cp mobile/models/*` in a workflow would
  * have shipped all thirteen, which is why the copy list comes from the pin
@@ -66,8 +70,8 @@ export function defaultDestFor(platform) {
 }
 
 /**
- * Copy every `bundle: true` pin from `mobile/models/` into `dest`, verifying
- * each one against its pin FIRST.
+ * Copy every pin `platform` bundles from `mobile/models/` into `dest`,
+ * verifying each one against its pin FIRST.
  *
  * THE VERIFY IS NOT REDUNDANT with `fetch-models.mjs`'s. Between the fetch and
  * this copy sits a whole workflow — a cache restore, an artifact download, a
@@ -76,12 +80,13 @@ export function defaultDestFor(platform) {
  * is checked here too, and the second check costs one read of a file already
  * in the page cache.
  */
-export function inject({ dest, root = REPO_ROOT, pins = PINS } = {}) {
+export function inject({ dest, platform, root = REPO_ROOT, pins = PINS } = {}) {
   const copied = [];
   const problems = [];
   const from = path.join(root, MODELS_DIR);
+  const wanted = bundledPins(platform, pins);
   fs.mkdirSync(dest, { recursive: true });
-  for (const pin of bundledPins(pins)) {
+  for (const pin of wanted) {
     const src = path.join(from, pin.name);
     if (!fs.existsSync(src)) {
       problems.push(`${pin.name}: not in ${MODELS_DIR} — run tools/mobile/fetch-models.mjs first`);
@@ -105,15 +110,46 @@ export function inject({ dest, root = REPO_ROOT, pins = PINS } = {}) {
  * ships with no weights and a founder is told `model-absent` on a build that
  * looked green.
  */
-export function check({ dest, pins = PINS } = {}) {
+export function check({ dest, platform, pins = PINS } = {}) {
   const problems = [];
-  for (const pin of bundledPins(pins)) {
+  const wanted = bundledPins(platform, pins);
+  for (const pin of wanted) {
     const abs = path.join(dest, pin.name);
     if (!fs.existsSync(abs)) { problems.push(`${pin.name}: missing from ${dest}`); continue; }
     const res = verifyBuffer(pin, fs.readFileSync(abs));
     if (!res.ok) problems.push(res.reason);
   }
+  /* THE OTHER PLATFORM'S FILES MUST NOT BE HERE EITHER. A stale copy of
+     q8f16 left in an iOS app would ride along as 86 MB of dead weight, and a
+     325 MB fp32 in an APK would break Android's ceiling; either is a build
+     that "has its model" and is still wrong. Only pins of a bundled kind
+     (anything some platform ships) are looked for: the audition voices and the
+     tokenizer are nobody's, and `prepare-webdir`'s own gate covers the web.
+     SEARCHED AT ANY DEPTH, not only beside the right files: everything under
+     `dest` ships (the Android assets dir holds the web bundle in `public/`),
+     so an fp32 left in a subdirectory is 325 MB in the APK all the same. */
+  const names = new Set(wanted.map((p) => p.name));
+  const foreign = new Map(pins
+    .filter((pin) => !names.has(pin.name) && Array.isArray(pin.bundle) && pin.bundle.length > 0)
+    .map((pin) => [pin.name, pin]));
+  for (const abs of filesUnder(dest)) {
+    const pin = foreign.get(path.basename(abs));
+    if (pin) problems.push(`${path.relative(dest, abs) || pin.name}: present in ${dest}, but it is bundled for ${pin.bundle.join("/")} only`);
+  }
   return problems;
+}
+
+/** Every regular file under `dir`, at any depth. Symlinks are not followed
+    (a link cannot loop the walk, and what it points at is checked where it
+    lives). A missing `dir` is no files: `check` has already named it. */
+function* filesUnder(dir) {
+  let entries;
+  try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch { return; }
+  for (const e of entries) {
+    const abs = path.join(dir, e.name);
+    if (e.isDirectory()) yield* filesUnder(abs);
+    else if (e.isFile()) yield abs;
+  }
 }
 
 /* --------------------------------------------------------------------- main */
@@ -130,16 +166,21 @@ if (isMain) {
   }
   const dest = path.resolve(REPO_ROOT, destArg || fallback);
   if (wantCheck) {
-    const problems = check({ dest });
+    const problems = check({ dest, platform });
     for (const p of problems) console.error(`  ${p}`);
     if (problems.length) {
-      console.error(`The app would ship with no Kokoro weights, and the probe would answer "model-absent".`);
+      console.error(`The ${platform} app would ship without its own Kokoro weights (or with the other platform's), and the probe would not measure what it names.`);
       process.exit(1);
     }
-    console.log(`${dest}: every bundled model file is present and matches its pin.`);
+    /* ONE LINE PER FILE, naming the platform: KV-R2's CI evidence is "fp32 in
+       the iOS app, q8f16 in the APK", read straight off these lines. */
+    for (const pin of bundledPins(platform)) {
+      console.log(`  ${platform}: ${pin.name}  ${pin.bytes} bytes  sha256 ${pin.sha256.slice(0, 8)}  ok`);
+    }
+    console.log(`${dest}: every model file the ${platform} app bundles is present and matches its pin, and no other platform's is.`);
     process.exit(0);
   }
-  const { copied, problems } = inject({ dest });
+  const { copied, problems } = inject({ dest, platform });
   for (const c of copied) console.log(`  ${c.name}  ${c.bytes} bytes  -> ${dest}`);
   for (const p of problems) console.error(`  ${p}`);
   process.exit(problems.length ? 1 : 0);

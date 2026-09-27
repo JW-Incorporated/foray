@@ -377,7 +377,9 @@ final class KokoroOrtProbeEngine implements ForayTtsPlugin.KokoroProbeEngine {
                with a pad at each end (tools/narration/kokoro-vocab.json
                documents the encoding), so the row is `length - 2`, clamped
                because a line longer than the matrix has no row of its own and
-               the last row is the least wrong answer. K-04 chunks instead. */
+               the last row is the least wrong answer. Since KV-R2 every
+               inference is one sentence chunk (≤ 460 phonemes), so the clamp
+               no longer fires on the probe passage. */
             int row = Math.min(Math.max(ids.length - 2, 0), STYLE_ROWS - 1);
             float[] styleRow = new float[STYLE_DIM];
             System.arraycopy(style, row * STYLE_DIM, styleRow, 0, STYLE_DIM);
