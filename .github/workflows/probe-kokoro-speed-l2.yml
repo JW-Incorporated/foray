@@ -1,0 +1,91 @@
+name: probe-kokoro-speed-l2 (throwaway, lens 2 Apple-native)
+on:
+  push:
+    branches: [probe/kokoro-speed-l2]
+permissions:
+  contents: read
+jobs:
+  coreml-chain:
+    # 7-stage laishere Core ML chain vs ORT fp32, on the probe passage's own ids.
+    # src=fluid: FluidInference's published mlpackages; src=convert: converted here from PyTorch.
+    strategy:
+      fail-fast: false
+      matrix:
+        src: [fluid, convert]
+    runs-on: macos-15
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: sysctl -n machdep.cpu.brand_string hw.ncpu hw.memsize; sw_vers
+      - run: node tools/mobile/fetch-models.mjs
+      - run: pip install "onnxruntime==1.20.1" "coremltools>=8.3" numpy scipy soundfile huggingface_hub
+      - if: matrix.src == 'fluid'
+        run: |
+          python - <<'EOF'
+          from huggingface_hub import snapshot_download
+          p = snapshot_download("FluidInference/kokoro-82m-coreml", allow_patterns=["ANE/Kokoro*.mlpackage/**", "ANE/vocab.json", "ANE/af_heart.bin"], local_dir="hf")
+          print(p)
+          EOF
+          echo "MDIR=hf/ANE" >> $GITHUB_ENV
+          cmp hf/ANE/af_heart.bin mobile/models/af_heart.bin && echo "af_heart.bin IDENTICAL to our pin" || echo "af_heart.bin DIFFERS"
+          python -c "import json;a=json.load(open('hf/ANE/vocab.json',encoding='utf8'));b=json.load(open('tools/narration/kokoro-vocab.json',encoding='utf8'));b=b['table'];ks=set(a)|set(k for k in b if len(k)==1);d=[k for k in ks if a.get(k)!=b.get(k)];print('vocab entries fluid',len(a),'ours',len([k for k in b if len(k)==1]),'mismatched keys',[(k,a.get(k),b.get(k)) for k in d][:20])"
+      - if: matrix.src == 'convert'
+        run: |
+          brew install espeak-ng
+          git clone --depth 1 https://github.com/laishere/kokoro-coreml lai
+          cd lai && git log -1 --format='laishere %h %ci'
+          pip install "kokoro>=0.9.4" torch scikit-learn
+          /usr/bin/time -l python -u convert.py 2>&1 | tail -60
+          ls -la output
+          du -sh output/*.mlpackage
+          echo "MDIR=lai/output" >> $GITHUB_ENV
+      - run: python -u tools/probe-tmp/kokoro_coreml.py ort 1.0 ort_s1
+      - run: python -u tools/probe-tmp/kokoro_coreml.py ort 1.0 ort_s1b
+      - run: python -u tools/probe-tmp/kokoro_coreml.py ort 1.5 ort_s15
+      - run: python -u tools/probe-tmp/kokoro_coreml.py coreml 1.0 cml_cpu_s1 "$MDIR" cpu
+      - run: python -u tools/probe-tmp/kokoro_coreml.py coreml 1.5 cml_cpu_s15 "$MDIR" cpu
+      - run: python -u tools/probe-tmp/kokoro_coreml.py coreml 1.0 cml_mixed_s1 "$MDIR" mixed
+        continue-on-error: true
+      - run: python -u tools/probe-tmp/kokoro_coreml.py compare
+
+  ort-coreml-ep:
+    # How much of the fp32 onnx-community graph ORT's CoreML EP claims, dynamic vs fixed input.
+    strategy:
+      fail-fast: false
+      matrix:
+        ortv: ["1.20.1", "latest"]
+    runs-on: macos-15
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: node tools/mobile/fetch-models.mjs
+      - run: |
+          if [ "${{ matrix.ortv }}" = latest ]; then pip install onnxruntime numpy onnx; else pip install "onnxruntime==${{ matrix.ortv }}" numpy onnx; fi
+          M=$(ls mobile/models/kokoro-v1_0-fp32.onnx) && echo "M=$M" >> $GITHUB_ENV
+          python -m onnxruntime.tools.make_dynamic_shape_fixed --input_name input_ids --input_shape 1,256 "$M" fixed256.onnx
+      - name: dynamic, MLProgram, ALL
+        run: |
+          set +e
+          python -u tools/probe-tmp/ort_coreml_ep.py "$M" ALL 0 > ep_dyn.log 2>&1
+          grep -E "^ort |load s|RESULT|THREW|number of partitions|number of nodes" ep_dyn.log | head -20
+          echo "--- unsupported op reasons (top)"; grep -oE "(Operator type|op_type)[^,]*" ep_dyn.log | sort | uniq -c | sort -rn | head -30
+          grep -iE "not supported|unsupported" ep_dyn.log | sed -E 's/.*\] //' | sort | uniq -c | sort -rn | head -30
+      - name: fixed input 256, MLProgram, ALL, RequireStaticInputShapes
+        run: |
+          set +e
+          python -u tools/probe-tmp/ort_coreml_ep.py fixed256.onnx ALL 1 256 > ep_fix.log 2>&1
+          grep -E "^ort |load s|RESULT|THREW|number of partitions|number of nodes" ep_fix.log | head -20
+          grep -iE "not supported|unsupported" ep_fix.log | sed -E 's/.*\] //' | sort | uniq -c | sort -rn | head -30
+      - name: dynamic, MLProgram, CPUOnly (Core ML's own CPU path)
+        run: |
+          set +e
+          python -u tools/probe-tmp/ort_coreml_ep.py "$M" CPUOnly 0 > ep_cpu.log 2>&1
+          grep -E "^ort |load s|RESULT|THREW|number of partitions|number of nodes" ep_cpu.log | head -20
