@@ -8,8 +8,10 @@ jobs:
   arm64:
     strategy:
       fail-fast: false
+      max-parallel: 5
       matrix:
-        ort: ["1.20.1", "1.22.0"]
+        variant: [model_q8f16, model_quantized, model_fp16, model, model_q4]
+        provider: [cpu, coreml]
     runs-on: macos-14
     steps:
       - uses: actions/checkout@v4
@@ -18,5 +20,6 @@ jobs:
       - uses: actions/setup-python@v5
         with: { python-version: "3.12" }
       - run: node tools/mobile/fetch-models.mjs
-      - run: pip install "onnxruntime==${{ matrix.ort }}" numpy
-      - run: uname -m && python tools/probe-tmp/kokoro_arm64.py
+      - run: mkdir -p models && curl -fsSL -o models/${{ matrix.variant }}.onnx "https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX/resolve/main/onnx/${{ matrix.variant }}.onnx"
+      - run: pip install "onnxruntime==1.20.1" numpy
+      - run: python -u tools/probe-tmp/kokoro_arm64.py ${{ matrix.variant }} ${{ matrix.provider }}
