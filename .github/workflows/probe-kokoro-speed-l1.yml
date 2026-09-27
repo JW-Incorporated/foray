@@ -9,7 +9,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        mode: [convbench2, fp16b]
+        mode: [fp16c]
     runs-on: macos-14
     timeout-minutes: 120
     steps:
@@ -19,7 +19,7 @@ jobs:
       - uses: actions/setup-python@v5
         with: { python-version: "3.12" }
       - run: node tools/mobile/fetch-models.mjs
-      - run: pip install "onnxruntime==1.20.1" "numpy>=2" onnx psutil packaging coremltools
+      - run: pip install "onnxruntime==1.20.1" "numpy>=2" onnx psutil packaging coremltools onnxconverter-common
       - run: sysctl -n machdep.cpu.brand_string hw.memsize hw.ncpu || true
       - if: matrix.mode == 'mem'
         run: |
@@ -30,7 +30,7 @@ jobs:
         run: python -u tools/probe-tmp/speed_l1.py ${{ matrix.mode }}
       - if: matrix.mode == 'ortver2'
         run: python -u tools/probe-tmp/speed_l1.py ortver2 1.20.1,1.22.1,1.24.4,1.30.0
-      - if: matrix.mode == 'fp16b' && always()
+      - if: matrix.mode == 'fp16c' && always()
         uses: actions/upload-artifact@v4
         with:
           name: fp16-wavs

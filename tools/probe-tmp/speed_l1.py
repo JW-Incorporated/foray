@@ -827,6 +827,115 @@ def mode_fp16b():
     log("FINITE VARIANTS:", results)
 
 
+# ---------------------------------------------------------------- round 5
+def drop_cast_pairs(m):
+    """Bypass Cast(->fp16) -> Cast(->fp32) round trips that the converter puts between blocked nodes."""
+    from onnx import TensorProto
+    prod, cons, _ = _graph_maps(m)
+    gout = {o.name for o in m.graph.output}
+    to = lambda n: next((a.i for a in n.attribute if a.name == "to"), None)
+    drop = set(); rewired = 0
+    for c1 in list(m.graph.node):
+        if c1.op_type != "Cast" or to(c1) != TensorProto.FLOAT16:
+            continue
+        src = c1.input[0]
+        for c2 in cons.get(c1.output[0], []):
+            if c2.op_type == "Cast" and to(c2) == TensorProto.FLOAT and c2.output[0] not in gout:
+                for x in cons.get(c2.output[0], []):
+                    for k, nm in enumerate(x.input):
+                        if nm == c2.output[0]:
+                            x.input[k] = src; rewired += 1
+                drop.add(id(c2))
+        if c1.output[0] not in gout and all(id(c) in drop for c in cons.get(c1.output[0], [])):
+            drop.add(id(c1))
+    keep = [n for n in m.graph.node if id(n) not in drop]
+    del m.graph.node[:]
+    m.graph.node.extend(keep)
+    return len(drop), rewired
+
+
+def d_block_set(m):
+    prod, cons, byname = _graph_maps(m)
+    msrc = [n.name for n in m.graph.node if n.name.startswith(GEN + "m_source/")]
+    D = set(msrc) | {BIG[0]}
+    for direction in ("down", "up"):
+        frontier = [BIG[0]] + msrc; seen = set()
+        while frontier:
+            nm = frontier.pop()
+            if nm in seen:
+                continue
+            seen.add(nm)
+            if direction == "down":
+                nxt = [c for o in byname[nm].output for c in cons.get(o, [])]
+            else:
+                nxt = [prod[i] for i in byname[nm].input if i in prod]
+            for c in nxt:
+                if c.name.startswith(GEN) and c.op_type not in ("Conv", "ConvTranspose", "STFT"):
+                    D.add(c.name); frontier.append(c.name)
+    return D
+
+
+def mode_fp16c():
+    import onnx
+    m = onnx.load(MODEL)
+    D = d_block_set(m)
+    F = {n.name for n in m.graph.node if n.name.startswith("/decoder/")}
+    del m
+    os.makedirs("models16", exist_ok=True)
+    s32 = make(threads=3)[0]
+    tot = aud = 0.0
+    for u in units("sent"):
+        dt, w = run(s32, u); tot += dt; aud += w.shape[-1] / SR
+    log(f"BASELINE fp32 t3 RTF_CONTENT {tot/aud:.3f}")
+    del s32
+    from onnxruntime.transformers.float16 import convert_float_to_float16, DEFAULT_OP_BLOCK_LIST
+    variants = []
+    for label, nb in (("H_sinegen_fp32_nocastpairs", D), ("I_decoder_fp32_nocastpairs", F), ("J_plain_nocastpairs", set())):
+        m = onnx.load(MODEL)
+        m16 = convert_float_to_float16(m, keep_io_types=True, op_block_list=list(DEFAULT_OP_BLOCK_LIST), node_block_list=sorted(nb))
+        nd, rw = drop_cast_pairs(m16)
+        dst = f"models16/{label}.onnx"
+        onnx.save(m16, dst)
+        log(f"converted {dst}: dropped {nd} casts, rewired {rw} inputs, {os.path.getsize(dst)/1e6:.1f}MB")
+        variants.append((label, dst))
+    try:
+        from onnxconverter_common import float16 as occ
+        m = onnx.load(MODEL)
+        m16 = occ.convert_float_to_float16(m, keep_io_types=True, node_block_list=sorted(D))
+        dst = "models16/G_occ_sinegen_fp32.onnx"
+        onnx.save(m16, dst)
+        log(f"converted {dst} (onnxconverter-common): {os.path.getsize(dst)/1e6:.1f}MB")
+        variants.append(("G_occ_sinegen_fp32", dst))
+    except Exception as e:
+        log("onnxconverter-common threw", str(e)[:400])
+    good = []
+    for label, dst in variants:
+        try:
+            bad = check_fast(dst, label)
+            if bad:
+                try:
+                    lines = units("line")
+                    log(f"  FIRST NONFINITE in {label}: {scan_gen(dst, [lines[2], max(units('sent'), key=len)])}")
+                except Exception as e:
+                    log("  scan threw", str(e)[:300])
+            else:
+                compare(MODEL, dst, label)
+                good.append(dst)
+        except Exception as e:
+            log(label, "threw", str(e)[:600])
+    log("FINITE VARIANTS:", good)
+    for dst in good[:1]:
+        for cu in ("CPUOnly", "ALL"):
+            try:
+                s, lt = make(model=dst, threads=3, providers=(("CoreMLExecutionProvider", {"ModelFormat": "MLProgram", "MLComputeUnits": cu}), "CPUExecutionProvider"))
+                nf = 0; tot = aud = 0.0
+                for u in units("sent"):
+                    dt, w = run(s, u); tot += dt; aud += w.shape[-1] / SR; nf += int(not np.isfinite(w).all())
+                log(f"COREML {cu} {dst}: load {lt:.1f}s nonfinite {nf}/15 RTF_CONTENT {tot/aud:.3f} (VM, no ANE)")
+            except Exception as e:
+                log("coreml threw", str(e)[:300])
+
+
 if __name__ == "__main__":
     log("ort", ort.__version__, "cpus", os.cpu_count(), "mode", sys.argv[1:])
     m = sys.argv[1]
