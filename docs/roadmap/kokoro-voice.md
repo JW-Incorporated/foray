@@ -1,5 +1,7 @@
 # Bundled neural voice (Kokoro) — hand-off plan for the qwen fleet + opus seats (revision 2)
 
+**SUPERSEDED 2026-09-26 by revision 3: `docs/kokoro-voices-in-app-plan.md`.** The founder cut scope to two American voices, Heart (default) and Echo, to get a bundled voice operational first. No card below has an open or merged PR; do not start one. The revision 2 → 3 card map is §7 of the new deck. The British voices are kept on the roadmap in the last section of this file ("Roadmap: British voices"). **Rev 3.1 (same day):** the q8f16 model this file assumes produces NaN on Apple silicon, so iOS moves to fp32 and the phone reading is KV-R2; see §10 of the new deck.
+
 Package: `docs/bundled-voice-plan.md` K-01..K-08 (K-06/K-07 done), HUMAN-ACTIONS #45 (phone probe), native engine NE-42 (PcmNarrator seat), narration phonemes authored server-side. Revised 2026-09-25 against `origin/main` @ **`ecb6bfa3`** (`feat(playlists) #839`; three commits past the reviewer's `0b2b8f92`, which was itself stale). Every path, symbol and line number below was re-verified with `git show origin/main:<path> | grep -n <symbol>` at that commit.
 
 **Standing instruction for every task (the reviewer's fix, adopted):** before editing, run `git fetch origin && git -c core.autocrlf=false show origin/main:<file> | grep -n <symbol>` for every file:line this plan cites in your task. A line number that no longer lands on the named symbol is a **stop condition**: re-anchor by symbol name if the symbol still exists in the same file, and say so in the PR; if the symbol is gone or moved files, stop and report.
@@ -606,3 +608,19 @@ Wave 4:
 ```
 
 File-disjointness within a wave: KV-01 (`tools/narration/*`), KV-03 (`tools/foray/check-forays.test.mjs`), KV-04 (`tools/mobile/gen-kokoro-vocab.mjs`, `player/kokoro-vocab.js`, two native constant files, the generated block in `foray-tts.js`, `tools/mobile/kokoro-vocab.test.mjs`, `tools/mobile/foray-tts-native.test.mjs`), KV-07 (`player/foray-queue.js` + test), KV-17 (`tools/narration/audition-page*`) — the only shared file is `test/suite-integrity.test.js` (floors), which every PR edits on its own line. Wave 2: KV-05 (`player/phoneme-chunks*`) and KV-06 (`foray-tts.js` outside the generated block, `tts-bridge.js`, `tools/mobile/foray-tts.test.mjs`, `tts-bridge.test.js`, `unported.json` tts-bridge section) share nothing; KV-11 and KV-14 touch different languages/directories and different `describe` blocks of `foray-tts-native.test.mjs`, colliding only on that suite's floor line. Wave 3: KV-08 → KV-09 → KV-10 are strictly serial (`queue-manager.js`, then `client.js`/`app.js`, then `app.js`); KV-08 and KV-06 both edit `unported.json` but in different sections and different waves. Native iOS (KV-11..13) and Android (KV-14..16) chains run in parallel; `tools/mobile/foray-tts.test.mjs` is edited by KV-06 alone; `mobile/plugins/foray-tts/README.md` is edited by KV-23 alone.
+
+## Roadmap: British voices, Isabella and Lewis (rev 3 KV-11) — LATER, not scheduled
+
+Wyatt, 2026-09-26: "let's put british on the roadmap and stick with just american for the time being, I'd rather get this operational and upgrade it later instead of spinning our wheels too much."
+
+- **Trigger:** the founder says go, after rev 3 KV-06's Foray listen (HUMAN-ACTIONS #119). Not before.
+- **Voices:** `bf_isabella` ("Isabella", British · female) and `bm_lewis` ("Lewis", British · male). Heart stays the default.
+- **Scope, in one paragraph:**
+  - Pin `bf_isabella` and `bm_lewis` in `tools/mobile/fetch-models.mjs`, hashed fresh at that time.
+  - Add `phonemize.py --accent en-GB` (misaki British plus the British espeak fallback, PC/server only) and an optional lexicon `ipa_gb`.
+  - Stamp `phonemes_gb` on narration items with the same chunk rule and vocab sha (verify every code point), and have check-forays and `AUTHORED_PHONEME_FIELDS` cover it.
+  - Add `accents["en-GB"] = {field: "phonemes_gb"}` and two entries to `mobile/plugins/foray-tts/kokoro-voices.json`.
+  - Player, synth and picker code do not change; that is rev 3 D5's point (a voice is a catalog entry plus a pin).
+  - The seed strip from rev 3 KV-02 already absorbs the second phoneme string.
+- **Size check when triggered:** each voice is 522,240 B, so two more add about 1 MiB against the 150 MB ceiling.
+- **needs_phone:** yes. Sized and specified when triggered; the full text is KV-11 in `docs/kokoro-voices-in-app-plan.md`.

@@ -1,5 +1,17 @@
 # A voice of our own, inside the app: research and a Hermes deck
 
+**Execution status (2026-09-26):** the cards that finish this deck are in
+`docs/kokoro-voices-in-app-plan.md` (Kokoro deck revision 3). Two American voices
+ship first, Heart (`af_heart`, the default) and Echo (`am_echo`); the British voices
+(Isabella, Lewis) are its roadmap card KV-11, not scheduled. That deck supersedes §6's
+three-voice audition and revision 2 (`docs/roadmap/kokoro-voice.md`). Order of proof:
+the voices work in the app, they narrate at a live pace on the founder's phone, then
+they read a Foray. **Amended the same day (rev 3.1, that deck's §10):** HA #45 ran on
+build 2026092602 and could not measure (`synthesis-failed/inference-threw`); an ARM64
+sweep showed the q8f16 model below produces NaN on Apple silicon while the x86 PC runs
+it fine. **iOS moves to the fp32 model** (325.5 MB, TestFlight only); Android stays on
+q8f16 for now; that deck's KV-R2 (probe v2 on the phone) replaces its PC sweep.
+
 **Status:** K-01's probe, K-03, K-06 and K-07 landed 2026-09-12 (per-card
 **DONE** markers in §9). **K-02 is PARTIAL, not done** — corrected 2026-09-12 by a
 machinery-audit pass: its module exists and its tests pass, but no production code
@@ -260,6 +272,8 @@ live with. The pick is recorded in `docs/DECISIONS.md`.
   document, and adds a DECISIONS entry. `on-device-tts.md` gets an addendum §10.
 
 ## 9. The card deck
+
+Execution: `docs/kokoro-voices-in-app-plan.md` rev 3 (2 American voices; British = KV-11). Rev 3.1: iOS on fp32, Android on q8f16, phone reading = KV-R2.
 
 Conventions as in the sibling decks: ask; owned files; dependencies; **measured**
 acceptance; sizing (S ≤ ½ day, M ≤ 2 days, L ≤ 5); governance; design comment first
