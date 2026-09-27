@@ -1443,6 +1443,37 @@ test("a synthesis-failed refusal keeps the load and memory numbers it DID produc
   const bare = formatDiagnosticReport(log.read()).split("\n").filter((l) => l.includes("voiceProbe")).at(-1);
   assert.match(bare, /voiceProbe kokoro-probe could not measure: model-absent {2}hidden=n$/);
 });
+
+test("a probe-v2 row names its pass, whether it was finite, and ORT's error tokens (KV-R2)", () => {
+  /* The founder pastes the RING, so §6a is read off these lines: per pass,
+     warm RTF, peak, finite y/n and the error tokens. A row written before
+     probe v2 must print exactly what it did (the tests above).
+     MUTATION: drop `pass` or `finite` from voiceProbe()'s picked fields — the
+     two passes' rows become indistinguishable, or a NaN pass reads clean. */
+  const { diag, log } = mk();
+  diag.voiceProbe({
+    engine: "kokoro-probe", ok: true, pass: "cpu", provider: "cpu", model: "kokoro-82m-v1.0-fp32",
+    modelLoadColdMs: 2100, modelLoadWarmMs: 900, rtfCold: 1.0, rtfWarm: 0.8, audioSec: 78,
+    audioFrom: "rendered", peakMemoryMb: 900, lockedScreenCompleted: true, finite: true,
+    nonFiniteLines: 0, lines: 15,
+  });
+  diag.voiceProbe({
+    engine: "kokoro-probe", ok: true, pass: "coreml", provider: "coreml", acceleratorWired: true,
+    modelLoadColdMs: 41000, modelLoadWarmMs: 9000, rtfCold: 0.7, rtfWarm: 0.5, audioSec: 63,
+    audioFrom: "rendered", peakMemoryMb: 700, lockedScreenCompleted: true, synthFailures: 3, synthReason: "non-finite",
+    finite: false, nonFiniteLines: 2, lines: 15, ortCode: "ep-fail", ortOp: "Conv", ortStage: "run",
+    prevKilledPass: "coreml", prevKilledChunk: 6, prevKilledPeakMb: 1400,
+  });
+  diag.voiceProbe({ engine: "kokoro-probe", ok: false, pass: "coreml", provider: "coreml", reason: "coreml-unavailable", loadErr: "ep-fail" });
+  const lines = formatDiagnosticReport(log.read()).split("\n").filter((l) => l.includes("voiceProbe"));
+  assert.equal(lines.length, 3, "one row per pass");
+  assert.match(lines[0], /kokoro-probe\/cpu \[pass cpu\]\(cpu-only\)  rtf cold 1\.00 warm 0\.80/);
+  assert.match(lines[0], /peak 900MB/);
+  assert.match(lines[0], /  finite=y  hidden=n$/);
+  assert.match(lines[1], /kokoro-probe\/coreml \[pass coreml\]  rtf cold 0\.70 warm 0\.50/);
+  assert.match(lines[1], /  nan 2\/15  finite=n  ort=ep-fail op=Conv at=run  LAST-RUN-KILLED coreml chunk 6 peak 1400MB  hidden=n$/);
+  assert.match(lines[2], /voiceProbe kokoro-probe\/coreml \[pass coreml\] could not measure: coreml-unavailable  load FAILED\(ep-fail\) —\/—  hidden=n$/);
+});
 /* L-06: what the lock screen was actually told (founder feedback F15)  */
 /* ==================================================================== */
 

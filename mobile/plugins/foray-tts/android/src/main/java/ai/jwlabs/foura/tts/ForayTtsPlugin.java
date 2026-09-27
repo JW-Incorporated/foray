@@ -966,25 +966,22 @@ public class ForayTtsPlugin extends Plugin implements TextToSpeech.OnInitListene
          * key, and "the page sent no passage" is an ANSWER this method has a
          * code for, not an exception to be caught two frames away. */
         org.json.JSONArray rawLines = passage == null ? null : passage.optJSONArray("lines");
-        List<int[]> idLines = new ArrayList<>();
+        /* KV-R2: ONE INFERENCE PER SENTENCE CHUNK, the same passage iOS reads.
+         * Each line's `chunks` (tools/narration/phonemize.py's
+         * `sentence_chunks`) are flattened in order; a line with no chunk ids
+         * is unphonemized. The phone never cuts a chunk itself (deck D3). */
+        List<int[]> idLines = null;
         int lineCount = 0;
         try {
             if (rawLines != null) {
                 lineCount = rawLines.length();
-                for (int i = 0; i < lineCount; i++) {
-                    org.json.JSONObject line = rawLines.getJSONObject(i);
-                    org.json.JSONArray ids = line.optJSONArray("ids");
-                    if (ids == null || ids.length() == 0) continue;
-                    int[] out = new int[ids.length()];
-                    for (int j = 0; j < ids.length(); j++) out[j] = ids.getInt(j);
-                    idLines.add(out);
-                }
+                idLines = chunkIds(rawLines);
             }
         } catch (Exception e) {
             /* A malformed passage is `passage-unphonemized`, not a crash: the
              * page owns that file and a founder reading the record needs to be
              * told which artefact to fix, not that something threw. */
-            idLines.clear();
+            idLines = null;
         }
 
         if (lineCount == 0) {
@@ -993,7 +990,7 @@ public class ForayTtsPlugin extends Plugin implements TextToSpeech.OnInitListene
             call.resolve(result);
             return;
         }
-        if (idLines.size() != lineCount) {
+        if (idLines == null) {
             result.put("ok", false);
             result.put("reason", "passage-unphonemized");
             call.resolve(result);
@@ -1058,6 +1055,37 @@ public class ForayTtsPlugin extends Plugin implements TextToSpeech.OnInitListene
         });
     }
 
+    /** Every chunk's ids, in passage order, or null when any line has none
+     *  (KV-R2). A line from before KV-R2 that carries only a whole-line
+     *  {@code ids} still counts as one chunk, the same rule as iOS's
+     *  {@code chunkIds}. */
+    static List<int[]> chunkIds(org.json.JSONArray lines) throws org.json.JSONException {
+        List<int[]> out = new ArrayList<>();
+        for (int i = 0; i < lines.length(); i++) {
+            org.json.JSONObject line = lines.getJSONObject(i);
+            org.json.JSONArray chunks = line.optJSONArray("chunks");
+            if (chunks != null && chunks.length() > 0) {
+                for (int c = 0; c < chunks.length(); c++) {
+                    int[] ids = idsOf(chunks.getJSONObject(c).optJSONArray("ids"));
+                    if (ids == null) return null;
+                    out.add(ids);
+                }
+            } else {
+                int[] ids = idsOf(line.optJSONArray("ids"));
+                if (ids == null) return null;
+                out.add(ids);
+            }
+        }
+        return out.isEmpty() ? null : out;
+    }
+
+    private static int[] idsOf(org.json.JSONArray ids) throws org.json.JSONException {
+        if (ids == null || ids.length() == 0) return null;
+        int[] out = new int[ids.length()];
+        for (int j = 0; j < ids.length(); j++) out[j] = ids.getInt(j);
+        return out;
+    }
+
     /** The measurement itself, on {@link #PROBE_EXECUTOR}. */
     private void measureProbe(PluginCall call, JSObject result, List<int[]> idLines, JSObject passage,
                               KokoroProbeEngine engine) {
@@ -1069,6 +1097,12 @@ public class ForayTtsPlugin extends Plugin implements TextToSpeech.OnInitListene
         }
 
         Context ctx = getContext();
+        /* KV-R2: the record names its pass, the same key iOS's two passes
+         * carry. Android runs ONE: q8f16 on ORT's CPU provider (deck D13) —
+         * no NNAPI in this deck. What it adds is finiteness per chunk
+         * (`nonFiniteLines` counts chunks), so a Pixel row can say whether
+         * Android shares the fp16 NaN Apple silicon showed. */
+        result.put("pass", "cpu");
         /* WHAT RAN, AND ON WHAT (L07-L09). Read before any stopwatch starts —
          * the model hash reads 86 MB and must not land in a timed section.
          * Build.MODEL (a model name), never a serial or a device id. */

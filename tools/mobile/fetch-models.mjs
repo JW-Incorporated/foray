@@ -31,7 +31,8 @@
  *     node tools/mobile/fetch-models.mjs            # fetch + verify
  *     node tools/mobile/fetch-models.mjs --verify   # verify what is on disk
  *     node tools/mobile/fetch-models.mjs --check    # check the pins only (CI)
- *     node tools/mobile/fetch-models.mjs --bundled  # names the files a build copies
+ *     node tools/mobile/fetch-models.mjs --bundled ios      # names the files an iOS build copies
+ *     node tools/mobile/fetch-models.mjs --bundled android  # ... and an Android one
  *
  * `--check` is the mode CI can run with no download and no secret: it asserts
  * every pin is well-formed and internally consistent, which is what makes
@@ -51,6 +52,17 @@
  *
  * A `null` pin still REFUSES TO FETCH — see `verifyBuffer` — so a pin added
  * later without a hash cannot ride along unverified.
+ *
+ * ── The fp32 pin was filled on 2026-09-26 (KV-R2), the same way, twice ────
+ * `onnx/model.onnx` (325.5 MB) was stream-hashed on the founder's Windows PC
+ * by two INDEPENDENT downloads — the first also written to the gitignored
+ * `mobile/models/`, the second hashed and dropped — and the two agreed:
+ *
+ *     stream-hash 2026-09-27T02:23:35.590Z model.onnx sha256=8fbea51ea711f2af382e88c833d9e288c6dc82ce5e98421ea61c058ce21a34cb bytes=325532232 (504.0s) saved
+ *     stream-hash 2026-09-27T02:31:53.696Z model.onnx sha256=8fbea51ea711f2af382e88c833d9e288c6dc82ce5e98421ea61c058ce21a34cb bytes=325532232 (497.3s)
+ *
+ * Two, because the card's stop rule is "two stream-hashes disagree": one
+ * download proves only that one response was self-consistent.
  */
 
 import fs from "node:fs";
@@ -71,15 +83,42 @@ export const MODELS_DIR = path.join("mobile", "models");
  * THE PINS.
  *
  * `name` is the filename the native halves look for —
- * `ForayTtsPlugin.swift`'s `MODEL_RESOURCE` and `ForayTtsPlugin.java`'s
- * `MODEL_ASSET`. Changing one without the others is caught by
- * `tools/mobile/fetch-models.test.mjs` and the XCTest pin of the same name.
+ * `ForayTtsPlugin.swift`'s `MODEL_RESOURCE` (iOS: the fp32 pin) and
+ * `ForayTtsPlugin.java`'s `MODEL_ASSET` (Android: the q8f16 pin). Changing one
+ * without the other is caught by `tools/mobile/fetch-models.test.mjs` and the
+ * XCTest pin of the same name.
  *
- * WHY q8f16 AND NOT int8 OR fp32. Deck §3's evidence table: fp32 is 326 MB and
- * measured 833 MB peak on a 2018 iPad; plain int8 measured SLOWER than fp32 on
- * that same device (RTF > 1.5); q8f16 is the 86 MB variant NimbleEdge ships on
- * phones. K-01 measures whether that choice survives contact with a real
- * phone — it is a starting point, not a finding.
+ * `bundle` IS PER PLATFORM (KV-R2, deck D13): the list of platforms whose app
+ * binary carries the file — `["ios"]`, `["android"]`, `["ios", "android"]`,
+ * or `[]` for a workstation-only file. There is no implicit value and no
+ * boolean: "goes into the app" stopped being one question the day the two
+ * platforms stopped shipping the same model.
+ *
+ * WHY fp32 ON iOS, q8f16 ON ANDROID, AND NOTHING ELSE (deck §10b, D13).
+ * The first answer here was q8f16 everywhere — 86 MB, the variant NimbleEdge
+ * ships on phones — and it was a starting point, not a finding. The finding
+ * came from an ARM64 sweep on GitHub's macos-14 Apple-silicon runners (ORT
+ * 1.20.1 Python, 1.22.0 as a cross-check; runs 36280828928, 36281480135 and
+ * 36282008323), on the probe passage and `af_heart`:
+ *   - EVERY export with fp16 activations goes NON-FINITE on Apple silicon:
+ *     `model_q8f16` (86 MB, the one we shipped) and `model_fp16` (163 MB) each
+ *     returned NaN samples on one or two lines of four, on the CPU and the
+ *     CoreML provider alike, and which lines varied with the ORT version. The
+ *     x86 PC renders the same ids on the same file cleanly, which is why no
+ *     workstation run ever caught it.
+ *   - `model.onnx` (fp32, 325.5 MB) is finite on every line, at a CPU RTF of
+ *     0.78–0.98 on a 3-vCPU M1 VM. Its peak RSS reached ~1.3 GB on the
+ *     417-token line: activation memory scales with line length, which is why
+ *     the probe passage is now sentence chunks.
+ *   - The finite small variants are too slow (`model_quantized`, int8 dynamic:
+ *     RTF ~1.8, ConvInteger is slow on ARM) or not small (`model_q4`: 305 MB,
+ *     RTF ~1.0). No small, finite, fast export exists.
+ * So iOS bundles fp32, over the 150 MB ceiling, for TestFlight only
+ * (`test/release-gates.test.js` holds its own budget). ANDROID STAYS ON q8f16
+ * because Play's base-module limit will not take 325 MB (fp32 there is KV-14,
+ * via Play Asset Delivery) — and Android carries the SAME fp16 NaN risk, which
+ * nobody has yet measured on an ARM Android phone; its probe reports
+ * finiteness per chunk for exactly that reason.
  *
  * THE VOICES ARE THE AUDITION SLATE, twelve of them (deck §6), because K-03
  * renders all twelve and K-04 bundles only the three the founders pick. A
@@ -94,7 +133,14 @@ export const MODELS_DIR = path.join("mobile", "models");
  *  5.5 MB to every install for a card that is not K-01. */
 export const PROBE_VOICE = "af_heart";
 
+/** The platforms a pin's `bundle` list may name — `inject-models.mjs`'s own
+    `PLATFORMS` keys. */
+export const BUNDLE_PLATFORMS = Object.freeze(["ios", "android"]);
+
 export const PINS = Object.freeze([
+  /* ANDROID's model (D13). Kept FIRST, and kept in this exact field order:
+     `render-audition.py`'s `read_pins` parses this pin out of this file's
+     text, and the PC audition renders q8f16, which is finite on x86. */
   Object.freeze({
     kind: "model",
     name: "kokoro-v1_0-q8f16.onnx",
@@ -103,7 +149,19 @@ export const PINS = Object.freeze([
     bytes: 86033585,
     licence: "Apache-2.0",
     source: "https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX",
-    bundle: true,
+    bundle: Object.freeze(["android"]),
+  }),
+  /* iOS's model (D13, KV-R2): the fp32 export, the only one finite and near
+     real time on Apple silicon. Hashed twice, independently — see the header. */
+  Object.freeze({
+    kind: "model",
+    name: "kokoro-v1_0-fp32.onnx",
+    url: "https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX/resolve/main/onnx/model.onnx",
+    sha256: "8fbea51ea711f2af382e88c833d9e288c6dc82ce5e98421ea61c058ce21a34cb",
+    bytes: 325532232,
+    licence: "Apache-2.0",
+    source: "https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX",
+    bundle: Object.freeze(["ios"]),
   }),
   ...[
     ["af_heart", "d583ccff3cdca2f7fae535cb998ac07e9fcb90f09737b9a41fa2734ec44a8f0b", 522240],
@@ -126,7 +184,8 @@ export const PINS = Object.freeze([
     bytes,
     licence: "Apache-2.0",
     source: "https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX",
-    bundle: id === PROBE_VOICE,
+    /* The probe voice goes to BOTH apps; the other eleven to neither. */
+    bundle: Object.freeze(id === PROBE_VOICE ? ["ios", "android"] : []),
   })),
   /* THE ID TABLE'S RECEIPT. `tools/narration/kokoro-vocab.json` is the
      phoneme-to-id table, committed because it is 3 KB and because
@@ -136,7 +195,7 @@ export const PINS = Object.freeze([
      asserts the two agree, and `--fetch` re-downloads the file so the
      extraction can be repeated by hand.
 
-     `bundle: false` — it never reaches a phone. The app receives ids and has
+     `bundle: []` — it never reaches a phone. The app receives ids and has
      no text to map; a table in the bundle would be the first step back towards
      a front end on the device, which is the thing deck §4 exists to prevent. */
   Object.freeze({
@@ -147,22 +206,31 @@ export const PINS = Object.freeze([
     bytes: 3497,
     licence: "Apache-2.0",
     source: "https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX",
-    bundle: false,
+    bundle: Object.freeze([]),
   }),
 ]);
 
-/** The pins a shell build copies into the app. Everything else is fetched for
-    a workstation's use (the audition's eleven other voices, the tokenizer) and
-    stays out of the binary — which is what keeps the size budget in
-    `test/release-gates.test.js` honest rather than aspirational. */
-export function bundledPins(pins = PINS) {
-  return pins.filter((p) => p.bundle === true);
+/** The pins ONE PLATFORM's shell build copies into its app. Everything else is
+    fetched for a workstation's use (the audition's eleven other voices, the
+    tokenizer) or for the other platform, and stays out of this binary — which
+    is what keeps each platform's size budget in `test/release-gates.test.js`
+    honest rather than aspirational.
+
+    THE PLATFORM IS REQUIRED. "Bundled" with no platform named has no answer
+    since D13 (fp32 on iOS, q8f16 on Android), and the old no-argument form
+    would have to guess one; an unknown platform throws rather than returning
+    an empty list that a build would read as "ship nothing". */
+export function bundledPins(platform, pins = PINS) {
+  if (!BUNDLE_PLATFORMS.includes(platform)) {
+    throw new Error(`bundledPins: unknown platform ${JSON.stringify(platform)} — expected one of ${BUNDLE_PLATFORMS.join(", ")}`);
+  }
+  return pins.filter((p) => Array.isArray(p.bundle) && p.bundle.includes(platform));
 }
 
-/** Total bytes a build would add to the app. Exported so the size ceiling can
-    be checked against the real pinned lengths instead of the deck's estimates. */
-export function bundledBytes(pins = PINS) {
-  return bundledPins(pins).reduce((n, p) => n + (p.bytes ?? 0), 0);
+/** Total bytes ONE PLATFORM's build adds to its app. Exported so each size
+    budget is checked against the real pinned lengths instead of estimates. */
+export function bundledBytes(platform, pins = PINS) {
+  return bundledPins(platform, pins).reduce((n, p) => n + (p.bytes ?? 0), 0);
 }
 
 /** The single command that turns a `null` pin into a real one. Printed rather
@@ -211,13 +279,20 @@ export function pinProblems(pins = PINS) {
     if ((p.sha256 === null) !== (p.bytes === null)) {
       problems.push(`${at}: sha256 and bytes must be pinned together — a half-pin verifies nothing`);
     }
-    /* `bundle` decides whether an 86 MB file goes into an app store binary.
-       A pin that merely FORGOT the field would default to falsy under a
-       `!p.bundle` read and silently stop shipping the model — the probe would
-       then answer `model-absent` on a build that fetched everything
-       correctly. Required and strictly boolean, so the omission is the error. */
-    if (typeof p.bundle !== "boolean") {
-      problems.push(`${at}: bundle must be true or false — "goes into the app" is never left implicit`);
+    /* `bundle` decides whether a 86–326 MB file goes into an app store
+       binary, and since D13 it answers that PER PLATFORM. A pin that merely
+       FORGOT the field would default to falsy and silently stop shipping the
+       model — the probe would then answer `model-absent` on a build that
+       fetched everything correctly. Required, and a LIST of known platforms
+       (`[]` for none), so the omission is the error. A bare `true` is refused
+       too: it used to mean "both", and "both" is now a thing a pin has to say. */
+    if (!Array.isArray(p.bundle)) {
+      problems.push(`${at}: bundle must be a list of platforms (${BUNDLE_PLATFORMS.map((x) => `"${x}"`).join(", ")}, or [] for none) — "goes into the app" is never left implicit`);
+    } else {
+      for (const platform of p.bundle) {
+        if (!BUNDLE_PLATFORMS.includes(platform)) problems.push(`${at}: bundle names an unknown platform ${JSON.stringify(platform)}`);
+      }
+      if (new Set(p.bundle).size !== p.bundle.length) problems.push(`${at}: bundle names a platform twice`);
     }
     if (typeof p.licence !== "string" || !p.licence) problems.push(`${at}: no licence recorded`);
     if (typeof p.source !== "string" || !/^https:\/\//.test(p.source || "")) {
@@ -267,7 +342,7 @@ export function ensureIgnored(root = REPO_ROOT) {
   fs.mkdirSync(dir, { recursive: true });
   const ignore = path.join(dir, ".gitignore");
   const body = "# Fetched by tools/mobile/fetch-models.mjs against a pinned sha256.\n"
-    + "# NEVER COMMITTED: the Kokoro model is ~86 MB (docs/bundled-voice-plan.md K-06).\n"
+    + "# NEVER COMMITTED: the Kokoro models are 86 MB (q8f16) and 326 MB (fp32) (docs/bundled-voice-plan.md K-06).\n"
     + "*\n!.gitignore\n";
   if (!fs.existsSync(ignore) || fs.readFileSync(ignore, "utf8") !== body) {
     fs.writeFileSync(ignore, body);
@@ -310,14 +385,26 @@ async function main() {
        over `mobile/models/` in the workflow: the fetch pulls twelve voices and
        a tokenizer that must NOT reach the binary, and a `cp mobile/models/*`
        would ship all of them. The decision belongs to the pin table, in the
-       same file as the hashes, where a reviewer sees both at once. */
-    for (const pin of bundledPins()) console.log(pin.name);
+       same file as the hashes, where a reviewer sees both at once.
+       Per platform since D13: an iOS build and an Android build carry
+       different models. */
+    const platform = process.argv[3];
+    if (!BUNDLE_PLATFORMS.includes(platform)) {
+      console.error(`Usage: node tools/mobile/fetch-models.mjs --bundled <${BUNDLE_PLATFORMS.join("|")}>`);
+      process.exit(2);
+    }
+    for (const pin of bundledPins(platform)) console.log(pin.name);
     process.exit(0);
   }
   if (mode === "--check") {
     console.log(`${PINS.length} pins, all well-formed.`);
-    console.log(`${bundledPins().length} of them are bundled into the app: `
-      + `${(bundledBytes() / (1024 * 1024)).toFixed(1)} MiB.`);
+    /* One line PER PLATFORM (KV-R2's CI evidence): the iOS app carries fp32,
+       the APK q8f16, and a log that summed them would describe neither. */
+    for (const platform of BUNDLE_PLATFORMS) {
+      const names = bundledPins(platform).map((p) => p.name);
+      console.log(`${platform}: ${names.length} bundled (${names.join(", ")}): `
+        + `${(bundledBytes(platform) / (1024 * 1024)).toFixed(1)} MiB.`);
+    }
     if (missing.length) {
       console.log(`${missing.length} of them carry no sha256 yet. Fill one with:`);
       console.log(`  ${fillPinCommand(missing[0])}`);
@@ -339,7 +426,7 @@ async function main() {
   }
   if (mode !== "--fetch") {
     console.error(`Unknown argument: ${mode}`);
-    console.error("Usage: node tools/mobile/fetch-models.mjs [--fetch|--verify|--check|--bundled]");
+    console.error("Usage: node tools/mobile/fetch-models.mjs [--fetch|--verify|--check|--bundled <ios|android>]");
     process.exit(2);
   }
   const dir = path.join(REPO_ROOT, MODELS_DIR);

@@ -24,7 +24,8 @@ import {
   GO_RTF_NEWEST, GO_RTF_OLDEST, GO_PEAK_MEMORY_MB,
   passageSeconds, passageProblem, realTimeFactor, rtfIsPlausible, toMegabytes,
   probeVerdict, summarizeProbe, formatProbeReport, runKokoroProbe,
-  ORT_CODES, ORT_STAGES, LINE_OUTCOMES, KOKORO_MODEL_PIN, nameOf,
+  ORT_CODES, ORT_STAGES, LINE_OUTCOMES, KOKORO_MODEL_PINS, nameOf,
+  PROBE_PASSES, summarizePasses, finiteOf,
 } from "./kokoro-probe.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -93,11 +94,16 @@ test("the shipped passage IS phonemized, so the probe can reach the phone's engi
      through the model's own table — because "there is an array here" and "the
      array says what the text says" are different claims and only the second
      one is worth anything.
-     MUTATION: null one line's `ids` — the passage refuses again and the probe
-     goes back to answering `passage-unphonemized`. */
+     MUTATION: null one chunk's `ids` — the passage refuses again and the probe
+     goes back to answering `passage-unphonemized`.
+
+     KV-R2: the ids live on each line's SENTENCE CHUNKS now (one inference per
+     chunk), and the line-level `ids` is gone. */
   assert.equal(passageProblem(PASSAGE), null);
   for (const l of PASSAGE.lines) {
-    assert.ok(Array.isArray(l.ids) && l.ids.length > 0, `${l.id}: no ids`);
+    assert.ok(Array.isArray(l.chunks) && l.chunks.length > 0, `${l.id}: no chunks`);
+    for (const c of l.chunks) assert.ok(Array.isArray(c.ids) && c.ids.length > 0, `${l.id}: a chunk with no ids`);
+    assert.ok(!("ids" in l), `${l.id}: a whole-line ids array is the inference nothing should run`);
     assert.ok(typeof l.phonemes === "string" && l.phonemes.length > 0, `${l.id}: no phonemes`);
   }
   assert.match(PASSAGE.vocab, /^sha256:[0-9a-f]{16}$/,
@@ -114,6 +120,11 @@ test("passageProblem separates missing, empty and unphonemized", () => {
   assert.equal(passageProblem({}), "passage-empty");
   assert.equal(passageProblem({ lines: [{ ids: [] }] }), "passage-unphonemized");
   assert.equal(passageProblem(phonemized()), null);
+  /* KV-R2: chunks count, and one chunk with no ids is the whole line refused.
+     MUTATION: accept a line whose chunks are present but empty of ids. */
+  assert.equal(passageProblem({ lines: [{ chunks: [{ ids: [0, 1, 0] }, { ids: [0, 2, 0] }] }] }), null);
+  assert.equal(passageProblem({ lines: [{ chunks: [{ ids: [0, 1, 0] }, { ids: [] }] }] }), "passage-unphonemized");
+  assert.equal(passageProblem({ lines: [{ chunks: [] }] }), "passage-unphonemized");
 });
 
 test("passageSeconds falls back to chars/17 for a line with no est_sec", () => {
@@ -515,23 +526,23 @@ test("no plugin reads a device NAME, a vendor id or an error message into the re
   }
 });
 
-test("`cpu` is the whole implementation, not a fallback — and the probe says so", () => {
-  /* The bundled-voice deck's viability estimates assume an accelerator. #685's
-     `kokoro-probe/cpu` was never a CoreML attempt that fell back: no execution
-     provider is appended on either platform, so ORT runs its CPU provider
-     because nothing else was ever registered. The record reports that as a
+test("`acceleratorWired` tells the truth: CoreML only on iOS's coreml pass, nothing on Android", () => {
+  /* #685's `kokoro-probe/cpu` was never a CoreML attempt that fell back: no
+     execution provider was appended anywhere, and the record said so as a
      FACT (`acceleratorWired`) rather than leaving a reader to infer it from a
-     provider string that reads like a fallback.
-     MUTATION: append a CoreML or NNAPI provider without flipping
-     `acceleratorWired` — the first half goes red and the deck keeps reading a
-     CPU number as an accelerated one. */
-  const appends = /appendCoreML|appendNnapi|addNnapi|CoreMLExecutionProvider|NNAPIExecutionProvider/;
-  for (const [name, src] of [["ios", IOS_ENGINE], ["android", AND_ENGINE]]) {
-    const wired = appends.test(src);
-    const claims = /acceleratorWired[^\n]*\n?[^\n]*\btrue\b/.test(src);
-    assert.equal(wired, claims,
-      `${name}: the source and the flag disagree about whether an accelerator is wired`);
-  }
+     provider string that reads like a fallback. KV-R2 wires the CoreML EP on
+     iOS for the `coreml` pass ONLY; the flag must follow the append, not the
+     pass name, and Android still appends nothing.
+     MUTATION: hard-code `acceleratorWired` to `true` on iOS, or append NNAPI
+     on Android without a flag — red. */
+  const appends = /appendCoreML|appendNnapi|addNnapi|NNAPIExecutionProvider/;
+  assert.ok(!appends.test(AND_ENGINE), "android: no accelerator is appended");
+  assert.ok(!/acceleratorWired[^\n]*\n?[^\n]*\btrue\b/.test(AND_ENGINE), "android: the flag never claims one");
+  assert.match(IOS_ENGINE, /try options\.appendCoreMLExecutionProvider\(with: coreml\)/, "ios: the coreml pass appends the EP");
+  assert.match(IOS_ENGINE, /coreml\.createMLProgram = true/, "ios: as an MLProgram");
+  assert.match(IOS_ENGINE, /coreml\.useCPUOnly = false\s+coreml\.useCPUAndGPU = false/, "ios: on ALL compute units");
+  assert.match(IOS_ENGINE, /var acceleratorWired: Bool \{ coreMLAppended \}/, "ios: the flag is the append's own result");
+  assert.match(IOS_ENGINE, /if pass == \.coreml \{/, "ios: only the coreml pass appends");
   assert.equal(summarizeProbe({ native: READING_685, audioSec: 10 }).acceleratorWired, false);
 });
 
@@ -561,9 +572,9 @@ test("the run refuses before touching the bridge when the passage is unphonemize
      and it has to keep being tested after the state that used to demonstrate
      it for free went away. */
   let called = false;
-  const broken = { ...PASSAGE, lines: PASSAGE.lines.map((l) => ({ ...l, ids: null })) };
+  const broken = { ...PASSAGE, lines: PASSAGE.lines.map((l) => ({ ...l, ids: null, chunks: null })) };
   const tts = { kokoroProbe: async () => { called = true; return { ok: true }; } };
-  return runKokoroProbe({ tts, passage: broken }).then((rec) => {
+  return runKokoroProbe({ tts, passage: broken }).then(([rec]) => {
     assert.equal(called, false);
     assert.equal(rec.reason, "passage-unphonemized");
   });
@@ -579,7 +590,7 @@ test("the shipped passage now reaches the bridge — the whole point of filling 
      founder's run. */
   let seen = null;
   const tts = { kokoroProbe: async (opts) => { seen = opts; return { ok: false, reason: "model-absent" }; } };
-  return runKokoroProbe({ tts, passage: PASSAGE }).then((rec) => {
+  return runKokoroProbe({ tts, passage: PASSAGE }).then(([rec]) => {
     assert.ok(seen, "the bridge was never asked");
     assert.equal(seen.passage.lines.length, 4);
     assert.equal(rec.reason, "model-absent", "the native half's own diagnosis wins");
@@ -587,12 +598,12 @@ test("the shipped passage now reaches the bridge — the whole point of filling 
 });
 
 test("no bridge at all is `no-bridge`, not a crash and not a zero", async () => {
-  const rec = await runKokoroProbe({ tts: null, passage: phonemized() });
+  const [rec] = await runKokoroProbe({ tts: null, passage: phonemized() });
   assert.equal(rec.ok, false);
   assert.equal(rec.reason, "no-bridge");
   /* MUTATION: drop the `typeof tts.kokoroProbe === "function"` half — an older
      bridge object with no probe method throws a TypeError at a founder. */
-  const stale = await runKokoroProbe({ tts: { speak: () => {} }, passage: phonemized() });
+  const [stale] = await runKokoroProbe({ tts: { speak: () => {} }, passage: phonemized() });
   assert.equal(stale.reason, "no-bridge");
 });
 
@@ -601,7 +612,7 @@ test("a native refusal keeps the native's OWN code when it is one we know", asyn
      runtime compiled in) are different actions for a founder.
      MUTATION: always report `refused` — both diagnoses are lost. */
   for (const reason of ["model-absent", "engine-absent"]) {
-    const rec = await runKokoroProbe({ tts: fakeTts({ ok: false, reason }), passage: phonemized() });
+    const [rec] = await runKokoroProbe({ tts: fakeTts({ ok: false, reason }), passage: phonemized() });
     assert.equal(rec.reason, reason);
   }
 });
@@ -610,7 +621,7 @@ test("a native reason we do NOT know degrades to `refused`", async () => {
   /* The vocabulary is closed on purpose: a code the page has never heard of
      would flow into the record and into an issue as if it meant something.
      MUTATION: pass any string through — `whatever-i-felt-like` appears. */
-  const rec = await runKokoroProbe({
+  const [rec] = await runKokoroProbe({
     tts: fakeTts({ ok: false, reason: "whatever-i-felt-like" }), passage: phonemized() });
   assert.equal(rec.reason, "refused");
   assert.ok(PROBE_REASONS.includes(rec.reason));
@@ -619,7 +630,7 @@ test("a native reason we do NOT know degrades to `refused`", async () => {
 test("an answer with no `ok` is a refusal, never a success", async () => {
   /* MUTATION: treat a missing `ok` as truthy-by-default. A plugin that returns
      `{}` then reports a complete measurement of nothing. */
-  const rec = await runKokoroProbe({ tts: fakeTts({}), passage: phonemized() });
+  const [rec] = await runKokoroProbe({ tts: fakeTts({}), passage: phonemized() });
   assert.equal(rec.ok, false);
   assert.equal(rec.reason, "refused");
 });
@@ -629,7 +640,7 @@ test("a throwing bridge resolves `threw` — the run never rejects", async () =>
      console line nobody has open (#225's own lesson).
      MUTATION: remove the try/catch — this test fails with the raw error. */
   const tts = { kokoroProbe: async () => { throw new Error("boom"); } };
-  const rec = await runKokoroProbe({ tts, passage: phonemized() });
+  const [rec] = await runKokoroProbe({ tts, passage: phonemized() });
   assert.equal(rec.reason, "threw");
   assert.equal(rec.ok, false);
 });
@@ -639,7 +650,7 @@ test("`threw` carries the error's NAME, never its message (L12)", async () => {
      leaks the path into the paste, the second leaves a bare `threw`. */
   const path = "/var/mobile/Containers/Data/Application/0000/Library/model.onnx";
   const tts = { kokoroProbe: async () => { throw new TypeError(`cannot open ${path}`); } };
-  const rec = await runKokoroProbe({ tts, passage: phonemized() });
+  const [rec] = await runKokoroProbe({ tts, passage: phonemized() });
   assert.equal(rec.reason, "threw");
   assert.equal(rec.synthReason, "TypeError");
   assert.ok(!JSON.stringify(rec).includes("/var/mobile"));
@@ -658,14 +669,15 @@ test("`threw` carries the error's NAME, never its message (L12)", async () => {
 /* ==================================================================== */
 
 /** The 2026-09-26 paste's failure as a Lane A phone would send it. The values
-    are illustrative; the shapes are the contract. */
+    are illustrative; the shapes are the contract. Its model facts are the
+    fp32 file's, because an iOS record is held to iOS's pin since D13. */
 const LANE_A_FAILURE = Object.freeze({
   ok: false, reason: "synthesis-failed", detail: "inference-threw", platform: "ios",
-  provider: "cpu", model: "kokoro-82m-v1.0-q8f16", modelLoadColdMs: 457, modelLoadWarmMs: 374,
+  provider: "cpu", model: "kokoro-82m-v1.0-fp32", modelLoadColdMs: 457, modelLoadWarmMs: 374,
   synthColdMs: 812, synthWarmMs: 2210, synthFailures: 4, lines: 4, audioColdSec: 0, audioWarmSec: 0,
   ortCode: "not-implemented", ortOp: "ConvTranspose", ortStage: "run",
   lineOutcomes: ["threw", "threw", "threw", "threw"], nonFiniteLines: 0, silentLines: 0,
-  ortVersion: "1.20.0", intraThreads: 0, cores: 6, modelBytes: 86033585, modelSha8: "04c658ae",
+  ortVersion: "1.20.0", intraThreads: 0, cores: 6, modelBytes: 325532232, modelSha8: "8fbea51e",
   device: "iPhone15.2", os: "18.6.2", thermalStart: "nominal", thermalEnd: "fair",
   lowPower: false, memWarn: false, bgAtFail: true,
   baseMemoryBytes: 142 * 1024 * 1024, peakMemoryBytes: 312 * 1024 * 1024, availableMemoryBytes: 1104 * 1024 * 1024,
@@ -679,7 +691,7 @@ test("summarizeProbe passes every Lane A key through by name", () => {
   const want = {
     platform: "ios", ortCode: "not-implemented", ortOp: "ConvTranspose", ortStage: "run", loadErr: null,
     lineOutcomes: "threw,threw,threw,threw", nonFiniteLines: 0, silentLines: 0,
-    ortVersion: "1.20.0", intraThreads: 0, cores: 6, modelBytes: 86033585, modelSha8: "04c658ae", modelPin: "ok",
+    ortVersion: "1.20.0", intraThreads: 0, cores: 6, modelBytes: 325532232, modelSha8: "8fbea51e", modelPin: "ok",
     device: "iPhone15.2", os: "18.6.2", thermalStart: "nominal", thermalEnd: "fair",
     lowPower: false, memWarn: false, bgAtFail: true, baseMemoryMb: 142, peakMemoryMb: 312, availableMemoryMb: 1104,
   };
@@ -723,9 +735,9 @@ test("summarizeProbe drops malformed Lane A values instead of storing them", () 
   assert.equal(summarizeProbe({ native: { ortOp: "A".repeat(33) } }).ortOp, null, "32 characters at most");
   assert.equal(summarizeProbe({ native: { device: "Pixel-8a" } }).device, "Pixel-8a");
   assert.equal(summarizeProbe({ native: { device: "x".repeat(33) } }).device, null);
-  /* The list is capped at 16 lines and never partially admitted. */
-  const many = summarizeProbe({ native: { lineOutcomes: Array(20).fill("ok") } }).lineOutcomes;
-  assert.equal(many.split(",").length, 16);
+  /* The list is capped at 32 (fifteen chunks since KV-R2) and never partially admitted. */
+  const many = summarizeProbe({ native: { lineOutcomes: Array(40).fill("ok") } }).lineOutcomes;
+  assert.equal(many.split(",").length, 32);
   assert.equal(summarizeProbe({ native: { lineOutcomes: [] } }).lineOutcomes, null);
   for (const t of LINE_OUTCOMES) assert.equal(summarizeProbe({ native: { lineOutcomes: [t] } }).lineOutcomes, t);
 });
@@ -735,6 +747,15 @@ test("modelPin is ok, mismatch, or null — never a guess (L08)", () => {
      extraction of the same size then passes. */
   const pin = (native) => summarizeProbe({ native }).modelPin;
   assert.equal(pin({ modelBytes: 86033585, modelSha8: "04c658ae" }), "ok");
+  /* Per platform since D13 (KV-R2): iOS is held to fp32's pin and Android to
+     q8f16's. MUTATION: hold every platform to one pin — iOS's right file then
+     reads MISMATCH, or Android's wrong one reads ok. */
+  assert.equal(pin({ platform: "ios", modelBytes: 325532232, modelSha8: "8fbea51e" }), "ok");
+  assert.equal(pin({ platform: "ios", modelBytes: 86033585, modelSha8: "04c658ae" }), "mismatch",
+    "q8f16 in the iOS app is the wrong file");
+  assert.equal(pin({ platform: "android", modelBytes: 325532232, modelSha8: "8fbea51e" }), "mismatch",
+    "fp32 in the APK is the wrong file");
+  assert.equal(pin({ platform: "android", modelBytes: 86033585, modelSha8: "04c658ae" }), "ok");
   assert.equal(pin({ modelBytes: 86033585, modelSha8: "deadbeef" }), "mismatch");
   assert.equal(pin({ modelBytes: 1234, modelSha8: "04c658ae" }), "mismatch");
   assert.equal(pin({ modelBytes: 1234 }), "mismatch");
@@ -744,12 +765,16 @@ test("modelPin is ok, mismatch, or null — never a guess (L08)", () => {
   assert.equal(pin({ modelBytes: 86033585, modelSha8: "04C658AE" }), null, "an unshaped sha is absent, not a match");
 });
 
-test("KOKORO_MODEL_PIN is fetch-models.mjs's first pin, not a copy that can drift", async () => {
-  /* MUTATION: re-pin the model in fetch-models.mjs without moving this — the
+test("KOKORO_MODEL_PINS are each platform's bundled model pin in fetch-models.mjs, not copies that can drift", async () => {
+  /* MUTATION: re-pin a model in fetch-models.mjs without moving this — the
      phone would then report `pin MISMATCH` for the right file. */
-  const { PINS } = await import("../tools/mobile/fetch-models.mjs");
-  assert.equal(PINS[0].bytes, KOKORO_MODEL_PIN.bytes);
-  assert.equal(PINS[0].sha256.slice(0, 8), KOKORO_MODEL_PIN.sha8);
+  const { bundledPins } = await import("../tools/mobile/fetch-models.mjs");
+  for (const platform of ["ios", "android"]) {
+    const [model] = bundledPins(platform).filter((p) => p.kind === "model");
+    assert.equal(KOKORO_MODEL_PINS[platform].bytes, model.bytes, platform);
+    assert.equal(KOKORO_MODEL_PINS[platform].sha8, model.sha256.slice(0, 8), platform);
+  }
+  assert.deepEqual(Object.keys(KOKORO_MODEL_PINS).sort(), ["android", "ios"]);
 });
 
 test("the drawer report says why it failed and on what (Lane A)", () => {
@@ -760,7 +785,7 @@ test("the drawer report says why it failed and on what (Lane A)", () => {
   assert.match(text, /^  ORT           1\.20\.0 cpu threads=auto cores=6$/m);
   assert.match(text, /^  failure       not-implemented op=ConvTranspose at=run background=y$/m);
   assert.match(text, /^  lines         threw,threw,threw,threw$/m);
-  assert.match(text, /^  model file    86033585 B sha 04c658ae \(pin ok\)$/m);
+  assert.match(text, /^  model file    325532232 B sha 8fbea51e \(pin ok\)$/m);
   assert.match(text, /^  device        iPhone15\.2 iOS 18\.6\.2  thermal nominal>fair  low power n$/m);
   assert.match(text, /^  memory        base 142 MB  peak 312 MB  headroom 1104 MB  warning n$/m);
   const mism = formatProbeReport(summarizeProbe({
@@ -791,7 +816,7 @@ test("an older shell's drawer report is unchanged: no Lane A line appears", () =
 test("a successful run computes RTF against the passage's own duration", async () => {
   const passage = phonemized();
   const audioSec = passageSeconds(passage);
-  const rec = await runKokoroProbe({
+  const [rec] = await runKokoroProbe({
     tts: fakeTts({ ok: true, synthWarmMs: audioSec * 1000 * 0.4, synthColdMs: audioSec * 1000 * 0.9,
       modelLoadColdMs: 1500, modelLoadWarmMs: 90, peakMemoryBytes: 280 * 1024 * 1024,
       provider: "cpu", model: "1.0", lockedScreenCompleted: true, lines: 4 }),
@@ -807,6 +832,147 @@ test("a successful run computes RTF against the passage's own duration", async (
      MUTATION: overwrite `elapsedMs` with `synthWarmMs`. */
   assert.equal(rec.elapsedMs, 1000);
   assert.equal(probeVerdict(rec, "newest").go, true);
+});
+
+/* ---------- KV-R2: probe v2, one record per pass ---------- */
+
+/** What an iOS probe-v2 build answers: two passes over the fp32 model and
+    the fifteen-chunk passage. The CPU pass measured and was finite; the
+    CoreML pass rendered but two chunks came back NaN, and one threw. Values
+    are illustrative; the shapes are the contract. */
+const MiB = 1024 * 1024;
+const V2_ANSWER = Object.freeze({
+  ok: true, reason: "", platform: "ios",
+  passes: [
+    { pass: "cpu", provider: "cpu", ok: true, reason: "", detail: "", platform: "ios", model: "kokoro-82m-v1.0-fp32",
+      modelLoadColdMs: 2100, modelLoadWarmMs: 900, synthColdMs: 3000, synthWarmMs: 60000, audioColdSec: 3, audioWarmSec: 75,
+      synthFailures: 0, lines: 15, lineOutcomes: Array(15).fill("ok"), nonFiniteLines: 0, silentLines: 0,
+      intraThreads: 4, peakMemoryBytes: 900 * MiB, processPeakBytes: 900 * MiB, lockedScreenCompleted: true,
+      acceleratorWired: false, modelBytes: 325532232, modelSha8: "8fbea51e" },
+    { pass: "coreml", provider: "coreml", ok: true, reason: "", detail: "non-finite", platform: "ios", model: "kokoro-82m-v1.0-fp32",
+      modelLoadColdMs: 41000, modelLoadWarmMs: 9000, synthColdMs: 2000, synthWarmMs: 30000, audioColdSec: 3, audioWarmSec: 60,
+      synthFailures: 3, lines: 15, lineOutcomes: ["ok", "nan", "ok", "threw", "ok", "nan", "ok", "ok", "ok", "ok", "ok", "ok", "ok", "ok", "ok"],
+      nonFiniteLines: 2, silentLines: 0, ortCode: "ep-fail", ortOp: "Conv", ortStage: "run",
+      intraThreads: 4, peakMemoryBytes: 700 * MiB, processPeakBytes: 900 * MiB, lockedScreenCompleted: true,
+      acceleratorWired: true, modelBytes: 325532232, modelSha8: "8fbea51e" },
+  ],
+});
+
+test("one row per pass, carrying provider, warm RTF, peak, finite and error text", async () => {
+  /* KV-R2's acceptance, read off the record: per pass (CPU, CoreML), warm RTF,
+     peak memory, finite yes/no, and ORT's error tokens if a chunk threw.
+     MUTATION: drop `finite` from summarizeProbe — both `finite` assertions
+     go red. MUTATION: summarize the answer as ONE record — the length is 1. */
+  const records = await runKokoroProbe({ tts: fakeTts(V2_ANSWER), passage: PASSAGE, now: () => 0 });
+  assert.equal(records.length, 2, "one record per pass");
+  const [cpu, coreml] = records;
+  assert.deepEqual(records.map((r) => r.pass), ["cpu", "coreml"]);
+  assert.deepEqual(records.map((r) => r.provider), ["cpu", "coreml"]);
+  assert.ok(Math.abs(cpu.rtfWarm - 0.8) < 1e-9, "warm RTF is synthesis over audio for every chunk after the first");
+  assert.ok(Math.abs(coreml.rtfWarm - 0.5) < 1e-9);
+  assert.equal(cpu.peakMemoryMb, 900);
+  assert.equal(coreml.peakMemoryMb, 700, "each pass's own peak, not the process's");
+  assert.equal(coreml.processPeakMb, 900);
+  assert.equal(cpu.finite, true);
+  assert.equal(coreml.finite, false);
+  assert.equal(coreml.nonFiniteLines, 2);
+  assert.equal(coreml.ortCode, "ep-fail");
+  assert.equal(coreml.ortOp, "Conv");
+  assert.equal(coreml.ortStage, "run");
+  assert.equal(cpu.ortCode, null);
+  assert.equal(coreml.modelPin, "ok", "the fp32 file is iOS's pin");
+  /* Both go into the drawer, each under its own pass. */
+  const text = formatProbeReport(records);
+  assert.match(text, /^voice probe \[cpu\]: kokoro-probe/m);
+  assert.match(text, /^voice probe \[coreml\]: kokoro-probe/m);
+  assert.match(text, /^  finite        yes \(every chunk\)$/m);
+  assert.match(text, /^  finite        NO — 2 of 15 chunks held NaN\/Infinity$/m);
+  assert.deepEqual([...PROBE_PASSES], ["cpu", "coreml"]);
+  /* diagnostic-log.js imports nothing, so it carries its own copy of the
+     pass words; the two are held in step here. MUTATION: rename a pass in
+     either — the ring then drops the pass of every row. */
+  const diag = await import("./diagnostic-log.js");
+  assert.deepEqual([...diag.PROBE_PASSES], [...PROBE_PASSES]);
+});
+
+test("a pass with a non-finite chunk is never a pass", () => {
+  /* §6a: "only a finite pass counts". The CoreML pass above is FASTER than the
+     CPU pass and would pass every other clause; a voice that goes NaN on two
+     chunks in fifteen drops two sentences in fifteen.
+     MUTATION: drop the `finite === false` clause from probeVerdict — the
+     faster, broken pass reads GO. */
+  const [cpu, coreml] = summarizePasses({ native: V2_ANSWER, audioSec: 77.4 });
+  assert.equal(probeVerdict(cpu, "newest").go, true, "the finite pass under 0.8 is a pass");
+  /* §6a: a v2 pass's peak is recorded, not gated — 900 MB is no failure here,
+     and the K-01 record (no `pass`) keeps its 400 MB ceiling.
+     MUTATION: gate v2 passes on 400 MB — the fp32 CPU pass above reads NO. */
+  assert.equal(cpu.peakMemoryMb, 900);
+  assert.ok(probeVerdict({ ...cpu, pass: null }, "newest").failures.some((x) => /^peak-memory 900 MB/.test(x)));
+  const verdict = probeVerdict(coreml, "newest");
+  assert.equal(verdict.go, false);
+  assert.ok(verdict.failures.some((x) => /^non-finite 2 of 15 chunks$/.test(x)), verdict.failures.join("; "));
+  /* finiteOf's three answers: a count of garbage is "no", a clean count over
+     rendered audio is "yes", and anything unmeasured is "unknown". */
+  assert.equal(finiteOf(2, 60), false);
+  assert.equal(finiteOf(0, 60), true);
+  assert.equal(finiteOf(0, 0), null, "nothing rendered is not 'finite'");
+  assert.equal(finiteOf(null, 60), null, "an older shell that did not count is not 'finite'");
+});
+
+test("coreml-unavailable is its own named pass, and the CPU pass beside it stands", () => {
+  /* ORT 1.20.0 may be built without the CoreML EP; pass B then says so and
+     pass A is untouched. MUTATION: drop `coreml-unavailable` from
+     PROBE_REASONS — the pass degrades to `refused` and the reason is lost. */
+  const native = { ok: true, platform: "ios", passes: [
+    V2_ANSWER.passes[0],
+    { pass: "coreml", provider: "coreml", ok: false, reason: "coreml-unavailable", loadErr: "ep-fail", platform: "ios" },
+  ] };
+  const [cpu, coreml] = summarizePasses({ native, audioSec: 77.4 });
+  assert.equal(cpu.ok, true);
+  assert.equal(coreml.ok, false);
+  assert.equal(coreml.reason, "coreml-unavailable");
+  assert.equal(coreml.loadErr, "ep-fail");
+  assert.equal(coreml.finite, null, "nothing ran, so finiteness is unknown, not yes");
+  assert.match(formatProbeReport(coreml), /^voice probe \[coreml\]: could not measure \(coreml-unavailable\)$/m);
+  /* A pass reason outside the vocabulary is `refused`, as a whole answer's is. */
+  const odd = summarizePasses({ native: { ok: true, passes: [{ pass: "cpu", ok: false, reason: "made-up" }] } });
+  assert.equal(odd[0].reason, "refused");
+});
+
+test("a refusal, an Android answer and an older shell are each ONE record", async () => {
+  /* Only a run that reached its passes has more than one thing to say.
+     MUTATION: always map over `native.passes` — a refusal becomes zero rows
+     and the founder's paste loses the only line that said why. */
+  const [refusal, ...rest] = await runKokoroProbe({ tts: fakeTts({ ok: false, reason: "model-absent" }), passage: PASSAGE });
+  assert.equal(refusal.reason, "model-absent");
+  assert.equal(rest.length, 0);
+  const android = await runKokoroProbe({
+    tts: fakeTts({ ok: true, platform: "android", pass: "cpu", provider: "cpu", synthWarmMs: 1000, audioWarmSec: 2,
+      nonFiniteLines: 1, lines: 15 }),
+    passage: PASSAGE });
+  assert.equal(android.length, 1);
+  assert.equal(android[0].pass, "cpu");
+  assert.equal(android[0].finite, false, "Android reports finiteness the same way (D13)");
+  const older = await runKokoroProbe({ tts: fakeTts({ ok: true, synthWarmMs: 1000, audioWarmSec: 2 }), passage: PASSAGE });
+  assert.equal(older.length, 1);
+  assert.equal(older[0].pass, null);
+});
+
+test("a run the system killed is reported by the next run's first record", () => {
+  /* The card's stop rule: "the app is killed during a pass (report the last
+     logged peak)". The native half leaves a marker per chunk; the next run
+     carries it. MUTATION: drop the prevKilled keys — the paste of the run
+     after a kill is indistinguishable from a first run. */
+  const native = { ...V2_ANSWER, passes: [
+    { ...V2_ANSWER.passes[0], prevKilledPass: "coreml", prevKilledChunk: 6, prevKilledPeakBytes: 1400 * MiB },
+    V2_ANSWER.passes[1],
+  ] };
+  const [first, second] = summarizePasses({ native, audioSec: 77.4 });
+  assert.equal(first.prevKilledPass, "coreml");
+  assert.equal(first.prevKilledChunk, 6);
+  assert.equal(first.prevKilledPeakMb, 1400);
+  assert.equal(second.prevKilledPass, null);
+  assert.match(formatProbeReport(first), /^  LAST RUN KILLED during coreml chunk 6, peak 1400 MB$/m);
 });
 
 /* ---------- the two copies of one string ---------- */

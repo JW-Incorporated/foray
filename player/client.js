@@ -5002,16 +5002,20 @@ const ForayPlayer = {
        STARTED — a probe that shares the phone with a playing episode is not
        measuring the same thing as one on a quiet phone. */
     const playing = transportIsRunning();
-    const record = await runKokoroProbe({ tts: ttsBridge, passage, now: () => Date.now() });
+    const records = await runKokoroProbe({ tts: ttsBridge, passage, now: () => Date.now() });
     /* Recorded WHETHER OR NOT it succeeded. "This build has no model in it" is
        the single most useful thing the first run can tell us, and a record
-       that only kept successes would answer every failed run with silence. */
-    try { diag.voiceProbe(record, { playing }); } catch (_) { /* the instrument must never be the outage */ }
-    return record;
+       that only kept successes would answer every failed run with silence.
+       ONE ROW PER PASS (KV-R2): the CPU pass and the CoreML pass are two
+       readings of the same passage, and §6a compares them row against row. */
+    for (const record of records) {
+      try { diag.voiceProbe(record, { playing }); } catch (_) { /* the instrument must never be the outage */ }
+    }
+    return records;
   },
 
-  /** The probe record as the several lines the drawer shows, plus K-01's
-      go/no-go verdict applied to it. Re-exported for the same reason
+  /** ONE pass's record as the several lines the drawer shows, plus K-01's
+      go/no-go verdict applied to it (the page calls this once per pass). Re-exported for the same reason
       `defaultVoice` is: `app.js` is a classic script and must not carry a
       second copy of a rule the record is judged by. `age` is `"newest"` or
       `"oldest"` — which phone this is, which the founder says, because the

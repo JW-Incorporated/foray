@@ -92,7 +92,7 @@ const FLOORS = {
   /* 50 -> 55 with S-01 (docs/search-plan.md, kanban t_46366383): a new
      `search` entry kind on PlayerDiagnostics — query length only, never the
      query text, per this suite's own §7. */
-  "player/diagnostic-log.test.js": 101, // review 2026-09-23 (fix/founder-reports-2026-09-23): a write before a slow hydration is HELD and written after the adopted ring (real DurableStore), the next write flushes by itself, the give-up force, a Clear drops what was held; the webkit door's skip is a row under the dashed command and the spec action is refused; 96 -> 101 // merge of fix/fr-diag (2026-09-23 founder record: recorded 939, entries 0, no build row): the clear mark, the build kept outside the ring, the MISSING gap line naming key+tiers, the boot row's hydration flag; 89 -> 96 // founder 2026-09-23 (fix/founder-reports-2026-09-23): a dropped duplicate press is a remote row saying dup=y, counted on the header apart from unhandled; the webkit door joins REMOTE_ORIGINS; 88 -> 89 // founder 2026-09-23 ("my car resumed Spotify"): the `remote` row (what the native side received, from which door, handled or not) and its header line; `via=` on a nowplaying row so a pause is a write; the plugin's own session acts are session kinds; 83 -> 88 // 2026-09-22 audit (L2), founder report 3: a `build` row per boot and a `build …` header line; 81 -> 83 // 2026-09-22 audit (L2), founder report 2: an unexplained stop carries hiddenFor + the element's readyState/networkState/error; a stall with no seam is a coalesced `media` row; an external play is a `transport` row; session rows carry hiddenFor; 76 -> 81 // #685 (2026-09-13): the voiceProbe line says rendered-vs-estimated and flags an impossible RTF; a synthesis-failed refusal keeps its numbers; 74 -> 76 // client audit (2026-09-12): the search row's one vocabulary + `hidden`, and the epMs/ctaMs fields; 72 -> 74 // K-01 (2026-09-12): the voiceProbe row — named fields only, null-not-zero on a refusal, and both report lines; 68 -> 72 // L-06 + M-03 (2026-09-12): the `nowplaying`, `session` and `transport` entries; 57 -> 68 // FD-01 (2026-09-10): the `data` entry's vocabulary and its line; 55 -> 57
+  "player/diagnostic-log.test.js": 123, // KV-R2 (2026-09-26): a probe-v2 row names its pass, finiteness and ORT's tokens (+1 on the 122 main carries after #849); 101 -> 123 // review 2026-09-23 (fix/founder-reports-2026-09-23): a write before a slow hydration is HELD and written after the adopted ring (real DurableStore), the next write flushes by itself, the give-up force, a Clear drops what was held; the webkit door's skip is a row under the dashed command and the spec action is refused; 96 -> 101 // merge of fix/fr-diag (2026-09-23 founder record: recorded 939, entries 0, no build row): the clear mark, the build kept outside the ring, the MISSING gap line naming key+tiers, the boot row's hydration flag; 89 -> 96 // founder 2026-09-23 (fix/founder-reports-2026-09-23): a dropped duplicate press is a remote row saying dup=y, counted on the header apart from unhandled; the webkit door joins REMOTE_ORIGINS; 88 -> 89 // founder 2026-09-23 ("my car resumed Spotify"): the `remote` row (what the native side received, from which door, handled or not) and its header line; `via=` on a nowplaying row so a pause is a write; the plugin's own session acts are session kinds; 83 -> 88 // 2026-09-22 audit (L2), founder report 3: a `build` row per boot and a `build …` header line; 81 -> 83 // 2026-09-22 audit (L2), founder report 2: an unexplained stop carries hiddenFor + the element's readyState/networkState/error; a stall with no seam is a coalesced `media` row; an external play is a `transport` row; session rows carry hiddenFor; 76 -> 81 // #685 (2026-09-13): the voiceProbe line says rendered-vs-estimated and flags an impossible RTF; a synthesis-failed refusal keeps its numbers; 74 -> 76 // client audit (2026-09-12): the search row's one vocabulary + `hidden`, and the epMs/ctaMs fields; 72 -> 74 // K-01 (2026-09-12): the voiceProbe row — named fields only, null-not-zero on a refusal, and both report lines; 68 -> 72 // L-06 + M-03 (2026-09-12): the `nowplaying`, `session` and `transport` entries; 57 -> 68 // FD-01 (2026-09-10): the `data` entry's vocabulary and its line; 55 -> 57
   "player/diagnostic-record.test.js": 25, // tests-7 (round-3 audit): -1 -- the `assert.ok(true)` placeholder "the stop rows come from the REAL element" is a comment above the three real tests now; 26 -> 25 // NE-26 (docs/native-engine-plan.md): the real page's Copy report reads the engine's ring once through ForayAudio, merges it, and the synchronous report carries the engine header line; 25 -> 26 // 2026-09-23 founder record (fix/fr-diag): the bounded wait on hydration (a hung IndexedDB no longer costs the boot and build rows) and a Clear that keeps the build on the header; 23 -> 25
   "player/episode-link.test.js": 6,
   /* The durable store (#40). Both of these guard against silent DATA LOSS
@@ -272,7 +272,7 @@ const FLOORS = {
      native answer with no `ok` read as success). A record that says "RTF 0.00,
      locked screen fine" because nothing ran is a record that gets pasted into a
      decision, and every one of those tests is one edit from allowing it. */
-  "player/kokoro-probe.test.js": 41, // #685 (2026-09-13): the zero-is-not-a-pass floor, the rendered-vs-estimated divisor, the three copies of the synthesis vocabulary, and CPU-is-the-whole-path; 30 -> 41 // K-01 (2026-09-12): the passage is phonemized, so "refuses before the bridge" and "reaches the bridge" are two tests; 29 -> 30
+  "player/kokoro-probe.test.js": 58, // KV-R2 (2026-09-26): one record per pass, a non-finite pass is never a pass, coreml-unavailable, one record for a refusal/Android/older shell, the killed-run marker (+5; the other +12 were already on main, from #848); 41 -> 58 // #685 (2026-09-13): the zero-is-not-a-pass floor, the rendered-vs-estimated divisor, the three copies of the synthesis vocabulary, and CPU-is-the-whole-path; 30 -> 41 // K-01 (2026-09-12): the passage is phonemized, so "refuses before the bridge" and "reaches the bridge" are two tests; 29 -> 30
   /* The native engine's parity harness (NE-03, docs/native-engine-plan.md §6).
      Zero slack. `run.test.js` is one test per fixture case (a loop, counted
      once here) plus the codec, comparator, schema and scenario-driver rules
@@ -587,7 +587,7 @@ const FLOORS = {
      app.js and data/ for the diagnostic Foray instrument's three identifying
      strings (HUMAN-ACTIONS.md #29) so it cannot silently come back into a
      release build once deleted. */
-  "test/release-gates.test.js": 14, // K-06 (2026-09-12): the espeak licence gate, the model pin table, the notices file and the 150 MB app-size ceiling; 7 -> 14 // S-07/G1 (2026-09-12): +1 — the Option-B contract, that §2 states the Shows-search lookup is unconditional rather than merely dropping the old promise; 6 -> 7
+  "test/release-gates.test.js": 16, // KV-R2 (2026-09-26): Android's bundled bytes are still q8f16's, and iOS's budget is its own with the TestFlight reason; 14 -> 16 // K-06 (2026-09-12): the espeak licence gate, the model pin table, the notices file and the 150 MB app-size ceiling; 7 -> 14 // S-07/G1 (2026-09-12): +1 — the Option-B contract, that §2 states the Shows-search lookup is unconditional rather than merely dropping the old promise; 6 -> 7
   /* The shared search matcher (#218/#219). Floored because both of the things it
      pins are invisible when they break. Loosening the prefix guard buys recall
      and reintroduces a documented collision flood that only the ~170-second
@@ -1530,12 +1530,12 @@ const FLOORS = {
      this file" and "our app executes whatever is now at that URL" is one hash
      comparison, and the load-bearing test here is that an UNPINNED entry never
      verifies however right the bytes are. Zero slack. */
-  "tools/mobile/fetch-models.test.mjs": 18, // K-01 (2026-09-12): the pins are FILLED, and `bundle` decides what reaches a phone; 16 -> 18
+  "tools/mobile/fetch-models.test.mjs": 19, // KV-R2 (2026-09-26): fp32 is bundled on iOS only and q8f16 on Android only; `bundle` is per platform and never implicit; 18 -> 19 // K-01 (2026-09-12): the pins are FILLED, and `bundle` decides what reaches a phone; 16 -> 18
   /* The weights-into-the-app step. New with the filled pins (2026-09-12): the
      failure it guards is a build that fetched 82 MB correctly and put it where
      the app does not look — green, uploaded, and answering `model-absent` to a
      founder holding a locked phone. Zero slack, same as its sibling above. */
-  "tools/mobile/inject-models.test.mjs": 7,
+  "tools/mobile/inject-models.test.mjs": 9, // KV-R2 (2026-09-26): an app carrying the other platform's model fails --check, and no platform is guessed; 7 -> 9
   /* The phoneme-to-id table and the ids that were mapped through it. The ids
      are the ONLY thing the phone ever sees of our text (deck §4: no G2P ships),
      so a wrong one is not a crash and not silence — it is a different phoneme,
@@ -1784,7 +1784,7 @@ const FLOORS = {
      could not tell from a real one. Those are the tests somebody deleting "the
      ones that only test the failure path" would take first, and they are the
      reason this card is not a way to publish a mispronounced Foray. */
-  "tools/narration/phonemize.test.mjs": 13,
+  "tools/narration/phonemize.test.mjs": 14, // KV-R2 (2026-09-26): sentence_chunks, D3's one chunk rule; 13 -> 14
   "tools/narration/render-audition.test.mjs": 22, // local voice audition (2026-09-26, founder: "test out many of the kokoro voices, find a couple favorites"): the 28 English voices, the pins read from fetch-models.mjs, the voice-id path guard, the published-Foray passage, the sentence splitter, the offline page, blind letters past Z, the favourites.json shape, --page-only and the unknown-voice refusal; 12 -> 22
   "tools/mobile/android-workflow.test.mjs": 62,
   /* Wiring the signing config into a project nobody commits. ZERO SLACK.

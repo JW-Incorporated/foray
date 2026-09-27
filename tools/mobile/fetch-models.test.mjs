@@ -25,7 +25,7 @@ import { fileURLToPath } from "node:url";
 
 import {
   PINS, MODELS_DIR, pinProblems, unfilled, verifyBuffer, verifyOnDisk,
-  digest, ensureIgnored, fillPinCommand, bundledPins, bundledBytes, PROBE_VOICE,
+  digest, ensureIgnored, fillPinCommand, bundledPins, bundledBytes, PROBE_VOICE, BUNDLE_PLATFORMS,
 } from "./fetch-models.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -93,36 +93,52 @@ test("two pins with the same name are a problem", () => {
 
 /* ---------- the slate ---------- */
 
-test("the table pins the q8f16 model and the twelve audition voices", () => {
+test("the table pins two models (q8f16, fp32) and the twelve audition voices", () => {
   /* Deck §6's slate is twelve, and K-04 bundles three of them. A table that
      drifted to eleven would silently drop a voice the founders were asked to
-     rank. MUTATION: remove one id from the voice list in fetch-models.mjs. */
+     rank. MUTATION: remove one id from the voice list in fetch-models.mjs.
+
+     TWO MODELS SINCE KV-R2 (D13): q8f16 for Android, and the fp32 export for
+     iOS, because every fp16-activation export goes NaN on Apple silicon. The
+     q8f16 pin stays FIRST: `render-audition.py`'s `read_pins` reads it by
+     name and `kokoro-probe.test.js` finds each platform's pin by bundle. */
   const models = PINS.filter((p) => p.kind === "model");
   const voices = PINS.filter((p) => p.kind === "voice");
-  assert.equal(models.length, 1, "one model");
+  assert.equal(models.length, 2, "one model per platform");
   assert.equal(voices.length, 12, "deck §6's slate is twelve voices");
   assert.equal(models[0].name, "kokoro-v1_0-q8f16.onnx");
+  assert.equal(PINS[0], models[0], "q8f16 is still the table's first pin");
+  assert.equal(models[1].name, "kokoro-v1_0-fp32.onnx");
+  assert.match(models[1].url, /\/resolve\/main\/onnx\/model\.onnx$/, "fp32 is the export's plain model.onnx");
+  /* The streamed length and digest of two independent downloads (header). A
+     different number here is a different file, whatever the name says. */
+  assert.equal(models[1].bytes, 325532232);
+  assert.equal(models[1].sha256, "8fbea51ea711f2af382e88c833d9e288c6dc82ce5e98421ea61c058ce21a34cb");
   for (const want of ["af_heart.bin", "af_bella.bin", "bm_fable.bin"]) {
     assert.ok(voices.some((v) => v.name === want), `${want} is in the slate`);
   }
 });
 
-test("the model filename matches what both native halves look for", () => {
+test("each platform's model filename matches what that platform's native half looks for", () => {
   /* THE CROSS-TREE PIN. `ForayTtsPlugin.swift` looks up MODEL_RESOURCE +
      MODEL_EXTENSION; `ForayTtsPlugin.java` looks up MODEL_ASSET. Nothing but
      this test connects a build script's output filename to two native lookups
      in two languages — and a mismatch reports as `model-absent`, which reads
-     exactly like "the build skipped the fetch".
-     MUTATION: rename the pin without renaming either constant. */
-  const model = PINS.find((p) => p.kind === "model");
+     exactly like "the build skipped the fetch". Since D13 each half looks for
+     ITS platform's model: fp32 on iOS, q8f16 on Android.
+     MUTATION: rename a pin without renaming its constant, or point Swift back
+     at q8f16. */
+  const modelFor = (platform) => bundledPins(platform).filter((p) => p.kind === "model");
+  const [ios] = modelFor("ios");
+  const [android] = modelFor("android");
   const swift = fs.readFileSync(
     path.join(REPO, "mobile/plugins/foray-tts/ios/Sources/ForayTtsPlugin/ForayTtsPlugin.swift"), "utf8");
   const java = fs.readFileSync(
     path.join(REPO, "mobile/plugins/foray-tts/android/src/main/java/ai/jwlabs/foura/tts/ForayTtsPlugin.java"), "utf8");
-  const base = model.name.replace(/\.onnx$/, "");
+  const base = ios.name.replace(/\.onnx$/, "");
   assert.ok(swift.includes(`MODEL_RESOURCE = "${base}"`), `Swift must look for ${base}`);
   assert.ok(swift.includes('MODEL_EXTENSION = "onnx"'));
-  assert.ok(java.includes(`MODEL_ASSET = "${model.name}"`), `Java must look for ${model.name}`);
+  assert.ok(java.includes(`MODEL_ASSET = "${android.name}"`), `Java must look for ${android.name}`);
 });
 
 /* ---------- the refusal ---------- */
@@ -180,31 +196,62 @@ test("every pin is filled, and the fill command is still printable for the next 
   assert.match(fillPinCommand(PINS[0]), /sha256/);
 });
 
-test("only the model and ONE voice are bundled into the app", () => {
-  /* The size budget is enforced by what `bundle: true` says, not by what a
+test("each app bundles its own model and ONE voice, and nothing else", () => {
+  /* The size budget is enforced by what `bundle` says, not by what a
      workflow's glob happens to match. Twelve voices are pinned because K-03's
      audition renders twelve; eleven of them have no business in an app store
      binary, and the tokenizer has no business on a phone at all (deck §4: no
      text front end on the device).
-     MUTATION: set `bundle: true` on a second voice — the bundled byte count
-     moves and this goes red before the .ipa does. */
-  const names = bundledPins().map((p) => p.name);
-  assert.deepEqual(names, ["kokoro-v1_0-q8f16.onnx", `${PROBE_VOICE}.bin`]);
-  assert.equal(bundledBytes(), 86033585 + 522240);
+     MUTATION: add a platform to a second voice's `bundle` — that platform's
+     byte count moves and this goes red before the .ipa does. */
+  assert.deepEqual(bundledPins("ios").map((p) => p.name), ["kokoro-v1_0-fp32.onnx", `${PROBE_VOICE}.bin`]);
+  assert.deepEqual(bundledPins("android").map((p) => p.name), ["kokoro-v1_0-q8f16.onnx", `${PROBE_VOICE}.bin`]);
+  assert.equal(bundledBytes("ios"), 325532232 + 522240);
+  assert.equal(bundledBytes("android"), 86033585 + 522240);
   for (const p of PINS.filter((p) => p.kind === "tokenizer")) {
-    assert.equal(p.bundle, false, "the id table never ships to a phone");
+    assert.deepEqual([...p.bundle], [], "the id table never ships to a phone");
   }
 });
 
-test("a pin that forgets `bundle` is a problem, not a default", () => {
+test("fp32 is bundled on iOS only and q8f16 on Android only", () => {
+  /* D13, both halves. fp32 is 325.5 MB: in an APK it breaks Android's 150 MB
+     ceiling and Play's base-module limit. q8f16 goes NaN on Apple silicon: in
+     the iOS app it is 86 MB of a model the phone cannot sing with, beside the
+     one it can. And the probe voice is in both, or one probe has no voice.
+     MUTATION: bundle fp32 on Android (`bundle: ["ios", "android"]`) — red.
+     MUTATION: bundle q8f16 on iOS — red. */
+  const byName = (name) => PINS.find((p) => p.name === name);
+  assert.deepEqual([...byName("kokoro-v1_0-fp32.onnx").bundle], ["ios"]);
+  assert.deepEqual([...byName("kokoro-v1_0-q8f16.onnx").bundle], ["android"]);
+  assert.deepEqual([...byName(`${PROBE_VOICE}.bin`).bundle].sort(), ["android", "ios"]);
+  assert.ok(!bundledPins("android").some((p) => p.name === "kokoro-v1_0-fp32.onnx"), "fp32 never reaches the APK");
+  assert.ok(!bundledPins("ios").some((p) => p.name === "kokoro-v1_0-q8f16.onnx"), "q8f16 never reaches the iOS app");
+  assert.equal(bundledPins("ios").filter((p) => p.kind === "model").length, 1, "one model per app");
+  assert.equal(bundledPins("android").filter((p) => p.kind === "model").length, 1, "one model per app");
+});
+
+test("a pin with an implicit bundle value is refused", () => {
   /* The dangerous default is falsy: a model pin whose `bundle` was dropped in
      a rebase would stop being copied, the app would ship without weights, and
      the probe would answer `model-absent` — which reads as "the build did not
-     fetch the weights" and sends a founder to look at the wrong thing.
-     MUTATION: fall back to `p.bundle ?? true` in `pinProblems`. */
+     fetch the weights" and sends a founder to look at the wrong thing. A bare
+     `true` is refused as well: it meant "both apps" before D13, and a pin that
+     still says it has not been told which model each app carries.
+     MUTATION: fall back to `p.bundle ?? []` in `pinProblems`, or accept
+     `true` as "every platform". */
   const { bundle, ...noBundle } = PINS[0];
-  assert.match(pinProblems([noBundle]).join("\n"), /bundle must be true or false/);
-  assert.match(pinProblems([{ ...PINS[0], bundle: "yes" }]).join("\n"), /bundle must be true or false/);
+  const refused = /bundle must be a list of platforms/;
+  assert.match(pinProblems([noBundle]).join("\n"), refused);
+  assert.match(pinProblems([{ ...PINS[0], bundle: true }]).join("\n"), refused);
+  assert.match(pinProblems([{ ...PINS[0], bundle: false }]).join("\n"), refused);
+  assert.match(pinProblems([{ ...PINS[0], bundle: "ios" }]).join("\n"), refused);
+  assert.match(pinProblems([{ ...PINS[0], bundle: ["web"] }]).join("\n"), /unknown platform "web"/);
+  assert.match(pinProblems([{ ...PINS[0], bundle: ["ios", "ios"] }]).join("\n"), /platform twice/);
+  assert.deepEqual(pinProblems([{ ...PINS[0], bundle: [] }]), [], "[] is an explicit 'none'");
+  /* And a caller cannot ask "bundled?" without naming the platform. */
+  assert.throws(() => bundledPins(), /unknown platform/);
+  assert.throws(() => bundledPins("web"), /unknown platform/);
+  assert.deepEqual([...BUNDLE_PLATFORMS], ["ios", "android"]);
 });
 
 /* ---------- the directory ---------- */
@@ -251,6 +298,11 @@ test("nothing model-shaped is committed to the repository", () => {
   const exts = [".onnx", ".onnx_data", ".ort", ".gguf", ".safetensors", ".pt"];
   const offenders = [];
   const walk = (rel) => {
+    /* `mobile/models/` is the fetch's own landing directory, and everything in
+       it is IGNORED by the `.gitignore` the test above pins, so a file there is
+       fetched, not committed. Skipped so that a workstation that ran the fetch
+       (KV-R2's did: the 325 MB fp32 file lives there) can still run this. */
+    if (rel === MODELS_DIR.split(path.sep).join("/")) return;
     const abs = path.join(REPO, rel);
     if (!fs.existsSync(abs)) return;
     for (const e of fs.readdirSync(abs, { withFileTypes: true })) {
