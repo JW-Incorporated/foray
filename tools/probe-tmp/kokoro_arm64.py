@@ -26,3 +26,4 @@ for ln in p["lines"]:
     except Exception as e:
         print(len(ids), "THREW", str(e)[:800])
 if tot_a: print("RTF(synth/audio)", round(tot_t / tot_a, 2))
+import resource; print("maxrss MB", round(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss/1e6))
