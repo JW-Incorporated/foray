@@ -431,6 +431,113 @@ def mode_fp16():
             log("coreml threw", str(e)[:400])
 
 
+# ---------------------------------------------------------------- round 2
+def mode_threads2():
+    # what does intra_op_num_threads=0 resolve to? (verbose log names the pool size)
+    so = sess_opts(); so.log_severity_level = 0
+    import io, contextlib
+    ort.set_default_logger_severity(0)
+    s = ort.InferenceSession(MODEL, so, providers=["CPUExecutionProvider"])
+    ort.set_default_logger_severity(3)
+    del s
+    import os as _o
+    log("sysctl hw.physicalcpu/logicalcpu/perflevel0:", _o.popen("sysctl -n hw.physicalcpu hw.logicalcpu hw.perflevel0.physicalcpu 2>/dev/null").read().split())
+    us = units("sent")[:9]
+    cfgs = [("t0", dict()), ("t1", dict(threads=1)), ("t2", dict(threads=2)), ("t3", dict(threads=3)),
+            ("t4", dict(threads=4)), ("t6", dict(threads=6)), ("t3 spin=off", dict(threads=3, spin=False)),
+            ("t2 spin=off", dict(threads=2, spin=False))]
+    res = {k: [] for k, _ in cfgs}
+    for rep in range(3):
+        for name, kw in cfgs:
+            s, lt = make(**kw); run(s, us[0])
+            tot = aud = 0.0
+            for u in us:
+                dt, w = run(s, u); tot += dt; aud += w.shape[-1] / SR
+            res[name].append(tot / aud); log(f"rep{rep} {name}: RTF_CONTENT {tot/aud:.3f}"); del s
+    for name, _ in cfgs:
+        log(f"SUMMARY {name}: RTF_CONTENT median {st.median(res[name]):.3f} runs {[round(x,3) for x in res[name]]}")
+
+
+def mode_combo():
+    us = units("sent")
+    for th in (3, 2):
+        s, _ = make(threads=th); run(s, us[0])
+        base = sum(run(s, u, 1.0)[1].shape[-1] for u in us) / SR
+        res = {1.0: [], 1.5: []}
+        for rep in range(3):
+            for sp in (1.0, 1.5):
+                tot = sum(run(s, u, sp)[0] for u in us)
+                res[sp].append(tot / base)
+                log(f"threads={th} rep{rep} speed {sp}: RTF_CONTENT {tot/base:.3f}")
+        for sp in res:
+            log(f"SUMMARY threads={th} speed {sp}: RTF_CONTENT median {st.median(res[sp]):.3f} runs {[round(x,3) for x in res[sp]]}")
+        del s
+
+
+def mode_profile2():
+    import onnx
+    m = onnx.load(MODEL, load_external_data=True)
+    init = {i.name: tuple(i.dims) for i in m.graph.initializer}
+    conv = {}
+    for n in m.graph.node:
+        if n.op_type in ("Conv", "ConvTranspose"):
+            at = {a.name: (list(a.ints) if a.ints else a.i) for a in n.attribute}
+            conv[n.name] = (n.op_type, init.get(n.input[1]), at.get("dilations"), at.get("group"), at.get("strides"))
+    del m
+    us = units("sent")
+    s, _ = make(threads=3, profile="prof2")
+    run(s, us[0])
+    for u in us:
+        run(s, u)
+    ev = json.load(open(s.end_profiling()))
+    by_pre, by_node, tot = {}, {}, 0
+    for e in ev:
+        if e.get("cat") != "Node" or not e.get("name", "").endswith("_kernel_time"):
+            continue
+        d = e["dur"]; tot += d
+        nm = e["name"][:-len("_kernel_time")]
+        parts = [p for p in nm.split("/") if p]
+        for depth in (3, 4):
+            pre = "/".join(parts[:depth])
+            by_pre[(depth, pre)] = by_pre.get((depth, pre), 0) + d
+        by_node[nm] = by_node.get(nm, 0) + d
+    log(f"PROFILE2 threads=3 total {tot/1e6:.2f}s")
+    for depth in (3, 4):
+        for (dp, k), v in sorted(by_pre.items(), key=lambda x: -x[1]):
+            if dp == depth and v / tot > 0.01:
+                log(f"  d{depth} {k:55s} {v/1e6:7.2f}s {100*v/tot:5.1f}%")
+    for k, v in sorted(by_node.items(), key=lambda x: -x[1])[:30]:
+        log(f"  node {100*v/tot:5.1f}% {k}  {conv.get(k, '')}")
+    ctot = sum(v for k, v in by_node.items() if k in conv)
+    log(f"  conv nodes total {100*ctot/tot:.1f}% of {len(conv)} conv nodes")
+
+
+def mode_ortver2():
+    vers = sys.argv[2].split(",")
+    res = {v: [] for v in vers}; rss = {v: [] for v in vers}
+    for rep in range(3):
+        for v in vers:
+            out = subprocess.run([f"venv{v}/bin/python", "-u", __file__, "verchild2"], capture_output=True, text=True)
+            line = [l for l in out.stdout.splitlines() if l.startswith("VER")]
+            log(f"rep{rep} {v}: {line[0] if line else out.stdout[-400:] + out.stderr[-800:]}")
+            if line:
+                res[v].append(float(line[0].split("RTF_CONTENT ")[1].split()[0]))
+                rss[v].append(float(line[0].split("peak_rss ")[1].split("MB")[0]))
+    for v in vers:
+        if res[v]:
+            log(f"SUMMARY ort {v} threads=3: RTF_CONTENT median {st.median(res[v]):.3f} runs {res[v]} peak_rss median {st.median(rss[v]):.0f}MB")
+
+
+def mode_verchild2():
+    us = units("sent")
+    s, lt = make(threads=3)
+    run(s, us[0])
+    tot = aud = 0.0; nf = 0
+    for u in us:
+        dt, w = run(s, u); tot += dt; aud += w.shape[-1] / SR; nf += int(not np.isfinite(w).all())
+    log(f"VER ort {ort.__version__} load {lt:.2f}s RTF_CONTENT {tot/aud:.3f} nonfinite {nf} peak_rss {rss_mb():.0f}MB")
+
+
 if __name__ == "__main__":
     log("ort", ort.__version__, "cpus", os.cpu_count(), "mode", sys.argv[1:])
     m = sys.argv[1]
