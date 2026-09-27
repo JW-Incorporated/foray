@@ -583,4 +583,192 @@ final class ForayTtsPluginTests: XCTestCase {
         XCTAssertFalse(ForayTtsPlugin.mustFlushBeforeSpeaking(isSpeaking: false, isPaused: false))
     }
 
+    // MARK: - Lane A: the probe says why it failed, and on what
+    // (docs/diagnostics/log-gaps-2026-09-26.md). Pure helpers first — none of
+    // them touches ONNX Runtime — then the measurement over a fake engine.
+
+    /// **ORT's error codes map to the page's closed tokens, by the C API's
+    /// numbering.** onnxruntime-objc has no error enum of its own: its
+    /// `error_utils.mm` puts `OrtErrorCode` (onnxruntime_c_api.h: ORT_OK = 0,
+    /// ORT_FAIL = 1 … ORT_EP_FAIL = 11) straight into `NSError.code` under the
+    /// domain "onnxruntime". MUTATION: drop or reorder one token — every code
+    /// after it names the wrong failure.
+    func testOrtCodeTokensFollowTheCApiNumbering() {
+        let expected = [1: "fail", 2: "invalid-argument", 3: "no-such-file", 4: "no-model",
+                        5: "engine-error", 6: "runtime-exception", 7: "invalid-protobuf",
+                        8: "model-loaded", 9: "not-implemented", 10: "invalid-graph", 11: "ep-fail"]
+        for (code, token) in expected {
+            XCTAssertEqual(KokoroOrtProbeEngine.ortCodeToken(code), token, "code \(code)")
+        }
+        XCTAssertEqual(KokoroOrtProbeEngine.ortCodeToken(0), "other", "ORT_OK is not a failure token")
+        XCTAssertEqual(KokoroOrtProbeEngine.ortCodeToken(12), "other")
+        XCTAssertEqual(KokoroOrtProbeEngine.ortCodeToken(-1), "other")
+        let ort = NSError(domain: "onnxruntime", code: 9, userInfo: nil)
+        XCTAssertEqual(KokoroOrtProbeEngine.ortCodeToken(ort), "not-implemented")
+        let foreign = NSError(domain: NSCocoaErrorDomain, code: 9, userInfo: nil)
+        XCTAssertEqual(KokoroOrtProbeEngine.ortCodeToken(foreign), "other", "a code means nothing outside ORT's domain")
+    }
+
+    /// **The operator's NAME comes out of an ORT message, and nothing else
+    /// does.** MUTATION: return the message, or widen the capture — the path
+    /// assertion goes red.
+    func testOrtOpTakesOnlyAnIdentifierFromTheMessage() {
+        XCTAssertEqual(KokoroOrtProbeEngine.ortOp(fromMessage:
+            "Non-zero status code returned while running ConvTranspose node. Name:'/decoder/up.0' Status Message: bad"),
+            "ConvTranspose")
+        XCTAssertEqual(KokoroOrtProbeEngine.ortOp(fromMessage:
+            "Could not find an implementation for STFT(17) node with name 'stft'"), "STFT")
+        let pathy = "Load model from /var/mobile/Containers/Data/Application/0A1B/Library/kokoro.onnx failed: No such file"
+        XCTAssertNil(KokoroOrtProbeEngine.ortOp(fromMessage: pathy))
+        let both = "while running Gather node. /var/mobile/Containers/x.onnx"
+        XCTAssertEqual(KokoroOrtProbeEngine.ortOp(fromMessage: both), "Gather")
+        let long = "Could not find an implementation for " + String(repeating: "A", count: 40)
+        XCTAssertNil(KokoroOrtProbeEngine.ortOp(fromMessage: long), "an identifier longer than 32 is refused, not cut")
+        XCTAssertNil(KokoroOrtProbeEngine.ortOp(fromMessage: ""))
+    }
+
+    /// **A buffer of NaN is not audio, and neither is a buffer of silence
+    /// (L04).** A GitHub macos-14 run of this model returned non-finite
+    /// samples on two lines of four without throwing. MUTATION: skip the
+    /// pass, or test only the first sample.
+    func testSampleVerdictNamesNaNAndSilence() {
+        XCTAssertEqual(KokoroOrtProbeEngine.sampleVerdict([0.1, Float.nan, 0.2] as [Float]), "non-finite")
+        XCTAssertEqual(KokoroOrtProbeEngine.sampleVerdict([0.1, 0.2, Float.infinity] as [Float]), "non-finite")
+        XCTAssertEqual(KokoroOrtProbeEngine.sampleVerdict([Float](repeating: 0, count: 2400)), "silent")
+        XCTAssertEqual(KokoroOrtProbeEngine.sampleVerdict([0.00001, -0.00002] as [Float]), "silent")
+        let sine = (0..<2400).map { Float(sin(Double($0) * 2 * Double.pi * 440 / 24_000)) * 0.3 }
+        XCTAssertNil(KokoroOrtProbeEngine.sampleVerdict(sine))
+    }
+
+    /// **Thermal state in the page's four words (L10).**
+    func testThermalTokens() {
+        XCTAssertEqual(ForayTtsPlugin.thermalToken(.nominal), "nominal")
+        XCTAssertEqual(ForayTtsPlugin.thermalToken(.fair), "fair")
+        XCTAssertEqual(ForayTtsPlugin.thermalToken(.serious), "serious")
+        XCTAssertEqual(ForayTtsPlugin.thermalToken(.critical), "critical")
+    }
+
+    /// **The hardware model identifier as a diagnostics token (L09).**
+    /// DiagGate tokens exclude commas, so `iPhone15,2` must arrive as
+    /// `iPhone15.2`. MUTATION: drop the comma swap.
+    func testMachineTokenSwapsTheCommaAndAdmitsOnlyTokenCharacters() {
+        XCTAssertEqual(ForayTtsPlugin.machineToken("iPhone15,2"), "iPhone15.2")
+        XCTAssertEqual(ForayTtsPlugin.machineToken("18.6.2"), "18.6.2")
+        XCTAssertEqual(ForayTtsPlugin.machineToken("a b/c"), "a-b-c")
+        XCTAssertEqual(ForayTtsPlugin.machineToken(String(repeating: "x", count: 40))?.count, 32)
+        XCTAssertNil(ForayTtsPlugin.machineToken(""))
+        XCTAssertNotNil(ForayTtsPlugin.machineToken(ForayTtsPlugin.machineIdentifier()))
+    }
+
+    /// **The model file is identified by a streamed hash (L08).** SHA-256 of
+    /// "abc" begins `ba7816bf`. MUTATION: hash only the first chunk, or
+    /// format upper-case.
+    func testModelFileFactsHashesTheWholeFile() throws {
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("foray-probe-\(UUID().uuidString).bin")
+        try Data("abc".utf8).write(to: url)
+        defer { try? FileManager.default.removeItem(at: url) }
+        let facts = try XCTUnwrap(ForayTtsPlugin.modelFileFacts(url))
+        XCTAssertEqual(facts.bytes, 3)
+        XCTAssertEqual(facts.sha8, "ba7816bf")
+        XCTAssertNil(ForayTtsPlugin.modelFileFacts(url.appendingPathExtension("missing")))
+    }
+
+    /// **The peak is a peak.** `phys_footprint` is the CURRENT footprint;
+    /// the high-water mark can never be below it. MUTATION: return the
+    /// current figure only — still passes this floor, which is why the JS
+    /// suite also pins `ledger_phys_footprint_peak` by name.
+    func testPeakResidentBytesIsNeverBelowTheCurrentFootprint() {
+        let now = ForayTtsPlugin.taskFootprint()
+        XCTAssertGreaterThan(now.current, 0)
+        XCTAssertGreaterThanOrEqual(ForayTtsPlugin.peakResidentBytes(), now.current)
+    }
+
+    /// **Every line throws: the failure path says so line by line, and keeps
+    /// the readings it used to drop (L05, L34, L35).** The failure path used
+    /// to omit `availableMemoryBytes` and `lockedScreenCompleted`, and kept
+    /// only the FIRST failure's code. MUTATION: build `lineOutcomes` from
+    /// `firstFailure`, or move either reading back into the success branch.
+    func testAFailingPassageReportsEveryLineAndTheFullContext() {
+        let result = ForayTtsPlugin.measure(engine: ThrowingProbeEngine(),
+                                            idLines: [[0, 1, 2, 0], [0, 3, 4, 0], [0, 5, 6, 0], [0, 7, 8, 0]],
+                                            speed: 1, modelURL: nil, isForeground: { false })
+        XCTAssertEqual(result["ok"] as? Bool, false)
+        XCTAssertEqual(result["reason"] as? String, "synthesis-failed")
+        XCTAssertEqual(result["detail"] as? String, "inference-threw")
+        XCTAssertEqual(result["lineOutcomes"] as? [String], ["threw", "threw", "threw", "threw"])
+        XCTAssertEqual(result["synthFailures"] as? Int, 4)
+        XCTAssertNotNil(result["availableMemoryBytes"] as? Double)
+        XCTAssertEqual(result["lockedScreenCompleted"] as? Bool, true)
+        XCTAssertEqual(result["bgAtFail"] as? Bool, true)
+        XCTAssertEqual(result["ortCode"] as? String, "not-implemented")
+        XCTAssertEqual(result["ortOp"] as? String, "ConvTranspose")
+        XCTAssertEqual(result["ortStage"] as? String, "run")
+        XCTAssertEqual(result["loadErr"] as? String, "no-model")
+        XCTAssertEqual(result["platform"] as? String, "ios")
+        XCTAssertNotNil(result["thermalStart"] as? String)
+        XCTAssertNotNil(result["thermalEnd"] as? String)
+        XCTAssertNotNil(result["lowPower"] as? Bool)
+        XCTAssertEqual(result["memWarn"] as? Bool, false)
+        XCTAssertNotNil(result["baseMemoryBytes"] as? Double)
+        XCTAssertNotNil(result["cores"] as? Int)
+        XCTAssertNotNil(result["device"] as? String)
+        XCTAssertNil(result["ortVersion"], "a fake engine is not ORT, so no runtime version is claimed")
+        XCTAssertFalse((result["device"] as? String ?? ",").contains(","))
+    }
+
+    /// **NaN and silence are failures with zero seconds, never audio (L04).**
+    /// MUTATION: add a failed line's `audioSec` to the total — the RTF is then
+    /// computed over garbage and the probe reports `ok`.
+    func testGarbageLinesCountAsFailuresAndContributeNoAudio() {
+        let result = ForayTtsPlugin.measure(engine: ScriptedProbeEngine(reasons: [nil, "non-finite", "silent", nil]),
+                                            idLines: [[0, 1, 2, 0], [0, 3, 4, 0], [0, 5, 6, 0], [0, 7, 8, 0]],
+                                            speed: 1, modelURL: nil, isForeground: { true })
+        XCTAssertEqual(result["ok"] as? Bool, true)
+        XCTAssertEqual(result["lineOutcomes"] as? [String], ["ok", "nan", "silent", "ok"])
+        XCTAssertEqual(result["nonFiniteLines"] as? Int, 1)
+        XCTAssertEqual(result["silentLines"] as? Int, 1)
+        XCTAssertEqual(result["synthFailures"] as? Int, 2)
+        XCTAssertEqual(result["audioColdSec"] as? Double, 2)
+        XCTAssertEqual(result["audioWarmSec"] as? Double, 2, "only the one good warm line counts")
+        XCTAssertEqual(result["bgAtFail"] as? Bool, false)
+        XCTAssertNil(result["ortCode"], "no ORT failure was named")
+        XCTAssertEqual(result["lockedScreenCompleted"] as? Bool, false)
+    }
+
+    /// **Every SYNTH_REASONS code has a line token.**
+    func testLineOutcomeTokens() {
+        XCTAssertEqual(ForayTtsPlugin.lineOutcome(nil), "ok")
+        XCTAssertEqual(ForayTtsPlugin.lineOutcome("inference-threw"), "threw")
+        XCTAssertEqual(ForayTtsPlugin.lineOutcome("no-output"), "no-output")
+        XCTAssertEqual(ForayTtsPlugin.lineOutcome("zero-samples"), "zero")
+        XCTAssertEqual(ForayTtsPlugin.lineOutcome("non-finite"), "nan")
+        XCTAssertEqual(ForayTtsPlugin.lineOutcome("silent"), "silent")
+        XCTAssertEqual(ForayTtsPlugin.lineOutcome("session-absent"), "skip")
+    }
+}
+
+/// Every line throws, the way the 2026-09-26 paste's phone did.
+private final class ThrowingProbeEngine: KokoroProbeEngine {
+    let modelName = "fake"
+    let provider = "cpu"
+    func load() -> (coldMs: Double, warmMs: Double) { (457, 374) }
+    func synthesize(ids: [Int], speed: Double) -> (synthMs: Double, audioSec: Double, reason: String?) {
+        (0, 0, "inference-threw")
+    }
+    var lastFailure: KokoroProbeFailure? { KokoroProbeFailure(code: "not-implemented", op: "ConvTranspose", stage: "run") }
+    var loadError: String? { "no-model" }
+}
+
+/// Answers each line with the next scripted reason; a nil reason is 2 s of
+/// audio, and a failed line CLAIMS 2 s too, which the plugin must ignore.
+private final class ScriptedProbeEngine: KokoroProbeEngine {
+    let modelName = "fake"
+    let provider = "cpu"
+    private var reasons: [String?]
+    init(reasons: [String?]) { self.reasons = reasons }
+    func load() -> (coldMs: Double, warmMs: Double) { (1, 1) }
+    func synthesize(ids: [Int], speed: Double) -> (synthMs: Double, audioSec: Double, reason: String?) {
+        let reason = reasons.isEmpty ? nil : reasons.removeFirst()
+        return (100, 2, reason)
+    }
 }

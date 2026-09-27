@@ -1,7 +1,11 @@
 package ai.jwlabs.foura.tts;
 
+import android.app.ActivityManager;
 import android.content.Context;
+import android.os.BatteryManager;
+import android.os.Build;
 import android.os.Bundle;
+import android.os.PowerManager;
 import android.speech.tts.TextToSpeech;
 import android.speech.tts.UtteranceProgressListener;
 import android.util.Log;
@@ -905,10 +909,35 @@ public class ForayTtsPlugin extends Plugin implements TextToSpeech.OnInitListene
          *  is the only path compiled. */
         default boolean acceleratorWired() { return false; }
 
+        /** Why the last {@link #synthesize} threw, as TOKENS (L03, L36):
+         *  ORT's error code, the operator it named, the stage. Never the
+         *  message. Null when nothing threw or the engine does not say. */
+        default ProbeFailure lastFailure() { return null; }
+
+        /** Why the cold session did not open, from the same token set as
+         *  {@link ProbeFailure#code}, or null. */
+        default String loadError() { return null; }
+
         /** Free what {@link #load} opened (audit round 3, mobile-native-5):
          *  an ORT session holds the ~86 MB model in native memory, which a
          *  dropped Java reference never frees. Called once, after the probe. */
         default void close() { }
+    }
+
+    /** One inference failure in closed tokens ({@code player/kokoro-probe.js}'s
+     *  {@code ORT_CODES} and {@code ORT_STAGES}) plus the failing operator's
+     *  name when the runtime named one. Built so nothing else CAN be stored:
+     *  an ORT file error's text can carry the app's data-directory path. */
+    public static final class ProbeFailure {
+        public final String code;
+        public final String op;
+        public final String stage;
+
+        public ProbeFailure(String code, String op, String stage) {
+            this.code = code;
+            this.op = op;
+            this.stage = stage;
+        }
     }
 
     /** The probe's own thread (audit round 3, mobile-native-5). Two model
@@ -1039,8 +1068,42 @@ public class ForayTtsPlugin extends Plugin implements TextToSpeech.OnInitListene
             return;
         }
 
+        Context ctx = getContext();
+        /* WHAT RAN, AND ON WHAT (L07-L09). Read before any stopwatch starts —
+         * the model hash reads 86 MB and must not land in a timed section.
+         * Build.MODEL (a model name), never a serial or a device id. */
+        result.put("cores", Runtime.getRuntime().availableProcessors());
+        String device = deviceToken(Build.MODEL);
+        if (device != null) result.put("device", device);
+        String os = deviceToken(Build.VERSION.RELEASE);
+        if (os != null) result.put("os", os);
+        if (engine instanceof KokoroOrtProbeEngine) {
+            KokoroOrtProbeEngine ort = (KokoroOrtProbeEngine) engine;
+            String version = ort.ortVersion();
+            if (version != null) result.put("ortVersion", version);
+            /* `makeSession` sets no intra-op thread count, so ORT's default —
+             * 0, "ORT picks" — is what ran, the same value iOS passes. */
+            result.put("intraThreads", 0);
+            putModelFileFacts(result, ort.modelPath());
+        }
+
+        /* HEAT, POWER AND MEMORY PRESSURE (L10/L11/L35). */
+        PowerManager pm = ctx == null ? null : (PowerManager) ctx.getSystemService(Context.POWER_SERVICE);
+        BatteryManager bm = ctx == null ? null : (BatteryManager) ctx.getSystemService(Context.BATTERY_SERVICE);
+        String thermalStart = thermalToken(pm);
+        if (thermalStart != null) result.put("thermalStart", thermalStart);
+        if (pm != null) result.put("lowPower", pm.isPowerSaveMode());
+        int batteryStart = batteryPercent(bm);
+        long batteryStartedAt = System.nanoTime();
+        long baseMemory = totalPssBytes();
+        if (baseMemory > 0) result.put("baseMemoryBytes", (double) baseMemory);
+        long peakMemory = baseMemory;
+
         double speed = passage.optDouble("speed", 1.0);
         double[] load = engine.load();
+        String loadErr = engine.loadError();
+        if (loadErr != null) result.put("loadErr", loadErr);
+        peakMemory = Math.max(peakMemory, totalPssBytes());
         double synthColdMs = 0;
         double synthWarmMs = 0;
         /* THE RENDERED SECONDS, AND #685's WHOLE STORY. `out[1]` is the audio
@@ -1057,27 +1120,86 @@ public class ForayTtsPlugin extends Plugin implements TextToSpeech.OnInitListene
         double audioWarmSec = 0;
         int synthFailures = 0;
         String firstFailure = null;
+        ProbeFailure firstOrtFailure = null;
+        /* One token per line, in passage order (L05): `firstFailure` alone
+         * said what went wrong FIRST and nothing about the other lines. */
+        JSArray lineOutcomes = new JSArray();
+        int nonFiniteLines = 0;
+        int silentLines = 0;
         for (int i = 0; i < idLines.size(); i++) {
             double[] out = engine.synthesize(idLines.get(i), speed);
             String why = engine.lastSynthReason();
+            double audioSec = out.length > 1 ? out[1] : 0;
             if (why != null) {
                 synthFailures++;
-                if (firstFailure == null) firstFailure = why;
+                // A failed line is never audio, whatever length it had (L04).
+                audioSec = 0;
+                if (firstFailure == null) {
+                    firstFailure = why;
+                    result.put("bgAtFail", !isForeground());
+                }
+                if (firstOrtFailure == null) firstOrtFailure = engine.lastFailure();
+                if ("non-finite".equals(why)) nonFiniteLines++;
+                if ("silent".equals(why)) silentLines++;
             }
+            lineOutcomes.put(lineOutcome(why));
+            // Sampled between lines, never inside a timed synthesis.
+            peakMemory = Math.max(peakMemory, totalPssBytes());
             /* FIRST LINE IS THE COLD NUMBER, the rest are warm — the go rule
              * in the card is stated on the warm figure alone, and a mean that
              * folded a two-second first inference into it would fail a phone
              * that is fine. */
             if (i == 0) {
                 synthColdMs = out[0];
-                audioColdSec = out.length > 1 ? out[1] : 0;
+                audioColdSec = audioSec;
             } else {
                 synthWarmMs += out[0];
-                audioWarmSec += out.length > 1 ? out[1] : 0;
+                audioWarmSec += audioSec;
             }
         }
 
+        /* BOTH EXIT PATHS carry everything below: the failure path is the one
+         * a founder needs it on, and it used to omit headroom and the
+         * locked-screen reading (L34/L35). */
+        String thermalEnd = thermalToken(pm);
+        if (thermalEnd != null) result.put("thermalEnd", thermalEnd);
+        int batteryEnd = batteryPercent(bm);
+        if (batteryStart >= 0 && batteryEnd >= 0) {
+            result.put("batteryDeltaPct", (double) (batteryStart - batteryEnd));
+            result.put("batteryWindowSec", (System.nanoTime() - batteryStartedAt) / 1e9);
+        }
+        Boolean lowMemory = systemLowMemory(ctx);
+        if (lowMemory != null) result.put("memWarn", lowMemory);
+        result.put("lineOutcomes", lineOutcomes);
+        result.put("nonFiniteLines", nonFiniteLines);
+        result.put("silentLines", silentLines);
+        if (firstOrtFailure != null) {
+            result.put("ortCode", firstOrtFailure.code);
+            result.put("ortStage", firstOrtFailure.stage);
+            if (firstOrtFailure.op != null) result.put("ortOp", firstOrtFailure.op);
+        }
         Runtime rt = Runtime.getRuntime();
+        result.put("model", engine.modelName());
+        result.put("provider", engine.provider());
+        result.put("acceleratorWired", engine.acceleratorWired());
+        result.put("modelLoadColdMs", load.length > 0 ? load[0] : 0);
+        result.put("modelLoadWarmMs", load.length > 1 ? load[1] : 0);
+        result.put("synthColdMs", synthColdMs);
+        result.put("synthWarmMs", synthWarmMs);
+        result.put("synthFailures", synthFailures);
+        result.put("lines", idLines.size());
+        /* A TRUE PEAK NOW. This was `Debug.getNativeHeapAllocatedSize()`
+         * read once at the end — the CURRENT native heap, not the high-water
+         * mark the 400 MB ceiling is about, and blind to ORT's mmapped
+         * weights. The total PSS is sampled after the load and after every
+         * line, and the largest is reported: the Android reading closest to
+         * iOS's `phys_footprint` peak. */
+        result.put("peakMemoryBytes", (double) Math.max(peakMemory, 0));
+        result.put("availableMemoryBytes", (double) (rt.maxMemory() - (rt.totalMemory() - rt.freeMemory())));
+        /* The honest weaker fact, same as iOS: the app was not resumed when
+         * the last line finished. HUMAN-ACTIONS.md H1's instruction is what
+         * makes it the strong claim. */
+        result.put("lockedScreenCompleted", !isForeground());
 
         /* NOT ONE LINE RENDERED IS A REFUSAL, NOT A MEASUREMENT. The weights
          * are here and the runtime loaded, so `model-absent`/`engine-absent`
@@ -1089,21 +1211,11 @@ public class ForayTtsPlugin extends Plugin implements TextToSpeech.OnInitListene
             result.put("ok", false);
             result.put("reason", "synthesis-failed");
             result.put("detail", firstFailure == null ? "zero-samples" : firstFailure);
-            result.put("model", engine.modelName());
-            result.put("provider", engine.provider());
-            result.put("modelLoadColdMs", load.length > 0 ? load[0] : 0);
-            result.put("modelLoadWarmMs", load.length > 1 ? load[1] : 0);
-            result.put("synthColdMs", synthColdMs);
-            result.put("synthWarmMs", synthWarmMs);
-            result.put("synthFailures", synthFailures);
-            result.put("lines", idLines.size());
             /* Reported as the zeroes they are, so the record is internally
              * consistent: rendered audio of 0 s makes every RTF `null` in
              * `summarizeProbe` rather than a quotient over an estimate. */
             result.put("audioColdSec", 0.0);
             result.put("audioWarmSec", 0.0);
-            result.put("acceleratorWired", engine.acceleratorWired());
-            result.put("peakMemoryBytes", (double) android.os.Debug.getNativeHeapAllocatedSize());
             call.resolve(result);
             return;
         }
@@ -1111,30 +1223,122 @@ public class ForayTtsPlugin extends Plugin implements TextToSpeech.OnInitListene
         result.put("ok", true);
         result.put("reason", "");
         result.put("detail", firstFailure == null ? "" : firstFailure);
-        result.put("model", engine.modelName());
-        result.put("provider", engine.provider());
-        result.put("acceleratorWired", engine.acceleratorWired());
-        result.put("modelLoadColdMs", load.length > 0 ? load[0] : 0);
-        result.put("modelLoadWarmMs", load.length > 1 ? load[1] : 0);
-        result.put("synthColdMs", synthColdMs);
-        result.put("synthWarmMs", synthWarmMs);
         result.put("audioColdSec", audioColdSec);
         result.put("audioWarmSec", audioWarmSec);
-        result.put("synthFailures", synthFailures);
-        result.put("lines", idLines.size());
-        /* `totalMemory - freeMemory` is the JVM heap, which is NOT where ORT's
-         * arena lives — the native allocation is the number the deck's 833 MB
-         * iPad reading is about. `Debug.getNativeHeapAllocatedSize()` is the
-         * one the card names, and it is reported ALONGSIDE the JVM figure
-         * rather than instead of it, because a reader comparing an Android
-         * number to an iOS `phys_footprint` needs to know which is which. */
-        result.put("peakMemoryBytes", (double) android.os.Debug.getNativeHeapAllocatedSize());
-        result.put("availableMemoryBytes", (double) (rt.maxMemory() - (rt.totalMemory() - rt.freeMemory())));
-        /* The honest weaker fact, same as iOS: the app was not resumed when
-         * the last line finished. HUMAN-ACTIONS.md H1's instruction is what
-         * makes it the strong claim. */
-        result.put("lockedScreenCompleted", !isForeground());
         call.resolve(result);
+    }
+
+    /** A line's outcome token (L05), from its {@code SYNTH_REASONS} code. */
+    static String lineOutcome(String reason) {
+        if (reason == null) return "ok";
+        switch (reason) {
+            case "inference-threw": return "threw";
+            case "no-output": return "no-output";
+            case "non-finite": return "nan";
+            case "silent": return "silent";
+            case "session-absent": return "skip";
+            default: return "zero";
+        }
+    }
+
+    /** A value admitted as a diagnostics TOKEN: every character outside
+     *  {@code [A-Za-z0-9._-]} becomes '-', capped at 32; null when empty. */
+    static String deviceToken(String raw) {
+        if (raw == null) return null;
+        StringBuilder out = new StringBuilder();
+        for (int i = 0; i < raw.length() && out.length() < 32; i++) {
+            char c = raw.charAt(i);
+            boolean ok = (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9')
+                    || c == '.' || c == '_' || c == '-';
+            out.append(ok ? c : '-');
+        }
+        return out.length() == 0 ? null : out.toString();
+    }
+
+    /** PowerManager's thermal status in iOS's four words (L10), or null
+     *  below API 29, where there is no such reading. */
+    private static String thermalToken(PowerManager pm) {
+        if (pm == null || Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return null;
+        try {
+            switch (pm.getCurrentThermalStatus()) {
+                case PowerManager.THERMAL_STATUS_NONE:
+                case PowerManager.THERMAL_STATUS_LIGHT:
+                    return "nominal";
+                case PowerManager.THERMAL_STATUS_MODERATE:
+                    return "fair";
+                case PowerManager.THERMAL_STATUS_SEVERE:
+                    return "serious";
+                case PowerManager.THERMAL_STATUS_CRITICAL:
+                case PowerManager.THERMAL_STATUS_EMERGENCY:
+                case PowerManager.THERMAL_STATUS_SHUTDOWN:
+                    return "critical";
+                default:
+                    return null;
+            }
+        } catch (Throwable t) {
+            return null;
+        }
+    }
+
+    /** Battery percent 0..100, or -1 when unknown. */
+    private static int batteryPercent(BatteryManager bm) {
+        if (bm == null) return -1;
+        try {
+            int pct = bm.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY);
+            return (pct >= 0 && pct <= 100) ? pct : -1;
+        } catch (Throwable t) {
+            return -1;
+        }
+    }
+
+    /** This process's total PSS in bytes, or 0 when it cannot be read. */
+    private static long totalPssBytes() {
+        try {
+            android.os.Debug.MemoryInfo info = new android.os.Debug.MemoryInfo();
+            android.os.Debug.getMemoryInfo(info);
+            return info.getTotalPss() * 1024L;
+        } catch (Throwable t) {
+            return 0;
+        }
+    }
+
+    /** Whether the system considers itself low on memory right now (L35), or
+     *  null when it cannot say. */
+    private static Boolean systemLowMemory(Context ctx) {
+        if (ctx == null) return null;
+        try {
+            ActivityManager am = (ActivityManager) ctx.getSystemService(Context.ACTIVITY_SERVICE);
+            if (am == null) return null;
+            ActivityManager.MemoryInfo info = new ActivityManager.MemoryInfo();
+            am.getMemoryInfo(info);
+            return info.lowMemory;
+        } catch (Throwable t) {
+            return null;
+        }
+    }
+
+    /** The model file's length and the first 8 hex digits of its SHA-256
+     *  (L08), streamed in 1 MiB chunks. Nothing is put when the file cannot
+     *  be read to the end — a partial hash is not one. */
+    private static void putModelFileFacts(JSObject result, String path) {
+        if (path == null) return;
+        try (java.io.InputStream in = new java.io.FileInputStream(path)) {
+            java.security.MessageDigest sha = java.security.MessageDigest.getInstance("SHA-256");
+            byte[] buf = new byte[1 << 20];
+            long bytes = 0;
+            int n;
+            while ((n = in.read(buf)) > 0) {
+                sha.update(buf, 0, n);
+                bytes += n;
+            }
+            byte[] digest = sha.digest();
+            StringBuilder hex = new StringBuilder();
+            for (int i = 0; i < 4; i++) hex.append(String.format(Locale.ROOT, "%02x", digest[i] & 0xff));
+            result.put("modelBytes", bytes);
+            result.put("modelSha8", hex.toString());
+        } catch (Throwable t) {
+            Log.w(TAG, "could not hash the Kokoro model", t);
+        }
     }
 
     /** Whether the app is frontmost, tracked from Capacitor's OWN lifecycle

@@ -1,6 +1,7 @@
 import Foundation
 import AVFAudio
 import Capacitor
+import CryptoKit
 import UIKit
 import os
 
@@ -41,11 +42,37 @@ public protocol KokoroProbeEngine {
     /// Reported rather than inferred from `provider`, because `"cpu"` reads as
     /// a fallback that fired and it is not one: it is the only path compiled.
     var acceleratorWired: Bool { get }
+
+    /// Why the last `synthesize` threw, as TOKENS (L03, L36): ORT's error
+    /// code, the operator it names, and the stage. Never the message.
+    var lastFailure: KokoroProbeFailure? { get }
+
+    /// Why the cold session did not open, from the same token set, or nil.
+    var loadError: String? { get }
 }
 
 public extension KokoroProbeEngine {
     /// The honest default for any engine that has not thought about it.
     var acceleratorWired: Bool { false }
+    /// An engine that does not say why it failed says nothing, not "ok".
+    var lastFailure: KokoroProbeFailure? { nil }
+    var loadError: String? { nil }
+}
+
+/// One inference failure in closed tokens (`player/kokoro-probe.js`'s
+/// `ORT_CODES` and `ORT_STAGES`), plus the failing operator's name when the
+/// runtime named one. Built so that nothing else CAN be stored: an ORT file
+/// error's text can carry the app-container path.
+public struct KokoroProbeFailure {
+    public let code: String
+    public let op: String?
+    public let stage: String
+
+    public init(code: String, op: String?, stage: String) {
+        self.code = code
+        self.op = op
+        self.stage = stage
+    }
 }
 
 /// The bridge half of `foray-tts` on iOS: wraps `AVSpeechSynthesizer` /
@@ -1051,7 +1078,61 @@ public class ForayTtsPlugin: CAPPlugin, CAPBridgedPlugin, AVSpeechSynthesizerDel
         }
 
         let speed = passage?["speed"] as? Double ?? 1.0
+        call.resolve(Self.measure(engine: engine, idLines: idLines, speed: speed,
+                                  modelURL: KokoroModelFiles.modelURL()))
+    }
+
+    /// The measurement itself, over ANY engine. Split out of
+    /// `runKokoroProbe` so the XCTest target can drive it with a fake engine
+    /// and a fake foreground reading: a test bundle has no weights, so the
+    /// plugin method answers `model-absent` long before it reaches here.
+    ///
+    /// LANE A (docs/diagnostics/log-gaps-2026-09-26.md): the result now says
+    /// WHY a failure happened and ON WHAT, in closed tokens and numbers only —
+    /// ORT's code, operator and stage (L03/L36), each line's outcome (L05),
+    /// the runtime, file and phone (L07-L09), and heat, power and memory
+    /// over the run (L10/L11/L34/L35). Local only: every value lands in
+    /// this JSObject and nowhere else.
+    static func measure(engine: KokoroProbeEngine, idLines: [[Int]], speed: Double, modelURL: URL?,
+                        isForeground: () -> Bool = { ForayTtsPlugin.isForeground() }) -> JSObject {
+        var result = JSObject()
+        result["platform"] = "ios"
+
+        /* WHAT RAN, AND ON WHAT (L07-L09). Read before any stopwatch starts —
+           the model hash reads 86 MB and must not land in a timed section.
+           The hardware MODEL identifier, never `UIDevice.name` (often a
+           person's name) and never the per-vendor device id. */
+        result["cores"] = ProcessInfo.processInfo.activeProcessorCount
+        if let device = machineToken(machineIdentifier()) { result["device"] = device }
+        if let os = machineToken(onMain { UIDevice.current.systemVersion }) { result["os"] = os }
+        if engine is KokoroOrtProbeEngine {
+            if let version = KokoroOrtProbeEngine.runtimeVersion() { result["ortVersion"] = version }
+            result["intraThreads"] = Int(KokoroOrtProbeEngine.INTRA_OP_THREADS)
+        }
+        if let url = modelURL, let facts = modelFileFacts(url) {
+            result["modelBytes"] = facts.bytes
+            result["modelSha8"] = facts.sha8
+        }
+
+        /* HEAT, POWER AND MEMORY PRESSURE (L10/L11/L35). A memory warning
+           during the run is caught by an observer that lives exactly as long
+           as this method — removed by the `defer` before anything resolves. */
+        let warned = ProbeFlag()
+        let observer = NotificationCenter.default.addObserver(
+            forName: UIApplication.didReceiveMemoryWarningNotification, object: nil, queue: nil) { _ in warned.set() }
+        defer { NotificationCenter.default.removeObserver(observer) }
+        let batteryWasMonitored = onMain { UIDevice.current.isBatteryMonitoringEnabled }
+        let batteryStart = onMain { () -> Float in
+            UIDevice.current.isBatteryMonitoringEnabled = true
+            return UIDevice.current.batteryLevel
+        }
+        let batteryStartedAt = DispatchTime.now().uptimeNanoseconds
+        result["thermalStart"] = thermalToken(ProcessInfo.processInfo.thermalState)
+        result["lowPower"] = ProcessInfo.processInfo.isLowPowerModeEnabled
+        result["baseMemoryBytes"] = Double(taskFootprint().current)
+
         let load = engine.load()
+        if let loadError = engine.loadError { result["loadErr"] = loadError }
         var synthColdMs: Double = 0
         var synthWarmMs: Double = 0
         // THE RENDERED SECONDS, AND #685's WHOLE STORY. This pair used to be
@@ -1069,12 +1150,28 @@ public class ForayTtsPlugin: CAPPlugin, CAPBridgedPlugin, AVSpeechSynthesizerDel
         var audioWarmSec: Double = 0
         var synthFailures = 0
         var firstFailure: String? = nil
+        var firstOrtFailure: KokoroProbeFailure? = nil
+        // One token per line, in passage order (L05) — `firstFailure` alone
+        // said what went wrong FIRST and nothing about the other three lines.
+        var lineOutcomes: [String] = []
+        var nonFiniteLines = 0
+        var silentLines = 0
         for (index, ids) in idLines.enumerated() {
             let out = engine.synthesize(ids: ids, speed: speed)
+            var audioSec = out.audioSec
             if let reason = out.reason {
                 synthFailures += 1
-                if firstFailure == nil { firstFailure = reason }
+                // A failed line is never audio, whatever length it had (L04).
+                audioSec = 0
+                if firstFailure == nil {
+                    firstFailure = reason
+                    result["bgAtFail"] = !isForeground()
+                }
+                if firstOrtFailure == nil { firstOrtFailure = engine.lastFailure }
+                if reason == "non-finite" { nonFiniteLines += 1 }
+                if reason == "silent" { silentLines += 1 }
             }
+            lineOutcomes.append(lineOutcome(out.reason))
             // FIRST LINE IS THE COLD NUMBER, the rest are the warm one. They
             // are reported separately rather than averaged because the deck's
             // go rule is stated on the WARM figure alone (§K-01 acceptance),
@@ -1082,12 +1179,60 @@ public class ForayTtsPlugin: CAPPlugin, CAPBridgedPlugin, AVSpeechSynthesizerDel
             // fail a phone that is fine.
             if index == 0 {
                 synthColdMs = out.synthMs
-                audioColdSec = out.audioSec
+                audioColdSec = audioSec
             } else {
                 synthWarmMs += out.synthMs
-                audioWarmSec += out.audioSec
+                audioWarmSec += audioSec
             }
         }
+
+        // BOTH EXIT PATHS carry everything below: the failure path is the one
+        // a founder needs it on, and it used to omit headroom and the
+        // locked-screen reading (L34/L35).
+        result["thermalEnd"] = thermalToken(ProcessInfo.processInfo.thermalState)
+        let batteryEnd = onMain { () -> Float in
+            let level = UIDevice.current.batteryLevel
+            UIDevice.current.isBatteryMonitoringEnabled = batteryWasMonitored
+            return level
+        }
+        if batteryStart >= 0, batteryEnd >= 0 {
+            // -1 is "unknown" (a simulator, or monitoring refused): omitted.
+            result["batteryDeltaPct"] = (Double(batteryStart - batteryEnd) * 1000).rounded() / 10
+            result["batteryWindowSec"] = Double(DispatchTime.now().uptimeNanoseconds - batteryStartedAt) / 1_000_000_000
+        }
+        result["memWarn"] = warned.value
+        result["lineOutcomes"] = lineOutcomes
+        result["nonFiniteLines"] = nonFiniteLines
+        result["silentLines"] = silentLines
+        if let failure = firstOrtFailure {
+            result["ortCode"] = failure.code
+            result["ortStage"] = failure.stage
+            if let op = failure.op { result["ortOp"] = op }
+        }
+        result["provider"] = engine.provider
+        result["model"] = engine.modelName
+        result["acceleratorWired"] = engine.acceleratorWired
+        result["modelLoadColdMs"] = load.coldMs
+        result["modelLoadWarmMs"] = load.warmMs
+        result["synthColdMs"] = synthColdMs
+        result["synthWarmMs"] = synthWarmMs
+        result["synthFailures"] = synthFailures
+        result["lines"] = idLines.count
+        // `os_proc_available_memory` is the figure Apple documents for "how
+        // much more can this process allocate before jetsam", which is the
+        // number that decides whether narration survives a locked screen —
+        // deck §5 item 3. The peak is the task's own high-water mark.
+        result["availableMemoryBytes"] = Double(os_proc_available_memory())
+        result["peakMemoryBytes"] = Double(peakResidentBytes())
+        // The card asks whether synthesis completed WITH THE SCREEN LOCKED for
+        // the whole passage. This reports the honest weaker fact: the app was
+        // NOT frontmost at the moment the last line finished. The founder
+        // instruction (HUMAN-ACTIONS.md H1) is what turns it into the strong
+        // claim — tap run, lock the phone immediately, unlock when the passage
+        // stops, and read this flag. A `true` here with a `false` on the same
+        // phone at the same build means the founder did not lock it, not that
+        // the phone is inconsistent.
+        result["lockedScreenCompleted"] = !isForeground()
 
         // NOT ONE LINE RENDERED IS A REFUSAL, NOT A MEASUREMENT. The weights
         // are here and the runtime loaded, so `model-absent`/`engine-absent`
@@ -1099,62 +1244,118 @@ public class ForayTtsPlugin: CAPPlugin, CAPBridgedPlugin, AVSpeechSynthesizerDel
             result["ok"] = false
             result["reason"] = "synthesis-failed"
             result["detail"] = firstFailure ?? "zero-samples"
-            result["provider"] = engine.provider
-            result["model"] = engine.modelName
-            result["modelLoadColdMs"] = load.coldMs
-            result["modelLoadWarmMs"] = load.warmMs
-            result["synthColdMs"] = synthColdMs
-            result["synthWarmMs"] = synthWarmMs
-            result["synthFailures"] = synthFailures
-            result["lines"] = idLines.count
             // Reported as the zeroes they are, so the record is internally
             // consistent: rendered audio of 0 s makes every RTF `null` in
             // `summarizeProbe` rather than a quotient over an estimate.
             result["audioColdSec"] = 0.0
             result["audioWarmSec"] = 0.0
-            result["acceleratorWired"] = engine.acceleratorWired
-            result["peakMemoryBytes"] = Double(Self.peakResidentBytes())
-            call.resolve(result)
-            return
+            return result
         }
 
         result["ok"] = true
         result["reason"] = ""
         result["detail"] = firstFailure ?? ""
-        result["model"] = engine.modelName
-        result["provider"] = engine.provider
-        result["acceleratorWired"] = engine.acceleratorWired
-        result["modelLoadColdMs"] = load.coldMs
-        result["modelLoadWarmMs"] = load.warmMs
-        result["synthColdMs"] = synthColdMs
-        result["synthWarmMs"] = synthWarmMs
         result["audioColdSec"] = audioColdSec
         result["audioWarmSec"] = audioWarmSec
-        result["synthFailures"] = synthFailures
-        result["lines"] = idLines.count
-        // `os_proc_available_memory` is the figure Apple documents for "how
-        // much more can this process allocate before jetsam", which is the
-        // number that decides whether narration survives a locked screen —
-        // deck §5 item 3. Peak resident size is read from the task info.
-        result["availableMemoryBytes"] = Double(os_proc_available_memory())
-        result["peakMemoryBytes"] = Double(Self.peakResidentBytes())
-        // The card asks whether synthesis completed WITH THE SCREEN LOCKED for
-        // the whole passage. This reports the honest weaker fact: the app was
-        // NOT frontmost at the moment the last line finished. The founder
-        // instruction (HUMAN-ACTIONS.md H1) is what turns it into the strong
-        // claim — tap run, lock the phone immediately, unlock when the passage
-        // stops, and read this flag. A `true` here with a `false` on the same
-        // phone at the same build means the founder did not lock it, not that
-        // the phone is inconsistent.
-        result["lockedScreenCompleted"] = !Self.isForeground()
-        call.resolve(result)
+        return result
+    }
+
+    /// A line's outcome token (L05), from its `SYNTH_REASONS` code.
+    static func lineOutcome(_ reason: String?) -> String {
+        guard let reason else { return "ok" }
+        switch reason {
+        case "inference-threw": return "threw"
+        case "no-output": return "no-output"
+        case "non-finite": return "nan"
+        case "silent": return "silent"
+        case "session-absent": return "skip"
+        default: return "zero"
+        }
+    }
+
+    /// `ProcessInfo.ThermalState` as the page's four words (L10).
+    static func thermalToken(_ state: ProcessInfo.ThermalState) -> String {
+        switch state {
+        case .nominal: return "nominal"
+        case .fair: return "fair"
+        case .serious: return "serious"
+        case .critical: return "critical"
+        @unknown default: return "unknown"
+        }
+    }
+
+    /// The hardware model identifier (`iPhone15,2`), from `utsname`. Never
+    /// `UIDevice.name`, which is whatever the owner called the phone.
+    static func machineIdentifier() -> String {
+        var info = utsname()
+        uname(&info)
+        let capacity = MemoryLayout.size(ofValue: info.machine)
+        return withUnsafePointer(to: info.machine) {
+            $0.withMemoryRebound(to: CChar.self, capacity: capacity) { String(cString: $0) }
+        }
+    }
+
+    /// A value admitted as a diagnostics TOKEN: ',' becomes '.' (DiagGate
+    /// tokens exclude commas, so `iPhone15,2` is `iPhone15.2`), any other
+    /// character outside `[A-Za-z0-9._-]` becomes '-', capped at 32; nil
+    /// when nothing is left.
+    static func machineToken(_ raw: String) -> String? {
+        let allowed = Set("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789._-")
+        let mapped = raw.replacingOccurrences(of: ",", with: ".").map { allowed.contains($0) ? $0 : "-" }
+        let token = String(mapped.prefix(32))
+        return token.isEmpty ? nil : token
+    }
+
+    /// The model file's length and the first 8 hex digits of its SHA-256
+    /// (L08), streamed in 1 MiB chunks so 86 MB is never held at once. Nil
+    /// when the file cannot be read to the end — a partial hash is not one.
+    static func modelFileFacts(_ url: URL) -> (bytes: Int, sha8: String)? {
+        guard let handle = try? FileHandle(forReadingFrom: url) else { return nil }
+        defer { try? handle.close() }
+        var hasher = SHA256()
+        var bytes = 0
+        do {
+            while true {
+                let chunk: Data? = try autoreleasepool { try handle.read(upToCount: 1 << 20) }
+                guard let chunk, !chunk.isEmpty else { break }
+                bytes += chunk.count
+                hasher.update(data: chunk)
+            }
+        } catch {
+            return nil
+        }
+        let sha8 = hasher.finalize().prefix(4).map { String(format: "%02x", $0) }.joined()
+        return (bytes, sha8)
+    }
+
+    /// Run a UIKit read on the main thread, without deadlocking when already
+    /// there — the same care `isForeground()` takes.
+    static func onMain<T>(_ body: () -> T) -> T {
+        if Thread.isMainThread { return body() }
+        return DispatchQueue.main.sync(execute: body)
     }
 
     /// Peak resident bytes for this task, or 0 when the kernel refuses. Zero
     /// is turned into "not measured" by `player/kokoro-probe.js`'s
     /// `toMegabytes`/`probeVerdict`, which treats an unmeasured ceiling as a
     /// FAILURE rather than a pass — see that file's own note on why.
+    ///
+    /// A TRUE PEAK NOW. This returned `phys_footprint`, which is the CURRENT
+    /// footprint: read after the last line, it said how much was held at the
+    /// end, not the high-water mark the 400 MB ceiling is about. The kernel
+    /// keeps the peak in the same `TASK_VM_INFO` answer; an older kernel that
+    /// leaves it 0 falls back to the current figure. The peak is the
+    /// PROCESS's since launch and cannot be reset, so a second probe run in
+    /// the same app session reports the larger of the two; `baseMemoryBytes`
+    /// (read before `load()`) is what tells a reader how much was already held.
     static func peakResidentBytes() -> UInt64 {
+        let footprint = taskFootprint()
+        return footprint.peak > 0 ? footprint.peak : footprint.current
+    }
+
+    /// `phys_footprint` (current) and `ledger_phys_footprint_peak`, or zeros
+    /// when the kernel refuses.
+    static func taskFootprint() -> (current: UInt64, peak: UInt64) {
         var info = task_vm_info_data_t()
         var count = mach_msg_type_number_t(MemoryLayout<task_vm_info_data_t>.size / MemoryLayout<natural_t>.size)
         let kerr: kern_return_t = withUnsafeMutablePointer(to: &info) {
@@ -1162,8 +1363,8 @@ public class ForayTtsPlugin: CAPPlugin, CAPBridgedPlugin, AVSpeechSynthesizerDel
                 task_info(mach_task_self_, task_flavor_t(TASK_VM_INFO), $0, &count)
             }
         }
-        guard kerr == KERN_SUCCESS else { return 0 }
-        return info.phys_footprint
+        guard kerr == KERN_SUCCESS else { return (0, 0) }
+        return (info.phys_footprint, UInt64(max(0, info.ledger_phys_footprint_peak)))
     }
 
     /// Whether the app is frontmost right now.
@@ -1182,5 +1383,24 @@ public class ForayTtsPlugin: CAPPlugin, CAPBridgedPlugin, AVSpeechSynthesizerDel
         let read: () -> Bool = { UIApplication.shared.applicationState == .active }
         if Thread.isMainThread { return read() }
         return DispatchQueue.main.sync(execute: read)
+    }
+}
+
+/// A flag set from a notification block and read once by the probe; locked
+/// because the two run on different queues.
+final class ProbeFlag {
+    private let lock = NSLock()
+    private var fired = false
+
+    func set() {
+        lock.lock()
+        fired = true
+        lock.unlock()
+    }
+
+    var value: Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        return fired
     }
 }

@@ -92,6 +92,22 @@ final class KokoroOrtProbeEngine: KokoroProbeEngine {
 
     private static let log = Logger(subsystem: "ai.jwlabs.foura", category: "kokoro-probe")
 
+    /// The value handed to `setIntraOpNumThreads`, and reported as
+    /// `intraThreads` (L09): 0 is "ORT picks", per the C API.
+    static let INTRA_OP_THREADS: Int32 = 0
+
+    /// A line whose every finite sample is quieter than this is `silent`
+    /// (L04): a buffer of the right length that says nothing.
+    static let SILENCE_FLOOR: Float = 1e-4
+
+    /// WHY ORT FAILED, AS A TOKEN (L03). The onnxruntime-objc wrapper puts
+    /// the C API's `OrtErrorCode` straight into `NSError.code` under the
+    /// domain `onnxruntime` (`objectivec/error_utils.mm`: `e.GetOrtErrorCode()`,
+    /// and `ORT_RUNTIME_EXCEPTION` for any other C++ exception). Index `i` is
+    /// code `i + 1`, exactly `onnxruntime_c_api.h`'s order; anything else is
+    /// `other`. The same set as `player/kokoro-probe.js`'s `ORT_CODES`.
+    static let ORT_CODE_TOKENS = ["fail", "invalid-argument", "no-such-file", "no-model", "engine-error", "runtime-exception", "invalid-protobuf", "model-loaded", "not-implemented", "invalid-graph", "ep-fail"]
+
     private let modelPath: String
     private let style: [Float]
     private var session: ORTSession?
@@ -99,9 +115,18 @@ final class KokoroOrtProbeEngine: KokoroProbeEngine {
     private var loadColdMs: Double = 0
     private var loadWarmMs: Double = 0
     private var providerName = "cpu"
+    private var lastSessionError: String?
 
     let modelName = "kokoro-82m-v1.0-q8f16"
     var provider: String { providerName }
+    /// Why the LAST `synthesize` threw, as tokens only. Reset on every call.
+    private(set) var lastFailure: KokoroProbeFailure?
+    /// Why the COLD session did not open, or nil when it did. A failed load
+    /// used to print `load 457ms/374ms` exactly like a real one.
+    private(set) var loadError: String?
+
+    /// The linked runtime's own version string (`ORTVersion()`, since 1.15).
+    static func runtimeVersion() -> String? { ORTVersion() }
 
     /// `nil` when anything needed is absent or malformed. A FAILED
     /// CONSTRUCTION IS NOT A CRASH and not a zero: the plugin reports
@@ -132,7 +157,9 @@ final class KokoroOrtProbeEngine: KokoroProbeEngine {
     /// deck §5 item 6's "load at app start and keep the session warm"
     /// mitigation actually turns on.
     func load() -> (coldMs: Double, warmMs: Double) {
+        lastSessionError = nil
         loadColdMs = timed { self.session = self.makeSession() }
+        loadError = session == nil ? (lastSessionError ?? "other") : nil
         loadWarmMs = timed { _ = self.makeSession() }
         return (loadColdMs, loadWarmMs)
     }
@@ -155,7 +182,7 @@ final class KokoroOrtProbeEngine: KokoroProbeEngine {
         do {
             guard let env = environment() else { return nil }
             let options = try ORTSessionOptions()
-            try options.setIntraOpNumThreads(0)   // 0 = ORT picks, per the C API
+            try options.setIntraOpNumThreads(Self.INTRA_OP_THREADS)   // 0 = ORT picks, per the C API
             try options.setGraphOptimizationLevel(ORTGraphOptimizationLevel.all)
             /* NO EXECUTION PROVIDER IS APPENDED, and `acceleratorWired` says so
                rather than leaving a reader to infer it from `provider: "cpu"`.
@@ -169,6 +196,8 @@ final class KokoroOrtProbeEngine: KokoroProbeEngine {
             return try ORTSession(env: env, modelPath: modelPath, sessionOptions: options)
         } catch {
             Self.log.error("could not open the Kokoro session: \(error.localizedDescription)")
+            // The TOKEN reaches the record; the text above stays in os_log.
+            lastSessionError = Self.ortCodeToken(error)
             return nil
         }
     }
@@ -187,6 +216,7 @@ final class KokoroOrtProbeEngine: KokoroProbeEngine {
     /// planning estimate and got `0.00` — a real number, better than every
     /// ceiling in the card. A failure has to arrive as a failure, by name.
     func synthesize(ids: [Int], speed: Double) -> (synthMs: Double, audioSec: Double, reason: String?) {
+        lastFailure = nil
         guard let session else { return (0, 0, "session-absent") }
         guard ids.count > 2 else { return (0, 0, "zero-samples") }
         var samples = 0
@@ -196,11 +226,57 @@ final class KokoroOrtProbeEngine: KokoroProbeEngine {
             samples = out.samples
             failure = out.reason
         }
-        if samples <= 0 { return (ms, 0, failure ?? "zero-samples") }
+        /* A `non-finite` or `silent` line has samples and is STILL a failure
+           (L04): it contributes 0 s, so no RTF is computed over garbage. */
+        if samples <= 0 || failure != nil { return (ms, 0, failure ?? "zero-samples") }
         return (ms, Double(samples) / Self.SAMPLE_RATE, nil)
     }
 
+    /// `(error as NSError).code` as an `ORT_CODE_TOKENS` token, or `other`
+    /// for a code outside 1..11 or an error from any other domain.
+    static func ortCodeToken(_ error: Error) -> String {
+        let ns = error as NSError
+        return ns.domain == "onnxruntime" ? ortCodeToken(ns.code) : "other"
+    }
+
+    static func ortCodeToken(_ code: Int) -> String {
+        guard code >= 1, code <= ORT_CODE_TOKENS.count else { return "other" }
+        return ORT_CODE_TOKENS[code - 1]
+    }
+
+    /// The failing operator's NAME out of an ORT message, or nil — WITHOUT
+    /// keeping the message, which can carry the app-container path. Only a
+    /// bare identifier of at most 32 characters can come out.
+    static func ortOp(fromMessage message: String) -> String? {
+        let patterns = ["running ([A-Za-z][A-Za-z0-9_]{0,31}) node",
+                        "implementation for ([A-Za-z][A-Za-z0-9_]{0,31})\\b"]
+        let range = NSRange(message.startIndex..., in: message)
+        for pattern in patterns {
+            guard let re = try? NSRegularExpression(pattern: pattern),
+                  let match = re.firstMatch(in: message, range: range),
+                  match.numberOfRanges > 1,
+                  let found = Range(match.range(at: 1), in: message) else { continue }
+            return String(message[found])
+        }
+        return nil
+    }
+
+    /// One pass over a line's samples (L04): any NaN/Inf is `non-finite`;
+    /// a peak magnitude under `SILENCE_FLOOR` is `silent`; otherwise nil.
+    static func sampleVerdict<C: Collection>(_ samples: C) -> String? where C.Element == Float {
+        var nonFinite = 0
+        var peakAbs: Float = 0
+        for sample in samples {
+            if !sample.isFinite { nonFinite += 1; continue }
+            peakAbs = max(peakAbs, abs(sample))
+        }
+        if nonFinite > 0 { return "non-finite" }
+        if peakAbs < SILENCE_FLOOR { return "silent" }
+        return nil
+    }
+
     private func run(session: ORTSession, ids: [Int], speed: Double) -> (samples: Int, reason: String?) {
+        var stage = "input"
         do {
             /* int64, little-endian, exactly as the graph declares. `Int` is
                64-bit on every device this ships to, but the conversion is
@@ -235,6 +311,7 @@ final class KokoroOrtProbeEngine: KokoroProbeEngine {
                renamed it would otherwise turn into "ORT returned nothing" with
                no diagnosis attached. */
             guard let outputName = (try session.outputNames()).first else { return (0, "no-output") }
+            stage = "run"
             let outputs = try session.run(
                 withInputs: ["input_ids": idsValue, "style": styleValue, "speed": speedTensor],
                 outputNames: [outputName],
@@ -244,6 +321,7 @@ final class KokoroOrtProbeEngine: KokoroProbeEngine {
                `WithError:` suffix and the out-parameter. Spelled the ObjC way
                it does not compile. */
             guard let audio = outputs[outputName] else { return (0, "no-output") }
+            stage = "output"
             let data = try audio.tensorData() as Data
             /* The samples are COUNTED AND DROPPED. K-01 measures speed, memory
                and whether the passage survives a locked screen; what it sounds
@@ -252,13 +330,25 @@ final class KokoroOrtProbeEngine: KokoroProbeEngine {
                session, which would mean this file could become the narration
                path by accident. */
             let samples = data.count / MemoryLayout<Float>.size
-            return (samples, samples > 0 ? nil : "zero-samples")
+            guard samples > 0 else { return (0, "zero-samples") }
+            /* COUNTED, AND NOW CHECKED (L04). A GitHub macos-14 run of this
+               model returned NaN on two lines of four without throwing; a
+               count alone called that audio. One pass, nothing kept. */
+            let verdict = data.withUnsafeBytes { raw in
+                Self.sampleVerdict(raw.bindMemory(to: Float.self))
+            }
+            return (samples, verdict)
         } catch {
             /* THE LOG LINE IS NOT THE REPORT. This `os_log` is unreachable from
                the founder's phone; the returned code is what reaches the
                diagnostics record he pastes, and #685 is what it costs when only
-               the unreachable half exists. */
+               the unreachable half exists. `lastFailure` carries the rest as
+               TOKENS (L03): ORT's code, the operator's name, and the stage —
+               never the message, which can embed the app-container path. */
             Self.log.error("Kokoro inference failed: \(error.localizedDescription)")
+            lastFailure = KokoroProbeFailure(code: Self.ortCodeToken(error),
+                                             op: Self.ortOp(fromMessage: (error as NSError).localizedDescription),
+                                             stage: stage)
             return (0, "inference-threw")
         }
     }

@@ -514,9 +514,48 @@ export async function kokoroProbe(opts = {}) {
     }
     return { ...native, ok: true, path: "native" };
   } catch (e) {
-    try { log("foray-tts: kokoroProbe is not available on this build", e); } catch (_e) { /* logging must never throw */ }
-    return { ok: false, path: "native", reason: "engine-absent" };
+    /* TWO DIFFERENT REJECTIONS, told apart (L12). Capacitor rejects a method
+       the native plugin does not have with code `UNIMPLEMENTED` — an older
+       shell whose plugin predates the probe — and THAT is `engine-absent`.
+       Anything else (a plugin that threw, a bridge that broke mid-call) used
+       to land here as `engine-absent` too, which reads exactly like "this
+       build has no runtime" and sent the next reader looking in the wrong
+       place. It is `threw`, and it carries the error's NAME — never its
+       message, which is free text from native code and can carry a path. */
+    try { log("foray-tts: kokoroProbe rejected", e); } catch (_e) { /* logging must never throw */ }
+    if (isUnimplementedRejection(e)) {
+      return { ok: false, path: "native", reason: "engine-absent" };
+    }
+    return { ok: false, path: "native", reason: "threw", detail: probeErrorName(e) };
   }
+}
+
+/** Is `e` Capacitor's "this binary has no such method/plugin" rejection?
+    Capacitor spells it `code: "UNIMPLEMENTED"`; older bridges only WORD it
+    ("… is not implemented on ios", "plugin not implemented"). The same rule as
+    `player/native-engine.js`'s `isUnimplemented`, written again for the
+    reason `probeErrorName` is. The message is READ to classify and never
+    kept: only the closed `engine-absent` leaves this function's caller. */
+export function isUnimplementedRejection(e) {
+  if (!e) return false;
+  if (e.code === "UNIMPLEMENTED") return true;
+  let text = "";
+  try { text = String(typeof e === "object" && "message" in e ? e.message : e); } catch (_e) { return false; }
+  return /not implemented|unimplemented/i.test(text);
+}
+
+/** An error's code or name, admitted only as a bare ASCII identifier of at
+    most 40 characters; `null` otherwise. The same rule as
+    `player/kokoro-probe.js`'s `nameOf` — written twice rather than imported
+    for the reason `PROBE_ENGINE` is (a classic-script page and a plugin web
+    half cannot import each other; `tts-bridge.js`'s header).
+    `tools/mobile/foray-tts.test.mjs` holds the two in step. */
+export function probeErrorName(e) {
+  if (!e || (typeof e !== "object" && typeof e !== "function")) return null;
+  for (const v of [e.code, e.name]) {
+    if (typeof v === "string" && /^[A-Za-z][A-Za-z0-9_]{0,39}$/.test(v)) return v;
+  }
+  return null;
 }
 
 /* ── L-05 (founder feedback F12): pause, resume, stop ───────────────────────

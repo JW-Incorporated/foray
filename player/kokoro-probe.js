@@ -111,11 +111,17 @@ export const RTF_FLOOR = 0.01;
                              produced audio. #685's zero, said out loud: the
                              native half carries its own `detail` (which of
                              `session-absent`, `inference-threw`, `no-output`,
-                             `zero-samples` fired first) so the next run names
-                             the fault instead of implying a miracle.
+                             `zero-samples`, `non-finite`, `silent` fired
+                             first) so the next run names the fault instead of
+                             implying a miracle.
       refused                the native half answered `ok: false` for a reason
                              of its own, carried through verbatim.
-      threw                  the call rejected. Carries the message. */
+      threw                  the call rejected. Carries the error's NAME
+                             (`nameOf`: `TypeError`, a Capacitor code) and
+                             never its message. A Capacitor `UNIMPLEMENTED`
+                             is not `threw`: it is an older shell with no
+                             probe method, which `foray-tts.js` reports as
+                             `engine-absent`. */
 export const PROBE_REASONS = Object.freeze([
   "no-bridge", "passage-missing", "passage-empty", "passage-unphonemized",
   "model-absent", "engine-absent", "synthesis-failed", "refused", "threw",
@@ -133,10 +139,71 @@ export const PROBE_REASONS = Object.freeze([
                        founder cannot read — so the CODE has to travel.
       no-output        the graph ran and named no output tensor.
       zero-samples     the output tensor was empty, or an unexpected shape the
-                       sample counter refused to guess at. */
+                       sample counter refused to guess at.
+      non-finite       the graph ran and returned samples, and at least one of
+                       them was NaN or Infinity (L04). A GitHub macos-14 run of
+                       this model did exactly that on two lines of four; a
+                       sample COUNT would have called it audio.
+      silent           every finite sample's magnitude was below 1e-4: a
+                       buffer of the right length that says nothing (L04).
+
+    A `non-finite` or `silent` line counts as a synthesis failure and adds 0 s
+    of audio, so an RTF is never computed over garbage. */
 export const SYNTH_REASONS = Object.freeze([
-  "session-absent", "inference-threw", "no-output", "zero-samples",
+  "session-absent", "inference-threw", "no-output", "zero-samples", "non-finite", "silent",
 ]);
+
+/** WHY ORT FAILED, as a token (L03, L36). The ORT C API's `OrtErrorCode`
+    values 1..11, in that order, plus the two a phone can hit that ORT does
+    not number: `oom` (Android's OutOfMemoryError) and `other` (anything else,
+    or a code outside 1..11). Both native halves map the runtime's own code to
+    one of these and NEVER carry the message: an ORT file error can embed the
+    app-container path, and a path is not something this record holds.
+
+    The same set answers `loadErr` — the cold `makeSession()` failing is the
+    same runtime saying the same things, one step earlier. */
+export const ORT_CODES = Object.freeze([
+  "fail", "invalid-argument", "no-such-file", "no-model", "engine-error", "runtime-exception",
+  "invalid-protobuf", "model-loaded", "not-implemented", "invalid-graph", "ep-fail", "oom", "other",
+]);
+
+/** Where in one line's inference the first failure happened: building the
+    three input tensors, `session.run`, or reading the output tensor back. */
+export const ORT_STAGES = Object.freeze(["input", "run", "output"]);
+
+/** One token per line, in passage order (L05). `threw` is `inference-threw`,
+    `zero` is `zero-samples`, `nan` is `non-finite`, `skip` is
+    `session-absent`; the others are their own reason. Short on purpose — the
+    ring line prints them comma-joined, four of them to a passage. */
+export const LINE_OUTCOMES = Object.freeze(["ok", "threw", "no-output", "zero", "nan", "silent", "skip"]);
+
+/** `ProcessInfo.thermalState` / `PowerManager.getCurrentThermalStatus()`,
+    folded to iOS's four words (L10). */
+export const THERMAL_STATES = Object.freeze(["nominal", "fair", "serious", "critical"]);
+
+/** The one model the probe bundles, as `tools/mobile/fetch-models.mjs`'s
+    first pin records it: the streamed length and the first 8 hex digits of
+    its SHA-256 (L08). A phone that reports anything else loaded a different
+    file than the one every other number here was measured against — the
+    Android cache check is length-only, so this is where a stale extraction
+    would first show. A test reads `PINS[0]` and holds the two in step. */
+export const KOKORO_MODEL_PIN = Object.freeze({ bytes: 86033585, sha8: "04c658ae" });
+
+/** An error's NAME, never its message (L12). Takes `e.code` (Capacitor's
+    `UNIMPLEMENTED`, `UNAVAILABLE`) and then `e.name` (`TypeError`), and
+    admits one only if it is a bare ASCII identifier of at most 40 characters
+    — the same shape discipline `diagnostic-log.js`'s `errorNameOf` applies.
+    Anything else is `null`: a message that happens to be one word is still
+    not admitted by accident, because a message carries spaces or punctuation
+    long before it carries a secret. */
+export const ERROR_NAME_RE = /^[A-Za-z][A-Za-z0-9_]{0,39}$/;
+export function nameOf(e) {
+  if (!e || (typeof e !== "object" && typeof e !== "function")) return null;
+  for (const v of [e.code, e.name]) {
+    if (typeof v === "string" && ERROR_NAME_RE.test(v)) return v;
+  }
+  return null;
+}
 
 /* ---------- the passage ---------- */
 
@@ -176,6 +243,46 @@ export function passageProblem(passage) {
     if (!l || !Array.isArray(l.ids) || l.ids.length === 0) return "passage-unphonemized";
   }
   return null;
+}
+
+/* ---------- shapes ---------- */
+
+/* Every field below that is not a number the page computed is admitted BY
+   SHAPE or from a closed set, and is `null` otherwise. The native halves are
+   written to send only these shapes; this is the second lock, because the
+   record is pasted into an issue and a path or a device name that slipped
+   through a native change would be pasted with it. */
+const TOKEN_RE = /^[A-Za-z0-9._-]{1,32}$/;
+const ORT_OP_RE = /^[A-Za-z][A-Za-z0-9_]{0,31}$/;
+const ORT_VERSION_RE = /^[0-9][0-9.]{0,15}$/;
+const SHA8_RE = /^[0-9a-f]{8}$/;
+const SYNTH_REASON_RE = /^[A-Za-z][A-Za-z0-9_-]{0,39}$/;
+const MAX_LINE_OUTCOMES = 16;
+
+const oneOf = (set, v) => (typeof v === "string" && set.includes(v) ? v : null);
+const shaped = (re, v) => (typeof v === "string" && re.test(v) ? v : null);
+const count = (v) => (Number.isInteger(v) && v >= 0 ? v : null);
+const bool = (v) => (typeof v === "boolean" ? v : null);
+
+/** The per-line outcomes as one comma-joined string, or `null`. The WHOLE
+    list is refused if any entry is outside `LINE_OUTCOMES`: a list with a
+    hole in it would print a passage of three lines as if it were four. */
+function lineOutcomesOf(v) {
+  if (!Array.isArray(v) || v.length === 0) return null;
+  const list = v.slice(0, MAX_LINE_OUTCOMES);
+  if (!list.every((t) => LINE_OUTCOMES.includes(t))) return null;
+  return list.join(",");
+}
+
+/** `ok` when both halves of the pin match, `mismatch` when either one was
+    reported and differs, `null` when neither was reported (an older shell). */
+export function modelPinOf(modelBytes, modelSha8) {
+  const haveBytes = modelBytes != null;
+  const haveSha = modelSha8 != null;
+  if (!haveBytes && !haveSha) return null;
+  if ((haveBytes && modelBytes !== KOKORO_MODEL_PIN.bytes) ||
+      (haveSha && modelSha8 !== KOKORO_MODEL_PIN.sha8)) return "mismatch";
+  return haveBytes && haveSha ? "ok" : null;
 }
 
 /* ---------- the arithmetic ---------- */
@@ -328,7 +435,9 @@ export function summarizeProbe({ native = null, elapsedMs = null, audioSec = nul
     audioFrom: rendered ? "rendered" : "estimated",
     passageSec,
     synthFailures: Number.isFinite(n.synthFailures) ? n.synthFailures : null,
-    synthReason: typeof n.detail === "string" && n.detail ? n.detail : null,
+    /* By shape: a closed sub-code, or an error NAME from a rejected call —
+       never a sentence. */
+    synthReason: shaped(SYNTH_REASON_RE, n.detail),
     rtfCold: realTimeFactor(synthColdMs, coldSec),
     rtfWarm: realTimeFactor(synthWarmMs, warmSec),
     peakMemoryMb: toMegabytes(n.peakMemoryBytes),
@@ -343,6 +452,37 @@ export function summarizeProbe({ native = null, elapsedMs = null, audioSec = nul
     batteryDeltaPct: Number.isFinite(n.batteryDeltaPct) ? n.batteryDeltaPct : null,
     batteryWindowSec: Number.isFinite(n.batteryWindowSec) ? n.batteryWindowSec : null,
     lines: Number.isFinite(n.lines) ? n.lines : null,
+
+    /* ── Lane A (docs/diagnostics/log-gaps-2026-09-26.md): WHY it failed and
+       ON WHAT. Every key is optional to the reader and `null` when an older
+       shell did not send it or sent it in a shape this file does not admit.
+       `diagnostic-log.js`'s `voiceProbe()` renders these by name. */
+    platform: oneOf(["ios", "android"], n.platform),
+    // L03/L36: ORT's own code for the FIRST failing line, and where it failed.
+    ortCode: oneOf(ORT_CODES, n.ortCode),
+    ortOp: shaped(ORT_OP_RE, n.ortOp),
+    ortStage: oneOf(ORT_STAGES, n.ortStage),
+    loadErr: oneOf(ORT_CODES, n.loadErr),
+    // L04/L05: what each line did, and how many produced garbage.
+    lineOutcomes: lineOutcomesOf(n.lineOutcomes),
+    nonFiniteLines: count(n.nonFiniteLines),
+    silentLines: count(n.silentLines),
+    // L07/L08/L09: the runtime, the file and the phone.
+    ortVersion: shaped(ORT_VERSION_RE, n.ortVersion),
+    intraThreads: count(n.intraThreads),
+    cores: count(n.cores),
+    modelBytes: count(n.modelBytes),
+    modelSha8: shaped(SHA8_RE, n.modelSha8),
+    modelPin: modelPinOf(count(n.modelBytes), shaped(SHA8_RE, n.modelSha8)),
+    device: shaped(TOKEN_RE, n.device),
+    os: shaped(TOKEN_RE, n.os),
+    // L10/L11/L35: heat, power and memory pressure over the run.
+    thermalStart: oneOf(THERMAL_STATES, n.thermalStart),
+    thermalEnd: oneOf(THERMAL_STATES, n.thermalEnd),
+    lowPower: bool(n.lowPower),
+    memWarn: bool(n.memWarn),
+    bgAtFail: bool(n.bgAtFail),
+    baseMemoryMb: toMegabytes(n.baseMemoryBytes),
   };
 }
 
@@ -358,7 +498,12 @@ export function formatProbeReport(record) {
     /* The sub-reason rides along when there is one: `synthesis-failed` is
        useless on its own and decisive as `synthesis-failed/session-absent`. */
     const detail = r.synthReason ? `/${r.synthReason}` : "";
-    return `voice probe: could not measure (${r.reason ?? "unknown"}${detail})`;
+    /* A refusal with nothing else to say stays ONE line (an `engine-absent`
+       under six dashes buries the why). A refusal from a phone that loaded
+       the model DOES have more to say — what ORT said, what each line did,
+       on what hardware — and the 2026-09-26 paste's bare `inference-threw`
+       with none of it is the reading Lane A exists for. */
+    return [`voice probe: could not measure (${r.reason ?? "unknown"}${detail})`, ...probeContextLines(r)].join("\n");
   }
   /* "rendered" vs "estimated" is the difference between an RTF and a ratio
      (see `summarizeProbe`), so it is printed next to the seconds it qualifies
@@ -375,7 +520,50 @@ export function formatProbeReport(record) {
     `  locked screen ${r.lockedScreenCompleted ? "completed the passage" : "did NOT complete"}`,
     `  battery       ${n(r.batteryDeltaPct, "%")} over ${n(r.batteryWindowSec, " s")}`,
     `  lines failed  ${n(r.synthFailures)}${r.synthReason ? ` (${r.synthReason})` : ""}`,
+    ...probeContextLines(r),
   ].join("\n");
+}
+
+/** Lane A's lines for the drawer, each printed ONLY when its data arrived, so
+    a record from an older shell prints exactly what it printed before. */
+function probeContextLines(r) {
+  const yn = (v) => (v === true ? "y" : v === false ? "n" : "—");
+  const mb = (v) => (v == null ? "—" : `${v} MB`);
+  const out = [];
+  if (r.ortVersion != null || r.cores != null || r.intraThreads != null) {
+    const threads = r.intraThreads == null ? "—" : r.intraThreads === 0 ? "auto" : r.intraThreads;
+    out.push(`  ORT           ${r.ortVersion ?? "—"} ${r.provider ?? "cpu"} threads=${threads} cores=${r.cores ?? "—"}`);
+  }
+  if (r.ortCode != null || r.loadErr != null) {
+    const parts = [];
+    if (r.ortCode != null) {
+      parts.push(r.ortCode);
+      if (r.ortOp != null) parts.push(`op=${r.ortOp}`);
+      if (r.ortStage != null) parts.push(`at=${r.ortStage}`);
+    }
+    if (r.loadErr != null) parts.push(`load=${r.loadErr}`);
+    if (r.bgAtFail != null) parts.push(`background=${yn(r.bgAtFail)}`);
+    out.push(`  failure       ${parts.join(" ")}`);
+  }
+  if (r.lineOutcomes != null) {
+    const bad = [];
+    if (r.nonFiniteLines > 0) bad.push(`non-finite ${r.nonFiniteLines}`);
+    if (r.silentLines > 0) bad.push(`silent ${r.silentLines}`);
+    out.push(`  lines         ${r.lineOutcomes}${bad.length ? ` (${bad.join(", ")})` : ""}`);
+  }
+  if (r.modelBytes != null || r.modelSha8 != null) {
+    const pin = r.modelPin === "ok" ? "ok" : r.modelPin === "mismatch" ? "MISMATCH" : "—";
+    out.push(`  model file    ${r.modelBytes ?? "—"} B sha ${r.modelSha8 ?? "—"} (pin ${pin})`);
+  }
+  if (r.device != null || r.os != null || r.thermalStart != null || r.lowPower != null) {
+    const osName = r.platform === "android" ? "Android" : r.platform === "ios" ? "iOS" : "";
+    const os = [osName, r.os].filter(Boolean).join(" ") || "—";
+    out.push(`  device        ${r.device ?? "—"} ${os}  thermal ${r.thermalStart ?? "—"}>${r.thermalEnd ?? "—"}  low power ${yn(r.lowPower)}`);
+  }
+  if (r.baseMemoryMb != null || r.memWarn != null) {
+    out.push(`  memory        base ${mb(r.baseMemoryMb)}  peak ${mb(r.peakMemoryMb)}  headroom ${mb(r.availableMemoryMb)}  warning ${yn(r.memWarn)}`);
+  }
+  return out;
 }
 
 /* ---------- the run ---------- */
@@ -406,7 +594,9 @@ export async function runKokoroProbe({ tts = null, passage = null, now = null } 
   try {
     native = await tts.kokoroProbe({ passage, engine: PROBE_ENGINE });
   } catch (e) {
-    return summarizeProbe({ reason: "threw", audioSec, elapsedMs: clock() - startedAt });
+    /* The error's NAME travels, never its message (L12): `synthReason` then
+       reads `threw/TypeError` instead of a bare `threw`. */
+    return summarizeProbe({ native: { detail: nameOf(e) }, reason: "threw", audioSec, elapsedMs: clock() - startedAt });
   }
   const elapsedMs = clock() - startedAt;
 
