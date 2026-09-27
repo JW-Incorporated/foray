@@ -59,17 +59,25 @@ final class AVDeckTests: XCTestCase {
         super.tearDown()
     }
 
+    /// `timers` nil is production's wall clock; a `VirtualDeckTimers` puts
+    /// the deck's deadline and pause settle (and the clock its elapsed times
+    /// read) under the test's control.
     private func makeDeck(
         deadlineSec: Double = AVDeckTests.testDeadlineSec,
+        timers: VirtualDeckTimers? = nil,
         makeAsset: ((URL, Bool) -> AVURLAsset)? = nil
     ) -> AVDeck {
-        let config = AVDeck.Config(
+        var config = AVDeck.Config(
             loadDeadlineSec: deadlineSec,
             sessionIsActive: { [unowned self] in self.sessionActive },
             writeRow: { [unowned self] in self.rows.append($0) },
             debugFault: { [unowned self] in self.faults.append($0) },
             makeAsset: makeAsset ?? AVDeck.defaultAsset
         )
+        if let timers {
+            config.after = { timers.after($0, $1) }
+            config.nowMs = { timers.nowMs }
+        }
         let deck = AVDeck(config: config)
         deck.onEvent = { [unowned self] event in
             // Timestamped in the log, so a slow CI load shows WHERE it was slow.
@@ -107,6 +115,26 @@ final class AVDeckTests: XCTestCase {
 
     private func spin(_ seconds: TimeInterval) {
         RunLoop.main.run(until: Date().addingTimeInterval(seconds))
+    }
+
+    /// Spins the main run loop until `done` holds or `timeout` passes. The
+    /// timeout is only how long a starved runner may take: no assertion that
+    /// follows depends on it.
+    private func spin(until done: () -> Bool, timeout: TimeInterval = 45) -> Bool {
+        let until = Date().addingTimeInterval(timeout)
+        while Date() < until {
+            if done() { return true }
+            RunLoop.main.run(until: Date().addingTimeInterval(0.02))
+        }
+        return done()
+    }
+
+    /// Waits for the deck's `.timeControl(.playing)` under `token`.
+    private func waitPlaying(_ token: DeckToken, file: StaticString = #filePath, line: UInt = #line) {
+        waitFor("timeControl(token: \(token), .playing)", file: file, line: line) {
+            if case .timeControl(token, .playing, _) = $0 { return true }
+            return false
+        }
     }
 
     private func readyEvent(_ token: DeckToken, file: StaticString = #filePath, line: UInt = #line)
@@ -311,25 +339,57 @@ final class AVDeckTests: XCTestCase {
     /// TO SEE IT FAIL: remove `armDeadline` from `load(...)`, or let
     /// `advanceIfReady` proceed without `item.status == .readyToPlay` (the
     /// preroll then throws on a non-ready item).
+    ///
+    /// WHY THE DEADLINE RUNS IN VIRTUAL TIME (ci.yml runs 36095220051,
+    /// 36176478568, 36283086977: "the stalling loader was never asked", a
+    /// 10 s wait for the deadline that ran out, an item still attached). The test
+    /// used to give the deck a REAL 1 s deadline. On a loaded Simulator
+    /// AVFoundation had not yet asked the resource loader for a byte when that
+    /// second was up, so the deadline detached the item and cancelled the
+    /// asset first and the loader was never asked; on a starved main queue
+    /// the deadline itself fired late. Two clocks raced the one event the
+    /// test is about. Now the deck's timers are `VirtualDeckTimers`: the test
+    /// waits (as long as the runner needs) for the loader to be asked, THEN
+    /// lets the deadline's time pass. The deadline is the PRODUCTION 20 s
+    /// (`AVDeck.defaultLoadDeadlineSec`), not a test value, and it must not
+    /// fire a millisecond early.
     func testANeverReadyUrlHitsTheDeadlineWithNoPreroll() throws {
         let loader = NeverAnsweringLoader()
         stallingLoader = loader
+        let timers = VirtualDeckTimers()
         deck.send(.unload)
-        deck = makeDeck(deadlineSec: 1.0) { url, precise in
+        deck = makeDeck(deadlineSec: AVDeck.defaultLoadDeadlineSec, timers: timers) { url, precise in
             let asset = AVDeck.defaultAsset(url, precise)
             asset.resourceLoader.setDelegate(loader, queue: loader.queue)
             return asset
         }
         let never = try XCTUnwrap(URL(string: "foray-never://deck.test/never.mp3"))
         deck.send(.loadURL(token: 7, url: never, startSec: 12, preciseTiming: true))
-        let hit = waitFor("deadlineExceeded(token: 7)", timeout: 10) {
+        XCTAssertEqual(timers.pending.map { $0.sec }, [AVDeck.defaultLoadDeadlineSec], "one deadline, the production 20 s")
+
+        // The event the test is about: AVFoundation asks the loader, which
+        // never answers. Nothing may settle the load meanwhile.
+        XCTAssertTrue(spin(until: { loader.requests > 0 }), "the stalling loader was never asked; the test proved nothing")
+        let settled: (DeckEvent) -> Bool = {
+            switch $0 {
+            case .ready, .failed, .deadlineExceeded: return true
+            default: return false
+            }
+        }
+        XCTAssertFalse(events.contains(where: settled), "the never-answering load settled by itself: \(events)")
+
+        let deadlineMs = AVDeck.defaultLoadDeadlineSec * 1000
+        timers.advance(ms: deadlineMs - 1)
+        XCTAssertFalse(events.contains(where: settled), "the deadline fired early: \(events)")
+        timers.advance(ms: 1)
+        let hit = events.first {
             if case .deadlineExceeded(7, _) = $0 { return true }
             return false
         }
-        if case let .deadlineExceeded(_, afterMs)? = hit {
-            XCTAssertGreaterThanOrEqual(afterMs, 1000)
+        guard case let .deadlineExceeded(_, afterMs)? = hit else {
+            return XCTFail("no deadlineExceeded(token: 7) at the deadline; events: \(events)")
         }
-        XCTAssertGreaterThan(loader.requests, 0, "the stalling loader was never asked; the test proved nothing")
+        XCTAssertEqual(afterMs, Int(deadlineMs))
         XCTAssertFalse(deck.primitives.contains { $0.hasPrefix("preroll") }, "\(deck.primitives)")
         XCTAssertFalse(events.contains { if case .ready = $0 { return true }; return false })
         XCTAssertNil(deck.player.currentItem, "the deadline must detach the item")
@@ -356,14 +416,26 @@ final class AVDeckTests: XCTestCase {
     /// the settle is `testAPlayInsideTheSettleWindowVoidsTheStop`.
     /// TO SEE IT FAIL: make `checkUncommandedPause` return at once, or drop
     /// the `intendsToPlay = false` in `pause()`.
+    ///
+    /// ITS WAITS ARE FOR THE EVENTS, NOT A BUDGET (ci.yml runs 36017393292,
+    /// 36087898470, 36194671575 and 8 more; 6 passed on a re-run). The report
+    /// comes `pauseSettleSec` (0.25 s) after the stop, and the test waited
+    /// 5 s for it. The failing logs show the Simulator's main queue stalled
+    /// far longer than that: the `.paused` observation of the external pause
+    /// landed about 5 s, 13 s and 25 s after it (AVDECK-EVENT lines), so the
+    /// report was still on its way when the wait gave up. Nothing here
+    /// measures the settle (`testAPlayInsideTheSettleWindowVoidsTheStop` pins
+    /// it, in virtual time), so the waits take the file's generous default,
+    /// and the external pause waits for `.playing` instead of assuming 0.3 s
+    /// of wall clock is enough for playback to start.
     func testAnExternalPauseBecomesAReconcileInput() throws {
         let uncommanded: (DeckEvent) -> Bool = { if case .pausedUncommanded = $0 { return true }; return false }
         guard loadAndWaitReady(try fixture("click-cbr", "mp3"), token: 3, startSec: 2) != nil else { return }
         deck.send(.play)
-        spin(0.3)
+        waitPlaying(3)
         events.removeAll()
         deck.player.pause()
-        let hit = waitFor("pausedUncommanded(token: 3)", timeout: 5) {
+        let hit = waitFor("pausedUncommanded(token: 3)") {
             if case .pausedUncommanded(3, _) = $0 { return true }
             return false
         }
@@ -380,7 +452,7 @@ final class AVDeckTests: XCTestCase {
         // The deck still intends to play, so a second system pause is seen.
         events.removeAll()
         deck.player.pause()
-        waitFor("a second pausedUncommanded(token: 3)", timeout: 5) {
+        waitFor("a second pausedUncommanded(token: 3)") {
             if case .pausedUncommanded(3, _) = $0 { return true }
             return false
         }
@@ -397,17 +469,37 @@ final class AVDeckTests: XCTestCase {
     /// reported: the play voids the suspicion. This is the deterministic half
     /// of the settle (the false report after a re-play is a race; see above).
     /// TO SEE IT FAIL: report at once in `checkUncommandedPause` (call
-    /// `work.perform()` instead of scheduling it), or drop the `playSeq` bump
-    /// and the cancel in `play()`.
+    /// `work.perform()` instead of scheduling it), or drop the cancel in
+    /// `play()`.
+    ///
+    /// WHY THE SETTLE RUNS IN VIRTUAL TIME (ci.yml runs 36075659511,
+    /// 36115931616, 36142783758: the stop was reported before the play). The
+    /// test used to spin 0.1 s of wall clock, trusting that the KVO hop had
+    /// landed and that the 0.25 s settle had NOT elapsed, then send the play.
+    /// On a loaded runner the spin overran the settle, so the play came after
+    /// the settle had already confirmed the stop: the test raced its own
+    /// clock, not the deck. Now the deck's timers are `VirtualDeckTimers`:
+    /// the test waits for the suspicion to be ARMED (at the production
+    /// `pauseSettleSec`), plays while its time has provably not passed, and
+    /// only then lets the settle run.
     func testAPlayInsideTheSettleWindowVoidsTheStop() throws {
+        let timers = VirtualDeckTimers()
+        deck.send(.unload)
+        deck = makeDeck(timers: timers)
         guard loadAndWaitReady(try fixture("click-cbr", "mp3"), token: 6, startSec: 3) != nil else { return }
         deck.send(.play)
-        spin(0.3)
+        waitPlaying(6)
         events.removeAll()
         deck.player.pause()
-        spin(0.1) // the KVO hop lands; the settle (0.25 s) has not elapsed
+        let armed = spin(until: { timers.pending.contains { $0.sec == AVDeck.pauseSettleSec } })
+        XCTAssertTrue(armed, "the external pause never armed a settle; events: \(events)")
+        let suspicion = timers.pending.first { $0.sec == AVDeck.pauseSettleSec }
         deck.send(.play)
-        spin(1.0)
+        XCTAssertEqual(suspicion?.work.isCancelled, true, "the play inside the settle window must void the suspicion")
+        // Its 0.25 s pass. Only THIS suspicion runs: a transient observation
+        // after the play may arm another one, whose own settle is the
+        // platform race the external-pause test describes, not this rule.
+        if let suspicion { timers.run(suspicion) }
         XCTAssertFalse(
             events.contains { if case .pausedUncommanded = $0 { return true }; return false },
             "a stop superseded by a play inside the settle window was reported: \(events)"
@@ -548,6 +640,44 @@ final class AVDeckTests: XCTestCase {
         XCTAssertNil(deck.onEvent)
         deck.send(.loadURL(token: 2, url: try fixture("click", "wav"), startSec: 0, preciseTiming: true))
         XCTAssertNil(deck.player.currentItem, "a command after invalidate ran")
+    }
+}
+
+/// AVDeck's timers and clock in virtual time (`Config.after`, `Config.nowMs`).
+/// Every timer the deck arms is held with the delay it asked for; it runs
+/// only when the test lets that much time pass (`advance`) or runs it by
+/// hand (`run`), and never once the deck cancelled it. The clock moves only
+/// with `advance`, so an elapsed time the deck reports is exactly the
+/// virtual time that passed. Main-confined, like the deck.
+final class VirtualDeckTimers {
+    struct Armed {
+        let sec: Double
+        let dueMs: Double
+        let work: DispatchWorkItem
+    }
+
+    private(set) var nowMs: Double = 0
+    private var armed: [Armed] = []
+
+    func after(_ sec: Double, _ work: DispatchWorkItem) {
+        armed.append(Armed(sec: sec, dueMs: nowMs + sec * 1000, work: work))
+    }
+
+    /// Armed, not yet run, and not cancelled.
+    var pending: [Armed] { armed.filter { !$0.work.isCancelled } }
+
+    /// Let `ms` pass: every timer that falls due runs, in due order.
+    func advance(ms: Double) {
+        nowMs += ms
+        while let next = pending.filter({ $0.dueMs <= nowMs }).min(by: { $0.dueMs < $1.dueMs }) {
+            run(next)
+        }
+    }
+
+    /// Run one armed timer now (a no-op when the deck cancelled it).
+    func run(_ timer: Armed) {
+        armed.removeAll { $0.work === timer.work }
+        if !timer.work.isCancelled { timer.work.perform() }
     }
 }
 

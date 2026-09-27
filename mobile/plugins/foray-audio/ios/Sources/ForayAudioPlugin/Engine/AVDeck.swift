@@ -89,24 +89,47 @@ final class AVDeck: DeckDriving {
         /// Makes the asset for a load. Injectable so a test can hand the deck
         /// an asset whose loader never answers (the deadline test).
         var makeAsset: (URL, Bool) -> AVURLAsset
+        /// Runs `work` on main `sec` seconds from now unless it was cancelled
+        /// first: the load deadline and the pause settle, the deck's only
+        /// timers. Injectable so a Simulator test can fire them in virtual
+        /// time instead of racing a loaded runner's wall clock (AVDeckTests).
+        var after: (_ sec: Double, _ work: DispatchWorkItem) -> Void
+        /// The monotonic clock, in ms, a load's elapsed time is read from
+        /// (`.ready`'s and `.deadlineExceeded`'s). Injectable with `after`, so
+        /// a deadline fired in virtual time reports virtual time.
+        var nowMs: () -> Double
 
         init(
             loadDeadlineSec: Double = AVDeck.defaultLoadDeadlineSec,
             sessionIsActive: @escaping () -> Bool,
             writeRow: @escaping (String) -> Void = AVDeck.logRow,
             debugFault: @escaping (String) -> Void = { assertionFailure($0) },
-            makeAsset: @escaping (URL, Bool) -> AVURLAsset = AVDeck.defaultAsset
+            makeAsset: @escaping (URL, Bool) -> AVURLAsset = AVDeck.defaultAsset,
+            after: @escaping (_ sec: Double, _ work: DispatchWorkItem) -> Void = AVDeck.mainQueueAfter,
+            nowMs: @escaping () -> Double = AVDeck.uptimeMs
         ) {
             self.loadDeadlineSec = loadDeadlineSec
             self.sessionIsActive = sessionIsActive
             self.writeRow = writeRow
             self.debugFault = debugFault
             self.makeAsset = makeAsset
+            self.after = after
+            self.nowMs = nowMs
         }
     }
 
     static func logRow(_ row: String) {
         logger.notice("\(row, privacy: .public)")
+    }
+
+    /// Production's timer: main, by the wall clock.
+    static func mainQueueAfter(_ sec: Double, _ work: DispatchWorkItem) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + sec, execute: work)
+    }
+
+    /// Production's clock: uptime, which never jumps when the wall clock is set.
+    static func uptimeMs() -> Double {
+        Double(DispatchTime.now().uptimeNanoseconds) / 1_000_000
     }
 
     /// P-7: precise timing is chosen per load by the core (provisional:
@@ -146,7 +169,8 @@ final class AVDeck: DeckDriving {
     private var targetStartSec: Double = 0
     private var gateAttempts = 0
     private var durationKnown = false
-    private var loadStartedAt = DispatchTime.now()
+    /// `config.nowMs()` when the current load started.
+    private var loadStartedAtMs: Double = 0
     private var deadline: DispatchWorkItem?
     private var playerObservations: [NSKeyValueObservation] = []
     private var itemObservations: [NSKeyValueObservation] = []
@@ -278,7 +302,7 @@ final class AVDeck: DeckDriving {
         reachedEnd = false
         lastTimeControl = nil
         lastWaitingReason = nil
-        loadStartedAt = .now()
+        loadStartedAtMs = config.nowMs()
         // The core hands the page's `audio_url` through as it is (nil for an
         // item with no audio of its own). Anything that is not an absolute
         // URL fails THIS load, under its token, so the core's failure path
@@ -451,7 +475,7 @@ final class AVDeck: DeckDriving {
             token: token,
             landedSec: player.currentTime().seconds,
             prerolled: prerolled,
-            elapsedMs: Self.msSince(loadStartedAt)
+            elapsedMs: msSinceLoadStarted()
         ))
     }
 
@@ -460,12 +484,12 @@ final class AVDeck: DeckDriving {
     private func armDeadline(generation gen: Int) {
         let work = DispatchWorkItem { [weak self] in self?.deadlineFired(generation: gen) }
         deadline = work
-        DispatchQueue.main.asyncAfter(deadline: .now() + config.loadDeadlineSec, execute: work)
+        config.after(config.loadDeadlineSec, work)
     }
 
     private func deadlineFired(generation gen: Int) {
         guard gen == generation, stage == .loading || stage == .gating, let token else { return }
-        let afterMs = Self.msSince(loadStartedAt)
+        let afterMs = msSinceLoadStarted()
         // Detach FIRST, and move the generation, so nothing that completes
         // late (a duration, a status, a seek) can preroll or sound: a URL that
         // turns ready at 21 s must not start the wrong thing in the car.
@@ -713,7 +737,7 @@ final class AVDeck: DeckDriving {
             self.emit(.pausedUncommanded(token: token, atSec: self.player.currentTime().seconds))
         }
         pauseSuspicion = work
-        DispatchQueue.main.asyncAfter(deadline: .now() + Self.pauseSettleSec, execute: work)
+        config.after(Self.pauseSettleSec, work)
     }
 
     private func looksUncommandedPaused() -> Bool {
@@ -793,7 +817,7 @@ final class AVDeck: DeckDriving {
         String(format: "%.3f", seconds)
     }
 
-    private static func msSince(_ start: DispatchTime) -> Int {
-        Int((DispatchTime.now().uptimeNanoseconds - start.uptimeNanoseconds) / 1_000_000)
+    private func msSinceLoadStarted() -> Int {
+        Int(max(0, config.nowMs() - loadStartedAtMs))
     }
 }
