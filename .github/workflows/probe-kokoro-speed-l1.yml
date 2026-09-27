@@ -9,7 +9,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        mode: [convbench, coremlep, mem]
+        mode: [convbench2, fp16b]
     runs-on: macos-14
     timeout-minutes: 120
     steps:
@@ -30,7 +30,7 @@ jobs:
         run: python -u tools/probe-tmp/speed_l1.py ${{ matrix.mode }}
       - if: matrix.mode == 'ortver2'
         run: python -u tools/probe-tmp/speed_l1.py ortver2 1.20.1,1.22.1,1.24.4,1.30.0
-      - if: matrix.mode == 'fp16' && always()
+      - if: matrix.mode == 'fp16b' && always()
         uses: actions/upload-artifact@v4
         with:
           name: fp16-wavs

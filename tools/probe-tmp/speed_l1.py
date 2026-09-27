@@ -662,6 +662,171 @@ def mode_mem():
             log(([l for l in out.stdout.splitlines() if l.startswith("MEM")] or [out.stderr[-400:]])[0])
 
 
+# ---------------------------------------------------------------- round 4
+GEN = "/decoder/decoder/generator/"
+BIG = ["/decoder/decoder/generator/Div", "/decoder/decoder/generator/m_source/l_sin_gen/Resize_1",
+       "/decoder/decoder/generator/m_source/l_sin_gen/Transpose_3", "/decoder/decoder/generator/m_source/l_sin_gen/Mul_4"]
+
+
+def _graph_maps(m):
+    prod, cons, byname = {}, {}, {}
+    for n in m.graph.node:
+        byname[n.name] = n
+        for o in n.output:
+            prod[o] = n
+        for i in n.input:
+            cons.setdefault(i, []).append(n)
+    return prod, cons, byname
+
+
+def mode_convbench2():
+    import onnx
+    from onnx import TensorProto
+    T = 24000
+    for C, K, dil in [(128, 11, 1), (256, 11, 1)]:
+        flop = 2 * C * C * K * T
+        for label, elem in (("fp32", TensorProto.FLOAT), ("fp16", TensorProto.FLOAT16)):
+            path = f"conv_{C}_{K}_{dil}_{label}.onnx"
+            _conv_model(path, C, K, dil, T, elem)
+            m = onnx.load(path); m.ir_version = 8; onnx.save(m, path)
+            for th in (1, 2, 3):
+                try:
+                    s = ort.InferenceSession(path, sess_opts(threads=th), providers=["CPUExecutionProvider"])
+                    x = np.random.randn(1, C, T).astype(np.float16 if label == "fp16" else np.float32)
+                    s.run(None, {"x": x})
+                    ts = []
+                    for _ in range(5):
+                        t = time.perf_counter(); s.run(None, {"x": x}); ts.append(time.perf_counter() - t)
+                    log(f"CONV ORT {label} C={C} K={K} d={dil} threads={th}: {min(ts)*1e3:.1f} ms  {flop/min(ts)/1e9:.0f} GFLOP/s")
+                except Exception as e:
+                    log(f"CONV ORT {label} C={C} threads={th} threw {str(e)[:300]}")
+
+
+def scan_gen(model_path, inputs, batch=150, prefix=GEN):
+    """First non-finite tensor (topological order) among nodes under prefix, any float type."""
+    import onnx
+    from onnx import helper
+    m = onnx.load(model_path)
+    inf = onnx.shape_inference.infer_shapes(m)
+    typ = {vi.name: vi.type.tensor_type.elem_type for vi in inf.graph.value_info}
+    order, prod = [], {}
+    for n in m.graph.node:
+        if not n.name.startswith(prefix):
+            continue
+        for o in n.output:
+            if typ.get(o) in (1, 10) and o not in prod:
+                prod[o] = (n.name, n.op_type); order.append(o)
+    keep = list(m.graph.output)
+    for b in range(0, len(order), batch):
+        names = order[b:b + batch]
+        del m.graph.output[:]
+        m.graph.output.extend(keep)
+        m.graph.output.extend([helper.make_tensor_value_info(n, typ[n], None) for n in names])
+        s = ort.InferenceSession(m.SerializeToString(), sess_opts(opt="none", threads=3), providers=["CPUExecutionProvider"])
+        outs = [o.name for o in s.get_outputs()]
+        bad = []
+        for ids in inputs:
+            r = s.run(None, {"input_ids": np.array([ids], dtype=np.int64), "style": style_mat()[min(len(ids) - 2, 509):][:1],
+                             "speed": np.array([1.0], dtype=np.float32)})
+            for n, v in zip(outs, r):
+                if n in prod and v.size and not np.isfinite(v.astype(np.float32)).all():
+                    bad.append(n)
+        if bad:
+            first = [n for n in names if n in set(bad)][:8]
+            return [(prod[n][0], prod[n][1]) for n in first]
+    return []
+
+
+def check_fast(path, label):
+    s, lt = make(model=path, threads=3)
+    sent, lines = units("sent"), units("line")
+    nf = []; tot = aud = 0.0
+    for rep in range(2):
+        for i, u in enumerate(sent):
+            dt, w = run(s, u)
+            if rep == 1:
+                tot += dt; aud += w.shape[-1] / SR
+            if not np.isfinite(w).all():
+                nf.append(f"sent{i}")
+    for i, u in enumerate(lines):
+        _, w = run(s, u)
+        if not np.isfinite(w).all():
+            nf.append(f"line{i}")
+    log(f"CHECK {label}: size {os.path.getsize(path)/1e6:.1f}MB nonfinite {len(nf)}/34 {sorted(set(nf))} "
+        f"RTF_CONTENT(t3) {tot/aud:.3f} peak_rss {rss_mb():.0f}MB")
+    return len(nf)
+
+
+def mode_fp16b():
+    import onnx
+    m = onnx.load(MODEL)
+    prod, cons, byname = _graph_maps(m)
+    # Show the neighbourhood of the overflowing nodes
+    for nm in BIG:
+        n = byname[nm]
+        ins = [(i, prod[i].name if i in prod else "init/input") for i in n.input]
+        outs = [(c.name, c.op_type) for o in n.output for c in cons.get(o, [])]
+        log(f"NODE {nm} [{n.op_type}] inputs {ins} -> consumers {outs}")
+    gen_nodes = [n for n in m.graph.node if n.name.startswith(GEN)]
+    log(f"generator nodes {len(gen_nodes)}; op mix {sorted({n.op_type for n in gen_nodes})}")
+    msrc = [n.name for n in m.graph.node if n.name.startswith(GEN + "m_source/")]
+    # D: whole harmonic source + Div + everything downstream of Div/m_source until a Conv or STFT
+    D = set(msrc) | {BIG[0]}
+    frontier = [BIG[0]] + msrc
+    seen = set()
+    while frontier:
+        nm = frontier.pop()
+        if nm in seen:
+            continue
+        seen.add(nm)
+        for o in byname[nm].output:
+            for c in cons.get(o, []):
+                if c.op_type in ("Conv", "ConvTranspose", "STFT") or not c.name.startswith(GEN):
+                    continue
+                D.add(c.name); frontier.append(c.name)
+    # and upstream of Div / m_source within the generator (f0 path), non-conv
+    frontier = [BIG[0]] + msrc; seen = set()
+    while frontier:
+        nm = frontier.pop()
+        if nm in seen:
+            continue
+        seen.add(nm)
+        for i in byname[nm].input:
+            p = prod.get(i)
+            if p is not None and p.name.startswith(GEN) and p.op_type not in ("Conv", "ConvTranspose", "STFT"):
+                D.add(p.name); frontier.append(p.name)
+    log(f"D block set: {len(D)} nodes, ops {sorted({byname[x].op_type for x in D})}")
+    E = {n.name for n in gen_nodes if n.op_type not in ("Conv", "ConvTranspose")}
+    F = {n.name for n in m.graph.node if n.name.startswith("/decoder/")}
+    del m
+    os.makedirs("models16", exist_ok=True)
+    s32 = make(threads=3)[0]
+    tot = aud = 0.0
+    for u in units("sent"):
+        dt, w = run(s32, u); tot += dt; aud += w.shape[-1] / SR
+    log(f"BASELINE fp32 t3 RTF_CONTENT {tot/aud:.3f}")
+    del s32
+    results = []
+    for label, nb in (("D_sinegen_fp32", D), ("E_gen_nonconv_fp32", E), ("F_decoder_fp32", F)):
+        dst = f"models16/{label}.onnx"
+        try:
+            convert(MODEL, dst, None, sorted(nb))
+            bad = check_fast(dst, label)
+            if bad:
+                try:
+                    lines = units("line")
+                    fb = scan_gen(dst, [lines[2], max(units("sent"), key=len)])
+                    log(f"  FIRST NONFINITE in {label}: {fb}")
+                except Exception as e:
+                    log("  scan threw", str(e)[:300])
+            else:
+                compare(MODEL, dst, label)
+                results.append(dst)
+        except Exception as e:
+            log(label, "threw", str(e)[:600])
+    log("FINITE VARIANTS:", results)
+
+
 if __name__ == "__main__":
     log("ort", ort.__version__, "cpus", os.cpu_count(), "mode", sys.argv[1:])
     m = sys.argv[1]
