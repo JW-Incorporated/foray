@@ -414,10 +414,19 @@ a[href^="#/"] {
    is the browser's own judgement of that). */
 [role="dialog"][tabindex="-1"]:focus:not(:focus-visible) { outline: none; }
 /* Same for where a route lands focus (app.js landOnPage, audit 2026-09-22 qa
-   row 80): the page heading, or #view on a page with none, is a programmatic
-   target so a screen reader reads it and Tab continues from it. */
-.page-head h2[tabindex="-1"]:focus:not(:focus-visible),
-#view[tabindex="-1"]:focus:not(:focus-visible) { outline: none; }
+   row 80): the page heading, Home's greeting, or #view on a page with none, is
+   a programmatic target so a screen reader reads it and Tab continues from it.
+   NO RING AT ALL, not merely none-on-tap (founder, 2026-09-27: "the top 4a
+   title bar block has a yellow outline, as if I somehow selected it"). Two
+   holes: the greeting was never listed, and WebKit judges a script's focus()
+   that runs after an async render — no user gesture on the stack — as
+   :focus-visible, so the :not(:focus-visible) guard let the amber ring paint
+   on a phone nobody had touched with a keyboard. A tabindex="-1" landing is
+   not a control and never a Tab stop, so a keyboard user loses nothing: the
+   ring returns on the first real control they Tab to. */
+.page-head h2[tabindex="-1"]:focus,
+.hv2-greeting[tabindex="-1"]:focus,
+#view[tabindex="-1"]:focus { outline: none; }
 /* THE ONE FOCUS RING (visual pass 1, 2026-09-23). Left to the browser, the
    ring is `outline: auto` in the UA's per-scheme colours — white on a phone set
    to Dark, near-black on one set to Light — over a page whose palette never

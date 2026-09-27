@@ -790,12 +790,17 @@ test("the one focus ring reaches the search field: the capsule draws it; no bare
      either `:not(:focus-visible)`-qualified, or an ANCESTOR draws the ring on
      `:focus-within`. MUTATIONS: delete the `:focus-within` ring -> red; add
      `.fy-chip:focus { outline: none }` anywhere -> red. */
+  const LANDINGS = new Set(['.page-head h2[tabindex="-1"]:focus', '.hv2-greeting[tabindex="-1"]:focus', '#view[tabindex="-1"]:focus']);
   const ANCESTOR_RING = { "#sh-compose #sh-form #sh-input:focus": "#sh-compose #sh-form:focus-within" };
   const bare = [];
   for (const r of RULES) {
     if (!r.decls.some((d) => d.prop === "outline" && /^(none|0)$/.test(d.value))) continue;
     for (const sel of r.selectors) {
       if (/:not\(:focus-visible\)/.test(sel)) continue;
+      /* A tabindex="-1" LANDING (route focus: the page heading, Home's greeting,
+         #view) is never a Tab stop, so a keyboard user never meets it and loses
+         no ring (2026-09-27, the founder's "yellow outline" on Home). */
+      if (LANDINGS.has(sel)) continue;
       const ring = ANCESTOR_RING[sel];
       if (ring && lastOn(ring, "outline") === "2px solid var(--amber)") continue;
       bare.push(sel);
@@ -915,4 +920,17 @@ test("the Up Next row the bar is on is drawn as the one that is on", () => {
     "the same mark a Foray's sounding clip row wears");
   assert.strictEqual(lastOn("body.ui-v2 .fy-row:has(.fy-jump.is-playing)", "border-color"), "var(--violet)", "for comparison");
   assert.strictEqual(lastOn("body.ui-v2 .up-next-row.is-current", "background"), "var(--surface2)");
+});
+
+test("a route's focus landing never paints the ring — Home's greeting included", () => {
+  /* Founder, 2026-09-27: "Sometimes the top '4a' title bar block has a yellow
+     outline, as if I somehow selected it." landOnPage focuses Home's greeting,
+     which had no rule, and WebKit judges a script's post-render focus() as
+     :focus-visible, so a :not(:focus-visible)-only guard does not hold on a
+     phone. MUTATIONS: drop `.hv2-greeting` from the rule -> red; re-qualify
+     any landing with :not(:focus-visible) -> red. */
+  for (const sel of ['.page-head h2[tabindex="-1"]:focus', '.hv2-greeting[tabindex="-1"]:focus', '#view[tabindex="-1"]:focus']) {
+    assert.strictEqual(lastOn(sel, "outline"), "none", `${sel} has no ring`);
+  }
+  assert.match(APP_JS, /querySelector\("\.hv2-greeting"\)/, "fixture assumption: landOnPage still lands on the greeting");
 });
