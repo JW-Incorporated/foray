@@ -57,8 +57,31 @@ final class NowPlayingPublisherTests: XCTestCase {
         }
     }
 
+    /// ArtworkCache's deadline in virtual time: every deadline the cache arms
+    /// is held here, with the delay it asked for, and fires only when the test
+    /// says so.
+    final class ManualDeadlines {
+        private(set) var armed: [Double] = []
+        private var pending: [() -> Void] = []
+
+        func schedule(_ sec: Double, _ fire: @escaping () -> Void) {
+            armed.append(sec)
+            pending.append(fire)
+        }
+
+        /// Let every armed deadline's time pass (a deadline whose load already
+        /// settled is a no-op in the cache, exactly as on main).
+        func passAll() {
+            let due = pending
+            pending = []
+            due.forEach { $0() }
+        }
+    }
+
     /// Spin main until `condition` holds (artwork lands on a later main turn).
-    func waitUntil(_ what: String, timeout: Double = 5, _ condition: @escaping () -> Bool) {
+    /// The timeout is only how long a starved runner may take to get there:
+    /// nothing the test asserts depends on it.
+    func waitUntil(_ what: String, timeout: Double = 60, _ condition: @escaping () -> Bool) {
         let done = expectation(description: what)
         func poll() {
             if condition() { return done.fulfill() }
@@ -195,19 +218,34 @@ final class NowPlayingPublisherTests: XCTestCase {
     /// and a dead source is not fetched again on the next write.
     /// TO SEE IT FAIL: keep the last artwork when the new one is not ready,
     /// wait on the fetch without a deadline, or not cache the failure.
+    ///
+    /// WHY THE DEADLINE IS FIRED BY HAND (ci.yml runs 36296215509, 36205293049
+    /// and 15 more between 2026-09-25 and 09-27; 10 passed on a re-run). The
+    /// test used to give the cache a real 0.2 s deadline and wait on the wall
+    /// clock. That deadline raced the bundled icon's read: the read runs on a
+    /// utility queue and hops back to main, and on a loaded Simulator that
+    /// took longer than 0.2 s, so the deadline settled the ICON as a failure
+    /// and "our icon lands" waited out its 5 s for an image that was never
+    /// coming. The cache's deadline is now a seam: here it is held and fired
+    /// only after the icon has landed, so the icon can never lose that race,
+    /// and the deadline the cache ARMS is asserted to be the production
+    /// `ArtworkCache.timeoutSec` (10 s, plan §4.5), not a test value.
     func testAnArtworkTimeoutDropsTheKey() {
         var fetches = 0
         let square = Self.square()
-        let cache = ArtworkCache(timeoutSec: 0.2, fetcher: { _, _, _ in
+        let deadlines = ManualDeadlines()
+        let cache = ArtworkCache(fetcher: { _, _, _ in
             fetches += 1
             return {}
-        }, bundleReader: { _ in square })
+        }, bundleReader: { _ in square }, deadline: deadlines.schedule)
         let center = DictionaryCenter()
         let publisher = NowPlayingPublisher(center: center, artwork: cache)
 
-        // Our own icon (bundled) lands on a later main turn and is attached.
+        // Our own icon (bundled) lands on a later main turn and is attached,
+        // with its deadline armed and not yet passed.
         publisher.write(Self.view(title: "A"))
         XCTAssertNil(center.nowPlayingInfo?[MPMediaItemPropertyArtwork])
+        XCTAssertEqual(deadlines.armed, [ArtworkCache.timeoutSec], "every load is bounded at the plan's 10 s")
         waitUntil("our icon lands") { center.nowPlayingInfo?[MPMediaItemPropertyArtwork] != nil }
         XCTAssertEqual(center.nowPlayingInfo?[MPMediaItemPropertyTitle] as? String, "A")
 
@@ -216,8 +254,15 @@ final class NowPlayingPublisherTests: XCTestCase {
         publisher.write(Self.view(title: "B", artwork: show, position: 10))
         XCTAssertNil(center.nowPlayingInfo?[MPMediaItemPropertyArtwork], "never the previous item's square")
         XCTAssertTrue(cache.isLoading(show))
-        waitUntil("the deadline passes") { !cache.isLoading(show) }
+        XCTAssertEqual(deadlines.armed, [ArtworkCache.timeoutSec, ArtworkCache.timeoutSec])
+
+        // Its 10 s pass with the fetch still silent: the deadline settles it.
+        deadlines.passAll()
+        XCTAssertFalse(cache.isLoading(show), "the deadline settles the load whatever the fetch is doing")
         guard case .failed = cache.lookup(show) else { return XCTFail("a timed-out load is a failure") }
+        guard case .image = cache.lookup(NowPlayingPublisher.artworkSource(of: Self.view(title: "A")) ?? "") else {
+            return XCTFail("a deadline passing after the icon landed must not undo it")
+        }
         XCTAssertNil(center.nowPlayingInfo?[MPMediaItemPropertyArtwork])
 
         publisher.write(Self.view(title: "B", artwork: show, position: 20, playing: false))
