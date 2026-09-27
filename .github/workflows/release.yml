@@ -200,7 +200,17 @@ jobs:
           # tools/release/build-number.mjs.
           CREATED_AT=$(gh api "repos/$REPO/actions/runs/$RUN_ID" --jq '.created_at')
           DAY="${CREATED_AT%%T*}"
-          gh api --paginate "repos/$REPO/actions/workflows/release.yml/runs?created=$DAY&per_page=100"             --jq '.workflow_runs[] | {id, created_at} | @json' > runs-today.jsonl
+          # The runs listing lags a just-created run (seen twice, both on the
+          # first release of a UTC day: "run N is not among release.yml's runs").
+          # Re-list until this run appears, up to ~2 minutes. build-number.mjs
+          # still refuses if it never does: a count that cannot see its own run
+          # may also be missing earlier ones, and guessing low is a red upload.
+          for attempt in 1 2 3 4 5 6 7 8; do
+            gh api --paginate "repos/$REPO/actions/workflows/release.yml/runs?created=$DAY&per_page=100"               --jq '.workflow_runs[] | {id, created_at} | @json' > runs-today.jsonl
+            if jq -e --argjson me "$RUN_ID" 'select(.id == $me)' runs-today.jsonl > /dev/null; then break; fi
+            echo "::warning::run $RUN_ID not yet in the runs listing for $DAY (attempt $attempt); re-listing in 15s"
+            sleep 15
+          done
           # The build number every EARLIER run of the day printed (its version
           # job echoes BUILD_NUMBER=...). A log that cannot be read is a warning:
           # the count still applies, and a collision is a red upload, not a
