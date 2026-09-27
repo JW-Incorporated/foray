@@ -130,6 +130,11 @@ final class EngineBridgeTests: XCTestCase {
         }
 
         var cmdRows: [DiagEntry] { world.output.diags.filter { $0.kind == "cmd" } }
+        /// The D-4 rows, one per valid send, written before it runs (they
+        /// carry the `source`; a refusal's outcome row does not).
+        var askedRows: [DiagEntry] { cmdRows.filter { $0[field: "source"] != nil } }
+        /// L02's outcome rows: only a refused send writes one.
+        var resultRows: [DiagEntry] { cmdRows.filter { $0[field: "result"] != nil } }
     }
 
     static func json(_ text: String) -> JSONNode {
@@ -315,13 +320,97 @@ final class EngineBridgeTests: XCTestCase {
         _ = rig.bridge.send(Self.json(#"{"v":1,"cmdSeq":1,"cmd":"pause","source":"tap"}"#))
         _ = rig.bridge.send(Self.json(#"{"v":1,"cmdSeq":2,"cmd":"next","source":"remote"}"#))
         _ = rig.bridge.send(Self.json(#"{"v":1,"cmdSeq":4,"cmd":"play","source":"tap"}"#))
-        XCTAssertEqual(rig.cmdRows.map { $0[field: "cmd"] }, [.string("pause"), .string("next"), .string("play")])
-        XCTAssertEqual(rig.cmdRows.map { $0[field: "source"] }, [.string("tap"), .string("remote"), .string("tap")])
-        XCTAssertEqual(rig.cmdRows.map { $0[field: "seqGap"] }, [nil, nil, .string("y")])
+        XCTAssertEqual(rig.askedRows.map { $0[field: "cmd"] }, [.string("pause"), .string("next"), .string("play")])
+        XCTAssertEqual(rig.askedRows.map { $0[field: "source"] }, [.string("tap"), .string("remote"), .string("tap")])
+        XCTAssertEqual(rig.askedRows.map { $0[field: "seqGap"] }, [nil, nil, .string("y")])
 
         _ = rig.bridge.hello(Self.hello)
         _ = rig.bridge.send(Self.json(#"{"v":1,"cmdSeq":1,"cmd":"pause","source":"tap"}"#))
-        XCTAssertNil(rig.cmdRows.last?[field: "seqGap"], "a new page counts from its own start")
+        XCTAssertNil(rig.askedRows.last?[field: "seqGap"], "a new page counts from its own start")
+    }
+
+    // MARK: - L02: the outcome of a refused command
+
+    /// A command the bridge refused writes a SECOND `cmd` row after the D-4
+    /// one: `cmd`, `cmdSeq` and `result=<Refusal>`, the same token the page
+    /// is answered with. An accepted command writes exactly one row. Before
+    /// L02 a refused pause read exactly like one that paused.
+    /// TO SEE IT FAIL: drop the outcome row from `send`, write it for an
+    /// accepted command too, or write it BEFORE `dispatch` (D-4's first row
+    /// must stay first).
+    @MainActor
+    func testARefusedCommandWritesItsResultAndAnAcceptedOneDoesNot() throws {
+        // Refused by the bridge: the capability this build did not declare.
+        let rig = Rig(capabilities: ["continuation"])
+        let refused = rig.send("playEpisode", #"{"item":{"id":"a","audio_url":"https://cdn.example/a.mp3"},"lastEpisodeRow":{"id":"a"}}"#)
+        XCTAssertEqual(refused["reason"], .string("capability-off"))
+        XCTAssertEqual(rig.cmdRows.count, 2, "\(rig.cmdRows)")
+        XCTAssertEqual(rig.cmdRows[0][field: "source"], .string("tap"), "the D-4 row stays first")
+        XCTAssertNil(rig.cmdRows[0][field: "result"])
+        let result = rig.cmdRows[1]
+        XCTAssertEqual(result[field: "cmd"], .string("playEpisode"))
+        XCTAssertEqual(result[field: "cmdSeq"], .number(1))
+        XCTAssertEqual(result[field: "result"], .string("capability-off"))
+        XCTAssertNil(result[field: "source"], "the outcome row is not a second request")
+        XCTAssertNil(DiagGate.admit(result)?[field: "dropped"], "DiagGate keeps the outcome row whole")
+
+        // Accepted: one row, no result.
+        let accepted = rig.send("setPageVisible", #"{"visible":false}"#)
+        XCTAssertEqual(accepted["ok"], .bool(true))
+        XCTAssertEqual(rig.cmdRows.count, 3)
+        XCTAssertEqual(rig.cmdRows.last?[field: "cmd"], .string("setPageVisible"))
+        XCTAssertNil(rig.cmdRows.last?[field: "result"])
+
+        // Refused because the engine is gone: every later transport command
+        // says `relinquished`, on the record as well as in the reply.
+        _ = rig.send("relinquish", #"{"cap":"all"}"#, source: "restore")
+        XCTAssertEqual(rig.engine?.isTornDown, true)
+        let before = rig.cmdRows.count
+        XCTAssertEqual(rig.send("play")["reason"], .string("relinquished"))
+        XCTAssertEqual(rig.cmdRows.count, before + 2)
+        XCTAssertEqual(rig.resultRows.last?[field: "cmd"], .string("play"))
+        XCTAssertEqual(rig.resultRows.last?[field: "result"], .string("relinquished"))
+        XCTAssertEqual(rig.resultRows.last?[field: "cmdSeq"], rig.askedRows.last?[field: "cmdSeq"],
+                       "the outcome names the request it answers")
+    }
+
+    /// A refusal the ENGINE answered (a failed activation) reaches the row
+    /// too, as the contract's token. TO SEE IT FAIL: only record the
+    /// bridge's own refusals.
+    @MainActor
+    func testAnEngineRefusalIsRecordedAsItsContractToken() {
+        let rig = Rig()
+        rig.world.session.answer = SessionActivation(ok: false, error: "cannot-interrupt-others", activateMs: 3)
+        let failed = rig.send("audition", #"{"text":"Hello","voiceId":null}"#)
+        XCTAssertEqual(failed["reason"], .string("session-failed:cannot-interrupt-others"))
+        XCTAssertEqual(rig.resultRows.map { $0[field: "result"] }, [.string("session-failed:cannot-interrupt-others")])
+    }
+
+    // MARK: - L28: headroom at a grace begin
+
+    /// The `grace kind=begin` row carries `availMb` (os_proc_available_memory
+    /// in MB) through `ForayEngine.availableMemoryMb`, so a paste whose engine
+    /// rows stop can say how close to the memory ceiling the app was when it
+    /// went into the background. Nil (not measurable) is JSON null.
+    /// TO SEE IT FAIL: drop `availMb` from `beginGrace`'s row.
+    @MainActor
+    func testTheGraceBeginRowCarriesAvailableMemory() throws {
+        let saved = ForayEngine.availableMemoryMb
+        defer { ForayEngine.availableMemoryMb = saved }
+        for (reading, expected) in [(Optional(812), JSONNode.number(812)), (nil, JSONNode.null)] {
+            ForayEngine.availableMemoryMb = { reading }
+            let world = FakeWorld()
+            world.deck.answersReady = true
+            let engine = ForayEngine(seams: world.seams, config: EngineConfig(build: "test"))
+            engine.start()
+            world.background.post(.background)
+            engine.handle(.queue(.load([ForayEngineHostTests.item("a")])))
+            engine.handle(.queue(.playIndex(0, startSec: nil, source: .tap)))
+            let begin = try XCTUnwrap(world.output.diags.first { $0.kind == "grace" && $0[field: "kind"] == .string("begin") },
+                                      "\(world.log.entries)")
+            XCTAssertEqual(begin[field: "availMb"], expected)
+            engine.teardown()
+        }
     }
 
     // MARK: - Relinquish and modeChanged

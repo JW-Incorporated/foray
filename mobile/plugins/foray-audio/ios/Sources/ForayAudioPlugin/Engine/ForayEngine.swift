@@ -108,6 +108,12 @@ final class ForayEngine {
     /// rows; 5 s is about one CDN load that goes wrong.
     static let lowBackgroundRemainingMs: Double = 5_000
 
+    /// L28: the memory headroom a `grace kind=begin` row records, in MB
+    /// (`os_proc_available_memory`). A seam so the XCTests are deterministic:
+    /// when the engine's rows simply stop in the background, this is what
+    /// says whether the app was near the jetsam line when it went there.
+    static var availableMemoryMb: () -> Int? = { DeviceFacts.availableMemoryMb() }
+
     /// The Developer session probe (NE-25c), built by the first
     /// `probeSession`. Nil on every launch nobody probed.
     private(set) var probe: SessionProbe?
@@ -630,7 +636,8 @@ final class ForayEngine {
             JSONMember("reason", .string(reason.rawValue)),
             JSONMember("task", .string(task == nil ? "invalid" : "ok")),
             JSONMember("bgRemainingMs", remainingMs.map { JSONNode.number($0) } ?? .null),
-            JSONMember("low", remainingMs.map { JSONNode.string($0 < Self.lowBackgroundRemainingMs ? "y" : "n") } ?? .null)
+            JSONMember("low", remainingMs.map { JSONNode.string($0 < Self.lowBackgroundRemainingMs ? "y" : "n") } ?? .null),
+            JSONMember("availMb", Self.availableMemoryMb().map { JSONNode.number(Double($0)) } ?? .null)
         ]))
     }
 

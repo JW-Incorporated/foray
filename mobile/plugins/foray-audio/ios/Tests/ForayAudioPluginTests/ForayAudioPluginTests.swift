@@ -1,5 +1,8 @@
 import XCTest
 import AVFAudio
+import MediaPlayer
+import UIKit
+import ForayEngineCore
 @testable import ForayAudioPlugin
 
 /// Mirrors `NowPlayingParsingTest.java` / `NowPlayingHubTest.java` on Android,
@@ -543,4 +546,171 @@ final class ForayAudioPluginTests: XCTestCase {
         )
     }
 
+    // MARK: - docs/diagnostics/log-gaps-2026-09-26.md, Lane B (legacy plugin)
+
+    /// L17/L20: the facts `emitSession` adds reach the wire through `extra`,
+    /// and the event's own four keys win over anything `extra` carries.
+    /// TO SEE IT FAIL: drop the `extra` copy from `sessionEvent`, or copy it
+    /// AFTER the fixed keys.
+    func testSessionEventCarriesItsExtraFactsAndItsOwnKeysWin() {
+        let event = ForayAudioPlugin.sessionEvent(
+            kind: "routeChange", reason: "new-device",
+            extra: ["nseq": 7, "nboot": 1_699_999_990_000, "other": true, "hint": false, "to": "carplay",
+                    "kind": "spoofed", "at": 1],
+            at: 1_700_000_000_000)
+        XCTAssertEqual(event["nseq"] as? Int, 7)
+        XCTAssertEqual(event["nboot"] as? Int, 1_699_999_990_000)
+        XCTAssertEqual(event["other"] as? Bool, true)
+        XCTAssertEqual(event["hint"] as? Bool, false)
+        XCTAssertEqual(event["to"] as? String, "carplay")
+        XCTAssertEqual(event["kind"] as? String, "routeChange")
+        XCTAssertEqual(event["producer"] as? String, "audio")
+        XCTAssertEqual(event["at"] as? Int, 1_700_000_000_000)
+        // No extra: exactly the four keys, as before.
+        XCTAssertEqual(Set(ForayAudioPlugin.sessionEvent(kind: "background", reason: "did-enter", at: 1).keys),
+                       ["kind", "reason", "producer", "at"])
+    }
+
+    /// L19/L20: a press carries `route`, `app`, `nseq` and `nboot`, and the
+    /// wire's own keys win. The seek path carries them too.
+    /// TO SEE IT FAIL: drop the `extra` copy from `transportEvent`, or from
+    /// `seekToTransportEvent`.
+    func testTransportEventCarriesItsExtraFactsAndItsOwnKeysWin() {
+        let event = ForayAudioPlugin.transportEvent(
+            action: "play", command: "play",
+            extra: ["route": "a2dp", "app": "bg", "nseq": 12, "nboot": 1_699_999_990_000, "origin": "spoofed"],
+            at: 1_700_000_000_000)
+        XCTAssertEqual(event["route"] as? String, "a2dp")
+        XCTAssertEqual(event["app"] as? String, "bg")
+        XCTAssertEqual(event["nseq"] as? Int, 12)
+        XCTAssertEqual(event["nboot"] as? Int, 1_699_999_990_000)
+        XCTAssertEqual(event["origin"] as? String, "command-center")
+        XCTAssertEqual(event["at"] as? Int, 1_700_000_000_000)
+        let seek = ForayAudioPlugin.seekToTransportEvent(positionTime: 2, extra: ["route": "a2dp"])
+        XCTAssertEqual(seek["route"] as? String, "a2dp")
+        XCTAssertEqual(seek["positionMs"] as? Int, 2000)
+    }
+
+    /// L14: every output port type maps to one closed token, and a port NAME
+    /// (what the listener called their car) is not a port type: it can only
+    /// ever read `other`, so no name reaches the record.
+    /// TO SEE IT FAIL: map `.carAudio` to `a2dp`, or return `type.rawValue`
+    /// for an unknown port.
+    func testPortTokenIsAClosedVocabularyOfPortTypes() {
+        let table: [(AVAudioSession.Port?, String)] = [
+            (.carAudio, "carplay"), (.bluetoothA2DP, "a2dp"), (.bluetoothHFP, "hfp"), (.bluetoothLE, "ble"),
+            (.builtInSpeaker, "speaker"), (.builtInReceiver, "receiver"), (.headphones, "wired"),
+            (.lineOut, "wired"), (.airPlay, "airplay"), (.usbAudio, "usb"), (.HDMI, "hdmi"),
+            (.builtInMic, "other"), (nil, "none")
+        ]
+        let vocabulary: Set<String> = ["carplay", "a2dp", "hfp", "ble", "speaker", "receiver", "wired", "airplay",
+                                       "usb", "hdmi", "other", "none"]
+        for (port, token) in table {
+            XCTAssertEqual(ForayAudioPlugin.portToken(port), token, port?.rawValue ?? "nil")
+            XCTAssertTrue(vocabulary.contains(ForayAudioPlugin.portToken(port)))
+        }
+        XCTAssertEqual(ForayAudioPlugin.portToken(AVAudioSession.Port(rawValue: "Wyatts Car")), "other",
+                       "a name is never a token")
+    }
+
+    /// L15: the category, mode and mix option as closed tokens.
+    /// TO SEE IT FAIL: spell `soloAmbient` as it is in the SDK, or read `mix`
+    /// from `.duckOthers`.
+    func testSessionCategoryIsClosedTokens() {
+        let table: [(AVAudioSession.Category, String)] = [
+            (.playback, "playback"), (.ambient, "ambient"), (.soloAmbient, "solo-ambient"),
+            (.playAndRecord, "play-and-record"), (.record, "record"), (.multiRoute, "multi-route"),
+            (AVAudioSession.Category(rawValue: "AVAudioSessionCategoryAudioProcessing"), "other")
+        ]
+        for (category, token) in table {
+            XCTAssertEqual(ForayAudioPlugin.sessionCategory(category: category, mode: .spokenAudio, options: []).cat,
+                           token, category.rawValue)
+        }
+        let modes: [(AVAudioSession.Mode, String)] = [(.spokenAudio, "spoken-audio"), (.default, "default"),
+                                                      (.moviePlayback, "other")]
+        for (mode, token) in modes {
+            XCTAssertEqual(ForayAudioPlugin.sessionCategory(category: .playback, mode: mode, options: []).mode, token)
+        }
+        XCTAssertTrue(ForayAudioPlugin.sessionCategory(category: .ambient, mode: .default, options: [.mixWithOthers]).mix)
+        XCTAssertFalse(ForayAudioPlugin.sessionCategory(category: .playback, mode: .default, options: [.duckOthers]).mix)
+    }
+
+    /// L13: the legacy hold's `err` is the engine's own mapping, so the two
+    /// lanes never spell one failure two ways.
+    /// TO SEE IT FAIL: give `sessionErrorToken` a table of its own.
+    func testSessionErrorTokenIsTheEnginesMapping() {
+        XCTAssertEqual(ForayAudioPlugin.sessionErrorToken(AVAudioSession.ErrorCode.insufficientPriority.rawValue),
+                       "insufficient-priority")
+        XCTAssertEqual(ForayAudioPlugin.sessionErrorToken(AVAudioSession.ErrorCode.cannotInterruptOthers.rawValue),
+                       "cannot-interrupt-others")
+        XCTAssertEqual(ForayAudioPlugin.sessionErrorToken(-1), "other")
+        for code in [AVAudioSession.ErrorCode.isBusy, .siriIsRecording, .expiredSession, .sessionNotActive, .badParam] {
+            XCTAssertEqual(ForayAudioPlugin.sessionErrorToken(code.rawValue), AudioSessionOwner.errorToken(code: code.rawValue))
+        }
+    }
+
+    /// L13/L19: the app state as `active inactive bg`.
+    func testAppStateToken() {
+        XCTAssertEqual(ForayAudioPlugin.appStateToken(.active), "active")
+        XCTAssertEqual(ForayAudioPlugin.appStateToken(.inactive), "inactive")
+        XCTAssertEqual(ForayAudioPlugin.appStateToken(.background), "bg")
+    }
+
+    /// L16: what interrupted, and for how long.
+    /// TO SEE IT FAIL: read `appWasSuspended` as `default`, or let an `.ended`
+    /// with no `.began` invent a duration.
+    func testInterruptionWhyAndDuration() {
+        XCTAssertEqual(ForayAudioPlugin.interruptionWhy(AVAudioSession.InterruptionReason.default.rawValue), "default")
+        XCTAssertEqual(ForayAudioPlugin.interruptionWhy(AVAudioSession.InterruptionReason.appWasSuspended.rawValue), "app-suspended")
+        XCTAssertEqual(ForayAudioPlugin.interruptionWhy(AVAudioSession.InterruptionReason.builtInMicMuted.rawValue), "mic-muted")
+        if #available(iOS 17.0, *) {
+            XCTAssertEqual(ForayAudioPlugin.interruptionWhy(AVAudioSession.InterruptionReason.routeDisconnected.rawValue),
+                           "route-disconnected")
+        }
+        XCTAssertEqual(ForayAudioPlugin.interruptionWhy(nil), "unknown")
+        XCTAssertEqual(ForayAudioPlugin.interruptionWhy(99), "unknown")
+
+        let began = Date(timeIntervalSince1970: 1_700_000_000)
+        XCTAssertEqual(ForayAudioPlugin.durationMs(from: began, to: began.addingTimeInterval(41.2)), 41_200)
+        XCTAssertEqual(ForayAudioPlugin.durationMs(from: began, to: began.addingTimeInterval(-3)), 0)
+        XCTAssertNil(ForayAudioPlugin.durationMs(from: nil, to: began))
+    }
+
+    /// L18: what the OS held for us at a re-assert.
+    /// TO SEE IT FAIL: reorder `reassertCommandTokens`, or list a disabled
+    /// command.
+    func testReassertFactsAreClosedTokens() {
+        XCTAssertEqual(ForayAudioPlugin.reassertCommandTokens, ["play", "pause", "toggle", "next", "prev", "skipf", "skipb", "seek"])
+        XCTAssertEqual(ForayAudioPlugin.enabledCommandList(Array(repeating: true, count: 8)),
+                       "play,pause,toggle,next,prev,skipf,skipb,seek")
+        XCTAssertEqual(ForayAudioPlugin.enabledCommandList([true, true, true, false, false, true, true, false]),
+                       "play,pause,toggle,skipf,skipb")
+        XCTAssertEqual(ForayAudioPlugin.enabledCommandList(Array(repeating: false, count: 8)), "")
+        let states: [(MPNowPlayingPlaybackState, String)] = [
+            (.playing, "playing"), (.paused, "paused"), (.stopped, "stopped"), (.interrupted, "interrupted"), (.unknown, "unknown")
+        ]
+        for (state, token) in states { XCTAssertEqual(ForayAudioPlugin.playbackStateToken(state), token) }
+    }
+
+    /// L09/L27/L28: the device facts are DiagGate tokens and whole numbers;
+    /// the model's comma becomes a dot; nothing token-shaped is invented.
+    /// TO SEE IT FAIL: keep the comma (DiagGate then drops `hw`), or report
+    /// 0 MB when the process has no memory limit.
+    func testDeviceFactsAreTokensAndWholeNumbers() {
+        XCTAssertEqual(DeviceFacts.token("iPhone15,2"), "iPhone15.2")
+        XCTAssertEqual(DeviceFacts.token("18.6.2"), "18.6.2")
+        XCTAssertNil(DeviceFacts.token(""))
+        XCTAssertNil(DeviceFacts.token("Wyatts iPhone"), "a space is never a token")
+        let machine = DeviceFacts.machine()
+        XCTAssertNotNil(machine)
+        XCTAssertFalse(machine?.contains(",") ?? true)
+        XCTAssertTrue(DiagGate.isToken(machine ?? ""))
+        XCTAssertEqual(DeviceFacts.thermalToken(.nominal), "nominal")
+        XCTAssertEqual(DeviceFacts.thermalToken(.fair), "fair")
+        XCTAssertEqual(DeviceFacts.thermalToken(.serious), "serious")
+        XCTAssertEqual(DeviceFacts.thermalToken(.critical), "critical")
+        XCTAssertEqual(DeviceFacts.megabytes(812 * 1_048_576), 812)
+        XCTAssertEqual(DeviceFacts.megabytes(1_572_864), 2, "rounded, not truncated")
+        XCTAssertNil(DeviceFacts.megabytes(0), "no memory limit is not measured, not 0 MB")
+    }
 }

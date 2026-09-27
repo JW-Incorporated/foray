@@ -148,16 +148,19 @@ final class AudioSessionOwner: SessionControlling {
     }
 
     func deactivate(notifyOthers: Bool) {
-        var ok = true
+        var token: String?
         do {
             try api.setActive(false, options: notifyOthers ? [.notifyOthersOnDeactivation] : [])
         } catch {
-            ok = false
+            token = Self.errorToken(code: (error as NSError).code)
         }
+        let ok = token == nil
         // A deactivation that failed left the session running, so it still
         // reads active: a play on it is owned, not an implicit activation.
         if ok { phase = .inactive }
-        row("deactivated", [JSONMember("ok", .bool(ok)), JSONMember("notify", .bool(notifyOthers))])
+        // L13: WHY it failed, on failure only (`is-busy` is I/O still running).
+        row("deactivated", [JSONMember("ok", .bool(ok)), JSONMember("notify", .bool(notifyOthers))]
+            + (token.map { [JSONMember("token", .string($0))] } ?? []))
     }
 
     func reapplyCategory() {
@@ -234,15 +237,29 @@ final class AudioSessionOwner: SessionControlling {
             // A category or override change moves no device: written down
             // (DV-12 reads routes), not handed to the rules.
             return row("notification", [JSONMember("name", .string("route")),
-                                        JSONMember("reason", reasonRaw.map { JSONNode.number(Double($0)) } ?? .null),
-                                        JSONMember("port", current.map { JSONNode.string($0.type) } ?? .null),
-                                        JSONMember("forwarded", .bool(false))])
+                                        JSONMember("reason", reasonRaw.map { JSONNode.number(Double($0)) } ?? .null)]
+                       + Self.routePorts(current: current, previous: previous)
+                       + [JSONMember("forwarded", .bool(false))])
         }
         row("notification", [JSONMember("name", .string("route")),
-                             JSONMember("oldDeviceUnavailable", .bool(change.oldDeviceUnavailable)),
-                             JSONMember("port", change.portType.map { JSONNode.string($0) } ?? .null),
-                             JSONMember("forwarded", .bool(true))])
+                             JSONMember("oldDeviceUnavailable", .bool(change.oldDeviceUnavailable))]
+            + Self.routePorts(current: current, previous: previous)
+            + [JSONMember("forwarded", .bool(true))])
         handler(.route(change))
+    }
+
+    /// L14: BOTH ends of every route row, `port` (where the audio goes now)
+    /// and `prevPort` (where it went before), so a paste can tell the car
+    /// connecting (`builtInSpeaker` -> `carAudio`) from a Bluetooth head unit
+    /// (`bluetoothA2DP`) and from the call profile taking over
+    /// (`bluetoothHFP`). Before this, a forwarded row carried only the port
+    /// the rules acted on, and a category change only the current one.
+    /// PORT TYPES ONLY: `Port.name` never enters a row, because the name of
+    /// a car or a headset is often its owner's. DiagGate admits both values
+    /// as tokens (letters and digits, which every port type is).
+    static func routePorts(current: Port?, previous: Port?) -> [JSONMember] {
+        [JSONMember("port", current.map { JSONNode.string($0.type) } ?? .null),
+         JSONMember("prevPort", previous.map { JSONNode.string($0.type) } ?? .null)]
     }
 
     private func mediaServicesReset(_ handler: (SessionEvent) -> Void) {
@@ -302,29 +319,54 @@ final class AudioSessionOwner: SessionControlling {
         }
     }
 
-    /// `setActive(true)`'s failure as the closed session-error token.
+    /// Every `AVAudioSession.ErrorCode` the rows name (L13), paired with its
+    /// token in the closed DETAIL set (player/engine-vocabulary.js
+    /// `SESSION_ERROR_DETAILS`). A table, so the XCTests walk the same pairs.
+    static let errorTokens: [(code: AVAudioSession.ErrorCode, token: Vocabulary.SessionErrorDetail)] = [
+        (.cannotInterruptOthers, .cannotInterruptOthers),
+        (.cannotStartPlaying, .cannotStartPlaying),
+        (.insufficientPriority, .insufficientPriority),
+        (.isBusy, .isBusy),
+        (.siriIsRecording, .siriIsRecording),
+        (.mediaServicesFailed, .mediaServicesFailed),
+        (.expiredSession, .expiredSession),
+        (.missingEntitlement, .missingEntitlement),
+        (.resourceNotAvailable, .resourceNotAvailable),
+        (.incompatibleCategory, .incompatibleCategory),
+        (.sessionNotActive, .sessionNotActive)
+    ]
+
+    /// An `AVAudioSession` failure (activation, deactivation, category) as
+    /// the closed session-error DETAIL token; any other code is `other`.
+    /// Before L13 everything but the first two was `other`, and every car
+    /// record said `failed` with no cause.
+    ///
+    /// THE CONTRACT DOES NOT GROW. `activate()` hands this token to the core,
+    /// whose `SessionPolicy.sessionFailedReason` admits it through the
+    /// contract's three-token `SessionError` set: the page is answered
+    /// `session-failed:cannot-interrupt-others`, `...:cannot-start-playing`,
+    /// or `session-failed:other` for every other detail token, while the
+    /// `session` row carries the precise one (AudioSessionOwnerTests pins the
+    /// fold). The legacy plugin shares this mapping
+    /// (`ForayAudioPlugin.sessionErrorToken`).
     static func errorToken(code: Int) -> String {
-        if code == AVAudioSession.ErrorCode.cannotInterruptOthers.rawValue {
-            return Vocabulary.SessionError.cannotInterruptOthers.rawValue
-        }
-        if code == AVAudioSession.ErrorCode.cannotStartPlaying.rawValue {
-            return Vocabulary.SessionError.cannotStartPlaying.rawValue
-        }
-        return Vocabulary.SessionError.other.rawValue
+        (errorTokens.first { $0.code.rawValue == code }?.token ?? .other).rawValue
     }
 
     // MARK: - Private
 
     private func applyCategory(why: String) {
-        var ok = true
+        var token: String?
         do {
             try api.setCategory(.playback, mode: .spokenAudio,
                                 policy: config.longFormAudio ? .longFormAudio : .default, options: [])
         } catch {
-            ok = false
+            token = Self.errorToken(code: (error as NSError).code)
         }
-        row("category", [JSONMember("why", .string(why)), JSONMember("ok", .bool(ok)),
-                         JSONMember("routeSharing", .string(routeSharing))])
+        // L13: `token` on failure only, as the `deactivated` row carries it.
+        row("category", [JSONMember("why", .string(why)), JSONMember("ok", .bool(token == nil)),
+                         JSONMember("routeSharing", .string(routeSharing))]
+            + (token.map { [JSONMember("token", .string($0))] } ?? []))
     }
 
     /// Every owner row: `session kind=<kind>`, its fields, then the phase and

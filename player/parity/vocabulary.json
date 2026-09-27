@@ -18,6 +18,20 @@
       "deadline"
     ],
     "sessionError": ["cannot-interrupt-others", "cannot-start-playing", "other"],
+    "sessionErrorDetail": [
+      "cannot-interrupt-others",
+      "cannot-start-playing",
+      "insufficient-priority",
+      "is-busy",
+      "siri-is-recording",
+      "media-services-failed",
+      "expired-session",
+      "missing-entitlement",
+      "resource-not-available",
+      "incompatible-category",
+      "session-not-active",
+      "other"
+    ],
     "interruptionReason": ["default", "appWasSuspended", "builtInMicMuted", "unknown"],
     "stopCause": [
       "pause",

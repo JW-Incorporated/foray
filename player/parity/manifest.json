@@ -231,7 +231,7 @@
     },
     "diag-tokens": {
       "files": {
-        "player/parity/fixtures/diag-tokens/diag-tokens.json": "c06d91072a29c828523c22c41ecd98bda58ce9f728717516d0aa3503ced8b0db"
+        "player/parity/fixtures/diag-tokens/diag-tokens.json": "38389e9831b3e46b921b8aad8d959749d5a527aeff9f0377638743525db1366e"
       },
       "ids": [
         "diag-tokens/set-names",
