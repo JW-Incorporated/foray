@@ -103,7 +103,7 @@ not Apache/MIT") as a check rather than a sentence.
   https://github.com/FluidInference/FluidAudio
 - **Notice:** Copyright 2026 laishere; Copyright FluidInference. Licensed
   under the Apache License, Version 2.0. Both licence texts, and a NOTICE
-  listing what was changed, ship in `mobile/plugins/foray-tts/ios/ThirdParty/`.
+  listing what was changed, are in `docs/legal/licenses/`.
 - **Status in this build:** constructed on demand when a founder taps the
   voice probe (iOS 17 and later), and never reached from the narration path,
   exactly like the ONNX Runtime engine above.

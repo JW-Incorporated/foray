@@ -17,7 +17,7 @@ import os
  * (https://github.com/FluidInference/FluidAudio, commit 20d4f0bd,
  * `Sources/FluidAudio/TTS/KokoroAne/Pipeline/`, Apache-2.0, Copyright
  * FluidInference). Both licence texts ship beside this package in
- * `ios/ThirdParty/`, and `docs/legal/third-party-notices.md` carries the
+ * `docs/legal/licenses/`, and `docs/legal/third-party-notices.md` carries the
  * notice. VENDORED, NOT DEPENDED ON (§2 item 5): FluidAudio as a SwiftPM
  * dependency would force this package's floor to iOS 17 for every listener,
  * and it crashed on first synthesis on a macOS 15 VM (§2 item 8).
@@ -394,6 +394,7 @@ final class KokoroCoreMLEngine: KokoroProbeEngine {
 /// bytes longer than its data: FluidAudio found CPU-routed BNNS kernels read a
 /// few bytes past the end of an input, which segfaults when the data ends on
 /// a page boundary (their #889 class, OS 27). Harmless where it is not needed.
+@available(iOS 17.0, *)
 enum KokoroCoreMLArrays {
     static let TAIL_SLACK = 16_384
 
