@@ -133,6 +133,10 @@ export const MODELS_DIR = path.join("mobile", "models");
  *  5.5 MB to every install for a card that is not K-01. */
 export const PROBE_VOICE = "af_heart";
 
+/** Download attempts per pin, and the linear backoff step between them. */
+export const FETCH_ATTEMPTS = 4;
+const FETCH_BACKOFF_MS = 10_000;
+
 /** The platforms a pin's `bundle` list may name — `inject-models.mjs`'s own
     `PLATFORMS` keys. */
 export const BUNDLE_PLATFORMS = Object.freeze(["ios", "android"]);
@@ -371,10 +375,6 @@ if (isMain) { main(); }
 /* Wrapped in a function rather than run at module scope so this file carries NO
    top-level await: `test/release-gates.test.js` is a CommonJS suite and imports
    the pin table, and a module with top-level await cannot be required. */
-/** Download attempts per pin, and the linear backoff step between them. */
-export const FETCH_ATTEMPTS = 4;
-const FETCH_BACKOFF_MS = 10_000;
-
 async function main() {
   const mode = process.argv[2] ?? "--fetch";
   const problems = pinProblems();
