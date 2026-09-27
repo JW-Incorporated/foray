@@ -2367,6 +2367,54 @@ test("the iOS ForayAudioPlugin writes the M-03 session needle ios-ci greps for",
   }
 });
 
+test("the iOS ForayAudioPlugin writes every Lane B diagnostics fact at the site that knows it (docs/diagnostics/log-gaps-2026-09-26.md)", () => {
+  /* The XCTests pin the PURE wire shapes (`sessionEvent`, `transportEvent`,
+     `portToken`, ...), but no XCTest can build the plugin and post a live
+     AVAudioSession notification, so a fact deleted from the emitter that
+     computes it (`other` from `emitSession`, `err` from `holdSession`, `to`
+     from `handleRouteChange`) left every suite green while the paste went
+     back to `sessionActivated (failed)` with no cause. This reads each
+     emitter's body for the keys the Lane B contract table says it writes.
+     MUTATION: delete any one of the key writes below, or stop calling
+     `stampNative` from either emitter -> this names the function and key. */
+  const code = stripSwiftComments(fs.readFileSync(AUDIO_SWIFT, "utf8"));
+  const writes = {
+    emitSession: ['"other"', '"hint"', "stampNative(", "extra: facts"],
+    stampNative: ['"nseq"', '"nboot"', "eventSeq += 1"],
+    transportFacts: ['"route"', '"app"', "portToken(", "currentAppState()", "stampNative("],
+    emitTransport: ["transportFacts()"],
+    handleRouteChange: ['"to"', '"from"', '"rawReason"', "categoryFacts()", "AVAudioSessionRouteChangePreviousRouteKey",
+      "extra: facts"],
+    holdSession: ['"err"', '"app"', "sessionErrorToken(", "categoryFacts()", "noteEngineOwnedSkip(", "extra: facts"],
+    releaseSession: ['"err"', '"app"', "sessionErrorToken(", "categoryFacts()", "noteEngineOwnedSkip(", "extra: facts"],
+    noteEngineOwnedSkip: ['"skipped-engine-owned"'],
+    handleInterruption: ['"why"', '"durMs"', "AVAudioSessionInterruptionReasonKey", "extra: extra"],
+    reassertNowPlaying: ["nowPlayingFacts()"],
+    nowPlayingFacts: ['"np"', '"cmds"', '"info"', "enabledCommandList("],
+    registerSessionObservers: ["thermalStateDidChangeNotification", "NSProcessInfoPowerStateDidChange",
+      "didReceiveMemoryWarningNotification"],
+    handleThermalState: ['"thermal"'],
+    handlePowerState: ['"lowPower"'],
+    handleMemoryWarning: ['"memoryWarning"', '"availMb"'],
+    registerCommandHandlers: ["self.transportFacts()"],
+  };
+  for (const [fn, keys] of Object.entries(writes)) {
+    const body = swiftFuncBody(code, fn);
+    assert.ok(body, `ForayAudioPlugin.swift no longer has ${fn}`);
+    for (const key of keys) assert.ok(body.includes(key), `${fn} no longer writes/calls ${key}`);
+  }
+  /* PORT TYPES, NEVER NAMES; no device identity (the brief's hard rules). */
+  for (const banned of ["portName", "UIDevice.current.name", "identifierForVendor"]) {
+    assert.ok(!code.includes(banned), `ForayAudioPlugin.swift reads ${banned}: a name or an identity must never reach the record`);
+  }
+  /* The engine's build row gets the device facts at boot (L09/L28). */
+  const boot = stripSwiftComments(fs.readFileSync(
+    path.join(PLUGIN_DIR, "ios/Sources/ForayAudioPlugin/Engine/EngineBoot.swift"), "utf8"));
+  for (const arg of ["hw: DeviceFacts.machine()", "os: DeviceFacts.osVersion()", "lowPower:", "thermal:", "availMb:"]) {
+    assert.ok(boot.includes(arg), `EngineBoot's BuildRow no longer passes ${arg}`);
+  }
+});
+
 test("the session event name is one string across the Swift and the web half (M-03)", () => {
   /* `foray-media-session.js` subscribes with `SESSION_EVENT` and re-broadcasts
      on `SESSION_DOM_EVENT`; `player/client.js` listens for the latter. A rename
