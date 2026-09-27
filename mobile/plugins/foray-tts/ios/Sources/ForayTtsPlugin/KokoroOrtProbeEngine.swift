@@ -152,6 +152,13 @@ final class KokoroOrtProbeEngine: KokoroProbeEngine {
     /// The fp32 export (D13). `fetch-models.mjs`'s iOS model pin.
     let modelName = "kokoro-82m-v1.0-fp32"
     var provider: String { pass.rawValue }
+    /// `coreml` IS ONLY WHAT WAS ASKED FOR. ORT 1.20.0's Objective-C API has
+    /// no call that says which nodes an EP took: the CoreML EP claims the
+    /// nodes it supports and ORT runs the rest on the CPU without a word, so a
+    /// `coreml` pass can be mostly, partly or not at all on CoreML. The record
+    /// says `requested` rather than letting `coreml` read as a fact. The CPU
+    /// pass registers no other EP, so its `cpu` is what ran: no basis needed.
+    var providerBasis: String? { pass == .coreml ? "requested" : nil }
     /// The pass's CoreML EP could not be registered: this ORT build has none
     /// (`ORTIsCoreMLExecutionProviderAvailable()` is false) or the append
     /// threw. The pass then records `coreml-unavailable`, and the CPU pass is

@@ -876,6 +876,10 @@ export const PROBE_ORT_STAGES = new Set(["input", "run", "output"]);
 /** KV-R2's probe passes, the same two words as `kokoro-probe.js`'s
     `PROBE_PASSES` (a test holds them in step: this module imports nothing). */
 export const PROBE_PASSES = new Set(["cpu", "coreml"]);
+/** `kokoro-probe.js`'s `KILLED_STAGES` and `PROVIDER_BASES`, held in step by
+    the same test. */
+export const PROBE_KILLED_STAGES = new Set(["load", "synth"]);
+export const PROBE_PROVIDER_BASES = new Set(["requested"]);
 /** What each line of the passage did (L05). */
 export const PROBE_LINE_OUTCOMES = new Set(["ok", "threw", "no-output", "zero", "nan", "silent", "skip"]);
 /** Whether the loaded model file is the pinned one (L08). */
@@ -1939,8 +1943,12 @@ export class PlayerDiagnostics {
       ["pass", oneOf(PROBE_PASSES, r.pass)],
       ["finite", boolOr(r.finite)],
       ["killedPass", oneOf(PROBE_PASSES, r.prevKilledPass)],
-      ["killedChunk", nonNegIntOr(r.prevKilledChunk)],
+      ["killedStage", oneOf(PROBE_KILLED_STAGES, r.prevKilledStage)],
+      ["killedChunksDone", nonNegIntOr(r.prevKilledChunksDone)],
       ["killedPeakMb", num(r.prevKilledPeakMb)],
+      /* `requested`: the provider was asked for, not confirmed (ORT 1.20
+         cannot say which nodes CoreML took). Printed after the provider. */
+      ["providerBasis", oneOf(PROBE_PROVIDER_BASES, r.providerBasis)],
     ]);
     return this.log.record("voiceProbe", row);
   }
@@ -2189,6 +2197,13 @@ function probePassTag(e) {
   return e.pass ? ` [pass ${e.pass}]` : "";
 }
 
+/** KV-R2: `/coreml(requested)` — the CoreML pass's provider was ASKED for,
+    and ORT 1.20 cannot say how much of the graph it actually took. */
+function probeProvider(e) {
+  if (!e.provider) return "";
+  return `/${e.provider}${e.providerBasis === "requested" ? "(requested)" : ""}`;
+}
+
 /** Belt to `_load`'s braces. `_load` drops any row with a non-finite `wall`, so this
     should be unreachable — but the report is the only way a founder ever sees any of
     this, and a RangeError here would lose the whole record rather than one row. */
@@ -2352,7 +2367,7 @@ function lineFor(e) {
            the one thing that matters and no dashes — and, since 2026-09-26,
            `hidden=` like every other line (L06). ORT's own code, the op and
            the stage follow the reason (L03), then how many lines failed. */
-        return `${head} ${e.engine ?? "?"}${e.provider ? `/${e.provider}` : ""}${probePassTag(e)}` +
+        return `${head} ${e.engine ?? "?"}${probeProvider(e)}${probePassTag(e)}` +
           ` could not measure: ${e.reason ?? "unknown"}` +
           (e.synthReason ? `/${e.synthReason}` : "") +
           (e.ortCode ? ` ort=${e.ortCode}` : "") + (e.ortOp ? ` op=${e.ortOp}` : "") +
@@ -2367,7 +2382,7 @@ function lineFor(e) {
          difference between "spectacular" and "broken". */
       const RTF_FLOOR = 0.01; // === kokoro-probe.js's RTF_FLOOR; this module imports nothing (header), so the two are pinned to each other by a test instead.
       const floor = (v) => (Number.isFinite(v) && v < RTF_FLOOR ? "!" : "");
-      return `${head} ${e.engine ?? "?"}${e.provider ? `/${e.provider}` : ""}${probePassTag(e)}` +
+      return `${head} ${e.engine ?? "?"}${probeProvider(e)}${probePassTag(e)}` +
         (e.acceleratorWired ? "" : "(cpu-only)") +
         `  rtf cold ${f2(e.rtfCold)}${floor(e.rtfCold)} warm ${f2(e.rtfWarm)}${floor(e.rtfWarm)}` +
         `  load ${ms(e.loadColdMs)}/${ms(e.loadWarmMs)}` +
@@ -2514,7 +2529,8 @@ function voiceProbeTail(e, failed) {
     parts.push(`  ort=${e.ortCode}${e.ortOp ? ` op=${e.ortOp}` : ""}${e.ortStage ? ` at=${e.ortStage}` : ""}`);
   }
   if (e.killedPass != null) {
-    parts.push(`  LAST-RUN-KILLED ${e.killedPass} chunk ${e.killedChunk ?? "?"} peak ${e.killedPeakMb == null ? "—" : `${e.killedPeakMb}MB`}`);
+    const where = e.killedStage === "load" ? "load" : `after ${e.killedChunksDone ?? "?"} chunks`;
+    parts.push(`  LAST-RUN-KILLED ${e.killedPass} ${where} peak ${e.killedPeakMb == null ? "—" : `${e.killedPeakMb}MB`}`);
   }
   if (e.silentLines > 0) parts.push(`  silent ${e.silentLines}/${e.lines ?? "?"}`);
   if (e.playing != null) parts.push(`  playing=${yn(e.playing)}`);

@@ -186,6 +186,17 @@ test("check() fails an app that carries the other platform's model, and names it
      gate's business, not this one's. */
   fs.copyFileSync(path.join(root, MODELS_DIR, "tokenizer.json"), path.join(dest, "tokenizer.json"));
   assert.equal(check({ dest, platform: "android", pins }).length, 1);
+  /* AT ANY DEPTH: everything under the assets dir ships, so the other
+     platform's model in a subdirectory (the web bundle's `public/`, say) is in
+     the APK all the same. MUTATION: look only at `dest`'s top level — the
+     nested copy below goes unreported. */
+  fs.rmSync(path.join(dest, "model.onnx"));
+  assert.deepEqual(check({ dest, platform: "android", pins }), []);
+  fs.mkdirSync(path.join(dest, "public", "deep"), { recursive: true });
+  fs.copyFileSync(path.join(root, MODELS_DIR, "model.onnx"), path.join(dest, "public", "deep", "model.onnx"));
+  const nested = check({ dest, platform: "android", pins });
+  assert.equal(nested.length, 1);
+  assert.match(nested[0], /public[\\/]deep[\\/]model\.onnx: present in .*bundled for ios only/);
 });
 
 test("inject and check refuse to guess a platform", () => {

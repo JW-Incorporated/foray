@@ -794,16 +794,54 @@ final class ForayTtsPluginTests: XCTestCase {
     /// at the start of a run instead of reading it first.
     func testAKilledRunsLastPassChunkAndPeakReachTheNextRunsFirstRecord() {
         let url = tempURL()
-        ProbeInFlight(url: url).note(pass: .coreml, chunk: 6, peakBytes: 1_400_000_000)
+        ProbeInFlight(url: url).note(pass: .coreml, stage: "synth", chunksDone: 6, peakBytes: 1_400_000_000)
         let result = ForayTtsPlugin.measurePasses(
             passes: [.cpu], idLines: [[0, 1, 2, 0]], speed: 1, modelURL: nil,
             makeEngine: { pass in LoggingProbeEngine(pass: pass, log: EventLog()) },
             isForeground: { false }, inFlight: ProbeInFlight(url: url))
         let first = (result["passes"] as? [[String: Any]] ?? []).first ?? [:]
         XCTAssertEqual(first["prevKilledPass"] as? String, "coreml")
-        XCTAssertEqual(first["prevKilledChunk"] as? Int, 6)
+        XCTAssertEqual(first["prevKilledStage"] as? String, "synth")
+        XCTAssertEqual(first["prevKilledChunksDone"] as? Int, 6)
         XCTAssertEqual(first["prevKilledPeakBytes"] as? Double, 1_400_000_000)
         XCTAssertFalse(FileManager.default.fileExists(atPath: url.path), "a run that finished leaves no marker")
+    }
+
+    /// **A kill DURING a pass's load is that pass's, not the last chunk of
+    /// the pass before it.** The CoreML pass compiles the graph inside
+    /// `load()`; the marker is written before the load, so a kill there reads
+    /// `coreml load`. MUTATION: drop the note before `engine.load()` — the
+    /// marker still says `cpu synth 2`, and the CPU pass takes the blame.
+    func testAKillDuringTheCoreMLLoadIsBlamedOnTheCoreMLLoad() {
+        let url = tempURL()
+        _ = ForayTtsPlugin.measurePasses(
+            idLines: [[0, 1, 2, 0], [0, 3, 4, 0]], speed: 1, modelURL: nil,
+            makeEngine: { pass in
+                let engine = LoggingProbeEngine(pass: pass, log: EventLog())
+                if pass == .coreml {
+                    // Read the marker the moment the CoreML load starts: that
+                    // is what a kill inside the compile would leave on disk.
+                    engine.onLoad = {
+                        let marker = (try? String(contentsOf: url, encoding: .utf8)) ?? ""
+                        XCTAssertTrue(marker.hasPrefix("coreml load 0 "), "the marker during the CoreML load reads '\(marker)'")
+                    }
+                }
+                return engine
+            },
+            isForeground: { false }, inFlight: ProbeInFlight(url: url))
+    }
+
+    /// **The CoreML pass says its provider was REQUESTED, not confirmed**:
+    /// ORT 1.20.0 cannot report which nodes CoreML took. MUTATION: drop
+    /// `providerBasis` from the record — `coreml` reads as a fact.
+    func testTheCoreMLPassSaysItsProviderWasRequested() {
+        let result = ForayTtsPlugin.measurePasses(
+            idLines: [[0, 1, 2, 0]], speed: 1, modelURL: nil,
+            makeEngine: { pass in LoggingProbeEngine(pass: pass, log: EventLog()) },
+            isForeground: { false }, inFlight: ProbeInFlight(url: tempURL()))
+        let passes = result["passes"] as? [[String: Any]] ?? []
+        XCTAssertNil(passes.first?["providerBasis"], "the CPU pass registers no other EP: `cpu` is what ran")
+        XCTAssertEqual(passes.last?["providerBasis"] as? String, "requested")
     }
 
     private func tempURL() -> URL {
@@ -834,13 +872,16 @@ private final class LoggingProbeEngine: KokoroProbeEngine {
     let modelName = "fake"
     let provider: String
     let providerUnavailable: Bool
+    let providerBasis: String?
     private let log: EventLog
+    var onLoad: (() -> Void)?
     init(pass: KokoroProbePass, log: EventLog, unavailable: Bool = false) {
         provider = pass.rawValue
         providerUnavailable = unavailable
+        providerBasis = pass == .coreml ? "requested" : nil
         self.log = log
     }
-    func load() -> (coldMs: Double, warmMs: Double) { log.add("load \(provider)"); return (1, 1) }
+    func load() -> (coldMs: Double, warmMs: Double) { onLoad?(); log.add("load \(provider)"); return (1, 1) }
     func synthesize(ids: [Int], speed: Double) -> (synthMs: Double, audioSec: Double, reason: String?) { (100, 2, nil) }
     func close() { log.add("close \(provider)") }
 }

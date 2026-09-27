@@ -121,11 +121,12 @@ once on the CPU and once on Apple's CoreML (which can use the Neural Engine). Th
 decide which one the app uses.
 
 **Steps:**
-1. **Install the newest TestFlight build — numbered 2026092701 or higher, and built after KV-R2
-   merged** (the overlord will post the exact build number on this card when it lands). It is a
-   big download (~330 MB), so use wi-fi. You can confirm the build after the run: every new
-   `voiceProbe` line says `[pass cpu]` or `[pass coreml]`. A line without `[pass …]` means an
-   older build — update and run again.
+1. **Wait for the overlord's note on this card naming the build to install** (it will be
+   numbered 2026092701 or higher), then install that build or a newer one from the TestFlight
+   app. The build number is the number in brackets after the version, for example
+   `1.0.0 (2026092703)`. It is a big download (~330 MB), so use wi-fi. You can confirm you have
+   the right build after the run: every new `voiceProbe` line says `[pass cpu]` or
+   `[pass coreml]`. A line without `[pass …]` means an older build: update and run again.
 2. Open the menu, open **Developer** at the bottom of Settings, turn on **"Voice engine probe"**,
    and tap **"Run the voice engine probe"**.
 3. **Lock the phone immediately, and leave it locked while it runs.** It takes about **five
@@ -143,8 +144,9 @@ decide which one the app uses.
    is also a real answer: that path could not start on this build, and the CPU line still counts.
 
 **Worked if:** a pasted diagnostics record with two `voiceProbe` lines from build 2026092701 or
-later, each carrying warm RTF, peak memory, `finite=y` or `finite=n(…)`, and the ORT error
-tokens if a pass failed. The overlord applies the plan's §6a table to it before the synthesizer
+later, each carrying warm RTF, peak memory, `finite=y` or `finite=n`, and the ORT error
+tokens if a pass failed. The CoreML line reads `coreml(requested)`: the phone was asked to use
+CoreML, and ORT 1.20 cannot say how much of the model CoreML actually took. The overlord applies the plan's §6a table to it before the synthesizer
 (KV-03a) locks a model and provider. Pixel and older phones are not needed for this run.
 
 ## #44 🟡 [DECIDE] Add the founders as Play testers, so Play actually emails you (R-08)

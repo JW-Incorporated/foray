@@ -124,15 +124,32 @@ export function check({ dest, platform, pins = PINS } = {}) {
      325 MB fp32 in an APK would break Android's ceiling; either is a build
      that "has its model" and is still wrong. Only pins of a bundled kind
      (anything some platform ships) are looked for: the audition voices and the
-     tokenizer are nobody's, and `prepare-webdir`'s own gate covers the web. */
+     tokenizer are nobody's, and `prepare-webdir`'s own gate covers the web.
+     SEARCHED AT ANY DEPTH, not only beside the right files: everything under
+     `dest` ships (the Android assets dir holds the web bundle in `public/`),
+     so an fp32 left in a subdirectory is 325 MB in the APK all the same. */
   const names = new Set(wanted.map((p) => p.name));
-  for (const pin of pins) {
-    if (names.has(pin.name) || !Array.isArray(pin.bundle) || pin.bundle.length === 0) continue;
-    if (fs.existsSync(path.join(dest, pin.name))) {
-      problems.push(`${pin.name}: present in ${dest}, but it is bundled for ${pin.bundle.join("/")} only`);
-    }
+  const foreign = new Map(pins
+    .filter((pin) => !names.has(pin.name) && Array.isArray(pin.bundle) && pin.bundle.length > 0)
+    .map((pin) => [pin.name, pin]));
+  for (const abs of filesUnder(dest)) {
+    const pin = foreign.get(path.basename(abs));
+    if (pin) problems.push(`${path.relative(dest, abs) || pin.name}: present in ${dest}, but it is bundled for ${pin.bundle.join("/")} only`);
   }
   return problems;
+}
+
+/** Every regular file under `dir`, at any depth. Symlinks are not followed
+    (a link cannot loop the walk, and what it points at is checked where it
+    lives). A missing `dir` is no files: `check` has already named it. */
+function* filesUnder(dir) {
+  let entries;
+  try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch { return; }
+  for (const e of entries) {
+    const abs = path.join(dir, e.name);
+    if (e.isDirectory()) yield* filesUnder(abs);
+    else if (e.isFile()) yield abs;
+  }
 }
 
 /* --------------------------------------------------------------------- main */

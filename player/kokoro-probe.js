@@ -148,6 +148,16 @@ export const PROBE_REASONS = Object.freeze([
     of these; iOS's `KokoroProbePass` holds the same two words. */
 export const PROBE_PASSES = Object.freeze(["cpu", "coreml"]);
 
+/** Where a run the system KILLED had got to (KV-R2's stop rule), as the next
+    run reports it: `load` while the pass's session was being built (the
+    CoreML pass compiles the graph there), `synth` once it was open. */
+export const KILLED_STAGES = Object.freeze(["load", "synth"]);
+
+/** How much a record's `provider` knows. `requested`: the EP was asked for
+    and the runtime cannot report which nodes it took (iOS's `coreml` pass on
+    ORT 1.20.0). A provider with no basis is the one that ran. */
+export const PROVIDER_BASES = Object.freeze(["requested"]);
+
 /** Why ONE line produced no audio, as the native halves name it. A closed set
     for the same reason `PROBE_REASONS` is one — it is read off a screen — but
     a separate one, because these are sub-findings of a run that otherwise
@@ -414,6 +424,14 @@ export function probeVerdict(record, age = "oldest") {
     const k = Number.isInteger(r.nonFiniteLines) ? r.nonFiniteLines : "some";
     failures.push(`non-finite ${k} of ${r.lines ?? "?"} chunks`);
   }
+  /* AND NEITHER IS A PASS THAT DROPPED A CHUNK ANY OTHER WAY. A chunk that
+     threw, came back silent or empty is a sentence the listener would not
+     hear; its audio is never counted (the natives zero it), so the RTF over
+     the rest can look fine while the voice skips. Non-finite chunks are
+     already named above and are not counted twice. */
+  const dropped = (Number.isInteger(r.synthFailures) ? r.synthFailures : 0)
+    - (Number.isInteger(r.nonFiniteLines) ? r.nonFiniteLines : 0);
+  if (dropped > 0) failures.push(`chunks-failed ${dropped} of ${r.lines ?? "?"} (threw, silent or empty)`);
   return { go: failures.length === 0, ceiling, failures };
 }
 
@@ -504,11 +522,12 @@ export function summarizeProbe({ native = null, elapsedMs = null, audioSec = nul
     peakMemoryMb: toMegabytes(n.peakMemoryBytes),
     availableMemoryMb: toMegabytes(n.availableMemoryBytes),
     lockedScreenCompleted: n.lockedScreenCompleted === true,
-    /* K-01's estimates assumed an accelerator. `false` on every build today —
-       neither native half appends a CoreML or NNAPI execution provider, so
-       `provider: "cpu"` is NOT a fallback that fired, it is the only path
-       compiled. Reported rather than inferred so nobody reads a CPU number as
-       an accelerated one; K-08 is where the EP gets wired and flips this. */
+    /* K-01's estimates assumed an accelerator. `true` only on iOS's `coreml`
+       pass (KV-R2), once its EP was appended — and even then `providerBasis`
+       says `requested`, because ORT 1.20 cannot report how much of the graph
+       CoreML took. Android appends no NNAPI EP, so its `provider: "cpu"` is
+       NOT a fallback that fired, it is the only path compiled. Reported
+       rather than inferred so nobody reads a CPU number as an accelerated one. */
     acceleratorWired: n.acceleratorWired === true,
     batteryDeltaPct: Number.isFinite(n.batteryDeltaPct) ? n.batteryDeltaPct : null,
     batteryWindowSec: Number.isFinite(n.batteryWindowSec) ? n.batteryWindowSec : null,
@@ -554,8 +573,13 @@ export function summarizeProbe({ native = null, elapsedMs = null, audioSec = nul
     finite: finiteOf(count(n.nonFiniteLines), rendered ? totalSec : null),
     processPeakMb: toMegabytes(n.processPeakBytes),
     prevKilledPass: oneOf(PROBE_PASSES, n.prevKilledPass),
-    prevKilledChunk: count(n.prevKilledChunk),
+    prevKilledStage: oneOf(KILLED_STAGES, n.prevKilledStage),
+    prevKilledChunksDone: count(n.prevKilledChunksDone),
     prevKilledPeakMb: toMegabytes(n.prevKilledPeakBytes),
+    /* `requested` when the record's provider was only ASKED for: ORT 1.20.0
+       cannot say which nodes the CoreML EP actually took, and ORT runs the
+       rest on the CPU without a word. Null when the provider is what ran. */
+    providerBasis: oneOf(PROVIDER_BASES, n.providerBasis),
   };
 }
 
@@ -610,7 +634,7 @@ export function formatProbeReport(record) {
      rather than left for the reader to assume. */
   const from = r.audioFrom === "rendered" ? "rendered" : "estimated";
   return [
-    `voice probe${passTag(r)}: ${r.engine} model ${n(r.model)} provider ${n(r.provider)}` +
+    `voice probe${passTag(r)}: ${r.engine} model ${n(r.model)} provider ${n(r.provider)}${basisTag(r)}` +
       (r.acceleratorWired ? "" : " (CPU only — no accelerator wired)"),
     `  model load    cold ${n(r.modelLoadColdMs, " ms")}  warm ${n(r.modelLoadWarmMs, " ms")}`,
     `  synthesis     cold ${n(r.synthColdMs, " ms")}  warm ${n(r.synthWarmMs, " ms")}  over ${n(r.audioSec, " s")} of ${from} audio`,
@@ -629,6 +653,20 @@ function passTag(r) {
   return r.pass ? ` [${r.pass}]` : "";
 }
 
+/** ` (requested — …)` after a provider the runtime could not confirm. */
+function basisTag(r) {
+  return r.providerBasis === "requested"
+    ? " (requested — ORT 1.20 cannot say which nodes it took; the rest ran on the CPU)"
+    : "";
+}
+
+/** Where a killed run died, in words: `load` (the session was being built —
+    the CoreML compile) or `after N chunks`. */
+function killedWhere(stage, done) {
+  if (stage === "load") return "during its load";
+  return `after ${done ?? "?"} chunks`;
+}
+
 /** Lane A's lines for the drawer, each printed ONLY when its data arrived, so
     a record from an older shell prints exactly what it printed before. */
 function probeContextLines(r) {
@@ -639,11 +677,11 @@ function probeContextLines(r) {
      numbers above it say. */
   if (r.finite != null) {
     out.push(r.finite
-      ? `  finite        yes (every chunk)`
+      ? `  finite        yes (no rendered chunk held NaN/Infinity)`
       : `  finite        NO — ${r.nonFiniteLines ?? "?"} of ${r.lines ?? "?"} chunks held NaN/Infinity`);
   }
   if (r.prevKilledPass != null) {
-    out.push(`  LAST RUN KILLED during ${r.prevKilledPass} chunk ${r.prevKilledChunk ?? "?"}, peak ${mb(r.prevKilledPeakMb)}`);
+    out.push(`  LAST RUN KILLED in the ${r.prevKilledPass} pass, ${killedWhere(r.prevKilledStage, r.prevKilledChunksDone)}, peak ${mb(r.prevKilledPeakMb)}`);
   }
   if (r.ortVersion != null || r.cores != null || r.intraThreads != null) {
     const threads = r.intraThreads == null ? "—" : r.intraThreads === 0 ? "auto" : r.intraThreads;

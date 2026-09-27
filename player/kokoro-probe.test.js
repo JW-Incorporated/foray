@@ -25,7 +25,7 @@ import {
   passageSeconds, passageProblem, realTimeFactor, rtfIsPlausible, toMegabytes,
   probeVerdict, summarizeProbe, formatProbeReport, runKokoroProbe,
   ORT_CODES, ORT_STAGES, LINE_OUTCOMES, KOKORO_MODEL_PINS, nameOf,
-  PROBE_PASSES, summarizePasses, finiteOf,
+  PROBE_PASSES, KILLED_STAGES, PROVIDER_BASES, summarizePasses, finiteOf,
 } from "./kokoro-probe.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -849,7 +849,7 @@ const V2_ANSWER = Object.freeze({
       synthFailures: 0, lines: 15, lineOutcomes: Array(15).fill("ok"), nonFiniteLines: 0, silentLines: 0,
       intraThreads: 4, peakMemoryBytes: 900 * MiB, processPeakBytes: 900 * MiB, lockedScreenCompleted: true,
       acceleratorWired: false, modelBytes: 325532232, modelSha8: "8fbea51e" },
-    { pass: "coreml", provider: "coreml", ok: true, reason: "", detail: "non-finite", platform: "ios", model: "kokoro-82m-v1.0-fp32",
+    { pass: "coreml", provider: "coreml", providerBasis: "requested", ok: true, reason: "", detail: "non-finite", platform: "ios", model: "kokoro-82m-v1.0-fp32",
       modelLoadColdMs: 41000, modelLoadWarmMs: 9000, synthColdMs: 2000, synthWarmMs: 30000, audioColdSec: 3, audioWarmSec: 60,
       synthFailures: 3, lines: 15, lineOutcomes: ["ok", "nan", "ok", "threw", "ok", "nan", "ok", "ok", "ok", "ok", "ok", "ok", "ok", "ok", "ok"],
       nonFiniteLines: 2, silentLines: 0, ortCode: "ep-fail", ortOp: "Conv", ortStage: "run",
@@ -868,6 +868,10 @@ test("one row per pass, carrying provider, warm RTF, peak, finite and error text
   const [cpu, coreml] = records;
   assert.deepEqual(records.map((r) => r.pass), ["cpu", "coreml"]);
   assert.deepEqual(records.map((r) => r.provider), ["cpu", "coreml"]);
+  /* CoreML is REQUESTED, not confirmed: ORT 1.20 cannot say which nodes it
+     took. MUTATION: drop `providerBasis` from summarizeProbe — red here and
+     in the drawer text below. */
+  assert.deepEqual(records.map((r) => r.providerBasis), [null, "requested"]);
   assert.ok(Math.abs(cpu.rtfWarm - 0.8) < 1e-9, "warm RTF is synthesis over audio for every chunk after the first");
   assert.ok(Math.abs(coreml.rtfWarm - 0.5) < 1e-9);
   assert.equal(cpu.peakMemoryMb, 900);
@@ -885,7 +889,9 @@ test("one row per pass, carrying provider, warm RTF, peak, finite and error text
   const text = formatProbeReport(records);
   assert.match(text, /^voice probe \[cpu\]: kokoro-probe/m);
   assert.match(text, /^voice probe \[coreml\]: kokoro-probe/m);
-  assert.match(text, /^  finite        yes \(every chunk\)$/m);
+  assert.match(text, /^  finite        yes \(no rendered chunk held NaN\/Infinity\)$/m);
+  assert.match(text, /^voice probe \[coreml\]: kokoro-probe model \S+ provider coreml \(requested — /m);
+  assert.doesNotMatch(text, /provider cpu \(requested/);
   assert.match(text, /^  finite        NO — 2 of 15 chunks held NaN\/Infinity$/m);
   assert.deepEqual([...PROBE_PASSES], ["cpu", "coreml"]);
   /* diagnostic-log.js imports nothing, so it carries its own copy of the
@@ -893,6 +899,8 @@ test("one row per pass, carrying provider, warm RTF, peak, finite and error text
      either — the ring then drops the pass of every row. */
   const diag = await import("./diagnostic-log.js");
   assert.deepEqual([...diag.PROBE_PASSES], [...PROBE_PASSES]);
+  assert.deepEqual([...diag.PROBE_KILLED_STAGES], [...KILLED_STAGES]);
+  assert.deepEqual([...diag.PROBE_PROVIDER_BASES], [...PROVIDER_BASES]);
 });
 
 test("a pass with a non-finite chunk is never a pass", () => {
@@ -911,6 +919,14 @@ test("a pass with a non-finite chunk is never a pass", () => {
   const verdict = probeVerdict(coreml, "newest");
   assert.equal(verdict.go, false);
   assert.ok(verdict.failures.some((x) => /^non-finite 2 of 15 chunks$/.test(x)), verdict.failures.join("; "));
+  /* Its third failed chunk THREW: named once, apart from the two NaN ones. */
+  assert.ok(verdict.failures.some((x) => /^chunks-failed 1 of 15 /.test(x)), verdict.failures.join("; "));
+  /* A FINITE pass that dropped a chunk is not a pass either: a chunk that
+     threw or came back silent is a sentence the listener never hears.
+     MUTATION: drop the `chunks-failed` clause — this reads GO. */
+  const dropped = probeVerdict({ ...cpu, synthFailures: 1, lineOutcomes: "ok,silent" }, "newest");
+  assert.equal(dropped.go, false);
+  assert.deepEqual(dropped.failures, ["chunks-failed 1 of 15 (threw, silent or empty)"]);
   /* finiteOf's three answers: a count of garbage is "no", a clean count over
      rendered audio is "yes", and anything unmeasured is "unknown". */
   assert.equal(finiteOf(2, 60), false);
@@ -964,15 +980,24 @@ test("a run the system killed is reported by the next run's first record", () =>
      carries it. MUTATION: drop the prevKilled keys — the paste of the run
      after a kill is indistinguishable from a first run. */
   const native = { ...V2_ANSWER, passes: [
-    { ...V2_ANSWER.passes[0], prevKilledPass: "coreml", prevKilledChunk: 6, prevKilledPeakBytes: 1400 * MiB },
+    { ...V2_ANSWER.passes[0], prevKilledPass: "coreml", prevKilledStage: "synth", prevKilledChunksDone: 6, prevKilledPeakBytes: 1400 * MiB },
     V2_ANSWER.passes[1],
   ] };
   const [first, second] = summarizePasses({ native, audioSec: 77.4 });
   assert.equal(first.prevKilledPass, "coreml");
-  assert.equal(first.prevKilledChunk, 6);
+  assert.equal(first.prevKilledStage, "synth");
+  assert.equal(first.prevKilledChunksDone, 6);
   assert.equal(first.prevKilledPeakMb, 1400);
   assert.equal(second.prevKilledPass, null);
-  assert.match(formatProbeReport(first), /^  LAST RUN KILLED during coreml chunk 6, peak 1400 MB$/m);
+  assert.match(formatProbeReport(first), /^  LAST RUN KILLED in the coreml pass, after 6 chunks, peak 1400 MB$/m);
+  /* A kill inside the CoreML LOAD (the graph compile) is the load's, not the
+     CPU pass's last chunk. MUTATION: drop `prevKilledStage` — it reads as
+     "after ? chunks", a synthesis that never started. */
+  const [atLoad] = summarizePasses({ native: { ...V2_ANSWER, passes: [
+    { ...V2_ANSWER.passes[0], prevKilledPass: "coreml", prevKilledStage: "load", prevKilledChunksDone: 0, prevKilledPeakBytes: 600 * MiB },
+  ] }, audioSec: 77.4 });
+  assert.equal(atLoad.prevKilledStage, "load");
+  assert.match(formatProbeReport(atLoad), /^  LAST RUN KILLED in the coreml pass, during its load, peak 600 MB$/m);
 });
 
 /* ---------- the two copies of one string ---------- */

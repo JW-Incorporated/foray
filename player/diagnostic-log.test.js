@@ -1458,20 +1458,27 @@ test("a probe-v2 row names its pass, whether it was finite, and ORT's error toke
     nonFiniteLines: 0, lines: 15,
   });
   diag.voiceProbe({
-    engine: "kokoro-probe", ok: true, pass: "coreml", provider: "coreml", acceleratorWired: true,
+    engine: "kokoro-probe", ok: true, pass: "coreml", provider: "coreml", providerBasis: "requested", acceleratorWired: true,
     modelLoadColdMs: 41000, modelLoadWarmMs: 9000, rtfCold: 0.7, rtfWarm: 0.5, audioSec: 63,
     audioFrom: "rendered", peakMemoryMb: 700, lockedScreenCompleted: true, synthFailures: 3, synthReason: "non-finite",
     finite: false, nonFiniteLines: 2, lines: 15, ortCode: "ep-fail", ortOp: "Conv", ortStage: "run",
-    prevKilledPass: "coreml", prevKilledChunk: 6, prevKilledPeakMb: 1400,
+    prevKilledPass: "coreml", prevKilledStage: "synth", prevKilledChunksDone: 6, prevKilledPeakMb: 1400,
   });
   diag.voiceProbe({ engine: "kokoro-probe", ok: false, pass: "coreml", provider: "coreml", reason: "coreml-unavailable", loadErr: "ep-fail" });
+  diag.voiceProbe({ engine: "kokoro-probe", ok: false, pass: "cpu", provider: "cpu", reason: "synthesis-failed",
+    prevKilledPass: "coreml", prevKilledStage: "load", prevKilledChunksDone: 0, prevKilledPeakMb: 600 });
   const lines = formatDiagnosticReport(log.read()).split("\n").filter((l) => l.includes("voiceProbe"));
-  assert.equal(lines.length, 3, "one row per pass");
+  assert.equal(lines.length, 4, "one row per pass");
+  /* A kill inside the CoreML compile is the load's, not the CPU pass's last
+     chunk. MUTATION: drop `killedStage` from the row — it reads "after 0 chunks". */
+  assert.match(lines[3], /LAST-RUN-KILLED coreml load peak 600MB/);
   assert.match(lines[0], /kokoro-probe\/cpu \[pass cpu\]\(cpu-only\)  rtf cold 1\.00 warm 0\.80/);
   assert.match(lines[0], /peak 900MB/);
   assert.match(lines[0], /  finite=y  hidden=n$/);
-  assert.match(lines[1], /kokoro-probe\/coreml \[pass coreml\]  rtf cold 0\.70 warm 0\.50/);
-  assert.match(lines[1], /  nan 2\/15  finite=n  ort=ep-fail op=Conv at=run  LAST-RUN-KILLED coreml chunk 6 peak 1400MB  hidden=n$/);
+  /* `(requested)`: ORT 1.20 cannot say which nodes CoreML took. MUTATION:
+     drop `providerBasis` from the row — `/coreml` reads as a fact. */
+  assert.match(lines[1], /kokoro-probe\/coreml\(requested\) \[pass coreml\]  rtf cold 0\.70 warm 0\.50/);
+  assert.match(lines[1], /  nan 2\/15  finite=n  ort=ep-fail op=Conv at=run  LAST-RUN-KILLED coreml after 6 chunks peak 1400MB  hidden=n$/);
   assert.match(lines[2], /voiceProbe kokoro-probe\/coreml \[pass coreml\] could not measure: coreml-unavailable  load FAILED\(ep-fail\) —\/—  hidden=n$/);
 });
 /* L-06: what the lock screen was actually told (founder feedback F15)  */
