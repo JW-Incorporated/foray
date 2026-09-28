@@ -55,6 +55,10 @@
  *                until now the page could not see one.
  *   `transport`  (M-03) which surface asked for a play/pause/stop — a tap, a
  *                remote command, our own reconcile, a session event.
+ *   `narration`  (Phase 2, 2026-09-28) a rendered narration file that failed
+ *                and was spoken from its script instead: why, on which path,
+ *                the item id, and the file's HOST name only — see
+ *                `NARRATION_FALLBACK_REASONS` for why a host is admitted.
  *
  * ── WHAT IS NEVER RECORDED, BY CONSTRUCTION ────────────────────────────────
  * No audio, no URLs, no listener identity. The rule that guarantees it: a
@@ -593,9 +597,35 @@ export class DiagnosticLog {
     URL — is dropped. This is the whole of the "no raw text" rule. */
 const STAGE_ROOTS = new Set([
   "audio", "backend", "event", "foray", "gesture", "handover", "item", "load",
-  "outPoint", "play", "player", "prefetch", "queue", "rate", "reconcile",
-  "restore", "resume", "seam", "seek", "transitionTTS",
+  "narration", "outPoint", "play", "player", "prefetch", "queue", "rate",
+  "reconcile", "restore", "resume", "seam", "seek", "transitionTTS",
 ]);
+
+/* ---------- the narration fallback row (Phase 2, 2026-09-28) ----------
+
+   `queue-manager.js` §14: a rendered narration file that fails is spoken from
+   its script, and each time it says so in ONE line —
+   `narration.fallback reason=<r> at=<where> item=<id> host=<host>`. The row
+   keeps four things, each admitted by vocabulary or shape and never copied as
+   text:
+
+     reason  why the FILE failed (`narrationFallbackReason`'s six words)
+     at      which path fell back: the first-line/jump load, a bridge, or a
+             line already sounding
+     item    the authored narration id (`dataIdOf`)
+     host    the file's HOST — a DNS name of our own audio domain, never a
+             path or a query. The one field here that is part of a URL, and
+             the reason is the question it answers: "was it our bucket, or
+             something else in the data?". Nothing about the listener. */
+export const NARRATION_FALLBACK_REASONS = new Set(["timeout", "network", "decode", "unsupported", "play-rejected", "failed"]);
+export const NARRATION_FALLBACK_AT = new Set(["load", "bridge", "playing"]);
+
+/** A host name by shape, or null: lower-case DNS labels only, no port, no
+    path, no credentials — so nothing but a host can be stored under it. */
+export function audioHostTokenOf(v) {
+  const s = asText(v).trim();
+  return /^[a-z0-9](?:[a-z0-9.-]{0,251}[a-z0-9])?$/.test(s) ? s : null;
+}
 
 /** Media events worth a stage. `timeupdate` is deliberately absent: it fires at
     4 Hz and is not a diagnostic. */
@@ -718,6 +748,7 @@ const RE = {
      named, and it must not reach a record that gets pasted into an issue. */
   knownCar: /^route\.autoResume\.knownCar=/,
   restore: /^restore\.index=(\d+)\.position=(\d+)s/,
+  narrationFallback: /^narration\.fallback reason=(\S+) at=(\S+) item=(\S+) host=(\S+)/,
   queueEnded: /^queue\.ended/,
 };
 
@@ -1383,6 +1414,22 @@ export class PlayerDiagnostics {
       this.log.record("stop", {
         source: "route", why: "autoResume.knownRoute", known: true,
         state: null, hidden: this._isHidden(),
+      });
+      handled = true;
+    }
+
+    hit = RE.narrationFallback.exec(m);
+    if (hit) {
+      /* §14 of queue-manager.js. Every field by vocabulary or shape — see
+         `NARRATION_FALLBACK_REASONS` above; a word outside it is stored as
+         null, never as the text that arrived. */
+      this.log.record("narration", {
+        source: "fallback",
+        reason: NARRATION_FALLBACK_REASONS.has(hit[1]) ? hit[1] : null,
+        at: NARRATION_FALLBACK_AT.has(hit[2]) ? hit[2] : null,
+        item: dataIdOf(hit[3]),
+        host: audioHostTokenOf(hit[4]),
+        hidden: this._isHidden(),
       });
       handled = true;
     }
@@ -2616,6 +2663,9 @@ function lineFor(e) {
     }
     case "transport":
       return `${head} ${e.action} from ${e.source}  hidden=${e.hidden ? "y" : "n"}`;
+    case "narration":
+      return `${head} ${e.source ?? "?"} ${e.reason ?? "?"} at=${e.at ?? "?"}` +
+        `  item=${e.item ?? "?"}  host=${e.host ?? "?"}  hidden=${e.hidden ? "y" : "n"}`;
     case "tapFail":
       return `${head} ${e.phase ?? "?"} failed  error=${e.error ?? "none"}` +
         (e.repeated > 1 ? `  x${e.repeated}` : "") +

@@ -36,6 +36,7 @@ import {
   nowPlayingFieldOf, NOWPLAYING_FIELD_MAX, NOWPLAYING_VIA, SESSION_KINDS, SESSION_PRODUCERS,
   TRANSPORT_SOURCES, TRANSPORT_ACTIONS, REMOTE_COMMANDS, REMOTE_ORIGINS,
   PROBE_ORT_CODES, PROBE_ORT_STAGES, PROBE_LINE_OUTCOMES, THERMAL_STATES,
+  NARRATION_FALLBACK_REASONS, NARRATION_FALLBACK_AT, audioHostTokenOf,
 } from "./diagnostic-log.js";
 /* The REAL store for the held-write tests below: whether a row written before a
    slow hydration overwrites the durable ring is a fact about `DurableStore`'s
@@ -2886,4 +2887,47 @@ test("GAPS Lane A: this file's probe vocabularies are the ones kokoro-probe.js a
   same(PROBE_ORT_STAGES, kp.ORT_STAGES);
   same(PROBE_LINE_OUTCOMES, kp.LINE_OUTCOMES);
   same(THERMAL_STATES, kp.THERMAL_STATES);
+});
+
+/* ==================================================================== */
+/* Phase 2 (2026-09-28): the narration fallback row                      */
+/* ==================================================================== */
+
+test("a narration fallback line becomes ONE `narration` row: reason, path, item and host — never the URL", () => {
+  /* queue-manager.js §14. The line is the manager's own; the row keeps four
+     vocabulary-or-shape fields. MUTATION: store `hit[4]` unchecked, or drop the
+     RE entry — the row is missing or carries the text. */
+  const { log, diag, store } = mk();
+  assert.equal(diag.note("narration.fallback reason=timeout at=load item=nar-1 host=audio.jwlabs.ai"), true);
+  const row = log.entries.find((e) => e.type === "narration");
+  assert.ok(row, "a narration row was recorded");
+  assert.equal(row.source, "fallback");
+  assert.equal(row.reason, "timeout");
+  assert.equal(row.at, "load");
+  assert.equal(row.item, "nar-1");
+  assert.equal(row.host, "audio.jwlabs.ai");
+  assert.equal(row.hidden, false);
+  assert.match(formatDiagnosticReport(log.read()), /narration  fallback timeout at=load  item=nar-1  host=audio\.jwlabs\.ai  hidden=n/);
+  assert.doesNotMatch(store.getItem(DIAG_KEY), /narration\/|\.m4a/, "no path reaches the record");
+});
+
+test("a narration fallback row admits only its vocabulary and a host-shaped host", () => {
+  const { log, diag, store } = mk();
+  diag.note("narration.fallback reason=https://x.test/?t=1 at=somewhere item=has/slash host=user:pw@x.test/path");
+  const row = log.entries.find((e) => e.type === "narration");
+  assert.equal(row.reason, null);
+  assert.equal(row.at, null);
+  assert.equal(row.item, null);
+  assert.equal(row.host, null);
+  assert.doesNotMatch(store.getItem(DIAG_KEY), /x\.test|pw@/);
+  assert.equal(audioHostTokenOf("audio.jwlabs.ai"), "audio.jwlabs.ai");
+  assert.equal(audioHostTokenOf("AUDIO.jwlabs.ai"), null, "the manager lower-cases; anything else is refused");
+  assert.equal(audioHostTokenOf("-"), null, "no host (a relative asset) is stored as null");
+  for (const r of ["timeout", "network", "decode", "unsupported", "play-rejected", "failed"]) assert.ok(NARRATION_FALLBACK_REASONS.has(r));
+  for (const a of ["load", "bridge", "playing"]) assert.ok(NARRATION_FALLBACK_AT.has(a));
+});
+
+test("the narration stages reach an open seam's trail by name", () => {
+  assert.equal(stageOf("narration.fallback reason=timeout at=bridge item=n host=h"), "narration.fallback");
+  assert.equal(stageOf("prefetch.narration.started n1 hidden=y"), "prefetch.narration.started");
 });

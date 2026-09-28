@@ -138,12 +138,18 @@
    rather than demoted — see the effect for why a vestigial `item.rate` that only
    a test helper populates is worse than no override at all.
 
-   TTS IS STILL 1.0x, and `setRate` respects that live (corner case #18). A
-   bridge is one line of our own narration at a level and pace we chose; playing
-   it at 2x is not a feature. `resetRateForTTS` forces 1.0 on the way in and
-   `restoreRate` brings the listener's speed back on the way out, so the only new
-   rule is that a tap arriving WHILE narration is audible is stored and applied
-   when the narration ends rather than mid-word.
+   RENDERED NARRATION FOLLOWS THE LISTENER; SPOKEN NARRATION STAYS AT 1x.
+   Until 2026-09-28 a rendered bridge was forced to 1.0x (corner case #18: "a
+   line of our own at a pace we chose"). Founder ruling D2, 2026-09-28
+   (docs/plans/spark-central-narration-assessment.md §1, amending the
+   2026-09-24 "narration 1x" ruling for AUDIO only): narration is rendered once
+   at 1.0x and the player speeds the FILE to the listener's rate, pitch
+   preserved (`html-audio-backend.js` keeps `preservesPitch` on). So
+   `resetRateForTTS` now applies the listener's rate to a rendered line, and a
+   tap during one lands at once. A SPOKEN line — script-only, or a rendered
+   line that fell back to its script (§14) — is still `NARRATION_RATE` (1x) on
+   the utterance, and a tap while one is audible is still stored and applied
+   when it ends rather than mid-word.
 
    ── 13. THE INTERLUDE JINGLE (`player/interlude.js`) ───────────────────────
    Founder request, 2026-09-10: a short sting between podcasts. The RULE lives
@@ -161,6 +167,60 @@
    and next interrupt it like any item. It is not a queue item, so nothing
    about `runtime_sec`, the Foray clock, position persistence or the ladder
    changes — the reducer never learns it exists, same as the beat.
+
+   ── 14. RENDERED NARRATION FALLS BACK TO ITS SCRIPT (Phase 2) ──────────────
+   docs/plans/spark-central-narration-assessment.md §3.3 / §5 row 2, founder
+   rulings D1–D11 2026-09-28. Narration is now rendered centrally and carries
+   an `audio_url`; the script stays on the item (it is the transcript, and
+   `foray-queue.js` keeps it). Before this, a narration FILE that failed —
+   a 404, a network drop, a decode error, a load past the backend's deadline —
+   was skipped when it was a bridge (`_advancePastBridgeFailure`) and STOPPED
+   the Foray when it was reached through `_loadItem` (a Foray's first line, a
+   jump, a skip onto it): the catch dispatched `E.error` -> idle.
+
+   Now such a line is SPOKEN from its script through the same on-device path a
+   script-only line uses (`_speakNarration`, 1x, the chosen voice), in all
+   three places a file can fail: the load in `_loadItem`, the load in
+   `_playTransitionBridge`, and an element error or refused `play()` while the
+   line is already sounding (`_onBackendError`). Once spoken it IS a synth line
+   for every other purpose — pause/resume/stop go to the bridge, `finished` or
+   the deadline advances it, a speed tap is deferred — because
+   `_beginSynthNarration` is the one place that says so.
+
+   What does NOT change: a line with no script, or no speech bridge wired,
+   fails exactly as before; a speech refusal after a file failure also fails
+   exactly as before (stop from `_loadItem`, skip from a bridge); and a line
+   with no file at all was always spoken. Each fallback writes one
+   `narration.fallback reason= at= item= host=` telemetry line, which
+   `diagnostic-log.js` keeps as a `narration` row — the URL's HOST only.
+
+   ONE ORDERING TRAP, handled in `_onBackendError`: the backend's persistent
+   `error` listener is registered before a load's own, so a media error during
+   a load reached `E.error` (idle) BEFORE the load's rejection reached the
+   catch — and the fallback would have found the player already stopped. While
+   a rendered narration load that can fall back is in flight, that report is
+   left to the load's own rejection.
+
+   AND ITS LATE TWIN: a load that fails by DEADLINE leaves the element pointed
+   at the file, persistent listener attached, so a stalled fetch that finally
+   errors reports AFTER the fallback has taken over — while its `speak()` is in
+   flight, or mid-utterance. Once a line's file has been given up on, the
+   element's reports about it are ignored (`_onBackendError` case 2); without
+   that the Foray stopped in the middle of the line it was reading aloud.
+
+   ── 15. WARMING THE NEXT NARRATION FILE (web lane, Phase 2) ────────────────
+   Distinct from §11 (the parked two-element HANDOVER): nothing is promoted and
+   the boundary never waits on it. When an item becomes audible and the item
+   straight after it is rendered narration, the backend is asked to fetch that
+   one file on a spare element (`backend.warmNarration`), so the CDN edge and
+   the connection are warm when the boundary loads it. Started at the START of
+   the item, never near its end, and only behind an item at least
+   `NARRATION_WARM_MIN_LEAD_SEC` long, so the warm is finished long before the
+   boundary's own load needs the media queue. Bounded to one file; dropped the
+   moment a load heads anywhere else (a skip, a jump, a stop).
+   Capability-checked like `prefetch`: a backend without it (every fake, the
+   native engine) behaves exactly as before. How the element is handled in a
+   hidden page, and why, is `html-audio-backend.js` §"narration warm".
 */
 
 import { reduce, S, E, itemRef, itemBounds, TTS, END_NATURAL, END_OUT_POINT } from "./queue-state.js";
@@ -272,8 +332,66 @@ export const NARRATION_RATE = 1;
 const NARRATION_DEADLINE_FACTOR = 1.5;
 const NARRATION_DEADLINE_MARGIN_SEC = 10;
 
+/** §15: the shortest item worth warming the next narration file behind.
+    A hidden page ran one media-element load as a task chain of ~11 s
+    (`html-audio-backend.js` §"prefetch", run 32057395270), and a warm still
+    running when the boundary's own load starts competes with it for the same
+    queue. So a warm starts only behind an item long enough to finish it
+    first: clips are ~110 s, and a known length under this is skipped. An item
+    of unknown length is warmed.
+    NOT EXPORTED on purpose: every export of this module is generated into the
+    Swift engine's constants (`tools/parity/gen-constants.mjs`), and this rule
+    is the web lane's alone until the native prefetch card (after M2) decides
+    its own. */
+const NARRATION_WARM_MIN_LEAD_SEC = 20;
+
 const nonEmptyStr = (s) => typeof s === "string" && s.trim().length > 0;
 const isNum = (n) => typeof n === "number" && Number.isFinite(n);
+
+/**
+ * Why a rendered narration file failed, as one word from a fixed vocabulary
+ * (§14) — for the `narration.fallback` row, which must never carry the
+ * backend's own message (it can hold a URL). Read off the messages
+ * `html-audio-backend.js` actually produces: `did not settle within Nms` (the
+ * load deadline), `load failed (code N)` / `media error N` (the element's
+ * MediaError code: 2 network, 3 decode, 4 source not supported — which is how
+ * most engines report a 404), and `play rejected: <Name>`.
+ *
+ * @param {*} err  an Error, or the string `onError` was given
+ * @returns {"timeout"|"network"|"decode"|"unsupported"|"play-rejected"|"failed"}
+ */
+export function narrationFallbackReason(err) {
+  let m = "";
+  try { m = String(err?.message ?? err ?? ""); } catch (_) { m = ""; }
+  if (/did not settle within/.test(m)) return "timeout";
+  if (/play rejected/.test(m)) return "play-rejected";
+  const code = /(?:\(code |media error )(\d+)/.exec(m)?.[1];
+  if (code === "2") return "network";
+  if (code === "3") return "decode";
+  if (code === "4") return "unsupported";
+  return "failed";
+}
+
+/**
+ * The host of a narration file's URL, lower-cased, or `null` — never the path,
+ * the query or anything else (§14: "url host only"). Admitted by shape, so a
+ * value that is not a plain DNS name is dropped rather than stored.
+ *
+ * @param {*} url
+ * @returns {string|null}
+ */
+export function audioHostOf(url) {
+  if (!nonEmptyStr(url)) return null;
+  let host = "";
+  try {
+    const u = new URL(url);
+    if (u.protocol !== "https:" && u.protocol !== "http:") return null;
+    host = u.hostname.toLowerCase();
+  } catch (_) {
+    return null;
+  }
+  return /^[a-z0-9](?:[a-z0-9.-]{0,251}[a-z0-9])?$/.test(host) ? host : null;
+}
 
 /** Wall clock for the seam beat. Injected so the suite drives the beat by hand
     instead of sleeping: a test that asserts "2 s elapsed" is a test that goes
@@ -592,8 +710,22 @@ export class PlayerQueueManager {
       backend.onPrefetchWindow = () => this._warmNextSegment();
     }
 
+    /** §14: `{ id, seq }` while a RENDERED narration load that can fall back to
+        its script is in flight, else `null` — see `_onBackendError`. */
+    this._narrationLoadInFlight = null;
+    /** §14: `{ id, seq }` while a FALLBACK `speak()` is in flight — the file
+        has already failed and the line is on its way to speech — else `null`.
+        See `_onBackendError`. */
+    this._narrationFallbackPending = null;
+    /** §14: the id of the rendered narration line being SPOKEN instead of
+        played, so a paused fallback resumes its utterance rather than
+        retrying the file mid-line. `null` otherwise. */
+    this._fallbackSpokenId = null;
+    /** §15: whether the backend can warm a narration file at all. */
+    this._narrationWarmCapable = typeof backend.warmNarration === "function";
+
     backend.onItemEnded = (reason) => this._handleBackendItemEnded(reason);
-    backend.onError = (msg) => this._handle(E.error(String(msg)));
+    backend.onError = (msg) => this._onBackendError(msg);
     /* The element stopped and nothing here asked it to (#263) — a car switched
        off, a call, headphones out. One of TWO triggers for the same reconcile;
        the other is the surface coming back to the foreground, for the case where
@@ -951,6 +1083,8 @@ export class PlayerQueueManager {
     }
     if (wasSynth) await this._stopNarration();
     this._stopTimer();
+    // §15: a stopped Foray has no "next" worth fetching.
+    this._dropStaleNarrationWarm([], "stop");
   }
 
   /** @param {object} [opts] `{ precise }` — decided by seek-policy.js (#30),
@@ -996,14 +1130,14 @@ export class PlayerQueueManager {
     if (!isRate(rate)) this._emit(`rate.snapped requested=${JSON.stringify(rate)} applied=${r}`);
     const was = this._rate;
     this._rate = r;
-    /* NARRATION IS NOT SPED UP, EVER (corner case #18). If a bridge is what is
-       audible right now, the value is STORED and applied when `restoreRate` fires
-       at the end of it — so a tap during narration is not lost, it just does not
-       take effect mid-word. Without this the guarantee `resetRateForTTS` exists
-       to make would hold for every path except a listener touching the control at
-       the wrong moment, which is precisely when a guarantee stops being one. */
-    if (this._narrationIsAudible()) {
-      this._emit(`rate.deferred=${r} — narration is audible and plays at 1.0x`);
+    /* A SPOKEN LINE IS NOT SPED UP (corner case #18, founder 2026-09-24). If a
+       synthesized line is what is audible right now, the value is STORED and
+       applied when `restoreRate` fires at the end of it — so a tap during it is
+       not lost, it just does not take effect mid-word.
+       A RENDERED line follows the listener (D2, 2026-09-28 — §12), so a tap
+       while one is sounding goes to the element now, like any clip. */
+    if (this._loadedIsSynth && this._narrationIsAudible()) {
+      this._emit(`rate.deferred=${r} — spoken narration is audible and plays at 1.0x`);
       return r;
     }
     this.backend.setRate(r);
@@ -1449,20 +1583,39 @@ export class PlayerQueueManager {
         return this.backend.setOutPoint(effect.seconds);
 
       case "resetRateForTTS":
-        // Corner case #18. Deliberately the literal 1.0 and NOT `this._rate`:
-        // narration is our own line at a pace we chose, and this effect exists
-        // to override the listener's speed rather than to consult it.
+        // Founder ruling D2, 2026-09-28 (§12): a RENDERED line is played at the
+        // LISTENER's rate, pitch preserved — the file was rendered at 1.0x and
+        // the player speeds it. Until then this was the literal 1.0 (corner
+        // case #18). The reducer still emits this effect for every TTS item, so
+        // the recorded queue-state rules (parity family `queue-state`) do not
+        // move; only what the effect MEANS for a file does.
         //
-        // EXCEPT for a synth item (§7 item 2 of generation-architecture.md).
+        // A synth item is still left alone (§7 item 2 of generation-architecture.md).
         // There is no rendered file and no media element under it — nothing
         // for `backend.setRate` to mean anything about — and forcing 1.0x here
         // would be a no-op on the wrong object, not a safe default. A
         // synthesizer's rate is a property of the UTTERANCE, so it is already
-        // set — to `NARRATION_RATE` (1x, founder 2026-09-24), the same speed
-        // this effect forces on a rendered bridge — at the `speak()` call
-        // inside `_loadItem`/`_speakNarration`, before this effect ever runs.
-        if (this._loadedIsSynth) return;
-        return this.backend.setRate(1.0);
+        // set — to `NARRATION_RATE` (1x, founder 2026-09-24) — at the
+        // `speak()` call inside `_loadItem`/`_speakNarration`, before this
+        // effect ever runs.
+        //
+        // DECIDED BY THE ITEM THIS EFFECT IS FOR, NOT BY `_loadedIsSynth`. On
+        // the bridge path (`itemEnded` -> `transitioning`) the reducer emits
+        // this BEFORE `playTransitionTTS` loads the line, so `_loadedIsSynth`
+        // still describes the PREVIOUS item. In a narration chain — a spoken
+        // line (script-only, or a rendered line that fell back) followed by a
+        // rendered one — reading it skipped the rendered line's rate entirely,
+        // and the file played at whatever the element last held (the
+        // listener's speed never applied, or a tap deferred during the spoken
+        // line not yet landed). A rendered line that later falls back to speech
+        // has had the listener's rate set on a silent element: harmless, and
+        // the next clip wants that rate anyway.
+        {
+          const ref = focusOf(this.state);
+          const target = ref ? this._itemFor(ref) : null;
+          if (target ? this._isSynthNarration(target) : this._loadedIsSynth) return;
+        }
+        return this.backend.setRate(this._rate);
 
       case "restoreRate":
         /* §12. This used to be `item?.rate ?? 1.0` — an unconditional reset to 1x
@@ -1633,8 +1786,23 @@ export class PlayerQueueManager {
     const idx = this.queue.findIndex((i) => i.id === item.id);
     if (idx >= 0) this.currentIndex = idx;
 
+    /* §15: a warm for anything but THIS item or the one straight after it is
+       for a "next" the listener has just left (a skip, a jump, a restart
+       elsewhere). Dropped now, before this load asks for the media queue. A
+       warm for this very item is kept until the load settles — it is the file
+       about to be fetched — and one for the item after it is still "next" (a
+       pause and resume of the clip before a line re-enters here). */
+    this._dropStaleNarrationWarm([item.id, this.queue[idx + 1]?.id], `load:${item.id}`);
+
+    /* §14: a rendered line already being SPOKEN because its file failed, paused
+       and now resumed, is a synth line for this load — it continues the
+       utterance instead of retrying the file mid-sentence. A restart
+       (`forced`) tries the file again. */
+    const resumingFallback = forced == null && this._fallbackSpokenId === item.id
+      && this._loadedId === item.id && this._loadedIsSynth && this._narrationPaused;
+
     try {
-      if (this._isSynthNarration(item)) {
+      if (this._isSynthNarration(item) || resumingFallback) {
         /* §7 item 1: a script-only narration item has no file for the backend
            to load at all — it is spoken, not played. §7 item 2: the rate
            passed here is the listener's CURRENT preference, read at the
@@ -1676,20 +1844,41 @@ export class PlayerQueueManager {
           this._emit(`tts.resumingInPlace ${item.id}`);
         }
       } else {
-        await this.backend.load(item, { startOffset });
-        /* SUPERSEDED BEFORE IT LANDED (audit 2026-09-22): a skip or a row tap
-           claimed the player while this load was in flight. The element is
-           being re-pointed at the newer item, so stamping `_loadedId` here would
-           say it holds THIS one — and `_persistPosition` would then write the
-           newer item's clock under this item's id. Checked here, straight after
-           the await, rather than only at the seam wait below: a newer load bumps
-           `_loadSeq` synchronously when it starts, so this comparison cannot be
-           early the way the one `_transport` describes can. */
-        if (this._loadSeq !== seq) {
-          return this._emit(`load.superseded ${item.id} — a newer load owns the player`);
+        /* §14: a rendered narration line whose file fails is spoken from its
+           script instead — this is the first-line and jump-to-line case, which
+           used to STOP the Foray through the catch below. */
+        const loadErr = await this._loadRenderedOrCatch(item, startOffset, seq);
+        if (loadErr) {
+          /* Not the current load any more, or the listener moved the player
+             during it (a pause, a stop): exactly what the catch below has
+             always done with a failure, so nothing new starts talking. */
+          if (this._loadSeq !== seq || !(this.state.type === "loadingItem" && sameItemRef(this.state.target, ref))) {
+            throw loadErr;
+          }
+          this._noteNarrationFallback(item, "load", loadErr);
+          const mine = ++this._speakIssued;
+          // A refusal throws into the catch below: today's outcome, unchanged.
+          await this._speakFallback(item, seq);
+          if (this._loadSeq !== seq || !(this.state.type === "loadingItem" && sameItemRef(this.state.target, ref))) {
+            return this._abandonSpeech(mine, `load.superseded ${item.id} — the player moved on while its fallback speak() was in flight`);
+          }
+          this._loadedId = item.id;
+          this._beginSynthNarration(item, { fallback: true });
+        } else {
+          /* SUPERSEDED BEFORE IT LANDED (audit 2026-09-22): a skip or a row tap
+             claimed the player while this load was in flight. The element is
+             being re-pointed at the newer item, so stamping `_loadedId` here would
+             say it holds THIS one — and `_persistPosition` would then write the
+             newer item's clock under this item's id. Checked here, straight after
+             the await, rather than only at the seam wait below: a newer load bumps
+             `_loadSeq` synchronously when it starts, so this comparison cannot be
+             early the way the one `_transport` describes can. */
+          if (this._loadSeq !== seq) {
+            return this._emit(`load.superseded ${item.id} — a newer load owns the player`);
+          }
+          this._loadedId = item.id;
+          this._endSynthNarration();
         }
-        this._loadedId = item.id;
-        this._endSynthNarration();
       }
       // The ladder's rung 3 runs HERE and nowhere earlier: this is the first
       // moment the duration of the copy the listener actually received exists.
@@ -1708,6 +1897,8 @@ export class PlayerQueueManager {
         return this._emit(`seam.gap.superseded ${item.id} — a newer load owns the player`);
       }
       await this._handle(E.itemLoaded());
+      // §15: the item is audible; warm the narration file straight after it.
+      if (this._loadSeq === seq && this.state.type === "playing") this._warmNextNarration();
     } catch (err) {
       /* A load nobody is on any more failing is not the CURRENT item failing.
          Dispatching `error` here would move the reducer to `idle` and pause the
@@ -1733,6 +1924,180 @@ export class PlayerQueueManager {
       one check this method needs; it does not re-decide that precedence. */
   _isSynthNarration(item) {
     return item?.kind === TTS && !item.audio_url && nonEmptyStr(item.script);
+  }
+
+  /* ---------- §14: a rendered line that fails is spoken instead ---------- */
+
+  /** Can this item's FILE be replaced by speaking its script? A rendered
+      narration line (TTS-kind, an `audio_url`) that still carries a script,
+      with a speech bridge wired. Anything else fails exactly as it always has. */
+  _canSpeakInstead(item) {
+    return item?.kind === TTS && nonEmptyStr(item.audio_url) && nonEmptyStr(item.script) && this._tts != null;
+  }
+
+  /**
+   * `backend.load`, except that for a line that can fall back (§14) a failure
+   * is RETURNED rather than thrown, and the load is marked in flight so the
+   * backend's own error report does not stop the player first (see
+   * `_onBackendError`). Resolves `null` on success. Any other item throws
+   * exactly as `backend.load` does.
+   *
+   * @param {object} item
+   * @param {number} startOffset
+   * @param {number} seq  the `_loadSeq` this load belongs to
+   * @returns {Promise<Error|null>}
+   */
+  async _loadRenderedOrCatch(item, startOffset, seq) {
+    if (!this._canSpeakInstead(item)) {
+      await this.backend.load(item, { startOffset });
+      return null;
+    }
+    const marker = { id: item.id, seq };
+    this._narrationLoadInFlight = marker;
+    try {
+      await this.backend.load(item, { startOffset });
+      return null;
+    } catch (err) {
+      return err ?? new Error(`load of ${item.id} failed`);
+    } finally {
+      if (this._narrationLoadInFlight === marker) this._narrationLoadInFlight = null;
+    }
+  }
+
+  /** The one diagnostics line per fallback (§14): why, where, which item and
+      the file's HOST — never the URL. `diagnostic-log.js` keeps it as a
+      `narration` row. */
+  _noteNarrationFallback(item, where, err) {
+    this._emit(
+      `narration.fallback reason=${narrationFallbackReason(err)} at=${where} ` +
+      `item=${item?.id ?? "?"} host=${audioHostOf(item?.audio_url) ?? "-"}`
+    );
+  }
+
+  /**
+   * The backend reports a media error or a refused `play()` (§14).
+   *
+   * Four cases, in order:
+   *   1. a rendered narration load that can fall back is IN FLIGHT: the
+   *      element's persistent `error` listener fires before the load's own, so
+   *      reporting here would stop the player before the load's rejection
+   *      could fall back. The load decides; nothing is dispatched here.
+   *   2. the element's file has ALREADY been given up on — a fallback
+   *      `speak()` is in flight, or the line is being spoken instead of its
+   *      file. A load that failed by DEADLINE leaves the element pointed at
+   *      the file with its persistent `error` listener attached, so a stalled
+   *      fetch that finally errors (a car losing signal) reports here after
+   *      the in-flight marker is gone. That is news about a file nobody is
+   *      playing; reporting it as `E.error` stopped the Foray in the middle
+   *      of the very line the fallback was reading. Nothing is dispatched.
+   *   3. a rendered narration line is SOUNDING (loaded, not already spoken)
+   *      and can fall back: speak its script instead of stopping.
+   *   4. anything else: `E.error`, exactly as before.
+   */
+  _onBackendError(msg) {
+    const text = String(msg);
+    const inFlight = this._narrationLoadInFlight;
+    if (inFlight && inFlight.seq === this._loadSeq) {
+      this._emit(`narration.error.leftToLoad ${inFlight.id} — its own load's failure decides`);
+      return undefined;
+    }
+    const pending = this._narrationFallbackPending;
+    if (pending && pending.seq === this._loadSeq) {
+      this._emit(`narration.error.ignored ${pending.id} — its file already failed and it is on its way to speech`);
+      return undefined;
+    }
+    const item = this._currentItem();
+    if (item != null && this._loadedIsSynth && this._fallbackSpokenId === item.id) {
+      this._emit(`narration.error.ignored ${item.id} — the line is being spoken instead of its file`);
+      return undefined;
+    }
+    const sounding = item != null && !this._loadedIsSynth && this._loadedId === item.id
+      && focusOf(this.state)?.id === item.id
+      && (this.state.type === "playing" || this.state.type === "transitioning");
+    if (sounding && this._canSpeakInstead(item)) {
+      return this._speakInsteadMidLine(item, text)
+        .catch((err) => this._emit(`narration.fallback.failed: ${err?.message ?? err}`));
+    }
+    return this._handle(E.error(text));
+  }
+
+  /** `_speakNarration` for a line whose FILE has failed (§14): the same call,
+      with `_narrationFallbackPending` held for its duration so the failed
+      element's late reports cannot stop the player before speech begins (see
+      `_onBackendError` case 2). Throws exactly as `_speakNarration` does. */
+  async _speakFallback(item, seq) {
+    const marker = { id: item.id, seq };
+    this._narrationFallbackPending = marker;
+    try {
+      return await this._speakNarration(item);
+    } finally {
+      if (this._narrationFallbackPending === marker) this._narrationFallbackPending = null;
+    }
+  }
+
+  /** A rendered line failed WHILE SOUNDING (a network drop mid-file, a decode
+      error, a refused play). Speak the whole script from its first word —
+      speech has no offset — and let the utterance's own `finished` (or the
+      deadline) advance the queue as for any spoken line. A refusal to speak is
+      today's outcome: `E.error`. */
+  async _speakInsteadMidLine(item, msg) {
+    this._noteNarrationFallback(item, "playing", msg);
+    const seq = this._loadSeq;
+    const stillOnIt = () => this._loadSeq === seq && focusOf(this.state)?.id === item.id
+      && (this.state.type === "playing" || this.state.type === "transitioning");
+    try { this.backend.pause(); } catch (_) { /* the element already failed; silence is the point */ }
+    const mine = ++this._speakIssued;
+    try {
+      await this._speakFallback(item, seq);
+    } catch (err) {
+      this._emit(`narration.fallback.refused ${item.id}: ${err?.message ?? err}`);
+      if (!stillOnIt()) return undefined;
+      return this._handle(E.error(msg));
+    }
+    if (!stillOnIt()) {
+      return this._abandonSpeech(mine, `narration.fallback.superseded ${item.id} — the player moved on while speak() was in flight`);
+    }
+    this._beginSynthNarration(item, { fallback: true });
+    return undefined;
+  }
+
+  /* ---------- §15: warming the next narration file ---------- */
+
+  /** Ask the backend to warm the file of the narration line straight after
+      the item now audible — one file, and only behind an item long enough to
+      finish the warm before its own boundary. Anything else drops a warm that
+      is no longer "next". */
+  _warmNextNarration() {
+    if (!this._narrationWarmCapable || this._disposed) return;
+    const current = this._currentItem();
+    const next = this.queue[this.currentIndex + 1] ?? null;
+    if (!current || !next || next.kind !== TTS || !nonEmptyStr(next.audio_url)) {
+      this._dropStaleNarrationWarm([], "nextIsNotRenderedNarration");
+      return;
+    }
+    const lead = itemLengthSec(current);
+    if (lead != null && lead < NARRATION_WARM_MIN_LEAD_SEC) {
+      this._dropStaleNarrationWarm([], "leadTooShort");
+      this._emit(`prefetch.narration.skipped ${next.id}: ${current.id} lasts ${Math.round(lead)}s, under the ${NARRATION_WARM_MIN_LEAD_SEC}s lead`);
+      return;
+    }
+    try {
+      this.backend.warmNarration(next);
+    } catch (err) {
+      this._emit(`prefetch.narration.threw ${err?.message ?? err}`);
+    }
+  }
+
+  /** Drop the backend's narration warm unless it is for one of `keepIds`. */
+  _dropStaleNarrationWarm(keepIds, why) {
+    if (!this._narrationWarmCapable || typeof this.backend.cancelNarrationWarm !== "function") return;
+    const warming = this.backend.narrationWarmId ?? null;
+    if (warming == null || keepIds.includes(warming)) return;
+    try {
+      this.backend.cancelNarrationWarm(why);
+    } catch (err) {
+      this._emit(`prefetch.narration.cancelThrew ${err?.message ?? err}`);
+    }
   }
 
   /** Speak a script-only narration item through the on-device plugin (§7
@@ -1813,9 +2178,12 @@ export class PlayerQueueManager {
    * has already been superseded (a skip, a new item entirely) is provably
    * stale rather than merely "already seen".
    */
-  _beginSynthNarration() {
+  _beginSynthNarration(item = null, { fallback = false } = {}) {
     this._loadedIsSynth = true;
     this._speakSeq++;
+    /* §14: remembered only for a rendered line spoken INSTEAD of its file, so
+       that line's resume continues the utterance (see `_loadItem`). */
+    this._fallbackSpokenId = fallback && item ? item.id : null;
     // L-05: a NEW utterance is never a paused one, whatever the last one was.
     this._narrationPaused = false;
     this._narrationPausedAtMs = null;
@@ -2016,6 +2384,7 @@ export class PlayerQueueManager {
       stale one) look unhandled and double-advance. */
   _endSynthNarration() {
     this._loadedIsSynth = false;
+    this._fallbackSpokenId = null;
     this._narrationStartedAtMs = null;
     /* L-05. A paused-narration flag that outlived its utterance would make
        the NEXT synth item's first `startPlayback` take the resume branch and
@@ -2494,6 +2863,8 @@ export class PlayerQueueManager {
     if (!bridge) return this._advancePastBridgeFailure();
     const bIdx = this.queue.findIndex((i) => i.id === bridge.id);
     if (bIdx >= 0) this.currentIndex = bIdx;
+    // §15: the same rule as `_loadItem` — a warm for this bridge is kept.
+    this._dropStaleNarrationWarm([bridge.id], `bridge:${bridge.id}`);
     /* THE LISTENER CAN MOVE DURING THE BRIDGE'S LOAD (audit round 3,
        player-core-2). A rendered bridge loads from a URL, 5-11 s on a hidden
        page, and a pause or a stop in that window changes the state but not the
@@ -2522,12 +2893,27 @@ export class PlayerQueueManager {
         }
         this._beginSynthNarration(bridge);
       } else {
-        await this.backend.load(bridge, { startOffset: 0 });
-        if (!stillOurs()) {
-          return this._emit(`transitionTTS.superseded ${bridge.id} — loaded, but the player moved on; not started`);
+        /* §14: a rendered bridge whose file fails is spoken from its script
+           instead of being skipped. Only a failure while the machine is still
+           on this bridge; otherwise the catch below does what it always did. */
+        const loadErr = await this._loadRenderedOrCatch(bridge, 0, seq);
+        if (loadErr) {
+          if (!stillOurs()) throw loadErr;
+          this._noteNarrationFallback(bridge, "bridge", loadErr);
+          const mine = ++this._speakIssued;
+          // A refusal throws into the catch below: skipped, as before.
+          await this._speakFallback(bridge, seq);
+          if (!stillOurs()) {
+            return this._abandonSpeech(mine, `transitionTTS.superseded ${bridge.id} — the player moved on while its fallback speak() was in flight`);
+          }
+          this._beginSynthNarration(bridge, { fallback: true });
+        } else {
+          if (!stillOurs()) {
+            return this._emit(`transitionTTS.superseded ${bridge.id} — loaded, but the player moved on; not started`);
+          }
+          this._endSynthNarration();
+          this.backend.play();
         }
-        this._endSynthNarration();
-        this.backend.play();
       }
       /* THE BRIDGE IS WHAT THE ELEMENT IS HOLDING, so it has to say so (#263).
          `_loadItem` sets this on its own success path and this method is the
@@ -2543,6 +2929,9 @@ export class PlayerQueueManager {
          down. Set after the load resolves, like `_loadItem`, so it is never
          true of audio the element does not yet have. */
       this._loadedId = bridge.id;
+      // §15: nothing to warm behind a bridge (a clip follows it), but a warm
+      // left over from before it is no longer "next".
+      this._warmNextNarration();
     } catch (err) {
       this._emit(`transitionTTS.loadFailed: ${err?.message ?? err}`);
       await this._advancePastBridgeFailure();
@@ -2712,6 +3101,15 @@ function narrationDeadlineSec(item, rate) {
   if (runtime <= 0) return 0;
   const slow = isNum(rate) && rate > 0 && rate < 1 ? 1 / rate : 1;
   return runtime * slow * NARRATION_DEADLINE_FACTOR + NARRATION_DEADLINE_MARGIN_SEC;
+}
+
+/** How long an item is expected to last, in its own seconds, or `null` when
+    nothing says (§15's lead rule). A segment's slice, else a positive
+    `duration_sec` (narration carries one from `foray-queue.js`). */
+function itemLengthSec(item) {
+  const bounds = boundsOf(item);
+  if (bounds && bounds.endSec != null) return Math.max(0, bounds.endSec - bounds.startSec);
+  return isNum(item?.duration_sec) && item.duration_sec > 0 ? item.duration_sec : null;
 }
 
 /** Is this queue item a bounded slice, and if so which one? The single

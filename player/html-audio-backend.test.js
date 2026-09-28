@@ -2955,3 +2955,159 @@ test("elementFacts never throws: an element whose reads throw reports nulls", ()
   assert.equal(f.paused, null, "a fake without `paused` reports it unknown, never false");
   assert.deepEqual(Object.keys(f).sort(), ["aheadSec", "atSec", "ns", "paused", "rs"], "numbers only — no source, no URL");
 });
+
+/* ---------- Phase 2 (founder rulings 2026-09-28): pitch and the narration warm ----------
+
+   D2: rendered narration plays at the listener's rate, so pitch has to hold at
+   every speed. §"narration warm": a spare, never-played element fetches the NEXT
+   rendered narration file; the boundary still loads it on the player element.
+   `narr()` builds a backend with that spare element injected, because in
+   `node --test` there is no `Audio` to make one from. */
+
+const N_URL = "https://audio.example/narration/n1.m4a";
+const narrItem = (id = "n1", url = N_URL) => ({ id, kind: "tts", audio_url: url, script: "A line." });
+
+function narr({ hidden = false } = {}) {
+  const el = new FakeAudio();
+  const spare = new FakeAudio();
+  const log = [];
+  const state = { hidden };
+  const b = new HtmlAudioBackend({
+    element: el, narrationWarmElement: spare, telemetry: (m) => log.push(m), isHidden: () => state.hidden,
+  });
+  return { b, el, spare, log, state };
+}
+
+test("D2: the player element keeps pitch at every speed from construction", () => {
+  /* Every engine defaults `preservesPitch` to true; the product must not rest on
+     a default. KILLING MUTATION: delete `keepPitch(el)` from the constructor. */
+  const { el } = mk();
+  assert.equal(el.preservesPitch, true);
+});
+
+test("D2: keepPitch sets the prefixed flags only where the engine has them, and never throws", async () => {
+  const { keepPitch } = await import("./html-audio-backend.js");
+  const webkit = { webkitPreservesPitch: false };
+  keepPitch(webkit);
+  assert.equal(webkit.preservesPitch, true);
+  assert.equal(webkit.webkitPreservesPitch, true);
+  assert.equal("mozPreservesPitch" in webkit, false, "no prefixed property is invented");
+  const refusing = {};
+  Object.defineProperty(refusing, "preservesPitch", { set() { throw new Error("read-only"); } });
+  assert.doesNotThrow(() => keepPitch(refusing));
+  assert.doesNotThrow(() => keepPitch(null));
+});
+
+test("narration warm: fetches the next file on the SPARE element, muted, and never plays it", () => {
+  const { b, el, spare, log } = narr();
+  assert.equal(b.warmNarration(narrItem()), true);
+  assert.equal(spare.src, N_URL, "the spare element holds the next file");
+  assert.equal(el.src, "", "the player element is untouched");
+  assert.equal(spare.muted, true);
+  assert.equal(spare.preload, "auto");
+  assert.equal(spare.preservesPitch, true);
+  assert.ok(!spare.calls.includes("play"), "a warm is never played");
+  assert.equal(b.narrationWarmId, "n1");
+  assert.ok(log.some((l) => /^prefetch\.narration\.started n1 hidden=n/.test(l)), log.join("\n"));
+});
+
+test("narration warm: bounded to ONE file — a second warm replaces the first", () => {
+  const { b, spare } = narr();
+  b.warmNarration(narrItem("n1"));
+  b.warmNarration(narrItem("n2", "https://audio.example/narration/n2.m4a"));
+  assert.equal(b.narrationWarmId, "n2");
+  assert.equal(spare.src, "https://audio.example/narration/n2.m4a");
+  assert.equal(b.warmNarration(narrItem("n2", "https://audio.example/narration/n2.m4a")), true, "asking again is a no-op, not a refetch");
+});
+
+test("narration warm: a cancel while VISIBLE aborts the fetch", () => {
+  const { b, spare, log } = narr();
+  b.warmNarration(narrItem());
+  assert.equal(b.cancelNarrationWarm("skip"), true);
+  assert.equal(b.narrationWarmId, null);
+  assert.ok(spare.calls.includes("removeAttribute:src") && spare.calls.includes("load"), `aborted: ${spare.calls}`);
+  assert.ok(log.some((l) => /prefetch\.narration\.cancelled n1: skip \(aborted\)/.test(l)));
+  assert.equal(b.cancelNarrationWarm("again"), false, "nothing left to cancel");
+});
+
+test("narration warm: a cancel while HIDDEN does no media work at all (the handover's discard lesson)", () => {
+  /* run 32057395270: the parked handover's discard queued two more steps AHEAD
+     of the cold load in a hidden page. A cancel there must touch nothing.
+     KILLING MUTATION: pass `abort: true` unconditionally from cancelNarrationWarm. */
+  const { b, spare } = narr({ hidden: true });
+  b.warmNarration(narrItem());
+  spare.calls.length = 0;
+  b.cancelNarrationWarm("skip");
+  assert.deepEqual(spare.calls, [], "no removeAttribute, no load()");
+  assert.equal(b.narrationWarmId, null, "but it is no longer wanted");
+});
+
+test("narration warm: refuses a non-https file and a file the player already holds", async () => {
+  const { b, log } = narr();
+  assert.equal(b.warmNarration(narrItem("n1", "narration/n1.m4a")), false);
+  assert.ok(log.some((l) => /prefetch\.narration\.skipped n1: not an https file/.test(l)));
+  await b.load(narrItem("n2", N_URL));
+  assert.equal(b.warmNarration(narrItem("n3", N_URL)), false);
+  assert.ok(log.some((l) => /already holds this file/.test(l)));
+});
+
+test("narration warm: a host whose Audio returns the PLAYER element gets no warm at all", () => {
+  /* The client harness's `Audio` hands back one element every time; a warm
+     would then re-point — and its cancel empty — the element the listener hears. */
+  const el = new FakeAudio();
+  const b = new HtmlAudioBackend({ element: el, narrationWarmElement: el });
+  assert.equal(b.warmNarration(narrItem()), false);
+  assert.equal(el.src, "", "the player element was never re-pointed");
+  assert.match(b.narrationWarmOffReason ?? "", /no spare element/);
+});
+
+test("narration warm: an unexplained pause while it is loading stands it down for the session", async () => {
+  const { b, el, spare, log } = narr();
+  await b.load(item("a"));
+  b.play();
+  el._fire("playing"); // audible, so any pause the load expected is spent
+  b.warmNarration(narrItem());
+  el._fire("pause"); // nobody asked for this
+  assert.equal(b.narrationWarmId, null);
+  assert.match(b.narrationWarmOffReason ?? "", /narration warm was in flight/);
+  assert.ok(log.some((l) => /pausedUnexpectedly while a narration warm was in flight/.test(l)));
+  assert.ok(spare.calls.includes("removeAttribute:src"), "the spare element is emptied");
+  assert.equal(b.warmNarration(narrItem("n2", "https://audio.example/n2.m4a")), false, "and it stays off");
+});
+
+test("narration warm: a READY warm is not evidence of a stolen session", async () => {
+  const { b, el, spare } = narr();
+  await b.load(item("a"));
+  b.play();
+  el._fire("playing");
+  b.warmNarration(narrItem());
+  spare._fire("canplaythrough");
+  el._fire("pause");
+  assert.equal(b.narrationWarmOffReason, null);
+  assert.equal(b.narrationWarmId, "n1");
+});
+
+test("narration warm: a failed warm is dropped and the boundary loads the ordinary way", () => {
+  const { b, spare, log } = narr();
+  b.warmNarration(narrItem());
+  spare.error = { code: 4 };
+  spare._fire("error");
+  assert.equal(b.narrationWarmId, null);
+  assert.equal(b.narrationWarmOffReason, null, "one bad file does not switch warming off");
+  assert.ok(log.some((l) => /prefetch\.narration\.failed n1 \(code 4\)/.test(l)));
+});
+
+test("narration warm: release() empties the spare element and switches it off", () => {
+  const { b, spare } = narr();
+  b.warmNarration(narrItem());
+  b.release();
+  assert.equal(b.narrationWarmId, null);
+  assert.ok(spare.calls.includes("removeAttribute:src"));
+  assert.equal(b.warmNarration(narrItem("n2")), false);
+});
+
+test("narration warm: without an Audio constructor (node --test) it is simply unavailable", () => {
+  const { b, log } = mk();
+  assert.equal(b.warmNarration(narrItem()), false);
+  assert.ok(log.some((l) => /prefetch\.narration\.unavailable n1: no spare element/.test(l)));
+});
