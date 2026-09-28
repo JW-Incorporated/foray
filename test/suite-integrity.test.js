@@ -1786,6 +1786,14 @@ const FLOORS = {
      reason this card is not a way to publish a mispronounced Foray. */
   "tools/narration/phonemize.test.mjs": 14, // KV-R2 (2026-09-26): sentence_chunks, D3's one chunk rule; 13 -> 14
   "tools/narration/render-audition.test.mjs": 22, // local voice audition (2026-09-26, founder: "test out many of the kokoro voices, find a couple favorites"): the 28 English voices, the pins read from fetch-models.mjs, the voice-id path guard, the published-Foray passage, the sentence splitter, the offline page, blind letters past Z, the favourites.json shape, --page-only and the unknown-voice refusal; 12 -> 22
+  /* Central narration render, Phase 1 (docs/plans/spark-central-narration-assessment.md §3.2/§5; founder
+     "Defaults" 2026-09-28). Zero slack. The refusals are the point: upload-narration refusing under CI is the
+     rule that keeps R2 writes off GitHub Actions, and the workflow test is the rule that keeps credentials out
+     of it; stamp-narration refusing a stale script or a published Foray is what keeps a wrong or unsafe file
+     off a listener's phone. */
+  "tools/narration/render-foray.test.mjs": 16, // content-hash key (deterministic, moves with every audio input, not with ids or rejects), per-voice unchanged detection, the manifest entry and document, the D2/D5 profile, the pins from fetch-models.mjs and Echo's recorded pin, the D2 speed refusal, @drafts = the three Phase 1 drafts, --smoke's two shortest lines, the unknown-id refusal, --check and --report through the real CLI, and the no-credentials workflow
+  "tools/narration/stamp-narration.test.mjs": 8, // Heart flat / Echo voices / render.{profile,script_sha,lexicon_sha}, runtime_sec restated by Heart's delta and check-forays agreeing, idempotence, the stale-script refusal with nothing written, the published-Foray refusal, the https-base rule, the profile refusal, and the real CLI twice
+  "tools/narration/upload-narration.test.mjs": 6, // refuses under CI (CI and GITHUB_ACTIONS, dry run included), the dry run reads no credentials, a file that differs from its manifest is refused, credentials only from the env file and never printed, only foray-narration is writable, and --immutable + headers with the secret only in rclone's environment
   "tools/mobile/android-workflow.test.mjs": 62,
   /* Wiring the signing config into a project nobody commits. ZERO SLACK.
      `mobile/android/` is regenerated on every build, so the only evidence the
