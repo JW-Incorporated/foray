@@ -248,6 +248,122 @@ export const FORAY_STATUSES = Object.freeze(["draft", "published"]);
     by name (mirroring `player/foray-queue.js` verbatim), so this list is
     documentation for `ACCEPTED_SHAPES` rather than a lookup table. */
 export const NARRATION_VOICE_FIELDS = Object.freeze(["script", "audio_url", "asset"]);
+
+/* ---- CENTRALLY RENDERED NARRATION (Phase 1) ---------------------------------
+ *
+ * docs/plans/spark-central-narration-assessment.md §3.4, ruled 2026-09-28
+ * ("Defaults", D1-D11). Narration is rendered once, centrally, by Kokoro
+ * (`tools/narration/render-foray.py`), uploaded write-once to the PUBLIC R2
+ * bucket `foray-narration` (D6), and stamped into `data/forays.json` by
+ * `tools/narration/stamp-narration.mjs` as:
+ *
+ *   audio_url        <NARRATION_PUBLIC_BASE>/n/<profile>/af_heart/<sha256>.m4a
+ *   duration_sec     measured from the file
+ *   duration_source  "measured"
+ *   voices.am_echo   { audio_url, duration_sec }          (Echo, D4)
+ *   render           { profile, script_sha, lexicon_sha } (Phase 2 rules)
+ *
+ * with the Foray's `runtime_sec` restated in the same write. The rules below
+ * are the Phase 1 subset (§5 "Phase 1 fast path", step 3): the URL's shape,
+ * the duration's provenance and sanity, the restated runtime, and the guard
+ * that keeps rendered audio off PUBLISHED Forays until the player's
+ * speak-the-script fallback ships (§1 risk 1). The stricter `render.*` rules
+ * (script_sha, profile, lexicon_sha) follow in Phase 2. */
+
+/** D6: the public base every rendered narration file is served from. Equal to
+    `public_base` in `tools/narration/render-profile.json` (a test pins the two
+    together once that file exists). No trailing slash, as the profile spells it. */
+export const NARRATION_PUBLIC_BASE = "https://audio.jwlabs.ai";
+/** D4: the voices rendered for every line. The first is the default: its file
+    lives in the flat `audio_url`/`duration_sec`, which installed builds play
+    unchanged; every other voice lives under `voices.<id>`. */
+export const NARRATION_VOICES = Object.freeze(["af_heart", "am_echo"]);
+export const DEFAULT_NARRATION_VOICE = NARRATION_VOICES[0];
+/** The object key under the base: `n/<profile>/<voice>/<sha256>.m4a`
+    (render-foray.py `render_key`). Content-addressed and write-once, so it
+    never carries a query; `.m4a` is D5's AAC-LC container. */
+export const NARRATION_KEY_RX = /^\/n\/([a-z0-9][a-z0-9._-]*)\/([a-z0-9_]+)\/([0-9a-f]{64})\.m4a$/;
+/** A measured duration must sit in [lo × estimate, hi × estimate + allowance],
+    where the estimate is the player's own script estimate at narration-craft's
+    planning rate (`narrationDuration`, 17 chars/s). The ratio is the render
+    tool's own reject band on SPOKEN length (render-profile.json
+    `reject.length_ratio`); the allowance covers what the file adds on top —
+    0.5 s of padding at each end, the 0.08 s gaps between chunks and AAC frame
+    alignment. A stamp outside it is the wrong file on the wrong line, or
+    milliseconds read as seconds, not a slow voice. */
+export const RENDERED_DURATION_RATIO = Object.freeze([0.5, 2.0]);
+export const RENDERED_DURATION_ALLOWANCE_SEC = 2;
+/** How closely `runtime_sec` must agree with the items once any narration
+    duration is MEASURED. The general drift detector allows 0.5 s; a Foray whose
+    narration was stamped from files restates its runtime in the same write
+    (stamp-narration.mjs does, to the millisecond), so anything past rounding is
+    a line stamped without its restatement (§3.4). */
+export const RUNTIME_RESTATED_TOLERANCE_SEC = 0.05;
+/** THE PHASE 2 GATE, machine-enforced (§3.4). `data/` auto-merges on green, so
+    nothing but this constant stops a render PR stamping audio on a PUBLISHED
+    Foray before the player's fallback ships: today a narration file that fails
+    to load stops the player on a Foray's first line (§1 risk 1). Flip it to
+    `true` in the Phase 2 PR, after the build carrying the fallback is out. */
+export const RENDERED_NARRATION_ON_PUBLISHED = false;
+
+/** True when the item carries a rendered file in ANY voice — what the
+    published guard reads. Stricter than the player's `audio_url ?? asset`: a
+    `voices` entry counts too, because the picker update will play it. */
+export function carriesRenderedNarration(item) {
+  if (nonEmptyString(item?.audio_url) || nonEmptyString(item?.asset)) return true;
+  return isPlainObject(item?.voices) && Object.values(item.voices).some((v) => nonEmptyString(v?.audio_url));
+}
+
+/**
+ * What is wrong with a rendered narration file's URL, for the voice it stands
+ * for. Lexical only (no network, like every URL check in this file); the live
+ * 200/content-type/duration check is the publish-time verifier's (§3.4).
+ */
+export function narrationAudioProblems(url, { voice = DEFAULT_NARRATION_VOICE } = {}) {
+  if (!nonEmptyString(url)) return [`has no audio_url`];
+  let u;
+  try {
+    u = new URL(url);
+  } catch {
+    return [`audio_url ${JSON.stringify(url)} is not a URL`];
+  }
+  const problems = [];
+  if (!url.startsWith(`${NARRATION_PUBLIC_BASE}/`) || u.origin !== new URL(NARRATION_PUBLIC_BASE).origin) {
+    problems.push(
+      `audio_url ${JSON.stringify(url)} is not under the narration bucket's public base ${NARRATION_PUBLIC_BASE}/ ` +
+        `(ruling D6: rendered narration is served from the public \`foray-narration\` bucket and nowhere else)`
+    );
+  }
+  if (u.username || u.password) problems.push(`audio_url carries credentials (secret leak)`);
+  if (u.search || u.hash) {
+    problems.push(
+      `audio_url carries a query or fragment — narration objects are content-addressed and immutable, so a query ` +
+        `is either a token or a cache-buster, and neither belongs in public data`
+    );
+  }
+  const key = NARRATION_KEY_RX.exec(u.pathname);
+  if (!key) {
+    problems.push(`audio_url's path ${JSON.stringify(u.pathname)} is not a rendered object key, n/<profile>/<voice>/<sha256>.m4a`);
+  } else if (key[2] !== voice) {
+    problems.push(`audio_url is ${key[2]}'s file but stands for ${voice}`);
+  }
+  return problems;
+}
+
+/** A measured duration that cannot belong to this script, or null. */
+export function renderedDurationProblem(durationSec, script) {
+  if (typeof script !== "string" || !script.trim()) return null;
+  const est = narrationDuration({ script }).sec;
+  const [lo, hi] = RENDERED_DURATION_RATIO;
+  const min = lo * est;
+  const max = hi * est + RENDERED_DURATION_ALLOWANCE_SEC;
+  if (durationSec >= min && durationSec <= max) return null;
+  return (
+    `a measured \`duration_sec\` of ${durationSec} s for a script estimated at ${est} s ` +
+    `(${script.trim().length} chars at ${NARRATION_CHARS_PER_SEC} chars/s) — outside [${min.toFixed(3)}, ${max.toFixed(3)}] s. ` +
+    `That is the wrong file on this line, or milliseconds stamped as seconds`
+  );
+}
 /** F-103 — `narration.cites[].kind`. What a narrated beat says it rests on:
     a clip this Foray plays (`tape`), or a document the writer quoted
     (`print`). Written by `backend/src/generation/forayItems.ts`'s `citesFor`
@@ -626,7 +742,7 @@ export function captionProblems(why, { show = "", episodeTitle = "" } = {}) {
   return problems;
 }
 
-export function checkForays(files) {
+export function checkForays(files, { renderedNarrationOnPublished = RENDERED_NARRATION_ON_PUBLISHED } = {}) {
   const errors = [];
   const warnings = [];
   const report = { forays: [], sources: 0 };
@@ -887,10 +1003,31 @@ export function checkForays(files) {
          * which is a safe failure and a confusing one. */
         if (seenNarrationIds.has(item.id)) E(`${at}: narration id "${item.id}" appears twice in one Foray`);
         seenNarrationIds.add(item.id);
+        /* THE PHASE 2 GATE (assessment §3.4, §1 risk 1). Ahead of every
+         * `continue` below, so no other defect on the item can hide it. */
+        if (foray.status === "published" && !renderedNarrationOnPublished && carriesRenderedNarration(item)) {
+          E(
+            `${where} carries rendered narration audio on a PUBLISHED Foray. Until the player's speak-the-script ` +
+              `fallback ships in a build, a narration file that fails to load stops the player on a Foray's first line ` +
+              `(docs/plans/spark-central-narration-assessment.md §1 risk 1). Stamp drafts only; the Phase 2 PR flips ` +
+              `RENDERED_NARRATION_ON_PUBLISHED in tools/foray/check-forays.mjs once that build is out.`
+          );
+        }
         if (item.duration_sec !== undefined && !(typeof item.duration_sec === "number" && item.duration_sec > 0 && Number.isFinite(item.duration_sec))) {
           E(`${where} has a \`duration_sec\` of ${JSON.stringify(item.duration_sec)} — it must be a positive finite number of seconds, or absent`);
           itemsOk = false;
           continue;
+        }
+        /* `duration_source` is the stored provenance `narrationDuration` hands
+         * back. Only the resolver's own vocabulary is a value, and it labels a
+         * `duration_sec` — alone it labels nothing, and the player ignores it and
+         * estimates from the script while the data claims a measurement. */
+        if (item.duration_source !== undefined) {
+          if (!DURATION_SOURCES.includes(item.duration_source)) {
+            E(`${where} has \`duration_source\` ${JSON.stringify(item.duration_source)}, not one of ${DURATION_SOURCES.map((d) => JSON.stringify(d)).join(", ")}`);
+          } else if (item.duration_sec === undefined) {
+            E(`${where} declares \`duration_source\` ${JSON.stringify(item.duration_source)} but has no \`duration_sec\` for it to describe`);
+          }
         }
         const hasScript = typeof item.script === "string" && item.script.trim().length > 0;
         /* §7 item 5, clause 1: "A narration item has either script or asset
@@ -922,6 +1059,42 @@ export function checkForays(files) {
           E(`${where} has \`mode\` ${JSON.stringify(item.mode)}, not one of the narration modes in narration-craft.md §0 / Q-02 (${[...NARRATION_MODES].join(", ")})`);
         } else if (isGeneratedForay(foray) && item.mode === undefined) {
           E(`${where} has no \`mode\` — every narration item in a generated Foray must declare one of the narration modes (narration-craft.md §0 / Q-02)`);
+        }
+        /* A measured duration has to be able to belong to its script: the check
+         * that catches the wrong file stamped on the wrong line (§3.4). Only
+         * with a script to measure against; a file with no script is bounded
+         * by the Carry ceiling below and nothing else. */
+        if (item.duration_sec !== undefined && hasScript) {
+          const problem = renderedDurationProblem(item.duration_sec, item.script);
+          if (problem) E(`${where} has ${problem}`);
+        }
+        /* The other rendered voices (D4). Validated whenever present — they are
+         * public URLs the picker update will play, so they get the same URL and
+         * duration rules as the flat Heart fields. */
+        if (item.voices !== undefined) {
+          if (!isPlainObject(item.voices) || Object.keys(item.voices).length === 0) {
+            E(`${where} has \`voices\` ${JSON.stringify(item.voices)} — it must be a non-empty object keyed by voice id, or be absent`);
+          } else {
+            for (const [voice, v] of Object.entries(item.voices)) {
+              const vAt = `${where}: voices.${voice}`;
+              if (!NARRATION_VOICES.includes(voice)) {
+                E(`${vAt} is not a rendered voice (${NARRATION_VOICES.join(", ")})`);
+                continue;
+              }
+              if (voice === DEFAULT_NARRATION_VOICE) {
+                E(`${vAt}: the default voice's file lives in the item's own \`audio_url\`/\`duration_sec\` (what installed builds play), never under \`voices\``);
+                continue;
+              }
+              if (!isPlainObject(v)) { E(`${vAt} is not an object`); continue; }
+              for (const p of narrationAudioProblems(v.audio_url, { voice })) E(`${vAt} ${p}`);
+              if (!(typeof v.duration_sec === "number" && Number.isFinite(v.duration_sec) && v.duration_sec > 0)) {
+                E(`${vAt} has a \`duration_sec\` of ${JSON.stringify(v.duration_sec)} — a rendered voice needs its measured length`);
+              } else if (hasScript) {
+                const problem = renderedDurationProblem(v.duration_sec, item.script);
+                if (problem) E(`${vAt} has ${problem}`);
+              }
+            }
+          }
         }
         if (item.duration_sec === undefined && !hasScript) {
           E(
@@ -1135,6 +1308,20 @@ export function checkForays(files) {
           if (/[?&](token|auth|api_?key|secret|password|session)=/i.test(url)) {
             E(`${where} asset looks tokened (secret leak)`);
           }
+          /* The file the player will actually load is a RENDERED one (§3.4):
+           * on the narration host, under a content key, in the default voice —
+           * and timed by what was measured from it. Without a measured
+           * duration the clock estimates the line from its script while the
+           * listener hears the file, and every seek and resume past it drifts. */
+          for (const p of narrationAudioProblems(url, { voice: DEFAULT_NARRATION_VOICE })) E(`${where} ${p}`);
+          if (item.duration_sec === undefined) {
+            E(`${where} plays a rendered file but has no \`duration_sec\` — stamp the length measured from the file, with \`duration_source: "measured"\``);
+          } else if (item.duration_source !== DURATION_MEASURED) {
+            E(
+              `${where} plays a rendered file, so its \`duration_sec\` is a measurement and must say so: ` +
+                `\`duration_source\` is ${JSON.stringify(item.duration_source)}, expected ${JSON.stringify(DURATION_MEASURED)}`
+            );
+          }
         }
         narrations.push({ at, id: item.id ?? null, sec: dur.sec, source: dur.source });
         timeline.push({ kind: NARRATION, duration: dur.sec });
@@ -1328,10 +1515,21 @@ export function checkForays(files) {
      * different length and this is what notices. It is compared against the
      * LISTENER'S clock, so a Foray that gains a bridge has to restate it — the
      * alternative is a `runtime_sec` that no surface can render honestly. */
-    if (typeof foray.runtime_sec === "number" && Math.abs(foray.runtime_sec - runtime) > 0.5) {
+    /* Once any narration length is MEASURED, the runtime must be RESTATED to
+     * match it, not merely be near it (§3.4: "runtime_sec must be restated in
+     * the same PR as the durations"). A line stamped without its restatement
+     * moves the clock by its measured-minus-estimated delta — often well under
+     * the general 0.5 s drift detector, and cumulative across lines. */
+    const measuredNarration = narrations.some((n) => n.source === DURATION_MEASURED);
+    const runtimeTolerance = measuredNarration ? RUNTIME_RESTATED_TOLERANCE_SEC : 0.5;
+    if (typeof foray.runtime_sec === "number" && Math.abs(foray.runtime_sec - runtime) > runtimeTolerance) {
       E(
         `\`runtime_sec\` says ${foray.runtime_sec.toFixed(2)} but the items sum to ${runtime.toFixed(2)}` +
-          (narrationRuntime > 0 ? ` (${tapeRuntime.toFixed(2)} of tape + ${narrationRuntime.toFixed(2)} of narration)` : "")
+          (narrationRuntime > 0 ? ` (${tapeRuntime.toFixed(2)} of tape + ${narrationRuntime.toFixed(2)} of narration)` : "") +
+          (measuredNarration
+            ? ` — this Foray carries measured narration, so \`runtime_sec\` is restated to within ${RUNTIME_RESTATED_TOLERANCE_SEC} s ` +
+              `in the same change that stamps the durations (tools/narration/stamp-narration.mjs does both)`
+            : "")
       );
     }
 

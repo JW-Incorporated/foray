@@ -64,9 +64,18 @@ const DATA_ROOT = process.env.FORAY_DATA_ROOT ? path.resolve(process.env.FORAY_D
    never ambiguous. Nothing is invented: the frozen set is a subset of what was
    committed. */
 const FROZEN_ROOT = path.join(HERE, "fixtures", "frozen");
+/* A THIRD carrier set since the Spark assessment's Phase 1 (2026-09-28): the
+   RENDERED fixture (`tools/foray/fixtures/rendered/`) — one real draft copied
+   verbatim from `data/` and stamped by `tools/narration/stamp-narration.mjs`
+   from a REAL render manifest (the Phase 1 smoke render). It is the committed
+   carrier of rendered narration — `audio_url`, `duration_source: "measured"`,
+   `voices`, `render` — ahead of the first data PR that stamps a live Foray
+   (G-21c fixture-before-emit; assessment §3.4). Named `rendered:<id>`. */
+const RENDERED_ROOT = path.join(HERE, "fixtures", "rendered");
 const sets = [
   { tag: "", files: loadFiles(DATA_ROOT) },
   { tag: "frozen:", files: loadFiles(FROZEN_ROOT) },
+  { tag: "rendered:", files: loadFiles(RENDERED_ROOT) },
 ].map(({ tag, files }) => ({
   tag,
   forays: files.forays.forays,
@@ -140,23 +149,15 @@ const KNOWN_UNCOVERED = [
   },
   {
     field: "narration.duration_source",
-    value: "measured",
-    why: "tools/narrate/ has not stamped `duration_sec` on any committed narration item yet.",
-  },
-  {
-    field: "narration.duration_source",
     value: "fallback",
     why: "a narration item with neither script nor duration — the admin-authored 'unvoiced' state the checker warns on and the player drops; none is committed.",
   },
   {
     field: "narration.voice",
-    value: "audio_url",
-    why: "every committed narration item is script-only (on-device TTS); no rendered audio has been attached.",
-  },
-  {
-    field: "narration.voice",
     value: "asset",
-    why: "as above — `asset` is the second field the player reads for rendered audio.",
+    why:
+      "every rendered narration file is stamped as `audio_url` (tools/narration/stamp-narration.mjs, since the Spark " +
+      "assessment's Phase 1); `asset` is the legacy second field the player still reads, and nothing writes it.",
   },
   /* F-103 (2026-09-12): a narrated beat ships the sources it rests on. The
      provenance used to die at §4.8 (`stitchAct.ts` copied `mode` and `script`
@@ -220,7 +221,7 @@ const KNOWN_UNCOVERED = [
   },
 ];
 /** Raise this only with a written reason in the same PR. Lowering it is free. */
-const KNOWN_UNCOVERED_CEILING = 13; // 12 -> 13: segment.transcript_source=apple-podcasts (2026-09-25), accepted ahead of the first Apple-sourced body foray-db publishes — see its entry above // 6 (jingle carrier landed with #632, 2026-09-11) + 1 narration.mode=intro (Q-02, 2026-09-12) + 3 segment.boundary values (Q-01, 2026-09-12) + 2 narration.cite_kind values (F-103, 2026-09-12), all until the next generation run lands their carriers
+const KNOWN_UNCOVERED_CEILING = 11; // 13 -> 11: narration.voice=audio_url and narration.duration_source=measured are carried by the rendered fixture (tools/foray/fixtures/rendered/, Spark assessment Phase 1, 2026-09-28) // 12 -> 13: segment.transcript_source=apple-podcasts (2026-09-25), accepted ahead of the first Apple-sourced body foray-db publishes — see its entry above // 6 (jingle carrier landed with #632, 2026-09-11) + 1 narration.mode=intro (Q-02, 2026-09-12) + 3 segment.boundary values (Q-01, 2026-09-12) + 2 narration.cite_kind values (F-103, 2026-09-12), all until the next generation run lands their carriers
 /* RAISED 10 -> 12 by F-103, and the reason it is a raise rather than a fixture
    is the one case this list exists for. Both new shapes are written by the
    GENERATOR and by nothing else, and the four committed Forays were generated
