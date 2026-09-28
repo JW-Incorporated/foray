@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "notes": "Copied verbatim from data/*.json on 2026-09-28 (main @ c6396c52), then stamped by tools/narration/stamp-narration.mjs (PR #864) from the REAL Phase 1 smoke render (render-narration run 36437228863: two lines, Heart and Echo). See tools/foray/fixtures/README.md, \"The rendered fixture\". Exactly the pool rows, episodes and topics the one Foray needs. Never edited editorially.",
+  "nodes": [
+    {
+      "id": "engineering",
+      "parent": null,
+      "label": "Engineering",
+      "apple_anchor": "Science",
+      "weight": 0.9,
+      "confidence": 0.9,
+      "last_evidence_at": "2026-07-07"
+    },
+    {
+      "id": "engineering/ai-robotics",
+      "parent": "engineering",
+      "label": "Ai Robotics",
+      "terms": [
+        "ai",
+        "artificial intelligence",
+        "machine learning",
+        "ml",
+        "mlops",
+        "deep learning",
+        "neural network",
+        "neural networks",
+        "llm",
+        "llms",
+        "large language model",
+        "large language models",
+        "robotics",
+        "robot",
+        "robots"
+      ],
+      "apple_anchor": "Technology",
+      "weight": 0.5,
+      "confidence": 0.3,
+      "last_evidence_at": "2026-07-09"
+    }
+  ]
+}

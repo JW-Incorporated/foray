@@ -1,8 +1,8 @@
 # The committed Foray fixtures
 
-Two checkout-shaped fixtures live here: `boundary/`, built to sit on the #182
-rule boundaries, and `frozen/`, verbatim copies of real Forays (the second
-half of this file).
+Three checkout-shaped fixtures live here: `boundary/`, built to sit on the #182
+rule boundaries, `frozen/`, verbatim copies of real Forays, and `rendered/`, one
+real draft stamped with centrally rendered narration (the last section).
 
 ## The boundary fixture
 
@@ -160,4 +160,42 @@ gate's `REAL_DATA_SUITES`.
 ```
 node tools/foray/check-forays.mjs --root tools/foray/fixtures/frozen
 node tools/foray/measure-cadence.mjs            # reads the frozen copy
+```
+
+---
+
+## The rendered fixture
+
+`rendered/data/*.json` is the committed carrier of **centrally rendered
+narration** (docs/plans/spark-central-narration-assessment.md, rulings D1–D11,
+2026-09-28). G-21c says a shape reaches a committed fixture, and every consumer
+in CI, before a run emits it; this is that fixture for `audio_url`,
+`duration_source: "measured"`, `voices` and `render`, ahead of the first data PR
+that stamps a live Foray.
+
+Nothing in it was hand-written:
+
+1. `beyond-the-algorithm-engineering-production-ai-s-e6533b` was copied verbatim
+   from `data/forays.json` on 2026-09-28 (main @ c6396c52), with exactly the pool
+   rows, episodes and taxonomy nodes it needs;
+2. it was then stamped by `tools/narration/stamp-narration.mjs` (PR #864) from
+   the **real** Phase 1 smoke render (render-narration run 36437228863: two lines,
+   Heart and Echo). The keys, the measured durations and the restated
+   `runtime_sec` are that tool's output, and a second run of it changed no byte.
+
+It stays a **draft**: Phase 1 stamps drafts only, and the checker refuses
+rendered audio on a published Foray until Phase 2.
+
+### Rules
+
+- **Never edit it editorially.** Re-stamp it with the stamp tool from a real
+  manifest if a rule needs a shape it lacks.
+- It must pass the real checker with zero errors, contain exactly what its Foray
+  plays, and read as files in the player — `tools/foray/rendered-fixture.test.mjs`
+  pins all three.
+- `tools/foray/fixture-coverage.test.mjs` counts it as a carrier (`rendered:<id>`),
+  and `check-forays.test.mjs` mutates it to prove each rendered-narration rule.
+
+```
+node tools/foray/check-forays.mjs --root tools/foray/fixtures/rendered
 ```

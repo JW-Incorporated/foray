@@ -8,6 +8,7 @@ Issue #182 / #134. `data/segments.json` is a **pool**; `data/forays.json` is a
 | `check-forays.mjs` | Structural integrity + the tier-A ordering rules (D1–D5, M3, M4) and, because `role` is recorded here, the per-role bounds L2/L3/L4 | no |
 | `check-forays.test.mjs` | Runs the checker over the committed data — **this is the CI gate** — and breaks each rule on purpose to prove it fires | no |
 | `fixture-coverage.test.mjs` | G-21c fixture-before-emit: every shape in the checker's `ACCEPTED_SHAPES` is carried by a committed Foray in `data/`, and the checker's source holds no vocabulary literal the enumeration omits; `KNOWN_UNCOVERED` lists today's gaps and can only shrink | no |
+| `rendered-fixture.test.mjs` | Holds `fixtures/rendered/` (one real draft stamped with centrally rendered narration) to what it claims, and proves the player reads its stamped lines as files | no |
 | `verify-source-audio.mjs` | Re-verifies every `audio_url` with a 2-byte ranged GET | **yes — manual only** |
 
 Dependency-free ESM, like the rest of `tools/`. No install step.
@@ -45,6 +46,27 @@ a second thing that can be wrong. Narration bridges enter the same list as
 `{ "type": "narration", "id": "...", "script": "..." }` (#134's shape); none are
 authored yet, and the checker accepts and skips them so a Foray that grows one
 does not have to change this directory.
+
+**Rendered narration** (Spark assessment, rulings D1–D11, 2026-09-28). A line
+rendered centrally is stamped by `tools/narration/stamp-narration.mjs` as:
+
+```jsonc
+{ "type": "narration", "id": "...", "script": "...",
+  "audio_url": "https://audio.jwlabs.ai/n/<profile>/af_heart/<sha256>.m4a",
+  "duration_sec": 6.869, "duration_source": "measured",
+  "voices": { "am_echo": { "audio_url": "https://audio.jwlabs.ai/n/<profile>/am_echo/<sha256>.m4a", "duration_sec": 6.784 } },
+  "render": { "profile": "...", "script_sha": "...", "lexicon_sha": "..." } }
+```
+
+`check-forays.mjs` holds the Phase 1 rules (assessment §3.4): the URL is under
+`NARRATION_PUBLIC_BASE` at a content key in the voice it stands for, with no
+query; a file means a measured `duration_sec` labelled `"measured"`, and the
+line keeps its `script` (the player's fallback speaks it); a measured
+length must fit its script (0.5–2.0× the 17 chars/s estimate, plus 2 s);
+`runtime_sec` is restated to within 0.05 s once any length is measured; and
+**rendered audio on a PUBLISHED Foray is an error** until the Phase 2 PR flips
+`RENDERED_NARRATION_ON_PUBLISHED` (the player's fallback must ship first). The
+`render.*` rules follow in Phase 2.
 
 **Nothing here duplicates `data/segments.json`.** A segment is referenced by id,
 so a corrected segment fixes every Foray using it. Three fields look like

@@ -64,6 +64,16 @@ import {
   TTS_ENGINES,
   LEXICON_PATH,
   NARRATION_VOICE_FIELDS,
+  NARRATION_PUBLIC_BASE,
+  NARRATION_VOICES,
+  DEFAULT_NARRATION_VOICE,
+  RENDERED_DURATION_RATIO,
+  RENDERED_DURATION_ALLOWANCE_SEC,
+  RUNTIME_RESTATED_TOLERANCE_SEC,
+  RENDERED_NARRATION_ON_PUBLISHED,
+  narrationAudioProblems,
+  renderedDurationProblem,
+  carriesRenderedNarration,
 } from "./check-forays.mjs";
 
 const { BANNED, INTERNAL_VOCABULARY, wordCount, MAX_WHY_LINE_WORDS } = copyRules;
@@ -1960,18 +1970,36 @@ test("two Forays may not share an id", () => {
     "unchanged" and mean it. Read from the report rather than restated. */
 const FIXTURE_RUNTIME = checkForays(fixture).report.forays.find((x) => x.id === "boundary-1").runtime_sec;
 
+/** A rendered narration file's URL as `tools/narration/stamp-narration.mjs`
+    writes it: the public base (D6), then `n/<profile>/<voice>/<sha256>.m4a`. */
+const renderedUrl = (voice = DEFAULT_NARRATION_VOICE, hex = "a") =>
+  `${NARRATION_PUBLIC_BASE}/n/kokoro-fp32-aac64-v1/${voice}/${hex.repeat(64).slice(0, 64)}.m4a`;
+
 /** A well-formed bridge: an id, a length something can read, and an asset — with
     no asset the player drops it, so the checker excludes it from the clock too
     (see "an unvoiced bridge" below). 40 s is a Patch, comfortably inside
-    narration-craft.md §0's 20-45 s band. */
-const bridge = (extra = {}) => ({
-  type: "narration", id: "nar-1", audio_url: "https://cdn.example/nar-1.mp3",
-  duration_sec: 40, ...extra,
-});
+    narration-craft.md §0's 20-45 s band. The asset is a RENDERED file, stamped
+    the way the Spark assessment's Phase 1 stamps one (§3.4): on the narration
+    host, with its measured length labelled as measured — and with the script
+    it was rendered from (§3.4: `script` stays required on a rendered line;
+    it is what the player speaks if the file fails). The default script is
+    sized to the bridge's duration at the 17 chars/s planning rate, so it sits
+    in the middle of the duration-vs-script sanity band whatever length a test
+    gives the bridge (capped at a 600 s estimate). */
+const bridgeScript = (sec) => "x".repeat(Math.round(Math.min(sec, 600) * 17));
+const bridge = (extra = {}) => {
+  const sec = typeof extra.duration_sec === "number" && Number.isFinite(extra.duration_sec) && extra.duration_sec > 0 ? extra.duration_sec : 40;
+  return {
+    type: "narration", id: "nar-1", script: bridgeScript(sec), audio_url: renderedUrl(),
+    duration_sec: 40, duration_source: "measured", ...extra,
+  };
+};
 
-/** A bridge timed by its script rather than by a stamped duration. */
+/** A bridge timed by its script rather than by a stamped duration — which,
+    since central rendering, means a line with no file yet: a rendered file
+    without its measured length is an error (§3.4). */
 const scripted = (chars, extra = {}) =>
-  bridge({ script: "x".repeat(chars), duration_sec: undefined, ...extra });
+  bridge({ script: "x".repeat(chars), duration_sec: undefined, duration_source: undefined, audio_url: undefined, ...extra });
 
 /** Insert bridges into a fixture clone and restate its runtime, because
     `runtime_sec` is the LISTENER's clock and a bridge moves it. Returns the
@@ -2269,9 +2297,15 @@ test("an over-long bridge is dropped from the clock, not left to distort every o
      drift and a D1 failure that is an artefact of the first mistake. */
   const f = fx();
   boundary(f).items.splice(1, 0, bridge({ duration_sec: 1e6 }));
+  /* Two errors, both about THIS line and both real: the Carry hard max, and
+     the rendered-duration sanity band (1e6 s cannot belong to any script the
+     bridge could carry: the milliseconds-as-seconds case, §3.4). Neither is
+     an artefact of the other; what must not appear is a runtime drift or a D1
+     failure caused by the line. */
   const errors = errorsFor(f);
-  assert.equal(errors.length, 1, errors.join("\n"));
-  assert.match(errors[0], /over the 180 s Carry hard max/);
+  assert.equal(errors.length, 2, errors.join("\n"));
+  assert.match(errors.find((e) => /Carry/.test(e)) ?? "", /over the 180 s Carry hard max/);
+  assert.equal(errors.filter((e) => /outside \[/.test(e)).length, 1, errors.join("\n"));
   assert.equal(checkForays(f).report.forays[0].runtime_sec, FIXTURE_RUNTIME);
 });
 
@@ -3187,4 +3221,274 @@ test("F-103: an admin-authored Foray may carry citations too — the rule is abo
     cites: [{ kind: "print", publication: "Somewhere", url: "not-a-url" }],
   });
   assert.match(errorsFor(f).join("\n"), /must be an http\(s\) address/);
+});
+
+/* ============================================================================
+   CENTRALLY RENDERED NARRATION — the Phase 1 rules
+   (docs/plans/spark-central-narration-assessment.md §3.4 and §5's Phase 1 fast
+   path, step 3; rulings D1-D11 accepted 2026-09-28)
+   ========================================================================= */
+
+/* Proven on the RENDERED fixture (`tools/foray/fixtures/rendered/`): one real
+   draft, stamped by `tools/narration/stamp-narration.mjs` from a real render
+   manifest. So the base case of every mutation below is the exact shape the
+   render card writes, not a hand-drawn approximation of it. Read-only; every
+   mutation starts from `rx()`. */
+const RENDERED_ROOT = path.join(HERE, "fixtures", "rendered");
+const renderedFixture = loadFiles(RENDERED_ROOT);
+const rx = () => structuredClone(renderedFixture);
+const renderedForay = (f) => f.forays.forays[0];
+/** The fixture's stamped lines — narration items carrying a rendered file. */
+const stampedLines = (f) => renderedForay(f).items.filter((i) => i.type === "narration" && typeof i.audio_url === "string");
+const firstStamped = (f) => {
+  const line = stampedLines(f)[0];
+  assert.ok(line, "the rendered fixture carries no stamped narration line");
+  return line;
+};
+const rendErrors = (f, pattern) => checkForays(f).errors.filter((e) => pattern.test(e));
+
+test("rendered narration: the shape stamp-narration.mjs writes passes clean (the control)", () => {
+  /* Every proof below is "this mutation of a passing Foray fails". Without this
+     control they would be demonstrations that broken data is broken. */
+  const f = rx();
+  assert.ok(stampedLines(f).length >= 1);
+  assert.deepEqual(checkForays(f).errors, []);
+});
+
+test("rendered narration: audio_url must sit under the narration bucket's public base, at a content key", () => {
+  /* D6: `foray-narration` at audio.jwlabs.ai, and nowhere else — not the
+     private transcript bucket, not a CDN someone had to hand, not a
+     cache-busted or tokened copy. MUTATION: drop the `narrationAudioProblems`
+     call from the narration block -> every case below goes green. */
+  const good = firstStamped(rx()).audio_url;
+  const key = good.slice(NARRATION_PUBLIC_BASE.length);
+  const cases = [
+    [`https://cdn.example${key}`, /not under the narration bucket's public base/],
+    [`https://foray-transcriptions.r2.dev${key}`, /not under the narration bucket's public base/],
+    [`https://audio.jwlabs.ai:8443${key}`, /not under the narration bucket's public base/],
+    [`https://AUDIO.jwlabs.ai${key}`, /not under the narration bucket's public base/],
+    [`https://user:pw@audio.jwlabs.ai${key}`, /carries credentials/],
+    [`${good}?v=2`, /carries a query or fragment/],
+    [`${good}#t=3`, /carries a query or fragment/],
+    [`${NARRATION_PUBLIC_BASE}/narration/line-1.m4a`, /is not a rendered object key/],
+    [good.replace(/\.m4a$/, ".mp3"), /is not a rendered object key/],
+    [good.replace(/\/[0-9a-f]{64}\.m4a$/, "/deadbeef.m4a"), /is not a rendered object key/],
+    [good.replace(`/${DEFAULT_NARRATION_VOICE}/`, "/am_echo/"), /is am_echo's file but stands for af_heart/],
+  ];
+  for (const [url, expected] of cases) {
+    const f = rx();
+    firstStamped(f).audio_url = url;
+    assert.equal(rendErrors(f, expected).length, 1, `${url} should fail with ${expected}; got:\n${checkForays(f).errors.join("\n")}`);
+  }
+});
+
+test("rendered narration: the URL rules follow the file the player loads — `asset` included", () => {
+  /* The player plays `audio_url ?? asset`. MUTATION: check `item.audio_url`
+     instead of the resolved `url` -> a stray `asset` escapes the host rule. */
+  const f = rx();
+  const line = firstStamped(f);
+  line.asset = "https://cdn.example/n/kokoro-fp32-aac64-v1/af_heart/" + "b".repeat(64) + ".m4a";
+  delete line.audio_url;
+  assert.equal(rendErrors(f, /not under the narration bucket's public base/).length, 1);
+});
+
+test("rendered narration: a file on the line means a MEASURED duration, labelled as one", () => {
+  /* §3.4: `duration_sec` finite and > 0 with `duration_source: "measured"`.
+     Without it the clock estimates the line from its script while the listener
+     hears the file, and every seek and resume after it drifts.
+     MUTATIONS: drop either branch of the rendered-file duration check. */
+  const noDuration = rx();
+  delete firstStamped(noDuration).duration_sec;
+  delete firstStamped(noDuration).duration_source;
+  assert.equal(rendErrors(noDuration, /plays a rendered file but has no `duration_sec`/).length, 1);
+
+  const unlabelled = rx();
+  delete firstStamped(unlabelled).duration_source;
+  assert.equal(rendErrors(unlabelled, /must say so: `duration_source` is undefined, expected "measured"/).length, 1);
+
+  const estimated = rx();
+  firstStamped(estimated).duration_source = "estimated";
+  assert.equal(rendErrors(estimated, /must say so: `duration_source` is "estimated"/).length, 1);
+});
+
+test("rendered narration: a rendered line keeps its script, in any voice and via `asset` too", () => {
+  /* §3.4: "`script` still required". The script is what the player's Phase 2
+     fallback speaks when the file fails to load (§3.3); without it one failed
+     fetch is silence or a stop. Before this rule a stamped line with its
+     script deleted passed the checker clean.
+     MUTATION: drop the `!hasScript && carriesRenderedNarration(item)` check ->
+     every case below goes green. */
+  const rule = /carries rendered narration audio but no `script`/;
+  const cases = [
+    (l) => { delete l.script; },
+    (l) => { l.script = "   "; },
+    (l) => { l.asset = l.audio_url; delete l.audio_url; delete l.script; },
+    (l) => { delete l.audio_url; delete l.duration_sec; delete l.duration_source; delete l.script; },
+  ];
+  for (const mutate of cases) {
+    const f = rx();
+    mutate(firstStamped(f));
+    assert.equal(rendErrors(f, rule).length, 1, `${mutate}\n${checkForays(f).errors.join("\n")}`);
+  }
+  // A script-only line (not yet rendered) is untouched by the rule.
+  assert.deepEqual(rendErrors(rx(), rule), []);
+});
+
+test("rendered narration: duration_source is the resolver's enum, and labels a duration_sec", () => {
+  /* MUTATIONS: drop the enum check -> "decoded" passes; drop the
+     orphan-label check -> a script-only line can claim a measurement. */
+  const offEnum = rx();
+  firstStamped(offEnum).duration_source = "decoded";
+  assert.equal(rendErrors(offEnum, /`duration_source` "decoded", not one of "measured", "estimated", "fallback"/).length, 1);
+
+  const orphan = rx();
+  const scriptOnly = renderedForay(orphan).items.find((i) => i.type === "narration" && !i.audio_url);
+  scriptOnly.duration_source = "measured";
+  assert.equal(rendErrors(orphan, /declares `duration_source` "measured" but has no `duration_sec`/).length, 1);
+});
+
+test("rendered narration: a measured duration must be able to belong to its script", () => {
+  /* The wrong file on the wrong line, or milliseconds read as seconds.
+     The band is [0.5 × estimate, 2.0 × estimate + 2 s] at the player's own
+     17 chars/s estimate. MUTATION: drop the `renderedDurationProblem` call ->
+     the millisecond case passes. */
+  const ms = rx();
+  firstStamped(ms).duration_sec = firstStamped(ms).duration_sec * 1000;
+  assert.equal(rendErrors(ms, /outside \[/).length, 1, checkForays(ms).errors.join("\n"));
+
+  const tooShort = rx();
+  firstStamped(tooShort).duration_sec = 0.4;
+  assert.equal(rendErrors(tooShort, /outside \[/).length, 1);
+
+  /* The boundaries themselves, both sides. */
+  const script = firstStamped(rx()).script;
+  const est = script.trim().length / 17;
+  const [lo, hi] = RENDERED_DURATION_RATIO;
+  const at = (sec) => renderedDurationProblem(sec, script);
+  assert.equal(at(lo * est + 0.01), null);
+  assert.match(at(lo * est - 0.01), /outside/);
+  assert.equal(at(hi * est + RENDERED_DURATION_ALLOWANCE_SEC - 0.01), null);
+  assert.match(at(hi * est + RENDERED_DURATION_ALLOWANCE_SEC + 0.01), /outside/);
+  // No script, nothing to measure against — the Carry ceiling bounds it instead.
+  assert.equal(renderedDurationProblem(120, undefined), null);
+});
+
+test("rendered narration: every real render in the fixture sits inside the sanity band with room", () => {
+  /* A band that real renders brush against would be a routine false positive
+     on the first data PR. Measured on the fixture: speech ~1.0-1.2× the
+     estimate, plus ~1 s of edge padding. */
+  for (const line of stampedLines(rx())) {
+    const est = line.script.trim().length / 17;
+    for (const sec of [line.duration_sec, ...Object.values(line.voices ?? {}).map((v) => v.duration_sec)]) {
+      assert.ok(sec > RENDERED_DURATION_RATIO[0] * est * 1.5, `${line.id}: ${sec} s is near the floor for ${est.toFixed(2)} s`);
+      assert.ok(sec < RENDERED_DURATION_RATIO[1] * est, `${line.id}: ${sec} s is near the ceiling for ${est.toFixed(2)} s`);
+    }
+  }
+});
+
+test("rendered narration: the other voices (D4) get the same URL and duration rules under `voices`", () => {
+  /* MUTATION: drop the `voices` block -> each case below passes, and a public
+     URL the picker update will play goes unchecked. */
+  const cases = [
+    [(l) => { l.voices = {}; }, /`voices` \{\} — it must be a non-empty object/],
+    [(l) => { l.voices = "am_echo"; }, /it must be a non-empty object/],
+    [(l) => { l.voices.bf_emma = l.voices.am_echo; }, /voices\.bf_emma is not a rendered voice/],
+    [(l) => { l.voices.af_heart = { audio_url: l.audio_url, duration_sec: l.duration_sec }; }, /voices\.af_heart: the default voice's file lives in the item's own/],
+    [(l) => { l.voices.am_echo = "x"; }, /voices\.am_echo is not an object/],
+    [(l) => { l.voices.am_echo.audio_url = l.audio_url; }, /voices\.am_echo audio_url is af_heart's file but stands for am_echo/],
+    [(l) => { l.voices.am_echo.audio_url = "https://cdn.example/echo.m4a"; }, /voices\.am_echo audio_url .* not under the narration bucket/],
+    [(l) => { delete l.voices.am_echo.duration_sec; }, /voices\.am_echo has a `duration_sec` of undefined/],
+    [(l) => { l.voices.am_echo.duration_sec *= 1000; }, /voices\.am_echo has a measured `duration_sec` .* outside/],
+  ];
+  for (const [mutate, expected] of cases) {
+    const f = rx();
+    mutate(firstStamped(f));
+    assert.equal(rendErrors(f, expected).length, 1, `${expected} expected; got:\n${checkForays(f).errors.join("\n")}`);
+  }
+  assert.deepEqual([...NARRATION_VOICES], ["af_heart", "am_echo"], "D4: Heart and Echo, Heart the default");
+});
+
+test("rendered narration: runtime_sec is RESTATED when durations are stamped, not merely near", () => {
+  /* §3.4: "runtime_sec must be restated in the same PR as the durations".
+     One line re-stamped 0.2 s longer without its restatement is well inside
+     the general 0.5 s drift detector — and 40 of them are not.
+     MUTATION: use 0.5 s for measured narration too -> the first case passes. */
+  const drifted = rx();
+  firstStamped(drifted).duration_sec = +(firstStamped(drifted).duration_sec + 0.2).toFixed(3);
+  assert.equal(rendErrors(drifted, /restated to within 0\.05 s/).length, 1, checkForays(drifted).errors.join("\n"));
+
+  const restated = rx();
+  firstStamped(restated).duration_sec = +(firstStamped(restated).duration_sec + 0.2).toFixed(3);
+  renderedForay(restated).runtime_sec = +(renderedForay(restated).runtime_sec + 0.2).toFixed(3);
+  assert.deepEqual(checkForays(restated).errors, []);
+
+  /* Scoped to MEASURED narration: a Foray timed only by estimates keeps the
+     0.5 s detector it always had. */
+  const unmeasured = fx();
+  boundary(unmeasured).runtime_sec = +(boundary(unmeasured).runtime_sec + 0.2).toFixed(2);
+  assert.deepEqual(errorsFor(unmeasured), []);
+  assert.equal(RUNTIME_RESTATED_TOLERANCE_SEC, 0.05);
+});
+
+test("NO AUDIO ON PUBLISHED FORAYS YET: rendered narration on a published Foray is an error until Phase 2", () => {
+  /* Assessment §1 risk 1: a narration file that fails to load stops the player
+     on a Foray's first line until the speak-the-script fallback ships. `data/`
+     auto-merges on green, so this error is the only thing between a render PR
+     and listeners (§3.4 "Make the Phase 2 gate machine-enforced").
+     MUTATION: delete the guard, or make it a warning -> the first assertion
+     goes green. */
+  const published = rx();
+  renderedForay(published).status = "published";
+  const guard = /carries rendered narration audio on a PUBLISHED Foray/;
+  assert.equal(rendErrors(published, guard).length, stampedLines(published).length);
+
+  // Any voice counts — an Echo-only line is still a file the app would load.
+  const echoOnly = rx();
+  renderedForay(echoOnly).status = "published";
+  for (const line of stampedLines(echoOnly)) {
+    delete line.audio_url;
+    delete line.duration_sec;
+    delete line.duration_source;
+  }
+  assert.ok(rendErrors(echoOnly, guard).length >= 1);
+
+  // Drafts are what Phase 1 stamps; a script-only published Foray is untouched.
+  assert.deepEqual(rendErrors(rx(), guard), []);
+  const scriptOnly = rx();
+  renderedForay(scriptOnly).status = "published";
+  for (const line of renderedForay(scriptOnly).items) {
+    for (const k of ["audio_url", "duration_sec", "duration_source", "voices", "render"]) delete line[k];
+  }
+  assert.deepEqual(rendErrors(scriptOnly, guard), []);
+
+  // The Phase 2 switch, exercised: with the fallback shipped, the same data passes the guard.
+  assert.deepEqual(checkForays(published, { renderedNarrationOnPublished: true }).errors.filter((e) => guard.test(e)), []);
+});
+
+test("NO AUDIO ON PUBLISHED FORAYS YET: the switch is OFF, and the CLI exits 1 on a published rendered Foray", () => {
+  /* Flipping RENDERED_NARRATION_ON_PUBLISHED is the Phase 2 PR's job, after
+     the build carrying the fallback is on phones — this pin makes that flip a
+     deliberate, reviewed edit to this test as well. */
+  assert.equal(RENDERED_NARRATION_ON_PUBLISHED, false);
+  const f = rx();
+  renderedForay(f).status = "published";
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "foray-rendered-"));
+  fs.mkdirSync(path.join(root, "data"));
+  for (const [name, value] of [["forays.json", f.forays], ["segments.json", f.segments], ["segment-sources.json", f.sources], ["taxonomy.json", f.taxonomy]]) {
+    fs.writeFileSync(path.join(root, "data", name), JSON.stringify(value, null, 2) + "\n");
+  }
+  const { status, stderr } = runCli(root);
+  assert.equal(status, 1);
+  assert.match(stderr, /carries rendered narration audio on a PUBLISHED Foray/);
+  assert.equal(runCli(RENDERED_ROOT).status, 0, "and 0 on the draft it was copied from");
+});
+
+test("rendered narration: the helpers agree with the player about what carries a file", () => {
+  assert.equal(carriesRenderedNarration({ script: "x" }), false);
+  assert.equal(carriesRenderedNarration({ audio_url: "", asset: "  " }), false);
+  assert.equal(carriesRenderedNarration({ asset: renderedUrl() }), true);
+  assert.equal(carriesRenderedNarration({ voices: { am_echo: { audio_url: renderedUrl("am_echo") } } }), true);
+  assert.deepEqual(narrationAudioProblems(renderedUrl()), []);
+  assert.deepEqual(narrationAudioProblems(renderedUrl("am_echo"), { voice: "am_echo" }), []);
+  assert.match(narrationAudioProblems("not a url").join(), /is not a URL/);
 });

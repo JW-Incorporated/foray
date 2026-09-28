@@ -84,6 +84,13 @@ export const REAL_DATA_SUITES: readonly string[] = [
      through: a checker change a publish lands with cannot silently make the
      fixture every player suite reads invalid. */
   "tools/foray/frozen-fixture.test.mjs",
+  /* Added 2026-09-28 with the suite itself (Spark assessment Phase 1). It
+     calls `loadFiles(RENDERED_ROOT)` — the rendered fixture, not `data/` — so
+     it is the same one-entry false positive as frozen-fixture above, listed
+     for the same reason: it checks the committed carrier of rendered
+     narration against the SAME checker a publish runs, so a checker change
+     cannot silently invalidate it. Five tests, no network. */
+  "tools/foray/rendered-fixture.test.mjs",
   /* Added 2026-09-23 with PR #741 (the frozen fixture; grilling-history-1
      retired). Its last test reads the REAL `data/forays.json` for the set of
      live Foray ids — that set is what makes a fixture-only id "retired" — and
