@@ -7,7 +7,29 @@ docs/. Completed workstreams move to their plan doc's retro section.
 
 ## Active workstreams
 
+### 2026-09-28 — the Spark direction: narration rendered centrally and streamed (D1–D11 ruled "Defaults")
+
+Owned: nothing held (docs only in this entry's PR, `docs/spark-direction-record`). The founder
+ruled *"Defaults"* on D1–D11 of `docs/plans/spark-central-narration-assessment.md` (PR #860),
+recorded in `docs/DECISIONS.md` 2026-09-28. Narration is rendered once by Kokoro (fp32) off the
+phone, as AAC `.m4a` 64 kbps mono, Heart and Echo, into the public R2 bucket `foray-narration` at
+`audio.jwlabs.ai`, and phones stream it; the phone's speech engine is only the fallback.
+**Agents: do not build on-device Kokoro.** `docs/kokoro-voices-in-app-plan.md`,
+`docs/voice/kokoro-speed-1.5x.md`, `docs/bundled-voice-plan.md` and `docs/roadmap/kokoro-voice.md`
+carry superseded banners with their card maps; `generation-architecture.md` §1.2 is amended.
+
+Order (assessment §5): Phase 0 this record → Phase 1 first listen on the three narrated **drafts**
+(render tool on the PC or in GitHub Actions; upload only from the PC, whose token is HA #120) →
+Phase 2 the "speak the script if the file fails" fallback ships in a build before any *published*
+Foray carries audio → Phase 3 the Spark → 4 slim app (D11, after the car listen) → 5 unattended
+nightly → 6 on-demand queue (D9) → 7 transcription (D10). Rules: no credential in the repo or CI;
+GitHub Actions never writes to R2; espeak-ng stays server/CI-side. HUMAN-ACTIONS #45 withdrawn;
+founder steps are #119–#126 (#119 bucket and #120 PC token block Phase 1).
+
 ### 2026-09-26 — `docs/kokoro-voices-plan`: Kokoro deck revision 3 (Heart + Echo; British later)
+
+**Superseded 2026-09-28** by the Spark direction (entry above): do not start a KV card without
+the deck's card map; HA #45 is withdrawn.
 
 Owned: nothing held (docs only). Lands `docs/kokoro-voices-in-app-plan.md`, the
 hand-off deck for bundling 4a's own voices: two American voices, Heart (default)

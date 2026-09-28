@@ -1,5 +1,32 @@
 # Bundled neural voice (Kokoro): hand-off deck, revision 3 (two American voices, operational first; reviewed)
 
+> **SUPERSEDED 2026-09-28 by central render (the Spark direction).** The founder ruled
+> *"Defaults"* on D1–D11 of `docs/plans/spark-central-narration-assessment.md` (PR #860; `docs/DECISIONS.md` 2026-09-28). Narration is now
+> rendered once by Kokoro off the phone (the PC, then the DGX Spark), stored in the public R2 bucket
+> `foray-narration` at `audio.jwlabs.ai`, and streamed like a clip. This reverses the 2026-09-26
+> *"Don't render entire Forays"* in §0. **Do not start a card from this deck without checking the map
+> below.**
+>
+> **Still applies:** Heart (`af_heart`, default) and Echo (`am_echo`) are the voices, now rendered
+> for every line (D4). The phone's speech engine (`foray-tts`) stays as the **fallback** for a line
+> whose file fails to load, so the plugin and its pronunciation lexicon stay. §10's measurements
+> stay as the record of why the phone path was abandoned. Rendering stays fp32 (never q8f16/fp16 on
+> ARM).
+>
+> **Card map (assessment §4):**
+> - **Parked:** KV-R2, KV-R3 (probe v3), KV-03a, KV-03b, KV-04, KV-05, KV-08, KV-09, KV-14.
+> - **Replaced:** KV-07 by the render step (Phase 1) and, for on-demand, a pipeline render stage;
+>   KV-13 by the model-removal step (D11, after the founder's car listen of rendered narration).
+> - **Retargeted:** KV-01 (the voice catalog and Echo's pin become render-side data in the render
+>   profile); KV-06 and KV-12 (the picker lists rendered voices; the Apple voice is an invisible
+>   fallback). KV-12's planned "HUMAN-ACTIONS #119" is not filed under that number (#119 went to the
+>   Spark items); its "listen in Heart, then Echo" check is re-filed against rendered narration when
+>   Echo reaches the picker.
+> - **Shrinks:** KV-02 keeps only the chunk rule, the `phonemize.py --json -` stdin fix and lexicon
+>   QA. No `phonemes` go into `data/forays.json`.
+> - **Done by this record:** KV-10 (the host decision is the Spark).
+> - **Becomes render work:** KV-11 (British voices) is two extra renders, no app build.
+
 **Where this lives:** revision 3 is this file, `docs/kokoro-voices-in-app-plan.md` (landed as KV-00). Revision 2 stays at `docs/roadmap/kokoro-voice.md`, marked superseded, and that file now carries the KV-11 British-voices roadmap entry.
 
 **Supersedes** revision 2 of this file (24 cards KV-01..KV-24, stamped `ecb6bfa3`). No revision-2 card has an open or merged PR (`gh pr list --search KV-` is empty), so ids are reused from KV-00. New ids in this revision: KV-R0/KV-R1 (readings), KV-03a/KV-03b (KV-03 split), KV-12 (allowlist retirement), KV-13 (probe retirement). The amendment below adds KV-R2 (it replaces KV-R1) and KV-14 (Android model delivery, LATER). The supersession map is in §7 and the review-fix map in §9. Parent deck: `docs/bundled-voice-plan.md` (K-01..K-08). Native engine: `docs/native-engine-plan.md` (NE-33 built on `engine/m2` in #837 but not merged; NE-42 seat).

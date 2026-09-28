@@ -2,6 +2,84 @@
 
 Per-topic ADRs live in `docs/adr/`. This file is the chronological record.
 
+## 2026-09-28 (the Spark direction: narration is rendered centrally and streamed; D1–D11 ruled at their defaults)
+
+Wyatt, 2026-09-28, answering the eleven decisions in
+`docs/plans/spark-central-narration-assessment.md` §1 (PR #860), verbatim:
+**"Defaults"**. Every decision below is the assessment's recommended default,
+accepted as written. The assessment has the reasoning, the change inventory
+(§3), the migration phases (§5) and the founder-only steps (§6); this entry is
+the record.
+
+What triggered the assessment, in his words (2026-09-27): *"I'm actually very
+worried about trying to run on old phones and so on, so just fetching audio is
+likely way better."*
+
+- **D1. Narration is rendered centrally, not spoken on the phone.** Kokoro
+  renders every narration line once, on the DGX Spark (or on the PC until the
+  Spark is running), and phones stream the file like a clip. This **reverses**
+  `docs/curation/generation-architecture.md` §1.2 ("narration is spoken
+  on-device"), the 2026-09-12 entry's "on-device stays", and the founder's
+  2026-09-26 *"Don't render entire Forays"* (`docs/kokoro-voices-in-app-plan.md`
+  §0). The phone's speech engine stays, as the **fallback** for a line whose
+  file will not load.
+- **D2. Render at 1.0x; the player speeds narration to the listener's rate,
+  with pitch preserved.** This amends the 2026-09-24 ruling #3 ("1x for now, but
+  maybe we change later"): rendered narration follows the listening rate, and a
+  line spoken by the fallback voice stays at 1x. The S1 ear check
+  (`docs/voice/kokoro-speed-1.5x.md`, time-stretch versus a speed=1.5 render)
+  comes first and may add speed variants.
+- **D3. How the Spark calls Claude:** now, the keyless relay answered by
+  headless Claude Code on the founder's subscription ($0 extra); later, a
+  capped Anthropic API key, when unattended daily runs or on-demand need it.
+- **D4. Voices:** render Heart (`af_heart`) and Echo (`am_echo`) for every
+  line. Heart ships first with no app change; Echo arrives with the picker
+  update.
+- **D5. Audio format:** AAC-LC in `.m4a`, 64 kbps, mono.
+- **D6. Bucket and domain:** a new **public** R2 bucket, `foray-narration`, at
+  the custom domain `audio.jwlabs.ai`. `foray-transcriptions` stays private
+  forever and never holds narration.
+- **D7. The `hold` label stays** on catalogue Forays, so the founder reviews
+  every one.
+- **D8. Hands on the Spark:** Joey does physical care and OS upkeep under a
+  runbook. The founder alone places secrets. Agents change the Spark only
+  through merged PRs plus a `spark-live` tag that the founder moves.
+- **D9. On-demand ("the Spark API") is a queue** in Supabase
+  (`generation_jobs`), founder-only first: whole Foray, then act by act. The
+  phone never calls the Spark directly.
+- **D10. Transcription moves to the Spark last**, after narration and
+  generation run cleanly there. It stays on Joey's rig until then.
+- **D11. The bundled voice models leave the app** in the first build after the
+  founder's car listen of rendered narration. The probe code comes out then
+  too, never before.
+
+**Standing rules that come with it** (from the assessment, adopted with the
+defaults):
+
+- No credential lives in the repo, CI or Vercel. The R2 **write** happens only
+  on a machine where the founder placed a token: the PC in Phase 1, the Spark
+  later. GitHub Actions never writes to R2. Rendering itself needs no secret and
+  may run in GitHub Actions.
+- The text front-end, espeak-ng (GPL-3.0) and misaki, stays server-side and
+  CI-side only; `test/release-gates.test.js`'s espeak needle keeps it out of the
+  app.
+- Clip audio is still never stored or served by 4a (§1.1, ADR-0007/0008).
+  `foray-narration` holds only 4a's own voice.
+- Rendered audio reaches *published* Forays only after the "speak the script
+  if the file fails" fallback ships in a build (assessment §1 risk 1, Phase 2).
+
+**What is superseded.** The on-device voice decks carry a banner from this
+date: `docs/kokoro-voices-in-app-plan.md`, `docs/voice/kokoro-speed-1.5x.md`,
+`docs/bundled-voice-plan.md` and `docs/roadmap/kokoro-voice.md`. Their probe
+measurements stay as the record of why. `HUMAN-ACTIONS.md` #45 (the voice
+probe) is withdrawn. The founder-only steps are `HUMAN-ACTIONS.md` #119–#126.
+
+**What would reverse it.** Rendered narration failing the founder's car listen,
+or central hosting proving unworkable (cost, legal or reliability). The phone's
+speech engine is still in the app as the fallback, so a reversal is a data
+revert, not a rebuild.
+
+
 ## 2026-09-25 (round-3 code audit: the founder's rulings on Q2-Q5)
 
 Wyatt, 2026-09-25, answering the round-3 questions (`docs/audit/round-3-code/synthesis.md`), verbatim:

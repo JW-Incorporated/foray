@@ -1,5 +1,19 @@
 # Kokoro narration fast enough for 1.5x listening
 
+> **SUPERSEDED 2026-09-28 by central render.** The founder ruled *"Defaults"* on D1–D11 of
+> `docs/plans/spark-central-narration-assessment.md` (PR #860; `docs/DECISIONS.md` 2026-09-28). Narration is rendered off the phone at **1.0x**,
+> and the player speeds it to the listener's rate with pitch preserved (D2, which amends the
+> 2026-09-24 ruling #3). The phone no longer has to synthesize faster than real time, so the
+> on-device speed problem this page solves is gone.
+>
+> **Still applies:** **S1** (the founder's ear check: Kokoro speed=1.5 versus a 1.5x time-stretch of
+> a 1.0x render) is **kept**; it decides whether speed variants are ever rendered. **S3** becomes the
+> player change "rendered narration follows the listening rate" (JS first, then the M2 engine). The
+> phone's speech engine stays as the fallback for a file that fails to load, at 1x.
+>
+> **Parked:** S2 (probe v3 on the phone), S4 (ORT quick wins), S5 (Core ML backend), S6 (render-ahead
+> worker). The measurements below stay as the record.
+
 **Status:** research synthesis, 2026-09-26. Four research lenses (ONNX tuning, Apple frameworks, architecture, prior art) measured on GitHub arm64 macOS VMs and surveyed what already ships on iPhones. Nothing here is built yet. Parent deck: `docs/kokoro-voices-in-app-plan.md` (D7, D8, D8a, D13, KV-R2).
 
 **The founder's ask:** *"I'm hoping to listen to forays on 1.5x speed, we can't but taking >1x clock time to get the narration."*

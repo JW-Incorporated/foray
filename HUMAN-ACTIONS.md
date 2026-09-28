@@ -2,7 +2,7 @@
 
 <!-- ha-format: 2 -->
 
-> **25 open.** Closed items are in `HUMAN-ACTIONS-DONE.md` — you never need it.
+> **32 open.** Closed items are in `HUMAN-ACTIONS-DONE.md` — you never need it.
 > To close one: reply `done` (or `skip <why>`) to its card in the project's human-action channel.
 > Anything else you reply is forwarded to a thread on the card.
 
@@ -18,6 +18,125 @@
    - **Keep them:** tell Claude "recover the 2026-09-14 nightly digest". It re-cuts the scan back to the 14th and opens `nightly/2026-09-14-recovery`, which is the branch name the guard looks for.
 
 **Worked if:** the next scheduled `nightly-refresh` run is green, a `nightly/<date>` PR opens the same day, and `nightly-watch` is green that evening.
+
+**Spark note (2026-09-28):** under the Spark direction (`docs/DECISIONS.md` 2026-09-28) the nightly step moves to the Spark (Phase 5). Step 2, dropping or recovering the stranded 2026-09-14 digest, must be decided before the first Spark nightly runs, even if the routine stays off until then.
+
+## #119 🔴 [BLOCKING] Create the public narration bucket `foray-narration` at `audio.jwlabs.ai` (~30 min)
+<!-- ha filed=2026-09-28 kind=default -->
+
+**Why:** You ruled "Defaults" on the Spark direction (2026-09-28, `docs/DECISIONS.md`): narration is rendered once off the phone and streamed like a clip. The files need a public home that is **not** the private transcripts bucket (D6). This is Phase 1's first step, and the first Heart-narrated Foray waits on it. Only you can change Cloudflare.
+
+**Steps:**
+1. Cloudflare dashboard, in the **same account that holds `jwlabs.ai`** → **R2** → **Create bucket**. Name it exactly `foray-narration`. Leave the location on Automatic.
+2. Open the bucket → **Settings** → **Custom Domains** → **Connect Domain** → type `audio.jwlabs.ai` → Continue → Connect. Leave the **r2.dev** public URL **off**.
+3. Same Settings page → **CORS policy** → **Add CORS policy** → paste this and save:
+   `[{"AllowedOrigins":["capacitor://localhost","https://localhost","https://jw-incorporated.github.io","https://foray-web-seven.vercel.app"],"AllowedMethods":["GET","HEAD"],"AllowedHeaders":["*"],"MaxAgeSeconds":86400}]`
+4. Go to the **jwlabs.ai** site → **Caching** → **Cache Rules** → **Create rule**. Name it `narration immutable`. When: **Hostname equals `audio.jwlabs.ai`**. Then: **Eligible for cache**, Edge TTL **"Use cache-control header if present"**, Browser TTL **"Respect origin"**. Deploy. (Our files say `immutable`, so they are cached for a year and most listens never touch R2.)
+5. Never make `foray-transcriptions` public, and never put narration in it. Never turn on **Logpush** for `audio.jwlabs.ai` (the privacy policy relies on there being no per-listener logs).
+6. Reply `done`.
+
+**Worked if:** opening `https://audio.jwlabs.ai/` in a browser shows an error page from Cloudflare/R2 (404 is fine while the bucket is empty), not "site can't be reached".
+
+## #120 🔴 [BLOCKING] Make a write key for `foray-narration` and put it in one file on your PC (~10 min)
+<!-- ha filed=2026-09-28 kind=default -->
+
+**Why:** The first narration upload runs on your PC (Phase 1), before the Spark is set up. Uploading needs a key, and keys never go in the repo, GitHub or Vercel: only a machine where you put one can write to the bucket (D8). Rendering needs no key and can run anywhere; the upload step (`tools/narration/upload-narration.mjs`) reads the file below and nothing else, and it refuses to run inside GitHub Actions.
+
+**Steps:**
+1. Cloudflare → **R2** → **Manage R2 API Tokens** (right side of the R2 page) → **Create API token**. Name: `foray-narration-pc-phase1`. Permissions: **Object Read & Write**. Under **Specify bucket(s)** choose **Apply to specific buckets only** → `foray-narration`. Create.
+2. Keep that page open. You need the **Access Key ID**, the **Secret Access Key**, and your **Account ID** (shown on the R2 overview page).
+3. On the PC, open File Explorer, type `%USERPROFILE%` in the address bar, press Enter, and make a new folder named `.foray` (so the folder is `C:\Users\wjduv\.foray`).
+4. Open Notepad and type these five lines, putting your values after the first three `=` signs (no spaces, no quotes):
+   ```
+   R2_NARRATION_ACCOUNT_ID=
+   R2_NARRATION_ACCESS_KEY_ID=
+   R2_NARRATION_SECRET_ACCESS_KEY=
+   R2_NARRATION_BUCKET=foray-narration
+   NARRATION_PUBLIC_BASE=https://audio.jwlabs.ai
+   ```
+5. **File → Save As**, open that `.foray` folder, set **Save as type** to **All files**, name it `r2-narration.env`, and save. (If Notepad names it `r2-narration.env.txt`, rename it.)
+6. Do **not** paste the key into any chat, issue or PR. Reply `done` only.
+7. Later: when the Spark takes over uploads (#121), delete this token in Cloudflare and delete the file.
+
+**Worked if:** the first narration upload Claude runs on your PC finds the file and writes to `foray-narration` without asking you for anything.
+
+## #121 🟡 [DECIDE] Set up the DGX Spark: first boot, network, and its own keys (~2 h, with Joey)
+<!-- ha filed=2026-09-28 kind=default -->
+
+**Why:** Phase 3 moves generation and rendering onto the Spark. Joey does the physical care and OS upkeep, **you alone place the secrets**, and agents change the box only through merged PRs plus a `spark-live` tag you move (D8). Not needed for the first listen: Phases 1 and 2 run on the PC.
+
+**Steps:**
+1. Decide where the Spark lives, and confirm Joey has hands on it.
+2. First boot of DGX OS: turn on **full-disk encryption** at install, then install all updates.
+3. Plug it into the router with a cable, and give it a fixed address (a **DHCP reservation** in your router's settings).
+4. Optional spend: a UPS (about $100–150).
+5. Create a non-root user for the service (for example `foray`). Install **Tailscale** and allow admin SSH with keys only. Do **not** forward any ports on your router.
+6. In Cloudflare, create three R2 tokens, each limited to one bucket: **Object Read & Write** on `foray-narration`; **Object Read** on `foray-transcriptions` (not Joey's farm token); **Object Read & Write** on a new **private** bucket `foray-ops` (create it; it holds backups).
+7. Put those tokens on the Spark in the file that the Spark runbook (`docs/ops/spark.md`, written in Phase 3) names, readable only by root. Claude will note the exact path on this card when the runbook lands. Keep a copy in your password manager.
+8. Then revoke the PC token from #120.
+
+**Worked if:** you can SSH to the Spark over Tailscale, nothing on the internet can reach it directly, and the runbook's check command reports all three tokens present.
+
+## #122 🟡 [DECIDE] Make a GitHub key for the Spark that can only open PRs (~5 min)
+<!-- ha filed=2026-09-28 kind=default -->
+
+**Why:** The Spark opens the held PRs for new Forays and narration. Its key must be able to do that and nothing more: no admin, no Actions, no secrets. Needed at Phase 3.
+
+**Steps:**
+1. GitHub → your picture → **Settings** → **Developer settings** → **Personal access tokens** → **Fine-grained tokens** → **Generate new token**.
+2. Name `foray-spark`. Expiration **90 days**. Resource owner **JW-Incorporated**. Repository access **Only select repositories** → `foray`.
+3. Repository permissions: **Contents: Read and write**, **Pull requests: Read and write**, **Issues: Read and write**. Leave everything else at **No access** (especially Administration, Actions, Secrets and Workflows).
+4. Generate. If the organization asks you to approve the token, approve it.
+5. Put it only on the Spark, in the file the Spark runbook names (as in #121). Never in the repo or a chat. Set a reminder to renew it in 90 days.
+6. Reply `done`.
+
+**Worked if:** a test PR opened from the Spark appears on the `foray` repo, and the token cannot open the repo's Settings.
+
+## #123 🟡 [DECIDE] Log Claude Code in on the Spark, and confirm your plan allows it to run unattended (~10 min)
+<!-- ha filed=2026-09-28 kind=default -->
+
+**Why:** The Spark writes Forays by asking Claude through the "relay", answered by Claude Code on your subscription at $0 extra (D3). It runs on a schedule with no one watching, so check first that your plan allows that. A capped API key comes later, for unattended daily runs or on-demand.
+
+**Steps:**
+1. Check that your Claude plan's terms and usage limits allow an automated, recurring pipeline. If they do not, say so here: the capped key then moves from "later" to "now".
+2. On the Spark, as the user the runbook names for the relay, run `claude` and sign in with your account.
+3. Later (optional spend, when you want unattended daily runs or on-demand): in the Anthropic Console, make a workspace `spark-generation` with a **hard monthly spend limit**, create a key there, and put it on the Spark in a root-only file. Not now.
+4. Reply `done`.
+
+**Worked if:** the runbook's relay check on the Spark answers one test request.
+
+## #124 🟢 [UPGRADE] Note: R2 storage will pass the 10 GB free tier at about 650–700 Forays (~1 min)
+<!-- ha filed=2026-09-28 kind=default -->
+
+**Why:** You asked to be told before R2 costs money. Each Foray adds about 14 MB of narration (Heart + Echo), and old files are never deleted, because phones may still point at them. Past 10 GB it costs about $0.015 per GB a month: roughly $0.06 a month at 1,000 Forays and about $2 a month at 10,000. Downloads stay free.
+
+**Steps:**
+1. Reply `ok` to accept, or name the cap you want instead.
+
+**Worked if:** you replied.
+
+## #125 🟡 [DECIDE] Approve the privacy-policy rewrite for streamed narration, when its PR opens (~15 min)
+<!-- ha filed=2026-09-28 kind=default -->
+
+**Why:** With narration at `audio.jwlabs.ai`, 4a runs a server in the audio path. The privacy policy and data-safety notes say today that there is none and that "we never see it", and they describe the phone's voice list. Those sentences become false and must be rewritten before rendered narration reaches listeners (Phase 2). Legal wording under `docs/` would auto-merge, so the PR carries `hold` and waits for you.
+
+**Steps:**
+1. When Claude posts the PR link here, read the changed sentences in `docs/legal/privacy-policy.md`, `docs/legal/data-safety.md` and `docs/legal/third-party-notices.md`.
+2. Reply `approved`, or say what to change.
+3. If the App Store or Play privacy answers repeat the old sentences, update them the same way (as in #109).
+
+**Worked if:** the PR merges with your approval, and no store text still says 4a has no server in the audio path.
+
+## #126 🟢 [UPGRADE] Tell Joey what moves to the Spark (~5 min)
+<!-- ha filed=2026-09-28 kind=default -->
+
+**Why:** Joey's work converges on the Spark, and he looks after the box (D8).
+
+**Steps:**
+1. Tell Joey, in your own words: narration is now rendered centrally and streamed from `audio.jwlabs.ai`; his Spark benchmark decides CPU versus GPU rendering; the nightly content step (#760) and, last of all, the transcript farm move to the Spark (D10); his rig and the AMD path (#28) retire after that; foray-db's Apple-transcript engine (#831) could run there too; he does physical care under the runbook, and you place all keys.
+2. Reply `done`.
+
+**Worked if:** Joey has acknowledged it.
 
 ## #118 🟢 [UPGRADE] Remove the retired events server from your Windows Startup folder (~2 min)
 <!-- ha filed=2026-09-25 kind=default -->
@@ -98,25 +217,6 @@
 3. If neither store carries these sentences, reply `skip none carried`.
 
 **Worked if:** no store-facing text says "two origins" or "miss-only", and the published policy names Vercel.
-
-## #45 🟡 [DECIDE] Run the voice probe on your phone twice (unlocked, then locked), and optionally the 30-minute soak — it picks the voice engine for 1.5x (KV-R3)
-<!-- ha filed=2026-09-12 kind=default -->
-
-**Re-issued 2026-09-27 for a NEW build (probe v3.1).** Your two taps on build 2026092705 closed 4a both times, and the crash report showed why: Apple's Core ML crashes inside its own code on iPhone 17 with iOS 26.4 or later (other Kokoro apps hit the same bug: FluidAudio #844/#889). The new build is built around that: **if 4a closes, just reopen it and tap the probe again; each run skips what crashed.** The crash itself is written into the record the next time 4a opens, so you do not even need to re-run it for us to see where it died.
-
-**Why:** you want to listen to Forays at 1.5x, and today our own voice (Kokoro) renders slower than that. The research (`docs/voice/kokoro-speed-1.5x.md`) found other apps run Kokoro on iPhones about 17 times faster than real time by putting most of it on Apple's Neural Engine. This build carries **that** version beside the one we have, and times both on your phone at normal speed and at 1.5x, with the screen on and with it locked. One run of this decides which engine the app uses. Nothing else here can take the reading.
-
-**Steps:**
-1. Install the newest 4a build from the TestFlight app — **the build that contains PR "probe v3 (KV-R3)" or any later one**. The overlord will note the exact build number on this card. It is a big download (about 420 MB), so use wi-fi. The build number is the number in brackets after the version, for example `1.0.0 (2026092801)`.
-2. Open the menu, open **Developer** at the bottom of Settings, turn on **Voice engine probe**, and tap **Run the voice engine probe**. **Leave the app open with the screen on** until the sheet shows a table (about five to ten minutes).
-3. Tap **Run the voice engine probe** again, and **lock the phone straight away**. Leave it locked for ten minutes, then unlock. If the sheet still says "Running the voice probe", lock it again for five more minutes.
-4. Optional, but it is the strongest evidence: tap **Start the 30-minute soak (then lock the phone)**, lock the phone at once, and leave it locked for 30 minutes (charging is fine). If you need the phone sooner, unlock it and tap **Stop the soak now** (the same button): it keeps every loop it finished.
-5. Unlock, tap **Copy** in the Playback diagnostics sheet, and **paste the whole record here**.
-6. If you like, tap the **Play … at 1.5x** buttons under the table to hear each engine at 1.5x, and say which ones sound wrong.
-7. **If 4a closes during a run, that is a finding, not a mistake: if 4a closes, just reopen it and tap the probe again; each run skips what crashed.** The record gets a `PROBE KILLED 4A` line the moment 4a reopens, naming the pass, the step and the shapes it was working on. Keep tapping until a run finishes, then Copy and paste. **Reset skipped passes** (under the soak button) brings the skipped ones back if you ever want them.
-8. On iOS 26.4 or later the probe **does not run Apple's Core ML at all** unless you first tap **Arm Core ML (may crash)** (it switches itself off when 4a restarts). The first runs should be done without it. Arm it only for one extra run if you are happy to see 4a close.
-
-**Worked if:** the pasted record has `voiceProbe` lines for each pass (the three `ort-cpu` passes come first now; Core ML lines say `coreml-bnns-os` on iOS 26.4+ unless armed, or `skipped-killed-last-run` after a crash) from the unlocked run and from the locked run, each tagged like `[pass ane-cputail @1.5x]` with a `content` figure and a `screen=` word (`unlocked` for the first run, `locked` or `background` for the second), plus one `voiceSoak` line if you ran the soak. A `could not measure: coreml-requires-ios17` line means the phone is below iOS 17 (yours is on 26.6, so it should not appear). Any `PROBE KILLED 4A` lines are wanted too: they say exactly which step crashed. The overlord applies the doc's §4 rule: if a lock-safe Core ML line (`ane-cputail` or `cml-cpu`) reads content ≤ 0.4 at 1.0x and the soak survives, Core ML becomes the iPhone engine; otherwise the app stays on the current engine with the speed fixes.
 
 ## #44 🟡 [DECIDE] Add the founders as Play testers, so Play actually emails you (R-08)
 <!-- ha filed=2026-09-11 kind=default -->

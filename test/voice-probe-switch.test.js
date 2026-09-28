@@ -599,11 +599,22 @@ test("probe v3.1: Reset skipped passes calls the player and says what it did", a
 });
 
 test("probe v3.1: the running line tells the founder a crash is expected and survivable", async () => {
-  /* HUMAN-ACTIONS #45 says the same words. */
+  /* HUMAN-ACTIONS #45 said the same words while it was open. It was withdrawn
+     on 2026-09-28 (the Spark direction, docs/DECISIONS.md: narration is
+     rendered centrally, so the probe decides nothing), and a withdrawn card
+     leaves the open file for the ledger. So: an open #45 must still carry the
+     words; otherwise the ledger must record #45 as closed. The app's line
+     stays until D11 removes the probe. */
   assert.ok(APP_SRC.includes("If 4a closes, just reopen it and tap the probe again; each run skips what crashed."));
   const card = fs.readFileSync(path.join(ROOT, "HUMAN-ACTIONS.md"), "utf8");
-  assert.ok(card.includes("if 4a closes, just reopen it and tap the probe again; each run skips what crashed"),
-    "HUMAN-ACTIONS #45 carries the re-tap instruction");
+  if (/^## #45 /m.test(card)) {
+    assert.ok(card.includes("if 4a closes, just reopen it and tap the probe again; each run skips what crashed"),
+      "HUMAN-ACTIONS #45 carries the re-tap instruction");
+  } else {
+    const ledger = fs.readFileSync(path.join(ROOT, "HUMAN-ACTIONS-DONE.md"), "utf8");
+    assert.match(ledger, /^- #45 · \d{4}-\d{2}-\d{2} · (done|skip) · /m,
+      "HUMAN-ACTIONS #45 left the open file, so the ledger must record it as closed");
+  }
 });
 
 test("probe v3.1: the player writes each pass's rows as the pass ends, and reports a crash at boot", async () => {
