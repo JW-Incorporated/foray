@@ -226,6 +226,17 @@ export const DENIED_PREFIXES = [
   // The privacy tripwire (S-08): the first step of both release jobs, and a
   // gate in its own right.
   "test/release-gates.test.js",
+  // The narration uploader (2026-09-28, docs/plans/spark-central-narration-
+  // assessment.md §3.5 "Path policy: add tools/spark/ (and the uploader)", ruling
+  // D8). The founder runs it on the PC (and later the Spark) where it reads the
+  // R2 WRITE token for the public `foray-narration` bucket from
+  // ~/.foray/r2-narration.env and hands it to rclone. `tools/` is allowlisted, so
+  // without this entry a bot PR could make the next upload send that token
+  // elsewhere, write another bucket, or overwrite live objects, and land unread:
+  // the tools/events-server.mjs argument, on a founder machine holding a
+  // credential. It imports only node: builtins, so the file alone is the surface.
+  // Change frequency: near zero once Phase 1 has uploaded.
+  "tools/narration/upload-narration.mjs",
 ];
 
 /* DENIED by NAME, anywhere under a directory (ci-release-5). A prefix list
