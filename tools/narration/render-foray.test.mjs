@@ -207,6 +207,33 @@ test("loudness is ONE gain to -19 LUFS with a capped peak limiter, and a line is
   assert.ok(out.extra.every((x) => x >= 0 && x < 1024), "the stretch is under one frame of silence");
 });
 
+test("a line whose ENCODED true peak is over -1 dBTP is re-encoded with a lower ceiling, never accepted", () => {
+  /* The drafts render (run 36441570533) left 12 of 236 lines at -1.0 to -0.2
+     dBTP: the limiter holds sample peaks, and AAC re-synthesis overshoots them.
+     The card's target is -1 dBTP, so the encoded file's true peak is the test.
+     MUTATION: accept an overshoot (next_headroom returns None when over), stop
+     adding the step, drop extra headroom from the limiter or the gain plan, or
+     retry forever (no attempts cap). */
+  const out = pyJson(
+    `r=P["render"]\n` +
+      `print(json.dumps({"ok":R.next_headroom(r,0.0,-1.0),"under":R.next_headroom(r,0.0,-3.2),` +
+      `"over":R.next_headroom(r,0.0,-0.37),"again":R.next_headroom(r,0.83,-0.9),` +
+      `"c0":R.limiter_ceiling_db(r),"c1":R.limiter_ceiling_db(r,0.83),` +
+      `"lim1":R.limiter_filter(r,0.83),"gain1":R.gain_plan(r,-25.0,-4.0,0.83),` +
+      `"retry":r["loudness"]["true_peak_retry"]}))`
+  );
+  assert.equal(out.ok, null, "exactly at the target is accepted");
+  assert.equal(out.under, null);
+  assert.equal(out.over, 0.83); // 0.63 over, plus the 0.2 step
+  assert.equal(out.again, 1.13); // cumulative: the second retry lowers the ceiling further
+  assert.equal(out.c0, -1.5);
+  assert.equal(out.c1, -2.33);
+  assert.match(out.lim1, /^alimiter=limit=0\.76\d+:/); // 10^(-2.33/20)
+  assert.deepEqual(out.gain1, [6.0, 4.33, "limited"]); // same gain (loudness kept), the limiter takes the extra
+  assert.ok(out.retry.attempts >= 2 && out.retry.attempts <= 5, "a bounded number of encodes");
+  assert.ok(out.retry.step_db > 0);
+});
+
 test("a render speed other than 1.0 is refused at load (ruling D2)", () => {
   /* MUTATION: delete the speed guard in load_profile. */
   const out = pyJson(

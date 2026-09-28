@@ -98,6 +98,8 @@ export function readManifests(paths) {
 }
 
 const round3 = (x) => Math.round(x * 1000) / 1000;
+const nonEmpty = (v) => typeof v === "string" && v.trim() !== "";
+const isObject = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
 
 /**
  * Stamp `doc` (data/forays.json, parsed) in place from the manifests.
@@ -139,6 +141,31 @@ export function stampForays(doc, manifests, { base, profile, allowPublished = fa
       }
       if (!profile.voices.includes(e.voice)) throw new StampError(`${e.voice} is not a voice in the render profile`);
       plan.push({ foray, item, e });
+    }
+  }
+  /* A line whose script moved on since its last stamp gets ONE new
+     `render.script_sha`, and that sha vouches for every voice on the line. So
+     every voice the line already carries must be re-stamped in this same run:
+     otherwise a re-rendered Heart would leave the OLD Echo file behind under a
+     fresh sha, and check-forays' script_sha rule (§3.4) could never see it. */
+  const planned = new Map();
+  for (const { item, e } of plan) {
+    if (!planned.has(item)) planned.set(item, { e, voices: new Set() });
+    planned.get(item).voices.add(e.voice);
+  }
+  for (const [item, { e, voices }] of planned) {
+    const prior = item.render?.script_sha;
+    if (typeof prior !== "string" || prior === sha256(billableText(item.script))) continue;
+    const carried = [
+      ...(nonEmpty(item.audio_url) ? [defaultVoice] : []),
+      ...Object.entries(isObject(item.voices) ? item.voices : {}).filter(([, v]) => nonEmpty(v?.audio_url)).map(([k]) => k),
+    ];
+    const left = carried.filter((v) => !voices.has(v));
+    if (left.length) {
+      throw new StampError(
+        `${e.foray_id} / ${e.item_id}: the script changed since its last stamp, and ${left.join(", ")} would keep ` +
+          "the old script's file under the new script_sha; render and stamp every voice of this line together"
+      );
     }
   }
 

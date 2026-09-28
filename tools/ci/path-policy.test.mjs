@@ -398,6 +398,21 @@ test("tools/events-server.mjs is denied even though tools/ is allowed", () => {
   assert.equal(p.denied[0].prefix, "tools/events-server.mjs");
 });
 
+test("tools/narration/upload-narration.mjs is denied: it holds the founder's R2 write token", () => {
+  // The founder runs it where ~/.foray/r2-narration.env holds the write token
+  // for the public narration bucket (assessment §3.5, D8). An unread change to
+  // it is a credential path, so it must never auto-merge. Its imports are
+  // node: builtins only, so no allowlisted module runs inside it either.
+  assert.ok(DENIED_PREFIXES.includes("tools/narration/upload-narration.mjs"));
+  const p = pathPolicy(["tools/narration/upload-narration.mjs"]);
+  assert.equal(p.denied.length, 1);
+  assert.equal(p.denied[0].prefix, "tools/narration/upload-narration.mjs");
+  const src = fs.readFileSync(path.join(REPO, "tools", "narration", "upload-narration.mjs"), "utf8");
+  const imports = [...src.matchAll(/^\s*import\b[^;]*?from\s+["']([^"']+)["']/gm)].map((m) => m[1]);
+  assert.ok(imports.length > 0);
+  assert.deepEqual(imports.filter((s) => !s.startsWith("node:")), [], "the uploader imports only node: builtins");
+});
+
 test("tools/mobile/inject-app-icon.mjs is denied, not merely acknowledged", () => {
   /* IT SITS ON THE OTHER SIDE OF A LINE ITS NEIGHBOUR DOES NOT.
      `inject-background-audio.mjs` WAS acknowledged (until round 3 denied it as release-job code): an

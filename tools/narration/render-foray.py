@@ -24,7 +24,10 @@ WHAT IT DOES, per narration item, per voice:
      gain takes it to -19 LUFS integrated on the mono file (-16 LUFS as heard)
      and a fast peak limiter holds peaks under -1 dBTP less 0.5 dB of AAC
      headroom, shaving at most 6 dB (pass 2). Never loudnorm's dynamic mode;
-     output loudness is measured again on the encoded file and recorded;
+     output loudness is measured again on the encoded file and recorded, and
+     a file whose TRUE peak is still over -1 dBTP (AAC re-synthesis overshoots
+     a sample-peak limiter) is re-encoded with the ceiling lowered by the
+     overshoot, up to 3 encodes, then refused;
   6. encode AAC-LC `.m4a`, 64 kbps, mono, 24 kHz, faststart, with an MP4
      comment marking it synthetic speech (EU AI Act Art. 50(2), §3.5);
   7. name it by CONTENT: `n/<profile>/<voice>/<sha256>.m4a`, the hash of the
@@ -453,7 +456,7 @@ def measure_filter(render: dict) -> str:
     return f"loudnorm=I={L['integrated_lufs']}:TP={L['true_peak_dbtp']}:LRA={L['lra']}:print_format=json"
 
 
-def gain_plan(render: dict, input_i: float, input_tp: float) -> tuple[float, float, str]:
+def gain_plan(render: dict, input_i: float, input_tp: float, extra_headroom_db: float = 0.0) -> tuple[float, float, str]:
     """ONE gain for the whole line, to the integrated target, with a peak
     limiter catching what that gain pushes over the ceiling.
 
@@ -465,11 +468,14 @@ def gain_plan(render: dict, input_i: float, input_tp: float) -> tuple[float, flo
     The limiter may take at most `max_reduction_db`; a line that would need
     more gets less gain instead and lands quieter.
 
+    `extra_headroom_db` lowers the ceiling further: the true-peak retry's
+    (see `next_headroom`), 0 on a line's first encode.
+
     Returns (gain dB, peak reduction the limiter is expected to apply, kind),
     kind "linear" (no peak reaches the ceiling), "limited" or "limited-capped"."""
     L = render["loudness"]
     lim = L["limiter"]
-    ceiling = float(L["true_peak_dbtp"]) - float(L.get("encoder_headroom_db", 0))
+    ceiling = limiter_ceiling_db(render, extra_headroom_db)
     gain = float(L["integrated_lufs"]) - input_i
     over = input_tp + gain - ceiling
     if over <= 0:
@@ -480,10 +486,31 @@ def gain_plan(render: dict, input_i: float, input_tp: float) -> tuple[float, flo
     return round(gain - (over - cap), 2), round(cap, 2), "limited-capped"
 
 
-def limiter_filter(render: dict) -> str:
+def limiter_ceiling_db(render: dict, extra_headroom_db: float = 0.0) -> float:
+    """The limiter's sample-peak ceiling: the true-peak target, less the AAC
+    headroom, less whatever a true-peak retry added."""
+    L = render["loudness"]
+    return float(L["true_peak_dbtp"]) - float(L.get("encoder_headroom_db", 0)) - float(extra_headroom_db)
+
+
+def next_headroom(render: dict, extra_headroom_db: float, output_tp: float):
+    """The true-peak guard. The limiter holds SAMPLE peaks; AAC re-synthesis
+    can put the decoded TRUE peak above the target anyway (the Phase 1 drafts
+    render, run 36441570533: 12 of 236 lines at -1.0 to -0.2 dBTP with 0.5 dB
+    of headroom). Returns the extra headroom for the next encode — the
+    overshoot plus a step — or None when the encoded line already meets the
+    target. A line still over it after `attempts` encodes is refused."""
+    L = render["loudness"]
+    over = float(output_tp) - float(L["true_peak_dbtp"])
+    if over <= 0:
+        return None
+    return round(float(extra_headroom_db) + over + float(L["true_peak_retry"]["step_db"]), 2)
+
+
+def limiter_filter(render: dict, extra_headroom_db: float = 0.0) -> str:
     L = render["loudness"]
     lim = L["limiter"]
-    ceiling_db = float(L["true_peak_dbtp"]) - float(L.get("encoder_headroom_db", 0))
+    ceiling_db = limiter_ceiling_db(render, extra_headroom_db)
     # `latency=1` compensates the look-ahead so the line keeps its exact length;
     # `level=0` disables alimiter's own make-up gain (the gain is ours).
     return (
@@ -492,13 +519,13 @@ def limiter_filter(render: dict) -> str:
     )
 
 
-def encode_command(ffmpeg: str, wav: Path, out: Path, render: dict, gain_db: float) -> list[str]:
+def encode_command(ffmpeg: str, wav: Path, out: Path, render: dict, gain_db: float, extra_headroom_db: float = 0.0) -> list[str]:
     """Gain, limiter, then AAC-LC. Neither filter changes the sample count,
     which is what lets the measured PCM duration be the duration played."""
     e = render["encode"]
     cmd = [
         ffmpeg, "-hide_banner", "-nostdin", "-y", "-i", str(wav),
-        "-af", f"volume={gain_db}dB,{limiter_filter(render)}",
+        "-af", f"volume={gain_db}dB,{limiter_filter(render, extra_headroom_db)}",
         "-c:a", e["codec"], "-b:a", f"{e['bitrate_kbps']}k", "-ac", str(e["channels"]), "-ar", str(e["sample_rate"]),
         "-map_metadata", "-1", "-metadata", f"comment={render['metadata']['comment']}",
         "-fflags", "+bitexact", "-flags:a", "+bitexact",
@@ -532,14 +559,27 @@ def normalize_and_encode(ffmpeg: str, ffprobe: str, pcm, out: Path, render: dict
 
     wav = tmp / (out.stem + ".wav")
     sf.write(str(wav), pcm, int(render["sample_rate"]), subtype="FLOAT")
+    attempts = int(render["loudness"]["true_peak_retry"]["attempts"])
+    extra = 0.0
     try:
         before = _measure(ffmpeg, wav, render)
-        gain, reduction, kind = gain_plan(render, before["i"], before["tp"])
         out.parent.mkdir(parents=True, exist_ok=True)
-        _run(encode_command(ffmpeg, wav, out, render, gain))
+        for attempt in range(1, attempts + 1):
+            gain, reduction, kind = gain_plan(render, before["i"], before["tp"], extra)
+            _run(encode_command(ffmpeg, wav, out, render, gain, extra))
+            after = _measure(ffmpeg, out, render)
+            more = next_headroom(render, extra, after["tp"])
+            if more is None:
+                break
+            if attempt == attempts:
+                out.unlink(missing_ok=True)
+                raise RenderError(
+                    f"true peak {after['tp']} dBTP is over the {render['loudness']['true_peak_dbtp']} dBTP target "
+                    f"after {attempts} encodes (extra headroom {extra} dB)"
+                )
+            extra = more
     finally:
         wav.unlink(missing_ok=True)
-    after = _measure(ffmpeg, out, render)
     probe = _run([ffprobe, "-v", "error", "-show_entries", "format=duration", "-of", "default=nw=1:nk=1", str(out)])
     return {
         "input_i": before["i"],
@@ -549,6 +589,8 @@ def normalize_and_encode(ffmpeg: str, ffprobe: str, pcm, out: Path, render: dict
         "output_i": after["i"],
         "output_tp": after["tp"],
         "type": kind,
+        "extra_headroom_db": extra,
+        "attempts": attempt,
         "decoded_sec": decoded_seconds(ffmpeg, out, int(render["encode"]["sample_rate"])),
         "container_sec": round(float(probe.stdout.strip()), 3),
     }

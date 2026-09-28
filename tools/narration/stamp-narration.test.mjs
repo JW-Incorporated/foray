@@ -123,6 +123,28 @@ test("a script edited after its render is refused, and nothing is written", () =
   assert.equal(JSON.stringify(doc), snapshot, "a refused stamp must not have written the lines before the stale one");
 });
 
+test("after a script edit, every voice the line carries is re-stamped together, or nothing is", () => {
+  /* render.script_sha is one per line and vouches for every voice on it. A
+     re-render where only Heart succeeded must not leave the OLD Echo file under
+     the NEW sha. MUTATION: drop the carried-voices check. */
+  const doc = realData();
+  stampForays(doc, [{ file: "m", manifest: fakeManifest(doc, DRAFT) }], { base: BASE, profile: PROFILE });
+  const line = doc.forays.find((f) => f.id === DRAFT).items.filter((i) => i.type === "narration").at(-1);
+  line.script += " Edited after the first render.";
+  const heartOnly = fakeManifest(doc, DRAFT, ["af_heart"]);
+  const snapshot = JSON.stringify(doc);
+  assert.throws(
+    () => stampForays(doc, [{ file: "m", manifest: heartOnly }], { base: BASE, profile: PROFILE }),
+    /am_echo would keep the old script's file/
+  );
+  assert.equal(JSON.stringify(doc), snapshot, "a refused stamp writes nothing");
+  /* Both voices, re-rendered from the new script: accepted. */
+  stampForays(doc, [{ file: "m", manifest: fakeManifest(doc, DRAFT) }], { base: BASE, profile: PROFILE });
+  assert.equal(line.render.script_sha, sha(billableText(line.script)));
+  /* An unedited line may still be re-stamped one voice at a time. */
+  stampForays(doc, [{ file: "m", manifest: fakeManifest(doc, DRAFT, ["af_heart"], 1.2) }], { base: BASE, profile: PROFILE });
+});
+
 test("a PUBLISHED Foray is refused in Phase 1 unless --allow-published", () => {
   /* Assessment §1 risk 1: a failed load stops the player until the fallback
      ships. MUTATION: drop the status guard. */
