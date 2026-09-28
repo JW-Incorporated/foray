@@ -184,6 +184,25 @@ test("the pins come from fetch-models.mjs, and Echo's recorded pin equals the be
   assert.equal(out.echo.bytes, 522240);
 });
 
+test("loudness is ONE gain to -19 LUFS, capped at -1 dBTP, and a line is whole AAC frames", () => {
+  /* A hot-peaked line comes out quieter, never compressed (loudnorm's dynamic
+     fallback squashed a smoke-run line); and a line of whole 1024-sample frames
+     decodes to exactly its PCM length, which is what duration_sec claims.
+     MUTATION: return to_target unconditionally, or drop the frame alignment. */
+  const out = pyJson(
+    `r=P["render"]\n` +
+      `f=r["frame_samples"]; pad=int(round(r["edge_pad_sec"]*r["sample_rate"])); ns=(1,1023,1024,8001,123457)\n` +
+      `tails=[R.tail_pad_samples(pad,n,f) for n in ns]\n` +
+      `print(json.dumps({"quiet":R.linear_gain_db(r,-25.0,-10.0),"hot":R.linear_gain_db(r,-25.0,-4.0),"f":f,` +
+      `"whole":[(pad+n+t)%f for n,t in zip(ns,tails)],"extra":[t-pad for t in tails]}))`
+  );
+  assert.deepEqual(out.quiet, [6.0, "linear"]);
+  assert.deepEqual(out.hot, [3.0, "linear-peak-limited"]);
+  assert.equal(out.f, 1024);
+  assert.deepEqual(out.whole, [0, 0, 0, 0, 0]);
+  assert.ok(out.extra.every((x) => x >= 0 && x < 1024), "the stretch is under one frame of silence");
+});
+
 test("a render speed other than 1.0 is refused at load (ruling D2)", () => {
   /* MUTATION: delete the speed guard in load_profile. */
   const out = pyJson(

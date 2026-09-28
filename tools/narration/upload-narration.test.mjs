@@ -26,12 +26,15 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 const CLI = path.join(HERE, "upload-narration.mjs");
 const PROFILE = JSON.parse(fs.readFileSync(path.join(HERE, "render-profile.json"), "utf8"));
 const SECRET = "s3cr3t-value-that-must-never-print";
+/* Exactly the five lines HUMAN-ACTIONS #120 tells the founder to type (Notepad, so CRLF). */
+const ACCOUNT = "0123456789abcdef0123456789abcdef";
 const GOOD_ENV = [
-  "# placed by the founder",
-  "R2_ACCESS_KEY_ID=AKIDEXAMPLE",
-  `R2_SECRET_ACCESS_KEY=${SECRET}`,
-  "R2_S3_ENDPOINT=https://0123456789abcdef.r2.cloudflarestorage.com",
-].join("\n");
+  `R2_NARRATION_ACCOUNT_ID=${ACCOUNT}`,
+  "R2_NARRATION_ACCESS_KEY_ID=AKIDEXAMPLE",
+  `R2_NARRATION_SECRET_ACCESS_KEY=${SECRET}`,
+  "R2_NARRATION_BUCKET=foray-narration",
+  "NARRATION_PUBLIC_BASE=https://audio.jwlabs.ai",
+].join("\r\n");
 
 /** An env with every CI marker removed, as on the founder's PC. */
 function localEnv(extra = {}) {
@@ -109,25 +112,36 @@ test("a file whose bytes differ from its manifest is refused before any upload",
   }
 });
 
-test("credentials come from the env file, dashboard spellings included, and never print", () => {
-  /* MUTATION: include the secret in toJSON, or read process.env instead. */
+test("credentials come from the env file, #120's names and the fallback spellings, and never print", () => {
+  /* The founder's file must parse to the account's endpoint. MUTATION: rename
+     R2_NARRATION_* in the alias table, include the secret in toJSON, or read
+     process.env instead. */
   const creds = parseEnvFile(GOOD_ENV);
   assert.equal(creds.bucket, ALLOWED_BUCKET);
+  assert.equal(creds.accessKeyId, "AKIDEXAMPLE");
+  assert.equal(creds.secretAccessKey, SECRET);
+  assert.equal(creds.endpoint, `https://${ACCOUNT}.r2.cloudflarestorage.com`);
+  assert.equal(creds.publicBase, "https://audio.jwlabs.ai");
+  assert.throws(() => parseEnvFile(GOOD_ENV.replace(ACCOUNT, "not-an-id")), /32-character hex/);
   assert.ok(!JSON.stringify(creds).includes(SECRET));
   const dash = parseEnvFile(
     `Access_Key_ID = AKID\nSecret_Access_Key = "${SECRET}"\nS3_API_Endpoint = https://abc.r2.cloudflarestorage.com\n`
   );
   assert.equal(dash.secretAccessKey, SECRET);
-  assert.throws(() => parseEnvFile("R2_ACCESS_KEY_ID=x"), (e) => e instanceof UploadError && !e.message.includes(SECRET));
+  assert.throws(
+    () => parseEnvFile(`R2_NARRATION_SECRET_ACCESS_KEY=${SECRET}`),
+    (e) => e instanceof UploadError && /R2_NARRATION_ACCESS_KEY_ID/.test(e.message) && !e.message.includes(SECRET)
+  );
   assert.match(defaultEnvFile("/home/f"), /[\\/]\.foray[\\/]r2-narration\.env$/);
 });
 
 test("only foray-narration is writable: the transcripts bucket and odd endpoints are refused", () => {
   /* D6: foray-transcriptions stays private forever and never holds narration.
      MUTATION: honour any R2_BUCKET value. */
-  assert.throws(() => parseEnvFile(`${GOOD_ENV}\nR2_BUCKET=foray-transcriptions`), /refusing bucket foray-transcriptions/);
-  assert.throws(() => parseEnvFile(`${GOOD_ENV}\nR2_BUCKET=foray-transcripts`), /refusing bucket/);
-  assert.throws(() => parseEnvFile(GOOD_ENV.replace(/https:\/\/[^\n]+/, "http://evil.example.com")), /R2_S3_ENDPOINT/);
+  const bucket = (b) => GOOD_ENV.replace("R2_NARRATION_BUCKET=foray-narration", `R2_NARRATION_BUCKET=${b}`);
+  assert.throws(() => parseEnvFile(bucket("foray-transcriptions")), /refusing bucket foray-transcriptions/);
+  assert.throws(() => parseEnvFile(bucket("foray-transcripts")), /refusing bucket/);
+  assert.throws(() => parseEnvFile(`${GOOD_ENV}\nR2_S3_ENDPOINT=http://evil.example.com`), /endpoint must be/);
 });
 
 test("rclone gets --immutable, the profile's headers, and the secret only through its environment", () => {

@@ -24,8 +24,9 @@
     "chunk_gap_sec": 0.08,
     "edge_trim": { "threshold_dbfs": -50, "keep_sec": 0.05 },
     "edge_pad_sec": 0.5,
+    "frame_samples": 1024,
     "loudness": {
-      "method": "ffmpeg loudnorm two-pass, linear",
+      "method": "ffmpeg loudnorm measures (pass 1); one linear gain to the target, capped at the true-peak ceiling (pass 2); never dynamic",
       "integrated_lufs": -19,
       "true_peak_dbtp": -1,
       "lra": 20,

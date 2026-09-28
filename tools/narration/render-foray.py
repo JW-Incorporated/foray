@@ -20,8 +20,11 @@ WHAT IT DOES, per narration item, per voice:
   4. trim the item's lead and tail silence, join the chunks with 0.08 s (each
      chunk keeps Kokoro's own sentence-edge breath, so that is the natural
      pause), pad 0.5 s at each end;
-  5. loudness-normalize with ffmpeg `loudnorm`, two passes, linear gain, to
-     -19 LUFS integrated / -1 dBTP on the mono file (-16 LUFS as heard);
+  5. loudness-normalize: ffmpeg `loudnorm` measures the line (pass 1), then ONE
+     linear gain takes it to -19 LUFS integrated on the mono file (-16 LUFS as
+     heard), capped so the true peak stays at or under -1 dBTP (pass 2). Never
+     loudnorm's dynamic mode, which would compress the voice; output loudness
+     is measured again on the encoded file and recorded;
   6. encode AAC-LC `.m4a`, 64 kbps, mono, 24 kHz, faststart, with an MP4
      comment marking it synthetic speech (EU AI Act Art. 50(2), §3.5);
   7. name it by CONTENT: `n/<profile>/<voice>/<sha256>.m4a`, the hash of the
@@ -29,8 +32,8 @@ WHAT IT DOES, per narration item, per voice:
      and every render setting (`render-profile.json` `render`). An edit
      re-renders only the lines whose phonemes changed; a stamped line whose key
      still matches is reported `unchanged` and not rendered at all;
-  8. measure `duration_sec` from the PCM, cross-check the container within
-     50 ms, and write one manifest.
+  8. measure `duration_sec` by decoding the file as a player does, reject it if
+     it is more than 50 ms from the rendered PCM, and write one manifest.
 
 NO CREDENTIALS. This file never uploads and reads no secret, so it may run in
 GitHub Actions (`.github/workflows/render-narration.yml`). Uploading is
@@ -416,8 +419,17 @@ def assemble(chunks: list, render: dict):
     joined = np.concatenate(parts)
     t = render["edge_trim"]
     speech = trim_edges(joined, sr, float(t["threshold_dbfs"]), float(t["keep_sec"]))
-    pad = np.zeros(int(round(render["edge_pad_sec"] * sr)), dtype=np.float32)
-    return speech, np.concatenate([pad, speech, pad])
+    pad = int(round(render["edge_pad_sec"] * sr))
+    # The tail pad is stretched (by < 1 frame of silence) so the line is a whole
+    # number of AAC frames: the encoder then has no partial last frame to round,
+    # and the decoded length equals this PCM length.
+    tail = tail_pad_samples(pad, speech.size, int(render.get("frame_samples", 1024)))
+    return speech, np.concatenate([np.zeros(pad, dtype=np.float32), speech, np.zeros(tail, dtype=np.float32)])
+
+
+def tail_pad_samples(pad: int, speech_samples: int, frame: int) -> int:
+    """The tail pad, stretched to make lead pad + speech + tail a whole number of frames."""
+    return pad + (-(pad + speech_samples + pad) % frame)
 
 
 def _ffmpeg_json(stderr: str) -> dict:
@@ -434,23 +446,34 @@ def _run(cmd: list[str]) -> subprocess.CompletedProcess:
     return r
 
 
-def loudnorm_filter(render: dict, measured: dict | None = None) -> str:
+def measure_filter(render: dict) -> str:
+    """ffmpeg `loudnorm` in measure-only use: it prints the EBU R128 integrated
+    loudness and true peak of the input as JSON; its own output is discarded."""
     L = render["loudness"]
-    f = f"loudnorm=I={L['integrated_lufs']}:TP={L['true_peak_dbtp']}:LRA={L['lra']}"
-    if measured is not None:
-        f += (
-            f":measured_I={measured['input_i']}:measured_TP={measured['input_tp']}"
-            f":measured_LRA={measured['input_lra']}:measured_thresh={measured['input_thresh']}"
-            f":offset={measured['target_offset']}:linear=true"
-        )
-    return f + ":print_format=json"
+    return f"loudnorm=I={L['integrated_lufs']}:TP={L['true_peak_dbtp']}:LRA={L['lra']}:print_format=json"
 
 
-def encode_command(ffmpeg: str, wav: Path, out: Path, render: dict, measured: dict) -> list[str]:
+def linear_gain_db(render: dict, input_i: float, input_tp: float) -> tuple[float, str]:
+    """ONE gain for the whole line: to the integrated target, but never past the
+    true-peak ceiling. This is loudnorm's own `linear=true` rule, without its
+    fallback to dynamic compression when the peak would clip: a line with an
+    unusually hot peak comes out slightly quieter, never squashed. Returns
+    (gain dB, "linear" | "linear-peak-limited")."""
+    L = render["loudness"]
+    to_target = float(L["integrated_lufs"]) - input_i
+    to_ceiling = float(L["true_peak_dbtp"]) - input_tp
+    if to_target <= to_ceiling:
+        return round(to_target, 2), "linear"
+    return round(to_ceiling, 2), "linear-peak-limited"
+
+
+def encode_command(ffmpeg: str, wav: Path, out: Path, render: dict, gain_db: float) -> list[str]:
+    """Gain, then AAC-LC. `volume` keeps the sample count exactly, which is what
+    lets the measured PCM duration be the duration the player plays."""
     e = render["encode"]
     cmd = [
         ffmpeg, "-hide_banner", "-nostdin", "-y", "-i", str(wav),
-        "-af", loudnorm_filter(render, measured) + f",aresample={e['sample_rate']}",
+        "-af", f"volume={gain_db}dB",
         "-c:a", e["codec"], "-b:a", f"{e['bitrate_kbps']}k", "-ac", str(e["channels"]), "-ar", str(e["sample_rate"]),
         "-map_metadata", "-1", "-metadata", f"comment={render['metadata']['comment']}",
         "-fflags", "+bitexact", "-flags:a", "+bitexact",
@@ -460,28 +483,47 @@ def encode_command(ffmpeg: str, wav: Path, out: Path, render: dict, measured: di
     return cmd + [str(out)]
 
 
+def _measure(ffmpeg: str, src: Path, render: dict) -> dict:
+    r = _run([ffmpeg, "-hide_banner", "-nostdin", "-i", str(src), "-af", measure_filter(render), "-f", "null", "-"])
+    m = _ffmpeg_json(r.stderr)
+    if not all(_finite_str(m.get(k)) for k in ("input_i", "input_tp")):
+        raise RenderError(f"loudnorm could not measure {src.name}: {m}")
+    return {"i": float(m["input_i"]), "tp": float(m["input_tp"])}
+
+
+def decoded_seconds(ffmpeg: str, src: Path, sample_rate: int) -> float:
+    """Decode the file as a player would (edit list honoured) and count samples."""
+    r = subprocess.run(
+        [ffmpeg, "-v", "error", "-nostdin", "-i", str(src), "-f", "s16le", "-ac", "1", "-ar", str(sample_rate), "-"],
+        capture_output=True,
+    )
+    if r.returncode != 0:
+        raise RenderError(f"ffmpeg could not decode {src.name}: {r.stderr.decode(errors='replace')[-300:]}")
+    return round(len(r.stdout) / 2 / sample_rate, 3)
+
+
 def normalize_and_encode(ffmpeg: str, ffprobe: str, pcm, out: Path, render: dict, tmp: Path) -> dict:
     import soundfile as sf
 
     wav = tmp / (out.stem + ".wav")
     sf.write(str(wav), pcm, int(render["sample_rate"]), subtype="FLOAT")
     try:
-        r1 = _run([ffmpeg, "-hide_banner", "-nostdin", "-i", str(wav), "-af", loudnorm_filter(render), "-f", "null", "-"])
-        measured = _ffmpeg_json(r1.stderr)
-        if not all(_finite_str(measured.get(k)) for k in ("input_i", "input_tp", "input_lra", "input_thresh", "target_offset")):
-            raise RenderError(f"loudnorm could not measure this line: {measured}")
+        before = _measure(ffmpeg, wav, render)
+        gain, kind = linear_gain_db(render, before["i"], before["tp"])
         out.parent.mkdir(parents=True, exist_ok=True)
-        r2 = _run(encode_command(ffmpeg, wav, out, render, measured))
-        second = _ffmpeg_json(r2.stderr)
+        _run(encode_command(ffmpeg, wav, out, render, gain))
     finally:
         wav.unlink(missing_ok=True)
+    after = _measure(ffmpeg, out, render)
     probe = _run([ffprobe, "-v", "error", "-show_entries", "format=duration", "-of", "default=nw=1:nk=1", str(out)])
     return {
-        "input_i": float(measured["input_i"]),
-        "input_tp": float(measured["input_tp"]),
-        "output_i": float(second["output_i"]),
-        "output_tp": float(second["output_tp"]),
-        "type": second.get("normalization_type"),
+        "input_i": before["i"],
+        "input_tp": before["tp"],
+        "gain_db": gain,
+        "output_i": after["i"],
+        "output_tp": after["tp"],
+        "type": kind,
+        "decoded_sec": decoded_seconds(ffmpeg, out, int(render["encode"]["sample_rate"])),
         "container_sec": round(float(probe.stdout.strip()), 3),
     }
 
@@ -653,12 +695,15 @@ def render_all(args, profile: dict) -> int:
                             f"spoken length {speech_sec} s is {ratio:.2f}x the {common['estimate_sec']} s estimate, "
                             f"outside [{lo}, {hi}]"
                         )
-                    duration = round(pcm.size / sr, 3)
+                    pcm_sec = round(pcm.size / sr, 3)
                     loud = normalize_and_encode(ffmpeg, ffprobe, pcm, out, render, tmp)
-                    drift = abs(loud["container_sec"] - duration)
+                    # duration_sec is what a player decodes (edit list honoured),
+                    # and it must agree with the PCM we rendered.
+                    duration = loud.pop("decoded_sec")
+                    drift = abs(duration - pcm_sec)
                     if drift > float(reject["max_container_drift_sec"]):
                         out.unlink(missing_ok=True)
-                        raise RenderError(f"container says {loud['container_sec']} s, PCM {duration} s ({drift:.3f} s apart)")
+                        raise RenderError(f"decodes to {duration} s, PCM is {pcm_sec} s ({drift:.3f} s apart)")
                     data = out.read_bytes()
                     container_sec = loud.pop("container_sec")
                     entry = manifest_entry(
@@ -668,8 +713,9 @@ def render_all(args, profile: dict) -> int:
                     )
                     sidecar.write_text(json.dumps(entry, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
                     entries.append(entry)
-                    log(f"{tag}: {duration:.1f} s, {len(data) / 1000:.0f} kB, {entry['loudness']['output_i']} LUFS "
-                        f"({entry['loudness']['type']}) in {time.perf_counter() - t0:.1f} s")
+                    log(f"{tag}: {duration:.3f} s (pcm {pcm_sec}, container {container_sec}), {len(data) / 1000:.0f} kB, "
+                        f"{entry['loudness']['output_i']:.1f} LUFS / {entry['loudness']['output_tp']:.1f} dBTP "
+                        f"({entry['loudness']['type']}, {entry['loudness']['gain_db']:+.1f} dB) in {time.perf_counter() - t0:.1f} s")
                 except RenderError as exc:
                     failed.append({**base, "error": str(exc)})
                     log(f"{tag}: FAILED {exc}")

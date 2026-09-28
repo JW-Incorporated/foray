@@ -23,17 +23,20 @@
  *     %USERPROFILE%\.foray\r2-narration.env      (Windows)
  *     ~/.foray/r2-narration.env                  (Linux / the Spark; chmod 600)
  *
- * `KEY=value` lines, `#` comments allowed. The names follow the corpus
- * convention (docs/roadmap/corpus.md `R2_ENV`):
+ * `KEY=value` lines, `#` comments allowed, exactly as HUMAN-ACTIONS #120
+ * tells the founder to write them:
  *
- *     R2_ACCESS_KEY_ID=...        Object Read & Write on foray-narration ONLY
- *     R2_SECRET_ACCESS_KEY=...
- *     R2_S3_ENDPOINT=https://<account-id>.r2.cloudflarestorage.com
- *     R2_BUCKET=foray-narration   (optional; any other bucket is refused)
+ *     R2_NARRATION_ACCOUNT_ID=<32 hex>          -> https://<id>.r2.cloudflarestorage.com
+ *     R2_NARRATION_ACCESS_KEY_ID=...            Object Read & Write on foray-narration ONLY
+ *     R2_NARRATION_SECRET_ACCESS_KEY=...
+ *     R2_NARRATION_BUCKET=foray-narration       (optional; any other bucket is refused)
+ *     NARRATION_PUBLIC_BASE=https://audio.jwlabs.ai   (optional; for --verify-public)
  *
- * The Cloudflare dashboard spellings (`Access_Key_ID`, `Secret_Access_Key`,
- * `S3_API_Endpoint`) are accepted too, case-insensitively. The values are
- * handed to rclone through its `RCLONE_CONFIG_*` environment, never argv.
+ * Fallback spellings are accepted case-insensitively: the corpus `R2_ENV`
+ * names (`R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_S3_ENDPOINT`,
+ * `R2_BUCKET`) and the Cloudflare dashboard's (`Access_Key_ID`,
+ * `Secret_Access_Key`, `S3_API_Endpoint`). The values are handed to rclone
+ * through its `RCLONE_CONFIG_*` environment, never argv.
  *
  * ── Headers ────────────────────────────────────────────────────────────────
  *   Content-Type:  audio/mp4
@@ -74,11 +77,14 @@ export function inCI(env = process.env) {
   });
 }
 
+/* The first name of each list is the one HUMAN-ACTIONS #120 writes. */
 const ALIASES = {
-  accessKeyId: ["r2_access_key_id", "access_key_id", "aws_access_key_id"],
-  secretAccessKey: ["r2_secret_access_key", "secret_access_key", "aws_secret_access_key"],
-  endpoint: ["r2_s3_endpoint", "s3_api_endpoint", "endpoint", "endpoint_url"],
-  bucket: ["r2_bucket", "bucket"],
+  accountId: ["r2_narration_account_id", "r2_account_id", "account_id"],
+  accessKeyId: ["r2_narration_access_key_id", "r2_access_key_id", "access_key_id", "aws_access_key_id"],
+  secretAccessKey: ["r2_narration_secret_access_key", "r2_secret_access_key", "secret_access_key", "aws_secret_access_key"],
+  endpoint: ["r2_narration_s3_endpoint", "r2_s3_endpoint", "s3_api_endpoint", "endpoint", "endpoint_url"],
+  bucket: ["r2_narration_bucket", "r2_bucket", "bucket"],
+  publicBase: ["narration_public_base"],
 };
 
 /** Parse the env file's text. Never echoes a value in an error. */
@@ -94,23 +100,31 @@ export function parseEnvFile(text) {
     raw[m[1].toLowerCase()] = v;
   }
   const pick = (names) => names.map((n) => raw[n]).find((v) => typeof v === "string" && v !== "");
+  const accountId = pick(ALIASES.accountId);
+  if (accountId !== undefined && !/^[0-9a-f]{32}$/i.test(accountId)) {
+    throw new UploadError("R2_NARRATION_ACCOUNT_ID must be the 32-character hex Account ID from the R2 overview page");
+  }
   const creds = {
     accessKeyId: pick(ALIASES.accessKeyId),
     secretAccessKey: pick(ALIASES.secretAccessKey),
-    endpoint: pick(ALIASES.endpoint),
+    endpoint: pick(ALIASES.endpoint) ?? (accountId ? `https://${accountId.toLowerCase()}.r2.cloudflarestorage.com` : undefined),
     bucket: pick(ALIASES.bucket) ?? ALLOWED_BUCKET,
+    publicBase: pick(ALIASES.publicBase),
   };
   const missing = ["accessKeyId", "secretAccessKey", "endpoint"].filter((k) => !creds[k]);
   if (missing.length) {
-    throw new UploadError(`the env file is missing ${missing.map((k) => ALIASES[k][0].toUpperCase()).join(", ")}`);
+    const name = { accessKeyId: "R2_NARRATION_ACCESS_KEY_ID", secretAccessKey: "R2_NARRATION_SECRET_ACCESS_KEY", endpoint: "R2_NARRATION_ACCOUNT_ID" };
+    throw new UploadError(`the env file is missing ${missing.map((k) => name[k]).join(", ")}`);
   }
   if (!/^https:\/\/[a-z0-9-]+\.r2\.cloudflarestorage\.com\/?$/i.test(creds.endpoint)) {
-    throw new UploadError("R2_S3_ENDPOINT must be https://<account-id>.r2.cloudflarestorage.com");
+    throw new UploadError("the R2 endpoint must be https://<account-id>.r2.cloudflarestorage.com");
   }
   if (creds.bucket !== ALLOWED_BUCKET) {
     throw new UploadError(`refusing bucket ${creds.bucket}: this tool writes only ${ALLOWED_BUCKET} (ruling D6)`);
   }
-  Object.defineProperty(creds, "toJSON", { value: () => ({ accessKeyId: "<redacted>", endpoint: creds.endpoint, bucket: creds.bucket }) });
+  Object.defineProperty(creds, "toJSON", {
+    value: () => ({ accessKeyId: "<redacted>", endpoint: creds.endpoint, bucket: creds.bucket, publicBase: creds.publicBase }),
+  });
   return creds;
 }
 
@@ -190,10 +204,10 @@ function run(cmd, args, env) {
   if (r.status !== 0) throw new UploadError(`${cmd} ${args[0]} exited ${r.status}`);
 }
 
-async function verifyPublic(uploads, profile) {
+async function verifyPublic(uploads, profile, publicBase) {
   let bad = 0;
   for (const u of uploads) {
-    const url = `${profile.public_base.replace(/\/+$/, "")}/${u.key}`;
+    const url = `${(publicBase ?? profile.public_base).replace(/\/+$/, "")}/${u.key}`;
     const res = await fetch(url, { method: "HEAD" });
     const ct = res.headers.get("content-type");
     const len = Number(res.headers.get("content-length"));
@@ -252,7 +266,7 @@ export async function main(argv = process.argv.slice(2), env = process.env) {
     fs.rmSync(listFile, { force: true });
   }
   console.log(`uploaded and checked ${uploads.length} object(s) in ${ALLOWED_BUCKET}`);
-  if (args.verifyPublic) await verifyPublic(uploads, profile);
+  if (args.verifyPublic) await verifyPublic(uploads, profile, creds.publicBase);
   return 0;
 }
 
