@@ -1,6 +1,8 @@
 # Assessment: all Foray generation and narration rendering on the DGX Spark, narration streamed to the app
 
-Status: **DRAFT assessment for founder review (2026-09-27). Nothing here is decided until the founder rules on §6/§7.**
+Status: **RULED 2026-09-28: defaults.** The founder replied *"Defaults"*, accepting D1–D11 (§1) as
+recommended; recorded in `docs/DECISIONS.md` 2026-09-28 (PR #863, Phase 0). Written 2026-09-27 as a
+draft for founder review.
 A completeness pass (same day) added §3.7, the prompt-injection, queue-spend, auto-merge and legal rows,
 the R2-operations and data-use cost rows, and the Phase 1 fast path.
 Read on `origin/main` @ 5645fce6 plus `origin/engine/m2`. Synthesized from six lens reviews
@@ -90,9 +92,10 @@ it cannot serve on-demand requests.
 5. **One box in a house.** If the Spark is down, *new* content waits, but everything already published
    keeps playing from R2.
 
-**Decisions you need to make** (each has a recommended default):
+**Decisions** — **RULED 2026-09-28: defaults.** Wyatt: *"Defaults"*. Every row below is decided as
+its recommended default (`docs/DECISIONS.md` 2026-09-28).
 
-| # | Decision | Recommended default |
+| # | Decision | Ruled 2026-09-28 (the recommended default) |
 |---|---|---|
 | D1 | Reverse "narration is spoken on the device" (generation-architecture §1.2; DECISIONS 2026-09-12) and your 2026-09-26 "Don't render entire Forays" | **Yes.** Record it in DECISIONS (founder-merged). |
 | D2 | Narration speed with rendered files | Render once at 1.0x and let the player speed narration to your listening rate (pitch preserved). This amends ruling 2026-09-24 #3. Do the S1 ear check first. |
@@ -502,7 +505,7 @@ blocks it.
 
 ## 6. HUMAN ACTIONS (founder-only)
 
-1. **Rule on D1–D11** (§1) and merge the DECISIONS PR (DENIED path).
+1. ~~**Rule on D1–D11**~~ **Ruled 2026-09-28: defaults.** Merge the DECISIONS PR (#863, DENIED path).
 2. **Spark physical setup:** first boot of DGX OS and updates, wired Ethernet with a DHCP reservation, a UPS
    (about $100–150, optional spend), full-disk encryption at install, a non-root service user, and admin
    SSH over Tailscale (key-only, no public ports). Decide where it lives and who has hands on it (D8).
