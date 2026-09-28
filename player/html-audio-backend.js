@@ -48,6 +48,18 @@
    that rejects without a user gesture. It must be caught — an unhandled
    rejection here is a console error on every session start.
 
+   A THIRD ELEMENT, AND IT IS NEVER PLAYED EITHER. §"narration warm" below:
+   one lazily-created, muted, never-played element that fetches the NEXT
+   rendered narration file while the current item plays. It is never promoted
+   (that is the parked handover's job, not this one's), so it cannot become
+   audible by construction.
+
+   PITCH IS KEPT at every speed (`keepPitch`): founder ruling D2, 2026-09-28,
+   plays rendered narration at the listener's rate, and a voice sped up
+   without pitch correction is a chipmunk. Every engine defaults
+   `preservesPitch` to true; it is set explicitly so no engine's default is
+   what the product rests on.
+
    `timeupdate` IS NOT A BOUNDARY. It fires roughly every 250 ms, and the spec
    only requires 4-66 Hz "at the UA's discretion" — so a bare
    `if (currentTime >= end) stop()` overshoots by up to a quarter second of
@@ -405,12 +417,28 @@ export class HtmlAudioBackend {
    */
   constructor({
     element = null, warmElement = null, prefetch = false, telemetry = null,
-    loadTimeoutMs = null, isHidden = null,
+    loadTimeoutMs = null, isHidden = null, narrationWarmElement = null,
   } = {}) {
     const el = element ?? (typeof Audio !== "undefined" ? new Audio() : null);
     if (!el) throw new Error("HtmlAudioBackend requires an <audio> element");
 
     this.el = el;
+    // D2 (2026-09-28): speed never changes pitch. See the header.
+    keepPitch(el);
+    /* §"narration warm". Created on first use, never before: a session that
+       never plays rendered narration never has a third element. Injected for
+       tests; the default factory returns null in `node --test`. */
+    this._narrationWarmEl = null;
+    this._makeNarrationWarmEl = narrationWarmElement
+      ? () => narrationWarmElement
+      : () => makeNarrationWarmElement();
+    /** `{ id, url, ready }` for the file being warmed, or null. */
+    this._narrationWarm = null;
+    /** Detaches the narration warm's own listeners. */
+    this._narrationWarmCleanup = null;
+    /** Non-null once narration warming is off for the session. One-way, for
+        the same reason `_prefetchOffReason` is. */
+    this._narrationWarmOff = null;
     this._telemetry = telemetry;
     /** Non-null only when a caller pinned it. Otherwise the deadline is chosen
         per load from visibility — see `_loadDeadlineMs`. */
@@ -449,6 +477,8 @@ export class HtmlAudioBackend {
     this._warmEl = prefetch === true ? (warmElement ?? makeWarmElement(el)) : null;
     if (this._warmEl) {
       this._warmEl.preload = "auto";
+      // It swaps roles with `el`, so it has to keep pitch the same way.
+      keepPitch(this._warmEl);
       // Same reasoning as above: never `crossOrigin`, on either element.
     }
     /** Non-null once prefetch is off, for whatever reason, and once it is off it
@@ -767,6 +797,163 @@ export class HtmlAudioBackend {
     if (this._fineTimer == null) return;
     clearTimeout(this._fineTimer);
     this._fineTimer = null;
+  }
+
+  /* ---------- narration warm (Phase 2, founder rulings 2026-09-28) ----------
+
+     NOT THE HANDOVER. §"prefetch" is a second element that BECOMES the player
+     at a boundary, and it is parked. This is a spare element that fetches the
+     next rendered narration file and is never played, never promoted and never
+     waited on: the boundary loads the file on `this.el` exactly as before, and
+     finds the CDN edge, the connection and (engine permitting) the HTTP cache
+     warm. docs/plans/spark-central-narration-assessment.md §1 risk 2 / §5.
+
+     WHAT THE PARKED HANDOVER TAUGHT, AND WHAT THIS DOES ABOUT IT:
+       - a hidden page runs a media load as a task chain of ~11 s, and a warm
+         still loading at the boundary competes with the boundary's own load.
+         So the manager asks only at the START of an item, and only behind one
+         long enough (`queue-manager.js` `NARRATION_WARM_MIN_LEAD_SEC`).
+       - the handover's DISCARD queued two more steps AHEAD of the cold load
+         (run 32057395270). So a cancel in a HIDDEN page does no media work at
+         all: the listeners go, the reference goes, and the element is left to
+         finish a file of a few hundred KB. Visible, it is aborted.
+       - an unexplained pause while a warm was loading switches it off for the
+         session (`_notePause`), the handover's own stand-down rule.
+       - one element for the session, created on first use; never inserted in
+         the document, muted, `preload = auto`. */
+
+  /** The id of the narration item being warmed, or null. */
+  get narrationWarmId() { return this._narrationWarm?.id ?? null; }
+
+  /** Why narration warming is off, or null. */
+  get narrationWarmOffReason() { return this._narrationWarmOff; }
+
+  /**
+   * Start fetching `item`'s rendered narration file on the spare element.
+   * Returns true when a warm is started or already running for this file.
+   * Every refusal says why, in telemetry.
+   *
+   * @param {{id: string, audio_url: string}} item
+   * @returns {boolean}
+   */
+  warmNarration(item) {
+    const id = item?.id ?? "?";
+    if (this._released) return false;
+    if (this._narrationWarmOff) {
+      this._emit(`prefetch.narration.unavailable ${id}: ${this._narrationWarmOff}`);
+      return false;
+    }
+    const url = item?.audio_url;
+    if (typeof url !== "string" || !/^https:\/\//.test(url)) {
+      this._emit(`prefetch.narration.skipped ${id}: not an https file`);
+      return false;
+    }
+    const held = this._narrationWarm;
+    if (held && held.id === item.id && held.url === url) return true;
+    if (url === this._currentUrl) {
+      this._emit(`prefetch.narration.skipped ${id}: the player already holds this file`);
+      return false;
+    }
+    if (!this._narrationWarmEl) {
+      let made = null;
+      try { made = this._makeNarrationWarmEl(); } catch (_) { made = null; }
+      /* A SPARE element, never the player: a host whose `Audio` hands back the
+         same object every time would otherwise have the warm re-point — and
+         its cancel empty — the element the listener is hearing. */
+      if (made === this.el || (made != null && made === this._warmEl)) made = null;
+      if (!made) {
+        this._narrationWarmOff = "no spare element is available";
+        this._emit(`prefetch.narration.unavailable ${id}: ${this._narrationWarmOff}`);
+        return false;
+      }
+      try {
+        made.preload = "auto";
+        made.muted = true;
+      } catch (_) { /* a warm that ignores these still only fetches */ }
+      keepPitch(made);
+      this._narrationWarmEl = made;
+    }
+    if (held) this._dropNarrationWarm(`replacedBy:${item.id}`, { abort: false });
+    const el = this._narrationWarmEl;
+    const warm = { id: item.id, url, ready: false };
+    const onReady = () => {
+      if (this._narrationWarm !== warm || warm.ready) return;
+      warm.ready = true;
+      this._emit(`prefetch.narration.ready ${warm.id}`);
+    };
+    const onErr = () => {
+      if (this._narrationWarm !== warm) return;
+      this._emit(`prefetch.narration.failed ${warm.id} (code ${el.error?.code ?? "?"}) — the boundary will load it the ordinary way`);
+      this._dropNarrationWarm("failed", { abort: false });
+    };
+    el.addEventListener("canplaythrough", onReady);
+    el.addEventListener("error", onErr);
+    this._narrationWarmCleanup = () => {
+      el.removeEventListener("canplaythrough", onReady);
+      el.removeEventListener("error", onErr);
+    };
+    this._narrationWarm = warm;
+    try {
+      el.src = url;
+    } catch (err) {
+      this._emit(`prefetch.narration.failed ${warm.id}: ${err?.name ?? err}`);
+      this._dropNarrationWarm("threw", { abort: false });
+      return false;
+    }
+    this._emit(`prefetch.narration.started ${warm.id} hidden=${this._hiddenNow() ? "y" : "n"}`);
+    return true;
+  }
+
+  /**
+   * Stop wanting the warmed file: a skip, a jump, a stop, or the queue moving
+   * past it. Visible, the fetch is aborted; hidden, nothing is done to the
+   * element (see the section comment). Returns whether anything was warming.
+   *
+   * @param {string} [why]
+   * @returns {boolean}
+   */
+  cancelNarrationWarm(why = "cancelled") {
+    if (!this._narrationWarm) return false;
+    this._dropNarrationWarm(why, { abort: !this._hiddenNow() });
+    return true;
+  }
+
+  _dropNarrationWarm(why, { abort }) {
+    const warm = this._narrationWarm;
+    this._narrationWarm = null;
+    if (this._narrationWarmCleanup) {
+      try { this._narrationWarmCleanup(); } catch (_) { /* never break a cancel */ }
+      this._narrationWarmCleanup = null;
+    }
+    if (!warm) return;
+    const el = this._narrationWarmEl;
+    const aborted = abort && !warm.ready && el != null;
+    if (aborted) {
+      try {
+        el.removeAttribute("src");
+        el.load();
+      } catch (_) { /* an element that refuses to stop is left to finish a small file */ }
+    }
+    this._emit(`prefetch.narration.cancelled ${warm.id}: ${why}${aborted ? " (aborted)" : ""}`);
+  }
+
+  /** Off for the rest of the session, and the element emptied. */
+  _disableNarrationWarm(reason) {
+    if (this._narrationWarm) this._dropNarrationWarm(reason, { abort: true });
+    if (!this._narrationWarmOff) this._narrationWarmOff = reason;
+    const el = this._narrationWarmEl;
+    this._narrationWarmEl = null;
+    if (el) {
+      try {
+        el.removeAttribute("src");
+        el.load();
+      } catch (_) { /* nothing left to do */ }
+    }
+  }
+
+  /** `isHidden()`, never throwing: a broken surface reads as visible. */
+  _hiddenNow() {
+    try { return this._isHidden() === true; } catch (_) { return false; }
   }
 
   /* ---------- prefetch (see §"prefetch" in the header) ---------- */
@@ -1172,6 +1359,13 @@ export class HtmlAudioBackend {
        That is deliberate — the cost of being wrong here is the 9.2 s seam that
        shipped before this feature, and the cost of being wrong the other way is
        silence a listener cannot fix from a locked screen. */
+    /* §"narration warm": the same hypothesis and the same answer. A narration
+       file loading on the spare element when playback was stopped from outside
+       stands narration warming down for the session. */
+    if (this._narrationWarm && !this._narrationWarm.ready) {
+      this._emit("audio.pausedUnexpectedly while a narration warm was in flight");
+      this._disableNarrationWarm("playback stopped while a narration warm was in flight — refusing to warm again");
+    }
     if (!this._warm || this._warm.ready) return;
     this._emit("audio.pausedUnexpectedly while a prefetch was in flight");
     this._disablePrefetch("playback stopped while a prefetch was in flight — refusing to warm again");
@@ -1849,6 +2043,7 @@ export class HtmlAudioBackend {
     // Before `_released` stops it mattering, and before the listeners go: the
     // warm element is holding a buffer too, and it must not be left decoding.
     this._discardWarm("released", { releaseElement: true });
+    this._disableNarrationWarm("released");
     this._detach(this.el);
     this.el.pause();
     this.el.removeAttribute("src");
@@ -1898,6 +2093,27 @@ function makeWarmElement(el) {
     warm.setAttribute("playsinline", "");
   }
   return warm;
+}
+
+/** The narration warm's spare element (§"narration warm"): a plain `Audio`,
+    NOT inserted in the document, so it is nobody's audible element. `null`
+    in `node --test`, which makes narration warming unavailable there. */
+function makeNarrationWarmElement() {
+  if (typeof Audio !== "undefined") return new Audio();
+  if (typeof document !== "undefined" && document.createElement) return document.createElement("audio");
+  return null;
+}
+
+/** Keep the voice's pitch at every playback rate (D2, 2026-09-28). The
+    standard property is set always; the prefixed ones only where the engine
+    has them. Never throws. */
+export function keepPitch(el) {
+  if (!el) return;
+  for (const key of ["preservesPitch", "webkitPreservesPitch", "mozPreservesPitch"]) {
+    try {
+      if (key === "preservesPitch" || key in el) el[key] = true;
+    } catch (_) { /* an engine that refuses keeps its own default, which is true */ }
+  }
 }
 
 function short(u) {
