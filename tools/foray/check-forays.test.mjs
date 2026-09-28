@@ -1980,11 +1980,20 @@ const renderedUrl = (voice = DEFAULT_NARRATION_VOICE, hex = "a") =>
     (see "an unvoiced bridge" below). 40 s is a Patch, comfortably inside
     narration-craft.md §0's 20-45 s band. The asset is a RENDERED file, stamped
     the way the Spark assessment's Phase 1 stamps one (§3.4): on the narration
-    host, with its measured length labelled as measured. */
-const bridge = (extra = {}) => ({
-  type: "narration", id: "nar-1", audio_url: renderedUrl(),
-  duration_sec: 40, duration_source: "measured", ...extra,
-});
+    host, with its measured length labelled as measured — and with the script
+    it was rendered from (§3.4: `script` stays required on a rendered line;
+    it is what the player speaks if the file fails). The default script is
+    sized to the bridge's duration at the 17 chars/s planning rate, so it sits
+    in the middle of the duration-vs-script sanity band whatever length a test
+    gives the bridge (capped at a 600 s estimate). */
+const bridgeScript = (sec) => "x".repeat(Math.round(Math.min(sec, 600) * 17));
+const bridge = (extra = {}) => {
+  const sec = typeof extra.duration_sec === "number" && Number.isFinite(extra.duration_sec) && extra.duration_sec > 0 ? extra.duration_sec : 40;
+  return {
+    type: "narration", id: "nar-1", script: bridgeScript(sec), audio_url: renderedUrl(),
+    duration_sec: 40, duration_source: "measured", ...extra,
+  };
+};
 
 /** A bridge timed by its script rather than by a stamped duration — which,
     since central rendering, means a line with no file yet: a rendered file
@@ -2288,9 +2297,15 @@ test("an over-long bridge is dropped from the clock, not left to distort every o
      drift and a D1 failure that is an artefact of the first mistake. */
   const f = fx();
   boundary(f).items.splice(1, 0, bridge({ duration_sec: 1e6 }));
+  /* Two errors, both about THIS line and both real: the Carry hard max, and
+     the rendered-duration sanity band (1e6 s cannot belong to any script the
+     bridge could carry: the milliseconds-as-seconds case, §3.4). Neither is
+     an artefact of the other; what must not appear is a runtime drift or a D1
+     failure caused by the line. */
   const errors = errorsFor(f);
-  assert.equal(errors.length, 1, errors.join("\n"));
-  assert.match(errors[0], /over the 180 s Carry hard max/);
+  assert.equal(errors.length, 2, errors.join("\n"));
+  assert.match(errors.find((e) => /Carry/.test(e)) ?? "", /over the 180 s Carry hard max/);
+  assert.equal(errors.filter((e) => /outside \[/.test(e)).length, 1, errors.join("\n"));
   assert.equal(checkForays(f).report.forays[0].runtime_sec, FIXTURE_RUNTIME);
 });
 
@@ -3294,6 +3309,29 @@ test("rendered narration: a file on the line means a MEASURED duration, labelled
   const estimated = rx();
   firstStamped(estimated).duration_source = "estimated";
   assert.equal(rendErrors(estimated, /must say so: `duration_source` is "estimated"/).length, 1);
+});
+
+test("rendered narration: a rendered line keeps its script, in any voice and via `asset` too", () => {
+  /* §3.4: "`script` still required". The script is what the player's Phase 2
+     fallback speaks when the file fails to load (§3.3); without it one failed
+     fetch is silence or a stop. Before this rule a stamped line with its
+     script deleted passed the checker clean.
+     MUTATION: drop the `!hasScript && carriesRenderedNarration(item)` check ->
+     every case below goes green. */
+  const rule = /carries rendered narration audio but no `script`/;
+  const cases = [
+    (l) => { delete l.script; },
+    (l) => { l.script = "   "; },
+    (l) => { l.asset = l.audio_url; delete l.audio_url; delete l.script; },
+    (l) => { delete l.audio_url; delete l.duration_sec; delete l.duration_source; delete l.script; },
+  ];
+  for (const mutate of cases) {
+    const f = rx();
+    mutate(firstStamped(f));
+    assert.equal(rendErrors(f, rule).length, 1, `${mutate}\n${checkForays(f).errors.join("\n")}`);
+  }
+  // A script-only line (not yet rendered) is untouched by the rule.
+  assert.deepEqual(rendErrors(rx(), rule), []);
 });
 
 test("rendered narration: duration_source is the resolver's enum, and labels a duration_sec", () => {

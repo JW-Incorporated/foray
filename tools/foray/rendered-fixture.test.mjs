@@ -130,9 +130,15 @@ test("the player reads the rendered lines as FILES timed by their measurement, a
 });
 
 const PROFILE = path.join(REPO_ROOT, "tools", "narration", "render-profile.json");
+/* Skipped ONLY while the render card (PR #864) is not on this branch at all.
+   Once any of its tools lands, the profile must be there too: a renamed or
+   deleted profile then fails here instead of quietly skipping the pin. */
+const RENDER_CARD_FILES = ["render-profile.json", "render-foray.py", "stamp-narration.mjs", "upload-narration.mjs"].map((f) =>
+  path.join(REPO_ROOT, "tools", "narration", f)
+);
 test(
   "the checker's narration constants agree with the render profile",
-  { skip: fs.existsSync(PROFILE) ? false : "tools/narration/render-profile.json is not on this branch yet (PR #864)" },
+  { skip: RENDER_CARD_FILES.some((f) => fs.existsSync(f)) ? false : "the render card (PR #864) is not on this branch yet" },
   () => {
     /* Two files state the same facts: the render/stamp tools read the
        profile, and CI reads check-forays.mjs. Pinned together so one cannot

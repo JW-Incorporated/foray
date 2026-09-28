@@ -60,7 +60,8 @@ rendered centrally is stamped by `tools/narration/stamp-narration.mjs` as:
 
 `check-forays.mjs` holds the Phase 1 rules (assessment §3.4): the URL is under
 `NARRATION_PUBLIC_BASE` at a content key in the voice it stands for, with no
-query; a file means a measured `duration_sec` labelled `"measured"`; a measured
+query; a file means a measured `duration_sec` labelled `"measured"`, and the
+line keeps its `script` (the player's fallback speaks it); a measured
 length must fit its script (0.5–2.0× the 17 chars/s estimate, plus 2 s);
 `runtime_sec` is restated to within 0.05 s once any length is measured; and
 **rendered audio on a PUBLISHED Foray is an error** until the Phase 2 PR flips

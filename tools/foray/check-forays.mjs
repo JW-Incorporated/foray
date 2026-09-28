@@ -1030,6 +1030,20 @@ export function checkForays(files, { renderedNarrationOnPublished = RENDERED_NAR
           }
         }
         const hasScript = typeof item.script === "string" && item.script.trim().length > 0;
+        /* §3.4: "`script` still required" on a rendered line, on ANY Foray.
+         * Ahead of the generated-Foray `continue` below, so a voices-only
+         * line reaches it. The script is what the file was rendered from
+         * (stamp-narration.mjs refuses a line without one), what `render.script_sha` hashes, and what the
+         * player's Phase 2 fallback SPEAKS when the file fails to load (§3.3) —
+         * a rendered line without it has no fallback, so one failed fetch is
+         * silence or a stop. Every narration file is now a rendered one (the
+         * URL rule below), so this covers `asset` and `voices` too. */
+        if (!hasScript && carriesRenderedNarration(item)) {
+          E(
+            `${where} carries rendered narration audio but no \`script\` — a rendered line keeps the script it was ` +
+              `rendered from: it is what the player speaks when the file fails to load (assessment §3.3, §3.4)`
+          );
+        }
         /* §7 item 5, clause 1: "A narration item has either script or asset
          * (never neither)." Gated as a hard failure ONLY for a generated
          * Foray (`isGeneratedForay`, defined above) — an admin-authored
