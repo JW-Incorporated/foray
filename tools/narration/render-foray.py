@@ -10,7 +10,8 @@ WHAT IT DOES, per narration item, per voice:
 
   1. phonemize the script with K-02's own stage (`phonemize.py`: the lexicon
      first, misaki en-US, espeak-ng for what misaki cannot look up) and cut it
-     with `sentence_chunks`, D3's one chunk rule;
+     with `sentence_chunks`, the one chunk rule (D3 of
+     `docs/kokoro-voices-in-app-plan.md`, not the assessment's D3);
   2. synthesize each chunk with Kokoro-82M **fp32** through onnxruntime on the
      CPU (the graph and bytes `tools/mobile/fetch-models.mjs` pins; never
      fp16/q8f16, which returned NaN on ARM), style row `len(ids) - 2`;
