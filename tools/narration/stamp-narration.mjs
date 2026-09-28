@@ -199,6 +199,7 @@ async function main() {
   const profile = loadProfile();
   const base = args.base ?? process.env.NARRATION_PUBLIC_BASE ?? profile.public_base;
   const dataPath = path.resolve(args.data ?? path.join(REPO_ROOT, "data", "forays.json"));
+  if (!fs.existsSync(dataPath)) throw new StampError(`no data file at ${dataPath}`);
   const text = fs.readFileSync(dataPath, "utf8");
   const doc = JSON.parse(text);
   const res = stampForays(doc, readManifests(args.manifests), { base, profile, allowPublished: args.allowPublished });
