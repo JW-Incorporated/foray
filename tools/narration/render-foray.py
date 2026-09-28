@@ -461,7 +461,9 @@ def linear_gain_db(render: dict, input_i: float, input_tp: float) -> tuple[float
     (gain dB, "linear" | "linear-peak-limited")."""
     L = render["loudness"]
     to_target = float(L["integrated_lufs"]) - input_i
-    to_ceiling = float(L["true_peak_dbtp"]) - input_tp
+    # AAC re-synthesis overshoots the input's true peak slightly (the smoke run
+    # measured +0.2 dB), so the cap keeps `encoder_headroom_db` in hand.
+    to_ceiling = float(L["true_peak_dbtp"]) - float(L.get("encoder_headroom_db", 0)) - input_tp
     if to_target <= to_ceiling:
         return round(to_target, 2), "linear"
     return round(to_ceiling, 2), "linear-peak-limited"

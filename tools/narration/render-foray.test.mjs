@@ -197,7 +197,7 @@ test("loudness is ONE gain to -19 LUFS, capped at -1 dBTP, and a line is whole A
       `"whole":[(pad+n+t)%f for n,t in zip(ns,tails)],"extra":[t-pad for t in tails]}))`
   );
   assert.deepEqual(out.quiet, [6.0, "linear"]);
-  assert.deepEqual(out.hot, [3.0, "linear-peak-limited"]);
+  assert.deepEqual(out.hot, [2.5, "linear-peak-limited"]); // -1 dBTP less 0.5 dB encoder headroom, from -4
   assert.equal(out.f, 1024);
   assert.deepEqual(out.whole, [0, 0, 0, 0, 0]);
   assert.ok(out.extra.every((x) => x >= 0 && x < 1024), "the stretch is under one frame of silence");
@@ -216,34 +216,45 @@ test("a render speed other than 1.0 is refused at load (ruling D2)", () => {
 
 /* ---------- selection ---------- */
 
-test("@drafts selects exactly the narrated drafts: the three Phase 1 Forays", () => {
-  /* §5 Phase 1 renders the three narrated DRAFTS; the published one waits.
-     MUTATION: select on `narration_items` alone -> how-ai-actually-gets-built joins. */
+/* A synthetic catalogue, so these tests do not read live data (a publish
+   must never be able to break them; backend/test/publishSuites.test.ts). */
+const DOC =
+  `N=lambda i,s: {"type":"narration","id":i,"script":s}\n` +
+  `doc={"forays":[` +
+  `{"id":"pub","status":"published","items":[N("a","Published narration line here.")]},` +
+  `{"id":"d1","status":"draft","items":[{"type":"segment"},N("x","A fairly long line of narration, the longest of all."),N("y","Short one."),N("z","Middle-sized narration line."),N("w","Tiny.")]},` +
+  `{"id":"d2","status":"draft","items":[{"type":"segment"}]},` +
+  `{"id":"d3","status":"draft","items":[N("q","Another draft line.")]}]}\n`;
+
+test("@drafts selects exactly the narrated drafts, never a published Foray", () => {
+  /* §5 Phase 1 renders the narrated DRAFTS; a published Foray waits for the
+     player's fallback. MUTATION: select on `narration_items` alone -> "pub" joins. */
+  const out = pyJson(DOC + `print(json.dumps([f["id"] for f in R.select_forays(doc,["@drafts"])]))`);
+  assert.deepEqual(out, ["d1", "d3"]);
+});
+
+test("naming a Foray with no narration, or an unknown id, is refused", () => {
+  /* MUTATION: skip it silently -> a render run that renders nothing looks green. */
   const out = pyJson(
-    `doc=json.loads(R.FORAYS_PATH.read_text(encoding="utf-8"))\n` +
-      `print(json.dumps([f["id"] for f in R.select_forays(doc,["@drafts"])]))`
+    DOC +
+      `res=[]\n` +
+      `for want in (["d2"],["nope"],["d1","d1"]):\n` +
+      `  try: res.append([f["id"] for f in R.select_forays(doc,want)])\n` +
+      `  except R.RenderError as e: res.append(str(e))\n` +
+      `print(json.dumps(res))`
   );
-  assert.deepEqual(out.sort(), [
-    "beyond-the-algorithm-engineering-production-ai-s-e6533b",
-    "the-chain-reaction-how-engineering-disasters-rea-25f1b7",
-    "what-engineers-actually-do-all-day-e08236",
-  ]);
+  assert.match(out[0], /d2 has no narration/);
+  assert.match(out[1], /nope is not a Foray id/);
+  assert.deepEqual(out[2], ["d1"]);
 });
 
 test("--smoke picks the two shortest lines of the first Foray, in running order", () => {
-  /* MUTATION: take items[:2] -> not the shortest. */
+  /* MUTATION: take items[:2] -> not the shortest; sort by length -> out of order. */
   const out = pyJson(
-    `doc=json.loads(R.FORAYS_PATH.read_text(encoding="utf-8"))\n` +
-      `f=R.select_forays(doc,["the-chain-reaction-how-engineering-disasters-rea-25f1b7"])\n` +
-      `(foray,items),=R.smoke_selection(f)\n` +
-      `allx=R.narration_items(foray)\n` +
-      `lens=sorted(len(i["script"]) for i in allx)[:2]\n` +
-      `order=[allx.index(i) for i in items]\n` +
-      `print(json.dumps({"n":len(items),"lens":sorted(len(i["script"]) for i in items),"want":lens,"ordered":order==sorted(order)}))`
+    DOC + `(foray,items),=R.smoke_selection(R.select_forays(doc,["d1","d3"]))\n` +
+      `print(json.dumps([foray["id"],[i["id"] for i in items]]))`
   );
-  assert.equal(out.n, 2);
-  assert.deepEqual(out.lens, out.want);
-  assert.equal(out.ordered, true);
+  assert.deepEqual(out, ["d1", ["y", "w"]]);
 });
 
 test("the CLI refuses an unknown Foray id before loading anything heavy", () => {

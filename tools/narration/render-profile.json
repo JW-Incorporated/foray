@@ -29,6 +29,7 @@
       "method": "ffmpeg loudnorm measures (pass 1); one linear gain to the target, capped at the true-peak ceiling (pass 2); never dynamic",
       "integrated_lufs": -19,
       "true_peak_dbtp": -1,
+      "encoder_headroom_db": 0.5,
       "lra": 20,
       "note": "-19 LUFS integrated on the mono file is -16 LUFS as heard on two speakers (assessment §3.2 / §7)"
     },

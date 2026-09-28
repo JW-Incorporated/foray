@@ -2,9 +2,10 @@
  *
  * `docs/plans/spark-central-narration-assessment.md` §3.0 (data shape), §3.4
  * (runtime restated in the same write; script_sha via billableText) and §5
- * Phase 1 (drafts only). Driven against a COPY of the real data/forays.json and
- * a manifest shaped exactly like render-foray.py's, so the check-forays gate
- * judges the stamped result, not a hand-built fixture.
+ * Phase 1 (drafts only). Driven against the FROZEN fixture (a verbatim copy of
+ * a real narrated draft) and a manifest shaped exactly like render-foray.py's,
+ * so the check-forays gate judges a real Foray, stamped, and a publish to
+ * data/ cannot break this suite.
  *
  * Every test names the mutation that turns it red.
  */
@@ -21,18 +22,29 @@ import { fileURLToPath } from "node:url";
 import { stampForays, normalizeBase, loadProfile, readManifests, StampError } from "./stamp-narration.mjs";
 import { narrationDuration } from "../../player/foray-queue.js";
 import { billableText } from "../narrate/billable.mjs";
-import { checkForays, loadFiles } from "../foray/check-forays.mjs";
+import { checkForays } from "../foray/check-forays.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, "..", "..");
 const CLI = path.join(HERE, "stamp-narration.mjs");
 const PROFILE = loadProfile();
 const BASE = "https://audio.jwlabs.ai";
-const DRAFT = "the-chain-reaction-how-engineering-disasters-rea-25f1b7";
-const PUBLISHED = "how-ai-actually-gets-built-3b83e1";
+/* The FROZEN fixture (tools/foray/fixtures/README.md): a verbatim copy of a
+   real narrated generated draft, so the checker judges real data and no
+   publish to data/ can break this suite. */
+const FROZEN = path.join(ROOT, "tools", "foray", "fixtures", "frozen", "data");
+const DRAFT = "what-engineers-actually-do-all-day-e08236";
+const PUBLISHED = "what-engineers-published-copy";
 
 const sha = (s) => crypto.createHash("sha256").update(s, "utf8").digest("hex");
-const realData = () => JSON.parse(fs.readFileSync(path.join(ROOT, "data", "forays.json"), "utf8"));
+const fixtureFile = (name) => JSON.parse(fs.readFileSync(path.join(FROZEN, `${name}.json`), "utf8"));
+/** The frozen catalogue, plus a PUBLISHED copy of the narrated draft. */
+function realData() {
+  const doc = fixtureFile("forays");
+  const copy = structuredClone(doc.forays.find((f) => f.id === DRAFT));
+  doc.forays.push({ ...copy, id: PUBLISHED, status: "published" });
+  return doc;
+}
 
 /** A manifest shaped like render-foray.py's, for every narration line of `fid`. */
 function fakeManifest(doc, fid, voices = PROFILE.voices, stretch = 1.1) {
@@ -81,10 +93,10 @@ test("runtime_sec is restated by exactly the Heart durations' change, and check-
   const heartSum = m.items.filter((e) => e.voice === "af_heart").reduce((a, e) => a + e.duration_sec, 0);
   stampForays(doc, [{ file: "m", manifest: m }], { base: BASE, profile: PROFILE });
   assert.ok(Math.abs(foray.runtime_sec - (before + heartSum - est)) < 0.002, `${foray.runtime_sec} vs ${before + heartSum - est}`);
-  const files = { ...loadFiles(ROOT), forays: doc };
+  doc.forays = doc.forays.filter((f) => f.id !== PUBLISHED);
+  const files = { forays: doc, segments: fixtureFile("segments"), sources: fixtureFile("segment-sources"), taxonomy: fixtureFile("taxonomy") };
   const { errors, report } = checkForays(files);
-  const mine = errors.filter((e) => e.includes(DRAFT) || /runtime_sec/.test(e));
-  assert.deepEqual(mine, [], mine.join("\n"));
+  assert.deepEqual(errors, [], errors.join("\n"));
   const r = report.forays.find((f) => f.id === DRAFT);
   assert.ok(Math.abs(r.runtime_sec - foray.runtime_sec) <= 0.5);
 });
@@ -137,13 +149,13 @@ test("a manifest from another render profile is refused", () => {
   assert.throws(() => stampForays(doc, [{ file: "m", manifest: m }], { base: BASE, profile: PROFILE }), /profile/);
 });
 
-test("the CLI stamps a copy of data/forays.json, then reports it unchanged on the second run", () => {
+test("the CLI stamps a copy of the frozen forays file, then reports it unchanged on the second run", () => {
   /* Executes the real entry point, twice, including directory manifest discovery.
      MUTATION: a module-level error, or writing when nothing changed. */
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "stamp-"));
   try {
     const dataPath = path.join(tmp, "forays.json");
-    fs.copyFileSync(path.join(ROOT, "data", "forays.json"), dataPath);
+    fs.writeFileSync(dataPath, JSON.stringify(fixtureFile("forays"), null, 2) + "\n");
     const doc = realData();
     fs.writeFileSync(path.join(tmp, "manifest-af_heart.json"), JSON.stringify(fakeManifest(doc, DRAFT, ["af_heart"])));
     fs.writeFileSync(path.join(tmp, "manifest-am_echo.json"), JSON.stringify(fakeManifest(doc, DRAFT, ["am_echo"])));
