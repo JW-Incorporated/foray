@@ -26,10 +26,11 @@
     "edge_pad_sec": 0.5,
     "frame_samples": 1024,
     "loudness": {
-      "method": "ffmpeg loudnorm measures (pass 1); one linear gain to the target, capped at the true-peak ceiling (pass 2); never dynamic",
+      "method": "ffmpeg loudnorm measures (pass 1); one gain to the target, then an alimiter peak limiter at the ceiling, at most max_reduction_db (pass 2); never loudnorm's dynamic mode",
       "integrated_lufs": -19,
       "true_peak_dbtp": -1,
       "encoder_headroom_db": 0.5,
+      "limiter": { "attack_ms": 5, "release_ms": 50, "max_reduction_db": 6 },
       "lra": 20,
       "note": "-19 LUFS integrated on the mono file is -16 LUFS as heard on two speakers (assessment §3.2 / §7)"
     },

@@ -21,10 +21,10 @@ WHAT IT DOES, per narration item, per voice:
      chunk keeps Kokoro's own sentence-edge breath, so that is the natural
      pause), pad 0.5 s at each end;
   5. loudness-normalize: ffmpeg `loudnorm` measures the line (pass 1), then ONE
-     linear gain takes it to -19 LUFS integrated on the mono file (-16 LUFS as
-     heard), capped so the true peak stays at or under -1 dBTP (pass 2). Never
-     loudnorm's dynamic mode, which would compress the voice; output loudness
-     is measured again on the encoded file and recorded;
+     gain takes it to -19 LUFS integrated on the mono file (-16 LUFS as heard)
+     and a fast peak limiter holds peaks under -1 dBTP less 0.5 dB of AAC
+     headroom, shaving at most 6 dB (pass 2). Never loudnorm's dynamic mode;
+     output loudness is measured again on the encoded file and recorded;
   6. encode AAC-LC `.m4a`, 64 kbps, mono, 24 kHz, faststart, with an MP4
      comment marking it synthetic speech (EU AI Act Art. 50(2), §3.5);
   7. name it by CONTENT: `n/<profile>/<voice>/<sha256>.m4a`, the hash of the
@@ -453,29 +453,52 @@ def measure_filter(render: dict) -> str:
     return f"loudnorm=I={L['integrated_lufs']}:TP={L['true_peak_dbtp']}:LRA={L['lra']}:print_format=json"
 
 
-def linear_gain_db(render: dict, input_i: float, input_tp: float) -> tuple[float, str]:
-    """ONE gain for the whole line: to the integrated target, but never past the
-    true-peak ceiling. This is loudnorm's own `linear=true` rule, without its
-    fallback to dynamic compression when the peak would clip: a line with an
-    unusually hot peak comes out slightly quieter, never squashed. Returns
-    (gain dB, "linear" | "linear-peak-limited")."""
+def gain_plan(render: dict, input_i: float, input_tp: float) -> tuple[float, float, str]:
+    """ONE gain for the whole line, to the integrated target, with a peak
+    limiter catching what that gain pushes over the ceiling.
+
+    Why a limiter: Kokoro speech is peaky. The Phase 1 drafts render (run
+    36437953289) with a plain peak-capped gain left 91 of 118 Heart lines
+    under target, from -19 down to -24.7 LUFS: a 5 dB line-to-line jump no
+    listener should hear. A fast limiter shaving the odd plosive a few dB is
+    inaudible on speech; loudnorm's dynamic mode (a moving AGC) is not used.
+    The limiter may take at most `max_reduction_db`; a line that would need
+    more gets less gain instead and lands quieter.
+
+    Returns (gain dB, peak reduction the limiter is expected to apply, kind),
+    kind "linear" (no peak reaches the ceiling), "limited" or "limited-capped"."""
     L = render["loudness"]
-    to_target = float(L["integrated_lufs"]) - input_i
-    # AAC re-synthesis overshoots the input's true peak slightly (the smoke run
-    # measured +0.2 dB), so the cap keeps `encoder_headroom_db` in hand.
-    to_ceiling = float(L["true_peak_dbtp"]) - float(L.get("encoder_headroom_db", 0)) - input_tp
-    if to_target <= to_ceiling:
-        return round(to_target, 2), "linear"
-    return round(to_ceiling, 2), "linear-peak-limited"
+    lim = L["limiter"]
+    ceiling = float(L["true_peak_dbtp"]) - float(L.get("encoder_headroom_db", 0))
+    gain = float(L["integrated_lufs"]) - input_i
+    over = input_tp + gain - ceiling
+    if over <= 0:
+        return round(gain, 2), 0.0, "linear"
+    cap = float(lim["max_reduction_db"])
+    if over <= cap:
+        return round(gain, 2), round(over, 2), "limited"
+    return round(gain - (over - cap), 2), round(cap, 2), "limited-capped"
+
+
+def limiter_filter(render: dict) -> str:
+    L = render["loudness"]
+    lim = L["limiter"]
+    ceiling_db = float(L["true_peak_dbtp"]) - float(L.get("encoder_headroom_db", 0))
+    # `latency=1` compensates the look-ahead so the line keeps its exact length;
+    # `level=0` disables alimiter's own make-up gain (the gain is ours).
+    return (
+        f"alimiter=limit={10 ** (ceiling_db / 20):.6f}:attack={lim['attack_ms']}:release={lim['release_ms']}"
+        ":level=0:latency=1"
+    )
 
 
 def encode_command(ffmpeg: str, wav: Path, out: Path, render: dict, gain_db: float) -> list[str]:
-    """Gain, then AAC-LC. `volume` keeps the sample count exactly, which is what
-    lets the measured PCM duration be the duration the player plays."""
+    """Gain, limiter, then AAC-LC. Neither filter changes the sample count,
+    which is what lets the measured PCM duration be the duration played."""
     e = render["encode"]
     cmd = [
         ffmpeg, "-hide_banner", "-nostdin", "-y", "-i", str(wav),
-        "-af", f"volume={gain_db}dB",
+        "-af", f"volume={gain_db}dB,{limiter_filter(render)}",
         "-c:a", e["codec"], "-b:a", f"{e['bitrate_kbps']}k", "-ac", str(e["channels"]), "-ar", str(e["sample_rate"]),
         "-map_metadata", "-1", "-metadata", f"comment={render['metadata']['comment']}",
         "-fflags", "+bitexact", "-flags:a", "+bitexact",
@@ -511,7 +534,7 @@ def normalize_and_encode(ffmpeg: str, ffprobe: str, pcm, out: Path, render: dict
     sf.write(str(wav), pcm, int(render["sample_rate"]), subtype="FLOAT")
     try:
         before = _measure(ffmpeg, wav, render)
-        gain, kind = linear_gain_db(render, before["i"], before["tp"])
+        gain, reduction, kind = gain_plan(render, before["i"], before["tp"])
         out.parent.mkdir(parents=True, exist_ok=True)
         _run(encode_command(ffmpeg, wav, out, render, gain))
     finally:
@@ -522,6 +545,7 @@ def normalize_and_encode(ffmpeg: str, ffprobe: str, pcm, out: Path, render: dict
         "input_i": before["i"],
         "input_tp": before["tp"],
         "gain_db": gain,
+        "limit_db": reduction,
         "output_i": after["i"],
         "output_tp": after["tp"],
         "type": kind,
@@ -717,7 +741,7 @@ def render_all(args, profile: dict) -> int:
                     entries.append(entry)
                     log(f"{tag}: {duration:.3f} s (pcm {pcm_sec}, container {container_sec}), {len(data) / 1000:.0f} kB, "
                         f"{entry['loudness']['output_i']:.1f} LUFS / {entry['loudness']['output_tp']:.1f} dBTP "
-                        f"({entry['loudness']['type']}, {entry['loudness']['gain_db']:+.1f} dB) in {time.perf_counter() - t0:.1f} s")
+                        f"({entry['loudness']['type']}, {entry['loudness']['gain_db']:+.1f} dB, limit {entry['loudness']['limit_db']:.1f} dB) in {time.perf_counter() - t0:.1f} s")
                 except RenderError as exc:
                     failed.append({**base, "error": str(exc)})
                     log(f"{tag}: FAILED {exc}")

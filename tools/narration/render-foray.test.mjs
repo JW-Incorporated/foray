@@ -184,20 +184,24 @@ test("the pins come from fetch-models.mjs, and Echo's recorded pin equals the be
   assert.equal(out.echo.bytes, 522240);
 });
 
-test("loudness is ONE gain to -19 LUFS, capped at -1 dBTP, and a line is whole AAC frames", () => {
-  /* A hot-peaked line comes out quieter, never compressed (loudnorm's dynamic
-     fallback squashed a smoke-run line); and a line of whole 1024-sample frames
-     decodes to exactly its PCM length, which is what duration_sec claims.
-     MUTATION: return to_target unconditionally, or drop the frame alignment. */
+test("loudness is ONE gain to -19 LUFS with a capped peak limiter, and a line is whole AAC frames", () => {
+  /* The drafts render left 91/118 Heart lines 1-6 dB under target with a plain
+     peak-capped gain; now the gain always aims at -19 and a limiter takes up to
+     6 dB of peaks, beyond which the gain gives way. A line of whole 1024-sample
+     frames decodes to exactly its PCM length, which is what duration_sec claims.
+     MUTATION: drop the cap, cap the gain at the ceiling again, or drop the frame alignment. */
   const out = pyJson(
     `r=P["render"]\n` +
       `f=r["frame_samples"]; pad=int(round(r["edge_pad_sec"]*r["sample_rate"])); ns=(1,1023,1024,8001,123457)\n` +
       `tails=[R.tail_pad_samples(pad,n,f) for n in ns]\n` +
-      `print(json.dumps({"quiet":R.linear_gain_db(r,-25.0,-10.0),"hot":R.linear_gain_db(r,-25.0,-4.0),"f":f,` +
+      `print(json.dumps({"quiet":R.gain_plan(r,-25.0,-10.0),"hot":R.gain_plan(r,-25.0,-4.0),"wild":R.gain_plan(r,-30.0,-2.0),` +
+      `"lim":R.limiter_filter(r),"f":f,` +
       `"whole":[(pad+n+t)%f for n,t in zip(ns,tails)],"extra":[t-pad for t in tails]}))`
   );
-  assert.deepEqual(out.quiet, [6.0, "linear"]);
-  assert.deepEqual(out.hot, [2.5, "linear-peak-limited"]); // -1 dBTP less 0.5 dB encoder headroom, from -4
+  assert.deepEqual(out.quiet, [6.0, 0.0, "linear"]); // -10 + 6 = -4 dBTP, under the -1.5 ceiling
+  assert.deepEqual(out.hot, [6.0, 3.5, "limited"]); // -4 + 6 = +2, 3.5 dB over -1.5
+  assert.deepEqual(out.wild, [6.5, 6.0, "limited-capped"]); // +11 dB would put -2 at +9, 10.5 over; 4.5 dB of gain gives way
+  assert.match(out.lim, /^alimiter=limit=0\.84\d+:attack=5:release=50:level=0:latency=1$/);
   assert.equal(out.f, 1024);
   assert.deepEqual(out.whole, [0, 0, 0, 0, 0]);
   assert.ok(out.extra.every((x) => x >= 0 && x < 1024), "the stretch is under one frame of silence");
