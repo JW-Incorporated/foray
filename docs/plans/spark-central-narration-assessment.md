@@ -459,7 +459,7 @@ verdict here.
 | `docs/roadmap/player-features.md` | #29 (downloads) | Can now include narration files (we control CORS). |
 | `tools/narrate/` | ElevenLabs adapter + pricing | Parked. The key and canonicalisation rules are reused. |
 | `HUMAN-ACTIONS.md` | #45 | **Withdraw** (probe runs are moot). |
-| | #119 | Rewrite ("listen in Heart, then Echo" against rendered narration). |
+| | KV-12's pencilled "#119" (never filed) | Re-file under a new number as "listen in Heart, then Echo" against rendered narration, when Echo reaches the picker. The number #119 went to the bucket card (PR #863). |
 | | #40 | Demote to fallback voice. |
 | | #28 (AMD/Vulkan path) | Moot once the farm moves (D10). |
 | | #46 | Retarget to the Spark. |
@@ -504,6 +504,11 @@ blocks it.
 ---
 
 ## 6. HUMAN ACTIONS (founder-only)
+
+Filed 2026-09-28 in `HUMAN-ACTIONS.md` (PR #863): item 3 is #119, the Phase-1 PC token in item 4 is #120,
+item 2 plus the Spark tokens is #121, item 7 is #122, items 8 and 11b are #123, item 6 is #124, item 11 is
+#125, item 12 is #126, and item 13 is a note on #46. Items 9, 10 and 14 are filed when their phase or PR
+arrives. #45 is withdrawn.
 
 1. ~~**Rule on D1–D11**~~ **Ruled 2026-09-28: defaults.** Merge the DECISIONS PR (#863, DENIED path).
 2. **Spark physical setup:** first boot of DGX OS and updates, wired Ethernet with a DHCP reservation, a UPS
