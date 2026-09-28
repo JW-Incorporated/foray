@@ -1,5 +1,12 @@
 # Bundled neural voice (Kokoro) — hand-off plan for the qwen fleet + opus seats (revision 2)
 
+> **SUPERSEDED AGAIN 2026-09-28: the whole on-device approach is replaced by central render.** The
+> founder ruled *"Defaults"* on D1–D11 of `docs/plans/spark-central-narration-assessment.md` (PR #860; `docs/DECISIONS.md` 2026-09-28).
+> Narration is rendered once off the phone and streamed. Nothing in this file is to be built. The
+> phone's speech engine stays only as the fallback for a file that fails to load. The British-voices
+> entry at the end ("Roadmap: British voices") still stands, as two extra **renders** with no app
+> build.
+
 **SUPERSEDED 2026-09-26 by revision 3: `docs/kokoro-voices-in-app-plan.md`.** The founder cut scope to two American voices, Heart (default) and Echo, to get a bundled voice operational first. No card below has an open or merged PR; do not start one. The revision 2 → 3 card map is §7 of the new deck. The British voices are kept on the roadmap in the last section of this file ("Roadmap: British voices"). **Rev 3.1 (same day):** the q8f16 model this file assumes produces NaN on Apple silicon, so iOS moves to fp32 and the phone reading is KV-R2; see §10 of the new deck.
 
 Package: `docs/bundled-voice-plan.md` K-01..K-08 (K-06/K-07 done), HUMAN-ACTIONS #45 (phone probe), native engine NE-42 (PcmNarrator seat), narration phonemes authored server-side. Revised 2026-09-25 against `origin/main` @ **`ecb6bfa3`** (`feat(playlists) #839`; three commits past the reviewer's `0b2b8f92`, which was itself stale). Every path, symbol and line number below was re-verified with `git show origin/main:<path> | grep -n <symbol>` at that commit.

@@ -1,5 +1,21 @@
 # A voice of our own, inside the app: research and a Hermes deck
 
+> **SUPERSEDED 2026-09-28 by central render.** The founder ruled *"Defaults"* on D1–D11 of
+> `docs/plans/spark-central-narration-assessment.md` (PR #860; `docs/DECISIONS.md` 2026-09-28). The voice is no longer bundled in the app:
+> Kokoro renders each narration line once off the phone, and phones stream the file. The bundled
+> models leave the app in the first build after the founder's car listen of rendered narration
+> (D11).
+>
+> **Still applies:** Kokoro-82M with Heart and Echo; phonemes computed server-side (§4's idea, now
+> inside the render step rather than shipped to the phone); the pronunciation lexicon; the espeak
+> gate in `test/release-gates.test.js` (espeak-ng stays server-side only). The platform voice stays
+> as the **fallback** for a file that fails to load.
+>
+> **Parked:** K-01 (phone measurement; `HUMAN-ACTIONS.md` #45 is withdrawn), K-04 (the on-device
+> engine), K-05 (the player speaks phonemes), K-08 (the accelerator provider). K-02's phonemizer is
+> reused by the render tool, but no `phonemes` go into `data/forays.json`. K-03, K-06 and K-07 are
+> done and stay as history.
+
 **Execution status (2026-09-26):** the cards that finish this deck are in
 `docs/kokoro-voices-in-app-plan.md` (Kokoro deck revision 3). Two American voices
 ship first, Heart (`af_heart`, the default) and Echo (`am_echo`); the British voices
