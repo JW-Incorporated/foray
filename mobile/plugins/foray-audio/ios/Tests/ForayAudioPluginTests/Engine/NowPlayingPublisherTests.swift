@@ -183,27 +183,37 @@ final class NowPlayingPublisherTests: XCTestCase {
         XCTAssertNotNil(DiagGate.admit(row), "the row passes the gate")
     }
 
-    /// A stall (and the sound coming back) changes only the RATE the car is
-    /// told: the state stays `playing`. That is on record too, as `via=rate`,
-    /// with the playhead the entry carried. The 2026-09-28 paste had no such
-    /// row, so every entry it showed read rate=0 and none could say whether
-    /// the lock screen's clock ever ran.
-    /// TO SEE IT FAIL: drop the `via = "rate"` branch in `publishSurface`.
+    /// A speed change, a stall and the sound coming back change only the
+    /// RATE the car is told: the state stays `playing`. Each is on record as
+    /// `via=rate`, with the elapsed time and duration the entry carried and
+    /// why a playing entry says 0 (`buffering`), next to the listener's rate.
+    /// While playing and not buffering the entry carries the LISTENING rate
+    /// (1.5), which with the elapsed time is what a head unit draws its
+    /// progress from (the 2026-09-28 car showed the total and no position).
+    /// TO SEE IT FAIL: drop the `via = "rate"` branch in `publishSurface`, or
+    /// publish 1 instead of the listener's rate.
     @MainActor
     func testARateOnlyChangeIsOnRecord() throws {
         let world = FakeWorld()
         let engine = playing(world)
         let token = try XCTUnwrap(world.deck.lastToken)
         world.deck.reading.audible = true
+        engine.handle(.queue(.setRate(1.5)))
+        XCTAssertEqual(NowPlayingRate.of(try XCTUnwrap(world.nowPlaying.last)), 1.5, "the listening rate is published")
         world.deck.report(.timeControl(token: token, status: .waiting, waitingReason: "AVPlayerWaitingToMinimizeStallsReason"))
+        XCTAssertEqual(NowPlayingRate.of(try XCTUnwrap(world.nowPlaying.last)), 0, "a stall stops the clock")
         world.deck.report(.timeControl(token: token, status: .playing, waitingReason: nil))
-        _ = engine
+        XCTAssertEqual(NowPlayingRate.of(try XCTUnwrap(world.nowPlaying.last)), 1.5)
         let rows = world.output.diags.filter { $0.kind == "nowplaying" }
-        XCTAssertEqual(rows.map { $0[field: "via"] }, [.string("metadata"), .string("rate"), .string("rate")])
-        XCTAssertEqual(rows.map { $0[field: "rate"] }, [.number(1), .number(0), .number(1)])
-        XCTAssertEqual(rows.map { $0[field: "state"] }, Array(repeating: .string(MediaMapping.playing), count: 3))
-        XCTAssertNotNil(rows.last?[field: "positionSec"])
-        for row in rows { XCTAssertNotNil(DiagGate.admit(row), "the row passes the gate") }
+        XCTAssertEqual(rows.map { $0[field: "via"] },
+                       [.string("metadata"), .string("rate"), .string("rate"), .string("rate")])
+        XCTAssertEqual(rows.map { $0[field: "rate"] }, [.number(1), .number(1.5), .number(0), .number(1.5)])
+        XCTAssertEqual(rows.map { $0[field: "buffering"] }, [.bool(false), .bool(false), .bool(true), .bool(false)])
+        XCTAssertEqual(rows.map { $0[field: "state"] }, Array(repeating: .string(MediaMapping.playing), count: 4))
+        XCTAssertEqual(rows.last?[field: "listenRate"], .number(1.5))
+        XCTAssertEqual(rows.last?[field: "durationSec"], .number(3600))
+        XCTAssertNotNil(rows.last?[field: "elapsedSec"]?.numberValue)
+        for row in rows { XCTAssertNil(DiagGate.admit(row)?[field: DiagGate.droppedField], "the gate dropped part of \(row)") }
     }
 
     // MARK: - The real MPNowPlayingInfoCenter

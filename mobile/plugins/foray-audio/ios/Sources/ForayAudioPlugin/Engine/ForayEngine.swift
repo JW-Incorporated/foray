@@ -588,9 +588,22 @@ final class ForayEngine {
                 JSONMember("artwork", .string(entry.metadata.artwork.isEmpty ? "n" : "y")),
                 JSONMember("state", .string(entry.playbackState)),
                 JSONMember("rate", .number(NowPlayingRate.of(entry))),
-                JSONMember("positionSec", entry.positionState.map { JSONNode.number(($0.position * 1000).rounded() / 1000) } ?? .null)
+                // What the car draws its progress bar from: the elapsed time
+                // and duration this entry carried (nil: none was published),
+                // and WHY a playing entry says rate 0 (the core's buffering
+                // latch, or a load in flight) next to the listener's rate.
+                JSONMember("elapsedSec", entry.positionState.map { JSONNode.number(Self.millis($0.position)) } ?? .null),
+                JSONMember("durationSec", entry.positionState.map { JSONNode.number(Self.millis($0.duration)) } ?? .null),
+                JSONMember("buffering", .bool(core.state.buffering)),
+                JSONMember("engineState", .string(core.state.stateType)),
+                JSONMember("listenRate", .number(core.state.rate))
             ]))
         }
+    }
+
+    /// Seconds to three decimals, for a row.
+    private static func millis(_ sec: Double) -> Double {
+        sec.isFinite ? (sec * 1000).rounded() / 1000 : 0
     }
 
     /// A transition (words, state, duration or rate changed), or a playhead

@@ -970,6 +970,19 @@ final class AVDeck: DeckDriving {
             JSONMember("bufferedAheadSec", Self.secNode(bufferedAhead(of: at)))
         ] + accessFields())
         emit(.stalled(token: token))
+        // THE STALL IS A LATCH IN THE CORE (`buffering = true`), and only a
+        // `.timeControl(.playing)` releases it. The stall notification comes
+        // through NotificationCenter's main OperationQueue while the
+        // timeControl KVO hops through the main dispatch queue, so it can land
+        // AFTER the player is already back to `.playing`, which was then never
+        // reported again (deduplicated): Now Playing kept `rate 0` for the
+        // rest of the item, the car read "paused", hid the elapsed time and
+        // kept pressing play. Re-report what the player says NOW, whatever
+        // the last report was.
+        guard gen == generation, self.token == token else { return }
+        lastTimeControl = nil
+        lastWaitingReason = nil
+        timeControlChanged()
     }
 
     /// `where` says which observation failed (`duration`, `item`, `player`,
