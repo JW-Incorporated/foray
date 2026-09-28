@@ -28,6 +28,9 @@ founder steps are #119–#126 (#119 bucket and #120 PC token block Phase 1).
 
 ### 2026-09-26 — `docs/kokoro-voices-plan`: Kokoro deck revision 3 (Heart + Echo; British later)
 
+**Superseded 2026-09-28** by the Spark direction (entry above): do not start a KV card without
+the deck's card map; HA #45 is withdrawn.
+
 Owned: nothing held (docs only). Lands `docs/kokoro-voices-in-app-plan.md`, the
 hand-off deck for bundling 4a's own voices: two American voices, Heart (default)
 and Echo, per the founder's 2026-09-26 cut ("put british on the roadmap… get this

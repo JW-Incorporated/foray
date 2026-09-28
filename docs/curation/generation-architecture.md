@@ -59,7 +59,8 @@ mixed audio file triggers legal review before anything else happens.
 >   `.m4a`, 64 kbps mono (D5), in the public R2 bucket `foray-narration` at `audio.jwlabs.ai` (D6),
 >   written once and never overwritten. Heart and Echo are both rendered (D4). The item carries
 >   `audio_url` and a measured `duration_sec` beside its `script`, and the player already prefers the
->   file ("the player prefers `asset`" below is that same rule).
+>   file (`audio_url ?? asset` in `player/foray-queue.js`; "the player prefers `asset`" below is that
+>   same rule).
 > - **The phone's speech engine is the fallback.** A line whose file fails to load is spoken from its
 >   `script` by the platform voice. That fallback must ship in a build before any *published* Foray
 >   carries audio (assessment §3.3, Phase 2). The `script` stays required: it is the transcript on

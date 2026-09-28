@@ -40,7 +40,7 @@
 ## #120 🔴 [BLOCKING] Make a write key for `foray-narration` and put it in one file on your PC (~10 min)
 <!-- ha filed=2026-09-28 kind=default -->
 
-**Why:** The first narration upload runs on your PC (Phase 1), before the Spark is set up. Uploading needs a key, and keys never go in the repo, GitHub or Vercel: only a machine where you put one can write to the bucket (D8). The render tool reads the file below and nothing else.
+**Why:** The first narration upload runs on your PC (Phase 1), before the Spark is set up. Uploading needs a key, and keys never go in the repo, GitHub or Vercel: only a machine where you put one can write to the bucket (D8). Rendering needs no key and can run anywhere; the upload step (`tools/narration/upload-narration.mjs`) reads the file below and nothing else, and it refuses to run inside GitHub Actions.
 
 **Steps:**
 1. Cloudflare → **R2** → **Manage R2 API Tokens** (right side of the R2 page) → **Create API token**. Name: `foray-narration-pc-phase1`. Permissions: **Object Read & Write**. Under **Specify bucket(s)** choose **Apply to specific buckets only** → `foray-narration`. Create.
