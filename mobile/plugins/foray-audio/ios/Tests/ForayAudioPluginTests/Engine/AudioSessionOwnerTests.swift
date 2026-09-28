@@ -39,6 +39,8 @@ final class FakeSessionAPI: AudioSessionAPI {
 
     var secondaryAudioShouldBeSilencedHint: Bool { hint }
     var outputPorts: [AudioSessionOwner.Port] { ports }
+    var otherAudio = false
+    var isOtherAudioPlaying: Bool { otherAudio }
 }
 
 /// `AudioSessionOwner`, the real `SessionControlling` (card NE-16;
@@ -426,6 +428,37 @@ final class AudioSessionOwnerTests: XCTestCase {
              fromBackground: false)
         spin(until: { events >= 1 })
         XCTAssertEqual(owner.phase, .lostToInterruption)
+        observation.cancel()
+    }
+
+    /// An interruption row says who likely took the session: whether another
+    /// app was playing, and our output port (a call or Siri moves it to the
+    /// call profile). Port TYPES only, never a name.
+    /// TO SEE IT FAIL: drop `interrupterFields()` from either notification row.
+    func testAnInterruptionRowSaysWhetherOtherAudioWasPlayingAndWhere() {
+        let api = FakeSessionAPI()
+        api.otherAudio = true
+        api.ports = [AudioSessionOwner.Port(type: "BluetoothA2DPOutput", name: "Wyatt's Car")]
+        let center = NotificationCenter()
+        let owner = makeOwner(api, center: center)
+        _ = owner.activate()
+        var events = 0
+        let observation = owner.observe { _ in events += 1 }
+        post(center, AVAudioSession.interruptionNotification, object: api,
+             [AVAudioSessionInterruptionTypeKey: AVAudioSession.InterruptionType.began.rawValue,
+              AVAudioSessionInterruptionReasonKey: AVAudioSession.InterruptionReason.default.rawValue],
+             fromBackground: false)
+        post(center, AVAudioSession.interruptionNotification, object: api,
+             [AVAudioSessionInterruptionTypeKey: AVAudioSession.InterruptionType.ended.rawValue],
+             fromBackground: false)
+        spin(until: { events >= 2 })
+        let interruptionRows = rows.filter { $0[field: "name"] == .string("interruption") }
+        XCTAssertEqual(interruptionRows.count, 2, "\(rows)")
+        for row in interruptionRows {
+            XCTAssertEqual(row[field: "otherAudio"], .bool(true))
+            XCTAssertEqual(row[field: "port"], .string("BluetoothA2DPOutput"))
+            XCTAssertFalse(row.fields.contains { $0.value == .string("Wyatt's Car") }, "a route name reached a row")
+        }
         observation.cancel()
     }
 

@@ -563,12 +563,19 @@ final class ForayEngine {
         seams.nowPlaying.write(entry)
 
         // DV-10 / H6: what the lock screen and the car were told, whenever
-        // the words or the state change (not on a drift rewrite).
+        // the words, the state or the RATE change (not on a drift rewrite).
+        // The rate is its own reason because a load writes `state=playing
+        // rate=0` (buffering: the clock stands still) and the moment sound
+        // starts changes only the rate: without `via=rate` every row of the
+        // 2026-09-28 paste read rate=0 and none could say whether the lock
+        // screen's clock ever ran.
         let via: String?
         if previous?.view.metadata != entry.metadata {
             via = "metadata"
         } else if previous?.view.playbackState != entry.playbackState {
             via = "state"
+        } else if let previous, NowPlayingRate.of(previous.view) != NowPlayingRate.of(entry) {
+            via = "rate"
         } else {
             via = nil
         }
@@ -580,7 +587,8 @@ final class ForayEngine {
                 JSONMember("album", .string(entry.metadata.album)),
                 JSONMember("artwork", .string(entry.metadata.artwork.isEmpty ? "n" : "y")),
                 JSONMember("state", .string(entry.playbackState)),
-                JSONMember("rate", .number(NowPlayingRate.of(entry)))
+                JSONMember("rate", .number(NowPlayingRate.of(entry))),
+                JSONMember("positionSec", entry.positionState.map { JSONNode.number(($0.position * 1000).rounded() / 1000) } ?? .null)
             ]))
         }
     }

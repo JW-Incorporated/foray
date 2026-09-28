@@ -17,6 +17,12 @@ protocol AudioSessionAPI: AnyObject {
     var secondaryAudioShouldBeSilencedHint: Bool { get }
     /// The current route's outputs, as the rows and the route rules read them.
     var outputPorts: [AudioSessionOwner.Port] { get }
+    /// Another app is playing audio right now (`AVAudioSession`'s own
+    /// property). Written into every interruption row: an interruption that
+    /// began while another app's audio was already playing, and never ended,
+    /// is another media app taking over; a call or Siri shows as the output
+    /// port moving to the call profile instead.
+    var isOtherAudioPlaying: Bool { get }
 }
 
 extension AVAudioSession: AudioSessionAPI {
@@ -217,14 +223,23 @@ final class AudioSessionOwner: SessionControlling {
                 phase = .lostToInterruption
             }
             row("notification", [JSONMember("name", .string("interruption")), JSONMember("type", .string("began")),
-                                 JSONMember("reason", .string(admitted.rawValue))])
+                                 JSONMember("reason", .string(admitted.rawValue))] + interrupterFields())
         case let .interruptionEnded(shouldResume):
             row("notification", [JSONMember("name", .string("interruption")), JSONMember("type", .string("ended")),
-                                 JSONMember("shouldResume", .bool(shouldResume))])
+                                 JSONMember("shouldResume", .bool(shouldResume))] + interrupterFields())
         case .route, .mediaServicesReset:
             break
         }
         handler(event)
+    }
+
+    /// Who is likely to have taken the session (the 2026-09-28 paste could
+    /// not say): whether another app is playing, and where our output goes
+    /// now (`BluetoothHFP` while a call or Siri holds a car or headset).
+    /// Port TYPE only, as every row (see `routePorts`).
+    private func interrupterFields() -> [JSONMember] {
+        [JSONMember("otherAudio", .bool(api.isOtherAudioPlaying)),
+         JSONMember("port", api.outputPorts.first.map { JSONNode.string($0.type) } ?? .null)]
     }
 
     private func routeChange(_ note: Notification, _ handler: (SessionEvent) -> Void) {

@@ -183,6 +183,29 @@ final class NowPlayingPublisherTests: XCTestCase {
         XCTAssertNotNil(DiagGate.admit(row), "the row passes the gate")
     }
 
+    /// A stall (and the sound coming back) changes only the RATE the car is
+    /// told: the state stays `playing`. That is on record too, as `via=rate`,
+    /// with the playhead the entry carried. The 2026-09-28 paste had no such
+    /// row, so every entry it showed read rate=0 and none could say whether
+    /// the lock screen's clock ever ran.
+    /// TO SEE IT FAIL: drop the `via = "rate"` branch in `publishSurface`.
+    @MainActor
+    func testARateOnlyChangeIsOnRecord() throws {
+        let world = FakeWorld()
+        let engine = playing(world)
+        let token = try XCTUnwrap(world.deck.lastToken)
+        world.deck.reading.audible = true
+        world.deck.report(.timeControl(token: token, status: .waiting, waitingReason: "AVPlayerWaitingToMinimizeStallsReason"))
+        world.deck.report(.timeControl(token: token, status: .playing, waitingReason: nil))
+        _ = engine
+        let rows = world.output.diags.filter { $0.kind == "nowplaying" }
+        XCTAssertEqual(rows.map { $0[field: "via"] }, [.string("metadata"), .string("rate"), .string("rate")])
+        XCTAssertEqual(rows.map { $0[field: "rate"] }, [.number(1), .number(0), .number(1)])
+        XCTAssertEqual(rows.map { $0[field: "state"] }, Array(repeating: .string(MediaMapping.playing), count: 3))
+        XCTAssertNotNil(rows.last?[field: "positionSec"])
+        for row in rows { XCTAssertNotNil(DiagGate.admit(row), "the row passes the gate") }
+    }
+
     // MARK: - The real MPNowPlayingInfoCenter
 
     /// The acceptance line: after a pause the real centre shows rate 0 with

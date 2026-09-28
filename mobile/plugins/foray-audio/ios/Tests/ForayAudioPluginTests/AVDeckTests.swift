@@ -27,6 +27,8 @@ final class AVDeckTests: XCTestCase {
     private var deck: AVDeck!
     private var events: [DeckEvent] = []
     private var rows: [String] = []
+    /// The deck's structured `deck` rows (`Config.diag`), as the ring gets them.
+    private var diags: [DiagEntry] = []
     private var faults: [String] = []
     private var sessionActive = true
     private var stallingLoader: NeverAnsweringLoader?
@@ -78,6 +80,7 @@ final class AVDeckTests: XCTestCase {
             config.after = { timers.after($0, $1) }
             config.nowMs = { timers.nowMs }
         }
+        config.diag = { [unowned self] in self.diags.append($0) }
         let deck = AVDeck(config: config)
         deck.onEvent = { [unowned self] event in
             // Timestamped in the log, so a slow CI load shows WHERE it was slow.
@@ -305,6 +308,64 @@ final class AVDeckTests: XCTestCase {
         XCTAssertEqual(late, [], "the superseded load (token 1) still reported")
     }
 
+    // MARK: - Same source is a seek
+
+    /// `DeckPolicy.sameSourceIsSeek` (plan §4.4: the in-place resume costs no
+    /// network round trip). The core resumes a paused item with a fresh
+    /// `.load` of the URL the deck holds; the deck keeps the ITEM (and its
+    /// buffer), runs the same gate under the new token (the zero-tolerance
+    /// seek, then the preroll), and reports `.ready` for it with no new
+    /// duration load. A different URL, or a different timing option, is a
+    /// cold load again. The 2026-09-28 paste is why: every play after a pause
+    /// refetched a 2 h 20 m file from scratch, and the second one missed the
+    /// 20 s deadline. TO SEE IT FAIL: drop the `holdsHealthy` branch at the
+    /// top of `load(...)`.
+    func testASameSourceLoadKeepsTheItemAndRunsTheGate() throws {
+        let url = try fixture("click-cbr", "mp3")
+        guard loadAndWaitReady(url, token: 1, startSec: 3) != nil else { return }
+        let item = try XCTUnwrap(deck.player.currentItem)
+        deck.send(.play)
+        deck.send(.pause)
+        events.removeAll()
+        diags.removeAll()
+
+        guard let ready = loadAndWaitReady(url, token: 2, startSec: 10) else { return }
+        XCTAssertTrue(deck.player.currentItem === item, "a same-source load made a new item")
+        XCTAssertEqual(ready.landedSec, 10, accuracy: 0.1)
+        XCTAssertEqual(deck.player.rate, 0, "a reused item must still be silent until play")
+        XCTAssertFalse(events.contains { if case .durationLoaded = $0 { return true }; return false },
+                       "a reused item loaded its duration again: \(events)")
+        let reuse = try XCTUnwrap(deck.primitives.lastIndex(of: "reuse"), "\(deck.primitives)")
+        let ops = Array(deck.primitives[reuse...])
+        XCTAssertFalse(ops.contains("attach"), "\(ops)")
+        let seek = ops.firstIndex(of: "seek 10.000")
+        let preroll = ops.firstIndex { $0.hasPrefix("preroll") }
+        XCTAssertNotNil(seek, "the reused load skipped the gate seek: \(ops)")
+        if let seek, let preroll { XCTAssertLessThan(seek, preroll, "the preroll must follow the seek") }
+        deck.send(.play)
+        XCTAssertEqual(deck.player.rate, 1)
+
+        // The rows say which it was, and pass the gate whole.
+        let deckRows = diags.filter { $0.kind == "deck" }
+        XCTAssertTrue(deckRows.contains { $0[field: "kind"] == .string("reuse") && $0[field: "token"] == .number(2) },
+                      "\(deckRows)")
+        XCTAssertTrue(deckRows.contains { $0[field: "kind"] == .string("ready") && $0[field: "reuse"] == .bool(true) },
+                      "\(deckRows)")
+        for row in deckRows {
+            XCTAssertNil(DiagGate.admit(row)?[field: DiagGate.droppedField], "the gate dropped part of \(row)")
+        }
+
+        // Another timing option is another asset: a cold load.
+        deck.send(.loadURL(token: 3, url: url, startSec: 0, preciseTiming: false))
+        XCTAssertFalse(deck.player.currentItem === item, "a different timing option reused the item")
+        guard readyEvent(3) != nil else { return }
+        let cold = try XCTUnwrap(deck.player.currentItem)
+        // And a different URL is one too.
+        deck.send(.loadURL(token: 4, url: try fixture("click", "wav"), startSec: 0, preciseTiming: false))
+        XCTAssertFalse(deck.player.currentItem === cold, "a different URL reused the item")
+        guard readyEvent(4) != nil else { return }
+    }
+
     // MARK: - Rate
 
     /// The listener's rate is held by the deck and re-applied on every play,
@@ -390,6 +451,14 @@ final class AVDeckTests: XCTestCase {
             return XCTFail("no deadlineExceeded(token: 7) at the deadline; events: \(events)")
         }
         XCTAssertEqual(afterMs, Int(deadlineMs))
+        // The row says WHERE it was stuck: the duration never loaded.
+        let row = try XCTUnwrap(diags.last { $0.kind == "deck" && $0[field: "kind"] == .string("deadline") },
+                                "no deck kind=deadline row: \(diags)")
+        XCTAssertEqual(row[field: "token"], .number(7))
+        XCTAssertEqual(row[field: "step"], .string("duration"))
+        XCTAssertEqual(row[field: "durationKnown"], .bool(false))
+        XCTAssertEqual(row[field: "afterMs"], .number(deadlineMs))
+        XCTAssertNil(DiagGate.admit(row)?[field: DiagGate.droppedField], "the gate dropped part of \(row)")
         XCTAssertFalse(deck.primitives.contains { $0.hasPrefix("preroll") }, "\(deck.primitives)")
         XCTAssertFalse(events.contains { if case .ready = $0 { return true }; return false })
         XCTAssertNil(deck.player.currentItem, "the deadline must detach the item")

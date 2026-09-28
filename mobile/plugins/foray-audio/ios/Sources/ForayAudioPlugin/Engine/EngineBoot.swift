@@ -48,7 +48,10 @@ enum EngineBoot {
             background: BackgroundGrace(),
             remote: RemoteSurface(),
             nowPlaying: NowPlayingPublisher(),
-            deck: AVDeck(config: AVDeck.Config(sessionIsActive: { session.phase == .active })),
+            // The deck's own rows (ready, deadline, failures, time control,
+            // access and error logs) go into the ring with everyone else's.
+            deck: AVDeck(config: AVDeck.Config(sessionIsActive: { session.phase == .active },
+                                               diag: { store.diag($0) })),
             speaker: PreviewSpeaker(config: PreviewSpeaker.Config(sessionIsActive: { session.phase == .active },
                                                                   diag: { store.diag($0) })),
             timing: timing,
