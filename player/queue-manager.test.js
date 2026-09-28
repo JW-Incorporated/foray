@@ -810,7 +810,7 @@ test("no resume position is stored for a segment", async () => {
 
 /* ---------- narration ---------- */
 
-test("narration between segments plays as an ordinary TTS item at 1.0x", async () => {
+test("rendered narration between segments plays as an ordinary TTS item at the listener's speed (1.0x by default)", async () => {
   const { m, backend } = make();
   await m.playForay(foray([
     { type: "narration", id: "nar-1", asset: "narration/fire-1.mp3" },
@@ -3585,6 +3585,74 @@ test("§14: a refused play() of a rendered line falls back too", async () => {
   assert.ok(log.some((l) => /^narration\.fallback reason=play-rejected at=playing/.test(l)));
 });
 
+test("§14: a LATE error from a file that timed out does not stop the line being read in its place", async () => {
+  /* A load that fails by deadline leaves the element pointed at the file with
+     its persistent `error` listener attached (html-audio-backend.js `load`), so
+     a stalled fetch that finally errors reports after the fallback has begun.
+     MUTATION THAT KILLS THIS: delete the `_fallbackSpokenId` branch of
+     `_onBackendError`. */
+  const tts = fakeTts();
+  const { m, log } = make({
+    tts, backendClass: FlakyBackend,
+    backend: { errors: { "nar-1": "load of nar-1 did not settle within 20000ms" } },
+  });
+  await m.playForay(foray([RLINE(), fseg()]), { resolveItem });
+  assert.equal(m.isNarrationPlayhead, true, "precondition: the line is being spoken");
+  m.backend.onError("media error 2");
+  await tick();
+  assert.equal(m.state.type, "playing", `not stopped: ${log.filter((l) => /narration|error/.test(l)).join(" | ")}`);
+  assert.deepEqual(transportsOf(tts), [], "the utterance was not paused or stopped");
+  assert.equal(tts.calls.length, 1, "and not spoken twice");
+  assert.ok(log.some((l) => /^narration\.error\.ignored nar-1 — the line is being spoken/.test(l)));
+});
+
+test("§14: an error from the failed file while the fallback's speak() is in flight does not stop it", async () => {
+  /* MUTATION THAT KILLS THIS: call `_speakNarration` directly instead of
+     `_speakFallback` at the load site. */
+  const tts = fakeTts();
+  let release = null;
+  const gate = new Promise((r) => { release = r; });
+  const speak = tts.speak;
+  tts.speak = async (text, opts) => { const r = await speak(text, opts); await gate; return r; };
+  const { m, log } = make({
+    tts, backendClass: FlakyBackend,
+    backend: { errors: { "nar-1": "load of nar-1 did not settle within 20000ms" } },
+  });
+  const starting = m.playForay(foray([RLINE(), fseg()]), { resolveItem });
+  await tick();
+  await tick();
+  assert.equal(tts.calls.length, 1, "precondition: the fallback speak() is in flight");
+  m.backend.onError("media error 2");
+  await tick();
+  release();
+  await starting;
+  await tick();
+  assert.equal(m.state.type, "playing", `not stopped: ${log.filter((l) => /narration|error/.test(l)).join(" | ")}`);
+  assert.equal(m.isNarrationPlayhead, true, "the line is spoken");
+  assert.ok(!transportsOf(tts).includes("stop"), "and not silenced");
+  assert.ok(log.some((l) => /^narration\.error\.ignored nar-1 — its file already failed/.test(l)));
+});
+
+test("§14: a second error while a sounding line is already falling back does not speak it twice", async () => {
+  const tts = fakeTts();
+  let release = null;
+  const gate = new Promise((r) => { release = r; });
+  const speak = tts.speak;
+  tts.speak = async (text, opts) => { const r = await speak(text, opts); await gate; return r; };
+  const { m } = make({ tts });
+  await m.playForay(foray([RLINE(), fseg()]), { resolveItem });
+  m.backend.onError("media error 2");
+  await tick();
+  m.backend.onError("play rejected: AbortError");
+  await tick();
+  release();
+  await tick();
+  await tick();
+  assert.equal(tts.calls.length, 1, "one fallback, not two");
+  assert.equal(m.state.type, "playing");
+  assert.equal(m.isNarrationPlayhead, true);
+});
+
 /** The manager's own `onError`, as the backend calls it. */
 function backend_onError(m, msg) { m.backend.onError(msg); }
 
@@ -3714,6 +3782,48 @@ test("D2: a rendered FIRST line plays at the listener's speed", async () => {
   await m.playForay(foray([RLINE(), fseg()]), { resolveItem });
   const rates = backend.calls.filter((c) => c.startsWith("rate:"));
   assert.ok(rates.length > 0 && rates.every((r) => r === "rate:1.5"), `got ${rates}`);
+});
+
+test("D2: a rendered line straight after a SPOKEN one (a narration chain) still gets the listener's speed", async () => {
+  /* The bridge path emits `resetRateForTTS` BEFORE the line loads, so the
+     manager's `_loadedIsSynth` still describes the spoken line before it.
+     Reading that flag skipped the rendered line's rate entirely: the file
+     played at whatever the element last held — here, never the listener's 2x,
+     because the Foray opened on a spoken line.
+     MUTATION THAT KILLS THIS: decide `resetRateForTTS` by `_loadedIsSynth`
+     instead of by the item the effect is for. */
+  const tts = fakeTts();
+  const { m, backend } = make({
+    tts, rate: 2, backendClass: FlakyBackend,
+    backend: { errors: { "nar-1": "load failed (code 2) for nar-1" } },
+  });
+  await m.playForay(foray([RLINE(), RLINE({ id: "nar-2", script: "The second line." }), fseg()]), { resolveItem });
+  assert.equal(m.isNarrationPlayhead, true, "precondition: the first line fell back to speech");
+  const before = backend.calls.length;
+  tts.finish();
+  await tick();
+  await tick();
+  const after = backend.calls.slice(before);
+  assert.ok(after.includes("load:nar-2@0"), `precondition: the chained rendered line loaded: ${after}`);
+  assert.ok(after.includes("rate:2"), `the rendered line is at the listener's 2x: ${after}`);
+  assert.ok(after.indexOf("rate:2") < after.indexOf("play"), `and before it is audible: ${after}`);
+});
+
+test("D2: a tap deferred during a spoken line lands on the rendered line chained after it", async () => {
+  const tts = fakeTts();
+  const { m, backend } = make({ tts, rate: 2 });
+  await m.playForay(foray([
+    { type: "narration", id: "s-1", script: "Spoken only." }, RLINE({ id: "nar-2" }), fseg(),
+  ]), { resolveItem });
+  assert.equal(m.setRate(1.5), 1.5);
+  const before = backend.calls.length;
+  tts.finish();
+  await tick();
+  await tick();
+  const after = backend.calls.slice(before);
+  assert.ok(after.includes("load:nar-2@0"), `precondition: ${after}`);
+  assert.ok(after.includes("rate:1.5"), `the deferred 1.5x reaches the rendered line: ${after}`);
+  assert.ok(after.indexOf("rate:1.5") < after.indexOf("play"), `before it is audible: ${after}`);
 });
 
 /* ---------- §15: warming the next narration file (web lane) ---------- */

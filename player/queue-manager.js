@@ -201,6 +201,13 @@
    a rendered narration load that can fall back is in flight, that report is
    left to the load's own rejection.
 
+   AND ITS LATE TWIN: a load that fails by DEADLINE leaves the element pointed
+   at the file, persistent listener attached, so a stalled fetch that finally
+   errors reports AFTER the fallback has taken over — while its `speak()` is in
+   flight, or mid-utterance. Once a line's file has been given up on, the
+   element's reports about it are ignored (`_onBackendError` case 2); without
+   that the Foray stopped in the middle of the line it was reading aloud.
+
    ── 15. WARMING THE NEXT NARRATION FILE (web lane, Phase 2) ────────────────
    Distinct from §11 (the parked two-element HANDOVER): nothing is promoted and
    the boundary never waits on it. When an item becomes audible and the item
@@ -706,6 +713,10 @@ export class PlayerQueueManager {
     /** §14: `{ id, seq }` while a RENDERED narration load that can fall back to
         its script is in flight, else `null` — see `_onBackendError`. */
     this._narrationLoadInFlight = null;
+    /** §14: `{ id, seq }` while a FALLBACK `speak()` is in flight — the file
+        has already failed and the line is on its way to speech — else `null`.
+        See `_onBackendError`. */
+    this._narrationFallbackPending = null;
     /** §14: the id of the rendered narration line being SPOKEN instead of
         played, so a paused fallback resumes its utterance rather than
         retrying the file mid-line. `null` otherwise. */
@@ -1587,7 +1598,23 @@ export class PlayerQueueManager {
         // set — to `NARRATION_RATE` (1x, founder 2026-09-24) — at the
         // `speak()` call inside `_loadItem`/`_speakNarration`, before this
         // effect ever runs.
-        if (this._loadedIsSynth) return;
+        //
+        // DECIDED BY THE ITEM THIS EFFECT IS FOR, NOT BY `_loadedIsSynth`. On
+        // the bridge path (`itemEnded` -> `transitioning`) the reducer emits
+        // this BEFORE `playTransitionTTS` loads the line, so `_loadedIsSynth`
+        // still describes the PREVIOUS item. In a narration chain — a spoken
+        // line (script-only, or a rendered line that fell back) followed by a
+        // rendered one — reading it skipped the rendered line's rate entirely,
+        // and the file played at whatever the element last held (the
+        // listener's speed never applied, or a tap deferred during the spoken
+        // line not yet landed). A rendered line that later falls back to speech
+        // has had the listener's rate set on a silent element: harmless, and
+        // the next clip wants that rate anyway.
+        {
+          const ref = focusOf(this.state);
+          const target = ref ? this._itemFor(ref) : null;
+          if (target ? this._isSynthNarration(target) : this._loadedIsSynth) return;
+        }
         return this.backend.setRate(this._rate);
 
       case "restoreRate":
@@ -1831,7 +1858,7 @@ export class PlayerQueueManager {
           this._noteNarrationFallback(item, "load", loadErr);
           const mine = ++this._speakIssued;
           // A refusal throws into the catch below: today's outcome, unchanged.
-          await this._speakNarration(item);
+          await this._speakFallback(item, seq);
           if (this._loadSeq !== seq || !(this.state.type === "loadingItem" && sameItemRef(this.state.target, ref))) {
             return this._abandonSpeech(mine, `load.superseded ${item.id} — the player moved on while its fallback speak() was in flight`);
           }
@@ -1950,14 +1977,22 @@ export class PlayerQueueManager {
   /**
    * The backend reports a media error or a refused `play()` (§14).
    *
-   * Three cases, in order:
+   * Four cases, in order:
    *   1. a rendered narration load that can fall back is IN FLIGHT: the
    *      element's persistent `error` listener fires before the load's own, so
    *      reporting here would stop the player before the load's rejection
    *      could fall back. The load decides; nothing is dispatched here.
-   *   2. a rendered narration line is SOUNDING (loaded, not already spoken)
+   *   2. the element's file has ALREADY been given up on — a fallback
+   *      `speak()` is in flight, or the line is being spoken instead of its
+   *      file. A load that failed by DEADLINE leaves the element pointed at
+   *      the file with its persistent `error` listener attached, so a stalled
+   *      fetch that finally errors (a car losing signal) reports here after
+   *      the in-flight marker is gone. That is news about a file nobody is
+   *      playing; reporting it as `E.error` stopped the Foray in the middle
+   *      of the very line the fallback was reading. Nothing is dispatched.
+   *   3. a rendered narration line is SOUNDING (loaded, not already spoken)
    *      and can fall back: speak its script instead of stopping.
-   *   3. anything else: `E.error`, exactly as before.
+   *   4. anything else: `E.error`, exactly as before.
    */
   _onBackendError(msg) {
     const text = String(msg);
@@ -1966,7 +2001,16 @@ export class PlayerQueueManager {
       this._emit(`narration.error.leftToLoad ${inFlight.id} — its own load's failure decides`);
       return undefined;
     }
+    const pending = this._narrationFallbackPending;
+    if (pending && pending.seq === this._loadSeq) {
+      this._emit(`narration.error.ignored ${pending.id} — its file already failed and it is on its way to speech`);
+      return undefined;
+    }
     const item = this._currentItem();
+    if (item != null && this._loadedIsSynth && this._fallbackSpokenId === item.id) {
+      this._emit(`narration.error.ignored ${item.id} — the line is being spoken instead of its file`);
+      return undefined;
+    }
     const sounding = item != null && !this._loadedIsSynth && this._loadedId === item.id
       && focusOf(this.state)?.id === item.id
       && (this.state.type === "playing" || this.state.type === "transitioning");
@@ -1975,6 +2019,20 @@ export class PlayerQueueManager {
         .catch((err) => this._emit(`narration.fallback.failed: ${err?.message ?? err}`));
     }
     return this._handle(E.error(text));
+  }
+
+  /** `_speakNarration` for a line whose FILE has failed (§14): the same call,
+      with `_narrationFallbackPending` held for its duration so the failed
+      element's late reports cannot stop the player before speech begins (see
+      `_onBackendError` case 2). Throws exactly as `_speakNarration` does. */
+  async _speakFallback(item, seq) {
+    const marker = { id: item.id, seq };
+    this._narrationFallbackPending = marker;
+    try {
+      return await this._speakNarration(item);
+    } finally {
+      if (this._narrationFallbackPending === marker) this._narrationFallbackPending = null;
+    }
   }
 
   /** A rendered line failed WHILE SOUNDING (a network drop mid-file, a decode
@@ -1990,7 +2048,7 @@ export class PlayerQueueManager {
     try { this.backend.pause(); } catch (_) { /* the element already failed; silence is the point */ }
     const mine = ++this._speakIssued;
     try {
-      await this._speakNarration(item);
+      await this._speakFallback(item, seq);
     } catch (err) {
       this._emit(`narration.fallback.refused ${item.id}: ${err?.message ?? err}`);
       if (!stillOnIt()) return undefined;
@@ -2844,7 +2902,7 @@ export class PlayerQueueManager {
           this._noteNarrationFallback(bridge, "bridge", loadErr);
           const mine = ++this._speakIssued;
           // A refusal throws into the catch below: skipped, as before.
-          await this._speakNarration(bridge);
+          await this._speakFallback(bridge, seq);
           if (!stillOurs()) {
             return this._abandonSpeech(mine, `transitionTTS.superseded ${bridge.id} — the player moved on while its fallback speak() was in flight`);
           }
