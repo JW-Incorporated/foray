@@ -1,0 +1,13 @@
+{
+  "name": "foray-engine-core-jvm",
+  "version": "0.1.0",
+  "private": true,
+  "license": "UNLICENSED",
+  "description": "The Android native engine's pure-JVM core (docs/plans/android-assessment.md A-21): the Java 21 port of ForayEngineCore (../../foray-engine-core, Swift), held to the same parity fixtures. NOT a Capacitor plugin in the bridge sense: it has no @CapacitorPlugin class and no JS half. It carries a `capacitor` key only because that is the one way Capacitor's CLI writes a Gradle module into the GENERATED mobile/android/ on every `cap add android` / `cap sync` (capacitor.settings.gradle `include`, app/capacitor.build.gradle `implementation project(...)`), so the module survives regeneration with nothing for a human to run. Android-only: there is no `capacitor.ios` key, so `cap add ios` skips it.",
+  "//why-src-is-dot": "capacitor.android.src is `.` because this directory IS the Gradle module (build.gradle sits next to this file). Capacitor then sets the module's projectDir to this directory.",
+  "capacitor": {
+    "android": {
+      "src": "."
+    }
+  }
+}

@@ -920,6 +920,17 @@ test("mobile/.gitignore ignores the GENERATED platform and not our own android/ 
     [PLUGIN_REL + "/android/build/intermediates/whatever.dex", true, "the plugin's Gradle build output must be ignored"],
     [PLUGIN_REL + "/android/.gradle/8.14.3/checksums/checksums.lock", true, "the plugin's Gradle cache must be ignored"],
     [PLUGIN_REL + "/android/local.properties", true, "a machine-absolute sdk.dir must never be committable"],
+    /* A-21: the JVM core is a Gradle module one level deeper, which the one-`*`
+       rules above do not reach. Its sources must stay committable and its build
+       output must not. */
+    [PLUGIN_REL + "/android/foray-engine-core-jvm/build.gradle", false, "the JVM core's Gradle module must be committable"],
+    [
+      PLUGIN_REL + "/android/foray-engine-core-jvm/src/main/java/ai/jwlabs/foura/engine/EngineHandshake.java",
+      false,
+      "the JVM core's sources must be committable",
+    ],
+    [PLUGIN_REL + "/android/foray-engine-core-jvm/build/libs/foray-engine-core-jvm.jar", true, "the JVM core's build output must be ignored"],
+    [PLUGIN_REL + "/android/foray-engine-core-jvm/.gradle/8.14.3/checksums/checksums.lock", true, "the JVM core's Gradle cache must be ignored"],
   ];
   for (const [rel, shouldBeIgnored, why] of cases) {
     const res = git(["check-ignore", "-q", "--no-index", rel]);
@@ -1020,11 +1031,18 @@ test("mobile/'s only non-Capacitor dependency is our own plugin, by a file: path
      round-2 audit persist-6, founder ruling "Option A"): the device-only store that
      keeps the account token out of the phone's backups — iOS Keychain this-device-
      only, Android no-backup storage; tools/mobile/foray-vault.test.mjs pins it. Say
-     so here, in the PR that adds the next one. */
-  assert.equal(local.length, 3, "expected exactly three local plugins, found: " + (local.map((l) => l.name).join(", ") || "none"));
+     so here, in the PR that adds the next one.
+
+     FOUR SINCE A-21 (docs/plans/android-assessment.md §5.4). `foray-engine-core-jvm`
+     is not a bridge plugin: it is the Android engine's pure-JVM core, a plain
+     `java-library` module nested at plugins/foray-audio/android/foray-engine-core-jvm/,
+     declared here only because this list is how `cap add android` learns which
+     Gradle modules to include in the generated project. The A-21 test below pins
+     what it is. */
+  assert.equal(local.length, 4, "expected exactly four local packages, found: " + (local.map((l) => l.name).join(", ") || "none"));
   assert.deepEqual(
     local.map((l) => l.name).sort(),
-    ["foray-audio", "foray-tts", "foray-vault"]
+    ["foray-audio", "foray-engine-core-jvm", "foray-tts", "foray-vault"]
   );
 });
 
@@ -2512,6 +2530,71 @@ test("NE-01: foray-engine-core is a pure package: no dependencies, Foundation-on
     hostTests.some((f) => /ParityRunner\.run\(/.test(fs.readFileSync(f, "utf8"))),
     "foray-engine-core/Tests has no wrapper that runs ForayEngineParity"
   );
+});
+
+test("A-21: foray-engine-core-jvm is a pure JVM module that cap add android links into the app", () => {
+  /* THE ANDROID TWIN OF THE NE-01 PURITY TEST ABOVE. Every engine decision Android
+     will make lives in this module so it runs under a plain `./gradlew test` on the
+     JVM (android-build.yml's A-21 step), with no Robolectric and no emulator. One
+     `com.android.library` plugin, one `android.*` import or one main dependency
+     makes that false, and the platform half belongs in foray-audio instead.
+     The wiring half: Capacitor writes the include/implementation lines only for a
+     package in mobile/package.json whose package.json has `capacitor.android`, and
+     it must have NO `capacitor.ios`, or `cap add ios` would look for a Swift
+     package that is not there.
+     MUTATION: `apply plugin: 'com.android.library'`, an `implementation` line, an
+     `import android.os.Bundle`, a `capacitor.ios` key, a Kotlin plugin, or moving
+     the directory; each fails here. */
+  const dir = path.join(PLUGIN_DIR, "android", "foray-engine-core-jvm");
+  const pkg = JSON.parse(fs.readFileSync(path.join(dir, "package.json"), "utf8"));
+  assert.equal(pkg.name, "foray-engine-core-jvm", "the Gradle project name Capacitor writes is the package name");
+  assert.equal(pkg.private, true);
+  assert.equal(pkg.capacitor?.android?.src, ".", "capacitor.android.src must be `.`: this directory is the Gradle module");
+  assert.equal(pkg.capacitor?.ios, undefined, "the JVM core is Android-only; a capacitor.ios key sends cap add ios looking for Swift");
+  assert.equal(
+    capPkg().dependencies?.["foray-engine-core-jvm"],
+    "file:plugins/foray-audio/android/foray-engine-core-jvm",
+    "mobile/package.json must declare the JVM core, or cap add android never includes it"
+  );
+
+  const gradle = fs.readFileSync(path.join(dir, "build.gradle"), "utf8");
+  const code = gradle.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");
+  const plugins = [...code.matchAll(/apply plugin:\s*['"]([^'"]+)['"]|\bid\s*\(?\s*['"]([^'"]+)['"]/g)].map((m) => m[1] || m[2]);
+  assert.deepEqual(plugins, ["java-library"], "the JVM core applies java-library and nothing else (no Android, no Kotlin)");
+  assert.doesNotMatch(code, /\bbuildscript\s*\{/, "no buildscript: the core adds no Gradle plugin to the build");
+  assert.doesNotMatch(code, /\bplugins\s*\{/, "no plugins block: the core adds no Gradle plugin to the build");
+  assert.match(code, /options\.release\s*=\s*21\b/, "the core compiles with --release 21, the JDK the app builds with");
+  const deps = [...code.matchAll(/^\s*(\w+)\s*[("']/gm)]
+    .map((m) => m[1])
+    .filter((c) => /^(implementation|api|compileOnly|runtimeOnly|testImplementation|testRuntimeOnly|annotationProcessor)$/.test(c));
+  assert.deepEqual(deps, ["testImplementation"], "the core has no main dependencies; tests take JUnit only");
+  assert.match(code, /testImplementation\s+"junit:junit:4\.13\.2"/, "tests use the JUnit the other Android modules use");
+
+  const javaUnder = (root) => {
+    const out = [];
+    const walk = (d) => {
+      for (const e of fs.readdirSync(d, { withFileTypes: true })) {
+        const p = path.join(d, e.name);
+        if (e.isDirectory()) walk(p);
+        else out.push(p);
+      }
+    };
+    if (fs.existsSync(root)) walk(root);
+    return out;
+  };
+  const main = javaUnder(path.join(dir, "src", "main"));
+  const tests = javaUnder(path.join(dir, "src", "test"));
+  assert.ok(main.length > 0 && main.every((f) => f.endsWith(".java")), "main sources are Java only");
+  assert.ok(tests.some((f) => f.endsWith("Test.java")), "the JVM core has no test, and android-build.yml would count zero cases");
+  for (const f of [...main, ...tests]) {
+    const src = fs.readFileSync(f, "utf8");
+    assert.doesNotMatch(
+      src,
+      /^\s*import\s+(static\s+)?(android|androidx|com\.getcapacitor|com\.google\.android)\./m,
+      path.relative(ROOT, f) + " imports an Android or Capacitor type; the JVM core is plain Java"
+    );
+  }
+  assert.ok(!main.some((f) => /AndroidManifest\.xml$/.test(f)), "a java-library has no manifest");
 });
 
 test("NE-01: foray-audio links the core by path, keeps ONE product, and its tests wrap the parity library", () => {
