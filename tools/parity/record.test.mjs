@@ -220,7 +220,7 @@ test("a JS change to a recorded (non-authored) case re-records it and puts it ba
 test("re-recording an unchanged tree changes no byte", async () => {
   const root = scratch();
   try {
-    const files = ["player/parity/manifest.json", "player/parity/swift-pending.json", "player/parity/floors.json", FIXTURE];
+    const files = ["player/parity/manifest.json", "player/parity/swift-pending.json", "player/parity/jvm-pending.json", "player/parity/floors.json", FIXTURE];
     const before = files.map((f) => fs.readFileSync(path.join(root, f), "utf8"));
     const r = await record({ root, log: quiet });
     assert.equal(r.ok, true, r.refusals.join("\n"));
@@ -255,11 +255,13 @@ test("recording one family never vouches for another: its authored cases still r
     assert.equal(readJ(root, "player/parity/manifest.json").families[fam], undefined,
       "a seam-gap run must not write the probe family's ids into the manifest");
 
-    const r = await record({ root, family: fam, portCard: "NE-09", log: quiet });
+    // A-22: a brand-new family is owed to the JVM too, whole, to --jvm-card.
+    const r = await record({ root, family: fam, portCard: "NE-09", jvmCard: "A-23", log: quiet });
     assert.equal(r.ok, true, r.refusals.join("\n"));
     assert.deepStrictEqual([...r.pendingAdded].sort(), [`${fam}/max`, `${fam}/snap`]);
     const pending = readJ(root, "player/parity/swift-pending.json");
     assert.equal(pending[`${fam}/max`], "NE-09", "the authored case is owed to the port card too");
+    assert.equal(readJ(root, "player/parity/jvm-pending.json").families[fam], "A-23", "the new family is owed to the JVM whole");
     assert.deepStrictEqual((await checkAll({ root })).problems, []);
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
@@ -288,6 +290,103 @@ test("a --port-card that is not a card id is refused", async () => {
     const r = await record({ root, portCard: "later", log: quiet });
     assert.equal(r.ok, false);
     assert.match(r.refusals.join("\n"), /not a card id/);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+/* ---------- the JVM's books (A-22) ---------- */
+
+/* jvm-pending.json keeps the JVM parity runner's books the way swift-pending.json
+   keeps the Swift one's, so a JS rule change never turns android-build red: it
+   hands an Android card a list. A family the JVM does not run is owed WHOLE, so
+   only a case new or changed in a family it does run (number-format today), or a
+   brand-new family, needs --jvm-card.
+   MUTATION: make jvmOwedBy return nothing, or drop the --jvm-card refusal -> the
+   first test fails; drop the jvm-pending checks from checkAll -> the second. */
+const NUMBER_FORMAT = "player/parity/fixtures/number-format/number-format.json";
+const JVM = "player/parity/jvm-pending.json";
+
+test("a case new in a family the JVM runs is refused without --jvm-card and owed to it with one; a whole-owed family needs none", async () => {
+  const root = scratch();
+  try {
+    assert.equal(readJ(root, JVM).families["number-format"], undefined, "precondition: the JVM runs number-format");
+    assert.equal(readJ(root, JVM).families["seam-gap"], "A-40", "precondition: seam-gap is owed whole");
+
+    const nf = readJ(root, NUMBER_FORMAT);
+    nf.cases.push({ id: "number-format/brand-new-2.5", covers: [], call: "jsonNumber", args: [2.5] });
+    writeJ(root, NUMBER_FORMAT, nf);
+    const refused = await record({ root, portCard: "NE-10s", log: quiet });
+    assert.equal(refused.ok, false);
+    assert.match(refused.refusals.join("\n"), /pass --jvm-card <A-xx>[\s\S]*number-format\/brand-new-2\.5/);
+    const badCard = await record({ root, portCard: "NE-10s", jvmCard: "NE-10s", log: quiet });
+    assert.match(badCard.refusals.join("\n"), /--jvm-card "NE-10s" is not an Android card id/);
+
+    const r = await record({ root, portCard: "NE-10s", jvmCard: "A-23", log: quiet });
+    assert.equal(r.ok, true, r.refusals.join("\n"));
+    assert.deepStrictEqual(r.jvmOwed, { families: [], cases: ["number-format/brand-new-2.5"] });
+    assert.deepStrictEqual(readJ(root, JVM).cases, { "number-format/brand-new-2.5": "A-23" });
+    assert.deepStrictEqual((await checkAll({ root })).problems, [], "the books a record writes are --check clean");
+
+    // A case new in a family owed whole: the Swift card is handed it, the JVM books do not move.
+    const jvmBefore = fs.readFileSync(path.join(root, JVM), "utf8");
+    const sg = readJ(root, FIXTURE);
+    sg.cases.push({ id: "seam-gap/brand-new-jvm", covers: [], call: "seamGapSec", args: [{ from: { $seg: ["a"] }, to: { $seg: ["b"] }, gapSec: 1.5 }] });
+    writeJ(root, FIXTURE, sg);
+    const owedWhole = await record({ root, portCard: "NE-28s", log: quiet });
+    assert.equal(owedWhole.ok, true, owedWhole.refusals.join("\n"));
+    assert.equal(fs.readFileSync(path.join(root, JVM), "utf8"), jvmBefore);
+
+    // Deleting the case drops its entry, as swift-pending drops a deleted id.
+    nf.cases.pop();
+    writeJ(root, NUMBER_FORMAT, nf);
+    const dropped = await record({ root, portCard: "NE-10s", lowerFloors: true, log: quiet });
+    assert.equal(dropped.ok, true, dropped.refusals.join("\n"));
+    assert.deepStrictEqual(readJ(root, JVM).cases, {});
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("--check is red on JVM books that name nothing, owe a jsOnly family, use a non-Android card, or owe a case twice", async () => {
+  const root = scratch();
+  try {
+    const jvm = readJ(root, JVM);
+    writeJ(root, JVM, {
+      ...jvm,
+      cases: { "no-such/case": "A-23", "seam-gap/rule-is-0.5s": "A-40", "number-format/zero": "NE-10s" },
+      families: { ...jvm.families, "no-such-family": "A-23", continuation: "A-40" },
+    });
+    const problems = (await checkAll({ root })).problems.join("\n");
+    assert.match(problems, /jvm-pending: no-such\/case names no fixture case/);
+    assert.match(problems, /jvm-pending: family no-such-family is neither recorded nor named in unported\.json/);
+    assert.match(problems, /jvm-pending: family continuation is jsOnly/);
+    assert.match(problems, /jvm-pending: seam-gap\/rule-is-0\.5s is owed on its own and with its whole family seam-gap/);
+    assert.match(problems, /jvm-pending: number-format\/zero is tagged "NE-10s", not an Android card id/);
+    // And a family unported.json will record into may be owed ahead of its fixtures.
+    assert.doesNotMatch(problems, /manager-remainder/);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("--check holds every recorded family to exactly one of the JVM's runs and its owed families", async () => {
+  /* MUTATION: drop the partition loop from checkJvmPending -> fails. Without
+     "runs" the JS side cannot tell a family the JVM runs from one nobody owes, so
+     a family recorded on a branch cut before jvm-pending.json existed would merge
+     with ci.yml green and only the non-required android-build red. */
+  const root = scratch();
+  try {
+    const jvm = readJ(root, JVM);
+    assert.deepStrictEqual(jvm.runs, ["compare", "number-format"], "precondition: the JVM runs compare and number-format");
+    const families = { ...jvm.families };
+    delete families.rate;
+    writeJ(root, JVM, { ...jvm, families, runs: [...jvm.runs, "seam-gap", "continuation", "no-such-family"] });
+    const problems = (await checkAll({ root })).problems.join("\n");
+    assert.match(problems, /jvm-pending: family rate is recorded but the JVM neither runs it nor owes it/);
+    assert.match(problems, /jvm-pending: family seam-gap is both in "runs" and owed whole/);
+    assert.match(problems, /jvm-pending: "runs" lists family continuation, which is jsOnly/);
+    assert.match(problems, /jvm-pending: "runs" lists family no-such-family, which is not recorded/);
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }

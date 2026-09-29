@@ -349,6 +349,7 @@ scenarios ran as fast as API 34's. D-A4's line holds on both legs.
 
 Raising either would only let a hung run cost more.
 
+### (f) Hidden seams, recorded
 
 The Foray runs clip, line, clip, line, clip, line, clip. Each clip is 22 s, over the 20 s floor
 of the narration warm (PR #867). It plays to its end with the app on Home and the screen off
