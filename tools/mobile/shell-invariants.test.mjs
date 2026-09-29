@@ -2597,6 +2597,56 @@ test("A-21: foray-engine-core-jvm is a pure JVM module that cap add android link
   assert.ok(!main.some((f) => /AndroidManifest\.xml$/.test(f)), "a java-library has no manifest");
 });
 
+test("A-23: the JVM core's main code keeps to the API 24 library surface, and reads its numbers from the generated constants", () => {
+  /* A-21's rule (STATE.md): Java 21 LANGUAGE features freely, but only the java.lang /
+     java.util API Android has at minSdk 24, because D8 desugars the language and
+     backports only some library methods. `--release 21` compiles `List.of` happily and
+     the APK then throws NoSuchMethodError on an Android 9 phone. The A-21 entry said
+     "nothing yet checks it"; A-23 is the first card with real main code, so this does.
+     A deny-list of the post-24 methods a port is likely to reach for, matched on code
+     with comments and string literals removed.
+     And NE-12s's rule, for the JVM: no literal 15 or 30 in the core's main code outside
+     the generated EngineConstants.java (the founder's seek pair had a second copy once).
+     MUTATION: `List.of(` in any main file, `import java.time.Duration;`, or a literal
+     `15.0` in MediaMapping.java; each fails here. */
+  const mainDir = path.join(PLUGIN_DIR, "android", "foray-engine-core-jvm", "src", "main", "java");
+  const files = [];
+  const walk = (d) => {
+    for (const e of fs.readdirSync(d, { withFileTypes: true })) {
+      const p = path.join(d, e.name);
+      if (e.isDirectory()) walk(p);
+      else if (p.endsWith(".java")) files.push(p);
+    }
+  };
+  walk(mainDir);
+  for (const name of ["PlayerQueueStateMachine.java", "Rows.java", "MediaMapping.java", "SessionPolicy.java", "EngineConstants.java"]) {
+    assert.ok(files.some((f) => path.basename(f) === name), `the A-23 port ${name} is missing from the JVM core`);
+  }
+  const POST_24 = [
+    [/\b(List|Set|Map)\.(of|copyOf)\s*\(/, "List/Set/Map.of and copyOf are API 30"],
+    [/\bMap\.entry\s*\(/, "Map.entry is API 30"],
+    [/\.(getFirst|getLast|removeFirst|removeLast|reversed)\s*\(\s*\)/, "the SequencedCollection methods are API 35"],
+    [/\.toList\s*\(\s*\)/, "Stream.toList is API 34"],
+    [/\bString\.join\s*\(/, "String.join is API 26"],
+    [/\.(isBlank|strip|stripLeading|stripTrailing|lines)\s*\(\s*\)/, "the Java 11 String methods are API 33"],
+    [/\.repeat\s*\(/, "String.repeat is API 33"],
+    [/\brequireNonNullElse(Get)?\s*\(/, "Objects.requireNonNullElse is API 30"],
+    [/\bimport\s+java\.time\b/, "java.time is API 26"],
+  ];
+  for (const f of files) {
+    const code = fs.readFileSync(f, "utf8")
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .replace(/\/\/.*$/gm, "")
+      .replace(/"(?:[^"\\\n]|\\.)*"/g, '""');
+    for (const [re, why] of POST_24) {
+      assert.doesNotMatch(code, re, `${path.relative(ROOT, f)}: ${why}, above this app's minSdk 24`);
+    }
+    if (path.basename(f) !== "EngineConstants.java") {
+      assert.doesNotMatch(code, /(?<![\w.])(15|30)(\.0+)?(?![\w.])/, `${path.relative(ROOT, f)} holds a literal 15 or 30; read the pair from EngineConstants`);
+    }
+  }
+});
+
 test("NE-01: foray-audio links the core by path, keeps ONE product, and its tests wrap the parity library", () => {
   /* THE SCHEME-LIST PIN. `ci.yml` runs `xcodebuild test -scheme ForayAudio`
      here, and Xcode names a package's schemes from its products: one product

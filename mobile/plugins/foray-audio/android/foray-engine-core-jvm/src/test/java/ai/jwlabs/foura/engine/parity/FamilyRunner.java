@@ -96,4 +96,30 @@ public interface FamilyRunner {
             return new Json.Obj(m);
         }
     }
+
+    /**
+     * A family whose fixture files target more than one JS module (a file names ONE
+     * module, and {@code resume-rules}' rules live in three): each file is run by the part
+     * that ports its module, and a file naming any other module is refused, for the
+     * reason {@link Pure} refuses one. The Swift {@code MultiModuleFamilyRunner}.
+     */
+    record MultiModule(String family, List<Pure> parts) implements FamilyRunner {
+        public MultiModule {
+            parts = new ArrayList<>(parts);
+            for (Pure p : parts) {
+                if (!p.family().equals(family)) throw new IllegalArgumentException(p.family() + " is not a part of " + family);
+            }
+        }
+
+        @Override
+        public Json run(FixtureCase testCase, FixtureFile file, Codec.Context context) {
+            for (Pure part : parts) {
+                if (part.module().equals(file.module())) return part.run(testCase, file, context);
+            }
+            List<String> modules = new ArrayList<>();
+            for (Pure part : parts) modules.add(part.module());
+            throw new HarnessError("E_BAD_CASE", file.path() + " targets " + (file.module() == null ? "no module" : file.module())
+                    + "; the JVM " + family + " runner ports " + String.join(", ", modules));
+        }
+    }
 }

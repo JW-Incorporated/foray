@@ -471,6 +471,17 @@ Rejected alternatives:
 - **Acceptance:** Those families are 0 pending, with the CI run id. Byte-identical rows are checked against the JS
   writer.
 - **Device check:** none.
+- **Status (2026-09-29): done in its PR, CI evidence in `STATE.md` (A-23 entry).** Ported into
+  `foray-engine-core-jvm` main code (Java 21, API 24 library surface): `PlayerQueueStateMachine` and its state, event
+  and effect types, `ItemBounds`, `PlaybackRate`, `ResumeRules`, `TransportPolicy`, `SessionPolicy`, `MediaMapping`
+  (whole: the Foray half is the same functions, and the `media` family that pins it stays A-40's), `Rows`,
+  `RestoreRecord`, `JSWriter` (`stringify`, `quote`, `isoString`), `JSDate` and an ordered `JsonNode` with
+  `JSON.parse`'s rules. `gen-constants.mjs` now also writes `EngineConstants.java` and `Vocabulary.java`, so no number
+  is retyped. `queue-state`, `rate`, `resume-rules`, `transport`, `rows`, `session`, `session-invariant` and
+  `media-episode` moved from `families` to `runs` in `jvm-pending.json` (698 cases, all passing). `session-invariant`
+  was owed to A-24; its function lives beside the session table, so it came along, and A-24 no longer owes it. The
+  `rows` family compares each row as a STRING, and a JUnit test proves it: the recorded row with two members swapped
+  (the same JSON value in other bytes) fails.
 
 #### A-24 · EngineCore for episodes on the JVM — **L**
 - **Depends on:** A-23.

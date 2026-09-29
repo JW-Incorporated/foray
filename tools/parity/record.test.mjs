@@ -378,12 +378,15 @@ test("--check holds every recorded family to exactly one of the JVM's runs and i
   const root = scratch();
   try {
     const jvm = readJ(root, JVM);
-    assert.deepStrictEqual(jvm.runs, ["compare", "number-format"], "precondition: the JVM runs compare and number-format");
+    // Preconditions, as data rather than a list a porting card must edit: the JVM runs
+    // compare, and still owes interlude and seam-gap (A-41, A-40).
+    assert.ok(jvm.runs.includes("compare"), "precondition: the JVM runs compare");
+    assert.ok(jvm.families.interlude && jvm.families["seam-gap"], "precondition: interlude and seam-gap are still owed whole");
     const families = { ...jvm.families };
-    delete families.rate;
+    delete families.interlude;
     writeJ(root, JVM, { ...jvm, families, runs: [...jvm.runs, "seam-gap", "continuation", "no-such-family"] });
     const problems = (await checkAll({ root })).problems.join("\n");
-    assert.match(problems, /jvm-pending: family rate is recorded but the JVM neither runs it nor owes it/);
+    assert.match(problems, /jvm-pending: family interlude is recorded but the JVM neither runs it nor owes it/);
     assert.match(problems, /jvm-pending: family seam-gap is both in "runs" and owed whole/);
     assert.match(problems, /jvm-pending: "runs" lists family continuation, which is jsOnly/);
     assert.match(problems, /jvm-pending: "runs" lists family no-such-family, which is not recorded/);

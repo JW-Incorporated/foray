@@ -7,6 +7,59 @@ docs/. Completed workstreams move to their plan doc's retro section.
 
 ## Active workstreams
 
+### 2026-09-29 — `android/a-23-pure-policies`: A-23, the pure policies (episode subset) on the JVM
+
+Owned: `foray-engine-core-jvm`'s main code (the ported policies), its parity runners, the Java half of
+`tools/parity/gen-constants.mjs`, and eight entries of `player/parity/jvm-pending.json`. Card A-23 of
+`docs/plans/android-assessment.md` (Track A1).
+
+**What was ported**, from `ForayEngineCore` (identical on `origin/main` and `origin/engine/m2` for these files), into
+Java 21 over the API 24 library surface:
+- the reducer (`PlayerQueueStateMachine`, with `ItemBounds`, `QueueItemRef`, and sealed state, event and effect types);
+- `PlaybackRate`, `ResumeRules`, `TransportPolicy`, `SessionPolicy` (the table and `audibleStartViolations`);
+- `MediaMapping` and `MediaAction`. The whole file came across, because the Foray half is the same functions; the
+  `media` family that pins Forays stays owed to A-40;
+- `Rows`, `RestoreRecord`, and `JSWriter.stringify` / `quote` / `isoString`, plus `JSDate` and an ordered `JsonNode`
+  that parses the way `JSON.parse` does. Java strings are UTF-16, as JavaScript's are. So unlike the Swift port, a lone
+  surrogate survives a round trip, as it does in JS.
+
+**No number is retyped.** `gen-constants.mjs` now also writes `EngineConstants.java` and `Vocabulary.java`. Java keeps
+the JS names (`EngineConstants.Transport.RESTART_WINDOW_SEC`). Control characters are octal escapes, because javac
+reads `\u` escapes before it lexes a literal. `--check` and `gen-constants.test.mjs` hold both engines' files to the JS.
+
+**The books.** `queue-state`, `rate`, `resume-rules`, `transport`, `rows`, `session`, `session-invariant` and
+`media-episode` moved from `families` to `runs`: 698 cases, 0 owed, 0 failed. `session-invariant` was owed to A-24.
+Its function lives beside the session table, so it was ported and run here, and A-24 no longer owes it.
+
+**Byte-identical rows.** The `rows` family compares each row as a STRING against what the JS writer produced.
+`PortedFamiliesTest` proves it: the recorded `cp-pos-typical` row with two members swapped (the same JSON value in
+different bytes) turns that case red. The same test hands the real fixtures a mutant through each runner's seam, and
+each one is caught by named cases of its own family only: two itemLoaded effects swapped, a `none`-policy pause that
+keeps the session, an invariant that trusts an unasked `sessionResult:ok`, and a surface that offers next with no next.
+
+**A new check** (`shell-invariants.test.mjs`, A-23). The JVM core's main code may not call the post-API-24 methods a
+port reaches for (`List.of`, `java.time`, `String.join`, the Java 11 String methods, the SequencedCollection methods).
+It also may not hold a literal 15 or 30 outside the generated constants. The A-21 entry said nothing checked this;
+now something does.
+
+**Executed locally:** `javac --release 21 -Xlint:all -Werror` plus JUnit on the JDK 21 already on this PC (a
+memory-capped plain `javac`, not Gradle): 46 JUnit cases green, the parity report shows 760 passed and 0 failed. Also
+green: `node --test` on gen-constants, record, suite-integrity, shell-invariants, android-workflow, `player/parity/*`
+and engine-ci. `record.mjs --check` passes.
+
+**CI-executed** (PR #890, head `8dda993a`):
+- `android-build` / `android-shell`: run 36589796184, job 109479593363. `:foray-engine-core-jvm:test` ran 46 JUnit
+  cases with 0 skipped, in 17 s. Parity totals: passed 760, not-ported 1018, js-only 58, and
+  failed/pending/stale/unaccounted all 0. Each of the eight families shows `executed = passed = cases, owed=0`. The
+  number-format mutation still turned the runner red. `assembleDebug` and `assembleRelease` are green, so D8 dexed the
+  ported classes for minSdk 24.
+- `CI` run 36589796182 is green: `engine-parity`, `ios-kit`, `ios-gate`, `data-and-site`, `backend`, `api` and
+  `playwright`.
+- Also green: `ios-build` / `ios-shell` (run 36589796283), `android-playback` API 34 and 36 (run 36589796347), and
+  `android-smoke` (run 36589796195).
+
+No device, and no request to Joey (D-A3).
+
 ### 2026-09-29 — `android/a-22-jvm-parity`: A-22, the JVM parity runner and its books
 
 Owned: `mobile/plugins/foray-audio/android/foray-engine-core-jvm/src/test/java/ai/jwlabs/foura/engine/parity/`

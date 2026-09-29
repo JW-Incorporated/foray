@@ -1,9 +1,10 @@
 #!/usr/bin/env node
-/* Generate the Swift engine's constants and closed vocabularies FROM the JS
-   reference (docs/native-engine-plan.md §6.7, card NE-04).
+/* Generate the native engines' constants and closed vocabularies FROM the JS
+   reference (docs/native-engine-plan.md §6.7, card NE-04; the JVM half is card
+   A-23 of docs/plans/android-assessment.md).
 
    USAGE
-     node tools/parity/gen-constants.mjs --write   regenerate the three files below
+     node tools/parity/gen-constants.mjs --write   regenerate the five files below
      node tools/parity/gen-constants.mjs --check   exit 1 if any of them is stale
 
    WHAT IT WRITES
@@ -14,6 +15,16 @@
          One String-backed enum per closed set in player/engine-vocabulary.js.
      player/parity/vocabulary.json
          The same sets as data, for the Swift parity runner and node tools.
+     android/foray-engine-core-jvm/src/main/java/ai/jwlabs/foura/engine/EngineConstants.java
+     android/foray-engine-core-jvm/src/main/java/ai/jwlabs/foura/engine/Vocabulary.java
+         The same two files for the Android engine's JVM core (A-23), which
+         ports the same policies and must read the same numbers. Java keeps the
+         JS names as they are (`EngineConstants.SeamGap.SEAM_GAP_SEC`), which
+         are already Java's constant spelling and can never be a Java keyword,
+         and a vocabulary token becomes an enum constant (`grace-expired` ->
+         GRACE_EXPIRED) carrying the token. The core's main code keeps to the
+         API 24 library surface (foray-engine-core-jvm/build.gradle), so the
+         lists are Collections.unmodifiableList(Arrays.asList(...)), never List.of.
 
    WHY GENERATED. A number like the 2.0 s seam beat is a RULE, and the failure
    this deck exists to prevent is the Swift engine quietly holding a different
@@ -62,6 +73,12 @@ export const CONSTANTS_FILE = `${CORE}/EngineConstants.swift`;
 export const VOCABULARY_SWIFT_FILE = `${CORE}/Diag/Vocabulary.swift`;
 export const VOCABULARY_JSON_FILE = "player/parity/vocabulary.json";
 export const VOCABULARY_MODULE = "player/engine-vocabulary.js";
+
+/* The Android engine's JVM core (A-23): the same constants, in Java. */
+const JVM_CORE = "mobile/plugins/foray-audio/android/foray-engine-core-jvm/src/main/java/ai/jwlabs/foura/engine";
+export const JAVA_PACKAGE = "ai.jwlabs.foura.engine";
+export const JAVA_CONSTANTS_FILE = `${JVM_CORE}/EngineConstants.java`;
+export const JAVA_VOCABULARY_FILE = `${JVM_CORE}/Vocabulary.java`;
 
 /** The modules whose exports the engine reimplements, and the namespace each
     one's constants live under. One namespace per module. A module joins this
@@ -198,16 +215,16 @@ export function swiftNumber(n, where) {
  */
 export function describeValue(value, where) {
   if (typeof value === "function") return null;
-  if (typeof value === "number") return { kind: "scalar", type: "Double", literal: swiftNumber(value, where) };
-  if (typeof value === "string") return { kind: "scalar", type: "String", literal: swiftString(value) };
-  if (typeof value === "boolean") return { kind: "scalar", type: "Bool", literal: String(value) };
+  if (typeof value === "number") return { kind: "scalar", type: "Double", literal: swiftNumber(value, where), value };
+  if (typeof value === "string") return { kind: "scalar", type: "String", literal: swiftString(value), value };
+  if (typeof value === "boolean") return { kind: "scalar", type: "Bool", literal: String(value), value };
   if (Array.isArray(value)) {
     if (!value.length) throw new UnsupportedConstantError(`${where} is an empty array; its element type is unknowable`);
     if (value.every((v) => typeof v === "number")) {
-      return { kind: "scalar", type: "[Double]", literal: `[${value.map((v, i) => swiftNumber(v, `${where}[${i}]`)).join(", ")}]` };
+      return { kind: "scalar", type: "[Double]", literal: `[${value.map((v, i) => swiftNumber(v, `${where}[${i}]`)).join(", ")}]`, value };
     }
     if (value.every((v) => typeof v === "string")) {
-      return { kind: "scalar", type: "[String]", literal: `[${value.map(swiftString).join(", ")}]` };
+      return { kind: "scalar", type: "[String]", literal: `[${value.map(swiftString).join(", ")}]`, value };
     }
     throw new UnsupportedConstantError(`${where} is an array that is neither all numbers nor all strings`);
   }
@@ -223,7 +240,7 @@ export function describeValue(value, where) {
       const name = memberName(k);
       if (seen.has(name)) throw new DuplicateConstantError(`duplicate export name: ${where}.${seen.get(name)} and .${k} would both be ${name}`);
       seen.set(name, k);
-      return { js: k, name, type: d.type, literal: d.literal };
+      return { js: k, name, type: d.type, literal: d.literal, value: v };
     });
     return { kind: "enum", members };
   }
@@ -422,7 +439,169 @@ export function renderVocabularyJson(sets) {
   });
 }
 
-/* ---------- the three files ---------- */
+/* ---------- Java (the Android engine's JVM core, A-23) ---------- */
+
+/** A JS string as a Java string literal. Control characters are OCTAL escapes,
+    never `\uXXXX`: javac turns a unicode escape into its character before it
+    lexes the literal, so a `\u000a` escape inside quotes is a line break in the
+    source and a compile error. A backslash is doubled, which also keeps a
+    backslash-u in the JS text from ever being read as one. A lone surrogate has
+    no UTF-8 spelling for the source file, so it is refused. */
+export function javaString(s) {
+  let out = '"';
+  for (let i = 0; i < s.length; i++) {
+    const cu = s.charCodeAt(i);
+    const ch = s[i];
+    if (cu >= 0xd800 && cu <= 0xdfff) {
+      const next = i + 1 < s.length ? s.charCodeAt(i + 1) : 0;
+      if (!(cu <= 0xdbff && next >= 0xdc00 && next <= 0xdfff)) {
+        throw new UnsupportedConstantError(`${JSON.stringify(s)} holds a lone surrogate, which a Java source file cannot spell`);
+      }
+      out += s.slice(i, i + 2);
+      i++;
+    } else if (ch === "\\") out += "\\\\";
+    else if (ch === '"') out += '\\"';
+    else if (ch === "\n") out += "\\n";
+    else if (ch === "\r") out += "\\r";
+    else if (ch === "\t") out += "\\t";
+    else if (cu < 0x20 || cu === 0x7f) out += "\\" + cu.toString(8).padStart(3, "0");
+    else out += ch;
+  }
+  return out + '"';
+}
+
+/** A JS number as a Java double literal: the shortest round-trip digits (the
+    same text as the Swift literal), with `.0` added to a bare integer, which
+    would otherwise be an int literal (and an Integer inside Arrays.asList). */
+export function javaNumber(n, where) {
+  const text = swiftNumber(n, where);
+  return /[.e]/.test(text) ? text : `${text}.0`;
+}
+
+/** A vocabulary token as a Java enum constant: the Swift case name in
+    SCREAMING_SNAKE (grace-expired -> GRACE_EXPIRED, appWasSuspended ->
+    APP_WAS_SUSPENDED). Upper-case, so never a Java keyword, and one-to-one
+    with the Swift case, so collectVocabulary's duplicate check covers it. */
+export function javaEnumConstant(token) {
+  return caseName(token).replace(/([A-Z])/g, "_$1").toUpperCase();
+}
+
+function javaValue(type, value, where) {
+  switch (type) {
+    case "Double": return { type: "double", literal: javaNumber(value, where) };
+    case "String": return { type: "String", literal: javaString(value) };
+    case "Bool": return { type: "boolean", literal: String(value) };
+    case "[Double]":
+      return {
+        type: "List<Double>",
+        literal: `Collections.unmodifiableList(Arrays.asList(${value.map((v, i) => javaNumber(v, `${where}[${i}]`)).join(", ")}))`,
+      };
+    case "[String]":
+      return { type: "List<String>", literal: `Collections.unmodifiableList(Arrays.asList(${value.map(javaString).join(", ")}))` };
+    default: throw new UnsupportedConstantError(`${where}: no Java type for ${type}`);
+  }
+}
+
+export function renderConstantsJava(namespaces, shared = []) {
+  const out = header("The Android engine's constants, from the JS reference (A-23; the Swift twin is NE-04's EngineConstants.swift).", [
+    "",
+    "Namespaced by source module, as EngineConstants.<Module>.<JS_NAME>, because the",
+    "JS modules reuse names for different rules. Exported by more than one module:",
+    ...(shared.length ? shared.map(([js, ns]) => `  ${js}: ${ns.join(", ")}`) : ["  (none)"]),
+    "",
+    "Every JS number is a double (JavaScript has no other number type). Policy",
+    "ports are separate classes (PlaybackRate, TransportPolicy, ...) that READ these;",
+    "they never redeclare a value here. API 24 library surface only (no List.of).",
+  ]);
+  out.push(`package ${JAVA_PACKAGE};`, "", "import java.util.Arrays;", "import java.util.Collections;", "import java.util.List;", "");
+  out.push("public final class EngineConstants {", "    private EngineConstants() {}");
+  for (const ns of namespaces) {
+    out.push("");
+    out.push(`    /** {@code ${ns.module}} */`);
+    out.push(`    public static final class ${ns.namespace} {`);
+    out.push(`        private ${ns.namespace}() {}`, "");
+    for (const m of ns.members) {
+      if (m.kind === "enum") {
+        if (m.name === ns.namespace) {
+          throw new DuplicateConstantError(`${ns.module}#${m.js} would be a Java class ${m.name} nested in a class of the same name`);
+        }
+        out.push("");
+        out.push(`        /** {@code ${m.js}} */`);
+        out.push(`        public static final class ${m.name} {`);
+        out.push(`            private ${m.name}() {}`);
+        out.push("");
+        for (const e of m.members) {
+          const j = javaValue(e.type, e.value, `${ns.module}#${m.js}.${e.js}`);
+          out.push(`            /** {@code ${m.js}.${e.js}} */`);
+          out.push(`            public static final ${j.type} ${e.js} = ${j.literal};`);
+        }
+        out.push("        }");
+        out.push("");
+      } else {
+        const j = javaValue(m.type, m.value, `${ns.module}#${m.js}`);
+        out.push(`        /** {@code ${m.js}} */`);
+        out.push(`        public static final ${j.type} ${m.js} = ${j.literal};`);
+      }
+    }
+    out.push("    }");
+  }
+  out.push("}", "");
+  // One blank line between members, and none before a closing brace.
+  return out.join("\n").replace(/\n{3,}/g, "\n\n").replace(/\n\n(\s*\})/g, "\n$1");
+}
+
+export function renderVocabularyJava(sets) {
+  const out = header("The Android engine's closed vocabularies, from player/engine-vocabulary.js (A-23).", [
+    "",
+    "A diagnostics row admits a token only through these sets; the reasons for",
+    "each set, and for keeping them closed, are in the JS module. The data only.",
+  ]);
+  out.push(`package ${JAVA_PACKAGE};`, "", "import java.util.Arrays;", "import java.util.Collections;", "import java.util.LinkedHashMap;",
+    "import java.util.List;", "import java.util.Map;", "");
+  out.push("public final class Vocabulary {", "    private Vocabulary() {}");
+  for (const s of sets) {
+    out.push("");
+    out.push(`    /** {@code ${s.set}} */`);
+    out.push(`    public enum ${s.type} {`);
+    s.tokens.forEach((t, i) => {
+      out.push(`        ${javaEnumConstant(t.token)}(${javaString(t.token)})${i === s.tokens.length - 1 ? ";" : ","}`);
+    });
+    out.push(
+      "",
+      "        /** The token, as the JS set spells it. */",
+      "        public final String token;",
+      "",
+      `        ${s.type}(String token) {`,
+      "            this.token = token;",
+      "        }",
+      "",
+      "        /** The member spelled {@code token}, or null for a token outside the set. */",
+      `        public static ${s.type} of(String token) {`,
+      `            for (${s.type} v : values()) if (v.token.equals(token)) return v;`,
+      "            return null;",
+      "        }",
+      "    }",
+    );
+  }
+  out.push(
+    "",
+    "    /** Every set's name, in the JS declaration order. */",
+    `    public static final List<String> SET_NAMES = Collections.unmodifiableList(Arrays.asList(${sets.map((s) => javaString(s.set)).join(", ")}));`,
+    "",
+    "    /** Every set's tokens, by set name, in the JS declaration order. */",
+    "    public static final Map<String, List<String>> SETS;",
+    "",
+    "    static {",
+    "        Map<String, List<String>> sets = new LinkedHashMap<>();",
+  );
+  for (const s of sets) {
+    out.push(`        sets.put(${javaString(s.set)}, Collections.unmodifiableList(Arrays.asList(${s.tokens.map((t) => javaString(t.token)).join(", ")})));`);
+  }
+  out.push("        SETS = Collections.unmodifiableMap(sets);", "    }", "}", "");
+  return out.join("\n");
+}
+
+/* ---------- the five files ---------- */
 
 /**
  * Render every generated file from the tree at `root`.
@@ -433,11 +612,17 @@ export async function generate({ root = REPO_ROOT, sources = SOURCES, vocabulary
   // A test hook: rewrite the loaded exports before rendering, to show that a
   // JS change the committed file does not reflect is caught.
   if (transform) loaded = transform(loaded);
-  const files = { [CONSTANTS_FILE]: renderConstants(collect(loaded), sharedNames(loaded)) };
+  const namespaces = collect(loaded);
+  const shared = sharedNames(loaded);
+  const files = {
+    [CONSTANTS_FILE]: renderConstants(namespaces, shared),
+    [JAVA_CONSTANTS_FILE]: renderConstantsJava(namespaces, shared),
+  };
   if (vocabularyModule) {
     const sets = collectVocabulary(await importFresh(root, vocabularyModule), vocabularyModule);
     files[VOCABULARY_SWIFT_FILE] = renderVocabularySwift(sets);
     files[VOCABULARY_JSON_FILE] = renderVocabularyJson(sets);
+    files[JAVA_VOCABULARY_FILE] = renderVocabularyJava(sets);
   }
   return files;
 }
