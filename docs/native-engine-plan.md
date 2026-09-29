@@ -418,6 +418,7 @@ Reason tokens: `not-loaded`, `no-next`, `no-previous`, `ended`, `refused-structu
    - `exclusions.json`, closed reasons: `webview-only`, `dom-only`, `text-pin`, `js-module-shape`
    - `unported.json`, JS tests that have no fixture or XCTest yet, each tagged with a card; burn-down only
    - `swift-pending.json`, burn-down only
+   - `jvm-pending.json`, burn-down only: the Android JVM port's books (A-22, `docs/plans/android-assessment.md` §5.4). A family the JVM does not run is owed whole; `record.mjs --jvm-card` hands a case new in a family it runs, or a new family, to an Android card. Rules in `player/parity/jvm-pending.js`.
    - `capabilities.json`
    - `floors.json`
 2. **Case format.** Pure calls `{id, covers[], call, args, expect}`. Scenarios `{setup, steps[], expect}`, with the closed verbs `call`, `settle`, `clock`, `deck`, `tts`, `interlude`, `session`, `lifecycle`, `remote` and `checkpoint`. Macros `$seg`, `$ep`, `$tts`, `$foray`. The op-log grammar is unchanged. Native-only `n.*` tokens are stripped, **except in the `prepare` family, which asserts them**.

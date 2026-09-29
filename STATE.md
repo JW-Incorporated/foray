@@ -7,6 +7,43 @@ docs/. Completed workstreams move to their plan doc's retro section.
 
 ## Active workstreams
 
+### 2026-09-29 — `android/a-22-jvm-parity`: A-22, the JVM parity runner and its books
+
+Owned: `mobile/plugins/foray-audio/android/foray-engine-core-jvm/src/test/java/ai/jwlabs/foura/engine/parity/`
+(new), `player/parity/jvm-pending.{js,json}` (new), and the JVM-parity step in `android-build.yml`. This is card A-22
+of `docs/plans/android-assessment.md` (Track A1).
+
+**What it is.** `ParitySuite` is the JVM twin of the Swift `ParitySuite`. It reads `player/parity/` in place:
+`manifest.json`, the fixture files, `jvm-pending.json`, `floors.json` and `unported.json`. It runs each family that
+has a JVM runner through ports of `codec.js` and `compare.js`, and it keeps the books. The run fails when:
+- a case that is not owed fails;
+- an owed case passes (a stale entry);
+- an id is neither run nor owed;
+- a jsOnly family is owed.
+
+**The books come in two grains**, because the JVM starts with almost nothing ported:
+- `families` means a whole family is owed.
+- `cases` means one id is owed inside a family the JVM does run.
+
+`record.mjs` keeps them the same way it keeps `swift-pending`. A case that is new or changed in a family the JVM runs,
+or a brand-new family, needs `--jvm-card A-xx`. Anything in a family that is owed whole needs no JVM card, so iOS and JS
+PRs are unaffected. `--check` validates the file.
+
+**What runs today.**
+- `number-format`: `JSWriter.jsonNumber` is main code. It is ECMA Number::toString with a shortest-digit search,
+  because Java's `Double.toString` keeps two digits where JS prints one (`5e-324`).
+- `compare`: the comparator port, checked against `compare.js`.
+
+**CI-executed** (`android-build` / `android-shell`, run 36569489207, job 109409622554, head `c0e414f6`):
+- `:foray-engine-core-jvm:test` ran 20 JUnit cases with 0 skipped, in **9 s**.
+- Totals: passed 62 (compare 37, number-format 25), not-ported 1716, js-only 58, failed/stale/unaccounted 0.
+- The next step flipped `number-format/point-one`'s recorded `"0.1"` to `"0.2"` in a copy of `player/parity`. The test then
+  went red on that case, which is the card's mutation acceptance, and it runs on every build.
+- `assembleDebug` and `assembleRelease` are green.
+
+**Not executed:** there was no local Gradle, per the memory-constrained-PC rule. There was no device and no request to
+Joey (D-A3).
+
 ### 2026-09-29 — `android/a-21-jvm-core`: A-21, the Android engine's JVM core is Java 21 (not Kotlin)
 
 Owned: `mobile/plugins/foray-audio/android/foray-engine-core-jvm/` (new) and its step in
