@@ -1,6 +1,6 @@
 # Hermes deck: the 4a iOS native playback engine (Tier 2, "full native engine") — revision 2
 
-**Status:** plan for Hermes to cut into kanban cards. Revision 2 was written 2026-09-23 against `origin/main` @ `adde5e12`. It answers the 47-finding critique of revision 1, and §13 gives the disposition of every finding. Revision 1 was written the same day, after the founder picked Tier 2 of `docs/ios-native-player-gap.md` §4. Companion decks: `docs/ios-controls-and-voice-plan.md` (L-, V- and D-cards), `docs/bundled-voice-plan.md` (K-cards), and the requirements document written the same day (IDs A/S/Q/P/N/R/T/C/M/NP/D/W/J/V/L/DV/H, cited below). This deck's cards are **NE-** (native engine). A card suffixed `j` is JavaScript only, runs on Windows and auto-merges. A card suffixed `s` is the Swift port that burns the same families down.
+**Status:** plan for Hermes to cut into kanban cards. **M3 re-planned 2026-09-29** (§7 M3, §14 Track M3): M1 and M2 are on `main`, and M3 proceeds on provisional field values while the founder's drives wait. Revision 2 was written 2026-09-23 against `origin/main` @ `adde5e12`. It answers the 47-finding critique of revision 1, and §13 gives the disposition of every finding. Revision 1 was written the same day, after the founder picked Tier 2 of `docs/ios-native-player-gap.md` §4. Companion decks: `docs/ios-controls-and-voice-plan.md` (L-, V- and D-cards), `docs/bundled-voice-plan.md` (K-cards), and the requirements document written the same day (IDs A/S/Q/P/N/R/T/C/M/NP/D/W/J/V/L/DV/H, cited below). This deck's cards are **NE-** (native engine). A card suffixed `j` is JavaScript only, runs on Windows and auto-merges. A card suffixed `s` is the Swift port that burns the same families down.
 
 **Where it comes from.** Three architecture designs were written against the requirements and judged three times. The spine is the **risk-first** design, which two of the three judges picked. Its first TestFlight build is the car test. It extends `foray-audio`, so that one module owns `MPRemoteCommandCenter` and the audio session. It uses two AVPlayer decks, and it is the only design that names silent-gap suspension. Grafted in, and named where each lands:
 - **From the contract-first design:** the mode is decided before any target is registered; a crash-loop guard (now based on a sentinel); a one-way handover per process; an explicit `lostToInterruption` session state; snapshot extrapolation from the page's own receipt time; continuation hops precomputed in JS; facades plus a JS reference engine; and three multiplexed bridge methods on the existing plugin.
@@ -559,16 +559,33 @@ DV-12 and DV-13 must pass. DV-7a and DV-9 must be recorded.
 
 ### M3 · Values from the field and completeness
 
-**Builds:**
-- P-13 and the precise-timing policy from the rows
-- the remaining manager scenarios (about 70), after which `swift-pending.json` and `unported.json` are deleted
-- the de-dup decision
-- the D-5 audit
-- the `.longFormAudio` trial
-- DV-11
-- the DECISIONS entries (G-7)
+*Re-planned 2026-09-29 (§14 Track M3). The founder's human actions will be a while, so every field value ships provisional (`// MEASURE`), and only NE-38f, the drive and NE-40d need a human.*
 
-**Founder test (G-6):** DV-7a (required), DV-7b (force-quit then the car's play; expected "not 4a", recorded only), DV-11, and a regression drive of H-1 to H-3.
+**Builds:**
+- **Provisional values from existing evidence**, each with the row that settles it (NE-38):
+  - P-13, split by class: clip 20 s, rendered line 8 s;
+  - the 600 s reuse idle limit;
+  - the grace low-water mark;
+  - OQ-12 `.forever`.
+- `engine-report.mjs` verdicts for each of those values (NE-38e). The values are settled from the pastes later (NE-38f, gated).
+- **Route resume on a known car** (founder Q5): a JS reference policy and fixtures, then the engine, keyed by port type and UID, persisted, with a Bluetooth arm that is off until the rows say otherwise (NE-38rj/rs).
+- **Rendered narration seams become ordinary deck seams**: the next clip is prepared behind a line, and the line behind a clip (NE-45j/s). Speech is the fallback only.
+- **The silence-node decision** (it stays off) and the late-timer row that would justify turning it on (NE-46).
+- **The car's Next over narration** and the fallback's cause (NE-39n); **audition by URL** (NE-47).
+- **The manager remainder** (18 tests), after which `swift-pending.json` and `unported.json` are deleted; the de-dup decision (NE-39j/s).
+- **The D-5 stop-cause audit, the `.longFormAudio` flag (off), the `engine/m3` → `main` merge and the M3 script** (NE-40).
+- **The DECISIONS entries** (G-7, NE-40d).
+
+**Founder test (G-6):**
+- DV-7a (required).
+- DV-7b: force-quit, then the car's play. Expected "not 4a"; recorded only.
+- The route-resume block (a car switched off and on while playing; a listener's pause must stay paused).
+- A rendered-Foray block, once one is published.
+- DV-11.
+- A regression drive of H-1 to H-3.
+- An optional `.longFormAudio` arm.
+
+Nothing in M3's engineering waits for this test, or for the M2 drive (#128).
 
 ### M4 · Harden, don't remove (after two clean weeks)
 
@@ -584,8 +601,8 @@ Week 2:       NE-02 · NE-04 · NE-05 · NE-07j/10j/11j/12j · NE-15 vs stub Dec
 Weeks 2-5:    NE-07s, NE-09..NE-12s, NE-14j/s → NE-15h → NE-16, NE-16g, NE-17..NE-20 · NE-22 · NE-24..NE-26r · G-1b
 Week ~6:      NE-27 flip (hold until OQ-9) + NE-27d DECISIONS → TestFlight 1 → G-3
 Weeks 7-11:   NE-28j..NE-36 → NE-37 → TestFlight 2 → G-4
-Weeks 12-14:  NE-38..NE-40 → TestFlight 3 → G-6
-+2 clean weeks: NE-41, NE-42, NE-44
+Weeks 12-14:  NE-38, NE-38e, NE-38rj/rs, NE-45j/s, NE-39j/n/s, NE-46, NE-47 → NE-40 (merge + TestFlight 3) → G-6 → NE-38f, NE-40d (re-planned 2026-09-29)
++2 clean weeks: NE-41, NE-42, NE-44, NE-48
 ```
 
 ## 8. Risks and how each one is retired
@@ -624,8 +641,8 @@ Weeks 12-14:  NE-38..NE-40 → TestFlight 3 → G-6
 | G-2 | a human merger | Optional `ios/` scaffold cleanup. | NE-44 only |
 | G-3 | Wyatt + a second person for calls | The M1 car test (§7). | M1 exit |
 | G-4 | Wyatt | The M2 drive. | M2 exit |
-| G-5 | Wyatt | OQ-9 (native default for the M1 build; recommended), OQ-3, OQ-5, OQ-6 (jingle 1.5 s vs 3.0 s), OQ-11 (delayed `play_started`), **OQ-12 (pause-hold policy, from the H-1/H-1b rows; amends S-4)**. | NE-27 (OQ-9), NE-29j (OQ-6), NE-38 (OQ-12) |
-| G-6 | Wyatt | DV-7a, DV-7b, DV-11, the regression drive. | M3 exit |
+| G-5 | Wyatt | OQ-9 (native default for the M1 build; recommended), OQ-3, OQ-5, OQ-6 (jingle 1.5 s vs 3.0 s), OQ-11 (delayed `play_started`), **OQ-12 (pause-hold policy, from the H-1/H-1b rows; amends S-4)**. | NE-27 (OQ-9), NE-29j (OQ-6), NE-38f (OQ-12; `.forever` stays the default until then) |
+| G-6 | Wyatt | DV-7a, DV-7b, the route-resume block, the rendered-Foray block, DV-11, the regression drive (NE-40's script). | M3 exit, and NE-38f's settled values. No M3 engineering card waits on it (re-plan 2026-09-29). |
 | G-7 | Wyatt (`founder-approved`; `docs/DECISIONS.md` is denied) | Separate DECISIONS PRs: NE-27d, NE-37d, NE-40d. Batched with label sittings. | Records only; never blocks a flip |
 
 ### 9a. Defaults applied by the orchestrator (2026-09-24), so no card waits
@@ -663,10 +680,14 @@ The founder's standing instruction is to route only true product/spend/legal cal
 | DV-2 / H-2, DV-4, DV-5 | M2 | packed `seam` rows, `outPoint` |
 | DV-8 | M3 | `build routeSharing=` |
 | DV-11 | M3 | Settings → Battery |
+| Route resume: does the car send its own play on connect? Is the Bluetooth arm needed? | M3 | `route kind=lost/back`, `remote play` → `route-back` (NE-38e) |
+| P-13 by class, the reuse idle limit, the rate latch | M2 → M3 | `deck kind=ready/deadline/attach/reuse`, `nowplaying via=rate` → `P13-clip`, `P13-line`, `reuse-idle`, `rate-latch` |
+| A suspension inside a silent seam (the silence node) | M2 → M3 | `grace kind=late inSeam=` → `suspension-in-seam` |
+| Rendered-line seams, the fallback's cause | M3 | packed `seam from= to= prepare=`, `narration kind=fallback cause=` |
 
 ## 11. Out of scope
 
-Android's native engine is out of scope for THIS deck, not for the product: it has its own plan, `docs/plans/android-assessment.md` (tracks A0–A2, ruled 2026-09-29 to start in parallel with M2), which ports this deck's core and contract to Media3 against the same parity fixtures. This deck's only Android edits are A-20's inert contract gating (§4.1). Also out of scope: any other Android work here (J-1), the website apart from behaviour-preserving extractions, CarPlay templates and Swift `foray-resolve`/`foray-queue`, the Kokoro engine, ADR-0007 rung 4, offline downloads, and proxying or padding enclosure bytes (L-3).
+Android's native engine is out of scope for THIS deck, not for the product: it has its own plan, `docs/plans/android-assessment.md` (tracks A0–A2, ruled 2026-09-29 to start in parallel with M2; Track A4, A-60..A-69, mirrors this deck's M3), which ports this deck's core and contract to Media3 against the same parity fixtures. This deck's only Android edits are A-20's inert contract gating (§4.1). Also out of scope: any other Android work here (J-1), the website apart from behaviour-preserving extractions, CarPlay templates and Swift `foray-resolve`/`foray-queue`, the Kokoro engine, ADR-0007 rung 4, offline downloads, and proxying or padding enclosure bytes (L-3).
 
 ## 12. Card conventions
 
@@ -735,11 +756,11 @@ Android's native engine is out of scope for THIS deck, not for the product: it h
 
 Read first: `CLAUDE.md`, this deck, the Tier 2 requirements, `docs/ios-native-player-gap.md`, `docs/ios-lock-screen.md`, the `html-audio-backend.js`, `queue-manager.js` and `durable-store.js` headers, and `ForayAudioPlugin.swift`'s header.
 
-> **Added 2026-09-25 — NE-38r · Resume on a known car route (founder Q5).** *"Q5 yes move everything in the app to the native engine."* When a route the engine has seen playing (CarPlay or a car's Bluetooth, keyed by port type and UID) comes back **and** the engine's last pause was caused by that route going away (not by a listener press, a call or Siri), the engine resumes on its own; a listener's pause is never resumed. It lives in the engine's route policy (NE-16's AudioSessionOwner route observer and the core's reason for the pause), with parity cases for "route-lost pause → resume" and "listener pause → no resume", and a car-test block. Milestone M3, after NE-38 (it needs the field rows on route change reasons). The web player's dead branch (round-3 finding player-core-10) is deleted rather than wired.
+> **Added 2026-09-25 — NE-38r · Resume on a known car route (founder Q5).** *"Q5 yes move everything in the app to the native engine."* When a route the engine has seen playing (CarPlay or a car's Bluetooth, keyed by port type and UID) comes back **and** the engine's last pause was caused by that route going away (not by a listener press, a call or Siri), the engine resumes on its own; a listener's pause is never resumed. It lives in the engine's route policy (NE-16's AudioSessionOwner route observer and the core's reason for the pause), with parity cases for "route-lost pause → resume" and "listener pause → no resume", and a car-test block. Milestone M3, after NE-38 (it needs the field rows on route change reasons). The web player's dead branch (round-3 finding player-core-10) is deleted rather than wired. **Status 2026-09-29:** the web branch is deleted. `EngineCore.onRoute` carries a partial port with five gaps: no JS reference or fixtures, keyed by name, CarPlay only, not persisted, and it resumes a listener's pause. The card is now NE-38rj and NE-38rs (§14 Track M3).
 
 ## 14. The card deck
 
-61 cards. Conventions are §12: the ask, owned files, dependencies, **measured** acceptance, a device check and a size (S ≤ ½ day, M ≤ 2 days, L ≤ 5). A `j` card is JavaScript only and runs on Windows; an `s` card is the Swift port that burns the same families down. Every card touching `mobile/plugins/*/ios/**` or `foray-engine-core/**` opens with the `hold` label (§12). The sequencing is the §7 timeline; `depends_on` below is the hard order.
+72 cards (revision 2 had 61; NE-37c and NE-39n were added with M2, and the M3 re-plan of 2026-09-29 added nine). Conventions are §12: the ask, owned files, dependencies, **measured** acceptance, a device check and a size (S ≤ ½ day, M ≤ 2 days, L ≤ 5). A `j` card is JavaScript only and runs on Windows; an `s` card is the Swift port that burns the same families down. Every card touching `mobile/plugins/*/ios/**` or `foray-engine-core/**` opens with the `hold` label (§12). The sequencing is the §7 timeline; `depends_on` below is the hard order.
 
 | Card | Title | Milestone | Size | Depends on |
 |---|---|---|---|---|
@@ -797,14 +818,23 @@ Read first: `CLAUDE.md`, this deck, the Tier 2 requirements, `docs/ios-native-pl
 | NE-37 | M2 flip: advertise 'foray', the drive script, the App Review note | M2 | S | NE-31s, NE-32, NE-33, NE-34, NE-35, NE-36 |
 | NE-37d | DECISIONS entry: Forays play natively on iOS (G-7) | M2 | S | NE-37 |
 | NE-37c | M2 catch-up with main after the M1 car test: #866 in Foray paths, audit round 3 and the Phase 2 narration rules in the engine | M2 | M | NE-37 |
-| NE-38 | Values from the field: load deadline, stall display, precise timing, and the hold-policy input to OQ-12 | M3 | M | NE-37 |
-| NE-39j | Record the remaining queue-manager scenarios (about 70) (JS) | M3 | L | NE-37 |
-| NE-39s | Swift burn-down of the manager remainder; delete the pending lists; the de-dup decision | M3 | L | NE-39j |
-| NE-39n | Rendered narration on the engine, what M2 leaves: the car's own next and narration, the web lane's narration warm, the fallback row's reason | M3 | S | NE-37c |
-| NE-40 | Stop-cause audit, the .longFormAudio trial, and the M3 script (DV-7a required, DV-7b negative control) | M3 | M | NE-38, NE-39s |
-| NE-40d | DECISIONS entries for M3: permanent rule-change discipline, de-dup, hold policy (G-7) | M3 | S | NE-39s, NE-40 |
+| NE-38 | Provisional field values now (P-13 per class, reuse idle, grace, OQ-12 default), and the rows that settle them | M3 | M | NE-37 |
+| NE-38e | engine-report.mjs learns the M3 verdicts (JS) | M3 | M | NE-38 |
+| NE-38f | Settle the values from the field (human-gated input: #128 and G-6 pastes) | M3 | S | NE-38e, #128, NE-40 drive |
+| NE-38rj | Route resume, the JS reference: a pure policy and the route-resume family (JS) | M3 | M | NE-37 |
+| NE-38rs | Route resume in the engine: port the policy, key by port type and UID, persist, rows | M3 | M | NE-38rj, NE-38 |
+| NE-45j | Prepare across narration seams, the JS reference (JS) | M3 | M | NE-37 |
+| NE-45s | Prepare across narration in the engine: a rendered line's seams are deck seams | M3 | L | NE-45j, NE-38 |
+| NE-39j | Record the manager remainder (18 tests) (JS) | M3 | M | NE-45j |
+| NE-39n | The car's own Next over narration, and the fallback's cause (retargeted) | M3 | M | NE-37c |
+| NE-46 | The silence-node decision: stays off, plus the late-timer row | M3 | S | NE-38 |
+| NE-47 | Audition by URL: the voice preview plays a rendered file on the engine | M3 | M | NE-37 |
+| NE-39s | Swift burn-down; delete the pending lists; the de-dup decision | M3 | L | NE-39j, NE-38rs, NE-45s, NE-39n, NE-47 |
+| NE-40 | Stop-cause audit, the .longFormAudio trial flag, the M3 merge and build, and the M3 script | M3 | M | NE-38, NE-38e, NE-38rs, NE-39s, NE-45s, NE-46 |
+| NE-40d | DECISIONS entries for M3 (G-7, human-gated) | M3 | S | NE-38f, NE-39s, NE-40 |
 | NE-41 | Harden, don't remove: retire the Developer Web entry and the iOS de-dup window; keep the legacy lane as fallback | M4 | M | NE-40 |
-| NE-42 | Phase-2 seats: the PcmNarrator interface for Kokoro and the CarPlay read APIs | M4 | M | NE-33, NE-24 |
+| NE-42 | Phase-2 seat: the CarPlay read APIs (the Kokoro PcmNarrator half is obsolete) | M4 | S | NE-24 |
+| NE-48 | NarrationCache: download a Foray's rendered narration when it starts | M4 | M | NE-45s |
 | NE-44 | Optional: freeze or delete the ios/ SwiftUI scaffold (G-2) | M4 | S | NE-02 |
 
 ### Track M1 · "One owner": native episodes, the car test
@@ -1530,6 +1560,7 @@ Read first: `CLAUDE.md`, this deck, the Tier 2 requirements, `docs/ios-native-pl
 
 #### NE-33 · SpeechNarrator on the path DV-9 chose, SpeechRules with pickDefaultVoice, audition moved onto it — **L**
 - **Milestone:** M2
+- **Status (2026-09-29):** shipped in M2, and **demoted to the fallback** by the Spark direction (DECISIONS 2026-09-28, D1). A rendered line plays on the deck, and the SpeechNarrator speaks only a line whose file will not load, or a Foray with no rendered narration. No M3 work retargets it. DV-9 matters only for that fallback.
 - **Depends on:** NE-25c, NE-27, NE-31s
 - **Ask:**
 
@@ -1635,64 +1666,422 @@ Read first: `CLAUDE.md`, this deck, the Tier 2 requirements, `docs/ios-native-pl
 - **Acceptance:** `coverage.test.js` green with nothing owed to `foray`; the new manager-foray, lexicon and speech-rate cases pass in Swift with `swift-pending.json` empty; ForayCatchUpTests, SpeechNarratorCatchUpTests and PositionFlushTests pass.
 - **Device check:** HUMAN-ACTIONS #128 (the M2 drive): the car shows the Foray's title and a moving progress bar through clips and narration; a long pause and a call resume.
 
-#### NE-39n · Rendered narration on the engine: what M2 leaves — **S**
+### Track M3 · Values from the field and completeness (re-planned 2026-09-29)
+
+> **Re-plan, 2026-09-29.** The founder, 2026-09-29: *"It's going to be a while until I get to those human actions. keep progressing towards milestone 3 for both iPhone and android."* So M3 no longer waits for field data. Every value that needs the founder's rows ships now as a **provisional value taken from existing evidence**, marked `// MEASURE:`, with the row that will settle it and an `engine-report.mjs` verdict that reads that row. Only three cards need a human: NE-38f (the pastes), the NE-40 drive (G-6) and NE-40d (the label). No engineering card waits on any of them. The M2 drive (HUMAN-ACTIONS #128) is still pending, and M3 does not wait for it either.
+>
+> **What changed since this track was written (2026-09-23):**
+> 1. **Narration is rendered centrally and played as files** (DECISIONS 2026-09-28, D1/D2; `docs/plans/spark-central-narration-assessment.md` §3.3, §4). A rendered line is an ordinary deck item, so its seams are ordinary deck seams (NE-45). On-device speech (NE-33's SpeechNarrator) is only the fallback. NE-42 loses its Kokoro half. The assessment's post-M2 list has five items:
+>    - the fallback and the rendered rate: shipped in M2 (NE-37c);
+>    - prepare across narration: NE-45;
+>    - audition by URL: NE-47;
+>    - `NarrationCache`: NE-48 (M4);
+>    - append (on-demand): stays out of this deck until on-demand is scheduled.
+> 2. **M2 review leftovers:**
+>    - The clip after a rendered narration line is not prepared. `EngineCore.warmNextSegment` warms only a transition that gets a beat, and `SeamGap.gapSec` gives any seam with a line in it 0 s. So a clip → line → clip passage costs two cold loads. Fixed by NE-45.
+>    - The silence node is built but off. The decision is NE-46.
+> 3. **Field evidence, 2026-09-28** (the founder's paste on build 2026092706; PR #866):
+>    - The stuck loads on a remote resume were same-source refetches, and #866 turned them into seeks.
+>    - The 20 s load deadline (P-13) and AVDeck's 600 s reuse idle limit are provisional (`// MEASURE`).
+>    - The Now Playing rate-0 latch is fixed, per item.
+>
+>    NE-38 and NE-38e carry this.
+> 4. **The M1 car test passed** (#114, build 2026092706). After a day parked, the car's play resumed 4a. That happened under `pauseHoldPolicy = .forever` and with every load cold. It is the evidence behind NE-38's provisional OQ-12 default.
+> 5. **NE-38r is only half done on `main`.** `EngineCore.onRoute` has a known-car resume branch, but it has five gaps:
+>    - no JS reference and no fixtures: the JS one was deleted by player-core-10;
+>    - it is keyed by the port's name;
+>    - it covers only `.carAudio` (CarPlay). The founder's car is `BluetoothA2DPOutput` (paste row e#83);
+>    - the set of known routes is in memory only;
+>    - its guard (`case .interrupted(_, true)`) also matches a listener's own pause, because the reducer models a pause as `interrupted(wasPlaying: true)` (#866). That breaks the founder's Q5 rule that "a listener's pause is never resumed".
+>
+>    NE-38rj and NE-38rs finish it.
+> 6. **The manager remainder is 18 tests, not about 70** (`player/parity/unported.json` at `32989b5c`). Seven of them are the warming rules that NE-45j rewrites, so NE-39j comes after NE-45j.
+>
+> **Branch and order.** The work happens on `engine/m3`, cut from `main` at `32989b5c`, with one PR per card into `engine/m3`. NE-40 merges `engine/m3` into `main` as one PR, as M2 did (#873). Every `s` card opens with `hold` (§12). At most two Swift PRs are open at once. Hard order:
+>
+> ```
+> NE-38 ─┬─ NE-38e ─────────────────────────────┐
+>        ├─ NE-46 ──────────────────────────────┤
+> NE-38rj ─ NE-38rs ────────────────────────────┤
+> NE-45j ─┬─ NE-45s ────────────────────────────┤
+>         └─ NE-39j ─┐                          │
+> NE-39n ────────────┼─ NE-39s ─────────────────┴─ NE-40 ─ (G-6 drive) ─ NE-38f ─ NE-40d
+> NE-47 ─────────────┘
+> ```
+>
+> **The Android twin** of this track is Track A4 in `docs/plans/android-assessment.md` §5.7 (A-60..A-69). A JS card here that records a new family also books that family in `player/parity/jvm-pending.json`, owed to its A4 card (`record.mjs --jvm-card`), so the JVM runner stays consistent.
+
+#### NE-38 · Provisional field values now, and the rows that settle them — **M**
+- **Milestone:** M3
+- **Depends on:** NE-37 (M2 on `main`, #873)
+- **Human-gated:** no. NE-38f is the gated half.
+- **Files:**
+  - `mobile/plugins/foray-audio/ios/Sources/ForayAudioPlugin/Engine/`: `AVDeck.swift`, `DeckPair.swift`, `AssetCache.swift`, `ForayEngine.swift`, `EngineBoot.swift`
+  - `foray-engine-core/Sources/ForayEngineCore/Engine/`: `EngineCore.swift` and `DeckVocabulary.swift` (the load's deadline class)
+  - JS first if a token is new: `player/engine-vocabulary.js` and the `diag-tokens` fixtures
+  - `docs/ios-native-engine-measurements.md` (new §"Provisional values (M3)")
+  - XCTests: `AVDeckTests`, `DeckPairTests`, `ForayCatchUpTests`
+- **Ask:** Give every value below a named constant. Its header comment cites the evidence and names the row and the NE-38e verdict that settle it.
+
+  | Value | Provisional | Evidence it rests on | Settled by (row → NE-38e verdict) |
+  |---|---|---|---|
+  | P-13 load deadline, clip or episode | **20 s**, unchanged, `// MEASURE` | Simulator cold first loads took 1.5–19.6 s (measurements §8.2). Warm loads took 0.2–1.2 s (§8.1, §10.1). In the field (2026-09-28), token 1 had its duration in 2.2 s and token 3 in 1.4 s. The only load past 19 s (token 2) was a same-source refetch, which #866 made a seek. | `deck kind=ready elapsedMs marks`, `deck kind=deadline step=` → `P13-clip` |
+  | P-13 load deadline, rendered narration line | **8 s**, new, `// MEASURE` | A line is about 160 KB (64 kbps, about 20 s of speech), and warm AVPlayer loads take under 1.3 s. A line that fails falls back to speech (NE-37c), so a longer wait only lengthens a silence. | the same rows with `kind=line` → `P13-line` |
+  | Reuse idle limit (`AVDeck.defaultReuseMaxIdleSec`, `AssetCache`) | **600 s**, unchanged, `// MEASURE` | #866's review: an item held for hours can report ready over an expired connection. M1's car win came from cold loads. | a `reuse idleSec=` followed within 30 s by `failed`, `deadline` or `stalled` on that token; `attach cold=stale idleSec=` → `reuse-idle` |
+  | `lowBackgroundRemainingMs` | **5 s**, unchanged, `// MEASURE` | about one CDN load that goes wrong | `grace low=y` against the span's outcome → `resume-latency` |
+  | `pauseHoldPolicy` (OQ-12) | **`.forever`**, unchanged (§9a default) | #114 passed on `.forever`. The HA #108 baseline shows a held session is necessary but not sufficient. The Developer "Pause hold: none" arm stays. | H-1 against H-1b rows → G-5 |
+  | P-14 stall display | buffering once `time-control waiting reason=` holds (as shipped in #866) | #866 | `time-control` and `nowplaying via=rate` rows → `rate-latch` |
+
+  - The core names a **deadline class** (`clip` or `line`) on the load it issues. AVDeck maps the class to seconds.
+  - If the `.load` command's fields are recorded in the `deck`, `deck-episode` or `prepare` fixtures, the class goes in JS first: `deck-policy.js` gains `loadDeadlineClass(item)`. Re-record with `--port-card NE-38` and `--jvm-card` (the family's A-card).
+  - The `deadline` row gains `class=`.
+  - No behaviour changes for a clip.
+- **Acceptance:**
+  - `grep -rn "// MEASURE" mobile/plugins/foray-audio` lists exactly the table's constants. Each tag names its verdict.
+  - XCTests on a fake clock:
+    - a rendered line whose load is still pending at 8 s writes `deck kind=deadline class=line`, and the line falls back to speech on a fresh token;
+    - a clip load that lands at 19 s does not time out;
+    - a prepared (standby) line uses the line class too.
+  - The measurements doc carries the table.
+  - `record.mjs --check` and `coverage.test.js` are green, and so are ios-kit, engine-parity and ios-gate on the head SHA.
+- **Device check:** none. NE-38f reads the pastes.
+
+#### NE-38e · `engine-report.mjs` learns the M3 verdicts — **M**
+- **Milestone:** M3
+- **Depends on:** NE-38 (the row fields). It can start in parallel against the grammar named here.
+- **Human-gated:** no. JS only, so it runs on Windows.
+- **Files:** `tools/mobile/engine-report.mjs`, `tools/mobile/engine-report.test.mjs`, a fixture paste under `tools/mobile/fixtures/` (synthetic, title-free), and its floor in `test/suite-integrity.test.js`.
+- **Ask:** Add these verdicts. Each is `pass`, `fail` or `no-coverage`, and it cites its rows. **Silence is `no-coverage`, never a pass.**
+  - `P13-clip` and `P13-line`: n, p50, p95 and max of `deck kind=ready elapsedMs` for cold loads (`attach cold=`), split by `access wwan>0`. Every `deadline` row with its `step` and `class`. A **proposal** (p95 × 2, rounded up to whole seconds, never below the observed max) is printed and never applied.
+  - `reuse-idle`: every `reuse` with `idleSec`, and whether a `failed`, `deadline` or `stalled` followed on that token within 30 s (the risk). Every `attach cold=stale` with its `idleSec` (what the limit cost).
+  - `rate-latch` (the #866 regression check): fail on any span over 3 s in which `nowplaying engineState=playing buffering=n` publishes `rate=0` while `elapsedSec` advances.
+  - `resume-latency`: `grace heldMs` for `remote-play` and `route-resume`, split by `cold` against `reuse`.
+  - `route-back` (NE-38rs): for each `route kind=back`, the decision, `known`, `lostSec`, and the ms until the next `remote play` (the car's own press). This answers whether the Bluetooth arm is needed.
+  - `seam-kinds` (NE-45s): the seam distribution, split `clip→clip`, `clip→line` and `line→clip`, with `prepare=hit|miss|none`.
+  - `suspension-in-seam` (NE-46): `grace kind=late inSeam=y` rows.
+  - `narration-fallback` (NE-39n): counts by `cause`.
+  - `dup` (DV-6, NE-39s): the `dupCandidate=y` count and the ms between presses of one command.
+- **Acceptance:**
+  - A test per verdict on synthetic pastes, covering pass, fail and no-coverage.
+  - A title-free excerpt of the 2026-09-28 paste (rows e#75–e#103) gives `no-coverage` for every new verdict, because it predates the rows. It never gives a pass.
+  - The CLI is executed on the fixture, and the output is quoted in the PR.
+- **Device check:** none.
+
+#### NE-38f · Settle the values from the field — **S**
+- **Milestone:** M3
+- **Depends on:** NE-38e, and the pastes from HUMAN-ACTIONS #128 (the M2 drive) and the NE-40 drive (G-6)
+- **Human-gated:** **yes (input only).** It runs when the pastes exist, and nothing else waits on it.
+- **Files:** the constants NE-38 tagged, `docs/ios-native-engine-measurements.md`, any re-recorded fixture, and `STATE.md`.
+- **Ask:** This is the old NE-38 work.
+  - Run `engine-report.mjs` over each paste.
+  - Replace each `// MEASURE` value with its verdict's proposal, or keep it with a dated reason ("n = 3, too few").
+  - Record in the measurements doc:
+    - DV-5's in-point error and the outPoint overshoot, per item kind;
+    - the H-1 against H-1b summary and the `secondaryAudioShouldBeSilencedHint` data, for OQ-12 (G-5).
+  - Apply the founder's OQ-12 ruling, or keep `.forever` and say so.
+  - Re-record any fixture whose constant changed, JS first.
+- **Acceptance:**
+  - The headers cite issue-linked pastes and run ids.
+  - No bare `// MEASURE:` tag remains; each one kept has a dated reason.
+  - The fixtures are green in JS, Swift and the JVM books (`record.mjs --check`).
+  - The OQ-12 ruling or default is in `STATE.md`.
+- **Device check:** the pastes themselves.
+
+#### NE-38rj · Route resume, the JS reference: a pure policy and the `route-resume` family (JS) — **M**
+- **Milestone:** M3
+- **Depends on:** NE-37
+- **Human-gated:** no.
+- **Files:**
+  - `player/route-resume.js` (new and pure). It is **not wired** into `queue-manager.js` or `client.js`: the web and Android JS lanes keep "a reconnect never resumes" (player-core-10).
+  - `player/route-resume.test.js`
+  - `player/parity/fixtures/route-resume/*.json`, `manifest.json`, `capabilities.json` (charged to `episode`), `coverage.js` `COVERED_SUITES`
+  - the books: `swift-pending.json` (`--port-card NE-38rs`) and `jvm-pending.json` (`families["route-resume"] = "A-61"`, `--jvm-card A-61`)
+  - `tools/parity/gen-constants.mjs` (the two constants)
+  - the floor in `test/suite-integrity.test.js`
+- **Ask:** `routeResumeDecision({ pausedBy, lost, back, known, lostAgoSec, bluetoothArm })` → `{ resume, why }`, plus `routeClass(portType)` and `routeKey(portType, uid)` (the key is hashed by the caller).
+  - `pausedBy` is one of `route`, `listener`, `interruption`, `system` or `none`.
+  - The classes:
+    - `car`: `CarAudio`;
+    - `bluetooth`: `BluetoothA2DPOutput`, `BluetoothHFP` and `BluetoothLE`;
+    - `other`: everything else.
+  - The rule is the founder's Q5 (DECISIONS 2026-09-25). Resume only when every condition below holds:
+    - the last pause was the loss of **that** route (same key);
+    - the route is known: it carried audible playback of ours;
+    - the loss is at most `ROUTE_RESUME_MAX_LOST_SEC` old: **24 h provisional, `// MEASURE`** ("after a day at work", #114, is about 9–10 h; a night parked is about 14 h);
+    - the route's class allows it: `car` always; `bluetooth` only with `bluetoothArm` on (**provisional OFF, `// MEASURE`**); `other` never.
+  - Why the Bluetooth arm is off: the founder's car is A2DP and sends its own play 7.4 s after connecting (2026-09-28 paste, e#83 → e#85). AirPods are A2DP too. An automatic resume would race the car's press and misfire on headphones.
+  - A listener's pause, a call, Siri, or any press after the loss clears eligibility. At most one resume per loss.
+  - Export `ROUTE_RESUME_MAX_LOST_SEC` and `ROUTE_RESUME_BLUETOOTH_DEFAULT`.
+  - Record at least 12 cases:
+    - route lost, then a known car back → resume;
+    - a listener's pause, then the car lost and back → no;
+    - a call during the loss → no;
+    - an unknown car → no;
+    - Bluetooth with the arm off → no, and with it on → yes;
+    - a loss 25 h old → no;
+    - a different car back → no;
+    - a second route-back after a resume → no;
+    - a back while a load is pending → exactly one resume;
+    - headphones (`other`) → no;
+    - a route lost while already paused → no.
+- **Acceptance:**
+  - The family passes in JS (`record.mjs --check`).
+  - It is pending for NE-38rs in `swift-pending.json` and owed whole to A-61 in `jvm-pending.json` (the `--check` books rule).
+  - `coverage.test.js` is green.
+  - `--mutate` on the listener rule turns a case red.
+  - A pin test proves `queue-manager.js` and `client.js` do not import `route-resume.js`.
+- **Device check:** none.
+
+#### NE-38rs · Route resume in the engine: port the policy, key by port type and UID, persist, rows — **M**
+- **Milestone:** M3
+- **Depends on:** NE-38rj, NE-38 (the vocabulary edit, to avoid a conflict)
+- **Human-gated:** no. The NE-40 route block is the device check.
+- **Files:**
+  - `foray-engine-core/Sources/ForayEngineCore/Policy/RouteResume.swift` (new)
+  - `Engine/EngineCore.swift`: `onRoute` rewritten over the policy, with `pausedBy` tracked
+  - `Engine/EngineState.swift`
+  - `Engine/EngineInput.swift`: `RouteChange` gains `portUID` and the class
+  - `ForayAudioPlugin/Engine/AudioSessionOwner.swift`: the `routeChange` classifier fills them
+  - `Engine/EngineStore.swift`: a private key, `ForayEngine.knownRoutes`
+  - `mobile/ENGINE_DEFAULT.json` and the `EngineConfig` flag `routeResumeBluetooth: false`
+  - the `ForayEngineParity` runner for `route-resume`
+  - XCTests: `RouteResumeTests`, `AudioSessionOwnerTests`
+- **Ask:**
+  - Replace the current branch with the policy.
+  - A route becomes known once our audio has played through it for at least 1 s (a `.playing` time-control while it is the current route).
+  - Keys are a salted SHA-256 of port type and UID. At most 8 are kept (least recently used goes first), and they persist in `EngineStore` private keys, never in `CapacitorStorage`.
+  - Rows:
+    - `route kind=lost port= key=<8 hex> known=`
+    - `route kind=back port= key= known= lostSec= pausedBy= decision=resume|no why=`
+
+    Never a name or a raw UID (DiagGate).
+  - A resume is `begin(.routeResume, source: .autoresume)`, with grace, like a car's press.
+  - Burn down `route-resume`. Opens with `hold`.
+- **Acceptance:**
+  - `route-resume` passes in the Swift runner, with nothing pending.
+  - XCTests:
+    - a listener's pause, then the car lost and back → no resume. The PR quotes this test failing against `main`'s branch before the port;
+    - CarPlay lost and back → exactly one resume, with an activation and grace;
+    - A2DP with the flag off → `decision=no why=bluetooth-off`;
+    - the known set survives an `EngineStore` reload;
+    - no row carries the raw UID.
+  - ios-kit, engine-parity and ios-gate are green on the head SHA.
+- **Device check:** the NE-40 route block.
+
+#### NE-45j · Prepare across narration seams, the JS reference (JS) — **M**
+- **Milestone:** M3
+- **Depends on:** NE-37
+- **Human-gated:** no.
+- **Files:**
+  - `player/deck-policy.js`: a new pure `warmsAcross({ from, to })`
+  - `player/queue-manager.js` `_warmNextSegment`: `warmsAcross` replaces the `seamGapSec(seam) > 0` gate
+  - `player/seam-gap.js`: its "warming follows the beat" coupling note now points at `deck-policy.js`
+  - `player/parity/reference-engine.js`: `WarmingBackend` warms on a natural end too
+  - `player/parity/fixtures/prepare/*`
+  - `queue-manager.test.js`: the two warming tests that assert the old rule ("a bridged seam is not warmed", "warming follows the SAME rule as the beat") are re-authored to the new rule
+  - `deck-policy.test.js`
+  - the books: `swift-pending.json` (`--port-card NE-45s`) and `jvm-pending.json` (`prepare` stays owed whole to A-25; once A-25 has ported it, new ids are `cases` owed to A-62)
+- **Ask:** The new rule:
+  - The next item is warmed when it has a file (a clip, or a rendered line with `audio_url`), whatever the beat.
+  - A spoken (script-only) line warms nothing. The item after a spoken line is warmed when the line **starts**, because the standby deck is idle while the synthesiser speaks.
+  - For an item with no out-point (a rendered line, or an episode's natural end), the window opens `PREFETCH_LEAD_SEC` of wall clock before its duration ends. An item shorter than the lead is warmed when it starts.
+  - The Foray's last item warms nothing, as today.
+  - Author a `prepare` case for clip → line → clip where both clips come from one episode: the standby still holds that episode, so the prepare is a same-source seek.
+  - **The web lane does not change.** `HtmlAudioBackend` prefetch stays parked, and a pin test proves no warm reaches it.
+- **Acceptance:**
+  - `prepare` is re-recorded and green in JS, with its new ids pending for NE-45s.
+  - `record.mjs --check` and `coverage.test.js` are green.
+  - `--mutate` back to the beat rule turns a clip → line case red.
+  - The web pin test is green.
+- **Device check:** none.
+
+#### NE-45s · Prepare across narration in the engine: a rendered line's seams are deck seams — **L**
+- **Milestone:** M3
+- **Depends on:** NE-45j, NE-38 (the `line` deadline class)
+- **Human-gated:** no.
+- **Files:**
+  - `EngineCore.swift`: `warmNextSegment` over `DeckPolicy.warmsAcross`, plus the warm at a spoken line's start
+  - `DeckPolicy.swift`
+  - `AVDeck.swift`: a window with no out-point, taken from the duration
+  - `DeckPair.swift`: promotion of a prepared rendered line, and a standby prepared under a spoken line
+  - `EngineCommand.swift`: no `narrationPulse` on a rendered line
+  - the packed `seam` rows
+  - XCTests: `DeckPairTests`, and `ForayCatchUpTests` extended
+  - the Swift `prepare` runner
+- **Ask:**
+  - Port NE-45j. A rendered line becomes an ordinary deck item from end to end:
+    - it is prepared on the standby and swaps like a clip;
+    - its seam row is packed like a clip's (`seam from=clip|line to=clip|line prepare=hit|miss|none`);
+    - its load uses the `line` deadline class;
+    - it gets no `narrationPulse`, because the deck has a position.
+  - A prepared line whose file fails falls back to speech at its turn, exactly as a cold one does (NE-37c's fresh-token rule).
+  - Opens with `hold`.
+- **Acceptance:**
+  - `prepare` passes in Swift, with nothing pending.
+  - Simulator XCTests on local files:
+    - on prepare hits, clip → rendered line → clip has seam silence ≤ `SEAM_GAP_SEC` + 250 ms at each boundary, and the second clip has no cold `attach` (it was prepared during the line);
+    - the clip after a spoken line is `prepare=hit`;
+    - at most one deck is audible at any time;
+    - a prepared line whose file returns 404 falls back to speech at its turn, with no early audio.
+  - ios-kit, engine-parity, ios-gate and ios-shell are green.
+- **Device check:** the NE-40 rendered-Foray block, once a Foray with rendered narration exists (Spark Phase 1).
+
+#### NE-39j · Record the manager remainder (18 tests) (JS) — **M**
+- **Milestone:** M3
+- **Depends on:** NE-45j (7 of the 18 are warming rules it rewrites)
+- **Human-gated:** no.
+- **Files:**
+  - `player/queue-manager.test.js`
+  - `player/parity/fixtures/manager-remainder/*` (the family `unported.json` names)
+  - `exclusions.json`
+  - `unported.json`
+  - the books: `swift-pending.json` (`--port-card NE-39s`) and `jvm-pending.json` (`manager-remainder` stays owed whole to A-40)
+- **Ask:** Record every `queue-manager` test still in `unported.json`. There were 18 at `32989b5c`: 7 warming, 2 position timer, 2 rate getter, player-core-7 and player-core-9, 2 round-2, an unknown ref, and a backend with no prefetch. The recorder gives the real count.
+  - Tests that only make sense for the WebView (the position timer while the ELEMENT plays, and a backend with no prefetch) go to `exclusions.json`, one entry each, with its closed reason.
+- **Acceptance:**
+  - `queue-manager` has no unported entries.
+  - The cases pass in JS and are pending for NE-39s.
+  - `coverage.test.js` is green.
+- **Device check:** none.
+
+#### NE-39n · The car's own Next over narration, and the fallback's cause (retargeted) — **M**
 - **Milestone:** M3
 - **Depends on:** NE-37c
-- **Ask:** (1) The engine's OWN next (the car's and the lock screen's) still follows the manager's `skipToNext` and steps over narration lines; the page's Next clip is a jump since player-core-6. Decide whether the car's next should land on a narration line too (the web lock screen's does), and port it with fixtures (manager `skipToNext` scenarios must move with it). (2) The web lane's narration warm (§15) has no engine twin beyond NE-32's DeckPair standby: measure a rendered line's seam on cellular before adding one. (3) The `narration kind=fallback` row says `timeout` or `failed`; AVDeck's own `deck kind=failed` row beside it carries the error's domain and code. Only if the field needs it, fold that into one reason.
-- **Acceptance:** A decision recorded for (1), with fixtures if it changes; (2) and (3) closed with the field rows or ported.
-- **Device check:** A drive over a Foray whose narration is rendered (after Spark Phase 1 publishes one).
+- **Human-gated:** no.
+- **Files:**
+  - JS first: `player/media-session.js` and `player/queue-manager.js` (Next), `player/engine-vocabulary.js` (causes), the `media` and `manager-foray` fixtures
+  - then Swift: `EngineCore.swift` (the remote's next, and the fallback row) and `MediaMapping.swift`
+  - XCTests
+- **Ask:** Part (2) of the old card, the narration warm, is now NE-45.
+  - **(1) Next.** The engine's own Next (car and lock screen) steps over narration lines. The web lock screen's Next lands on them. **Provisional ruling: the engine follows the JS reference**, so Next goes to the next item, a narration line included. That is one behaviour on every surface.
+    - Record `nexttrack` cases: from a clip whose next item is a line (lands on the line), and from a line (lands on the next clip).
+    - The manager's `skipToNext` scenarios move with it, JS first, then Swift.
+  - **(3) The fallback's cause.** The `narration kind=fallback` row gains `cause=`, one of `timeout`, `http-4xx`, `http-5xx`, `offline`, `decode` or `other`. It is mapped from AVDeck's `failed` and `deadline` fields (error domain and code, `logStatus`), as tokens only, JS vocabulary first.
+- **Acceptance:**
+  - The fixtures are green in JS and in Swift, with nothing pending.
+  - An XCTest maps each cause from a synthetic deck failure.
+  - The Next decision is recorded in `STATE.md`, with the JS citation.
+- **Device check:** the NE-40 rendered-Foray block (Next during a line; airplane mode during a line).
 
-### Track M3 · Values from the field and completeness
+#### NE-46 · The silence-node decision: it stays off, and a row that would show the suspension it exists for — **S**
+- **Milestone:** M3
+- **Depends on:** NE-38
+- **Human-gated:** only the enable flip, and only on evidence. The card itself is not gated.
+- **Files:** `EngineCore.swift` (timer lateness), `BackgroundGrace.swift`, `SilenceNode.swift` (its header states the decision rule), `EngineConfig`/`ENGINE_DEFAULT.json` (a pin), and XCTests.
+- **Ask:**
+  - **Decision (provisional): `silenceNodeEnabled` stays false.** Four reasons:
+    - App Review 2.5.4 (R21);
+    - no suspension inside a seam has been observed, neither in the M1 car test nor in the 2026-09-28 paste;
+    - BackgroundGrace holds a task across every silent span;
+    - NE-45 shrinks silent spans to the beat.
+  - **Add the detector.** Every engine timer that fires while grace is held (the seam beat, the silence cap, the narration tick, a load deadline) compares its due time with now. If it is late by more than `NARRATION_SUSPEND_GAP_MS` (5 s, an existing constant), it writes `grace kind=late timer= lateMs= inSeam=y|n bgRemainingMs=`.
+  - **The rule for turning it on:** only if a drive shows at least one `grace kind=late inSeam=y`, meaning a suspension inside a silent seam despite grace. The change is a one-line flag PR that cites the paste, and the App Review note (NE-34) must already be in the submission notes.
+- **Acceptance:**
+  - XCTests on a fake clock: a seam-beat timer delivered 6 s late while grace is held writes the row; one 4 s late does not.
+  - A pin test shows the flag defaults to false.
+- **Device check:** the `grace` rows of #128 and the NE-40 drive (NE-38e `suspension-in-seam`).
 
-#### NE-38 · Values from the field: load deadline, stall display, precise timing, and the hold-policy input to OQ-12 — **M**
+#### NE-47 · Audition by URL: the voice preview plays a rendered file on the engine — **M**
 - **Milestone:** M3
 - **Depends on:** NE-37
+- **Human-gated:** no.
+- **Files:**
+  - JS first: `player/engine-contract.js` (`audition` gains an optional `url`: https, on the narration host), the contract schema, the `contract` fixtures, `player/parity/reference-engine.js`
+  - then Swift: `ContractDecoding.swift`, `EngineCore.swift`
+  - XCTests
+  - `PreviewSpeaker.swift` is unchanged
+- **Ask:** This is Spark §3.3: the preview plays `preview.m4a`.
+  - An audition that carries a `url` plays on a deck. The tap's own user-caused activation covers it.
+  - It is refused with `engine-busy` while running, as today.
+  - A preview that fails to load falls back to `PreviewSpeaker` speaking the text.
+  - An audition with no `url` stays on `PreviewSpeaker` (the Apple voice is the fallback).
+  - **The page sends `url` only once the picker offers rendered voices** (the Spark voice-picker card, KV-06/KV-12 retargeted). Until then nothing changes on the page.
+- **Acceptance:**
+  - The contract cases pass in JS and in Swift.
+  - XCTests:
+    - a `url` audition loads on the deck and activates once;
+    - it is refused while running;
+    - a 404 falls back to speech;
+    - a no-`url` audition is byte-identical to today.
+- **Device check:** none until the picker ships rendered voices.
+
+#### NE-39s · Swift burn-down; delete `swift-pending.json` and `unported.json`; the de-dup decision — **L**
+- **Milestone:** M3
+- **Depends on:** NE-39j, NE-38rs, NE-45s, NE-39n, NE-47. Every M3 JS card's Swift port has to land first, because once the lists are deleted nothing may be owed.
+- **Human-gated:** no.
+- **Files:** the Swift runners and ports for `manager-remainder`; `player/parity/swift-pending.json` and `unported.json` (deleted); `coverage.test.js` (requires both absent); and `EngineCore.swift` / `RemoteSurface.swift` only if the de-dup decision changes.
 - **Ask:**
+  - Port the NE-39j cases. Empty and delete `swift-pending.json` and `unported.json`.
+  - `jvm-pending.json` **stays**: it is Android's book (A-63).
+  - **De-dup (DV-6), provisional decision: keep it record-only, with no drop guard.** The iOS native path's 500 ms window stays until NE-41.
+    - Evidence: every remote row in the 2026-09-28 paste has `dupCandidate=n`.
+    - The car's repeated plays (e#85 and e#89, 5 s apart; e#116/118/120) are separate presses seconds apart, retries of a silent resume. A guard wide enough to catch them would drop real presses.
+    - NE-38e's `dup` verdict settles it later.
+  - Opens with `hold`.
+- **Acceptance:**
+  - The manager family's JS and Swift counts are equal.
+  - Neither pending file exists, and `coverage.test.js` requires that.
+  - The de-dup evidence is linked in the PR and drafted for NE-40d.
+- **Device check:** reads the DV-6 rows.
 
-  - From the M1/M2 engine reports (the packed seam rows on cellular, outPoint overshoot, DV-5 in-point error), set the P-13 deadline (p95 plus a documented margin), confirm the precise-timing policy per item kind, and confirm the P-14 display.
-  - Write the values and their measured basis into the AVDeck/DeckPair headers and the measurements doc, and remove the // MEASURE: tags. Re-record any fixture whose constant changed.
-  - Summarise the H-1 vs H-1b rows and the secondaryAudioShouldBeSilencedHint data for OQ-12 (G-5), and apply the founder's pauseHoldPolicy ruling.
-
-- **Acceptance:** Headers cite the issue-linked pastes and run ids. The fixtures are re-recorded and green on both sides. No // MEASURE: tag remains. The OQ-12 ruling is recorded in STATE.md, and the default in code matches it.
-- **Device check:** Uses the M1/M2 pastes; the NE-40 drive confirms.
-
-#### NE-39j · Record the remaining queue-manager scenarios (about 70) (JS) — **L**
+#### NE-40 · Stop-cause audit, the `.longFormAudio` trial flag, the M3 merge and build, and the M3 script — **M**
 - **Milestone:** M3
-- **Depends on:** NE-37
-- **Ask:** Record every queue-manager.test.js test still in unported.json (about 70 at adde5e12; the recorder gives the real count). Prefetch/warm-loading cases that are WebView-only go into exclusions.json with the closed reason, one entry per test. Port card NE-39s.
-- **Acceptance:** queue-manager has zero unported entries. The cases pass in JS and sit in swift-pending tagged NE-39s.
-- **Device check:** None.
-
-#### NE-39s · Swift burn-down of the manager remainder; delete the pending lists; the de-dup decision — **L**
-- **Milestone:** M3
-- **Depends on:** NE-39j
-- **Ask:** Port the NE-39j cases. Empty and delete swift-pending.json and unported.json; coverage.test.js then requires that both are absent. From the DV-6 dupCandidate rows (engine-report), either add a same-origin, same-command drop guard sized to the measured window (JS-first, with a fixture) or keep record-only and write the evidence for NE-40d. Opens with `hold`.
-- **Acceptance:** The manager family's JS and Swift counts are equal. Neither pending file exists. The guard is green. The de-dup evidence (pastes) is linked in the PR.
-- **Device check:** Reads the DV-6 rows.
-
-#### NE-40 · Stop-cause audit, the .longFormAudio trial, and the M3 script (DV-7a required, DV-7b negative control) — **M**
-- **Milestone:** M3
-- **Depends on:** NE-38, NE-39s
+- **Depends on:** NE-38, NE-38e, NE-38rs, NE-39s, NE-45s, NE-46
+- **Human-gated:** the drive (G-6) only. The audit, the flag and the merge are not gated.
+- **Files:**
+  - the stop paths in `AVDeck.swift`, `DeckPair.swift`, `SpeechNarrator.swift`, `InterludePlayer.swift`, `AudioSessionOwner.swift`, `BackgroundGrace.swift`, `SilenceNode.swift` and `EngineCore.swift`
+  - `StopCauseTests.swift` (new)
+  - the `EngineConfig` flag `routeSharingLongForm`
+  - the Developer drawer toggle (`app.js`, through the existing `setModeOverride`-style bridge)
+  - `docs/native-engine-m3-drive-test.md` (new)
+  - `HUMAN-ACTIONS.md` (one new item)
 - **Ask:**
+  - **Stop-cause audit (D-5).** Every path that stops audio writes a cause row before the stop. That covers AVDeck, DeckPair, the SpeechNarrator (fallback only now), InterludePlayer, the session observers, grace expiry, the silence cap, the route policy and the line deadline. Every `stop cause=unknown` in the pastes gets a named cause or a follow-up card.
+  - **`.longFormAudio` (DV-8)** goes behind `routeSharingLongForm`, **default OFF, `// MEASURE`**.
+    - M1's car win happened on the default route-sharing policy, so the default does not change without a drive.
+    - A Developer toggle lets the drive trial it, and `build routeSharing=` goes in the Copy header.
+  - **Merge `engine/m3` into `main`** as one PR (as #873 did), with CI green. If it touches denied paths, it waits for `founder-approved`; never self-apply it. Record the TestFlight build number.
+  - **The M3 script:** `docs/native-engine-m3-drive-test.md`, plus a HUMAN-ACTIONS item that is ready to issue.
+    - It names ONE build.
+    - Step 0: the Copy header shows that build with `engine=native` and `strikes=0`, and TestFlight automatic updates are off.
+    - The 10-minute desk pre-flight comes first.
+    - One parked Copy per block, pasted to the M3 issue.
 
-  - Audit every audio-stopping path (AVDeck, DeckPair, SpeechNarrator, InterludePlayer, the session observers, grace expiry, the silence cap), and make each emit a cause row before the stop (D-5). Every 'stop cause=unknown' in the pastes gets a named cause or a follow-up card.
-  - Trial .longFormAudio behind its flag for DV-8, and adopt it only with no car-routing regression.
-  - Write the M3 HUMAN-ACTIONS script (one named build):
-    - DV-7a: Developer 'Simulate system termination' while paused in the background, then the car's play; expected 4a with launch=background; REQUIRED
-    - DV-7b: a user force-quit, then the car's play; expected 'not 4a'; recorded only
-    - DV-11: battery over 1 h against a JS-mode run via the Developer toggle
-    - a regression drive of H-1 to H-3, including the navigation arm and the negative control
-    - parked Copies to the M3 issue
+    The blocks:
+    1. **DV-7a (REQUIRED):** play, pause, lock, background the app, then Developer → "Simulate system termination". Then press the car's play. Expected: 4a plays, with `launch=background`.
+    2. **DV-7b (recorded only):** force-quit 4a from the app switcher, then press the car's play. Expected: *not* 4a.
+    3. **Route resume (NE-38r):**
+       - Play in the car and switch the car off while 4a plays. Wait at least 10 min, then switch the car on. With CarPlay, 4a resumes by itself. With Bluetooth, note whether the car sends play itself (`route-back`).
+       - Then pause in the app, switch the car off and on again. 4a must **not** resume.
+    4. **Rendered Foray (when one is published):** screen off, through at least two clip → line → clip seams. Press the car's Next during a line. Turn on airplane mode for 10 s during a line: the line falls back to the phone's voice.
+    5. **DV-11:** an hour of native playback, then an hour with the Developer JS toggle. Read Settings → Battery for each.
+    6. **Regression:** H-1 (2, 10 and 30 min), H-1b, H-3 (a call placed by a second person), the navigation arm, and the Spotify negative control.
+    7. **Optional:** H-1 at 10 min with the `.longFormAudio` toggle on.
+- **Acceptance:**
+  - `StopCauseTests` enumerates every stop path and asserts a cause row for each.
+  - The flag defaults off (pin).
+  - The merge PR is green on ios-kit, engine-parity, ios-gate, ios-shell and android-shell.
+  - The TestFlight build number is recorded in the HUMAN-ACTIONS item.
+  - `engine-report.mjs` run on the script's sample paste lists every M3 verdict.
+- **Device check:** G-6. DV-7a passes. DV-7b is recorded. DV-11 and the regression drive pass per `engine-report`.
 
-- **Acceptance:** An XCTest enumerates the stop paths and asserts a cause row for each. DV-8 is recorded, and the flag is set with its reason. The TestFlight build number is recorded.
-- **Device check:** G-6: DV-7a passes; DV-7b is recorded; DV-11; the regression drive passes per engine-report.
-
-#### NE-40d · DECISIONS entries for M3: permanent rule-change discipline, de-dup, hold policy (G-7) — **S**
+#### NE-40d · DECISIONS entries for M3 (G-7) — **S**
 - **Milestone:** M3
-- **Depends on:** NE-39s, NE-40
-- **Ask:** A separate docs/DECISIONS.md PR, founder-approved: the JS-first rule-change discipline is permanent; the de-dup decision with its evidence; the OQ-12 pause-hold ruling.
-- **Acceptance:** Merged with founder-approved and linked in STATE.md.
-- **Device check:** None.
+- **Depends on:** NE-38f, NE-39s, NE-40
+- **Human-gated:** **yes** (`founder-approved`; `docs/DECISIONS.md` is denied).
+- **Files:** `docs/DECISIONS.md` only, in its own PR.
+- **Ask:** Record:
+  - the JS-first rule-change discipline is permanent;
+  - the de-dup decision, with its evidence;
+  - the OQ-12 pause-hold ruling;
+  - the route-resume Bluetooth arm (on or off, and the `route-back` rows behind it);
+  - the silence-node decision;
+  - the settled P-13 values;
+  - the Next-over-narration ruling (NE-39n).
+
+  Batch it with a label sitting. If the M3 Android entry (A-69) is ready, it can ride in the same PR.
+- **Acceptance:** merged with `founder-approved` and linked in `STATE.md`.
+- **Device check:** none.
 
 ### Track M4 · Harden, don't remove
 
@@ -1715,12 +2104,28 @@ Read first: `CLAUDE.md`, this deck, the Tier 2 requirements, `docs/ios-native-pl
 - **Acceptance:** Android and web suites are unchanged. The legacy smoke test is green in ios-kit. The iOS native path has no HtmlAudioBackend construction (unit pin plus probe). The two-week evidence is linked in the PR.
 - **Device check:** A normal week of founder use plus a final H-1/H-2/H-3 drive.
 
-#### NE-42 · Phase-2 seats: the PcmNarrator interface for Kokoro and the CarPlay read APIs — **M**
+#### NE-42 · Phase-2 seat: the CarPlay read APIs (retargeted 2026-09-29: the Kokoro PcmNarrator half is obsolete) — **S**
 - **Milestone:** M4
-- **Depends on:** NE-33, NE-24
-- **Ask:** A PcmNarrator implementing the Speaking seam over AVAudioEngine plus AVAudioPlayerNode, accepting AVAudioPCMBuffer on the same session with the same NarratorEvents (reuse NE-33's PCM path if it was built). It is exercised by a test with a generated sine buffer and wired to nothing. Expose the NP-11 read APIs on ForayEngine (the current queue with titles; play Foray id / play episode from the restore record), unused and documented as the CarPlay seam. No entitlement, no CarPlay scene, no Swift foray-resolve/foray-queue.
-- **Acceptance:** XCTests: PcmNarrator emits started, paused, continued and finished with the right seq, and the audible-start invariant holds (SessionControlling fake). The read APIs return the snapshot queue. A grep pin shows no CarPlay entitlement or scene.
-- **Device check:** None.
+- **Depends on:** NE-24
+- **Human-gated:** no.
+- **Why retargeted:** narration is rendered centrally (DECISIONS 2026-09-28, D1; Spark assessment §4: "NE-42 drops the PcmNarrator for Kokoro half"). No on-device Kokoro engine will need a PCM seat. If DV-9 ever forces the fallback voice onto a PCM path, NE-33's `write(_:toBufferCallback:)` path already is one.
+- **Files:** `ForayEngine.swift` (the read APIs), `ForayEngineHostTests`, and a grep pin in `tools/mobile/shell-invariants.test.mjs`.
+- **Ask:** Expose the NP-11 read APIs on ForayEngine: the current queue with titles, and play a Foray by id or an episode from the restore record. Leave them unused, and document them as the CarPlay seam. No entitlement, no CarPlay scene, and no Swift `foray-resolve`/`foray-queue`.
+- **Acceptance:** XCTests: the read APIs return the snapshot's queue. A grep pin shows no CarPlay entitlement or scene.
+- **Device check:** none.
+
+#### NE-48 · NarrationCache: download a Foray's rendered narration when it starts — **M**
+- **Milestone:** M4 (added 2026-09-29 from Spark assessment §3.3 and §3.7)
+- **Depends on:** NE-45s. It is also worth doing only once published Forays carry rendered narration (Spark Phase 1).
+- **Human-gated:** no.
+- **Files:** `mobile/plugins/foray-audio/ios/Sources/ForayAudioPlugin/Engine/NarrationCache.swift` (new), `EngineBoot.swift`, `AVDeck.swift` (a local-file URL for a cached line), `EngineStore.swift` (its index, in private keys), `NarrationCacheTests`.
+- **Ask:** When a Foray starts, download its rendered lines for the chosen voice (about 7 MB per voice per Foray) into Caches. The URLs are content-addressed and immutable, so a file never goes stale. A line plays from the local file when it is there, and from the URL otherwise. This makes narration seams instant and survives a mid-drive dropout, where today an unprefetched line falls back to the phone's voice.
+  - The download runs on a background `URLSession`, never competes with the audible deck's load, and stops when the Foray ends.
+  - The cache is capped at 50 MB (least recently used goes first). `// MEASURE`: settled by the `narration-cache hit|miss|evicted` rows.
+- **Acceptance:** XCTests: a cached line loads from a file URL; a miss streams; the cap evicts the oldest entries; a download never starts while a deck load is pending. The rows are admitted by DiagGate.
+- **Device check:** a Foray played with airplane mode on after its narration has downloaded.
+
+> **Not in this deck: append and the waiting state** (Spark §3.3, on-demand S2/S3: Swift `appendForayItems`, "Building the next part…"). They are planned when on-demand is scheduled, JS first.
 
 #### NE-44 · Optional: freeze or delete the ios/ SwiftUI scaffold (G-2) — **S**
 - **Milestone:** M4
