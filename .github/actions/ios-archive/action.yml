@@ -89,6 +89,19 @@ runs:
         node tools/mobile/fetch-models.mjs --fetch ios
         node tools/mobile/inject-models.mjs ios mobile/ios/App/App/public
         node tools/mobile/inject-models.mjs ios mobile/ios/App/App/public --check
+
+    - name: Put the seam jingle in the app (NE-34)
+      # NOT a SwiftPM resource: a `resources:` on a plugin target makes a
+      # resource-bundle target, and this action's signed archive fails on it
+      # ("ForayAudio_ForayAudioPlugin does not support provisioning profiles",
+      # release run 36535801479). Copied into the public/ folder reference
+      # instead, like the weights above; see the script's header.
+      shell: bash
+      run: |
+        set -euo pipefail
+        node tools/mobile/inject-interlude.mjs mobile/ios/App/App/public
+        node tools/mobile/inject-interlude.mjs mobile/ios/App/App/public --check
+
     - name: Which Xcode container did Capacitor generate?
       id: xc
       shell: bash

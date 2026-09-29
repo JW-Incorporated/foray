@@ -194,19 +194,84 @@ final class InterludeSeamTests: XCTestCase {
             debugFault: fault))
     }
 
-    // MARK: - The hash pin
+    // MARK: - The hash pin, and where the app finds the jingle
 
-    /// The jingle the phone plays is the web's, byte for byte, and it decodes
-    /// to the measured 3.0 s.
-    /// TO SEE IT FAIL: re-export the bundled WAV (any byte), or drop the
-    /// `resources:` line from the ForayAudioPlugin target.
-    func testTheBundledJingleIsTheWebAssetByHash() throws {
-        let url = try XCTUnwrap(InterludePlayer.assetURL, "the plugin's resource bundle carries no interlude-placeholder.wav")
-        let data = try Data(contentsOf: url)
-        let hex = SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
-        XCTAssertEqual(hex, InterludePlayer.assetSHA256)
+    /// `player/assets/`, read in place from the checkout: walk up from this
+    /// source file, as the parity library's `ParityLocator` does (the
+    /// Simulator reads the host's file system). The jingle is NOT a SwiftPM
+    /// resource of either target any more (a resource bundle broke the signed
+    /// archive, release run 36535801479), so there is no `Bundle.module` copy.
+    private func webAssets(filePath: String = #filePath) throws -> URL {
+        var dir = URL(fileURLWithPath: filePath).deletingLastPathComponent()
+        while dir.pathComponents.count > 1 {
+            let assets = dir.appendingPathComponent("player/assets")
+            if FileManager.default.fileExists(atPath: assets.appendingPathComponent("interlude-placeholder.wav").path) {
+                return assets
+            }
+            dir.deleteLastPathComponent()
+        }
+        return try XCTUnwrap(nil as URL?, "no player/assets/interlude-placeholder.wav above \(filePath)")
+    }
+
+    /// A stand-in for `Bundle.main.resourceURL`: a fresh directory, removed
+    /// after the test.
+    private func resourceRoot() throws -> URL {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent("interlude-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        addTeardownBlock { try? FileManager.default.removeItem(at: root) }
+        return root
+    }
+
+    /// The jingle the phone plays is the web's, byte for byte, found where
+    /// tools/mobile/inject-interlude.mjs puts it (`public/player/assets/`
+    /// under the app's resources), and it decodes to the measured 3.0 s.
+    /// TO SEE IT FAIL: re-export the web WAV (any byte), change
+    /// `assetSubdirectory`, or drop the `isPinned` guard from `make`.
+    @MainActor
+    func testTheAppsJingleIsTheWebAssetByHash() throws {
+        let web = try webAssets().appendingPathComponent("interlude-placeholder.wav")
+        let data = try Data(contentsOf: web)
+        XCTAssertEqual(InterludePlayer.sha256Hex(data), InterludePlayer.assetSHA256)
+
+        let root = try resourceRoot()
+        let dir = root.appendingPathComponent("public/player/assets")
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        try data.write(to: dir.appendingPathComponent("interlude-placeholder.wav"))
+        let url = try XCTUnwrap(InterludePlayer.assetURL(resourceRoot: root), "not found at public/player/assets")
+        XCTAssertEqual(url.standardizedFileURL.path, dir.appendingPathComponent("interlude-placeholder.wav").standardizedFileURL.path)
+        XCTAssertTrue(InterludePlayer.isPinned(url))
+
+        var diags: [DiagEntry] = []
+        let made = InterludePlayer.make(sessionIsActive: { true }, diag: { diags.append($0) }, timing: ClockTiming(),
+                                        resourceRoot: root)
+        XCTAssertNotNil(made)
+        XCTAssertEqual(diags.count, 0)
         let player = try AVAudioPlayer(contentsOf: url)
         XCTAssertEqual(player.duration, Interlude.durationSec, accuracy: 0.05, "INTERLUDE_DURATION_SEC is the asset's length")
+    }
+
+    /// A missing jingle, or any other file where it should be, costs the
+    /// jingle (an `unavailable` row, no player) and never the app.
+    /// TO SEE IT FAIL: play whatever file is found without hashing it, or
+    /// trap on a missing asset.
+    @MainActor
+    func testAMissingOrForeignJingleCostsTheJingleOnly() throws {
+        let root = try resourceRoot()
+        var diags: [DiagEntry] = []
+        XCTAssertNil(InterludePlayer.make(sessionIsActive: { true }, diag: { diags.append($0) }, timing: ClockTiming(),
+                                          resourceRoot: root))
+        XCTAssertEqual(diags.map { $0[field: "why"] }, [.string("no-asset")])
+
+        // The bundle root is looked at first, so a foreign file there wins
+        // the lookup and must lose the pin.
+        try Data("an episode somebody dropped here".utf8).write(to: root.appendingPathComponent("interlude-placeholder.wav"))
+        XCTAssertNotNil(InterludePlayer.assetURL(resourceRoot: root))
+        diags = []
+        XCTAssertNil(InterludePlayer.make(sessionIsActive: { true }, diag: { diags.append($0) }, timing: ClockTiming(),
+                                          resourceRoot: root))
+        XCTAssertEqual(diags.map { $0[field: "kind"] }, [.string("unavailable")])
+        XCTAssertEqual(diags.map { $0[field: "why"] }, [.string("hash-mismatch")])
+        XCTAssertNil(InterludePlayer.assetURL(resourceRoot: nil))
     }
 
     // MARK: - The ceiling

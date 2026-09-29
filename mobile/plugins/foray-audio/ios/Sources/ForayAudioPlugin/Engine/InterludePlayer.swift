@@ -1,5 +1,6 @@
 import Foundation
 import AVFoundation
+import CryptoKit
 import ForayEngineCore
 
 /// The part of `AVAudioPlayer` InterludePlayer touches. `AVJingle` is the
@@ -14,7 +15,7 @@ protocol JingleAPI: AnyObject {
     func stop()
 }
 
-/// One `AVAudioPlayer` on the bundled `interlude-placeholder.wav`, built on
+/// One `AVAudioPlayer` on the app's `interlude-placeholder.wav`, built on
 /// the first start (after the session is active, never at boot: a player
 /// that prepares its buffers can take the audio hardware).
 final class AVJingle: NSObject, JingleAPI, AVAudioPlayerDelegate {
@@ -80,41 +81,53 @@ final class AVJingle: NSObject, JingleAPI, AVAudioPlayerDelegate {
 ///   3. ONE END PER START. A late `didFinish` for a start that was stopped,
 ///      restarted or already ended at the ceiling reports nothing.
 ///
-/// The asset is a copy of `player/assets/interlude-placeholder.wav` in the
-/// plugin's resources, pinned by SHA-256 (`assetSHA256`, held equal to both
-/// files by tools/audio/interlude-asset.test.mjs and by the XCTest that hashes
-/// the bundled copy), so the phone plays the same bytes the web does.
+/// The asset is `player/assets/interlude-placeholder.wav`, the web's own
+/// jingle, which the build copies into the app at
+/// `App.app/public/player/assets/` (tools/mobile/inject-interlude.mjs). It is
+/// pinned by SHA-256 (`assetSHA256`, held equal to the web file by
+/// tools/audio/interlude-asset.test.mjs), and `make` hashes the file it is
+/// about to play against that pin, so the phone plays the same bytes the web
+/// does or no jingle at all.
+///
+/// NOT A SWIFTPM RESOURCE. M2 shipped it as `resources:` on this target, which
+/// makes SwiftPM build a resource-bundle target, and the signed archive failed
+/// on it ("ForayAudio_ForayAudioPlugin does not support provisioning
+/// profiles", release run 36535801479). shell-invariants.test.mjs keeps every
+/// shipping plugin target free of `resources:`.
 final class InterludePlayer: InterludePlaying {
 
-    /// SHA-256 of `player/assets/interlude-placeholder.wav` and of the bundled
-    /// copy (`Resources/interlude-placeholder.wav`).
+    /// SHA-256 of `player/assets/interlude-placeholder.wav`, the file the app
+    /// carries at `public/player/assets/`.
     static let assetSHA256 = "597c4fbad12846431d5c6c78bf6a4fc469b2c2d416f53f50bcb26d2e823f83af"
     static let assetName = "interlude-placeholder"
     static let assetExtension = "wav"
-    /// SwiftPM's resource bundle for this target (`<package>_<target>`).
-    static let resourceBundleName = "ForayAudio_ForayAudioPlugin"
+    /// Where under the app's resources the build puts it: Capacitor's web
+    /// bundle folder reference (`public`), at the web's own path.
+    static let assetSubdirectory = "public/player/assets"
 
-    /// Where the bundled jingle is, or nil. Looked up by hand rather than
-    /// through SwiftPM's `Bundle.module`, whose accessor traps when the
+    /// Where the jingle is under `resourceRoot` (the app's resources), or nil.
+    /// The root FIRST and `public/player/assets` second, `KokoroModelFiles`'
+    /// order (foray-tts), so a later real resource phase needs no change here.
+    /// Plain file lookups rather than `Bundle.module`, which traps when its
     /// bundle is missing: a packaging slip must cost the jingle (the boot
     /// leaves `interludeAvailable` off), never the app.
-    /// The places are SwiftPM's own (`resource_bundle_accessor.swift`, the
-    /// Xcode variant): the app's resources, this code's bundle, and, for a
-    /// test bundle, the build products directory beside it.
-    static var assetURL: URL? {
-        let own = Bundle(for: InterludePlayer.self)
-        let hosts = [Bundle.main.resourceURL, own.resourceURL, Bundle.main.bundleURL, own.bundleURL,
-                     own.resourceURL?.deletingLastPathComponent(),
-                     own.resourceURL?.deletingLastPathComponent().deletingLastPathComponent(),
-                     own.resourceURL?.deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()]
-        for case let host? in hosts {
-            let url = host.appendingPathComponent("\(resourceBundleName).bundle")
-            if let bundle = Bundle(url: url),
-               let asset = bundle.url(forResource: assetName, withExtension: assetExtension) {
-                return asset
-            }
-        }
-        return Bundle.main.url(forResource: assetName, withExtension: assetExtension)
+    static func assetURL(resourceRoot: URL? = Bundle.main.resourceURL) -> URL? {
+        guard let root = resourceRoot else { return nil }
+        let file = "\(assetName).\(assetExtension)"
+        let candidates = [root.appendingPathComponent(file),
+                          root.appendingPathComponent(assetSubdirectory).appendingPathComponent(file)]
+        return candidates.first { FileManager.default.fileExists(atPath: $0.path) }
+    }
+
+    /// Whether the file at `url` hashes to `assetSHA256`. `make` asks this of
+    /// the file it found, so the pin covers the bytes actually played.
+    static func isPinned(_ url: URL) -> Bool {
+        guard let data = try? Data(contentsOf: url, options: .mappedIfSafe) else { return false }
+        return sha256Hex(data) == assetSHA256
+    }
+
+    static func sha256Hex(_ data: Data) -> String {
+        SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
     }
 
     struct Config {
@@ -146,12 +159,18 @@ final class InterludePlayer: InterludePlaying {
         self.config = config
     }
 
-    /// The real one, on the bundled asset; nil when the asset is missing.
+    /// The real one, on the app's asset; nil when the asset is missing or is
+    /// not the pinned jingle.
     static func make(sessionIsActive: @escaping () -> Bool, diag: @escaping (DiagEntry) -> Void,
-                     timing: EngineTiming) -> InterludePlayer? {
-        guard let url = assetURL else {
+                     timing: EngineTiming, resourceRoot: URL? = Bundle.main.resourceURL) -> InterludePlayer? {
+        guard let url = assetURL(resourceRoot: resourceRoot) else {
             diag(DiagEntry(kind: "interlude", fields: [JSONMember("kind", .string("unavailable")),
                                                         JSONMember("why", .string("no-asset"))]))
+            return nil
+        }
+        guard isPinned(url) else {
+            diag(DiagEntry(kind: "interlude", fields: [JSONMember("kind", .string("unavailable")),
+                                                        JSONMember("why", .string("hash-mismatch"))]))
             return nil
         }
         return InterludePlayer(config: Config(sessionIsActive: sessionIsActive, diag: diag, timing: timing,

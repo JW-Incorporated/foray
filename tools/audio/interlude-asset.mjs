@@ -1,42 +1,50 @@
-/* NE-34's bundled jingle, as the repo's audio guards see it.
+/* NE-34's jingle, as the repo's tools see it.
  *
- * The native engine's InterludePlayer plays the seam jingle from the iOS
- * plugin's own resources (mobile/plugins/foray-audio/ios/Sources/
- * ForayAudioPlugin/Resources/interlude-placeholder.wav), because a SwiftPM
- * resource must live inside its target. That file is a byte-identical COPY of
- * player/assets/interlude-placeholder.wav, the web's jingle, and this module
- * is the ONE definition of the pin that keeps it so:
+ * The native engine's InterludePlayer plays the seam jingle from the APP
+ * BUNDLE, at `App.app/public/player/assets/interlude-placeholder.wav`: the
+ * same repo-relative path the web serves it from, placed into the generated
+ * iOS project's `public/` folder reference by tools/mobile/inject-interlude.mjs
+ * after `cap add ios` / `cap sync` (the same injection point
+ * tools/mobile/inject-models.mjs uses for the Kokoro weights).
  *
- *   - INTERLUDE_SHA256 is the SHA-256 both files must hash to, and the same
- *     literal InterludePlayer.swift carries as `assetSHA256` (the XCTest
- *     hashes the bundled copy on the Simulator against that);
- *   - exemptInterludePaths() is the narrow exemption the two audio guards
- *     (tools/transcribe/fetch-audio.test.mjs, tools/narration/
- *     render-audition.test.mjs) grant it: the one path, only while its bytes
- *     hash to the pin AND the web asset still does too. A different WAV
- *     dropped at that path, or a re-exported web jingle nobody copied across,
- *     exempts nothing and both guards go red.
+ * IT IS NOT A SWIFTPM RESOURCE ANY MORE, AND MUST NOT BECOME ONE AGAIN. M2
+ * (#873) shipped it as `resources: [.copy(...)]` on the ForayAudioPlugin
+ * target, which makes SwiftPM generate a resource-bundle target
+ * (`ForayAudio_ForayAudioPlugin`). The signed archive passes its provisioning
+ * settings to EVERY target in the build, and a resource bundle cannot take a
+ * profile, so release run 36535801479 (build 2026092902) died in
+ * `xcodebuild archive` with "ForayAudio_ForayAudioPlugin does not support
+ * provisioning profiles" (exit 65). The unsigned ios-shell build never sees
+ * that. tools/mobile/shell-invariants.test.mjs now refuses a `resources:` on
+ * any shipping target under mobile/plugins.
+ *
+ * There is ONE copy of the bytes in the repo (INTERLUDE_SOURCE, the web's
+ * jingle) and this module is the ONE definition of the pin on it:
+ *
+ *   - INTERLUDE_SHA256 is the SHA-256 the file must hash to, and the same
+ *     literal InterludePlayer.swift carries as `assetSHA256`. The Swift side
+ *     hashes the file it actually loads before it will play it, and the
+ *     injector verifies it before and after the copy.
+ *   - INTERLUDE_APP_PATH is where, under the app's `public/`, it lands.
  */
 import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 
 export const INTERLUDE_SOURCE = "player/assets/interlude-placeholder.wav";
-export const INTERLUDE_BUNDLED = "mobile/plugins/foray-audio/ios/Sources/ForayAudioPlugin/Resources/interlude-placeholder.wav";
+/** Relative to the generated project's `public/` (and so to `App.app/public/`).
+ *  Mirrors the web path on purpose: InterludePlayer.swift looks here. */
+export const INTERLUDE_APP_PATH = "player/assets/interlude-placeholder.wav";
 export const INTERLUDE_SHA256 = "597c4fbad12846431d5c6c78bf6a4fc469b2c2d416f53f50bcb26d2e823f83af";
+
+/** The hex SHA-256 of a buffer. */
+export function sha256Hex(buf) {
+  return crypto.createHash("sha256").update(buf).digest("hex");
+}
 
 /** The hex SHA-256 of a repo-relative file, or null when it is missing. */
 export function sha256Of(root, rel) {
   const abs = path.join(root, rel);
   if (!fs.existsSync(abs)) return null;
-  return crypto.createHash("sha256").update(fs.readFileSync(abs)).digest("hex");
-}
-
-/** Repo-relative, forward-slash paths of the bundled jingle the guards may skip. */
-export function exemptInterludePaths(root) {
-  const exempt = new Set();
-  if (sha256Of(root, INTERLUDE_SOURCE) === INTERLUDE_SHA256 && sha256Of(root, INTERLUDE_BUNDLED) === INTERLUDE_SHA256) {
-    exempt.add(INTERLUDE_BUNDLED);
-  }
-  return exempt;
+  return sha256Hex(fs.readFileSync(abs));
 }

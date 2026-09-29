@@ -1,79 +1,74 @@
 /* NE-34's hash pin (docs/native-engine-plan.md, card NE-34): the jingle the
- * native engine plays from the iOS plugin's resources is the web's jingle,
- * byte for byte, and the exemption the audio guards grant the copy cannot
- * become a door.
+ * native engine plays is the web's jingle, byte for byte.
  *
- * The Simulator half (InterludeSeamTests.testTheBundledJingleIsTheWebAssetByHash)
- * hashes the copy the resource bundle actually carries; this half runs on every
- * machine and holds the three places the pin is written (this module, the web
- * asset, InterludePlayer.swift) to one value, the manifest to one resource,
- * and the App Review note (for NE-37) to the facts it states.
+ * Since 2026-09-29 there is ONE copy in the repo (player/assets/), injected
+ * into App.app/public/player/assets/ by tools/mobile/inject-interlude.mjs. It
+ * used to be a SwiftPM resource of the ForayAudioPlugin target, and that broke
+ * the signed archive (a resource bundle cannot take a provisioning profile,
+ * release run 36535801479). The Simulator half
+ * (InterludeSeamTests.testTheAppsJingleIsTheWebAssetByHash) hashes the file
+ * through InterludePlayer's own lookup; this half runs on every machine and
+ * holds the places the pin is written (this module, the web asset,
+ * InterludePlayer.swift) to one value, the lookup to the injector's
+ * destination, and the App Review note (for NE-37) to the facts it states.
  */
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import crypto from "node:crypto";
 import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { INTERLUDE_BUNDLED, INTERLUDE_SHA256, INTERLUDE_SOURCE, exemptInterludePaths, sha256Of } from "./interlude-asset.mjs";
+import { INTERLUDE_APP_PATH, INTERLUDE_SHA256, INTERLUDE_SOURCE, sha256Hex, sha256Of } from "./interlude-asset.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 const PLUGIN_DIR = path.join(ROOT, "mobile", "plugins", "foray-audio");
 const PLAYER_SWIFT = path.join(PLUGIN_DIR, "ios/Sources/ForayAudioPlugin/Engine/InterludePlayer.swift");
 const NOTE = path.join(ROOT, "docs/store/app-review-background-audio.md");
 
-test("the hash pin: the web jingle and the bundled copy both hash to INTERLUDE_SHA256, and InterludePlayer.swift carries the same literal", () => {
-  /* MUTATION: re-export either WAV (any byte), or change assetSHA256 in the
-     Swift. Each fails here; the Simulator test fails on the bundled bytes. */
+test("the hash pin: the web jingle hashes to INTERLUDE_SHA256, InterludePlayer.swift carries the same literal, and make() checks it", () => {
+  /* MUTATION: re-export the WAV (any byte), change assetSHA256 in the Swift,
+     or drop the isPinned guard from make(). Each fails here. */
   assert.equal(sha256Of(ROOT, INTERLUDE_SOURCE), INTERLUDE_SHA256, `${INTERLUDE_SOURCE} is not the pinned jingle`);
-  assert.equal(sha256Of(ROOT, INTERLUDE_BUNDLED), INTERLUDE_SHA256, `${INTERLUDE_BUNDLED} is not a copy of ${INTERLUDE_SOURCE}`);
+  assert.equal(sha256Hex(Buffer.from("")), "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
   const swift = fs.readFileSync(PLAYER_SWIFT, "utf8");
   assert.deepEqual([...swift.matchAll(/static let assetSHA256 = "([0-9a-f]{64})"/g)].map((m) => m[1]), [INTERLUDE_SHA256]);
   assert.match(swift, /static let assetName = "interlude-placeholder"/);
   assert.match(swift, /static let assetExtension = "wav"/);
-  assert.equal(path.basename(INTERLUDE_BUNDLED), path.basename(INTERLUDE_SOURCE));
+  assert.match(swift, /guard isPinned\(url\) else \{/);
+  assert.equal(path.basename(INTERLUDE_APP_PATH), path.basename(INTERLUDE_SOURCE));
 });
 
-test("the plugin target ships exactly one resource, the jingle, and the test target keeps the click tracks", () => {
-  /* MUTATION: `.process(` the WAV (SwiftPM may transcode a processed
-     resource: the bytes would no longer be the pinned ones), add a second
-     resource to the plugin target, or move the click tracks into it. */
+test("the app looks for the jingle where the injector puts it, and the plugin target ships no resources", () => {
+  /* MUTATION: change assetSubdirectory or INTERLUDE_APP_PATH without the
+     other; put the jingle back as a SwiftPM resource (the archive failure);
+     leave a Resources/ directory under the plugin. */
+  const swift = fs.readFileSync(PLAYER_SWIFT, "utf8");
+  const sub = /static let assetSubdirectory = "([^"]+)"/.exec(swift)?.[1];
+  assert.equal(`${sub}/${path.basename(INTERLUDE_APP_PATH)}`, `public/${INTERLUDE_APP_PATH}`,
+    "InterludePlayer looks under public/ where tools/mobile/inject-interlude.mjs writes");
+  assert.equal(INTERLUDE_APP_PATH, INTERLUDE_SOURCE, "the app carries it at the web's own path");
   const manifest = fs.readFileSync(path.join(PLUGIN_DIR, "Package.swift"), "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
   const pluginTarget = /\.target\(\s*name:\s*"ForayAudioPlugin"[\s\S]*?path:\s*"ios\/Sources\/ForayAudioPlugin"[\s\S]*?\)\s*,\s*\.testTarget/.exec(manifest);
   assert.ok(pluginTarget, "the ForayAudioPlugin target is missing");
-  const resources = [...pluginTarget[0].matchAll(/\.(copy|process)\("([^"]*)"\)/g)].map((m) => `${m[1]}:${m[2]}`);
-  assert.deepEqual(resources, ["copy:Resources/interlude-placeholder.wav"]);
-  const resourcesDir = path.join(PLUGIN_DIR, "ios/Sources/ForayAudioPlugin/Resources");
-  assert.deepEqual(fs.readdirSync(resourcesDir), ["interlude-placeholder.wav"], "one file in the plugin's Resources");
-  assert.equal(`mobile/plugins/foray-audio/ios/Sources/ForayAudioPlugin/Resources/interlude-placeholder.wav`, INTERLUDE_BUNDLED);
+  assert.doesNotMatch(pluginTarget[0], /resources\s*:/, "the plugin target declares resources again");
+  assert.doesNotMatch(swift.replace(/\/\/.*$/gm, ""), /Bundle\.module/);
+  assert.equal(fs.existsSync(path.join(PLUGIN_DIR, "ios/Sources/ForayAudioPlugin/Resources")), false);
 });
 
-test("the exemption covers the one path, only while both files hash to the pin", () => {
-  /* MUTATION: exempt by path alone, or check only the bundled copy's hash.
-     A different WAV at that path, or a web jingle changed without its copy,
-     must stay an offender for the two audio guards. */
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), "interlude-exempt-"));
-  try {
-    const put = (rel, buf) => {
-      fs.mkdirSync(path.dirname(path.join(root, rel)), { recursive: true });
-      fs.writeFileSync(path.join(root, rel), buf);
-    };
-    const real = fs.readFileSync(path.join(ROOT, INTERLUDE_SOURCE));
-    put(INTERLUDE_BUNDLED, Buffer.from("an episode somebody dropped here"));
-    put(INTERLUDE_SOURCE, real);
-    assert.deepEqual([...exemptInterludePaths(root)], [], "a different file at the bundled path");
-    put(INTERLUDE_BUNDLED, real);
-    assert.deepEqual([...exemptInterludePaths(root)], [INTERLUDE_BUNDLED]);
-    const changed = Buffer.concat([real, Buffer.from([0])]);
-    put(INTERLUDE_SOURCE, changed);
-    put(INTERLUDE_BUNDLED, changed);
-    assert.notEqual(crypto.createHash("sha256").update(changed).digest("hex"), INTERLUDE_SHA256);
-    assert.deepEqual([...exemptInterludePaths(root)], [], "both re-exported: the pin must move with them");
-  } finally {
-    fs.rmSync(root, { recursive: true, force: true });
-  }
-  assert.deepEqual([...exemptInterludePaths(ROOT)], [INTERLUDE_BUNDLED], "on the real repo it exempts the copy");
+test("one copy of the jingle's bytes in the repo: no other file hashes to the pin", () => {
+  /* MUTATION: commit a copy anywhere (the old SwiftPM resource path, a test
+     fixture): the audio guards no longer exempt one, and the pin has one file
+     to hold. */
+  const hits = [];
+  const walk = (rel) => {
+    for (const e of fs.readdirSync(path.join(ROOT, rel), { withFileTypes: true })) {
+      if (e.name === "node_modules" || e.name.startsWith(".") || e.name === "www" || e.name === "ios" && rel === "mobile") continue;
+      const next = rel ? `${rel}/${e.name}` : e.name;
+      if (e.isDirectory()) walk(next);
+      else if (/\.wav$/i.test(e.name) && sha256Of(ROOT, next) === INTERLUDE_SHA256) hits.push(next);
+    }
+  };
+  walk("");
+  assert.deepEqual(hits, [INTERLUDE_SOURCE]);
 });
 
 test("the App Review note (for NE-37) states what the code does: a 3 s jingle stopped by 4.5 s, the silence node off and capped", () => {
