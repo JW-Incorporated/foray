@@ -122,6 +122,30 @@ final class NarrationFallbackCauseTests: XCTestCase {
         XCTAssertEqual(rows.first?[field: "reason"], .string("timeout"))
     }
 
+    /// The row reaches the paste with its cause: every row passes DiagGate on
+    /// its way into the ring, and the gate admits a `cause` field through a
+    /// closed set. A `narration` row's `cause` is the fallback's set, not
+    /// `stopCause`, of which no fallback cause is a member.
+    /// TO SEE IT FAIL: drop the `narration` case from
+    /// `DiagGate.vocabularySet` (every cause is then dropped and named in
+    /// `dropped`).
+    func testTheGateKeepsEveryFallbackCauseOnTheRow() throws {
+        for cause in Cause.allCases {
+            var host = ForayCatchUpTests.host([ForayCatchUpTests.rendered(0), ForayCatchUpTests.clip(1, "a", 100, 200)])
+            let out = host.send(.deck(.failed(token: host.lastLoad ?? 0, message: "synthetic", cause: cause)), after: 0)
+            let row = try XCTUnwrap(Self.fallbackRows(out).first, "\(cause): \(out)")
+            let admitted = try XCTUnwrap(DiagGate.admit(row), "\(cause)")
+            XCTAssertEqual(admitted[field: "cause"], .string(cause.rawValue), "\(cause): \(admitted)")
+            XCTAssertNil(admitted[field: DiagGate.droppedField], "\(cause): nothing withheld: \(admitted)")
+        }
+        // Still a closed set: a stop cause is not a fallback cause.
+        let stray = DiagEntry(kind: "narration", fields: [JSONMember("kind", .string("fallback")),
+                                                           JSONMember("cause", .string("load-deadline"))])
+        let admitted = try XCTUnwrap(DiagGate.admit(stray))
+        XCTAssertNil(admitted[field: "cause"])
+        XCTAssertEqual(admitted[field: DiagGate.droppedField], .array([.string("cause")]))
+    }
+
     /// A clip that fails writes no fallback row, whatever the deck read.
     func testAClipsFailureWritesNoFallbackRow() {
         var host = ForayCatchUpTests.host([ForayCatchUpTests.clip(0, "a", 100, 200), ForayCatchUpTests.rendered(1)])

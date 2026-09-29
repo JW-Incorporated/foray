@@ -10,7 +10,7 @@ import Foundation
  *   1. A field whose value belongs to a closed vocabulary is admitted ONLY
  *      through `Vocabulary.admit`, exactly (a `cause`, a `source`, a seam's
  *      `stages`, a `mode` row's `reason`, an interruption's `reason`, a
- *      session `error`). A misspelt token is dropped, never "fixed", so the
+ *      session `error`, a `narration` row's fallback `cause`). A misspelt token is dropped, never "fixed", so the
  *      emitter's defect shows as a gap (player/engine-vocabulary.js).
  *   2. Every other string must be a TOKEN: ASCII letters, digits and `._:-`,
  *      at most 64 characters. That excludes every URL (`/`), every sentence
@@ -113,6 +113,11 @@ public enum DiagGate {
 
     /// Rule 1: the closed set a field is admitted through, if any.
     public static func vocabularySet(kind: String, event: String?, key: String) -> String? {
+        // A `narration` row's `cause` is the fallback's (NE-39n: `narration
+        // kind=fallback cause=offline`), not a stop cause. Before the generic
+        // `cause` below, or every fallback cause (none is a stop cause) is
+        // dropped at the ring and the paste never says why a line fell back.
+        if kind == "narration" && key == "cause" { return "narrationFallbackCause" }
         switch key {
         case "cause": return "stopCause"
         case "source": return "source"
