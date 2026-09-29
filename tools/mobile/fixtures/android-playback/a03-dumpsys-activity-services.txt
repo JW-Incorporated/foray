@@ -1,0 +1,59 @@
+ACTIVITY MANAGER SERVICES (dumpsys activity services)
+  User 0 active services:
+  * ServiceRecord{8087fe6 u0 ai.jwlabs.foura/.audio.PlaybackKeepAliveService}
+    intent={cmp=ai.jwlabs.foura/.audio.PlaybackKeepAliveService}
+    packageName=ai.jwlabs.foura
+    processName=ai.jwlabs.foura
+    baseDir=/data/app/~~kRL7bWdPVVlY6RWPdIYJYA==/ai.jwlabs.foura-3uReHiKlpbk6rllKrPZVXg==/base.apk
+    dataDir=/data/user/0/ai.jwlabs.foura
+    app=ProcessRecord{4f99661 3402:ai.jwlabs.foura/u0a192}
+    mAllowWhileInUsePermissionInFgsReason=PROC_STATE_TOP
+    allowUiJobScheduling=true
+    recentCallingPackage=ai.jwlabs.foura
+    recentCallingUid=10192
+    allowStartForeground=PROC_STATE_TOP
+    startForegroundCount=1
+    infoAllowStartForeground=[callingPackage: ai.jwlabs.foura; callingUid: 10192; uidState: TOP ; uidBFSL: [BFSL]; intent: Intent { cmp=ai.jwlabs.foura/.audio.PlaybackKeepAliveService }; code:PROC_STATE_TOP; tempAllowListReason:<null>; targetSdkVersion:36; callerTargetSdkVersion:36; startForegroundCount:0; bindFromPackage:null: isBindService:false]
+    isForeground=true foregroundId=1837 types=00000002 foregroundNoti=Notification(channel=foray-playback shortcut=null contentView=null vibrate=null sound=null defaults=0x0 flags=0x2062 color=0x00000000 category=transport groupKey=silent vis=PUBLIC)
+    createTime=-10s532ms startingBgTimeout=--
+    lastActivity=-10s530ms restartTime=-10s530ms createdFromFg=true
+    startRequested=true delayedStop=false stopIfKilled=true callStart=true lastStartId=1
+ startCommandResult=2
+
+  * ServiceRecord{74a44ef u0 ai.jwlabs.foura/org.chromium.content.app.SandboxedProcessService0:0}
+    intent={cmp=ai.jwlabs.foura/org.chromium.content.app.SandboxedProcessService0:0}
+    packageName=ai.jwlabs.foura
+    processName=com.google.android.webview:sandboxed_process0:org.chromium.content.app.SandboxedProcessService0:0
+    baseDir=/data/app/~~o7Z5iJbhAWBkAwh5yaG3GQ==/com.google.android.webview-Ubq0MaDOPiioMQQiHY3Idw==/WebViewGoogle.apk
+    dataDir=/data/user/0/com.google.android.webview
+    app=ProcessRecord{c184b67 3613:com.google.android.webview:sandboxed_process0:org.chromium.content.app.SandboxedProcessService0:0/u0a192i0}
+    isolationHostProc=ProcessRecord{c184b67 3613:com.google.android.webview:sandboxed_process0:org.chromium.content.app.SandboxedProcessService0:0/u0a192i0}
+    mAllowWhileInUsePermissionInFgsReason=PROC_STATE_TOP
+    allowUiJobScheduling=false
+    recentCallingPackage=ai.jwlabs.foura
+    recentCallingUid=10192
+    allowStartForeground=PROC_STATE_TOP
+    startForegroundCount=0
+    infoAllowStartForeground=[callingPackage: ai.jwlabs.foura; callingUid: 10192; uidState: TOP ; uidBFSL: [BFSL]; intent: Intent { cmp=ai.jwlabs.foura/org.chromium.content.app.SandboxedProcessService0:0 (has extras) }; code:PROC_STATE_TOP; tempAllowListReason:<null>; targetSdkVersion:34; callerTargetSdkVersion:36; startForegroundCount:0; bindFromPackage:null: isBindService:true]
+    createTime=-19s339ms startingBgTimeout=--
+    lastActivity=-17s564ms restartTime=-18s896ms createdFromFg=true
+    Bindings:
+    * IntentBindRecord{c7848c4 CREATE}:
+      intent={cmp=ai.jwlabs.foura/org.chromium.content.app.SandboxedProcessService0:0}
+      binder=android.os.BinderProxy@fae3ad
+      requested=true received=true hasBound=true doRebind=false
+      * Client AppBindRecord{ffd6e2 ProcessRecord{4f99661 3402:ai.jwlabs.foura/u0a192}}
+        Per-process Connections:
+          ConnectionRecord{d0f3be8 u0 CR WPRI ai.jwlabs.foura/org.chromium.content.app.SandboxedProcessService0:0:@a20410b flags=0x80000021}
+          ConnectionRecord{ef27ffb u0 CR IMP ai.jwlabs.foura/org.chromium.content.app.SandboxedProcessService0:0:@4028d8a flags=0x80000041}
+    All Connections:
+      ConnectionRecord{ef27ffb u0 CR IMP ai.jwlabs.foura/org.chromium.content.app.SandboxedProcessService0:0:@4028d8a flags=0x80000041}
+      ConnectionRecord{d0f3be8 u0 CR WPRI ai.jwlabs.foura/org.chromium.content.app.SandboxedProcessService0:0:@a20410b flags=0x80000021}
+
+  Connection bindings to services:
+  * ConnectionRecord{ef27ffb u0 CR IMP ai.jwlabs.foura/org.chromium.content.app.SandboxedProcessService0:0:@4028d8a flags=0x80000041}
+    binding=AppBindRecord{ffd6e2 ai.jwlabs.foura/org.chromium.content.app.SandboxedProcessService0:0:ai.jwlabs.foura}
+    conn=android.os.BinderProxy@4028d8a flags=0x80000041
+  * ConnectionRecord{d0f3be8 u0 CR WPRI ai.jwlabs.foura/org.chromium.content.app.SandboxedProcessService0:0:@a20410b flags=0x80000021}
+    binding=AppBindRecord{ffd6e2 ai.jwlabs.foura/org.chromium.content.app.SandboxedProcessService0:0:ai.jwlabs.foura}
+    conn=android.os.BinderProxy@a20410b flags=0x80000021
