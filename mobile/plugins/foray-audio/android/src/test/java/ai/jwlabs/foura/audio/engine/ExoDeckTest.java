@@ -171,7 +171,7 @@ public class ExoDeckTest {
             assertEquals(0, h.player.getMediaItemCount());
             // The network comes back: the detached load must not become ready or sound.
             gate.open();
-            h.runFor(3000);
+            h.advanceIdle(3000);
             assertNull("a load past its deadline never reports ready", h.find(DeckEvent.Ready.class));
             assertFalse(h.player.getPlayWhenReady());
             h.deck.send(DeckCommand.PLAY);

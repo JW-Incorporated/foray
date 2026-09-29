@@ -13,6 +13,7 @@ import androidx.media3.test.utils.FakeClock;
 import androidx.media3.test.utils.TestExoPlayerBuilder;
 import androidx.media3.test.utils.robolectric.RobolectricUtil;
 import androidx.test.core.app.ApplicationProvider;
+import org.robolectric.shadows.ShadowLooper;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeoutException;
@@ -66,31 +67,22 @@ final class DeckHarness implements AutoCloseable {
         });
     }
 
-    /**
-     * Run the main looper (and so the fake clock) until the condition holds.
-     *
-     * <p>THE NUDGE. An auto-advancing FakeClock only jumps to its next message when that is at
-     * most a second away, and only messages keep it moving. A playing player posts one every
-     * 10 ms, but an idle one (after a deadline cleared it) or one whose load is blocked posts
-     * nothing near, and then a deck timer seconds out would never come due. So when the clock
-     * has not moved for a while, it is moved 10 ms by hand, the cadence Media3's own work loop
-     * keeps.
-     */
+    /** Run the main looper (and so the auto-advancing fake clock) until the condition holds. */
     void runUntil(BooleanSupplier condition) throws TimeoutException {
-        long[] last = {clock.elapsedRealtime()};
-        int[] still = {0};
-        RobolectricUtil.runMainLooperUntil(() -> {
-            if (condition.getAsBoolean()) return true;
-            long now = clock.elapsedRealtime();
-            if (now != last[0]) {
-                last[0] = now;
-                still[0] = 0;
-            } else if (++still[0] >= 20) {
-                still[0] = 0;
-                clock.advanceTime(10);
-            }
-            return false;
-        });
+        RobolectricUtil.runMainLooperUntil(condition::getAsBoolean);
+    }
+
+    /**
+     * Move the fake clock by hand, {@code ms} in 10 ms steps, running the main looper after
+     * each. For a player with nothing to do: an auto-advancing FakeClock only jumps to a message
+     * at most a second away, and only messages keep it moving, so an idle player (one a deadline
+     * cleared) would otherwise never let seconds pass.
+     */
+    void advanceIdle(long ms) {
+        for (long done = 0; done < ms; done += 10) {
+            clock.advanceTime(10);
+            ShadowLooper.idleMainLooper();
+        }
     }
 
     /** Let {@code ms} of virtual time pass. */
