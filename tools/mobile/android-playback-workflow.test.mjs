@@ -1,5 +1,5 @@
-/* `.github/workflows/android-playback.yml` (A-04): the properties that would
- * otherwise rot silently.
+/* `.github/workflows/android-playback.yml` (A-04, A-06): the properties that
+ * would otherwise rot silently.
  *
  * It cannot run the workflow; the PR names the run that did. What it holds:
  *   - the job stays advisory, reads no secret, never uploads to a store, and
@@ -9,7 +9,9 @@
  *     boot that is not made here is red,
  *   - every scenario the runner knows is its own step, gated only on the launch,
  *     and none of them can have its verdict discarded,
- *   - the runner and the workflow agree on where the click tracks live.
+ *   - the runner and the workflow agree on where the click tracks live,
+ *   - A-06: two matrix legs, API 34 (the smoke's image, the fast leg) and API 36,
+ *     each proving its device is its API level and uploading under its own name.
  *
  * The reading helpers are `workflow-yaml.mjs`'s; see `android-workflow.test.mjs`
  * for why every assertion about a step reads its CODE and not its comments.
@@ -75,8 +77,8 @@ test("A-04: android-playback.yml has the house shape and one advisory job", () =
   }
   assert.equal(/continue-on-error/.test(PYML), false);
   assert.match(PYML, /^ {4}runs-on: ubuntu-latest$/m);
-  const t = /^ {4}timeout-minutes: (\d+)$/m.exec(PYML);
-  assert.ok(t && Number(t[1]) <= 30, "the job needs a ceiling, and the card's budget is 12 minutes");
+  /* A-06 made the ceiling per leg; the A-06 test below pins each leg's number. */
+  assert.match(PYML, /^ {4}timeout-minutes: \$\{\{ matrix\.timeout \}\}$/m, "the job needs a ceiling");
 });
 
 test("A-04: it fires on the app's paths and its own file, by hand, and never on push or schedule", () => {
@@ -157,11 +159,69 @@ test("A-04: the boot is android-smoke.yml's, step for step, plus the click track
     assert.ok(i > at, `"${name}" is out of the smoke's order`);
     at = i;
   }
-  /* The env block is the smoke's too: same image, same SDK, same package. */
-  for (const key of ["SDK_PLATFORM", "SDK_BUILD_TOOLS", "EMULATOR_IMAGE", "AVD_NAME", "PKG"]) {
+  /* The env block is the smoke's too: same SDK, same package. The image is the
+     matrix leg's (A-06), and the fast leg's is the smoke's: the test below. */
+  for (const key of ["SDK_PLATFORM", "SDK_BUILD_TOOLS", "AVD_NAME", "PKG"]) {
     const re = new RegExp(`^ {6}${key}: (.+)$`, "m");
     assert.equal(re.exec(PLY)?.[1], re.exec(SMK)?.[1], `${key} differs from the smoke's`);
   }
+});
+
+/** The matrix legs, as `{ api, image, timeout }`, read from the job's
+ *  `strategy.matrix.include` list (code only, so a comment cannot add a leg). */
+function legs() {
+  const strategy = block(PYML, "strategy", 4);
+  assert.ok(strategy, "the job has no strategy: A-06's two legs are a matrix");
+  const include = block(strategy, "include", 8);
+  assert.ok(include, "the matrix has no include list");
+  return include
+    .split(/\n(?= {10}- )/)
+    .map((chunk) => {
+      const field = (k) => new RegExp(`^ {10}(?:- | {2})${k}: (.+)$`, "m").exec(chunk)?.[1]?.trim() ?? null;
+      return { api: Number(field("api")), image: field("image"), timeout: Number(field("timeout")) };
+    });
+}
+
+test("A-06: two legs, API 34 (the smoke's image, fast) and API 36 (current, allowed to be slower)", () => {
+  /* MUTATION: delete the API 36 leg -> fails. MUTATION: change the API 34
+     leg's image to android-35 -> fails (the fast leg is the launch the smoke
+     certifies). MUTATION: `fail-fast: true` -> fails (a red API 36 leg would
+     cancel API 34's verdicts). MUTATION: raise the API 34 ceiling to 45 ->
+     fails. MUTATION: hardcode `EMULATOR_IMAGE` again -> fails (both legs would
+     boot the same image under two names). */
+  const L = legs();
+  assert.deepEqual(L.map((l) => l.api), [34, 36]);
+  const smokeImage = /^ {6}EMULATOR_IMAGE: (.+)$/m.exec(SMK)?.[1];
+  assert.equal(L[0].image, smokeImage, "the fast leg is the smoke's image");
+  assert.equal(L[0].image, "system-images;android-34;google_apis;x86_64");
+  assert.equal(L[1].image, "system-images;android-36;google_apis;x86_64", "A-06: a current google_apis x86_64 image");
+  assert.ok(L[0].timeout > 0 && L[0].timeout <= 30, "the fast leg keeps A-04's 30-minute ceiling");
+  assert.ok(L[1].timeout >= L[0].timeout && L[1].timeout <= 45, "the API 36 leg may be slower, not unbounded");
+  assert.match(block(PYML, "strategy", 4), /^ {6}fail-fast: false$/m);
+  assert.match(PYML, /^ {6}EMULATOR_IMAGE: \$\{\{ matrix\.image \}\}$/m);
+  assert.match(PYML, /^ {6}API_LEVEL: \$\{\{ matrix\.api \}\}$/m);
+  assert.match(PYML, /^ {4}name: android-playback \(API \$\{\{ matrix\.api \}\}\)$/m, "each leg's check says its API level");
+});
+
+test("A-06: each leg proves its device is its API level, and uploads and summarises under its own name", () => {
+  /* MUTATION: `|| true` on the SDK comparison -> fails. MUTATION: move the
+     check after the install -> fails. MUTATION: drop `-api${{ matrix.api }}`
+     from the artifact name -> fails (upload-artifact@v4 refuses a second
+     artifact of one name in a run, so the second leg's evidence would be lost). */
+  const s = playStep("The device is the leg's API level");
+  assert.ok(s, "no step checks the booted device's API level");
+  assert.match(s, /device-sdk\.txt/);
+  assert.match(s, /\[ "\$GOT" = "\$API_LEVEL" \]/);
+  assert.equal(failureClauses(s), 1);
+  assert.equal(/\[ "\$GOT" = "\$API_LEVEL" \][^\n]*\|\| true/.test(s), false);
+  assert.match(s, /webview-version\.txt/, "the leg records its WebView version");
+  const at = PLY.indexOf("- name: The device is the leg's API level");
+  assert.ok(at > PLY.indexOf("- name: Boot it") && at < PLY.indexOf("- name: Install the app and start it"));
+  const up = step(PLY, "Upload the playback evidence");
+  assert.match(up, /^ {10}name: foray-android-playback-api\$\{\{ matrix\.api \}\}$/m);
+  const summary = playStep("What the scenarios established");
+  assert.match(summary, /API \$\{API_LEVEL\}/, "the summary names its leg");
+  assert.equal(/API 34 emulator/.test(summary), false, "the summary does not claim API 34 on the API 36 leg");
 });
 
 test("A-04: the click tracks the runner plays are the ones the build copies, and the APK is checked for them", () => {
