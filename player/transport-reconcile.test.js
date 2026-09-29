@@ -1695,6 +1695,44 @@ test("a RESTORED ribbon is current but not loaded, so a caller's own start path 
   restore();
 });
 
+test("A-07: hasLoadedItem is isLoadedCurrent without the id: nothing, a restored bar and an ended Foray are not loaded; playing and paused are", async (t) => {
+  /* Android's hardware back on Home asks this (app.js leaveAppFromBack):
+     loaded minimizes, so the service and the audio live on; not loaded exits.
+     MUTATION 1: drop the `restoredPending` check in client.js's
+     `hasLoadedItem` -> the restored bar reads as loaded, red. MUTATION 2:
+     drop the "ended" exclusion -> the finished Foray reads as loaded, red.
+     MUTATION 3: answer `isPlaying()` -> the paused case is red. */
+  {
+    const { client, restore } = await bootClient(t);
+    assert.equal(client.hasLoadedItem(), false, "a fresh player has nothing loaded");
+    restore();
+  }
+  {
+    const { client, restore } = await aRestoredRibbon(t, 1800);
+    assert.equal(client.hasLoadedItem(), false, "a restored bar has nothing loaded");
+    await client.togglePlayback();
+    await settle();
+    assert.equal(client.hasLoadedItem(), true, "playing: loaded");
+    await client.togglePlayback();
+    await settle();
+    assert.equal(client.hasLoadedItem(), true, "paused: still loaded");
+    restore();
+  }
+  {
+    const { client, audio, restore } = await bootClient(t);
+    await client.playForay(synthetic(), { startIndex: 1 });   // the last segment
+    await settle();
+    await settle();
+    assert.equal(client.hasLoadedItem(), true, "a Foray playing is loaded");
+    audio.runOut();
+    await settle();
+    await settle();
+    assert.equal(client.forayStatus().ended, true, "precondition: the Foray is over");
+    assert.equal(client.hasLoadedItem(), false, "an ended Foray is not");
+    restore();
+  }
+});
+
 test("AUDIT: a scrub on a RESTORED ribbon is where the next press starts", async (t) => {
   /* The restored bar holds no audio, so `manager.seek` hit an empty queue, the
      reducer refused it silently, the thumb snapped back and play started from

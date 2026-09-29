@@ -14554,6 +14554,41 @@ function handleBack() {
   return "exit";
 }
 
+/* ---------- BACK ON HOME WHILE LISTENING (A-07, docs/plans/android-assessment.md) ----------
+
+   The bottom of the back order used to be `exitApp()` unconditionally. On
+   Android that finishes the activity, and the audio plugin's
+   `handleOnDestroy` stops the playback service with it: back on Home while
+   listening killed the audio. Every podcast player minimizes there instead,
+   and `@capacitor/app` has `minimizeApp` (Android: `moveTaskToBack`), which
+   keeps the activity, the service and the WebView alive. So: with something
+   loaded — playing or paused, an episode or a Foray — back on Home
+   minimizes; with nothing loaded it leaves the app as before. "Loaded" is
+   the player's own answer (`ForayPlayer.hasLoadedItem`, the id-less form of
+   `isLoadedCurrent`): a restored bar or an ended queue is not loaded, and
+   leaving from there loses nothing. A shell without `minimizeApp` keeps the
+   old exit rather than doing nothing. */
+function playerHasLoadedItem(win = window) {
+  let player = null;
+  try { player = win && win.ForayPlayer; } catch (_) { player = null; }
+  if (!player || typeof player.hasLoadedItem !== "function") return false;
+  try { return player.hasLoadedItem() === true; } catch (_) { return false; }
+}
+
+/** What the shell does when the back order bottoms out on Home: "minimize"
+    with something loaded (and a shell that can), else "exit". */
+function leaveAppFromBack(app, win = window) {
+  if (playerHasLoadedItem(win) && typeof app.minimizeApp === "function") {
+    try {
+      const out = app.minimizeApp();
+      if (out && typeof out.catch === "function") out.catch(() => {});
+    } catch (_) { /* the shell refused; staying put beats killing the audio */ }
+    return "minimize";
+  }
+  if (typeof app.exitApp === "function") app.exitApp();
+  return "exit";
+}
+
 /** Register with the Capacitor App plugin when the shell provides it. Returns
     whether a listener was installed — false on the web, where the browser's
     own back is the right one. */
@@ -14563,7 +14598,7 @@ function bindHardwareBack(win = window) {
   if (!app || typeof app.addListener !== "function") return false;
   try {
     app.addListener("backButton", () => {
-      if (handleBack() === "exit" && typeof app.exitApp === "function") app.exitApp();
+      if (handleBack() === "exit") leaveAppFromBack(app, win);
     });
   } catch (_) { return false; }
   return true;
