@@ -360,6 +360,10 @@ These are the same as `docs/native-engine-plan.md` §12, adapted:
   writes pass or fail and pastes. Add a `docs/field-records/` template for the result.
 - **Acceptance:** Reviewed against the scenario list in §3–§4, with every "Device check" line in A0 covered.
 - **Device check:** this is the device check.
+- **Status (2026-09-29): written, not issued.** `docs/android-device-pass.md` (25 steps, with a coverage table
+  against §3–§4 and every A0 device check, plus A-27, A-40 and A-41 for the native build) and the record template
+  `docs/field-records/android-device-pass-TEMPLATE.md`. Per D-A3 nobody asks Joey to run it until A-42 has landed;
+  HUMAN-ACTIONS #127 is the item that issues it.
 
 #### A-15 · JS-lane hidden-seam stopgap — **M** (conditional, founder decision D-A4)
 - **Depends on:** A-05 (f) and/or the device pass measuring seams above 3 s with the screen off.
