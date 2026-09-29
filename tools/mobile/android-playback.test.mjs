@@ -356,6 +356,25 @@ test("(d) passes only with all four controls shown and a tap that paused the pag
   assert.equal(verdictNotification({ ...base, after: { ...after, remote: [{ action: "play" }] } }).ok, false, "the tap never reached the page");
 });
 
+test("(d) on the real API 34 shade (run 36551857323): our title, show and play button, and no 15/30 (A04-F2)", () => {
+  /* MUTATION: match the pair on "Previous track" -> back15 is found here and
+     this fails. The one real SystemUI dump this job has, from its own run: the
+     media panel carries our title and show, play/pause and previous track, and
+     none of the pair, which is what A04-F2 records. When F2 is fixed the next
+     run's dump replaces this fixture and the last two assertions flip. */
+  const xml = fs.readFileSync(path.join(FIX, "run36551857323-shade-expand-settings-paused.xml"), "utf8");
+  const c = mediaControls(uiNodes(xml), { title: EPISODE.title, artist: SHOW });
+  assert.equal(c.title.id, "com.android.systemui:id/header_title");
+  assert.equal(c.artist.id, "com.android.systemui:id/header_artist");
+  assert.equal(c.play.id, "com.android.systemui:id/actionPlayPause");
+  assert.ok(c.play.bounds.x2 > c.play.bounds.x1);
+  assert.equal(c.back15, null);
+  assert.equal(c.forward30, null);
+  const v = verdictNotification({ controls: c, expected: { title: EPISODE.title, artist: SHOW }, tapped: { at: center(c.play.bounds) },
+    after: { episodePlaying: false, remote: [{ action: "pause", handled: true }] } });
+  assert.deepEqual(applyKnown("notification", v.failures).ok, true, "only A04-F2's two sentences fail on the real shade");
+});
+
 /* ───────────────────────────── (e) and the rest ───────────────────────────── */
 
 test("(e) a screenshot is a PNG with a size, or it is not a screenshot", () => {
