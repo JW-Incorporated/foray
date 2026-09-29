@@ -157,8 +157,9 @@ checked). The decisions are in §6, each with a recommended default.
 - **Track A2: native Forays.** This mirrors iOS M2: tape, out-points, rendered narration files, the TTS fallback
   seam, and interludes. It starts after A1 and narration Phase 4.
 - **Track A3: Android Auto.** Last, and only when store launch returns to scope.
+- **Track A4: M3 parity** (added 2026-09-29, §5.7). This mirrors iOS M3: provisional field values with their rows, route resume on a known car, prepare across narration seams, the keep-alive decision, audition by URL, the stop-cause audit, and an empty JVM parity book. It starts after A-42.
 
-Rough agent time at this repo's observed pace: A0 ≈ 2 weeks, A1 ≈ 2–3 weeks, A2 ≈ 1–2 weeks, A3 ≈ 1 week. iOS
+Rough agent time at this repo's observed pace: A0 ≈ 2 weeks, A1 ≈ 2–3 weeks, A2 ≈ 1–2 weeks, A3 ≈ 1 week, A4 ≈ 1–1½ weeks. iOS
 M1 and M2 landed within about a week of their plan, and the fixtures make a port much cheaper than the original
 design work was.
 
@@ -606,6 +607,175 @@ Rejected alternatives:
 - **Depends on:** A-50, and store launch being in scope.
 - **Ask:** Submit through Play Console. Google gives Auto apps an extra manual review.
 
+### 5.7 Track A4: M3 parity (mirrors iOS M3)
+
+*Added 2026-09-29.* The founder, 2026-09-29: *"keep progressing towards milestone 3 for both iPhone and android"*. iOS M3 was re-planned the same day (`docs/native-engine-plan.md` §7 M3 and §14 Track M3: NE-38..NE-40d, NE-45..NE-47). The cards below mirror it for the JVM core (`foray-engine-core-jvm`) and the Media3 deck and service (A-25, A-26). They follow A-42, so M3's rules land on Android only after Android plays Forays natively.
+
+**The same rules as iOS M3:**
+- **JS stays the reference.** Every iOS M3 JS card (NE-38rj, NE-45j, NE-39j, NE-39n, NE-47) books its new family or ids in `player/parity/jvm-pending.json` to the A4 card below (`record.mjs --jvm-card A-6x`), so the JVM runner's `runs`/`families` books stay consistent (`record.mjs --check`).
+- **Field values ship provisional and marked `// MEASURE`**, with the row that settles each one. Android uses the same values as iOS unless an emulator measurement says otherwise.
+- **No device pass before the Android engine is fully operational** (D-A3). The human steps are written HUMAN-ACTIONS-ready and issued through #127 after A-42. No engineering card waits on them.
+
+Rough agent time: about 1–1½ weeks after A-42, because the policies arrive as fixtures that are already green in JS and Swift.
+
+**Hard order:**
+
+```
+A-42 ─┬─ A-60 ─┬─ A-65
+      │        └─ A-68 (gated)
+      ├─ A-61  (also needs NE-38rj)
+      ├─ A-62  (also needs NE-45j)
+      ├─ A-64  (also needs NE-39n)
+      └─ A-66  (also needs NE-47)
+A-61, A-62, A-64, A-66 (+ NE-39j) ─ A-63 ─ A-67 ─ A-68 ─ A-69 (gated)
+```
+
+#### A-60 · Provisional field values and their rows on the Media3 deck (mirrors NE-38, NE-38e) — **M**
+- **Depends on:** A-42
+- **Human-gated:** no.
+- **Files:**
+  - the ExoPlayer deck (A-25): the load deadline and same-source reuse
+  - the JVM `EngineCore` (the deadline class NE-38 adds)
+  - `ForayPlaybackService` (A-26): the session's published speed
+  - the Android `EngineStore` rows (A-27)
+  - Robolectric tests with `FakeClock`
+  - `docs/android-emulator-measurements.md`
+  - `tools/mobile/engine-report.mjs`: it accepts an Android paste
+- **Ask:**
+  - **Load deadline, per class,** the same provisional numbers as iOS: clip or episode 20 s, rendered line 8 s, each `// MEASURE`. If NE-38 put the class in the fixtures, the numbers come from the same source.
+  - **Same-source reuse** (#866's rule): a load of the URL the deck already holds is a `seekTo` in the prepared `MediaItem` if it was live within 600 s (`// MEASURE`), and a cold `setMediaItem` otherwise.
+  - **The rows NE-38e reads, with the same tokens:** `deck kind=attach cold=|reuse idleSec=|ready elapsedMs=|deadline step= class=`.
+  - **The published speed during buffering:** a Media3 session derives its state from the player, so iOS's rate-0 latch cannot recur as such. Pin that the session reports the listening speed while playing, and 0 only while buffering.
+- **Acceptance:**
+  - Robolectric tests:
+    - a line load past 8 s times out and falls back to `TextToSpeech`;
+    - a clip load that lands at 19 s does not time out;
+    - a reuse after 600 s idle is cold;
+    - DiagGate admits the rows.
+  - `engine-report.mjs` gives the new verdicts over an emulator paste (the A-05 artifacts), with the run id.
+- **Device check:** none. A-68 reads Joey's pastes.
+
+#### A-61 · Route resume on the JVM core, from Android's device callbacks (mirrors NE-38rs) — **M**
+- **Depends on:** A-42, NE-38rj (the `route-resume` family, owed to A-61 in `jvm-pending.json`)
+- **Human-gated:** no.
+- **Files:**
+  - `foray-engine-core-jvm`: `RouteResume.java` (the policy port) and `EngineCore` (`onRoute`)
+  - the Android shell: an `AudioDeviceCallback` on `AudioManager` for added and removed devices; BECOMING_NOISY (A-08) stays the pause
+  - the Android `EngineStore` (known route keys: a salted SHA-256 of device type and address, 8 at most, least recently used goes first)
+  - `ENGINE_DEFAULT.json` (`routeResumeBluetooth: false` for Android too)
+  - Robolectric tests with `ShadowAudioManager` input devices
+- **Ask:**
+  - Burn down `route-resume` (move it from `families` to `runs`).
+  - The class mapping on Android:
+    - `car`: a connected Android Auto projection or car UI mode (`UiModeManager`);
+    - `bluetooth`: `TYPE_BLUETOOTH_A2DP`, `TYPE_BLUETOOTH_SCO` and `TYPE_BLE_*`;
+    - `other`: everything else.
+  - Reading the Bluetooth device class (to tell a car from headphones) needs the `BLUETOOTH_CONNECT` runtime permission on API 31+. **It is not requested.** That would be a new permission prompt, which is a founder call and is proposed below as D-A9. Until then the `bluetooth` arm stays off, which matches iOS.
+  - Rows: the same `route kind=lost|back ... decision= why=`. Never a device name or a raw address.
+- **Acceptance:**
+  - `route-resume` has nothing pending on the JVM, in the `android-build` run id.
+  - Robolectric tests:
+    - a listener's pause, then the device removed and re-added → no resume;
+    - a car-mode route lost and back → exactly one resume;
+    - the keys survive a store reload.
+  - An `android-playback` step adds and removes a virtual device, where the emulator allows it. Otherwise it is recorded as no-coverage.
+- **Device check:** A-67's script, route block.
+
+#### A-62 · Prepare across narration seams on the Media3 deck (mirrors NE-45s) — **M**
+- **Depends on:** A-42, NE-45j (its new `prepare` ids are `cases` owed to A-62 once A-25 has ported the family)
+- **Human-gated:** no.
+- **Files:** the Foray tape from A-40 (an ExoPlayer playlist with `ClippingConfiguration`, or a deck pair, whichever A-40 chose), the JVM `DeckPolicy.warmsAcross`, the packed `seam` rows, and Robolectric tests.
+- **Ask:** Port `warmsAcross`. A rendered line is a `MediaItem` like a clip.
+  - **Playlist:** ExoPlayer already buffers the next item, so the work is to keep rendered lines in the playlist and to prepare the clip after a *spoken* line at the line's start. A spoken line is a playlist boundary where the player idles while `TextToSpeech` speaks. That needs a second player, or Media3's `PreloadManager`.
+  - **Deck pair:** port NE-45s as written.
+  - Seam rows name `from=`, `to=` and `prepare=`.
+- **Acceptance:**
+  - `prepare` has nothing pending on the JVM.
+  - Robolectric: clip → rendered line → clip has no cold load on the second clip.
+  - A-05 (f) in native mode: p95 seam ≤ 1 s with the screen off (the A-40 bar), split by seam kind, with the run id.
+- **Device check:** A-67's script, rendered-Foray block.
+
+#### A-63 · The manager remainder, de-dup, and an empty JVM book (mirrors NE-39s) — **L**
+- **Depends on:** A-61, A-62, A-64, A-66, NE-39j. Every M3 family must be booked before the book can empty.
+- **Human-gated:** no.
+- **Files:** the JVM runners for `manager-remainder` and any other family still owed, `player/parity/jvm-pending.json`, and `EngineCore` (the JVM port).
+- **Ask:**
+  - Port whatever of `manager-remainder` A-40 left, and every id still owed.
+  - When `families` and `cases` are both empty, keep `jvm-pending.json` with `runs` only, and make `record.mjs --check` require empty books from then on.
+  - **De-dup:** record `dupCandidate` on Media3 media-button deliveries, record-only (NE-39s's provisional decision). Android's legacy JS lane keeps its own window.
+- **Acceptance:**
+  - The JVM runs every recorded engine family, and `families` and `cases` are empty (run id).
+  - `record.mjs --check` enforces that.
+- **Device check:** none.
+
+#### A-64 · Next over narration, and the fallback's cause, on the JVM (mirrors NE-39n) — **S**
+- **Depends on:** A-42, NE-39n
+- **Human-gated:** no.
+- **Files:** the JVM `EngineCore` (the remote's next), `MediaMapping`, the `narration kind=fallback cause=` mapping from ExoPlayer's `PlaybackException` error codes (`ERROR_CODE_IO_*` → `offline` or `http-4xx`/`http-5xx`, `ERROR_CODE_PARSING_*`/`DECODING_*` → `decode`), and Robolectric tests.
+- **Ask:** Port NE-39n's ruling: the engine's Next lands on the next item, a narration line included. Map the causes to the same tokens.
+- **Acceptance:** the NE-39n cases pass on the JVM. Robolectric maps each `PlaybackException` class to its cause.
+- **Device check:** A-67's script.
+
+#### A-65 · Keep-alive across silent seams: the Android twin of the silence-node decision (mirrors NE-46) — **S**
+- **Depends on:** A-60
+- **Human-gated:** only a change of policy, on evidence.
+- **Files:** `ForayPlaybackService` (the session player facade's state during a seam beat and a spoken line), the late-timer row, and Robolectric tests.
+- **Ask:**
+  - Android does not suspend a process that runs a foreground `MediaSessionService`. The Android risk is the service **leaving the foreground** while nothing sounds. Media3 keeps the service in the foreground only while the player is playing, or is buffering with `playWhenReady` set.
+  - **Decision (provisional):** render no silence. Instead, the facade reports `playWhenReady = true` and `STATE_BUFFERING` through a seam beat and through a spoken fallback line, so the service stays in the foreground.
+  - Add the same late-timer row as NE-46 (`grace kind=late inSeam=`), plus `fgs kind=left inSeam=y` if the service ever leaves the foreground mid-Foray.
+- **Acceptance:**
+  - Robolectric: through a 3 s beat and a spoken line, the service stays in the foreground.
+  - A timer 6 s late writes the row.
+  - A-05 (g) Doze stays green in native mode.
+- **Device check:** A-68 reads the rows.
+
+#### A-66 · Audition by URL on the Media3 deck (mirrors NE-47) — **S**
+- **Depends on:** A-42, NE-47
+- **Human-gated:** no.
+- **Files:** the Android bridge's contract decoding (A-28), the JVM `EngineCore`, and Robolectric tests.
+- **Ask:**
+  - An `audition` with a `url` plays on the deck, with focus requested for the tap.
+  - It is refused with `engine-busy` while running.
+  - A failed preview falls back to `TextToSpeech`.
+- **Acceptance:** the contract cases pass on the JVM. Robolectric covers the refusal and the fallback.
+- **Device check:** none until the picker ships rendered voices.
+
+#### A-67 · Stop-cause audit and the A4 script (mirrors NE-40) — **M**
+- **Depends on:** A-63, A-65
+- **Human-gated:** the device pass only (D-A3: issued through #127 after A-42, never before). The audit and the emulator steps are not gated.
+- **Files:** every stop path in the Android shell and deck, `android-playback.yml` and `tools/mobile/android-playback.mjs` (native-mode steps; a governed path, so `founder-approved` is applied by the orchestrator, never self-applied), `docs/android-device-pass.md` (an A4 section), and Robolectric tests.
+- **Ask:**
+  - **Stop-cause audit:** every stop writes a cause row. That covers ExoPlayer errors, focus loss (transient, permanent, and a duck handled as pause), BECOMING_NOISY, `onTaskRemoved`, a service stop, Doze, the line deadline and the route policy.
+  - **Emulator twins of DV-7a and DV-7b,** automated, native mode:
+    - pause, background, `am kill`, then `cmd media_session dispatch play` → 4a resumes through playback resumption (A-27). **Gated.**
+    - `am force-stop`, then play → not 4a. **Recorded only.**
+  - **The A4 section of the device pass**, HUMAN-ACTIONS-ready and not issued before A-42:
+    - route resume with Joey's car or headset (the lost/back rows; a listener's pause stays paused);
+    - a rendered Foray, screen off, through two line seams;
+    - airplane mode during a line;
+    - one hour of battery, native against the JS lane.
+- **Acceptance:**
+  - A Robolectric test enumerates every stop path and asserts a cause row for each.
+  - The kill-then-play step is green in native mode on both API legs (run id).
+  - The force-stop value is recorded.
+- **Device check:** Joey's A4 pass, after A-42.
+
+#### A-68 · Settle the Android values (mirrors NE-38f) — **S**
+- **Depends on:** A-60, A-67, and Joey's pastes (#127)
+- **Human-gated:** **yes (input only).**
+- **Files:** the constants A-60 tagged, and `docs/android-emulator-measurements.md`.
+- **Ask:** Run `engine-report.mjs` over Joey's pastes and the emulator artifacts. Settle each `// MEASURE` value, or keep it with a dated reason. Where Android's evidence differs from iOS, the constants split per platform, with the reason.
+- **Acceptance:** no bare `// MEASURE` remains on the Android side.
+- **Device check:** the pastes.
+
+#### A-69 · DECISIONS entry: Android M3 parity (G-7) — **S**
+- **Depends on:** A-68
+- **Human-gated:** **yes** (`founder-approved`; `docs/DECISIONS.md` is denied).
+- **Ask:** A separate DECISIONS PR records that Android carries M3's rules, with their Android-specific values and the D-A9 answer. It can ride in NE-40d's PR if both are ready together.
+- **Acceptance:** merged with `founder-approved`.
+- **Device check:** none.
+
 ---
 
 ## 6. Founder decisions (each has a recommended default; silence = the default)
@@ -629,6 +799,7 @@ Rejected alternatives:
 | **D-A6** | Firebase Test Lab (real OEM phones in the cloud)? *(possible cost)* | **Not now.** Revisit after A1 has instrumented tests worth running. | The free Spark plan (10 virtual / 5 physical runs a day) is enough later, but it adds a Firebase service-account secret, which adds to the exposure until HUMAN-ACTIONS #115 is done. |
 | **D-A7** | Android Auto? | **Defer to store-launch scope (A3 last).** | It triggers Play's car review. Plain Bluetooth plus steering-wheel buttons covers your car use first. |
 | **D-A8** | Remove on-device Kokoro from Android ahead of narration Phase 4? | **No. Keep the ruled order** (A-10 lands with Phase 4). | The narration assessment is already ruled. The 86 MB only costs download size on an internal track. |
+| **D-A9** | Request the `BLUETOOTH_CONNECT` runtime permission, so route resume (A-61) can tell a car's Bluetooth from headphones? *(added 2026-09-29)* | **No.** The Bluetooth arm stays off on both platforms (NE-38rj), and car mode or Android Auto covers the `car` class. | It is a new permission prompt, for a feature the founder's own car makes redundant: it sends play itself 7.4 s after connecting (2026-09-28 paste). Revisit if the `route-back` rows show a car that does not. |
 
 Routed to agents, not the founder: Kotlin vs. Java (A-21 spike), emulator flags (A-03), and which A-05 values
 become gates.
