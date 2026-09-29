@@ -10,8 +10,9 @@ import Foundation
  *   1. A field whose value belongs to a closed vocabulary is admitted ONLY
  *      through `Vocabulary.admit`, exactly (a `cause`, a `source`, a seam's
  *      `stages`, a `mode` row's `reason`, an interruption's `reason`, a
- *      session `error`, a `narration` row's fallback `cause`). A misspelt token is dropped, never "fixed", so the
- *      emitter's defect shows as a gap (player/engine-vocabulary.js).
+ *      session `error`, a `narration` row's fallback `cause`). A misspelt
+ *      token is dropped, never "fixed", so the emitter's defect shows as a
+ *      gap (player/engine-vocabulary.js).
  *   2. Every other string must be a TOKEN: ASCII letters, digits and `._:-`,
  *      at most 64 characters. That excludes every URL (`/`), every sentence
  *      (space), every e-mail (`@`) and every device name with a space or an
