@@ -34,8 +34,21 @@ public enum EngineConstants {
         public static let loadSettleTimeoutMs: Double = 10000
         /// `OUT_POINT_ARM_LEAD_SEC`
         public static let outPointArmLeadSec: Double = 2
+        /// `OUT_POINT_LAYER`
+        public enum OutPointLayer {
+            /// `OUT_POINT_LAYER.END_TIME`
+            public static let endTime: String = "endTime"
+            /// `OUT_POINT_LAYER.BOUNDARY`
+            public static let boundary: String = "boundary"
+            /// `OUT_POINT_LAYER.WATCHDOG`
+            public static let watchdog: String = "watchdog"
+        }
         /// `OUT_POINT_MIN_TIMER_MS`
         public static let outPointMinTimerMs: Double = 4
+        /// `OUT_POINT_WATCHDOG_POLL_MS`
+        public static let outPointWatchdogPollMs: Double = 250
+        /// `OUT_POINT_WATCHDOG_WINDOW_SEC`
+        public static let outPointWatchdogWindowSec: Double = 1.5
         /// `RECOVERY`
         public enum Recovery {
             /// `RECOVERY.ARM_OUT_POINT`
@@ -47,6 +60,13 @@ public enum EngineConstants {
         }
         /// `SETTLE_NEAR_SEC`
         public static let settleNearSec: Double = 1
+        /// `WATCHDOG_WAKE`
+        public enum WatchdogWake {
+            /// `WATCHDOG_WAKE.STOP`
+            public static let stop: String = "stop"
+            /// `WATCHDOG_WAKE.REARM`
+            public static let rearm: String = "rearm"
+        }
     }
 
     /// `player/default-voice.js`
@@ -179,6 +199,16 @@ public enum EngineConstants {
         public static let segment: String = "segment"
     }
 
+    /// `player/foray-structure.js`
+    public enum ForayStructure {
+        /// `QUEUE_KINDS`
+        public static let queueKinds: [String] = ["episode", "tts", "jingle"]
+        /// `REFUSED_STRUCTURE`
+        public static let refusedStructure: String = "refused-structure"
+        /// `STRUCTURE_PROBLEMS`
+        public static let structureProblems: [String] = ["empty", "not-an-object", "no-id", "duplicate-id", "unknown-kind", "no-audio", "bad-bounds", "dai-unanchored", "no-reference", "silent-narration", "no-duration"]
+    }
+
     /// `player/html-audio-backend.js`
     public enum HtmlAudioBackend {
         /// `PREFETCH_LEAD_SEC`
@@ -259,8 +289,16 @@ public enum EngineConstants {
 
     /// `player/queue-manager.js`
     public enum QueueManager {
+        /// `NARRATION_DEADLINE_FACTOR`
+        public static let narrationDeadlineFactor: Double = 1.5
+        /// `NARRATION_DEADLINE_MARGIN_SEC`
+        public static let narrationDeadlineMarginSec: Double = 10
         /// `NARRATION_RATE`
         public static let narrationRate: Double = 1
+        /// `NARRATION_SUSPEND_GAP_MS`
+        public static let narrationSuspendGapMs: Double = 5000
+        /// `NARRATION_TICK_MS`
+        public static let narrationTickMs: Double = 250
         /// `POSITION_INTERVAL_MS`
         public static let positionIntervalMs: Double = 15000
         /// `POSITION_MIN_DELTA_SEC`

@@ -795,9 +795,11 @@ Read first: `CLAUDE.md`, this deck, the Tier 2 requirements, `docs/ios-native-pl
 | NE-36 | ios-build native probe phase; existing phases pinned to legacy; reload clobber check | M2 | M | NE-06, NE-30s, NE-32 |
 | NE-37 | M2 flip: advertise 'foray', the drive script, the App Review note | M2 | S | NE-31s, NE-32, NE-33, NE-34, NE-35, NE-36 |
 | NE-37d | DECISIONS entry: Forays play natively on iOS (G-7) | M2 | S | NE-37 |
+| NE-37c | M2 catch-up with main after the M1 car test: #866 in Foray paths, audit round 3 and the Phase 2 narration rules in the engine | M2 | M | NE-37 |
 | NE-38 | Values from the field: load deadline, stall display, precise timing, and the hold-policy input to OQ-12 | M3 | M | NE-37 |
 | NE-39j | Record the remaining queue-manager scenarios (about 70) (JS) | M3 | L | NE-37 |
 | NE-39s | Swift burn-down of the manager remainder; delete the pending lists; the de-dup decision | M3 | L | NE-39j |
+| NE-39n | Rendered narration on the engine, what M2 leaves: the car's own next and narration, the web lane's narration warm, the fallback row's reason | M3 | S | NE-37c |
 | NE-40 | Stop-cause audit, the .longFormAudio trial, and the M3 script (DV-7a required, DV-7b negative control) | M3 | M | NE-38, NE-39s |
 | NE-40d | DECISIONS entries for M3: permanent rule-change discipline, de-dup, hold policy (G-7) | M3 | S | NE-39s, NE-40 |
 | NE-41 | Harden, don't remove: retire the Developer Web entry and the iOS de-dup window; keep the legacy lane as fallback | M4 | M | NE-40 |
@@ -1619,6 +1621,25 @@ Read first: `CLAUDE.md`, this deck, the Tier 2 requirements, `docs/ios-native-pl
 - **Ask:** A separate docs/DECISIONS.md PR, founder-approved, batched with a label sitting.
 - **Acceptance:** Merged with founder-approved and linked in STATE.md.
 - **Device check:** None.
+
+#### NE-37c · M2 catch-up with main after the M1 car test — **M**
+- **Milestone:** M2
+- **Depends on:** NE-37
+- **Why:** `engine/m2` was held while the founder drove the M1 car test (#114, passed 2026-09-28 on build 2026092706). `main` moved on under it: #866 (AVDeck same-source reuse, the stall re-report, deck and Now Playing rows), audit round 3 (#835) and the Phase 2 rendered-narration rules (#867, founder rulings D1-D11). The parity guard then owed the `foray` capability 60 JS tests and 7 fixture cases.
+- **Ask (done on the M2 PR):**
+  - Merge `main` into `engine/m2` (AVDeck: both sides; see the merge commit).
+  - #866 in the M2-only paths: the DeckPair's decks are AVDecks, so a same-source load on either (a seam between two clips of one episode, a prepare onto a standby that held that episode) is a seek in the held item; an out-point stop and the reuse keep the idle clock; the stall latch is PER ITEM in the core (cleared when an item ends, when a new load lands and when a spoken line starts); a Foray's Now Playing is a Foray's (client.js `mediaViewFields`: the Foray's title and "clip n of N", the Foray clock, a sounding line counting on instead of reading as a load at rate 0).
+  - Audit round 3 in the engine: a speak() the player left is stopped (player-core-4/7), a bridge that lands or starts after a pause or a stop is not played (player-core-2), a line the output could not play advances at once (mobile-native-3), and the lexicon keeps one match per stretch (mobile-native-8). The rest hold by construction and are pinned by XCTests (xctest.json).
+  - Phase 2 narration in the engine: a RENDERED line (a narration item with `audio_url`) plays on the deck like a clip at the LISTENER's speed (D2), and a tap during it lands at once; a spoken line stays 1x. A rendered line whose file fails (its load, a bridge's load, or mid-line) is read aloud from its script on the synthesiser (§14), on a fresh token so a late report about the file is dropped; a paused fallback line resumes its utterance.
+- **Acceptance:** `coverage.test.js` green with nothing owed to `foray`; the new manager-foray, lexicon and speech-rate cases pass in Swift with `swift-pending.json` empty; ForayCatchUpTests, SpeechNarratorCatchUpTests and PositionFlushTests pass.
+- **Device check:** HUMAN-ACTIONS #128 (the M2 drive): the car shows the Foray's title and a moving progress bar through clips and narration; a long pause and a call resume.
+
+#### NE-39n · Rendered narration on the engine: what M2 leaves — **S**
+- **Milestone:** M3
+- **Depends on:** NE-37c
+- **Ask:** (1) The engine's OWN next (the car's and the lock screen's) still follows the manager's `skipToNext` and steps over narration lines; the page's Next clip is a jump since player-core-6. Decide whether the car's next should land on a narration line too (the web lock screen's does), and port it with fixtures (manager `skipToNext` scenarios must move with it). (2) The web lane's narration warm (§15) has no engine twin beyond NE-32's DeckPair standby: measure a rendered line's seam on cellular before adding one. (3) The `narration kind=fallback` row says `timeout` or `failed`; AVDeck's own `deck kind=failed` row beside it carries the error's domain and code. Only if the field needs it, fold that into one reason.
+- **Acceptance:** A decision recorded for (1), with fixtures if it changes; (2) and (3) closed with the field rows or ported.
+- **Device check:** A drive over a Foray whose narration is rendered (after Spark Phase 1 publishes one).
 
 ### Track M3 · Values from the field and completeness
 

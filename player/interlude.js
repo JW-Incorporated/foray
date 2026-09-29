@@ -168,6 +168,36 @@ export function describeInterlude({ from, to, cause = AUTO_ADVANCE } = {}) {
   return `no jingle: ${from.id} -> ${to.id} is one episode (the seam beat marks the cut)`;
 }
 
+/* ---------- the native silence node's cap ---------- */
+
+/**
+ * How many more seconds the native engine's silence node may render, measured
+ * from the out-point (NE-28j; docs/native-engine-plan.md §4.4, "The silence
+ * fallback"). The node is digital silence that keeps a backgrounded app's audio
+ * alive across a seam while the next load settles. It is timing only, behind a
+ * flag that is off by default, and the web never runs it: this is here because
+ * JS is the reference, so the Swift port has a rule to match rather than a
+ * number to guess.
+ *
+ * Two rules, both absolute:
+ *   - never beyond `INTERLUDE_CEILING_SEC` from the out-point, whatever the load
+ *     does (after the cap only the background-grace task covers the gap);
+ *   - never when the engine is not running or the audio session is not active.
+ *     Silence is still an audible start as far as the session is concerned
+ *     (engine-contract.js AUDIBLE_COMMANDS names `silenceStart`).
+ *
+ * @param {object} [s]
+ * @param {number} [s.sinceOutPointSec]  wall-clock seconds since the out-point fired
+ * @param {boolean} [s.running=false]    the engine's `running` (the listener intends to play)
+ * @param {boolean} [s.sessionActive=false]  the audio session is active
+ * @returns {number} seconds, 0 when it must not run
+ */
+export function silenceNodeSec({ sinceOutPointSec, running = false, sessionActive = false } = {}) {
+  if (running !== true || sessionActive !== true) return 0;
+  if (typeof sinceOutPointSec !== "number" || !Number.isFinite(sinceOutPointSec) || sinceOutPointSec < 0) return 0;
+  return Math.max(0, INTERLUDE_CEILING_SEC - sinceOutPointSec);
+}
+
 /* ---------- the setting ---------- */
 
 /** The stored preference, or ON. Same injection and same posture as

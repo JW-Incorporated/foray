@@ -1,0 +1,266 @@
+{
+  "family": "foray-clock",
+  "module": "player/foray-queue.js",
+  "note": "How long each item of a built Foray queue is on the Foray clock (player/foray-queue.js itemRuntimeSec, the ONLY definition; narrationDuration's measured > estimated > fallback precedence; forayRuntimeSec; runtimeIsEstimated), and the jingle's 3.0 s (OQ-6, authored). The engine counts what the page built: these are the numbers its ForayClock must agree with. foray-queue.test.js is not a covered suite (buildForayQueue stays the page's, plan §3 A-1), so these cases cover no test by name. Port: NE-29s ForayClock.",
+  "cases": [
+    {
+      "id": "foray-clock/jingle-duration",
+      "covers": [],
+      "authored": true,
+      "note": "OQ-6 (plan §9a, applied by NE-29j): an authored jingle counts on the Foray clock for its asset's MEASURED 3.0 s — the same file as the seam interlude (interlude.js INTERLUDE_DURATION_SEC) — not §4.8's 1.5 s estimate, so the clock the engine keeps and the audio it plays agree. Authored: change the asset, re-measure, change this by hand. foray-queue.test.js 'OQ-6: a jingle item counts on the Foray clock for exactly as long as its asset plays'.",
+      "read": "JINGLE_DURATION_SEC",
+      "expect": { "value": 3 }
+    },
+    {
+      "id": "foray-clock/narration-chars-per-sec",
+      "covers": [],
+      "read": "NARRATION_CHARS_PER_SEC",
+      "expect": { "value": 17 }
+    },
+    {
+      "id": "foray-clock/narration-fallback-sec",
+      "covers": [],
+      "read": "NARRATION_FALLBACK_SEC",
+      "expect": { "value": 8 }
+    },
+    {
+      "id": "foray-clock/duration-measured",
+      "covers": [],
+      "read": "DURATION_MEASURED",
+      "expect": { "value": "measured" }
+    },
+    {
+      "id": "foray-clock/duration-estimated",
+      "covers": [],
+      "read": "DURATION_ESTIMATED",
+      "expect": { "value": "estimated" }
+    },
+    {
+      "id": "foray-clock/duration-fallback",
+      "covers": [],
+      "read": "DURATION_FALLBACK",
+      "expect": { "value": "fallback" }
+    },
+    {
+      "id": "foray-clock/jingle",
+      "covers": [],
+      "read": "JINGLE",
+      "expect": { "value": "jingle" }
+    },
+    {
+      "id": "foray-clock/narration-duration-measured",
+      "covers": [],
+      "note": "A stamped duration is a measurement.",
+      "call": "narrationDuration",
+      "args": [{ "duration_sec": 12.5 }],
+      "expect": { "return": { "sec": 12.5, "source": "measured" } }
+    },
+    {
+      "id": "foray-clock/narration-duration-keeps-provenance",
+      "covers": [],
+      "note": "Resolving twice cannot promote an estimate to a measurement.",
+      "call": "narrationDuration",
+      "args": [{ "duration_sec": 2.941, "duration_source": "estimated" }],
+      "expect": { "return": { "sec": 2.941, "source": "estimated" } }
+    },
+    {
+      "id": "foray-clock/narration-duration-script-estimate",
+      "covers": [],
+      "note": "50 chars at 17/s, rounded to the millisecond.",
+      "call": "narrationDuration",
+      "args": [{ "script": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" }],
+      "expect": { "return": { "sec": 2.941, "source": "estimated" } }
+    },
+    {
+      "id": "foray-clock/narration-duration-script-trimmed",
+      "covers": [],
+      "call": "narrationDuration",
+      "args": [{ "script": "   yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy  " }],
+      "expect": { "return": { "sec": 2, "source": "estimated" } }
+    },
+    {
+      "id": "foray-clock/narration-duration-zero-duration-uses-script",
+      "covers": [],
+      "call": "narrationDuration",
+      "args": [{ "duration_sec": 0, "script": "zzzzzzzzzzzzzzzzz" }],
+      "expect": { "return": { "sec": 1, "source": "estimated" } }
+    },
+    {
+      "id": "foray-clock/narration-duration-blank-script-fallback",
+      "covers": [],
+      "note": "Neither a duration nor a script: the fallback, never zero.",
+      "call": "narrationDuration",
+      "args": [{ "script": "   " }],
+      "expect": { "return": { "sec": 8, "source": "fallback" } }
+    },
+    {
+      "id": "foray-clock/narration-duration-nothing-fallback",
+      "covers": [],
+      "call": "narrationDuration",
+      "args": [{}],
+      "expect": { "return": { "sec": 8, "source": "fallback" } }
+    },
+    {
+      "id": "foray-clock/narration-duration-null-fallback",
+      "covers": [],
+      "call": "narrationDuration",
+      "args": [null],
+      "expect": { "return": { "sec": 8, "source": "fallback" } }
+    },
+    {
+      "id": "foray-clock/item-runtime-segment",
+      "covers": [],
+      "call": "itemRuntimeSec",
+      "args": [{ "$seg": ["a", 100, 210] }],
+      "expect": { "return": 110 }
+    },
+    {
+      "id": "foray-clock/item-runtime-authored-end-wins",
+      "covers": [],
+      "note": "The ad pad is tolerance, not content (ADR-0008).",
+      "call": "itemRuntimeSec",
+      "args": [{ "$seg": ["a", 100, 260, { "authored_end_sec": 200 }] }],
+      "expect": { "return": 100 }
+    },
+    {
+      "id": "foray-clock/item-runtime-narration",
+      "covers": [],
+      "call": "itemRuntimeSec",
+      "args": [{ "$tts": ["n", { "duration_sec": 8 }] }],
+      "expect": { "return": 8 }
+    },
+    {
+      "id": "foray-clock/item-runtime-jingle",
+      "covers": [],
+      "call": "itemRuntimeSec",
+      "args": [
+        {
+          "id": "j",
+          "kind": "jingle",
+          "audio_url": "https://jw-incorporated.github.io/foray/player/assets/interlude-placeholder.wav",
+          "duration_sec": 3,
+          "duration_source": "measured"
+        }
+      ],
+      "expect": { "return": 3 }
+    },
+    {
+      "id": "foray-clock/item-runtime-backwards-bounds-fall-to-duration",
+      "covers": [],
+      "call": "itemRuntimeSec",
+      "args": [{ "$seg": ["a", 210, 100, { "duration_sec": 5 }] }],
+      "expect": { "return": 5 }
+    },
+    {
+      "id": "foray-clock/item-runtime-nothing",
+      "covers": [],
+      "call": "itemRuntimeSec",
+      "args": [{ "id": "x" }],
+      "expect": { "return": 0 }
+    },
+    {
+      "id": "foray-clock/item-runtime-null",
+      "covers": [],
+      "call": "itemRuntimeSec",
+      "args": [null],
+      "expect": { "return": 0 }
+    },
+    {
+      "id": "foray-clock/foray-runtime-mixed",
+      "covers": [],
+      "note": "110 s of tape + 8 s of narration + a 3.0 s jingle + 60 s of tape: the listener's clock, so narration and the jingle count.",
+      "call": "forayRuntimeSec",
+      "args": [
+        [
+          { "$seg": ["a", 100, 210, { "source_item_id": "ep-a" }] },
+          { "$tts": ["n1", { "duration_sec": 8, "duration_source": "measured" }] },
+          {
+            "id": "j1",
+            "kind": "jingle",
+            "audio_url": "https://jw-incorporated.github.io/foray/player/assets/interlude-placeholder.wav",
+            "duration_sec": 3,
+            "duration_source": "measured"
+          },
+          { "$seg": ["b", 400, 460, { "source_item_id": "ep-b" }] }
+        ]
+      ],
+      "expect": { "return": 181 }
+    },
+    {
+      "id": "foray-clock/foray-runtime-empty",
+      "covers": [],
+      "call": "forayRuntimeSec",
+      "args": [[]],
+      "expect": { "return": 0 }
+    },
+    {
+      "id": "foray-clock/foray-runtime-null",
+      "covers": [],
+      "call": "forayRuntimeSec",
+      "args": [null],
+      "expect": { "return": 0 }
+    },
+    {
+      "id": "foray-clock/estimated-all-measured",
+      "covers": [],
+      "call": "runtimeIsEstimated",
+      "args": [
+        [
+          { "$seg": ["a", 100, 210, { "source_item_id": "ep-a" }] },
+          { "$tts": ["n1", { "duration_sec": 8, "duration_source": "measured" }] },
+          {
+            "id": "j1",
+            "kind": "jingle",
+            "audio_url": "https://jw-incorporated.github.io/foray/player/assets/interlude-placeholder.wav",
+            "duration_sec": 3,
+            "duration_source": "measured"
+          },
+          { "$seg": ["b", 400, 460, { "source_item_id": "ep-b" }] }
+        ]
+      ],
+      "expect": { "return": false }
+    },
+    {
+      "id": "foray-clock/estimated-one-estimate",
+      "covers": [],
+      "call": "runtimeIsEstimated",
+      "args": [
+        [
+          { "$seg": ["a", 100, 210, { "source_item_id": "ep-a" }] },
+          { "$tts": ["n1", { "duration_sec": 8, "duration_source": "measured" }] },
+          {
+            "id": "j1",
+            "kind": "jingle",
+            "audio_url": "https://jw-incorporated.github.io/foray/player/assets/interlude-placeholder.wav",
+            "duration_sec": 3,
+            "duration_source": "measured"
+          },
+          { "$seg": ["b", 400, 460, { "source_item_id": "ep-b" }] },
+          { "$tts": ["n2", { "duration_sec": 3, "duration_source": "estimated" }] }
+        ]
+      ],
+      "expect": { "return": true }
+    },
+    {
+      "id": "foray-clock/estimated-one-fallback",
+      "covers": [],
+      "call": "runtimeIsEstimated",
+      "args": [[{ "$tts": ["n3", { "duration_sec": 8, "duration_source": "fallback" }] }]],
+      "expect": { "return": true }
+    },
+    {
+      "id": "foray-clock/estimated-tape-only",
+      "covers": [],
+      "call": "runtimeIsEstimated",
+      "args": [[{ "$seg": ["a"] }, { "$seg": ["b"] }]],
+      "expect": { "return": false }
+    },
+    {
+      "id": "foray-clock/estimated-not-an-array",
+      "covers": [],
+      "call": "runtimeIsEstimated",
+      "args": [null],
+      "expect": { "return": false }
+    }
+  ]
+}

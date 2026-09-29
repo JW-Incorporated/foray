@@ -44,6 +44,14 @@ public enum DeckCommand: Equatable, Sendable {
     /// three-layer never-early watch is NE-32's; a load drops the armed one.
     case setOutPoint(sec: Double?)
     case unload
+    /// Warm the NEXT item on the standby deck at its in-point (NE-30s decides
+    /// WHEN, queue-manager.js `_warmNextSegment`; the standby deck decides
+    /// whether, deck-policy.js `prefetchDecision`, and hands it over at the
+    /// boundary only for the same source and in-point, `warmPromotion`). The
+    /// DeckPair that honours it is NE-32's, behind `deckPairEnabled`; a deck
+    /// with no standby ignores it, and the seam then loads cold inside the
+    /// beat, which is the audible seam either way.
+    case prepare(itemId: String, url: String?, startSec: Double)
 }
 
 /// `timeControlStatus`, as the core reads it (P-14: waiting is `buffering`).
@@ -74,6 +82,16 @@ public enum DeckEvent: Equatable, Sendable {
     case stalled(token: DeckToken)
     /// The item played to its end (or to its out-point).
     case ended(token: DeckToken)
+    /// The playhead is the prefetch lead from an armed out-point while
+    /// audible (html-audio-backend.js `_maybeOpenPrefetchWindow`): the
+    /// moment to prepare the next item (NE-30s).
+    case prepareWindow(token: DeckToken)
+    /// NE-32: the DeckPair's report on the load `token`, just before its
+    /// `.ready`: whether the standby deck answered it (`hit`, a promotion) or
+    /// it degraded to an ordinary load, and the load stages the standby deck
+    /// reached (`Vocabulary.Stage`), so the packed `seam` row says WHERE a
+    /// prepare missed. A single deck never sends it.
+    case prepared(token: DeckToken, hit: Bool, stages: [Vocabulary.Stage])
 }
 
 /// What the deck says RIGHT NOW, read synchronously on main by the host
@@ -121,11 +139,27 @@ public struct EngineNow: Equatable, Sendable {
     /// `cold-play` rows, so a Copy after a drive shows how close each silent
     /// span came to the suspension it was covering (plan §4.4).
     public var bgRemainingMs: Double?
+    /// The synthesiser's own word on whether it is speaking (NE-31s), read by
+    /// the host at the moment the input is handled, as the deck's reading is:
+    /// what `foray-tts.js`'s `state()` answers the JS manager.
+    public var narrator: NarratorReading
 
-    public init(wallMs: Double, monoMs: Double, deck: DeckReading = .idle, bgRemainingMs: Double? = nil) {
+    public init(wallMs: Double, monoMs: Double, deck: DeckReading = .idle, bgRemainingMs: Double? = nil,
+                narrator: NarratorReading = .unknown) {
         self.wallMs = wallMs
         self.monoMs = monoMs
         self.deck = deck
         self.bgRemainingMs = bgRemainingMs
+        self.narrator = narrator
     }
+}
+
+/// `speaking | paused | idle` from whoever is actually speaking, or `unknown`
+/// when nothing can say (a bridge with no `state()`): an interruption is then
+/// taken at its word (queue-manager.js `_reconcileNarrationInterrupted`).
+public enum NarratorReading: String, Equatable, Sendable {
+    case unknown
+    case speaking
+    case paused
+    case idle
 }

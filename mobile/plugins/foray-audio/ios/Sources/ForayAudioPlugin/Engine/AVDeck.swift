@@ -43,6 +43,35 @@ import os
 /// buffers on play. What it must never do is loop on a flaky pipeline while
 /// the car waits for sound.
 ///
+/// ── THE OUT-POINT, IN THREE LAYERS (NE-32; plan §4.3 P-2) ─────────────────
+///
+/// A bounded item (a Foray segment) stops at its out-point, never early, and
+/// the first of three layers to see it wins, per load token:
+///
+///   1. `forwardPlaybackEndTime = end + stopPad` on the item (stopPad 0:
+///      NE-25a measured no early stop, docs/ios-native-engine-measurements.md
+///      §7.5). AVFoundation stops ON the boundary; its notification is the
+///      slowest signal (~30 ms after the boundary observer, measured).
+///   2. a boundary time observer at `end`, the FASTEST signal (0.0-0.4 ms
+///      past, measured), which can also fail to fire at all when layer 1
+///      stopped the player exactly on the boundary first;
+///   3. a watchdog: ONE timer until 1.5 s of wall clock before the predicted
+///      crossing, then a 250 ms poll inside that window only, re-armed on every
+///      seek, rate change and play (DV-11: one wakeup outside the window, not
+///      four a second for a whole Foray).
+///
+/// The decisions are the core's `DeckPolicy.outPointStep`, fixture-pinned by
+/// the `outpoint` family; this type only runs the ops it returns and feeds it
+/// what it observed. A report before the playhead reached the boundary stops
+/// nothing (`outPoint.early:`); a report after the stop is stale; a scrub past
+/// the boundary clears layers 1 and 2 and a scrub back re-arms them. The stop
+/// writes the `outPoint` row with its overshoot and reports `.ended`, the same
+/// event a natural end reports (the core treats them as one end).
+///
+/// The same watch opens the PREFETCH WINDOW (`.prepareWindow`) with one more
+/// one-shot timer, `PREFETCH_LEAD_SEC` of wall clock before the boundary, but
+/// only when a DeckPair has a standby deck to prepare (`prepareWindowAvailable`).
+///
 /// ── SAME SOURCE IS A SEEK, NOT A LOAD (`DeckPolicy.sameSourceIsSeek`) ─────
 ///
 /// The core re-enters the item the deck holds with a fresh `.load` (a paused
@@ -108,6 +137,27 @@ final class AVDeck: DeckDriving {
     /// Bound on `primitives`, the test-visible log of AVPlayer calls.
     private static let primitiveCap = 256
 
+    /// NE-32's pad on layer 1 (`forwardPlaybackEndTime = end + stopPad`).
+    /// NE-25a measured no early stop in 128 trials at 1x and 2x with a pad of
+    /// 0, so the pad stays 0 (docs/ios-native-engine-measurements.md §7.5).
+    static let defaultStopPadSec: Double = 0
+
+    /// How far below the boundary a LAYER's report may read and still be the
+    /// boundary: `CMTime` at a 1 µs timescale can read a hair under the second
+    /// it was set to. NE-25a's never-early assertion used the same 1 ms.
+    static let layerSlackSec: Double = 0.001
+
+    /// The one-shot timers the out-point uses (the watchdog, the prefetch
+    /// window): `DispatchSourceTimer`s on main with a small leeway, because the
+    /// watchdog's poll IS its overshoot.
+    private static let outPointTiming = MainQueueTiming(leeway: .milliseconds(1))
+
+    /// Which timer a `Config.schedule` call is for (the tests count them).
+    enum TimerPurpose: String {
+        case watchdog
+        case prepareWindow = "prepare-window"
+    }
+
     private static let logger = Logger(
         subsystem: Bundle.main.bundleIdentifier ?? "ai.jwlabs.foura",
         category: "ForayEngine.AVDeck"
@@ -125,20 +175,34 @@ final class AVDeck: DeckDriving {
         /// can prove the fault fires without crashing the test process.
         var debugFault: (String) -> Void
         /// Makes the asset for a load. Injectable so a test can hand the deck
-        /// an asset whose loader never answers (the deadline test).
+        /// an asset whose loader never answers (the deadline test), and so a
+        /// DeckPair's two decks share one `AssetCache`.
         var makeAsset: (URL, Bool) -> AVURLAsset
-        /// Runs `work` on main `sec` seconds from now unless it was cancelled
-        /// first: the load deadline and the pause settle, the deck's only
-        /// timers. Injectable so a Simulator test can fire them in virtual
-        /// time instead of racing a loaded runner's wall clock (AVDeckTests).
-        var after: (_ sec: Double, _ work: DispatchWorkItem) -> Void
-        /// The monotonic clock, in ms, a load's elapsed time is read from
-        /// (`.ready`'s and `.deadlineExceeded`'s). Injectable with `after`, so
-        /// a deadline fired in virtual time reports virtual time.
-        var nowMs: () -> Double
-        /// The ring's structured `deck` rows (see ROWS above). The boot hands
-        /// it `EngineOutput.diag`; the default writes nowhere.
+        /// Whether a detach cancels the asset's pending loads. True for an
+        /// asset this deck owns alone; FALSE for a shared one (`AssetCache`),
+        /// where `cancelLoading()` would also cancel the other deck's load.
+        var cancelsAssetLoading: Bool
+        /// The ring's structured rows: the `outPoint` row (NE-32) and the `deck`
+        /// rows (see ROWS above). The boot hands it `EngineOutput.diag`; the
+        /// default writes nowhere.
         var diag: (DiagEntry) -> Void
+        /// NE-32: layer 1's pad (`defaultStopPadSec`).
+        var stopPadSec: Double
+        /// NE-32: a one-shot timer on main, `ms` of wall clock from now.
+        /// Injectable so a test can count the watchdog's wakeups.
+        var schedule: (TimerPurpose, Double, @escaping () -> Void) -> EngineObservation
+        /// Runs `work` on main `sec` seconds from now unless it was cancelled
+        /// first: the load deadline and the pause settle. Injectable so a
+        /// Simulator test can fire them in virtual time instead of racing a
+        /// loaded runner's wall clock (AVDeckTests).
+        var after: (_ sec: Double, _ work: DispatchWorkItem) -> Void
+        /// NE-32: the monotonic clock the out-point watch reads, in ms; also
+        /// the one a load's elapsed time (`.ready`, `.deadlineExceeded`) is
+        /// read from, so a deadline fired in virtual time reports virtual time.
+        var nowMs: () -> Double
+        /// NE-32: which out-point layers run. All three in production; a
+        /// Simulator test arms one alone to prove it stops never-early.
+        var outPointLayers: Set<DeckPolicy.OutPointLayer>
         /// Same source is a seek (see above). On in production; NE-25b's
         /// two-deck spike turns it off, because each of its trials measures a
         /// COLD gate on the same fixture.
@@ -150,6 +214,12 @@ final class AVDeck: DeckDriving {
         /// of it, so uptime would call an eight-hour-old item fresh.
         /// Injectable so a test can age the held item.
         var idleClockMs: () -> Double
+        /// A load on this asset failed or passed its deadline. A DeckPair's
+        /// decks hand it to their shared `AssetCache` (`forget`), so the retry
+        /// gets a NEW asset: a failed or hung asset stays that way, and the
+        /// cache would otherwise hand the same one back (NE-37c review). A
+        /// lone deck makes a new asset for every cold load already.
+        var assetFailed: (AVURLAsset) -> Void
 
         init(
             loadDeadlineSec: Double = AVDeck.defaultLoadDeadlineSec,
@@ -157,24 +227,34 @@ final class AVDeck: DeckDriving {
             writeRow: @escaping (String) -> Void = AVDeck.logRow,
             debugFault: @escaping (String) -> Void = { assertionFailure($0) },
             makeAsset: @escaping (URL, Bool) -> AVURLAsset = AVDeck.defaultAsset,
+            cancelsAssetLoading: Bool = true,
+            diag: @escaping (DiagEntry) -> Void = { _ in },
+            stopPadSec: Double = AVDeck.defaultStopPadSec,
+            schedule: @escaping (TimerPurpose, Double, @escaping () -> Void) -> EngineObservation = AVDeck.mainQueueTimer,
             after: @escaping (_ sec: Double, _ work: DispatchWorkItem) -> Void = AVDeck.mainQueueAfter,
             nowMs: @escaping () -> Double = AVDeck.uptimeMs,
-            diag: @escaping (DiagEntry) -> Void = { _ in },
+            outPointLayers: Set<DeckPolicy.OutPointLayer> = Set(DeckPolicy.OutPointLayer.allCases),
             reusesSameSource: Bool = true,
             reuseMaxIdleSec: Double = AVDeck.defaultReuseMaxIdleSec,
-            idleClockMs: @escaping () -> Double = AVDeck.continuousMs
+            idleClockMs: @escaping () -> Double = AVDeck.continuousMs,
+            assetFailed: @escaping (AVURLAsset) -> Void = { _ in }
         ) {
             self.loadDeadlineSec = loadDeadlineSec
             self.sessionIsActive = sessionIsActive
             self.writeRow = writeRow
             self.debugFault = debugFault
             self.makeAsset = makeAsset
+            self.cancelsAssetLoading = cancelsAssetLoading
+            self.diag = diag
+            self.stopPadSec = stopPadSec
+            self.schedule = schedule
             self.after = after
             self.nowMs = nowMs
-            self.diag = diag
+            self.outPointLayers = outPointLayers
             self.reusesSameSource = reusesSameSource
             self.reuseMaxIdleSec = reuseMaxIdleSec
             self.idleClockMs = idleClockMs
+            self.assetFailed = assetFailed
         }
     }
 
@@ -182,7 +262,12 @@ final class AVDeck: DeckDriving {
         logger.notice("\(row, privacy: .public)")
     }
 
-    /// Production's timer: main, by the wall clock.
+    static func mainQueueTimer(_ purpose: TimerPurpose, _ ms: Double, _ fire: @escaping () -> Void) -> EngineObservation {
+        outPointTiming.schedule(afterMs: ms, repeating: false, fire: fire)
+    }
+
+    /// Production's timer for the load deadline and the pause settle: main,
+    /// by the wall clock.
     static func mainQueueAfter(_ sec: Double, _ work: DispatchWorkItem) {
         DispatchQueue.main.asyncAfter(deadline: .now() + sec, execute: work)
     }
@@ -257,7 +342,9 @@ final class AVDeck: DeckDriving {
     /// Set once by `invalidate()`; the deck is inert from then on.
     private var invalidated = false
     /// The source the attached item was made from (the load's `url` string)
-    /// and its timing option: what "the same source" is compared against.
+    /// and its timing option: what "the same source" is compared against,
+    /// here (`coldReason`) and by the pair (NE-32's prefetch decision and
+    /// its "same episode" check). nil while no item is attached.
     private(set) var loadedURL: String?
     private var loadedPreciseTiming = false
     /// The current load kept the attached item (same source) rather than
@@ -272,6 +359,21 @@ final class AVDeck: DeckDriving {
     /// ready, commanded, or observed playing or stopping. What
     /// `reuseMaxIdleSec` is measured from.
     private var lastLiveMs: Double = 0
+
+    /// NE-32: the out-point watch (`DeckPolicy.outPointStep`'s state), the
+    /// boundary observer (layer 2), the watchdog's one timer (layer 3), and
+    /// the prefetch window's one timer.
+    private var watch = DeckPolicy.OutPointWatch()
+    private var boundaryObserver: Any?
+    private var watchdog: EngineObservation?
+    private var windowTimer: EngineObservation?
+    private var windowOpened = false
+    /// Set by a DeckPair on the deck that holds the player role: there is a
+    /// standby deck, so the prefetch window means something. A lone deck
+    /// never opens it (the core then never prepares).
+    var prepareWindowAvailable = false {
+        didSet { if prepareWindowAvailable != oldValue { rearmPrepareWindow() } }
+    }
 
     /// The attached item's duration, when AVFoundation knows a finite one.
     private var itemDurationSec: Double? {
@@ -294,10 +396,13 @@ final class AVDeck: DeckDriving {
     deinit {
         deadline?.cancel()
         pauseSuspicion?.cancel()
+        watchdog?.cancel()
+        windowTimer?.cancel()
+        if let boundaryObserver { player.removeTimeObserver(boundaryObserver) }
         playerObservations.forEach { $0.invalidate() }
         itemObservations.forEach { $0.invalidate() }
         itemNotifications.forEach { NotificationCenter.default.removeObserver($0) }
-        asset?.cancelLoading()
+        if config.cancelsAssetLoading { asset?.cancelLoading() }
     }
 
     func send(_ command: DeckCommand) {
@@ -318,7 +423,27 @@ final class AVDeck: DeckDriving {
             setOutPoint(sec)
         case .unload:
             unload()
+        case .prepare:
+            // One deck has no standby to warm: the DeckPair (NE-32, behind
+            // `deckPairEnabled`) answers it and never forwards it. A lone deck
+            // never opens the prefetch window, so the core never asks; if it
+            // does, the seam loads cold inside the beat.
+            break
         }
+    }
+
+    /// The load stage the pair reads at a boundary (readiness is re-asserted
+    /// there, never trusted: `DeckPolicy.warmPromotion`'s `canPlay`).
+    var isReady: Bool { stage == .ready }
+
+    /// The handover's `adopt-identity` step (NE-32): the standby deck's load
+    /// becomes the core's load `token`, so every later event carries the
+    /// token the core is waiting on. Nothing else about the load changes.
+    func adopt(token newToken: DeckToken) {
+        dispatchPrecondition(condition: .onQueue(.main))
+        guard !invalidated, token != nil else { return }
+        token = newToken
+        watch.token = newToken
     }
 
     /// The host reads this before every input (`EngineNow.deck`), because the
@@ -354,6 +479,7 @@ final class AVDeck: DeckDriving {
         unload()
         invalidated = true
         onEvent = nil
+        removeBoundaryObserver()
         playerObservations.forEach { $0.invalidate() }
         playerObservations = []
     }
@@ -377,6 +503,9 @@ final class AVDeck: DeckDriving {
             record("pause (load)")
             player.pause()
         }
+        // Every out-point layer and timer of the previous load goes, whether
+        // this load keeps the item or not (a load drops the out-point).
+        resetOutPoint()
         let idleSec = item == nil ? nil : max(0, (config.idleClockMs() - lastLiveMs) / 1000)
         let cold = coldReason(urlString, preciseTiming: preciseTiming, idleSec: idleSec)
         if cold == nil {
@@ -466,7 +595,8 @@ final class AVDeck: DeckDriving {
     /// the item's observers are re-registered under it. The gate starts from
     /// `advanceIfReady` like any load's (duration and both statuses are in),
     /// so the one path to `preroll(` is unchanged. The out-point lives on the
-    /// item, and a load drops it (`DeckCommand.load`), so it is disarmed here.
+    /// item, and a load drops it (`DeckCommand.load`): `load` disarmed it,
+    /// with every other layer and timer, in `resetOutPoint` before this ran.
     private func reuse(token newToken: DeckToken, startSec: Double, idleSec: Double?) {
         let fromSec = player.currentTime().seconds
         deadline?.cancel()
@@ -487,7 +617,8 @@ final class AVDeck: DeckDriving {
         gateMarks = []
         noteLive()
         guard let item else { return }
-        item.forwardPlaybackEndTime = .invalid
+        // The out-point lives on the item; `load` already dropped it
+        // (`resetOutPoint`, the one writer of layer 1 besides the watch).
         unobserveItem()
         observe(item: item, generation: generation)
         armDeadline(generation: generation)
@@ -701,6 +832,8 @@ final class AVDeck: DeckDriving {
             JSONMember("bufferedAheadSec", Self.secNode(bufferedAhead(of: targetStartSec))),
             JSONMember("marks", .object(gateMarks))
         ] + accessFields() + errorLogFields())
+        // A hung asset stays hung: the next load of this source gets a new one.
+        if let asset { config.assetFailed(asset) }
         // Detach FIRST, and move the generation, so nothing that completes
         // late (a duration, a status, a seek) can preroll or sound: a URL that
         // turns ready at 21 s must not start the wrong thing in the car.
@@ -741,6 +874,7 @@ final class AVDeck: DeckDriving {
         pauseSuspicion?.cancel()
         pauseSuspicion = nil
         applyRateAndPlay()
+        step(.play(atSec: playheadSec, nowMs: config.nowMs()))
     }
 
     /// The only place this type starts audio. The rate is re-applied on EVERY
@@ -762,6 +896,7 @@ final class AVDeck: DeckDriving {
         noteLive()
         record("pause")
         player.pause()
+        step(.pause(atSec: playheadSec))
     }
 
     private func setRate(_ newRate: Float) {
@@ -777,19 +912,22 @@ final class AVDeck: DeckDriving {
             record("rate=\(newRate)")
             player.rate = newRate
         }
+        // Re-armed on every rate change: the watchdog's delay is WALL clock.
+        step(.rate(Double(newRate), atSec: playheadSec, nowMs: config.nowMs()))
     }
 
-    /// The out-point's FIRST layer only (plan §4.3 P-2):
-    /// `forwardPlaybackEndTime` (nil disarms), so AVFoundation itself treats
-    /// that second as the item's end. The boundary observer and the
-    /// watchdog armed for the last 1.5 s are NE-32's, which is also the card
-    /// in which a bounded item first plays; an episode (M1) never sets one.
-    /// It lives on the ITEM, so the next load's fresh item drops it, as the
-    /// core's vocabulary says a load does.
+    /// The out-point (plan §4.3 P-2, NE-32): hand the boundary to the watch,
+    /// which arms layers 1 and 2 when the playhead is before it and the
+    /// watchdog once the deck plays. nil (or junk) disarms. An episode (M1)
+    /// never sets one. A load drops it, as the core's vocabulary says.
     private func setOutPoint(_ sec: Double?) {
-        guard let item else { return }
+        guard item != nil, let token else { return }
         let end = sec.flatMap { $0.isFinite && $0 > 0 ? $0 : nil }
-        item.forwardPlaybackEndTime = end.map { Self.time($0) } ?? .invalid
+        windowOpened = false
+        step(.load(token: token, outPointSec: end, atSec: playheadSec))
+        if intendsToPlay, player.rate != 0 {
+            step(.play(atSec: playheadSec, nowMs: config.nowMs()))
+        }
     }
 
     private func seek(to sec: Double) {
@@ -803,10 +941,16 @@ final class AVDeck: DeckDriving {
             reachedEnd = false
             let gen = generation
             record("seek \(Self.format(target))")
+            // The watch moves with the seek NOW (a scrub past the boundary
+            // clears layers 1 and 2 before the player gets there), and again
+            // from where it really landed.
+            step(.seek(atSec: target, nowMs: config.nowMs()))
             player.seek(to: Self.time(target), toleranceBefore: .zero, toleranceAfter: .zero) { [weak self] finished in
                 DispatchQueue.main.async {
                     guard let self, gen == self.generation else { return }
-                    self.emit(.seeked(token: token, landedSec: self.player.currentTime().seconds, finished: finished))
+                    let landed = self.player.currentTime().seconds
+                    if landed.isFinite { self.step(.seek(atSec: landed, nowMs: self.config.nowMs())) }
+                    self.emit(.seeked(token: token, landedSec: landed, finished: finished))
                 }
             }
         case .idle, .failed:
@@ -820,9 +964,11 @@ final class AVDeck: DeckDriving {
             record("pause (unload)")
             player.pause()
         }
+        resetOutPoint()
         detachItem()
         generation += 1
         token = nil
+        loadedURL = nil
         stage = .idle
         if player.currentItem != nil {
             record("detach")
@@ -893,7 +1039,7 @@ final class AVDeck: DeckDriving {
         pauseSuspicion?.cancel()
         pauseSuspicion = nil
         unobserveItem()
-        asset?.cancelLoading()
+        if config.cancelsAssetLoading { asset?.cancelLoading() }
         asset = nil
         item = nil
         loadedURL = nil
@@ -980,6 +1126,7 @@ final class AVDeck: DeckDriving {
             guard gen == self.generation, seq == self.playSeq, self.looksUncommandedPaused(), let token = self.token
             else { return }
             self.intendsToPlay = false
+            self.step(.pause(atSec: self.playheadSec))
             self.emit(.pausedUncommanded(token: token, atSec: self.player.currentTime().seconds))
         }
         pauseSuspicion = work
@@ -1021,8 +1168,44 @@ final class AVDeck: DeckDriving {
         return true
     }
 
+    /// `didPlayToEndTime`: either layer 1 (the item reached
+    /// `forwardPlaybackEndTime`) or the file ran out. With no out-point it is
+    /// the natural end, as in M1. With one, the watch decides: the boundary
+    /// reached first by layer 1 is a stop; after a stop by another layer it is
+    /// stale (NO second `.ended`: NE-25a measured this notification ~30 ms
+    /// after the boundary observer); a file that ran out BEFORE the boundary
+    /// (an authored `end_sec` past the real audio) is the item's one, natural,
+    /// end.
     private func itemEnded(generation gen: Int) {
         guard gen == generation, let token else { return }
+        let at = playheadSec
+        guard let out = watch.outPointSec, watch.token == token else {
+            finishAtEnd(token)
+            return
+        }
+        // Another layer already stopped this item (and no seek moved it since):
+        // this is layer 1's late notification of the same end.
+        if watch.fired && reachedEnd { return }
+        if watch.armed && at >= out - Self.layerSlackSec {
+            step(.layer(.endTime, token: token, atSec: Swift.max(at, out), nowMs: config.nowMs()))
+            return
+        }
+        // Not a boundary stop: a scrub past the boundary freed the item, or the
+        // player stopped before it anyway (the file ran out, or, never
+        // measured, an early end time). The item has ended; waiting for a
+        // boundary the player will not reach would stall the Foray, so it is
+        // the natural end, and an early one is written down.
+        if watch.armed, let duration = itemDurationSec, at < duration - Self.endSlackSec {
+            config.diag(DiagEntry(kind: "outPoint", fields: [
+                JSONMember("kind", .string("early")),
+                JSONMember("layer", .string(DeckPolicy.OutPointLayer.endTime.rawValue)),
+                JSONMember("token", .number(Double(token)))]))
+            config.writeRow("outPoint early layer=endTime token=\(token) at=\(Self.format(at)) out=\(Self.format(out))")
+        }
+        step(.ended(atSec: at))
+    }
+
+    private func finishAtEnd(_ token: DeckToken) {
         reachedEnd = true
         intendsToPlay = false
         noteLive()
@@ -1067,7 +1250,159 @@ final class AVDeck: DeckDriving {
             JSONMember("step", .string(gateStep)),
             JSONMember("positionSec", Self.secNode(player.currentTime().seconds))
         ] + Self.errorFields(error) + accessFields() + errorLogFields())
+        // A failed asset is never retried by AVFoundation: the next load of
+        // this source gets a new one.
+        if let asset { config.assetFailed(asset) }
         emit(.failed(token: token, message: message))
+    }
+
+    // MARK: - The out-point (NE-32)
+
+    /// The playhead the watch reads: the player's, or the start a gating load
+    /// will land on (the same rule as `reading`).
+    private var playheadSec: Double {
+        guard stage == .ready else { return targetStartSec }
+        let at = player.currentTime().seconds
+        return at.isFinite ? at : targetStartSec
+    }
+
+    /// Feed the watch one event and run the ops it answers, in order.
+    private func step(_ event: DeckPolicy.OutPointEvent) {
+        let (next, ops) = DeckPolicy.outPointStep(watch, event)
+        watch = next
+        for op in ops { apply(op) }
+        rearmPrepareWindow()
+    }
+
+    private func apply(_ op: DeckPolicy.OutPointOp) {
+        switch op {
+        case let .endTime(sec):
+            // Layer 1 lives on the ITEM; a disarm is `.invalid`.
+            let armed = config.outPointLayers.contains(.endTime) ? sec : nil
+            item?.forwardPlaybackEndTime = armed.map { Self.time($0 + config.stopPadSec) } ?? .invalid
+        case let .boundary(sec):
+            removeBoundaryObserver()
+            guard let sec, config.outPointLayers.contains(.boundary) else { return }
+            let gen = generation
+            let token = watch.token
+            boundaryObserver = player.addBoundaryTimeObserver(forTimes: [NSValue(time: Self.time(sec))], queue: .main) { [weak self] in
+                self?.layerFired(.boundary, token: token, generation: gen)
+            }
+        case let .watchdogArm(ms):
+            watchdog?.cancel()
+            watchdog = nil
+            guard config.outPointLayers.contains(.watchdog) else { return }
+            let gen = generation
+            watchdog = config.schedule(.watchdog, ms) { [weak self] in self?.watchdogFired(generation: gen) }
+        case .watchdogCancel:
+            watchdog?.cancel()
+            watchdog = nil
+        case let .stop(layer, overshootMs):
+            outPointStop(layer, overshootMs: overshootMs)
+        case let .early(layer):
+            config.diag(DiagEntry(kind: "outPoint", fields: [
+                JSONMember("kind", .string("early")), JSONMember("layer", .string(layer.rawValue)),
+                JSONMember("token", .number(Double(watch.token)))]))
+            config.writeRow("outPoint early layer=\(layer.rawValue) token=\(watch.token)")
+        case .stale:
+            break
+        case .endedNatural:
+            if let token { finishAtEnd(token) }
+        }
+    }
+
+    /// Layer 2's callback. A boundary observer can fire a hair under the time
+    /// it was set to (CMTime rounding), so within `layerSlackSec` it reads as
+    /// the boundary itself; anything earlier is an early report.
+    private func layerFired(_ layer: DeckPolicy.OutPointLayer, token: DeckToken, generation gen: Int) {
+        guard gen == generation, !invalidated else { return }
+        var at = playheadSec
+        if let out = watch.outPointSec, at < out, at >= out - Self.layerSlackSec { at = out }
+        step(.layer(layer, token: token, atSec: at, nowMs: config.nowMs()))
+    }
+
+    /// Layer 3's one timer came due. The watch ignores a wake before its due
+    /// time, which a timer that fired a hair early (clock rounding) would be,
+    /// and would then never re-arm; so the wake is stamped no earlier than due.
+    private func watchdogFired(generation gen: Int) {
+        guard gen == generation, !invalidated else { return }
+        watchdog = nil
+        let now = Swift.max(config.nowMs(), watch.timerDueMs ?? 0)
+        step(.timer(atSec: playheadSec, nowMs: now))
+    }
+
+    /// A layer reached the boundary first: stop (layer 1 already stopped the
+    /// player itself), write the `outPoint` row with the overshoot, and report
+    /// the item's end.
+    private func outPointStop(_ layer: DeckPolicy.OutPointLayer, overshootMs: Double) {
+        guard let token else { return }
+        intendsToPlay = false
+        reachedEnd = true
+        // It was sounding up to the boundary: live (same-source reuse).
+        noteLive()
+        pauseSuspicion?.cancel()
+        pauseSuspicion = nil
+        if player.rate != 0 {
+            record("pause (out-point \(layer.rawValue))")
+            player.pause()
+        }
+        config.diag(DiagEntry(kind: "outPoint", fields: [
+            JSONMember("kind", .string("stop")), JSONMember("layer", .string(layer.rawValue)),
+            JSONMember("overshootMs", .number(overshootMs)), JSONMember("rate", .number(Double(rate))),
+            JSONMember("token", .number(Double(token)))]))
+        config.writeRow("outPoint layer=\(layer.rawValue) overshootMs=\(JSWriter.numberToString(overshootMs)) rate=\(rate) token=\(token)")
+        emit(.ended(token: token))
+    }
+
+    /// A load or an unload: every layer and both timers go, and the watch
+    /// starts over, keeping only the rate (the boundary lives on the old item,
+    /// the observer on the player, so it must be removed here).
+    private func resetOutPoint() {
+        if watch.outPointSec != nil { item?.forwardPlaybackEndTime = .invalid }
+        removeBoundaryObserver()
+        watchdog?.cancel()
+        watchdog = nil
+        windowTimer?.cancel()
+        windowTimer = nil
+        windowOpened = false
+        let heldRate = watch.rate
+        watch = DeckPolicy.OutPointWatch()
+        watch.rate = heldRate
+    }
+
+    private func removeBoundaryObserver() {
+        if let boundaryObserver { player.removeTimeObserver(boundaryObserver) }
+        boundaryObserver = nil
+    }
+
+    /// The prefetch window's one timer (`DeckPolicy.prefetchWindowDelayMs`),
+    /// re-derived after every watch step: once per boundary, only while this
+    /// deck is audible toward an armed boundary, and only with a standby deck.
+    private func rearmPrepareWindow() {
+        windowTimer?.cancel()
+        windowTimer = nil
+        guard !invalidated, token != nil, stage == .ready,
+              let delay = DeckPolicy.prefetchWindowDelayMs(
+                available: prepareWindowAvailable, outPointSec: watch.outPointSec,
+                armed: watch.armed && !watch.fired, paused: !watch.playing, atSec: playheadSec,
+                rate: watch.rate, leadSec: EngineConstants.HtmlAudioBackend.prefetchLeadSec,
+                alreadyOpened: windowOpened) else { return }
+        if delay <= 0 {
+            openPrepareWindow()
+            return
+        }
+        let gen = generation
+        windowTimer = config.schedule(.prepareWindow, delay) { [weak self] in
+            guard let self, gen == self.generation else { return }
+            self.windowTimer = nil
+            self.rearmPrepareWindow()
+        }
+    }
+
+    private func openPrepareWindow() {
+        guard let token else { return }
+        windowOpened = true
+        emit(.prepareWindow(token: token))
     }
 
     // MARK: - Network logs (rows only)

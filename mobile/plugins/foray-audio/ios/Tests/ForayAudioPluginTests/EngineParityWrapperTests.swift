@@ -67,6 +67,27 @@ final class EngineParityWrapperTests: XCTestCase {
     func testDeckEpisodeFamily() { assertParityFamily("deck-episode", requireRunner: true) }
     func testManagerEpisodeFamily() { assertParityFamily("manager-episode", requireRunner: true) }
 
+    /// NE-28s: the Foray seam policies as the app links them.
+    func testInterludeFamily() { assertParityFamily("interlude", requireRunner: true) }
+    func testSeekPolicyFamily() { assertParityFamily("seek-policy", requireRunner: true) }
+    func testOutpointFamily() { assertParityFamily("outpoint", requireRunner: true) }
+
+    /// NE-29s: the Foray clock, resume rules, structural check and lock screen as the app links them.
+    func testForayClockFamily() { assertParityFamily("foray-clock", requireRunner: true) }
+    func testForayProgressFamily() { assertParityFamily("foray-progress", requireRunner: true) }
+    func testForayStructureFamily() { assertParityFamily("foray-structure", requireRunner: true) }
+    func testMediaFamily() { assertParityFamily("media", requireRunner: true) }
+
+    /// NE-30s: the deck's guards, the Foray tape and the prepare seams as the app links them.
+    func testDeckFamily() { assertParityFamily("deck", requireRunner: true) }
+    func testManagerForayFamily() { assertParityFamily("manager-foray", requireRunner: true) }
+    func testPrepareFamily() { assertParityFamily("prepare", requireRunner: true) }
+
+    /// NE-33: the default voice, the lexicon and the speech rate as the app links them.
+    func testDefaultVoiceFamily() { assertParityFamily("default-voice", requireRunner: true) }
+    func testLexiconFamily() { assertParityFamily("lexicon", requireRunner: true) }
+    func testSpeechRateFamily() { assertParityFamily("speech-rate", requireRunner: true) }
+
     /// Every family in manifest.json, including any recorded after this file
     /// was written: executed or owed, nothing stale, nothing dropped.
     func testEveryManifestFamilyIsExecutedOrPending() throws {

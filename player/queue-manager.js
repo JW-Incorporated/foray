@@ -225,7 +225,7 @@
 
 import { reduce, S, E, itemRef, itemBounds, TTS, END_NATURAL, END_OUT_POINT } from "./queue-state.js";
 import { SINGLE_ITEM, assertStrategy } from "./queue-strategy.js";
-import { seekPrecision, FOREIGN, APPROXIMATE } from "./seek-policy.js";
+import { segmentLoadGate } from "./seek-policy.js";
 import { buildForayQueue } from "./foray-queue.js";
 import { seamGapSec, describeSeam, SEAM_GAP_SEC, AUTO_ADVANCE } from "./seam-gap.js";
 import { normalizeRate, isRate, DEFAULT_RATE } from "./playback-rate.js";
@@ -278,7 +278,7 @@ export function positionTickDue(last, id, seconds) {
     250ms matches the ~4Hz cadence `client.js`'s own `timeupdate` handler
     already repaints at, so a narration line does not look smoother or
     choppier than an ordinary segment. */
-const NARRATION_TICK_MS = 250;
+export const NARRATION_TICK_MS = 250;
 
 /** A narration tick that lands this much later than it was due means the page
     was SUSPENDED, not busy (audit round 2 review). `nowMs` is wall clock and
@@ -287,7 +287,7 @@ const NARRATION_TICK_MS = 250;
     tripped the deadline and advanced into the next clip with no press — past
     the 30 s lag bound and `_pausedByListener` that guard every other resume.
     A suspension is asked about as an interruption instead. */
-const NARRATION_SUSPEND_GAP_MS = 5_000;
+export const NARRATION_SUSPEND_GAP_MS = 5_000;
 
 /** The speed every SYNTHESIZED narration line is spoken at, whatever speed the
     listener has chosen for the podcasts around it. Founder ruling, 2026-09-24
@@ -329,8 +329,8 @@ export const NARRATION_RATE = 1;
     plus the margin — generous, because advancing early cuts a slow
     voice off mid-word, and the cost of waiting is only that the stall lasts a
     little longer. */
-const NARRATION_DEADLINE_FACTOR = 1.5;
-const NARRATION_DEADLINE_MARGIN_SEC = 10;
+export const NARRATION_DEADLINE_FACTOR = 1.5;
+export const NARRATION_DEADLINE_MARGIN_SEC = 10;
 
 /** §15: the shortest item worth warming the next narration file behind.
     A hidden page ran one media-element load as a task chain of ~11 s
@@ -2783,29 +2783,13 @@ export class PlayerQueueManager {
    * acceptance criterion that the drift case is logged rather than silent.
    */
   _segmentGate(item) {
-    if (!item?.needs_drift_check) return { ok: true };
-
-    const observed = this.backend.duration;
-    if (typeof observed !== "number" || !Number.isFinite(observed)) {
-      return {
-        ok: false,
-        reason: "the copy in hand reports no duration, so the ad load cannot be compared to the reference",
-      };
-    }
-
-    const { precision, reason } = seekPrecision(
-      { id: item.source_item_id, dai_suspected: item.dai_suspected },
-      {
-        isLocalFile: this._forayOptions.isLocalFile,
-        source: FOREIGN,
-        observedDuration: observed,
-        recordedDuration: item.reference_duration_sec,
-        adPadSec: item.ad_pad_sec ?? undefined,
-        allowAdPad: this._forayOptions.allowAdPad,
-      }
-    );
-    if (precision === APPROXIMATE) return { ok: false, reason };
-    return { ok: true, note: `${precision} — ${reason}` };
+    // NE-28j: the rule is seek-policy.js `segmentLoadGate`, unchanged, so the
+    // native engine is pinned to the same answer (the seek-policy family).
+    return segmentLoadGate(item, {
+      observedDuration: this.backend.duration,
+      isLocalFile: this._forayOptions.isLocalFile,
+      allowAdPad: this._forayOptions.allowAdPad,
+    });
   }
 
   /** Leave a segment we refused, without ever making it audible. The state is

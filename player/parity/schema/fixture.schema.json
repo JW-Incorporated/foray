@@ -108,7 +108,7 @@
       "type": "object",
       "required": ["target"],
       "properties": {
-        "target": { "description": "What the scenario drives. JS drivers exist for: manager.", "enum": ["manager", "deck", "engine"] },
+        "target": { "description": "What the scenario drives. JS drivers exist for: manager, deck (NE-28j: the outpoint family over deck-policy.js outPointStep and a driven clock), and engine (NE-30j: the prepare family over player/parity/reference-engine.js with the warm handover on; call steps are engine commands, deck steps its deck events, and every checkpoint carries nowMs, the T of an audible start).", "enum": ["manager", "deck", "engine"] },
         "positionEvents": { "description": "NE-14j: the manager's position store is the real PositionStore, and its onSave writes event.position:<id>@<seconds>:<duration> into the op log (plan §5.5 pendingEvents).", "type": "boolean" },
         "scheduler": { "enum": ["instant", "manual"] },
         "backend": { "type": "object" },
@@ -116,17 +116,23 @@
         "positions": { "description": "Seed saved positions: id -> seconds.", "type": "object" },
         "rate": { "type": "number" },
         "seamGapSec": { "$ref": "#/$defs/input" },
-        "tts": { "type": ["boolean", "object"] },
+        "tts": { "description": "The narration bridge (fakes.js fakeTts). An object opts into NE-31j's shapes: refuse, voiceFallback, onFinished: false, transport: false, pause: rejects, resume: {answer}, state: true.", "type": ["boolean", "object"] },
+        "voice": { "description": "NE-31j, manager target: the listener's chosen narration voice the manager is constructed with (null: the synthesiser picks).", "type": ["string", "null"] },
+        "narrationTicks": { "description": "NE-31j, manager target: wire the surface's narration pulse (onNarrationTick), counted for the narrationTicks view. The manager runs its narration ticker, and so its deadline, only when a surface listens.", "type": "boolean" },
         "interlude": { "type": ["boolean", "object"] },
-        "interludeEnabled": { "type": "boolean" }
+        "interludeEnabled": { "type": "boolean" },
+        "view": { "description": "NE-30j, manager target: extra checkpoint fields, opt-in (runner.js VIEW_KEYS).", "type": "array", "items": { "type": "string" } },
+        "seamGapEvents": { "description": "NE-30j, manager target: the surface beat callback writes event.seamGap:<true|false> into the op log.", "type": "boolean" },
+        "forayBuild": { "description": "NE-30j, manager target: a real curated Foray built as the page builds it ({id, data: frozen | committed, dropSources?, segments?: false}); a playForay or setQueueFromForay call with no args plays its hydrated document.", "type": "object" },
+        "capabilities": { "description": "NE-30j, engine target: what the reference engine advertises (default: episode, continuation, restore, foray).", "type": "array", "items": { "type": "string" } }
       }
     },
     "verb": {
-      "description": "The closed scenario verbs (plan §6.2). remote has no JS driver yet; a JS case using it fails with E_NO_JS_DRIVER naming the card that adds it (runner.js PENDING_DRIVERS). session and lifecycle (NE-14j) take the values in runner.js SESSION_EVENTS and LIFECYCLE_EVENTS.",
+      "description": "The closed scenario verbs (plan §6.2). Every verb has a JS driver; a verb added without one fails with E_NO_JS_DRIVER naming the card that adds it (runner.js PENDING_DRIVERS). session and lifecycle (NE-14j) take the values in runner.js SESSION_EVENTS and LIFECYCLE_EVENTS; remote (NE-29j) takes an action from runner.js REMOTE_ACTIONS, with optional details (seekto's {seekTime}), pressed through media-session.js mediaSessionActions.",
       "enum": ["call", "settle", "clock", "deck", "tts", "interlude", "session", "lifecycle", "remote", "checkpoint"]
     },
     "step": {
-      "description": "Exactly one verb key, plus that verb's own fields (args, await, reason, message, sec, audible, id, shouldResume, routeName, isCarRoute, items, index, autoplay).",
+      "description": "Exactly one verb key, plus that verb's own fields (args, await, reason, message, sec, audible, id, shouldResume, routeName, isCarRoute, items, index, autoplay, details; for the deck target, outPointSec, rate and token, and the ended event; NE-30j: a call step may carry returns, a runner.js RETURN_PROJECTIONS name, and on the engine target refused; NE-31j: a manager-target clock step may carry every (advance in steps of that many ms, an awake page), and the tts verb takes finish or silent).",
       "type": "object",
       "minProperties": 1
     },

@@ -245,7 +245,7 @@ final class FakeDeck: DeckDriving {
         case .pause: reading.audible = false
         case let .seek(toSec): reading.positionSec = toSec
         case .unload: reading = DeckReading(positionSec: nil, durationSec: nil, audible: false, ended: false)
-        case .setRate, .setOutPoint: break
+        case .setRate, .setOutPoint, .prepare: break
         }
     }
 
@@ -283,6 +283,7 @@ extension DeckCommand {
         case .setRate: return "setRate"
         case .setOutPoint: return "setOutPoint"
         case .unload: return "unload"
+        case .prepare: return "prepare"
         }
     }
 }
@@ -292,7 +293,10 @@ extension DeckCommand {
 final class FakeSpeaker: Speaking {
     let log: SeamLog
     var onFinish: ((SpeechEnd) -> Void)?
+    var onNarratorEvent: ((NarratorEvent) -> Void)?
     private(set) var spoken: [String] = []
+    /// The narration commands the host handed on (NE-33), in order.
+    private(set) var narrated: [NarrationCommand] = []
 
     init(log: SeamLog) { self.log = log }
 
@@ -303,11 +307,93 @@ final class FakeSpeaker: Speaking {
 
     func stopSpeaking() { log.add("speaker.stop") }
 
+    func narrate(_ command: NarrationCommand) {
+        narrated.append(command)
+        log.add("speaker.narrate")
+    }
+
+    /// The synthesizer reports on a line of narration (on main, as
+    /// SpeechNarrator delivers it).
+    func report(_ event: NarratorEvent) {
+        onNarratorEvent?(event)
+    }
+
     /// The synthesizer's delegate reports the line's end (on main, as
-    /// PreviewSpeaker delivers it).
+    /// SpeechNarrator delivers it).
     func end(_ end: SpeechEnd = .finished) {
         log.add("speaker.\(end.rawValue)")
         onFinish?(end)
+    }
+}
+
+// MARK: - InterludePlaying (NE-34)
+
+/// A jingle that sounds on `start()` and ends only when the test says so.
+final class FakeInterlude: InterludePlaying {
+    let log: SeamLog
+    var onEnded: ((String) -> Void)?
+    /// Answer `start()` with false.
+    var refuse = false
+    private(set) var starts = 0
+    private(set) var stops = 0
+    private(set) var releases = 0
+    private(set) var isSounding = false
+
+    init(log: SeamLog) { self.log = log }
+
+    func start() -> Bool {
+        guard !refuse else {
+            log.add("interlude.start refused")
+            return false
+        }
+        starts += 1
+        isSounding = true
+        log.add("interlude.start")
+        return true
+    }
+
+    func stop() {
+        stops += 1
+        isSounding = false
+        log.add("interlude.stop")
+    }
+
+    func release() {
+        releases += 1
+        isSounding = false
+        log.add("interlude.release")
+    }
+
+    /// The jingle stops sounding by itself (on main, as InterludePlayer
+    /// reports it).
+    func end(_ reason: String = "ended") {
+        isSounding = false
+        log.add("interlude.ended \(reason)")
+        onEnded?(reason)
+    }
+}
+
+// MARK: - SilenceRendering (NE-34)
+
+final class FakeSilence: SilenceRendering {
+    let log: SeamLog
+    private(set) var isRunning = false
+    private(set) var caps: [Double] = []
+    private(set) var stops = 0
+
+    init(log: SeamLog) { self.log = log }
+
+    func start(capMs: Double) -> Bool {
+        caps.append(capMs)
+        isRunning = true
+        log.add("silence.start \(Int(capMs))")
+        return true
+    }
+
+    func stop() {
+        stops += 1
+        isRunning = false
+        log.add("silence.stop")
     }
 }
 
@@ -428,9 +514,14 @@ final class FakeWorld {
     /// Nil unless a test gives the world one (NE-16): the host then runs
     /// without persistence, as most tests want.
     var holdPolicyStore: FakeHoldPolicyStore?
+    /// Nil unless a test gives the world one (NE-34): the host then answers
+    /// every jingle start `refused` and renders no silence, as the M1 world did.
+    var interlude: InterludePlaying?
+    var silence: SilenceRendering?
 
     var seams: EngineSeams {
         EngineSeams(session: session, background: background, remote: remote, nowPlaying: nowPlaying,
-                    deck: deck, speaker: speaker, timing: timing, output: output, holdPolicy: holdPolicyStore)
+                    deck: deck, speaker: speaker, timing: timing, output: output, holdPolicy: holdPolicyStore,
+                    interlude: interlude, silence: silence)
     }
 }

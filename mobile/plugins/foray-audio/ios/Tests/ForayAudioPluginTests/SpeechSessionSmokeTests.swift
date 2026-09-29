@@ -12,7 +12,7 @@ import ForayEngineCore
 /// background, in a car. A Simulator has no lock, no background, no car and no
 /// other app; its "session" is the Mac's audio. So this only shows the obvious
 /// failure is absent on the rig: with the production pieces (AudioSessionOwner's
-/// category and activation, PreviewSpeaker's synthesizer configuration, the
+/// category and activation, SpeechNarrator's synthesizer configuration (the direct path), the
 /// real AVDeck), a deck started in the same main turn as `didFinish` reaches
 /// `.playing` within 1 s, and no interruption notification arrives. The answer
 /// that decides NE-33's path comes from the Developer probe on the phone
@@ -99,7 +99,7 @@ final class SpeechSessionSmokeTests: XCTestCase {
     }
 
     /// The smoke. TO SEE IT FAIL: deactivate the session in
-    /// `PreviewSpeaker`'s `onFinish` path before the play (the deck's play
+    /// `SpeechNarrator`'s `onFinish` path before the play (the deck's play
     /// then trips the implicit-activation fault); or send the play before the
     /// line ends (a second audible producer while the synthesizer speaks is
     /// what `speechMs` and the ordering assertion catch).
@@ -143,12 +143,13 @@ final class SpeechSessionSmokeTests: XCTestCase {
         guard ready else { return }
 
         var speakerRows: [DiagEntry] = []
-        let speaker = PreviewSpeaker(config: PreviewSpeaker.Config(
+        let speaker = SpeechNarrator(config: SpeechNarrator.Config(
+            path: .direct,
             sessionIsActive: { owner.phase == .active },
             diag: { speakerRows.append($0) },
             debugFault: { faults.append($0) }
         ))
-        XCTAssertTrue(speaker.synthesizer.usesApplicationAudioSession, "the smoke must run the configuration SpeechNarrator ships")
+        XCTAssertTrue(speaker.synthesizer?.usesApplicationAudioSession ?? false, "the smoke must run the configuration SpeechNarrator ships")
 
         let beforeLine = Reading(session)
         var ends: [SpeechEnd] = []
@@ -214,7 +215,7 @@ final class SpeechSessionSmokeTests: XCTestCase {
                 atPlaying?.cell ?? "-"
             ]],
             notes: [
-                "AudioSessionOwner (.playback/.spokenAudio) activated; PreviewSpeaker (usesApplicationAudioSession = true, 1x); the production AVDeck on click-cbr.mp3, loaded and paused before the line.",
+                "AudioSessionOwner (.playback/.spokenAudio) activated; SpeechNarrator on the direct path (usesApplicationAudioSession = true, 1x); the production AVDeck on click-cbr.mp3, loaded and paused before the line.",
                 "SIMULATOR SMOKE, NOT EVIDENCE: no lock, no background, no car. DV-9 is answered by the Developer session probe on the phone (NE-27 desk pre-flight).",
                 "Voices installed: \(voices). Implicit-activation faults: \(faults.isEmpty ? "none" : faults.joined(separator: "; ")).",
                 "The line is WARM: this process's first line (SpeechWarmUp) finished after \(SpeechWarmUp.coldMs.map { msValue($0) } ?? "-") ms."
@@ -234,7 +235,7 @@ final class SpeechSessionSmokeTests: XCTestCase {
     /// for the new line. A probe or a narrator waiting on the old line's end
     /// would otherwise take its cancel for the new line's.
     /// TO SEE IT FAIL: drop the `utterance === self.current` check in
-    /// `PreviewSpeaker.deliver`, or make the new line current AFTER stopping
+    /// `DirectOutput.deliver` (and SpeechNarrator's current-line check), or make the new line current AFTER stopping
     /// the old one.
     func testAReplacedLineEndsSilentlyAndTheNewOneReportsOnce() throws {
         try requireSpeech()
@@ -244,7 +245,8 @@ final class SpeechSessionSmokeTests: XCTestCase {
         defer { owner.deactivate(notifyOthers: false) }
 
         var faults: [String] = []
-        let speaker = PreviewSpeaker(config: PreviewSpeaker.Config(
+        let speaker = SpeechNarrator(config: SpeechNarrator.Config(
+            path: .direct,
             sessionIsActive: { owner.phase == .active }, diag: { _ in }, debugFault: { faults.append($0) }))
         var ends: [SpeechEnd] = []
         speaker.onFinish = { ends.append($0) }
@@ -256,7 +258,7 @@ final class SpeechSessionSmokeTests: XCTestCase {
         // before it starts gets no delegate call. So it must have started.
         XCTAssertTrue(spin(until: 15) { speaker.linesStarted == 1 }, "the first line never started")
         spin(until: 0.5) { false }
-        XCTAssertTrue(speaker.synthesizer.isSpeaking, "the first line ended before it could be replaced")
+        XCTAssertTrue(speaker.synthesizer?.isSpeaking ?? false, "the first line ended before it could be replaced")
         speaker.speak(text: Self.line, voiceId: nil)
         XCTAssertTrue(spin(until: Self.speechTimeoutSec) { !ends.isEmpty }, "the replacing line never ended")
         spin(until: 1) { false }
@@ -271,7 +273,8 @@ final class SpeechSessionSmokeTests: XCTestCase {
     func testSpeakingWithoutAnActiveSessionIsAFault() {
         var rows: [DiagEntry] = []
         var faults: [String] = []
-        let speaker = PreviewSpeaker(config: PreviewSpeaker.Config(
+        let speaker = SpeechNarrator(config: SpeechNarrator.Config(
+            path: .direct,
             sessionIsActive: { false }, diag: { rows.append($0) }, debugFault: { faults.append($0) }))
         speaker.speak(text: Self.line, voiceId: nil)
         speaker.stopSpeaking()
@@ -286,8 +289,8 @@ final class SpeechSessionSmokeTests: XCTestCase {
     /// device does not have falls back to the system's, never to nothing.
     /// TO SEE IT FAIL: set another rate in `utterance(text:voiceId:)`.
     func testTheEnginesUtteranceIsOneXOnTheApplicationSession() {
-        XCTAssertTrue(PreviewSpeaker.makeSynthesizer().usesApplicationAudioSession)
-        let utterance = PreviewSpeaker.utterance(text: "x", voiceId: "com.example.no-such-voice")
+        XCTAssertTrue(SpeechNarrator.makeSynthesizer().usesApplicationAudioSession)
+        let utterance = SpeechNarrator.utterance(text: "x", voiceId: "com.example.no-such-voice")
         XCTAssertEqual(utterance.rate, AVSpeechUtteranceDefaultSpeechRate)
         XCTAssertNil(utterance.voice, "an unknown identifier leaves the system's voice")
     }
@@ -312,7 +315,8 @@ enum SpeechWarmUp {
         let owner = AudioSessionOwner(config: AudioSessionOwner.Config(diag: { _ in }))
         _ = owner.activate()
         defer { owner.deactivate(notifyOthers: false) }
-        let speaker = PreviewSpeaker(config: PreviewSpeaker.Config(
+        let speaker = SpeechNarrator(config: SpeechNarrator.Config(
+            path: .direct,
             sessionIsActive: { owner.phase == .active }, diag: { _ in }, debugFault: { _ in }))
         var ended = false
         speaker.onFinish = { _ in ended = true }

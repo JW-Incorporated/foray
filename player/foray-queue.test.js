@@ -488,3 +488,13 @@ test("F-90: an authored jingle item plays the same asset the seam interlude play
   assert.match(JINGLE_ASSET_URL, /^https:\/\//, "index.html's CSP allows media-src https: only");
   assert.doesNotMatch(JINGLE_ASSET_URL, /TBD/);
 });
+
+test("OQ-6: a jingle item counts on the Foray clock for exactly as long as its asset plays", () => {
+  /* One asset, one length. The jingle item plays the interlude's file, so the
+     clock counts the interlude's measured 3.0 s — the 1.5 s this used to read
+     left every Foray with a jingle 1.5 s behind its own audio (plan §9a OQ-6,
+     NE-29j). MUTATION: put JINGLE_DURATION_SEC back to 1.5 — red here and in the
+     authored foray-clock fixture. */
+  assert.equal(JINGLE_DURATION_SEC, INTERLUDE_DURATION_SEC);
+  assert.equal(JINGLE_DURATION_SEC, 3.0);
+});

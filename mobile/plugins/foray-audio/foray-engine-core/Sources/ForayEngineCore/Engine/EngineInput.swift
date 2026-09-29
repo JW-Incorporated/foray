@@ -44,6 +44,48 @@ public struct EngineItem: Equatable {
 
     /// `refOf(item)`: what the reducer knows of it.
     public var ref: QueueItemRef { QueueItemRef(id: id, kind: kind, bounds: bounds) }
+
+    // MARK: what a built Foray item carries (NE-30s)
+
+    /// The item as the seam rule reads it (seam-gap.js `isSegment`).
+    public var seam: SeamItem { SeamItem(startSec: startSec, endSec: endSec) }
+
+    /// ADR-0007's load-time ladder reads these off the BUILT item
+    /// (foray-queue.js carries them "so the gate never has to go back to a
+    /// catalogue it does not own"). `!item?.needs_drift_check` is truthiness.
+    public var needsDriftCheck: Bool { node["needs_drift_check"]?.isTruthy ?? false }
+    public var daiSuspected: Bool { node["dai_suspected"]?.isTruthy ?? false }
+    public var referenceDurationSec: Double? { node["reference_duration_sec"]?.numberValue }
+    /// `item.ad_pad_sec ?? undefined`: null is no pad.
+    public var adPadSec: Double? { node["ad_pad_sec"]?.numberValue }
+
+    /// `_isSynthNarration(item)`: a `tts` item with a non-empty `script` and
+    /// no file. It is SPOKEN (NE-31s), never loaded on a deck; a narration item
+    /// with a file (a rendered bridge) plays on the deck like any other audio.
+    public var isSynthNarration: Bool {
+        guard kind == .tts, audioUrl == nil, let script = node["script"]?.stringValue else { return false }
+        return !script.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    /// `_canSpeakInstead(item)` (queue-manager.js §14, Phase 2): a RENDERED
+    /// narration line (a `tts` item with a file) that still carries its
+    /// script, so a file that fails can be read aloud instead. The engine's
+    /// synthesiser is always wired (EngineBoot), which the JS also requires.
+    public var canSpeakInstead: Bool {
+        guard kind == .tts, let url = audioUrl, !url.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+              let script = node["script"]?.stringValue else { return false }
+        return !script.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    /// The item as the Foray clock and the structural check read it.
+    public var forayItem: ForayItem { ForayItem(node: node) }
+
+    /// The item as TransportPolicy's Foray-clock rules read it.
+    public var transportItem: TransportPolicy.Item {
+        TransportPolicy.Item(startSec: startSec, endSec: endSec, authoredEndSec: node["authored_end_sec"]?.numberValue,
+                             durationSec: durationSec, kind: node["kind"]?.stringValue,
+                             hasAudioUrl: node["audio_url"]?.isTruthy ?? false)
+    }
 }
 
 /// Why a play-ish intent arrived; recorded before anything else (D-4).
@@ -64,6 +106,10 @@ public enum QueueInput: Equatable {
     case setRate(Double?)
     /// `seek(seconds, {precise})` in the source's own seconds.
     case seek(sec: Double, precise: Bool)
+    /// `setQueueFromForay(foray, {isLocalFile, allowAdPad})` with the PAGE's
+    /// build (NE-30s): the queue is replaced and nothing loads, as `load`, and
+    /// the two options the load-time ladder reads are kept for its loads.
+    case loadForay([EngineItem], isLocalFile: Bool, allowAdPad: Bool)
 }
 
 /// A press from the lock screen, the car or a headset (`MPRemoteCommand`).
@@ -149,6 +195,12 @@ public enum LifecycleEvent: Equatable {
     /// The app came back: ask the deck what happened while nobody was
     /// listening (#263).
     case foreground
+    /// The engine itself is being torn down (card NE-31s; the page's
+    /// `dispose()` in the JS manager): whatever is speaking or sounding is
+    /// silenced, the deck and the jingle player are released, every timer is
+    /// cancelled, and the core answers nothing from then on. The reducer's
+    /// state is left as it was: a teardown is not a transport action.
+    case teardown
 }
 
 /// The timers the core arms through `.timerArm` and hears back from.
@@ -159,6 +211,64 @@ public enum EngineTimer: String, Equatable, Sendable, CaseIterable {
     case graceExpired = "grace-expired"
     /// `pauseHoldPolicy = .until(m)` ran out while paused.
     case holdExpired = "hold-expired"
+    /// The seam beat's remainder ran out (NE-30s): the wait parked on it
+    /// goes on, and the next segment becomes audible.
+    case seamBeat = "seam-beat"
+    /// The narration pulse (NE-31s, queue-manager.js `_tickNarration`): every
+    /// `NARRATION_TICK_MS` while a spoken line is audible, a one-shot the core
+    /// re-arms. It repaints the surface (nothing else moves the clock of a
+    /// line no deck is playing), watches for a suspension, and enforces the
+    /// line's deadline.
+    case narrationTick = "narration-tick"
+    /// The silence node's hard cap (NE-31s; the node is NE-34's, flagged off):
+    /// `INTERLUDE_CEILING_SEC` from the out-point, after which only grace covers.
+    case silenceCap = "silence-cap"
+}
+
+// ── THE NARRATING OVERLAY (card NE-31s) ─────────────────────────────────────
+//
+// A spoken line is not a deck item: the synthesiser speaks it (NE-33's
+// SpeechNarrator), so what the core needs from the world is what the JS
+// manager gets from its narration bridge (player/tts-bridge.js), as inputs
+// keyed by the utterance's `seq`, the identity the core stamped on `speak`.
+
+/// How the synthesiser answered `resume(seq)` (queue-manager.js
+/// `_resumeNarration` reads the bridge's answer, not just its arrival).
+public enum NarrationResumeAnswer: Equatable {
+    /// The line continues from the word it paused on.
+    case continued
+    /// The line restarted from its first word (Android's emulated pause,
+    /// `fromStart: true`): the line's clock restarts with it.
+    case fromStart
+    /// The voice did not resume (an older shell, a synthesiser that refused):
+    /// the line stays paused and its clock stays frozen.
+    case refused(reason: String)
+    /// Nobody answered (no transport at all): the voice never stopped, so the
+    /// clock is not frozen either. The honest reading of no answer.
+    case noAnswer
+}
+
+/// What the synthesiser tells the engine about the utterance `seq`.
+public enum NarratorEvent: Equatable {
+    /// `speak(seq)` was accepted and the line is audible. `voiceFallback`: it
+    /// is being spoken in another voice than the one asked for (V-01).
+    case started(seq: Int, voiceFallback: Bool)
+    /// `speak(seq)` was refused (no synthesiser, nothing it could speak).
+    case failed(seq: Int, reason: String)
+    /// `didFinish`: the whole line was spoken. The only end that advances.
+    case finished(seq: Int)
+    /// `didCancel`: a stop, a replacement, or the session taken from under
+    /// the line. NEVER an advance (L-05: stop never maps to finished).
+    case cancelled(seq: Int)
+    /// The answer to `resume(seq)`.
+    case resumed(seq: Int, answer: NarrationResumeAnswer)
+}
+
+/// The jingle player's reports (InterludePlayer, NE-34).
+public enum InterludeEvent: Equatable {
+    /// The jingle ended on its own (`ended`), failed (`error`), or could not
+    /// start at all (`refused`, reported the moment `start` is refused).
+    case ended(reason: String)
 }
 
 /// Everything `EngineCore.handle` accepts.
@@ -172,4 +282,8 @@ public enum EngineInput: Equatable {
     case session(SessionEvent)
     case lifecycle(LifecycleEvent)
     case timer(EngineTimer)
+    /// The synthesiser speaking a line of the Foray's narration (NE-31s).
+    case narrator(NarratorEvent)
+    /// The interlude jingle (NE-31s).
+    case interlude(InterludeEvent)
 }

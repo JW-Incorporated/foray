@@ -1,0 +1,663 @@
+{
+  "family": "seek-policy",
+  "module": "player/seek-policy.js",
+  "note": "ADR-0007's ladder (rungs 1-5) and ADR-0008's pad, as player/seek-policy.js answers them: one case per assertion of seek-policy.test.js. The six rendering tests (formatTimestamp, describeTimestamp, the banned-words scan, a padded time as an estimate) are excluded as text-pin: the page renders every timestamp, and the engine never formats one.",
+  "cases": [
+    {
+      "id": "seek-policy/local-file-foreign-exact",
+      "covers": ["seek-policy::a downloaded file is exact, even for a stitched show"],
+      "call": "seekPrecision",
+      "args": [
+        { "id": "ep-dai", "dai_suspected": true },
+        { "isLocalFile": true, "source": "foreign" }
+      ],
+      "expect": { "return": { "precision": "exact", "reason": "local file" } }
+    },
+    {
+      "id": "seek-policy/local-file-own-exact",
+      "covers": ["seek-policy::a downloaded file is exact, even for a stitched show"],
+      "call": "seekPrecision",
+      "args": [
+        { "id": "ep-dai", "dai_suspected": true },
+        { "isLocalFile": true, "source": "own" }
+      ],
+      "expect": { "return": { "precision": "exact", "reason": "local file" } }
+    },
+    {
+      "id": "seek-policy/local-file-beats-drift",
+      "covers": ["seek-policy::local-file beats every other signal, including observed drift"],
+      "call": "seekPrecision",
+      "args": [
+        { "id": "ep-dai", "dai_suspected": true },
+        {
+          "isLocalFile": true,
+          "source": "own",
+          "observedDuration": 3600,
+          "recordedDuration": 1
+        }
+      ],
+      "expect": { "return": { "precision": "exact", "reason": "local file" } }
+    },
+    {
+      "id": "seek-policy/static-foreign-exact",
+      "covers": ["seek-policy::a static enclosure is exact regardless of timestamp source"],
+      "call": "seekPrecision",
+      "args": [{ "id": "ep-static", "dai_suspected": false }, { "source": "foreign" }],
+      "expect": { "return": { "precision": "exact", "reason": "static enclosure" } }
+    },
+    {
+      "id": "seek-policy/static-own-exact",
+      "covers": ["seek-policy::a static enclosure is exact regardless of timestamp source"],
+      "call": "seekPrecision",
+      "args": [{ "id": "ep-static", "dai_suspected": false }, { "source": "own" }],
+      "expect": { "return": { "precision": "exact", "reason": "static enclosure" } }
+    },
+    {
+      "id": "seek-policy/stitched-foreign-approximate",
+      "covers": ["seek-policy::streaming a stitched show: a FOREIGN timestamp is approximate"],
+      "call": "seekPrecision",
+      "args": [{ "id": "ep-dai", "dai_suspected": true }, { "source": "foreign" }],
+      "expect": {
+        "return": {
+          "precision": "approximate",
+          "reason": "dynamic ad insertion; anchor resolution (ADR-0007 rung 4 / ADR-0008's locate step) is not implemented — segment skipped rather than played at a stale offset"
+        }
+      }
+    },
+    {
+      "id": "seek-policy/stitched-own-exact",
+      "covers": ["seek-policy::streaming a stitched show: the listener's OWN marker is exact"],
+      "call": "seekPrecision",
+      "args": [{ "id": "ep-dai", "dai_suspected": true }, { "source": "own" }],
+      "expect": {
+        "return": { "precision": "exact", "reason": "listener's own marker on their own copy" }
+      }
+    },
+    {
+      "id": "seek-policy/own-marker-drift-approximate",
+      "covers": [
+        "seek-policy::an OWN marker degrades to approximate once the copy demonstrably changed"
+      ],
+      "call": "seekPrecision",
+      "args": [
+        { "id": "ep-dai", "dai_suspected": true },
+        { "source": "own", "recordedDuration": 3600, "observedDuration": 3631 }
+      ],
+      "expect": {
+        "return": { "precision": "approximate", "reason": "ad load changed (31s duration drift)" }
+      }
+    },
+    {
+      "id": "seek-policy/own-small-drift-0",
+      "covers": ["seek-policy::small duration differences do not count as drift"],
+      "call": "seekPrecision",
+      "args": [
+        { "id": "ep-dai", "dai_suspected": true },
+        { "source": "own", "recordedDuration": 3600, "observedDuration": 3600 }
+      ],
+      "expect": {
+        "return": { "precision": "exact", "reason": "listener's own marker on their own copy" }
+      }
+    },
+    {
+      "id": "seek-policy/own-small-drift-1",
+      "covers": ["seek-policy::small duration differences do not count as drift"],
+      "call": "seekPrecision",
+      "args": [
+        { "id": "ep-dai", "dai_suspected": true },
+        { "source": "own", "recordedDuration": 3600, "observedDuration": 3601 }
+      ],
+      "expect": {
+        "return": { "precision": "exact", "reason": "listener's own marker on their own copy" }
+      }
+    },
+    {
+      "id": "seek-policy/own-small-drift-minus-5",
+      "covers": ["seek-policy::small duration differences do not count as drift"],
+      "call": "seekPrecision",
+      "args": [
+        { "id": "ep-dai", "dai_suspected": true },
+        { "source": "own", "recordedDuration": 3600, "observedDuration": 3595 }
+      ],
+      "expect": {
+        "return": { "precision": "exact", "reason": "listener's own marker on their own copy" }
+      }
+    },
+    {
+      "id": "seek-policy/own-small-drift-30",
+      "covers": ["seek-policy::small duration differences do not count as drift"],
+      "call": "seekPrecision",
+      "args": [
+        { "id": "ep-dai", "dai_suspected": true },
+        { "source": "own", "recordedDuration": 3600, "observedDuration": 3630 }
+      ],
+      "expect": {
+        "return": { "precision": "exact", "reason": "listener's own marker on their own copy" }
+      }
+    },
+    {
+      "id": "seek-policy/own-recorded-only-exact",
+      "covers": ["seek-policy::drift only applies when both durations are known"],
+      "call": "seekPrecision",
+      "args": [
+        { "id": "ep-dai", "dai_suspected": true },
+        { "source": "own", "recordedDuration": 3600 }
+      ],
+      "expect": {
+        "return": { "precision": "exact", "reason": "listener's own marker on their own copy" }
+      }
+    },
+    {
+      "id": "seek-policy/own-observed-only-exact",
+      "covers": ["seek-policy::drift only applies when both durations are known"],
+      "call": "seekPrecision",
+      "args": [
+        { "id": "ep-dai", "dai_suspected": true },
+        { "source": "own", "observedDuration": 3600 }
+      ],
+      "expect": {
+        "return": { "precision": "exact", "reason": "listener's own marker on their own copy" }
+      }
+    },
+    {
+      "id": "seek-policy/default-source-empty-ctx",
+      "covers": ["seek-policy::source defaults to FOREIGN — the safe assumption"],
+      "call": "seekPrecision",
+      "args": [{ "id": "ep-dai", "dai_suspected": true }, {}],
+      "expect": {
+        "return": {
+          "precision": "approximate",
+          "reason": "dynamic ad insertion; anchor resolution (ADR-0007 rung 4 / ADR-0008's locate step) is not implemented — segment skipped rather than played at a stale offset"
+        }
+      }
+    },
+    {
+      "id": "seek-policy/default-source-no-ctx",
+      "covers": ["seek-policy::source defaults to FOREIGN — the safe assumption"],
+      "call": "seekPrecision",
+      "args": [{ "id": "ep-dai", "dai_suspected": true }],
+      "expect": {
+        "return": {
+          "precision": "approximate",
+          "reason": "dynamic ad insertion; anchor resolution (ADR-0007 rung 4 / ADR-0008's locate step) is not implemented — segment skipped rather than played at a stale offset"
+        }
+      }
+    },
+    {
+      "id": "seek-policy/null-item-static",
+      "covers": [
+        "seek-policy::a missing or malformed item is treated as static rather than throwing"
+      ],
+      "call": "seekPrecision",
+      "args": [null, {}],
+      "expect": { "return": { "precision": "exact", "reason": "static enclosure" } }
+    },
+    {
+      "id": "seek-policy/empty-item-static",
+      "covers": [
+        "seek-policy::a missing or malformed item is treated as static rather than throwing"
+      ],
+      "call": "seekPrecision",
+      "args": [{}, {}],
+      "expect": { "return": { "precision": "exact", "reason": "static enclosure" } }
+    },
+    {
+      "id": "seek-policy/can-seek-exactly-stitched-foreign",
+      "covers": ["seek-policy::canSeekExactly mirrors seekPrecision"],
+      "call": "canSeekExactly",
+      "args": [{ "id": "ep-dai", "dai_suspected": true }, { "source": "foreign" }],
+      "expect": { "return": false }
+    },
+    {
+      "id": "seek-policy/can-seek-exactly-stitched-own",
+      "covers": ["seek-policy::canSeekExactly mirrors seekPrecision"],
+      "call": "canSeekExactly",
+      "args": [{ "id": "ep-dai", "dai_suspected": true }, { "source": "own" }],
+      "expect": { "return": true }
+    },
+    {
+      "id": "seek-policy/can-seek-exactly-static",
+      "covers": ["seek-policy::canSeekExactly mirrors seekPrecision"],
+      "call": "canSeekExactly",
+      "args": [{ "id": "ep-static", "dai_suspected": false }, {}],
+      "expect": { "return": true }
+    },
+    {
+      "id": "seek-policy/stitched-streaming-foreign-approximate",
+      "covers": [
+        "seek-policy::nothing streaming a stitched show is exact unless the listener made it"
+      ],
+      "call": "seekPrecision",
+      "args": [
+        { "id": "ep-dai", "dai_suspected": true },
+        { "isLocalFile": false, "source": "foreign" }
+      ],
+      "expect": {
+        "return": {
+          "precision": "approximate",
+          "reason": "dynamic ad insertion; anchor resolution (ADR-0007 rung 4 / ADR-0008's locate step) is not implemented — segment skipped rather than played at a stale offset"
+        }
+      }
+    },
+    {
+      "id": "seek-policy/stitched-streaming-undefined-approximate",
+      "covers": [
+        "seek-policy::nothing streaming a stitched show is exact unless the listener made it"
+      ],
+      "call": "seekPrecision",
+      "args": [
+        { "id": "ep-dai", "dai_suspected": true },
+        { "isLocalFile": false, "source": { "$undefined": true } }
+      ],
+      "expect": {
+        "return": {
+          "precision": "approximate",
+          "reason": "dynamic ad insertion; anchor resolution (ADR-0007 rung 4 / ADR-0008's locate step) is not implemented — segment skipped rather than played at a stale offset"
+        }
+      }
+    },
+    {
+      "id": "seek-policy/stitched-streaming-chapters-approximate",
+      "covers": [
+        "seek-policy::nothing streaming a stitched show is exact unless the listener made it"
+      ],
+      "call": "seekPrecision",
+      "args": [
+        { "id": "ep-dai", "dai_suspected": true },
+        { "isLocalFile": false, "source": "chapters" }
+      ],
+      "expect": {
+        "return": {
+          "precision": "approximate",
+          "reason": "dynamic ad insertion; anchor resolution (ADR-0007 rung 4 / ADR-0008's locate step) is not implemented — segment skipped rather than played at a stale offset"
+        }
+      }
+    },
+    {
+      "id": "seek-policy/stitched-streaming-transcript-approximate",
+      "covers": [
+        "seek-policy::nothing streaming a stitched show is exact unless the listener made it"
+      ],
+      "call": "seekPrecision",
+      "args": [
+        { "id": "ep-dai", "dai_suspected": true },
+        { "isLocalFile": false, "source": "transcript" }
+      ],
+      "expect": {
+        "return": {
+          "precision": "approximate",
+          "reason": "dynamic ad insertion; anchor resolution (ADR-0007 rung 4 / ADR-0008's locate step) is not implemented — segment skipped rather than played at a stale offset"
+        }
+      }
+    },
+    {
+      "id": "seek-policy/rung3-matching-load-exact",
+      "covers": [
+        "seek-policy::a foreign timestamp on a stitched show is exact when the ad load matches"
+      ],
+      "call": "seekPrecision",
+      "args": [
+        { "id": "ep-dai", "dai_suspected": true },
+        { "source": "foreign", "recordedDuration": 2501, "observedDuration": 2510 }
+      ],
+      "expect": {
+        "return": {
+          "precision": "exact",
+          "reason": "ad load matches the reference copy (9s duration drift)"
+        }
+      }
+    },
+    {
+      "id": "seek-policy/rung3-at-tolerance-exact",
+      "covers": [
+        "seek-policy::rung 3 uses the same 30s tolerance as the OWN branch, at the boundary"
+      ],
+      "call": "seekPrecision",
+      "args": [
+        { "id": "ep-dai", "dai_suspected": true },
+        { "source": "foreign", "recordedDuration": 2501, "observedDuration": 2531 }
+      ],
+      "expect": {
+        "return": {
+          "precision": "exact",
+          "reason": "ad load matches the reference copy (30s duration drift)"
+        }
+      }
+    },
+    {
+      "id": "seek-policy/rung3-past-tolerance-approximate",
+      "covers": [
+        "seek-policy::rung 3 uses the same 30s tolerance as the OWN branch, at the boundary"
+      ],
+      "call": "seekPrecision",
+      "args": [
+        { "id": "ep-dai", "dai_suspected": true },
+        { "source": "foreign", "recordedDuration": 2501, "observedDuration": 2532 }
+      ],
+      "expect": {
+        "return": {
+          "precision": "approximate",
+          "reason": "dynamic ad insertion; anchor resolution (ADR-0007 rung 4 / ADR-0008's locate step) is not implemented — segment skipped rather than played at a stale offset"
+        }
+      }
+    },
+    {
+      "id": "seek-policy/rung3-shorter-copy-approximate",
+      "covers": [
+        "seek-policy::drift in either direction counts — a shorter copy is a changed copy"
+      ],
+      "call": "seekPrecision",
+      "args": [
+        { "id": "ep-dai", "dai_suspected": true },
+        { "source": "foreign", "recordedDuration": 2501, "observedDuration": 2200 }
+      ],
+      "expect": {
+        "return": {
+          "precision": "approximate",
+          "reason": "dynamic ad insertion; anchor resolution (ADR-0007 rung 4 / ADR-0008's locate step) is not implemented — segment skipped rather than played at a stale offset"
+        }
+      }
+    },
+    {
+      "id": "seek-policy/rung3-recorded-only",
+      "covers": ["seek-policy::rung 3 needs both durations; one alone decides nothing"],
+      "call": "seekPrecision",
+      "args": [
+        { "id": "ep-dai", "dai_suspected": true },
+        { "source": "foreign", "recordedDuration": 2501 }
+      ],
+      "expect": {
+        "return": {
+          "precision": "approximate",
+          "reason": "dynamic ad insertion; anchor resolution (ADR-0007 rung 4 / ADR-0008's locate step) is not implemented — segment skipped rather than played at a stale offset"
+        }
+      }
+    },
+    {
+      "id": "seek-policy/rung3-observed-only",
+      "covers": ["seek-policy::rung 3 needs both durations; one alone decides nothing"],
+      "call": "seekPrecision",
+      "args": [
+        { "id": "ep-dai", "dai_suspected": true },
+        { "source": "foreign", "observedDuration": 2510 }
+      ],
+      "expect": {
+        "return": {
+          "precision": "approximate",
+          "reason": "dynamic ad insertion; anchor resolution (ADR-0007 rung 4 / ADR-0008's locate step) is not implemented — segment skipped rather than played at a stale offset"
+        }
+      }
+    },
+    {
+      "id": "seek-policy/rung3-neither",
+      "covers": ["seek-policy::rung 3 needs both durations; one alone decides nothing"],
+      "call": "seekPrecision",
+      "args": [{ "id": "ep-dai", "dai_suspected": true }, { "source": "foreign" }],
+      "expect": {
+        "return": {
+          "precision": "approximate",
+          "reason": "dynamic ad insertion; anchor resolution (ADR-0007 rung 4 / ADR-0008's locate step) is not implemented — segment skipped rather than played at a stale offset"
+        }
+      }
+    },
+    {
+      "id": "seek-policy/locate-step-is-named-absence",
+      "covers": [
+        "seek-policy::the locate step is a named, callable absence rather than a silence"
+      ],
+      "call": "locateStep",
+      "args": [],
+      "expect": {
+        "return": {
+          "implemented": false,
+          "reason": "anchor resolution (ADR-0007 rung 4 / ADR-0008's locate step) is not implemented — segment skipped rather than played at a stale offset"
+        }
+      }
+    },
+    {
+      "id": "seek-policy/drifted-copy-honest-skip",
+      "covers": [
+        "seek-policy::a drifted stitched copy falls to the honest skip, naming the missing rung"
+      ],
+      "call": "seekPrecision",
+      "args": [
+        { "id": "ep-dai", "dai_suspected": true },
+        { "source": "foreign", "recordedDuration": 2501, "observedDuration": 3200 }
+      ],
+      "expect": {
+        "return": {
+          "precision": "approximate",
+          "reason": "dynamic ad insertion; anchor resolution (ADR-0007 rung 4 / ADR-0008's locate step) is not implemented — segment skipped rather than played at a stale offset"
+        }
+      }
+    },
+    {
+      "id": "seek-policy/pad-off-unless-opted-in",
+      "covers": ["seek-policy::the pad rung is off unless the caller opts in"],
+      "call": "seekPrecision",
+      "args": [
+        { "id": "ep-dai", "dai_suspected": true },
+        { "source": "foreign", "adPadSec": 100 }
+      ],
+      "expect": {
+        "return": {
+          "precision": "approximate",
+          "reason": "dynamic ad insertion; anchor resolution (ADR-0007 rung 4 / ADR-0008's locate step) is not implemented — segment skipped rather than played at a stale offset"
+        }
+      }
+    },
+    {
+      "id": "seek-policy/pad-within-ceiling-padded",
+      "covers": [
+        "seek-policy::an opted-in pad within the ceiling is padded — playable, never exact"
+      ],
+      "call": "seekPrecision",
+      "args": [
+        { "id": "ep-dai", "dai_suspected": true },
+        { "source": "foreign", "adPadSec": 100, "allowAdPad": true }
+      ],
+      "expect": {
+        "return": {
+          "padSec": 100,
+          "precision": "padded",
+          "reason": "PADDABLE: 100s pad within the 120s ceiling (ADR-0008)"
+        }
+      }
+    },
+    {
+      "id": "seek-policy/pad-within-ceiling-not-exact",
+      "covers": [
+        "seek-policy::an opted-in pad within the ceiling is padded — playable, never exact"
+      ],
+      "call": "canSeekExactly",
+      "args": [
+        { "id": "ep-dai", "dai_suspected": true },
+        { "source": "foreign", "adPadSec": 100, "allowAdPad": true }
+      ],
+      "expect": { "return": false }
+    },
+    {
+      "id": "seek-policy/pad-cannot-cover-larger-drift",
+      "covers": ["seek-policy::a pad cannot cover a drift larger than itself"],
+      "call": "seekPrecision",
+      "args": [
+        { "id": "ep-dai", "dai_suspected": true },
+        {
+          "source": "foreign",
+          "recordedDuration": 2501,
+          "observedDuration": 4200,
+          "adPadSec": 60,
+          "allowAdPad": true
+        }
+      ],
+      "expect": {
+        "return": {
+          "precision": "approximate",
+          "reason": "this copy carries 1699s of ad load, beyond the 60s the pad bounds (ADR-0008)"
+        }
+      }
+    },
+    {
+      "id": "seek-policy/pad-covers-this-copy",
+      "covers": ["seek-policy::a pad that does cover this copy's ad load still pads"],
+      "call": "seekPrecision",
+      "args": [
+        { "id": "ep-dai", "dai_suspected": true },
+        {
+          "source": "foreign",
+          "recordedDuration": 2501,
+          "observedDuration": 2567,
+          "adPadSec": 100,
+          "allowAdPad": true
+        }
+      ],
+      "expect": {
+        "return": {
+          "padSec": 100,
+          "precision": "padded",
+          "reason": "PADDABLE: 100s pad within the 120s ceiling (ADR-0008)"
+        }
+      }
+    },
+    {
+      "id": "seek-policy/pad-over-ceiling-locate-required",
+      "covers": ["seek-policy::a pad over the ceiling is LOCATE-REQUIRED"],
+      "call": "seekPrecision",
+      "args": [
+        { "id": "ep-dai", "dai_suspected": true },
+        { "source": "foreign", "adPadSec": 121, "allowAdPad": true }
+      ],
+      "expect": {
+        "return": {
+          "precision": "approximate",
+          "reason": "LOCATE-REQUIRED: 121s pad exceeds the 120s ceiling (ADR-0008)"
+        }
+      }
+    },
+    {
+      "id": "seek-policy/rung3-outranks-pad",
+      "covers": ["seek-policy::rung 3 outranks the pad — a matching copy needs no tolerance"],
+      "call": "seekPrecision",
+      "args": [
+        { "id": "ep-dai", "dai_suspected": true },
+        {
+          "source": "foreign",
+          "recordedDuration": 2501,
+          "observedDuration": 2510,
+          "adPadSec": 100,
+          "allowAdPad": true
+        }
+      ],
+      "expect": {
+        "return": {
+          "precision": "exact",
+          "reason": "ad load matches the reference copy (9s duration drift)"
+        }
+      }
+    },
+    {
+      "id": "seek-policy/pad-ignores-static",
+      "covers": ["seek-policy::the pad never touches a static enclosure or a downloaded file"],
+      "call": "seekPrecision",
+      "args": [
+        { "id": "ep-static", "dai_suspected": false },
+        { "source": "foreign", "adPadSec": 999, "allowAdPad": true }
+      ],
+      "expect": { "return": { "precision": "exact", "reason": "static enclosure" } }
+    },
+    {
+      "id": "seek-policy/pad-ignores-local-file",
+      "covers": ["seek-policy::the pad never touches a static enclosure or a downloaded file"],
+      "call": "seekPrecision",
+      "args": [
+        { "id": "ep-dai", "dai_suspected": true },
+        { "isLocalFile": true, "adPadSec": 999, "allowAdPad": true }
+      ],
+      "expect": { "return": { "precision": "exact", "reason": "local file" } }
+    },
+    {
+      "id": "seek-policy/can-play-padded",
+      "covers": ["seek-policy::canPlaySegment separates 'play it' from 'promise a time'"],
+      "call": "canPlaySegment",
+      "args": [
+        { "id": "ep-dai", "dai_suspected": true },
+        { "source": "foreign", "adPadSec": 100, "allowAdPad": true }
+      ],
+      "expect": { "return": true }
+    },
+    {
+      "id": "seek-policy/can-play-padded-not-exact",
+      "covers": ["seek-policy::canPlaySegment separates 'play it' from 'promise a time'"],
+      "call": "canSeekExactly",
+      "args": [
+        { "id": "ep-dai", "dai_suspected": true },
+        { "source": "foreign", "adPadSec": 100, "allowAdPad": true }
+      ],
+      "expect": { "return": false }
+    },
+    {
+      "id": "seek-policy/can-play-unresolvable-skipped",
+      "covers": ["seek-policy::canPlaySegment separates 'play it' from 'promise a time'"],
+      "call": "canPlaySegment",
+      "args": [{ "id": "ep-dai", "dai_suspected": true }, { "source": "foreign" }],
+      "expect": { "return": false }
+    },
+    {
+      "id": "seek-policy/can-play-static",
+      "covers": ["seek-policy::canPlaySegment separates 'play it' from 'promise a time'"],
+      "call": "canPlaySegment",
+      "args": [{ "id": "ep-static", "dai_suspected": false }, { "source": "foreign" }],
+      "expect": { "return": true }
+    },
+    {
+      "id": "seek-policy/drift-tolerance-is-30",
+      "covers": [
+        "seek-policy::DRIFT_TOLERANCE_SEC stays at 30 — ADR-0008 forbids widening it for ads"
+      ],
+      "authored": true,
+      "note": "ADR-0008: the OWN-marker drift tolerance is not the ad rung and must never be widened for ads.",
+      "read": "DRIFT_TOLERANCE_SEC",
+      "expect": { "value": 30 }
+    },
+    {
+      "id": "seek-policy/ad-pad-ceiling-is-120",
+      "covers": [
+        "seek-policy::DRIFT_TOLERANCE_SEC stays at 30 — ADR-0008 forbids widening it for ads"
+      ],
+      "authored": true,
+      "note": "ADR-0008's admission ceiling, equal to ANCHOR_TIME_TOLERANCE_SEC in tools/segments/merge-segments.mjs.",
+      "read": "AD_PAD_CEILING_SEC",
+      "expect": { "value": 120 }
+    },
+    {
+      "id": "seek-policy/token-own",
+      "covers": [],
+      "read": "OWN",
+      "expect": { "value": "own" }
+    },
+    {
+      "id": "seek-policy/token-foreign",
+      "covers": [],
+      "read": "FOREIGN",
+      "expect": { "value": "foreign" }
+    },
+    {
+      "id": "seek-policy/token-exact",
+      "covers": [],
+      "read": "EXACT",
+      "expect": { "value": "exact" }
+    },
+    {
+      "id": "seek-policy/token-approximate",
+      "covers": [],
+      "read": "APPROXIMATE",
+      "expect": { "value": "approximate" }
+    },
+    {
+      "id": "seek-policy/token-padded",
+      "covers": [],
+      "read": "PADDED",
+      "expect": { "value": "padded" }
+    }
+  ]
+}

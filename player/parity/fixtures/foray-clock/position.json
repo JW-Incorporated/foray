@@ -1,0 +1,521 @@
+{
+  "family": "foray-clock",
+  "module": "player/foray-resolve.js",
+  "note": "Position across the whole Foray (player/foray-resolve.js): segmentStarts, segmentAtElapsed (clamped at both ends), forayElapsed (a segment's playhead minus its in-point; a narration item's playhead as is) and progressSegments, the running order resumePoint reconciles against. One queue of a segment, a narration bridge, a jingle and a segment, so each kind's clock is pinned. The page's display formatters (fmtClock, fmtSpan) are not the engine's. Port: NE-29s ForayClock.",
+  "cases": [
+    {
+      "id": "foray-clock/starts-mixed",
+      "covers": [],
+      "call": "segmentStarts",
+      "args": [
+        [
+          { "$seg": ["a", 100, 210, { "source_item_id": "ep-a" }] },
+          { "$tts": ["n1", { "duration_sec": 8, "duration_source": "measured" }] },
+          {
+            "id": "j1",
+            "kind": "jingle",
+            "audio_url": "https://jw-incorporated.github.io/foray/player/assets/interlude-placeholder.wav",
+            "duration_sec": 3,
+            "duration_source": "measured"
+          },
+          { "$seg": ["b", 400, 460, { "source_item_id": "ep-b" }] }
+        ]
+      ],
+      "expect": { "return": [0, 110, 118, 121] }
+    },
+    {
+      "id": "foray-clock/starts-null",
+      "covers": [],
+      "call": "segmentStarts",
+      "args": [null],
+      "expect": { "return": [] }
+    },
+    {
+      "id": "foray-clock/at-elapsed-zero",
+      "covers": [],
+      "call": "segmentAtElapsed",
+      "args": [
+        [
+          { "$seg": ["a", 100, 210, { "source_item_id": "ep-a" }] },
+          { "$tts": ["n1", { "duration_sec": 8, "duration_source": "measured" }] },
+          {
+            "id": "j1",
+            "kind": "jingle",
+            "audio_url": "https://jw-incorporated.github.io/foray/player/assets/interlude-placeholder.wav",
+            "duration_sec": 3,
+            "duration_source": "measured"
+          },
+          { "$seg": ["b", 400, 460, { "source_item_id": "ep-b" }] }
+        ],
+        0
+      ],
+      "expect": { "return": { "index": 0, "into": 0, "start": 0 } }
+    },
+    {
+      "id": "foray-clock/at-elapsed-inside-first",
+      "covers": [],
+      "call": "segmentAtElapsed",
+      "args": [
+        [
+          { "$seg": ["a", 100, 210, { "source_item_id": "ep-a" }] },
+          { "$tts": ["n1", { "duration_sec": 8, "duration_source": "measured" }] },
+          {
+            "id": "j1",
+            "kind": "jingle",
+            "audio_url": "https://jw-incorporated.github.io/foray/player/assets/interlude-placeholder.wav",
+            "duration_sec": 3,
+            "duration_source": "measured"
+          },
+          { "$seg": ["b", 400, 460, { "source_item_id": "ep-b" }] }
+        ],
+        109.9
+      ],
+      "expect": { "return": { "index": 0, "into": 109.9, "start": 0 } }
+    },
+    {
+      "id": "foray-clock/at-elapsed-second-start",
+      "covers": [],
+      "call": "segmentAtElapsed",
+      "args": [
+        [
+          { "$seg": ["a", 100, 210, { "source_item_id": "ep-a" }] },
+          { "$tts": ["n1", { "duration_sec": 8, "duration_source": "measured" }] },
+          {
+            "id": "j1",
+            "kind": "jingle",
+            "audio_url": "https://jw-incorporated.github.io/foray/player/assets/interlude-placeholder.wav",
+            "duration_sec": 3,
+            "duration_source": "measured"
+          },
+          { "$seg": ["b", 400, 460, { "source_item_id": "ep-b" }] }
+        ],
+        110
+      ],
+      "expect": { "return": { "index": 1, "into": 0, "start": 110 } }
+    },
+    {
+      "id": "foray-clock/at-elapsed-inside-narration",
+      "covers": [],
+      "call": "segmentAtElapsed",
+      "args": [
+        [
+          { "$seg": ["a", 100, 210, { "source_item_id": "ep-a" }] },
+          { "$tts": ["n1", { "duration_sec": 8, "duration_source": "measured" }] },
+          {
+            "id": "j1",
+            "kind": "jingle",
+            "audio_url": "https://jw-incorporated.github.io/foray/player/assets/interlude-placeholder.wav",
+            "duration_sec": 3,
+            "duration_source": "measured"
+          },
+          { "$seg": ["b", 400, 460, { "source_item_id": "ep-b" }] }
+        ],
+        117
+      ],
+      "expect": { "return": { "index": 1, "into": 7, "start": 110 } }
+    },
+    {
+      "id": "foray-clock/at-elapsed-jingle-start",
+      "covers": [],
+      "call": "segmentAtElapsed",
+      "args": [
+        [
+          { "$seg": ["a", 100, 210, { "source_item_id": "ep-a" }] },
+          { "$tts": ["n1", { "duration_sec": 8, "duration_source": "measured" }] },
+          {
+            "id": "j1",
+            "kind": "jingle",
+            "audio_url": "https://jw-incorporated.github.io/foray/player/assets/interlude-placeholder.wav",
+            "duration_sec": 3,
+            "duration_source": "measured"
+          },
+          { "$seg": ["b", 400, 460, { "source_item_id": "ep-b" }] }
+        ],
+        118
+      ],
+      "expect": { "return": { "index": 2, "into": 0, "start": 118 } }
+    },
+    {
+      "id": "foray-clock/at-elapsed-inside-jingle",
+      "covers": [],
+      "call": "segmentAtElapsed",
+      "args": [
+        [
+          { "$seg": ["a", 100, 210, { "source_item_id": "ep-a" }] },
+          { "$tts": ["n1", { "duration_sec": 8, "duration_source": "measured" }] },
+          {
+            "id": "j1",
+            "kind": "jingle",
+            "audio_url": "https://jw-incorporated.github.io/foray/player/assets/interlude-placeholder.wav",
+            "duration_sec": 3,
+            "duration_source": "measured"
+          },
+          { "$seg": ["b", 400, 460, { "source_item_id": "ep-b" }] }
+        ],
+        120.9
+      ],
+      "expect": { "return": { "index": 2, "into": 2.9000000000000057, "start": 118 } }
+    },
+    {
+      "id": "foray-clock/at-elapsed-last-start",
+      "covers": [],
+      "call": "segmentAtElapsed",
+      "args": [
+        [
+          { "$seg": ["a", 100, 210, { "source_item_id": "ep-a" }] },
+          { "$tts": ["n1", { "duration_sec": 8, "duration_source": "measured" }] },
+          {
+            "id": "j1",
+            "kind": "jingle",
+            "audio_url": "https://jw-incorporated.github.io/foray/player/assets/interlude-placeholder.wav",
+            "duration_sec": 3,
+            "duration_source": "measured"
+          },
+          { "$seg": ["b", 400, 460, { "source_item_id": "ep-b" }] }
+        ],
+        121
+      ],
+      "expect": { "return": { "index": 3, "into": 0, "start": 121 } }
+    },
+    {
+      "id": "foray-clock/at-elapsed-at-total",
+      "covers": [],
+      "call": "segmentAtElapsed",
+      "args": [
+        [
+          { "$seg": ["a", 100, 210, { "source_item_id": "ep-a" }] },
+          { "$tts": ["n1", { "duration_sec": 8, "duration_source": "measured" }] },
+          {
+            "id": "j1",
+            "kind": "jingle",
+            "audio_url": "https://jw-incorporated.github.io/foray/player/assets/interlude-placeholder.wav",
+            "duration_sec": 3,
+            "duration_source": "measured"
+          },
+          { "$seg": ["b", 400, 460, { "source_item_id": "ep-b" }] }
+        ],
+        181
+      ],
+      "expect": { "return": { "index": 3, "into": 60, "start": 121 } }
+    },
+    {
+      "id": "foray-clock/at-elapsed-past-total",
+      "covers": [],
+      "call": "segmentAtElapsed",
+      "args": [
+        [
+          { "$seg": ["a", 100, 210, { "source_item_id": "ep-a" }] },
+          { "$tts": ["n1", { "duration_sec": 8, "duration_source": "measured" }] },
+          {
+            "id": "j1",
+            "kind": "jingle",
+            "audio_url": "https://jw-incorporated.github.io/foray/player/assets/interlude-placeholder.wav",
+            "duration_sec": 3,
+            "duration_source": "measured"
+          },
+          { "$seg": ["b", 400, 460, { "source_item_id": "ep-b" }] }
+        ],
+        500
+      ],
+      "expect": { "return": { "index": 3, "into": 60, "start": 121 } }
+    },
+    {
+      "id": "foray-clock/at-elapsed-negative",
+      "covers": [],
+      "call": "segmentAtElapsed",
+      "args": [
+        [
+          { "$seg": ["a", 100, 210, { "source_item_id": "ep-a" }] },
+          { "$tts": ["n1", { "duration_sec": 8, "duration_source": "measured" }] },
+          {
+            "id": "j1",
+            "kind": "jingle",
+            "audio_url": "https://jw-incorporated.github.io/foray/player/assets/interlude-placeholder.wav",
+            "duration_sec": 3,
+            "duration_source": "measured"
+          },
+          { "$seg": ["b", 400, 460, { "source_item_id": "ep-b" }] }
+        ],
+        -5
+      ],
+      "expect": { "return": { "index": 0, "into": 0, "start": 0 } }
+    },
+    {
+      "id": "foray-clock/at-elapsed-nan",
+      "covers": [],
+      "call": "segmentAtElapsed",
+      "args": [
+        [
+          { "$seg": ["a", 100, 210, { "source_item_id": "ep-a" }] },
+          { "$tts": ["n1", { "duration_sec": 8, "duration_source": "measured" }] },
+          {
+            "id": "j1",
+            "kind": "jingle",
+            "audio_url": "https://jw-incorporated.github.io/foray/player/assets/interlude-placeholder.wav",
+            "duration_sec": 3,
+            "duration_source": "measured"
+          },
+          { "$seg": ["b", 400, 460, { "source_item_id": "ep-b" }] }
+        ],
+        { "$num": "NaN" }
+      ],
+      "expect": { "return": { "index": 0, "into": 0, "start": 0 } }
+    },
+    {
+      "id": "foray-clock/at-elapsed-empty",
+      "covers": [],
+      "call": "segmentAtElapsed",
+      "args": [[], 10],
+      "expect": { "return": null }
+    },
+    {
+      "id": "foray-clock/elapsed-segment",
+      "covers": [],
+      "note": "A segment's playhead is an offset into somebody else's episode: 150 - 100 in.",
+      "call": "forayElapsed",
+      "args": [
+        [
+          { "$seg": ["a", 100, 210, { "source_item_id": "ep-a" }] },
+          { "$tts": ["n1", { "duration_sec": 8, "duration_source": "measured" }] },
+          {
+            "id": "j1",
+            "kind": "jingle",
+            "audio_url": "https://jw-incorporated.github.io/foray/player/assets/interlude-placeholder.wav",
+            "duration_sec": 3,
+            "duration_source": "measured"
+          },
+          { "$seg": ["b", 400, 460, { "source_item_id": "ep-b" }] }
+        ],
+        0,
+        150
+      ],
+      "expect": { "return": 50 }
+    },
+    {
+      "id": "foray-clock/elapsed-before-in-point",
+      "covers": [],
+      "call": "forayElapsed",
+      "args": [
+        [
+          { "$seg": ["a", 100, 210, { "source_item_id": "ep-a" }] },
+          { "$tts": ["n1", { "duration_sec": 8, "duration_source": "measured" }] },
+          {
+            "id": "j1",
+            "kind": "jingle",
+            "audio_url": "https://jw-incorporated.github.io/foray/player/assets/interlude-placeholder.wav",
+            "duration_sec": 3,
+            "duration_source": "measured"
+          },
+          { "$seg": ["b", 400, 460, { "source_item_id": "ep-b" }] }
+        ],
+        0,
+        40
+      ],
+      "expect": { "return": 0 }
+    },
+    {
+      "id": "foray-clock/elapsed-past-out-point",
+      "covers": [],
+      "call": "forayElapsed",
+      "args": [
+        [
+          { "$seg": ["a", 100, 210, { "source_item_id": "ep-a" }] },
+          { "$tts": ["n1", { "duration_sec": 8, "duration_source": "measured" }] },
+          {
+            "id": "j1",
+            "kind": "jingle",
+            "audio_url": "https://jw-incorporated.github.io/foray/player/assets/interlude-placeholder.wav",
+            "duration_sec": 3,
+            "duration_source": "measured"
+          },
+          { "$seg": ["b", 400, 460, { "source_item_id": "ep-b" }] }
+        ],
+        0,
+        400
+      ],
+      "expect": { "return": 110 }
+    },
+    {
+      "id": "foray-clock/elapsed-narration",
+      "covers": [],
+      "note": "A narration item has no in-point: its playhead IS the offset.",
+      "call": "forayElapsed",
+      "args": [
+        [
+          { "$seg": ["a", 100, 210, { "source_item_id": "ep-a" }] },
+          { "$tts": ["n1", { "duration_sec": 8, "duration_source": "measured" }] },
+          {
+            "id": "j1",
+            "kind": "jingle",
+            "audio_url": "https://jw-incorporated.github.io/foray/player/assets/interlude-placeholder.wav",
+            "duration_sec": 3,
+            "duration_source": "measured"
+          },
+          { "$seg": ["b", 400, 460, { "source_item_id": "ep-b" }] }
+        ],
+        1,
+        4
+      ],
+      "expect": { "return": 114 }
+    },
+    {
+      "id": "foray-clock/elapsed-jingle-clamped",
+      "covers": [],
+      "call": "forayElapsed",
+      "args": [
+        [
+          { "$seg": ["a", 100, 210, { "source_item_id": "ep-a" }] },
+          { "$tts": ["n1", { "duration_sec": 8, "duration_source": "measured" }] },
+          {
+            "id": "j1",
+            "kind": "jingle",
+            "audio_url": "https://jw-incorporated.github.io/foray/player/assets/interlude-placeholder.wav",
+            "duration_sec": 3,
+            "duration_source": "measured"
+          },
+          { "$seg": ["b", 400, 460, { "source_item_id": "ep-b" }] }
+        ],
+        2,
+        5
+      ],
+      "expect": { "return": 121 }
+    },
+    {
+      "id": "foray-clock/elapsed-last",
+      "covers": [],
+      "call": "forayElapsed",
+      "args": [
+        [
+          { "$seg": ["a", 100, 210, { "source_item_id": "ep-a" }] },
+          { "$tts": ["n1", { "duration_sec": 8, "duration_source": "measured" }] },
+          {
+            "id": "j1",
+            "kind": "jingle",
+            "audio_url": "https://jw-incorporated.github.io/foray/player/assets/interlude-placeholder.wav",
+            "duration_sec": 3,
+            "duration_source": "measured"
+          },
+          { "$seg": ["b", 400, 460, { "source_item_id": "ep-b" }] }
+        ],
+        3,
+        410
+      ],
+      "expect": { "return": 131 }
+    },
+    {
+      "id": "foray-clock/elapsed-index-past-end",
+      "covers": [],
+      "call": "forayElapsed",
+      "args": [
+        [
+          { "$seg": ["a", 100, 210, { "source_item_id": "ep-a" }] },
+          { "$tts": ["n1", { "duration_sec": 8, "duration_source": "measured" }] },
+          {
+            "id": "j1",
+            "kind": "jingle",
+            "audio_url": "https://jw-incorporated.github.io/foray/player/assets/interlude-placeholder.wav",
+            "duration_sec": 3,
+            "duration_source": "measured"
+          },
+          { "$seg": ["b", 400, 460, { "source_item_id": "ep-b" }] }
+        ],
+        99,
+        410
+      ],
+      "expect": { "return": 131 }
+    },
+    {
+      "id": "foray-clock/elapsed-negative-index",
+      "covers": [],
+      "call": "forayElapsed",
+      "args": [
+        [
+          { "$seg": ["a", 100, 210, { "source_item_id": "ep-a" }] },
+          { "$tts": ["n1", { "duration_sec": 8, "duration_source": "measured" }] },
+          {
+            "id": "j1",
+            "kind": "jingle",
+            "audio_url": "https://jw-incorporated.github.io/foray/player/assets/interlude-placeholder.wav",
+            "duration_sec": 3,
+            "duration_source": "measured"
+          },
+          { "$seg": ["b", 400, 460, { "source_item_id": "ep-b" }] }
+        ],
+        -1,
+        150
+      ],
+      "expect": { "return": 0 }
+    },
+    {
+      "id": "foray-clock/elapsed-no-playhead",
+      "covers": [],
+      "call": "forayElapsed",
+      "args": [
+        [
+          { "$seg": ["a", 100, 210, { "source_item_id": "ep-a" }] },
+          { "$tts": ["n1", { "duration_sec": 8, "duration_source": "measured" }] },
+          {
+            "id": "j1",
+            "kind": "jingle",
+            "audio_url": "https://jw-incorporated.github.io/foray/player/assets/interlude-placeholder.wav",
+            "duration_sec": 3,
+            "duration_source": "measured"
+          },
+          { "$seg": ["b", 400, 460, { "source_item_id": "ep-b" }] }
+        ],
+        3
+      ],
+      "expect": { "return": 121 }
+    },
+    {
+      "id": "foray-clock/elapsed-empty",
+      "covers": [],
+      "call": "forayElapsed",
+      "args": [[], 0, 10],
+      "expect": { "return": 0 }
+    },
+    {
+      "id": "foray-clock/progress-segments",
+      "covers": [],
+      "note": "One row per playable item with its authored segment id (null for narration and the jingle, never invented) and its Foray-clock start and length: what resumePoint reconciles a stored row against.",
+      "call": "progressSegments",
+      "args": [
+        {
+          "playable": [
+            { "$seg": ["a", 100, 210, { "source_item_id": "ep-a" }] },
+            { "$tts": ["n1", { "duration_sec": 8, "duration_source": "measured" }] },
+            {
+              "id": "j1",
+              "kind": "jingle",
+              "audio_url": "https://jw-incorporated.github.io/foray/player/assets/interlude-placeholder.wav",
+              "duration_sec": 3,
+              "duration_source": "measured"
+            },
+            { "$seg": ["b", 400, 460, { "source_item_id": "ep-b" }] }
+          ],
+          "entries": [
+            { "playable": true, "queueIndex": 0, "segment_id": "s1" },
+            { "playable": true, "queueIndex": 1, "segment_id": null },
+            { "playable": true, "queueIndex": 3, "segment_id": "s2" },
+            { "playable": false, "queueIndex": null, "segment_id": "s9" }
+          ]
+        }
+      ],
+      "expect": {
+        "return": [
+          { "durationSec": 110, "id": "s1", "startSec": 0 },
+          { "durationSec": 8, "id": null, "startSec": 110 },
+          { "durationSec": 3, "id": null, "startSec": 118 },
+          { "durationSec": 60, "id": "s2", "startSec": 121 }
+        ]
+      }
+    },
+    {
+      "id": "foray-clock/progress-segments-null",
+      "covers": [],
+      "call": "progressSegments",
+      "args": [null],
+      "expect": { "return": [] }
+    }
+  ]
+}

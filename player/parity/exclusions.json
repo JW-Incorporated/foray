@@ -1,5 +1,231 @@
 {
   "//": "Covered-suite tests with no Swift meaning. Each has one closed reason (webview-only, dom-only, text-pin, js-module-shape) and a sentence of why. An entry claims the engine need never reimplement this rule; a reviewer should be able to check that claim from the sentence alone.",
+  "foray-playback": {
+    "AUDIT 2026-09-22: a FINISHED Foray offers to start over, not to resume": {
+      "reason": "dom-only",
+      "why": "app.js's Foray page (renderForay) mounted in a stub DOM against a fake player bridge: markup, bindings, labels and what the page paints. In native mode the page is unchanged and reads the engine through the facades (NE-35 wires native Forays); nothing here is a rule the engine reimplements."
+    },
+    "AUDIT 2026-09-22: the main button is painted from `running`, the answer its press is decided by": {
+      "reason": "dom-only",
+      "why": "app.js's Foray page (renderForay) mounted in a stub DOM against a fake player bridge: markup, bindings, labels and what the page paints. In native mode the page is unchanged and reads the engine through the facades (NE-35 wires native Forays); nothing here is a rule the engine reimplements."
+    },
+    "DELETING EVERYTHING leaves the page interactive, and resume works again after it": {
+      "reason": "webview-only",
+      "why": "The page's own storage tiers (window.forayStorage, localStorage, the durable IndexedDB/Preferences tier, quota handling) as app.js reads them. In native mode the engine owns cp_foray and friends (OWNED_PREFIXES) and the page adopts them (NE-23); these pin the web tiers."
+    },
+    "EVICTION: a durable row is readable by the page after localStorage is wiped": {
+      "reason": "webview-only",
+      "why": "The page's own storage tiers (window.forayStorage, localStorage, the durable IndexedDB/Preferences tier, quota handling) as app.js reads them. In native mode the engine owns cp_foray and friends (OWNED_PREFIXES) and the page adopts them (NE-23); these pin the web tiers."
+    },
+    "MIGRATION through the real page: rows already in localStorage reach the durable tier": {
+      "reason": "webview-only",
+      "why": "The page's own storage tiers (window.forayStorage, localStorage, the durable IndexedDB/Preferences tier, quota handling) as app.js reads them. In native mode the engine owns cp_foray and friends (OWNED_PREFIXES) and the page adopts them (NE-23); these pin the web tiers."
+    },
+    "MIGRATION: the page still reads its own state through the store afterwards": {
+      "reason": "webview-only",
+      "why": "The page's own storage tiers (window.forayStorage, localStorage, the durable IndexedDB/Preferences tier, quota handling) as app.js reads them. In native mode the engine owns cp_foray and friends (OWNED_PREFIXES) and the page adopts them (NE-23); these pin the web tiers."
+    },
+    "PAUSING a live Foray is not a failed start — the page stays live": {
+      "reason": "dom-only",
+      "why": "app.js's Foray page (renderForay) mounted in a stub DOM against a fake player bridge: markup, bindings, labels and what the page paints. In native mode the page is unchanged and reads the engine through the facades (NE-35 wires native Forays); nothing here is a rule the engine reimplements."
+    },
+    "STORAGE FAILURE MUST NOT MAKE THE PAGE INERT — the regression this suite exists for": {
+      "reason": "webview-only",
+      "why": "The page's own storage tiers (window.forayStorage, localStorage, the durable IndexedDB/Preferences tier, quota handling) as app.js reads them. In native mode the engine owns cp_foray and friends (OWNED_PREFIXES) and the page adopts them (NE-23); these pin the web tiers."
+    },
+    "a backend with no out-point watch refuses the Foray instead of playing whole episodes": {
+      "reason": "js-module-shape",
+      "why": "A backend without an out-point watch (setOutPoint undefined), and the manager's refusal to hand it a bounded item. The native engine has one deck type and it always carries the three-layer out-point (outpoint and deck families), so there is no blind backend to refuse."
+    },
+    "a control that fails over live audio is recorded as a control, not as a start": {
+      "reason": "dom-only",
+      "why": "app.js's Foray page (renderForay) mounted in a stub DOM against a fake player bridge: markup, bindings, labels and what the page paints. In native mode the page is unchanged and reads the engine through the facades (NE-35 wires native Forays); nothing here is a rule the engine reimplements."
+    },
+    "a control that throws over LIVE audio says so without lying about the state": {
+      "reason": "dom-only",
+      "why": "app.js's Foray page (renderForay) mounted in a stub DOM against a fake player bridge: markup, bindings, labels and what the page paints. In native mode the page is unchanged and reads the engine through the facades (NE-35 wires native Forays); nothing here is a rule the engine reimplements."
+    },
+    "a drifted resume is recorded as an event; a clean one is not": {
+      "reason": "dom-only",
+      "why": "app.js's Foray page (renderForay) mounted in a stub DOM against a fake player bridge: markup, bindings, labels and what the page paints. In native mode the page is unchanged and reads the engine through the facades (NE-35 wires native Forays); nothing here is a rule the engine reimplements."
+    },
+    "a failed start leaves a trace in the record, not only on the screen": {
+      "reason": "dom-only",
+      "why": "app.js's Foray page (renderForay) mounted in a stub DOM against a fake player bridge: markup, bindings, labels and what the page paints. In native mode the page is unchanged and reads the engine through the facades (NE-35 wires native Forays); nothing here is a rule the engine reimplements."
+    },
+    "a full quota with no durable tier makes lsSet return false, and health says why": {
+      "reason": "webview-only",
+      "why": "The page's own storage tiers (window.forayStorage, localStorage, the durable IndexedDB/Preferences tier, quota handling) as app.js reads them. In native mode the engine owns cp_foray and friends (OWNED_PREFIXES) and the page adopts them (NE-23); these pin the web tiers."
+    },
+    "a mount with no storage at all still renders and binds": {
+      "reason": "webview-only",
+      "why": "The page's own storage tiers (window.forayStorage, localStorage, the durable IndexedDB/Preferences tier, quota handling) as app.js reads them. In native mode the engine owns cp_foray and friends (OWNED_PREFIXES) and the page adopts them (NE-23); these pin the web tiers."
+    },
+    "a record that throws does not cost the listener the message on screen": {
+      "reason": "dom-only",
+      "why": "app.js's Foray page (renderForay) mounted in a stub DOM against a fake player bridge: markup, bindings, labels and what the page paints. In native mode the page is unchanged and reads the engine through the facades (NE-35 wires native Forays); nothing here is a rule the engine reimplements."
+    },
+    "a refused write is reported to the caller instead of pretending to have worked": {
+      "reason": "webview-only",
+      "why": "The page's own storage tiers (window.forayStorage, localStorage, the durable IndexedDB/Preferences tier, quota handling) as app.js reads them. In native mode the engine owns cp_foray and friends (OWNED_PREFIXES) and the page adopts them (NE-23); these pin the web tiers."
+    },
+    "a resume whose segment no longer exists still mounts an interactive page": {
+      "reason": "dom-only",
+      "why": "app.js's Foray page (renderForay) mounted in a stub DOM against a fake player bridge: markup, bindings, labels and what the page paints. In native mode the page is unchanged and reads the engine through the facades (NE-35 wires native Forays); nothing here is a rule the engine reimplements."
+    },
+    "a scrub past either end of the strip clamps instead of leaving the Foray": {
+      "reason": "dom-only",
+      "why": "app.js's Foray page (renderForay) mounted in a stub DOM against a fake player bridge: markup, bindings, labels and what the page paints. In native mode the page is unchanged and reads the engine through the facades (NE-35 wires native Forays); nothing here is a rule the engine reimplements."
+    },
+    "a snapshot from an OLDER player module leaves the label alone rather than blanking it": {
+      "reason": "dom-only",
+      "why": "app.js's Foray page (renderForay) mounted in a stub DOM against a fake player bridge: markup, bindings, labels and what the page paints. In native mode the page is unchanged and reads the engine through the facades (NE-35 wires native Forays); nothing here is a rule the engine reimplements."
+    },
+    "a source credit is bound, so the outbound click is measured": {
+      "reason": "dom-only",
+      "why": "app.js's Foray page (renderForay) mounted in a stub DOM against a fake player bridge: markup, bindings, labels and what the page paints. In native mode the page is unchanged and reads the engine through the facades (NE-35 wires native Forays); nothing here is a rule the engine reimplements."
+    },
+    "a speed changed in the mini-player's sheet reaches the page's button": {
+      "reason": "dom-only",
+      "why": "app.js's Foray page (renderForay) mounted in a stub DOM against a fake player bridge: markup, bindings, labels and what the page paints. In native mode the page is unchanged and reads the engine through the facades (NE-35 wires native Forays); nothing here is a rule the engine reimplements."
+    },
+    "a start that THROWS says so on the page instead of vanishing into the console": {
+      "reason": "dom-only",
+      "why": "app.js's Foray page (renderForay) mounted in a stub DOM against a fake player bridge: markup, bindings, labels and what the page paints. In native mode the page is unchanged and reads the engine through the facades (NE-35 wires native Forays); nothing here is a rule the engine reimplements."
+    },
+    "a start that fails puts the page back to cold, so the next tap is a real retry": {
+      "reason": "dom-only",
+      "why": "app.js's Foray page (renderForay) mounted in a stub DOM against a fake player bridge: markup, bindings, labels and what the page paints. In native mode the page is unchanged and reads the engine through the facades (NE-35 wires native Forays); nothing here is a rule the engine reimplements."
+    },
+    "a stored position makes the cold press a resume, and Start over clears it": {
+      "reason": "dom-only",
+      "why": "app.js's Foray page (renderForay) mounted in a stub DOM against a fake player bridge: markup, bindings, labels and what the page paints. In native mode the page is unchanged and reads the engine through the facades (NE-35 wires native Forays); nothing here is a rule the engine reimplements."
+    },
+    "a thumbs-down opens the sheet and records nothing until it is submitted": {
+      "reason": "dom-only",
+      "why": "app.js's Foray page (renderForay) mounted in a stub DOM against a fake player bridge: markup, bindings, labels and what the page paints. In native mode the page is unchanged and reads the engine through the facades (NE-35 wires native Forays); nothing here is a rule the engine reimplements."
+    },
+    "a thumbs-up records a vote — the binder that actually threw": {
+      "reason": "dom-only",
+      "why": "app.js's Foray page (renderForay) mounted in a stub DOM against a fake player bridge: markup, bindings, labels and what the page paints. In native mode the page is unchanged and reads the engine through the facades (NE-35 wires native Forays); nothing here is a rule the engine reimplements."
+    },
+    "an error too strange to describe still reaches the screen AND the record": {
+      "reason": "dom-only",
+      "why": "app.js's Foray page (renderForay) mounted in a stub DOM against a fake player bridge: markup, bindings, labels and what the page paints. In native mode the page is unchanged and reads the engine through the facades (NE-35 wires native Forays); nothing here is a rule the engine reimplements."
+    },
+    "an older player module that cannot answer the drift question does not break the page": {
+      "reason": "js-module-shape",
+      "why": "A stale JS module (served from a cache) missing an export the page feature-tests. The native engine and its protocol version are fixed per build (the handshake family)."
+    },
+    "another Foray's ticks are not this page's news": {
+      "reason": "dom-only",
+      "why": "app.js's Foray page (renderForay) mounted in a stub DOM against a fake player bridge: markup, bindings, labels and what the page paints. In native mode the page is unchanged and reads the engine through the facades (NE-35 wires native Forays); nothing here is a rule the engine reimplements."
+    },
+    "app.js reads and writes through window.forayStorage when one is published": {
+      "reason": "webview-only",
+      "why": "The page's own storage tiers (window.forayStorage, localStorage, the durable IndexedDB/Preferences tier, quota handling) as app.js reads them. In native mode the engine owns cp_foray and friends (OWNED_PREFIXES) and the page adopts them (NE-23); these pin the web tiers."
+    },
+    "autoplay refusal reads as a browser being careful, not as a broken app": {
+      "reason": "webview-only",
+      "why": "WebKit lifts an <audio> element's autoplay restriction only for a play() made inside a user gesture's task (#225), so the page must reach the element with nothing awaited first. The native engine starts AVPlayer from a bridge command with an active session; there is no gesture to spend."
+    },
+    "changing the speed does NOT start playback": {
+      "reason": "dom-only",
+      "why": "app.js's Foray page (renderForay) mounted in a stub DOM against a fake player bridge: markup, bindings, labels and what the page paints. In native mode the page is unchanged and reads the engine through the facades (NE-35 wires native Forays); nothing here is a rule the engine reimplements."
+    },
+    "clicking a quarter of the way along the strip seeks to a quarter of the Foray": {
+      "reason": "dom-only",
+      "why": "app.js's Foray page (renderForay) mounted in a stub DOM against a fake player bridge: markup, bindings, labels and what the page paints. In native mode the page is unchanged and reads the engine through the facades (NE-35 wires native Forays); nothing here is a rule the engine reimplements."
+    },
+    "client.js only ever reports an error that describes the attempt in front of it": {
+      "reason": "dom-only",
+      "why": "app.js's Foray page (renderForay) mounted in a stub DOM against a fake player bridge: markup, bindings, labels and what the page paints. In native mode the page is unchanged and reads the engine through the facades (NE-35 wires native Forays); nothing here is a rule the engine reimplements."
+    },
+    "client.js spends the gesture on the element BEFORE its first await": {
+      "reason": "webview-only",
+      "why": "WebKit lifts an <audio> element's autoplay restriction only for a play() made inside a user gesture's task (#225), so the page must reach the element with nothing awaited first. The native engine starts AVPlayer from a bridge command with an active session; there is no gesture to spend."
+    },
+    "dismissing the sheet leaves the segment unvoted": {
+      "reason": "dom-only",
+      "why": "app.js's Foray page (renderForay) mounted in a stub DOM against a fake player bridge: markup, bindings, labels and what the page paints. In native mode the page is unchanged and reads the engine through the facades (NE-35 wires native Forays); nothing here is a rule the engine reimplements."
+    },
+    "during a seam beat the page says Pause, not Loading — the silence is deliberate": {
+      "reason": "dom-only",
+      "why": "app.js's Foray page (renderForay) mounted in a stub DOM against a fake player bridge: markup, bindings, labels and what the page paints. In native mode the page is unchanged and reads the engine through the facades (NE-35 wires native Forays); nothing here is a rule the engine reimplements."
+    },
+    "every why-line the UI will render is inside the copy budget": {
+      "reason": "text-pin",
+      "why": "Word counts of the authored why-lines the page renders (product principle 4): copy, not playback. The engine never renders a why-line."
+    },
+    "mounting the Foray page binds the transport — the inert-page regression": {
+      "reason": "dom-only",
+      "why": "app.js's Foray page (renderForay) mounted in a stub DOM against a fake player bridge: markup, bindings, labels and what the page paints. In native mode the page is unchanged and reads the engine through the facades (NE-35 wires native Forays); nothing here is a rule the engine reimplements."
+    },
+    "next, previous, a row and the strip each reach the player": {
+      "reason": "dom-only",
+      "why": "app.js's Foray page (renderForay) mounted in a stub DOM against a fake player bridge: markup, bindings, labels and what the page paints. In native mode the page is unchanged and reads the engine through the facades (NE-35 wires native Forays); nothing here is a rule the engine reimplements."
+    },
+    "pause comes back through the same callback and the label flips": {
+      "reason": "dom-only",
+      "why": "app.js's Foray page (renderForay) mounted in a stub DOM against a fake player bridge: markup, bindings, labels and what the page paints. In native mode the page is unchanged and reads the engine through the facades (NE-35 wires native Forays); nothing here is a rule the engine reimplements."
+    },
+    "play() does not destructure its options in the signature — a null caller must not throw": {
+      "reason": "js-module-shape",
+      "why": "A JS function signature's destructuring of a null argument. The engine's playForay arguments arrive as a validated protocol payload (engine-contract.js)."
+    },
+    "pressing play reaches the player, and the callback repaints the page": {
+      "reason": "dom-only",
+      "why": "app.js's Foray page (renderForay) mounted in a stub DOM against a fake player bridge: markup, bindings, labels and what the page paints. In native mode the page is unchanged and reads the engine through the facades (NE-35 wires native Forays); nothing here is a rule the engine reimplements."
+    },
+    "scrubbing a Foray that has not started begins it AT that position, not at the top": {
+      "reason": "dom-only",
+      "why": "app.js's Foray page (renderForay) mounted in a stub DOM against a fake player bridge: markup, bindings, labels and what the page paints. In native mode the page is unchanged and reads the engine through the facades (NE-35 wires native Forays); nothing here is a rule the engine reimplements."
+    },
+    "tapping the speed button opens a picker instead of cycling directly": {
+      "reason": "dom-only",
+      "why": "app.js's Foray page (renderForay) mounted in a stub DOM against a fake player bridge: markup, bindings, labels and what the page paints. In native mode the page is unchanged and reads the engine through the facades (NE-35 wires native Forays); nothing here is a rule the engine reimplements."
+    },
+    "the 2px gaps between the bars are live scrubber, not dead zones": {
+      "reason": "dom-only",
+      "why": "app.js's Foray page (renderForay) mounted in a stub DOM against a fake player bridge: markup, bindings, labels and what the page paints. In native mode the page is unchanged and reads the engine through the facades (NE-35 wires native Forays); nothing here is a rule the engine reimplements."
+    },
+    "the Foray page carries a speed button, labelled from the player": {
+      "reason": "dom-only",
+      "why": "app.js's Foray page (renderForay) mounted in a stub DOM against a fake player bridge: markup, bindings, labels and what the page paints. In native mode the page is unchanged and reads the engine through the facades (NE-35 wires native Forays); nothing here is a rule the engine reimplements."
+    },
+    "the bar the listener is inside fills as it plays; the ones behind it are full": {
+      "reason": "dom-only",
+      "why": "app.js's Foray page (renderForay) mounted in a stub DOM against a fake player bridge: markup, bindings, labels and what the page paints. In native mode the page is unchanged and reads the engine through the facades (NE-35 wires native Forays); nothing here is a rule the engine reimplements."
+    },
+    "the clock a failed start leaves behind is the place the button goes": {
+      "reason": "dom-only",
+      "why": "app.js's Foray page (renderForay) mounted in a stub DOM against a fake player bridge: markup, bindings, labels and what the page paints. In native mode the page is unchanged and reads the engine through the facades (NE-35 wires native Forays); nothing here is a rule the engine reimplements."
+    },
+    "the live bar keeps moving between segment changes — it is painted above the paint guard": {
+      "reason": "dom-only",
+      "why": "app.js's Foray page (renderForay) mounted in a stub DOM against a fake player bridge: markup, bindings, labels and what the page paints. In native mode the page is unchanged and reads the engine through the facades (NE-35 wires native Forays); nothing here is a rule the engine reimplements."
+    },
+    "the markup app.js emits carries every hook the harness serves": {
+      "reason": "dom-only",
+      "why": "app.js's Foray page (renderForay) mounted in a stub DOM against a fake player bridge: markup, bindings, labels and what the page paints. In native mode the page is unchanged and reads the engine through the facades (NE-35 wires native Forays); nothing here is a rule the engine reimplements."
+    },
+    "the page hands the RESOLVED Foray to the resume lookup, not just two numbers": {
+      "reason": "dom-only",
+      "why": "app.js's Foray page (renderForay) mounted in a stub DOM against a fake player bridge: markup, bindings, labels and what the page paints. In native mode the page is unchanged and reads the engine through the facades (NE-35 wires native Forays); nothing here is a rule the engine reimplements."
+    },
+    "the speed button says its value to a screen reader AT NORMAL SPEED too": {
+      "reason": "dom-only",
+      "why": "app.js's Foray page (renderForay) mounted in a stub DOM against a fake player bridge: markup, bindings, labels and what the page paints. In native mode the page is unchanged and reads the engine through the facades (NE-35 wires native Forays); nothing here is a rule the engine reimplements."
+    },
+    "the speed button survives a Foray with nothing playable": {
+      "reason": "dom-only",
+      "why": "app.js's Foray page (renderForay) mounted in a stub DOM against a fake player bridge: markup, bindings, labels and what the page paints. In native mode the page is unchanged and reads the engine through the facades (NE-35 wires native Forays); nothing here is a rule the engine reimplements."
+    },
+    "the tap reaches playForay with nothing awaited in front of it": {
+      "reason": "webview-only",
+      "why": "WebKit lifts an <audio> element's autoplay restriction only for a play() made inside a user gesture's task (#225), so the page must reach the element with nothing awaited first. The native engine starts AVPlayer from a bridge command with an active session; there is no gesture to spend."
+    }
+  },
   "html-audio-backend": {
     "A TELEMETRY SINK THAT THROWS CANNOT BREAK THE PLAYER (#264)": {
       "reason": "js-module-shape",
@@ -13,13 +239,29 @@
       "reason": "webview-only",
       "why": "WebKit lifts an <audio> element's autoplay restriction only for a play() made inside a user gesture's task (#225). The native engine starts AVPlayer from native code, where there is no autoplay gesture to spend."
     },
+    "a rejected play() surfaces as onError, never an unhandled rejection": {
+      "reason": "js-module-shape",
+      "why": "HTMLMediaElement.play() returns a Promise, and an unhandled rejection is a JS runtime concept. AVPlayer's play returns nothing; a deck that cannot play reports a failed event (AVDeckTests)."
+    },
     "a released backend does not spend a gesture on a dead element": {
       "reason": "webview-only",
       "why": "WebKit lifts an <audio> element's autoplay restriction only for a play() made inside a user gesture's task (#225). The native engine starts AVPlayer from native code, where there is no autoplay gesture to spend."
     },
+    "a surface's own listeners survive a handover": {
+      "reason": "webview-only",
+      "why": "addMediaListener re-attaches the page's DOM listeners to whichever <audio> element holds the player role. In native mode the page's events come from the engine (snapshot and events over the bridge), whichever AVPlayer is playing."
+    },
     "a throwing isHidden cannot stop a load, and falls back to the visible budget": {
       "reason": "webview-only",
       "why": "A page-supplied isHidden() callback (document.hidden) that throws. The native engine reads application state natively; an unknown visibility getting the visible budget is fixtured in deck-episode (deadline-unknown-visibility-is-visible)."
+    },
+    "a window handler that throws cannot take the audio down with it": {
+      "reason": "js-module-shape",
+      "why": "A page callback (onPrefetchWindow) that throws inside the element's timeupdate. The native DeckPair's window is the engine's own decision (deck/window-*), with no page callback in the path."
+    },
+    "an element that refuses a playback rate does not take the Foray down with it": {
+      "reason": "webview-only",
+      "why": "Safari's <audio> throws on some playbackRate assignments, so the setter is guarded. AVPlayer's rate is a property that never throws; which rate the lock screen reports is deck/reported-rate-*."
     },
     "every deadline is ref'd, so it fires whether or not anything else is running": {
       "reason": "js-module-shape",
@@ -64,6 +306,116 @@
     "elementFacts never throws: an element whose reads throw reports nulls": {
       "reason": "webview-only",
       "why": "The same HTMLMediaElement read, guarded against a DOM getter that throws. The engine reads no element (NE-15), so there is nothing here for Swift to reimplement."
+    },
+    "narration warm: fetches the next file on the SPARE element, muted, and never plays it": {
+      "reason": "webview-only",
+      "why": "The spare HTMLMediaElement that warms the next rendered narration file (section 15 of queue-manager.js): its fetch, abort, hidden-page and stand-down rules are the web element's. The engine prefetches with NE-32's DeckPair standby deck instead (deck and prepare families, DeckPairTests)."
+    },
+    "narration warm: bounded to ONE file — a second warm replaces the first": {
+      "reason": "webview-only",
+      "why": "The spare HTMLMediaElement that warms the next rendered narration file (section 15 of queue-manager.js): its fetch, abort, hidden-page and stand-down rules are the web element's. The engine prefetches with NE-32's DeckPair standby deck instead (deck and prepare families, DeckPairTests)."
+    },
+    "narration warm: a cancel while VISIBLE aborts the fetch": {
+      "reason": "webview-only",
+      "why": "The spare HTMLMediaElement that warms the next rendered narration file (section 15 of queue-manager.js): its fetch, abort, hidden-page and stand-down rules are the web element's. The engine prefetches with NE-32's DeckPair standby deck instead (deck and prepare families, DeckPairTests)."
+    },
+    "narration warm: a cancel while HIDDEN does no media work at all (the handover's discard lesson)": {
+      "reason": "webview-only",
+      "why": "The spare HTMLMediaElement that warms the next rendered narration file (section 15 of queue-manager.js): its fetch, abort, hidden-page and stand-down rules are the web element's. The engine prefetches with NE-32's DeckPair standby deck instead (deck and prepare families, DeckPairTests)."
+    },
+    "narration warm: refuses a non-https file and a file the player already holds": {
+      "reason": "webview-only",
+      "why": "The spare HTMLMediaElement that warms the next rendered narration file (section 15 of queue-manager.js): its fetch, abort, hidden-page and stand-down rules are the web element's. The engine prefetches with NE-32's DeckPair standby deck instead (deck and prepare families, DeckPairTests)."
+    },
+    "narration warm: a host whose Audio returns the PLAYER element gets no warm at all": {
+      "reason": "webview-only",
+      "why": "The spare HTMLMediaElement that warms the next rendered narration file (section 15 of queue-manager.js): its fetch, abort, hidden-page and stand-down rules are the web element's. The engine prefetches with NE-32's DeckPair standby deck instead (deck and prepare families, DeckPairTests)."
+    },
+    "narration warm: an unexplained pause while it is loading stands it down for the session": {
+      "reason": "webview-only",
+      "why": "The spare HTMLMediaElement that warms the next rendered narration file (section 15 of queue-manager.js): its fetch, abort, hidden-page and stand-down rules are the web element's. The engine prefetches with NE-32's DeckPair standby deck instead (deck and prepare families, DeckPairTests)."
+    },
+    "narration warm: a READY warm is not evidence of a stolen session": {
+      "reason": "webview-only",
+      "why": "The spare HTMLMediaElement that warms the next rendered narration file (section 15 of queue-manager.js): its fetch, abort, hidden-page and stand-down rules are the web element's. The engine prefetches with NE-32's DeckPair standby deck instead (deck and prepare families, DeckPairTests)."
+    },
+    "narration warm: a failed warm is dropped and the boundary loads the ordinary way": {
+      "reason": "webview-only",
+      "why": "The spare HTMLMediaElement that warms the next rendered narration file (section 15 of queue-manager.js): its fetch, abort, hidden-page and stand-down rules are the web element's. The engine prefetches with NE-32's DeckPair standby deck instead (deck and prepare families, DeckPairTests)."
+    },
+    "narration warm: release() empties the spare element and switches it off": {
+      "reason": "webview-only",
+      "why": "The spare HTMLMediaElement that warms the next rendered narration file (section 15 of queue-manager.js): its fetch, abort, hidden-page and stand-down rules are the web element's. The engine prefetches with NE-32's DeckPair standby deck instead (deck and prepare families, DeckPairTests)."
+    },
+    "narration warm: without an Audio constructor (node --test) it is simply unavailable": {
+      "reason": "webview-only",
+      "why": "The spare HTMLMediaElement that warms the next rendered narration file (section 15 of queue-manager.js): its fetch, abort, hidden-page and stand-down rules are the web element's. The engine prefetches with NE-32's DeckPair standby deck instead (deck and prepare families, DeckPairTests)."
+    },
+    "D2: the player element keeps pitch at every speed from construction": {
+      "reason": "dom-only",
+      "why": "`preservesPitch` and its vendor-prefixed flags on the HTMLMediaElement. AVDeck keeps pitch at every rate by setting `audioTimePitchAlgorithm = .timeDomain` on every item it makes (AVDeck.load)."
+    },
+    "D2: keepPitch sets the prefixed flags only where the engine has them, and never throws": {
+      "reason": "dom-only",
+      "why": "`preservesPitch` and its vendor-prefixed flags on the HTMLMediaElement. AVDeck keeps pitch at every rate by setting `audioTimePitchAlgorithm = .timeDomain` on every item it makes (AVDeck.load)."
+    }
+  },
+  "interlude": {
+    "an `error` reports 'error'; a rejected play() reports 'rejected'; a throwing play() refuses": {
+      "reason": "dom-only",
+      "why": "DOM `error` events and the promise HTMLMediaElement.play() returns. The native jingle is not an <audio> element: it is the engine's InterludePlayer behind the Interlude seam (NE-34), whose start/stop/ended contract is the fakeInterlude the manager-foray scenarios drive (NE-31j) and whose timing NE-34's Simulator tests assert."
+    },
+    "construction points the element at the asset and asks for it up front": {
+      "reason": "dom-only",
+      "why": "An <audio> element's src and preload attributes. The native jingle is not an <audio> element: it is the engine's InterludePlayer behind the Interlude seam (NE-34), whose start/stop/ended contract is the fakeInterlude the manager-foray scenarios drive (NE-31j) and whose timing NE-34's Simulator tests assert."
+    },
+    "describeInterlude names the decision it made, not one it did not": {
+      "reason": "text-pin",
+      "why": "Pins describeInterlude's English telemetry sentences. The engine's jingle rows carry closed tokens from the diag-tokens vocabulary, not these strings (the same call as describeSeam's two tests)."
+    },
+    "no element on this host: every method is inert and start() says so": {
+      "reason": "dom-only",
+      "why": "A host with no Audio constructor (Node, a non-DOM worker). The native jingle is not an <audio> element: it is the engine's InterludePlayer behind the Interlude seam (NE-34), whose start/stop/ended contract is the fakeInterlude the manager-foray scenarios drive (NE-31j) and whose timing NE-34's Simulator tests assert."
+    },
+    "prime() spends the gesture muted, then rewinds and unmutes; once per session": {
+      "reason": "webview-only",
+      "why": "WebKit lifts an <audio> element's autoplay restriction only for a play() made inside a user gesture's task (#225). The native engine starts audio from native code, where there is no gesture to spend."
+    },
+    "release() silences, drops the source, and refuses to start again": {
+      "reason": "dom-only",
+      "why": "removeAttribute('src') and load() on the element to drop its buffer. The native jingle is not an <audio> element: it is the engine's InterludePlayer behind the Interlude seam (NE-34), whose start/stop/ended contract is the fakeInterlude the manager-foray scenarios drive (NE-31j) and whose timing NE-34's Simulator tests assert."
+    },
+    "start() refuses an element that has not buffered, and does not play it": {
+      "reason": "dom-only",
+      "why": "HTMLMediaElement.readyState (HAVE_FUTURE_DATA). The native jingle is not an <audio> element: it is the engine's InterludePlayer behind the Interlude seam (NE-34), whose start/stop/ended contract is the fakeInterlude the manager-foray scenarios drive (NE-31j) and whose timing NE-34's Simulator tests assert."
+    },
+    "start() rewinds, forces 1.0x whatever the element had, plays, and reports active": {
+      "reason": "dom-only",
+      "why": "The element's currentTime and playbackRate properties. The 1.0x rule itself is fixtured (interlude/rate-is-1x). The native jingle is not an <audio> element: it is the engine's InterludePlayer behind the Interlude seam (NE-34), whose start/stop/ended contract is the fakeInterlude the manager-foray scenarios drive (NE-31j) and whose timing NE-34's Simulator tests assert."
+    },
+    "the URL satisfies `media-src https:` on every host, including capacitor://localhost": {
+      "reason": "webview-only",
+      "why": "index.html's Content-Security-Policy (media-src https:) applies to the WebView's own media elements. Native playback is not subject to the page's CSP."
+    },
+    "the committed placeholder is 44.1 kHz stereo 16-bit PCM, under 600 KB": {
+      "reason": "js-module-shape",
+      "why": "Reads the committed WAV's bytes with Node's fs. It pins the FILE that every player plays, not a rule a player implements, and it holds whichever engine plays the asset; there is nothing for Swift to reimplement."
+    },
+    "the element's `ended` reports once, and a stop is never reported": {
+      "reason": "dom-only",
+      "why": "DOM `ended` event listeners on the element. The native jingle is not an <audio> element: it is the engine's InterludePlayer behind the Interlude seam (NE-34), whose start/stop/ended contract is the fakeInterlude the manager-foray scenarios drive (NE-31j) and whose timing NE-34's Simulator tests assert."
+    },
+    "the placeholder peaks at about -6 dBFS, starts from silence and ends in silence": {
+      "reason": "js-module-shape",
+      "why": "Reads the committed WAV's samples with Node's fs. It pins the asset's loudness and clean edges, which no player computes; it holds whichever engine plays the file."
+    },
+    "the preference is ON unless the store says the literal 'off', and a broken store is ON": {
+      "reason": "webview-only",
+      "why": "The page owns cp_interlude: client.js reads it with readInterludePref and hands the engine a boolean (setInterludeEnabled, engine-contract.js). The engine never reads the key, so there is no store for it to misread."
+    },
+    "writeInterludePref stores 'on'/'off' under the cp_ key and reports a refusal": {
+      "reason": "webview-only",
+      "why": "The page's Settings switch writes cp_interlude (client.js setInterludeEnabled -> writeInterludePref) and then sends the engine the boolean. The engine persists nothing under that key."
     }
   },
   "media-session": {
@@ -186,6 +538,14 @@
     "app.js hands over the discover pool it already fetched, not a new request": {
       "reason": "js-module-shape",
       "why": "Text scan: app.js reuses the discover pool it already fetched; native mode replaces this page wiring wholesale (plan §5.6: syncMediaSession returns early and the lock-screen surfaces are not installed), so there is no rule here for the engine to reimplement."
+    },
+    "artworkUrlsByShow harvests the discover pool by exact show name": {
+      "reason": "webview-only",
+      "why": "The page joins show artwork out of data/discover.json (client.js, through foray-sources.js artworkUrlsByShow) and hands the engine a finished URL per item; the engine never reads the discover pool. The engine half — a miss falls back to the app artwork, never a blank — is media/artwork-miss-falls-back."
+    },
+    "artworkUrlsByShow survives a missing, malformed or empty document": {
+      "reason": "webview-only",
+      "why": "The page joins show artwork out of data/discover.json (client.js, through foray-sources.js artworkUrlsByShow) and hands the engine a finished URL per item; the engine never reads the discover pool. The engine half — a miss falls back to the app artwork, never a blank — is media/artwork-miss-falls-back."
     },
     "clear() empties the OS slot and reports none": {
       "reason": "webview-only",
@@ -333,13 +693,29 @@
     }
   },
   "playback-rate": {
-    "the label is written the way podcast apps write it": {
-      "reason": "dom-only",
-      "why": "The rate button's text is page DOM in both engine modes (plan §3 A-1: the page owns the UI); the engine carries the rate as a number, never this label."
+    "a junk or stale stored row is snapped on the way OUT, not trusted": {
+      "reason": "webview-only",
+      "why": "cp_rate is read and written by the page through readRate/writeRate (plan §5.2: setRate — the page still writes cp_rate); the engine receives the rate as a number through setRate, and the snap it applies is the rate family's normalizeRate cases."
+    },
+    "a store that throws is reported, never thrown out of — a refused write is not a refused speed": {
+      "reason": "webview-only",
+      "why": "cp_rate is read and written by the page through readRate/writeRate (plan §5.2: setRate — the page still writes cp_rate); the engine receives the rate as a number through setRate, and the snap it applies is the rate family's normalizeRate cases."
+    },
+    "a stored speed round-trips": {
+      "reason": "webview-only",
+      "why": "cp_rate is read and written by the page through readRate/writeRate (plan §5.2: setRate — the page still writes cp_rate); the engine receives the rate as a number through setRate, and the snap it applies is the rate family's normalizeRate cases."
+    },
+    "an off-ladder value is snapped on the way IN too, so no junk is ever stored": {
+      "reason": "webview-only",
+      "why": "cp_rate is read and written by the page through readRate/writeRate (plan §5.2: setRate — the page still writes cp_rate); the engine receives the rate as a number through setRate, and the snap it applies is the rate family's normalizeRate cases."
     },
     "no label ever reads 1.5000000000000002×, or 'undefined×'": {
       "reason": "dom-only",
       "why": "The rate button's text is page DOM in both engine modes (plan §3 A-1: the page owns the UI); the engine carries the rate as a number, never this label. The snap a junk value labels as is normalizeRate's, which the rate family pins."
+    },
+    "nothing stored is normal speed, not zero": {
+      "reason": "webview-only",
+      "why": "cp_rate is read and written by the page through readRate/writeRate (plan §5.2: setRate — the page still writes cp_rate); the engine receives the rate as a number through setRate, and the snap it applies is the rate family's normalizeRate cases."
     },
     "the accessible name says the value, because aria-label REPLACES the button text": {
       "reason": "dom-only",
@@ -349,25 +725,9 @@
       "reason": "webview-only",
       "why": "cp_rate is read and written by the page through readRate/writeRate (plan §5.2: setRate — the page still writes cp_rate); the engine receives the rate as a number through setRate, and the snap it applies is the rate family's normalizeRate cases."
     },
-    "a stored speed round-trips": {
-      "reason": "webview-only",
-      "why": "cp_rate is read and written by the page through readRate/writeRate (plan §5.2: setRate — the page still writes cp_rate); the engine receives the rate as a number through setRate, and the snap it applies is the rate family's normalizeRate cases."
-    },
-    "nothing stored is normal speed, not zero": {
-      "reason": "webview-only",
-      "why": "cp_rate is read and written by the page through readRate/writeRate (plan §5.2: setRate — the page still writes cp_rate); the engine receives the rate as a number through setRate, and the snap it applies is the rate family's normalizeRate cases."
-    },
-    "a junk or stale stored row is snapped on the way OUT, not trusted": {
-      "reason": "webview-only",
-      "why": "cp_rate is read and written by the page through readRate/writeRate (plan §5.2: setRate — the page still writes cp_rate); the engine receives the rate as a number through setRate, and the snap it applies is the rate family's normalizeRate cases."
-    },
-    "an off-ladder value is snapped on the way IN too, so no junk is ever stored": {
-      "reason": "webview-only",
-      "why": "cp_rate is read and written by the page through readRate/writeRate (plan §5.2: setRate — the page still writes cp_rate); the engine receives the rate as a number through setRate, and the snap it applies is the rate family's normalizeRate cases."
-    },
-    "a store that throws is reported, never thrown out of — a refused write is not a refused speed": {
-      "reason": "webview-only",
-      "why": "cp_rate is read and written by the page through readRate/writeRate (plan §5.2: setRate — the page still writes cp_rate); the engine receives the rate as a number through setRate, and the snap it applies is the rate family's normalizeRate cases."
+    "the label is written the way podcast apps write it": {
+      "reason": "dom-only",
+      "why": "The rate button's text is page DOM in both engine modes (plan §3 A-1: the page owns the UI); the engine carries the rate as a number, never this label."
     }
   },
   "position-store": {
@@ -389,6 +749,14 @@
       "reason": "js-module-shape",
       "why": "queue-strategy.js builds the queue in the page; the engine is handed a built queue and the page's continuation hops (plan §3 A-1: the page owns decisions; §5.5), so there is no strategy for it to reimplement."
     },
+    "a backend with no out-point watch refuses the Foray instead of playing whole episodes": {
+      "reason": "js-module-shape",
+      "why": "A backend without an out-point watch (setOutPoint undefined), and the manager's refusal to hand it a bounded item. The native engine has one deck type and it always carries the three-layer out-point (outpoint and deck families), so there is no blind backend to refuse."
+    },
+    "a bounded item reaching a blind backend by any other route refuses too": {
+      "reason": "js-module-shape",
+      "why": "A backend without an out-point watch (setOutPoint undefined), and the manager's refusal to hand it a bounded item. The native engine has one deck type and it always carries the three-layer out-point (outpoint and deck families), so there is no blind backend to refuse."
+    },
     "a malformed strategy is rejected at construction, not at play time": {
       "reason": "js-module-shape",
       "why": "queue-strategy.js builds the queue in the page; the engine is handed a built queue and the page's continuation hops (plan §3 A-1: the page owns decisions; §5.5), so there is no strategy for it to reimplement."
@@ -397,6 +765,26 @@
       "reason": "js-module-shape",
       "why": "PlayerQueueManager's module-level singleton guard (corner case #19's first layer). The engine is one @MainActor ForayEngine per process by construction (plan §4.2, A-4); the single-audible half of #19 is fixtured in manager-episode (double-skip-with-slow-loads-plays-once)."
     },
+    "a surface that throws in onSeamGapChange cannot break playback": {
+      "reason": "js-module-shape",
+      "why": "A page callback (onSeamGapChange) that throws. In native mode the page is told about the beat through the snapshot's inSeamGap and the engine event, across the bridge; no page code runs inside the engine's seam path."
+    },
+    "an unbounded queue still works on a backend with no out-point watch": {
+      "reason": "js-module-shape",
+      "why": "A backend without an out-point watch (setOutPoint undefined), and the manager's refusal to hand it a bounded item. The native engine has one deck type and it always carries the three-layer out-point (outpoint and deck families), so there is no blind backend to refuse."
+    },
+    "cold-launch restore of a Foray on a blind backend makes no sound either": {
+      "reason": "js-module-shape",
+      "why": "A backend without an out-point watch (setOutPoint undefined), and the manager's refusal to hand it a bounded item. The native engine has one deck type and it always carries the three-layer out-point (outpoint and deck families), so there is no blind backend to refuse."
+    },
+    "disposing during a beat leaves no timer alive": {
+      "reason": "js-module-shape",
+      "why": "PlayerQueueManager.dispose(), the JS object's teardown (tests, a page reload). EngineCore lives for the process; its beat is cut by stop and every transport action, which manager-foray/stop-during-a-beat and the transport-during-a-beat cases pin with timersLive 0."
+    },
+    "the beat is observable in telemetry, both when it fires and when it is cut": {
+      "reason": "text-pin",
+      "why": "Pins the English telemetry lines seam.gap.armed / hold / cut. The beat's arming, hold and cut are fixtured by their effects (manager-foray/an-unbridged-seam-holds-the-full-beat, pause-during-a-beat); the engine's rows use the diag-tokens vocabulary."
+    },
     "the manager adds no macrotask between a settled load and play()": {
       "reason": "webview-only",
       "why": "WebKit's user-gesture indicator is task-scoped, so a timer between the load and play() strands an autoplay start. The native engine starts audio from native code, where no autoplay gesture exists to lose."
@@ -404,16 +792,64 @@
     "reconnecting a route never resumes on the web and Android path, even one reported as a car (player-core-10)": {
       "reason": "webview-only",
       "why": "The JS manager's route policy runs only on the web and Android path (founder Q5 default, audit round 3): reconnecting never resumes there. The native engine owns route policy (EngineCore.knownCarRoutes) and pins it with its own XCTests."
+    },
+    "§14: a media error during the first line's load does not stop the player before the fallback": {
+      "reason": "webview-only",
+      "why": "The ordering trap between html-audio-backend.js's persistent `error` listener and a load's own rejection: the listener fires first, so the page must leave the report to the load. AVDeck reports one `.failed` (or `.deadlineExceeded`) per load token and nothing else, and the core decides the fallback from that one event (fallBackToScript; fixture manager-foray/a-first-line-whose-file-fails-is-spoken)."
+    },
+    "§14: a refused play() of a rendered line falls back too": {
+      "reason": "webview-only",
+      "why": "An HTMLMediaElement `play()` promise rejected by the browser's autoplay policy. AVPlayer has no play promise and the engine's session is active before any play (plan §4.4); a file that fails while sounding is AVDeck's `.failed`, which falls back the same way (fixture manager-foray/a-line-that-fails-while-sounding-is-spoken-from-its-first-word)."
+    },
+    "§14: narrationFallbackReason reads the backend's own messages into six words": {
+      "reason": "webview-only",
+      "why": "It reads html-audio-backend.js's own error sentences (MediaError codes, `did not settle within`, `play rejected`) into a word. The engine's reason comes from the DeckEvent itself (`deadlineExceeded` is `timeout`, `failed` is `failed`, the `narration kind=fallback` row), and AVDeck's own `deck kind=failed` row carries the error's domain and code."
+    },
+    "§14: audioHostOf keeps the host and nothing else": {
+      "reason": "js-module-shape",
+      "why": "A JS helper that cuts a URL down to its host for the web's `narration.fallback` telemetry line. On iOS a URL never leaves AVDeck: its `deck` rows carry the host through AVDeck.hostNode (AVDeckTests), and the core's fallback row carries none."
+    },
+    "§15: the rendered line after a clip is warmed once the clip is audible — one file": {
+      "reason": "webview-only",
+      "why": "Section 15 is the web lane's narration warm: HtmlAudioBackend.warmNarration fetches the next rendered file on a spare muted element that is never played or promoted. queue-manager.js checks the capability and says so: a backend without it (every fake, the native engine) behaves exactly as before. The engine's own prefetch is NE-32's DeckPair standby, pinned by the deck and prepare families and DeckPairTests."
+    },
+    "§15: nothing is warmed when the next item is a clip or a script-only line": {
+      "reason": "webview-only",
+      "why": "Section 15 is the web lane's narration warm: HtmlAudioBackend.warmNarration fetches the next rendered file on a spare muted element that is never played or promoted. queue-manager.js checks the capability and says so: a backend without it (every fake, the native engine) behaves exactly as before. The engine's own prefetch is NE-32's DeckPair standby, pinned by the deck and prepare families and DeckPairTests."
+    },
+    "§15: a skip past the warmed line cancels it, and the new next line is warmed": {
+      "reason": "webview-only",
+      "why": "Section 15 is the web lane's narration warm: HtmlAudioBackend.warmNarration fetches the next rendered file on a spare muted element that is never played or promoted. queue-manager.js checks the capability and says so: a backend without it (every fake, the native engine) behaves exactly as before. The engine's own prefetch is NE-32's DeckPair standby, pinned by the deck and prepare families and DeckPairTests."
+    },
+    "§15: arriving at the warmed line keeps the warm until its load, then lets it go": {
+      "reason": "webview-only",
+      "why": "Section 15 is the web lane's narration warm: HtmlAudioBackend.warmNarration fetches the next rendered file on a spare muted element that is never played or promoted. queue-manager.js checks the capability and says so: a backend without it (every fake, the native engine) behaves exactly as before. The engine's own prefetch is NE-32's DeckPair standby, pinned by the deck and prepare families and DeckPairTests."
+    },
+    "§15: no warm behind an item too short to finish it before its own boundary": {
+      "reason": "webview-only",
+      "why": "Section 15 is the web lane's narration warm: HtmlAudioBackend.warmNarration fetches the next rendered file on a spare muted element that is never played or promoted. queue-manager.js checks the capability and says so: a backend without it (every fake, the native engine) behaves exactly as before. The engine's own prefetch is NE-32's DeckPair standby, pinned by the deck and prepare families and DeckPairTests."
+    },
+    "§15: stop drops the warm": {
+      "reason": "webview-only",
+      "why": "Section 15 is the web lane's narration warm: HtmlAudioBackend.warmNarration fetches the next rendered file on a spare muted element that is never played or promoted. queue-manager.js checks the capability and says so: a backend without it (every fake, the native engine) behaves exactly as before. The engine's own prefetch is NE-32's DeckPair standby, pinned by the deck and prepare families and DeckPairTests."
+    },
+    "§15: a backend without the capability (every other fake, the native engine) is untouched": {
+      "reason": "webview-only",
+      "why": "Section 15 is the web lane's narration warm: HtmlAudioBackend.warmNarration fetches the next rendered file on a spare muted element that is never played or promoted. queue-manager.js checks the capability and says so: a backend without it (every fake, the native engine) behaves exactly as before. The engine's own prefetch is NE-32's DeckPair standby, pinned by the deck and prepare families and DeckPairTests."
+    },
+    "§15: pausing and resuming the clip before a warmed line keeps the warm — no refetch": {
+      "reason": "webview-only",
+      "why": "Section 15 is the web lane's narration warm: HtmlAudioBackend.warmNarration fetches the next rendered file on a spare muted element that is never played or promoted. queue-manager.js checks the capability and says so: a backend without it (every fake, the native engine) behaves exactly as before. The engine's own prefetch is NE-32's DeckPair standby, pinned by the deck and prepare families and DeckPairTests."
     }
   },
   "queue-state": {
-    "reduce never mutates the state it is given": {
-      "reason": "js-module-shape",
-      "why": "Pins that the JS reducer leaves its argument object untouched. The Swift PlayerQueueState is an enum value type passed by value, so a reducer that mutates its input cannot be written; every transition's output is pinned by the queue-state family instead."
-    },
     "an unknown event is ignored with telemetry rather than throwing": {
       "reason": "js-module-shape",
       "why": "Pins reduce()'s default branch for an event object whose type is outside the closed set. Swift's Event is a closed enum switched exhaustively, so an unknown event is unrepresentable; the engine's own unknown-input path is the contract family's unknown-cmd (NE-11j)."
+    },
+    "reduce never mutates the state it is given": {
+      "reason": "js-module-shape",
+      "why": "Pins that the JS reducer leaves its argument object untouched. The Swift PlayerQueueState is an enum value type passed by value, so a reducer that mutates its input cannot be written; every transition's output is pinned by the queue-state family instead."
     }
   },
   "seam-gap": {
@@ -424,6 +860,32 @@
     "the beat's log line names both sides and the length": {
       "reason": "text-pin",
       "why": "Pins describeSeam's English telemetry sentence. The engine writes packed seam rows from the diag-tokens vocabulary, not this string."
+    }
+  },
+  "seek-policy": {
+    "a padded timestamp still renders as an estimate, never as a clock time": {
+      "reason": "text-pin",
+      "why": "Pins formatTimestamp's wording for a PADDED time. That a padded segment is playable but never exact is fixtured (seek-policy/can-play-padded-not-exact). The page renders every timestamp a listener sees (chapter lists, the scrubber, spoken answers). The engine carries seconds and a precision token (seekPrecision, fixtured) and never formats one, so this wording has no Swift meaning."
+    },
+    "approximate rendering contains no banned copy words": {
+      "reason": "text-pin",
+      "why": "A copy-rules scan (CLAUDE.md) over rendered strings. The page renders every timestamp a listener sees (chapter lists, the scrubber, spoken answers). The engine carries seconds and a precision token (seekPrecision, fixtured) and never formats one, so this wording has no Swift meaning."
+    },
+    "describeTimestamp never implies precision it does not have": {
+      "reason": "text-pin",
+      "why": "Pins describeTimestamp's prose (\"at 1:07:30\", \"around minute 68\"). The page renders every timestamp a listener sees (chapter lists, the scrubber, spoken answers). The engine carries seconds and a precision token (seekPrecision, fixtured) and never formats one, so this wording has no Swift meaning."
+    },
+    "formatTimestamp marks approximate times and rounds away false precision": {
+      "reason": "text-pin",
+      "why": "Pins formatTimestamp's \"~N min\" wording. The page renders every timestamp a listener sees (chapter lists, the scrubber, spoken answers). The engine carries seconds and a precision token (seekPrecision, fixtured) and never formats one, so this wording has no Swift meaning."
+    },
+    "formatTimestamp refuses junk instead of rendering NaN": {
+      "reason": "text-pin",
+      "why": "Pins the \"--:--\" placeholder string. The page renders every timestamp a listener sees (chapter lists, the scrubber, spoken answers). The engine carries seconds and a precision token (seekPrecision, fixtured) and never formats one, so this wording has no Swift meaning."
+    },
+    "formatTimestamp renders exact times to the second": {
+      "reason": "text-pin",
+      "why": "Pins formatTimestamp's clock strings. The page renders every timestamp a listener sees (chapter lists, the scrubber, spoken answers). The engine carries seconds and a precision token (seekPrecision, fixtured) and never formats one, so this wording has no Swift meaning."
     }
   },
   "transport-policy": {
@@ -609,6 +1071,22 @@
       "reason": "dom-only",
       "why": "The sheet's ⏭, Up Next (N) and Save read the page's own episode surface. Page painting that client.js does identically in both modes from what the manager surface answers (in native mode, the facades); the engine never draws the page, so there is nothing here for Swift to reimplement."
     },
+    "AUDIT: \"Next clip\" is disabled on the last segment instead of silently doing nothing": {
+      "reason": "dom-only",
+      "why": "client.js render() disables the sheet's \"Next clip\" button when the playhead's index is the Foray's last; in native mode the index is the engine snapshot's (NE-35) and the page paints it the same way. The engine's own refusal of a next past the end is ForayTapeTests/testAForayNeverChains; the button's state is page painting with nothing for Swift to reimplement."
+    },
+    "PERSONA: an episode played AFTER the Foray keeps the bar": {
+      "reason": "dom-only",
+      "why": "lastPlayedForay() is the page choosing which bar to paint at boot, by comparing the updated_at stamps of the cp_foray and cp_last_episode rows. In native mode the page makes the same choice over the rows the engine writes in the same format (the rows family, cp-foray.json); the engine never decides what the page's bar shows."
+    },
+    "a RESTORED ribbon is current but not loaded, so a caller's own start path takes a press on it (round-3 review, L2)": {
+      "reason": "webview-only",
+      "why": "A page-side predicate app.js reads before a stamp tap (restoredPending plus the manager's state type). In native mode client.js answers it from the same restoredPending and the facades' snapshot state; the engine has no rule here, it only plays what the page's start path sends."
+    },
+    "a voice Preview never cuts off the narrator's line, playing or paused (round-3 review, L3)": {
+      "reason": "webview-only",
+      "why": "The web player's own guard in client.js auditionVoice: with no engine, a preview and narration share the page's one synthesiser, so the page refuses a preview while a line is loaded. In native mode the preview is an audition command and the engine already refuses it while it plays (NE-22, engine-busy), so this page branch never runs there."
+    },
     "a Next clip tap that throws leaves the index where the audio is, and repaints (audit round 3, player-rest-5)": {
       "reason": "dom-only",
       "why": "A click handler's rejection guard and the page's pending Foray index in client.js; the engine never owns a DOM control or the page's index bookkeeping."
@@ -624,6 +1102,112 @@
     "the Foray page is not repainted while the document is hidden, and is repainted on return (audit round 3, perf-8)": {
       "reason": "dom-only",
       "why": "Whether client.js repaints the Foray page while document.hidden; page painting the engine never does."
+    }
+  },
+  "tts-bridge": {
+    "inShell: false in a plain browser tab, true when Capacitor injected a bridge": {
+      "reason": "webview-only",
+      "why": "Whether the page runs inside the Capacitor shell (window.Capacitor present), read from the live window. The engine is the shell; it never asks whether it is one."
+    },
+    "inShell: reads the ambient window when called with no argument": {
+      "reason": "webview-only",
+      "why": "Whether the page runs inside the Capacitor shell (window.Capacitor present), read from the live window. The engine is the shell; it never asks whether it is one."
+    },
+    "the shell tries the bundle's flattened copy first; the website tries the plugin's own path first": {
+      "reason": "js-module-shape",
+      "why": "tts-bridge.js is the page's loader for the ForayTts plugin's web module (a dynamic import over candidate paths, memoised per bridge, answering { ok: false } rather than rejecting). The native engine narrates through its own SpeechNarrator in the same binary (plan §4; NE-33): there is no module to find, load, memoise or version-skew, so this is a rule about the JS module, not about narration."
+    },
+    "the candidate order is chosen from the live window, not baked in at import": {
+      "reason": "js-module-shape",
+      "why": "tts-bridge.js is the page's loader for the ForayTts plugin's web module (a dynamic import over candidate paths, memoised per bridge, answering { ok: false } rather than rejecting). The native engine narrates through its own SpeechNarrator in the same binary (plan §4; NE-33): there is no module to find, load, memoise or version-skew, so this is a rule about the JS module, not about narration."
+    },
+    "speak: the module is resolved once per bridge, however many lines it speaks": {
+      "reason": "js-module-shape",
+      "why": "tts-bridge.js is the page's loader for the ForayTts plugin's web module (a dynamic import over candidate paths, memoised per bridge, answering { ok: false } rather than rejecting). The native engine narrates through its own SpeechNarrator in the same binary (plan §4; NE-33): there is no module to find, load, memoise or version-skew, so this is a rule about the JS module, not about narration."
+    },
+    "speak: a candidate that 404s falls through to the next one": {
+      "reason": "js-module-shape",
+      "why": "tts-bridge.js is the page's loader for the ForayTts plugin's web module (a dynamic import over candidate paths, memoised per bridge, answering { ok: false } rather than rejecting). The native engine narrates through its own SpeechNarrator in the same binary (plan §4; NE-33): there is no module to find, load, memoise or version-skew, so this is a rule about the JS module, not about narration."
+    },
+    "speak: nothing loadable at all resolves { ok: false } and never rejects": {
+      "reason": "js-module-shape",
+      "why": "tts-bridge.js is the page's loader for the ForayTts plugin's web module (a dynamic import over candidate paths, memoised per bridge, answering { ok: false } rather than rejecting). The native engine narrates through its own SpeechNarrator in the same binary (plan §4; NE-33): there is no module to find, load, memoise or version-skew, so this is a rule about the JS module, not about narration. What the manager does with a line nothing can speak is fixtured (manager-foray/a-script-with-no-synthesiser-fails-cleanly)."
+    },
+    "speak: a module with no speak() is a miss, not a crash": {
+      "reason": "js-module-shape",
+      "why": "tts-bridge.js is the page's loader for the ForayTts plugin's web module (a dynamic import over candidate paths, memoised per bridge, answering { ok: false } rather than rejecting). The native engine narrates through its own SpeechNarrator in the same binary (plan §4; NE-33): there is no module to find, load, memoise or version-skew, so this is a rule about the JS module, not about narration."
+    },
+    "a throwing logger must not break the failure path": {
+      "reason": "js-module-shape",
+      "why": "tts-bridge.js is the page's loader for the ForayTts plugin's web module (a dynamic import over candidate paths, memoised per bridge, answering { ok: false } rather than rejecting). The native engine narrates through its own SpeechNarrator in the same binary (plan §4; NE-33): there is no module to find, load, memoise or version-skew, so this is a rule about the JS module, not about narration."
+    },
+    "onFinished: returns an unsubscribe function immediately, before the module resolves": {
+      "reason": "js-module-shape",
+      "why": "tts-bridge.js is the page's loader for the ForayTts plugin's web module (a dynamic import over candidate paths, memoised per bridge, answering { ok: false } rather than rejecting). The native engine narrates through its own SpeechNarrator in the same binary (plan §4; NE-33): there is no module to find, load, memoise or version-skew, so this is a rule about the JS module, not about narration. The subscription races the module's load; natively the narrator's delegate is wired at construction."
+    },
+    "onFinished: a module with no onFinished() is a silent miss, not a crash": {
+      "reason": "js-module-shape",
+      "why": "tts-bridge.js is the page's loader for the ForayTts plugin's web module (a dynamic import over candidate paths, memoised per bridge, answering { ok: false } rather than rejecting). The native engine narrates through its own SpeechNarrator in the same binary (plan §4; NE-33): there is no module to find, load, memoise or version-skew, so this is a rule about the JS module, not about narration. What the manager does without a finished event is fixtured (manager-foray/a-bridge-without-finished-never-auto-advances)."
+    },
+    "onFinished: unsubscribing before the module resolves prevents the late subscription": {
+      "reason": "js-module-shape",
+      "why": "tts-bridge.js is the page's loader for the ForayTts plugin's web module (a dynamic import over candidate paths, memoised per bridge, answering { ok: false } rather than rejecting). The native engine narrates through its own SpeechNarrator in the same binary (plan §4; NE-33): there is no module to find, load, memoise or version-skew, so this is a rule about the JS module, not about narration. The subscription races the module's load; natively the narrator's delegate is wired at construction."
+    },
+    "onFinished: unsubscribing after the module resolves removes the real listener": {
+      "reason": "js-module-shape",
+      "why": "tts-bridge.js is the page's loader for the ForayTts plugin's web module (a dynamic import over candidate paths, memoised per bridge, answering { ok: false } rather than rejecting). The native engine narrates through its own SpeechNarrator in the same binary (plan §4; NE-33): there is no module to find, load, memoise or version-skew, so this is a rule about the JS module, not about narration. The subscription races the module's load; natively the narrator's delegate is wired at construction."
+    },
+    "onFinished: a non-function argument is a no-op, not a crash": {
+      "reason": "js-module-shape",
+      "why": "tts-bridge.js is the page's loader for the ForayTts plugin's web module (a dynamic import over candidate paths, memoised per bridge, answering { ok: false } rather than rejecting). The native engine narrates through its own SpeechNarrator in the same binary (plan §4; NE-33): there is no module to find, load, memoise or version-skew, so this is a rule about the JS module, not about narration. A typed Swift callback cannot be a non-function."
+    },
+    "listVoices: forwards options to the module and returns its answer": {
+      "reason": "js-module-shape",
+      "why": "tts-bridge.js is the page's loader for the ForayTts plugin's web module (a dynamic import over candidate paths, memoised per bridge, answering { ok: false } rather than rejecting). The native engine narrates through its own SpeechNarrator in the same binary (plan §4; NE-33): there is no module to find, load, memoise or version-skew, so this is a rule about the JS module, not about narration. The voice list itself is SpeechRules' (NE-33: resolveVoice, bestVoice, candidates) and the default-voice family's."
+    },
+    "listVoices: an older module without the method reports that, rather than throwing": {
+      "reason": "js-module-shape",
+      "why": "tts-bridge.js is the page's loader for the ForayTts plugin's web module (a dynamic import over candidate paths, memoised per bridge, answering { ok: false } rather than rejecting). The native engine narrates through its own SpeechNarrator in the same binary (plan §4; NE-33): there is no module to find, load, memoise or version-skew, so this is a rule about the JS module, not about narration."
+    },
+    "listVoices: an unreachable module resolves { ok: false }, never rejects": {
+      "reason": "js-module-shape",
+      "why": "tts-bridge.js is the page's loader for the ForayTts plugin's web module (a dynamic import over candidate paths, memoised per bridge, answering { ok: false } rather than rejecting). The native engine narrates through its own SpeechNarrator in the same binary (plan §4; NE-33): there is no module to find, load, memoise or version-skew, so this is a rule about the JS module, not about narration."
+    },
+    "client.js actually passes a TTS bridge into the queue manager": {
+      "reason": "js-module-shape",
+      "why": "client.js's wiring of the page's shared bridge instance (into the queue manager, and the Kokoro probe through the same instance). In native mode the engine owns its narrator; the page's wiring is pinned here and by native-mode.test.js, not reimplemented."
+    },
+    "kokoroProbe delegates to the module, through the same memoised load": {
+      "reason": "js-module-shape",
+      "why": "The developer-only Kokoro probe's delegate on the page's bridge (kokoroProbe through the memoised module). It is a ForayTts plugin method the page calls; the engine neither probes nor exposes it."
+    },
+    "an older shell build — a module with no kokoroProbe — answers engine-absent": {
+      "reason": "js-module-shape",
+      "why": "The developer-only Kokoro probe's delegate on the page's bridge (kokoroProbe through the memoised module). It is a ForayTts plugin method the page calls; the engine neither probes nor exposes it."
+    },
+    "no module at all is no-bridge, and the probe still resolves": {
+      "reason": "js-module-shape",
+      "why": "The developer-only Kokoro probe's delegate on the page's bridge (kokoroProbe through the memoised module). It is a ForayTts plugin method the page calls; the engine neither probes nor exposes it."
+    },
+    "client.js runs the probe through the SAME shared bridge instance": {
+      "reason": "js-module-shape",
+      "why": "client.js's wiring of the page's shared bridge instance (into the queue manager, and the Kokoro probe through the same instance). In native mode the engine owns its narrator; the page's wiring is pinned here and by native-mode.test.js, not reimplemented."
+    },
+    "a transport call before anything has spoken does NOT load the module": {
+      "reason": "js-module-shape",
+      "why": "tts-bridge.js is the page's loader for the ForayTts plugin's web module (a dynamic import over candidate paths, memoised per bridge, answering { ok: false } rather than rejecting). The native engine narrates through its own SpeechNarrator in the same binary (plan §4; NE-33): there is no module to find, load, memoise or version-skew, so this is a rule about the JS module, not about narration."
+    },
+    "an older shell's module — a speak() and no pause() — is reported, not thrown": {
+      "reason": "js-module-shape",
+      "why": "tts-bridge.js is the page's loader for the ForayTts plugin's web module (a dynamic import over candidate paths, memoised per bridge, answering { ok: false } rather than rejecting). The native engine narrates through its own SpeechNarrator in the same binary (plan §4; NE-33): there is no module to find, load, memoise or version-skew, so this is a rule about the JS module, not about narration. What the manager does with a bridge that has no transport is fixtured (manager-foray/l05-no-transport-still-pauses)."
+    },
+    "state() is idle, without a fetch, until something has spoken": {
+      "reason": "js-module-shape",
+      "why": "tts-bridge.js is the page's loader for the ForayTts plugin's web module (a dynamic import over candidate paths, memoised per bridge, answering { ok: false } rather than rejecting). The native engine narrates through its own SpeechNarrator in the same binary (plan §4; NE-33): there is no module to find, load, memoise or version-skew, so this is a rule about the JS module, not about narration."
+    },
+    "a module that will not load leaves a transport call resolved, never rejected": {
+      "reason": "js-module-shape",
+      "why": "tts-bridge.js is the page's loader for the ForayTts plugin's web module (a dynamic import over candidate paths, memoised per bridge, answering { ok: false } rather than rejecting). The native engine narrates through its own SpeechNarrator in the same binary (plan §4; NE-33): there is no module to find, load, memoise or version-skew, so this is a rule about the JS module, not about narration."
     }
   }
 }

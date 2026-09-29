@@ -397,7 +397,6 @@ test("positions, routes and interruptions are the engine's: the facade writes no
   assert.equal(await s.f.manager.routeChanged({ oldDeviceUnavailable: true }), false);
   assert.equal(await s.f.manager.interruptionEnded(true), false);
   assert.equal(s.cmds().length, cmds);
-  assert.throws(() => s.f.manager.setQueueFromForay({ id: "f" }), /capability-off/);
   assert.equal(s.f.backend.notePlayGesture(), undefined);
   s.done();
 });
@@ -407,4 +406,34 @@ test("a page booted while the engine is already playing reports the engine's ite
   assert.deepStrictEqual(s.f.manager.queue, [{ id: "ep-9", kind: "episode", title: "Nine" }]);
   assert.equal(s.f.manager.currentIndex, 0);
   assert.deepStrictEqual(s.sent, [], "attaching to a running engine sends nothing");
+});
+
+/* ---------- a Foray (NE-35) ---------- */
+
+const FORAY = {
+  id: "f1", title: "A Foray",
+  items: [
+    { type: "segment", id: "s0", audio_url: "https://cdn.test/a.mp3", start_sec: 100, end_sec: 200, duration_sec: 3600 },
+    { type: "segment", id: "s1", audio_url: "https://cdn.test/b.mp3", start_sec: 300, end_sec: 400, duration_sec: 3600 },
+  ],
+};
+
+test("NE-35: the facade builds the Foray in JS and plays it with ONE playForay; its clips are jumps and its scrub is the Foray clock", async () => {
+  const s = await stack({ engine: { capabilities: ["episode", "continuation", "restore", "foray"] } });
+  const report = s.f.manager.setQueueFromForay(FORAY, {});
+  assert.deepStrictEqual(report.items.map((i) => i.id), ["f1#0", "f1#1"]);
+  assert.deepStrictEqual(s.cmds(), [], "building sends nothing");
+  const { items, ...buildReport } = report;
+  assert.deepStrictEqual(s.f.manager.forayArgs({ startElapsedSec: 150, voiceId: "v" }), {
+    forayId: "f1", title: "A Foray", items, buildReport, isLocalFile: false, allowAdPad: false, voiceId: "v", startElapsedSec: 150,
+  });
+  assert.equal(await s.f.manager.playForay({ startElapsedSec: 150 }), true);
+  assert.equal(s.ref.manager.currentIndex, 1, "the engine resolved the resume point");
+  assert.equal(await s.f.manager.play(0), true, "a clip, by index");
+  assert.equal(await s.f.manager.seekForay(170), true);
+  assert.deepStrictEqual(s.cmds().filter((c) => c !== "setPageVisible"), ["playForay", "jump", "seekTo"]);
+  assert.equal(s.ref.manager.currentIndex, 1);
+  s.f.manager.setQueueFromPick(episode("a"));
+  assert.equal(s.f.manager.forayArgs(), null, "an episode pick is not a Foray");
+  s.done();
 });

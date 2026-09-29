@@ -1,0 +1,84 @@
+{
+  "family": "foray-structure",
+  "module": "player/parity/forays.js",
+  "note": "Every committed Foray, built as the page builds it, passes the structural check the engine will run on playForay (authored: a publish that breaks the build's structure is red here, one that merely edits or adds a Foray is not); and the frozen capital-types-1 seam census. A Foray deleted from data/ must drop its case here.",
+  "cases": [
+    {
+      "id": "foray-structure/committed-grilling-history-2",
+      "covers": [],
+      "authored": true,
+      "call": "structureOf",
+      "args": [{ "$foray": "grilling-history-2" }],
+      "expect": { "return": { "ok": true, "problems": [], "reason": null } }
+    },
+    {
+      "id": "foray-structure/committed-capital-types-1",
+      "covers": [],
+      "authored": true,
+      "call": "structureOf",
+      "args": [{ "$foray": "capital-types-1" }],
+      "expect": { "return": { "ok": true, "problems": [], "reason": null } }
+    },
+    {
+      "id": "foray-structure/committed-geology-plates-1",
+      "covers": [],
+      "authored": true,
+      "call": "structureOf",
+      "args": [{ "$foray": "geology-plates-1" }],
+      "expect": { "return": { "ok": true, "problems": [], "reason": null } }
+    },
+    {
+      "id": "foray-structure/committed-beyond-the-algorithm-engineering-production-ai-s-e6533b",
+      "covers": [],
+      "authored": true,
+      "call": "structureOf",
+      "args": [{ "$foray": "beyond-the-algorithm-engineering-production-ai-s-e6533b" }],
+      "expect": { "return": { "ok": true, "problems": [], "reason": null } }
+    },
+    {
+      "id": "foray-structure/committed-how-ai-actually-gets-built-3b83e1",
+      "covers": [],
+      "authored": true,
+      "call": "structureOf",
+      "args": [{ "$foray": "how-ai-actually-gets-built-3b83e1" }],
+      "expect": { "return": { "ok": true, "problems": [], "reason": null } }
+    },
+    {
+      "id": "foray-structure/committed-the-chain-reaction-how-engineering-disasters-rea-25f1b7",
+      "covers": [],
+      "authored": true,
+      "call": "structureOf",
+      "args": [{ "$foray": "the-chain-reaction-how-engineering-disasters-rea-25f1b7" }],
+      "expect": { "return": { "ok": true, "problems": [], "reason": null } }
+    },
+    {
+      "id": "foray-structure/committed-what-engineers-actually-do-all-day-e08236",
+      "covers": [],
+      "authored": true,
+      "call": "structureOf",
+      "args": [{ "$foray": "what-engineers-actually-do-all-day-e08236" }],
+      "expect": { "return": { "ok": true, "problems": [], "reason": null } }
+    },
+    {
+      "id": "foray-structure/frozen-capital-types-1-census",
+      "covers": [
+        "interlude::capital-types-1 (frozen): 21 seams, 11 of them inside one episode, so exactly 10 jingles"
+      ],
+      "authored": true,
+      "note": "The FROZEN fixture's capital-types-1 (tools/foray/fixtures/frozen/data, never data/): 22 segments, 21 joins, each a seam beat; 11 are two cuts of one episode, so exactly 10 jingles, and exactly where the strip draws a capsule edge. The numbers interlude.test.js pins, authored.",
+      "call": "frozenCensus",
+      "args": ["capital-types-1"],
+      "expect": {
+        "return": {
+          "beats": 21,
+          "items": 22,
+          "jingles": 10,
+          "sameSource": 11,
+          "seams": 21,
+          "segments": 22,
+          "sourceChanges": 10
+        }
+      }
+    }
+  ]
+}

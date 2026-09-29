@@ -21,6 +21,23 @@
 
 **Spark note (2026-09-28):** under the Spark direction (`docs/DECISIONS.md` 2026-09-28) the nightly step moves to the Spark (Phase 5). Step 2, dropping or recovering the stranded 2026-09-14 digest, must be decided before the first Spark nightly runs, even if the routine stays off until then.
 
+## #128 🟡 [DECIDE] Drive a Foray in the car on the first TestFlight build after `engine/m2` merges (~2 drives)
+<!-- ha filed=2026-09-28 kind=default -->
+
+**Why:** M2 moves Forays onto the iPhone's own player (clips, narration, jingle), as M1 did for episodes, which your car resumed on 2026-09-28. Only your car can show that a Foray survives seams, long pauses, calls and car buttons.
+
+**Steps:**
+1. Use only the build number Claude adds here. TestFlight → 4a → Automatic Updates off.
+2. In the car, play a Foray with narration. Listen through at least two clip → narration → clip seams.
+3. Pause from the car. Leave it 10+ minutes (or park). Press the car's play.
+4. Take or make a phone call mid-Foray; hang up.
+5. Press skip-back 15 and skip-forward 30 from the car, once each.
+6. Check the car shows the title and a moving progress bar.
+7. Parked: Developer → Playback diagnostics → Copy; paste here with the route.
+8. If a Foray will not play or keeps stopping: Developer → Playback engine → Web, then restart 4a. Episodes and Forays go back to the web player. Say so here.
+
+**Worked if:** every seam plays; after the pause and the call 4a resumes by itself or on one press; 15/30 move; title and progress bar show.
+
 ## #119 🔴 [BLOCKING] Create the public narration bucket `foray-narration` at `audio.jwlabs.ai` (~30 min)
 <!-- ha filed=2026-09-28 kind=default -->
 
@@ -204,20 +221,6 @@
 4. Reply `done` (or paste any SQL error) here.
 
 **Worked if:** RLS is on for every table the migration lists, the app still syncs events and interests, and Delete my data removes the `learning_cursor` rows (check in the Table editor after a test deletion).
-
-## #114 🟡 [DECIDE] Drive the M1 car test on the next TestFlight build after `engine/m1` merges — the native player is its default (~3 drives)
-<!-- ha filed=2026-09-24 kind=default -->
-
-**Why:** On 2026-09-24 your car chose Spotify even though 4a held its audio session for 8 minutes (`docs/field-records/2026-09-24-car-baseline.md`): iOS goes back to the app whose audio last *played*, and in 4a that was the web view's process. The iOS app now plays episodes through its own native player, and card NE-27b made that the build default (`mobile/ENGINE_DEFAULT.json` says `native` with `episode`, `continuation` and `restore`; the Developer group can switch back to the web player). Whether the car now comes back to 4a can only be measured in your car. Nothing here can do it.
-
-**Steps:**
-1. The build is **2026092532** (released 2026-09-25 off `main` c8e7dffb, with the native engine as the default). Test **only that build**, and turn TestFlight's Automatic Updates off for 4a so it cannot change mid-drive.
-2. Follow `docs/native-engine-m1-car-test.md` from **Step 0**: the header check, the 10-minute desk pre-flight, then blocks 0-11 in the car. Each block ends with one **Developer → Playback diagnostics → Copy**, taken while parked.
-3. Blocks **0 and 1** are the two failures from 2026-09-24: paused in the app, phone locked, the car connects and 4a resumes; and paused from the car, a long pause, play, and 4a resumes and stays.
-4. Paste every Copy into this card's thread, one per block, each headed with its block number and the route (CarPlay, car Bluetooth, AirPods or speaker). M1 needs **three drives**.
-5. If the build is unusable for daily listening, TestFlight → 4a → **Previous Builds** puts the old one back. You do not need Claude for that. Say so here.
-
-**Worked if:** across three drives, `node tools/mobile/engine-report.mjs` over the Copies shows no `sessionActivated failed`, no `remote play handled=y` without audio, and no takeover except the negative control (block 7, which should go to Spotify). DV-12 and DV-13 pass, and blocks 0 and 1 play 4a.
 
 ## #109 🟡 [DECIDE] Mirror the approved privacy wording in the store listings, if they carry it (~10 min)
 <!-- ha filed=2026-09-24 kind=default -->

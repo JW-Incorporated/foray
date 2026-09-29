@@ -100,7 +100,9 @@ import {
   WEBKIT_ORIGIN, REMOTE_COMMAND_FOR_ACTION, remoteCommandFor, UNMIRRORED_ACTIONS,
 } from "../../mobile/plugins/foray-audio/web/foray-media-session.js";
 import { FORAY_AUDIO_REACHED_NEEDLE, FORAY_SESSION_NEEDLE } from "./ios-ci.mjs";
-import { REMOTE_ORIGINS, REMOTE_COMMANDS } from "../../player/diagnostic-log.js";
+import {
+  REMOTE_ORIGINS, REMOTE_COMMANDS, SESSION_KINDS, SESSION_PORTS, SESSION_APP_STATES, dataTokenOf,
+} from "../../player/diagnostic-log.js";
 import { CLICK_TRACK_DIR, exemptClickTrackPaths } from "../audio/click-tracks.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -1605,7 +1607,7 @@ test("start() and stop() do not claim to know whether the service is running", (
   );
   assert.deepEqual(
     fieldsOf("state"),
-    ["notificationPermission", "notificationsEnabled", "platform", "running", "sessionActive"],
+    ["focusState", "notificationPermission", "notificationsEnabled", "platform", "route", "running", "sessionActive"],
     "state() is the ONLY method that may answer `running`, and it can because it is a separate call. " +
       "#27 added three diagnostics beside it, because \"the lock screen is blank\" has at least three " +
       "causes and only one of them is a bug in this code."
@@ -2528,7 +2530,8 @@ test("NE-01: foray-audio links the core by path, keeps ONE product, and its test
   const products = [...manifest.matchAll(/\.library\(\s*name:\s*"(\w+)"/g)].map((m) => m[1]);
   assert.deepEqual(products, ["ForayAudio"], "foray-audio must keep exactly one product, or its scheme list changes");
 
-  const pluginTarget = /\.target\(\s*name:\s*"ForayAudioPlugin"[\s\S]*?path:\s*"ios\/Sources\/ForayAudioPlugin"\)/.exec(manifest);
+  // NE-34: the path may be followed by the target's one resource (the jingle).
+  const pluginTarget = /\.target\(\s*name:\s*"ForayAudioPlugin"[\s\S]*?path:\s*"ios\/Sources\/ForayAudioPlugin"\s*[,)]/.exec(manifest);
   assert.ok(pluginTarget, "the ForayAudioPlugin target is missing");
   assert.match(pluginTarget[0], /\.product\(\s*name:\s*"ForayEngineCore",\s*package:\s*"foray-engine-core"\s*\)/);
   assert.match(
@@ -3767,6 +3770,166 @@ test("NE-25b: the two-deck spike measures AVDeck's own gate: two real decks, no 
   for (const file of files) assert.ok(exempt.has(`${CLICK_TRACK_DIR}/${file}`), `${file} is not in the hash-checked exempt set`);
 });
 
+/* ─────────── NE-32: DeckPair and the three-layer out-point ───────────
+ *
+ * docs/native-engine-plan.md §4.3 and card NE-32. The Simulator tests
+ * (DeckPairSeamTests, DeckPairTests) prove the behaviour; what they cannot see
+ * is which FILE reaches for what, and that the pair ships OFF. */
+
+test("NE-32: DeckPair ships off, never touches a player, and the out-point's three layers live in AVDeck's one watch", () => {
+  /* The pair SHIPPED off; since NE-37 the shipping boot turns it on (NE-27's
+     test holds that), and the core's own default stays off.
+     MUTATION: default the core's `deckPairEnabled` to true; build a DeckPair
+     in EngineBoot without the flag; seek or pause `player` from DeckPair.swift, or import
+     AVFoundation there; write `forwardPlaybackEndTime` or add a boundary
+     observer outside AVDeck's `apply`; raise the stop pad; arm the watchdog
+     with anything but `config.schedule(.watchdog`; let the pair play a deck in
+     the handover. Each fails here. */
+  const core = stripSwiftComments(fs.readFileSync(path.join(CORE_DIR, "Sources/ForayEngineCore/Engine/EngineCore.swift"), "utf8"));
+  assert.match(core, /deckPairEnabled: Bool = false\)/, "EngineConfig.deckPairEnabled defaults OFF in the core (EngineBoot turns it on, NE-37)");
+
+  const boot = stripSwiftComments(fs.readFileSync(path.join(ENGINE_DIR, "EngineBoot.swift"), "utf8"));
+  assert.match(boot, /config\.deckPairEnabled\s*\?\s*DeckPair\.make\(/, "the boot builds a DeckPair only behind the flag");
+  assert.equal([...boot.matchAll(/DeckPair\.make\(/g)].length, 1);
+
+  const pairPath = path.join(ENGINE_DIR, "DeckPair.swift");
+  assert.deepEqual(swiftImports(pairPath).sort(), ["ForayEngineCore", "Foundation"], "DeckPair speaks DeckCommands; it imports no AVFoundation");
+  const pair = stripSwiftComments(fs.readFileSync(pairPath, "utf8"));
+  assert.doesNotMatch(pair, /\bplayer\b|\bAVPlayer\b/, "DeckPair must never touch a deck's AVPlayer (NE-25b §10.3: a foreign seek leaves a deck ready at the wrong place)");
+  const handover = swiftFuncBody(pair, "handover") ?? "";
+  assert.doesNotMatch(handover, /\.send\(\.play\)/, "no handover step plays");
+  const pause = handover.indexOf("outgoing.send(.pause)");
+  assert.ok(pause > 0 && pause < handover.indexOf("activeIndex = standbyIndex"), "the outgoing deck is paused before the roles swap");
+  assert.match(handover, /guard !outgoing\.reading\.audible else/, "the swap waits for the outgoing deck to read not audible");
+  assert.match(handover, /for step in DeckPolicy\.handoverSteps\(\)/, "the handover runs the core's step list, in its order");
+  assert.match(swiftFuncBody(pair, "load") ?? "", /DeckPolicy\.warmPromotion\(/, "promotion is the core's decision");
+  assert.match(swiftFuncBody(pair, "prepare") ?? "", /DeckPolicy\.prefetchDecision\(/, "warming is the core's decision");
+
+  const deck = stripSwiftComments(fs.readFileSync(AVDECK_SWIFT, "utf8"));
+  assert.match(deck, /static let defaultStopPadSec: Double = 0\n/, "stopPad stays 0 (NE-25a measured no early stop)");
+  assert.deepEqual(swiftCallersOf(deck, "player\\.addBoundaryTimeObserver"), ["apply"]);
+  const writers = [...deck.matchAll(/func\s+(\w+)\s*\(/g)].map((m) => m[1])
+    .filter((n) => /forwardPlaybackEndTime\s*=/.test(swiftFuncBody(deck, n) ?? ""));
+  assert.deepEqual([...new Set(writers)].sort(), ["apply", "resetOutPoint"], "layer 1 is written by the watch's ops (and cleared on a new load) only");
+  assert.match(swiftFuncBody(deck, "step") ?? "", /DeckPolicy\.outPointStep\(watch, event\)/, "the out-point's decisions are the core's reducer");
+  const apply = swiftFuncBody(deck, "apply") ?? "";
+  assert.match(apply, /config\.schedule\(\.watchdog, ms\)/, "the watchdog's one timer comes from the scheduler seam");
+  assert.match(apply, /Self\.time\(\$0 \+ config\.stopPadSec\)/, "layer 1 is end + stopPad");
+  assert.doesNotMatch(deck, /repeating:\s*true/, "the watchdog is one-shot timers, never a repeating poll");
+});
+
+/* ─────────── NE-31s: the narration, interlude and jingle overlays ───────────
+ *
+ * docs/native-engine-plan.md §14 NE-31s. The manager-foray narration and
+ * jingle families prove the behaviour; what they cannot see is that every
+ * new switch ships OFF, that a line is uttered at NARRATION_RATE unless the
+ * listener-rate flag is on, and that nothing audible is emitted without the
+ * session (speak, interludeStart, silenceStart). */
+
+test("NE-31s: the overlays ship off, a line is uttered at NARRATION_RATE, and nothing audible starts without the session", () => {
+  /* MUTATION: default narrationFollowsListenerRate, interludeAvailable or
+     silenceNodeEnabled to true; utter a line at `state.rate` unconditionally;
+     drop the session guard from speakLine or armInterlude; let the host speak
+     a Foray line through the audition's `speak` (NE-33: narration goes to the
+     one SpeechNarrator's `narrate`, the audition to its `speak`). Each fails
+     here. */
+  const core = stripSwiftComments(fs.readFileSync(path.join(CORE_DIR, "Sources/ForayEngineCore/Engine/EngineCore.swift"), "utf8"));
+  assert.match(core, /narrationFollowsListenerRate: Bool = false/, "narration rides the listener's rate only behind a flag that defaults OFF");
+  assert.match(core, /interludeAvailable: Bool = false/, "no jingle until the host has a player (NE-34)");
+  assert.match(core, /silenceNodeEnabled: Bool = false/, "the silence node ships OFF (NE-34)");
+  assert.match(swiftFuncBody(core, "speakLine") ?? "", /guard state\.session == \.active else/, "a line is never spoken without the session");
+  assert.match(swiftFuncBody(core, "armInterlude") ?? "", /guard state\.session == \.active else/, "the jingle never starts without the session");
+  assert.match(core, /config\.narrationFollowsListenerRate \? state\.rate : EngineConstants\.QueueManager\.narrationRate/,
+    "the utterance rate is NARRATION_RATE (OQ-3) unless the flag is on");
+  assert.match(swiftFuncBody(core, "startSilence") ?? "", /Interlude\.silenceNodeSec\(/, "the silence node's cap is the interlude rule's");
+
+  const host = stripSwiftComments(fs.readFileSync(path.join(ENGINE_DIR, "ForayEngine.swift"), "utf8"));
+  const interpret = swiftFuncBody(host, "interpret") ?? "";
+  const narration = interpret.slice(interpret.indexOf("case let .narration("), interpret.indexOf("case let .interlude("));
+  assert.ok(narration.length > 0, "the host interprets the narration commands");
+  assert.match(narration, /seams\.speaker\.narrate\(command\)/, "the host hands every narration command to SpeechNarrator (NE-33)");
+  assert.doesNotMatch(narration, /speaker\.speak\(/, "a Foray line never goes through the audition's speak");
+});
+
+/* ─────────── NE-34: InterludePlayer, seam grace, the capped silence node ───────────
+ *
+ * docs/native-engine-plan.md §14 NE-34. The behaviour is executed over fakes
+ * by ForayAudioPluginTests/Engine/InterludeSeamTests.swift (ios-kit) and the
+ * hash pin by tools/audio/interlude-asset.test.mjs. What is pinned here is the
+ * shape those stand on: the jingle and the silence node are the only engine
+ * files that build an AVAudioPlayer or an AVAudioEngine, each checks the
+ * session BEFORE it can sound, the jingle's ceiling and the node's cap are
+ * engine timers, the node ships unbuilt behind its flag, and the host wires,
+ * refuses and tears down both. */
+
+test("NE-34: the jingle and the silence node sound only with the session, stop themselves on engine timers, and ship behind their flags", () => {
+  /* MUTATION: build an AVAudioPlayer, an AVAudioSourceNode, or an
+     AVAudioEngine outside SilenceNode and NE-33's SpeechNarrator; move the sessionIsActive check below playFromStart / engine.start;
+     drop the ceiling or cap schedule; clamp the node to capMs alone; build the
+     SilenceNode without `config.silenceNodeEnabled ?`; hard-code
+     interludeAvailable; drop the host's refused answer, its running/session
+     guard, or the teardown release. Each fails here. */
+  const playerPath = path.join(ENGINE_DIR, "InterludePlayer.swift");
+  const nodePath = path.join(ENGINE_DIR, "SilenceNode.swift");
+  for (const file of [playerPath, nodePath]) {
+    assert.deepEqual(swiftImports(file).sort(), ["AVFoundation", "ForayEngineCore", "Foundation"], `${path.basename(file)} imports`);
+  }
+  for (const file of swiftFilesUnder(ENGINE_DIR)) {
+    const code = stripSwiftComments(fs.readFileSync(file, "utf8"));
+    if (/\bAVAudioPlayer\(/.test(code)) assert.equal(file, playerPath, `${path.relative(ROOT, file)} builds an AVAudioPlayer`);
+    /* NE-33's PCM narrator renders speech through an AVAudioEngine of its
+       own; the silence source node is SilenceNode's alone. */
+    if (/\bAVAudioEngine\(/.test(code)) {
+      assert.ok([nodePath, path.join(ENGINE_DIR, "SpeechNarrator.swift")].includes(file), `${path.relative(ROOT, file)} builds an AVAudioEngine`);
+    }
+    if (/\bAVAudioSourceNode\(/.test(code)) assert.equal(file, nodePath, `${path.relative(ROOT, file)} renders a source node`);
+  }
+
+  const player = stripSwiftComments(fs.readFileSync(playerPath, "utf8"));
+  const interlude = player.slice(player.indexOf("final class InterludePlayer"));
+  const start = swiftFuncBody(interlude, "start") ?? "";
+  assert.ok(start.indexOf("config.sessionIsActive()") >= 0 && start.indexOf("config.sessionIsActive()") < start.indexOf("playFromStart()"),
+    "the jingle checks the session before it can sound");
+  assert.match(start, /implicitActivation[\s\S]*"interlude"/, "a start without the session is a fault row");
+  assert.match(start, /config\.timing\.schedule\(afterMs: config\.ceilingMs, repeating: false\)/, "the ceiling is an engine timer");
+  assert.match(interlude, /var ceilingMs: Double = Interlude\.ceilingSec \* 1000/);
+  assert.match(swiftFuncBody(interlude, "finish") ?? "", /guard this == sounding else \{ return \}/, "one end per start");
+  assert.match(player, /made\.enableRate = false\s*made\.rate = Float\(Interlude\.rate\)\s*made\.numberOfLoops = 0/, "1.0x, never looped");
+  assert.doesNotMatch(player, /Bundle\.module/, "a missing resource bundle costs the jingle, never the app");
+
+  const nodeCode = stripSwiftComments(fs.readFileSync(nodePath, "utf8"));
+  const node = nodeCode.slice(nodeCode.indexOf("final class SilenceNode"));
+  const nodeStart = swiftFuncBody(node, "start") ?? "";
+  assert.ok(nodeStart.indexOf("config.sessionIsActive()") >= 0 && nodeStart.indexOf("config.sessionIsActive()") < nodeStart.indexOf("engine.start()"),
+    "the node checks the session before it renders");
+  assert.match(nodeStart, /let cap = Swift\.min\(capMs, config\.ceilingMs\)/, "the node's cap is clamped to the ceiling");
+  assert.match(nodeStart, /config\.timing\.schedule\(afterMs: cap, repeating: false\)/, "the cap is an engine timer");
+  assert.match(node, /var ceilingMs: Double = Interlude\.ceilingSec \* 1000/);
+
+  const seams = stripSwiftComments(fs.readFileSync(SEAMS_SWIFT, "utf8"));
+  const fakes = stripSwiftComments(fs.readFileSync(FAKES_SWIFT, "utf8"));
+  for (const seam of ["InterludePlaying", "SilenceRendering"]) {
+    assert.match(seams, new RegExp(String.raw`protocol ${seam}: AnyObject \{`), `Seams.swift must declare ${seam}`);
+    assert.match(fakes, new RegExp(String.raw`final class \w+: ${seam} \{`), `${seam} has no recording fake`);
+  }
+
+  const boot = stripSwiftComments(fs.readFileSync(path.join(ENGINE_DIR, "EngineBoot.swift"), "utf8"));
+  assert.match(boot, /config\.interludeAvailable = interlude != nil/, "the jingle is available exactly when the asset shipped");
+  assert.match(boot, /config\.silenceNodeEnabled\s*\?\s*SilenceNode\(/, "the silence node is built only behind its flag");
+
+  const host = stripSwiftComments(fs.readFileSync(HOST_SWIFT, "utf8"));
+  assert.match(swiftFuncBody(host, "interpretInterlude") ?? "",
+    /if seams\.interlude\?\.start\(\) != true \{ handle\(\.interlude\(\.ended\(reason: "refused"\)\)\) \}/,
+    "a jingle start the host cannot honour is an immediate end");
+  assert.match(swiftFuncBody(host, "startSilence") ?? "", /guard core\.state\.isRunning, core\.state\.session == \.active else/,
+    "the host never renders silence for a transport that is not running, or without the session");
+  assert.match(swiftFuncBody(host, "start") ?? "", /seams\.interlude\?\.onEnded = \{[\s\S]*?receive\(\.interlude\(\.ended\(reason: reason\)\)\)/,
+    "the jingle's end reaches the core");
+  const teardown = swiftFuncBody(host, "teardown") ?? "";
+  assert.match(teardown, /seams\.interlude\?\.release\(\)/);
+  assert.match(teardown, /seams\.silence\?\.stop\(\)/);
+});
+
 test("NE-25c: one synthesizer configuration, a platform-free probe reached only through probeSession, and a smoke on the production pieces", () => {
   /* DV-9 (plan §10) is answered on the founder's phone by the Developer
      session probe, and NE-33 picks SpeechNarrator's path from that one row.
@@ -3792,7 +3955,7 @@ test("NE-25c: one synthesizer configuration, a platform-free probe reached only 
      pause on every finish; drop the smoke's NE-25c tag. Each fails. */
   const PLATFORM = /\b(AVAudioSession|AVPlayer|AVSpeechSynthesizer|MPRemoteCommandCenter|MPNowPlayingInfoCenter|UIApplication|DispatchSource|NotificationCenter|UserDefaults)\b/;
   const probePath = path.join(ENGINE_DIR, "SessionProbe.swift");
-  const speakerPath = path.join(ENGINE_DIR, "PreviewSpeaker.swift");
+  const speakerPath = path.join(ENGINE_DIR, "SpeechNarrator.swift");
   const smokePath = path.join(PLUGIN_DIR, "ios/Tests/ForayAudioPluginTests/SpeechSessionSmokeTests.swift");
   const probeTestsPath = path.join(PLUGIN_DIR, "ios/Tests/ForayAudioPluginTests/Engine/SessionProbeTests.swift");
 
@@ -3822,19 +3985,26 @@ test("NE-25c: one synthesizer configuration, a platform-free probe reached only 
   assert.match(swiftFuncBody(host, "start"), /seams\.speaker\.onFinish = \{[\s\S]*?probe\?\.speechEnded\(end\)/, "didFinish reaches the probe");
 
   const speaker = stripSwiftComments(fs.readFileSync(speakerPath, "utf8"));
-  assert.match(speaker, /final class PreviewSpeaker: NSObject, Speaking, AVSpeechSynthesizerDelegate \{/);
+  // NE-33: PreviewSpeaker grew into SpeechNarrator; the probe's line is its audition.
+  assert.match(speaker, /final class SpeechNarrator: NSObject, Speaking \{/);
   assert.match(swiftFuncBody(speaker, "makeSynthesizer"), /usesApplicationAudioSession = true/, "the engine's synthesizer speaks through the app's session, said out loud");
-  assert.match(swiftFuncBody(speaker, "utterance"), /\.rate = AVSpeechUtteranceDefaultSpeechRate/, "narration is 1x, Apple's default rate (OQ-3)");
+  assert.match(speaker, /static func utterance\(text: String, voiceId: String\?, rate: Float = AVSpeechUtteranceDefaultSpeechRate,/, "a line is 1x, Apple's default rate, unless told (OQ-3)");
+  assert.match(swiftFuncBody(speaker, "utterance"), /utterance\.rate = rate/);
+  assert.match(swiftFuncBody(speaker, "speechRate"), /multiplier == 1\s*\?\s*AVSpeechUtteranceDefaultSpeechRate/, "1x is AVSpeechUtteranceDefaultSpeechRate (founder 2026-09-24)");
+  assert.match(swiftFuncBody(speaker, "guardSession"), /guard !config\.sessionIsActive\(\) else \{ return \}[\s\S]*?FaultKind\.implicitActivation[\s\S]*?config\.debugFault\(/,
+    "the implicit-activation guard writes the fault row and trips DEBUG");
   const speak = swiftFuncBody(speaker, "speak");
-  const guardAt = speak.search(/if !config\.sessionIsActive\(\) \{[\s\S]*?config\.diag\([\s\S]*?FaultKind\.implicitActivation[\s\S]*?config\.debugFault\(/);
-  assert.ok(guardAt >= 0 && guardAt < speak.indexOf("synthesizer.speak("), "the implicit-activation guard runs before the synthesizer speaks");
+  assert.ok(speak.indexOf("guardSession()") >= 0 && speak.indexOf("guardSession()") < speak.indexOf("begin("), "the guard runs before the line is handed to the output");
+  const narrateBody = swiftFuncBody(speaker, "narrate") ?? "";
+  const narrateSpeak = narrateBody.slice(0, narrateBody.indexOf("case let .pause("));
+  assert.ok(narrateSpeak.indexOf("guardSession()") >= 0 && narrateSpeak.indexOf("guardSession()") < narrateSpeak.indexOf("begin("), "and before a narration line");
   const synthesizers = [...swiftFilesUnder(path.join(PLUGIN_DIR, "ios/Sources")), ...swiftFilesUnder(path.join(CORE_DIR, "Sources"))]
     .flatMap((file) => [...stripSwiftComments(fs.readFileSync(file, "utf8")).matchAll(/\bAVSpeechSynthesizer\(\)/g)].map(() => path.basename(file)));
-  assert.deepEqual(synthesizers, ["PreviewSpeaker.swift"], "one synthesizer configuration in the engine");
-  assert.match(speaker, /init\(config: Config\) \{[^}]*synthesizer = PreviewSpeaker\.makeSynthesizer\(\)/, "the speaker speaks through that configuration");
+  assert.deepEqual(synthesizers, ["SpeechNarrator.swift"], "one synthesizer configuration in the engine");
+  assert.equal([...speaker.matchAll(/speech = SpeechNarrator\.makeSynthesizer\(\)/g)].length, 2, "both outputs speak through that configuration");
 
   const smoke = stripSwiftComments(fs.readFileSync(smokePath, "utf8"));
-  for (const piece of [/AudioSessionOwner\(config:/, /PreviewSpeaker\(config:/, /\bAVDeck\(config:/]) {
+  for (const piece of [/AudioSessionOwner\(config:/, /SpeechNarrator\(config: SpeechNarrator\.Config\(\s*path: \.direct,/, /\bAVDeck\(config:/]) {
     assert.match(smoke, piece, "the smoke runs the production pieces");
   }
   assert.match(smoke, /static let tag = "NE-25c"/);
@@ -3993,12 +4163,69 @@ test("A-08: an Android headphone unplug reaches the page as the route loss clien
     `client.js's onNativeSession must act on ${kind}/${reason}, the pair the Android service sends`
   );
   assert.match(service, /AudioManager\.ACTION_AUDIO_BECOMING_NOISY/);
-  assert.match(service, /NowPlayingHub\.dispatchSession\(SESSION_ROUTE_CHANGE, REASON_OLD_DEVICE_GONE\)/);
+  assert.match(service, /NowPlayingHub\.dispatchSession\(SESSION_ROUTE_CHANGE, REASON_OLD_DEVICE_GONE[,)]/);
   const onCreate = /public void onCreate\(\)\s*\{([\s\S]*?)\n    \}/.exec(service)?.[1] ?? "";
   assert.ok(!onCreate.includes("registerNoisyReceiver"), "registered while running, not from onCreate");
   assert.match(service, /running = true;\s*registerNoisyReceiver\(\);/, "registered once startForeground succeeded");
   const onDestroy = /public void onDestroy\(\)\s*\{([\s\S]*?)\n    \}/.exec(service)?.[1] ?? "";
   assert.ok(onDestroy.includes("unregisterNoisyReceiver()"), "and unregistered with the service");
+});
+
+test("A-09: every Android session row is one the record admits, and client.js never acts on an inference", () => {
+  /* SessionMonitor.java's rows are Robolectric's to drive (SessionMonitorTest);
+     what only a source read can tie is the vocabulary across the bridge. A kind
+     outside SESSION_KINDS is dropped by the page, a reason outside dataTokenOf
+     is blanked, a port outside SESSION_PORTS is left off. MUTATIONS: spell the
+     focus kind "focusLost" -> red; spell a device removal "old-device-gone" ->
+     red (client.js would pause for a device that was not playing); add
+     "focusChange" to onNativeSession's list -> red. */
+  const dir = path.join(PLUGIN_DIR, "android/src/main/java/ai/jwlabs/foura/audio");
+  const monitor = stripJavaComments(fs.readFileSync(path.join(dir, "SessionMonitor.java"), "utf8"));
+  const constant = (name) => {
+    const m = new RegExp(`static final String ${name} = "([^"]*)"`).exec(monitor);
+    assert.ok(m, `SessionMonitor.java declares ${name}`);
+    return m[1];
+  };
+  for (const k of ["KIND_BACKGROUND", "KIND_FOREGROUND", "KIND_ROUTE_CHANGE", "KIND_FOCUS_CHANGE",
+    "KIND_MEMORY_WARNING", "KIND_SESSION_ACTIVATED"]) {
+    assert.ok(SESSION_KINDS.has(constant(k)), `${k}=${constant(k)} is not in diagnostic-log.js's SESSION_KINDS`);
+  }
+  for (const r of ["REASON_DID_ENTER", "REASON_WILL_ENTER", "REASON_NEW_DEVICE", "REASON_DEVICE_REMOVED",
+    "REASON_FOCUS_LOST", "REASON_FOCUS_REGAINED"]) {
+    assert.equal(dataTokenOf(constant(r)), constant(r), `${r} is not a record token`);
+  }
+  assert.notEqual(constant("REASON_DEVICE_REMOVED"), "old-device-gone",
+    "a removed device is not always the output; the pause is A-08's becoming-noisy");
+  for (const a of ["APP_ACTIVE", "APP_BACKGROUND"]) assert.ok(SESSION_APP_STATES.has(constant(a)), a);
+  /* Every port token portToken can return, and the two route() adds. */
+  const portBody = /static String portToken\(int type\) \{([\s\S]*?)\n {8}\}/.exec(monitor)?.[1] ?? "";
+  const ports = [...portBody.matchAll(/return "([a-z0-9]+)";/g)].map((m) => m[1]);
+  assert.ok(ports.length >= 7, "found portToken's returns");
+  for (const p of [...ports, constant("PORT_NONE"), constant("PORT_SPEAKER")]) {
+    assert.ok(SESSION_PORTS.has(p), `portToken returns ${p}, which SESSION_PORTS drops`);
+  }
+  /* The trim levels are record tokens too. */
+  const trimBody = /static String trimLevelToken\(int level\) \{([\s\S]*?)\n {4}\}/.exec(monitor)?.[1] ?? "";
+  const levels = [...trimBody.matchAll(/return "([^"]+)";/g)].map((m) => m[1]);
+  assert.ok(levels.length >= 7, "found trimLevelToken's returns");
+  for (const l of [...levels, "level-99"]) assert.equal(dataTokenOf(l), l, l);
+  /* client.js acts on a fixed list, and the inference is not on it. */
+  const client = fs.readFileSync(path.join(ROOT, "player/client.js"), "utf8");
+  const acted = /function onNativeSession\(detail\) \{[\s\S]*?if \(!\[([^\]]*)\]\.includes\(kind\)\) return;/.exec(client)?.[1];
+  assert.ok(acted, "found onNativeSession's kind list");
+  const actedKinds = [...acted.matchAll(/"(\w+)"/g)].map((m) => m[1]);
+  for (const k of ["KIND_FOCUS_CHANGE", "KIND_MEMORY_WARNING", "KIND_SESSION_ACTIVATED"]) {
+    assert.ok(!actedKinds.includes(constant(k)), `client.js must not act on ${constant(k)} -- it is diagnostics only`);
+  }
+  /* Wired: the plugin installs the monitor and reports its two answers; both
+     refusal sites write the row. */
+  const plugin = stripJavaComments(fs.readFileSync(path.join(dir, "ForayAudioPlugin.java"), "utf8"));
+  const service = stripJavaComments(fs.readFileSync(path.join(dir, "PlaybackKeepAliveService.java"), "utf8"));
+  assert.match(plugin, /SessionMonitor\.install\(getContext\(\)\)/);
+  assert.match(plugin, /result\.put\("focusState", SessionMonitor\.focusState\(\)\)/);
+  assert.match(plugin, /result\.put\("route", SessionMonitor\.route\(\)\)/);
+  assert.match(plugin, /SessionMonitor\.foregroundRefused\(e\)/, "the plugin's startForegroundService refusal");
+  assert.match(service, /SessionMonitor\.foregroundRefused\(e\)/, "the service's startForeground refusal");
 });
 
 test("the Android shell starts the service for a narration-first Foray from the transport's first playing payload (round 2, native-2)", () => {
@@ -4312,24 +4539,30 @@ function engineDefaultRefusal(engineDefault, stateText) {
     return 'mobile/ENGINE_DEFAULT.json says "native", but STATE.md records no line "OQ-9 answer (<date>): native default ..." carrying the ruling in double quotes';
   }
   const caps = engineDefault.capabilities ?? [];
-  const allowed = ["episode", "continuation", "restore"];
+  /* NE-37, the M2 flip: `foray` joins M1's three. Narration and the interlude
+     are families of `foray` (player/parity/capabilities.json), and
+     `remainder` is a bookkeeping gate no build may ship. */
+  const allowed = ["episode", "continuation", "restore", "foray"];
   const extra = caps.filter((c) => !allowed.includes(c));
-  if (extra.length) return `the M1 native default may advertise only ${allowed.join(", ")}; it also lists ${extra.join(", ")}`;
+  if (extra.length) return `the M2 native default may advertise only ${allowed.join(", ")}; it also lists ${extra.join(", ")}`;
   return null;
 }
 
 test("NE-27: ENGINE_DEFAULT says native only when STATE.md records the OQ-9 answer", () => {
   /* MUTATIONS: commit {"mode":"native"} with STATE.md's OQ-9 line deleted ->
-     red; keep the line but drop its quoted ruling -> red; add "foray" to a
-     native default in M1 -> red. The synthetic cases below are those mutations,
-     run every time, so the guard cannot go vacuous while the default is js. */
+     red; keep the line but drop its quoted ruling -> red; add "remainder" (or
+     anything past M2's four) to a native default -> red. The synthetic cases
+     below are those mutations, run every time, so the guard cannot go vacuous
+     while the default is js. */
   const record = 'OQ-9 answer (2026-09-24): native default for the founder\'s builds, "Full native engine".';
   assert.equal(engineDefaultRefusal({ mode: "js" }, ""), null, "a js default needs no record");
   assert.match(engineDefaultRefusal({ mode: "native", capabilities: ["episode"] }, "") ?? "", /OQ-9/);
   assert.match(engineDefaultRefusal({ mode: "native" }, "OQ-9 answer (2026-09-24): native default, unquoted") ?? "", /OQ-9/);
   assert.match(engineDefaultRefusal({ mode: "native" }, "  " + record) ?? "", /OQ-9/, "the record is a line of its own");
   assert.equal(engineDefaultRefusal({ mode: "native", capabilities: ["episode", "continuation", "restore"] }, record), null);
-  assert.match(engineDefaultRefusal({ mode: "native", capabilities: ["episode", "foray"] }, record) ?? "", /foray/);
+  assert.equal(engineDefaultRefusal({ mode: "native", capabilities: ["episode", "continuation", "restore", "foray"] }, record), null);
+  assert.match(engineDefaultRefusal({ mode: "native", capabilities: ["episode", "remainder"] }, record) ?? "", /remainder/);
+  assert.match(engineDefaultRefusal({ mode: "native", capabilities: ["foray", "narration"] }, record) ?? "", /narration/);
 
   /* Per platform since A-20 (docs/plans/android-assessment.md): the OQ-9 rule
      reads the `ios` block. The `android` block is js (the legacy lane) until
@@ -4340,4 +4573,102 @@ test("NE-27: ENGINE_DEFAULT says native only when STATE.md records the OQ-9 answ
   const refusal = engineDefaultRefusal(committed.ios, fs.readFileSync(STATE_MD, "utf8").replace(/\r\n/g, "\n"));
   assert.equal(refusal, null, refusal ?? "");
   assert.deepEqual(committed.android, { mode: "js", capabilities: [] }, "android stays js until A-31");
+
+  /* NE-37, the M2 flip: a default that grants `foray` needs a boot that plays
+     one. The core's flags stay OFF (headless tests and the parity driver build
+     cores without them); the shipping boot turns on the tape and the deck
+     pair, and leaves the silence node (H-2), the direct synthesizer (DV-9) and
+     narration at the listener's speed (OQ-3) off. MUTATION: drop "foray" from
+     ENGINE_DEFAULT.json while the boot turns the tape on, or the reverse; set
+     any of the three held flags in the boot. */
+  const boot = stripSwiftComments(fs.readFileSync(path.join(ENGINE_DIR, "EngineBoot.swift"), "utf8"));
+  assert.equal(/config\.forayTapeEnabled = true\b/.test(boot), (committed.ios.capabilities ?? []).includes("foray"),
+    "ENGINE_DEFAULT.json grants foray exactly when EngineBoot turns the Foray tape on");
+  assert.deepEqual([...(committed.ios.capabilities ?? [])].sort(), ["continuation", "episode", "foray", "restore"], "NE-37: the M2 default");
+  assert.match(boot, /config\.deckPairEnabled = true\b/, "NE-37 turns the deck pair on with the tape");
+  for (const held of ["silenceNodeEnabled", "speechDirect", "narrationFollowsListenerRate"]) {
+    assert.doesNotMatch(boot, new RegExp(String.raw`config\.${held}\s*=`), `the boot must leave ${held} at the core's default (off)`);
+  }
+});
+
+/* ─────────── NE-33: SpeechNarrator, SpeechRules and the bundled lexicon ───────────
+ * docs/native-engine-plan.md §14 NE-33. */
+
+test("NE-33: SpeechRules is byte-identical in the core and foray-tts, the lexicon is bundled with a hash pin, the speech families run, and SpeechNarrator takes the PCM path by default", async () => {
+  /* The card: "Move resolveVoice, bestVoice, candidates, lexicon/IPA
+     application and pickDefaultVoice into core/Policy/SpeechRules.swift.
+     ForayTts keeps a byte-identical copy of the shared code (node test). The
+     lexicon JSON is bundled into foray-audio with a hash pin to foray-tts's
+     hard-terms.json." And DV-9 has no row from the phone, so the narrator's
+     default is the PCM path, the direct synthesizer behind a flag.
+     MUTATION: edit one SpeechRules.swift copy; give ForayTtsPlugin its own
+     bestVoice again; edit hard-terms.json without re-bundling (or change the
+     pin); unregister a speech runner or drop a wrapper's requirement; default
+     `speechDirect` or the narrator's path to direct; map a narration stop to
+     `.finished`. Each fails here. */
+  const { createHash } = await import("node:crypto");
+  const coreRules = path.join(CORE_DIR, "Sources/ForayEngineCore/Policy/SpeechRules.swift");
+  const ttsRules = path.join(MOBILE, "plugins/foray-tts/ios/Sources/ForayTtsPlugin/SpeechRules.swift");
+  const a = fs.readFileSync(coreRules);
+  const b = fs.readFileSync(ttsRules);
+  assert.ok(a.equals(b), "the two SpeechRules.swift copies differ: edit both, or neither");
+  assert.ok(!a.includes(0x0d), "LF line endings, or the byte comparison is a Windows accident");
+  assert.deepEqual(swiftImports(coreRules), ["Foundation"], "SpeechRules builds on Linux and in both plugins");
+  const rules = stripSwiftComments(a.toString("utf8"));
+  for (const fn of ["candidates", "bestVoice", "resolveVoice", "pickDefaultVoice", "ipaOverrides", "narrationVoice", "defaultVoiceIdentifier"]) {
+    assert.ok(swiftFuncBody(rules, fn), `SpeechRules has ${fn}`);
+  }
+  assert.match(rules, /public static let defaultVoiceName = "Samantha"/, "the founder's 2026-09-10 ruling");
+  assert.match(swiftFuncBody(rules, "narrationVoice"), /defaultVoiceIdentifier\(installed: installed\)[\s\S]*?resolveVoice\(/,
+    "no voice asked for: the default rule first, bestVoice only without a Samantha");
+
+  const plugin = stripSwiftComments(fs.readFileSync(path.join(MOBILE, "plugins/foray-tts/ios/Sources/ForayTtsPlugin/ForayTtsPlugin.swift"), "utf8"));
+  assert.doesNotMatch(plugin, /struct VoiceOption\b|struct VoiceResolution\b/, "the plugin's voice types are SpeechRules'");
+  for (const fn of ["candidates", "bestVoice", "resolveVoice", "sortedForListing", "qualityLabel", "primarySubtag"]) {
+    assert.match(swiftFuncBody(plugin, fn) ?? "", new RegExp(`SpeechRules\\.${fn}\\(`), `ForayTtsPlugin.${fn} delegates to SpeechRules`);
+  }
+
+  const lexiconSource = path.join(MOBILE, "plugins/foray-tts/lexicon/hard-terms.json");
+  const bundle = fs.readFileSync(path.join(ENGINE_DIR, "SpeechLexicon.swift"), "utf8");
+  const sha = createHash("sha256").update(fs.readFileSync(lexiconSource)).digest("hex");
+  assert.match(bundle, new RegExp(`static let sourceSHA256 = "${sha}"`), "SpeechLexicon's pin is hard-terms.json's sha256: re-bundle the lexicon");
+  const embedded = bundle.slice(bundle.indexOf('static let json = #"""\n') + 'static let json = #"""\n'.length, bundle.lastIndexOf('\n"""#'));
+  assert.equal(embedded, fs.readFileSync(lexiconSource, "utf8").replace(/\n$/, ""), "SpeechLexicon.json is hard-terms.json byte for byte");
+
+  const registry = stripSwiftComments(fs.readFileSync(path.join(CORE_DIR, "Sources/ForayEngineParity/FamilyRunner.swift"), "utf8"));
+  for (const runner of ["DefaultVoiceFamily.runner", "LexiconFamily.runner", "SpeechRateFamily.runner"]) {
+    assert.ok(registry.includes(runner), `the registry holds ${runner}`);
+  }
+  for (const wrapper of [path.join(CORE_DIR, "Tests/ForayEngineCoreTests/ParityFamilyTests.swift"),
+    path.join(PLUGIN_DIR, "ios/Tests/ForayAudioPluginTests/EngineParityWrapperTests.swift")]) {
+    const code = fs.readFileSync(wrapper, "utf8");
+    for (const fam of ["default-voice", "lexicon", "speech-rate"]) {
+      assert.ok(code.includes(`assertParityFamily("${fam}", requireRunner: true)`), `${path.basename(wrapper)} requires the ${fam} runner`);
+    }
+  }
+
+  const core = stripSwiftComments(fs.readFileSync(path.join(CORE_DIR, "Sources/ForayEngineCore/Engine/EngineCore.swift"), "utf8"));
+  assert.match(core, /speechDirect: Bool = false/, "the direct synthesizer is behind a flag that defaults OFF (DV-9 unanswered)");
+  const boot = stripSwiftComments(fs.readFileSync(path.join(ENGINE_DIR, "EngineBoot.swift"), "utf8"));
+  assert.match(boot, /speaker: SpeechNarrator\(config: SpeechNarrator\.Config\(path: config\.speechDirect \? \.direct : \.pcm,/,
+    "the boot builds the one narrator on the flag's path");
+  const narrator = stripSwiftComments(fs.readFileSync(path.join(ENGINE_DIR, "SpeechNarrator.swift"), "utf8"));
+  assert.match(narrator, /init\(path: Path = \.pcm,/, "the narrator's own default is PCM");
+  assert.match(narrator, /final class PcmOutput[\s\S]*?speech\.write\(utterance\)/, "path B renders with write(_:toBufferCallback:)");
+  assert.match(narrator, /AVAudioPlayerNode\(\)/, "and plays through the engine's own player");
+  assert.doesNotMatch(narrator, /\b(setActive|setCategory)\(/, "the narrator never touches the session");
+  const narrate = swiftFuncBody(narrator, "narrate") ?? "";
+  const stopCase = narrate.slice(narrate.indexOf("case let .stop("), narrate.indexOf("case let .discard("));
+  assert.match(stopCase, /\.cancelled\(seq: seq\)/, "a stop reports cancelled");
+  assert.doesNotMatch(stopCase, /\.finished/, "a stop is never a finish (L-05)");
+
+  const tests = path.join(PLUGIN_DIR, "ios/Tests/ForayAudioPluginTests/Engine/SpeechNarratorTests.swift");
+  for (const name of [
+    "testPauseAndResumeMidUtteranceContinuesTheSameLine",
+    "testStopNeverAdvances",
+    "testAVoiceThatIsNotInstalledFallsBackAndSaysSo",
+    "testWithNoVoiceIdTheColdPathSpeaksTheDefaultVoiceNotTheBestTier",
+  ]) {
+    assert.ok(swiftTestNames(tests).includes(name), `NE-33's ${name} is gone`);
+  }
 });

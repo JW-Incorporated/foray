@@ -370,7 +370,8 @@ export function capabilityFamilies(capabilities) {
     union, so a capability any build advertises is gated; none while a block
     says js) and the Swift source's `advertisedCapabilities` array literal
     (EngineBridgeRules.swift). Since NE-27b both say episode, continuation and
-    restore for iOS; Android's block advertises nothing until A-31. */
+    restore for iOS; since NE-37 (the M2 flip) foray too. Android's block
+    advertises nothing until A-31. */
 export function advertisedCapabilities(root) {
   const out = new Map();
   const def = path.join(root, "mobile", "ENGINE_DEFAULT.json");

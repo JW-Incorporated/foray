@@ -1,8 +1,8 @@
 {
-  "//": "Per platform since A-20 (docs/plans/android-assessment.md). ios: the plist injector (tools/mobile/inject-background-audio.mjs) writes ForayEngineDefault and ForayEngineCapabilities from this block; native since NE-27b. android: js, the legacy lane, until A-31 flips it; no Android build reads it before the Media3 engine exists.",
+  "//": "Per platform since A-20 (docs/plans/android-assessment.md). ios: the plist injector (tools/mobile/inject-background-audio.mjs) writes ForayEngineDefault and ForayEngineCapabilities from this block; native since NE-27b, foray since NE-37 (the M2 flip). android: js, the legacy lane, until A-31 flips it; no Android build reads it before the Media3 engine exists.",
   "ios": {
     "mode": "native",
-    "capabilities": ["episode", "continuation", "restore"]
+    "capabilities": ["episode", "continuation", "restore", "foray"]
   },
   "android": {
     "mode": "js",

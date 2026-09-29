@@ -38,8 +38,13 @@ const r = (s) => Math.round(s);
  * FakeBackend, plus a `log` argument so it can share the scenario's log.
  */
 export class FakeBackend {
-  constructor({ log = new OpLog(), failLoadFor = [], durationById = {}, duration = 3600, holdLoads = false } = {}) {
+  constructor({ log = new OpLog(), failLoadFor = [], durationById = {}, duration = 3600, holdLoads = false, loadTurns = 0 } = {}) {
     this.log = log;
+    /** NE-30j. A load that takes a few MICROTASK turns before it starts —
+        queue-manager.test.js's AsyncLoadBackend, "any real network load": the
+        window in which a stale wait could resume and arm a boundary the
+        replacement load then clears. */
+    this.loadTurns = Number.isInteger(loadTurns) && loadTurns > 0 ? loadTurns : 0;
     /** NE-14j. When true a load does not settle until the scenario says so
         (the `deck: "loaded"` / `"loadFailed"` verbs, via `settleLoad`), so a
         superseded load can land AFTER the load that replaced it — the ordering
@@ -66,6 +71,7 @@ export class FakeBackend {
   get duration() { return this.durationById[this._loadedId] ?? this._duration; }
   set duration(v) { this._duration = v; }
   async load(item, { startOffset = 0 } = {}) {
+    for (let i = 0; i < this.loadTurns; i++) await Promise.resolve();
     this._loadedId = item.id;
     this.outPoint = null; // contract: a load drops any armed boundary
     this.paused = true;
@@ -165,24 +171,74 @@ export class MemoryStore {
  * The on-device narration bridge: `speak`, the optional `onFinished`, and the
  * L-05 transport (`pause`/`resume`/`stop`). `finish()` is the scenario's
  * `tts` verb standing in for `speechSynthesizer(_:didFinish:)`.
+ *
+ * NE-31j. The shapes queue-manager.test.js's narration suites hand the
+ * manager, each opt-in so a plain `tts: true` is exactly the fake it was:
+ *
+ *   refuse         speak answers { ok: false } (a synthesiser that will not)
+ *   voiceFallback  speak answers { ok: true, voiceFallback: true } (the plugin
+ *                  spoke in another voice than the one asked for)
+ *   onFinished     false: the bridge has no `onFinished` at all (an older
+ *                  shell) — no ticker, no auto-advance
+ *   transport      false: no `pause`/`resume`/`stop` (a shell built before L-05)
+ *   pause          "rejects": the pause call is made (`tts.pause`) and throws
+ *   resume         an answer object: what `resume` resolves (Android's
+ *                  `{fromStart: true}`, an older shell's `{accepted: false}`)
+ *   state          true: the bridge answers `state()` — `speaking` from a
+ *                  speak until finish/stop, `paused` between pause and resume,
+ *                  `idle` otherwise. The scenario's `tts: "silent"` is the
+ *                  session taken from under the utterance: the synthesiser
+ *                  stops and tells nobody (ForayTtsPlugin.swift), so only
+ *                  `state()` says so. A read, never an op.
  */
-export function fakeTts({ log = new OpLog(), refuse = false } = {}) {
+export function fakeTts({
+  log = new OpLog(), refuse = false, voiceFallback = false, onFinished = true,
+  transport = true, pause = "ok", resume = null, state = false,
+} = {}) {
   const listeners = new Set();
-  return {
+  let word = "idle";
+  const bridge = {
     log,
     async speak(text, opts = {}) {
       log.push(`tts.speak:${text}@${opts.rate ?? "-"}${opts.voice ? `:${opts.voice}` : ""}`);
-      return refuse ? { ok: false, reason: "refused" } : { ok: true };
+      if (refuse) return { ok: false, reason: "refused" };
+      word = "speaking";
+      return voiceFallback ? { ok: true, voiceFallback: true } : { ok: true };
     },
-    onFinished(fn) {
+    finish() { word = "idle"; for (const fn of [...listeners]) fn(); },
+    /** The session was taken: the synthesiser is silent and reports nothing. */
+    silence() { word = "idle"; },
+  };
+  if (onFinished !== false) {
+    bridge.onFinished = (fn) => {
       listeners.add(fn);
       return () => listeners.delete(fn);
-    },
-    finish() { for (const fn of [...listeners]) fn(); },
-    async pause() { log.push("tts.pause"); return { ok: true, accepted: true, path: "native" }; },
-    async resume() { log.push("tts.resume"); return { ok: true, accepted: true, path: "native" }; },
-    async stop() { log.push("tts.stop"); return { ok: true, accepted: true, path: "native" }; },
-  };
+    };
+  }
+  if (transport !== false) {
+    bridge.pause = async () => {
+      log.push("tts.pause");
+      if (pause === "rejects") throw new Error("the bridge is gone");
+      if (word === "speaking") word = "paused";
+      return { ok: true, accepted: true, path: "native" };
+    };
+    bridge.resume = async () => {
+      log.push("tts.resume");
+      if (resume && typeof resume === "object") {
+        if (resume.accepted === true) word = "speaking";
+        return { ...resume };
+      }
+      if (word === "paused") word = "speaking";
+      return { ok: true, accepted: true, path: "native" };
+    };
+    bridge.stop = async () => {
+      log.push("tts.stop");
+      word = "idle";
+      return { ok: true, accepted: true, path: "native" };
+    };
+  }
+  if (state === true) bridge.state = async () => ({ ok: true, state: word });
+  return bridge;
 }
 
 /** The jingle player: `start() -> bool`, `stop()`, assignable `onEnded`.

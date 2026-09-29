@@ -1,0 +1,330 @@
+{
+  "family": "interlude",
+  "module": "player/interlude.js",
+  "note": "The jingle's decision table (interlude.js interludeEligible and sameSourceEpisode), its constants, and the native silence node's cap (silenceNodeSec, authored). The element wrapper's tests are dom-only, the preference's are the page's, and describeInterlude's wording is text-pin; exclusions.json says why for each.",
+  "cases": [
+    {
+      "id": "interlude/rule-segment-to-segment",
+      "covers": [
+        "interlude::the rule: into a segment on auto-advance, from anything but a jingle"
+      ],
+      "call": "interludeEligible",
+      "args": [{ "from": { "$seg": ["a"] }, "to": { "$seg": ["b"] } }],
+      "expect": { "return": true }
+    },
+    {
+      "id": "interlude/rule-narration-to-segment",
+      "covers": [
+        "interlude::the rule: into a segment on auto-advance, from anything but a jingle"
+      ],
+      "call": "interludeEligible",
+      "args": [{ "from": { "$tts": ["n", { "script": "a line" }] }, "to": { "$seg": ["b"] } }],
+      "expect": { "return": true }
+    },
+    {
+      "id": "interlude/rule-nothing-before",
+      "covers": [
+        "interlude::the rule: into a segment on auto-advance, from anything but a jingle"
+      ],
+      "call": "interludeEligible",
+      "args": [{ "from": null, "to": { "$seg": ["b"] } }],
+      "expect": { "return": false }
+    },
+    {
+      "id": "interlude/rule-nothing-after",
+      "covers": [
+        "interlude::the rule: into a segment on auto-advance, from anything but a jingle"
+      ],
+      "call": "interludeEligible",
+      "args": [{ "from": { "$seg": ["a"] }, "to": null }],
+      "expect": { "return": false }
+    },
+    {
+      "id": "interlude/rule-segment-to-narration",
+      "covers": [
+        "interlude::the rule: into a segment on auto-advance, from anything but a jingle"
+      ],
+      "call": "interludeEligible",
+      "args": [{ "from": { "$seg": ["a"] }, "to": { "$tts": ["n", { "script": "a line" }] } }],
+      "expect": { "return": false }
+    },
+    {
+      "id": "interlude/rule-narration-to-narration",
+      "covers": [
+        "interlude::the rule: into a segment on auto-advance, from anything but a jingle"
+      ],
+      "call": "interludeEligible",
+      "args": [
+        {
+          "from": { "$tts": ["n", { "script": "a line" }] },
+          "to": { "$tts": ["m", { "script": "a line" }] }
+        }
+      ],
+      "expect": { "return": false }
+    },
+    {
+      "id": "interlude/rule-user-skip",
+      "covers": [
+        "interlude::the rule: into a segment on auto-advance, from anything but a jingle"
+      ],
+      "call": "interludeEligible",
+      "args": [{ "from": { "$seg": ["a"] }, "to": { "$seg": ["b"] }, "cause": "user" }],
+      "expect": { "return": false }
+    },
+    {
+      "id": "interlude/rule-after-authored-jingle",
+      "covers": [
+        "interlude::the rule: into a segment on auto-advance, from anything but a jingle"
+      ],
+      "call": "interludeEligible",
+      "args": [{ "from": { "id": "j", "kind": "jingle" }, "to": { "$seg": ["b"] } }],
+      "expect": { "return": false }
+    },
+    {
+      "id": "interlude/rule-episode-to-segment",
+      "covers": [
+        "interlude::the rule: into a segment on auto-advance, from anything but a jingle"
+      ],
+      "call": "interludeEligible",
+      "args": [{ "from": { "$ep": ["e"] }, "to": { "$seg": ["b"] } }],
+      "expect": { "return": true }
+    },
+    {
+      "id": "interlude/rule-segment-to-episode",
+      "covers": [
+        "interlude::the rule: into a segment on auto-advance, from anything but a jingle"
+      ],
+      "call": "interludeEligible",
+      "args": [{ "from": { "$seg": ["a"] }, "to": { "$ep": ["e"] } }],
+      "expect": { "return": false }
+    },
+    {
+      "id": "interlude/rule-explicit-auto-cause",
+      "covers": [
+        "interlude::the rule: into a segment on auto-advance, from anything but a jingle"
+      ],
+      "call": "interludeEligible",
+      "args": [{ "from": { "$seg": ["a"] }, "to": { "$seg": ["b"] }, "cause": "auto" }],
+      "expect": { "return": true }
+    },
+    {
+      "id": "interlude/rule-no-arguments",
+      "covers": [
+        "interlude::the rule: into a segment on auto-advance, from anything but a jingle"
+      ],
+      "call": "interludeEligible",
+      "args": [],
+      "expect": { "return": false }
+    },
+    {
+      "id": "interlude/same-episode-one-episode-two-cuts",
+      "covers": [
+        "interlude::two cuts of the SAME episode get no jingle; the strip's capsule key decides (p-foray-1)"
+      ],
+      "call": "interludeEligible",
+      "args": [
+        {
+          "from": { "$seg": ["a", 100, 210, { "source_item_id": "ep-1" }] },
+          "to": { "$seg": ["b", 100, 210, { "source_item_id": "ep-1" }] }
+        }
+      ],
+      "expect": { "return": false }
+    },
+    {
+      "id": "interlude/same-episode-one-episode-item-id-shape",
+      "covers": [
+        "interlude::two cuts of the SAME episode get no jingle; the strip's capsule key decides (p-foray-1)"
+      ],
+      "call": "interludeEligible",
+      "args": [
+        {
+          "from": { "$seg": ["a", 100, 210, { "item_id": "ep-1" }] },
+          "to": { "$seg": ["b", 100, 210, { "item_id": "ep-1" }] }
+        }
+      ],
+      "expect": { "return": false }
+    },
+    {
+      "id": "interlude/same-episode-change-of-episode",
+      "covers": [
+        "interlude::two cuts of the SAME episode get no jingle; the strip's capsule key decides (p-foray-1)"
+      ],
+      "call": "interludeEligible",
+      "args": [
+        {
+          "from": { "$seg": ["a", 100, 210, { "source_item_id": "ep-1" }] },
+          "to": { "$seg": ["b", 100, 210, { "source_item_id": "ep-2" }] }
+        }
+      ],
+      "expect": { "return": true }
+    },
+    {
+      "id": "interlude/same-episode-narration-into-tape",
+      "covers": [
+        "interlude::two cuts of the SAME episode get no jingle; the strip's capsule key decides (p-foray-1)"
+      ],
+      "call": "interludeEligible",
+      "args": [
+        {
+          "from": { "$tts": ["n", { "script": "a line" }] },
+          "to": { "$seg": ["b", 100, 210, { "source_item_id": "ep-1" }] }
+        }
+      ],
+      "expect": { "return": true }
+    },
+    {
+      "id": "interlude/same-episode-two-unidentified-episodes",
+      "covers": [
+        "interlude::two cuts of the SAME episode get no jingle; the strip's capsule key decides (p-foray-1)"
+      ],
+      "call": "interludeEligible",
+      "args": [{ "from": { "$seg": ["a"] }, "to": { "$seg": ["b"] } }],
+      "expect": { "return": true }
+    },
+    {
+      "id": "interlude/same-source-unidentified-is-not-one",
+      "covers": [
+        "interlude::two cuts of the SAME episode get no jingle; the strip's capsule key decides (p-foray-1)"
+      ],
+      "call": "sameSourceEpisode",
+      "args": [{ "$seg": ["a"] }, { "$seg": ["b"] }],
+      "expect": { "return": false }
+    },
+    {
+      "id": "interlude/same-source-one-key",
+      "covers": [
+        "interlude::two cuts of the SAME episode get no jingle; the strip's capsule key decides (p-foray-1)"
+      ],
+      "call": "sameSourceEpisode",
+      "args": [
+        { "$seg": ["a", 100, 210, { "source_item_id": "ep-1" }] },
+        { "$seg": ["b", 100, 210, { "source_item_id": "ep-1" }] }
+      ],
+      "expect": { "return": true }
+    },
+    {
+      "id": "interlude/duration-sec",
+      "covers": [
+        "interlude::INTERLUDE_DURATION_SEC is the file's measured length, inside the 2.5-3.5 s brief, under the ceiling"
+      ],
+      "read": "INTERLUDE_DURATION_SEC",
+      "expect": { "value": 3 }
+    },
+    {
+      "id": "interlude/ceiling-is-4.5s",
+      "covers": [
+        "interlude::INTERLUDE_DURATION_SEC is the file's measured length, inside the 2.5-3.5 s brief, under the ceiling"
+      ],
+      "authored": true,
+      "note": "The longest a seam is held for the jingle: the asset's 3.0 s plus 1.5 s of play() start-up. The native jingle adapter and the silence node are both capped by it (plan §4.4).",
+      "read": "INTERLUDE_CEILING_SEC",
+      "expect": { "value": 4.5 }
+    },
+    {
+      "id": "interlude/rate-is-1x",
+      "covers": [],
+      "authored": true,
+      "note": "The jingle always plays at 1.0x, whatever the listener's rate (corner case #18's argument, as for narration).",
+      "read": "INTERLUDE_RATE",
+      "expect": { "value": 1 }
+    },
+    {
+      "id": "interlude/silence-node-at-the-out-point-is-the-ceiling",
+      "covers": [],
+      "authored": true,
+      "note": "Hard-capped at INTERLUDE_CEILING_SEC from the out-point, whatever the load does (plan §4.4).",
+      "call": "silenceNodeSec",
+      "args": [{ "sinceOutPointSec": 0, "running": true, "sessionActive": true }],
+      "expect": { "return": 4.5 }
+    },
+    {
+      "id": "interlude/silence-node-counts-down-from-the-out-point",
+      "covers": [],
+      "authored": true,
+      "call": "silenceNodeSec",
+      "args": [{ "sinceOutPointSec": 1.5, "running": true, "sessionActive": true }],
+      "expect": { "return": 3 }
+    },
+    {
+      "id": "interlude/silence-node-never-beyond-the-ceiling",
+      "covers": [],
+      "authored": true,
+      "note": "At the cap the node stops; after it only the background-grace task covers the gap.",
+      "call": "silenceNodeSec",
+      "args": [{ "sinceOutPointSec": 4.5, "running": true, "sessionActive": true }],
+      "expect": { "return": 0 }
+    },
+    {
+      "id": "interlude/silence-node-never-after-the-ceiling",
+      "covers": [],
+      "authored": true,
+      "call": "silenceNodeSec",
+      "args": [{ "sinceOutPointSec": 30, "running": true, "sessionActive": true }],
+      "expect": { "return": 0 }
+    },
+    {
+      "id": "interlude/silence-node-never-when-not-running",
+      "covers": [],
+      "authored": true,
+      "note": "Silence is an audible start as far as the session is concerned (engine-contract.js AUDIBLE_COMMANDS): never without the listener's intent to play.",
+      "call": "silenceNodeSec",
+      "args": [{ "sinceOutPointSec": 0, "running": false, "sessionActive": true }],
+      "expect": { "return": 0 }
+    },
+    {
+      "id": "interlude/silence-node-never-when-session-inactive",
+      "covers": [],
+      "authored": true,
+      "note": "Never without an active session: the audible-start invariant (plan §4.4).",
+      "call": "silenceNodeSec",
+      "args": [{ "sinceOutPointSec": 0, "running": true, "sessionActive": false }],
+      "expect": { "return": 0 }
+    },
+    {
+      "id": "interlude/silence-node-never-when-neither",
+      "covers": [],
+      "authored": true,
+      "call": "silenceNodeSec",
+      "args": [{ "sinceOutPointSec": 0, "running": false, "sessionActive": false }],
+      "expect": { "return": 0 }
+    },
+    {
+      "id": "interlude/silence-node-truthy-is-not-true",
+      "covers": [],
+      "authored": true,
+      "call": "silenceNodeSec",
+      "args": [{ "sinceOutPointSec": 0, "running": 1, "sessionActive": "yes" }],
+      "expect": { "return": 0 }
+    },
+    {
+      "id": "interlude/silence-node-never-before-the-out-point",
+      "covers": [],
+      "authored": true,
+      "call": "silenceNodeSec",
+      "args": [{ "sinceOutPointSec": -1, "running": true, "sessionActive": true }],
+      "expect": { "return": 0 }
+    },
+    {
+      "id": "interlude/silence-node-junk-time-is-no-silence",
+      "covers": [],
+      "authored": true,
+      "call": "silenceNodeSec",
+      "args": [
+        {
+          "sinceOutPointSec": { "$num": "NaN" },
+          "running": true,
+          "sessionActive": true
+        }
+      ],
+      "expect": { "return": 0 }
+    },
+    {
+      "id": "interlude/silence-node-no-arguments",
+      "covers": [],
+      "authored": true,
+      "call": "silenceNodeSec",
+      "args": [{ "$undefined": true }],
+      "expect": { "return": 0 }
+    }
+  ]
+}

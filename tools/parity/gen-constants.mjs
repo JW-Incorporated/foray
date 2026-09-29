@@ -78,6 +78,8 @@ export const SOURCES = Object.freeze([
   { module: "player/episode-progress.js", namespace: "EpisodeProgress" },
   { module: "player/foray-progress.js", namespace: "ForayProgress" },
   { module: "player/foray-queue.js", namespace: "ForayQueue" },
+  // NE-29j: the structural check's refusal token, kinds and closed problem codes (J-4), for NE-29s's StructuralCheck.
+  { module: "player/foray-structure.js", namespace: "ForayStructure" },
   { module: "player/html-audio-backend.js", namespace: "HtmlAudioBackend" },
   { module: "player/interlude.js", namespace: "Interlude" },
   { module: "player/media-session.js", namespace: "MediaSession" },

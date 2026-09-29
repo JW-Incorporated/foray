@@ -491,6 +491,10 @@ public class PlaybackKeepAliveService extends Service {
                truth, and stopSelf() means we do not sit as a started-but-not-
                foreground service. */
             Log.w(TAG, "startForeground failed; continuing without a foreground service", e);
+            /* A-09: the refusal is a row in the record, with the exception's class --
+               the second of the two places Android can say no (the plugin's
+               `startForegroundService` is the first). */
+            SessionMonitor.foregroundRefused(e);
             running = false;
             stopSelf();
             return START_NOT_STICKY;
@@ -517,7 +521,10 @@ public class PlaybackKeepAliveService extends Service {
             public void onReceive(Context context, Intent intent) {
                 if (intent == null || !AudioManager.ACTION_AUDIO_BECOMING_NOISY.equals(intent.getAction())) return;
                 Log.i(TAG, "audio becoming noisy: the output was lost; asking the page to pause");
-                NowPlayingHub.dispatchSession(SESSION_ROUTE_CHANGE, REASON_OLD_DEVICE_GONE);
+                /* A-09: with the port it was lost FROM (the route SessionMonitor last
+                   saw), so the row reads `old-device-gone a2dp->?` rather than a bare
+                   reason. The route callback that follows says where it went. */
+                NowPlayingHub.dispatchSession(SESSION_ROUTE_CHANGE, REASON_OLD_DEVICE_GONE, SessionMonitor.lostRouteFacts());
             }
         };
         try {

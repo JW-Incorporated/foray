@@ -43,23 +43,58 @@ enum EngineBoot {
             availMb: DeviceFacts.availableMemoryMb()))
 
         let session = AudioSessionOwner(config: AudioSessionOwner.Config(diag: { store.diag($0) }))
+        var config = EngineConfig(build: bundleVersion)
+        // NE-37, THE M2 FLIP: the app's engine plays Forays. The core's own
+        // defaults stay OFF (every headless test and the parity driver build
+        // one without them); the shipping boot turns on the Foray tape
+        // (NE-30s) and the two-deck pair with its prepared standby (NE-32).
+        // The rest stay off on purpose: the silence node until H-2 rows show a
+        // suspension (NE-34), the direct synthesizer until DV-9 answers
+        // (NE-33), and SPOKEN narration at the listener's speed until the
+        // founder changes his 1x ruling (OQ-3; a RENDERED line, one with an
+        // `audio_url`, follows the listener's speed since D2, 2026-09-28, with
+        // no flag). The page only sends `playForay` when
+        // the hello grants `foray` (mobile/ENGINE_DEFAULT.json ∩
+        // EngineBridgeRules.advertisedCapabilities).
+        config.forayTapeEnabled = true
+        config.deckPairEnabled = true
+        let sessionIsActive = { session.phase == .active }
+        // NE-34: the seam's jingle on the bundled asset (nil, and no jingle,
+        // if the asset did not ship), and the silence node only behind its
+        // flag (OFF). The jingle sounds at a Foray's seams now the tape is on.
+        let interlude = InterludePlayer.make(sessionIsActive: sessionIsActive, diag: { store.diag($0) },
+                                             timing: timing)
+        config.interludeAvailable = interlude != nil
+        let silence: SilenceRendering? = config.silenceNodeEnabled
+            ? SilenceNode(config: SilenceNode.Config(sessionIsActive: sessionIsActive, diag: { store.diag($0) },
+                                                     timing: timing))
+            : nil
+        // NE-32: two decks with a prepared standby, behind `deckPairEnabled`
+        // (on since NE-37, above); off, M1's one deck. Either way the deck's
+        // `outPoint` rows go into the ring.
+        let deck: DeckDriving = config.deckPairEnabled
+            ? DeckPair.make(sessionIsActive: sessionIsActive, diag: { store.diag($0) })
+            : AVDeck(config: AVDeck.Config(sessionIsActive: sessionIsActive, diag: { store.diag($0) }))
         let seams = EngineSeams(
             session: session,
             background: BackgroundGrace(),
             remote: RemoteSurface(),
             nowPlaying: NowPlayingPublisher(),
-            // The deck's own rows (ready, deadline, failures, time control,
-            // access and error logs) go into the ring with everyone else's.
-            deck: AVDeck(config: AVDeck.Config(sessionIsActive: { session.phase == .active },
-                                               diag: { store.diag($0) })),
-            speaker: PreviewSpeaker(config: PreviewSpeaker.Config(sessionIsActive: { session.phase == .active },
+            deck: deck,
+            // NE-33: the one synthesizer, for the audition and the narration,
+            // on the path DV-9 chose (PCM while DV-9 has no row; direct
+            // behind `speechDirect`, off).
+            speaker: SpeechNarrator(config: SpeechNarrator.Config(path: config.speechDirect ? .direct : .pcm,
+                                                                  sessionIsActive: sessionIsActive,
                                                                   diag: { store.diag($0) })),
             timing: timing,
             output: store,
             holdPolicy: holdPolicy,
+            interlude: interlude,
+            silence: silence,
             // Developer "Simulate system termination" only (DV-7a).
             terminate: { exit(0) })
-        let engine = ForayEngine(seams: seams, config: EngineConfig(build: bundleVersion))
+        let engine = ForayEngine(seams: seams, config: config)
         engine.start()
         engine.coldBoot(from: store.restoreRecord())
         return engine
