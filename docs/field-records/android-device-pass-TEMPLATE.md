@@ -19,6 +19,7 @@ Episode and Foray titles may stay as they are; nothing personal goes in here.
 | Phone | Pixel 10 Pro |
 | Android version and security patch (Settings → About phone) | |
 | Build under test (the Copy header's `build=`) | |
+| Native by default, or forced (from the script's "Filled in when issued") | |
 | Car (make, model, year) or headset (model) | |
 | Headphones used for step 10 | |
 | PC with `adb` for D and Part H? (yes / no) | |
@@ -47,7 +48,7 @@ Failures, one line each (step number and what happened):
 |---|---|---|---|---|
 | 1 | Install from the Play opt-in link; auto-update off | build shown in Play → About this app | | |
 | 2 | First-launch screenshot | nothing under the status or gesture bar | | |
-| 3 | Header check | engine=native, strikes=0, build under test, caps include episode and foray | | |
+| 3 | Header check | engine=native, strikes=0, build under test, caps include episode, foray and restore | | |
 
 ### Step 2 evidence (S)
 
@@ -92,8 +93,8 @@ Screenshots: commit them next to this file as `<this file's name>-step2-<n>.png`
 
 | Step | What | Expected (short; the script has it in full) | Result | Note |
 |---|---|---|---|---|
-| 8 | Two cross-episode seams, locked | both start by themselves; each `gap` ≤ 4.0 s, `hidden=y->y` | | |
-| 9 | Locked Foray seams; a Foray that opens with narration | controls from the first line; each Foray `gap` ≤ 1.0 s | | |
+| 8 | Two cross-episode seams, locked | both start by themselves; each `seam … src=engine` row `gap` ≤ 4.0 s | | |
+| 9 | Locked Foray seams; a Foray that opens with narration | controls from the first line; each Foray `seam … src=engine` `gap` ≤ 1.0 s | | |
 
 ### Step 8 evidence (C)
 
@@ -177,9 +178,9 @@ What each wheel button did: pause `____`, play `____`, next `____`, previous `__
 
 | Step | What | Expected (short; the script has it in full) | Result | Note |
 |---|---|---|---|---|
-| 18 | Voice preview during a narration line (#117 step 2) | "Pause playback to preview"; the line is not cut off | | |
-| 19 | Airplane-mode narration fallback (A-41) | the phone's voice speaks the line within ~3 s; `narration.fallback` row | | |
-| 20 | A network-only voice offline (#117 step 3) | narration moves on within ~2 s | | |
+| 18 | Voice preview during a narration line (#117 step 2) | "Pause playback to preview" (the web player's wording is a fail); the line is not cut off | | |
+| 19 | Airplane-mode narration fallback (A-41), Foray 2 | the phone's voice speaks the line within ~3 s; the fallback row | | |
+| 20 | A network-only voice offline (#117 step 3), Foray 3 | narration moves on within ~2 s | | |
 
 ### Step 18 evidence (C)
 

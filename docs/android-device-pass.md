@@ -27,10 +27,27 @@ blank, stop: the pass is not issued yet.
 |---|---|
 | Play build under test (versionCode, e.g. `2026110301`) | |
 | It carries A-42 (merge commit on `main`) | |
+| Native by default on that build, or forced? (see the note below) | |
 | Debug APK for Part H: the `android-build` run id on the same commit (artifact `android-shell-evidence` → `app-debug.apk`) | |
 | Three short episodes to queue in Up Next (Part C, step 8) | |
 | **Foray 1**, which opens with a narrator line and has rendered narration (Parts C, F, H) | |
-| **Foray 2**, a different narrated Foray, not yet played on this phone (Part F) | |
+| **Foray 2**, a different narrated Foray, not yet played on this phone (step 19) | |
+| **Foray 3**, a third narrated Foray, not yet played on this phone (step 20) | |
+| The row the Android engine writes when a narration file fails and the phone's voice takes over (step 19) | |
+
+Notes for the issuing session:
+
+- **The debug APK does not build itself.** `android-build.yml` has no `push` trigger, so
+  a release commit on `main` usually has no run. Dispatch one on a branch whose head is
+  that commit (`gh workflow run android-build.yml --ref <branch>`), and issue the pass
+  within the artifact's 14-day retention. If the run is gone, Part H cannot run; say so
+  here rather than let the tester find out.
+- **Native by default, or forced.** `docs/plans/android-assessment.md` lists "a device
+  pass" among A-42's own dependencies, while ruling D-A3 says no pass before A-42. If
+  the Forays default has not flipped yet because the flip waits on this record, write
+  "forced" above: the tester then sets ☰ → Developer → **Playback engine** to
+  **Native**, swipes 4a away and reopens it, before step 3. Which reading holds is the
+  orchestrator's call, not the tester's.
 
 ## What you need
 
@@ -56,11 +73,12 @@ blank, stop: the pass is not issued yet.
   number. Take the Copy after the step, not during it.
 - **Every Copy starts with the engine header.** For this pass it must read
   `engine=native … strikes=0 … build=<the build under test>`, and `caps=` must include
-  `episode` and `foray`. If a Copy says `engine=js`, `engine=legacy`, `strikes=` above
-  0 or another build, **stop and send that Copy**: nothing after it measures the
-  native engine.
-- **Every stop must be explained.** A Copy must not contain `stop cause=unknown`. If
-  it does, mark the step fail even if you heard nothing wrong.
+  `episode`, `foray` and `restore`. If a Copy says `engine=js`, `strikes=` above 0 or
+  another build, **stop and send that Copy**: nothing after it measures the native
+  engine. (Part H is the one exception: it switches to the web player on purpose.)
+- **Every stop must be explained.** No `stop` row in a Copy may read `cause=unknown`
+  (the engine prints it as `stop … src=engine cause=unknown`). If one does, mark the
+  step fail even if you heard nothing wrong.
 - **D = the two `adb` reads (PC only).** With the phone on USB, run both and paste the
   output under the step's number. If no PC is at hand, write "no PC" and move on.
 
@@ -91,7 +109,9 @@ blank, stop: the pass is not issued yet.
 2. **First-launch screenshot.** Open 4a and take **S** before tapping anything.
    *Expected:* nothing is drawn under the status bar (clock, battery) or under the
    gesture bar at the bottom; no text is cut off at the edges. (A-11)
-3. **Header check.** Take **C**.
+3. **Header check.** If "Filled in when issued" says **forced**, first set ☰ →
+   Developer → **Playback engine** to **Native**, swipe 4a away in Recents and reopen
+   it. Take **C**.
    *Expected:* the header rule above holds. If it does not, stop here.
 
 ## Part B: speaker, notification, lock screen (6 min)
@@ -128,15 +148,17 @@ blank, stop: the pass is not issued yet.
    before its end, lock, and time the seam into episode 3 the same way. Write both
    stopwatch times.
    *Expected:* both episodes start by themselves with the screen off. In **C**, each
-   of the two `seam` rows reads `gap` **4.0 s or less** with `hidden=y->y`, and none
-   reads `NEVER STARTED` or `NEVER AUDIBLE`. (Pass line: D-A4's 4 s.) **C**.
+   of the two seams has a `seam … src=engine` row (the native engine's) reading `gap`
+   **4.0 s or less**, and none reads `NEVER AUDIBLE` or `NEVER STARTED`. If a seam has
+   only a web-player `seam` row (no `src=engine`; it ends in `hidden=…`), the web player
+   played it: that is a fail, whatever its gap. (Pass line: D-A4's 4 s.) **C**.
 9. **A locked Foray seam, and a Foray that opens with narration.** Open **Foray 1**,
    press play, and **lock the phone within 2 seconds**. Leave it locked through the
    narrator's opening line and the next two seams (narrator → first clip, first clip →
    next item). Time both seams with the stopwatch.
    *Expected:* the lock screen shows controls from the first line (unlock and relock
    briefly to look if you need to); the first clip starts with the screen off. In
-   **C**, the two Foray `seam` rows each read `gap` **1.0 s or less** (A-40's line),
+   **C**, the two Foray `seam … src=engine` rows each read `gap` **1.0 s or less** (A-40's line),
    and what you heard was about half a second of silence each time. (native-2, A-40,
    A-15) **C**, **D**.
 
@@ -193,24 +215,27 @@ blank, stop: the pass is not issued yet.
     voice** and tap **Preview** on any voice.
     *Expected:* the picker says **"Pause playback to preview"** (the native engine's
     answer), and the narrator's line keeps playing to its end; nothing is cut off or
-    skipped. "Preview is unavailable while the narrator is on a line." is also a pass,
-    but note it: it means the web player was playing, which this build should not be
-    doing. **C**.
+    skipped. "Preview is unavailable while the narrator is on a line." is the web
+    player's answer (the one #117 step 2 was written for): write **fail** and send the
+    Copy, because it means the web player was playing the Foray, which this build
+    must not be doing. **C**.
 19. **Airplane-mode narration fallback** (A-41, A-10). Open **Foray 2**'s page while
     online, then turn **airplane mode on**, then press play.
     *Expected:* the narrator's opening line is **spoken by the phone's own voice**
     (it sounds different from the usual narrator) within about 3 seconds; not
-    silence, not a stuck spinner. The Copy has a row naming the fallback (`narration.fallback …`,
-    or the engine's row for it). The
-    clip after it cannot load offline; turn airplane mode off and it plays within about
-    30 seconds, or after one press of play (write which). No crash. **C**.
+    silence, not a stuck spinner. The Copy has the fallback row named in "Filled in
+    when issued". If the **usual narrator's** voice speaks the line instead, the file
+    was fetched before airplane mode went on, so nothing was tested: write n/a with
+    that note. The clip after it cannot load offline; turn airplane mode off and it
+    plays within about 30 seconds, or after one press of play (write which). No crash.
+    **C**.
 20. **A network-only voice offline** (HUMAN-ACTIONS #117 step 3). In **Narration
     voice**, pick a voice whose name ends in `-network`. If there is none, write n/a.
-    Turn airplane mode on and play **Foray 2** from the start.
+    Open **Foray 3**'s page while online, turn airplane mode on, and press play.
     *Expected:* the narration **moves on at once** (within about 2 seconds) rather than
     after a long silence. If the usual narrator's voice plays the opening line instead
-    (the file was fetched after all), write n/a with that note. Put the voice back to what it was, and turn airplane mode
-    off. **C**.
+    (the file was fetched after all), write n/a with that note. Put the voice back to
+    what it was, and turn airplane mode off. **C**.
 
 ## Part G: font size, then Delete my data (4 min)
 
@@ -264,8 +289,10 @@ replaces the Play install.
     6): lock the phone and press pause, then play, on the lock screen.
     *Expected:* the Foray pauses and plays, and the lock screen shows what read (2)
     showed.
-25. **Put the Play build back.** Set **Playback engine** back to **Automatic**, uninstall
-    the debug build, and reinstall 4a from Google Play.
+25. **Put the Play build back.** Uninstall the debug build (its settings go with it),
+    and reinstall 4a from Google Play. If "Filled in when issued" says **forced**, set
+    **Playback engine** to **Native** again and restart 4a; otherwise leave it on
+    **Automatic**. Play any episode.
     *Expected:* the Play build is back, and its Copy header reads `engine=native`
     again. **C**.
 
