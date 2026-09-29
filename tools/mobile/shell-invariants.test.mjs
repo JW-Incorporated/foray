@@ -96,7 +96,7 @@ import { SEEK_BACKWARD_SEC, SEEK_FORWARD_SEC } from "../../player/media-session.
 import { hydrateForayItems, indexSegments, indexSources } from "../../player/foray-resolve.js";
 import { PLUGIN_NAME } from "../../mobile/plugins/foray-audio/web/foray-audio-shell.js";
 import {
-  PLUGIN_NAME as MEDIA_PLUGIN_NAME, SET_METHOD, TRANSPORT_EVENT, ROUTABLE_ACTIONS, CLOSE_ACTION,
+  PLUGIN_NAME as MEDIA_PLUGIN_NAME, SET_METHOD, TRANSPORT_EVENT, SESSION_EVENT, ROUTABLE_ACTIONS, CLOSE_ACTION,
   WEBKIT_ORIGIN, REMOTE_COMMAND_FOR_ACTION, remoteCommandFor, UNMIRRORED_ACTIONS,
 } from "../../mobile/plugins/foray-audio/web/foray-media-session.js";
 import { FORAY_AUDIO_REACHED_NEEDLE, FORAY_SESSION_NEEDLE } from "./ios-ci.mjs";
@@ -4137,6 +4137,36 @@ test("a transport press on a running Android service is dispatched and NOT re-po
   assert.match(body, /CLOSE_TRANSPORT\.equals\(action\)[\s\S]*STOP_FOREGROUND_REMOVE/, "a close takes the notification down now");
   assert.match(service, /static boolean foregroundStartNeeded\(boolean running, boolean transportIntent\)\s*\{\s*return !running \|\| !transportIntent;/);
   assert.match(service, /if \(!running \|\| closing\) return;/, "and nothing re-posts while closing");
+});
+
+test("A-08: an Android headphone unplug reaches the page as the route loss client.js pauses on", () => {
+  /* The broadcast itself is Robolectric's (PlaybackKeepAliveServiceTest); what only
+     a source read can tie is the three spellings across the bridge. MUTATIONS:
+     rename the Java SESSION_EVENT -> every unplug goes to an event nobody
+     subscribed to; spell the reason "old-device-lost" -> client.js ignores it and
+     the podcast carries on from the speaker; register from onCreate -> red. */
+  const dir = path.join(PLUGIN_DIR, "android/src/main/java/ai/jwlabs/foura/audio");
+  const plugin = stripJavaComments(fs.readFileSync(path.join(dir, "ForayAudioPlugin.java"), "utf8"));
+  const service = stripJavaComments(fs.readFileSync(path.join(dir, "PlaybackKeepAliveService.java"), "utf8"));
+  const client = fs.readFileSync(path.join(ROOT, "player/client.js"), "utf8");
+  const javaEvent = /static final String SESSION_EVENT = "(\w+)"/.exec(plugin);
+  assert.ok(javaEvent, "ForayAudioPlugin.java declares SESSION_EVENT");
+  assert.equal(javaEvent[1], SESSION_EVENT, "the Java's session event name and the web half's agree");
+  assert.match(plugin, /notifyListeners\(SESSION_EVENT, sessionEvent\(/, "the plugin raises it");
+  assert.match(plugin, /NowPlayingHub\.setSessionSink\(sessionSink\)/, "…from the hub's session sink");
+  const kind = /static final String SESSION_ROUTE_CHANGE = "([\w-]+)"/.exec(service)?.[1];
+  const reason = /static final String REASON_OLD_DEVICE_GONE = "([\w-]+)"/.exec(service)?.[1];
+  assert.ok(
+    client.includes(`kind === "${kind}" && detail.reason === "${reason}"`),
+    `client.js's onNativeSession must act on ${kind}/${reason}, the pair the Android service sends`
+  );
+  assert.match(service, /AudioManager\.ACTION_AUDIO_BECOMING_NOISY/);
+  assert.match(service, /NowPlayingHub\.dispatchSession\(SESSION_ROUTE_CHANGE, REASON_OLD_DEVICE_GONE\)/);
+  const onCreate = /public void onCreate\(\)\s*\{([\s\S]*?)\n    \}/.exec(service)?.[1] ?? "";
+  assert.ok(!onCreate.includes("registerNoisyReceiver"), "registered while running, not from onCreate");
+  assert.match(service, /running = true;\s*registerNoisyReceiver\(\);/, "registered once startForeground succeeded");
+  const onDestroy = /public void onDestroy\(\)\s*\{([\s\S]*?)\n    \}/.exec(service)?.[1] ?? "";
+  assert.ok(onDestroy.includes("unregisterNoisyReceiver()"), "and unregistered with the service");
 });
 
 test("the Android shell starts the service for a narration-first Foray from the transport's first playing payload (round 2, native-2)", () => {

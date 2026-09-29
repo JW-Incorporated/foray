@@ -712,6 +712,89 @@ test("ROUND 2 nav-2: the shell's back button is wired to that order and leaves t
   assert.strictEqual(app.exits, 1, "with nothing open and nothing behind, back leaves the app");
 });
 
+/* A-07 (docs/plans/android-assessment.md): back on Home while something is
+   loaded minimizes instead of exiting. On Android `exitApp` finishes the
+   activity and the audio plugin's `handleOnDestroy` stops the playback
+   service with it, so the old unconditional exit killed the audio. */
+function shellApp() {
+  return {
+    listeners: {}, exits: 0, minimizes: 0,
+    addListener(name, fn) { this.listeners[name] = fn; return Promise.resolve({ remove() {} }); },
+    exitApp() { this.exits++; },
+    minimizeApp() { this.minimizes++; return Promise.resolve(); },
+  };
+}
+const shellWin = (app, player) => ({ Capacitor: { Plugins: { App: app } }, ...(player ? { ForayPlayer: player } : {}) });
+
+test("A-07: back on Home MINIMIZES while an episode or Foray is playing, so the audio lives on", () => {
+  /* MUTATION: put back the unconditional `app.exitApp()` in the listener ->
+     exits 1, minimizes 0; red. */
+  const m = mount();
+  const app = shellApp();
+  assert.strictEqual(m.ctx.bindHardwareBack(shellWin(app, { hasLoadedItem: () => true, isPlaying: () => true })), true);
+  app.listeners.backButton({ canGoBack: false });
+  assert.strictEqual(app.minimizes, 1, "playing: the app goes to the background");
+  assert.strictEqual(app.exits, 0, "and is not finished");
+});
+
+test("A-07: back on Home MINIMIZES while something is loaded but paused", () => {
+  /* MUTATION: ask the player `isPlaying` instead of `hasLoadedItem` -> a paused
+     episode exits and the ribbon, the service and the lock-screen card go with
+     it; red. */
+  const m = mount();
+  const app = shellApp();
+  m.ctx.bindHardwareBack(shellWin(app, { hasLoadedItem: () => true, isPlaying: () => false }));
+  app.listeners.backButton({ canGoBack: false });
+  assert.strictEqual(app.minimizes, 1, "paused: still minimized");
+  assert.strictEqual(app.exits, 0);
+});
+
+test("A-07: back on Home with nothing loaded still EXITS — no player, a player with nothing, a player that throws", () => {
+  /* MUTATION: minimize unconditionally -> back on an empty Home never leaves;
+     red. MUTATION: drop the try around `hasLoadedItem` -> the throwing player
+     breaks the listener; red. */
+  for (const [label, player] of [
+    ["no player on the page", null],
+    ["nothing loaded", { hasLoadedItem: () => false }],
+    ["an older player without the question", {}],
+    ["a player that throws", { hasLoadedItem() { throw new Error("boom"); } }],
+  ]) {
+    const m = mount();
+    const app = shellApp();
+    m.ctx.bindHardwareBack(shellWin(app, player));
+    app.listeners.backButton({ canGoBack: false });
+    assert.strictEqual(app.exits, 1, `${label}: back leaves the app`);
+    assert.strictEqual(app.minimizes, 0, `${label}: and does not minimize`);
+  }
+});
+
+test("A-07: only the BOTTOM of the back order minimizes; a shell without minimizeApp keeps the exit", () => {
+  /* MUTATION: minimize before `handleBack()` -> back with the drawer open
+     backgrounds the app instead of closing the drawer; red. */
+  const m = mount();
+  const app = shellApp();
+  m.ctx.bindHardwareBack(shellWin(app, { hasLoadedItem: () => true }));
+  m.menu.click();
+  app.listeners.backButton({ canGoBack: true });
+  assert.strictEqual(m.drawer.hidden, true, "back closed the drawer");
+  assert.strictEqual(app.minimizes + app.exits, 0, "and did nothing else");
+
+  const m2 = mount();
+  const old = shellApp();
+  delete old.minimizeApp;
+  m2.ctx.bindHardwareBack(shellWin(old, { hasLoadedItem: () => true }));
+  old.listeners.backButton({ canGoBack: false });
+  assert.strictEqual(old.exits, 1, "no minimizeApp in the shell: the old exit, not a dead button");
+
+  const m3 = mount();
+  const refusing = shellApp();
+  refusing.minimizeApp = function () { this.minimizes++; return Promise.reject(new Error("UNIMPLEMENTED")); };
+  m3.ctx.bindHardwareBack(shellWin(refusing, { hasLoadedItem: () => true }));
+  refusing.listeners.backButton({ canGoBack: false });
+  assert.strictEqual(refusing.minimizes, 1);
+  assert.strictEqual(refusing.exits, 0, "a refused minimize never becomes a kill of the audio");
+});
+
 test("THE REAL init() registers the back handler with the shell", async () => {
   /* MUTATION: remove `bindHardwareBack()` from init(). Red. */
   const app = { listeners: {}, addListener(name, fn) { this.listeners[name] = fn; return Promise.resolve({ remove() {} }); }, exitApp() {} };

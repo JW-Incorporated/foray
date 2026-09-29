@@ -1695,6 +1695,44 @@ test("a RESTORED ribbon is current but not loaded, so a caller's own start path 
   restore();
 });
 
+test("A-07: hasLoadedItem is isLoadedCurrent without the id: nothing, a restored bar and an ended Foray are not loaded; playing and paused are", async (t) => {
+  /* Android's hardware back on Home asks this (app.js leaveAppFromBack):
+     loaded minimizes, so the service and the audio live on; not loaded exits.
+     MUTATION 1: drop the `restoredPending` check in client.js's
+     `hasLoadedItem` -> the restored bar reads as loaded, red. MUTATION 2:
+     drop the "ended" exclusion -> the finished Foray reads as loaded, red.
+     MUTATION 3: answer `isPlaying()` -> the paused case is red. */
+  {
+    const { client, restore } = await bootClient(t);
+    assert.equal(client.hasLoadedItem(), false, "a fresh player has nothing loaded");
+    restore();
+  }
+  {
+    const { client, restore } = await aRestoredRibbon(t, 1800);
+    assert.equal(client.hasLoadedItem(), false, "a restored bar has nothing loaded");
+    await client.togglePlayback();
+    await settle();
+    assert.equal(client.hasLoadedItem(), true, "playing: loaded");
+    await client.togglePlayback();
+    await settle();
+    assert.equal(client.hasLoadedItem(), true, "paused: still loaded");
+    restore();
+  }
+  {
+    const { client, audio, restore } = await bootClient(t);
+    await client.playForay(synthetic(), { startIndex: 1 });   // the last segment
+    await settle();
+    await settle();
+    assert.equal(client.hasLoadedItem(), true, "a Foray playing is loaded");
+    audio.runOut();
+    await settle();
+    await settle();
+    assert.equal(client.forayStatus().ended, true, "precondition: the Foray is over");
+    assert.equal(client.hasLoadedItem(), false, "an ended Foray is not");
+    restore();
+  }
+});
+
 test("AUDIT: a scrub on a RESTORED ribbon is where the next press starts", async (t) => {
   /* The restored bar holds no audio, so `manager.seek` hit an empty queue, the
      reducer refused it silently, the thumb snapped back and play started from
@@ -2284,6 +2322,43 @@ test("REPORT 1: a route that DISAPPEARED pauses the transport and writes where i
   assert.equal(audio.paused, true, "the car went away, so the sound stops");
   assert.equal(transport(doc).label, "Play");
   assert.ok(Math.abs(posRow(storage, "ep-a").seconds - 1800) < 1, "at the second it stopped");
+  restore();
+});
+
+/** The Android Capacitor shell, as far as the page's boot reads it: platform
+    `android`, so there is no native engine (durable-store.js's
+    `deferredPrefixesFor` is iOS-only) and the page's own player owns the
+    session events. The Preferences tier answers empty. */
+function androidShell() {
+  return {
+    getPlatform: () => "android",
+    isNativePlatform: () => true,
+    nativePromise: async (plugin, method) => {
+      if (plugin === "Preferences" && method === "keys") return { keys: [] };
+      if (plugin === "Preferences" && method === "get") return { value: null };
+      return {};
+    },
+  };
+}
+
+test("A-08: on ANDROID, headphones unplugged pause the transport and write where it stopped", async (t) => {
+  /* `PlaybackKeepAliveService`'s ACTION_AUDIO_BECOMING_NOISY receiver sends the
+     iOS plugin's own pair through `ForayAudioPlugin.sessionEvent`, with the same
+     four keys; this is that payload reaching the page on the Android shell.
+     KILLING MUTATIONS: gate the `old-device-gone` branch of `onNativeSession`
+     to iOS, or have the Java send any other reason. */
+  const { client, doc, win, audio, storage, restore } = await bootClient(t, { capacitor: androidShell() });
+  assert.equal(win.Capacitor.getPlatform(), "android", "precondition: the Android shell");
+  await client.play(episodeItem());
+  await settle();
+  assert.equal(audio.paused, false, "precondition: playing from the headphones");
+  audio.currentTime = 900;
+  nativeSession(win, { kind: "routeChange", reason: "old-device-gone", producer: "audio", at: Date.now() });
+  await settle();
+  await settle();
+  assert.equal(audio.paused, true, "the headphones went, so the sound stops rather than moving to the speaker");
+  assert.equal(transport(doc).label, "Play");
+  assert.ok(Math.abs(posRow(storage, "ep-a").seconds - 900) < 1, "at the second it stopped");
   restore();
 });
 
