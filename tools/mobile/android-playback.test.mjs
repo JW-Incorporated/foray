@@ -52,10 +52,12 @@ import {
   focusStack,
   foregroundService,
   intLine,
+  jingleIn,
   killLine,
   jumpExpression,
   mediaButtonRoute,
   mediaControls,
+  mediaLogExpression,
   mediaSessions,
   parseArgs,
   pngInfo,
@@ -647,6 +649,10 @@ test("A-05: the media button route, the call state, the focused window and a buc
   assert.deepEqual(r, { session: `${PKG}/androidx.media3.session.id.foray`, sessionPackage: PKG, lastReceiver: null });
   const yt = mediaButtonRoute(SESSIONS.replace("Last MediaButtonReceiver: null", "Last MediaButtonReceiver: MBR {pkg=com.google.android.apps.youtube.music}"));
   assert.equal(yt.lastReceiver, "MBR {pkg=com.google.android.apps.youtube.music}");
+  /* Run 36562447644's (j): once our process is gone the dump says "Media
+     button session is null", which is nobody, not a package called "null". */
+  const gone = mediaButtonRoute(SESSIONS.replace(/Media button session is \S+/, "Media button session is null"));
+  assert.deepEqual(gone, { session: null, sessionPackage: null, lastReceiver: null });
   assert.equal(callState("  mCallState=1\n  mRingingCallState=0"), "RINGING");
   assert.equal(callState("mCallState=2"), "OFFHOOK");
   assert.equal(callState("mCallState=0"), "IDLE");
@@ -678,7 +684,7 @@ test("A-05 (f): seam statistics count a seam that never became audible as the wo
   assert.equal(st.p95Ms, 3000);
   assert.equal(st.maxMs, 3000);
   assert.equal(st.hiddenAtBoundary, 6);
-  assert.deepEqual(a15Trigger(st), { triggered: false, why: "p95 3000 ms <= 4000 ms" });
+  assert.deepEqual(a15Trigger(st), { triggered: false, on: "gap", why: "p95 gap 3000 ms <= 4000 ms" });
   const stalled = seamStats([...rows, seam(9, null, { lastStage: "load.deadline" })]);
   assert.equal(stalled.neverStarted, 1);
   assert.equal(stalled.p95Ms, "never audible");
@@ -696,7 +702,8 @@ test("A-05 (f): recorded, not gated: the verdict fails only when there was nothi
   const slow = seamStats([seam(1, 9000), seam(2, 11000)]);
   const ok = verdictSeams({ started: { ok: true }, wake: "Asleep", stats: slow });
   assert.equal(ok.ok, true);
-  assert.equal(ok.recorded.triggered, true);
+  assert.equal(ok.recorded.a15.triggered, true);
+  assert.deepEqual(ok.recorded.gap, { p50Ms: 9000, p95Ms: 11000, maxMs: 11000 });
   assert.match(verdictSeams({ started: { ok: true }, wake: "Awake", stats: slow }).failures.join(), /screen did not go off/);
   assert.match(verdictSeams({ started: { ok: false }, wake: "Asleep", stats: slow }).failures.join(), /did not start/);
   assert.match(verdictSeams({ started: { ok: true }, wake: "Asleep", stats: seamStats([]) }).failures.join(), /no seam row/);
@@ -845,4 +852,69 @@ test("A-05: the ring read and the speech instrument run in a fake page", () => {
     assert.deepEqual(s.tts.map((t) => [t.method, t.ok]), [["speak", true], ["speak", true]], "only ForayTts calls are recorded");
     assert.equal(s.tts[0].voice, "en-us-x");
   });
+});
+
+test("A-05 (f): the interlude jingle's span is taken out of a seam, and the A-15 line is decided on the silence", () => {
+  /* MUTATION: count a jingle that played in ANOTHER seam -> the second row
+     reads 3000 ms of jingle and fails. MUTATION: decide a15Trigger on the
+     gap when the media log is there -> the jingle case triggers and fails.
+     Run 36562447644: every line -> clip seam was ~3.35 s, a 3.0 s jingle plus
+     ~0.35 s; the ring cannot say which part was sound. */
+  const jingle = "jw-incorporated.github.io/interlude-placeholder.wav";
+  const media = [
+    { at: 1030, type: "playing", src: jingle },
+    { at: 4030, type: "ended", src: jingle },
+    { at: 4340, type: "playing", src: "localhost/click-vbr-xing.mp3" },
+  ];
+  const withJ = seam(1, 3340, { wall: 1000 });
+  const without = seam(2, 40, { wall: 9000 });
+  assert.equal(jingleIn(withJ, media), 3000);
+  assert.equal(jingleIn(without, media), 0);
+  assert.equal(jingleIn(seam(3, null, { wall: 1000 }), media), 0, "a seam with no gap has no jingle to take out");
+  /* A jingle cut short by the next clip counts only up to the seam's end. */
+  assert.equal(jingleIn(seam(4, 2000, { wall: 1000 }), media), 1970);
+  const st = seamStats([withJ, without, seam(5, 4600, { wall: 20000 })], [
+    ...media,
+    { at: 20010, type: "playing", src: jingle },
+    { at: 23010, type: "ended", src: jingle },
+  ]);
+  assert.equal(st.media, true);
+  assert.equal(st.withJingle, 2);
+  assert.deepEqual(st.gapsMs, [40, 3340, 4600]);
+  assert.deepEqual(st.silencesMs, [40, 340, 1600]);
+  assert.equal(st.p95Ms, 4600);
+  assert.equal(st.silenceP95Ms, 1600);
+  assert.deepEqual(a15Trigger(st), { triggered: false, on: "silence", why: "p95 silence 1600 ms <= 4000 ms" });
+  assert.deepEqual(st.rows.map((r) => r.jingleMs), [3000, 0, 3000]);
+  const noMedia = seamStats([withJ]);
+  assert.deepEqual([noMedia.media, noMedia.withJingle, noMedia.silenceP95Ms], [false, null, 3340], "without the log the silence is the whole gap");
+});
+
+test("A-05 (f): the instrument logs each element's playing and ended, and the log read filters by time", () => {
+  /* MUTATION: log from the A-04 block (guarded by `hooked`) -> a page A-04
+     already instrumented never logs, and the second install below fails. */
+  const listeners = new Map();
+  class HTMLMediaElement {
+    addEventListener(n, fn) { listeners.set(`${this.id}:${n}`, fn); }
+    play() { return "p"; }
+  }
+  const window = { addEventListener: () => {}, ForayPlayer: {}, __a04: { remote: [], elements: [], hooked: true } };
+  let now = 1000;
+  const ctx = vm.createContext({ window, HTMLMediaElement, navigator: {}, document: {}, URL, Date: { now: () => now } });
+  vm.runInContext(INSTRUMENT_EXPRESSION, ctx);
+  const el = new HTMLMediaElement();
+  el.id = "j";
+  el.src = "https://jw-incorporated.github.io/foray/player/assets/interlude-placeholder.wav";
+  el.play();
+  el.play();
+  now = 1500;
+  listeners.get("j:playing")();
+  now = 4500;
+  listeners.get("j:ended")();
+  const log = JSON.parse(JSON.stringify(vm.runInContext(mediaLogExpression(1200), ctx)));
+  assert.deepEqual(log, [
+    { at: 1500, type: "playing", src: "jw-incorporated.github.io/interlude-placeholder.wav" },
+    { at: 4500, type: "ended", src: "jw-incorporated.github.io/interlude-placeholder.wav" },
+  ]);
+  assert.equal(vm.runInContext(mediaLogExpression(0), ctx).length, 2, "one listener per element, however often it plays");
 });

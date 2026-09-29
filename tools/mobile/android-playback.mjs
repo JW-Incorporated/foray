@@ -311,6 +311,33 @@ export const INSTRUMENT_EXPRESSION = `(() => {
       return play.apply(this, arguments);
     };
   }
+  /* A-05 (f): when each element started and ended sounding, whatever it is,
+     so a seam can be split into the interlude jingle (queue-manager.js §13,
+     on by default, which the diagnostics ring does not record) and silence.
+     Its own guard for the same reason as the speech hook below. */
+  if (!A.mediaLogHooked) {
+    A.mediaLogHooked = true;
+    A.media = A.media || [];
+    const name = (el) => {
+      const src = String(el.currentSrc || el.src || '');
+      try { const u = new URL(src); return u.host + '/' + u.pathname.split('/').pop(); } catch (_) { return src.slice(-40); }
+    };
+    const log = (type, el) => {
+      A.media.push({ at: Date.now(), type, src: name(el) });
+      if (A.media.length > 400) A.media.splice(0, A.media.length - 400);
+    };
+    const play2 = HTMLMediaElement.prototype.play;
+    HTMLMediaElement.prototype.play = function () {
+      if (!this.__a05logged && typeof this.addEventListener === 'function') {
+        this.__a05logged = true;
+        const el = this;
+        el.addEventListener('playing', () => log('playing', el));
+        el.addEventListener('ended', () => log('ended', el));
+        el.addEventListener('pause', () => log('pause', el));
+      }
+      return play2.apply(this, arguments);
+    };
+  }
   /* A-05 (k): every call into the on-device speech plugin, and what it
      answered. Guarded on its own, because a page A-04 already instrumented has
      'hooked' set. Passes every call through unchanged. */
@@ -438,6 +465,14 @@ export const DIAGNOSTICS_EXPRESSION = `(async () => {
   } catch (_) { /* fall through to the page's own record */ }
   return typeof window.forayDiagnosticReport === 'function' ? String(window.forayDiagnosticReport()) : '(no diagnostics report on window)';
 })()`;
+
+/** (f): the element events the instrument logged since `sinceMs`. */
+export function mediaLogExpression(sinceMs = 0) {
+  return `(() => {
+  const A = window.__a04 || {};
+  return (A.media || []).filter((e) => e.at >= ${Number(sinceMs)});
+})()`;
+}
 
 /** The row types (f) and (k) read back out of the ring. */
 export const RING_TYPES = Object.freeze(["seam", "narration", "stop", "outPoint"]);
@@ -629,9 +664,11 @@ export function mediaButtonRoute(dump) {
   const session = /Media button session is (\S+)/.exec(text);
   const receiver = /Last MediaButtonReceiver: (.*)$/m.exec(text);
   const r = receiver ? receiver[1].trim() : null;
+  /* "Media button session is null" once no session holds the keys. */
+  const held = session && session[1] !== "null" ? session[1] : null;
   return {
-    session: session ? session[1] : null,
-    sessionPackage: session ? session[1].split("/")[0] : null,
+    session: held,
+    sessionPackage: held ? held.split("/")[0] : null,
     lastReceiver: r === "null" ? null : r,
   };
 }
@@ -672,13 +709,49 @@ function rank(sorted, p) {
  *  than any gap (Infinity) in p50/p95, because leaving the worst seams out of a
  *  percentile is how a stall reads as a good number. A cut seam and the end of
  *  the queue are not seams a listener waited through, and are counted apart. */
-export function seamStats(entries) {
+/** How much of a seam the interlude jingle filled: the jingle's element went
+ *  `playing` inside the seam, and sounded until its `ended` or the seam's end.
+ *  0 when no jingle played in it. `media` is the instrument's element log. */
+export function jingleIn(seamRow, media) {
+  if (!num(seamRow?.observedGapMs) || !num(seamRow?.wall)) return 0;
+  const start = seamRow.wall;
+  const end = start + seamRow.observedGapMs;
+  const isJingle = (e) => String(e.src).includes(INTERLUDE_MARK);
+  const on = (media ?? []).find((e) => e.type === "playing" && isJingle(e) && e.at >= start - 100 && e.at <= end);
+  if (!on) return 0;
+  const off = (media ?? []).find((e) => (e.type === "ended" || e.type === "pause") && isJingle(e) && e.at >= on.at);
+  return Math.max(0, Math.min(off ? off.at : end, end) - on.at);
+}
+
+/** The interlude jingle's asset (`player/interlude.js` INTERLUDE_ASSET_PATH). */
+export const INTERLUDE_MARK = "interlude";
+
+/** (f): the seams the ring measured, as the numbers D-A4 is decided on.
+ *
+ *  `observedGapMs` is the ring's own number: the wall clock from the boundary
+ *  (the out-point, or a file's `ended`) to the next `playing`. A seam that
+ *  never became audible has none, and it is not left out: it counts as longer
+ *  than any gap (Infinity) in p50/p95, because leaving the worst seams out of a
+ *  percentile is how a stall reads as a good number. A cut seam and the end of
+ *  the queue are not seams a listener waited through, and are counted apart.
+ *
+ *  THE JINGLE IS NOT SILENCE. Advancing INTO a clip from anything but the same
+ *  episode plays the 3 s interlude jingle (queue-manager.js §13, founder
+ *  request 2026-09-10, on by default), and the seam lasts at least as long as
+ *  it: sound the listener was meant to hear. The ring does not say whether one
+ *  played, so `media` (the instrument's element log) is used to take the
+ *  jingle's span out: `silenceMs` is the gap minus the jingle. Without `media`
+ *  the silence is not known and is reported as the whole gap. */
+export function seamStats(entries, media = null) {
   const seams = (entries ?? []).filter((e) => e && e.type === "seam" && e.endOfQueue !== true);
   const measured = seams.filter((e) => num(e.observedGapMs));
   const cut = seams.filter((e) => !num(e.observedGapMs) && e.cutBy != null);
   const never = seams.filter((e) => !num(e.observedGapMs) && e.cutBy == null);
   const gapsMs = measured.map((e) => e.observedGapMs).sort((a, b) => a - b);
+  const jingleOf = (e) => (media ? jingleIn(e, media) : 0);
+  const silencesMs = measured.map((e) => e.observedGapMs - jingleOf(e)).sort((a, b) => a - b);
   const ranked = [...gapsMs, ...never.map(() => Infinity)];
+  const rankedSilence = [...silencesMs, ...never.map(() => Infinity)];
   const finite = (v) => (v === Infinity ? "never audible" : v);
   return {
     seams: seams.length,
@@ -689,9 +762,17 @@ export function seamStats(entries) {
     p50Ms: finite(rank(ranked, 0.5)),
     p95Ms: finite(rank(ranked, 0.95)),
     maxMs: finite(ranked.length ? ranked[ranked.length - 1] : null),
+    media: !!media,
+    withJingle: media ? measured.filter((e) => jingleOf(e) > 0).length : null,
+    silencesMs,
+    silenceP50Ms: finite(rank(rankedSilence, 0.5)),
+    silenceP95Ms: finite(rank(rankedSilence, 0.95)),
+    silenceMaxMs: finite(rankedSilence.length ? rankedSilence[rankedSilence.length - 1] : null),
     hiddenAtBoundary: seams.filter((e) => e.hiddenAtBoundary === true).length,
     rows: seams.map((e) => ({
-      seq: e.seq, fromId: e.fromId ?? null, toId: e.toId ?? null, observedGapMs: e.observedGapMs ?? null,
+      seq: e.seq, fromId: e.fromId ?? null, toId: e.toId ?? null, openedBy: e.openedBy ?? null,
+      observedGapMs: e.observedGapMs ?? null, jingleMs: num(e.observedGapMs) && media ? jingleOf(e) : null,
+      holdMs: e.holdMs ?? null, askedGapMs: e.askedGapMs ?? null,
       deadlineMs: e.deadlineMs ?? null, crossEpisode: e.crossEpisode ?? null, hiddenAtBoundary: e.hiddenAtBoundary ?? null,
       hiddenAtStart: e.hiddenAtStart ?? null, lastStage: e.lastStage ?? null, cutBy: e.cutBy ?? null,
       trail: (e.stages ?? []).slice(-6).map((s) => s.stage),
@@ -699,14 +780,19 @@ export function seamStats(entries) {
   };
 }
 
-/** D-A4 (§6): ship A-15 when the emulator's p95 hidden seam is over 4 s. */
+/** D-A4 (§6): ship A-15 when the emulator's p95 hidden seam is over 4 s.
+ *  Decided on the SILENCE: A-15's own acceptance (p50 <= 2 s) could never be
+ *  met by a number that includes a 3 s jingle on every seam into a clip, so
+ *  the jingle cannot be what the line is about. The whole gap is reported
+ *  beside it. */
 export function a15Trigger(stats) {
-  const p95 = stats?.p95Ms;
-  if (p95 == null) return { triggered: null, why: "no seam was measured" };
-  if (p95 === "never audible") return { triggered: true, why: "p95 is a seam that never became audible" };
+  const on = stats?.media ? "silence" : "gap";
+  const p95 = stats?.media ? stats.silenceP95Ms : stats?.p95Ms;
+  if (p95 == null) return { triggered: null, on, why: "no seam was measured" };
+  if (p95 === "never audible") return { triggered: true, on, why: `p95 ${on} is a seam that never became audible` };
   return p95 > GATES.seamP95TriggerMs
-    ? { triggered: true, why: `p95 ${p95} ms > ${GATES.seamP95TriggerMs} ms` }
-    : { triggered: false, why: `p95 ${p95} ms <= ${GATES.seamP95TriggerMs} ms` };
+    ? { triggered: true, on, why: `p95 ${on} ${p95} ms > ${GATES.seamP95TriggerMs} ms` }
+    : { triggered: false, on, why: `p95 ${on} ${p95} ms <= ${GATES.seamP95TriggerMs} ms` };
 }
 
 /* ───────────────────────────── verdicts ───────────────────────────── */
@@ -865,7 +951,17 @@ export function verdictSeams({ started, wake, stats }) {
   if (!ASLEEP.test(String(wake ?? ""))) failures.push(`the screen did not go off: mWakefulness=${wake}, so no seam was hidden`);
   if (!stats) failures.push("the diagnostics ring could not be read");
   else if (stats.seams === 0) failures.push("the diagnostics ring holds no seam row for this Foray");
-  return { ok: failures.length === 0, failures, recorded: stats ? { ...a15Trigger(stats), p50Ms: stats.p50Ms, p95Ms: stats.p95Ms, maxMs: stats.maxMs, measured: stats.measured, neverStarted: stats.neverStarted } : null };
+  return {
+    ok: failures.length === 0,
+    failures,
+    recorded: stats
+      ? {
+          a15: a15Trigger(stats), measured: stats.measured, neverStarted: stats.neverStarted, withJingle: stats.withJingle,
+          gap: { p50Ms: stats.p50Ms, p95Ms: stats.p95Ms, maxMs: stats.maxMs },
+          silence: { p50Ms: stats.silenceP50Ms, p95Ms: stats.silenceP95Ms, maxMs: stats.silenceMaxMs },
+        }
+      : null,
+  };
 }
 
 /** (g) GATED: forced Doze, unplugged, in the rare bucket, and five minutes
@@ -1529,6 +1625,7 @@ async function seams(ctx) {
   await prepare(ctx);
   const mark = await page(ctx, ringExpression(Number.MAX_SAFE_INTEGER));
   const since = num(mark?.seq) ? mark.seq : 0;
+  const sinceMs = Date.now() - 60000;
   const { started } = await startFixture(ctx, SEAMS_FORAY);
   shell("input", "keyevent", "KEYCODE_HOME");
   await sleep(1500);
@@ -1569,12 +1666,19 @@ async function seams(ctx) {
     ring = { ok: false, error: String(e?.message ?? e) };
   }
   save(ctx, "f-ring.json", JSON.stringify(ring, null, 2));
-  const stats = ring?.ok ? seamStats(ring.entries) : null;
+  let media = null;
+  try {
+    media = await page(ctx, mediaLogExpression(sinceMs));
+  } catch (_) {
+    media = null;
+  }
+  save(ctx, "f-media.json", JSON.stringify(media, null, 2));
+  const stats = ring?.ok ? seamStats(ring.entries, Array.isArray(media) ? media : null) : null;
   const v = verdictSeams({ started, wake, stats });
   return {
     ...v,
     measured: { started, wake, since, stats, curve, lost, ringError: ring?.ok ? null : ring?.error ?? null },
-    evidence: ["f-dumpsys-power.txt", "f-ring.json"],
+    evidence: ["f-dumpsys-power.txt", "f-ring.json", "f-media.json"],
   };
 }
 
@@ -1591,6 +1695,10 @@ async function doze(ctx) {
     set.unplug = shell("dumpsys", "battery", "unplug").trim();
     shell("input", "keyevent", "KEYCODE_SLEEP");
     await sleep(2000);
+    /* An emulator image may ship with deep idle switched off
+       (config_enableAutoPowerModes), and force-idle then answers "Unable to go
+       deep idle; not enabled" and changes nothing. */
+    set.enable = shell("dumpsys", "deviceidle", "enable").trim();
     set.forceIdle = shell("dumpsys", "deviceidle", "force-idle").trim();
     set.bucket = shell("am", "set-standby-bucket", ctx.pkg, "rare").trim();
     const wake = wakefulness(dumpTo(ctx, "g-dumpsys-power.txt", "dumpsys", "power"));
@@ -1606,7 +1714,7 @@ async function doze(ctx) {
       try {
         const s = await state(ctx);
         curve.push({ at: s.at, elapsedSec: s.foray?.elapsedSec ?? null, index: s.foray?.index ?? null, running: s.foray?.running ?? null,
-          deep: shell("dumpsys", "deviceidle", "get", "deep").trim() });
+          deep: shell("dumpsys", "deviceidle", "get", "deep").trim(), bucket: intLine(shell("am", "get-standby-bucket", ctx.pkg)) });
         last = s;
       } catch (e) {
         lost = String(e?.message ?? e);
@@ -1730,6 +1838,16 @@ async function killLeg(ctx, leg, kill) {
   await sleep(3000);
   const pidAfterKill = pidOf(ctx.pkg);
   const routeAfterKill = mediaButtonRoute(shell("dumpsys", "media_session"));
+  /* When the kill did not take, the page is still there: read it before the
+     press so the press's own foray:remote row can be told apart. */
+  let pageBefore = null;
+  if (pidAfterKill && pidAfterKill === ctx.pid) {
+    try {
+      pageBefore = await state(ctx);
+    } catch (_) {
+      pageBefore = null;
+    }
+  }
   const dispatch = shell("cmd", "media_session", "dispatch", "play").trim();
   await sleep(6000);
   const sessionsAfter = dumpTo(ctx, `j-${leg}-1-after-play-dumpsys-media_session.txt`, "dumpsys", "media_session");
@@ -1737,7 +1855,12 @@ async function killLeg(ctx, leg, kill) {
   const routeAfter = mediaButtonRoute(sessionsAfter);
   const pidAfterDispatch = pidOf(ctx.pkg);
   let pagePlaying = null;
-  if (pidAfterDispatch) {
+  let remote = null;
+  let pageState = null;
+  /* Only a process with a page can be asked: a service restarted on its own
+     has no WebView, and DevTools would be waited on for a minute for nothing. */
+  const hasPage = !!pidAfterDispatch && String(shell("cat", "/proc/net/unix")).includes(`webview_devtools_remote_${pidAfterDispatch}`);
+  if (hasPage) {
     /* The same process the kill left, or a new one the press started: either
        way, is anything playing in it? */
     if (pidAfterDispatch !== ctx.pid) {
@@ -1747,6 +1870,8 @@ async function killLeg(ctx, leg, kill) {
     try {
       const [a, b] = await window2(ctx);
       pagePlaying = wasPlaying(a, b);
+      if (pageBefore) remote = b.remote.slice(pageBefore.remote.length);
+      pageState = b.foray ? { running: b.foray.running, loading: b.foray.loading, readyState: b.element?.readyState ?? null } : null;
     } catch (_) {
       pagePlaying = null;
     }
@@ -1755,7 +1880,7 @@ async function killLeg(ctx, leg, kill) {
     leg, killOut: String(killOut ?? "").trim().slice(0, 200), pidBefore, pidAfterKill, killed: !!pidBefore && pidAfterKill !== pidBefore,
     routeBefore, routeAfterKill, dispatch: dispatch.slice(0, 200), routeAfter,
     receivedBy: receiverOf(parsed, routeAfter), ourSession: parsed.sessions.filter((s) => s.package === ctx.pkg).map((s) => s.state),
-    pidAfterDispatch, pagePlaying,
+    pidAfterDispatch, hasPage, pagePlaying, remote, pageState,
   };
 }
 
@@ -1853,6 +1978,22 @@ async function airplane(ctx) {
     save(ctx, "k-ring.json", JSON.stringify(ring, null, 2));
     save(ctx, "k-trail.json", JSON.stringify(trail, null, 2));
     const fallback = (ring?.entries ?? []).filter((e) => e.type === "narration");
+    /* The boundary the deadline runs from is the first clip's out-point, as the
+       ring stamped it, not the first poll that saw the index move: a 250 ms
+       poll can see the speech before it sees the index. */
+    const boundary = (ring?.entries ?? []).find((e) => e.type === "outPoint" && num(e.targetSec) && Math.abs(e.targetSec - AIRPLANE_FORAY.segments.segments[0].end_sec) < 1);
+    if (decision && boundary && num(boundary.wall)) {
+      const at = decision.kind === "spoken" ? s.tts.slice(ttsFrom).find((r) => r.method === "speak")?.at ?? decision.at : decision.at;
+      decision = { ...decision, polledMs: decision.ms, ms: at - boundary.wall, from: "outPoint" };
+    }
+    if (decision && fallback[0] && boundary && num(fallback[0].wall)) decision.fallbackMs = fallback[0].wall - boundary.wall;
+    /* A speak call the plugin then refused is a skip, not speech: the manager
+       moves on past the line either way, and the record says which. */
+    if (decision?.kind === "spoken") {
+      const row = s.tts.slice(ttsFrom).find((r) => r.method === "speak");
+      if (row) decision.ok = row.ok;
+      if (row && row.ok === false) decision = { ...decision, kind: "skipped", why: `speech refused: ${row.error}` };
+    }
     const v = verdictAirplane({ airplane: flag === "1", reachedLine: reachedAt != null, decision, landed: landedAt != null, final: s });
     return {
       ...v,
