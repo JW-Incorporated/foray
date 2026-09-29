@@ -538,6 +538,15 @@ Rejected alternatives:
 
 ## 6. Founder decisions (each has a recommended default; silence = the default)
 
+> **RULED 2026-09-29 (founder, in his words):** "android also needs to move to native engine (or whatever is best). once the plan is done, then start work on that in parallel to bring it up to the same maturity level (sans testing) as the iphone app. joey will be the tester here, he has an android" and then "don't have joey test until the native engine is fully operational." What that settles:
+> - **D-A1: yes.** A0 starts now.
+> - **D-A2: yes, and NOT gated on the iOS M2 car test.** A1 and A2 start now, in parallel with iOS M2/M3, aiming at the iPhone app's maturity. Porting while the iOS core still moves is accepted; parity fixtures keep the two honest.
+> - **D-A3: Joey's Pixel is the device of record, but no device passes until the Android native engine is fully operational** (after A-42). Until then A-14 is written but not issued, and H-1/H-2 wait. CI emulator scenarios are the only Android testing.
+> - **D-A4:** decide on emulator measurements alone (p95 > 4 s ⇒ ship A-15), not device measurements.
+> - **D-A5, D-A6: not now** (no spend approved).
+> - **D-A7: defer** (A3 last). The iPhone app has no CarPlay app either, so parity does not need Android Auto.
+> - **D-A8: default** (A-10 lands with narration Phase 4).
+
 | # | Decision | Recommended default | Why |
 |---|---|---|---|
 | **D-A1** | Start Track A0 now, emulator tests first, in parallel with iOS M2/M3? | **Yes.** | It touches no iOS files. It is the cheapest way to make Android bugs surface without a human, and it gives the JS lane a real-world proxy now that the iPhone no longer exercises it. |
