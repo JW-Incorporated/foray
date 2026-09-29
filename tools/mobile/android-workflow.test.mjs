@@ -14,7 +14,9 @@
  *   - the two checks that only a build can make — that `cap sync` still wires
  *     `foray-audio` in, and that its library manifest still merges — stay in it,
  *   - the release lint gate stays impossible to skip silently,
- *   - no emulator is ever added,
+ *   - no emulator is ever added (to `android-build.yml`; the launch check lives
+ *     in `android-smoke.yml`, which since A-02 runs on the same path set, reads
+ *     no secret and never uploads to a store),
  *   - since R-05 (docs/release-lockstep-plan.md) `android-release.yml` is the
  *     PR-time check of the release pipeline and the founder's by-hand EXCEPTION
  *     path, never an upload path: it holds no Play credential and no store-upload
@@ -90,6 +92,17 @@ const RELEASE_REL = ".github/workflows/android-release.yml";
 const REL = fs.readFileSync(path.join(ROOT, RELEASE_REL), "utf8");
 const RYML = code(REL);
 
+/* THE THIRD ANDROID WORKFLOW, A-02 (docs/plans/android-assessment.md §5.3).
+   The emulator job moved out of `android-release.yml`, steps unchanged, so it
+   can run on every PR that changes the app without dragging the key-holding
+   bundle job along. `android-release.yml` still CALLS it on its
+   `workflow_dispatch`. Every launch assertion below reads THIS file now; the
+   A-02 section pins the trigger set, the call, and the "never uploads, reads no
+   secret" rule that makes the wide trigger safe. */
+const SMOKE_REL = ".github/workflows/android-smoke.yml";
+const SMK = fs.readFileSync(path.join(ROOT, SMOKE_REL), "utf8");
+const SYML = code(SMK);
+
 /** Every `./gradlew` COMMAND in the workflow, one joined line each. */
 function gradlewInvocations(src) {
   return invocationsOf(src, "./gradlew");
@@ -123,6 +136,12 @@ function stepCode(nameFragment) {
  *  the raw step is satisfiable by the argument rather than by the check. */
 function releaseStepCode(nameFragment) {
   const s = step(REL, nameFragment);
+  return s === null ? null : code(s);
+}
+
+/** The same, for `android-smoke.yml` (A-02), for the same reason. */
+function smokeStepCode(nameFragment) {
+  const s = step(SMK, nameFragment);
   return s === null ? null : code(s);
 }
 
@@ -398,7 +417,7 @@ test("no emulator is created, booted or installed", () => {
      shell PR. Asserting it is there stops the pair from drifting into "no
      emulator anywhere", which is how the launch check would be lost while this
      test stayed green and looked like the reason. */
-  assert.match(RYML, /avdmanager create avd/, "the emulator smoke test must exist somewhere — android-release.yml is where");
+  assert.match(SYML, /avdmanager create avd/, "the emulator smoke test must exist somewhere — android-smoke.yml is where (A-02)");
 });
 
 /* ───────────── the two checks that ONLY a build can make ──────────────────── */
@@ -760,10 +779,17 @@ test("both jobs run on Linux and both have a timeout", () => {
      An emulator that never boots holds a runner for GitHub's 6-hour default, and
      the boot poll below has its own 15-minute bound precisely because "hangs
      forever" is this job's characteristic failure. */
-  const runners = (REL.match(/^ {4}runs-on: ubuntu-latest$/gm) ?? []).length;
-  assert.equal(runners, 2, "both jobs must be on ubuntu-latest");
-  assert.equal(/runs-on: macos/.test(RYML), false, "an Android build on macOS costs 10x and learns nothing");
-  assert.equal((REL.match(/^ {4}timeout-minutes: \d+$/gm) ?? []).length, 2, "both jobs need a timeout");
+  /* A-02: the smoke job's body moved to android-smoke.yml, and a job that
+     CALLS a reusable workflow may not carry `runs-on:` or `timeout-minutes:`,
+     so the pair is now counted across the two files: the bundle here, the
+     launch there. MUTATION: delete `timeout-minutes:` from android-smoke.yml's
+     job -> fails (zero, not one). */
+  const count = (src, re) => (src.match(re) ?? []).length;
+  assert.equal(count(REL, /^ {4}runs-on: ubuntu-latest$/gm), 1, "the bundle job must be on ubuntu-latest");
+  assert.equal(count(SMK, /^ {4}runs-on: ubuntu-latest$/gm), 1, "the smoke job must be on ubuntu-latest");
+  assert.equal(/runs-on: macos/.test(RYML + SYML), false, "an Android build on macOS costs 10x and learns nothing");
+  assert.equal(count(REL, /^ {4}timeout-minutes: \d+$/gm), 1, "the bundle job needs a timeout");
+  assert.equal(count(SMK, /^ {4}timeout-minutes: \d+$/gm), 1, "the smoke job needs a timeout");
 });
 
 test("it never runs on a push or a schedule, and its path filter is the pipeline itself", () => {
@@ -787,9 +813,18 @@ test("it never runs on a push or a schedule, and its path filter is the pipeline
      a `pull_request` trigger is the ONLY way this pipeline can be exercised
      against real output before it merges. */
   assert.ok(on.includes(`"${RELEASE_REL}"`), "the workflow must trigger on changes to itself");
-  for (const p of ['"mobile/gradle/**"', '"tools/mobile/wire-signing.mjs"', '"tools/mobile/webview-probe.mjs"']) {
+  for (const p of ['"mobile/gradle/**"', '"tools/mobile/wire-signing.mjs"']) {
     assert.ok(on.includes(p), `the path filter is missing ${p} — a change to it would ship untested`);
   }
+  /* A-02: the probe LEFT this list. Only the smoke job runs it, and that job
+     lives in android-smoke.yml, whose filter carries it (pinned in the A-02
+     section). Here it would build a signed bundle to test a script the bundle
+     never runs. MUTATION: put it back -> fails. */
+  assert.equal(
+    on.includes('"tools/mobile/webview-probe.mjs"'),
+    false,
+    "the WebView probe is the smoke job's input, and the smoke job is android-smoke.yml's"
+  );
   for (const wide of ['"mobile/**"', '"data/**"', '"docs/**"', '"**"', '"app.js"']) {
     assert.equal(on.includes(wide), false, `${wide} in this filter makes a 65-minute pipeline run on ordinary PRs`);
   }
@@ -813,12 +848,24 @@ test("every action is GitHub's own — including for the emulator, where it is t
      and THIS is the one workflow in the repo a signing key passes through — the
      argument that kept `android-actions/setup-android` out of `android-build.yml`
      is strictly stronger here. */
-  const uses = REL.split(/\r?\n/)
-    .map((l) => l.trim())
-    .filter((l) => /^(- )?uses:/.test(l))
-    .map((l) => l.replace(/^(- )?uses:\s*/, ""));
-  assert.ok(uses.length >= 6, `expected at least six actions across two jobs, found ${uses.length}`);
-  for (const u of uses) {
+  /* `code()` first, so a `uses:` quoted in a comment is not counted. A-02: the
+     one non-`actions/*` line allowed is the call to this repo's own
+     android-smoke.yml, at a LOCAL path — which runs this commit's file, not
+     anyone else's code — and that file is held to the same rule. MUTATION:
+     add `- uses: reactivecircus/android-emulator-runner@v2` to either file ->
+     fails. */
+  const usesOf = (src) =>
+    code(src)
+      .split(/\r?\n/)
+      .map((l) => l.trim())
+      .filter((l) => /^(- )?uses:/.test(l))
+      .map((l) => l.replace(/^(- )?uses:\s*/, ""));
+  const uses = usesOf(REL);
+  const local = uses.filter((u) => u.startsWith("./"));
+  assert.deepEqual(local, ["./.github/workflows/android-smoke.yml"], "the only local call is the smoke workflow");
+  const actions = [...uses.filter((u) => !u.startsWith("./")), ...usesOf(SMK)];
+  assert.ok(actions.length >= 8, `expected at least eight actions across the two jobs, found ${actions.length}`);
+  for (const u of actions) {
     assert.match(u, /^actions\/[\w-]+@v\d+$/, `${u} is not a major-pinned first-party actions/* action`);
   }
 });
@@ -1174,14 +1221,14 @@ test("every pipeline whose failure has a diagnostic can actually reach it", () =
      and the operator gets the tool's own error instead — which is exactly the
      shape android-build.yml's `find … || true` comment already records for the
      merged-manifest diagnostic. */
-  const launch = releaseStepCode("Install the app and start it");
+  const launch = smokeStepCode("Install the app and start it");
   assert.match(launch, /adb install -r -g "\$APK"[^\n]*\|\| true/, "adb install exits non-zero on failure");
   assert.match(launch, /am start -W -n "\$PKG\/\.MainActivity"[^\n]*\|\| true/, "adb shell forwards am's status");
   const key = releaseStepCode("Materialise the upload key");
   assert.match(key, /if ! printf '%s' "\$KEYSTORE_B64" \| base64 --decode/, "invalid base64 must reach its own message");
   /* And the crash report, where SIGPIPE from `head` would otherwise abort the
      step with the log group left open and the verdict line unprinted. */
-  const alive = releaseStepCode("Still alive, and nothing crashed");
+  const alive = smokeStepCode("Still alive, and nothing crashed");
   assert.match(alive, /\{ grep -A 30 [^\n]*\|\| true; \} \| head -80/, "grep into head must survive SIGPIPE");
 });
 
@@ -1345,7 +1392,7 @@ test("THE AVD IS PROVEN TO EXIST BEFORE ANYTHING IS LAUNCHED", () => {
      founder's own box, missing their system images. A grep for the name over
      that output is satisfied by an AVD the emulator cannot start, which is this
      same bug wearing a check. */
-  const s = releaseStepCode("name: Create the AVD");
+  const s = smokeStepCode("name: Create the AVD");
   assert.ok(s, "no step creates the AVD and verifies it");
   assert.match(s, /avdmanager create avd/, "the AVD must be created");
   assert.match(
@@ -1385,7 +1432,7 @@ test("THE AVD IS PROVEN TO EXIST BEFORE ANYTHING IS LAUNCHED", () => {
   assert.match(s, /-d pixel_6/, "a device profile must be given so the interactive prompt never happens");
   assert.match(s, /< \/dev\/null/, "and stdin closed, so a prompt cannot hang the job");
   assert.equal(
-    /echo no \| avdmanager/.test(RYML),
+    /echo no \| avdmanager/.test(SYML),
     false,
     "`echo no | avdmanager` is the recipe that exited 0 and created nothing"
   );
@@ -1394,7 +1441,7 @@ test("THE AVD IS PROVEN TO EXIST BEFORE ANYTHING IS LAUNCHED", () => {
      resolve their root through different variables. */
   assert.match(s, /ANDROID_AVD_HOME="\$HOME\/\.android\/avd"/, "the AVD root must be pinned for both tools");
   /* AND IT IS A SEPARATE STEP FROM THE BOOT, so its verdict is its own. */
-  const boot = releaseStepCode("name: Boot it");
+  const boot = smokeStepCode("name: Boot it");
   assert.ok(boot, "no step boots the emulator");
   assert.equal(
     /avdmanager create/.test(boot),
@@ -1414,7 +1461,7 @@ test("a dead emulator is noticed in seconds, not at the end of the timeout", () 
      a bad flag, no KVM, a corrupt image — blocks it for the full timeout with the
      answer already sitting in the log. Watching the pid it started turns every
      one of those into a failure in seconds. */
-  const s = releaseStepCode("name: Boot it");
+  const s = smokeStepCode("name: Boot it");
   assert.match(s, /EMU_PID=\$!/, "the emulator's pid must be captured");
   assert.match(s, /kill -0 "\$EMU_PID"/, "and checked while waiting, or a dead emulator waits out the clock");
   assert.match(s, /getprop sys\.boot_completed/, "the boot must be waited for on sys.boot_completed");
@@ -1431,13 +1478,13 @@ test("the emulator image is NOT API 36, because that cost is measured", () => {
      so many words to pin an older API level. targetSdk is 36; the emulator's API
      level is not what this job tests, and paying §6.2's bill again to make it
      match a number would be paying it for nothing. */
-  assert.match(REL, /EMULATOR_IMAGE: system-images;android-34;google_apis;x86_64/);
+  assert.match(SMK, /EMULATOR_IMAGE: system-images;android-34;google_apis;x86_64/);
   assert.equal(
-    /system-images;android-3[56]/.test(RYML),
+    /system-images;android-3[56]/.test(SYML),
     false,
     "MP1 §6.2 measured an API-36 cold boot not completing in ~35 minutes"
   );
-  assert.match(prose(REL), /§6\.2/, "the header must carry the citation, so the next session does not re-pay for it");
+  assert.match(prose(SMK), /§6\.2/, "the header must carry the citation, so the next session does not re-pay for it");
 });
 
 test("KVM is enabled and ASSERTED, not hoped for", () => {
@@ -1458,7 +1505,7 @@ test("KVM is enabled and ASSERTED, not hoped for", () => {
      (`test -c`, a real missing-KVM runner class) and one for "exists but still
      not writable" (`test -w`, the final gate after settle+retries). Both must
      still be able to fail the job independently. */
-  const s = releaseStepCode("Enable KVM");
+  const s = smokeStepCode("Enable KVM");
   assert.ok(s, "nothing enables KVM");
   assert.match(s, /99-kvm4all\.rules/);
   assert.match(s, /udevadm settle/, "udevadm trigger only queues the change; settle must wait for it before the check runs");
@@ -1474,7 +1521,7 @@ test("the app is installed and started, and `am start` must report ok", () => {
      `Error type 3` on stdout and a zero exit status, so without reading the
      Status line the "launch" step is an echo. `-W` is what makes the Status line
      exist. `adb install` has the same shape and gets the same treatment. */
-  const s = releaseStepCode("Install the app and start it");
+  const s = smokeStepCode("Install the app and start it");
   assert.ok(s, "no step installs and launches the app");
   assert.match(s, /adb install -r -g "\$APK"/);
   assert.match(s, /grep -q '\^Success'/, "adb install also prints failures to stdout and exits 0");
@@ -1492,7 +1539,7 @@ test("the WebView is interrogated over DevTools, and the probe's verdict is the 
      RUNNING: `mobile/android/` is not committed, so no unit test can read it,
      and the APK checks next door prove classes were REGISTERED, not that any of
      them work. */
-  const s = releaseStepCode("The WebView is running OUR app");
+  const s = smokeStepCode("The WebView is running OUR app");
   assert.ok(s, "no step reads the running WebView");
   assert.match(s, /node tools\/mobile\/webview-probe\.mjs/);
   assert.equal(
@@ -1513,7 +1560,7 @@ test("the process is re-checked after the probe, by pid and not merely by presen
      and Android restarts a crashed foreground app readily, so "a process with
      this package name exists" is satisfied by the replacement. The pid is what
      distinguishes "still running" from "running again". */
-  const s = releaseStepCode("Still alive, and nothing crashed");
+  const s = smokeStepCode("Still alive, and nothing crashed");
   assert.ok(s, "nothing re-checks the process after the probe");
   assert.match(s, /pidof "\$PKG"/);
   assert.match(s, /\[ "\$STILL" = "\$PID" \]/, "a restarted process is a crashed process");
@@ -1531,7 +1578,7 @@ test("the debug-APK stand-in is checked rather than assumed", () => {
      future template turns R8 on, that stops being true SILENTLY, and R8 breaking
      reflection-based plugin registration is precisely a crash only the release
      build has. */
-  const s = releaseStepCode("still a fair stand-in");
+  const s = smokeStepCode("still a fair stand-in");
   assert.ok(s, "nothing checks that the debug build still stands in for the release build");
   assert.match(s, /minifyEnabled\[\[:space:\]\]\+true/, "minification turning on must fail this job");
   assert.match(s, /minifyEnabled\[\[:space:\]\]\+false/, "and the line disappearing entirely must fail it too");
@@ -1548,12 +1595,12 @@ test("the run's own summary says what a launch does NOT prove", () => {
      battery managers are untestable by construction, and Bluetooth routing is
      not reachable at all. MP1 §5.4 once claimed "confirmed live" for a spike
      that never ran; the caveat goes where the tick is. */
-  const summary = releaseStepCode("What the launch established");
+  const summary = smokeStepCode("What the launch established");
   assert.ok(summary, "the smoke job has no summary step");
   assert.match(summary, /What it does not prove/);
   assert.match(summary, /GITHUB_STEP_SUMMARY/);
   assert.match(summary, /§6\.4/, "the summary must cite the section that says why, not merely hedge");
-  const p = prose(REL);
+  const p = prose(SMK);
   assert.match(p, /WHAT THIS STILL DOES NOT PROVE/);
   assert.match(p, /an emulator is not a phone/i);
 });
@@ -1568,4 +1615,136 @@ test("the bundle summary tells a human where the artefact is and whether it is s
   assert.match(s, /This bundle cannot be submitted/);
   assert.match(s, /Ready to upload/);
   assert.match(s, /foray-android-release/, "the summary must name the artifact to download");
+});
+
+/* ─────────────── A-02: the launch runs on every app PR ─────────────────────
+ *
+ * docs/plans/android-assessment.md §5.3, card A-02. The iPhone no longer runs
+ * the JS player lane, so the Android emulator is the only automated witness
+ * that `app.js` and `player/` still start. The smoke job therefore moved into
+ * its own workflow with `android-build.yml`'s path set, and `android-release.yml`
+ * calls it on a dispatch. What makes the wide trigger safe is what these tests
+ * pin: it stays advisory, reads no secret and never uploads to a store.
+ */
+
+test("A-02: android-smoke.yml has the house shape and one advisory job", () => {
+  /* MUTATION: rename the job `backend:` -> fails. Same required-check-by-name
+     hazard as the other two files, and worse here: this one now runs on every
+     app PR, so a collision would gate them all on a cold AVD. */
+  assert.deepEqual(topLevelKeys(SMK), ["name", "on", "concurrency", "permissions", "jobs"]);
+  assert.match(SMK, /^name: android-smoke$/m);
+  const names = block(SMK, "jobs")
+    .split(/\r?\n/)
+    .filter((l) => /^ {2}[a-z][\w-]*:/.test(l))
+    .map((l) => l.trim().replace(":", ""));
+  assert.deepEqual(names, ["android-smoke"]);
+  for (const required of ["backend", "data-and-site", "path-policy", "ios-kit"]) {
+    assert.equal(names.includes(required), false, `a job named ${required} collides with a required check`);
+  }
+  assert.equal(/continue-on-error/.test(SYML), false, "advisory means not required, not unable to fail");
+});
+
+test("A-02: the smoke fires on android-build.yml's path set plus the release pipeline's four paths", () => {
+  /* MUTATION: delete the `"player/**"` line -> fails. Or add `"data/**"` -> fails.
+     Or add `push:` -> fails. Or change `paths:` to `paths-ignore:` -> fails.
+     THE CARD, LITERALLY: the five paths the shell is built from, which is
+     android-build.yml's own filter (read from that file, so the two cannot
+     drift), plus the four the smoke used to fire on. */
+  const on = block(SMK, "on");
+  assert.ok(on, "no `on:` block");
+  assert.match(on, /^ {2}workflow_dispatch:/m, "a by-hand re-check of main must be possible");
+  assert.match(on, /^ {2}workflow_call:/m, "android-release.yml calls this on its dispatch");
+  assert.match(on, /^ {2}pull_request:/m);
+  assert.equal(/^\s{2}push:/m.test(on), false, "a push trigger re-runs on merge what already ran on the PR");
+  assert.equal(/^\s{2}schedule:/m.test(on), false, "an emulator boot on a day nothing changed buys nothing");
+  assert.match(on, /^ {4}paths:$/m, "the pull_request trigger must filter with `paths:`");
+  assert.equal(/paths-ignore/.test(SYML), false, "`paths-ignore` INVERTS the filter");
+  const listed = (src) => [...src.matchAll(/^ {6}- "([^"]+)"$/gm)].map((m) => m[1]);
+  const smokePaths = listed(on);
+  const buildPaths = listed(block(WF, "on")).filter((p) => p !== WORKFLOW_REL);
+  assert.deepEqual(
+    [...buildPaths].sort(),
+    ["app.js", "index.html", "mobile/**", "player/**", "tools/mobile/**"],
+    "android-build.yml's product paths changed; re-read A-02 before following them"
+  );
+  for (const p of buildPaths) {
+    assert.ok(smokePaths.includes(p), `the smoke must fire on ${p}, as android-build.yml does`);
+  }
+  for (const p of [
+    RELEASE_REL,
+    "mobile/gradle/**",
+    "tools/mobile/wire-signing.mjs",
+    "tools/mobile/webview-probe.mjs",
+    SMOKE_REL,
+  ]) {
+    assert.ok(smokePaths.includes(p), `the smoke must still fire on ${p}`);
+  }
+  for (const wide of ["data/**", "docs/**", "backend/**", "**", "test/**"]) {
+    assert.equal(smokePaths.includes(wide), false, `${wide} would boot an emulator for a content PR`);
+  }
+  assert.equal(smokePaths.length, 10, `exactly the ten paths above, found: ${JSON.stringify(smokePaths)}`);
+});
+
+test("A-02: android-release.yml calls the smoke on a dispatch only, hands it no secret, and never chains it", () => {
+  /* MUTATION: delete the `if: github.event_name == 'workflow_dispatch'` line
+     -> fails (a PR touching android-release.yml would boot two emulators).
+     MUTATION: add `secrets: inherit` -> fails: that would hand the upload key
+     to a job whose whole licence to run on every PR is that it holds none. */
+  const jobs = block(REL, "jobs");
+  const caller = block(jobs.split(/\r?\n/).map((l) => l.slice(2)).join("\n"), "android-smoke");
+  assert.ok(caller, "android-release.yml no longer has an android-smoke job");
+  const lines = code(caller)
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter(Boolean);
+  assert.deepEqual(
+    lines,
+    ["if: github.event_name == 'workflow_dispatch'", "uses: ./.github/workflows/android-smoke.yml"],
+    "the caller is exactly the dispatch gate and the call — no `secrets:`, no `with:`, no `needs:`"
+  );
+  assert.equal(/secrets:\s*inherit/.test(RYML), false, "the release workflow must not pass its secrets to anything");
+});
+
+test("A-02: the smoke never uploads to a store and reads no secret", () => {
+  /* MUTATION: add `KEY: ${{ secrets.ANDROID_KEYSTORE_B64 }}` to any smoke step
+     -> fails. MUTATION: add `uses: r0adkll/upload-google-play@<sha>` -> fails
+     here and in the R-05 test. MUTATION: point the evidence upload at
+     `${{ runner.temp }}` -> fails.
+     THE RULE THAT MAKES A WIDE TRIGGER SAFE. A job that runs on every app PR
+     must not be a way to reach a credential or a store. The only thing it
+     publishes is its own evidence directory, as a GitHub Actions artifact. */
+  assert.equal(/secrets\./.test(SYML), false, "the smoke job reads no secret, so it runs on any PR, fork or not");
+  assert.equal(/secrets:/.test(SYML), false, "and declares none for a caller to pass");
+  for (const store of ["upload-google-play", "upload-testflight", "altool", "fastlane", "PLAY_SERVICE_ACCOUNT_JSON"]) {
+    assert.equal(SYML.includes(store), false, `${store} would make the launch check an upload path`);
+  }
+  const uploads = SYML.split(/\r?\n/).filter((l) => /uses: actions\/upload-artifact@/.test(l));
+  assert.equal(uploads.length, 1, "exactly one artifact upload: the launch evidence");
+  const up = step(SMK, "Upload the launch evidence");
+  assert.ok(up, "the launch evidence is never uploaded");
+  assert.match(up, /path: \$\{\{ runner\.temp \}\}\/android-smoke\s*$/m, "from exactly its report directory");
+  assert.match(up, /^ {8}if: always\(\)$/m, "a failed launch's logs are the most useful thing in the run");
+  const p = prose(SMK);
+  assert.match(p, /never uploads to a store/i, "the header must say it never uploads to a store");
+  assert.match(p, /reads no secret/i, "the header must say it reads no secret");
+});
+
+test("A-02: the smoke's concurrency cancels superseded runs, apart from its caller, and it asks for nothing", () => {
+  /* MUTATION: set the group to `android-release-${{ github.ref }}` -> fails.
+     When android-release.yml calls this workflow, a shared group would make the
+     callee wait on, or cancel, its own caller. MUTATION: `contents: write` ->
+     fails. */
+  const c = block(SMK, "concurrency");
+  assert.match(c, /cancel-in-progress: true/);
+  assert.match(c, /group: android-smoke-\$\{\{ github\.ref \}\}/);
+  assert.notEqual(
+    /group: (.+)/.exec(c)[1],
+    /group: (.+)/.exec(block(REL, "concurrency"))[1],
+    "the callee's concurrency group must differ from the caller's"
+  );
+  const perms = block(SMK, "permissions");
+  assert.match(perms, /contents: read/);
+  for (const w of ["write", "write-all", "packages:", "id-token"]) {
+    assert.equal(perms.includes(w), false, `the smoke job has no reason to hold ${w}`);
+  }
 });
