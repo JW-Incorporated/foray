@@ -34,6 +34,7 @@ import {
   center,
   fixtureDocs,
   foregroundService,
+  killLine,
   jumpExpression,
   mediaControls,
   mediaSessions,
@@ -236,6 +237,25 @@ test("(b) fails on a frozen clock, a new pid, or a screen that never went off", 
   }
   assert.equal(verdictBackground(bgInputs({ wake: "Dozing" })).ok, true, "Dozing is a screen that is off");
   assert.equal(GATES.backgroundWaitMs, 60000, "the card's 60 s");
+});
+
+test("(b) a dead process is reported with ActivityManager's own reason", () => {
+  /* MUTATION: return the first `Killing` line whatever its pid -> the
+     other-process case below names the wrong death. Run 36547348476's reason,
+     verbatim: the app died holding GMS's FontsProvider when gms.persistent
+     restarted. */
+  const log = [
+    "09-29 09:14:28.505   520  2239 I ActivityManager: Process com.google.android.gms.persistent (pid 1400) has died: fg  BFGS",
+    "09-29 09:14:28.510   520  2239 I ActivityManager: Killing 999:com.example/u0a1 (adj 900): cached",
+    "09-29 09:14:28.517   520  2239 I ActivityManager: Killing 2627:ai.jwlabs.foura/u0a192 (adj 200): depends on provider com.google.android.gms/.fonts.provider.FontsProvider in dying proc com.google.android.gms.persistent (adj -10000)",
+  ].join("\n");
+  const why = killLine(log, "2627");
+  assert.match(why, /^Killing 2627:ai\.jwlabs\.foura\/u0a192 \(adj 200\): depends on provider com\.google\.android\.gms\/\.fonts/);
+  assert.equal(killLine(log, "3000"), null);
+  assert.match(killLine("I ActivityManager: Process ai.jwlabs.foura (pid 41) has died: fg SVC", "41"), /has died/);
+  const v = verdictBackground(bgInputs({ pidAfter: null, killedBy: why }));
+  assert.equal(v.ok, false);
+  assert.ok(v.failures.some((f) => f.includes("FontsProvider")), "the failure carries the reason");
 });
 
 /* ───────────────────────────── (c) transport ───────────────────────────── */

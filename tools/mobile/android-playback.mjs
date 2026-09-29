@@ -440,7 +440,7 @@ export function verdictPlay({ started, first, last, service, sessions, expected 
 }
 
 /** (b) Home, then the screen off: still playing a minute later, same process. */
-export function verdictBackground({ first, last, pidBefore, pidAfter, wake, service }) {
+export function verdictBackground({ first, last, pidBefore, pidAfter, wake, service, killedBy = null }) {
   const failures = [];
   const e0 = first?.foray?.elapsedSec;
   const e1 = last?.foray?.elapsedSec;
@@ -454,12 +454,14 @@ export function verdictBackground({ first, last, pidBefore, pidAfter, wake, serv
     failures.push(`the Foray clock advanced ${advancedSec} s in ${wallSec} s with the screen off; the gate is ${GATES.backgroundMinAdvanceSec} s`);
   }
   if (!pidBefore) failures.push("no app process before the screen went off");
-  else if (pidAfter !== pidBefore) failures.push(`the pid changed from ${pidBefore} to ${pidAfter}: the app died or restarted`);
+  else if (pidAfter !== pidBefore) {
+    failures.push(`the pid changed from ${pidBefore} to ${pidAfter}: the app died or restarted${killedBy ? ` (${killedBy})` : ""}`);
+  }
   return {
     ok: failures.length === 0,
     failures,
     measured: {
-      advancedSec, wallSec, wakefulness: wake, pidBefore, pidAfter,
+      advancedSec, wallSec, wakefulness: wake, pidBefore, pidAfter, killedBy,
       visibility: last?.visibility ?? null, running: last?.foray?.running ?? null, service,
     },
   };
@@ -525,6 +527,20 @@ const shell = (...args) => adb(["shell", ...args]).stdout;
 
 export function pidOf(pkg = PKG) {
   return String(shell("pidof", pkg)).trim().split(/\s+/)[0] || null;
+}
+
+/** What ActivityManager said when it ended our process, from the system log:
+ *  the `Killing <pid>:<pkg> (adj …): <reason>` line, or its `has died` line. */
+export function killLine(log, pid, pkg = PKG) {
+  const lines = String(log ?? "").split(/\r?\n/);
+  const hit =
+    lines.find((l) => l.includes(`Killing ${pid}:${pkg}/`)) ??
+    lines.find((l) => /has died/.test(l) && l.includes(`${pkg} (pid ${pid})`));
+  return hit ? hit.replace(/^.*?ActivityManager: /, "").trim() : null;
+}
+
+function killReason(pid, pkg) {
+  return pid ? killLine(adb(["logcat", "-d", "-b", "system"]).stdout, pid, pkg) : null;
 }
 
 /** Forward the page's DevTools socket (found, not name-assumed, as in
@@ -688,19 +704,29 @@ async function background(ctx) {
   const first = await state(ctx);
   const curve = [{ at: first.at, elapsedSec: first.foray?.elapsedSec ?? null, t: first.element?.t ?? null }];
   const end = Date.now() + GATES.backgroundWaitMs;
+  let last = null;
+  let lost = null;
   while (Date.now() < end) {
     await sleep(Math.min(10000, Math.max(0, end - Date.now())));
-    const s = await state(ctx);
-    curve.push({ at: s.at, elapsedSec: s.foray?.elapsedSec ?? null, t: s.element?.t ?? null, index: s.foray?.index ?? null });
+    try {
+      const s = await state(ctx);
+      curve.push({ at: s.at, elapsedSec: s.foray?.elapsedSec ?? null, t: s.element?.t ?? null, index: s.foray?.index ?? null });
+      last = s;
+    } catch (e) {
+      /* The page stopped answering: a dead process is the likeliest reason,
+         and the pid check below says so. Waiting out the minute adds nothing. */
+      lost = String(e?.message ?? e);
+      break;
+    }
   }
-  const last = await state(ctx);
   const pidAfter = pidOf(ctx.pkg);
+  const killedBy = pidAfter === pidBefore ? null : killReason(pidBefore, ctx.pkg);
   const servicesDump = shell("dumpsys", "activity", "services", ctx.pkg);
   save(ctx, "b-dumpsys-activity-services.txt", servicesDump);
   const v = verdictBackground({
-    first, last, pidBefore, pidAfter, wake: wakefulness(powerDump), service: foregroundService(servicesDump),
+    first, last, pidBefore, pidAfter, wake: wakefulness(powerDump), service: foregroundService(servicesDump), killedBy,
   });
-  return { ...v, measured: { ...v.measured, curve }, evidence: ["b-dumpsys-power.txt", "b-dumpsys-activity-services.txt"] };
+  return { ...v, measured: { ...v.measured, curve, lost }, evidence: ["b-dumpsys-power.txt", "b-dumpsys-activity-services.txt"] };
 }
 
 /** The two routes a press can take into the system: straight to the media

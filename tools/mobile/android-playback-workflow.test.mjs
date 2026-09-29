@@ -235,3 +235,22 @@ test("A-04: the evidence is collected whenever there was a device, and the summa
   assert.match(p, /D-A3/, "the header says why this is the only Android testing");
   assert.match(p, /adb reverse/, "the header says why the fixtures are bundled rather than reversed");
 });
+
+test("A-04: Play services' first-boot restart is waited out before the install, boundedly and without failing", () => {
+  /* MUTATION: move the step after the install -> fails. MUTATION: drop the
+     120 s bound -> fails (a gms that never restarts would hold the runner).
+     MUTATION: add `exit 1` to the no-restart branch -> fails: the wait is a
+     precaution against an emulator event, not a gate on the app.
+     Run 36547348476: gms.persistent restarted ~55 s after boot and
+     ActivityManager killed the app for holding its FontsProvider, 30 s into
+     (b). */
+  const s = playStep("Let Play services finish its first-boot restart");
+  assert.ok(s, "no step waits for gms.persistent's first-boot restart");
+  assert.match(s, /pidof "\$GMS"/);
+  assert.match(s, /GMS=com\.google\.android\.gms\.persistent/);
+  assert.match(s, /-lt 120 \]/, "bounded");
+  assert.equal(failureClauses(s), 0, "it never fails the job");
+  const at = PLY.indexOf("- name: Let Play services finish its first-boot restart");
+  assert.ok(at > PLY.indexOf("- name: Boot it") && at < PLY.indexOf("- name: Install the app and start it"));
+  assert.match(prose(step(PLY, "Let Play services")), /FontsProvider/, "the step says what it saw");
+});

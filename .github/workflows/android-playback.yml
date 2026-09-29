@@ -290,6 +290,39 @@ jobs:
           adb shell settings put global animator_duration_scale 0
           adb shell getprop ro.build.version.sdk | tee "$ART/device-sdk.txt"
 
+      - name: Let Play services finish its first-boot restart
+        # MEASURED ON THIS JOB'S FIRST RUN (36547348476), and the reason this step
+        # exists. About 55 s after boot, `com.google.android.gms.persistent`
+        # restarts itself after taking new flags (it "has died" with no crash and
+        # no kill). ActivityManager then kills every process holding a provider
+        # in it, and the WebView holds its FontsProvider, so the app died 30 s
+        # into (b): "Killing …:ai.jwlabs.foura (adj 200): depends on provider
+        # com.google.android.gms/.fonts.provider.FontsProvider in dying proc
+        # com.google.android.gms.persistent". A-02's broken-app.js run saw the
+        # same death at the same age. It is a fresh emulator's first minute, so
+        # the job waits it out before installing: until the process's pid changes,
+        # or 120 s. Never fails: without a restart the scenarios run as before.
+        # The kill is a real Android behaviour too, a foreground service does not
+        # stop it, and docs/android-emulator-measurements.md §5 records it.
+        run: |
+          set -euo pipefail
+          GMS=com.google.android.gms.persistent
+          FIRST=$(adb shell pidof "$GMS" 2>/dev/null | tr -d '\r' || true)
+          START=$(date +%s)
+          NOW="$FIRST"
+          while [ $(( $(date +%s) - START )) -lt 120 ]; do
+            NOW=$(adb shell pidof "$GMS" 2>/dev/null | tr -d '\r' || true)
+            if [ -n "$FIRST" ] && [ -n "$NOW" ] && [ "$NOW" != "$FIRST" ]; then break; fi
+            sleep 3
+          done
+          WAITED=$(( $(date +%s) - START ))
+          if [ -n "$FIRST" ] && [ -n "$NOW" ] && [ "$NOW" != "$FIRST" ]; then
+            echo "$GMS restarted after ${WAITED}s (pid $FIRST -> $NOW)" | tee "$ART/gms-settle.txt"
+            sleep 5
+          else
+            echo "::warning::$GMS did not restart within ${WAITED}s (pid ${FIRST:-none} -> ${NOW:-none}); the scenarios run anyway" | tee "$ART/gms-settle.txt"
+          fi
+
       - name: Install the app and start it
         id: launch
         run: |
