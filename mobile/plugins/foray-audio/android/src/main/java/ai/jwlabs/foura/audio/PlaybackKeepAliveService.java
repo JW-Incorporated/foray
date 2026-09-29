@@ -5,9 +5,12 @@ import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.pm.ServiceInfo;
+import android.media.AudioManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.IBinder;
@@ -20,6 +23,7 @@ import androidx.annotation.OptIn;
 import androidx.core.app.NotificationCompat;
 import androidx.core.app.NotificationManagerCompat;
 import androidx.core.app.ServiceCompat;
+import androidx.core.content.ContextCompat;
 import androidx.media3.common.util.UnstableApi;
 import androidx.media3.session.CommandButton;
 import androidx.media3.session.MediaSession;
@@ -157,6 +161,15 @@ public class PlaybackKeepAliveService extends Service {
      *  (see {@link #ACTION_TRANSPORT}). */
     static final String CLOSE_TRANSPORT = "close";
 
+    /** A-08: the {@code SESSION_EVENT} a lost output becomes, in the iOS plugin's
+     *  words ({@code ForayAudioPlugin.swift}'s {@code routeChangeReason} for
+     *  {@code .oldDeviceUnavailable}). {@code player/client.js}'s
+     *  {@code onNativeSession} matches exactly this pair and calls
+     *  {@code manager.routeChanged}, which pauses (corner case #13);
+     *  {@code shell-invariants.test.mjs} pins the spelling against client.js. */
+    static final String SESSION_ROUTE_CHANGE = "routeChange";
+    static final String REASON_OLD_DEVICE_GONE = "old-device-gone";
+
     /**
      * Read by {@link ForayAudioPlugin} so a JS caller can be told what actually
      * happened rather than what was requested.
@@ -200,6 +213,36 @@ public class PlaybackKeepAliveService extends Service {
     @Nullable private MediaSession session;
     @Nullable private WebViewPlayer player;
     @Nullable private NowPlayingHub.Listener listener;
+
+    /**
+     * A-08: headphones pulled out, or a Bluetooth headset or car dropping, while a
+     * Foray is loaded.
+     *
+     * <p>{@code ACTION_AUDIO_BECOMING_NOISY} is Android's "the output is about to be
+     * the loudspeaker" broadcast, and it is the platform's documented cue to pause.
+     * Nothing in the WebView hears it: the {@code <audio>} element keeps playing and
+     * a podcast about to go out of the phone's speaker in a quiet room is the bug.
+     * iOS reaches the same pause through {@code AVAudioSession}'s
+     * {@code oldDeviceUnavailable}; this is the Android door into the same path.
+     *
+     * <p><b>REGISTERED WHILE RUNNING, not from {@code onCreate}:</b> the broadcast
+     * matters only while a Foray is loaded, which is exactly this service's
+     * foreground lifetime (see the class comment). Unregistered in
+     * {@link #onDestroy}. Main thread only.
+     *
+     * <p><b>RECEIVER_EXPORTED, and that is not an opening.</b> The action is a
+     * PROTECTED broadcast: only the system can send it, so "exported" admits no
+     * other app. {@code NOT_EXPORTED} would be the reflex, but on API 24-32
+     * {@code ContextCompat} implements it by guarding the receiver with the app's
+     * own signature permission, and a broadcast the audio service sends is then
+     * a question of how the platform treats that permission for the system uid --
+     * something only a device can settle, and the whole feature is one broadcast.
+     * {@code EXPORTED} is the classic unguarded registration every player used
+     * before API 33, with the flag Android 14 asks for. Robolectric covers the
+     * dispatch ({@code PlaybackKeepAliveServiceTest}); {@code adb} cannot send a
+     * protected broadcast, so a real unplug is the device check.
+     */
+    @Nullable private BroadcastReceiver noisyReceiver;
 
     static boolean isRunning() {
         return running;
@@ -434,6 +477,7 @@ public class PlaybackKeepAliveService extends Service {
             lastNotificationKey = visibleKey(NowPlayingHub.get());
             ServiceCompat.startForeground(this, NOTIFICATION_ID, buildNotification(), foregroundServiceType());
             running = true;
+            registerNoisyReceiver();
         } catch (Exception e) {
             /* Broad on purpose, and the reason is the whole point of this catch.
                From Android 14, startForeground throws
@@ -457,8 +501,52 @@ public class PlaybackKeepAliveService extends Service {
     @Override
     public void onDestroy() {
         running = false;
+        unregisterNoisyReceiver();
         releaseSession();
         super.onDestroy();
+    }
+
+    /** Idempotent: a bare start re-asserts foreground on a running service (the
+     *  plugin's {@code start}), and a second registration would deliver every unplug
+     *  twice. Wrapped because a receiver that cannot register must cost the pause on
+     *  unplug, not the foreground service. */
+    private void registerNoisyReceiver() {
+        if (noisyReceiver != null) return;
+        BroadcastReceiver receiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                if (intent == null || !AudioManager.ACTION_AUDIO_BECOMING_NOISY.equals(intent.getAction())) return;
+                Log.i(TAG, "audio becoming noisy: the output was lost; asking the page to pause");
+                NowPlayingHub.dispatchSession(SESSION_ROUTE_CHANGE, REASON_OLD_DEVICE_GONE);
+            }
+        };
+        try {
+            ContextCompat.registerReceiver(
+                this,
+                receiver,
+                new IntentFilter(AudioManager.ACTION_AUDIO_BECOMING_NOISY),
+                ContextCompat.RECEIVER_EXPORTED
+            );
+            noisyReceiver = receiver;
+        } catch (Exception e) {
+            Log.w(TAG, "could not register the becoming-noisy receiver; unplugging will not pause", e);
+        }
+    }
+
+    private void unregisterNoisyReceiver() {
+        BroadcastReceiver receiver = noisyReceiver;
+        noisyReceiver = null;
+        if (receiver == null) return;
+        try {
+            unregisterReceiver(receiver);
+        } catch (Exception e) {
+            Log.w(TAG, "unregistering the becoming-noisy receiver failed", e);
+        }
+    }
+
+    /** Whether the A-08 receiver is registered. Package-visible for the JUnit suite. */
+    boolean isNoisyReceiverRegistered() {
+        return noisyReceiver != null;
     }
 
     @Nullable
