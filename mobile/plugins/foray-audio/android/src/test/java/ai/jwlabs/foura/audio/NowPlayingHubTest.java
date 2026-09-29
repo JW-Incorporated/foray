@@ -170,6 +170,35 @@ public class NowPlayingHubTest {
         NowPlayingHub.dispatch("play", 0L, 0L);
     }
 
+    /* ---- A-08: the session sink ---- */
+
+    @Test
+    public void dispatchSession_reachesTheSessionSink_andWithoutOneIsDropped() {
+        NowPlayingHub.dispatchSession("routeChange", "old-device-gone"); // no sink: no throw
+        AtomicReference<String> seen = new AtomicReference<>();
+        NowPlayingHub.setSessionSink((kind, reason) -> seen.set(kind + "/" + reason));
+        NowPlayingHub.dispatchSession("routeChange", "old-device-gone");
+        assertEquals("routeChange/old-device-gone", seen.get());
+    }
+
+    @Test
+    public void clearSessionSink_isIdentityChecked_andASinkThatThrowsIsContained() {
+        AtomicReference<String> seen = new AtomicReference<>();
+        NowPlayingHub.SessionSink stale = (k, r) -> { throw new IllegalStateException("gone"); };
+        NowPlayingHub.SessionSink fresh = (k, r) -> seen.set(k);
+        NowPlayingHub.setSessionSink(stale);
+        NowPlayingHub.dispatchSession("routeChange", "old-device-gone"); // contained, not thrown
+        NowPlayingHub.setSessionSink(fresh);
+        NowPlayingHub.clearSessionSink(stale);
+        NowPlayingHub.dispatchSession("routeChange", "old-device-gone");
+        assertEquals("clearSessionSink(stale) must not unregister the newer sink", "routeChange", seen.get());
+
+        NowPlayingHub.reset();
+        seen.set(null);
+        NowPlayingHub.dispatchSession("routeChange", "old-device-gone");
+        assertNull("reset forgets the session sink", seen.get());
+    }
+
     private static com.getcapacitor.JSObject payload() throws Exception {
         return new com.getcapacitor.JSObject("{\"state\":\"playing\",\"title\":\"Episode 1\"}");
     }

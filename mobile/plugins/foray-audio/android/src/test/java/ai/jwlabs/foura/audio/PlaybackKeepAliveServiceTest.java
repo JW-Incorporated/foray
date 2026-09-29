@@ -5,12 +5,16 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import android.content.Intent;
+import android.media.AudioManager;
+import android.os.Looper;
 
 import org.junit.After;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.robolectric.Robolectric;
 import org.robolectric.RobolectricTestRunner;
+import org.robolectric.RuntimeEnvironment;
+import org.robolectric.Shadows;
 import org.robolectric.android.controller.ServiceController;
 import org.robolectric.annotation.Config;
 import org.robolectric.shadows.ShadowNotificationManager;
@@ -189,5 +193,92 @@ public class PlaybackKeepAliveServiceTest {
             PlaybackKeepAliveService.compactActions(0, 1, 2, 3, 4, true)));
         assertEquals("a missing slot is skipped, not drawn as -1", "[1, 4]", java.util.Arrays.toString(
             PlaybackKeepAliveService.compactActions(-1, 1, -1, -1, 4, false)));
+    }
+
+    /* ---- A-08: pause on headphone unplug / Bluetooth loss ---- */
+
+    /** Every session event the service sent the page, as "kind/reason". */
+    private static java.util.List<String> captureSessionEvents() {
+        java.util.List<String> seen = new java.util.ArrayList<>();
+        NowPlayingHub.setSessionSink((kind, reason) -> seen.add(kind + "/" + reason));
+        return seen;
+    }
+
+    /** What the system sends when the output is about to become the loudspeaker.
+     *  `adb shell am broadcast` cannot send it (a protected broadcast), which is why
+     *  this suite is the only automated cover the receiver has. */
+    private static void becomeNoisy() {
+        RuntimeEnvironment.getApplication().sendBroadcast(new Intent(AudioManager.ACTION_AUDIO_BECOMING_NOISY));
+        Shadows.shadowOf(Looper.getMainLooper()).idle();
+    }
+
+    @Test
+    public void becomingNoisyWhileRunning_tellsThePageTheOldDeviceIsGone() {
+        // MUTATION: drop `registerNoisyReceiver()` from onStartCommand, or dispatch
+        // any other kind/reason -- client.js's onNativeSession matches exactly
+        // routeChange/old-device-gone, and anything else plays on from the speaker.
+        java.util.List<String> seen = captureSessionEvents();
+        controller = Robolectric.buildService(PlaybackKeepAliveService.class);
+        controller.create();
+        controller.startCommand(0, 0);
+        assertTrue("registered once the service is foreground",
+            controller.get().isNoisyReceiverRegistered());
+
+        becomeNoisy();
+
+        assertEquals(java.util.Collections.singletonList("routeChange/old-device-gone"), seen);
+    }
+
+    @Test
+    public void becomingNoisyBeforeAnyStart_isNotHeard() {
+        // The broadcast means nothing with no Foray loaded; onCreate alone builds the
+        // session but is not "running". MUTATION: register from onCreate.
+        java.util.List<String> seen = captureSessionEvents();
+        controller = Robolectric.buildService(PlaybackKeepAliveService.class);
+        controller.create();
+        becomeNoisy();
+        assertTrue("nothing reaches the page before the service is running", seen.isEmpty());
+    }
+
+    @Test
+    public void becomingNoisyAfterDestroy_isNotHeard() {
+        // MUTATION: drop `unregisterNoisyReceiver()` from onDestroy -- a stopped
+        // Foray would then be "paused" by every later unplug, and the receiver leaks.
+        java.util.List<String> seen = captureSessionEvents();
+        controller = Robolectric.buildService(PlaybackKeepAliveService.class);
+        controller.create();
+        controller.startCommand(0, 0);
+        PlaybackKeepAliveService service = controller.get();
+        controller.destroy();
+        controller = null;
+        assertFalse(service.isNoisyReceiverRegistered());
+        becomeNoisy();
+        assertTrue("an unregistered receiver hears nothing", seen.isEmpty());
+    }
+
+    @Test
+    public void aSecondBareStart_doesNotDeliverAnUnplugTwice() {
+        // ForayAudioPlugin#start re-asserts foreground on a running service.
+        // MUTATION: drop the `noisyReceiver != null` guard -- two receivers, two
+        // pauses, and a second `routeChanged` on the record for one unplug.
+        java.util.List<String> seen = captureSessionEvents();
+        controller = Robolectric.buildService(PlaybackKeepAliveService.class);
+        controller.create();
+        controller.startCommand(0, 0);
+        controller.startCommand(0, 1);
+        becomeNoisy();
+        assertEquals(1, seen.size());
+    }
+
+    @Test
+    public void anotherAudioBroadcastIsNotMistakenForAnUnplug() {
+        // The receiver filters on the action: a headset PLUGGED IN is not a loss.
+        java.util.List<String> seen = captureSessionEvents();
+        controller = Robolectric.buildService(PlaybackKeepAliveService.class);
+        controller.create();
+        controller.startCommand(0, 0);
+        RuntimeEnvironment.getApplication().sendBroadcast(new Intent(AudioManager.ACTION_HEADSET_PLUG));
+        Shadows.shadowOf(Looper.getMainLooper()).idle();
+        assertTrue(seen.isEmpty());
     }
 }

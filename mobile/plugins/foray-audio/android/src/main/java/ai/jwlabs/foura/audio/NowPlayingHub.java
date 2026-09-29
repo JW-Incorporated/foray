@@ -80,6 +80,20 @@ final class NowPlayingHub {
         }
     }
 
+    /**
+     * Carries a SYSTEM event -- something the OS did under the player, not a press --
+     * back to the page as the plugin's {@code SESSION_EVENT} (A-08). Implemented by the
+     * plugin, for the same reason {@link TransportSink} is: it is the only thing that
+     * can reach the WebView.
+     *
+     * <p>{@code kind} and {@code reason} are the iOS plugin's closed vocabulary
+     * ({@code player/diagnostic-log.js} admits it, {@code player/client.js} acts on
+     * it), so the page reads an Android route loss exactly as it reads an iOS one.
+     */
+    interface SessionSink {
+        void onSession(@NonNull String kind, @NonNull String reason);
+    }
+
     /** The two origins, spelled as `REMOTE_ORIGINS` in `player/diagnostic-log.js`
      *  spells them. */
     static final String ORIGIN_SESSION = "media-session";
@@ -92,6 +106,7 @@ final class NowPlayingHub {
     private static volatile NowPlaying current = NowPlaying.EMPTY;
     @Nullable private static volatile Listener listener = null;
     @Nullable private static volatile TransportSink sink = null;
+    @Nullable private static volatile SessionSink sessionSink = null;
 
     @NonNull
     static NowPlaying get() {
@@ -139,6 +154,37 @@ final class NowPlayingHub {
         if (sink == expected) sink = null;
     }
 
+    static void setSessionSink(@Nullable SessionSink next) {
+        sessionSink = next;
+    }
+
+    /** Identity-checked, for the Activity-recreation overlap {@link #clearSink}
+     *  names. */
+    static void clearSessionSink(@Nullable SessionSink expected) {
+        if (sessionSink == expected) sessionSink = null;
+    }
+
+    /**
+     * A system event for the page (A-08: headphones unplugged, a Bluetooth route
+     * lost). Dropped when no page is listening, for {@link #dispatch}'s reason: a
+     * pause replayed minutes later, after the page came back, is a pause nobody
+     * caused.
+     */
+    static void dispatchSession(@NonNull String kind, @NonNull String reason) {
+        final SessionSink target = sessionSink;
+        if (target == null) {
+            Log.w(TAG, "session " + kind + "/" + reason + " arrived with no page listening");
+            return;
+        }
+        try {
+            target.onSession(kind, reason);
+        } catch (Exception e) {
+            /* Same rule as a transport press: this runs on the main thread inside a
+               broadcast receiver, and failing to tell the page must not kill the app. */
+            Log.w(TAG, "could not deliver session " + kind + "/" + reason, e);
+        }
+    }
+
     /**
      * A transport press from the OS, a Bluetooth button or a car head unit.
      *
@@ -174,5 +220,6 @@ final class NowPlayingHub {
         current = NowPlaying.EMPTY;
         listener = null;
         sink = null;
+        sessionSink = null;
     }
 }

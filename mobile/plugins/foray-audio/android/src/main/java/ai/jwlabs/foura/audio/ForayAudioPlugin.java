@@ -93,9 +93,21 @@ public class ForayAudioPlugin extends Plugin {
      *  delivered to nobody and every test stays green. */
     static final String TRANSPORT_EVENT = "transport";
 
+    /** A-08. Raised when the SYSTEM changes something under the player (today: the
+     *  output was lost -- see {@code PlaybackKeepAliveService#noisyReceiver}). The
+     *  same name, and the same payload shape, as {@code ForayAudioPlugin.swift}'s
+     *  {@code SESSION_EVENT}; {@code foray-media-session.js} re-broadcasts it on
+     *  {@code window} as {@code foray:session}, where {@code player/client.js} acts on
+     *  it and {@code player/diagnostic-log.js} records it. Asserted equal to the web
+     *  half's {@code SESSION_EVENT} by {@code shell-invariants.test.mjs}. */
+    static final String SESSION_EVENT = "session";
+
     /** Registered with the hub so a press can reach the page. Held as a field so
      *  {@code handleOnDestroy} can clear exactly the one it registered. */
     private NowPlayingHub.TransportSink sink;
+
+    /** The A-08 twin of {@link #sink}, for system events. */
+    private NowPlayingHub.SessionSink sessionSink;
 
     /**
      * Register the two things that must outlive a single bridge call.
@@ -142,6 +154,32 @@ public class ForayAudioPlugin extends Plugin {
         };
         NowPlayingHub.setSink(sink);
 
+        sessionSink = (kind, reason) -> {
+            /* LOGCAT AS WELL AS THE BRIDGE, as the iOS plugin writes the unified log:
+               a `notifyListeners` reaches a WebView that may be asleep, and a device
+               pass reading `adb logcat -s ForayAudio` needs a channel that does not
+               depend on the page being awake. Closed vocabulary only. */
+            Log.i(TAG, "ForayAudio.session kind=" + kind + " reason=" + reason);
+            notifyListeners(SESSION_EVENT, sessionEvent(kind, reason, System.currentTimeMillis()));
+        };
+        NowPlayingHub.setSessionSink(sessionSink);
+    }
+
+    /**
+     * The wire shape, pure so the JUnit suite can pin it: {@code {kind, reason,
+     * producer, at}}, exactly the four keys {@code ForayAudioPlugin.swift}'s
+     * {@code sessionEvent} writes. {@code producer} is {@code "audio"} (this plugin,
+     * as opposed to the TTS one) and {@code at} is epoch MILLISECONDS, the clock
+     * {@code diagnostic-log.js} stamps every entry with and the one
+     * {@code client.js}'s {@code sessionLagMs} subtracts from.
+     */
+    static JSObject sessionEvent(String kind, String reason, long at) {
+        JSObject event = new JSObject();
+        event.put("kind", kind);
+        event.put("reason", reason);
+        event.put("producer", "audio");
+        event.put("at", at);
+        return event;
     }
 
     @PluginMethod
@@ -455,6 +493,8 @@ public class ForayAudioPlugin extends Plugin {
            every transport press after a rotation would reach nobody. */
         NowPlayingHub.clearSink(sink);
         sink = null;
+        NowPlayingHub.clearSessionSink(sessionSink);
+        sessionSink = null;
         stopServiceQuietly();
         super.handleOnDestroy();
     }

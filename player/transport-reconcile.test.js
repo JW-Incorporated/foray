@@ -2287,6 +2287,43 @@ test("REPORT 1: a route that DISAPPEARED pauses the transport and writes where i
   restore();
 });
 
+/** The Android Capacitor shell, as far as the page's boot reads it: platform
+    `android`, so there is no native engine (durable-store.js's
+    `deferredPrefixesFor` is iOS-only) and the page's own player owns the
+    session events. The Preferences tier answers empty. */
+function androidShell() {
+  return {
+    getPlatform: () => "android",
+    isNativePlatform: () => true,
+    nativePromise: async (plugin, method) => {
+      if (plugin === "Preferences" && method === "keys") return { keys: [] };
+      if (plugin === "Preferences" && method === "get") return { value: null };
+      return {};
+    },
+  };
+}
+
+test("A-08: on ANDROID, headphones unplugged pause the transport and write where it stopped", async (t) => {
+  /* `PlaybackKeepAliveService`'s ACTION_AUDIO_BECOMING_NOISY receiver sends the
+     iOS plugin's own pair through `ForayAudioPlugin.sessionEvent`, with the same
+     four keys; this is that payload reaching the page on the Android shell.
+     KILLING MUTATIONS: gate the `old-device-gone` branch of `onNativeSession`
+     to iOS, or have the Java send any other reason. */
+  const { client, doc, win, audio, storage, restore } = await bootClient(t, { capacitor: androidShell() });
+  assert.equal(win.Capacitor.getPlatform(), "android", "precondition: the Android shell");
+  await client.play(episodeItem());
+  await settle();
+  assert.equal(audio.paused, false, "precondition: playing from the headphones");
+  audio.currentTime = 900;
+  nativeSession(win, { kind: "routeChange", reason: "old-device-gone", producer: "audio", at: Date.now() });
+  await settle();
+  await settle();
+  assert.equal(audio.paused, true, "the headphones went, so the sound stops rather than moving to the speaker");
+  assert.equal(transport(doc).label, "Play");
+  assert.ok(Math.abs(posRow(storage, "ep-a").seconds - 900) < 1, "at the second it stopped");
+  restore();
+});
+
 test("REPORT 1: a LATE interruption never pauses audio the listener has since resumed", async (t) => {
   /* A suspended page handles a native event when it wakes, so an interruption
      can arrive after the listener pressed play on the lock screen. It is a
