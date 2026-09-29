@@ -455,8 +455,9 @@ final class SessionMonitor {
             for (AudioPlaybackConfiguration c : configs) {
                 AudioAttributes attrs = c == null ? null : c.getAudioAttributes();
                 if (attrs == null) continue;
-                if (FocusInference.isMediaUsage(attrs.getUsage())) media++;
-                else other = true;
+                int usage = attrs.getUsage();
+                if (FocusInference.isMediaUsage(usage)) media++;
+                else if (!FocusInference.isPassingSound(usage)) other = true;
             }
         }
         onPlayback(media, other, report);
@@ -623,7 +624,8 @@ final class SessionMonitor {
      * <ul>
      *   <li><b>lost</b>: the page reports PLAYING, media-usage audio had been heard
      *       under it, media-usage audio goes quiet, and a player of ANOTHER usage (a
-     *       ringtone, a call, a navigation prompt, an assistant) is active at that
+     *       ringtone, a call, a navigation prompt, an assistant -- never a
+     *       notification's ding, see {@link #isPassingSound}) is active at that
      *       moment or starts within {@link #TAKEOVER_WINDOW_MS}. A pause the page asked
      *       for, and a seam's own silence, have no other player beside them and write
      *       nothing -- which is also why a hidden seam's 9-11 s load is never mistaken
@@ -660,6 +662,32 @@ final class SessionMonitor {
             return usage == AudioAttributes.USAGE_MEDIA
                 || usage == AudioAttributes.USAGE_UNKNOWN
                 || usage == AudioAttributes.USAGE_GAME;
+        }
+
+        /** A sound that plays OVER media and never takes it away: a notification
+         *  ding, a key click, a screen reader's speech. The platform ducks media
+         *  under these (they ask for may-duck focus, when they ask at all), so one
+         *  of them is not a takeover -- and counting it as one would read a seam's
+         *  or a stall's silence that happened to coincide with a message arriving
+         *  as a lost focus, which is exactly the wrong cause one line above a stop.
+         *  Neither ours nor somebody else's: ignored. A RINGTONE and an ALARM are
+         *  not on this list; they are the takeovers the rule exists to see. (The three
+         *  COMMUNICATION_* usages are deprecated from API 33 but still arrive from
+         *  apps that set them.) */
+        @SuppressWarnings("deprecation")
+        static boolean isPassingSound(int usage) {
+            switch (usage) {
+                case AudioAttributes.USAGE_NOTIFICATION:
+                case AudioAttributes.USAGE_NOTIFICATION_EVENT:
+                case AudioAttributes.USAGE_NOTIFICATION_COMMUNICATION_REQUEST:
+                case AudioAttributes.USAGE_NOTIFICATION_COMMUNICATION_INSTANT:
+                case AudioAttributes.USAGE_NOTIFICATION_COMMUNICATION_DELAYED:
+                case AudioAttributes.USAGE_ASSISTANCE_SONIFICATION:
+                case AudioAttributes.USAGE_ASSISTANCE_ACCESSIBILITY:
+                    return true;
+                default:
+                    return false;
+            }
         }
 
         synchronized int onConfigs(int mediaActive, boolean otherActive, boolean pagePlaying, boolean pageLoaded, long now) {

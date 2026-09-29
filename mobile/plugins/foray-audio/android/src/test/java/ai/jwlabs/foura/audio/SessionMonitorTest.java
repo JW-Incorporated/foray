@@ -333,6 +333,26 @@ public class SessionMonitorTest {
         assertFalse(SessionMonitor.FocusInference.isMediaUsage(AudioAttributes.USAGE_VOICE_COMMUNICATION));
         assertFalse(SessionMonitor.FocusInference.isMediaUsage(AudioAttributes.USAGE_ASSISTANCE_NAVIGATION_GUIDANCE));
         assertFalse(SessionMonitor.FocusInference.isMediaUsage(AudioAttributes.USAGE_ASSISTANT));
+        // A ding plays over media and never takes it; a ringtone and an alarm do.
+        assertTrue(SessionMonitor.FocusInference.isPassingSound(AudioAttributes.USAGE_NOTIFICATION));
+        assertTrue(SessionMonitor.FocusInference.isPassingSound(AudioAttributes.USAGE_ASSISTANCE_SONIFICATION));
+        assertFalse(SessionMonitor.FocusInference.isPassingSound(AudioAttributes.USAGE_NOTIFICATION_RINGTONE));
+        assertFalse(SessionMonitor.FocusInference.isPassingSound(AudioAttributes.USAGE_ALARM));
+    }
+
+    @Test
+    public void aNotificationDingAtASeamsSilence_isNotALoss_butARingtoneIs() throws Exception {
+        // Through the registered AudioPlaybackCallback. MUTATION: count every non-media
+        // usage as a takeover -> a message arriving as a seam begins (or a stall
+        // starts) writes lost-inferred one line above a stop it did not cause.
+        SessionMonitor.install(app());
+        page("playing");
+        audio().setActivePlaybackConfigurationsFor(List.of(usage(AudioAttributes.USAGE_MEDIA)), true);
+        audio().setActivePlaybackConfigurationsFor(Collections.emptyList(), true);
+        audio().setActivePlaybackConfigurationsFor(List.of(usage(AudioAttributes.USAGE_NOTIFICATION)), true);
+        assertTrue("a ding over a seam is not a takeover", rows.isEmpty());
+        audio().setActivePlaybackConfigurationsFor(List.of(usage(AudioAttributes.USAGE_NOTIFICATION_RINGTONE)), true);
+        assertEquals(Collections.singletonList("focusChange/lost-inferred"), rows);
     }
 
     /* ---- foreground-service refusals ---- */
