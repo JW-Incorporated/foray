@@ -435,8 +435,9 @@ Rejected alternatives:
   `:foray-engine-core-jvm:test`. `number-format` (`JSWriter.jsonNumber`, main code) is the one engine family it runs.
   `compare` also runs: it holds the runner's own comparator to `compare.js`. The other 30 recorded families, plus
   `manager-remainder` (named in `unported.json`), are owed whole in `player/parity/jvm-pending.json`, each to the card
-  below that ports it. A-23 on remove their family line, or split it into ids, as they port. `record.mjs --jvm-card`
-  keeps those books from the JS side. Every android-build run also flips one fixture value in a copy and requires the
+  below that ports it. `compare` and `number-format` are listed in its `runs`. A-23 on move their family from
+  `families` to `runs` (or split it into ids) in the same change as its runner. `record.mjs --jvm-card` keeps those
+  books from the JS side, and `record.mjs --check` holds every recorded family to exactly one of `runs` and `families`. Every android-build run also flips one fixture value in a copy and requires the
   runner to go red. The run id and numbers are in `STATE.md` (A-22 entry).
 
 #### A-23 · Port the pure policies (episode subset) — **L**

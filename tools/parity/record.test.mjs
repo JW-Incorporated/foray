@@ -370,6 +370,28 @@ test("--check is red on JVM books that name nothing, owe a jsOnly family, use a 
   }
 });
 
+test("--check holds every recorded family to exactly one of the JVM's runs and its owed families", async () => {
+  /* MUTATION: drop the partition loop from checkJvmPending -> fails. Without
+     "runs" the JS side cannot tell a family the JVM runs from one nobody owes, so
+     a family recorded on a branch cut before jvm-pending.json existed would merge
+     with ci.yml green and only the non-required android-build red. */
+  const root = scratch();
+  try {
+    const jvm = readJ(root, JVM);
+    assert.deepStrictEqual(jvm.runs, ["compare", "number-format"], "precondition: the JVM runs compare and number-format");
+    const families = { ...jvm.families };
+    delete families.rate;
+    writeJ(root, JVM, { ...jvm, families, runs: [...jvm.runs, "seam-gap", "continuation", "no-such-family"] });
+    const problems = (await checkAll({ root })).problems.join("\n");
+    assert.match(problems, /jvm-pending: family rate is recorded but the JVM neither runs it nor owes it/);
+    assert.match(problems, /jvm-pending: family seam-gap is both in "runs" and owed whole/);
+    assert.match(problems, /jvm-pending: "runs" lists family continuation, which is jsOnly/);
+    assert.match(problems, /jvm-pending: "runs" lists family no-such-family, which is not recorded/);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
 /* ---------- --mutate ---------- */
 
 test("the four named mutation rules exist, and each anchor occurs exactly once in its file", () => {

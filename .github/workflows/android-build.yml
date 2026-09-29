@@ -490,6 +490,18 @@ jobs:
           fi
           grep -q 'failed number-format/point-one' "$ART/gradle-jvm-parity-mutant.log" \
             || { echo "::group::mutant run log tail"; tail -150 "$ART/gradle-jvm-parity-mutant.log"; echo "::endgroup::"; echo "the mutant run failed, but not on the flipped case"; exit 1; }
+          # ...and on NOTHING ELSE. The mutant run rewrote the report (the copy of the
+          # real one is already in $ART): its only failure must be the flipped case,
+          # with no tree problem, or the red came from the copy, not the flip.
+          cp "$report" "$ART/jvm-parity-mutant-report.json"
+          node -e '
+            const r = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"));
+            const bad = r.notable.filter((x) => ["failed", "stale-pending", "unaccounted"].includes(x.outcome)).map((x) => x.id);
+            if (r.ok || r.problems.length || bad.length !== 1 || bad[0] !== "number-format/point-one") {
+              console.log("mutant report: ok=" + r.ok + " failures=" + JSON.stringify(bad) + " problems=" + JSON.stringify(r.problems));
+              process.exit(1);
+            }
+          ' "$report" || { echo "the mutant run was red for more than the flipped case"; exit 1; }
           echo "mutation: number-format/point-one flipped to \"0.2\" turned the JVM parity runner red, as it must" | tee -a "$ART/jvm-parity.txt"
           { echo "### JVM parity (A-22)"; echo; echo '```'; cat "$ART/jvm-parity.txt"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
 

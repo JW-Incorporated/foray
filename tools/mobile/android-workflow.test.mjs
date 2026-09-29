@@ -500,7 +500,8 @@ test("A-21: the JVM engine core is asserted wired in, and its JVM tests run and 
 test("A-22: the JVM parity runner's report is read, and a flipped fixture value must turn it red", () => {
   /* MUTATION: append `|| true` to the report check, drop `--rerun` or the
      FORAY_PARITY_DIR export before the mutant gradlew call, drop the `exit 1`
-     under a green mutant, or drop the grep for the flipped case -> fails.
+     under a green mutant, drop the grep for the flipped case, or drop the
+     mutant-report check that it failed on that case ALONE -> fails.
      docs/plans/android-assessment.md A-22: "A mutation of one fixture value turns
      it red." ParitySuiteTest runs inside the A-21 step's `:foray-engine-core-jvm:test`;
      this step reads its report, then runs the SAME test against a copy of
@@ -521,7 +522,8 @@ test("A-22: the JVM parity runner's report is read, and a flipped fixture value 
   assert.match(s, /export FORAY_PARITY_DIR="\$mutant\/player\/parity"\n\s*mutant_green=yes\n\s*if ! \.\/gradlew /, "the mutant run must be pointed at the copy");
   assert.match(s, /if \[ "\$mutant_green" = yes \]; then\n[^\n]*\n\s*exit 1/, "a GREEN mutant run must fail the job");
   assert.match(s, /grep -q 'failed number-format\/point-one'/, "the mutant must fail ON the flipped case, not for some other reason");
-  assert.equal(failureClauses(s), 5, "report missing, books unbalanced, flip impossible, mutant green, wrong case: five ways to fail");
+  assert.match(s, /bad\.length !== 1 \|\| bad\[0\] !== "number-format\/point-one"/, "the mutant must fail on the flipped case ALONE, per its report");
+  assert.equal(failureClauses(s), 6, "report missing, books unbalanced, flip impossible, mutant green, wrong case, red for more than the flip: six ways to fail");
   const at = (frag) => WF.indexOf("- name: " + frag);
   assert.ok(at("JVM parity runner") > at("JVM engine core"), "after the step whose test run writes the report");
   assert.ok(at("JVM parity runner") < at("assembleDebug"), "before the APK builds, so a red book costs seconds, not an APK build");

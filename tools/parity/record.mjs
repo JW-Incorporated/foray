@@ -248,11 +248,7 @@ export async function record({ root = REPO_ROOT, family = null, portCard = null,
   try { jvm = loadJvmPending(root); } catch (e) { refusals.push(`cannot read ${JVM_PENDING_FILE}: ${e.message}`); }
   if (jvm) {
     refusals.push(...jvm.problems);
-    jvmOwed = jvmOwedBy(
-      jvm,
-      affected.map((id) => ({ id, family: affectedFamily.get(id) })),
-      new Set(Object.keys(data.manifest.families ?? {})),
-    );
+    jvmOwed = jvmOwedBy(jvm, affected.map((id) => ({ id, family: affectedFamily.get(id) })));
     const n = jvmOwed.families.length + jvmOwed.cases.length;
     if (n && !jvmCard && !evaluationRefused) {
       refusals.push(

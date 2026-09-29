@@ -25,6 +25,12 @@ has a JVM runner through ports of `codec.js` and `compare.js`, and it keeps the 
 - `families` means a whole family is owed.
 - `cases` means one id is owed inside a family the JVM does run.
 
+A third key, `runs`, lists the families the JVM has a runner for. The JVM suite fails when it differs from the
+registered runners. `record.mjs --check` in `ci.yml` holds every recorded family that is not jsOnly to exactly one of
+`runs` and `families`. Without it, the JS side could not tell a family the JVM runs from one nobody owes. A family
+recorded on a branch cut before these books existed would then merge green, and only the non-required android-build
+would go red, on whichever Android PR came next. (Added in review.)
+
 `record.mjs` keeps them the same way it keeps `swift-pending`. A case that is new or changed in a family the JVM runs,
 or a brand-new family, needs `--jvm-card A-xx`. Anything in a family that is owed whole needs no JVM card, so iOS and JS
 PRs are unaffected. `--check` validates the file.
@@ -38,7 +44,8 @@ PRs are unaffected. `--check` validates the file.
 - `:foray-engine-core-jvm:test` ran 20 JUnit cases with 0 skipped, in **9 s**.
 - Totals: passed 62 (compare 37, number-format 25), not-ported 1716, js-only 58, failed/stale/unaccounted 0.
 - The next step flipped `number-format/point-one`'s recorded `"0.1"` to `"0.2"` in a copy of `player/parity`. The test then
-  went red on that case, which is the card's mutation acceptance, and it runs on every build.
+  went red on that case, which is the card's mutation acceptance, and it runs on every build. The step also reads the
+  mutant run's report, which must show that case as the only failure and no tree problem.
 - `assembleDebug` and `assembleRelease` are green.
 
 **Not executed:** there was no local Gradle, per the memory-constrained-PC rule. There was no device and no request to

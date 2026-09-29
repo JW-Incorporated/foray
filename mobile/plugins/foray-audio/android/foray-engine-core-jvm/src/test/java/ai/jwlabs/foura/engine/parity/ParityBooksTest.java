@@ -215,6 +215,24 @@ public class ParityBooksTest {
     }
 
     @Test
+    public void theRunsListMustBeExactlyTheRegisteredRunners() {
+        // record.mjs --check trusts "runs" to say which families the JVM runs; a list
+        // that drifts from JvmFamilies.ALL would let it vouch for a family nobody runs.
+        ParityData missing = fresh();
+        missing.runs.remove(NUMBER_FORMAT);
+        SuiteReport a = run(missing);
+        assertTrue(hasProblem(a, "registered for family " + NUMBER_FORMAT + ", but jvm-pending.json \"runs\" does not list it"));
+        assertFalse(a.ok());
+
+        ParityData extra = fresh();
+        String owed = owedFamily(extra);
+        extra.runs.add(owed);
+        SuiteReport b = run(extra);
+        assertTrue(hasProblem(b, "\"runs\" lists family " + owed + ", but no JVM runner is registered for it"));
+        assertFalse(b.ok());
+    }
+
+    @Test
     public void aFixtureFileTheManifestDoesNotListIsAProblem() {
         ParityData data = fresh();
         data.filesOnDisk.add("player/parity/fixtures/stray/stray.json");

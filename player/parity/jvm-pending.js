@@ -14,6 +14,16 @@
      "cases":    { "<id>": "A-23" }        one case owed inside a family the JVM
                                           DOES run (a partial port, or a JS rule
                                           change the port has not caught up with).
+     "runs":     [ "<family>", ... ]      the families the JVM HAS a runner for
+                                          (JvmFamilies.ALL; the JVM suite fails
+                                          when the two disagree).
+
+   Every recorded family that is not jsOnly is in exactly one of "runs" and
+   "families", and `record.mjs --check` (ci.yml, which runs on every PR) holds
+   that partition. Without "runs" the JS side could not tell a family the JVM
+   runs from one nobody owes, so a family recorded on a branch cut before this
+   file existed would merge green and turn only the (non-required) android-build
+   job red, on whichever Android PR came next.
 
    The JVM runner fails when a case not owed fails, when an owed case passes
    (stale: burn the entry down), and when a manifest id is neither run nor owed.
@@ -39,7 +49,7 @@ export function loadJvmPending(root, parityDir = "player/parity") {
   const doc = JSON.parse(fs.readFileSync(path.join(root, parityDir, JVM_PENDING_FILE), "utf8"));
   const problems = [];
   for (const k of Object.keys(doc)) {
-    if (!k.startsWith("//") && k !== "families" && k !== "cases") problems.push(`jvm-pending: unknown key ${JSON.stringify(k)}`);
+    if (!k.startsWith("//") && k !== "families" && k !== "cases" && k !== "runs") problems.push(`jvm-pending: unknown key ${JSON.stringify(k)}`);
   }
   const obj = (k) => {
     const v = doc[k];
@@ -49,8 +59,14 @@ export function loadJvmPending(root, parityDir = "player/parity") {
     }
     return v;
   };
+  let runs = doc.runs;
+  if (!Array.isArray(runs) || !runs.every((f) => typeof f === "string")) {
+    problems.push(`jvm-pending: "runs" must be an array of family names (the families the JVM has a runner for)`);
+    runs = [];
+  }
+  for (const f of new Set(runs.filter((x, i) => runs.indexOf(x) !== i))) problems.push(`jvm-pending: "runs" lists ${f} twice`);
   const comments = Object.fromEntries(Object.entries(doc).filter(([k]) => k.startsWith("//")));
-  return { families: { ...obj("families") }, cases: { ...obj("cases") }, comments, problems };
+  return { families: { ...obj("families") }, cases: { ...obj("cases") }, runs: [...new Set(runs)], comments, problems };
 }
 
 /** The families unported.json says tests will be recorded into. */
@@ -70,6 +86,22 @@ export function unportedFamilies(unported) {
  */
 export function checkJvmPending(jvm, { familyOf, families, jsOnlyFamilies, unported }) {
   const problems = [...(jvm.problems ?? [])];
+  const runs = new Set(jvm.runs ?? []);
+  // The partition: every recorded family the JVM could run is either run or owed whole, never both, never neither.
+  for (const family of [...families].sort()) {
+    if (jsOnlyFamilies.has(family)) continue;
+    const owed = family in jvm.families;
+    if (runs.has(family) && owed) {
+      problems.push(`jvm-pending: family ${family} is both in "runs" and owed whole: keep one`);
+    } else if (!runs.has(family) && !owed) {
+      problems.push(`jvm-pending: family ${family} is recorded but the JVM neither runs it nor owes it: ` +
+        `owe it whole to the Android card that ports it ("families", or record.mjs --jvm-card A-xx), or list it in "runs" with its JVM runner`);
+    }
+  }
+  for (const family of [...runs].sort()) {
+    if (!families.has(family)) problems.push(`jvm-pending: "runs" lists family ${family}, which is not recorded`);
+    else if (jsOnlyFamilies.has(family)) problems.push(`jvm-pending: "runs" lists family ${family}, which is jsOnly; the JVM never runs it`);
+  }
   for (const [family, card] of Object.entries(jvm.families)) {
     if (!families.has(family) && !unported.has(family)) {
       problems.push(`jvm-pending: family ${family} is neither recorded nor named in unported.json: delete the entry`);
@@ -82,6 +114,7 @@ export function checkJvmPending(jvm, { familyOf, families, jsOnlyFamilies, unpor
     if (family === undefined) problems.push(`jvm-pending: ${id} names no fixture case`);
     else if (jsOnlyFamilies.has(family)) problems.push(`jvm-pending: ${id} is in a jsOnly family; no JVM card can owe it`);
     else if (family in jvm.families) problems.push(`jvm-pending: ${id} is owed on its own and with its whole family ${family}: keep one entry`);
+    else if (!runs.has(family)) problems.push(`jvm-pending: ${id} is owed on its own, but its family ${family} is not in "runs"`);
     if (!JVM_CARD_RE.test(card)) problems.push(`jvm-pending: ${id} is tagged ${JSON.stringify(card)}, not an Android card id`);
   }
   return problems;
@@ -89,17 +122,18 @@ export function checkJvmPending(jvm, { familyOf, families, jsOnlyFamilies, unpor
 
 /**
  * What a record run owes the JVM. `affected`: [{id, family}] new or changed, not
- * jsOnly; `knownFamilies`: the families recorded BEFORE this run. Returns
- * `{families, cases}` to add: a brand-new family is owed whole, and a new or
- * changed id is owed on its own only when its family is not already owed whole
- * (nor the id already owed). Nothing here needs a card when both are empty.
+ * jsOnly. Returns `{families, cases}` to add: a family the JVM neither runs nor
+ * owes (a brand-new one, or one recorded before these books existed) is owed
+ * whole, and a new or changed id in a family the JVM runs is owed on its own
+ * (unless already owed). Nothing here needs a card when both are empty.
  */
-export function jvmOwedBy(jvm, affected, knownFamilies) {
+export function jvmOwedBy(jvm, affected) {
+  const runs = new Set(jvm.runs ?? []);
   const families = new Set();
   const cases = new Set();
   for (const { id, family } of affected) {
     if (family in jvm.families) continue;
-    if (!knownFamilies.has(family)) families.add(family);
+    if (!runs.has(family)) families.add(family);
     else if (!(id in jvm.cases)) cases.add(id);
   }
   return { families: [...families].sort(), cases: [...cases].sort() };
@@ -123,5 +157,6 @@ export function nextJvmPending(jvm, { owed, card, liveIds, liveFamilies, unporte
     if (!liveIds.has(id)) { dropped.push(id); delete cases[id]; }
   }
   const sorted = (o) => Object.fromEntries(Object.entries(o).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)));
-  return { doc: { ...jvm.comments, cases: sorted(cases), families: sorted(families) }, dropped };
+  // "runs" is kept as it is: a runner whose family is gone is the JVM suite's to report, and --check's.
+  return { doc: { ...jvm.comments, cases: sorted(cases), families: sorted(families), runs: [...(jvm.runs ?? [])].sort() }, dropped };
 }

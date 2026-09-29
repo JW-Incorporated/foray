@@ -42,7 +42,9 @@ import java.util.regex.Pattern;
  * entry naming no case or no family (a family unported.json will record into is
  * allowed ahead of its fixtures), a case entry inside a family that is owed whole,
  * a card tag that is not an A- card, a fixture file on disk the manifest does not list,
- * and a fixture id the manifest lacks.
+ * a fixture id the manifest lacks, and a jvm-pending.json {@code runs} list that is not
+ * exactly the registered runners (the JS side reads it to hold every recorded family
+ * to exactly one of run and owed).
  */
 public final class ParitySuite {
     /** An Android card id, as record.mjs's JVM_CARD_RE spells it. */
@@ -272,6 +274,15 @@ public final class ParitySuite {
         for (String family : runners.keySet()) {
             if (!data.manifest.containsKey(family)) {
                 problems.add("a JVM runner is registered for family " + family + ", which manifest.json does not list");
+            }
+            if (!data.runs.contains(family)) {
+                problems.add("a JVM runner is registered for family " + family + ", but jvm-pending.json \"runs\" does not list it"
+                        + " (record.mjs --check reads \"runs\" to know which families the JVM runs)");
+            }
+        }
+        for (String family : data.runs) {
+            if (!runners.containsKey(family)) {
+                problems.add("jvm-pending.json \"runs\" lists family " + family + ", but no JVM runner is registered for it");
             }
         }
         for (Map.Entry<String, String> e : data.pendingFamilies.entrySet()) {

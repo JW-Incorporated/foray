@@ -32,6 +32,8 @@ public final class ParityData {
     public final Map<String, String> pendingFamilies = new TreeMap<>();
     /** jvm-pending.json "cases": one case id owed inside a family the JVM does run -> its card. */
     public final Map<String, String> pendingCases = new TreeMap<>();
+    /** jvm-pending.json "runs": the families the JVM has a runner for; must equal {@link JvmFamilies#ALL}'s. */
+    public final TreeSet<String> runs = new TreeSet<>();
     /** family -> minimum case count, from floors.json. */
     public final Map<String, Integer> floors = new TreeMap<>();
     /**
@@ -146,8 +148,16 @@ public final class ParityData {
                 into.put(e.getKey(), e.getValue().asString() == null ? "" : e.getValue().asString());
             }
         }
+        Json runList = pending.get("runs");
+        if (runList == null || runList.asList() == null) {
+            throw new HarnessError("E_BAD_CASE", "jvm-pending.json has no \"runs\" array");
+        }
+        for (Json family : runList.asList()) {
+            if (family.asString() == null) throw new HarnessError("E_BAD_CASE", "jvm-pending.json \"runs\" holds a non-string");
+            data.runs.add(family.asString());
+        }
         for (String key : pending.asMap().keySet()) {
-            if (!key.startsWith("//") && !key.equals("families") && !key.equals("cases")) {
+            if (!key.startsWith("//") && !key.equals("families") && !key.equals("cases") && !key.equals("runs")) {
                 throw new HarnessError("E_BAD_CASE", "jvm-pending.json has an unknown key \"" + key + "\"");
             }
         }
