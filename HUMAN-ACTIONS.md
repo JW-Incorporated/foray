@@ -34,6 +34,7 @@
 5. Press skip-back 15 and skip-forward 30 from the car, once each.
 6. Check the car shows the title and a moving progress bar.
 7. Parked: Developer → Playback diagnostics → Copy; paste here with the route.
+8. If a Foray will not play or keeps stopping: Developer → Playback engine → Web, then restart 4a. Episodes and Forays go back to the web player. Say so here.
 
 **Worked if:** every seam plays; after the pause and the call 4a resumes by itself or on one press; 15/30 move; title and progress bar show.
 

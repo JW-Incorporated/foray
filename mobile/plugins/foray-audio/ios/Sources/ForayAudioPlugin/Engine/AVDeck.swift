@@ -214,6 +214,12 @@ final class AVDeck: DeckDriving {
         /// of it, so uptime would call an eight-hour-old item fresh.
         /// Injectable so a test can age the held item.
         var idleClockMs: () -> Double
+        /// A load on this asset failed or passed its deadline. A DeckPair's
+        /// decks hand it to their shared `AssetCache` (`forget`), so the retry
+        /// gets a NEW asset: a failed or hung asset stays that way, and the
+        /// cache would otherwise hand the same one back (NE-37c review). A
+        /// lone deck makes a new asset for every cold load already.
+        var assetFailed: (AVURLAsset) -> Void
 
         init(
             loadDeadlineSec: Double = AVDeck.defaultLoadDeadlineSec,
@@ -230,7 +236,8 @@ final class AVDeck: DeckDriving {
             outPointLayers: Set<DeckPolicy.OutPointLayer> = Set(DeckPolicy.OutPointLayer.allCases),
             reusesSameSource: Bool = true,
             reuseMaxIdleSec: Double = AVDeck.defaultReuseMaxIdleSec,
-            idleClockMs: @escaping () -> Double = AVDeck.continuousMs
+            idleClockMs: @escaping () -> Double = AVDeck.continuousMs,
+            assetFailed: @escaping (AVURLAsset) -> Void = { _ in }
         ) {
             self.loadDeadlineSec = loadDeadlineSec
             self.sessionIsActive = sessionIsActive
@@ -247,6 +254,7 @@ final class AVDeck: DeckDriving {
             self.reusesSameSource = reusesSameSource
             self.reuseMaxIdleSec = reuseMaxIdleSec
             self.idleClockMs = idleClockMs
+            self.assetFailed = assetFailed
         }
     }
 
@@ -824,6 +832,8 @@ final class AVDeck: DeckDriving {
             JSONMember("bufferedAheadSec", Self.secNode(bufferedAhead(of: targetStartSec))),
             JSONMember("marks", .object(gateMarks))
         ] + accessFields() + errorLogFields())
+        // A hung asset stays hung: the next load of this source gets a new one.
+        if let asset { config.assetFailed(asset) }
         // Detach FIRST, and move the generation, so nothing that completes
         // late (a duration, a status, a seek) can preroll or sound: a URL that
         // turns ready at 21 s must not start the wrong thing in the car.
@@ -1240,6 +1250,9 @@ final class AVDeck: DeckDriving {
             JSONMember("step", .string(gateStep)),
             JSONMember("positionSec", Self.secNode(player.currentTime().seconds))
         ] + Self.errorFields(error) + accessFields() + errorLogFields())
+        // A failed asset is never retried by AVFoundation: the next load of
+        // this source gets a new one.
+        if let asset { config.assetFailed(asset) }
         emit(.failed(token: token, message: message))
     }
 

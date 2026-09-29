@@ -50,8 +50,10 @@ enum EngineBoot {
         // (NE-30s) and the two-deck pair with its prepared standby (NE-32).
         // The rest stay off on purpose: the silence node until H-2 rows show a
         // suspension (NE-34), the direct synthesizer until DV-9 answers
-        // (NE-33), and narration at the listener's speed until the founder
-        // changes his 1x ruling (OQ-3). The page only sends `playForay` when
+        // (NE-33), and SPOKEN narration at the listener's speed until the
+        // founder changes his 1x ruling (OQ-3; a RENDERED line, one with an
+        // `audio_url`, follows the listener's speed since D2, 2026-09-28, with
+        // no flag). The page only sends `playForay` when
         // the hello grants `foray` (mobile/ENGINE_DEFAULT.json ∩
         // EngineBridgeRules.advertisedCapabilities).
         config.forayTapeEnabled = true

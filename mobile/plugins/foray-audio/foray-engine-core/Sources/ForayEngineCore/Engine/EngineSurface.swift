@@ -93,7 +93,8 @@ extension EngineCore {
         let items = state.queue.map { Optional($0.forayItem) }
         let starts = ForayClock.segmentStarts(items)
         let playhead: Double?
-        if let line = state.narration, line.itemId == item.id, state.loadedId == item.id {
+        let speaking = state.narration.map { $0.itemId == item.id && state.loadedId == item.id } ?? false
+        if speaking, let line = state.narration {
             playhead = monoMs.map { line.elapsedSec(atMono: $0) }
         } else if state.loadedId == item.id {
             playhead = deck.positionSec
@@ -118,7 +119,13 @@ extension EngineCore {
             item: mediaItem(item), nextItem: next.map(mediaItem), forayTitle: state.forayTitle ?? "",
             index: Double(index), total: Double(state.queue.count),
             showArtworkUrl: item.node["artwork_url"]?.stringValue,
-            durationSec: ForayClock.forayRuntimeSec(items), positionSec: position, playbackRate: state.rate,
+            durationSec: ForayClock.forayRuntimeSec(items), positionSec: position,
+            // THE RATE THE PLAYHEAD REALLY MOVES AT (client.js: "the element's
+            // real rate, not the chosen one"): the OS extrapolates position +
+            // rate x wall between writes. A SPOKEN line runs at 1x on the wall
+            // clock (corner case #18, D2 keeps it), whatever the listener's
+            // speed, so it says 1; a clip and a rendered line say the listener's.
+            playbackRate: speaking ? 1 : state.rate,
             buffering: state.buffering || loading, playing: state.isRunning, inSeamGap: state.inSeamGap,
             ended: state.stateType == "ended", foray: true)
     }

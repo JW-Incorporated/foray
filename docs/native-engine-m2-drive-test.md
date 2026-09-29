@@ -26,7 +26,10 @@ These are preconditions, not steps for the founder.
    `foray` owes work. NE-37 cleared the last 20 `transport-reconcile` tests
    that `manager-foray` still owed. The shipping boot (`EngineBoot.swift`) turns on the Foray tape
    and the two-deck pair. It leaves the silence node, the direct synthesizer
-   and narration at the listener's speed off.
+   and spoken (synthesized) narration at the listener's speed off. A rendered
+   line (one with an `audio_url`) plays through the deck like a clip, at the
+   listener's speed (D2, 2026-09-28), and is read from its script if its file
+   fails (§14).
 2. **Narration and the jingle are part of `foray`**, not capabilities of their
    own: their families (`speech-rate`, `lexicon`, `default-voice`,
    `interlude`, `manager-foray`'s narration and jingle cases) are charged to

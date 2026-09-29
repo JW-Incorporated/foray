@@ -125,7 +125,8 @@ final class DeckPair: DeckDriving {
                 sessionIsActive: sessionIsActive,
                 makeAsset: { [unowned cache] url, precise in cache.asset(for: url, preciseTiming: precise) },
                 cancelsAssetLoading: false,
-                diag: diag))
+                diag: diag,
+                assetFailed: { [unowned cache] asset in cache.forget(asset) }))
         }
         return DeckPair(deck(), deck(), config: Config(diag: diag), assetCache: cache)
     }

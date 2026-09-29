@@ -592,4 +592,40 @@ final class DeckPairSeamTests: XCTestCase {
         XCTAssertEqual(cache.count, 2)
         XCTAssertFalse(first === cache.asset(for: cbr, preciseTiming: true), "the least recently used entry was evicted")
     }
+
+    /// NE-37c review: a cold load after a long pause gets a NEW asset, the
+    /// path the M1 car test proved (build 2026092706: every load after hours
+    /// parked was cold), and so does a load after a failure or a deadline
+    /// (`forget`). Sharing is for the seams of one listening session only.
+    /// TO SEE IT FAIL: drop the idle check from `AssetCache.reusable`.
+    func testTheAssetCacheHandsAColdLoadAFreshAssetAfterALongIdleOrAForget() throws {
+        let cbr = try fixture("click-cbr.mp3")
+        var clock: Double = 0
+        let cache = AssetCache(maxIdleSec: 600, clockMs: { clock })
+        let first = cache.asset(for: cbr, preciseTiming: true)
+        clock += 599_000
+        XCTAssertTrue(first === cache.asset(for: cbr, preciseTiming: true), "used within the idle limit: shared")
+        clock += 601_000
+        let fresh = cache.asset(for: cbr, preciseTiming: true)
+        XCTAssertFalse(first === fresh, "idle past the limit: a new asset, as M1's cold load had")
+        XCTAssertEqual(cache.count, 1)
+        cache.forget(fresh)
+        XCTAssertEqual(cache.count, 0)
+        XCTAssertFalse(fresh === cache.asset(for: cbr, preciseTiming: true), "a forgotten asset is never handed out again")
+    }
+
+    /// An asset whose duration FAILED is never handed out again: AVFoundation
+    /// does not retry a failed key, so a retry on it would fail at once.
+    /// TO SEE IT FAIL: drop the status check from `AssetCache.reusable`.
+    func testTheAssetCacheReplacesAnAssetWhoseDurationFailed() throws {
+        let missing = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("no-such-\(UUID().uuidString).mp3")
+        let cache = AssetCache()
+        let broken = cache.asset(for: missing, preciseTiming: true)
+        let loaded = expectation(description: "duration answered")
+        broken.loadValuesAsynchronously(forKeys: ["duration"]) { loaded.fulfill() }
+        wait(for: [loaded], timeout: 10)
+        XCTAssertEqual(broken.statusOfValue(forKey: "duration", error: nil), .failed, "precondition: a missing file fails")
+        XCTAssertFalse(broken === cache.asset(for: missing, preciseTiming: true))
+    }
 }

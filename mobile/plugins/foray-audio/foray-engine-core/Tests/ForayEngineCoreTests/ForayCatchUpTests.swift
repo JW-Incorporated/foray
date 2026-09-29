@@ -308,6 +308,27 @@ final class ForayCatchUpTests: XCTestCase {
         XCTAssertEqual(lineBar.playbackRate, 1, "a SOUNDING line counts on; it is not a load (rate 0)")
     }
 
+    /// The car extrapolates `position + rate x wall` between writes, so the
+    /// rate published is the one the playhead really moves at: the listener's
+    /// on a clip, 1 on a SPOKEN line (it runs on the wall clock at 1x), or the
+    /// car's progress bar runs ahead through every line at 1.5x.
+    /// TO SEE IT FAIL: publish `state.rate` during a spoken line.
+    func testASpokenLineTellsTheCarItsRealRateNotTheListeners() throws {
+        var host = try playingForay(ForayCatchUpTests.titled)
+        host.send(.queue(.setRate(1.5)), after: 0)
+        host.reading.positionSec = 150
+        let clip = MediaMapping.sessionView(try XCTUnwrap(host.core.mediaView(deck: host.reading, monoMs: host.monoMs)))
+        XCTAssertEqual(try XCTUnwrap(clip.positionState).playbackRate, 1.5, "a clip runs at the listener's speed")
+
+        let bridge = ForayCatchUpTests.endClip(&host)
+        guard let seq = NarrationOverlayTests.spokenSeq(bridge) else { return XCTFail("\(bridge)") }
+        host.send(.narrator(.started(seq: seq, voiceFallback: false)), after: 0)
+        let line = MediaMapping.sessionView(try XCTUnwrap(host.core.mediaView(deck: host.reading, monoMs: host.monoMs + 2000)))
+        let bar = try XCTUnwrap(line.positionState)
+        XCTAssertEqual(bar.playbackRate, 1, "a spoken line runs at 1x on the wall clock")
+        XCTAssertEqual(bar.position, 102, "two wall seconds into the line are two Foray seconds")
+    }
+
     // MARK: - #866 in a Foray: the stall latch is per item
 
     /// The rate-0 latch (#866, the 2026-09-28 paste): `buffering` is set by a
