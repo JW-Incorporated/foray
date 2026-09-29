@@ -883,7 +883,7 @@ test("two lock-screen nexttracks advance two segments", async () => {
    (client.js `forayNext`, `play(index + 1)`) always landed on a narration line;
    the manager's `skipToNext`, which the engine's `next` ports, stepped over it.
    One behaviour on every surface: Next is the next item, a line included. The
-   Foray is literal (the `media/remote-nexttrack-*-line` fixtures carry the same
+   Foray is literal (the `manager-foray/remote-nexttrack-*-line` fixtures carry the same
    one), with the line between two clips of one episode. */
 async function playerWithLine() {
   __resetInstanceForTests();

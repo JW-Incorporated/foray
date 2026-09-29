@@ -846,6 +846,7 @@
         "player/parity/fixtures/manager-foray/jingle.json": "c9016c928cfc2dd0a8c3429124dbc5da2b6775b2161601a3aedaed4b74f4fff2",
         "player/parity/fixtures/manager-foray/narration.json": "dd05be479486a191ea10810cea5c9da26763ae2d4571551dade5b33439edb401",
         "player/parity/fixtures/manager-foray/real-forays.json": "ce2d584ca45514c92c7a0b9095d4566d40429fb180f17faa352c202c4c88b6f4",
+        "player/parity/fixtures/manager-foray/remote-next.json": "e5eaf96acf68a5bc0092e6eaee63115a002ae278232026f3e8380f838c6c6765",
         "player/parity/fixtures/manager-foray/tape.json": "bffeb969f00fbe7d2b5c1a7a8fcd450f2ddc43b04e53428eeb320ceffa38bf73"
       },
       "ids": [
@@ -934,6 +935,8 @@
         "manager-foray/foray-2-1.5x-holds-through-every-seam",
         "manager-foray/foray-2-2x-mid-foray-survives-every-later-seam",
         "manager-foray/foray-2-the-beat-is-wall-clock-at-2x",
+        "manager-foray/remote-nexttrack-onto-a-line",
+        "manager-foray/remote-nexttrack-from-a-line",
         "manager-foray/a-segment-loads-at-its-in-point",
         "manager-foray/the-out-point-is-armed-before-play",
         "manager-foray/a-whole-episode-arms-nothing",
@@ -987,7 +990,7 @@
       "files": {
         "player/parity/fixtures/media/committed.json": "0904f44351c437b8b09f6d116be8b4a8b193c99feb29671e66a7f8df89eddebe",
         "player/parity/fixtures/media/media-mapping.json": "ed9b8eda0f101de423576d87852955a85e0bf0b56e20dbf4d106cb5368e256b3",
-        "player/parity/fixtures/media/remote.json": "49030dc25e246123d6c645cac17a894ba27ebe253cf498861851176b20aefeff"
+        "player/parity/fixtures/media/remote.json": "7788989d8cbcc5ee17085e448ca44ae917014441c6d4447d8ff60aeff0998bba"
       },
       "ids": [
         "media/committed-forays-exist",
@@ -1029,8 +1032,6 @@
         "media/artwork-hit-is-one-entry",
         "media/remote-nexttrack",
         "media/remote-two-nexttracks",
-        "media/remote-nexttrack-onto-a-line",
-        "media/remote-nexttrack-from-a-line",
         "media/remote-previoustrack",
         "media/remote-pause",
         "media/remote-play-after-pause",

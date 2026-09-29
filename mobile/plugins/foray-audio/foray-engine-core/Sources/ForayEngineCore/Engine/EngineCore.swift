@@ -473,8 +473,8 @@ public struct EngineCore {
     /// authored line the phone's own button would have played, and from the
     /// clip before a closing line ended the Foray unheard. One behaviour on
     /// every surface: from a clip whose next item is a line, Next lands on the
-    /// line; from a line, on the item after it. The `media`
-    /// `remote-nexttrack-*-line` and `manager-foray` `next-*` fixtures pin both.
+    /// line; from a line, on the item after it. The `manager-foray`
+    /// `remote-nexttrack-*-line` and `next-*` fixtures pin both.
     private mutating func next(source: EngineSource) {
         if nextItem(from: cursor, skipBridges: false) != nil {
             cutSeamGap("skipToNext")

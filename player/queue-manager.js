@@ -1016,8 +1016,8 @@ export class PlayerQueueManager {
        authored line the phone's own button would have played, and from the
        clip before a closing line ended the Foray unheard. One behaviour on
        every surface: Next is the next item. From a line it is the item after
-       the line (the next clip, or the next line of a chain). The `media`
-       `remote-nexttrack-*` and `manager-foray` `next-*` fixtures pin both. */
+       the line (the next clip, or the next line of a chain). The `manager-foray`
+       `remote-nexttrack-*-line` and `next-*` fixtures pin both. */
     const next = this._nextItem(this._cursor(), false);
     if (next) this._targetIndex = next.index;
     // currentIndex is NOT advanced here. The reducer's skip emits savePosition
