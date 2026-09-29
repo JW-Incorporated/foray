@@ -219,6 +219,11 @@ These are the same as `docs/native-engine-plan.md` §12, adapted:
 - **Acceptance:** A table of the three flags × {currentTime advances, media_session state, audio focus stack
   entry}, with run ids. A chosen flag.
 - **Device check:** none.
+- **Status (2026-09-29): done.** All three flags play: `currentTime` advances about 10 s in 10 s, Media3 reports
+  PLAYING, and WebView takes `AUDIOFOCUS_GAIN` (run 36539778610, two attempts, throwaway PR #880). **Chosen flag:
+  `-no-audio`**, the one the smoke job already passes, so A-04 needs no flag change. `-audio none` is the same QEMU
+  flag, and the default backend only adds a PulseAudio init failure. Table and evidence:
+  `docs/android-emulator-measurements.md` §1–§4.
 
 #### A-04 · `android-playback` scenario job, part 1: play, background, controls — **M**
 - **Depends on:** A-03.
