@@ -759,7 +759,7 @@
     },
     "lexicon": {
       "files": {
-        "player/parity/fixtures/lexicon/ipa-overrides.json": "2b345195ba1539505148a4bd0673231363b3b47166c464aaf75a8799be6100a8"
+        "player/parity/fixtures/lexicon/ipa-overrides.json": "93d06aa344ca82ab53044538303b9ff80e59de90a87b51837b080f287ba12f92"
       },
       "ids": [
         "lexicon/authored-ipa",
@@ -776,6 +776,8 @@
         "lexicon/apostrophe-bounds-a-word",
         "lexicon/digits-bound-a-word",
         "lexicon/overlapping-entries-keep-lexicon-order-on-a-tie",
+        "lexicon/the-longest-term-at-a-start-wins",
+        "lexicon/a-term-inside-a-kept-match-is-dropped",
         "lexicon/bundled-lexicon-sake"
       ]
     },
@@ -835,7 +837,7 @@
       "files": {
         "player/parity/fixtures/manager-foray/audition.json": "9c1eed332cf0db001efc1de1e1b0c27f1bd50fef9c49202229d8312c9adcfb60",
         "player/parity/fixtures/manager-foray/jingle.json": "c9016c928cfc2dd0a8c3429124dbc5da2b6775b2161601a3aedaed4b74f4fff2",
-        "player/parity/fixtures/manager-foray/narration.json": "f3ab3692cd724ae3ca65316607d1b68f77c3191f4bf843369749acd9f4956c77",
+        "player/parity/fixtures/manager-foray/narration.json": "bd2cd5bceee72c4d448cd00b4ff748960c7c595b985e7afdf78f7bcadae02332",
         "player/parity/fixtures/manager-foray/real-forays.json": "ce2d584ca45514c92c7a0b9095d4566d40429fb180f17faa352c202c4c88b6f4",
         "player/parity/fixtures/manager-foray/tape.json": "bffeb969f00fbe7d2b5c1a7a8fcd450f2ddc43b04e53428eeb320ceffa38bf73"
       },
@@ -894,6 +896,20 @@
         "manager-foray/stop-during-a-bridge-never-advances",
         "manager-foray/a-call-during-a-spoken-bridge-resumes-into-the-next-real-item",
         "manager-foray/a-call-during-a-rendered-bridge-resumes-into-the-next-real-item",
+        "manager-foray/a-first-line-whose-file-fails-is-spoken",
+        "manager-foray/a-jump-onto-a-line-whose-file-fails-speaks-it",
+        "manager-foray/a-rendered-bridge-whose-file-fails-is-spoken",
+        "manager-foray/a-line-that-fails-while-sounding-is-spoken-from-its-first-word",
+        "manager-foray/an-error-on-a-clip-still-stops",
+        "manager-foray/a-rendered-line-with-no-script-fails-as-before",
+        "manager-foray/speech-refused-after-a-failed-first-line-stops-as-before",
+        "manager-foray/speech-refused-after-a-failed-bridge-skips-it-as-before",
+        "manager-foray/a-paused-fallback-line-resumes-its-utterance",
+        "manager-foray/with-no-synthesiser-a-failed-file-fails-as-before",
+        "manager-foray/d2-a-rendered-first-line-plays-at-the-listeners-speed",
+        "manager-foray/d2-a-rendered-line-after-a-spoken-one-gets-the-listeners-speed",
+        "manager-foray/d2-a-tap-deferred-during-a-spoken-line-lands-on-the-rendered-line-after-it",
+        "manager-foray/a-tap-during-a-spoken-line-lands-when-it-ends",
         "manager-foray/foray-1-play-loads-segment-1",
         "manager-foray/foray-1-plays-through-and-ends",
         "manager-foray/foray-1-every-seam-holds-a-beat",
@@ -1936,7 +1952,7 @@
     "speech-rate": {
       "files": {
         "player/parity/fixtures/speech-rate/constants.json": "ad3e8fc2281ed49a6d401d6e9adb1b4c87d5fb8dec28deec16d5c1f94bee7f88",
-        "player/parity/fixtures/speech-rate/speak.json": "ed200f9e8f73b3eff6466b1471456a2cb1aa29388659fbe769e49d5530d3e73f"
+        "player/parity/fixtures/speech-rate/speak.json": "bedbe9963414e7ae53b8cc707f1e8ecba6e06dcbed8ad8cf3985ab2fc3571ea9"
       },
       "ids": [
         "speech-rate/narration-rate-is-1x",

@@ -572,10 +572,12 @@ public struct EngineCore {
                           JSONMember("applied", .number(snap.applied))])
         }
         state.rate = snap.applied
-        // NARRATION IS NOT SPED UP, EVER (corner case #18): a tap while our own
-        // line is audible is kept (`pendingRate`) and reaches the deck when
-        // the line ends (`restoreRate`), never mid-word.
-        if config.forayTapeEnabled && narrationIsAudible {
+        // A SPOKEN LINE IS NOT SPED UP (corner case #18, founder 2026-09-24):
+        // a tap while one is audible is kept (`pendingRate`) and reaches the
+        // deck when the line ends (`restoreRate`), never mid-word. A RENDERED
+        // line follows the listener (D2, 2026-09-28): the tap goes to the deck
+        // now, like any clip (`_loadedIsSynth && _narrationIsAudible()`).
+        if config.forayTapeEnabled && state.narration != nil && narrationIsAudible {
             state.pendingRate = snap.applied
             diag("rate", [JSONMember("kind", .string("deferred")), JSONMember("applied", .number(snap.applied))])
             return
@@ -587,6 +589,23 @@ public struct EngineCore {
     /// since `transitioning` covers the bridge loading as well as playing.
     private var narrationIsAudible: Bool {
         state.stateType == "transitioning" || state.currentItem?.kind == .tts
+    }
+
+    /// queue-manager.js `focusOf(state)` read through `_itemFor`: the queue
+    /// item the reducer's state is about (the playing item, the bridge being
+    /// transitioned to, the interrupted item, the load's target), nil when
+    /// idle or ended.
+    private var focusItem: EngineItem? {
+        let ref: QueueItemRef?
+        switch state.player {
+        case let .playing(item): ref = item
+        case let .transitioning(_, to): ref = to
+        case let .interrupted(item, _): ref = item
+        case let .loadingItem(target, _, _): ref = target
+        case .idle, .ended: ref = nil
+        }
+        guard let ref else { return nil }
+        return state.queue.first(where: { $0.id == ref.id })
     }
 
     /// The one-way relinquish (plan §4.6): stop WITH persistence, keep the
@@ -862,11 +881,21 @@ public struct EngineCore {
             diag("seek", [JSONMember("kind", .string("rejected")), JSONMember("reason", .string(reason))])
         case let .setOutPoint(seconds): deckCommand(.setOutPoint(sec: seconds))
         case .resetRateForTTS:
-            // Corner case #18: a rendered narration line plays at NARRATION_RATE,
-            // never the listener's speed. A SPOKEN line has no deck under it:
-            // its rate rode on the utterance (NE-31s).
-            if state.narration != nil { return }
-            deckCommand(.setRate(EngineConstants.QueueManager.narrationRate))
+            // Founder ruling D2, 2026-09-28 (queue-manager.js §12): a RENDERED
+            // line plays at the LISTENER's rate, pitch kept (AVDeck's
+            // `.timeDomain`); it was the literal NARRATION_RATE until then
+            // (corner case #18). A SPOKEN line has no deck under it: its 1x
+            // rode on the utterance (NE-31s). DECIDED BY THE ITEM THIS EFFECT
+            // IS FOR, not by the line now loaded: on the bridge path the
+            // reducer emits it before the line loads, so `narration` still
+            // describes the PREVIOUS item (a spoken line chained before a
+            // rendered one would skip the rendered line's rate).
+            if let target = focusItem {
+                if target.isSynthNarration { return }
+            } else if state.narration != nil {
+                return
+            }
+            deckCommand(.setRate(state.rate))
         case .restoreRate:
             if state.narration != nil { return }
             state.pendingRate = nil
@@ -941,7 +970,13 @@ public struct EngineCore {
         if let index = state.queue.firstIndex(where: { $0.id == item.id }) { state.currentIndex = index }
         state.lastToken += 1
         let token = state.lastToken
-        if config.forayTapeEnabled && item.isSynthNarration {
+        // §14: a rendered line already being SPOKEN because its file failed,
+        // paused and now resumed, is a spoken line for this load: it continues
+        // the utterance instead of retrying the file mid-sentence. A restart
+        // (`forced`) tries the file again.
+        let resumingFallback = offsets.forced == nil && state.fallbackSpokenId == item.id
+            && state.loadedId == item.id && state.narration?.paused == true
+        if config.forayTapeEnabled && (item.isSynthNarration || resumingFallback) {
             // §7 item 1: a script-only line has no file for a deck; it is
             // SPOKEN (NE-31s).
             return loadSpokenLine(item, token: token, restart: offsets.forced != nil)
@@ -1044,10 +1079,23 @@ public struct EngineCore {
         guard let pending = state.pendingLoad, pending.token == token else {
             return diag("deck", [JSONMember("kind", .string("superseded")), JSONMember("token", .number(Double(token)))])
         }
+        // THE LISTENER CAN MOVE DURING A RENDERED BRIDGE'S LOAD (audit round 3,
+        // player-core-2): a pause, an interruption or a stop in that window
+        // changes the state but not the load. The bridge plays only if the
+        // machine is still transitioning to it; otherwise it landed for nobody
+        // and is not started (a pause undone from the car, or a line playing
+        // behind a closed player, is what this prevents).
+        if pending.bridge, !stillOn(pending) {
+            state.pendingLoad = nil
+            return diag("bridge", [JSONMember("kind", .string("landed-after-leaving")),
+                                   JSONMember("token", .number(Double(token)))])
+        }
         state.pendingLoad = nil
         state.loadedId = pending.itemId
         state.loadedToken = token
         state.startingHop = nil
+        // A new load owns the deck: the last one's stall is not this one's.
+        clearStallLatch()
         // A deck item holds the playhead now: a spoken line it replaced is
         // over (`_endSynthNarration`).
         endSpokenLine()
@@ -1092,6 +1140,7 @@ public struct EngineCore {
         guard isPending || isHeld else {
             return diag("deck", [JSONMember("kind", .string("superseded-failure")), JSONMember("token", .number(Double(token)))])
         }
+        if fallBackToScript(token, isPending: isPending, cause: cause) { return }
         if let pending = state.pendingLoad, pending.bridge, pending.token == token {
             // A bridge that will not load never stalls the queue (corner case #12).
             state.pendingLoad = nil
@@ -1113,6 +1162,58 @@ public struct EngineCore {
         dispatch(.error("loadItem(\(itemId)) failed: \(message)"))
     }
 
+    /// §14 (queue-manager.js, Phase 2; founder rulings D1-D11, 2026-09-28):
+    /// a RENDERED narration line whose FILE fails is read aloud from its
+    /// script instead, in all three places a file can fail:
+    ///
+    ///   - `load`: the line's own load (a Foray's first line, a jump, a skip
+    ///     onto it), which used to stop the Foray;
+    ///   - `bridge`: a rendered bridge's load, which used to be stepped over;
+    ///   - `playing`: the file failing while the line sounds, which used to
+    ///     stop the Foray. The deck is paused and the whole script is spoken
+    ///     from its first word (speech has no offset).
+    ///
+    /// Only while the machine is still ON that line (a pause, a stop or a skip
+    /// during the load keeps today's outcome). The spoken line gets a FRESH
+    /// token, so a late report about the failed file (a second error, a
+    /// deadline's twin) names a load nobody is on and is dropped as
+    /// `superseded-failure`. If the synthesiser refuses too, its `.failed`
+    /// reaches `onLoadFailure` as a spoken load, which never falls back: the
+    /// first line stops and a bridge is stepped over, exactly as before. A
+    /// line with no script, and a clip, fail exactly as before.
+    private mutating func fallBackToScript(_ token: DeckToken, isPending: Bool, cause: Vocabulary.StopCause) -> Bool {
+        guard config.forayTapeEnabled else { return false }
+        let itemId: String?
+        let at: String
+        if isPending {
+            guard let pending = state.pendingLoad, pending.token == token, pending.spokenSeq == nil else { return false }
+            itemId = pending.itemId
+            at = pending.bridge ? "bridge" : "load"
+        } else {
+            guard state.narration == nil else { return false }
+            itemId = state.loadedId
+            at = "playing"
+        }
+        guard let itemId, let item = state.queue.first(where: { $0.id == itemId }), item.canSpeakInstead,
+              focusItem?.id == item.id else { return false }
+        switch (at, state.player) {
+        case ("load", .loadingItem), ("bridge", .transitioning), ("playing", .playing), ("playing", .transitioning):
+            break
+        default:
+            return false
+        }
+        diag("narration", [JSONMember("kind", .string("fallback")),
+                           JSONMember("reason", .string(cause == .loadDeadline ? "timeout" : "failed")),
+                           JSONMember("at", .string(at))])
+        // A file that failed mid-line: silence the deck under it first.
+        if at == "playing" { deckCommand(.pause) }
+        state.lastToken += 1
+        // `load` lands like any loaded line (the gate, the beat, itemLoaded);
+        // a bridge, and a line already playing, play on without an itemLoaded.
+        speakLine(item, token: state.lastToken, bridge: at != "load", fallback: true)
+        return true
+    }
+
     /// `_handleBackendItemEnded`: the item ran out. The queue's next item, or
     /// the next continuation hop when `autoAdvance` is on, or the end.
     private mutating func onEnded(_ token: DeckToken) {
@@ -1126,6 +1227,9 @@ public struct EngineCore {
     /// `.ended`, or a spoken line's `didFinish` or deadline, NE-31s). Resolve
     /// what "next" means, then feed exactly one `itemEnded`.
     private mutating func itemEnded() {
+        // The stall latch belongs to the item that ended (#866's rate-0 latch,
+        // ported to the Foray seams): whatever plays next reports its own.
+        clearStallLatch()
         switch state.player {
         case .transitioning:
             let next = nextItem(from: cursor, skipBridges: true)
@@ -2002,10 +2106,11 @@ public struct EngineCore {
     /// `_speakNarration`: ask the synthesiser for utterance `seq`. Like a
     /// deck load it is a request now and an answer later (`started` or
     /// `failed` for that seq), and the playhead moves only on `started`.
-    private mutating func speakLine(_ item: EngineItem, token: DeckToken, bridge: Bool) {
+    private mutating func speakLine(_ item: EngineItem, token: DeckToken, bridge: Bool, fallback: Bool = false) {
         state.speakSeq += 1
         let seq = state.speakSeq
-        state.pendingLoad = PendingLoad(token: token, itemId: item.id, startSec: 0, bridge: bridge, spokenSeq: seq)
+        state.pendingLoad = PendingLoad(token: token, itemId: item.id, startSec: 0, bridge: bridge, spokenSeq: seq,
+                                        fallback: fallback)
         // The audible-start backstop (plan §4.4), as `startPlayback`'s: a line
         // is never spoken into a session this engine does not hold.
         guard state.session == .active else {
@@ -2051,14 +2156,36 @@ public struct EngineCore {
     private mutating func narrationStarted(_ seq: Int, voiceFallback: Bool) {
         guard let pending = state.pendingLoad, pending.spokenSeq == seq,
               let item = state.queue.first(where: { $0.id == pending.itemId }) else {
+            // SUPERSEDED WHILE speak() WAS IN FLIGHT (audit round 3,
+            // player-core-4/7): the voice started on accept, and a skip, a row
+            // tap or a stop moved the player on. Silence it, unless a newer
+            // speak() already replaced it (`_abandonSpeech`). A repeated
+            // `started` for the line already playing is not a stale one.
+            if state.narration?.seq != seq { abandonSpeech(seq) }
             return diag("narration", [JSONMember("kind", .string("superseded")), JSONMember("seq", .number(Double(seq)))])
+        }
+        // THE LISTENER CAN MOVE WHILE THE LINE'S speak() IS IN FLIGHT (audit
+        // round 3, player-core-2/4): a pause or an interruption changes the
+        // state but not the pending line. The line starts only if the machine
+        // is still loading it (`_loadItem`) or still transitioning to it
+        // (`_playTransitionBridge`); otherwise the voice that already began is
+        // silenced and nothing else moves.
+        guard stillOn(pending) else {
+            state.pendingLoad = nil
+            abandonSpeech(seq)
+            return diag("narration", [JSONMember("kind", .string("left-while-speaking")),
+                                      JSONMember("seq", .number(Double(seq)))])
         }
         state.pendingLoad = nil
         state.lastVoiceFallback = voiceFallback
         state.loadedId = pending.itemId
         state.loadedToken = pending.token
         state.startingHop = nil
+        // A spoken line is the playhead: no deck stall describes it.
+        clearStallLatch()
         state.narration = SpokenLine(seq: seq, itemId: item.id, startedAtMono: now.monoMs)
+        // §14: remembered only for a rendered line spoken INSTEAD of its file.
+        state.fallbackSpokenId = pending.fallback ? item.id : nil
         startNarrationTicker()
         if voiceFallback {
             diag("narration", [JSONMember("kind", .string("voice-fallback"))])
@@ -2069,6 +2196,46 @@ public struct EngineCore {
         landed(item, token: pending.token)
     }
 
+    /// THE STALL LATCH IS PER ITEM (client.js `setNowPlaying`: "something
+    /// else is current now, so neither the last item's failure nor its stall
+    /// describes it"). `buffering` is set by a `.stalled` and cleared only by
+    /// that deck's `.timeControl(.playing)`, and while it is set Now Playing
+    /// publishes rate 0: the car reads "paused" and hides the progress bar
+    /// (the 2026-09-28 paste; AVDeck's re-report, #866, fixed the late-stall
+    /// half). In a Foray the item after a clip that stalled near its end is a
+    /// spoken line or the next clip's load, and neither would ever send the
+    /// `.playing` that clears it, so the whole next line read "paused".
+    private mutating func clearStallLatch() {
+        guard state.buffering else { return }
+        state.buffering = false
+        diag("deck", [JSONMember("kind", .string("stall-cleared"))])
+    }
+
+    /// Is the machine still on the line `pending` is speaking? `_loadItem`'s
+    /// check (still `loadingItem` with that target) for a line it loads, and
+    /// `_playTransitionBridge`'s `stillOurs` (still `transitioning` to it) for
+    /// a bridge. A rendered line that failed WHILE SOUNDING and is read from
+    /// its script instead (§14, `_speakInsteadMidLine`'s `stillOnIt`) may
+    /// also be `playing`.
+    private func stillOn(_ pending: PendingLoad) -> Bool {
+        guard focusItem?.id == pending.itemId else { return false }
+        switch state.player {
+        case .loadingItem: return !pending.bridge
+        case .transitioning: return pending.bridge
+        case .playing: return pending.bridge && pending.fallback
+        case .idle, .ended, .interrupted: return false
+        }
+    }
+
+    /// `_abandonSpeech(mine)`: a speak() whose line the player has left. The
+    /// voice started on accept, so it is told to stop, unless a NEWER speak()
+    /// has been issued since, which already replaced this utterance and must
+    /// not be cut off.
+    private mutating func abandonSpeech(_ seq: Int) {
+        guard seq == state.speakSeq else { return }
+        out.append(.narration(.stop(seq: seq)))
+    }
+
     /// `_endSynthNarration`: a deck item holds the playhead. A line that did
     /// not finish (left paused by a skip, or past its deadline over silence)
     /// is dropped, so the synthesiser never keeps an utterance nobody will
@@ -2076,6 +2243,7 @@ public struct EngineCore {
     private mutating func endSpokenLine() {
         guard let line = state.narration else { return }
         state.narration = nil
+        state.fallbackSpokenId = nil
         stopNarrationTicker()
         if !line.finished { out.append(.narration(.discard(seq: line.seq))) }
     }

@@ -45,8 +45,9 @@ extension EngineCore {
     ///   deck has sound, instead of counting over silence (p-car-8).
     /// - The rate is the listener's; the publisher writes 0 whenever the
     ///   state is not playing (plan §4.5: `playbackState` is never used).
-    public func mediaView(deck: DeckReading) -> MediaMapping.View? {
+    public func mediaView(deck: DeckReading, monoMs: Double? = nil) -> MediaMapping.View? {
         guard !state.closed, let item = state.currentItem else { return nil }
+        if state.forayId != nil { return forayMediaView(item, deck: deck, monoMs: monoMs) }
         let node = item.node
         let loaded = state.loadedId == item.id
         let stored = state.positions[item.id]
@@ -65,5 +66,60 @@ extension EngineCore {
             durationSec: duration, positionSec: position, playbackRate: state.rate,
             buffering: state.buffering || loading, playing: state.isRunning, inSeamGap: state.inSeamGap,
             ended: state.stateType == "ended", foray: state.forayId != nil)
+    }
+
+    /// client.js `mediaViewFields`'s FORAY branch (NE-37c: M2 had been
+    /// describing a Foray to the lock screen and the car as an episode, so a
+    /// spoken line read "4a" with no artist, no line carried the Foray's title,
+    /// and the progress bar was the clip's, not the Foray's):
+    ///
+    /// - the item and the one after it (a line's "Up next:"), the Foray's
+    ///   title, and "clip n of N";
+    /// - the FORAY's clock: its runtime as the duration, and the playhead on
+    ///   it (a spoken line's wall clock, the deck's while it holds the item,
+    ///   else the item's own start), as the page reports it;
+    /// - `buffering` is the deck's stall latch, plus a clip load in flight
+    ///   (silence), and a bridge only while it is still loading or its speak()
+    ///   is unanswered. A line that is SOUNDING in `transitioning` counts on:
+    ///   treating every bridge as a load published rate 0 for the whole line,
+    ///   and the car stopped its clock through every narration seam.
+    func forayMediaView(_ item: EngineItem, deck: DeckReading, monoMs: Double?) -> MediaMapping.View {
+        func mediaItem(_ engineItem: EngineItem) -> MediaMapping.Item {
+            MediaMapping.Item(kind: engineItem.node["kind"]?.stringValue, title: engineItem.node["title"]?.stringValue,
+                              show: engineItem.node["show"]?.stringValue)
+        }
+        let index = Swift.max(0, state.currentIndex)
+        let next = state.queue.indices.contains(index + 1) ? state.queue[index + 1] : nil
+        let items = state.queue.map { Optional($0.forayItem) }
+        let starts = ForayClock.segmentStarts(items)
+        let playhead: Double?
+        if let line = state.narration, line.itemId == item.id, state.loadedId == item.id {
+            playhead = monoMs.map { line.elapsedSec(atMono: $0) }
+        } else if state.loadedId == item.id {
+            playhead = deck.positionSec
+        } else if let pending = state.pendingLoad, pending.itemId == item.id {
+            playhead = pending.startSec
+        } else {
+            playhead = nil
+        }
+        let position: Double
+        if let playhead, playhead.isFinite {
+            position = ForayClock.forayElapsed(items, index: Double(index), playheadSec: playhead)
+        } else {
+            position = starts.indices.contains(index) ? starts[index] : 0
+        }
+        let loading: Bool
+        switch state.player {
+        case .loadingItem: loading = true
+        case .transitioning: loading = state.pendingLoad != nil
+        case .idle, .playing, .interrupted, .ended: loading = false
+        }
+        return MediaMapping.View(
+            item: mediaItem(item), nextItem: next.map(mediaItem), forayTitle: state.forayTitle ?? "",
+            index: Double(index), total: Double(state.queue.count),
+            showArtworkUrl: item.node["artwork_url"]?.stringValue,
+            durationSec: ForayClock.forayRuntimeSec(items), positionSec: position, playbackRate: state.rate,
+            buffering: state.buffering || loading, playing: state.isRunning, inSeamGap: state.inSeamGap,
+            ended: state.stateType == "ended", foray: true)
     }
 }

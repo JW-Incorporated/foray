@@ -355,7 +355,6 @@
               "rate:2",
               "outPoint:210",
               "play",
-              "rate:1",
               "tts.speak:a bridge line@1"
             ],
             "playhead": "nar-1",
@@ -388,7 +387,6 @@
           "rate:2",
           "outPoint:210",
           "play",
-          "rate:1",
           "tts.speak:a bridge line@1",
           "load:foray-1#2@400",
           "rate:2",

@@ -196,6 +196,12 @@ enum SpeechEnd: String, Equatable, Sendable {
     /// `didCancel`: stopped before the end (a `stopSpeaking`, a new line, an
     /// interruption that took the session).
     case cancelled
+    /// The output could not play the line at all (its first buffer could not
+    /// be converted, connected or started). Like the JS plugins' `finished`
+    /// carrying `error` (audit round 3, mobile-native-3), the line is OVER: a
+    /// narration line advances at once instead of running its clock over
+    /// silence to the deadline.
+    case failed
 }
 
 /// The engine's one synthesizer (SpeechNarrator, NE-33): the audition line

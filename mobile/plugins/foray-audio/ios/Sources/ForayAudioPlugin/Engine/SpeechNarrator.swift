@@ -315,7 +315,12 @@ final class SpeechNarrator: NSObject, Speaking {
         case .audition:
             onFinish?(end)
         case let .narration(seq):
-            onNarratorEvent?(end == .finished ? .finished(seq: seq) : .cancelled(seq: seq))
+            // A line the output FAILED to play is over, and advances now
+            // (mobile-native-3); a cancel never advances (L-05).
+            if end == .failed {
+                config.diag(DiagEntry(kind: "speaker", fields: [JSONMember("kind", .string("line-failed"))]))
+            }
+            onNarratorEvent?(end == .cancelled ? .cancelled(seq: seq) : .finished(seq: seq))
         }
     }
 
@@ -520,7 +525,7 @@ final class PcmOutput: NSObject, SpeechOutput, AVSpeechSynthesizerDelegate {
         }
         guard let playable = standardBuffer(buffer), connect(playable.format), startEngine() else {
             diag(DiagEntry(kind: "speaker", fields: [JSONMember("kind", .string("pcm-refused"))]))
-            return end(id, .cancelled)
+            return end(id, .failed)
         }
         if scheduled == 0 { linesStarted += 1 }
         scheduled += 1

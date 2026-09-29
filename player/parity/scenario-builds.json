@@ -64,6 +64,14 @@
         {"id":"foray-1#1","ord":1,"kind":"episode","audio_url":"https://cdn.example/other.mp3","start_sec":400,"end_sec":500,"authored_end_sec":500,"ad_pad_applied_sec":0,"source_item_id":"ep-other","dai_suspected":false,"reference_duration_sec":null,"ad_pad_sec":null,"needs_drift_check":false,"start_anchor":null,"end_anchor":null,"why":"he explains it plainly","title":"Other","show":"Indie"}
       ]
     },
+    "manager-foray/a-first-line-whose-file-fails-is-spoken@0": {
+      "isLocalFile": false, "allowAdPad": false, "warnings": 0,
+      "skipped": [],
+      "items": [
+        {"id":"nar-1","ord":0,"kind":"tts","audio_url":"narration/nar-1.mp3","title":"","script":"the line read aloud","duration_sec":1.118,"duration_source":"estimated"},
+        {"id":"foray-1#1","ord":1,"kind":"episode","audio_url":"https://cdn.example/static.mp3","start_sec":100,"end_sec":210,"authored_end_sec":210,"ad_pad_applied_sec":0,"source_item_id":"ep-static","dai_suspected":false,"reference_duration_sec":null,"ad_pad_sec":null,"needs_drift_check":false,"start_anchor":null,"end_anchor":null,"why":"he explains it plainly","title":"Static","show":"Indie"}
+      ]
+    },
     "manager-foray/a-foray-with-nothing-playable-is-silent@0": {
       "isLocalFile": false, "allowAdPad": false, "warnings": 0,
       "skipped": [{"index":0,"id":"foray-1#0","item_id":"ghost"}],
@@ -96,6 +104,15 @@
         {"id":"foray-1#2","ord":2,"kind":"episode","audio_url":"https://cdn.example/static.mp3","start_sec":900,"end_sec":1000,"authored_end_sec":1000,"ad_pad_applied_sec":0,"source_item_id":"ep-static","dai_suspected":false,"reference_duration_sec":null,"ad_pad_sec":null,"needs_drift_check":false,"start_anchor":null,"end_anchor":null,"why":"he explains it plainly","title":"Static","show":"Indie"}
       ]
     },
+    "manager-foray/a-jump-onto-a-line-whose-file-fails-speaks-it@0": {
+      "isLocalFile": false, "allowAdPad": false, "warnings": 0,
+      "skipped": [],
+      "items": [
+        {"id":"foray-1#0","ord":0,"kind":"episode","audio_url":"https://cdn.example/static.mp3","start_sec":100,"end_sec":210,"authored_end_sec":210,"ad_pad_applied_sec":0,"source_item_id":"ep-static","dai_suspected":false,"reference_duration_sec":null,"ad_pad_sec":null,"needs_drift_check":false,"start_anchor":null,"end_anchor":null,"why":"he explains it plainly","title":"Static","show":"Indie"},
+        {"id":"nar-1","ord":1,"kind":"tts","audio_url":"narration/nar-1.mp3","title":"","script":"the line read aloud","duration_sec":1.118,"duration_source":"estimated"},
+        {"id":"foray-1#2","ord":2,"kind":"episode","audio_url":"https://cdn.example/static.mp3","start_sec":400,"end_sec":500,"authored_end_sec":500,"ad_pad_applied_sec":0,"source_item_id":"ep-static","dai_suspected":false,"reference_duration_sec":null,"ad_pad_sec":null,"needs_drift_check":false,"start_anchor":null,"end_anchor":null,"why":"he explains it plainly","title":"Static","show":"Indie"}
+      ]
+    },
     "manager-foray/a-ladder-refusal-consumes-the-remaining-beat@0": {
       "isLocalFile": false, "allowAdPad": false, "warnings": 0,
       "skipped": [],
@@ -103,6 +120,14 @@
         {"id":"foray-1#0","ord":0,"kind":"episode","audio_url":"https://cdn.example/static.mp3","start_sec":100,"end_sec":210,"authored_end_sec":210,"ad_pad_applied_sec":0,"source_item_id":"ep-static","dai_suspected":false,"reference_duration_sec":null,"ad_pad_sec":null,"needs_drift_check":false,"start_anchor":null,"end_anchor":null,"why":"he explains it plainly","title":"Static","show":"Indie"},
         {"id":"foray-1#1","ord":1,"kind":"episode","audio_url":"https://cdn.example/dai.mp3","start_sec":400,"end_sec":500,"authored_end_sec":500,"ad_pad_applied_sec":0,"source_item_id":"ep-dai","dai_suspected":true,"reference_duration_sec":2501,"ad_pad_sec":null,"needs_drift_check":true,"start_anchor":"so the thing about fire","end_anchor":"and that is why it stuck","why":"he explains it plainly","title":"Stitched","show":"Big"},
         {"id":"foray-1#2","ord":2,"kind":"episode","audio_url":"https://cdn.example/other.mp3","start_sec":700,"end_sec":800,"authored_end_sec":800,"ad_pad_applied_sec":0,"source_item_id":"ep-other","dai_suspected":false,"reference_duration_sec":null,"ad_pad_sec":null,"needs_drift_check":false,"start_anchor":null,"end_anchor":null,"why":"he explains it plainly","title":"Other","show":"Indie"}
+      ]
+    },
+    "manager-foray/a-line-that-fails-while-sounding-is-spoken-from-its-first-word@0": {
+      "isLocalFile": false, "allowAdPad": false, "warnings": 0,
+      "skipped": [],
+      "items": [
+        {"id":"nar-1","ord":0,"kind":"tts","audio_url":"narration/nar-1.mp3","title":"","script":"the line read aloud","duration_sec":1.118,"duration_source":"estimated"},
+        {"id":"foray-1#1","ord":1,"kind":"episode","audio_url":"https://cdn.example/static.mp3","start_sec":100,"end_sec":210,"authored_end_sec":210,"ad_pad_applied_sec":0,"source_item_id":"ep-static","dai_suspected":false,"reference_duration_sec":null,"ad_pad_sec":null,"needs_drift_check":false,"start_anchor":null,"end_anchor":null,"why":"he explains it plainly","title":"Static","show":"Indie"}
       ]
     },
     "manager-foray/a-lost-route-during-a-beat@0": {
@@ -129,6 +154,14 @@
         {"id":"foray-1#1","ord":1,"kind":"episode","audio_url":"https://cdn.example/static.mp3","start_sec":100,"end_sec":210,"authored_end_sec":210,"ad_pad_applied_sec":0,"source_item_id":"ep-static","dai_suspected":false,"reference_duration_sec":null,"ad_pad_sec":null,"needs_drift_check":false,"start_anchor":null,"end_anchor":null,"why":"he explains it plainly","title":"Static","show":"Indie"}
       ]
     },
+    "manager-foray/a-paused-fallback-line-resumes-its-utterance@0": {
+      "isLocalFile": false, "allowAdPad": false, "warnings": 0,
+      "skipped": [],
+      "items": [
+        {"id":"nar-1","ord":0,"kind":"tts","audio_url":"narration/nar-1.mp3","title":"","script":"the line read aloud","duration_sec":1.118,"duration_source":"estimated"},
+        {"id":"foray-1#1","ord":1,"kind":"episode","audio_url":"https://cdn.example/static.mp3","start_sec":100,"end_sec":210,"authored_end_sec":210,"ad_pad_applied_sec":0,"source_item_id":"ep-static","dai_suspected":false,"reference_duration_sec":null,"ad_pad_sec":null,"needs_drift_check":false,"start_anchor":null,"end_anchor":null,"why":"he explains it plainly","title":"Static","show":"Indie"}
+      ]
+    },
     "manager-foray/a-rendered-bridge-is-1x-and-the-speed-comes-back@1": {
       "isLocalFile": false, "allowAdPad": false, "warnings": 1,
       "skipped": [],
@@ -136,6 +169,23 @@
         {"id":"foray-1#0","ord":0,"kind":"episode","audio_url":"https://cdn.example/static.mp3","start_sec":100,"end_sec":210,"authored_end_sec":210,"ad_pad_applied_sec":0,"source_item_id":"ep-static","dai_suspected":false,"reference_duration_sec":null,"ad_pad_sec":null,"needs_drift_check":false,"start_anchor":null,"end_anchor":null,"why":"he explains it plainly","title":"Static","show":"Indie"},
         {"id":"nar-1","ord":1,"kind":"tts","audio_url":"narration/fire-1.mp3","title":"","script":"","duration_sec":8,"duration_source":"fallback"},
         {"id":"foray-1#2","ord":2,"kind":"episode","audio_url":"https://cdn.example/static.mp3","start_sec":400,"end_sec":500,"authored_end_sec":500,"ad_pad_applied_sec":0,"source_item_id":"ep-static","dai_suspected":false,"reference_duration_sec":null,"ad_pad_sec":null,"needs_drift_check":false,"start_anchor":null,"end_anchor":null,"why":"he explains it plainly","title":"Static","show":"Indie"}
+      ]
+    },
+    "manager-foray/a-rendered-bridge-whose-file-fails-is-spoken@0": {
+      "isLocalFile": false, "allowAdPad": false, "warnings": 0,
+      "skipped": [],
+      "items": [
+        {"id":"foray-1#0","ord":0,"kind":"episode","audio_url":"https://cdn.example/static.mp3","start_sec":100,"end_sec":210,"authored_end_sec":210,"ad_pad_applied_sec":0,"source_item_id":"ep-static","dai_suspected":false,"reference_duration_sec":null,"ad_pad_sec":null,"needs_drift_check":false,"start_anchor":null,"end_anchor":null,"why":"he explains it plainly","title":"Static","show":"Indie"},
+        {"id":"nar-1","ord":1,"kind":"tts","audio_url":"narration/nar-1.mp3","title":"","script":"the line read aloud","duration_sec":1.118,"duration_source":"estimated"},
+        {"id":"foray-1#2","ord":2,"kind":"episode","audio_url":"https://cdn.example/static.mp3","start_sec":400,"end_sec":500,"authored_end_sec":500,"ad_pad_applied_sec":0,"source_item_id":"ep-static","dai_suspected":false,"reference_duration_sec":null,"ad_pad_sec":null,"needs_drift_check":false,"start_anchor":null,"end_anchor":null,"why":"he explains it plainly","title":"Static","show":"Indie"}
+      ]
+    },
+    "manager-foray/a-rendered-line-with-no-script-fails-as-before@0": {
+      "isLocalFile": false, "allowAdPad": false, "warnings": 1,
+      "skipped": [],
+      "items": [
+        {"id":"nar-1","ord":0,"kind":"tts","audio_url":"narration/nar-1.mp3","title":"","script":"","duration_sec":8,"duration_source":"fallback"},
+        {"id":"foray-1#1","ord":1,"kind":"episode","audio_url":"https://cdn.example/static.mp3","start_sec":100,"end_sec":210,"authored_end_sec":210,"ad_pad_applied_sec":0,"source_item_id":"ep-static","dai_suspected":false,"reference_duration_sec":null,"ad_pad_sec":null,"needs_drift_check":false,"start_anchor":null,"end_anchor":null,"why":"he explains it plainly","title":"Static","show":"Indie"}
       ]
     },
     "manager-foray/a-resume-from-outside-the-slice-lands-on-the-in-point@0": {
@@ -224,6 +274,15 @@
         {"id":"foray-1#1","ord":1,"kind":"episode","audio_url":"https://cdn.example/static.mp3","start_sec":100,"end_sec":210,"authored_end_sec":210,"ad_pad_applied_sec":0,"source_item_id":"ep-static","dai_suspected":false,"reference_duration_sec":null,"ad_pad_sec":null,"needs_drift_check":false,"start_anchor":null,"end_anchor":null,"why":"he explains it plainly","title":"Static","show":"Indie"}
       ]
     },
+    "manager-foray/a-tap-during-a-spoken-line-lands-when-it-ends@0": {
+      "isLocalFile": false, "allowAdPad": false, "warnings": 0,
+      "skipped": [],
+      "items": [
+        {"id":"foray-1#0","ord":0,"kind":"episode","audio_url":"https://cdn.example/static.mp3","start_sec":100,"end_sec":210,"authored_end_sec":210,"ad_pad_applied_sec":0,"source_item_id":"ep-static","dai_suspected":false,"reference_duration_sec":null,"ad_pad_sec":null,"needs_drift_check":false,"start_anchor":null,"end_anchor":null,"why":"he explains it plainly","title":"Static","show":"Indie"},
+        {"id":"nar-1","ord":1,"kind":"tts","audio_url":null,"title":"","script":"a spoken line","duration_sec":0.765,"duration_source":"estimated"},
+        {"id":"foray-1#2","ord":2,"kind":"episode","audio_url":"https://cdn.example/static.mp3","start_sec":400,"end_sec":500,"authored_end_sec":500,"ad_pad_applied_sec":0,"source_item_id":"ep-static","dai_suspected":false,"reference_duration_sec":null,"ad_pad_sec":null,"needs_drift_check":false,"start_anchor":null,"end_anchor":null,"why":"he explains it plainly","title":"Static","show":"Indie"}
+      ]
+    },
     "manager-foray/a-three-segment-foray-with-a-call-in-the-middle@0": {
       "isLocalFile": false, "allowAdPad": false, "warnings": 0,
       "skipped": [],
@@ -247,6 +306,14 @@
       "items": [
         {"id":"nar-1","ord":0,"kind":"tts","audio_url":"narration/fire-1.mp3","title":"","script":"ignored","duration_sec":0.412,"duration_source":"estimated"},
         {"id":"foray-1#1","ord":1,"kind":"episode","audio_url":"https://cdn.example/static.mp3","start_sec":100,"end_sec":210,"authored_end_sec":210,"ad_pad_applied_sec":0,"source_item_id":"ep-static","dai_suspected":false,"reference_duration_sec":null,"ad_pad_sec":null,"needs_drift_check":false,"start_anchor":null,"end_anchor":null,"why":"he explains it plainly","title":"Static","show":"Indie"}
+      ]
+    },
+    "manager-foray/an-error-on-a-clip-still-stops@0": {
+      "isLocalFile": false, "allowAdPad": false, "warnings": 0,
+      "skipped": [],
+      "items": [
+        {"id":"foray-1#0","ord":0,"kind":"episode","audio_url":"https://cdn.example/static.mp3","start_sec":100,"end_sec":210,"authored_end_sec":210,"ad_pad_applied_sec":0,"source_item_id":"ep-static","dai_suspected":false,"reference_duration_sec":null,"ad_pad_sec":null,"needs_drift_check":false,"start_anchor":null,"end_anchor":null,"why":"he explains it plainly","title":"Static","show":"Indie"},
+        {"id":"nar-1","ord":1,"kind":"tts","audio_url":"narration/nar-1.mp3","title":"","script":"the line read aloud","duration_sec":1.118,"duration_source":"estimated"}
       ]
     },
     "manager-foray/an-interruption-during-a-spoken-line@0": {
@@ -294,6 +361,32 @@
       "items": [
         {"id":"foray-1#0","ord":0,"kind":"episode","audio_url":"https://cdn.example/static.mp3","start_sec":100,"end_sec":210,"authored_end_sec":210,"ad_pad_applied_sec":0,"source_item_id":"ep-static","dai_suspected":false,"reference_duration_sec":null,"ad_pad_sec":null,"needs_drift_check":false,"start_anchor":null,"end_anchor":null,"why":"he explains it plainly","title":"Static","show":"Indie"},
         {"id":"foray-1#1","ord":1,"kind":"episode","audio_url":"https://cdn.example/static.mp3","start_sec":210,"end_sec":330,"authored_end_sec":330,"ad_pad_applied_sec":0,"source_item_id":"ep-static","dai_suspected":false,"reference_duration_sec":null,"ad_pad_sec":null,"needs_drift_check":false,"start_anchor":null,"end_anchor":null,"why":"he explains it plainly","title":"Static","show":"Indie"}
+      ]
+    },
+    "manager-foray/d2-a-rendered-first-line-plays-at-the-listeners-speed@1": {
+      "isLocalFile": false, "allowAdPad": false, "warnings": 0,
+      "skipped": [],
+      "items": [
+        {"id":"nar-1","ord":0,"kind":"tts","audio_url":"narration/nar-1.mp3","title":"","script":"the line read aloud","duration_sec":1.118,"duration_source":"estimated"},
+        {"id":"foray-1#1","ord":1,"kind":"episode","audio_url":"https://cdn.example/static.mp3","start_sec":100,"end_sec":210,"authored_end_sec":210,"ad_pad_applied_sec":0,"source_item_id":"ep-static","dai_suspected":false,"reference_duration_sec":null,"ad_pad_sec":null,"needs_drift_check":false,"start_anchor":null,"end_anchor":null,"why":"he explains it plainly","title":"Static","show":"Indie"}
+      ]
+    },
+    "manager-foray/d2-a-rendered-line-after-a-spoken-one-gets-the-listeners-speed@1": {
+      "isLocalFile": false, "allowAdPad": false, "warnings": 0,
+      "skipped": [],
+      "items": [
+        {"id":"nar-1","ord":0,"kind":"tts","audio_url":null,"title":"","script":"a spoken line","duration_sec":0.765,"duration_source":"estimated"},
+        {"id":"nar-2","ord":1,"kind":"tts","audio_url":"narration/nar-2.mp3","title":"","script":"the line read aloud","duration_sec":1.118,"duration_source":"estimated"},
+        {"id":"foray-1#2","ord":2,"kind":"episode","audio_url":"https://cdn.example/static.mp3","start_sec":100,"end_sec":210,"authored_end_sec":210,"ad_pad_applied_sec":0,"source_item_id":"ep-static","dai_suspected":false,"reference_duration_sec":null,"ad_pad_sec":null,"needs_drift_check":false,"start_anchor":null,"end_anchor":null,"why":"he explains it plainly","title":"Static","show":"Indie"}
+      ]
+    },
+    "manager-foray/d2-a-tap-deferred-during-a-spoken-line-lands-on-the-rendered-line-after-it@1": {
+      "isLocalFile": false, "allowAdPad": false, "warnings": 0,
+      "skipped": [],
+      "items": [
+        {"id":"nar-1","ord":0,"kind":"tts","audio_url":null,"title":"","script":"a spoken line","duration_sec":0.765,"duration_source":"estimated"},
+        {"id":"nar-2","ord":1,"kind":"tts","audio_url":"narration/nar-2.mp3","title":"","script":"the line read aloud","duration_sec":1.118,"duration_source":"estimated"},
+        {"id":"foray-1#2","ord":2,"kind":"episode","audio_url":"https://cdn.example/static.mp3","start_sec":100,"end_sec":210,"authored_end_sec":210,"ad_pad_applied_sec":0,"source_item_id":"ep-static","dai_suspected":false,"reference_duration_sec":null,"ad_pad_sec":null,"needs_drift_check":false,"start_anchor":null,"end_anchor":null,"why":"he explains it plainly","title":"Static","show":"Indie"}
       ]
     },
     "manager-foray/each-utterance-finishes-at-most-once@0": {
@@ -1144,6 +1237,23 @@
         {"id":"foray-1#2","ord":2,"kind":"episode","audio_url":"https://cdn.example/other.mp3","start_sec":700,"end_sec":800,"authored_end_sec":800,"ad_pad_applied_sec":0,"source_item_id":"ep-other","dai_suspected":false,"reference_duration_sec":null,"ad_pad_sec":null,"needs_drift_check":false,"start_anchor":null,"end_anchor":null,"why":"he explains it plainly","title":"Other","show":"Indie"}
       ]
     },
+    "manager-foray/speech-refused-after-a-failed-bridge-skips-it-as-before@0": {
+      "isLocalFile": false, "allowAdPad": false, "warnings": 0,
+      "skipped": [],
+      "items": [
+        {"id":"foray-1#0","ord":0,"kind":"episode","audio_url":"https://cdn.example/static.mp3","start_sec":100,"end_sec":210,"authored_end_sec":210,"ad_pad_applied_sec":0,"source_item_id":"ep-static","dai_suspected":false,"reference_duration_sec":null,"ad_pad_sec":null,"needs_drift_check":false,"start_anchor":null,"end_anchor":null,"why":"he explains it plainly","title":"Static","show":"Indie"},
+        {"id":"nar-1","ord":1,"kind":"tts","audio_url":"narration/nar-1.mp3","title":"","script":"the line read aloud","duration_sec":1.118,"duration_source":"estimated"},
+        {"id":"foray-1#2","ord":2,"kind":"episode","audio_url":"https://cdn.example/static.mp3","start_sec":400,"end_sec":500,"authored_end_sec":500,"ad_pad_applied_sec":0,"source_item_id":"ep-static","dai_suspected":false,"reference_duration_sec":null,"ad_pad_sec":null,"needs_drift_check":false,"start_anchor":null,"end_anchor":null,"why":"he explains it plainly","title":"Static","show":"Indie"}
+      ]
+    },
+    "manager-foray/speech-refused-after-a-failed-first-line-stops-as-before@0": {
+      "isLocalFile": false, "allowAdPad": false, "warnings": 0,
+      "skipped": [],
+      "items": [
+        {"id":"nar-1","ord":0,"kind":"tts","audio_url":"narration/nar-1.mp3","title":"","script":"the line read aloud","duration_sec":1.118,"duration_source":"estimated"},
+        {"id":"foray-1#1","ord":1,"kind":"episode","audio_url":"https://cdn.example/static.mp3","start_sec":100,"end_sec":210,"authored_end_sec":210,"ad_pad_applied_sec":0,"source_item_id":"ep-static","dai_suspected":false,"reference_duration_sec":null,"ad_pad_sec":null,"needs_drift_check":false,"start_anchor":null,"end_anchor":null,"why":"he explains it plainly","title":"Static","show":"Indie"}
+      ]
+    },
     "manager-foray/stop-during-a-beat@0": {
       "isLocalFile": false, "allowAdPad": false, "warnings": 0,
       "skipped": [],
@@ -1234,6 +1344,14 @@
       "skipped": [],
       "items": [
         {"id":"foray-1#0","ord":0,"kind":"episode","audio_url":"https://cdn.example/static.mp3","start_sec":100,"end_sec":210,"authored_end_sec":210,"ad_pad_applied_sec":0,"source_item_id":"ep-static","dai_suspected":false,"reference_duration_sec":null,"ad_pad_sec":null,"needs_drift_check":false,"start_anchor":null,"end_anchor":null,"why":"he explains it plainly","title":"Static","show":"Indie"}
+      ]
+    },
+    "manager-foray/with-no-synthesiser-a-failed-file-fails-as-before@0": {
+      "isLocalFile": false, "allowAdPad": false, "warnings": 0,
+      "skipped": [],
+      "items": [
+        {"id":"nar-1","ord":0,"kind":"tts","audio_url":"narration/nar-1.mp3","title":"","script":"the line read aloud","duration_sec":1.118,"duration_source":"estimated"},
+        {"id":"foray-1#1","ord":1,"kind":"episode","audio_url":"https://cdn.example/static.mp3","start_sec":100,"end_sec":210,"authored_end_sec":210,"ad_pad_applied_sec":0,"source_item_id":"ep-static","dai_suspected":false,"reference_duration_sec":null,"ad_pad_sec":null,"needs_drift_check":false,"start_anchor":null,"end_anchor":null,"why":"he explains it plainly","title":"Static","show":"Indie"}
       ]
     },
     "prepare/a-paused-deck-opens-no-window@0": {

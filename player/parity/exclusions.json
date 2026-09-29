@@ -306,6 +306,58 @@
     "elementFacts never throws: an element whose reads throw reports nulls": {
       "reason": "webview-only",
       "why": "The same HTMLMediaElement read, guarded against a DOM getter that throws. The engine reads no element (NE-15), so there is nothing here for Swift to reimplement."
+    },
+    "narration warm: fetches the next file on the SPARE element, muted, and never plays it": {
+      "reason": "webview-only",
+      "why": "The spare HTMLMediaElement that warms the next rendered narration file (section 15 of queue-manager.js): its fetch, abort, hidden-page and stand-down rules are the web element's. The engine prefetches with NE-32's DeckPair standby deck instead (deck and prepare families, DeckPairTests)."
+    },
+    "narration warm: bounded to ONE file — a second warm replaces the first": {
+      "reason": "webview-only",
+      "why": "The spare HTMLMediaElement that warms the next rendered narration file (section 15 of queue-manager.js): its fetch, abort, hidden-page and stand-down rules are the web element's. The engine prefetches with NE-32's DeckPair standby deck instead (deck and prepare families, DeckPairTests)."
+    },
+    "narration warm: a cancel while VISIBLE aborts the fetch": {
+      "reason": "webview-only",
+      "why": "The spare HTMLMediaElement that warms the next rendered narration file (section 15 of queue-manager.js): its fetch, abort, hidden-page and stand-down rules are the web element's. The engine prefetches with NE-32's DeckPair standby deck instead (deck and prepare families, DeckPairTests)."
+    },
+    "narration warm: a cancel while HIDDEN does no media work at all (the handover's discard lesson)": {
+      "reason": "webview-only",
+      "why": "The spare HTMLMediaElement that warms the next rendered narration file (section 15 of queue-manager.js): its fetch, abort, hidden-page and stand-down rules are the web element's. The engine prefetches with NE-32's DeckPair standby deck instead (deck and prepare families, DeckPairTests)."
+    },
+    "narration warm: refuses a non-https file and a file the player already holds": {
+      "reason": "webview-only",
+      "why": "The spare HTMLMediaElement that warms the next rendered narration file (section 15 of queue-manager.js): its fetch, abort, hidden-page and stand-down rules are the web element's. The engine prefetches with NE-32's DeckPair standby deck instead (deck and prepare families, DeckPairTests)."
+    },
+    "narration warm: a host whose Audio returns the PLAYER element gets no warm at all": {
+      "reason": "webview-only",
+      "why": "The spare HTMLMediaElement that warms the next rendered narration file (section 15 of queue-manager.js): its fetch, abort, hidden-page and stand-down rules are the web element's. The engine prefetches with NE-32's DeckPair standby deck instead (deck and prepare families, DeckPairTests)."
+    },
+    "narration warm: an unexplained pause while it is loading stands it down for the session": {
+      "reason": "webview-only",
+      "why": "The spare HTMLMediaElement that warms the next rendered narration file (section 15 of queue-manager.js): its fetch, abort, hidden-page and stand-down rules are the web element's. The engine prefetches with NE-32's DeckPair standby deck instead (deck and prepare families, DeckPairTests)."
+    },
+    "narration warm: a READY warm is not evidence of a stolen session": {
+      "reason": "webview-only",
+      "why": "The spare HTMLMediaElement that warms the next rendered narration file (section 15 of queue-manager.js): its fetch, abort, hidden-page and stand-down rules are the web element's. The engine prefetches with NE-32's DeckPair standby deck instead (deck and prepare families, DeckPairTests)."
+    },
+    "narration warm: a failed warm is dropped and the boundary loads the ordinary way": {
+      "reason": "webview-only",
+      "why": "The spare HTMLMediaElement that warms the next rendered narration file (section 15 of queue-manager.js): its fetch, abort, hidden-page and stand-down rules are the web element's. The engine prefetches with NE-32's DeckPair standby deck instead (deck and prepare families, DeckPairTests)."
+    },
+    "narration warm: release() empties the spare element and switches it off": {
+      "reason": "webview-only",
+      "why": "The spare HTMLMediaElement that warms the next rendered narration file (section 15 of queue-manager.js): its fetch, abort, hidden-page and stand-down rules are the web element's. The engine prefetches with NE-32's DeckPair standby deck instead (deck and prepare families, DeckPairTests)."
+    },
+    "narration warm: without an Audio constructor (node --test) it is simply unavailable": {
+      "reason": "webview-only",
+      "why": "The spare HTMLMediaElement that warms the next rendered narration file (section 15 of queue-manager.js): its fetch, abort, hidden-page and stand-down rules are the web element's. The engine prefetches with NE-32's DeckPair standby deck instead (deck and prepare families, DeckPairTests)."
+    },
+    "D2: the player element keeps pitch at every speed from construction": {
+      "reason": "dom-only",
+      "why": "`preservesPitch` and its vendor-prefixed flags on the HTMLMediaElement. AVDeck keeps pitch at every rate by setting `audioTimePitchAlgorithm = .timeDomain` on every item it makes (AVDeck.load)."
+    },
+    "D2: keepPitch sets the prefixed flags only where the engine has them, and never throws": {
+      "reason": "dom-only",
+      "why": "`preservesPitch` and its vendor-prefixed flags on the HTMLMediaElement. AVDeck keeps pitch at every rate by setting `audioTimePitchAlgorithm = .timeDomain` on every item it makes (AVDeck.load)."
     }
   },
   "interlude": {
@@ -740,6 +792,54 @@
     "reconnecting a route never resumes on the web and Android path, even one reported as a car (player-core-10)": {
       "reason": "webview-only",
       "why": "The JS manager's route policy runs only on the web and Android path (founder Q5 default, audit round 3): reconnecting never resumes there. The native engine owns route policy (EngineCore.knownCarRoutes) and pins it with its own XCTests."
+    },
+    "§14: a media error during the first line's load does not stop the player before the fallback": {
+      "reason": "webview-only",
+      "why": "The ordering trap between html-audio-backend.js's persistent `error` listener and a load's own rejection: the listener fires first, so the page must leave the report to the load. AVDeck reports one `.failed` (or `.deadlineExceeded`) per load token and nothing else, and the core decides the fallback from that one event (fallBackToScript; fixture manager-foray/a-first-line-whose-file-fails-is-spoken)."
+    },
+    "§14: a refused play() of a rendered line falls back too": {
+      "reason": "webview-only",
+      "why": "An HTMLMediaElement `play()` promise rejected by the browser's autoplay policy. AVPlayer has no play promise and the engine's session is active before any play (plan §4.4); a file that fails while sounding is AVDeck's `.failed`, which falls back the same way (fixture manager-foray/a-line-that-fails-while-sounding-is-spoken-from-its-first-word)."
+    },
+    "§14: narrationFallbackReason reads the backend's own messages into six words": {
+      "reason": "webview-only",
+      "why": "It reads html-audio-backend.js's own error sentences (MediaError codes, `did not settle within`, `play rejected`) into a word. The engine's reason comes from the DeckEvent itself (`deadlineExceeded` is `timeout`, `failed` is `failed`, the `narration kind=fallback` row), and AVDeck's own `deck kind=failed` row carries the error's domain and code."
+    },
+    "§14: audioHostOf keeps the host and nothing else": {
+      "reason": "js-module-shape",
+      "why": "A JS helper that cuts a URL down to its host for the web's `narration.fallback` telemetry line. On iOS a URL never leaves AVDeck: its `deck` rows carry the host through AVDeck.hostNode (AVDeckTests), and the core's fallback row carries none."
+    },
+    "§15: the rendered line after a clip is warmed once the clip is audible — one file": {
+      "reason": "webview-only",
+      "why": "Section 15 is the web lane's narration warm: HtmlAudioBackend.warmNarration fetches the next rendered file on a spare muted element that is never played or promoted. queue-manager.js checks the capability and says so: a backend without it (every fake, the native engine) behaves exactly as before. The engine's own prefetch is NE-32's DeckPair standby, pinned by the deck and prepare families and DeckPairTests."
+    },
+    "§15: nothing is warmed when the next item is a clip or a script-only line": {
+      "reason": "webview-only",
+      "why": "Section 15 is the web lane's narration warm: HtmlAudioBackend.warmNarration fetches the next rendered file on a spare muted element that is never played or promoted. queue-manager.js checks the capability and says so: a backend without it (every fake, the native engine) behaves exactly as before. The engine's own prefetch is NE-32's DeckPair standby, pinned by the deck and prepare families and DeckPairTests."
+    },
+    "§15: a skip past the warmed line cancels it, and the new next line is warmed": {
+      "reason": "webview-only",
+      "why": "Section 15 is the web lane's narration warm: HtmlAudioBackend.warmNarration fetches the next rendered file on a spare muted element that is never played or promoted. queue-manager.js checks the capability and says so: a backend without it (every fake, the native engine) behaves exactly as before. The engine's own prefetch is NE-32's DeckPair standby, pinned by the deck and prepare families and DeckPairTests."
+    },
+    "§15: arriving at the warmed line keeps the warm until its load, then lets it go": {
+      "reason": "webview-only",
+      "why": "Section 15 is the web lane's narration warm: HtmlAudioBackend.warmNarration fetches the next rendered file on a spare muted element that is never played or promoted. queue-manager.js checks the capability and says so: a backend without it (every fake, the native engine) behaves exactly as before. The engine's own prefetch is NE-32's DeckPair standby, pinned by the deck and prepare families and DeckPairTests."
+    },
+    "§15: no warm behind an item too short to finish it before its own boundary": {
+      "reason": "webview-only",
+      "why": "Section 15 is the web lane's narration warm: HtmlAudioBackend.warmNarration fetches the next rendered file on a spare muted element that is never played or promoted. queue-manager.js checks the capability and says so: a backend without it (every fake, the native engine) behaves exactly as before. The engine's own prefetch is NE-32's DeckPair standby, pinned by the deck and prepare families and DeckPairTests."
+    },
+    "§15: stop drops the warm": {
+      "reason": "webview-only",
+      "why": "Section 15 is the web lane's narration warm: HtmlAudioBackend.warmNarration fetches the next rendered file on a spare muted element that is never played or promoted. queue-manager.js checks the capability and says so: a backend without it (every fake, the native engine) behaves exactly as before. The engine's own prefetch is NE-32's DeckPair standby, pinned by the deck and prepare families and DeckPairTests."
+    },
+    "§15: a backend without the capability (every other fake, the native engine) is untouched": {
+      "reason": "webview-only",
+      "why": "Section 15 is the web lane's narration warm: HtmlAudioBackend.warmNarration fetches the next rendered file on a spare muted element that is never played or promoted. queue-manager.js checks the capability and says so: a backend without it (every fake, the native engine) behaves exactly as before. The engine's own prefetch is NE-32's DeckPair standby, pinned by the deck and prepare families and DeckPairTests."
+    },
+    "§15: pausing and resuming the clip before a warmed line keeps the warm — no refetch": {
+      "reason": "webview-only",
+      "why": "Section 15 is the web lane's narration warm: HtmlAudioBackend.warmNarration fetches the next rendered file on a spare muted element that is never played or promoted. queue-manager.js checks the capability and says so: a backend without it (every fake, the native engine) behaves exactly as before. The engine's own prefetch is NE-32's DeckPair standby, pinned by the deck and prepare families and DeckPairTests."
     }
   },
   "queue-state": {

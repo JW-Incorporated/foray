@@ -331,24 +331,40 @@ public enum SpeechRules {
 
     /// `buildIpaOverrides(text, entries)`: every case-insensitive match of an
     /// entry's term on a word boundary (a letter, a digit or an apostrophe on
-    /// either side means it is inside a longer word), sorted by position
-    /// (stable, as `Array.prototype.sort` is), keeping only entries whose
-    /// `ipa` is authored. A term with `ipa: null` produces NO override: a
-    /// guessed pronunciation is worse than the synthesiser's own.
+    /// either side means it is inside a longer word), ONE MATCH PER STRETCH OF
+    /// TEXT (audit round 3, mobile-native-8, foray-tts.js `findMatches`):
+    /// earliest first, the LONGEST at a given start, entry order on a tie
+    /// (a stable sort, as `Array.prototype.sort` is), and a match that starts
+    /// inside a kept one is dropped. Only then are entries whose `ipa` is not
+    /// authored filtered out: a term with `ipa: null` produces NO override (a
+    /// guessed pronunciation is worse than the synthesiser's own), but it still
+    /// claims its stretch, exactly as in the JS.
     public static func ipaOverrides(_ text: String, entries: [LexiconEntry]) -> [IpaOverride] {
         let length = text.utf16.count
-        var found: [(order: Int, override: IpaOverride)] = []
+        var found: [(order: Int, term: String, ipa: String?, start: Int, end: Int)] = []
         for entry in entries where !entry.term.isEmpty {
             let pattern = "(?<![\\p{L}\\p{N}'])" + NSRegularExpression.escapedPattern(for: entry.term) + "(?![\\p{L}\\p{N}'])"
             guard let expression = try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive]) else { continue }
             for match in expression.matches(in: text, options: [], range: NSRange(location: 0, length: length)) {
-                guard let ipa = entry.ipa, match.range.length > 0 else { continue }
-                found.append((found.count, IpaOverride(term: entry.term, ipa: ipa, start: match.range.location,
-                                                       end: match.range.location + match.range.length)))
+                guard match.range.length > 0 else { continue }
+                found.append((found.count, entry.term, entry.ipa, match.range.location,
+                              match.range.location + match.range.length))
             }
         }
-        return found.sorted {
-            $0.override.start != $1.override.start ? $0.override.start < $1.override.start : $0.order < $1.order
-        }.map(\.override)
+        let sorted = found.sorted {
+            if $0.start != $1.start { return $0.start < $1.start }
+            let a = $0.end - $0.start, b = $1.end - $1.start
+            return a != b ? a > b : $0.order < $1.order
+        }
+        var kept: [IpaOverride] = []
+        var cursor = 0
+        for match in sorted {
+            if match.start < cursor { continue }
+            cursor = match.end
+            if let ipa = match.ipa {
+                kept.append(IpaOverride(term: match.term, ipa: ipa, start: match.start, end: match.end))
+            }
+        }
+        return kept
     }
 }

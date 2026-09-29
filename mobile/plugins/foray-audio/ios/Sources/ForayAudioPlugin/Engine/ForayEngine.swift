@@ -576,7 +576,8 @@ final class ForayEngine {
         let moved = surfaceMoved
         surfaceMoved = false
 
-        guard !availability.clearsNowPlaying, let view = core.mediaView(deck: seams.deck.reading) else {
+        guard !availability.clearsNowPlaying,
+              let view = core.mediaView(deck: seams.deck.reading, monoMs: seams.timing.monoMs) else {
             // Nil ONLY for a finished Foray, a close or a data deletion, and
             // only if the engine had written something (a fresh engine does
             // not wipe an entry it never owned).

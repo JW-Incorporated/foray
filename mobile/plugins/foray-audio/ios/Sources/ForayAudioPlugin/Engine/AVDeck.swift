@@ -587,7 +587,8 @@ final class AVDeck: DeckDriving {
     /// the item's observers are re-registered under it. The gate starts from
     /// `advanceIfReady` like any load's (duration and both statuses are in),
     /// so the one path to `preroll(` is unchanged. The out-point lives on the
-    /// item, and a load drops it (`DeckCommand.load`), so it is disarmed here.
+    /// item, and a load drops it (`DeckCommand.load`): `load` disarmed it,
+    /// with every other layer and timer, in `resetOutPoint` before this ran.
     private func reuse(token newToken: DeckToken, startSec: Double, idleSec: Double?) {
         let fromSec = player.currentTime().seconds
         deadline?.cancel()
@@ -608,7 +609,8 @@ final class AVDeck: DeckDriving {
         gateMarks = []
         noteLive()
         guard let item else { return }
-        item.forwardPlaybackEndTime = .invalid
+        // The out-point lives on the item; `load` already dropped it
+        // (`resetOutPoint`, the one writer of layer 1 besides the watch).
         unobserveItem()
         observe(item: item, generation: generation)
         armDeadline(generation: generation)

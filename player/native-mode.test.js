@@ -874,7 +874,12 @@ test("NE-35: forayNext, forayPrevious, forayJump and foraySeek are intents; the 
   /* KILLING MUTATIONS: leave the facade's play() as playEpisode inside a
      Foray — forayJump sends playEpisode and the engine drops the Foray;
      send foraySeek's source offset instead of the Foray-clock second — the
-     engine lands in the wrong clip. */
+     engine lands in the wrong clip.
+     Next clip is `play(index + 1)` since audit round 3 (player-core-6: a
+     narration line is authored content, never stepped over), so in native
+     mode it is the SAME intent as a row tap: `jump {index}`. MUTATION: put
+     `manager.skipToNext()` back in `forayNext` and the first intent is
+     `next`, which the engine answers by stepping over narration. */
   const h = await bootNative(t, { capabilities: WITH_FORAY });
   const r = synthetic();
   await h.client.playForay(r, { startIndex: 0 });
@@ -902,7 +907,8 @@ test("NE-35: forayNext, forayPrevious, forayJump and foraySeek are intents; the 
   await drain();
 
   const intents = h.sent.slice(before).filter((p) => AUDIBLE_OR_TRANSPORT.has(p.cmd));
-  assert.deepEqual(intents.map((p) => p.cmd), ["next", "jump", "seekTo", "previous"], "one intent per press, nothing else audible");
+  assert.deepEqual(intents.map((p) => p.cmd), ["jump", "jump", "seekTo", "previous"], "one intent per press, nothing else audible");
+  assert.deepEqual(intents[0].args, { index: 1 }, "Next clip is a jump to the next item");
   assert.deepEqual(intents[1].args, { index: 0 });
   assert.deepEqual(intents[2].args, { sec: 170 }, "seekTo carries the FORAY's second (the engine's forayScrub)");
   assert.equal(sentOf(h, "playEpisode").length, 0, "a Foray's clip is never sent as an episode");

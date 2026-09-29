@@ -158,6 +158,11 @@ public struct EngineState: Equatable {
     /// line the loaded item IS, from the synthesiser accepting it until a
     /// deck item's load lands. Nil while the playhead is a deck item.
     public var narration: SpokenLine?
+    /// `_fallbackSpokenId` (§14, Phase 2): the id of the RENDERED line being
+    /// spoken from its script because its file failed, so a pause and resume
+    /// of it continues the utterance instead of retrying the file mid-line.
+    /// Nil otherwise, and whenever no spoken line is loaded.
+    public var fallbackSpokenId: String?
     /// The last utterance `seq` stamped (`_speakSeq`): every `speak` is a new
     /// one, and every answer names the one it is about.
     public var speakSeq = 0
@@ -246,6 +251,10 @@ public struct PendingLoad: Equatable {
     /// `spokenSeq`, and `NarratorEvent.started` / `.failed` for that seq is
     /// this load landing or failing. Nil for a deck load.
     public var spokenSeq: Int?
+    /// §14 (Phase 2): this spoken line is a RENDERED line read from its
+    /// script because its file failed (`_beginSynthNarration(item,
+    /// {fallback: true})`).
+    public var fallback = false
 }
 
 /// A spoken line the playhead is on (NE-31s): queue-manager.js

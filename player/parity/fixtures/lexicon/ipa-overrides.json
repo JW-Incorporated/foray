@@ -166,7 +166,7 @@
     {
       "id": "lexicon/overlapping-entries-keep-lexicon-order-on-a-tie",
       "covers": [],
-      "note": "Two entries matching the same span: both are overrides, and on a tie in position the earlier entry comes first (a stable sort). Authored for the native port.",
+      "note": "Two entries matching the same span: ONE match per stretch of text (audit round 3, mobile-native-8), and on a tie in length the earlier entry wins (a stable sort). Authored for the native port; re-recorded by NE-37c.",
       "call": "buildIpaOverrides",
       "args": [
         "Sake is sake.",
@@ -175,11 +175,36 @@
       "expect": {
         "return": [
           { "end": 4, "ipa": "a", "start": 0, "term": "sake" },
-          { "end": 4, "ipa": "b", "start": 0, "term": "SAKE" },
-          { "end": 12, "ipa": "a", "start": 8, "term": "sake" },
-          { "end": 12, "ipa": "b", "start": 8, "term": "SAKE" }
+          { "end": 12, "ipa": "a", "start": 8, "term": "sake" }
         ]
       }
+    },
+    {
+      "id": "lexicon/the-longest-term-at-a-start-wins",
+      "covers": [],
+      "note": "Audit round 3, mobile-native-8: 'X' and 'X Y' both match at the same start; only the longer is kept, so the shared words are never said twice. NE-37c.",
+      "call": "buildIpaOverrides",
+      "args": [
+        "A sake bomb, then sake.",
+        [{ "term": "sake", "ipa": "a" }, { "term": "sake bomb", "ipa": "b" }]
+      ],
+      "expect": {
+        "return": [
+          { "end": 11, "ipa": "b", "start": 2, "term": "sake bomb" },
+          { "end": 22, "ipa": "a", "start": 18, "term": "sake" }
+        ]
+      }
+    },
+    {
+      "id": "lexicon/a-term-inside-a-kept-match-is-dropped",
+      "covers": [],
+      "note": "Audit round 3, mobile-native-8: a match that starts INSIDE a kept one is dropped, and a longer entry with no authored ipa still claims its stretch (the filter runs after). NE-37c.",
+      "call": "buildIpaOverrides",
+      "args": [
+        "Try the junmai sake.",
+        [{ "term": "junmai sake", "ipa": null }, { "term": "sake", "ipa": "a" }]
+      ],
+      "expect": { "return": [] }
     },
     {
       "id": "lexicon/bundled-lexicon-sake",

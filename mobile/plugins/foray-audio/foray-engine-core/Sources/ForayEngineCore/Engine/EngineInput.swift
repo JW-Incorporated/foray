@@ -67,6 +67,16 @@ public struct EngineItem: Equatable {
         return !script.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
+    /// `_canSpeakInstead(item)` (queue-manager.js §14, Phase 2): a RENDERED
+    /// narration line (a `tts` item with a file) that still carries its
+    /// script, so a file that fails can be read aloud instead. The engine's
+    /// synthesiser is always wired (EngineBoot), which the JS also requires.
+    public var canSpeakInstead: Bool {
+        guard kind == .tts, let url = audioUrl, !url.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+              let script = node["script"]?.stringValue else { return false }
+        return !script.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
     /// The item as the Foray clock and the structural check read it.
     public var forayItem: ForayItem { ForayItem(node: node) }
 
