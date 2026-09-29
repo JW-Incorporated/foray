@@ -1,0 +1,79 @@
+package ai.jwlabs.foura.engine.parity;
+
+import ai.jwlabs.foura.engine.JSWriter;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+
+/**
+ * The fixture families the JVM runs, one {@link FamilyRunner} each. Every other family
+ * is owed in player/parity/jvm-pending.json (A-22: "every case pending except one
+ * trivial family"). A porting card (A-23 on) adds its family here and burns its entry
+ * out of jvm-pending.json in the same change; the suite fails if it does one without
+ * the other.
+ */
+public final class JvmFamilies {
+    private JvmFamilies() {}
+
+    /** player/parity/rows.js, the module number-format's fixture names. */
+    public static final String ROWS_MODULE = "player/parity/rows.js";
+
+    /** player/parity/compare.js, the module the compare meta-family's fixture names. */
+    public static final String COMPARE_MODULE = "player/parity/compare.js";
+
+    /**
+     * {@code number-format}: {@code jsonNumber(x)} is {@code JSON.stringify(x)}, the way
+     * every number inside a shared row is printed. The one ENGINE family A-22 ports,
+     * because it is a single pure function; {@link JSWriter} is main code, and the row
+     * writer (A-23) is built on it.
+     */
+    public static final FamilyRunner NUMBER_FORMAT = new FamilyRunner.Pure(
+            "number-format",
+            ROWS_MODULE,
+            Map.of(),
+            Map.<String, FamilyRunner.Call>of("jsonNumber", args -> {
+                Json x = args.isEmpty() ? Json.UNDEFINED : args.get(0);
+                if (!(x instanceof Json.Num n)) throw new HarnessError("E_BAD_CASE", "jsonNumber takes a number");
+                return new FamilyRunner.Returned(Json.str(JSWriter.jsonNumber(n.value())));
+            }));
+
+    /**
+     * {@code compare}: the comparator itself, as fixtures (the Swift CompareFamily). Not
+     * an engine rule but this runner's own verdict: every other family's pass or fail
+     * goes through {@link Comparator}, so compare.js's decision table is replayed
+     * against it, and a JVM comparator that drifts from the JS one turns this family
+     * red instead of quietly turning a wrong answer green. The inputs go through the
+     * codec on both sides (expand, then re-encode, as compareVerdict does), so this
+     * family also pins the two codecs' round trip of every tag.
+     */
+    public static final FamilyRunner COMPARE = new FamilyRunner.Pure(
+            "compare",
+            COMPARE_MODULE,
+            Map.of(),
+            Map.<String, FamilyRunner.Call>of("compareVerdict", args -> {
+                Json expected = Codec.encode(args.size() > 0 ? args.get(0) : Json.UNDEFINED);
+                Json actual = Codec.encode(args.size() > 1 ? args.get(1) : Json.UNDEFINED);
+                // `opts ?? {}`: a missing or nullish opts is no options.
+                Json opts = args.size() > 2 ? args.get(2) : Json.UNDEFINED;
+                Json family = opts.get("family");
+                Json tolerance = opts.get("tolerance");
+                List<Comparator.Difference> diffs = Comparator.compare(expected, actual,
+                        family == null ? null : family.asString(),
+                        tolerance == null ? null : tolerance.asNumber());
+                List<Json> out = new ArrayList<>();
+                for (Comparator.Difference d : diffs) {
+                    Map<String, Json> m = new LinkedHashMap<>();
+                    m.put("path", Json.str(d.path()));
+                    m.put("why", Json.str(d.why()));
+                    out.add(new Json.Obj(m));
+                }
+                Map<String, Json> verdict = new LinkedHashMap<>();
+                verdict.put("equal", diffs.isEmpty() ? Json.TRUE : Json.FALSE);
+                verdict.put("diffs", new Json.Arr(out));
+                return new FamilyRunner.Returned(new Json.Obj(verdict));
+            }));
+
+    /** Every registered runner. */
+    public static final List<FamilyRunner> ALL = List.of(COMPARE, NUMBER_FORMAT);
+}
