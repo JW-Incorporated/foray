@@ -444,8 +444,10 @@ export const EXTERNALLY_OWNED = "externally-owned";
  * The prefixes a store should defer from construction: `prefixes` inside the
  * iOS Capacitor shell, where the native engine exists, and none anywhere else.
  *
- * The web has no engine, and Android never gains one (plan §11): deferring
- * there would hold back a migration nothing will ever release. `getPlatform()`
+ * The web has no engine, and Android has none yet (its Media3 engine is
+ * docs/plans/android-assessment.md track A1; A-28 extends this with the page's
+ * HELLO_PLATFORMS): deferring there would hold back a migration nothing
+ * releases. `getPlatform()`
  * is Capacitor's own answer ("ios" | "android" | "web"); a bridge without it is
  * an older shell that predates the engine, and defers nothing.
  *

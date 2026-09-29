@@ -4564,9 +4564,15 @@ test("NE-27: ENGINE_DEFAULT says native only when STATE.md records the OQ-9 answ
   assert.match(engineDefaultRefusal({ mode: "native", capabilities: ["episode", "remainder"] }, record) ?? "", /remainder/);
   assert.match(engineDefaultRefusal({ mode: "native", capabilities: ["foray", "narration"] }, record) ?? "", /narration/);
 
+  /* Per platform since A-20 (docs/plans/android-assessment.md): the OQ-9 rule
+     reads the `ios` block. The `android` block is js (the legacy lane) until
+     A-31 flips it, after the Android engine is fully operational, Joey's device
+     pass and a founder car drive; A-31 replaces this pin with its own record.
+     MUTATION: commit android "native" -> red. */
   const committed = JSON.parse(fs.readFileSync(ENGINE_DEFAULT_JSON, "utf8"));
-  const refusal = engineDefaultRefusal(committed, fs.readFileSync(STATE_MD, "utf8").replace(/\r\n/g, "\n"));
+  const refusal = engineDefaultRefusal(committed.ios, fs.readFileSync(STATE_MD, "utf8").replace(/\r\n/g, "\n"));
   assert.equal(refusal, null, refusal ?? "");
+  assert.deepEqual(committed.android, { mode: "js", capabilities: [] }, "android stays js until A-31");
 
   /* NE-37, the M2 flip: a default that grants `foray` needs a boot that plays
      one. The core's flags stay OFF (headless tests and the parity driver build
@@ -4576,9 +4582,9 @@ test("NE-27: ENGINE_DEFAULT says native only when STATE.md records the OQ-9 answ
      ENGINE_DEFAULT.json while the boot turns the tape on, or the reverse; set
      any of the three held flags in the boot. */
   const boot = stripSwiftComments(fs.readFileSync(path.join(ENGINE_DIR, "EngineBoot.swift"), "utf8"));
-  assert.equal(/config\.forayTapeEnabled = true\b/.test(boot), (committed.capabilities ?? []).includes("foray"),
+  assert.equal(/config\.forayTapeEnabled = true\b/.test(boot), (committed.ios.capabilities ?? []).includes("foray"),
     "ENGINE_DEFAULT.json grants foray exactly when EngineBoot turns the Foray tape on");
-  assert.deepEqual([...(committed.capabilities ?? [])].sort(), ["continuation", "episode", "foray", "restore"], "NE-37: the M2 default");
+  assert.deepEqual([...(committed.ios.capabilities ?? [])].sort(), ["continuation", "episode", "foray", "restore"], "NE-37: the M2 default");
   assert.match(boot, /config\.deckPairEnabled = true\b/, "NE-37 turns the deck pair on with the tape");
   for (const held of ["silenceNodeEnabled", "speechDirect", "narrationFollowsListenerRate"]) {
     assert.doesNotMatch(boot, new RegExp(String.raw`config\.${held}\s*=`), `the boot must leave ${held} at the core's default (off)`);

@@ -698,6 +698,20 @@ export function helloRequest(pageBuild) {
   return { pageBuild: typeof pageBuild === "string" ? pageBuild : "", protocol: PROTOCOL };
 }
 
+/** The platforms whose shell may drive a native engine, for decideMode: iOS
+    (docs/native-engine-plan.md) and Android (docs/plans/android-assessment.md
+    A-20; the Media3 engine of track A1). Anything else — the web, a
+    platform-less bridge — is `not-ios` without a question. The token keeps its
+    name because it is on the wire of every Copy paste since NE-26. */
+export const ENGINE_PLATFORMS = Object.freeze(["ios", "android"]);
+
+/** The platforms whose shell the PAGE asks engineHello (A-20's flag). Only
+    iOS today: Android's ForayAudio plugin has no engine methods until A-28,
+    which adds "android" here. Until then the page never asks an Android shell,
+    so `methodPresent` is false there and decideMode answers `no-method` — the
+    JS player, nothing to relinquish, exactly the lane Android always had. */
+export const HELLO_PLATFORMS = Object.freeze(["ios"]);
+
 /** Why decideMode answered what it did, one token per outcome. */
 export const HANDSHAKE_REASONS = Object.freeze([
   "native", "not-ios", "no-method", "no-hello", "bad-hello", "engine-legacy", "protocol-mismatch",
@@ -707,9 +721,11 @@ export const HANDSHAKE_REASONS = Object.freeze([
  * Does this page drive a native engine? (§4.6's page boot order; NE-21, NE-22.)
  *
  *   {platform, methodPresent, hello}
- *     platform       Capacitor.getPlatform(): only "ios" has an engine
+ *     platform       Capacitor.getPlatform(): one of ENGINE_PLATFORMS ("ios",
+ *                    "android") may have an engine; anything else is `not-ios`
  *     methodPresent  whether the plugin answers engineHello at all (an older
- *                    binary does not)
+ *                    binary does not, and neither does any Android binary
+ *                    before A-28: the page does not ask — HELLO_PLATFORMS)
  *     hello          engineHello's answer, or null for a timeout (5 s) or a
  *                    rejection
  *
@@ -726,7 +742,7 @@ export const HANDSHAKE_REASONS = Object.freeze([
  */
 export function decideMode(input) {
   const out = (mode, reason, relinquish) => ({ mode, reason, relinquish });
-  if (input?.platform !== "ios") return out("js", "not-ios", false);
+  if (!ENGINE_PLATFORMS.includes(input?.platform)) return out("js", "not-ios", false);
   if (input.methodPresent !== true) return out("js", "no-method", false);
   const hello = input.hello;
   if (hello === null || hello === undefined) return out("js", "no-hello", true);

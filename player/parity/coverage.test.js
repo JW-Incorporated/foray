@@ -660,10 +660,18 @@ test("the advertised list is read from ENGINE_DEFAULT.json and from the Swift so
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "parity-cap-"));
   try {
     fs.mkdirSync(path.join(root, "mobile", "plugins", "foray-audio", "ios", "Sources"), { recursive: true });
-    fs.writeFileSync(path.join(root, "mobile", "ENGINE_DEFAULT.json"), JSON.stringify({ mode: "native", capabilities: ["episode"] }));
+    // Per platform since A-20: every block is read, so Android's capabilities
+    // are gated too. MUTATION: read only the ios block -> "restore" is lost.
+    fs.writeFileSync(path.join(root, "mobile", "ENGINE_DEFAULT.json"), JSON.stringify({
+      "//": "a comment",
+      ios: { mode: "native", capabilities: ["episode"] },
+      android: { mode: "native", capabilities: ["restore"] },
+    }));
     fs.writeFileSync(path.join(root, "mobile", "plugins", "foray-audio", "ios", "Sources", "E.swift"),
       'enum Engine { static let advertisedCapabilities: [String] = ["episode", "foray"] }\n');
-    assert.deepStrictEqual([...advertisedCapabilities(root).keys()].sort(), ["episode", "foray"]);
+    const advertised = advertisedCapabilities(root);
+    assert.deepStrictEqual([...advertised.keys()].sort(), ["episode", "foray", "restore"]);
+    assert.equal(advertised.get("restore"), "mobile/ENGINE_DEFAULT.json (android)");
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }

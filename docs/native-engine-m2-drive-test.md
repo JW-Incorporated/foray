@@ -19,7 +19,8 @@ into `main`, and that build's number is added to the card once the build exists.
 
 These are preconditions, not steps for the founder.
 
-1. **The flip (met, NE-37).** `mobile/ENGINE_DEFAULT.json` says
+1. **The flip (met, NE-37).** The `ios` block of `mobile/ENGINE_DEFAULT.json`
+   (per platform since A-20) says
    `{"mode":"native","capabilities":["episode","continuation","restore","foray"]}`,
    and the Swift `EngineBridgeRules.advertisedCapabilities` lists the same four.
    `player/parity/coverage.test.js` refuses both while any family mapped to

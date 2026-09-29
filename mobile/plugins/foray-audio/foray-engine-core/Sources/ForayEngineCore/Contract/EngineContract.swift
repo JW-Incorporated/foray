@@ -201,11 +201,15 @@ public enum EngineContract {
     /// timeout or a rejection. `mode` is checked BEFORE `protocol`, because
     /// the NE-01 stub answers `{mode: "legacy", reason: "not-built"}` with no
     /// protocol at all, and that is the ordinary case, not a mismatch.
+    /// `platform` is one of `ENGINE_PLATFORMS` (iOS, and Android since A-20 of
+    /// docs/plans/android-assessment.md) or the answer is `not-ios`.
     public static func decidePageMode(platform: String?, methodPresent: Bool, hello: JSONNode?) -> PageDecision {
         func out(_ mode: PageMode, _ reason: HandshakeReason, _ relinquish: Bool) -> PageDecision {
             PageDecision(mode: mode, reason: reason, relinquish: relinquish)
         }
-        guard platform == "ios" else { return out(.js, .notIos, false) }
+        guard let platform, EngineConstants.EngineContract.enginePlatforms.contains(platform) else {
+            return out(.js, .notIos, false)
+        }
         guard methodPresent else { return out(.js, .noMethod, false) }
         // JSON null and "no answer" are one case: the page reads both as `== null`.
         guard let hello, hello != .null else { return out(.js, .noHello, true) }

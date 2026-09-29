@@ -42,7 +42,7 @@
    test in this directory drives the real client over a JS engine. */
 
 import {
-  PROTOCOL, helloRequest, decideMode, validateSnapshot, validateContract, extrapolate,
+  PROTOCOL, HELLO_PLATFORMS, helloRequest, decideMode, validateSnapshot, validateContract, extrapolate,
 } from "./engine-contract.js";
 
 /** The Capacitor plugin the three methods live on (the existing ForayAudio,
@@ -257,9 +257,14 @@ export function createNativeEngine({
     if (helloPromise) return helloPromise;
     helloPromise = (async () => {
       const platform = bridge.platform;
-      let methodPresent = bridge.available;
+      /* Only a platform in HELLO_PLATFORMS is asked (A-20's flag: iOS until
+         A-28 gives Android's plugin the methods). An Android shell's bridge is
+         `available` — ForayAudio is on it — but it has no engineHello, so it
+         is `methodPresent: false`: `no-method`, the JS player, no relinquish
+         sent to a plugin that could not take one. */
+      let methodPresent = HELLO_PLATFORMS.includes(platform) && bridge.available;
       let answer = null;
-      if (platform === "ios" && methodPresent) {
+      if (methodPresent) {
         ensureListening();
         answer = await new Promise((resolve) => {
           let done = false;

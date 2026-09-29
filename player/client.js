@@ -815,7 +815,8 @@ window.forayDiagnosticReport = () => formatDiagnosticReport(
  * engine client (NE-22), built at load for the handshake. A page with none —
  * a Capacitor injected after load — gets a read-only one (no hello, no send,
  * no listener), and only inside the iOS shell — on the web and Android there is no engine,
- * and the header says `engine=js reason=not-ios` without a bridge call. Read
+ * and the header says `engine=js reason=not-ios` (the web) or `reason=no-method`
+ * (Android, which the page does not ask until A-28) without a bridge call. Read
  * from `window.Capacitor` at CALL time, not at module load, because the bridge
  * is the shell's to inject and the record is read long after boot.
  */

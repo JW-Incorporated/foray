@@ -33,6 +33,7 @@ import {
   ENGINE_CAPABILITIES_KEY,
   ENGINE_DEFAULT_FILE,
   ENGINE_DEFAULT_KEY,
+  ENGINE_DEFAULT_PLATFORMS,
   NON_EXEMPT_ENCRYPTION_KEY,
   PlistError,
   assertEncryptionDeclared,
@@ -46,6 +47,7 @@ import {
   nonExemptEncryption,
   parseEncryptionFlag,
   parseEngineDefault,
+  parseEngineDefaults,
   rootEntries,
 } from "./inject-background-audio.mjs";
 
@@ -637,6 +639,11 @@ test("the committed ENGINE_DEFAULT.json is the M2 native default NE-37 flipped, 
   const repoFile = fileURLToPath(new URL("../../mobile/ENGINE_DEFAULT.json", import.meta.url));
   assert.equal(path.resolve(ENGINE_DEFAULT_FILE), path.resolve(repoFile));
   assert.deepEqual(parseEngineDefault(fs.readFileSync(repoFile, "utf8")), M2_DEFAULT);
+  /* A-20 (docs/plans/android-assessment.md): the file is per platform. The
+     plist gets the ios block; Android's is js, the legacy lane, until A-31.
+     MUTATION: commit android "native", or read the android block by default. */
+  assert.deepEqual(parseEngineDefaults(fs.readFileSync(repoFile, "utf8")), { ios: M2_DEFAULT, android: JS_DEFAULT });
+  assert.deepEqual(parseEngineDefault(fs.readFileSync(repoFile, "utf8"), "android"), JS_DEFAULT);
 });
 
 test("a generated plist has no engine default: the app reads that as js (no-plist-key)", () => {
@@ -704,21 +711,39 @@ test("a wrong type, a padded value or a duplicate root key is refused, not read"
   );
 });
 
-test("ENGINE_DEFAULT.json is parsed strictly: two modes, plain capability tokens, no unknown keys", () => {
+test("ENGINE_DEFAULT.json is parsed strictly: both platforms, two modes, plain capability tokens, no unknown keys", () => {
   /* A typo here is a build that plays through the wrong engine with every check
-     green. MUTATION: lowercase the mode before checking it, or drop the
-     unknown-key refusal. */
-  assert.deepEqual(parseEngineDefault('{"mode":"js"}'), JS_DEFAULT);
-  assert.deepEqual(parseEngineDefault('{"mode":"native","capabilities":["episode"],"//":"why"}'),
+     green. MUTATION: lowercase the mode before checking it, drop the
+     unknown-key refusal, or let a platform block be missing (A-20). */
+  const file = (ios, android = { mode: "js" }, extra = {}) => JSON.stringify({ ...extra, ios, android });
+  assert.deepEqual([...ENGINE_DEFAULT_PLATFORMS], ["ios", "android"]);
+  assert.deepEqual(parseEngineDefault(file({ mode: "js" })), JS_DEFAULT);
+  assert.deepEqual(parseEngineDefault(file({ mode: "native", capabilities: ["episode"], "//": "why" }, { mode: "js" }, { "//": "top" })),
     { mode: "native", capabilities: ["episode"] });
-  for (const bad of [
-    "", "not json", "[]", "null", '{"mode":"Native"}', '{"mode":"native "}', '{"mode":"legacy"}', "{}",
+  assert.deepEqual(parseEngineDefault(file({ mode: "js" }, { mode: "native", capabilities: ["episode"] }), "android"),
+    { mode: "native", capabilities: ["episode"] });
+  assert.deepEqual(parseEngineDefaults(file({ mode: "native" })), { ios: { mode: "native", capabilities: [] }, android: JS_DEFAULT });
+  const blocks = [
+    "[]", "null", '{"mode":"Native"}', '{"mode":"native "}', '{"mode":"legacy"}', "{}",
     '{"mdoe":"js","mode":"js"}', '{"mode":"js","capabilities":"episode"}', '{"mode":"js","capabilities":["Episode"]}',
     '{"mode":"js","capabilities":["episode","episode"]}', '{"mode":"js","capabilities":[1]}',
     '{"mode":"js","capabilities":["<x>"]}',
-  ]) {
-    assert.throws(() => parseEngineDefault(bad), PlistError, `accepted ${bad}`);
+  ];
+  const bad = [
+    "", "not json", "[]", "null", "{}",
+    // the pre-A-20 flat shape is refused by name, not read as "no ios block"
+    '{"mode":"js"}', '{"mode":"native","capabilities":["episode"]}',
+    // a platform missing, or one this file does not know
+    '{"ios":{"mode":"js"}}', '{"android":{"mode":"js"}}', '{"ios":{"mode":"js"},"android":{"mode":"js"},"web":{"mode":"js"}}',
+    ...blocks.map((b) => `{"ios":${b},"android":{"mode":"js"}}`),
+    ...blocks.map((b) => `{"ios":{"mode":"js"},"android":${b}}`),
+  ];
+  for (const text of bad) {
+    assert.throws(() => parseEngineDefaults(text), PlistError, `accepted ${text}`);
+    assert.throws(() => parseEngineDefault(text), PlistError, `accepted ${text}`);
   }
+  assert.throws(() => parseEngineDefault('{"mode":"js"}'), /per platform since A-20/);
+  assert.throws(() => parseEngineDefault(file({ mode: "js" }), "web"), PlistError);
   assert.throws(() => injectEngineDefault(CAPACITOR_PLIST, { mode: "Native", capabilities: [] }), PlistError);
 });
 
@@ -772,11 +797,14 @@ test("the CI invocations write the engine default and --check prints ForayEngine
 
     // --engine-default names another source of truth; a bad one fails the run.
     const nativeFile = path.join(dir, "ENGINE_DEFAULT.json");
-    fs.writeFileSync(nativeFile, '{"mode":"native","capabilities":["episode"]}');
+    fs.writeFileSync(nativeFile, '{"ios":{"mode":"native","capabilities":["episode"]},"android":{"mode":"js"}}');
     assert.equal(run([plist, "--engine-default", nativeFile]).status, 0);
     assert.deepEqual(engineDefault(fs.readFileSync(plist, "utf8")), { mode: "native", capabilities: ["episode"] });
     assert.equal(run([plist, "--check", "--engine-default", nativeFile]).status, 0);
-    fs.writeFileSync(nativeFile, '{"mode":"Native"}');
+    fs.writeFileSync(nativeFile, '{"ios":{"mode":"Native"},"android":{"mode":"js"}}');
+    assert.equal(run([plist, "--engine-default", nativeFile]).status, 1);
+    // The pre-A-20 flat shape fails the run too (A-20: per platform).
+    fs.writeFileSync(nativeFile, '{"mode":"native","capabilities":["episode"]}');
     assert.equal(run([plist, "--engine-default", nativeFile]).status, 1);
     assert.equal(run([plist, "--engine-default"]).status, 2, "a flag with no value");
     assert.equal(run([plist, "--engine-default", "--check"]).status, 2, "a flag is never a value");

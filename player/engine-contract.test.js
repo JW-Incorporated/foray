@@ -26,6 +26,7 @@ import {
   OWNED_PREFIXES, PROTOCOL, COMMANDS, EVENTS, REFUSALS, BRIDGE_METHODS, CONTRACT_KINDS,
   SESSION_PHASES, SESSION_INPUTS, AUDIBLE_COMMANDS, STRIKE_LIMIT,
   contractSchemaDocument, validateContract, contractAccepts, decideMode, extrapolate,
+  ENGINE_PLATFORMS, HELLO_PLATFORMS,
   sessionTransition, audibleStartViolations, decideEngineMode, engineModeTrace,
 } from "./engine-contract.js";
 import { SESSION_ERRORS } from "./engine-vocabulary.js";
@@ -182,8 +183,29 @@ test("decideMode: native only on iOS with the method, a well-formed native hello
   assert.equal(ios(null).relinquish, true);
   assert.equal(ios({ ...native, protocol: 2 }).relinquish, true);
   assert.equal(ios({ mode: "native" }).relinquish, true);
-  assert.equal(decideMode({ platform: "android", methodPresent: true, hello: native }).mode, "js");
   assert.equal(decideMode({ platform: "ios", methodPresent: false, hello: native }).mode, "js");
+  assert.equal(decideMode({ platform: "web", methodPresent: true, hello: native }).reason, "not-ios");
+});
+
+test("decideMode (A-20): Android drives a native engine only on protocol 1; the page does not ask it yet, so it stays js", () => {
+  /* docs/plans/android-assessment.md A-20. The contract lets an Android shell
+     answer engineHello exactly as iOS does; HELLO_PLATFORMS keeps the page from
+     asking until A-28, so today's Android is methodPresent false: `no-method`,
+     the JS player, nothing to relinquish — the lane it always had, where the
+     token used to be `not-ios`.
+     MUTATION: keep `platform !== "ios"` in decideMode -> the native case is
+     js/not-ios -> red. Add "android" to HELLO_PLATFORMS -> red below. */
+  const native = contractSchemaDocument().$defs.helloResponse["x-examples"].valid.native;
+  const android = (methodPresent, hello) => decideMode({ platform: "android", methodPresent, hello });
+  assert.deepStrictEqual(android(true, native), { mode: "native", reason: "native", relinquish: false });
+  assert.deepStrictEqual(android(true, { ...native, protocol: 2 }), { mode: "js", reason: "protocol-mismatch", relinquish: true });
+  assert.deepStrictEqual(android(true, { mode: "legacy", reason: "not-built" }), { mode: "js", reason: "engine-legacy", relinquish: false });
+  assert.deepStrictEqual(android(true, null), { mode: "js", reason: "no-hello", relinquish: true });
+  // Today's Android: the page never asks, so no method — and still js.
+  assert.deepStrictEqual(android(false, null), { mode: "js", reason: "no-method", relinquish: false });
+  assert.deepStrictEqual([...ENGINE_PLATFORMS], ["ios", "android"]);
+  assert.deepStrictEqual([...HELLO_PLATFORMS], ["ios"], "A-28 adds android here, with the plugin's engine methods");
+  assert.ok(Object.isFrozen(ENGINE_PLATFORMS) && Object.isFrozen(HELLO_PLATFORMS));
 });
 
 test("extrapolate is frozen while inSeamGap, buffering or not running, and runs on the page's own clock otherwise", () => {

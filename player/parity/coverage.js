@@ -366,16 +366,21 @@ export function capabilityFamilies(capabilities) {
 /* ---------- the capability gate ---------- */
 
 /** Capabilities advertised by the shipping configuration: `mobile/ENGINE_DEFAULT.json`
-    (`capabilities`; none while it said js) and the Swift source's
-    `advertisedCapabilities` array literal (EngineBridgeRules.swift). Since
-    NE-27b both say episode, continuation and restore; since NE-37 (the M2
-    flip) foray too. */
+    (every platform block's `capabilities` — per platform since A-20, and the
+    union, so a capability any build advertises is gated; none while a block
+    says js) and the Swift source's `advertisedCapabilities` array literal
+    (EngineBridgeRules.swift). Since NE-27b both say episode, continuation and
+    restore for iOS; since NE-37 (the M2 flip) foray too. Android's block
+    advertises nothing until A-31. */
 export function advertisedCapabilities(root) {
   const out = new Map();
   const def = path.join(root, "mobile", "ENGINE_DEFAULT.json");
   if (fs.existsSync(def)) {
     const doc = JSON.parse(fs.readFileSync(def, "utf8"));
-    for (const c of doc.capabilities ?? []) out.set(c, "mobile/ENGINE_DEFAULT.json");
+    for (const [platform, block] of Object.entries(doc)) {
+      if (platform.startsWith("//") || !block || typeof block !== "object" || Array.isArray(block)) continue;
+      for (const c of block.capabilities ?? []) out.set(c, `mobile/ENGINE_DEFAULT.json (${platform})`);
+    }
   }
   const walk = (dir) => {
     if (!fs.existsSync(dir)) return;

@@ -1,7 +1,7 @@
 {
   "family": "handshake",
   "module": "player/engine-contract.js",
-  "note": "The page's side of engineHello (docs/native-engine-plan.md §4.6, §5.1; player/engine-contract.js decideMode and helloRequest, NE-11j): native only on iOS, with the method present, a well-formed hello, mode native and a matching protocol; relinquish whenever an engine might be running and the page runs JS anyway. Ported by NE-11s (the engine answers the same hello).",
+  "note": "The page's side of engineHello (docs/native-engine-plan.md §4.6, §5.1; player/engine-contract.js decideMode and helloRequest, NE-11j): native only on an engine platform (iOS, and Android since A-20 of docs/plans/android-assessment.md), with the method present, a well-formed hello, mode native and a matching protocol; relinquish whenever an engine might be running and the page runs JS anyway. Ported by NE-11s (the engine answers the same hello).",
   "cases": [
     {
       "id": "handshake/protocol",
@@ -38,6 +38,12 @@
       }
     },
     {
+      "id": "handshake/engine-platforms",
+      "covers": [],
+      "read": "ENGINE_PLATFORMS",
+      "expect": { "value": ["ios", "android"] }
+    },
+    {
       "id": "handshake/hello-request",
       "covers": [],
       "call": "helloRequest",
@@ -52,9 +58,9 @@
       "expect": { "return": { "pageBuild": "", "protocol": 1 } }
     },
     {
-      "id": "handshake/decide-android",
+      "id": "handshake/decide-android-native",
       "covers": [],
-      "note": "Only iOS has a native engine.",
+      "note": "A-20 (docs/plans/android-assessment.md): Android is an engine platform, held to the same hello as iOS. The page does not ask it until A-28 (HELLO_PLATFORMS), so this answer is the contract, not yet a lane.",
       "call": "decideMode",
       "args": [
         {
@@ -110,7 +116,38 @@
           }
         }
       ],
-      "expect": { "return": { "mode": "js", "reason": "not-ios", "relinquish": false } }
+      "expect": { "return": { "mode": "native", "reason": "native", "relinquish": false } }
+    },
+    {
+      "id": "handshake/decide-android-no-method",
+      "covers": [],
+      "authored": true,
+      "note": "A-20: today's Android. The page does not ask an Android shell engineHello until A-28, so the method is absent: the JS player, nothing to relinquish. This was `not-ios` before A-20; the lane is unchanged.",
+      "call": "decideMode",
+      "args": [{ "platform": "android", "methodPresent": false, "hello": null }],
+      "expect": { "return": { "mode": "js", "reason": "no-method", "relinquish": false } }
+    },
+    {
+      "id": "handshake/decide-android-no-hello",
+      "covers": [],
+      "note": "A-20: an Android engine that was asked and did not answer may be running; relinquish, as on iOS.",
+      "call": "decideMode",
+      "args": [{ "platform": "android", "methodPresent": true, "hello": null }],
+      "expect": { "return": { "mode": "js", "reason": "no-hello", "relinquish": true } }
+    },
+    {
+      "id": "handshake/decide-android-legacy",
+      "covers": [],
+      "note": "A-20: an Android engine answering legacy (the A-31 default until the flip) is the JS player with nothing to relinquish.",
+      "call": "decideMode",
+      "args": [
+        {
+          "platform": "android",
+          "methodPresent": true,
+          "hello": { "mode": "legacy", "reason": "build-default", "protocol": 1 }
+        }
+      ],
+      "expect": { "return": { "mode": "js", "reason": "engine-legacy", "relinquish": false } }
     },
     {
       "id": "handshake/decide-web",
