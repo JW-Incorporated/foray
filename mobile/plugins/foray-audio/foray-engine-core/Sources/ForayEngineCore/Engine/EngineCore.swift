@@ -111,6 +111,16 @@ public struct EngineCore {
     /// Plan §4.3: an uncommanded pause within this long of a route going away
     /// (in either order) is the route's, not the system's.
     public static let routeAttributionMs: Double = 500
+    /// P-14, the stall display (plan §4.3; #866): the surface shows
+    /// `buffering` from the moment the deck reports
+    /// `waitingToPlayAtSpecifiedRate` (a `deck kind=time-control
+    /// status=waiting reason=` row) until it reports playing again, with no
+    /// debounce. PROVISIONAL (card NE-38): a short waiting spell in the car
+    /// flips the lock screen to buffering, which #866's per-item Now Playing
+    /// rate latch now publishes honestly. Settled by the `time-control` rows
+    /// against the `nowplaying via=rate` rows (NE-38e verdict `rate-latch`,
+    /// NE-38f); false would show a stall as playing.
+    public static let bufferingWhileWaiting = true // MEASURE: verdict=rate-latch (NE-38e). Rows: deck kind=time-control status=waiting reason=, nowplaying via=rate.
     /// `REMOTE_DUPLICATE_WINDOW_MS` (foray-media-session.js): a second press of
     /// the same command inside it is recorded as `dupCandidate` (T-8) and
     /// still handled; DV-6 decides whether anything is ever dropped.
@@ -997,7 +1007,7 @@ public struct EngineCore {
         }
         state.pendingLoad = PendingLoad(token: token, itemId: item.id, startSec: startSec)
         deckCommand(.load(token: token, itemId: item.id, url: item.audioUrl, startSec: startSec,
-                          preciseTiming: bounds != nil))
+                          preciseTiming: bounds != nil, deadlineClass: DeckDeadlineClass(item)))
     }
 
     /// `_savedPositionFor(item)`: where a COLD start begins, through the one
@@ -1310,7 +1320,7 @@ public struct EngineCore {
         case .playing:
             state.buffering = false
             if state.grace != nil { endGrace(.playing) }
-        case .waiting: state.buffering = true
+        case .waiting: if EngineCore.bufferingWhileWaiting { state.buffering = true }
         case .paused: break
         }
     }
@@ -1757,7 +1767,7 @@ public struct EngineCore {
     private mutating func deckCommand(_ command: DeckCommand) {
         out.append(.deck(command))
         switch command {
-        case let .load(_, _, _, startSec, _):
+        case let .load(_, _, _, startSec, _, _):
             deck.positionSec = startSec
             deck.audible = false
             deck.ended = false
@@ -1917,7 +1927,8 @@ public struct EngineCore {
             return diag("prepare", [JSONMember("kind", .string("skipped")), JSONMember("item", .string(next.item.id))])
         }
         state.preparedItemId = next.item.id
-        deckCommand(.prepare(itemId: next.item.id, url: next.item.audioUrl, startSec: next.item.bounds?.startSec ?? 0))
+        deckCommand(.prepare(itemId: next.item.id, url: next.item.audioUrl, startSec: next.item.bounds?.startSec ?? 0,
+                             deadlineClass: DeckDeadlineClass(next.item)))
     }
 
     // MARK: the seam beat (queue-manager.js §10)
@@ -2095,7 +2106,8 @@ public struct EngineCore {
         let token = state.lastToken
         if bridge.isSynthNarration { return speakLine(bridge, token: token, bridge: true) }
         state.pendingLoad = PendingLoad(token: token, itemId: bridge.id, startSec: 0, bridge: true)
-        deckCommand(.load(token: token, itemId: bridge.id, url: bridge.audioUrl, startSec: 0, preciseTiming: false))
+        deckCommand(.load(token: token, itemId: bridge.id, url: bridge.audioUrl, startSec: 0, preciseTiming: false,
+                          deadlineClass: DeckDeadlineClass(bridge)))
     }
 
     /// `_advancePastBridgeFailure`: the item after the bridge, bridges skipped.

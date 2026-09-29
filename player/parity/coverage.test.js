@@ -26,6 +26,7 @@ import {
   swiftTestMethods, topLevelTests, capabilityFamilies, capabilityGate, advertisedCapabilities, counts,
   readCoveredSuites, facadeProblems, FACADE_MAPPED_SUITES, FACADE_SUITES,
 } from "./coverage.js";
+import { NATIVE_TOKEN_FAMILIES } from "./compare.js";
 
 const DATA = loadParityData(REPO_ROOT);
 const FIXTURES = loadFixtures(REPO_ROOT);
@@ -621,8 +622,39 @@ test("capabilities.json holds the plan §6.6 map", () => {
      episode and foray capabilities never wait on it; nothing may ever advertise
      it. MUTATION: add "remainder" to the advertised list -> the next test's
      gate is red for as long as NE-39j owes anything. */
-  assert.deepStrictEqual(DATA.capabilities.remainder, ["compare", "manager-remainder"]);
+  // NE-45j parks prepare-narration here while NE-45s owes it (the M2 build
+  // advertises foray, which may owe nothing); NE-45s moves it to foray.
+  assert.deepStrictEqual(DATA.capabilities.remainder, ["compare", "manager-remainder", "prepare-narration"]);
   assert.ok(!advertisedCapabilities(REPO_ROOT).has("remainder"), "the remainder is a bookkeeping gate, never a capability a build ships");
+});
+
+test("NE-45j: prepare-narration is authored against reference-engine, keeps its n.* tokens, and is owed whole to NE-45s and A-62", () => {
+  /* The card's acceptance: the family is recorded green in JS with its ids
+     pending for NE-45s. It is the prepare family's seams with a line in them,
+     so it is held to prepare's rules (authored, run on the engine target, T on
+     every checkpoint, n.* asserted), and it is parked under `remainder` rather
+     than `foray` only because foray ships and may owe nothing. MUTATION: drop
+     one prepare-narration id from swift-pending.json -> red; take
+     "prepare-narration" out of NATIVE_TOKEN_FAMILIES -> red. */
+  const files = FIXTURES.filter((f) => f.family === "prepare-narration");
+  assert.ok(files.length > 0, "prepare-narration is recorded");
+  const cases = files.flatMap((f) => f.doc.cases);
+  for (const c of cases) assert.equal(DATA.pending[c.id], "NE-45s", `${c.id} is owed to NE-45s`);
+  const seams = cases.filter((c) => c.setup?.target === "engine");
+  assert.ok(seams.length > 0, "the family holds engine seams");
+  for (const c of seams) {
+    assert.equal(c.authored, true, `${c.id} must be authored (the prepare timing)`);
+    assert.ok(c.expect.checkpoints.every((k) => typeof k.nowMs === "number"), `${c.id}: every checkpoint carries T`);
+  }
+  const ops = seams.flatMap((c) => c.expect.ops);
+  for (const token of ["n.prepare:", "n.prepare-seek:", "n.handover:"]) {
+    assert.ok(ops.some((o) => o.startsWith(token)), `the family asserts ${token}`);
+  }
+  assert.ok(NATIVE_TOKEN_FAMILIES.includes("prepare-narration"), "compare.js keeps its n.* tokens");
+  assert.ok(DATA.capabilities.remainder.includes("prepare-narration") && !DATA.capabilities.foray.includes("prepare-narration"));
+  const jvm = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, "player/parity/jvm-pending.json"), "utf8"));
+  assert.equal(jvm.families["prepare-narration"], "A-62", "the JVM owes it whole to A-62");
+  assert.equal(jvm.families.prepare, "A-25", "prepare itself stays owed whole to A-25");
 });
 
 test("every capability the engine advertises has zero pending and zero unported entries", () => {

@@ -1877,7 +1877,7 @@ Read first: `CLAUDE.md`, this deck, the Tier 2 requirements, `docs/ios-native-pl
   - `player/queue-manager.js` `_warmNextSegment`: `warmsAcross` replaces the `seamGapSec(seam) > 0` gate
   - `player/seam-gap.js`: its "warming follows the beat" coupling note now points at `deck-policy.js`
   - `player/parity/reference-engine.js`: `WarmingBackend` warms on a natural end too
-  - `player/parity/fixtures/prepare/*`
+  - `player/parity/fixtures/prepare/*` — as built, a sibling family `player/parity/fixtures/prepare-narration/` (`seams.json`: authored engine seams; `policy.json`: `warmsAcross` and the duration window). `prepare` is charged to `foray`, which the M2 build advertises and which may owe nothing, so the new ids could not be pending there; the family is parked under the unadvertised `remainder` gate, keeps its `n.*` tokens (`NATIVE_TOKEN_FAMILIES`, JS, Swift and Java), and NE-45s moves it to `foray` or folds it into `prepare`. A same-source prepare on the standby is written `n.prepare-seek:<id>@<s>`.
   - `queue-manager.test.js`: the two warming tests that assert the old rule ("a bridged seam is not warmed", "warming follows the SAME rule as the beat") are re-authored to the new rule
   - `deck-policy.test.js`
   - the books: `swift-pending.json` (`--port-card NE-45s`) and `jvm-pending.json` (`prepare` stays owed whole to A-25; once A-25 has ported it, new ids are `cases` owed to A-62)
@@ -1909,7 +1909,7 @@ Read first: `CLAUDE.md`, this deck, the Tier 2 requirements, `docs/ios-native-pl
   - XCTests: `DeckPairTests`, and `ForayCatchUpTests` extended
   - the Swift `prepare` runner
 - **Ask:**
-  - Port NE-45j. A rendered line becomes an ordinary deck item from end to end:
+  - Port NE-45j (`prepare-narration`: burn it down, then move it from `remainder` to `foray` in `capabilities.json`, with the NE-45j test in `coverage.test.js`). A rendered line becomes an ordinary deck item from end to end:
     - it is prepared on the standby and swaps like a clip;
     - its seam row is packed like a clip's (`seam from=clip|line to=clip|line prepare=hit|miss|none`);
     - its load uses the `line` deadline class;

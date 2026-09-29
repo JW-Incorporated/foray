@@ -673,7 +673,7 @@ A-61, A-62, A-64, A-66 (+ NE-39j) ─ A-63 ─ A-67 ─ A-68 ─ A-69 (gated)
 - **Device check:** A-67's script, route block.
 
 #### A-62 · Prepare across narration seams on the Media3 deck (mirrors NE-45s) — **M**
-- **Depends on:** A-42, NE-45j (its new `prepare` ids are `cases` owed to A-62 once A-25 has ported the family)
+- **Depends on:** A-42, NE-45j (it recorded its cases as a sibling family, `prepare-narration`, which `jvm-pending.json` owes whole to A-62; `prepare` itself stays owed whole to A-25)
 - **Human-gated:** no.
 - **Files:** the Foray tape from A-40 (an ExoPlayer playlist with `ClippingConfiguration`, or a deck pair, whichever A-40 chose), the JVM `DeckPolicy.warmsAcross`, the packed `seam` rows, and Robolectric tests.
 - **Ask:** Port `warmsAcross`. A rendered line is a `MediaItem` like a clip.
@@ -681,7 +681,7 @@ A-61, A-62, A-64, A-66 (+ NE-39j) ─ A-63 ─ A-67 ─ A-68 ─ A-69 (gated)
   - **Deck pair:** port NE-45s as written.
   - Seam rows name `from=`, `to=` and `prepare=`.
 - **Acceptance:**
-  - `prepare` has nothing pending on the JVM.
+  - `prepare-narration` has nothing pending on the JVM (the JVM runs it, and `families` no longer names it).
   - Robolectric: clip → rendered line → clip has no cold load on the second clip.
   - A-05 (f) in native mode: p95 seam ≤ 1 s with the screen off (the A-40 bar), split by seam kind, with the run id.
 - **Device check:** A-67's script, rendered-Foray block.

@@ -41,7 +41,7 @@ final class EngineCoreTests: XCTestCase {
             }
             for command in all {
                 switch command {
-                case let .deck(.load(token, _, _, startSec, _)):
+                case let .deck(.load(token, _, _, startSec, _, _)):
                     lastLoad = token
                     reading.positionSec = startSec
                     reading.audible = false
@@ -461,7 +461,7 @@ final class EngineCoreTests: XCTestCase {
         XCTAssertEqual(host.core.state.session, .active)
         host.send(.session(.interruptionBegan(reason: "default")))
         let resumed = host.send(.session(.interruptionEnded(shouldResume: true)))
-        XCTAssertTrue(resumed.contains { if case let .deck(.load(_, _, _, startSec, _)) = $0 { return startSec == 41 }; return false },
+        XCTAssertTrue(resumed.contains { if case let .deck(.load(_, _, _, startSec, _, _)) = $0 { return startSec == 41 }; return false },
                       "\(resumed)")
     }
 
@@ -537,7 +537,7 @@ final class EngineCoreTests: XCTestCase {
         let pended = idle.send(try EngineCoreTests.command("seekTo", .object([JSONMember("sec", .number(600))])))
         XCTAssertNil(pended.firstIndex { if case .deck = $0 { return true }; return false }, "nothing loaded: nothing to seek")
         XCTAssertTrue(idle.send(.command(.play, source: .tap))
-            .contains { if case let .deck(.load(_, _, _, startSec, _)) = $0 { return startSec == 600 }; return false })
+            .contains { if case let .deck(.load(_, _, _, startSec, _, _)) = $0 { return startSec == 600 }; return false })
 
         var loading = Host()
         loading.send(.queue(.load([EngineCoreTests.item("a")])))
@@ -565,7 +565,7 @@ final class EngineCoreTests: XCTestCase {
         host.send(.queue(.load([EngineCoreTests.item("a")])))
         let started = host.send(.queue(.playIndex(0, startSec: nil, source: .tap)))
         XCTAssertTrue(started.contains {
-            if case let .deck(.load(_, _, _, startSec, _)) = $0 { return startSec == 2280 }
+            if case let .deck(.load(_, _, _, startSec, _, _)) = $0 { return startSec == 2280 }
             return false
         }, "the cold load resumes: \(started)")
         let nudged = host.send(try EngineCoreTests.command("seekBy", .object([JSONMember("deltaSec", .number(-15))])))
@@ -599,7 +599,7 @@ final class EngineCoreTests: XCTestCase {
             return false
         }
         let loadB = left.firstIndex {
-            if case let .deck(.load(_, itemId, _, _, _)) = $0 { return itemId == "b" }
+            if case let .deck(.load(_, itemId, _, _, _, _)) = $0 { return itemId == "b" }
             return false
         }
         XCTAssertNotNil(wrote, "the scrub is what was kept: \(left)")
@@ -690,7 +690,7 @@ final class EngineCoreTests: XCTestCase {
         var on = playing()
         on.send(try continuation(autoAdvance: true, [EngineCoreTests.hop(1, next: "b"), EngineCoreTests.hop(2, next: "c")]))
         let walked = on.send(.deck(.ended(token: on.lastLoad!)))
-        XCTAssertTrue(walked.contains { if case let .deck(.load(_, itemId, _, _, _)) = $0 { return itemId == "b" }; return false })
+        XCTAssertTrue(walked.contains { if case let .deck(.load(_, itemId, _, _, _, _)) = $0 { return itemId == "b" }; return false })
         XCTAssertTrue(walked.contains { if case .emit(.advanced) = $0 { return true }; return false })
         XCTAssertEqual(on.core.state.advanceLog.map(\.hop.nextId), ["b"])
         XCTAssertEqual(on.core.state.chain.map(\.nextId), ["c"])

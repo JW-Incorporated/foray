@@ -1275,6 +1275,35 @@
         "prepare/at-2x-the-beat-is-still-500ms-of-wall-clock"
       ]
     },
+    "prepare-narration": {
+      "files": {
+        "player/parity/fixtures/prepare-narration/policy.json": "4c1aad687f1f0884810de383f3a17d2fdf1b363e8ea55ef19ddd63af8bf232dc",
+        "player/parity/fixtures/prepare-narration/seams.json": "e3b18c68dd554b5a2ec56461ed15461a0da42595573ac68173d3a0c1a81fd35b"
+      },
+      "ids": [
+        "prepare-narration/warms-clip-to-clip",
+        "prepare-narration/warms-clip-to-rendered-line",
+        "prepare-narration/warms-rendered-line-to-clip",
+        "prepare-narration/warms-spoken-line-to-clip",
+        "prepare-narration/warms-natural-end-to-clip",
+        "prepare-narration/spoken-line-is-not-warmed",
+        "prepare-narration/empty-url-is-not-warmed",
+        "prepare-narration/the-last-item-warms-nothing",
+        "prepare-narration/window-from-duration-shut-outside-the-lead",
+        "prepare-narration/window-from-duration-open-inside-the-lead",
+        "prepare-narration/window-from-duration-at-a-natural-end",
+        "prepare-narration/window-shorter-than-the-lead-opens-at-the-start",
+        "prepare-narration/window-from-duration-is-wall-clock-at-2x",
+        "prepare-narration/window-no-duration-no-boundary",
+        "prepare-narration/window-duration-never-stands-in-for-an-unarmed-out-point",
+        "prepare-narration/window-from-duration-shut-while-paused",
+        "prepare-narration/clip-line-clip-in-one-episode-prepares-the-second-clip-by-a-seek",
+        "prepare-narration/clip-line-clip-across-two-episodes-prepares-both-seams",
+        "prepare-narration/a-spoken-line-prepares-nothing-and-the-clip-after-it-is-prepared-at-its-start",
+        "prepare-narration/a-line-shorter-than-the-lead-prepares-the-next-clip-at-its-start",
+        "prepare-narration/a-line-that-ends-the-foray-prepares-nothing"
+      ]
+    },
     "queue-state": {
       "files": {
         "player/parity/fixtures/queue-state/queue-state.json": "4df9d1b0e362130491fad057544179b395cf733e891cfb0a5d641126edc8da51"

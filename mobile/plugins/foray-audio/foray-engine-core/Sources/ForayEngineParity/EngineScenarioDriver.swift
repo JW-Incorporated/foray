@@ -1003,7 +1003,7 @@ final class ScenarioWorld {
     /// WarmingBackend's standby deck).
     func applyDeck(_ command: DeckCommand) {
         switch command {
-        case let .load(token, itemId, url, startSec, _):
+        case let .load(token, itemId, url, startSec, _, _):
             if engineTarget {
                 // `warmPromotion` at the boundary: a load that finds its source
                 // and in-point warm is a handover, said BEFORE the load.
@@ -1053,7 +1053,7 @@ final class ScenarioWorld {
             reading = DeckReading(positionSec: nil, durationSec: nil, audible: false, ended: false)
             // FakeBackend's `release()` is the teardown's (`dispose`).
             if disposing && !engineTarget { ops.append("release") } else { native("n.deck.unload") }
-        case let .prepare(itemId, url, startSec):
+        case let .prepare(itemId, url, startSec, _):
             guard engineTarget else { return native("n.deck.prepare:\(itemId)") }
             // WarmingBackend `prefetch`: the standby deck's own decision.
             let offset = JSMath.round(DeckPolicy.warmOffset(startSec))
