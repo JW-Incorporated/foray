@@ -156,7 +156,14 @@ test("media-session is wholly classified: media-episode, an exclusion, or NE-29j
     const label = `media-session :: ${JSON.stringify(name)}`;
     if (st.covered.length) {
       tally.fixtured++;
-      for (const id of st.covered) assert.ok(id.startsWith("media-episode/") || id.startsWith("media/"), `${label} is covered by ${id}, outside media-episode and media`);
+      // NE-39n: a press over a Foray WITH a narration line runs in
+      // manager-foray (`remote-*` cases only), because only the Foray-tape
+      // driver reads the page's build of such a Foray; still the foray
+      // capability, still EngineCore's remote handlers.
+      for (const id of st.covered) {
+        assert.ok(id.startsWith("media-episode/") || id.startsWith("media/") || id.startsWith("manager-foray/remote-"),
+          `${label} is covered by ${id}, outside media-episode, media and manager-foray's remote-* cases`);
+      }
     } else if (st.excluded) tally.excluded++;
     else {
       assert.fail(`${label} must be fixtured or excluded; it is ${JSON.stringify(st.unported ?? "in no list")}`);
@@ -168,6 +175,7 @@ test("media-session is wholly classified: media-episode, an exclusion, or NE-29j
   // the half NE-29j owes can never hold the episode capability back (plan §6.6).
   assert.ok(DATA.capabilities.episode.includes("media-episode"));
   assert.ok(DATA.capabilities.foray.includes("media") && !DATA.capabilities.episode.includes("media"));
+  assert.ok(DATA.capabilities.foray.includes("manager-foray") && !DATA.capabilities.episode.includes("manager-foray"));
 });
 
 test("seam-gap, interlude and seek-policy are wholly classified, own no unported entry, outpoint is recorded, and none of the four owes Swift anything", () => {

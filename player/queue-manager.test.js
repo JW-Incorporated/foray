@@ -288,13 +288,29 @@ test("a missing bridge asset never stalls the queue", async () => {
   assert.ok(backend.loads().includes("load:b"), "must advance past the broken bridge to the real item");
 });
 
-test("skipToNext steps over a bridge rather than playing it alone", async () => {
+/* NE-39n (2026-09-29): Next is the next item, a narration line included — the
+   page's `forayNext` (client.js, `play(index + 1)`, audit round 3 player-core-6)
+   and so the web lock screen always landed on the line, and the engine's own
+   Next (the car, the iPhone lock screen) now answers the same. This test used
+   to pin the opposite ("skipToNext steps over a bridge"). */
+test("skipToNext lands on a bridge: Next is the next item, a line included (NE-39n)", async () => {
   const { m, backend } = make({ strategy: PICKED_FIRST });
   m.setQueueFromPick(ep("a"), { others: [tts("bridge"), ep("b")] });
   await m.play(0);
   backend.calls.length = 0;
   await m.skipToNext();
+  assert.deepStrictEqual(backend.loads(), ["load:bridge"]);
+  assert.equal(m.currentIndex, 1);
+});
+
+test("skipToNext from a bridge lands on the item after it (NE-39n)", async () => {
+  const { m, backend } = make({ strategy: PICKED_FIRST });
+  m.setQueueFromPick(ep("a"), { others: [tts("bridge"), ep("b")] });
+  await m.play(1);
+  backend.calls.length = 0;
+  await m.skipToNext();
   assert.deepStrictEqual(backend.loads(), ["load:b"]);
+  assert.equal(m.currentIndex, 2);
 });
 
 /* ---------- interruption (corner case #11) ---------- */
@@ -3928,16 +3944,18 @@ test("§15: nothing is warmed when the next item is a clip or a script-only line
   assert.deepEqual(warmsOf(backend), []);
 });
 
-test("§15: a skip past the warmed line cancels it, and the new next line is warmed", async () => {
+test("§15: a jump past the warmed line cancels it, and the new next line is warmed", async () => {
   const { m, backend } = make({ backendClass: WarmingBackend });
   await m.playForay(foray([
     fseg(), RLINE(), fseg({ start_sec: 400, end_sec: 500 }), RLINE({ id: "nar-2" }), fseg({ start_sec: 700, end_sec: 800 }),
   ]), { resolveItem });
-  await m.skipToNext(); // Next clip steps over the line to foray-1#2
+  // A jump past the line (Next lands ON the line since NE-39n, which is the
+  // "arriving at the warmed line" case below).
+  await m.play(2);
   assert.deepEqual(warmsOf(backend), ["warm:nar-1", "cancel:nar-1:load:foray-1#2", "warm:nar-2"]);
   assert.ok(
     backend.calls.indexOf("cancel:nar-1:load:foray-1#2") < backend.calls.indexOf("load:foray-1#2@400"),
-    "cancelled BEFORE the skip's own load asks for the media queue"
+    "cancelled BEFORE the jump's own load asks for the media queue"
   );
 });
 

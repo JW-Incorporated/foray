@@ -1018,7 +1018,18 @@ export class PlayerQueueManager {
   }
 
   async _skipToNext() {
-    const next = this._nextItem(this._cursor(), true);
+    /* THE NEXT ITEM, A NARRATION LINE INCLUDED (NE-39n, 2026-09-29). This used
+       to step over every `kind: "tts"` item — the Swift transition-bridge
+       rule — while the page's own Next (client.js `forayNext`, `play(index +
+       1)` since audit round 3, player-core-6) and so the web lock screen's
+       `nexttrack` landed on the line. Two answers to one press meant the car
+       and the iPhone lock screen, which reach the engine's `next`, skipped the
+       authored line the phone's own button would have played, and from the
+       clip before a closing line ended the Foray unheard. One behaviour on
+       every surface: Next is the next item. From a line it is the item after
+       the line (the next clip, or the next line of a chain). The `manager-foray`
+       `remote-nexttrack-*-line` and `next-*` fixtures pin both. */
+    const next = this._nextItem(this._cursor(), false);
     if (next) this._targetIndex = next.index;
     // currentIndex is NOT advanced here. The reducer's skip emits savePosition
     // BEFORE loadItem, and savePosition writes whatever currentIndex points at

@@ -359,7 +359,7 @@
     },
     "diag-tokens": {
       "files": {
-        "player/parity/fixtures/diag-tokens/diag-tokens.json": "38389e9831b3e46b921b8aad8d959749d5a527aeff9f0377638743525db1366e"
+        "player/parity/fixtures/diag-tokens/diag-tokens.json": "d4eb1dbc5470109cdd303066f17d093f9901fd84b8770ca53d90128a0b822d3d"
       },
       "ids": [
         "diag-tokens/set-names",
@@ -370,6 +370,7 @@
         "diag-tokens/source-tokens",
         "diag-tokens/mode-reason-tokens",
         "diag-tokens/fault-kind-tokens",
+        "diag-tokens/narration-fallback-cause-tokens",
         "diag-tokens/admit-stage-ready",
         "diag-tokens/admit-session-error-other",
         "diag-tokens/admit-interruption-reason-app-was-suspended",
@@ -379,6 +380,8 @@
         "diag-tokens/admit-mode-reason-no-plist-key",
         "diag-tokens/admit-mode-reason-not-built",
         "diag-tokens/admit-fault-kind-implicit-activation",
+        "diag-tokens/admit-narration-fallback-cause-offline",
+        "diag-tokens/admit-narration-fallback-cause-status-is-not-a-token",
         "diag-tokens/admit-wrong-set",
         "diag-tokens/admit-case-folded",
         "diag-tokens/admit-padded",
@@ -788,7 +791,7 @@
     "manager-episode": {
       "files": {
         "player/parity/fixtures/manager-episode/last-episode-row.json": "a21f5bf2c1cc037c4d84285d9d3dbb9f6ad0b5b87a6c3f36c8e2943cfb5fa454",
-        "player/parity/fixtures/manager-episode/scenarios.json": "c56575541a249556027900a148a952fc5420f047ad1c7378677de26efb8f6263"
+        "player/parity/fixtures/manager-episode/scenarios.json": "3c14b3eaaf40bf256f5ed0760be99db8f557ae9b5b50e848294deb75d6ad5a2c"
       },
       "ids": [
         "manager-episode/last-episode-row-full-snapshot",
@@ -841,8 +844,9 @@
       "files": {
         "player/parity/fixtures/manager-foray/audition.json": "9c1eed332cf0db001efc1de1e1b0c27f1bd50fef9c49202229d8312c9adcfb60",
         "player/parity/fixtures/manager-foray/jingle.json": "c9016c928cfc2dd0a8c3429124dbc5da2b6775b2161601a3aedaed4b74f4fff2",
-        "player/parity/fixtures/manager-foray/narration.json": "bd2cd5bceee72c4d448cd00b4ff748960c7c595b985e7afdf78f7bcadae02332",
+        "player/parity/fixtures/manager-foray/narration.json": "dd05be479486a191ea10810cea5c9da26763ae2d4571551dade5b33439edb401",
         "player/parity/fixtures/manager-foray/real-forays.json": "ce2d584ca45514c92c7a0b9095d4566d40429fb180f17faa352c202c4c88b6f4",
+        "player/parity/fixtures/manager-foray/remote-next.json": "e5eaf96acf68a5bc0092e6eaee63115a002ae278232026f3e8380f838c6c6765",
         "player/parity/fixtures/manager-foray/tape.json": "bffeb969f00fbe7d2b5c1a7a8fcd450f2ddc43b04e53428eeb320ceffa38bf73"
       },
       "ids": [
@@ -864,7 +868,8 @@
         "manager-foray/pause-under-a-slow-load-cuts-the-jingle-at-once",
         "manager-foray/an-episode-then-a-bridge-plays-the-bridge",
         "manager-foray/a-missing-bridge-never-stalls-the-queue",
-        "manager-foray/next-steps-over-a-bridge",
+        "manager-foray/next-lands-on-a-bridge",
+        "manager-foray/next-from-a-bridge-lands-on-the-item-after-it",
         "manager-foray/a-bridge-starts-at-zero",
         "manager-foray/rendered-narration-plays-at-1x-with-no-out-point",
         "manager-foray/a-script-only-line-is-spoken-not-loaded",
@@ -930,6 +935,8 @@
         "manager-foray/foray-2-1.5x-holds-through-every-seam",
         "manager-foray/foray-2-2x-mid-foray-survives-every-later-seam",
         "manager-foray/foray-2-the-beat-is-wall-clock-at-2x",
+        "manager-foray/remote-nexttrack-onto-a-line",
+        "manager-foray/remote-nexttrack-from-a-line",
         "manager-foray/a-segment-loads-at-its-in-point",
         "manager-foray/the-out-point-is-armed-before-play",
         "manager-foray/a-whole-episode-arms-nothing",
