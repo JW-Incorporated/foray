@@ -365,10 +365,12 @@ that only completed on resume. A test in `ios-workflow.test.mjs` asserts that no
 - **The one thing only a phone can settle is now `HUMAN-ACTIONS.md` #11 step 6** —
   at each change of voice, does it sound like a two-second pause or like the app
   stopped? #224 is a founder report that it sounded like the latter.
-- **#16 / #18:** still open. #16's *build* is now automated, but its device
-  questions — icons visible, a Foray advancing with the phone locked, stale-content
-  behaviour after an update — are device questions and a simulator cannot answer
-  them. #18 is Android and this workflow says nothing about it.
+- **#16 / #18:** both closed since. #16 was skipped on 2026-09-24 because CI now
+  generates and builds the iOS shell; its device questions (icons visible, a Foray
+  advancing with the phone locked, stale-content behaviour after an update) went
+  to real-phone records, which a simulator cannot replace. #18 is Android, and
+  this workflow says nothing about it. It was closed on 2026-09-29 on the Android
+  emulator smoke (`android-release` run 36203157867: `hasCapacitor: true`).
 - **#17:** whether the bundled-data freeze blocks a store submission.
 
 ## 4b. What the runs have actually measured
