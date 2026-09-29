@@ -39,9 +39,10 @@ Everything else is **qwen**. A qwen task has an exact change, named tests with t
 | Shows pipeline tail + search polish (#714, #729, S-10 poller, P-04/P-07/P-09/P-10) | [shows-search.md](shows-search.md) | 18 | 9 | 9 | 5 / 12 / 1 | A fresh change-index pointer (PKG-00). The live poller waits on G1/G3 (a shows Postgres). Founder: G8, G9, P-09 loser, P-10 option. |
 | Catalogue and personalization (#547 labels, breadth subjects, personas, ladders, events) | [catalogue-personalization.md](catalogue-personalization.md) | 22 | 8 | 14 | 9 / 13 / 0 | Human merges for `backend/src/` (PKG-09, PKG-18) and `docs/DECISIONS.md`. Founder: `label_scope`, breadth subjects, the intl file, the `card_shown` archetype. |
 | Listener-requested Forays and sharing (#690, #71, Guideline 1.2, Path B) | [listener-forays-sharing.md](listener-forays-sharing.md) | 25 | 15 | 10 | 7 / 18 / 0 | Sharing ships on its own. The generation service is built dark until the four Path B rulings (host, spend, review gate, CSP) and a public contact address. |
-| **Total** | | **224** | **111** | **113** | **64 / 150 / 10** | |
+| Android parity (A0 emulator tests + JS-lane fixes, A1 Media3 episodes, A2 native Forays, A3 Android Auto deferred) | [../plans/android-assessment.md](../plans/android-assessment.md) | 32 | 32 | 0 | 0 / 15 / 11 (+ 6 L) | Added 2026-09-29, after the nine packages above, and not written as a qwen hand-off: nearly every card is native, CI or device work, so treat all 32 as opus. Founder ruled 2026-09-29 (plan §6): A0, A1 and A2 start now in parallel with iOS M2; no device pass and no request to Joey until the Android native engine is fully operational (after A-42); no spend; A3 deferred. Device pass: HUMAN-ACTIONS #127, not issued yet. |
+| **Total** (the nine 2026-09-25 packages) | | **224** | **111** | **113** | **64 / 150 / 10** | |
 
-Sizes: XS under an hour, S under half a day, M under two days of agent work.
+Sizes: XS under an hour, S under half a day, M under two days of agent work. The Android plan also uses L (more than two days); its sizes are its own estimates.
 
 ## Founder questions (deduplicated, with proposed defaults)
 

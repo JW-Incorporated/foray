@@ -238,8 +238,11 @@ over the Chrome DevTools protocol (`tools/mobile/webview-probe.mjs`).
 - **Anything about backgrounded playback.** `docs/research/mp1-background-audio.md`
   §6.4 is a section on precisely this: an emulator never enters Doze, has no
   reason to freeze a cached app, cannot show OEM battery managers, and has no
-  real audio routing, telephony or Bluetooth. `HUMAN-ACTIONS.md` #11 is the
-  device pass, and it stays open.
+  real audio routing, telephony or Bluetooth. The device pass is
+  `HUMAN-ACTIONS.md` #127, which replaced the Android half of the closed #11.
+  It is not issued until the Android native engine is fully operational
+  (A-42 in `docs/plans/android-assessment.md`); the script is
+  `docs/android-device-pass.md` (A-14).
 - **The lock screen.** Media3 session, transport buttons, notification
   permission: none of it is touched here.
 - **The release configuration, directly.** DevTools is reachable only on a
