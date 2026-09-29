@@ -89,7 +89,15 @@ public final class JvmFamilies {
     public static final FamilyRunner SESSION_INVARIANT = SessionFamily.invariantRunner();
     public static final FamilyRunner MEDIA_EPISODE = MediaEpisodeFamily.runner();
 
+    /*
+     * A-24: the engine's functional core for episodes (EngineCore, main code), driven through
+     * the manager-episode scenarios by EngineScenarioDriver, which also checks the
+     * audible-start invariant on every turn; and the episode deck's rules (DeckPolicy).
+     */
+    public static final FamilyRunner MANAGER_EPISODE = ManagerEpisodeFamily.runner();
+    public static final FamilyRunner DECK_EPISODE = DeckEpisodeFamily.runner();
+
     /** Every registered runner. */
     public static final List<FamilyRunner> ALL = List.of(COMPARE, NUMBER_FORMAT, QUEUE_STATE, RATE, RESUME_RULES, TRANSPORT, ROWS,
-            SESSION, SESSION_INVARIANT, MEDIA_EPISODE);
+            SESSION, SESSION_INVARIANT, MEDIA_EPISODE, MANAGER_EPISODE, DECK_EPISODE);
 }

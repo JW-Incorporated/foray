@@ -490,6 +490,15 @@ Rejected alternatives:
   pass.
 - **Acceptance:** Those families are 0 pending, and the invariant test fails under mutation.
 - **Device check:** none.
+- **Status (2026-09-29): done in its PR, evidence in `STATE.md` (A-24 entry).** `EngineCore` (main code, Java 21 over
+  the API 24 surface) is the Swift core's episode path with the Foray tape off, plus its input, command, state and
+  deck vocabulary, the typed command set (`EngineContract`) and `DeckPolicy`'s episode rules. `manager-episode` and
+  `deck-episode` moved to `runs` in `jvm-pending.json` (102 cases, all passing). `EngineScenarioDriver` checks the
+  audible-start invariant on every scenario turn, and `EngineScenarioDriverTest` turns named cases red under the Swift
+  driver's two mutations (a play while lost to an interruption, a play before ready). `snapshot` moved from A-24 to
+  A-28: its cases are the contract's `contractAccepts` and `extrapolate`, which A-28 ports with `contract` and
+  `handshake`. The restore-record rebuild (`EngineCore.restoring`) is A-27's; the tape and the overlay are A-40's and
+  A-41's.
 
 #### A-25 · ExoPlayer deck adapter behind a DeckDriving seam — **L**
 - **Depends on:** A-24.

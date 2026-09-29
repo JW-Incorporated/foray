@@ -4,7 +4,6 @@
   "families": {
     "contract": "A-28",
     "deck": "A-25",
-    "deck-episode": "A-24",
     "default-voice": "A-41",
     "diag-tokens": "A-28",
     "engine-mode": "A-29",
@@ -14,7 +13,6 @@
     "handshake": "A-28",
     "interlude": "A-41",
     "lexicon": "A-41",
-    "manager-episode": "A-24",
     "manager-foray": "A-40",
     "manager-remainder": "A-40",
     "media": "A-40",
@@ -22,11 +20,13 @@
     "prepare": "A-25",
     "seam-gap": "A-40",
     "seek-policy": "A-40",
-    "snapshot": "A-24",
+    "snapshot": "A-28",
     "speech-rate": "A-41"
   },
   "runs": [
     "compare",
+    "deck-episode",
+    "manager-episode",
     "media-episode",
     "number-format",
     "queue-state",
