@@ -1625,7 +1625,8 @@ async function seams(ctx) {
   await prepare(ctx);
   const mark = await page(ctx, ringExpression(Number.MAX_SAFE_INTEGER));
   const since = num(mark?.seq) ? mark.seq : 0;
-  const sinceMs = Date.now() - 60000;
+  /* The page's clock, not this runner's: the log is stamped inside the page. */
+  const sinceMs = (await state(ctx)).at;
   const { started } = await startFixture(ctx, SEAMS_FORAY);
   shell("input", "keyevent", "KEYCODE_HOME");
   await sleep(1500);
@@ -2025,7 +2026,14 @@ async function backHome(ctx) {
     focusNow = currentFocus(shell("dumpsys", "window"));
     log.push({ presses, focus: focusNow.window });
   }
-  const left = focusNow.found && focusNow.pkg !== ctx.pkg;
+  /* A window with no package (a transition, the shade) is not an answer:
+     read once more before deciding. Left means another app's window. */
+  if (!focusNow.pkg) {
+    await sleep(1500);
+    focusNow = currentFocus(shell("dumpsys", "window"));
+    log.push({ presses, focus: focusNow.window, reread: true });
+  }
+  const left = !!focusNow.pkg && focusNow.pkg !== ctx.pkg;
   await sleep(1500);
   const [first, last] = await window2(ctx);
   const pidAfter = pidOf(ctx.pkg);

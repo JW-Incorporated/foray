@@ -7,7 +7,7 @@ phone. The PC this repo is written on runs no emulator and no Gradle build, so e
 comes from a GitHub Actions runner.
 
 Cards add their own section. A-03 (can the emulator play audio at all?) wrote §1–§4. A-05
-records its seam, focus, call and kill values here, and A-06 records its API 36 differences.
+records its seam, focus, call and kill values in §6, and A-06 records its API 36 differences.
 
 ## 1. A-03: the answer
 
@@ -206,3 +206,209 @@ failure sentence and nothing else in its scenario, and the fix for each should b
   - `https://localhost` is Capacitor's own origin.
   - So the click tracks ship inside the CI-built debug APK, the way A-03 did it. No shipped bundle
     carries them.
+
+## 6. A-05: the playback scenarios, part 2
+
+A-05 adds seven scenarios to the same job, (f) to (l), one step each. The card's rule is to
+record first and gate only where it says so:
+- **Gated:** (g) Doze, (k) the airplane-mode narration fallback, and (l) Back on Home. A-07 is
+  merged (PR #874), so (l) is gated rather than expected-fail.
+- **Recorded:** (f) hidden seams, (h) audio focus, (i) a phone call and (j) a process kill. Each
+  of these fails only when there was nothing to record: the screen stayed on, the helper app got no
+  focus, the call never rang, or the force-stop control did not hold.
+
+Everything in this section is **CI-executed**, on the same image and WebView as §2 and §5. Two
+runs on PR #888:
+- Run **36562447644** (head `43ffaac2`) took 19 min 02 s for the whole job, A-04's scenarios
+  included.
+- Run **36565163853** (head `d3aafcfd`, job 109395193688) took 19 min 02 s. It adds the interlude
+  split in (f), the out-point clock in (k) and the bucket samples in (g).
+
+All twelve scenarios were green on both runs.
+
+The fixtures:
+- **Rendered narration.** Three `.m4a` lines of 5, 6 and 7 s, made in the job by ffmpeg at
+  `tools/narration/render-profile.json`'s encode: AAC, 64 kbps, mono, 24 kHz, faststart
+  (`a05-narration-ffprobe.txt`). They are bundled at `a05/` beside A-04's click tracks, and no
+  audio is committed.
+- **Clips.** The NE-25a click tracks, as in §5.
+- **The "other app" in (h).** `tools/mobile/a05-focus-helper/`, built in the job with javac, d8
+  and aapt2 from the SDK the job already installs.
+
+### (f) Hidden seam timing, recorded
+
+The Foray runs clip, line, clip, line, clip, line, clip. Each clip is 22 s, over the 20 s floor
+of the narration warm (PR #867). It plays to its end with the app on Home and the screen off
+(`mWakefulness=Asleep`, all six seams `hiddenAtBoundary`). The gaps are the diagnostics ring's
+own `observedGapMs`: the time from the boundary (an out-point, or a line's `ended`) to the next
+`playing`.
+
+| Seam | Run 36562447644 gap | Run 36565163853 gap | Of which interlude jingle | Silence |
+|---|---|---|---|---|
+| clip 1 → line 1 | 35 ms | 25 ms | none | 25 ms |
+| line 1 → clip 2 | 3,366 ms | 3,129 ms | 3,097 ms | 32 ms |
+| clip 2 → line 2 | 36 ms | 33 ms | none | 33 ms |
+| line 2 → clip 3 | 3,345 ms | 3,119 ms | 3,097 ms | 22 ms |
+| clip 3 → line 3 | 33 ms | 52 ms | none | 52 ms |
+| line 3 → clip 4 | 3,350 ms | 3,110 ms | 3,080 ms | 30 ms |
+| **p50 / p95** | 36 / 3,366 ms | 52 / 3,129 ms | | **30 / 52 ms** |
+
+The jingle and silence columns are run 36565163853's. The first run had no element log, so its
+jingle cannot be separated.
+
+**D-A4: A-15 is not triggered.** The emulator's p95 hidden seam is 3.1–3.4 s even when the whole
+gap is counted, and 52 ms of silence. Both are under the 4 s line. None of the six seams failed to
+become audible, and none came near the 20 s hidden deadline.
+
+**Every seam into a clip is the interlude jingle, not dead air.**
+- Advancing into a clip from anything but the same episode plays the 3.0 s interlude jingle
+  (`queue-manager.js` §13, on by default). The seam lasts as long as the jingle does: the ring
+  shows a `seam.gap.hold` of about 4.47 s, which is the jingle's ceiling.
+- The ring does not record whether a jingle played. So the runner logs every element's `playing`
+  and `ended` and takes the jingle's span out of the gap. `seamStats` reports both numbers, and the
+  A-15 line is decided on the silence.
+- The reason for deciding on the silence: A-15's own acceptance, "p50 ≤ 2 s", could never be met
+  by a number that includes a 3 s jingle on every seam into a clip. The gap is printed beside the
+  silence, so the orchestrator can decide on it instead.
+
+**What this does not settle.** The files are served from the APK (`https://localhost`), so a load
+costs no network time. What (f) measures is the WebView's own hidden-page timing: every file
+started within about 50 ms of its boundary with the screen off, which is far from the 9–11 s
+hidden-page loads MP1 §4.1a measured. The network cost of a CDN line or episode belongs to the
+device pass. The jingle itself is
+fetched from `jw-incorporated.github.io`, over the network, on every run.
+
+**Two gaps in the diagnostics ring, found here:**
+- A seam opened by a rendered line's `ended` has no `fromId`, `toId` or deadline. Nothing the ring
+  keeps names either side. A likely cause, not verified: the element's `ended` reaches the ring
+  after the clip's load has already announced its deadline, while no seam was open.
+- The ring never records that the interlude jingle played.
+
+On a phone, a founder's paste therefore shows a line → clip seam as a bare "gap 3,1xx ms" with no
+ids. This is worth a small diagnostics card.
+
+### (g) Doze, gated
+
+The sequence is `dumpsys battery unplug`, Home, sleep, `dumpsys deviceidle force-idle` ("Now forced
+in to deep idle mode"), then `am set-standby-bucket ai.jwlabs.foura rare`. The deep state read
+`IDLE` at the start and at every 20 s sample, on both runs.
+
+| Run | Foray clock | Wall clock | pid | Service after |
+|---|---|---|---|---|
+| 36562447644 | 288.3 s | 300.0 s | unchanged | foreground, mediaPlayback |
+| 36565163853 | 288.6 s | 300.0 s | unchanged | foreground, mediaPlayback |
+
+The clock is short of the wall by the Foray's own seams (the jingle at each clip change).
+
+**The rare bucket does not hold while a Foray plays.** On run 36565163853 the bucket read back 40
+(rare) at 20, 40 and 60 s. It read 10 (ACTIVE) from the 80 s sample to the end, and the first
+clip change came at about 84 s. Run 36562447644 also ended at 10. The system promotes the app out
+of rare on its own, most likely because of the media notification update at a clip change. That
+promotion is not verified.
+
+So (g) proves:
+- five minutes of forced deep Doze;
+- the first minute or so of that in the rare bucket.
+
+It does not prove five minutes in rare. That is Android's behaviour and not something the job
+should fight, but a follow-up gate should not claim more.
+
+### (h) Audio focus, recorded
+
+This settles the §6.2 question on the emulator. While we play, the focus stack holds one entry:
+`pack: ai.jwlabs.foura`, client `…org.chromium.content.browser.AudioFocusDelegate`,
+`gain: GAIN`, `USAGE_MEDIA`. WebView requests and holds `AUDIOFOCUS_GAIN` for the page's
+`<audio>`, as A-03 found with a bare element. The same result held on both runs.
+
+| Helper asks for | Our stack entry while held | Our audio while held | After the helper abandons |
+|---|---|---|---|
+| `AUDIOFOCUS_GAIN_TRANSIENT` | `GAIN/LOSS_TRANSIENT`, helper on top | **paused** (0 s over 4 s; page `running: false`) | **resumed**: our entry back on top with `GAIN`, and 4.0 s over 4 s |
+| `AUDIOFOCUS_GAIN` | removed from the stack | **paused** (0 s over 4 s) | **not resumed**, and the stack is empty. This is Android's rule: a permanent loss is not given back. |
+
+The helper's own log reads `mode=transient result=1`, `mode=gain result=1` and
+`mode=abandon result=1` (tag `A05Focus`). Our app was in the background (the helper's activity on
+top) throughout.
+
+### (i) A phone call, recorded
+
+The app is on Home and playing. The sequence is `adb emu gsm call 5550105`, then `accept`, then
+`cancel`, and each answered `OK`. The same result held on both runs.
+
+| Phase | `mCallState` | Focus stack top | Our entry | Our audio |
+|---|---|---|---|---|
+| before | IDLE | ai.jwlabs.foura | `GAIN/none` | playing (4.0 s over 4 s) |
+| ringing | RINGING | com.android.server.telecom | `GAIN/LOSS_TRANSIENT` | **paused** (0 s) |
+| in call | OFFHOOK | com.android.server.telecom | `GAIN/LOSS_TRANSIENT` | **paused** (0 s) |
+| 3 s after hang-up | IDLE | ai.jwlabs.foura | `GAIN/none` | **resumed** (4.0 s over 4 s) |
+| +10 s | IDLE | ai.jwlabs.foura | `GAIN/none` | still playing |
+
+**A-12 is not triggered by the emulator.** A-12's condition is (h)/(i) "showing that we play over
+a call or over another app". We do neither:
+- WebView's own focus handling pauses on every loss;
+- it resumes on a transient regain, with the app in the background.
+
+That background resume works, unlike A04-F1's remote play: a focus regain resumes the paused
+element in place.
+
+**What is left for the device pass:**
+- a real call;
+- Spotify, which takes focus and also plays;
+- a current WebView, where A-06's API 36 leg is the emulator half.
+
+### (j) Process kill, recorded
+
+Each leg starts from a paused Foray with the app on Home. Our Media3 session holds the media
+button (`Media button session is ai.jwlabs.foura/androidx.media3.session.id.foray`). Then the
+process is ended, and `cmd media_session dispatch play` is pressed.
+
+| Leg | Did the process die? | Media button session after | Who got the play |
+|---|---|---|---|
+| `am kill ai.jwlabs.foura` | **no**: same pid on both runs. `am kill` only kills a process the system considers cached, and the paused Foray keeps the `mediaPlayback` service up. | ours, `PAUSED` | **us**, and it did not play: a handled `play` row reached the page, which sat `loading` at `readyState` 1. That is A04-F1, reproduced by a third route. |
+| SIGKILL from the app's uid (`run-as … kill -9`), what the low-memory killer does | **yes**: "Process ai.jwlabs.foura (pid …) has died: fg +50 FGS". No restart. | `null` ("Media button session is changed to null") | **nobody**: `Last MediaButtonReceiver: null`, no session playing, and our process did not come back |
+| `am force-stop` (the negative control) | yes | `null` | nobody, and our process stayed gone (gated) |
+
+On this image, then, a play after 4a's process dies goes nowhere. No other app is started, even
+though YouTube and YouTube Music have media sessions with receivers. Two consequences:
+- "The car hands play to Spotify" needs a phone where another app was the last receiver. That is
+  the device pass.
+- Nothing brought 4a back after a death. No media button receiver of ours was on record, so a
+  media key cannot restart the app. Restarting it is A-27's job in native mode.
+
+The SIGKILL leg is an addition to the card, because `am kill` could not end the process.
+
+### (k) Airplane mode narration fallback, gated
+
+The sequence is `cmd connectivity airplane-mode enable` (`airplane_mode_on=1`), with the app on
+screen. The Foray is a 6 s clip, then a rendered line at
+`https://audio.jwlabs.ai/n/a05-ci/unreachable.m4a`, then a clip.
+
+| Run | File failed | Spoken after the clip's out-point | Next clip playing after the speech started |
+|---|---|---|---|
+| 36562447644 | `narration` row: `reason=unsupported at=bridge host=audio.jwlabs.ai` | about 6 ms after the fallback row. That run timed the deadline from a poll, fixed on the next. | 7.2 s |
+| 36565163853 | the same row, 39 ms after the out-point | **42 ms** (`ForayTts.speak`, answered ok) | 6.9 s |
+
+The gate is 15 s: the visible load deadline of 10 s, plus 5 s. Offline, WebView fails the load at
+once, with `MEDIA_ERR_SRC_NOT_SUPPORTED`, which reads as `unsupported`. It does not wait out the
+deadline. The engine that spoke is `com.google.android.tts`.
+
+### (l) Back on Home while playing, gated
+
+On both runs, the first Back was consumed inside the app, and the second moved the focused window
+to the launcher. After that:
+- the pid was unchanged;
+- the clock advanced 4.0 s over 4 s (3.98 s on the second run);
+- `PlaybackKeepAliveService` was still a foreground service with the mediaPlayback type;
+- the page read `visibility: hidden`.
+
+A-07's acceptance holds: Back minimizes while something is loaded.
+
+### What a follow-up PR can turn into gates
+
+Each of these has a clear pass line and held on both runs:
+- **(h) transient focus.** Paused while held, and resumed after the abandon.
+- **(h) permanent focus.** Paused, with our entry removed from the stack.
+- **(i) the call.** Paused while ringing and in the call, and resumed within 3 s of hang-up.
+- **(f) silence.** p95 at or under 4 s (D-A4's line), with no never-audible seam.
+- **(j) a SIGKILL.** It leaves the media button with nobody.
+
+Only the force-stop control is gated today.

@@ -275,6 +275,19 @@ These are the same as `docs/native-engine-plan.md` §12, adapted:
   run ids. A follow-up PR converts each recorded value that has a clear pass line into a gate.
 - **Device check:** none. The device pass confirms the values the emulator cannot give: audible quality, a real
   call, real Bluetooth.
+- **Status (2026-09-29): built, PR #888.**
+  - **What was built.** Seven steps in `android-playback.yml` and the runner. The rendered-narration fixtures
+    are made in the job by ffmpeg at the render profile's encode, and the (h) helper APK is built with javac,
+    d8 and aapt2.
+  - **Evidence.** Green on runs 36562447644 and 36565163853, 19 min for the whole job.
+  - **What the recorded scenarios found:**
+    - **(f)** Hidden seams have p95 3.1–3.4 s of gap, which is the 3 s interlude jingle on every seam into a
+      clip, and 52 ms of silence. A-15 is **not** triggered.
+    - **(h) and (i)** WebView holds `AUDIOFOCUS_GAIN`. It pauses on a transient loss, a permanent loss and a
+      call, and it resumes after a transient loss and after the call. A-12 is **not** triggered.
+    - **(j)** `am kill` cannot end a paused Foray's process. After a SIGKILL, a media play reaches nobody.
+  - **Gated and green:** (g) Doze, (k) the airplane-mode fallback, and (l) Back on Home.
+  - **Details:** `docs/android-emulator-measurements.md` §6.
 
 #### A-06 · API 36 leg for the playback job — **S**
 - **Depends on:** A-04.
