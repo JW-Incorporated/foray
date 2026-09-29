@@ -1485,6 +1485,15 @@ function isRunning() {
   return isPlaying() || manager?.inSeamGap === true;
 }
 
+/** Something is current AND its media is loaded (playing or paused). False
+    for a restored bar (nothing loaded until the first press), an ended queue
+    and nothing at all. Shared by `isLoadedCurrent` and `hasLoadedItem`. */
+function hasLoadedItem() {
+  if (!current || restoredPending) return false;
+  const t = manager?.state?.type;
+  return typeof t === "string" && t !== "idle" && t !== "ended";
+}
+
 /**
  * THE ONE PLACE BELIEF IS CHECKED AGAINST THE ELEMENT (#689).
  *
@@ -4652,9 +4661,19 @@ const ForayPlayer = {
    * toggling (round-3 review, L2).
    */
   isLoadedCurrent(id) {
-    if (!id || current?.id !== id || restoredPending) return false;
-    const t = manager?.state?.type;
-    return typeof t === "string" && t !== "idle" && t !== "ended";
+    return Boolean(id) && current?.id === id && hasLoadedItem();
+  },
+
+  /**
+   * Is ANYTHING loaded right now — an episode or a Foray, playing or paused?
+   * `isLoadedCurrent`'s answer without the id: the same three exclusions (a
+   * restored bar, an ended queue, nothing at all). What Android's hardware
+   * back asks on Home (A-07, docs/plans/android-assessment.md): with something
+   * loaded it minimizes, so the service and the audio carry on; with nothing
+   * loaded it leaves the app as before.
+   */
+  hasLoadedItem() {
+    return hasLoadedItem();
   },
 
   /** The id of the ORDINARY episode on the bar, or null — null during a Foray,
