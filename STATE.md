@@ -45,8 +45,20 @@ now something does.
 **Executed locally:** `javac --release 21 -Xlint:all -Werror` plus JUnit on the JDK 21 already on this PC (a
 memory-capped plain `javac`, not Gradle): 46 JUnit cases green, the parity report shows 760 passed and 0 failed. Also
 green: `node --test` on gen-constants, record, suite-integrity, shell-invariants, android-workflow, `player/parity/*`
-and engine-ci. `record.mjs --check` passes. **CI:** the run ids are in the PR and below once green. No device, and no
-request to Joey (D-A3).
+and engine-ci. `record.mjs --check` passes.
+
+**CI-executed** (PR #890, head `8dda993a`):
+- `android-build` / `android-shell`: run 36589796184, job 109479593363. `:foray-engine-core-jvm:test` ran 46 JUnit
+  cases with 0 skipped, in 17 s. Parity totals: passed 760, not-ported 1018, js-only 58, and
+  failed/pending/stale/unaccounted all 0. Each of the eight families shows `executed = passed = cases, owed=0`. The
+  number-format mutation still turned the runner red. `assembleDebug` and `assembleRelease` are green, so D8 dexed the
+  ported classes for minSdk 24.
+- `CI` run 36589796182 is green: `engine-parity`, `ios-kit`, `ios-gate`, `data-and-site`, `backend`, `api` and
+  `playwright`.
+- Also green: `ios-build` / `ios-shell` (run 36589796283), `android-playback` API 34 and 36 (run 36589796347), and
+  `android-smoke` (run 36589796195).
+
+No device, and no request to Joey (D-A3).
 
 ### 2026-09-29 — `android/a-22-jvm-parity`: A-22, the JVM parity runner and its books
 
