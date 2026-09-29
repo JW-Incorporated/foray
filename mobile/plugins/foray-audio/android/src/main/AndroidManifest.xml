@@ -41,6 +41,11 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- A-25: the native engine's ExoPlayer deck (engine/ExoDeck.java) sets
+         setWakeMode(C.WAKE_MODE_NETWORK), so the CPU and the Wi-Fi radio stay up while it
+         plays with the screen off, and Media3 needs WAKE_LOCK to hold those locks. A normal
+         (install-time) permission: no prompt and no Play declaration. -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
 
     <application>
         <service

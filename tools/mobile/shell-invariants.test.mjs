@@ -1521,7 +1521,7 @@ test("the plugin's Gradle dependencies are androidx only, and each is named in t
   const coords = [
     ...gradle.matchAll(/^\s*(?:implementation|api|compileOnly|runtimeOnly)\s+["']([^"']+)["']/gm),
   ].map((m) => m[1]);
-  const allowed = [/^androidx\.appcompat:appcompat:/, /^androidx\.media3:media3-(session|common):/];
+  const allowed = [/^androidx\.appcompat:appcompat:/, /^androidx\.media3:media3-(session|common|exoplayer):/];
   const header = gradle.slice(0, gradle.indexOf("*/"));
   for (const c of coords) {
     assert.ok(
@@ -1534,15 +1534,12 @@ test("the plugin's Gradle dependencies are androidx only, and each is named in t
       "the plugin declares " + c + " and the build.gradle header does not mention " + artefact
     );
   }
-  /* NOT exoplayer and NOT ui, which are the two easy mistakes: one puts a second real
-     audio pipeline in a process whose whole design is that the page owns the only one,
-     and the other is ~1 MB of PlayerView for a notification built with
-     NotificationCompat. */
+  /* NOT ui: ~1 MB of PlayerView for a notification built with NotificationCompat.
+     media3-exoplayer WAS on this list until A-25 (docs/plans/android-assessment.md §5.4),
+     when the native engine got its deck (engine/ExoDeck.java); the A-25 test below pins
+     what that player may and may not do. */
   for (const c of coords) {
-    assert.ok(
-      !/media3-(exoplayer|ui)/.test(c),
-      "the plugin declares " + c + ": there is no player to build and no view to inflate here"
-    );
+    assert.ok(!/media3-ui/.test(c), "the plugin declares " + c + ": there is no view to inflate here");
   }
   /* A FIXED VERSION, not a range. `1.+` or `latest.release` makes the lock screen's
      behaviour a function of the day the APK was built, which is the one property a
@@ -1572,7 +1569,12 @@ test("the plugin's Gradle dependencies are androidx only, and each is named in t
      — had silently gone. That build fails, so it is not the worst kind of hole; but a
      test whose whole subject is the dependency list should not need the compiler to
      notice a missing dependency. */
-  for (const required of ["androidx.appcompat:appcompat:", "androidx.media3:media3-session:", "androidx.media3:media3-common:"]) {
+  for (const required of [
+    "androidx.appcompat:appcompat:",
+    "androidx.media3:media3-session:",
+    "androidx.media3:media3-common:",
+    "androidx.media3:media3-exoplayer:",
+  ]) {
     assert.ok(
       coords.some((c) => c.startsWith(required)),
       "the plugin no longer declares " + required + ", which it compiles against"
@@ -2595,6 +2597,57 @@ test("A-21: foray-engine-core-jvm is a pure JVM module that cap add android link
     );
   }
   assert.ok(!main.some((f) => /AndroidManifest\.xml$/.test(f)), "a java-library has no manifest");
+});
+
+test("A-25: the ExoPlayer deck sits behind DeckDriving, holds its wake mode, and starts audio in one place", () => {
+  /* docs/plans/android-assessment.md A-25. The deck is foray-audio's (the platform half), and
+     the core it speaks to is the pure-JVM module, linked by project path, never the other way
+     round (the A-21 test above pins that the core has no main dependency).
+     - setWakeMode(C.WAKE_MODE_NETWORK): the card's requirement, the thing that keeps the CPU
+       and the Wi-Fi radio up across a screen-off seam; Media3 needs WAKE_LOCK to hold it, so
+       the library manifest declares it.
+     - SeekParameters.EXACT: an in-point is a place in the content, not the nearest sync point.
+     - ONE AUDIBLE START. `player.play()` appears once, in applyRateAndPlay (the rate is
+       re-applied on every play), and nothing sets play-when-ready true behind it: the
+       twin of the iOS "preroll( only in prerollWhenReady" pin, because a second start path
+       is how audio escapes the readiness gate.
+     - The tests are the card's harness: media3-test-utils and -robolectric at the one Media3
+       version, and the click tracks read in place from the iOS fixtures.
+     MUTATION: drop the wake mode, a second `.play()`, `setPlayWhenReady(true)`, the WAKE_LOCK
+     line, the core project dependency, or the test-utils lines; each fails here. */
+  const android = path.join(PLUGIN_DIR, "android");
+  const gradle = fs.readFileSync(path.join(android, "build.gradle"), "utf8");
+  const code = gradle.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");
+  assert.match(code, /implementation project\(':foray-engine-core-jvm'\)/, "foray-audio must link the engine core by project path");
+  for (const a of ["media3-test-utils", "media3-test-utils-robolectric"]) {
+    assert.ok(code.includes(`testImplementation "androidx.media3:${a}:$` + `media3Version"`), `${a} at the one Media3 version`);
+  }
+  assert.match(code, /systemProperty 'foray\.clicktracks\.dir'/, "the click tracks reach the tests in place");
+
+  const engineDir = path.join(android, "src", "main", "java", "ai", "jwlabs", "foura", "audio", "engine");
+  const strip = (src) =>
+    src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "").replace(/"(?:[^"\\n]|\.)*"/g, '""');
+  const deck = strip(fs.readFileSync(path.join(engineDir, "ExoDeck.java"), "utf8"));
+  assert.match(deck, /class ExoDeck implements DeckDriving\b/);
+  assert.match(deck, /setWakeMode\(C\.WAKE_MODE_NETWORK\)/, "the deck must hold the network wake mode");
+  assert.match(deck, /setSeekParameters\(SeekParameters\.EXACT\)/, "in-points are exact");
+  assert.equal((deck.match(/\.play\(\)/g) || []).length, 1, "ExoDeck starts audio in exactly one place");
+  assert.doesNotMatch(deck, /setPlayWhenReady\(\s*true\s*\)/, "no second start path around the readiness gate");
+  assert.doesNotMatch(deck, /import com\.getcapacitor\./, "the deck is engine code, not bridge code");
+  const seam = strip(fs.readFileSync(path.join(engineDir, "DeckDriving.java"), "utf8"));
+  assert.match(seam, /interface DeckDriving\b/);
+  assert.doesNotMatch(seam, /import androidx\.media3\./, "the seam names no Media3 type: a fake stands behind it too");
+
+  const manifest = fs.readFileSync(path.join(android, "src", "main", "AndroidManifest.xml"), "utf8");
+  assert.match(manifest, /<uses-permission android:name="android\.permission\.WAKE_LOCK" \/>/, "WAKE_MODE_NETWORK needs WAKE_LOCK");
+
+  const testDir = path.join(android, "src", "test", "java", "ai", "jwlabs", "foura", "audio", "engine");
+  for (const name of ["ExoDeckTest.java", "ExoDeckMeasurementTest.java"]) {
+    assert.ok(fs.existsSync(path.join(testDir, name)), `${name} is the card's acceptance and is missing`);
+  }
+  const harness = fs.readFileSync(path.join(testDir, "DeckHarness.java"), "utf8");
+  assert.match(harness, /new TestExoPlayerBuilder\(/, "the deck is tested on media3-test-utils' player");
+  assert.match(harness, /new FakeClock\(/, "in virtual time");
 });
 
 test("A-23: the JVM core's main code keeps to the API 24 library surface, and reads its numbers from the generated constants", () => {

@@ -52,11 +52,29 @@
  * ANYWAY, because `WebViewPlayer.java` imports it directly and a module should ask
  * for what it compiles against rather than inherit it. Same version, one place.
  *
- * NOT MEDIA3-EXOPLAYER, NOT MEDIA3-UI. There is no player to build and no view to
- * inflate: the audio is the WebView's own `<audio>` element. `media3-ui` would be
- * ~1 MB of `PlayerView` for a notification we build with `NotificationCompat`, and
- * `media3-exoplayer` would put a second, real audio pipeline in a process whose whole
- * design is that the page owns the one that exists.
+ * AND SINCE A-25 (docs/plans/android-assessment.md §5.4, Track A1), MEDIA3-EXOPLAYER
+ * AND THE ENGINE CORE, because the native engine now has a deck:
+ *
+ *   - androidx.media3:media3-exoplayer  — `ExoPlayer`, the player behind
+ *     `engine/ExoDeck.java`, the Android twin of iOS's AVDeck. Until A-25 this header
+ *     said the opposite ("a second, real audio pipeline in a process whose whole design
+ *     is that the page owns the one that exists"), and that stays true of the JS lane:
+ *     the deck is wired to nothing until A-26's MediaSessionService drives it in native
+ *     mode, behind the A-20 contract gate (mobile/ENGINE_DEFAULT.json: android mode `js`).
+ *     It brings media3-extractor, -decoder, -container and -datasource (the progressive
+ *     MP3/WAV path) and androidx.exifinterface.
+ *   - project(':foray-engine-core-jvm') — the engine's pure-JVM core (A-21..A-24): the
+ *     deck speaks its DeckCommand / DeckEvent vocabulary and runs its out-point reducer.
+ *     Not a Maven artefact: the sibling module `cap add android` already includes.
+ *
+ * STILL NOT MEDIA3-UI: ~1 MB of `PlayerView` for a notification we build with
+ * `NotificationCompat`.
+ *
+ * AND FOR THE TESTS ONLY (A-25): androidx.media3:media3-test-utils and
+ * media3-test-utils-robolectric (`TestExoPlayerBuilder`, `FakeClock`,
+ * `RobolectricUtil`), the card's named harness, at the one Media3 version. They depend
+ * on Robolectric 4.16, so the Robolectric line below says 4.16 rather than let Gradle
+ * quietly lift 4.14.1 under it.
  *
  * WHAT COMES IN BEHIND THEM, stated because a transitive dependency is still a
  * dependency: `media3-common` exposes `com.google.guava:guava` (33.3.1-android) as
@@ -102,6 +120,11 @@ ext {
     media3Version = '1.11.0'
 }
 
+/* A-25: the NE-25a click tracks the ExoDeck measurements play, read IN PLACE from the iOS
+   test fixtures (the same files the iOS InOutPointMeasurementTests measure), as the JVM core
+   reads player/parity/ in place: nothing is copied into this module. */
+def forayClickTracks = file('../ios/Tests/ForayAudioPluginTests/Fixtures/ClickTracks')
+
 apply plugin: 'com.android.library'
 
 android {
@@ -140,6 +163,14 @@ android {
         unitTests {
             includeAndroidResources = true
             returnDefaultValues = true
+            /* A-25: the click tracks are an INPUT of the unit-test task (a fixture-only change
+               reruns it) and reach the tests as a system property. The ExoDeck tests hold a
+               real ExoPlayer each; the heap is raised from Gradle's 512 MB default for them. */
+            all { test ->
+                test.systemProperty 'foray.clicktracks.dir', forayClickTracks.path
+                test.inputs.dir(forayClickTracks).withPropertyName('forayClickTracks').withPathSensitivity(PathSensitivity.RELATIVE)
+                test.maxHeapSize = '2g'
+            }
         }
     }
 }
@@ -154,6 +185,8 @@ dependencies {
     implementation "androidx.appcompat:appcompat:$androidxAppCompatVersion"
     implementation "androidx.media3:media3-session:$media3Version"
     implementation "androidx.media3:media3-common:$media3Version"
+    implementation "androidx.media3:media3-exoplayer:$media3Version"
+    implementation project(':foray-engine-core-jvm')
 
     /* JVM unit tests only (src/test), not instrumentation — no emulator/device
        needed, so these run in the same `assembleDebug`-hosting CI job. Versions
@@ -162,7 +195,9 @@ dependencies {
        the wrong version is a resolution error, not a test failure, so it is looked
        up rather than remembered. */
     testImplementation "junit:junit:4.13.2"
-    testImplementation "org.robolectric:robolectric:4.14.1"
+    testImplementation "org.robolectric:robolectric:4.16"
     testImplementation "androidx.test:core:1.6.1"
     testImplementation "androidx.test.ext:junit:1.2.1"
+    testImplementation "androidx.media3:media3-test-utils:$media3Version"
+    testImplementation "androidx.media3:media3-test-utils-robolectric:$media3Version"
 }

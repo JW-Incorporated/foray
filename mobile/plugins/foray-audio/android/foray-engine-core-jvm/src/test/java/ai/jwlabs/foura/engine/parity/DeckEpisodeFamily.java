@@ -124,7 +124,7 @@ final class DeckEpisodeFamily {
      * default, {@code pinnedMs != null} is loose (and returned as given, so it must be a
      * number), {@code hidden === true} is strict.
      */
-    private static Outcome loadDeadlineMs(List<Json> args) {
+    static Outcome loadDeadlineMs(List<Json> args) {
         Json s = JsArgs.objectParam(arg(args, 0), true);
         if (s == null) return TYPE_ERROR;
         double deadline = DeckPolicy.loadDeadlineMs(looseNumber(at(s, "pinnedMs"), "loadDeadlineMs's pinnedMs"),
@@ -138,7 +138,7 @@ final class DeckEpisodeFamily {
      * falsy {@code loadedUrl} is "nothing loaded"; a truthy one must be a string, and
      * {@code url} is compared strictly, so a non-string url never equals it.
      */
-    private static Outcome sameSourceIsSeek(List<Json> args) {
+    static Outcome sameSourceIsSeek(List<Json> args) {
         Json s = param(args);
         if (s == null) return TYPE_ERROR;
         Json loaded = at(s, "loadedUrl");
