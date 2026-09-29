@@ -457,6 +457,10 @@
       "reason": "dom-only",
       "why": "The restored ribbon's ↺/↻ nudges move a PENDING position the page holds with nothing loaded in any engine; the press that follows carries it as playEpisode's startSec (native-facades.test.js). Page painting that client.js does identically in both modes from what the manager surface answers (in native mode, the facades); the engine never draws the page, so there is nothing here for Swift to reimplement."
     },
+    "A-08: on ANDROID, headphones unplugged pause the transport and write where it stopped": {
+      "reason": "webview-only",
+      "why": "The Android shell has no native engine, so the page acts on the Capacitor plugin's copy of the route loss: PlaybackKeepAliveService turns ACTION_AUDIO_BECOMING_NOISY into the iOS plugin's routeChange/old-device-gone session event, and client.js onNativeSession calls manager.routeChanged. In native mode the page returns before acting (the engine observes AVAudioSession's route change itself, plan §4.4), and the rule the call reaches, a lost route pauses and writes where it stopped, is fixtured in manager-episode (a-lost-route-writes-where-it-stopped)."
+    },
     "REPORT 1: a LATE interruption never pauses audio the listener has since resumed": {
       "reason": "webview-only",
       "why": "A suspended WebView handles the plugin's session event when it wakes, so an interruption can reach the page after the listener resumed, and the page must ask the element rather than obey. The engine observes AVAudioSession.interruptionNotification live (plan §4.4), where began means the session was taken now; the reconcile that does run natively is fixtured in manager-episode (an-unseen-stop-is-corrected-once-and-one-press-resumes)."
