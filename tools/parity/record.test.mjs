@@ -397,9 +397,9 @@ test("--check holds every recorded family to exactly one of the JVM's runs and i
 
 /* ---------- --mutate ---------- */
 
-test("the four named mutation rules exist, and each anchor occurs exactly once in its file", () => {
+test("the five named mutation rules exist, and each anchor occurs exactly once in its file", () => {
   const rules = loadMutations();
-  assert.deepStrictEqual(Object.keys(rules), ["seam-gap", "never-early", "15/30", "pause-silence"]);
+  assert.deepStrictEqual(Object.keys(rules), ["seam-gap", "never-early", "15/30", "pause-silence", "warm-across"]);
   for (const [name, r] of Object.entries(rules)) {
     const src = fs.readFileSync(path.join(ROOT, r.patch.file), "utf8");
     assert.equal(src.split(r.patch.find).length - 1, 1, `${name}: anchor drifted in ${r.patch.file}`);
@@ -444,6 +444,19 @@ test("--mutate on the pause-silence rule fails both the original JS test and the
      pause-silences-an-audible-element scenario loses its `pause`. MUTATION:
      delete that scenario -> "fixture: ... still pass". */
   const r = runMutation("pause-silence", loadMutations()["pause-silence"], { root: ROOT });
+  assert.equal(r.js, "killed", r.detail.join("\n"));
+  assert.equal(r.fixture, "killed", r.detail.join("\n"));
+  assert.equal(r.killed, true);
+});
+
+test("--mutate on the warm-across rule fails both the original JS test and the prepare-narration family", () => {
+  /* NE-45j's acceptance: --mutate back to the beat rule turns a clip -> line
+     case red. The mutant warms only a segment-to-segment seam, so the rendered
+     line after a clip is not prepared (queue-manager.test.js) and neither the
+     authored clip -> line -> clip seams nor the warmsAcross rows hold.
+     MUTATION: drop every clip -> line case from prepare-narration ->
+     "fixture: ... still pass". */
+  const r = runMutation("warm-across", loadMutations()["warm-across"], { root: ROOT });
   assert.equal(r.js, "killed", r.detail.join("\n"));
   assert.equal(r.fixture, "killed", r.detail.join("\n"));
   assert.equal(r.killed, true);

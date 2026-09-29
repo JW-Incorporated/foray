@@ -764,10 +764,67 @@ export function unexplainedPauseAction({ expected, ended, warmInFlight }) {
 /**
  * Does the prefetch window open on this tick? Only while the player is
  * AUDIBLE (a paused page is the throttled state warming exists to avoid), with
- * an armed boundary, once per boundary, and within `leadSec` of WALL clock —
- * so a faster rate opens it earlier in the episode.
+ * a boundary, once per boundary, and within `leadSec` of WALL clock — so a
+ * faster rate opens it earlier in the episode.
+ *
+ * THE BOUNDARY (NE-45j). An armed out-point, when the item has one. An item
+ * with NO out-point — a rendered narration line, or an episode left to its
+ * natural end — ends where its file does, so its boundary is `durationSec`,
+ * and the window opens `leadSec` of wall clock before that. An item shorter
+ * than the lead is therefore inside its window from its first tick: it warms
+ * at its start, which is the only time there is. No out-point and no usable
+ * duration is no boundary, and nothing opens. An out-point that exists but is
+ * not armed is still no boundary: the duration never stands in for a slice's
+ * own end.
+ *
+ * `durationSec` is optional and defaults to "none", so a caller that does not
+ * pass it (HtmlAudioBackend: the web lane is parked and unchanged) gets exactly
+ * the out-point-only answer it always had.
  */
-export function prefetchWindowOpens({ available, outPointSec, armed, paused, atSec, rate, leadSec, alreadyOpened = false }) {
-  if (!available || outPointSec == null || !armed || paused || alreadyOpened) return false;
-  return !((outPointSec - atSec) / deckRate(rate) > leadSec);
+export function prefetchWindowOpens({
+  available, outPointSec, armed, paused, atSec, rate, leadSec, alreadyOpened = false, durationSec = null,
+}) {
+  if (!available || paused || alreadyOpened) return false;
+  const boundarySec = outPointSec != null
+    ? (armed ? outPointSec : null)
+    : (Number.isFinite(durationSec) && durationSec > 0 ? durationSec : null);
+  if (boundarySec == null) return false;
+  return !((boundarySec - atSec) / deckRate(rate) > leadSec);
+}
+
+/**
+ * Is the item AFTER `from` prepared on the standby deck? (NE-45j.)
+ *
+ * The rule is the FILE, not the beat. The next item is prepared when it has a
+ * file to fetch: a clip, a rendered narration line (`audio_url`), anything
+ * with a source. A spoken, script-only line has no file, so it prepares
+ * nothing — the synthesiser speaks it. The Foray's last item prepares nothing
+ * (there is no `to`), because a Foray does not chain.
+ *
+ * WHY NOT THE BEAT ANY MORE. Until NE-45j this question was
+ * `seamGapSec(seam) > 0` (seam-gap.js): warm exactly the seams that get a
+ * beat. That was right while the only thing worth preparing was the next
+ * segment, and it made every narration seam cold. A line is not a beat seam
+ * (it carries its own padding), so clip -> line -> clip paid two cold loads,
+ * each one `max(0, load)` of silence on a phone that may be backgrounded. The
+ * beat still decides how much SILENCE a seam gets; this decides whether the
+ * next file is ready when the silence ends. Two questions, two rules.
+ *
+ * WHEN is not decided here. The window (`prefetchWindowOpens`) opens `leadSec`
+ * before the current item's boundary — its out-point, or its duration when it
+ * has none. The one exception is a SPOKEN line: the standby deck is idle
+ * while the synthesiser speaks, so the manager asks at the line's START
+ * (queue-manager.js §11).
+ *
+ * Whether a warm then happens at all is `prefetchDecision`: a next item in
+ * the source the player already holds is a same-source seek, not a warm.
+ *
+ * @param {object} s
+ * @param {object|null} s.from  the queue item playing now
+ * @param {object|null} s.to    the queue item that boundary advances to
+ * @returns {boolean}
+ */
+export function warmsAcross({ from = null, to = null } = {}) {
+  if (!from || !to) return false;
+  return typeof to.audio_url === "string" && to.audio_url.length > 0;
 }

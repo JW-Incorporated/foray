@@ -99,12 +99,22 @@
    window is open, what comes next and where does it start — and deliberately
    nothing more: the queue is the one thing here a backend must never learn.
 
-   Two properties to preserve:
+   Three properties to preserve:
 
-     WARMING USES THE BEAT'S OWN RULE. Eligibility is `seamGapSec(...) > 0`, the
-     same call that decides the beat, not a second copy of "is this a
-     segment-to-segment seam". Warm exactly the transitions that get a beat and
-     the two cannot drift apart.
+     WARMING FOLLOWS THE FILE, NOT THE BEAT (NE-45j). Eligibility is
+     `deck-policy.js` `warmsAcross`: the next item is prepared when it has a
+     file (a clip, or a rendered narration line), whatever the beat says. It
+     used to be `seamGapSec(...) > 0`, which warmed only segment-to-segment
+     seams and left every narration seam cold — clip -> line -> clip paid two
+     cold loads. A spoken (script-only) line has no file and prepares nothing;
+     the Foray's last item prepares nothing.
+
+     A SPOKEN LINE WARMS WHAT FOLLOWS IT AT ITS START. The media element (the
+     native standby deck) is idle while the synthesiser speaks, and no
+     playhead is approaching a boundary to open a window, so the manager asks
+     itself once the line is audible (`_loadItem`, `_playTransitionBridge`).
+     Only for a backend that can actually prefetch: HtmlAudioBackend's
+     handover is parked (`canPrefetch` false), and no warm reaches it.
 
      THE BEAT IS STILL SPENT IN FULL. `_awaitSeamGap` is untouched, so a
      handover that finishes early waits out the remainder and the listener hears
@@ -231,6 +241,7 @@ import { seamGapSec, describeSeam, SEAM_GAP_SEC, AUTO_ADVANCE } from "./seam-gap
 import { normalizeRate, isRate, DEFAULT_RATE } from "./playback-rate.js";
 import { interludeEligible, describeInterlude, INTERLUDE_CEILING_SEC } from "./interlude.js";
 import { interruptionResumeOffset } from "./transport-policy.js";
+import { warmsAcross } from "./deck-policy.js";
 
 /** The periodic position write's cadence. Exported (NE-08) so the native
     engine's generated constants (NE-04) and its ResumeRules port read this
@@ -1898,7 +1909,12 @@ export class PlayerQueueManager {
       }
       await this._handle(E.itemLoaded());
       // §15: the item is audible; warm the narration file straight after it.
-      if (this._loadSeq === seq && this.state.type === "playing") this._warmNextNarration();
+      if (this._loadSeq === seq && this.state.type === "playing") {
+        this._warmNextNarration();
+        // §11 (NE-45j): a SPOKEN line leaves the deck idle, so what follows it
+        // is prepared now, at the line's start.
+        if (this._loadedIsSynth) this._warmNextSegment("line-start");
+      }
     } catch (err) {
       /* A load nobody is on any more failing is not the CURRENT item failing.
          Dispatching `error` here would move the reducer to `idle` and pause the
@@ -2565,40 +2581,57 @@ export class PlayerQueueManager {
   }
 
   /**
-   * The backend's playhead watch says the boundary is `PREFETCH_LEAD_SEC` of
-   * wall clock away. Name the segment that boundary will advance to, and where
-   * it starts, so that its load happens while the current one is still audible.
+   * Name the item the next boundary will advance to, and where it starts, so
+   * that its load happens while the current item is still audible.
+   *
+   * Two callers (§11, NE-45j):
+   *   - the backend's playhead watch, `PREFETCH_LEAD_SEC` of wall clock before
+   *     the boundary: the out-point, or the file's end for an item with none
+   *     (a rendered line, an episode's natural end);
+   *   - this class, at the START of a spoken line (`at: "line-start"`),
+   *     because the synthesiser is audible and the deck is not.
    *
    * Synchronous on purpose: it is called from inside a media event, it touches
    * no state of ours and dispatches no event, so it cannot interleave with the
-   * reducer. Everything about HOW the load happens — the second element, the
-   * readiness condition, the handover — is the backend's, and stays there.
+   * reducer. Everything about HOW the load happens — the second element or
+   * standby deck, the readiness condition, the handover — is the backend's.
    *
    * A warmed segment can still be refused at load time by the ADR-0007 ladder
    * (`_segmentGate`), in which case the bytes are wasted and the skip proceeds
    * exactly as it does today. A wasted warm load is the cheapest failure here
    * and is not worth a guard.
    */
-  _warmNextSegment() {
+  _warmNextSegment(at = "window") {
     if (this._disposed) return;
-    // Only a running item is approaching a boundary. A beat, a pause or a load
-    // in flight has no seam to cover yet — and `_cursor()` would answer for an
-    // in-flight skip rather than for what is playing.
-    if (this.state.type !== "playing") return;
-    const next = this._nextItem(this._cursor(), false);
-    if (!next) return this._emit("prefetch.none: nothing follows this item");
+    if (!this._canPrefetchSegments()) return;
+    // Only an AUDIBLE item is approaching a boundary: a playing one, or a line
+    // bridging a seam (`transitioning`). A beat, a pause or a load in flight
+    // has no seam to cover yet — and `_cursor()` would answer for an in-flight
+    // skip rather than for what is playing.
+    const type = this.state.type;
+    if (type !== "playing" && type !== "transitioning") return;
+    // What the boundary will advance to, counted the way
+    // `_handleBackendItemEnded` counts it from each state.
+    const next = this._nextItem(this._cursor(), type === "transitioning");
+    if (!next) return this._emit(`prefetch.none: nothing follows this item (${at})`);
     const from = this._currentItem();
     const to = next.item;
-    const seam = { from, to, bridged: to.kind === TTS, cause: AUTO_ADVANCE, gapSec: this.seamGapSec };
-    // The beat's own rule, CALLED rather than re-implemented (§11): warm exactly
-    // the transitions that get a beat, and the two cannot drift apart.
-    if (seamGapSec(seam) <= 0) return this._emit(`prefetch.skipped ${to.id}: ${describeSeam(seam)}`);
+    if (!warmsAcross({ from, to })) {
+      return this._emit(`prefetch.skipped ${to.id}: ${to.kind === TTS ? "a spoken line has no file to prepare" : "no file to prepare"} (${at})`);
+    }
     const bounds = boundsOf(to);
     // The in-point, which is the same offset `_loadItem` will ask for. A warm
     // element parked anywhere else is not promoted — see the backend's
     // `_warmReadyFor` — so getting this wrong costs a slow seam, never a
     // segment that starts in the wrong place.
     this.backend.prefetch(to, { startOffset: bounds ? bounds.startSec : 0 });
+  }
+
+  /** Can the backend prepare a next item at all? It must implement `prefetch`
+      and not say it is off: HtmlAudioBackend's handover is parked
+      (`canPrefetch` false) and stays so, so this class never asks it. */
+  _canPrefetchSegments() {
+    return typeof this.backend.prefetch === "function" && this.backend.canPrefetch !== false;
   }
 
   /**
@@ -2916,6 +2949,10 @@ export class PlayerQueueManager {
       // §15: nothing to warm behind a bridge (a clip follows it), but a warm
       // left over from before it is no longer "next".
       this._warmNextNarration();
+      // §11 (NE-45j): a SPOKEN bridge leaves the deck idle, so the clip after
+      // it is prepared now, at the line's start. A rendered bridge's window
+      // is the deck's, from its duration.
+      if (this._loadedIsSynth) this._warmNextSegment("line-start");
     } catch (err) {
       this._emit(`transitionTTS.loadFailed: ${err?.message ?? err}`);
       await this._advancePastBridgeFailure();

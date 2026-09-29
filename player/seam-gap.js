@@ -40,12 +40,13 @@
      - The beat is still spent in full when the load finishes early. That is
        deliberate: the beat is the authored FLOOR of the silence between two
        voices (the founder's number, below), and the load can only lengthen it.
-     - `seamGapSec()` is ALSO the eligibility rule for warming: the manager
-       warms exactly the transitions that get a beat (`queue-manager.js` §11),
-       whenever the backend's prefetch is switched back on. So a change here
-       changes what would get prefetched. That coupling is on
-       purpose — two answers to "is this a seam" is the drift this module exists
-       to prevent — but it is wider than it looks.
+     - `seamGapSec()` is NOT the rule for warming any more (NE-45j). It used
+       to be — the manager warmed exactly the transitions that got a beat —
+       and that left every narration seam cold, because a seam with a line in
+       it gets no beat. What is prepared is now `deck-policy.js`
+       `warmsAcross`: the next item is warmed when it has a file, whatever
+       the beat (`queue-manager.js` §11). A change here changes the SILENCE
+       at a seam and nothing about what is loaded before it.
 
    ── The number: 0.5 s, the founder's ruling of 2026-09-24 ────────────────
 
