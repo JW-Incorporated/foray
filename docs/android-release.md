@@ -19,6 +19,14 @@ started on any device or emulator. `android-release.yml` adds all three: a
 upload key from GitHub Secrets, and an emulator job that installs the app,
 starts it, and reads the running WebView back over Chrome DevTools.
 
+> **A-02, 2026-09-29 (`docs/plans/android-assessment.md` §5.3).** The emulator
+> job moved to `.github/workflows/android-smoke.yml`, steps unchanged, and now
+> runs on every PR that touches what the app is built from (`mobile/**`,
+> `tools/mobile/**`, `player/**`, `app.js`, `index.html`) as well as the
+> release pipeline's paths. `android-release.yml` calls it on a
+> `workflow_dispatch`, so a by-hand bundle run still ends with a launch verdict.
+> It reads no secret and never uploads to a store. §4.1 is updated.
+
 > **SUPERSEDED FOR THE UPLOAD HALF, 2026-09-07 (R-05, `docs/release-lockstep-plan.md`).**
 > Once R-03's `release.yml` had a real green run on `main`, uploading to Play's
 > internal testing track became `release.yml`'s job via
@@ -212,7 +220,7 @@ recovery path referenced in §1.1 exists only for enrolled apps.
 
 ## 4. The smoke test, and exactly what it settles
 
-The `android-smoke` job builds the debug APK, boots an API-34 emulator on the
+The `android-smoke` job (`android-smoke.yml` since A-02) builds the debug APK, boots an API-34 emulator on the
 runner, installs the app, starts `MainActivity`, and then reads the live page
 over the Chrome DevTools protocol (`tools/mobile/webview-probe.mjs`).
 
@@ -264,14 +272,26 @@ So:
 
 - **not required** — `protect-main` requires `backend`, `data-and-site` and
   `path-policy`, and neither of these jobs is named like any of them;
-- **not on every PR** — the `pull_request` trigger fires only when the release
-  pipeline itself changes (`android-release.yml`, `mobile/gradle/**`,
-  `wire-signing.mjs`, `webview-probe.mjs`). Ordinary `mobile/**` changes are
-  covered by `android-build.yml`, which stays fast, credential-free and
-  emulator-free;
+- **on every app PR, and on nothing else** — since A-02 the smoke lives in
+  `android-smoke.yml`, whose `pull_request` trigger is `android-build.yml`'s path
+  set (`mobile/**`, `tools/mobile/**`, `player/**`, `app.js`, `index.html`)
+  plus `search-engine.js` and `styles.css` (bundled, and loaded before
+  `app.js`), the release pipeline's paths and itself. Not `data/**` or `docs/**`, and
+  no `push` or `schedule`. The measured cost that made this affordable: 3m49s end
+  to end (run 36203157867). The iPhone no longer runs the JS player lane, so this
+  emulator is the only automated witness that `app.js` and `player/` still start
+  on a phone;
+- **the bundle stays narrow** — `android-release.yml`'s own `pull_request`
+  trigger still fires only when the release pipeline changes
+  (`android-release.yml`, `mobile/gradle/**`, `wire-signing.mjs`), so the upload
+  key is never decoded for an ordinary app PR. It calls `android-smoke.yml` on a
+  `workflow_dispatch` only, and passes it no secrets;
 - **not able to block a bundle** — `android-smoke` does not `needs:`
   `android-bundle` in either direction, so a flaked AVD never stands between the
-  founder and a submittable `.aab`. That independence is asserted by a test.
+  founder and a submittable `.aab`. That independence is asserted by a test;
+- **never an upload path, and holds no secret** — the smoke job reads no secret
+  and uploads nothing but its own evidence as a GitHub Actions artifact.
+  `tools/mobile/android-workflow.test.mjs` pins both.
 
 A flaky required check is worse than no check. This one is advisory: its verdict
 is read by a human before a submission.

@@ -5,10 +5,12 @@ description: >-
   the signed .aab as a workflow artifact instead and say exactly why. Factored
   out of android-release.yml for R-03 (docs/release-lockstep-plan.md) so
   release.yml and the PR-time CI job share one implementation. DOES NOT run
-  the android-smoke emulator job — that stays a separate, much slower job in
-  android-release.yml per its own header ("not needs: android-bundle... this
-  job builds and installs the DEBUG APK"); release.yml ships what android-build/
-  android-release already proved boots, it does not re-prove it on every tag.
+  the android-smoke emulator job — that is a separate job, in android-smoke.yml
+  since A-02 (it runs on every app PR, and android-release.yml calls it on a
+  dispatch), per its own header ("it does not install android-release.yml's
+  bundle... this job builds and installs the DEBUG APK"); release.yml ships what
+  android-build/android-smoke already proved boots, it does not re-prove it on
+  every tag.
   Callers must `actions/checkout` before invoking this action.
 
 inputs:

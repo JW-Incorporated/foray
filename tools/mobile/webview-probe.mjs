@@ -284,18 +284,33 @@ export async function evaluate(wsUrl, expression, timeoutMs = 30000) {
   }
 }
 
-async function probe({ endpoint, timeoutMs, title }) {
-  const deadline = Date.now() + timeoutMs;
+/** Poll the page until it passes or the deadline expires.
+ *
+ *  THE PAGE'S OWN VERDICT OUTLIVES A LATER TRANSPORT FAILURE (A-02). The
+ *  deliberately broken `app.js` run showed why: for ~55 s the probe reached
+ *  the page and saw an empty `#view`, then the emulator killed the app for an
+ *  unrelated reason (a dying `gms.persistent` provider), and every attempt after
+ *  that failed with `fetch failed`. Reporting only the LAST attempt turned "the
+ *  page never rendered" into "could not connect", which reads as an adb
+ *  problem. So when the final attempt did not reach the page, the most recent
+ *  verdict that DID is reported first, with the transport failure after it.
+ *
+ *  `deps` exists for the tests; the CLI passes nothing. */
+export async function probe({ endpoint, timeoutMs, title }, deps = {}) {
+  const { listTargetsImpl = listTargets, evaluateImpl = evaluate, sleepImpl = sleep, now = Date.now } = deps;
+  const deadline = now() + timeoutMs;
   let last = { ok: false, failures: ["the probe never reached the page"], observed: null };
+  let lastPage = null;
   let attempts = 0;
-  while (Date.now() < deadline) {
+  while (now() < deadline) {
     attempts += 1;
     try {
-      const target = pickPage(await listTargets(endpoint, { timeoutMs: stepTimeoutMs(deadline, Date.now(), 5000) }));
+      const target = pickPage(await listTargetsImpl(endpoint, { timeoutMs: stepTimeoutMs(deadline, now(), 5000) }));
       if (target) {
-        const observed = await evaluate(target.webSocketDebuggerUrl, PROBE_EXPRESSION, stepTimeoutMs(deadline, Date.now(), 30000));
+        const observed = await evaluateImpl(target.webSocketDebuggerUrl, PROBE_EXPRESSION, stepTimeoutMs(deadline, now(), 30000));
         const v = verdict(observed, { expectedTitle: title });
         last = { ...v, observed, target: { url: target.url, title: target.title } };
+        lastPage = last;
         if (v.ok) break;
       } else {
         last = { ok: false, failures: [`no DevTools page target at ${endpoint} yet`], observed: null };
@@ -303,8 +318,18 @@ async function probe({ endpoint, timeoutMs, title }) {
     } catch (err) {
       last = { ok: false, failures: [String(err.message ?? err)], observed: null };
     }
-    if (Date.now() >= deadline) break;
-    await sleep(2000);
+    if (now() >= deadline) break;
+    await sleepImpl(2000);
+  }
+  if (!last.ok && lastPage && last !== lastPage) {
+    return {
+      ...lastPage,
+      failures: [
+        ...lastPage.failures,
+        `after that, the page stopped answering: ${last.failures.join("; ")}`,
+      ],
+      attempts,
+    };
   }
   return { ...last, attempts };
 }
