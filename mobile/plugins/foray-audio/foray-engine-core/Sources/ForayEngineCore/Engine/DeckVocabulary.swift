@@ -30,7 +30,13 @@ public enum DeckCommand: Equatable, Sendable {
     /// resume cost no network round trip. `url` is nil only for an item with
     /// no audio of its own (a fixture's bare `$ep`, a spoken line), which the
     /// deck reports as a failed load.
-    case load(token: DeckToken, itemId: String, url: String?, startSec: Double, preciseTiming: Bool)
+    ///
+    /// `deadlineClass` (NE-38) is which P-13 deadline the load runs under:
+    /// the core names it from the item (`DeckDeadlineClass(item)`), and the
+    /// deck maps it to seconds (`AVDeck.Config.deadlineSec(for:)`). It
+    /// defaults to `.clip`, whose deadline is the one every load had before.
+    case load(token: DeckToken, itemId: String, url: String?, startSec: Double, preciseTiming: Bool,
+              deadlineClass: DeckDeadlineClass = .clip)
     /// Legal only after `.ready` for the current token. The core also emits it
     /// only with the audio session active (`SessionPolicy`'s audible-start
     /// invariant); the adapter's implicit-activation check is the backstop.
@@ -51,7 +57,37 @@ public enum DeckCommand: Equatable, Sendable {
     /// DeckPair that honours it is NE-32's, behind `deckPairEnabled`; a deck
     /// with no standby ignores it, and the seam then loads cold inside the
     /// beat, which is the audible seam either way.
-    case prepare(itemId: String, url: String?, startSec: Double)
+    /// `deadlineClass` as on `.load`: the standby deck's warm load runs
+    /// under the same deadline the item's own load would (NE-38).
+    case prepare(itemId: String, url: String?, startSec: Double, deadlineClass: DeckDeadlineClass = .clip)
+}
+
+/// Which P-13 load deadline a load runs under (card NE-38;
+/// docs/native-engine-plan.md §14 Track M3, docs/ios-native-engine-measurements.md
+/// §12). The CORE names the class, because only the core knows what the item
+/// is; the DECK maps it to seconds, because the seconds are a property of
+/// AVFoundation and the network (`AVDeck.defaultLoadDeadlineSec`,
+/// `AVDeck.defaultLineLoadDeadlineSec`). The class also rides on the deck's
+/// `attach`, `reuse`, `ready` and `deadline` rows (`class=`), so NE-38e's
+/// `P13-clip` and `P13-line` verdicts can split time-to-ready by it.
+///
+/// WHY A LINE HAS ITS OWN. A rendered narration line (a `tts` item with a
+/// file, DECISIONS 2026-09-28) is a small file (about 160 KB), and one that
+/// fails is read aloud from its script (NE-37c), so waiting a clip's 20 s
+/// for it only lengthens a silence in the car. A clip is a slice of a large
+/// episode on a third-party host, whose cold first load has been measured at
+/// up to 19.6 s.
+public enum DeckDeadlineClass: String, Equatable, Sendable, CaseIterable {
+    /// An episode or a Foray clip: anything that is not a narration line.
+    case clip
+    /// A rendered narration line (`kind: "tts"`) played from its file.
+    case line
+
+    /// The class of the load of `item`: a narration item is a `line`, and
+    /// everything else is a `clip`. (A spoken line never reaches a deck.)
+    public init(_ item: EngineItem) {
+        self = item.kind == .tts ? .line : .clip
+    }
 }
 
 /// `timeControlStatus`, as the core reads it (P-14: waiting is `buffering`).

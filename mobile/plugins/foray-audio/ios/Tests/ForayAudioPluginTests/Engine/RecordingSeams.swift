@@ -233,7 +233,7 @@ final class FakeDeck: DeckDriving {
         sent.append(command)
         log.add("deck.\(command.logName)")
         switch command {
-        case let .load(token, _, _, startSec, _):
+        case let .load(token, _, _, startSec, _, _):
             lastToken = token
             reading.positionSec = startSec
             reading.audible = false
