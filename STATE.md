@@ -7,6 +7,19 @@ docs/. Completed workstreams move to their plan doc's retro section.
 
 ## Active workstreams
 
+### 2026-09-29 — `engine/m3`: iOS M3 re-planned; Android Track A4 added
+
+**The ask.** The founder, 2026-09-29: *"It's going to be a while until I get to those human actions. keep progressing towards milestone 3 for both iPhone and android"*.
+
+**The plan.** `docs/native-engine-plan.md` §7 M3 and §14 Track M3 hold the iOS side. `docs/plans/android-assessment.md` §5.7 holds Android's Track A4 (A-60..A-69, after A-42).
+
+**How it runs.**
+- Every field value ships provisional (`// MEASURE`) from existing evidence, with the row and the `engine-report.mjs` verdict that will settle it.
+- Only NE-38f, the G-6 drive and NE-40d need a human. No engineering card waits on them, or on the M2 drive (#128).
+- The work is on branch `engine/m3`, cut from `main` at `32989b5c`, with one PR per card into it. NE-40 merges it to `main`.
+
+**Owned while it runs:** `mobile/plugins/foray-audio/**` (engine) and the parity families `route-resume`, `prepare` and `manager-remainder`.
+
 ### 2026-09-29 — `android/a-23-pure-policies`: A-23, the pure policies (episode subset) on the JVM
 
 Owned: `foray-engine-core-jvm`'s main code (the ported policies), its parity runners, the Java half of
@@ -59,18 +72,6 @@ and engine-ci. `record.mjs --check` passes.
   `android-smoke` (run 36589796195).
 
 No device, and no request to Joey (D-A3).
-### 2026-09-29 — `engine/m3`: iOS M3 re-planned; Android Track A4 added
-
-**The ask.** The founder, 2026-09-29: *"It's going to be a while until I get to those human actions. keep progressing towards milestone 3 for both iPhone and android"*.
-
-**The plan.** `docs/native-engine-plan.md` §7 M3 and §14 Track M3 hold the iOS side. `docs/plans/android-assessment.md` §5.7 holds Android's Track A4 (A-60..A-69, after A-42).
-
-**How it runs.**
-- Every field value ships provisional (`// MEASURE`) from existing evidence, with the row and the `engine-report.mjs` verdict that will settle it.
-- Only NE-38f, the G-6 drive and NE-40d need a human. No engineering card waits on them, or on the M2 drive (#128).
-- The work is on branch `engine/m3`, cut from `main` at `32989b5c`, with one PR per card into it. NE-40 merges it to `main`.
-
-**Owned while it runs:** `mobile/plugins/foray-audio/**` (engine) and the parity families `route-resume`, `prepare` and `manager-remainder`.
 
 ### 2026-09-29 — `android/a-22-jvm-parity`: A-22, the JVM parity runner and its books
 
