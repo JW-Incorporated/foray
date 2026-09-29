@@ -93,3 +93,34 @@ test("applyD13Dedupe: output is sorted by id and deterministic across shuffled i
   assert.deepEqual(a, [1, 2, 3]);
   assert.deepEqual(b, [1, 2, 3]);
 });
+
+/* Audit round 3, arch-drift-3. The fallback key was ASCII-only, so three
+   unrelated guid-less shows in three scripts all keyed `ta:|` and collapsed
+   into one (reproduced on origin/main: groups 1, duplicates_collapsed 2).
+   MUTATION: put back `[^a-z0-9]` -- one group, two rows silently dropped. */
+test("applyD13Dedupe: guid-less shows in non-Latin scripts keep their own groups", () => {
+  const rows = [
+    { id: 1, podcastGuid: "", title: "伊藤洋一のポッドキャスト", itunesAuthor: "日本放送" },
+    { id: 2, podcastGuid: "", title: "Радио Свобода", itunesAuthor: "РС" },
+    { id: 3, podcastGuid: "", title: "صوت", itunesAuthor: "" },
+  ];
+  const { counts, canonical } = applyD13Dedupe(rows);
+  assert.equal(counts.groups, 3);
+  assert.equal(counts.duplicates_collapsed, 0);
+  assert.deepEqual(canonical.map((r) => r.id), [1, 2, 3]);
+  assert.equal(normalizeKey("Радио Свобода"), "радио свобода");
+  // The same non-Latin show listed twice still collapses, as a Latin one does.
+  const twice = applyD13Dedupe([rows[1], { ...rows[1], id: 4, title: "РАДИО  СВОБОДА!" }]);
+  assert.equal(twice.counts.groups, 1);
+});
+
+/* MUTATION: drop the empty-title guard -- two punctuation-only titles share
+   `ta:|` and one is dropped. */
+test("groupKeyFor: a title that normalises to nothing is keyed by the row's own id", () => {
+  assert.deepEqual(groupKeyFor({ id: 7, podcastGuid: "", title: "!!!", itunesAuthor: "" }), { key: "id:7", kind: "title_author" });
+  const { counts } = applyD13Dedupe([
+    { id: 8, podcastGuid: "", title: "???", itunesAuthor: "" },
+    { id: 9, podcastGuid: "", title: "...", itunesAuthor: "" },
+  ]);
+  assert.equal(counts.groups, 2);
+});

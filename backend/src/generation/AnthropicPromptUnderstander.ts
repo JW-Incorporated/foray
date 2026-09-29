@@ -6,7 +6,7 @@ import { defaultBudgetGuard, type BudgetGuard } from "../cost/budgetGuard";
 import { parseWithRetry } from "./parseWithRetry";
 import type { ClarityResult, IntentUnderstanding } from "../types/generation";
 import type { PromptUnderstander, PromptUnderstandContext } from "./PromptUnderstander";
-import { recordUsage } from "./usageTracking";
+import { createMessage } from "./anthropicCall";
 import { demotedNames, houseStyleTitle, titleStyleProblems } from "../copy/rules";
 
 /**
@@ -79,13 +79,12 @@ export class AnthropicPromptUnderstander implements PromptUnderstander {
       sessionId: ctx.sessionId
     });
 
-    const response = await this.client.messages.create({
+    const response = await createMessage(this.client, {
       model: MODEL,
       max_tokens: 400,
       messages: [{ role: "user", content: promptText }]
-    });
+    }, "prompt-understand");
 
-    recordUsage(response.usage);
     const textBlock = response.content.find((b: Anthropic.ContentBlock): b is Anthropic.TextBlock => b.type === "text");
     if (!textBlock) throw new Error("Anthropic clarity response had no text block");
 
@@ -104,7 +103,7 @@ export class AnthropicPromptUnderstander implements PromptUnderstander {
         sessionId: ctx.sessionId
       });
 
-      const retryResponse = await this.client.messages.create({
+      const retryResponse = await createMessage(this.client, {
         model: MODEL,
         max_tokens: 400,
         messages: [
@@ -112,7 +111,7 @@ export class AnthropicPromptUnderstander implements PromptUnderstander {
           { role: "assistant", content: textBlock.text },
           { role: "user", content: reaskLine }
         ]
-      });
+      }, "prompt-understand");
       const retryTextBlock = retryResponse.content.find((b: Anthropic.ContentBlock): b is Anthropic.TextBlock => b.type === "text");
       if (!retryTextBlock) throw new Error("Anthropic clarity re-ask response had no text block");
       return retryTextBlock.text;
@@ -133,13 +132,12 @@ export class AnthropicPromptUnderstander implements PromptUnderstander {
       sessionId: ctx.sessionId
     });
 
-    const response = await this.client.messages.create({
+    const response = await createMessage(this.client, {
       model: MODEL,
       max_tokens: 600,
       messages: [{ role: "user", content: promptText }]
-    });
+    }, "prompt-understand");
 
-    recordUsage(response.usage);
     const textBlock = response.content.find((b: Anthropic.ContentBlock): b is Anthropic.TextBlock => b.type === "text");
     if (!textBlock) throw new Error("Anthropic intent response had no text block");
 
@@ -158,7 +156,7 @@ export class AnthropicPromptUnderstander implements PromptUnderstander {
         sessionId: ctx.sessionId
       });
 
-      const retryResponse = await this.client.messages.create({
+      const retryResponse = await createMessage(this.client, {
         model: MODEL,
         max_tokens: 600,
         messages: [
@@ -166,7 +164,7 @@ export class AnthropicPromptUnderstander implements PromptUnderstander {
           { role: "assistant", content: textBlock.text },
           { role: "user", content: reaskLine }
         ]
-      });
+      }, "prompt-understand");
       const retryTextBlock = retryResponse.content.find((b: Anthropic.ContentBlock): b is Anthropic.TextBlock => b.type === "text");
       if (!retryTextBlock) throw new Error("Anthropic intent re-ask response had no text block");
       return retryTextBlock.text;
@@ -214,7 +212,7 @@ export class AnthropicPromptUnderstander implements PromptUnderstander {
         estimatedUsd: roughTokenEstimate(promptText + line) * USD_PER_INPUT_TOKEN + 60 * USD_PER_OUTPUT_TOKEN,
         sessionId: ctx.sessionId
       });
-      const response = await this.client.messages.create({
+      const response = await createMessage(this.client, {
         model: MODEL,
         max_tokens: 120,
         messages: [
@@ -222,8 +220,7 @@ export class AnthropicPromptUnderstander implements PromptUnderstander {
           { role: "assistant", content: JSON.stringify(intent) },
           { role: "user", content: line }
         ]
-      });
-      recordUsage(response.usage);
+      }, "prompt-understand");
       text = response.content.find((b: Anthropic.ContentBlock): b is Anthropic.TextBlock => b.type === "text")?.text ?? "";
     } catch (error) {
       console.warn(`AnthropicPromptUnderstander: the title re-ask for "${title}" failed (${error instanceof Error ? error.message : String(error)}); keeping it`);

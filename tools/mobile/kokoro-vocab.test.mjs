@@ -106,39 +106,63 @@ test("the passage's vocab stamp is the sha of the committed table", () => {
   assert.equal(PASSAGE.vocab, canonicalVocabSha(VOCAB.table));
 });
 
-test("every line's ids decode back to exactly that line's phonemes", () => {
+/** Every sentence chunk in the passage, with the line it belongs to (KV-R2:
+    one inference per chunk, and the ids live on the chunk). */
+const CHUNKS = PASSAGE.lines.flatMap((line) => (line.chunks ?? []).map((chunk, i) => ({ line, chunk, at: `${line.id}#${i}` })));
+
+test("every chunk's ids decode back to exactly that chunk's phonemes", () => {
   /* THE TEST THIS FILE EXISTS FOR. Decoding id -> phoneme through the reversed
      table and re-joining must reproduce the recorded string character for
      character, with one pad at each end and nothing dropped.
-     MUTATION: delete one id from any line in the passage — the decode comes up
+     MUTATION: delete one id from any chunk in the passage — the decode comes up
      one phoneme short. This is the mutation that matters, because a
      silent-skip mapper (kokoro-onnx's own `VOCAB.get` filter) produces exactly
      that file and nothing else in the repo would notice. */
   const byId = new Map(Object.entries(VOCAB.table).map(([ph, id]) => [id, ph]));
   assert.ok(PASSAGE.lines.length > 0);
-  for (const line of PASSAGE.lines) {
-    assert.ok(Array.isArray(line.ids) && line.ids.length > 2, `${line.id}: no ids`);
-    assert.equal(line.ids[0], VOCAB.pad_id, `${line.id}: missing the leading pad`);
-    assert.equal(line.ids.at(-1), VOCAB.pad_id, `${line.id}: missing the trailing pad`);
-    const decoded = line.ids.slice(1, -1).map((id) => {
-      assert.ok(byId.has(id), `${line.id}: id ${id} is not in the table`);
+  assert.ok(CHUNKS.length >= PASSAGE.lines.length, "every line has at least one chunk");
+  for (const { chunk, at } of CHUNKS) {
+    assert.ok(Array.isArray(chunk.ids) && chunk.ids.length > 2, `${at}: no ids`);
+    assert.equal(chunk.ids[0], VOCAB.pad_id, `${at}: missing the leading pad`);
+    assert.equal(chunk.ids.at(-1), VOCAB.pad_id, `${at}: missing the trailing pad`);
+    const decoded = chunk.ids.slice(1, -1).map((id) => {
+      assert.ok(byId.has(id), `${at}: id ${id} is not in the table`);
       return byId.get(id);
     }).join("");
-    assert.equal(decoded, line.phonemes, `${line.id}: ids and phonemes disagree`);
+    assert.equal(decoded, chunk.phonemes, `${at}: ids and phonemes disagree`);
   }
 });
 
-test("no line exceeds the graph's input_ids limit", () => {
-  /* The ONNX graph takes at most `max_input_ids` tokens, pads included, and
-     the style vector has one row per unpadded length. A line over the limit
-     does not fail loudly at synthesis — it is where a chunking design becomes
-     mandatory (K-04), and this is the tripwire that says when.
-     MUTATION: paste a fifth, much longer line into the passage. */
+test("every chunk is ≤ 460 code points and maps to the committed ids", () => {
+  /* KV-R2 / D3: one inference per SENTENCE CHUNK, cut by `phonemize.py`'s
+     `sentence_chunks`, so no inference is handed more than 460 code points and
+     each has its own style row. The line's `phonemes` is its chunks joined by
+     "\n" (D3's wire shape), and each chunk's ids are one per CODE POINT plus
+     the two pads — a combining mark such as U+0303 is one id, not zero.
+     MUTATION: put a whole line back as ONE chunk — the passage no longer has
+     its fifteen sentence chunks, and a 415-phoneme inference is back.
+     MUTATION: count UTF-16 units — a line with a combining mark disagrees. */
+  assert.equal(CHUNKS.length, 15, "the passage's four lines are fifteen sentence chunks");
   for (const line of PASSAGE.lines) {
-    assert.ok(line.ids.length <= VOCAB.max_input_ids,
-      `${line.id}: ${line.ids.length} ids exceeds the graph's limit of ${VOCAB.max_input_ids}`);
-    assert.ok(line.ids.length - 2 <= 510,
-      `${line.id}: ${line.ids.length - 2} unpadded ids has no style-vector row (the voice file holds 510)`);
+    assert.ok(!("ids" in line), `${line.id}: a whole-line ids array is the inference nothing should run`);
+    assert.equal(line.phonemes, line.chunks.map((c) => c.phonemes).join("\n"),
+      `${line.id}: the line's phonemes are its chunks joined by a newline`);
+  }
+  for (const { chunk, at } of CHUNKS) {
+    const points = [...chunk.phonemes].length;
+    assert.ok(points <= 460, `${at}: ${points} code points is over the 460 chunk limit`);
+    assert.ok(points >= 24 || CHUNKS.find((x) => x.chunk === chunk).line.chunks.length === 1,
+      `${at}: a chunk under 24 code points should have merged into its neighbour`);
+    assert.equal(chunk.ids.length, points + 2, `${at}: one id per code point, plus the pads`);
+    assert.equal(chunk.style_row, Math.min(chunk.ids.length - 2, 509), `${at}: the style row is min(padded - 2, 509)`);
+    assert.ok(chunk.ids.length <= VOCAB.max_input_ids, `${at}: over the graph's input_ids limit`);
+    assert.ok(Number.isFinite(chunk.est_sec) && chunk.est_sec > 0, `${at}: no expected seconds`);
+  }
+  /* The chunks share out their line's estimate, so the passage's total is the
+     planning total it always was. */
+  for (const line of PASSAGE.lines) {
+    const sum = line.chunks.reduce((n, c) => n + c.est_sec, 0);
+    assert.ok(Math.abs(sum - line.est_sec) < 0.01, `${line.id}: chunk estimates sum to ${sum}, the line says ${line.est_sec}`);
   }
 });
 

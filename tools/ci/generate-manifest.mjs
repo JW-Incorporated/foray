@@ -85,6 +85,48 @@ export const UNSTAMPED_BUILD_ID = "unstamped";
 
 const BUILD_ID_RE = /const BUILD_ID = "([^"]*)";/;
 
+/* THE PAGE'S OWN DEPLOY ID (round-3 audit, app-3-3). `index.html` carries
+   `<meta name="foray-deploy-id" content="unstamped">`, and the deploy build
+   stamps it with the deploy id next to sw.js's BUILD_ID, so a page can tell
+   whether the worker's "generation-changed" names the deploy it is already
+   running. The meta is part of index.html's bytes, which feed the deploy id,
+   so the id is computed over index.html with that one attribute read as
+   "unstamped" (`identityBytes`): stamping never changes the id it stamps,
+   the manifest still lists index.html's REAL (stamped) sha256 for sw.js to
+   verify, and a source tree's id equals its stamped build's. A tree whose
+   index.html has no such meta (a fixture) hashes exactly as before. */
+export const DEPLOY_META_RE = /<meta name="foray-deploy-id" content="([^"]*)">/;
+const INDEX_FILE = "index.html";
+
+/** The bytes the deploy id is computed over: `buf` itself, except that an
+    index.html's deploy-id meta reads as unstamped. */
+function identityBytes(rel, buf) {
+  if (posix(rel) !== INDEX_FILE) return buf;
+  const text = buf.toString("utf8");
+  if (!DEPLOY_META_RE.test(text)) return buf;
+  return Buffer.from(
+    text.replace(DEPLOY_META_RE, `<meta name="foray-deploy-id" content="${UNSTAMPED_BUILD_ID}">`),
+    "utf8"
+  );
+}
+
+/** index.html's deploy-id meta content in `root`, or null when it has none. */
+function readDeployMeta(root) {
+  const abs = path.join(root, INDEX_FILE);
+  if (!existsSync(abs)) return null;
+  const m = DEPLOY_META_RE.exec(readFileSync(abs, "utf8"));
+  return m ? m[1] : null;
+}
+
+/* Stamps index.html's deploy-id meta in `root`, when it has one. */
+function stampDeployMeta(root, deployId) {
+  const abs = path.join(root, INDEX_FILE);
+  if (!existsSync(abs)) return;
+  const src = readFileSync(abs, "utf8");
+  if (!DEPLOY_META_RE.test(src)) return;
+  writeFileSync(abs, src.replace(DEPLOY_META_RE, `<meta name="foray-deploy-id" content="${deployId}">`));
+}
+
 /* The modules that compute the stamp. `tools/web/vercel-should-build.mjs`'s
    STAMP_MODULES is the same list (a test pins the two equal); it is not
    imported from there because this module runs standalone in a scratch tree. */
@@ -187,12 +229,18 @@ function stampTimestamp(root = ROOT, opts = {}) {
   return buildTimestamp(root, { ...opts, paths: stampInputs(root) });
 }
 
-function sha256File(root, relPath) {
+function readListed(root, relPath) {
   const abs = path.join(root, relPath);
   if (!existsSync(abs)) {
     throw new Error(`generate-manifest: listed file is missing on disk: ${posix(relPath)}`);
   }
-  return createHash("sha256").update(readFileSync(abs)).digest("hex");
+  return readFileSync(abs);
+}
+
+const sha256 = (buf) => createHash("sha256").update(buf).digest("hex");
+
+function sha256File(root, relPath) {
+  return sha256(readListed(root, relPath));
 }
 
 /** The CRLF offenders among the files a stamp of `root` would hash. */
@@ -204,11 +252,14 @@ function crlfIn(root) {
    which is the input set the pointer is derived from and must not join. */
 function computeManifest(root = ROOT) {
   const files = {};
+  const identity = {};
   for (const rel of listedFiles(root)) {
+    const buf = readListed(root, rel);
     /* Cache keys and sw.js fetches use forward slashes regardless of OS. */
-    files[posix(rel)] = "sha256:" + sha256File(root, rel);
+    files[posix(rel)] = "sha256:" + sha256(buf);
+    identity[posix(rel)] = "sha256:" + sha256(identityBytes(rel, buf));
   }
-  return { deploy_id: deployIdFrom(files), files };
+  return { deploy_id: deployIdFrom(identity), files };
 }
 
 /* Adds the pointer's hash as a manifest entry, keeping the listing sorted so a
@@ -257,6 +308,9 @@ function stampBuild(dir, { builtAt } = {}) {
   }
   const bad = crlfIn(dir);
   if (bad.length) throw new Error(crlfFatalMessage(bad));
+  /* index.html's deploy-id meta first (app-3-3): its stamped bytes are what
+     the manifest must list, and `identityBytes` keeps the id unchanged. */
+  stampDeployMeta(dir, computeManifest(dir).deploy_id);
   const base = computeManifest(dir);
   /* Pointer first — its bytes are a manifest entry, so it has to be on disk in
      its final form before the manifest that names it is written. */
@@ -309,6 +363,10 @@ function stampedProblems(dir) {
   const { id, error } = readBuildId(dir);
   if (error) problems.push(error);
   else if (id !== base.deploy_id) problems.push(`${SW_FILE}'s BUILD_ID is ${JSON.stringify(id)} but the tree computes to ${base.deploy_id}`);
+  const meta = readDeployMeta(dir);
+  if (meta !== null && meta !== base.deploy_id) {
+    problems.push(`${INDEX_FILE}'s foray-deploy-id meta is ${JSON.stringify(meta)} but the tree computes to ${base.deploy_id}`);
+  }
   return problems;
 }
 
@@ -354,6 +412,13 @@ function sourceProblems(root = ROOT) {
     problems.push(
       `${SW_FILE} carries BUILD_ID ${JSON.stringify(id)}; the committed file must say ${JSON.stringify(UNSTAMPED_BUILD_ID)}. ` +
         "The deploy builds stamp it (issue #701); a committed stamp is a merge conflict with every open PR."
+    );
+  }
+  const meta = readDeployMeta(root);
+  if (meta !== null && meta !== UNSTAMPED_BUILD_ID) {
+    problems.push(
+      `${INDEX_FILE}'s foray-deploy-id meta carries ${JSON.stringify(meta)}; the committed file must say ${JSON.stringify(UNSTAMPED_BUILD_ID)}. ` +
+        "The deploy builds stamp it (round-3 audit, app-3-3), like sw.js's BUILD_ID."
     );
   }
   try {
@@ -523,6 +588,7 @@ if (isEntryScript()) main();
 
 export {
   computeManifest,
+  readDeployMeta,
   listedFiles,
   playerSources,
   fontSources,

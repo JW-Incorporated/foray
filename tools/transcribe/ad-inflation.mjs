@@ -58,7 +58,7 @@
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { dirname, join, resolve as resolvePath } from 'node:path';
-import { AUDIO_PROBE_HEADERS, awaitHostSlot, waitBeforeRetry } from '../segments/politeness.mjs';
+import { AUDIO_PROBE_HEADERS, awaitHostSlot, discardBody, waitBeforeRetry } from '../segments/politeness.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 
@@ -267,7 +267,7 @@ export async function probeEpisode(url, declaredBytes, {
     status = res.status == null ? null : res.status;
     if (status != null && isRetryableStatus(status)) {
       error = `HTTP ${status}`;
-      if (res.body && typeof res.body.cancel === 'function') await res.body.cancel();
+      await discardBody(res);
       /* UNCONDITIONAL, INCLUDING ON THE LAST ATTEMPT. The hold is a property of
          the HOST, not of whether this caller intends to try again. Guarding it
          with `attempt < maxAttempts` -- which this loop did until review caught
@@ -290,7 +290,7 @@ export async function probeEpisode(url, declaredBytes, {
     const delivered =
       parseContentRangeTotal(res.headers.get('content-range')) ??
       Number(res.headers.get('content-length'));
-    if (res.body && typeof res.body.cancel === 'function') await res.body.cancel();
+    await discardBody(res);
 
     const ratio = inflationRatio(delivered, declaredBytes);
     /* "NO USABLE LENGTH IN THE RESPONSE" MUST DESCRIBE THE RESPONSE, and it did

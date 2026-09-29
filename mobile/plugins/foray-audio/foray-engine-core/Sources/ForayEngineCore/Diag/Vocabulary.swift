@@ -35,6 +35,22 @@ public enum Vocabulary {
         case other = "other"
     }
 
+    /// `sessionErrorDetail`
+    public enum SessionErrorDetail: String, CaseIterable, Sendable {
+        case cannotInterruptOthers = "cannot-interrupt-others"
+        case cannotStartPlaying = "cannot-start-playing"
+        case insufficientPriority = "insufficient-priority"
+        case isBusy = "is-busy"
+        case siriIsRecording = "siri-is-recording"
+        case mediaServicesFailed = "media-services-failed"
+        case expiredSession = "expired-session"
+        case missingEntitlement = "missing-entitlement"
+        case resourceNotAvailable = "resource-not-available"
+        case incompatibleCategory = "incompatible-category"
+        case sessionNotActive = "session-not-active"
+        case other = "other"
+    }
+
     /// `interruptionReason`
     public enum InterruptionReason: String, CaseIterable, Sendable {
         case `default` = "default"
@@ -92,12 +108,13 @@ public enum Vocabulary {
     }
 
     /// Every set's name, in the JS declaration order.
-    public static let setNames: [String] = ["stage", "sessionError", "interruptionReason", "stopCause", "source", "modeReason", "faultKind"]
+    public static let setNames: [String] = ["stage", "sessionError", "sessionErrorDetail", "interruptionReason", "stopCause", "source", "modeReason", "faultKind"]
 
     /// Every set's tokens, by set name, in the JS declaration order.
     public static let sets: [String: [String]] = [
         "stage": Stage.allCases.map(\.rawValue),
         "sessionError": SessionError.allCases.map(\.rawValue),
+        "sessionErrorDetail": SessionErrorDetail.allCases.map(\.rawValue),
         "interruptionReason": InterruptionReason.allCases.map(\.rawValue),
         "stopCause": StopCause.allCases.map(\.rawValue),
         "source": Source.allCases.map(\.rawValue),

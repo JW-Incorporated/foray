@@ -1,0 +1,60 @@
+{
+  "$comment": [
+    "The central narration render profile (docs/plans/spark-central-narration-assessment.md §3.2, rulings D1-D11 accepted 2026-09-28).",
+    "ONE file read by render-foray.py (how audio is made), upload-narration.mjs (where it goes, with which headers) and stamp-narration.mjs (what data/forays.json says).",
+    "EVERYTHING UNDER `render` IS HASHED INTO EVERY OBJECT KEY. Change any value there and every key changes, so a new render can never overwrite an old object (the bucket is write-once and phones keep old data sets). Bump `id` in the same edit so the new objects also land under a new prefix.",
+    "Fields outside `render` (voices, rejects, headers, bucket) do not change audio bytes and are not hashed.",
+    "The fp32 model and af_heart are pinned in tools/mobile/fetch-models.mjs (the one hash table). am_echo has no pin there yet (KV-01), so its sha256 is recorded here, equal to the #844 audition manifest and tools/narration/bench-narration.py RECORDED_VOICE_PINS; a pin in fetch-models.mjs wins once it exists."
+  ],
+  "id": "kokoro-fp32-aac64-v1",
+  "model": "kokoro-v1_0-fp32.onnx",
+  "voices": ["af_heart", "am_echo"],
+  "default_voice": "af_heart",
+  "recorded_voice_pins": {
+    "am_echo": {
+      "sha256": "3968b92c3c4cd1c4416dbded36c13eaa388a90d5788d02a13e4d781f5f8cf3c3",
+      "bytes": 522240,
+      "url": "https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX/resolve/main/voices/am_echo.bin"
+    }
+  },
+  "render": {
+    "speed": 1.0,
+    "sample_rate": 24000,
+    "chunking": "phonemize.py sentence_chunks, one inference per chunk, style row len(ids)-2",
+    "chunk_gap_sec": 0.08,
+    "edge_trim": { "threshold_dbfs": -50, "keep_sec": 0.05 },
+    "edge_pad_sec": 0.5,
+    "frame_samples": 1024,
+    "loudness": {
+      "method": "ffmpeg loudnorm measures (pass 1); one gain to the target, then an alimiter peak limiter at the ceiling, at most max_reduction_db (pass 2); the ENCODED file's true peak is measured and, if over the target, re-encoded with the ceiling lowered by the overshoot + step_db (at most `attempts` encodes, then refused); never loudnorm's dynamic mode",
+      "integrated_lufs": -19,
+      "true_peak_dbtp": -1,
+      "encoder_headroom_db": 0.5,
+      "limiter": { "attack_ms": 5, "release_ms": 50, "max_reduction_db": 6 },
+      "true_peak_retry": { "attempts": 3, "step_db": 0.2 },
+      "lra": 20,
+      "note": "-19 LUFS integrated on the mono file is -16 LUFS as heard on two speakers (assessment §3.2 / §7)"
+    },
+    "encode": {
+      "codec": "aac",
+      "encoder": "ffmpeg native aac (LGPL build; never libfdk_aac)",
+      "container": "m4a",
+      "bitrate_kbps": 64,
+      "channels": 1,
+      "sample_rate": 24000,
+      "faststart": true
+    },
+    "metadata": { "comment": "Synthetic speech: Kokoro-82M, 4a" }
+  },
+  "reject": {
+    "min_chunk_peak": 0.01,
+    "estimate_chars_per_sec": 17,
+    "length_ratio": [0.5, 2.0],
+    "max_container_drift_sec": 0.05
+  },
+  "key_prefix": "n",
+  "content_type": "audio/mp4",
+  "cache_control": "public, max-age=31536000, immutable",
+  "bucket": "foray-narration",
+  "public_base": "https://audio.jwlabs.ai"
+}

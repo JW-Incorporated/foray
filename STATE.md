@@ -7,6 +7,72 @@ docs/. Completed workstreams move to their plan doc's retro section.
 
 ## Active workstreams
 
+### 2026-09-28 — the Spark direction: narration rendered centrally and streamed (D1–D11 ruled "Defaults")
+
+Owned: nothing held (docs only in this entry's PR, `docs/spark-direction-record`). The founder
+ruled *"Defaults"* on D1–D11 of `docs/plans/spark-central-narration-assessment.md` (PR #860),
+recorded in `docs/DECISIONS.md` 2026-09-28. Narration is rendered once by Kokoro (fp32) off the
+phone, as AAC `.m4a` 64 kbps mono, Heart and Echo, into the public R2 bucket `foray-narration` at
+`audio.jwlabs.ai`, and phones stream it; the phone's speech engine is only the fallback.
+**Agents: do not build on-device Kokoro.** `docs/kokoro-voices-in-app-plan.md`,
+`docs/voice/kokoro-speed-1.5x.md`, `docs/bundled-voice-plan.md` and `docs/roadmap/kokoro-voice.md`
+carry superseded banners with their card maps; `generation-architecture.md` §1.2 is amended.
+
+Order (assessment §5): Phase 0 this record → Phase 1 first listen on the three narrated **drafts**
+(render tool on the PC or in GitHub Actions; upload only from the PC, whose token is HA #120) →
+Phase 2 the "speak the script if the file fails" fallback ships in a build before any *published*
+Foray carries audio → Phase 3 the Spark → 4 slim app (D11, after the car listen) → 5 unattended
+nightly → 6 on-demand queue (D9) → 7 transcription (D10). Rules: no credential in the repo or CI;
+GitHub Actions never writes to R2; espeak-ng stays server/CI-side. HUMAN-ACTIONS #45 withdrawn;
+founder steps are #119–#126 (#119 bucket and #120 PC token block Phase 1).
+
+### 2026-09-26 — `docs/kokoro-voices-plan`: Kokoro deck revision 3 (Heart + Echo; British later)
+
+**Superseded 2026-09-28** by the Spark direction (entry above): do not start a KV card without
+the deck's card map; HA #45 is withdrawn.
+
+Owned: nothing held (docs only). Lands `docs/kokoro-voices-in-app-plan.md`, the
+hand-off deck for bundling 4a's own voices: two American voices, Heart (default)
+and Echo, per the founder's 2026-09-26 cut ("put british on the roadmap… get this
+operational and upgrade it later"). Revision 2 (`docs/roadmap/kokoro-voice.md`) is
+marked superseded and keeps the British roadmap entry (KV-11). First moves: KV-R0
+(founder runs HA #45 as written), KV-01 and KV-03a in parallel. Draft PR; never
+labelled or merged by an agent.
+
+**Amended 2026-09-26 (rev 3.1, deck §10):** KV-R0 is done and could not measure
+(build 2026092602: `synthesis-failed/inference-threw`, `load 457ms/374ms peak
+280.3MB`; the ORT error text is only in `os_log`). An ARM64 sweep (`probe/kokoro-arm64`,
+runs 36280828928 / 36281480135 / 36282008323) found q8f16 and fp16 produce NaN on
+Apple silicon; only fp32 (325.5 MB) is finite, at CPU RTF 0.78–0.98. So iOS bundles
+fp32 (TestFlight only), Android stays on q8f16 (fp32 there is KV-14, LATER), and
+**KV-R2** (probe v2: fp32, CPU vs CoreML passes, finiteness, sentence chunks; after
+the `diag/` voice-probe lane) replaces KV-R1 and gates KV-03a.
+
+### 2026-09-25 — `r3fix/integration`: audit round 3 (code), lanes L1-L6 and L8 in ONE PR
+
+Owned: nothing held. One branch off `main` 5c2c8ea1 with seven round-3 lane
+branches (`r3fix/l1-app-data`, `l2-app-surface`, `l3-player-and-native-tts`,
+`l4-web-platform`, `l5-generation`, `l6-backend-rest`, `l8-data-tools`) merged
+`--no-ff` in that order, resolved hunk by hunk; none has a PR of its own —
+**this PR supersedes them.** L7 (`r3fix/l7-ci-release-security`,
+`r3fix/l7-release-environment`) is not in it: its files are all
+founder-merge and the environment half waits on HUMAN-ACTIONS #115. `api/`,
+`vercel.json`, `backend/src` and `docs/legal/privacy-policy.md` changed, so
+it needs a human merge. Never labelled, never merged by an agent.
+
+**What the integration changed:** HUMAN-ACTIONS numbering (L3's device-check
+card and L5's events-server card had both taken #115, which main had since
+used for the release environment: they are #117 and #118; #116 now names the
+migration file); the politeness/search-probe pins after L4 moved
+`appleShowSearch.ts` into `api/_lib`; and twenty suite floors raised to the
+merged tree's real counts. Parity: `record.mjs --check` 1098/1098 unchanged,
+no re-record. **Completeness sweep (same branch):** Q4 is done: the founder
+ruled "loosen" after L5 applied the "no change" default, and the safety check
+now keys on intent (`gen-9`, `cf0161c1`); `app-2-6`'s event half (a changed or
+withdrawn thumbs vote carries the vote it replaces to the learning job) landed
+in `0b3ea310`; `docs/audit/round-3-code/status.tsv` is the ledger (172 fixed
+of 186, 16 of them in #821; `ci-release-3` founder-held, `tests-6` lands last).
+
 ### 2026-09-24 — `engine/ne-27`: NE-27 part 1 — the L-2 legal edits, the OQ-9 guard and the M1 car-test script (the flip itself is blocked)
 
 Owned: `docs/native-engine-m1-car-test.md`. Branch off `engine/m1`, PR into it.

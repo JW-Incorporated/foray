@@ -4,10 +4,10 @@ import {
   dampedDelta,
   nextWeight,
   nextConfidence,
-  computeCardIgnoredStreak,
   buildKnownNodeMap,
   applyEvent,
   applyEventBatch,
+  CardShownStreaks,
   IGNORED_CARD_SHOWN_THRESHOLD,
   STRETCH_NEGATIVE_DAMPING,
   type ApplyDeps
@@ -185,33 +185,6 @@ describe("nextWeight / nextConfidence — clamping", () => {
   });
 });
 
-describe("computeCardIgnoredStreak", () => {
-  it("counts consecutive topic-overlapping card_shown events, including the current one", () => {
-    const history: PersistedEvent[] = [
-      evt({ type: "card_shown", payload: { episode_slug: "e1", topics: [FUSION], archetype: "stretch" } }),
-      evt({ type: "card_shown", payload: { episode_slug: "e2", topics: [FUSION], archetype: "stretch" } }),
-      evt({ type: "card_shown", payload: { episode_slug: "e3", topics: [FUSION], archetype: "stretch" } })
-    ];
-    const current = evt({ type: "card_shown", payload: { episode_slug: "e4", topics: [FUSION], archetype: "stretch" } });
-    expect(computeCardIgnoredStreak(history, current)).toBe(4);
-  });
-
-  it("resets the streak at an intervening pick with overlapping topics", () => {
-    const history: PersistedEvent[] = [
-      evt({ type: "card_shown", payload: { episode_slug: "e1", topics: [FUSION], archetype: "stretch" } }),
-      evt({ type: "picked", payload: { episode_slug: "e1", topics: [FUSION], archetype: "stretch" } }),
-      evt({ type: "card_shown", payload: { episode_slug: "e2", topics: [FUSION], archetype: "stretch" } })
-    ];
-    const current = evt({ type: "card_shown", payload: { episode_slug: "e3", topics: [FUSION], archetype: "stretch" } });
-    expect(computeCardIgnoredStreak(history, current)).toBe(2);
-  });
-
-  it("ignores card_shown events with no topic overlap", () => {
-    const history: PersistedEvent[] = [evt({ type: "card_shown", payload: { episode_slug: "e1", topics: [POLITICS], archetype: "stretch" } })];
-    const current = evt({ type: "card_shown", payload: { episode_slug: "e2", topics: [FUSION], archetype: "stretch" } });
-    expect(computeCardIgnoredStreak(history, current)).toBe(1);
-  });
-});
 
 describe("buildKnownNodeMap", () => {
   it("maps node id -> label from a taxonomy file", () => {
@@ -305,5 +278,124 @@ describe("applyEvent — orchestration against in-memory repositories", () => {
     expect(outcomes.slice(0, 4).every((o) => o.applied.length === 0)).toBe(true);
     expect(outcomes[4]!.applied).toHaveLength(1);
     expect(outcomes[4]!.applied[0]).toMatchObject({ reason: "card_ignored_repeatedly" });
+  });
+});
+
+/* Round-3 audit, lane L6 (backend-rest-17): "card shown, never picked x5 ->
+   gentle -" fires once per five showings, not on every showing after the
+   fifth; the streak is a running per-topic count, not an O(n^2) rescan. */
+describe("card_ignored_repeatedly fires once per threshold (round 3)", () => {
+  const shown = (n: number, topics = [FUSION]) =>
+    evt({ type: "card_shown", payload: { episode_slug: `e${n}`, topics, archetype: "deep-learn" } });
+  const newDeps = (): ApplyDeps => ({
+    taxonomyRepo: new InMemoryTaxonomyRepository(),
+    auditRepo: new InMemoryInterestAuditRepository(),
+    knownNodes: new Map([
+      [FUSION, { label: "Fusion" }],
+      [POLITICS, { label: "Politics" }]
+    ])
+  });
+
+  it("a streak of 6..9 is silent; 10 fires again", () => {
+    for (const n of [6, 7, 8, 9]) expect(deriveInterestDeltas(shown(1), { ignoredCardShownCount: n })).toEqual([]);
+    expect(deriveInterestDeltas(shown(1), { ignoredCardShownCount: 2 * IGNORED_CARD_SHOWN_THRESHOLD })).toHaveLength(1);
+  });
+
+  it("twelve showings in one batch penalise twice (the 5th and the 10th), not eight times", async () => {
+    const outcomes = await applyEventBatch(Array.from({ length: 12 }, (_, i) => shown(i)), newDeps());
+    const fired = outcomes.map((o, i) => (o.applied.length > 0 ? i : -1)).filter((i) => i >= 0);
+    expect(fired).toEqual([4, 9]);
+  });
+
+  it("a pick of the topic resets its streak; another topic's pick does not", async () => {
+    const pick = (topics: string[]) => evt({ type: "picked", payload: { episode_slug: "p", topics, archetype: "deep-learn" } });
+    const events = [shown(1), shown(2), shown(3), pick([POLITICS]), shown(4), pick([FUSION]), shown(5), shown(6), shown(7), shown(8), shown(9)];
+    const outcomes = await applyEventBatch(events, newDeps());
+    const firedSlugs = outcomes.flatMap((o, i) => (o.applied.some((a) => a.reason === "card_ignored_repeatedly") ? [events[i]!.payload] : []));
+    expect(firedSlugs).toEqual([{ episode_slug: "e9", topics: [FUSION], archetype: "deep-learn" }]);
+  });
+
+  /* Round-3 review (L6): the streak was the highest count among a card's
+     topics and every topic on the card was penalised by it, so a topic the
+     listener had JUST picked was penalised because its sibling hit five, and a
+     topic's own fifth showing could hide behind a sibling's seventh.
+     MUTATION: judge every topic by the card's highest count again (pass
+     `ignoredCardShownCount: streaks.observe(event)`) -- FUSION is penalised
+     straight after its pick, and POLITICS' fifth showing is skipped. */
+  it("each topic is judged on its own count: a just-picked topic is not penalised for its sibling", async () => {
+    const pick = (topics: string[]) => evt({ type: "picked", payload: { episode_slug: "p", topics, archetype: "deep-learn" } });
+    const both = (n: number) => shown(n, [FUSION, POLITICS]);
+    const events = [both(1), both(2), both(3), both(4), pick([FUSION]), both(5)];
+    const outcomes = await applyEventBatch(events, newDeps());
+    expect(outcomes[5]!.applied.map((a) => a.nodeId)).toEqual([POLITICS]);
+
+    const s3 = [shown(20, [FUSION]), shown(21, [FUSION]), both(22), both(23), both(24), both(25), both(26)];
+    const out3 = await applyEventBatch(s3, newDeps());
+    // FUSION fires at its 5th (event 4); POLITICS at ITS 5th (event 6), where FUSION is at 7.
+    expect(out3.map((o) => o.applied.map((a) => a.nodeId))).toEqual([[], [], [], [], [FUSION], [], [POLITICS]]);
+  });
+
+  it("CardShownStreaks.observeCounts reports each topic's own count; a pick clears only its topics", () => {
+    const s = new CardShownStreaks();
+    expect([...s.observeCounts(shown(1, [FUSION]))]).toEqual([[FUSION, 1]]);
+    expect([...s.observeCounts(shown(2, [FUSION, POLITICS]))]).toEqual([[FUSION, 2], [POLITICS, 1]]);
+    expect(s.observeCounts(evt({ type: "picked", payload: { episode_slug: "p", topics: [POLITICS], archetype: "comfort" } })).size).toBe(0);
+    expect([...s.observeCounts(shown(3, [FUSION, POLITICS]))]).toEqual([[FUSION, 3], [POLITICS, 1]]);
+  });
+
+  it("per-topic counts win over the single streak; the single streak alone covers every topic", () => {
+    expect(deriveInterestDeltas(shown(1, [FUSION, POLITICS]), { ignoredCardShownCount: IGNORED_CARD_SHOWN_THRESHOLD }).map((d) => d.nodeId)).toEqual([FUSION, POLITICS]);
+    expect(deriveInterestDeltas(shown(1, [FUSION, POLITICS]), { ignoredCardShownCounts: new Map([[FUSION, 5], [POLITICS, 4]]) }).map((d) => d.nodeId)).toEqual([FUSION]);
+  });
+
+  it("CardShownStreaks counts per topic and reports the highest", () => {
+    const s = new CardShownStreaks();
+    expect(s.observe(shown(1, [FUSION]))).toBe(1);
+    expect(s.observe(shown(2, [POLITICS]))).toBe(1);
+    expect(s.observe(shown(3, [FUSION, POLITICS]))).toBe(2);
+    expect(s.observe(evt({ type: "picked", payload: { episode_slug: "p", topics: [FUSION], archetype: "comfort" } }))).toBe(0);
+    expect(s.observe(shown(4, [FUSION]))).toBe(1);
+  });
+});
+
+/* Round-3 audit app-2-6 (completeness sweep): a changed or withdrawn thumbs
+   vote takes the replaced vote's move back. The client logged only the ups, so
+   up, clear, up reached this job as three ups and moved the subject three
+   times; it now logs `direction: "cleared"` and `replaces`.
+   MUTATIONS (each run): return [] for "cleared" -> the up/cleared/up batch
+   lands at +0.2, and a cleared up undoes nothing, red; drop `undo` from the
+   changed-vote path -> the up -> down flip is one row, red; undo a
+   non-durable replaced vote (drop the `.filter((d) => d.durable)`) -> "a
+   non-subject down has nothing to undo" sees an extra row, red. */
+describe("thumbs: a changed or withdrawn vote undoes the one it replaces (app-2-6)", () => {
+  const thumbs = (payload: Record<string, unknown>) => evt({ type: "thumbs", payload: { node_id: FUSION, ...payload } as never });
+
+  it("up, cleared, up moves the node by ONE up, not three", async () => {
+    const taxonomyRepo = new InMemoryTaxonomyRepository();
+    const deps: ApplyDeps = { taxonomyRepo, auditRepo: new InMemoryInterestAuditRepository(), knownNodes: new Map([[FUSION, { label: "Fusion" }]]) };
+    await applyEventBatch([
+      thumbs({ direction: "up" }),
+      thumbs({ direction: "cleared", replaces: { direction: "up", reasons: [] } }),
+      thumbs({ direction: "up" })
+    ], deps);
+    const once = deriveInterestDeltas(thumbs({ direction: "up" }))[0]!.delta;
+    expect((await taxonomyRepo.getNode(USER, FUSION))!.weight).toBeCloseTo(once, 10);
+  });
+
+  it("a cleared up is one negative more_like_this; a cleared subject down gives the down back", () => {
+    expect(deriveInterestDeltas(thumbs({ direction: "cleared", replaces: { direction: "up" } }))).toEqual([
+      { nodeId: FUSION, reason: "more_like_this", delta: -0.1, durable: true, archetypeSlot: null }
+    ]);
+    const d = deriveInterestDeltas(thumbs({ direction: "cleared", replaces: { direction: "down", reasons: ["Not my subject"] } }));
+    expect(d).toHaveLength(1);
+    expect(d[0]).toMatchObject({ reason: "thumbs_down_named_node", durable: true });
+    expect(d[0]!.delta).toBeGreaterThan(0);
+  });
+
+  it("up -> a subject down undoes the up and applies the down; a non-subject down has nothing to undo", () => {
+    const flip = deriveInterestDeltas(thumbs({ direction: "down", reasons: ["Not my subject"], replaces: { direction: "up" } }));
+    expect(flip.map((x) => [x.reason, Math.sign(x.delta)])).toEqual([["more_like_this", -1], ["thumbs_down_named_node", -1]]);
+    expect(deriveInterestDeltas(thumbs({ direction: "cleared", replaces: { direction: "down", reasons: ["Bad audio quality"] } }))).toEqual([]);
+    expect(deriveInterestDeltas(thumbs({ direction: "cleared" }))).toEqual([]);
   });
 });

@@ -10,7 +10,7 @@
 import { join } from "node:path";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import { MAX_SHARD_ASSETS_PER_RELEASE, RELEASE_TAG_PREFIX, REPO_SLUG } from "./config.mjs";
+import { MAX_SHARD_ASSETS_PER_RELEASE, POINTER_SCHEMA_VERSION, RELEASE_TAG_PREFIX, REPO_SLUG } from "./config.mjs";
 
 const execFileP = promisify(execFile);
 
@@ -165,7 +165,7 @@ export function buildPointer({
   shardReleases = [], shardsPublished = false,
 }) {
   return {
-    version: 1,
+    version: POINTER_SCHEMA_VERSION,   // the shard shape is v2 (arch-drift-7)
     export_version: exportVersion,
     release_tag: tag,
     asset_base_url: assetBaseUrl,

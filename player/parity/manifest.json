@@ -359,7 +359,7 @@
     },
     "diag-tokens": {
       "files": {
-        "player/parity/fixtures/diag-tokens/diag-tokens.json": "c06d91072a29c828523c22c41ecd98bda58ce9f728717516d0aa3503ced8b0db"
+        "player/parity/fixtures/diag-tokens/diag-tokens.json": "38389e9831b3e46b921b8aad8d959749d5a527aeff9f0377638743525db1366e"
       },
       "ids": [
         "diag-tokens/set-names",
@@ -782,7 +782,7 @@
     "manager-episode": {
       "files": {
         "player/parity/fixtures/manager-episode/last-episode-row.json": "a21f5bf2c1cc037c4d84285d9d3dbb9f6ad0b5b87a6c3f36c8e2943cfb5fa454",
-        "player/parity/fixtures/manager-episode/scenarios.json": "790dc086f69b55e6e6fd6b4cd7f859a8cf7ed4287983008b09944098f729649e"
+        "player/parity/fixtures/manager-episode/scenarios.json": "c56575541a249556027900a148a952fc5420f047ad1c7378677de26efb8f6263"
       },
       "ids": [
         "manager-episode/last-episode-row-full-snapshot",
@@ -803,7 +803,6 @@
         "manager-episode/a-listeners-resume-does-not-step-back",
         "manager-episode/interruption-step-back-stops-at-the-in-point",
         "manager-episode/a-lost-route-pauses",
-        "manager-episode/only-a-known-car-route-resumes",
         "manager-episode/a-lost-route-is-not-resumed-by-a-later-call",
         "manager-episode/a-listeners-pause-is-not-resumed-by-a-call",
         "manager-episode/a-foreground-reconcile-is-not-resumable",
@@ -812,6 +811,7 @@
         "manager-episode/cold-launch-without-autoplay-is-silent",
         "manager-episode/a-part-heard-episode-resumes-a-fresh-one-starts-at-zero",
         "manager-episode/previous-restarts-at-zero",
+        "manager-episode/previous-after-a-failed-load-reloads-the-clip",
         "manager-episode/a-skip-saves-the-outgoing-position",
         "manager-episode/every-effect-has-a-handler",
         "manager-episode/set-rate-hands-the-deck-only-ladder-values",

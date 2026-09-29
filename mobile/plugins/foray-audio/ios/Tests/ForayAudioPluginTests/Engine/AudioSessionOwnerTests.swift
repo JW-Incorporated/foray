@@ -18,6 +18,7 @@ final class FakeSessionAPI: AudioSessionAPI {
     private(set) var activeCalls: [(Bool, Bool)] = []
     var activateError: Error?
     var deactivateError: Error?
+    var categoryError: Error?
     var hint = false
     var ports: [AudioSessionOwner.Port] = []
 
@@ -27,6 +28,7 @@ final class FakeSessionAPI: AudioSessionAPI {
     func setCategory(_ category: AVAudioSession.Category, mode: AVAudioSession.Mode,
                      policy: AVAudioSession.RouteSharingPolicy, options: AVAudioSession.CategoryOptions) throws {
         categories.append(CategoryCall(category: category, mode: mode, policy: policy, options: options))
+        if let categoryError { throw categoryError }
     }
 
     func setActive(_ active: Bool, options: AVAudioSession.SetActiveOptions) throws {
@@ -37,6 +39,8 @@ final class FakeSessionAPI: AudioSessionAPI {
 
     var secondaryAudioShouldBeSilencedHint: Bool { hint }
     var outputPorts: [AudioSessionOwner.Port] { ports }
+    var otherAudio = false
+    var isOtherAudioPlaying: Bool { otherAudio }
 }
 
 /// `AudioSessionOwner`, the real `SessionControlling` (card NE-16;
@@ -118,15 +122,36 @@ final class AudioSessionOwnerTests: XCTestCase {
         XCTAssertEqual(row?[field: "phase"], .string("active"))
     }
 
-    /// A refused activation is the closed token, and the owner stays inactive
-    /// (so the implicit-activation guard still fires on a stray play).
-    /// TO SEE IT FAIL: map every error to `other`, or set `.active` on failure.
+    /// Every `AVAudioSession.ErrorCode` the rows name, as its DETAIL token
+    /// (L13); any other code is `other`. Written out as literals, not read
+    /// back from `errorTokens`, so a wrong pair in the table is caught.
+    static let errorCases: [(code: Int, token: String)] = [
+        (AVAudioSession.ErrorCode.cannotInterruptOthers.rawValue, "cannot-interrupt-others"),
+        (AVAudioSession.ErrorCode.cannotStartPlaying.rawValue, "cannot-start-playing"),
+        (AVAudioSession.ErrorCode.insufficientPriority.rawValue, "insufficient-priority"),
+        (AVAudioSession.ErrorCode.isBusy.rawValue, "is-busy"),
+        (AVAudioSession.ErrorCode.siriIsRecording.rawValue, "siri-is-recording"),
+        (AVAudioSession.ErrorCode.mediaServicesFailed.rawValue, "media-services-failed"),
+        (AVAudioSession.ErrorCode.expiredSession.rawValue, "expired-session"),
+        (AVAudioSession.ErrorCode.missingEntitlement.rawValue, "missing-entitlement"),
+        (AVAudioSession.ErrorCode.resourceNotAvailable.rawValue, "resource-not-available"),
+        (AVAudioSession.ErrorCode.incompatibleCategory.rawValue, "incompatible-category"),
+        (AVAudioSession.ErrorCode.sessionNotActive.rawValue, "session-not-active"),
+        (AVAudioSession.ErrorCode.badParam.rawValue, "other"),
+        (-1, "other")
+    ]
+
+    /// A refused activation is the closed DETAIL token (L13: every car record
+    /// said `failed` with no cause), and the owner stays inactive (so the
+    /// implicit-activation guard still fires on a stray play). The page's
+    /// answer does NOT grow: the core folds every detail token outside the
+    /// contract's three into `session-failed:other`, which is a `Refusal`.
+    /// TO SEE IT FAIL: map every error to `other`; set `.active` on failure;
+    /// or admit the detail set in `SessionPolicy.sessionFailedReason` (the
+    /// reply then names a refusal the contract does not define).
     func testAFailedActivationIsAClosedToken() {
-        for (code, token) in [
-            (AVAudioSession.ErrorCode.cannotInterruptOthers.rawValue, "cannot-interrupt-others"),
-            (AVAudioSession.ErrorCode.cannotStartPlaying.rawValue, "cannot-start-playing"),
-            (AVAudioSession.ErrorCode.isBusy.rawValue, "other")
-        ] {
+        let contract: Set<String> = ["cannot-interrupt-others", "cannot-start-playing"]
+        for (code, token) in Self.errorCases {
             let api = FakeSessionAPI()
             api.activateError = NSError(domain: NSOSStatusErrorDomain, code: code)
             let owner = makeOwner(api)
@@ -135,13 +160,22 @@ final class AudioSessionOwnerTests: XCTestCase {
             XCTAssertEqual(answer.error, token)
             XCTAssertEqual(owner.phase, .inactive)
             XCTAssertEqual(sessionRows("activated").last?[field: "token"], .string(token))
+            XCTAssertNotNil(Vocabulary.SessionErrorDetail(rawValue: token), "\(token) is in the generated detail set")
+
+            let reason = SessionPolicy.sessionFailedReason(answer.error)
+            XCTAssertNotNil(EngineContract.Refusal(rawValue: reason), "\(token) -> \(reason) is a contract refusal")
+            XCTAssertEqual(reason, contract.contains(token) ? "session-failed:\(token)" : "session-failed:other", token)
+            XCTAssertEqual(EngineBridgeRules.refusal(for: [reason]),
+                           contract.contains(token) ? EngineContract.Refusal(rawValue: reason) : EngineContract.Refusal.sessionFailedOther, token)
         }
+        XCTAssertEqual(AudioSessionOwner.errorTokens.count, Self.errorCases.count - 2, "every named code is tabled")
     }
 
     // MARK: - Deactivation
 
     /// Notify only when the core says so (close, final end, data deletion);
-    /// a hold that expired or a `none` pause releases without it.
+    /// a hold that expired or a `none` pause releases without it. A
+    /// deactivation that worked carries no `token`.
     /// TO SEE IT FAIL: always pass `.notifyOthersOnDeactivation`.
     func testDeactivationNotifiesOnlyWhenAsked() {
         let api = FakeSessionAPI()
@@ -153,10 +187,13 @@ final class AudioSessionOwnerTests: XCTestCase {
         owner.deactivate(notifyOthers: true)
         XCTAssertEqual(api.deactivations, [false, true])
         XCTAssertEqual(sessionRows("deactivated").map { $0[field: "notify"] }, [.bool(false), .bool(true)])
+        XCTAssertEqual(sessionRows("deactivated").map { $0[field: "token"] }, [nil, nil])
     }
 
     /// A deactivation the system refused leaves the session running, so the
-    /// owner keeps reading it active. TO SEE IT FAIL: set `.inactive` first.
+    /// owner keeps reading it active, and the row says WHY (L13: `is-busy`
+    /// is I/O still running on the session).
+    /// TO SEE IT FAIL: set `.inactive` first, or drop `token` from the row.
     func testARefusedDeactivationKeepsThePhase() {
         let api = FakeSessionAPI()
         api.deactivateError = NSError(domain: NSOSStatusErrorDomain, code: AVAudioSession.ErrorCode.isBusy.rawValue)
@@ -165,6 +202,23 @@ final class AudioSessionOwnerTests: XCTestCase {
         owner.deactivate(notifyOthers: false)
         XCTAssertEqual(owner.phase, .active)
         XCTAssertEqual(sessionRows("deactivated").last?[field: "ok"], .bool(false))
+        XCTAssertEqual(sessionRows("deactivated").last?[field: "token"], .string("is-busy"))
+    }
+
+    /// A category the system refused says why (L13); one it took carries no
+    /// `token`. TO SEE IT FAIL: drop `token` from `applyCategory`'s row.
+    func testARefusedCategoryRowCarriesItsToken() {
+        _ = makeOwner(FakeSessionAPI())
+        XCTAssertEqual(sessionRows("category").last?[field: "ok"], .bool(true))
+        XCTAssertNil(sessionRows("category").last?[field: "token"])
+
+        rows = []
+        let api = FakeSessionAPI()
+        api.categoryError = NSError(domain: NSOSStatusErrorDomain,
+                                    code: AVAudioSession.ErrorCode.incompatibleCategory.rawValue)
+        _ = makeOwner(api)
+        XCTAssertEqual(sessionRows("category").last?[field: "ok"], .bool(false))
+        XCTAssertEqual(sessionRows("category").last?[field: "token"], .string("incompatible-category"))
     }
 
     // MARK: - Readings
@@ -216,6 +270,52 @@ final class AudioSessionOwnerTests: XCTestCase {
             XCTAssertNil(AudioSessionOwner.routeChange(reasonRaw: other.rawValue, current: car, previous: speaker))
         }
         XCTAssertNil(AudioSessionOwner.routeChange(reasonRaw: nil, current: car, previous: nil))
+    }
+
+    /// L14: every route row carries BOTH port types, `port` (now) and
+    /// `prevPort` (before), whether or not the rules act on it, and never a
+    /// port's name. The rows pass DiagGate whole.
+    /// TO SEE IT FAIL: drop `prevPort` from `routePorts`, write `$0.name`
+    /// instead of `$0.type`, or go back to one `port` per row.
+    func testEveryRouteRowCarriesBothPortTypesAndNeverAName() throws {
+        let carAudio = AVAudioSession.Port.carAudio.rawValue
+        let speakerType = AVAudioSession.Port.builtInSpeaker.rawValue
+        let car = AudioSessionOwner.Port(type: carAudio, name: "Wyatts Car")
+        let speaker = AudioSessionOwner.Port(type: speakerType, name: "Speaker")
+        let both = AudioSessionOwner.routePorts(current: car, previous: speaker)
+        XCTAssertEqual(both, [JSONMember("port", .string(carAudio)), JSONMember("prevPort", .string(speakerType))])
+        XCTAssertFalse(JSWriter.stringify(.object(both)).contains("Wyatts"), "a port NAME reached a row")
+        XCTAssertEqual(AudioSessionOwner.routePorts(current: nil, previous: nil),
+                       [JSONMember("port", .null), JSONMember("prevPort", .null)])
+
+        // Through the observer: a forwarded row (a new device) and a written-
+        // down one (a category change) both carry both keys.
+        let api = FakeSessionAPI()
+        api.ports = [car]
+        let center = NotificationCenter()
+        let owner = makeOwner(api, center: center)
+        let observation = owner.observe { _ in }
+        for reason in [AVAudioSession.RouteChangeReason.newDeviceAvailable, .categoryChange] {
+            post(center, AVAudioSession.routeChangeNotification, object: api,
+                 [AVAudioSessionRouteChangeReasonKey: reason.rawValue], fromBackground: false)
+        }
+        let routeRows = { self.sessionRows("notification").filter { $0[field: "name"] == .string("route") } }
+        spin(until: { routeRows().count >= 2 })
+        XCTAssertEqual(routeRows().map { $0[field: "forwarded"] }, [.bool(true), .bool(false)])
+        for row in routeRows() {
+            XCTAssertEqual(row[field: "port"], .string(carAudio))
+            XCTAssertEqual(row[field: "prevPort"], .null, "no previous route in the notification: null, not absent")
+            XCTAssertFalse(JSWriter.stringify(.object(row.fields)).contains("Wyatts"))
+            // Both port types survive the gate. (The row's `name` sub-kind is
+            // withheld by rule 4, a key containing `name`: pre-existing, and
+            // not this test's subject.)
+            let admitted = try XCTUnwrap(DiagGate.admit(row))
+            let dropped = admitted[field: "dropped"]?.arrayValue?.compactMap(\.stringValue) ?? []
+            XCTAssertFalse(dropped.contains("port") || dropped.contains("prevPort"), "DiagGate withheld a port: \(dropped)")
+            XCTAssertEqual(admitted[field: "port"], .string(carAudio))
+            XCTAssertEqual(admitted[field: "prevPort"], .null)
+        }
+        observation.cancel()
     }
 
     // MARK: - Observation
@@ -328,6 +428,37 @@ final class AudioSessionOwnerTests: XCTestCase {
              fromBackground: false)
         spin(until: { events >= 1 })
         XCTAssertEqual(owner.phase, .lostToInterruption)
+        observation.cancel()
+    }
+
+    /// An interruption row says who likely took the session: whether another
+    /// app was playing, and our output port (a call or Siri moves it to the
+    /// call profile). Port TYPES only, never a name.
+    /// TO SEE IT FAIL: drop `interrupterFields()` from either notification row.
+    func testAnInterruptionRowSaysWhetherOtherAudioWasPlayingAndWhere() {
+        let api = FakeSessionAPI()
+        api.otherAudio = true
+        api.ports = [AudioSessionOwner.Port(type: "BluetoothA2DPOutput", name: "Wyatt's Car")]
+        let center = NotificationCenter()
+        let owner = makeOwner(api, center: center)
+        _ = owner.activate()
+        var events = 0
+        let observation = owner.observe { _ in events += 1 }
+        post(center, AVAudioSession.interruptionNotification, object: api,
+             [AVAudioSessionInterruptionTypeKey: AVAudioSession.InterruptionType.began.rawValue,
+              AVAudioSessionInterruptionReasonKey: AVAudioSession.InterruptionReason.default.rawValue],
+             fromBackground: false)
+        post(center, AVAudioSession.interruptionNotification, object: api,
+             [AVAudioSessionInterruptionTypeKey: AVAudioSession.InterruptionType.ended.rawValue],
+             fromBackground: false)
+        spin(until: { events >= 2 })
+        let interruptionRows = rows.filter { $0[field: "name"] == .string("interruption") }
+        XCTAssertEqual(interruptionRows.count, 2, "\(rows)")
+        for row in interruptionRows {
+            XCTAssertEqual(row[field: "otherAudio"], .bool(true))
+            XCTAssertEqual(row[field: "port"], .string("BluetoothA2DPOutput"))
+            XCTAssertFalse(row.fields.contains { $0.value == .string("Wyatt's Car") }, "a route name reached a row")
+        }
         observation.cancel()
     }
 

@@ -1,9 +1,14 @@
 import { describe, expect, it } from "vitest";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import {
   estimateSeconds,
   phonemizeItem,
   phonemizeItems,
   phonemizedCount,
+  phonemizedSummary,
+  phonemizeStage,
   runPhonemizer,
   PHONEMIZER_SCRIPT,
   type Phonemizer
@@ -149,6 +154,66 @@ describe("runPhonemizer", () => {
        has not installed the stage, which is every machine today. */
     expect(() => runPhonemizer([{ id: "p1", script: "Hello." }], { python: "definitely-not-python" })).not.toThrow();
     expect(runPhonemizer([{ id: "p1", script: "Hello." }], { python: "definitely-not-python" }).size).toBe(0);
+  });
+
+  it("gen-16: says WHY there are no phonemes when the interpreter is absent", () => {
+    const lines: string[] = [];
+    runPhonemizer([{ id: "p1", script: "Hello." }], { python: "definitely-not-python", log: (l) => lines.push(l) });
+    expect(lines).toHaveLength(1);
+    expect(lines[0]).toMatch(/ENOENT/);
+  });
+
+  it("gen-16: a phoneme answer over spawnSync's 1 MiB default still arrives (maxBuffer), and a non-zero exit logs its stderr", () => {
+    /* A stand-in phonemizer run by node itself: it answers every page with a
+       2 MiB phoneme string. MUTATION THAT KILLS THIS: drop maxBuffer — the
+       child is killed with ENOBUFS and the map comes back empty. */
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "phonemize-"));
+    fs.mkdirSync(path.join(root, "tools", "narration"), { recursive: true });
+    fs.writeFileSync(
+      path.join(root, PHONEMIZER_SCRIPT),
+      [
+        "let input = '';",
+        "process.stdin.on('data', (d) => { input += d; });",
+        "process.stdin.on('end', () => {",
+        "  const { items } = JSON.parse(input);",
+        "  if (items[0].script === 'fail') { process.stderr.write('misaki is not installed'); process.exit(3); }",
+        "  const big = 'a'.repeat(2 * 1024 * 1024);",
+        "  process.stdout.write(JSON.stringify({ items: items.map((i) => ({ id: i.id, phonemes: big, tts: { model: 'm', vocab: 'v' } })) }));",
+        "});"
+      ].join("\n")
+    );
+    try {
+      const lines: string[] = [];
+      const out = runPhonemizer([{ id: "p1", script: "Hello." }], { repoRoot: root, python: process.execPath, log: (l) => lines.push(l) });
+      expect(out.get("p1")?.phonemes.length).toBe(2 * 1024 * 1024);
+      expect(lines).toEqual([]);
+      const failed = runPhonemizer([{ id: "p1", script: "fail" }], { repoRoot: root, python: process.execPath, log: (l) => lines.push(l) });
+      expect(failed.size).toBe(0);
+      expect(lines.join(" | ")).toMatch(/exit 3.*misaki is not installed/);
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("gen-16: phonemizedSummary reports N of M pages", () => {
+    const withTts = phonemizeItem(page({ id: "p1" }), ok);
+    const without = page({ id: "p2" });
+    expect(phonemizedSummary([withTts, without])).toBe("phonemized 1 of 2 pages");
+  });
+
+  /* Round-3 review (L5): phonemizedSummary had no caller, so the "visible
+     total miss" gen-16 promised reached no output. The stage's entry point
+     now reports the count itself.
+     MUTATION: drop the log(summary) call in phonemizeStage -- no line. */
+  it("phonemizeStage reports the count every time, a total miss included", () => {
+    const lines: string[] = [];
+    const nothing: Phonemizer = () => null;
+    const out = phonemizeStage([page({ id: "p1" }), page({ id: "p2" })], nothing, (l) => lines.push(l));
+    expect(lines).toEqual(["phonemized 0 of 2 pages"]);
+    expect(out.summary).toBe("phonemized 0 of 2 pages");
+    const done = phonemizeStage([page({ id: "p1" })], ok, (l) => lines.push(l));
+    expect(done.summary).toBe("phonemized 1 of 1 pages");
+    expect(lines).toHaveLength(2);
   });
 
   it("names the script the repository actually carries", () => {

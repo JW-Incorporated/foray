@@ -3,7 +3,7 @@
   "private": true,
   "description": "Vercel serverless functions (Stage 3b, kanban t_567b570f). Scoped dependencies only — the repo root stays dependency-free by design (see CLAUDE.md). Vercel auto-detects and bundles this directory's functions.",
   "scripts": {
-    "test": "node --import tsx --test",
+    "test": "node --import tsx --test \"_test/**/*.test.mjs\"",
     "typecheck": "tsc -p tsconfig.typecheck.json"
   },
   "dependencies": {

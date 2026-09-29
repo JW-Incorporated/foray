@@ -2,7 +2,7 @@
 
 <!-- ha-format: 2 -->
 
-> **24 open.** Closed items are in `HUMAN-ACTIONS-DONE.md` — you never need it.
+> **33 open.** Closed items are in `HUMAN-ACTIONS-DONE.md` — you never need it.
 > To close one: reply `done` (or `skip <why>`) to its card in the project's human-action channel.
 > Anything else you reply is forwarded to a thread on the card.
 
@@ -19,7 +19,9 @@
 
 **Worked if:** the next scheduled `nightly-refresh` run is green, a `nightly/<date>` PR opens the same day, and `nightly-watch` is green that evening.
 
-## #119 🟡 [DECIDE] Drive the M2 Foray test on the next TestFlight build after `engine/m2` merges — Forays now play natively (~2 drives)
+**Spark note (2026-09-28):** under the Spark direction (`docs/DECISIONS.md` 2026-09-28) the nightly step moves to the Spark (Phase 5). Step 2, dropping or recovering the stranded 2026-09-14 digest, must be decided before the first Spark nightly runs, even if the routine stays off until then.
+
+## #128 🟡 [DECIDE] Drive the M2 Foray test on the next TestFlight build after `engine/m2` merges — Forays now play natively (~2 drives)
 <!-- ha filed=2026-09-25 kind=default -->
 
 **Why:** Card NE-37 switched Forays onto the iPhone's own player: clips, narration and the jingle keep playing with the screen off. Whether a 51-minute locked Foray drive holds every seam, and whether narration resumes mid-sentence, can only be measured on your phone in your car.
@@ -31,6 +33,150 @@
 4. External TestFlight or App Store only: paste the note in `docs/store/app-review-background-audio.md` into App Review Notes.
 
 **Worked if:** `engine-report.mjs` shows H-2 with no `stop cause=unknown`, seam 1 to the last present, DV-4/5/9/10 pass, and narration resumed mid-sentence.
+
+## #119 🔴 [BLOCKING] Create the public narration bucket `foray-narration` at `audio.jwlabs.ai` (~30 min)
+<!-- ha filed=2026-09-28 kind=default -->
+
+**Why:** You ruled "Defaults" on the Spark direction (2026-09-28, `docs/DECISIONS.md`): narration is rendered once off the phone and streamed like a clip. The files need a public home that is **not** the private transcripts bucket (D6). This is Phase 1's first step, and the first Heart-narrated Foray waits on it. Only you can change Cloudflare.
+
+**Steps:**
+1. Cloudflare dashboard, in the **same account that holds `jwlabs.ai`** → **R2** → **Create bucket**. Name it exactly `foray-narration`. Leave the location on Automatic.
+2. Open the bucket → **Settings** → **Custom Domains** → **Connect Domain** → type `audio.jwlabs.ai` → Continue → Connect. Leave the **r2.dev** public URL **off**.
+3. Same Settings page → **CORS policy** → **Add CORS policy** → paste this and save:
+   `[{"AllowedOrigins":["capacitor://localhost","https://localhost","https://jw-incorporated.github.io","https://foray-web-seven.vercel.app"],"AllowedMethods":["GET","HEAD"],"AllowedHeaders":["*"],"MaxAgeSeconds":86400}]`
+4. Go to the **jwlabs.ai** site → **Caching** → **Cache Rules** → **Create rule**. Name it `narration immutable`. When: **Hostname equals `audio.jwlabs.ai`**. Then: **Eligible for cache**, Edge TTL **"Use cache-control header if present"**, Browser TTL **"Respect origin"**. Deploy. (Our files say `immutable`, so they are cached for a year and most listens never touch R2.)
+5. Never make `foray-transcriptions` public, and never put narration in it. Never turn on **Logpush** for `audio.jwlabs.ai` (the privacy policy relies on there being no per-listener logs).
+6. Reply `done`.
+
+**Worked if:** opening `https://audio.jwlabs.ai/` in a browser shows an error page from Cloudflare/R2 (404 is fine while the bucket is empty), not "site can't be reached".
+
+## #120 🔴 [BLOCKING] Make a write key for `foray-narration` and put it in one file on your PC (~10 min)
+<!-- ha filed=2026-09-28 kind=default -->
+
+**Why:** The first narration upload runs on your PC (Phase 1), before the Spark is set up. Uploading needs a key, and keys never go in the repo, GitHub or Vercel: only a machine where you put one can write to the bucket (D8). Rendering needs no key and can run anywhere; the upload step (`tools/narration/upload-narration.mjs`) reads the file below and nothing else, and it refuses to run inside GitHub Actions.
+
+**Steps:**
+1. Cloudflare → **R2** → **Manage R2 API Tokens** (right side of the R2 page) → **Create API token**. Name: `foray-narration-pc-phase1`. Permissions: **Object Read & Write**. Under **Specify bucket(s)** choose **Apply to specific buckets only** → `foray-narration`. Create.
+2. Keep that page open. You need the **Access Key ID**, the **Secret Access Key**, and your **Account ID** (shown on the R2 overview page).
+3. On the PC, open File Explorer, type `%USERPROFILE%` in the address bar, press Enter, and make a new folder named `.foray` (so the folder is `C:\Users\wjduv\.foray`).
+4. Open Notepad and type these five lines, putting your values after the first three `=` signs (no spaces, no quotes):
+   ```
+   R2_NARRATION_ACCOUNT_ID=
+   R2_NARRATION_ACCESS_KEY_ID=
+   R2_NARRATION_SECRET_ACCESS_KEY=
+   R2_NARRATION_BUCKET=foray-narration
+   NARRATION_PUBLIC_BASE=https://audio.jwlabs.ai
+   ```
+5. **File → Save As**, open that `.foray` folder, set **Save as type** to **All files**, name it `r2-narration.env`, and save. (If Notepad names it `r2-narration.env.txt`, rename it.)
+6. Do **not** paste the key into any chat, issue or PR. Reply `done` only.
+7. Later: when the Spark takes over uploads (#121), delete this token in Cloudflare and delete the file.
+
+**Worked if:** the first narration upload Claude runs on your PC finds the file and writes to `foray-narration` without asking you for anything.
+
+## #121 🟡 [DECIDE] Set up the DGX Spark: first boot, network, and its own keys (~2 h, with Joey)
+<!-- ha filed=2026-09-28 kind=default -->
+
+**Why:** Phase 3 moves generation and rendering onto the Spark. Joey does the physical care and OS upkeep, **you alone place the secrets**, and agents change the box only through merged PRs plus a `spark-live` tag you move (D8). Not needed for the first listen: Phases 1 and 2 run on the PC.
+
+**Steps:**
+1. Decide where the Spark lives, and confirm Joey has hands on it.
+2. First boot of DGX OS: turn on **full-disk encryption** at install, then install all updates.
+3. Plug it into the router with a cable, and give it a fixed address (a **DHCP reservation** in your router's settings).
+4. Optional spend: a UPS (about $100–150).
+5. Create a non-root user for the service (for example `foray`). Install **Tailscale** and allow admin SSH with keys only. Do **not** forward any ports on your router.
+6. In Cloudflare, create three R2 tokens, each limited to one bucket: **Object Read & Write** on `foray-narration`; **Object Read** on `foray-transcriptions` (not Joey's farm token); **Object Read & Write** on a new **private** bucket `foray-ops` (create it; it holds backups).
+7. Put those tokens on the Spark in the file that the Spark runbook (`docs/ops/spark.md`, written in Phase 3) names, readable only by root. Claude will note the exact path on this card when the runbook lands. Keep a copy in your password manager.
+8. Then revoke the PC token from #120.
+
+**Worked if:** you can SSH to the Spark over Tailscale, nothing on the internet can reach it directly, and the runbook's check command reports all three tokens present.
+
+## #122 🟡 [DECIDE] Make a GitHub key for the Spark that can only open PRs (~5 min)
+<!-- ha filed=2026-09-28 kind=default -->
+
+**Why:** The Spark opens the held PRs for new Forays and narration. Its key must be able to do that and nothing more: no admin, no Actions, no secrets. Needed at Phase 3.
+
+**Steps:**
+1. GitHub → your picture → **Settings** → **Developer settings** → **Personal access tokens** → **Fine-grained tokens** → **Generate new token**.
+2. Name `foray-spark`. Expiration **90 days**. Resource owner **JW-Incorporated**. Repository access **Only select repositories** → `foray`.
+3. Repository permissions: **Contents: Read and write**, **Pull requests: Read and write**, **Issues: Read and write**. Leave everything else at **No access** (especially Administration, Actions, Secrets and Workflows).
+4. Generate. If the organization asks you to approve the token, approve it.
+5. Put it only on the Spark, in the file the Spark runbook names (as in #121). Never in the repo or a chat. Set a reminder to renew it in 90 days.
+6. Reply `done`.
+
+**Worked if:** a test PR opened from the Spark appears on the `foray` repo, and the token cannot open the repo's Settings.
+
+## #123 🟡 [DECIDE] Log Claude Code in on the Spark, and confirm your plan allows it to run unattended (~10 min)
+<!-- ha filed=2026-09-28 kind=default -->
+
+**Why:** The Spark writes Forays by asking Claude through the "relay", answered by Claude Code on your subscription at $0 extra (D3). It runs on a schedule with no one watching, so check first that your plan allows that. A capped API key comes later, for unattended daily runs or on-demand.
+
+**Steps:**
+1. Check that your Claude plan's terms and usage limits allow an automated, recurring pipeline. If they do not, say so here: the capped key then moves from "later" to "now".
+2. On the Spark, as the user the runbook names for the relay, run `claude` and sign in with your account.
+3. Later (optional spend, when you want unattended daily runs or on-demand): in the Anthropic Console, make a workspace `spark-generation` with a **hard monthly spend limit**, create a key there, and put it on the Spark in a root-only file. Not now.
+4. Reply `done`.
+
+**Worked if:** the runbook's relay check on the Spark answers one test request.
+
+## #124 🟢 [UPGRADE] Note: R2 storage will pass the 10 GB free tier at about 650–700 Forays (~1 min)
+<!-- ha filed=2026-09-28 kind=default -->
+
+**Why:** You asked to be told before R2 costs money. Each Foray adds about 14 MB of narration (Heart + Echo), and old files are never deleted, because phones may still point at them. Past 10 GB it costs about $0.015 per GB a month: roughly $0.06 a month at 1,000 Forays and about $2 a month at 10,000. Downloads stay free.
+
+**Steps:**
+1. Reply `ok` to accept, or name the cap you want instead.
+
+**Worked if:** you replied.
+
+## #125 🟡 [DECIDE] Approve the privacy-policy rewrite for streamed narration, when its PR opens (~15 min)
+<!-- ha filed=2026-09-28 kind=default -->
+
+**Why:** With narration at `audio.jwlabs.ai`, 4a runs a server in the audio path. The privacy policy and data-safety notes say today that there is none and that "we never see it", and they describe the phone's voice list. Those sentences become false and must be rewritten before rendered narration reaches listeners (Phase 2). Legal wording under `docs/` would auto-merge, so the PR carries `hold` and waits for you.
+
+**Steps:**
+1. When Claude posts the PR link here, read the changed sentences in `docs/legal/privacy-policy.md`, `docs/legal/data-safety.md` and `docs/legal/third-party-notices.md`.
+2. Reply `approved`, or say what to change.
+3. If the App Store or Play privacy answers repeat the old sentences, update them the same way (as in #109).
+
+**Worked if:** the PR merges with your approval, and no store text still says 4a has no server in the audio path.
+
+## #126 🟢 [UPGRADE] Tell Joey what moves to the Spark (~5 min)
+<!-- ha filed=2026-09-28 kind=default -->
+
+**Why:** Joey's work converges on the Spark, and he looks after the box (D8).
+
+**Steps:**
+1. Tell Joey, in your own words: narration is now rendered centrally and streamed from `audio.jwlabs.ai`; his Spark benchmark decides CPU versus GPU rendering; the nightly content step (#760) and, last of all, the transcript farm move to the Spark (D10); his rig and the AMD path (#28) retire after that; foray-db's Apple-transcript engine (#831) could run there too; he does physical care under the runbook, and you place all keys.
+2. Reply `done`.
+
+**Worked if:** Joey has acknowledged it.
+
+## #118 🟢 [UPGRADE] Remove the retired events server from your Windows Startup folder (~2 min)
+<!-- ha filed=2026-09-25 kind=default -->
+
+**Why:** `ForayEventsServer.vbs` in your Startup folder starts `tools/events-server.mjs` from the old `commute-curator` checkout at every login. Nothing uses it (events go to Supabase), it listens on every network interface on port 8787 with no auth, and the repo copy has now been deleted (round-3 audit security-9). Only you can remove the Startup entry.
+
+**Steps:**
+1. Press Win+R, type `shell:startup`, press Enter.
+2. Delete `ForayEventsServer.vbs`.
+3. In Task Manager → Details, end the `node.exe` whose command line is `node tools\events-server.mjs` (or just sign out and back in).
+
+**Worked if:** `netstat -ano | findstr :8787` prints nothing after your next login.
+
+## #117 🟢 [UPGRADE] On a phone, check six player fixes from audit round 3 that no machine here can hear (~20 min)
+<!-- ha filed=2026-09-25 kind=default -->
+
+**Why:** Branch `r3fix/l3-player-and-native-tts` fixes narration and transport bugs that only a real speaker proves; unit tests carry the logic. Use a Foray with spoken narration, on the web player (Developer → web player on iOS).
+
+**Steps:**
+1. iOS: during a narration line press pause, then Next clip onto another line. The new line must be heard (mobile-native-1).
+2. Android: open the voice picker mid-narration and tap Preview. The picker must say "Preview is unavailable while the narrator is on a line." and the Foray must keep speaking that line, not skip it (mobile-native-2; a preview would cut the line off, so it is refused).
+3. Android, airplane mode, a network-only voice: narration must move on at once, not after a long silence (mobile-native-3).
+4. iOS over Spotify: play a Foray to its end without pausing. Spotify must offer to resume (mobile-native-4).
+5. Pause, or press Stop, while a rendered bridge line is still loading: nothing may start playing (player-core-2).
+6. Screen locked, press Next during a slow start: the next clip must play, not stop (player-core-3).
+
+**Worked if:** all six behave as written; paste Developer → Playback diagnostics → Copy into the card thread for any that do not.
 
 ## #115 🔴 [BLOCKING] Put the app-signing and store-upload secrets behind a protected `release` environment (~15 min)
 <!-- ha filed=2026-09-25 kind=default -->
@@ -52,8 +198,8 @@
 **Why:** Round-3 code audit, question Q3. The fix lane adds a new numbered migration under `backend/migrations/`. It turns on row-level security for the catalogue and pipeline tables, adds per-table policies on `events`, `user_interests` and `taxonomy_nodes` (with event timestamps set by the server), and adds a delete policy on `learning_cursor` so **Delete my data** can remove that table's rows too. The code and the privacy-policy rows describing it land in the round-3 fix PR, but **nothing reaches the live database until you apply it**. You asked for this to be your follow-up (2026-09-25).
 
 **Steps:**
-1. Wait for the round-3 fix PR to merge. Claude will reply here with the migration's file name.
-2. Supabase dashboard → the 4a project → **SQL editor**. Paste the migration file's contents, read it, and run it (or `supabase db push` if you use the CLI).
+1. Wait for the round-3 fix PR to merge. The migration is `backend/migrations/supabase/0003_rls_least_privilege.sql`.
+2. Supabase dashboard → the 4a project → **SQL editor**. Paste that file's contents, read it, and run it (or `supabase db push` if you use the CLI).
 3. Check it worked: **Table editor** shows RLS **enabled** on each table the migration names. As an anonymous user, the app still loads Home, and **Developer → Playback diagnostics** shows no `sync` or `events` errors.
 4. Reply `done` (or paste any SQL error) here.
 
@@ -85,53 +231,6 @@
 
 **Worked if:** no store-facing text says "two origins" or "miss-only", and the published policy names Vercel.
 
-## #45 🟡 [DECIDE] Run the voice-engine probe on your phone — the one measurement no machine here can take (K-01)
-<!-- ha filed=2026-09-12 kind=default -->
-
-**Why:** the platform voices came back "all so bad" (2026-09-11) and the picker is
-cut down to Samantha as a stopgap. The real fix is our own neural voice bundled in
-the app (`docs/bundled-voice-plan.md`). Everything downstream of that — the engine,
-the player, which three voices ship — waits on ONE number nobody here can produce:
-how fast a real phone synthesizes it, in how much memory, with the screen locked.
-The go/no-go rule was written before the run so it cannot be read generously
-afterwards: RTF ≤ 0.8 warm on the newest phone, ≤ 1.5 on the oldest tried, peak
-memory ≤ 400 MB, and the passage completes with the screen locked.
-
-**Status, 2026-09-13 (third attempt — most of the way there):** you ran this on
-build **2026091316** and got
-
-```
-voiceProbe kokoro-probe/cpu  rtf cold 0.00 warm 0.00  load 467ms/388ms  peak 290.9MB  locked=n  batt —  over 77.4s
-```
-
-**Most of that is real and it is the first time any of it existed.** The weights
-reached your phone, the model loaded in 467 ms cold / 388 ms warm, and it peaked at
-290.9 MB — comfortably under the 400 MB ceiling. **Nothing you did was wrong.**
-
-The two RTF zeroes were ours, not yours: the app was dividing the synthesis time by
-an audio length it had **estimated** rather than one the phone had **rendered**, so
-a synthesis that produced nothing came out as `0.00` — which happens to beat every
-ceiling in the go rule. That is fixed (#685): the phone now reports the audio it
-actually made, an impossibly fast RTF is rejected as a failed measurement instead of
-celebrated, and if synthesis produces nothing the line says
-`could not measure: synthesis-failed/<which failure>` in plain words. **A `could not
-measure` line on the next run is a useful result, not a wasted trip — paste it.**
-
-One clause is still completely untested: `locked=n` means the phone was never
-locked, so we do not know whether our voice keeps speaking with the screen off.
-That is one of the four go/no-go conditions.
-
-**Steps:**
-1. Install the first TestFlight (or Play internal) build numbered **higher than 2026091316**. Nothing at or below that number can produce a trustworthy measurement — 2026091316 is the build that reported the two zeroes — so check the build number before you start.
-2. Open the menu, tap **Developer** at the bottom of Settings, turn on **"Voice engine probe"**, and tap **"Run the voice engine probe"**.
-3. **Lock the phone immediately — within a second or two, and in any case BEFORE the passage finishes.** It runs about 78 seconds. This is not tidiness: whether synthesis survives the lock screen is one of the four go/no-go clauses, the app can only report the weaker fact that it was not frontmost when the last line ended, and locking in time is what turns that into the real answer. Locking late reads as a FAILURE, not as a missing number — so if you mistime it, say so and run it again rather than sending the record.
-4. When the passage stops, unlock, tap **Copy** in the sheet that is already open, and paste the whole record here.
-5. Do the same on Joey's Pixel 10 Pro, and on the oldest phone either of you can find — say which record is which phone and which OS version.
-6. If a record says "could not measure" rather than giving numbers, paste it anyway and stop there. `model-absent` means the build did not fetch the weights; `engine-absent` means it fetched them but the runtime did not load; `synthesis-failed/…` means both worked and the inference itself did not, and the part after the slash names which. All three are build problems, not phone ones, and all three are ours to fix. Likewise an `rtf … 0.00!` with an exclamation mark, or `over 0.0s` — those mean the run measured nothing and we need the line, not a re-run.
-
-**Worked if:** a pasted diagnostics record carrying a `voiceProbe` line with real
-numbers on it, one per phone, each labelled with the device and OS version. Those
-numbers go into `docs/research/on-device-tts.md` §10 and decide K-04.
 ## #44 🟡 [DECIDE] Add the founders as Play testers, so Play actually emails you (R-08)
 <!-- ha filed=2026-09-11 kind=default -->
 

@@ -23,6 +23,7 @@ import type { TranscriptBodySource, TranscriptTextIndex } from "../src/generatio
 import type { TranscriptCue, TranscriptCueProvider, TranscriptDigestEntry } from "../src/generation/transcriptArchiveLookup";
 import { loadCatalogueData, type CatalogueData } from "../src/generation/catalogueLookup";
 import { StubExternalResearcher } from "../src/generation/StubExternalResearcher";
+import { TruncatedReplyError } from "../src/generation/anthropicCall";
 import type { ExternalResearcher, ExternalResearchContext, ExternalResearchResult } from "../src/generation/ExternalResearcher";
 import type { IntentUnderstanding } from "../src/types/generation";
 import { InMemoryCostEventSink } from "../src/cost/costEvents";
@@ -220,6 +221,36 @@ describe("buildResearchShape — cheap-first ordering: external research fires O
     for (const label of noTapeLabels) {
       expect(spy.calls).toContain(label);
     }
+  });
+
+  /* Round-3 review (L5): research() refuses a reply cut off at max_tokens
+     (gen-10), and the fan-out ran Promise.all with no catch, so one truncated
+     subtopic failed the whole research-shape stage.
+     MUTATION: drop the TruncatedReplyError catch in fanOutExternalResearch --
+     buildResearchShape rejects. */
+  it("a subtopic whose external research is truncated gets no notes; the stage still completes", async () => {
+    const { guard } = guardAndSink();
+    const spy = new SpyExternalResearcher(guard);
+    let first = true;
+    const truncating: ExternalResearcher = {
+      providerName: "truncating",
+      research: async (topic, ctx) => {
+        if (first) {
+          first = false;
+          throw new TruncatedReplyError("Anthropic external-research reply was truncated");
+        }
+        return spy.research(topic, ctx);
+      }
+    };
+    const shape = await buildResearchShape(noTapeIntent(), { researcher: truncating, ctx: { userId: "founder-1" }, catalogue: noTapeFixtureCatalogue() });
+    const gaps = shape.subtopics.filter((s) => s.tape.signal === "none");
+    expect(gaps.length).toBeGreaterThan(0);
+    expect(gaps.filter((s) => s.externalNotes === null)).toHaveLength(1);
+
+    const failing: ExternalResearcher = { providerName: "failing", research: async () => { throw new Error("budget exceeded"); } };
+    await expect(
+      buildResearchShape(noTapeIntent(), { researcher: failing, ctx: { userId: "founder-1" }, catalogue: noTapeFixtureCatalogue() })
+    ).rejects.toThrow(/budget exceeded/);
   });
 
   it("records externallyResearched=true only for subtopics that were actually gaps", async () => {

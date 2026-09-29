@@ -10,13 +10,20 @@ import { isCuratedRow } from "./identity.mjs";
 /** Lowercase, collapse whitespace, strip punctuation that varies between
     otherwise-identical listings ("Show: The Podcast" vs "Show - The
     Podcast"). Deliberately conservative — this is a fallback key, not a
-    display string. */
+    display string.
+
+    UNICODE LETTERS AND DIGITS, NOT ASCII (audit round 3, arch-drift-3). The
+    class was ASCII-only, so a title written only in Japanese, Cyrillic or
+    Arabic normalised to "" and every guid-less non-Latin show in the dump
+    shared the key `ta:|` and collapsed into ONE canonical row. \p{L}\p{N},
+    with NFKD applied before lowercasing, is the rule the app and the API use
+    for show titles (normaliseShowTitle). */
 export function normalizeKey(s) {
   return String(s ?? "")
-    .toLowerCase()
     .normalize("NFKD")
     .replace(/[\u0300-\u036f]/g, "") // strip accents
-    .replace(/[^a-z0-9]+/g, " ")
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
     .trim()
     .replace(/\s+/g, " ");
 }
@@ -24,11 +31,16 @@ export function normalizeKey(s) {
 /** The group key for one row: podcastGuid when present (trimmed, non-empty,
     lowercased — guids are case-insensitive by RFC 4122), else normalised
     title+author. Returns `{ key, kind }` so a caller/test can see which
-    path fired. */
+    path fired.
+
+    A row whose title normalises to nothing (pure punctuation or emoji) has no
+    title to group on, so it is keyed by its own id and never merges with
+    anything: an unknown identity is not a shared one. */
 export function groupKeyFor(row) {
   const guid = String(row.podcastGuid ?? "").trim();
   if (guid) return { key: `guid:${guid.toLowerCase()}`, kind: "guid" };
   const title = normalizeKey(row.title);
+  if (!title) return { key: `id:${row.id}`, kind: "title_author" };
   const author = normalizeKey(row.itunesAuthor || row.itunesOwnerName || "");
   return { key: `ta:${title}|${author}`, kind: "title_author" };
 }

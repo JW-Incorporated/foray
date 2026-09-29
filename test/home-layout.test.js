@@ -546,7 +546,13 @@ test("nothing carrying the `hidden` attribute can render — pinned on the Shows
 /* BUG 4 — THE FOUR CARDS CRUSHED TO SLIVERS                             */
 /* ==================================================================== */
 
-test("the four subject cards keep a floor no sibling can take, and `.home` grows instead of crushing them", () => {
+test("`.home` grows instead of crushing its content: a min-height floor, never a fixed height", () => {
+  /* ROUND 3 (search-api-css-10): the `.cards4` grid this test also floored is
+     deleted. It was the retired flag-off Home's four-card grid, and renderHome()
+     always renders Home v2, which never emits it
+     (test/home-information-architecture.test.js pins that). The `.home` half
+     below still stands: Home v2 carries the `.home` class too. The history of
+     the bug is kept here because it is why `.home` says min-height. */
   /* `.home` is a flex column and `.cards4` its only `flex: 1` child, so a
      fixed `height` on the container makes every optional sibling — the
      continue banner, the "Jump back in" rows, the foray list — come straight
@@ -562,35 +568,13 @@ test("the four subject cards keep a floor no sibling can take, and `.home` grows
      MUTATION: `.cards4 { min-height: 0; }` (its value before this fix). The
      floor assertion fails. MUTATION 2: change `.home`'s `min-height` back to
      `height`. The "grows" assertion fails, naming `height`. */
-  /* Read the card's WHOLE box, not just its padding. The first version of this
-     summed artwork + padding by hand and forgot `.mini-card`'s 1px border —
-     and because the stylesheet's own calc made the identical omission, the two
-     agreed at 344px and neither could see that each card's content box was
-     54px against 56px of artwork, clipped 2px top and bottom. `boxOf` already
-     folds padding AND border, so the border cannot be dropped from one side
-     only. Verified by mutation: `.mini-card { border: 6px solid }` used to
-     leave all five tests green. */
-  const card = boxOf(".mini-card");
-  const cardChrome = card.paddingTop + card.paddingBottom + card.borderTop + card.borderBottom;
-  assert.ok(cardChrome > 0, ".mini-card must declare padding/border for this floor to mean anything");
-  const artHeight = px(valueOf(".mini-card img", "height"));
-  assert.ok(artHeight > 0, ".mini-card's artwork must declare a height");
-
-  const gap = px(valueOf(".cards4", "gap"));
-  const required = 4 * (artHeight + cardChrome) + 3 * gap;
-  const floor = px(valueOf(".cards4", "min-height"));
-
-  assert.ok(floor >= required,
-    `.cards4's min-height is ${floor}px but four whole .mini-cards need ${required}px ` +
-    `(${artHeight}px artwork + ${cardChrome}px padding+border each, plus 3x${gap}px gaps) — ` +
-    `below this the cards clip their own artwork`);
-
-  /* The other half: a floor only helps if the container may exceed its ideal
-     height. With a fixed `height` the floor would just overflow the column and
-     paint over `.home-below`. */
+  /* A floor only helps if the container may exceed its ideal height. With a
+     fixed `height` the column has a hard budget and its content overflows or
+     is crushed instead of making the page scroll. */
   assert.strictEqual(valueOf(".home", "height"), null,
-    ".home must not declare a fixed `height` — with one, `.cards4`'s floor overflows " +
-    "the column and paints over `.home-below` instead of making the page scroll");
+    ".home must not declare a fixed `height` — with one, its content is crushed or overflows " +
+    "instead of making the page scroll");
+  assert.strictEqual(valueOf(".cards4", "min-height"), null, "the retired .cards4 grid stays deleted");
   assert.ok(valueOf(".home", "min-height") != null,
     ".home must declare `min-height` so it still fills one screen when the content fits");
 });

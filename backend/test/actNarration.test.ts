@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { writeNarration, allWrittenNarration, pageOfWrittenBeat, type NarrationWriteStats, type WrittenAct } from "../src/generation/writeNarration";
+import { writeNarration, allWrittenNarration, pageOfWrittenBeat, showsHeardBeforeEachAct, type NarrationWriteStats, type WrittenAct } from "../src/generation/writeNarration";
 import { writeActNarration, actDocuments, buildActSources, groundDocsFor, sourcesForRest, titlesForClip } from "../src/generation/writeAct";
 import {
   CLIP_FIRST_SENTENCES_WORDS,
@@ -1578,3 +1578,23 @@ describe("Q-09 — the first clip from a show says the show's name, and no clip 
   });
 });
 
+
+describe("gen-8 — Q-09's show memory is carried ACROSS acts", () => {
+  it("showsHeardBeforeEachAct: each act gets the shows introduced by the acts before it, and act 1 gets none", () => {
+    const shows: Record<string, string> = { [ITEM_A]: SHOW, [ITEM_B]: "Another Show" };
+    const second: SourcedAct = { title: "Act 2", slots: [{ title: "Later", beats: [tape("The robot in the simulator.", TAPE_B)] }] };
+    const before = showsHeardBeforeEachAct([fourBeatsTwoClips(), second, fourBeatsTwoClips()], (t) => shows[t.itemId] ?? "");
+    expect(before[0]).toEqual([]);
+    expect(before[1]).toEqual([SHOW, "Another Show"]);
+    expect(before[2]).toEqual([SHOW, "Another Show", "Another Show"]);
+  });
+
+  it("writeNarration hands each act its own earlier-acts set: a show act 1 named is not first-heard in a later act", async () => {
+    /* MUTATION THAT KILLS THIS: drop `showsIntroduced` from the options
+       writeNarration builds for writeActNarration — every act starts with an
+       empty set and re-introduces the show by name. */
+    const { writer, verifier, requests } = builders();
+    await writeNarration([fourBeatsTwoClips()], { writer, verifier, evidence: gatherer(), showsIntroduced: [[SHOW]] }, voice, ctx);
+    expect(requests[0]!.clips.map((c) => c.showFirstHeard)).toEqual([false, false]);
+  });
+});

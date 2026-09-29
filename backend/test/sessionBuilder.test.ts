@@ -347,3 +347,44 @@ describe("buildSession — per-user personalization (personalization-and-depth-p
     expect(diversity.distinctBranches).toBeGreaterThanOrEqual(3);
   });
 });
+
+/* Round-3 audit, lane L6: backend-rest-15 (the dedup log names the survivor)
+   and backend-rest-16 (an unparseable date scores neutral, not as 1970). */
+describe("buildSession round-3 fixes", () => {
+  it("the dedup log names the candidate actually kept, never keptId === droppedId (backend-rest-15)", async () => {
+    const candidates = loadRealCandidates();
+    const base = candidates[0]!;
+    const dupTitle = "Qzxv entirely unique duplicate title for the dedup log";
+    // "b-dup" comes first, so it is the survivor; "a-dup" is the group's root (smallest id).
+    const withDups = [...candidates, { ...base, id: "b-dup", title: dupTitle }, { ...base, id: "a-dup", title: dupTitle }];
+    const { droppedDuplicates, scoreLog } = await buildSession({
+      userId: "test-user",
+      sessionKey: "dedup",
+      commuteMinutes: 20,
+      playbackSpeed: 1.4,
+      taxonomy: loadRealTaxonomy(),
+      candidates: withDups,
+      enricher: new StubEnricher()
+    });
+    expect(droppedDuplicates).toContainEqual({ keptId: "b-dup", droppedId: "a-dup" });
+    for (const d of droppedDuplicates) expect(d.keptId).not.toBe(d.droppedId);
+    expect(scoreLog.some((e) => e.candidateId === "b-dup")).toBe(true);
+    expect(scoreLog.some((e) => e.candidateId === "a-dup")).toBe(false);
+  });
+
+  it("an unparseable release date gets the neutral freshness 0.5, not 1970's 0 (backend-rest-16)", async () => {
+    const candidates = loadRealCandidates();
+    const undated = { ...candidates[0]!, id: "undated-1", title: "Qzxv undated candidate", releaseDate: "unknown" };
+    const { scoreLog } = await buildSession({
+      userId: "test-user",
+      sessionKey: "undated",
+      commuteMinutes: 20,
+      playbackSpeed: 1.4,
+      taxonomy: loadRealTaxonomy(),
+      candidates: [...candidates, undated],
+      enricher: new StubEnricher()
+    });
+    const entry = scoreLog.find((e) => e.candidateId === "undated-1")!;
+    expect(entry.components.freshness).toBe(0.5);
+  });
+});

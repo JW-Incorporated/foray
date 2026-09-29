@@ -62,7 +62,7 @@ import { fileURLToPath } from "node:url";
 import {
   createForayMediaSession, mediaSessionApplies, nowPlayingPayload, identityKey,
   transportState, assetUri,
-  PLUGIN_NAME, SET_METHOD, TRANSPORT_EVENT, SESSION_EVENT, SESSION_DOM_EVENT, REMOTE_DOM_EVENT,
+  PLUGIN_NAME, SET_METHOD, TRANSPORT_EVENT, SESSION_EVENT, SESSION_DOM_EVENT, REMOTE_DOM_EVENT, NATIVE_TRANSPORT_FACTS,
   ROUTABLE_ACTIONS, CLOSE_ACTION, UNMIRRORED_ACTIONS, WEBKIT_ORIGIN, REMOTE_DUPLICATE_WINDOW_MS,
   REMOTE_COMMAND_FOR_ACTION, remoteCommandFor,
   SEEK_BACKWARD_SEC, SEEK_FORWARD_SEC, POSITION_MIN_INTERVAL_MS, ASSET_BASE, IOS_ASSET_BASE,
@@ -2015,6 +2015,35 @@ test("every native transport event is re-broadcast as foray:remote, with what th
       { command: "toggle-play-pause", action: "pause", origin: "command-center", at: 1700000000000, handled: true, deduped: false },
       { command: "next-track", action: "nexttrack", origin: "command-center", at: 1700000000001, handled: false, deduped: false },
     ]);
+  });
+});
+
+// L19/L20 (docs/diagnostics/log-gaps-2026-09-26.md): the iOS plugin stamps each
+// press with `nseq`/`nboot` (so the record can count presses lost on the way to a
+// sleeping WebView) and `route`/`app` (who pressed). They ride onto the record's
+// row as they arrived, on a deduped copy too; nothing else the event carries does.
+// TO SEE IT FAIL: drop `...native` from `deliver`'s row, or forward every key.
+test("the plugin door's nseq/nboot/route/app reach the foray:remote row, and nothing else rides along", () => {
+  withWindow((win) => {
+    const { session, nav, capacitor } = setup();
+    session.install();
+    nav.mediaSession.setActionHandler("play", () => {});
+    const seen = [];
+    win.addEventListener(REMOTE_DOM_EVENT, (e) => seen.push(e.detail));
+    const sub = subFor(capacitor, TRANSPORT_EVENT);
+    sub.callback({
+      action: "play", command: "play", origin: "command-center", at: 1700000000000,
+      nseq: 41, nboot: 1699999990000, route: "carplay", app: "bg",
+      portName: "Wyatts Car", nseqText: "x", extra: { deep: 1 },
+    });
+    sub.callback({ action: "play", command: "play", origin: "command-center", nseq: Number.NaN, nboot: "1", route: 7, app: null });
+    assert.deepEqual(seen[0], {
+      nseq: 41, nboot: 1699999990000, route: "carplay", app: "bg",
+      command: "play", action: "play", origin: "command-center", at: 1700000000000, handled: true, deduped: false,
+    });
+    assert.deepEqual(Object.keys(seen[1]).sort(), ["action", "at", "command", "deduped", "handled", "origin"],
+      "a fact of the wrong type is not forwarded");
+    assert.deepEqual(Object.keys(NATIVE_TRANSPORT_FACTS), ["nseq", "nboot", "route", "app"]);
   });
 });
 

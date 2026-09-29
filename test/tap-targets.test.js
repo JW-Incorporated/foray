@@ -218,6 +218,7 @@ const BUTTONS = {
   ".interest-reset": { rule: ".interest-reset" },
   ".hv2-play": { tall: "body.ui-v2 .hv2-play", why: "Home's one play button (founder, 2026-09-24): a labelled capsule, \"▶ Play <title>\", 48px tall with 16/20px side padding" },
   ".play-btn": { rule: ".play-btn" },
+  ".pl-save": { tall: "button.pl-save", why: "a labelled capsule (\"Save to my playlists\" / \"✓ Saved\") with 16px side padding" },
   ".rate-option": { tall: ".rate-option", why: "a row of the speed sheet's full-width column" },
   ".reorder": { rule: "button.reorder" },
   ".show-star": { rule: "button.show-star" },
@@ -225,7 +226,9 @@ const BUTTONS = {
   ".up-next": { rule: "button.up-next" },
   ".up-next-remove": { rule: "button.up-next-remove" },
   ".voice-row-audition": { rule: ".voice-row-audition" },
-  '<button type="submit">': { size: ["#pl-form button", "#cr-form button"] },
+  /* #pl-form's Go went with the #/playlists builder (round-3 audit,
+     search-api-css-10); Create's Build is the one submit button left. */
+  '<button type="submit">': { size: ["#cr-form button"] },
 };
 
 test("every <button> the app renders is classified, and reaches 44px the way its class says", () => {

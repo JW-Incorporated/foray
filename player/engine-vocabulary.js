@@ -53,6 +53,29 @@ export const STAGES = Object.freeze([
     (§5.2). */
 export const SESSION_ERRORS = Object.freeze(["cannot-interrupt-others", "cannot-start-playing", "other"]);
 
+/** WHY an AVAudioSession call failed, in full (L13, docs/diagnostics/
+    log-gaps-2026-09-26.md): every `AVAudioSession.ErrorCode` a hold, a
+    category write or a deactivation can answer, as the `token=` of an engine
+    `session` row and the `err=` of a legacy `sessionActivated (failed)`.
+    Every car record so far says `sessionActivated (failed)` and nothing else,
+    and `insufficient-priority` (another app outranks us in the background)
+    and `cannot-interrupt-others` (a non-mixable app is sounding) call for
+    different fixes.
+
+    A SEPARATE SET, NOT A WIDER SESSION_ERRORS. SESSION_ERRORS is part of the
+    page <-> engine contract: engine-contract.js builds a `session-failed:<t>`
+    refusal from each of its tokens, and a new token there would be a new
+    refusal the page must handle. So the contract keeps its three, and a
+    detail token outside them answers `session-failed:other`
+    (`sessionFailedReason` admits through SESSION_ERRORS), while the
+    diagnostics row carries the precise one. Every SESSION_ERRORS token is
+    here too, spelled the same (engine-vocabulary.test.js pins both rules). */
+export const SESSION_ERROR_DETAILS = Object.freeze([
+  "cannot-interrupt-others", "cannot-start-playing", "insufficient-priority", "is-busy",
+  "siri-is-recording", "media-services-failed", "expired-session", "missing-entitlement",
+  "resource-not-available", "incompatible-category", "session-not-active", "other",
+]);
+
 /** `AVAudioSessionInterruptionReasonKey`, spelled as Apple spells the cases
     (§4.4). `appWasSuspended` is the one that matters most: its began
     notification can arrive late, for a suspension that is already over, and
@@ -120,6 +143,7 @@ export const FAULT_KINDS = Object.freeze(["implicit-activation", "externally-own
 export const VOCABULARY = Object.freeze({
   stage: STAGES,
   sessionError: SESSION_ERRORS,
+  sessionErrorDetail: SESSION_ERROR_DETAILS,
   interruptionReason: INTERRUPTION_REASONS,
   stopCause: STOP_CAUSES,
   source: SOURCES,

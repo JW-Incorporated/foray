@@ -129,8 +129,8 @@ The app also asks the browser to mark its storage as persistent
 | `cp_history` | The last 200 episode ids you picked or played in the app | **No** (but see `picked` in §2) |
 | `cp_seen` | Episode ids already shown to you, so they are not repeated | **No** |
 | `cp_saved` | The episodes you saved | **No** (but see `saved` in §2) |
-| `cp_lastpick` | A snapshot of the last episode you picked | **No** (but marking it Done sends `finished` — §2) |
-| `cp_playlists` | Playlists you built, including the text you typed to build them. Since 2026-08-19 each part also keeps a copy of the episode's own details — its id, title, show name, length, Apple Podcasts ids and topic ids — so a playlist still lists what is in it after the episode leaves 4a's catalogue. It deliberately does **not** copy the audio URL or the artwork URL | **No** |
+| `cp_lastpick` | Retired (2026-09-25): it used to hold a snapshot of the last episode you picked, which nothing in the app read any more. It is no longer written, and a copy left from an earlier version is deleted the next time the app starts | **No** |
+| `cp_playlists` | Playlists you built, including the text you typed to build them, and playlists you saved from ones 4a made for you (a generated playlist or a Suggested subject). A saved one also notes where it came from: which kind it was and its id, so saving it again does not make a second copy. Since 2026-08-19 each part also keeps a copy of the episode's own details — its id, title, show name, length, Apple Podcasts ids and topic ids — so a playlist still lists what is in it after the episode leaves 4a's catalogue. It deliberately does **not** copy the audio URL or the artwork URL | **No** |
 | `cp_quests` | A legacy key, migrated once into `cp_playlists` | **No** |
 | `cp_queue` | Your Up Next list — an ordered array of episode ids you added from any episode row's "+ Up Next" control. Separate from `cp_playlists`; holds only the ids — the details it shows are in `cp_episode_snaps` | **No** |
 | `cp_episode_snaps` | A copy of the details of each episode in your Up Next list and your recent history — title, show name, length, publish date, artwork and audio addresses, topic ids and the first couple of sentences of its description — so those lists can still show and play an episode after the app reloads, including episodes from outside 4a's own catalogue. An episode is dropped from it once neither list names it any more | **No** |
@@ -155,7 +155,7 @@ The app also asks the browser to mark its storage as persistent
 | `cp_sb_session` | The access and refresh token for your anonymous account, and its user id. In the iOS and Android app it is kept on the phone only and is **not** in the phone's backups — see "One key is the exception" above | It **is** your credential for our database — see §3 |
 | `cp_storage_health` | A diagnostic record of storage failures, for troubleshooting | **No** |
 | `cp_storage_stale` | The names (never the values) of any of the keys above that this device's `localStorage` refused to update while a durable copy accepted the change, so the next launch reads the newer durable copy instead of the stale one. Usually absent; kept only in the durable copies — IndexedDB, and in the iOS and Android app its preferences store too — never in `localStorage` | **No** |
-| `cp_diag` | A playback diagnostic record, capped at the most recent 200 entries: how long each seam between two segments took, the load deadline in force, out-point overshoot, stops (a lost audio route, an interruption), which resume point was written and read back, when the app went to the background and for how long, and any press of a play or transport control that failed — with the *class* of the error (for example `NotAllowedError`, meaning your browser held the audio back), never its message, and with a count when the same press fails repeatedly. It also keeps search rows (query length, local hit counts, timings), now-playing, remote-command and native-session rows. It holds no audio, no URLs, no account id and no device names — when it records that a known audio route came back, it records only *that* one was recognised, never which | **No** — it is never transmitted; the menu's **Developer** → **Playback diagnostics** shows it and lets you copy or clear it |
+| `cp_diag` | A playback diagnostic record, capped at the most recent 200 entries: how long each seam between two segments took, the load deadline in force, out-point overshoot, stops (a lost audio route, an interruption), which resume point was written and read back, when the app went to the background and for how long, and any press of a play or transport control that failed — with the *class* of the error (for example `NotAllowedError`, meaning your browser held the audio back), never its message, and with a count when the same press fails repeatedly. It also keeps search rows (query length, local hit counts, timings), now-playing, remote-command and native-session rows, and a row each time a narration recording failed to play and its script was read aloud by your device's voice instead — why it failed, which line, and the name of the server it came from (for example `audio.jwlabs.ai`), never the recording's address. It holds no audio, no URLs, no account id and no device names — when it records that a known audio route came back, it records only *that* one was recognised, never which | **No** — it is never transmitted; the menu's **Developer** → **Playback diagnostics** shows it and lets you copy or clear it |
 
 **The iOS app's native audio player.** In the iOS app, episodes and forays
 (their clips, the narration between them and the short jingle between two
@@ -222,7 +222,7 @@ request that is not to our own origin.
 ## 2. What leaves your device, exactly
 
 The app buffers events locally (in the event queue described above) and
-periodically sends some of them to our database (Supabase — see §3). **Eighteen of the twenty-two event types the app records never leave the device.** The
+periodically sends some of them to our database (Supabase — see §3). **Nineteen of the twenty-three event types the app records never leave the device.** The
 buffer is trimmed to the most recent 5,000 entries.
 
 **Sent** (`app.js:toEventRow()`). Every row carries your anonymous account id
@@ -232,14 +232,15 @@ and a timestamp:
 |---|---|
 | `picked` | Episode slug, its topic ids, an `app` label, and a context label. See the note below — both labels carry less about you than their names suggest |
 | `saved` | Episode slug, topic ids |
-| `thumbs` | Up or down; the taxonomy node it applies to; optionally the episode slug, segment id and foray id; the reason codes you selected; **and the free-text note you typed** (a single line, up to 200 characters) |
+| `thumbs` | Up or down, or that you withdrew a vote; when you change or withdraw a vote, the direction and reason codes of the vote it replaces (so the change is counted once); the taxonomy node it applies to; optionally the episode slug, segment id and foray id; the reason codes you selected; **and the free-text note you typed** (a single line, up to 200 characters) |
 | `session_shown` → stored as `session_built` | A session key and which builder produced it |
 
 **Not sent — recorded only on your device:** `play_started`, `position` (your play
 position; stored about every 15 seconds, recorded as an event at most once a
 minute per episode — `player/position-store.js:save()`), `foray_play`,
 `foray_restart`, `foray_progress_drift`, `source_opened`, `saved`'s counterpart
-`unsaved`, `playlist_built`, `playlist_removed`, `family_mode`,
+`unsaved`, `playlist_built`, `playlist_saved` (keeping a playlist 4a made as
+your own), `playlist_removed`, `family_mode`,
 `autoadvance_pref` (toggling continuous playback on or off), `voice_pref`
 (choosing a narration voice — V-01), `refreshed_all`,
 `storage_fault`, `queued` and its counterpart `unqueued`

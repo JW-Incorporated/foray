@@ -220,7 +220,17 @@ export function parseFeed(xmlBody: string): ParsedFeed {
     warnings.push("feed has zero <item> entries");
   }
 
-  const episodes: ParsedEpisode[] = items.map((rawItem, idx) => parseItem(rawItem, idx));
+  // One bad item must not take the whole feed (and a show's page) down: the
+  // contract above is "never throws", so a throwing item becomes a warning
+  // and is skipped.
+  const episodes: ParsedEpisode[] = [];
+  items.forEach((rawItem, idx) => {
+    try {
+      episodes.push(parseItem(rawItem, idx));
+    } catch (err) {
+      warnings.push(`item #${idx} skipped: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  });
 
   return {
     title,
@@ -245,11 +255,13 @@ function parseItem(rawItem: unknown, idx: number): ParsedEpisode {
   let guid: string | null = null;
   let guidIsPermalink = false;
   if (isPlainObject(item.guid)) {
-    guid = textOf(item.guid);
+    guid = textOf(item.guid) || null;
     const isPermalinkAttr = attrOf(item.guid, "isPermaLink");
     guidIsPermalink = isPermalinkAttr !== "false"; // default true per RSS spec
   } else if (typeof item.guid === "string") {
-    guid = item.guid.trim();
+    // An empty <guid></guid> means "no guid", not the identity "": every
+    // such episode would otherwise collide on (show_id, "").
+    guid = item.guid.trim() || null;
     guidIsPermalink = true;
   }
   if (!guid) warnings.push("missing guid — identity relies on composite key");

@@ -1,8 +1,9 @@
 import { describe, it, expect, vi } from "vitest";
-import { AnthropicExternalResearcher } from "../src/generation/AnthropicExternalResearcher";
+import { AnthropicExternalResearcher, RetrievalUnreadableError, salvageCompletePassages } from "../src/generation/AnthropicExternalResearcher";
 import { BudgetGuard } from "../src/cost/budgetGuard";
 import { InMemoryCostEventSink } from "../src/cost/costEvents";
 import { makeFakeAnthropicClient, textBlock, toolUseBlock } from "./helpers/fakeAnthropicClient";
+import type Anthropic from "@anthropic-ai/sdk";
 
 /**
  * Error-path + budget-guard-wiring coverage for AnthropicExternalResearcher
@@ -110,5 +111,129 @@ describe("AnthropicExternalResearcher", () => {
     const researcher = new AnthropicExternalResearcher(new BudgetGuard(new InMemoryCostEventSink(), 100), client);
 
     await expect(researcher.research("topic", ctx)).rejects.toThrow();
+  });
+
+  /* gen-1 (round-3 audit): the real web-search reply shape. */
+  describe("gen-1: a web-search reply is read after its tool results, and retrieval never re-asks", () => {
+    const block = (b: Record<string, unknown>) => b as unknown as Anthropic.ContentBlock;
+    const request = { claim: "Charcoal briquettes began as a waste scheme", maxPassages: 3, maxChars: 1500 };
+    const searchReply = (answerParts: string[], stop_reason = "end_turn") => ({
+      stop_reason,
+      content: [
+        textBlock("I'll search for published sources on this."),
+        block({ type: "server_tool_use", id: "srvtoolu_1", name: "web_search", input: { query: "charcoal briquettes history" } }),
+        block({ type: "web_search_tool_result", tool_use_id: "srvtoolu_1", content: [{ type: "web_search_result", url: "https://example.org/a", title: "A", encrypted_content: "x" }] }),
+        ...answerParts.map((t) => textBlock(t))
+      ]
+    });
+
+    it("retrievePassages parses a split final answer after a preamble and a tool result, with ONE call", async () => {
+      const { client, create } = makeFakeAnthropicClient([]);
+      create.mockResolvedValue(
+        searchReply(['{"passages": [{"title": "Kingsford history", "url": "https://example.org/a", ', '"text": "The plant turned sawdust into briquettes."}]}'])
+      );
+      const researcher = new AnthropicExternalResearcher(new BudgetGuard(new InMemoryCostEventSink(), 100), client);
+      const passages = await researcher.retrievePassages(request, ctx);
+      expect(create).toHaveBeenCalledTimes(1);
+      expect(passages).toEqual([
+        expect.objectContaining({ docId: "print:1", title: "Kingsford history", text: "The plant turned sawdust into briquettes." })
+      ]);
+    });
+
+    /* Round-3 review (L5): an unparseable reply used to come back as [], which
+       gatherEvidence records as a confirmed "nothing exists" verdict and caches.
+       It is a failure: thrown, never cached, asked again.
+       MUTATION: return [] from the parse catch again -- this resolves. */
+    it("retrievePassages FAILS (throws RetrievalUnreadableError) on an unparseable answer, and never re-asks without the tool", async () => {
+      const { client, create } = makeFakeAnthropicClient([]);
+      create.mockResolvedValue(searchReply(["I could not find anything verbatim, sorry."]));
+      const researcher = new AnthropicExternalResearcher(new BudgetGuard(new InMemoryCostEventSink(), 100), client);
+      await expect(researcher.retrievePassages(request, ctx)).rejects.toBeInstanceOf(RetrievalUnreadableError);
+      expect(create).toHaveBeenCalledTimes(1);
+      // A turn still paused after the last continuation has no answer text at all: the same failure.
+      create.mockReset();
+      create.mockResolvedValue({ stop_reason: "pause_turn", content: [textBlock("Searching.")] });
+      await expect(researcher.retrievePassages(request, ctx)).rejects.toBeInstanceOf(RetrievalUnreadableError);
+    });
+
+    it("an explicit empty answer is still an empty result, not a failure", async () => {
+      const { client, create } = makeFakeAnthropicClient([]);
+      create.mockResolvedValue(searchReply(['{"passages": []}']));
+      const researcher = new AnthropicExternalResearcher(new BudgetGuard(new InMemoryCostEventSink(), 100), client);
+      await expect(researcher.retrievePassages(request, ctx)).resolves.toEqual([]);
+    });
+
+    /* Round-3 review (L5): a reply cut off at max_tokens was refused, recorded as
+       a failed retrieval, and re-asked at full search cost on every later page.
+       It now keeps the passages that finished and drops the one the cut went
+       through, unrepaired.
+       MUTATION: use createWebSearchTurn (which refuses the truncated reply) --
+       this rejects with TruncatedReplyError. */
+    it("a truncated retrieval keeps the passages that finished, drops the cut one, and makes ONE call", async () => {
+      const { client, create } = makeFakeAnthropicClient([]);
+      create.mockResolvedValue(
+        searchReply(
+          [
+            '{"passages": [{"title": "One", "url": "https://e/1", "text": "First whole passage, with a \\"quote\\" and a } brace."}, ',
+            '{"title": "Two", "text": "Second whole passage."}, {"title": "Three", "text": "Cut off mid-sen'
+          ],
+          "max_tokens"
+        )
+      );
+      const researcher = new AnthropicExternalResearcher(new BudgetGuard(new InMemoryCostEventSink(), 100), client);
+      const passages = await researcher.retrievePassages(request, ctx);
+      expect(passages.map((p) => p.title)).toEqual(["One", "Two"]);
+      expect(passages[0]!.text).toBe('First whole passage, with a "quote" and a } brace.');
+      expect(create).toHaveBeenCalledTimes(1);
+
+      create.mockResolvedValue(searchReply(['{"passages": [{"title": "Only", "text": "never fini'], "max_tokens"));
+      await expect(researcher.retrievePassages(request, ctx)).rejects.toBeInstanceOf(RetrievalUnreadableError);
+    });
+
+    it("salvageCompletePassages reads the last passages array and ignores what the cut went through", () => {
+      expect(salvageCompletePassages('Draft: {"passages": [{"title": "x", "text": "old"}]} Final: {"passages": [{"title": "y", "text": "new"}, {"title": "z", "te')).toEqual([
+        { title: "y", text: "new" }
+      ]);
+      expect(salvageCompletePassages("no json here")).toEqual([]);
+    });
+
+    it("a pause_turn is continued with the tool and the paused content, and the answer comes from the continuation", async () => {
+      const { client, create } = makeFakeAnthropicClient([]);
+      create
+        .mockResolvedValueOnce({
+          stop_reason: "pause_turn",
+          content: [
+            textBlock("Searching."),
+            block({ type: "server_tool_use", id: "srvtoolu_1", name: "web_search", input: { query: "q" } })
+          ]
+        })
+        .mockResolvedValueOnce({
+          stop_reason: "end_turn",
+          content: [
+            block({ type: "web_search_tool_result", tool_use_id: "srvtoolu_1", content: [] }),
+            textBlock('{"passages": [{"title": "T", "text": "words"}]}')
+          ]
+        });
+      const guard = new BudgetGuard(new InMemoryCostEventSink(), 100);
+      const spy = vi.spyOn(guard, "checkAndRecord");
+      const researcher = new AnthropicExternalResearcher(guard, client);
+      const passages = await researcher.retrievePassages(request, ctx);
+      expect(passages.map((p) => p.text)).toEqual(["words"]);
+      expect(create).toHaveBeenCalledTimes(2);
+      const second = create.mock.calls[1]![0];
+      expect(second.tools).toEqual([expect.objectContaining({ name: "web_search" })]);
+      expect(second.messages).toHaveLength(2);
+      expect(second.messages[1]).toMatchObject({ role: "assistant" });
+      expect(spy).toHaveBeenCalledTimes(2); // the continuation is metered too
+    });
+
+    it("research reads its JSON from the answer after the tool result, not from the preamble", async () => {
+      const { client, create } = makeFakeAnthropicClient([]);
+      create.mockResolvedValue(searchReply(['{"notes": "real notes", ', '"controversies": ["one"]}']));
+      const researcher = new AnthropicExternalResearcher(new BudgetGuard(new InMemoryCostEventSink(), 100), client);
+      const result = await researcher.research("topic", ctx);
+      expect(result).toEqual({ notes: "real notes", controversies: ["one"] });
+      expect(create).toHaveBeenCalledTimes(1);
+    });
   });
 });

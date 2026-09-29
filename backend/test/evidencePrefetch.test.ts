@@ -13,6 +13,7 @@ import type { EvidenceBeat, EvidenceDoc, EvidenceGatherer, EvidencePack } from "
 import type { ExternalResearchContext } from "../src/generation/ExternalResearcher";
 import type { SourcedAct, SourcedBeat, SourcedSlot } from "../src/types/tapeSourcing";
 import type { Voice } from "../src/types/spine";
+import { BudgetExceededError } from "../src/cost/budgetGuard";
 
 /**
  * G-35 / M6: the evidence for every page of every act is gathered in one
@@ -234,6 +235,41 @@ describe("PrefetchingEvidenceGatherer — the fan-out, and what narration finds 
     expect(after.narrationGathers).toBe(1);
     expect(after.narrationHits).toBe(0);
     expect(after.hitRate).toBe(0);
+  });
+
+  it("gen-5: does not memoise a pack whose retrieval FAILED (resolved, not thrown) — counted failed, and narration asks again", async () => {
+    /* MUTATION THAT KILLS THIS: keep memoising every resolved pack. The
+       first gather's empty, failed pack is then served to narration for the
+       whole run, and `failed` reads 0. */
+    let failedOnce = false;
+    const inner = new CountingGatherer();
+    const realGather = inner.gather.bind(inner);
+    inner.gather = async (beat: EvidenceBeat): Promise<EvidencePack> => {
+      const pack = await realGather(beat);
+      if (!failedOnce && beat.claim.startsWith("The as-built")) {
+        failedOnce = true;
+        return { ...pack, docs: [], retrievalFailed: true };
+      }
+      return pack;
+    };
+    const evidence = new PrefetchingEvidenceGatherer(inner);
+    const prefetch = await evidence.prefetch([MIXED_ACT], ctx, { concurrency: 2 });
+    expect(prefetch.failed).toBe(1);
+    expect(prefetch.prefetched).toBe(3);
+
+    const pack = await evidence.gather({ claim: "The as-built connection carried sixty percent of the code load.", requiresEvidence: true }, ctx);
+    expect(pack.docs).toEqual([DOC]);
+    expect(pack.retrievalFailed).toBeUndefined();
+    expect(inner.calls).toHaveLength(5);
+  });
+
+  it("gen-5: a budget refusal during the fan-out stops the run instead of being counted as a failed page", async () => {
+    const inner = new CountingGatherer();
+    inner.gather = async (): Promise<EvidencePack> => {
+      throw new BudgetExceededError(1, 9.9, 0.2, 10);
+    };
+    const evidence = new PrefetchingEvidenceGatherer(inner);
+    await expect(evidence.prefetch([MIXED_ACT], ctx, { concurrency: 2 })).rejects.toBeInstanceOf(BudgetExceededError);
   });
 
   it("skips the slots a resumed run will not narrate again, and counts them rather than fetching for them", async () => {

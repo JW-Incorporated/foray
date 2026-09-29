@@ -32,7 +32,8 @@ ruling — §9's own "Resolved" notes say so explicitly where they apply.
 
 ## 1. Rulings — settled 2026-08-31, do not relitigate
 
-Four decisions were taken by Wyatt. Each one closes a fork that otherwise reopens in every session.
+Four decisions were taken by Wyatt. Each one closes a fork that otherwise reopens in every session. The founder himself reopened §1.2 on
+2026-09-28 (narration is now rendered centrally; see the banner there).
 
 ### 1.1 Seek-and-stop holds. No derived audio artefact, ever.
 
@@ -48,6 +49,34 @@ This is product principle #3 and it is not a technical preference. Any proposal 
 mixed audio file triggers legal review before anything else happens.
 
 ### 1.2 Narration is spoken on-device. A backdoor exists for curated Forays.
+
+> **SUPERSEDED 2026-09-28: narration is rendered centrally and streamed (the Spark direction).** The
+> founder ruled *"Defaults"* on D1–D11 of `docs/plans/spark-central-narration-assessment.md` (PR
+> #860; `docs/DECISIONS.md` 2026-09-28). What this section now means:
+>
+> - **The default is a rendered file, not the phone's voice.** Kokoro-82M (fp32) renders each
+>   narration line once, off the phone: on the PC first, then on the DGX Spark. The file is AAC-LC
+>   `.m4a`, 64 kbps mono (D5), in the public R2 bucket `foray-narration` at `audio.jwlabs.ai` (D6),
+>   written once and never overwritten. Heart and Echo are both rendered (D4). The item carries
+>   `audio_url` and a measured `duration_sec` beside its `script`, and the player already prefers the
+>   file (`audio_url ?? asset` in `player/foray-queue.js`; "the player prefers `asset`" below is that
+>   same rule).
+> - **The phone's speech engine is the fallback.** A line whose file fails to load is spoken from its
+>   `script` by the platform voice. That fallback must ship in a build before any *published* Foray
+>   carries audio (assessment §3.3, Phase 2). The `script` stays required: it is the transcript on
+>   the Foray page and the source the audio is checked against.
+> - **Rate.** Rendered at 1.0x; the player speeds rendered narration to the listener's rate with
+>   pitch preserved (D2). A fallback line stays at 1x.
+> - **What survives of the economics below.** Synthesis is still ~free (seconds of CPU per Foray),
+>   and hosting is cents (about 7 MB per voice per Foray; egress is free on R2). What is given up is
+>   "zero hosted bytes" and "nothing has to be rendered before playback". §6's progressive playback
+>   survives because rendering is per act and takes seconds; on-demand renders each act before
+>   `onActReady` exposes it (assessment §2b).
+> - **Unchanged:** §1.1. Clip audio is still never stored or served by 4a; the narration bucket holds
+>   only 4a's own voice. espeak-ng stays server-side (§1.2.1's line now covers the render host).
+>
+> The paragraphs below are kept as the record of the 2026-08-31 and 2026-09-12 reasoning. Read them
+> as history, not as the rule.
 
 Default: the narration item carries a **script**, and the device speaks it with **the bundled
 voice; the platform's own engine is the fallback**. Zero TTS spend, zero hosted bytes, works
@@ -530,6 +559,10 @@ Write it once, as a template, and gate it in `check-forays.mjs`: **a generated F
 item is not the disclosure fails validation.** It should be impossible to publish without it.
 
 #### 4.7a — Phonemize (K-02, added 2026-09-12) — **NOT WIRED: this stage does not run**
+
+> **2026-09-28:** with central render (§1.2), phonemizing happens inside the narration **render
+> step** on the render host, not in the pipeline, and no `phonemes` are written to
+> `data/forays.json`. This stage stays unwired and is deleted later (assessment §3.2, KV-07).
 
 > **Corrected 2026-09-12 (machinery-audit pass).** This section was written in the present
 > indicative and described a pipeline stage that has never executed. It is the document most

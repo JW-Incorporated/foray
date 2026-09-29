@@ -10,8 +10,10 @@
                          for determinism)
      top.json       — curated (all of them) + top N by popularity among the
                          rest, budget checked by the caller
-     changed.json    — pi_ids whose newest_item_at advanced since the
-                         previous release
+     changed.json    — { baseline, changed }: pi_ids whose newest_item_at
+                         advanced since the previous release, or
+                         { baseline:false, changed:null } when there is
+                         no previous-release snapshot to diff against
      id-map.json     — slug -> pi_id for the curated catalogue; EVERY
                          curated show must resolve or the whole run fails
                          closed, naming every miss (enforced by the caller,
@@ -106,8 +108,17 @@ export function buildTop(canonicalRows, curatedIds, topN) {
 /** changed.json: pi_ids whose newestItemPubdate advanced versus the
     previous manifest's per-id snapshot. `previousNewest` is a
     Map<id, newestItemPubdate> (or plain object) from the prior release; a
-    row absent from it counts as changed (new since last release). */
+    row absent from it counts as changed (new since last release).
+
+    NO SNAPSHOT, NO LIST (audit round 3, data-tools-14). With no prior-release
+    snapshot (`previousNewest` null/undefined: none is persisted yet) the
+    result is `{ baseline: false, changed: null }`, not every id. The import
+    used to pass `{}`, so every weekly release listed every show as changed
+    and `scan.mjs --source index` ran a full scan labelled as an index scan,
+    plus a candidates list of shows that had not changed at all. A consumer
+    reads baseline:false as "index unavailable" (tools/refresh/candidates.mjs). */
 export function buildChanged(canonicalRows, previousNewest) {
+  if (previousNewest == null) return { baseline: false, changed: null };
   const prevMap = previousNewest instanceof Map ? previousNewest : new Map(Object.entries(previousNewest || {}));
   const changed = [];
   for (const row of canonicalRows) {
@@ -119,7 +130,7 @@ export function buildChanged(canonicalRows, previousNewest) {
     }
   }
   changed.sort((a, b) => a - b);
-  return changed;
+  return { baseline: true, changed };
 }
 
 /** id-map.json builder. Matches curated shows to canonical dump rows by

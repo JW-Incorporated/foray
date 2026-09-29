@@ -68,6 +68,15 @@ extension EngineStore: EngineRecords {
 /// one: a command the page sent that never arrived, or a second page talking
 /// to the same engine. A hello resets the count, because a new page starts
 /// its own.
+///
+/// ── A REFUSAL IS ON RECORD TOO (L02) ─────────────────────────────────────
+///
+/// That first row is written before the command runs, so on its own it
+/// cannot say whether the engine obeyed: a refused pause read exactly like
+/// one that paused. A command the bridge or the engine REFUSED writes a
+/// second `cmd` row after it, `cmd=<name> cmdSeq=<n> result=<Refusal>`; an
+/// accepted one writes nothing more, so one row per command stays the
+/// common case and D-4's ordering is untouched.
 @MainActor
 final class EngineBridge {
 
@@ -153,50 +162,64 @@ final class EngineBridge {
         if gap { fields.append(JSONMember("seqGap", .string("y"))) }
         row("cmd", fields)
 
-        let command = request.command
-        // The Developer setting works in every lane: it is how a listener on
-        // the web player asks for the native one at the next launch.
-        if case let .setModeOverride(mode) = command {
-            owner.setModeOverride(mode)
-            return reply(nil)
-        }
-        guard let engine = liveEngine else {
-            // "Delete my data" works in every lane too. With no live engine
-            // (the web-player lane, or after any relinquish: every Foray tap
-            // in M1) there is nothing to stop, but what earlier native
-            // launches stored (the private keys, the restore record, the
-            // ring) is still on the device, and the store is still here.
-            if case .purge = command, let records {
-                records.purge()
-                return reply(nil)
+        /// One valid command, run: nil when it was accepted, else the refusal
+        /// the page is answered with. Nested, so every early exit stays a
+        /// plain `return` and the rows around it stay in `send` (L02).
+        func dispatch() -> EngineContract.Refusal? {
+            let command = request.command
+            // The Developer setting works in every lane: it is how a listener on
+            // the web player asks for the native one at the next launch.
+            if case let .setModeOverride(mode) = command {
+                owner.setModeOverride(mode)
+                return nil
             }
-            return reply(owner.engine?.isTornDown == true ? .relinquished : .capabilityOff)
-        }
-        if let needed = EngineBridgeRules.requiredCapability(command), !capabilities.contains(needed) {
-            return reply(.capabilityOff)
+            guard let engine = liveEngine else {
+                // "Delete my data" works in every lane too. With no live engine
+                // (the web-player lane, or after any relinquish: every Foray tap
+                // in M1) there is nothing to stop, but what earlier native
+                // launches stored (the private keys, the restore record, the
+                // ring) is still on the device, and the store is still here.
+                if case .purge = command, let records {
+                    records.purge()
+                    return nil
+                }
+                return owner.engine?.isTornDown == true ? .relinquished : .capabilityOff
+            }
+            if let needed = EngineBridgeRules.requiredCapability(command), !capabilities.contains(needed) {
+                return .capabilityOff
+            }
+
+            let verdict: EngineVerdict
+            if case let .relinquish(cap) = command {
+                // The owner's, not the core's alone: it runs the legacy hand-over
+                // after the core goes terminal (plan §4.6).
+                verdict = owner.relinquish(cap: cap, source: request.source)
+            } else {
+                verdict = engine.handle(.command(command, source: request.source))
+            }
+            if case .purge = command {
+                // "Delete my data" (NE-23's order: stop without persisting, then
+                // this). The core stopped and cleared its state; what it stored
+                // (the shared rows, the private keys, the restore record, the
+                // ring) is the store's to remove, now, before the answer the page
+                // waits on to purge its own (NE-24: the ring holds rows from here).
+                records?.purge()
+            }
+            if case let .setPageVisible(visible) = command {
+                apply(coalescer.setVisible(visible))
+            }
+            if case .playEpisode = command, verdict.ok { lastError = nil }
+            return EngineBridgeRules.refusal(for: verdict.failures)
         }
 
-        let verdict: EngineVerdict
-        if case let .relinquish(cap) = command {
-            // The owner's, not the core's alone: it runs the legacy hand-over
-            // after the core goes terminal (plan §4.6).
-            verdict = owner.relinquish(cap: cap, source: request.source)
-        } else {
-            verdict = engine.handle(.command(command, source: request.source))
+        let refusal = dispatch()
+        if let refusal {
+            // L02: the outcome, after the fact, only when it is a refusal.
+            row("cmd", [JSONMember("cmd", .string(request.command.name.rawValue)),
+                        JSONMember("cmdSeq", .number(Double(request.cmdSeq))),
+                        JSONMember("result", .string(refusal.rawValue))])
         }
-        if case .purge = command {
-            // "Delete my data" (NE-23's order: stop without persisting, then
-            // this). The core stopped and cleared its state; what it stored
-            // (the shared rows, the private keys, the restore record, the
-            // ring) is the store's to remove, now, before the answer the page
-            // waits on to purge its own (NE-24: the ring holds rows from here).
-            records?.purge()
-        }
-        if case let .setPageVisible(visible) = command {
-            apply(coalescer.setVisible(visible))
-        }
-        if case .playEpisode = command, verdict.ok { lastError = nil }
-        return reply(EngineBridgeRules.refusal(for: verdict.failures))
+        return reply(refusal)
     }
 
     // MARK: - engineRead

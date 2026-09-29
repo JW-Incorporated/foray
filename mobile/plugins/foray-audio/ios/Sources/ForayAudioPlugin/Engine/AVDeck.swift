@@ -72,6 +72,31 @@ import os
 /// one-shot timer, `PREFETCH_LEAD_SEC` of wall clock before the boundary, but
 /// only when a DeckPair has a standby deck to prepare (`prepareWindowAvailable`).
 ///
+/// ── SAME SOURCE IS A SEEK, NOT A LOAD (`DeckPolicy.sameSourceIsSeek`) ─────
+///
+/// The core re-enters the item the deck holds with a fresh `.load` (a paused
+/// listener's play, an interruption's rewind: the reducer resumes through
+/// `loadingItem`). When the deck already holds that URL, ready and with no
+/// error, the load KEEPS THE ITEM: a new token and generation, the same gate
+/// (zero-tolerance seek, then preroll, then `.ready`), and no new asset. It
+/// is what `DeckVocabulary`'s `.load` and plan §4.4 promise ("no network
+/// round trip") and what html-audio-backend.js does. Before this every play
+/// after a pause threw the buffer away and fetched the file again from
+/// scratch (the 2026-09-28 paste: tokens 1, 2, 3 for one episode, the second
+/// load 16 s to its duration and past the 20 s deadline). A failed item, a
+/// different URL or a different timing option is still a cold load.
+///
+/// ── ROWS (the `deck` rows in the ring) ────────────────────────────────────
+///
+/// The core writes a row for the duration, a not-ready and a refusal. What
+/// only the deck can see is written here, through `Config.diag`: the attach
+/// or reuse, `.ready` with the elapsed ms of each gate step, the deadline
+/// with the step it was stuck on, a failure's error domain and code (never
+/// its sentence), `timeControlStatus` with the waiting reason and the buffer
+/// ahead, a stall, and the item's access-log and error-log entries (host,
+/// HTTP status, bytes, requests over cellular). Tokens and numbers only:
+/// DiagGate refuses anything else, and a URL never leaves this type.
+///
 /// ── ONE THREAD ─────────────────────────────────────────────────────────────
 ///
 /// The engine is main-confined (plan §4.2), so this is too: `send` asserts
@@ -95,6 +120,19 @@ final class AVDeck: DeckDriving {
     /// before it is reported (see `checkUncommandedPause`). Well inside the
     /// core's 500 ms route-attribution window (plan §4.3).
     static let pauseSettleSec: Double = 0.25
+
+    /// How long the deck may have been idle (not playing, not loading) and
+    /// still treat a same-source load as a seek in the held item. Past it the
+    /// load is cold, exactly as before same-source reuse existed. The field's
+    /// proven path is a car resuming 4a after HOURS parked (the milestone-1
+    /// car test, build 2026092706, where every load was cold), and a held
+    /// item that old has had its connection and possibly its signed redirect
+    /// expire behind a `.readyToPlay` status, so the buffer it would keep is
+    /// not worth the risk of an item that fails mid-drive. The pause the
+    /// 2026-09-28 paste refetched after (12 s) is well inside it.
+    /// PROVISIONAL: the `attach` row's `idleSec` and `cold` say how often it
+    /// decides. Measured on a clock that runs while the phone sleeps.
+    static let defaultReuseMaxIdleSec: Double = 600 // MEASURE: NE-38, from the attach/reuse rows.
 
     /// Bound on `primitives`, the test-visible log of AVPlayer calls.
     private static let primitiveCap = 256
@@ -144,7 +182,9 @@ final class AVDeck: DeckDriving {
         /// asset this deck owns alone; FALSE for a shared one (`AssetCache`),
         /// where `cancelLoading()` would also cancel the other deck's load.
         var cancelsAssetLoading: Bool
-        /// NE-32: the ring's structured rows (the `outPoint` row). Default: none.
+        /// The ring's structured rows: the `outPoint` row (NE-32) and the `deck`
+        /// rows (see ROWS above). The boot hands it `EngineOutput.diag`; the
+        /// default writes nowhere.
         var diag: (DiagEntry) -> Void
         /// NE-32: layer 1's pad (`defaultStopPadSec`).
         var stopPadSec: Double
@@ -163,6 +203,17 @@ final class AVDeck: DeckDriving {
         /// NE-32: which out-point layers run. All three in production; a
         /// Simulator test arms one alone to prove it stops never-early.
         var outPointLayers: Set<DeckPolicy.OutPointLayer>
+        /// Same source is a seek (see above). On in production; NE-25b's
+        /// two-deck spike turns it off, because each of its trials measures a
+        /// COLD gate on the same fixture.
+        var reusesSameSource: Bool
+        /// See `defaultReuseMaxIdleSec`.
+        var reuseMaxIdleSec: Double
+        /// The clock idleness is read from, in ms. NOT `nowMs`: uptime stops
+        /// while the device sleeps, and a phone parked all day sleeps for most
+        /// of it, so uptime would call an eight-hour-old item fresh.
+        /// Injectable so a test can age the held item.
+        var idleClockMs: () -> Double
 
         init(
             loadDeadlineSec: Double = AVDeck.defaultLoadDeadlineSec,
@@ -176,7 +227,10 @@ final class AVDeck: DeckDriving {
             schedule: @escaping (TimerPurpose, Double, @escaping () -> Void) -> EngineObservation = AVDeck.mainQueueTimer,
             after: @escaping (_ sec: Double, _ work: DispatchWorkItem) -> Void = AVDeck.mainQueueAfter,
             nowMs: @escaping () -> Double = AVDeck.uptimeMs,
-            outPointLayers: Set<DeckPolicy.OutPointLayer> = Set(DeckPolicy.OutPointLayer.allCases)
+            outPointLayers: Set<DeckPolicy.OutPointLayer> = Set(DeckPolicy.OutPointLayer.allCases),
+            reusesSameSource: Bool = true,
+            reuseMaxIdleSec: Double = AVDeck.defaultReuseMaxIdleSec,
+            idleClockMs: @escaping () -> Double = AVDeck.continuousMs
         ) {
             self.loadDeadlineSec = loadDeadlineSec
             self.sessionIsActive = sessionIsActive
@@ -190,6 +244,9 @@ final class AVDeck: DeckDriving {
             self.after = after
             self.nowMs = nowMs
             self.outPointLayers = outPointLayers
+            self.reusesSameSource = reusesSameSource
+            self.reuseMaxIdleSec = reuseMaxIdleSec
+            self.idleClockMs = idleClockMs
         }
     }
 
@@ -207,8 +264,15 @@ final class AVDeck: DeckDriving {
         DispatchQueue.main.asyncAfter(deadline: .now() + sec, execute: work)
     }
 
+    /// Production's clock: uptime, which never jumps when the wall clock is set.
     static func uptimeMs() -> Double {
         Double(DispatchTime.now().uptimeNanoseconds) / 1_000_000
+    }
+
+    /// A monotonic clock that keeps counting while the device sleeps
+    /// (Darwin's CLOCK_MONOTONIC; `uptimeMs` does not).
+    static func continuousMs() -> Double {
+        Double(clock_gettime_nsec_np(CLOCK_MONOTONIC)) / 1_000_000
     }
 
     /// P-7: precise timing is chosen per load by the core (provisional:
@@ -269,9 +333,24 @@ final class AVDeck: DeckDriving {
     private var pauseSuspicion: DispatchWorkItem?
     /// Set once by `invalidate()`; the deck is inert from then on.
     private var invalidated = false
-    /// The source this deck holds (the load's `url` string), for the pair's
-    /// "same episode" check.
+    /// The source the attached item was made from (the load's `url` string)
+    /// and its timing option: what "the same source" is compared against,
+    /// here (`coldReason`) and by the pair (NE-32's prefetch decision and
+    /// its "same episode" check). nil while no item is attached.
     private(set) var loadedURL: String?
+    private var loadedPreciseTiming = false
+    /// The current load kept the attached item (same source) rather than
+    /// making a new one. For the rows.
+    private var reusedItem = false
+    /// The gate step the current load is in, and the ms (since the load
+    /// started) at which each step completed: the `ready` and `deadline`
+    /// rows say where the time went, or where it stopped.
+    private var gateStep = "idle"
+    private var gateMarks: [JSONMember] = []
+    /// `config.idleClockMs()` when the held item was last live: loading,
+    /// ready, commanded, or observed playing or stopping. What
+    /// `reuseMaxIdleSec` is measured from.
+    private var lastLiveMs: Double = 0
 
     /// NE-32: the out-point watch (`DeckPolicy.outPointStep`'s state), the
     /// boundary observer (layer 2), the watchdog's one timer (layer 3), and
@@ -410,14 +489,24 @@ final class AVDeck: DeckDriving {
         // the gate, at the wrong offset, and with no preroll.
         intendsToPlay = false
         if player.rate != 0 {
+            // It was sounding up to this instant: live, however long ago the
+            // last command was.
+            noteLive()
             record("pause (load)")
             player.pause()
         }
+        // Every out-point layer and timer of the previous load goes, whether
+        // this load keeps the item or not (a load drops the out-point).
         resetOutPoint()
+        let idleSec = item == nil ? nil : max(0, (config.idleClockMs() - lastLiveMs) / 1000)
+        let cold = coldReason(urlString, preciseTiming: preciseTiming, idleSec: idleSec)
+        if cold == nil {
+            reuse(token: newToken, startSec: startSec, idleSec: idleSec)
+            return
+        }
         detachItem()
         generation += 1
         token = newToken
-        loadedURL = urlString
         stage = .loading
         targetStartSec = max(0, startSec)
         gateAttempts = 0
@@ -426,6 +515,10 @@ final class AVDeck: DeckDriving {
         lastTimeControl = nil
         lastWaitingReason = nil
         loadStartedAtMs = config.nowMs()
+        loadedURL = nil
+        reusedItem = false
+        gateStep = "duration"
+        gateMarks = []
         // The core hands the page's `audio_url` through as it is (nil for an
         // item with no audio of its own). Anything that is not an absolute
         // URL fails THIS load, under its token, so the core's failure path
@@ -433,6 +526,7 @@ final class AVDeck: DeckDriving {
         guard let url = urlString.flatMap({ URL(string: $0) }), url.scheme != nil else {
             stage = .failed
             record("no-url")
+            deckRow("failed", newToken, [JSONMember("where", .string("no-url"))])
             emit(.failed(token: newToken, message: "no-url"))
             return
         }
@@ -444,11 +538,88 @@ final class AVDeck: DeckDriving {
         item.audioTimePitchAlgorithm = .timeDomain
         self.asset = asset
         self.item = item
+        loadedURL = urlString
+        loadedPreciseTiming = preciseTiming
+        noteLive()
         observe(item: item, generation: generation)
         armDeadline(generation: generation)
         record("attach")
+        deckRow("attach", newToken, [
+            JSONMember("startSec", Self.secNode(targetStartSec)),
+            JSONMember("precise", .bool(preciseTiming)),
+            JSONMember("host", Self.hostNode(url.host)),
+            // Why this load did not keep the held item (`no-item` when there
+            // was none), and how long that item had been idle.
+            JSONMember("cold", .string(cold ?? "no-item")),
+            JSONMember("idleSec", Self.secNode(idleSec))
+        ])
         player.replaceCurrentItem(with: item)
         loadDuration(of: asset, generation: generation)
+    }
+
+    /// `DeckPolicy.sameSourceIsSeek` from what this deck holds: the same URL
+    /// (and the same timing option, which is the asset's), an item still on
+    /// the player whose duration and both statuses are in, no error on it,
+    /// and not idle past `reuseMaxIdleSec`. Nil means keep the item; any
+    /// other answer is why the load is cold, as a row token.
+    private func coldReason(_ url: String?, preciseTiming: Bool, idleSec: Double?) -> String? {
+        guard config.reusesSameSource else { return "off" }
+        guard let item, player.currentItem === item else { return "no-item" }
+        guard let url, url == loadedURL else { return "other-source" }
+        guard preciseTiming == loadedPreciseTiming else { return "timing" }
+        let failed = stage == .failed || item.status == .failed || item.error != nil
+        if failed { return "failed" }
+        let hasMetadata = durationKnown && item.status == .readyToPlay && player.status == .readyToPlay
+        if !hasMetadata { return "not-ready" }
+        guard let idleSec, idleSec <= config.reuseMaxIdleSec else { return "stale" }
+        return DeckPolicy.sameSourceIsSeek(loadedUrl: loadedURL, url: url, hasMetadata: hasMetadata, failed: failed)
+            ? nil : "policy"
+    }
+
+    /// The held item is live now (see `lastLiveMs`).
+    private func noteLive() {
+        lastLiveMs = config.idleClockMs()
+    }
+
+    /// Same source: keep the item and its buffer, and run the SAME gate under
+    /// the new token. The generation moves, so every callback of the previous
+    /// load (a gate seek, a preroll, a deadline, a pause settle) is void, and
+    /// the item's observers are re-registered under it. The gate starts from
+    /// `advanceIfReady` like any load's (duration and both statuses are in),
+    /// so the one path to `preroll(` is unchanged. The out-point lives on the
+    /// item, and a load drops it (`DeckCommand.load`), so it is disarmed here.
+    private func reuse(token newToken: DeckToken, startSec: Double, idleSec: Double?) {
+        let fromSec = player.currentTime().seconds
+        deadline?.cancel()
+        deadline = nil
+        pauseSuspicion?.cancel()
+        pauseSuspicion = nil
+        generation += 1
+        token = newToken
+        stage = .loading
+        targetStartSec = max(0, startSec)
+        gateAttempts = 0
+        reachedEnd = false
+        lastTimeControl = nil
+        lastWaitingReason = nil
+        loadStartedAtMs = config.nowMs()
+        reusedItem = true
+        gateStep = "readiness"
+        gateMarks = []
+        noteLive()
+        guard let item else { return }
+        item.forwardPlaybackEndTime = .invalid
+        unobserveItem()
+        observe(item: item, generation: generation)
+        armDeadline(generation: generation)
+        record("reuse")
+        deckRow("reuse", newToken, [
+            JSONMember("startSec", Self.secNode(targetStartSec)),
+            JSONMember("fromSec", Self.secNode(fromSec)),
+            JSONMember("bufferedAheadSec", Self.secNode(bufferedAhead(of: targetStartSec))),
+            JSONMember("idleSec", Self.secNode(idleSec))
+        ])
+        advanceIfReady()
     }
 
     private func loadDuration(of asset: AVURLAsset, generation gen: Int) {
@@ -463,12 +634,15 @@ final class AVDeck: DeckDriving {
         switch asset.statusOfValue(forKey: "duration", error: &error) {
         case .loaded:
             durationKnown = true
+            mark("duration")
+            if stage == .loading { gateStep = "readiness" }
             let duration = asset.duration
             let seconds: Double? = duration.isNumeric && duration.seconds.isFinite ? duration.seconds : nil
             emit(.durationLoaded(token: token, durationSec: seconds))
             advanceIfReady()
         case .failed:
-            fail(generation: gen, message: "duration: \(error?.localizedDescription ?? "unknown")")
+            fail(generation: gen, message: "duration: \(error?.localizedDescription ?? "unknown")",
+                 where: "duration", error: error)
         default:
             // Cancelled by a newer load or the deadline; that path reported.
             break
@@ -483,6 +657,7 @@ final class AVDeck: DeckDriving {
         guard stage == .loading, durationKnown, let item,
               player.status == .readyToPlay, item.status == .readyToPlay else { return }
         stage = .gating
+        mark("readiness")
         gateSeek()
     }
 
@@ -493,6 +668,7 @@ final class AVDeck: DeckDriving {
     private func gateSeek() {
         let gen = generation
         let target = targetStartSec
+        gateStep = "seek"
         record("seek \(Self.format(target))")
         player.seek(to: Self.time(target), toleranceBefore: .zero, toleranceAfter: .zero) { [weak self] finished in
             DispatchQueue.main.async {
@@ -503,6 +679,7 @@ final class AVDeck: DeckDriving {
 
     private func gateSeekCompleted(finished: Bool, target: Double, generation gen: Int) {
         guard gen == generation, stage == .gating else { return }
+        if finished { mark("seek") }
         // The core moved the start while the seek ran (a `.seek` before
         // `.ready` only moves the target, it issues nothing): seek again.
         // That is not a failure, so it does not spend the retry.
@@ -540,6 +717,7 @@ final class AVDeck: DeckDriving {
         }
         let gen = generation
         let target = targetStartSec
+        gateStep = "preroll"
         record("preroll player=\(player.status.rawValue) item=\(item.status.rawValue) rate=\(player.rate)")
         player.preroll(atRate: rate) { [weak self] finished in
             DispatchQueue.main.async {
@@ -558,6 +736,7 @@ final class AVDeck: DeckDriving {
             notReady(cause: "preroll-unfinished")
             return
         }
+        mark("preroll")
         becomeReady(prerolled: true)
     }
 
@@ -580,6 +759,7 @@ final class AVDeck: DeckDriving {
     private func ordinaryLoad() {
         let gen = generation
         let target = targetStartSec
+        gateStep = "ordinary-load"
         record("seek \(Self.format(target)) ordinary")
         player.seek(to: Self.time(target), toleranceBefore: .zero, toleranceAfter: .zero) { [weak self] _ in
             DispatchQueue.main.async {
@@ -594,11 +774,26 @@ final class AVDeck: DeckDriving {
         deadline?.cancel()
         deadline = nil
         stage = .ready
+        gateStep = "ready"
+        noteLive()
+        let landed = player.currentTime().seconds
+        let elapsed = msSinceLoadStarted()
+        deckRow("ready", token, [
+            JSONMember("landedSec", Self.secNode(landed)),
+            JSONMember("targetSec", Self.secNode(targetStartSec)),
+            JSONMember("prerolled", .bool(prerolled)),
+            JSONMember("reuse", .bool(reusedItem)),
+            JSONMember("elapsedMs", .number(Double(elapsed))),
+            JSONMember("attempts", .number(Double(gateAttempts))),
+            JSONMember("marks", .object(gateMarks)),
+            JSONMember("bufferedAheadSec", Self.secNode(bufferedAhead(of: landed))),
+            JSONMember("likelyToKeepUp", item.map { JSONNode.bool($0.isPlaybackLikelyToKeepUp) } ?? .null)
+        ])
         emit(.ready(
             token: token,
-            landedSec: player.currentTime().seconds,
+            landedSec: landed,
             prerolled: prerolled,
-            elapsedMs: msSinceLoadStarted()
+            elapsedMs: elapsed
         ))
     }
 
@@ -613,6 +808,20 @@ final class AVDeck: DeckDriving {
     private func deadlineFired(generation gen: Int) {
         guard gen == generation, stage == .loading || stage == .gating, let token else { return }
         let afterMs = msSinceLoadStarted()
+        // Where it was stuck, read BEFORE the detach drops the item: the step,
+        // what AVFoundation said, how much it had fetched and from where.
+        deckRow("deadline", token, [
+            JSONMember("afterMs", .number(Double(afterMs))),
+            JSONMember("step", .string(gateStep)),
+            JSONMember("reuse", .bool(reusedItem)),
+            JSONMember("durationKnown", .bool(durationKnown)),
+            JSONMember("playerStatus", .string(Self.statusToken(player.status.rawValue))),
+            JSONMember("itemStatus", .string(Self.statusToken(item?.status.rawValue))),
+            JSONMember("attempts", .number(Double(gateAttempts))),
+            JSONMember("targetSec", Self.secNode(targetStartSec)),
+            JSONMember("bufferedAheadSec", Self.secNode(bufferedAhead(of: targetStartSec))),
+            JSONMember("marks", .object(gateMarks))
+        ] + accessFields() + errorLogFields())
         // Detach FIRST, and move the generation, so nothing that completes
         // late (a duration, a status, a seek) can preroll or sound: a URL that
         // turns ready at 21 s must not start the wrong thing in the car.
@@ -646,6 +855,7 @@ final class AVDeck: DeckDriving {
         }
         intendsToPlay = true
         reachedEnd = false
+        noteLive()
         // Voids any pause suspicion armed before this play (see
         // `checkUncommandedPause`): that stop is superseded by the command.
         playSeq += 1
@@ -671,6 +881,7 @@ final class AVDeck: DeckDriving {
 
     private func pause() {
         intendsToPlay = false
+        noteLive()
         record("pause")
         player.pause()
         step(.pause(atSec: playheadSec))
@@ -785,12 +996,29 @@ final class AVDeck: DeckDriving {
             },
             center.addObserver(forName: AVPlayerItem.failedToPlayToEndTimeNotification, object: item, queue: .main) { [weak self] note in
                 let error = note.userInfo?[AVPlayerItemFailedToPlayToEndTimeErrorKey] as? Error
-                self?.fail(generation: gen, message: "failed-to-end: \(error?.localizedDescription ?? "unknown")")
+                self?.fail(generation: gen, message: "failed-to-end: \(error?.localizedDescription ?? "unknown")",
+                           where: "failed-to-end", error: error)
             },
             center.addObserver(forName: AVPlayerItem.playbackStalledNotification, object: item, queue: .main) { [weak self] _ in
                 self?.itemStalled(generation: gen)
+            },
+            // The network's own record (host, HTTP status, bytes, cellular):
+            // what the deadline and stall rows cannot say by themselves.
+            center.addObserver(forName: AVPlayerItem.newAccessLogEntryNotification, object: item, queue: .main) { [weak self] _ in
+                self?.accessLogged(generation: gen)
+            },
+            center.addObserver(forName: AVPlayerItem.newErrorLogEntryNotification, object: item, queue: .main) { [weak self] _ in
+                self?.errorLogged(generation: gen)
             }
         ]
+    }
+
+    /// Drop the item's observers (KVO and notifications), keeping the item.
+    private func unobserveItem() {
+        itemObservations.forEach { $0.invalidate() }
+        itemObservations = []
+        itemNotifications.forEach { NotificationCenter.default.removeObserver($0) }
+        itemNotifications = []
     }
 
     private func detachItem() {
@@ -798,18 +1026,17 @@ final class AVDeck: DeckDriving {
         deadline = nil
         pauseSuspicion?.cancel()
         pauseSuspicion = nil
-        itemObservations.forEach { $0.invalidate() }
-        itemObservations = []
-        itemNotifications.forEach { NotificationCenter.default.removeObserver($0) }
-        itemNotifications = []
+        unobserveItem()
         if config.cancelsAssetLoading { asset?.cancelLoading() }
         asset = nil
         item = nil
+        loadedURL = nil
     }
 
     private func playerStatusChanged() {
         if player.status == .failed {
-            fail(generation: generation, message: "player: \(player.error?.localizedDescription ?? "unknown")")
+            fail(generation: generation, message: "player: \(player.error?.localizedDescription ?? "unknown")",
+                 where: "player", error: player.error)
             return
         }
         advanceIfReady()
@@ -821,7 +1048,8 @@ final class AVDeck: DeckDriving {
         case .readyToPlay:
             advanceIfReady()
         case .failed:
-            fail(generation: gen, message: "item: \(item.error?.localizedDescription ?? "unknown")")
+            fail(generation: gen, message: "item: \(item.error?.localizedDescription ?? "unknown")",
+                 where: "item", error: item.error)
         default:
             break
         }
@@ -839,8 +1067,24 @@ final class AVDeck: DeckDriving {
         }
         let reason = status == .waiting ? player.reasonForWaitingToPlay?.rawValue : nil
         if status != lastTimeControl || reason != lastWaitingReason {
+            // Playing, waiting, or the moment it stopped (an interruption, a
+            // route): the item was live up to here.
+            noteLive()
             lastTimeControl = status
             lastWaitingReason = reason
+            // The row the 2026-09-28 paste did not have: a "playing" engine
+            // whose playhead never moved was either waiting (and why) or
+            // paused, and only this says which.
+            let at = player.currentTime().seconds
+            deckRow("time-control", token, [
+                JSONMember("status", .string(status.rawValue)),
+                JSONMember("reason", reason.map { JSONNode.string(Self.waitingToken($0)) } ?? .null),
+                JSONMember("step", .string(gateStep)),
+                JSONMember("positionSec", Self.secNode(at)),
+                JSONMember("bufferedAheadSec", Self.secNode(bufferedAhead(of: at))),
+                JSONMember("likelyToKeepUp", item.map { JSONNode.bool($0.isPlaybackLikelyToKeepUp) } ?? .null),
+                JSONMember("rate", .number(Double(player.rate)))
+            ])
             emit(.timeControl(token: token, status: status, waitingReason: reason))
         }
         checkUncommandedPause()
@@ -952,20 +1196,48 @@ final class AVDeck: DeckDriving {
     private func finishAtEnd(_ token: DeckToken) {
         reachedEnd = true
         intendsToPlay = false
+        noteLive()
         emit(.ended(token: token))
     }
 
     private func itemStalled(generation gen: Int) {
         guard gen == generation, let token else { return }
+        let at = player.currentTime().seconds
+        deckRow("stalled", token, [
+            JSONMember("positionSec", Self.secNode(at)),
+            JSONMember("bufferedAheadSec", Self.secNode(bufferedAhead(of: at)))
+        ] + accessFields())
         emit(.stalled(token: token))
+        // THE STALL IS A LATCH IN THE CORE (`buffering = true`), and only a
+        // `.timeControl(.playing)` releases it. The stall notification comes
+        // through NotificationCenter's main OperationQueue while the
+        // timeControl KVO hops through the main dispatch queue, so it can land
+        // AFTER the player is already back to `.playing`, which was then never
+        // reported again (deduplicated): Now Playing kept `rate 0` for the
+        // rest of the item, the car read "paused", hid the elapsed time and
+        // kept pressing play. Re-report what the player says NOW, whatever
+        // the last report was.
+        guard gen == generation, self.token == token else { return }
+        lastTimeControl = nil
+        lastWaitingReason = nil
+        timeControlChanged()
     }
 
-    private func fail(generation gen: Int, message: String) {
+    /// `where` says which observation failed (`duration`, `item`, `player`,
+    /// `failed-to-end`); the row carries the error's domain and code and its
+    /// underlying one (a CoreMedia or URL error under AVFoundation's), never
+    /// the localized sentence, which DiagGate would refuse anyway.
+    private func fail(generation gen: Int, message: String, where step: String, error: Error?) {
         guard gen == generation, stage != .failed, let token else { return }
         deadline?.cancel()
         deadline = nil
         stage = .failed
         intendsToPlay = false
+        deckRow("failed", token, [
+            JSONMember("where", .string(step)),
+            JSONMember("step", .string(gateStep)),
+            JSONMember("positionSec", Self.secNode(player.currentTime().seconds))
+        ] + Self.errorFields(error) + accessFields() + errorLogFields())
         emit(.failed(token: token, message: message))
     }
 
@@ -1051,6 +1323,8 @@ final class AVDeck: DeckDriving {
         guard let token else { return }
         intendsToPlay = false
         reachedEnd = true
+        // It was sounding up to the boundary: live (same-source reuse).
+        noteLive()
         pauseSuspicion?.cancel()
         pauseSuspicion = nil
         if player.rate != 0 {
@@ -1116,10 +1390,136 @@ final class AVDeck: DeckDriving {
         emit(.prepareWindow(token: token))
     }
 
+    // MARK: - Network logs (rows only)
+
+    private func accessLogged(generation gen: Int) {
+        guard gen == generation, let token else { return }
+        deckRow("access", token, accessFields())
+    }
+
+    private func errorLogged(generation gen: Int) {
+        guard gen == generation, let token else { return }
+        deckRow("http-error", token, errorLogFields())
+    }
+
+    /// The item's latest access-log event: where the bytes came from and how
+    /// fast. `wwan` is the number of media requests made over cellular.
+    private func accessFields() -> [JSONMember] {
+        guard let event = item?.accessLog()?.events.last else { return [JSONMember("access", .null)] }
+        return [
+            JSONMember("host", Self.hostNode(event.uri.flatMap { URLComponents(string: $0)?.host })),
+            JSONMember("bytes", .number(Double(max(0, event.numberOfBytesTransferred)))),
+            JSONMember("transferMs", Self.msNode(event.transferDuration)),
+            JSONMember("requests", .number(Double(max(0, event.numberOfMediaRequests)))),
+            JSONMember("wwan", .number(Double(max(0, event.mediaRequestsWWAN)))),
+            JSONMember("observedKbps", Self.kbpsNode(event.observedBitrate)),
+            JSONMember("stalls", .number(Double(max(0, event.numberOfStalls)))),
+            JSONMember("serverChanges", .number(Double(max(0, event.numberOfServerAddressChanges))))
+        ]
+    }
+
+    /// The item's latest error-log event: the HTTP status (or the URL
+    /// error's code) and its domain. Its comment is free text and stays out.
+    private func errorLogFields() -> [JSONMember] {
+        guard let event = item?.errorLog()?.events.last else { return [] }
+        return [
+            JSONMember("logHost", Self.hostNode(event.uri.flatMap { URLComponents(string: $0)?.host })),
+            JSONMember("logStatus", .number(Double(event.errorStatusCode))),
+            JSONMember("logDomain", Self.tokenNode(event.errorDomain))
+        ]
+    }
+
     // MARK: - Helpers
 
     private func emit(_ event: DeckEvent) {
         onEvent?(event)
+    }
+
+    /// A `deck` row for `token`, written through `Config.diag`.
+    private func deckRow(_ kind: String, _ token: DeckToken, _ fields: [JSONMember]) {
+        config.diag(DiagEntry(kind: "deck", fields: [
+            JSONMember("kind", .string(kind)),
+            JSONMember("token", .number(Double(token)))
+        ] + fields))
+    }
+
+    /// The first completion of a gate step, in ms since the load started.
+    private func mark(_ step: String) {
+        guard !gateMarks.contains(where: { $0.key == step }) else { return }
+        gateMarks.append(JSONMember(step, .number(Double(msSinceLoadStarted()))))
+    }
+
+    /// Seconds of media loaded from `sec` onwards, in the loaded range that
+    /// holds it (0 when none does: the playhead sits outside the buffer).
+    private func bufferedAhead(of sec: Double) -> Double? {
+        guard let item, sec.isFinite else { return nil }
+        for value in item.loadedTimeRanges {
+            let range = value.timeRangeValue
+            let start = range.start.seconds
+            let end = range.end.seconds
+            guard start.isFinite, end.isFinite else { continue }
+            if sec >= start - 0.001 && sec <= end { return end - sec }
+        }
+        return 0
+    }
+
+    /// Three decimals, or null for a value a row cannot carry.
+    static func secNode(_ sec: Double?) -> JSONNode {
+        guard let sec, sec.isFinite else { return .null }
+        return .number((sec * 1000).rounded() / 1000)
+    }
+
+    static func msNode(_ sec: TimeInterval) -> JSONNode {
+        sec.isFinite && sec >= 0 ? .number((sec * 1000).rounded()) : .null
+    }
+
+    static func kbpsNode(_ bitsPerSecond: Double) -> JSONNode {
+        bitsPerSecond.isFinite && bitsPerSecond > 0 ? .number((bitsPerSecond / 1000).rounded()) : .null
+    }
+
+    /// A host is a token (letters, digits, dots, dashes), lowercased; any
+    /// other shape is null rather than a row DiagGate would have to refuse.
+    static func hostNode(_ host: String?) -> JSONNode {
+        tokenNode(host?.lowercased())
+    }
+
+    static func tokenNode(_ text: String?) -> JSONNode {
+        guard let text, DiagGate.isToken(text) else { return .null }
+        return .string(text)
+    }
+
+    /// `AVPlayer.Status` / `AVPlayerItem.Status` raw values (both 0 unknown,
+    /// 1 ready, 2 failed); nil is an item that is not there.
+    static func statusToken(_ raw: Int?) -> String {
+        switch raw {
+        case 0?: return "unknown"
+        case 1?: return "ready"
+        case 2?: return "failed"
+        case nil: return "none"
+        default: return "other"
+        }
+    }
+
+    /// `reasonForWaitingToPlay`, shortened to a token.
+    static func waitingToken(_ raw: String) -> String {
+        switch raw {
+        case AVPlayer.WaitingReason.toMinimizeStalls.rawValue: return "minimize-stalls"
+        case AVPlayer.WaitingReason.evaluatingBufferingRate.rawValue: return "evaluating-buffering-rate"
+        case AVPlayer.WaitingReason.noItemToPlay.rawValue: return "no-item"
+        default: return DiagGate.isToken(raw) ? raw : "other"
+        }
+    }
+
+    /// An error as `domain`/`code`, and its underlying error's, if any.
+    static func errorFields(_ error: Error?) -> [JSONMember] {
+        guard let error else { return [JSONMember("errDomain", .null)] }
+        let ns = error as NSError
+        var fields = [JSONMember("errDomain", tokenNode(ns.domain)), JSONMember("errCode", .number(Double(ns.code)))]
+        if let under = ns.userInfo[NSUnderlyingErrorKey] as? NSError {
+            fields.append(JSONMember("underDomain", tokenNode(under.domain)))
+            fields.append(JSONMember("underCode", .number(Double(under.code))))
+        }
+        return fields
     }
 
     private func record(_ op: String) {

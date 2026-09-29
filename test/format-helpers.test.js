@@ -21,6 +21,12 @@
  * what these renders touch, and duplicated rather than imported for the reason
  * that file gives — each suite's fixtures are its own.
  */
+/* A ZONE WEST OF UTC, set before any Date is made (audit round 3, tests-5). CI
+   runs in UTC, where local and UTC formatting are the same function, so the
+   `{ local: true }` and "judge the year in UTC" tests below could not fail
+   there. Node re-reads TZ at runtime and the vm context shares it. */
+process.env.TZ = "America/Los_Angeles";
+
 const { test } = require("node:test");
 const assert = require("node:assert");
 const vm = require("node:vm");
@@ -241,14 +247,16 @@ test("an aged-out playlist row states its unavailability once", () => {
 /* fmtDate                                                             */
 /* ------------------------------------------------------------------ */
 
-/* The local calendar day of an instant, the way `fmtDate(…, { local: true })`
-   must write it — computed HERE, in the machine's own zone, rather than written
-   as a literal. The fixtures' instants fall on Sep 21 in the Americas and Sep 22
-   from about UTC+6 east, so a literal (or a `Sep 2[01]` regex) failed on any
-   machine set to Asia/Pacific time (review 2026-09-23). */
-const localDay = (iso) => new Date(iso).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
+/* LITERAL EXPECTATIONS, IN A PINNED ZONE (audit round 3, tests-5). These used
+   a `localDay()` computed in the machine's own zone, which kept them passing on
+   an Asia/Pacific laptop and also made them unable to fail in UTC CI. The suite
+   now pins TZ=America/Los_Angeles at the top, so the expected strings are
+   literals everywhere, and the instants are chosen to fall on DIFFERENT days in
+   UTC and in Los Angeles: 03:00Z on Sep 21 is 20:00 on Sep 20 there. */
 
-/* MUTATION: drop the NaN guard — "Invalid Date" comes back. */
+/* MUTATION: drop the NaN guard — "Invalid Date" comes back.
+   MUTATION 2 (tests-5): make fmtDate ignore `local` — "Sep 21, 2019" for the
+   Sep 20 local day, red in every zone west of UTC, CI included now. */
 test("fmtDate never says 'Invalid Date', in either timezone mode", () => {
   const { ctx } = mount();
   for (const opts of [undefined, { local: true }]) {
@@ -257,8 +265,9 @@ test("fmtDate never says 'Invalid Date', in either timezone mode", () => {
     assert.strictEqual(ctx.fmtDate(null, opts), "");
   }
   assert.strictEqual(ctx.fmtDate("2019-09-21"), "Sep 21, 2019");
-  assert.strictEqual(ctx.fmtDate("2019-09-21T12:00:00.000Z", { local: true }), localDay("2019-09-21T12:00:00.000Z"));
-  assert.match(localDay("2019-09-21T12:00:00.000Z"), /^Sep 2\d, 2019$/, "fixture: the expected form is the short month");
+  assert.strictEqual(new Date("2019-09-21T03:00:00.000Z").getDate(), 20, "fixture: the suite runs in Los Angeles");
+  assert.strictEqual(ctx.fmtDate("2019-09-21T03:00:00.000Z", { local: true }), "Sep 20, 2019", "local: the listener's own day");
+  assert.strictEqual(ctx.fmtDate("2019-09-21T03:00:00.000Z"), "Sep 21, 2019", "default: the UTC day");
 });
 
 /* THE YEAR ONLY WHEN IT IS NOT THIS ONE (audit round 2, copy-15), Apple
@@ -287,7 +296,7 @@ test("the Playlists page formats 'played' through fmtDate and says nothing for a
   const m = mount();
   onePartPlaylist(m);
   m.ctx.renderPlaylists();
-  assert.ok(m.view().includes(`played ${localDay("2019-09-21T18:00:00.000Z")}`), m.view());
+  assert.ok(m.view().includes("played Sep 21, 2019"), m.view());
 
   const raw = JSON.parse(m.ctx.localStorage.getItem("cp_playlists"));
   raw[0].last_played_at = "garbage";

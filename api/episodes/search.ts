@@ -1,11 +1,17 @@
 import * as fs from "fs";
 import * as path from "path";
 import { applyCors } from "../_lib/cors";
-import { fetchFeedConditional } from "../../backend/src/feeds/conditionalGet";
-import { parseFeed, type ParsedEpisode } from "../../backend/src/feeds/parser";
-import { appleSearchBucket } from "./appleBucket";
-import { loadShowIdMap } from "./showIdMap";
-import { episodeSearchCache, episodeFeedFailureCache, normalizeQueryKey } from "./searchCache";
+import { type ParsedEpisode } from "../../backend/src/feeds/parser";
+import { DEFAULT_FEED_USER_AGENT } from "../../backend/src/feeds/userAgent";
+import { appleSearchBucket } from "../_lib/appleBucket";
+import { loadShowIdMap } from "../_lib/showIdMap";
+import { episodeSearchCache, episodeFeedFailureCache, normalizeQueryKey, showScopedQueryKey } from "../_lib/searchCache";
+import { sharedFeedReader, FEED_FETCHES_PER_SHOW_PER_MINUTE, FEED_FETCH_LIMITED_ERROR } from "../_lib/feedCache";
+import { liveEpisodeGuid } from "../_lib/liveEpisodeId";
+import {
+  appleCallerBuckets, clientKey, normalizeSearchText, CLIENT_LIMITED_ERROR,
+  QUERY_MAX_CHARS, QUERY_MIN_CHARS, QUERY_TOO_LONG_ERROR, QUERY_TOO_SHORT_ERROR,
+} from "../_lib/clientLimit";
 
 /**
  * GET /api/episodes/search?q=<query>&show=<show_id> — episode search (S-07,
@@ -27,9 +33,9 @@ import { episodeSearchCache, episodeFeedFailureCache, normalizeQueryKey } from "
  *      loadCatalogFallback() for the measurement.
  *
  *   2. SHOW-SCOPED SEARCH (`show=<show_id>`): no Apple call at all. Fetches
- *      that show's live feed (S-02's exact path: fetchFeedConditional +
- *      parseFeed, no persisted state between invocations — same no-DB-mode
- *      shape as `api/shows/[show_id]/episodes.ts`) and filters episodes by
+ *      that show's live feed (through api/_lib/feedCache.ts, the parsed feed
+ *      kept per show and shared with `api/shows/[show_id]/episodes.ts`;
+ *      round-3 audit, search-api-css-3) and filters episodes by
  *      a case-insensitive substring match on title. It doesn't touch the
  *      rate-limited Apple endpoint and gives an exact answer for a show 4a
  *      already knows about — but it is NOT cheap, and S-07's "this is cheap"
@@ -54,9 +60,22 @@ import { episodeSearchCache, episodeFeedFailureCache, normalizeQueryKey } from "
  */
 
 const APPLE_SEARCH_URL = "https://itunes.apple.com/search";
-const EPISODE_USER_AGENT = "Foray/0.1 (personal podcast client; contact wjduvall@gmail.com)";
+/* Imported, never restated (round-3 audit, arch-drift-14): one drifted copy of
+   this string was 403'd by a feed host and cost 423 transcripts (#316). The
+   politeness scan in tools/segments/politeness.test.mjs now reads api/ too. */
+const EPISODE_USER_AGENT = DEFAULT_FEED_USER_AGENT;
 const APPLE_TIMEOUT_MS = 8_000; // keeps the <1.5s acceptance target reachable even with cache misses
 const MAX_RESULTS = 25;
+
+/* OUTBOUND FEED FETCHES ARE LIMITED PER SHOW (round-3 audit, search-api-css-4),
+   and the parsed feed is kept per show (search-api-css-3): both live in
+   api/_lib/feedCache.ts, shared with the per-show list. A script looping
+   `?show=<id>&q=<random>` used to download a multi-MB third-party feed per
+   request; now a new `q` reads the kept parse, and a refetch past the per-show
+   budget is refused (degraded, never an empty success). Re-exported for tests. */
+export { FEED_FETCHES_PER_SHOW_PER_MINUTE, FEED_FETCH_LIMITED_ERROR };
+export const feedFetchBuckets = sharedFeedReader.buckets;
+export { sharedFeedReader };
 
 /* THE APPLE ASK IS NOT THE CALLER'S `limit` (defect 2, 2026-09-13).
  *
@@ -182,14 +201,17 @@ function mapAppleHit(hit: AppleEpisodeHit, idMap: Map<number, string>): EpisodeS
   };
 }
 
-/** Maps a freshly-parsed live-feed episode to our shape (show-scoped path). */
-function mapLiveEpisode(showId: string, showTitle: string | null, ep: ParsedEpisode): EpisodeSearchResult | null {
+/** Maps a freshly-parsed live-feed episode to our shape (show-scoped path).
+ *  A guid-less episode gets the same fallback id the per-show list serves it
+ *  under (liveEpisodeGuid, the rule the DB ingest also uses); `idx`, its
+ *  position in the whole feed, is only the last resort for that id. */
+export function mapLiveEpisode(showId: string, showTitle: string | null, ep: ParsedEpisode, idx: number): EpisodeSearchResult | null {
   if (!ep.enclosureUrl) return null;
   return {
     show_id: showId,
     show_title: showTitle,
     title: ep.title,
-    guid: ep.guid,
+    guid: liveEpisodeGuid(ep, idx),
     description_text: ep.descriptionText || null,
     published_at: ep.publishedAt,
     duration_seconds: ep.duration.seconds,
@@ -251,7 +273,7 @@ async function searchWithinShow(
     if (err instanceof ShowMetaFilesUnavailableError) {
       // Distinct from "unknown show_id" below: the catalog files this
       // lookup depends on could not be read at all (e.g. missing from the
-      // deployed bundle — see vercel.json's includeFiles / api/test/
+      // deployed bundle — see vercel.json's includeFiles / api/_test/
       // vercel-bundle.test.mjs), not merely "this id isn't in them". A
       // caller can't fix a bad show_id, but this IS an operational
       // failure worth surfacing honestly rather than as a false-empty
@@ -262,19 +284,13 @@ async function searchWithinShow(
   }
   if (!meta) return { results: [], error: `unknown show_id: ${showId}`, feedFailed: false };
 
-  const fetchResult = await fetchFeedConditional(meta.feedUrl, { etag: null, lastModified: null }, {
-    fetchImpl,
-    userAgent: EPISODE_USER_AGENT
-  });
-  if (fetchResult.error || fetchResult.body === null) {
-    return { results: [], error: fetchResult.error ?? `unexpected empty body (status ${fetchResult.status})`, feedFailed: true };
-  }
+  const feed = await sharedFeedReader.read(showId, meta.feedUrl, { fetchImpl, userAgent: EPISODE_USER_AGENT });
+  if (!feed.parsed) return { results: [], error: feed.error ?? "feed unavailable", feedFailed: feed.feedFailed };
 
-  const parsed = parseFeed(fetchResult.body);
+  const parsed = feed.parsed;
   const q = query.trim().toLowerCase();
   const results = parsed.episodes
-    .filter((ep) => ep.title.toLowerCase().includes(q))
-    .map((ep) => mapLiveEpisode(showId, meta.title, ep))
+    .map((ep, idx) => (ep.title.toLowerCase().includes(q) ? mapLiveEpisode(showId, meta.title, ep, idx) : null))
     .filter((ep): ep is EpisodeSearchResult => ep !== null);
   return { results, error: null, feedFailed: false };
 }
@@ -359,13 +375,19 @@ export default async function handler(req: ApiRequest, res: ApiResponse): Promis
     res.status(400).json({ error: "q is required" });
     return;
   }
+  if (q.length > QUERY_MAX_CHARS) {
+    res.status(400).json({ error: QUERY_TOO_LONG_ERROR });
+    return;
+  }
 
   const showScope = firstParam(req.query.show);
   const limitParam = firstParam(req.query.limit);
   const parsedLimit = limitParam ? Number.parseInt(limitParam, 10) : NaN;
   const limit = Number.isFinite(parsedLimit) && parsedLimit > 0 ? Math.min(parsedLimit, 100) : MAX_RESULTS;
 
-  const cacheKey = normalizeQueryKey(q, showScope, limit);
+  /* The show-scoped matcher compares raw lowercased text, so its key must too
+     (showScopedQueryKey); the Apple path keys on the folded text. */
+  const cacheKey = showScope ? showScopedQueryKey(q, showScope, limit) : normalizeQueryKey(q, showScope, limit);
   const cached = episodeSearchCache.get(cacheKey) as { episodes: EpisodeSearchResult[]; source: string[]; total?: number; capped?: boolean } | undefined;
   if (cached) {
     res.setHeader("Cache-Control", "public, max-age=300, stale-while-revalidate=3600");
@@ -410,6 +432,18 @@ export default async function handler(req: ApiRequest, res: ApiResponse): Promis
   }
 
   // General (unscoped) search — the rate-limited Apple path.
+  /* security-10: the caller's own budget, and a query worth a slot, before the
+     shared Apple bucket. Same one shape as every other answer. */
+  const refusal = normalizeSearchText(q).length < QUERY_MIN_CHARS
+    ? QUERY_TOO_SHORT_ERROR
+    : !appleCallerBuckets.tryConsume(clientKey(req.headers))
+      ? CLIENT_LIMITED_ERROR
+      : null;
+  if (refusal) {
+    res.setHeader("Cache-Control", "no-store");
+    res.status(200).json({ query: q, show: null, episodes: [], source: [], total: 0, capped: false, degraded: true, error: refusal });
+    return;
+  }
   if (!appleSearchBucket.tryConsume()) {
     res.setHeader("Cache-Control", "no-store");
     res.status(200).json({
@@ -419,7 +453,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse): Promis
       source: [],
       /* One shape on every path (audit round 2, honesty-11 added these two to
          the answered paths; a refusal that dropped them would make the client
-         and api/test/episodes-search-degraded-honesty.test.mjs branch on keys). */
+         and api/_test/episodes-search-degraded-honesty.test.mjs branch on keys). */
       total: 0,
       capped: false,
       degraded: true,

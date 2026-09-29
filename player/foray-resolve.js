@@ -34,6 +34,7 @@
 import {
   buildForayQueue, forayRuntimeSec, itemRuntimeSec, narrationDuration, runtimeIsEstimated, SEGMENT,
 } from "./foray-queue.js";
+import { hms } from "./seek-policy.js";
 
 /** The one status that may be shown to a visitor who did not ask by id. */
 export const PUBLISHED = "published";
@@ -730,16 +731,11 @@ export function forayElapsed(items, index, playheadSec = null) {
 
 /* ---------- display ---------- */
 
-/** `m:ss`, or `h:mm:ss` past an hour. Foray-length, not episode-length: the
-    seek-policy's formatTimestamp exists for a position in one episode and
-    deliberately signals imprecision, which is not this number's problem. */
+/** `m:ss`, or `h:mm:ss` past an hour. The same clock text as an episode's
+    (`seek-policy.js` `hms`, floored; audit round 3, arch-drift-10), without
+    formatTimestamp's precision signal, which is not this number's problem. */
 export function fmtClock(sec) {
-  const total = isNum(sec) && sec > 0 ? Math.floor(sec) : 0;
-  const h = Math.floor(total / 3600);
-  const m = Math.floor((total % 3600) / 60);
-  const s = total % 60;
-  const ss = String(s).padStart(2, "0");
-  return h > 0 ? `${h}:${String(m).padStart(2, "0")}:${ss}` : `${m}:${ss}`;
+  return hms(isNum(sec) && sec > 0 ? sec : 0);
 }
 
 /** "45 sec" / "2 min" / "1 hr 35 min". Rounded, because a segment's length is a

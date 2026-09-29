@@ -129,7 +129,7 @@ export async function extractDump({ archivePath, outDir }) {
     catalogue. Pure aside from reading `db` via the streaming generator;
     used by both `main()` and the unit tests (tests pass an in-memory
     DatabaseSync built from fixtures). */
-export function runPipeline(db, { curatedShows, previousNewest = {}, now = Date.now() } = {}) {
+export function runPipeline(db, { curatedShows, previousNewest = null, now = Date.now() } = {}) {
   const totalRows = countPodcasts(db);
   /* Curated shows are exempt from D1 — see identity.mjs's `curatedKeys`. Built
      once, before the stream, because the filter runs per row over 4.7M of
@@ -348,7 +348,12 @@ async function main() {
   const db = new DatabaseSync(dbPath, { readOnly: true });
   let manifest;
   try {
-    const previousNewest = {}; // TODO(S-11 follow-up wiring): read from prior manifest's per-id snapshot once persisted; empty means "everything counts as changed" on a fresh build, which is correct for the first run.
+    /* No prior-release per-id snapshot is persisted yet (the S-11 follow-up
+       wiring), so there is no baseline: changed.json says so
+       ({ baseline:false, changed:null }) instead of listing every show as
+       changed on every weekly release (audit round 3, data-tools-14). Pass
+       the prior release's snapshot here once one is published. */
+    const previousNewest = null;
     const result = runPipeline(db, { curatedShows, previousNewest });
     console.log(`read ${result.totalRows} rows; D1 kept ${result.d1Counts.kept}; D13 canonical ${result.canonical.length}`);
     console.log(`D1 per-filter misses: ${JSON.stringify(result.d1Counts)}`);

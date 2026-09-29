@@ -10,6 +10,7 @@ import assert from "node:assert/strict";
 
 import {
   BUILD_STAMP_FILE, DEPLOY_MANIFEST_FILE, BUILD_STAMP_WAIT_MS, deployIdOf, buildStampDoc, nativeBuildOf, readBuildStamp,
+  osFromUserAgent,
 } from "./build-stamp.js";
 
 /** A fetch that answers from a table, and records what it was asked. */
@@ -36,7 +37,7 @@ test("the shell reads the bundled stamp AND asks the binary for its build number
     },
   };
   const stamp = await readBuildStamp({ inShell: true, fetchJson, capacitor });
-  assert.deepEqual(stamp, { shell: true, web: "2b808ec9d50c5b98", native: "2026092224", version: "1.4.0" });
+  assert.deepEqual(stamp, { shell: true, web: "2b808ec9d50c5b98", native: "2026092224", version: "1.4.0", os: null, platform: null });
   assert.deepEqual(asked, [BUILD_STAMP_FILE], "the shell has no manifest to ask");
 });
 
@@ -47,7 +48,7 @@ test("the website reads the manifest, and prefers the generation the worker PINN
   const { fetchJson, asked } = fetchFrom({ [DEPLOY_MANIFEST_FILE]: { deploy_id: "aaaaaaaaaaaaaaaa" } });
   assert.deepEqual(
     await readBuildStamp({ inShell: false, fetchJson, pinned: "bbbbbbbbbbbbbbbb" }),
-    { shell: false, web: "bbbbbbbbbbbbbbbb", native: null, version: null },
+    { shell: false, web: "bbbbbbbbbbbbbbbb", native: null, version: null, os: null, platform: null },
   );
   assert.deepEqual(asked, [], "a pinned page does not need to ask");
   assert.equal((await readBuildStamp({ inShell: false, fetchJson })).web, "aaaaaaaaaaaaaaaa");
@@ -57,9 +58,9 @@ test("nothing here throws: a missing file, a throwing bridge and no fetch all re
   const boom = { nativePromise: async () => { throw new Error("plugin not implemented"); } };
   assert.deepEqual(
     await readBuildStamp({ inShell: true, fetchJson: async () => { throw new Error("404"); }, capacitor: boom }),
-    { shell: true, web: null, native: null, version: null },
+    { shell: true, web: null, native: null, version: null, os: null, platform: null },
   );
-  assert.deepEqual(await readBuildStamp({}), { shell: false, web: null, native: null, version: null });
+  assert.deepEqual(await readBuildStamp({}), { shell: false, web: null, native: null, version: null, os: null, platform: null });
 });
 
 test("every value is admitted by SHAPE — the record is pasted into issues", () => {
@@ -87,7 +88,7 @@ test("a bridge that never answers cannot cost the row: the web half is stamped, 
   const { fetchJson } = fetchFrom({ [BUILD_STAMP_FILE]: { deploy_id: "2b808ec9d50c5b98" } });
   const hung = { nativePromise: () => new Promise(() => {}) };
   const stamp = await readBuildStamp({ inShell: true, fetchJson, capacitor: hung, timeoutMs: 20 });
-  assert.deepEqual(stamp, { shell: true, web: "2b808ec9d50c5b98", native: null, version: null });
+  assert.deepEqual(stamp, { shell: true, web: "2b808ec9d50c5b98", native: null, version: null, os: null, platform: null });
 });
 
 test("the bound is PER HALF: a bundle read that hangs still lets the binary answer", { timeout: 5000 }, async () => {
@@ -98,6 +99,38 @@ test("the bound is PER HALF: a bundle read that hangs still lets the binary answ
   const fetchJson = () => new Promise(() => {});
   const capacitor = { nativePromise: async () => ({ build: "2026092326", version: "1.4.0" }) };
   const stamp = await readBuildStamp({ inShell: true, fetchJson, capacitor, timeoutMs: 20 });
-  assert.deepEqual(stamp, { shell: true, web: null, native: "2026092326", version: "1.4.0" });
+  assert.deepEqual(stamp, { shell: true, web: null, native: "2026092326", version: "1.4.0", os: null, platform: null });
   assert.equal(BUILD_STAMP_WAIT_MS, 5000, "the shipped bound matches app.js's wait on hydration");
+});
+
+/* ---------- L09 (log-gaps 2026-09-26): which OS ---------- */
+
+const IOS_UA = "Mozilla/5.0 (iPhone; CPU iPhone OS 18_6_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148";
+const IPAD_UA = "Mozilla/5.0 (iPad; CPU OS 17_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148";
+const ANDROID_UA = "Mozilla/5.0 (Linux; Android 14; Pixel 8 Build/AP2A.240805.005; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/128.0.6613.127 Mobile Safari/537.36";
+
+test("the OS version is read from the WebView's user agent: digits only, never the rest of the string", () => {
+  /* The paste had no OS at all. The UA is the one place the page can read it
+     without a native call, and it also names the device and browser build —
+     none of which may leave this function.
+     KILLING MUTATION 1: drop the `(?:_(\d+))?` group — 18.6.2 reads 18.6.
+     KILLING MUTATION 2: return the whole match — "Pixel 8" rides into the record. */
+  assert.deepEqual(osFromUserAgent(IOS_UA), { os: "18.6.2", platform: "ios" });
+  assert.deepEqual(osFromUserAgent(IPAD_UA), { os: "17.4", platform: "ios" });
+  assert.deepEqual(osFromUserAgent(ANDROID_UA), { os: "14", platform: "android" });
+  assert.deepEqual(osFromUserAgent("Mozilla/5.0 (Linux; Android 13.1.2; SM-S911B)"), { os: "13.1.2", platform: "android" });
+  assert.deepEqual(osFromUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64)"), { os: null, platform: null });
+  assert.deepEqual(osFromUserAgent(null), { os: null, platform: null });
+  assert.doesNotMatch(JSON.stringify(osFromUserAgent(ANDROID_UA)), /Pixel|Chrome|Build/);
+});
+
+test("readBuildStamp carries the OS beside the build, from an injected user agent", async () => {
+  /* KILLING MUTATION: ignore `userAgent` — the stamp's os reads null. */
+  const { fetchJson } = fetchFrom({ [BUILD_STAMP_FILE]: { deploy_id: "2b808ec9d50c5b98" } });
+  const capacitor = { nativePromise: async () => ({ build: "2026092602", version: "1.0" }) };
+  const stamp = await readBuildStamp({ inShell: true, fetchJson, capacitor, userAgent: IOS_UA });
+  assert.deepEqual(stamp, { shell: true, web: "2b808ec9d50c5b98", native: "2026092602", version: "1.0", os: "18.6.2", platform: "ios" });
+  const web = await readBuildStamp({ inShell: false, pinned: "bbbbbbbbbbbbbbbb", userAgent: ANDROID_UA });
+  assert.equal(web.os, "14");
+  assert.equal(web.platform, "android");
 });

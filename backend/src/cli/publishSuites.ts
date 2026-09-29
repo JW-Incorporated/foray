@@ -84,6 +84,13 @@ export const REAL_DATA_SUITES: readonly string[] = [
      through: a checker change a publish lands with cannot silently make the
      fixture every player suite reads invalid. */
   "tools/foray/frozen-fixture.test.mjs",
+  /* Added 2026-09-28 with the suite itself (Spark assessment Phase 1). It
+     calls `loadFiles(RENDERED_ROOT)` — the rendered fixture, not `data/` — so
+     it is the same one-entry false positive as frozen-fixture above, listed
+     for the same reason: it checks the committed carrier of rendered
+     narration against the SAME checker a publish runs, so a checker change
+     cannot silently invalidate it. Five tests, no network. */
+  "tools/foray/rendered-fixture.test.mjs",
   /* Added 2026-09-23 with PR #741 (the frozen fixture; grilling-history-1
      retired). Its last test reads the REAL `data/forays.json` for the set of
      live Foray ids — that set is what makes a fixture-only id "retired" — and
@@ -100,7 +107,12 @@ export const REAL_DATA_SUITES: readonly string[] = [
      (`readData("data/forays.json")` and the two pool files), so a publish that
      adds a Foray whose shape a painter mishandles must be refused here, not
      found on a phone. */
-  "test/load-states.test.js"
+  "test/load-states.test.js",
+  /* Added 2026-09-26 with the suite itself (PR #844). It picks the audition
+     passage from the REAL `data/forays.json` (the page reads live narration
+     at render time), so a publish that changes a narration shape the picker
+     mishandles is refused here rather than found on the founder's PC. */
+  "tools/narration/render-audition.test.mjs"
 ];
 
 /**
@@ -161,17 +173,35 @@ export type SuiteSpawn = (
   opts: { cwd: string }
 ) => { status: number | null; stdout: string; stderr: string; error?: Error };
 
-const defaultSpawn: SuiteSpawn = (cmd, args, opts) => {
-  const r = spawnSync(cmd, [...args], {
-    cwd: opts.cwd,
-    encoding: "utf8",
-    env: process.env,
-    // 613 tests of TAP with YAML blocks is a few hundred KB; leave headroom for
-    // a run where every assertion fails with a stack.
-    maxBuffer: 64 * 1024 * 1024
-  });
-  return { status: r.status, stdout: r.stdout ?? "", stderr: r.stderr ?? "", error: r.error };
-};
+/**
+ * Bounds on the gate (backend-rest-20). spawnSync had no timeout and node's
+ * default per-test timeout is Infinity, so one suite that never settled hung
+ * publish-foray forever with the three data files written into the tree: the
+ * half-written state the gate exists to prevent. Now a hung test fails on its
+ * own after SUITE_TEST_TIMEOUT_MS, and the whole run is SIGKILLed after
+ * SUITES_RUN_TIMEOUT_MS; the resulting spawn error (ETIMEDOUT) is already a
+ * "(runner)" failure, so the refusal path restores the tree.
+ */
+export const SUITE_TEST_TIMEOUT_MS = 120_000;
+export const SUITES_RUN_TIMEOUT_MS = 10 * 60_000;
+
+export function makeSuiteSpawn(timeoutMs: number = SUITES_RUN_TIMEOUT_MS): SuiteSpawn {
+  return (cmd, args, opts) => {
+    const r = spawnSync(cmd, [...args], {
+      cwd: opts.cwd,
+      encoding: "utf8",
+      env: process.env,
+      // 613 tests of TAP with YAML blocks is a few hundred KB; leave headroom for
+      // a run where every assertion fails with a stack.
+      maxBuffer: 64 * 1024 * 1024,
+      timeout: timeoutMs,
+      killSignal: "SIGKILL"
+    });
+    return { status: r.status, stdout: r.stdout ?? "", stderr: r.stderr ?? "", error: r.error };
+  };
+}
+
+const defaultSpawn: SuiteSpawn = makeSuiteSpawn();
 
 /** Unquote a TAP YAML scalar: `'C:\\x\\y.js:4:1'` → `C:\x\y.js:4:1`. The
  * reporter single-quotes strings and doubles backslashes and quotes inside. */
@@ -277,7 +307,9 @@ export function runRealDataSuites(opts: {
   const files = opts.files ?? REAL_DATA_SUITES;
   const spawn = opts.spawn ?? defaultSpawn;
   const started = Date.now();
-  const r = spawn(process.execPath, ["--test", "--test-reporter=tap", ...files], { cwd: opts.repoRoot });
+  const r = spawn(process.execPath, ["--test", "--test-reporter=tap", `--test-timeout=${SUITE_TEST_TIMEOUT_MS}`, ...files], {
+    cwd: opts.repoRoot
+  });
   const durationMs = Date.now() - started;
   const failures = parseTapFailures(r.stdout, opts.repoRoot);
   const counts = parseTapCounts(r.stdout);

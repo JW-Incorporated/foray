@@ -608,3 +608,18 @@ test("writeJsonAtomic is defined exactly once in this directory", () => {
   const owners = sources.filter((f) => readFileSync(join(dir, f), "utf8").includes("function writeJsonAtomic"));
   assert.deepEqual(owners, ["sweep-transcripts.mjs"], "one definition; every other caller imports it");
 });
+
+/* Audit round 3, data-tools-13: sweep-transcripts had its own entity decoder,
+   which handed `&#99999999;` to String.fromCodePoint. The RangeError failed the
+   whole feed's parse and lost every transcript URL in it. It now re-exports the
+   range-checked decoder in tools/refresh/entities.mjs.
+   MUTATION: restore the local decoder -- parseFeed throws RangeError here. */
+test("an out-of-range numeric entity does not fail the feed's parse", async () => {
+  const { decodeEntities: shared } = await import("../refresh/entities.mjs");
+  assert.equal(decodeEntities, shared, "one decoder, not a drifted copy");
+  const { episodes } = parseFeed(feed(`<item><guid>bad&#99999999;guid</guid><title>A &#x110000; title</title>
+    <podcast:transcript url="https://example.com/a.vtt?x=1&amp;y=2" type="text/vtt"/></item>`));
+  assert.equal(episodes.length, 1);
+  assert.equal(episodes[0].transcript_url, "https://example.com/a.vtt?x=1&y=2");
+  assert.equal(decodeEntities("&#12ab;"), "&#12ab;", "hex digits are not read as a decimal entity");
+});

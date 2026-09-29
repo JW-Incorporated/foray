@@ -13,7 +13,7 @@ import type {
   NarrationWriterBuilder,
   SeamBrief
 } from "./NarrationWriterBuilder";
-import { recordUsage } from "./usageTracking";
+import { assertReplyComplete, createMessage } from "./anthropicCall";
 import { NARRATOR_STRUCTURE_RULE } from "../copy/narratorStructure";
 
 /**
@@ -153,16 +153,14 @@ export class AnthropicNarrationWriterBuilder implements NarrationWriterBuilder {
       sessionId: ctx.sessionId
     });
 
-    const response = await this.client.messages.create({
+    const response = await createMessage(this.client, {
       model: MODEL,
       max_tokens: maxOutputTokens,
       messages: [{ role: "user", content: promptText }]
-    });
+    }, operation);
 
-    recordUsage(response.usage);
     const textBlock = response.content.find((b: Anthropic.ContentBlock): b is Anthropic.TextBlock => b.type === "text");
     if (!textBlock) throw new Error("Anthropic narration-write response had no text block");
-    assertNotTruncated(response.stop_reason, operation, maxOutputTokens);
 
     const reask = async (): Promise<string> => {
       const reaskLine = "Your previous reply was not valid JSON; reply with the JSON object only.";
@@ -179,7 +177,7 @@ export class AnthropicNarrationWriterBuilder implements NarrationWriterBuilder {
         sessionId: ctx.sessionId
       });
 
-      const retryResponse = await this.client.messages.create({
+      const retryResponse = await createMessage(this.client, {
         model: MODEL,
         max_tokens: maxOutputTokens,
         messages: [
@@ -187,11 +185,9 @@ export class AnthropicNarrationWriterBuilder implements NarrationWriterBuilder {
           { role: "assistant", content: textBlock.text },
           { role: "user", content: reaskLine }
         ]
-      });
-      recordUsage(retryResponse.usage);
+      }, operation);
       const retryTextBlock = retryResponse.content.find((b: Anthropic.ContentBlock): b is Anthropic.TextBlock => b.type === "text");
       if (!retryTextBlock) throw new Error("Anthropic narration-write re-ask response had no text block");
-      assertNotTruncated(retryResponse.stop_reason, operation, maxOutputTokens);
       return retryTextBlock.text;
     };
 
@@ -217,12 +213,9 @@ export class AnthropicNarrationWriterBuilder implements NarrationWriterBuilder {
  * to run out of room as the original call.
  */
 export function assertNotTruncated(stopReason: string | null | undefined, operation: WriterOperation, maxOutputTokens: number): void {
-  if (stopReason !== "max_tokens") return;
-  throw new Error(
-    `Anthropic ${operation} reply was truncated: the model hit max_tokens (${maxOutputTokens}) before finishing its JSON. ` +
-      "A truncated reply parses as a SHORT act (parseOrRepairJson closes the brackets) and every seam it never wrote would be " +
-      "recorded as a seam the writer chose to leave silent — so it is refused here instead."
-  );
+  /* Round-3 audit gen-10: the check now lives in anthropicCall.ts and runs on
+     EVERY builder's reply (createMessage calls it), not only the writer's. */
+  assertReplyComplete(stopReason, operation, maxOutputTokens);
 }
 
 const JSON_ONLY = "Respond with ONLY a single JSON object, no markdown fences, no other text, matching exactly:";

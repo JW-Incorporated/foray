@@ -227,6 +227,18 @@ export function createTtsBridge({ load = null, candidates = null, log = null } =
        `onFinished` (an older shell build, mirroring `listVoices`'s own
        comment on the same risk) or never resolves before `dispose()` runs,
        the returned function is a no-op rather than a promise it cannot keep. */
+    /* Probe v3.1: each finished probe pass's records (`probePass`). ASYNC,
+       unlike `onFinished`: the probe subscribes and THEN starts the run, so
+       the subscription must exist before the first pass can end. An older
+       shell with no `onProbePass` resolves a no-op; its passes still arrive
+       in the run's own answer. */
+    async onProbePass(fn) {
+      if (typeof fn !== "function") return () => {};
+      if (!pending) pending = loadModule();
+      const mod = await pending;
+      if (!mod || typeof mod.onProbePass !== "function") return () => {};
+      return mod.onProbePass(fn);
+    },
     onFinished(fn) {
       if (typeof fn !== "function") return () => {};
       let live = true;

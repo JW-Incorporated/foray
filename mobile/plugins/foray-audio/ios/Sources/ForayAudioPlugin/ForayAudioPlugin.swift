@@ -208,6 +208,29 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
     /// (design comment §2).
     private var interrupted = false
 
+    /// When the interruption in progress began, so its `interruptionEnded`
+    /// can say how long it lasted (`durMs`, L16). Wall clock, not uptime:
+    /// uptime stops while the phone sleeps, and a call on a locked phone is
+    /// exactly that. On `stateQueue`.
+    private var interruptionBeganAt: Date?
+
+    /// L20: did the car's play never reach 4a, or did it reach this plugin
+    /// and die on the bridge to a sleeping WebView? Every session and
+    /// transport event carries `nseq` (this counter, +1 per event, never
+    /// reset) and `nboot` (this process's start, epoch ms), so the record can
+    /// count the events that left here and never arrived: a gap in `nseq`
+    /// within one `nboot`. Bumped only on `stateQueue`, where every emitter
+    /// runs (`stampNative`).
+    private static let bootEpochMs = Int((Date().timeIntervalSince1970 * 1000).rounded())
+    private var eventSeq = 0
+
+    /// L23: whether the last hold (and, separately, the last release) was
+    /// skipped because the native engine owns the session. A skip is
+    /// recorded once per run of skips, not once per retry; a real hold or
+    /// release resets its own flag. On `stateQueue`.
+    private var holdSkipped = false
+    private var releaseSkipped = false
+
     /// Bumped when the payload's STATE changes, so a re-assert armed for an
     /// older pause does not fire after the transport has moved on. Not on every
     /// payload (review, 2026-09-23): a lock-screen scrub while paused, or a
@@ -222,6 +245,11 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
     private var artworkCache: (uri: String, item: MPMediaItemArtwork?)?
     /// Remote artwork URIs with a load in flight, so one slow fetch is one fetch.
     private var artworkLoading = Set<String>()
+    /// The last remote artwork load that FAILED, and when it may be tried
+    /// again (audit round 3, mobile-native-6). A failure is not cached as "no
+    /// artwork" for the rest of the item any more: a dead zone or a slow host
+    /// as the car connects is usually transient.
+    private var artworkRetryAfter: (uri: String, at: Date)?
 
     /// L-02's log-side needle (`FORAY_AUDIO_REACHED_NEEDLE` in
     /// `tools/mobile/ios-ci.mjs`, pinned to this string by
@@ -276,6 +304,8 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
     /// them); the hop is for the day it does not, because the owner is
     /// main-confined and a legacy registration off main would be a new race.
     override public func load() {
+        // L20: `nboot` is fixed at the first load, not at the first event.
+        _ = Self.bootEpochMs
         let register: () -> Void = { [weak self] in self?.runLegacyRegistration() }
         let decide = { [weak self] in
             MainActor.assumeIsolated {
@@ -285,6 +315,29 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
             }
         }
         if Thread.isMainThread { decide() } else { DispatchQueue.main.sync(execute: decide) }
+        Self.relayVoiceProbeRows()
+    }
+
+    /// VOICE-PROBE ROWS IN THE ENGINE'S RING (probe v3.1). ForayTts is a
+    /// separate Swift package and cannot reach the ring, so it POSTS this
+    /// notification, on the main thread and synchronously, at each probe pass
+    /// start; the row is appended to `diag.jsonl` before the post returns,
+    /// i.e. before the pass's (possibly fatal) load begins. The ring's append
+    /// is one `FileHandle.write` per row (DiagRing.swift), which a process
+    /// killed a moment later does not undo — so a pass that takes 4a down is
+    /// still an `e#` row in the next paste. The name is ForayTts's
+    /// `ProbeEngineRow.NOTIFICATION`, pinned equal by foray-tts.test.mjs.
+    static let VOICE_PROBE_ROW_NOTIFICATION = "ai.jwlabs.foura.voiceProbeRow"
+    private static var voiceProbeRelay: NSObjectProtocol?
+
+    private static func relayVoiceProbeRows() {
+        guard voiceProbeRelay == nil else { return }
+        voiceProbeRelay = NotificationCenter.default.addObserver(
+            forName: Notification.Name(VOICE_PROBE_ROW_NOTIFICATION), object: nil, queue: nil) { note in
+            let info = note.userInfo ?? [:]
+            let write = { MainActor.assumeIsolated { EngineOwnership.shared.voiceProbeRow(info) } }
+            if Thread.isMainThread { write() } else { DispatchQueue.main.sync(execute: write) }
+        }
     }
 
     /// Today's `load()`, verbatim: the legacy lane's registration. Runs at
@@ -401,6 +454,22 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
             self, selector: #selector(handleWillEnterForeground(_:)),
             name: UIApplication.willEnterForegroundNotification, object: nil
         )
+        /* L27: the phone's own state, so a stall, a failed hold or a slow
+           seam can be lined up with a thermal throttle, Low Power Mode or a
+           memory warning. Removed with the rest in `deinit`
+           (`removeObserver(self)` takes every one). */
+        center.addObserver(
+            self, selector: #selector(handleThermalState(_:)),
+            name: ProcessInfo.thermalStateDidChangeNotification, object: nil
+        )
+        center.addObserver(
+            self, selector: #selector(handlePowerState(_:)),
+            name: .NSProcessInfoPowerStateDidChange, object: nil
+        )
+        center.addObserver(
+            self, selector: #selector(handleMemoryWarning(_:)),
+            name: UIApplication.didReceiveMemoryWarningNotification, object: nil
+        )
     }
 
     @objc private func handleInterruption(_ note: Notification) {
@@ -412,6 +481,7 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
         let began = raw == AVAudioSession.InterruptionType.began.rawValue
         let options = (note.userInfo?[AVAudioSessionInterruptionOptionKey] as? UInt) ?? 0
         let shouldResume = AVAudioSession.InterruptionOptions(rawValue: options).contains(.shouldResume)
+        let why = Self.interruptionWhy(note.userInfo?[AVAudioSessionInterruptionReasonKey] as? UInt)
         stateQueue.async { [weak self] in
             guard let self = self else { return }
             /* WHETHER WE WERE HOLDING (2026-09-23). An interruption that lands
@@ -426,11 +496,23 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
             /* From here until `.ended`, a pause the page reports is the OS's
                doing and takes no hold -- `sessionMove`, design comment §2. */
             self.interrupted = began
+            /* L16: WHAT interrupted (a call or Siri, the app's suspension, a
+               route disconnect) on `began`, and for how long on `ended`. */
+            var extra = JSObject()
+            let now = Date()
+            if began {
+                extra["why"] = why
+                self.interruptionBeganAt = now
+            } else {
+                if let durMs = Self.durationMs(from: self.interruptionBeganAt, to: now) { extra["durMs"] = durMs }
+                self.interruptionBeganAt = nil
+            }
             self.emitSession(
                 kind: began ? "interruptionBegan" : "interruptionEnded",
                 reason: began
                     ? (held ? "began-while-held" : "began")
-                    : (shouldResume ? "should-resume" : "no-resume")
+                    : (shouldResume ? "should-resume" : "no-resume"),
+                extra: extra
             )
             /* TAKE THE HOLD BACK (review, 2026-09-23). A call or a Siri press
                between the founder's pause and his car landed `began-while-held`
@@ -456,10 +538,23 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
         let reason = Self.routeChangeReason(raw)
         /* Read on the observer's queue: `currentRoute` is the session's answer
            NOW, and the route it describes is the one the next press comes from. */
-        let outputs = AVAudioSession.sharedInstance().currentRoute.outputs.map { $0.portType.rawValue }
+        let route = AVAudioSession.sharedInstance().currentRoute
+        let outputs = route.outputs.map { $0.portType.rawValue }
+        /* L14: WHICH ports, from and to, as PORT-TYPE tokens (`speaker` ->
+           `carplay`): the port types were read here and thrown away, so the
+           2026-09-24 record could not tell CarPlay from Bluetooth. Never
+           `portName`: a car or a headset is often named after its owner.
+           `rawReason` when iOS gave a reason this build cannot name. L15: and
+           what the category is now, since a category change 1 s after a
+           failed hold is exactly what the record could not explain. */
+        let previous = note.userInfo?[AVAudioSessionRouteChangePreviousRouteKey] as? AVAudioSessionRouteDescription
+        var facts = Self.categoryFacts()
+        facts["to"] = Self.portToken(route.outputs.first?.portType)
+        facts["from"] = Self.portToken(previous?.outputs.first?.portType)
+        if reason == "unknown" { facts["rawReason"] = Int(raw) }
         stateQueue.async { [weak self] in
             guard let self = self else { return }
-            self.emitSession(kind: "routeChange", reason: reason)
+            self.emitSession(kind: "routeChange", reason: reason, extra: facts)
             /* THE TRACK PAIR FOLLOWS THE ROUTE (audit round 2, p-impatient-3).
                A headset or car appearing turns next/previous on for it; the
                built-in speaker alone turns them off, so the lock screen goes
@@ -521,6 +616,34 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
         }
     }
 
+    /// L27. Posted on an arbitrary thread; the state is read there and the
+    /// event written on `stateQueue`. A state a later iOS adds is not written.
+    @objc private func handleThermalState(_ note: Notification) {
+        guard let state = DeviceFacts.thermalToken(ProcessInfo.processInfo.thermalState) else { return }
+        stateQueue.async { [weak self] in
+            self?.emitSession(kind: "thermal", reason: state)
+        }
+    }
+
+    /// L27: Low Power Mode went on or off.
+    @objc private func handlePowerState(_ note: Notification) {
+        let on = DeviceFacts.lowPowerMode()
+        stateQueue.async { [weak self] in
+            self?.emitSession(kind: "lowPower", reason: on ? "on" : "off")
+        }
+    }
+
+    /// L27: iOS asked the app to free memory. `availMb` is the headroom left
+    /// (`os_proc_available_memory`), when it can be read.
+    @objc private func handleMemoryWarning(_ note: Notification) {
+        let availMb = DeviceFacts.availableMemoryMb()
+        stateQueue.async { [weak self] in
+            var extra = JSObject()
+            if let availMb { extra["availMb"] = availMb }
+            self?.emitSession(kind: "memoryWarning", reason: "warning", extra: extra)
+        }
+    }
+
     /// `AVAudioSession.RouteChangeReason` -> the closed vocabulary
     /// `player/diagnostic-log.js`'s `dataTokenOf()` admits. A dashed
     /// lower-case token and NEVER the route's name: a Bluetooth route is
@@ -542,7 +665,143 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
         }
     }
 
-    private func emitSession(kind: String, reason: String) {
+    /// `AVAudioSession.Port` -> the closed port token (L14): `carplay a2dp hfp
+    /// ble speaker receiver wired airplay usb hdmi other none`. It takes the
+    /// port's TYPE and nothing else, so no caller can hand it a `portName`
+    /// (which is what the listener called their car or headset). Pure and
+    /// `internal` so `ForayAudioPluginTests` pins every case.
+    static func portToken(_ type: AVAudioSession.Port?) -> String {
+        guard let type else { return "none" }
+        switch type {
+        case .carAudio: return "carplay"
+        case .bluetoothA2DP: return "a2dp"
+        case .bluetoothHFP: return "hfp"
+        case .bluetoothLE: return "ble"
+        case .builtInSpeaker: return "speaker"
+        case .builtInReceiver: return "receiver"
+        case .headphones, .lineOut: return "wired"
+        case .airPlay: return "airplay"
+        case .usbAudio: return "usb"
+        case .HDMI: return "hdmi"
+        default: return "other"
+        }
+    }
+
+    /// The session's category, mode and mix option as closed tokens (L15):
+    /// `cat` (`playback ambient solo-ambient play-and-record record
+    /// multi-route other`), `mode` (`spoken-audio default other`) and `mix`
+    /// (`.mixWithOthers`). Pure, so the XCTests table it.
+    static func sessionCategory(category: AVAudioSession.Category, mode: AVAudioSession.Mode,
+                                options: AVAudioSession.CategoryOptions) -> (cat: String, mode: String, mix: Bool) {
+        let cat: String
+        switch category {
+        case .playback: cat = "playback"
+        case .ambient: cat = "ambient"
+        case .soloAmbient: cat = "solo-ambient"
+        case .playAndRecord: cat = "play-and-record"
+        case .record: cat = "record"
+        case .multiRoute: cat = "multi-route"
+        default: cat = "other"
+        }
+        let modeToken: String
+        switch mode {
+        case .spokenAudio: modeToken = "spoken-audio"
+        case .default: modeToken = "default"
+        default: modeToken = "other"
+        }
+        return (cat, modeToken, options.contains(.mixWithOthers))
+    }
+
+    /// `cat`/`mode`/`mix`, read from the shared session now.
+    private static func categoryFacts() -> JSObject {
+        let session = AVAudioSession.sharedInstance()
+        let facts = sessionCategory(category: session.category, mode: session.mode, options: session.categoryOptions)
+        var object = JSObject()
+        object["cat"] = facts.cat
+        object["mode"] = facts.mode
+        object["mix"] = facts.mix
+        return object
+    }
+
+    /// A failed `setCategory`/`setActive` as the closed session-error DETAIL
+    /// token (L13). The engine's mapping, shared: one table for both lanes.
+    static func sessionErrorToken(_ code: Int) -> String {
+        AudioSessionOwner.errorToken(code: code)
+    }
+
+    /// `UIApplication.State` as `active inactive bg` (L13, L19).
+    static func appStateToken(_ state: UIApplication.State) -> String {
+        switch state {
+        case .active: return "active"
+        case .background: return "bg"
+        case .inactive: return "inactive"
+        @unknown default: return "inactive"
+        }
+    }
+
+    /// The app's state now, read on main (`ForayTtsPlugin.isForeground`'s
+    /// pattern). Called from `stateQueue`, which never runs while main waits
+    /// on it: main's only `stateQueue.sync` (`runLegacyRegistration`) runs
+    /// before any observer or command target that reaches this exists.
+    static func currentAppState() -> String {
+        let read: () -> String = { MainActor.assumeIsolated { Self.appStateToken(UIApplication.shared.applicationState) } }
+        if Thread.isMainThread { return read() }
+        return DispatchQueue.main.sync(execute: read)
+    }
+
+    /// `AVAudioSessionInterruptionReasonKey` -> `default app-suspended
+    /// mic-muted route-disconnected unknown` (L16). Absent is `unknown`.
+    static func interruptionWhy(_ raw: UInt?) -> String {
+        guard let raw else { return "unknown" }
+        if #available(iOS 17.0, *), raw == AVAudioSession.InterruptionReason.routeDisconnected.rawValue {
+            return "route-disconnected"
+        }
+        switch AVAudioSession.InterruptionReason(rawValue: raw) {
+        case .default?: return "default"
+        case .appWasSuspended?: return "app-suspended"
+        case .builtInMicMuted?: return "mic-muted"
+        default: return "unknown"
+        }
+    }
+
+    /// Whole milliseconds from `began` to `now`, or nil with no `began` (an
+    /// `.ended` iOS sent without its `.began`). Never negative.
+    static func durationMs(from began: Date?, to now: Date) -> Int? {
+        guard let began else { return nil }
+        return Int((max(0, now.timeIntervalSince(began)) * 1000).rounded())
+    }
+
+    /// `MPNowPlayingInfoCenter.playbackState` -> `playing paused stopped
+    /// interrupted unknown` (L18).
+    static func playbackStateToken(_ state: MPNowPlayingPlaybackState) -> String {
+        switch state {
+        case .playing: return "playing"
+        case .paused: return "paused"
+        case .stopped: return "stopped"
+        case .interrupted: return "interrupted"
+        default: return "unknown"
+        }
+    }
+
+    /// The command tokens of `cmds` (L18), in the fixed order
+    /// `nowPlayingFacts` reads their `isEnabled` in.
+    static let reassertCommandTokens = ["play", "pause", "toggle", "next", "prev", "skipf", "skipb", "seek"]
+
+    /// The ENABLED subset of `reassertCommandTokens`, comma-joined, in that
+    /// order; empty when none is. Pure, so the XCTests pin it.
+    static func enabledCommandList(_ enabled: [Bool]) -> String {
+        zip(reassertCommandTokens, enabled).filter { $0.1 }.map { $0.0 }.joined(separator: ",")
+    }
+
+    /// L20: the per-process sequence and boot stamp, on every event this
+    /// plugin sends. On `stateQueue`.
+    private func stampNative(_ facts: inout JSObject) {
+        eventSeq += 1
+        facts["nseq"] = eventSeq
+        facts["nboot"] = Self.bootEpochMs
+    }
+
+    private func emitSession(kind: String, reason: String, extra: JSObject = [:]) {
         /* THE UNIFIED LOG AS WELL AS THE BRIDGE, and the duplication is the
            point. A `notifyListeners` reaches a WebView that may be suspended —
            which is precisely the case M-03 is about — and Capacitor drops an
@@ -555,15 +814,27 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
         Self.logger.notice(
             "ForayAudio.session kind=\(kind, privacy: .public) reason=\(reason, privacy: .public)"
         )
-        notifyListeners(Self.SESSION_EVENT, data: Self.sessionEvent(kind: kind, reason: reason))
+        /* L17: whether another app is sounding (`other`) and whether iOS
+           would silence it for us (`hint`), on EVERY event: the car resuming
+           Spotify is this, and it was never on the record. */
+        let session = AVAudioSession.sharedInstance()
+        var facts = extra
+        facts["other"] = session.isOtherAudioPlaying
+        facts["hint"] = session.secondaryAudioShouldBeSilencedHint
+        stampNative(&facts)
+        notifyListeners(Self.SESSION_EVENT, data: Self.sessionEvent(kind: kind, reason: reason, extra: facts))
     }
 
     /// The wire shape, pure and `internal` so a test can pin it without a
     /// notification centre. `at` is epoch MILLISECONDS — the unit
     /// `diagnostic-log.js` stamps every entry with, so a reader never has to
-    /// guess which clock a native event is on.
-    static func sessionEvent(kind: String, reason: String, at: Double = Date().timeIntervalSince1970 * 1000) -> JSObject {
+    /// guess which clock a native event is on. `extra` carries the facts of
+    /// docs/diagnostics/log-gaps-2026-09-26.md's Lane B contract (closed
+    /// tokens, numbers and booleans only); the four fixed keys win over it.
+    static func sessionEvent(kind: String, reason: String, extra: JSObject = [:],
+                             at: Double = Date().timeIntervalSince1970 * 1000) -> JSObject {
         var event = JSObject()
+        for (key, value) in extra { event[key] = value }
         event["kind"] = kind
         event["reason"] = reason
         event["producer"] = "audio"
@@ -792,6 +1063,17 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
             return .none
         case (_, .playing):
             return holding ? .supersede : .none
+        /* THE END OF PLAYBACK RELEASES WHOEVER ACTIVATED (audit round 3,
+           mobile-native-4). A Foray played through without a pause never took
+           the hold, but every narration line activated this same shared
+           session (`ForayTtsPlugin` claims it), so ending on `holding` alone
+           left a non-mixable `.playback` session active after the Foray and
+           never told the app it interrupted that it may resume -- the one
+           promise design comment §2 makes. From playing or paused into ended
+           or none, release and notify either way. Never from the playing path,
+           and never from a state that had nothing to play. */
+        case (.playing, .none), (.playing, .ended), (.paused, .none), (.paused, .ended):
+            return .releaseAndNotify
         case (_, .none), (_, .ended):
             return holding ? .releaseAndNotify : .none
         default:
@@ -844,10 +1126,15 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
         guard !EngineModeFlag.sessionOwnedByEngine else {
             holdsSession = false
             Self.logger.notice("ForayAudio.session hold skipped: engine-owned reason=\(reason, privacy: .public)")
+            /* L23: on the record too, once per run of skips (a route change
+               and a pause each ask; the first says it). */
+            holdSkipped = noteEngineOwnedSkip(kind: "sessionActivated", alreadyNoted: holdSkipped)
             return
         }
+        holdSkipped = false
         let session = AVAudioSession.sharedInstance()
         var ok = true
+        var facts = JSObject()
         do {
             /* `.spokenAudio`, the app's ONE mode (see `load()`; audit round 2,
                native-10). This was `.default` on the argument that a paused
@@ -861,9 +1148,15 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
             try session.setActive(true, options: [])
         } catch {
             ok = false
+            /* L13: WHY, and in what app state. The reason stays `failed`
+               (the record's token rule refuses `failed:x`); the cause rides
+               beside it as `err`. */
+            facts["err"] = Self.sessionErrorToken((error as NSError).code)
+            facts["app"] = Self.currentAppState()
         }
         holdsSession = ok
-        emitSession(kind: "sessionActivated", reason: ok ? reason : "failed")
+        facts.merge(Self.categoryFacts()) { mine, _ in mine }
+        emitSession(kind: "sessionActivated", reason: ok ? reason : "failed", extra: facts)
     }
 
     /// Let go of an activation WE made, at the END of playback only:
@@ -876,17 +1169,33 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
         guard !EngineModeFlag.sessionOwnedByEngine else {
             holdsSession = false
             Self.logger.notice("ForayAudio.session release skipped: engine-owned reason=\(reason, privacy: .public)")
+            releaseSkipped = noteEngineOwnedSkip(kind: "sessionReleased", alreadyNoted: releaseSkipped)
             return
         }
+        releaseSkipped = false
         let session = AVAudioSession.sharedInstance()
         var ok = true
+        var facts = JSObject()
         do {
             try session.setActive(false, options: notifyOthers ? [.notifyOthersOnDeactivation] : [])
         } catch {
             ok = false
+            facts["err"] = Self.sessionErrorToken((error as NSError).code)
+            facts["app"] = Self.currentAppState()
         }
         holdsSession = false
-        emitSession(kind: "sessionReleased", reason: ok ? reason : "failed")
+        facts.merge(Self.categoryFacts()) { mine, _ in mine }
+        emitSession(kind: "sessionReleased", reason: ok ? reason : "failed", extra: facts)
+    }
+
+    /// L23: a hold or release the engine's ownership skipped is written as
+    /// `<kind> (skipped-engine-owned)`, once per run of skips of that kind: the
+    /// first says it, the retries do not. Returns the new flag (always set).
+    /// Outside the guards, whose bodies stay a flat `return` (shell-invariants
+    /// reads them). On `stateQueue`.
+    private func noteEngineOwnedSkip(kind: String, alreadyNoted: Bool) -> Bool {
+        if !alreadyNoted { emitSession(kind: kind, reason: "skipped-engine-owned") }
+        return true
     }
 
     /// The transport is playing again: the producer's own activation stands in
@@ -921,7 +1230,25 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
     private func reassertNowPlaying(reason: String) {
         applyNowPlayingInfo(lastPayload)
         applyCommandAvailability(lastPayload, force: true)
-        emitSession(kind: "nowPlayingReasserted", reason: reason)
+        emitSession(kind: "nowPlayingReasserted", reason: reason, extra: nowPlayingFacts())
+    }
+
+    /// L18: what the OS holds for us right after the re-assert. `np` (the
+    /// centre's playback state), `cmds` (which commands are ENABLED: a car's
+    /// play goes nowhere if `play` is off) and `info` (whether there is an
+    /// entry at all). On `stateQueue`.
+    private func nowPlayingFacts() -> JSObject {
+        let center = MPNowPlayingInfoCenter.default()
+        var facts = JSObject()
+        facts["np"] = Self.playbackStateToken(center.playbackState)
+        facts["cmds"] = Self.enabledCommandList([
+            commandCenter.playCommand.isEnabled, commandCenter.pauseCommand.isEnabled,
+            commandCenter.togglePlayPauseCommand.isEnabled, commandCenter.nextTrackCommand.isEnabled,
+            commandCenter.previousTrackCommand.isEnabled, commandCenter.skipForwardCommand.isEnabled,
+            commandCenter.skipBackwardCommand.isEnabled, commandCenter.changePlaybackPositionCommand.isEnabled
+        ])
+        facts["info"] = center.nowPlayingInfo != nil
+        return facts
     }
 
     // MARK: - MPNowPlayingInfoCenter
@@ -1038,9 +1365,12 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
     /// are read from disk once, and a remote image is fetched asynchronously
     /// (`URLSession`, bounded) with the entry re-posted when it lands. Until it
     /// lands the entry goes out without artwork -- the same "no artwork, never a
-    /// guess" rule `media-session.js`'s `artworkUrl()` enforces upstream -- and
-    /// a failed load is cached as none, so a dead URL costs one attempt and not
-    /// one per write. On `stateQueue`.
+    /// guess" rule `media-session.js`'s `artworkUrl()` enforces upstream. A
+    /// failed REMOTE load is not cached as none (audit round 3, mobile-native-6):
+    /// it is retried once `artworkRetryAfterSec` has passed, so a dead URL costs
+    /// one attempt per interval and not one per write, and a fetch that timed
+    /// out in a dead zone does not leave the lock screen bare for the rest of
+    /// the item. On `stateQueue`.
     private func artworkItem(for uri: String) -> MPMediaItemArtwork? {
         guard !uri.isEmpty else { return nil }
         if let cached = artworkCache, cached.uri == uri { return cached.item }
@@ -1055,12 +1385,24 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
         if url.isFileURL {
             return rememberArtwork(uri: uri, image: UIImage(contentsOfFile: url.path))
         }
+        guard Self.artworkLoadAllowed(uri: uri, lastFailure: artworkRetryAfter, now: Date()) else { return nil }
         loadRemoteArtwork(uri: uri, url: url)
         return nil
     }
 
-    /// Cache and wrap. A `nil` image is cached too -- "this URI has no artwork"
-    /// is an answer, and asking again on every write is the bug above.
+    /// How long a failed remote artwork load waits before it is tried again.
+    static let artworkRetryAfterSec: Double = 45
+
+    /// Whether a remote artwork load may start: not while the same URI's last
+    /// failure is inside its retry window (mobile-native-6).
+    static func artworkLoadAllowed(uri: String, lastFailure: (uri: String, at: Date)?, now: Date) -> Bool {
+        guard let failure = lastFailure, failure.uri == uri else { return true }
+        return now >= failure.at
+    }
+
+    /// Cache and wrap. A `nil` image from the bundle or a file is cached too --
+    /// "this URI has no artwork" is an answer there, and asking again on every
+    /// write is the bug above. A remote failure is not (see `artworkItem`).
     private func rememberArtwork(uri: String, image: UIImage?) -> MPMediaItemArtwork? {
         let item = image.map { image in MPMediaItemArtwork(boundsSize: image.size) { _ in image } }
         artworkCache = (uri: uri, item: item)
@@ -1081,8 +1423,15 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
             self.stateQueue.async {
                 self.artworkLoading.remove(uri)
                 let image = data.flatMap { UIImage(data: $0) }
+                /* ONLY A SUCCESS IS CACHED (mobile-native-6). A failure or a
+                   timeout records a retry time instead of a permanent nil. */
+                guard image != nil else {
+                    self.artworkRetryAfter = (uri: uri, at: Date().addingTimeInterval(Self.artworkRetryAfterSec))
+                    return
+                }
+                if self.artworkRetryAfter?.uri == uri { self.artworkRetryAfter = nil }
                 _ = self.rememberArtwork(uri: uri, image: image)
-                if image != nil && self.lastPayload.artworkUri == uri && self.lastPayload.state != .none {
+                if self.lastPayload.artworkUri == uri && self.lastPayload.state != .none {
                     self.applyNowPlayingInfo(self.lastPayload)
                 }
             }
@@ -1189,9 +1538,10 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
             // `ForayAudioPluginTests` can pin it without a live command center.
             let positionTime = event.positionTime
             self?.stateQueue.async {
-                self?.notifyListeners(
+                guard let self else { return }
+                self.notifyListeners(
                     Self.TRANSPORT_EVENT,
-                    data: Self.seekToTransportEvent(positionTime: positionTime)
+                    data: Self.seekToTransportEvent(positionTime: positionTime, extra: self.transportFacts())
                 )
             }
             return .success
@@ -1328,8 +1678,21 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
         )
         notifyListeners(
             Self.TRANSPORT_EVENT,
-            data: Self.transportEvent(action: action, positionMs: positionMs, offsetMs: offsetMs, command: command)
+            data: Self.transportEvent(action: action, positionMs: positionMs, offsetMs: offsetMs, command: command,
+                                      extra: transportFacts())
         )
+    }
+
+    /// L19: who pressed, as far as iOS lets anyone tell: the output the press
+    /// came in on (`route`, a port token: `carplay`, `a2dp`, `speaker` for
+    /// the lock screen) and the app's state (`app`). With L20's `nseq`/
+    /// `nboot`. On `stateQueue`.
+    private func transportFacts() -> JSObject {
+        var facts = JSObject()
+        facts["route"] = Self.portToken(AVAudioSession.sharedInstance().currentRoute.outputs.first?.portType)
+        facts["app"] = Self.currentAppState()
+        stampNative(&facts)
+        return facts
     }
 
     /// The wire shape of a `transport` event: `{action, positionMs?, offsetMs?,
@@ -1341,9 +1704,11 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
     /// `ForayAudioPluginTests` can pin it.
     static func transportEvent(
         action: String, positionMs: Int64? = nil, offsetMs: Int64? = nil,
-        command: String? = nil, at: Double = Date().timeIntervalSince1970 * 1000
+        command: String? = nil, extra: JSObject = [:], at: Double = Date().timeIntervalSince1970 * 1000
     ) -> JSObject {
         var event = JSObject()
+        // L19/L20's facts first, so the wire's own keys always win.
+        for (key, value) in extra { event[key] = value }
         event["action"] = action
         if let positionMs = positionMs {
             event["positionMs"] = Int(positionMs)
@@ -1366,8 +1731,76 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
     /// segment offset is added or subtracted here, and none may ever be. A
     /// negative position is not a place on any Foray and clamps to 0, the same
     /// way `NowPlayingPayload` clamps a negative `positionMs` it is sent.
-    static func seekToTransportEvent(positionTime: TimeInterval) -> JSObject {
+    static func seekToTransportEvent(positionTime: TimeInterval, extra: JSObject = [:]) -> JSObject {
         let positionMs = Int64(max(0, positionTime * 1000).rounded())
-        return transportEvent(action: "seekto", positionMs: positionMs, command: "change-position")
+        return transportEvent(action: "seekto", positionMs: positionMs, command: "change-position", extra: extra)
+    }
+}
+
+/// WHICH PHONE, AND HOW IT WAS (L09, L27, L28; docs/diagnostics/
+/// log-gaps-2026-09-26.md): the facts the engine's `build` row
+/// (`EngineBoot.makeEngine`) and this plugin's power events carry. Closed
+/// tokens and whole numbers only, every one admitted by DiagGate's token
+/// rule. The hardware MODEL (`utsname.machine`, e.g. `iPhone15,2`), and never
+/// the device's name (`UIDevice.name` is what the listener called their
+/// phone), `identifierForVendor` or a serial.
+///
+/// HERE AND NOT IN `Engine/`: the engine's files import only Foundation and
+/// the core (shell-invariants.test.mjs), and these are platform reads.
+enum DeviceFacts {
+
+    /// A DiagGate token, or nil. `utsname.machine` spells a model with a
+    /// comma (`iPhone15,2`), which the token rule excludes, so it becomes a
+    /// dot (`iPhone15.2`); anything else outside the rule is not written.
+    static func token(_ raw: String) -> String? {
+        let dotted = raw.replacingOccurrences(of: ",", with: ".")
+        return DiagGate.isToken(dotted) ? dotted : nil
+    }
+
+    /// The iOS version (`18.6.2`), as a token. `UIDevice` is main-actor
+    /// state; the engine's boot reads it on main.
+    @MainActor
+    static func osVersion() -> String? {
+        token(UIDevice.current.systemVersion)
+    }
+
+    /// Low Power Mode, now.
+    static func lowPowerMode() -> Bool {
+        ProcessInfo.processInfo.isLowPowerModeEnabled
+    }
+
+    /// The hardware model, as a token (`iPhone15.2`; `arm64` on a Simulator).
+    static func machine() -> String? {
+        var info = utsname()
+        guard uname(&info) == 0 else { return nil }
+        let raw = withUnsafeBytes(of: &info.machine) { bytes in
+            String(decoding: bytes.prefix { $0 != 0 }, as: UTF8.self)
+        }
+        return token(raw)
+    }
+
+    /// `ProcessInfo.ThermalState` in the closed set `nominal fair serious
+    /// critical`; a state a later iOS adds is nil (not written), never a
+    /// fifth word.
+    static func thermalToken(_ state: ProcessInfo.ThermalState) -> String? {
+        switch state {
+        case .nominal: return "nominal"
+        case .fair: return "fair"
+        case .serious: return "serious"
+        case .critical: return "critical"
+        @unknown default: return nil
+        }
+    }
+
+    /// Bytes -> whole MB. Zero is what `os_proc_available_memory` answers
+    /// for a process with no memory limit (a Simulator), which is "not
+    /// measured", so it is nil rather than a headroom of 0.
+    static func megabytes(_ bytes: Int) -> Int? {
+        bytes > 0 ? Int((Double(bytes) / 1_048_576).rounded()) : nil
+    }
+
+    /// How much more this process may allocate before iOS ends it, in MB.
+    static func availableMemoryMb() -> Int? {
+        megabytes(os_proc_available_memory())
     }
 }

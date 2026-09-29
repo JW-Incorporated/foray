@@ -1,5 +1,8 @@
 import { describe, it, expect } from "vitest";
-import { parseArgs, candidateFilename } from "../src/cli/generateForays";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { parseArgs, candidateFilename, mergeReportEntries, readPriorReportEntries } from "../src/cli/generateForays";
 import { BudgetGuard } from "../src/cost/budgetGuard";
 import { defaultCostEventSink } from "../src/cost/costEvents";
 
@@ -89,5 +92,62 @@ describe("the checkpoint key is the candidate's basename (F-18)", () => {
   it("is stable for the same prompt and different for another", () => {
     expect(candidateFilename("a")).toBe(candidateFilename("a"));
     expect(candidateFilename("a")).not.toBe(candidateFilename("b"));
+  });
+});
+
+/* Round-3 audit, lane L6 (backend-rest-7): a re-run in the same --out merges
+   report.json instead of rewriting it from this run alone. */
+describe("report.json is merged across re-runs", () => {
+  const row = (prompt: string, extra: Record<string, unknown> = {}) => ({
+    prompt,
+    outcome: "generated",
+    detail: "OK x",
+    ms: 1,
+    file: `/out/${candidateFilename(prompt)}`,
+    ...extra
+  });
+
+  it("keeps rows for candidates this run skipped as already built, with their publish records", () => {
+    const publish = { pr_url: "https://github.com/o/r/pull/1", branch: "generate/a", base: "origin/main", base_sha: "abc", deploy_id: null, published_at: "t" };
+    const prior = [row("alpha", { publish }), row("beta", { publish_refused: { gate: "real-data-suites" } })];
+    const merged = mergeReportEntries(prior, [row("gamma")]);
+    expect(merged.map((e) => e.prompt)).toEqual(["alpha", "beta", "gamma"]);
+    expect(merged[0]!.publish).toEqual(publish);
+    expect(merged[1]!.publish_refused).toEqual({ gate: "real-data-suites" });
+  });
+
+  /* Round-3 review (L6): a row in this run's report is a candidate built
+     afresh (a skipped one produces no row), so the old build's publish or
+     refusal does not describe it.
+     MUTATION: copy old.publish / old.publish_refused onto the new row again --
+     the rebuilt alpha reports the old refusal and the old PR. */
+  it("a re-generated prompt replaces its row in place and drops the old build's publish / publish_refused", () => {
+    const prior = [row("alpha", { detail: "old", publish: { pr_url: "u" }, publish_refused: { gate: "g" } }), row("beta")];
+    const merged = mergeReportEntries(prior, [row("alpha", { detail: "new" })]);
+    expect(merged).toHaveLength(2);
+    expect(merged[0]).toMatchObject({ prompt: "alpha", detail: "new" });
+    expect(merged[0]!.publish).toBeUndefined();
+    expect(merged[0]!.publish_refused).toBeUndefined();
+  });
+
+  it("matches by candidate basename too, and reads an existing report.json (an unreadable one is set aside, not lost)", () => {
+    const elsewhere = { file: `/elsewhere/${candidateFilename("delta")}`, publish: { pr_url: "p" } } as unknown as Parameters<typeof mergeReportEntries>[0][number];
+    const merged = mergeReportEntries([elsewhere], [row("delta")]);
+    expect(merged).toHaveLength(1);
+    expect(merged[0]!.file).toBe(`/out/${candidateFilename("delta")}`);
+    expect(merged[0]!.publish).toBeUndefined();
+
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "foray-report-"));
+    try {
+      const reportPath = path.join(dir, "report.json");
+      expect(readPriorReportEntries(reportPath)).toEqual([]);
+      fs.writeFileSync(reportPath, JSON.stringify({ entries: [row("alpha")] }));
+      expect(readPriorReportEntries(reportPath).map((e) => e.prompt)).toEqual(["alpha"]);
+      fs.writeFileSync(reportPath, "{ not json");
+      expect(readPriorReportEntries(reportPath)).toEqual([]);
+      expect(fs.readdirSync(dir).some((n) => n.startsWith("report.json.unreadable-"))).toBe(true);
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
   });
 });

@@ -41,6 +41,7 @@ import path from "node:path";
 import { spawn } from "node:child_process";
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
+import { describeExit, exitCodeFor } from "./exit-code.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 export const REPO_ROOT = path.resolve(HERE, "..", "..");
@@ -70,10 +71,12 @@ async function main() {
   const stop = () => child.kill("SIGINT");
   process.on("SIGINT", stop);
   process.on("SIGTERM", stop);
-  const code = await new Promise((resolve) => child.on("exit", resolve));
+  const { code, signal } = await new Promise((resolve) => child.on("exit", (c, sig) => resolve({ code: c, signal: sig })));
   /* Exit 1 means "warmed, and there are still shows nothing can search" — the
-     warmer's own verdict, passed through so a caller can gate a run on it. */
-  process.exitCode = code ?? 0;
+     warmer's own verdict, passed through so a caller can gate a run on it.
+     data-tools-8: a warmer ended by a signal is 128 + n, never 0. */
+  if (signal) console.log(`[warm] warmer exited ${describeExit(code, signal)}`);
+  process.exitCode = exitCodeFor(code, signal);
 }
 
 const isMain = process.argv[1] && path.resolve(process.argv[1]) === path.resolve(fileURLToPath(import.meta.url));

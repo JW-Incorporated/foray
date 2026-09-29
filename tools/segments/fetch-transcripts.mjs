@@ -76,6 +76,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { dirname, join, resolve as resolvePath, sep } from "node:path";
 import { UA, awaitHostSlot, waitBeforeRetry } from "./politeness.mjs";
+import { BodyTooLargeError, readBodyCapped } from "../refresh/fetch-limits.mjs";
 import { normalize } from "./transcript-normalize.mjs";
 /* IMPORTED, NOT RESTATED. This file carried its own three-line
    `writeJsonAtomic` — the sixth duplicated implementation found in this repo,
@@ -280,9 +281,15 @@ export async function fetchBody(url, { fetchImpl = fetch, attempts = MAX_ATTEMPT
         }
         const contentType = res.headers.get("content-type");
         assertNotAudio(url, contentType);
-        const text = await res.text();
-        const bytes = Buffer.byteLength(text, "utf8");
-        if (bytes > MAX_BODY_BYTES) throw new FetchError("TOO_LARGE", `${bytes} bytes from ${url}`);
+        // Counted WHILE streaming (audit round 3, data-tools-7): the byte check
+        // used to run after res.text() had already buffered the whole body.
+        let text;
+        try {
+          text = await readBodyCapped(res, ctl, MAX_BODY_BYTES);
+        } catch (e) {
+          if (e instanceof BodyTooLargeError) throw new FetchError("TOO_LARGE", `${e.message} from ${url}`);
+          throw e;
+        }
         return { text, content_type: contentType };
       }
       const err = new FetchError(`HTTP_${res.status}`, `${res.statusText || "request failed"} for ${url}`);

@@ -6,7 +6,9 @@
 
 import test from "node:test";
 import assert from "node:assert/strict";
-import { PlayerQueueManager, NARRATION_RATE, __resetInstanceForTests } from "./queue-manager.js";
+import {
+  PlayerQueueManager, NARRATION_RATE, narrationFallbackReason, audioHostOf, __resetInstanceForTests,
+} from "./queue-manager.js";
 import { SINGLE_ITEM, PICKED_FIRST, CONTINUE_TAIL } from "./queue-strategy.js";
 import { forayRuntimeSec } from "./foray-queue.js";
 import { INTERLUDE_CEILING_SEC } from "./interlude.js";
@@ -384,20 +386,25 @@ test("a route disappearing pauses immediately", async () => {
   assert.ok(backend.calls.includes("pause"));
 });
 
-test("auto-resume happens only for a route already known as a car", async () => {
-  const { m } = make();
+test("reconnecting a route never resumes on the web and Android path, even one reported as a car (player-core-10)", async () => {
+  /* Founder Q5 default (audit round 3): the known-car-route auto-resume was
+     dead code here (no caller ever named a route) and is deleted; the native
+     iOS engine owns route policy. MUTATION: restore the auto-resume block and
+     the car reconnect goes to `playing`. */
+  const { m, backend } = make();
   m.setQueueFromPick(ep("a"));
   await m.play(0);
 
-  // Unknown route reappearing must NOT start audio unasked.
   await m.routeChanged({ oldDeviceUnavailable: true, routeName: "Some Headphones" });
   await m.routeChanged({ oldDeviceUnavailable: false, routeName: "Some Headphones" });
-  assert.equal(m.state.type, "interrupted", "unknown route must not auto-resume");
+  assert.equal(m.state.type, "interrupted", "headphones reappearing start nothing");
 
-  // A route we have seen as a car does resume.
+  await m.resume();
   await m.routeChanged({ oldDeviceUnavailable: true, routeName: "Civic", isCarRoute: true });
-  await m.routeChanged({ oldDeviceUnavailable: false, routeName: "Civic" });
-  assert.equal(m.state.type, "playing", "known car route resumes");
+  backend.calls.length = 0;
+  await m.routeChanged({ oldDeviceUnavailable: false, routeName: "Civic", isCarRoute: true });
+  assert.equal(m.state.type, "interrupted", "a car reappearing starts nothing either");
+  assert.ok(!backend.calls.includes("play"), `${backend.calls}`);
 });
 
 /* ---------- cold launch (corner case #15) ---------- */
@@ -519,6 +526,28 @@ test("skipToPrevious restarts at zero, not at the playhead just saved", async ()
 
   await m.skipToPrevious();
   assert.ok(backend.calls.includes("load:a@0"), `expected restart at 0, got ${backend.calls}`);
+});
+
+test("previous after a failed load reloads the clip, and never ends the queue (player-core-1)", async () => {
+  /* A failed load leaves the machine `idle`. ‹‹ from there used to reach the
+     reducer as `skipToPrevious(null)`, which returned `ended` — the state a Foray
+     reads as "Played". MUTATION: pass `null` again from `skipToPrevious` and the
+     state goes to `ended` with no reload. */
+  const { m, backend } = make({ backend: { failLoadFor: ["b"] } });
+  m.loadQueue([ep("a"), ep("b"), ep("c")]);
+  await m.play(1);
+  await tick();
+  assert.equal(m.state.type, "idle", "precondition: the load failed");
+  backend.failLoadFor.clear();
+  backend.calls.length = 0;
+
+  await m.skipToPrevious();
+  await tick();
+  assert.notEqual(m.state.type, "ended", "previous never finishes the queue");
+  assert.equal(m.state.type, "playing", "the failed clip is retried");
+  assert.equal(m.currentIndex, 1);
+  assert.ok(backend.calls.includes("load:b@0"), `reloaded at the top, got ${backend.calls}`);
+  m.dispose();
 });
 
 test("ROUND 2 review: a play settling mid-skip-back does not wipe the skip's armed restart offset", async () => {
@@ -781,7 +810,7 @@ test("no resume position is stored for a segment", async () => {
 
 /* ---------- narration ---------- */
 
-test("narration between segments plays as an ordinary TTS item at 1.0x", async () => {
+test("rendered narration between segments plays as an ordinary TTS item at the listener's speed (1.0x by default)", async () => {
   const { m, backend } = make();
   await m.playForay(foray([
     { type: "narration", id: "nar-1", asset: "narration/fire-1.mp3" },
@@ -1302,11 +1331,13 @@ const BRIDGED = () => foray([
   fseg({ start_sec: 400, end_sec: 500 }),
 ]);
 
-test("narration still plays at 1.0x, and the listener's speed comes back after it", async () => {
-  /* Corner case #18, which the new ownership must not weaken: a bridge is one
-     line of our own narration at a level and a pace we chose, and playing it at
-     2x is not a feature. `resetRateForTTS` is deliberately the literal 1.0 rather
-     than a consultation of `this._rate`. */
+test("D2: a rendered bridge plays at the listener's speed, and the speed holds after it", async () => {
+  /* Founder ruling D2, 2026-09-28 (docs/plans/spark-central-narration-assessment.md
+     §1): narration is rendered once at 1.0x and the player speeds the FILE to the
+     listener's rate, pitch preserved. This amends corner case #18 for rendered
+     narration only; until then `resetRateForTTS` was the literal 1.0 and this
+     test pinned `rate:1` in the middle of the sequence.
+     MUTATION THAT KILLS THIS: put `setRate(1.0)` back in `resetRateForTTS`. */
   const { m, backend } = make();
   m.setRate(2);
   await m.playForay(BRIDGED(), { resolveItem });
@@ -1314,43 +1345,55 @@ test("narration still plays at 1.0x, and the listener's speed comes back after i
   assert.equal(m.state.type, "transitioning", "the bridge is what is audible");
   await m._handleBackendItemEnded();               // the line finishes
 
-  assert.deepStrictEqual(
-    backend.calls.filter((c) => c.startsWith("rate:")),
-    ["rate:2", "rate:2", "rate:1", "rate:2", "rate:2"],
-    "set, first segment, the bridge forced to normal, then the listener's speed back — twice, " +
-    "because `itemEnded` in `transitioning` restores it before the load and `itemLoaded` again after"
-  );
+  const rates = backend.calls.filter((c) => c.startsWith("rate:"));
+  assert.ok(rates.length >= 3, `set, first segment, the bridge, then the segment after: ${rates}`);
+  assert.ok(rates.every((r) => r === "rate:2"), `the file is never forced to 1x: ${rates}`);
   assert.ok(
-    backend.calls.indexOf("rate:1") < backend.calls.indexOf("load:nar-1@0"),
-    "and forced BEFORE the narration is audible, not after"
+    backend.calls.indexOf("rate:2", backend.calls.indexOf("outPoint:210")) < backend.calls.indexOf("load:nar-1@0"),
+    "and the listener's speed is in force BEFORE the narration is audible"
   );
 });
 
-test("a tap during narration is deferred, not lost, and lands when the line ends", async () => {
-  /* The one case the ownership adds. Without the guard, corner case #18 would
-     hold for every path except a listener touching the control at the wrong
-     moment — which is exactly when a guarantee stops being one. Deferred, not
-     ignored: the value is theirs from the next segment on.
-
-     MUTATION THAT KILLS THIS: delete the `_narrationIsAudible()` branch in
-     `setRate`. `rate:1.5` then reaches the element mid-line and the middle
-     assertion fails. */
+test("D2: a tap during a RENDERED line reaches the element at once", async () => {
+  /* The rendered half of the old "deferred" rule is gone: a rendered line is a
+     file at the listener's speed like any clip, so there is no mid-word to
+     protect. MUTATION THAT KILLS THIS: drop `this._loadedIsSynth &&` from the
+     deferral in `setRate`. */
   const { m, backend, log } = make();
   await m.playForay(BRIDGED(), { resolveItem });
   await m._handleBackendItemEnded(END_OUT_POINT);
   assert.equal(m.state.type, "transitioning", "the bridge is what is audible");
 
   const before = backend.calls.length;
-  assert.equal(m.setRate(1.5), 1.5, "the value is accepted and remembered");
-  assert.deepStrictEqual(
-    backend.calls.slice(before), [],
-    "but nothing reaches the element while our own narration is sounding"
-  );
-  assert.ok(log.some((t) => /rate\.deferred=1\.5/.test(t)), "and it says so");
-  assert.equal(m.rate, 1.5, "the control's label is already theirs, even though the audio is not");
+  assert.equal(m.setRate(1.5), 1.5);
+  assert.deepStrictEqual(backend.calls.slice(before), ["rate:1.5"], "the element gets it now");
+  assert.ok(!log.some((t) => /rate\.deferred/.test(t)), "nothing is deferred");
+});
 
-  await m._handleBackendItemEnded();
-  assert.ok(backend.calls.includes("rate:1.5"), "the deferred speed lands on the segment after the line");
+test("a tap during a SPOKEN line is deferred, not lost, and lands when the line ends", async () => {
+  /* Corner case #18 still holds for speech (founder, 2026-09-24: "1x for now"):
+     an utterance's rate is fixed when it starts, and the element under it is a
+     stale clip. Deferred, not ignored: the value is theirs from the next
+     segment on. MUTATION THAT KILLS THIS: delete the deferral in `setRate`. */
+  const tts = fakeTts();
+  const { m, backend, log } = make({ tts });
+  await m.playForay(foray([
+    fseg(),
+    { type: "narration", id: "nar-1", script: "a bridge line" },
+    fseg({ start_sec: 400, end_sec: 500 }),
+  ]), { resolveItem });
+  await m._handleBackendItemEnded(END_OUT_POINT);
+  assert.equal(m.isNarrationPlayhead, true, "precondition: a spoken line is audible");
+
+  const before = backend.calls.length;
+  assert.equal(m.setRate(1.5), 1.5, "the value is accepted and remembered");
+  assert.deepStrictEqual(backend.calls.slice(before), [], "but nothing reaches the element mid-line");
+  assert.ok(log.some((t) => /rate\.deferred=1\.5/.test(t)), "and it says so");
+
+  tts.finish();
+  await tick();
+  await tick();
+  assert.ok(backend.calls.slice(before).includes("rate:1.5"), "the deferred speed lands on the segment after the line");
 });
 
 test("setRate snaps a junk or off-ladder value instead of handing it to the element", () => {
@@ -3124,4 +3167,744 @@ test("ROUND 2 review: the element's own unexplained pause (a call on an awake pa
   assert.equal(await m.reconcileWithBackend("unexplainedPause"), true);
   await m.interruptionEnded(true);
   assert.equal(m.state.type, "playing");
+});
+
+/* ---------- audit round 3: every await re-checks who owns the player ---------- */
+
+/** A backend whose load of the named ids waits until the test releases it. */
+class HeldLoadBackend extends FakeBackend {
+  constructor(o = {}) { super(o); this.holdFor = new Set(o.holdFor ?? []); this.release = null; }
+  async load(item, opts) {
+    const p = super.load(item, opts);
+    if (this.holdFor.has(item.id)) await new Promise((r) => { this.release = r; });
+    return p;
+  }
+}
+
+/** fakeTts whose next speak() waits until the test releases it. */
+function heldSpeakTts() {
+  const t = fakeTts();
+  const speak = t.speak;
+  t.holdNext = false;
+  t.release = null;
+  t.speak = async (text, opts) => {
+    const r = await speak(text, opts);
+    if (t.holdNext) { t.holdNext = false; await new Promise((res) => { t.release = res; }); }
+    return r;
+  };
+  return t;
+}
+
+async function intoHeldBridgeLoad() {
+  const { m, backend } = make({ strategy: PICKED_FIRST, backendClass: HeldLoadBackend, backend: { holdFor: ["bridge"] } });
+  m.setQueueFromPick(ep("a"), { others: [tts("bridge"), ep("b")] });
+  await m.play(0);
+  backend.calls.length = 0;
+  const ending = backend.onItemEnded();
+  await tick();
+  assert.equal(m.state.type, "transitioning", "precondition: the bridge is loading");
+  assert.ok(backend.release, "precondition: its load is in flight");
+  return { m, backend, ending };
+}
+
+test("a pause during a rendered bridge's load is not undone when the load lands (player-core-2)", async () => {
+  /* MUTATION: drop the `stillOurs()` check after `backend.load(bridge)` and the
+     bridge's `play` runs under a listener's pause. */
+  const { m, backend, ending } = await intoHeldBridgeLoad();
+  await m.pause();
+  backend.calls.length = 0;
+  backend.release();
+  await ending;
+  await tick();
+  assert.ok(!backend.calls.includes("play"), `nothing may start under a pause: ${backend.calls}`);
+  assert.equal(m.state.type, "interrupted");
+  m.dispose();
+});
+
+test("a stop during a rendered bridge's load leaves no audio behind a closed player (player-core-2)", async () => {
+  const { m, backend, ending } = await intoHeldBridgeLoad();
+  await m.stop();
+  backend.calls.length = 0;
+  backend.release();
+  await ending;
+  await tick();
+  assert.ok(!backend.calls.includes("play"), `nothing may start after Stop: ${backend.calls}`);
+  assert.equal(m.state.type, "idle");
+  m.dispose();
+});
+
+test("a pause while a SYNTH bridge's speak() is in flight silences the voice (player-core-2)", async () => {
+  const tts = heldSpeakTts();
+  const { m } = make({ tts });
+  await m.playForay(foray([
+    fseg(),
+    { type: "narration", id: "nar-1", asset: undefined, script: "a bridge line" },
+    fseg({ start_sec: 400, end_sec: 500 }),
+  ]), { resolveItem });
+  tts.holdNext = true;
+  const ending = m._handleBackendItemEnded(END_OUT_POINT);
+  await tick();
+  assert.equal(m.state.type, "transitioning", "precondition: the bridge is being spoken");
+  await m.pause();
+  tts.release();
+  await ending;
+  await tick();
+  assert.ok(transportsOf(tts).includes("stop"), `the voice is told to stop: ${transportsOf(tts)}`);
+  assert.equal(m.isNarrationPlayhead, false, "and it is not marked as the playhead");
+  m.dispose();
+});
+
+test("a narration load superseded while speak() is in flight stops talking over the next item (player-core-4)", async () => {
+  /* MUTATION: drop the `_loadSeq !== seq` check after `_speakNarration` in
+     `_loadItem` and the stale call marks itself loaded (`isNarrationPlayhead`)
+     and never stops the voice. */
+  const tts = heldSpeakTts();
+  const { m, backend } = make({ tts });
+  tts.holdNext = true;
+  const starting = m.playForay(foray([
+    { type: "narration", id: "nar-1", script: "the opening line" },
+    fseg(),
+  ]), { resolveItem });
+  await tick();
+  assert.equal(m.state.type, "loadingItem", "precondition: speak() is in flight");
+  await m.skipToNext();
+  await tick();
+  tts.release();
+  await starting;
+  await tick();
+  assert.ok(transportsOf(tts).includes("stop"), `the stale voice is stopped: ${transportsOf(tts)}`);
+  assert.equal(m.isNarrationPlayhead, false, "the newer item owns the player, not the stale line");
+  assert.equal(m.state.type, "playing");
+  assert.ok(backend.loads().includes("load:foray-1#1"), `${backend.loads()}`);
+  m.dispose();
+});
+
+test("a stale speak() does not stop the NEWER line that replaced it (player-core-4)", async () => {
+  const tts = heldSpeakTts();
+  const { m } = make({ tts });
+  tts.holdNext = true;
+  const starting = m.playForay(foray([
+    { type: "narration", id: "nar-1", script: "the opening line" },
+    { type: "narration", id: "nar-2", script: "the second line" },
+    fseg(),
+  ]), { resolveItem });
+  await tick();
+  await m.play(1);
+  await tick();
+  tts.release();
+  await starting;
+  await tick();
+  assert.ok(!transportsOf(tts).includes("stop"), `the newer line keeps its voice: ${transportsOf(tts)}`);
+  assert.equal(m.isNarrationPlayhead, true);
+  m.dispose();
+});
+
+test("a skip's load that a newer skip already replaced is dropped, not run after it (player-core-9)", async () => {
+  /* Two skips from a playing synth line: the first skip's pausePlayback awaits
+     the bridge, the second's loadItem(D) runs meanwhile, and the first's
+     loadItem(C) used to run after it, supersede D and land itemLoaded into
+     loadingItem(D). MUTATION: drop the stale-target check at the top of
+     `_loadItem` and C is loaded last. */
+  const tts = fakeTts();
+  let releasePause = null;
+  tts.pause = async () => {
+    tts.transport.push("pause");
+    await new Promise((r) => { releasePause = r; });
+    return { ok: true, accepted: true, path: "native" };
+  };
+  const { m, backend } = make({ tts });
+  await m.playForay(foray([
+    { type: "narration", id: "nar-1", script: "the opening line" },
+    fseg(),
+    fseg({ start_sec: 400, end_sec: 500 }),
+  ]), { resolveItem });
+  assert.equal(m.isNarrationPlayhead, true, "precondition: a synth line is playing");
+  const first = m.skipToNext();
+  await tick();
+  assert.ok(releasePause, "precondition: the first skip is waiting on the pause");
+  await m.skipToNext();
+  await tick();
+  releasePause();
+  await first;
+  await tick();
+  const loads = backend.loads();
+  assert.equal(loads[loads.length - 1], "load:foray-1#2", `the newest target is the last load: ${loads}`);
+  assert.equal(m.currentIndex, 2, "the index agrees with the state");
+  assert.equal(m.state.type, "playing");
+  assert.equal(m.state.item.id, "foray-1#2");
+  m.dispose();
+});
+
+test("stop() is silence even when the machine believed it was already paused (player-core-7)", async () => {
+  /* The #689 drift: the element is audible while the state says `interrupted`,
+     and the reducer's stop from there emits no pausePlayback. MUTATION: delete
+     the `elementIsAudible` check in `stop()` and the element is never paused. */
+  const { m, backend } = make();
+  m.setQueueFromPick(ep("a"));
+  await m.play(0);
+  backend.paused = false;
+  await m.pause();
+  assert.equal(m.state.type, "interrupted", "precondition: paused");
+  backend.paused = false;            // something outside the app made it audible
+  backend.calls.length = 0;
+  backend.pause = function () { this.calls.push("pause"); this.paused = true; };
+  await m.stop();
+  assert.equal(m.state.type, "idle");
+  assert.ok(backend.calls.includes("pause"), `Stop must silence the element: ${backend.calls}`);
+  m.dispose();
+});
+
+test("stop() while a narration line's speak() is in flight leaves no voice behind (player-core-7)", async () => {
+  /* `wasSynth` is false at entry (the line has not been accepted yet), so
+     stop() itself does not reach the TTS; the load's own staleness check does,
+     when speak() returns into `idle`. MUTATION: drop that check in `_loadItem`
+     and the voice is never stopped. */
+  const tts = heldSpeakTts();
+  const { m } = make({ tts });
+  tts.holdNext = true;
+  const starting = m.playForay(foray([
+    { type: "narration", id: "nar-1", script: "the opening line" },
+    fseg(),
+  ]), { resolveItem });
+  await tick();
+  await m.stop();
+  tts.release();
+  await starting;
+  await tick();
+  assert.equal(m.state.type, "idle");
+  assert.ok(transportsOf(tts).includes("stop"), `the voice is stopped: ${transportsOf(tts)}`);
+  assert.equal(m.isNarrationPlayhead, false);
+  m.dispose();
+});
+
+/* ---------- audit round 3: a `finished` says which utterance it is ---------- */
+
+/** fakeTts whose speak() names each utterance, and whose finish() can carry a payload. */
+function namedTts() {
+  const t = fakeTts();
+  let n = 0;
+  const speak = t.speak;
+  const listeners = new Set();
+  t.speak = async (text, opts) => { await speak(text, opts); n += 1; return { ok: true, utteranceId: `u${n}` }; };
+  t.onFinished = (fn) => { listeners.add(fn); return () => listeners.delete(fn); };
+  t.finishWith = (payload) => { for (const fn of [...listeners]) fn(payload); };
+  return t;
+}
+
+async function onANarrationLine(tts) {
+  const made = make({ tts });
+  await made.m.playForay(foray([
+    { type: "narration", id: "nar-1", script: "the opening line" },
+    fseg(),
+  ]), { resolveItem });
+  assert.equal(made.m.isNarrationPlayhead, true, "precondition: the line is speaking");
+  return made;
+}
+
+test("a preview's `finished` never advances past narration (mobile-native-2)", async () => {
+  /* MUTATION: drop the `audition` check in `_onTtsFinished` and the Foray moves
+     on past a line the listener did not hear. */
+  const tts = namedTts();
+  const { m, backend } = await onANarrationLine(tts);
+  tts.finishWith({ audition: true });   // no id to compare: the flag alone must stop it
+  await tick();
+  await tick();
+  assert.equal(m.isNarrationPlayhead, true, "still on the line");
+  assert.ok(!backend.loads().includes("load:foray-1#1"), `${backend.loads()}`);
+  m.dispose();
+});
+
+test("a `finished` naming another utterance is stale and is dropped; this line's own advances (mobile-native-2)", async () => {
+  /* MUTATION: drop the utterance-id comparison in `_onTtsFinished`. */
+  const tts = namedTts();
+  const { m, backend } = await onANarrationLine(tts);
+  tts.finishWith({ utteranceId: "u0-an-older-line" });
+  await tick();
+  await tick();
+  assert.equal(m.isNarrationPlayhead, true, "a stale finish advances nothing");
+  tts.finishWith({ utteranceId: "u1" });
+  await tick();
+  await tick();
+  assert.ok(backend.loads().includes("load:foray-1#1"), `this line's own finish advances: ${backend.loads()}`);
+  m.dispose();
+});
+
+test("an engine error reported on `finished` moves on at once (mobile-native-3)", async () => {
+  /* The Android plugin now reports onError as `finished` with `error`, instead
+     of leaving the line 'speaking' in silence until the narration deadline. */
+  const tts = namedTts();
+  const { m, backend, log } = await onANarrationLine(tts);
+  tts.finishWith({ utteranceId: "u1", error: -4 });
+  await tick();
+  await tick();
+  assert.ok(backend.loads().includes("load:foray-1#1"), `the queue moved on: ${backend.loads()}`);
+  assert.ok(log.some((l) => /tts\.finished\.error code=-4/.test(l)), JSON.stringify(log.filter((l) => /tts/.test(l))));
+  m.dispose();
+});
+
+/* ---------- §14 (Phase 2, founder rulings 2026-09-28): a rendered line whose
+   file fails is spoken from its script ----------
+
+   docs/plans/spark-central-narration-assessment.md §1 risk 1 / §3.3 / §5 row 2.
+   Before this, a failed narration FILE was skipped as a bridge and STOPPED the
+   Foray through `_loadItem` (its first line, a jump, a skip onto it). Every test
+   below names the path it covers; the first is the one the assessment calls out. */
+
+const N_HOST = "audio.jwlabs.ai";
+const RLINE = (extra = {}) => ({
+  type: "narration", id: "nar-1", audio_url: `https://${N_HOST}/narration/0a1b2c.m4a?v=1`,
+  script: "The first line.", duration_sec: 12, ...extra,
+});
+
+/** A backend whose loads fail with the backend's REAL messages, and which can
+    report the element's `error` through `onError` BEFORE the load rejects —
+    the order `html-audio-backend.js` produces, because its persistent `error`
+    listener is registered before any load's own. */
+class FlakyBackend extends FakeBackend {
+  constructor(opts = {}) {
+    super(opts);
+    this.errors = opts.errors ?? {};
+    this.errorEventFor = new Set(opts.errorEventFor ?? []);
+  }
+  async load(item, { startOffset = 0 } = {}) {
+    this._loadedId = item.id;
+    this.outPoint = null;
+    this.calls.push(`load:${item.id}@${Math.round(startOffset)}`);
+    if (this.errorEventFor.has(item.id) && this.onError) this.onError("media error 4");
+    if (this.errors[item.id]) throw new Error(this.errors[item.id]);
+  }
+}
+
+test("§14: a Foray whose FIRST line's file fails speaks the script instead of stopping", async () => {
+  /* THE FIRST-ITEM CASE (assessment §1 risk 1): `_loadItem`'s catch used to
+     dispatch `E.error`, which is idle — the Foray never started.
+     MUTATION THAT KILLS THIS: make `_loadRenderedOrCatch` rethrow. */
+  const tts = fakeTts();
+  const { m, backend, log } = make({
+    tts, rate: 2, backendClass: FlakyBackend,
+    backend: { errors: { "nar-1": "load of nar-1 did not settle within 20000ms" } },
+  });
+  await m.playForay(foray([RLINE(), fseg()]), { resolveItem });
+
+  assert.equal(m.state.type, "playing", "the Foray is playing, not stopped");
+  assert.deepEqual(tts.calls.map((c) => c.text), ["The first line."], "the script was spoken");
+  assert.equal(tts.calls[0].rate, NARRATION_RATE, "spoken at the narration rate, not the listener's 2x");
+  assert.equal(m.isNarrationPlayhead, true, "it is a spoken line for the clock and the transport");
+  assert.ok(
+    log.includes(`narration.fallback reason=timeout at=load item=nar-1 host=${N_HOST}`),
+    `one diagnostics line, host only: ${log.filter((l) => /narration/.test(l))}`
+  );
+
+  tts.finish();
+  await tick();
+  await tick();
+  assert.ok(backend.calls.includes("load:foray-1#1@100"), `the line's finish advances: ${backend.calls}`);
+  assert.equal(backend.calls.filter((c) => c.startsWith("rate:")).pop(), "rate:2", "and the clip after it is at 2x");
+});
+
+test("§14: a media error during the first line's load does not stop the player before the fallback", async () => {
+  /* THE ORDERING TRAP: the element's persistent `error` listener reports before
+     the load's own rejection. Reported as `E.error`, the player was idle by the
+     time the fallback looked. MUTATION THAT KILLS THIS: delete the in-flight
+     branch of `_onBackendError`. */
+  const tts = fakeTts();
+  const { m, log } = make({
+    tts, backendClass: FlakyBackend,
+    backend: { errors: { "nar-1": "load failed (code 4) for nar-1" }, errorEventFor: ["nar-1"] },
+  });
+  await m.playForay(foray([RLINE(), fseg()]), { resolveItem });
+  assert.equal(m.state.type, "playing", `not idle: ${log.join(" | ")}`);
+  assert.equal(tts.calls.length, 1);
+  assert.ok(log.some((l) => /^narration\.error\.leftToLoad nar-1/.test(l)));
+  assert.ok(log.includes(`narration.fallback reason=unsupported at=load item=nar-1 host=${N_HOST}`));
+});
+
+test("§14: jumping onto a line whose file fails speaks it (the jump case)", async () => {
+  const tts = fakeTts();
+  const { m, log } = make({
+    tts, backendClass: FlakyBackend, backend: { errors: { "nar-1": "load failed (code 2) for nar-1" } },
+  });
+  await m.playForay(foray([fseg(), RLINE(), fseg({ start_sec: 400, end_sec: 500 })]), { resolveItem });
+  await m.play(1);
+  assert.equal(m.state.type, "playing");
+  assert.equal(m._currentItem().id, "nar-1");
+  assert.equal(tts.calls.length, 1);
+  assert.ok(log.includes(`narration.fallback reason=network at=load item=nar-1 host=${N_HOST}`));
+});
+
+test("§14: a rendered BRIDGE whose file fails is spoken, not skipped", async () => {
+  /* `_advancePastBridgeFailure` used to skip the line. MUTATION THAT KILLS
+     THIS: make the bridge path's `_loadRenderedOrCatch` result throw. */
+  const tts = fakeTts();
+  const { m, backend, log } = make({
+    tts, backendClass: FlakyBackend, backend: { errors: { "nar-1": "load failed (code 3) for nar-1" } },
+  });
+  await m.playForay(foray([fseg(), RLINE(), fseg({ start_sec: 400, end_sec: 500 })]), { resolveItem });
+  await m._handleBackendItemEnded(END_OUT_POINT);
+
+  assert.equal(m.state.type, "transitioning", "the bridge is what is audible");
+  assert.equal(tts.calls.length, 1, "spoken");
+  assert.ok(!backend.loads().includes("load:foray-1#2"), "the next clip did not start over the line");
+  assert.ok(log.includes(`narration.fallback reason=decode at=bridge item=nar-1 host=${N_HOST}`));
+
+  tts.finish();
+  await tick();
+  await tick();
+  assert.ok(backend.calls.includes("load:foray-1#2@400"), `then the Foray moves on: ${backend.calls}`);
+});
+
+test("§14: a line that fails WHILE SOUNDING is spoken from its first word", async () => {
+  const tts = fakeTts();
+  const { m, backend, log } = make({ tts });
+  await m.playForay(foray([RLINE(), fseg()]), { resolveItem });
+  assert.equal(m.state.type, "playing");
+  assert.equal(tts.calls.length, 0, "precondition: the file is playing");
+
+  const before = backend.calls.length;
+  backend.onError("media error 2");
+  await tick();
+  assert.equal(m.state.type, "playing", "not stopped");
+  assert.equal(tts.calls.length, 1, "spoken instead");
+  assert.ok(backend.calls.slice(before).includes("pause"), "and the failed element is silenced");
+  assert.ok(log.includes(`narration.fallback reason=network at=playing item=nar-1 host=${N_HOST}`));
+
+  tts.finish();
+  await tick();
+  await tick();
+  assert.ok(backend.calls.includes("load:foray-1#1@100"));
+});
+
+test("§14: a refused play() of a rendered line falls back too", async () => {
+  const tts = fakeTts();
+  const { m, log } = make({ tts });
+  await m.playForay(foray([RLINE(), fseg()]), { resolveItem });
+  backend_onError(m, "play rejected: NotAllowedError");
+  await tick();
+  assert.equal(m.state.type, "playing");
+  assert.equal(tts.calls.length, 1);
+  assert.ok(log.some((l) => /^narration\.fallback reason=play-rejected at=playing/.test(l)));
+});
+
+test("§14: a LATE error from a file that timed out does not stop the line being read in its place", async () => {
+  /* A load that fails by deadline leaves the element pointed at the file with
+     its persistent `error` listener attached (html-audio-backend.js `load`), so
+     a stalled fetch that finally errors reports after the fallback has begun.
+     MUTATION THAT KILLS THIS: delete the `_fallbackSpokenId` branch of
+     `_onBackendError`. */
+  const tts = fakeTts();
+  const { m, log } = make({
+    tts, backendClass: FlakyBackend,
+    backend: { errors: { "nar-1": "load of nar-1 did not settle within 20000ms" } },
+  });
+  await m.playForay(foray([RLINE(), fseg()]), { resolveItem });
+  assert.equal(m.isNarrationPlayhead, true, "precondition: the line is being spoken");
+  m.backend.onError("media error 2");
+  await tick();
+  assert.equal(m.state.type, "playing", `not stopped: ${log.filter((l) => /narration|error/.test(l)).join(" | ")}`);
+  assert.deepEqual(transportsOf(tts), [], "the utterance was not paused or stopped");
+  assert.equal(tts.calls.length, 1, "and not spoken twice");
+  assert.ok(log.some((l) => /^narration\.error\.ignored nar-1 — the line is being spoken/.test(l)));
+});
+
+test("§14: an error from the failed file while the fallback's speak() is in flight does not stop it", async () => {
+  /* MUTATION THAT KILLS THIS: call `_speakNarration` directly instead of
+     `_speakFallback` at the load site. */
+  const tts = fakeTts();
+  let release = null;
+  const gate = new Promise((r) => { release = r; });
+  const speak = tts.speak;
+  tts.speak = async (text, opts) => { const r = await speak(text, opts); await gate; return r; };
+  const { m, log } = make({
+    tts, backendClass: FlakyBackend,
+    backend: { errors: { "nar-1": "load of nar-1 did not settle within 20000ms" } },
+  });
+  const starting = m.playForay(foray([RLINE(), fseg()]), { resolveItem });
+  await tick();
+  await tick();
+  assert.equal(tts.calls.length, 1, "precondition: the fallback speak() is in flight");
+  m.backend.onError("media error 2");
+  await tick();
+  release();
+  await starting;
+  await tick();
+  assert.equal(m.state.type, "playing", `not stopped: ${log.filter((l) => /narration|error/.test(l)).join(" | ")}`);
+  assert.equal(m.isNarrationPlayhead, true, "the line is spoken");
+  assert.ok(!transportsOf(tts).includes("stop"), "and not silenced");
+  assert.ok(log.some((l) => /^narration\.error\.ignored nar-1 — its file already failed/.test(l)));
+});
+
+test("§14: a second error while a sounding line is already falling back does not speak it twice", async () => {
+  const tts = fakeTts();
+  let release = null;
+  const gate = new Promise((r) => { release = r; });
+  const speak = tts.speak;
+  tts.speak = async (text, opts) => { const r = await speak(text, opts); await gate; return r; };
+  const { m } = make({ tts });
+  await m.playForay(foray([RLINE(), fseg()]), { resolveItem });
+  m.backend.onError("media error 2");
+  await tick();
+  m.backend.onError("play rejected: AbortError");
+  await tick();
+  release();
+  await tick();
+  await tick();
+  assert.equal(tts.calls.length, 1, "one fallback, not two");
+  assert.equal(m.state.type, "playing");
+  assert.equal(m.isNarrationPlayhead, true);
+});
+
+/** The manager's own `onError`, as the backend calls it. */
+function backend_onError(m, msg) { m.backend.onError(msg); }
+
+test("§14: an error on a CLIP still stops the player exactly as before", async () => {
+  const tts = fakeTts();
+  const { m } = make({ tts });
+  await m.playForay(foray([fseg(), RLINE()]), { resolveItem });
+  backend_onError(m, "media error 2");
+  await tick();
+  assert.equal(m.state.type, "idle", "only narration has a script to fall back to");
+  assert.equal(tts.calls.length, 0);
+});
+
+test("§14: a rendered line with NO script fails exactly as before", async () => {
+  const tts = fakeTts();
+  const { m, log } = make({
+    tts, backendClass: FlakyBackend, backend: { errors: { "nar-1": "load failed (code 4) for nar-1" } },
+  });
+  await m.playForay(foray([RLINE({ script: undefined }), fseg()]), { resolveItem });
+  assert.equal(m.state.type, "idle");
+  assert.equal(tts.calls.length, 0);
+  assert.ok(!log.some((l) => /narration\.fallback/.test(l)));
+});
+
+test("§14: with no speech bridge wired a failed file fails exactly as before", async () => {
+  const { m } = make({
+    backendClass: FlakyBackend, backend: { errors: { "nar-1": "load failed (code 4) for nar-1" } },
+  });
+  await m.playForay(foray([RLINE(), fseg()]), { resolveItem });
+  assert.equal(m.state.type, "idle");
+});
+
+/** A bridge that refuses every line, as a device with no usable voice does. */
+function refusingTts() {
+  const tts = fakeTts();
+  tts.speak = async (text, opts = {}) => {
+    tts.calls.push({ text, rate: opts.rate, voice: opts.voice });
+    return { ok: false, reason: "no voice" };
+  };
+  return tts;
+}
+
+test("§14: if speech is refused too, the first line stops as before", async () => {
+  const tts = refusingTts();
+  const { m } = make({
+    tts, backendClass: FlakyBackend, backend: { errors: { "nar-1": "load failed (code 4) for nar-1" } },
+  });
+  await m.playForay(foray([RLINE(), fseg()]), { resolveItem });
+  assert.equal(tts.calls.length, 1, "speech was tried");
+  assert.equal(m.state.type, "idle");
+});
+
+test("§14: if speech is refused too, a bridge is skipped as before", async () => {
+  const tts = refusingTts();
+  const { m, backend } = make({
+    tts, backendClass: FlakyBackend, backend: { errors: { "nar-1": "load failed (code 4) for nar-1" } },
+  });
+  await m.playForay(foray([fseg(), RLINE(), fseg({ start_sec: 400, end_sec: 500 })]), { resolveItem });
+  await m._handleBackendItemEnded(END_OUT_POINT);
+  await tick();
+  assert.equal(tts.calls.length, 1);
+  assert.ok(backend.calls.includes("load:foray-1#2@400"), `skipped to the next clip: ${backend.calls}`);
+});
+
+test("§14: pausing and resuming a fallback line continues the utterance, never retries the file mid-line", async () => {
+  const tts = fakeTts();
+  const { m, backend } = make({
+    tts, backendClass: FlakyBackend, backend: { errors: { "nar-1": "load failed (code 2) for nar-1" } },
+  });
+  await m.playForay(foray([RLINE(), fseg()]), { resolveItem });
+  await m.pause();
+  await m.resume();
+  assert.deepEqual(transportsOf(tts), ["pause", "resume"], `got ${transportsOf(tts)}`);
+  assert.equal(tts.calls.length, 1, "not spoken again from the top");
+  assert.equal(backend.loads().filter((l) => l === "load:nar-1").length, 1, "and the file was not retried");
+});
+
+test("§14: a failing load the listener has already skipped past is not spoken", async () => {
+  /* The superseded rule: a skip during the load owns the player, and a
+     fallback for the line it left would talk over the clip it chose. */
+  const tts = fakeTts();
+  let rejectLine = null;
+  class SlowBackend extends FakeBackend {
+    async load(item, o = {}) {
+      if (item.id !== "nar-1") return super.load(item, o);
+      this.calls.push(`load:${item.id}@0`);
+      return new Promise((_, reject) => { rejectLine = reject; });
+    }
+  }
+  const { m } = make({ tts, backendClass: SlowBackend });
+  const starting = m.playForay(foray([RLINE(), fseg(), fseg({ start_sec: 400, end_sec: 500 })]), { resolveItem });
+  await tick();
+  assert.ok(rejectLine, "precondition: the line's load is in flight");
+  const skipping = m.skipToNext();
+  await tick();
+  rejectLine(new Error("load failed (code 2) for nar-1"));
+  await Promise.all([starting, skipping]);
+  await tick();
+  assert.equal(tts.calls.length, 0, "nothing talks over the clip the listener chose");
+  assert.equal(m.state.type, "playing");
+  assert.equal(m._currentItem().id, "foray-1#1");
+});
+
+test("§14: narrationFallbackReason reads the backend's own messages into six words", () => {
+  assert.equal(narrationFallbackReason(new Error("load of n did not settle within 20000ms")), "timeout");
+  assert.equal(narrationFallbackReason(new Error("load failed (code 2) for n")), "network");
+  assert.equal(narrationFallbackReason("media error 3"), "decode");
+  assert.equal(narrationFallbackReason(new Error("load failed (code 4) for n")), "unsupported");
+  assert.equal(narrationFallbackReason("play rejected: NotAllowedError"), "play-rejected");
+  assert.equal(narrationFallbackReason(new Error("https://x.test/a?token=secret")), "failed", "never the text");
+  assert.equal(narrationFallbackReason(null), "failed");
+});
+
+test("§14: audioHostOf keeps the host and nothing else", () => {
+  assert.equal(audioHostOf("https://Audio.JWLabs.ai/narration/x.m4a?token=1#t"), "audio.jwlabs.ai");
+  assert.equal(audioHostOf("https://user:pw@audio.jwlabs.ai:8443/x"), "audio.jwlabs.ai", "no credentials, no port");
+  assert.equal(audioHostOf("narration/fire-1.mp3"), null, "a relative asset has no host");
+  assert.equal(audioHostOf("javascript:alert(1)"), null);
+  assert.equal(audioHostOf(""), null);
+  assert.equal(audioHostOf(undefined), null);
+});
+
+test("D2: a rendered FIRST line plays at the listener's speed", async () => {
+  /* The `_loadItem` path of `resetRateForTTS` (the bridge path is the BRIDGED
+     test above). */
+  const { m, backend } = make({ rate: 1.5 });
+  await m.playForay(foray([RLINE(), fseg()]), { resolveItem });
+  const rates = backend.calls.filter((c) => c.startsWith("rate:"));
+  assert.ok(rates.length > 0 && rates.every((r) => r === "rate:1.5"), `got ${rates}`);
+});
+
+test("D2: a rendered line straight after a SPOKEN one (a narration chain) still gets the listener's speed", async () => {
+  /* The bridge path emits `resetRateForTTS` BEFORE the line loads, so the
+     manager's `_loadedIsSynth` still describes the spoken line before it.
+     Reading that flag skipped the rendered line's rate entirely: the file
+     played at whatever the element last held — here, never the listener's 2x,
+     because the Foray opened on a spoken line.
+     MUTATION THAT KILLS THIS: decide `resetRateForTTS` by `_loadedIsSynth`
+     instead of by the item the effect is for. */
+  const tts = fakeTts();
+  const { m, backend } = make({
+    tts, rate: 2, backendClass: FlakyBackend,
+    backend: { errors: { "nar-1": "load failed (code 2) for nar-1" } },
+  });
+  await m.playForay(foray([RLINE(), RLINE({ id: "nar-2", script: "The second line." }), fseg()]), { resolveItem });
+  assert.equal(m.isNarrationPlayhead, true, "precondition: the first line fell back to speech");
+  const before = backend.calls.length;
+  tts.finish();
+  await tick();
+  await tick();
+  const after = backend.calls.slice(before);
+  assert.ok(after.includes("load:nar-2@0"), `precondition: the chained rendered line loaded: ${after}`);
+  assert.ok(after.includes("rate:2"), `the rendered line is at the listener's 2x: ${after}`);
+  assert.ok(after.indexOf("rate:2") < after.indexOf("play"), `and before it is audible: ${after}`);
+});
+
+test("D2: a tap deferred during a spoken line lands on the rendered line chained after it", async () => {
+  const tts = fakeTts();
+  const { m, backend } = make({ tts, rate: 2 });
+  await m.playForay(foray([
+    { type: "narration", id: "s-1", script: "Spoken only." }, RLINE({ id: "nar-2" }), fseg(),
+  ]), { resolveItem });
+  assert.equal(m.setRate(1.5), 1.5);
+  const before = backend.calls.length;
+  tts.finish();
+  await tick();
+  await tick();
+  const after = backend.calls.slice(before);
+  assert.ok(after.includes("load:nar-2@0"), `precondition: ${after}`);
+  assert.ok(after.includes("rate:1.5"), `the deferred 1.5x reaches the rendered line: ${after}`);
+  assert.ok(after.indexOf("rate:1.5") < after.indexOf("play"), `before it is audible: ${after}`);
+});
+
+/* ---------- §15: warming the next narration file (web lane) ---------- */
+
+/** A backend with the narration-warm capability, recording into the same
+    call list as its loads so ORDER is assertable. */
+class WarmingBackend extends FakeBackend {
+  constructor(opts) { super(opts); this.warm = null; }
+  warmNarration(item) { this.calls.push(`warm:${item.id}`); this.warm = item.id; return true; }
+  cancelNarrationWarm(why) { this.calls.push(`cancel:${this.warm}:${why}`); this.warm = null; return true; }
+  get narrationWarmId() { return this.warm; }
+}
+const warmsOf = (backend) => backend.calls.filter((c) => /^(warm|cancel):/.test(c));
+
+test("§15: the rendered line after a clip is warmed once the clip is audible — one file", async () => {
+  const { m, backend } = make({ backendClass: WarmingBackend });
+  await m.playForay(foray([fseg(), RLINE(), fseg({ start_sec: 400, end_sec: 500 })]), { resolveItem });
+  assert.deepEqual(warmsOf(backend), ["warm:nar-1"]);
+  assert.ok(backend.calls.indexOf("play") < backend.calls.indexOf("warm:nar-1"), "after the clip starts, never before");
+});
+
+test("§15: nothing is warmed when the next item is a clip or a script-only line", async () => {
+  const { m, backend } = make({ backendClass: WarmingBackend });
+  await m.playForay(foray([
+    fseg(), fseg({ start_sec: 400, end_sec: 500 }), { type: "narration", id: "s-1", script: "spoken only" },
+  ]), { resolveItem });
+  await m.skipToNext();
+  assert.deepEqual(warmsOf(backend), []);
+});
+
+test("§15: a skip past the warmed line cancels it, and the new next line is warmed", async () => {
+  const { m, backend } = make({ backendClass: WarmingBackend });
+  await m.playForay(foray([
+    fseg(), RLINE(), fseg({ start_sec: 400, end_sec: 500 }), RLINE({ id: "nar-2" }), fseg({ start_sec: 700, end_sec: 800 }),
+  ]), { resolveItem });
+  await m.skipToNext(); // Next clip steps over the line to foray-1#2
+  assert.deepEqual(warmsOf(backend), ["warm:nar-1", "cancel:nar-1:load:foray-1#2", "warm:nar-2"]);
+  assert.ok(
+    backend.calls.indexOf("cancel:nar-1:load:foray-1#2") < backend.calls.indexOf("load:foray-1#2@400"),
+    "cancelled BEFORE the skip's own load asks for the media queue"
+  );
+});
+
+test("§15: arriving at the warmed line keeps the warm until its load, then lets it go", async () => {
+  const { m, backend } = make({ backendClass: WarmingBackend });
+  await m.playForay(foray([fseg(), RLINE(), fseg({ start_sec: 400, end_sec: 500 })]), { resolveItem });
+  await m._handleBackendItemEnded(END_OUT_POINT);
+  const load = backend.calls.indexOf("load:nar-1@0");
+  const cancel = backend.calls.findIndex((c) => c.startsWith("cancel:nar-1"));
+  assert.ok(load >= 0 && cancel > load, `kept through the load, dropped after it: ${warmsOf(backend)} / ${backend.calls}`);
+});
+
+test("§15: no warm behind an item too short to finish it before its own boundary", async () => {
+  // 15 s, under queue-manager.js's 20 s NARRATION_WARM_MIN_LEAD_SEC.
+  const { m, backend, log } = make({ backendClass: WarmingBackend });
+  await m.playForay(foray([fseg({ start_sec: 100, end_sec: 115 }), RLINE()]), { resolveItem });
+  assert.deepEqual(warmsOf(backend), []);
+  assert.ok(log.some((l) => /^prefetch\.narration\.skipped nar-1: foray-1#0 lasts 15s/.test(l)), log.join("\n"));
+});
+
+test("§15: stop drops the warm", async () => {
+  const { m, backend } = make({ backendClass: WarmingBackend });
+  await m.playForay(foray([fseg(), RLINE()]), { resolveItem });
+  await m.stop();
+  assert.deepEqual(warmsOf(backend), ["warm:nar-1", "cancel:nar-1:stop"]);
+});
+
+test("§15: a backend without the capability (every other fake, the native engine) is untouched", async () => {
+  const { m, backend } = make();
+  await m.playForay(foray([fseg(), RLINE()]), { resolveItem });
+  assert.deepEqual(warmsOf(backend), []);
+  assert.equal(m.state.type, "playing");
+});
+
+test("§15: pausing and resuming the clip before a warmed line keeps the warm — no refetch", async () => {
+  /* Every resume re-enters `_loadItem`; the line after the clip is still
+     "next". MUTATION THAT KILLS THIS: keep only `item.id` in `_loadItem`'s
+     `_dropStaleNarrationWarm` call. */
+  const { m, backend } = make({ backendClass: WarmingBackend });
+  await m.playForay(foray([fseg(), RLINE(), fseg({ start_sec: 400, end_sec: 500 })]), { resolveItem });
+  await m.pause();
+  await m.resume();
+  assert.deepEqual(warmsOf(backend), ["warm:nar-1", "warm:nar-1"], "asked again, never cancelled in between");
 });

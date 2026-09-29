@@ -17,6 +17,7 @@ import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { classifyShow, daiHostIn, daiReason, mergeShowEntry } from "./dai.mjs";
+import { prepareSessionPatch } from "./session-patch.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const args = process.argv.slice(2);
@@ -130,42 +131,20 @@ Object.entries(byHost).sort((a, b) => b[1] - a[1]).slice(0, 14)
 if (DRY) {
   console.log("\n--dry-run: no files written.");
 } else {
+  // session.json is hand-authored and its blocks are one per line — patch its
+  // text rather than reformatting it (same reasoning as backfill-audio.mjs).
+  // Patched and VERIFIED before any file is written (audit round 3,
+  // data-tools-11): the check used to run after the DAI cache and
+  // discover.json were already rewritten, so a throw left them disagreeing.
+  // The flag is updated in place when present, so --reclassify can flip it
+  // (see patchDaiFlags in ./session-patch.mjs).
+  const sPath = join(ROOT, "data", "session.json");
+  const { txt, patched } = prepareSessionPatch(readFileSync(sPath, "utf8"), session.episodes, { kind: "dai" });
+
   cache.built_at = new Date().toISOString();
   writeFileSync(CLASS_PATH, JSON.stringify(cache, null, 2) + "\n");
   discover.built_at = cache.built_at;
   writeFileSync(join(ROOT, "data", "discover.json"), JSON.stringify(discover, null, 2) + "\n");
-
-  // session.json is hand-authored and its blocks are one per line — patch its
-  // text rather than reformatting it (same reasoning as backfill-audio.mjs).
-  const sPath = join(ROOT, "data", "session.json");
-  let txt = readFileSync(sPath, "utf8");
-  const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  let patched = 0;
-  for (const [id, e] of Object.entries(session.episodes)) {
-    if (e.dai_suspected === undefined) continue;
-    // UPDATE in place when the field already exists; insert only when it does
-    // not. The obvious idempotence guard — skip any block that already has the
-    // field — silently strands the old value whenever --reclassify flips a
-    // show, which is precisely what that mode exists to do. The bug would only
-    // ever surface as a stale flag in shipped data.
-    const existing = new RegExp(`("${esc(id)}":\\s*\\{[^{}]*?"dai_suspected":\\s*)(?:true|false)`);
-    if (existing.test(txt)) {
-      txt = txt.replace(existing, `$1${e.dai_suspected}`);
-      patched++;
-      continue;
-    }
-    const re = new RegExp(`("${esc(id)}":\\s*\\{[^{}]*?"audio_bytes":\\s*(?:-?\\d+|null))`);
-    if (!re.test(txt)) continue;
-    txt = txt.replace(re, `$1, "dai_suspected": ${e.dai_suspected}`);
-    patched++;
-  }
-  const reparsed = JSON.parse(txt); // refuse to write anything unparseable
-  for (const [id, e] of Object.entries(session.episodes)) {
-    if (e.dai_suspected === undefined) continue;
-    if (reparsed.episodes[id].dai_suspected !== e.dai_suspected) {
-      throw new Error(`session patch mismatch on ${id}`);
-    }
-  }
   writeFileSync(sPath, txt);
   console.log(`\nwrote data/dai-classification.json, data/discover.json, data/session.json (${patched} session blocks patched)`);
 }

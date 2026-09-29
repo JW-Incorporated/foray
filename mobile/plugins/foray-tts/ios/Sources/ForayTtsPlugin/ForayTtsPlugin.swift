@@ -1,6 +1,7 @@
 import Foundation
 import AVFAudio
 import Capacitor
+import CryptoKit
 import UIKit
 import os
 
@@ -37,15 +38,101 @@ public protocol KokoroProbeEngine {
 
     /// Whether an accelerator execution provider (CoreML on iOS, NNAPI on
     /// Android) is registered on the session, as opposed to ORT's CPU
-    /// provider. `false` on every build today — see `KokoroOrtProbeEngine`.
+    /// provider. `true` only on the KV-R2 `coreml` pass once its EP was
+    /// appended (see `providerBasis` for what that does NOT prove).
     /// Reported rather than inferred from `provider`, because `"cpu"` reads as
     /// a fallback that fired and it is not one: it is the only path compiled.
     var acceleratorWired: Bool { get }
+
+    /// Why the last `synthesize` threw, as TOKENS (L03, L36): ORT's error
+    /// code, the operator it names, and the stage. Never the message.
+    var lastFailure: KokoroProbeFailure? { get }
+
+    /// Why the cold session did not open, from the same token set, or nil.
+    var loadError: String? { get }
+
+    /// KV-R2: the pass's execution provider could not be registered at all
+    /// (the CoreML EP is absent from this ORT build, or its append threw).
+    /// The pass records `coreml-unavailable` instead of pretending to run.
+    var providerUnavailable: Bool { get }
+
+    /// How much `provider` KNOWS (KV-R2): `"requested"` when the EP was only
+    /// asked for and the runtime cannot say which nodes it actually took (the
+    /// CoreML pass on ORT 1.20.0, whose API reports no per-node placement, so
+    /// CoreML may have taken all of the graph, part of it, or none, with the
+    /// rest silently on the CPU), nil when `provider` is simply what ran.
+    var providerBasis: String? { get }
+
+    /// The intra-op thread count the session was built with, or nil when the
+    /// engine does not say (a fake). Reported as `intraThreads` (L09).
+    var intraThreads: Int? { get }
+
+    /// Release the session `load()` opened. KV-R2 calls it at the end of
+    /// every pass, BEFORE the next pass's engine is built, so two 325 MB fp32
+    /// sessions never share the process.
+    func close()
+
+    /// KV-R3: the Core ML chain's per-stage compute units, in chain order
+    /// (`ane,ane,ane,cpu,cpu,ane,cpu`), or nil for an engine with no stages.
+    var route: String? { get }
+
+    /// KV-R3: the last `synthesize`'s milliseconds per Core ML stage, in
+    /// chain order (§5 item 6), or nil for an engine with no stages.
+    var lastStageMs: [Double]? { get }
+
+    /// KV-R3: keep (or stop keeping) each rendered chunk's samples, for the
+    /// pass's WAV (§5 item 10). Off unless the matrix asks, chunk by chunk.
+    func setCaptureSamples(_ on: Bool)
+
+    /// The last captured chunk's samples, handed over once, or nil.
+    func takeLastSamples() -> [Float]?
+
+    /* Probe v3.1: the Core ML engine breadcrumbs each stage's compile, load
+       and predict through `ProbeStageHook` (ProbeLedger.swift), not through
+       this protocol, which the XCTest fakes implement. */
+
+    /// The last `synthesize`'s input shape per Core ML stage, in chain order:
+    /// the largest input handed to that stage (`1x512x310`), `-` for a stage
+    /// the chunk never reached. Nil for an engine with no stages.
+    var lastStageInputs: [String]? { get }
+
+    /// The last `synthesize`'s predicted frame count (the Core ML durations'
+    /// sum), or nil.
+    var lastFrames: Int? { get }
 }
 
 public extension KokoroProbeEngine {
     /// The honest default for any engine that has not thought about it.
     var acceleratorWired: Bool { false }
+    /// An engine that does not say why it failed says nothing, not "ok".
+    var lastFailure: KokoroProbeFailure? { nil }
+    var loadError: String? { nil }
+    var providerUnavailable: Bool { false }
+    var providerBasis: String? { nil }
+    var intraThreads: Int? { nil }
+    func close() {}
+    var route: String? { nil }
+    var lastStageMs: [Double]? { nil }
+    func setCaptureSamples(_ on: Bool) {}
+    func takeLastSamples() -> [Float]? { nil }
+    var lastStageInputs: [String]? { nil }
+    var lastFrames: Int? { nil }
+}
+
+/// One inference failure in closed tokens (`player/kokoro-probe.js`'s
+/// `ORT_CODES` and `ORT_STAGES`), plus the failing operator's name when the
+/// runtime named one. Built so that nothing else CAN be stored: an ORT file
+/// error's text can carry the app-container path.
+public struct KokoroProbeFailure {
+    public let code: String
+    public let op: String?
+    public let stage: String
+
+    public init(code: String, op: String?, stage: String) {
+        self.code = code
+        self.op = op
+        self.stage = stage
+    }
 }
 
 /// The bridge half of `foray-tts` on iOS: wraps `AVSpeechSynthesizer` /
@@ -113,10 +200,42 @@ public class ForayTtsPlugin: CAPPlugin, CAPBridgedPlugin, AVSpeechSynthesizerDel
     static let STATE_IDLE = "idle"
 
     private let synthesizer = AVSpeechSynthesizer()
+    /// WHICH UTTERANCE (audit round 3, mobile-native-2): the id `speak()`
+    /// returned for each queued utterance, and whether it was a voice-picker
+    /// preview, so `finished` can say whose completion it is. Keyed by the
+    /// utterance object; removed on finish or cancel. The delegate runs on a
+    /// different thread from the plugin method, hence the lock.
+    private var utteranceMeta: [ObjectIdentifier: (id: String, audition: Bool)] = [:]
+    private let utteranceMetaLock = NSLock()
+
+    /// A new `speak()` REPLACES whatever the synthesizer holds (audit round 3,
+    /// mobile-native-1). `AVSpeechSynthesizer.speak` only enqueues, and a
+    /// paused synthesizer stays paused: after a skip away from a narration line
+    /// (the reducer pauses before it loads) the next line queued silently
+    /// behind the paused one. Android always spoke with QUEUE_FLUSH; this is
+    /// the same rule. `stopSpeaking` fires `didCancel`, never `didFinish`,
+    /// so flushing never advances the queue.
+    static func mustFlushBeforeSpeaking(isSpeaking: Bool, isPaused: Bool) -> Bool {
+        return isSpeaking || isPaused
+    }
+
+    private func takeUtteranceMeta(_ utterance: AVSpeechUtterance) -> (id: String, audition: Bool)? {
+        utteranceMetaLock.lock()
+        defer { utteranceMetaLock.unlock() }
+        return utteranceMeta.removeValue(forKey: ObjectIdentifier(utterance))
+    }
 
     override public func load() {
         synthesizer.delegate = self
         registerSessionObservers()
+        /* PROBE v3.1: a breadcrumb on disk now can only be a probe run the
+           PREVIOUS process did not finish (this runs once per process, before
+           any probe can start). It becomes a kill report at once — durably,
+           before the breadcrumb is cleared — and the page writes it as its own
+           `voiceProbe` row at boot (`mode: "status"`), whether or not the
+           founder ever taps the probe again. File I/O of a few hundred bytes:
+           no runtime is touched here. */
+        ProbeLedger.shared.promoteLeftover()
     }
 
     deinit {
@@ -227,19 +346,32 @@ public class ForayTtsPlugin: CAPPlugin, CAPBridgedPlugin, AVSpeechSynthesizerDel
     /// `speak()` call site below for months -- `speak()` resolves on ACCEPT,
     /// not completion, so nothing in that method itself can ever learn when
     /// the listener stops hearing the line. This is the other half: fired
-    /// once per utterance, unconditionally, with no payload -- the web/queue
-    /// layer (`player/queue-manager.js`'s `_onTtsFinished`) already tracks
-    /// WHICH utterance is current and de-dupes a stray duplicate itself, so
-    /// this delegate method stays a pure "an utterance just ended" signal
-    /// and does not try to also answer "which one" -- one native event, one
-    /// job.
+    /// once per utterance, unconditionally. THE PAYLOAD NAMES THE UTTERANCE
+    /// (audit round 3, mobile-native-2): `utteranceId` is the id `speak()`
+    /// returned and `audition` says it was a preview. The queue used to be
+    /// unable to tell a stale completion (a preview, or a line it had already
+    /// left) from the current line's, because it compared only its own
+    /// sequence number; `_onTtsFinished` now drops any finish that is not the
+    /// line it is waiting for.
     ///
     /// Fired for EVERY completion, not gated on whether JS is still
     /// listening: `notifyListeners` is a no-op with no registered listener
     /// (Capacitor's own documented behaviour), so there is nothing here to
     /// guard.
     public func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didFinish utterance: AVSpeechUtterance) {
-        notifyListeners(Self.FINISHED_EVENT, data: JSObject())
+        var data = JSObject()
+        if let meta = takeUtteranceMeta(utterance) {
+            data["utteranceId"] = meta.id
+            data["audition"] = meta.audition
+        }
+        notifyListeners(Self.FINISHED_EVENT, data: data)
+    }
+
+    /// A cancelled utterance (a `stop()`, or a new `speak()` flushing the old
+    /// one) is forgotten and NOTHING is emitted: a cancel is never a finish,
+    /// and a stop that advanced the queue would be a skip.
+    public func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didCancel utterance: AVSpeechUtterance) {
+        _ = takeUtteranceMeta(utterance)
     }
 
     /// The `rate` this plugin receives is a PLAYBACK-SPEED MULTIPLIER, not a
@@ -590,12 +722,24 @@ public class ForayTtsPlugin: CAPPlugin, CAPBridgedPlugin, AVSpeechSynthesizerDel
            because both are guarded on the native engine's ownership (NE-16). */
         Self.claimSession()
 
+        /* mobile-native-1: replace, never queue behind (see
+           `mustFlushBeforeSpeaking`). */
+        if Self.mustFlushBeforeSpeaking(isSpeaking: synthesizer.isSpeaking, isPaused: synthesizer.isPaused) {
+            synthesizer.stopSpeaking(at: .immediate)
+        }
+        /* mobile-native-2: an id per utterance, echoed on `finished`. */
+        let utteranceId = UUID().uuidString
+        let audition = call.getBool("audition") ?? false
+        utteranceMetaLock.lock()
+        utteranceMeta[ObjectIdentifier(utterance)] = (id: utteranceId, audition: audition)
+        utteranceMetaLock.unlock()
         synthesizer.speak(utterance)
 
         var result = JSObject()
         result["ok"] = true
         result["platform"] = "ios"
         result["accepted"] = true
+        result["utteranceId"] = utteranceId
         result["overridesApplied"] = appliedCount
         result["reason"] = ""
         /* WHICH VOICE ACTUALLY SPOKE, read back off the utterance rather than
@@ -722,9 +866,9 @@ public class ForayTtsPlugin: CAPPlugin, CAPBridgedPlugin, AVSpeechSynthesizerDel
        that keeps this card and L-03 from fighting: `speechSynthesizer(_:didFinish:)`
        is what raises `FINISHED_EVENT`, and that event advances the queue. A
        stop that advanced the queue past the line it just silenced would turn
-       every pause-then-stop into a skip. There is no `didCancel` handler here
-       precisely so that nothing is emitted on that path — the absence is the
-       mechanism, which is why it is written down. */
+       every pause-then-stop into a skip. The `didCancel` handler above only
+       forgets the utterance's id (mobile-native-2); it emits nothing, and that
+       silence is the mechanism, which is why it is written down. */
 
     /// Pause the current utterance at the next word boundary.
     ///
@@ -838,7 +982,10 @@ public class ForayTtsPlugin: CAPPlugin, CAPBridgedPlugin, AVSpeechSynthesizerDel
     /// (`tools/mobile/fetch-models.mjs`). Looked up by name rather than
     /// assumed present: a build that skipped the fetch step must say
     /// `model-absent`, not crash.
-    static let MODEL_RESOURCE = "kokoro-v1_0-q8f16"
+    ///
+    /// fp32 SINCE KV-R2 (deck D13): the only Kokoro export that is finite on
+    /// Apple silicon. `fetch-models.mjs`'s iOS model pin; Android keeps q8f16.
+    static let MODEL_RESOURCE = "kokoro-v1_0-fp32"
     static let MODEL_EXTENSION = "onnx"
     /// The one voice the probe bundles — `fetch-models.mjs`'s `PROBE_VOICE`.
     /// One, not three: K-01 times the graph, and the graph takes the same time
@@ -856,9 +1003,69 @@ public class ForayTtsPlugin: CAPPlugin, CAPBridgedPlugin, AVSpeechSynthesizerDel
     /// proper resource phase needs no change here.
     static let RESOURCE_SUBDIR = "public"
 
+    /// The probe's own serial queue (audit round 3, mobile-native-5). Two model
+    /// loads and a synthesis per line used to run on the bridge's serial
+    /// plugin queue, so a probe run mid-Foray held every ForayTts call behind
+    /// it. Serial, so two taps queue rather than load the model twice at once.
+    static let probeQueue = DispatchQueue(label: "ai.jwlabs.foura.tts.kokoroProbe", qos: .userInitiated)
+
     @objc func kokoroProbe(_ call: CAPPluginCall) {
+        /* KV-R3: STOP THE SOAK. Answered HERE, on the bridge's thread, and
+           never queued: the soak is running on `probeQueue`, and a stop sent
+           there would wait out the whole 30 minutes behind it. */
+        if call.getString("mode") == "stop" {
+            ProbeSoakStop.shared.request()
+            var stop = JSObject()
+            stop["platform"] = "ios"
+            stop["mode"] = "stop"
+            stop["ok"] = true
+            stop["reason"] = ""
+            call.resolve(stop)
+            return
+        }
+        /* PROBE v3.1: the ledger's three questions, answered HERE for the same
+           reason `stop` is — a running matrix holds `probeQueue`, and the
+           drawer's "Reset skipped passes" must not wait ten minutes. */
+        switch call.getString("mode") {
+        case "status":
+            call.resolve(Self.probeStatus(ProbeLedger.shared))
+            return
+        case "killed-ack":
+            let ids = (call.getArray("ids") as? [String]) ?? []
+            var ack = JSObject()
+            ack["platform"] = "ios"
+            ack["mode"] = "killed-ack"
+            ack["ok"] = true
+            ack["reason"] = ""
+            ack["removed"] = ProbeLedger.shared.acknowledge(ids: ids)
+            call.resolve(ack)
+            return
+        case "reset":
+            var reset = JSObject()
+            reset["platform"] = "ios"
+            reset["mode"] = "reset"
+            reset["ok"] = true
+            reset["reason"] = ""
+            reset["cleared"] = ProbeLedger.shared.quarantine.reset()
+            call.resolve(reset)
+            return
+        default:
+            break
+        }
+        Self.probeQueue.async { [weak self] in
+            self?.runKokoroProbe(call)
+        }
+    }
+
+    private func runKokoroProbe(_ call: CAPPluginCall) {
         var result = JSObject()
         result["platform"] = "ios"
+
+        /* KV-R3: "play the WAV this pass rendered" — no passage, no engine. */
+        if call.getString("mode") == "listen" {
+            call.resolve(Self.playProbeWav(pass: call.getString("pass")))
+            return
+        }
 
         // The passage, pre-phonemized, from the page. NO TEXT FRONT-END ON
         // DEVICE is the licence argument this whole deck rests on (deck §4),
@@ -866,21 +1073,35 @@ public class ForayTtsPlugin: CAPPlugin, CAPBridgedPlugin, AVSpeechSynthesizerDel
         // never falls back to one.
         let passage = call.getObject("passage")
         let lines = (passage?["lines"] as? [[String: Any]]) ?? []
-        let idLines: [[Int]] = lines.compactMap { $0["ids"] as? [Int] }
         if lines.isEmpty {
             result["ok"] = false
             result["reason"] = "passage-empty"
             call.resolve(result)
             return
         }
-        if idLines.count != lines.count {
+        /* KV-R2: ONE INFERENCE PER SENTENCE CHUNK, in passage order. Each
+           line carries `chunks` (`phonemize.py`'s `sentence_chunks`, each
+           with its own ids); a line with none is unphonemized, whatever else
+           it holds. The phone never cuts a chunk itself (D3). */
+        guard let idLines = Self.chunkIds(lines) else {
             result["ok"] = false
             result["reason"] = "passage-unphonemized"
             call.resolve(result)
             return
         }
 
-        if KokoroModelFiles.modelURL() == nil {
+        /* KV-R3: MODEL-ABSENT ONLY WHEN NEITHER ENGINE HAS ITS FILES. Each pass
+           otherwise answers for itself — an ORT pass with no fp32 file, or a
+           Core ML pass on a phone below iOS 17 (`coreml-requires-ios17`) or
+           with no compiled stages, is that pass's refusal, and the passes that
+           can run still do. */
+        /* PROBE v3.1: on iOS 26.4+ Core ML is refused (`coreml-bnns-os`,
+           FluidAudio #844/#889) unless the drawer's "arm Core ML (may crash)"
+           switch sent `armCoreML: true`. */
+        let armed = call.getBool("armCoreML") ?? false
+        let coreMLRefusal = Self.coreMLRefusal(armed: armed)
+        let ledger = ProbeLedger.shared
+        if KokoroModelFiles.modelURL() == nil, coreMLRefusal != nil, Self.probeEngine == nil {
             result["ok"] = false
             result["reason"] = "model-absent"
             result["lookedFor"] = "\(Self.MODEL_RESOURCE).\(Self.MODEL_EXTENSION)"
@@ -888,127 +1109,217 @@ public class ForayTtsPlugin: CAPPlugin, CAPBridgedPlugin, AVSpeechSynthesizerDel
             return
         }
 
-        /* THE ENGINE IS BUILT HERE, ON DEMAND, AND NOWHERE ELSE.
-           `probeEngine` stays nil on every shipping build — the XCTest that
-           asserts it still does — and this line is why that remains true AND
-           the probe can still answer: ORT is not touched at `load()`, not at
-           app start, and not on any path narration reaches. It is constructed
-           the moment a founder taps the probe button on a build that fetched
-           the weights, and released when this method returns. An engine
-           registered at startup would be running ONNX Runtime in every
-           listener's app for a card that measures one phone. */
-        guard let engine = Self.probeEngine ?? KokoroOrtProbeEngine() else {
-            result["ok"] = false
-            result["reason"] = "engine-absent"
-            call.resolve(result)
+        /* THE ENGINES ARE BUILT HERE, ON DEMAND, ONE PASS AT A TIME, AND
+           NOWHERE ELSE. `probeEngine` stays nil on every shipping build — the
+           XCTest that asserts it still does — and this is why that remains true
+           AND the probe can still answer: neither runtime is touched at
+           `load()`, at app start, or on any path narration reaches. */
+
+        /* SILENT AUDIO FOR THE LENGTH OF THE RUN (`ProbeKeepAlive`), so a
+           phone locked right after the tap keeps running the probe the way it
+           keeps running narration. Stopped before the call resolves. */
+        let keepAlive = ProbeKeepAlive()
+        let keepAliveState = keepAlive.start()
+        defer { keepAlive.stop() }
+
+        if call.getString("mode") == "soak" {
+            /* THE SOAK: the best background-safe pass, speed 1.5, in a loop. */
+            let minutes = min(max(call.getDouble("soakMinutes") ?? Self.SOAK_MINUTES, 1), 60)
+            let skipped = Set(ledger.quarantine.entries().map { $0.pass })
+            let pass = KokoroProbePass.soakPass(coreMLAvailable: coreMLRefusal == nil, skipped: skipped)
+            var answer: JSObject
+            switch Self.buildEngine(pass, armed: armed) {
+            case .refused(let reason):
+                answer = Self.refusalRecord(pass: pass, speed: ProbeMath.WAV_SPEED, reason: reason)
+                answer["mode"] = "soak"
+            case .engine(let engine):
+                defer { engine.close() }
+                /* A stop tapped before this soak began is not this soak's. */
+                ProbeSoakStop.shared.reset()
+                answer = Self.runSoak(engine: engine, pass: pass, idLines: idLines, minutes: minutes, ledger: ledger)
+            }
+            answer["keepAlive"] = keepAliveState
+            call.resolve(answer)
             return
         }
 
-        let speed = passage?["speed"] as? Double ?? 1.0
-        let load = engine.load()
-        var synthColdMs: Double = 0
-        var synthWarmMs: Double = 0
-        // THE RENDERED SECONDS, AND #685's WHOLE STORY. This pair used to be
-        // one local named `audioSec` that was summed on every iteration and
-        // then never written into `result` — the engine measured the audio it
-        // produced, the plugin added it up, and the number died here. With no
-        // rendered length on the wire, `player/kokoro-probe.js` divided by the
-        // passage's PLANNING ESTIMATE instead, which is positive whatever the
-        // engine does; a synthesis time of zero over 77.4 estimated seconds is
-        // not an unmeasured RTF, it is `0.00`, and 0.00 beats every ceiling
-        // K-01 has. Both halves are reported, SPLIT COLD/WARM to match the two
-        // synthesis figures, so each RTF is a ratio of two numbers measured
-        // over the same audio.
-        var audioColdSec: Double = 0
-        var audioWarmSec: Double = 0
-        var synthFailures = 0
-        var firstFailure: String? = nil
-        for (index, ids) in idLines.enumerated() {
-            let out = engine.synthesize(ids: ids, speed: speed)
-            if let reason = out.reason {
-                synthFailures += 1
-                if firstFailure == nil { firstFailure = reason }
-            }
-            // FIRST LINE IS THE COLD NUMBER, the rest are the warm one. They
-            // are reported separately rather than averaged because the deck's
-            // go rule is stated on the WARM figure alone (§K-01 acceptance),
-            // and a mean that folded a 2-second first inference into it would
-            // fail a phone that is fine.
-            if index == 0 {
-                synthColdMs = out.synthMs
-                audioColdSec = out.audioSec
+        /* PER-PASS FLUSH: each pass's records go to the page (`probePass`)
+           the moment the pass ends — the ledger's journal has them on disk
+           already — and each pass start is a row in the engine's own ring. */
+        let run = probeNowMs()
+        var answer = Self.measurePasses(idLines: idLines, modelURL: KokoroModelFiles.modelURL(),
+                                        makeEngine: { Self.buildEngine($0, armed: armed) },
+                                        ledger: ledger, run: run,
+                                        wavDirectory: ProbeWav.directory(),
+                                        onPassStart: { pass, order in
+                                            ProbeEngineRow.post(event: "voice-pass", pass: pass, order: order, run: run)
+                                        },
+                                        onPassDone: { [weak self] pass, records in
+                                            let stamped = records.map { r -> [String: Any] in
+                                                var r = r
+                                                r["keepAlive"] = keepAliveState
+                                                return r as [String: Any]
+                                            }
+                                            self?.notifyListeners(Self.PROBE_PASS_EVENT, data: [
+                                                "platform": "ios", "pass": pass.rawValue,
+                                                "probeRun": Double(run), "passes": stamped,
+                                            ])
+                                        })
+        if var records = answer["passes"] as? [JSObject] {
+            for i in records.indices { records[i]["keepAlive"] = keepAliveState }
+            answer["passes"] = records
+        }
+        call.resolve(answer)
+    }
+
+    /// The event each finished pass's records travel on (probe v3.1), the
+    /// same word as `web/foray-tts.js`'s `PROBE_PASS_EVENT`.
+    static let PROBE_PASS_EVENT = "probePass"
+
+    /// `mode: "status"`: the unacknowledged kill reports (JSON text the page
+    /// parses), the skip list, and whether this OS is one Core ML is gated on.
+    static func probeStatus(_ ledger: ProbeLedger,
+                            version: OperatingSystemVersion = ProcessInfo.processInfo.operatingSystemVersion) -> JSObject {
+        var status = JSObject()
+        status["platform"] = "ios"
+        status["mode"] = "status"
+        status["ok"] = true
+        status["reason"] = ""
+        status["reportsJson"] = ledger.pendingReportsJSON()
+        let skipped: [[String: Any]] = ledger.quarantine.entries().map { entry in
+            var o = entry.crumb.fields(prefix: "killed")
+            o["pass"] = entry.pass.rawValue
+            return o
+        }
+        status["skippedJson"] = (try? JSONSerialization.data(withJSONObject: skipped))
+            .flatMap { String(data: $0, encoding: .utf8) } ?? "[]"
+        status["bnnsAffected"] = ProbeCoreMLGuard.bnnsAffected(version)
+        return status
+    }
+
+    /// The soak's default length (card KV-R3: "a loop for 30 minutes").
+    static let SOAK_MINUTES = 30.0
+
+    /// Every chunk's ids, in passage order, or nil when any line has no
+    /// chunk ids. A line from before KV-R2 that carries only a whole-line
+    /// `ids` still counts as one chunk, so an older passage measures rather
+    /// than refusing — but the passage this build ships is chunked.
+    static func chunkIds(_ lines: [[String: Any]]) -> [[Int]]? {
+        var out: [[Int]] = []
+        for line in lines {
+            if let chunks = line["chunks"] as? [[String: Any]], !chunks.isEmpty {
+                for chunk in chunks {
+                    guard let ids = chunk["ids"] as? [Int], !ids.isEmpty else { return nil }
+                    out.append(ids)
+                }
+            } else if let ids = line["ids"] as? [Int], !ids.isEmpty {
+                out.append(ids)
             } else {
-                synthWarmMs += out.synthMs
-                audioWarmSec += out.audioSec
+                return nil
             }
         }
+        return out.isEmpty ? nil : out
+    }
 
-        // NOT ONE LINE RENDERED IS A REFUSAL, NOT A MEASUREMENT. The weights
-        // are here and the runtime loaded, so `model-absent`/`engine-absent`
-        // would both be lies — but there is no number, and the only thing
-        // worse than no number is a zero that reads as a triumph. The sub-code
-        // travels in `detail` so the next run says WHICH failure it was
-        // instead of leaving it in a device log nobody can read.
-        if audioColdSec + audioWarmSec <= 0 {
-            result["ok"] = false
-            result["reason"] = "synthesis-failed"
-            result["detail"] = firstFailure ?? "zero-samples"
-            result["provider"] = engine.provider
-            result["model"] = engine.modelName
-            result["modelLoadColdMs"] = load.coldMs
-            result["modelLoadWarmMs"] = load.warmMs
-            result["synthColdMs"] = synthColdMs
-            result["synthWarmMs"] = synthWarmMs
-            result["synthFailures"] = synthFailures
-            result["lines"] = idLines.count
-            // Reported as the zeroes they are, so the record is internally
-            // consistent: rendered audio of 0 s makes every RTF `null` in
-            // `summarizeProbe` rather than a quotient over an estimate.
-            result["audioColdSec"] = 0.0
-            result["audioWarmSec"] = 0.0
-            result["acceleratorWired"] = engine.acceleratorWired
-            result["peakMemoryBytes"] = Double(Self.peakResidentBytes())
-            call.resolve(result)
-            return
+    /* KV-R3: the passes, the matrix and the soak live in
+       `KokoroProbeMatrix.swift` (`measurePasses`, `measurePass`, `runSoak`). */
+
+    /// A line's outcome token (L05), from its `SYNTH_REASONS` code.
+    static func lineOutcome(_ reason: String?) -> String {
+        guard let reason else { return "ok" }
+        switch reason {
+        case "inference-threw": return "threw"
+        case "no-output": return "no-output"
+        case "non-finite": return "nan"
+        case "silent": return "silent"
+        case "session-absent": return "skip"
+        default: return "zero"
         }
+    }
 
-        result["ok"] = true
-        result["reason"] = ""
-        result["detail"] = firstFailure ?? ""
-        result["model"] = engine.modelName
-        result["provider"] = engine.provider
-        result["acceleratorWired"] = engine.acceleratorWired
-        result["modelLoadColdMs"] = load.coldMs
-        result["modelLoadWarmMs"] = load.warmMs
-        result["synthColdMs"] = synthColdMs
-        result["synthWarmMs"] = synthWarmMs
-        result["audioColdSec"] = audioColdSec
-        result["audioWarmSec"] = audioWarmSec
-        result["synthFailures"] = synthFailures
-        result["lines"] = idLines.count
-        // `os_proc_available_memory` is the figure Apple documents for "how
-        // much more can this process allocate before jetsam", which is the
-        // number that decides whether narration survives a locked screen —
-        // deck §5 item 3. Peak resident size is read from the task info.
-        result["availableMemoryBytes"] = Double(os_proc_available_memory())
-        result["peakMemoryBytes"] = Double(Self.peakResidentBytes())
-        // The card asks whether synthesis completed WITH THE SCREEN LOCKED for
-        // the whole passage. This reports the honest weaker fact: the app was
-        // NOT frontmost at the moment the last line finished. The founder
-        // instruction (HUMAN-ACTIONS.md H1) is what turns it into the strong
-        // claim — tap run, lock the phone immediately, unlock when the passage
-        // stops, and read this flag. A `true` here with a `false` on the same
-        // phone at the same build means the founder did not lock it, not that
-        // the phone is inconsistent.
-        result["lockedScreenCompleted"] = !Self.isForeground()
-        call.resolve(result)
+    /// `ProcessInfo.ThermalState` as the page's four words (L10).
+    static func thermalToken(_ state: ProcessInfo.ThermalState) -> String {
+        switch state {
+        case .nominal: return "nominal"
+        case .fair: return "fair"
+        case .serious: return "serious"
+        case .critical: return "critical"
+        @unknown default: return "unknown"
+        }
+    }
+
+    /// The hardware model identifier (`iPhone15,2`), from `utsname`. Never
+    /// `UIDevice.name`, which is whatever the owner called the phone.
+    static func machineIdentifier() -> String {
+        var info = utsname()
+        uname(&info)
+        let capacity = MemoryLayout.size(ofValue: info.machine)
+        return withUnsafePointer(to: info.machine) {
+            $0.withMemoryRebound(to: CChar.self, capacity: capacity) { String(cString: $0) }
+        }
+    }
+
+    /// A value admitted as a diagnostics TOKEN: ',' becomes '.' (DiagGate
+    /// tokens exclude commas, so `iPhone15,2` is `iPhone15.2`), any other
+    /// character outside `[A-Za-z0-9._-]` becomes '-', capped at 32; nil
+    /// when nothing is left.
+    static func machineToken(_ raw: String) -> String? {
+        let allowed = Set("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789._-")
+        let mapped = raw.replacingOccurrences(of: ",", with: ".").map { allowed.contains($0) ? $0 : "-" }
+        let token = String(mapped.prefix(32))
+        return token.isEmpty ? nil : token
+    }
+
+    /// The model file's length and the first 8 hex digits of its SHA-256
+    /// (L08), streamed in 1 MiB chunks so 86 MB is never held at once. Nil
+    /// when the file cannot be read to the end — a partial hash is not one.
+    static func modelFileFacts(_ url: URL) -> (bytes: Int, sha8: String)? {
+        guard let handle = try? FileHandle(forReadingFrom: url) else { return nil }
+        defer { try? handle.close() }
+        var hasher = SHA256()
+        var bytes = 0
+        do {
+            while true {
+                let chunk: Data? = try autoreleasepool { try handle.read(upToCount: 1 << 20) }
+                guard let chunk, !chunk.isEmpty else { break }
+                bytes += chunk.count
+                hasher.update(data: chunk)
+            }
+        } catch {
+            return nil
+        }
+        let sha8 = hasher.finalize().prefix(4).map { String(format: "%02x", $0) }.joined()
+        return (bytes, sha8)
+    }
+
+    /// Run a UIKit read on the main thread, without deadlocking when already
+    /// there — the same care `isForeground()` takes.
+    static func onMain<T>(_ body: () -> T) -> T {
+        if Thread.isMainThread { return body() }
+        return DispatchQueue.main.sync(execute: body)
     }
 
     /// Peak resident bytes for this task, or 0 when the kernel refuses. Zero
     /// is turned into "not measured" by `player/kokoro-probe.js`'s
     /// `toMegabytes`/`probeVerdict`, which treats an unmeasured ceiling as a
     /// FAILURE rather than a pass — see that file's own note on why.
+    ///
+    /// A TRUE PEAK NOW. This returned `phys_footprint`, which is the CURRENT
+    /// footprint: read after the last line, it said how much was held at the
+    /// end, not the high-water mark the 400 MB ceiling is about. The kernel
+    /// keeps the peak in the same `TASK_VM_INFO` answer; an older kernel that
+    /// leaves it 0 falls back to the current figure. The peak is the
+    /// PROCESS's since launch and cannot be reset, so a second probe run in
+    /// the same app session reports the larger of the two; `baseMemoryBytes`
+    /// (read before `load()`) is what tells a reader how much was already held.
     static func peakResidentBytes() -> UInt64 {
+        let footprint = taskFootprint()
+        return footprint.peak > 0 ? footprint.peak : footprint.current
+    }
+
+    /// `phys_footprint` (current) and `ledger_phys_footprint_peak`, or zeros
+    /// when the kernel refuses.
+    static func taskFootprint() -> (current: UInt64, peak: UInt64) {
         var info = task_vm_info_data_t()
         var count = mach_msg_type_number_t(MemoryLayout<task_vm_info_data_t>.size / MemoryLayout<natural_t>.size)
         let kerr: kern_return_t = withUnsafeMutablePointer(to: &info) {
@@ -1016,8 +1327,8 @@ public class ForayTtsPlugin: CAPPlugin, CAPBridgedPlugin, AVSpeechSynthesizerDel
                 task_info(mach_task_self_, task_flavor_t(TASK_VM_INFO), $0, &count)
             }
         }
-        guard kerr == KERN_SUCCESS else { return 0 }
-        return info.phys_footprint
+        guard kerr == KERN_SUCCESS else { return (0, 0) }
+        return (info.phys_footprint, UInt64(max(0, info.ledger_phys_footprint_peak)))
     }
 
     /// Whether the app is frontmost right now.
@@ -1036,5 +1347,70 @@ public class ForayTtsPlugin: CAPPlugin, CAPBridgedPlugin, AVSpeechSynthesizerDel
         let read: () -> Bool = { UIApplication.shared.applicationState == .active }
         if Thread.isMainThread { return read() }
         return DispatchQueue.main.sync(execute: read)
+    }
+}
+
+/// One pass's memory high-water mark (KV-R2): the current `phys_footprint`,
+/// polled every 10 ms on its own queue from `start()` to `stop()`. The
+/// kernel's own peak cannot be reset between passes, and sampling only
+/// between chunks would miss the activations that exist only DURING one —
+/// which is where fp32's ~1.3 GB lived on the ARM64 VM.
+final class FootprintSampler {
+    private let queue = DispatchQueue(label: "ai.jwlabs.foura.tts.kokoroProbe.footprint", qos: .utility)
+    private let lock = NSLock()
+    private var highWater: UInt64 = 0
+    private var timer: DispatchSourceTimer?
+
+    func start(everyMs: Int = 10) {
+        sample()
+        let timer = DispatchSource.makeTimerSource(queue: queue)
+        timer.schedule(deadline: .now(), repeating: .milliseconds(everyMs), leeway: .milliseconds(2))
+        timer.setEventHandler { [weak self] in self?.sample() }
+        timer.resume()
+        self.timer = timer
+    }
+
+    /// The high-water mark so far.
+    var peak: UInt64 {
+        lock.lock()
+        defer { lock.unlock() }
+        return highWater
+    }
+
+    /// Stop polling and return the high-water mark, one last reading included.
+    func stop() -> UInt64 {
+        timer?.cancel()
+        timer = nil
+        sample()
+        return peak
+    }
+
+    private func sample() {
+        let now = ForayTtsPlugin.taskFootprint().current
+        lock.lock()
+        if now > highWater { highWater = now }
+        lock.unlock()
+    }
+}
+
+/* `ProbeInFlight` (the kill marker) moved to ProbeLedger.swift, with the
+   launch-time report and the quarantine that read it (probe v3.1). */
+
+/// A flag set from a notification block and read once by the probe; locked
+/// because the two run on different queues.
+final class ProbeFlag {
+    private let lock = NSLock()
+    private var fired = false
+
+    func set() {
+        lock.lock()
+        fired = true
+        lock.unlock()
+    }
+
+    var value: Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        return fired
     }
 }

@@ -104,6 +104,27 @@ describe("EventRowSchema — valid rows per type", () => {
   });
 });
 
+describe("thumbs: a withdrawn or changed vote (round-3 audit app-2-6)", () => {
+  // MUTATION: drop "cleared" from the direction enum, or drop `replaces` from
+  // ThumbsPayloadSchema (zod strips it) -> red.
+  it("accepts direction 'cleared' and keeps `replaces`", () => {
+    const row = parseEventRow({
+      user_id: USER,
+      type: "thumbs",
+      payload: { direction: "cleared", node_id: "engineering/energy-fusion", replaces: { direction: "up", reasons: [] } }
+    });
+    expect(row.payload).toMatchObject({ direction: "cleared", replaces: { direction: "up", reasons: [] } });
+  });
+
+  it("rejects a `replaces` that is not an up or a down", () => {
+    expect(safeParseEventRow({
+      user_id: USER,
+      type: "thumbs",
+      payload: { direction: "up", node_id: "engineering/energy-fusion", replaces: { direction: "cleared" } }
+    }).success).toBe(false);
+  });
+});
+
 describe("EventRowSchema — rejects invalid rows", () => {
   it("rejects an unknown type", () => {
     const result = safeParseEventRow({ user_id: USER, type: "not_a_real_type", payload: {} });

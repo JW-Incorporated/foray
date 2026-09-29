@@ -2,7 +2,7 @@ import * as fs from "fs";
 import * as path from "path";
 import { FileTranscriptCueProvider, loadTranscriptArchive, type TranscriptDigestEntry } from "../generation/transcriptArchiveLookup";
 import { corpusCoverage, corpusCoverageLine, corpusSafeKey, scanNormalizedCorpus } from "../generation/transcriptCorpus";
-import { DEFAULT_FEED_USER_AGENT } from "../feeds/userAgent";
+import { fetchFeedConditional } from "../feeds/conditionalGet";
 import { FileTranscriptTextIndex } from "../generation/transcriptTextIndex";
 
 /**
@@ -165,38 +165,123 @@ function catalogueShows(): Map<string, { title: string; feedUrl: string | null }
   return out;
 }
 
-async function loadFeed(showId: string, feedUrl: string | null, offline: boolean): Promise<Map<string, FeedEpisode>> {
-  const cacheFile = path.join(FEED_CACHE, `${showId.replace(/[^a-z0-9_-]+/gi, "-")}.xml`);
+/** A cached feed older than this is refetched (conditionally) before use. */
+export const FEED_CACHE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
+
+export interface LoadFeedOptions {
+  cacheDir?: string;
+  fetchImpl?: typeof fetch;
+  now?: () => number;
+  maxAgeMs?: number;
+  /** Guids the caller needs; one missing from the cached feed forces a refetch. */
+  needGuids?: readonly string[];
+}
+
+/**
+ * A show's feed, joined by guid, from the cache or the network.
+ *
+ * backend-rest-14: this used a bare `fetch` with no timeout and no byte cap,
+ * and reused the cached XML forever, so episodes published after the first
+ * warm never got enclosure URLs. It now goes through `fetchFeedConditional`
+ * (15 s timeout, 20 MB cap, the project's one user agent) and refetches when
+ * the cache is older than `FEED_CACHE_MAX_AGE_MS` or lacks a guid a pending
+ * body needs, as a conditional GET keyed on the cache file's mtime so an
+ * unchanged feed costs a 304. A failed refetch falls back to the cache.
+ */
+export async function loadFeed(
+  showId: string,
+  feedUrl: string | null,
+  offline: boolean,
+  opts: LoadFeedOptions = {}
+): Promise<Map<string, FeedEpisode>> {
+  const cacheDir = opts.cacheDir ?? FEED_CACHE;
+  const now = opts.now ?? (() => Date.now());
+  const maxAgeMs = opts.maxAgeMs ?? FEED_CACHE_MAX_AGE_MS;
+  const cacheFile = path.join(cacheDir, `${showId.replace(/[^a-z0-9_-]+/gi, "-")}.xml`);
   let xml: string | null = null;
+  let cachedAtMs: number | null = null;
   try {
     // eslint-disable-next-line security/detect-non-literal-fs-filename -- path slugged from a catalogue show id.
-    if (fs.existsSync(cacheFile)) xml = fs.readFileSync(cacheFile, "utf8");
+    if (fs.existsSync(cacheFile)) {
+      // eslint-disable-next-line security/detect-non-literal-fs-filename -- see above.
+      xml = fs.readFileSync(cacheFile, "utf8");
+      // eslint-disable-next-line security/detect-non-literal-fs-filename -- see above.
+      cachedAtMs = fs.statSync(cacheFile).mtimeMs;
+    }
   } catch {
     xml = null;
+    cachedAtMs = null;
   }
-  if (!xml && !offline && feedUrl) {
-    try {
-      /* The project's ONE outbound identity, imported rather than spelled
-         (#316): `tools/segments/politeness.test.mjs` refuses any file under
-         `backend/src/` that writes its own, and it is right to — two identities
-         is how a publisher blocks half a corpus and nobody can tell which half. */
-      const res = await fetch(feedUrl, { headers: { "user-agent": DEFAULT_FEED_USER_AGENT } });
-      if (res.ok) {
-        xml = await res.text();
-        fs.mkdirSync(FEED_CACHE, { recursive: true });
-        // eslint-disable-next-line security/detect-non-literal-fs-filename -- see above.
-        fs.writeFileSync(cacheFile, xml, "utf8");
-      }
-    } catch {
-      /* A feed that will not answer costs this show its enclosure URLs and
-         nothing else. Reported per show, never fatal. */
-      xml = null;
+
+  const index = (text: string | null) => {
+    const byGuid = new Map<string, FeedEpisode>();
+    if (text) for (const episode of parseFeedEpisodes(text)) byGuid.set(episode.guid, episode);
+    return byGuid;
+  };
+  let byGuid = index(xml);
+
+  const stale =
+    xml === null ||
+    cachedAtMs === null ||
+    now() - cachedAtMs > maxAgeMs ||
+    (opts.needGuids ?? []).some((g) => !byGuid.has(g));
+  if (!stale || offline || !feedUrl) return byGuid;
+
+  /* The project's ONE outbound identity lives in fetchFeedConditional (#316:
+     `tools/segments/politeness.test.mjs` refuses any file under `backend/src/`
+     that writes its own). */
+  const res = await fetchFeedConditional(
+    feedUrl,
+    { etag: null, lastModified: xml !== null && cachedAtMs !== null ? new Date(cachedAtMs).toUTCString() : null },
+    { fetchImpl: opts.fetchImpl }
+  );
+  try {
+    if (res.notModified && xml !== null) {
+      const t = new Date(now());
+      // eslint-disable-next-line security/detect-non-literal-fs-filename -- see above.
+      fs.utimesSync(cacheFile, t, t);
+    } else if (res.body !== null && !res.error) {
+      xml = res.body;
+      byGuid = index(xml);
+      // eslint-disable-next-line security/detect-non-literal-fs-filename -- the feed cache directory (or a test's).
+      fs.mkdirSync(cacheDir, { recursive: true });
+      // eslint-disable-next-line security/detect-non-literal-fs-filename -- see above.
+      fs.writeFileSync(cacheFile, xml, "utf8");
     }
+    /* A feed that will not answer costs this show its enclosure URLs and
+       nothing else: the cache (if any) is used as it is. */
+  } catch {
+    /* A cache write failure is not a warm failure. */
   }
-  const byGuid = new Map<string, FeedEpisode>();
-  if (!xml) return byGuid;
-  for (const episode of parseFeedEpisodes(xml)) byGuid.set(episode.guid, episode);
   return byGuid;
+}
+
+/**
+ * backend-rest-8: the rows to write to corpus-digest.json. A `--show X` warm
+ * reconciles only X, so it REPLACES X's rows and keeps every other show's;
+ * the old code wrote X's rows alone and dropped the rest of the archive. A
+ * full warm (no `--show`) is the whole truth and replaces everything,
+ * including with an empty list, so stale rows are pruned.
+ */
+export function mergeCorpusRows(
+  existing: readonly TranscriptDigestEntry[],
+  fresh: readonly TranscriptDigestEntry[],
+  onlyShows: readonly string[]
+): TranscriptDigestEntry[] {
+  if (onlyShows.length === 0) return [...fresh];
+  const kept = existing.filter((r) => !onlyShows.includes(r.show_id));
+  return [...kept, ...fresh].sort((a, b) => a.show_id.localeCompare(b.show_id) || a.guid.localeCompare(b.guid));
+}
+
+/** The rows currently in a corpus digest file, or none. */
+export function readCorpusDigestRows(file: string = CORPUS_DIGEST): TranscriptDigestEntry[] {
+  try {
+    // eslint-disable-next-line security/detect-non-literal-fs-filename -- fixed machine-local path (or a test's).
+    const parsed = JSON.parse(fs.readFileSync(file, "utf8")) as { transcripts?: unknown };
+    return Array.isArray(parsed.transcripts) ? (parsed.transcripts as TranscriptDigestEntry[]) : [];
+  } catch {
+    return [];
+  }
 }
 
 /** What one body file says about itself. */
@@ -282,7 +367,9 @@ export async function reconcileCorpus(options: { offline: boolean; onlyShows: st
     }
     if (pending.length === 0) continue;
 
-    const feed = await loadFeed(show.showId, meta?.feedUrl ?? null, options.offline);
+    const feed = await loadFeed(show.showId, meta?.feedUrl ?? null, options.offline, {
+      needGuids: pending.map((b) => b.guid)
+    });
     let mintable = 0;
     for (const body of pending) {
       const episode = feed.get(body.guid);
@@ -339,11 +426,15 @@ async function main(): Promise<void> {
 
   if (!args.buildOnly) {
     console.log("reconciling data-local/transcripts/normalized/ against the committed digests...");
-    const { rows, perShow } = await reconcileCorpus({ offline: args.offline, onlyShows: args.shows });
-    if (rows.length === 0) {
+    const { rows: fresh, perShow } = await reconcileCorpus({ offline: args.offline, onlyShows: args.shows });
+    /* Always written: a --show warm merges into the other shows' rows, and a
+       full warm replaces the file even with nothing to add, so stale rows go. */
+    const rows = mergeCorpusRows(readCorpusDigestRows(), fresh, args.shows);
+    const bytes = writeCorpusDigest(rows);
+    if (fresh.length === 0) {
       console.log("  nothing to add: every body on disk already has a committed digest row.");
+      console.log(`  corpus-digest.json now holds ${rows.length} rows (${mb(bytes)})`);
     } else {
-      const bytes = writeCorpusDigest(rows);
       for (const show of perShow) {
         const tail = show.searchableOnly > 0 ? `, ${show.searchableOnly} searchable-only (no feed metadata, cannot mint tape)` : "";
         console.log(`  ${show.showId}: +${show.added} rows, ${show.mintable} mintable${tail}`);

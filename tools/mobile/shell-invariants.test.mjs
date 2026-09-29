@@ -1895,6 +1895,35 @@ test("the iOS ForayAudioPlugin touches AVAudioSession.setActive from its two ses
   assert.equal((table.match(/\.hold\b/g) ?? []).length, 1, "exactly one transition may take the session");
 });
 
+test("iOS lock-screen artwork caches only a successful load; a failure is retried after a window (audit round 3, mobile-native-6)", () => {
+  /* One failed or timed-out fetch used to cache "no artwork" for that URI for
+     the rest of the item. MUTATION: put `_ = self.rememberArtwork(uri: uri,
+     image: image)` back ahead of the failure check, or drop the retry gate in
+     artworkItem. */
+  const code = stripSwiftComments(fs.readFileSync(AUDIO_SWIFT, "utf8"));
+  const load = swiftFuncBody(code, "loadRemoteArtwork");
+  const fail = load.indexOf("guard image != nil else {");
+  const remember = load.indexOf("rememberArtwork(uri: uri, image: image)");
+  assert.ok(fail >= 0 && remember > fail, "a failure returns before anything is cached");
+  assert.match(load, /self\.artworkRetryAfter = \(uri: uri, at: Date\(\)\.addingTimeInterval\(Self\.artworkRetryAfterSec\)\)/);
+  assert.match(swiftFuncBody(code, "artworkItem"), /guard Self\.artworkLoadAllowed\(uri: uri, lastFailure: artworkRetryAfter, now: Date\(\)\) else \{ return nil \}\s*loadRemoteArtwork\(uri: uri, url: url\)/);
+  const after = /static let artworkRetryAfterSec: Double = (\d+)/.exec(code);
+  assert.ok(after && Number(after[1]) >= 30 && Number(after[1]) <= 60, "a 30-60 s retry window");
+});
+
+test("the iOS end of playback releases and notifies even when the plugin never took the hold (audit round 3, mobile-native-4)", () => {
+  /* Every narration line activates the shared session (ForayTtsPlugin), so a
+     Foray played through without a pause ended with a non-mixable session
+     still active and the interrupted app never told it could resume.
+     MUTATION: drop the playing/paused -> ended/none row from sessionMove. */
+  const code = stripSwiftComments(fs.readFileSync(AUDIO_SWIFT, "utf8"));
+  const table = swiftFuncBody(code, "sessionMove");
+  assert.match(table, /case \(\.playing, \.none\), \(\.playing, \.ended\), \(\.paused, \.none\), \(\.paused, \.ended\):\s*return \.releaseAndNotify/);
+  const endRow = table.indexOf("(.playing, .ended)");
+  const holdingRow = table.indexOf("case (_, .none), (_, .ended):");
+  assert.ok(endRow >= 0 && holdingRow > endRow, "the end-of-playback row is matched before the holding-only fallback");
+});
+
 test("the iOS resume transition deactivates NOTHING; a pause the OS caused takes no hold; a hold the OS took is taken back (review 2026-09-23)", () => {
   /* Three findings against the paused-hold model, each a line of Swift:
      1. `releaseQuietly` called `setActive(false)` on the paused -> playing
@@ -2335,6 +2364,54 @@ test("the iOS ForayAudioPlugin writes the M-03 session needle ios-ci greps for",
     "mediaServicesWereResetNotification", "didEnterBackgroundNotification",
     "willEnterForegroundNotification"]) {
     assert.ok(code.includes(name), `ForayAudioPlugin.swift no longer observes ${name} — M-03 loses that cause`);
+  }
+});
+
+test("the iOS ForayAudioPlugin writes every Lane B diagnostics fact at the site that knows it (docs/diagnostics/log-gaps-2026-09-26.md)", () => {
+  /* The XCTests pin the PURE wire shapes (`sessionEvent`, `transportEvent`,
+     `portToken`, ...), but no XCTest can build the plugin and post a live
+     AVAudioSession notification, so a fact deleted from the emitter that
+     computes it (`other` from `emitSession`, `err` from `holdSession`, `to`
+     from `handleRouteChange`) left every suite green while the paste went
+     back to `sessionActivated (failed)` with no cause. This reads each
+     emitter's body for the keys the Lane B contract table says it writes.
+     MUTATION: delete any one of the key writes below, or stop calling
+     `stampNative` from either emitter -> this names the function and key. */
+  const code = stripSwiftComments(fs.readFileSync(AUDIO_SWIFT, "utf8"));
+  const writes = {
+    emitSession: ['"other"', '"hint"', "stampNative(", "extra: facts"],
+    stampNative: ['"nseq"', '"nboot"', "eventSeq += 1"],
+    transportFacts: ['"route"', '"app"', "portToken(", "currentAppState()", "stampNative("],
+    emitTransport: ["transportFacts()"],
+    handleRouteChange: ['"to"', '"from"', '"rawReason"', "categoryFacts()", "AVAudioSessionRouteChangePreviousRouteKey",
+      "extra: facts"],
+    holdSession: ['"err"', '"app"', "sessionErrorToken(", "categoryFacts()", "noteEngineOwnedSkip(", "extra: facts"],
+    releaseSession: ['"err"', '"app"', "sessionErrorToken(", "categoryFacts()", "noteEngineOwnedSkip(", "extra: facts"],
+    noteEngineOwnedSkip: ['"skipped-engine-owned"'],
+    handleInterruption: ['"why"', '"durMs"', "AVAudioSessionInterruptionReasonKey", "extra: extra"],
+    reassertNowPlaying: ["nowPlayingFacts()"],
+    nowPlayingFacts: ['"np"', '"cmds"', '"info"', "enabledCommandList("],
+    registerSessionObservers: ["thermalStateDidChangeNotification", "NSProcessInfoPowerStateDidChange",
+      "didReceiveMemoryWarningNotification"],
+    handleThermalState: ['"thermal"'],
+    handlePowerState: ['"lowPower"'],
+    handleMemoryWarning: ['"memoryWarning"', '"availMb"'],
+    registerCommandHandlers: ["self.transportFacts()"],
+  };
+  for (const [fn, keys] of Object.entries(writes)) {
+    const body = swiftFuncBody(code, fn);
+    assert.ok(body, `ForayAudioPlugin.swift no longer has ${fn}`);
+    for (const key of keys) assert.ok(body.includes(key), `${fn} no longer writes/calls ${key}`);
+  }
+  /* PORT TYPES, NEVER NAMES; no device identity (the brief's hard rules). */
+  for (const banned of ["portName", "UIDevice.current.name", "identifierForVendor"]) {
+    assert.ok(!code.includes(banned), `ForayAudioPlugin.swift reads ${banned}: a name or an identity must never reach the record`);
+  }
+  /* The engine's build row gets the device facts at boot (L09/L28). */
+  const boot = stripSwiftComments(fs.readFileSync(
+    path.join(PLUGIN_DIR, "ios/Sources/ForayAudioPlugin/Engine/EngineBoot.swift"), "utf8"));
+  for (const arg of ["hw: DeviceFacts.machine()", "os: DeviceFacts.osVersion()", "lowPower:", "thermal:", "availMb:"]) {
+    assert.ok(boot.includes(arg), `EngineBoot's BuildRow no longer passes ${arg}`);
   }
 });
 
@@ -3055,7 +3132,7 @@ test("NE-11s: both wrappers require the six contract families, the registry hold
   }
   for (const file of swiftFilesUnder(path.join(CORE_DIR, "Sources/ForayEngineCore/Contract"))) {
     const code = stripSwiftComments(fs.readFileSync(file, "utf8"));
-    assert.doesNotMatch(code, /(JSONSerialization|JSONEncoder|JSONDecoder|Codable|Decodable)/,
+    assert.doesNotMatch(code, /\b(JSONSerialization|JSONEncoder|JSONDecoder|Codable|Decodable)\b/,
       `${path.relative(ROOT, file)} decodes the contract with Foundation's JSON; it reads JSONNode (NE-11s)`);
   }
 });
@@ -3440,6 +3517,14 @@ const GUARDED_SESSION_SITES = [
   ["ForayAudioPlugin.swift", "releaseSession", "setActive"],
   ["ForayTtsPlugin.swift", "claimSession", "setActive"],
   ["ForayTtsPlugin.swift", "claimSession", "setCategory"],
+  /* KV-R3: the voice probe's silent keep-alive and its WAV player, both
+     legacy-mode only (with the engine owning the session they play inside
+     the owner's category and touch nothing). */
+  ["KokoroProbeMatrix.swift", "start", "setCategory"],
+  ["KokoroProbeMatrix.swift", "start", "setActive"],
+  ["KokoroProbeMatrix.swift", "stop", "setCategory"],
+  ["KokoroProbeMatrix.swift", "playProbeWav", "setCategory"],
+  ["KokoroProbeMatrix.swift", "playProbeWav", "setActive"],
 ];
 
 /** The start offset and name of the Swift func whose body encloses offset `at`. */

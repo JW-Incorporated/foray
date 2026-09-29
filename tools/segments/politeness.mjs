@@ -145,6 +145,33 @@ export const AUDIO_PROBE_HEADERS = Object.freeze({
   "accept-language": ACCEPT_LANGUAGE,
 });
 
+/** The largest body `discardBody` will read to the end rather than cancel. A
+    `bytes=0-1` answer is two bytes; anything near this size is not an answer to
+    the question the probe asked. */
+export const MAX_DRAIN_BYTES = 64 * 1024;
+
+/** THE ONE WAY a probe lets go of a response it asked two bytes of (audit
+    round 3, data-tools-6). Drains only a 206 whose declared length is small --
+    reading it lets the socket go back to the pool -- and CANCELS everything
+    else. A host that ignores `Range` answers 200 with the whole episode, and
+    `await res.arrayBuffer()` on that downloaded tens to hundreds of MB before
+    the probe reported "not 206": the exact case it exists to detect, and a
+    breach of "two bytes per episode and no audio". Four probe tools had four
+    spellings of this; two cancelled, two drained unconditionally. Never throws.
+    Returns what it did, for tests and logs. */
+export async function discardBody(res, { maxDrainBytes = MAX_DRAIN_BYTES } = {}) {
+  const body = res?.body;
+  if (!body) return "none";
+  const declared = res.headers?.get?.("content-length");
+  const small = declared != null && declared !== "" && Number.isFinite(Number(declared)) && Number(declared) <= maxDrainBytes;
+  if (res.status === 206 && small) {
+    try { await res.arrayBuffer(); } catch (_) { /* best-effort */ }
+    return "drained";
+  }
+  try { if (typeof body.cancel === "function") await body.cancel(); } catch (_) { /* best-effort */ }
+  return "cancelled";
+}
+
 /** Per host, not global. This catalogue's feeds cluster onto a handful of CDNs,
     so N workers are otherwise N simultaneous hits on one host. */
 export const MIN_HOST_INTERVAL_MS = 1200;

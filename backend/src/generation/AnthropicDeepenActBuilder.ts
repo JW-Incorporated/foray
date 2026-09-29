@@ -6,7 +6,7 @@ import { defaultBudgetGuard, type BudgetGuard } from "../cost/budgetGuard";
 import { parseWithRetry } from "./parseWithRetry";
 import type { Act, DeepenedAct, Spine } from "../types/spine";
 import type { DeepenActBuilder, DeepenActContext } from "./DeepenActBuilder";
-import { recordUsage } from "./usageTracking";
+import { createMessage } from "./anthropicCall";
 import { NARRATOR_STRUCTURE_RULE } from "../copy/narratorStructure";
 
 /**
@@ -94,13 +94,12 @@ export class AnthropicDeepenActBuilder implements DeepenActBuilder {
       sessionId: ctx.sessionId
     });
 
-    const response = await this.client.messages.create({
+    const response = await createMessage(this.client, {
       model: MODEL,
       max_tokens: MAX_OUTPUT_TOKENS,
       messages: [{ role: "user", content: promptText }]
-    });
+    }, "deepen-act");
 
-    recordUsage(response.usage);
     const textBlock = response.content.find((b: Anthropic.ContentBlock): b is Anthropic.TextBlock => b.type === "text");
     if (!textBlock) throw new Error("Anthropic deepen-act response had no text block");
 
@@ -119,7 +118,7 @@ export class AnthropicDeepenActBuilder implements DeepenActBuilder {
         sessionId: ctx.sessionId
       });
 
-      const retryResponse = await this.client.messages.create({
+      const retryResponse = await createMessage(this.client, {
         model: MODEL,
         max_tokens: MAX_OUTPUT_TOKENS,
         messages: [
@@ -127,7 +126,7 @@ export class AnthropicDeepenActBuilder implements DeepenActBuilder {
           { role: "assistant", content: textBlock.text },
           { role: "user", content: reaskLine }
         ]
-      });
+      }, "deepen-act");
       const retryTextBlock = retryResponse.content.find((b: Anthropic.ContentBlock): b is Anthropic.TextBlock => b.type === "text");
       if (!retryTextBlock) throw new Error("Anthropic deepen-act re-ask response had no text block");
       return retryTextBlock.text;

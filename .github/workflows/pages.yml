@@ -74,6 +74,18 @@ jobs:
         with:
           node-version: 22
 
+      # security-11 (round-3 audit; round-3 review, L4): the UX prototypes under
+      # docs/ux/ have no CSP, inline scripts and unescaped innerHTML
+      # interpolation. Published here they share the app's origin, where the
+      # Supabase session (cp_sb_session) lives. The Vercel dist already leaves
+      # them out (tools/web/prepare-dist.mjs EXTRAS); the Pages artifact does
+      # too. Removed BEFORE the stamp, so the stamped tree is the uploaded tree.
+      # Until the HUMAN-ACTIONS #110 settings flip, the legacy branch deploy
+      # still serves main's root verbatim, prototype included: this closes the
+      # Pages path only once this workflow is the one deploying.
+      - name: Leave the UX prototypes out of the Pages artifact (security-11)
+        run: rm -f docs/ux/*.html
+
       - name: Stamp the checkout (deploy-manifest.json, the Foray directory pointer, sw.js BUILD_ID)
         env:
           CI: "true"

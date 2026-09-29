@@ -1,7 +1,8 @@
 import { searchBreadthShows } from "../../backend/src/catalog/searchBreadthShows";
 import { loadBreadthCatalog } from "../../backend/src/catalog/breadthCatalog";
 import { applyCors } from "../_lib/cors";
-import { appleShowSearch, mergeDirectoryShows } from "./appleShowSearch";
+import { appleShowSearch, mergeDirectoryShows } from "../_lib/appleShowSearch";
+import { clientKey, normalizeSearchText, QUERY_MAX_CHARS, QUERY_MIN_CHARS, QUERY_TOO_LONG_ERROR, QUERY_TOO_SHORT_ERROR } from "../_lib/clientLimit";
 
 /**
  * GET /api/shows/search?q=<query>&limit=<n> — the backend half of A3.1/Q3
@@ -207,6 +208,10 @@ export default async function handler(req: ApiRequest, res: ApiResponse): Promis
     res.status(400).json({ error: "q or id is required" });
     return;
   }
+  if (q.length > QUERY_MAX_CHARS) {
+    res.status(400).json({ error: QUERY_TOO_LONG_ERROR });
+    return;
+  }
 
   const limitParam = firstParam(req.query.limit);
   const parsedLimit = limitParam ? Number.parseInt(limitParam, 10) : NaN;
@@ -232,8 +237,22 @@ export default async function handler(req: ApiRequest, res: ApiResponse): Promis
      left, which keeps the refusal S-06 actually needed: a script, a probe or
      `tools/search-probe.mjs`'s forced-MISS samples still never spend a slot,
      because they do not ask. */
+  /* security-10: a query with under QUERY_MIN_CHARS letters or digits is not
+     worth a directory slot; the catalogue still answers it. */
+  if (fallthroughAsked && normalizeSearchText(q).length < QUERY_MIN_CHARS) {
+    res.setHeader("Cache-Control", "public, max-age=300, stale-while-revalidate=3600");
+    res.status(200).json({
+      query: q,
+      shows: results,
+      degraded: false,
+      source: results.length ? ["catalogue"] : [],
+      fallthrough: { attempted: false, error: QUERY_TOO_SHORT_ERROR, cached: false },
+    });
+    return;
+  }
+
   if (fallthroughAsked) {
-    const apple = await appleShowSearch(q, limit);
+    const apple = await appleShowSearch(q, limit, fetch, { callerKey: clientKey(req.headers) });
     /* MERGED, NEVER REPLACED. A rate-limited or failed directory pass returns
        the catalogue's own rows with a flag beside them — never an error, and
        never `[]`. Before P-02 this line read `shows: apple.shows`, which was

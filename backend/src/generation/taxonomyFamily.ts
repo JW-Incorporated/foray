@@ -1,7 +1,7 @@
 import * as fs from "fs";
 import * as path from "path";
 import { loadTaxonomyNodes, type TaxonomyNode } from "./resolveTopic";
-import { deriveItemId, type TranscriptDigestEntry } from "./transcriptArchiveLookup";
+import { deriveItemId, legacyItemId, type TranscriptDigestEntry } from "./transcriptArchiveLookup";
 
 /**
  * The §4.5 TOPIC GATE's one job: say whether two things belong to the same
@@ -253,7 +253,12 @@ export function taxonomyNodesForItemId(itemId: string, root: string = REPO_ROOT)
  * third copy is where they would have started to drift.
  */
 export function nodesForArchiveEntry(entry: TranscriptDigestEntry, root: string = REPO_ROOT): string[] {
-  return unionNodes(taxonomyNodesForShowId(entry.show_id, root), taxonomyNodesForItemId(deriveItemId(entry), root));
+  const id = deriveItemId(entry);
+  const legacy = legacyItemId(entry);
+  const nodes = unionNodes(taxonomyNodesForShowId(entry.show_id, root), taxonomyNodesForItemId(id, root));
+  /* gen-6: an episode whose id gained a collision suffix keeps the tags the
+     committed data filed under its legacy id, so its topic gating is unchanged. */
+  return legacy === id ? nodes : unionNodes(nodes, taxonomyNodesForItemId(legacy, root));
 }
 
 /** The two fields of a `data/segments.json` row the pool-side gate reads. */

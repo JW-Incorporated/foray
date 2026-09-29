@@ -10,6 +10,7 @@ import { dirname, join } from "node:path";
 import { createRequire } from "node:module";
 import { gzipSync } from "node:zlib";
 import { UA } from "./segments/politeness.mjs";
+import { durationMinutes } from "./refresh/enclosure.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 // reuse the backend's battle-tested lenient XML parser
@@ -37,17 +38,6 @@ async function fetchText(url, attempt = 1) {
   }
 }
 
-function normDuration(raw) {
-  if (raw == null) return null;
-  const s = String(raw).trim();
-  if (/^\d+$/.test(s)) return Math.round(Number(s) / 60);
-  const parts = s.split(":").map(Number);
-  if (parts.some(isNaN)) return null;
-  if (parts.length === 3) return Math.round(parts[0] * 60 + parts[1] + parts[2] / 60);
-  if (parts.length === 2) return Math.round(parts[0] + parts[1] / 60);
-  return null;
-}
-
 const text = (v) => (v == null ? null : typeof v === "object" ? (v["#text"] ?? null) : String(v));
 
 function parseFeed(xml) {
@@ -68,7 +58,7 @@ function parseFeed(xml) {
         try { const d = new Date(it.pubDate); return isNaN(d) ? null : d.toISOString().slice(0, 10); }
         catch (_) { return null; }
       })(),
-      duration_min: normDuration(it["itunes:duration"]),
+      duration_min: durationMinutes(it["itunes:duration"]),   // one parser (arch-drift-5)
       enclosure_url: enc["@_url"] ?? null,
       link: text(it.link),
       episode: it["itunes:episode"] ?? null,

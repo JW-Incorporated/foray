@@ -66,7 +66,9 @@
 
 /* ---------- value types ---------- */
 
-/** Item kinds. TTS items always play at 1.0x (corner case #18). */
+/** Item kinds. A SPOKEN TTS item plays at 1.0x (corner case #18, founder
+    2026-09-24); a RENDERED one follows the listener's rate (ruling D2,
+    2026-09-28) — `queue-manager.js` §12 applies both. */
 export const EPISODE = "episode";
 export const TTS = "tts";
 
@@ -200,7 +202,9 @@ export const F = Object.freeze({
   savePosition: () => Object.freeze({ type: "savePosition" }),
 
   playTransitionTTS: () => Object.freeze({ type: "playTransitionTTS" }),
-  /** Force rate to 1.0 before a TTS item becomes audible (corner case #18). */
+  /** Before a TTS item becomes audible. What it means is the manager's
+      (`queue-manager.js` §12): a rendered line gets the listener's rate (D2,
+      2026-09-28), a spoken line keeps its utterance's 1.0x. */
   resetRateForTTS: () => Object.freeze({ type: "resetRateForTTS" }),
   restoreRate: () => Object.freeze({ type: "restoreRate" }),
   emitTelemetry: (message) => Object.freeze({ type: "emitTelemetry", message }),
@@ -473,8 +477,8 @@ function handleInterruptionEnded(state, shouldResume) {
 function handleRouteChanged(state, oldDeviceUnavailable) {
   if (!oldDeviceUnavailable) {
     // A route became available (e.g. BT reconnect). The reducer does not
-    // auto-resume — "resume only for previously-known car routes" is a
-    // policy that lives in the manager, which issues an explicit play.
+    // auto-resume, and on the web/Android path nothing else does either
+    // (player-core-10): the native iOS engine owns route policy.
     return [state, [F.emitTelemetry("route.changed.available")]];
   }
 

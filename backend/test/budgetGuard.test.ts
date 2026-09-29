@@ -146,3 +146,30 @@ describe("BudgetGuard", () => {
     ).resolves.toBeDefined();
   });
 });
+
+/* Round-3 audit, lane L6 (backend-rest-13): concurrent callers cannot all
+   pass the cap, because check-and-record is serialised per guard. */
+describe("BudgetGuard under concurrency", () => {
+  it("four concurrent 0.4 calls against a 1.0 cap: exactly two record, two are refused", async () => {
+    const sink = new InMemoryCostEventSink();
+    const guard = new BudgetGuard(sink, 1.0);
+    const call = () => guard.checkAndRecord({ userId: "u1", operation: "tier1_classify", provider: "anthropic", estimatedUsd: 0.4 });
+    const settled = await Promise.allSettled([call(), call(), call(), call()]);
+    expect(settled.filter((s) => s.status === "fulfilled")).toHaveLength(2);
+    const refused = settled.filter((s): s is PromiseRejectedResult => s.status === "rejected");
+    expect(refused).toHaveLength(2);
+    for (const r of refused) expect(r.reason).toBeInstanceOf(BudgetExceededError);
+    expect(await guard.spentToday("u1")).toBeCloseTo(0.8);
+  });
+
+  it("the per-Foray ceiling holds under concurrency too, and a refusal does not jam later calls", async () => {
+    const sink = new InMemoryCostEventSink();
+    const guard = new BudgetGuard(sink, 100, 1.0);
+    const call = (usd: number) =>
+      guard.checkAndRecord({ userId: "u1", operation: "narrate", provider: "anthropic", estimatedUsd: usd, sessionId: "s1" });
+    const settled = await Promise.allSettled([call(0.6), call(0.6), call(0.6)]);
+    expect(settled.filter((s) => s.status === "fulfilled")).toHaveLength(1);
+    expect(settled.filter((s) => s.status === "rejected").every((s) => (s as PromiseRejectedResult).reason instanceof EpisodeBudgetExceededError)).toBe(true);
+    await expect(call(0.3)).resolves.toBeDefined();
+  });
+});

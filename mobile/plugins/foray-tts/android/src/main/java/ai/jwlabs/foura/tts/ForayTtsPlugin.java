@@ -1,7 +1,11 @@
 package ai.jwlabs.foura.tts;
 
+import android.app.ActivityManager;
 import android.content.Context;
+import android.os.BatteryManager;
+import android.os.Build;
 import android.os.Bundle;
+import android.os.PowerManager;
 import android.speech.tts.TextToSpeech;
 import android.speech.tts.UtteranceProgressListener;
 import android.util.Log;
@@ -23,6 +27,8 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 /**
  * The bridge half of `foray-tts` on Android: wraps {@link TextToSpeech}.
@@ -122,6 +128,22 @@ public class ForayTtsPlugin extends Plugin implements TextToSpeech.OnInitListene
      *  {@link TextToSpeech#isSpeaking} exists but answers about the ENGINE,
      *  which other apps share; this answers about us. */
     private boolean speaking = false;
+    /** The id of the utterance this plugin is speaking (or has paused), or
+     *  null. Audit round 3, mobile-native-2: {@code onDone}/{@code onError} for
+     *  any OTHER id (an utterance a QUEUE_FLUSH or a pause already cut) is
+     *  ignored, and {@code finished} carries this id so the page can tell
+     *  whose completion it is. Cleared BEFORE every {@code tts.stop()} this
+     *  plugin makes, so the stop's own callbacks are never mistaken for the
+     *  engine failing. A resumed remainder keeps the same id. */
+    private volatile String currentUtteranceId = null;
+    /** Whether {@link #currentUtteranceId} is a voice-picker preview, echoed
+     *  on {@code finished} so the queue never advances on it. */
+    private volatile boolean currentIsAudition = false;
+    /** Whether the current line was handed to the engine as SSML. Its
+     *  {@code onRangeStart} offsets then index markup, not text, so a resume
+     *  re-speaks the plain line from its start rather than a substring that
+     *  could cut through a tag (audit round 3, mobile-native-8). */
+    private boolean lastWasSsml = false;
 
     /** The three words {@code state()} reports, matching iOS exactly so one
      *  caller can read both platforms. */
@@ -282,6 +304,15 @@ public class ForayTtsPlugin extends Plugin implements TextToSpeech.OnInitListene
 
                 @Override
                 public void onDone(String utteranceId) {
+                    /* mobile-native-2: only the utterance this plugin is on.
+                       An utterance a QUEUE_FLUSH replaced (a preview spoken
+                       over narration, a skip) reports its own end, and that
+                       end must not advance whichever line is current now. */
+                    if (utteranceId == null || !utteranceId.equals(currentUtteranceId) || paused) {
+                        return;
+                    }
+                    final boolean audition = currentIsAudition;
+                    currentUtteranceId = null;
                     speaking = false;
                     paused = false;
                     /* §7 item 3 (L-03). `speak()` itself stays accept-only
@@ -295,11 +326,29 @@ public class ForayTtsPlugin extends Plugin implements TextToSpeech.OnInitListene
                        `ForayAudioPlugin.java`'s TRANSPORT_EVENT emission
                        already makes for a command coming off a media-session
                        callback. */
-                    notifyListeners(FINISHED_EVENT, new JSObject());
+                    JSObject finished = new JSObject();
+                    finished.put("utteranceId", utteranceId);
+                    finished.put("audition", audition);
+                    notifyListeners(FINISHED_EVENT, finished);
+                }
+
+                /* AN ENGINE ERROR ENDS THE LINE (audit round 3,
+                   mobile-native-3). This was a no-op: a network voice in a
+                   dead zone, a dead engine process or a failed synthesis left
+                   `speaking` true and sent nothing, so the page ran the
+                   narration clock over silence until its deadline (1.5x the
+                   line plus 10 s). Both overloads are Android's; API 21+
+                   calls the one with a code. A stop this plugin made cleared
+                   `currentUtteranceId` first, so it never lands here. */
+                @Override
+                public void onError(String utteranceId) {
+                    onEngineError(utteranceId, TextToSpeech.ERROR);
                 }
 
                 @Override
-                public void onError(String utteranceId) { /* completion is not awaited; see below */ }
+                public void onError(String utteranceId, int errorCode) {
+                    onEngineError(utteranceId, errorCode);
+                }
             });
 
             /* PASSED THROUGH, NOT DROPPED, per the card's explicit instruction
@@ -322,6 +371,12 @@ public class ForayTtsPlugin extends Plugin implements TextToSpeech.OnInitListene
                resume. */
             lastBoundary = 0;
             paused = false;
+            /* mobile-native-2: this is the utterance the plugin is on from now;
+               a preview says so. Set BEFORE speak(): its callbacks run on the
+               engine's thread and can arrive before speak() returns. */
+            currentIsAudition = Boolean.TRUE.equals(call.getBoolean("audition", false));
+            currentUtteranceId = utteranceId;
+            lastWasSsml = androidSsml != null && !androidSsml.isEmpty();
             if (androidSsml != null && !androidSsml.isEmpty()) {
                 /* TextToSpeech has no public "speak SSML" entry point distinct
                    from speak(CharSequence, ...) -- the undocumented behaviour
@@ -337,11 +392,21 @@ public class ForayTtsPlugin extends Plugin implements TextToSpeech.OnInitListene
                that was handed to the engine, SSML markup included, because
                `onRangeStart`'s offsets are into that string and not into the
                plain text. */
-            lastSpokenText = (androidSsml != null && !androidSsml.isEmpty()) ? androidSsml : text;
+            /* THE PLAIN LINE, NOT THE MARKUP (audit round 3, mobile-native-8).
+               This kept the SSML string so `onRangeStart`'s offsets would index
+               it, but a resume then spoke a substring of the markup: no
+               `<speak>`, possibly half a `<phoneme>` tag, read aloud or
+               rejected. `resume()` re-speaks the plain line from its start when
+               SSML was used (`lastWasSsml`), and from the boundary otherwise. */
+            lastSpokenText = text;
             speaking = speakResult == TextToSpeech.SUCCESS;
+            if (!speaking) {
+                currentUtteranceId = null;
+            }
 
             pendingResult.put("ok", speakResult == TextToSpeech.SUCCESS);
             pendingResult.put("accepted", speakResult == TextToSpeech.SUCCESS);
+            pendingResult.put("utteranceId", utteranceId);
             pendingResult.put("usedSsml", androidSsml != null && !androidSsml.isEmpty());
             pendingResult.put("overridesRequested", overrideCount);
             /* Same reporting contract the iOS half states: say which voice
@@ -616,9 +681,13 @@ public class ForayTtsPlugin extends Plugin implements TextToSpeech.OnInitListene
         boolean accepted = false;
         if (tts != null && !ttsInitFailed && speaking && !paused) {
             try {
-                tts.stop();
+                /* Flags BEFORE the stop (mobile-native-3): the stop's own
+                   callbacks can arrive on the engine's thread before
+                   `tts.stop()` returns, and `onEngineError` must see a pause,
+                   not a line that failed. */
                 paused = true;
                 speaking = false;
+                tts.stop();
                 accepted = true;
             } catch (Exception e) {
                 Log.w(TAG, "pause() failed", e);
@@ -652,15 +721,22 @@ public class ForayTtsPlugin extends Plugin implements TextToSpeech.OnInitListene
         boolean fromStart = false;
         if (tts != null && !ttsInitFailed && paused && lastSpokenText != null) {
             try {
-                int from = lastBoundary;
+                int from = lastWasSsml ? 0 : lastBoundary;
                 if (from < 0 || from >= lastSpokenText.length()) {
                     from = 0;
                 }
                 fromStart = from == 0;
                 String remainder = lastSpokenText.substring(from);
                 Bundle params = new Bundle();
+                /* The SAME utterance id (mobile-native-2): the remainder is
+                   the rest of the line the page is waiting on, so its end is
+                   that line's end. Plain text always (mobile-native-8). */
+                String resumedId = currentUtteranceId != null ? currentUtteranceId : UUID.randomUUID().toString();
+                currentUtteranceId = resumedId;
+                paused = false;
+                speaking = true;
                 int speakResult = tts.speak(
-                    remainder, TextToSpeech.QUEUE_FLUSH, params, UUID.randomUUID().toString()
+                    remainder, TextToSpeech.QUEUE_FLUSH, params, resumedId
                 );
                 accepted = speakResult == TextToSpeech.SUCCESS;
                 if (accepted) {
@@ -670,10 +746,14 @@ public class ForayTtsPlugin extends Plugin implements TextToSpeech.OnInitListene
                        — off by however far the first pause had got. */
                     lastSpokenText = remainder;
                     lastBoundary = 0;
-                    paused = false;
-                    speaking = true;
+                    lastWasSsml = false;
+                } else {
+                    paused = true;
+                    speaking = false;
                 }
             } catch (Exception e) {
+                paused = true;
+                speaking = false;
                 Log.w(TAG, "resume() failed", e);
             }
         }
@@ -702,8 +782,13 @@ public class ForayTtsPlugin extends Plugin implements TextToSpeech.OnInitListene
         JSObject result = new JSObject();
         result.put("platform", "android");
         boolean accepted = false;
+        /* Forgotten BEFORE the stop (mobile-native-2/3): the stop's own
+           callbacks are then for no utterance this plugin is on. */
+        currentUtteranceId = null;
         if (tts != null && !ttsInitFailed && (speaking || paused)) {
             try {
+                speaking = false;
+                paused = false;
                 tts.stop();
                 accepted = true;
             } catch (Exception e) {
@@ -719,6 +804,28 @@ public class ForayTtsPlugin extends Plugin implements TextToSpeech.OnInitListene
         result.put("state", stateWord());
         result.put("reason", accepted ? "" : "nothing to act on");
         call.resolve(result);
+    }
+
+    /**
+     * An engine error on the utterance this plugin is speaking: the line is
+     * over, and the page is told so at once as a {@code finished} carrying
+     * {@code error}, so the queue moves on instead of waiting out its deadline
+     * (audit round 3, mobile-native-3). Ignored for any other utterance, and
+     * while paused (a pause is a stop this plugin made).
+     */
+    private void onEngineError(String utteranceId, int errorCode) {
+        if (utteranceId == null || !utteranceId.equals(currentUtteranceId) || paused) {
+            return;
+        }
+        final boolean audition = currentIsAudition;
+        currentUtteranceId = null;
+        speaking = false;
+        paused = false;
+        JSObject finished = new JSObject();
+        finished.put("utteranceId", utteranceId);
+        finished.put("audition", audition);
+        finished.put("error", errorCode);
+        notifyListeners(FINISHED_EVENT, finished);
     }
 
     /** {@code speaking | paused | idle}. {@code paused} is checked first for
@@ -801,7 +908,45 @@ public class ForayTtsPlugin extends Plugin implements TextToSpeech.OnInitListene
          *  {@code "cpu"} reads as a fallback that fired and it is not one: it
          *  is the only path compiled. */
         default boolean acceleratorWired() { return false; }
+
+        /** Why the last {@link #synthesize} threw, as TOKENS (L03, L36):
+         *  ORT's error code, the operator it named, the stage. Never the
+         *  message. Null when nothing threw or the engine does not say. */
+        default ProbeFailure lastFailure() { return null; }
+
+        /** Why the cold session did not open, from the same token set as
+         *  {@link ProbeFailure#code}, or null. */
+        default String loadError() { return null; }
+
+        /** Free what {@link #load} opened (audit round 3, mobile-native-5):
+         *  an ORT session holds the ~86 MB model in native memory, which a
+         *  dropped Java reference never frees. Called once, after the probe. */
+        default void close() { }
     }
+
+    /** One inference failure in closed tokens ({@code player/kokoro-probe.js}'s
+     *  {@code ORT_CODES} and {@code ORT_STAGES}) plus the failing operator's
+     *  name when the runtime named one. Built so nothing else CAN be stored:
+     *  an ORT file error's text can carry the app's data-directory path. */
+    public static final class ProbeFailure {
+        public final String code;
+        public final String op;
+        public final String stage;
+
+        public ProbeFailure(String code, String op, String stage) {
+            this.code = code;
+            this.op = op;
+            this.stage = stage;
+        }
+    }
+
+    /** The probe's own thread (audit round 3, mobile-native-5). Two model
+     *  loads and a synthesis per line used to run inside the @PluginMethod,
+     *  on the one plugin thread every Capacitor call shares, so a probe run
+     *  mid-Foray stalled ForayAudio.setNowPlaying, ForayTts.speak/pause and
+     *  the vault for its whole length. One thread, so two taps queue rather
+     *  than load the model twice at once. */
+    private static final ExecutorService PROBE_EXECUTOR = Executors.newSingleThreadExecutor();
 
     /** The seam. Null on every build that ships today; K-04 sets it. */
     public static KokoroProbeEngine probeEngine = null;
@@ -821,25 +966,22 @@ public class ForayTtsPlugin extends Plugin implements TextToSpeech.OnInitListene
          * key, and "the page sent no passage" is an ANSWER this method has a
          * code for, not an exception to be caught two frames away. */
         org.json.JSONArray rawLines = passage == null ? null : passage.optJSONArray("lines");
-        List<int[]> idLines = new ArrayList<>();
+        /* KV-R2: ONE INFERENCE PER SENTENCE CHUNK, the same passage iOS reads.
+         * Each line's `chunks` (tools/narration/phonemize.py's
+         * `sentence_chunks`) are flattened in order; a line with no chunk ids
+         * is unphonemized. The phone never cuts a chunk itself (deck D3). */
+        List<int[]> idLines = null;
         int lineCount = 0;
         try {
             if (rawLines != null) {
                 lineCount = rawLines.length();
-                for (int i = 0; i < lineCount; i++) {
-                    org.json.JSONObject line = rawLines.getJSONObject(i);
-                    org.json.JSONArray ids = line.optJSONArray("ids");
-                    if (ids == null || ids.length() == 0) continue;
-                    int[] out = new int[ids.length()];
-                    for (int j = 0; j < ids.length(); j++) out[j] = ids.getInt(j);
-                    idLines.add(out);
-                }
+                idLines = chunkIds(rawLines);
             }
         } catch (Exception e) {
             /* A malformed passage is `passage-unphonemized`, not a crash: the
              * page owns that file and a founder reading the record needs to be
              * told which artefact to fix, not that something threw. */
-            idLines.clear();
+            idLines = null;
         }
 
         if (lineCount == 0) {
@@ -848,7 +990,7 @@ public class ForayTtsPlugin extends Plugin implements TextToSpeech.OnInitListene
             call.resolve(result);
             return;
         }
-        if (idLines.size() != lineCount) {
+        if (idLines == null) {
             result.put("ok", false);
             result.put("reason", "passage-unphonemized");
             call.resolve(result);
@@ -884,8 +1026,69 @@ public class ForayTtsPlugin extends Plugin implements TextToSpeech.OnInitListene
          * method returns. An engine registered at startup would be running
          * ONNX Runtime in every listener's app for a card that measures one
          * phone. */
-        KokoroProbeEngine engine = probeEngine;
-        if (engine == null) engine = KokoroOrtProbeEngine.create(getContext());
+        final List<int[]> lines = idLines;
+        PROBE_EXECUTOR.execute(() -> {
+            KokoroProbeEngine owned = null;
+            try {
+                KokoroProbeEngine engine = probeEngine;
+                if (engine == null) {
+                    engine = KokoroOrtProbeEngine.create(getContext());
+                    owned = engine;
+                }
+                measureProbe(call, result, lines, passage, engine);
+            } catch (Throwable t) {
+                Log.e(TAG, "the Kokoro probe failed", t);
+                JSObject failed = new JSObject();
+                failed.put("platform", "android");
+                failed.put("ok", false);
+                failed.put("reason", "threw");
+                failed.put("detail", t.getClass().getSimpleName());
+                call.resolve(failed);
+            } finally {
+                /* The engine THIS call built is closed here, whatever
+                   happened (mobile-native-5); a test's injected
+                   `probeEngine` belongs to the test. */
+                if (owned != null) {
+                    try { owned.close(); } catch (Throwable ignored) { }
+                }
+            }
+        });
+    }
+
+    /** Every chunk's ids, in passage order, or null when any line has none
+     *  (KV-R2). A line from before KV-R2 that carries only a whole-line
+     *  {@code ids} still counts as one chunk, the same rule as iOS's
+     *  {@code chunkIds}. */
+    static List<int[]> chunkIds(org.json.JSONArray lines) throws org.json.JSONException {
+        List<int[]> out = new ArrayList<>();
+        for (int i = 0; i < lines.length(); i++) {
+            org.json.JSONObject line = lines.getJSONObject(i);
+            org.json.JSONArray chunks = line.optJSONArray("chunks");
+            if (chunks != null && chunks.length() > 0) {
+                for (int c = 0; c < chunks.length(); c++) {
+                    int[] ids = idsOf(chunks.getJSONObject(c).optJSONArray("ids"));
+                    if (ids == null) return null;
+                    out.add(ids);
+                }
+            } else {
+                int[] ids = idsOf(line.optJSONArray("ids"));
+                if (ids == null) return null;
+                out.add(ids);
+            }
+        }
+        return out.isEmpty() ? null : out;
+    }
+
+    private static int[] idsOf(org.json.JSONArray ids) throws org.json.JSONException {
+        if (ids == null || ids.length() == 0) return null;
+        int[] out = new int[ids.length()];
+        for (int j = 0; j < ids.length(); j++) out[j] = ids.getInt(j);
+        return out;
+    }
+
+    /** The measurement itself, on {@link #PROBE_EXECUTOR}. */
+    private void measureProbe(PluginCall call, JSObject result, List<int[]> idLines, JSObject passage,
+                              KokoroProbeEngine engine) {
         if (engine == null) {
             result.put("ok", false);
             result.put("reason", "engine-absent");
@@ -893,8 +1096,48 @@ public class ForayTtsPlugin extends Plugin implements TextToSpeech.OnInitListene
             return;
         }
 
+        Context ctx = getContext();
+        /* KV-R2: the record names its pass, the same key iOS's two passes
+         * carry. Android runs ONE: q8f16 on ORT's CPU provider (deck D13) —
+         * no NNAPI in this deck. What it adds is finiteness per chunk
+         * (`nonFiniteLines` counts chunks), so a Pixel row can say whether
+         * Android shares the fp16 NaN Apple silicon showed. */
+        result.put("pass", "cpu");
+        /* WHAT RAN, AND ON WHAT (L07-L09). Read before any stopwatch starts —
+         * the model hash reads 86 MB and must not land in a timed section.
+         * Build.MODEL (a model name), never a serial or a device id. */
+        result.put("cores", Runtime.getRuntime().availableProcessors());
+        String device = deviceToken(Build.MODEL);
+        if (device != null) result.put("device", device);
+        String os = deviceToken(Build.VERSION.RELEASE);
+        if (os != null) result.put("os", os);
+        if (engine instanceof KokoroOrtProbeEngine) {
+            KokoroOrtProbeEngine ort = (KokoroOrtProbeEngine) engine;
+            String version = ort.ortVersion();
+            if (version != null) result.put("ortVersion", version);
+            /* `makeSession` sets no intra-op thread count, so ORT's default —
+             * 0, "ORT picks" — is what ran, the same value iOS passes. */
+            result.put("intraThreads", 0);
+            putModelFileFacts(result, ort.modelPath());
+        }
+
+        /* HEAT, POWER AND MEMORY PRESSURE (L10/L11/L35). */
+        PowerManager pm = ctx == null ? null : (PowerManager) ctx.getSystemService(Context.POWER_SERVICE);
+        BatteryManager bm = ctx == null ? null : (BatteryManager) ctx.getSystemService(Context.BATTERY_SERVICE);
+        String thermalStart = thermalToken(pm);
+        if (thermalStart != null) result.put("thermalStart", thermalStart);
+        if (pm != null) result.put("lowPower", pm.isPowerSaveMode());
+        int batteryStart = batteryPercent(bm);
+        long batteryStartedAt = System.nanoTime();
+        long baseMemory = totalPssBytes();
+        if (baseMemory > 0) result.put("baseMemoryBytes", (double) baseMemory);
+        long peakMemory = baseMemory;
+
         double speed = passage.optDouble("speed", 1.0);
         double[] load = engine.load();
+        String loadErr = engine.loadError();
+        if (loadErr != null) result.put("loadErr", loadErr);
+        peakMemory = Math.max(peakMemory, totalPssBytes());
         double synthColdMs = 0;
         double synthWarmMs = 0;
         /* THE RENDERED SECONDS, AND #685's WHOLE STORY. `out[1]` is the audio
@@ -911,27 +1154,86 @@ public class ForayTtsPlugin extends Plugin implements TextToSpeech.OnInitListene
         double audioWarmSec = 0;
         int synthFailures = 0;
         String firstFailure = null;
+        ProbeFailure firstOrtFailure = null;
+        /* One token per line, in passage order (L05): `firstFailure` alone
+         * said what went wrong FIRST and nothing about the other lines. */
+        JSArray lineOutcomes = new JSArray();
+        int nonFiniteLines = 0;
+        int silentLines = 0;
         for (int i = 0; i < idLines.size(); i++) {
             double[] out = engine.synthesize(idLines.get(i), speed);
             String why = engine.lastSynthReason();
+            double audioSec = out.length > 1 ? out[1] : 0;
             if (why != null) {
                 synthFailures++;
-                if (firstFailure == null) firstFailure = why;
+                // A failed line is never audio, whatever length it had (L04).
+                audioSec = 0;
+                if (firstFailure == null) {
+                    firstFailure = why;
+                    result.put("bgAtFail", !isForeground());
+                }
+                if (firstOrtFailure == null) firstOrtFailure = engine.lastFailure();
+                if ("non-finite".equals(why)) nonFiniteLines++;
+                if ("silent".equals(why)) silentLines++;
             }
+            lineOutcomes.put(lineOutcome(why));
+            // Sampled between lines, never inside a timed synthesis.
+            peakMemory = Math.max(peakMemory, totalPssBytes());
             /* FIRST LINE IS THE COLD NUMBER, the rest are warm — the go rule
              * in the card is stated on the warm figure alone, and a mean that
              * folded a two-second first inference into it would fail a phone
              * that is fine. */
             if (i == 0) {
                 synthColdMs = out[0];
-                audioColdSec = out.length > 1 ? out[1] : 0;
+                audioColdSec = audioSec;
             } else {
                 synthWarmMs += out[0];
-                audioWarmSec += out.length > 1 ? out[1] : 0;
+                audioWarmSec += audioSec;
             }
         }
 
+        /* BOTH EXIT PATHS carry everything below: the failure path is the one
+         * a founder needs it on, and it used to omit headroom and the
+         * locked-screen reading (L34/L35). */
+        String thermalEnd = thermalToken(pm);
+        if (thermalEnd != null) result.put("thermalEnd", thermalEnd);
+        int batteryEnd = batteryPercent(bm);
+        if (batteryStart >= 0 && batteryEnd >= 0) {
+            result.put("batteryDeltaPct", (double) (batteryStart - batteryEnd));
+            result.put("batteryWindowSec", (System.nanoTime() - batteryStartedAt) / 1e9);
+        }
+        Boolean lowMemory = systemLowMemory(ctx);
+        if (lowMemory != null) result.put("memWarn", lowMemory);
+        result.put("lineOutcomes", lineOutcomes);
+        result.put("nonFiniteLines", nonFiniteLines);
+        result.put("silentLines", silentLines);
+        if (firstOrtFailure != null) {
+            result.put("ortCode", firstOrtFailure.code);
+            result.put("ortStage", firstOrtFailure.stage);
+            if (firstOrtFailure.op != null) result.put("ortOp", firstOrtFailure.op);
+        }
         Runtime rt = Runtime.getRuntime();
+        result.put("model", engine.modelName());
+        result.put("provider", engine.provider());
+        result.put("acceleratorWired", engine.acceleratorWired());
+        result.put("modelLoadColdMs", load.length > 0 ? load[0] : 0);
+        result.put("modelLoadWarmMs", load.length > 1 ? load[1] : 0);
+        result.put("synthColdMs", synthColdMs);
+        result.put("synthWarmMs", synthWarmMs);
+        result.put("synthFailures", synthFailures);
+        result.put("lines", idLines.size());
+        /* A TRUE PEAK NOW. This was `Debug.getNativeHeapAllocatedSize()`
+         * read once at the end — the CURRENT native heap, not the high-water
+         * mark the 400 MB ceiling is about, and blind to ORT's mmapped
+         * weights. The total PSS is sampled after the load and after every
+         * line, and the largest is reported: the Android reading closest to
+         * iOS's `phys_footprint` peak. */
+        result.put("peakMemoryBytes", (double) Math.max(peakMemory, 0));
+        result.put("availableMemoryBytes", (double) (rt.maxMemory() - (rt.totalMemory() - rt.freeMemory())));
+        /* The honest weaker fact, same as iOS: the app was not resumed when
+         * the last line finished. HUMAN-ACTIONS.md H1's instruction is what
+         * makes it the strong claim. */
+        result.put("lockedScreenCompleted", !isForeground());
 
         /* NOT ONE LINE RENDERED IS A REFUSAL, NOT A MEASUREMENT. The weights
          * are here and the runtime loaded, so `model-absent`/`engine-absent`
@@ -943,21 +1245,11 @@ public class ForayTtsPlugin extends Plugin implements TextToSpeech.OnInitListene
             result.put("ok", false);
             result.put("reason", "synthesis-failed");
             result.put("detail", firstFailure == null ? "zero-samples" : firstFailure);
-            result.put("model", engine.modelName());
-            result.put("provider", engine.provider());
-            result.put("modelLoadColdMs", load.length > 0 ? load[0] : 0);
-            result.put("modelLoadWarmMs", load.length > 1 ? load[1] : 0);
-            result.put("synthColdMs", synthColdMs);
-            result.put("synthWarmMs", synthWarmMs);
-            result.put("synthFailures", synthFailures);
-            result.put("lines", idLines.size());
             /* Reported as the zeroes they are, so the record is internally
              * consistent: rendered audio of 0 s makes every RTF `null` in
              * `summarizeProbe` rather than a quotient over an estimate. */
             result.put("audioColdSec", 0.0);
             result.put("audioWarmSec", 0.0);
-            result.put("acceleratorWired", engine.acceleratorWired());
-            result.put("peakMemoryBytes", (double) android.os.Debug.getNativeHeapAllocatedSize());
             call.resolve(result);
             return;
         }
@@ -965,30 +1257,122 @@ public class ForayTtsPlugin extends Plugin implements TextToSpeech.OnInitListene
         result.put("ok", true);
         result.put("reason", "");
         result.put("detail", firstFailure == null ? "" : firstFailure);
-        result.put("model", engine.modelName());
-        result.put("provider", engine.provider());
-        result.put("acceleratorWired", engine.acceleratorWired());
-        result.put("modelLoadColdMs", load.length > 0 ? load[0] : 0);
-        result.put("modelLoadWarmMs", load.length > 1 ? load[1] : 0);
-        result.put("synthColdMs", synthColdMs);
-        result.put("synthWarmMs", synthWarmMs);
         result.put("audioColdSec", audioColdSec);
         result.put("audioWarmSec", audioWarmSec);
-        result.put("synthFailures", synthFailures);
-        result.put("lines", idLines.size());
-        /* `totalMemory - freeMemory` is the JVM heap, which is NOT where ORT's
-         * arena lives — the native allocation is the number the deck's 833 MB
-         * iPad reading is about. `Debug.getNativeHeapAllocatedSize()` is the
-         * one the card names, and it is reported ALONGSIDE the JVM figure
-         * rather than instead of it, because a reader comparing an Android
-         * number to an iOS `phys_footprint` needs to know which is which. */
-        result.put("peakMemoryBytes", (double) android.os.Debug.getNativeHeapAllocatedSize());
-        result.put("availableMemoryBytes", (double) (rt.maxMemory() - (rt.totalMemory() - rt.freeMemory())));
-        /* The honest weaker fact, same as iOS: the app was not resumed when
-         * the last line finished. HUMAN-ACTIONS.md H1's instruction is what
-         * makes it the strong claim. */
-        result.put("lockedScreenCompleted", !isForeground());
         call.resolve(result);
+    }
+
+    /** A line's outcome token (L05), from its {@code SYNTH_REASONS} code. */
+    static String lineOutcome(String reason) {
+        if (reason == null) return "ok";
+        switch (reason) {
+            case "inference-threw": return "threw";
+            case "no-output": return "no-output";
+            case "non-finite": return "nan";
+            case "silent": return "silent";
+            case "session-absent": return "skip";
+            default: return "zero";
+        }
+    }
+
+    /** A value admitted as a diagnostics TOKEN: every character outside
+     *  {@code [A-Za-z0-9._-]} becomes '-', capped at 32; null when empty. */
+    static String deviceToken(String raw) {
+        if (raw == null) return null;
+        StringBuilder out = new StringBuilder();
+        for (int i = 0; i < raw.length() && out.length() < 32; i++) {
+            char c = raw.charAt(i);
+            boolean ok = (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9')
+                    || c == '.' || c == '_' || c == '-';
+            out.append(ok ? c : '-');
+        }
+        return out.length() == 0 ? null : out.toString();
+    }
+
+    /** PowerManager's thermal status in iOS's four words (L10), or null
+     *  below API 29, where there is no such reading. */
+    private static String thermalToken(PowerManager pm) {
+        if (pm == null || Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return null;
+        try {
+            switch (pm.getCurrentThermalStatus()) {
+                case PowerManager.THERMAL_STATUS_NONE:
+                case PowerManager.THERMAL_STATUS_LIGHT:
+                    return "nominal";
+                case PowerManager.THERMAL_STATUS_MODERATE:
+                    return "fair";
+                case PowerManager.THERMAL_STATUS_SEVERE:
+                    return "serious";
+                case PowerManager.THERMAL_STATUS_CRITICAL:
+                case PowerManager.THERMAL_STATUS_EMERGENCY:
+                case PowerManager.THERMAL_STATUS_SHUTDOWN:
+                    return "critical";
+                default:
+                    return null;
+            }
+        } catch (Throwable t) {
+            return null;
+        }
+    }
+
+    /** Battery percent 0..100, or -1 when unknown. */
+    private static int batteryPercent(BatteryManager bm) {
+        if (bm == null) return -1;
+        try {
+            int pct = bm.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY);
+            return (pct >= 0 && pct <= 100) ? pct : -1;
+        } catch (Throwable t) {
+            return -1;
+        }
+    }
+
+    /** This process's total PSS in bytes, or 0 when it cannot be read. */
+    private static long totalPssBytes() {
+        try {
+            android.os.Debug.MemoryInfo info = new android.os.Debug.MemoryInfo();
+            android.os.Debug.getMemoryInfo(info);
+            return info.getTotalPss() * 1024L;
+        } catch (Throwable t) {
+            return 0;
+        }
+    }
+
+    /** Whether the system considers itself low on memory right now (L35), or
+     *  null when it cannot say. */
+    private static Boolean systemLowMemory(Context ctx) {
+        if (ctx == null) return null;
+        try {
+            ActivityManager am = (ActivityManager) ctx.getSystemService(Context.ACTIVITY_SERVICE);
+            if (am == null) return null;
+            ActivityManager.MemoryInfo info = new ActivityManager.MemoryInfo();
+            am.getMemoryInfo(info);
+            return info.lowMemory;
+        } catch (Throwable t) {
+            return null;
+        }
+    }
+
+    /** The model file's length and the first 8 hex digits of its SHA-256
+     *  (L08), streamed in 1 MiB chunks. Nothing is put when the file cannot
+     *  be read to the end — a partial hash is not one. */
+    private static void putModelFileFacts(JSObject result, String path) {
+        if (path == null) return;
+        try (java.io.InputStream in = new java.io.FileInputStream(path)) {
+            java.security.MessageDigest sha = java.security.MessageDigest.getInstance("SHA-256");
+            byte[] buf = new byte[1 << 20];
+            long bytes = 0;
+            int n;
+            while ((n = in.read(buf)) > 0) {
+                sha.update(buf, 0, n);
+                bytes += n;
+            }
+            byte[] digest = sha.digest();
+            StringBuilder hex = new StringBuilder();
+            for (int i = 0; i < 4; i++) hex.append(String.format(Locale.ROOT, "%02x", digest[i] & 0xff));
+            result.put("modelBytes", bytes);
+            result.put("modelSha8", hex.toString());
+        } catch (Throwable t) {
+            Log.w(TAG, "could not hash the Kokoro model", t);
+        }
     }
 
     /** Whether the app is frontmost, tracked from Capacitor's OWN lifecycle

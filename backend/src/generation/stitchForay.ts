@@ -64,6 +64,14 @@ export class ActCoverageFailedError extends Error {
 export interface StitchForayOptions {
   continuity: SmoothActsOptions;
   /**
+   * gen-4 (round-3 audit): per act, per slot (by position), the slot id the
+   * Foray's `slots` declares (`slotIdsFromSpine`). Every item is stamped with
+   * it rather than with a slug of its slot's title, so the items and `slots`
+   * cannot disagree (a reworded or a duplicated title). Optional: without it
+   * items re-slug the title, as before.
+   */
+  slotIds?: readonly (readonly string[])[];
+  /**
    * WS-D2 (docs/curation/generation-fix-plan-2026-09-09.md, "D2 (streaming
    * publish)"): fired once per act, the instant that act's own items are
    * assembled and its coverage validated (see the loop below) — before the
@@ -159,7 +167,10 @@ export class ForayStitcher {
     const introduction = await smoothActIntroduction(this.deepenedActs, i, this.options.continuity, this.ctx);
 
     // (a) Within-act deterministic stitching.
-    const stitched = stitchAct(written, actLabel);
+    const actSlotIds = this.options.slotIds?.[i];
+    const stitched = stitchAct(written, actLabel, actSlotIds);
+    const firstSlotId = actSlotIds?.[0];
+    const lastSlotId = actSlotIds?.[act.slots.length - 1];
 
     const totalBeats = countActBeats(written);
     const coverageResult = validateActCoverage(stitched.coverage, totalBeats);
@@ -180,6 +191,7 @@ export class ForayStitcher {
         kind: "narration",
         narrationKind: "seam",
         slotTitle: act.slots[0]?.title,
+        ...(firstSlotId !== undefined ? { slotId: firstSlotId } : {}),
         mode: "Frame",
         script: introduction,
         id: `${actLabel}-introduction`
@@ -189,6 +201,7 @@ export class ForayStitcher {
         kind: "narration",
         narrationKind: "seam",
         slotTitle: act.slots[act.slots.length - 1]?.title,
+        ...(lastSlotId !== undefined ? { slotId: lastSlotId } : {}),
         mode: "Frame",
         script: act.exit,
         id: `${actLabel}-exit`

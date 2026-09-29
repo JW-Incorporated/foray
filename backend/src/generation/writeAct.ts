@@ -205,9 +205,11 @@ export interface WriteActOptions {
    * does not need introducing again in act 3.
    *
    * Omitted means "none yet", which is what act 1 passes and what every
-   * caller that does not care passes. `writeActNarration` returns the set as
-   * it stands after this act (`showsNamed` on the result of
-   * `clipBriefsFor`), and `runPipeline` carries it forward.
+   * caller that does not care passes. Acts are narrated concurrently (G-32),
+   * so nothing is carried from one act's narration to the next: `runPipeline`
+   * computes every act's set up front from the sourced acts
+   * (`showsHeardBeforeEachAct` in writeNarration.ts, gen-8) and
+   * `writeNarration` hands each act its own.
    */
   showsIntroduced?: ReadonlyArray<string>;
 }

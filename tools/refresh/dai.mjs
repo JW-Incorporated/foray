@@ -48,7 +48,7 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
-import { UA, ACCEPT_LANGUAGE, awaitHostSlot } from "../segments/politeness.mjs";
+import { UA, ACCEPT_LANGUAGE, awaitHostSlot, discardBody } from "../segments/politeness.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const list = JSON.parse(readFileSync(join(HERE, "dai-hosts.json"), "utf8"));
@@ -173,7 +173,7 @@ export async function resolveChain(url, {
     status = res.status ?? null;
     /* Two bytes were asked for and the body is not wanted at all; an
        un-cancelled body on a manual redirect keeps the socket open. */
-    if (res.body && typeof res.body.cancel === "function") await res.body.cancel().catch(() => {});
+    await discardBody(res);
 
     const location = status >= 300 && status < 400 ? res.headers?.get?.("location") : null;
     if (!location) {

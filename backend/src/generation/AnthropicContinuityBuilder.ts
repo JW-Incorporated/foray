@@ -5,7 +5,7 @@ import { env } from "../config/env";
 import { costFor, modelFor } from "../config/models";
 import { defaultBudgetGuard, type BudgetGuard } from "../cost/budgetGuard";
 import type { ContinuityBuilder, ContinuityBuildContext, ContinuitySmoothRequest, ContinuitySmoothResult } from "./ContinuityBuilder";
-import { recordUsage } from "./usageTracking";
+import { createMessage } from "./anthropicCall";
 import { NARRATOR_STRUCTURE_RULE } from "../copy/narratorStructure";
 
 /**
@@ -62,13 +62,12 @@ export class AnthropicContinuityBuilder implements ContinuityBuilder {
       sessionId: ctx.sessionId
     });
 
-    const response = await this.client.messages.create({
+    const response = await createMessage(this.client, {
       model: MODEL,
       max_tokens: MAX_OUTPUT_TOKENS,
       messages: [{ role: "user", content: promptText }]
-    });
+    }, "continuity-smooth");
 
-    recordUsage(response.usage);
     const textBlock = response.content.find((b: Anthropic.ContentBlock): b is Anthropic.TextBlock => b.type === "text");
     if (!textBlock) throw new Error("Anthropic continuity-smooth response had no text block");
 
@@ -87,7 +86,7 @@ export class AnthropicContinuityBuilder implements ContinuityBuilder {
         sessionId: ctx.sessionId
       });
 
-      const retryResponse = await this.client.messages.create({
+      const retryResponse = await createMessage(this.client, {
         model: MODEL,
         max_tokens: MAX_OUTPUT_TOKENS,
         messages: [
@@ -95,7 +94,7 @@ export class AnthropicContinuityBuilder implements ContinuityBuilder {
           { role: "assistant", content: textBlock.text },
           { role: "user", content: reaskLine }
         ]
-      });
+      }, "continuity-smooth");
       const retryTextBlock = retryResponse.content.find((b: Anthropic.ContentBlock): b is Anthropic.TextBlock => b.type === "text");
       if (!retryTextBlock) throw new Error("Anthropic continuity-smooth re-ask response had no text block");
       return retryTextBlock.text;

@@ -63,6 +63,7 @@ import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 
 import { createRelay, DEFAULT_DIR, DEFAULT_PORT } from "./relay.mjs";
+import { describeExit, exitCodeFor } from "./exit-code.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 export const REPO_ROOT = path.resolve(HERE, "..", "..");
@@ -141,7 +142,8 @@ async function main() {
 
   console.log(`[start-run] relay up on http://127.0.0.1:${port}`);
   console.log(`[start-run] parked requests appear in ${relay.dirs.queueDir}`);
-  console.log(`[start-run] answer one by writing <id>.reply.txt beside it, or POST /answer/<id>`);
+  console.log(`[start-run] answer one by writing <id>.reply.txt beside it, or POST /answer/<id> with "Authorization: Bearer ${relay.token}"`);
+  console.log(`[start-run] answer token: ${relay.token} (also in ${relay.dirs.tokenPath})`);
   console.log(`[start-run] kpi.jsonl: ${relay.dirs.kpiPath}`);
 
   if (args.relayOnly) {
@@ -177,10 +179,11 @@ async function main() {
   process.on("SIGINT", stop);
   process.on("SIGTERM", stop);
 
-  const code = await new Promise((resolve) => child.on("exit", resolve));
+  /* data-tools-8: a driver ended by a signal is a failure (128 + n), never exit 0. */
+  const { code, signal } = await new Promise((resolve) => child.on("exit", (c, sig) => resolve({ code: c, signal: sig })));
   await relay.close();
-  console.log(`[start-run] driver exited ${code}; relay stopped. KPI rows: ${relay.dirs.kpiPath}`);
-  process.exitCode = code ?? 0;
+  console.log(`[start-run] driver exited ${describeExit(code, signal)}; relay stopped. KPI rows: ${relay.dirs.kpiPath}`);
+  process.exitCode = exitCodeFor(code, signal);
 }
 
 const isMain = process.argv[1] && path.resolve(process.argv[1]) === path.resolve(fileURLToPath(import.meta.url));

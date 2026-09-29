@@ -171,6 +171,34 @@ test("reconciliation: a release that exists with no landed pointer PR is still r
   }
 });
 
+/* Round-3 review (L8): pointerChanged compared the tag and shard state but not
+   `version`, so a committed v1 pointer for the current release was never
+   rewritten at POINTER_SCHEMA_VERSION.
+   MUTATION: drop the `version` clause -- run 2 reports nothing to reconcile
+   and the file stays at version 1. */
+test("a pointer at an older schema version for the same release is rewritten", async () => {
+  const root = await mkdtemp(join(tmpdir(), "shows-e2e-"));
+  const buildOutDir = join(root, "out");
+  const statePath = join(root, "state", "last-build.json");
+  const pointerPath = join(root, "shows-index-pointer.json");
+  const { ghExec } = fakeGhRegistry();
+  const log = () => {};
+  try {
+    await seedBuildOutput({ buildOutDir, statePath, exportVersion: "local:abc123", checksum: "abc123" });
+    const buildExecRan = async () => ({ stdout: "BUILD_COMPLETE: out (export_version local:abc123)" });
+    await runAndPublish(["--dump-file", "a"], { buildExec: buildExecRan, ghExec, statePath, buildOutDir, pointerPath, repo: "org/repo", log });
+    const written = JSON.parse(await readFile(pointerPath, "utf8"));
+    assert.ok(written.version > 1, "the builder writes the bumped schema version");
+    await writeFile(pointerPath, JSON.stringify({ ...written, version: 1 }, null, 2));
+
+    const result = await runAndPublish(["--dump-file", "a"], { buildExec: buildExecRan, ghExec, statePath, buildOutDir, pointerPath, repo: "org/repo", log });
+    assert.equal(result.pointerChanged, true);
+    assert.equal(JSON.parse(await readFile(pointerPath, "utf8")).version, written.version);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test("a genuinely new dump version (different export_version) DOES publish a second release", async () => {
   const root = await mkdtemp(join(tmpdir(), "shows-e2e-"));
   const buildOutDir = join(root, "out");

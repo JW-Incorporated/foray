@@ -69,3 +69,32 @@ test("importing the launcher does not start a warm", async () => {
   const source = fs.readFileSync(path.join(REPO_ROOT, "tools", "generation", "warm-transcript-index.mjs"), "utf8");
   assert.match(source, /if \(isMain\) await main\(\);/);
 });
+
+/* ---------------------------------------------- data-tools-8: exit status */
+
+import { exitCodeFor, describeExit } from "./exit-code.mjs";
+import { spawnSync } from "node:child_process";
+
+test("a child ended by a signal is a failure: 128 + n, never 0 (data-tools-8)", () => {
+  // MUTATION: `code ?? 0` again — SIGKILL then reads as success, and a caller
+  // gating a run on the warmer's exit code treats an aborted warm as clean.
+  assert.equal(exitCodeFor(0, null), 0);
+  assert.equal(exitCodeFor(1, null), 1);
+  assert.equal(exitCodeFor(null, "SIGKILL"), 137);
+  assert.equal(exitCodeFor(null, "SIGINT"), 130);
+  assert.equal(exitCodeFor(null, "SIGNOTREAL"), 1);
+  assert.equal(exitCodeFor(null, null), 1);
+  assert.match(describeExit(null, "SIGTERM"), /signal SIGTERM \(exit 143\)/);
+});
+
+test("both launchers pass the child's (code, signal) through exitCodeFor (data-tools-8)", () => {
+  // MUTATION: leave either launcher on `process.exitCode = code ?? 0`.
+  for (const file of ["start-run.mjs", "warm-transcript-index.mjs"]) {
+    const src = fs.readFileSync(path.join(REPO_ROOT, "tools", "generation", file), "utf8");
+    assert.doesNotMatch(src, /code \?\? 0/, `${file} still turns a signal into exit 0`);
+    assert.match(src, /process\.exitCode = exitCodeFor\(code, signal\)/, `${file} does not use exitCodeFor`);
+  }
+  /* And the real thing: a node child killed by a signal reports code null. */
+  const killed = spawnSync(process.execPath, ["-e", "process.kill(process.pid, 'SIGTERM')"]);
+  if (process.platform !== "win32") assert.equal(exitCodeFor(killed.status, killed.signal), 143);
+});

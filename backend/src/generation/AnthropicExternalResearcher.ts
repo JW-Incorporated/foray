@@ -11,7 +11,7 @@ import type {
   PassageRetrievalRequest,
   RetrievedPassage
 } from "./ExternalResearcher";
-import { recordUsage } from "./usageTracking";
+import { createMessage, createWebSearchTurn, createWebSearchTurnKeepingTruncation, webSearchAnswerText } from "./anthropicCall";
 
 /**
  * Real §4.2 external research via the Anthropic API's server-side web
@@ -84,17 +84,23 @@ export class AnthropicExternalResearcher implements ExternalResearcher {
     const estimatedInputTokens = roughTokenEstimate(promptText);
     // Pre-call budget check with a conservative estimate covering both
     // token spend and the worst-case search-call cost for this topic.
-    await this.budgetGuard.checkAndRecord({
-      userId: ctx.userId,
-      operation: "external_research",
-      provider: this.providerName,
-      model: MODEL,
-      estimatedUsd:
-        estimatedInputTokens * USD_PER_INPUT_TOKEN + 500 * USD_PER_OUTPUT_TOKEN + MAX_SEARCHES_PER_TOPIC * USD_PER_SEARCH,
-      sessionId: ctx.sessionId
-    });
+    const meter = () =>
+      this.budgetGuard.checkAndRecord({
+        userId: ctx.userId,
+        operation: "external_research",
+        provider: this.providerName,
+        model: MODEL,
+        estimatedUsd:
+          estimatedInputTokens * USD_PER_INPUT_TOKEN + 500 * USD_PER_OUTPUT_TOKEN + MAX_SEARCHES_PER_TOPIC * USD_PER_SEARCH,
+        sessionId: ctx.sessionId
+      });
+    await meter();
 
-    const response = await this.client.messages.create({
+    /* gen-1 (round-3 audit): a web-search reply is several blocks, and its
+       answer is the text AFTER the last web_search_tool_result, not the first
+       text block (usually an "I'll search for..." preamble). A pause_turn is
+       continued with the same tools (createWebSearchTurn). */
+    const content = await createWebSearchTurn(this.client, {
       model: MODEL,
       max_tokens: 800,
       messages: [{ role: "user", content: promptText }],
@@ -105,11 +111,10 @@ export class AnthropicExternalResearcher implements ExternalResearcher {
           max_uses: MAX_SEARCHES_PER_TOPIC
         } satisfies Anthropic.WebSearchTool20250305
       ]
-    });
+    }, "external-research", meter);
 
-    recordUsage(response.usage);
-    const textBlock = response.content.find((b: Anthropic.ContentBlock): b is Anthropic.TextBlock => b.type === "text");
-    if (!textBlock) throw new Error("Anthropic external-research response had no text block");
+    const answer = webSearchAnswerText(content);
+    if (!answer) throw new Error("Anthropic external-research response had no text block");
 
     const reask = async (): Promise<string> => {
       const reaskLine = "Your previous reply was not valid JSON; reply with the JSON object only.";
@@ -119,7 +124,7 @@ export class AnthropicExternalResearcher implements ExternalResearcher {
       // web_search tool is offered on the re-ask (see messages.create
       // below), so unlike the original call's estimate this one carries no
       // USD_PER_SEARCH cost.
-      const reaskEstimatedInputTokens = roughTokenEstimate(promptText + textBlock.text + reaskLine);
+      const reaskEstimatedInputTokens = roughTokenEstimate(promptText + answer + reaskLine);
       await this.budgetGuard.checkAndRecord({
         userId: ctx.userId,
         operation: "external_research",
@@ -129,21 +134,21 @@ export class AnthropicExternalResearcher implements ExternalResearcher {
         sessionId: ctx.sessionId
       });
 
-      const retryResponse = await this.client.messages.create({
+      const retryResponse = await createMessage(this.client, {
         model: MODEL,
         max_tokens: 800,
         messages: [
           { role: "user", content: promptText },
-          { role: "assistant", content: textBlock.text },
+          { role: "assistant", content: answer },
           { role: "user", content: reaskLine }
         ]
-      });
+      }, "external-research");
       const retryTextBlock = retryResponse.content.find((b: Anthropic.ContentBlock): b is Anthropic.TextBlock => b.type === "text");
       if (!retryTextBlock) throw new Error("Anthropic external-research re-ask response had no text block");
       return retryTextBlock.text;
     };
 
-    return parseLastJsonBlock(ResearchSchema, textBlock.text, "External research output", reask);
+    return parseLastJsonBlock(ResearchSchema, answer, "External research output", reask);
   }
 
   /**
@@ -177,69 +182,80 @@ export class AnthropicExternalResearcher implements ExternalResearcher {
       RETRIEVAL_MAX_OUTPUT_TOKENS,
       Math.ceil((request.maxPassages * request.maxChars) / 4) + 200
     );
-    await this.budgetGuard.checkAndRecord({
-      userId: ctx.userId,
-      operation: "evidence_retrieval",
-      provider: this.providerName,
-      model: MODEL,
-      estimatedUsd:
-        roughTokenEstimate(promptText) * USD_PER_INPUT_TOKEN +
-        estimatedOutputTokens * USD_PER_OUTPUT_TOKEN +
-        MAX_SEARCHES_PER_TOPIC * USD_PER_SEARCH,
-      sessionId: ctx.sessionId
-    });
-
-    const response = await this.client.messages.create({
-      model: MODEL,
-      max_tokens: RETRIEVAL_MAX_OUTPUT_TOKENS,
-      messages: [{ role: "user", content: promptText }],
-      tools: [
-        {
-          type: "web_search_20250305",
-          name: "web_search",
-          max_uses: MAX_SEARCHES_PER_TOPIC
-        } satisfies Anthropic.WebSearchTool20250305
-      ]
-    });
-
-    recordUsage(response.usage);
-    const textBlock = response.content.find((b: Anthropic.ContentBlock): b is Anthropic.TextBlock => b.type === "text");
-    if (!textBlock) throw new Error("Anthropic evidence-retrieval response had no text block");
-
-    const reask = async (): Promise<string> => {
-      const reaskLine = "Your previous reply was not valid JSON; reply with the JSON object only.";
-      // The re-ask is its own real API call — it re-sends the whole prompt
-      // plus the bad reply, so it is its own metered spend, gated the same
-      // way as the original call (see parseWithRetry.ts's BUDGET note). No
-      // web_search tool is offered on the re-ask, so unlike the original
-      // call's estimate this one carries no USD_PER_SEARCH cost.
-      const reaskEstimatedInputTokens = roughTokenEstimate(promptText + textBlock.text + reaskLine);
-      await this.budgetGuard.checkAndRecord({
+    const meter = () =>
+      this.budgetGuard.checkAndRecord({
         userId: ctx.userId,
         operation: "evidence_retrieval",
         provider: this.providerName,
         model: MODEL,
-        estimatedUsd: reaskEstimatedInputTokens * USD_PER_INPUT_TOKEN + RETRIEVAL_MAX_OUTPUT_TOKENS * USD_PER_OUTPUT_TOKEN,
+        estimatedUsd:
+          roughTokenEstimate(promptText) * USD_PER_INPUT_TOKEN +
+          estimatedOutputTokens * USD_PER_OUTPUT_TOKEN +
+          MAX_SEARCHES_PER_TOPIC * USD_PER_SEARCH,
         sessionId: ctx.sessionId
       });
+    await meter();
 
-      const retryResponse = await this.client.messages.create({
+    const { content, truncated } = await createWebSearchTurnKeepingTruncation(
+      this.client,
+      {
         model: MODEL,
         max_tokens: RETRIEVAL_MAX_OUTPUT_TOKENS,
-        messages: [
-          { role: "user", content: promptText },
-          { role: "assistant", content: textBlock.text },
-          { role: "user", content: reaskLine }
+        messages: [{ role: "user", content: promptText }],
+        tools: [
+          {
+            type: "web_search_20250305",
+            name: "web_search",
+            max_uses: MAX_SEARCHES_PER_TOPIC
+          } satisfies Anthropic.WebSearchTool20250305
         ]
-      });
-      const retryTextBlock = retryResponse.content.find((b: Anthropic.ContentBlock): b is Anthropic.TextBlock => b.type === "text");
-      if (!retryTextBlock) throw new Error("Anthropic evidence-retrieval re-ask response had no text block");
-      return retryTextBlock.text;
-    };
+      },
+      "evidence-retrieval",
+      meter
+    );
 
-    const parsed = await parseLastJsonBlock(PassagesSchema, textBlock.text, "Evidence retrieval output", reask);
+    /* gen-1 (round-3 audit). The answer is the text after the last
+       web_search_tool_result, joined in order (a cited answer arrives split
+       over several text blocks); the first text block is usually only a
+       preamble. And retrieval NEVER re-asks: a re-ask cannot carry the search
+       results and was sent without the tool, so the model could only answer
+       from memory, and those "verbatim" passages became print evidence the
+       writer quoted.
+
+       A reply with no parseable answer (prose, or a turn still paused after
+       MAX_PAUSE_TURN_CONTINUATIONS, which leaves no answer text) is a FAILED
+       retrieval, thrown as RetrievalUnreadableError, never an empty result
+       (round-3 review, L5). An empty result is a verdict: gatherEvidence caches
+       it as "nothing exists" for a content page and refuses the page. Only a
+       parsed `{"passages": []}` says that. A failure is not cached, marks the
+       pack retrievalFailed, and is asked again (F-77).
+
+       A reply cut off at max_tokens keeps the passages that FINISHED, parsed
+       one by one, never repaired. Refusing it made the gather record a
+       failure and re-ask the same prompt at the same ceiling on every later
+       page, paying for the search again (round-3 review, L5). Only when not
+       one passage finished is it a failure. */
+    const answer = webSearchAnswerText(content);
+    let passages: z.infer<typeof PassagesSchema>["passages"];
+    if (truncated) {
+      passages = salvageCompletePassages(answer);
+      if (passages.length === 0) {
+        throw new RetrievalUnreadableError("evidence retrieval reply hit max_tokens before one passage was complete");
+      }
+      console.warn(
+        `AnthropicExternalResearcher: evidence retrieval reply hit max_tokens (${RETRIEVAL_MAX_OUTPUT_TOKENS}); keeping the ${passages.length} passage(s) that finished`
+      );
+    } else {
+      try {
+        passages = (await parseLastJsonBlock(PassagesSchema, answer, "Evidence retrieval output")).passages;
+      } catch (err) {
+        throw new RetrievalUnreadableError(
+          `evidence retrieval reply had no parseable answer (${(err as Error).message.slice(0, 160)})`
+        );
+      }
+    }
     const retrievedAt = new Date().toISOString();
-    return parsed.passages.slice(0, request.maxPassages).map((p, i) => ({
+    return passages.slice(0, request.maxPassages).map((p, i) => ({
       docId: `print:${i + 1}`,
       title: p.title,
       ...(p.url ? { url: p.url } : {}),
@@ -249,6 +265,62 @@ export class AnthropicExternalResearcher implements ExternalResearcher {
   }
 }
 
+
+/** A retrieval reply that answered nothing readable. A FAILURE, not an empty
+ * result: gatherEvidence records it as failed, caches nothing, and asks again. */
+export class RetrievalUnreadableError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "RetrievalUnreadableError";
+  }
+}
+
+const PassageSchema = PassagesSchema.shape.passages.element;
+
+/**
+ * The passages of a TRUNCATED `{"passages": [...]}` reply that finished: each
+ * complete object in the array, parsed on its own. Nothing is repaired: an
+ * object the cut went through is dropped whole, so a half passage can never
+ * become print evidence. Reads the LAST `"passages"` array in the text (the
+ * model may narrate before its answer).
+ */
+export function salvageCompletePassages(text: string): Array<z.infer<typeof PassageSchema>> {
+  const key = text.lastIndexOf('"passages"');
+  if (key < 0) return [];
+  const open = text.indexOf("[", key);
+  if (open < 0) return [];
+  const out: Array<z.infer<typeof PassageSchema>> = [];
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+  let start = -1;
+  for (let i = open + 1; i < text.length; i++) {
+    const c = text[i]!;
+    if (inString) {
+      if (escaped) escaped = false;
+      else if (c === "\\") escaped = true;
+      else if (c === '"') inString = false;
+      continue;
+    }
+    if (c === '"') inString = true;
+    else if (c === "{") {
+      if (depth === 0) start = i;
+      depth += 1;
+    } else if (c === "}") {
+      depth -= 1;
+      if (depth === 0 && start >= 0) {
+        try {
+          const parsed = PassageSchema.safeParse(JSON.parse(text.slice(start, i + 1)));
+          if (parsed.success) out.push(parsed.data);
+        } catch {
+          /* not an object JSON can read: dropped, never repaired */
+        }
+        start = -1;
+      }
+    } else if (c === "]" && depth === 0) break;
+  }
+  return out;
+}
 
 function buildRetrievalPrompt(request: PassageRetrievalRequest): string {
   return [

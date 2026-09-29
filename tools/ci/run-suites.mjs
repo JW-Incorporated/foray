@@ -112,7 +112,7 @@ export const REPO_ROOT = path.resolve(HERE, "..", "..");
  * ALLOWED_PREFIXES (always a human merge, never auto-merge-eligible), so it
  * doesn't need floor protection against a silent auto-merged test deletion —
  * and folding it into this shared data-and-site discovery would imply it
- * does. `api/test/import-closure.test.mjs` instead gets its own required
+ * does. `api/_test/import-closure.test.mjs` instead gets its own required
  * `api` CI job (ci.yml), which installs api/'s own dependencies and runs it
  * directly — same shape as the `backend` job. */
 export const SCANNED_DIRS = ["player", "test", "tools"];

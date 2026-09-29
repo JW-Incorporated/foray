@@ -3,7 +3,7 @@
  *
  * TWO HALVES OF ONE CARD, and they share a card because they share one
  * endpoint change (`api/shows/search.ts`). This suite is the CLIENT side of
- * both; the server side is `api/test/shows-search-apple.test.mjs`.
+ * both; the server side is `api/_test/shows-search-apple.test.mjs`.
  *
  * (a) THE DIRECTORY PASS. S-06 shipped this as a LAST RESORT behind two gates:
  *     the client asked only when its own local pass found nothing, and the
@@ -64,6 +64,8 @@ const SEARCH_SRC = fs.readFileSync(path.join(ROOT, "search-engine.js"), "utf8");
 process.on("unhandledRejection", () => {});
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+/* audit round 3, tests-3: where a test waits for a known outcome it waits for the CONDITION. */
+const { waitFor } = require("./helpers/wait-for.js");
 
 function makeEl(tag) {
   const handlers = new Map();
@@ -317,7 +319,7 @@ test("an index-only hit no longer closes the gate: the seam S-03 opened is now a
      suppresses the directory and the `directoryCalls()` assertion goes red. */
   const m = mount();
   m.input.fire("focus");
-  await sleep(10);
+  await waitFor(() => m.evalIn("showIndex !== null")); // the focus loaded the index (tests-3: a condition, not a guess)
   m.input.value = "deep history";
   m.byId.get("sh-form").fire("submit");
   assert.ok(m.results().innerHTML.includes("Deep History Hour"),
@@ -355,14 +357,14 @@ test("TEN strong local matches still ask the directory: the `tim` case, which ev
     }],
   });
   m.input.fire("focus");
-  await sleep(10);
+  await waitFor(() => m.evalIn("showIndex !== null"));
   m.input.value = "tim";
   m.byId.get("sh-form").fire("submit");
   const localRows = (m.results().innerHTML.match(/href="#\/show\//g) || []).length;
   assert.ok(localRows >= 10, `fixture assumption: ten strong local matches, got ${localRows}`);
   assert.strictEqual(m.directoryCalls().length, 1,
     "ten strong local matches must not buy the listener a suppressed directory");
-  await sleep(20);
+  await waitFor(() => m.results().innerHTML.includes("The Tim Ferriss Show"));
   assert.ok(m.results().innerHTML.includes("The Tim Ferriss Show"),
     "and the show the listener actually meant must arrive");
 });
@@ -507,7 +509,7 @@ test("the directory pass has its own hot-query cache, and a failure is not cache
   assert.strictEqual(bad.directoryCalls().length, 2, "a failure must not be remembered as an answer");
 });
 
-test("the two normalised-title rules are one rule: app.js and api/shows/appleShowSearch.ts agree character for character", () => {
+test("the two normalised-title rules are one rule: app.js and api/_lib/appleShowSearch.ts agree character for character", () => {
   /* The dedup happens on BOTH sides — the endpoint merges Apple beneath the
      catalogue, the client merges whatever arrives beneath what is painted — so
      two copies of the rule exist, in two languages, with no import between
@@ -526,9 +528,10 @@ test("the two normalised-title rules are one rule: app.js and api/shows/appleSho
   /* Folded since audit round 2 (search-9): the NFKD + combining-mark strip is
      part of the rule now, in both copies. */
   const EXPR = String.raw`String(title || "").normalize("NFKD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim()`;
-  const server = fs.readFileSync(path.join(ROOT, "api", "shows", "appleShowSearch.ts"), "utf8");
+  const server = fs.readFileSync(path.join(ROOT, "api", "_lib", "appleShowSearch.ts"), "utf8");
   assert.ok(APP_SRC.includes(EXPR), "app.js must carry the rule verbatim");
-  assert.ok(server.includes(EXPR), "api/shows/appleShowSearch.ts must carry the same rule verbatim");
+  assert.ok(server.includes(EXPR), "api/_lib/appleShowSearch.ts must carry the same rule verbatim");
+  assert.ok(fs.readFileSync(path.join(ROOT, "tools", "search-probe.mjs"), "utf8").includes(EXPR), "tools/search-probe.mjs must carry the same rule verbatim (arch-drift-6)");
 
   /* THE STEM IS THE SECOND HALF OF THE SAME RULE and is pinned the same way
      (adversarial review 2026-09-12, defect 3): the dedup that matters runs on
@@ -536,7 +539,7 @@ test("the two normalised-title rules are one rule: app.js and api/shows/appleSho
      drift this test exists to stop. */
   const SEP = String.raw`/\s[–—]\s|\s-\s|:|\s\(|\s\[/u`;
   const STEM = String.raw`return normaliseShowTitle(cut > 0 ? raw.slice(0, cut) : raw);`;
-  for (const [label, src] of [["app.js", APP_SRC], ["api/shows/appleShowSearch.ts", server]]) {
+  for (const [label, src] of [["app.js", APP_SRC], ["api/_lib/appleShowSearch.ts", server]]) {
     assert.ok(src.includes(SEP), `${label} must carry the separator set verbatim`);
     assert.ok(src.includes(STEM), `${label} must carry the stem rule verbatim`);
   }
@@ -586,7 +589,7 @@ test("an Apple directory result is rendered and cached like any other breadth ro
 /* ---------- S-06, the client audit's finding 1: the ORDER survives ---------- */
 
 const APPLE_THREE = ["Zebra Talks", "Morning Brief", "Acquired"].map((title, i) => ({
-  /* Exactly what `api/shows/appleShowSearch.ts`'s `mapAppleShow` stamps: a
+  /* Exactly what `api/_lib/appleShowSearch.ts`'s `mapAppleShow` stamps: a
      `tier: "breadth"` row with NO `chart_rank` — Apple's ranking is the array
      order and nothing else. */
   show_id: `90000${i}`,

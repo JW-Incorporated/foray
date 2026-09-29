@@ -293,6 +293,18 @@ final class DiagRingTests: XCTestCase {
                                             wallMs: Self.t0, monoMs: 1))
         XCTAssertEqual(DiagGate.loggerText(row),
                        "#1 build engineVersion=1.0.0 protocol=1 bundleVersion=2026092400 launch=background pitch=timeDomain hold=until:60")
+
+        // L09/L28: which phone, which iOS, and how it was at boot. Every
+        // field passes DiagGate intact (`iPhone15.2`, not `iPhone15,2`).
+        // TO SEE IT FAIL: drop a field from `entry`, or rename a key.
+        let device = try XCTUnwrap(ring.append(BuildRow(engineVersion: "1.0.0", bundleVersion: "2026092602",
+                                                        launch: .foreground, holdPolicy: .forever,
+                                                        hw: "iPhone15.2", os: "18.6.2", lowPower: false,
+                                                        thermal: "fair", availMb: 1104).entry,
+                                               wallMs: Self.t0, monoMs: 2))
+        XCTAssertEqual(DiagGate.loggerText(device),
+                       "#2 build engineVersion=1.0.0 protocol=1 bundleVersion=2026092602 launch=foreground pitch=timeDomain hold=forever hw=iPhone15.2 os=18.6.2 lowPower=false thermal=fair availMb=1104")
+        XCTAssertNil(device.fields.first { $0.key == DiagGate.droppedField }, "DiagGate withheld a device fact")
     }
 
     // MARK: - Keys

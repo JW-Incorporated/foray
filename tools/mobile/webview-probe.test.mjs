@@ -33,6 +33,8 @@ import {
   pickPage,
   titleOf,
   verdict,
+  listTargets,
+  stepTimeoutMs,
 } from "./webview-probe.mjs";
 
 const ROOT = path.resolve(import.meta.dirname, "..", "..");
@@ -329,4 +331,27 @@ test("the expected host is the one Capacitor actually serves from on Android", (
   assert.equal(EXPECTED_HOST, "localhost");
   const config = JSON.parse(fs.readFileSync(path.join(ROOT, "mobile/capacitor.config.json"), "utf8"));
   assert.equal(config.server?.hostname ?? "localhost", EXPECTED_HOST);
+});
+
+test("mobile-native-10: the DevTools target fetch gives up at its bound instead of hanging the job", async () => {
+  /* A forwarded port that accepts and never answers held `fetch` for undici's
+     300 s header timeout. MUTATION: drop the `signal` from listTargets' fetch
+     and this sits until the race below calls it hung. */
+  const silent = (_url, { signal } = {}) => new Promise((_, reject) => {
+    signal?.addEventListener("abort", () => reject(signal.reason));
+  });
+  const outcome = await Promise.race([
+    listTargets("http://127.0.0.1:9", { timeoutMs: 50, fetchImpl: silent }).then(() => "answered", (err) => err),
+    new Promise((r) => setTimeout(() => r("hung"), 1000)),
+  ]);
+  assert.notEqual(outcome, "hung");
+  assert.ok(outcome instanceof Error, `it rejects: ${outcome}`);
+});
+
+test("mobile-native-10: every probe step is clamped to what is left of the deadline", () => {
+  /* MUTATION: return `capMs` alone and an evaluate starting 2 s before the
+     deadline could run 30 s past it. */
+  assert.equal(stepTimeoutMs(10_000, 0, 30_000), 10_000);
+  assert.equal(stepTimeoutMs(100_000, 0, 30_000), 30_000);
+  assert.equal(stepTimeoutMs(10_000, 12_000, 5_000), 1, "a step at or past the deadline fails fast");
 });

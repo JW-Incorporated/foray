@@ -67,8 +67,15 @@ export const RELEASE_TAG_PREFIX = "shows-index-";
     D3-swap-ready config value the client reads to find the current
     release, per 4a-shows-pipeline-plan.md's origin-is-a-config-value
     design. Bumped whenever the pointer's own shape changes, independent of
-    `manifest.json`'s `version`. */
-export const POINTER_SCHEMA_VERSION = 1;
+    `manifest.json`'s `version`, and written by publish-release.mjs's
+    buildPointer (it was dead until audit round 3, arch-drift-7, while
+    buildPointer hard-coded 1).
+
+      1  the original pointer: release tag, asset base, manifest, counts.
+      2  S-04c: adds `shards_published` and `shard_releases` (the batch
+         release ranges). Readers treat both as optional, so a v1 pointer
+         still reads as "no shard releases". */
+export const POINTER_SCHEMA_VERSION = 2;
 
 /** S-04c: shard publishing. GitHub Releases hard-caps a single release at
     1,000 total assets (confirmed via GitHub's own docs and a real HTTP 422

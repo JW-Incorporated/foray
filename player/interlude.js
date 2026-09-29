@@ -84,7 +84,7 @@
 */
 
 import { AUTO_ADVANCE, isSegment } from "./seam-gap.js";
-import { JINGLE } from "./foray-queue.js";
+import { JINGLE, INTERLUDE_ASSET_DURATION_SEC } from "./foray-queue.js";
 import { sourceKeyOf } from "./segment-strip.js";
 
 /** Repo-relative path of the asset — what the generator writes and the live
@@ -100,7 +100,7 @@ export const INTERLUDE_ASSET_URL = SITE_ROOT + INTERLUDE_ASSET_PATH;
     which reads the WAV header and fails if the two drift. Not read from the
     element's `duration` at runtime: the manager does not need it to play the
     jingle (it waits for `ended`), only tests and docs do. */
-export const INTERLUDE_DURATION_SEC = 3.0;
+export const INTERLUDE_DURATION_SEC = INTERLUDE_ASSET_DURATION_SEC;
 
 /** The longest the manager will hold a seam for the jingle. A media element
     that never fires `ended` — a stalled fetch, a decoder that gave up silently,

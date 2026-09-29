@@ -542,6 +542,31 @@ test("with the switch off, nothing continues", () => {
   assert.strictEqual(fake.calls.length, 0);
 });
 
+test("app-1-9: with the switch off, the finished episode still leaves Up Next and nothing plays", () => {
+  /* The removal lived only inside the advance, so the finished row stayed at
+     the top of Up Next and a later advance replayed it. MUTATION: return
+     before the removal when the switch is off (the old guard) -> the finished
+     row is still queued; red. */
+  const m = mount();
+  const [a, b, c] = m.playable;
+  seedLivePool(m, [a, b, c]);
+  m.ctx.lsSet("cp_autoadvance", false);
+  m.ctx.addToQueue(a.id);
+  m.ctx.addToQueue(b.id);
+  const fake = makeFakePlayer();
+  m.ctx.window.ForayPlayer = fake;
+
+  m.ctx.advanceQueueOnEnded(a.id);
+
+  assert.strictEqual(fake.calls.length, 0, "the switch still means silence");
+  assert.deepStrictEqual([...m.ctx.queueIds()], [b.id], "the finished row left Up Next");
+
+  /* The replay the finding describes: the switch back on, another episode ends. */
+  m.ctx.lsSet("cp_autoadvance", true);
+  m.ctx.advanceQueueOnEnded(c.id);
+  assert.ok(!fake.calls.some((call) => JSON.stringify(call).includes(a.id)), "the finished episode was replayed");
+});
+
 test("REVIEW: a chained play that throws is reported to the bar, not left as an unhandled rejection", async () => {
   /* advanceQueueOnEnded called `.play(...).then(...)` with no catch: a throw
      was an unhandled rejection and a silent stop. MUTATION: drop the rejection

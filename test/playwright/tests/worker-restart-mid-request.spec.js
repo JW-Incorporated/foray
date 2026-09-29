@@ -8,7 +8,7 @@
  * sw.js's own header ("nothing in memory to lose").
  */
 import { test, expect } from "@playwright/test";
-import { startServer, registerAndActivate, terminateServiceWorker } from "../lib/harness.mjs";
+import { startServer, registerAndActivate, terminateServiceWorker, cacheNames, updateAndAwaitNewWorker } from "../lib/harness.mjs";
 
 test.describe("WORKER RESTART MID-REQUEST (real browser)", () => {
   test("a freshly restarted worker (zero in-memory state) still serves a tagged old generation", async ({
@@ -24,12 +24,12 @@ test.describe("WORKER RESTART MID-REQUEST (real browser)", () => {
     // A second generation lands and promotes, so "current" is now gen 2 —
     // gen 1 stays retained (RETENTION keeps current + immediately previous).
     server.setFiles({ "data/forays.json": '{"forays":["gen-2-data"]}' });
-    await page.evaluate(() =>
-      navigator.serviceWorker
-        .getRegistration()
-        .then((reg) => reg && reg.update())
-    );
-    await page.waitForTimeout(1500);
+    const gen2 = server.currentManifest().deploy_id;
+    // THE PREMISE (round-3 audit, tests-1): gen 2 really installed and
+    // promoted, so "current" is not gen 1 any more.
+    const second = await updateAndAwaitNewWorker(page);
+    expect(second).toEqual({ appeared: true, state: "activated" });
+    expect(await cacheNames(page)).toContain("foray-gen-" + gen2);
 
     // Kill the live worker process entirely, then fetch through a brand-new
     // one, tagged for the OLD generation.

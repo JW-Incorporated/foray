@@ -191,7 +191,11 @@ export async function runAndPublish(argv, {
     // No pointer file yet — this is the first release ever, or it was
     // never committed. Either way, a write is needed.
   }
+  // `version` too (round-3 review, L8): a committed v1 pointer for the same
+  // release and shard state still has to be rewritten at the bumped
+  // POINTER_SCHEMA_VERSION, or the version never describes the shape.
   const pointerChanged = !currentPointer
+    || currentPointer.version !== pointer.version
     || currentPointer.release_tag !== pointer.release_tag
     || currentPointer.shards_published !== pointer.shards_published
     || JSON.stringify(currentPointer.shard_releases || []) !== JSON.stringify(pointer.shard_releases);

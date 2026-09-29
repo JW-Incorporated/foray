@@ -41,82 +41,9 @@ process.on("unhandledRejection", () => {});
 
 /* ---------- a small DOM ---------- */
 
-class El {
-  constructor(tag) {
-    this.tagName = String(tag || "div").toUpperCase();
-    this.children = [];
-    this.parent = null;
-    this.id = null;
-    this.className = "";
-    this.textContent = "";
-    this.value = "";
-    this.hidden = false;
-    this.disabled = false;
-    this.attrs = {};
-    this.dataset = {};
-    this.style = { setProperty() {} };
-    this._html = "";
-    this._on = new Map();
-    const cls = () => new Set(String(this.className).split(/\s+/).filter(Boolean));
-    this.classList = {
-      add: (...c) => { const s = cls(); c.forEach((x) => s.add(x)); this.className = [...s].join(" "); },
-      remove: (...c) => { const s = cls(); c.forEach((x) => s.delete(x)); this.className = [...s].join(" "); },
-      contains: (c) => cls().has(c),
-      toggle: (c, on) => { const want = on ?? !cls().has(c); if (want) this.classList.add(c); else this.classList.remove(c); return want; },
-    };
-  }
-  get firstElementChild() { return this.children[0] || null; }
-  get innerHTML() { return this._html; }
-  set innerHTML(html) {
-    this._html = String(html);
-    this.children = [];
-    const stack = [this];
-    const re = /<(\/?)([a-zA-Z][a-zA-Z0-9-]*)([^>]*)>/g;
-    let m;
-    while ((m = re.exec(this._html))) {
-      const [, closing, tag, rest] = m;
-      if (closing) { if (stack.length > 1) stack.pop(); continue; }
-      const kid = new El(tag);
-      for (const a of rest.matchAll(/([a-zA-Z_:][\w:.-]*)(?:="([^"]*)")?/g)) {
-        const [, name, val = ""] = a;
-        kid.attrs[name] = val;
-        if (name === "id") kid.id = val;
-        if (name === "class") kid.className = val;
-      }
-      stack[stack.length - 1].appendChild(kid);
-      if (!/^(img|input|br|hr|meta|link|source)$/i.test(tag) && !/\/\s*$/.test(rest)) stack.push(kid);
-    }
-  }
-  appendChild(k) { k.parent = this; this.children.push(k); return k; }
-  append(...ks) { ks.forEach((k) => this.appendChild(k)); }
-  remove() { if (this.parent) this.parent.children = this.parent.children.filter((c) => c !== this); }
-  setAttribute(k, v) { this.attrs[k] = String(v); }
-  getAttribute(k) { return k in this.attrs ? this.attrs[k] : null; }
-  removeAttribute(k) { delete this.attrs[k]; }
-  hasAttribute(k) { return k in this.attrs; }
-  addEventListener(t, fn) { if (!this._on.has(t)) this._on.set(t, []); this._on.get(t).push(fn); }
-  removeEventListener() {}
-  listeners(t) { return (this._on.get(t) || []).length; }
-  focus() {} blur() {} select() {}
-  closest() { return null; }
-  getBoundingClientRect() { return { top: 0, left: 0, width: 0, height: 0 }; }
-  descendants() { return this.children.flatMap((c) => [c, ...c.descendants()]); }
-  querySelector(sel) { return this.querySelectorAll(sel)[0] || null; }
-  querySelectorAll(sel) {
-    const parts = String(sel).trim().split(/\s+/);
-    let scopes = [this];
-    for (const p of parts) scopes = scopes.flatMap((s) => s.descendants().filter((e) => matches(e, p)));
-    return [...new Set(scopes)];
-  }
-}
-function matches(el, sel) {
-  return sel.split(/(?=[#.[])/).every((tok) => {
-    if (tok.startsWith("#")) return el.id === tok.slice(1);
-    if (tok.startsWith(".")) return el.classList.contains(tok.slice(1));
-    if (tok.startsWith("[")) { const name = tok.slice(1, -1).split("=")[0]; return name in el.attrs; }
-    return el.tagName === tok.toUpperCase();
-  });
-}
+/* The shared small DOM (audit round 3, tests-10): one copy, and a
+   `[name="value"]` selector compares the value. */
+const { El } = require("./helpers/fake-dom.js");
 
 async function settle(n = 30) { for (let i = 0; i < n; i++) await new Promise((r) => setTimeout(r, 0)); }
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -163,7 +90,7 @@ function heldIdb(seed = {}) {
  * @param {object|null} [o.eventLog] a queue to publish as window.forayEventLog
  * @param {number} [o.storageWaitMs] the hydration bound, shortened
  */
-function mount({ fetchImpl = null, store = null, eventLog = null, storageWaitMs = null, hash = "#/", readyState = "complete", ceilingMs = null } = {}) {
+function mount({ fetchImpl = null, store = null, eventLog = null, storageWaitMs = null, hash = "#/", readyState = "complete", ceilingMs = null, holdTimer = null } = {}) {
   const docListeners = new Map();
   const body = new El("body");
   const view = new El("main"); view.id = "view"; body.appendChild(view);
@@ -207,7 +134,9 @@ function mount({ fetchImpl = null, store = null, eventLog = null, storageWaitMs 
     history: { replaceState() {}, pushState() {}, back() {} },
     CSS: { escape: (s) => String(s) },
     URL, URLSearchParams, Math, Date, JSON, Promise, clearTimeout, queueMicrotask,
-    setTimeout: (fn, ms) => { const t = setTimeout(fn, ms); if (t && t.unref) t.unref(); return t; },
+    /* `holdTimer(fn, ms)` returning true keeps that timer for the test to fire
+       itself (tests-11): a claim about WHICH timer is armed needs no wall clock. */
+    setTimeout: (fn, ms) => { if (holdTimer && holdTimer(fn, ms)) return 0; const t = setTimeout(fn, ms); if (t && t.unref) t.unref(); return t; },
     requestAnimationFrame: (fn) => setTimeout(fn, 0),
     encodeURIComponent, decodeURIComponent,
     scrollY: 0, scrollTo() {},
@@ -432,7 +361,14 @@ test("ROUND 2 review (races-4): a hydration that NEVER finishes is bounded, and 
      armStorageSettleCeiling from settleOnHydrate -> the gate never opens; red.
      Push `saveInterests` per call again -> the waiter count grows; red. */
   const { store } = await storeOver({ idb: { cp_seen: JSON.stringify(["x"]) } });   // never released
-  const m = mount({ store, storageWaitMs: 20, ceilingMs: 4000 });
+  /* NO WALL CLOCK (audit round 3, tests-11). This waited out a real 4000 ms
+     ceiling on every run, and a short one races the premise asserts below on a
+     slow runner (booted() alone can outlast it). The claim is that the ceiling
+     is ARMED and that firing it opens the gate, so the timer armed with the
+     ceiling's (unique) delay is held, counted, and fired by the test. */
+  const CEILING = 7_654_321;
+  const held = [];
+  const m = mount({ store, storageWaitMs: 20, ceilingMs: CEILING, holdTimer: (fn, ms) => (ms === CEILING ? (held.push(fn), true) : false) });
   await m.booted();
   const tax = JSON.parse(read("data/taxonomy.json"));
   const root = tax.nodes.find((n) => n.parent === null);
@@ -441,7 +377,9 @@ test("ROUND 2 review (races-4): a hydration that NEVER finishes is bounded, and 
   const after = vm.runInContext("storageSettleWaiters.length", m.ctx);
   assert.ok(after - before <= 1, `five nudges queued ${after - before} waiters`);
   assert.strictEqual(m.ctx.storageWaiting(), true, "premise: still hydrating");
-  for (let i = 0; i < 80 && m.ctx.storageWaiting(); i++) await sleep(100);
+  assert.strictEqual(held.length, 1, "the settle ceiling was armed once");
+  held[0]();
+  await settle(5);
   assert.strictEqual(m.ctx.storageWaiting(), false, "the ceiling opened the gate");
   const saved = JSON.parse(store.getItem("cp_interests") || "null");
   assert.ok(saved && typeof saved[root.id] === "number", "the interests reached the store's sync tier");
@@ -592,17 +530,28 @@ test("ROUND 2 review (perf-2): an <img> whose width/height attributes CSS resize
 /* perf-3: priming waits for a still listener                             */
 /* ==================================================================== */
 
-test("perf-3: whenQuiet runs nothing while the listener keeps touching the page", async () => {
-  /* MUTATION: make whenQuiet call whenIdle at once, or drop the re-check. */
+test("perf-3: whenQuiet runs nothing while the listener keeps touching the page", (t) => {
+  /* MUTATION: make whenQuiet call whenIdle at once, or drop the re-check.
+     THE CLOCK IS DRIVEN, NOT SLEPT (audit round 3, tests-2): this slept 25/25/60
+     ms of wall clock, and a ~45 ms stall of a loaded runner let the final sleep
+     resolve before the re-armed check's fn, turning unrelated PRs red. The
+     mount's setTimeout forwards to the (mocked) global, and ctx.Date is the
+     mocked Date, so app.js's own timers and Date.now() run on this clock. */
+  t.mock.timers.enable({ apis: ["setTimeout", "Date"], now: 1_000_000 });
   const m = mount({ fetchImpl: () => new Promise(() => {}) });
   let ran = 0;
   m.ctx.whenQuiet(() => { ran += 1; }, 40);
-  await sleep(25);
+  t.mock.timers.tick(25);
   m.ctx.noteInteraction();
-  await sleep(25);
+  t.mock.timers.tick(25);
   assert.strictEqual(ran, 0, "it ran 50 ms in, 25 ms after a tap");
-  await sleep(60);
+  t.mock.timers.tick(14);
+  assert.strictEqual(ran, 0, "39 ms after the tap is not yet 40 ms of stillness");
+  t.mock.timers.tick(2);
+  t.mock.timers.tick(1);
   assert.strictEqual(ran, 1, "and it runs once the listener has been still");
+  t.mock.timers.tick(500);
+  assert.strictEqual(ran, 1, "once");
 });
 
 test("perf-3: init() primes the vocabulary through whenQuiet, and taps are what it listens for", () => {
@@ -661,4 +610,574 @@ test("perf-5: the two roman faces are preloaded, same-origin, as fonts", () => {
   for (const f of ["fonts/fraunces-variable.woff2", "fonts/dm-sans-variable.woff2"]) {
     assert.ok(html.includes(`<link rel="preload" href="${f}" as="font" type="font/woff2" crossorigin>`), `${f} is not preloaded`);
   }
+});
+
+/* ==================================================================== */
+/* tests-10: the shared small DOM compares attribute values               */
+/* ==================================================================== */
+
+test("tests-10: [name=\"value\"] matches only the element with that value, in both harnesses' shared DOM", () => {
+  /* boot-path and load-states each had a copy whose `[data-x="id"]` threw the
+     value away, so a lookup by value got the first element carrying the
+     attribute. MUTATION: in test/helpers/fake-dom.js make the valued branch
+     `name in el.attrs` again -> the lookup for "b" answers "a"; red. Put an
+     inline El back in either suite -> the second assertion group is red. */
+  const { El } = require("./helpers/fake-dom.js");
+  const root = new El("div");
+  root.innerHTML = '<ul><li><button data-star="a" class="star">A</button></li><li><button data-star="b.c #d" class="star on">B</button></li></ul>';
+  const [a, b] = root.querySelectorAll("[data-star]");
+  assert.ok(a && b, "premise: two stars");
+  assert.strictEqual(root.querySelector('[data-star="b.c #d"]'), b, "a value holding . # and a space is one token");
+  assert.strictEqual(root.querySelector("[data-star='a']"), a);
+  assert.strictEqual(root.querySelector('button.on[data-star="b.c #d"]'), b);
+  assert.strictEqual(root.querySelector('[data-star="zzz"]'), null, "a value no element has matches nothing");
+  assert.strictEqual(root.querySelectorAll('ul [data-star="a"]').length, 1);
+  assert.throws(() => root.querySelector("[data-star^=a]"), /not supported/, "an operator it does not know throws instead of matching nothing");
+  for (const f of ["boot-path.test.js", "load-states.test.js"]) {
+    const src = fs.readFileSync(path.join(__dirname, f), "utf8");
+    assert.ok(!/\bclass El\b/.test(src), `${f} carries its own El again`);
+    assert.ok(src.includes('require("./helpers/fake-dom.js")'), `${f} does not use the shared DOM`);
+  }
+});
+
+/* ==================================================================== */
+/* app-1-2: syncs asked for before storage settles share one waiter       */
+/* ==================================================================== */
+
+test("app-1-2: five syncs asked for while storage is settling queue ONE waiter, and it runs one sync", async () => {
+  /* Each call pushed its own afterStorageSettles closure and markStorageSettled
+     ran them all at once: N syncs POSTing the same rows. MUTATION: push a
+     waiter per call again -> the count grows by five; red. */
+  const { store, tier } = await storeOver({
+    idb: { cp_sb_session: JSON.stringify({ user_id: "uid-old", access_token: "at-old", refresh_token: "rt-old", expires_at: Math.floor(Date.now() / 1000) + 3600 }) },
+  });
+  const log = fakeEventLog();
+  log.append({ ts: "2026-09-22T10:00:00Z", type: "picked", builder: "t", profile: "p", payload: { episode_id: "e1" } });
+  const posts = [];
+  const m = mount({
+    store, eventLog: log, storageWaitMs: 20, ceilingMs: 60000,
+    fetchImpl: (url, opts) => {
+      if (/rest\/v1\/events/.test(url)) { posts.push(opts.body); return Promise.resolve({ ok: true, status: 201, json: async () => ({}) }); }
+      if (/supabase\.co/.test(url)) return Promise.resolve({ ok: true, status: 200, json: async () => ({}) });
+      return new Promise(() => {});
+    },
+  });
+  await settle(20);
+  assert.strictEqual(m.ctx.storageWaiting(), true, "premise: still hydrating");
+  const before = vm.runInContext("storageSettleWaiters.length", m.ctx);
+  const calls = [];
+  for (let i = 0; i < 5; i++) calls.push(m.ctx.trySyncEvents());
+  const after = vm.runInContext("storageSettleWaiters.length", m.ctx);
+  assert.ok(after - before <= 1, `five syncs queued ${after - before} waiters`);
+  tier.release();
+  await store.hydrate();
+  await Promise.all(calls);
+  await settle(10);
+  assert.strictEqual(posts.length, 1, `the row went out ${posts.length} times`);
+});
+
+/* ==================================================================== */
+/* app-1-1: the listener's own actions before hydration lands             */
+/* ==================================================================== */
+
+test("app-1-1: a star, an Up Next add, a play and a follow before a slow hydration land ON the durable rows, not over them", async () => {
+  /* localStorage swept, IndexedDB holding the listener's library, hydration
+     slower than the five-second bound. toggleStar read {} and wrote {b}, and
+     property 2 kept that over the durable {a} for good; the same for Up Next,
+     History and Followed. MUTATION: make toggleStar (or saveQueueIds, or
+     recordHistory, or toggleShowStar) lsSet its read-modify-write directly
+     again -> the durable row is gone after hydration; red. */
+  const snapA = { id: "a", title: "A", show: "S", audio_url: "https://x.test/a.mp3", topics: [] };
+  const { store, tier } = await storeOver({
+    idb: {
+      cp_saved: JSON.stringify({ a: snapA }),
+      cp_queue: JSON.stringify(["q-durable"]),
+      cp_history: JSON.stringify(["h-durable"]),
+      cp_starred_shows: JSON.stringify({ "show-durable": { show_id: "show-durable", title: "D" } }),
+      cp_episode_snaps: JSON.stringify({ "q-durable": { id: "q-durable", audio_url: "https://x.test/q.mp3" } }),
+    },
+  });
+  const m = mount({ store, storageWaitMs: 20, ceilingMs: 60000 });
+  await m.booted();
+  assert.strictEqual(m.ctx.storageWaiting(), true, "premise: the page painted and hydration has not landed");
+  m.state.itemIndex.b = { id: "b", title: "B", show: "S", audio_url: "https://x.test/b.mp3", topics: [] };
+  m.ctx.toggleStar("b");
+  assert.strictEqual(m.ctx.isSaved("b"), true, "the star paints at once, from the overlay");
+  m.ctx.addToQueue("b");
+  assert.ok(m.ctx.queueIds().includes("b"), "Up Next shows the add at once");
+  m.ctx.recordHistory("b");
+  const show = m.state.catalog && m.state.catalog.shows && m.state.catalog.shows[0];
+  assert.ok(show, "premise: the catalogue is loaded");
+  m.ctx.toggleShowStar(show.show_id);
+
+  tier.release();
+  await store.hydrate();
+  await settle(20);
+  await store.flush();
+  const saved = JSON.parse(store.getItem("cp_saved"));
+  assert.ok(saved.a && saved.b, `Saved after hydration: ${Object.keys(saved)}`);
+  const queue = JSON.parse(store.getItem("cp_queue"));
+  assert.ok(queue.includes("q-durable") && queue.includes("b"), `Up Next after hydration: ${queue}`);
+  const history = JSON.parse(store.getItem("cp_history"));
+  assert.ok(history.includes("h-durable") && history[history.length - 1] === "b", `History after hydration: ${history}`);
+  const snaps = JSON.parse(store.getItem("cp_episode_snaps"));
+  assert.ok(snaps["q-durable"] && snaps.b, `snapshots after hydration: ${Object.keys(snaps)}`);
+  const followed = JSON.parse(store.getItem("cp_starred_shows"));
+  assert.ok(followed["show-durable"] && followed[show.show_id], `Followed after hydration: ${Object.keys(followed)}`);
+  assert.strictEqual(m.ctx.isSaved("a"), true, "the durable star reads back");
+});
+
+test("app-1-1 (round-3 review, L1): a playlist built, a playlist played and a Foray thumb before a slow hydration land ON the durable rows", async () => {
+  /* The first app-1-1 fix covered stars, Up Next, History and follows; the
+     playlist writers (build, remove, touch) and the Foray thumb still read the
+     unhydrated store and lsSet over it, and property 2 kept that write over the
+     durable list for good. MUTATION: make buildPlaylist call
+     savePlaylists([playlist, ...playlists()]) again (or setFeedback lsSet its
+     read-modify-write) -> the durable playlist (or vote) is gone. */
+  const durable = { id: "p-durable", title: "Durable", query: "durable", created: "2026-09-01T00:00:00.000Z", items: [] };
+  const other = { id: "p-other", title: "Other", query: "other", created: "2026-09-02T00:00:00.000Z", items: [] };
+  const { store, tier } = await storeOver({
+    idb: {
+      cp_playlists: JSON.stringify([durable, other]),
+      cp_foray_feedback: JSON.stringify({ "seg-durable": { direction: "up", reasons: [], note: "", ts: "2026-09-01T00:00:00.000Z" } }),
+    },
+  });
+  const m = mount({ store, storageWaitMs: 20, ceilingMs: 60000 });
+  await m.booted();
+  assert.strictEqual(m.ctx.storageWaiting(), true, "premise: the page painted and hydration has not landed");
+  const built = m.ctx.buildPlaylist("history");
+  assert.ok(built.playlist, `premise: the build made a playlist (${built.status})`);
+  assert.ok(m.ctx.playlists().some((p) => p.id === built.playlist.id), "the new playlist shows at once, from the overlay");
+  m.ctx.setFeedback({ segment_id: "seg-new", topic: null, item_id: null }, "down", { reasons: ["Bad audio quality"] });
+  assert.strictEqual(m.ctx.feedbackFor("seg-new").direction, "down", "the thumb paints at once");
+  assert.strictEqual(store.getItem("cp_playlists"), null, "nothing was written over the unhydrated store");
+
+  tier.release();
+  await store.hydrate();
+  await settle(20);
+  await store.flush();
+  const ids = JSON.parse(store.getItem("cp_playlists")).map((p) => p.id);
+  assert.deepStrictEqual(ids, [built.playlist.id, "p-durable", "p-other"], `playlists after hydration: ${ids}`);
+  const votes = JSON.parse(store.getItem("cp_foray_feedback"));
+  assert.ok(votes["seg-durable"] && votes["seg-new"], `votes after hydration: ${Object.keys(votes)}`);
+
+  // After settle, a play and a removal are plain edits of the durable list.
+  m.ctx.touchPlaylistPlayed("p-other");
+  assert.ok(JSON.parse(store.getItem("cp_playlists")).find((p) => p.id === "p-other").last_played_at);
+});
+
+test("app-1-1: an un-star before hydration removes the durable row it names, and only that one", async () => {
+  /* MUTATION: resolve the toggle against the stored value at settle time
+     (flip, not the intent the tap painted) -> the tapped row survives; red. */
+  const { store, tier } = await storeOver({ idb: { cp_saved: JSON.stringify({ a: { id: "a" }, c: { id: "c" } }) } });
+  const m = mount({ store, storageWaitMs: 20, ceilingMs: 60000 });
+  await m.booted();
+  m.state.itemIndex.c = { id: "c", title: "C", audio_url: "https://x.test/c.mp3", topics: [] };
+  m.ctx.toggleStar("c");            // unhydrated: not saved yet as far as the page knows -> a star
+  m.ctx.toggleStar("c");            // and off again
+  assert.strictEqual(m.ctx.isSaved("c"), false);
+  tier.release();
+  await store.hydrate();
+  await settle(20);
+  const saved = JSON.parse(store.getItem("cp_saved"));
+  assert.deepStrictEqual(Object.keys(saved).sort(), ["a"], "star-then-unstar of c removes c and keeps a");
+});
+
+test("app-1-1: no first-run sheet is offered while the store has not answered; it is decided once it has", async () => {
+  /* isGenuineFirstTimeUser read an unhydrated cp_history/cp_saved and a
+     returning listener got the Welcome sheet. MUTATION: drop the
+     storageWaiting() return from offerHomeOnboarding -> the sheet opens over a
+     returning listener's Home; red. */
+  const { store, tier } = await storeOver({ idb: { cp_history: JSON.stringify(["h1", "h2"]), cp_intro_dismissed: "true" } });
+  const m = mount({ store, storageWaitMs: 20, ceilingMs: 60000 });
+  await m.booted();
+  assert.strictEqual(m.ctx.storageWaiting(), true, "premise");
+  const sheetUp = () => Boolean(m.ctx.document.querySelector("#first-time-sheet"));
+  assert.strictEqual(m.ctx.isGenuineFirstTimeUser(), true, "premise: unhydrated, the listener looks new");
+  assert.ok(!sheetUp(), "the first-run sheet opened before the store answered");
+  tier.release();
+  await store.hydrate();
+  await settle(20);
+  assert.strictEqual(m.ctx.isGenuineFirstTimeUser(), false);
+  assert.ok(!sheetUp(), "a returning listener got the first-run sheet");
+});
+
+/* ==================================================================== */
+/* app-1-7: a re-deal before storage settles records only the new deal    */
+/* ==================================================================== */
+
+test("app-1-7: 'Show my picks' before storage settles keeps the durable deal memory and records only the re-deal", async () => {
+  /* The undo ran against a deal whose recorder had not run yet (it cut the
+     PREVIOUS session's entries), and then both recorders fired, so the
+     pre-pick deal was counted as seen after all. MUTATION: drop the
+     `epoch !== dealEpoch` stand-down -> deal 1's branches are recorded; red.
+     Drop the `lastDealRecorded` guard -> the undo runs early; red on the
+     durable entries. */
+  const { store, tier } = await storeOver({ idb: { cp_recent_branches: JSON.stringify(["r1", "r2", "r3"]), cp_seen: JSON.stringify(["s1"]) } });
+  const m = mount({ store, storageWaitMs: 20, ceilingMs: 60000 });
+  await m.booted();
+  assert.strictEqual(m.ctx.storageWaiting(), true, "premise");
+  const deal1 = m.state.cardSlots.map((sl) => sl.branch);
+  const deal1Ids = m.state.cardSlots.flatMap((sl) => sl.items.map((it) => it.id));
+  assert.ok(deal1.length, "premise: a deal was made");
+  m.ctx.redealAfterOnboardingPicks([]);
+  const deal2 = m.state.cardSlots.map((sl) => sl.branch);
+  const deal2Ids = new Set(m.state.cardSlots.flatMap((sl) => sl.items.map((it) => it.id)));
+  tier.release();
+  await store.hydrate();
+  await settle(20);
+  const recent = JSON.parse(store.getItem("cp_recent_branches"));
+  assert.deepStrictEqual(recent, ["r1", "r2", "r3"].concat(deal2).slice(-8), "only the re-deal is remembered, after the durable entries");
+  const seen = JSON.parse(store.getItem("cp_seen"));
+  assert.ok(seen.includes("s1"), "the durable seen list survived");
+  const leaked = deal1Ids.filter((id) => !deal2Ids.has(id) && seen.includes(id));
+  assert.strictEqual(leaked.length, 0, `the pre-pick deal was recorded as seen: ${leaked}`);
+});
+
+/* ==================================================================== */
+/* app-1-8 / perf-3: cp_saved is trimmed, and parsed once per string      */
+/* ==================================================================== */
+
+/** Count JSON.parse calls app.js makes, from now on. */
+function countParses(m) {
+  const counter = { n: 0 };
+  m.ctx.JSON = { stringify: JSON.stringify, parse: (...a) => { counter.n += 1; return JSON.parse(...a); } };
+  return counter;
+}
+
+test("app-1-8: a star stores a trimmed snapshot, and an old untrimmed entry shrinks on the next star", () => {
+  /* toggleStar stored `{ ...snap }`: a breadth episode's whole description as
+     hook AND description, plus every chapter. MUTATION: store `{ ...snap }`
+     again -> the stored hook is 20,000 characters; red. */
+  const huge = "x".repeat(20000);
+  const chapters = Array.from({ length: 300 }, (_, i) => ({ title: `c${i}`, start_time_seconds: i }));
+  const m = mount({ fetchImpl: () => new Promise(() => {}) });
+  m.ctx.localStorage.setItem("cp_saved", JSON.stringify({ old: { id: "old", title: "Old", hook: huge, description: huge, chapters } }));
+  m.state.itemIndex.b = { id: "b", title: "B", audio_url: "https://x.test/b.mp3", topics: [], hook: huge, description: huge, chapters };
+  m.ctx.toggleStar("b");
+  const saved = JSON.parse(m.ctx.localStorage.getItem("cp_saved"));
+  for (const id of ["b", "old"]) {
+    assert.ok(saved[id].hook.length <= 280, `${id}: hook ${saved[id].hook.length}`);
+    assert.ok(saved[id].description.length <= 4000, `${id}: description kept for the episode page, bounded (${saved[id].description.length})`);
+    assert.ok(saved[id].chapters.length <= 100, `${id}: chapters ${saved[id].chapters.length}`);
+  }
+  assert.ok(m.ctx.localStorage.getItem("cp_saved").length < 20000, "the whole list is small");
+});
+
+test("app-1-8: a star the store refuses stays off, and is not logged or learned from", () => {
+  /* lsSet's refusal was ignored: the star lit, the save was logged, and the
+     next reload lost it. MUTATION: ignore editStored's answer in toggleStar ->
+     a "saved" event is logged; red. */
+  const m = mount({ fetchImpl: () => new Promise(() => {}) });
+  const ls = m.ctx.localStorage;
+  const realSet = ls.setItem;
+  ls.setItem = (k, v) => { if (k === "cp_saved") throw new Error("QuotaExceededError"); return realSet(k, v); };
+  m.state.itemIndex.b = { id: "b", title: "B", audio_url: "https://x.test/b.mp3", topics: ["science"] };
+  const events = vm.runInContext("_bufferedEvents.length", m.ctx);
+  m.ctx.toggleStar("b");
+  assert.strictEqual(m.ctx.isSaved("b"), false, "the star shows what was kept");
+  const logged = vm.runInContext("_bufferedEvents", m.ctx).slice(events).map((r) => r.type);
+  assert.ok(!logged.includes("saved"), `logged: ${logged}`);
+});
+
+test("app-1-8: a page of rows parses cp_saved once, not once per row's star", () => {
+  /* MUTATION: make storedValue call lsGet (a fresh parse) again -> 100 parses; red. */
+  const m = mount({ fetchImpl: () => new Promise(() => {}) });
+  const saved = {};
+  for (let i = 0; i < 100; i++) saved[`e${i}`] = { id: `e${i}`, title: `E${i}`, hook: "h".repeat(200) };
+  m.ctx.localStorage.setItem("cp_saved", JSON.stringify(saved));
+  const parses = countParses(m);
+  let html = "";
+  for (let i = 0; i < 100; i++) html += m.ctx.starBtn(`e${i}`);
+  assert.strictEqual((html.match(/class="star on"/g) || []).length, 100, "premise: every star reads saved");
+  assert.ok(parses.n <= 1, `${parses.n} parses for one paint`);
+  m.ctx.localStorage.setItem("cp_saved", JSON.stringify({ e0: saved.e0 }));
+  assert.strictEqual(m.ctx.isSaved("e1"), false, "a new stored string is read, not the old parse");
+});
+
+test("perf-3: the Now Playing sheet's per-tick reads parse nothing once Up Next and Saved are unchanged", async () => {
+  /* Every 4 Hz timeupdate read EPISODE_NAVIGATION.next, .upNextCount and
+     .isSaved, each re-parsing cp_queue and cp_saved. player/client.js is
+     unchanged: its getters now read the memoised maps. MUTATION: make
+     storedValue call lsGet again -> dozens of parses per second; red. */
+  const m = mount({ fetchImpl: () => new Promise(() => {}) });
+  m.ctx.forayContinuation = await import(pathToFileURL(path.join(ROOT, "player/continuation.js")).href);
+  m.ctx.ForayPlayer = { currentEpisodeId: () => "cur" };
+  m.ctx.localStorage.setItem("cp_queue", JSON.stringify(["cur", "q1", "q2"]));
+  m.ctx.localStorage.setItem("cp_saved", JSON.stringify({ q1: { id: "q1", audio_url: "https://x.test/1.mp3" } }));
+  m.ctx.localStorage.setItem("cp_episode_snaps", JSON.stringify({ q2: { id: "q2", audio_url: "https://x.test/2.mp3" } }));
+  const nav = vm.runInContext("EPISODE_NAVIGATION", m.ctx);
+  const warm = [nav.next, nav.upNextCount, nav.isSaved("cur")];
+  assert.ok(typeof warm[0] === "function" && warm[1] === 3, "premise: the getters answer");
+  const parses = countParses(m);
+  for (let tick = 0; tick < 40; tick++) { void nav.next; void nav.upNextCount; nav.isSaved("cur"); }
+  assert.strictEqual(parses.n, 0, `${parses.n} parses over 40 ticks`);
+});
+
+/* ==================================================================== */
+/* app-1-12: a player module that never loads does not grow the buffer    */
+/* ==================================================================== */
+
+test("app-1-12: with the modules run and no event log, the pre-module buffer keeps only the newest 500 rows", () => {
+  /* MUTATION: drop the cap -> 1200 rows sit in memory for the session; red. */
+  const m = mount({ fetchImpl: () => new Promise(() => {}) });
+  for (let i = 0; i < 1200; i++) m.ctx.logEvent("picked", { episode_id: `e${i}` });
+  const buf = vm.runInContext("_bufferedEvents", m.ctx);
+  assert.strictEqual(buf.length, 500);
+  assert.strictEqual(buf[buf.length - 1].payload.episode_id, "e1199", "the newest rows are the ones kept");
+});
+
+test("app-1-12: while the module may still arrive, the buffer is a real queue and is not cut", () => {
+  /* readyState "interactive": the deferred modules have not run, so the log
+     may yet be published and every row must reach it. */
+  const m = mount({ fetchImpl: () => new Promise(() => {}), readyState: "interactive" });
+  for (let i = 0; i < 700; i++) m.ctx.logEvent("picked", { episode_id: `e${i}` });
+  assert.strictEqual(vm.runInContext("_bufferedEvents.length", m.ctx) >= 700, true);
+});
+
+/* ==================================================================== */
+/* app-1-13 / app-1-14: small correctness in the deal and the titles      */
+/* ==================================================================== */
+
+test("app-1-13: an unparseable release date sorts as the oldest, and the newest episode still leads its branch", () => {
+  /* `new Date("garbage") - x` is NaN, which a sort reads as "equal", so the
+     newest item after it never moved ahead of it. MUTATION: put the
+     `new Date(b.release_date || 0) - new Date(a.release_date || 0)`
+     comparator back -> "old" leads; red. */
+  const m = mount({ fetchImpl: () => new Promise(() => {}) });
+  const items = [
+    { id: "old", release_date: "2024-01-01" },
+    { id: "bad", release_date: "not a date" },
+    { id: "new", release_date: "2025-06-01" },
+  ];
+  const chain = m.ctx.branchChain(items, new Set(), new Set()).map((it) => it.id);
+  assert.deepStrictEqual([...chain], ["new", "old", "bad"]);
+});
+
+test("app-1-14: a playlist title keeps accented and non-Latin words whole", () => {
+  /* MUTATION: split on /[^a-z0-9]+/ again -> "Pok Mon Lore"; red. */
+  const m = mount({ fetchImpl: () => new Promise(() => {}) });
+  const t = (q) => m.ctx.prettyTitle(q);
+  assert.strictEqual(t("Pokémon lore"), "Pokémon Lore");
+  assert.strictEqual(t("café culture"), "Café Culture");
+  assert.strictEqual(t("Poke\u0301mon lore"), "Pokémon Lore", "a decomposed accent stays inside its word");
+  assert.strictEqual(t("история москвы"), "История Москвы");
+  assert.strictEqual(t("東京 food"), "東京 Food");
+  assert.strictEqual(t("the history of ai"), "History AI", "ASCII stopwords and acronyms still apply");
+  assert.strictEqual(t("!!!"), "Playlist");
+});
+
+/* ==================================================================== */
+/* app-1-6: a generated playlist's link survives a re-deal                */
+/* ==================================================================== */
+
+test("app-1-6: #/playlist/gen-<leaf> resolves from the catalogue after a re-deal, and for a leaf outside the top three", async () => {
+  /* generatedPlaylistById looked the id up among the three Home shows, which
+     drop any leaf whose root is dealt into a card slot this boot. MUTATION:
+     resolve through generatedPlaylists().find again -> "not found" once the
+     leaf's root is dealt; red. */
+  const m = mount();
+  await m.booted();
+  const home = m.ctx.generatedPlaylists();
+  assert.ok(home.length > 0, "premise: Home shows generated playlists");
+  const shown = home[0];
+  const before = [...shown.items].map((p) => p.id);
+  const again = m.ctx.generatedPlaylistById(shown.id);
+  assert.deepStrictEqual([...again.items].map((p) => p.id), before, "the page matches Home's card while Home shows it");
+
+  const leaf = m.ctx.nodeById(shown.branch);
+  m.state.cardSlots = [{ slot: 1, branch: leaf.parent, role: "top", item: null, items: [] }];   // the next boot deals its root
+  assert.ok(!m.ctx.generatedPlaylists().some((p) => p.id === shown.id), "premise: Home no longer shows it");
+  const afterRedeal = m.ctx.generatedPlaylistById(shown.id);
+  assert.ok(afterRedeal && afterRedeal.items.length >= 3, "a re-deal made the link 'Playlist not found'");
+
+  const pool = m.ctx.poolFiltered();
+  const other = m.state.taxonomy.nodes.find((n) => n.parent !== null && !home.some((p) => p.branch === n.id)
+    && pool.filter((it) => (it.topics || []).includes(n.id)).length >= 3);
+  assert.ok(other, "premise: a leaf with episodes that Home does not show");
+  assert.ok(m.ctx.generatedPlaylistById(`gen-${other.id}`), "a real leaf outside the top three is not answerable");
+  assert.strictEqual(m.ctx.generatedPlaylistById("gen-no-such-leaf"), null);
+  const root = m.state.taxonomy.nodes.find((n) => n.parent === null);
+  assert.strictEqual(m.ctx.generatedPlaylistById(`gen-${root.id}`), null, "a root is a subject, not a generated playlist");
+});
+
+/* ==================================================================== */
+/* app-3-13: a throw in boot is a page with Try again, not a dead screen  */
+/* ==================================================================== */
+
+test("app-3-13: stored cp_seen / cp_recent_branches / cp_history of the wrong shape do not stop the boot", async () => {
+  /* `new Set({})` and `(5).includes` threw inside buildCards on every launch.
+     MUTATION: drop the stringList guard on cp_seen in buildCards -> the boot
+     never reaches Home; red. */
+  const m = mount({
+    fetchImpl: null,
+  });
+  // The mount's localStorage is its own; seed it before the boot reads it.
+  m.ctx.localStorage.setItem("cp_seen", JSON.stringify({ a: 1 }));
+  m.ctx.localStorage.setItem("cp_recent_branches", JSON.stringify(5));
+  m.ctx.localStorage.setItem("cp_history", JSON.stringify({ b: 2 }));
+  await m.booted();
+  assert.strictEqual(m.state.ready, true, "the boot stopped on a stored value of the wrong shape");
+  assert.ok(m.state.cardSlots.length > 0, "Home was dealt");
+  assert.doesNotMatch(m.view.innerHTML, /data-boot-loading|couldn't start/);
+});
+
+test("app-3-13: any throw between the documents and the first page paints Try again, binds the chrome, and counts the page as painted", async () => {
+  /* MUTATION: remove the try/catch around init's post-session body -> the
+     view stays "Loading 4a…" with ☰ disabled; red. */
+  const m = mount();
+  m.ctx.buildCards = () => { throw new TypeError("boom"); };
+  vm.runInContext("firstPagePainted.then(() => { globalThis.__painted = true; })", m.ctx);
+  for (let i = 0; i < 600 && !/couldn't start/.test(m.view.innerHTML); i++) await settle(1);
+  await settle(5);
+  assert.match(m.view.innerHTML, /4a couldn't start\./);
+  assert.ok(m.view.querySelector("[data-retry]"), "the failure offers Try again");
+  assert.doesNotMatch(m.view.innerHTML, /data-boot-loading/);
+  assert.strictEqual(m.menu.disabled, false, "☰ was left disabled");
+  assert.ok(m.menu.listeners("click") > 0, "☰ was never bound");
+  assert.strictEqual(m.ctx.__painted, true, "the service worker waits on a first page that never came");
+  /* Round-3 review (L1): this used to assert only that a hashchange listener
+     was REGISTERED ("no typed route can recover the page"), which passed while
+     recovery by route was impossible: the throw is before state.ready, and
+     route() returns until then. The truth, pinned: a typed route leaves the
+     Try again note in place (never a blank or half-built page), and Try again
+     is a fresh load.
+     MUTATION: bind Try again to route() instead of location.reload -- no
+     reload; set state.ready in the catch -- the hashchange renders over the note. */
+  assert.strictEqual(m.state.ready, false, "a failed boot is not a ready app");
+  m.ctx.location.hash = "#/library";
+  for (const fn of m.winListeners.get("hashchange") || []) fn();
+  await settle(5);
+  assert.match(m.view.innerHTML, /4a couldn't start\./, "a typed route replaced the Try again note");
+  let reloaded = 0;
+  m.ctx.location.reload = () => { reloaded += 1; };
+  m.view.querySelector("[data-retry]").click();
+  assert.strictEqual(reloaded, 1, "Try again is a fresh load");
+});
+
+/* ==================================================================== */
+/* data-integrity-4: Family mode fails closed, on every list              */
+/* ==================================================================== */
+
+test("data-integrity-4: INVARIANT — with Family mode on, no pool episode without a clean rating gets through, on the real data", async () => {
+  /* 516 of discover.json's items carry no `explicit`; the filter hid only
+     `explicit === true`. MUTATION: put `i.explicit !== true && branchOf(i) !==
+     "comedy"` back in poolFiltered -> unrated items from unrated shows (Lex
+     Fridman's, session.json's) pass; red. */
+  const m = mount();
+  await m.booted();
+  m.ctx.localStorage.setItem("cp_family", "true");
+  const pool = m.ctx.poolFiltered();
+  const catalog = JSON.parse(read("data/catalog-client.json")).shows;
+  const byTitle = new Map(catalog.map((s) => [s.title, s]));
+  assert.ok(pool.length > 0, "premise: Family mode still has something to play");
+  const leaks = [];
+  for (const it of pool) {
+    if (it.explicit === true) leaks.push(`${it.id}: explicit`);
+    else if (it.explicit !== false) {
+      const show = m.ctx.catalogShowForItem(it);
+      if (!show || show.explicit !== false) leaks.push(`${it.id}: unrated, show ${show ? show.explicit : "unknown"}`);
+      // Round-3 review (L1): a clean show rating is only trusted when none of the show's pool episodes is rated explicit.
+      else if (m.ctx.showHasExplicitEpisodes(show)) leaks.push(`${it.id}: unrated, show rated clean but has explicit episodes`);
+    }
+  }
+  assert.deepStrictEqual(leaks, [], `${leaks.length} episodes without a clean rating got through`);
+  const unrated = JSON.parse(read("data/discover.json")).items.filter((it) => it.explicit !== true && it.explicit !== false);
+  assert.ok(unrated.some((it) => byTitle.get(it.show) && byTitle.get(it.show).explicit === false && pool.some((p) => p.id === it.id)),
+    "an unrated episode of a show rated clean inherits the rating (founder Q1 default) and is shown");
+});
+
+test("data-integrity-4: the predicate — an unrated episode inherits its show's rating, else it is hidden", async () => {
+  const m = mount();
+  await m.booted();
+  const shows = m.state.catalog.shows;
+  const clean = shows.find((s) => s.explicit === false && !m.ctx.showHasExplicitEpisodes(s) && !m.ctx.showIsComedy(s));
+  const rated = shows.find((s) => s.explicit === true);
+  const unratedShow = shows.find((s) => s.explicit == null);
+  assert.ok(clean && rated && unratedShow, "premise: the catalogue has all three show ratings");
+  const ep = (show, extra = {}) => ({ id: "x", show: show ? show.title : "No Such Show", topics: ["history"], ...extra });
+  const safe = (it) => m.ctx.familySafe(it);
+  assert.strictEqual(safe(ep(clean)), true, "unrated, show rated clean -> shown");
+  assert.strictEqual(safe(ep(rated)), false, "unrated, show rated explicit -> hidden");
+  assert.strictEqual(safe(ep(unratedShow)), false, "unrated, show unrated -> hidden (fail closed)");
+  assert.strictEqual(safe(ep(null)), false, "unrated, show unknown -> hidden (fail closed)");
+  assert.strictEqual(safe(ep(unratedShow, { explicit: false })), true, "an episode's own clean rating is enough");
+  assert.strictEqual(safe(ep(clean, { explicit: true })), false, "an episode's own explicit rating wins over a clean show");
+  assert.strictEqual(safe(ep(clean, { topics: ["comedy"] })), false, "comedy stays out, as before");
+  assert.strictEqual(safe(ep(null, { show_id: clean.show_id, show: "Renamed" })), true, "joined by show_id first");
+});
+
+test("round-3 review (L1): a show rated clean whose own episodes are rated explicit is not trusted, and a comedy show's catalogue rows stay out", async () => {
+  /* catalog-client.json rates Ancient History Fangirl, 20VC, KILL TONY, Call Her
+     Daddy and Bad Friends clean. An unrated episode inherited that, and the show
+     page's full-catalogue rows (topics: [], so branchOf says "other") never met
+     the comedy rule. MUTATION: drop the showHasExplicitEpisodes check -- the
+     Fangirl row passes; drop the showIsComedy check -- the KILL TONY row passes. */
+  const m = mount();
+  await m.booted();
+  const byId = (id) => m.state.catalog.shows.find((s) => s.show_id === id);
+  const fangirl = byId("ancient-history-fangirl");
+  const killTony = byId("kill-tony");
+  assert.ok(fangirl && fangirl.explicit === false && killTony && killTony.explicit === false, "premise: both shows are rated clean in the catalogue");
+  assert.strictEqual(m.ctx.showHasExplicitEpisodes(fangirl), true, "premise: the Fangirl has explicit-rated episodes in the pool");
+  // A show-page full-catalogue row, exactly as fullCatalogueRowToEpRowItem builds it: no rating, no topics.
+  const row = (show) => ({ id: `${show.show_id}--guid:x`, show_id: show.show_id, show: show.title, title: "An episode", topics: [] });
+  assert.strictEqual(m.ctx.familySafe(row(fangirl)), false, "an unrated row of a clean-rated show with explicit episodes");
+  assert.strictEqual(m.ctx.familySafe(row(killTony)), false, "a comedy show's back-catalogue row");
+  // The comedy rule on its own: a clean-rated comedy show with no explicit pool
+  // episode (none in today's data, so one is added) still keeps its rows out.
+  const standUp = { show_id: "clean-stand-up-fixture", title: "Clean Stand-Up Fixture", explicit: false, taxonomy_node_ids: ["comedy/stand-up"] };
+  m.state.catalog = { ...m.state.catalog, shows: [...m.state.catalog.shows, standUp] };
+  assert.strictEqual(m.ctx.showHasExplicitEpisodes(standUp), false, "premise: nothing explicit in the pool for it");
+  assert.strictEqual(m.ctx.familySafe(row(standUp)), false, "a comedy show's row with no topics is comedy");
+  assert.strictEqual(m.ctx.familySafe({ ...row(fangirl), explicit: false }), true, "an episode's own clean rating still counts");
+  const trusted = m.state.catalog.shows.find((s) => s.explicit === false && !m.ctx.showHasExplicitEpisodes(s) && !m.ctx.showIsComedy(s));
+  assert.strictEqual(m.ctx.familySafe(row(trusted)), true, "a clean show whose episodes agree still vouches for an unrated row");
+});
+
+test("data-integrity-4: a show page and Library go through the same predicate", async () => {
+  /* episodesForShow and Library read state.discover.items / cp_saved directly
+     and never asked Family mode. MUTATION: drop familyAllows from
+     episodesForShow (or the Library filter) -> an explicit episode is listed;
+     red. */
+  const m = mount();
+  await m.booted();
+  const items = m.state.discover.items;
+  const explicitEp = items.find((it) => it.explicit === true);
+  assert.ok(explicitEp, "premise: the pool has an explicit episode");
+  const show = m.state.catalog.shows.find((s) => s.title === explicitEp.show) || { title: explicitEp.show };
+  assert.ok(m.ctx.episodesForShow(show).some((it) => it.id === explicitEp.id), "premise: with Family mode off it is listed");
+  m.ctx.localStorage.setItem("cp_family", "true");
+  const listed = m.ctx.episodesForShow(show);
+  assert.ok(!listed.some((it) => it.id === explicitEp.id), "the show page lists an explicit episode in Family mode");
+  assert.ok(listed.every((it) => m.ctx.familySafe(it)), "and nothing unrated-unsafe either");
+
+  m.state.itemIndex[explicitEp.id] = m.ctx.snapshot(explicitEp.id, explicitEp);
+  m.ctx.localStorage.setItem("cp_family", "false");
+  m.ctx.toggleStar(explicitEp.id);
+  m.ctx.localStorage.setItem("cp_family", "true");
+  m.ctx.renderLibrary();
+  assert.ok(!m.view.innerHTML.includes(`data-star="${explicitEp.id}"`), "Library shows a saved explicit episode in Family mode");
+  m.ctx.localStorage.setItem("cp_family", "false");
+  m.ctx.renderLibrary();
+  assert.ok(m.view.innerHTML.includes(`data-star="${explicitEp.id}"`), "premise: with Family mode off Library shows it");
+});
+
+test("round-3 review (L1): Library says Family mode hid a saved episode, never 'Nothing saved yet'", async () => {
+  /* With every star filtered out, Library said "Nothing saved yet": false, the
+     stars exist and are only hidden. MUTATION: drop the savedHidden branch in
+     renderLibrary -- the empty-state copy comes back. */
+  const m = mount();
+  await m.booted();
+  const explicitEp = m.state.discover.items.find((it) => it.explicit === true);
+  assert.ok(explicitEp, "premise: the pool has an explicit episode");
+  m.state.itemIndex[explicitEp.id] = m.ctx.snapshot(explicitEp.id, explicitEp);
+  m.ctx.localStorage.setItem("cp_family", "false");
+  m.ctx.toggleStar(explicitEp.id);
+  m.ctx.localStorage.setItem("cp_family", "true");
+  m.ctx.renderLibrary();
+  const html = m.view.innerHTML;
+  assert.ok(!html.includes(`data-star="${explicitEp.id}"`), "premise: the row is hidden");
+  assert.doesNotMatch(html, /Nothing saved yet/, "Library denies a star it only hid");
+  assert.match(html, /Family mode is on, so 1 saved episode is hidden\./);
 });

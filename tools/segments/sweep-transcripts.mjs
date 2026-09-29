@@ -91,6 +91,8 @@ import { dirname, join, resolve as resolvePath } from "node:path";
 import { durationSeconds, enclosureLengthBytes, hostOf } from "../refresh/enclosure.mjs";
 import { classifyShow, isDaiHost } from "../refresh/dai.mjs";
 import { UA, awaitHostSlot, waitBeforeRetry } from "./politeness.mjs";
+import { decodeEntities } from "../refresh/entities.mjs";
+import { BodyTooLargeError, readResponseCapped } from "../refresh/fetch-limits.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 
@@ -125,20 +127,12 @@ export class SweepError extends Error {
 // the parser scan.mjs borrows from backend/node_modules is not worth dragging
 // into a script that must run standalone in CI.
 
-const ENTITIES = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", "#39": "'", nbsp: " " };
-
-export function decodeEntities(raw) {
-  if (raw == null) return null;
-  return String(raw).replace(/&(#x?[0-9a-f]+|[a-z]+);/gi, (whole, body) => {
-    const key = body.toLowerCase();
-    if (ENTITIES[key] !== undefined) return ENTITIES[key];
-    if (key[0] === "#") {
-      const code = key[1] === "x" ? parseInt(key.slice(2), 16) : parseInt(key.slice(1), 10);
-      return Number.isFinite(code) && code > 0 ? String.fromCodePoint(code) : whole;
-    }
-    return whole;
-  });
-}
+/* ONE entity decoder for tools/ (audit round 3, data-tools-13): the refresh
+   path's, which range-checks code points. The copy that lived here passed
+   `&#99999999;` straight to String.fromCodePoint, whose RangeError failed the
+   whole show's parse, and read `&#12ab;` as code 12. Re-exported because the
+   tests (and anything else) import it from here. */
+export { decodeEntities };
 
 /** Reads one attribute off a raw start-tag string. Single or double quoted,
     entity-decoded — `&amp;` in a URL is the common case, and a transcript URL
@@ -277,7 +271,16 @@ export async function fetchFeed(url, { attempts = MAX_ATTEMPTS, timeoutMs = FEED
         redirect: "follow",
         signal: ctl.signal,
       });
-      if (res.ok) return await res.text();
+      if (res.ok) {
+        // Byte-capped (audit round 3, data-tools-7): one endless feed must not
+        // take down a 1,000-feed sweep. Too big is final, not retried.
+        try {
+          return await readResponseCapped(res, ctl);
+        } catch (e) {
+          if (e instanceof BodyTooLargeError) throw new SweepError("TOO_LARGE", `${e.message} for ${url}`);
+          throw e;
+        }
+      }
 
       const err = new SweepError(`HTTP_${res.status}`, `${res.statusText || "request failed"} for ${url}`);
       if (res.status !== 429 && res.status < 500) throw err; // permanent — do not retry
@@ -290,7 +293,7 @@ export async function fetchFeed(url, { attempts = MAX_ATTEMPTS, timeoutMs = FEED
         await sleep(wait);
       }
     } catch (e) {
-      if (e instanceof SweepError && e.code.startsWith("HTTP_") && e.code !== "HTTP_429") throw e;
+      if (e instanceof SweepError && ((e.code.startsWith("HTTP_") && e.code !== "HTTP_429") || e.code === "TOO_LARGE")) throw e;
       // `fetch failed` on its own names nothing — the cause carries the DNS or
       // TLS code that says whether this feed is dead or we are.
       const cause = e?.cause?.code || e?.cause?.message;

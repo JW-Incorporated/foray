@@ -681,7 +681,7 @@ test("catalog-client.json is derived from catalog.json via the committed build s
   assert.ok(out.includes("up to date"), out);
 });
 
-test("catalog-client.json carries exactly the six fields renderShow() reads, for every show", () => {
+test("catalog-client.json carries exactly the six fields renderShow() reads, plus Family mode's show rating, for every show", () => {
   /* The whitelist is the decision, so it is pinned literally — same pattern as
      playlist-durability.test.js's PLAYLIST_PART_FIELDS pin.
 
@@ -689,7 +689,9 @@ test("catalog-client.json carries exactly the six fields renderShow() reads, for
      client.mjs (e.g. `feed_url`) without a reason. This fails, because the
      projected shape grows past what this test allows. */
   const client = readJson("data/catalog-client.json");
-  const expectedKeys = ["show_id", "title", "artwork_url", "editorial_note", "taxonomy_node_ids", "episode_count"].sort();
+  /* + "explicit" (audit round 3, data-integrity-4): Family mode decides an
+     unrated episode by its show's catalogue rating (founder Q1 default). */
+  const expectedKeys = ["show_id", "title", "artwork_url", "editorial_note", "taxonomy_node_ids", "episode_count", "explicit"].sort();
   for (const show of client.shows) {
     assert.deepStrictEqual(Object.keys(show).sort(), expectedKeys, `show ${show.show_id} has an unexpected field set`);
   }

@@ -4,8 +4,11 @@ import { describe, expect, it } from "vitest";
 import {
   REAL_DATA_READ_RE,
   REAL_DATA_SUITES,
+  SUITES_RUN_TIMEOUT_MS,
+  SUITE_TEST_TIMEOUT_MS,
   formatSuiteFailure,
   knownUncoveredGuidance,
+  makeSuiteSpawn,
   parseTapCounts,
   parseTapFailures,
   runRealDataSuites,
@@ -224,18 +227,18 @@ describe("parseTapFailures — node --test's TAP, reduced to the failing asserti
 });
 
 describe("runRealDataSuites — how the suites are run and how a broken run is reported", () => {
-  it("spawns node --test --test-reporter=tap <files> with cwd = repoRoot", () => {
+  it("spawns node --test --test-reporter=tap --test-timeout=120000 <files> with cwd = repoRoot (backend-rest-20: a hung test fails)", () => {
     const { spawn, calls } = fakeSpawn({ status: 0, stdout: GREEN_TAP });
     runRealDataSuites({ repoRoot: ROOT, files: ["player/a.test.js", "tools/b.test.mjs"], spawn });
     expect(calls).toEqual([
-      { cmd: process.execPath, args: ["--test", "--test-reporter=tap", "player/a.test.js", "tools/b.test.mjs"], cwd: ROOT }
+      { cmd: process.execPath, args: ["--test", "--test-reporter=tap", "--test-timeout=120000", "player/a.test.js", "tools/b.test.mjs"], cwd: ROOT }
     ]);
   });
 
   it("defaults to REAL_DATA_SUITES when no files are given", () => {
     const { spawn, calls } = fakeSpawn({ status: 0, stdout: GREEN_TAP });
     const result = runRealDataSuites({ repoRoot: ROOT, spawn });
-    expect(calls[0]!.args.slice(2)).toEqual([...REAL_DATA_SUITES]);
+    expect(calls[0]!.args.slice(3)).toEqual([...REAL_DATA_SUITES]);
     expect(result.files).toEqual(REAL_DATA_SUITES);
   });
 
@@ -339,5 +342,28 @@ describe("the fixture-coverage suite joins the publish gate (G-21c part (2))", (
       ])
     ).toEqual([]);
     expect(knownUncoveredGuidance([])).toEqual([]);
+  });
+});
+
+/* Round-3 audit, lane L6 (backend-rest-20): the gate's spawn is bounded, so a
+   hung suite becomes a "(runner)" refusal instead of hanging publish-foray. */
+describe("the real-data suites gate cannot hang", () => {
+  it("makeSuiteSpawn kills a child that outlives its timeout, and the run is refused", () => {
+    const spawn = makeSuiteSpawn(800);
+    const started = Date.now();
+    const r = spawn(process.execPath, ["-e", "setInterval(() => {}, 1000)"], { cwd: process.cwd() });
+    expect(Date.now() - started).toBeLessThan(8000);
+    expect(r.error).toBeDefined();
+    expect((r.error as NodeJS.ErrnoException).code).toBe("ETIMEDOUT");
+
+    const hung: SuiteSpawn = () => spawn(process.execPath, ["-e", "setInterval(() => {}, 1000)"], { cwd: process.cwd() });
+    const result = runRealDataSuites({ repoRoot: ROOT, files: ["player/a.test.js"], spawn: hung });
+    expect(result.ok).toBe(false);
+    expect(result.failures[0]!.suite).toBe("(runner)");
+  });
+
+  it("the default bounds are ten minutes for the run and two minutes a test", () => {
+    expect(SUITES_RUN_TIMEOUT_MS).toBe(600_000);
+    expect(SUITE_TEST_TIMEOUT_MS).toBe(120_000);
   });
 });

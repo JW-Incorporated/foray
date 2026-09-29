@@ -1735,7 +1735,7 @@ class Tier2Walk {
        (see `SourceBeatsOptions.audioSourceFor`). */
     const audioSource = state.audioSourceFor ? state.audioSourceFor(candidate.entry, itemId) : null;
     if (state.audioSourceFor && !audioSource) return null;
-    if (audioSource) state.newSegmentSources.set(itemId, audioSource);
+    if (audioSource) recordMintedSource(state.newSegmentSources, itemId, audioSource);
     /* A supersede keeps the committed row's id — it IS that row, re-cut — so it
        does not pass through `mintSegmentId`, whose whole job is to refuse an id
        the pool already holds (F-84). The id it would have minted is the same
@@ -2511,6 +2511,23 @@ function makeSegmentWindowText(archive: TranscriptDigestEntry[], cueProvider: Tr
    windows name their episode with it, \u00a74.3's beat seed carries that name back).
    Re-exported here, unchanged, so every existing importer is untouched. */
 export { deriveItemId };
+
+/**
+ * gen-6 (round-3 audit): one item id is one episode. A second episode
+ * arriving under an id this run already minted an audio row for would
+ * otherwise REPLACE that row, and the first episode's segments would play the
+ * second's enclosure. Ids are unique per guid since `disambiguateItemIds`, so
+ * this is a guard, and it fails loudly rather than re-pointing audio.
+ */
+export function recordMintedSource(sources: Map<string, MintedSegmentSource>, itemId: string, source: MintedSegmentSource): void {
+  const held = sources.get(itemId);
+  if (held && held.episode_guid !== source.episode_guid) {
+    throw new Error(
+      `sourceBeats: item id "${itemId}" already holds episode ${held.episode_guid}; refusing to re-point it at episode ${source.episode_guid} (gen-6)`
+    );
+  }
+  sources.set(itemId, source);
+}
 
 /** The pool's own id rule (`merge-segments.mjs`'s `segmentId`):
  * `<item_id>#<start_sec rounded>`, and NOTHING ELSE. Until F-84 a collision

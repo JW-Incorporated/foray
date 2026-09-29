@@ -26,7 +26,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { AUDIO_PROBE_HEADERS } from "../segments/politeness.mjs";
+import { AUDIO_PROBE_HEADERS, discardBody } from "../segments/politeness.mjs";
 import {
   AD_FREE_FLOOR,
   AD_FREE_THRESHOLD,
@@ -72,8 +72,9 @@ for (const s of targets) {
     const total = parseContentRangeTotal(res.headers.get("content-range"));
     const ratio = Number.isFinite(total) && s.audio_bytes ? total / s.audio_bytes : NaN;
     line += ` HTTP ${res.status}  total=${Number.isFinite(total) ? total : "?"}  declared=${s.audio_bytes}  ratio=${Number.isFinite(ratio) ? ratio.toFixed(4) : "?"}`;
-    // Drain so the socket closes rather than waiting on the agent's timeout.
-    await res.arrayBuffer().catch(() => {});
+    // Let go of the body: drained if it is the 2-byte 206 we asked for,
+    // cancelled otherwise -- a 200 here is the WHOLE episode (data-tools-6).
+    await discardBody(res);
     if (res.status !== 206) { line += "  <-- FAIL: not 206"; failures++; }
     else if (!Number.isFinite(ratio)) { line += "  <-- FAIL: no parsable Content-Range"; failures++; }
     else if (ratio >= AD_FREE_THRESHOLD) { line += `  <-- FAIL: ad-inflated past ${AD_FREE_THRESHOLD}`; failures++; }

@@ -1676,6 +1676,25 @@ async function aRestoredRibbon(t, seconds = 1800, opts = {}) {
   return booted;
 }
 
+test("a RESTORED ribbon is current but not loaded, so a caller's own start path takes a press on it (round-3 review, L2)", async (t) => {
+  /* app.js's stamp tap asks isLoadedCurrent to tell a paused episode (resume
+     it) from a restored bar (start it through startEpisodePlay). MUTATION:
+     make isLoadedCurrent answer isCurrent (drop its state checks) -- the
+     restored bar reads as loaded. */
+  const { client, restore } = await aRestoredRibbon(t, 1800);
+  const id = client.currentEpisodeId();
+  assert.ok(id && client.isCurrent(id), "precondition: the restored episode is current");
+  assert.equal(client.isLoadedCurrent(id), false, "a restored bar has nothing loaded");
+  assert.equal(client.isLoadedCurrent("some-other-id"), false);
+  await client.togglePlayback();
+  await settle();
+  assert.equal(client.isLoadedCurrent(id), true, "once it plays, it is loaded");
+  await client.togglePlayback();
+  await settle();
+  assert.equal(client.isLoadedCurrent(id), true, "and paused, it is still loaded");
+  restore();
+});
+
 test("AUDIT: a scrub on a RESTORED ribbon is where the next press starts", async (t) => {
   /* The restored bar holds no audio, so `manager.seek` hit an empty queue, the
      reducer refused it silently, the thumb snapped back and play started from
@@ -2666,7 +2685,7 @@ function fakeSpeech() {
     speak(u) { this.spoken.push(u.text); this.speaking = true; this.paused = false; },
     pause() { this.transport.push("pause"); this.paused = true; },
     resume() { this.transport.push("resume"); this.paused = false; },
-    cancel() { this.transport.push("cancel"); this.speaking = false; this.paused = false; },
+    cancel() { this.transport.push("cancel"); this.speaking = false; }, // spec: cancel() keeps the paused state
     getVoices() { return []; },
   };
 }
@@ -3024,14 +3043,21 @@ test("ROUND 2 honesty-13: elapsed and remaining add up, and the countdown keeps 
   await client.play({ ...episodeItem(), duration_sec: 60 });
   await settle();
   const { now, left } = clocks(doc);
+  /* Audit round 3, arch-drift-10: every clock floors now (the Foray clock
+     always did), so 12.5 s reads 0:12 and the countdown is derived from the
+     same floored seconds. */
   audio.currentTime = 12.5;
   audio.fire("timeupdate");
-  assert.equal(now.textContent, "0:13");
-  assert.equal(left.textContent, "-0:47", "13 + 47 = 60");
+  assert.equal(now.textContent, "0:12");
+  assert.equal(left.textContent, "-0:48", "12 + 48 = 60");
   audio.currentTime = 59.3;
   audio.fire("timeupdate");
   assert.equal(left.textContent, "-0:01", "a clock that shows a second keeps its minus");
   audio.currentTime = 59.6;
+  audio.fire("timeupdate");
+  assert.equal(now.textContent, "0:59", "still playing, so not yet the end");
+  assert.equal(left.textContent, "-0:01");
+  audio.currentTime = 60;
   audio.fire("timeupdate");
   assert.equal(left.textContent, "0:00", "and only a clock that shows nothing drops it");
   restore();
@@ -3323,6 +3349,10 @@ test("ROUND 2 native-3: an interruption during a SPOKEN line pauses the Foray, a
   await settle();
   await settle();
   assert.equal(transport(doc).label, "Pause", "precondition: the line is speaking");
+  /* Every speak() now flushes the synthesizer first (audit round 3,
+     mobile-native-1), so the line's own start recorded a `cancel`. What this
+     test pins is what the interruption does after that. */
+  speech.transport.length = 0;
   // A late event: the line is still speaking — the call was declined.
   nativeSession(win, { kind: "interruptionBegan", reason: "began", producer: "tts", at: Date.now() });
   await settle();
@@ -3497,5 +3527,262 @@ test("previousMeansRestart is the player's own window: false at the start, true 
   assert.equal(client.previousMeansRestart(), true, "at the window, previous means restart");
   audio.currentTime = 2400;
   assert.equal(client.previousMeansRestart(), true);
+  restore();
+});
+
+test("‹‹ after a failed Foray load retries the clip; it never marks the Foray Played (audit round 3, player-core-1)", async (t) => {
+  /* The listener's clip would not load (a 404, a timeout, an iOS refusal) and
+     the machine went `idle`. ‹‹ is the natural retry. It used to reach the
+     reducer as `skipToPrevious(null)`, which returned `ended`, and `ended` is
+     what `persistForayProgress` writes as "Played" and what the next ▶ restarts
+     from clip 1. MUTATION: pass `null` from `PlayerQueueManager.skipToPrevious`
+     again and nothing reloads (with the reducer's no-op) or the status reads
+     `ended` (without it). */
+  const { client, audio, restore } = await bootClient(t);
+  const resolved = synthetic();
+  audio.loadPlan.set("https://cdn.test/b.mp3", "error");
+  await client.playForay(resolved, { startIndex: 1 });
+  await settle();
+  await settle();
+  assert.equal(client.forayStatus().ended, false, "precondition: a failed load is not the end");
+
+  audio.loadPlan.clear();
+  const before = audio.calls.length;
+  await client.forayPrevious();
+  await settle();
+  await settle();
+  const status = client.forayStatus();
+  assert.equal(status.ended, false, "previous never finishes a Foray");
+  assert.equal(status.index, 1, "the failed clip is the one retried");
+  assert.ok(audio.calls.slice(before).includes("load"), `the clip is reloaded: ${audio.calls.slice(before).join(", ")}`);
+  assert.equal(status.playing, true, "and it plays");
+  const row = client.forayResume(resolved.id, { resolved, includeFinished: true });
+  assert.notEqual(row?.finished, true, `the resume row is not Played: ${JSON.stringify(row)}`);
+  restore();
+});
+
+test("Next clip onto a narration line plays the line, not the clip after it (audit round 3, player-core-6)", async (t) => {
+  /* `skipToNext` steps over `kind: "tts"` items (the Swift bridge rule); a
+     Foray's narration is authored content. MUTATION: put
+     `await manager.skipToNext()` back in `forayNext` and the index lands on 2. */
+  const { client, audio, restore } = await bootClient(t);
+  const resolved = forayWithLine({ rendered: true });
+  await client.playForay(resolved, { startIndex: 0 });
+  await settle();
+  await client.forayNext();
+  await settle();
+  await settle();
+  assert.equal(client.forayStatus().index, 1, "the narration line is the next clip");
+  assert.match(audio.src, /n1\.mp3$/, `and it is what plays: ${audio.src}`);
+  restore();
+});
+
+test("Next clip from the penultimate clip onto a closing line does not end the Foray (audit round 3, player-core-6)", async (t) => {
+  const { client, audio, restore } = await bootClient(t);
+  const resolved = forayWithLine({ rendered: true, lineLast: true });
+  await client.playForay(resolved, { startIndex: 0 });
+  await settle();
+  await client.forayNext();
+  await settle();
+  await settle();
+  const status = client.forayStatus();
+  assert.equal(status.ended, false, "the closing line is still to be heard");
+  assert.equal(status.index, 1);
+  assert.match(audio.src, /n1\.mp3$/);
+  restore();
+});
+
+test("a scrub made while paused survives starting a Foray (audit round 3, player-core-8)", async (t) => {
+  /* `play()` flushes both stores on the way out (player-3); `playForay()` did
+     not. KILLING MUTATION: delete `flushPositions()` from `playForay`. */
+  const { client, doc, audio, storage, restore } = await pausedAt(t, 600);
+  const { scrub } = sheet(doc);
+  scrub.value = "500";                                   // 1800 s
+  for (const fn of scrub.listeners.get("change") ?? []) await fn();
+  await settle();
+  assert.ok(Math.abs(audio.currentTime - 1800) < 1, "precondition: the element moved");
+  assert.ok(Math.abs(posRow(storage, "ep-a").seconds - 600) < 1, "precondition: the row still says 600");
+  await client.playForay(synthetic(), { startIndex: 0 });
+  await settle();
+  assert.ok(Math.abs(posRow(storage, "ep-a").seconds - 1800) < 1, `the scrub is what was kept, got ${posRow(storage, "ep-a").seconds}`);
+  restore();
+});
+
+test("a drag released on its starting value does not freeze the bar and clocks (audit round 3, player-core-5)", async (t) => {
+  /* A range fires `change` only when the committed value moved; a thumb put
+     back where it started fires `input` alone. `scrubbing` then stuck true and
+     every repaint skipped the bar and the clocks. KILLING MUTATION: delete the
+     release listeners (`endScrubPreview`) and the clock stays on the preview. */
+  const { client, doc, audio, restore } = await bootClient(t);
+  await client.play(episodeItem());
+  await settle();
+  const { now, scrub } = clocks(doc);
+  scrub.value = "500";
+  for (const fn of scrub.listeners.get("input") ?? []) fn();
+  assert.equal(now.textContent, "30:00", "precondition: the preview follows the thumb");
+  scrub.value = "0";                                      // back where it started
+  for (const fn of scrub.listeners.get("input") ?? []) fn();
+  for (const fn of scrub.listeners.get("pointerup") ?? []) fn();
+  await new Promise((r) => setTimeout(r, 5));
+  audio.currentTime = 600;
+  audio.fire("timeupdate");
+  assert.equal(now.textContent, "10:00", "the clock follows the audio again");
+  assert.equal(scrub.value, "167", "and so does the thumb");
+  restore();
+});
+
+test("a release followed by a real change still seeks to the thumb (audit round 3, player-core-5)", async (t) => {
+  /* The release check must not clear the preview before the `change` reads it. */
+  const { client, doc, audio, restore } = await bootClient(t);
+  await client.play(episodeItem());
+  await settle();
+  const { scrub } = clocks(doc);
+  scrub.value = "500";
+  for (const fn of scrub.listeners.get("input") ?? []) fn();
+  for (const fn of scrub.listeners.get("pointerup") ?? []) fn();
+  for (const fn of scrub.listeners.get("change") ?? []) await fn();
+  await new Promise((r) => setTimeout(r, 5));
+  await settle();
+  assert.ok(Math.abs(audio.currentTime - 1800) < 1, `the scrub seeks, got ${audio.currentTime}`);
+  restore();
+});
+
+test("a Next clip tap that throws leaves the index where the audio is, and repaints (audit round 3, player-rest-5)", async (t) => {
+  /* `setForayIndex` records `pendingFrom` and then paints; a throw after that
+     used to leave the page waiting for a move that never came, with the
+     rejection unhandled. Driven here by a clip whose `why` cannot be read.
+     KILLING MUTATION: drop the catch in `moveForay` and the status stays on 1. */
+  const { client, doc, restore } = await bootClient(t);
+  const resolved = synthetic();
+  await client.playForay(resolved, { startIndex: 0 });
+  await settle();
+  Object.defineProperty(resolved.playable[1], "why", { get() { throw new TypeError("unreadable"); } });
+  const next = findWhere(doc.body, (n) => n.textContent === "Next clip ›");
+  await next.click();                   // must not reject: the guard owns it
+  await settle();
+  assert.equal(client.forayStatus().index, 0, "the page is back on the clip that is playing");
+  restore();
+});
+
+test("the Foray page is not repainted while the document is hidden, and is repainted on return (audit round 3, perf-8)", async (t) => {
+  /* KILLING MUTATION: drop the `document.hidden` check around `notifyForay()` in
+     `render()` and the hidden ticks each repaint the page. */
+  const { client, doc, audio, restore } = await bootClient(t);
+  let paints = 0;
+  await client.playForay(synthetic(), { startIndex: 0, onChange: () => { paints++; } });
+  await settle();
+  doc.hidden = true;
+  doc.fire("visibilitychange");
+  await settle();
+  paints = 0;
+  for (let i = 0; i < 4; i++) { audio.currentTime = 110 + i; audio.fire("timeupdate"); }
+  await settle();
+  assert.equal(paints, 0, "no Foray-page paint with the screen off");
+  doc.hidden = false;
+  doc.fire("visibilitychange");
+  await settle();
+  await settle();
+  assert.ok(paints >= 1, "the page is repainted once it is visible again");
+  restore();
+});
+
+test("a skip from a PAUSED narration line to the next line is heard, not queued behind the pause (audit round 3, mobile-native-1)", async (t) => {
+  /* A synthesizer's speak() only enqueues, and a paused one stays paused: after
+     a pause and a skip, the next line used to wait silently behind the paused
+     one (iOS AVSpeechSynthesizer, and Web Speech). This fake models exactly that
+     queue. MUTATION: delete the `cancel()` before `speak()` in foray-tts.js's
+     Web Speech branch and nothing is audible after the skip.
+     Round-3 review (L3): the fake's cancel() used to clear `paused`, which the
+     spec says cancel() does not do, so the test passed while Chromium stayed
+     paused. It keeps `paused` now. MUTATION: delete the resume() after
+     cancel() -- the second line is queued behind the pause and not heard. */
+  const speech = {
+    queue: [], paused: false, transport: [],
+    get speaking() { return this.queue.length > 0 && !this.paused; },
+    get pending() { return this.queue.length > 1; },
+    speak(u) { this.queue.push(u.text); },
+    pause() { this.transport.push("pause"); this.paused = true; },
+    resume() { this.transport.push("resume"); this.paused = false; },
+    // Spec: cancel() empties the queue and does NOT change the paused state.
+    cancel() { this.transport.push("cancel"); this.queue = []; },
+    getVoices() { return []; },
+    audible() { return this.paused ? null : (this.queue[0] ?? null); },
+  };
+  const { client, doc, restore } = await bootClient(t, { speech });
+  const foray = {
+    id: "f-two-lines", kind: "deep-dive", title: "A Foray", status: "published",
+    slots: [{ id: "one", title: "Slot one" }],
+    items: [
+      { type: "narration", slot: "one", id: "n1", duration_sec: 20, script: "The first line." },
+      { type: "narration", slot: "one", id: "n2", duration_sec: 20, script: "The second line." },
+      { type: "segment", slot: "one", label: "L1", role: "explanation", segment_id: "sa" },
+    ],
+  };
+  const segments = indexSegments({ segments: [
+    { id: "sa", item_id: "ep-a", start_sec: 100, end_sec: 200, reference_duration_sec: 3600, why: "w", topic: "food/grilling-bbq", confidence: "high" },
+  ] });
+  const sources = indexSources({ sources: [
+    { id: "ep-a", show: "Show A", title: "Ep A", audio_url: "https://cdn.test/a.mp3", duration_sec: 3600, dai_suspected: false },
+  ] });
+  await client.playForay(resolveForay(foray, { segments, sources }), { startIndex: 0 });
+  await settle();
+  assert.equal(speech.audible(), "The first line.", "precondition: the first line is speaking");
+  transport(doc).press();               // pause the line
+  await settle();
+  assert.equal(speech.audible(), null, "precondition: paused");
+  await client.forayNext();
+  await settle();
+  await settle();
+  assert.equal(client.forayStatus().index, 1);
+  assert.equal(speech.audible(), "The second line.", `the next line is heard: queue=${JSON.stringify(speech.queue)} paused=${speech.paused}`);
+  restore();
+});
+
+test("a voice Preview never cuts off the narrator's line, playing or paused (round-3 review, L3)", async (t) => {
+  /* Every platform flushes the one synthesiser before a new utterance, so a
+     Preview mid-line killed the line; the kill sends no `finished`, the
+     preview's own is ignored, and the Foray sat silent to the narration
+     deadline, then skipped the line. The web player now refuses the preview
+     while a narration line is loaded (native mode already refused while its
+     engine plays). MUTATION: drop the isNarrationPlayhead refusal in
+     client.js auditionVoice -- the preview is spoken over the line. */
+  const speech = {
+    queue: [], paused: false,
+    get speaking() { return this.queue.length > 0 && !this.paused; },
+    get pending() { return this.queue.length > 1; },
+    speak(u) { this.queue.push(u.text); },
+    pause() { this.paused = true; },
+    resume() { this.paused = false; },
+    cancel() { this.queue = []; },
+    getVoices() { return []; },
+  };
+  const { client, doc, restore } = await bootClient(t, { speech });
+  const foray = {
+    id: "f-preview", kind: "deep-dive", title: "A Foray", status: "published",
+    slots: [{ id: "one", title: "Slot one" }],
+    items: [
+      { type: "narration", slot: "one", id: "n1", duration_sec: 20, script: "The narrator's line." },
+      { type: "segment", slot: "one", label: "L1", role: "explanation", segment_id: "sa" },
+    ],
+  };
+  const segments = indexSegments({ segments: [
+    { id: "sa", item_id: "ep-a", start_sec: 100, end_sec: 200, reference_duration_sec: 3600, why: "w", topic: "food/grilling-bbq", confidence: "high" },
+  ] });
+  const sources = indexSources({ sources: [
+    { id: "ep-a", show: "Show A", title: "Ep A", audio_url: "https://cdn.test/a.mp3", duration_sec: 3600, dai_suspected: false },
+  ] });
+  await client.playForay(resolveForay(foray, { segments, sources }), { startIndex: 0 });
+  await settle();
+  assert.deepEqual(speech.queue, ["The narrator's line."], "precondition: the line is speaking");
+
+  const playing = await client.auditionVoice("one, two, three", null);
+  assert.deepEqual(playing, { ok: false, reason: "narration-loaded" });
+  assert.deepEqual(speech.queue, ["The narrator's line."], "the line was not flushed for the preview");
+
+  transport(doc).press();               // pause the line: still refused, the line is still loaded
+  await settle();
+  const paused = await client.auditionVoice("one, two, three", null);
+  assert.equal(paused.reason, "narration-loaded");
+  assert.deepEqual(speech.queue, ["The narrator's line."]);
   restore();
 });

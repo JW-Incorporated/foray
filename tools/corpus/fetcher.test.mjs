@@ -5,7 +5,7 @@
 
 import { test } from "node:test";
 import assert from "node:assert";
-import { createFetcher, USER_AGENT, AGENT_TOKEN } from "./fetcher.mjs";
+import { bodyTimeoutMs, createFetcher, USER_AGENT, AGENT_TOKEN } from "./fetcher.mjs";
 import { parseRobots } from "./robots.mjs";
 
 /* ------------------------------------------------------------ test rig */
@@ -312,4 +312,59 @@ test("fetch: honors Retry-After seconds on 429", async () => {
   const r = await f.fetchUrl("https://example.com/limited");
   assert.equal(r.ok, true);
   assert.ok(times[1] - times[0] >= 30_000, `waited ${times[1] - times[0]}ms`);
+});
+
+/* --------------------------------- body reads (audit round 3, data-tools-3) */
+
+/* A body read that rejects -- its deadline fired, or the connection reset
+   mid-stream -- used to escape fetchUrl (which promises never to throw for
+   fetch-level failures) and end the whole ingest run.
+   MUTATION: drop the try/catch around the body read -- both calls reject. */
+test("fetch: a body read that fails is a returned failure, never a throw", async () => {
+  const timeout = () => { const e = new Error("The operation was aborted due to timeout"); e.name = "TimeoutError"; return e; };
+  const streaming = { ...makeRes(200, "", { "content-length": "1000" }), body: { getReader: () => ({ read: async () => { throw timeout(); }, cancel: async () => {}, releaseLock() {} }) } };
+  const buffered = { ...makeRes(200), arrayBuffer: async () => { throw timeout(); } };
+  for (const res of [streaming, buffered]) {
+    const f = createFetcher({ fetchImpl: makeFetch({ ...NO_ROBOTS, "https://example.com/big.pdf": [res] }), ...makeClock() });
+    const r = await f.fetchUrl("https://example.com/big.pdf");
+    assert.equal(r.ok, false);
+    assert.equal(r.status, 200);
+    assert.ok(r.notes.some((n) => /body read failed: TimeoutError/.test(n)), r.notes.join(" | "));
+  }
+});
+
+/* The header deadline no longer covers the body. The fake honours the request
+   signal the way undici does: a body read after abort rejects.
+   MUTATION: pass AbortSignal.timeout(attemptTimeoutMs) to fetch again (one
+   clock for headers and body) -- the 25 ms deadline cuts the 2-chunk body. */
+test("fetch: the attempt timeout bounds the headers, and the body has its own deadline", async () => {
+  const chunks = [new TextEncoder().encode("hel"), new TextEncoder().encode("lo")];
+  const fetchImpl = async (url, opts) => {
+    if (url.endsWith("robots.txt")) return makeRes(404);
+    let i = 0;
+    const signal = opts.signal;
+    return {
+      ...makeRes(200, "", { "content-length": "5" }),
+      body: {
+        getReader: () => ({
+          read: async () => {
+            await new Promise((r) => setTimeout(r, 40));
+            if (signal?.aborted) { const e = new Error("aborted"); e.name = signal.reason?.name ?? "AbortError"; throw e; }
+            return i < chunks.length ? { done: false, value: chunks[i++] } : { done: true, value: undefined };
+          },
+          cancel: async () => {},
+        }),
+      },
+    };
+  };
+  const f = createFetcher({ fetchImpl, ...makeClock(), attemptTimeoutMs: 25 });
+  const r = await f.fetchUrl("https://example.com/slow");
+  assert.equal(r.ok, true, r.notes.join(" | "));
+  assert.equal(r.body.toString(), "hello");
+});
+
+test("fetch: the body deadline scales with the declared length", () => {
+  assert.equal(bodyTimeoutMs(0, 30_000), 120_000, "undeclared: four base allowances");
+  assert.equal(bodyTimeoutMs(64 * 1024, 30_000), 31_000);
+  assert.ok(bodyTimeoutMs(50 * 1024 * 1024, 30_000) >= 800_000, "a 50 MB PDF gets minutes, not 30 s");
 });

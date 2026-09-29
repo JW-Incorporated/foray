@@ -77,7 +77,7 @@ test("loadChangeIndex returns ok:false when the pointer is stale (release run st
 test("loadChangeIndex succeeds for a fresh pointer within the staleness ceiling", async () => {
   const publishedAt = new Date(Date.parse("2026-01-01T00:00:00Z"));
   const now = publishedAt.getTime() + 2 * 24 * 3600_000; // 2 days later, well within default 9-day ceiling
-  const fetchImpl = fakeFetch({ "changed.json": [1], "id-map.json": {}, "top.json": [] });
+  const fetchImpl = fakeFetch({ "changed.json": { baseline: true, changed: [1] }, "id-map.json": {}, "top.json": [] });
   const result = await withPointer(
     { asset_base_url: "https://example.com/rel", published_at: publishedAt.toISOString() },
     (path) => loadChangeIndex({ pointerPath: path, fetchImpl, now }),
@@ -95,7 +95,7 @@ test("loadChangeIndex returns ok:false on a fetch failure, never throws", async 
 });
 
 test("loadChangeIndex returns ok:false when any asset 404s", async () => {
-  const fetchImpl = fakeFetch({ "changed.json": [1, 2], "id-map.json": {} }); // top.json missing -> 404
+  const fetchImpl = fakeFetch({ "changed.json": { baseline: true, changed: [1, 2] }, "id-map.json": {} }); // top.json missing -> 404
   const result = await withPointer(
     { asset_base_url: "https://example.com/rel", published_at: FRESH_PUBLISHED_AT },
     (path) => loadChangeIndex({ pointerPath: path, now: FRESH_NOW, fetchImpl }),
@@ -116,7 +116,7 @@ test("loadChangeIndex returns ok:false on malformed asset shapes", async () => {
 
 test("loadChangeIndex succeeds and parses all three assets", async () => {
   const fetchImpl = fakeFetch({
-    "changed.json": [10, 20, "30"],
+    "changed.json": { baseline: true, changed: [10, 20, "30"] },
     "id-map.json": { "show-a": 10, "show-b": 99 },
     "top.json": [{ id: 10, t: "Show A", c: true }, { id: 500, t: "Big Show", c: false }],
   });
@@ -222,4 +222,24 @@ test("curationCandidates records rank as position in the untouched top.json list
   const changedIds = new Set([2, 4]);
   const result = curationCandidates(topRows, changedIds);
   assert.deepStrictEqual(result.map((r) => r.rank), [1, 3]);
+});
+
+/* Audit round 3, data-tools-14. A release with no previous snapshot cannot say
+   what changed; loadChangeIndex must report the index unavailable so scan
+   falls back to an honest full scan instead of a full scan labelled "index"
+   plus a candidates list of unchanged shows.
+   MUTATION: accept a bare array, or ignore `baseline` -- ok comes back true. */
+test("loadChangeIndex treats a baseline-less changed.json as index unavailable", async () => {
+  for (const [changed, reason] of [
+    [{ baseline: false, changed: null }, /no baseline/],
+    [[1, 2, 3], /bare array/],
+  ]) {
+    const fetchImpl = fakeFetch({ "changed.json": changed, "id-map.json": {}, "top.json": [] });
+    const result = await withPointer(
+      { asset_base_url: "https://example.com/rel", published_at: FRESH_PUBLISHED_AT },
+      (path) => loadChangeIndex({ pointerPath: path, now: FRESH_NOW, fetchImpl }),
+    );
+    assert.equal(result.ok, false, JSON.stringify(changed));
+    assert.match(result.reason, reason);
+  }
 });

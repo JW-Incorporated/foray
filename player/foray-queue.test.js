@@ -472,6 +472,14 @@ test("a jingle needs no start_sec/end_sec — it is not a segment for seam purpo
   assert.equal(items[0].end_sec, undefined);
 });
 
+test("arch-drift-4: a jingle item lasts exactly as long as the file it plays", () => {
+  /* The jingle item said 1.5 s while the interlude WAV it plays is 3.0 s
+     (interlude.test.js measures the header), so every jingle undercounted the
+     Foray clock by 1.5 s under a DURATION_MEASURED label. MUTATION: set
+     JINGLE_DURATION_SEC back to 1.5. */
+  assert.equal(JINGLE_DURATION_SEC, INTERLUDE_DURATION_SEC);
+});
+
 test("F-90: an authored jingle item plays the same asset the seam interlude plays — never a TBD URL", () => {
   /* The first generated Foray with a jingle item (2026-09-11) would have asked
      the audio backend to load "TBD:jingle-asset". One asset, two routes: point

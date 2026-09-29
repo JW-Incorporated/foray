@@ -8,7 +8,7 @@
  * fetch function.
  */
 import { test, expect } from "@playwright/test";
-import { startServer, registerAndActivate, runLoads } from "../lib/harness.mjs";
+import { startServer, registerAndActivate, runLoads, cacheNames, updateAndAwaitNewWorker } from "../lib/harness.mjs";
 
 test.describe("OFFLINE RELOAD (real browser)", () => {
   test("a fully offline reload gets one internally consistent generation, never a shell/data mix", async ({
@@ -62,10 +62,15 @@ test.describe("OFFLINE RELOAD (real browser)", () => {
     // its ORIGINAL (gen 1) code — exactly the "stayed open across a deploy"
     // scenario RETENTION exists for.
     server.setFiles({ "data/forays.json": '{"forays":["gen-2-data"]}' });
-    await page.evaluate(() =>
-      navigator.serviceWorker.getRegistration().then((reg) => reg && reg.update())
-    );
-    await page.waitForTimeout(1500);
+    const gen2 = server.currentManifest().deploy_id;
+    // THE PREMISE (round-3 audit, tests-1): gen 2 really installed and
+    // promoted. Before the fixture stamped sw.js, update() was a byte-identical
+    // no-op and "gen 1 is still readable" held trivially.
+    const second = await updateAndAwaitNewWorker(page);
+    expect(second).toEqual({ appeared: true, state: "activated" });
+    const names = await cacheNames(page);
+    expect(names).toContain("foray-gen-" + gen2);
+    expect(names).toContain("foray-gen-" + gen1);
 
     await context.setOffline(true);
     const text = await page.evaluate(async (gen1) => {

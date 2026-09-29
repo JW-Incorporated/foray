@@ -230,6 +230,66 @@ test("END TO END: a database that will not open leaves a working localStorage-on
   assert.equal(store.health().ok, false, "and the lost durability is recorded, not hidden");
 });
 
+test("player-rest-1: a transaction that never settles is abandoned at the deadline, aborted, and the connection reopened", async () => {
+  /* MUTATION: construct with `txDeadlineMs: 0` (the old unbounded wait) and
+     the write never settles; drop `onDeadline` and the next call reuses the
+     dead connection (`opens` stays 1). */
+  const factory = new FakeFactory();
+  const tier = makeIdbTier({ indexedDB: factory, txDeadlineMs: 30 });
+  await tier.write("cp_a", "1");
+  factory.hang = true;
+  const hung = await Promise.race([
+    tier.write("cp_b", "2").then(() => "resolved", (err) => err),
+    new Promise((r) => setTimeout(() => r("still waiting"), 500)),
+  ]);
+  assert.equal(hung?.name, "TimeoutError", `got ${hung}`);
+  assert.equal(factory.aborts, 1, "the stuck transaction is aborted");
+  factory.hang = false;
+  await tier.write("cp_c", "3");
+  assert.equal(factory.opens, 2, "a fresh connection, not the one that went silent");
+});
+
+test("player-rest-2: a connection the browser closed is forgotten, and the next write opens a fresh one", async () => {
+  /* WebKit's "Connection to Indexed Database server lost", or Clear site data:
+     the close event fires and the old handle is dead. MUTATION: drop the
+     `db.onclose` handler in `idbConnection` AND the InvalidStateError retry in
+     `withStore`, and every later write rejects. */
+  const factory = new FakeFactory();
+  const tier = makeIdbTier({ indexedDB: factory });
+  await tier.write("cp_a", "1");
+  factory.db.closed = true;
+  factory.db.onclose();
+  await tier.write("cp_b", "2");
+  assert.equal(factory.opens, 2, "reopened");
+  assert.equal((await tier.readAll("cp_")).get("cp_b"), "2");
+});
+
+test("player-rest-2: a dead handle with no close event is retried once on a fresh connection", async () => {
+  /* MUTATION: delete the InvalidStateError retry in `withStore`. */
+  const factory = new FakeFactory();
+  const tier = makeIdbTier({ indexedDB: factory });
+  await tier.write("cp_a", "1");
+  factory.db.closed = true;              // no close event delivered
+  await tier.write("cp_b", "2");
+  assert.equal(factory.opens, 2);
+  assert.equal((await tier.readAll("cp_")).get("cp_b"), "2");
+});
+
+test("player-rest-2: versionchange closes and forgets the handle", async () => {
+  /* MUTATION: drop the `db.onversionchange` handler in `idbConnection`. */
+  const factory = new FakeFactory();
+  let closed = 0;
+  factory.db.close = () => { closed += 1; factory.db.closed = true; };
+  const tier = makeIdbTier({ indexedDB: factory });
+  await tier.write("cp_a", "1");
+  factory.db.onversionchange();
+  assert.equal(closed, 1, "the old connection is closed, so it cannot block the other context");
+  factory.txThrows = false;
+  const opensBefore = factory.opens;
+  await tier.readAll("cp_");
+  assert.equal(factory.opens, opensBefore + 1, "and the next call opens a new one");
+});
+
 /* ================================================================= the fake ==
 
    Just enough IndexedDB to drive the adapter, and deliberately no more. Requests
@@ -269,6 +329,9 @@ class FakeObjectStore {
   constructor(tx, store) { this.tx = tx; this.store = store; }
   put(record) {
     const req = new FakeRequest();
+    /* WKWebView after a background (audit round 3, player-rest-1): the request
+       is accepted and then nothing, not complete, not error, not abort. */
+    if (this.tx.db.factory.hang) return req;
     if (this.tx.db.factory.putError) {
       this.tx._failWith(this.tx.db.factory.putError);
       req._fail(this.tx.db.factory.putError);
@@ -325,6 +388,10 @@ class FakeTransaction {
       if (this.oncomplete) this.oncomplete({ target: this });
     };
   }
+  abort() {
+    this.db.factory.aborts += 1;
+    this._settled = true;
+  }
   _failWith(error) {
     this.error = error;
     setTimeout(() => {
@@ -347,6 +414,9 @@ class FakeDb {
     return this.stores.get(name);
   }
   transaction(names, mode) {
+    /* A connection the browser closed (audit round 3, player-rest-2): every
+       transaction() on it throws InvalidStateError until a fresh open. */
+    if (this.closed) throw Object.assign(new Error("The database connection is closing."), { name: "InvalidStateError" });
     if (this.factory.txThrows) throw new Error("no transaction available");
     return new FakeTransaction(this, names, mode);
   }
@@ -358,6 +428,8 @@ class FakeFactory {
     this.blocked = blocked;
     this.putError = putError;
     this.txThrows = txThrows;
+    this.hang = false;
+    this.aborts = 0;
     this.opens = 0;
     this.db = new FakeDb(this);
     this._created = false;
@@ -378,6 +450,7 @@ class FakeFactory {
     setTimeout(() => {
       if (this.openError) { req.error = this.openError; if (req.onerror) req.onerror({ target: req }); return; }
       if (this.blocked) { if (req.onblocked) req.onblocked({ target: req }); return; }
+      this.db.closed = false;   // a fresh open is a live connection again
       req.result = this.db;
       if (!this._created) { this._created = true; if (req.onupgradeneeded) req.onupgradeneeded({ target: req }); }
       if (req.onsuccess) req.onsuccess({ target: req });

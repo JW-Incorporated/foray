@@ -127,7 +127,10 @@ import { createNativeFacades } from "./native-facades.js";
 import { engineDiagnosticReport, engineBridgePresent, pageEngineView } from "./engine-diagnostics.js";
 import { readBuildStamp, BUILD_STAMP_WAIT_MS } from "./build-stamp.js";
 import { createTtsBridge } from "./tts-bridge.js";
-import { runKokoroProbe, formatProbeReport, probeVerdict } from "./kokoro-probe.js";
+import {
+  runKokoroProbe, formatProbeReport, probeVerdict, formatProbeTable, formatSoakReport, wavPasses, playProbeWav,
+  stopProbeSoak, readProbeKills, ackProbeKills, resetProbeSkips,
+} from "./kokoro-probe.js";
 import { createInterludePlayer, readInterludePref, writeInterludePref } from "./interlude.js";
 import { makeIdbTier } from "./idb-tier.js";
 import { createEventLog } from "./event-log.js";
@@ -551,7 +554,40 @@ const diagLog = new DiagnosticLog({ storage });
 const diag = new PlayerDiagnostics({
   log: diagLog,
   isHidden: () => typeof document !== "undefined" && document.hidden === true,
+  /* L24 (log-gaps 2026-09-26): what the player believed at an unexplained
+     stop — the reducer's state and the item the playhead is on, the same two
+     facts `reconcileOnReturn` reads — instead of a hard-coded `state=?`. */
+  getState: () => ({ state: manager?.state?.type ?? null, item: manager?.playheadItemId ?? null }),
 });
+
+/** `navigator.onLine` when the browser says, else null — never a guess (L25, L26). */
+function browserOnline() {
+  try { return typeof navigator !== "undefined" && typeof navigator.onLine === "boolean" ? navigator.onLine : null; } catch (_) { return null; }
+}
+
+/** L25: the playing element's own state for a media row, plus `online`. Total:
+    a backend without `elementFacts` (the engine's facade) gives only `online`. */
+function mediaFacts() {
+  let facts = null;
+  try { facts = typeof backend?.elementFacts === "function" ? backend.elementFacts() : null; } catch (_) { facts = null; }
+  return { ...(facts && typeof facts === "object" ? facts : {}), online: browserOnline() };
+}
+
+/* L22 (log-gaps 2026-09-26): WHERE THE ENGINE DECISION LANDED, as a row in
+   the timeline — the header's `engine=` line says which lane this page is in
+   NOW, and nothing said when it committed. iOS shell only (elsewhere the lane
+   is JS from the first line and there is no decision to record), and after
+   hydration like every other write. The reason is the engine's own when it
+   answered native (`build-default`, `override`), the page's otherwise. */
+if (engineShell) {
+  engineModeReady.then((mode) => storageReady.then(() => {
+    const d = engine?.decision ?? null;
+    const reason = mode === "native"
+      ? (typeof d?.hello?.reason === "string" ? d.hello.reason : d?.reason ?? null)
+      : d?.mode === "native" ? "attach-failed" : d?.reason ?? null;
+    diag.engineMode({ mode, reason });
+  })).catch(() => {});
+}
 /* EVERY WRITER WAITS FOR HYDRATION, and it is the LISTENER — not just the boot row
    — that has to wait. This ordering is load-bearing rather than tidy.
 
@@ -571,6 +607,22 @@ const diag = new PlayerDiagnostics({
    `storageReady` never rejects (every tier failure is caught into `health()`), but
    the catch is attached anyway. It resolves with whether hydration landed inside
    the bound — see `HYDRATE_WAIT_MS` — and the boot row records that. */
+/** Probe v3.1: write each unacknowledged kill report's rows, then ack them.
+    Never throws; a web page or an older shell has nothing to report. */
+async function recordVoiceProbeKills() {
+  try {
+    const status = await readProbeKills({ tts: ttsBridge });
+    const written = [];
+    for (const kill of status.kills) {
+      for (const record of kill.records) {
+        try { diag.voiceProbe(record, {}); } catch (_) { /* the instrument must never be the outage */ }
+      }
+      if (kill.id) written.push(kill.id);
+    }
+    if (written.length) await ackProbeKills({ tts: ttsBridge, ids: written });
+  } catch (_) { /* never the outage */ }
+}
+
 storageReady.then((hydrated) => {
   diag.boot({ hydrated: hydrated === true });
   if (hydrated !== true) {
@@ -587,6 +639,14 @@ storageReady.then((hydrated) => {
      it is a write into the durable record. Asynchronous, so it lands a moment
      after the boot row; never rejects. */
   recordBuildStamp();
+  /* PROBE v3.1: a voice-probe run 4a did NOT survive is reported HERE, at
+     the next launch, as its own `voiceProbe` row (`killed-app`) — plus the
+     rows of the passes that finished before it — whether or not the founder
+     ever taps the probe again. Build 2026092705 died twice on its first pass
+     and the paste held nothing; the old kill marker only surfaced inside a
+     later COMPLETED run. After hydration like every other write; the native
+     half forgets a report only once its rows are written (`killed-ack`). */
+  recordVoiceProbeKills();
   if (typeof document !== "undefined") {
     document.addEventListener("visibilitychange", () => diag.visibility(document.hidden === true));
   }
@@ -642,7 +702,8 @@ storageReady.then((hydrated) => {
  *     goes away.
  *   - `routeChange` / `old-device-gone` is the car switched off or headphones
  *     out: `manager.routeChanged`, corner case #13, which pauses. It can only
- *     stop audio, never start it.
+ *     stop audio, never start it: reconnecting never resumes on this path
+ *     (audit round 3, player-core-10); the native engine owns route policy.
  *   - `interruptionBegan`, `foreground` and `mediaServicesReset` RECONCILE
  *     rather than command. These can be delivered LATE — a suspended page
  *     handles them when it wakes (`lagMs` in the record measures it) — and an
@@ -891,7 +952,11 @@ const directory = createForayDirectory({
   fetch: (url, opts) => fetch(url, opts),
   cache: makeIdbTier({ dbName: DIRECTORY_DB_NAME }),
   onEvent: (fields) => {
-    storageReady.then(() => diag.dataSource(fields)).catch(() => {});
+    /* L26: read at the moment of the outcome, not after the hydration wait —
+       whether the browser thought it was online, and how long after the page
+       came back to the foreground this refresh ended. */
+    const at = { online: browserOnline(), sinceFgMs: diag.sinceForegroundMs() };
+    storageReady.then(() => diag.dataSource({ ...fields, ...at })).catch(() => {});
   },
 });
 window.forayDirectory = directory;
@@ -1351,13 +1416,23 @@ let loadingStart = null;
    below), so the next episode's own end is reportable again. */
 let _endedAnnouncedFor = null;
 const _episodeEndedListeners = new Set();
+/** Native mode: whether the last continuation plan sent to the engine lets it
+    walk to the next item at an end (`autoAdvance`). True until a plan says
+    otherwise, which is the engine's own default. */
+let engineWalksAtEnd = true;
 
 function _announceEpisodeEndedIfNeeded() {
   if (foray || !manager || !current) return;
   /* Native mode: the ENGINE walks the chain at an end (§5.5), with the page
      asleep or not, and the page learns of it as an `advanced` hop. Announcing
-     the end to app.js as well would start the next episode twice. */
-  if (engineMode === "native") return;
+     the end to app.js as well would start the next episode twice.
+     BUT ONLY WHEN IT WALKS (round-3 review, L1). With Continuous playback off
+     the plan says autoAdvance:false, the engine walks no hop, and no
+     `advanced` ever reaches the page: the finished row stayed at the top of
+     Up Next with its play button on iOS, the bug app-1-9 fixed for the web
+     player. Then the end IS announced, and app.js's advanceQueueOnEnded, which
+     with the switch off only removes the finished row, does the rest. */
+  if (engineMode === "native" && engineWalksAtEnd) return;
   if (manager.state?.type !== "ended") return;
   if (_endedAnnouncedFor === current.id) return;
   _endedAnnouncedFor = current.id;
@@ -1511,6 +1586,44 @@ function setForayIndex(index, { pending = true } = {}) {
   const item = foray.resolved.playable[index];
   if (item) setNowPlaying(forayNowPlaying(item, index), item.why);
   else notifyForay();
+}
+
+/** Move the Foray's index and then the manager, and put the index back if
+    either throws (audit round 3, player-rest-5). `setForayIndex` records
+    `pendingFrom` so `syncForaySegment` waits for the manager to arrive; a move
+    that threw left it waiting for good, the page showing a clip the audio never
+    reached, and `forayPlayhead()` null, so the resume point stopped being saved.
+    Rethrows: the tap's own guard (`guardTap`) reports it. */
+async function moveForay(index, move) {
+  try {
+    setForayIndex(index);
+    await move();
+  } catch (err) {
+    if (foray) {
+      foray.pendingFrom = null;
+      const at = manager?.currentIndex ?? -1;
+      if (at >= 0) foray.index = at;
+    }
+    throw err;
+  }
+}
+
+/** A transport control's click handler that cannot leave the page behind
+    (audit round 3, player-rest-5). The handlers below call async methods, and
+    a rejection used to be unhandled and skip the repaint — the restored-ribbon
+    crash was one real instance. Reported to the field record as a `control`
+    tap failure (the error's class only), and the page repaints either way. */
+function guardTap(run) {
+  return (...args) => {
+    let p;
+    try { p = Promise.resolve(run(...args)); } catch (err) { p = Promise.reject(err); }
+    return p.catch((err) => {
+      try { diag.tapFailed({ phase: "control", name: err?.name ?? null }); } catch (_) { /* the record is best-effort */ }
+      console.warn("[player] a transport control failed", err);
+    }).finally(() => {
+      try { render(); } catch (_) { /* a repaint that throws must not reject the tap */ }
+    });
+  };
 }
 
 /** Reconcile with the manager when IT moved us — the out-point path, where the
@@ -1947,7 +2060,12 @@ function render() {
   syncMediaSession();
   if (foray) {
     persistForayProgress();
-    notifyForay();
+    /* The Foray page is page too (audit round 3, perf-8): `paintForay` wrote
+       its clock, strip fill, labels and notice four times a second with the
+       screen off for the length of a drive. The resume row above is not paint
+       and keeps running; `reconcileOnReturn` calls `render()` on the way back,
+       which lands here visible and repaints the page once. */
+    if (!(typeof document !== "undefined" && document.hidden === true)) notifyForay();
   } else {
     _announceEpisodeEndedIfNeeded();
   }
@@ -2055,7 +2173,9 @@ function paintPage(running) {
  * clocks go through the same formatter's rule first, so they add up.
  */
 function paintClocks(pos, dur, valuetext = true) {
-  const whole = foray ? Math.floor : Math.round;
+  /* One rounding rule for both clocks (audit round 3, arch-drift-10): the
+     elapsed text is floored everywhere now, so its countdown is too. */
+  const whole = Math.floor;
   const now = foray ? fmtClock(pos) : formatTimestamp(pos, EXACT);
   if (ui.tNow.textContent !== now) ui.tNow.textContent = now;
   const left = dur ? remainingClock(whole(dur) - whole(pos)) : "--:--";
@@ -3434,6 +3554,7 @@ function sendEnginePlan(plan) {
   chainItems = keep;
   const args = { planSeq: plan.planSeq, autoAdvance: plan.autoAdvance !== false, chain };
   if (plan.previous !== undefined) args.previous = plan.previous;
+  engineWalksAtEnd = args.autoAdvance;
   return engine.send("setContinuation", args, { source: "restore" }).then((r) => r.ok === true);
 }
 
@@ -3505,6 +3626,8 @@ function relinquishToJs(cap) {
        hung IndexedDB must not hold a Foray tap hostage (idb-tier.js, hazard 1). */
     storage.releaseOwnership().catch(() => {});
     engineMode = "js";
+    /* L22: the lane changed mid-process; the timeline says when. */
+    try { diag.engineMode({ mode: "js", reason: "relinquished" }); } catch (_) { /* the instrument must never be the outage */ }
     if (engineFacades) { engineFacades.dispose(); engineFacades = null; }
     manager = null;
     backend = null;
@@ -3528,8 +3651,11 @@ function bind() {
      short-circuit and the toggle have to read the same authority or the fix in
      one is undone by the other. */
   const toggle = () => setRunning(!transportIsRunning());
-  ui.playBtn.addEventListener("click", toggle);
-  ui.bigPlay.addEventListener("click", toggle);
+  /* Guarded at the listener (audit round 3, player-rest-5): a rejection is
+     reported and the page repaints. `toggle` itself stays the plain call the
+     lock screen's surface is pinned to. */
+  ui.playBtn.addEventListener("click", guardTap(toggle));
+  ui.bigPlay.addEventListener("click", guardTap(toggle));
 
   /* U-13: the only listener that reaches `stopAndClose` from the UI. Everything
      else that used to (the mini bar's ✕) now collapses instead. */
@@ -3764,15 +3890,35 @@ function bind() {
   ui.backBtn.addEventListener("click", () => nudgeBy(-SEEK_BACK));
   ui.fwdBtn.addEventListener("click", () => nudgeBy(SEEK_FWD));
   ui.skipBtn.addEventListener("click", () => nudgeBy(-SEEK_BACK));
-  ui.clipPrev.addEventListener("click", () => ForayPlayer.forayPrevious());
-  ui.clipNext.addEventListener("click", () => ForayPlayer.forayNext());
+  ui.clipPrev.addEventListener("click", guardTap(() => ForayPlayer.forayPrevious()));
+  ui.clipNext.addEventListener("click", guardTap(() => ForayPlayer.forayNext()));
 
   /* The clocks follow the thumb while it moves (audit round 2, player-6). */
   ui.scrub.addEventListener("pointerdown", () => { scrubByPointer = true; });
   ui.scrub.addEventListener("keydown", () => { scrubByPointer = false; });
   ui.scrub.addEventListener("blur", () => { scrubByPointer = false; });
   ui.scrub.addEventListener("input", () => paintScrubPreview());
-  ui.scrub.addEventListener("change", async () => {
+  /* A RELEASE WITH NO `change` ENDS THE PREVIEW TOO (audit round 3,
+     player-core-5). Browsers fire `change` on a range only when the committed
+     value differs from the one at the start of the interaction, so a thumb
+     wiggled and put back where it started fired `input` and never `change`,
+     `scrubbing` stuck at true, and `paintPage` skipped the bar, both clocks and
+     the spoken value for the rest of the session. The check waits a task: a
+     real `change` is dispatched with the release and clears `scrubbing` itself
+     (and seeks); clearing it first would let `render()` overwrite the value the
+     `change` is about to read. */
+  const endScrubPreview = () => {
+    if (!scrubbing) return;
+    setTimeout(() => {
+      if (!scrubbing) return;
+      scrubbing = false;
+      render();
+    }, 0);
+  };
+  for (const type of ["pointerup", "pointercancel", "lostpointercapture", "blur"]) {
+    ui.scrub.addEventListener(type, endScrubPreview);
+  }
+  ui.scrub.addEventListener("change", guardTap(async () => {
     /* A change with no `input` before it (some assistive paths) is still a
        step from the frozen value. */
     if (!scrubbing) rebaseHeldScrubStep();
@@ -3786,7 +3932,7 @@ function bind() {
     const dur = episodeDurationSec();
     if (dur) await seekEpisodeTo(frac * dur);
     else render();
-  });
+  }));
 
   ui.rateBtn.addEventListener("click", () => openRatePicker());
 
@@ -4094,7 +4240,10 @@ function wireMediaListeners() {
      `addMediaListener`, like the repaints above, so these survive the handover
      to the second element at a cross-episode seam. */
   for (const type of ["playing", "waiting", "stalled", "ended"]) {
-    backend.addMediaListener(type, () => diag.mediaEvent(type));
+    /* L25: the element's own state rides with a stall (paused, where, how much
+       is buffered ahead) plus the browser's online flag, so a starving element
+       and a throttled paused one no longer print the same row. */
+    backend.addMediaListener(type, () => diag.mediaEvent(type, mediaFacts()));
   }
   /* The SECOND consumer of `waiting` (audit 2026-09-22): the listener, not only
      the record. See `setBuffering` for why `stalled` is not one of them. */
@@ -4572,6 +4721,21 @@ const ForayPlayer = {
     return Boolean(id) && current?.id === id;
   },
 
+  /**
+   * `id` is current AND its media is loaded (playing or paused), so resuming
+   * it continues what the listener was hearing. False for a RESTORED bar
+   * (nothing loaded until the first press), an episode that has ENDED, and a
+   * failed load: those still show on the bar, but a press on them is a START,
+   * and a caller with its own start path (app.js's startEpisodePlay: History,
+   * play_started, the play list, the engine plan) must take it rather than
+   * toggling (round-3 review, L2).
+   */
+  isLoadedCurrent(id) {
+    if (!id || current?.id !== id || restoredPending) return false;
+    const t = manager?.state?.type;
+    return typeof t === "string" && t !== "idle" && t !== "ended";
+  },
+
   /** The id of the ORDINARY episode on the bar, or null — null during a Foray,
       whose next/previous are segments and never the page's. What app.js's
       `setEpisodeNavigation` getters ask "next after what?". */
@@ -4908,7 +5072,18 @@ const ForayPlayer = {
        something plays, and app.js says "Pause playback to preview". */
     if (engineMode === null) return engineModeReady.then(() => ForayPlayer.auditionVoice(text, voiceId));
     if (engineMode === "native" && engine) return auditionThroughEngine(text, voiceId);
-    return ttsBridge.speak(text, { rate: NARRATION_RATE, voice: voiceId });
+    /* NOT OVER A NARRATION LINE (round-3 review, L3). There is one
+       synthesiser, and every platform now flushes it before a new utterance
+       (iOS stopSpeaking(.immediate), Android QUEUE_FLUSH, Web Speech
+       cancel()), so a preview cut the loaded line off, playing or paused. The
+       cut line sends no `finished` and the preview's own is ignored
+       (mobile-native-2), so the Foray sat silent until the narration deadline
+       and then skipped a line nobody heard. Refused while a line is loaded,
+       as native mode refuses while the engine plays; app.js names it. */
+    if (manager && manager.isNarrationPlayhead) return Promise.resolve({ ok: false, reason: "narration-loaded" });
+    /* `audition` (audit round 3, mobile-native-2): the plugins echo it on
+       `finished`, so a preview's end is never taken for narration's. */
+    return ttsBridge.speak(text, { rate: NARRATION_RATE, voice: voiceId, audition: true });
   },
 
   /* ---------- K-01: the bundled-voice measurement ----------
@@ -4927,24 +5102,89 @@ const ForayPlayer = {
      NOTHING ABOUT NARRATION IS TOUCHED. No manager, no queue, no `this._voice`
      — a measurement that could change what the next narration item sounds like
      would not be a measurement. */
-  async runVoiceProbe() {
+  async runVoiceProbe({ armCoreML = false } = {}) {
     const passage = await loadProbePassage();
-    const record = await runKokoroProbe({ tts: ttsBridge, passage, now: () => Date.now() });
-    /* Recorded WHETHER OR NOT it succeeded. "This build has no model in it" is
+    /* L34 (log-gaps 2026-09-26): whether 4a was playing when the probe
+       STARTED — a probe that shares the phone with a playing episode is not
+       measuring the same thing as one on a quiet phone. */
+    const playing = transportIsRunning();
+    /* KV-R3: the matrix — one `voiceProbe` row per pass x speed.
+       Recorded WHETHER OR NOT it succeeded. "This build has no model in it" is
        the single most useful thing the first run can tell us, and a record
-       that only kept successes would answer every failed run with silence. */
-    try { diag.voiceProbe(record); } catch (_) { /* the instrument must never be the outage */ }
-    return record;
+       that only kept successes would answer every failed run with silence.
+       PROBE v3.1: each row is written AS ITS PASS ENDS (`onRecord`, from the
+       native `probePass` event), not when the whole matrix answers, so a pass
+       that kills 4a leaves every earlier pass's rows in the record.
+       `armCoreML` is the drawer's per-session "arm Core ML (may crash)"
+       switch: on iOS 26.4+ Core ML is refused without it. */
+    return runKokoroProbe({
+      tts: ttsBridge, passage, now: () => Date.now(), armCoreML: armCoreML === true,
+      onRecord: (record) => diag.voiceProbe(record, { playing }),
+    });
   },
 
-  /** The probe record as the several lines the drawer shows, plus K-01's
-      go/no-go verdict applied to it. Re-exported for the same reason
+  /* PROBE v3.1: "Reset skipped passes" — the passes that killed 4a run again
+     on the next probe. And the skip list itself, for the drawer's label. */
+  async resetVoiceProbeSkips() {
+    return resetProbeSkips({ tts: ttsBridge });
+  },
+  async voiceProbeStatus() {
+    const status = await readProbeKills({ tts: ttsBridge });
+    return { skipped: status.skipped, bnnsAffected: status.bnnsAffected };
+  },
+
+  /* KV-R3: THE SOAK — the best background-safe pass rendering the passage at
+     speed 1.5 in a loop for 30 minutes with the phone locked (docs/voice/
+     kokoro-speed-1.5x.md §5 item 9). Its own entry point rather than a flag on
+     `runVoiceProbe`, for the reason that one takes none: the page decides
+     what to OFFER. ONE `voiceSoak` row, written whatever the outcome — a
+     soak iOS ended is reported by the next run's `prevKilled*`. */
+  async runVoiceSoak() {
+    const passage = await loadProbePassage();
+    const playing = transportIsRunning();
+    const records = await runKokoroProbe({ tts: ttsBridge, passage, now: () => Date.now(), mode: "soak" });
+    for (const record of records) {
+      try { diag.voiceSoak(record, { playing }); } catch (_) { /* the instrument must never be the outage */ }
+    }
+    return records;
+  },
+
+  /* KV-R3 review: END THE SOAK EARLY. The native half answers at once; the
+     `runVoiceSoak` call above then resolves with the loops it finished and
+     writes its row as usual. */
+  async stopVoiceSoak() {
+    return stopProbeSoak({ tts: ttsBridge });
+  },
+
+  /** ONE pass's record as the several lines the drawer shows, plus K-01's
+      go/no-go verdict applied to it (the page calls this once per pass). Re-exported for the same reason
       `defaultVoice` is: `app.js` is a classic script and must not carry a
       second copy of a rule the record is judged by. `age` is `"newest"` or
       `"oldest"` — which phone this is, which the founder says, because the
       card's ceiling differs between them. */
   formatVoiceProbe(record, age = "oldest") {
     return { text: formatProbeReport(record), verdict: probeVerdict(record, age) };
+  },
+
+  /** KV-R3: the whole v3 run as the drawer's compact table and one 1.5x
+      verdict per pass (empty for a run with no v3 records), and the soak's
+      report. Re-exported for the reason `formatVoiceProbe` is. */
+  formatVoiceProbeTable(records) {
+    return formatProbeTable(records);
+  },
+  formatVoiceSoak(record) {
+    return formatSoakReport(record);
+  },
+
+  /** KV-R3: the passes the last run kept a speed-1.5 WAV for, and a play
+      for one of them — through the SAME `ttsBridge` the probe used, played
+      natively by pass name (the page's CSP admits no local media, and no
+      path crosses the bridge). */
+  voiceProbeWavPasses(records) {
+    return wavPasses(records);
+  },
+  async playVoiceProbeWav(pass) {
+    return playProbeWav({ tts: ttsBridge, pass });
   },
 
   /** Which segment `elapsedSec` lands in, and how far into it — re-exported so
@@ -5017,6 +5257,12 @@ const ForayPlayer = {
     backend.notePlayGesture();
     // The jingle's element needs the same tap, for the same reason (§13).
     if (interlude) interlude.prime();
+    /* LEAVING IS A FLUSH HERE TOO (audit round 3, player-core-8), for the
+       reason `play()` gives: the outgoing episode or Foray is still the
+       manager's current item and `foray` until the two lines below replace
+       them, and neither the reducer's `play` nor a paused player writes a
+       position on the way out. Synchronous, so the tap above stays spent first. */
+    flushPositions();
     /* `onChange ?? forayWatcher`: a Foray started from somewhere that is not
        its page (the restored mini bar, the lock screen) still reaches the page
        that asked to watch — see `watchForay`. */
@@ -5305,8 +5551,14 @@ const ForayPlayer = {
     const last = foray.resolved.playable.length - 1;
     if (manager.currentIndex >= last) return;
     foray.error = null;
-    setForayIndex(manager.currentIndex + 1);
-    await manager.skipToNext();
+    const nextIndex = manager.currentIndex + 1;
+    /* THE NEXT CLIP, NOT THE NEXT NON-NARRATION ITEM (audit round 3,
+       player-core-6). `skipToNext` steps over every `kind: "tts"` item — the
+       Swift transition-bridge rule — and in a Foray a narration line is
+       authored content: Next used to jump past it while the page highlighted
+       it, and from the clip before a closing line it ended the Foray unheard.
+       `play(index)`, the way `forayPrevious` already moves. */
+    await moveForay(nextIndex, () => manager.play(nextIndex));
     render();
   },
 
@@ -5339,8 +5591,7 @@ const ForayPlayer = {
       segmentStartSec: segmentStarts(foray.resolved.playable)[index],
     });
     if (choice === PREVIOUS.ITEM_BEFORE) {
-      setForayIndex(index - 1);
-      await manager.play(foray.index);
+      await moveForay(index - 1, () => manager.play(index - 1));
     } else {
       await manager.skipToPrevious();
     }
@@ -5371,9 +5622,8 @@ const ForayPlayer = {
     if (!scrub) return;
     if (scrub.reload) {
       foray.error = null;
-      setForayIndex(scrub.index);
       /* The offset rides on the load (races-1) — see `playForay`. */
-      await manager.play(scrub.index, scrub.offset != null ? { startOffset: scrub.offset } : undefined);
+      await moveForay(scrub.index, () => manager.play(scrub.index, scrub.offset != null ? { startOffset: scrub.offset } : undefined));
     } else if (scrub.offset != null) {
       await manager.seek(scrub.offset, { precise: true });
     }

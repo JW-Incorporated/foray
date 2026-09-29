@@ -7,7 +7,8 @@
       "artwork_url": null,
       "editorial_note": "Marathon technical interviews with the actual scientists and founders building fusion reactors, AI, and everything adjacent.",
       "taxonomy_node_ids": [],
-      "episode_count": null
+      "episode_count": null,
+      "explicit": null
     },
     {
       "show_id": "titans-of-nuclear",
@@ -17,7 +18,8 @@
       "taxonomy_node_ids": [
         "engineering/energy-fusion"
       ],
-      "episode_count": null
+      "episode_count": null,
+      "explicit": null
     },
     {
       "show_id": "omega-tau",
@@ -28,7 +30,8 @@
         "engineering/energy-fusion",
         "science/materials"
       ],
-      "episode_count": null
+      "episode_count": null,
+      "explicit": null
     },
     {
       "show_id": "cleantechies-podcast",
@@ -38,7 +41,8 @@
       "taxonomy_node_ids": [
         "engineering/energy-fusion"
       ],
-      "episode_count": null
+      "episode_count": null,
+      "explicit": null
     },
     {
       "show_id": "catalyst-shayle-kann",
@@ -48,7 +52,8 @@
       "taxonomy_node_ids": [
         "engineering/energy-fusion"
       ],
-      "episode_count": null
+      "episode_count": null,
+      "explicit": null
     },
     {
       "show_id": "lab-to-market-leadership",
@@ -59,7 +64,8 @@
         "engineering/energy-fusion",
         "business/startups"
       ],
-      "episode_count": null
+      "episode_count": null,
+      "explicit": null
     },
     {
       "show_id": "cbc-ideas",
@@ -69,7 +75,8 @@
       "taxonomy_node_ids": [
         "engineering/energy-fusion"
       ],
-      "episode_count": null
+      "episode_count": null,
+      "explicit": null
     },
     {
       "show_id": "stuff-you-should-know",
@@ -80,7 +87,8 @@
         "science/materials",
         "history/technology"
       ],
-      "episode_count": null
+      "episode_count": null,
+      "explicit": null
     },
     {
       "show_id": "materialism-podcast",
@@ -90,7 +98,8 @@
       "taxonomy_node_ids": [
         "science/materials"
       ],
-      "episode_count": null
+      "episode_count": null,
+      "explicit": null
     },
     {
       "show_id": "inside-chips",
@@ -100,7 +109,8 @@
       "taxonomy_node_ids": [
         "engineering/precision-mfg"
       ],
-      "episode_count": null
+      "episode_count": null,
+      "explicit": null
     },
     {
       "show_id": "mtdcnc-podcast",
@@ -111,7 +121,8 @@
         "engineering/precision-mfg",
         "science/materials"
       ],
-      "episode_count": null
+      "episode_count": null,
+      "explicit": null
     },
     {
       "show_id": "being-an-engineer",
@@ -123,7 +134,8 @@
         "craft/diy-home",
         "business/careers"
       ],
-      "episode_count": null
+      "episode_count": null,
+      "explicit": null
     },
     {
       "show_id": "fall-of-civilizations",
@@ -134,7 +146,8 @@
         "history/military-ancient",
         "history/technology"
       ],
-      "episode_count": null
+      "episode_count": null,
+      "explicit": null
     },
     {
       "show_id": "the-rest-is-history",
@@ -145,7 +158,8 @@
         "history/technology",
         "history/military-ancient"
       ],
-      "episode_count": null
+      "episode_count": null,
+      "explicit": null
     },
     {
       "show_id": "conan-obrien-needs-a-friend",
@@ -155,7 +169,8 @@
       "taxonomy_node_ids": [
         "comedy/casual-hangs"
       ],
-      "episode_count": null
+      "episode_count": null,
+      "explicit": null
     },
     {
       "show_id": "smartless",
@@ -165,7 +180,8 @@
       "taxonomy_node_ids": [
         "comedy/casual-hangs"
       ],
-      "episode_count": null
+      "episode_count": null,
+      "explicit": null
     },
     {
       "show_id": "my-brother-my-brother-and-me",
@@ -175,7 +191,8 @@
       "taxonomy_node_ids": [
         "comedy/casual-hangs"
       ],
-      "episode_count": null
+      "episode_count": null,
+      "explicit": null
     },
     {
       "show_id": "making-chips",
@@ -185,7 +202,8 @@
       "taxonomy_node_ids": [
         "engineering/precision-mfg"
       ],
-      "episode_count": 530
+      "episode_count": 530,
+      "explicit": false
     },
     {
       "show_id": "business-of-machining",
@@ -195,7 +213,8 @@
       "taxonomy_node_ids": [
         "engineering/precision-mfg"
       ],
-      "episode_count": 459
+      "episode_count": 459,
+      "explicit": false
     },
     {
       "show_id": "within-tolerance",
@@ -205,7 +224,8 @@
       "taxonomy_node_ids": [
         "engineering/precision-mfg"
       ],
-      "episode_count": 283
+      "episode_count": 283,
+      "explicit": false
     },
     {
       "show_id": "mrs-bulletin-materials-news",
@@ -215,7 +235,8 @@
       "taxonomy_node_ids": [
         "science/materials"
       ],
-      "episode_count": 136
+      "episode_count": 136,
+      "explicit": false
     },
     {
       "show_id": "its-a-material-world",
@@ -225,7 +246,8 @@
       "taxonomy_node_ids": [
         "science/materials"
       ],
-      "episode_count": 100
+      "episode_count": 100,
+      "explicit": false
     },
     {
       "show_id": "hardcore-history",
@@ -235,7 +257,8 @@
       "taxonomy_node_ids": [
         "history/military-ancient"
       ],
-      "episode_count": 12
+      "episode_count": 12,
+      "explicit": false
     },
     {
       "show_id": "the-ancients",
@@ -245,7 +268,8 @@
       "taxonomy_node_ids": [
         "history/military-ancient"
       ],
-      "episode_count": 743
+      "episode_count": 743,
+      "explicit": false
     },
     {
       "show_id": "ancient-history-fangirl",
@@ -255,7 +279,8 @@
       "taxonomy_node_ids": [
         "history/military-ancient"
       ],
-      "episode_count": 359
+      "episode_count": 359,
+      "explicit": false
     },
     {
       "show_id": "history-of-ancient-greece",
@@ -265,7 +290,8 @@
       "taxonomy_node_ids": [
         "history/military-ancient"
       ],
-      "episode_count": 131
+      "episode_count": 131,
+      "explicit": false
     },
     {
       "show_id": "engines-of-our-ingenuity",
@@ -275,7 +301,8 @@
       "taxonomy_node_ids": [
         "history/technology"
       ],
-      "episode_count": 100
+      "episode_count": 100,
+      "explicit": false
     },
     {
       "show_id": "the-engineering-history-podcast",
@@ -285,7 +312,8 @@
       "taxonomy_node_ids": [
         "history/technology"
       ],
-      "episode_count": 67
+      "episode_count": 67,
+      "explicit": false
     },
     {
       "show_id": "acquired",
@@ -296,7 +324,8 @@
         "business/startups",
         "history/technology"
       ],
-      "episode_count": 215
+      "episode_count": 215,
+      "explicit": false
     },
     {
       "show_id": "founders",
@@ -306,7 +335,8 @@
       "taxonomy_node_ids": [
         "business/startups"
       ],
-      "episode_count": 448
+      "episode_count": 448,
+      "explicit": false
     },
     {
       "show_id": "this-week-in-startups",
@@ -316,7 +346,8 @@
       "taxonomy_node_ids": [
         "business/startups"
       ],
-      "episode_count": 1442
+      "episode_count": 1442,
+      "explicit": false
     },
     {
       "show_id": "techsurge-deep-tech-podcast",
@@ -327,7 +358,8 @@
         "business/startups",
         "engineering/energy-fusion"
       ],
-      "episode_count": 37
+      "episode_count": 37,
+      "explicit": false
     },
     {
       "show_id": "twenty-minute-vc",
@@ -337,7 +369,8 @@
       "taxonomy_node_ids": [
         "business/startups"
       ],
-      "episode_count": 1478
+      "episode_count": 1478,
+      "explicit": false
     },
     {
       "show_id": "luthier-on-luthier",
@@ -347,7 +380,8 @@
       "taxonomy_node_ids": [
         "craft/instrument-making"
       ],
-      "episode_count": 115
+      "episode_count": 115,
+      "explicit": false
     },
     {
       "show_id": "fretboard-journal-guitar-podcast",
@@ -357,7 +391,8 @@
       "taxonomy_node_ids": [
         "craft/instrument-making"
       ],
-      "episode_count": 542
+      "episode_count": 542,
+      "explicit": false
     },
     {
       "show_id": "violin-chronicles",
@@ -367,7 +402,8 @@
       "taxonomy_node_ids": [
         "craft/instrument-making"
       ],
-      "episode_count": 49
+      "episode_count": 49,
+      "explicit": false
     },
     {
       "show_id": "piano-tech-radio-hour",
@@ -377,7 +413,8 @@
       "taxonomy_node_ids": [
         "craft/instrument-making"
       ],
-      "episode_count": 102
+      "episode_count": 102,
+      "explicit": false
     },
     {
       "show_id": "gardenfork-radio",
@@ -387,7 +424,8 @@
       "taxonomy_node_ids": [
         "craft/diy-home"
       ],
-      "episode_count": 100
+      "episode_count": 100,
+      "explicit": false
     },
     {
       "show_id": "around-the-house-eric-g",
@@ -397,7 +435,8 @@
       "taxonomy_node_ids": [
         "craft/diy-home"
       ],
-      "episode_count": 1242
+      "episode_count": 1242,
+      "explicit": false
     },
     {
       "show_id": "wood-talk",
@@ -407,7 +446,8 @@
       "taxonomy_node_ids": [
         "craft/diy-home"
       ],
-      "episode_count": 620
+      "episode_count": 620,
+      "explicit": false
     },
     {
       "show_id": "shop-talk-live",
@@ -417,7 +457,8 @@
       "taxonomy_node_ids": [
         "craft/diy-home"
       ],
-      "episode_count": 386
+      "episode_count": 386,
+      "explicit": false
     },
     {
       "show_id": "good-hang-amy-poehler",
@@ -427,7 +468,8 @@
       "taxonomy_node_ids": [
         "comedy/casual-hangs"
       ],
-      "episode_count": 72
+      "episode_count": 72,
+      "explicit": false
     },
     {
       "show_id": "fly-on-the-wall",
@@ -437,7 +479,8 @@
       "taxonomy_node_ids": [
         "comedy/casual-hangs"
       ],
-      "episode_count": 399
+      "episode_count": 399,
+      "explicit": false
     },
     {
       "show_id": "bad-friends",
@@ -447,7 +490,8 @@
       "taxonomy_node_ids": [
         "comedy/casual-hangs"
       ],
-      "episode_count": 334
+      "episode_count": 334,
+      "explicit": false
     },
     {
       "show_id": "gastropod",
@@ -457,7 +501,8 @@
       "taxonomy_node_ids": [
         "food/cooking-science"
       ],
-      "episode_count": 291
+      "episode_count": 291,
+      "explicit": false
     },
     {
       "show_id": "the-bbq-central-show",
@@ -467,7 +512,8 @@
       "taxonomy_node_ids": [
         "food/cooking-science"
       ],
-      "episode_count": 1846
+      "episode_count": 1846,
+      "explicit": false
     },
     {
       "show_id": "black-box-down",
@@ -477,7 +523,8 @@
       "taxonomy_node_ids": [
         "aviation/accidents"
       ],
-      "episode_count": 150
+      "episode_count": 150,
+      "explicit": false
     },
     {
       "show_id": "flight-safety-detectives",
@@ -487,7 +534,8 @@
       "taxonomy_node_ids": [
         "aviation/accidents"
       ],
-      "episode_count": 335
+      "episode_count": 335,
+      "explicit": false
     },
     {
       "show_id": "this-podcast-will-kill-you",
@@ -497,7 +545,8 @@
       "taxonomy_node_ids": [
         "medicine/biology"
       ],
-      "episode_count": 293
+      "episode_count": 293,
+      "explicit": false
     },
     {
       "show_id": "two-scientists-walk-into-a-bar",
@@ -507,7 +556,8 @@
       "taxonomy_node_ids": [
         "medicine/biology"
       ],
-      "episode_count": 56
+      "episode_count": 56,
+      "explicit": false
     },
     {
       "show_id": "lingthusiasm",
@@ -517,7 +567,8 @@
       "taxonomy_node_ids": [
         "linguistics/language"
       ],
-      "episode_count": 117
+      "episode_count": 117,
+      "explicit": false
     },
     {
       "show_id": "the-allusionist",
@@ -527,7 +578,8 @@
       "taxonomy_node_ids": [
         "linguistics/language"
       ],
-      "episode_count": 251
+      "episode_count": 251,
+      "explicit": false
     },
     {
       "show_id": "science-for-sport-podcast",
@@ -537,7 +589,8 @@
       "taxonomy_node_ids": [
         "sports/biomechanics"
       ],
-      "episode_count": 326
+      "episode_count": 326,
+      "explicit": false
     },
     {
       "show_id": "just-fly-performance-podcast",
@@ -547,7 +600,8 @@
       "taxonomy_node_ids": [
         "sports/biomechanics"
       ],
-      "episode_count": 300
+      "episode_count": 300,
+      "explicit": false
     },
     {
       "show_id": "the-outlaw-ocean",
@@ -557,7 +611,8 @@
       "taxonomy_node_ids": [
         "nature/ocean-science"
       ],
-      "episode_count": 19
+      "episode_count": 19,
+      "explicit": false
     },
     {
       "show_id": "the-sound-aquatic",
@@ -567,7 +622,8 @@
       "taxonomy_node_ids": [
         "nature/ocean-science"
       ],
-      "episode_count": 6
+      "episode_count": 6,
+      "explicit": false
     },
     {
       "show_id": "song-exploder",
@@ -577,7 +633,8 @@
       "taxonomy_node_ids": [
         "music/theory-production"
       ],
-      "episode_count": 369
+      "episode_count": 369,
+      "explicit": false
     },
     {
       "show_id": "switched-on-pop",
@@ -587,7 +644,8 @@
       "taxonomy_node_ids": [
         "music/theory-production"
       ],
-      "episode_count": 542
+      "episode_count": 542,
+      "explicit": false
     },
     {
       "show_id": "my-favorite-theorem",
@@ -597,7 +655,8 @@
       "taxonomy_node_ids": [
         "math/puzzles"
       ],
-      "episode_count": 96
+      "episode_count": 96,
+      "explicit": false
     },
     {
       "show_id": "99-percent-invisible",
@@ -607,7 +666,8 @@
       "taxonomy_node_ids": [
         "architecture/infrastructure"
       ],
-      "episode_count": 812
+      "episode_count": 812,
+      "explicit": false
     },
     {
       "show_id": "the-worlds-best-construction-podcast",
@@ -617,7 +677,8 @@
       "taxonomy_node_ids": [
         "architecture/infrastructure"
       ],
-      "episode_count": 196
+      "episode_count": 196,
+      "explicit": false
     },
     {
       "show_id": "spit-and-twitches-animal-cognition",
@@ -627,7 +688,8 @@
       "taxonomy_node_ids": [
         "nature/animal-cognition"
       ],
-      "episode_count": 25
+      "episode_count": 25,
+      "explicit": false
     },
     {
       "show_id": "ologies-with-alie-ward",
@@ -637,7 +699,8 @@
       "taxonomy_node_ids": [
         "nature/animal-cognition"
       ],
-      "episode_count": 519
+      "episode_count": 519,
+      "explicit": false
     },
     {
       "show_id": "spycast",
@@ -647,7 +710,8 @@
       "taxonomy_node_ids": [
         "espionage/cold-war-tech"
       ],
-      "episode_count": 752
+      "episode_count": 752,
+      "explicit": false
     },
     {
       "show_id": "main-engine-cut-off",
@@ -657,7 +721,8 @@
       "taxonomy_node_ids": [
         "space/rockets"
       ],
-      "episode_count": 337
+      "episode_count": 337,
+      "explicit": false
     },
     {
       "show_id": "off-nominal",
@@ -667,7 +732,8 @@
       "taxonomy_node_ids": [
         "space/rockets"
       ],
-      "episode_count": 251
+      "episode_count": 251,
+      "explicit": false
     },
     {
       "show_id": "planetary-radio",
@@ -677,7 +743,8 @@
       "taxonomy_node_ids": [
         "space/rockets"
       ],
-      "episode_count": 1346
+      "episode_count": 1346,
+      "explicit": false
     },
     {
       "show_id": "advent-of-computing",
@@ -687,7 +754,8 @@
       "taxonomy_node_ids": [
         "computing/history"
       ],
-      "episode_count": 202
+      "episode_count": 202,
+      "explicit": false
     },
     {
       "show_id": "corecursive",
@@ -697,7 +765,8 @@
       "taxonomy_node_ids": [
         "computing/history"
       ],
-      "episode_count": 118
+      "episode_count": 118,
+      "explicit": false
     },
     {
       "show_id": "software-engineering-daily",
@@ -707,7 +776,8 @@
       "taxonomy_node_ids": [
         "computing/history"
       ],
-      "episode_count": 105
+      "episode_count": 105,
+      "explicit": false
     },
     {
       "show_id": "planet-money",
@@ -717,7 +787,8 @@
       "taxonomy_node_ids": [
         "economics/markets"
       ],
-      "episode_count": 659
+      "episode_count": 659,
+      "explicit": false
     },
     {
       "show_id": "odd-lots",
@@ -727,7 +798,8 @@
       "taxonomy_node_ids": [
         "economics/markets"
       ],
-      "episode_count": 1243
+      "episode_count": 1243,
+      "explicit": false
     },
     {
       "show_id": "freakonomics-radio",
@@ -737,7 +809,8 @@
       "taxonomy_node_ids": [
         "economics/markets"
       ],
-      "episode_count": 985
+      "episode_count": 985,
+      "explicit": false
     },
     {
       "show_id": "hidden-brain",
@@ -747,7 +820,8 @@
       "taxonomy_node_ids": [
         "psychology/decision-making"
       ],
-      "episode_count": 696
+      "episode_count": 696,
+      "explicit": false
     },
     {
       "show_id": "you-are-not-so-smart",
@@ -757,7 +831,8 @@
       "taxonomy_node_ids": [
         "psychology/decision-making"
       ],
-      "episode_count": 340
+      "episode_count": 340,
+      "explicit": false
     },
     {
       "show_id": "choiceology",
@@ -767,7 +842,8 @@
       "taxonomy_node_ids": [
         "psychology/decision-making"
       ],
-      "episode_count": 114
+      "episode_count": 114,
+      "explicit": false
     },
     {
       "show_id": "planetgeo-geology-podcast",
@@ -777,7 +853,8 @@
       "taxonomy_node_ids": [
         "nature/earth-science"
       ],
-      "episode_count": 290
+      "episode_count": 290,
+      "explicit": false
     },
     {
       "show_id": "geology-bites",
@@ -787,7 +864,8 @@
       "taxonomy_node_ids": [
         "nature/earth-science"
       ],
-      "episode_count": 125
+      "episode_count": 125,
+      "explicit": false
     },
     {
       "show_id": "dont-panic-geocast",
@@ -797,7 +875,8 @@
       "taxonomy_node_ids": [
         "nature/earth-science"
       ],
-      "episode_count": 433
+      "episode_count": 433,
+      "explicit": false
     },
     {
       "show_id": "well-theres-your-problem",
@@ -807,7 +886,8 @@
       "taxonomy_node_ids": [
         "engineering/disasters"
       ],
-      "episode_count": 261
+      "episode_count": 261,
+      "explicit": false
     },
     {
       "show_id": "causality-engineered-network",
@@ -817,7 +897,8 @@
       "taxonomy_node_ids": [
         "engineering/disasters"
       ],
-      "episode_count": 76
+      "episode_count": 76,
+      "explicit": false
     },
     {
       "show_id": "brady-heywood-podcast",
@@ -827,7 +908,8 @@
       "taxonomy_node_ids": [
         "engineering/disasters"
       ],
-      "episode_count": 37
+      "episode_count": 37,
+      "explicit": false
     },
     {
       "show_id": "f1-beyond-the-grid",
@@ -837,7 +919,8 @@
       "taxonomy_node_ids": [
         "automotive/racing"
       ],
-      "episode_count": 434
+      "episode_count": 434,
+      "explicit": false
     },
     {
       "show_id": "tuned-in-hpa",
@@ -847,7 +930,8 @@
       "taxonomy_node_ids": [
         "automotive/racing"
       ],
-      "episode_count": 366
+      "episode_count": 366,
+      "explicit": false
     },
     {
       "show_id": "the-race-f1-podcast",
@@ -857,7 +941,8 @@
       "taxonomy_node_ids": [
         "automotive/racing"
       ],
-      "episode_count": 933
+      "episode_count": 933,
+      "explicit": false
     },
     {
       "show_id": "volts",
@@ -867,7 +952,8 @@
       "taxonomy_node_ids": [
         "engineering/energy-grid"
       ],
-      "episode_count": 431
+      "episode_count": 431,
+      "explicit": false
     },
     {
       "show_id": "energy-gang",
@@ -877,7 +963,8 @@
       "taxonomy_node_ids": [
         "engineering/energy-grid"
       ],
-      "episode_count": 578
+      "episode_count": 578,
+      "explicit": false
     },
     {
       "show_id": "watt-it-takes",
@@ -887,7 +974,8 @@
       "taxonomy_node_ids": [
         "engineering/energy-grid"
       ],
-      "episode_count": 98
+      "episode_count": 98,
+      "explicit": false
     },
     {
       "show_id": "philosophize-this",
@@ -897,7 +985,8 @@
       "taxonomy_node_ids": [
         "philosophy/ideas"
       ],
-      "episode_count": 249
+      "episode_count": 249,
+      "explicit": false
     },
     {
       "show_id": "partially-examined-life",
@@ -907,7 +996,8 @@
       "taxonomy_node_ids": [
         "philosophy/ideas"
       ],
-      "episode_count": 876
+      "episode_count": 876,
+      "explicit": false
     },
     {
       "show_id": "philosophy-bites",
@@ -917,7 +1007,8 @@
       "taxonomy_node_ids": [
         "philosophy/ideas"
       ],
-      "episode_count": 406
+      "episode_count": 406,
+      "explicit": false
     },
     {
       "show_id": "camera-shake-photography-podcast",
@@ -927,7 +1018,8 @@
       "taxonomy_node_ids": [
         "craft/photography"
       ],
-      "episode_count": 316
+      "episode_count": 316,
+      "explicit": false
     },
     {
       "show_id": "go-creative-show",
@@ -938,7 +1030,8 @@
         "craft/photography",
         "craft/filmmaking"
       ],
-      "episode_count": 101
+      "episode_count": 101,
+      "explicit": false
     },
     {
       "show_id": "the-cinematography-podcast",
@@ -949,7 +1042,8 @@
         "craft/photography",
         "craft/filmmaking"
       ],
-      "episode_count": 429
+      "episode_count": 429,
+      "explicit": false
     },
     {
       "show_id": "radiolab",
@@ -959,7 +1053,8 @@
       "taxonomy_node_ids": [
         "science/storytelling"
       ],
-      "episode_count": 856
+      "episode_count": 856,
+      "explicit": false
     },
     {
       "show_id": "science-vs",
@@ -969,7 +1064,8 @@
       "taxonomy_node_ids": [
         "science/storytelling"
       ],
-      "episode_count": 337
+      "episode_count": 337,
+      "explicit": false
     },
     {
       "show_id": "unexplainable",
@@ -979,7 +1075,8 @@
       "taxonomy_node_ids": [
         "science/storytelling"
       ],
-      "episode_count": 292
+      "episode_count": 292,
+      "explicit": false
     },
     {
       "show_id": "how-i-built-this",
@@ -989,7 +1086,8 @@
       "taxonomy_node_ids": [
         "business/founders"
       ],
-      "episode_count": 849
+      "episode_count": 849,
+      "explicit": false
     },
     {
       "show_id": "business-wars",
@@ -999,7 +1097,8 @@
       "taxonomy_node_ids": [
         "business/founders"
       ],
-      "episode_count": 723
+      "episode_count": 723,
+      "explicit": false
     },
     {
       "show_id": "masters-of-scale",
@@ -1009,7 +1108,8 @@
       "taxonomy_node_ids": [
         "business/founders"
       ],
-      "episode_count": 713
+      "episode_count": 713,
+      "explicit": false
     },
     {
       "show_id": "we-have-ways-of-making-you-talk",
@@ -1019,7 +1119,8 @@
       "taxonomy_node_ids": [
         "history/military-modern"
       ],
-      "episode_count": 1006
+      "episode_count": 1006,
+      "explicit": false
     },
     {
       "show_id": "unauthorized-history-pacific-war",
@@ -1029,7 +1130,8 @@
       "taxonomy_node_ids": [
         "history/military-modern"
       ],
-      "episode_count": 228
+      "episode_count": 228,
+      "explicit": false
     },
     {
       "show_id": "history-of-wwii-podcast",
@@ -1039,7 +1141,8 @@
       "taxonomy_node_ids": [
         "history/military-modern"
       ],
-      "episode_count": 643
+      "episode_count": 643,
+      "explicit": false
     },
     {
       "show_id": "the-war-on-cars",
@@ -1049,7 +1152,8 @@
       "taxonomy_node_ids": [
         "cities/urbanism"
       ],
-      "episode_count": 246
+      "episode_count": 246,
+      "explicit": false
     },
     {
       "show_id": "strong-towns-podcast",
@@ -1059,7 +1163,8 @@
       "taxonomy_node_ids": [
         "cities/urbanism"
       ],
-      "episode_count": 600
+      "episode_count": 600,
+      "explicit": false
     },
     {
       "show_id": "talking-headways",
@@ -1069,7 +1174,8 @@
       "taxonomy_node_ids": [
         "cities/urbanism"
       ],
-      "episode_count": 807
+      "episode_count": 807,
+      "explicit": false
     },
     {
       "show_id": "chemistry-world-podcast",
@@ -1079,7 +1185,8 @@
       "taxonomy_node_ids": [
         "science/chemistry"
       ],
-      "episode_count": 72
+      "episode_count": 72,
+      "explicit": false
     },
     {
       "show_id": "distillations",
@@ -1089,7 +1196,8 @@
       "taxonomy_node_ids": [
         "science/chemistry"
       ],
-      "episode_count": 362
+      "episode_count": 362,
+      "explicit": false
     },
     {
       "show_id": "tiny-matters",
@@ -1099,7 +1207,8 @@
       "taxonomy_node_ids": [
         "science/chemistry"
       ],
-      "episode_count": 179
+      "episode_count": 179,
+      "explicit": false
     },
     {
       "show_id": "the-sharp-end-podcast",
@@ -1109,7 +1218,8 @@
       "taxonomy_node_ids": [
         "adventure/exploration"
       ],
-      "episode_count": 138
+      "episode_count": 138,
+      "explicit": false
     },
     {
       "show_id": "the-enormocast",
@@ -1119,7 +1229,8 @@
       "taxonomy_node_ids": [
         "adventure/exploration"
       ],
-      "episode_count": 340
+      "episode_count": 340,
+      "explicit": false
     },
     {
       "show_id": "alpinist",
@@ -1129,7 +1240,8 @@
       "taxonomy_node_ids": [
         "adventure/exploration"
       ],
-      "episode_count": 74
+      "episode_count": 74,
+      "explicit": false
     },
     {
       "show_id": "designer-notes",
@@ -1139,7 +1251,8 @@
       "taxonomy_node_ids": [
         "gaming/design"
       ],
-      "episode_count": 96
+      "episode_count": 96,
+      "explicit": false
     },
     {
       "show_id": "game-design-round-table",
@@ -1149,7 +1262,8 @@
       "taxonomy_node_ids": [
         "gaming/design"
       ],
-      "episode_count": 391
+      "episode_count": 391,
+      "explicit": false
     },
     {
       "show_id": "clockwork-game-design-podcast",
@@ -1159,7 +1273,8 @@
       "taxonomy_node_ids": [
         "gaming/design"
       ],
-      "episode_count": 50
+      "episode_count": 50,
+      "explicit": false
     },
     {
       "show_id": "huberman-lab",
@@ -1169,7 +1284,8 @@
       "taxonomy_node_ids": [
         "medicine/neuroscience"
       ],
-      "episode_count": 421
+      "episode_count": 421,
+      "explicit": false
     },
     {
       "show_id": "the-matt-walker-podcast",
@@ -1179,7 +1295,8 @@
       "taxonomy_node_ids": [
         "medicine/neuroscience"
       ],
-      "episode_count": 179
+      "episode_count": 179,
+      "explicit": false
     },
     {
       "show_id": "the-peter-attia-drive",
@@ -1189,7 +1306,8 @@
       "taxonomy_node_ids": [
         "medicine/neuroscience"
       ],
-      "episode_count": 446
+      "episode_count": 446,
+      "explicit": false
     },
     {
       "show_id": "strict-scrutiny",
@@ -1199,7 +1317,8 @@
       "taxonomy_node_ids": [
         "society/law"
       ],
-      "episode_count": 419
+      "episode_count": 419,
+      "explicit": false
     },
     {
       "show_id": "amicus-dahlia-lithwick",
@@ -1209,7 +1328,8 @@
       "taxonomy_node_ids": [
         "society/law"
       ],
-      "episode_count": 617
+      "episode_count": 617,
+      "explicit": false
     },
     {
       "show_id": "5-4-podcast",
@@ -1219,7 +1339,8 @@
       "taxonomy_node_ids": [
         "society/law"
       ],
-      "episode_count": 408
+      "episode_count": 408,
+      "explicit": false
     },
     {
       "show_id": "craft-beer-and-brewing-magazine-podcast",
@@ -1229,7 +1350,8 @@
       "taxonomy_node_ids": [
         "food/fermentation"
       ],
-      "episode_count": 490
+      "episode_count": 490,
+      "explicit": false
     },
     {
       "show_id": "experimental-brewing",
@@ -1239,7 +1361,8 @@
       "taxonomy_node_ids": [
         "food/fermentation"
       ],
-      "episode_count": 385
+      "episode_count": 385,
+      "explicit": false
     },
     {
       "show_id": "fermup",
@@ -1249,7 +1372,8 @@
       "taxonomy_node_ids": [
         "food/fermentation"
       ],
-      "episode_count": 100
+      "episode_count": 100,
+      "explicit": false
     },
     {
       "show_id": "i-know-dino",
@@ -1259,7 +1383,8 @@
       "taxonomy_node_ids": [
         "nature/paleontology"
       ],
-      "episode_count": 766
+      "episode_count": 766,
+      "explicit": false
     },
     {
       "show_id": "common-descent",
@@ -1269,7 +1394,8 @@
       "taxonomy_node_ids": [
         "nature/paleontology"
       ],
-      "episode_count": 378
+      "episode_count": 378,
+      "explicit": false
     },
     {
       "show_id": "palaeocast",
@@ -1279,7 +1405,8 @@
       "taxonomy_node_ids": [
         "nature/paleontology"
       ],
-      "episode_count": 244
+      "episode_count": 244,
+      "explicit": false
     },
     {
       "show_id": "the-archaeology-show",
@@ -1289,7 +1416,8 @@
       "taxonomy_node_ids": [
         "history/archaeology"
       ],
-      "episode_count": 345
+      "episode_count": 345,
+      "explicit": false
     },
     {
       "show_id": "the-dirt-podcast",
@@ -1299,7 +1427,8 @@
       "taxonomy_node_ids": [
         "history/archaeology"
       ],
-      "episode_count": 271
+      "episode_count": 271,
+      "explicit": false
     },
     {
       "show_id": "storm-front-freaks",
@@ -1309,7 +1438,8 @@
       "taxonomy_node_ids": [
         "nature/weather"
       ],
-      "episode_count": 316
+      "episode_count": 316,
+      "explicit": false
     },
     {
       "show_id": "weather-geeks",
@@ -1319,7 +1449,8 @@
       "taxonomy_node_ids": [
         "nature/weather"
       ],
-      "episode_count": 432
+      "episode_count": 432,
+      "explicit": false
     },
     {
       "show_id": "ams-on-the-air",
@@ -1329,7 +1460,8 @@
       "taxonomy_node_ids": [
         "nature/weather"
       ],
-      "episode_count": 42
+      "episode_count": 42,
+      "explicit": false
     },
     {
       "show_id": "myths-and-legends",
@@ -1339,7 +1471,8 @@
       "taxonomy_node_ids": [
         "culture/mythology"
       ],
-      "episode_count": 653
+      "episode_count": 653,
+      "explicit": false
     },
     {
       "show_id": "our-fake-history",
@@ -1349,7 +1482,8 @@
       "taxonomy_node_ids": [
         "culture/mythology"
       ],
-      "episode_count": 308
+      "episode_count": 308,
+      "explicit": false
     },
     {
       "show_id": "folklore-and-fiction",
@@ -1359,7 +1493,8 @@
       "taxonomy_node_ids": [
         "culture/mythology"
       ],
-      "episode_count": 51
+      "episode_count": 51,
+      "explicit": false
     },
     {
       "show_id": "artcurious",
@@ -1369,7 +1504,8 @@
       "taxonomy_node_ids": [
         "culture/art"
       ],
-      "episode_count": 227
+      "episode_count": 227,
+      "explicit": false
     },
     {
       "show_id": "the-lonely-palette",
@@ -1379,7 +1515,8 @@
       "taxonomy_node_ids": [
         "culture/art"
       ],
-      "episode_count": 107
+      "episode_count": 107,
+      "explicit": false
     },
     {
       "show_id": "a-piece-of-work",
@@ -1389,7 +1526,8 @@
       "taxonomy_node_ids": [
         "culture/art"
       ],
-      "episode_count": 11
+      "episode_count": 11,
+      "explicit": false
     },
     {
       "show_id": "sticky-notes",
@@ -1399,7 +1537,8 @@
       "taxonomy_node_ids": [
         "music/classical"
       ],
-      "episode_count": 291
+      "episode_count": 291,
+      "explicit": false
     },
     {
       "show_id": "aria-code",
@@ -1409,7 +1548,8 @@
       "taxonomy_node_ids": [
         "music/classical"
       ],
-      "episode_count": 52
+      "episode_count": 52,
+      "explicit": false
     },
     {
       "show_id": "music-history-monday",
@@ -1419,7 +1559,8 @@
       "taxonomy_node_ids": [
         "music/classical"
       ],
-      "episode_count": 120
+      "episode_count": 120,
+      "explicit": false
     },
     {
       "show_id": "that-triathlon-show",
@@ -1429,7 +1570,8 @@
       "taxonomy_node_ids": [
         "sports/endurance"
       ],
-      "episode_count": 705
+      "episode_count": 705,
+      "explicit": false
     },
     {
       "show_id": "fast-talk",
@@ -1439,7 +1581,8 @@
       "taxonomy_node_ids": [
         "sports/endurance"
       ],
-      "episode_count": 470
+      "episode_count": 470,
+      "explicit": false
     },
     {
       "show_id": "physiology-endurance-running",
@@ -1449,7 +1592,8 @@
       "taxonomy_node_ids": [
         "sports/endurance"
       ],
-      "episode_count": 110
+      "episode_count": 110,
+      "explicit": false
     },
     {
       "show_id": "shipwrecks-and-sea-dogs",
@@ -1459,7 +1603,8 @@
       "taxonomy_node_ids": [
         "transport/maritime"
       ],
-      "episode_count": 186
+      "episode_count": 186,
+      "explicit": false
     },
     {
       "show_id": "maritime-history-podcast",
@@ -1469,7 +1614,8 @@
       "taxonomy_node_ids": [
         "transport/maritime"
       ],
-      "episode_count": 76
+      "episode_count": 76,
+      "explicit": false
     },
     {
       "show_id": "the-roundhouse",
@@ -1479,7 +1625,8 @@
       "taxonomy_node_ids": [
         "transport/trains"
       ],
-      "episode_count": 166
+      "episode_count": 166,
+      "explicit": false
     },
     {
       "show_id": "railway-mania",
@@ -1489,7 +1636,8 @@
       "taxonomy_node_ids": [
         "transport/trains"
       ],
-      "episode_count": 39
+      "episode_count": 39,
+      "explicit": false
     },
     {
       "show_id": "woodshop-life",
@@ -1499,7 +1647,8 @@
       "taxonomy_node_ids": [
         "craft/woodworking"
       ],
-      "episode_count": 100
+      "episode_count": 100,
+      "explicit": false
     },
     {
       "show_id": "mwa-woodworking",
@@ -1509,7 +1658,8 @@
       "taxonomy_node_ids": [
         "craft/woodworking"
       ],
-      "episode_count": 618
+      "episode_count": 618,
+      "explicit": false
     },
     {
       "show_id": "practical-ai",
@@ -1519,7 +1669,8 @@
       "taxonomy_node_ids": [
         "engineering/ai-robotics"
       ],
-      "episode_count": 364
+      "episode_count": 364,
+      "explicit": false
     },
     {
       "show_id": "twiml-ai",
@@ -1529,7 +1680,8 @@
       "taxonomy_node_ids": [
         "engineering/ai-robotics"
       ],
-      "episode_count": 789
+      "episode_count": 789,
+      "explicit": false
     },
     {
       "show_id": "robot-brains",
@@ -1539,7 +1691,8 @@
       "taxonomy_node_ids": [
         "engineering/ai-robotics"
       ],
-      "episode_count": 67
+      "episode_count": 67,
+      "explicit": false
     },
     {
       "show_id": "robot-talk",
@@ -1549,7 +1702,8 @@
       "taxonomy_node_ids": [
         "engineering/ai-robotics"
       ],
-      "episode_count": 169
+      "episode_count": 169,
+      "explicit": false
     },
     {
       "show_id": "happiness-lab",
@@ -1560,7 +1714,8 @@
         "health/mental",
         "psychology"
       ],
-      "episode_count": null
+      "episode_count": null,
+      "explicit": false
     },
     {
       "show_id": "ten-percent-happier",
@@ -1571,7 +1726,8 @@
         "health/mental",
         "psychology"
       ],
-      "episode_count": null
+      "episode_count": null,
+      "explicit": false
     },
     {
       "show_id": "feel-better-live-more",
@@ -1582,7 +1738,8 @@
         "health/mental",
         "health/nutrition"
       ],
-      "episode_count": null
+      "episode_count": null,
+      "explicit": false
     },
     {
       "show_id": "the-psychology-podcast",
@@ -1592,7 +1749,8 @@
       "taxonomy_node_ids": [
         "psychology"
       ],
-      "episode_count": null
+      "episode_count": null,
+      "explicit": false
     },
     {
       "show_id": "maintenance-phase",
@@ -1602,7 +1760,8 @@
       "taxonomy_node_ids": [
         "health/nutrition"
       ],
-      "episode_count": null
+      "episode_count": null,
+      "explicit": false
     },
     {
       "show_id": "zoe-science-nutrition",
@@ -1612,7 +1771,8 @@
       "taxonomy_node_ids": [
         "health/nutrition"
       ],
-      "episode_count": null
+      "episode_count": null,
+      "explicit": false
     },
     {
       "show_id": "foundmyfitness",
@@ -1623,7 +1783,8 @@
         "health/nutrition",
         "medicine/neuroscience"
       ],
-      "episode_count": null
+      "episode_count": null,
+      "explicit": false
     },
     {
       "show_id": "sigma-nutrition-radio",
@@ -1633,7 +1794,8 @@
       "taxonomy_node_ids": [
         "health/nutrition"
       ],
-      "episode_count": null
+      "episode_count": null,
+      "explicit": false
     },
     {
       "show_id": "mel-robbins-podcast",
@@ -1644,7 +1806,8 @@
         "education/self-improvement",
         "health/mental"
       ],
-      "episode_count": null
+      "episode_count": null,
+      "explicit": false
     },
     {
       "show_id": "happier-gretchen-rubin",
@@ -1654,7 +1817,8 @@
       "taxonomy_node_ids": [
         "education/self-improvement"
       ],
-      "episode_count": null
+      "episode_count": null,
+      "explicit": false
     },
     {
       "show_id": "good-inside-dr-becky",
@@ -1665,7 +1829,8 @@
         "kids-family/parenting",
         "psychology"
       ],
-      "episode_count": null
+      "episode_count": null,
+      "explicit": false
     },
     {
       "show_id": "ask-lisa-parenting",
@@ -1676,7 +1841,8 @@
         "kids-family/parenting",
         "psychology"
       ],
-      "episode_count": null
+      "episode_count": null,
+      "explicit": false
     },
     {
       "show_id": "armchair-expert",
@@ -1686,7 +1852,8 @@
       "taxonomy_node_ids": [
         "comedy/interviews"
       ],
-      "episode_count": 1067
+      "episode_count": 1067,
+      "explicit": false
     },
     {
       "show_id": "call-her-daddy",
@@ -1696,7 +1863,8 @@
       "taxonomy_node_ids": [
         "comedy/interviews"
       ],
-      "episode_count": 598
+      "episode_count": 598,
+      "explicit": false
     },
     {
       "show_id": "this-past-weekend-theo-von",
@@ -1706,7 +1874,8 @@
       "taxonomy_node_ids": [
         "comedy/interviews"
       ],
-      "episode_count": 554
+      "episode_count": 554,
+      "explicit": false
     },
     {
       "show_id": "wtf-marc-maron",
@@ -1716,7 +1885,8 @@
       "taxonomy_node_ids": [
         "comedy/interviews"
       ],
-      "episode_count": 1226
+      "episode_count": 1226,
+      "explicit": false
     },
     {
       "show_id": "las-culturistas",
@@ -1727,7 +1897,8 @@
         "comedy/interviews",
         "culture/pop-culture"
       ],
-      "episode_count": 566
+      "episode_count": 566,
+      "explicit": false
     },
     {
       "show_id": "comedy-bang-bang",
@@ -1737,7 +1908,8 @@
       "taxonomy_node_ids": [
         "comedy/casual-hangs"
       ],
-      "episode_count": 162
+      "episode_count": 162,
+      "explicit": false
     },
     {
       "show_id": "2-bears-1-cave",
@@ -1747,7 +1919,8 @@
       "taxonomy_node_ids": [
         "comedy/casual-hangs"
       ],
-      "episode_count": 333
+      "episode_count": 333,
+      "explicit": false
     },
     {
       "show_id": "how-did-this-get-made",
@@ -1758,7 +1931,8 @@
         "comedy/casual-hangs",
         "tv-film/reviews"
       ],
-      "episode_count": 378
+      "episode_count": 378,
+      "explicit": false
     },
     {
       "show_id": "handsome",
@@ -1768,7 +1942,8 @@
       "taxonomy_node_ids": [
         "comedy/casual-hangs"
       ],
-      "episode_count": 251
+      "episode_count": 251,
+      "explicit": false
     },
     {
       "show_id": "kill-tony",
@@ -1778,7 +1953,8 @@
       "taxonomy_node_ids": [
         "comedy/stand-up"
       ],
-      "episode_count": 775
+      "episode_count": 775,
+      "explicit": false
     },
     {
       "show_id": "working-it-out-birbiglia",
@@ -1789,7 +1965,8 @@
         "comedy/stand-up",
         "comedy/interviews"
       ],
-      "episode_count": 253
+      "episode_count": 253,
+      "explicit": false
     },
     {
       "show_id": "criminal",
@@ -1800,7 +1977,8 @@
         "true-crime",
         "society/law"
       ],
-      "episode_count": 470
+      "episode_count": 470,
+      "explicit": false
     },
     {
       "show_id": "serial",
@@ -1811,7 +1989,8 @@
         "true-crime",
         "society/law"
       ],
-      "episode_count": 125
+      "episode_count": 125,
+      "explicit": false
     },
     {
       "show_id": "astonishing-legends",
@@ -1822,7 +2001,8 @@
         "paranormal",
         "history"
       ],
-      "episode_count": 454
+      "episode_count": 454,
+      "explicit": false
     },
     {
       "show_id": "lore",
@@ -1833,7 +2013,8 @@
         "paranormal",
         "history"
       ],
-      "episode_count": 799
+      "episode_count": 799,
+      "explicit": false
     },
     {
       "show_id": "casefile-true-crime",
@@ -1843,7 +2024,8 @@
       "taxonomy_node_ids": [
         "true-crime"
       ],
-      "episode_count": 499
+      "episode_count": 499,
+      "explicit": false
     },
     {
       "show_id": "unexplained",
@@ -1853,7 +2035,8 @@
       "taxonomy_node_ids": [
         "paranormal"
       ],
-      "episode_count": 424
+      "episode_count": 424,
+      "explicit": false
     },
     {
       "show_id": "in-the-dark",
@@ -1864,7 +2047,8 @@
         "true-crime",
         "society/law"
       ],
-      "episode_count": 70
+      "episode_count": 70,
+      "explicit": false
     },
     {
       "show_id": "crime-junkie",
@@ -1874,7 +2058,8 @@
       "taxonomy_node_ids": [
         "true-crime"
       ],
-      "episode_count": 517
+      "episode_count": 517,
+      "explicit": false
     },
     {
       "show_id": "morbid",
@@ -1885,7 +2070,8 @@
         "true-crime",
         "history"
       ],
-      "episode_count": 879
+      "episode_count": 879,
+      "explicit": false
     },
     {
       "show_id": "dateline-nbc",
@@ -1896,7 +2082,8 @@
         "true-crime",
         "society/law"
       ],
-      "episode_count": 882
+      "episode_count": 882,
+      "explicit": false
     },
     {
       "show_id": "wicked-words-kate-winkler-dawson",
@@ -1907,7 +2094,8 @@
         "true-crime",
         "history"
       ],
-      "episode_count": 286
+      "episode_count": 286,
+      "explicit": false
     },
     {
       "show_id": "bone-valley",
@@ -1918,7 +2106,8 @@
         "true-crime",
         "society/law"
       ],
-      "episode_count": 134
+      "episode_count": 134,
+      "explicit": false
     },
     {
       "show_id": "this-american-life",
@@ -1929,7 +2118,8 @@
         "personal-journals",
         "science/storytelling"
       ],
-      "episode_count": null
+      "episode_count": null,
+      "explicit": false
     },
     {
       "show_id": "snap-judgment",
@@ -1940,7 +2130,8 @@
         "science/storytelling",
         "personal-journals"
       ],
-      "episode_count": null
+      "episode_count": null,
+      "explicit": false
     },
     {
       "show_id": "the-moth",
@@ -1951,7 +2142,8 @@
         "science/storytelling",
         "culture/performing-arts"
       ],
-      "episode_count": null
+      "episode_count": null,
+      "explicit": false
     },
     {
       "show_id": "ear-hustle",
@@ -1962,7 +2154,8 @@
         "society",
         "personal-journals"
       ],
-      "episode_count": null
+      "episode_count": null,
+      "explicit": true
     },
     {
       "show_id": "storycorps",
@@ -1973,7 +2166,8 @@
         "personal-journals",
         "society"
       ],
-      "episode_count": null
+      "episode_count": null,
+      "explicit": false
     },
     {
       "show_id": "heavyweight",
@@ -1984,7 +2178,8 @@
         "personal-journals",
         "relationships"
       ],
-      "episode_count": null
+      "episode_count": null,
+      "explicit": true
     },
     {
       "show_id": "death-sex-money",
@@ -1995,7 +2190,8 @@
         "personal-journals",
         "relationships"
       ],
-      "episode_count": null
+      "episode_count": null,
+      "explicit": false
     },
     {
       "show_id": "where-should-we-begin",
@@ -2006,7 +2202,8 @@
         "relationships",
         "psychology"
       ],
-      "episode_count": null
+      "episode_count": null,
+      "explicit": false
     },
     {
       "show_id": "modern-love",
@@ -2017,7 +2214,8 @@
         "relationships",
         "personal-journals"
       ],
-      "episode_count": null
+      "episode_count": null,
+      "explicit": true
     },
     {
       "show_id": "we-can-do-hard-things",
@@ -2028,7 +2226,8 @@
         "relationships",
         "health/mental"
       ],
-      "episode_count": null
+      "episode_count": null,
+      "explicit": true
     },
     {
       "show_id": "dear-sugars",
@@ -2039,7 +2238,8 @@
         "relationships",
         "personal-journals"
       ],
-      "episode_count": null
+      "episode_count": null,
+      "explicit": false
     },
     {
       "show_id": "dear-prudence",
@@ -2050,7 +2250,8 @@
         "relationships",
         "personal-journals"
       ],
-      "episode_count": null
+      "episode_count": null,
+      "explicit": false
     },
     {
       "show_id": "wow-in-the-world",
@@ -2060,7 +2261,8 @@
       "taxonomy_node_ids": [
         "kids-family/education"
       ],
-      "episode_count": null
+      "episode_count": null,
+      "explicit": false
     },
     {
       "show_id": "story-pirates",
@@ -2070,7 +2272,8 @@
       "taxonomy_node_ids": [
         "kids-family/stories"
       ],
-      "episode_count": null
+      "episode_count": null,
+      "explicit": false
     },
     {
       "show_id": "circle-round",
@@ -2080,7 +2283,8 @@
       "taxonomy_node_ids": [
         "kids-family/stories"
       ],
-      "episode_count": null
+      "episode_count": null,
+      "explicit": false
     },
     {
       "show_id": "welcome-to-night-vale",
@@ -2091,7 +2295,8 @@
         "fiction",
         "fiction/drama"
       ],
-      "episode_count": null
+      "episode_count": null,
+      "explicit": false
     },
     {
       "show_id": "the-magnus-archives",
@@ -2102,7 +2307,8 @@
         "fiction",
         "fiction/drama"
       ],
-      "episode_count": null
+      "episode_count": null,
+      "explicit": false
     },
     {
       "show_id": "old-gods-of-appalachia",
@@ -2113,7 +2319,8 @@
         "fiction",
         "fiction/drama"
       ],
-      "episode_count": null
+      "episode_count": null,
+      "explicit": false
     },
     {
       "show_id": "levar-burton-reads",
@@ -2124,7 +2331,8 @@
         "fiction",
         "fiction/sci-fi"
       ],
-      "episode_count": null
+      "episode_count": null,
+      "explicit": false
     },
     {
       "show_id": "twenty-thousand-hertz",
@@ -2135,7 +2343,8 @@
         "culture/design",
         "music/theory-production"
       ],
-      "episode_count": null
+      "episode_count": null,
+      "explicit": false
     },
     {
       "show_id": "design-matters",
@@ -2145,7 +2354,8 @@
       "taxonomy_node_ids": [
         "culture/design"
       ],
-      "episode_count": null
+      "episode_count": null,
+      "explicit": false
     },
     {
       "show_id": "the-great-women-artists",
@@ -2155,7 +2365,8 @@
       "taxonomy_node_ids": [
         "culture/art"
       ],
-      "episode_count": null
+      "episode_count": null,
+      "explicit": false
     },
     {
       "show_id": "dissect",
@@ -2165,7 +2376,8 @@
       "taxonomy_node_ids": [
         "music/theory-production"
       ],
-      "episode_count": null
+      "episode_count": null,
+      "explicit": false
     },
     {
       "show_id": "broken-record",
@@ -2175,7 +2387,8 @@
       "taxonomy_node_ids": [
         "music"
       ],
-      "episode_count": null
+      "episode_count": null,
+      "explicit": false
     },
     {
       "show_id": "basic-brewing-radio",
@@ -2186,7 +2399,8 @@
         "food/fermentation",
         "food/drinks"
       ],
-      "episode_count": 978
+      "episode_count": 978,
+      "explicit": false
     },
     {
       "show_id": "whiskycast",
@@ -2196,7 +2410,8 @@
       "taxonomy_node_ids": [
         "food/drinks"
       ],
-      "episode_count": 1176
+      "episode_count": 1176,
+      "explicit": false
     },
     {
       "show_id": "ill-drink-to-that-wine-talk",
@@ -2206,7 +2421,8 @@
       "taxonomy_node_ids": [
         "food/drinks"
       ],
-      "episode_count": 505
+      "episode_count": 505,
+      "explicit": true
     },
     {
       "show_id": "inside-winemaking",
@@ -2217,7 +2433,8 @@
         "food/drinks",
         "food/fermentation"
       ],
-      "episode_count": 224
+      "episode_count": 224,
+      "explicit": false
     },
     {
       "show_id": "cider-chat",
@@ -2228,7 +2445,8 @@
         "food/fermentation",
         "food/drinks"
       ],
-      "episode_count": 514
+      "episode_count": 514,
+      "explicit": true
     },
     {
       "show_id": "bourbon-pursuit",
@@ -2238,7 +2456,8 @@
       "taxonomy_node_ids": [
         "food/drinks"
       ],
-      "episode_count": 1207
+      "episode_count": 1207,
+      "explicit": true
     },
     {
       "show_id": "spirits-and-distilling",
@@ -2248,7 +2467,8 @@
       "taxonomy_node_ids": [
         "food/drinks"
       ],
-      "episode_count": 47
+      "episode_count": 47,
+      "explicit": false
     }
   ]
 }

@@ -177,6 +177,8 @@ public enum EngineConstants {
         public static let durationFallback: String = "fallback"
         /// `DURATION_MEASURED`
         public static let durationMeasured: String = "measured"
+        /// `INTERLUDE_ASSET_DURATION_SEC`
+        public static let interludeAssetDurationSec: Double = 3
         /// `JINGLE`
         public static let jingle: String = "jingle"
         /// `JINGLE_ASSET_URL`

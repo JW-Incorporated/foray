@@ -724,11 +724,20 @@ const ROOT = join(import.meta.dirname, "..", "..");
 const git = (args) => execFileSync("git", args, { cwd: ROOT, encoding: "utf8" }).trim();
 const isRepo = (() => { try { git(["rev-parse", "--git-dir"]); return true; } catch { return false; } })();
 
+/* Audit round 3, tests-8. The probe used to be `probe.mp3`, which the global
+   `*.mp3` rule ignores wherever it sits, so this stayed green with the
+   `data-local/` line deleted. The probes below are names only the DIRECTORY
+   rule can ignore, and the assertion names that rule.
+   MUTATION: delete `data-local/` from .gitignore -- check-ignore then exits 1
+   on both probes (or names some other rule) and this goes red. */
 test("the decode download dir is gitignored", { skip: !isRepo && "not a git checkout" }, () => {
-  const probe = join(AUDIO_DIR, "probe.mp3");
-  const out = git(["check-ignore", "-v", "--no-index", probe].map(String));
-  assert.ok(out.length > 0, `${AUDIO_DIR} is not gitignored — a 95MB episode could be committed`);
   assert.ok(basename(AUDIO_DIR).length > 0);
+  for (const name of ["probe.aac", "probe.json"]) {
+    const probe = join(AUDIO_DIR, name);
+    let out = "";
+    try { out = git(["check-ignore", "-v", "--no-index", probe].map(String)); } catch (_) { out = ""; }
+    assert.match(out, /^\.gitignore:\d+:data-local\/\s/, `${probe} is not ignored by the data-local/ rule -- a 95MB episode could be committed (${out || "not ignored"})`);
+  }
 });
 
 test("the committed report carries no transcript text and no audio", { skip: !existsSync(REPORT_PATH) && "not measured yet" }, () => {

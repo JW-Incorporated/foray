@@ -45,6 +45,11 @@ function parseArgs(argv) {
    both files. */
 export const CLIENT_SHOW_FIELDS = [
   "show_id", "title", "artwork_url", "editorial_note", "taxonomy_node_ids", "episode_count",
+  /* The show-level rating (audit round 3, data-integrity-4; founder Q1 default):
+     Family mode hides an episode with no rating of its own unless its show is
+     rated clean here, so the client needs this one curation field. true /
+     false / null, as data/catalog.json has it. */
+  "explicit",
 ];
 
 export function projectShow(show) {

@@ -109,42 +109,28 @@ export class PostgresShowEpisodesStore implements ShowEpisodesStore {
     return result.rows.map(rowToEpisode);
   }
 
+  /**
+   * One multi-row INSERT ... ON CONFLICT per chunk, all inside one
+   * transaction (backend-rest-9): a failing row now rolls the whole batch
+   * back instead of leaving half a show upserted, and a 400-episode show
+   * costs a handful of round trips rather than 400. Rows are de-duplicated
+   * by guid first (last one wins, as the old per-row loop did), because
+   * Postgres refuses an ON CONFLICT DO UPDATE that touches one row twice.
+   */
   async upsertEpisodes(episodes: CatalogShowEpisode[]): Promise<void> {
     if (episodes.length === 0) return;
-    for (const ep of episodes) {
-      await this.client.query(
-        `insert into catalog_show_episodes
-           (show_id, guid, title, description_html, description_text, published_at,
-            duration_seconds, audio_url, season_number, episode_number, chapters_url, chapters, updated_at)
-         values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12, now())
-         on conflict (show_id, guid) do update set
-           title = excluded.title,
-           description_html = excluded.description_html,
-           description_text = excluded.description_text,
-           published_at = excluded.published_at,
-           duration_seconds = excluded.duration_seconds,
-           audio_url = excluded.audio_url,
-           season_number = excluded.season_number,
-           episode_number = excluded.episode_number,
-           chapters_url = excluded.chapters_url,
-           -- never overwrite a lazily-fetched chapters body with null on a re-ingest
-           chapters = coalesce(excluded.chapters, catalog_show_episodes.chapters),
-           updated_at = now()`,
-        [
-          ep.show_id,
-          ep.guid,
-          ep.title,
-          ep.description_html,
-          ep.description_text,
-          ep.published_at,
-          ep.duration_seconds,
-          ep.audio_url,
-          ep.season_number,
-          ep.episode_number,
-          ep.chapters_url,
-          ep.chapters ? JSON.stringify(ep.chapters) : null
-        ]
-      );
+    const unique = [...new Map(episodes.map((ep) => [`${ep.show_id}\x00${ep.guid}`, ep])).values()];
+    await this.client.query("begin");
+    try {
+      for (let i = 0; i < unique.length; i += UPSERT_CHUNK_ROWS) {
+        const chunk = unique.slice(i, i + UPSERT_CHUNK_ROWS);
+        const { sql, params } = buildEpisodeUpsert(chunk);
+        await this.client.query(sql, params);
+      }
+      await this.client.query("commit");
+    } catch (err) {
+      await this.client.query("rollback").catch(() => undefined);
+      throw err;
     }
   }
 
@@ -196,6 +182,52 @@ export class PostgresShowEpisodesStore implements ShowEpisodesStore {
       ]
     );
   }
+}
+
+/** 12 params per row: 500 rows stays well under Postgres's 65535-parameter cap. */
+const UPSERT_CHUNK_ROWS = 500;
+const EPISODE_UPSERT_COLUMNS = 12;
+
+/** Builds the batched upsert for one chunk. Exported for tests. */
+export function buildEpisodeUpsert(episodes: CatalogShowEpisode[]): { sql: string; params: unknown[] } {
+  const params: unknown[] = [];
+  const tuples = episodes.map((ep, row) => {
+    params.push(
+      ep.show_id,
+      ep.guid,
+      ep.title,
+      ep.description_html,
+      ep.description_text,
+      ep.published_at,
+      ep.duration_seconds,
+      ep.audio_url,
+      ep.season_number,
+      ep.episode_number,
+      ep.chapters_url,
+      ep.chapters ? JSON.stringify(ep.chapters) : null
+    );
+    const base = row * EPISODE_UPSERT_COLUMNS;
+    const slots = Array.from({ length: EPISODE_UPSERT_COLUMNS }, (_, c) => "$" + String(base + c + 1));
+    return `(${slots.join(",")}, now())`;
+  });
+  const sql = `insert into catalog_show_episodes
+       (show_id, guid, title, description_html, description_text, published_at,
+        duration_seconds, audio_url, season_number, episode_number, chapters_url, chapters, updated_at)
+     values ${tuples.join(", ")}
+     on conflict (show_id, guid) do update set
+       title = excluded.title,
+       description_html = excluded.description_html,
+       description_text = excluded.description_text,
+       published_at = excluded.published_at,
+       duration_seconds = excluded.duration_seconds,
+       audio_url = excluded.audio_url,
+       season_number = excluded.season_number,
+       episode_number = excluded.episode_number,
+       chapters_url = excluded.chapters_url,
+       -- never overwrite a lazily-fetched chapters body with null on a re-ingest
+       chapters = coalesce(excluded.chapters, catalog_show_episodes.chapters),
+       updated_at = now()`;
+  return { sql, params };
 }
 
 function rowToEpisode(row: Record<string, unknown>): CatalogShowEpisode {

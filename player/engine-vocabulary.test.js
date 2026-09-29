@@ -11,8 +11,10 @@ import { fileURLToPath } from "node:url";
 import {
   VOCABULARY, VOCABULARY_SETS, admitToken,
   INTERRUPTION_REASONS, STOP_CAUSES, MODE_REASONS, FAULT_KINDS, SOURCES,
+  SESSION_ERRORS, SESSION_ERROR_DETAILS,
 } from "./engine-vocabulary.js";
 import { TRANSPORT_SOURCES } from "./diagnostic-log.js";
+import { REFUSALS, sessionFailedReason } from "./engine-contract.js";
 import { TOKEN_RE } from "../tools/parity/gen-constants.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -61,4 +63,37 @@ test("every set is frozen, non-empty, duplicate-free and spelled as a token; adm
   }
   assert.throws(() => admitToken("hasOwnProperty", "x"), RangeError);
   assert.throws(() => admitToken(undefined, "x"), RangeError);
+});
+
+test("the session-error DETAIL set names every AVAudioSession.ErrorCode the iOS side maps, and keeps the contract's three (L13)", () => {
+  /* AudioSessionOwner.errorToken maps these eleven AVAudioSession.ErrorCode
+     cases (and `other` for the rest); the Swift enum is generated from this
+     list, so a token the Swift spells must be here. The three contract
+     tokens are the same strings, so a row's `token=` and the reply's
+     `session-failed:<t>` never disagree for the cases the contract names.
+     TO SEE IT FAIL: drop `insufficient-priority`, or respell
+     `cannot-interrupt-others` in one set only. */
+  assert.deepEqual([...SESSION_ERROR_DETAILS], [
+    "cannot-interrupt-others", "cannot-start-playing", "insufficient-priority", "is-busy",
+    "siri-is-recording", "media-services-failed", "expired-session", "missing-entitlement",
+    "resource-not-available", "incompatible-category", "session-not-active", "other",
+  ]);
+  for (const t of SESSION_ERRORS) assert.equal(admitToken("sessionErrorDetail", t), t, `contract token ${t}`);
+  assert.equal(admitToken("sessionError", "insufficient-priority"), null, "the contract set did not grow");
+});
+
+test("a detail token folds into the contract's refusals: its own for the three, session-failed:other for the rest (L13, no contract change)", () => {
+  /* The engine hands the activation's token to sessionFailedReason, and the
+     page is answered with a Refusal. A detail token must never become a
+     refusal the contract does not define: the page would read it as
+     unknown. TO SEE IT FAIL: add a detail token to SESSION_ERRORS (the
+     contract then grows a refusal), or admit through SESSION_ERROR_DETAILS
+     in sessionFailedReason. */
+  for (const t of SESSION_ERROR_DETAILS) {
+    const reason = sessionFailedReason(t);
+    assert.ok(REFUSALS.includes(reason), `${t} -> ${reason} is a contract refusal`);
+    assert.equal(reason, SESSION_ERRORS.includes(t) ? `session-failed:${t}` : "session-failed:other", t);
+  }
+  assert.deepEqual(REFUSALS.filter((r) => r.startsWith("session-failed:")),
+    ["session-failed:cannot-interrupt-others", "session-failed:cannot-start-playing", "session-failed:other"]);
 });

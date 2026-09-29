@@ -52,7 +52,7 @@ this isn't optional — a mismatched `user_id` is simply rejected.
 | `skipped_at` | `episode_slug, show?, topics[], elapsed_seconds, duration_seconds?` | **not currently observable on web — see §4** |
 | `finished` | `episode_slug, show?, topics[], percent_complete, source` | `source` mandatory, see §1.2 |
 | `voice_command` | `command, node_id?, show?, episode_slug?` | `command` in `more_like_this\|something_different\|less_x\|never_this_show` |
-| `thumbs` | `direction (up\|down), node_id, episode_slug?` | `node_id` mandatory — thumbs always target a named node |
+| `thumbs` | `direction (up\|down\|cleared), node_id, episode_slug?, replaces?` | `node_id` mandatory — thumbs always target a named node. `replaces {direction (up\|down), reasons?}` names the vote a changed or withdrawn one replaces, and a `cleared` row always carries it; the learning job takes that vote's move back (round-3 audit, app-2-6) |
 | `saved` | `episode_slug, show?, topics[]` | |
 | `session_built` | `session_key, builder` | |
 | `session_rated` | `session_key, rating (good\|meh\|bad)` | |
@@ -119,7 +119,7 @@ following are currently emitted at all:
   successful write.
 - Batch inserts via `supabase.from('events').insert(rows)` in chunks (e.g.
   ~500 rows) rather than one request per event.
-- **Retire** the current `EVENTS_ENDPOINT = "http://127.0.0.1:8787/events"`
+- **Retired (2026-09-25):** `tools/events-server.mjs` and `scripts/events-server.vbs` were deleted in the round-3 code audit (security-9, data-tools-12); the generation relay now defaults to port 8788. Original note: **Retire** the current `EVENTS_ENDPOINT = "http://127.0.0.1:8787/events"`
   localhost stopgap (`app.js` lines 65-84) once Supabase sync lands — don't
   maintain two parallel sync paths.
 - Every row's `payload` should validate against the shape in §2 before

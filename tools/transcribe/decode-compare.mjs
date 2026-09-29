@@ -90,7 +90,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
    the right band for asking whether a tag accounts for a byte gap -- a second
    copy of that number would be the fourth threshold in this repo to drift. */
 import { fetchEpisode, cleanup, ROOT } from "./fetch-audio.mjs";
-import { UA, AUDIO_UA, ACCEPT_LANGUAGE, awaitHostSlot } from "../segments/politeness.mjs";
+import { UA, AUDIO_UA, ACCEPT_LANGUAGE, awaitHostSlot, discardBody } from "../segments/politeness.mjs";
 import { fetchBody, assertTranscriptTarget, spanImplausible } from "../segments/fetch-transcripts.mjs";
 import { normalize } from "../segments/transcript-normalize.mjs";
 import { CONSTANT_OFFSET_TOLERANCE_BYTES } from "../segments/measure-suspects.mjs";
@@ -493,8 +493,8 @@ export async function probeGrid(target, { fetchImpl = fetch, sleep = null } = {}
         transfer_encoding: res.headers.get("transfer-encoding"),
         resolved_host: (() => { try { return new URL(res.url).host; } catch { return null; } })(),
       });
-      if (ranged) await res.arrayBuffer().catch(() => {});
-      else res.body?.cancel?.().catch?.(() => {});
+      // A ranged cell that got a 200 is the whole file; discardBody cancels it (data-tools-6).
+      await discardBody(res);
     }
   }
   const totals = [...new Set(cells.map((c) => c.total).filter((n) => Number.isFinite(n)))];

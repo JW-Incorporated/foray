@@ -21,14 +21,22 @@
 
 import { mkdirSync, rmSync, cpSync, existsSync, statSync, readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { dirname, join, relative, sep, isAbsolute } from "node:path";
+import { dirname, join, relative, sep } from "node:path";
 import { POINTER_PATH } from "../ci/forays-directory.mjs";
 import { stampBuild, stampedProblems, stampTimestamp } from "../ci/generate-manifest.mjs";
+import { resolveOutDir, USAGE } from "./out-dir.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const args = process.argv.slice(2);
-const OUT_ARG = args.includes("--out") ? args[args.indexOf("--out") + 1] : "dist";
-const OUT = isAbsolute(OUT_ARG) ? OUT_ARG : join(ROOT, OUT_ARG);
+/* The output directory is deleted before the build, so it is validated first
+   (round-3 audit, ci-release-15): never the checkout, an ancestor of it, or a
+   directory holding a .git — see out-dir.mjs. */
+const outDir = resolveOutDir(args, ROOT);
+if (outDir.error) {
+  console.error(`FATAL: ${outDir.error}\n${USAGE}`);
+  process.exit(2);
+}
+const OUT = outDir.out;
 
 /** Hard cap. The whole point is to not ship the 12 MB catalogue by accident, so
     failing loudly beats a slow deploy nobody looks at. */
@@ -102,9 +110,16 @@ function fontSources() {
     .map((f) => join("fonts", f));
 }
 
-/* Joey's UX prototype. Already shared as a live link, so the Vercel deploy has
-   to keep serving it or an outward-facing URL breaks. */
-const EXTRAS = ["docs/ux/foray-m3-prototype.html"];
+/* Files outside the app that ship anyway. EMPTY ON PURPOSE (round-3 audit,
+   security-11): docs/ux/foray-m3-prototype.html used to ride along because a
+   link to it had been shared, but it has no CSP, inline scripts and unescaped
+   innerHTML interpolation, and served from here it shares the app's origin,
+   where the Supabase session lives. A prototype that needs a public URL gets
+   its own origin. pages.yml removes docs/ux/*.html from the Pages artifact
+   too (round-3 review, L4); until the HUMAN-ACTIONS #110 settings flip the
+   legacy branch deploy still serves it, so security-11 is closed on Vercel
+   and only partly on Pages until then. */
+const EXTRAS = [];
 
 function copy(rel) {
   const src = join(ROOT, rel);

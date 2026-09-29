@@ -56,11 +56,14 @@ const erow = (seq, at, kind, fields = {}) => ({ seq, at, mono: seq * 10, kind, .
 
 /** The row lines of a report (after the header), as {seq, type, engine}. */
 function rowLines(text) {
+  /* Engine rows are headed `e#` since 2026-09-26 (L22), page rows `#`; the
+     `e` is asserted to agree with `src=engine` so neither can drift alone. */
   return text.split("\n")
-    .filter((l) => /^#\d/.test(l))
+    .filter((l) => /^e?#\d/.test(l))
     .map((l) => {
-      const m = /^#(\d+)\s+\S+\s+(\S+)(\s+src=engine)?/.exec(l);
-      return { seq: Number(m[1]), type: m[2], engine: !!m[3], line: l };
+      const m = /^(e?)#(\d+)\s+\S+\s+(\S+)(\s+src=engine)?/.exec(l);
+      assert.equal(m[1] === "e", !!m[4], `a row's e# prefix and its src=engine disagree: ${l}`);
+      return { seq: Number(m[2]), type: m[3], engine: !!m[4], line: l };
     });
 }
 
@@ -205,25 +208,25 @@ test("each engine kind the card names has its line: session, remote, mode, seam,
      no gap reads `observedGapMs=—` instead of NEVER AUDIBLE. */
   const at = T0 + 1234;
   assert.equal(engineLineFor(erow(5, at, "session", { event: "activated", ok: true, token: null, activateMs: 12.34, phase: "active", hint: false })),
-    "#5    12:00:01.234 session    src=engine activated activateMs=12ms ok=y token=— hint=n phase=active");
+    "e#5    12:00:01.234 session    src=engine activated activateMs=12ms ok=y token=— hint=n phase=active");
   assert.equal(engineLineFor(erow(6, at, "session", { event: "activate", ok: false, activateMs: 3, reason: "session-failed:cannot-interrupt-others" })),
-    "#6    12:00:01.234 session    src=engine activate activateMs=3ms ok=n reason=session-failed:cannot-interrupt-others");
+    "e#6    12:00:01.234 session    src=engine activate activateMs=3ms ok=n reason=session-failed:cannot-interrupt-others");
   assert.equal(engineLineFor(erow(7, at, "remote", { cmd: "togglePlayPause", dupCandidate: "y", route: "carAudio", grace: "none", thread: "main", state: "playing", status: "success" })),
-    "#7    12:00:01.234 remote     src=engine togglePlayPause status=success route=carAudio thread=main dupCandidate=y grace=none state=playing");
+    "e#7    12:00:01.234 remote     src=engine togglePlayPause status=success route=carAudio thread=main dupCandidate=y grace=none state=playing");
   assert.equal(engineLineFor(erow(8, at, "mode", { reason: "downgrade", cap: "foray" })),
-    "#8    12:00:01.234 mode       src=engine reason=downgrade cap=foray");
+    "e#8    12:00:01.234 mode       src=engine reason=downgrade cap=foray");
   assert.equal(engineLineFor(erow(9, at, "seam", { observedGapMs: 512.4, askedGapMs: 500, prepared: true, grace: true, bgRemainingMs: 28000, stages: ["prepare", "ready", "playing"] })),
-    "#9    12:00:01.234 seam       src=engine gap 512ms asked 500ms prepared=y grace=y bgRemainingMs=28000ms stages=prepare>ready>playing");
+    "e#9    12:00:01.234 seam       src=engine gap 512ms asked 500ms prepared=y grace=y bgRemainingMs=28000ms stages=prepare>ready>playing");
   assert.equal(engineLineFor(erow(10, at, "seam", { observedGapMs: null, askedGapMs: 500, prepared: false, grace: false, bgRemainingMs: null, stages: ["prepare"] })),
-    "#10   12:00:01.234 seam       src=engine NEVER AUDIBLE asked 500ms prepared=n grace=n bgRemainingMs=— stages=prepare");
+    "e#10   12:00:01.234 seam       src=engine NEVER AUDIBLE asked 500ms prepared=n grace=n bgRemainingMs=— stages=prepare");
   assert.equal(engineLineFor(erow(11, at, "grace", { event: "begin", reason: "seam", task: "ok", bgRemainingMs: null })),
-    "#11   12:00:01.234 grace      src=engine begin reason=seam task=ok bgRemainingMs=—");
+    "e#11   12:00:01.234 grace      src=engine begin reason=seam task=ok bgRemainingMs=—");
   assert.equal(engineLineFor(erow(12, at, "probe", { event: "speech-then-play", ok: true, activateMs: 40 })),
-    "#12   12:00:01.234 probe      src=engine speech-then-play ok=y activateMs=40ms");
+    "e#12   12:00:01.234 probe      src=engine speech-then-play ok=y activateMs=40ms");
   assert.equal(engineLineFor(erow(13, at, "lifecycle", { event: "didEnterBackground", state: "playing" })),
-    "#13   12:00:01.234 lifecycle  src=engine didEnterBackground state=playing");
+    "e#13   12:00:01.234 lifecycle  src=engine didEnterBackground state=playing");
   assert.equal(engineLineFor(erow(14, at, "build", { engineVersion: "1.0.0", protocol: 1, bundleVersion: "2026092401", launch: "background", pitch: "timeDomain", hold: "forever" })),
-    "#14   12:00:01.234 build      src=engine v1.0.0 protocol=1 bundleVersion=2026092401 launch=background pitch=timeDomain hold=forever");
+    "e#14   12:00:01.234 build      src=engine v1.0.0 protocol=1 bundleVersion=2026092401 launch=background pitch=timeDomain hold=forever");
 });
 
 test("a field no formatter names is still printed, and what the gate withheld is said", () => {
@@ -236,7 +239,7 @@ test("a field no formatter names is still printed, and what the gate withheld is
   assert.match(line, / withheld=routeName$/);
   // A kind with no line of its own (the rest of ENGINE_ROW_KINDS) prints its sub-kind and fields.
   assert.equal(engineLineFor(erow(4, T0, "stop", { cause: "interruption", source: "session", item: "ep-1", positionSec: 61.5, state: "playing" })),
-    "#4    12:00:00.000 stop       src=engine cause=interruption source=session item=ep-1 positionSec=61.5 state=playing");
+    "e#4    12:00:00.000 stop       src=engine cause=interruption source=session item=ep-1 positionSec=61.5 state=playing");
 });
 
 test("unknown row kinds and unreadable rows show as counts, never dropped silently", () => {
@@ -283,12 +286,25 @@ test("a ring that was asked for and not read says so, with why", () => {
   assert.doesNotMatch(notAsked, /^engine rows/m, "the web has no engine to account for");
 });
 
+/** The Swift files whose private `row("…"` names a ROW KIND. The other files
+    with a `row(_:)` helper (AudioSessionOwner.swift, SessionProbe.swift) pass
+    a SUB-kind, filed under `session`/`probe` — see the test below. */
+const ROW_KIND_EMITTERS = new Set(["EngineBridge.swift", "EngineOwnership.swift"]);
+
 test("every row kind the Swift engine writes has a line here", () => {
   /* Pins the page's table to the engine's emitters, so a new kind cannot reach
      a paste only as a count. Scans the shipping Swift (not the tests) for the
-     three ways a row kind is named: `diag("kind"`, `DiagEntry(kind: "kind"` and
-     a row type's `static let kind = "kind"`.
-     MUTATION: remove "deck" from ENGINE_ROW_KINDS. This fails. */
+     four ways a row kind is named: `diag("kind"`, `DiagEntry(kind: "kind"`, a
+     row type's `static let kind = "kind"`, and a file-private `row("kind"`.
+     THE FOURTH IS SCOPED BY FILE, and that is not a shortcut (log-gaps
+     2026-09-26, L01). EngineBridge.swift's and EngineOwnership.swift's
+     `row(_ kind:)` write a ROW KIND (`cmd`, `hello`, `mode`) — the scan missed
+     them, which is how 15 `cmd` rows reached the 2026-09-26 paste only as
+     `cmd x15`. AudioSessionOwner.swift's and SessionProbe.swift's `row(_:)`
+     take a SUB-KIND (`activated`, `armed`, …) that they file under `session`
+     and `probe`, so scanning them would demand kinds the engine never writes.
+     MUTATION 1: remove "deck" from ENGINE_ROW_KINDS. This fails.
+     MUTATION 2: remove "cmd" from ENGINE_ROW_KINDS. This fails. */
   const roots = [
     "mobile/plugins/foray-audio/foray-engine-core/Sources",
     "mobile/plugins/foray-audio/ios/Sources",
@@ -300,19 +316,130 @@ test("every row kind the Swift engine writes has a line here", () => {
       if (ent.isDirectory()) walk(p);
       else if (ent.name.endsWith(".swift")) {
         const src = fs.readFileSync(p, "utf8");
-        for (const re of [/\bdiag\("([^"]+)"/g, /DiagEntry\(kind:\s*"([^"]+)"/g, /static let kind = "([^"]+)"/g]) {
+        const res = [/\bdiag\("([^"]+)"/g, /DiagEntry\(kind:\s*"([^"]+)"/g, /static let kind = "([^"]+)"/g];
+        if (ROW_KIND_EMITTERS.has(ent.name)) res.push(/\brow\("([^"]+)"/g);
+        for (const re of res) {
           for (const m of src.matchAll(re)) kinds.add(m[1]);
         }
       }
     }
   };
   for (const r of roots) walk(path.join(ROOT, r));
-  // Not vacuous: the engine writes at least these today (NE-14s, NE-16, NE-19).
-  for (const k of ["build", "seam", "session", "remote", "mode", "grace", "stop", "deck"]) {
+  // Not vacuous: the engine writes at least these today (NE-14s, NE-16, NE-19, L01).
+  for (const k of ["build", "seam", "session", "remote", "mode", "grace", "stop", "deck", "cmd", "hello"]) {
     assert.ok(kinds.has(k), `the scan no longer finds the engine's "${k}" rows — has the emitter moved?`);
   }
   const missing = [...kinds].filter((k) => !ENGINE_ROW_KINDS.includes(k));
   assert.deepEqual(missing, [], `the engine writes kinds Copy would only count: add them to ENGINE_ROW_KINDS (diagnostic-log.js), with a line if they need one`);
+});
+
+/* ==================================================================== */
+/* 3b. log-gaps 2026-09-26: commands, boots, builds, and Lane B's fields  */
+/* ==================================================================== */
+
+test("GAPS L01: a cmd row names the command, its source and its place in the page's count; a refusal and a bad hello say so", () => {
+  /* The 2026-09-26 paste printed `engine rows of unknown kinds, not shown:
+     cmd x15`. MUTATION: remove "cmd" from ENGINE_ROW_KINDS — the rows go back
+     to being a count, and the scan test above fails too. */
+  assert.equal(engineLineFor(erow(12, T0 + 3100, "cmd", { cmd: "playEpisode", source: "tap", cmdSeq: 7 })),
+    "e#12   12:00:03.100 cmd        src=engine playEpisode source=tap cmdSeq=7");
+  assert.equal(engineLineFor(erow(13, T0 + 3101, "cmd", { cmd: "playEpisode", cmdSeq: 7, result: "capability-off" })),
+    "e#13   12:00:03.101 cmd        src=engine playEpisode cmdSeq=7 result=capability-off");
+  assert.equal(engineLineFor(erow(14, T0 + 3200, "cmd", { cmd: "pause", source: "remote", cmdSeq: 9, seqGap: "y" })),
+    "e#14   12:00:03.200 cmd        src=engine pause source=remote cmdSeq=9 seqGap=y");
+  assert.equal(engineLineFor(erow(15, T0 + 3300, "cmd", { invalid: "y", cmd: null })),
+    "e#15   12:00:03.300 cmd        src=engine ? INVALID");
+  assert.equal(engineLineFor(erow(16, T0 + 3400, "hello", { invalid: "y" })),
+    "e#16   12:00:03.400 hello      src=engine invalid=y");
+  const text = formatDiagnosticReport(pageRecord(0, () => 0), {
+    decision: NATIVE_DECISION, rows: [erow(1, T0, "cmd", { cmd: "pause", source: "tap", cmdSeq: 1 }), erow(2, T0 + 1, "hello", { invalid: "y" })],
+  }, { tzOffsetMin: 0 });
+  assert.doesNotMatch(text, /unknown kinds/);
+  assert.deepEqual(rowLines(text).map((l) => l.type), ["cmd", "hello"]);
+});
+
+test("GAPS L01: the header counts the page's commands by name, the engine's refusals and the count's gaps", () => {
+  /* The paste's own mix: 8 setPageVisible, 4 pause, 3 playEpisode, and one
+     refusal row (Lane B writes a second cmd row with result= only then).
+     MUTATION 1: count the refusal row as a command — the header says 16.
+     MUTATION 2: sort by name — pause comes before setPageVisible. */
+  const rows = [];
+  let seq = 0;
+  const add = (cmd, extra = {}) => rows.push(erow(++seq, T0 + seq, "cmd", { cmd, source: "tap", cmdSeq: seq, ...extra }));
+  for (let i = 0; i < 3; i++) add("playEpisode");
+  for (let i = 0; i < 8; i++) add("setPageVisible");
+  for (let i = 0; i < 4; i++) add("pause");
+  rows.push(erow(++seq, T0 + seq, "cmd", { cmd: "playEpisode", cmdSeq: 3, result: "capability-off" }));
+  const text = formatDiagnosticReport(pageRecord(0, () => 0), { decision: NATIVE_DECISION, rows }, { tzOffsetMin: 0 });
+  assert.match(text, /^engine commands 15: setPageVisible x8,\n {2}pause x4, playEpisode x3 · 1 refused · 0 seq gaps$/m);
+  for (const l of text.split("\n")) if (/^(engine commands| {2}pause)/.test(l)) assert.ok(l.length <= 52, l);
+  /* A skipped cmdSeq is counted. */
+  const gapped = formatDiagnosticReport(pageRecord(0, () => 0), {
+    decision: NATIVE_DECISION, rows: [erow(1, T0, "cmd", { cmd: "pause", cmdSeq: 1 }), erow(2, T0 + 1, "cmd", { cmd: "pause", cmdSeq: 5, seqGap: "y" })],
+  }, { tzOffsetMin: 0 });
+  assert.match(gapped, /^engine commands 2: pause x2 · 0 refused · 1 seq gap$/m);
+});
+
+test("GAPS L22: each engine boot gets a divider naming its build — an older one says so — and the header lists the boots", () => {
+  /* The paste interleaved build 2026092532's rows with 2026092602's and
+     nothing said which was which.
+     MUTATION 1: drop the divider — `== engine boot` is gone.
+     MUTATION 2: mark every boot older — the running build's divider says
+     (older build). */
+  const rows = [
+    erow(1, T0, "build", { engineVersion: "1.0.0", protocol: 1, bundleVersion: "2026092532", launch: "foreground" }),
+    erow(2, T0 + 10, "mode", { mode: "native", reason: "build-default", strikes: 0 }),
+    erow(35, T0 + 20, "stop", { cause: "remote" }),
+    erow(36, T0 + 30, "build", { engineVersion: "1.0.0", protocol: 1, bundleVersion: "2026092401", launch: "background" }),
+    erow(80, T0 + 40, "stop", { cause: "remote" }),
+  ];
+  const text = formatDiagnosticReport(pageRecord(0, () => 0), { decision: NATIVE_DECISION, rows }, { tzOffsetMin: 0 });
+  assert.match(text, /^engine boots in ring 2: 2026092532 e#1\.\.e#35,\n {2}2026092401 e#36\.\.e#80$/m);
+  const body = text.split("\n").slice(text.split("\n").indexOf("-- 2026-09-24 (UTC) --"));
+  assert.deepEqual(body.filter((l) => l.startsWith("==")), [
+    "== engine boot 2026092532 v1.0.0 launch=foreground (older build) ==",
+    "== engine boot 2026092401 v1.0.0 launch=background ==",
+  ]);
+  /* Each divider sits directly above its build row. */
+  assert.match(body[body.indexOf("== engine boot 2026092401 v1.0.0 launch=background ==") + 1], /^e#36 {3}\S+ build /);
+});
+
+test("GAPS L09/L14/L28: Lane B's new engine fields print with no formatter change, and the header names the phone from the build row", () => {
+  /* `engineFields` prints every field a row carries; this pins that it still
+     does for the fields Lane B adds, and that the device line prefers the
+     engine's own hardware model.
+     MUTATION: give `build` a skip list that drops unknown fields. */
+  const build = erow(1, T0, "build", {
+    engineVersion: "1.0.0", protocol: 1, bundleVersion: "2026092401", launch: "foreground",
+    hw: "iPhone15.2", os: "18.6.2", lowPower: false, thermal: "fair", availMb: 1800,
+  });
+  assert.equal(engineLineFor(build),
+    "e#1    12:00:00.000 build      src=engine v1.0.0 protocol=1 bundleVersion=2026092401 launch=foreground hw=iPhone15.2 os=18.6.2 lowPower=n thermal=fair availMb=1800");
+  const route = erow(2, T0 + 5, "session", { event: "notification", port: "carAudio", prevPort: "speaker", reason: "newDeviceAvailable" });
+  assert.equal(engineLineFor(route),
+    "e#2    12:00:00.005 session    src=engine notification reason=newDeviceAvailable port=carAudio prevPort=speaker");
+  const text = formatDiagnosticReport(pageRecord(0, () => 0), { decision: NATIVE_DECISION, rows: [build, route] }, { tzOffsetMin: 0 });
+  assert.match(text, /^device iPhone15\.2 · iOS 18\.6\.2 · lowPower=n\n {2}thermal=fair$/m);
+});
+
+test("GAPS L30: a page row the page handled late sorts by when it HAPPENED, and page order never changes", () => {
+  /* #1032's route change was handled 38 s after it happened; every engine row
+     of those 38 s printed above its cause.
+     MUTATION: compare on `wall` alone — the engine row lands first again. */
+  const page = [
+    { seq: 1, wall: T0, type: "visibility", to: "hidden", forMs: 1 },
+    { seq: 2, wall: T0 + 38_041, type: "session", kind: "routeChange", reason: "new-device", producer: "audio", at: T0 + 1000, lagMs: 37_041, hidden: true },
+    { seq: 3, wall: T0 + 38_050, type: "visibility", to: "visible", forMs: 38_050 },
+  ];
+  const engine = [erow(7, T0 + 20_000, "stop", { cause: "route" })];
+  const merged = mergeEngineRows(page, engine);
+  assert.deepEqual(merged.map((m) => (m.src === "engine" ? `e${m.row.seq}` : `p${m.seq}`)), ["p1", "p2", "e7", "p3"]);
+  /* A prompt delivery (lag ≤ 1 s) still sorts by the page's own clock. */
+  const prompt = [{ ...page[1], at: T0 + 37_500, lagMs: 541 }];
+  assert.deepEqual(mergeEngineRows(prompt, engine).map((m) => (m.src === "engine" ? "e" : "p")), ["e", "p"]);
+  /* And the late row says when it happened, beside when it was handled. */
+  const text = formatDiagnosticReport({ ...pageRecord(0, () => 0), entries: page, seq: 3 }, { decision: NATIVE_DECISION, rows: engine }, { tzOffsetMin: 0 });
+  assert.match(text, /^#2 {4}12:00:38\.041 session {4}audio routeChange @12:00:01\.000 \(new-device\) {2}lag 37041ms {2}hidden=y$/m);
 });
 
 /* ==================================================================== */

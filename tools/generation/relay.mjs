@@ -151,21 +151,40 @@
  * would reintroduce "waited forever on a file" by a different route.
  *
  * Usage:
- *   node tools/generation/relay.mjs [--port 8787] [--dir data-local/relay]
+ *   node tools/generation/relay.mjs [--port 8788] [--dir data-local/relay]
  *                                   [--park-timeout-ms 0] [--quiet]
+ *
+ * LOCAL AND AUTHENTICATED (round-3 audit, data-tools-1 + security-8)
+ *   - Ids are unique per process: `r<runStamp>-<seq>` (runStamp is random per
+ *     createRelay), so a reply file left over from an earlier run can never
+ *     answer this run's call of the same sequence number. Leftover queue files
+ *     are moved to `done/stale-<ts>/` at start, for the audit trail.
+ *   - Any request carrying an `Origin` header (a browser page) is refused, and
+ *     so is any request whose `Host` is not 127.0.0.1:<port> or
+ *     localhost:<port> (DNS rebinding).
+ *   - POST /answer/:id and POST /reset need `Authorization: Bearer <token>`.
+ *     The token is per run (or RELAY_TOKEN), printed at startup and written to
+ *     `<dir>/token`. The FILE answer surface (`<id>.reply.txt`) needs no token:
+ *     writing into the queue directory already takes local file access.
+ *   - A header-derived id (an idempotency key) is used as a file name only
+ *     after it is reduced to [A-Za-z0-9_-] (or hashed), so it cannot escape the
+ *     queue directory.
+ *   - The default port is 8788: 8787 was the retired events server's
+ *     (data-tools-12 / security-9), which bound every interface.
  *
  * Started for you, together with the driver, by `tools/generation/start-run.mjs`.
  * The floor for this file's suite lives in test/suite-integrity.test.js.
  */
 
 import http from "node:http";
+import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 /* ------------------------------------------------------------------ constants */
 
-export const DEFAULT_PORT = 8787;
+export const DEFAULT_PORT = 8788;
 export const DEFAULT_DIR = "data-local/relay";
 
 /* A real idempotency key, if anything ever sends one. Checked before the
@@ -303,16 +322,60 @@ export function renderRequest(entry) {
   return lines.join("\n");
 }
 
+/**
+ * security-8 / data-tools-1: an id that came from a request header becomes a
+ * file name, so it is reduced to a safe alphabet first. A value already made of
+ * [A-Za-z0-9_-] (up to 64 chars) is kept; anything else is replaced by a hash,
+ * so "../x" can never name a path outside the queue.
+ */
+export function safeHeaderId(value) {
+  const v = String(value ?? "").trim();
+  if (/^[A-Za-z0-9_-]{1,64}$/.test(v)) return v;
+  return `h${crypto.createHash("sha1").update(v).digest("hex").slice(0, 16)}`;
+}
+
+/**
+ * data-tools-1: move whatever an earlier run left in the queue (unanswered
+ * requests, a reply written after that run died) into `done/stale-<ts>/`, so
+ * none of it can be read as this run's. Returns how many files moved.
+ */
+export function sweepStaleQueue(queueDir, doneDir, stamp = new Date().toISOString().replace(/[:.]/g, "-")) {
+  let names;
+  try {
+    names = fs.readdirSync(queueDir);
+  } catch {
+    return 0;
+  }
+  if (names.length === 0) return 0;
+  const staleDir = path.join(doneDir, `stale-${stamp}`);
+  fs.mkdirSync(staleDir, { recursive: true });
+  for (const name of names) fs.renameSync(path.join(queueDir, name), path.join(staleDir, name));
+  return names.length;
+}
+
 /* ------------------------------------------------------------------- the relay */
 
-export function createRelay({ dir = DEFAULT_DIR, parkTimeoutMs = 0, quiet = false, now = Date.now } = {}) {
+export function createRelay({
+  dir = DEFAULT_DIR,
+  parkTimeoutMs = 0,
+  quiet = false,
+  now = Date.now,
+  token = process.env.RELAY_TOKEN || crypto.randomUUID(),
+  runStamp = crypto.randomBytes(3).toString("hex"),
+} = {}) {
   const rootDir = path.resolve(dir);
   const queueDir = path.join(rootDir, "queue");
   const doneDir = path.join(rootDir, "done");
   const kpiPath = path.join(rootDir, "kpi.jsonl");
+  const tokenPath = path.join(rootDir, "token");
 
   fs.mkdirSync(queueDir, { recursive: true });
   fs.mkdirSync(doneDir, { recursive: true });
+  /* data-tools-1: nothing an earlier process left in queue/ is this run's. */
+  const staleMoved = sweepStaleQueue(queueDir, doneDir);
+  /* security-8: the per-run bearer token, where a local answerer can read it. */
+  fs.writeFileSync(tokenPath, `${token}\n`, { mode: 0o600 });
+  let boundPort = null;
 
   /** id -> entry. The ONLY map. Keyed on a logical call id (I-23), never on a
    *  body hash. */
@@ -323,10 +386,14 @@ export function createRelay({ dir = DEFAULT_DIR, parkTimeoutMs = 0, quiet = fals
   const log = (...a) => {
     if (!quiet) console.log("[relay]", ...a);
   };
+  if (staleMoved > 0) log(`moved ${staleMoved} leftover queue file(s) from an earlier run to ${doneDir}${path.sep}stale-*`);
 
+  /* data-tools-1 + security-8: unique per PROCESS (runStamp) and not
+     guessable across runs. `r0001` restarted with every process, so a
+     leftover r0003.reply.txt answered the next run's third call. */
   function mintId() {
     seq += 1;
-    return `r${String(seq).padStart(4, "0")}`;
+    return `r${runStamp}-${String(seq).padStart(4, "0")}`;
   }
 
   /**
@@ -337,7 +404,10 @@ export function createRelay({ dir = DEFAULT_DIR, parkTimeoutMs = 0, quiet = fals
   function logicalIdFor(headers, body) {
     for (const h of ID_HEADERS) {
       const v = headers?.[h];
-      if (typeof v === "string" && v.trim()) return { id: v.trim(), joined: pending.has(v.trim()) };
+      if (typeof v === "string" && v.trim()) {
+        const id = safeHeaderId(v);
+        return { id, joined: pending.has(id) };
+      }
     }
     const retryCount = Number(headers?.[RETRY_COUNT_HEADER] ?? 0) || 0;
     if (retryCount > 0) {
@@ -560,10 +630,30 @@ export function createRelay({ dir = DEFAULT_DIR, parkTimeoutMs = 0, quiet = fals
     });
   }
 
+  /** security-8: who may talk to this process at all. A browser page sends
+   *  `Origin`; the SDK and curl do not. A rebinding page sends its own Host. */
+  function refusedCaller(req) {
+    if (req.headers.origin !== undefined) return "requests from a web page (Origin header) are refused";
+    if (boundPort !== null) {
+      const host = String(req.headers.host ?? "").toLowerCase();
+      if (host !== `127.0.0.1:${boundPort}` && host !== `localhost:${boundPort}`) return `Host "${host}" is not this relay`;
+    }
+    return null;
+  }
+
+  function authorized(req) {
+    const header = String(req.headers.authorization ?? "");
+    const expected = `Bearer ${token}`;
+    return header.length === expected.length && crypto.timingSafeEqual(Buffer.from(header), Buffer.from(expected));
+  }
+
   const server = http.createServer(async (req, res) => {
     const url = new URL(req.url, "http://127.0.0.1");
     const route = url.pathname;
     try {
+      const refused = refusedCaller(req);
+      if (refused) return json(res, 403, { type: "error", error: { type: "permission_error", message: refused } });
+
       if (req.method === "GET" && (route === "/health" || route === "/")) return json(res, 200, { ok: true, pending: pending.size });
 
       if (req.method === "GET" && route === "/kpi") {
@@ -590,6 +680,10 @@ export function createRelay({ dir = DEFAULT_DIR, parkTimeoutMs = 0, quiet = fals
         if (!entry) return json(res, 404, { error: "unknown id" });
         /* F-67: the whole request, not a summary. */
         return json(res, 200, { id: entry.id, request: entry.body, tools: entry.tools, rendered: renderRequest(entry) });
+      }
+
+      if (req.method === "POST" && (route.startsWith("/answer/") || route === "/reset") && !authorized(req)) {
+        return json(res, 401, { type: "error", error: { type: "authentication_error", message: `${route} needs Authorization: Bearer <token> (printed at startup, and in ${tokenPath})` } });
       }
 
       if (req.method === "POST" && route.startsWith("/answer/")) {
@@ -661,7 +755,9 @@ export function createRelay({ dir = DEFAULT_DIR, parkTimeoutMs = 0, quiet = fals
       watcher = null; /* poll alone is sufficient, just slower. */
     }
     const actual = server.address().port;
+    boundPort = actual;
     log(`listening on http://127.0.0.1:${actual}  queue=${queueDir}  kpi=${kpiPath}`);
+    log(`answer token (POST /answer/:id and /reset need "Authorization: Bearer <token>"): ${token}  (also in ${tokenPath})`);
     return actual;
   }
 
@@ -671,7 +767,7 @@ export function createRelay({ dir = DEFAULT_DIR, parkTimeoutMs = 0, quiet = fals
     await new Promise((resolve) => server.close(resolve));
   }
 
-  return { server, listen, close, park, answer, claim, reset, sweepReplies, pending, counters, dirs: { rootDir, queueDir, doneDir, kpiPath } };
+  return { server, listen, close, park, answer, claim, reset, sweepReplies, pending, counters, token, runStamp, dirs: { rootDir, queueDir, doneDir, kpiPath, tokenPath } };
 }
 
 /* ------------------------------------------------------------------- the CLI */

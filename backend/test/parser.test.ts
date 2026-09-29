@@ -390,3 +390,38 @@ describe("security regression: GHSA-8r6m-32jq-jx6q (fast-xml-parser DOCTYPE/enti
   });
 });
 
+
+/* Round-3 audit, lane L6 (backend-rest-1 / -10): parseFeed never throws, and
+   an empty guid is "no guid", never the identity "". */
+describe("parseFeed round-3 hardening", () => {
+  const wrap = (items: string) => `<rss><channel><title>x</title>${items}</channel></rss>`;
+
+  it("does not throw on out-of-range numeric entities in titles (backend-rest-1)", () => {
+    const xml = wrap(
+      `<item><title>Bad &#99999999; title</title><guid>a</guid></item>` +
+        `<item><title>Hex &#x110000; title</title><guid>b</guid></item>`
+    );
+    let feed: ReturnType<typeof parseFeed> | undefined;
+    expect(() => {
+      feed = parseFeed(xml);
+    }).not.toThrow();
+    expect(feed!.episodes.map((e) => e.title)).toEqual(["Bad \uFFFD title", "Hex \uFFFD title"]);
+  });
+
+  it("does not throw on an out-of-range entity in the channel title", () => {
+    expect(() => parseFeed(`<rss><channel><title>&#99999999;</title></channel></rss>`)).not.toThrow();
+  });
+
+  it("normalises an empty or whitespace guid to null (backend-rest-10)", () => {
+    const feed = parseFeed(
+      wrap(
+        `<item><title>One</title><guid></guid></item>` +
+          `<item><title>Two</title><guid>   </guid></item>` +
+          `<item><title>Three</title><guid/></item>` +
+          `<item><title>Four</title><guid isPermaLink="false"></guid></item>`
+      )
+    );
+    expect(feed.episodes.map((e) => e.guid)).toEqual([null, null, null, null]);
+    for (const ep of feed.episodes) expect(ep.warnings.join(" ")).toContain("missing guid");
+  });
+});

@@ -382,16 +382,253 @@ test("player/ never reads the key — the page decides whether to OFFER a run", 
     .filter((f) => f.endsWith(".js"))
     .filter((f) => fs.readFileSync(path.join(ROOT, "player", f), "utf8").includes("cp_voice_probe"));
   assert.deepStrictEqual(offenders, []);
-  assert.ok(/async runVoiceProbe\(\) \{/.test(CLIENT_SRC), "the player's entry point takes no arguments");
+  /* Probe v3.1: the ONE argument is the drawer's per-session "arm Core ML
+     (may crash)" choice, handed in by the page — still no storage read. */
+  assert.ok(/async runVoiceProbe\(\{ armCoreML = false \} = \{\}\) \{/.test(CLIENT_SRC),
+    "the player's entry point takes only the page's arm choice");
 });
 
 test("nothing in the probe path touches how narration is spoken", async () => {
   /* THE INERTNESS CLAIM, from the page's side. `client.js`'s `runVoiceProbe`
      must not reach the manager, set a voice, or change the rate.
      MUTATION: route the probe through `manager`/`applyVoice` — this goes red. */
-  const fn = CLIENT_SRC.slice(CLIENT_SRC.indexOf("async runVoiceProbe()"));
+  const fn = CLIENT_SRC.slice(CLIENT_SRC.indexOf("async runVoiceProbe("));
   const body = fn.slice(0, fn.indexOf("\n  },"));
   for (const forbidden of ["manager", "applyVoice", "applyRate", "setNarrationVoice"]) {
     assert.ok(!body.includes(forbidden), `runVoiceProbe must not mention ${forbidden}`);
   }
+});
+
+/* ==================================================================== */
+/* audit round 3, app-3-11: one probe at a time                          */
+/* ==================================================================== */
+
+test("app-3-11: a second tap while a probe runs starts no second probe, and the control is disabled until it ends", async () => {
+  /* MUTATION: drop the voiceProbeRunning guard -> two engine loads at once;
+     red on the call count. Drop the disabling -> red on `disabled`. */
+  const h = await mount({ seed: { cp_voice_probe: true } });
+  let finish;
+  h.ctx.window.ForayPlayer.runVoiceProbe = () => { h.probeCalls.push(Date.now()); return new Promise((r) => { finish = r; }); };
+  h.openDrawer();
+  const first = h.fn("runVoiceProbe")();
+  await h.settle(3);
+  assert.strictEqual(h.run().disabled, true, "the run control looks tappable mid-run");
+  const second = h.fn("runVoiceProbe")();
+  await h.settle(3);
+  assert.strictEqual(h.probeCalls.length, 1, "a second probe was started beside the first");
+  assert.strictEqual(second, first, "the second tap is handed the run already under way");
+  assert.match(h.status().textContent, /Running the voice probe/, "the reopened sheet says a run is under way");
+  finish({ engine: "kokoro-probe", ok: false, reason: "model-absent" });
+  await first;
+  await h.settle(3);
+  assert.strictEqual(h.run().disabled, false, "the control never came back");
+  const third = h.fn("runVoiceProbe")();
+  await h.settle(3);
+  finish({ engine: "kokoro-probe", ok: false, reason: "model-absent" });
+  await third;
+  assert.strictEqual(h.probeCalls.length, 2, "a run after the first has ended is a new run");
+});
+
+/* ==================================================================== */
+/* KV-R3: probe v3 — the table, the WAV buttons, the soak                */
+/* ==================================================================== */
+
+test("KV-R3: the soak control exists only on iOS, under the run control, and goes with the switch", async () => {
+  /* MUTATION: offer the soak everywhere — Android's plugin has no soak and a
+     tap would run the matrix again under a soak's label. */
+  const h = await mount({ seed: { cp_voice_probe: true } });
+  h.openDrawer();
+  assert.strictEqual(findIn(h.body, "#voice-probe-soak"), null, "no soak off iOS");
+  const g = await mount({ seed: { cp_voice_probe: true } });
+  g.ctx.Capacitor = { getPlatform: () => "ios" };
+  g.openDrawer();
+  const ids = g.drawerIds();
+  assert.strictEqual(ids[ids.indexOf("voice-probe-run") + 1], "voice-probe-soak");
+  assert.strictEqual(ids[ids.length - 1], "delete-data", "Delete my data stays last");
+  await g.toggle().click();
+  assert.strictEqual(findIn(g.body, "#voice-probe-soak"), null, "switch off: the soak control is gone too");
+});
+
+test("KV-R3: a v3 run shows the table and one Play button per pass that kept a WAV", async () => {
+  const h = await mount({ seed: { cp_voice_probe: true } });
+  const records = [
+    { engine: "kokoro-probe", ok: true, pass: "ane", speed: 1, hasWav: false },
+    { engine: "kokoro-probe", ok: true, pass: "ane", speed: 1.5, hasWav: true },
+  ];
+  const played = [];
+  Object.assign(h.ctx.window.ForayPlayer, {
+    runVoiceProbe: async () => records,
+    formatVoiceProbeTable: () => "voice probe v3 — TABLE",
+    voiceProbeWavPasses: () => ["ane"],
+    playVoiceProbeWav: async (pass) => { played.push(pass); return { ok: true }; },
+  });
+  h.openDrawer();
+  await h.run().click();
+  await h.settle();
+  assert.match(h.status().textContent, /^voice probe v3 — TABLE\nCopy the record above/);
+  assert.ok(h.status().classList.contains("dd-status-report"), "the table keeps its columns");
+  assert.ok(!/go\/no-go/.test(h.status().textContent), "K-01's 0.8 go/no-go is not this card's question");
+  const box = findIn(h.body, "#voice-probe-listen");
+  assert.ok(box, "the Play buttons are under the status line");
+  const buttons = box.children;
+  assert.strictEqual(buttons.length, 1);
+  assert.strictEqual(buttons[0].textContent, "Play ane at 1.5x");
+  await buttons[0].click();
+  await h.settle();
+  assert.deepStrictEqual(played, ["ane"]);
+  /* A second run replaces the buttons, never stacks them. */
+  await h.run().click();
+  await h.settle();
+  /* Counted among the status line's siblings: the fake DOM can reach one
+     node by two paths, so a tree-wide count would say 2 for one box. */
+  const boxes = () => h.status().parentNode.children.filter((c) => c.id === "voice-probe-listen");
+  assert.strictEqual(boxes().length, 1);
+});
+
+test("KV-R3: the soak runs through runVoiceSoak, shows its report, and blocks a second run meanwhile", async () => {
+  /* MUTATION: let the matrix start beside a running soak — two engines load
+     at once on a locked phone. */
+  const h = await mount({ seed: { cp_voice_probe: true } });
+  h.ctx.Capacitor = { getPlatform: () => "ios" };
+  let finish;
+  Object.assign(h.ctx.window.ForayPlayer, {
+    runVoiceSoak: () => new Promise((r) => { finish = r; }),
+    formatVoiceSoak: () => "voice soak [ane-cputail @1.5x]: 412 loops",
+  });
+  h.openDrawer();
+  const soak = findIn(h.body, "#voice-probe-soak");
+  soak.click();
+  await h.settle(3);
+  assert.match(h.status().textContent, /Running the 30-minute soak\. Lock the phone now/);
+  assert.strictEqual(h.run().disabled, true);
+  /* KV-R3 review: while a soak runs, its control is the STOP. */
+  assert.strictEqual(soak.disabled, false, "the soak control stays live, as its stop");
+  assert.strictEqual(soak.textContent, "Stop the soak now (keeps what it measured)");
+  h.fn("runVoiceProbe")();
+  await h.settle(3);
+  assert.strictEqual(h.probeCalls.length, 0, "the matrix never started beside the soak");
+  assert.match(h.status().textContent, /Running the 30-minute soak/);
+  finish([{ kind: "soak", ok: true }]);
+  await h.settle();
+  assert.match(h.status().textContent, /^voice soak \[ane-cputail @1\.5x\]: 412 loops\nCopy the record above/);
+  assert.strictEqual(h.run().disabled, false);
+  assert.strictEqual(soak.textContent, "Start the 30-minute soak (then lock the phone)", "back to Start once it ends");
+});
+
+test("KV-R3 review: tapping the soak control mid-soak STOPS it, and the soak's report still lands", async () => {
+  /* MUTATION: leave the control disabled during a soak, or have it start a
+     second soak — the founder has no way to get his phone back early. */
+  const h = await mount({ seed: { cp_voice_probe: true } });
+  h.ctx.Capacitor = { getPlatform: () => "ios" };
+  let finish;
+  let stops = 0;
+  let soaks = 0;
+  Object.assign(h.ctx.window.ForayPlayer, {
+    runVoiceSoak: () => { soaks += 1; return new Promise((r) => { finish = r; }); },
+    stopVoiceSoak: async () => { stops += 1; finish([{ kind: "soak", ok: true, stopped: true }]); return { ok: true }; },
+    formatVoiceSoak: () => "voice soak [ane-cputail @1.5x]: 3 loops over 4.0 min (stopped early by you)",
+  });
+  h.openDrawer();
+  const soak = findIn(h.body, "#voice-probe-soak");
+  soak.click();
+  await h.settle(3);
+  soak.click();
+  await h.settle();
+  assert.strictEqual(stops, 1, "the second tap stopped the soak");
+  assert.strictEqual(soaks, 1, "and started no second one");
+  assert.match(h.status().textContent, /stopped early by you/);
+  assert.strictEqual(soak.disabled, false);
+  assert.strictEqual(soak.textContent, "Start the 30-minute soak (then lock the phone)");
+});
+
+/* ==================================================================== */
+/* probe v3.1: crash-resilient and self-reporting                       */
+/* ==================================================================== */
+
+test("probe v3.1: iPhone gets Arm Core ML and Reset skipped passes under the soak, and they go with the switch", async () => {
+  /* MUTATION: drop either control — the founder cannot arm Core ML on iOS
+     26.4+ or bring back a pass that crashed once. */
+  const g = await mount({ seed: { cp_voice_probe: true } });
+  g.ctx.Capacitor = { getPlatform: () => "ios" };
+  g.openDrawer();
+  const ids = g.drawerIds();
+  const at = ids.indexOf("voice-probe-soak");
+  assert.deepStrictEqual(ids.slice(at, at + 3), ["voice-probe-soak", "voice-probe-arm", "voice-probe-reset"]);
+  assert.strictEqual(ids[ids.length - 1], "delete-data", "Delete my data stays last");
+  assert.match(findIn(g.body, "#voice-probe-arm").textContent, /^Arm Core ML \(may crash\): off$/);
+  assert.strictEqual(findIn(g.body, "#voice-probe-reset").textContent, "Reset skipped passes");
+  await g.toggle().click();
+  assert.strictEqual(findIn(g.body, "#voice-probe-arm"), null);
+  assert.strictEqual(findIn(g.body, "#voice-probe-reset"), null);
+  const h = await mount({ seed: { cp_voice_probe: true } });
+  h.openDrawer();
+  assert.strictEqual(findIn(h.body, "#voice-probe-arm"), null, "not off iOS");
+});
+
+test("probe v3.1: arming reaches the next run, and is never stored (a crash relaunches disarmed)", async () => {
+  /* MUTATION: persist the arm switch — a crash would relaunch armed and the
+     next tap would crash again. MUTATION: drop the argument — Core ML is
+     refused on the founder's iOS 26.6 whatever he taps. */
+  const h = await mount({ seed: { cp_voice_probe: true } });
+  h.ctx.Capacitor = { getPlatform: () => "ios" };
+  const seen = [];
+  h.ctx.window.ForayPlayer.runVoiceProbe = async (opts) => { seen.push(opts); return { engine: "kokoro-probe", ok: false, reason: "model-absent" }; };
+  h.openDrawer();
+  const before = [...h.store.map.keys()].sort();
+  await h.run().click();
+  await h.settle();
+  const arm = findIn(h.body, "#voice-probe-arm");
+  await arm.click();
+  assert.match(arm.textContent, /ON for the next run/);
+  await h.run().click();
+  await h.settle();
+  assert.deepStrictEqual(seen.map((o) => o && o.armCoreML), [false, true]);
+  assert.deepStrictEqual([...h.store.map.keys()].sort(), before, "the arm switch writes nothing to storage");
+});
+
+test("probe v3.1: Reset skipped passes calls the player and says what it did", async () => {
+  const h = await mount({ seed: { cp_voice_probe: true } });
+  h.ctx.Capacitor = { getPlatform: () => "ios" };
+  let resets = 0;
+  h.ctx.window.ForayPlayer.resetVoiceProbeSkips = async () => { resets += 1; return { ok: true, cleared: 3 }; };
+  h.openDrawer();
+  await findIn(h.body, "#voice-probe-reset").click();
+  await h.settle();
+  assert.strictEqual(resets, 1);
+  assert.match(h.status().textContent, /3 skipped pass\(es\) will run again/);
+});
+
+test("probe v3.1: the running line tells the founder a crash is expected and survivable", async () => {
+  /* HUMAN-ACTIONS #45 said the same words while it was open. It was withdrawn
+     on 2026-09-28 (the Spark direction, docs/DECISIONS.md: narration is
+     rendered centrally, so the probe decides nothing), and a withdrawn card
+     leaves the open file for the ledger. So: an open #45 must still carry the
+     words; otherwise the ledger must record #45 as closed. The app's line
+     stays until D11 removes the probe. */
+  assert.ok(APP_SRC.includes("If 4a closes, just reopen it and tap the probe again; each run skips what crashed."));
+  const card = fs.readFileSync(path.join(ROOT, "HUMAN-ACTIONS.md"), "utf8");
+  if (/^## #45 /m.test(card)) {
+    assert.ok(card.includes("if 4a closes, just reopen it and tap the probe again; each run skips what crashed"),
+      "HUMAN-ACTIONS #45 carries the re-tap instruction");
+  } else {
+    const ledger = fs.readFileSync(path.join(ROOT, "HUMAN-ACTIONS-DONE.md"), "utf8");
+    assert.match(ledger, /^- #45 · \d{4}-\d{2}-\d{2} · (done|skip) · /m,
+      "HUMAN-ACTIONS #45 left the open file, so the ledger must record it as closed");
+  }
+});
+
+test("probe v3.1: the player writes each pass's rows as the pass ends, and reports a crash at boot", async () => {
+  /* MUTATION: write the rows only after `runKokoroProbe` resolves, or drop
+     the boot-time report — a pass that kills 4a leaves no row at all, which
+     is exactly what build 2026092705 did twice. */
+  const fn = CLIENT_SRC.slice(CLIENT_SRC.indexOf("async runVoiceProbe("));
+  const body = fn.slice(0, fn.indexOf("\n  },"));
+  assert.match(body, /onRecord: \(record\) => diag\.voiceProbe\(record, \{ playing \}\)/);
+  assert.ok(!/for \(const record of records\)/.test(body), "no end-of-run write loop");
+  const boot = CLIENT_SRC.slice(CLIENT_SRC.indexOf("storageReady.then((hydrated) => {"));
+  assert.ok(boot.slice(0, 2000).includes("recordVoiceProbeKills();"), "the kill report is written at boot, after hydration");
+  const report = CLIENT_SRC.slice(CLIENT_SRC.indexOf("async function recordVoiceProbeKills()"));
+  const reportBody = report.slice(0, report.indexOf("\n}\n"));
+  assert.ok(reportBody.indexOf("diag.voiceProbe(record") < reportBody.indexOf("ackProbeKills("),
+    "rows are written BEFORE the native half is told it may forget them");
 });

@@ -49,86 +49,9 @@ process.on("unhandledRejection", () => {});
 
 /* ---------- a DOM whose innerHTML becomes a real (small) tree ---------- */
 
-const VOID = new Set(["img", "input", "br", "hr", "meta", "link", "source", "wbr"]);
-
-class El {
-  constructor(tag) {
-    this.tagName = String(tag || "div").toUpperCase();
-    this.children = [];
-    this.parent = null;
-    this.id = null;
-    this.className = "";
-    this.textContent = "";
-    this.value = "";
-    this.hidden = false;
-    this.disabled = false;
-    this.attrs = {};
-    this.dataset = {};
-    this.style = { setProperty() {} };
-    this._html = "";
-    this._on = new Map();
-    const cls = () => new Set(String(this.className).split(/\s+/).filter(Boolean));
-    this.classList = {
-      add: (...c) => { const s = cls(); c.forEach((x) => s.add(x)); this.className = [...s].join(" "); },
-      remove: (...c) => { const s = cls(); c.forEach((x) => s.delete(x)); this.className = [...s].join(" "); },
-      contains: (c) => cls().has(c),
-      toggle: (c, on) => { const want = on ?? !cls().has(c); if (want) this.classList.add(c); else this.classList.remove(c); return want; },
-    };
-  }
-  get innerHTML() { return this._html; }
-  set innerHTML(html) {
-    this._html = String(html);
-    this.children = [];
-    const stack = [this];
-    const re = /<(\/?)([a-zA-Z][a-zA-Z0-9-]*)([^>]*)>/g;
-    let m;
-    while ((m = re.exec(this._html))) {
-      const [, closing, tag, rest] = m;
-      if (closing) { if (stack.length > 1) stack.pop(); continue; }
-      const kid = new El(tag);
-      for (const a of rest.matchAll(/([a-zA-Z_:][\w:.-]*)(?:="([^"]*)")?/g)) {
-        const [, name, val = ""] = a;
-        kid.attrs[name] = val;
-        if (name === "id") kid.id = val;
-        if (name === "class") kid.className = val;
-        if (name === "hidden") kid.hidden = true;
-        if (name.startsWith("data-")) kid.dataset[name.slice(5).replace(/-([a-z])/g, (_, c) => c.toUpperCase())] = val;
-      }
-      stack[stack.length - 1].appendChild(kid);
-      if (!VOID.has(tag.toLowerCase()) && !/\/\s*$/.test(rest)) stack.push(kid);
-    }
-  }
-  appendChild(k) { k.parent = this; this.children.push(k); return k; }
-  append(...ks) { ks.forEach((k) => this.appendChild(k)); }
-  remove() { if (this.parent) this.parent.children = this.parent.children.filter((c) => c !== this); }
-  setAttribute(k, v) { this.attrs[k] = String(v); }
-  getAttribute(k) { return k in this.attrs ? this.attrs[k] : null; }
-  removeAttribute(k) { delete this.attrs[k]; }
-  addEventListener(t, fn) { if (!this._on.has(t)) this._on.set(t, []); this._on.get(t).push(fn); }
-  removeEventListener() {}
-
-  /** Fire this element's click listeners, once-listeners included. */
-  click() { const fns = this._on.get("click") || []; this._on.set("click", []); for (const fn of fns) fn({ target: this, preventDefault() {}, stopPropagation() {} }); }
-  focus() {} blur() {} select() {}
-  closest() { return null; }
-  getBoundingClientRect() { return { top: 0, left: 0, width: 0, height: 0 }; }
-  descendants() { return this.children.flatMap((c) => [c, ...c.descendants()]); }
-  querySelector(sel) { return this.querySelectorAll(sel)[0] || null; }
-  querySelectorAll(sel) {
-    const parts = String(sel).trim().split(/\s+/);
-    let scopes = [this];
-    for (const p of parts) scopes = scopes.flatMap((s) => s.descendants().filter((e) => matches(e, p)));
-    return [...new Set(scopes)];
-  }
-}
-function matches(el, sel) {
-  return sel.split(/(?=[#.[])/).every((tok) => {
-    if (tok.startsWith("#")) return el.id === tok.slice(1);
-    if (tok.startsWith(".")) return el.classList.contains(tok.slice(1));
-    if (tok.startsWith("[")) { const name = tok.slice(1, -1).split("=")[0]; return name in el.attrs; }
-    return el.tagName === tok.toUpperCase();
-  });
-}
+/* The shared small DOM (audit round 3, tests-10): one copy, and a
+   `[name="value"]` selector compares the value. */
+const { El } = require("./helpers/fake-dom.js");
 
 /* ---------- the mount ---------- */
 
@@ -601,6 +524,11 @@ test("Home repaints once when the player module lands after its first paint, res
 /* ==================================================================== */
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+/* Positive outcomes are WAITED FOR, not slept past (audit round 3, tests-3):
+   the passes run behind the product's own 250 ms debounce, and a fixed sleep a
+   little longer than that flaked the moment a runner fired the debounce late.
+   `sleep` stays only for the stub's own simulated latency. */
+const { waitFor } = require("./helpers/wait-for.js");
 
 /** The Shows page with its search endpoints routed. `catalogue` answers the
     fast pass, `directory` the fall-through, `directoryError` models the
@@ -650,7 +578,7 @@ test("a keystroke with no local match says it is searching — never 'not found'
   const m = mountSearch({ catalogue: [{ show_id: "hub", title: "Huberman Lab" }], catalogueDelayMs: 50 });
   m.ctx.onShowSearchInput("huberman");
   assert.match(m.note.textContent, /Searching for \u201chuberman\u201d/, `the keystroke must not claim an answer: "${m.note.textContent}"`);
-  await sleep(450);
+  await waitFor(() => /Huberman Lab/.test(m.view.querySelector("#sh-results").innerHTML) && m.note.hidden);
   assert.match(m.view.querySelector("#sh-results").innerHTML, /Huberman Lab/, "the catalogue's row lands");
   assert.ok(m.note.hidden, "and the note steps aside for it");
   assert.ok(!m.said.some((s) => /not found|No results|No shows found/i.test(s)),
@@ -664,7 +592,7 @@ test("a search that every pass answered with nothing says 'No shows found' — s
      count never reaches zero, the note stays "Searching…", red. */
   const m = mountSearch();
   m.ctx.renderShowSearchResults("zzqx");
-  await sleep(150);
+  await waitFor(() => /No shows found/.test(m.note.textContent));
   assert.strictEqual(m.note.textContent, "No shows found for \u201czzqx\u201d.");
   assert.ok(!m.note.hidden);
   assert.ok(m.offer().hidden, "every pass answered, and there is nothing else to offer");
@@ -679,12 +607,12 @@ test("an empty answer behind a pass that FAILED says part of the search did not 
      showPassDone. The failure is not reported, and this goes red. */
   const m = mountSearch({ directoryError: "rate-limited" });
   m.ctx.renderShowSearchResults("zzqx");
-  await sleep(150);
+  await waitFor(() => /No shows found/.test(m.note.textContent) && /Part of this search didn't load/.test(m.partial().innerHTML));
   assert.match(m.note.textContent, /No shows found/);
   assert.match(m.partial().innerHTML, /Part of this search didn't load\./);
   const before = m.calls.filter((u) => u.includes("fallthrough=1")).length;
   assert.ok(m.retry(m.partial()), "the failure offers Try again");
-  await sleep(150);
+  await waitFor(() => m.calls.filter((u) => u.includes("fallthrough=1")).length > before);
   assert.ok(m.calls.filter((u) => u.includes("fallthrough=1")).length > before, "Try again asks the directory again");
 });
 
@@ -697,7 +625,7 @@ test("REVIEW: a search whose requests never answer ends as a failed search with 
   vm.runInContext("API_DEADLINE_MS = 30", m.ctx);
   m.ctx.renderShowSearchResults("zzqx");
   assert.match(m.note.textContent, /Searching for \u201czzqx\u201d/, "precondition: it starts out searching");
-  await sleep(250);
+  await waitFor(() => !/Searching/.test(m.note.textContent));
   assert.doesNotMatch(m.note.textContent, /Searching/, `the note must end: "${m.note.textContent}"`);
   assert.match(m.partial().innerHTML, /Part of this search didn't load\./, "and say the search did not load, with Try again");
 });
@@ -713,7 +641,7 @@ test("REVIEW: a playlist build whose search documents never arrive still runs, a
   m.ctx.loadSearchData();
   let ran = false;
   m.ctx.whenSearchDataReady(() => { ran = true; });
-  await sleep(150);
+  await waitFor(() => ran);
   assert.strictEqual(ran, true, "the build runs with the degraded scorer once the deadline passes");
 });
 
@@ -732,7 +660,7 @@ test("a subject's own name that finds no show by title offers that subject's cat
   const catalog = { shows: [{ show_id: "s1", title: "Alpha Show", taxonomy_node_ids: ["science/physics"] }] };
   const m = mountSearch({ taxonomy, catalog });
   m.ctx.renderShowSearchResults("Science");
-  await sleep(150);
+  await waitFor(() => /No shows found/.test(m.note.textContent) && /category/.test(m.offer().innerHTML));
   assert.match(m.note.textContent, /No shows found for \u201cScience\u201d/);
   const html = m.offer().innerHTML;
   assert.match(html, /href="#\/category\/science%2Fphysics"/, `the category that holds a show is offered: ${html}`);
@@ -752,7 +680,7 @@ test("while the playlist check behind the results is still owed, the page says s
   assert.ok(!pl.hidden && /data-cta-pending/.test(pl.innerHTML),
     `the section says it is still looking before the scan runs: hidden=${pl.hidden} ${pl.innerHTML}`);
   assert.doesNotMatch(pl.innerHTML, /Create a playlist|No /, "and claims no outcome while it does");
-  await sleep(150);
+  await waitFor(() => !/data-cta-pending/.test(pl.innerHTML));
   assert.doesNotMatch(pl.innerHTML, /data-cta-pending/, `the scan answered, so "still looking" is gone: ${pl.innerHTML}`);
 });
 
@@ -765,7 +693,7 @@ test("a playlist check that throws still ends 'Still looking' — it is not a sp
   console.warn = () => {};
   try {
     m.ctx.renderShowSearchResults("zzqx");
-    await sleep(150);
+    await waitFor(() => !/data-cta-pending/.test(m.view.querySelector("#pl-search-results").innerHTML));
   } finally { console.warn = warn; }
   const pl = m.view.querySelector("#pl-search-results");
   assert.doesNotMatch(pl.innerHTML, /data-cta-pending/, `a failed scan must not leave the line up: ${pl.innerHTML}`);

@@ -67,6 +67,7 @@ import { randomUUID } from "node:crypto";
 import { parseShard, transcriptLabelsFromXml, emptyTranscriptLabels, LABEL_SCHEMA_VERSION } from "./labels.mjs";
 import { selectFreshCandidates, selectEscalateCandidates } from "./select.mjs";
 import { UA } from "../segments/politeness.mjs";
+import { readResponseCapped } from "../refresh/fetch-limits.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 
@@ -208,7 +209,9 @@ async function fetchText(url, timeoutMs = FETCH_TIMEOUT_MS) {
   try {
     const res = await fetch(url, { headers: { "User-Agent": UA }, redirect: "follow", signal: controller.signal });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    return await res.text();
+    // Byte-capped (audit round 3, data-tools-7): a breadth sweep over
+    // thousands of feeds must not buffer one endless response.
+    return await readResponseCapped(res, controller);
   } finally {
     clearTimeout(timer);
   }

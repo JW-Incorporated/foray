@@ -3,13 +3,31 @@
    Fetch paths in this repo bound elapsed time (the sleep/throttle loop) but
    not response bytes. A publisher can serve an extremely large or endless
    response fast enough to dodge that, exhausting memory before anything
-   notices. Used by both tools/refresh/scan.mjs and tools/refresh-feeds.mjs
-   (duplicated fetch path — see the M6 finding for de-duplicating the two
-   scripts themselves; this file is the interim shared piece so the fix
-   isn't written twice). */
+   notices.
+
+   EVERY feed and transcript body read in tools/ goes through here (audit
+   round 3, data-tools-7): scan.mjs (fetchFeedCapped), backfill-show.mjs,
+   classify/prepare-batch.mjs and segments/sweep-transcripts.mjs (whose
+   fetchFeed measure-suspects.mjs reuses) through readResponseCapped with
+   their own AbortController and politeness headers, and
+   segments/fetch-transcripts.mjs through readBodyCapped. The header used to
+   say tools/refresh-feeds.mjs used it; that file is a 31-line wrapper that
+   spawns scan.mjs, so it is covered through scan, not by an import.
+   fetch-limits.test.mjs pins the list. */
 
 export const MAX_FEED_BYTES = 20 * 1024 * 1024; // 20 MB — generous for RSS/Atom.
 export const MAX_ITEMS_PER_FEED = 2000; // defense in depth, after parsing.
+
+/** Thrown when a body is (or declares itself) over the byte ceiling, so a
+    caller with a retry loop can tell "too big, final" from a network error.
+    `code` matches the TOO_LARGE the transcript fetcher already used. */
+export class BodyTooLargeError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = "BodyTooLargeError";
+    this.code = "TOO_LARGE";
+  }
+}
 
 /** Guard 1: reject an implausible declared Content-Length before downloading
     anything. Returns an error string, or null when fine to proceed. Aborts
@@ -40,7 +58,7 @@ export async function readBodyCapped(res, controller, maxBytes = MAX_FEED_BYTES)
     // returning something unbounded.
     const text = await res.text();
     if (Buffer.byteLength(text, "utf8") > maxBytes) {
-      throw new Error(`response exceeded ${maxBytes} bytes (post-hoc check, no stream available)`);
+      throw new BodyTooLargeError(`response exceeded ${maxBytes} bytes (post-hoc check, no stream available)`);
     }
     return text;
   }
@@ -57,7 +75,7 @@ export async function readBodyCapped(res, controller, maxBytes = MAX_FEED_BYTES)
       if (total > maxBytes) {
         controller.abort();
         try { await reader.cancel(); } catch (_) { /* best-effort */ }
-        throw new Error(`response exceeded ${maxBytes} bytes (aborted mid-stream)`);
+        throw new BodyTooLargeError(`response exceeded ${maxBytes} bytes (aborted mid-stream)`);
       }
       chunks.push(value);
     }
@@ -65,7 +83,20 @@ export async function readBodyCapped(res, controller, maxBytes = MAX_FEED_BYTES)
     try { reader.releaseLock(); } catch (_) { /* may already be released */ }
   }
 
-  return Buffer.concat(chunks.map((c) => Buffer.from(c))).toString("utf8");
+  // Decode the way the res.text() this replaced did: the WHATWG UTF-8 decode
+  // drops a leading byte-order mark. Buffer#toString keeps it as U+FEFF, and a
+  // JSON transcript that starts with one then fails JSON.parse and yields zero
+  // cues (round-3 review, L8). TextDecoder's default (ignoreBOM: false) strips it.
+  return new TextDecoder("utf-8").decode(Buffer.concat(chunks.map((c) => Buffer.from(c))));
+}
+
+/** Both guards on a response the caller already holds: the declared length,
+    then the streamed byte count. For fetchers that keep their own retry
+    ladder, headers and AbortController and only need the body bounded. */
+export async function readResponseCapped(res, controller, maxBytes = MAX_FEED_BYTES) {
+  const lengthError = await checkDeclaredLength(res, controller, maxBytes);
+  if (lengthError) throw new BodyTooLargeError(lengthError);
+  return readBodyCapped(res, controller, maxBytes);
 }
 
 /** Fetch a feed URL with both guards applied. Mirrors the shape scan.mjs and
@@ -87,10 +118,7 @@ export async function fetchFeedCapped(url, opts = {}) {
     const res = await fetchImpl(url, { headers, redirect: "follow", signal: controller.signal });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
-    const lengthError = await checkDeclaredLength(res, controller, maxBytes);
-    if (lengthError) throw new Error(lengthError);
-
-    return await readBodyCapped(res, controller, maxBytes);
+    return await readResponseCapped(res, controller, maxBytes);
   } finally {
     clearTimeout(timer);
   }

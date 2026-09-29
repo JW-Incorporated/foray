@@ -385,7 +385,7 @@ test("no file outside search-engine.js declares its own hitText/hitTag", () => {
      nobody remembered to add to a skip list. */
   const tracked = execFileSync("git", ["ls-files", "-z", "*.js", "*.mjs", "*.cjs"],
     { cwd: ROOT, encoding: "utf8", maxBuffer: 1 << 24 })
-    .split(" ").filter(Boolean);
+    .split("\u0000").filter(Boolean);
   const offenders = [];
   for (const rel of tracked) {
     if (rel === "search-engine.js") continue;
@@ -506,4 +506,198 @@ test("tokenize still accepts ordinary long-ish real words under the ceiling", ()
   // not normal vocabulary.
   const tokens = SE.tokenize("electroencephalography basics");
   assert.ok(tokens.includes("electroencephalography"));
+});
+
+/* ---------- round-3 audit, search-api-css-2: own properties only ---------- */
+
+/* The real semantic index, read once: the modifiers map is where
+   `mods["constructor"]` found the Object function. */
+function realSemanticCtx(items = []) {
+  const semantic = JSON.parse(fs.readFileSync(path.join(ROOT, "data", "semantic-index.json"), "utf8"));
+  return { discover: { items }, itemTags: { tags: {} }, semantic };
+}
+
+test("search-api-css-2: 'constructor' is a word, not an inherited Object filter", () => {
+  /* MUTATION: go back to `if (mods[tok]) filters.push(mods[tok])` — the
+     Object function lands in filters and the word is dropped. */
+  const SE = require(path.join(ROOT, "search-engine.js"));
+  const ctx = realSemanticCtx();
+  for (const q of ["constructor", "constructor theory", "hasownproperty", "tostring valueof"]) {
+    const interp = SE.interpretQuery(q, ctx);
+    assert.ok(interp.filters.every((f) => typeof f.type === "string"), `${q}: a filter with no type got in`);
+  }
+  const interp = SE.interpretQuery("constructor theory", ctx);
+  assert.deepEqual(interp.filters, []);
+  assert.ok(interp.groups.some((g) => g.token === "constructor"), "the word is kept as content");
+});
+
+test("search-api-css-2: 'constructor theory' with nothing matching answers empty instead of throwing", () => {
+  /* MUTATION: `f.type.startsWith("duration")` without the typeof guard, with
+     the Object filter back — TypeError: Cannot read properties of undefined. */
+  const SE = require(path.join(ROOT, "search-engine.js"));
+  const ctx = realSemanticCtx();
+  const interp = SE.interpretQuery("constructor theory", ctx);
+  assert.doesNotThrow(() => SE.searchWithRelaxation([], interp, 0, ctx.itemTags, () => 0.5));
+  const hand = { groups: [], filters: [{ value: 1 }, Object], thinAnchorCount: 0, hasPrimary: false };
+  assert.doesNotThrow(() => SE.searchWithRelaxation([], hand, 0, {}, () => 0.5), "a typeless filter never throws");
+});
+
+/* ---------- round-3 audit, search-api-css-1: a modifier word is not always a filter ---------- */
+
+/* The live catalogue, the way app.js's fullPool() builds it (session episodes
+   first, then discover items, deduped) — the same plumbing the battery and
+   test/search-bar-exposure.test.js copy; the matcher itself is never copied. */
+let livePool = null;
+function liveSearch(query) {
+  const SE = require(path.join(ROOT, "search-engine.js"));
+  if (!livePool) {
+    const read = (rel) => JSON.parse(fs.readFileSync(path.join(ROOT, rel), "utf8"));
+    const discover = read("data/discover.json");
+    const itemTags = read("data/item-tags.json");
+    const semantic = read("data/semantic-index.json");
+    const session = read("data/session.json");
+    const pool = [];
+    const seen = new Set();
+    for (const id of Object.keys(session.episodes)) {
+      const ep = session.episodes[id];
+      pool.push({ id, show: ep.show, title: ep.title, duration_min: ep.duration_min ?? null,
+        topics: ep.topics || [], hook: ep.hook || ep.summary || ep.title, release_date: ep.release_date });
+      seen.add(id);
+    }
+    for (const item of discover.items) if (!seen.has(item.id)) pool.push(item);
+    livePool = { pool, ctx: { semantic, itemTags, discover }, itemTags };
+  }
+  const interp = SE.interpretQuery(query, livePool.ctx);
+  const { results, relaxed } = SE.searchWithRelaxation(livePool.pool, interp, 2, livePool.itemTags, () => 0.5);
+  return { interp, results, relaxed, status: SE.classifyResults(results).status };
+}
+
+test("search-api-css-1: 'deep learning' is a topic, not every episode over an hour", () => {
+  /* It returned 805 random long episodes with status "ok": "learning" was
+     stripped as generic and "deep" consumed as duration_min 60, leaving a
+     pure filter over the whole pool. MUTATION: drop the modifiersAreContent
+     rule — the duration filter comes back and the result count explodes. */
+  const r = liveSearch("deep learning");
+  assert.deepEqual(r.interp.filters, [], "no duration filter");
+  assert.ok(r.interp.groups.some((g) => g.token === "deep"), "'deep' is the content");
+  assert.ok(r.results.length < 200, `a topic answer, not the pool: ${r.results.length} results`);
+});
+
+test("search-api-css-1 follow-up: a format noun does not turn a filter query into a content search", () => {
+  /* Round-3 review (L4): SUBJECT_GENERIC_WORDS held format nouns (interview,
+     talk, chat, intro, ...), so "long interviews" dropped its duration filter
+     and searched titles for the word "long".
+     MUTATION: put "interviews", "chats" and "intro" back in
+     SUBJECT_GENERIC_WORDS -- the filters come back empty. */
+  for (const [q, type] of [["long interviews", "duration_min"], ["new interviews", "recency_days"], ["short chats", "duration_max"], ["quick intro", "duration_max"]]) {
+    const r = liveSearch(q);
+    assert.ok(r.interp.filters.some((f) => f.type === type), `${q}: expected a ${type} filter, got ${JSON.stringify(r.interp.filters)}`);
+  }
+  // The subject word the rule was written for still turns modifiers into content.
+  assert.deepEqual(liveSearch("deep learning").interp.filters, []);
+});
+
+test("search-api-css-1: 'story' reaches the storytelling concept instead of becoming the history filter", () => {
+  /* MUTATION: drop the conceptOverrides check — "story" is the history branch
+     filter again and has no content group. */
+  const r = liveSearch("story");
+  assert.deepEqual(r.interp.filters, []);
+  assert.deepEqual(r.interp.groups.map((g) => g.token), ["story"]);
+  const m = liveSearch("marathon training");
+  assert.ok(m.interp.groups.some((g) => g.token === "marathon"), "'marathon' is the endurance concept, not a 3-hour filter");
+});
+
+test("search-api-css-1: a modifier whose concept IS its own branch is still a filter ('funny history')", () => {
+  /* The rule's other edge: funny/comedy belong to the comedy concept AND
+     filter to the comedy branch; that is one meaning, and the filter stands. */
+  const r = liveSearch("funny history");
+  assert.deepEqual(r.interp.filters, [{ type: "branch", value: ["comedy"] }]);
+  assert.deepEqual(r.interp.groups.map((g) => g.token), ["history"]);
+});
+
+test("search-api-css-1: 'deep sea' and 'speed of light' are never a confident answer made of filler", () => {
+  /* deep sea: "sea" is the content and the answer is short, never "ok" over
+     the pool. speed of light: "light" (comedy branch) matches nothing, so the
+     filter is RELAXED and says so; nothing comes back as comedy. */
+  const sea = liveSearch("deep sea");
+  assert.ok(sea.interp.groups.some((g) => g.token === "sea"));
+  assert.notEqual(sea.status, "ok", `deep sea came back ${sea.status} with ${sea.results.length} results`);
+  const light = liveSearch("speed of light");
+  assert.ok(light.interp.groups.some((g) => g.token === "speed"), "the subject is kept as content");
+  assert.ok(light.results.length === 0 || light.relaxed === "all", "an unmatchable filter is relaxed openly, not silently applied");
+});
+
+/* ---------- round-3 audit, search-api-css-6: topic search folds diacritics ---------- */
+
+test("search-api-css-6: an accented query tokenizes to whole words, not thin fragments", () => {
+  /* "pokémon" was ["pok","mon"] and "naïve bayes" ["na","ve","bayes"], every
+     fragment thin and required. MUTATION: drop foldDiacritics from tokenize. */
+  const SE = require(path.join(ROOT, "search-engine.js"));
+  assert.deepEqual(SE.tokenize("pokémon"), ["pokemon"]);
+  assert.deepEqual(SE.tokenize("café racer"), ["cafe", "racer"]);
+  assert.deepEqual(SE.tokenize("naïve bayes"), ["naive", "bayes"]);
+});
+
+test("search-api-css-6: accented and unaccented spellings find each other in the catalogue", () => {
+  /* MUTATION: go back to `.toLowerCase()` on the item text in scoreMatch — a
+     plain "pokemon" query no longer finds "The Pokémon Story". */
+  const SE = require(path.join(ROOT, "search-engine.js"));
+  const pool = [
+    { id: "a", title: "The Pokémon Story", show: "Games Show", hook: "", topics: ["games/culture"] },
+    { id: "b", title: "Pokemon Cards Explained", show: "Café Talk", hook: "", topics: ["games/culture"] },
+    { id: "c", title: "Cooking with fire", show: "Food Show", hook: "", topics: ["food/cooking"] },
+  ];
+  const ctx = { discover: { items: pool }, itemTags: { tags: {} }, semantic: {} };
+  for (const q of ["pokemon", "pokémon", "POKÉMON"]) {
+    const interp = SE.interpretQuery(q, ctx);
+    const ids = SE.searchWithRelaxation(pool, interp, 0, ctx.itemTags, () => 0.5).results.map((r) => r.i.id).sort();
+    assert.deepEqual(ids, ["a", "b"], `${q} -> ${ids.join(",")}`);
+  }
+});
+
+/* ---------- round-3 audit, search-api-css-11: an unknown date is never recent ---------- */
+
+test("search-api-css-11: a recency filter refuses an unparseable release_date, like a missing one", () => {
+  /* MUTATION: go back to `new Date(item.release_date || 0)` — the malformed
+     date gives NaN, `NaN > 90` is false, and the item passes "new". */
+  const SE = require(path.join(ROOT, "search-engine.js"));
+  const recent = [{ type: "recency_days", value: 90 }];
+  const today = new Date().toISOString().slice(0, 10);
+  assert.equal(SE.passesFilters({ release_date: today }, recent), true, "premise: a real recent date passes");
+  assert.equal(SE.passesFilters({ release_date: "2001-01-01" }, recent), false);
+  assert.equal(SE.passesFilters({}, recent), false, "no date");
+  assert.equal(SE.passesFilters({ release_date: "not a date" }, recent), false, "an unparseable date");
+  assert.equal(SE.passesFilters({ release_date: "Tuesday-ish" }, [{ type: "recency_days", value: 7 }]), false);
+});
+
+/* ---------- round-3 review (L4): no raw control bytes in tracked source ---------- */
+
+test("no tracked source file carries a raw control byte (a NUL makes grep and ripgrep call it binary)", () => {
+  /* foldText's ASCII fast path was written `/[^<NUL>-<DEL>]/` with the raw
+     bytes, so grep printed only "Binary file search-engine.js matches" and
+     ripgrep stopped at the NUL: the search engine dropped out of every
+     repo-wide search. The same sweep found a raw NUL in two test files and two
+     raw BACKSPACE bytes where `\b` was meant, which made two assertions test
+     nothing. Read as raw bytes on purpose, over every tracked source file;
+     tab, newline and carriage return are the only C0 bytes allowed.
+     MUTATION: put a literal NUL back into foldText -- this names
+     search-engine.js and its line. */
+  const tracked = execFileSync("git", ["ls-files", "-z", "*.js", "*.mjs", "*.cjs", "*.ts", "*.tsx", "*.html", "*.css"],
+    { cwd: ROOT, encoding: "utf8", maxBuffer: 1 << 24 })
+    .split("\u0000").filter(Boolean);
+  const offenders = [];
+  for (const rel of tracked) {
+    let bytes;
+    try { bytes = fs.readFileSync(path.join(ROOT, rel)); } catch (_) { continue; }
+    for (let i = 0; i < bytes.length; i++) {
+      const b = bytes[i];
+      if ((b < 0x20 && b !== 0x09 && b !== 0x0a && b !== 0x0d) || b === 0x7f) {
+        const line = bytes.subarray(0, i).toString("latin1").split("\n").length;
+        offenders.push(`${rel}:${line} (0x${b.toString(16).padStart(2, "0")})`);
+        break;
+      }
+    }
+  }
+  assert.ok(tracked.includes("search-engine.js"), "the sweep found the search engine");
+  assert.deepStrictEqual(offenders, [], "write the escape (\u0000, \b), never the raw byte");
 });

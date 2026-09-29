@@ -35,6 +35,15 @@ export class FakeCheckpointStore implements CheckpointStore {
     });
   }
 
+  /** gen-12: forgets `stages` for `key`, like FileCheckpointStore.drop. */
+  drop(key: string, stages: string[]): void {
+    const existing = this.files.get(key);
+    if (!existing) return;
+    const kept = { ...existing.stages };
+    for (const stage of stages) delete kept[stage];
+    this.files.set(key, { ...existing, stages: kept });
+  }
+
   /** Stage keys banked for `key`, in insertion order. */
   stageKeys(key: string): string[] {
     return Object.keys(this.files.get(key)?.stages ?? {});

@@ -304,7 +304,7 @@ jobs:
         run: |
           set -euo pipefail
           node tools/mobile/fetch-models.mjs --check
-          node tools/mobile/fetch-models.mjs --fetch
+          node tools/mobile/fetch-models.mjs --fetch android
           node tools/mobile/inject-models.mjs android mobile/android/app/src/main/assets
           node tools/mobile/inject-models.mjs android mobile/android/app/src/main/assets --check
       - name: Put the REAL splash screen and launcher icon in the generated project

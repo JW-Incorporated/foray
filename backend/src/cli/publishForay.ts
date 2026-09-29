@@ -707,6 +707,95 @@ export function recordRefusalInReport(reportPath: string, candidateFile: string,
   return true;
 }
 
+export interface ShipPublishOptions {
+  repoRoot: string;
+  branch: string;
+  previousRef: PreviousRef;
+  snapshot: DataSnapshot;
+  files: readonly string[];
+  commitMessage: string;
+  prTitle: string;
+  prBody: string;
+  hold: boolean;
+  out?: Pick<Out, "log" | "error">;
+}
+
+/**
+ * Step 3b: commit, prove it is only the publish, push, open the PR.
+ *
+ * HOLD IS APPLIED BY `gh pr create` ITSELF (backend-rest-6). It used to be a
+ * second `gh pr edit --add-label hold` call, and automerge-nightly.yml arms
+ * auto-merge on `opened`: if that second call failed, a --force'd Foray (which
+ * must always carry hold) was left open, unheld and auto-mergeable. Now the
+ * label rides the create, the PR's labels are read back, and a PR that is not
+ * held after one retry is a loud non-zero exit naming the PR.
+ *
+ * NO STRANDED CHECKOUT (backend-rest-19). A failure BEFORE the push succeeds
+ * (the commit, commitPublish's F-75 proof, the push) undoes the publish: the
+ * branch is reset to origin/main (--mixed, so nothing outside the three data
+ * files is touched), the data files are put back byte for byte, and the
+ * never-pushed branch is abandoned. A failure AFTER the push (the PR) keeps
+ * the pushed branch and prints it with the command that finishes the job.
+ */
+export function shipPublish(run: Runner, o: ShipPublishOptions): { prUrl: string } {
+  const out = o.out ?? CONSOLE;
+  try {
+    commitPublish(run, o.files, o.commitMessage);
+    run("git", ["push", "-u", "origin", "HEAD"]);
+  } catch (err) {
+    out.error(`Publish failed before the push landed; undoing it (branch ${o.branch} abandoned, data files restored).`);
+    try {
+      run("git", ["reset", "--mixed", PUBLISH_BASE]);
+    } finally {
+      restoreDataFiles(o.repoRoot, o.snapshot);
+      abandonPublishBranch(run, o.branch, o.previousRef);
+    }
+    throw err;
+  }
+
+  const createArgs = ["pr", "create", "--base", "main", "--head", o.branch, "--title", o.prTitle, "--body", o.prBody];
+  if (o.hold) createArgs.push("--label", "hold");
+  let prUrl: string;
+  try {
+    prUrl = run("gh", createArgs).trim();
+  } catch (err) {
+    const back = o.previousRef.kind === "branch" ? o.previousRef.name : `--detach ${o.previousRef.sha}`;
+    out.error(
+      `The branch ${o.branch} IS PUSHED but opening its PR failed. To finish: ` +
+        `gh pr create --base main --head ${o.branch} --title ${JSON.stringify(o.prTitle)}${o.hold ? " --label hold" : ""} --body-file <body>` +
+        ` ; then git switch ${back}.` +
+        (o.hold ? ` If a PR was opened anyway, it may NOT be held: check \`gh pr view ${o.branch}\` and add the hold label before anything else.` : "")
+    );
+    throw err;
+  }
+  out.log(`Opened PR: ${prUrl}`);
+
+  if (o.hold) {
+    const held = () => {
+      try {
+        return run("gh", ["pr", "view", prUrl, "--json", "labels", "--jq", ".labels[].name"]).split(/\r?\n/).map((l) => l.trim()).includes("hold");
+      } catch {
+        return false;
+      }
+    };
+    if (!held()) {
+      try {
+        run("gh", ["pr", "edit", prUrl, "--add-label", "hold"]);
+      } catch {
+        /* judged by the read-back below */
+      }
+      if (!held()) {
+        throw new Error(
+          `PR ${prUrl} IS NOT HELD. It must carry the \`hold\` label (a forced publish always does), and ` +
+            "automerge-nightly.yml will merge an unheld green data/-only PR on its own. Add the label or close the PR NOW."
+        );
+      }
+    }
+    out.log('Applied "hold" — automerge-nightly.yml will not merge this without it being removed by a founder.');
+  }
+  return { prUrl };
+}
+
 async function main(): Promise<void> {
   const args = parseArgs(process.argv.slice(2));
   if (!args.input) {
@@ -845,25 +934,17 @@ async function main(): Promise<void> {
   }
 
   // Step 3b — commit, prove it is only the publish, push, PR (foray-nightly.md step 7).
-  commitPublish(run, write.files, `Generated Foray: ${input.title} (${input.id})`);
-  run("git", ["push", "-u", "origin", "HEAD"]);
-
-  const prUrl = run("gh", [
-    "pr",
-    "create",
-    "--base",
-    "main",
-    "--title",
-    `Generated Foray: ${input.title}`,
-    "--body",
-    publishPrBody(input, gate, suites, input.meta?.veracity, write)
-  ]);
-  console.log(`Opened PR: ${prUrl}`);
-
-  if (args.hold) {
-    run("gh", ["pr", "edit", prUrl, "--add-label", "hold"]);
-    console.log('Applied "hold" — automerge-nightly.yml will not merge this without it being removed by a founder.');
-  }
+  const { prUrl } = shipPublish(run, {
+    repoRoot: REPO_ROOT,
+    branch,
+    previousRef,
+    snapshot,
+    files: write.files,
+    commitMessage: `Generated Foray: ${input.title} (${input.id})`,
+    prTitle: `Generated Foray: ${input.title}`,
+    prBody: publishPrBody(input, gate, suites, input.meta?.veracity, write),
+    hold: args.hold
+  });
 
   if (args.report) {
     const record: PublishRecord = {

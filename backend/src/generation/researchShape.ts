@@ -17,6 +17,7 @@ import {
   tokenizeForCatalogueQuery,
   type CatalogueData
 } from "./catalogueLookup";
+import { TruncatedReplyError } from "./anthropicCall";
 import { resolveTopic } from "./resolveTopic";
 import { familyGateAllows, nodesForArchiveEntry } from "./taxonomyFamily";
 import {
@@ -413,11 +414,25 @@ async function fanOutExternalResearch(
 ): Promise<Map<string, { notes: string; controversies: string[] }>> {
   const results = await Promise.all(
     gaps.map(async ({ seed }) => {
-      const r = await researcher.research(seed.label, ctx);
-      return [seed.label, r] as const;
+      try {
+        const r = await researcher.research(seed.label, ctx);
+        return [seed.label, r] as const;
+      } catch (err) {
+        /* A research reply cut off at max_tokens is refused (gen-10), and one
+           subtopic's refusal used to reject this Promise.all and fail the whole
+           §4.2 stage (round-3 review, L5). These notes are never spoken; the
+           subtopic simply has no external notes, like one the catalogue
+           covered. Any other error, a budget stop included, still stops the
+           stage. */
+        if (!(err instanceof TruncatedReplyError)) throw err;
+        console.warn(`researchShape: external research for "${seed.label}" was truncated at max_tokens; that subtopic has no external notes`);
+        return null;
+      }
     })
   );
-  return new Map(results.map(([label, r]) => [label, { notes: r.notes, controversies: r.controversies }]));
+  return new Map(
+    results.flatMap((entry) => (entry ? [[entry[0], { notes: entry[1].notes, controversies: entry[1].controversies }] as const] : []))
+  );
 }
 
 /**

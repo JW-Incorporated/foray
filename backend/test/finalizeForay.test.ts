@@ -128,8 +128,12 @@ describe("finalizeForay — §4.9 validate-then-write", () => {
   });
 
   it("refuses an id that already exists in the live forays.json, before running any check", async () => {
+    /* gen-12 (round-3 audit): refused as a validation error (ok=false), not
+       thrown, so the partial gate and --continue-on-refused-partial see it. */
     const candidate = validCandidate("boundary-1"); // already in the fixture
-    await expect(finalizeForay(candidate, FIXTURE_ROOT)).rejects.toThrow(/already exists/);
+    const result = await finalizeForay(candidate, FIXTURE_ROOT);
+    expect(result.validation.ok).toBe(false);
+    expect(result.validation.checkForaysErrors.join(" ")).toMatch(/already exists/);
   });
 
   it("reports check-narration's findings too (curation-artifact scope, see module doc comment)", async () => {

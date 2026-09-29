@@ -10,7 +10,8 @@ It is judged against the same **before** record as M1,
 is not enough. The car goes back to the app whose audio last *played*, so the
 session the Foray played through must be the one that is held.
 
-This file is the script. HUMAN-ACTIONS #119 (filed by NE-37) asks for the drive
+This file is the script. HUMAN-ACTIONS #128 (filed by NE-37 as #119, renumbered
+when `engine/m2` took `main` on 2026-09-28) asks for the drive
 and links here. It names **the next TestFlight build after `engine/m2` merges**
 into `main`, and that build's number is added to the card once the build exists.
 
@@ -45,7 +46,7 @@ These are preconditions, not steps for the founder.
   the speaker.
 - **One Copy per block.** At the end of each block, while parked: menu →
   **Developer** → **Playback diagnostics** → **Copy**. Paste every Copy into the
-  M2 issue (or HUMAN-ACTIONS #119's thread), one comment per block, each
+  M2 issue (or HUMAN-ACTIONS #128's thread), one comment per block, each
   headed with the block's number and the route.
 - **Every Copy starts with the engine header**:
   `engine=native v<ver> proto=1 caps=episode,continuation,restore,foray reason=<r> strikes=0 hold=<policy> build=<number> | web=<stamp>`.
@@ -97,11 +98,20 @@ Each block ends with one Copy, taken while parked.
 3. **H6, what the car shows.** Through one clip, then one narration line, then
    a pause: the car's screen and the lock screen show the Foray and the clip or
    line, **never "4a" or "Unknown"**. At the seam from a narration line into a
-   clip, the title and artwork stay filled in. They never go blank. Copy.
+   clip, the title and artwork stay filled in. They never go blank. The car
+   also shows a **progress bar that moves** while a clip plays (the
+   2026-09-28 episode paste lost it to a stale rate 0; #866). Copy.
 4. **Paused for a long time.** Pause the Foray from the car. Wait **10
    minutes**. Press the car's play: 4a resumes the Foray and keeps playing
    through the next seam. Copy.
-5. **Negative control.** Pause the Foray, play **Spotify for 10 seconds**,
+5. **A phone call mid-Foray.** During a clip, take or make a short call
+   (or have someone call you). Hang up. Expected: 4a resumes the Foray by
+   itself, a few seconds before where the call cut in, or on one press of the
+   car's play. It never stays silent while another app starts. Copy.
+6. **15 and 30 from the car.** During a clip, press the car's (or the lock
+   screen's) skip-back 15 once, then skip-forward 30 once. Each moves the clip
+   by that much and keeps playing; neither jumps to another clip. Copy.
+7. **Negative control.** Pause the Foray, play **Spotify for 10 seconds**,
    pause Spotify, press the car's play. Expected: **Spotify**. This is correct:
    the car goes to the app that played last. Copy.
 

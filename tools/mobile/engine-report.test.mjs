@@ -40,9 +40,10 @@ function value(key, v) {
 function fields(r, skip = []) {
   return Object.keys(r).filter((k) => !HEADER_KEYS.has(k) && !skip.includes(k)).map((k) => `${k}=${value(k, r[k])}`);
 }
-/** A mirror of engineLineFor for one DiagRow-shaped object. */
+/** A mirror of engineLineFor for one DiagRow-shaped object: `e#` since
+    2026-09-26 (log-gaps L22). The legacy `#` form is pinned separately. */
 function line(r) {
-  const head = `#${String(r.seq).padEnd(4)} ${clock(r.at)} ${String(r.kind).padEnd(10)} src=engine`;
+  const head = `e#${String(r.seq).padEnd(4)} ${clock(r.at)} ${String(r.kind).padEnd(10)} src=engine`;
   let body;
   switch (r.kind) {
     case "build": body = [`v${r.engineVersion}`, ...fields(r, ["engineVersion"])]; break;
@@ -139,6 +140,25 @@ test("parses every engine line shape Copy prints back into fields", () => {
   assert.equal(rows[7].f.positionSec, 812.4);
   assert.deepEqual(rows[8].f.dropped, ["name"], "withheld= is DiagGate's dropped list");
   assert.equal(rows[1].t - rows[0].t, 1000);
+});
+
+test("reads an engine row headed e# (2026-09-26 on) AND the legacy # form, and skips the dividers", () => {
+  /* log-gaps L22: the engine's rows took an `e#` head so a paste can tell them
+     from the page's `#` rows, which count from 1 too. Old pastes still exist.
+     MUTATION: revert ENGINE_LINE to /^#(\d+)…/. The e# paste then yields no
+     engine rows and this fails. */
+  const rows = [bootRow(), remote("play"), graceEnd()];
+  const legacy = (r) => line(r).replace(/^e#/, "#");
+  const now = parsePaste(paste(rows));
+  const old = parsePaste(paste(rows, { format: legacy }));
+  assert.equal(now.engineRows.length, 3);
+  assert.deepEqual(now.engineRows.map((r) => [r.seq, r.kind, r.event]), old.engineRows.map((r) => [r.seq, r.kind, r.event]));
+  assert.deepEqual(now.engineRows.map((r) => r.f), old.engineRows.map((r) => r.f));
+  /* The dividers Copy now prints between rows are not rows of either ring. */
+  const divided = parsePaste(paste(rows).replace(/^(e#1 .*)$/m,
+    "-- 2026-10-01 (UTC) --\n== engine boot 2026100101 v1.0.0 launch=foreground ==\n== page boot 3 ==\n$1"));
+  assert.equal(divided.engineRows.length, 3);
+  assert.equal(divided.pageRows.length, 0);
 });
 
 test("reads the ring file (diag.jsonl) as well as a Copy, and counts what is neither", () => {

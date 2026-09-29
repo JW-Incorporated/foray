@@ -16,12 +16,13 @@
  *
  * The floor for this suite lives in test/suite-integrity.test.js.            */
 
+process.env.TZ = "America/Los_Angeles"; // audit round 3, tests-5: off UTC, so the local-formatter mutation below now fails in CI too
 import { test } from "node:test";
 import assert from "node:assert";
 import { readFileSync as _readSelfFile } from "node:fs";
 import {
   titleMatches, selectEpisodes, pendingRecord, resolveShows, parseArgs,
-  normDuration, BackfillError, DEFAULT_NEWEST,
+  BackfillError, DEFAULT_NEWEST, fetchFeed,
   feedItems, buildPayload, resolveOutPath,
 } from "./backfill-show.mjs";
 
@@ -240,12 +241,15 @@ test("a tokened or non-audio enclosure is withheld with a reason rather than pub
 });
 
 test("duration parses all three itunes:duration spellings", () => {
-  // KILLED BY: deleting the `parts.length === 2` branch (mm:ss feeds read as null).
-  assert.equal(normDuration("01:10:53"), 71);
-  assert.equal(normDuration("23:20"), 23);
-  assert.equal(normDuration("3600"), 60);
-  assert.equal(normDuration("nonsense"), null);
-  assert.equal(normDuration(null), null);
+  // KILLED BY: deleting the MM:SS branch of enclosure.mjs durationSeconds (mm:ss feeds read as null).
+  // The minutes come from the ONE parser now (arch-drift-5); this pins what backfill writes.
+  const dur = (raw) => pendingRecord(show(), item({ "itunes:duration": raw })).record.duration_min;
+  assert.equal(dur("01:10:53"), 71);
+  assert.equal(dur("23:20"), 23);
+  assert.equal(dur("3600"), 60);
+  assert.equal(dur("1834.5"), 31, "decimal seconds, as the backend parses them");
+  assert.equal(dur("nonsense"), null);
+  assert.equal(dur(null), null);
 });
 
 // ------------------------------------------------------------ show resolution --
@@ -444,3 +448,18 @@ function readSelf() {
 function codeOnly(src) {
   return src.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/^\s*\/\/.*$/gm, " ");
 }
+
+/* Audit round 3, data-tools-7: backfill-show's feed fetch had no timeout, so
+   one hung feed hung the backfill forever. MUTATION: drop the timer -- the
+   fetch below never settles and the race reports "hung". */
+test("a feed that never answers times out instead of hanging the backfill", async () => {
+  const neverAnswers = (url, init) => new Promise((resolve, reject) => {
+    init.signal.addEventListener("abort", () => reject(Object.assign(new Error("aborted"), { name: "AbortError" })));
+  });
+  const outcome = await Promise.race([
+    fetchFeed("https://feeds.test/hung.xml", { fetchImpl: neverAnswers, timeoutMs: 50 }).then(() => "resolved", (e) => e),
+    new Promise((r) => setTimeout(() => r("hung"), 2000)),
+  ]);
+  assert.ok(outcome instanceof BackfillError, `expected a BackfillError, got ${outcome}`);
+  assert.equal(outcome.code, "TIMEOUT");
+});

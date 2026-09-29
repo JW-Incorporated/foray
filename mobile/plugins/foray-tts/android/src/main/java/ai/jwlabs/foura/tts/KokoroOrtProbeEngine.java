@@ -13,9 +13,12 @@ import java.nio.FloatBuffer;
 import java.nio.LongBuffer;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import ai.onnxruntime.OnnxTensor;
 import ai.onnxruntime.OrtEnvironment;
+import ai.onnxruntime.OrtException;
 import ai.onnxruntime.OrtSession;
 
 /**
@@ -73,6 +76,110 @@ final class KokoroOrtProbeEngine implements ForayTtsPlugin.KokoroProbeEngine {
      *  interface's own note: before #685 all three failures were the same
      *  {@code [0, 0]} and the diagnosis lived only in logcat. */
     private volatile String lastSynthReason = null;
+    /** Why the last {@link #synthesize} threw, as TOKENS only (L03): ORT's
+     *  code, the operator it named, and the stage. Never the message — an
+     *  ORT file error's text can carry the app's data-directory path. */
+    private volatile ForayTtsPlugin.ProbeFailure lastFailure = null;
+    /** Why the cold session did not open, or null when it did. A failed load
+     *  used to print its two timings exactly like a real one. */
+    private volatile String loadError = null;
+    private volatile String lastSessionError = null;
+
+    /** A line whose every finite sample is quieter than this is
+     *  {@code silent} (L04). The same floor as iOS. */
+    static final float SILENCE_FLOOR = 1e-4f;
+
+    /** The operator's name out of an ORT message, without keeping the
+     *  message. The same two patterns as iOS; only a bare identifier of at
+     *  most 32 characters can come out. */
+    private static final Pattern[] OP_PATTERNS = {
+            Pattern.compile("running ([A-Za-z][A-Za-z0-9_]{0,31}) node"),
+            Pattern.compile("implementation for ([A-Za-z][A-Za-z0-9_]{0,31})\\b"),
+    };
+
+    /** The extracted model file ORT actually loads, for the plugin's length
+     *  and hash (L08) — which is where a stale extraction of the right SIZE
+     *  would finally show; {@link #extractModel} checks length only. */
+    String modelPath() {
+        return modelPath;
+    }
+
+    /** The linked runtime's own version string (L07), or null. */
+    String ortVersion() {
+        try {
+            return OrtEnvironment.getEnvironment().getVersion();
+        } catch (Throwable t) {
+            return null;
+        }
+    }
+
+    @Override
+    public ForayTtsPlugin.ProbeFailure lastFailure() {
+        return lastFailure;
+    }
+
+    @Override
+    public String loadError() {
+        return loadError;
+    }
+
+    /** ORT's error as a closed token (L03, L36): the C API's
+     *  {@code OrtErrorCode} 1..11 by name, {@code oom} when the JVM ran out,
+     *  {@code other} for anything else. The same set as
+     *  {@code player/kokoro-probe.js}'s {@code ORT_CODES}. */
+    static String ortCodeToken(Throwable t) {
+        if (t instanceof OutOfMemoryError) return "oom";
+        if (t instanceof OrtException) return ortCodeToken(((OrtException) t).getCode());
+        return "other";
+    }
+
+    static String ortCodeToken(OrtException.OrtErrorCode code) {
+        if (code == null) return "other";
+        switch (code) {
+            case ORT_FAIL: return "fail";
+            case ORT_INVALID_ARGUMENT: return "invalid-argument";
+            case ORT_NO_SUCHFILE: return "no-such-file";
+            case ORT_NO_MODEL: return "no-model";
+            case ORT_ENGINE_ERROR: return "engine-error";
+            case ORT_RUNTIME_EXCEPTION: return "runtime-exception";
+            case ORT_INVALID_PROTOBUF: return "invalid-protobuf";
+            case ORT_MODEL_LOADED: return "model-loaded";
+            case ORT_NOT_IMPLEMENTED: return "not-implemented";
+            case ORT_INVALID_GRAPH: return "invalid-graph";
+            case ORT_EP_FAIL: return "ep-fail";
+            default: return "other";
+        }
+    }
+
+    static String ortOp(String message) {
+        if (message == null) return null;
+        for (Pattern p : OP_PATTERNS) {
+            Matcher m = p.matcher(message);
+            if (m.find()) return m.group(1);
+        }
+        return null;
+    }
+
+    /** One pass over a line's samples (L04): any NaN/Infinity is
+     *  {@code non-finite}; a peak magnitude under {@link #SILENCE_FLOOR} is
+     *  {@code silent}; otherwise null. */
+    static String sampleVerdict(Object value) {
+        float[][] rows;
+        if (value instanceof float[]) rows = new float[][]{ (float[]) value };
+        else if (value instanceof float[][]) rows = (float[][]) value;
+        else return null;
+        int nonFinite = 0;
+        float peakAbs = 0f;
+        for (float[] row : rows) {
+            for (float v : row) {
+                if (Float.isNaN(v) || Float.isInfinite(v)) { nonFinite++; continue; }
+                peakAbs = Math.max(peakAbs, Math.abs(v));
+            }
+        }
+        if (nonFinite > 0) return "non-finite";
+        if (peakAbs < SILENCE_FLOOR) return "silent";
+        return null;
+    }
 
     private KokoroOrtProbeEngine(String modelPath, float[] style) {
         this.modelPath = modelPath;
@@ -168,7 +275,9 @@ final class KokoroOrtProbeEngine implements ForayTtsPlugin.KokoroProbeEngine {
     @Override
     public double[] load() {
         long t0 = System.nanoTime();
+        lastSessionError = null;
         session = makeSession();
+        loadError = session == null ? (lastSessionError == null ? "other" : lastSessionError) : null;
         long t1 = System.nanoTime();
         OrtSession second = makeSession();
         long t2 = System.nanoTime();
@@ -176,6 +285,17 @@ final class KokoroOrtProbeEngine implements ForayTtsPlugin.KokoroProbeEngine {
             try { second.close(); } catch (Throwable ignored) { }
         }
         return new double[]{ (t1 - t0) / 1e6, (t2 - t1) / 1e6 };
+    }
+
+    /** Close the session {@link #load} kept (audit round 3, mobile-native-5).
+     *  The environment is ORT's process-wide singleton and is left alone. */
+    @Override
+    public void close() {
+        OrtSession s = session;
+        session = null;
+        if (s != null) {
+            try { s.close(); } catch (Throwable ignored) { }
+        }
     }
 
     private OrtSession makeSession() {
@@ -193,6 +313,8 @@ final class KokoroOrtProbeEngine implements ForayTtsPlugin.KokoroProbeEngine {
             return env.createSession(modelPath, opts);
         } catch (Throwable t) {
             Log.e(TAG, "could not open the Kokoro session", t);
+            // The TOKEN reaches the record; the text above stays in logcat.
+            lastSessionError = ortCodeToken(t);
             return null;
         }
     }
@@ -224,13 +346,18 @@ final class KokoroOrtProbeEngine implements ForayTtsPlugin.KokoroProbeEngine {
      */
     @Override
     public double[] synthesize(int[] ids, double speed) {
+        // Reset FIRST, as iOS does: a line that returns early must not carry
+        // the previous line's ORT failure as if it were its own.
+        lastFailure = null;
         if (session == null) { lastSynthReason = "session-absent"; return new double[]{0, 0}; }
         if (ids == null || ids.length <= 2) { lastSynthReason = "zero-samples"; return new double[]{0, 0}; }
         lastSynthReason = null;
         long t0 = System.nanoTime();
         int samples = run(ids, speed);
         long t1 = System.nanoTime();
-        if (samples <= 0) {
+        /* A `non-finite` or `silent` line HAS samples and is still a failure
+           (L04): it contributes 0 s, so no RTF is computed over garbage. */
+        if (samples <= 0 || lastSynthReason != null) {
             if (lastSynthReason == null) lastSynthReason = "zero-samples";
             return new double[]{ (t1 - t0) / 1e6, 0 };
         }
@@ -239,6 +366,7 @@ final class KokoroOrtProbeEngine implements ForayTtsPlugin.KokoroProbeEngine {
 
     private int run(int[] ids, double speed) {
         Map<String, OnnxTensor> inputs = new HashMap<>();
+        String stage = "input";
         try {
             long[] tokens = new long[ids.length];
             for (int i = 0; i < ids.length; i++) tokens[i] = ids[i];
@@ -249,7 +377,9 @@ final class KokoroOrtProbeEngine implements ForayTtsPlugin.KokoroProbeEngine {
                with a pad at each end (tools/narration/kokoro-vocab.json
                documents the encoding), so the row is `length - 2`, clamped
                because a line longer than the matrix has no row of its own and
-               the last row is the least wrong answer. K-04 chunks instead. */
+               the last row is the least wrong answer. Since KV-R2 every
+               inference is one sentence chunk (≤ 460 phonemes), so the clamp
+               no longer fires on the probe passage. */
             int row = Math.min(Math.max(ids.length - 2, 0), STYLE_ROWS - 1);
             float[] styleRow = new float[STYLE_DIM];
             System.arraycopy(style, row * STYLE_DIM, styleRow, 0, STYLE_DIM);
@@ -259,7 +389,9 @@ final class KokoroOrtProbeEngine implements ForayTtsPlugin.KokoroProbeEngine {
             inputs.put("speed", OnnxTensor.createTensor(
                     env, FloatBuffer.wrap(new float[]{(float) speed}), new long[]{1}));
 
+            stage = "run";
             try (OrtSession.Result result = session.run(inputs)) {
+                stage = "output";
                 Object value = result.get(0).getValue();
                 /* The samples are COUNTED AND DROPPED. K-01 measures speed,
                    memory and whether the passage survives a locked screen;
@@ -276,7 +408,12 @@ final class KokoroOrtProbeEngine implements ForayTtsPlugin.KokoroProbeEngine {
                 if (n <= 0) {
                     lastSynthReason = (value instanceof float[] || value instanceof float[][])
                             ? "zero-samples" : "no-output";
+                    return n;
                 }
+                /* COUNTED, AND NOW CHECKED (L04): a GitHub macos-14 run of
+                   this model returned NaN on two lines of four without
+                   throwing, and a count alone called that audio. */
+                lastSynthReason = sampleVerdict(value);
                 return n;
             }
         } catch (Throwable t) {
@@ -285,6 +422,7 @@ final class KokoroOrtProbeEngine implements ForayTtsPlugin.KokoroProbeEngine {
              * the diagnostics record he pastes, and #685 is what it costs when
              * only the unreachable half exists. */
             Log.e(TAG, "Kokoro inference failed", t);
+            lastFailure = new ForayTtsPlugin.ProbeFailure(ortCodeToken(t), ortOp(t.getMessage()), stage);
             lastSynthReason = "inference-threw";
             return 0;
         } finally {

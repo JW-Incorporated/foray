@@ -73,9 +73,11 @@ test("the build script itself builds, but its test does not", () => {
   assert.equal(pathMatters("tools/web/vercel-should-build.test.mjs"), false);
 });
 
-test("the one deployed file under docs/ builds", () => {
-  /* `EXTRAS` in prepare-dist.mjs. Everything else under docs/ is prose. */
-  assert.equal(pathMatters("docs/ux/foray-m3-prototype.html"), true);
+test("nothing under docs/ deploys, the UX prototype included (security-11)", () => {
+  /* The prototype left prepare-dist's EXTRAS (round-3 audit, security-11): it
+     shared the app's origin with no CSP. So a change to it cannot change what
+     Vercel serves, and it no longer forces a build. */
+  assert.equal(pathMatters("docs/ux/foray-m3-prototype.html"), false);
   assert.equal(pathMatters("docs/DECISIONS.md"), false);
 });
 
@@ -89,7 +91,7 @@ test("the paths that cannot reach a deploy are skippable", () => {
     "mobile/www/index.html",
     ".github/workflows/ci.yml",
     "backend/test/copyRules.test.ts",
-    "api/test/vercel-bundle.test.mjs",
+    "api/_test/vercel-bundle.test.mjs",
     "tools/foray/check-forays.mjs",
     "tools/ci/path-policy.mjs",
   ]) {
@@ -104,7 +106,6 @@ test("root markdown is skippable — STATE.md and HUMAN-ACTIONS.md change consta
   assert.equal(pathMatters("STATE.md"), false);
   assert.equal(pathMatters("HUMAN-ACTIONS.md"), false);
   assert.equal(pathMatters("README.md"), false);
-  assert.equal(pathMatters("docs/ux/foray-m3-prototype.html"), true, "…and the one deployed doc still builds");
   assert.ok(IGNORED_PATTERNS.length >= 1);
 });
 
@@ -188,7 +189,6 @@ test("every exception is a function and at least one path reaches each", () => {
   /* An exception nobody can trigger is dead code that reads as protection.
      MUTATION: add a rescue for a path that cannot exist — this fails. */
   const samples = [
-    "docs/ux/foray-m3-prototype.html",
     "tools/web/prepare-dist.mjs",
     "tools/ci/generate-manifest.mjs",
     "player/client.js",

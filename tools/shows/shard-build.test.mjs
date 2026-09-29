@@ -73,7 +73,7 @@ test("buildTop: curated rows are never displaced by the popularity cap", () => {
 test("buildChanged: a row absent from the previous snapshot counts as changed", () => {
   const rows = [{ id: 1, newestItemPubdate: 100 }];
   const changed = buildChanged(rows, {});
-  assert.deepEqual(changed, [1]);
+  assert.deepEqual(changed, { baseline: true, changed: [1] });
 });
 
 test("buildChanged: only rows whose newestItemPubdate advanced are reported", () => {
@@ -84,7 +84,16 @@ test("buildChanged: only rows whose newestItemPubdate advanced are reported", ()
   ];
   const prev = { 1: 100, 2: 150, 3: 100 };
   const changed = buildChanged(rows, prev);
-  assert.deepEqual(changed, [2]);
+  assert.deepEqual(changed, { baseline: true, changed: [2] });
+});
+
+/* Audit round 3, data-tools-14: with no prior-release snapshot there is no
+   diff to report. MUTATION: fall through to the diff with an empty map (the
+   old `previousNewest = {}`) -- every id comes back "changed". */
+test("buildChanged: no previous snapshot means no baseline, not every show changed", () => {
+  const rows = [{ id: 1, newestItemPubdate: 100 }, { id: 2, newestItemPubdate: 200 }];
+  assert.deepEqual(buildChanged(rows, null), { baseline: false, changed: null });
+  assert.deepEqual(buildChanged(rows, undefined), { baseline: false, changed: null });
 });
 
 test("buildIdMap: matches curated shows by normalised feed_url", () => {

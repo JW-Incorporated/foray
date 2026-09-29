@@ -112,6 +112,10 @@ export interface CheckpointStore {
   /** Persists one stage's output. Called after the stage returns, so a file on
    * disk only ever describes work that actually completed. */
   save(key: string, stage: CheckpointStageKey, data: unknown): Promise<void> | void;
+  /** gen-12: forgets banked stages, so the next run redoes them. Optional: a
+   * store without it simply keeps the file (the in-process fence in
+   * CheckpointSession still stops this run from re-banking them). */
+  drop?(key: string, stages: CheckpointStageKey[]): Promise<void> | void;
 }
 
 /**
@@ -150,6 +154,9 @@ export function checkpointFingerprint(input: { prompt: string; duration: string;
 export class CheckpointSession {
   private readonly stages: Record<string, unknown>;
   private readonly resumedStages = new Set<string>();
+  /** gen-12: keys dropped this run; a later save of a matching key (an act
+   * still narrating when the drop happened) is not banked either. */
+  private fence: ((name: CheckpointStageKey) => boolean) | null = null;
 
   private constructor(
     private readonly store: CheckpointStore | undefined,
@@ -252,7 +259,39 @@ export class CheckpointSession {
     await this.record(name, value);
   }
 
+  /** Whether this run resumed `name` from disk rather than producing it. */
+  wasResumed(name: CheckpointStageKey): boolean {
+    return this.resumedStages.has(name);
+  }
+
+  /**
+   * gen-12 (round-3 audit): forget every banked stage `match` selects, in
+   * memory and in the store, and refuse to bank a matching stage for the rest
+   * of this run. Used when a resumed stage turns out to be stale against the
+   * world (a resumed `source` whose minted rows now collide with the pool):
+   * without it every later resume replays the same banked sourcing and fails
+   * the same way until someone runs with --no-resume.
+   */
+  async drop(match: (name: CheckpointStageKey) => boolean): Promise<CheckpointStageKey[]> {
+    const previous = this.fence;
+    this.fence = previous ? (name) => previous(name) || match(name) : match;
+    const dropped = Object.keys(this.stages).filter(match);
+    for (const name of dropped) {
+      delete this.stages[name];
+      this.resumedStages.delete(name);
+    }
+    if (this.store?.drop && dropped.length > 0) {
+      try {
+        await this.store.drop(this.key, dropped);
+      } catch {
+        /* Same rule as record(): checkpoint I/O never fails the run. */
+      }
+    }
+    return dropped;
+  }
+
   private async record(name: CheckpointStageKey, value: unknown): Promise<void> {
+    if (this.fence?.(name)) return;
     this.stages[name] = value;
     if (!this.store) return;
     try {
