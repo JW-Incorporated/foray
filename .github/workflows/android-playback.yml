@@ -57,8 +57,8 @@
 # WHY COPIED AND NOT SHARED: a composite action under `.github/actions/` would
 # have moved `android-smoke.yml`'s steps a second time in two days, and every
 # pin in `android-workflow.test.mjs` reads them from that file. A byte-for-byte
-# test gets the same guarantee without that churn. A-06 (the API 36 leg) is the
-# natural moment to extract the action if a third caller appears.
+# test gets the same guarantee without that churn. A-06 added its API 36 leg as
+# a matrix entry of this job, not as a third caller, so the copy stays two.
 #
 # WHY THE CLICK TRACKS ARE IN THE APK, NOT BEHIND `adb reverse` (the card's
 # wording): the page's CSP admits `media-src https:` only; the WebView refuses
@@ -102,9 +102,9 @@
 #   API 34 is the fast leg, the image `android-smoke.yml` boots (the workflow
 #          test pins the two equal), with the 30-minute ceiling A-04 set.
 #   API 36 is the current leg. It is allowed to be slower (MP1 §6.2 measured a
-#          cold API-36 image never booting under WHPX; a KVM runner is a
-#          different machine, and the leg's own timings are what the
-#          measurements doc records), so its ceiling is 45 minutes.
+#          cold API-36 image never booting under WHPX; on a KVM runner it
+#          booted in 57 s and the job took 9 min 34 s, against API 34's
+#          8 min 14 s, run 36559231419), so its ceiling is 45 minutes.
 #
 # `fail-fast: false`, so a red leg never cancels the other's verdicts. Each leg
 # checks that the device it booted really is its API level before installing
