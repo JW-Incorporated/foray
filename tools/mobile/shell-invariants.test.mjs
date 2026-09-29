@@ -4331,7 +4331,13 @@ test("NE-27: ENGINE_DEFAULT says native only when STATE.md records the OQ-9 answ
   assert.equal(engineDefaultRefusal({ mode: "native", capabilities: ["episode", "continuation", "restore"] }, record), null);
   assert.match(engineDefaultRefusal({ mode: "native", capabilities: ["episode", "foray"] }, record) ?? "", /foray/);
 
+  /* Per platform since A-20 (docs/plans/android-assessment.md): the OQ-9 rule
+     reads the `ios` block. The `android` block is js (the legacy lane) until
+     A-31 flips it, after the Android engine is fully operational, Joey's device
+     pass and a founder car drive; A-31 replaces this pin with its own record.
+     MUTATION: commit android "native" -> red. */
   const committed = JSON.parse(fs.readFileSync(ENGINE_DEFAULT_JSON, "utf8"));
-  const refusal = engineDefaultRefusal(committed, fs.readFileSync(STATE_MD, "utf8").replace(/\r\n/g, "\n"));
+  const refusal = engineDefaultRefusal(committed.ios, fs.readFileSync(STATE_MD, "utf8").replace(/\r\n/g, "\n"));
   assert.equal(refusal, null, refusal ?? "");
+  assert.deepEqual(committed.android, { mode: "js", capabilities: [] }, "android stays js until A-31");
 });

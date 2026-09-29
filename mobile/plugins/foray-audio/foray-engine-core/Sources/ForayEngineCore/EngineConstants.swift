@@ -75,10 +75,14 @@ public enum EngineConstants {
         public static let engineModes: [String] = ["native", "legacy"]
         /// `ENGINE_MODE_EVENTS`
         public static let engineModeEvents: [String] = ["launch", "healthy", "page-health", "set-override"]
+        /// `ENGINE_PLATFORMS`
+        public static let enginePlatforms: [String] = ["ios", "android"]
         /// `EVENTS`
         public static let events: [String] = ["snapshot", "advanced", "skipped", "error", "voiceFallback", "diag", "modeChanged"]
         /// `HANDSHAKE_REASONS`
         public static let handshakeReasons: [String] = ["native", "not-ios", "no-method", "no-hello", "bad-hello", "engine-legacy", "protocol-mismatch"]
+        /// `HELLO_PLATFORMS`
+        public static let helloPlatforms: [String] = ["ios"]
         /// `HOLD_POLICY_KINDS`
         public static let holdPolicyKinds: [String] = ["forever", "none", "until"]
         /// `MODE_OVERRIDES`

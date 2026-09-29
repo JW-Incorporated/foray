@@ -82,7 +82,8 @@ public enum HandshakeFamily {
             "PROTOCOL": .number(Double(EngineContract.protocolVersion)),
             "PAGE_MODES": ContractFamily.names(EngineContract.PageMode.allCases),
             "ENGINE_MODES": ContractFamily.names(EngineMode.Mode.allCases),
-            "HANDSHAKE_REASONS": ContractFamily.names(EngineContract.HandshakeReason.allCases)
+            "HANDSHAKE_REASONS": ContractFamily.names(EngineContract.HandshakeReason.allCases),
+            "ENGINE_PLATFORMS": SessionFamily.strings(EngineConstants.EngineContract.enginePlatforms)
         ],
         calls: [
             "helloRequest": { args in
@@ -94,7 +95,7 @@ public enum HandshakeFamily {
                 ]))
             },
             "decideMode": { args in
-                // `input?.platform !== "ios"`, `input.methodPresent !== true`,
+                // `!ENGINE_PLATFORMS.includes(input?.platform)`, `input.methodPresent !== true`,
                 // and a hello of null or undefined is no answer at all.
                 let input = ArgReading.arg(args, 0)
                 let hello = input["hello"]

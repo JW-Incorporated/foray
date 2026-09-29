@@ -23,7 +23,7 @@
    own (decideMode: `not-ios`, `no-method`); anything else is `undecided`,
    which is exactly what it is. */
 
-import { decideMode } from "./engine-contract.js";
+import { decideMode, HELLO_PLATFORMS } from "./engine-contract.js";
 import { ENGINE_PLUGIN } from "./native-engine.js";
 import { formatDiagnosticReport } from "./diagnostic-log.js";
 
@@ -44,10 +44,12 @@ function platformOf(capacitor) {
   try { return typeof capacitor?.getPlatform === "function" ? capacitor.getPlatform() : null; } catch (_) { return null; }
 }
 
-/** Is there an engine to ask? The iOS shell with the ForayAudio plugin on the
-    bridge — the same test native-engine.js's bridge makes before a hello. */
+/** Is there an engine to ask? A shell the page asks engineHello on
+    (engine-contract.js HELLO_PLATFORMS: iOS until A-28) with the ForayAudio
+    plugin on the bridge — the same test native-engine.js makes before a hello.
+    An Android shell is not asked yet, so its header says `no-method` (A-20). */
 export function engineBridgePresent(capacitor) {
-  if (platformOf(capacitor) !== "ios" || typeof capacitor?.nativePromise !== "function") return false;
+  if (!HELLO_PLATFORMS.includes(platformOf(capacitor)) || typeof capacitor?.nativePromise !== "function") return false;
   try {
     return typeof capacitor.isPluginAvailable === "function" ? capacitor.isPluginAvailable(ENGINE_PLUGIN) !== false : true;
   } catch (_) { return false; }
@@ -59,7 +61,7 @@ export function engineBridgePresent(capacitor) {
 export function pageEngineDecision({ engine = null, capacitor = null } = {}) {
   if (engine?.decision) return engine.decision;
   const platform = platformOf(capacitor);
-  if (platform !== "ios" || !engineBridgePresent(capacitor)) {
+  if (!engineBridgePresent(capacitor)) {
     const { mode, reason } = decideMode({ platform, methodPresent: engineBridgePresent(capacitor) });
     return { mode, reason, hello: null };
   }

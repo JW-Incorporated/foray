@@ -132,7 +132,7 @@ player/engine-contract.js           PROTOCOL, names, OWNED_PREFIXES, decideMode,
 player/native-engine.js, native-facades.js, reference-engine.js (warm handover ON under fakes)
 player/transport-policy.js, player/continuation.js      extracted pure rules
 player/parity/                      fixtures, schema, runner, recorder, coverage guard (§6)
-mobile/ENGINE_DEFAULT.json          {"mode": "js"|"native", "capabilities": [...]}
+mobile/ENGINE_DEFAULT.json          per platform since A-20: {"ios": {"mode": "js"|"native", "capabilities": [...]}, "android": {...}}
 tools/mobile/inject-background-audio.mjs   + writes ForayEngineDefault/Capabilities and patches AppDelegate
 tools/mobile/engine-report.mjs      turns a Copy paste into DV verdicts and a seam distribution
 tools/parity/record.mjs, gen-constants.mjs
@@ -141,7 +141,7 @@ tools/parity/record.mjs, gen-constants.mjs
 - **The directory is `foray-engine-core`, not `core`.** A path dependency takes its identity from the last path component, and `core` is too generic.
 - **The reducer is copied, not moved.** `ios/` is a dead SwiftUI scaffold that ships nowhere. Moving the reducer breaks `ForayApp.swift`, and it breaks ForayKit's host `swift test` (ForayKit is iOS 17 only, the core targets macOS 12). It would also put a human merge (G-2) on the critical path. The copy's header names the source commit. An optional M4 card (NE-44) freezes or deletes the scaffold.
 - **The parity engine is a library, not a test file.** SwiftPM tests cannot share sources across packages, so `ForayEngineParity` returns results as data. Thin XCTest wrappers in both `foray-engine-core/Tests` (Linux and macOS `swift test`) and `ForayAudioPluginTests` (the existing `xcodebuild test -scheme ForayAudio` step) run it. That gives a real zero-`.github` fallback.
-- **Three bridge methods on the existing plugin.** New commands never need a new `CAPPluginMethod`. Android never gains them.
+- **Three bridge methods on the existing plugin.** New commands never need a new `CAPPluginMethod`. Android gains the same three, speaking the same protocol v1, when its Media3 engine lands (card A-28 of `docs/plans/android-assessment.md`, track A1). Until then the page does not ask an Android shell (`HELLO_PLATFORMS` in `player/engine-contract.js`, A-20's flag), so Android's answer is `no-method`: the JS player, as always. `decideMode` already accepts `platform: "android"` with a protocol-1 hello (A-20), and `mobile/ENGINE_DEFAULT.json` holds an `android` block that stays `js` until A-31.
 
 ### 4.2 Runtime shape: a functional core and an imperative shell, confined to main
 
@@ -665,7 +665,7 @@ The founder's standing instruction is to route only true product/spend/legal cal
 
 ## 11. Out of scope
 
-Android (J-1), the website apart from behaviour-preserving extractions, CarPlay templates and Swift `foray-resolve`/`foray-queue`, the Kokoro engine, ADR-0007 rung 4, offline downloads, and proxying or padding enclosure bytes (L-3).
+Android's native engine is out of scope for THIS deck, not for the product: it has its own plan, `docs/plans/android-assessment.md` (tracks A0–A2, ruled 2026-09-29 to start in parallel with M2), which ports this deck's core and contract to Media3 against the same parity fixtures. This deck's only Android edits are A-20's inert contract gating (§4.1). Also out of scope: any other Android work here (J-1), the website apart from behaviour-preserving extractions, CarPlay templates and Swift `foray-resolve`/`foray-queue`, the Kokoro engine, ADR-0007 rung 4, offline downloads, and proxying or padding enclosure bytes (L-3).
 
 ## 12. Card conventions
 

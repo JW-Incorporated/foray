@@ -133,6 +133,17 @@ test("a REJECTED hello resolves 'js' with a relinquish; an UNIMPLEMENTED one (an
   assert.deepStrictEqual(old.sends(), [], "nothing native can be running on a binary without the method");
   assert.ok(isUnimplemented({ code: "UNIMPLEMENTED" }));
   assert.ok(!isUnimplemented(new Error("the plugin crashed")));
+
+  /* A-20 (docs/plans/android-assessment.md): an Android shell's bridge has
+     ForayAudio on it, and Android is an engine platform in the contract now,
+     but the page does not ask it (HELLO_PLATFORMS) until A-28: no hello, no
+     relinquish, `no-method` — and still js. Even a plugin that WOULD answer
+     native is not asked. MUTATION: take methodPresent from bridge.available
+     alone -> `no-hello` and a relinquish sent to Android -> red. */
+  const android = fakeCapacitor({ platform: "android", hello: nativeHello() });
+  const c = await createNativeEngine({ capacitor: android, scheduler: manualScheduler() }).engineModeReady;
+  assert.deepStrictEqual([c.mode, c.reason, c.relinquish], ["js", "no-method", false]);
+  assert.deepStrictEqual(android.calls, [], "the page asks an Android shell nothing");
 });
 
 test("a protocol mismatch or an unreadable hello relinquishes; a clear legacy answer does not", async () => {

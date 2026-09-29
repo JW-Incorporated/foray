@@ -54,7 +54,7 @@
  *   node tools/mobile/inject-background-audio.mjs <Info.plist> --encryption false
  *   node tools/mobile/inject-background-audio.mjs <Info.plist> --engine-default <file>
  * Every run that edits also writes the native engine's build default (from
- * `mobile/ENGINE_DEFAULT.json` unless `--engine-default` names another file)
+ * the `ios` block of `mobile/ENGINE_DEFAULT.json` unless `--engine-default` names another file)
  * and the AppDelegate cold path (`AppDelegate.swift` beside the plist), and
  * every `--check` reads both back; see those sections below.
  * Any other argument is an error, not an ignored flag (same rule as
@@ -493,8 +493,12 @@ export function injectNonExemptEncryption(xml, value = false) {
  * silently does nothing. So the value is written here, from one committed
  * file, and read back by `--check` on every CI build that makes an app.
  *
- * THE SOURCE OF TRUTH is `mobile/ENGINE_DEFAULT.json` ({"mode": "js"} until
- * NE-27 flips it), next to the capabilities the build advertises
+ * THE SOURCE OF TRUTH is `mobile/ENGINE_DEFAULT.json`, PER PLATFORM since A-20
+ * (docs/plans/android-assessment.md): {"ios": {...}, "android": {...}}. This
+ * script writes the `ios` block ({"mode": "js"} until NE-27 flipped it); the
+ * `android` block stays "js" (the legacy lane) until A-31 flips it, and
+ * nothing reads it before the Android engine exists (A-26..A-28). Each block
+ * carries its mode next to the capabilities the build advertises
  * (`ForayEngineCapabilities`; `player/parity/coverage.js` refuses a
  * capability whose fixtures are still pending). Both CI invocations of this
  * script (`ios-build.yml`, `.github/actions/ios-archive/action.yml`) already
@@ -514,11 +518,48 @@ export const ENGINE_DEFAULT_FILE = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)), "..", "..", "mobile", "ENGINE_DEFAULT.json"
 );
 
-/** `mobile/ENGINE_DEFAULT.json`, parsed and validated. STRICT: an unknown
+/** The platforms `mobile/ENGINE_DEFAULT.json` holds a block for, each
+ *  required (A-20). Only `ios` is written into a plist, by this script. */
+export const ENGINE_DEFAULT_PLATFORMS = Object.freeze(["ios", "android"]);
+
+/** One platform's block, validated: {mode, capabilities?}. STRICT: an unknown
  *  key, a mode outside the two words, or a capability that is not a plain
  *  token is a typo, and a typo here is a build that plays through the wrong
  *  engine with every check green. Keys starting with "//" are comments. */
-export function parseEngineDefault(text) {
+export function validateEngineDefault(doc, where = "ENGINE_DEFAULT.json") {
+  if (!doc || typeof doc !== "object" || Array.isArray(doc)) {
+    throw new PlistError(`${where} must be an object like {"mode": "js"}`);
+  }
+  for (const key of Object.keys(doc)) {
+    if (key !== "mode" && key !== "capabilities" && !key.startsWith("//")) {
+      throw new PlistError(`${where} has an unknown key ${JSON.stringify(key)}`);
+    }
+  }
+  if (!ENGINE_DEFAULT_MODES.includes(doc.mode)) {
+    throw new PlistError(
+      `${where} "mode" must be one of ${JSON.stringify(ENGINE_DEFAULT_MODES)}, got ${JSON.stringify(doc.mode)}`
+    );
+  }
+  const capabilities = doc.capabilities ?? [];
+  if (!Array.isArray(capabilities)) {
+    throw new PlistError(`${where} "capabilities" must be an array of strings`);
+  }
+  for (const c of capabilities) {
+    if (typeof c !== "string" || !/^[a-z][a-z0-9-]*$/.test(c)) {
+      throw new PlistError(`${where} has an invalid capability ${JSON.stringify(c)}`);
+    }
+  }
+  if (new Set(capabilities).size !== capabilities.length) {
+    throw new PlistError(`${where} lists a capability twice`);
+  }
+  return { mode: doc.mode, capabilities: [...capabilities] };
+}
+
+/** `mobile/ENGINE_DEFAULT.json`, parsed and validated, every platform:
+ *  {"ios": {...}, "android": {...}}, both required, nothing else but "//"
+ *  comments. The pre-A-20 flat shape ({"mode": ...} at the top) is refused
+ *  by name, so an old file cannot be read as "no ios block". */
+export function parseEngineDefaults(text) {
   let doc;
   try {
     doc = JSON.parse(text);
@@ -526,31 +567,32 @@ export function parseEngineDefault(text) {
     throw new PlistError(`ENGINE_DEFAULT.json is not JSON: ${e.message}`);
   }
   if (!doc || typeof doc !== "object" || Array.isArray(doc)) {
-    throw new PlistError('ENGINE_DEFAULT.json must be an object like {"mode": "js"}');
+    throw new PlistError('ENGINE_DEFAULT.json must be an object like {"ios": {"mode": "js"}, "android": {"mode": "js"}}');
   }
   for (const key of Object.keys(doc)) {
-    if (key !== "mode" && key !== "capabilities" && !key.startsWith("//")) {
-      throw new PlistError(`ENGINE_DEFAULT.json has an unknown key ${JSON.stringify(key)}`);
+    if (ENGINE_DEFAULT_PLATFORMS.includes(key) || key.startsWith("//")) continue;
+    const hint = key === "mode" || key === "capabilities"
+      ? ' (per platform since A-20: {"ios": {"mode": ...}, "android": {"mode": ...}})'
+      : "";
+    throw new PlistError(`ENGINE_DEFAULT.json has an unknown key ${JSON.stringify(key)}${hint}`);
+  }
+  const out = {};
+  for (const platform of ENGINE_DEFAULT_PLATFORMS) {
+    if (!Object.prototype.hasOwnProperty.call(doc, platform)) {
+      throw new PlistError(`ENGINE_DEFAULT.json has no ${JSON.stringify(platform)} block`);
     }
+    out[platform] = validateEngineDefault(doc[platform], `ENGINE_DEFAULT.json "${platform}"`);
   }
-  if (!ENGINE_DEFAULT_MODES.includes(doc.mode)) {
-    throw new PlistError(
-      `ENGINE_DEFAULT.json "mode" must be one of ${JSON.stringify(ENGINE_DEFAULT_MODES)}, got ${JSON.stringify(doc.mode)}`
-    );
+  return out;
+}
+
+/** One platform's block of `mobile/ENGINE_DEFAULT.json` (the whole file is
+ *  validated first). `ios` by default: the block this script writes. */
+export function parseEngineDefault(text, platform = "ios") {
+  if (!ENGINE_DEFAULT_PLATFORMS.includes(platform)) {
+    throw new PlistError(`ENGINE_DEFAULT.json has no platform ${JSON.stringify(platform)}`);
   }
-  const capabilities = doc.capabilities ?? [];
-  if (!Array.isArray(capabilities)) {
-    throw new PlistError('ENGINE_DEFAULT.json "capabilities" must be an array of strings');
-  }
-  for (const c of capabilities) {
-    if (typeof c !== "string" || !/^[a-z][a-z0-9-]*$/.test(c)) {
-      throw new PlistError(`ENGINE_DEFAULT.json has an invalid capability ${JSON.stringify(c)}`);
-    }
-  }
-  if (new Set(capabilities).size !== capabilities.length) {
-    throw new PlistError("ENGINE_DEFAULT.json lists a capability twice");
-  }
-  return { mode: doc.mode, capabilities: [...capabilities] };
+  return parseEngineDefaults(text)[platform];
 }
 
 /** The ONE root entry named `key`, or null. Duplicates throw, for the reason
@@ -630,7 +672,7 @@ function engineValueXml(key, def, indent) {
  */
 export function injectEngineDefault(xml, def) {
   if (typeof xml !== "string" || xml.trim() === "") throw new PlistError("empty plist source");
-  const checked = parseEngineDefault(JSON.stringify(def));
+  const checked = validateEngineDefault(def, "the engine default");
   let out = xml;
   const changes = [];
   for (const key of [ENGINE_DEFAULT_KEY, ENGINE_CAPABILITIES_KEY]) {

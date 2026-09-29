@@ -306,16 +306,20 @@
     },
     "handshake": {
       "files": {
-        "player/parity/fixtures/handshake/handshake.json": "cd1f231c831afbc1818f4cf4780344d25de14aae5b3f5853e61e5d919e96ab94"
+        "player/parity/fixtures/handshake/handshake.json": "66497479c1b23f54fa0c95372506ade4c5eb8b07481171659a2bab4b1df60901"
       },
       "ids": [
         "handshake/protocol",
         "handshake/page-modes",
         "handshake/engine-modes",
         "handshake/handshake-reasons",
+        "handshake/engine-platforms",
         "handshake/hello-request",
         "handshake/hello-request-no-build",
-        "handshake/decide-android",
+        "handshake/decide-android-native",
+        "handshake/decide-android-no-method",
+        "handshake/decide-android-no-hello",
+        "handshake/decide-android-legacy",
         "handshake/decide-web",
         "handshake/decide-no-method",
         "handshake/decide-no-hello",
