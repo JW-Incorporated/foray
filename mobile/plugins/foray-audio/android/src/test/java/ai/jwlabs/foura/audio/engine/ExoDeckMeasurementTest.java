@@ -41,7 +41,7 @@ import org.robolectric.annotation.Config;
  * <p>ASSERTED, one-sided, as on iOS: every trial produced a measurement (a silent rig is a
  * failure, not an empty table), and NEVER EARLY: no out-point stop, and no settled playhead,
  * before the out-point (1 ms of slack for millisecond positions). Where the file has an EXACT
- * seek map (constant-bitrate MP3, PCM WAV) the in-point is also held to one MP3 frame. The
+ * seek map (constant-bitrate MP3, PCM WAV) the in-point is also held to [0, one sample] late. The
  * rest is reported: printed as {@code A25-json} lines, and written to
  * {@code $ART/a25-deck-measurements.json} (android-build's evidence artefact) or, without
  * {@code ART}, to {@code build/a25-deck-measurements.json}. docs/android-emulator-measurements.md
@@ -60,8 +60,10 @@ public class ExoDeckMeasurementTest {
     static final double NEVER_EARLY_TOLERANCE_SEC = 0.001;
     /** How much of the landing is heard and matched: long enough to hold a double click. */
     static final double HEARD_WINDOW_SEC = 12.0;
-    /** One MPEG-2 layer III frame at 16 kHz (576 samples). */
+    /** One MPEG-2 layer III frame at 16 kHz (576 samples): one MP3 sample. */
     static final double MP3_FRAME_SEC = 576.0 / 16000;
+    /** One WAV sample: WavExtractor writes PCM in tenth-of-a-second runs. */
+    static final double WAV_CHUNK_SEC = 0.1;
 
     private static final List<JSONObject> IN_TRIALS = new ArrayList<>();
     private static final List<JSONObject> OUT_TRIALS = new ArrayList<>();
@@ -145,9 +147,12 @@ public class ExoDeckMeasurementTest {
             assertEquals("the deck reports the start it was asked for", requested, ready.landedSec(), 0.0005);
             if (exactSeekMap(fixture)) {
                 // An exact seek map labels every sample with its real place, and the first
-                // sample heard is the first one at or after the request.
+                // sample heard is the first WHOLE sample at or after the request: Media3 drops
+                // the one the request falls inside (every audio sample is a sync sample), so
+                // the in-point is never early and at most one sample late.
+                double sampleSec = fixture.isWav() ? WAV_CHUNK_SEC : MP3_FRAME_SEC;
                 assertEquals(fixture + " " + trial, 0, seekMapOffsetMs, 0.5);
-                assertTrue(fixture + " " + trial, errorMs >= -0.5 && errorMs <= MP3_FRAME_SEC * 1000 + 0.5);
+                assertTrue(fixture + " " + trial, errorMs >= -0.5 && errorMs <= sampleSec * 1000 + 0.5);
             }
         }
     }

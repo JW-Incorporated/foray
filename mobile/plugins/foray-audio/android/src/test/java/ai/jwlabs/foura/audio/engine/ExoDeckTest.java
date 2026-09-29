@@ -69,10 +69,15 @@ public class ExoDeckTest {
 
             h.deck.send(DeckCommand.PLAY);
             h.runUntil(() -> h.player.isPlaying());
+            long t0 = h.clock.elapsedRealtime();
+            double p0 = h.deck.reading().positionSec;
+            assertTrue("playback starts where the gate landed: " + p0, p0 >= 30.0 && p0 < 30.25);
             h.runFor(1500);
             DeckReading playing = h.deck.reading();
             assertTrue(playing.audible);
-            assertTrue("the playhead moves: " + playing.positionSec, playing.positionSec >= 31.4 && playing.positionSec <= 31.6);
+            double content = playing.positionSec - p0;
+            double wall = (h.clock.elapsedRealtime() - t0) / 1000.0;
+            assertTrue("the playhead moves at 1x: " + content + " s in " + wall + " s", wall >= 1.5 && Math.abs(content - wall) <= 0.05);
             assertTrue(h.deck.primitives().contains("attach"));
             assertTrue(h.deck.primitives().contains("play rate=1"));
             assertTrue("no fault with the session active", h.faults.isEmpty());
