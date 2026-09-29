@@ -17,6 +17,8 @@ import com.getcapacitor.annotation.CapacitorPlugin;
 import com.getcapacitor.annotation.Permission;
 import com.getcapacitor.annotation.PermissionCallback;
 
+import java.util.Map;
+
 /**
  * The bridge half of `foray-audio`: the methods that start, stop and report the
  * {@link PlaybackKeepAliveService}, and the ones that carry #27's now-playing state
@@ -154,15 +156,34 @@ public class ForayAudioPlugin extends Plugin {
         };
         NowPlayingHub.setSink(sink);
 
-        sessionSink = (kind, reason) -> {
-            /* LOGCAT AS WELL AS THE BRIDGE, as the iOS plugin writes the unified log:
-               a `notifyListeners` reaches a WebView that may be asleep, and a device
-               pass reading `adb logcat -s ForayAudio` needs a channel that does not
-               depend on the page being awake. Closed vocabulary only. */
-            Log.i(TAG, "ForayAudio.session kind=" + kind + " reason=" + reason);
-            notifyListeners(SESSION_EVENT, sessionEvent(kind, reason, System.currentTimeMillis()));
+        sessionSink = new NowPlayingHub.SessionSink() {
+            @Override
+            public void onSession(@androidx.annotation.NonNull String kind, @androidx.annotation.NonNull String reason) {
+                onSession(kind, reason, java.util.Collections.emptyMap());
+            }
+
+            @Override
+            public void onSession(
+                @androidx.annotation.NonNull String kind, @androidx.annotation.NonNull String reason,
+                @androidx.annotation.NonNull Map<String, Object> facts
+            ) {
+                /* LOGCAT AS WELL AS THE BRIDGE, as the iOS plugin writes the unified log:
+                   a `notifyListeners` reaches a WebView that may be asleep, and a device
+                   pass reading `adb logcat -s ForayAudio` needs a channel that does not
+                   depend on the page being awake. Closed vocabulary only: every fact is
+                   a token, a number or a boolean (SessionMonitor's own rule). */
+                Log.i(TAG, "ForayAudio.session kind=" + kind + " reason=" + reason
+                    + (facts.isEmpty() ? "" : " " + facts));
+                notifyListeners(SESSION_EVENT, sessionEvent(kind, reason, facts, System.currentTimeMillis()));
+            }
         };
         NowPlayingHub.setSessionSink(sessionSink);
+
+        /* A-09: the system events an `<audio>` element cannot report -- background and
+           foreground, onTrimMemory, output routes, and an inferred loss of the audio --
+           raised through the same sink. Process-wide and idempotent: an Activity
+           recreation constructs a second plugin, and the monitors outlive both. */
+        SessionMonitor.install(getContext());
     }
 
     /**
@@ -174,7 +195,19 @@ public class ForayAudioPlugin extends Plugin {
      * {@code client.js}'s {@code sessionLagMs} subtracts from.
      */
     static JSObject sessionEvent(String kind, String reason, long at) {
+        return sessionEvent(kind, reason, java.util.Collections.emptyMap(), at);
+    }
+
+    /**
+     * A-09: the same four keys plus the facts beside them, the way
+     * {@code ForayAudioPlugin.swift}'s {@code sessionEvent(kind:reason:extra:)} writes
+     * {@code extra} first and lets the four fixed keys win over it.
+     */
+    static JSObject sessionEvent(String kind, String reason, Map<String, Object> facts, long at) {
         JSObject event = new JSObject();
+        for (Map.Entry<String, Object> fact : facts.entrySet()) {
+            if (fact.getKey() != null && fact.getValue() != null) event.put(fact.getKey(), fact.getValue());
+        }
         event.put("kind", kind);
         event.put("reason", reason);
         event.put("producer", "audio");
@@ -215,6 +248,10 @@ public class ForayAudioPlugin extends Plugin {
             Log.w(TAG, "could not start the playback foreground service", e);
             result.put("started", false);
             result.put("reason", e.getClass().getSimpleName() + ": " + e.getMessage());
+            /* A-09: and a row in the record, with the exception's class, because the
+               page's own `start` result is logged only as prose and a refusal is the
+               one thing that explains a background stop on Android 12+. */
+            SessionMonitor.foregroundRefused(e);
         }
         /* NOT reported: whether the service is running now. `started` means "the
            request was accepted", which is the strongest thing knowable at this
@@ -277,6 +314,15 @@ public class ForayAudioPlugin extends Plugin {
         result.put("sessionActive", PlaybackKeepAliveService.isSessionActive());
         result.put("notificationsEnabled", notificationsEnabled());
         result.put("notificationPermission", notificationPermission());
+        /* A-09: the two facts a device pass asks first about a stop. `focusState` is
+           INFERRED (Android tells a non-system app nothing about who holds focus):
+           `held` = the page plays and a media player is sounding, `lost` = ours went
+           quiet under a page that thought it played while another kind of audio
+           started, `idle` = the page is not playing, `unknown` = no evidence yet (or
+           API < 26). `route` is the port token of the likely media output --
+           SESSION_PORTS in diagnostic-log.js, never a device's name. */
+        result.put("focusState", SessionMonitor.focusState());
+        result.put("route", SessionMonitor.route());
         call.resolve(result);
     }
 

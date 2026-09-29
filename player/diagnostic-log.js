@@ -853,6 +853,15 @@ export const SESSION_KINDS = new Set([
      critical), Low Power Mode (on|off) and a memory warning (with `availMb`),
      so a stall or a failed hold can be lined up against them. */
   "thermal", "lowPower", "memoryWarning",
+  /* A-09 (Android): an INFERRED loss or return of the audio (reason
+     `lost-inferred` | `regained-inferred`). Android tells a non-system app
+     nothing about who holds focus, so `SessionMonitor.java` reads it off the
+     anonymised player list: our media went quiet under a playing page while a
+     ringtone, a call or a prompt started. A separate kind from
+     `interruptionBegan` ON PURPOSE: `player/client.js` acts on interruptions
+     and never on this — a heuristic may explain a stop, never cause one
+     (`shell-invariants.test.mjs` pins client.js's list). */
+  "focusChange",
 ]);
 
 /* ---------- Lane B's session facts (log-gaps 2026-09-26) ----------
@@ -3322,7 +3331,9 @@ export function formatDiagnosticReport(record, engine = null, { tzOffsetMin = ne
     for (const e of sessions) {
       const k = byKind.get(e.kind) ?? { n: 0, failed: 0, skipped: 0 };
       k.n += 1;
-      if (e.reason === "failed") k.failed += 1;
+      /* A-09: Android's refused foreground service is `refused-<exception>`
+         (the class is the finding), and it is a failure all the same. */
+      if (e.reason === "failed" || /^refused(?:-|$)/.test(e.reason ?? "")) k.failed += 1;
       if (e.reason === "skipped-engine-owned") k.skipped += 1;
       byKind.set(e.kind, k);
     }

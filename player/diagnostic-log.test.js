@@ -2931,3 +2931,37 @@ test("the narration stages reach an open seam's trail by name", () => {
   assert.equal(stageOf("narration.fallback reason=timeout at=bridge item=n host=h"), "narration.fallback");
   assert.equal(stageOf("prefetch.narration.started n1 hidden=y"), "prefetch.narration.started");
 });
+
+/* ---------- A-09: the Android plugin's session rows ---------- */
+
+test("A-09: every row SessionMonitor.java writes is admitted and printed with its facts", () => {
+  /* The Android twin of Lane B's exact-line test: the kinds, reasons and facts
+     `SessionMonitor.java` sends (its constants are pinned to these words by
+     shell-invariants.test.mjs). MUTATION: drop "focusChange" from
+     SESSION_KINDS — the first sessionEvent returns null and the inferred loss
+     never reaches the paste. */
+  const { log, diag, clock: c } = mk();
+  c.set(AT_1032);
+  assert.ok(SESSION_KINDS.has("focusChange"));
+  diag.sessionEvent({ kind: "focusChange", reason: "lost-inferred", producer: "audio", at: AT_1032, other: true, app: "bg" });
+  assert.match(lineOf(log, "session"), / audio focusChange \(lost-inferred\) app=bg other=y {2}lag 0ms/);
+  diag.sessionEvent({ kind: "focusChange", reason: "regained-inferred", producer: "audio", at: AT_1032, other: false, durMs: 41_234 });
+  assert.match(lineOf(log, "session"), / audio focusChange \(regained-inferred\) dur 41\.2s {2}lag/);
+  diag.sessionEvent({ kind: "routeChange", reason: "new-device", producer: "audio", at: AT_1032, from: "speaker", to: "a2dp" });
+  assert.match(lineOf(log, "session"), / audio routeChange \(new-device\) speaker->a2dp {2}lag/);
+  diag.sessionEvent({ kind: "routeChange", reason: "device-removed", producer: "audio", at: AT_1032, from: "a2dp", to: "speaker" });
+  assert.match(lineOf(log, "session"), / audio routeChange \(device-removed\) a2dp->speaker {2}lag/);
+  diag.sessionEvent({ kind: "routeChange", reason: "old-device-gone", producer: "audio", at: AT_1032, from: "wired" });
+  assert.match(lineOf(log, "session"), / audio routeChange \(old-device-gone\) wired->\? {2}lag/);
+  diag.sessionEvent({ kind: "memoryWarning", reason: "running-critical", producer: "audio", at: AT_1032, availMb: 96, app: "active" });
+  assert.match(lineOf(log, "session"), / audio memoryWarning \(running-critical\) app=active avail 96MB {2}lag/);
+  diag.sessionEvent({ kind: "background", reason: "did-enter", producer: "audio", at: AT_1032 });
+  diag.sessionEvent({ kind: "foreground", reason: "will-enter", producer: "audio", at: AT_1032 });
+  /* The refusal names the exception's CLASS, as a token. */
+  diag.sessionEvent({ kind: "sessionActivated", reason: "refused-foreground-service-start-not-allowed", producer: "audio", at: AT_1032, app: "bg" });
+  assert.match(lineOf(log, "session"), / audio sessionActivated \(refused-foreground-service-start-not-allowed\) app=bg {2}lag/);
+  /* And the header counts it as a failure. MUTATION: count only `failed`. */
+  const text = formatDiagnosticReport(log.read(), null, { tzOffsetMin: 0 });
+  assert.match(text, /sessionActivated 1 \(1 failed\)/);
+  assert.match(text, /focusChange 2/);
+});

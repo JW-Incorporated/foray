@@ -100,7 +100,9 @@ import {
   WEBKIT_ORIGIN, REMOTE_COMMAND_FOR_ACTION, remoteCommandFor, UNMIRRORED_ACTIONS,
 } from "../../mobile/plugins/foray-audio/web/foray-media-session.js";
 import { FORAY_AUDIO_REACHED_NEEDLE, FORAY_SESSION_NEEDLE } from "./ios-ci.mjs";
-import { REMOTE_ORIGINS, REMOTE_COMMANDS } from "../../player/diagnostic-log.js";
+import {
+  REMOTE_ORIGINS, REMOTE_COMMANDS, SESSION_KINDS, SESSION_PORTS, SESSION_APP_STATES, dataTokenOf,
+} from "../../player/diagnostic-log.js";
 import { CLICK_TRACK_DIR, exemptClickTrackPaths } from "../audio/click-tracks.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -1605,7 +1607,7 @@ test("start() and stop() do not claim to know whether the service is running", (
   );
   assert.deepEqual(
     fieldsOf("state"),
-    ["notificationPermission", "notificationsEnabled", "platform", "running", "sessionActive"],
+    ["focusState", "notificationPermission", "notificationsEnabled", "platform", "route", "running", "sessionActive"],
     "state() is the ONLY method that may answer `running`, and it can because it is a separate call. " +
       "#27 added three diagnostics beside it, because \"the lock screen is blank\" has at least three " +
       "causes and only one of them is a bug in this code."
@@ -4161,12 +4163,69 @@ test("A-08: an Android headphone unplug reaches the page as the route loss clien
     `client.js's onNativeSession must act on ${kind}/${reason}, the pair the Android service sends`
   );
   assert.match(service, /AudioManager\.ACTION_AUDIO_BECOMING_NOISY/);
-  assert.match(service, /NowPlayingHub\.dispatchSession\(SESSION_ROUTE_CHANGE, REASON_OLD_DEVICE_GONE\)/);
+  assert.match(service, /NowPlayingHub\.dispatchSession\(SESSION_ROUTE_CHANGE, REASON_OLD_DEVICE_GONE[,)]/);
   const onCreate = /public void onCreate\(\)\s*\{([\s\S]*?)\n    \}/.exec(service)?.[1] ?? "";
   assert.ok(!onCreate.includes("registerNoisyReceiver"), "registered while running, not from onCreate");
   assert.match(service, /running = true;\s*registerNoisyReceiver\(\);/, "registered once startForeground succeeded");
   const onDestroy = /public void onDestroy\(\)\s*\{([\s\S]*?)\n    \}/.exec(service)?.[1] ?? "";
   assert.ok(onDestroy.includes("unregisterNoisyReceiver()"), "and unregistered with the service");
+});
+
+test("A-09: every Android session row is one the record admits, and client.js never acts on an inference", () => {
+  /* SessionMonitor.java's rows are Robolectric's to drive (SessionMonitorTest);
+     what only a source read can tie is the vocabulary across the bridge. A kind
+     outside SESSION_KINDS is dropped by the page, a reason outside dataTokenOf
+     is blanked, a port outside SESSION_PORTS is left off. MUTATIONS: spell the
+     focus kind "focusLost" -> red; spell a device removal "old-device-gone" ->
+     red (client.js would pause for a device that was not playing); add
+     "focusChange" to onNativeSession's list -> red. */
+  const dir = path.join(PLUGIN_DIR, "android/src/main/java/ai/jwlabs/foura/audio");
+  const monitor = stripJavaComments(fs.readFileSync(path.join(dir, "SessionMonitor.java"), "utf8"));
+  const constant = (name) => {
+    const m = new RegExp(`static final String ${name} = "([^"]*)"`).exec(monitor);
+    assert.ok(m, `SessionMonitor.java declares ${name}`);
+    return m[1];
+  };
+  for (const k of ["KIND_BACKGROUND", "KIND_FOREGROUND", "KIND_ROUTE_CHANGE", "KIND_FOCUS_CHANGE",
+    "KIND_MEMORY_WARNING", "KIND_SESSION_ACTIVATED"]) {
+    assert.ok(SESSION_KINDS.has(constant(k)), `${k}=${constant(k)} is not in diagnostic-log.js's SESSION_KINDS`);
+  }
+  for (const r of ["REASON_DID_ENTER", "REASON_WILL_ENTER", "REASON_NEW_DEVICE", "REASON_DEVICE_REMOVED",
+    "REASON_FOCUS_LOST", "REASON_FOCUS_REGAINED"]) {
+    assert.equal(dataTokenOf(constant(r)), constant(r), `${r} is not a record token`);
+  }
+  assert.notEqual(constant("REASON_DEVICE_REMOVED"), "old-device-gone",
+    "a removed device is not always the output; the pause is A-08's becoming-noisy");
+  for (const a of ["APP_ACTIVE", "APP_BACKGROUND"]) assert.ok(SESSION_APP_STATES.has(constant(a)), a);
+  /* Every port token portToken can return, and the two route() adds. */
+  const portBody = /static String portToken\(int type\) \{([\s\S]*?)\n {8}\}/.exec(monitor)?.[1] ?? "";
+  const ports = [...portBody.matchAll(/return "([a-z0-9]+)";/g)].map((m) => m[1]);
+  assert.ok(ports.length >= 7, "found portToken's returns");
+  for (const p of [...ports, constant("PORT_NONE"), constant("PORT_SPEAKER")]) {
+    assert.ok(SESSION_PORTS.has(p), `portToken returns ${p}, which SESSION_PORTS drops`);
+  }
+  /* The trim levels are record tokens too. */
+  const trimBody = /static String trimLevelToken\(int level\) \{([\s\S]*?)\n {4}\}/.exec(monitor)?.[1] ?? "";
+  const levels = [...trimBody.matchAll(/return "([^"]+)";/g)].map((m) => m[1]);
+  assert.ok(levels.length >= 7, "found trimLevelToken's returns");
+  for (const l of [...levels, "level-99"]) assert.equal(dataTokenOf(l), l, l);
+  /* client.js acts on a fixed list, and the inference is not on it. */
+  const client = fs.readFileSync(path.join(ROOT, "player/client.js"), "utf8");
+  const acted = /function onNativeSession\(detail\) \{[\s\S]*?if \(!\[([^\]]*)\]\.includes\(kind\)\) return;/.exec(client)?.[1];
+  assert.ok(acted, "found onNativeSession's kind list");
+  const actedKinds = [...acted.matchAll(/"(\w+)"/g)].map((m) => m[1]);
+  for (const k of ["KIND_FOCUS_CHANGE", "KIND_MEMORY_WARNING", "KIND_SESSION_ACTIVATED"]) {
+    assert.ok(!actedKinds.includes(constant(k)), `client.js must not act on ${constant(k)} -- it is diagnostics only`);
+  }
+  /* Wired: the plugin installs the monitor and reports its two answers; both
+     refusal sites write the row. */
+  const plugin = stripJavaComments(fs.readFileSync(path.join(dir, "ForayAudioPlugin.java"), "utf8"));
+  const service = stripJavaComments(fs.readFileSync(path.join(dir, "PlaybackKeepAliveService.java"), "utf8"));
+  assert.match(plugin, /SessionMonitor\.install\(getContext\(\)\)/);
+  assert.match(plugin, /result\.put\("focusState", SessionMonitor\.focusState\(\)\)/);
+  assert.match(plugin, /result\.put\("route", SessionMonitor\.route\(\)\)/);
+  assert.match(plugin, /SessionMonitor\.foregroundRefused\(e\)/, "the plugin's startForegroundService refusal");
+  assert.match(service, /SessionMonitor\.foregroundRefused\(e\)/, "the service's startForeground refusal");
 });
 
 test("the Android shell starts the service for a narration-first Foray from the transport's first playing payload (round 2, native-2)", () => {
