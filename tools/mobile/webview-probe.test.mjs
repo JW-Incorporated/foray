@@ -322,6 +322,41 @@ test("a socket that closes without answering fails immediately, not on the timer
   }
 });
 
+test("A-04: a gesture is sent only when the caller asks, and the launch probe never asks", async () => {
+  /* MUTATION: send `userGesture: true` unconditionally -> fails (the first
+     call). MUTATION: drop `userGesture` from the params -> fails (the second).
+     The playback scenarios start audio over DevTools and need the gesture, as
+     A-03 did. The launch check only reads the page, and a read that also counted
+     as a tap would change what it observes. */
+  const saved = globalThis.WebSocket;
+  const sent = [];
+  globalThis.WebSocket = class {
+    constructor() {
+      this.listeners = {};
+      queueMicrotask(() => this.listeners.open?.());
+    }
+    addEventListener(name, fn) {
+      this.listeners[name] = fn;
+    }
+    send(raw) {
+      const msg = JSON.parse(raw);
+      sent.push(msg.params);
+      queueMicrotask(() => this.listeners.message?.({ data: JSON.stringify({ id: msg.id, result: { result: { value: 2 } } }) }));
+    }
+    close() {}
+  };
+  try {
+    assert.equal(await evaluate("ws://127.0.0.1:9222/x", "1+1"), 2);
+    assert.equal(await evaluate("ws://127.0.0.1:9222/x", "1+1", 1000, { userGesture: true }), 2);
+  } finally {
+    globalThis.WebSocket = saved;
+  }
+  assert.equal(sent[0].userGesture, false, "the default read must not count as a tap");
+  assert.equal(sent[1].userGesture, true, "the playback runner's call must");
+  const src = fs.readFileSync(new URL("./webview-probe.mjs", import.meta.url), "utf8");
+  assert.equal(/evaluateImpl\([^)]*userGesture/.test(src), false, "the launch probe's own evaluate call passes no gesture");
+});
+
 test("the expected host is the one Capacitor actually serves from on Android", () => {
   /* MUTATION: change EXPECTED_HOST to "capacitor" (the iOS scheme's host)
      -> fails.

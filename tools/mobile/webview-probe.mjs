@@ -225,8 +225,14 @@ export async function listTargets(endpoint, { timeoutMs = 5000, fetchImpl = fetc
   return res.json();
 }
 
-/** One `Runtime.evaluate` over the DevTools websocket. */
-export async function evaluate(wsUrl, expression, timeoutMs = 30000) {
+/** One `Runtime.evaluate` over the DevTools websocket.
+ *
+ *  `userGesture` (A-04) is for the playback scenario runner,
+ *  `android-playback.mjs`, which starts audio from here. DevTools then runs the
+ *  expression as if the listener had tapped, so the WebView's autoplay rule is not
+ *  the reason nothing plays. A-03 played a clip the same way. The launch probe
+ *  never passes it: it only reads the page. */
+export async function evaluate(wsUrl, expression, timeoutMs = 30000, { userGesture = false } = {}) {
   if (typeof globalThis.WebSocket !== "function") {
     throw new Error(
       "this Node has no global WebSocket (Node >= 22 provides one) — the DevTools evaluate cannot run"
@@ -255,7 +261,7 @@ export async function evaluate(wsUrl, expression, timeoutMs = 30000) {
           JSON.stringify({
             id: 1,
             method: "Runtime.evaluate",
-            params: { expression, awaitPromise: true, returnByValue: true },
+            params: { expression, awaitPromise: true, returnByValue: true, userGesture: userGesture === true },
           })
         );
       });

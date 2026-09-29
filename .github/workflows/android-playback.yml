@@ -1,0 +1,417 @@
+# Play audio in the Android app on an emulator, background it, drive it from
+# the lock screen and the headset keys, and read the notification.
+#
+# A-04 (`docs/plans/android-assessment.md` §5.3, track A0). `android-smoke.yml`
+# settles LAUNCH. This workflow is the first thing in the repo that settles
+# anything about PLAYBACK on Android. Under the founder's ruling D-A3 (§6), no
+# person tests Android until its native engine is operational (after A-42), so
+# until then this job and A-05's additions to it are the only Android testing.
+#
+# ── WHAT IT RUNS ─────────────────────────────────────────────────────────────
+#
+# `tools/mobile/android-playback.mjs`, one scenario per step, each printing a
+# JSON verdict and failing its own step when the verdict fails:
+#
+#   (e) the first screen after launch, as a PNG (edge-to-edge evidence), plus
+#       the safe-area insets the page was laid out with. Run FIRST because it is
+#       the first-launch screen; lettered (e) because that is the card's letter.
+#   (a) a three-clip Foray over the committed NE-25a click tracks, started with
+#       `ForayPlayer.playForay`, the Foray page's own call. The element's
+#       `currentTime` advances at least 3 s over 5 s; `dumpsys activity services`
+#       shows `PlaybackKeepAliveService` in the foreground with the mediaPlayback
+#       type; `dumpsys media_session` shows our session PLAYING with the title
+#       and show our payload sent; `navigator.mediaSession.forayPolyfill` is true.
+#   (b) Home, then the screen off. A minute later the Foray clock has moved at
+#       least 30 s and the pid is the one (a) recorded.
+#   (c) `cmd media_session dispatch pause|play|next|previous`, then
+#       `input keyevent KEYCODE_MEDIA_PAUSE|PLAY|NEXT|PREVIOUS`. Each press must
+#       arrive at the page as a handled `foray:remote` row AND change the page's
+#       state the way the press means.
+#   (d) a single episode (its controls are ↺15, play/pause, 30↻), then
+#       `cmd statusbar expand-notifications` and `uiautomator dump`: our title,
+#       our show and both seek buttons are on the shade's media controls, and a
+#       tap on pause (`input tap`) pauses the page.
+#
+# PRODUCT DEFECTS THIS JOB FOUND are `KNOWN_FAILURES` in the runner: each
+# excuses exactly one failure sentence as EXPECTED-FAIL (a warning on the run,
+# "expected-fail" in the summary) so the job keeps guarding everything else
+# while the fix is its own card. The first two, both found by this job's own
+# first runs: A04-F1, a remote play or previous with the app in the background
+# never resumes; A04-F2, the system media controls show no 15/30 pair.
+#
+# Then the evidence the card asks for, uploaded whatever happened:
+# `logcat -s Capacitor ForayAudio chromium`, every `dumpsys` a verdict read,
+# the screenshots and window dumps, and the diagnostics sheet's Copy.
+#
+# ── THE BOOT IS android-smoke.yml's, COPIED AND PINNED ───────────────────────
+#
+# The steps from KVM to `am start` are `android-smoke.yml`'s, with its comments
+# left there: read that file for why each one is shaped the way it is (the KVM
+# race, the AVD that was never created, the dead emulator noticed in seconds, the
+# debug APK standing in for the release one). Two differences, both named:
+# the evidence directory is `android-playback`, and the build step copies the
+# three click tracks into the APK's web assets at `a04/`.
+# `tools/mobile/android-playback-workflow.test.mjs` compares the two files step
+# by step with comments stripped, so a fix to one without the other is red.
+#
+# WHY COPIED AND NOT SHARED: a composite action under `.github/actions/` would
+# have moved `android-smoke.yml`'s steps a second time in two days, and every
+# pin in `android-workflow.test.mjs` reads them from that file. A byte-for-byte
+# test gets the same guarantee without that churn. A-06 (the API 36 leg) is the
+# natural moment to extract the action if a third caller appears.
+#
+# WHY THE CLICK TRACKS ARE IN THE APK, NOT BEHIND `adb reverse` (the card's
+# wording): the page's CSP admits `media-src https:` only; the WebView refuses
+# cleartext for an app targeting API 26+; and `https://localhost` is
+# Capacitor's own origin, so a reversed port there is never asked. Bundled at
+# `a04/`, Capacitor serves them from the same origin as the app's own content,
+# which A-03 measured working (run 36539778610).
+#
+# ── TRIGGER, COST, ADVISORY ──────────────────────────────────────────────────
+#
+# The smoke's app paths (what the APK is built from) plus this file. No `push`
+# and no `schedule`, the repo's infrequency rule. `workflow_dispatch` for a
+# by-hand check of `main`. The card's budget is 12 minutes for the job.
+#
+# ADVISORY, NOT REQUIRED: a cold emulator is the flakiest thing this repo runs,
+# and `protect-main` matches required checks by name (`backend`,
+# `data-and-site`, `path-policy`); `android-playback` is none of them, and the
+# workflow test pins that it stays so.
+#
+# NEVER UPLOADS TO A STORE, READS NO SECRET. It publishes its own evidence
+# directory as a GitHub Actions artifact and nothing else. Every `uses:` is
+# `actions/*`; the emulator is driven with `sdkmanager`, `avdmanager`,
+# `emulator` and `adb` directly.
+#
+# ── WHAT THIS STILL DOES NOT PROVE ───────────────────────────────────────────
+#
+# An emulator is not a phone (`docs/research/mp1-background-audio.md` §6.4).
+# (b) turns the screen off for a minute; it does not force Doze, the standby
+# buckets or a phone call, which are A-05. Nothing here is audible; A-03 showed
+# the guest mixes the samples, and a person listening is the device pass,
+# which D-A3 holds until after A-42. API 34 only; A-06 adds a current image.
+
+name: android-playback
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "mobile/**"
+      - "tools/mobile/**"
+      - "index.html"
+      - "app.js"
+      - "player/**"
+      - "search-engine.js"
+      - "styles.css"
+      - ".github/workflows/android-playback.yml"
+
+concurrency:
+  group: android-playback-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  android-playback:
+    runs-on: ubuntu-latest
+    # The card's budget is 12 minutes; this is the ceiling for a hung boot, which
+    # the boot step's own 15-minute deadline would otherwise race.
+    timeout-minutes: 30
+    env:
+      SDK_PLATFORM: platforms;android-36
+      SDK_BUILD_TOOLS: build-tools;36.0.0
+      # API 34, as android-smoke.yml argues at length (MP1 §6.2's measured cold
+      # API-36 boot). A-06 adds a current image as a second leg.
+      EMULATOR_IMAGE: system-images;android-34;google_apis;x86_64
+      AVD_NAME: foray-ci
+      PKG: ai.jwlabs.foura
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          filter: blob:none
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Enable KVM, or the emulator falls back to software and never boots
+        run: |
+          set -euo pipefail
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' \
+            | sudo tee /etc/udev/rules.d/99-kvm4all.rules > /dev/null
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+          sudo udevadm settle --timeout=30 || true
+          for i in 1 2 3 4 5; do
+            if [ -w /dev/kvm ]; then break; fi
+            sudo chmod 0666 /dev/kvm 2>/dev/null || true
+            sleep 1
+          done
+          ls -l /dev/kvm || true
+          test -c /dev/kvm || { echo "/dev/kvm does not exist on this runner at all — this runner class has no KVM device, not a permissions problem"; exit 1; }
+          test -w /dev/kvm || { echo "/dev/kvm is still not writable after udevadm settle and a direct permission change — this runner cannot accelerate an emulator"; exit 1; }
+
+      - name: The Android SDK, plus the emulator and one system image
+        run: |
+          set -euo pipefail
+          echo "ART=$RUNNER_TEMP/android-playback" >> "$GITHUB_ENV"
+          mkdir -p "$RUNNER_TEMP/android-playback"
+          SDK="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+          if [ -z "$SDK" ] || [ ! -d "$SDK" ]; then
+            echo "Neither ANDROID_HOME nor ANDROID_SDK_ROOT points at an SDK on this runner."
+            exit 1
+          fi
+          echo "ANDROID_HOME=$SDK" >> "$GITHUB_ENV"
+          SDKMANAGER=$(command -v sdkmanager 2>/dev/null || true)
+          if [ -z "$SDKMANAGER" ]; then
+            SDKMANAGER=$(ls "$SDK"/cmdline-tools/*/bin/sdkmanager 2>/dev/null | tail -1 || true)
+          fi
+          if [ -z "$SDKMANAGER" ] || [ ! -x "$SDKMANAGER" ]; then
+            echo "no sdkmanager on PATH or under $SDK/cmdline-tools/*/bin/"
+            exit 1
+          fi
+          yes 2>/dev/null | "$SDKMANAGER" --licenses > /dev/null || true
+          "$SDKMANAGER" --install "$SDK_PLATFORM" "$SDK_BUILD_TOOLS" "platform-tools" "emulator" "$EMULATOR_IMAGE"
+          echo "$SDK/platform-tools" >> "$GITHUB_PATH"
+          echo "$SDK/emulator" >> "$GITHUB_PATH"
+          echo "$(dirname "$SDKMANAGER")" >> "$GITHUB_PATH"
+
+      - name: Build the webDir, generate the project, and build the debug APK
+        working-directory: mobile
+        run: |
+          set -euo pipefail
+          npm ci --no-audit --no-fund
+          npm run add:android > "$ART/cap-add-android.log" 2>&1
+          # ── A-04's one addition to the smoke's build ─────────────────────────
+          # The three committed NE-25a click tracks, into the web assets, where
+          # Capacitor serves them at https://localhost/a04/. This debug APK is
+          # built here and never leaves the runner; the shipped bundle is made by
+          # prepare-webdir.mjs and carries no click track.
+          mkdir -p android/app/src/main/assets/public/a04
+          cp plugins/foray-audio/ios/Tests/ForayAudioPluginTests/Fixtures/ClickTracks/click-cbr.mp3 \
+             plugins/foray-audio/ios/Tests/ForayAudioPluginTests/Fixtures/ClickTracks/click-vbr-xing.mp3 \
+             plugins/foray-audio/ios/Tests/ForayAudioPluginTests/Fixtures/ClickTracks/click-vbr-notoc.mp3 \
+             android/app/src/main/assets/public/a04/
+          # ── end of the addition ──────────────────────────────────────────────
+          echo "sdk.dir=$ANDROID_HOME" > android/local.properties
+          chmod +x android/gradlew
+          cd android
+          if ! ./gradlew assembleDebug --no-daemon --console=plain \
+              > "$ART/gradle-assembleDebug.log" 2>&1; then
+            echo "::group::assembleDebug tail"; tail -300 "$ART/gradle-assembleDebug.log"; echo "::endgroup::"
+            exit 1
+          fi
+          APK=app/build/outputs/apk/debug/app-debug.apk
+          test -f "$APK"
+          cp "$APK" "$ART/app-debug.apk"
+          echo "APK=$PWD/$APK" >> "$GITHUB_ENV"
+
+      - name: The click tracks are in the APK the scenarios install
+        # Checked in the artefact rather than trusted from the `cp`: a Capacitor
+        # that stopped packaging `assets/public/` subdirectories would make every
+        # scenario fail with a 404 inside the page, reported as "no element".
+        run: |
+          set -euo pipefail
+          unzip -l "$APK" | tee "$ART/apk-listing.txt" > /dev/null
+          FOUND=$(grep -cE 'assets/public/a04/click-(cbr|vbr-xing|vbr-notoc)\.mp3$' "$ART/apk-listing.txt" || true)
+          [ "$FOUND" = "3" ] || { echo "the APK carries $FOUND of the 3 click tracks under assets/public/a04/"; exit 1; }
+          echo "the APK carries the 3 click tracks under assets/public/a04/"
+
+      - name: The debug build is still a fair stand-in for the release build
+        working-directory: mobile/android
+        run: |
+          set -euo pipefail
+          if grep -qE '^[[:space:]]*minifyEnabled[[:space:]]+true' app/build.gradle; then
+            echo "the release build type now minifies, so a debug-APK smoke test no longer stands in for it."
+            echo "Either install a release APK in this job, or delete this check and record the gap."
+            exit 1
+          fi
+          grep -qE '^[[:space:]]*minifyEnabled[[:space:]]+false' app/build.gradle \
+            || { echo "no minifyEnabled line in the generated app/build.gradle — Capacitor's template changed; re-read this step's argument before trusting the smoke result"; exit 1; }
+
+      - name: Create the AVD, and prove it exists before launching anything
+        run: |
+          set -euo pipefail
+          export ANDROID_AVD_HOME="$HOME/.android/avd"
+          echo "ANDROID_AVD_HOME=$ANDROID_AVD_HOME" >> "$GITHUB_ENV"
+          mkdir -p "$ANDROID_AVD_HOME"
+          set +e
+          avdmanager create avd -n "$AVD_NAME" -k "$EMULATOR_IMAGE" -d pixel_6 --force \
+            < /dev/null > "$ART/avdmanager.log" 2>&1
+          AVDMANAGER_STATUS=$?
+          set -e
+          cat "$ART/avdmanager.log"
+          if [ "$AVDMANAGER_STATUS" -ne 0 ]; then
+            echo "avdmanager exited $AVDMANAGER_STATUS — no AVD was created"
+            exit 1
+          fi
+          emulator -list-avds > "$ART/emulator-list-avds.txt" 2>&1 || true
+          cat "$ART/emulator-list-avds.txt"
+          if ! grep -qxF "$AVD_NAME" "$ART/emulator-list-avds.txt"; then
+            echo "the emulator does not list an AVD called $AVD_NAME, so launching it would fail with Unknown AVD name."
+            echo "--- avdmanager's own view, including AVDs it considers broken:"
+            avdmanager list avd || true
+            echo "--- $ANDROID_AVD_HOME:"
+            ls -la "$ANDROID_AVD_HOME" || true
+            exit 1
+          fi
+          test -f "$ANDROID_AVD_HOME/$AVD_NAME.ini" \
+            || { echo "no $AVD_NAME.ini in $ANDROID_AVD_HOME — the emulator listed it but its config is not where both tools agree it should be"; exit 1; }
+          echo "AVD $AVD_NAME exists and the emulator can see it"
+
+      - name: Boot it
+        run: |
+          set -euo pipefail
+          adb start-server
+          nohup emulator -avd "$AVD_NAME" \
+            -no-window -no-audio -no-boot-anim -no-snapshot \
+            -gpu swiftshader_indirect -camera-back none -camera-front none \
+            -accel on -memory 4096 -partition-size 4096 \
+            > "$ART/emulator.log" 2>&1 &
+          EMU_PID=$!
+          DEADLINE=$(( $(date +%s) + 900 ))
+          until [ "$(timeout 30 adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = "1" ]; do
+            if ! kill -0 "$EMU_PID" 2>/dev/null; then
+              echo "the emulator process exited before the device finished booting"
+              tail -80 "$ART/emulator.log"
+              exit 1
+            fi
+            if [ "$(date +%s)" -ge "$DEADLINE" ]; then
+              echo "the emulator did not finish booting in 15 minutes"
+              tail -80 "$ART/emulator.log"
+              exit 1
+            fi
+            sleep 5
+          done
+          adb shell settings put global window_animation_scale 0
+          adb shell settings put global transition_animation_scale 0
+          adb shell settings put global animator_duration_scale 0
+          adb shell getprop ro.build.version.sdk | tee "$ART/device-sdk.txt"
+
+      - name: Let Play services finish its first-boot restart
+        # MEASURED ON THIS JOB'S FIRST RUN (36547348476), and the reason this step
+        # exists. About 55 s after boot, `com.google.android.gms.persistent`
+        # restarts itself after taking new flags (it "has died" with no crash and
+        # no kill). ActivityManager then kills every process holding a provider
+        # in it, and the WebView holds its FontsProvider, so the app died 30 s
+        # into (b): "Killing …:ai.jwlabs.foura (adj 200): depends on provider
+        # com.google.android.gms/.fonts.provider.FontsProvider in dying proc
+        # com.google.android.gms.persistent". A-02's broken-app.js run saw the
+        # same death at the same age. It is a fresh emulator's first minute, so
+        # the job waits it out before installing: until the process's pid changes,
+        # or 120 s. Never fails: without a restart the scenarios run as before.
+        # The kill is a real Android behaviour too, a foreground service does not
+        # stop it, and docs/android-emulator-measurements.md §5 records it.
+        run: |
+          set -euo pipefail
+          GMS=com.google.android.gms.persistent
+          FIRST=$(adb shell pidof "$GMS" 2>/dev/null | tr -d '\r' || true)
+          START=$(date +%s)
+          NOW="$FIRST"
+          while [ $(( $(date +%s) - START )) -lt 120 ]; do
+            NOW=$(adb shell pidof "$GMS" 2>/dev/null | tr -d '\r' || true)
+            if [ -n "$FIRST" ] && [ -n "$NOW" ] && [ "$NOW" != "$FIRST" ]; then break; fi
+            sleep 3
+          done
+          WAITED=$(( $(date +%s) - START ))
+          if [ -n "$FIRST" ] && [ -n "$NOW" ] && [ "$NOW" != "$FIRST" ]; then
+            echo "$GMS restarted after ${WAITED}s (pid $FIRST -> $NOW)" | tee "$ART/gms-settle.txt"
+            sleep 5
+          else
+            echo "::warning::$GMS did not restart within ${WAITED}s (pid ${FIRST:-none} -> ${NOW:-none}); the scenarios run anyway" | tee "$ART/gms-settle.txt"
+          fi
+
+      - name: Install the app and start it
+        id: launch
+        run: |
+          set -euo pipefail
+          adb logcat -c
+          adb install -r -g "$APK" 2>&1 | tee "$ART/adb-install.txt" || true
+          grep -q '^Success' "$ART/adb-install.txt" || { echo "the APK did not install"; exit 1; }
+          adb shell am start -W -n "$PKG/.MainActivity" 2>&1 | tee "$ART/am-start.txt" || true
+          grep -q '^Status: ok' "$ART/am-start.txt" || { echo "am start did not report Status: ok"; exit 1; }
+
+      # ── The scenarios. Each is its own step with its own verdict, and each
+      # runs whether or not the one before it passed, so one run prints every
+      # verdict. A scenario's exit code is its step's: 1 for a failed verdict,
+      # 2 for one that could not run. None of them is `|| true`'d.
+
+      - name: (e) The first screen after launch, as a screenshot
+        id: first-launch
+        if: ${{ !cancelled() && steps.launch.outcome == 'success' }}
+        run: node tools/mobile/android-playback.mjs first-launch --art "$ART"
+
+      - name: (a) A bundled clip plays through the real player, in a mediaPlayback service
+        id: play
+        if: ${{ !cancelled() && steps.launch.outcome == 'success' }}
+        run: node tools/mobile/android-playback.mjs play --art "$ART"
+
+      - name: (b) Home, then the screen off, and it is still playing a minute later
+        id: background
+        if: ${{ !cancelled() && steps.launch.outcome == 'success' }}
+        run: node tools/mobile/android-playback.mjs background --art "$ART"
+
+      - name: (c) media_session dispatch and KEYCODE_MEDIA presses reach the page
+        id: transport
+        if: ${{ !cancelled() && steps.launch.outcome == 'success' }}
+        run: node tools/mobile/android-playback.mjs transport --art "$ART"
+
+      - name: (d) The shade shows our title, show and 15/30, and its pause pauses
+        id: notification
+        if: ${{ !cancelled() && steps.launch.outcome == 'success' }}
+        run: node tools/mobile/android-playback.mjs notification --art "$ART"
+
+      - name: Collect the logcat, the dumpsys outputs and the diagnostics Copy
+        # Whenever the device got as far as an install attempt. Before that there
+        # is no device, and `adb logcat` would wait for one until its timeout.
+        if: ${{ !cancelled() && (steps.launch.outcome == 'success' || steps.launch.outcome == 'failure') }}
+        run: node tools/mobile/android-playback.mjs collect --art "$ART"
+
+      - name: What the scenarios established
+        if: always()
+        run: |
+          set -euo pipefail
+          ART="${ART:-$RUNNER_TEMP/android-playback}"
+          mkdir -p "$ART"
+          {
+            echo "## Android playback scenarios (A-04)"
+            echo
+            node tools/mobile/android-playback.mjs summary --art "$ART"
+            echo
+            for f in "$ART"/verdict-*.json; do
+              [ -f "$f" ] || continue
+              echo "<details><summary>$(basename "$f")</summary>"; echo
+              echo '```json'; cat "$f"; echo '```'
+              echo; echo "</details>"
+            done
+            echo
+            echo "**What this proves:** on an API 34 emulator, the JS player lane plays a"
+            echo "Foray in a mediaPlayback foreground service, publishes our title and show to"
+            echo "the system, keeps playing with the app backgrounded and the screen off for a"
+            echo "minute, obeys media-session and media-key presses, and draws a shade control"
+            echo "whose pause pauses the page."
+            echo
+            echo "**What it does not prove:** anything a phone adds. No Doze, standby bucket,"
+            echo "call or process kill (A-05), no OEM battery manager, no Bluetooth or car, and"
+            echo "nothing audible — \`docs/research/mp1-background-audio.md\` §6.4. It also runs"
+            echo "the DEBUG APK with three click tracks added, because DevTools is unreachable on"
+            echo "a release build."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload the playback evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: foray-android-playback
+          path: ${{ runner.temp }}/android-playback
+          if-no-files-found: warn
+          retention-days: 14

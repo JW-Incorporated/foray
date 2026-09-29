@@ -218,6 +218,10 @@ const ACKNOWLEDGED_UNDENIED_GATES = {
   // turn a check red, not change what gets built or signed.
   "tools/mobile/webview-probe.mjs": "post-build diagnostic probe; cannot alter build/signing output",
   "tools/mobile/probe/install-probe.mjs": "post-build diagnostic probe; cannot alter build/signing output",
+  // A-04: the playback scenarios drive the installed DEBUG APK over DevTools and
+  // adb in an advisory job that reads no secret and uploads only its evidence.
+  // A neutered copy can only make that advisory job greener than it should be.
+  "tools/mobile/android-playback.mjs": "advisory emulator scenario runner (A-04); drives a debug APK, holds no secret, cannot alter build/signing output",
   // nightly-refresh.yml / nightly-watch.yml run with `contents: write` (they
   // commit refreshed data), not a founder-merge decision — an accepted T3
   // trade per the file's own tiering above, bounded by main's branch

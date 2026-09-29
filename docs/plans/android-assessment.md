@@ -247,6 +247,12 @@ These are the same as `docs/native-engine-plan.md` §12, adapted:
 - **Acceptance:** The job is green on its PR with every scenario's verdict printed. One mutation (break the
   service start in a throwaway branch) turns (a) red. The job takes ≤ 12 min.
 - **Device check:** none. This is the no-human proxy.
+- **Status (2026-09-29): built, PR #885.** `android-playback.yml` + `tools/mobile/android-playback.mjs`. Green
+  run 36551857323 (8 min 08 s). The mutation run 36551980831 (throwaway PR #886) turned (a) red. The job found
+  two product defects, now expected-fail in the runner: **A04-F1**, where a remote play or previous with the app
+  in the background never plays, and **A04-F2**, where the system media controls show no 15/30. The click tracks
+  ship in the CI-built debug APK, not over `adb reverse`, because the CSP and cleartext rules forbid that route.
+  Evidence: `docs/android-emulator-measurements.md` §5.
 
 #### A-05 · `android-playback`, part 2: seams, focus, calls, Doze, kill — **M**
 - **Depends on:** A-04.

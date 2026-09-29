@@ -127,3 +127,82 @@ The spike's code (a matrix workflow and a DevTools script) lives only on throwaw
 `.github/a03-spike/emulator-audio-spike.mjs`). The PR was closed unmerged and its branch
 deleted, and the PR still holds the commit. It was never merged because A-04 builds the real
 scenario runner by extending `tools/mobile/webview-probe.mjs`.
+
+## 5. A-04: the playback scenarios, part 1
+
+`.github/workflows/android-playback.yml` runs `tools/mobile/android-playback.mjs` on the smoke's
+boot. It plays a three-clip Foray made of the NE-25a click tracks, bundled into the debug APK at
+`a04/`, through `ForayPlayer.playForay`, and then works through scenarios (a)–(e). Everything in
+this section is **CI-executed**. The green run is **36551857323** on PR #885 (head `105e8995`),
+with the same image and WebView as §2. The job took **8 min 08 s**, against the card's 12-minute
+budget.
+
+| Scenario | Verdict | Measured |
+|---|---|---|
+| (e) first launch | pass | The screenshot is 1080×2400. The page reads every `env(safe-area-inset-*)` as `0px`, with `innerHeight` 891 against a `screen.height` of 915 (CSS px). So on API 34 the WebView is laid out inside the system bars, not edge to edge. Enforcement starts at API 35 (A-06, A-11). |
+| (a) play | pass | `currentTime` advanced 5.02 s in 5.02 s. `PlaybackKeepAliveService` showed `isForeground=true types=00000002` (the mediaPlayback bit). Our session was the media button session, `PLAYING`, `description=A-04 click one, 4a CI fixtures`, which matches the payload. `forayPolyfill` was `true`. |
+| (b) Home, then sleep | pass | `mWakefulness=Asleep`. The Foray clock advanced 60.02 s in 60.02 s of wall time, and the pid was unchanged. |
+| (c) transport | pass, with **A04-F1** expected-fail | Every press arrived as a handled `foray:remote` row. With the app on screen, pause then play resumed at once. In the background, see A04-F1. |
+| (d) shade | pass, with **A04-F2** expected-fail | The shade showed our title and show. A tap on its pause button paused the page (a handled `pause` row). The shade had no 15/30 buttons (A04-F2). |
+
+**Mutation (the card's acceptance).** Throwaway PR #886 removed
+`ContextCompat.startForegroundService` from `ForayAudioPlugin.start`. Run **36551980831** turned
+(a) red with two failures: "no PlaybackKeepAliveService in dumpsys activity services" and
+"dumpsys media_session lists no session for ai.jwlabs.foura". The PR was closed unmerged and the
+branch deleted. On the same run, **(b) still passed**: with no foreground service, an emulator
+kept a backgrounded, screen-off WebView playing for 60 s. So (b) is evidence that playback
+survives Home plus sleep on an emulator. It is not evidence that the service is what keeps it
+alive. Doze and the standby buckets (A-05 (g)) are where the service has to matter.
+
+### Two product defects this job found
+
+These are reported by the runner's `KNOWN_FAILURES` as expected-fail. Each one excuses exactly one
+failure sentence and nothing else in its scenario, and the fix for each should be its own card.
+
+- **A04-F1: with the app in the background, a remote play or previous never plays.**
+  - The failing sequence: the app is on the Home screen with the screen on. A pause from
+    `cmd media_session dispatch` or `KEYCODE_MEDIA_PAUSE` works. The play that follows reaches
+    the page (handled `play` row, `transport play from remote` in the diagnostics record), but
+    the element falls to `readyState` 1 and the queue manager sits in `loadingItem`. There is no
+    audio-focus request and no audio.
+  - A `previous` that restarts the clip ends the same way. The clock moves back, then silence.
+  - What still works: a `next`, which loads a different file, plays at once. The same pause then
+    play with the app on screen also resumes at once (the foreground control, gated).
+  - Reproduced on runs 36549143331, 36550714726 and 36551857323.
+  - Impact: on this emulator, a lock screen, a headset or a car cannot resume the JS player once
+    it is paused in the background. That is the Android form of founder report F5.
+  - Not established: whether a current WebView on a phone does the same. This is WebView 113, and
+    Chromium suspends a paused player's pipeline in a hidden page. The device pass after A-42 is
+    where that gets settled.
+- **A04-F2: the system media controls show no ↺15 / 30↻.**
+  - Our Media3 session publishes `custom actions=[]` for a Foray and for a single episode alike
+    (`dumpsys media_session`, every run).
+  - So on API 33+ the shade and lock screen draw play/pause and previous track, and nothing else
+    (screenshot `d-shade-expand-settings.png` and the dump committed at
+    `tools/mobile/fixtures/android-playback/run36551857323-shade-expand-settings-paused.xml`).
+  - The media button preferences set in `PlaybackKeepAliveService` (audit round 2, native-7)
+    never reach the platform session.
+  - A likely cause, not verified: Media3 grants those buttons to its media-notification
+    controller, and a service that is not a `MediaSessionService` has no such controller.
+
+### What the first runs taught the job
+
+- **Play services restarts itself about 55–65 s after a cold boot.**
+  - `com.google.android.gms.persistent` "has died" with no crash, to apply new flags.
+  - ActivityManager then kills every process holding one of its providers. The WebView holds the
+    FontsProvider, so on run 36547348476 the app died 30 s into (b):
+    `Killing …:ai.jwlabs.foura (adj 200): depends on provider com.google.android.gms/.fonts.provider.FontsProvider in dying proc com.google.android.gms.persistent`.
+  - The job now waits for that restart before installing (62–70 s measured). (b) also reports
+    ActivityManager's own kill line if the app dies.
+  - The kill is also a real-phone risk: a foreground service does not protect an app from its
+    provider's process dying, for example on a Play services update. Worth a line in A-05's
+    process-kill work.
+- **`uiautomator dump` cannot read a playing media panel.** It fails with "could not get idle
+  state" every time, because the progress bar animates. (d) therefore reads the panel paused,
+  resumes, and taps the same place, where pause now is.
+- **The card's `adb reverse` is not reachable from this page.**
+  - The CSP allows only `media-src https:`.
+  - The WebView refuses cleartext at targetSdk 36.
+  - `https://localhost` is Capacitor's own origin.
+  - So the click tracks ship inside the CI-built debug APK, the way A-03 did it. No shipped bundle
+    carries them.
