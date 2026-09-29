@@ -1,0 +1,188 @@
+# A-03 SPIKE (docs/plans/android-assessment.md §5.3) — THROWAWAY, never merged.
+# Can the CI emulator play audio at all? One emulator per audio flag; each plays
+# a clip bundled into the debug APK and records currentTime, dumpsys
+# media_session and dumpsys audio. Boot/install steps are android-smoke.yml's.
+name: android-audio-spike
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/android-audio-spike.yml"
+      - ".github/a03-spike/**"
+
+concurrency:
+  group: android-audio-spike-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  spike:
+    name: spike (${{ matrix.label }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: no-audio
+            flags: "-no-audio"
+          - label: audio-none
+            flags: "-audio none"
+          - label: default
+            flags: ""
+    env:
+      SDK_PLATFORM: platforms;android-36
+      SDK_BUILD_TOOLS: build-tools;36.0.0
+      EMULATOR_IMAGE: system-images;android-34;google_apis;x86_64
+      AVD_NAME: foray-ci
+      PKG: ai.jwlabs.foura
+      AUDIO_FLAGS: ${{ matrix.flags }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          filter: blob:none
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - name: Enable KVM
+        run: |
+          set -euo pipefail
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' \
+            | sudo tee /etc/udev/rules.d/99-kvm4all.rules > /dev/null
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+          sudo udevadm settle --timeout=30 || true
+          for i in 1 2 3 4 5; do
+            if [ -w /dev/kvm ]; then break; fi
+            sudo chmod 0666 /dev/kvm 2>/dev/null || true
+            sleep 1
+          done
+          test -w /dev/kvm
+      - name: SDK, emulator, image
+        run: |
+          set -euo pipefail
+          echo "ART=$RUNNER_TEMP/audio-spike" >> "$GITHUB_ENV"
+          mkdir -p "$RUNNER_TEMP/audio-spike"
+          SDK="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+          echo "ANDROID_HOME=$SDK" >> "$GITHUB_ENV"
+          SDKMANAGER=$(command -v sdkmanager 2>/dev/null || true)
+          if [ -z "$SDKMANAGER" ]; then
+            SDKMANAGER=$(ls "$SDK"/cmdline-tools/*/bin/sdkmanager 2>/dev/null | tail -1 || true)
+          fi
+          yes 2>/dev/null | "$SDKMANAGER" --licenses > /dev/null || true
+          "$SDKMANAGER" --install "$SDK_PLATFORM" "$SDK_BUILD_TOOLS" "platform-tools" "emulator" "$EMULATOR_IMAGE"
+          echo "$SDK/platform-tools" >> "$GITHUB_PATH"
+          echo "$SDK/emulator" >> "$GITHUB_PATH"
+          echo "$(dirname "$SDKMANAGER")" >> "$GITHUB_PATH"
+      - name: Build the debug APK with the click track bundled at /a03/
+        working-directory: mobile
+        run: |
+          set -euo pipefail
+          npm ci --no-audit --no-fund
+          npm run add:android > "$ART/cap-add-android.log" 2>&1
+          # The spike's one addition to the app: a committed 90 s CBR MP3 click
+          # track (NE-25a) served by Capacitor at https://localhost/a03/.
+          mkdir -p android/app/src/main/assets/public/a03
+          cp plugins/foray-audio/ios/Tests/ForayAudioPluginTests/Fixtures/ClickTracks/click-cbr.mp3 \
+             android/app/src/main/assets/public/a03/click-cbr.mp3
+          echo "sdk.dir=$ANDROID_HOME" > android/local.properties
+          chmod +x android/gradlew
+          cd android
+          if ! ./gradlew assembleDebug --no-daemon --console=plain > "$ART/gradle-assembleDebug.log" 2>&1; then
+            tail -200 "$ART/gradle-assembleDebug.log"; exit 1
+          fi
+          APK=app/build/outputs/apk/debug/app-debug.apk
+          unzip -l "$APK" | grep 'a03/click-cbr.mp3'
+          echo "APK=$PWD/$APK" >> "$GITHUB_ENV"
+      - name: Create the AVD
+        run: |
+          set -euo pipefail
+          export ANDROID_AVD_HOME="$HOME/.android/avd"
+          echo "ANDROID_AVD_HOME=$ANDROID_AVD_HOME" >> "$GITHUB_ENV"
+          mkdir -p "$ANDROID_AVD_HOME"
+          avdmanager create avd -n "$AVD_NAME" -k "$EMULATOR_IMAGE" -d pixel_6 --force < /dev/null > "$ART/avdmanager.log" 2>&1
+          emulator -list-avds | grep -qxF "$AVD_NAME"
+      - name: Boot it (${{ matrix.label }})
+        run: |
+          set -euo pipefail
+          adb start-server
+          emulator -version | head -1 | tee "$ART/emulator-version.txt" || true
+          # $AUDIO_FLAGS is deliberately unquoted: "-audio none" is two words and
+          # the default leg passes nothing.
+          nohup emulator -avd "$AVD_NAME" \
+            -no-window $AUDIO_FLAGS -no-boot-anim -no-snapshot \
+            -gpu swiftshader_indirect -camera-back none -camera-front none \
+            -accel on -memory 4096 -partition-size 4096 -verbose \
+            > "$ART/emulator.log" 2>&1 &
+          EMU_PID=$!
+          DEADLINE=$(( $(date +%s) + 900 ))
+          until [ "$(timeout 30 adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = "1" ]; do
+            if ! kill -0 "$EMU_PID" 2>/dev/null; then echo "emulator exited"; tail -80 "$ART/emulator.log"; exit 1; fi
+            if [ "$(date +%s)" -ge "$DEADLINE" ]; then echo "no boot in 15 min"; tail -80 "$ART/emulator.log"; exit 1; fi
+            sleep 5
+          done
+          adb shell settings put global window_animation_scale 0
+          adb shell settings put global transition_animation_scale 0
+          adb shell settings put global animator_duration_scale 0
+          echo "flags: '${AUDIO_FLAGS}'" | tee "$ART/flags.txt"
+          grep -iE 'audio|pulse|alsa|oss|sdl|wav' "$ART/emulator.log" | head -60 | tee "$ART/emulator-audio-lines.txt" || true
+          adb shell getprop | grep -iE 'audio|qemu' | tee "$ART/getprop-audio.txt" || true
+      - name: Install and launch
+        run: |
+          set -euo pipefail
+          adb logcat -c
+          adb install -r -g "$APK" 2>&1 | tee "$ART/adb-install.txt" || true
+          grep -q '^Success' "$ART/adb-install.txt"
+          adb shell am start -W -n "$PKG/.MainActivity" 2>&1 | tee "$ART/am-start.txt" || true
+          grep -q '^Status: ok' "$ART/am-start.txt"
+      - name: Play the clip and read the system
+        run: |
+          set -euo pipefail
+          PID=$(adb shell pidof "$PKG" 2>/dev/null | tr -d '\r' | awk '{print $1}' || true)
+          [ -n "$PID" ]
+          SOCK=$(adb shell cat /proc/net/unix 2>/dev/null | tr -d '\r' \
+                 | grep -o 'webview_devtools_remote_[0-9]*' | sort -u | head -1 || true)
+          SOCK="${SOCK:-webview_devtools_remote_$PID}"
+          adb forward tcp:9222 "localabstract:$SOCK"
+          # Idle baseline, before anything plays.
+          adb shell dumpsys media_session > "$ART/idle-dumpsys-media_session.txt" 2>&1 || true
+          adb shell dumpsys audio > "$ART/idle-dumpsys-audio.txt" 2>&1 || true
+          node .github/a03-spike/emulator-audio-spike.mjs \
+            --endpoint http://127.0.0.1:9222 --flag "$AUDIO_FLAGS" --pkg "$PKG" --out-dir "$ART"
+          adb shell dumpsys activity services "$PKG" > "$ART/dumpsys-activity-services.txt" 2>&1 || true
+          adb logcat -d > "$ART/logcat.txt" || true
+          grep -iE 'AudioTrack|AudioFlinger|audio_hw|AudioSink|MediaPlayer|chromium.*audio|ForayAudio' "$ART/logcat.txt" | tail -150 > "$ART/logcat-audio.txt" || true
+      - name: Summary
+        if: always()
+        run: |
+          ART="${ART:-$RUNNER_TEMP/audio-spike}"
+          {
+            echo "## A-03 audio spike: flags '${AUDIO_FLAGS:-(default backend)}'"
+            echo
+            if [ -f "$ART/audio-spike.json" ]; then
+              echo '```json'
+              node .github/a03-spike/summarize.mjs "$ART/audio-spike.json"
+              echo '```'
+            fi
+            echo '<details><summary>emulator audio lines</summary>'
+            echo
+            echo '```'
+            cat "$ART/emulator-audio-lines.txt" 2>/dev/null || true
+            echo '```'
+            echo '</details>'
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: a03-audio-spike-${{ matrix.label }}
+          path: ${{ runner.temp }}/audio-spike
+          if-no-files-found: warn
+          retention-days: 30
