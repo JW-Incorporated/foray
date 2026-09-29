@@ -139,7 +139,7 @@ budget.
 
 | Scenario | Verdict | Measured |
 |---|---|---|
-| (e) first launch | pass | The screenshot is 1080×2400. The page reads every `env(safe-area-inset-*)` as `0px`, with `innerHeight` 891 against a `screen.height` of 915 (CSS px). So on API 34 the WebView is laid out inside the system bars, not edge to edge. Enforcement starts at API 35 (A-06, A-11). |
+| (e) first launch | pass | The screenshot is 1080×2400. The page reads every `env(safe-area-inset-*)` as `0px`, with `innerHeight` 891 against a `screen.height` of 915 (CSS px). Read at the time as "laid out inside the system bars". **Corrected by A-06 (§6):** the screenshot shows the header drawn under the status bar. |
 | (a) play | pass | `currentTime` advanced 5.02 s in 5.02 s. `PlaybackKeepAliveService` showed `isForeground=true types=00000002` (the mediaPlayback bit). Our session was the media button session, `PLAYING`, `description=A-04 click one, 4a CI fixtures`, which matches the payload. `forayPolyfill` was `true`. |
 | (b) Home, then sleep | pass | `mWakefulness=Asleep`. The Foray clock advanced 60.02 s in 60.02 s of wall time, and the pid was unchanged. |
 | (c) transport | pass, with **A04-F1** expected-fail | Every press arrived as a handled `foray:remote` row. With the app on screen, pause then play resumed at once. In the background, see A04-F1. |
@@ -206,3 +206,74 @@ failure sentence and nothing else in its scenario, and the fix for each should b
   - `https://localhost` is Capacitor's own origin.
   - So the click tracks ship inside the CI-built debug APK, the way A-03 did it. No shipped bundle
     carries them.
+
+## 6. A-06: the API 36 leg, and how it differs from API 34
+
+`android-playback.yml` is now a two-leg matrix on the same boot, the same debug APK and the same runner
+class. **API 34** is the fast leg: the smoke's image, with a 30-minute ceiling. **API 36** is
+`system-images;android-36;google_apis;x86_64`, the platform the app targets, with a 45-minute ceiling.
+Each leg checks that its device reports its own API level before installing, records its WebView
+version, and uploads its own artifact (`foray-android-playback-api34` / `-api36`). Everything in this
+section is **CI-executed**. The run is **36559231419** on PR #887 (head `c4de3fb3`), and **both legs
+were green on that one run**: API 34 job 109375789832, API 36 job 109375789606.
+
+MP1 §6.2's worry did not hold on a KVM runner: the cold API 36 image booted in 57 s.
+
+### The legs side by side
+
+| | API 34 | API 36 |
+|---|---|---|
+| Android release / WebView | 14 / 113.0.5672.136 | 16 / 133.0.6943.137 |
+| Job wall time | 8 min 14 s | 9 min 34 s |
+| Boot (`sys.boot_completed`) | 41 s | 57 s |
+| Play services first-boot restart wait | restarted after 66 s (71 s step) | **did not restart** within the 120 s bound (warning, not a failure) |
+| (e) `env(safe-area-inset-*)` | all `0px` | all `0px` |
+| (e) `innerHeight` / `screen.height` (CSS px) | 891 / 915 | **842** / 915 |
+| (e) the screenshot | **The page's header is drawn under the status bar.** The clock and the signal icons sit on top of the ☰ button and the refresh button. | **No overlap.** The page sits between an opaque light status bar and an opaque light navigation bar. |
+| (a) `currentTime` advanced | 5.025 s in 5.025 s | 5.006 s in 5.006 s |
+| (a) foreground service | `isForeground=true`, `types=0x2` | same |
+| (a) media button session | `ai.jwlabs.foura/androidx.media3.session.id.foray` | same, with a `/6` suffix (the parser takes either) |
+| (a) our session | `PLAYING`, `custom actions=[]` | same |
+| (b) screen off, Foray clock | `Asleep`, 60.03 s in 60.03 s, same pid | `Asleep`, 60.02 s in 60.02 s, same pid |
+| (c) foreground control (pause, play) | pass | pass |
+| (c) background presses | pause and next pass. **A04-F1** on play and previous (element at `readyState` 1, queue `loading`) | **identical**: pause and next pass, A04-F1 on the same four presses |
+| (d) shade | title and show present, **A04-F2** (no 15/30). A playing panel cannot be dumped ("could not get idle state"), so the paused fallback ran. | identical |
+| Audio focus | 11 `requestAudioFocus()` lines from Chromium's `AudioFocusDelegate`, none refused. Our package is on top of the stack at the end with `GAIN`. | same: 11 requests, none refused. The app targets 36, so this is the Android 15+ rule in force. |
+
+### What the API 36 leg settles
+
+- **The Android 15+ audio-focus rule does not refuse us here.** On API 36 the WebView's focus
+  requests were all granted. That includes the ones made with the app hidden after Home in (c): the
+  `next` presses at 11:09:32 and 11:10:02 each abandoned and re-requested focus, and the new clip
+  played. No refusal was logged. The `mediaPlayback` service is up whenever the page plays, which is the
+  exemption the rule allows. This is on an emulator, with no competing app. Focus *loss* (a call,
+  another player) is A-05 (h)/(i).
+- **A04-F1 is not an old-WebView artefact.** A-04 established it only on WebView 113. It reproduces
+  exactly on WebView 133 / Android 16, so its fix card should not wait for a phone to confirm it.
+  It is not the focus rule either. The failing background `play` (11:09:20.8 on API 36) produced no
+  `requestAudioFocus()` at all, so nothing was refused. The element never got as far as asking.
+- **A04-F2 is the same on both.** The session publishes `custom actions=[]` on both platforms.
+
+### Edge to edge: a correction to §5, and what triggers A-11
+
+§5's (e) row read `innerHeight` 891 against 915 as "laid out inside the system bars, not edge to
+edge" on API 34. **The screenshots say otherwise.** On API 34 the WebView is drawn *under the status
+bar*, and the missing 24 CSS px is the navigation bar at the bottom. The status bar's clock and
+icons are drawn over the page's header: the ☰ and refresh buttons. The page cannot pad for this,
+because `env(safe-area-inset-top)` reads `0px`. The same overlap is in A-04's own run: `first-launch.png`
+in run 36551857323's artifact.
+
+On API 36 the WebView is inset from both bars (842 = 915 − 49 status − 24 navigation). The insets
+correctly read `0px` there, because nothing overlaps. The bars are opaque and light above and below
+a dark app. That is a cosmetic mismatch, not an overlap.
+
+So **A-11 is triggered, by the API 34 screenshot, not by API 36's.** A-11's acceptance ("API 36
+screenshot with no overlap") already holds. The fix it needs is for Android 14 and below, where
+the status bar is transparent over the WebView. A-11 should add "API 34 screenshot with no overlap"
+to its acceptance, and consider the light bars on 36 at the same time. Both `first-launch.png` files
+are in run 36559231419's artifacts.
+
+### What neither leg proves
+
+The same as §5: nothing audible, no Doze or standby bucket, no call, no OEM battery manager, and
+no current phone's WebView (the API 36 image ships 133). The device pass after A-42 settles those.
