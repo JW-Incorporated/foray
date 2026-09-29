@@ -1,3 +1,4 @@
+throw new Error("A-02 throwaway: deliberately broken app.js; #view must stay empty");
 /* Foray web client v4 — app shell.
    Views: home (rails: Jump back in, Forays / Playlists / Suggested),
    playlists list, playlist detail, shows, Forays, Library. Hash routing.
