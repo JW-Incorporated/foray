@@ -287,7 +287,7 @@ These are the same as `docs/native-engine-plan.md` §12, adapted:
       call, and it resumes after a transient loss and after the call. A-12 is **not** triggered.
     - **(j)** `am kill` cannot end a paused Foray's process. After a SIGKILL, a media play reaches nobody.
   - **Gated and green:** (g) Doze, (k) the airplane-mode fallback, and (l) Back on Home.
-  - **Details:** `docs/android-emulator-measurements.md` §6.
+  - **Details:** `docs/android-emulator-measurements.md` §7.
 
 #### A-06 · API 36 leg for the playback job — **S**
 - **Depends on:** A-04.
@@ -295,6 +295,15 @@ These are the same as `docs/native-engine-plan.md` §12, adapted:
   edge-to-edge rules run at least on an emulator. It is allowed to be slower. Keep API 34 as the fast leg.
 - **Acceptance:** Both legs are green on one run. The differences between them are noted in the measurements doc.
 - **Device check:** none.
+- **Status (2026-09-29): built, PR #887.** `android-playback.yml` is a two-leg matrix: API 34 (the fast leg,
+  8 min 14 s) and API 36 `google_apis` x86_64 (9 min 34 s, a 57 s cold boot). Both legs were green on run
+  36559231419. Findings:
+  - On API 36 (Android 16, WebView 133), every audio-focus request was granted, including those made in the
+    background.
+  - A04-F1 and A04-F2 reproduce identically on API 36. A04-F1's background play never requests focus.
+  - **Edge to edge:** API 36 has no overlap. **API 34 does:** the status bar is drawn over the page's header,
+    with the insets at `0px`. That corrects A-04's reading, and it is what triggers A-11.
+  - Evidence: `docs/android-emulator-measurements.md` §6.
 
 #### A-07 · Back on Home minimizes instead of exiting while something is loaded — **S**
 - **Depends on:** none (JS only).

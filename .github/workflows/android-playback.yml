@@ -32,8 +32,8 @@
 #       our show and both seek buttons are on the shade's media controls, and a
 #       tap on pause (`input tap`) pauses the page.
 #
-# A-05 (part 2) adds seven more, one step each, recorded first and gated only
-# where the card says so:
+# A-05 (part 2) adds seven more, one step each and on both A-06 legs, recorded
+# first and gated only where the card says so:
 #
 #   (f) hidden seams, RECORDED: a Foray of clip / rendered-narration .m4a /
 #       clip / ... played to its end with the screen off; the seam gaps are the
@@ -84,8 +84,8 @@
 # WHY COPIED AND NOT SHARED: a composite action under `.github/actions/` would
 # have moved `android-smoke.yml`'s steps a second time in two days, and every
 # pin in `android-workflow.test.mjs` reads them from that file. A byte-for-byte
-# test gets the same guarantee without that churn. A-06 (the API 36 leg) is the
-# natural moment to extract the action if a third caller appears.
+# test gets the same guarantee without that churn. A-06 added its API 36 leg as
+# a matrix entry of this job, not as a third caller, so the copy stays two.
 #
 # WHY THE CLICK TRACKS ARE IN THE APK, NOT BEHIND `adb reverse` (the card's
 # wording): the page's CSP admits `media-src https:` only; the WebView refuses
@@ -116,7 +116,31 @@
 # Its Doze is forced by a shell command, its call is the emulator's modem, and
 # its "other app" asks for focus without playing. Nothing here is audible; A-03 showed
 # the guest mixes the samples, and a person listening is the device pass,
-# which D-A3 holds until after A-42. API 34 only; A-06 adds a current image.
+# which D-A3 holds until after A-42.
+#
+# ── TWO LEGS: API 34 (FAST) AND API 36 (CURRENT) ─────────────────────────────
+#
+# A-06. The app targets 36, and the rules that land BECAUSE of that are gated
+# on the platform the app runs ON: Android 15's edge-to-edge enforcement and
+# its audio-focus rule (an app targeting 35+ cannot take focus unless it is the
+# top app or runs a foreground service). API 34 never runs either. So the job
+# is a matrix of two legs on the same boot, the same APK and the same runner:
+#
+#   API 34 is the fast leg, the image `android-smoke.yml` boots (the workflow
+#          test pins the two equal), with the 30-minute ceiling A-04 set.
+#   API 36 is the current leg. It is allowed to be slower (MP1 §6.2 measured a
+#          cold API-36 image never booting under WHPX; on a KVM runner it
+#          booted in 57 s and the job took 9 min 34 s, against API 34's
+#          8 min 14 s, run 36559231419), so its ceiling is 45 minutes.
+#
+# A-05's (f)-(l) add about 10 minutes of scenarios to each leg, five of them
+# (g)'s Doze. Both ceilings still hold: the legs' wall times with A-05 are in
+# `docs/android-emulator-measurements.md` §7.
+#
+# `fail-fast: false`, so a red leg never cancels the other's verdicts. Each leg
+# checks that the device it booted really is its API level before installing
+# anything, and uploads its own artifact. The differences between the legs are
+# recorded in `docs/android-emulator-measurements.md` §6.
 
 name: android-playback
 
@@ -142,17 +166,34 @@ permissions:
 
 jobs:
   android-playback:
+    name: android-playback (API ${{ matrix.api }})
     runs-on: ubuntu-latest
-    # A-04's budget was 12 minutes. A-05 adds about 12 more, five of them the
-    # card's own five minutes of Doze. This is the ceiling for a hung boot or a
-    # hung scenario, which the boot step's own 15-minute deadline would race.
-    timeout-minutes: 45
+    strategy:
+      # Both legs always print every verdict: one red leg cancels nothing.
+      fail-fast: false
+      matrix:
+        include:
+          # The fast leg: android-smoke.yml's image, as it argues at length.
+          - api: 34
+            image: system-images;android-34;google_apis;x86_64
+            timeout: 30
+          # A-06: the platform the app targets, so the Android 15+ focus and
+          # edge-to-edge rules run at least on an emulator. Allowed to be slower.
+          - api: 36
+            image: system-images;android-36;google_apis;x86_64
+            timeout: 45
+    # The ceiling for a hung boot or a hung scenario, which the boot step's own
+    # 15-minute deadline would otherwise race. A-04's budget was 12 minutes; A-05
+    # took the one-leg job to 19 min 54 s on API 34 (run 36573733303), five of
+    # them the card's own Doze. API 36's extra time is all before the scenarios
+    # (a slower SDK install, boot and Play-services wait), so neither ceiling
+    # moved: the measured legs are in docs/android-emulator-measurements.md §7.
+    timeout-minutes: ${{ matrix.timeout }}
     env:
       SDK_PLATFORM: platforms;android-36
       SDK_BUILD_TOOLS: build-tools;36.0.0
-      # API 34, as android-smoke.yml argues at length (MP1 §6.2's measured cold
-      # API-36 boot). A-06 adds a current image as a second leg.
-      EMULATOR_IMAGE: system-images;android-34;google_apis;x86_64
+      EMULATOR_IMAGE: ${{ matrix.image }}
+      API_LEVEL: ${{ matrix.api }}
       AVD_NAME: foray-ci
       PKG: ai.jwlabs.foura
 
@@ -390,6 +431,20 @@ jobs:
           adb shell settings put global animator_duration_scale 0
           adb shell getprop ro.build.version.sdk | tee "$ART/device-sdk.txt"
 
+      - name: The device is the leg's API level, and its WebView is recorded
+        # A-06. A matrix leg that silently booted the other image would print a
+        # second copy of the first leg's verdicts under the wrong name. The
+        # WebView version is the other half of what differs between the legs
+        # (API 34's image ships WebView 113), so it is written down beside them.
+        run: |
+          set -euo pipefail
+          GOT=$(tr -d '\r[:space:]' < "$ART/device-sdk.txt")
+          [ "$GOT" = "$API_LEVEL" ] || { echo "this leg asked for API $API_LEVEL and booted a device reporting ro.build.version.sdk=$GOT"; exit 1; }
+          adb shell getprop ro.build.version.release | tr -d '\r' | tee "$ART/device-release.txt"
+          adb shell dumpsys package com.google.android.webview 2>/dev/null | tr -d '\r' \
+            | grep -m 3 -E '^[[:space:]]+versionName=' | tee "$ART/webview-version.txt" || true
+          echo "API $GOT, as this leg asked"
+
       - name: Let Play services finish its first-boot restart
         # MEASURED ON THIS JOB'S FIRST RUN (36547348476), and the reason this step
         # exists. About 55 s after boot, `com.google.android.gms.persistent`
@@ -511,7 +566,7 @@ jobs:
           ART="${ART:-$RUNNER_TEMP/android-playback}"
           mkdir -p "$ART"
           {
-            echo "## Android playback scenarios (A-04, A-05)"
+            echo "## Android playback scenarios (A-04, A-05), API ${API_LEVEL}"
             echo
             node tools/mobile/android-playback.mjs summary --art "$ART"
             echo
@@ -522,7 +577,7 @@ jobs:
               echo; echo "</details>"
             done
             echo
-            echo "**What this proves:** on an API 34 emulator, the JS player lane plays a"
+            echo "**What this proves:** on an API ${API_LEVEL} emulator, the JS player lane plays a"
             echo "Foray in a mediaPlayback foreground service, publishes our title and show to"
             echo "the system, keeps playing with the app backgrounded and the screen off for a"
             echo "minute, obeys media-session and media-key presses, and draws a shade control"
@@ -542,7 +597,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: foray-android-playback
+          name: foray-android-playback-api${{ matrix.api }}
           path: ${{ runner.temp }}/android-playback
           if-no-files-found: warn
           retention-days: 14
