@@ -10,6 +10,7 @@ import ai.jwlabs.foura.engine.DeckReading;
 import ai.jwlabs.foura.engine.EngineCommand;
 import ai.jwlabs.foura.engine.JSWriter;
 import ai.jwlabs.foura.engine.JsonNode;
+import android.content.Context;
 import android.net.Uri;
 import android.os.Looper;
 import android.util.Log;
@@ -25,6 +26,8 @@ import androidx.media3.common.Timeline;
 import androidx.media3.common.util.Clock;
 import androidx.media3.common.util.HandlerWrapper;
 import androidx.media3.common.util.UnstableApi;
+import androidx.media3.common.util.WakeLockManager;
+import androidx.media3.common.util.WifiLockManager;
 import androidx.media3.datasource.DataSource;
 import androidx.media3.exoplayer.ExoPlayer;
 import androidx.media3.exoplayer.PlayerMessage;
@@ -135,6 +138,20 @@ import java.util.function.Consumer;
  * reason this module's manifest declares WAKE_LOCK), {@code SeekParameters.EXACT}, no
  * repeat. Audio attributes, focus and becoming-noisy are the session's (A-26), and releasing
  * the player is its owner's: {@link #invalidate()} stops observing it and nothing more.
+ *
+ * <h2>THE GATE HOLDS ITS OWN WAKE LOCK</h2>
+ *
+ * <p>Media3's wake mode holds the CPU and Wi-Fi locks only while play-when-ready is on
+ * ({@code ExoPlayerImpl.updateWakeAndWifiLock}), and the gate turns play-when-ready OFF for the
+ * whole load. So with the screen off, every seam between clips (a load after the last one
+ * ended, in the car) would fetch and prepare with no lock at all: the CPU may suspend
+ * mid-load, and the P-13 deadline, a handler timer on uptime, would not run while it sleeps.
+ * The deck therefore holds its own CPU and Wi-Fi locks (Media3's {@link WakeLockManager} and
+ * {@link WifiLockManager}, the same managers the wake mode uses, their binder calls on the
+ * player's playback looper, not this one) from the attach or reuse until the gate ends: ready,
+ * failed, the deadline, an unload or {@link #invalidate()}. The deadline bounds how long that
+ * is. The locks are released AFTER {@code ready} is delivered, so a host that plays inside
+ * that callback has Media3's own lock posted before this one is let go.
  */
 @OptIn(markerClass = UnstableApi.class)
 public final class ExoDeck implements DeckDriving {
@@ -165,6 +182,27 @@ public final class ExoDeck implements DeckDriving {
     public static final double LAYER_SLACK_SEC = 0.001;
 
     private static final int PRIMITIVE_CAP = 256;
+
+    /** Holds the CPU (and the Wi-Fi radio) awake while a load gates; see THE GATE HOLDS ITS OWN WAKE LOCK. */
+    public interface GateAwake {
+        void setStayAwake(boolean stayAwake);
+    }
+
+    /**
+     * The production {@link GateAwake}: Media3's wake and Wi-Fi lock managers, as
+     * {@code WAKE_MODE_NETWORK} builds them, on the player's playback looper (their binder calls
+     * stay off the engine's looper) and the player's clock. Needs WAKE_LOCK (declared).
+     */
+    public static GateAwake systemGateAwake(Context context, ExoPlayer player) {
+        WakeLockManager wake = new WakeLockManager(context, player.getPlaybackLooper(), player.getClock());
+        WifiLockManager wifi = new WifiLockManager(context, player.getPlaybackLooper(), player.getClock());
+        wake.setEnabled(true);
+        wifi.setEnabled(true);
+        return stayAwake -> {
+            wake.setStayAwake(stayAwake);
+            wifi.setStayAwake(stayAwake);
+        };
+    }
 
     /** Makes the source for a load: the URL the core handed over and its timing option. */
     public interface MediaSourceMaker {
@@ -206,6 +244,13 @@ public final class ExoDeck implements DeckDriving {
         public Consumer<EngineCommand.DiagEntry> diag = entry -> {};
         /** Required: see {@link #progressive}. */
         public MediaSourceMaker mediaSources;
+        /**
+         * Required unless {@link #gateAwake} is set: the context the gate's wake and Wi-Fi locks
+         * are built from ({@link #systemGateAwake}).
+         */
+        public Context context;
+        /** Default (null): {@link #systemGateAwake} over {@link #context}. A test injects a recorder. */
+        public GateAwake gateAwake;
         /** Which out-point layers run. Both Media3 has; a test arms one alone to prove it stops never-early. */
         public Set<OutPointLayer> outPointLayers = EnumSet.of(OutPointLayer.BOUNDARY, OutPointLayer.WATCHDOG);
         /** Same source is a seek. On in production. */
@@ -291,12 +336,20 @@ public final class ExoDeck implements DeckDriving {
     private long lastLiveMs;
     private PendingSeek pendingSeek;
 
+    private final GateAwake gateAwake;
+    /** Whether {@link #gateAwake} was last told to hold. */
+    private boolean gateHeld;
+
     private DeckPolicy.OutPointWatch watch = new DeckPolicy.OutPointWatch();
     private PlayerMessage boundaryMessage;
     private Timer watchdog;
 
     public ExoDeck(@NonNull ExoPlayer player, @NonNull Config config) {
         if (config.mediaSources == null) throw new IllegalArgumentException("ExoDeck needs Config.mediaSources");
+        if (config.gateAwake == null && config.context == null) {
+            throw new IllegalArgumentException("ExoDeck needs Config.context (the gate's wake lock) or Config.gateAwake");
+        }
+        this.gateAwake = config.gateAwake != null ? config.gateAwake : systemGateAwake(config.context, player);
         this.player = player;
         this.config = config;
         this.clock = player.getClock();
@@ -327,6 +380,7 @@ public final class ExoDeck implements DeckDriving {
             case DeckCommand.SetOutPoint c -> setOutPoint(c.sec());
             case DeckCommand.Unload c -> unload();
         }
+        syncGateAwake();
     }
 
     /**
@@ -357,6 +411,7 @@ public final class ExoDeck implements DeckDriving {
         invalidated = true;
         listener = null;
         player.removeListener(playerListener);
+        syncGateAwake();
     }
 
     /** Every Media3 call that can move the audible state, in order (bounded). The tests assert on it. */
@@ -501,6 +556,8 @@ public final class ExoDeck implements DeckDriving {
                 m("marks", new JsonNode.Obj(gateMarks)),
                 m("bufferedAheadSec", sec(bufferedAheadSec())));
         emit(new DeckEvent.Ready(token, landed, true, elapsed));
+        // AFTER the event: a play the host sends inside it posts Media3's own lock first.
+        syncGateAwake();
     }
 
     private void reportDuration() {
@@ -543,6 +600,7 @@ public final class ExoDeck implements DeckDriving {
         record("detach (deadline)");
         clearPlayer();
         emit(new DeckEvent.DeadlineExceeded(stuck, afterMs));
+        syncGateAwake();
     }
 
     // ---------------------------------------------------------------- transport
@@ -860,6 +918,7 @@ public final class ExoDeck implements DeckDriving {
                 m("errCode", error == null ? JsonNode.NULL : JsonNode.num(error.errorCode)),
                 m("errName", error == null ? JsonNode.NULL : tokenNode(error.getErrorCodeName())));
         emit(new DeckEvent.Failed(token, message));
+        syncGateAwake();
     }
 
     // ---------------------------------------------------------------- the out-point
@@ -982,6 +1041,19 @@ public final class ExoDeck implements DeckDriving {
     }
 
     // ---------------------------------------------------------------- helpers
+
+    /** The gate's locks are held exactly while a load gates (stage LOADING) on a live deck. */
+    private void syncGateAwake() {
+        boolean want = stage == Stage.LOADING && !invalidated;
+        if (want == gateHeld) return;
+        gateHeld = want;
+        gateAwake.setStayAwake(want);
+    }
+
+    /** Whether the deck holds the gate's wake lock now (tests and the diagnostics). */
+    public boolean holdsGateWakeLock() {
+        return gateHeld;
+    }
 
     private void checkThread() {
         if (Looper.myLooper() != player.getApplicationLooper()) {

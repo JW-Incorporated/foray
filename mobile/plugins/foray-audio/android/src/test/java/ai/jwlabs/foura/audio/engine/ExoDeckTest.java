@@ -11,6 +11,7 @@ import ai.jwlabs.foura.engine.DeckEvent;
 import ai.jwlabs.foura.engine.DeckReading;
 import ai.jwlabs.foura.engine.EngineCommand;
 import androidx.media3.common.Player;
+import java.util.ArrayList;
 import java.util.List;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -184,6 +185,60 @@ public class ExoDeckTest {
             assertNotNull(refused);
             assertEquals("failed", refused.reason());
             assertEquals(DeckReading.idle(), h.deck.reading());
+        } finally {
+            gate.open();
+        }
+    }
+
+    @Test
+    public void theGateHoldsItsOwnWakeLockFromAttachUntilTheGateEnds() throws Exception {
+        // Media3's wake mode holds its locks only while play-when-ready is on, and the gate turns
+        // it off for the whole load: without the deck's own lock a screen-off seam loads with the
+        // CPU free to sleep, and the deadline (an uptime timer) cannot fire.
+        List<Boolean> awake = new ArrayList<>();
+        List<Boolean> heldAtReady = new ArrayList<>();
+        GatedDataSource.Gate gate = new GatedDataSource.Gate(0);
+        try (DeckHarness h = new DeckHarness(GatedDataSource.factory(gate), c -> {
+            c.gateAwake = awake::add;
+            c.loadDeadlineSec = 3;
+        })) {
+            h.deck.setListener(event -> {
+                h.events.add(event);
+                h.positionsAtEvent.add(h.player.getCurrentPosition() / 1000.0);
+                if (event instanceof DeckEvent.Ready) heldAtReady.add(h.deck.holdsGateWakeLock());
+            });
+            h.deck.send(load(1, CBR, 12.0));
+            assertFalse("the gate runs with play-when-ready off", h.player.getPlayWhenReady());
+            assertEquals("the attach takes the lock", List.of(true), awake);
+            h.await(DeckEvent.DeadlineExceeded.class);
+            assertEquals("the deadline lets it go", List.of(true, false), awake);
+
+            gate.open();
+            int from = h.events.size();
+            h.deck.send(load(2, CBR, 5.0));
+            assertEquals(List.of(true, false, true), awake);
+            h.await(DeckEvent.Ready.class, from);
+            assertEquals("still held while ready is delivered (a play inside it posts Media3's lock first)",
+                    List.of(true), heldAtReady);
+            assertEquals("ready lets it go", List.of(true, false, true, false), awake);
+            h.deck.send(DeckCommand.PLAY);
+            h.runUntil(() -> h.player.isPlaying());
+            assertFalse("playing is the wake mode's, not the gate's", h.deck.holdsGateWakeLock());
+
+            // A same-source reuse gates too; an unload mid-gate lets it go.
+            h.deck.send(load(3, CBR, 30.0));
+            assertTrue(h.deck.holdsGateWakeLock());
+            h.deck.send(DeckCommand.UNLOAD);
+            assertFalse(h.deck.holdsGateWakeLock());
+            // And invalidate, mid-gate, too.
+            h.deck.send(load(4, XING, 3.0));
+            assertTrue(h.deck.holdsGateWakeLock());
+            h.deck.invalidate();
+            assertFalse(h.deck.holdsGateWakeLock());
+            assertEquals(Boolean.FALSE, awake.get(awake.size() - 1));
+            for (int i = 1; i < awake.size(); i++) {
+                assertTrue("every hold is followed by a release: " + awake, !awake.get(i).equals(awake.get(i - 1)));
+            }
         } finally {
             gate.open();
         }

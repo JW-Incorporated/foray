@@ -2613,8 +2613,9 @@ test("A-25: the ExoPlayer deck sits behind DeckDriving, holds its wake mode, and
        is how audio escapes the readiness gate.
      - The tests are the card's harness: media3-test-utils and -robolectric at the one Media3
        version, and the click tracks read in place from the iOS fixtures.
-     MUTATION: drop the wake mode, a second `.play()`, `setPlayWhenReady(true)`, the WAKE_LOCK
-     line, the core project dependency, or the test-utils lines; each fails here. */
+     MUTATION: drop the wake mode, the gate's own locks, a second `.play()`,
+     `setPlayWhenReady(true)`, the WAKE_LOCK line, the core project dependency, or the
+     test-utils lines; each fails here. */
   const android = path.join(PLUGIN_DIR, "android");
   const gradle = fs.readFileSync(path.join(android, "build.gradle"), "utf8");
   const code = gradle.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");
@@ -2630,6 +2631,12 @@ test("A-25: the ExoPlayer deck sits behind DeckDriving, holds its wake mode, and
   const deck = strip(fs.readFileSync(path.join(engineDir, "ExoDeck.java"), "utf8"));
   assert.match(deck, /class ExoDeck implements DeckDriving\b/);
   assert.match(deck, /setWakeMode\(C\.WAKE_MODE_NETWORK\)/, "the deck must hold the network wake mode");
+  /* The wake mode holds nothing while play-when-ready is off, which is the whole gate: the deck
+     holds its own CPU and Wi-Fi locks from the attach until the gate ends, or a screen-off seam
+     loads with the CPU free to sleep and the P-13 deadline (an uptime timer) never fires. */
+  assert.match(deck, /new WakeLockManager\(/, "the gate holds its own CPU wake lock");
+  assert.match(deck, /new WifiLockManager\(/, "the gate holds its own Wi-Fi lock");
+  assert.match(deck, /stage == Stage\.LOADING && !invalidated/, "the gate lock is held exactly while a load gates");
   assert.match(deck, /setSeekParameters\(SeekParameters\.EXACT\)/, "in-points are exact");
   assert.equal((deck.match(/\.play\(\)/g) || []).length, 1, "ExoDeck starts audio in exactly one place");
   assert.doesNotMatch(deck, /setPlayWhenReady\(\s*true\s*\)/, "no second start path around the readiness gate");

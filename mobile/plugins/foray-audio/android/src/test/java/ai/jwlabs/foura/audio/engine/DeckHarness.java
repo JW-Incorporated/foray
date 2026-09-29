@@ -59,6 +59,8 @@ final class DeckHarness implements AutoCloseable {
         config.writeRow = logRows::add;
         config.debugFault = faults::add;
         config.sessionIsActive = () -> sessionActive;
+        // The production gate lock (Media3's wake and Wi-Fi lock managers) unless a test injects a recorder.
+        config.context = context;
         tweak.accept(config);
         deck = new ExoDeck(player, config);
         deck.setListener(event -> {

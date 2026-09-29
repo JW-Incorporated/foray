@@ -25,6 +25,15 @@ and three entries of `player/parity/jvm-pending.json`. Card A-25 of `docs/plans/
 `setWakeMode(C.WAKE_MODE_NETWORK)` is set, and the library manifest now declares WAKE_LOCK. The deck is wired to nothing
 yet: A-26's service drives it.
 
+**Review fix: the gate holds its own wake lock.** Media3's wake mode holds its locks only while play-when-ready is on
+(`ExoPlayerImpl.updateWakeAndWifiLock`, read from the 1.11 bytecode), and the gate keeps play-when-ready off for the
+whole load. So a screen-off seam would have loaded with the CPU free to suspend, and the P-13 deadline (an uptime
+handler timer) could not fire while it slept. The deck now holds its own CPU and Wi-Fi locks (Media3's
+`WakeLockManager` / `WifiLockManager`, binder calls on the playback looper) from the attach or reuse until the gate
+ends: ready (released after the event, so a play inside it posts Media3's lock first), failed, the deadline, an unload
+or `invalidate()`. `Config.context` is now required (or `Config.gateAwake`). `ExoDeckTest` pins it, and so does the
+A-25 shell invariant.
+
 **Paths.** `mobile/plugins/foray-audio/android/build.gradle` is a governed path. It adds media3-exoplayer, the core by
 project path, media3-test-utils(-robolectric), and Robolectric 4.16 (what test-utils 1.11.0 needs). So this PR waits on
 `founder-approved`.
