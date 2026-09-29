@@ -97,7 +97,15 @@ public final class JvmFamilies {
     public static final FamilyRunner MANAGER_EPISODE = ManagerEpisodeFamily.runner();
     public static final FamilyRunner DECK_EPISODE = DeckEpisodeFamily.runner();
 
+    /*
+     * A-25: the rest of the deck's rules, ported with the ExoPlayer deck (foray-audio's
+     * ExoDeck): the native out-point (three layers and a windowed watchdog, over runner.js's
+     * driven clock), the deck's guards, and the standby deck's decisions (DeckPolicy).
+     */
+    public static final FamilyRunner OUTPOINT = DeckFamilies.outpoint();
+    public static final FamilyRunner DECK = DeckFamilies.deck();
+
     /** Every registered runner. */
     public static final List<FamilyRunner> ALL = List.of(COMPARE, NUMBER_FORMAT, QUEUE_STATE, RATE, RESUME_RULES, TRANSPORT, ROWS,
-            SESSION, SESSION_INVARIANT, MEDIA_EPISODE, MANAGER_EPISODE, DECK_EPISODE);
+            SESSION, SESSION_INVARIANT, MEDIA_EPISODE, MANAGER_EPISODE, DECK_EPISODE, OUTPOINT, DECK);
 }

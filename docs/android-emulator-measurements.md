@@ -8,6 +8,8 @@ comes from a GitHub Actions runner.
 
 Cards add their own section. A-03 (can the emulator play audio at all?) wrote §1–§4. A-06
 records its API 36 differences in §6, and A-05 records its seam, focus, call and kill values in §7.
+A-25 (the native engine's ExoPlayer deck) records its in-point and out-point error in §8; those
+numbers come from Robolectric on the same runner, not from the emulator, and §8 says what that means.
 
 ## 1. A-03: the answer
 
@@ -527,3 +529,99 @@ Each of these has a clear pass line and held on both runs:
 - **(j) a SIGKILL.** It leaves the media button with nobody.
 
 Only the force-stop control is gated today.
+
+## 8. A-25: the ExoPlayer deck's in-point and out-point (Robolectric, not the emulator)
+
+**Run:** `android-build` run 36633382530, job 109627870662 (`android-shell`), head `e05fb324`,
+PR #898. The raw trials are the run's `android-shell-evidence` artefact,
+`a25-deck-measurements.json`; `ExoDeckMeasurementTest` writes it.
+
+**What was measured, and what was not.** `ExoDeck` (`mobile/plugins/foray-audio/android/.../engine/`)
+drove a media3-test-utils player: `TestExoPlayerBuilder` on an auto-advancing `FakeClock`, with a
+renderer that consumes samples by timestamp and keeps their bytes. The clips were the NE-25a click
+tracks, read in place from the iOS fixtures. The iOS in-points, out-point, lead-in and rates were
+used (docs/ios-native-engine-measurements.md), so the two platforms can be compared.
+
+The numbers are therefore Media3 1.11.0's own logic: the extractors and their seek maps, the
+playback loop's 10 ms work cadence, positioned-message delivery, and the deck's timers. They are
+in VIRTUAL time, over a local file. They are not a device's audio latency and not a CDN's. The
+emulator's native leg (A-26, A-30) and the device pass after A-42 measure those.
+
+**How an in-point is judged.** Media3 labels every sample with a media time; after a seek, that
+label comes from the file's seek map. The first sample the listener hears is located IN THE FILE by
+its bytes: an MP3 sample is one frame, and a WAV sample is a run of PCM. A 12 s heard window
+always holds a double click, so the match is unique for MP3 and nearest-the-label for WAV. So:
+- `err` = where the first heard sample really is, minus the request;
+- `offset` = its real place minus Media3's label (the seek map's error);
+- `late` = the label minus the request (whole-sample quantization).
+
+### In-points (ms; negative = the listener hears content from BEFORE the in-point)
+
+| Fixture | Request (s) | approximate: err / offset / late | precise: err / offset / late |
+|---|---|---|---|
+| click-cbr.mp3 (no header) | 9.65 | +34 / 0 / 34 | +34 / 0 / 34 |
+| | 19.65 | +6 / 0 / 6 | +6 / 0 / 6 |
+| | 49.65 | +30 / 0 / 30 | +30 / 0 / 30 |
+| click-vbr-xing.mp3 (Xing TOC) | 9.65 | −578 / −629 / 51 | −578 / −629 / 51 |
+| | 19.65 | −390 / −404 / 14 | −390 / −404 / 14 |
+| | 49.65 | −186 / −196 / 10 | −186 / −196 / 10 |
+| click-vbr-notoc.mp3 (no table) | 9.65 | +34 / 0 / 34 | −3566 / −3636 / 70 |
+| | 19.65 | −7662 / −7668 / 6 | −7662 / −7668 / 6 |
+| | 49.65 | −19986 / −20016 / 30 | −19986 / −20016 / 30 |
+| click.wav (PCM) | 9.65 | 0 / 0 / 0 | 0 / 0 / 0 |
+| | 19.65 | 0 / 0 / 0 | 0 / 0 / 0 |
+
+What this settles:
+- **An exact seek map is exact, then late by less than one sample.** On constant-bitrate MP3 and
+  PCM WAV the label is the truth (offset 0 in every trial). Media3 drops the whole sample the
+  request falls inside, because every audio sample is a sync sample. The listener therefore starts
+  0 to 1 sample late: up to 36 ms for a 16 kHz MP3 frame (26 ms at 44.1 kHz). This is asserted
+  (never early, at most one sample). iOS measured 0 to −4.9 ms on the same files (§7.3 of
+  docs/ios-native-engine-measurements.md): AVFoundation lands within a few samples, Media3 on the
+  next whole frame.
+- **A VBR seek table is early by up to about 0.6 s.** The Xing TOC's 100 points put the landing
+  186 to 629 ms BEFORE the request. The listener hears the tail of the previous content. iOS's
+  approximate seek on the same file was −221 ms at 49.65 s; its precise seek was within 7 ms.
+- **A VBR file with no table is wrong by seconds.** The constant-bitrate estimate from the first
+  frame put the landing 7.7 s early at 19.65 s and 20 s early at 49.65 s.
+- **`preciseTiming` changes nothing here.** In Media3 1.11, `Mp3Extractor.FLAG_ENABLE_INDEX_SEEKING`
+  is a fallback for an unseekable map, not an override (the bytecode shows it). It never applies to
+  these files, so both columns match wherever the seek map was used.
+- **Near the start, the result depends on the race.** At 9.65 s the landing sometimes falls inside
+  what the loader has already read from byte 0: exact labels, `+34`. Sometimes it goes through the
+  seek map: `−3566` on the no-table file. Which one happens depends on real I/O against virtual
+  time, and three runs saw both outcomes on both VBR files. On a phone over a network, the seek map
+  is the usual path.
+
+For A-40 (Foray in-points, bounded segments): on Android, a VBR source's in-point is not trustworthy
+from Media3's seek map. Before a Foray segment on a VBR MP3 can be cut on Android, A-40 needs an
+index of its own (read to the in-point, or a server-side frame index), or a rendered clip. iOS got
+this from `AVURLAssetPreferPreciseDurationAndTimingKey`. The episode path (`preciseTiming` false)
+has the same errors for a resume position on a VBR podcast. That is within the core's resume rewind
+for the Xing case. It is not within it for a no-table file, and NE-38's field rows should count how
+many feeds that is.
+
+### Out-points (55.005 s, 4 s lead-in, played to the stop; ms)
+
+| Layers armed | Rate | Stopped by | Overshoot (row) | Position at the stop | Settled after 0.5 s | Early reports |
+|---|---|---|---|---|---|---|
+| boundary | 1x, 2x | boundary | 0 | +0 | +0 | 0 |
+| watchdog | 1x | watchdog | 0 | +0 | +2 | 0 |
+| watchdog | 2x | watchdog | 0 | +0 | +4 | 0 |
+| boundary + watchdog | 1x, 2x | boundary | 0 | +0 | +0 | 0 |
+
+The table is identical for all four fixtures, because an out-point is a position, not a seek. That
+makes 24 trials, and none of them was early. **Never early is asserted.**
+
+The boundary layer (a `PlayerMessage` at the out-point, rounded up to the millisecond) fires in
+the playback loop at the boundary itself. The watchdog alone reads the boundary on the app thread
+and pauses one work-loop tick later: +2 ms of content at 1x, +4 ms at 2x. `endTime`, the third iOS
+layer, has no Media3 counterpart on a live source, so the deck runs its ops as no-ops (ExoDeck's
+header says why).
+
+Compared with iOS (§7.5 of docs/ios-native-engine-measurements.md): the boundary layer matches
+AVFoundation's boundary observer, which fired 0.1 to 0.6 ms past the boundary and settled 0.8 to
+2.9 ms past it. The watchdog does not compare. On iOS its poll ran on a real clock and overshot by
+14 to 236 ms. Here the virtual clock fires every timer exactly on time, so the watchdog's real
+overshoot, its timer jitter, is not measured on Android until the emulator leg runs it.
+

@@ -509,6 +509,19 @@ Rejected alternatives:
   → buffering.
 - **Acceptance:** Robolectric green in CI. In-point and out-point error are reported in the measurements doc.
 - **Device check:** none.
+- **Status (2026-09-29): done in its PR, evidence in `STATE.md` (A-25 entry) and
+  `docs/android-emulator-measurements.md` §8.** `DeckDriving` and `ExoDeck` live in foray-audio
+  (`.../audio/engine/`). The deck gates the load on Media3's READY with play-when-ready off (the
+  preroll), reads the position, holds the rate and re-applies it on every play, and enforces a load
+  deadline on the player's clock. It also does same-source reuse, the uncommanded-pause settle and
+  stall → waiting, and it sets `setWakeMode(C.WAKE_MODE_NETWORK)` (WAKE_LOCK declared). The
+  out-point runs `DeckPolicy.outPointStep` over two Media3 layers: a `PlayerMessage` boundary and
+  the watchdog. `endTime` has no live Media3 counterpart. `DeckPolicy` gained the out-point reducer,
+  the deck's guards and the standby deck's decisions, so `outpoint` (50) and `deck` (77) moved to
+  `runs`. `prepare` runs the Foray tape through the engine, so it is now owed to **A-40**.
+  Measured: exact seek maps are never early and at most one sample late. Media3's VBR seek maps are
+  early by 0.2–0.6 s with a Xing TOC and by seconds without one, whether or not `preciseTiming` is
+  set, and that is A-40's to solve for Foray in-points.
 
 #### A-26 · `ForayPlaybackService` (MediaSessionService) shell — **L**
 - **Depends on:** A-25.
@@ -682,7 +695,7 @@ A-61, A-62, A-64, A-66 (+ NE-39j) ─ A-63 ─ A-67 ─ A-68 ─ A-69 (gated)
 - **Device check:** A-67's script, route block.
 
 #### A-62 · Prepare across narration seams on the Media3 deck (mirrors NE-45s) — **M**
-- **Depends on:** A-42, NE-45j (its new `prepare` ids are `cases` owed to A-62 once A-25 has ported the family)
+- **Depends on:** A-42, NE-45j (its new `prepare` ids are `cases` owed to A-62 once A-40 has ported the family: A-25 handed `prepare` to A-40, because its cases run the Foray tape through the engine)
 - **Human-gated:** no.
 - **Files:** the Foray tape from A-40 (an ExoPlayer playlist with `ClippingConfiguration`, or a deck pair, whichever A-40 chose), the JVM `DeckPolicy.warmsAcross`, the packed `seam` rows, and Robolectric tests.
 - **Ask:** Port `warmsAcross`. A rendered line is a `MediaItem` like a clip.
