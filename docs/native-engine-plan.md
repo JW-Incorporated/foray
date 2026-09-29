@@ -449,7 +449,7 @@ Reason tokens: `not-loaded`, `no-next`, `no-previous`, `ended`, `refused-structu
    | `foray` | seam-gap, interlude, seek-policy, outpoint, foray-clock, foray-progress, foray-structure, media, manager-foray, deck, prepare, speech-rate, lexicon, default-voice |
 
    `coverage.test.js` parses the advertised list from `ENGINE_DEFAULT.json` and from the Swift source.
-7. **Generated constants.** `gen-constants.mjs` imports the JS exports and namespaces them by source module. A test fails on a stale file and on any duplicate export name. `RESTART_WINDOW_SEC`, `SEEK_INSIDE_END_SEC` and `POSITION_INTERVAL_MS` are exported by NE-08 first. `vocabulary.json` holds the closed token sets.
+7. **Generated constants.** `gen-constants.mjs` imports the JS exports and namespaces them by source module. A test fails on a stale file and on any duplicate export name. `RESTART_WINDOW_SEC`, `SEEK_INSIDE_END_SEC` and `POSITION_INTERVAL_MS` are exported by NE-08 first. `vocabulary.json` holds the closed token sets. Since A-23 (`docs/plans/android-assessment.md` §5.4) it also writes `EngineConstants.java` and `Vocabulary.java` into the Android engine's JVM core (`foray-engine-core-jvm`), from the same exports, so the two native engines read one set of numbers.
 8. **CI.**
    - **G-1a (requested on day 1):** `engine-parity` in `ci.yml` on `ubuntu-latest`, container `swift:5.10`, image cached. It runs on `push`, `pull_request` **and `workflow_dispatch`**, and is advisory. This is the only fast Swift loop the Windows agents have.
    - **G-1b (after about a week of green G-1a runs; a hard prerequisite of NE-27):**

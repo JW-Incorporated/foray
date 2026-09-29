@@ -8,10 +8,9 @@ import java.util.Map;
 
 /**
  * The fixture families the JVM runs, one {@link FamilyRunner} each. Every other family
- * is owed in player/parity/jvm-pending.json (A-22: "every case pending except one
- * trivial family"). A porting card (A-23 on) adds its family here and burns its entry
- * out of jvm-pending.json in the same change; the suite fails if it does one without
- * the other.
+ * is owed in player/parity/jvm-pending.json. A porting card adds its family here and
+ * burns its entry out of jvm-pending.json (moving it to "runs") in the same change; the
+ * suite fails if it does one without the other.
  */
 public final class JvmFamilies {
     private JvmFamilies() {}
@@ -74,6 +73,23 @@ public final class JvmFamilies {
                 return new FamilyRunner.Returned(new Json.Obj(verdict));
             }));
 
+    /*
+     * A-23: the pure policies of the episode subset, ported from ForayEngineCore into this
+     * module's main code, each family run by its runner below (the JVM twins of the Swift
+     * FamilyRunners): the reducer, the rate ladder, the resume and cadence rules, the
+     * transport rules, the byte-identical shared rows, the session table and its
+     * audible-start invariant, and the lock-screen / remote-command mapping.
+     */
+    public static final FamilyRunner QUEUE_STATE = QueueStateFamily.runner();
+    public static final FamilyRunner RATE = PolicyFamilies.rate();
+    public static final FamilyRunner RESUME_RULES = PolicyFamilies.resumeRules();
+    public static final FamilyRunner TRANSPORT = PolicyFamilies.transport();
+    public static final FamilyRunner ROWS = RowsFamily.runner();
+    public static final FamilyRunner SESSION = SessionFamily.runner();
+    public static final FamilyRunner SESSION_INVARIANT = SessionFamily.invariantRunner();
+    public static final FamilyRunner MEDIA_EPISODE = MediaEpisodeFamily.runner();
+
     /** Every registered runner. */
-    public static final List<FamilyRunner> ALL = List.of(COMPARE, NUMBER_FORMAT);
+    public static final List<FamilyRunner> ALL = List.of(COMPARE, NUMBER_FORMAT, QUEUE_STATE, RATE, RESUME_RULES, TRANSPORT, ROWS,
+            SESSION, SESSION_INVARIANT, MEDIA_EPISODE);
 }

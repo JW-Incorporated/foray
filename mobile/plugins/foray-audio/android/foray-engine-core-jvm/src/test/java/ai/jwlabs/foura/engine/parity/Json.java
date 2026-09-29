@@ -61,6 +61,10 @@ public sealed interface Json permits Json.Null, Json.Undefined, Json.Bool, Json.
         return new Str(value);
     }
 
+    static Json bool(boolean value) {
+        return value ? TRUE : FALSE;
+    }
+
     /** A member of an object, or null when this is not an object or has no such key. */
     default Json get(String key) {
         return this instanceof Obj o ? o.fields().get(key) : null;

@@ -1,0 +1,130 @@
+package ai.jwlabs.foura.engine;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.EnumSet;
+import java.util.List;
+import org.junit.Test;
+
+/**
+ * The ports' hand-typed closed sets held to the GENERATED constants (A-23), and the rules
+ * the parity families reach only through their adapters: {@code commandAvailability}
+ * (NP-5), the rate snap, the hold policy's spelling. The Swift PolicyPortTests and
+ * MediaMappingTests, for the JVM port.
+ */
+public class PolicyPortTest {
+    private static <E extends Enum<E>> List<String> tokens(E[] values, java.util.function.Function<E, String> token) {
+        List<String> out = new ArrayList<>();
+        for (E v : values) out.add(token.apply(v));
+        return out;
+    }
+
+    /** Every closed set a port spells as an enum is, in order, the JS export it ports (EngineConstants is generated). */
+    @Test
+    public void theHandTypedSetsAreTheGeneratedOnesInOrder() {
+        assertEquals(EngineConstants.EngineContract.SESSION_PHASES, tokens(SessionPolicy.Phase.values(), p -> p.token));
+        assertEquals(EngineConstants.EngineContract.SESSION_INPUTS, tokens(SessionPolicy.InputKind.values(), k -> k.token));
+        assertEquals(EngineConstants.EngineContract.PLAY_VIAS, tokens(SessionPolicy.PlayVia.values(), v -> v.token));
+        assertEquals(EngineConstants.EngineContract.SESSION_ACTIONS, tokens(SessionPolicy.Action.values(), a -> a.token));
+        assertEquals(EngineConstants.EngineContract.SESSION_ROWS, tokens(SessionPolicy.Row.values(), r -> r.token));
+        assertEquals(EngineConstants.EngineContract.HOLD_POLICY_KINDS, SessionPolicy.HoldPolicy.KINDS);
+        assertEquals(EngineConstants.EngineContract.DEFAULT_HOLD_POLICY, SessionPolicy.HoldPolicy.DEFAULT.text());
+        assertEquals(EngineConstants.MediaSession.MEDIA_ACTIONS, tokens(MediaAction.values(), a -> a.token));
+        assertEquals(EngineConstants.EngineContract.SNAPSHOT_MODES,
+                tokens(MediaMapping.CommandSnapshot.Mode.values(), m -> m.token));
+        assertEquals(Arrays.asList(EngineConstants.QueueState.EPISODE, EngineConstants.QueueState.TTS),
+                tokens(PlayerItemKind.values(), k -> k.token));
+    }
+
+    /** The founder's 15/30 reaches the steps from the generated constants, and never from a literal. */
+    @Test
+    public void theSeekPairIsTheGeneratedOne() {
+        assertEquals(EngineConstants.MediaSession.SEEK_BACKWARD_SEC, MediaMapping.SeekSteps.DEFAULT.backwardSec(), 0);
+        assertEquals(EngineConstants.MediaSession.SEEK_FORWARD_SEC, MediaMapping.SeekSteps.DEFAULT.forwardSec(), 0);
+        MediaMapping.Intent back = MediaMapping.intent(MediaAction.SEEK_BACKWARD, MediaMapping.PressDetails.NONE, MediaMapping.SeekSteps.DEFAULT);
+        assertEquals(new MediaMapping.Intent.SeekBy(-EngineConstants.MediaSession.SEEK_BACKWARD_SEC), back);
+        assertNull("a scrub with no time is not a seek to zero",
+                MediaMapping.intent(MediaAction.SEEK_TO, MediaMapping.PressDetails.NONE, MediaMapping.SeekSteps.DEFAULT));
+    }
+
+    /**
+     * NP-5: a paused, interrupted or ended EPISODE keeps every target; next / previous
+     * follow the neighbours; stop is never enabled; only nothing-loaded and a finished
+     * Foray clear Now Playing. TO SEE IT FAIL: enable STOP, or clear on an ended episode.
+     */
+    @Test
+    public void commandAvailabilityFollowsTheSnapshot() {
+        MediaMapping.CommandAvailability episode = MediaMapping.commandAvailability(
+                new MediaMapping.CommandSnapshot(MediaMapping.CommandSnapshot.Mode.EPISODE, true, false, true, false),
+                MediaMapping.SeekSteps.DEFAULT);
+        assertFalse(episode.clearsNowPlaying());
+        assertEquals(EnumSet.of(MediaMapping.RemoteCommand.PLAY, MediaMapping.RemoteCommand.PAUSE, MediaMapping.RemoteCommand.TOGGLE_PLAY_PAUSE,
+                MediaMapping.RemoteCommand.PREVIOUS_TRACK, MediaMapping.RemoteCommand.SKIP_BACKWARD, MediaMapping.RemoteCommand.SKIP_FORWARD,
+                MediaMapping.RemoteCommand.CHANGE_PLAYBACK_POSITION), episode.enabled());
+        assertFalse(episode.isEnabled(MediaMapping.RemoteCommand.STOP));
+        assertEquals(EngineConstants.MediaSession.SEEK_FORWARD_SEC, episode.skipForwardIntervalSec(), 0);
+
+        MediaMapping.CommandAvailability foray = MediaMapping.commandAvailability(
+                new MediaMapping.CommandSnapshot(MediaMapping.CommandSnapshot.Mode.FORAY, false, true, false, true),
+                MediaMapping.SeekSteps.DEFAULT);
+        assertTrue(foray.isEnabled(MediaMapping.RemoteCommand.NEXT_TRACK));
+        assertFalse(foray.isEnabled(MediaMapping.RemoteCommand.PREVIOUS_TRACK));
+
+        for (MediaMapping.CommandSnapshot done : new MediaMapping.CommandSnapshot[] {
+            new MediaMapping.CommandSnapshot(MediaMapping.CommandSnapshot.Mode.FORAY, true, true, true, true),
+            new MediaMapping.CommandSnapshot(MediaMapping.CommandSnapshot.Mode.UNLOADED, false, false, false, false)}) {
+            MediaMapping.CommandAvailability a = MediaMapping.commandAvailability(done, MediaMapping.SeekSteps.DEFAULT);
+            assertTrue(a.clearsNowPlaying());
+            assertTrue(a.enabled().isEmpty());
+        }
+    }
+
+    /** {@code setRate}'s decision: snapped onto the ladder, and it SAYS it snapped. */
+    @Test
+    public void aSnappedRateSaysSo() {
+        assertEquals(new PlaybackRate.Snap(1.25, true), PlaybackRate.snap(1.3));
+        assertEquals(new PlaybackRate.Snap(1.5, false), PlaybackRate.snap(1.5));
+        assertEquals(new PlaybackRate.Snap(1.0, true), PlaybackRate.snap(null));
+        assertEquals(EngineConstants.PlaybackRate.RATES, PlaybackRate.RATES);
+    }
+
+    /** The hold policy's one-string spelling round-trips, and nothing outside the pattern parses. */
+    @Test
+    public void theHoldPolicyRoundTripsItsSpelling() {
+        for (String text : new String[] {"forever", "none", "until:1", "until:999999"}) {
+            assertEquals(text, SessionPolicy.HoldPolicy.parse(text).text());
+        }
+        for (String text : new String[] {"until:0", "until:01", "until:1000000", "until:", "until:5m", "Forever", "", "until:١"}) {
+            assertNull(text, SessionPolicy.HoldPolicy.parse(text));
+        }
+    }
+
+    /** The audible-start invariant: a result nobody asked for is not an activation, and a deactivate ends it. */
+    @Test
+    public void anUnaskedSuccessIsNotAnActivation() {
+        assertEquals(Arrays.asList(new SessionPolicy.Violation(1, "deckPlay")), SessionPolicy.audibleStartViolations(
+                SessionPolicy.Phase.INACTIVE, Arrays.asList("sessionResult:ok", "deckPlay")));
+        assertTrue(SessionPolicy.audibleStartViolations(SessionPolicy.Phase.INACTIVE,
+                Arrays.asList("sessionActivate", "sessionResult:ok", "deckPlay")).isEmpty());
+        assertEquals(1, SessionPolicy.audibleStartViolations(SessionPolicy.Phase.ACTIVE,
+                Arrays.asList("sessionDeactivate", "speak")).size());
+    }
+
+    /** Two segments of one episode are two queue items: identity includes the bounds. */
+    @Test
+    public void identityIncludesTheBounds() {
+        QueueItemRef a = new QueueItemRef("ep", PlayerItemKind.EPISODE, ItemBounds.make(10.0, 20.0));
+        QueueItemRef b = new QueueItemRef("ep", PlayerItemKind.EPISODE, ItemBounds.make(20.0, 30.0));
+        assertFalse(QueueItemRef.sameRef(a, b));
+        assertTrue(QueueItemRef.sameRef(a, new QueueItemRef("ep", PlayerItemKind.EPISODE, ItemBounds.make(10.0, 20.0))));
+        assertTrue(QueueItemRef.sameRef(null, null));
+        PlayerQueueStateMachine.Transition t = PlayerQueueStateMachine.reduce(new PlayerQueueState.Playing(a), new PlayerEvent.Play(b));
+        assertEquals("the second segment is not a repeat of the first", new PlayerQueueState.LoadingItem(b, a), t.state());
+        assertEquals("playing(ep[10-20])", PlayerQueueStateMachine.describe(new PlayerQueueState.Playing(a)));
+    }
+}

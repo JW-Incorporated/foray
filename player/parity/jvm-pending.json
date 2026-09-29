@@ -18,20 +18,23 @@
     "manager-foray": "A-40",
     "manager-remainder": "A-40",
     "media": "A-40",
-    "media-episode": "A-23",
     "outpoint": "A-25",
     "prepare": "A-25",
-    "queue-state": "A-23",
-    "rate": "A-23",
-    "resume-rules": "A-23",
-    "rows": "A-23",
     "seam-gap": "A-40",
     "seek-policy": "A-40",
-    "session": "A-23",
-    "session-invariant": "A-24",
     "snapshot": "A-24",
-    "speech-rate": "A-41",
-    "transport": "A-23"
+    "speech-rate": "A-41"
   },
-  "runs": ["compare", "number-format"]
+  "runs": [
+    "compare",
+    "media-episode",
+    "number-format",
+    "queue-state",
+    "rate",
+    "resume-rules",
+    "rows",
+    "session",
+    "session-invariant",
+    "transport"
+  ]
 }

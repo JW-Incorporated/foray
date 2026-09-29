@@ -16,8 +16,10 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import {
   REPO_ROOT, SOURCES, CONSTANTS_FILE, VOCABULARY_SWIFT_FILE, VOCABULARY_JSON_FILE, VOCABULARY_MODULE,
+  JAVA_CONSTANTS_FILE, JAVA_VOCABULARY_FILE,
   generate, staleFiles, main, collect, collectVocabulary, loadSources, describeValue,
   memberName, typeName, caseName, swiftString, swiftNumber, renderConstants, renderVocabularySwift,
+  javaString, javaNumber, javaEnumConstant, renderConstantsJava, renderVocabularyJava,
   DuplicateConstantError, UnsupportedConstantError,
 } from "./gen-constants.mjs";
 
@@ -37,12 +39,15 @@ function namespaceBlock(swift, ns) {
   return swift.slice(open, close);
 }
 
-test("the committed EngineConstants.swift, Vocabulary.swift and vocabulary.json are exactly what the JS generates", async () => {
+test("the committed EngineConstants.swift, Vocabulary.swift, vocabulary.json and the two JVM files are exactly what the JS generates", async () => {
   const files = await generate();
-  assert.deepEqual(Object.keys(files).sort(), [CONSTANTS_FILE, VOCABULARY_SWIFT_FILE, VOCABULARY_JSON_FILE].sort());
+  assert.deepEqual(
+    Object.keys(files).sort(),
+    [CONSTANTS_FILE, VOCABULARY_SWIFT_FILE, VOCABULARY_JSON_FILE, JAVA_CONSTANTS_FILE, JAVA_VOCABULARY_FILE].sort()
+  );
   assert.deepEqual(
     staleFiles(REPO_ROOT, files), [],
-    "a JS constant or vocabulary token changed and the Swift side was not regenerated: run `node tools/parity/gen-constants.mjs --write`"
+    "a JS constant or vocabulary token changed and the Swift or JVM side was not regenerated: run `node tools/parity/gen-constants.mjs --write`"
   );
 });
 
@@ -52,8 +57,10 @@ test("changing SEAM_GAP_SEC without regenerating turns the check red, and names 
   const files = await generate({
     transform: (loaded) => loaded.map((s) => (s.namespace === "SeamGap" ? { ...s, exports: { ...s.exports, SEAM_GAP_SEC: 2.5 } } : s)),
   });
-  assert.deepEqual(staleFiles(REPO_ROOT, files), [CONSTANTS_FILE]);
+  // Both engines' constants go stale together (A-23 added the JVM's).
+  assert.deepEqual(staleFiles(REPO_ROOT, files), [CONSTANTS_FILE, JAVA_CONSTANTS_FILE]);
   assert.match(namespaceBlock(files[CONSTANTS_FILE], "SeamGap"), /public static let seamGapSec: Double = 2\.5\n/);
+  assert.match(javaNamespaceBlock(files[JAVA_CONSTANTS_FILE], "SeamGap"), /public static final double SEAM_GAP_SEC = 2\.5;\n/);
   const committed = fs.readFileSync(path.join(REPO_ROOT, CONSTANTS_FILE), "utf8");
   assert.match(namespaceBlock(committed, "SeamGap"), /public static let seamGapSec: Double = 0\.5\n/);
 });
@@ -195,6 +202,87 @@ test("vocabulary tokens: closed shape, no two tokens that are one Swift case, ke
   assert.deepEqual(json.sets, JSON.parse(JSON.stringify(vocab.VOCABULARY)));
 });
 
+/* ---------- the JVM half (A-23, docs/plans/android-assessment.md §5.4) ---------- */
+
+/** The body of `public static final class <ns> {` in a generated Java file, to its closing brace at the same indent. */
+function javaNamespaceBlock(java, ns) {
+  const open = java.indexOf(`    public static final class ${ns} {\n`);
+  assert.ok(open >= 0, `no class ${ns} in the generated Java file`);
+  return java.slice(open, java.indexOf("\n    }\n", open));
+}
+
+test("A-23: every constant is in EngineConstants.java under its module's class, by its JS name, with the JS value", async () => {
+  /* The Android engine's JVM core ports the same policies, so it must read the same
+     numbers: a JVM port holding its own 2.0 is the silent fork NE-04 exists to
+     prevent. Java keeps the JS names (already Java's constant spelling, never a
+     keyword). MUTATION: skip a member in renderConstantsJava, or print 15 as an int
+     literal -> fails. */
+  const committed = fs.readFileSync(path.join(REPO_ROOT, JAVA_CONSTANTS_FILE), "utf8");
+  assert.match(committed, /^\/\/ GENERATED FILE - DO NOT EDIT\.\n/);
+  assert.match(committed, /\npackage ai\.jwlabs\.foura\.engine;\n/);
+  assert.ok(!committed.includes("List.of("), "main code keeps to the API 24 library surface: no List.of");
+  let emitted = 0;
+  for (const s of SOURCES) {
+    const mod = await import(pathToFileURL(path.join(REPO_ROOT, s.module)).href);
+    assert.ok(committed.includes(`    /** {@code ${s.module}} */\n    public static final class ${s.namespace} {`),
+      `${s.namespace} is not labelled with its module ${s.module}`);
+    const block = javaNamespaceBlock(committed, s.namespace);
+    for (const [name, value] of Object.entries(mod)) {
+      if (typeof value === "function" || (s.omit && name in s.omit)) continue;
+      assert.ok(block.includes(`        /** {@code ${name}} */\n`), `${s.module}#${name} is missing from EngineConstants.${s.namespace} (Java)`);
+      emitted++;
+    }
+  }
+  assert.ok(emitted >= 60, `only ${emitted} constants emitted`);
+  for (const needle of [
+    "public static final double RESTART_WINDOW_SEC = 4.0;", "public static final double SEEK_INSIDE_END_SEC = 0.25;",
+    "public static final double POSITION_INTERVAL_MS = 15000.0;",
+    "public static final List<Double> RATES = Collections.unmodifiableList(Arrays.asList(0.75, 1.0, 1.25, 1.5, 1.75, 2.0));",
+    "public static final double SEEK_BACKWARD_SEC = 15.0;", "public static final double SEEK_FORWARD_SEC = 30.0;",
+    'public static final String PLAY_RESTORED = "play-restored";',
+    'public static final List<String> OWNED_PREFIXES = Collections.unmodifiableList(Arrays.asList("cp_pos:", "cp_foray:", "cp_last_episode"));',
+  ]) assert.ok(committed.includes(needle), `EngineConstants.java lacks ${needle}`);
+});
+
+test("A-23: Java literals are double literals and octal-escaped strings, and every vocabulary token is an enum constant carrying it", async () => {
+  assert.equal(javaNumber(2, "x"), "2.0", "a bare integer would be an int (an Integer inside Arrays.asList)");
+  assert.equal(javaNumber(0.25, "x"), "0.25");
+  assert.equal(javaNumber(1e21, "x"), "1e21");
+  assert.equal(javaNumber(-0, "x"), "-0.0");
+  assert.equal(javaNumber(0.1 + 0.2, "x"), "0.30000000000000004");
+  assert.throws(() => javaNumber(Infinity, "x"), UnsupportedConstantError);
+  assert.equal(javaString('a"b\\c'), '"a\\"b\\\\c"');
+  assert.equal(javaString("line\nnext\ttab\rret"), '"line\\nnext\\ttab\\rret"');
+  // javac reads a unicode escape BEFORE it lexes a literal, so a control character is
+  // octal and a backslash-u in the JS text is a doubled backslash, never an escape.
+  assert.equal(javaString("\b\f\u0001\u007f"), '"\\010\\014\\001\\177"');
+  assert.equal(javaString("\\u000a"), '"\\\\u000a"');
+  assert.equal(javaString("Foray · clip 1 — 4a 🎧"), '"Foray · clip 1 — 4a 🎧"');
+  assert.throws(() => javaString("x\ud800"), UnsupportedConstantError, "a lone surrogate has no UTF-8 spelling");
+  assert.equal(javaEnumConstant("grace-expired"), "GRACE_EXPIRED");
+  assert.equal(javaEnumConstant("appWasSuspended"), "APP_WAS_SUSPENDED");
+  assert.equal(javaEnumConstant("default"), "DEFAULT");
+  const java = renderConstantsJava(collect([src("K", { CASE: 1, MODE: { SWITCH: "s" }, NAMES: ["a", "b"] })]));
+  assert.match(java, /public static final double CASE = 1\.0;\n/);
+  assert.match(java, /public static final class Mode \{\n {12}private Mode\(\) \{\}\n\n {12}\/\*\* \{@code MODE\.SWITCH\} \*\/\n {12}public static final String SWITCH = "s";\n/);
+  assert.match(java, /public static final List<String> NAMES = Collections\.unmodifiableList\(Arrays\.asList\("a", "b"\)\);\n/);
+  assert.throws(() => renderConstantsJava(collect([src("Mode", { MODE: { A: "a" } })])), DuplicateConstantError,
+    "a nested class named like its enclosing class does not compile");
+
+  const vocab = await import(pathToFileURL(path.join(REPO_ROOT, VOCABULARY_MODULE)).href);
+  const committed = fs.readFileSync(path.join(REPO_ROOT, JAVA_VOCABULARY_FILE), "utf8");
+  assert.equal(committed, renderVocabularyJava(collectVocabulary(vocab)));
+  for (const [set, tokens] of Object.entries(vocab.VOCABULARY)) {
+    const type = set[0].toUpperCase() + set.slice(1);
+    const at = committed.indexOf(`    public enum ${type} {\n`);
+    assert.ok(at >= 0, `no enum ${type}`);
+    const body = committed.slice(at, committed.indexOf("\n    }\n", at));
+    for (const token of tokens) {
+      assert.ok(body.includes(`        ${javaEnumConstant(token)}(${JSON.stringify(token)})`), `${type} lacks ${token}`);
+    }
+  }
+});
+
 test("the CLI: --check is red on a stale tree and names the file, --write fixes it, and bad usage exits 2", async () => {
   const root = tmpRoot();
   try {
@@ -211,6 +299,9 @@ test("the CLI: --check is red on a stale tree and names the file, --write fixes 
     assert.match(swift, /public static let seamGapSec: Double = 2\n/);
     assert.ok(!swift.includes("\r"), "LF only");
     assert.ok(fs.existsSync(path.join(root, VOCABULARY_SWIFT_FILE)) && fs.existsSync(path.join(root, VOCABULARY_JSON_FILE)));
+    const java = fs.readFileSync(path.join(root, JAVA_CONSTANTS_FILE), "utf8");
+    assert.match(java, /public static final double SEAM_GAP_SEC = 2\.0;\n/);
+    assert.ok(!java.includes("\r") && fs.existsSync(path.join(root, JAVA_VOCABULARY_FILE)), "the JVM files too, LF only");
 
     // The acceptance's own mutation, on a real (temp) file this time: the JS
     // changes, nobody regenerates, --check goes red.
@@ -219,6 +310,7 @@ test("the CLI: --check is red on a stale tree and names the file, --write fixes 
     assert.equal(await main(["--check"], { ...opts, err }), 1);
     assert.match(errs.join("\n"), /stale, regenerate with `node tools\/parity\/gen-constants\.mjs --write`/);
     assert.match(errs.join("\n"), /EngineConstants\.swift/);
+    assert.match(errs.join("\n"), /EngineConstants\.java/, "the JVM file goes stale with the Swift one");
     assert.equal(await main(["--write"], opts), 0);
     assert.equal(await main(["--check"], { ...opts, err }), 0);
 
