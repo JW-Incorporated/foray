@@ -37,7 +37,7 @@ final class ForayTapeTests: XCTestCase {
 
     static func loads(_ out: [EngineCommand]) -> [String] {
         out.compactMap {
-            if case let .deck(.load(_, itemId, _, startSec, _)) = $0 { return "\(itemId)@\(JSWriter.numberToString(startSec))" }
+            if case let .deck(.load(_, itemId, _, startSec, _, _)) = $0 { return "\(itemId)@\(JSWriter.numberToString(startSec))" }
             return nil
         }
     }

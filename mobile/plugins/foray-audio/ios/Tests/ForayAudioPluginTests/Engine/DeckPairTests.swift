@@ -34,7 +34,7 @@ final class DeckPairTests: XCTestCase {
             sent.append(command)
             journal.entries.append("\(name).\(command.logName)")
             switch command {
-            case let .load(_, _, url, startSec, _):
+            case let .load(_, _, url, startSec, _, _):
                 loadedURL = url
                 isReady = false
                 reading = DeckReading(positionSec: startSec, durationSec: nil, audible: false, ended: false)
@@ -63,7 +63,7 @@ final class DeckPairTests: XCTestCase {
         /// The load the pair issued on this deck most recently.
         var lastLoadToken: DeckToken? {
             for command in sent.reversed() {
-                if case let .load(token, _, _, _, _) = command { return token }
+                if case let .load(token, _, _, _, _, _) = command { return token }
             }
             return nil
         }
@@ -154,6 +154,28 @@ final class DeckPairTests: XCTestCase {
         pair.send(.prepare(itemId: "b", url: urlB, startSec: 300))
         pair.send(.prepare(itemId: "b", url: urlB, startSec: 300))
         XCTAssertEqual(b.count("load"), 1, "already warm")
+    }
+
+    /// NE-38: a prepared LINE warms under the line's P-13 class, the class
+    /// its own load would have had, so a hung warm line gives up at 8 s like
+    /// the line itself; and a load that misses the warm one reaches the
+    /// player deck with its class intact. (A clip's prepare keeps `.clip`:
+    /// `testAPrepareLoadsTheStandbyAtItsInPointAndTheCoreHearsNothingOfIt`.)
+    /// TO SEE IT FAIL: drop `deadlineClass:` from the standby's `.load` in
+    /// `prepare`.
+    func testAPreparedLineWarmsUnderTheLineDeadlineClass() {
+        pair.send(.load(token: 1, itemId: "a", url: urlA, startSec: 100, preciseTiming: true))
+        a.becomeReady(1, atSec: 100)
+        pair.send(.play)
+        pair.send(.prepare(itemId: "f1#1", url: urlB, startSec: 0, deadlineClass: .line))
+        let warm = b.lastLoadToken ?? 0
+        XCTAssertLessThan(warm, 0)
+        XCTAssertEqual(b.sent.last, .load(token: warm, itemId: "f1#1", url: urlB, startSec: 0, preciseTiming: true,
+                                          deadlineClass: .line))
+        let load = DeckCommand.load(token: 2, itemId: "f1#2", url: urlC, startSec: 0, preciseTiming: false,
+                                    deadlineClass: .line)
+        pair.send(load)
+        XCTAssertEqual(a.sent.last, load, "the missed load keeps its class on the player deck")
     }
 
     // MARK: - the boundary
