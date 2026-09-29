@@ -374,7 +374,7 @@ jobs:
         run: |
           set -euo pipefail
           if ! ./gradlew :foray-audio:testDebugUnitTest :foray-tts:testDebugUnitTest \
-              :foray-vault:testDebugUnitTest --no-daemon --console=plain \
+              :foray-vault:testDebugUnitTest --continue --no-daemon --console=plain \
               > "$ART/gradle-native-unit-test.log" 2>&1; then
             echo "::group::native unit test log tail"; tail -300 "$ART/gradle-native-unit-test.log"; echo "::endgroup::"
             exit 1
@@ -382,12 +382,18 @@ jobs:
           grep -E "^BUILD (SUCCESSFUL|FAILED)" "$ART/gradle-native-unit-test.log" | tail -1 || true
           # A module with NO test classes reports testDebugUnitTest as NO-SOURCE and
           # stays green, so a lost src/test directory would pass silently. Each module
-          # must have written a JUnit report with at least one test case.
+          # must have written a JUnit report with at least one test case. A SKIPPED
+          # case fails the step too: one `@Ignore` line would otherwise turn a
+          # mutation-killing test green with the feature it guards deleted.
+          # `--continue` above runs every module even when an earlier one fails,
+          # so one red run names all three modules' failures, not just the first.
           for m in foray-audio foray-tts foray-vault; do
             d="../plugins/$m/android/build/test-results/testDebugUnitTest"
             n=$(cat "$d"/TEST-*.xml 2>/dev/null | grep -c '<testcase ' || true)
-            echo "$m: $n test cases" | tee -a "$ART/native-unit-test-counts.txt"
+            k=$(cat "$d"/TEST-*.xml 2>/dev/null | grep -c '<skipped' || true)
+            echo "$m: $n test cases, $k skipped" | tee -a "$ART/native-unit-test-counts.txt"
             test "$n" -gt 0 || { echo "$m ran no unit tests"; exit 1; }
+            test "$k" -eq 0 || { echo "$m skipped $k unit test(s): a skipped test proves nothing"; exit 1; }
           done
 
       - name: assembleDebug
