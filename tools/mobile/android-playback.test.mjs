@@ -293,6 +293,9 @@ test("(c) a press passes only when it reached the page AND the page did it", () 
   assert.equal(ok("pause", { index: 0, running: false, elapsedSec: 20 }, "play").ok, false, "the wrong action");
   assert.equal(ok("next", { index: 0, running: true, elapsedSec: 25 }, "nexttrack").ok, false, "did not move");
   assert.equal(ok("previous", { index: 0, running: true, elapsedSec: 19.5 }, "previoustrack").ok, false, "half a second is not a previous");
+  /* Run 36550714726: in the background, previous moved the clock back and the
+     clip never played again. That is a failure of previous, not a pass. */
+  assert.equal(ok("previous", { index: 2, running: false, loading: true, elapsedSec: 0 }, "previoustrack").ok, false, "a clock moved back onto silence");
   /* The row must be NEW: one from before the press does not count. */
   const stale = verdictPress({
     kind: "pause",
@@ -477,6 +480,20 @@ test("a known product defect is reported as expected-fail, and only the failure 
   assert.deepEqual(plus.failures, ["the page is still playing after the tap on pause"]);
   assert.equal(applyKnown("play", ["no back-15 button"]).ok, false, "a known failure belongs to its scenario only");
   assert.deepEqual(applyKnown("notification", []).knownNotReproduced, ["A04-F2"]);
+  /* A04-F1 excuses the BACKGROUND play/previous that does not resume, and
+     nothing about the foreground control: that one resumed on run
+     36550714726, and it is what makes F1 a statement about the background. */
+  const f1 = applyKnown("transport", [
+    "cmd media_session dispatch play: the page is not running after play",
+    "input keyevent KEYCODE_MEDIA_PREVIOUS: the page is not running after previous",
+    "foreground: cmd media_session dispatch play: the page is not running after play",
+    "cmd media_session dispatch pause: no pause reached the page (foray:remote)",
+  ]);
+  assert.deepEqual(f1.expectedFailures.map((e) => e.id), ["A04-F1", "A04-F1"]);
+  assert.deepEqual(f1.failures, [
+    "foreground: cmd media_session dispatch play: the page is not running after play",
+    "cmd media_session dispatch pause: no pause reached the page (foray:remote)",
+  ]);
   for (const k of KNOWN_FAILURES) {
     assert.ok(SCENARIOS.some(([id]) => id === k.scenario), `${k.id} names an unknown scenario`);
     assert.match(k.what, /\brun/, `${k.id} must name the run that showed it`);

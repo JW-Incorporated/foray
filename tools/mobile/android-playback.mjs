@@ -485,6 +485,11 @@ export function verdictPress({ kind, before, after, sinceRemote = 0 }) {
   else if (kind === "next" && !(b && a.index === b.index + 1)) failures.push(`next moved the Foray from clip ${b?.index} to ${a.index}`);
   else if (kind === "previous" && !(b && num(b.elapsedSec) && num(a.elapsedSec) && a.elapsedSec <= b.elapsedSec - GATES.previousMinRewindSec)) {
     failures.push(`previous moved the Foray clock from ${b?.elapsedSec} to ${a.elapsedSec}, not back`);
+  } else if (kind === "previous" && !(a.running === true && !a.loading)) {
+    /* Previous is a restart or the clip before, and either way the Foray is
+       meant to be PLAYING afterwards: a clock moved back onto silence is the
+       listener's "the button did something and then nothing". */
+    failures.push("the page is not running after previous");
   }
   return { ok: failures.length === 0, failures };
 }
@@ -750,7 +755,8 @@ function pressDone(kind, before) {
     if (kind === "pause") return a.running === false;
     if (kind === "play") return a.running === true;
     if (kind === "next") return a.index === (before?.foray?.index ?? -2) + 1 && a.running === true && !a.loading;
-    return num(a.elapsedSec) && num(before?.foray?.elapsedSec) && a.elapsedSec <= before.foray.elapsedSec - GATES.previousMinRewindSec;
+    return num(a.elapsedSec) && num(before?.foray?.elapsedSec) && a.elapsedSec <= before.foray.elapsedSec - GATES.previousMinRewindSec
+      && a.running === true && !a.loading;
   };
 }
 
@@ -762,9 +768,9 @@ function pressDone(kind, before) {
  *  the next one meaningless: a Media3 player that believes it is paused ignores
  *  a pause, and that would read as the pause never arriving.
  *
- *  First, a FOREGROUND CONTROL, recorded and never gated: pause then play with
- *  the app on screen. It says whether a background failure below is about the
- *  background, which is the first question a fix will ask. */
+ *  First, a FOREGROUND CONTROL: pause then play with the app on screen. It is
+ *  gated like the rest, and it is what makes A04-F1 (below) a statement about
+ *  the BACKGROUND: run 36550714726 resumed here and did not resume there. */
 async function transport(ctx) {
   wakeAndUnlock();
   await sleep(1000);
@@ -785,7 +791,10 @@ async function transport(ctx) {
     presses.push(await press(ctx, p));
     await sleep(1500);
   }
-  const failures = presses.filter((p) => !p.ok).map((p) => `${p.press}: ${p.failures.join("; ")}`);
+  const failures = [
+    ...control.filter((p) => !p.ok).map((p) => `foreground: ${p.press}: ${p.failures.join("; ")}`),
+    ...presses.filter((p) => !p.ok).flatMap((p) => p.failures.map((f) => `${p.press}: ${f}`)),
+  ];
   save(ctx, "c-dumpsys-media_session.txt", shell("dumpsys", "media_session"));
   return {
     ok: failures.length === 0,
@@ -967,6 +976,15 @@ async function collect(ctx) {
  *  (the fix deletes the entry), because a strict one would turn red on a fix.
  *  `docs/android-emulator-measurements.md` §5 has the evidence for each. */
 export const KNOWN_FAILURES = Object.freeze([
+  Object.freeze({
+    id: "A04-F1",
+    scenario: "transport",
+    match: /^(cmd media_session dispatch (play|previous)|input keyevent KEYCODE_MEDIA_(PLAY|PREVIOUS)): the page is not running after (play|previous)$/,
+    what:
+      "with the app in the BACKGROUND, a remote play after a pause, or a previous that restarts the clip, never plays: " +
+      "the element falls to readyState 1 and the queue manager sits in loadingItem, while the same pause/play with the app " +
+      "on screen resumes at once (run 36550714726); a lock screen, headset or car cannot resume the JS player",
+  }),
   Object.freeze({
     id: "A04-F2",
     scenario: "notification",

@@ -32,6 +32,13 @@
 #       our show and both seek buttons are on the shade's media controls, and a
 #       tap on pause (`input tap`) pauses the page.
 #
+# PRODUCT DEFECTS THIS JOB FOUND are `KNOWN_FAILURES` in the runner: each
+# excuses exactly one failure sentence as EXPECTED-FAIL (a warning on the run,
+# "expected-fail" in the summary) so the job keeps guarding everything else
+# while the fix is its own card. The first two, both found by this job's own
+# first runs: A04-F1, a remote play or previous with the app in the background
+# never resumes; A04-F2, the system media controls show no 15/30 pair.
+#
 # Then the evidence the card asks for, uploaded whatever happened:
 # `logcat -s Capacitor ForayAudio chromium`, every `dumpsys` a verdict read,
 # the screenshots and window dumps, and the diagnostics sheet's Copy.
