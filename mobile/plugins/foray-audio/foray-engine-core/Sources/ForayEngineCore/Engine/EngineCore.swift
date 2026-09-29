@@ -207,11 +207,12 @@ public struct EngineCore {
         return ColdRestore(core: core, queue: items, index: record.index)
     }
 
-    /// `canNext` (plan §5.5): the queue has a next item, or the continuation
-    /// chain is non-empty, REGARDLESS of `autoAdvance` (as the page's
+    /// `canNext` (plan §5.5): the queue has a next item (a narration line
+    /// counts, NE-39n: Next lands on it), or the continuation chain is
+    /// non-empty, REGARDLESS of `autoAdvance` (as the page's
     /// `EPISODE_NAVIGATION.next` does today). A Foray never chains.
     public var canNext: Bool {
-        nextItem(from: cursor, skipBridges: true) != nil || (state.forayId == nil && !state.chain.isEmpty)
+        nextItem(from: cursor, skipBridges: false) != nil || (state.forayId == nil && !state.chain.isEmpty)
     }
 
     /// `seamGapRemainingMs`: what is left of the seam beat at `monoMs`, 0 when
@@ -460,10 +461,22 @@ public struct EngineCore {
         }
     }
 
-    /// Next: the queue's next item (bridges stepped over), else the first
-    /// continuation hop (`canNext` is the chain, whatever `autoAdvance` says).
+    /// Next: the queue's next item, a narration line included (NE-39n), else
+    /// the first continuation hop (`canNext` is the chain, whatever
+    /// `autoAdvance` says).
+    ///
+    /// NEXT LANDS ON A LINE (NE-39n, 2026-09-29, provisional; the JS
+    /// reference is queue-manager.js `_skipToNext`, and the page's own Next is
+    /// client.js `forayNext`, `play(index + 1)` since audit round 3,
+    /// player-core-6). This stepped over every `.tts` item, the old
+    /// transition-bridge rule, so the car and the lock screen skipped an
+    /// authored line the phone's own button would have played, and from the
+    /// clip before a closing line ended the Foray unheard. One behaviour on
+    /// every surface: from a clip whose next item is a line, Next lands on the
+    /// line; from a line, on the item after it. The `media`
+    /// `remote-nexttrack-*-line` and `manager-foray` `next-*` fixtures pin both.
     private mutating func next(source: EngineSource) {
-        if nextItem(from: cursor, skipBridges: true) != nil {
+        if nextItem(from: cursor, skipBridges: false) != nil {
             cutSeamGap("skipToNext")
             begin(.skipNext, source: source)
             return releaseSeamGap()
@@ -819,7 +832,8 @@ public struct EngineCore {
             state.pendingStartSec = nil
             dispatch(.play(item.ref), offsets: LoadOffsets(explicit: explicit))
         case .skipNext:
-            guard let next = nextItem(from: cursor, skipBridges: true) else { return refuse(.noNext) }
+            // The next item, a line included (NE-39n; `next(source:)`).
+            guard let next = nextItem(from: cursor, skipBridges: false) else { return refuse(.noNext) }
             // currentIndex is NOT advanced here: the reducer's skip saves the
             // outgoing position first, against what is loaded. `load` moves it.
             state.targetIndex = next.index
@@ -1046,9 +1060,10 @@ public struct EngineCore {
     private mutating func onDeck(_ event: DeckEvent) {
         switch event {
         case let .ready(token, _, _, _): onReady(token)
-        case let .failed(token, message): onLoadFailure(token, message: message, cause: .error)
-        case let .deadlineExceeded(token, afterMs):
-            onLoadFailure(token, message: "no ready inside \(afterMs) ms", cause: .loadDeadline)
+        case let .failed(token, message, why):
+            onLoadFailure(token, message: message, cause: .error, fallbackCause: why)
+        case let .deadlineExceeded(token, afterMs, why):
+            onLoadFailure(token, message: "no ready inside \(afterMs) ms", cause: .loadDeadline, fallbackCause: why)
         case let .ended(token): onEnded(token)
         case let .timeControl(token, status, _): onTimeControl(token, status: status)
         case let .pausedUncommanded(token, _): onUncommandedPause(token)
@@ -1134,13 +1149,14 @@ public struct EngineCore {
     /// any more is not the CURRENT item failing; otherwise the cause row, the
     /// page's error (`chain-start` for a hop, C-6), then the reducer's error
     /// (idle, pause).
-    private mutating func onLoadFailure(_ token: DeckToken, message: String, cause: Vocabulary.StopCause) {
+    private mutating func onLoadFailure(_ token: DeckToken, message: String, cause: Vocabulary.StopCause,
+                                        fallbackCause: Vocabulary.NarrationFallbackCause) {
         let isPending = state.pendingLoad?.token == token
         let isHeld = state.pendingLoad == nil && state.loadedToken == token
         guard isPending || isHeld else {
             return diag("deck", [JSONMember("kind", .string("superseded-failure")), JSONMember("token", .number(Double(token)))])
         }
-        if fallBackToScript(token, isPending: isPending, cause: cause) { return }
+        if fallBackToScript(token, isPending: isPending, cause: cause, why: fallbackCause) { return }
         if let pending = state.pendingLoad, pending.bridge, pending.token == token {
             // A bridge that will not load never stalls the queue (corner case #12).
             state.pendingLoad = nil
@@ -1181,7 +1197,14 @@ public struct EngineCore {
     /// reaches `onLoadFailure` as a spoken load, which never falls back: the
     /// first line stops and a bridge is stepped over, exactly as before. A
     /// line with no script, and a clip, fail exactly as before.
-    private mutating func fallBackToScript(_ token: DeckToken, isPending: Bool, cause: Vocabulary.StopCause) -> Bool {
+    ///
+    /// The row carries `cause=` (NE-39n): the deck's closed reading of why the
+    /// file failed (`timeout`, `http-4xx`, `http-5xx`, `offline`, `decode`,
+    /// `other`), so a drive's paste says whether the fallback was the network,
+    /// the narration host or the file. `reason=` stays as it was (`timeout`
+    /// for the load deadline, else `failed`).
+    private mutating func fallBackToScript(_ token: DeckToken, isPending: Bool, cause: Vocabulary.StopCause,
+                                           why: Vocabulary.NarrationFallbackCause) -> Bool {
         guard config.forayTapeEnabled else { return false }
         let itemId: String?
         let at: String
@@ -1204,7 +1227,8 @@ public struct EngineCore {
         }
         diag("narration", [JSONMember("kind", .string("fallback")),
                            JSONMember("reason", .string(cause == .loadDeadline ? "timeout" : "failed")),
-                           JSONMember("at", .string(at))])
+                           JSONMember("at", .string(at)),
+                           JSONMember("cause", .string(why.rawValue))])
         // A file that failed mid-line: silence the deck under it first.
         if at == "playing" { deckCommand(.pause) }
         state.lastToken += 1

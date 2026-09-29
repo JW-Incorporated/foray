@@ -6,7 +6,7 @@
     {
       "id": "diag-tokens/set-names",
       "covers": [],
-      "note": "The eight closed sets, by the name admitToken takes, in declaration order.",
+      "note": "The closed sets, by the name admitToken takes, in declaration order.",
       "read": "VOCABULARY_SETS",
       "expect": {
         "value": [
@@ -17,7 +17,8 @@
           "stopCause",
           "source",
           "modeReason",
-          "faultKind"
+          "faultKind",
+          "narrationFallbackCause"
         ]
       }
     },
@@ -120,6 +121,13 @@
       "expect": { "value": ["implicit-activation", "externally-owned"] }
     },
     {
+      "id": "diag-tokens/narration-fallback-cause-tokens",
+      "covers": [],
+      "note": "NE-39n: the cause= of a narration kind=fallback row.",
+      "read": "NARRATION_FALLBACK_CAUSES",
+      "expect": { "value": ["timeout", "http-4xx", "http-5xx", "offline", "decode", "other"] }
+    },
+    {
       "id": "diag-tokens/admit-stage-ready",
       "covers": [],
       "note": "A token in its set is admitted as itself.",
@@ -184,6 +192,21 @@
       "call": "admitToken",
       "args": ["faultKind", "implicit-activation"],
       "expect": { "return": "implicit-activation" }
+    },
+    {
+      "id": "diag-tokens/admit-narration-fallback-cause-offline",
+      "covers": [],
+      "call": "admitToken",
+      "args": ["narrationFallbackCause", "offline"],
+      "expect": { "return": "offline" }
+    },
+    {
+      "id": "diag-tokens/admit-narration-fallback-cause-status-is-not-a-token",
+      "covers": [],
+      "note": "NE-39n: a raw HTTP status is never a cause; the deck maps 404 to http-4xx.",
+      "call": "admitToken",
+      "args": ["narrationFallbackCause", "404"],
+      "expect": { "return": null }
     },
     {
       "id": "diag-tokens/admit-wrong-set",

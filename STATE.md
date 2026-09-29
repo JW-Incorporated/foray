@@ -20,6 +20,18 @@ docs/. Completed workstreams move to their plan doc's retro section.
 
 **Owned while it runs:** `mobile/plugins/foray-audio/**` (engine) and the parity families `route-resume`, `prepare` and `manager-remainder`.
 
+### 2026-09-29 — `engine/ne-39n-next-fallback-cause`: NE-39n, Next lands on a narration line; the fallback's cause
+
+**The Next decision (provisional ruling, M3).** Next goes to the NEXT ITEM, a narration line included, on every surface: the page's button, the web lock screen, the car and the iPhone lock screen. From a clip whose next item is a line, Next lands on the line. From a line, it lands on the item after it.
+- **JS citation (the reference):** `player/queue-manager.js` `_skipToNext` now reads `this._nextItem(this._cursor(), false)`, so it no longer steps over `kind: "tts"`. It now agrees with `player/client.js` `forayNext` (`play(index + 1)`, audit round 3 player-core-6). The web lock screen's `nexttrack` already routed there (`media-session.js` §2, client.js `next: () => ForayPlayer.forayNext()`).
+- **Why:** the engine's `next` (the car, the lock screen) stepped over authored lines that the phone's own button played. From the clip before a closing line, it ended the Foray unheard.
+- **Pinned by:** `media/remote-nexttrack-onto-a-line` and `media/remote-nexttrack-from-a-line`, `manager-foray/next-lands-on-a-bridge` and `manager-foray/next-from-a-bridge-lands-on-the-item-after-it`, and `manager-episode/every-effect-has-a-handler` (re-recorded). Swift: `EngineCore.next(source:)`, `.skipNext` and `canNext` use `skipBridges: false`. The end-of-item and bridge-failure paths still step over bridges, as the JS does.
+- **Undo:** if the founder rules otherwise, flip `_skipToNext` first, re-record, then flip the three Swift sites.
+
+**The fallback's cause.** The `narration kind=fallback` row gains `cause=`, one of `timeout`, `http-4xx`, `http-5xx`, `offline`, `decode` or `other` (the JS vocabulary set `narrationFallbackCause`, then generated into Swift and Java). AVDeck reads it from the same fields its `failed` and `deadline` rows print, through the core's pure `NarrationFallbackCauseReading`. The code tables are provisional (`// MEASURE`): an unmapped failure is `other`, and the deck row beside it holds the codes to extend the table from.
+
+**Device check (human, not blocking):** NE-40's rendered-Foray block. Press Next during a line and see the next clip start at its in-point. Turn on airplane mode during a line: the paste shows `narration kind=fallback ... cause=offline`.
+
 ### 2026-09-29 — `android/a-23-pure-policies`: A-23, the pure policies (episode subset) on the JVM
 
 Owned: `foray-engine-core-jvm`'s main code (the ported policies), its parity runners, the Java half of

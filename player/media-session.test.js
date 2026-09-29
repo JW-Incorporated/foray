@@ -879,6 +879,53 @@ test("two lock-screen nexttracks advance two segments", async () => {
   assert.equal(manager.currentIndex, 2);
 });
 
+/* NE-39n (2026-09-29): the car's own Next over narration. The page's Next
+   (client.js `forayNext`, `play(index + 1)`) always landed on a narration line;
+   the manager's `skipToNext`, which the engine's `next` ports, stepped over it.
+   One behaviour on every surface: Next is the next item, a line included. The
+   Foray is literal (the `media/remote-nexttrack-*-line` fixtures carry the same
+   one), with the line between two clips of one episode. */
+async function playerWithLine() {
+  __resetInstanceForTests();
+  const backend = new FakeBackend();
+  const manager = new PlayerQueueManager({ backend, seamGapSec: 0, allowMultiple: true });
+  const catalogue = {
+    "ep-a": { id: "ep-a", title: "Fire", show: "Origin Stories", audio_url: "https://example.test/a.mp3", duration_sec: 3600 },
+  };
+  manager.setQueueFromForay({
+    id: "foray-1",
+    title: "Fire",
+    items: [
+      { type: "segment", item_id: "ep-a", start_sec: 100, end_sec: 210 },
+      { type: "narration", id: "nar-1", asset: "narration/fire-1.mp3" },
+      { type: "segment", item_id: "ep-a", start_sec: 400, end_sec: 520 },
+    ],
+  }, { resolveItem: (id) => catalogue[id] ?? null });
+  const surface = {
+    next: () => manager.skipToNext(),
+    previous: () => manager.skipToPrevious(),
+  };
+  return { backend, manager, map: actionMap(surface) };
+}
+
+test("nexttrack from a clip whose next item is a narration line lands on the line (NE-39n)", async () => {
+  const { backend, manager, map } = await playerWithLine();
+  await manager.play(0);
+  backend.calls.length = 0;
+  await map.get("nexttrack")();
+  assert.equal(manager.currentIndex, 1, "the line is the next item");
+  assert.ok(backend.calls.includes("load:nar-1@0"), `the line is what loads: ${backend.calls.join(" ")}`);
+});
+
+test("nexttrack from a narration line lands on the next clip at its in-point (NE-39n)", async () => {
+  const { backend, manager, map } = await playerWithLine();
+  await manager.play(1);
+  backend.calls.length = 0;
+  await map.get("nexttrack")();
+  assert.equal(manager.currentIndex, 2, "the clip after the line");
+  assert.ok(backend.calls.includes("load:foray-1#2@400"), `at its in-point: ${backend.calls.join(" ")}`);
+});
+
 test("previoustrack from a lock screen restarts the segment at its in-point", async () => {
   const { r, backend, map } = await realPlayer();
   const first = r.playable[0];

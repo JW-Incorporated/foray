@@ -5577,7 +5577,10 @@ const ForayPlayer = {
        Swift transition-bridge rule — and in a Foray a narration line is
        authored content: Next used to jump past it while the page highlighted
        it, and from the clip before a closing line it ended the Foray unheard.
-       `play(index)`, the way `forayPrevious` already moves. */
+       `play(index)`, the way `forayPrevious` already moves. Since NE-39n
+       (2026-09-29) `skipToNext` agrees — Next is the next item, a line
+       included — so the engine's own Next (the car, the iPhone lock screen)
+       lands where this does. */
     await moveForay(nextIndex, () => manager.play(nextIndex));
     render();
   },
