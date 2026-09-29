@@ -104,9 +104,13 @@ final class ForayEngine {
 
     /// Below this much background time at a begin, the `grace` row says
     /// `low=y` (plan §4.4: "if backgroundTimeRemaining is already small ...
-    /// that is written to the row"). // MEASURE: NE-38 sets it from the H-1
-    /// rows; 5 s is about one CDN load that goes wrong.
-    static let lowBackgroundRemainingMs: Double = 5_000
+    /// that is written to the row"). It decides nothing: it only labels the
+    /// row. PROVISIONAL (card NE-38; docs/ios-native-engine-measurements.md
+    /// §12): 5 s is about one CDN load that goes wrong (a warm load takes
+    /// 0.2-1.2 s, a cold one up to the 20 s P-13 deadline). Settled by the
+    /// `grace low=y` rows against each span's outcome (`grace kind=end
+    /// outcome=`, `heldMs`), NE-38e verdict `resume-latency`, NE-38f.
+    static let lowBackgroundRemainingMs: Double = 5_000 // MEASURE: verdict=resume-latency (NE-38e). Rows: grace low=y, grace kind=end outcome= heldMs.
 
     /// L28: the memory headroom a `grace kind=begin` row records, in MB
     /// (`os_proc_available_memory`). A seam so the XCTests are deterministic:
