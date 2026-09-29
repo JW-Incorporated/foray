@@ -233,7 +233,8 @@ does not block Capacitor's bridge injection. That is what `docs/mobile-shell.md`
 §5 *reasoned* and nobody had run. It says nothing about Android, which injects an
 inline `<script>` into the served HTML from a `https://localhost` origin — a
 different mechanism, and the one §5's risk is actually about. That is
-`HUMAN-ACTIONS.md` #18 and it stays open. `bridgeVerdict()` carries both halves of
+`HUMAN-ACTIONS.md` #18, since closed: the Android emulator smoke (`android-release`
+run 36203157867) logged `hasCapacitor: true` under the real CSP. `bridgeVerdict()` carries both halves of
 that sentence in its own output so the claim cannot creep in a retelling.
 
 **And a `bridge-blocked` result does not automatically mean the CSP.** On iOS the
@@ -364,10 +365,12 @@ that only completed on resume. A test in `ios-workflow.test.mjs` asserts that no
 - **The one thing only a phone can settle is now `HUMAN-ACTIONS.md` #11 step 6** —
   at each change of voice, does it sound like a two-second pause or like the app
   stopped? #224 is a founder report that it sounded like the latter.
-- **#16 / #18:** still open. #16's *build* is now automated, but its device
-  questions — icons visible, a Foray advancing with the phone locked, stale-content
-  behaviour after an update — are device questions and a simulator cannot answer
-  them. #18 is Android and this workflow says nothing about it.
+- **#16 / #18:** both closed since. #16 was skipped on 2026-09-24 because CI now
+  generates and builds the iOS shell; its device questions (icons visible, a Foray
+  advancing with the phone locked, stale-content behaviour after an update) went
+  to real-phone records, which a simulator cannot replace. #18 is Android, and
+  this workflow says nothing about it. It was closed on 2026-09-29 on the Android
+  emulator smoke (`android-release` run 36203157867: `hasCapacitor: true`).
 - **#17:** whether the bundled-data freeze blocks a store submission.
 
 ## 4b. What the runs have actually measured

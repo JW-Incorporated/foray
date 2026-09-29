@@ -196,7 +196,9 @@ for every claim is labelled inline and summarised here.
 of 2026-08-17 some of the iOS column *was* executed, in the **iOS Simulator on a
 CI runner** (§0b). A Simulator models neither power management nor true
 suspension, so a pass there is weaker evidence than a failure would be; it is
-emphatically not a device measurement, and `HUMAN-ACTIONS.md` #11 stays open.
+emphatically not a device measurement. The phone pass was `HUMAN-ACTIONS.md` #11,
+closed 2026-09-24 on the founder's iPhone records; the Android half is now #127,
+not issued until the Android native engine is fully operational.
 
 The Android toolchain was installed and a Capacitor app around our real player
 was built and pushed to the emulator — but it never finished booting well enough

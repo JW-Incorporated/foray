@@ -2,7 +2,7 @@
 
 <!-- ha-format: 2 -->
 
-> **32 open.** Closed items are in `HUMAN-ACTIONS-DONE.md` — you never need it.
+> **31 open.** Closed items are in `HUMAN-ACTIONS-DONE.md` — you never need it.
 > To close one: reply `done` (or `skip <why>`) to its card in the project's human-action channel.
 > Anything else you reply is forwarded to a thread on the card.
 
@@ -154,6 +154,19 @@
 2. Reply `done`.
 
 **Worked if:** Joey has acknowledged it.
+
+## #127 🟢 [UPGRADE] Android device pass (Joey's Pixel) — not issued yet: waits for the Android native engine (~30 min per milestone)
+<!-- ha filed=2026-09-29 kind=default -->
+
+**Why:** Replaces the Android half of #11, closed on iPhone evidence; no human has run 4a on Android. Founder ruling D-A3 (2026-09-29): no device pass and no request to Joey until the Android native engine is fully operational, after A-42.
+
+**Steps:**
+1. Nothing yet. Do not ask Joey. A session edits this item when A-42 (`docs/plans/android-assessment.md` §5) has landed and issues the pass.
+2. Then Joey, on the Pixel 10 Pro: install the latest build from the Play internal-testing opt-in link (#44).
+3. Run `docs/android-device-pass.md` (the A-14 script) step by step, writing pass or fail for each.
+4. Paste each Developer → Playback diagnostics → Copy into the `docs/field-records/` template the script names.
+
+**Worked if:** a filled Android device-pass record for a build carrying A-42 is in `docs/field-records/`.
 
 ## #118 🟢 [UPGRADE] Remove the retired events server from your Windows Startup folder (~2 min)
 <!-- ha filed=2026-09-25 kind=default -->
@@ -409,23 +422,6 @@ artifact.
 
 ---
 
-## #18 🟡 [DECIDE] On Android: settle whether our CSP kills Capacitor's bridge
-<!-- ha filed=2026-09-11 kind=default -->
-
-**Why:** This is the **top open risk** in the whole native-app change, and it can be settled by reading one line in a console.
-
-Capacitor injects its native bridge (`native-bridge.js`, the app config, and every plugin's JavaScript) into the page as an **inline `<script>`**. Foray's page carries a strict CSP
-
-**Steps:**
-1. Install **JDK 21** (Capacitor 8 dies on JDK 17 with `invalid source release: 21`) and the Android **platform tools** (for `adb`).
-2. Build the app:
-3. Turn on **Developer options → USB debugging** on the phone, plug it in, and install:
-4. Open the app on the phone. On the computer, open Chrome and go to **`chrome://inspect`**, then click **inspect** under the Foray app.
-5. **In that console, type `Capacitor` and press enter.** Report which you get:
-6. Either way, also say whether the four cards render and whether search works.
-
-**Worked if:** there is a comment on #36 quoting what `Capacitor` evaluated to in the Android console, plus any CSP error text verbatim.
-
 ## #17 🟡 [DECIDE] Decide: does the app ship with data frozen at build time?
 <!-- ha filed=2026-09-11 kind=keyword -->
 
@@ -468,19 +464,6 @@ Capacitor injects its native bridge (`native-bridge.js`, the app config, and eve
 5. See the pre-migration item text at commit 275b35e7c023aea1b9b94f28b9f2596ea4502d0b (legacy HUMAN-ACTIONS.md, item #13).
 
 **Worked if:** `docs/legal/privacy-policy.md` contains no `TODO(founder)` markers, and the answers in `docs/legal/data-safety.md` can be pasted into both forms without a judgement call left in them.
-
----
-
-## #12 🟡 [DECIDE] Decide: does Android's native audio backend land before the Play release?
-<!-- ha filed=2026-09-11 kind=keyword -->
-
-**Why:** #34 plans to wrap the web app in a Capacitor shell and ship both stores, **Google Play first**, because Play is more lenient about webviews and Android builds on Windows today. The MP1 research (`docs/research/mp1-background-audio.md`) does not overturn that, but it found that on *audio* the two pla
-
-**Steps:**
-1. Read §9 and §10 of `docs/research/mp1-background-audio.md` — two short sections, one table.
-2. Reply with one of the three phrases above and change the status below. A session will re-scope #28, #27 and #34 to match.
-
-**Worked if:** #28 and #27 say the same thing about Android as #34's milestone order does, and nobody has to re-derive it.
 
 ---
 

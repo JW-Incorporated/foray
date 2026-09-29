@@ -796,8 +796,10 @@ and **0 CSP violations** — **on a booted iOS Simulator.** The arm64/Release st
 a **compile only**: `BUILD SUCCEEDED`, unsigned, never installed and never
 launched. So the `img-src 'self'` reasoning in §2.3 is observed *on a simulator*,
 and `docs/ios-ci.md` twice warns that a simulator is not a device. Nothing has run
-on real iOS hardware either. The Android device pass is
-`HUMAN-ACTIONS.md` #11, and the CSP line item is #18 in the post-#220 numbering.
+on real iOS hardware either. The Android device pass is now
+`HUMAN-ACTIONS.md` #127 (it replaced the Android half of the closed #11). The CSP
+line item was #18; it was closed on 2026-09-29 on the Android emulator smoke
+(`android-release` run 36203157867: `hasCapacitor: true`, `platform: android`).
 
 ### The top open risk: Android's injected bridge versus this CSP
 
