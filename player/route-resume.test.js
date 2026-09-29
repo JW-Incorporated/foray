@@ -11,7 +11,8 @@
    TO SEE ONE FAIL: let a listener's pause through the first guard of
    routeResumeDecision (record.mjs --mutate route-listener does exactly that),
    or set ROUTE_RESUME_MAX_LOST_SEC to 25 h, or turn the Bluetooth arm on by
-   default, or drop `s.lost = null` from a resume in routeResumeStep, or let
+   default, or drop both `s.pausedBy = "none"` and `s.lost = null` from a resume in
+   routeResumeStep (either one alone is enough to spend the loss), or let
    "lost" arm while paused — each turns the named test red with the case id and
    the diff. */
 

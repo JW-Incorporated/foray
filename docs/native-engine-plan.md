@@ -1857,6 +1857,7 @@ Read first: `CLAUDE.md`, this deck, the Tier 2 requirements, `docs/ios-native-pl
 
     Never a name or a raw UID (DiagGate).
   - A resume is `begin(.routeResume, source: .autoresume)`, with grace, like a car's press.
+  - `lostSec` is measured on the wall clock (`Date()`), never on uptime (`ProcessInfo.systemUptime`, `DispatchTime`), which stops while the phone sleeps: a phone asleep overnight in a parked car would otherwise read a two-day loss as minutes old (route-resume.js, THE CLOCK). A negative age is refused.
   - Burn down `route-resume`. Opens with `hold`.
   - The reference is `routeResumeDecision` plus the reducer `routeResumeStep` (replayed by `routeResumeReplay` in the `sequences` fixtures): the reducer is how `pausedBy` and the one-resume-per-loss rule are tracked, so `EngineCore` tracks them the same way.
 - **Acceptance:**

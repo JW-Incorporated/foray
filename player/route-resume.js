@@ -37,15 +37,23 @@
    engine reads directly; A-61 maps Android's AudioDeviceInfo types onto the
    same three classes. */
 
-/** How old a route loss may be and still resume. // MEASURE (NE-38e
-    `route-back` rows -> NE-38f): 24 h, provisional. The evidence it rests on:
+/** How old a route loss may be and still resume. // MEASURE: verdict=route-back
+    (NE-38e `route-back` rows' `lostSec` -> NE-38f): 24 h, provisional. The evidence it rests on:
     "after a day at work" (#114, passed on M1) is about 9-10 h, and a car
     parked overnight is about 14 h, so 24 h covers both with room, while a loss
-    from the day before yesterday is not the same drive. */
+    from the day before yesterday is not the same drive.
+
+    THE CLOCK. The age is measured on a clock that keeps running while the
+    phone sleeps and the app is suspended: wall-clock seconds (Swift `Date()`,
+    Java `System.currentTimeMillis()`). NOT uptime (`ProcessInfo.systemUptime`,
+    `DispatchTime`, `SystemClock.uptimeMillis`), which stops while the device
+    sleeps, so a phone asleep in a parked car overnight would read a two-day
+    loss as a few minutes old and resume it. A wall clock that steps backwards
+    gives a negative age, which is refused (`loss-age-unknown`). */
 export const ROUTE_RESUME_MAX_LOST_SEC = 24 * 60 * 60;
 
-/** Whether a Bluetooth route (A2DP, HFP, LE) may resume on its own. // MEASURE
-    (NE-38e `route-back`: the ms from a route's `back` to the car's own `remote
+/** Whether a Bluetooth route (A2DP, HFP, LE) may resume on its own.
+    // MEASURE: verdict=route-back (NE-38e `route-back`: the ms from a route's `back` to the car's own `remote
     play`): OFF, provisional. The founder's car is BluetoothA2DPOutput and
     sends its own play 7.4 s after connecting (2026-09-28 paste, e#83 -> e#85),
     so an automatic resume would only race that press; and AirPods are A2DP
@@ -118,6 +126,7 @@ export function routeResumeInitial({ playing = true } = {}) {
 /**
  * One event through the route-resume bookkeeping. Pure: returns a new state.
  * Events (`on`):
+ *   `atSec` is wall-clock seconds (see ROUTE_RESUME_MAX_LOST_SEC: never uptime).
  *   - "lost"  {port, key, atSec}: the route went away. Arms a resume only when we
  *             were playing; a route lost while paused changes nothing.
  *   - "back"  {port, key, known, atSec}: a route came back; asks routeResumeDecision.
