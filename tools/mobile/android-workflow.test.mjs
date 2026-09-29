@@ -1644,7 +1644,7 @@ test("A-02: android-smoke.yml has the house shape and one advisory job", () => {
   assert.equal(/continue-on-error/.test(SYML), false, "advisory means not required, not unable to fail");
 });
 
-test("A-02: the smoke fires on android-build.yml's path set plus the release pipeline's four paths", () => {
+test("A-02: the smoke fires on android-build.yml's path set, the two bundled root shell files, and the release pipeline's four paths", () => {
   /* MUTATION: delete the `"player/**"` line -> fails. Or add `"data/**"` -> fails.
      Or add `push:` -> fails. Or change `paths:` to `paths-ignore:` -> fails.
      THE CARD, LITERALLY: the five paths the shell is built from, which is
@@ -1679,10 +1679,19 @@ test("A-02: the smoke fires on android-build.yml's path set plus the release pip
   ]) {
     assert.ok(smokePaths.includes(p), `the smoke must still fire on ${p}`);
   }
+  /* The two root files the shell bundles and index.html loads before app.js,
+     which android-build.yml's filter does not name. Read from
+     prepare-webdir.mjs's SHELL_FILES so a file leaving the bundle is noticed.
+     MUTATION: drop `"search-engine.js"` from the filter -> fails. */
+  const shell = fs.readFileSync(path.join(ROOT, "tools/mobile/prepare-webdir.mjs"), "utf8");
+  for (const p of ["search-engine.js", "styles.css"]) {
+    assert.ok(shell.includes(`"${p}"`), `${p} is no longer in prepare-webdir.mjs's SHELL_FILES; re-read A-02`);
+    assert.ok(smokePaths.includes(p), `the smoke must fire on ${p}: it ships in the APK and loads before app.js`);
+  }
   for (const wide of ["data/**", "docs/**", "backend/**", "**", "test/**"]) {
     assert.equal(smokePaths.includes(wide), false, `${wide} would boot an emulator for a content PR`);
   }
-  assert.equal(smokePaths.length, 10, `exactly the ten paths above, found: ${JSON.stringify(smokePaths)}`);
+  assert.equal(smokePaths.length, 12, `exactly the twelve paths above, found: ${JSON.stringify(smokePaths)}`);
 });
 
 test("A-02: android-release.yml calls the smoke on a dispatch only, hands it no secret, and never chains it", () => {

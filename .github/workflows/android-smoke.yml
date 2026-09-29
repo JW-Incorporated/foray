@@ -28,8 +28,9 @@
 #
 # `pull_request` on `android-build.yml`'s path set (`mobile/**`,
 # `tools/mobile/**`, `player/**`, `app.js`, `index.html`) — what the webDir and
-# the native shell are made of — plus the four paths the release pipeline
-# watched (three are inside `mobile/**` / `tools/mobile/**` already; they are
+# the native shell are made of — plus `search-engine.js` and `styles.css`,
+# which the shell bundles and index.html loads before app.js, plus the four
+# paths the release pipeline watched (three are inside `mobile/**` / `tools/mobile/**` already; they are
 # listed by name so narrowing the broad globs later cannot drop them silently),
 # plus this file. NOT `data/**`, NOT `docs/**`: a nightly content PR changes
 # neither what the app is nor how it starts.
@@ -92,6 +93,13 @@ on:
       - "index.html"
       - "app.js"
       - "player/**"
+      # Beyond android-build.yml's set: both are in prepare-webdir.mjs's
+      # SHELL_FILES, so they ship in the APK, and index.html loads them BEFORE
+      # app.js (`<script src="search-engine.js">`, `<link href="styles.css">`).
+      # A PR touching only one of them changes what launches, so it gets the
+      # launch check too.
+      - "search-engine.js"
+      - "styles.css"
       - ".github/workflows/android-smoke.yml"
       - ".github/workflows/android-release.yml"
       - "mobile/gradle/**"

@@ -272,7 +272,8 @@ So:
 - **on every app PR, and on nothing else** — since A-02 the smoke lives in
   `android-smoke.yml`, whose `pull_request` trigger is `android-build.yml`'s path
   set (`mobile/**`, `tools/mobile/**`, `player/**`, `app.js`, `index.html`)
-  plus the release pipeline's paths and itself. Not `data/**` or `docs/**`, and
+  plus `search-engine.js` and `styles.css` (bundled, and loaded before
+  `app.js`), the release pipeline's paths and itself. Not `data/**` or `docs/**`, and
   no `push` or `schedule`. The measured cost that made this affordable: 3m49s end
   to end (run 36203157867). The iPhone no longer runs the JS player lane, so this
   emulator is the only automated witness that `app.js` and `player/` still start
