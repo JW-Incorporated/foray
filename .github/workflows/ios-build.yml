@@ -459,6 +459,10 @@ jobs:
           APP="$DD_SIM/Build/Products/Debug-iphonesimulator/App.app"
           test -d "$APP"
           test -f "$APP/public/index.html"
+          # NE-34's jingle reached the BUILT bundle where InterludePlayer looks
+          # (tools/mobile/inject-interlude.mjs; not a SwiftPM resource, which
+          # breaks the signed archive).
+          test -f "$APP/public/player/assets/interlude-placeholder.wav"
           echo "app=$APP" >> "$GITHUB_OUTPUT"
           du -sh "$APP" | tee -a "$ART/app-size.txt"
 
