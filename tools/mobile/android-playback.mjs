@@ -67,6 +67,8 @@ import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { evaluate, expectedTitle, listTargets, pickPage, probe as launchProbe } from "./webview-probe.mjs";
 import { LOAD_SETTLE_TIMEOUT_MS } from "../../player/deck-policy.js";
+import { DIAG_KEY } from "../../player/diagnostic-log.js";
+import { INTERLUDE_ASSET_PATH } from "../../player/interlude.js";
 import { NARRATION_DEADLINE_FACTOR, NARRATION_DEADLINE_MARGIN_SEC } from "../../player/queue-manager.js";
 
 export const PKG = "ai.jwlabs.foura";
@@ -478,16 +480,16 @@ export function mediaLogExpression(sinceMs = 0) {
 export const RING_TYPES = Object.freeze(["seam", "narration", "stop", "outPoint"]);
 
 /** The diagnostics ring's rows written after `sinceSeq`, read from its own
- *  durable copy (`cp_diag`, `player/diagnostic-log.js`), which is what the
+ *  durable copy (`DIAG_KEY`, `player/diagnostic-log.js`), which is what the
  *  sheet's Copy formats. Read-only. `seq` comes back either way, so a call
  *  with a huge `sinceSeq` is how a scenario marks where it started. */
 export function ringExpression(sinceSeq = 0) {
   return `(() => {
   let raw = null;
-  try { raw = localStorage.getItem(${JSON.stringify("cp_diag")}); } catch (e) { return { ok: false, error: String((e && e.message) || e) }; }
-  if (!raw) return { ok: false, error: 'no cp_diag in localStorage' };
+  try { raw = localStorage.getItem(${JSON.stringify(DIAG_KEY)}); } catch (e) { return { ok: false, error: String((e && e.message) || e) }; }
+  if (!raw) return { ok: false, error: ${JSON.stringify(`no ${DIAG_KEY} in localStorage`)} };
   let rec = null;
-  try { rec = JSON.parse(raw); } catch (_) { return { ok: false, error: 'cp_diag is not JSON' }; }
+  try { rec = JSON.parse(raw); } catch (_) { return { ok: false, error: ${JSON.stringify(`${DIAG_KEY} is not JSON`)} }; }
   const entries = Array.isArray(rec.entries) ? rec.entries : [];
   const types = ${JSON.stringify(RING_TYPES)};
   return { ok: true, seq: rec.seq, dropped: rec.dropped,
@@ -701,14 +703,6 @@ function rank(sorted, p) {
   return sorted[Math.min(sorted.length - 1, Math.max(0, Math.ceil(p * sorted.length) - 1))];
 }
 
-/** (f): the seams the ring measured, as the numbers D-A4 is decided on.
- *
- *  `observedGapMs` is the ring's own number: the wall clock from the boundary
- *  (the out-point, or a file's `ended`) to the next `playing`. A seam that
- *  never became audible has none, and it is not left out: it counts as longer
- *  than any gap (Infinity) in p50/p95, because leaving the worst seams out of a
- *  percentile is how a stall reads as a good number. A cut seam and the end of
- *  the queue are not seams a listener waited through, and are counted apart. */
 /** How much of a seam the interlude jingle filled: the jingle's element went
  *  `playing` inside the seam, and sounded until its `ended` or the seam's end.
  *  0 when no jingle played in it. `media` is the instrument's element log. */
@@ -723,8 +717,11 @@ export function jingleIn(seamRow, media) {
   return Math.max(0, Math.min(off ? off.at : end, end) - on.at);
 }
 
-/** The interlude jingle's asset (`player/interlude.js` INTERLUDE_ASSET_PATH). */
-export const INTERLUDE_MARK = "interlude";
+/** The interlude jingle's file name, as the instrument logs it (host + last
+ *  path segment). Taken from the player's own constant, so a renamed or
+ *  replaced jingle asset moves this with it instead of silently counting
+ *  every jingle as silence. */
+export const INTERLUDE_MARK = path.posix.basename(INTERLUDE_ASSET_PATH);
 
 /** (f): the seams the ring measured, as the numbers D-A4 is decided on.
  *
