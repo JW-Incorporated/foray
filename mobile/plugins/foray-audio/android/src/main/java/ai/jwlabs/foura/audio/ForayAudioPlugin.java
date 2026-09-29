@@ -236,7 +236,7 @@ public class ForayAudioPlugin extends Plugin {
            anyone calls it, onStartCommand has run. */
         result.put("alreadyRunning", PlaybackKeepAliveService.isRunning());
         try {
-            ContextCompat.startForegroundService(context, serviceIntent(context));
+            /* A-04 MUTATION (throwaway): the service is never started. */
             result.put("started", true);
             result.put("reason", "");
         } catch (Exception e) {
