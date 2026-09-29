@@ -354,7 +354,7 @@ jobs:
           test -d ../plugins/foray-audio/android/src/main/java \
             || { echo "the plugin's Java sources are missing from the checkout — see mobile/.gitignore's anchoring note"; exit 1; }
 
-      - name: foray-audio native unit tests (Robolectric — actually RUNS the plugin/service code)
+      - name: native unit tests — foray-audio, foray-tts, foray-vault (Robolectric — actually RUNS the plugin code)
         # M5 (full-repo-review-report.md, 2026-08-31): everything above this step
         # proves the plugin's SOURCES survived regeneration and that the APK
         # compiles; nothing runs a line of `ForayAudioPlugin`,
@@ -364,15 +364,31 @@ jobs:
         # (onCreate/onStartCommand/onDestroy), the hub's cross-thread dispatch, and
         # the `setNowPlaying` payload parsing that the class's own AUDIT comments
         # warn can crash Media3 on the main thread with a malformed payload.
+        #
+        # A-13 (docs/plans/android-assessment.md §5.3) adds the other two
+        # hand-written modules: `:foray-tts` (the `finished` event and the
+        # utteranceId it carries on the done and error paths) and `:foray-vault`
+        # (the token store's round-trip, corrupt-file recovery and the no-backup
+        # directory). One Gradle invocation, so the three share one configuration.
         working-directory: mobile/android
         run: |
           set -euo pipefail
-          if ! ./gradlew :foray-audio:testDebugUnitTest --no-daemon --console=plain \
-              > "$ART/gradle-foray-audio-test.log" 2>&1; then
-            echo "::group::foray-audio unit test log tail"; tail -300 "$ART/gradle-foray-audio-test.log"; echo "::endgroup::"
+          if ! ./gradlew :foray-audio:testDebugUnitTest :foray-tts:testDebugUnitTest \
+              :foray-vault:testDebugUnitTest --no-daemon --console=plain \
+              > "$ART/gradle-native-unit-test.log" 2>&1; then
+            echo "::group::native unit test log tail"; tail -300 "$ART/gradle-native-unit-test.log"; echo "::endgroup::"
             exit 1
           fi
-          grep -E "^BUILD (SUCCESSFUL|FAILED)" "$ART/gradle-foray-audio-test.log" | tail -1 || true
+          grep -E "^BUILD (SUCCESSFUL|FAILED)" "$ART/gradle-native-unit-test.log" | tail -1 || true
+          # A module with NO test classes reports testDebugUnitTest as NO-SOURCE and
+          # stays green, so a lost src/test directory would pass silently. Each module
+          # must have written a JUnit report with at least one test case.
+          for m in foray-audio foray-tts foray-vault; do
+            d="../plugins/$m/android/build/test-results/testDebugUnitTest"
+            n=$(cat "$d"/TEST-*.xml 2>/dev/null | grep -c '<testcase ' || true)
+            echo "$m: $n test cases" | tee -a "$ART/native-unit-test-counts.txt"
+            test "$n" -gt 0 || { echo "$m ran no unit tests"; exit 1; }
+          done
 
       - name: assembleDebug
         # The primary verdict, and the artefact a founder can actually install.

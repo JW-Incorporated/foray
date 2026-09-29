@@ -44,6 +44,16 @@ android {
         sourceCompatibility JavaVersion.VERSION_21
         targetCompatibility JavaVersion.VERSION_21
     }
+    /* A-13 (docs/plans/android-assessment.md §5.3): JVM unit tests under
+       Robolectric, set up the way `foray-audio`'s module is and for the same
+       reason: they run on the CI runner that already builds this module, with
+       no emulator and no device. `includeAndroidResources` lets Robolectric
+       read this module's merged manifest. */
+    testOptions {
+        unitTests {
+            includeAndroidResources = true
+        }
+    }
 }
 
 repositories {
@@ -77,4 +87,12 @@ dependencies {
      * works. See docs/legal/third-party-notices.md, "What is deliberately NOT
      * here", for the names and the argument. */
     implementation 'com.microsoft.onnxruntime:onnxruntime-android:1.20.0'
+
+    /* Test-only (src/test), never in the APK. The same four coordinates and
+       versions as `foray-audio/android/build.gradle`, so the three hand-written
+       modules test against one Robolectric. */
+    testImplementation "junit:junit:4.13.2"
+    testImplementation "org.robolectric:robolectric:4.14.1"
+    testImplementation "androidx.test:core:1.6.1"
+    testImplementation "androidx.test.ext:junit:1.2.1"
 }
