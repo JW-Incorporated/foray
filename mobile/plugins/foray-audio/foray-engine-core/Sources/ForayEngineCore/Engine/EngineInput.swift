@@ -286,4 +286,10 @@ public enum EngineInput: Equatable {
     case narrator(NarratorEvent)
     /// The interlude jingle (NE-31s).
     case interlude(InterludeEvent)
+    /// The PREVIEW deck (NE-47): the voice picker's rendered `preview.m4a`,
+    /// on a deck of its own so a preview never touches the item the main
+    /// deck holds. Its events speak the main deck's vocabulary; the core
+    /// reads only the load's answer (`.ready`, `.failed`,
+    /// `.deadlineExceeded`) and the file's `.ended`, for the token it issued.
+    case preview(DeckEvent)
 }

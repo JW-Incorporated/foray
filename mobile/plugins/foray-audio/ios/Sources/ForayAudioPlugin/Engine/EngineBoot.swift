@@ -24,6 +24,15 @@ import ForayEngineCore
 // rate 0 (S-3). The first activation is a play's, inside the turn that asked.
 enum EngineBoot {
 
+    /// NE-47: how long the voice preview's load may take before the audition
+    /// is spoken instead. PROVISIONAL: a listener tapped "preview" and is
+    /// waiting, so this is well under the main deck's 20 s (P-13), and above
+    /// the few seconds a cold 64 kbps `.m4a` of a sentence takes on a slow
+    /// cellular link. The `deck` rows with `lane=preview` carry the load's
+    /// time to ready (`elapsedMs`) and any `deadlineExceeded`; the first
+    /// week of rendered-voice previews settles it.
+    static let previewLoadDeadlineSec: Double = 6 // MEASURE: NE-47, from the lane=preview time-to-ready rows.
+
     /// Build the process's engine in native mode. The `build` row is written
     /// FIRST, before any seam writes its own (BuildRow's rule), so every
     /// paste says which engine and which launch produced the rows under it.
@@ -75,6 +84,16 @@ enum EngineBoot {
         let deck: DeckDriving = config.deckPairEnabled
             ? DeckPair.make(sessionIsActive: sessionIsActive, diag: { store.diag($0) })
             : AVDeck(config: AVDeck.Config(sessionIsActive: sessionIsActive, diag: { store.diag($0) }))
+        // NE-47: the voice picker's rendered preview plays on a deck of its
+        // own (the page sends a `url` only once the picker offers rendered
+        // voices, so until then this deck never loads anything). Its rows
+        // say `lane=preview`, so a Copy never mistakes them for the main
+        // deck's. A preview is a few seconds of a voice: a load that has not
+        // answered inside `previewLoadDeadlineSec` is spoken instead.
+        let preview = AVDeck(config: AVDeck.Config(
+            loadDeadlineSec: EngineBoot.previewLoadDeadlineSec, sessionIsActive: sessionIsActive,
+            diag: { store.diag(DiagEntry(kind: $0.kind, fields: $0.fields + [JSONMember("lane", .string("preview"))])) },
+            reusesSameSource: false))
         let seams = EngineSeams(
             session: session,
             background: BackgroundGrace(),
@@ -92,6 +111,7 @@ enum EngineBoot {
             holdPolicy: holdPolicy,
             interlude: interlude,
             silence: silence,
+            preview: preview,
             // Developer "Simulate system termination" only (DV-7a).
             terminate: { exit(0) })
         let engine = ForayEngine(seams: seams, config: config)

@@ -200,6 +200,10 @@ final class ForayEngine {
         seams.interlude?.onEnded = { [weak self] reason in
             MainActor.assumeIsolated { self?.receive(.interlude(.ended(reason: reason))) }
         }
+        // The voice preview's deck (NE-47): its load's answer and its end.
+        seams.preview?.onEvent = { [weak self] event in
+            MainActor.assumeIsolated { self?.receive(.preview(event)) }
+        }
         observations.append(seams.session.observe { [weak self] event in
             MainActor.assumeIsolated { self?.receive(.session(event)) }
         })
@@ -241,6 +245,8 @@ final class ForayEngine {
         graceSpan = nil
         seams.deck.onEvent = nil
         seams.deck.invalidate()
+        seams.preview?.onEvent = nil
+        seams.preview?.invalidate()
         seams.speaker.onFinish = nil
         seams.speaker.onNarratorEvent = nil
         // Nothing sounds past a teardown: the jingle and the silence node are
@@ -514,6 +520,8 @@ final class ForayEngine {
             seams.output.writeRestore(record)
         case let .speak(text, voiceId):
             seams.speaker.speak(text: text, voiceId: voiceId)
+        case let .preview(deckCommand):
+            interpretPreview(deckCommand)
         case let .narration(command):
             // The narrating overlay's synthesiser: SpeechNarrator (NE-33), the
             // same one that speaks an audition. Its answers come back through
@@ -664,6 +672,20 @@ final class ForayEngine {
             let on = enabled.contains(command)
             if let previous, previous.contains(command) == on { continue }
             seams.remote.setEnabled(on, for: command)
+        }
+    }
+
+    // MARK: - The voice preview's deck (NE-47)
+
+    /// The preview deck plays what the core asks of it. With none wired, a
+    /// load is answered `.failed` after this turn (the inbox), so the core
+    /// speaks the line instead: an audition is never silent for want of a
+    /// deck.
+    private func interpretPreview(_ command: DeckCommand) {
+        if let preview = seams.preview {
+            preview.send(command)
+        } else if case let .load(token, _, _, _, _) = command {
+            handle(.preview(.failed(token: token, message: "no preview deck")))
         }
     }
 

@@ -401,6 +401,42 @@
       "expect": { "return": true }
     },
     {
+      "id": "contract/send-request-valid-audition-spoken",
+      "covers": [],
+      "call": "contractAccepts",
+      "args": [
+        "sendRequest",
+        {
+          "v": 1,
+          "cmdSeq": 11,
+          "cmd": "audition",
+          "source": "audition",
+          "args": { "text": "This is how I sound", "voiceId": null }
+        }
+      ],
+      "expect": { "return": true }
+    },
+    {
+      "id": "contract/send-request-valid-audition-rendered",
+      "covers": [],
+      "call": "contractAccepts",
+      "args": [
+        "sendRequest",
+        {
+          "v": 1,
+          "cmdSeq": 12,
+          "cmd": "audition",
+          "source": "audition",
+          "args": {
+            "text": "This is how I sound",
+            "voiceId": "kokoro:af_heart",
+            "url": "https://audio.jwlabs.ai/n/kokoro-fp32-aac64-v1/af_heart/preview.m4a"
+          }
+        }
+      ],
+      "expect": { "return": true }
+    },
+    {
       "id": "contract/send-request-invalid-unknown-cmd",
       "covers": [],
       "call": "contractAccepts",
@@ -498,6 +534,102 @@
           "cmd": "setModeOverride",
           "source": "tap",
           "args": { "mode": "legacy" }
+        }
+      ],
+      "expect": { "return": false }
+    },
+    {
+      "id": "contract/send-request-invalid-audition-url-not-https",
+      "covers": [],
+      "call": "contractAccepts",
+      "args": [
+        "sendRequest",
+        {
+          "v": 1,
+          "cmdSeq": 5,
+          "cmd": "audition",
+          "source": "audition",
+          "args": {
+            "text": "This is how I sound",
+            "voiceId": null,
+            "url": "http://audio.jwlabs.ai/n/kokoro-fp32-aac64-v1/af_heart/preview.m4a"
+          }
+        }
+      ],
+      "expect": { "return": false }
+    },
+    {
+      "id": "contract/send-request-invalid-audition-url-off-host",
+      "covers": [],
+      "call": "contractAccepts",
+      "args": [
+        "sendRequest",
+        {
+          "v": 1,
+          "cmdSeq": 5,
+          "cmd": "audition",
+          "source": "audition",
+          "args": {
+            "text": "This is how I sound",
+            "voiceId": null,
+            "url": "https://cdn.example.com/n/v1/af_heart/preview.m4a"
+          }
+        }
+      ],
+      "expect": { "return": false }
+    },
+    {
+      "id": "contract/send-request-invalid-audition-url-with-query",
+      "covers": [],
+      "call": "contractAccepts",
+      "args": [
+        "sendRequest",
+        {
+          "v": 1,
+          "cmdSeq": 5,
+          "cmd": "audition",
+          "source": "audition",
+          "args": {
+            "text": "This is how I sound",
+            "voiceId": null,
+            "url": "https://audio.jwlabs.ai/n/kokoro-fp32-aac64-v1/af_heart/preview.m4a?token=abc"
+          }
+        }
+      ],
+      "expect": { "return": false }
+    },
+    {
+      "id": "contract/send-request-invalid-audition-url-lookalike-host",
+      "covers": [],
+      "call": "contractAccepts",
+      "args": [
+        "sendRequest",
+        {
+          "v": 1,
+          "cmdSeq": 5,
+          "cmd": "audition",
+          "source": "audition",
+          "args": {
+            "text": "This is how I sound",
+            "voiceId": null,
+            "url": "https://audio.jwlabs.ai.example.com/preview.m4a"
+          }
+        }
+      ],
+      "expect": { "return": false }
+    },
+    {
+      "id": "contract/send-request-invalid-audition-url-null",
+      "covers": [],
+      "call": "contractAccepts",
+      "args": [
+        "sendRequest",
+        {
+          "v": 1,
+          "cmdSeq": 5,
+          "cmd": "audition",
+          "source": "audition",
+          "args": { "text": "This is how I sound", "voiceId": null, "url": null }
         }
       ],
       "expect": { "return": false }

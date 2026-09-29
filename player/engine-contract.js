@@ -188,6 +188,22 @@ export function parseHoldPolicy(policy) {
 
 const HOLD_POLICY_PATTERN = "^(forever|none|until:[1-9][0-9]{0,5})$";
 
+/** The narration host (Spark ruling D6): the public `foray-narration` bucket's
+    custom domain, where every rendered narration file and each voice's
+    `preview.m4a` live (tools/narration/render-profile.json `public_base`,
+    which engine-contract.test.js holds this equal to). NE-47: an audition's
+    `url` must be a file here. The engine reads it as
+    `EngineConstants.EngineContract.narrationPublicBase`. */
+export const NARRATION_PUBLIC_BASE = "https://audio.jwlabs.ai";
+
+/** NE-47: an audition `url`. https, ON the narration host, and a plain
+    object path: the characters of a content key and nothing else, so no
+    query or fragment (a token or a cache-buster), no credentials, no port,
+    no percent-escapes and no second host smuggled after an `@`. The engine
+    checks exactly these characters (ContractDecoding.swift `narrationUrl`),
+    so the page and the engine accept and refuse the same urls. */
+const NARRATION_URL_PATTERN = `^${NARRATION_PUBLIC_BASE.replace(/[.]/g, "\\.")}/[A-Za-z0-9._~/-]+$`;
+
 /** The public kinds a payload can be validated as, in the order the schema
     file lists them. */
 export const CONTRACT_KINDS = Object.freeze([
@@ -241,7 +257,16 @@ const COMMAND_ARGS = {
   ackAdvances: argsOf(["upToSeq"], { upToSeq: nonNegInt }),
   ackEvents: argsOf(["upToSeq"], { upToSeq: nonNegInt }),
   relinquish: argsOf(["cap"], { cap: { enum: [...RELINQUISH_CAPS] } }),
-  audition: argsOf(["text", "voiceId"], { text: { type: "string", minLength: 1 }, voiceId: nullable(str) }),
+  /* NE-47 (Spark §3.3): `url`, when present, is the chosen voice's RENDERED
+     preview (`preview.m4a` on the narration host). The engine plays it on a
+     deck and falls back to speaking `text` in `voiceId` if it will not load;
+     with no `url` the audition is spoken, exactly as before. The page sends
+     one only once the picker offers rendered voices. */
+  audition: argsOf(["text", "voiceId"], {
+    text: { type: "string", minLength: 1 },
+    voiceId: nullable(str),
+    url: { type: "string", pattern: NARRATION_URL_PATTERN },
+  }),
   setModeOverride: argsOf(["mode"], { mode: { enum: [...MODE_OVERRIDES] } }),
   setHoldPolicy: argsOf(["policy"], { policy: { type: "string", pattern: HOLD_POLICY_PATTERN } }),
 };
@@ -274,6 +299,10 @@ const SNAPSHOT_IDLE = {
 };
 
 const without = (o, k) => { const c = { ...o }; delete c[k]; return c; };
+
+/** A rendered voice preview as the picker will name it (NE-47): the per-voice
+    `preview.m4a` under the render profile's prefix (Spark §3.2). */
+const PREVIEW_URL = `${NARRATION_PUBLIC_BASE}/n/kokoro-fp32-aac64-v1/af_heart/preview.m4a`;
 
 /** `{valid: {slug: payload}, invalid: {slug: payload}}` per public kind. Each
     one is a case in the contract family (the snapshot's in the snapshot
@@ -328,6 +357,11 @@ const EXAMPLES = {
         args: { planSeq: 3, autoAdvance: false, chain: [{ planSeq: 3, hopSeq: 1, nextId: "ep-2" }] },
       },
       "stop-data-deletion": { v: 1, cmdSeq: 10, cmd: "stop", source: "tap", args: { persist: false } },
+      "audition-spoken": { v: 1, cmdSeq: 11, cmd: "audition", source: "audition", args: { text: "This is how I sound", voiceId: null } },
+      "audition-rendered": {
+        v: 1, cmdSeq: 12, cmd: "audition", source: "audition",
+        args: { text: "This is how I sound", voiceId: "kokoro:af_heart", url: PREVIEW_URL },
+      },
     },
     invalid: {
       "unknown-cmd": { v: 1, cmdSeq: 5, cmd: "fastForward", source: "tap" },
@@ -339,6 +373,25 @@ const EXAMPLES = {
       "play-episode-without-row": { v: 1, cmdSeq: 5, cmd: "playEpisode", source: "tap", args: { item: { id: "ep-1" } } },
       "negative-seq": { v: 1, cmdSeq: -1, cmd: "play", source: "tap" },
       "override-unknown-mode": { v: 1, cmdSeq: 5, cmd: "setModeOverride", source: "tap", args: { mode: "legacy" } },
+      "audition-url-not-https": {
+        v: 1, cmdSeq: 5, cmd: "audition", source: "audition",
+        args: { text: "This is how I sound", voiceId: null, url: PREVIEW_URL.replace("https:", "http:") },
+      },
+      "audition-url-off-host": {
+        v: 1, cmdSeq: 5, cmd: "audition", source: "audition",
+        args: { text: "This is how I sound", voiceId: null, url: "https://cdn.example.com/n/v1/af_heart/preview.m4a" },
+      },
+      "audition-url-with-query": {
+        v: 1, cmdSeq: 5, cmd: "audition", source: "audition",
+        args: { text: "This is how I sound", voiceId: null, url: `${PREVIEW_URL}?token=abc` },
+      },
+      "audition-url-lookalike-host": {
+        v: 1, cmdSeq: 5, cmd: "audition", source: "audition",
+        args: { text: "This is how I sound", voiceId: null, url: "https://audio.jwlabs.ai.example.com/preview.m4a" },
+      },
+      "audition-url-null": {
+        v: 1, cmdSeq: 5, cmd: "audition", source: "audition", args: { text: "This is how I sound", voiceId: null, url: null },
+      },
     },
   },
   sendResponse: {

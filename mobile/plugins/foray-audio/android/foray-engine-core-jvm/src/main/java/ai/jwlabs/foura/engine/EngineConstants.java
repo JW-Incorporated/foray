@@ -133,6 +133,8 @@ public final class EngineConstants {
         public static final List<String> HOLD_POLICY_KINDS = Collections.unmodifiableList(Arrays.asList("forever", "none", "until"));
         /** {@code MODE_OVERRIDES} */
         public static final List<String> MODE_OVERRIDES = Collections.unmodifiableList(Arrays.asList("auto", "native", "web"));
+        /** {@code NARRATION_PUBLIC_BASE} */
+        public static final String NARRATION_PUBLIC_BASE = "https://audio.jwlabs.ai";
         /** {@code OWNED_PREFIXES} */
         public static final List<String> OWNED_PREFIXES = Collections.unmodifiableList(Arrays.asList("cp_pos:", "cp_foray:", "cp_last_episode"));
         /** {@code PAGE_MODES} */

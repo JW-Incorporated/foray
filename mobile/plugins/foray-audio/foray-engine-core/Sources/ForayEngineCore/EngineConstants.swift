@@ -107,6 +107,8 @@ public enum EngineConstants {
         public static let holdPolicyKinds: [String] = ["forever", "none", "until"]
         /// `MODE_OVERRIDES`
         public static let modeOverrides: [String] = ["auto", "native", "web"]
+        /// `NARRATION_PUBLIC_BASE`
+        public static let narrationPublicBase: String = "https://audio.jwlabs.ai"
         /// `OWNED_PREFIXES`
         public static let ownedPrefixes: [String] = ["cp_pos:", "cp_foray:", "cp_last_episode"]
         /// `PAGE_MODES`

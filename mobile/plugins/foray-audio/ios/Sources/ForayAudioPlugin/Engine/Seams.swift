@@ -325,6 +325,12 @@ struct EngineSeams {
     var interlude: InterludePlaying? = nil
     /// The silence node (NE-34), built only when `silenceNodeEnabled` is on.
     var silence: SilenceRendering? = nil
+    /// The PREVIEW deck (NE-47): the voice picker's rendered `preview.m4a`
+    /// plays here, never on `deck`, so a preview leaves the item a paused
+    /// Foray holds exactly where it was. Nil (every older test world): a
+    /// preview's load is answered `.failed` at once, and the audition is
+    /// spoken instead, as it was before it had a url.
+    var preview: DeckDriving? = nil
     /// Ends the process: Developer "Simulate system termination" (NE-24,
     /// DV-7a) and nothing else. The boot supplies the real one; nil (every
     /// test world) records the decision in the row and exits nothing.

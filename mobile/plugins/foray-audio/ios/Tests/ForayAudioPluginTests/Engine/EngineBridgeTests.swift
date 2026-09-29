@@ -83,8 +83,10 @@ final class EngineBridgeTests: XCTestCase {
         let owner: FakeOwner
         let bridge: EngineBridge
 
-        init(native: Bool = true, capabilities: [String]? = ["episode", "continuation"]) {
+        init(native: Bool = true, capabilities: [String]? = ["episode", "continuation"], preview: Bool = false) {
             let world = FakeWorld()
+            // NE-47: the voice preview's own deck, logging as `preview.*`.
+            if preview { world.preview = FakeDeck(log: world.log, name: "preview") }
             let records = FakeRecords()
             let clock = FakeTiming(log: SeamLog())
             var engine: ForayEngine?
@@ -258,6 +260,130 @@ final class EngineBridgeTests: XCTestCase {
         let failed = refused.send("audition", #"{"text":"Hello","voiceId":null}"#)
         XCTAssertEqual(failed["reason"], .string("session-failed:cannot-interrupt-others"))
         XCTAssertEqual(refused.world.speaker.spoken, [])
+    }
+
+    // MARK: - NE-47: audition by URL (Spark §3.3)
+
+    static let previewURL = "https://audio.jwlabs.ai/n/kokoro-fp32-aac64-v1/af_heart/preview.m4a"
+
+    /// An audition that names a rendered `preview.m4a` loads it on the
+    /// PREVIEW deck (the main deck is not touched), activates the session
+    /// ONCE through the SessionControlling seam before the load, and plays
+    /// it when the deck says it is ready; nothing is spoken. The next play
+    /// of the queue cuts it.
+    /// TO SEE IT FAIL: route the preview to `seams.deck`, activate again for
+    /// the play, play before `.ready`, or skip `stopPreview` in `begin`.
+    @MainActor
+    func testAURLAuditionLoadsOnThePreviewDeckAndActivatesOnce() throws {
+        let rig = Rig(preview: true)
+        let preview = try XCTUnwrap(rig.world.preview)
+        let reply = rig.send("audition", #"{"text":"Hello","voiceId":"kokoro:af_heart","url":"\#(Self.previewURL)"}"#,
+                             source: "audition")
+        accepted(.sendResponse, reply)
+        XCTAssertEqual(reply["ok"], .bool(true), JSWriter.stringify(reply))
+        XCTAssertEqual(rig.world.session.activateCalls, 1)
+        guard case let .load(token, _, url, startSec, _)? = preview.sent.first else {
+            return XCTFail("no preview load: \(preview.sent)")
+        }
+        XCTAssertEqual(url, Self.previewURL)
+        XCTAssertEqual(startSec, 0)
+        XCTAssertTrue(rig.world.deck.sent.isEmpty, "the main deck is not the preview's: \(rig.world.deck.sent)")
+        XCTAssertEqual(preview.count("play"), 0, "nothing plays before the load is ready")
+        let activate = try XCTUnwrap(rig.world.log.index(of: "session.activate"))
+        let load = try XCTUnwrap(rig.world.log.index(of: "preview.load"))
+        XCTAssertLessThan(activate, load, "activated before loading: \(rig.world.log.entries)")
+
+        preview.report(.ready(token: token, landedSec: 0, prerolled: true, elapsedMs: 40))
+        XCTAssertEqual(preview.count("play"), 1)
+        XCTAssertEqual(rig.world.session.activateCalls, 1, "the tap's own activation covers the play")
+        XCTAssertEqual(rig.world.speaker.spoken, [])
+        XCTAssertEqual(rig.engine?.state.stateType, "idle", "a preview is not a play of the queue")
+
+        rig.playing()
+        XCTAssertEqual(preview.count("unload"), 1, "the next play cuts the preview")
+        XCTAssertEqual(rig.engine?.state.stateType, "playing")
+    }
+
+    /// While the engine runs, an audition with a url is refused `engine-busy`
+    /// exactly as a spoken one is, and neither deck nor the synthesizer moves.
+    /// TO SEE IT FAIL: check the running state only for a spoken audition.
+    @MainActor
+    func testAURLAuditionWhileRunningReturnsEngineBusy() throws {
+        let rig = Rig(preview: true)
+        let preview = try XCTUnwrap(rig.world.preview)
+        rig.playing()
+        let reply = rig.send("audition", #"{"text":"Hello","voiceId":null,"url":"\#(Self.previewURL)"}"#,
+                             source: "audition")
+        accepted(.sendResponse, reply)
+        XCTAssertEqual(reply["ok"], .bool(false))
+        XCTAssertEqual(reply["reason"], .string("engine-busy"))
+        XCTAssertTrue(preview.sent.isEmpty, "\(preview.sent)")
+        XCTAssertEqual(rig.world.speaker.spoken, [])
+    }
+
+    /// A preview that answers 404 is SPOKEN instead, in the voice the page
+    /// resolved, with no second activation; the reply was already ok. With
+    /// no preview deck wired at all, the host answers the load `failed` and
+    /// the line is spoken the same way.
+    /// TO SEE IT FAIL: drop the fallback `.speak`, or leave the host silent
+    /// when it has no preview deck.
+    @MainActor
+    func testAPreviewThatAnswers404IsSpoken() throws {
+        let rig = Rig(preview: true)
+        let preview = try XCTUnwrap(rig.world.preview)
+        let reply = rig.send("audition", #"{"text":"Hello","voiceId":"com.apple.voice.compact.en-US.Samantha","url":"\#(Self.previewURL)"}"#,
+                             source: "audition")
+        XCTAssertEqual(reply["ok"], .bool(true), JSWriter.stringify(reply))
+        let token = try XCTUnwrap(preview.lastToken)
+        XCTAssertEqual(rig.world.speaker.spoken, [], "not before the load has answered")
+        preview.report(.failed(token: token, message: "HTTP 404"))
+        XCTAssertEqual(rig.world.speaker.spoken, ["Hello"])
+        XCTAssertEqual(preview.count("play"), 0)
+        XCTAssertEqual(rig.world.session.activateCalls, 1)
+        let fallback = rig.world.output.diags.last { $0.kind == "audition" && $0[field: "kind"] == .string("fallback") }
+        XCTAssertEqual(fallback?[field: "reason"], .string("failed"))
+
+        let bare = Rig()
+        let answered = bare.send("audition", #"{"text":"Hello","voiceId":null,"url":"\#(Self.previewURL)"}"#,
+                                 source: "audition")
+        XCTAssertEqual(answered["ok"], .bool(true))
+        XCTAssertEqual(bare.world.speaker.spoken, ["Hello"], "no preview deck: spoken at once")
+        XCTAssertTrue(bare.world.deck.sent.isEmpty)
+    }
+
+    /// An audition with no url is byte-identical to the audition before
+    /// NE-47: the same seam calls in the same order, the same reply bytes and
+    /// the same rows, whether or not a preview deck is wired, and the preview
+    /// deck never hears of it.
+    /// TO SEE IT FAIL: load a preview for every audition, or change the
+    /// spoken path's commands.
+    @MainActor
+    func testANoURLAuditionIsByteIdenticalToToday() throws {
+        let before = Rig()
+        let after = Rig(preview: true)
+        let args = #"{"text":"Hello","voiceId":"com.apple.voice.compact.en-US.Samantha"}"#
+        let old = before.send("audition", args, source: "audition")
+        let new = after.send("audition", args, source: "audition")
+        XCTAssertEqual(JSWriter.stringify(new), JSWriter.stringify(old))
+        XCTAssertEqual(after.world.log.entries, before.world.log.entries)
+        XCTAssertEqual(after.world.output.diags.map { JSWriter.stringify(.object($0.fields)) + $0.kind },
+                       before.world.output.diags.map { JSWriter.stringify(.object($0.fields)) + $0.kind })
+        XCTAssertEqual(after.world.speaker.spoken, ["Hello"])
+        XCTAssertTrue(try XCTUnwrap(after.world.preview).sent.isEmpty)
+        XCTAssertEqual(before.world.log.entries.filter { $0.hasPrefix("session.") || $0.hasPrefix("speaker.") },
+                       ["session.activate", "speaker.speak"], "activate, then speak: the audition as it always was")
+    }
+
+    /// The preview deck is torn down with the engine: no event reaches a
+    /// relinquished core. TO SEE IT FAIL: drop the preview lines of teardown().
+    @MainActor
+    func testTheTeardownInvalidatesThePreviewDeck() throws {
+        let rig = Rig(preview: true)
+        let preview = try XCTUnwrap(rig.world.preview)
+        XCTAssertTrue(preview.isObserved)
+        rig.engine?.teardown()
+        XCTAssertFalse(preview.isObserved)
+        XCTAssertTrue(preview.invalidated)
     }
 
     // MARK: - engineHello
