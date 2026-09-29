@@ -1150,7 +1150,7 @@ public struct EngineCore {
     /// page's error (`chain-start` for a hop, C-6), then the reducer's error
     /// (idle, pause).
     private mutating func onLoadFailure(_ token: DeckToken, message: String, cause: Vocabulary.StopCause,
-                                        fallbackCause: Vocabulary.NarrationFallbackCause) {
+                                        fallbackCause: Vocabulary.NarrationFallbackCause = .other) {
         let isPending = state.pendingLoad?.token == token
         let isHeld = state.pendingLoad == nil && state.loadedToken == token
         guard isPending || isHeld else {
