@@ -27,7 +27,7 @@
 **Why:** M2 moves Forays onto the iPhone's own player (clips, narration, jingle), as M1 did for episodes, which your car resumed on 2026-09-28. Only your car can show that a Foray survives seams, long pauses, calls and car buttons.
 
 **Steps:**
-1. Use only the build number Claude adds here. TestFlight → 4a → Automatic Updates off.
+1. Use build **2026092903** (or later). TestFlight → 4a → Automatic Updates off.
 2. In the car, play a Foray with narration. Listen through at least two clip → narration → clip seams.
 3. Pause from the car. Leave it 10+ minutes (or park). Press the car's play.
 4. Take or make a phone call mid-Foray; hang up.
