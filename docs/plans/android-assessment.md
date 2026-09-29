@@ -407,6 +407,10 @@ Rejected alternatives:
 - **Acceptance:** A trivial type and one test run in `android-build` (run id). The decision and the reason are
   recorded in `STATE.md`.
 - **Device check:** none.
+- **Status (2026-09-29): done, Java 21.** The module is `mobile/plugins/foray-audio/android/foray-engine-core-jvm/`
+  (`java-library`, wired in through its own `package.json` and a `file:` dependency). `android-build` runs
+  `:foray-engine-core-jvm:test` in its own step. The run id, the loop time and the reasons Kotlin was not clean are
+  in `STATE.md` (A-21 entry).
 
 #### A-22 · JVM parity runner — **M**
 - **Depends on:** A-21.

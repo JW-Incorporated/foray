@@ -7,6 +7,44 @@ docs/. Completed workstreams move to their plan doc's retro section.
 
 ## Active workstreams
 
+### 2026-09-29 — `android/a-21-jvm-core`: A-21, the Android engine's JVM core is Java 21 (not Kotlin)
+
+Owned: `mobile/plugins/foray-audio/android/foray-engine-core-jvm/` (new) and its step in
+`android-build.yml`. Card A-21 of `docs/plans/android-assessment.md` (Track A1). The Kotlin-or-Java
+choice is routed to agents (§6).
+
+**Decision: Java 21.** The card says to pick Kotlin if adding the Kotlin Gradle plugin to the
+regenerated project is clean. It is not clean. Capacitor 8.5.0's generated root `build.gradle` puts only
+AGP 8.13.0 and google-services on the buildscript classpath, and `cap add android` rewrites that file.
+Kotlin would therefore have to load from the module's own `buildscript`/`plugins {}` classloader, next to
+AGP's. That means a new plugin artefact (kotlin-gradle-plugin and its compiler), a Kotlin compiler daemon
+beside Gradle's on the runner, and a KGP version to keep compatible with Gradle 8.14.3 and AGP. (Capacitor
+itself only patches Kotlin in for Cordova plugins, by regex.) Java 21 adds nothing new: the JDK is already 21
+and asserted, every hand-written Android module here is Java, and sealed interfaces, records and exhaustive
+pattern `switch` cover the Swift core's enums with associated values. Kotlin was judged from the
+template and **not executed**.
+
+**Wiring.** The module is a `java-library` (no Android plugin, no main dependencies, `options.release = 21`).
+It has its own `package.json` with `capacitor.android.src: "."` and no `ios` key, and `mobile/package.json`
+declares it as `file:plugins/foray-audio/android/foray-engine-core-jvm`. `cap add android` then writes
+`include ':foray-engine-core-jvm'` and `implementation project(':foray-engine-core-jvm')` on every
+generation. It has no plugin class, so `capacitor.plugins.json` is unchanged.
+
+**CI-executed** (`android-build` / `android-shell`, run 36540520964, job 109314553904, head `6a3713b8`):
+- Both lines were generated.
+- `EngineHandshakeTest` passed (1 case, 0 skipped).
+- **Loop time:** `./gradlew :foray-engine-core-jvm:test` took **8 s** warm (after the Robolectric step
+  paid Gradle's startup; the whole step was 8 s).
+- `assembleDebug` and `assembleRelease` (with `lintVitalRelease`) are green with the module linked. The
+  release APK's `classes.dex` contains `ai/jwlabs/foura/engine/EngineHandshake` and **no** reference to
+  `java/lang/runtime/SwitchBootstraps` or `ObjectMethods`. So D8 desugars the record-pattern `switch`
+  and the record methods for minSdk 24.
+
+**Rule for A-22 on:** use Java 21 *language* features freely, but only java.lang/java.util *APIs* that exist at
+API 24 in main code (`Map.of` is API 30, `List.getFirst` is API 35). D8 backports only some of these, and
+nothing yet checks it. Tests run on the JVM only. `shell-invariants.test.mjs` (the A-21 test) pins that the
+module stays pure.
+
 ### 2026-09-28 — the Spark direction: narration rendered centrally and streamed (D1–D11 ruled "Defaults")
 
 Owned: nothing held (docs only in this entry's PR, `docs/spark-direction-record`). The founder

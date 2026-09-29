@@ -124,6 +124,15 @@ into the generated project. The module therefore does not have to be *inside* th
 generated tree to be *part of* the generated build. That indirection is the whole
 trick, and it is Capacitor's, not ours.
 
+**A-21 (2026-09-29) uses the same trick for a module that is not a bridge plugin.**
+The Android engine's pure-JVM core, `plugins/foray-audio/android/foray-engine-core-jvm/`,
+is a `java-library` module (Java 21, no Android plugin). It has its own `package.json`
+with `capacitor.android.src: "."` and no `ios` key, and `mobile/package.json` declares
+it as a `file:` dependency, so `cap add android` writes its `include` and
+`implementation project(...)` lines like any plugin's. It has no `@CapacitorPlugin`
+class, so it adds nothing to `capacitor.plugins.json`. Its build.gradle header
+explains why, and STATE.md records why it is Java rather than Kotlin.
+
 ## 3. What was built
 
 ### 3.1 The plugin
