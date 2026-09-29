@@ -11,7 +11,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, writeFileSync, rmSync } from "node:fs";
+import { mkdtempSync, writeFileSync, rmSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -19,6 +19,7 @@ import { fileURLToPath } from "node:url";
 import {
   parsePaste, analyze, verdicts, formatReport, percentile, seamDistribution, headerCheck,
   audibleAfter, interruptions, main, DV_TITLES, strictFailed,
+  M3_TITLES, m3Verdicts, deadlineProposalSec, stats, P13_CURRENT_SEC, REUSE_MAX_IDLE_SEC, REMOTE_DUPLICATE_WINDOW_MS,
 } from "./engine-report.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -35,6 +36,7 @@ function value(key, v) {
   if (typeof v === "boolean") return v ? "y" : "n";
   if (typeof v === "number") return /Ms$/.test(key) ? `${Math.round(v)}ms` : String(v);
   if (Array.isArray(v)) return v.length ? v.join(key === "stages" ? ">" : ",") : "—";
+  if (typeof v === "object") return JSON.stringify(v);
   return String(v);
 }
 function fields(r, skip = []) {
@@ -493,4 +495,291 @@ test("round-trips through the page's real Copy formatter when it is there (NE-26
   const viaReal = parsePaste(paste(rows, { format: mod.engineLineFor })).engineRows;
   const viaMirror = parsePaste(paste(rows)).engineRows;
   assert.deepEqual(viaReal.map((r) => [r.kind, r.event, r.f]), viaMirror.map((r) => [r.kind, r.event, r.f]));
+});
+
+// ───────────── the M3 verdicts (NE-38e) ─────────────
+
+const m3 = (text, id) => byId(analyze(text).m3.verdicts, id);
+const deck = (event, token, extra = {}) => ({ kind: "deck", event, token, ...extra });
+const attachRow = (token, extra = {}) => deck("attach", token, { startSec: 0, precise: true, host: "cdn.example", cold: "no-item", idleSec: null, class: "clip", ...extra });
+const readyRow = (token, elapsedMs, extra = {}) => deck("ready", token, { landedSec: 0, reuse: false, elapsedMs, attempts: 1, marks: { duration: 400 }, class: "clip", ...extra });
+const accessRow = (token, wwan) => deck("access", token, { host: "cdn.example", bytes: 90000, requests: 2, wwan, stalls: 0 });
+const deadlineRow = (token, extra = {}) => deck("deadline", token, { afterMs: 20000, step: "readiness", class: "clip", reuse: false, durationKnown: false, wwan: 0, ...extra });
+const reuseRow = (token, idleSec, extra = {}) => deck("reuse", token, { startSec: 100, fromSec: 98, idleSec, class: "clip", ...extra });
+const npRow = (extra = {}) => ({ kind: "nowplaying", via: "rate", title: "Episode", artist: "Show", album: "", state: "playing", rate: 1, elapsedSec: 100, durationSec: 3600, buffering: false, engineState: "playing", listenRate: 1, ...extra });
+const graceBegin = (reason = "remote-play", extra = {}) => ({ kind: "grace", event: "begin", reason, task: "ok", bgRemainingMs: 28000, low: "n", ...extra });
+const graceDone = (reason, heldMs, outcome = "playing") => ({ kind: "grace", event: outcome === "expired" ? "expired" : "end", outcome, reason, heldMs });
+const back = (extra = {}) => ({ kind: "route", event: "back", port: "CarAudio", key: "0a1b2c3d", known: true, lostSec: 600, pausedBy: "route", decision: "resume", why: "route-back", ...extra });
+const kinded = (gap, from, to, prepare = "hit", extra = {}) => seam(gap, { from, to, prepare, ...extra });
+const lateRow = (inSeam, extra = {}) => ({ kind: "grace", event: "late", timer: "seam-beat", lateMs: 6000, inSeam, bgRemainingMs: 20000, ...extra });
+const fallbackRow = (cause) => ({ kind: "narration", event: "fallback", reason: "failed", where: "load", ...(cause === undefined ? {} : { cause }) });
+const press = (cmd, extra = {}) => ({ kind: "remote", cmd, dupCandidate: "n", route: "carAudio", thread: "main", state: "playing", grace: "n", ...extra });
+
+test("M3: the table has all ten verdicts, and an empty paste covers none of them", () => {
+  assert.deepEqual(Object.keys(M3_TITLES), ["P13-clip", "P13-line", "reuse-idle", "rate-latch", "resume-latency",
+    "route-back", "seam-kinds", "suspension-in-seam", "narration-fallback", "dup"]);
+  const list = m3Verdicts(parsePaste(paste([])));
+  assert.deepEqual(list.map((v) => v.id), Object.keys(M3_TITLES));
+  for (const v of list) assert.equal(v.verdict, "no-coverage", `${v.id}: ${v.why}`);
+});
+
+test("P13 proposal: p95 x 2 rounded up to whole seconds, never below the observed max", () => {
+  assert.equal(deadlineProposalSec(stats([])), null);
+  assert.equal(deadlineProposalSec(stats([1500])), 3);
+  assert.equal(deadlineProposalSec(stats([1200, 1400, 1501])), 4, "3002 ms rounds UP to 4 s");
+  // p95 of 20 values is the 19th: 1000; x2 = 2 s, but the max (9.2 s) wins.
+  assert.equal(deadlineProposalSec(stats([...Array(19).fill(1000), 9200])), 10);
+});
+
+test("P13-clip: cold loads under the deadline pass, split by network; reuse-only is no-coverage", () => {
+  const text = paste([
+    bootRow(),
+    attachRow(1), accessRow(1, 0), readyRow(1, 1800),
+    attachRow(2, { cold: "stale", idleSec: 900 }), accessRow(2, 7), readyRow(2, 3900),
+    // A pre-NE-38 load (no class=) reads as a clip, and says so.
+    attachRow(3, { class: undefined }), readyRow(3, 2500, { class: undefined }),
+    // A reuse is not a cold load.
+    reuseRow(4, 60), readyRow(4, 300, { reuse: true }),
+  ]);
+  const a = analyze(text);
+  const v = byId(a.m3.verdicts, "P13-clip");
+  assert.equal(v.verdict, "pass", v.why);
+  assert.match(v.why, /n 3, p50 2500ms, p95 3900ms, max 3900ms \(1 without class=, read as clip\); proposal 8 s/);
+  assert.deepEqual(v.rows, ["#4", "#7", "#9"]);
+  assert.equal(a.m3.loads.clip.byNet.cellular.n, 1);
+  assert.equal(a.m3.loads.clip.byNet.wifi.n, 1);
+  assert.equal(a.m3.loads.clip.byNet.unknown.n, 1);
+  assert.match(formatReport(a), /\| clip \| n 3, p50 2500ms, p95 3900ms, max 3900ms \| n 1, p50 3900ms/);
+  assert.equal(m3(paste([bootRow(), reuseRow(1, 30), readyRow(1, 250, { reuse: true })]), "P13-clip").verdict, "no-coverage");
+});
+
+test("P13-clip fails on a deadline row (with its step and class) and on under 2x headroom", () => {
+  const dl = m3(paste([bootRow(), attachRow(1), readyRow(1, 2000), attachRow(2), deadlineRow(2, { step: "preroll" })]), "P13-clip");
+  assert.equal(dl.verdict, "fail");
+  assert.match(dl.why, /1 loads hit the 20 s deadline \(#5 step=preroll class=clip afterMs=20000ms\)/);
+  const tight = m3(paste([bootRow(), attachRow(1), readyRow(1, 11_000)]), "P13-clip");
+  assert.equal(tight.verdict, "fail");
+  assert.match(tight.why, /less than 2x headroom under 20 s: .*proposal 22 s/);
+  assert.equal(m3(paste([bootRow(), attachRow(1), readyRow(1, 9_900)]), "P13-clip").verdict, "pass", "19.8 s rounds up to 20 s, not over");
+});
+
+test("P13-line: rendered-line loads judge the 8 s line deadline; clip loads leave it no-coverage", () => {
+  const line = (t, ms) => [attachRow(t, { class: "line" }), readyRow(t, ms, { class: "line" })];
+  assert.equal(m3(paste([bootRow(), ...line(1, 640), ...line(2, 910)]), "P13-line").verdict, "pass");
+  const dl = m3(paste([bootRow(), ...line(1, 640), attachRow(2, { class: "line" }), deadlineRow(2, { class: "line", afterMs: 8000 })]), "P13-line");
+  assert.equal(dl.verdict, "fail");
+  assert.match(dl.why, /hit the 8 s deadline/);
+  assert.equal(m3(paste([bootRow(), ...line(1, 4200)]), "P13-line").verdict, "fail", "4.2 s x 2 > 8 s");
+  const clipsOnly = paste([bootRow(), attachRow(1), readyRow(1, 1500)]);
+  assert.equal(m3(clipsOnly, "P13-line").verdict, "no-coverage");
+  assert.equal(m3(clipsOnly, "P13-clip").verdict, "pass");
+});
+
+test("reuse-idle: trouble on the reuse's token within 30 s fails; stale loads are the cost; no reuse is no-coverage", () => {
+  const ok = m3(paste([bootRow(), reuseRow(1, 180), readyRow(1, 400, { reuse: true }), attachRow(2, { cold: "stale", idleSec: 1500 })]), "reuse-idle");
+  assert.equal(ok.verdict, "pass", ok.why);
+  assert.match(ok.why, /1 reuses \(idleSec max 180s\).*1 cold=stale loads \(idleSec 1500s\) are what the 600 s limit cost/);
+  const stalled = m3(paste([bootRow(), reuseRow(1, 540), { ...deck("stalled", 1, { positionSec: 101, wwan: 3 }), dt: 12_000 }]), "reuse-idle");
+  assert.equal(stalled.verdict, "fail");
+  assert.match(stalled.why, /#2 idleSec=540s then stalled #3 after 12000ms/);
+  // Trouble on ANOTHER token, or later than 30 s, is not the reuse's.
+  assert.equal(m3(paste([bootRow(), reuseRow(1, 540), deck("failed", 2, { where: "item" })]), "reuse-idle").verdict, "pass");
+  assert.equal(m3(paste([bootRow(), reuseRow(1, 540), { ...deck("stalled", 1), dt: 31_000 }]), "reuse-idle").verdict, "pass");
+  const onlyStale = m3(paste([bootRow(), attachRow(1, { cold: "stale", idleSec: 700 })]), "reuse-idle");
+  assert.equal(onlyStale.verdict, "no-coverage");
+  assert.deepEqual(onlyStale.rows, ["#2"]);
+  // A token restarts with a boot: token 1 after a relaunch is a different load.
+  assert.equal(m3(paste([bootRow(), reuseRow(1, 540), { ...bootRow(), dt: 100 }, deck("stalled", 1)]), "reuse-idle").verdict, "pass");
+});
+
+test("rate-latch: rate 0 for over 3 s while playing with the clock advancing fails (#866); honest spans pass", () => {
+  const latched = m3(paste([npRow({ rate: 0, via: "state", elapsedSec: 100 }), { ...npRow({ rate: 1, elapsedSec: 104.2 }), dt: 4_000 }]), "rate-latch");
+  assert.equal(latched.verdict, "fail");
+  assert.match(latched.why, /#1→#2 4000ms, elapsedSec \+4.2/);
+  const short = m3(paste([npRow({ rate: 0, elapsedSec: 100 }), { ...npRow({ elapsedSec: 101.5 }), dt: 1_500 }]), "rate-latch");
+  assert.equal(short.verdict, "pass", short.why);
+  // Buffering (the stall latch, P-14) and a clock that stood still are honest rate 0.
+  assert.equal(m3(paste([npRow({ rate: 0, buffering: true }), { ...npRow({ elapsedSec: 106 }), dt: 6_000 }]), "rate-latch").verdict, "pass");
+  assert.equal(m3(paste([npRow({ rate: 0 }), { ...npRow({ elapsedSec: 100 }), dt: 9_000 }]), "rate-latch").verdict, "pass");
+  // A jump further than the span could play is a seek, not a latch.
+  assert.equal(m3(paste([npRow({ rate: 0 }), { ...npRow({ elapsedSec: 160 }), dt: 5_000 }]), "rate-latch").verdict, "pass");
+  // At 2x the clock may run twice as fast.
+  assert.equal(m3(paste([npRow({ rate: 0, listenRate: 2 }), { ...npRow({ elapsedSec: 109 }), dt: 5_000 }]), "rate-latch").verdict, "fail");
+  assert.equal(m3(paste([{ kind: "nowplaying", title: "E", artist: "S", album: "", state: "playing", rate: 0, via: "state" }]), "rate-latch").verdict, "no-coverage",
+    "a row without engineState= (before #866) judges nothing");
+  assert.equal(m3(paste([npRow({ rate: 0, engineState: "loadingItem" })]), "rate-latch").verdict, "no-coverage", "never shown running");
+});
+
+test("resume-latency: heldMs split cold vs reuse; an expired span fails; an unclassified span is no-coverage", () => {
+  const a = analyze(paste([
+    bootRow(),
+    remote("play"), graceBegin(), attachRow(1), readyRow(1, 2000), { ...graceDone("remote-play", 2300), dt: 300 },
+    { ...remote("play"), dt: 60_000 }, graceBegin(), reuseRow(2, 45), readyRow(2, 300, { reuse: true }), graceDone("remote-play", 480),
+    { ...back(), dt: 60_000 }, graceBegin("route-resume", { low: "y", bgRemainingMs: 4000 }), reuseRow(3, 90), graceDone("route-resume", 700),
+  ]));
+  const v = byId(a.m3.verdicts, "resume-latency");
+  assert.equal(v.verdict, "pass", v.why);
+  assert.match(v.why, /remote-play cold heldMs n 1, p50 2300ms/);
+  assert.match(v.why, /remote-play reuse heldMs n 1, p50 480ms/);
+  assert.match(v.why, /route-resume reuse heldMs n 1, p50 700ms/);
+  assert.match(v.why, /low=y on 1 \(#13 → playing\)/);
+  const expired = m3(paste([bootRow(), remote("play"), graceBegin(), attachRow(1), graceDone("remote-play", 29_000, "expired")]), "resume-latency");
+  assert.equal(expired.verdict, "fail");
+  assert.match(expired.why, /#3 remote-play cold heldMs=29000ms/);
+  // The 2026-09-28 shape: a span with no deck attach/reuse row inside it.
+  const old = m3(paste([remote("play"), graceBegin(), { kind: "deck", event: "duration", durationSec: 8452.5, token: 2 }, graceDone("remote-play", 19146, "not-running")]), "resume-latency");
+  assert.equal(old.verdict, "no-coverage");
+  assert.match(old.why, /#2 unclassified → not-running/);
+  assert.equal(m3(paste([bootRow(), graceBegin("seam"), graceDone("seam", 500)]), "resume-latency").verdict, "no-coverage", "a seam span is not a resume");
+});
+
+test("route-back: a heard resume and a car's own play pass; a listener's pause resumed or a missed Bluetooth resume fails", () => {
+  const car = m3(paste([bootRow(), back(), graceBegin("route-resume"), attachRow(1), readyRow(1, 1200), graceDone("route-resume", 1500)]), "route-back");
+  assert.equal(car.verdict, "pass", car.why);
+  assert.match(car.why, /#2 CarAudio decision=resume why=route-back known=y lostSec=600 pausedBy=route → car play none/);
+  const bt = back({ port: "BluetoothA2DPOutput", decision: "no", why: "bluetooth-off" });
+  const carPressed = m3(paste([bootRow(), bt, { ...remote("play"), dt: 7_400 }, graceBegin(), graceDone("remote-play", 900)]), "route-back");
+  assert.equal(carPressed.verdict, "pass", "the car's own play 7.4 s later answers it");
+  assert.match(carPressed.why, /→ car play 7400ms/);
+  const missed = m3(paste([bootRow(), bt, { ...remote("play"), dt: 45_000 }]), "route-back");
+  assert.equal(missed.verdict, "fail");
+  assert.match(missed.why, /the Bluetooth arm is needed \(#2\)/);
+  const listener = m3(paste([bootRow(), back({ pausedBy: "listener" }), graceBegin("route-resume"), graceDone("route-resume", 800)]), "route-back");
+  assert.equal(listener.verdict, "fail");
+  assert.match(listener.why, /Q5: #2 pausedBy=listener/);
+  const silent = m3(paste([bootRow(), back(), graceBegin("route-resume"), { kind: "stop", cause: "grace-expired", state: "loadingItem", dt: 25_000 }]), "route-back");
+  assert.equal(silent.verdict, "fail");
+  assert.match(silent.why, /resumed silently/);
+  // A listener's pause declined, or headphones: nothing to fault.
+  assert.equal(m3(paste([bootRow(), back({ pausedBy: "listener", decision: "no", why: "listener-paused" })]), "route-back").verdict, "pass");
+  assert.equal(m3(paste([bootRow(), { kind: "session", event: "route", port: "BluetoothA2DPOutput", oldDeviceUnavailable: false }]), "route-back").verdict, "no-coverage");
+});
+
+test("seam-kinds: split clip→clip, clip→line and line→clip with prepare; a miss or an unprepared line→clip fails", () => {
+  const good = analyze(paste([bootRow(), kinded(510, "clip", "clip"), kinded(520, "clip", "line"), kinded(560, "clip", "line", "none"), kinded(540, "line", "clip")]));
+  const v = byId(good.m3.verdicts, "seam-kinds");
+  assert.equal(v.verdict, "pass", v.why);
+  assert.deepEqual(good.m3.seams.table.map((g) => [g.kind, g.n]), [["clip→clip", 1], ["clip→line", 2], ["line→clip", 1]]);
+  assert.deepEqual(good.m3.seams.table[1].prepare, { hit: 1, none: 1 }, "a spoken line has nothing to prepare");
+  assert.match(formatReport(good), /- clip→line: gap n 2, p50 520ms, p95 560ms, max 560ms; prepare hit 1, none 1/);
+  assert.equal(m3(paste([bootRow(), kinded(1900, "line", "clip", "none")]), "seam-kinds").verdict, "fail", "the M2 leftover: the clip after a line not prepared");
+  assert.equal(m3(paste([bootRow(), kinded(2400, "clip", "clip", "miss")]), "seam-kinds").verdict, "fail");
+  assert.equal(m3(paste([bootRow(), kinded(null, "clip", "line")]), "seam-kinds").verdict, "fail");
+  assert.equal(m3(paste([bootRow(), seam(510)]), "seam-kinds").verdict, "no-coverage", "a seam row without from=/to= predates NE-45s");
+  const evicted = m3(paste([kinded(510, "clip", "clip", "hit", { seq: 900 })], { ring: "engine rows 1 of 2000, #900..#900, 899 older evicted" }), "seam-kinds");
+  assert.equal(evicted.verdict, "incomplete", "an evicted early seam is not a pass");
+});
+
+test("suspension-in-seam: a late timer inside a seam fails; a covered drive with the detector passes", () => {
+  const bgSeam = graceBegin("seam", { bgRemainingMs: 22000 });
+  const fail = m3(paste([bootRow(), bgSeam, lateRow(true)]), "suspension-in-seam");
+  assert.equal(fail.verdict, "fail");
+  assert.match(fail.why, /#3 timer=seam-beat lateMs=6000ms inSeam=y/);
+  assert.equal(m3(paste([bootRow(), attachRow(1), bgSeam, graceDone("seam", 600)]), "suspension-in-seam").verdict, "pass", "class= says the detector shipped");
+  assert.equal(m3(paste([bootRow(), bgSeam, lateRow(false, { timer: "narration-tick" })]), "suspension-in-seam").verdict, "pass");
+  const m2Build = m3(paste([bootRow(), bgSeam, graceDone("seam", 600)]), "suspension-in-seam");
+  assert.equal(m2Build.verdict, "no-coverage", "an M2 build has no detector to be silent");
+  assert.match(m2Build.why, /detector/);
+  assert.equal(m3(paste([bootRow(), attachRow(1), graceBegin("seam", { bgRemainingMs: null })]), "suspension-in-seam").verdict, "no-coverage",
+    "a foreground seam is not the suspension this is about");
+});
+
+test("narration-fallback: counts by cause; an unmapped cause fails; a fallback with no cause predates NE-39n", () => {
+  const ok = m3(paste([bootRow(), attachRow(1, { class: "line" }), fallbackRow("http-4xx"), fallbackRow("timeout"), fallbackRow("http-4xx")]), "narration-fallback");
+  assert.equal(ok.verdict, "pass", ok.why);
+  assert.match(ok.why, /1 rendered-line loads, 3 fallbacks, every cause mapped; by cause: http-4xx 2, timeout 1/);
+  assert.equal(m3(paste([bootRow(), attachRow(1, { class: "line" }), readyRow(1, 600, { class: "line" })]), "narration-fallback").verdict, "pass", "lines played, none fell back");
+  const other = m3(paste([bootRow(), fallbackRow("other"), fallbackRow("offline")]), "narration-fallback");
+  assert.equal(other.verdict, "fail");
+  assert.match(other.why, /#2 cause=other/);
+  assert.equal(m3(paste([bootRow(), fallbackRow("gremlins")]), "narration-fallback").verdict, "fail", "outside the closed vocabulary");
+  const old = m3(paste([bootRow(), fallbackRow(undefined)]), "narration-fallback");
+  assert.equal(old.verdict, "no-coverage");
+  assert.match(old.why, /1 fallbacks without cause= \(before NE-39n\) not counted/);
+});
+
+test("dup: presses of one command a hand's pace apart pass, under 150 ms fail, seconds apart are no-coverage", () => {
+  const hand = m3(paste([bootRow(), press("nextTrack"), { ...press("nextTrack", { dupCandidate: "y" }), dt: 320 }]), "dup");
+  assert.equal(hand.verdict, "pass", hand.why);
+  assert.match(hand.why, /closest 320ms.*dupCandidate=y 1/);
+  const machine = m3(paste([bootRow(), press("play"), { ...press("play", { dupCandidate: "y" }), dt: 40 }]), "dup");
+  assert.equal(machine.verdict, "fail");
+  assert.match(machine.why, /#2→#3 play 40ms/);
+  // The 2026-09-28 shape: the car's plays 5 s apart, and each press's status-only row.
+  const apart = m3(paste([bootRow(), press("play"), { kind: "remote", cmd: "play", status: "success", dt: 5 }, { ...press("play"), dt: 5_000 }]), "dup");
+  assert.equal(apart.verdict, "no-coverage");
+  assert.match(apart.why, /2 presses, dupCandidate=y 0; between presses of one command: play min 5005ms over 1/);
+  // Two different commands close together are not a pair.
+  assert.equal(m3(paste([bootRow(), press("play"), { ...press("pause"), dt: 100 }]), "dup").verdict, "no-coverage");
+  assert.equal(m3(paste([bootRow()]), "dup").verdict, "no-coverage");
+});
+
+const FIXTURES = path.join(HERE, "fixtures", "engine-report");
+
+test("the 2026-09-28 excerpt (e#75..e#103) predates the M3 rows: every M3 verdict is no-coverage, never a pass", () => {
+  const file = path.join(FIXTURES, "2026-09-28-excerpt.txt");
+  const text = readFileSync(file, "utf8");
+  assert.doesNotMatch(text, /Latent Space|Jev:|substack/i, "title-free");
+  const a = analyze(text);
+  assert.equal(a.parsed.engineRows.length, 29);
+  assert.deepEqual([a.parsed.engineRows[0].seq, a.parsed.engineRows.at(-1).seq], [75, 103]);
+  for (const v of a.m3.verdicts) assert.equal(v.verdict, "no-coverage", `${v.id}: ${v.why}`);
+  // The CLI, as the PR quotes it.
+  const run = spawnSync(process.execPath, [path.join(HERE, "engine-report.mjs"), file], { encoding: "utf8" });
+  assert.equal(run.status, 0, run.stderr);
+  const table = run.stdout.split("### M3 verdicts (NE-38e)")[1].split("### M3 readings")[0];
+  assert.equal((table.match(/\| no-coverage \|/g) ?? []).length, 10);
+  assert.doesNotMatch(table, /\| pass \|/);
+});
+
+test("the synthetic M3 drive (printed by the real Copy formatter) passes every M3 verdict, and --strict agrees", () => {
+  const file = path.join(FIXTURES, "m3-drive-synthetic.txt");
+  const a = analyze(readFileSync(file, "utf8"));
+  assert.equal(a.header.ok, true);
+  for (const v of a.m3.verdicts) assert.equal(v.verdict, "pass", `${v.id}: ${v.why}`);
+  assert.equal(a.m3.loads.clip.proposalSec, 8);
+  assert.equal(a.m3.loads.line.proposalSec, 2);
+  const run = spawnSync(process.execPath, [path.join(HERE, "engine-report.mjs"), file, "--strict", "--json"], { encoding: "utf8" });
+  assert.equal(run.status, 0, run.stderr);
+  const json = JSON.parse(run.stdout);
+  assert.deepEqual(json.m3.verdicts.map((v) => v.verdict), Array(10).fill("pass"));
+  assert.equal(json.m3.loads.clip.all.n, 3);
+});
+
+test("--strict stops on an M3 fail too", () => {
+  const out = [];
+  const dir = mkdtempSync(path.join(tmpdir(), "engine-report-m3-"));
+  try {
+    const file = path.join(dir, "latched.txt");
+    writeFileSync(file, paste([bootRow(), npRow({ rate: 0, elapsedSec: 100 }), { ...npRow({ elapsedSec: 106 }), dt: 6_000 }]));
+    assert.equal(main([file, "--strict"], { stdout: { write: (s) => out.push(s) } }), 1);
+    assert.match(out.join(""), /\| rate-latch [^|]*\| \*\*fail\*\* \|/);
+    assert.equal(main([file], { stdout: { write() {} } }), 0, "without --strict a fail is reported, not an exit code");
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("the values the M3 verdicts judge are the ones the Swift sources ship (// MEASURE)", () => {
+  const src = (rel) => readFileSync(path.join(ROOT, "mobile", "plugins", "foray-audio", ...rel.split("/")), "utf8");
+  const constant = (text, name) => {
+    const m = new RegExp(`\\b${name}\\s*(?::\\s*Double)?\\s*=\\s*([\\d_.]+)`).exec(text);
+    assert.ok(m, `${name} not found`);
+    return Number(m[1].replace(/_/g, ""));
+  };
+  const avdeck = src("ios/Sources/ForayAudioPlugin/Engine/AVDeck.swift");
+  assert.equal(constant(avdeck, "defaultLoadDeadlineSec"), P13_CURRENT_SEC.clip);
+  assert.equal(constant(avdeck, "defaultLineLoadDeadlineSec"), P13_CURRENT_SEC.line);
+  assert.equal(constant(avdeck, "defaultReuseMaxIdleSec"), REUSE_MAX_IDLE_SEC);
+  assert.match(avdeck, /defaultLoadDeadlineSec[^\n]*MEASURE: verdict=P13-clip/);
+  assert.match(avdeck, /defaultLineLoadDeadlineSec[^\n]*MEASURE: verdict=P13-line/);
+  assert.match(avdeck, /defaultReuseMaxIdleSec[^\n]*MEASURE: verdict=reuse-idle/);
+  const core = src("foray-engine-core/Sources/ForayEngineCore/Engine/EngineCore.swift");
+  assert.equal(constant(core, "remoteDuplicateWindowMs"), REMOTE_DUPLICATE_WINDOW_MS);
+  assert.match(core, /bufferingWhileWaiting[^\n]*MEASURE: verdict=rate-latch/);
+  // Every `// MEASURE: verdict=<id>` in these sources names a verdict this tool prints.
+  const tagged = [avdeck, core, src("ios/Sources/ForayAudioPlugin/Engine/ForayEngine.swift")]
+    .flatMap((t) => [...t.matchAll(/MEASURE: verdict=([\w-]+)/g)].map((m) => m[1]));
+  assert.ok(tagged.length >= 5, tagged.join(","));
+  for (const id of tagged) assert.ok(id in M3_TITLES, `// MEASURE: verdict=${id} has no NE-38e verdict`);
 });

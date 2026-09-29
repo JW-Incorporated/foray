@@ -1765,6 +1765,15 @@ Read first: `CLAUDE.md`, this deck, the Tier 2 requirements, `docs/ios-native-pl
   - A test per verdict on synthetic pastes, covering pass, fail and no-coverage.
   - A title-free excerpt of the 2026-09-28 paste (rows e#75–e#103) gives `no-coverage` for every new verdict, because it predates the rows. It never gives a pass.
   - The CLI is executed on the fixture, and the output is quoted in the PR.
+- **As built (2026-09-29):** the fixtures are `tools/mobile/fixtures/engine-report/2026-09-28-excerpt.txt` (all ten no-coverage) and `m3-drive-synthetic.txt` (all ten pass, printed through the real `engineLineFor`). Rules the card left open, each stated in the tool's header:
+  - A load with no `class=` (an M2 row) reads as `clip`; the report counts them. A `P13-*` fail is a deadline row of that class, or a proposal above the shipped value.
+  - `resume-latency` counts only spans with a `deck attach` (cold) or `deck reuse` inside them, and fails on `grace expired`.
+  - `rate-latch` ignores a jump larger than the span could play (a seek).
+  - `route-back` fails on a resume of a pause the route did not cause (Q5), a silent resume, or `why=bluetooth-off` on a known route with no car `remote play` within 30 s.
+  - `seam-kinds` reads `prepare=hit` (the standby was promoted), `miss` (prepared, still loaded cold) and `none`. It fails on `miss`, on a line→clip seam that was not prepared and on a never-audible seam. On an evicted ring a pass reads `incomplete`, as DV-2 does. NE-45s writes these tokens.
+  - `suspension-in-seam` needs the detector in the build (a `grace late` row, or a `deck` row with `class=`) and a seam held in the background.
+  - `dup` is no-coverage unless two presses of one command are within 1 s, because the 2026-09-28 plays 5 s apart say nothing about a window. It fails under 150 ms, which is faster than a hand (provisional).
+  - `--strict` also exits 1 on an M3 fail. A test pins the judged values to the Swift constants and checks that every `// MEASURE: verdict=` names a verdict.
 - **Device check:** none.
 
 #### NE-38f · Settle the values from the field — **S**

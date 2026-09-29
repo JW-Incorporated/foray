@@ -1693,8 +1693,12 @@ const FLOORS = {
      incomplete (never passed), the resume latencies, the remote/route summary,
      the seam distribution, the fault counts, the M1 exit readings and the CLI;
      plus the round trip through NE-26's real engineLineFor once it is on the
-     branch. Zero slack. */
-  "tools/mobile/engine-report.test.mjs": 25,
+     branch. Zero slack. NE-38e: 25 -> 43, the ten M3 verdicts (each one's
+     pass, fail and no-coverage), the proposal's arithmetic, the 2026-09-28
+     excerpt fixture (no-coverage everywhere, never a pass), the synthetic M3
+     drive fixture, --strict on an M3 fail, and the pin to the Swift constants
+     each `// MEASURE: verdict=` names. */
+  "tools/mobile/engine-report.test.mjs": 43,
   "tools/mobile/ios-workflow.test.mjs": 46, // ci-release-12 (round-3 audit): +1 -- no npm install under mobile/ on either iOS path; 45 -> 46 // NE-17: +1 -- the plist step keeps the bare injector run and its --check, which carry ForayEngineDefault, with no --engine-default override // NE-06: +1 -- the parity fixtures and recorder are negated out of the path filter, below the patterns they narrow // +4 (2026-09-13): the MinimumOSVersion patch runs before both builds, off one resolved SwiftPM tree, with the deployment target READ not written, and the built device bundle is read back
 
   "tools/mobile/probe/install-probe.test.mjs": 50, // NE-36 (2026-09-25): the native phase, its audio base, its page and its Foray; 39 -> 50
