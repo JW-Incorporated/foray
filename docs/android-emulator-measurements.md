@@ -82,8 +82,11 @@ How to read the columns:
   `isForeground=true`, `types=00000002` (mediaPlayback), notification channel
   `foray-playback`, category `transport`.
 
-Raw evidence is in each job's artifact `a03-audio-spike-<flag>` (30-day retention): idle and
-playing `dumpsys` outputs, `emulator.log`, `logcat.txt` and `audio-spike.json`.
+Raw evidence is in the run's artifacts `a03-audio-spike-<flag>` (30-day retention): idle and
+playing `dumpsys` outputs, `emulator.log`, `logcat.txt` and `audio-spike.json`. The run holds
+one artifact per flag, and it is **attempt 2's**: the re-run replaced attempt 1's uploads. Attempt
+1's numbers survive in its job logs (the step that prints `audio-spike.json`), under the attempt-1
+job ids above.
 
 ## 3. What this settles beyond the flag
 
@@ -104,6 +107,11 @@ playing `dumpsys` outputs, `emulator.log`, `logcat.txt` and `audio-spike.json`.
   seconds. A-04 (b) covers Home plus sleep, and A-05 covers Doze, calls and kills.
 - **Nothing audible.** No leg sent samples to a host device a human could hear, and no
   test needs one. Audible quality is for the device pass.
+- **`media_session` PLAYING is not evidence of audio.** The page set `playbackState = 'playing'`
+  itself, and the polyfill forwards that to Media3 whether or not a sample was rendered. The
+  column shows that the session plumbing works under each flag. The evidence that the clip
+  actually played is the `currentTime` and mixer-frames columns. A-04 must not assert
+  "audio plays" from the media session alone.
 - **The app's own player.** The clip was played by a bare `<audio>` element created in the
   page, not by `queue-manager.js`. The system-side facts above should not depend on which
   code calls `play()`, but that is not measured here. A-04 plays through the real player.
