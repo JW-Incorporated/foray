@@ -479,6 +479,12 @@ export function verdictPress({ kind, before, after, sinceRemote = 0 }) {
   else if (!arrived.some((r) => r.handled)) failures.push(`${action} reached the page but no handler ran`);
   const b = before?.foray;
   const a = after?.foray;
+  /* THE STATE BEFORE MUST DIFFER FROM THE ONE THE PRESS MEANS. A pause sent to
+     a page that was already paused (a set-up that failed) would otherwise pass
+     on state with a handler that did nothing: "compare page state before and
+     after", the card's words, needs a before that could have been different. */
+  if (kind === "pause" && b?.running !== true) failures.push("the page was not running before pause, so the pause measured nothing");
+  if (kind === "play" && b?.running !== false) failures.push("the page was already running before play, so the play measured nothing");
   if (!a) failures.push("no Foray state after the press");
   else if (kind === "pause" && a.running !== false) failures.push("the page is still running after pause");
   else if (kind === "play" && a.running !== true) failures.push("the page is not running after play");
@@ -506,6 +512,9 @@ export function verdictNotification({ controls, expected, tapped, after, sinceRe
   }
   if (!tapped) failures.push("no pause button was tapped");
   else {
+    /* A tap on a page that was already paused measures nothing: it must have
+       been playing for "the tap paused it" to mean anything. */
+    if (tapped.playingBefore !== true) failures.push("the page was not playing before the tap, so the tap measured nothing");
     const arrived = (after?.remote ?? []).slice(sinceRemote).filter((r) => r.action === "pause" && r.handled);
     if (!arrived.length) failures.push("the tap on pause never reached the page (foray:remote)");
     const running = after?.foray ? after.foray.running : after?.episodePlaying;

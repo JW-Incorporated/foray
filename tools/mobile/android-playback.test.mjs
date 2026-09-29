@@ -281,10 +281,22 @@ test("(c) a press passes only when it reached the page AND the page did it", () 
      fooled by a handler that ran and did nothing. Both are required. */
   const at = (foray, remote = []) => ({ foray, remote });
   const before = at({ index: 0, running: true, elapsedSec: 20 }, [{ action: "x" }]);
+  const pausedBefore = at({ index: 0, running: false, elapsedSec: 20 }, [{ action: "x" }]);
   const ok = (kind, foray, action, handled = true) =>
-    verdictPress({ kind, before, after: at(foray, [{ action: "x" }, { action, handled }]), sinceRemote: 1 });
+    verdictPress({ kind, before: kind === "play" ? pausedBefore : before, after: at(foray, [{ action: "x" }, { action, handled }]), sinceRemote: 1 });
   assert.equal(ok("pause", { index: 0, running: false, elapsedSec: 20 }, "pause").ok, true);
   assert.equal(ok("play", { index: 0, running: true, elapsedSec: 20 }, "play").ok, true);
+  /* MUTATION: drop the before-state clause -> a pause sent to a page that was
+     already paused (a set-up that failed) passes with a handler that did
+     nothing, and a play sent to a running page likewise. */
+  const vacuousPause = verdictPress({ kind: "pause", before: pausedBefore,
+    after: at({ index: 0, running: false, elapsedSec: 20 }, [{ action: "x" }, { action: "pause", handled: true }]), sinceRemote: 1 });
+  assert.equal(vacuousPause.ok, false, "a pause of a paused page measures nothing");
+  const vacuousPlay = verdictPress({ kind: "play", before,
+    after: at({ index: 0, running: true, elapsedSec: 21 }, [{ action: "x" }, { action: "play", handled: true }]), sinceRemote: 1 });
+  assert.equal(vacuousPlay.ok, false, "a play of a running page measures nothing");
+  /* The before clause is not A04-F1's sentence, so it is never excused. */
+  assert.equal(applyKnown("transport", vacuousPlay.failures.map((f) => `cmd media_session dispatch play: ${f}`)).ok, false);
   assert.equal(ok("next", { index: 1, running: true, elapsedSec: 85 }, "nexttrack").ok, true);
   assert.equal(ok("previous", { index: 0, running: true, elapsedSec: 0.2 }, "previoustrack").ok, true);
 
@@ -345,13 +357,16 @@ test("(d) passes only with all four controls shown and a tap that paused the pag
   /* MUTATION: drop the forward30 clause -> the case without it passes. */
   const controls = mediaControls(uiNodes(SHADE), { title: EPISODE.title, artist: SHOW });
   const after = { foray: null, episodePlaying: false, remote: [{ action: "play" }, { action: "pause", handled: true }] };
-  const base = { controls, expected: { title: EPISODE.title, artist: SHOW }, tapped: { at: { x: 1, y: 1 } }, after, sinceRemote: 1 };
+  const base = { controls, expected: { title: EPISODE.title, artist: SHOW }, tapped: { at: { x: 1, y: 1 }, playingBefore: true }, after, sinceRemote: 1 };
   assert.equal(verdictNotification(base).ok, true, verdictNotification(base).failures.join("; "));
   for (const k of ["title", "artist", "back15", "forward30"]) {
     assert.equal(verdictNotification({ ...base, controls: { ...controls, [k]: null } }).ok, false, `no ${k} must fail (d)`);
   }
   assert.equal(verdictNotification({ ...base, controls: null }).ok, false, "an unreadable shade");
   assert.equal(verdictNotification({ ...base, tapped: null }).ok, false, "nothing tapped");
+  /* MUTATION: drop the playingBefore clause -> a tap on an already-paused page
+     passes on state alone. */
+  assert.equal(verdictNotification({ ...base, tapped: { ...base.tapped, playingBefore: false } }).ok, false, "not playing before the tap");
   assert.equal(verdictNotification({ ...base, after: { ...after, episodePlaying: true } }).ok, false, "still playing");
   assert.equal(verdictNotification({ ...base, after: { ...after, remote: [{ action: "play" }] } }).ok, false, "the tap never reached the page");
 });
@@ -370,7 +385,7 @@ test("(d) on the real API 34 shade (run 36551857323): our title, show and play b
   assert.ok(c.play.bounds.x2 > c.play.bounds.x1);
   assert.equal(c.back15, null);
   assert.equal(c.forward30, null);
-  const v = verdictNotification({ controls: c, expected: { title: EPISODE.title, artist: SHOW }, tapped: { at: center(c.play.bounds) },
+  const v = verdictNotification({ controls: c, expected: { title: EPISODE.title, artist: SHOW }, tapped: { at: center(c.play.bounds), playingBefore: true },
     after: { episodePlaying: false, remote: [{ action: "pause", handled: true }] } });
   assert.deepEqual(applyKnown("notification", v.failures).ok, true, "only A04-F2's two sentences fail on the real shade");
 });
