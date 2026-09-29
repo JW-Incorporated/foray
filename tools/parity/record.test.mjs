@@ -63,7 +63,14 @@ function scratch() {
     fs.mkdirSync(path.dirname(path.join(root, rel)), { recursive: true });
     fs.copyFileSync(path.join(ROOT, rel), path.join(root, rel));
   };
-  const modules = withImports(loadFixtures(ROOT).map((fx) => fx.doc.module).filter(Boolean));
+  /* The engine target (prepare, prepare-narration) names no `module`: it runs
+     player/parity/reference-engine.js, so that file's imports are seeded too
+     (NE-45j: it reads PREFETCH_LEAD_SEC from html-audio-backend.js, which no
+     fixture's module reaches). */
+  const modules = withImports([
+    ...loadFixtures(ROOT).map((fx) => fx.doc.module).filter(Boolean),
+    "player/parity/reference-engine.js",
+  ]);
   for (const rel of ["player/package.json", "player/seam-gap.test.js", ...modules]) copy(rel);
   /* NE-29j: `$foray: "<id>"` reads the committed Foray from data/, and the
      committed-Foray adapter (player/parity/forays.js) builds it against the
