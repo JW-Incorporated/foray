@@ -339,10 +339,11 @@ jobs:
         # (API 34's image ships WebView 113), so it is written down beside them.
         run: |
           set -euo pipefail
-          GOT=$(tr -d '[:space:]' < "$ART/device-sdk.txt")
+          GOT=$(tr -d '\r[:space:]' < "$ART/device-sdk.txt")
           [ "$GOT" = "$API_LEVEL" ] || { echo "this leg asked for API $API_LEVEL and booted a device reporting ro.build.version.sdk=$GOT"; exit 1; }
-          adb shell getprop ro.build.version.release | tr -d '' | tee "$ART/device-release.txt"
-          adb shell dumpsys package com.google.android.webview 2>/dev/null | tr -d ''             | grep -m 3 -E '^[[:space:]]+versionName=' | tee "$ART/webview-version.txt" || true
+          adb shell getprop ro.build.version.release | tr -d '\r' | tee "$ART/device-release.txt"
+          adb shell dumpsys package com.google.android.webview 2>/dev/null | tr -d '\r' \
+            | grep -m 3 -E '^[[:space:]]+versionName=' | tee "$ART/webview-version.txt" || true
           echo "API $GOT, as this leg asked"
 
       - name: Let Play services finish its first-boot restart
