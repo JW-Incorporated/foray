@@ -821,7 +821,7 @@
       "reason": "webview-only",
       "why": "Section 15 is the web lane's narration warm: HtmlAudioBackend.warmNarration fetches the next rendered file on a spare muted element that is never played or promoted. queue-manager.js checks the capability and says so: a backend without it (every fake, the native engine) behaves exactly as before. The engine's own prefetch is NE-32's DeckPair standby, pinned by the deck and prepare families and DeckPairTests."
     },
-    "§15: a skip past the warmed line cancels it, and the new next line is warmed": {
+    "§15: a jump past the warmed line cancels it, and the new next line is warmed": {
       "reason": "webview-only",
       "why": "Section 15 is the web lane's narration warm: HtmlAudioBackend.warmNarration fetches the next rendered file on a spare muted element that is never played or promoted. queue-manager.js checks the capability and says so: a backend without it (every fake, the native engine) behaves exactly as before. The engine's own prefetch is NE-32's DeckPair standby, pinned by the deck and prepare families and DeckPairTests."
     },

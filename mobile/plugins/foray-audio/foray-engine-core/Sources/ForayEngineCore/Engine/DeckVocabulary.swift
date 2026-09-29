@@ -105,9 +105,15 @@ public enum DeckEvent: Equatable, Sendable {
     case ready(token: DeckToken, landedSec: Double, prerolled: Bool, elapsedMs: Int)
     /// An interrupted seek or an unfinished preroll; the deck retries itself.
     case notReady(token: DeckToken, attempt: Int, cause: String)
-    /// The load did not become ready inside its deadline (P-13).
-    case deadlineExceeded(token: DeckToken, afterMs: Int)
-    case failed(token: DeckToken, message: String)
+    /// The load did not become ready inside its deadline (P-13). `cause` is
+    /// the deck's reading of WHY (NE-39n): `timeout` unless its error log
+    /// shows a server status or no network by then.
+    case deadlineExceeded(token: DeckToken, afterMs: Int, cause: Vocabulary.NarrationFallbackCause = .timeout)
+    /// The item failed. `cause` is the deck's mapping of the failure (the
+    /// error's domain and code, its underlying one, and the error log's
+    /// status) to a closed token (NE-39n, AVDeck.fallbackCause); the core
+    /// writes it on a `narration kind=fallback` row and nowhere else.
+    case failed(token: DeckToken, message: String, cause: Vocabulary.NarrationFallbackCause = .other)
     /// A command the deck would not run (`play` before `.ready`).
     case refused(command: String, reason: String)
     case timeControl(token: DeckToken, status: DeckTimeControl, waitingReason: String?)

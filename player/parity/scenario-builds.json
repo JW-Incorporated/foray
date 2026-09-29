@@ -1204,6 +1204,24 @@
         {"id":"foray-1#0","ord":0,"kind":"episode","audio_url":"https://cdn.example/static.mp3","start_sec":640,"end_sec":750,"authored_end_sec":750,"ad_pad_applied_sec":0,"source_item_id":"ep-static","dai_suspected":false,"reference_duration_sec":null,"ad_pad_sec":null,"needs_drift_check":false,"start_anchor":null,"end_anchor":null,"why":"he explains it plainly","title":"Static","show":"Indie"}
       ]
     },
+    "manager-foray/remote-nexttrack-from-a-line@0": {
+      "isLocalFile": false, "allowAdPad": false, "warnings": 1,
+      "skipped": [],
+      "items": [
+        {"id":"foray-1#0","ord":0,"kind":"episode","audio_url":"https://example.test/a.mp3","start_sec":100,"end_sec":210,"authored_end_sec":210,"ad_pad_applied_sec":0,"source_item_id":"ep-a","dai_suspected":false,"reference_duration_sec":null,"ad_pad_sec":null,"needs_drift_check":false,"start_anchor":null,"end_anchor":null,"why":"","title":"Fire","show":"Origin Stories"},
+        {"id":"nar-1","ord":1,"kind":"tts","audio_url":"narration/fire-1.mp3","title":"","script":"","duration_sec":8,"duration_source":"fallback"},
+        {"id":"foray-1#2","ord":2,"kind":"episode","audio_url":"https://example.test/a.mp3","start_sec":400,"end_sec":520,"authored_end_sec":520,"ad_pad_applied_sec":0,"source_item_id":"ep-a","dai_suspected":false,"reference_duration_sec":null,"ad_pad_sec":null,"needs_drift_check":false,"start_anchor":null,"end_anchor":null,"why":"","title":"Fire","show":"Origin Stories"}
+      ]
+    },
+    "manager-foray/remote-nexttrack-onto-a-line@0": {
+      "isLocalFile": false, "allowAdPad": false, "warnings": 1,
+      "skipped": [],
+      "items": [
+        {"id":"foray-1#0","ord":0,"kind":"episode","audio_url":"https://example.test/a.mp3","start_sec":100,"end_sec":210,"authored_end_sec":210,"ad_pad_applied_sec":0,"source_item_id":"ep-a","dai_suspected":false,"reference_duration_sec":null,"ad_pad_sec":null,"needs_drift_check":false,"start_anchor":null,"end_anchor":null,"why":"","title":"Fire","show":"Origin Stories"},
+        {"id":"nar-1","ord":1,"kind":"tts","audio_url":"narration/fire-1.mp3","title":"","script":"","duration_sec":8,"duration_source":"fallback"},
+        {"id":"foray-1#2","ord":2,"kind":"episode","audio_url":"https://example.test/a.mp3","start_sec":400,"end_sec":520,"authored_end_sec":520,"ad_pad_applied_sec":0,"source_item_id":"ep-a","dai_suspected":false,"reference_duration_sec":null,"ad_pad_sec":null,"needs_drift_check":false,"start_anchor":null,"end_anchor":null,"why":"","title":"Fire","show":"Origin Stories"}
+      ]
+    },
     "manager-foray/rendered-narration-plays-at-1x-with-no-out-point@0": {
       "isLocalFile": false, "allowAdPad": false, "warnings": 1,
       "skipped": [],

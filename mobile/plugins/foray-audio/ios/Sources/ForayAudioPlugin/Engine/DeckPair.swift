@@ -353,7 +353,7 @@ private extension DeckEvent {
     var deckToken: DeckToken? {
         switch self {
         case let .durationLoaded(token, _), let .ready(token, _, _, _), let .notReady(token, _, _),
-             let .deadlineExceeded(token, _), let .failed(token, _), let .timeControl(token, _, _),
+             let .deadlineExceeded(token, _, _), let .failed(token, _, _), let .timeControl(token, _, _),
              let .pausedUncommanded(token, _), let .seeked(token, _, _), let .stalled(token),
              let .ended(token), let .prepareWindow(token), let .prepared(token, _, _):
             return token

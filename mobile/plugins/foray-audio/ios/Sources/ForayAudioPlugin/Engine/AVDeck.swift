@@ -883,6 +883,9 @@ final class AVDeck: DeckDriving {
             JSONMember("bufferedAheadSec", Self.secNode(bufferedAhead(of: targetStartSec))),
             JSONMember("marks", .object(gateMarks))
         ] + accessFields() + errorLogFields())
+        // Why, as the core's closed token (NE-39n), read while the item and
+        // its error log are still attached.
+        let cause = Self.fallbackCause(error: nil, log: lastErrorLogEvent(), deadline: true)
         // A hung asset stays hung: the next load of this source gets a new one.
         if let asset { config.assetFailed(asset) }
         // Detach FIRST, and move the generation, so nothing that completes
@@ -893,7 +896,7 @@ final class AVDeck: DeckDriving {
         stage = .failed
         record("detach (deadline)")
         player.replaceCurrentItem(with: nil)
-        emit(.deadlineExceeded(token: token, afterMs: afterMs))
+        emit(.deadlineExceeded(token: token, afterMs: afterMs, cause: cause))
     }
 
     // MARK: - Transport
@@ -1301,10 +1304,11 @@ final class AVDeck: DeckDriving {
             JSONMember("step", .string(gateStep)),
             JSONMember("positionSec", Self.secNode(player.currentTime().seconds))
         ] + Self.errorFields(error) + accessFields() + errorLogFields())
+        let cause = Self.fallbackCause(error: error, log: lastErrorLogEvent(), deadline: false)
         // A failed asset is never retried by AVFoundation: the next load of
         // this source gets a new one.
         if let asset { config.assetFailed(asset) }
-        emit(.failed(token: token, message: message))
+        emit(.failed(token: token, message: message, cause: cause))
     }
 
     // MARK: - The out-point (NE-32)
@@ -1482,6 +1486,34 @@ final class AVDeck: DeckDriving {
             JSONMember("stalls", .number(Double(max(0, event.numberOfStalls)))),
             JSONMember("serverChanges", .number(Double(max(0, event.numberOfServerAddressChanges))))
         ]
+    }
+
+    /// The item's latest error-log event as the two values the fallback's
+    /// cause reads (`logStatus`, `logDomain`), or nil when the log is empty.
+    private func lastErrorLogEvent() -> (status: Int, domain: String)? {
+        guard let event = item?.errorLog()?.events.last else { return nil }
+        return (event.errorStatusCode, event.errorDomain)
+    }
+
+    /// The `cause=` of the core's `narration kind=fallback` row (NE-39n): the
+    /// failure's error and its underlying one, and the error log's last
+    /// status and domain, read by the core's pure
+    /// `NarrationFallbackCauseReading` into one closed token. The same fields
+    /// the `failed` and `deadline` rows print, so a paste can check the
+    /// mapping against the row beside it. Every deck failure carries one; the
+    /// core writes it only when the failure is a rendered line falling back.
+    static func fallbackCause(error: Error?, log: (status: Int, domain: String)?,
+                              deadline: Bool) -> Vocabulary.NarrationFallbackCause {
+        var errors: [NarrationFallbackCauseReading.Code] = []
+        if let error {
+            let ns = error as NSError
+            errors.append(.init(domain: ns.domain, code: ns.code))
+            if let under = ns.userInfo[NSUnderlyingErrorKey] as? NSError {
+                errors.append(.init(domain: under.domain, code: under.code))
+            }
+        }
+        return NarrationFallbackCauseReading.cause(errors: errors, logStatus: log?.status,
+                                                   logDomain: log?.domain, deadline: deadline)
     }
 
     /// The item's latest error-log event: the HTTP status (or the URL

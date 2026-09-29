@@ -5573,11 +5573,14 @@ const ForayPlayer = {
     foray.error = null;
     const nextIndex = manager.currentIndex + 1;
     /* THE NEXT CLIP, NOT THE NEXT NON-NARRATION ITEM (audit round 3,
-       player-core-6). `skipToNext` steps over every `kind: "tts"` item — the
+       player-core-6). `skipToNext` stepped over every `kind: "tts"` item — the
        Swift transition-bridge rule — and in a Foray a narration line is
        authored content: Next used to jump past it while the page highlighted
        it, and from the clip before a closing line it ended the Foray unheard.
-       `play(index)`, the way `forayPrevious` already moves. */
+       `play(index)`, the way `forayPrevious` already moves. Since NE-39n
+       (2026-09-29) `skipToNext` agrees — Next is the next item, a line
+       included — so the engine's own Next (the car, the iPhone lock screen)
+       lands where this does. */
     await moveForay(nextIndex, () => manager.play(nextIndex));
     render();
   },
