@@ -32,6 +32,33 @@
 #       our show and both seek buttons are on the shade's media controls, and a
 #       tap on pause (`input tap`) pauses the page.
 #
+# A-05 (part 2) adds seven more, one step each and on both A-06 legs, recorded
+# first and gated only where the card says so:
+#
+#   (f) hidden seams, RECORDED: a Foray of clip / rendered-narration .m4a /
+#       clip / ... played to its end with the screen off; the seam gaps are the
+#       diagnostics ring's own `observedGapMs` rows. p95 > 4 s is D-A4's line
+#       for shipping the JS-lane stopgap A-15.
+#   (g) Doze, GATED: `dumpsys battery unplug`, `dumpsys deviceidle force-idle`,
+#       `am set-standby-bucket ... rare`, and five minutes later the Foray clock
+#       has moved at least four of them in the same process.
+#   (h) audio focus, RECORDED: the focus stack while we play, then a helper
+#       app built in this job (`tools/mobile/a05-focus-helper/`) asks for
+#       AUDIOFOCUS_GAIN_TRANSIENT and AUDIOFOCUS_GAIN: do we pause, and resume?
+#   (i) a phone call, RECORDED: `adb emu gsm call`, accept, cancel.
+#   (j) process kill, RECORDED: paused on Home, `am kill`, a SIGKILL from the
+#       app's own uid, then `cmd media_session dispatch play`: which package
+#       gets it. `am force-stop` is the negative control, and the only gate.
+#   (k) airplane-mode narration fallback, GATED: a rendered line that cannot
+#       load is spoken from its script (or skipped) within the deadline.
+#   (l) Back on Home while playing, GATED: A-07 (PR #874) is on main, so the
+#       audio must keep going after Back.
+#
+# The rendered-narration files are made here by ffmpeg at the render profile's
+# encode (`tools/narration/render-profile.json`) and bundled beside the click
+# tracks at `a05/`; no audio is committed. The focus helper is built with
+# javac, d8 and aapt2 from the SDK this job already installs, not Gradle.
+#
 # PRODUCT DEFECTS THIS JOB FOUND are `KNOWN_FAILURES` in the runner: each
 # excuses exactly one failure sentence as EXPECTED-FAIL (a warning on the run,
 # "expected-fail" in the summary) so the job keeps guarding everything else
@@ -86,8 +113,8 @@
 # ── WHAT THIS STILL DOES NOT PROVE ───────────────────────────────────────────
 #
 # An emulator is not a phone (`docs/research/mp1-background-audio.md` §6.4).
-# (b) turns the screen off for a minute; it does not force Doze, the standby
-# buckets or a phone call, which are A-05. Nothing here is audible; A-03 showed
+# Its Doze is forced by a shell command, its call is the emulator's modem, and
+# its "other app" asks for focus without playing. Nothing here is audible; A-03 showed
 # the guest mixes the samples, and a person listening is the device pass,
 # which D-A3 holds until after A-42.
 #
@@ -105,6 +132,11 @@
 #          cold API-36 image never booting under WHPX; on a KVM runner it
 #          booted in 57 s and the job took 9 min 34 s, against API 34's
 #          8 min 14 s, run 36559231419), so its ceiling is 45 minutes.
+#
+# A-05's (f)-(l) add about 10 minutes of scenarios to each leg, five of them
+# (g)'s Doze. Both ceilings still hold: with A-05 the legs took 19 min 29 s
+# (API 34) and 20 min 36 s (API 36) on run 36579295565, recorded in
+# `docs/android-emulator-measurements.md` §7.
 #
 # `fail-fast: false`, so a red leg never cancels the other's verdicts. Each leg
 # checks that the device it booted really is its API level before installing
@@ -151,9 +183,12 @@ jobs:
           - api: 36
             image: system-images;android-36;google_apis;x86_64
             timeout: 45
-    # A-04's budget is 12 minutes for the fast leg; this is the ceiling for a
-    # hung boot, which the boot step's own 15-minute deadline would otherwise
-    # race. The API 36 leg gets more (see the header).
+    # The ceiling for a hung boot or a hung scenario, which the boot step's own
+    # 15-minute deadline would otherwise race. A-04's budget was 12 minutes; A-05
+    # took the one-leg job to 19 min 54 s on API 34 (run 36573733303), five of
+    # them the card's own Doze. API 36's extra time is all before the scenarios
+    # (a slower SDK install, boot and Play-services wait), so neither ceiling
+    # moved: the measured legs are in docs/android-emulator-measurements.md §7.
     timeout-minutes: ${{ matrix.timeout }}
     env:
       SDK_PLATFORM: platforms;android-36
@@ -220,6 +255,34 @@ jobs:
           echo "$SDK/emulator" >> "$GITHUB_PATH"
           echo "$(dirname "$SDKMANAGER")" >> "$GITHUB_PATH"
 
+      - name: Render the A-05 narration fixtures (.m4a, the render profile's encode)
+        # (f) and (k) play rendered narration, which ships as `audio_url` .m4a
+        # files now (DECISIONS 2026-09-28, PR #867). Made here rather than
+        # committed: the repo's audio guards refuse committed audio, and a tone
+        # at the profile's encode (AAC, 64 kbps, mono, 24 kHz, faststart) is all
+        # a FILE seam can depend on. Names and lengths are the runner's
+        # NARRATION_LINES, pinned by android-playback-workflow.test.mjs.
+        run: |
+          set -euo pipefail
+          if ! command -v ffmpeg > /dev/null; then
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq --no-install-recommends ffmpeg > /dev/null
+          fi
+          OUT="$RUNNER_TEMP/a05-narration"
+          mkdir -p "$OUT"
+          line() {
+            ffmpeg -hide_banner -nostdin -loglevel error -y \
+              -f lavfi -i "sine=frequency=$2:sample_rate=24000:duration=$3" \
+              -ac 1 -ar 24000 -c:a aac -b:a 64k -movflags +faststart "$OUT/$1"
+          }
+          line a05-line-1.m4a 220 5
+          line a05-line-2.m4a 247 6
+          line a05-line-3.m4a 262 7
+          for f in "$OUT"/a05-line-*.m4a; do
+            ffprobe -hide_banner -v error -show_entries format=duration:stream=codec_name,sample_rate,channels -of compact "$f"
+          done | tee "$ART/a05-narration-ffprobe.txt"
+          [ "$(ls "$OUT"/a05-line-*.m4a | wc -l)" = "3" ] || { echo "ffmpeg did not make the 3 narration fixtures"; exit 1; }
+
       - name: Build the webDir, generate the project, and build the debug APK
         working-directory: mobile
         run: |
@@ -236,6 +299,9 @@ jobs:
              plugins/foray-audio/ios/Tests/ForayAudioPluginTests/Fixtures/ClickTracks/click-vbr-xing.mp3 \
              plugins/foray-audio/ios/Tests/ForayAudioPluginTests/Fixtures/ClickTracks/click-vbr-notoc.mp3 \
              android/app/src/main/assets/public/a04/
+          # A-05: the rendered-narration fixtures the step above made, at a05/.
+          mkdir -p android/app/src/main/assets/public/a05
+          cp "$RUNNER_TEMP"/a05-narration/a05-line-*.m4a android/app/src/main/assets/public/a05/
           # ── end of the addition ──────────────────────────────────────────────
           echo "sdk.dir=$ANDROID_HOME" > android/local.properties
           chmod +x android/gradlew
@@ -260,6 +326,40 @@ jobs:
           FOUND=$(grep -cE 'assets/public/a04/click-(cbr|vbr-xing|vbr-notoc)\.mp3$' "$ART/apk-listing.txt" || true)
           [ "$FOUND" = "3" ] || { echo "the APK carries $FOUND of the 3 click tracks under assets/public/a04/"; exit 1; }
           echo "the APK carries the 3 click tracks under assets/public/a04/"
+
+      - name: The narration fixtures are in the APK the scenarios install
+        run: |
+          set -euo pipefail
+          FOUND=$(grep -cE 'assets/public/a05/a05-line-[123]\.m4a$' "$ART/apk-listing.txt" || true)
+          [ "$FOUND" = "3" ] || { echo "the APK carries $FOUND of the 3 narration fixtures under assets/public/a05/"; exit 1; }
+          echo "the APK carries the 3 narration fixtures under assets/public/a05/"
+
+      - name: Build the A-05 focus helper, a tiny APK that asks for audio focus (javac, d8, aapt2; no Gradle)
+        # (h)'s "other app": tools/mobile/a05-focus-helper/, one Activity that
+        # requests AUDIOFOCUS_GAIN or _TRANSIENT and abandons it on command.
+        # Built from the platform and build-tools this job installed, signed
+        # with a throwaway key made here, installed on this emulator only.
+        run: |
+          set -euo pipefail
+          BT="$ANDROID_HOME/build-tools/${SDK_BUILD_TOOLS#build-tools;}"
+          AJ="$ANDROID_HOME/platforms/${SDK_PLATFORM#platforms;}/android.jar"
+          H=tools/mobile/a05-focus-helper
+          OUT="$RUNNER_TEMP/a05-focus-helper"
+          rm -rf "$OUT"
+          mkdir -p "$OUT/classes" "$OUT/dex"
+          javac -source 8 -target 8 -Xlint:-options -bootclasspath "$AJ" -d "$OUT/classes" \
+            $(find "$H/src" -name '*.java')
+          "$BT/d8" --release --min-api 26 --lib "$AJ" --output "$OUT/dex" $(find "$OUT/classes" -name '*.class')
+          "$BT/aapt2" link -o "$OUT/unsigned.apk" -I "$AJ" --manifest "$H/AndroidManifest.xml" \
+            --min-sdk-version 26 --target-sdk-version 34 --version-code 1 --version-name 1
+          (cd "$OUT/dex" && zip -q ../unsigned.apk classes.dex)
+          "$BT/zipalign" -f 4 "$OUT/unsigned.apk" "$OUT/aligned.apk"
+          keytool -genkeypair -keystore "$OUT/throwaway.p12" -storetype PKCS12 -storepass a05-throwaway \
+            -alias helper -keyalg RSA -keysize 2048 -validity 2 -dname "CN=A-05 focus helper" -noprompt
+          "$BT/apksigner" sign --ks "$OUT/throwaway.p12" --ks-pass pass:a05-throwaway \
+            --out "$ART/a05-focus-helper.apk" "$OUT/aligned.apk"
+          "$BT/apksigner" verify "$ART/a05-focus-helper.apk"
+          echo "built $ART/a05-focus-helper.apk"
 
       - name: The debug build is still a fair stand-in for the release build
         working-directory: mobile/android
@@ -419,6 +519,41 @@ jobs:
         if: ${{ !cancelled() && steps.launch.outcome == 'success' }}
         run: node tools/mobile/android-playback.mjs notification --art "$ART"
 
+      - name: (f) Hidden seams, a clip, a rendered line, a clip, with the screen off (recorded)
+        id: seams
+        if: ${{ !cancelled() && steps.launch.outcome == 'success' }}
+        run: node tools/mobile/android-playback.mjs seams --art "$ART"
+
+      - name: (g) Doze, unplugged, in the rare bucket, and still playing after 5 minutes (gated)
+        id: doze
+        if: ${{ !cancelled() && steps.launch.outcome == 'success' }}
+        run: node tools/mobile/android-playback.mjs doze --art "$ART"
+
+      - name: (h) Another app takes audio focus, the focus stack and whether we pause (recorded)
+        id: focus
+        if: ${{ !cancelled() && steps.launch.outcome == 'success' }}
+        run: node tools/mobile/android-playback.mjs focus --art "$ART"
+
+      - name: (i) A phone call rings, is answered and hangs up, pause and resume (recorded)
+        id: call
+        if: ${{ !cancelled() && steps.launch.outcome == 'success' }}
+        run: node tools/mobile/android-playback.mjs call --art "$ART"
+
+      - name: (j) The process is killed, then a media play, who receives it (recorded)
+        id: kill
+        if: ${{ !cancelled() && steps.launch.outcome == 'success' }}
+        run: node tools/mobile/android-playback.mjs kill --art "$ART"
+
+      - name: (k) Airplane mode, a rendered line that cannot load is spoken or skipped in time (gated)
+        id: airplane
+        if: ${{ !cancelled() && steps.launch.outcome == 'success' }}
+        run: node tools/mobile/android-playback.mjs airplane --art "$ART"
+
+      - name: (l) Back on Home while playing leaves the app and the audio keeps going (gated)
+        id: back-home
+        if: ${{ !cancelled() && steps.launch.outcome == 'success' }}
+        run: node tools/mobile/android-playback.mjs back-home --art "$ART"
+
       - name: Collect the logcat, the dumpsys outputs and the diagnostics Copy
         # Whenever the device got as far as an install attempt. Before that there
         # is no device, and `adb logcat` would wait for one until its timeout.
@@ -432,7 +567,7 @@ jobs:
           ART="${ART:-$RUNNER_TEMP/android-playback}"
           mkdir -p "$ART"
           {
-            echo "## Android playback scenarios (A-04), API ${API_LEVEL}"
+            echo "## Android playback scenarios (A-04, A-05), API ${API_LEVEL}"
             echo
             node tools/mobile/android-playback.mjs summary --art "$ART"
             echo
@@ -447,11 +582,14 @@ jobs:
             echo "Foray in a mediaPlayback foreground service, publishes our title and show to"
             echo "the system, keeps playing with the app backgrounded and the screen off for a"
             echo "minute, obeys media-session and media-key presses, and draws a shade control"
-            echo "whose pause pauses the page."
+            echo "whose pause pauses the page. A-05 adds forced Doze (gated), the airplane-mode"
+            echo "narration fallback (gated) and Back on Home (gated), and records hidden seams,"
+            echo "audio focus, a call and a process kill."
             echo
-            echo "**What it does not prove:** anything a phone adds. No Doze, standby bucket,"
-            echo "call or process kill (A-05), no OEM battery manager, no Bluetooth or car, and"
-            echo "nothing audible — \`docs/research/mp1-background-audio.md\` §6.4. It also runs"
+            echo "**What it does not prove:** anything a phone adds. Doze here is forced by a"
+            echo "shell command, the call is the emulator's modem, and there is no OEM battery"
+            echo "manager, no Bluetooth or car, and nothing audible —"
+            echo "\`docs/research/mp1-background-audio.md\` §6.4. It also runs"
             echo "the DEBUG APK with three click tracks added, because DevTools is unreachable on"
             echo "a release build."
           } >> "$GITHUB_STEP_SUMMARY"
