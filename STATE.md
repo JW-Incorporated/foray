@@ -7,6 +7,55 @@ docs/. Completed workstreams move to their plan doc's retro section.
 
 ## Active workstreams
 
+### 2026-09-29 — `android/a-25-exoplayer-deck`: A-25, the ExoPlayer deck behind a DeckDriving seam
+
+Owned: foray-audio's `engine/` package (`DeckDriving`, `ExoDeck` and their Robolectric tests), the rest of the JVM
+`DeckPolicy` (the out-point reducer, the deck's guards, the standby deck's decisions), the `outpoint` and `deck` runners,
+and three entries of `player/parity/jvm-pending.json`. Card A-25 of `docs/plans/android-assessment.md` (Track A1), PR #898.
+
+**The deck.** It is the Media3 twin of AVDeck, and it speaks the core's `DeckCommand` / `DeckEvent`. It does:
+- a readiness-gated load (READY with play-when-ready off is the preroll; `play` is refused before it);
+- position readings (the target while gating), and the rate, held and re-applied on every play;
+- a load deadline on the player's own clock;
+- same-source reuse (a seek in the held source, and the `attach` row says why a load was cold);
+- the uncommanded-pause settle, and stall → waiting;
+- the out-point, from `DeckPolicy.outPointStep`: a `PlayerMessage` boundary and the watchdog. `endTime` has no Media3
+  counterpart on a live source, so its ops are no-ops.
+
+`setWakeMode(C.WAKE_MODE_NETWORK)` is set, and the library manifest now declares WAKE_LOCK. The deck is wired to nothing
+yet: A-26's service drives it.
+
+**Paths.** `mobile/plugins/foray-audio/android/build.gradle` is a governed path. It adds media3-exoplayer, the core by
+project path, media3-test-utils(-robolectric), and Robolectric 4.16 (what test-utils 1.11.0 needs). So this PR waits on
+`founder-approved`.
+
+**The books.** `outpoint` (50 cases) and `deck` (77) moved to `runs`: 0 owed, 0 failed. `prepare` was owed to A-25, but
+its cases run the Foray tape through the engine (ForayTapeRunner, target `engine`), so it is now owed to A-40, and
+A-62's note says so.
+
+**CI** (run 36633382530, job 109627870662, head `e05fb324`), green:
+- `:foray-audio:testDebugUnitTest`: 68 cases, 0 skipped, including the 15 `ExoDeckTest` and 2 `ExoDeckMeasurementTest` cases.
+- `:foray-engine-core-jvm:test`: 87 cases.
+- JVM parity: 989 passed, and failed, pending, stale and unaccounted all 0. The mutation still turns it red.
+- `assembleDebug` / `assembleRelease` pass.
+
+**Measured** (docs/android-emulator-measurements.md §8, Robolectric and virtual time, not the emulator):
+- In-points on exact seek maps (CBR MP3, WAV) are never early and 0 to 1 sample late.
+- The Xing-TOC VBR landed 186 to 629 ms early. The no-table VBR landed up to 20 s early.
+- `preciseTiming` does not change the VBR result, because Media3 1.11's index seeking is only a fallback. A-40 must
+  solve this for Foray in-points.
+- Out-points: 24 trials, never early. The boundary layer settled at +0 ms; the watchdog alone at +2 ms (1x) and
+  +4 ms (2x).
+
+**Executed locally:**
+- core `javac -Werror` and JUnit on the scratchpad Temurin: 87 green, parity 989 passed;
+- `record.mjs --check`: 1836 match;
+- `node --test` over the parity and suite-integrity tests: 2363/2363;
+- `shell-invariants`: the new A-25 test and the updated dependency test pass;
+- a compile-only `javac` of the deck and its tests against android-36 and the Media3 1.11.0 jars (no Gradle).
+
+No device, and no request to Joey (D-A3).
+
 ### 2026-09-29 — `android/a-24-enginecore-episodes`: A-24, EngineCore for episodes on the JVM
 
 Owned: `foray-engine-core-jvm`'s engine core (`EngineCore` and its input, command, state and deck vocabulary),
