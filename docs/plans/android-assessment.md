@@ -279,7 +279,8 @@ These are the same as `docs/native-engine-plan.md` §12, adapted:
   - **What was built.** Seven steps in `android-playback.yml` and the runner. The rendered-narration fixtures
     are made in the job by ffmpeg at the render profile's encode, and the (h) helper APK is built with javac,
     d8 and aapt2.
-  - **Evidence.** Green on runs 36562447644 and 36565163853, 19 min for the whole job.
+  - **Evidence.** Green on runs 36562447644 and 36565163853, 19 min for the whole job. After A-06's matrix,
+    green on both legs on run 36579295565: API 34 in 19 min 29 s, API 36 in 20 min 36 s.
   - **What the recorded scenarios found:**
     - **(f)** Hidden seams have p95 3.1–3.4 s of gap, which is the 3 s interlude jingle on every seam into a
       clip, and 52 ms of silence. A-15 is **not** triggered.

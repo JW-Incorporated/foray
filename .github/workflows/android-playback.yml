@@ -134,7 +134,8 @@
 #          8 min 14 s, run 36559231419), so its ceiling is 45 minutes.
 #
 # A-05's (f)-(l) add about 10 minutes of scenarios to each leg, five of them
-# (g)'s Doze. Both ceilings still hold: the legs' wall times with A-05 are in
+# (g)'s Doze. Both ceilings still hold: with A-05 the legs took 19 min 29 s
+# (API 34) and 20 min 36 s (API 36) on run 36579295565, recorded in
 # `docs/android-emulator-measurements.md` §7.
 #
 # `fail-fast: false`, so a red leg never cancels the other's verdicts. Each leg

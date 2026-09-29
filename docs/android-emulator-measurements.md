@@ -326,10 +326,26 @@ What the measurements before the merge say:
 So the API 36 leg was expected at about 22 min 30 s: API 34's 19 min 54 s plus about 2 min 30 s
 of setup.
 
+What the first two-leg run measured: run **36579295565** on PR #888 (the merge, head `f7d658a1`).
+All twelve scenarios were green on both legs.
+
+| | API 34 (job 109442936065) | API 36 (job 109442936168) |
+|---|---|---|
+| Job wall time | **19 min 29 s** of 30 | **20 min 36 s** of 45 |
+| Before the first scenario | 5 min 31 s | 6 min 44 s |
+| SDK install / boot / Play services wait | 50 s / 46 s / 67 s | 85 s / 57 s / 120 s (did not restart) |
+| Scenarios (e) to (l) | 13 min 49 s | 13 min 46 s |
+| (g) Doze step | 5 min 08 s | 5 min 07 s |
+| (f) p95 seam gap / p95 silence | 3,374 ms / 85 ms | 3,342 ms / 42 ms |
+
+The API 36 leg came in under the projection. Its whole extra 1 min 07 s is setup, and its
+scenarios ran as fast as API 34's. D-A4's line holds on both legs.
+
 **Neither ceiling moved.** Each is a ceiling for a hung boot or a hung scenario, not a budget:
 - A hung boot fails the boot step's own 15-minute deadline at about 19 minutes on either leg
   (about 4 minutes of setup first), which is inside both ceilings.
-- A normal run fills about two-thirds of API 34's 30 and half of API 36's 45.
+- A normal run fills about two-thirds of API 34's 30 (19 min 29 s) and under half of API 36's
+  45 (20 min 36 s).
 
 Raising either would only let a hung run cost more.
 
