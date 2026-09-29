@@ -1485,6 +1485,15 @@ function isRunning() {
   return isPlaying() || manager?.inSeamGap === true;
 }
 
+/** Something is current AND its media is loaded (playing or paused). False
+    for a restored bar (nothing loaded until the first press), an ended queue
+    and nothing at all. Shared by `isLoadedCurrent` and `hasLoadedItem`. */
+function hasLoadedItem() {
+  if (!current || restoredPending) return false;
+  const t = manager?.state?.type;
+  return typeof t === "string" && t !== "idle" && t !== "ended";
+}
+
 /**
  * THE ONE PLACE BELIEF IS CHECKED AGAINST THE ELEMENT (#689).
  *
@@ -1511,15 +1520,6 @@ function isRunning() {
  * A new surface — another scrub bar, another sheet, a native transport — cannot
  * add a fifth way to drift without going through a control that asks this.
  */
-/** Something is current AND its media is loaded (playing or paused). False
-    for a restored bar (nothing loaded until the first press), an ended queue
-    and nothing at all. Shared by `isLoadedCurrent` and `hasLoadedItem`. */
-function hasLoadedItem() {
-  if (!current || restoredPending) return false;
-  const t = manager?.state?.type;
-  return typeof t === "string" && t !== "idle" && t !== "ended";
-}
-
 function transportIsRunning() {
   return isRunning() || manager?.elementIsAudible === true;
 }
