@@ -35,6 +35,7 @@ import {
   verdict,
   listTargets,
   stepTimeoutMs,
+  probe,
 } from "./webview-probe.mjs";
 
 const ROOT = path.resolve(import.meta.dirname, "..", "..");
@@ -354,4 +355,59 @@ test("mobile-native-10: every probe step is clamped to what is left of the deadl
   assert.equal(stepTimeoutMs(10_000, 0, 30_000), 10_000);
   assert.equal(stepTimeoutMs(100_000, 0, 30_000), 30_000);
   assert.equal(stepTimeoutMs(10_000, 12_000, 5_000), 1, "a step at or past the deadline fails fast");
+});
+
+test("A-02: a page verdict seen earlier is not hidden by a later transport failure", async () => {
+  /* MUTATION: return `{ ...last, attempts }` unconditionally -> fails.
+     The deliberately broken app.js run: the probe reached the page and saw an
+     empty #view, then the emulator killed the app and every later attempt read
+     `fetch failed`. The report must lead with what the page showed. */
+  let t = 0;
+  let calls = 0;
+  const target = { type: "page", url: `https://${EXPECTED_HOST}/`, title: "4a", webSocketDebuggerUrl: "ws://x" };
+  const result = await probe(
+    { endpoint: "http://127.0.0.1:9222", timeoutMs: 10_000, title: "4a" },
+    {
+      now: () => t,
+      sleepImpl: async (ms) => {
+        t += ms;
+      },
+      listTargetsImpl: async () => {
+        calls += 1;
+        if (calls > 2) throw new Error("fetch failed");
+        return [target];
+      },
+      evaluateImpl: async () => ({
+        url: `https://${EXPECTED_HOST}/`,
+        title: "4a",
+        viewPresent: true,
+        viewChildren: 0,
+        hasCapacitor: true,
+        bridge: { platform: "android" },
+      }),
+    }
+  );
+  assert.equal(result.ok, false);
+  assert.match(result.failures[0], /<main id="view"> is empty/, `led with: ${JSON.stringify(result.failures)}`);
+  assert.match(result.failures.at(-1), /stopped answering: fetch failed/);
+  assert.equal(result.observed.viewChildren, 0, "the page's own observation is kept");
+  assert.ok(result.attempts > 2);
+});
+
+test("A-02: a probe that never reached the page still reports the transport failure alone", async () => {
+  let t = 0;
+  const result = await probe(
+    { endpoint: "http://127.0.0.1:9222", timeoutMs: 5_000, title: "4a" },
+    {
+      now: () => t,
+      sleepImpl: async (ms) => {
+        t += ms;
+      },
+      listTargetsImpl: async () => {
+        throw new Error("fetch failed");
+      },
+    }
+  );
+  assert.deepEqual(result.failures, ["fetch failed"]);
+  assert.equal(result.observed, null);
 });

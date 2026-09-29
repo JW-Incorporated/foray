@@ -1840,7 +1840,7 @@ const FLOORS = {
      "android"` is set in ForayAudioPlugin.java and nowhere else. That second one
      is the closest relative in this repo of #269, where an Android fixture
      answered `running: true` and the fake was the only place the code worked. */
-  "tools/mobile/webview-probe.test.mjs": 18, // audit round 3 integration: the real post-merge count, 16 -> 18 // 2026-09-22 (audit, persona #43): app.js now paints a boot line into #view before its first await, so a view still holding it is a failed launch, not a certified one; 15 -> 16
+  "tools/mobile/webview-probe.test.mjs": 20, // A-02: a page verdict seen earlier leads the report when later attempts only fail to connect, and a probe that never reached the page reports the transport failure alone; 18 -> 20 // audit round 3 integration: the real post-merge count, 16 -> 18 // 2026-09-22 (audit, persona #43): app.js now paints a boot line into #view before its first await, so a view still holding it is a failed launch, not a certified one; 15 -> 16
 
   /* M1 (full-repo review 2026-08-31): the byte-ceiling guards shared by
      scan.mjs and refresh-feeds.mjs. Covers all three defenses named in the
