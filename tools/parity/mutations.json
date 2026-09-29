@@ -45,6 +45,17 @@
       "family": "manager-episode",
       "recordedBy": "NE-14j"
     },
+    "warm-across": {
+      "why": "The next item is prepared when it has a FILE, whatever the beat (deck-policy.js warmsAcross, NE-45j), so a rendered narration line and the clip after it are both prepared and clip -> line -> clip is two handovers, not two cold loads. The mutant is the rule it replaced: warm only a segment-to-segment seam (the beat's rule, seam-gap.js).",
+      "patch": {
+        "file": "player/deck-policy.js",
+        "find": "  return typeof to.audio_url === \"string\" && to.audio_url.length > 0;",
+        "replace": "  return to.kind !== \"tts\" && from.kind !== \"tts\" && from.end_sec != null && to.end_sec != null;"
+      },
+      "jsTest": { "suite": "queue-manager", "name": "a rendered line is warmed across its seam, whatever the beat; a spoken one has no file to warm" },
+      "family": "prepare-narration",
+      "recordedBy": "NE-45j"
+    },
     "route-listener": {
       "why": "A listener's pause is never resumed when a car comes back (founder Q5, docs/DECISIONS.md 2026-09-25; route-resume.js routeResumeDecision). The mutant is main's EngineCore.onRoute guard before NE-38rs, `case .interrupted(_, true)`, which also matches a listener's own pause and resumes it.",
       "patch": {

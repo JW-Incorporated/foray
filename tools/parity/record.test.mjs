@@ -64,7 +64,14 @@ function scratch() {
     fs.mkdirSync(path.dirname(path.join(root, rel)), { recursive: true });
     fs.copyFileSync(path.join(ROOT, rel), path.join(root, rel));
   };
-  const modules = withImports(loadFixtures(ROOT).map((fx) => fx.doc.module).filter(Boolean));
+  /* The engine target (prepare, prepare-narration) names no `module`: it runs
+     player/parity/reference-engine.js, so that file's imports are seeded too
+     (NE-45j: it reads PREFETCH_LEAD_SEC from html-audio-backend.js, which no
+     fixture's module reaches). */
+  const modules = withImports([
+    ...loadFixtures(ROOT).map((fx) => fx.doc.module).filter(Boolean),
+    "player/parity/reference-engine.js",
+  ]);
   for (const rel of ["player/package.json", "player/seam-gap.test.js", ...modules]) copy(rel);
   /* NE-29j: `$foray: "<id>"` reads the committed Foray from data/, and the
      committed-Foray adapter (player/parity/forays.js) builds it against the
@@ -398,9 +405,9 @@ test("--check holds every recorded family to exactly one of the JVM's runs and i
 
 /* ---------- --mutate ---------- */
 
-test("the five named mutation rules exist, and each anchor occurs exactly once in its file", () => {
+test("the six named mutation rules exist, and each anchor occurs exactly once in its file", () => {
   const rules = loadMutations();
-  assert.deepStrictEqual(Object.keys(rules), ["seam-gap", "never-early", "15/30", "pause-silence", "route-listener"]);
+  assert.deepStrictEqual(Object.keys(rules), ["seam-gap", "never-early", "15/30", "pause-silence", "warm-across", "route-listener"]);
   for (const [name, r] of Object.entries(rules)) {
     const src = fs.readFileSync(path.join(ROOT, r.patch.file), "utf8");
     assert.equal(src.split(r.patch.find).length - 1, 1, `${name}: anchor drifted in ${r.patch.file}`);
@@ -445,6 +452,19 @@ test("--mutate on the pause-silence rule fails both the original JS test and the
      pause-silences-an-audible-element scenario loses its `pause`. MUTATION:
      delete that scenario -> "fixture: ... still pass". */
   const r = runMutation("pause-silence", loadMutations()["pause-silence"], { root: ROOT });
+  assert.equal(r.js, "killed", r.detail.join("\n"));
+  assert.equal(r.fixture, "killed", r.detail.join("\n"));
+  assert.equal(r.killed, true);
+});
+
+test("--mutate on the warm-across rule fails both the original JS test and the prepare-narration family", () => {
+  /* NE-45j's acceptance: --mutate back to the beat rule turns a clip -> line
+     case red. The mutant warms only a segment-to-segment seam, so the rendered
+     line after a clip is not prepared (queue-manager.test.js) and neither the
+     authored clip -> line -> clip seams nor the warmsAcross rows hold.
+     MUTATION: drop every clip -> line case from prepare-narration ->
+     "fixture: ... still pass". */
+  const r = runMutation("warm-across", loadMutations()["warm-across"], { root: ROOT });
   assert.equal(r.js, "killed", r.detail.join("\n"));
   assert.equal(r.fixture, "killed", r.detail.join("\n"));
   assert.equal(r.killed, true);

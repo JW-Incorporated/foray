@@ -20,6 +20,7 @@
     "media": "A-40",
     "outpoint": "A-25",
     "prepare": "A-25",
+    "prepare-narration": "A-62",
     "route-resume": "A-61",
     "seam-gap": "A-40",
     "seek-policy": "A-40",

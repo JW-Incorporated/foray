@@ -18,15 +18,17 @@
    - Native-only `n.*` op tokens are stripped from any `ops` array before the
      comparison, EXCEPT in the `prepare` family, which exists to assert them
      (plan §6.2: "Native-only n.* tokens are stripped, except in the prepare
-     family"). JS never emits them; the Swift engine emits them for its standby
-     deck, and every other family must stay blind to that. */
+     family"), and its NE-45j sibling `prepare-narration` (the same seams with
+     a narration line in them, parked outside `prepare` while NE-45s owes it).
+     JS never emits them; the Swift engine emits them for its standby deck,
+     and every other family must stay blind to that. */
 
 import { encode } from "./codec.js";
 
 export const NATIVE_TOKEN_PREFIX = "n.";
 
 /** Families whose op logs keep `n.*` tokens. */
-export const NATIVE_TOKEN_FAMILIES = Object.freeze(["prepare"]);
+export const NATIVE_TOKEN_FAMILIES = Object.freeze(["prepare", "prepare-narration"]);
 
 const isPlainObject = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
 const isSpecialNum = (v) => isPlainObject(v) && Object.keys(v).length === 1 && "$num" in v;

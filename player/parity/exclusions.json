@@ -358,6 +358,10 @@
     "D2: keepPitch sets the prefixed flags only where the engine has them, and never throws": {
       "reason": "dom-only",
       "why": "`preservesPitch` and its vendor-prefixed flags on the HTMLMediaElement. AVDeck keeps pitch at every rate by setting `audioTimePitchAlgorithm = .timeDomain` on every item it makes (AVDeck.load)."
+    },
+    "NE-45j: the web lane prepares nothing across a narration seam — prefetch stays parked": {
+      "reason": "webview-only",
+      "why": "Pins that the WEB lane stays parked: the production HtmlAudioBackend (no second element) is never asked to prefetch across a narration seam, from a window or from the line-start warm. The native standby deck does prepare there; that rule is the prepare-narration family (NE-45s)."
     }
   },
   "interlude": {

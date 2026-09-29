@@ -25,7 +25,7 @@ public final class Comparator {
     public static final String NATIVE_TOKEN_PREFIX = "n.";
 
     /** compare.js NATIVE_TOKEN_FAMILIES: the families whose op logs KEEP {@code n.*} tokens. */
-    public static final List<String> NATIVE_TOKEN_FAMILIES = List.of("prepare");
+    public static final List<String> NATIVE_TOKEN_FAMILIES = List.of("prepare", "prepare-narration");
 
     /** One difference; {@code expected}/{@code actual} null means absent (compare.js's undefined). */
     public record Difference(String path, Json expected, Json actual, String why) {
