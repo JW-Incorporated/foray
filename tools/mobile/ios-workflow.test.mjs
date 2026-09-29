@@ -1042,3 +1042,112 @@ test("ci-release-12: no iOS path runs `npm install` under mobile/ — both insta
   assert.ok(fs.existsSync(path.join(ROOT, "mobile", "package-lock.json")), "npm ci needs the committed lockfile");
   assert.doesNotMatch(WF, /no committed lockfile/i, "the stale comment must not come back");
 });
+
+/* ─────────── NE-36: the native pass, the legacy pin, and the gate ─────────── */
+
+/** Step names in file order, so "A runs before B" is a question about the job. */
+function stepOrder(src) {
+  return [...src.matchAll(/^ {6}- name: (.+)$/gm)].map((m) => m[1].trim());
+}
+function indexOfStep(src, fragment) {
+  const i = stepOrder(src).findIndex((n) => n.includes(fragment));
+  assert.ok(i >= 0, `no step named like "${fragment}"`);
+  return i;
+}
+
+test("NE-36: the native pass is IN the workflow, after the JS-lane read and before the report", () => {
+  /* The M2 audit: the pass existed only as a staged snippet
+     (tools/mobile/probe/ios-build-native-pass.yml), so run 36194671642 reported
+     "The native pass did not run" and nothing here noticed. */
+  const s = step(WF, "Run the native-engine probe") ?? "";
+  assert.ok(s, "the native-engine probe step is missing from ios-build.yml");
+  assert.match(s, /^\s*id: probe_native\s*$/m);
+  assert.match(s, /if: env\.PROBES != 'false' && steps\.probe_install\.outcome == 'success'/,
+    "the native pass must be guarded like the other probe steps");
+  const run = commandsOnly(code(s));
+  assert.match(run, /install-probe\.mjs "\$APPDIR\/public" --phase native --audio-base "file:\/\/\$APPDIR\/public\/"/);
+  assert.match(run, /ios-ci\.mjs seed-mode "\$UDID" "\$APP_ID" native >> "\$STEPS"/);
+  assert.match(run, /ios-ci\.mjs native-rows "\$WORK\/defaults\.plist" > "\$ART\/native-rows\.json"/);
+  assert.match(run, /> "\$ART\/simulator-log-native\.txt"/);
+  assert.match(run, /STEPS="\$ART\/native-steps\.txt"/);
+  /* The raw defaults export stays in the never-uploaded work dir. */
+  assert.match(run, /WORK="\$RUNNER_TEMP\/ios-ci-native-work"/);
+  assert.doesNotMatch(run, /(defaults export|Preferences\/\$APP_ID\.plist)[^\n]*\$ART\//);
+  /* ORDER: "Run the probes" reads localStorage before this pass rewrites
+     `foray_probe_bridge`; the report reads what this pass writes. */
+  const probes = indexOfStep(WF, "Run the probes");
+  const native = indexOfStep(WF, "Run the native-engine probe");
+  const report = indexOfStep(WF, "Report what the probes established");
+  assert.ok(probes < native && native < report, `step order is ${stepOrder(WF).join(" -> ")}`);
+  assert.equal(fs.existsSync(path.join(ROOT, "tools/mobile/probe/ios-build-native-pass.yml")), false,
+    "the staged snippet is back beside a landed step; two copies drift");
+});
+
+test("NE-36: BOTH JS-lane passes are pinned to legacy before their launch, and only the native pass seeds native", () => {
+  /* The M1 flip made the native engine the build default. The out-point and seam
+     passes drive the JS player on purpose; unpinned, run 36194671642's smoke read
+     `native` / `build-default` and the JS-lane numbers were taken beside a native
+     engine. The seed must land after each (re)install and before each launch,
+     into its own file (native-steps.txt's presence means "the native pass ran"). */
+  const seedWeb = /node tools\/mobile\/ios-ci\.mjs seed-mode "\$UDID" "\$APP_ID" web >> "\$ART\/lane-seeds\.txt"/;
+  const install = commandsOnly(code(step(WF, "Install the probed app") ?? ""));
+  const iInstall = install.indexOf('xcrun simctl install "$UDID" "$PROBED"');
+  const iSeed1 = install.search(seedWeb);
+  assert.ok(iInstall >= 0 && iSeed1 > iInstall, "pass 1's seed must follow its install");
+  assert.doesNotMatch(install, /simctl launch/, "pass 1 is launched by the probe step, after the seed");
+
+  const probe = commandsOnly(code(step(WF, "Run the probes") ?? ""));
+  const firstLaunch = probe.indexOf('xcrun simctl launch "$UDID" "$APP_ID"');
+  assert.ok(firstLaunch >= 0);
+  const pass2 = probe.slice(probe.indexOf("--phase seam"));
+  const iReinstall = pass2.indexOf("xcrun simctl install");
+  const iSeed2 = pass2.search(seedWeb);
+  const iLaunch2 = pass2.indexOf('xcrun simctl launch "$UDID" "$APP_ID"');
+  assert.ok(iReinstall >= 0 && iReinstall < iSeed2 && iSeed2 < iLaunch2, "pass 2: reinstall -> seed web -> launch");
+
+  const nativeSeeds = (YML.match(/seed-mode "\$UDID" "\$APP_ID" native/g) || []).length;
+  assert.equal(nativeSeeds, 1, "exactly one native seed, in the native pass");
+  assert.doesNotMatch(install + probe, /native-steps\.txt/, "a JS-lane pass must not write native-steps.txt");
+});
+
+test("NE-36: a FAILING probe verdict fails the job — the gate step exists, runs after the upload, and cannot be softened", () => {
+  /* Run 36194671642: a `fail` row in section 5 on a GREEN job. `ios-ci.mjs
+     verdict` exits 0 by design (it reports), so the gate is its own step. */
+  const s = step(WF, "Fail the job on a failing probe assertion") ?? "";
+  assert.ok(s, "the fail-on-verdict gate step is gone");
+  assert.doesNotMatch(commandsOnly(s), /continue-on-error/, "a gate that cannot fail is not a gate");
+  assert.match(s, /if: always\(\) && steps\.verdict\.outcome == 'success'/);
+  assert.match(s, /NATIVE_VERDICT: \$\{\{ steps\.verdict\.outputs\.native \}\}/);
+  assert.match(s, /NATIVE_FAILED: \$\{\{ steps\.verdict\.outputs\.native_failed \}\}/);
+  /* After the verdict AND after the upload, so the evidence always ships. */
+  const verdict = indexOfStep(WF, "Report what the probes established");
+  const upload = stepOrder(WF).findIndex((n) => n.includes("Upload everything"));
+  const gate = indexOfStep(WF, "Fail the job on a failing probe assertion");
+  assert.ok(verdict < gate && upload < gate, `step order is ${stepOrder(WF).join(" -> ")}`);
+  const run = commandsOnly(code(s));
+  const block = run.slice(run.indexOf('if [ "${NATIVE_VERDICT:-}" = "fail" ]'));
+  assert.ok(block.startsWith("if ["), "the gate no longer tests NATIVE_VERDICT = fail");
+  assert.match(block.slice(0, block.indexOf("\n          fi")), /::error::[\s\S]*^\s*exit 1\s*$/m,
+    "the gate must be loud and exit non-zero");
+  /* The verdict step itself stays a reporter, and not softened. */
+  assert.doesNotMatch(commandsOnly(step(WF, "Report what the probes established") ?? ""), /continue-on-error/);
+});
+
+test("NE-36: the gate's shell actually exits 1 on `fail` and 0 on everything else", async () => {
+  /* Behaviour, not text: run the step's own script under bash. */
+  const { spawnSync } = await import("node:child_process");
+  const probe = spawnSync("bash", ["-c", "true"]);
+  if (probe.error || probe.status !== 0) return; // no bash on this host: the text test above still holds
+  const lines = code(step(WF, "Fail the job on a failing probe assertion") ?? "").split("\n");
+  const at = lines.findIndex((l) => /^\s*run: \|\s*$/.test(l));
+  assert.ok(at >= 0, "the gate has no run block");
+  const script = lines.slice(at + 1).map((l) => l.replace(/^ {10}/, "")).join("\n");
+  const runWith = (env) => spawnSync("bash", ["-c", script], { encoding: "utf8", env: { ...process.env, ...env } });
+  const failed = runWith({ NATIVE_VERDICT: "fail", NATIVE_FAILED: "seams,reload-clobber", LEGACY_SMOKE: "pinned" });
+  assert.equal(failed.status, 1, failed.stdout + failed.stderr);
+  assert.match(failed.stdout, /::error::.*seams,reload-clobber/);
+  for (const v of ["pass", "incomplete", "no-coverage", ""]) {
+    const r = runWith({ NATIVE_VERDICT: v, NATIVE_FAILED: "", LEGACY_SMOKE: "pinned" });
+    assert.equal(r.status, 0, `verdict "${v}" failed the job: ${r.stdout}${r.stderr}`);
+  }
+});

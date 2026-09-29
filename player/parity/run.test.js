@@ -17,6 +17,10 @@ import { REPO_ROOT, loadFixtures, validateFixtures, runCase, closedSets, loadSch
 import { encode, decodeSpecial, expandInputs, containsMacro, MACROS, SPECIAL_NUMBERS } from "./codec.js";
 import { compare, NATIVE_TOKEN_FAMILIES } from "./compare.js";
 import { manualScheduler, instantScheduler, OpLog, FakeBackend } from "./fakes.js";
+import { BUILDS_FILE, committedIds, overTable } from "./forays.js";
+import { SCENARIO_BUILDS_FILE, SCENARIO_BUILD_FAMILIES, buildKey, expectedScenarioBuilds, currentScenarioBuilds } from "./scenario-builds.js";
+import fs from "node:fs";
+import path from "node:path";
 
 const FIXTURES = loadFixtures(REPO_ROOT);
 
@@ -104,6 +108,57 @@ test("$foray reads a committed Foray by id, and a literal one as given", () => {
   assert.ok(Array.isArray(f.items) && f.items.length > 0, "the committed Foray has items");
   assert.deepStrictEqual(expandInputs({ $foray: { id: "x", items: [{ $seg: ["s"] }] } }).items[0].start_sec, 100);
   assert.throws(() => expandInputs({ $foray: "no-such-foray" }, { root: REPO_ROOT }), /E_BAD_MACRO/);
+});
+
+test("NE-29s: foray-builds.json holds the page's build of every committed Foray a Swift case names, and each build passes the same authored expects", () => {
+  /* The Swift half of the committed-Foray cases reads its INPUT from this table
+     (the engine never builds a Foray, plan §3 A-1), so the table must hold a
+     build for every Foray a case names, and every build in it must satisfy the
+     case's authored expect when the JS rules run over it — which is exactly
+     what the Swift runner computes. It is deliberately NOT required to be
+     byte-fresh (a data publish must not turn npm test red; `node
+     tools/parity/foray-builds.mjs --check` says when to refresh).
+     MUTATION: delete one Foray's entry from foray-builds.json, or give one of
+     its segments to "4a" as show, or drop an item's audio_url -> red here. */
+  const table = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, BUILDS_FILE), "utf8"));
+  const ids = committedIds(FIXTURES);
+  assert.ok(ids.data.length >= 2 && ids.frozen.length >= 1, "the committed cases name Forays");
+  for (const id of ids.data) assert.ok(Array.isArray(table.data?.[id]) && table.data[id].length > 0, `${id} has no build in ${BUILDS_FILE}`);
+  for (const id of ids.frozen) assert.ok(Array.isArray(table.frozen?.[id]) && table.frozen[id].length > 0, `${id} has no frozen build`);
+  let ran = 0;
+  // JS-only files (NE-30j foray-data) are never run by Swift, so never over the table.
+  for (const fx of FIXTURES.filter((f) => f.doc.module === "player/parity/forays.js" && f.doc.jsOnly !== true)) {
+    for (const c of fx.doc.cases) {
+      const args = expandInputs(c.args ?? [], { root: REPO_ROOT });
+      const diffs = compare(c.expect, { return: encode(overTable(c.call, args, table)) }, { family: fx.family });
+      assert.deepStrictEqual(diffs, [], `${c.id} over the table's build`);
+      ran += 1;
+    }
+  }
+  assert.ok(ran >= 30, `only ${ran} committed cases ran over the table`);
+});
+
+test("NE-30s: scenario-builds.json is the page's current build of every Foray a manager-episode, manager-foray or prepare scenario plays", async () => {
+  /* The Swift scenario drivers read a scenario's Foray from this table (the
+     engine never builds one, plan §3 A-1). It depends on the fixtures and the
+     frozen fixture data only, so it is held CURRENT here: a re-recorded
+     scenario refreshes it in the same PR (node tools/parity/scenario-builds.mjs
+     --write). MUTATION: edit one built item's start_sec, or delete one entry
+     -> red; add a playForay step to a manager-foray case without --write -> red. */
+  assert.equal(currentScenarioBuilds(REPO_ROOT), await expectedScenarioBuilds(FIXTURES),
+    `${SCENARIO_BUILDS_FILE} is stale: node tools/parity/scenario-builds.mjs --write`);
+  const table = JSON.parse(currentScenarioBuilds(REPO_ROOT)).builds;
+  let steps = 0;
+  for (const f of FIXTURES.filter((x) => SCENARIO_BUILD_FAMILIES.includes(x.family))) {
+    for (const c of f.doc.cases) {
+      for (const [i, s] of (c.steps ?? []).entries()) {
+        if (s.call !== "playForay" && s.call !== "setQueueFromForay") continue;
+        assert.ok(table[buildKey(c.id, i)], `${c.id} step ${i} has no build`);
+        steps += 1;
+      }
+    }
+  }
+  assert.ok(steps >= 60, `only ${steps} Foray plays have a build`);
 });
 
 test("macros are closed, alone in their object, and never legal in an expect", () => {
@@ -272,8 +327,26 @@ test("scenario: on a manual clock the seam beat holds the next play until the cl
   assert.equal(after.inSeamGap, false);
 });
 
-test("scenario: a verb with no JS driver fails loudly with its card, never silently skips", async () => {
-  await assert.rejects(scenario([{ remote: "next" }]), /E_NO_JS_DRIVER.*NE-29j/);
+test("scenario: a remote press goes through the real action table into the real manager, and a press the OS could not deliver is refused", async () => {
+  /* NE-29j. The `remote` driver: nexttrack loads the next item at its in-point
+     and arms its out-point, pause pauses the element, seekto without a usable
+     time is not a seek to zero (the table's own refusal), and an action name the
+     OS does not have is a malformed case, not a no-op. */
+  const got = await scenario([
+    { call: "loadQueue", args: [[{ $seg: ["a", 100, 210] }, { $seg: ["b", 400, 500] }]] }, { call: "play", args: [0] },
+    { checkpoint: "started" },
+    { remote: "nexttrack" }, { checkpoint: "next" },
+    { remote: "seekto", details: {} }, { checkpoint: "no-time" },
+    { remote: "pause" }, { checkpoint: "paused" },
+  ], { seamGapSec: 0 });
+  const [, next, noTime, paused] = got.checkpoints;
+  assert.ok(next.ops.includes("load:b@400"), next.ops.join(" "));
+  assert.ok(next.ops.includes("outPoint:500"), next.ops.join(" "));
+  assert.equal(next.index, 1);
+  assert.deepStrictEqual(noTime.ops, [], "seekto with no time does nothing");
+  assert.ok(paused.ops.includes("pause"));
+  await assert.rejects(scenario([{ remote: "next" }]), /E_BAD_CASE.*unknown remote action/);
+  assert.deepStrictEqual(Object.keys(PENDING_DRIVERS), [], "every schema verb has a JS driver");
 });
 
 /* ---------- NE-14j: the session, lifecycle and held-load drivers ---------- */
@@ -343,7 +416,91 @@ test("scenario: positionEvents puts the real PositionStore behind the manager, o
 test("scenario: only the manager's public surface is callable", async () => {
   assert.ok(!MANAGER_CALLS.some((m) => m.startsWith("_")));
   await assert.rejects(scenario([{ call: "_handle", args: [] }]), /E_UNKNOWN_EXPORT/);
-  await assert.rejects(runCase({ id: "f/s", covers: [], setup: { target: "engine" }, steps: [] }, { family: "f", doc: {} }), /E_SCENARIO_TARGET/);
+  // NE-30j gave "engine" its driver (the prepare family); a target outside the
+  // schema's set still has none.
+  await assert.rejects(runCase({ id: "f/s", covers: [], setup: { target: "nowhere" }, steps: [] }, { family: "f", doc: {} }), /E_SCENARIO_TARGET/);
+});
+
+const deckScenario = (steps, setup = {}) => runCase({ id: "f/d", covers: [], setup: { target: "deck", ...setup }, steps }, { family: "f", doc: {} });
+
+test("scenario (deck, NE-28j): the driven clock moves the playhead by elapsed x rate and delivers the watchdog when it is due", async () => {
+  const got = await deckScenario([
+    { deck: "load", outPointSec: 210, sec: 100 }, { deck: "play" }, { clock: 100000 }, { checkpoint: "far" },
+    { clock: 10000 }, { checkpoint: "done" },
+  ]);
+  const [far, done] = got.checkpoints;
+  assert.deepEqual(far.ops, ["endTime:210", "boundary:210", "watchdog.arm:108500"], "one timer until the window, nothing while it waits");
+  assert.equal(far.atSec, 200);
+  assert.equal(done.ops.at(-1), "outPoint.stop:watchdog:0", "the stop lands on the boundary, never before it");
+  assert.equal(done.ops.filter((o) => o === "watchdog.arm:250").length, 6, "250 ms polls inside the 1.5 s window only");
+  // A deck event or a verb the deck target cannot read is a harness error.
+  await assert.rejects(deckScenario([{ deck: "explode" }]), /E_BAD_CASE/);
+  await assert.rejects(deckScenario([{ deck: "boundary" }]), /E_BAD_CASE.*nothing loaded/);
+  await assert.rejects(deckScenario([{ call: "play", args: [] }]), /E_BAD_CASE/);
+  await assert.rejects(deckScenario([{ clock: 1.5 }]), /E_BAD_CASE/);
+});
+
+test("scenario (NE-30j): the engine target stamps T on every checkpoint, the manager's opt-in views and report projection, a real Foray build, and the deck's natural end", async () => {
+  // The engine target: a Foray over reference-engine, its beat on the manual
+  // clock, and a refused command a harness error unless the step expects it.
+  const seg = (id, url, start, end) => ({ type: "segment", id, audio_url: url, start_sec: start, end_sec: end, duration_sec: 3600 });
+  const pf = { call: "playForay", args: { forayId: "f1", title: "F", items: [seg("s0", "https://cdn.test/a.mp3", 100, 200), seg("s1", "https://cdn.test/b.mp3", 300, 400)], buildReport: {}, isLocalFile: false, allowAdPad: false, voiceId: null } };
+  const engine = (steps) => runCase({ id: "f/e", covers: [], setup: { target: "engine" }, steps }, { family: "f", doc: {} });
+  const got = await engine([pf, { deck: "window" }, { deck: "ended", reason: "outPoint" }, { clock: 500 }, { checkpoint: "audible" }]);
+  assert.equal(got.checkpoints[0].nowMs, 500);
+  assert.deepEqual(got.checkpoints[0].ops, [
+    "load:f1#0@100", "rate:1", "outPoint:200", "play", "n.prepare:f1#1@300",
+    "n.handover:f1#1@300", "load:f1#1@300", "rate:1", "outPoint:400", "play",
+  ], "prepared in the window, handed over at the seam, audible at the beat");
+  await assert.rejects(engine([{ call: "play" }]), /E_BAD_CASE.*not-loaded/);
+  await assert.rejects(engine([{ deck: "explode" }]), /E_BAD_CASE/);
+  // The manager's views are opt-in (no earlier family changes shape), closed,
+  // and timersLive needs the manual clock; a report is a closed projection.
+  const mgr = (steps, setup = {}) => runCase({ id: "f/m", covers: [], setup: { target: "manager", ...setup }, steps }, { family: "f", doc: {} });
+  const plain = await mgr([{ call: "loadQueue", args: [[{ $ep: ["a"] }]] }, { checkpoint: "c" }]);
+  assert.equal("outPoint" in plain.checkpoints[0], false);
+  await assert.rejects(mgr([{ checkpoint: "c" }], { view: ["everything"] }), /E_BAD_CASE/);
+  await assert.rejects(mgr([{ checkpoint: "c" }], { view: ["timersLive"] }), /E_BAD_CASE.*manual/);
+  await assert.rejects(mgr([{ call: "loadQueue", args: [[]], returns: "everything" }]), /E_BAD_CASE/);
+  // A real Foray, built as the page builds it, played with no arguments.
+  const real = await mgr([{ call: "playForay", returns: "forayReport" }, { checkpoint: "c" }], { forayBuild: { id: "grilling-history-2", data: "frozen" } });
+  assert.equal(real.checkpoints[0].returned[0].items.length, 10);
+  assert.equal(real.checkpoints[0].ops[0], "load:grilling-history-2#0@147");
+  await assert.rejects(mgr([], { forayBuild: { id: "no-such-foray", data: "frozen" } }), /E_BAD_CASE/);
+  // The deck's natural end spends the watch: a later boundary report is stale.
+  const deck = await runCase({ id: "f/d", covers: [], setup: { target: "deck" }, steps: [
+    { deck: "load", sec: 100, outPointSec: 400 }, { deck: "play" }, { deck: "ended" }, { deck: "boundary", sec: 400 }, { checkpoint: "c" },
+  ] }, { family: "f", doc: {} });
+  assert.deepEqual(deck.checkpoints[0].ops.slice(-3), ["watchdog.cancel", "ended:natural", "outPoint.stale:boundary"]);
+});
+
+test("scenario (NE-31j): the narration overlay's driver — the bridge's shapes, the narration views, an awake clock, a silent synthesiser, and dispose", async () => {
+  const mgr = (steps, setup = {}) => runCase({ id: "f/m", covers: [], setup: { target: "manager", ...setup }, steps }, { family: "f", doc: {} });
+  const line = { call: "playForay", args: [{ id: "f", title: "F", items: [{ type: "narration", id: "n1", script: "a line", duration_sec: 4 }] }] };
+  // The chosen voice reaches speak() beside the 1x rate; views are opt-in.
+  const spoken = await mgr([line, { clock: 750, every: 250 }, { checkpoint: "c" }], {
+    tts: true, voice: "v", rate: 2, scheduler: "manual", narrationTicks: true,
+    view: ["narrationSec", "narrationPlayhead", "narrationTicks", "lastVoiceFallback", "wasPlaying"],
+  });
+  const [c] = spoken.checkpoints;
+  assert.deepEqual(c.ops, ["tts.speak:a line@1:v"]);
+  assert.deepEqual([c.narrationSec, c.narrationPlayhead, c.narrationTicks, c.lastVoiceFallback, c.wasPlaying], [0.75, true, 3, false, null]);
+  // `every` moves an awake clock; it must divide the jump.
+  await assert.rejects(mgr([{ clock: 700, every: 250 }], { scheduler: "manual" }), /E_BAD_CASE/);
+  await assert.rejects(mgr([{ checkpoint: "c" }], { view: ["narrationTicks"] }), /E_BAD_CASE.*narrationTicks/);
+  // A bridge with no transport answers nothing; one whose pause rejects still
+  // logs the ask. Neither throws out of the manager.
+  const bare = await mgr([line, { call: "pause" }, { checkpoint: "c" }], { tts: { transport: false, onFinished: false } });
+  assert.deepEqual(bare.checkpoints[0].ops, ["tts.speak:a line@1"]);
+  const angry = await mgr([line, { call: "pause" }, { checkpoint: "c" }], { tts: { pause: "rejects" } });
+  assert.deepEqual(angry.checkpoints[0].ops, ["tts.speak:a line@1", "tts.pause"]);
+  // `silent` is the session taken from under the line: only state() says so.
+  const taken = await mgr([line, { tts: "silent" }, { session: "interruptionReconciled" }, { checkpoint: "c" }], { tts: { state: true } });
+  assert.equal(taken.checkpoints[0].state, "interrupted");
+  await assert.rejects(mgr([line, { tts: "explode" }], { tts: true }), /E_BAD_CASE/);
+  // dispose is a call a scenario may make: the synthesiser is silenced.
+  const gone = await mgr([line, { call: "dispose" }, { checkpoint: "c" }], { tts: true });
+  assert.deepEqual(gone.checkpoints[0].ops.slice(-2), ["tts.stop", "release"]);
 });
 
 /* ---------- the fakes ---------- */

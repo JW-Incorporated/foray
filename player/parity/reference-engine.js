@@ -50,6 +50,18 @@ import {
 import { PlayerQueueManager } from "../queue-manager.js";
 import { PositionStore } from "../position-store.js";
 import { OpLog, FakeBackend, MemoryStore, fakeTts } from "./fakes.js";
+import { warmOffset, prefetchDecision, warmPromotion } from "../deck-policy.js";
+import { structuralCheck } from "../foray-structure.js";
+import { segmentAtElapsed, forayElapsed } from "../foray-resolve.js";
+import { forayRuntimeSec } from "../foray-queue.js";
+import { sourceOffsetFor, scrubTarget, skipTarget } from "../transport-policy.js";
+
+/** A queue `buildForayQueue` already built — what the PAGE sends (plan §3
+    A-1; NE-35): every item has a `kind` and none has an authored `type`. A
+    parity scenario's `playForay` carries authored-shape items instead
+    (`type: "segment"`), which this engine still builds itself. */
+const isBuiltQueue = (items) => Array.isArray(items) && items.length > 0
+  && items.every((i) => i && typeof i === "object" && typeof i.kind === "string" && i.type === undefined);
 
 /** What `engineHello` names this engine. */
 export const REFERENCE_ENGINE_VERSION = "reference-1";
@@ -68,28 +80,43 @@ const clone = (v) => (v === undefined ? undefined : JSON.parse(JSON.stringify(v)
  * FakeBackend with the warm handover. Same tokens as FakeBackend (the manager
  * suites' grammar), plus the native-only `n.prepare:<id>@<s>` when a segment is
  * warmed and `n.handover:<id>@<s>` when a load finds it warm.
+ *
+ * THE DECISIONS ARE THE REAL ONES (NE-30j). Whether to warm and whether a warm
+ * load may be promoted are deck-policy.js `prefetchDecision` and
+ * `warmPromotion` — what HtmlAudioBackend asks and what the native DeckPair
+ * answers identically — so a same-episode seam is not warmed here either (the
+ * same-source seek covers it), and a load is handed over only for the SOURCE
+ * and in-point that were warmed. A warm load here is ready at once: there is no
+ * network, so the race is always won; losing it is the deck family's case.
  */
 export class WarmingBackend extends FakeBackend {
   constructor(opts = {}) {
     super(opts);
     this._warm = null;
+    this._currentUrl = null;
     /** Assigned by the manager when `prefetch` exists (queue-manager.js §11). */
     this.onPrefetchWindow = null;
     this.ended = false;
   }
   prefetch(item, { startOffset = 0 } = {}) {
-    const offset = round(Number.isFinite(startOffset) && startOffset > 0 ? startOffset : 0);
-    if (this._warm && this._warm.id === item.id && this._warm.offset === offset) return true;
-    this._warm = { id: item.id, offset };
+    const offset = round(warmOffset(startOffset));
+    const decision = prefetchDecision({
+      available: true, url: item?.audio_url, currentUrl: this._currentUrl, warm: this._warm, offsetSec: offset,
+    });
+    if (decision === "already") { this._warm.id = item.id; return true; }
+    if (decision !== "start") return false;
+    this._warm = { id: item.id, url: item.audio_url, offset, ready: true, failed: false };
     this.log.push(`n.prepare:${item.id}@${offset}`);
     return true;
   }
   async load(item, opts = {}) {
-    const offset = round(opts.startOffset ?? 0);
+    const offset = round(warmOffset(opts.startOffset ?? 0));
     const warm = this._warm;
     this._warm = null;
-    if (warm && warm.id === item.id && warm.offset === offset) this.log.push(`n.handover:${item.id}@${offset}`);
+    const verdict = warmPromotion({ warm, url: item?.audio_url, offsetSec: offset, canPlay: true, atSec: offset });
+    if (verdict === "promote") this.log.push(`n.handover:${item.id}@${offset}`);
     this.ended = false;
+    this._currentUrl = item?.audio_url ?? null;
     return super.load(item, opts);
   }
   /** The playhead is PREFETCH_LEAD_SEC from an armed out-point while audible:
@@ -453,6 +480,7 @@ export class ReferenceEngine {
           if (!this.capabilities.includes("foray")) return "capability-off";
           const failed = this._ensureSession(viaOf(source));
           if (failed) return failed;
+          if (isBuiltQueue(args.items)) return this._playBuiltForay(args);
           this.playing = { kind: "foray", forayId: args.forayId, title: args.title };
           const report = m.setQueueFromForay({ id: args.forayId, title: args.title, items: args.items }, {
             isLocalFile: args.isLocalFile, allowAdPad: args.allowAdPad,
@@ -492,6 +520,7 @@ export class ReferenceEngine {
           return null;
         case "seekBy": case "seekTo": {
           if (!this.playing || !this._currentItem()) return "not-loaded";
+          if (this.playing.kind === "foray" && this.playing.built) return this._forayScrub(cmd, args);
           const at = cmd === "seekTo" ? args.sec : Math.max(0, this.backend.currentTime + args.deltaSec);
           await m.seek(at, { precise: true });
           return null;
@@ -559,6 +588,45 @@ export class ReferenceEngine {
     await this.manager.pause();
     const t = this._session({ kind: "pause" });
     if (t.actions.includes("deactivate")) this._row({ kind: "session", deactivate: true });
+  }
+
+  /**
+   * `playForay` with the page's BUILT queue, as EngineCore.playForay takes it
+   * (NE-30s; the page side is NE-35): re-validate the structure (J-4) and
+   * refuse it whole, load it as built, and start where `startElapsedSec`
+   * lands on the Foray clock (`segmentAtElapsed`, `sourceOffsetFor`).
+   */
+  async _playBuiltForay(args) {
+    const m = this.manager;
+    if (!structuralCheck(args.items).ok) return "refused-structure";
+    this.playing = { kind: "foray", forayId: args.forayId, title: args.title, built: true };
+    // The load-time ladder's options, as setQueueFromForay would have set them.
+    m._forayOptions = { isLocalFile: Boolean(args.isLocalFile), allowAdPad: Boolean(args.allowAdPad) };
+    m.loadQueue(args.items);
+    if (args.voiceId !== undefined) m.setVoice(args.voiceId);
+    const at = Number.isFinite(args.startElapsedSec) && args.startElapsedSec > 0
+      ? segmentAtElapsed(args.items, args.startElapsedSec) : null;
+    const offset = at ? sourceOffsetFor(args.items[at.index], at.into) : null;
+    await m.play(at ? at.index : 0, offset != null ? { startOffset: offset } : undefined);
+    return null;
+  }
+
+  /** `seekTo` / `seekBy` inside a page-built Foray: on the FORAY's clock, as
+      EngineCore.forayScrub / forayNudge read them. */
+  async _forayScrub(cmd, args) {
+    const m = this.manager;
+    const items = m.queue;
+    const target = cmd === "seekTo" ? args.sec : skipTarget({
+      foray: true, offsetSec: args.deltaSec, durationSec: forayRuntimeSec(items),
+      positionSec: forayElapsed(items, m.currentIndex, this.backend.currentTime),
+    });
+    if (target == null) return null;
+    const at = segmentAtElapsed(items, target);
+    const scrub = scrubTarget({ at, item: at ? items[at.index] : null, currentIndex: m.currentIndex, stateType: m.state?.type ?? null });
+    if (!scrub) return "not-loaded";
+    if (scrub.reload) await m.play(scrub.index, scrub.offset != null ? { startOffset: scrub.offset } : undefined);
+    else if (scrub.offset != null) await m.seek(scrub.offset, { precise: true });
+    return null;
   }
 
   async _playEpisode(item, lastEpisodeRow, startSec) {

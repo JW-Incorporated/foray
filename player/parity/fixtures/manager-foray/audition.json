@@ -1,0 +1,130 @@
+{
+  "family": "manager-foray",
+  "note": "Audition against reference-engine (NE-31j, authored): the narrator is the engine's, so a voice preview never talks over a running Foray. Port card NE-31s.",
+  "cases": [
+    {
+      "id": "manager-foray/audition-is-refused-while-running",
+      "covers": [],
+      "authored": true,
+      "note": "AUTHORED (NE-31j): a voice audition speaks at 1x when nothing is running, is refused with engine-busy while a Foray plays, and is allowed again once it is paused.",
+      "setup": { "target": "engine" },
+      "steps": [
+        {
+          "call": "audition",
+          "args": { "text": "This is how I sound", "voiceId": "voice-a" }
+        },
+        { "checkpoint": "idle" },
+        {
+          "call": "playForay",
+          "args": {
+            "forayId": "f1",
+            "title": "A Foray",
+            "items": [
+              {
+                "type": "segment",
+                "id": "s0",
+                "audio_url": "https://cdn.test/a.mp3",
+                "start_sec": 100,
+                "end_sec": 200,
+                "duration_sec": 3600
+              },
+              {
+                "type": "segment",
+                "id": "s1",
+                "audio_url": "https://cdn.test/b.mp3",
+                "start_sec": 300,
+                "end_sec": 400,
+                "duration_sec": 3600
+              }
+            ],
+            "buildReport": {},
+            "isLocalFile": false,
+            "allowAdPad": false,
+            "voiceId": null
+          }
+        },
+        { "checkpoint": "running" },
+        {
+          "call": "audition",
+          "args": { "text": "This is how I sound", "voiceId": "voice-a" },
+          "refused": "engine-busy"
+        },
+        { "checkpoint": "refused" },
+        { "call": "pause" },
+        {
+          "call": "audition",
+          "args": { "text": "This is how I sound", "voiceId": null }
+        },
+        { "checkpoint": "paused" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": -1,
+            "name": "idle",
+            "nowMs": 0,
+            "ops": ["tts.speak:This is how I sound@1:voice-a"],
+            "playhead": null,
+            "rate": 1,
+            "state": "idle"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "running",
+            "nowMs": 0,
+            "ops": ["load:f1#0@100", "rate:1", "outPoint:200", "play"],
+            "playhead": "f1#0",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "refused",
+            "nowMs": 0,
+            "ops": [],
+            "playhead": "f1#0",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "paused",
+            "nowMs": 0,
+            "ops": ["pause", "tts.speak:This is how I sound@1"],
+            "playhead": "f1#0",
+            "rate": 1,
+            "state": "interrupted"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "end",
+            "nowMs": 0,
+            "ops": [],
+            "playhead": "f1#0",
+            "rate": 1,
+            "state": "interrupted"
+          }
+        ],
+        "ops": [
+          "tts.speak:This is how I sound@1:voice-a",
+          "load:f1#0@100",
+          "rate:1",
+          "outPoint:200",
+          "play",
+          "pause",
+          "tts.speak:This is how I sound@1"
+        ]
+      }
+    }
+  ]
+}

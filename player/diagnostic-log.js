@@ -2824,6 +2824,16 @@ export const ENGINE_ROW_KINDS = Object.freeze([
   "speaker",
   /* NE-16g / NE-24: a cold play's span row (grace=, bgRemainingMs), which DV-7a reads. */
   "cold-play",
+  /* NE-30s, the Foray tape: the seam beat beginning, ending and being cut
+     (beat), a ladder refusal at load (skip) and a noted copy (gate), the
+     standby deck asked to prepare (prepare), a rendered bridge that would not
+     load (bridge), and a playForay refused for its structure (foray). */
+  "beat", "skip", "gate", "prepare", "bridge", "foray",
+  /* NE-31s, the overlays: a spoken line's life (narration: voice, started,
+     resuming in place, ended by finish or deadline, suspended, cancelled,
+     voice fallback), the jingle's (interlude: started, cut, ended, skipped)
+     and the flagged-off silence node's (silence: stopped, capped, refused). */
+  "narration", "interlude", "silence",
   /* L01 (log-gaps 2026-09-26): EngineBridge's own rows — every command the page
      sent (`cmd`: name, source, cmdSeq, a seqGap, and on a refusal a second row
      with `result=`) and a malformed hello. The 2026-09-26 paste showed

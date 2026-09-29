@@ -65,6 +65,12 @@ function scratch() {
   };
   const modules = withImports(loadFixtures(ROOT).map((fx) => fx.doc.module).filter(Boolean));
   for (const rel of ["player/package.json", "player/seam-gap.test.js", ...modules]) copy(rel);
+  /* NE-29j: `$foray: "<id>"` reads the committed Foray from data/, and the
+     committed-Foray adapter (player/parity/forays.js) builds it against the
+     other two documents, or against the frozen fixture's three. */
+  for (const dir of ["data", "tools/foray/fixtures/frozen/data"]) {
+    for (const name of ["forays", "segments", "segment-sources"]) copy(`${dir}/${name}.json`);
+  }
   fs.cpSync(path.join(ROOT, "player", "parity"), path.join(root, "player", "parity"), {
     recursive: true,
     filter: (src) => !/\.test\.js$/.test(src),

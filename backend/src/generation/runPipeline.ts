@@ -517,9 +517,10 @@ export function slotsFromSpine(spine: Spine): ForaySlot[] {
   return slots;
 }
 
-/** A jingle's fixed length, mirroring `player/foray-queue.js`'s own constant
-    (3.0 s, the interlude WAV it plays; audit round 3, arch-drift-4).
-    `test/jingle-duration.test.js` pins the two equal. */
+/** A jingle's fixed length, mirroring `player/foray-queue.js`'s own constant:
+    the interlude WAV's measured 3.0 s (OQ-6, docs/native-engine-plan.md §9a,
+    NE-29j; audit round 3, arch-drift-4). `test/jingle-duration.test.js` pins
+    the two equal. */
 export const JINGLE_DURATION_SEC = 3.0;
 
 /**

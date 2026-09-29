@@ -1,0 +1,1913 @@
+{
+  "family": "foray-progress",
+  "module": "player/foray-progress.js",
+  "note": "The pure half of player/foray-progress.js, one case per assertion of foray-progress.test.js: the row (makeProgress, isProgressRecord, progressKey), the resume decision (resumePoint: MIN_RESUME_SEC, NEAR_END_SEC, the live total and last index, #40's drift verdicts against a live running order, FD-05's `present: false`), reconcileSegment, percentDone and the two labels. Rows are written with a fixed `now`. The storage half is storage.json; the 5 s throttle's own arithmetic is resume-rules/foray-cadence.json (NE-09). Port: NE-29s (ResumeRules gains the thresholds and drift verdicts; Rows gains segment id plus offset).",
+  "cases": [
+    {
+      "id": "foray-progress/key-prefix",
+      "covers": ["foray-progress::the storage key keeps the legacy cp_ prefix"],
+      "note": "Renaming this wipes every listener's resume point.",
+      "read": "KEY_PREFIX",
+      "expect": { "value": "cp_foray:" }
+    },
+    {
+      "id": "foray-progress/key-of-id",
+      "covers": ["foray-progress::the storage key keeps the legacy cp_ prefix"],
+      "call": "progressKey",
+      "args": ["grilling-history-1"],
+      "expect": { "return": "cp_foray:grilling-history-1" }
+    },
+    {
+      "id": "foray-progress/make-row",
+      "covers": [
+        "foray-progress::makeProgress stores the Foray's own clock, not an audio element's"
+      ],
+      "call": "makeProgress",
+      "args": [
+        {
+          "forayId": "grilling-history-1",
+          "title": "The history of grilling",
+          "elapsedSec": 1180,
+          "totalSec": 3673,
+          "index": 9,
+          "now": "2026-08-16T10:00:00.000Z"
+        }
+      ],
+      "expect": {
+        "return": {
+          "elapsed_sec": 1180,
+          "foray_id": "grilling-history-1",
+          "index": 9,
+          "into_sec": 0,
+          "segment_id": null,
+          "title": "The history of grilling",
+          "total_sec": 3673,
+          "updated_at": "2026-08-16T10:00:00.000Z"
+        }
+      }
+    },
+    {
+      "id": "foray-progress/make-negative-elapsed",
+      "covers": [
+        "foray-progress::makeProgress refuses to record a negative or non-finite clock as one"
+      ],
+      "call": "makeProgress",
+      "args": [
+        {
+          "forayId": "grilling-history-1",
+          "elapsedSec": -5,
+          "totalSec": 3673,
+          "now": "2026-08-16T10:00:00.000Z"
+        }
+      ],
+      "expect": {
+        "return": {
+          "elapsed_sec": 0,
+          "foray_id": "grilling-history-1",
+          "index": -1,
+          "into_sec": 0,
+          "segment_id": null,
+          "title": "",
+          "total_sec": 3673,
+          "updated_at": "2026-08-16T10:00:00.000Z"
+        }
+      }
+    },
+    {
+      "id": "foray-progress/make-nan-elapsed",
+      "covers": [
+        "foray-progress::makeProgress refuses to record a negative or non-finite clock as one"
+      ],
+      "call": "makeProgress",
+      "args": [
+        {
+          "forayId": "grilling-history-1",
+          "elapsedSec": { "$num": "NaN" },
+          "totalSec": 3673,
+          "now": "2026-08-16T10:00:00.000Z"
+        }
+      ],
+      "expect": {
+        "return": {
+          "elapsed_sec": 0,
+          "foray_id": "grilling-history-1",
+          "index": -1,
+          "into_sec": 0,
+          "segment_id": null,
+          "title": "",
+          "total_sec": 3673,
+          "updated_at": "2026-08-16T10:00:00.000Z"
+        }
+      }
+    },
+    {
+      "id": "foray-progress/make-infinite-total",
+      "covers": [
+        "foray-progress::makeProgress refuses to record a negative or non-finite clock as one"
+      ],
+      "call": "makeProgress",
+      "args": [
+        {
+          "forayId": "grilling-history-1",
+          "elapsedSec": 10,
+          "totalSec": { "$num": "Infinity" },
+          "now": "2026-08-16T10:00:00.000Z"
+        }
+      ],
+      "expect": {
+        "return": {
+          "elapsed_sec": 10,
+          "foray_id": "grilling-history-1",
+          "index": -1,
+          "into_sec": 0,
+          "segment_id": null,
+          "title": "",
+          "total_sec": 0,
+          "updated_at": "2026-08-16T10:00:00.000Z"
+        }
+      }
+    },
+    {
+      "id": "foray-progress/make-index-negative",
+      "covers": [
+        "foray-progress::an index that is not a real segment is recorded as none, not as segment 0"
+      ],
+      "call": "makeProgress",
+      "args": [
+        {
+          "forayId": "grilling-history-1",
+          "elapsedSec": 60,
+          "totalSec": 3673,
+          "index": -3,
+          "now": "2026-08-16T10:00:00.000Z"
+        }
+      ],
+      "expect": {
+        "return": {
+          "elapsed_sec": 60,
+          "foray_id": "grilling-history-1",
+          "index": -1,
+          "into_sec": 0,
+          "segment_id": null,
+          "title": "",
+          "total_sec": 3673,
+          "updated_at": "2026-08-16T10:00:00.000Z"
+        }
+      }
+    },
+    {
+      "id": "foray-progress/make-index-fraction",
+      "covers": [
+        "foray-progress::an index that is not a real segment is recorded as none, not as segment 0"
+      ],
+      "call": "makeProgress",
+      "args": [
+        {
+          "forayId": "grilling-history-1",
+          "elapsedSec": 60,
+          "totalSec": 3673,
+          "index": 1.5,
+          "now": "2026-08-16T10:00:00.000Z"
+        }
+      ],
+      "expect": {
+        "return": {
+          "elapsed_sec": 60,
+          "foray_id": "grilling-history-1",
+          "index": -1,
+          "into_sec": 0,
+          "segment_id": null,
+          "title": "",
+          "total_sec": 3673,
+          "updated_at": "2026-08-16T10:00:00.000Z"
+        }
+      }
+    },
+    {
+      "id": "foray-progress/make-index-zero",
+      "covers": [
+        "foray-progress::an index that is not a real segment is recorded as none, not as segment 0"
+      ],
+      "call": "makeProgress",
+      "args": [
+        {
+          "forayId": "grilling-history-1",
+          "elapsedSec": 60,
+          "totalSec": 3673,
+          "index": 0,
+          "now": "2026-08-16T10:00:00.000Z"
+        }
+      ],
+      "expect": {
+        "return": {
+          "elapsed_sec": 60,
+          "foray_id": "grilling-history-1",
+          "index": 0,
+          "into_sec": 0,
+          "segment_id": null,
+          "title": "",
+          "total_sec": 3673,
+          "updated_at": "2026-08-16T10:00:00.000Z"
+        }
+      }
+    },
+    {
+      "id": "foray-progress/is-record-full",
+      "covers": [
+        "foray-progress::isProgressRecord rejects the half-written rows a reader would trip over"
+      ],
+      "call": "isProgressRecord",
+      "args": [
+        {
+          "foray_id": "grilling-history-1",
+          "title": "The history of grilling",
+          "elapsed_sec": 1180,
+          "total_sec": 3673,
+          "index": 9,
+          "segment_id": null,
+          "into_sec": 0,
+          "updated_at": "2026-08-16T10:00:00.000Z"
+        }
+      ],
+      "expect": { "return": true }
+    },
+    {
+      "id": "foray-progress/is-record-null",
+      "covers": [
+        "foray-progress::isProgressRecord rejects the half-written rows a reader would trip over"
+      ],
+      "call": "isProgressRecord",
+      "args": [null],
+      "expect": { "return": false }
+    },
+    {
+      "id": "foray-progress/is-record-empty-id",
+      "covers": [
+        "foray-progress::isProgressRecord rejects the half-written rows a reader would trip over"
+      ],
+      "call": "isProgressRecord",
+      "args": [{ "foray_id": "", "elapsed_sec": 1, "total_sec": 2 }],
+      "expect": { "return": false }
+    },
+    {
+      "id": "foray-progress/is-record-string-clock",
+      "covers": [
+        "foray-progress::isProgressRecord rejects the half-written rows a reader would trip over"
+      ],
+      "call": "isProgressRecord",
+      "args": [{ "foray_id": "grilling-history-1", "elapsed_sec": "1180", "total_sec": 3673 }],
+      "expect": { "return": false }
+    },
+    {
+      "id": "foray-progress/is-record-zero-total",
+      "covers": [
+        "foray-progress::isProgressRecord rejects the half-written rows a reader would trip over"
+      ],
+      "call": "isProgressRecord",
+      "args": [{ "foray_id": "grilling-history-1", "elapsed_sec": 10, "total_sec": 0 }],
+      "expect": { "return": false }
+    },
+    {
+      "id": "foray-progress/resume-mid",
+      "covers": ["foray-progress::mid-Foray, resume offers the stored position and what is left"],
+      "call": "resumePoint",
+      "args": [
+        {
+          "foray_id": "grilling-history-1",
+          "title": "The history of grilling",
+          "elapsed_sec": 1180,
+          "total_sec": 3673,
+          "index": 9,
+          "segment_id": null,
+          "into_sec": 0,
+          "updated_at": "2026-08-16T10:00:00.000Z"
+        },
+        { "totalSec": 3673 }
+      ],
+      "expect": {
+        "return": {
+          "drift": "unverified",
+          "elapsedSec": 1180,
+          "finished": false,
+          "index": 9,
+          "percent": 32,
+          "remainingSec": 2493
+        }
+      }
+    },
+    {
+      "id": "foray-progress/min-resume-sec",
+      "covers": ["foray-progress::barely started is not a resume point — it is a fresh start"],
+      "read": "MIN_RESUME_SEC",
+      "expect": { "value": 20 }
+    },
+    {
+      "id": "foray-progress/resume-under-min",
+      "covers": ["foray-progress::barely started is not a resume point — it is a fresh start"],
+      "call": "resumePoint",
+      "args": [
+        {
+          "foray_id": "grilling-history-1",
+          "title": "The history of grilling",
+          "elapsed_sec": 19,
+          "total_sec": 3673,
+          "index": 9,
+          "segment_id": null,
+          "into_sec": 0,
+          "updated_at": "2026-08-16T10:00:00.000Z"
+        },
+        { "totalSec": 3673 }
+      ],
+      "expect": { "return": null }
+    },
+    {
+      "id": "foray-progress/resume-over-min",
+      "covers": ["foray-progress::barely started is not a resume point — it is a fresh start"],
+      "call": "resumePoint",
+      "args": [
+        {
+          "foray_id": "grilling-history-1",
+          "title": "The history of grilling",
+          "elapsed_sec": 21,
+          "total_sec": 3673,
+          "index": 9,
+          "segment_id": null,
+          "into_sec": 0,
+          "updated_at": "2026-08-16T10:00:00.000Z"
+        },
+        { "totalSec": 3673 }
+      ],
+      "expect": {
+        "return": {
+          "drift": "unverified",
+          "elapsedSec": 21,
+          "finished": false,
+          "index": 9,
+          "percent": 1,
+          "remainingSec": 3652
+        }
+      }
+    },
+    {
+      "id": "foray-progress/near-end-sec",
+      "covers": [
+        "foray-progress::inside the last segment counts as finished, not as 40 seconds to go"
+      ],
+      "read": "NEAR_END_SEC",
+      "expect": { "value": 45 }
+    },
+    {
+      "id": "foray-progress/resume-near-end",
+      "covers": [
+        "foray-progress::inside the last segment counts as finished, not as 40 seconds to go"
+      ],
+      "call": "resumePoint",
+      "args": [
+        {
+          "foray_id": "grilling-history-1",
+          "title": "The history of grilling",
+          "elapsed_sec": 3633,
+          "total_sec": 3673,
+          "index": 9,
+          "segment_id": null,
+          "into_sec": 0,
+          "updated_at": "2026-08-16T10:00:00.000Z"
+        },
+        { "totalSec": 3673 }
+      ],
+      "expect": {
+        "return": {
+          "drift": "unverified",
+          "elapsedSec": 3633,
+          "finished": true,
+          "index": 9,
+          "percent": 100,
+          "remainingSec": 0
+        }
+      }
+    },
+    {
+      "id": "foray-progress/resume-past-live-total",
+      "covers": [
+        "foray-progress::a stored position past the Foray's CURRENT length is clamped, not trusted"
+      ],
+      "call": "resumePoint",
+      "args": [
+        {
+          "foray_id": "grilling-history-1",
+          "title": "The history of grilling",
+          "elapsed_sec": 1180,
+          "total_sec": 3673,
+          "index": 9,
+          "segment_id": null,
+          "into_sec": 0,
+          "updated_at": "2026-08-16T10:00:00.000Z"
+        },
+        { "totalSec": 600 }
+      ],
+      "expect": {
+        "return": {
+          "drift": "unverified",
+          "elapsedSec": 600,
+          "finished": true,
+          "index": 9,
+          "percent": 100,
+          "remainingSec": 0
+        }
+      }
+    },
+    {
+      "id": "foray-progress/resume-index-past-live",
+      "covers": [
+        "foray-progress::a stored index past the Foray's CURRENT last segment is dropped, not clamped to the end"
+      ],
+      "call": "resumePoint",
+      "args": [
+        {
+          "foray_id": "grilling-history-1",
+          "title": "The history of grilling",
+          "elapsed_sec": 1180,
+          "total_sec": 3673,
+          "index": 31,
+          "segment_id": null,
+          "into_sec": 0,
+          "updated_at": "2026-08-16T10:00:00.000Z"
+        },
+        { "totalSec": 3673, "maxIndex": 19 }
+      ],
+      "expect": {
+        "return": {
+          "drift": "unverified",
+          "elapsedSec": 1180,
+          "finished": false,
+          "index": -1,
+          "percent": 32,
+          "remainingSec": 2493
+        }
+      }
+    },
+    {
+      "id": "foray-progress/resume-index-in-range",
+      "covers": ["foray-progress::an in-range index survives the clamp, and -1 stays -1"],
+      "call": "resumePoint",
+      "args": [
+        {
+          "foray_id": "grilling-history-1",
+          "title": "The history of grilling",
+          "elapsed_sec": 1180,
+          "total_sec": 3673,
+          "index": 9,
+          "segment_id": null,
+          "into_sec": 0,
+          "updated_at": "2026-08-16T10:00:00.000Z"
+        },
+        { "totalSec": 3673, "maxIndex": 31 }
+      ],
+      "expect": {
+        "return": {
+          "drift": "unverified",
+          "elapsedSec": 1180,
+          "finished": false,
+          "index": 9,
+          "percent": 32,
+          "remainingSec": 2493
+        }
+      }
+    },
+    {
+      "id": "foray-progress/resume-index-at-max",
+      "covers": ["foray-progress::an in-range index survives the clamp, and -1 stays -1"],
+      "call": "resumePoint",
+      "args": [
+        {
+          "foray_id": "grilling-history-1",
+          "title": "The history of grilling",
+          "elapsed_sec": 1180,
+          "total_sec": 3673,
+          "index": 31,
+          "segment_id": null,
+          "into_sec": 0,
+          "updated_at": "2026-08-16T10:00:00.000Z"
+        },
+        { "totalSec": 3673, "maxIndex": 31 }
+      ],
+      "expect": {
+        "return": {
+          "drift": "unverified",
+          "elapsedSec": 1180,
+          "finished": false,
+          "index": 31,
+          "percent": 32,
+          "remainingSec": 2493
+        }
+      }
+    },
+    {
+      "id": "foray-progress/resume-index-none",
+      "covers": ["foray-progress::an in-range index survives the clamp, and -1 stays -1"],
+      "call": "resumePoint",
+      "args": [
+        {
+          "foray_id": "grilling-history-1",
+          "title": "The history of grilling",
+          "elapsed_sec": 1180,
+          "total_sec": 3673,
+          "index": -1,
+          "segment_id": null,
+          "into_sec": 0,
+          "updated_at": "2026-08-16T10:00:00.000Z"
+        },
+        { "totalSec": 3673, "maxIndex": 31 }
+      ],
+      "expect": {
+        "return": {
+          "drift": "unverified",
+          "elapsedSec": 1180,
+          "finished": false,
+          "index": -1,
+          "percent": 32,
+          "remainingSec": 2493
+        }
+      }
+    },
+    {
+      "id": "foray-progress/resume-no-max-index",
+      "covers": [
+        "foray-progress::with no maxIndex given the stored index is passed through unchanged"
+      ],
+      "call": "resumePoint",
+      "args": [
+        {
+          "foray_id": "grilling-history-1",
+          "title": "The history of grilling",
+          "elapsed_sec": 1180,
+          "total_sec": 3673,
+          "index": 9,
+          "segment_id": null,
+          "into_sec": 0,
+          "updated_at": "2026-08-16T10:00:00.000Z"
+        },
+        { "totalSec": 3673 }
+      ],
+      "expect": {
+        "return": {
+          "drift": "unverified",
+          "elapsedSec": 1180,
+          "finished": false,
+          "index": 9,
+          "percent": 32,
+          "remainingSec": 2493
+        }
+      }
+    },
+    {
+      "id": "foray-progress/resume-null-row",
+      "covers": ["foray-progress::resumePoint on a missing or malformed row is null"],
+      "call": "resumePoint",
+      "args": [null, { "totalSec": 3673 }],
+      "expect": { "return": null }
+    },
+    {
+      "id": "foray-progress/resume-malformed-row",
+      "covers": ["foray-progress::resumePoint on a missing or malformed row is null"],
+      "call": "resumePoint",
+      "args": [{ "foray_id": "grilling-history-1" }, { "totalSec": 3673 }],
+      "expect": { "return": null }
+    },
+    {
+      "id": "foray-progress/resume-row-total",
+      "covers": ["foray-progress::with no totalSec passed, the row's own total is used"],
+      "call": "resumePoint",
+      "args": [
+        {
+          "foray_id": "grilling-history-1",
+          "title": "The history of grilling",
+          "elapsed_sec": 1180,
+          "total_sec": 3673,
+          "index": 9,
+          "segment_id": null,
+          "into_sec": 0,
+          "updated_at": "2026-08-16T10:00:00.000Z"
+        }
+      ],
+      "expect": {
+        "return": {
+          "drift": "unverified",
+          "elapsedSec": 1180,
+          "finished": false,
+          "index": 9,
+          "percent": 32,
+          "remainingSec": 2493
+        }
+      }
+    },
+    {
+      "id": "foray-progress/percent-zero",
+      "covers": ["foray-progress::percentDone is clamped to 0..100 and never returns NaN"],
+      "call": "percentDone",
+      "args": [0, 3673],
+      "expect": { "return": 0 }
+    },
+    {
+      "id": "foray-progress/percent-all",
+      "covers": ["foray-progress::percentDone is clamped to 0..100 and never returns NaN"],
+      "call": "percentDone",
+      "args": [3673, 3673],
+      "expect": { "return": 100 }
+    },
+    {
+      "id": "foray-progress/percent-double",
+      "covers": ["foray-progress::percentDone is clamped to 0..100 and never returns NaN"],
+      "call": "percentDone",
+      "args": [7346, 3673],
+      "expect": { "return": 100 }
+    },
+    {
+      "id": "foray-progress/percent-negative",
+      "covers": ["foray-progress::percentDone is clamped to 0..100 and never returns NaN"],
+      "call": "percentDone",
+      "args": [-10, 3673],
+      "expect": { "return": 0 }
+    },
+    {
+      "id": "foray-progress/percent-no-total",
+      "covers": ["foray-progress::percentDone is clamped to 0..100 and never returns NaN"],
+      "call": "percentDone",
+      "args": [100, 0],
+      "expect": { "return": 0 }
+    },
+    {
+      "id": "foray-progress/percent-nan",
+      "covers": ["foray-progress::percentDone is clamped to 0..100 and never returns NaN"],
+      "call": "percentDone",
+      "args": [{ "$num": "NaN" }, 3673],
+      "expect": { "return": 0 }
+    },
+    {
+      "id": "foray-progress/remaining-42",
+      "covers": ["foray-progress::remainingLabel is the mockup's phrasing, in whole minutes"],
+      "call": "remainingLabel",
+      "args": [2493],
+      "expect": { "return": "42 min left" }
+    },
+    {
+      "id": "foray-progress/remaining-32",
+      "covers": ["foray-progress::remainingLabel is the mockup's phrasing, in whole minutes"],
+      "call": "remainingLabel",
+      "args": [1920],
+      "expect": { "return": "32 min left" }
+    },
+    {
+      "id": "foray-progress/remaining-90s",
+      "covers": ["foray-progress::remainingLabel is the mockup's phrasing, in whole minutes"],
+      "call": "remainingLabel",
+      "args": [90],
+      "expect": { "return": "2 min left" }
+    },
+    {
+      "id": "foray-progress/remaining-20s",
+      "covers": ["foray-progress::remainingLabel never says 0 min left"],
+      "call": "remainingLabel",
+      "args": [20],
+      "expect": { "return": "under a minute left" }
+    },
+    {
+      "id": "foray-progress/remaining-zero",
+      "covers": ["foray-progress::remainingLabel never says 0 min left"],
+      "call": "remainingLabel",
+      "args": [0],
+      "expect": { "return": "finished" }
+    },
+    {
+      "id": "foray-progress/remaining-negative",
+      "covers": ["foray-progress::remainingLabel never says 0 min left"],
+      "call": "remainingLabel",
+      "args": [-5],
+      "expect": { "return": "finished" }
+    },
+    {
+      "id": "foray-progress/remaining-null",
+      "covers": ["foray-progress::remainingLabel never says 0 min left"],
+      "call": "remainingLabel",
+      "args": [null],
+      "expect": { "return": "finished" }
+    },
+    {
+      "id": "foray-progress/remaining-estimated",
+      "covers": [
+        "foray-progress::an estimated runtime says 'about' (states-11); under a minute is already a hedge"
+      ],
+      "call": "remainingLabel",
+      "args": [1920, { "estimated": true }],
+      "expect": { "return": "about 32 min left" }
+    },
+    {
+      "id": "foray-progress/remaining-not-estimated",
+      "covers": [
+        "foray-progress::an estimated runtime says 'about' (states-11); under a minute is already a hedge"
+      ],
+      "call": "remainingLabel",
+      "args": [1920, { "estimated": false }],
+      "expect": { "return": "32 min left" }
+    },
+    {
+      "id": "foray-progress/remaining-estimated-under-minute",
+      "covers": [
+        "foray-progress::an estimated runtime says 'about' (states-11); under a minute is already a hedge"
+      ],
+      "call": "remainingLabel",
+      "args": [20, { "estimated": true }],
+      "expect": { "return": "under a minute left" }
+    },
+    {
+      "id": "foray-progress/played-label",
+      "covers": [
+        "foray-progress::progressLabel: 'Played' for a finished Foray, the minutes otherwise, nothing for no point (honesty-2)"
+      ],
+      "read": "PLAYED_LABEL",
+      "expect": { "value": "Played" }
+    },
+    {
+      "id": "foray-progress/label-finished",
+      "covers": [
+        "foray-progress::progressLabel: 'Played' for a finished Foray, the minutes otherwise, nothing for no point (honesty-2)"
+      ],
+      "call": "progressLabel",
+      "args": [{ "finished": true, "remainingSec": 0 }],
+      "expect": { "return": "Played" }
+    },
+    {
+      "id": "foray-progress/label-minutes",
+      "covers": [
+        "foray-progress::progressLabel: 'Played' for a finished Foray, the minutes otherwise, nothing for no point (honesty-2)"
+      ],
+      "call": "progressLabel",
+      "args": [{ "finished": false, "remainingSec": 600 }],
+      "expect": { "return": "10 min left" }
+    },
+    {
+      "id": "foray-progress/label-estimated",
+      "covers": [
+        "foray-progress::progressLabel: 'Played' for a finished Foray, the minutes otherwise, nothing for no point (honesty-2)"
+      ],
+      "call": "progressLabel",
+      "args": [{ "finished": false, "remainingSec": 600 }, { "estimated": true }],
+      "expect": { "return": "about 10 min left" }
+    },
+    {
+      "id": "foray-progress/label-none",
+      "covers": [
+        "foray-progress::progressLabel: 'Played' for a finished Foray, the minutes otherwise, nothing for no point (honesty-2)"
+      ],
+      "call": "progressLabel",
+      "args": [null],
+      "expect": { "return": "" }
+    },
+    {
+      "id": "foray-progress/resume-finished-row",
+      "covers": [
+        "foray-progress::markFinished writes a row that reads back finished at 100%, past the throttle (honesty-2)"
+      ],
+      "call": "resumePoint",
+      "args": [
+        {
+          "foray_id": "grilling-history-1",
+          "title": "t",
+          "elapsed_sec": 3673,
+          "total_sec": 3673,
+          "index": 31,
+          "segment_id": "last",
+          "into_sec": 90,
+          "updated_at": "2026-08-16T10:00:00.000Z"
+        },
+        { "totalSec": 3673 }
+      ],
+      "expect": {
+        "return": {
+          "drift": "unverified",
+          "elapsedSec": 3673,
+          "finished": true,
+          "index": 31,
+          "percent": 100,
+          "remainingSec": 0
+        }
+      }
+    },
+    {
+      "id": "foray-progress/make-anchored",
+      "covers": ["foray-progress::a row records WHICH segment it was in and how far into it"],
+      "call": "makeProgress",
+      "args": [
+        {
+          "forayId": "grilling-history-1",
+          "title": "t",
+          "elapsedSec": 220,
+          "totalSec": 540,
+          "index": 2,
+          "segmentId": "s3",
+          "intoSec": 40,
+          "now": "2026-08-16T10:00:00.000Z"
+        }
+      ],
+      "expect": {
+        "return": {
+          "elapsed_sec": 220,
+          "foray_id": "grilling-history-1",
+          "index": 2,
+          "into_sec": 40,
+          "segment_id": "s3",
+          "title": "t",
+          "total_sec": 540,
+          "updated_at": "2026-08-16T10:00:00.000Z"
+        }
+      }
+    },
+    {
+      "id": "foray-progress/old-row-is-record",
+      "covers": [
+        "foray-progress::a row from before segment ids existed is still a valid resume point"
+      ],
+      "call": "isProgressRecord",
+      "args": [
+        {
+          "foray_id": "grilling-history-1",
+          "title": "t",
+          "elapsed_sec": 220,
+          "total_sec": 540,
+          "index": 2,
+          "updated_at": "2026-08-16T10:00:00.000Z"
+        }
+      ],
+      "expect": { "return": true }
+    },
+    {
+      "id": "foray-progress/old-row-resumes",
+      "covers": [
+        "foray-progress::a row from before segment ids existed is still a valid resume point"
+      ],
+      "call": "resumePoint",
+      "args": [
+        {
+          "foray_id": "grilling-history-1",
+          "title": "t",
+          "elapsed_sec": 220,
+          "total_sec": 540,
+          "index": 2,
+          "updated_at": "2026-08-16T10:00:00.000Z"
+        },
+        { "totalSec": 540 }
+      ],
+      "expect": {
+        "return": {
+          "drift": "unverified",
+          "elapsedSec": 220,
+          "finished": false,
+          "index": 2,
+          "percent": 41,
+          "remainingSec": 320
+        }
+      }
+    },
+    {
+      "id": "foray-progress/drift-unverified",
+      "covers": [
+        "foray-progress::with no live order supplied the answer is unchanged, and says so"
+      ],
+      "read": "DRIFT_UNVERIFIED",
+      "expect": { "value": "unverified" }
+    },
+    {
+      "id": "foray-progress/resume-no-order",
+      "covers": [
+        "foray-progress::with no live order supplied the answer is unchanged, and says so"
+      ],
+      "call": "resumePoint",
+      "args": [
+        {
+          "foray_id": "grilling-history-1",
+          "title": "t",
+          "elapsed_sec": 220,
+          "total_sec": 540,
+          "index": 2,
+          "segment_id": "s3",
+          "into_sec": 40,
+          "updated_at": "2026-08-16T10:00:00.000Z"
+        },
+        { "totalSec": 540 }
+      ],
+      "expect": {
+        "return": {
+          "drift": "unverified",
+          "elapsedSec": 220,
+          "finished": false,
+          "index": 2,
+          "percent": 41,
+          "remainingSec": 320
+        }
+      }
+    },
+    {
+      "id": "foray-progress/drift-exact",
+      "covers": [
+        "foray-progress::an unchanged running order resumes to the same second and reports exact"
+      ],
+      "read": "DRIFT_EXACT",
+      "expect": { "value": "exact" }
+    },
+    {
+      "id": "foray-progress/resume-exact",
+      "covers": [
+        "foray-progress::an unchanged running order resumes to the same second and reports exact"
+      ],
+      "call": "resumePoint",
+      "args": [
+        {
+          "foray_id": "grilling-history-1",
+          "title": "t",
+          "elapsed_sec": 220,
+          "total_sec": 540,
+          "index": 2,
+          "segment_id": "s3",
+          "into_sec": 40,
+          "updated_at": "2026-08-16T10:00:00.000Z"
+        },
+        {
+          "totalSec": 540,
+          "segments": [
+            { "id": "s1", "startSec": 0, "durationSec": 90 },
+            { "id": "s2", "startSec": 90, "durationSec": 90 },
+            { "id": "s3", "startSec": 180, "durationSec": 90 },
+            { "id": "s4", "startSec": 270, "durationSec": 90 },
+            { "id": "s5", "startSec": 360, "durationSec": 90 },
+            { "id": "s6", "startSec": 450, "durationSec": 90 }
+          ]
+        }
+      ],
+      "expect": {
+        "return": {
+          "drift": "exact",
+          "elapsedSec": 220,
+          "finished": false,
+          "index": 2,
+          "percent": 41,
+          "remainingSec": 320
+        }
+      }
+    },
+    {
+      "id": "foray-progress/drift-moved",
+      "covers": [
+        "foray-progress::A SEGMENT THAT MOVED is followed, not the clock — the listener remembers the audio"
+      ],
+      "read": "DRIFT_MOVED",
+      "expect": { "value": "moved" }
+    },
+    {
+      "id": "foray-progress/resume-moved",
+      "covers": [
+        "foray-progress::A SEGMENT THAT MOVED is followed, not the clock — the listener remembers the audio"
+      ],
+      "call": "resumePoint",
+      "args": [
+        {
+          "foray_id": "grilling-history-1",
+          "title": "t",
+          "elapsed_sec": 220,
+          "total_sec": 540,
+          "index": 2,
+          "segment_id": "s3",
+          "into_sec": 40,
+          "updated_at": "2026-08-16T10:00:00.000Z"
+        },
+        {
+          "totalSec": 540,
+          "segments": [
+            { "id": "s1", "startSec": 0, "durationSec": 90 },
+            { "id": "s3", "startSec": 90, "durationSec": 90 },
+            { "id": "s2", "startSec": 180, "durationSec": 90 },
+            { "id": "s4", "startSec": 270, "durationSec": 90 },
+            { "id": "s5", "startSec": 360, "durationSec": 90 },
+            { "id": "s6", "startSec": 450, "durationSec": 90 }
+          ]
+        }
+      ],
+      "expect": {
+        "return": {
+          "drift": "moved",
+          "elapsedSec": 130,
+          "finished": false,
+          "index": 1,
+          "percent": 24,
+          "remainingSec": 410
+        }
+      }
+    },
+    {
+      "id": "foray-progress/drift-dropped",
+      "covers": [
+        "foray-progress::A SEGMENT THAT IS GONE degrades to the clamped clock and paints no row"
+      ],
+      "read": "DRIFT_DROPPED",
+      "expect": { "value": "dropped" }
+    },
+    {
+      "id": "foray-progress/resume-gone",
+      "covers": [
+        "foray-progress::A SEGMENT THAT IS GONE degrades to the clamped clock and paints no row"
+      ],
+      "call": "resumePoint",
+      "args": [
+        {
+          "foray_id": "grilling-history-1",
+          "title": "t",
+          "elapsed_sec": 220,
+          "total_sec": 540,
+          "index": 2,
+          "segment_id": "s3",
+          "into_sec": 40,
+          "updated_at": "2026-08-16T10:00:00.000Z"
+        },
+        {
+          "totalSec": 450,
+          "segments": [
+            { "id": "s1", "startSec": 0, "durationSec": 90 },
+            { "id": "s2", "startSec": 90, "durationSec": 90 },
+            { "id": "s4", "startSec": 180, "durationSec": 90 },
+            { "id": "s5", "startSec": 270, "durationSec": 90 },
+            { "id": "s6", "startSec": 360, "durationSec": 90 }
+          ]
+        }
+      ],
+      "expect": {
+        "return": {
+          "drift": "dropped",
+          "elapsedSec": 220,
+          "finished": false,
+          "index": -1,
+          "percent": 49,
+          "remainingSec": 230
+        }
+      }
+    },
+    {
+      "id": "foray-progress/resume-gone-shorter",
+      "covers": [
+        "foray-progress::A SEGMENT THAT IS GONE from a much shorter Foray cannot seek past the end"
+      ],
+      "call": "resumePoint",
+      "args": [
+        {
+          "foray_id": "grilling-history-1",
+          "title": "t",
+          "elapsed_sec": 220,
+          "total_sec": 540,
+          "index": 2,
+          "segment_id": "s3",
+          "into_sec": 40,
+          "updated_at": "2026-08-16T10:00:00.000Z"
+        },
+        {
+          "totalSec": 180,
+          "segments": [
+            { "id": "s1", "startSec": 0, "durationSec": 90 },
+            { "id": "s2", "startSec": 90, "durationSec": 90 }
+          ]
+        }
+      ],
+      "expect": {
+        "return": {
+          "drift": "dropped",
+          "elapsedSec": 180,
+          "finished": true,
+          "index": -1,
+          "percent": 100,
+          "remainingSec": 0
+        }
+      }
+    },
+    {
+      "id": "foray-progress/drift-unanchored",
+      "covers": [
+        "foray-progress::an old row against a changed order is checked the old way, and labelled as such"
+      ],
+      "read": "DRIFT_UNANCHORED",
+      "expect": { "value": "unanchored" }
+    },
+    {
+      "id": "foray-progress/resume-old-row-changed-order",
+      "covers": [
+        "foray-progress::an old row against a changed order is checked the old way, and labelled as such"
+      ],
+      "call": "resumePoint",
+      "args": [
+        {
+          "foray_id": "grilling-history-1",
+          "title": "t",
+          "elapsed_sec": 220,
+          "total_sec": 540,
+          "index": 2,
+          "updated_at": "2026-08-16T10:00:00.000Z"
+        },
+        {
+          "totalSec": 270,
+          "maxIndex": 2,
+          "segments": [
+            { "id": "s1", "startSec": 0, "durationSec": 90 },
+            { "id": "s2", "startSec": 90, "durationSec": 90 },
+            { "id": "s3", "startSec": 180, "durationSec": 90 }
+          ]
+        }
+      ],
+      "expect": {
+        "return": {
+          "drift": "unanchored",
+          "elapsedSec": 220,
+          "finished": false,
+          "index": 2,
+          "percent": 81,
+          "remainingSec": 50
+        }
+      }
+    },
+    {
+      "id": "foray-progress/resume-offset-clamped",
+      "covers": [
+        "foray-progress::a stored offset longer than the segment now is clamped INSIDE that segment"
+      ],
+      "call": "resumePoint",
+      "args": [
+        {
+          "foray_id": "grilling-history-1",
+          "title": "t",
+          "elapsed_sec": 40,
+          "total_sec": 120,
+          "index": 2,
+          "segment_id": "s3",
+          "into_sec": 40,
+          "updated_at": "2026-08-16T10:00:00.000Z"
+        },
+        {
+          "totalSec": 120,
+          "segments": [
+            { "id": "s3", "startSec": 0, "durationSec": 30 },
+            { "id": "s4", "startSec": 30, "durationSec": 90 }
+          ]
+        }
+      ],
+      "expect": {
+        "return": {
+          "drift": "moved",
+          "elapsedSec": 29,
+          "finished": false,
+          "index": 0,
+          "percent": 24,
+          "remainingSec": 91
+        }
+      }
+    },
+    {
+      "id": "foray-progress/resume-hole-in-order",
+      "covers": [
+        "foray-progress::a malformed entry in the live order does not shift the indexes after it"
+      ],
+      "call": "resumePoint",
+      "args": [
+        {
+          "foray_id": "grilling-history-1",
+          "title": "t",
+          "elapsed_sec": 220,
+          "total_sec": 540,
+          "index": 2,
+          "segment_id": "s3",
+          "into_sec": 40,
+          "updated_at": "2026-08-16T10:00:00.000Z"
+        },
+        {
+          "totalSec": 270,
+          "segments": [
+            { "id": "s1", "startSec": 0, "durationSec": 90 },
+            { "id": "s2", "startSec": 90 },
+            { "id": "s3", "startSec": 180, "durationSec": 90 }
+          ]
+        }
+      ],
+      "expect": {
+        "return": {
+          "drift": "exact",
+          "elapsedSec": 220,
+          "finished": false,
+          "index": 2,
+          "percent": 81,
+          "remainingSec": 50
+        }
+      }
+    },
+    {
+      "id": "foray-progress/reconcile-useless-order",
+      "covers": [
+        "foray-progress::a live order with no usable entry at all is 'no live order', not 'everything is gone'"
+      ],
+      "call": "reconcileSegment",
+      "args": [
+        {
+          "foray_id": "grilling-history-1",
+          "title": "t",
+          "elapsed_sec": 220,
+          "total_sec": 540,
+          "index": 2,
+          "segment_id": "s3",
+          "into_sec": 40,
+          "updated_at": "2026-08-16T10:00:00.000Z"
+        },
+        [
+          { "id": "s3" },
+          { "id": "s4", "startSec": { "$num": "NaN" }, "durationSec": 5 }
+        ]
+      ],
+      "expect": { "return": { "drift": "unverified" } }
+    },
+    {
+      "id": "foray-progress/resume-useless-order",
+      "covers": [
+        "foray-progress::a live order with no usable entry at all is 'no live order', not 'everything is gone'"
+      ],
+      "call": "resumePoint",
+      "args": [
+        {
+          "foray_id": "grilling-history-1",
+          "title": "t",
+          "elapsed_sec": 220,
+          "total_sec": 540,
+          "index": 2,
+          "segment_id": "s3",
+          "into_sec": 40,
+          "updated_at": "2026-08-16T10:00:00.000Z"
+        },
+        {
+          "totalSec": 540,
+          "segments": [
+            { "id": "s3" },
+            { "id": "s4", "startSec": { "$num": "NaN" }, "durationSec": 5 }
+          ]
+        }
+      ],
+      "expect": {
+        "return": {
+          "drift": "unverified",
+          "elapsedSec": 220,
+          "finished": false,
+          "index": 2,
+          "percent": 41,
+          "remainingSec": 320
+        }
+      }
+    },
+    {
+      "id": "foray-progress/reconcile-negative-duration",
+      "covers": [
+        "foray-progress::a negative duration in the live order cannot pull a resume before its segment"
+      ],
+      "call": "reconcileSegment",
+      "args": [
+        {
+          "foray_id": "grilling-history-1",
+          "title": "t",
+          "elapsed_sec": 220,
+          "total_sec": 540,
+          "index": 2,
+          "segment_id": "s3",
+          "into_sec": 40,
+          "updated_at": "2026-08-16T10:00:00.000Z"
+        },
+        [
+          { "id": "s3", "startSec": 100, "durationSec": -50 },
+          { "id": "s4", "startSec": 100, "durationSec": 90 }
+        ]
+      ],
+      "expect": { "return": { "drift": "dropped" } }
+    },
+    {
+      "id": "foray-progress/reconcile-null-id",
+      "covers": [
+        "foray-progress::a segment with no authored id cannot anchor a resume and does not match one"
+      ],
+      "call": "reconcileSegment",
+      "args": [
+        {
+          "foray_id": "grilling-history-1",
+          "title": "",
+          "elapsed_sec": 40,
+          "total_sec": 180,
+          "index": 0,
+          "segment_id": null,
+          "into_sec": 0,
+          "updated_at": "2026-08-16T10:00:00.000Z"
+        },
+        [
+          { "id": null, "startSec": 0, "durationSec": 90 },
+          { "id": "s3", "startSec": 90, "durationSec": 90 }
+        ]
+      ],
+      "expect": { "return": { "drift": "unanchored" } }
+    },
+    {
+      "id": "foray-progress/reconcile-null-order",
+      "covers": ["foray-progress::reconcileSegment refuses to guess from a malformed live order"],
+      "call": "reconcileSegment",
+      "args": [
+        {
+          "foray_id": "grilling-history-1",
+          "title": "t",
+          "elapsed_sec": 220,
+          "total_sec": 540,
+          "index": 2,
+          "segment_id": "s3",
+          "into_sec": 40,
+          "updated_at": "2026-08-16T10:00:00.000Z"
+        },
+        null
+      ],
+      "expect": { "return": { "drift": "unverified" } }
+    },
+    {
+      "id": "foray-progress/reconcile-empty-order",
+      "covers": ["foray-progress::reconcileSegment refuses to guess from a malformed live order"],
+      "call": "reconcileSegment",
+      "args": [
+        {
+          "foray_id": "grilling-history-1",
+          "title": "t",
+          "elapsed_sec": 220,
+          "total_sec": 540,
+          "index": 2,
+          "segment_id": "s3",
+          "into_sec": 40,
+          "updated_at": "2026-08-16T10:00:00.000Z"
+        },
+        []
+      ],
+      "expect": { "return": { "drift": "unverified" } }
+    },
+    {
+      "id": "foray-progress/reconcile-id-only",
+      "covers": ["foray-progress::reconcileSegment refuses to guess from a malformed live order"],
+      "call": "reconcileSegment",
+      "args": [
+        {
+          "foray_id": "grilling-history-1",
+          "title": "t",
+          "elapsed_sec": 220,
+          "total_sec": 540,
+          "index": 2,
+          "segment_id": "s3",
+          "into_sec": 40,
+          "updated_at": "2026-08-16T10:00:00.000Z"
+        },
+        [{ "id": "s3" }]
+      ],
+      "expect": { "return": { "drift": "unverified" } }
+    },
+    {
+      "id": "foray-progress/reconcile-nan-start",
+      "covers": ["foray-progress::reconcileSegment refuses to guess from a malformed live order"],
+      "call": "reconcileSegment",
+      "args": [
+        {
+          "foray_id": "grilling-history-1",
+          "title": "t",
+          "elapsed_sec": 220,
+          "total_sec": 540,
+          "index": 2,
+          "segment_id": "s3",
+          "into_sec": 40,
+          "updated_at": "2026-08-16T10:00:00.000Z"
+        },
+        [{ "id": "s3", "startSec": { "$num": "NaN" }, "durationSec": 90 }]
+      ],
+      "expect": { "return": { "drift": "unverified" } }
+    },
+    {
+      "id": "foray-progress/reconcile-null-row",
+      "covers": ["foray-progress::reconcileSegment refuses to guess from a malformed live order"],
+      "call": "reconcileSegment",
+      "args": [
+        null,
+        [
+          { "id": "s1", "startSec": 0, "durationSec": 90 },
+          { "id": "s2", "startSec": 90, "durationSec": 90 },
+          { "id": "s3", "startSec": 180, "durationSec": 90 },
+          { "id": "s4", "startSec": 270, "durationSec": 90 },
+          { "id": "s5", "startSec": 360, "durationSec": 90 },
+          { "id": "s6", "startSec": 450, "durationSec": 90 }
+        ]
+      ],
+      "expect": { "return": { "drift": "unverified" } }
+    },
+    {
+      "id": "foray-progress/drift-tolerance",
+      "covers": [
+        "foray-progress::a re-derived clock within a second of the stored one is not called drift"
+      ],
+      "read": "DRIFT_TOLERANCE_SEC",
+      "expect": { "value": 1 }
+    },
+    {
+      "id": "foray-progress/resume-within-tolerance",
+      "covers": [
+        "foray-progress::a re-derived clock within a second of the stored one is not called drift"
+      ],
+      "call": "resumePoint",
+      "args": [
+        {
+          "foray_id": "grilling-history-1",
+          "title": "t",
+          "elapsed_sec": 220.4,
+          "total_sec": 540,
+          "index": 2,
+          "segment_id": "s3",
+          "into_sec": 40,
+          "updated_at": "2026-08-16T10:00:00.000Z"
+        },
+        {
+          "totalSec": 540,
+          "segments": [
+            { "id": "s1", "startSec": 0, "durationSec": 90 },
+            { "id": "s2", "startSec": 90, "durationSec": 90 },
+            { "id": "s3", "startSec": 180, "durationSec": 90 },
+            { "id": "s4", "startSec": 270, "durationSec": 90 },
+            { "id": "s5", "startSec": 360, "durationSec": 90 },
+            { "id": "s6", "startSec": 450, "durationSec": 90 }
+          ]
+        }
+      ],
+      "expect": {
+        "return": {
+          "drift": "exact",
+          "elapsedSec": 220,
+          "finished": false,
+          "index": 2,
+          "percent": 41,
+          "remainingSec": 320
+        }
+      }
+    },
+    {
+      "id": "foray-progress/resume-last-segment-finished",
+      "covers": [
+        "foray-progress::a changed order can also make a row resumable that the clock said was finished"
+      ],
+      "call": "resumePoint",
+      "args": [
+        {
+          "foray_id": "grilling-history-1",
+          "title": "",
+          "elapsed_sec": 510,
+          "total_sec": 540,
+          "index": 5,
+          "segment_id": "s6",
+          "into_sec": 60,
+          "updated_at": "2026-08-16T10:00:00.000Z"
+        },
+        { "totalSec": 540 }
+      ],
+      "expect": {
+        "return": {
+          "drift": "unverified",
+          "elapsedSec": 510,
+          "finished": true,
+          "index": 5,
+          "percent": 100,
+          "remainingSec": 0
+        }
+      }
+    },
+    {
+      "id": "foray-progress/resume-last-segment-moved-first",
+      "covers": [
+        "foray-progress::a changed order can also make a row resumable that the clock said was finished"
+      ],
+      "call": "resumePoint",
+      "args": [
+        {
+          "foray_id": "grilling-history-1",
+          "title": "",
+          "elapsed_sec": 510,
+          "total_sec": 540,
+          "index": 5,
+          "segment_id": "s6",
+          "into_sec": 60,
+          "updated_at": "2026-08-16T10:00:00.000Z"
+        },
+        {
+          "totalSec": 540,
+          "segments": [
+            { "id": "s6", "startSec": 0, "durationSec": 90 },
+            { "id": "s1", "startSec": 90, "durationSec": 90 },
+            { "id": "s2", "startSec": 180, "durationSec": 90 },
+            { "id": "s3", "startSec": 270, "durationSec": 90 },
+            { "id": "s4", "startSec": 360, "durationSec": 90 },
+            { "id": "s5", "startSec": 450, "durationSec": 90 }
+          ]
+        }
+      ],
+      "expect": {
+        "return": {
+          "drift": "moved",
+          "elapsedSec": 60,
+          "finished": false,
+          "index": 0,
+          "percent": 11,
+          "remainingSec": 480
+        }
+      }
+    },
+    {
+      "id": "foray-progress/hostile-row-resume",
+      "covers": [
+        "foray-progress::nothing in the freshness path throws on a hostile row or a hostile order"
+      ],
+      "call": "resumePoint",
+      "args": [
+        {
+          "foray_id": "grilling-history-1",
+          "elapsed_sec": 1,
+          "total_sec": 1,
+          "segment_id": {},
+          "into_sec": "x"
+        },
+        {
+          "totalSec": 540,
+          "segments": [
+            { "id": "s1", "startSec": 0, "durationSec": 90 },
+            { "id": "s2", "startSec": 90, "durationSec": 90 },
+            { "id": "s3", "startSec": 180, "durationSec": 90 },
+            { "id": "s4", "startSec": 270, "durationSec": 90 },
+            { "id": "s5", "startSec": 360, "durationSec": 90 },
+            { "id": "s6", "startSec": 450, "durationSec": 90 }
+          ]
+        }
+      ],
+      "expect": { "return": null }
+    },
+    {
+      "id": "foray-progress/hostile-row-reconcile",
+      "covers": [
+        "foray-progress::nothing in the freshness path throws on a hostile row or a hostile order"
+      ],
+      "call": "reconcileSegment",
+      "args": [
+        {
+          "foray_id": "grilling-history-1",
+          "elapsed_sec": 1,
+          "total_sec": 1,
+          "segment_id": {},
+          "into_sec": "x"
+        },
+        [
+          { "id": "s1", "startSec": 0, "durationSec": 90 },
+          { "id": "s2", "startSec": 90, "durationSec": 90 },
+          { "id": "s3", "startSec": 180, "durationSec": 90 },
+          { "id": "s4", "startSec": 270, "durationSec": 90 },
+          { "id": "s5", "startSec": 360, "durationSec": 90 },
+          { "id": "s6", "startSec": 450, "durationSec": 90 }
+        ]
+      ],
+      "expect": { "return": { "drift": "unanchored" } }
+    },
+    {
+      "id": "foray-progress/hostile-order-resume",
+      "covers": [
+        "foray-progress::nothing in the freshness path throws on a hostile row or a hostile order"
+      ],
+      "call": "resumePoint",
+      "args": [
+        {
+          "foray_id": "grilling-history-1",
+          "title": "t",
+          "elapsed_sec": 220,
+          "total_sec": 540,
+          "index": 2,
+          "segment_id": "s3",
+          "into_sec": 40,
+          "updated_at": "2026-08-16T10:00:00.000Z"
+        },
+        { "totalSec": 540, "segments": [null, { "$undefined": true }, 3, "s3"] }
+      ],
+      "expect": {
+        "return": {
+          "drift": "unverified",
+          "elapsedSec": 220,
+          "finished": false,
+          "index": 2,
+          "percent": 41,
+          "remainingSec": 320
+        }
+      }
+    },
+    {
+      "id": "foray-progress/hostile-order-reconcile",
+      "covers": [
+        "foray-progress::nothing in the freshness path throws on a hostile row or a hostile order"
+      ],
+      "call": "reconcileSegment",
+      "args": [
+        {
+          "foray_id": "grilling-history-1",
+          "title": "t",
+          "elapsed_sec": 220,
+          "total_sec": 540,
+          "index": 2,
+          "segment_id": "s3",
+          "into_sec": 40,
+          "updated_at": "2026-08-16T10:00:00.000Z"
+        },
+        [null, { "$undefined": true }, 3, "s3"]
+      ],
+      "expect": { "return": { "drift": "unverified" } }
+    },
+    {
+      "id": "foray-progress/hostile-negative-into-resume",
+      "covers": [
+        "foray-progress::nothing in the freshness path throws on a hostile row or a hostile order"
+      ],
+      "call": "resumePoint",
+      "args": [
+        {
+          "foray_id": "grilling-history-1",
+          "title": "t",
+          "elapsed_sec": 220,
+          "total_sec": 540,
+          "index": 2,
+          "segment_id": "s3",
+          "into_sec": 0,
+          "updated_at": "2026-08-16T10:00:00.000Z"
+        },
+        {
+          "totalSec": 540,
+          "segments": [
+            { "id": "s1", "startSec": 0, "durationSec": 90 },
+            { "id": "s2", "startSec": 90, "durationSec": 90 },
+            { "id": "s3", "startSec": 180, "durationSec": 90 },
+            { "id": "s4", "startSec": 270, "durationSec": 90 },
+            { "id": "s5", "startSec": 360, "durationSec": 90 },
+            { "id": "s6", "startSec": 450, "durationSec": 90 }
+          ]
+        }
+      ],
+      "expect": {
+        "return": {
+          "drift": "moved",
+          "elapsedSec": 180,
+          "finished": false,
+          "index": 2,
+          "percent": 33,
+          "remainingSec": 360
+        }
+      }
+    },
+    {
+      "id": "foray-progress/hostile-negative-into-reconcile",
+      "covers": [
+        "foray-progress::nothing in the freshness path throws on a hostile row or a hostile order"
+      ],
+      "call": "reconcileSegment",
+      "args": [
+        {
+          "foray_id": "grilling-history-1",
+          "title": "t",
+          "elapsed_sec": 220,
+          "total_sec": 540,
+          "index": 2,
+          "segment_id": "s3",
+          "into_sec": 0,
+          "updated_at": "2026-08-16T10:00:00.000Z"
+        },
+        [
+          { "id": "s1", "startSec": 0, "durationSec": 90 },
+          { "id": "s2", "startSec": 90, "durationSec": 90 },
+          { "id": "s3", "startSec": 180, "durationSec": 90 },
+          { "id": "s4", "startSec": 270, "durationSec": 90 },
+          { "id": "s5", "startSec": 360, "durationSec": 90 },
+          { "id": "s6", "startSec": 450, "durationSec": 90 }
+        ]
+      ],
+      "expect": { "return": { "drift": "moved", "elapsedSec": 180, "index": 2 } }
+    },
+    {
+      "id": "foray-progress/hostile-empty-order-resume",
+      "covers": [
+        "foray-progress::nothing in the freshness path throws on a hostile row or a hostile order"
+      ],
+      "call": "resumePoint",
+      "args": [
+        {
+          "foray_id": "grilling-history-1",
+          "title": "t",
+          "elapsed_sec": 220,
+          "total_sec": 540,
+          "index": 2,
+          "segment_id": "s3",
+          "into_sec": 40,
+          "updated_at": "2026-08-16T10:00:00.000Z"
+        },
+        { "totalSec": 540, "segments": [] }
+      ],
+      "expect": {
+        "return": {
+          "drift": "unverified",
+          "elapsedSec": 220,
+          "finished": false,
+          "index": 2,
+          "percent": 41,
+          "remainingSec": 320
+        }
+      }
+    },
+    {
+      "id": "foray-progress/hostile-empty-order-reconcile",
+      "covers": [
+        "foray-progress::nothing in the freshness path throws on a hostile row or a hostile order"
+      ],
+      "call": "reconcileSegment",
+      "args": [
+        {
+          "foray_id": "grilling-history-1",
+          "title": "t",
+          "elapsed_sec": 220,
+          "total_sec": 540,
+          "index": 2,
+          "segment_id": "s3",
+          "into_sec": 40,
+          "updated_at": "2026-08-16T10:00:00.000Z"
+        },
+        []
+      ],
+      "expect": { "return": { "drift": "unverified" } }
+    },
+    {
+      "id": "foray-progress/resume-foray-gone",
+      "covers": [
+        "foray-progress::A FORAY THAT IS GONE FROM THE DIRECTORY reads dropped, paints no row, and never throws"
+      ],
+      "call": "resumePoint",
+      "args": [
+        {
+          "foray_id": "grilling-history-1",
+          "title": "t",
+          "elapsed_sec": 220,
+          "total_sec": 540,
+          "index": 2,
+          "segment_id": "s3",
+          "into_sec": 40,
+          "updated_at": "2026-08-16T10:00:00.000Z"
+        },
+        { "present": false }
+      ],
+      "expect": {
+        "return": {
+          "drift": "dropped",
+          "elapsedSec": 220,
+          "finished": false,
+          "index": -1,
+          "percent": 41,
+          "remainingSec": 320
+        }
+      }
+    },
+    {
+      "id": "foray-progress/reconcile-foray-gone",
+      "covers": [
+        "foray-progress::A FORAY THAT IS GONE FROM THE DIRECTORY reads dropped, paints no row, and never throws"
+      ],
+      "call": "reconcileSegment",
+      "args": [
+        {
+          "foray_id": "grilling-history-1",
+          "title": "t",
+          "elapsed_sec": 220,
+          "total_sec": 540,
+          "index": 2,
+          "segment_id": "s3",
+          "into_sec": 40,
+          "updated_at": "2026-08-16T10:00:00.000Z"
+        },
+        null,
+        { "present": false }
+      ],
+      "expect": { "return": { "drift": "dropped" } }
+    },
+    {
+      "id": "foray-progress/resume-foray-gone-old-row",
+      "covers": [
+        "foray-progress::A FORAY THAT IS GONE FROM THE DIRECTORY reads dropped, paints no row, and never throws"
+      ],
+      "call": "resumePoint",
+      "args": [
+        {
+          "foray_id": "grilling-history-1",
+          "title": "The history of grilling",
+          "elapsed_sec": 1180,
+          "total_sec": 3673,
+          "index": 9,
+          "segment_id": null,
+          "into_sec": 0,
+          "updated_at": "2026-08-16T10:00:00.000Z"
+        },
+        { "present": false }
+      ],
+      "expect": {
+        "return": {
+          "drift": "dropped",
+          "elapsedSec": 1180,
+          "finished": false,
+          "index": -1,
+          "percent": 32,
+          "remainingSec": 2493
+        }
+      }
+    },
+    {
+      "id": "foray-progress/resume-present-default",
+      "covers": [
+        "foray-progress::A FORAY THAT IS GONE FROM THE DIRECTORY reads dropped, paints no row, and never throws"
+      ],
+      "call": "resumePoint",
+      "args": [
+        {
+          "foray_id": "grilling-history-1",
+          "title": "t",
+          "elapsed_sec": 220,
+          "total_sec": 540,
+          "index": 2,
+          "segment_id": "s3",
+          "into_sec": 40,
+          "updated_at": "2026-08-16T10:00:00.000Z"
+        }
+      ],
+      "expect": {
+        "return": {
+          "drift": "unverified",
+          "elapsedSec": 220,
+          "finished": false,
+          "index": 2,
+          "percent": 41,
+          "remainingSec": 320
+        }
+      }
+    },
+    {
+      "id": "foray-progress/resume-present-default-order",
+      "covers": [
+        "foray-progress::A FORAY THAT IS GONE FROM THE DIRECTORY reads dropped, paints no row, and never throws"
+      ],
+      "call": "resumePoint",
+      "args": [
+        {
+          "foray_id": "grilling-history-1",
+          "title": "t",
+          "elapsed_sec": 220,
+          "total_sec": 540,
+          "index": 2,
+          "segment_id": "s3",
+          "into_sec": 40,
+          "updated_at": "2026-08-16T10:00:00.000Z"
+        },
+        {
+          "segments": [
+            { "id": "s1", "startSec": 0, "durationSec": 90 },
+            { "id": "s2", "startSec": 90, "durationSec": 90 },
+            { "id": "s3", "startSec": 180, "durationSec": 90 },
+            { "id": "s4", "startSec": 270, "durationSec": 90 },
+            { "id": "s5", "startSec": 360, "durationSec": 90 },
+            { "id": "s6", "startSec": 450, "durationSec": 90 }
+          ]
+        }
+      ],
+      "expect": {
+        "return": {
+          "drift": "exact",
+          "elapsedSec": 220,
+          "finished": false,
+          "index": 2,
+          "percent": 41,
+          "remainingSec": 320
+        }
+      }
+    },
+    {
+      "id": "foray-progress/max-age-h",
+      "covers": ["foray-progress::a position older than the age limit stops being offered"],
+      "read": "MAX_AGE_H",
+      "expect": { "value": 720 }
+    },
+    {
+      "id": "foray-progress/save-every-sec",
+      "covers": [
+        "foray-progress::force writes through the throttle — pause and page-hide cannot wait for a tick"
+      ],
+      "note": "Corner case #17's bar is 15 s lost at worst.",
+      "read": "SAVE_EVERY_SEC",
+      "expect": { "value": 5 }
+    }
+  ]
+}

@@ -103,7 +103,13 @@ export const JINGLE_ASSET_URL = "https://jw-incorporated.github.io/foray/player/
     imports from this module and this one cannot import it back;
     `interlude.js`'s `INTERLUDE_DURATION_SEC` is this value, and
     `interlude.test.js` measures it against the WAV header. Change it with the
-    asset, and restate every `runtime_sec` (`check-forays.mjs` says which). */
+    asset, and restate every `runtime_sec` (`check-forays.mjs` says which).
+
+    OQ-6 (docs/native-engine-plan.md §9a, NE-29j, 2026-09-25) is the same
+    finding from the native side: the engine counts what it plays, so it would
+    have disagreed with the page by 1.5 s per jingle. `foray-queue.test.js` pins
+    this equal to INTERLUDE_DURATION_SEC and the `foray-clock` parity family
+    pins the value as authored. */
 export const INTERLUDE_ASSET_DURATION_SEC = 3.0;
 
 /** A jingle item plays that file to its end, so it lasts exactly as long. */

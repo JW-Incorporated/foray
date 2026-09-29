@@ -183,10 +183,22 @@ final class ForayEngine {
         seams.deck.onEvent = { [weak self] event in
             MainActor.assumeIsolated { self?.receive(.deck(event)) }
         }
-        // The end of a spoken line. M1's core has no input for it (narration
-        // is M2's); the only listener is the Developer probe (NE-25c).
+        // The end of an audition line: the core has no input for it; the only
+        // listener is the Developer probe (NE-25c).
         seams.speaker.onFinish = { [weak self] end in
             MainActor.assumeIsolated { self?.probe?.speechEnded(end) }
+        }
+        // A line of narration (NE-33's SpeechNarrator): started, failed,
+        // finished, cancelled, resumed, each for the utterance `seq` the core
+        // named. An answer given while a turn is running (the narrator answers
+        // `speak` at once) is queued behind that turn by `handle`.
+        seams.speaker.onNarratorEvent = { [weak self] event in
+            MainActor.assumeIsolated { self?.receive(.narrator(event)) }
+        }
+        // The jingle stopped sounding by itself (`ended`, `error`) or at its
+        // ceiling (NE-34): the core shrinks the seam back to the beat.
+        seams.interlude?.onEnded = { [weak self] reason in
+            MainActor.assumeIsolated { self?.receive(.interlude(.ended(reason: reason))) }
         }
         observations.append(seams.session.observe { [weak self] event in
             MainActor.assumeIsolated { self?.receive(.session(event)) }
@@ -230,6 +242,12 @@ final class ForayEngine {
         seams.deck.onEvent = nil
         seams.deck.invalidate()
         seams.speaker.onFinish = nil
+        seams.speaker.onNarratorEvent = nil
+        // Nothing sounds past a teardown: the jingle and the silence node are
+        // stopped here too, whatever the core's own teardown already asked.
+        seams.interlude?.onEnded = nil
+        seams.interlude?.release()
+        seams.silence?.stop()
         probe?.cancel()
         inbox = []
         onTurnCompleted = nil
@@ -462,7 +480,7 @@ final class ForayEngine {
             // The playhead jumps: Now Playing is rewritten after this turn
             // whatever the drift check would say (plan §4.5: every seek).
             case .seek, .load, .unload: surfaceMoved = true
-            case .play, .pause, .setRate, .setOutPoint: break
+            case .play, .pause, .setRate, .setOutPoint, .prepare: break
             }
             seams.deck.send(deckCommand)
         case let .sessionActivate(requestId):
@@ -496,6 +514,21 @@ final class ForayEngine {
             seams.output.writeRestore(record)
         case let .speak(text, voiceId):
             seams.speaker.speak(text: text, voiceId: voiceId)
+        case let .narration(command):
+            // The narrating overlay's synthesiser: SpeechNarrator (NE-33), the
+            // same one that speaks an audition. Its answers come back through
+            // `onNarratorEvent`, after this turn (the inbox). The core asks
+            // only with the Foray tape on (the shipping boot's, since NE-37).
+            seams.speaker.narrate(command)
+        case let .interlude(command):
+            interpretInterlude(command)
+        case let .silenceStart(capMs):
+            startSilence(capMs: capMs)
+        case .silenceStop:
+            seams.silence?.stop()
+        case .narrationPulse:
+            // A spoken line's clock moved with no deck event to say so.
+            surfaceMoved = true
         case let .emit(event):
             seams.output.emit(event)
             onEmit?(event)
@@ -543,7 +576,8 @@ final class ForayEngine {
         let moved = surfaceMoved
         surfaceMoved = false
 
-        guard !availability.clearsNowPlaying, let view = core.mediaView(deck: seams.deck.reading) else {
+        guard !availability.clearsNowPlaying,
+              let view = core.mediaView(deck: seams.deck.reading, monoMs: seams.timing.monoMs) else {
             // Nil ONLY for a finished Foray, a close or a data deletion, and
             // only if the engine had written something (a fresh engine does
             // not wipe an entry it never owned).
@@ -631,6 +665,40 @@ final class ForayEngine {
             if let previous, previous.contains(command) == on { continue }
             seams.remote.setEnabled(on, for: command)
         }
+    }
+
+    // MARK: - The interlude jingle and the silence node (NE-34)
+
+    /// The core asks only when `interludeAvailable` is on and its session is
+    /// active; InterludePlayer checks the real session again. A start that is
+    /// not honoured (no player, or the player refused) is answered the way
+    /// the JS answers a refused `start()`: an immediate `ended(refused)`,
+    /// after this turn (the inbox), so the seam shrinks back to the beat.
+    private func interpretInterlude(_ command: InterludeCommand) {
+        switch command {
+        case .start:
+            if seams.interlude?.start() != true { handle(.interlude(.ended(reason: "refused"))) }
+        case .stop:
+            seams.interlude?.stop()
+        case .release:
+            seams.interlude?.release()
+        }
+    }
+
+    /// The silence node (flagged off: the boot builds none unless
+    /// `silenceNodeEnabled`). It never runs for a transport that is not
+    /// running or without the session, whatever the command says; its own
+    /// cap is `min(capMs, INTERLUDE_CEILING_SEC)` from now, the out-point.
+    private func startSilence(capMs: Double) {
+        guard let silence = seams.silence else { return }
+        guard core.state.isRunning, core.state.session == .active else {
+            seams.output.diag(DiagEntry(kind: "silence", fields: [
+                JSONMember("kind", .string("node-refused")),
+                JSONMember("why", .string(core.state.isRunning ? "no-session" : "not-running"))
+            ]))
+            return
+        }
+        _ = silence.start(capMs: capMs)
     }
 
     // MARK: - BackgroundGrace

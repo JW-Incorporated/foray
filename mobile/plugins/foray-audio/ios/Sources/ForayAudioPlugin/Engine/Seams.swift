@@ -196,17 +196,70 @@ enum SpeechEnd: String, Equatable, Sendable {
     /// `didCancel`: stopped before the end (a `stopSpeaking`, a new line, an
     /// interruption that took the session).
     case cancelled
+    /// The output could not play the line at all (its first buffer could not
+    /// be converted, connected or started). Like the JS plugins' `finished`
+    /// carrying `error` (audit round 3, mobile-native-3), the line is OVER: a
+    /// narration line advances at once instead of running its clock over
+    /// silence to the deadline.
+    case failed
 }
 
+/// The engine's one synthesizer (SpeechNarrator, NE-33): the audition line
+/// (OQ-5) and the Foray's narration, never both at once (an audition is
+/// refused `engine-busy` while the engine runs).
 protocol Speaking: AnyObject {
-    /// The end of the utterance in flight, ON MAIN, once per `speak`. The host
-    /// sets it at start and clears it at teardown. NE-25c's session probe
-    /// waits on it (DV-9 is "what happens to the session after `didFinish`");
-    /// NE-33's narrator will turn it into a core input.
+    /// The end of the AUDITION line in flight, ON MAIN, once per `speak`. The
+    /// host sets it at start and clears it at teardown. NE-25c's session probe
+    /// waits on it (DV-9 is "what happens to the session after `didFinish`").
     var onFinish: ((SpeechEnd) -> Void)? { get set }
+    /// What the synthesizer says about a line of NARRATION, keyed by the
+    /// utterance `seq` the core stamped on `narrate(.speak)`: the core's
+    /// `NarratorEvent` input, delivered on main (the host feeds it back into
+    /// the core, after the turn in progress).
+    var onNarratorEvent: ((NarratorEvent) -> Void)? { get set }
     /// Audible: the core emits it only after an activation (OQ-5).
     func speak(text: String, voiceId: String?)
     func stopSpeaking()
+    /// Carry out one of the core's narration commands (speak is audible, and
+    /// the core emits it only with the session active).
+    func narrate(_ command: NarrationCommand)
+}
+
+// MARK: - The interlude jingle (InterludePlayer, NE-34)
+
+/// The seam's jingle: one short bundled asset at 1.0x (plan §14 NE-34). The
+/// core decides WHEN (`EngineCommand.interlude`); the conformer only plays it
+/// and says when it stopped sounding.
+protocol InterludePlaying: AnyObject {
+    /// The jingle stopped sounding by itself, ON MAIN, at most once per
+    /// accepted `start()`: `ended` (the file ran out), `error` (it failed
+    /// mid-play) or `ceiling` (neither came within `INTERLUDE_CEILING_SEC`,
+    /// so the conformer stopped it). Never for a `stop()` or a `release()`.
+    /// The host sets it at start and clears it at teardown.
+    var onEnded: ((String) -> Void)? { get set }
+    /// Start from the first frame. Audible, so it refuses (false, and a
+    /// `fault` row) unless the engine's session is active; false too when
+    /// the asset cannot play. A start while sounding restarts it.
+    func start() -> Bool
+    /// Silence it without an end report (a transport action cut the beat).
+    func stop()
+    /// Stop and drop the decoded asset (the engine's teardown).
+    func release()
+}
+
+// MARK: - The silence node (SilenceNode, NE-34; behind `silenceNodeEnabled`, OFF)
+
+/// Digital silence rendered through the engine's own session so the process
+/// keeps rendering across a silent seam (timing only, L-3). OFF by default
+/// (`EngineConfig.silenceNodeEnabled`): the boot builds no conformer at all
+/// unless the flag is on.
+protocol SilenceRendering: AnyObject {
+    /// Start rendering, for at most `min(capMs, INTERLUDE_CEILING_SEC)` from
+    /// now: the conformer stops ITSELF at that cap whatever the load does.
+    /// Refuses (false) unless the session is active.
+    func start(capMs: Double) -> Bool
+    func stop()
+    var isRunning: Bool { get }
 }
 
 // MARK: - Clocks and timers (MainQueueTiming)
@@ -267,6 +320,11 @@ struct EngineSeams {
     var output: EngineOutput
     /// Optional so a world without persistence (most tests) needs no store.
     var holdPolicy: HoldPolicyStoring? = nil
+    /// The seam's jingle (NE-34). Nil: every `interlude(.start)` is answered
+    /// `ended(refused)` at once, and the boot leaves `interludeAvailable` off.
+    var interlude: InterludePlaying? = nil
+    /// The silence node (NE-34), built only when `silenceNodeEnabled` is on.
+    var silence: SilenceRendering? = nil
     /// Ends the process: Developer "Simulate system termination" (NE-24,
     /// DV-7a) and nothing else. The boot supplies the real one; nil (every
     /// test world) records the decision in the row and exits nothing.

@@ -10,7 +10,7 @@ import ForayEngineCore
 /// listener who presses play first, a relinquish mid-run).
 ///
 /// The phone run differs only in which seams are real: the same host, the
-/// same core, `PreviewSpeaker` instead of `FakeSpeaker`. So what is pinned
+/// same core, `SpeechNarrator` instead of `FakeSpeaker`. So what is pinned
 /// here is what the DV-9 row will mean.
 ///
 /// Each test names the edit that turns it red.

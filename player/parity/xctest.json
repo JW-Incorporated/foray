@@ -1,10 +1,35 @@
 {
   "//": "Covered-suite tests (coverage.js COVERED_SUITES) that a named XCTest method stands for: suite stem -> test name -> \"xctest:<Class>/<testMethod>\". coverage.test.js greps the Swift test sources under mobile/plugins for every mapping, so a renamed or deleted XCTest turns it red.",
+  "queue-manager": {
+    "ROUND 2 review: a deadline that lands mid-transition retries on the next tick instead of killing the ticker": "xctest:NarrationOverlayTests/testADeadlineTickNeverLandsMidTransitionAndNeverAdvancesTwice",
+    "a `finished` naming another utterance is stale and is dropped; this line's own advances (mobile-native-2)": "xctest:ForayCatchUpTests/testAFinishForAnotherUtteranceIsStaleAndOnlyThisLinesOwnAdvances",
+    "a narration load superseded while speak() is in flight stops talking over the next item (player-core-4)": "xctest:ForayCatchUpTests/testASpeakThePlayerLeftIsSilencedNeverTalkingOverTheNextItem",
+    "stop() while a narration line's speak() is in flight leaves no voice behind (player-core-7)": "xctest:ForayCatchUpTests/testASpeakThePlayerLeftIsSilencedNeverTalkingOverTheNextItem",
+    "a pause during a rendered bridge's load is not undone when the load lands (player-core-2)": "xctest:ForayCatchUpTests/testAPauseOrStopDuringARenderedBridgesLoadIsNotUndoneWhenItLands",
+    "a stop during a rendered bridge's load leaves no audio behind a closed player (player-core-2)": "xctest:ForayCatchUpTests/testAPauseOrStopDuringARenderedBridgesLoadIsNotUndoneWhenItLands",
+    "a pause while a SYNTH bridge's speak() is in flight silences the voice (player-core-2)": "xctest:ForayCatchUpTests/testAPauseWhileASpokenBridgesSpeakIsInFlightSilencesTheVoice",
+    "a stale speak() does not stop the NEWER line that replaced it (player-core-4)": "xctest:ForayCatchUpTests/testAStaleSpeakNeverStopsTheNewerLineThatReplacedIt",
+    "a preview's `finished` never advances past narration (mobile-native-2)": "xctest:SpeechNarratorCatchUpTests/testAPreviewsEndIsNeverANarrationEvent",
+    "an engine error reported on `finished` moves on at once (mobile-native-3)": "xctest:SpeechNarratorCatchUpTests/testALineTheOutputCouldNotPlayIsOverAndAdvances",
+    "§14: a LATE error from a file that timed out does not stop the line being read in its place": "xctest:ForayCatchUpTests/testLateReportsAboutAFailedFileNeverStopItsSpokenLine",
+    "§14: an error from the failed file while the fallback's speak() is in flight does not stop it": "xctest:ForayCatchUpTests/testLateReportsAboutAFailedFileNeverStopItsSpokenLine",
+    "§14: a second error while a sounding line is already falling back does not speak it twice": "xctest:ForayCatchUpTests/testAFileThatFailsWhileSoundingIsSpokenOnceFromItsFirstWord",
+    "§14: a failing load the listener has already skipped past is not spoken": "xctest:ForayCatchUpTests/testAFailingLoadTheListenerSkippedPastIsNotSpoken"
+  },
   "html-audio-backend": {
     "a first load that stalls without erroring also degrades rather than hanging": "xctest:AVDeckTests/testANeverReadyUrlHitsTheDeadlineWithNoPreroll",
+    "a released backend refuses further work instead of half-operating": "xctest:AVDeckTests/testInvalidateSilencesDetachesAndStopsReporting",
+    "an item with no audio_url rejects rather than loading an empty src": "xctest:AVDeckTests/testALoadWithNoUsableUrlFailsThatLoad",
+    "load applies the start offset AFTER metadata, never before": "xctest:AVDeckTests/testOffsetLandsOnTheCbrMp3AndTheWav",
+    "load does not resolve until the seek has settled near the offset": "xctest:AVDeckTests/testOffsetLandsOnTheCbrMp3AndTheWav",
+    "load resolves once the element can produce audio": "xctest:AVDeckTests/testNothingIsAudibleBeforeReady",
+    "loading a second item reuses the same element": "xctest:AVDeckTests/testALoadSilencesTheDeckBeforeTheNextItemAttaches",
     "on a real clock the boundary fires and never clips at 2x either": "xctest:InOutPointMeasurementTests/testOutPointOvershootAtOneAndTwoTimesAndNeverEarly",
     "on a real clock the boundary fires and never clips, at every phase of a tick": "xctest:InOutPointMeasurementTests/testOutPointOvershootAtOneAndTwoTimesAndNeverEarly",
-    "rate set before play survives the load that reset it": "xctest:AVDeckTests/testRateIsHeldAcrossThreeLoads"
+    "rate set before play survives the load that reset it": "xctest:AVDeckTests/testRateIsHeldAcrossThreeLoads",
+    "release stops playback, drops the buffer and detaches listeners": "xctest:AVDeckTests/testInvalidateSilencesDetachesAndStopsReporting",
+    "release stops the watch dead": "xctest:AVDeckTests/testInvalidateSilencesDetachesAndStopsReporting",
+    "the element's ended event reaches the manager": "xctest:AVDeckTests/testTheEndIsEndedNotAnUncommandedPause"
   },
   "transport-reconcile": {
     "AUDIT: a superseded load's listeners do not touch its successor's playhead": "xctest:AVDeckTests/testASupersededLoadIsSilent",
@@ -14,6 +39,16 @@
     "a file that simply ran out is not an interruption": "xctest:AVDeckTests/testTheEndIsEndedNotAnUncommandedPause",
     "a pause nobody asked for is reported; one we caused is not": "xctest:AVDeckTests/testAnExternalPauseBecomesAReconcileInput",
     "paused and ended are read off the element, not off what we believe": "xctest:AVDeckTests/testTheReadingFollowsTheLoadAndThePlay",
-    "the out-point's own pause is not an unexplained one": "xctest:AVDeckTests/testTheUncommandedPauseRule"
+    "the out-point's own pause is not an unexplained one": "xctest:AVDeckTests/testTheUncommandedPauseRule",
+    "AUDIT: play on a FINISHED Foray starts it over instead of replaying its last segment": "xctest:ForayTapeTests/testPlayOnAnEndedForayStartsAtZero",
+    "a position that CAN be read is still written, so the refusal is not a mute": "xctest:ForayTapeTests/testTheCpForayCadence",
+    "a Foray played to the end is MARKED 'Played', not wiped back to unplayed (honesty-2)": "xctest:ForayTapeTests/testTheCpForayCadence",
+    "A FAILED SEAM MUST NOT REWRITE THE RESUME ROW WITH THE FAILED SEGMENT'S IN-POINT": "xctest:ForayTapeTests/testAFailedSeamLoadNeverWritesTheClipThatNeverLoaded",
+    "THE STORE IS NEVER HANDED A POSITION NOBODY READ": "xctest:ForayTapeTests/testAFailedSeamLoadNeverWritesTheClipThatNeverLoaded",
+    "THE POSITION THE ROUTE DIED AT IS WRITTEN, past the save throttle": "xctest:ForayTapeTests/testALostRouteWritesWhereItDiedPastTheThrottle",
+    "ROUND 2 races-1: a resume superseded by Next clip inside its load window never seeks the new clip": "xctest:ForayTapeTests/testAResumeSupersededByNextNeverSeeksTheNewClip",
+    "a scrub made while paused survives starting a Foray (audit round 3, player-core-8)": "xctest:PositionFlushTests/testAScrubMadeWhilePausedSurvivesStartingAForay",
+    "a skip from a PAUSED narration line to the next line is heard, not queued behind the pause (audit round 3, mobile-native-1)": "xctest:SpeechNarratorCatchUpTests/testANewLineAfterAPausedOneIsSpokenNotQueuedBehindThePause",
+    "‹‹ after a failed Foray load retries the clip; it never marks the Foray Played (audit round 3, player-core-1)": "xctest:ForayCatchUpTests/testPreviousAfterAFailedForayLoadRetriesTheClipAndNeverFinishesTheForay"
   }
 }

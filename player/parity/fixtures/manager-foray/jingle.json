@@ -1,0 +1,2110 @@
+{
+  "family": "manager-foray",
+  "note": "The interlude jingle's CLOCK (queue-manager.js §13; NE-31j): it rides the seam beat's machinery — starts at the boundary, absorbs the next load, holds playback until it ends or the INTERLUDE_CEILING_SEC ceiling cuts it, and dies with the beat on any transport action. The RULE (which seams get one) is the interlude family's. Port card NE-31s.",
+  "cases": [
+    {
+      "id": "manager-foray/the-jingle-starts-at-the-boundary-and-holds-the-tape",
+      "covers": [
+        "queue-manager::segment -> segment: the jingle starts at the boundary, the next load runs under it, and playback waits for it"
+      ],
+      "note": "It starts at the out-point, the next load runs under it, the beat alone does not release it, and the tape starts when it ends.",
+      "setup": {
+        "target": "manager",
+        "catalogue": {
+          "ep-static": {
+            "id": "ep-static",
+            "audio_url": "https://cdn.example/static.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Static",
+            "show": "Indie"
+          },
+          "ep-other": {
+            "id": "ep-other",
+            "audio_url": "https://cdn.example/other.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Other",
+            "show": "Indie"
+          },
+          "ep-dai": {
+            "id": "ep-dai",
+            "audio_url": "https://cdn.example/dai.mp3",
+            "dai_suspected": true,
+            "duration_sec": 2501,
+            "title": "Stitched",
+            "show": "Big"
+          }
+        },
+        "interlude": true,
+        "scheduler": "manual",
+        "view": ["seamGapRemainingMs", "timersLive"]
+      },
+      "steps": [
+        {
+          "call": "playForay",
+          "args": [
+            {
+              "id": "foray-1",
+              "title": "Fire",
+              "items": [
+                {
+                  "type": "segment",
+                  "item_id": "ep-static",
+                  "start_sec": 100,
+                  "end_sec": 210,
+                  "why": "he explains it plainly"
+                },
+                {
+                  "type": "segment",
+                  "item_id": "ep-other",
+                  "start_sec": 400,
+                  "end_sec": 500,
+                  "why": "he explains it plainly"
+                },
+                {
+                  "type": "segment",
+                  "item_id": "ep-static",
+                  "start_sec": 900,
+                  "end_sec": 1000,
+                  "why": "he explains it plainly"
+                }
+              ]
+            }
+          ]
+        },
+        { "deck": "time", "sec": 210 },
+        { "deck": "ended", "reason": "outPoint" },
+        { "checkpoint": "boundary" },
+        { "clock": 500 },
+        { "checkpoint": "beat-spent" },
+        { "interlude": "end" },
+        { "settle": 1 },
+        { "checkpoint": "tape" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": true,
+            "inSeamGap": true,
+            "index": 1,
+            "name": "boundary",
+            "ops": [
+              "load:foray-1#0@100",
+              "rate:1",
+              "outPoint:210",
+              "play",
+              "interlude.start",
+              "load:foray-1#1@400"
+            ],
+            "playhead": "foray-1#1",
+            "rate": 1,
+            "seamGapRemainingMs": 4500,
+            "state": "loadingItem",
+            "timersLive": 1
+          },
+          {
+            "inInterlude": true,
+            "inSeamGap": true,
+            "index": 1,
+            "name": "beat-spent",
+            "ops": [],
+            "playhead": "foray-1#1",
+            "rate": 1,
+            "seamGapRemainingMs": 4000,
+            "state": "loadingItem",
+            "timersLive": 1
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "tape",
+            "ops": ["interlude.ended:ended", "rate:1", "outPoint:500", "play"],
+            "playhead": "foray-1#1",
+            "rate": 1,
+            "seamGapRemainingMs": 0,
+            "state": "playing",
+            "timersLive": 0
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "end",
+            "ops": [],
+            "playhead": "foray-1#1",
+            "rate": 1,
+            "seamGapRemainingMs": 0,
+            "state": "playing",
+            "timersLive": 0
+          }
+        ],
+        "ops": [
+          "load:foray-1#0@100",
+          "rate:1",
+          "outPoint:210",
+          "play",
+          "interlude.start",
+          "load:foray-1#1@400",
+          "interlude.ended:ended",
+          "rate:1",
+          "outPoint:500",
+          "play"
+        ]
+      }
+    },
+    {
+      "id": "manager-foray/no-jingle-before-the-first-item",
+      "covers": [
+        "queue-manager::never before the first item: pressing play starts the tape, not a jingle"
+      ],
+      "note": "There is nothing to mark off from.",
+      "setup": {
+        "target": "manager",
+        "catalogue": {
+          "ep-static": {
+            "id": "ep-static",
+            "audio_url": "https://cdn.example/static.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Static",
+            "show": "Indie"
+          },
+          "ep-other": {
+            "id": "ep-other",
+            "audio_url": "https://cdn.example/other.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Other",
+            "show": "Indie"
+          },
+          "ep-dai": {
+            "id": "ep-dai",
+            "audio_url": "https://cdn.example/dai.mp3",
+            "dai_suspected": true,
+            "duration_sec": 2501,
+            "title": "Stitched",
+            "show": "Big"
+          }
+        },
+        "interlude": true,
+        "scheduler": "manual",
+        "view": ["seamGapRemainingMs", "timersLive"]
+      },
+      "steps": [
+        {
+          "call": "playForay",
+          "args": [
+            {
+              "id": "foray-1",
+              "title": "Fire",
+              "items": [
+                {
+                  "type": "segment",
+                  "item_id": "ep-static",
+                  "start_sec": 100,
+                  "end_sec": 210,
+                  "why": "he explains it plainly"
+                },
+                {
+                  "type": "segment",
+                  "item_id": "ep-other",
+                  "start_sec": 400,
+                  "end_sec": 500,
+                  "why": "he explains it plainly"
+                },
+                {
+                  "type": "segment",
+                  "item_id": "ep-static",
+                  "start_sec": 900,
+                  "end_sec": 1000,
+                  "why": "he explains it plainly"
+                }
+              ]
+            }
+          ]
+        },
+        { "checkpoint": "playing" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "playing",
+            "ops": ["load:foray-1#0@100", "rate:1", "outPoint:210", "play"],
+            "playhead": "foray-1#0",
+            "rate": 1,
+            "seamGapRemainingMs": 0,
+            "state": "playing",
+            "timersLive": 0
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "end",
+            "ops": [],
+            "playhead": "foray-1#0",
+            "rate": 1,
+            "seamGapRemainingMs": 0,
+            "state": "playing",
+            "timersLive": 0
+          }
+        ],
+        "ops": ["load:foray-1#0@100", "rate:1", "outPoint:210", "play"]
+      }
+    },
+    {
+      "id": "manager-foray/the-jingle-follows-narration-into-the-tape",
+      "covers": [
+        "queue-manager::narration -> segment gets the jingle after the line; segment -> narration does not"
+      ],
+      "note": "Narration is the marker into narration; the jingle sounds between the narrator's line and the tape.",
+      "setup": {
+        "target": "manager",
+        "catalogue": {
+          "ep-static": {
+            "id": "ep-static",
+            "audio_url": "https://cdn.example/static.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Static",
+            "show": "Indie"
+          },
+          "ep-other": {
+            "id": "ep-other",
+            "audio_url": "https://cdn.example/other.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Other",
+            "show": "Indie"
+          },
+          "ep-dai": {
+            "id": "ep-dai",
+            "audio_url": "https://cdn.example/dai.mp3",
+            "dai_suspected": true,
+            "duration_sec": 2501,
+            "title": "Stitched",
+            "show": "Big"
+          }
+        },
+        "interlude": true,
+        "scheduler": "manual",
+        "view": ["seamGapRemainingMs", "timersLive"]
+      },
+      "steps": [
+        {
+          "call": "playForay",
+          "args": [
+            {
+              "id": "foray-1",
+              "title": "Fire",
+              "items": [
+                {
+                  "type": "segment",
+                  "item_id": "ep-static",
+                  "start_sec": 100,
+                  "end_sec": 210,
+                  "why": "he explains it plainly"
+                },
+                { "type": "narration", "id": "nar-1", "asset": "narration/fire-1.mp3" },
+                {
+                  "type": "segment",
+                  "item_id": "ep-static",
+                  "start_sec": 400,
+                  "end_sec": 500,
+                  "why": "he explains it plainly"
+                }
+              ]
+            }
+          ]
+        },
+        { "deck": "time", "sec": 210 },
+        { "deck": "ended", "reason": "outPoint" },
+        { "checkpoint": "into-narration" },
+        { "deck": "ended", "reason": "natural" },
+        { "checkpoint": "into-tape" },
+        { "interlude": "end" },
+        { "clock": 500 },
+        { "checkpoint": "tape" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "into-narration",
+            "ops": [
+              "load:foray-1#0@100",
+              "rate:1",
+              "outPoint:210",
+              "play",
+              "rate:1",
+              "load:nar-1@0",
+              "play"
+            ],
+            "playhead": "nar-1",
+            "rate": 1,
+            "seamGapRemainingMs": 0,
+            "state": "transitioning",
+            "timersLive": 0
+          },
+          {
+            "inInterlude": true,
+            "inSeamGap": true,
+            "index": 2,
+            "name": "into-tape",
+            "ops": ["interlude.start", "rate:1", "load:foray-1#2@400"],
+            "playhead": "foray-1#2",
+            "rate": 1,
+            "seamGapRemainingMs": 4500,
+            "state": "loadingItem",
+            "timersLive": 1
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 2,
+            "name": "tape",
+            "ops": ["interlude.ended:ended", "rate:1", "outPoint:500", "play"],
+            "playhead": "foray-1#2",
+            "rate": 1,
+            "seamGapRemainingMs": 0,
+            "state": "playing",
+            "timersLive": 0
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 2,
+            "name": "end",
+            "ops": [],
+            "playhead": "foray-1#2",
+            "rate": 1,
+            "seamGapRemainingMs": 0,
+            "state": "playing",
+            "timersLive": 0
+          }
+        ],
+        "ops": [
+          "load:foray-1#0@100",
+          "rate:1",
+          "outPoint:210",
+          "play",
+          "rate:1",
+          "load:nar-1@0",
+          "play",
+          "interlude.start",
+          "rate:1",
+          "load:foray-1#2@400",
+          "interlude.ended:ended",
+          "rate:1",
+          "outPoint:500",
+          "play"
+        ]
+      }
+    },
+    {
+      "id": "manager-foray/one-jingle-after-a-narration-chain",
+      "covers": [
+        "queue-manager::never between two narration items: a narration chain gets one jingle, into the tape"
+      ],
+      "note": "Narration -> narration: none; narration -> segment: exactly one.",
+      "setup": {
+        "target": "manager",
+        "catalogue": {
+          "ep-static": {
+            "id": "ep-static",
+            "audio_url": "https://cdn.example/static.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Static",
+            "show": "Indie"
+          },
+          "ep-other": {
+            "id": "ep-other",
+            "audio_url": "https://cdn.example/other.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Other",
+            "show": "Indie"
+          },
+          "ep-dai": {
+            "id": "ep-dai",
+            "audio_url": "https://cdn.example/dai.mp3",
+            "dai_suspected": true,
+            "duration_sec": 2501,
+            "title": "Stitched",
+            "show": "Big"
+          }
+        },
+        "interlude": true,
+        "scheduler": "manual",
+        "view": ["seamGapRemainingMs", "timersLive"]
+      },
+      "steps": [
+        {
+          "call": "playForay",
+          "args": [
+            {
+              "id": "foray-1",
+              "title": "Fire",
+              "items": [
+                { "type": "narration", "id": "nar-1", "asset": "narration/one.mp3" },
+                { "type": "narration", "id": "nar-2", "asset": "narration/two.mp3" },
+                {
+                  "type": "segment",
+                  "item_id": "ep-static",
+                  "start_sec": 100,
+                  "end_sec": 210,
+                  "why": "he explains it plainly"
+                }
+              ]
+            }
+          ]
+        },
+        { "deck": "ended", "reason": "natural" },
+        { "checkpoint": "chain" },
+        { "deck": "ended", "reason": "natural" },
+        { "checkpoint": "into-tape" },
+        { "interlude": "end" },
+        { "clock": 500 },
+        { "checkpoint": "tape" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "chain",
+            "ops": ["load:nar-1@0", "rate:1", "play", "rate:1", "load:nar-2@0", "play"],
+            "playhead": "nar-2",
+            "rate": 1,
+            "seamGapRemainingMs": 0,
+            "state": "transitioning",
+            "timersLive": 0
+          },
+          {
+            "inInterlude": true,
+            "inSeamGap": true,
+            "index": 2,
+            "name": "into-tape",
+            "ops": ["interlude.start", "rate:1", "load:foray-1#2@100"],
+            "playhead": "foray-1#2",
+            "rate": 1,
+            "seamGapRemainingMs": 4500,
+            "state": "loadingItem",
+            "timersLive": 1
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 2,
+            "name": "tape",
+            "ops": ["interlude.ended:ended", "rate:1", "outPoint:210", "play"],
+            "playhead": "foray-1#2",
+            "rate": 1,
+            "seamGapRemainingMs": 0,
+            "state": "playing",
+            "timersLive": 0
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 2,
+            "name": "end",
+            "ops": [],
+            "playhead": "foray-1#2",
+            "rate": 1,
+            "seamGapRemainingMs": 0,
+            "state": "playing",
+            "timersLive": 0
+          }
+        ],
+        "ops": [
+          "load:nar-1@0",
+          "rate:1",
+          "play",
+          "rate:1",
+          "load:nar-2@0",
+          "play",
+          "interlude.start",
+          "rate:1",
+          "load:foray-1#2@100",
+          "interlude.ended:ended",
+          "rate:1",
+          "outPoint:210",
+          "play"
+        ]
+      }
+    },
+    {
+      "id": "manager-foray/no-jingle-after-the-last-item",
+      "covers": ["queue-manager::never after the last item: the Foray simply ends"],
+      "note": "The Foray ends; nothing sounds after it.",
+      "setup": {
+        "target": "manager",
+        "catalogue": {
+          "ep-static": {
+            "id": "ep-static",
+            "audio_url": "https://cdn.example/static.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Static",
+            "show": "Indie"
+          },
+          "ep-other": {
+            "id": "ep-other",
+            "audio_url": "https://cdn.example/other.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Other",
+            "show": "Indie"
+          },
+          "ep-dai": {
+            "id": "ep-dai",
+            "audio_url": "https://cdn.example/dai.mp3",
+            "dai_suspected": true,
+            "duration_sec": 2501,
+            "title": "Stitched",
+            "show": "Big"
+          }
+        },
+        "interlude": true,
+        "scheduler": "manual",
+        "view": ["seamGapRemainingMs", "timersLive"]
+      },
+      "steps": [
+        {
+          "call": "playForay",
+          "args": [
+            {
+              "id": "foray-1",
+              "title": "Fire",
+              "items": [
+                {
+                  "type": "segment",
+                  "item_id": "ep-static",
+                  "start_sec": 100,
+                  "end_sec": 210,
+                  "why": "he explains it plainly"
+                }
+              ]
+            }
+          ]
+        },
+        { "deck": "time", "sec": 210 },
+        { "deck": "ended", "reason": "outPoint" },
+        { "checkpoint": "ended" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "ended",
+            "ops": ["load:foray-1#0@100", "rate:1", "outPoint:210", "play"],
+            "playhead": "foray-1#0",
+            "rate": 1,
+            "seamGapRemainingMs": 0,
+            "state": "ended",
+            "timersLive": 0
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "end",
+            "ops": [],
+            "playhead": "foray-1#0",
+            "rate": 1,
+            "seamGapRemainingMs": 0,
+            "state": "ended",
+            "timersLive": 0
+          }
+        ],
+        "ops": ["load:foray-1#0@100", "rate:1", "outPoint:210", "play"]
+      }
+    },
+    {
+      "id": "manager-foray/the-jingle-is-not-a-queue-item",
+      "covers": [
+        "queue-manager::the jingle is not a queue item: the queue, the runtime and the index are what the Foray authored"
+      ],
+      "note": "Three authored segments are three queue items; the jingle plays at the seam and the index moves by exactly one.",
+      "setup": {
+        "target": "manager",
+        "catalogue": {
+          "ep-static": {
+            "id": "ep-static",
+            "audio_url": "https://cdn.example/static.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Static",
+            "show": "Indie"
+          },
+          "ep-other": {
+            "id": "ep-other",
+            "audio_url": "https://cdn.example/other.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Other",
+            "show": "Indie"
+          },
+          "ep-dai": {
+            "id": "ep-dai",
+            "audio_url": "https://cdn.example/dai.mp3",
+            "dai_suspected": true,
+            "duration_sec": 2501,
+            "title": "Stitched",
+            "show": "Big"
+          }
+        },
+        "interlude": true,
+        "scheduler": "manual",
+        "view": ["seamGapRemainingMs", "timersLive"]
+      },
+      "steps": [
+        {
+          "call": "setQueueFromForay",
+          "args": [
+            {
+              "id": "foray-1",
+              "title": "Fire",
+              "items": [
+                {
+                  "type": "segment",
+                  "item_id": "ep-static",
+                  "start_sec": 100,
+                  "end_sec": 210,
+                  "why": "he explains it plainly"
+                },
+                {
+                  "type": "segment",
+                  "item_id": "ep-other",
+                  "start_sec": 400,
+                  "end_sec": 500,
+                  "why": "he explains it plainly"
+                },
+                {
+                  "type": "segment",
+                  "item_id": "ep-static",
+                  "start_sec": 900,
+                  "end_sec": 1000,
+                  "why": "he explains it plainly"
+                }
+              ]
+            }
+          ],
+          "returns": "forayReport"
+        },
+        { "call": "play", "args": [0] },
+        { "deck": "time", "sec": 210 },
+        { "deck": "ended", "reason": "outPoint" },
+        { "checkpoint": "seam" },
+        { "interlude": "end" },
+        { "clock": 500 },
+        { "checkpoint": "next" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": true,
+            "inSeamGap": true,
+            "index": 1,
+            "name": "seam",
+            "ops": [
+              "load:foray-1#0@100",
+              "rate:1",
+              "outPoint:210",
+              "play",
+              "interlude.start",
+              "load:foray-1#1@400"
+            ],
+            "playhead": "foray-1#1",
+            "rate": 1,
+            "returned": [
+              {
+                "items": ["foray-1#0", "foray-1#1", "foray-1#2"],
+                "skipped": [],
+                "warnings": 0
+              }
+            ],
+            "seamGapRemainingMs": 4500,
+            "state": "loadingItem",
+            "timersLive": 1
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "next",
+            "ops": ["interlude.ended:ended", "rate:1", "outPoint:500", "play"],
+            "playhead": "foray-1#1",
+            "rate": 1,
+            "seamGapRemainingMs": 0,
+            "state": "playing",
+            "timersLive": 0
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "end",
+            "ops": [],
+            "playhead": "foray-1#1",
+            "rate": 1,
+            "seamGapRemainingMs": 0,
+            "state": "playing",
+            "timersLive": 0
+          }
+        ],
+        "ops": [
+          "load:foray-1#0@100",
+          "rate:1",
+          "outPoint:210",
+          "play",
+          "interlude.start",
+          "load:foray-1#1@400",
+          "interlude.ended:ended",
+          "rate:1",
+          "outPoint:500",
+          "play"
+        ]
+      }
+    },
+    {
+      "id": "manager-foray/pause-during-the-jingle-silences-it",
+      "covers": [
+        "queue-manager::pause during the jingle silences it, nothing starts, and no position is written for it"
+      ],
+      "note": "Pause cuts the jingle like it cuts the beat; nothing becomes audible after it and no position is written.",
+      "setup": {
+        "target": "manager",
+        "catalogue": {
+          "ep-static": {
+            "id": "ep-static",
+            "audio_url": "https://cdn.example/static.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Static",
+            "show": "Indie"
+          },
+          "ep-other": {
+            "id": "ep-other",
+            "audio_url": "https://cdn.example/other.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Other",
+            "show": "Indie"
+          },
+          "ep-dai": {
+            "id": "ep-dai",
+            "audio_url": "https://cdn.example/dai.mp3",
+            "dai_suspected": true,
+            "duration_sec": 2501,
+            "title": "Stitched",
+            "show": "Big"
+          }
+        },
+        "interlude": true,
+        "scheduler": "manual",
+        "view": ["seamGapRemainingMs", "timersLive"]
+      },
+      "steps": [
+        {
+          "call": "playForay",
+          "args": [
+            {
+              "id": "foray-1",
+              "title": "Fire",
+              "items": [
+                {
+                  "type": "segment",
+                  "item_id": "ep-static",
+                  "start_sec": 100,
+                  "end_sec": 210,
+                  "why": "he explains it plainly"
+                },
+                {
+                  "type": "segment",
+                  "item_id": "ep-other",
+                  "start_sec": 400,
+                  "end_sec": 500,
+                  "why": "he explains it plainly"
+                },
+                {
+                  "type": "segment",
+                  "item_id": "ep-static",
+                  "start_sec": 900,
+                  "end_sec": 1000,
+                  "why": "he explains it plainly"
+                }
+              ]
+            }
+          ]
+        },
+        { "deck": "time", "sec": 210 },
+        { "deck": "ended", "reason": "outPoint" },
+        { "checkpoint": "jingle" },
+        { "call": "pause" },
+        { "checkpoint": "paused" },
+        { "clock": 10000 },
+        { "checkpoint": "later" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": true,
+            "inSeamGap": true,
+            "index": 1,
+            "name": "jingle",
+            "ops": [
+              "load:foray-1#0@100",
+              "rate:1",
+              "outPoint:210",
+              "play",
+              "interlude.start",
+              "load:foray-1#1@400"
+            ],
+            "playhead": "foray-1#1",
+            "rate": 1,
+            "seamGapRemainingMs": 4500,
+            "state": "loadingItem",
+            "timersLive": 1
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "paused",
+            "ops": ["interlude.stop"],
+            "playhead": "foray-1#1",
+            "rate": 1,
+            "seamGapRemainingMs": 0,
+            "state": "interrupted",
+            "timersLive": 0
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "later",
+            "ops": [],
+            "playhead": "foray-1#1",
+            "rate": 1,
+            "seamGapRemainingMs": 0,
+            "state": "interrupted",
+            "timersLive": 0
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "end",
+            "ops": [],
+            "playhead": "foray-1#1",
+            "rate": 1,
+            "seamGapRemainingMs": 0,
+            "state": "interrupted",
+            "timersLive": 0
+          }
+        ],
+        "ops": [
+          "load:foray-1#0@100",
+          "rate:1",
+          "outPoint:210",
+          "play",
+          "interlude.start",
+          "load:foray-1#1@400",
+          "interlude.stop"
+        ]
+      }
+    },
+    {
+      "id": "manager-foray/next-during-the-jingle-silences-it",
+      "covers": [
+        "queue-manager::next during the jingle silences it, and a skip gets no jingle of its own (the listener named a destination)"
+      ],
+      "note": "The skip cuts the jingle, starts no second one, and lands on the third segment.",
+      "setup": {
+        "target": "manager",
+        "catalogue": {
+          "ep-static": {
+            "id": "ep-static",
+            "audio_url": "https://cdn.example/static.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Static",
+            "show": "Indie"
+          },
+          "ep-other": {
+            "id": "ep-other",
+            "audio_url": "https://cdn.example/other.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Other",
+            "show": "Indie"
+          },
+          "ep-dai": {
+            "id": "ep-dai",
+            "audio_url": "https://cdn.example/dai.mp3",
+            "dai_suspected": true,
+            "duration_sec": 2501,
+            "title": "Stitched",
+            "show": "Big"
+          }
+        },
+        "interlude": true,
+        "scheduler": "manual",
+        "view": ["seamGapRemainingMs", "timersLive"]
+      },
+      "steps": [
+        {
+          "call": "playForay",
+          "args": [
+            {
+              "id": "foray-1",
+              "title": "Fire",
+              "items": [
+                {
+                  "type": "segment",
+                  "item_id": "ep-static",
+                  "start_sec": 100,
+                  "end_sec": 210,
+                  "why": "he explains it plainly"
+                },
+                {
+                  "type": "segment",
+                  "item_id": "ep-other",
+                  "start_sec": 400,
+                  "end_sec": 500,
+                  "why": "he explains it plainly"
+                },
+                {
+                  "type": "segment",
+                  "item_id": "ep-static",
+                  "start_sec": 900,
+                  "end_sec": 1000,
+                  "why": "he explains it plainly"
+                }
+              ]
+            }
+          ]
+        },
+        { "deck": "time", "sec": 210 },
+        { "deck": "ended", "reason": "outPoint" },
+        { "call": "skipToNext" },
+        { "checkpoint": "skipped" },
+        { "clock": 10000 },
+        { "settle": 1 },
+        { "checkpoint": "later" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 2,
+            "name": "skipped",
+            "ops": [
+              "load:foray-1#0@100",
+              "rate:1",
+              "outPoint:210",
+              "play",
+              "interlude.start",
+              "load:foray-1#1@400",
+              "interlude.stop",
+              "load:foray-1#2@900",
+              "rate:1",
+              "outPoint:1000",
+              "play"
+            ],
+            "playhead": "foray-1#2",
+            "rate": 1,
+            "seamGapRemainingMs": 0,
+            "state": "playing",
+            "timersLive": 0
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 2,
+            "name": "later",
+            "ops": [],
+            "playhead": "foray-1#2",
+            "rate": 1,
+            "seamGapRemainingMs": 0,
+            "state": "playing",
+            "timersLive": 0
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 2,
+            "name": "end",
+            "ops": [],
+            "playhead": "foray-1#2",
+            "rate": 1,
+            "seamGapRemainingMs": 0,
+            "state": "playing",
+            "timersLive": 0
+          }
+        ],
+        "ops": [
+          "load:foray-1#0@100",
+          "rate:1",
+          "outPoint:210",
+          "play",
+          "interlude.start",
+          "load:foray-1#1@400",
+          "interlude.stop",
+          "load:foray-1#2@900",
+          "rate:1",
+          "outPoint:1000",
+          "play"
+        ]
+      }
+    },
+    {
+      "id": "manager-foray/a-jingle-that-cannot-start-leaves-the-beat",
+      "covers": ["queue-manager::a jingle that cannot start leaves the seam its ordinary beat"],
+      "note": "Refused: the seam is the 0.5 s beat and only the beat.",
+      "setup": {
+        "target": "manager",
+        "catalogue": {
+          "ep-static": {
+            "id": "ep-static",
+            "audio_url": "https://cdn.example/static.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Static",
+            "show": "Indie"
+          },
+          "ep-other": {
+            "id": "ep-other",
+            "audio_url": "https://cdn.example/other.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Other",
+            "show": "Indie"
+          },
+          "ep-dai": {
+            "id": "ep-dai",
+            "audio_url": "https://cdn.example/dai.mp3",
+            "dai_suspected": true,
+            "duration_sec": 2501,
+            "title": "Stitched",
+            "show": "Big"
+          }
+        },
+        "interlude": { "refuse": true },
+        "scheduler": "manual",
+        "view": ["seamGapRemainingMs", "timersLive"]
+      },
+      "steps": [
+        {
+          "call": "playForay",
+          "args": [
+            {
+              "id": "foray-1",
+              "title": "Fire",
+              "items": [
+                {
+                  "type": "segment",
+                  "item_id": "ep-static",
+                  "start_sec": 100,
+                  "end_sec": 210,
+                  "why": "he explains it plainly"
+                },
+                {
+                  "type": "segment",
+                  "item_id": "ep-other",
+                  "start_sec": 400,
+                  "end_sec": 500,
+                  "why": "he explains it plainly"
+                },
+                {
+                  "type": "segment",
+                  "item_id": "ep-static",
+                  "start_sec": 900,
+                  "end_sec": 1000,
+                  "why": "he explains it plainly"
+                }
+              ]
+            }
+          ]
+        },
+        { "deck": "time", "sec": 210 },
+        { "deck": "ended", "reason": "outPoint" },
+        { "checkpoint": "beat" },
+        { "clock": 499 },
+        { "checkpoint": "silent" },
+        { "clock": 1 },
+        { "checkpoint": "tape" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": true,
+            "index": 1,
+            "name": "beat",
+            "ops": [
+              "load:foray-1#0@100",
+              "rate:1",
+              "outPoint:210",
+              "play",
+              "interlude.refused",
+              "load:foray-1#1@400"
+            ],
+            "playhead": "foray-1#1",
+            "rate": 1,
+            "seamGapRemainingMs": 500,
+            "state": "loadingItem",
+            "timersLive": 1
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": true,
+            "index": 1,
+            "name": "silent",
+            "ops": [],
+            "playhead": "foray-1#1",
+            "rate": 1,
+            "seamGapRemainingMs": 1,
+            "state": "loadingItem",
+            "timersLive": 1
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "tape",
+            "ops": ["rate:1", "outPoint:500", "play"],
+            "playhead": "foray-1#1",
+            "rate": 1,
+            "seamGapRemainingMs": 0,
+            "state": "playing",
+            "timersLive": 0
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "end",
+            "ops": [],
+            "playhead": "foray-1#1",
+            "rate": 1,
+            "seamGapRemainingMs": 0,
+            "state": "playing",
+            "timersLive": 0
+          }
+        ],
+        "ops": [
+          "load:foray-1#0@100",
+          "rate:1",
+          "outPoint:210",
+          "play",
+          "interlude.refused",
+          "load:foray-1#1@400",
+          "rate:1",
+          "outPoint:500",
+          "play"
+        ]
+      }
+    },
+    {
+      "id": "manager-foray/a-jingle-that-ends-early-still-spends-the-beat",
+      "covers": ["queue-manager::a jingle that ends early still spends the beat"],
+      "note": "Dead 200 ms in, the beat still owes 300 ms.",
+      "setup": {
+        "target": "manager",
+        "catalogue": {
+          "ep-static": {
+            "id": "ep-static",
+            "audio_url": "https://cdn.example/static.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Static",
+            "show": "Indie"
+          },
+          "ep-other": {
+            "id": "ep-other",
+            "audio_url": "https://cdn.example/other.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Other",
+            "show": "Indie"
+          },
+          "ep-dai": {
+            "id": "ep-dai",
+            "audio_url": "https://cdn.example/dai.mp3",
+            "dai_suspected": true,
+            "duration_sec": 2501,
+            "title": "Stitched",
+            "show": "Big"
+          }
+        },
+        "interlude": true,
+        "scheduler": "manual",
+        "view": ["seamGapRemainingMs", "timersLive"]
+      },
+      "steps": [
+        {
+          "call": "playForay",
+          "args": [
+            {
+              "id": "foray-1",
+              "title": "Fire",
+              "items": [
+                {
+                  "type": "segment",
+                  "item_id": "ep-static",
+                  "start_sec": 100,
+                  "end_sec": 210,
+                  "why": "he explains it plainly"
+                },
+                {
+                  "type": "segment",
+                  "item_id": "ep-other",
+                  "start_sec": 400,
+                  "end_sec": 500,
+                  "why": "he explains it plainly"
+                },
+                {
+                  "type": "segment",
+                  "item_id": "ep-static",
+                  "start_sec": 900,
+                  "end_sec": 1000,
+                  "why": "he explains it plainly"
+                }
+              ]
+            }
+          ]
+        },
+        { "deck": "time", "sec": 210 },
+        { "deck": "ended", "reason": "outPoint" },
+        { "clock": 200 },
+        { "interlude": "end", "reason": "error" },
+        { "checkpoint": "ended-early" },
+        { "clock": 299 },
+        { "checkpoint": "silent" },
+        { "clock": 1 },
+        { "checkpoint": "tape" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": true,
+            "index": 1,
+            "name": "ended-early",
+            "ops": [
+              "load:foray-1#0@100",
+              "rate:1",
+              "outPoint:210",
+              "play",
+              "interlude.start",
+              "load:foray-1#1@400",
+              "interlude.ended:error"
+            ],
+            "playhead": "foray-1#1",
+            "rate": 1,
+            "seamGapRemainingMs": 300,
+            "state": "loadingItem",
+            "timersLive": 1
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": true,
+            "index": 1,
+            "name": "silent",
+            "ops": [],
+            "playhead": "foray-1#1",
+            "rate": 1,
+            "seamGapRemainingMs": 1,
+            "state": "loadingItem",
+            "timersLive": 1
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "tape",
+            "ops": ["rate:1", "outPoint:500", "play"],
+            "playhead": "foray-1#1",
+            "rate": 1,
+            "seamGapRemainingMs": 0,
+            "state": "playing",
+            "timersLive": 0
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "end",
+            "ops": [],
+            "playhead": "foray-1#1",
+            "rate": 1,
+            "seamGapRemainingMs": 0,
+            "state": "playing",
+            "timersLive": 0
+          }
+        ],
+        "ops": [
+          "load:foray-1#0@100",
+          "rate:1",
+          "outPoint:210",
+          "play",
+          "interlude.start",
+          "load:foray-1#1@400",
+          "interlude.ended:error",
+          "rate:1",
+          "outPoint:500",
+          "play"
+        ]
+      }
+    },
+    {
+      "id": "manager-foray/a-jingle-that-never-ends-is-cut-at-the-ceiling",
+      "covers": [
+        "queue-manager::a jingle that never reports ending is cut at the ceiling and the tape starts"
+      ],
+      "note": "INTERLUDE_CEILING_SEC (4.5 s) from the out-point: the jingle is cut and the tape starts, never two things audible at once.",
+      "setup": {
+        "target": "manager",
+        "catalogue": {
+          "ep-static": {
+            "id": "ep-static",
+            "audio_url": "https://cdn.example/static.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Static",
+            "show": "Indie"
+          },
+          "ep-other": {
+            "id": "ep-other",
+            "audio_url": "https://cdn.example/other.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Other",
+            "show": "Indie"
+          },
+          "ep-dai": {
+            "id": "ep-dai",
+            "audio_url": "https://cdn.example/dai.mp3",
+            "dai_suspected": true,
+            "duration_sec": 2501,
+            "title": "Stitched",
+            "show": "Big"
+          }
+        },
+        "interlude": true,
+        "scheduler": "manual",
+        "view": ["seamGapRemainingMs", "timersLive"]
+      },
+      "steps": [
+        {
+          "call": "playForay",
+          "args": [
+            {
+              "id": "foray-1",
+              "title": "Fire",
+              "items": [
+                {
+                  "type": "segment",
+                  "item_id": "ep-static",
+                  "start_sec": 100,
+                  "end_sec": 210,
+                  "why": "he explains it plainly"
+                },
+                {
+                  "type": "segment",
+                  "item_id": "ep-other",
+                  "start_sec": 400,
+                  "end_sec": 500,
+                  "why": "he explains it plainly"
+                },
+                {
+                  "type": "segment",
+                  "item_id": "ep-static",
+                  "start_sec": 900,
+                  "end_sec": 1000,
+                  "why": "he explains it plainly"
+                }
+              ]
+            }
+          ]
+        },
+        { "deck": "time", "sec": 210 },
+        { "deck": "ended", "reason": "outPoint" },
+        { "checkpoint": "jingle" },
+        { "clock": 500 },
+        { "checkpoint": "past-beat" },
+        { "clock": 3999 },
+        { "checkpoint": "before-ceiling" },
+        { "clock": 1 },
+        { "checkpoint": "ceiling" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": true,
+            "inSeamGap": true,
+            "index": 1,
+            "name": "jingle",
+            "ops": [
+              "load:foray-1#0@100",
+              "rate:1",
+              "outPoint:210",
+              "play",
+              "interlude.start",
+              "load:foray-1#1@400"
+            ],
+            "playhead": "foray-1#1",
+            "rate": 1,
+            "seamGapRemainingMs": 4500,
+            "state": "loadingItem",
+            "timersLive": 1
+          },
+          {
+            "inInterlude": true,
+            "inSeamGap": true,
+            "index": 1,
+            "name": "past-beat",
+            "ops": [],
+            "playhead": "foray-1#1",
+            "rate": 1,
+            "seamGapRemainingMs": 4000,
+            "state": "loadingItem",
+            "timersLive": 1
+          },
+          {
+            "inInterlude": true,
+            "inSeamGap": true,
+            "index": 1,
+            "name": "before-ceiling",
+            "ops": [],
+            "playhead": "foray-1#1",
+            "rate": 1,
+            "seamGapRemainingMs": 1,
+            "state": "loadingItem",
+            "timersLive": 1
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "ceiling",
+            "ops": ["interlude.stop", "rate:1", "outPoint:500", "play"],
+            "playhead": "foray-1#1",
+            "rate": 1,
+            "seamGapRemainingMs": 0,
+            "state": "playing",
+            "timersLive": 0
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "end",
+            "ops": [],
+            "playhead": "foray-1#1",
+            "rate": 1,
+            "seamGapRemainingMs": 0,
+            "state": "playing",
+            "timersLive": 0
+          }
+        ],
+        "ops": [
+          "load:foray-1#0@100",
+          "rate:1",
+          "outPoint:210",
+          "play",
+          "interlude.start",
+          "load:foray-1#1@400",
+          "interlude.stop",
+          "rate:1",
+          "outPoint:500",
+          "play"
+        ]
+      }
+    },
+    {
+      "id": "manager-foray/interlude-off-then-on",
+      "covers": [
+        "queue-manager::interludeEnabled: false plays no jingle; setInterludeEnabled(true) turns it on for the next seam"
+      ],
+      "note": "Off means off; turned on, the next seam has it.",
+      "setup": {
+        "target": "manager",
+        "catalogue": {
+          "ep-static": {
+            "id": "ep-static",
+            "audio_url": "https://cdn.example/static.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Static",
+            "show": "Indie"
+          },
+          "ep-other": {
+            "id": "ep-other",
+            "audio_url": "https://cdn.example/other.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Other",
+            "show": "Indie"
+          },
+          "ep-dai": {
+            "id": "ep-dai",
+            "audio_url": "https://cdn.example/dai.mp3",
+            "dai_suspected": true,
+            "duration_sec": 2501,
+            "title": "Stitched",
+            "show": "Big"
+          }
+        },
+        "interlude": true,
+        "scheduler": "manual",
+        "view": ["seamGapRemainingMs", "timersLive"],
+        "interludeEnabled": false
+      },
+      "steps": [
+        {
+          "call": "playForay",
+          "args": [
+            {
+              "id": "foray-1",
+              "title": "Fire",
+              "items": [
+                {
+                  "type": "segment",
+                  "item_id": "ep-static",
+                  "start_sec": 100,
+                  "end_sec": 210,
+                  "why": "he explains it plainly"
+                },
+                {
+                  "type": "segment",
+                  "item_id": "ep-other",
+                  "start_sec": 400,
+                  "end_sec": 500,
+                  "why": "he explains it plainly"
+                },
+                {
+                  "type": "segment",
+                  "item_id": "ep-static",
+                  "start_sec": 900,
+                  "end_sec": 1000,
+                  "why": "he explains it plainly"
+                }
+              ]
+            }
+          ]
+        },
+        { "deck": "time", "sec": 210 },
+        { "deck": "ended", "reason": "outPoint" },
+        { "clock": 500 },
+        { "checkpoint": "off" },
+        { "call": "setInterludeEnabled", "args": [true] },
+        { "deck": "time", "sec": 500 },
+        { "deck": "ended", "reason": "outPoint" },
+        { "checkpoint": "on" },
+        { "interlude": "end" },
+        { "clock": 500 },
+        { "checkpoint": "third" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "off",
+            "ops": [
+              "load:foray-1#0@100",
+              "rate:1",
+              "outPoint:210",
+              "play",
+              "load:foray-1#1@400",
+              "rate:1",
+              "outPoint:500",
+              "play"
+            ],
+            "playhead": "foray-1#1",
+            "rate": 1,
+            "seamGapRemainingMs": 0,
+            "state": "playing",
+            "timersLive": 0
+          },
+          {
+            "inInterlude": true,
+            "inSeamGap": true,
+            "index": 2,
+            "name": "on",
+            "ops": ["interlude.start", "load:foray-1#2@900"],
+            "playhead": "foray-1#2",
+            "rate": 1,
+            "seamGapRemainingMs": 4500,
+            "state": "loadingItem",
+            "timersLive": 1
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 2,
+            "name": "third",
+            "ops": ["interlude.ended:ended", "rate:1", "outPoint:1000", "play"],
+            "playhead": "foray-1#2",
+            "rate": 1,
+            "seamGapRemainingMs": 0,
+            "state": "playing",
+            "timersLive": 0
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 2,
+            "name": "end",
+            "ops": [],
+            "playhead": "foray-1#2",
+            "rate": 1,
+            "seamGapRemainingMs": 0,
+            "state": "playing",
+            "timersLive": 0
+          }
+        ],
+        "ops": [
+          "load:foray-1#0@100",
+          "rate:1",
+          "outPoint:210",
+          "play",
+          "load:foray-1#1@400",
+          "rate:1",
+          "outPoint:500",
+          "play",
+          "interlude.start",
+          "load:foray-1#2@900",
+          "interlude.ended:ended",
+          "rate:1",
+          "outPoint:1000",
+          "play"
+        ]
+      }
+    },
+    {
+      "id": "manager-foray/no-interlude-wired-leaves-the-seam-alone",
+      "covers": ["queue-manager::with no interlude wired, every seam is exactly what it was"],
+      "note": "Without a jingle player the seam is the beat.",
+      "setup": {
+        "target": "manager",
+        "catalogue": {
+          "ep-static": {
+            "id": "ep-static",
+            "audio_url": "https://cdn.example/static.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Static",
+            "show": "Indie"
+          },
+          "ep-other": {
+            "id": "ep-other",
+            "audio_url": "https://cdn.example/other.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Other",
+            "show": "Indie"
+          },
+          "ep-dai": {
+            "id": "ep-dai",
+            "audio_url": "https://cdn.example/dai.mp3",
+            "dai_suspected": true,
+            "duration_sec": 2501,
+            "title": "Stitched",
+            "show": "Big"
+          }
+        },
+        "scheduler": "manual",
+        "view": ["seamGapRemainingMs", "timersLive"]
+      },
+      "steps": [
+        {
+          "call": "playForay",
+          "args": [
+            {
+              "id": "foray-1",
+              "title": "Fire",
+              "items": [
+                {
+                  "type": "segment",
+                  "item_id": "ep-static",
+                  "start_sec": 100,
+                  "end_sec": 210,
+                  "why": "he explains it plainly"
+                },
+                {
+                  "type": "segment",
+                  "item_id": "ep-other",
+                  "start_sec": 400,
+                  "end_sec": 500,
+                  "why": "he explains it plainly"
+                }
+              ]
+            }
+          ]
+        },
+        { "deck": "time", "sec": 210 },
+        { "deck": "ended", "reason": "outPoint" },
+        { "checkpoint": "beat" },
+        { "clock": 500 },
+        { "checkpoint": "tape" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": true,
+            "index": 1,
+            "name": "beat",
+            "ops": [
+              "load:foray-1#0@100",
+              "rate:1",
+              "outPoint:210",
+              "play",
+              "load:foray-1#1@400"
+            ],
+            "playhead": "foray-1#1",
+            "rate": 1,
+            "seamGapRemainingMs": 500,
+            "state": "loadingItem",
+            "timersLive": 1
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "tape",
+            "ops": ["rate:1", "outPoint:500", "play"],
+            "playhead": "foray-1#1",
+            "rate": 1,
+            "seamGapRemainingMs": 0,
+            "state": "playing",
+            "timersLive": 0
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "end",
+            "ops": [],
+            "playhead": "foray-1#1",
+            "rate": 1,
+            "seamGapRemainingMs": 0,
+            "state": "playing",
+            "timersLive": 0
+          }
+        ],
+        "ops": [
+          "load:foray-1#0@100",
+          "rate:1",
+          "outPoint:210",
+          "play",
+          "load:foray-1#1@400",
+          "rate:1",
+          "outPoint:500",
+          "play"
+        ]
+      }
+    },
+    {
+      "id": "manager-foray/teardown-during-the-jingle-silences-and-releases-it",
+      "covers": ["queue-manager::dispose() during a jingle silences it and releases the element"],
+      "note": "The teardown cuts the jingle and drops its buffer.",
+      "setup": {
+        "target": "manager",
+        "catalogue": {
+          "ep-static": {
+            "id": "ep-static",
+            "audio_url": "https://cdn.example/static.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Static",
+            "show": "Indie"
+          },
+          "ep-other": {
+            "id": "ep-other",
+            "audio_url": "https://cdn.example/other.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Other",
+            "show": "Indie"
+          },
+          "ep-dai": {
+            "id": "ep-dai",
+            "audio_url": "https://cdn.example/dai.mp3",
+            "dai_suspected": true,
+            "duration_sec": 2501,
+            "title": "Stitched",
+            "show": "Big"
+          }
+        },
+        "interlude": true,
+        "scheduler": "manual",
+        "view": ["seamGapRemainingMs", "timersLive"]
+      },
+      "steps": [
+        {
+          "call": "playForay",
+          "args": [
+            {
+              "id": "foray-1",
+              "title": "Fire",
+              "items": [
+                {
+                  "type": "segment",
+                  "item_id": "ep-static",
+                  "start_sec": 100,
+                  "end_sec": 210,
+                  "why": "he explains it plainly"
+                },
+                {
+                  "type": "segment",
+                  "item_id": "ep-other",
+                  "start_sec": 400,
+                  "end_sec": 500,
+                  "why": "he explains it plainly"
+                },
+                {
+                  "type": "segment",
+                  "item_id": "ep-static",
+                  "start_sec": 900,
+                  "end_sec": 1000,
+                  "why": "he explains it plainly"
+                }
+              ]
+            }
+          ]
+        },
+        { "deck": "time", "sec": 210 },
+        { "deck": "ended", "reason": "outPoint" },
+        { "call": "dispose" },
+        { "checkpoint": "disposed" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "disposed",
+            "ops": [
+              "load:foray-1#0@100",
+              "rate:1",
+              "outPoint:210",
+              "play",
+              "interlude.start",
+              "load:foray-1#1@400",
+              "interlude.stop",
+              "release",
+              "interlude.release"
+            ],
+            "playhead": "foray-1#1",
+            "rate": 1,
+            "seamGapRemainingMs": 0,
+            "state": "loadingItem",
+            "timersLive": 0
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "end",
+            "ops": [],
+            "playhead": "foray-1#1",
+            "rate": 1,
+            "seamGapRemainingMs": 0,
+            "state": "loadingItem",
+            "timersLive": 0
+          }
+        ],
+        "ops": [
+          "load:foray-1#0@100",
+          "rate:1",
+          "outPoint:210",
+          "play",
+          "interlude.start",
+          "load:foray-1#1@400",
+          "interlude.stop",
+          "release",
+          "interlude.release"
+        ]
+      }
+    },
+    {
+      "id": "manager-foray/pause-under-a-slow-load-cuts-the-jingle-at-once",
+      "covers": [
+        "queue-manager::pause while the next segment is still loading cuts the jingle at once, not when the load lands"
+      ],
+      "note": "Cut at the tap while the load is in flight; the load landing into a paused player starts nothing.",
+      "setup": {
+        "target": "manager",
+        "catalogue": {
+          "ep-static": {
+            "id": "ep-static",
+            "audio_url": "https://cdn.example/static.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Static",
+            "show": "Indie"
+          },
+          "ep-other": {
+            "id": "ep-other",
+            "audio_url": "https://cdn.example/other.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Other",
+            "show": "Indie"
+          },
+          "ep-dai": {
+            "id": "ep-dai",
+            "audio_url": "https://cdn.example/dai.mp3",
+            "dai_suspected": true,
+            "duration_sec": 2501,
+            "title": "Stitched",
+            "show": "Big"
+          }
+        },
+        "interlude": true,
+        "scheduler": "manual",
+        "view": ["seamGapRemainingMs", "timersLive"],
+        "backend": { "holdLoads": true }
+      },
+      "steps": [
+        {
+          "call": "playForay",
+          "args": [
+            {
+              "id": "foray-1",
+              "title": "Fire",
+              "items": [
+                {
+                  "type": "segment",
+                  "item_id": "ep-static",
+                  "start_sec": 100,
+                  "end_sec": 210,
+                  "why": "he explains it plainly"
+                },
+                {
+                  "type": "segment",
+                  "item_id": "ep-other",
+                  "start_sec": 400,
+                  "end_sec": 500,
+                  "why": "he explains it plainly"
+                },
+                {
+                  "type": "segment",
+                  "item_id": "ep-static",
+                  "start_sec": 900,
+                  "end_sec": 1000,
+                  "why": "he explains it plainly"
+                }
+              ]
+            }
+          ],
+          "await": false
+        },
+        { "deck": "loaded", "id": "foray-1#0" },
+        { "settle": 1 },
+        { "checkpoint": "playing" },
+        { "deck": "time", "sec": 210 },
+        { "deck": "ended", "reason": "outPoint" },
+        { "checkpoint": "under-load" },
+        { "call": "pause" },
+        { "checkpoint": "paused" },
+        { "deck": "loaded", "id": "foray-1#1" },
+        { "settle": 1 },
+        { "checkpoint": "landed" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "playing",
+            "ops": ["load:foray-1#0@100", "rate:1", "outPoint:210", "play"],
+            "playhead": "foray-1#0",
+            "rate": 1,
+            "seamGapRemainingMs": 0,
+            "state": "playing",
+            "timersLive": 0
+          },
+          {
+            "inInterlude": true,
+            "inSeamGap": true,
+            "index": 1,
+            "name": "under-load",
+            "ops": ["interlude.start", "load:foray-1#1@400"],
+            "playhead": "foray-1#0",
+            "rate": 1,
+            "seamGapRemainingMs": 4500,
+            "state": "loadingItem",
+            "timersLive": 0
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "paused",
+            "ops": ["interlude.stop"],
+            "playhead": "foray-1#0",
+            "rate": 1,
+            "seamGapRemainingMs": 0,
+            "state": "interrupted",
+            "timersLive": 0
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "landed",
+            "ops": [],
+            "playhead": "foray-1#1",
+            "rate": 1,
+            "seamGapRemainingMs": 0,
+            "state": "interrupted",
+            "timersLive": 0
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "end",
+            "ops": [],
+            "playhead": "foray-1#1",
+            "rate": 1,
+            "seamGapRemainingMs": 0,
+            "state": "interrupted",
+            "timersLive": 0
+          }
+        ],
+        "ops": [
+          "load:foray-1#0@100",
+          "rate:1",
+          "outPoint:210",
+          "play",
+          "interlude.start",
+          "load:foray-1#1@400",
+          "interlude.stop"
+        ]
+      }
+    }
+  ]
+}

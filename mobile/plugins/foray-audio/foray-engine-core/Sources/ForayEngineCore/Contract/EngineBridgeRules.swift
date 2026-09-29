@@ -42,11 +42,17 @@ public enum EngineBridgeRules {
     ///     (NE-14s), and its family owes nothing.
     ///   - `restore` (NE-27b): the cold path boots from the restore record
     ///     (NE-24), and its families owe nothing.
-    ///   - `foray` is NOT, yet: it waits for M2 (NE-30s).
-    /// These three are exactly what shell-invariants lets an M1 native
-    /// default (mobile/ENGINE_DEFAULT.json) list. A capability missing here is
+    ///   - `foray` (NE-37, the M2 flip): the core plays Forays (NE-30s, the
+    ///     tape; NE-31s narration and the jingle; NE-32 the deck pair; NE-33
+    ///     the narrator; NE-34 the interlude), and NE-37 emptied the last 20
+    ///     `transport-reconcile` tests owed to `manager-foray`, so every family
+    ///     it lists owes nothing. Narration and the interlude are families of
+    ///     this capability, not capabilities of their own
+    ///     (player/parity/capabilities.json).
+    /// These four are exactly what shell-invariants lets a native default
+    /// (mobile/ENGINE_DEFAULT.json) list. A capability missing here is
     /// refused `capability-off` by `engineSend`, whatever the plist says.
-    public static let advertisedCapabilities: [String] = ["episode", "continuation", "restore"]
+    public static let advertisedCapabilities: [String] = ["episode", "continuation", "restore", "foray"]
 
     /// `ForayEngineCapabilities` (the plist, from mobile/ENGINE_DEFAULT.json)
     /// ∩ `advertisedCapabilities`, in the contract's order. Nil (no plist key)
@@ -146,6 +152,11 @@ public enum EngineBridgeRules {
         case let .error(code, message):
             return .object([JSONMember("type", .string(EngineContract.EventType.error.rawValue)),
                             JSONMember("code", .string(code)), JSONMember("message", .string(message))])
+        case let .skipped(itemId, index, reason):
+            // NE-30s: ADR-0007's ladder refused a segment at load.
+            return .object([JSONMember("type", .string(EngineContract.EventType.skipped.rawValue)),
+                            JSONMember("itemId", .string(itemId)), JSONMember("index", .number(Double(index))),
+                            JSONMember("reason", .string(reason))])
         }
     }
 
@@ -177,7 +188,9 @@ public enum EngineBridgeRules {
 /// which `SnapshotStamper` adds.
 public enum EngineSnapshot {
 
-    public static func body(core: EngineCore, deck: DeckReading, lastError: String?) -> [JSONMember] {
+    /// `monoMs`: when the snapshot is taken, for a spoken line's clock
+    /// (`narrationElapsedSec`, NE-31s); without it the field is left out.
+    public static func body(core: EngineCore, deck: DeckReading, lastError: String?, monoMs: Double? = nil) -> [JSONMember] {
         let state = core.state
         let type = state.stateType
         // A stopped engine keeps its queue (the reducer is idle); the page
@@ -206,23 +219,22 @@ public enum EngineSnapshot {
         }
         members += [
             JSONMember("running", .bool(state.isRunning)),
-            // Seams and the interlude are M2's (NE-30s, NE-31s).
-            JSONMember("inSeamGap", .bool(false)),
-            JSONMember("inInterlude", .bool(false)),
+            JSONMember("inSeamGap", .bool(state.inSeamGap)),
+            JSONMember("inInterlude", .bool(state.inInterlude)),
             JSONMember("buffering", .bool(state.buffering)),
             JSONMember("ended", .bool(type == "ended")),
             JSONMember("positionSec", .number(playhead)),
             JSONMember("durationSec", duration),
             JSONMember("sourceTimeSec", loaded ? .number(playhead) : .null),
             JSONMember("playheadItemId", state.loadedId.map { JSONNode.string($0) } ?? .null),
-            JSONMember("isNarrationPlayhead", .bool(false)),
+            JSONMember("isNarrationPlayhead", .bool(state.isNarrationPlayhead)),
             JSONMember("rate", .number(rate)),
             JSONMember("effectiveRate", .number(effectiveRate)),
             JSONMember("canNext", .bool(core.canNext)),
             JSONMember("canPrevious", .bool(item != nil && core.canPrevious)),
             JSONMember("autoAdvance", .bool(state.autoAdvance)),
             JSONMember("lastError", lastError.map { JSONNode.string($0) } ?? .null),
-            JSONMember("skippedSegments", .number(0)),
+            JSONMember("skippedSegments", .number(Double(state.skippedSegments))),
             JSONMember("pendingAdvances", .number(Double(state.advanceLog.count))),
             JSONMember("pendingEvents", .number(Double(state.pendingEvents.count))),
             JSONMember("session", .string(state.session.rawValue)),
@@ -233,6 +245,10 @@ public enum EngineSnapshot {
                 JSONMember("album", .string(metadata?.album ?? ""))
             ]))
         ]
+        // reference-engine.js: the spoken line's clock, when there is one.
+        if let monoMs, let elapsed = core.narrationElapsedSec(atMono: monoMs), elapsed.isFinite, elapsed >= 0 {
+            members.append(JSONMember("narrationElapsedSec", .number(elapsed)))
+        }
         return members
     }
 

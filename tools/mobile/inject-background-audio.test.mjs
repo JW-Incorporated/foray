@@ -626,16 +626,17 @@ test("the reason the answer is `false` is written down beside the key", () => {
    does nothing, and nothing is red. These tests are what keep it loud. */
 
 const JS_DEFAULT = Object.freeze({ mode: "js", capabilities: [] });
-/** NE-27b, the M1 flip: what mobile/ENGINE_DEFAULT.json commits (plan §9a,
-    OQ-9's default, recorded in STATE.md; shell-invariants holds the record). */
-const M1_DEFAULT = Object.freeze({ mode: "native", capabilities: ["episode", "continuation", "restore"] });
+/** NE-37, the M2 flip (after NE-27b's M1 flip): what mobile/ENGINE_DEFAULT.json
+    commits (plan §9a, OQ-9's default, recorded in STATE.md; shell-invariants
+    holds the record). */
+const M2_DEFAULT = Object.freeze({ mode: "native", capabilities: ["episode", "continuation", "restore", "foray"] });
 
-test("the committed ENGINE_DEFAULT.json is the M1 native default NE-27b flipped, and the script reads THAT file", () => {
+test("the committed ENGINE_DEFAULT.json is the M2 native default NE-37 flipped, and the script reads THAT file", () => {
   /* MUTATION: point ENGINE_DEFAULT_FILE anywhere else, commit "js" again, or
      drop / add a capability. */
   const repoFile = fileURLToPath(new URL("../../mobile/ENGINE_DEFAULT.json", import.meta.url));
   assert.equal(path.resolve(ENGINE_DEFAULT_FILE), path.resolve(repoFile));
-  assert.deepEqual(parseEngineDefault(fs.readFileSync(repoFile, "utf8")), M1_DEFAULT);
+  assert.deepEqual(parseEngineDefault(fs.readFileSync(repoFile, "utf8")), M2_DEFAULT);
 });
 
 test("a generated plist has no engine default: the app reads that as js (no-plist-key)", () => {
@@ -760,8 +761,8 @@ test("the CI invocations write the engine default and --check prints ForayEngine
     assert.equal(encryption.status, 0, encryption.stderr);
     const check = run([plist, "--check", "--encryption", "false"]);
     assert.equal(check.status, 0, check.stderr);
-    assert.match(check.stdout, /ForayEngineDefault=native ForayEngineCapabilities=\["episode","continuation","restore"\]/);
-    assert.deepEqual(engineDefault(fs.readFileSync(plist, "utf8")), M1_DEFAULT);
+    assert.match(check.stdout, /ForayEngineDefault=native ForayEngineCapabilities=\["episode","continuation","restore","foray"\]/);
+    assert.deepEqual(engineDefault(fs.readFileSync(plist, "utf8")), M2_DEFAULT);
 
     // A plist whose engine default was changed by hand fails --check.
     fs.writeFileSync(plist, fs.readFileSync(plist, "utf8").replace("<string>native</string>", "<string>js</string>"));

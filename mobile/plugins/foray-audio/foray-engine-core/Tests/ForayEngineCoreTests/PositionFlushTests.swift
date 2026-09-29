@@ -42,6 +42,27 @@ final class PositionFlushTests: XCTestCase {
                       "the cold path's record moves with it")
     }
 
+    /// transport-reconcile "a scrub made while paused survives starting a
+    /// Foray (audit round 3, player-core-8)": natively the scrub is an engine
+    /// `seekTo` that moves the deck, and `playForay` FLUSHES what was playing
+    /// before it replaces the queue ("leaving is a flush"), so the row says
+    /// where the listener scrubbed to, not where they paused.
+    /// TO SEE IT FAIL: drop `flushPosition()` from `playForay`.
+    func testAScrubMadeWhilePausedSurvivesStartingAForay() throws {
+        var host = Host(config: ForayTapeTests.tape)
+        host.send(.queue(.load([EngineCoreTests.item("a")])))
+        host.send(.queue(.playIndex(0, startSec: nil, source: .tap)))
+        host.land()
+        host.confirm()
+        host.reading.positionSec = 600
+        host.send(try EngineCoreTests.command("pause"))
+        host.send(try EngineCoreTests.command("seekTo", .object([JSONMember("sec", .number(1800))])))
+        XCTAssertEqual(host.reading.positionSec, 1800, "precondition: the deck moved")
+        let out = host.send(try EngineCoreTests.command("playForay", ForayTapeTests.forayArgs(ForayTapeTests.twoClips)))
+        let write = try XCTUnwrap(writes(out).last { $0.itemId == "a" }, "the episode was not flushed: \(out)")
+        XCTAssertEqual(write.seconds, 1800, "the scrub is what was kept")
+    }
+
     /// `willTerminate` flushes the same way.
     /// TO SEE IT FAIL: drop `flushPosition()` from the `.terminating` case.
     func testTerminatingWritesThePlayhead() throws {

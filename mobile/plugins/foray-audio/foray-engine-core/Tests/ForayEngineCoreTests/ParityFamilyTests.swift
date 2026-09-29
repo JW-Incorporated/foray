@@ -63,6 +63,40 @@ final class ParityFamilyTests: XCTestCase {
     func testDeckEpisodeFamily() { assertParityFamily("deck-episode", requireRunner: true) }
     func testManagerEpisodeFamily() { assertParityFamily("manager-episode", requireRunner: true) }
 
+    /// Recorded by NE-28j, ported by NE-28s: the Foray seam policies. The
+    /// jingle's rule and the silence node's cap (`Interlude`), ADR-0007's
+    /// ladder, ADR-0008's pad and the ladder at load (`SeekPolicy`), and the
+    /// native three-layer out-point with its windowed watchdog (`DeckPolicy`'s
+    /// `outPointStep`, driven over a driven clock). Each must RUN here.
+    func testInterludeFamily() { assertParityFamily("interlude", requireRunner: true) }
+    func testSeekPolicyFamily() { assertParityFamily("seek-policy", requireRunner: true) }
+    func testOutpointFamily() { assertParityFamily("outpoint", requireRunner: true) }
+
+    /// Recorded by NE-29j, ported by NE-29s: the Foray clock (`ForayClock`),
+    /// the Foray's resume rules and throttled row writer (ResumeRules' Foray
+    /// half, `Rows`), J-4's structural check (`StructuralCheck`) and the
+    /// Foray half of the lock screen (`MediaMapping`, and remote presses into
+    /// `EngineCore`), over every committed Foray too. Each must RUN here.
+    func testForayClockFamily() { assertParityFamily("foray-clock", requireRunner: true) }
+    func testForayProgressFamily() { assertParityFamily("foray-progress", requireRunner: true) }
+    func testForayStructureFamily() { assertParityFamily("foray-structure", requireRunner: true) }
+    func testMediaFamily() { assertParityFamily("media", requireRunner: true) }
+
+    /// Recorded by NE-30j, ported by NE-30s: the deck's guards and its
+    /// single-deck slices (`DeckPolicy`; the pair's decisions stay NE-32's),
+    /// the manager's Foray tape through `EngineCore` with the tape on, and
+    /// the prepare family's audible seams through the contract. Each must RUN.
+    func testDeckFamily() { assertParityFamily("deck", requireRunner: true) }
+    func testManagerForayFamily() { assertParityFamily("manager-foray", requireRunner: true) }
+    func testPrepareFamily() { assertParityFamily("prepare", requireRunner: true) }
+
+    /// Ported by NE-33: the default voice (the Samantha ruling) and the
+    /// pronunciation lexicon's matcher (`SpeechRules`), and what reaches the
+    /// synthesiser (1x, the chosen voice) through `EngineCore`. Each must RUN.
+    func testDefaultVoiceFamily() { assertParityFamily("default-voice", requireRunner: true) }
+    func testLexiconFamily() { assertParityFamily("lexicon", requireRunner: true) }
+    func testSpeechRateFamily() { assertParityFamily("speech-rate", requireRunner: true) }
+
     /// Every family in manifest.json, including ones no method above names:
     /// every id executed or owed, no stale pending entry, no whole-tree
     /// problem. And something must have RUN: zero failures from a runner that

@@ -7,11 +7,75 @@ public struct EngineConfig: Equatable {
     public var holdPolicy: SessionPolicy.HoldPolicy
     /// The listener's stored speed (`cp_rate`); snapped onto the ladder.
     public var rate: Double?
+    /// M2's Foray tape (card NE-30s): the `playForay` command, ADR-0007's
+    /// load-time ladder, the seam beat and its transport cuts, the standby
+    /// deck's prepare, rendered narration bridges and the `cp_foray` cadence.
+    /// OFF by default (plan §12: M2 code that changes shared episode paths
+    /// merged behind an off-by-default flag); off, `playForay` is refused
+    /// `capability-off` and every episode path is exactly M1's. The shipping
+    /// boot (EngineBoot) turns it on since NE-37, the M2 flip.
+    public var forayTapeEnabled: Bool
+    /// `seamGapSec` (`SEAM_GAP_SEC`, 0.5 s: the founder's ruling of
+    /// 2026-09-24). Passed straight through, as the JS manager passes it:
+    /// `SeamGap` owns what a nonsense length means (no beat).
+    public var seamGapSec: Double
+    /// NE-32's DeckPair: two decks, the standby one prepared and prerolled at
+    /// the next segment's in-point while the current one is audible. OFF by
+    /// default; the shipping boot turns it on since NE-37 (plan §4.3). The
+    /// core decides nothing on it (it prepares when the
+    /// deck opens the prefetch window, and a single deck never opens one); the
+    /// host reads it to choose which deck it builds.
+    public var deckPairEnabled: Bool
+    /// NE-31s, OQ-3 (founder, 2026-09-24: "1x for now, but maybe we change
+    /// later"): a spoken line is uttered at `NARRATION_RATE` whatever the
+    /// listener's speed. On, it would ride the listener's rate instead. OFF.
+    public var narrationFollowsListenerRate: Bool
+    /// The narration pulse (`onNarrationTick`): the surface listens, so the
+    /// line's clock repaints and its deadline and suspension checks run. The
+    /// JS manager runs its ticker only when a surface listens, so the parity
+    /// driver sets this from `setup.narrationTicks`; the app always listens.
+    public var narrationPulse: Bool
+    /// The host has a jingle player (NE-34's InterludePlayer). Off, no seam
+    /// gets a jingle, exactly as a manager built with no `interlude`.
+    public var interludeAvailable: Bool
+    /// `cp_interlude` as read at boot (`interludeEnabled`, default on).
+    public var interludeEnabled: Bool
+    /// The silence node (NE-34), capped at `INTERLUDE_CEILING_SEC` from the
+    /// out-point. OFF: it is enabled in a follow-up only if a suspension is
+    /// shown (plan §14 NE-34).
+    public var silenceNodeEnabled: Bool
+    /// The listener's narration voice at boot (`voice`), nil for the
+    /// synthesiser's own pick.
+    public var voiceId: String?
+    /// NE-33's SpeechNarrator path. DV-9 (does the session an
+    /// `AVSpeechSynthesizer` leaves after `didFinish` still play, locked?) has
+    /// no row from the phone yet, and the plan's rule for an unanswered or
+    /// inconclusive DV-9 is the PCM path: `write(_:toBufferCallback:)` into
+    /// the engine's own `AVAudioEngine` player. On, the synthesizer speaks
+    /// directly (`speak`, `pauseSpeaking(at: .word)`) on the application
+    /// session instead. OFF. The core decides nothing on it; the host reads
+    /// it to choose the narrator's output.
+    public var speechDirect: Bool
 
-    public init(build: String = "", holdPolicy: SessionPolicy.HoldPolicy = .default, rate: Double? = nil) {
+    public init(build: String = "", holdPolicy: SessionPolicy.HoldPolicy = .default, rate: Double? = nil,
+                forayTapeEnabled: Bool = false, seamGapSec: Double = SeamGap.defaultGapSec,
+                narrationFollowsListenerRate: Bool = false, narrationPulse: Bool = true,
+                interludeAvailable: Bool = false, interludeEnabled: Bool = true,
+                silenceNodeEnabled: Bool = false, voiceId: String? = nil, speechDirect: Bool = false,
+                deckPairEnabled: Bool = false) {
         self.build = build
         self.holdPolicy = holdPolicy
         self.rate = rate
+        self.forayTapeEnabled = forayTapeEnabled
+        self.seamGapSec = seamGapSec
+        self.deckPairEnabled = deckPairEnabled
+        self.narrationFollowsListenerRate = narrationFollowsListenerRate
+        self.narrationPulse = narrationPulse
+        self.interludeAvailable = interludeAvailable
+        self.interludeEnabled = interludeEnabled
+        self.silenceNodeEnabled = silenceNodeEnabled
+        self.voiceId = voiceId
+        self.speechDirect = speechDirect
     }
 }
 
@@ -74,6 +138,9 @@ public struct EngineCore {
     private var deckMovedThisTurn = false
     /// `stop({persist: false})` is data deletion: its reducer save is skipped.
     private var suppressSave = false
+    /// `_narrationStopping` (L-05): the `pausePlayback` a stop's reducer emits
+    /// must not pause a synthesiser one instruction before the stop stops it.
+    private var narrationStopping = false
 
     public init(config: EngineConfig = EngineConfig(), positions: [String: ResumeRules.StoredPosition] = [:]) {
         self.config = config
@@ -81,7 +148,15 @@ public struct EngineCore {
         initial.holdPolicy = config.holdPolicy
         initial.rate = PlaybackRate.normalize(config.rate)
         initial.positions = positions
+        initial.interludeEnabled = config.interludeEnabled
+        initial.voiceId = EngineCore.voice(config.voiceId)
         state = initial
+    }
+
+    /// `typeof id === "string" && id ? id : null`.
+    static func voice(_ id: String?) -> String? {
+        guard let id, !id.isEmpty else { return nil }
+        return id
     }
 
     /// What a cold boot rebuilt from the engine's private restore record
@@ -127,23 +202,39 @@ public struct EngineCore {
         let advances: [AdvanceEntry] = record.advanceLog.compactMap(AdvanceEntry.init(restored:))
         core.state.advanceLog = Array(advances.suffix(EngineCore.advanceLogCap))
         core.state.lastAdvanceSeq = advances.map(\.seq).max() ?? 0
+        // NE-31s: a cold narration speaks in the voice the listener chose.
+        if let voice = EngineCore.voice(record.voiceId) { core.state.voiceId = voice }
         return ColdRestore(core: core, queue: items, index: record.index)
     }
 
     /// `canNext` (plan §5.5): the queue has a next item, or the continuation
     /// chain is non-empty, REGARDLESS of `autoAdvance` (as the page's
-    /// `EPISODE_NAVIGATION.next` does today).
+    /// `EPISODE_NAVIGATION.next` does today). A Foray never chains.
     public var canNext: Bool {
-        nextItem(from: cursor, skipBridges: true) != nil || !state.chain.isEmpty
+        nextItem(from: cursor, skipBridges: true) != nil || (state.forayId == nil && !state.chain.isEmpty)
+    }
+
+    /// `seamGapRemainingMs`: what is left of the seam beat at `monoMs`, 0 when
+    /// no beat is running.
+    public func seamGapRemainingMs(atMono monoMs: Double) -> Double {
+        guard let until = state.gapUntilMono else { return 0 }
+        return Swift.max(0, until - monoMs)
     }
 
     /// Previous restarts the item in place, so it exists whenever one does.
     public var canPrevious: Bool { state.currentItem != nil }
 
+    /// `narrationElapsedSec` (NE-31s): the spoken line's wall-time clock at
+    /// `monoMs`, nil while the playhead is not a spoken line. What the Foray
+    /// clock, the snapshot and the lock screen read for a synth item.
+    public func narrationElapsedSec(atMono monoMs: Double) -> Double? {
+        state.narration?.elapsedSec(atMono: monoMs)
+    }
+
     // MARK: - The one door
 
     public mutating func handle(_ input: EngineInput, now: EngineNow) -> [EngineCommand] {
-        if state.session == .relinquished { return [] }
+        if state.session == .relinquished || state.tornDown { return [] }
         self.now = now
         deck = now.deck
         out = []
@@ -161,7 +252,7 @@ public struct EngineCore {
             }
             route(input)
         }
-        if state.session != .relinquished { settleTurn() }
+        if state.session != .relinquished && !state.tornDown { settleTurn() }
         let result = out
         out = []
         return result
@@ -177,6 +268,8 @@ public struct EngineCore {
         case let .session(event): onSession(event)
         case let .lifecycle(event): onLifecycle(event)
         case let .timer(timer): onTimer(timer)
+        case let .narrator(event): onNarrator(event)
+        case let .interlude(event): onInterlude(event)
         }
     }
 
@@ -197,13 +290,15 @@ public struct EngineCore {
             state.queue = [episode]
             state.currentIndex = -1
             state.forayId = nil
+            state.forayTitle = nil
             state.lastEpisodeRow = lastEpisodeRow
             state.lastEpisodeRowWritten = false
             state.startingHop = nil
             playIndex(0, startSec: startSec, source: source)
-        case .playForay:
-            // M2 (NE-30s): until then the page relinquishes before a Foray.
-            refuse(.capabilityOff)
+        case let .playForay(args):
+            // Off (M1, and M2 until NE-37) the page relinquishes before a Foray.
+            guard config.forayTapeEnabled else { return refuse(.capabilityOff) }
+            playForay(args, source: source)
         case let .setContinuation(planSeq, autoAdvance, chain, previous):
             state.planSeq = planSeq
             state.autoAdvance = autoAdvance
@@ -214,14 +309,29 @@ public struct EngineCore {
         case .toggle: toggle(source: source)
         case .next: next(source: source)
         case .previous: previous(source: source)
-        case let .seekBy(deltaSec): seekBy(deltaSec, source: source)
-        case let .seekTo(sec): seekTo(sec, source: source)
+        case let .seekBy(deltaSec):
+            if forayTransport { return forayNudge(deltaSec, source: source) }
+            seekBy(deltaSec, source: source)
+        case let .seekTo(sec):
+            if forayTransport { return forayScrub(to: sec, source: source) }
+            seekTo(sec, source: source)
         case let .jump(index): playIndex(index, startSec: nil, source: source)
         case let .stop(persist): stop(persist: persist, source: source)
         case let .setRate(rate): setRate(rate)
-        case .setVoice, .setInterludeEnabled:
-            // Narration and the interlude are M2 (NE-31s, NE-33).
-            break
+        case let .setVoice(voiceId):
+            // `setVoice(id)`: the NEXT line speaks in it (a synthesiser cannot
+            // swap voices mid-utterance), and a cold narration too.
+            state.voiceId = EngineCore.voice(voiceId)
+            diag("narration", [JSONMember("kind", .string("voice")),
+                               JSONMember("chosen", .bool(state.voiceId != nil))])
+            writeRestore()
+        case let .setInterludeEnabled(on):
+            // A preference about the rest of the hour, not a transport action:
+            // a jingle already sounding is not cut (queue-manager.js).
+            if on != state.interludeEnabled {
+                diag("interlude", [JSONMember("kind", .string("enabled")), JSONMember("on", .bool(on))])
+            }
+            state.interludeEnabled = on
         case let .setPageVisible(visible): state.pageVisible = visible
         case let .ackAdvances(upToSeq):
             state.advanceLog.removeAll { $0.seq <= upToSeq }
@@ -263,12 +373,25 @@ public struct EngineCore {
             state.currentIndex = -1
             state.forayId = nil
             state.closed = false
+        case let .loadForay(items, isLocalFile, allowAdPad):
+            // `setQueueFromForay(foray, opts)` with the page's build: the same
+            // replacement, plus the options the load-time ladder reads.
+            state.queue = items
+            state.currentIndex = -1
+            state.forayId = nil
+            state.closed = false
+            state.forayIsLocalFile = isLocalFile
+            state.forayAllowAdPad = allowAdPad
         case let .playIndex(index, startSec, source): playIndex(index, startSec: startSec, source: source)
         case let .setRate(rate): setRate(rate)
         case let .seek(sec, precise):
             // The manager's own `seek`: straight to the reducer, which holds it
-            // for a load in flight and refuses it with nothing loaded.
+            // for a load in flight and refuses it with nothing loaded. A
+            // transport action, so it cuts a running beat (a scrub ends the
+            // beat early: the parked load starts at the new second).
+            cutSeamGap("seek")
             dispatch(.seek(seconds: sec, precise: precise))
+            releaseSeamGap()
         }
     }
 
@@ -276,16 +399,28 @@ public struct EngineCore {
 
     private mutating func playIndex(_ index: Int, startSec: Double?, source: EngineSource) {
         guard state.queue.indices.contains(index) else { return refuse(.notLoaded) }
+        cutSeamGap("play")
         begin(.playIndex(index, startSec: startSec), source: source)
+        releaseSeamGap()
     }
 
     /// `resume()`: play the current item. While the transport already runs,
     /// the reducer answers (the same item loading or playing is a no-op) and no
-    /// session or grace is involved.
+    /// session or grace is involved. A FINISHED Foray starts over from its
+    /// first item (`endedPlayAction`): play after the end is never a resume
+    /// of the last clip's last second.
     private mutating func play(source: EngineSource) {
         guard let item = state.currentItem else { return refuse(.notLoaded) }
-        if state.isRunning { return dispatch(.play(item.ref)) }
-        begin(.resume, source: source)
+        if TransportPolicy.endedPlayAction(foray: state.forayId != nil, stateType: state.stateType) == .startOver {
+            return playIndex(0, startSec: nil, source: source)
+        }
+        cutSeamGap("resume")
+        if state.isRunning {
+            dispatch(.play(item.ref))
+        } else {
+            begin(.resume, source: source)
+        }
+        releaseSeamGap()
     }
 
     /// `pause()`. THE POSTCONDITION IS SILENCE (#689 report 3): the reducer's
@@ -293,6 +428,7 @@ public struct EngineCore {
     /// so a deck audible while the machine says paused is paused here, by the
     /// deck's own word, never the reverse.
     private mutating func pause(source: EngineSource) {
+        cutSeamGap("pause")
         state.pausedByListener = true
         stopRow(.pause, source: source)
         dispatch(.interruptionBegan)
@@ -303,6 +439,10 @@ public struct EngineCore {
         }
         applySession(SessionPolicy.transition(from: state.session, on: .pause, holdPolicy: state.holdPolicy))
         armHoldTimerIfPaused()
+        releaseSeamGap()
+        // A pause is a moment the resume point becomes the thing read back
+        // next time (client.js `persistForayProgress({force: true})`).
+        persistForay(force: true)
     }
 
     /// TOGGLE FROM NATIVE TRUTH: `running` is the belief OR the deck's own
@@ -323,17 +463,36 @@ public struct EngineCore {
     /// Next: the queue's next item (bridges stepped over), else the first
     /// continuation hop (`canNext` is the chain, whatever `autoAdvance` says).
     private mutating func next(source: EngineSource) {
-        if nextItem(from: cursor, skipBridges: true) != nil { return begin(.skipNext, source: source) }
-        if let hop = state.chain.first { return begin(.walkHop(hop), source: source) }
+        if nextItem(from: cursor, skipBridges: true) != nil {
+            cutSeamGap("skipToNext")
+            begin(.skipNext, source: source)
+            return releaseSeamGap()
+        }
+        // A Foray is ONE queue: its last item's next is nothing, never a hop
+        // (CLAUDE.md principle 1, no chaining).
+        if state.forayId == nil, let hop = state.chain.first { return begin(.walkHop(hop), source: source) }
         refuse(.noNext)
     }
 
     /// Previous RESTARTS the item in place (`skipToPrevious`, the manager's
     /// "restart item"; walking back to `previousHop` is the page's call and
-    /// arrives as a playEpisode).
+    /// arrives as a playEpisode). In a Foray the Foray clock decides
+    /// (`previousAction`): inside the first `restartWindowSec` of a clip it
+    /// goes to the one before, otherwise it restarts this one.
     private mutating func previous(source: EngineSource) {
-        guard state.currentItem != nil else { return refuse(.noPrevious) }
+        guard let item = state.currentItem else { return refuse(.noPrevious) }
+        if forayTransport {
+            let index = state.currentIndex
+            let starts = ForayClock.segmentStarts(forayItems)
+            let start = starts.indices.contains(index) ? starts[index] : 0
+            if TransportPolicy.previousAction(index: Double(index), positionSec: forayPositionSec(of: item),
+                                              segmentStartSec: start) == .itemBefore {
+                return playIndex(index - 1, startSec: nil, source: source)
+            }
+        }
+        cutSeamGap("skipToPrevious")
         begin(.skipPrevious, source: source)
+        releaseSeamGap()
     }
 
     /// `seekTo` from the page or the lock screen: clamped the way the page
@@ -347,7 +506,9 @@ public struct EngineCore {
             state.pendingStartSec = target
             return
         }
+        cutSeamGap("seek")
         dispatch(.seek(seconds: target, precise: false))
+        releaseSeamGap()
     }
 
     /// A nudge steps from where the listener IS: the deck's playhead once it
@@ -368,6 +529,8 @@ public struct EngineCore {
     /// cause row, then the reducer's save and pause, then the session is
     /// released WITH notify: the listener closed the player.
     private mutating func stop(persist: Bool, source: EngineSource) {
+        cutSeamGap("stop")
+        defer { releaseSeamGap() }
         state.pausedByListener = true
         stopRow(persist ? .close : .dataDeletion, source: source)
         // CLOSING IS A FLUSH (audit round 2, player-3): the reducer's stop
@@ -377,8 +540,14 @@ public struct EngineCore {
         if persist { flushPosition() }
         state.closed = true
         suppressSave = !persist
+        // L-05: "Stopping a Foray must also stop speech", in ONE call: the
+        // reducer's pause is held off so a pause never precedes the stop.
+        let wasSpeaking = state.narration != nil
+        narrationStopping = wasSpeaking
         dispatch(.stop)
+        narrationStopping = false
         suppressSave = false
+        if wasSpeaking { stopNarration() }
         applySession(SessionPolicy.transition(from: state.session, on: persist ? .close : .dataDeletion,
                                               holdPolicy: state.holdPolicy))
         if !persist {
@@ -403,7 +572,40 @@ public struct EngineCore {
                           JSONMember("applied", .number(snap.applied))])
         }
         state.rate = snap.applied
+        // A SPOKEN LINE IS NOT SPED UP (corner case #18, founder 2026-09-24):
+        // a tap while one is audible is kept (`pendingRate`) and reaches the
+        // deck when the line ends (`restoreRate`), never mid-word. A RENDERED
+        // line follows the listener (D2, 2026-09-28): the tap goes to the deck
+        // now, like any clip (`_loadedIsSynth && _narrationIsAudible()`).
+        if config.forayTapeEnabled && state.narration != nil && narrationIsAudible {
+            state.pendingRate = snap.applied
+            diag("rate", [JSONMember("kind", .string("deferred")), JSONMember("applied", .number(snap.applied))])
+            return
+        }
         deckCommand(.setRate(snap.applied))
+    }
+
+    /// `_narrationIsAudible()`: read from the item, not the reducer's state,
+    /// since `transitioning` covers the bridge loading as well as playing.
+    private var narrationIsAudible: Bool {
+        state.stateType == "transitioning" || state.currentItem?.kind == .tts
+    }
+
+    /// queue-manager.js `focusOf(state)` read through `_itemFor`: the queue
+    /// item the reducer's state is about (the playing item, the bridge being
+    /// transitioned to, the interrupted item, the load's target), nil when
+    /// idle or ended.
+    private var focusItem: EngineItem? {
+        let ref: QueueItemRef?
+        switch state.player {
+        case let .playing(item): ref = item
+        case let .transitioning(_, to): ref = to
+        case let .interrupted(item, _): ref = item
+        case let .loadingItem(target, _, _): ref = target
+        case .idle, .ended: ref = nil
+        }
+        guard let ref else { return nil }
+        return state.queue.first(where: { $0.id == ref.id })
     }
 
     /// The one-way relinquish (plan §4.6): stop WITH persistence, keep the
@@ -411,6 +613,10 @@ public struct EngineCore {
     /// interrupted is invited back), end grace, cancel timers, write the
     /// `{mode: "relinquished"}` record, and go terminal.
     private mutating func relinquish(cap: EngineContract.RelinquishCap, source: EngineSource) {
+        // Nothing parked may start audio after the engine gave the process back.
+        cutSeamGap("relinquish")
+        state.gapParkedToken = nil
+        state.gapCut = false
         stopRow(.relinquish, source: source)
         if state.isRunning {
             state.pausedByListener = true
@@ -419,6 +625,8 @@ public struct EngineCore {
             persistPosition()
         }
         if audibleNow { deckCommand(.pause) }
+        // The synthesiser outlives nothing the engine gave back (NE-31s).
+        if state.narration != nil { stopNarration() }
         deckCommand(.unload)
         if state.grace != nil { endGrace(.relinquished) }
         if state.positionTimerArmed {
@@ -580,11 +788,14 @@ public struct EngineCore {
         guard result.ok else {
             out.append(.commandFailed(reason: transition.reason ?? SessionPolicy.sessionFailedReason(result.error)))
             if parked.intent == .interruptionResume { dispatch(.interruptionEnded(shouldResume: false)) }
-            return
+            return releaseSeamGap()
         }
         state.activatedInProcess = true
         cancelHoldTimer()
         run(parked.intent, source: parked.source)
+        // A beat cut by the action that asked for this activation is released
+        // only now, after that action issued its own load (`_transport`).
+        releaseSeamGap()
     }
 
     /// The intent itself, once the session allows sound.
@@ -659,24 +870,45 @@ public struct EngineCore {
         switch effect {
         case let .loadItem(ref): load(ref, offsets: offsets)
         case .startPlayback: startPlayback()
-        case .pausePlayback: deckCommand(.pause)
+        case .pausePlayback:
+            // L-05 (founder feedback F12): every pause surface arrives here, so
+            // a spoken line pauses its SYNTHESISER, not a deck that is not
+            // playing it.
+            if state.narration != nil { pauseNarration() } else { deckCommand(.pause) }
         case .savePosition: if !suppressSave { persistPosition() }
         case let .seekTo(seconds, _): deckCommand(.seek(toSec: seconds))
         case let .seekRejected(reason):
             diag("seek", [JSONMember("kind", .string("rejected")), JSONMember("reason", .string(reason))])
         case let .setOutPoint(seconds): deckCommand(.setOutPoint(sec: seconds))
         case .resetRateForTTS:
-            // Corner case #18: a rendered narration line plays at NARRATION_RATE,
-            // never the listener's speed.
-            deckCommand(.setRate(EngineConstants.QueueManager.narrationRate))
-        case .restoreRate: deckCommand(.setRate(state.rate))
+            // Founder ruling D2, 2026-09-28 (queue-manager.js §12): a RENDERED
+            // line plays at the LISTENER's rate, pitch kept (AVDeck's
+            // `.timeDomain`); it was the literal NARRATION_RATE until then
+            // (corner case #18). A SPOKEN line has no deck under it: its 1x
+            // rode on the utterance (NE-31s). DECIDED BY THE ITEM THIS EFFECT
+            // IS FOR, not by the line now loaded: on the bridge path the
+            // reducer emits it before the line loads, so `narration` still
+            // describes the PREVIOUS item (a spoken line chained before a
+            // rendered one would skip the rendered line's rate).
+            if let target = focusItem {
+                if target.isSynthNarration { return }
+            } else if state.narration != nil {
+                return
+            }
+            deckCommand(.setRate(state.rate))
+        case .restoreRate:
+            if state.narration != nil { return }
+            state.pendingRate = nil
+            deckCommand(.setRate(state.rate))
         case .playTransitionTTS:
-            // Bridges and narration are M2 (NE-31s). Until then a bridge is
-            // stepped over the way a bridge that failed to load is
+            // With the Foray tape on a bridge plays: a RENDERED one on the deck
+            // (NE-30s), a SPOKEN one through the synthesiser (NE-31s),
+            // `_playTransitionBridge`. With the tape off every bridge is stepped
+            // over the way a bridge that failed to load is
             // (`_advancePastBridgeFailure`): a missing line never stalls the
             // queue (corner case #12).
-            let next = nextItem(from: cursor, skipBridges: true)
-            dispatch(.itemEnded(next: next?.item.ref, bridged: false))
+            if config.forayTapeEnabled { return playTransitionBridge() }
+            advancePastBridgeFailure()
         case .emitTelemetry: break
         }
     }
@@ -686,6 +918,8 @@ public struct EngineCore {
     /// save already ran); the loaded id moves only when `.ready` comes back.
     private mutating func load(_ ref: QueueItemRef, offsets: LoadOffsets) {
         guard let item = state.queue.first(where: { $0.id == ref.id }) else {
+            // Drop the beat's deadline with the item it belonged to.
+            endSeamGap("unknownRef")
             return dispatch(.error("loadItem: unknown ref \(ref.id)"))
         }
         let bounds = item.bounds
@@ -736,6 +970,17 @@ public struct EngineCore {
         if let index = state.queue.firstIndex(where: { $0.id == item.id }) { state.currentIndex = index }
         state.lastToken += 1
         let token = state.lastToken
+        // §14: a rendered line already being SPOKEN because its file failed,
+        // paused and now resumed, is a spoken line for this load: it continues
+        // the utterance instead of retrying the file mid-sentence. A restart
+        // (`forced`) tries the file again.
+        let resumingFallback = offsets.forced == nil && state.fallbackSpokenId == item.id
+            && state.loadedId == item.id && state.narration?.paused == true
+        if config.forayTapeEnabled && (item.isSynthNarration || resumingFallback) {
+            // §7 item 1: a script-only line has no file for a deck; it is
+            // SPOKEN (NE-31s).
+            return loadSpokenLine(item, token: token, restart: offsets.forced != nil)
+        }
         state.pendingLoad = PendingLoad(token: token, itemId: item.id, startSec: startSec)
         deckCommand(.load(token: token, itemId: item.id, url: item.audioUrl, startSec: startSec,
                           preciseTiming: bounds != nil))
@@ -760,6 +1005,13 @@ public struct EngineCore {
                            JSONMember("session", .string(state.session.rawValue))])
             out.append(.commandFailed(reason: EngineContract.Refusal.sessionFailedOther.rawValue))
             return
+        }
+        if let line = state.narration {
+            // A spoken line: its FIRST start is already under way (the
+            // synthesiser answered `speak`); a start after a pause CONTINUES
+            // the same utterance (L-05: resume from the same sentence).
+            if line.paused { out.append(.narration(.resume(seq: line.seq))) }
+            return writeRestore()
         }
         deckCommand(.play)
         if let row = state.lastEpisodeRow, !state.lastEpisodeRowWritten,
@@ -811,6 +1063,13 @@ public struct EngineCore {
             diag("deck", [JSONMember("kind", .string("refused")), JSONMember("command", .string(command)),
                           JSONMember("reason", .string(reason))])
         case .seeked: break
+        case let .prepareWindow(token):
+            guard token == state.loadedToken else { return }
+            warmNextSegment()
+        case let .prepared(token, hit, stages):
+            // Only the load in flight is described; a stale report is dropped.
+            guard state.pendingLoad?.token == token else { return }
+            state.deckPrepare = DeckPrepareReport(token: token, hit: hit, stages: stages)
         }
     }
 
@@ -820,12 +1079,55 @@ public struct EngineCore {
         guard let pending = state.pendingLoad, pending.token == token else {
             return diag("deck", [JSONMember("kind", .string("superseded")), JSONMember("token", .number(Double(token)))])
         }
+        // THE LISTENER CAN MOVE DURING A RENDERED BRIDGE'S LOAD (audit round 3,
+        // player-core-2): a pause, an interruption or a stop in that window
+        // changes the state but not the load. The bridge plays only if the
+        // machine is still transitioning to it; otherwise it landed for nobody
+        // and is not started (a pause undone from the car, or a line playing
+        // behind a closed player, is what this prevents).
+        if pending.bridge, !stillOn(pending) {
+            state.pendingLoad = nil
+            return diag("bridge", [JSONMember("kind", .string("landed-after-leaving")),
+                                   JSONMember("token", .number(Double(token)))])
+        }
         state.pendingLoad = nil
         state.loadedId = pending.itemId
         state.loadedToken = token
         state.startingHop = nil
-        // The ADR-0007 gate and the seam beat run here in M2 (NE-30s).
-        dispatch(.itemLoaded)
+        // A new load owns the deck: the last one's stall is not this one's.
+        clearStallLatch()
+        // A deck item holds the playhead now: a spoken line it replaced is
+        // over (`_endSynthNarration`).
+        endSpokenLine()
+        if pending.bridge {
+            // A rendered bridge plays the moment it lands (`_playTransitionBridge`).
+            return startPlayback()
+        }
+        guard config.forayTapeEnabled, let item = state.queue.first(where: { $0.id == pending.itemId }) else {
+            return dispatch(.itemLoaded)
+        }
+        landed(item, token: token)
+    }
+
+    /// What follows a load that landed (a deck's `.ready`, or a spoken line's
+    /// `started`): ADR-0007's gate, then the beat.
+    private mutating func landed(_ item: EngineItem, token: DeckToken) {
+        // ADR-0007's rung 3 runs HERE and nowhere earlier: the first moment the
+        // duration of the copy the listener actually received exists. An
+        // APPROXIMATE copy is never made audible: the segment is skipped.
+        let gate = SeekPolicy.segmentLoadGate(
+            needsDriftCheck: item.needsDriftCheck, daiSuspected: item.daiSuspected,
+            referenceDurationSec: item.referenceDurationSec, adPadSec: item.adPadSec,
+            observedDuration: deck.durationSec, isLocalFile: state.forayIsLocalFile,
+            allowAdPad: state.forayAllowAdPad)
+        if !gate.ok { return refuseAtLoad(item, reason: gate.reason ?? "") }
+        if gate.note != nil {
+            diag("gate", [JSONMember("kind", .string("noted")), JSONMember("item", .string(item.id))])
+        }
+        // The seam beat is spent HERE, between a loaded-and-positioned asset
+        // and the `itemLoaded` that arms the out-point and starts it. A load
+        // that FAILED never reaches this line: an error never waits out a beat.
+        awaitSeamGap(token)
     }
 
     /// A load (or the item it loaded) failed. A failure nobody is waiting on
@@ -838,9 +1140,19 @@ public struct EngineCore {
         guard isPending || isHeld else {
             return diag("deck", [JSONMember("kind", .string("superseded-failure")), JSONMember("token", .number(Double(token)))])
         }
+        if fallBackToScript(token, isPending: isPending, cause: cause) { return }
+        if let pending = state.pendingLoad, pending.bridge, pending.token == token {
+            // A bridge that will not load never stalls the queue (corner case #12).
+            state.pendingLoad = nil
+            diag("bridge", [JSONMember("kind", .string("load-failed")), JSONMember("item", .string(pending.itemId))])
+            return advancePastBridgeFailure()
+        }
         let itemId = state.pendingLoad?.itemId ?? state.loadedId ?? "?"
         state.pendingLoad = nil
         stopRow(cause)
+        // Drop the beat's deadline with the item it belonged to: a failed seam
+        // reports at once, and the next load does not sit out a stale beat.
+        endSeamGap("loadFailed")
         if state.startingHop != nil {
             state.startingHop = nil
             out.append(.emit(.error(code: "chain-start", message: message)))
@@ -850,31 +1162,118 @@ public struct EngineCore {
         dispatch(.error("loadItem(\(itemId)) failed: \(message)"))
     }
 
+    /// §14 (queue-manager.js, Phase 2; founder rulings D1-D11, 2026-09-28):
+    /// a RENDERED narration line whose FILE fails is read aloud from its
+    /// script instead, in all three places a file can fail:
+    ///
+    ///   - `load`: the line's own load (a Foray's first line, a jump, a skip
+    ///     onto it), which used to stop the Foray;
+    ///   - `bridge`: a rendered bridge's load, which used to be stepped over;
+    ///   - `playing`: the file failing while the line sounds, which used to
+    ///     stop the Foray. The deck is paused and the whole script is spoken
+    ///     from its first word (speech has no offset).
+    ///
+    /// Only while the machine is still ON that line (a pause, a stop or a skip
+    /// during the load keeps today's outcome). The spoken line gets a FRESH
+    /// token, so a late report about the failed file (a second error, a
+    /// deadline's twin) names a load nobody is on and is dropped as
+    /// `superseded-failure`. If the synthesiser refuses too, its `.failed`
+    /// reaches `onLoadFailure` as a spoken load, which never falls back: the
+    /// first line stops and a bridge is stepped over, exactly as before. A
+    /// line with no script, and a clip, fail exactly as before.
+    private mutating func fallBackToScript(_ token: DeckToken, isPending: Bool, cause: Vocabulary.StopCause) -> Bool {
+        guard config.forayTapeEnabled else { return false }
+        let itemId: String?
+        let at: String
+        if isPending {
+            guard let pending = state.pendingLoad, pending.token == token, pending.spokenSeq == nil else { return false }
+            itemId = pending.itemId
+            at = pending.bridge ? "bridge" : "load"
+        } else {
+            guard state.narration == nil else { return false }
+            itemId = state.loadedId
+            at = "playing"
+        }
+        guard let itemId, let item = state.queue.first(where: { $0.id == itemId }), item.canSpeakInstead,
+              focusItem?.id == item.id else { return false }
+        switch (at, state.player) {
+        case ("load", .loadingItem), ("bridge", .transitioning), ("playing", .playing), ("playing", .transitioning):
+            break
+        default:
+            return false
+        }
+        diag("narration", [JSONMember("kind", .string("fallback")),
+                           JSONMember("reason", .string(cause == .loadDeadline ? "timeout" : "failed")),
+                           JSONMember("at", .string(at))])
+        // A file that failed mid-line: silence the deck under it first.
+        if at == "playing" { deckCommand(.pause) }
+        state.lastToken += 1
+        // `load` lands like any loaded line (the gate, the beat, itemLoaded);
+        // a bridge, and a line already playing, play on without an itemLoaded.
+        speakLine(item, token: state.lastToken, bridge: at != "load", fallback: true)
+        return true
+    }
+
     /// `_handleBackendItemEnded`: the item ran out. The queue's next item, or
     /// the next continuation hop when `autoAdvance` is on, or the end.
     private mutating func onEnded(_ token: DeckToken) {
         guard token == state.loadedToken else {
             return diag("deck", [JSONMember("kind", .string("stale-ended")), JSONMember("token", .number(Double(token)))])
         }
+        itemEnded()
+    }
+
+    /// `_handleBackendItemEnded`: the item the playhead is on ended (the deck's
+    /// `.ended`, or a spoken line's `didFinish` or deadline, NE-31s). Resolve
+    /// what "next" means, then feed exactly one `itemEnded`.
+    private mutating func itemEnded() {
+        // The stall latch belongs to the item that ended (#866's rate-0 latch,
+        // ported to the Foray seams): whatever plays next reports its own.
+        clearStallLatch()
         switch state.player {
         case .transitioning:
             let next = nextItem(from: cursor, skipBridges: true)
+            // A bridge marks its own seam, so no beat; but narration -> segment
+            // DOES get the jingle (§13): the founder's "between podcasts" mark
+            // comes after the narrator's line, before the next tape starts.
+            if let next { armInterlude(from: state.currentItem, to: next.item) }
             dispatch(.itemEnded(next: next?.item.ref, bridged: false))
         case .playing:
+            // THE OUT-POINT AND A NATURAL END ARE ONE END: the deck reports
+            // either as `.ended` (forwardPlaybackEndTime, the boundary layer,
+            // the watchdog or the file running out), and every transition
+            // after it is identical, which is the value of the one path.
             if let next = nextItem(from: cursor, skipBridges: false) {
-                // The seam beat and the interlude between two items are M2's
-                // (NE-30s/NE-31s).
-                return dispatch(.itemEnded(next: next.item.ref, bridged: next.item.kind == .tts))
+                let bridged = next.item.kind == .tts
+                if config.forayTapeEnabled, let from = state.currentItem {
+                    // Stamp the beat BEFORE dispatching: `itemEnded` issues the
+                    // next load in this same turn, and the whole point is for
+                    // that load to happen inside the beat.
+                    armSeamGap(from: from, to: next.item, bridged: bridged)
+                    // And the jingle in the same instant, for the same reason
+                    // (§13), after the beat so its deadline is the floor.
+                    armInterlude(from: from, to: next.item)
+                    // The span runs from the out-point until the next item is
+                    // audible, so iOS cannot suspend the process mid-seam.
+                    if state.backgrounded {
+                        beginGrace(state.preparedItemId == next.item.id ? .seam : .prepareMiss)
+                    }
+                }
+                dispatch(.itemEnded(next: next.item.ref, bridged: bridged))
+                // A silent seam (a beat with no jingle in it) may render
+                // digital silence, flagged off (NE-34).
+                return startSilence()
             }
-            if state.autoAdvance, let hop = state.chain.first {
+            if state.autoAdvance, state.forayId == nil, let hop = state.chain.first {
                 dispatch(.itemEnded(next: nil, bridged: false))
                 return begin(.walkHop(hop), source: .autoadvance)
             }
-            if state.autoAdvance {
+            if state.autoAdvance && state.forayId == nil {
                 diag("continuation", [JSONMember("kind", .string("chain-exhausted"))])
             }
             stopRow(state.forayId != nil ? .finalEnd : .ended)
             dispatch(.itemEnded(next: nil, bridged: false))
+            markForayFinished()
             applySession(SessionPolicy.transition(from: state.session, on: .finalEnd, holdPolicy: state.holdPolicy))
         case .idle, .loadingItem, .interrupted, .ended:
             diag("deck", [JSONMember("kind", .string("ended-ignored")), JSONMember("state", .string(state.stateType))])
@@ -914,10 +1313,15 @@ public struct EngineCore {
     /// that THIS item is audible (`elementResumed` carries no play).
     private mutating func reconcile(unexplainedPause: Bool, routeAttributed: Bool) {
         if case let .interrupted(item, _) = state.player {
-            guard audibleNow, let current = state.currentItem, state.loadedId == current.id, item.id == current.id else { return }
+            guard state.narration == nil, audibleNow, let current = state.currentItem, state.loadedId == current.id,
+                  item.id == current.id else { return }
             return dispatch(.elementResumed)
         }
         guard case .playing = state.player else { return }
+        // A spoken line is "playing" with nothing in the deck producing it:
+        // the deck's silence says nothing about it (only an interruption asks
+        // the synthesiser, `onInterruptionBegan`).
+        guard state.narration == nil else { return }
         guard !deck.audible else { return }
         guard !deck.ended else {
             return diag("reconcile", [JSONMember("kind", .string("skipped-ended"))])
@@ -947,6 +1351,16 @@ public struct EngineCore {
     /// `appWasSuspended` are rows, not stops; anything else takes the session
     /// and pauses (`interruptionBegan()`), with its cause row first.
     private mutating func onInterruptionBegan(_ raw: String?) {
+        // A SPOKEN LINE, and the synthesiser says it is still speaking: the
+        // event is late (the call was declined and the line carried on), so
+        // nothing is touched, the rule the tape keeps for a late event
+        // (`_reconcileNarrationInterrupted`). Anything else is the session
+        // taken from under the utterance, which AVSpeechSynthesizer reports
+        // to nobody: the line is interrupted below, never advanced.
+        if state.narration != nil, state.isPlaying, now.narrator == .speaking {
+            return diag("session", [JSONMember("kind", .string("interruption")), JSONMember("phase", .string("began")),
+                                    JSONMember("late", .string("narration-speaking"))])
+        }
         let reason = SessionPolicy.interruptionReason(raw)
         let running = state.isRunning || audibleNow
         let transition = SessionPolicy.transition(
@@ -958,9 +1372,11 @@ public struct EngineCore {
         if transition.row == .micMuted || transition.row == .staleSuspension {
             return applySession(transition)
         }
+        cutSeamGap("interruption")
         stopRow(.interruption)
         applySession(transition)
         dispatch(.interruptionBegan)
+        releaseSeamGap()
     }
 
     /// `interruptionEnded(shouldResume)`: ONLY AN INTERRUPTION THE OS CAUSED IS
@@ -1017,8 +1433,18 @@ public struct EngineCore {
                 // system's; the route is why (plan §4.3, either order).
                 diag("session", [JSONMember("kind", .string("route-attributed")), JSONMember("to", .string("pause"))])
             }
+            // A beat that outlived a lost route would start audio into a dead
+            // route the moment its timer fired.
+            cutSeamGap("routeLost")
             stopRow(.routeChange)
             dispatch(.routeChanged(oldDeviceUnavailable: true))
+            releaseSeamGap()
+            // The clock stops with the route, so no later tick carries the
+            // position it died at past the 5 s throttle: write it NOW
+            // (client.js `reconcileOnReturn`'s forced write; NE-37 ports
+            // transport-reconcile's "THE POSITION THE ROUTE DIED AT IS
+            // WRITTEN"). An unknown playhead still writes nothing.
+            persistForay(force: true)
         } else {
             dispatch(.routeChanged(oldDeviceUnavailable: false))
         }
@@ -1068,12 +1494,28 @@ public struct EngineCore {
         case .foreground:
             state.backgrounded = false
             reconcile(unexplainedPause: false, routeAttributed: false)
+        case .teardown:
+            teardown()
         }
     }
 
     private mutating func onTimer(_ timer: EngineTimer) {
         switch timer {
-        case .positionTick: persistIfDue()
+        case .positionTick:
+            persistIfDue()
+            persistForay(force: false)
+        case .seamBeat:
+            state.seamTimerArmed = false
+            finishSeamGap()
+        case .narrationTick:
+            state.narrationTickArmed = false
+            narrationTick()
+        case .silenceCap:
+            // INTERLUDE_CEILING_SEC from the out-point: past it only grace covers.
+            guard state.silenceActive else { return }
+            state.silenceActive = false
+            out.append(.silenceStop)
+            diag("silence", [JSONMember("kind", .string("capped"))])
         case .graceExpired:
             guard state.grace != nil else { return }
             // The deterministic outcome (plan §4.4): end the task, say so,
@@ -1136,6 +1578,9 @@ public struct EngineCore {
     /// hold has no playhead to write (#689), and one is never fabricated.
     private mutating func persistPosition() {
         guard let item = state.currentItem, item.bounds == nil else { return }
+        // A spoken line has nothing in the deck: the deck's playhead is left
+        // over from the item before it, and an utterance has no position.
+        if state.narration != nil && item.id == state.loadedId { return }
         guard state.loadedId == item.id else {
             return diag("position", [JSONMember("kind", .string("refused")),
                                      JSONMember("item", .string(item.id)),
@@ -1165,13 +1610,14 @@ public struct EngineCore {
     private mutating func flushPosition() {
         guard state.currentItem != nil else { return }
         persistPosition()
+        persistForay(force: true)
     }
 
     /// `_persistIfDue`: the periodic write, while playing, when the playhead
     /// has moved enough on this item since the last write by anyone.
     private mutating func persistIfDue() {
         guard case .playing = state.player, let item = state.currentItem, item.bounds == nil,
-              state.loadedId == item.id,
+              state.loadedId == item.id, state.narration == nil,
               ResumeRules.positionTickDue(last: state.lastPersisted, id: item.id, seconds: deck.positionSec) else { return }
         persistPosition()
     }
@@ -1205,6 +1651,7 @@ public struct EngineCore {
             offsetSec: offset,
             forayId: state.forayId,
             rate: state.rate,
+            voiceId: state.voiceId,
             advanceLog: state.advanceLog.map(\.node),
             pendingEvents: state.pendingEvents.map(\.node),
             updatedAt: stamp,
@@ -1302,7 +1749,7 @@ public struct EngineCore {
         case .unload:
             deck = DeckReading(positionSec: nil, durationSec: nil, audible: false, ended: false)
             deckMovedThisTurn = true
-        case .setRate, .setOutPoint:
+        case .setRate, .setOutPoint, .prepare:
             break
         }
     }
@@ -1331,6 +1778,789 @@ public struct EngineCore {
             }
         }
         if state.isRunning { cancelHoldTimer() }
+    }
+
+    // MARK: - Forays (NE-30s)
+
+    /// A Foray the ENGINE was handed (`playForay`): its transport runs on the
+    /// Foray clock. A queue loaded through the manager's own surface (a
+    /// parity scenario's `playForay`) keeps the manager's transport.
+    private var forayTransport: Bool { config.forayTapeEnabled && state.forayId != nil }
+
+    /// The queue as the Foray clock reads it.
+    private var forayItems: [ForayItem?] { state.queue.map { Optional($0.forayItem) } }
+
+    /// Where the listener is on the Foray clock (client.js `forayPlayhead`):
+    /// the deck's playhead once it holds the item, the second a load in flight
+    /// will land on, else unknown (nil), which a write never guesses.
+    private func forayPositionSec(of item: EngineItem) -> Double? {
+        let playhead: Double?
+        if let line = state.narration, line.itemId == item.id, state.loadedId == item.id {
+            // A spoken line's clock is wall time since it started (L-03).
+            playhead = line.elapsedSec(atMono: now.monoMs)
+        } else if state.loadedId == item.id {
+            playhead = deck.positionSec
+        } else if let pending = state.pendingLoad, pending.itemId == item.id {
+            playhead = pending.startSec
+        } else {
+            playhead = nil
+        }
+        guard let playhead, playhead.isFinite else { return nil }
+        return ForayClock.forayElapsed(forayItems, index: Double(state.currentIndex), playheadSec: playhead)
+    }
+
+    /// `playForay {forayId, title, items, buildReport, startElapsedSec?,
+    /// isLocalFile, allowAdPad, voiceId}` (plan §5.2). The page built the
+    /// queue (A-1); the engine RE-VALIDATES its structure (J-4) and refuses it
+    /// whole, before anything is audible, when any item is not what
+    /// `buildForayQueue` guarantees. A resume point on the Foray clock lands
+    /// inside its clip (`segmentAtElapsed`, `sourceOffsetFor`).
+    private mutating func playForay(_ args: EngineContract.PlayForay, source: EngineSource) {
+        let items = args.items.compactMap { EngineItem(node: $0.node) }
+        let verdict = StructuralCheck.check(items.map { Optional($0.forayItem) })
+        guard items.count == args.items.count, verdict.ok else {
+            diag("foray", [JSONMember("kind", .string("refused-structure")),
+                           JSONMember("problems", .number(Double(verdict.problems.count)))])
+            return refuse(.refusedStructure)
+        }
+        // LEAVING IS A FLUSH: whatever was playing writes where it got to.
+        flushPosition()
+        state.queue = items
+        state.currentIndex = -1
+        state.forayId = args.forayId
+        state.forayTitle = args.title
+        state.forayIsLocalFile = args.isLocalFile
+        state.forayAllowAdPad = args.allowAdPad
+        state.lastEpisodeRow = nil
+        state.lastEpisodeRowWritten = false
+        state.startingHop = nil
+        state.closed = false
+        state.preparedItemId = nil
+        state.skippedSegments = 0
+        state.forayFinishedWritten = false
+        state.forayThrottle.clear(forayId: args.forayId)
+        if let elapsed = args.startElapsedSec, let at = ForayClock.segmentAtElapsed(forayItems, elapsed: elapsed),
+           items.indices.contains(at.index) {
+            let offset = TransportPolicy.sourceOffset(for: items[at.index].transportItem, into: at.into)
+            return playIndex(at.index, startSec: offset, source: source)
+        }
+        playIndex(0, startSec: nil, source: source)
+    }
+
+    /// A scrub on the Foray clock (`seekTo` in a Foray): which clip it lands
+    /// in and where (`segmentAtElapsed`), then `scrubTarget`: another clip, or
+    /// a Foray with nothing loaded, is a load at the offset; the same clip is
+    /// a seek. A spoken line has no offset to seek to.
+    private mutating func forayScrub(to elapsed: Double, source: EngineSource) {
+        guard let at = ForayClock.segmentAtElapsed(forayItems, elapsed: elapsed),
+              state.queue.indices.contains(at.index) else { return refuse(.notLoaded) }
+        let item = state.queue[at.index]
+        let scrub = TransportPolicy.scrubTarget(atIndex: Double(at.index), into: at.into, item: item.transportItem,
+                                                currentIndex: Double(state.currentIndex), stateType: state.stateType)
+        if scrub.reload { return playIndex(at.index, startSec: scrub.offset, source: source) }
+        guard let offset = scrub.offset else { return }
+        cutSeamGap("seek")
+        dispatch(.seek(seconds: offset, precise: true))
+        releaseSeamGap()
+    }
+
+    /// A ↺15 / 30↻ nudge in a Foray: a step on the Foray clock, stopped short
+    /// of the total (`skipTarget(foray: true)`), then an ordinary scrub.
+    private mutating func forayNudge(_ deltaSec: Double, source: EngineSource) {
+        guard let item = state.currentItem else { return refuse(.notLoaded) }
+        let position = forayPositionSec(of: item)
+            ?? ForayClock.segmentStarts(forayItems)[Swift.max(0, state.currentIndex)]
+        guard let target = TransportPolicy.skipTarget(foray: true, positionSec: position, offsetSec: deltaSec,
+                                                      durationSec: ForayClock.forayRuntimeSec(forayItems)) else { return }
+        forayScrub(to: target, source: source)
+    }
+
+    /// `_warmNextSegment`: the deck says the boundary is the prefetch lead
+    /// away. Name the item that boundary will advance to and its in-point, so
+    /// the standby deck can load it while this one is still audible. Only a
+    /// running item approaches a boundary, and only the transitions that get
+    /// a beat are warmed (the beat's own rule, CALLED, so the two cannot
+    /// drift): a Foray's last item prepares nothing, since a Foray never
+    /// chains.
+    private mutating func warmNextSegment() {
+        guard config.forayTapeEnabled, case .playing = state.player, let from = state.currentItem else { return }
+        guard let next = nextItem(from: cursor, skipBridges: false) else {
+            return diag("prepare", [JSONMember("kind", .string("none"))])
+        }
+        let sec = SeamGap.gapSec(from: from.seam, to: next.item.seam, bridged: next.item.kind == .tts,
+                                 cause: SeamGap.autoAdvance, gapSec: config.seamGapSec)
+        guard sec > 0 else {
+            return diag("prepare", [JSONMember("kind", .string("skipped")), JSONMember("item", .string(next.item.id))])
+        }
+        state.preparedItemId = next.item.id
+        deckCommand(.prepare(itemId: next.item.id, url: next.item.audioUrl, startSec: next.item.bounds?.startSec ?? 0))
+    }
+
+    // MARK: the seam beat (queue-manager.js §10)
+
+    /// `_setGapDeadline`: the one writer of the deadline, so the `beat` row
+    /// (the page's `onSeamGapChange`) can never disagree with `inSeamGap`.
+    private mutating func setGapDeadline(_ until: Double?) {
+        let was = state.gapUntilMono != nil
+        state.gapUntilMono = until
+        if until == nil { state.gapArmedAtMono = nil }
+        if was != (until != nil) {
+            diag("beat", [JSONMember("kind", .string(until != nil ? "begin" : "end"))])
+        }
+    }
+
+    /// `_armSeamGap(from, to, bridged)`: at the moment the out-point (or a
+    /// natural end) fires, decide whether this transition is a seam and stamp
+    /// the ABSOLUTE deadline. The beat is wall clock: it does not scale with
+    /// the listener's rate.
+    private mutating func armSeamGap(from: EngineItem, to: EngineItem, bridged: Bool) {
+        let sec = SeamGap.gapSec(from: from.seam, to: to.seam, bridged: bridged, cause: SeamGap.autoAdvance,
+                                 gapSec: config.seamGapSec)
+        guard sec > 0 else { return }
+        setGapDeadline(now.monoMs + sec * 1000)
+        state.gapArmedAtMono = now.monoMs
+        state.gapAskedMs = sec * 1000
+    }
+
+    /// `_awaitSeamGap(seq)`: hold what remains of the beat, then start the
+    /// item, if this load still owns the player. Nothing remaining (no beat,
+    /// or a slow load that already spent it) starts it now: a slow load costs
+    /// max(gap, load), never gap + load.
+    private mutating func awaitSeamGap(_ token: DeckToken) {
+        let remaining = seamGapRemainingMs(atMono: now.monoMs)
+        if remaining <= 0 {
+            let armedAt = state.gapArmedAtMono
+            // A jingle still claiming to sound once the whole deadline is
+            // spent (a slow load past the ceiling) loses to the tape.
+            stopInterlude("spent")
+            setGapDeadline(nil)
+            return seamLanded(armedAt: armedAt)
+        }
+        state.gapParkedToken = token
+        state.gapCut = false
+        state.seamTimerArmed = true
+        out.append(.timerArm(.seamBeat, afterMs: remaining, repeating: false))
+    }
+
+    /// The parked wait's `finish`: the beat ran out, or the action that cut it
+    /// has issued its own load. Idempotent. A newer load (a skip, a jump, the
+    /// ladder walking past a refused segment) means this one is abandoned
+    /// quietly; otherwise `itemLoaded`, which the reducer reads by state: the
+    /// out-point armed and the item started, a scrub's pending seek applied,
+    /// or nothing at all after a pause or a stop.
+    private mutating func finishSeamGap() {
+        guard let token = state.gapParkedToken else { return }
+        state.gapParkedToken = nil
+        if state.seamTimerArmed {
+            state.seamTimerArmed = false
+            out.append(.timerCancel(.seamBeat))
+        }
+        state.gapCut = false
+        let armedAt = state.gapArmedAtMono
+        // §13: the deadline ran out with the jingle still sounding (the
+        // ceiling). Two audible things at once is corner case #19's shape,
+        // so the jingle loses. A no-op whenever it ended on its own.
+        stopInterlude("ceiling")
+        setGapDeadline(nil)
+        guard state.lastToken == token else {
+            return diag("beat", [JSONMember("kind", .string("superseded"))])
+        }
+        seamLanded(armedAt: armedAt)
+    }
+
+    /// The load the beat held becomes audible: the packed `seam` row (plan
+    /// §13 item 37) when it was a real seam, then `itemLoaded`.
+    private mutating func seamLanded(armedAt: Double?) {
+        // NE-32: the DeckPair's own report on this load, when it sent one,
+        // is the truth about the standby deck (a prepare ASKED is not a
+        // prepare HIT); without one the row says what it always said.
+        let report = state.deckPrepare.flatMap { $0.token == state.loadedToken ? $0 : nil }
+        state.deckPrepare = nil
+        if let armedAt {
+            let row = SeamRow(observedGapMs: now.monoMs - armedAt, askedGapMs: state.gapAskedMs,
+                              prepared: report?.hit
+                                  ?? (state.preparedItemId != nil && state.preparedItemId == state.loadedId),
+                              grace: state.grace != nil, bgRemainingMs: now.bgRemainingMs.map { $0.rounded() },
+                              stages: report.map { $0.stages + [.play] } ?? [.ready, .play])
+            out.append(.diag(row.entry))
+        }
+        stopSilence("landed")
+        dispatch(.itemLoaded)
+    }
+
+    /// `_cutSeamGap(why)`: EVERY transport action ends a running beat (the
+    /// beat marks an edit the listener did not ask for; touching the transport
+    /// names a destination). The clock stops now; the parked wait is left
+    /// parked until `releaseSeamGap`, after the action's own load.
+    private mutating func cutSeamGap(_ why: String) {
+        // §13: a jingle is the beat with sound in it, so whatever cuts the
+        // beat silences the jingle (and the silence node under it).
+        stopInterlude(why)
+        stopSilence(why)
+        setGapDeadline(nil)
+        guard state.gapParkedToken != nil, !state.gapCut else { return }
+        state.gapCut = true
+        if state.seamTimerArmed {
+            state.seamTimerArmed = false
+            out.append(.timerCancel(.seamBeat))
+        }
+        diag("beat", [JSONMember("kind", .string("cut")), JSONMember("why", .string(why))])
+    }
+
+    /// `_releaseSeamGap`: let a cut wait go, now that `lastToken` tells the
+    /// truth. A parked activation's action has not run yet: its answer
+    /// releases it (`onSessionResult`).
+    private mutating func releaseSeamGap() {
+        guard state.gapParkedToken != nil, state.gapCut, state.pendingActivation == nil else { return }
+        finishSeamGap()
+    }
+
+    /// `_endSeamGap(why)`: cut and release, for the paths that end a seam
+    /// without being a transport action (a failed load, a queue run out).
+    private mutating func endSeamGap(_ why: String) {
+        cutSeamGap(why)
+        releaseSeamGap()
+    }
+
+    // MARK: ADR-0007 at load, and rendered bridges
+
+    /// The ladder refused the copy in hand: the segment is never audible. A
+    /// `skipped` event and row say so, and the Foray moves on.
+    private mutating func refuseAtLoad(_ item: EngineItem, reason: String) {
+        state.skippedSegments += 1
+        let index = state.queue.firstIndex(where: { $0.id == item.id }) ?? state.currentIndex
+        diag("skip", [JSONMember("kind", .string("ladder")), JSONMember("item", .string(item.id)),
+                      JSONMember("index", .number(Double(index)))])
+        out.append(.emit(.skipped(itemId: item.id, index: index, reason: reason)))
+        skipUnplayableSegment()
+    }
+
+    /// `_skipUnplayableSegment`: still `loadingItem` (nothing was started), so
+    /// `skipToNext` replaces the in-flight target. With something left the
+    /// beat's deadline is KEPT: the refusal happened inside the beat, so the
+    /// replacement spends what remains of it. With nothing left the Foray
+    /// ends instead of looping, and there is no load to spend the beat.
+    private mutating func skipUnplayableSegment() {
+        let next = nextItem(from: cursor, skipBridges: false)
+        if let next {
+            state.targetIndex = next.index
+        } else {
+            endSeamGap("queueExhausted")
+            stopRow(.finalEnd)
+        }
+        dispatch(.skipToNext(next?.item.ref))
+        if next == nil, state.stateType == "ended" {
+            markForayFinished()
+            applySession(SessionPolicy.transition(from: state.session, on: .finalEnd, holdPolicy: state.holdPolicy))
+        }
+    }
+
+    /// `_playTransitionBridge`: the reducer is `transitioning` onto a narration
+    /// bridge. A RENDERED one (a file) plays on the deck from 0 the moment it
+    /// lands; a SPOKEN one is handed to the synthesiser (NE-31s). One that is
+    /// missing, or fails to load or to speak, is stepped over so the queue
+    /// never stalls.
+    private mutating func playTransitionBridge() {
+        guard case let .transitioning(_, to) = state.player else {
+            return diag("bridge", [JSONMember("kind", .string("without-transitioning"))])
+        }
+        guard let index = state.queue.firstIndex(where: { $0.id == to.id }) else { return advancePastBridgeFailure() }
+        let bridge = state.queue[index]
+        state.currentIndex = index
+        state.lastToken += 1
+        let token = state.lastToken
+        if bridge.isSynthNarration { return speakLine(bridge, token: token, bridge: true) }
+        state.pendingLoad = PendingLoad(token: token, itemId: bridge.id, startSec: 0, bridge: true)
+        deckCommand(.load(token: token, itemId: bridge.id, url: bridge.audioUrl, startSec: 0, preciseTiming: false))
+    }
+
+    /// `_advancePastBridgeFailure`: the item after the bridge, bridges skipped.
+    private mutating func advancePastBridgeFailure() {
+        let next = nextItem(from: cursor, skipBridges: true)
+        dispatch(.itemEnded(next: next?.item.ref, bridged: false))
+    }
+
+    // MARK: - The narrating overlay (NE-31s; queue-manager.js §7 and L-03/L-05)
+
+    /// The multiplier a line is uttered at: `NARRATION_RATE` (1x, OQ-3,
+    /// founder 2026-09-24), unless `narrationFollowsListenerRate` is on.
+    private var utteranceRate: Double {
+        config.narrationFollowsListenerRate ? state.rate : EngineConstants.QueueManager.narrationRate
+    }
+
+    /// `_loadItem` for a script-only line. RE-ENTERING A PAUSED UTTERANCE IS A
+    /// RESUME, NOT A RESTART (L-05): every resume path routes back through a
+    /// load, which is right for a deck and wrong for a synthesiser (`speak`
+    /// has no offset), so a re-entry into the line the playhead is already on,
+    /// with the line paused and no restart asked for, speaks nothing and lets
+    /// `startPlayback` continue the same utterance.
+    private mutating func loadSpokenLine(_ item: EngineItem, token: DeckToken, restart: Bool) {
+        if !restart, state.loadedId == item.id, let line = state.narration, line.itemId == item.id, line.paused {
+            state.pendingLoad = nil
+            diag("narration", [JSONMember("kind", .string("resuming-in-place"))])
+            return landed(item, token: token)
+        }
+        speakLine(item, token: token, bridge: false)
+    }
+
+    /// `_speakNarration`: ask the synthesiser for utterance `seq`. Like a
+    /// deck load it is a request now and an answer later (`started` or
+    /// `failed` for that seq), and the playhead moves only on `started`.
+    private mutating func speakLine(_ item: EngineItem, token: DeckToken, bridge: Bool, fallback: Bool = false) {
+        state.speakSeq += 1
+        let seq = state.speakSeq
+        state.pendingLoad = PendingLoad(token: token, itemId: item.id, startSec: 0, bridge: bridge, spokenSeq: seq,
+                                        fallback: fallback)
+        // The audible-start backstop (plan §4.4), as `startPlayback`'s: a line
+        // is never spoken into a session this engine does not hold.
+        guard state.session == .active else {
+            diag("fault", [JSONMember("kind", .string("no-session")), JSONMember("at", .string("narration")),
+                           JSONMember("session", .string(state.session.rawValue))])
+            return onLoadFailure(token, message: "no active session for narration", cause: .error)
+        }
+        out.append(.narration(.speak(seq: seq, text: item.node["script"]?.stringValue ?? "", voiceId: state.voiceId,
+                                     utteranceRate: utteranceRate)))
+    }
+
+    private mutating func onNarrator(_ event: NarratorEvent) {
+        guard config.forayTapeEnabled else { return }
+        switch event {
+        case let .started(seq, voiceFallback):
+            narrationStarted(seq, voiceFallback: voiceFallback)
+        case let .failed(seq, _):
+            guard let pending = state.pendingLoad, pending.spokenSeq == seq else {
+                return diag("narration", [JSONMember("kind", .string("superseded-failure")), JSONMember("seq", .number(Double(seq)))])
+            }
+            // A failed speak is not a voice-fallback report (`_lastSpeakResult = null`).
+            state.lastVoiceFallback = nil
+            // The existing "a load failed" path: a bridge is stepped over, a
+            // line the listener asked for is the page's error.
+            onLoadFailure(pending.token, message: "foray-tts: speak refused", cause: .error)
+        case let .finished(seq):
+            finishLine(seq, why: "finished")
+        case let .cancelled(seq):
+            // A stop, a replacement, or the session taken from under the line:
+            // NEVER an advance (L-05, "stop never advances"). What happens next
+            // is the transport's (a pause, a stop) or the interruption's.
+            diag("narration", [JSONMember("kind", .string("cancelled")),
+                               JSONMember("current", .bool(state.narration?.seq == seq))])
+        case let .resumed(seq, answer):
+            narrationResumed(seq, answer)
+        }
+    }
+
+    /// The synthesiser accepted utterance `seq`: the line IS the playhead now
+    /// (`_loadedId`, `_beginSynthNarration`). A `_loadItem` line then takes
+    /// the gate and the beat like any landed load; a bridge is already
+    /// `transitioning` and plays on.
+    private mutating func narrationStarted(_ seq: Int, voiceFallback: Bool) {
+        guard let pending = state.pendingLoad, pending.spokenSeq == seq,
+              let item = state.queue.first(where: { $0.id == pending.itemId }) else {
+            // SUPERSEDED WHILE speak() WAS IN FLIGHT (audit round 3,
+            // player-core-4/7): the voice started on accept, and a skip, a row
+            // tap or a stop moved the player on. Silence it, unless a newer
+            // speak() already replaced it (`_abandonSpeech`). A repeated
+            // `started` for the line already playing is not a stale one.
+            if state.narration?.seq != seq { abandonSpeech(seq) }
+            return diag("narration", [JSONMember("kind", .string("superseded")), JSONMember("seq", .number(Double(seq)))])
+        }
+        // THE LISTENER CAN MOVE WHILE THE LINE'S speak() IS IN FLIGHT (audit
+        // round 3, player-core-2/4): a pause or an interruption changes the
+        // state but not the pending line. The line starts only if the machine
+        // is still loading it (`_loadItem`) or still transitioning to it
+        // (`_playTransitionBridge`); otherwise the voice that already began is
+        // silenced and nothing else moves.
+        guard stillOn(pending) else {
+            state.pendingLoad = nil
+            abandonSpeech(seq)
+            return diag("narration", [JSONMember("kind", .string("left-while-speaking")),
+                                      JSONMember("seq", .number(Double(seq)))])
+        }
+        state.pendingLoad = nil
+        state.lastVoiceFallback = voiceFallback
+        state.loadedId = pending.itemId
+        state.loadedToken = pending.token
+        state.startingHop = nil
+        // A spoken line is the playhead: no deck stall describes it.
+        clearStallLatch()
+        state.narration = SpokenLine(seq: seq, itemId: item.id, startedAtMono: now.monoMs)
+        // §14: remembered only for a rendered line spoken INSTEAD of its file.
+        state.fallbackSpokenId = pending.fallback ? item.id : nil
+        startNarrationTicker()
+        if voiceFallback {
+            diag("narration", [JSONMember("kind", .string("voice-fallback"))])
+        }
+        // The line is audible: a span covering its start is over.
+        if state.grace != nil { endGrace(.playing) }
+        if pending.bridge { return }
+        landed(item, token: pending.token)
+    }
+
+    /// THE STALL LATCH IS PER ITEM (client.js `setNowPlaying`: "something
+    /// else is current now, so neither the last item's failure nor its stall
+    /// describes it"). `buffering` is set by a `.stalled` and cleared only by
+    /// that deck's `.timeControl(.playing)`, and while it is set Now Playing
+    /// publishes rate 0: the car reads "paused" and hides the progress bar
+    /// (the 2026-09-28 paste; AVDeck's re-report, #866, fixed the late-stall
+    /// half). In a Foray the item after a clip that stalled near its end is a
+    /// spoken line or the next clip's load, and neither would ever send the
+    /// `.playing` that clears it, so the whole next line read "paused".
+    private mutating func clearStallLatch() {
+        guard state.buffering else { return }
+        state.buffering = false
+        diag("deck", [JSONMember("kind", .string("stall-cleared"))])
+    }
+
+    /// Is the machine still on the line `pending` is speaking? `_loadItem`'s
+    /// check (still `loadingItem` with that target) for a line it loads, and
+    /// `_playTransitionBridge`'s `stillOurs` (still `transitioning` to it) for
+    /// a bridge. A rendered line that failed WHILE SOUNDING and is read from
+    /// its script instead (§14, `_speakInsteadMidLine`'s `stillOnIt`) may
+    /// also be `playing`.
+    private func stillOn(_ pending: PendingLoad) -> Bool {
+        guard focusItem?.id == pending.itemId else { return false }
+        switch state.player {
+        case .loadingItem: return !pending.bridge
+        case .transitioning: return pending.bridge
+        case .playing: return pending.bridge && pending.fallback
+        case .idle, .ended, .interrupted: return false
+        }
+    }
+
+    /// `_abandonSpeech(mine)`: a speak() whose line the player has left. The
+    /// voice started on accept, so it is told to stop, unless a NEWER speak()
+    /// has been issued since, which already replaced this utterance and must
+    /// not be cut off.
+    private mutating func abandonSpeech(_ seq: Int) {
+        guard seq == state.speakSeq else { return }
+        out.append(.narration(.stop(seq: seq)))
+    }
+
+    /// `_endSynthNarration`: a deck item holds the playhead. A line that did
+    /// not finish (left paused by a skip, or past its deadline over silence)
+    /// is dropped, so the synthesiser never keeps an utterance nobody will
+    /// continue.
+    private mutating func endSpokenLine() {
+        guard let line = state.narration else { return }
+        state.narration = nil
+        state.fallbackSpokenId = nil
+        stopNarrationTicker()
+        if !line.finished { out.append(.narration(.discard(seq: line.seq))) }
+    }
+
+    /// `_onTtsFinished`: advance past the line EXACTLY ONCE. The event must
+    /// name the line the playhead is on (a finish for a line already left is
+    /// not this line's), and each line advances at most once
+    /// (`_advancedSpeakSeq`), whether by `didFinish` or by its deadline.
+    /// Returns whether it advanced.
+    @discardableResult
+    private mutating func finishLine(_ seq: Int, why: String) -> Bool {
+        guard var line = state.narration else {
+            diag("narration", [JSONMember("kind", .string("stray-end")), JSONMember("why", .string(why))])
+            return false
+        }
+        guard line.seq == seq else {
+            diag("narration", [JSONMember("kind", .string("stale-end")), JSONMember("why", .string(why))])
+            return false
+        }
+        guard state.advancedSpeakSeq != seq else {
+            diag("narration", [JSONMember("kind", .string("duplicate-end")), JSONMember("why", .string(why))])
+            return false
+        }
+        state.advancedSpeakSeq = seq
+        if why == "finished" {
+            line.finished = true
+            state.narration = line
+        }
+        stopNarrationTicker()
+        diag("narration", [JSONMember("kind", .string("ended")), JSONMember("why", .string(why))])
+        // Grace at narration end: the synthesiser has stopped rendering and
+        // the next item is not audible yet, in the background the one span
+        // `UIBackgroundModes: audio` does not cover.
+        if state.backgrounded && state.isRunning { beginGrace(.narrationHandover) }
+        itemEnded()
+        return true
+    }
+
+    /// `_pauseNarration`: hold the line at a word; its clock freezes.
+    /// Idempotent, because the reducer is not.
+    private mutating func pauseNarration() {
+        guard !narrationStopping, var line = state.narration, !line.paused else { return }
+        line.paused = true
+        line.pausedAtMono = now.monoMs
+        state.narration = line
+        stopNarrationTicker()
+        out.append(.narration(.pause(seq: line.seq)))
+    }
+
+    /// The synthesiser's answer to `resume(seq)` (`_resumeNarration`): the
+    /// clock continues from where it froze, restarts with a line re-spoken
+    /// from its first word, or (refused) stays frozen with the line paused,
+    /// so the next play tries the resume again.
+    private mutating func narrationResumed(_ seq: Int, _ answer: NarrationResumeAnswer) {
+        guard var line = state.narration, line.seq == seq, line.paused else {
+            return diag("narration", [JSONMember("kind", .string("resume-stale")), JSONMember("seq", .number(Double(seq)))])
+        }
+        switch answer {
+        case .refused:
+            diag("narration", [JSONMember("kind", .string("resume-refused"))])
+            if state.grace != nil { endGrace(.notRunning) }
+            return
+        case .fromStart:
+            line.startedAtMono = now.monoMs
+        case .continued, .noAnswer:
+            line.startedAtMono += line.pausedAtMono.map { Swift.max(0, now.monoMs - $0) } ?? 0
+        }
+        line.paused = false
+        line.pausedAtMono = nil
+        state.narration = line
+        startNarrationTicker()
+        if state.grace != nil { endGrace(.playing) }
+    }
+
+    /// `_stopNarration`: silence the line at once. The line stays the
+    /// playhead (a stop is not a skip); its clock is simply no longer paused.
+    private mutating func stopNarration() {
+        guard var line = state.narration else { return }
+        line.paused = false
+        line.pausedAtMono = nil
+        state.narration = line
+        stopNarrationTicker()
+        out.append(.narration(.stop(seq: line.seq)))
+    }
+
+    /// `_startNarrationTicker`: one pulse `NARRATION_TICK_MS` out, re-armed by
+    /// each pulse, only while a surface listens (`narrationPulse`).
+    private mutating func startNarrationTicker() {
+        stopNarrationTicker()
+        guard config.narrationPulse, var line = state.narration else { return }
+        let afterMs = EngineConstants.QueueManager.narrationTickMs
+        line.tickDueAtMono = now.monoMs + afterMs
+        state.narration = line
+        state.narrationTickArmed = true
+        out.append(.timerArm(.narrationTick, afterMs: afterMs, repeating: false))
+    }
+
+    private mutating func stopNarrationTicker() {
+        guard state.narrationTickArmed else { return }
+        state.narrationTickArmed = false
+        out.append(.timerCancel(.narrationTick))
+    }
+
+    /// `_tickNarration`. The pulse repaints the surface. A pulse that lands
+    /// `NARRATION_SUSPEND_GAP_MS` late means the process was SUSPENDED, not
+    /// busy: the slept time never counts towards the deadline (the start is
+    /// shifted as a pause shifts it) and the synthesiser is asked, as a fresh
+    /// interruption asks it. Past the deadline (the synthesiser's session was
+    /// taken and no `didFinish` is coming) the line is finished, once, through
+    /// the same guards; a pulse that cannot advance keeps the ticker alive.
+    private mutating func narrationTick() {
+        guard var line = state.narration else { return }
+        let late = line.tickDueAtMono.map { now.monoMs - $0 } ?? 0
+        out.append(.narrationPulse(elapsedSec: line.elapsedSec(atMono: now.monoMs)))
+        if late > EngineConstants.QueueManager.narrationSuspendGapMs {
+            diag("narration", [JSONMember("kind", .string("suspended")), JSONMember("lateMs", .number(late.rounded()))])
+            line.startedAtMono += late
+            state.narration = line
+            startNarrationTicker()
+            return reconcileNarrationInterrupted("narration.suspended")
+        }
+        let deadline = EngineCore.narrationDeadlineSec(state.currentItem, rate: utteranceRate)
+        if deadline > 0 && line.elapsedSec(atMono: now.monoMs) > deadline {
+            diag("narration", [JSONMember("kind", .string("deadline")), JSONMember("limitSec", .number(deadline.rounded()))])
+            if finishLine(line.seq, why: "deadline") { return }
+            guard let current = state.narration, state.advancedSpeakSeq != current.seq else { return }
+        }
+        startNarrationTicker()
+    }
+
+    /// `narrationDeadlineSec(item, rate)`: the line's runtime at the speed it
+    /// is SPOKEN at (stretched only when slower than 1x) times
+    /// `NARRATION_DEADLINE_FACTOR`, plus the margin. Zero (no deadline) for a
+    /// line that carries no runtime: a limit derived from nothing would cut
+    /// every unmeasured line off at the margin.
+    public static func narrationDeadlineSec(_ item: EngineItem?, rate: Double) -> Double {
+        guard let runtime = item?.durationSec, runtime.isFinite, runtime > 0 else { return 0 }
+        let slow = rate.isFinite && rate > 0 && rate < 1 ? 1 / rate : 1
+        return runtime * slow * EngineConstants.QueueManager.narrationDeadlineFactor
+            + EngineConstants.QueueManager.narrationDeadlineMarginSec
+    }
+
+    /// `_reconcileNarrationInterrupted`: there is no element to ask, so the
+    /// SYNTHESISER is asked. Still speaking: nothing is touched. Anything
+    /// else (or nobody able to say) is the session taken from under the line:
+    /// `interrupted`, the clock frozen by the pause, resumable by one press or
+    /// a should-resume, never an advance.
+    private mutating func reconcileNarrationInterrupted(_ why: String) {
+        if now.narrator == .speaking {
+            return diag("reconcile", [JSONMember("kind", .string("skipped-narration-speaking")), JSONMember("why", .string(why))])
+        }
+        guard state.isPlaying else { return }
+        diag("reconcile", [JSONMember("kind", .string("narration-interrupted")), JSONMember("why", .string(why)),
+                           JSONMember("tts", .string(now.narrator.rawValue))])
+        stopRow(.systemPause)
+        state.pausedByListener = false
+        cutSeamGap("reconcile")
+        dispatch(.interruptionBegan)
+        releaseSeamGap()
+    }
+
+    // MARK: - The interlude jingle (NE-31s; queue-manager.js §13)
+
+    /// `_armInterlude(from, to)`: at the same instant as the beat and after
+    /// it, start the jingle and stretch the deadline to its ceiling, so the
+    /// jingle ABSORBS the next segment's load. The rule is interlude.js's
+    /// (`Interlude.eligible`); the clock is the beat's.
+    private mutating func armInterlude(from: EngineItem?, to: EngineItem?) {
+        guard config.forayTapeEnabled, config.interludeAvailable, state.interludeEnabled, let to else { return }
+        guard Interlude.eligible(from: from?.forayItem.interlude, to: to.forayItem.interlude) else {
+            return diag("interlude", [JSONMember("kind", .string("skipped"))])
+        }
+        // The audible-start invariant: nothing sounds without the session.
+        guard state.session == .active else {
+            return diag("fault", [JSONMember("kind", .string("no-session")), JSONMember("at", .string("interlude"))])
+        }
+        out.append(.interlude(.start))
+        state.inInterlude = true
+        state.beatUntilMono = state.gapUntilMono
+        setGapDeadline(Swift.max(state.gapUntilMono ?? 0, now.monoMs + Interlude.ceilingSec * 1000))
+        diag("interlude", [JSONMember("kind", .string("started"))])
+    }
+
+    /// `_onInterludeEnded(reason)`: shrink the seam back to the beat's own
+    /// deadline. A wait parked on the ceiling finishes now if the beat is
+    /// spent, or is re-timed to what the beat still owes (a jingle that failed
+    /// at once never shortens the beat); a load not yet landed just holds the
+    /// remainder when it does.
+    private mutating func onInterlude(_ event: InterludeEvent) {
+        switch event {
+        case let .ended(reason):
+            guard state.inInterlude else {
+                return diag("interlude", [JSONMember("kind", .string("stray-end"))])
+            }
+            state.inInterlude = false
+            let beatUntil = state.beatUntilMono
+            state.beatUntilMono = nil
+            diag("interlude", [JSONMember("kind", .string("ended")),
+                               JSONMember("why", .string(DiagGate.isToken(reason) ? reason : "other"))])
+            let remaining = beatUntil.map { Swift.max(0, $0 - now.monoMs) } ?? 0
+            if state.gapParkedToken != nil && !state.gapCut {
+                if state.seamTimerArmed {
+                    state.seamTimerArmed = false
+                    out.append(.timerCancel(.seamBeat))
+                }
+                if remaining <= 0 { return finishSeamGap() }
+                setGapDeadline(beatUntil)
+                state.seamTimerArmed = true
+                out.append(.timerArm(.seamBeat, afterMs: remaining, repeating: false))
+                return
+            }
+            if state.gapCut { return } // parked; `releaseSeamGap` owns it
+            setGapDeadline(remaining > 0 ? beatUntil : nil)
+        }
+    }
+
+    /// `_stopInterlude(why)`: silence a sounding jingle without reporting an
+    /// end. Idempotent.
+    private mutating func stopInterlude(_ why: String) {
+        guard state.inInterlude else { return }
+        state.inInterlude = false
+        state.beatUntilMono = nil
+        out.append(.interlude(.stop))
+        diag("interlude", [JSONMember("kind", .string("cut")), JSONMember("why", .string(why))])
+    }
+
+    // MARK: - The silence node (NE-31s commands; NE-34's node, flagged OFF)
+
+    /// Digital silence across a silent seam, so the process keeps rendering
+    /// while the next load happens. Hard-capped at `INTERLUDE_CEILING_SEC`
+    /// from the out-point (`Interlude.silenceNodeSec`, which answers 0 when
+    /// the transport is not running or the session is not active), after
+    /// which only grace covers.
+    private mutating func startSilence() {
+        guard config.forayTapeEnabled, config.silenceNodeEnabled, !state.silenceActive,
+              state.inSeamGap, !state.inInterlude else { return }
+        let sec = Interlude.silenceNodeSec(sinceOutPointSec: 0, running: state.isRunning,
+                                           sessionActive: state.session == .active)
+        guard sec > 0 else { return diag("silence", [JSONMember("kind", .string("refused"))]) }
+        state.silenceActive = true
+        out.append(.silenceStart(capMs: sec * 1000))
+        out.append(.timerArm(.silenceCap, afterMs: sec * 1000, repeating: false))
+    }
+
+    private mutating func stopSilence(_ why: String) {
+        guard state.silenceActive else { return }
+        state.silenceActive = false
+        out.append(.timerCancel(.silenceCap))
+        out.append(.silenceStop)
+        diag("silence", [JSONMember("kind", .string("stopped")), JSONMember("why", .string(why))])
+    }
+
+    // MARK: - Teardown (the page's `dispose()`)
+
+    /// The engine itself goes away: the line is stopped, the beat's clock and
+    /// the jingle are cut, the parked wait is DROPPED (never released: nothing
+    /// may start after this), the deck and the jingle player are released,
+    /// every timer and grace span ends, and the core answers nothing more.
+    /// The reducer's state is left as it was.
+    private mutating func teardown() {
+        if state.narration != nil { stopNarration() }
+        cutSeamGap("dispose")
+        state.gapParkedToken = nil
+        state.gapCut = false
+        state.pendingLoad = nil
+        state.pendingActivation = nil
+        deckCommand(.unload)
+        if config.forayTapeEnabled && config.interludeAvailable { out.append(.interlude(.release)) }
+        if state.positionTimerArmed {
+            state.positionTimerArmed = false
+            out.append(.timerCancel(.positionTick))
+        }
+        cancelHoldTimer()
+        if state.grace != nil { endGrace(.relinquished) }
+        diag("mode", [JSONMember("kind", .string("teardown"))])
+        state.tornDown = true
+    }
+
+    // MARK: cp_foray (client.js `persistForayProgress`)
+
+    /// The Foray's resume row. `force` is the set of moments a resume point
+    /// becomes the thing read back next time (a pause, a close, the app
+    /// leaving the foreground); otherwise it is the position tick, throttled
+    /// to one write per 5 s of Foray clock (`ForayWriteThrottle`). An unknown
+    /// playhead (a load in flight or failed) writes NOTHING: an unknown
+    /// position must never overwrite a known one. The authored segment id is
+    /// the item's `segment_id` when the page put one on it (#40), else null.
+    private mutating func persistForay(force: Bool) {
+        guard forayTransport, let forayId = state.forayId, let item = state.currentItem,
+              state.stateType != "ended", state.loadedId == item.id,
+              let elapsed = forayPositionSec(of: item),
+              let stamp = Rows.timestamp(epochMs: now.wallMs) else { return }
+        let starts = ForayClock.segmentStarts(forayItems)
+        let start = starts.indices.contains(state.currentIndex) ? starts[state.currentIndex] : 0
+        let input = Rows.ForayProgressInput(
+            forayId: forayId, title: state.forayTitle, elapsedSec: elapsed,
+            totalSec: ForayClock.forayRuntimeSec(forayItems), index: Double(state.currentIndex),
+            segmentId: item.node["segment_id"]?.stringValue, intoSec: Swift.max(0, elapsed - start))
+        guard let row = state.forayThrottle.due(input, force: force, updatedAt: stamp) else { return }
+        out.append(.writeRow(row))
+        state.forayThrottle.recorded(forayId: forayId, elapsedSec: elapsed, ok: true)
+    }
+
+    /// Reaching the end MARKS the row finished, once (`markFinished`): a
+    /// finished Foray says "Played", never "0 min left".
+    private mutating func markForayFinished() {
+        guard forayTransport, !state.forayFinishedWritten, let forayId = state.forayId,
+              let last = state.queue.last, let stamp = Rows.timestamp(epochMs: now.wallMs) else { return }
+        let total = ForayClock.forayRuntimeSec(forayItems)
+        let input = Rows.ForayProgressInput(
+            forayId: forayId, title: state.forayTitle, elapsedSec: total, totalSec: total,
+            index: Double(state.queue.count - 1), segmentId: last.node["segment_id"]?.stringValue,
+            intoSec: ForayClock.itemRuntimeSec(last.forayItem))
+        guard let row = state.forayThrottle.due(input, force: true, updatedAt: stamp) else { return }
+        out.append(.writeRow(row))
+        state.forayThrottle.recorded(forayId: forayId, elapsedSec: total, ok: true)
+        state.forayFinishedWritten = true
     }
 
     // MARK: - Queue lookups

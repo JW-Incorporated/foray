@@ -1,0 +1,588 @@
+{
+  "family": "default-voice",
+  "module": "player/default-voice.js",
+  "note": "pickDefaultVoice — the Samantha ruling of 2026-09-10 (authored) — and the helpers it is built from (bestInstalledByName, qualityRank, primarySubtag, isEnglish), one case per assertion of default-voice.test.js. That suite is not one of the plan's fifteen covered suites, so each case names its test in the note rather than in covers. The voice choice is the page's decision (plan §3 A-1); the engine ports the rule so a native cold start with no cp_voice speaks in the same voice the page would pick. Port: NE-33.",
+  "cases": [
+    {
+      "id": "default-voice/name-is-samantha",
+      "covers": [],
+      "authored": true,
+      "note": "Founder ruling 2026-09-10: Samantha is the default voice. Authored. default-voice.test.js: 'the default is Samantha, requested across every English locale'.",
+      "read": "DEFAULT_VOICE_NAME",
+      "expect": { "value": "Samantha" }
+    },
+    {
+      "id": "default-voice/list-lang-en",
+      "covers": [],
+      "authored": true,
+      "note": "A bare primary subtag is what makes both native halves widen to every en-* voice. Authored. default-voice.test.js: 'the default is Samantha, requested across every English locale'.",
+      "read": "VOICE_LIST_LANG",
+      "expect": { "value": "en" }
+    },
+    {
+      "id": "default-voice/stock-phone",
+      "covers": [],
+      "note": "default-voice.test.js: 'on a stock phone the default is Samantha compact, not whichever novelty voice sorts first'. Albert sorts first at the same tier and must not win.",
+      "call": "pickDefaultVoice",
+      "args": [
+        [
+          {
+            "identifier": "com.apple.speech.synthesis.voice.Albert",
+            "name": "Albert",
+            "language": "en-US",
+            "quality": "default"
+          },
+          {
+            "identifier": "com.apple.eloquence.en-US.Eddy",
+            "name": "Eddy",
+            "language": "en-US",
+            "quality": "default"
+          },
+          {
+            "identifier": "com.apple.ttsbundle.Samantha-compact",
+            "name": "Samantha",
+            "language": "en-US",
+            "quality": "default"
+          },
+          {
+            "identifier": "com.apple.speech.synthesis.voice.Zarvox",
+            "name": "Zarvox",
+            "language": "en-US",
+            "quality": "default"
+          },
+          {
+            "identifier": "com.apple.ttsbundle.Daniel-compact",
+            "name": "Daniel",
+            "language": "en-GB",
+            "quality": "default"
+          }
+        ]
+      ],
+      "expect": { "return": "com.apple.ttsbundle.Samantha-compact" }
+    },
+    {
+      "id": "default-voice/two-tiers",
+      "covers": [],
+      "note": "default-voice.test.js: 'with Samantha installed at two tiers, the best tier's identifier wins'.",
+      "call": "pickDefaultVoice",
+      "args": [
+        [
+          {
+            "identifier": "com.apple.speech.synthesis.voice.Albert",
+            "name": "Albert",
+            "language": "en-US",
+            "quality": "default"
+          },
+          {
+            "identifier": "com.apple.eloquence.en-US.Eddy",
+            "name": "Eddy",
+            "language": "en-US",
+            "quality": "default"
+          },
+          {
+            "identifier": "com.apple.ttsbundle.Samantha-compact",
+            "name": "Samantha",
+            "language": "en-US",
+            "quality": "default"
+          },
+          {
+            "identifier": "com.apple.speech.synthesis.voice.Zarvox",
+            "name": "Zarvox",
+            "language": "en-US",
+            "quality": "default"
+          },
+          {
+            "identifier": "com.apple.ttsbundle.Daniel-compact",
+            "name": "Daniel",
+            "language": "en-GB",
+            "quality": "default"
+          },
+          {
+            "identifier": "com.apple.voice.enhanced.en-US.Samantha",
+            "name": "Samantha",
+            "language": "en-US",
+            "quality": "enhanced"
+          }
+        ]
+      ],
+      "expect": { "return": "com.apple.voice.enhanced.en-US.Samantha" }
+    },
+    {
+      "id": "default-voice/three-tiers",
+      "covers": [],
+      "note": "default-voice.test.js: 'with Samantha installed at two tiers, the best tier's identifier wins'.",
+      "call": "pickDefaultVoice",
+      "args": [
+        [
+          {
+            "identifier": "com.apple.speech.synthesis.voice.Albert",
+            "name": "Albert",
+            "language": "en-US",
+            "quality": "default"
+          },
+          {
+            "identifier": "com.apple.eloquence.en-US.Eddy",
+            "name": "Eddy",
+            "language": "en-US",
+            "quality": "default"
+          },
+          {
+            "identifier": "com.apple.ttsbundle.Samantha-compact",
+            "name": "Samantha",
+            "language": "en-US",
+            "quality": "default"
+          },
+          {
+            "identifier": "com.apple.speech.synthesis.voice.Zarvox",
+            "name": "Zarvox",
+            "language": "en-US",
+            "quality": "default"
+          },
+          {
+            "identifier": "com.apple.ttsbundle.Daniel-compact",
+            "name": "Daniel",
+            "language": "en-GB",
+            "quality": "default"
+          },
+          {
+            "identifier": "com.apple.voice.enhanced.en-US.Samantha",
+            "name": "Samantha",
+            "language": "en-US",
+            "quality": "enhanced"
+          },
+          {
+            "identifier": "com.apple.voice.premium.en-US.Samantha",
+            "name": "Samantha",
+            "language": "en-US",
+            "quality": "premium"
+          }
+        ]
+      ],
+      "expect": { "return": "com.apple.voice.premium.en-US.Samantha" }
+    },
+    {
+      "id": "default-voice/better-other-name",
+      "covers": [],
+      "note": "default-voice.test.js: 'a better voice of ANOTHER name never displaces Samantha as the default'. The #491 behaviour the founder overruled.",
+      "call": "pickDefaultVoice",
+      "args": [
+        [
+          {
+            "identifier": "com.apple.voice.premium.en-US.Ava",
+            "name": "Ava",
+            "language": "en-US",
+            "quality": "premium"
+          },
+          {
+            "identifier": "com.apple.speech.synthesis.voice.Albert",
+            "name": "Albert",
+            "language": "en-US",
+            "quality": "default"
+          },
+          {
+            "identifier": "com.apple.eloquence.en-US.Eddy",
+            "name": "Eddy",
+            "language": "en-US",
+            "quality": "default"
+          },
+          {
+            "identifier": "com.apple.ttsbundle.Samantha-compact",
+            "name": "Samantha",
+            "language": "en-US",
+            "quality": "default"
+          },
+          {
+            "identifier": "com.apple.speech.synthesis.voice.Zarvox",
+            "name": "Zarvox",
+            "language": "en-US",
+            "quality": "default"
+          },
+          {
+            "identifier": "com.apple.ttsbundle.Daniel-compact",
+            "name": "Daniel",
+            "language": "en-GB",
+            "quality": "default"
+          }
+        ]
+      ],
+      "expect": { "return": "com.apple.ttsbundle.Samantha-compact" }
+    },
+    {
+      "id": "default-voice/no-samantha",
+      "covers": [],
+      "note": "default-voice.test.js: 'no Samantha installed at all -> null, which means 'the plugin picks' (#491 unchanged)'.",
+      "call": "pickDefaultVoice",
+      "args": [
+        [
+          {
+            "identifier": "com.apple.speech.synthesis.voice.Albert",
+            "name": "Albert",
+            "language": "en-US",
+            "quality": "default"
+          },
+          {
+            "identifier": "com.apple.eloquence.en-US.Eddy",
+            "name": "Eddy",
+            "language": "en-US",
+            "quality": "default"
+          },
+          {
+            "identifier": "com.apple.speech.synthesis.voice.Zarvox",
+            "name": "Zarvox",
+            "language": "en-US",
+            "quality": "default"
+          },
+          {
+            "identifier": "com.apple.ttsbundle.Daniel-compact",
+            "name": "Daniel",
+            "language": "en-GB",
+            "quality": "default"
+          }
+        ]
+      ],
+      "expect": { "return": null }
+    },
+    {
+      "id": "default-voice/empty-list",
+      "covers": [],
+      "note": "default-voice.test.js: 'no Samantha installed at all -> null, which means 'the plugin picks' (#491 unchanged)'.",
+      "call": "pickDefaultVoice",
+      "args": [[]],
+      "expect": { "return": null }
+    },
+    {
+      "id": "default-voice/undefined-list",
+      "covers": [],
+      "note": "default-voice.test.js: 'no Samantha installed at all -> null, which means 'the plugin picks' (#491 unchanged)'.",
+      "call": "pickDefaultVoice",
+      "args": [{ "$undefined": true }],
+      "expect": { "return": null }
+    },
+    {
+      "id": "default-voice/null-list",
+      "covers": [],
+      "note": "default-voice.test.js: 'no Samantha installed at all -> null, which means 'the plugin picks' (#491 unchanged)'.",
+      "call": "pickDefaultVoice",
+      "args": [null],
+      "expect": { "return": null }
+    },
+    {
+      "id": "default-voice/case-and-blank-id",
+      "covers": [],
+      "note": "default-voice.test.js: 'the name match is case-insensitive and ignores entries with no identifier'.",
+      "call": "pickDefaultVoice",
+      "args": [
+        [
+          {
+            "identifier": "",
+            "name": "Samantha",
+            "language": "en-US",
+            "quality": "premium"
+          },
+          {
+            "identifier": "x-samantha",
+            "name": "samantha",
+            "language": "en-US",
+            "quality": "default"
+          }
+        ]
+      ],
+      "expect": { "return": "x-samantha" }
+    },
+    {
+      "id": "default-voice/foreign-only",
+      "covers": [],
+      "note": "default-voice.test.js: 'a same-named voice in a non-English locale is not the English default'.",
+      "call": "pickDefaultVoice",
+      "args": [
+        [
+          {
+            "identifier": "com.apple.voice.compact.fr-FR.Samantha",
+            "name": "Samantha",
+            "language": "fr-FR",
+            "quality": "enhanced"
+          }
+        ]
+      ],
+      "expect": { "return": null }
+    },
+    {
+      "id": "default-voice/foreign-and-stock",
+      "covers": [],
+      "note": "default-voice.test.js: 'a same-named voice in a non-English locale is not the English default'.",
+      "call": "pickDefaultVoice",
+      "args": [
+        [
+          {
+            "identifier": "com.apple.voice.compact.fr-FR.Samantha",
+            "name": "Samantha",
+            "language": "fr-FR",
+            "quality": "enhanced"
+          },
+          {
+            "identifier": "com.apple.speech.synthesis.voice.Albert",
+            "name": "Albert",
+            "language": "en-US",
+            "quality": "default"
+          },
+          {
+            "identifier": "com.apple.eloquence.en-US.Eddy",
+            "name": "Eddy",
+            "language": "en-US",
+            "quality": "default"
+          },
+          {
+            "identifier": "com.apple.ttsbundle.Samantha-compact",
+            "name": "Samantha",
+            "language": "en-US",
+            "quality": "default"
+          },
+          {
+            "identifier": "com.apple.speech.synthesis.voice.Zarvox",
+            "name": "Zarvox",
+            "language": "en-US",
+            "quality": "default"
+          },
+          {
+            "identifier": "com.apple.ttsbundle.Daniel-compact",
+            "name": "Daniel",
+            "language": "en-GB",
+            "quality": "default"
+          }
+        ]
+      ],
+      "expect": { "return": "com.apple.ttsbundle.Samantha-compact" }
+    },
+    {
+      "id": "default-voice/rank-premium",
+      "covers": [],
+      "note": "default-voice.test.js: 'qualityRank orders iOS and Android tiers within a platform, and never crashes on junk'.",
+      "call": "qualityRank",
+      "args": ["premium"],
+      "expect": { "return": 5 }
+    },
+    {
+      "id": "default-voice/rank-enhanced",
+      "covers": [],
+      "note": "default-voice.test.js: 'qualityRank orders iOS and Android tiers within a platform, and never crashes on junk'.",
+      "call": "qualityRank",
+      "args": ["enhanced"],
+      "expect": { "return": 4 }
+    },
+    {
+      "id": "default-voice/rank-default",
+      "covers": [],
+      "note": "default-voice.test.js: 'qualityRank orders iOS and Android tiers within a platform, and never crashes on junk'.",
+      "call": "qualityRank",
+      "args": ["default"],
+      "expect": { "return": 3 }
+    },
+    {
+      "id": "default-voice/rank-very-high",
+      "covers": [],
+      "note": "default-voice.test.js: 'qualityRank orders iOS and Android tiers within a platform, and never crashes on junk'.",
+      "call": "qualityRank",
+      "args": ["very-high"],
+      "expect": { "return": 5 }
+    },
+    {
+      "id": "default-voice/rank-high",
+      "covers": [],
+      "note": "default-voice.test.js: 'qualityRank orders iOS and Android tiers within a platform, and never crashes on junk'.",
+      "call": "qualityRank",
+      "args": ["high"],
+      "expect": { "return": 4 }
+    },
+    {
+      "id": "default-voice/rank-normal",
+      "covers": [],
+      "note": "default-voice.test.js: 'qualityRank orders iOS and Android tiers within a platform, and never crashes on junk'.",
+      "call": "qualityRank",
+      "args": ["normal"],
+      "expect": { "return": 3 }
+    },
+    {
+      "id": "default-voice/rank-low",
+      "covers": [],
+      "note": "default-voice.test.js: 'qualityRank orders iOS and Android tiers within a platform, and never crashes on junk'.",
+      "call": "qualityRank",
+      "args": ["low"],
+      "expect": { "return": 1 }
+    },
+    {
+      "id": "default-voice/rank-very-low",
+      "covers": [],
+      "note": "default-voice.test.js: 'qualityRank orders iOS and Android tiers within a platform, and never crashes on junk'.",
+      "call": "qualityRank",
+      "args": ["very-low"],
+      "expect": { "return": 0 }
+    },
+    {
+      "id": "default-voice/rank-unknown",
+      "covers": [],
+      "note": "default-voice.test.js: 'qualityRank orders iOS and Android tiers within a platform, and never crashes on junk'.",
+      "call": "qualityRank",
+      "args": ["unknown"],
+      "expect": { "return": 2 }
+    },
+    {
+      "id": "default-voice/rank-premium-upper",
+      "covers": [],
+      "note": "default-voice.test.js: 'qualityRank orders iOS and Android tiers within a platform, and never crashes on junk'.",
+      "call": "qualityRank",
+      "args": ["PREMIUM"],
+      "expect": { "return": 5 }
+    },
+    {
+      "id": "default-voice/rank-undefined",
+      "covers": [],
+      "note": "default-voice.test.js: 'qualityRank orders iOS and Android tiers within a platform, and never crashes on junk'.",
+      "call": "qualityRank",
+      "args": [{ "$undefined": true }],
+      "expect": { "return": 2 }
+    },
+    {
+      "id": "default-voice/subtag-en-us",
+      "covers": [],
+      "note": "default-voice.test.js: 'primarySubtag / isEnglish accept BCP-47, underscores, and Android's ISO-639-2 spelling'.",
+      "call": "primarySubtag",
+      "args": ["en-US"],
+      "expect": { "return": "en" }
+    },
+    {
+      "id": "default-voice/subtag-en-gb-underscore",
+      "covers": [],
+      "note": "default-voice.test.js: 'primarySubtag / isEnglish accept BCP-47, underscores, and Android's ISO-639-2 spelling'.",
+      "call": "primarySubtag",
+      "args": ["en_GB"],
+      "expect": { "return": "en" }
+    },
+    {
+      "id": "default-voice/subtag-eng-usa",
+      "covers": [],
+      "note": "default-voice.test.js: 'primarySubtag / isEnglish accept BCP-47, underscores, and Android's ISO-639-2 spelling'.",
+      "call": "primarySubtag",
+      "args": ["eng-USA"],
+      "expect": { "return": "eng" }
+    },
+    {
+      "id": "default-voice/subtag-undefined",
+      "covers": [],
+      "note": "default-voice.test.js: 'primarySubtag / isEnglish accept BCP-47, underscores, and Android's ISO-639-2 spelling'.",
+      "call": "primarySubtag",
+      "args": [{ "$undefined": true }],
+      "expect": { "return": "" }
+    },
+    {
+      "id": "default-voice/english-en-au",
+      "covers": [],
+      "note": "default-voice.test.js: 'primarySubtag / isEnglish accept BCP-47, underscores, and Android's ISO-639-2 spelling'.",
+      "call": "isEnglish",
+      "args": ["en-AU"],
+      "expect": { "return": true }
+    },
+    {
+      "id": "default-voice/english-eng-ind",
+      "covers": [],
+      "note": "default-voice.test.js: 'primarySubtag / isEnglish accept BCP-47, underscores, and Android's ISO-639-2 spelling'.",
+      "call": "isEnglish",
+      "args": ["eng-IND"],
+      "expect": { "return": true }
+    },
+    {
+      "id": "default-voice/english-fr-fr",
+      "covers": [],
+      "note": "default-voice.test.js: 'primarySubtag / isEnglish accept BCP-47, underscores, and Android's ISO-639-2 spelling'.",
+      "call": "isEnglish",
+      "args": ["fr-FR"],
+      "expect": { "return": false }
+    },
+    {
+      "id": "default-voice/english-empty",
+      "covers": [],
+      "note": "default-voice.test.js: 'primarySubtag / isEnglish accept BCP-47, underscores, and Android's ISO-639-2 spelling'.",
+      "call": "isEnglish",
+      "args": [""],
+      "expect": { "return": false }
+    },
+    {
+      "id": "default-voice/best-daniel",
+      "covers": [],
+      "note": "default-voice.test.js: 'bestInstalledByName is the same rule for any name, so the picker's per-row dedup cannot drift from the default'.",
+      "call": "bestInstalledByName",
+      "args": [
+        [
+          {
+            "identifier": "com.apple.ttsbundle.Daniel-compact",
+            "name": "Daniel",
+            "language": "en-GB",
+            "quality": "default"
+          },
+          {
+            "identifier": "com.apple.voice.enhanced.en-GB.Daniel",
+            "name": "Daniel",
+            "language": "en-GB",
+            "quality": "enhanced"
+          }
+        ],
+        "daniel"
+      ],
+      "expect": {
+        "return": {
+          "identifier": "com.apple.voice.enhanced.en-GB.Daniel",
+          "language": "en-GB",
+          "name": "Daniel",
+          "quality": "enhanced"
+        }
+      }
+    },
+    {
+      "id": "default-voice/best-absent-name",
+      "covers": [],
+      "note": "default-voice.test.js: 'bestInstalledByName is the same rule for any name, so the picker's per-row dedup cannot drift from the default'.",
+      "call": "bestInstalledByName",
+      "args": [
+        [
+          {
+            "identifier": "com.apple.ttsbundle.Daniel-compact",
+            "name": "Daniel",
+            "language": "en-GB",
+            "quality": "default"
+          },
+          {
+            "identifier": "com.apple.voice.enhanced.en-GB.Daniel",
+            "name": "Daniel",
+            "language": "en-GB",
+            "quality": "enhanced"
+          }
+        ],
+        "Kate"
+      ],
+      "expect": { "return": null }
+    },
+    {
+      "id": "default-voice/best-empty-name",
+      "covers": [],
+      "note": "default-voice.test.js: 'bestInstalledByName is the same rule for any name, so the picker's per-row dedup cannot drift from the default'.",
+      "call": "bestInstalledByName",
+      "args": [
+        [
+          {
+            "identifier": "com.apple.ttsbundle.Daniel-compact",
+            "name": "Daniel",
+            "language": "en-GB",
+            "quality": "default"
+          },
+          {
+            "identifier": "com.apple.voice.enhanced.en-GB.Daniel",
+            "name": "Daniel",
+            "language": "en-GB",
+            "quality": "enhanced"
+          }
+        ],
+        ""
+      ],
+      "expect": { "return": null }
+    }
+  ]
+}

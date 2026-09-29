@@ -26,7 +26,7 @@ import ForayEngineCore
 ///      speech obeys the audible-start invariant (under `pauseHoldPolicy =
 ///      none` the core activates first; under the default `forever` it is
 ///      already active) and reaches the synthesizer configuration
-///      SpeechNarrator will use (`PreviewSpeaker`).
+///      SpeechNarrator speaks with (NE-33: whichever path it runs).
 ///   3. PLAY, the moment the synthesizer reports `didFinish`: an ordinary
 ///      `play` of the paused episode through the core, which activates only
 ///      if its session is not active ("activate if needed") and opens

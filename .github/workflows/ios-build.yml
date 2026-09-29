@@ -565,6 +565,15 @@ jobs:
           # not enforce it, but re-signing costs nothing and removes a variable.
           codesign --force --sign - "$PROBED" || true
           xcrun simctl install "$UDID" "$PROBED"
+          # NE-36: PIN THE JS-LANE PASSES TO THE LEGACY LANE. The native engine is
+          # the build default since the M1 flip; the out-point and seam passes drive
+          # the JS player on purpose and must not run with a native engine holding
+          # the session under them. The engine decides its lane once per process, at
+          # launch, so the seed goes in with the app not running. Its own file, NOT
+          # native-steps.txt: that file's presence is what tells the verdict the
+          # native pass ran. The bridge record's engineHello answer (`legacy` /
+          # `override`) is the smoke that proves the seed took.
+          node tools/mobile/ios-ci.mjs seed-mode "$UDID" "$APP_ID" web >> "$ART/lane-seeds.txt"
           echo "probed=$PROBED" >> "$GITHUB_OUTPUT"
 
       - name: Run the probes (two passes — the out-point, then the SEAM TRANSITION)
@@ -714,6 +723,9 @@ jobs:
             "${{ steps.probe_install.outputs.probed }}/public" --phase seam
           codesign --force --sign - "${{ steps.probe_install.outputs.probed }}" || true
           xcrun simctl install "$UDID" "${{ steps.probe_install.outputs.probed }}"
+          # NE-36: the seam pass is a JS-lane pass too — re-pin it to legacy after
+          # the reinstall, before its launch (see the install step).
+          node tools/mobile/ios-ci.mjs seed-mode "$UDID" "$APP_ID" web >> "$ART/lane-seeds.txt"
           xcrun simctl launch "$UDID" "$APP_ID"
           sleep 15
           xcrun simctl io "$UDID" screenshot "$ART/03-seam-playing.png" || true
@@ -826,6 +838,92 @@ jobs:
           echo "read $i local-storage database(s)"
           ls -l "$ART" || true
 
+      - name: Run the native-engine probe (NE-36 — playForay, > 90 s backgrounded, WebContent kill, reload)
+        # NE-36 (docs/native-engine-plan.md), landed from the staged
+        # tools/mobile/probe/ios-build-native-pass.yml. AFTER the two-pass probe
+        # step, whose localStorage read must already have happened (this pass
+        # boots probe-bridge.js again, which rewrites `foray_probe_bridge`), and
+        # BEFORE the reporting step, which reads native-rows.json,
+        # native-steps.txt and simulator-log-native.txt from $ART by default.
+        # (Other steps' names are not quoted here: the suites find a step by a
+        # fragment of its text, and a quoted name would shadow the real step.)
+        #
+        # COST: about 200 s more on a runner that bills at 10x (15 + 125 + 8 + 40 s
+        # of sleeps, plus an in-place install). The 125 s is the card's "more than
+        # 90 s" with the ~35 s Settings has taken to come forward on a cold
+        # Simulator.
+        #
+        # SECURITY: the defaults export holds every `CapacitorStorage.` value the
+        # app wrote (a session token included), so it goes to a work directory that
+        # is never uploaded; `native-rows` lets out only `cp_pos:*`, `cp_foray:*`
+        # and the probe's own record — the same boundary the localStorage read
+        # keeps.
+        #
+        # `continue-on-error` like the other measurement steps: a pass that could
+        # not run is no-coverage in the report. A pass that RAN and measured a
+        # failure is not hidden by this flag — the gate step at the end of the job
+        # turns a `fail` verdict red.
+        id: probe_native
+        if: env.PROBES != 'false' && steps.probe_install.outcome == 'success'
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          UDID="${{ steps.sim.outputs.udid }}"
+          STEPS="$ART/native-steps.txt"
+          WORK="$RUNNER_TEMP/ios-ci-native-work"
+          rm -rf "$WORK" && mkdir -p "$WORK"
+          # Its own capture and its own cap, like each pass above.
+          xcrun simctl spawn "$UDID" log stream --style compact \
+            --predicate 'process == "App" OR senderImagePath CONTAINS "WebKit"' \
+            2>&1 | head -c 20000000 > "$ART/simulator-log-native.txt" &
+          LOG_PID=$!
+          trap 'kill "$LOG_PID" 2>/dev/null || true' EXIT
+
+          # The engine decides its lane once per process, at launch: terminate, then seed.
+          xcrun simctl terminate "$UDID" "$APP_ID" || true
+          # IN PLACE, in the installed bundle: the engine's AVPlayer opens the three
+          # segments as files, and this is the only path they have.
+          APPDIR=$(xcrun simctl get_app_container "$UDID" "$APP_ID" app)
+          node tools/mobile/probe/install-probe.mjs "$APPDIR/public" --phase native --audio-base "file://$APPDIR/public/"
+          node tools/mobile/ios-ci.mjs seed-mode "$UDID" "$APP_ID" native >> "$STEPS"
+
+          echo "launch=$(xcrun simctl launch "$UDID" "$APP_ID")" >> "$STEPS"
+          sleep 15
+          xcrun simctl io "$UDID" screenshot "$ART/05-native-playing.png" || true
+          xcrun simctl launch "$UDID" com.apple.Preferences \
+            || xcrun simctl launch "$UDID" com.apple.mobilesafari
+          echo "backgrounded_at=$(date +%s)" >> "$STEPS"
+          sleep 125
+
+          # A-3: kill the Simulator's WebContent process(es) mid-Foray, app still hidden.
+          KILLED=$(ps -axo pid=,command= | awk '/com\.apple\.WebKit\.WebContent/ && /CoreSimulator/ {print $1}')
+          N=0
+          for P in $KILLED; do if kill -9 "$P" 2>/dev/null; then N=$((N+1)); fi; done
+          echo "webcontent_killed=$N" >> "$STEPS"
+          sleep 8
+
+          # Foreground. The pid must not change: a relaunch is not a WebContent kill.
+          echo "foreground=$(xcrun simctl launch "$UDID" "$APP_ID")" >> "$STEPS"
+          echo "foreground_at=$(date +%s)" >> "$STEPS"
+          # The page settles 4 s, pauses, reads the rows, loads index.html (W-8), and
+          # the real page stamps its record 15 s later.
+          sleep 40
+          xcrun simctl io "$UDID" screenshot "$ART/06-native-after-reload.png" || true
+
+          # THE APP'S OWN PLIST, in its data container. `simctl spawn defaults export`
+          # reads the device-wide domain instead: trial run 36176555294 got one key
+          # back (the seed) and none of the app's `CapacitorStorage.` writes. It is
+          # the fallback only.
+          DATA=$(xcrun simctl get_app_container "$UDID" "$APP_ID" data)
+          if [ -f "$DATA/Library/Preferences/$APP_ID.plist" ]; then
+            cp "$DATA/Library/Preferences/$APP_ID.plist" "$WORK/defaults.plist"
+          else
+            xcrun simctl spawn "$UDID" defaults export "$APP_ID" - > "$WORK/defaults.plist"
+          fi
+          plutil -convert xml1 "$WORK/defaults.plist"
+          node tools/mobile/ios-ci.mjs native-rows "$WORK/defaults.plist" > "$ART/native-rows.json"
+          xcrun simctl terminate "$UDID" "$APP_ID" || true
+
       # ── signing and TestFlight upload: retired here, R-05 ────────────────────
       #
       # This job no longer signs or uploads anything — that is `release.yml`'s
@@ -853,7 +951,8 @@ jobs:
           IOS_BUILD_STATUS: >-
             simulator=${{ steps.build_sim.outcome }},
             device=${{ steps.build_dev.outcome }},
-            probes=${{ steps.probe_run.outcome }}
+            probes=${{ steps.probe_run.outcome }},
+            native=${{ steps.probe_native.outcome }}
         run: |
           set -euo pipefail
           # `if: always()` means this can run even when the very first step failed
@@ -926,3 +1025,32 @@ jobs:
           path: ${{ runner.temp }}/ios-ci
           if-no-files-found: warn
           retention-days: 14
+
+      - name: Fail the job on a failing probe assertion (NE-36)
+        # THE REPORT IS NOT A GATE; THIS IS. `ios-ci.mjs verdict` exits 0 for every
+        # verdict so that a crash in the reporter is the only thing that can turn
+        # its own step red — and that left run 36194671642 GREEN with a `fail`
+        # row in section 5 ("JS-lane passes pinned to legacy") and a native pass
+        # that never ran. A MEASURED failure must not read as a green run.
+        #
+        # SCOPE: section 5's verdict (`native`), which is `fail` when ANY of its
+        # assertions — the legacy smoke, the native lane, playForay, the
+        # WebContent kill, the seams, Now Playing, the forbidden WebKit/MediaRemote
+        # and setNowPlaying lines, HTMLMediaElement, the W-8 reload clobber — is a
+        # measured `fail`. `no-coverage` / `incomplete` stay non-fatal, exactly as
+        # a Simulator that will not boot does: silence is reported as silence, not
+        # as a pass and not as a broken build.
+        #
+        # AFTER THE UPLOAD, so the evidence of the failure is always published.
+        if: always() && steps.verdict.outcome == 'success'
+        env:
+          NATIVE_VERDICT: ${{ steps.verdict.outputs.native }}
+          NATIVE_FAILED: ${{ steps.verdict.outputs.native_failed }}
+          LEGACY_SMOKE: ${{ steps.verdict.outputs.legacy_smoke }}
+        run: |
+          set -euo pipefail
+          echo "native=${NATIVE_VERDICT:-unset} legacy_smoke=${LEGACY_SMOKE:-unset}"
+          if [ "${NATIVE_VERDICT:-}" = "fail" ]; then
+            echo "::error::NE-36 native-lane assertion(s) FAILED: ${NATIVE_FAILED:-see the job summary}. Section 5 of the summary has the evidence."
+            exit 1
+          fi

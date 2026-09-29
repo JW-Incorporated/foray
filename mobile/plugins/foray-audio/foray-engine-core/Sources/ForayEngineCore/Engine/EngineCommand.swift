@@ -21,6 +21,16 @@ public enum GraceReason: String, Equatable, Sendable, CaseIterable {
     case coldPlay = "cold-play"
     /// The next episode of a continuation chain loading after an end.
     case autoAdvance = "auto-advance"
+    /// A Foray seam reached in the background with the next item prepared
+    /// (NE-30s): the span runs from the out-point until it is audible.
+    case seam = "seam"
+    /// The same, with nothing prepared: the next item loads cold inside the
+    /// beat, the case that most needs the process kept awake (NE-30s).
+    case prepareMiss = "prepare-miss"
+    /// A spoken line ended in the background (NE-31s): the synthesiser has
+    /// stopped rendering and the next item is not audible yet, which is
+    /// exactly the silence `UIBackgroundModes: audio` does not cover.
+    case narrationHandover = "narration-handover"
 }
 
 /// How a grace span ended. Every begin has exactly one of these.
@@ -132,6 +142,40 @@ public struct DiagEntry: Equatable {
     }
 }
 
+/// What the core asks of the synthesiser (NE-31s; NE-33's SpeechNarrator
+/// carries it out). Every command names its utterance by `seq`, and every
+/// answer (`NarratorEvent`) is taken only for the utterance it names.
+public enum NarrationCommand: Equatable {
+    /// Speak `text` as utterance `seq`. `utteranceRate` is the multiplier
+    /// the line is spoken at: `NARRATION_RATE` (1x, OQ-3, the founder's
+    /// 2026-09-24 ruling; 1x is `AVSpeechUtteranceDefaultSpeechRate`) unless
+    /// `EngineConfig.narrationFollowsListenerRate` is on. A line already held
+    /// (paused, or still speaking) is REPLACED, never queued behind.
+    case speak(seq: Int, text: String, voiceId: String?, utteranceRate: Double)
+    /// `pauseSpeaking(at: .word)`: hold the line at a word boundary.
+    case pause(seq: Int)
+    /// `continueSpeaking()`: the same utterance, never a re-speak. Answered
+    /// with `NarratorEvent.resumed`.
+    case resume(seq: Int)
+    /// `stopSpeaking(at: .immediate)`. A stop is never a finish.
+    case stop(seq: Int)
+    /// The line was left for a deck item and will never be continued: drop
+    /// it if the synthesiser still holds it. Silent by construction (the
+    /// line was already paused, or its deadline passed over silence).
+    case discard(seq: Int)
+}
+
+/// What the core asks of the jingle player (NE-31s; NE-34's InterludePlayer).
+public enum InterludeCommand: Equatable {
+    /// Start the jingle at 1.0x. A refusal is reported as
+    /// `InterludeEvent.ended(reason: "refused")` in the same breath.
+    case start
+    /// Silence it without reporting an end (a transport action cut the beat).
+    case stop
+    /// Drop its buffer (the engine's teardown).
+    case release
+}
+
 /// Events for the page (plan §5.4), best effort.
 public enum EngineEvent: Equatable {
     /// A continuation hop was walked (source autoadvance, or a next press).
@@ -139,6 +183,10 @@ public enum EngineEvent: Equatable {
     /// `error{code}`: `chain-start` when a hop's start failed (C-6), `load`
     /// for any other failed item.
     case error(code: String, message: String)
+    /// `skipped` (plan §5.4; NE-30s): ADR-0007's ladder refused a segment at
+    /// load (the copy in hand is not the one the times were authored
+    /// against), so it was never audible and the Foray went on without it.
+    case skipped(itemId: String, index: Int, reason: String)
 }
 
 /// What the core asks the world to do.
@@ -165,6 +213,18 @@ public enum EngineCommand: Equatable {
     case writeRestore(RestoreRecord?)
     /// Speak an audition line (OQ-5): audible, so it follows an activation.
     case speak(text: String, voiceId: String?)
+    /// The narrating overlay (NE-31s): a line of the Foray's own narration.
+    case narration(NarrationCommand)
+    /// The interlude jingle (NE-31s).
+    case interlude(InterludeCommand)
+    /// The silence node (NE-31s commands; NE-34's AVAudioEngine source node,
+    /// behind `EngineConfig.silenceNodeEnabled`, OFF): digital silence that
+    /// keeps the process rendering across a seam, for at most `capMs`.
+    case silenceStart(capMs: Double)
+    case silenceStop
+    /// The narration pulse: repaint the surface, whose clock for a spoken
+    /// line is the line's wall-time clock (no deck is playing it).
+    case narrationPulse(elapsedSec: Double)
     case emit(EngineEvent)
     case diag(DiagEntry)
     /// The command did not happen; the reason is a contract `Refusal` token.
@@ -184,6 +244,7 @@ public enum EngineCommand: Equatable {
             case .setRate: return "deckSetRate"
             case .setOutPoint: return "deckSetOutPoint"
             case .unload: return "deckUnload"
+            case .prepare: return "deckPrepare"
             }
         case .sessionActivate: return SessionPolicy.TurnMarker.activate
         case .sessionDeactivate: return SessionPolicy.TurnMarker.deactivate
@@ -198,6 +259,23 @@ public enum EngineCommand: Equatable {
         case .appendEvent: return "appendEvent"
         case .writeRestore: return "writeRestore"
         case .speak: return "speak"
+        case let .narration(command):
+            switch command {
+            // Both make a line audible, so both are `speak` to the invariant.
+            case .speak, .resume: return "speak"
+            case .pause: return "narrationPause"
+            case .stop: return "narrationStop"
+            case .discard: return "narrationDiscard"
+            }
+        case let .interlude(command):
+            switch command {
+            case .start: return "interludeStart"
+            case .stop: return "interludeStop"
+            case .release: return "interludeRelease"
+            }
+        case .silenceStart: return "silenceStart"
+        case .silenceStop: return "silenceStop"
+        case .narrationPulse: return "narrationPulse"
         case .emit: return "emit"
         case .diag: return "diag"
         case .commandFailed: return "commandFailed"

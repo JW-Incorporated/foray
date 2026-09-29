@@ -101,6 +101,95 @@ public struct EngineState: Equatable {
     /// and a relinquish never set it.
     public var closed = false
 
+    // MARK: the Foray tape (NE-30s)
+
+    /// `_gapUntil`: the seam beat's ABSOLUTE deadline on the monotonic clock,
+    /// stamped at the out-point, so the next load runs INSIDE the beat rather
+    /// than before it. Non-nil exactly while a beat is running (`inSeamGap`),
+    /// which includes the load happening inside it.
+    public var gapUntilMono: Double?
+    /// When the beat was armed (the out-point) and the gap it asked for, for
+    /// the packed seam row.
+    public var gapArmedAtMono: Double?
+    public var gapAskedMs: Double = 0
+    /// `_gapFinish`: the load whose `itemLoaded` waits out the beat's
+    /// remainder, by its token. Compared with `lastToken` when the wait ends:
+    /// a newer load (a skip, a jump, the ladder) means it is abandoned.
+    public var gapParkedToken: DeckToken?
+    /// `_gapCut`: a transport action cut the beat; the parked wait is released
+    /// only once that action has issued whatever load it was going to.
+    public var gapCut = false
+    /// The `.seamBeat` timer is armed.
+    public var seamTimerArmed = false
+    /// `_forayOptions`: what the load-time ladder reads (`setQueueFromForay`).
+    public var forayIsLocalFile = false
+    public var forayAllowAdPad = false
+    /// The Foray's title, for its `cp_foray` row.
+    public var forayTitle: String?
+    /// The item the standby deck was last asked to prepare (a seam that finds
+    /// it there was a prepare hit).
+    public var preparedItemId: String?
+    /// The DeckPair's report on the load in flight (NE-32, `.prepared`), for
+    /// the packed seam row; nil when the deck sent none (one deck, the
+    /// parity driver), and the row then says what it said before NE-32.
+    public var deckPrepare: DeckPrepareReport?
+    /// Segments ADR-0007's ladder refused at load (the snapshot's `skippedSegments`).
+    public var skippedSegments = 0
+    /// The `cp_foray` write throttle: foray-progress.js `ForayProgressStore`'s
+    /// gate, its 5 s clock throttle per Foray, and the refused-write count.
+    var forayThrottle = ResumeRules.ForayWriteThrottle()
+    /// A finished Foray's row is marked once (client.js `persistForayProgress`).
+    public var forayFinishedWritten = false
+
+    /// `inSeamGap`: a beat is running.
+    public var inSeamGap: Bool { gapUntilMono != nil }
+
+    // MARK: the narrating overlay and the jingle (NE-31s)
+
+    /// `_voice`: the listener's chosen narration voice, or nil for the
+    /// synthesiser's own pick. Read at every `speak`, never cached; kept in
+    /// the restore record so a cold narration speaks in the same voice.
+    public var voiceId: String?
+    /// `lastVoiceFallback`: whether the last line spoke in another voice than
+    /// the one asked for (V-01's notice); nil until a line has spoken, and
+    /// again after a speak that failed.
+    public var lastVoiceFallback: Bool?
+    /// `_loadedIsSynth` and everything the JS keeps beside it: the spoken
+    /// line the loaded item IS, from the synthesiser accepting it until a
+    /// deck item's load lands. Nil while the playhead is a deck item.
+    public var narration: SpokenLine?
+    /// `_fallbackSpokenId` (§14, Phase 2): the id of the RENDERED line being
+    /// spoken from its script because its file failed, so a pause and resume
+    /// of it continues the utterance instead of retrying the file mid-line.
+    /// Nil otherwise, and whenever no spoken line is loaded.
+    public var fallbackSpokenId: String?
+    /// The last utterance `seq` stamped (`_speakSeq`): every `speak` is a new
+    /// one, and every answer names the one it is about.
+    public var speakSeq = 0
+    /// `_advancedSpeakSeq`: the utterance already advanced past, so a finish
+    /// (or the deadline) advances each line at most once.
+    public var advancedSpeakSeq: Int?
+    /// The `.narrationTick` one-shot is armed.
+    public var narrationTickArmed = false
+    /// A speed tap that landed while narration was audible (corner case #18):
+    /// `rate` already holds it; the deck gets it when the narration ends
+    /// (`restoreRate`), never mid-word.
+    public var pendingRate: Double?
+    /// `_interludeEnabled`: the listener's `cp_interlude`.
+    public var interludeEnabled = true
+    /// `_interludeActive`: the jingle is sounding (a subset of `inSeamGap`).
+    public var inInterlude = false
+    /// `_beatUntil`: the BEAT's own deadline while the jingle stretches it,
+    /// so the jingle's end falls back to what the beat still owes.
+    public var beatUntilMono: Double?
+    /// The silence node is running (flagged off; NE-34's).
+    public var silenceActive = false
+    /// `_disposed`: the engine was torn down; the core answers nothing more.
+    public var tornDown = false
+
+    /// `isNarrationPlayhead`: a spoken line is the playhead.
+    public var isNarrationPlayhead: Bool { narration != nil }
+
     // MARK: the app around the engine
 
     public var backgrounded = false
@@ -154,6 +243,48 @@ public struct PendingLoad: Equatable {
     public let token: DeckToken
     public let itemId: String
     public let startSec: Double
+    /// A rendered narration bridge (`_playTransitionBridge`, NE-30s): it plays
+    /// the moment it lands, with no `itemLoaded` (the reducer is
+    /// `transitioning`, not loading).
+    public var bridge = false
+    /// A SPOKEN line (NE-31s): the synthesiser was asked to speak utterance
+    /// `spokenSeq`, and `NarratorEvent.started` / `.failed` for that seq is
+    /// this load landing or failing. Nil for a deck load.
+    public var spokenSeq: Int?
+    /// §14 (Phase 2): this spoken line is a RENDERED line read from its
+    /// script because its file failed (`_beginSynthNarration(item,
+    /// {fallback: true})`).
+    public var fallback = false
+}
+
+/// A spoken line the playhead is on (NE-31s): queue-manager.js
+/// `_loadedIsSynth`, `_narrationStartedAtMs`, `_narrationPaused` and
+/// `_narrationPausedAtMs`, as one value that exists exactly while they mean
+/// something. Its clock is WALL time since the line started (no deck plays
+/// it), frozen while it is paused and shifted forward by the pause on resume.
+public struct SpokenLine: Equatable {
+    public let seq: Int
+    public let itemId: String
+    public var startedAtMono: Double
+    public var paused = false
+    public var pausedAtMono: Double?
+    /// When the pulse armed last was due, to tell a suspended process from a
+    /// busy one (`_narrationTickDueAtMs`).
+    public var tickDueAtMono: Double?
+    /// The synthesiser said `didFinish` for it (nothing left to drop).
+    public var finished = false
+
+    public init(seq: Int, itemId: String, startedAtMono: Double) {
+        self.seq = seq
+        self.itemId = itemId
+        self.startedAtMono = startedAtMono
+    }
+
+    /// `narrationElapsedSec` at `monoMs`.
+    public func elapsedSec(atMono monoMs: Double) -> Double {
+        let at = paused ? (pausedAtMono ?? monoMs) : monoMs
+        return Swift.max(0, (at - startedAtMono) / 1000)
+    }
 }
 
 /// A play-ish intent waiting for its activation's answer.
@@ -179,4 +310,17 @@ public enum DeferredIntent: Equatable {
 public struct LastRemote: Equatable {
     public let command: MediaMapping.RemoteCommand
     public let atMono: Double
+}
+
+/// What the DeckPair said about one load (NE-32; `DeckEvent.prepared`).
+public struct DeckPrepareReport: Equatable {
+    public var token: DeckToken
+    public var hit: Bool
+    public var stages: [Vocabulary.Stage]
+
+    public init(token: DeckToken, hit: Bool, stages: [Vocabulary.Stage]) {
+        self.token = token
+        self.hit = hit
+        self.stages = stages
+    }
 }

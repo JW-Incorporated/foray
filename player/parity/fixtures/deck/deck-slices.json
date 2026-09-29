@@ -1,0 +1,703 @@
+{
+  "family": "deck",
+  "note": "The native out-point over one deck, beyond the outpoint family (NE-30j): consecutive slices of one source (back to back, backwards), arming while paused, a load clearing the last boundary, junk, rate re-derivation, the top speed's overshoot, a stall at the boundary, and a boundary past the real audio (the reducer's `ended` event). deck-policy.js outPointStep over the runner's driven clock. Port card NE-30s.",
+  "cases": [
+    {
+      "id": "deck/back-to-back-slices",
+      "covers": [
+        "html-audio-backend::back-to-back slices of one episode each stop at their own boundary"
+      ],
+      "note": "Two slices of one episode: each load is a new token with its own boundary, and each stops at ITS boundary (100.5, then 400.5), never the other's.",
+      "setup": { "target": "deck" },
+      "steps": [
+        { "deck": "load", "sec": 100, "outPointSec": 100.5 },
+        { "deck": "play" },
+        { "clock": 1000 },
+        { "checkpoint": "first" },
+        { "deck": "load", "sec": 400, "outPointSec": 400.5 },
+        { "deck": "play" },
+        { "clock": 1000 },
+        { "checkpoint": "second" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "armed": true,
+            "atSec": 100.5,
+            "fired": true,
+            "name": "first",
+            "nowMs": 1000,
+            "ops": [
+              "endTime:100.5",
+              "boundary:100.5",
+              "watchdog.arm:250",
+              "watchdog.arm:250",
+              "outPoint.stop:watchdog:0"
+            ],
+            "playing": false,
+            "rate": 1
+          },
+          {
+            "armed": true,
+            "atSec": 400.5,
+            "fired": true,
+            "name": "second",
+            "nowMs": 2000,
+            "ops": [
+              "endTime:400.5",
+              "boundary:400.5",
+              "watchdog.arm:250",
+              "watchdog.arm:250",
+              "outPoint.stop:watchdog:0"
+            ],
+            "playing": false,
+            "rate": 1
+          },
+          {
+            "armed": true,
+            "atSec": 400.5,
+            "fired": true,
+            "name": "end",
+            "nowMs": 2000,
+            "ops": [],
+            "playing": false,
+            "rate": 1
+          }
+        ],
+        "ops": [
+          "endTime:100.5",
+          "boundary:100.5",
+          "watchdog.arm:250",
+          "watchdog.arm:250",
+          "outPoint.stop:watchdog:0",
+          "endTime:400.5",
+          "boundary:400.5",
+          "watchdog.arm:250",
+          "watchdog.arm:250",
+          "outPoint.stop:watchdog:0"
+        ]
+      }
+    },
+    {
+      "id": "deck/backwards-slices",
+      "covers": [
+        "html-audio-backend::consecutive same-episode slices may run BACKWARDS through the episode"
+      ],
+      "note": "The second slice sits EARLIER in the episode: the boundary re-arms behind the old one and stops there.",
+      "setup": { "target": "deck" },
+      "steps": [
+        { "deck": "load", "sec": 900, "outPointSec": 900.4 },
+        { "deck": "play" },
+        { "clock": 1000 },
+        { "checkpoint": "first" },
+        { "deck": "load", "sec": 100, "outPointSec": 100.4 },
+        { "deck": "play" },
+        { "clock": 1000 },
+        { "checkpoint": "second" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "armed": true,
+            "atSec": 900.4,
+            "fired": true,
+            "name": "first",
+            "nowMs": 1000,
+            "ops": [
+              "endTime:900.4",
+              "boundary:900.4",
+              "watchdog.arm:250",
+              "watchdog.arm:150",
+              "outPoint.stop:watchdog:0"
+            ],
+            "playing": false,
+            "rate": 1
+          },
+          {
+            "armed": true,
+            "atSec": 100.401,
+            "fired": true,
+            "name": "second",
+            "nowMs": 2000,
+            "ops": [
+              "endTime:100.4",
+              "boundary:100.4",
+              "watchdog.arm:250",
+              "watchdog.arm:151",
+              "outPoint.stop:watchdog:1"
+            ],
+            "playing": false,
+            "rate": 1
+          },
+          {
+            "armed": true,
+            "atSec": 100.401,
+            "fired": true,
+            "name": "end",
+            "nowMs": 2000,
+            "ops": [],
+            "playing": false,
+            "rate": 1
+          }
+        ],
+        "ops": [
+          "endTime:900.4",
+          "boundary:900.4",
+          "watchdog.arm:250",
+          "watchdog.arm:150",
+          "outPoint.stop:watchdog:0",
+          "endTime:100.4",
+          "boundary:100.4",
+          "watchdog.arm:250",
+          "watchdog.arm:151",
+          "outPoint.stop:watchdog:1"
+        ]
+      }
+    },
+    {
+      "id": "deck/arming-while-paused",
+      "covers": [
+        "html-audio-backend::arming while paused works: the boundary takes effect once play starts"
+      ],
+      "note": "Armed at load, nothing runs while paused (no timer), and the boundary takes effect once play starts.",
+      "setup": { "target": "deck" },
+      "steps": [
+        { "deck": "load", "sec": 100, "outPointSec": 100.4 },
+        { "clock": 2000 },
+        { "checkpoint": "paused" },
+        { "deck": "play" },
+        { "clock": 1000 },
+        { "checkpoint": "played" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "armed": true,
+            "atSec": 100,
+            "fired": false,
+            "name": "paused",
+            "nowMs": 2000,
+            "ops": ["endTime:100.4", "boundary:100.4"],
+            "playing": false,
+            "rate": 1
+          },
+          {
+            "armed": true,
+            "atSec": 100.401,
+            "fired": true,
+            "name": "played",
+            "nowMs": 3000,
+            "ops": ["watchdog.arm:250", "watchdog.arm:151", "outPoint.stop:watchdog:1"],
+            "playing": false,
+            "rate": 1
+          },
+          {
+            "armed": true,
+            "atSec": 100.401,
+            "fired": true,
+            "name": "end",
+            "nowMs": 3000,
+            "ops": [],
+            "playing": false,
+            "rate": 1
+          }
+        ],
+        "ops": [
+          "endTime:100.4",
+          "boundary:100.4",
+          "watchdog.arm:250",
+          "watchdog.arm:151",
+          "outPoint.stop:watchdog:1"
+        ]
+      }
+    },
+    {
+      "id": "deck/load-clears-the-previous-out-point",
+      "covers": ["html-audio-backend::load clears the previous item's out-point"],
+      "note": "A new load with no boundary clears the old one: layers 1 and 2 are cleared, and the unbounded item plays past where the last one stopped.",
+      "setup": { "target": "deck" },
+      "steps": [
+        { "deck": "load", "sec": 100, "outPointSec": 200 },
+        { "checkpoint": "armed" },
+        { "deck": "load", "sec": 150, "outPointSec": null },
+        { "deck": "play" },
+        { "clock": 60000 },
+        { "checkpoint": "free" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "armed": true,
+            "atSec": 100,
+            "fired": false,
+            "name": "armed",
+            "nowMs": 0,
+            "ops": ["endTime:200", "boundary:200"],
+            "playing": false,
+            "rate": 1
+          },
+          {
+            "armed": false,
+            "atSec": 210,
+            "fired": false,
+            "name": "free",
+            "nowMs": 60000,
+            "ops": ["endTime:null", "boundary:null"],
+            "playing": true,
+            "rate": 1
+          },
+          {
+            "armed": false,
+            "atSec": 210,
+            "fired": false,
+            "name": "end",
+            "nowMs": 60000,
+            "ops": [],
+            "playing": true,
+            "rate": 1
+          }
+        ],
+        "ops": ["endTime:200", "boundary:200", "endTime:null", "boundary:null"]
+      }
+    },
+    {
+      "id": "deck/junk-out-point-arms-nothing",
+      "covers": [
+        "html-audio-backend::setOutPoint(null) and junk clear the watch rather than arming nonsense"
+      ],
+      "note": "A boundary that is not a finite number arms nothing rather than nonsense.",
+      "setup": { "target": "deck" },
+      "steps": [
+        { "deck": "load", "sec": 100, "outPointSec": "soon" },
+        { "deck": "play" },
+        { "clock": 5000 },
+        { "checkpoint": "free" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "armed": false,
+            "atSec": 105,
+            "fired": false,
+            "name": "free",
+            "nowMs": 5000,
+            "ops": ["endTime:null", "boundary:null"],
+            "playing": true,
+            "rate": 1
+          },
+          {
+            "armed": false,
+            "atSec": 105,
+            "fired": false,
+            "name": "end",
+            "nowMs": 5000,
+            "ops": [],
+            "playing": true,
+            "rate": 1
+          }
+        ],
+        "ops": ["endTime:null", "boundary:null"]
+      }
+    },
+    {
+      "id": "deck/speeding-up-re-derives-the-watchdog",
+      "covers": [
+        "html-audio-backend::speeding up mid-segment re-derives the boundary on the same tick, not on ratechange"
+      ],
+      "note": "2 s of content at 1x is outside the 1.5 s window (a 500 ms wait); at 2x it is 1 s of wall clock, inside it: the watchdog is re-armed on the rate change itself, for a poll.",
+      "setup": { "target": "deck" },
+      "steps": [
+        { "deck": "load", "sec": 100, "outPointSec": 102 },
+        { "deck": "play" },
+        { "checkpoint": "at-1x" },
+        { "deck": "rate", "rate": 2 },
+        { "checkpoint": "at-2x" },
+        { "clock": 2000 },
+        { "checkpoint": "stopped" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "armed": true,
+            "atSec": 100,
+            "fired": false,
+            "name": "at-1x",
+            "nowMs": 0,
+            "ops": ["endTime:102", "boundary:102", "watchdog.arm:500"],
+            "playing": true,
+            "rate": 1
+          },
+          {
+            "armed": true,
+            "atSec": 100,
+            "fired": false,
+            "name": "at-2x",
+            "nowMs": 0,
+            "ops": ["watchdog.cancel", "watchdog.arm:250"],
+            "playing": true,
+            "rate": 2
+          },
+          {
+            "armed": true,
+            "atSec": 102,
+            "fired": true,
+            "name": "stopped",
+            "nowMs": 2000,
+            "ops": [
+              "watchdog.arm:250",
+              "watchdog.arm:250",
+              "watchdog.arm:250",
+              "outPoint.stop:watchdog:0"
+            ],
+            "playing": false,
+            "rate": 2
+          },
+          {
+            "armed": true,
+            "atSec": 102,
+            "fired": true,
+            "name": "end",
+            "nowMs": 2000,
+            "ops": [],
+            "playing": false,
+            "rate": 2
+          }
+        ],
+        "ops": [
+          "endTime:102",
+          "boundary:102",
+          "watchdog.arm:500",
+          "watchdog.cancel",
+          "watchdog.arm:250",
+          "watchdog.arm:250",
+          "watchdog.arm:250",
+          "watchdog.arm:250",
+          "outPoint.stop:watchdog:0"
+        ]
+      }
+    },
+    {
+      "id": "deck/slowing-down-re-derives-the-watchdog",
+      "covers": [
+        "html-audio-backend::slowing down re-derives it too — the timer must not fire before the audio arrives"
+      ],
+      "note": "The other direction: at 2x the boundary is inside the window; at 1x it is not, and the watchdog waits for the window instead of waking early.",
+      "setup": { "target": "deck" },
+      "steps": [
+        { "deck": "rate", "rate": 2 },
+        { "deck": "load", "sec": 100, "outPointSec": 102 },
+        { "deck": "play" },
+        { "checkpoint": "at-2x" },
+        { "deck": "rate", "rate": 1 },
+        { "checkpoint": "at-1x" },
+        { "clock": 3000 },
+        { "checkpoint": "stopped" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "armed": true,
+            "atSec": 100,
+            "fired": false,
+            "name": "at-2x",
+            "nowMs": 0,
+            "ops": ["endTime:102", "boundary:102", "watchdog.arm:250"],
+            "playing": true,
+            "rate": 2
+          },
+          {
+            "armed": true,
+            "atSec": 100,
+            "fired": false,
+            "name": "at-1x",
+            "nowMs": 0,
+            "ops": ["watchdog.cancel", "watchdog.arm:500"],
+            "playing": true,
+            "rate": 1
+          },
+          {
+            "armed": true,
+            "atSec": 102,
+            "fired": true,
+            "name": "stopped",
+            "nowMs": 3000,
+            "ops": [
+              "watchdog.arm:250",
+              "watchdog.arm:250",
+              "watchdog.arm:250",
+              "watchdog.arm:250",
+              "watchdog.arm:250",
+              "watchdog.arm:250",
+              "outPoint.stop:watchdog:0"
+            ],
+            "playing": false,
+            "rate": 1
+          },
+          {
+            "armed": true,
+            "atSec": 102,
+            "fired": true,
+            "name": "end",
+            "nowMs": 3000,
+            "ops": [],
+            "playing": false,
+            "rate": 1
+          }
+        ],
+        "ops": [
+          "endTime:102",
+          "boundary:102",
+          "watchdog.arm:250",
+          "watchdog.cancel",
+          "watchdog.arm:500",
+          "watchdog.arm:250",
+          "watchdog.arm:250",
+          "watchdog.arm:250",
+          "watchdog.arm:250",
+          "watchdog.arm:250",
+          "watchdog.arm:250",
+          "outPoint.stop:watchdog:0"
+        ]
+      }
+    },
+    {
+      "id": "deck/a-rate-change-with-no-boundary-arms-nothing",
+      "covers": [
+        "html-audio-backend::a rate change with no boundary armed arms nothing — it is not a reason to start watching"
+      ],
+      "note": "An unbounded item: a rate change is not a reason to start watching.",
+      "setup": { "target": "deck" },
+      "steps": [
+        { "deck": "load", "sec": 100, "outPointSec": null },
+        { "deck": "play" },
+        { "deck": "rate", "rate": 1.5 },
+        { "clock": 5000 },
+        { "checkpoint": "free" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "armed": false,
+            "atSec": 107.5,
+            "fired": false,
+            "name": "free",
+            "nowMs": 5000,
+            "ops": ["endTime:null", "boundary:null"],
+            "playing": true,
+            "rate": 1.5
+          },
+          {
+            "armed": false,
+            "atSec": 107.5,
+            "fired": false,
+            "name": "end",
+            "nowMs": 5000,
+            "ops": [],
+            "playing": true,
+            "rate": 1.5
+          }
+        ],
+        "ops": ["endTime:null", "boundary:null"]
+      }
+    },
+    {
+      "id": "deck/top-speed-overshoot-is-a-poll-not-a-tick",
+      "covers": [
+        "html-audio-backend::the top speed's overshoot is the fine timer's latency times the rate, not a tick's"
+      ],
+      "note": "At 2x the stop's overshoot is bounded by the watchdog's own wake times the rate — never by an event tick.",
+      "setup": { "target": "deck" },
+      "steps": [
+        { "deck": "rate", "rate": 2 },
+        { "deck": "load", "sec": 100, "outPointSec": 102.3 },
+        { "deck": "play" },
+        { "clock": 3000 },
+        { "checkpoint": "stopped" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "armed": true,
+            "atSec": 102.3,
+            "fired": true,
+            "name": "stopped",
+            "nowMs": 3000,
+            "ops": [
+              "endTime:102.3",
+              "boundary:102.3",
+              "watchdog.arm:250",
+              "watchdog.arm:250",
+              "watchdog.arm:250",
+              "watchdog.arm:250",
+              "watchdog.arm:150",
+              "outPoint.stop:watchdog:0"
+            ],
+            "playing": false,
+            "rate": 2
+          },
+          {
+            "armed": true,
+            "atSec": 102.3,
+            "fired": true,
+            "name": "end",
+            "nowMs": 3000,
+            "ops": [],
+            "playing": false,
+            "rate": 2
+          }
+        ],
+        "ops": [
+          "endTime:102.3",
+          "boundary:102.3",
+          "watchdog.arm:250",
+          "watchdog.arm:250",
+          "watchdog.arm:250",
+          "watchdog.arm:250",
+          "watchdog.arm:150",
+          "outPoint.stop:watchdog:0"
+        ]
+      }
+    },
+    {
+      "id": "deck/a-stall-at-the-boundary-neither-stops-early-nor-spins",
+      "covers": [
+        "html-audio-backend::a buffering stall at the boundary neither stops early nor spins"
+      ],
+      "note": "Stalled short of the boundary: the watchdog wakes, finds the playhead short, re-arms once per poll (it does not spin at the floor) and stops only after the playhead really crosses.",
+      "setup": { "target": "deck" },
+      "steps": [
+        { "deck": "load", "sec": 100, "outPointSec": 100.9 },
+        { "deck": "play" },
+        { "clock": 400 },
+        { "deck": "stall" },
+        { "clock": 1000 },
+        { "checkpoint": "stalled" },
+        { "deck": "unstall" },
+        { "clock": 1000 },
+        { "checkpoint": "stopped" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "armed": true,
+            "atSec": 100.4,
+            "fired": false,
+            "name": "stalled",
+            "nowMs": 1400,
+            "ops": [
+              "endTime:100.9",
+              "boundary:100.9",
+              "watchdog.arm:250",
+              "watchdog.arm:250",
+              "watchdog.arm:250",
+              "watchdog.arm:250",
+              "watchdog.arm:250",
+              "watchdog.arm:250"
+            ],
+            "playing": true,
+            "rate": 1
+          },
+          {
+            "armed": true,
+            "atSec": 100.901,
+            "fired": true,
+            "name": "stopped",
+            "nowMs": 2400,
+            "ops": ["watchdog.arm:250", "watchdog.arm:151", "outPoint.stop:watchdog:1"],
+            "playing": false,
+            "rate": 1
+          },
+          {
+            "armed": true,
+            "atSec": 100.901,
+            "fired": true,
+            "name": "end",
+            "nowMs": 2400,
+            "ops": [],
+            "playing": false,
+            "rate": 1
+          }
+        ],
+        "ops": [
+          "endTime:100.9",
+          "boundary:100.9",
+          "watchdog.arm:250",
+          "watchdog.arm:250",
+          "watchdog.arm:250",
+          "watchdog.arm:250",
+          "watchdog.arm:250",
+          "watchdog.arm:250",
+          "watchdog.arm:250",
+          "watchdog.arm:151",
+          "outPoint.stop:watchdog:1"
+        ]
+      }
+    },
+    {
+      "id": "deck/an-out-point-past-the-audio-yields-one-end",
+      "covers": [
+        "html-audio-backend::an out-point past the real audio yields exactly one end, the natural one"
+      ],
+      "note": "The authored end lies past this copy's audio: the file ends first (the natural end), and a boundary report after it is stale — exactly one end.",
+      "setup": { "target": "deck" },
+      "steps": [
+        { "deck": "load", "sec": 100, "outPointSec": 400 },
+        { "deck": "play" },
+        { "clock": 500 },
+        { "deck": "ended", "sec": 100.5 },
+        { "checkpoint": "ran-out" },
+        { "deck": "endTime", "sec": 400 },
+        { "clock": 5000 },
+        { "checkpoint": "after" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "armed": true,
+            "atSec": 100.5,
+            "fired": true,
+            "name": "ran-out",
+            "nowMs": 500,
+            "ops": [
+              "endTime:400",
+              "boundary:400",
+              "watchdog.arm:298500",
+              "watchdog.cancel",
+              "ended:natural"
+            ],
+            "playing": false,
+            "rate": 1
+          },
+          {
+            "armed": true,
+            "atSec": 400,
+            "fired": true,
+            "name": "after",
+            "nowMs": 5500,
+            "ops": ["outPoint.stale:endTime"],
+            "playing": false,
+            "rate": 1
+          },
+          {
+            "armed": true,
+            "atSec": 400,
+            "fired": true,
+            "name": "end",
+            "nowMs": 5500,
+            "ops": [],
+            "playing": false,
+            "rate": 1
+          }
+        ],
+        "ops": [
+          "endTime:400",
+          "boundary:400",
+          "watchdog.arm:298500",
+          "watchdog.cancel",
+          "ended:natural",
+          "outPoint.stale:endTime"
+        ]
+      }
+    }
+  ]
+}

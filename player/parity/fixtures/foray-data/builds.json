@@ -1,0 +1,135 @@
+{
+  "family": "foray-data",
+  "module": "player/parity/forays.js",
+  "jsOnly": true,
+  "note": "The page's BUILD of real Forays (NE-30j): what foray-playback.test.js pins that is not playback — resolution, order, runtime, clock and resume rows over real curated documents. JS only: the engine never builds a Foray (plan §3 A-1), so these are owed to no Swift card. Authored at the rule.",
+  "cases": [
+    {
+      "id": "foray-data/frozen-grilling-history-1",
+      "covers": [
+        "foray-playback::Foray #1 is in the frozen fixture, is a draft, and its items are #134's typed list",
+        "foray-playback::every authored segment of Foray #1 resolves to real audio",
+        "foray-playback::the running order is the authored order, slot by slot",
+        "foray-playback::the total runtime matches what the Foray document declares, and the clock renders it",
+        "foray-playback::the segments come from more than one show — that is the point of a Foray",
+        "foray-playback::elapsed is Foray time, not a position inside somebody else's episode",
+        "foray-playback::elapsed never exceeds the Foray's total, at any segment",
+        "foray-playback::every second of the Foray maps back to the segment it came from",
+        "foray-playback::a stored position in the closing segment is treated as finished, not resumed",
+        "foray-playback::Foray #1's own running order reconciles a row written from it as exact",
+        "foray-playback::dropping a segment from Foray #1 degrades the row rather than seeking wrong"
+      ],
+      "authored": true,
+      "note": "The frozen grilling-history-1's build and the page-side rules over it: resolution, order, slots, clock, shows, the Foray clock round trip, and resume rows over the real order. All true is the rule.",
+      "call": "frozenAudit",
+      "args": ["grilling-history-1"],
+      "expect": {
+        "return": {
+          "allHttps": true,
+          "beatsWithinTheD3Share": true,
+          "clockRendersRuntime": true,
+          "closingSegmentIsFinished": true,
+          "droppedSegmentDegrades": true,
+          "elapsedIsForayTime": true,
+          "elapsedNeverExceedsTotal": true,
+          "everySecondMapsBack": true,
+          "everySegmentResolves": true,
+          "isDraft": true,
+          "itemsAreTyped": true,
+          "longerVersionClampsToTotal": true,
+          "moreThanOneShow": true,
+          "noBridges": true,
+          "ownOrderReconcilesExact": true,
+          "repeatsAnEpisode": true,
+          "runningOrderIsAuthored": true,
+          "runtimeMatchesDeclared": true,
+          "slotsCoverEntries": true
+        }
+      }
+    },
+    {
+      "id": "foray-data/frozen-grilling-history-2-seams",
+      "covers": [
+        "foray-playback::grilling-history-2 still has the cross-episode seams these speed tests need"
+      ],
+      "authored": true,
+      "note": "The speed tests' premise: ten items, at least five seams that change source.",
+      "call": "frozenSeams",
+      "args": ["grilling-history-2"],
+      "expect": { "return": { "crossEpisodeAtLeastFive": true, "playable": 10 } }
+    },
+    {
+      "id": "foray-data/resolves-grilling-history-2",
+      "covers": [
+        "foray-playback::every segment of every committed Foray in data/ resolves to real https audio"
+      ],
+      "authored": true,
+      "note": "Every authored segment of every committed Foray resolves to playable https audio: one authored case per Foray in data/forays.json.",
+      "call": "resolveAudit",
+      "args": [{ "$foray": "grilling-history-2" }],
+      "expect": {
+        "return": { "everyAuthoredSegmentHasAnEntry": true, "notHttps": 0, "unplayable": 0 }
+      }
+    },
+    {
+      "id": "foray-data/resolves-capital-types-1",
+      "covers": [],
+      "authored": true,
+      "call": "resolveAudit",
+      "args": [{ "$foray": "capital-types-1" }],
+      "expect": {
+        "return": { "everyAuthoredSegmentHasAnEntry": true, "notHttps": 0, "unplayable": 0 }
+      }
+    },
+    {
+      "id": "foray-data/resolves-geology-plates-1",
+      "covers": [],
+      "authored": true,
+      "call": "resolveAudit",
+      "args": [{ "$foray": "geology-plates-1" }],
+      "expect": {
+        "return": { "everyAuthoredSegmentHasAnEntry": true, "notHttps": 0, "unplayable": 0 }
+      }
+    },
+    {
+      "id": "foray-data/resolves-beyond-the-algorithm-engineering-production-ai-s-e6533b",
+      "covers": [],
+      "authored": true,
+      "call": "resolveAudit",
+      "args": [{ "$foray": "beyond-the-algorithm-engineering-production-ai-s-e6533b" }],
+      "expect": {
+        "return": { "everyAuthoredSegmentHasAnEntry": true, "notHttps": 0, "unplayable": 0 }
+      }
+    },
+    {
+      "id": "foray-data/resolves-how-ai-actually-gets-built-3b83e1",
+      "covers": [],
+      "authored": true,
+      "call": "resolveAudit",
+      "args": [{ "$foray": "how-ai-actually-gets-built-3b83e1" }],
+      "expect": {
+        "return": { "everyAuthoredSegmentHasAnEntry": true, "notHttps": 0, "unplayable": 0 }
+      }
+    },
+    {
+      "id": "foray-data/resolves-the-chain-reaction-how-engineering-disasters-rea-25f1b7",
+      "covers": [],
+      "authored": true,
+      "call": "resolveAudit",
+      "args": [{ "$foray": "the-chain-reaction-how-engineering-disasters-rea-25f1b7" }],
+      "expect": {
+        "return": { "everyAuthoredSegmentHasAnEntry": true, "notHttps": 0, "unplayable": 0 }
+      }
+    },
+    {
+      "id": "foray-data/resolves-what-engineers-actually-do-all-day-e08236",
+      "covers": [],
+      "authored": true,
+      "call": "resolveAudit",
+      "args": [{ "$foray": "what-engineers-actually-do-all-day-e08236" }],
+      "expect": {
+        "return": { "everyAuthoredSegmentHasAnEntry": true, "notHttps": 0, "unplayable": 0 }
+      }
+    }
+  ]
+}

@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<!-- PHASE N (card NE-36): the native engine's lane in the real shell.
+
+     The page hands a committed 3-segment local-file Foray to the ENGINE
+     (`engineSend playForay`) and makes no sound of its own. So its CSP has NO
+     media-src at all: `default-src 'none'` forbids every media load, which makes
+     "the page played nothing" structural rather than a promise. `connect-src
+     'self'` is for the module graph; `'unsafe-inline'` is absent, as everywhere
+     else in this repo. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Foray native-engine probe</title>
+</head>
+<body>
+<h1>Foray native-engine probe</h1>
+<p>Sends one <code>playForay</code> to the native engine, survives a WebContent
+kill and a reload, and records what the engine did.</p>
+<pre id="out">starting…</pre>
+<!-- The phase file again: `window.FORAY_PROBE_AUDIO_BASE` was set on index.html
+     and does not survive the navigation here (trial run 36176555294 read
+     `no-audio-base`). A classic external script runs before the module. -->
+<script src="probe-phase.js"></script>
+<script type="module" src="probe-native.js"></script>
+</body>
+</html>

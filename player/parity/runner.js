@@ -208,17 +208,43 @@ export async function runCase(c, fixture, { root = REPO_ROOT } = {}) {
     JS case using one fails loudly rather than being silently skipped. */
 export const PENDING_DRIVERS = Object.freeze({
   /* `session` and `lifecycle` were listed here for NE-14j, which drives them
-     now (SESSION_EVENTS and LIFECYCLE_EVENTS below).
-
-     `remote`: NE-12j recorded media-session's episode subset without it: the remote-press
-     table is a pure function of a surface and the presses, asked through
-     player/parity/media-actions.js, so no press needed a manager behind it. The
-     media-session tests that DO press a lock-screen button into a live manager
-     are the Foray ones (a real Foray's nexttrack, previoustrack, pause, seekto),
-     and NE-12j left them in unported.json for NE-29j — so NE-29j is the first
-     card that needs this driver. */
-  remote: "NE-29j",
+     now (SESSION_EVENTS and LIFECYCLE_EVENTS below). `remote` was listed for
+     NE-29j, which drives it now (REMOTE_ACTIONS below). Every schema verb has
+     a JS driver; the mechanism stays for the next verb the schema gains. */
 });
+
+/** What a `remote` step can press (NE-29j): a lock-screen, car or headphone
+    button, as the OS names it (media-session.js MEDIA_ACTIONS). A step is
+    `{remote: "<action>", details?: {...}}` — `details` is what the OS hands
+    the handler (`seekto` carries `{seekTime}`).
+
+    THE PRESS GOES THROUGH THE REAL TABLE. The driver asks
+    `mediaSessionActions(surface)` for the handler — the same function that
+    installs the page's handlers and that NE-12s ports as MediaMapping — and
+    calls it, so a remap (seekbackward's -15, seekto's refusal of a missing
+    time) reaches the manager exactly as it reaches the page. The SURFACE is the
+    one media-session.test.js's `realPlayer` builds over a real manager: play
+    resumes, pause pauses, stop stops, next/previous skip, and both seeks are
+    precise seeks on the loaded element's clock. On iOS the engine's remote
+    handlers answer the same presses (plan §4.5); the op log is the claim.
+
+    A press of an action the surface did not install is a HARNESS error: the OS
+    never delivers a command nobody registered. */
+export const REMOTE_ACTIONS = Object.freeze([
+  "play", "pause", "stop", "previoustrack", "nexttrack", "seekbackward", "seekforward", "seekto",
+]);
+
+function remoteSurface(m, backend) {
+  return {
+    play: () => m.resume(),
+    pause: () => m.pause(),
+    stop: () => m.stop(),
+    next: () => m.skipToNext(),
+    previous: () => m.skipToPrevious(),
+    seekBy: (offset) => m.seek(Math.max(0, backend.currentTime + offset), { precise: true }),
+    seekTo: (position) => m.seek(position, { precise: true }),
+  };
+}
 
 /** What a `session` step can say (NE-14j): the audio session's notifications,
     as the page hands them to the manager.
@@ -259,7 +285,16 @@ export const MANAGER_CALLS = Object.freeze([
   "skipToNext", "skipToPrevious", "stop", "seek", "setRate", "setVoice", "setInterludeEnabled",
   "interruptionBegan", "interruptionEnded", "routeChanged", "restoreColdLaunchState",
   "reconcileWithBackend",
+  /* NE-31j. The page tearing the player down mid-utterance or mid-jingle
+     (the engine's own teardown natively): what it silences and releases is
+     the claim. The harness's own teardown still runs after the ops are
+     copied, so a case asserts only the dispose it asked for. */
+  "dispose",
 ]);
+
+/** How many macrotask turns a scenario waits, at its end, for what it floated
+    to settle (NE-30j; see runScenario). */
+const FLOAT_SETTLE_TURNS = 50;
 
 /** What a checkpoint records about the manager. Plain data only. */
 function managerView(m) {
@@ -273,10 +308,320 @@ function managerView(m) {
   };
 }
 
+/** NE-30j. What a Foray scenario may ADD to its checkpoints, by naming it in
+    `setup.view`. Opt-in, so no earlier family's checkpoints change shape.
+
+      outPoint            the boundary the deck holds armed now (null: none)
+      seamGapRemainingMs  what is left of the seam beat, in wall-clock ms
+      timersLive          how many timers are alive on the manual clock (0:
+                          nothing left to fire, so no beat can start audio
+                          after a pause, a stop or a skip)
+      positionSec         the deck's playhead
+
+    NE-31j, the narration overlay:
+
+      narrationSec        the spoken line's clock, in seconds (null: nothing
+                          is being spoken) — what the Foray clock and the lock
+                          screen read for a synth item
+      narrationPlayhead   true while a synth line is the playhead
+      narrationTicks      how many times the narration pulse has fired
+                          (setup.narrationTicks) — the surface's repaint
+      lastVoiceFallback   the synthesiser's own "I spoke in another voice"
+                          (null: nothing has spoken)
+      wasPlaying          the interrupted state's wasPlaying (null in any other
+                          state): whether one press, or should-resume, resumes */
+export const VIEW_KEYS = Object.freeze([
+  "outPoint", "seamGapRemainingMs", "timersLive", "positionSec",
+  "narrationSec", "narrationPlayhead", "narrationTicks", "lastVoiceFallback", "wasPlaying",
+]);
+
+function extraView(keys, { m, backend, scheduler, ticks }) {
+  const out = {};
+  for (const k of keys) {
+    if (k === "outPoint") out.outPoint = backend.outPoint ?? null;
+    else if (k === "seamGapRemainingMs") out.seamGapRemainingMs = m.seamGapRemainingMs;
+    else if (k === "timersLive") {
+      if (typeof scheduler.live !== "number") throw new HarnessError("E_BAD_CASE", `view "timersLive" needs setup.scheduler = "manual"`);
+      out.timersLive = scheduler.live;
+    } else if (k === "positionSec") out.positionSec = backend.currentTime;
+    else if (k === "narrationSec") out.narrationSec = m.narrationElapsedSec ?? null;
+    else if (k === "narrationPlayhead") out.narrationPlayhead = m.isNarrationPlayhead === true;
+    else if (k === "narrationTicks") {
+      if (!ticks) throw new HarnessError("E_BAD_CASE", `view "narrationTicks" needs setup.narrationTicks = true`);
+      out.narrationTicks = ticks.count;
+    } else if (k === "lastVoiceFallback") out.lastVoiceFallback = m.lastVoiceFallback ?? null;
+    else if (k === "wasPlaying") out.wasPlaying = m.state?.type === "interrupted" ? m.state.wasPlaying === true : null;
+    else throw new HarnessError("E_BAD_CASE", `unknown view key ${JSON.stringify(k)} (one of ${VIEW_KEYS.join(", ")})`);
+  }
+  return out;
+}
+
+/** NE-30j. What a `call` step's `returns` may record into the next checkpoint's
+    `returned` list. A closed projection, never the raw value: playForay's
+    report carries whole queue items and English reasons, and a reason is text
+    (a text-pin), not a rule.
+
+      forayReport  {items: [queue ids], skipped: [{index, id, item_id}], warnings: n} */
+export const RETURN_PROJECTIONS = Object.freeze(["forayReport"]);
+
+function project(kind, value) {
+  if (kind === "forayReport") {
+    return {
+      items: (value?.items ?? []).map((i) => i.id),
+      skipped: (value?.skipped ?? []).map((s) => ({ index: s.index, id: s.id ?? null, item_id: s.item_id ?? null })),
+      warnings: (value?.warnings ?? []).length,
+    };
+  }
+  throw new HarnessError("E_BAD_CASE", `unknown returns projection ${JSON.stringify(kind)} (one of ${RETURN_PROJECTIONS.join(", ")})`);
+}
+
+/** NE-30j. `setup.forayBuild`: a REAL curated Foray, built the way the page
+    builds it (foray-resolve.js `resolveForay` over the documents), so a
+    scenario can play the frozen fixture's Forays end to end as
+    foray-playback.test.js does. `{id, data: "frozen" | "committed",
+    dropSources?: [source item ids], segments?: false}`. The build's hydrated
+    document is what a `playForay` / `setQueueFromForay` call with no
+    arguments is handed, and its source index is the resolver.
+
+    WHAT THE SWIFT RUNNER NEEDS (NE-30s): the same build as input, not a Swift
+    resolver — the engine never builds a Foray (plan §3 A-1). The same harness
+    choice NE-29s makes for `$foray` (forays.js). */
+export async function forayBuildFor(spec, ctx) {
+  const { resolveForay, indexSegments, indexSources, findForay } = await importModule(ctx.root, "player/foray-resolve.js");
+  const dir = spec?.data === "frozen" ? "tools/foray/fixtures/frozen/data" : spec?.data === "committed" ? "data" : null;
+  if (!dir || typeof spec.id !== "string") throw new HarnessError("E_BAD_CASE", `forayBuild needs {id, data: "frozen" | "committed"}`);
+  const rd = (f) => JSON.parse(fs.readFileSync(path.join(ctx.root, dir, f), "utf8"));
+  const foray = findForay(rd("forays.json"), spec.id, { unlocked: [spec.id] });
+  if (!foray) throw new HarnessError("E_BAD_CASE", `forayBuild: ${spec.id} is not in ${dir}/forays.json`);
+  const sources = indexSources(rd("segment-sources.json"));
+  for (const id of spec.dropSources ?? []) sources.delete(id);
+  const segments = indexSegments(spec.segments === false ? null : rd("segments.json"));
+  return resolveForay(foray, { segments, sources });
+}
+
+/* ---------- the `deck` target: the native out-point (NE-28j) ----------
+
+   The `outpoint` family drives deck-policy.js `outPointStep`, the native deck's
+   three-layer out-point as a pure reducer, over a DRIVEN CLOCK: this driver owns
+   the wall clock and the playhead, moves the playhead by `elapsed x rate` while
+   the deck plays (and is not stalled), and delivers the watchdog's one timer at
+   the moment it comes due, with the playhead where it really is by then. The
+   op log is the reducer's ops, in order; nothing else writes to it.
+
+   `deck` steps:
+     load      {id?, outPointSec, sec}  a new item at in-point `sec` (a new token)
+     play | pause
+     seek      {sec}
+     rate      {rate}
+     stall | unstall                    the playhead freezes / moves again while
+                                        playing (buffering): time passes, content
+                                        does not
+     endTime | boundary  {token?, sec?} layer 1 / layer 2 reports now, for the
+                                        current token or an older one; `sec` is
+                                        the playhead the report read (an
+                                        observer's own latency or jitter), which
+                                        is where the playhead then is
+     ended     {sec?}                   NE-30j: the FILE ran out (an authored
+                                        end past the real audio) — the item's
+                                        one, natural, end
+   `clock: ms` advances the wall clock. */
+
+export const DECK_EVENTS = Object.freeze([
+  "load", "play", "pause", "seek", "rate", "stall", "unstall", "endTime", "boundary", "ended",
+]);
+
+/** Milliseconds of content, kept whole so a long driven clock accumulates no
+    floating-point error. */
+const toMs = (sec) => Math.round(sec * 1000);
+
+async function runDeckScenario(c, setup, ctx) {
+  const policy = await importModule(ctx.root, "player/deck-policy.js");
+  const log = new OpLog();
+  let state = policy.initialOutPointWatch();
+  let nowMs = 0;
+  let atMs = 0;
+  let stalled = false;
+  let loads = 0;
+  const atSec = () => atMs / 1000;
+  const dispatch = (event) => {
+    const r = policy.outPointStep(state, { atSec: atSec(), nowMs, ...event });
+    state = r.state;
+    for (const op of r.ops) log.push(op);
+  };
+  if (setup.rate !== undefined) dispatch({ type: "rate", rate: setup.rate });
+
+  const { verbs } = closedSets();
+  const checkpoints = [];
+  let mark = 0;
+  const checkpoint = (name) => {
+    checkpoints.push({
+      name, ops: log.since(mark),
+      nowMs, atSec: atSec(), armed: state.armed, fired: state.fired, playing: state.playing, rate: state.rate,
+    });
+    mark = log.length;
+  };
+
+  for (const [i, step] of c.steps.entries()) {
+    const verb = Object.keys(step).find((k) => verbs.includes(k));
+    if (!verb) throw new HarnessError("E_UNKNOWN_VERB", `step ${i} of ${c.id} has no known verb`);
+    switch (verb) {
+      case "deck":
+        switch (step.deck) {
+          case "load":
+            loads += 1;
+            atMs = toMs(step.sec ?? 0);
+            dispatch({ type: "load", token: loads, outPointSec: step.outPointSec ?? null });
+            break;
+          case "play":
+          case "pause":
+            dispatch({ type: step.deck });
+            break;
+          case "seek":
+            if (typeof step.sec !== "number") throw new HarnessError("E_BAD_CASE", `deck seek needs a numeric sec`);
+            atMs = toMs(step.sec);
+            dispatch({ type: "seek" });
+            break;
+          case "rate":
+            dispatch({ type: "rate", rate: step.rate });
+            break;
+          case "stall":
+          case "unstall":
+            stalled = step.deck === "stall";
+            break;
+          case "ended":
+            if (!loads) throw new HarnessError("E_BAD_CASE", `an end with nothing loaded`);
+            if (step.sec !== undefined) atMs = toMs(step.sec);
+            dispatch({ type: "ended" });
+            break;
+          case "endTime":
+          case "boundary":
+            if (!loads) throw new HarnessError("E_BAD_CASE", `a ${step.deck} report with nothing loaded`);
+            if (step.sec !== undefined) atMs = toMs(step.sec);
+            dispatch({ type: "layer", layer: step.deck, token: step.token ?? loads });
+            break;
+          default:
+            throw new HarnessError("E_BAD_CASE", `unknown deck event "${step.deck}" (one of ${DECK_EVENTS.join(", ")})`);
+        }
+        break;
+      case "clock": {
+        if (!(Number.isInteger(step.clock) && step.clock >= 0)) throw new HarnessError("E_BAD_CASE", `clock takes whole milliseconds`);
+        const until = nowMs + step.clock;
+        for (;;) {
+          const due = state.timerDueMs;
+          const to = due !== null && due <= until ? due : until;
+          if (state.playing && !stalled) atMs += Math.round((to - nowMs) * state.rate);
+          nowMs = to;
+          if (due !== null && due <= until) dispatch({ type: "timer" });
+          else break;
+        }
+        break;
+      }
+      case "checkpoint":
+        checkpoint(step.checkpoint);
+        break;
+      default:
+        throw new HarnessError("E_BAD_CASE", `the deck target takes deck, clock and checkpoint steps, not "${verb}"`);
+    }
+  }
+  checkpoint("end");
+  return encode({ checkpoints, ops: [...log.ops] });
+}
+
+/* ---------- the `engine` target: the prepare family (NE-30j) ----------
+
+   The `prepare` family asserts seams at the AUDIBLE level: "item N+1 starts
+   at wall time T, at offset O" (plan §6), with the native-only `n.prepare:` /
+   `n.handover:` tokens ASSERTED rather than stripped (compare.js keeps `n.*`
+   in this family only). The JS warm handover is parked on the web, so the only
+   JS path that prepares is reference-engine.js — protocol v1 over the REAL
+   manager, with a WarmingBackend — and this target drives it.
+
+   `call` steps are engine COMMANDS (`{call: "<cmd>", args?, source?}`, sent
+   as engineSend payloads with a running cmdSeq; a refused reply is a harness
+   error unless the step says `refused: "<reason>"`). `deck` steps are the
+   engine's deck events (`ended` with `reason`, `error`, `time`/`duration`
+   with `sec`, `window`, `stall`, `flowing`). `clock` moves the manual
+   clock. A checkpoint records the manager view plus `nowMs` — T. */
+
+export const ENGINE_DECK_EVENTS = Object.freeze(["ended", "error", "time", "duration", "window", "stall", "flowing"]);
+
+async function runEngineScenario(c, setup, ctx) {
+  const { ReferenceEngine } = await importModule(ctx.root, "player/parity/reference-engine.js");
+  const log = new OpLog();
+  const scheduler = manualScheduler();
+  const eng = new ReferenceEngine({
+    scheduler, now: () => 0, log,
+    capabilities: setup.capabilities ?? ["episode", "continuation", "restore", "foray"],
+    catalogue: setup.catalogue ?? {}, backend: setup.backend ?? {},
+    ...(setup.seamGapSec !== undefined ? { seamGapSec: setup.seamGapSec } : {}),
+  });
+  const { verbs } = closedSets();
+  const checkpoints = [];
+  let mark = 0;
+  let cmdSeq = 0;
+  const checkpoint = (name) => {
+    checkpoints.push({ name, ops: log.since(mark), nowMs: scheduler.nowMs(), ...managerView(eng.manager) });
+    mark = log.length;
+  };
+  let ops = [];
+  try {
+    for (const [i, step] of c.steps.entries()) {
+      const verb = Object.keys(step).find((k) => verbs.includes(k));
+      if (!verb) throw new HarnessError("E_UNKNOWN_VERB", `step ${i} of ${c.id} has no known verb`);
+      switch (verb) {
+        case "call": {
+          const payload = {
+            v: 1, cmdSeq: ++cmdSeq, cmd: step.call, source: step.source ?? "tap",
+            ...(step.args !== undefined ? { args: expandInputs(step.args, ctx) } : {}),
+          };
+          const reply = await eng.engineSend(payload);
+          const want = step.refused ?? null;
+          if ((reply.ok ? null : reply.reason) !== want) {
+            throw new HarnessError("E_BAD_CASE", `engine ${step.call} answered ${JSON.stringify(reply.ok ? "ok" : reply.reason)}, the step expects ${JSON.stringify(want ?? "ok")}`);
+          }
+          break;
+        }
+        case "deck": {
+          if (!ENGINE_DECK_EVENTS.includes(step.deck)) {
+            throw new HarnessError("E_BAD_CASE", `unknown engine deck event ${JSON.stringify(step.deck)} (one of ${ENGINE_DECK_EVENTS.join(", ")})`);
+          }
+          const arg = step.deck === "ended" ? (step.reason ?? "natural")
+            : step.deck === "error" ? (step.message ?? "error")
+              : step.sec;
+          await eng.deck(step.deck, arg);
+          break;
+        }
+        case "clock":
+          if (!(Number.isInteger(step.clock) && step.clock >= 0)) throw new HarnessError("E_BAD_CASE", "clock takes whole milliseconds");
+          await scheduler.advance(step.clock);
+          await tick();
+          break;
+        case "settle":
+          for (let n = 0; n < (Number.isInteger(step.settle) && step.settle > 0 ? step.settle : 1); n++) await tick();
+          break;
+        case "checkpoint":
+          checkpoint(step.checkpoint);
+          break;
+        default:
+          throw new HarnessError("E_BAD_CASE", `the engine target takes call, deck, clock, settle and checkpoint steps, not "${verb}"`);
+      }
+    }
+    await tick();
+    checkpoint("end");
+  } finally {
+    ops = [...log.ops];
+    eng.dispose();
+  }
+  return encode({ checkpoints, ops });
+}
+
 async function runScenario(c, ctx) {
   const setup = expandInputs(c.setup ?? {}, ctx);
+  if (setup.target === "deck") return runDeckScenario(c, setup, ctx);
+  if (setup.target === "engine") return runEngineScenario(c, setup, ctx);
   if (setup.target !== "manager") throw new HarnessError("E_SCENARIO_TARGET", `no JS driver for target "${setup.target}"`);
   const { PlayerQueueManager, __resetInstanceForTests } = await importModule(ctx.root, "player/queue-manager.js");
+  const { mediaSessionActions } = await importModule(ctx.root, "player/media-session.js");
 
   const log = new OpLog();
   const backend = new FakeBackend({ log, ...(setup.backend ?? {}) });
@@ -284,22 +629,41 @@ async function runScenario(c, ctx) {
   const scheduler = setup.scheduler === "manual" ? manualScheduler() : instantScheduler();
   const tts = setup.tts ? fakeTts({ log, ...(typeof setup.tts === "object" ? setup.tts : {}) }) : null;
   const interlude = setup.interlude ? fakeInterlude({ log, ...(typeof setup.interlude === "object" ? setup.interlude : {}) }) : null;
-  const catalogue = setup.catalogue ?? {};
+  const built = setup.forayBuild ? await forayBuildFor(setup.forayBuild, ctx) : null;
+  const catalogue = built ? Object.fromEntries(built.sources) : (setup.catalogue ?? {});
+  const view = setup.view ?? [];
+  if (!Array.isArray(view)) throw new HarnessError("E_BAD_CASE", "setup.view is a list of view keys");
+  /* NE-31j. The narration pulse: the surface's `onNarrationTick` (client.js
+     repaints on it; the native engine's narration clock drives the same
+     snapshot). Wired only when a case asks, because the manager runs its
+     ticker — and so its deadline — only when a surface listens. Counted, not
+     logged: how often a page repaints is not an act on the outside world. */
+  const ticks = setup.narrationTicks === true ? { count: 0 } : null;
 
   __resetInstanceForTests();
   const m = new PlayerQueueManager({
     backend, positionStore: store, scheduler, tts, interlude,
+    /* NE-30j. The surface's beat callback, as an op: the page repaints on it,
+       and the native engine reports the same transition. */
+    ...(setup.seamGapEvents === true ? { onSeamGapChange: (inGap) => log.push(`event.seamGap:${inGap === true}`) } : {}),
     ...(setup.rate !== undefined ? { rate: setup.rate } : {}),
     ...(setup.seamGapSec !== undefined ? { seamGapSec: setup.seamGapSec } : {}),
     ...(setup.interludeEnabled !== undefined ? { interludeEnabled: setup.interludeEnabled } : {}),
+    ...(setup.voice !== undefined ? { voice: setup.voice } : {}),
+    ...(ticks ? { onNarrationTick: () => { ticks.count++; } } : {}),
   });
 
   const { verbs } = closedSets();
   const checkpoints = [];
   let mark = 0;
+  let returned = [];
   const checkpoint = (name) => {
-    checkpoints.push({ name, ops: log.since(mark), ...managerView(m) });
+    checkpoints.push({
+      name, ops: log.since(mark), ...managerView(m), ...extraView(view, { m, backend, scheduler, ticks }),
+      ...(returned.length ? { returned } : {}),
+    });
     mark = log.length;
+    returned = [];
   };
   const floating = [];
   let ops = [];
@@ -318,7 +682,8 @@ async function runScenario(c, ctx) {
           // A Foray needs a resolver, and a function cannot live in JSON: the
           // scenario's `catalogue` is that resolver's table.
           if (step.call === "playForay" || step.call === "setQueueFromForay") {
-            args = [args[0], { ...(args[1] ?? {}), resolveItem: (id) => catalogue[id] ?? null }];
+            const doc = args.length === 0 && built ? built.hydrated : args[0];
+            args = [doc, { ...(args[1] ?? {}), resolveItem: (id) => catalogue[id] ?? null }];
           }
           /* NE-14k. `stop` is the ENGINE's stop command (the Swift driver
              sends `.stop(persist: true)`), which is the page's close:
@@ -328,7 +693,10 @@ async function runScenario(c, ctx) {
              manager's own refusals (`_persistPosition`, its one caller's call). */
           if (step.call === "stop") m._persistPosition();
           const p = Promise.resolve(m[step.call](...args));
-          if (step.await === false) floating.push(p.catch(() => {}));
+          if (step.returns !== undefined) {
+            if (step.await === false) throw new HarnessError("E_BAD_CASE", "a call that records what it returns must be awaited");
+            returned.push(project(step.returns, await p));
+          } else if (step.await === false) floating.push(p.catch(() => {}));
           else await p;
           break;
         }
@@ -337,7 +705,15 @@ async function runScenario(c, ctx) {
           break;
         case "clock":
           if (!scheduler.advance) throw new HarnessError("E_BAD_CASE", `"clock" needs setup.scheduler = "manual"`);
-          await scheduler.advance(step.clock);
+          /* NE-31j. `every`: move the clock in steps of that many ms, as an
+             AWAKE page's timers fire (the narration ticker every 250 ms). One
+             jump is a suspended page, which is a different rule. */
+          if (step.every !== undefined) {
+            if (!(Number.isInteger(step.every) && step.every > 0 && Number.isInteger(step.clock) && step.clock % step.every === 0)) {
+              throw new HarnessError("E_BAD_CASE", "clock with `every` takes whole ms, a multiple of `every`");
+            }
+            for (let t = 0; t < step.clock; t += step.every) await scheduler.advance(step.every);
+          } else await scheduler.advance(step.clock);
           break;
         case "deck":
           /* The file ran out: the element is paused and `ended` (NE-14k: the
@@ -392,8 +768,12 @@ async function runScenario(c, ctx) {
         }
         case "tts":
           if (!tts) throw new HarnessError("E_BAD_CASE", `"tts" needs setup.tts`);
-          if (step.tts !== "finish") throw new HarnessError("E_BAD_CASE", `unknown tts event "${step.tts}"`);
-          tts.finish();
+          /* NE-31j. `silent`: the session was taken from under the line; the
+             synthesiser stops and reports nothing (only setup.tts.state can
+             then say so). */
+          if (step.tts === "finish") tts.finish();
+          else if (step.tts === "silent") tts.silence();
+          else throw new HarnessError("E_BAD_CASE", `unknown tts event "${step.tts}" (finish, silent)`);
           await tick();
           break;
         case "interlude":
@@ -402,12 +782,38 @@ async function runScenario(c, ctx) {
           interlude.finish(step.reason ?? "ended");
           await tick();
           break;
+        case "remote": {
+          if (!REMOTE_ACTIONS.includes(step.remote)) {
+            throw new HarnessError("E_BAD_CASE", `unknown remote action ${JSON.stringify(step.remote)} (have ${REMOTE_ACTIONS.join(", ")})`);
+          }
+          const handler = new Map(mediaSessionActions(remoteSurface(m, backend))).get(step.remote);
+          if (!handler) throw new HarnessError("E_BAD_CASE", `the surface installs no "${step.remote}" handler, so the OS could never deliver this press`);
+          const run = Promise.resolve("details" in step ? handler(expandInputs(step.details, ctx)) : handler());
+          if (step.await === false) floating.push(run.catch(() => {}));
+          else await run;
+          await tick();
+          break;
+        }
         case "checkpoint":
           checkpoint(step.checkpoint);
           break;
       }
     }
-    await Promise.all(floating);
+    /* NE-30j. Wait for what the scenario floated (an end at a seam, a held
+       load) — but never forever. A scenario that ENDS inside a seam beat on
+       the manual clock leaves the end's handler waiting on a timer only a
+       `clock` step could fire; so does any case under a mutant that lengthens
+       the beat (record.test.mjs records the whole tree with SEAM_GAP_SEC
+       changed). Awaited outright, that is a promise the event loop can never
+       settle, and node cancels the whole run instead of failing one case.
+       Bounded, the case records the state it really ended in, which --check
+       then reports as a difference. Every recorded case settles long before
+       the bound. */
+    {
+      let settled = false;
+      Promise.all(floating).then(() => { settled = true; }, () => { settled = true; });
+      for (let n = 0; n < FLOAT_SETTLE_TURNS && !settled; n++) await tick();
+    }
     await tick();
     checkpoint("end");
   } finally {

@@ -374,3 +374,400 @@ export function recoveryLoadedOps({ superseded, stopped, boundarySec }) {
 export function recoveryFailedOps({ superseded, stopped }) {
   return superseded || stopped ? [] : [RECOVERY.REPORT];
 }
+
+/* ---------- the native out-point: three layers and a windowed watchdog ----------
+
+   NE-28j (docs/native-engine-plan.md §4.3, P-2; the `outpoint` parity family,
+   ported by NE-28s into DeckPolicy). The web deck above has two stages, a
+   coarse `timeupdate` check and a fine timer. The native deck has THREE layers,
+   and the first to fire wins, per load token:
+
+     1. `forwardPlaybackEndTime`: the player item stops itself at the boundary;
+     2. a boundary time observer at the same instant;
+     3. a watchdog: ONE timer at `(end - now) / rate - OUT_POINT_WATCHDOG_WINDOW_SEC`
+        of wall clock, then a poll every `OUT_POINT_WATCHDOG_POLL_MS`, only
+        inside that window. Re-armed on every seek and every rate change. It is
+        for the day layers 1 and 2 both stay quiet (a stall across the boundary,
+        an observer the system dropped), and it costs nothing the rest of the
+        time: one wakeup outside the window instead of four a second for a
+        whole 51-minute Foray (DV-11).
+
+   NEVER EARLY, IN EVERY LAYER. A layer that reports before the playhead has
+   reached the boundary stops nothing: the report is written down
+   (`outPoint.early:`) and the watchdog is re-armed from where the playhead
+   really is. The payoff a segment exists for is never clipped.
+
+   These are JS because JS is the reference (plan §6): the web never runs them,
+   the fixtures pin them, and the Swift DeckPolicy must answer the same. The
+   reducer is pure: every event carries the playhead (`atSec`) and, where time
+   matters, the wall clock (`nowMs`), and every answer is a new state plus a
+   list of op tokens, so the op log a fixture records is exactly what the
+   native deck is commanded to do. */
+
+/** How much WALL CLOCK before the boundary the watchdog starts polling: the
+    plan's "last ~1.5 s" (§4.3). */
+export const OUT_POINT_WATCHDOG_WINDOW_SEC = 1.5;
+/** The watchdog's poll interval inside the window (plan §4.3). */
+export const OUT_POINT_WATCHDOG_POLL_MS = 250;
+
+/** The three layers, as they name themselves in the op log and the `outPoint`
+    row. */
+export const OUT_POINT_LAYER = Object.freeze({
+  END_TIME: "endTime",
+  BOUNDARY: "boundary",
+  WATCHDOG: "watchdog",
+});
+
+/** What a watchdog wake does (`watchdogWakeAction`). */
+export const WATCHDOG_WAKE = Object.freeze({
+  /** The playhead has reached the boundary: stop, attributed to the watchdog. */
+  STOP: "stop",
+  /** Not there yet: arm again for what is left (a poll inside the window, or
+      the one long wait outside it after a slow-down or a stall). */
+  REARM: "rearm",
+});
+
+/**
+ * How long, in WALL-CLOCK milliseconds, to arm the watchdog's one timer for,
+ * or null when there must be no timer at all.
+ *
+ * Null when there is no boundary (an unbounded episode), when it is not armed
+ * (a scrub went past it, so the rest of the episode free-plays), when the deck
+ * is paused (nothing is approaching anything), and when the playhead is already
+ * at or past it (the caller stops instead of waiting). Outside the window: the
+ * wall-clock time until the window opens, rounded UP, so the timer never wakes
+ * before the window. Inside it: one poll interval, but never later than the
+ * predicted crossing and never below `OUT_POINT_MIN_TIMER_MS`.
+ *
+ * @param {object} s
+ * @param {number|null} s.outPointSec  the boundary, in the source's seconds
+ * @param {number} s.atSec             the playhead
+ * @param {*} s.rate                   the deck's rate (see `deckRate`)
+ * @param {boolean} [s.armed=true]     the boundary is ahead of the playhead
+ * @param {boolean} [s.paused=false]   the deck is paused
+ * @returns {number|null}
+ */
+export function watchdogDelayMs({ outPointSec, atSec, rate, armed = true, paused = false }) {
+  if (typeof outPointSec !== "number" || !Number.isFinite(outPointSec) || !armed || paused) return null;
+  if (!(atSec < outPointSec)) return null;
+  const remainingWallSec = (outPointSec - atSec) / deckRate(rate);
+  const untilWindowSec = remainingWallSec - OUT_POINT_WATCHDOG_WINDOW_SEC;
+  if (untilWindowSec > 0) return Math.ceil(untilWindowSec * 1000);
+  return Math.max(OUT_POINT_MIN_TIMER_MS, Math.min(OUT_POINT_WATCHDOG_POLL_MS, Math.ceil(remainingWallSec * 1000)));
+}
+
+/**
+ * What a watchdog wake does, given where the playhead is NOW. The timer was a
+ * prediction, and a stall or a rate change makes predictions wrong, so the wake
+ * re-reads the playhead and stops only on a genuine crossing.
+ *
+ * @param {object} s
+ * @param {number} s.atSec        the playhead now
+ * @param {number} s.outPointSec  the armed boundary
+ * @returns {string} a `WATCHDOG_WAKE` token
+ */
+export function watchdogWakeAction({ atSec, outPointSec }) {
+  return atSec >= outPointSec ? WATCHDOG_WAKE.STOP : WATCHDOG_WAKE.REARM;
+}
+
+/** How far past the boundary a stop landed, in whole milliseconds of CONTENT
+    (the `outPoint` row's overshoot). Never negative: a stop is never early. */
+export function outPointOvershootMs({ atSec, outPointSec }) {
+  return Math.max(0, Math.round((atSec - outPointSec) * 1000));
+}
+
+/** A watch with nothing loaded. */
+export function initialOutPointWatch() {
+  return {
+    token: 0, outPointSec: null, armed: false, fired: false,
+    playing: false, rate: 1, timerDueMs: null,
+  };
+}
+
+const validBoundary = (s) => (typeof s === "number" && Number.isFinite(s) ? s : null);
+
+/** Layers 1 and 2 hold the boundary while it is armed and are cleared when it
+    is not: a scrub past the out-point frees the rest of the episode, and an end
+    time left behind would stop it anyway. */
+function boundaryOps(armed, outPointSec) {
+  const v = armed ? outPointSec : null;
+  return [`endTime:${v ?? "null"}`, `boundary:${v ?? "null"}`];
+}
+
+/** Cancel the one timer (if any), then arm it again from here (if it should
+    be armed at all). */
+function rearmWatchdog(state, { atSec, nowMs }, ops) {
+  let next = state;
+  if (next.timerDueMs !== null) {
+    ops.push("watchdog.cancel");
+    next = { ...next, timerDueMs: null };
+  }
+  if (next.fired) return next;
+  const delay = watchdogDelayMs({
+    outPointSec: next.outPointSec, atSec, rate: next.rate, armed: next.armed, paused: !next.playing,
+  });
+  if (delay === null) return next;
+  ops.push(`watchdog.arm:${delay}`);
+  return { ...next, timerDueMs: nowMs + delay };
+}
+
+function stopAt(state, layer, atSec, ops) {
+  if (state.timerDueMs !== null) ops.push("watchdog.cancel");
+  ops.push(`outPoint.stop:${layer}:${outPointOvershootMs({ atSec, outPointSec: state.outPointSec })}`);
+  return { ...state, fired: true, playing: false, timerDueMs: null };
+}
+
+/**
+ * The native out-point, as a reducer. Every event carries `atSec` (the
+ * playhead) and, where time matters, `nowMs` (the wall clock).
+ *
+ *   {type: "load", token, outPointSec, atSec}   a new item and token; the deck
+ *        is paused after a load. A boundary at or behind the in-point is not
+ *        armed: the item free-plays.
+ *   {type: "play", atSec, nowMs}                arm the watchdog
+ *   {type: "pause", atSec}                      cancel it
+ *   {type: "seek", atSec, nowMs}                re-derive `armed` from the new
+ *        playhead (a scrub past frees the episode; a scrub back re-arms it,
+ *        even after a stop on this token), then re-arm the watchdog
+ *   {type: "rate", rate, atSec, nowMs}          re-arm the watchdog at the new rate
+ *   {type: "timer", atSec, nowMs}               the watchdog's timer came due
+ *   {type: "layer", layer, token, atSec, nowMs} layer 1 or 2 reported the boundary
+ *
+ * Ops: `endTime:<s|null>`, `boundary:<s|null>`, `watchdog.arm:<ms>`,
+ * `watchdog.cancel`, `outPoint.stop:<layer>:<overshootMs>` (pause the deck and
+ * report the item's end), `outPoint.early:<layer>` (a report before the
+ * boundary: nothing stops), `outPoint.stale:<layer>` (a report for another
+ * token, for a boundary no longer armed, or after the stop: nothing happens).
+ *
+ * @param {object} state  from `initialOutPointWatch` or a previous step
+ * @param {object} event
+ * @returns {{state: object, ops: string[]}}
+ */
+export function outPointStep(state, event) {
+  const ops = [];
+  const { atSec = 0, nowMs = 0 } = event ?? {};
+  switch (event?.type) {
+    case "load": {
+      const outPointSec = validBoundary(event.outPointSec);
+      const armed = outPointSec !== null && atSec < outPointSec;
+      if (state.timerDueMs !== null) ops.push("watchdog.cancel");
+      ops.push(...boundaryOps(armed, outPointSec));
+      return {
+        state: { ...state, token: event.token, outPointSec, armed, fired: false, playing: false, timerDueMs: null },
+        ops,
+      };
+    }
+    case "play":
+      if (state.fired) return { state, ops };
+      return { state: rearmWatchdog({ ...state, playing: true }, { atSec, nowMs }, ops), ops };
+    case "pause":
+      if (state.timerDueMs !== null) ops.push("watchdog.cancel");
+      return { state: { ...state, playing: false, timerDueMs: null }, ops };
+    case "seek": {
+      const armed = state.outPointSec !== null && atSec < state.outPointSec;
+      if (armed !== state.armed) ops.push(...boundaryOps(armed, state.outPointSec));
+      const next = { ...state, armed, fired: armed ? false : state.fired };
+      return { state: rearmWatchdog(next, { atSec, nowMs }, ops), ops };
+    }
+    case "rate":
+      return { state: rearmWatchdog({ ...state, rate: deckRate(event.rate) }, { atSec, nowMs }, ops), ops };
+    case "timer": {
+      if (state.timerDueMs === null || nowMs < state.timerDueMs) return { state, ops };
+      const next = { ...state, timerDueMs: null };
+      if (!next.playing || !next.armed || next.fired) return { state: next, ops };
+      if (watchdogWakeAction({ atSec, outPointSec: next.outPointSec }) === WATCHDOG_WAKE.STOP) {
+        return { state: stopAt(next, OUT_POINT_LAYER.WATCHDOG, atSec, ops), ops };
+      }
+      return { state: rearmWatchdog(next, { atSec, nowMs }, ops), ops };
+    }
+    case "layer": {
+      const layer = event.layer;
+      if (event.token !== state.token || !state.armed || state.fired) {
+        ops.push(`outPoint.stale:${layer}`);
+        return { state, ops };
+      }
+      if (atSec < state.outPointSec) {
+        ops.push(`outPoint.early:${layer}`);
+        return { state: rearmWatchdog(state, { atSec, nowMs }, ops), ops };
+      }
+      return { state: stopAt(state, layer, atSec, ops), ops };
+    }
+    /* NE-30j. The FILE ran out before the boundary: an authored `end_sec` past
+       the real audio (html-audio-backend.js logs `outPoint.beyondDuration` for
+       it). That is the item's one end, the natural one — so the watch is spent
+       exactly as a stop spends it, and a layer that reports the boundary later
+       is stale rather than a second end. */
+    case "ended": {
+      if (state.timerDueMs !== null) ops.push("watchdog.cancel");
+      ops.push("ended:natural");
+      return { state: { ...state, fired: true, playing: false, timerDueMs: null }, ops };
+    }
+    default:
+      return { state, ops };
+  }
+}
+
+/* ---------- the element's readings and the setters' guards (NE-30j) ----------
+
+   What the backend does with a value it is handed, or reads off the element,
+   before anything acts on it. The native deck (AVDeck) is handed the same
+   values over the bridge and must refuse and clamp them the same way. */
+
+/** Where a seek goes, or null when the value is junk and the seek is ignored
+    (not a number, not finite, or negative). */
+export function deckSeekTarget(seconds) {
+  return typeof seconds === "number" && Number.isFinite(seconds) && seconds >= 0 ? seconds : null;
+}
+
+/** The volume a duck may set: clamped to 0..1, and junk is silence rather than
+    a throw (hold-to-talk ducking uses this, not a gain node). */
+export function deckVolume(v) {
+  return Math.min(1, Math.max(0, Number(v) || 0));
+}
+
+/** The duration the deck reports: a finite number, else null — never NaN,
+    which every consumer would have to special-case. */
+export function deckDuration(d) {
+  return typeof d === "number" && Number.isFinite(d) ? d : null;
+}
+
+/** The rate the deck REPORTS (the lock screen's position state extrapolates
+    with it): the element's own when it has a usable one, otherwise the rate we
+    asked for. A rate the engine refused is a rate the lock screen must not
+    claim. */
+export function deckReportedRate({ elementRate, pendingRate }) {
+  return typeof elementRate === "number" && Number.isFinite(elementRate) && elementRate > 0 ? elementRate : pendingRate;
+}
+
+/* ---------- the warm handover: the standby deck (NE-30j; DeckPair, NE-32) ----------
+
+   `HtmlAudioBackend` can prepare the NEXT segment on a second element while the
+   current one is audible, and hand the player role over at the boundary. On
+   the web that is parked (html-audio-backend.js §"prefetch"); on iOS the
+   native DeckPair prepares on a standby deck. Either way the DECISIONS are the
+   same, and they live here: whether to warm at all, when the element counts as
+   ready, whether a warm element may be promoted for the load in front of it,
+   the order of the handover, what a refused play may recover, and what an
+   unexplained pause means while a warm load is in flight. */
+
+/** The in-point a warm load is parked at: a positive finite offset, else 0. */
+export function warmOffset(startOffset) {
+  return Number.isFinite(startOffset) && startOffset > 0 ? startOffset : 0;
+}
+
+/**
+ * Whether `prefetch(item)` warms, and if not, why.
+ *   "unavailable"   no standby deck, parked, released or stood down
+ *   "no-url"        nothing to fetch
+ *   "same-episode"  the next item is in the source the player already holds:
+ *                   the same-source SEEK covers that seam, and a refetch could
+ *                   come back differently stitched
+ *   "already"       the standby deck already holds exactly this (url, offset)
+ *   "start"         warm it (a failed warm load does not count as held)
+ */
+export function prefetchDecision({ available, url, currentUrl, warm = null, offsetSec = 0 }) {
+  if (!available) return "unavailable";
+  if (!url) return "no-url";
+  if (url === currentUrl) return "same-episode";
+  if (warm && warm.url === url && warm.offset === offsetSec && !warm.failed) return "already";
+  return "start";
+}
+
+/** A warm load is READY only once the playhead is at its in-point AND the
+    element can produce audio — never on `canplay` for the file's head, which
+    would hand over 0:00 of somebody else's episode. `offsetSec` 0 needs no
+    seek. */
+export function warmSettled({ offsetSec, atSec, canPlay }) {
+  const near = offsetSec === 0 || Math.abs((atSec ?? 0) - offsetSec) <= SETTLE_NEAR_SEC;
+  return near && canPlay === true;
+}
+
+/**
+ * May the warm element BECOME the player for the load in front of it? Asked at
+ * the boundary, and readiness is RE-ASSERTED rather than trusted: a buffer can
+ * go away, or the element drift off its in-point, without an error.
+ *
+ * @param {object} s
+ * @param {object|null} s.warm   {url, offset, ready, failed} or null
+ * @param {string} s.url         the load's source
+ * @param {number} s.offsetSec   the load's in-point (`warmOffset`)
+ * @param {boolean} s.canPlay    the warm element can produce audio NOW
+ * @param {number} s.atSec       the warm element's playhead NOW
+ * @returns {string} "promote", or why not: "none", "not-ready", "failed",
+ *   "different-item", "wrong-offset", "buffer-gone", "drifted"
+ */
+export function warmPromotion({ warm, url, offsetSec, canPlay, atSec }) {
+  if (!warm) return "none";
+  if (warm.failed) return "failed";
+  if (!warm.ready) return "not-ready";
+  if (warm.url !== url) return "different-item";
+  if (warm.offset !== offsetSec) return "wrong-offset";
+  if (canPlay !== true) return "buffer-gone";
+  if (Math.abs((atSec ?? 0) - offsetSec) > SETTLE_NEAR_SEC) return "drifted";
+  return "promote";
+}
+
+/**
+ * The handover, in order. ORDER IS THE SAFETY PROPERTY: the outgoing element
+ * stops reporting and is paused BEFORE the roles swap, so no instant has two
+ * elements un-paused (on iOS a second one that plays takes the session). The
+ * demoted element's buffer is NOT dropped (that is media work queued in front of
+ * the promoted element's start); identity is adopted before any element write;
+ * and the rate and the duck are carried onto the element that inherits the
+ * role. Nothing here plays: the manager's own play follows the load.
+ * @returns {string[]}
+ */
+export function handoverSteps() {
+  return [
+    "detach-outgoing", "pause-outgoing", "swap-roles", "attach-incoming",
+    "adopt-identity", "carry-volume", "carry-rate",
+  ];
+}
+
+/** Does forgetting a warm load also drop its buffer? Only at `release` —
+    nothing is waiting on the element's task queue then. At a boundary, a
+    replacement or a stand-down, dropping it queues media work in front of the
+    load the listener is waiting for. */
+export function discardFreesBuffer(cause) {
+  return cause === "release";
+}
+
+/**
+ * A play the PLAYER element refused: recover onto the element that holds the
+ * gesture, or report? Recover only an autoplay refusal (`NotAllowedError`) of a
+ * handover not yet proven by a `playing`, on the live player of an unreleased
+ * backend. An `AbortError` is an ordinary interrupted play (a pause or a skip),
+ * and a pause clears the window: recovering either would start audio the
+ * listener had just stopped.
+ * @returns {"recover"|"report"}
+ */
+export function playRefusalAction({ errorName, handoverUnproven, isPlayer = true, released = false }) {
+  if (released || !isPlayer || !handoverUnproven) return "report";
+  return errorName === "NotAllowedError" ? "recover" : "report";
+}
+
+/**
+ * A `pause` event nobody asked for.
+ *   "own"         the pause we caused (the boundary's, a transport pause)
+ *   "ran-out"     the file ended — `pause` fires before `ended`
+ *   "report"      tell the manager (it reconciles)
+ *   "stand-down"  report AND stop warming for good: a warm load was IN FLIGHT,
+ *                 the one window in which a second element could have taken
+ *                 the session. A warm buffer already ready is not evidence.
+ */
+export function unexplainedPauseAction({ expected, ended, warmInFlight }) {
+  if (expected) return "own";
+  if (ended) return "ran-out";
+  return warmInFlight ? "stand-down" : "report";
+}
+
+/**
+ * Does the prefetch window open on this tick? Only while the player is
+ * AUDIBLE (a paused page is the throttled state warming exists to avoid), with
+ * an armed boundary, once per boundary, and within `leadSec` of WALL clock —
+ * so a faster rate opens it earlier in the episode.
+ */
+export function prefetchWindowOpens({ available, outPointSec, armed, paused, atSec, rate, leadSec, alreadyOpened = false }) {
+  if (!available || outPointSec == null || !armed || paused || alreadyOpened) return false;
+  return !((outPointSec - atSec) / deckRate(rate) > leadSec);
+}
