@@ -390,6 +390,51 @@ jobs:
             test "$n" -gt 0 || { echo "$m ran no unit tests"; exit 1; }
           done
 
+      - name: TEMP A-13 mutation check (removed before merge)
+        working-directory: mobile/android
+        run: |
+          python3 - <<'PY'
+          import subprocess, sys
+          V = "../plugins/foray-vault/android/src/main/java/ai/jwlabs/foura/vault/"
+          T = "../plugins/foray-tts/android/src/main/java/ai/jwlabs/foura/tts/ForayTtsPlugin.java"
+          VT = "ai.jwlabs.foura.vault.ForayVaultPluginTest."
+          TT = "ai.jwlabs.foura.tts.ForayTtsPluginFinishedTest."
+          GUARD = "if (utteranceId == null || !utteranceId.equals(currentUtteranceId) || paused) {"
+          M = [
+            ("V1 set stores the value", V + "DeviceOnlyVault.java", "rows.put(key, value);", 'rows.put(key, "");', 1, "foray-vault", VT + "roundTrip_setGetKeysRemove_andItSurvivesANewPluginInstance"),
+            ("V2 keys sorted", V + "DeviceOnlyVault.java", "Collections.sort(out);", "", 1, "foray-vault", VT + "roundTrip_setGetKeysRemove_andItSurvivesANewPluginInstance"),
+            ("V3 failure quotes message", V + "ForayVaultPlugin.java", "e.getClass().getSimpleName()", "e.getMessage()", 1, "foray-vault", VT + "corruptFile_readsRejectWithoutQuotingTheFile"),
+            ("V4 readForWrite throws", V + "DeviceOnlyVault.java", "return unreadableStore(e);", "throw new IOException(e);", 1, "foray-vault", VT + "corruptFile_recoversOnTheNextWrite"),
+            ("V5 remove keeps corrupt file", V + "DeviceOnlyVault.java", "if (rows.remove(key) != null || unreadable) write(rows);", "if (rows.remove(key) != null) write(rows);", 1, "foray-vault", VT + "corruptFile_removeReplacesItWithAnEmptyStore"),
+            ("V6 files dir not no-backup", V + "ForayVaultPlugin.java", "getContext().getNoBackupFilesDir()", "getContext().getFilesDir()", 1, "foray-vault", VT + "theFileIsWrittenToTheNoBackupDirectory"),
+            ("T1 onDone drops utteranceId", T, 'finished.put("utteranceId", utteranceId);', "", 1, "foray-tts", TT + "onDone_raisesFinishedCarryingTheUtteranceId"),
+            ("T2 onEngineError drops utteranceId", T, 'finished.put("utteranceId", utteranceId);', "", 2, "foray-tts", TT + "onError_withACode_raisesFinishedCarryingTheUtteranceIdAndTheCode"),
+            ("T3 legacy onError is a no-op", T, "onEngineError(utteranceId, TextToSpeech.ERROR);", "", 1, "foray-tts", TT + "onError_legacyOverload_raisesFinishedCarryingTheUtteranceId"),
+            ("T4 onDone guard loses the id check", T, GUARD, "if (utteranceId == null || paused) {", 1, "foray-tts", TT + "anUtteranceAQueueFlushReplaced_raisesNothing"),
+            ("T5 onEngineError guard loses the id check", T, GUARD, "if (utteranceId == null || paused) {", 2, "foray-tts", TT + "anUtteranceAQueueFlushReplaced_raisesNothing"),
+          ]
+          survived = []
+          for name, path, old, new, nth, mod, test in M:
+              src = open(path, encoding="utf-8").read()
+              at = -1
+              for _ in range(nth):
+                  at = src.index(old, at + 1)
+              open(path, "w", encoding="utf-8").write(src[:at] + new + src[at + len(old):])
+              try:
+                  r = subprocess.run(["./gradlew", ":" + mod + ":testDebugUnitTest", "--tests", test, "--console=plain"],
+                                     capture_output=True, text=True)
+              finally:
+                  open(path, "w", encoding="utf-8").write(src)
+              out = r.stdout + r.stderr
+              method = test.rsplit(".", 1)[1]
+              killed = r.returncode != 0 and (method + " FAILED") in out
+              print(("KILLED  " if killed else "SURVIVED") + "  " + name + "  ->  " + method, flush=True)
+              if not killed:
+                  survived.append(name)
+                  print("\n".join(out.splitlines()[-60:]))
+          sys.exit(1 if survived else 0)
+          PY
+
       - name: assembleDebug
         # The primary verdict, and the artefact a founder can actually install.
         # `--no-daemon` because a runner is a single-shot machine and a daemon
