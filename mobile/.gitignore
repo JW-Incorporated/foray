@@ -130,6 +130,11 @@ plugins/*/android/build/
 plugins/*/android/.gradle/
 plugins/*/android/.cxx/
 plugins/*/android/local.properties
+# A-21: the engine's pure-JVM core is a Gradle module NESTED one level deeper
+# (plugins/foray-audio/android/foray-engine-core-jvm/), so the `plugins/*/android/build/`
+# rule above, anchored and one `*` deep, does not reach its build/ tree.
+plugins/*/android/*/build/
+plugins/*/android/*/.gradle/
 
 # Android
 android/.gradle/

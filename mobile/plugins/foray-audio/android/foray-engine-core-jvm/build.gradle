@@ -1,0 +1,82 @@
+/* `foray-engine-core-jvm`: the Android engine's pure-JVM core. Card A-21
+ * (docs/plans/android-assessment.md §5.4), the spike that picks the language and
+ * proves the wiring before any engine code is ported.
+ *
+ * WHAT IT IS FOR. The iOS engine keeps every decision in `ForayEngineCore`
+ * (../../foray-engine-core, Swift, Foundation-only) and holds it to the parity
+ * fixtures in player/parity/fixtures/. Track A1 ports that core to the JVM so the
+ * same fixtures hold Android to the same answers (A-22 builds the runner, A-23 on
+ * port the policies). This module is where that port lives.
+ *
+ * PURE JVM, AND THAT IS THE POINT. `java-library`, not `com.android.library`: no
+ * android.jar on the compile classpath, so an `android.*` import is a compile error
+ * rather than a review comment, and `./gradlew :foray-engine-core-jvm:test` runs on
+ * a plain JVM with no Robolectric and no AGP unit-test variant. The platform half
+ * (ExoPlayer, the MediaSessionService) belongs in `foray-audio` (this directory's
+ * parent) and depends on this module, never the other way round.
+ *
+ * HOW `cap add android` PICKS IT UP. `mobile/android/` is generated and gitignored,
+ * so nothing may be patched into it. This directory carries a package.json whose
+ * `capacitor.android.src` is `.`, and `mobile/package.json` declares it as
+ * `file:plugins/foray-audio/android/foray-engine-core-jvm`: the same mechanism as
+ * foray-audio, foray-tts and foray-vault. Capacitor's CLI (8.5.0,
+ * dist/android/update.js installGradlePlugins) then writes, on every generation,
+ *     capacitor.settings.gradle   include ':foray-engine-core-jvm'
+ *                                 project(':foray-engine-core-jvm').projectDir = …
+ *     app/capacitor.build.gradle  implementation project(':foray-engine-core-jvm')
+ * and android-build.yml asserts both lines. It has no @CapacitorPlugin class, so it
+ * adds nothing to capacitor.plugins.json.
+ *
+ * JAVA 21, NOT KOTLIN: the A-21 decision, with the reasons in STATE.md. In short,
+ * the generated root build.gradle (Capacitor 8.5.0 template) puts only AGP and
+ * google-services on the buildscript classpath, and that file is regenerated, so
+ * Kotlin would mean a new Gradle plugin artefact (kotlin-gradle-plugin and its
+ * compiler) loaded from this subproject's own classloader beside AGP's, a Kotlin
+ * compiler daemon beside Gradle's on the runner, and a version to keep in step with
+ * Gradle and AGP. Java 21 costs nothing new: the JDK is already 21 and asserted,
+ * every hand-written Android module here is Java, and sealed interfaces, records and
+ * exhaustive pattern `switch` cover what the Swift core uses enums with associated
+ * values for.
+ *
+ * NO BUILDSCRIPT, NO PLUGIN VERSION. `java-library` is core Gradle, so this file
+ * adds no Gradle plugin at all.
+ *
+ * `options.release = 21`. It compiles against the Java 21 platform API, the JDK
+ * capacitor-android and foray-audio compile with. It does NOT stop a call to a Java
+ * library method Android lacks at minSdk 24 (`Map.of` is API 30, `List.getFirst`
+ * API 35): D8 desugars the LANGUAGE features but backports only some library
+ * methods. So the rule for main code here is Java 21 language features over the
+ * java.lang / java.util API that API 24 has; tests run on the JVM only and may use
+ * anything. The assembleDebug and assembleRelease steps, which dex this module into
+ * the APK, are what prove D8 accepts the class files.
+ */
+
+apply plugin: 'java-library'
+
+tasks.withType(JavaCompile).configureEach {
+    options.release = 21
+    options.encoding = 'UTF-8'
+    options.compilerArgs += ['-Xlint:all', '-Werror']
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    /* NO main dependencies, and shell-invariants.test.mjs pins that: this core is
+       the JDK and nothing else, as ForayEngineCore is Foundation and nothing else.
+
+       JUnit 4.13.2 for tests: the coordinate foray-audio, foray-tts and foray-vault
+       already test with, so it is no new Maven artefact. */
+    testImplementation "junit:junit:4.13.2"
+}
+
+test {
+    /* android-build.yml counts the JUnit XML <testcase> and <skipped> entries, as
+       it does for the Robolectric modules. This puts each case in the log as well. */
+    testLogging {
+        events "passed", "skipped", "failed"
+        exceptionFormat "full"
+    }
+}

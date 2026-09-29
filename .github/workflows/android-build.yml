@@ -396,6 +396,43 @@ jobs:
             test "$k" -eq 0 || { echo "$m skipped $k unit test(s): a skipped test proves nothing"; exit 1; }
           done
 
+      - name: JVM engine core — foray-engine-core-jvm is wired in and its tests run on a plain JVM (A-21)
+        # docs/plans/android-assessment.md A-21. The Android engine's core is a
+        # `java-library` module (no Android plugin, no Robolectric), nested at
+        # plugins/foray-audio/android/foray-engine-core-jvm/, and it reaches the
+        # generated project the same way foray-audio does: Capacitor writes its
+        # include and implementation lines from mobile/package.json on every
+        # `cap add android`. Checked here, not in the step above, because that step
+        # is about the foreground service and is pinned at three checks.
+        #
+        # AFTER the Robolectric step on purpose: Gradle's distribution and the
+        # shared configuration are already paid, so the elapsed time printed below
+        # is the core's own edit-test loop in CI, which A-21 asks to record. The
+        # assembleDebug and assembleRelease steps then dex this module into the
+        # APK, which is what proves D8 accepts its Java 21 class files.
+        working-directory: mobile/android
+        run: |
+          set -euo pipefail
+          grep -q "':foray-engine-core-jvm'" capacitor.settings.gradle \
+            || { echo "cap sync did not include ':foray-engine-core-jvm' — the JVM engine core is NOT in this build"; exit 1; }
+          grep -q "project(':foray-engine-core-jvm')" app/capacitor.build.gradle \
+            || { echo "':foray-engine-core-jvm' is included but not an app dependency, so it is never dexed"; exit 1; }
+          start=$SECONDS
+          if ! ./gradlew :foray-engine-core-jvm:test --no-daemon --console=plain \
+              > "$ART/gradle-engine-core-jvm-test.log" 2>&1; then
+            echo "::group::JVM engine core test log tail"; tail -300 "$ART/gradle-engine-core-jvm-test.log"; echo "::endgroup::"
+            exit 1
+          fi
+          elapsed=$((SECONDS - start))
+          grep -E "^BUILD (SUCCESSFUL|FAILED)" "$ART/gradle-engine-core-jvm-test.log" | tail -1 || true
+          d="../plugins/foray-audio/android/foray-engine-core-jvm/build/test-results/test"
+          n=$(cat "$d"/TEST-*.xml 2>/dev/null | grep -c '<testcase ' || true)
+          k=$(cat "$d"/TEST-*.xml 2>/dev/null | grep -c '<skipped' || true)
+          echo "foray-engine-core-jvm: $n test cases, $k skipped, ${elapsed}s for ./gradlew :foray-engine-core-jvm:test" \
+            | tee -a "$ART/native-unit-test-counts.txt"
+          test "$n" -gt 0 || { echo "foray-engine-core-jvm ran no unit tests"; exit 1; }
+          test "$k" -eq 0 || { echo "foray-engine-core-jvm skipped $k unit test(s): a skipped test proves nothing"; exit 1; }
+
       - name: assembleDebug
         # The primary verdict, and the artefact a founder can actually install.
         # `--no-daemon` because a runner is a single-shot machine and a daemon

@@ -464,6 +464,39 @@ test("the job asserts our own native code survived the regeneration", () => {
   );
 });
 
+test("A-21: the JVM engine core is asserted wired in, and its JVM tests run and are counted", () => {
+  /* MUTATION: delete the `grep -q "':foray-engine-core-jvm'"` line, append
+     `|| true` to either count check, or drop `:foray-engine-core-jvm:test` from the
+     gradlew call -> fails.
+     docs/plans/android-assessment.md A-21: the core is a pure `java-library` module
+     that reaches the GENERATED project only through `cap add android`, so, as for
+     foray-audio, the only place its wiring can be checked is a job that generated
+     the project. Four checks, four failure clauses (settings include, app
+     dependency, at least one test case, no skipped case), plus the gradlew
+     call's own exit. */
+  const s = stepCode("foray-engine-core-jvm is wired in");
+  assert.ok(s, "no step runs the JVM engine core's tests (A-21)");
+  assert.match(s, /grep -q "':foray-engine-core-jvm'" capacitor\.settings\.gradle/, "the settings include must be asserted");
+  assert.match(
+    s,
+    /grep -q "project\(':foray-engine-core-jvm'\)" app\/capacitor\.build\.gradle/,
+    "the app dependency must be asserted: an included module that is not a dependency is never dexed"
+  );
+  /* A real INVOCATION, not the string: the step's own summary `echo` names the
+     command, and a regex over the step text was satisfied by that echo alone. */
+  assert.ok(
+    invocationsOf(s, "./gradlew").some((c) => /\.\/gradlew :foray-engine-core-jvm:test\b/.test(c)),
+    "the JVM core's plain `test` task must be run by a gradlew call"
+  );
+  assert.match(s, /foray-engine-core-jvm\/build\/test-results\/test/, "the JVM core's JUnit reports must be counted");
+  assert.equal(failureClauses(s), 5, "the gradlew call and all four checks must be able to fail the job");
+  /* BEFORE the APK builds, so a red core test stops the job before it spends
+     twenty minutes building an APK around it. */
+  const at = (frag) => WF.indexOf("- name: " + frag);
+  assert.ok(at("JVM engine core") > at("native unit tests"), "the JVM core step runs after the Robolectric step (its timing is the warm loop)");
+  assert.ok(at("JVM engine core") < at("assembleDebug"), "the JVM core step runs before the APK builds");
+});
+
 test("the merged manifest is checked for the service, its type and both permissions", () => {
   /* MUTATION: delete the `android:foregroundServiceType="mediaPlayback"` needle
      -> fails.
