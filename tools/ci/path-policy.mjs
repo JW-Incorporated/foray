@@ -168,6 +168,13 @@ export const DENIED_PREFIXES = [
   // an audition behind it.
   "tools/mobile/fetch-models.mjs",
   "tools/mobile/inject-models.mjs",
+  // Same step, one file over (2026-09-29): NE-34's seam jingle, copied into the
+  // iOS app's public/ by both iOS build paths (the release composite action
+  // included) and verified against the pin its module holds. It stopped being
+  // a SwiftPM resource because a resource bundle cannot take the signed
+  // archive's provisioning profile (release run 36535801479).
+  "tools/mobile/inject-interlude.mjs",
+  "tools/audio/interlude-asset.mjs",
   // The release machinery (2026-09-22, docs/release-reliability-plan.md). Two
   // live exposures, either one enough on its own: `upload-retry.mjs` runs inside
   // the ios-archive step that holds the decoded App Store Connect key, and

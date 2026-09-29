@@ -3871,9 +3871,10 @@ test("NE-34: the jingle and the silence node sound only with the session, stop t
      guard, or the teardown release. Each fails here. */
   const playerPath = path.join(ENGINE_DIR, "InterludePlayer.swift");
   const nodePath = path.join(ENGINE_DIR, "SilenceNode.swift");
-  for (const file of [playerPath, nodePath]) {
-    assert.deepEqual(swiftImports(file).sort(), ["AVFoundation", "ForayEngineCore", "Foundation"], `${path.basename(file)} imports`);
-  }
+  /* InterludePlayer also imports CryptoKit: it hashes the jingle it loads
+     against the pin before it will play it (2026-09-29). */
+  assert.deepEqual(swiftImports(playerPath).sort(), ["AVFoundation", "CryptoKit", "ForayEngineCore", "Foundation"], "InterludePlayer.swift imports");
+  assert.deepEqual(swiftImports(nodePath).sort(), ["AVFoundation", "ForayEngineCore", "Foundation"], "SilenceNode.swift imports");
   for (const file of swiftFilesUnder(ENGINE_DIR)) {
     const code = stripSwiftComments(fs.readFileSync(file, "utf8"));
     if (/\bAVAudioPlayer\(/.test(code)) assert.equal(file, playerPath, `${path.relative(ROOT, file)} builds an AVAudioPlayer`);
@@ -3896,6 +3897,7 @@ test("NE-34: the jingle and the silence node sound only with the session, stop t
   assert.match(swiftFuncBody(interlude, "finish") ?? "", /guard this == sounding else \{ return \}/, "one end per start");
   assert.match(player, /made\.enableRate = false\s*made\.rate = Float\(Interlude\.rate\)\s*made\.numberOfLoops = 0/, "1.0x, never looped");
   assert.doesNotMatch(player, /Bundle\.module/, "a missing resource bundle costs the jingle, never the app");
+  assert.match(swiftFuncBody(interlude, "make") ?? "", /guard isPinned\(url\) else \{/, "the jingle is hashed against the pin before it is played");
 
   const nodeCode = stripSwiftComments(fs.readFileSync(nodePath, "utf8"));
   const node = nodeCode.slice(nodeCode.indexOf("final class SilenceNode"));
@@ -4671,4 +4673,66 @@ test("NE-33: SpeechRules is byte-identical in the core and foray-tts, the lexico
   ]) {
     assert.ok(swiftTestNames(tests).includes(name), `NE-33's ${name} is gone`);
   }
+});
+
+/* ─────────── No SwiftPM resources on a shipping plugin target (2026-09-29) ───────────
+ *
+ * Release run 36535801479 (build 2026092902) failed in .github/actions/ios-archive:
+ *
+ *   mobile/plugins/foray-audio/Package.swift: error: ForayAudio_ForayAudioPlugin
+ *   does not support provisioning profiles        (xcodebuild archive, exit 65)
+ *
+ * M2 (#873) had added `resources: [.copy("Resources/interlude-placeholder.wav")]`
+ * to the ForayAudioPlugin target. ANY `resources:` on a target makes SwiftPM
+ * generate a resource-bundle target (`<package>_<target>`) that is built into
+ * the app. The signed archive passes its provisioning settings on the
+ * xcodebuild command line, which applies them to EVERY target in the build, and
+ * a resource bundle cannot take a provisioning profile, so the archive fails.
+ * The unsigned ios-shell build (ios-build.yml) and ios-kit's `xcodebuild test`
+ * never pass a profile, so neither can see it: only a release run does, after
+ * the founder is already waiting on TestFlight.
+ *
+ * So: no Package.swift under mobile/plugins declares `resources:` on a target
+ * that ships in the app. A `.testTarget` may (the click tracks are one): the App
+ * scheme's archive never builds test targets. A file the app needs goes into
+ * the generated project's `public/` folder reference instead
+ * (tools/mobile/inject-interlude.mjs for NE-34's jingle, inject-models.mjs for
+ * the Kokoro weights). */
+test("no Package.swift under mobile/plugins declares `resources:` on a shipping target: a resource bundle cannot take the signed archive's provisioning profile", () => {
+  /* MUTATION: put `resources: [.copy("Resources/interlude-placeholder.wav")]`
+     back on ForayAudioPlugin, or add `resources:` to any `.target` in
+     foray-tts, foray-vault or foray-engine-core. Each fails here. */
+  const manifests = [];
+  const walk = (dir) => {
+    for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+      if (e.name === "node_modules" || e.name.startsWith(".")) continue;
+      const abs = path.join(dir, e.name);
+      if (e.isDirectory()) walk(abs);
+      else if (e.name === "Package.swift") manifests.push(abs);
+    }
+  };
+  walk(path.join(MOBILE, "plugins"));
+  const rel = manifests.map((m) => path.relative(ROOT, m).split(path.sep).join("/"));
+  for (const expected of ["mobile/plugins/foray-audio/Package.swift", "mobile/plugins/foray-audio/foray-engine-core/Package.swift",
+    "mobile/plugins/foray-tts/Package.swift", "mobile/plugins/foray-vault/Package.swift"]) {
+    assert.ok(rel.includes(expected), `the scan no longer finds ${expected}: it has gone blind`);
+  }
+  const offenders = [];
+  let testTargetResources = 0;
+  for (const file of manifests) {
+    const code = stripSwiftComments(fs.readFileSync(file, "utf8"));
+    for (const m of code.matchAll(/\bresources\s*:/g)) {
+      /* The target a `resources:` belongs to is the nearest `.<kind>(` opener
+         before it whose kind ends in "target" (.target, .testTarget,
+         .executableTarget, .binaryTarget, .macro...Target). */
+      const owner = [...code.slice(0, m.index).matchAll(/\.(\w*[tT]arget)\s*\(/g)].at(-1)?.[1];
+      if (owner === "testTarget") testTargetResources += 1;
+      else offenders.push(`${path.relative(ROOT, file)}: \`resources:\` on a .${owner ?? "(no target)"}`);
+    }
+  }
+  assert.deepEqual(offenders, [],
+    "a SwiftPM resource on a shipping target breaks the signed iOS archive (release run 36535801479); put the file in the app's public/ folder instead, as tools/mobile/inject-interlude.mjs does");
+  assert.ok(testTargetResources >= 1, "the scan no longer sees the click tracks' test-target resources: it has gone blind");
+  assert.equal(fs.existsSync(path.join(PLUGIN_DIR, "ios/Sources/ForayAudioPlugin/Resources")), false,
+    "ForayAudioPlugin has a Resources/ directory again: nothing may ship from it");
 });

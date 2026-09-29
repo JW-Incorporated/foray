@@ -255,6 +255,16 @@ jobs:
           node tools/mobile/fetch-models.mjs --fetch ios
           node tools/mobile/inject-models.mjs ios mobile/ios/App/App/public
           node tools/mobile/inject-models.mjs ios mobile/ios/App/App/public --check
+      - name: Put the seam jingle in the app (NE-34)
+        # The same step `.github/actions/ios-archive` runs. NOT a SwiftPM
+        # resource: a `resources:` on a plugin target makes a resource-bundle
+        # target, and the signed archive fails on it ("ForayAudio_ForayAudioPlugin
+        # does not support provisioning profiles", release run 36535801479),
+        # which this unsigned build never sees. See the script's header.
+        run: |
+          set -euo pipefail
+          node tools/mobile/inject-interlude.mjs mobile/ios/App/App/public
+          node tools/mobile/inject-interlude.mjs mobile/ios/App/App/public --check
       - name: Which Xcode container did Capacitor generate?
         # `-workspace` (CocoaPods) or `-project` (SwiftPM), chosen by a tested
         # function rather than assumed. Every Capacitor guide — and HUMAN-ACTIONS.md
@@ -449,6 +459,10 @@ jobs:
           APP="$DD_SIM/Build/Products/Debug-iphonesimulator/App.app"
           test -d "$APP"
           test -f "$APP/public/index.html"
+          # NE-34's jingle reached the BUILT bundle where InterludePlayer looks
+          # (tools/mobile/inject-interlude.mjs; not a SwiftPM resource, which
+          # breaks the signed archive).
+          test -f "$APP/public/player/assets/interlude-placeholder.wav"
           echo "app=$APP" >> "$GITHUB_OUTPUT"
           du -sh "$APP" | tee -a "$ART/app-size.txt"
 
