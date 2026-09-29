@@ -497,6 +497,36 @@ test("A-21: the JVM engine core is asserted wired in, and its JVM tests run and 
   assert.ok(at("JVM engine core") < at("assembleDebug"), "the JVM core step runs before the APK builds");
 });
 
+test("A-22: the JVM parity runner's report is read, and a flipped fixture value must turn it red", () => {
+  /* MUTATION: append `|| true` to the report check, drop `--rerun` or the
+     FORAY_PARITY_DIR export before the mutant gradlew call, drop the `exit 1`
+     under a green mutant, or drop the grep for the flipped case -> fails.
+     docs/plans/android-assessment.md A-22: "A mutation of one fixture value turns
+     it red." ParitySuiteTest runs inside the A-21 step's `:foray-engine-core-jvm:test`;
+     this step reads its report, then runs the SAME test against a copy of
+     player/parity with number-format/point-one's recorded "0.1" flipped, and the
+     job fails if that run is green. */
+  const s = stepCode("JVM parity runner");
+  assert.ok(s, "no step checks the JVM parity runner (A-22)");
+  assert.match(s, /build\/parity\/jvm-parity-report\.json/, "the step must read the report ParitySuiteTest writes");
+  assert.match(s, /test -f "\$report" \|\| \{[^}]*exit 1; \}/, "a missing report (the test never ran) must fail the job");
+  assert.match(s, /!r\.ok/, "a report that is not ok must fail the job");
+  assert.match(s, /r\.totals\.passed > 0/, "a report that passed nothing must fail the job");
+  assert.match(s, /cp -R \.\.\/\.\.\/player\/parity "\$mutant\/player\/parity"/, "the mutation runs on a COPY of player/parity, never the checkout");
+  assert.match(s, /c\.expect\.return = "0\.2"/, "one recorded fixture value must be flipped");
+  const mutant = invocationsOf(s, "./gradlew").find((c) => /:foray-engine-core-jvm:test\b/.test(c));
+  assert.ok(mutant, "the mutant run must be a real gradlew invocation");
+  assert.match(mutant, /--tests '\*ParitySuiteTest'/, "the mutant run is the parity test");
+  assert.match(mutant, /--rerun\b/, "--rerun, or Gradle calls an unchanged source tree up to date and runs nothing");
+  assert.match(s, /export FORAY_PARITY_DIR="\$mutant\/player\/parity"\n\s*mutant_green=yes\n\s*if ! \.\/gradlew /, "the mutant run must be pointed at the copy");
+  assert.match(s, /if \[ "\$mutant_green" = yes \]; then\n[^\n]*\n\s*exit 1/, "a GREEN mutant run must fail the job");
+  assert.match(s, /grep -q 'failed number-format\/point-one'/, "the mutant must fail ON the flipped case, not for some other reason");
+  assert.equal(failureClauses(s), 5, "report missing, books unbalanced, flip impossible, mutant green, wrong case: five ways to fail");
+  const at = (frag) => WF.indexOf("- name: " + frag);
+  assert.ok(at("JVM parity runner") > at("JVM engine core"), "after the step whose test run writes the report");
+  assert.ok(at("JVM parity runner") < at("assembleDebug"), "before the APK builds, so a red book costs seconds, not an APK build");
+});
+
 test("the merged manifest is checked for the service, its type and both permissions", () => {
   /* MUTATION: delete the `android:foregroundServiceType="mediaPlayback"` needle
      -> fails.

@@ -72,11 +72,42 @@ dependencies {
     testImplementation "junit:junit:4.13.2"
 }
 
+/* A-22: THE JVM PARITY RUNNER reads the repo's player/parity/ IN PLACE: manifest.json,
+ * jvm-pending.json, floors.json, unported.json and every fixture file, the same JSON
+ * the Swift runner reads (docs/native-engine-plan.md section 6). Nothing is copied
+ * into this module. FORAY_PARITY_DIR, when set, points it at another tree
+ * (android-build.yml's mutation check uses a copy with one fixture value flipped);
+ * otherwise the first ancestor of this directory that holds player/parity/manifest.json.
+ * Canonical first, so a symlinked module directory still walks up the real checkout.
+ * Null when there is none: configuration never fails on it, and ParitySuiteTest then
+ * fails with the reason, which is where a missing tree belongs. */
+def forayParityDir = {
+    def configured = System.getenv('FORAY_PARITY_DIR')
+    if (configured) return file(configured)
+    for (def dir = projectDir.canonicalFile; dir != null; dir = dir.parentFile) {
+        def candidate = new File(dir, 'player/parity')
+        if (new File(candidate, 'manifest.json').isFile()) return candidate
+    }
+    return null
+}()
+def forayParityReport = layout.buildDirectory.file('parity/jvm-parity-report.json')
+
 test {
     /* android-build.yml counts the JUnit XML <testcase> and <skipped> entries, as
        it does for the Robolectric modules. This puts each case in the log as well. */
     testLogging {
         events "passed", "skipped", "failed"
         exceptionFormat "full"
+        /* The parity run prints one `jvm-parity family=...` line per family. */
+        showStandardStreams = true
     }
+    /* The fixtures are INPUTS of this task. Without this line Gradle would call the
+       task up to date after a fixture-only change (nothing under src/ moved) and
+       report the last run's green over a tree it never read. */
+    if (forayParityDir != null) {
+        inputs.dir(forayParityDir).withPropertyName('forayParityDir').withPathSensitivity(PathSensitivity.RELATIVE)
+        systemProperty 'foray.parity.dir', forayParityDir.path
+    }
+    systemProperty 'foray.parity.report', forayParityReport.get().asFile.path
+    outputs.file(forayParityReport).withPropertyName('forayParityReport')
 }

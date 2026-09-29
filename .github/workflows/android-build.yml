@@ -433,6 +433,66 @@ jobs:
           test "$n" -gt 0 || { echo "foray-engine-core-jvm ran no unit tests"; exit 1; }
           test "$k" -eq 0 || { echo "foray-engine-core-jvm skipped $k unit test(s): a skipped test proves nothing"; exit 1; }
 
+      - name: JVM parity runner — the fixtures hold the JVM core to the JS answers, and a flipped fixture value turns it red (A-22)
+        # docs/plans/android-assessment.md A-22. `ParitySuiteTest` ran inside the
+        # `:foray-engine-core-jvm:test` call of the step above: it read
+        # player/parity/fixtures IN PLACE (the JSON the Swift runner reads), ran
+        # every family foray-engine-core-jvm has a runner for, and kept the books
+        # against player/parity/jvm-pending.json, so a red book already failed that
+        # step's gradlew call. `record.mjs --check` (ci.yml) stays the JS reference.
+        #
+        # THIS STEP PROVES THE RUNNER CAN FAIL. (1) The report must exist and say
+        # ok with at least one case passed: a runner that found nothing to run
+        # would otherwise be a green nothing. (2) One fixture value is flipped in
+        # a COPY of player/parity (number-format/point-one's recorded "0.1"
+        # becomes "0.2"), FORAY_PARITY_DIR points the same test at the copy, and
+        # it must now FAIL, naming that case. That is the card's "a mutation of
+        # one fixture value turns it red", run on every build rather than once.
+        # `--rerun` because the source did not change and Gradle would otherwise
+        # call the task up to date. The checkout is never written.
+        working-directory: mobile/android
+        run: |
+          set -euo pipefail
+          report=../plugins/foray-audio/android/foray-engine-core-jvm/build/parity/jvm-parity-report.json
+          test -f "$report" || { echo "the JVM parity runner wrote no report, so ParitySuiteTest never ran"; exit 1; }
+          cp "$report" "$ART/jvm-parity-report.json"
+          node -e '
+            const r = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"));
+            for (const line of r.families) console.log(line);
+            console.log("jvm-parity totals " + JSON.stringify(r.totals));
+            if (!r.ok || r.problems.length) { console.log("jvm-parity report is not ok: " + r.problems.join("; ")); process.exit(1); }
+            if (!(r.totals.passed > 0)) { console.log("jvm-parity passed nothing"); process.exit(1); }
+          ' "$report" | tee "$ART/jvm-parity.txt" || { echo "the JVM parity books did not balance"; exit 1; }
+
+          mutant="$RUNNER_TEMP/jvm-parity-mutant"
+          rm -rf "$mutant"
+          mkdir -p "$mutant/player"
+          cp -R ../../player/parity "$mutant/player/parity"
+          node -e '
+            const fs = require("fs");
+            const file = process.argv[1];
+            const doc = JSON.parse(fs.readFileSync(file, "utf8"));
+            const c = doc.cases.find((x) => x.id === "number-format/point-one");
+            if (!c || c.expect?.return !== "0.1") { console.log("number-format/point-one is not the case this check flips"); process.exit(1); }
+            c.expect.return = "0.2";
+            fs.writeFileSync(file, JSON.stringify(doc, null, 2) + "\n");
+          ' "$mutant/player/parity/fixtures/number-format/number-format.json" || { echo "could not flip the fixture value"; exit 1; }
+          export FORAY_PARITY_DIR="$mutant/player/parity"
+          mutant_green=yes
+          if ! ./gradlew :foray-engine-core-jvm:test --tests '*ParitySuiteTest' --rerun \
+              --no-daemon --console=plain > "$ART/gradle-jvm-parity-mutant.log" 2>&1; then
+            mutant_green=no
+          fi
+          unset FORAY_PARITY_DIR
+          if [ "$mutant_green" = yes ]; then
+            echo "number-format/point-one was flipped to \"0.2\" and the JVM parity runner stayed GREEN: it is not holding the JVM to the fixtures"
+            exit 1
+          fi
+          grep -q 'failed number-format/point-one' "$ART/gradle-jvm-parity-mutant.log" \
+            || { echo "::group::mutant run log tail"; tail -150 "$ART/gradle-jvm-parity-mutant.log"; echo "::endgroup::"; echo "the mutant run failed, but not on the flipped case"; exit 1; }
+          echo "mutation: number-format/point-one flipped to \"0.2\" turned the JVM parity runner red, as it must" | tee -a "$ART/jvm-parity.txt"
+          { echo "### JVM parity (A-22)"; echo; echo '```'; cat "$ART/jvm-parity.txt"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+
       - name: assembleDebug
         # The primary verdict, and the artefact a founder can actually install.
         # `--no-daemon` because a runner is a single-shot machine and a daemon
