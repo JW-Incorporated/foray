@@ -33,7 +33,7 @@ import {
   PERSIST_GRANTED, PERSIST_DENIED, PERSIST_UNSUPPORTED, PERSIST_ERROR, PERSIST_UNKNOWN,
 } from "./durable-store.js";
 import { ForayProgressStore, makeProgress, readProgress, progressKey, listProgress } from "./foray-progress.js";
-import { OWNED_PREFIXES } from "./engine-contract.js";
+import { OWNED_PREFIXES, HELLO_PLATFORMS } from "./engine-contract.js";
 import { FAULT_KINDS } from "./engine-vocabulary.js";
 
 /* ---------- fakes ----------
@@ -1844,6 +1844,14 @@ test("SINGLE WRITER: deferral is for the iOS shell only — not the web, not And
   assert.deepEqual(deferredPrefixesFor(shell("web", false), OWNED_PREFIXES), []);
   assert.deepEqual(deferredPrefixesFor({ getPlatform() { throw new Error("x"); } }, OWNED_PREFIXES), []);
   assert.deepEqual(deferredPrefixesFor(shell("ios"), OWNED_PREFIXES), [...OWNED_PREFIXES]);
+  /* A-20: the store defers exactly on the platforms the page asks engineHello
+     (engine-contract.js HELLO_PLATFORMS). client.js builds the engine only
+     where the store defers, so a platform in one list and not the other is
+     a hello nobody sends, or rows held for an engine nobody asks. A-28 adds
+     "android" to both. MUTATION: add "android" to HELLO_PLATFORMS alone -> red. */
+  for (const platform of ["ios", "android", "web"]) {
+    assert.equal(deferredPrefixesFor(shell(platform), OWNED_PREFIXES).length > 0, HELLO_PLATFORMS.includes(platform), platform);
+  }
   const web = createDurableStore({ localStorage: new FakeLocal() });
   assert.equal(web.ownership(), null, "a store nobody defers has no owner state at all");
   const ios = createDurableStore({ localStorage: new FakeLocal(), deferredPrefixes: OWNED_PREFIXES });
