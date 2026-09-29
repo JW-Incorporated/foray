@@ -94,10 +94,10 @@ test("exclusions carry a closed reason and a sentence; unported entries carry a 
   }
 });
 
-test("the fifteen covered suites are the plan's fifteen, and each not-yet-written one names its card", () => {
+test("the covered suites are the plan's fifteen and NE-38rj's route-resume, and each not-yet-written one names its card", () => {
   assert.deepStrictEqual(Object.keys(COVERED_SUITES).sort(), [
     "continuation", "foray-playback", "foray-progress", "html-audio-backend", "interlude", "media-session",
-    "playback-rate", "position-store", "queue-manager", "queue-state", "seam-gap", "seek-policy",
+    "playback-rate", "position-store", "queue-manager", "queue-state", "route-resume", "seam-gap", "seek-policy",
     "transport-policy", "transport-reconcile", "tts-bridge",
   ]);
   for (const [stem, cfg] of Object.entries(COVERED_SUITES)) {
@@ -116,6 +116,7 @@ const RECORDED_SUITES = Object.freeze({
   "queue-state": { family: "queue-state", card: "NE-07j" },
   "playback-rate": { family: "rate", card: "NE-07j" },
   "continuation": { family: "continuation", card: "NE-13" },
+  "route-resume": { family: "route-resume", card: "NE-38rj" },
 });
 
 test("a suite whose recording card has landed owes nothing, and is fixtured into its own family only", () => {
@@ -613,7 +614,8 @@ test("capabilities.json holds the plan §6.6 map", () => {
      episode and foray capabilities never wait on it; nothing may ever advertise
      it. MUTATION: add "remainder" to the advertised list -> the next test's
      gate is red for as long as NE-39j owes anything. */
-  assert.deepStrictEqual(DATA.capabilities.remainder, ["compare", "manager-remainder"]);
+  // NE-38rj parks route-resume here until NE-38rs ports it and moves it to episode.
+  assert.deepStrictEqual(DATA.capabilities.remainder, ["compare", "manager-remainder", "route-resume"]);
   assert.ok(!advertisedCapabilities(REPO_ROOT).has("remainder"), "the remainder is a bookkeeping gate, never a capability a build ships");
 });
 
@@ -718,4 +720,25 @@ test("NE-33: speech-rate, lexicon and default-voice owe nothing, the lexicon fam
     for (const c of f.doc.cases) assert.equal(c.call, "buildIpaOverrides");
   }
   for (const [id, card] of Object.entries(DATA.pending)) assert.notEqual(card, "NE-33", `${id} is still owed to NE-33`);
+});
+
+test("NE-38rj: route-resume is owed whole to NE-38rs and to A-61, waits under the unadvertised remainder gate, and is a card id the books accept", () => {
+  /* NE-38rj's acceptance: the family is pending for NE-38rs in swift-pending.json
+     and owed whole to A-61 in jvm-pending.json. It is an episode rule, but the
+     M2 build advertises episode, which may owe nothing (the gate above), so the
+     family waits under `remainder` and NE-38rs moves it to episode in the PR
+     that empties it. MUTATION: drop one route-resume id from swift-pending.json
+     -> red (and the Swift runner's "neither executed nor pending"); charge it to
+     episode while it is owed -> red here and in the advertised-capability gate;
+     move it to jvm-pending.json's runs -> red. */
+  const cases = FIXTURES.filter((f) => f.family === "route-resume").flatMap((f) => f.doc.cases);
+  assert.ok(cases.length >= 12, `the card records at least 12 cases, not ${cases.length}`);
+  for (const c of cases) assert.equal(DATA.pending[c.id], "NE-38rs", `${c.id} is owed to NE-38rs`);
+  assert.ok(DATA.capabilities.remainder.includes("route-resume"));
+  assert.ok(!DATA.capabilities.episode.includes("route-resume"), "episode is advertised by the M2 build and cannot owe NE-38rs's port");
+  const jvm = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, "player", "parity", "jvm-pending.json"), "utf8"));
+  assert.equal(jvm.families["route-resume"], "A-61");
+  assert.ok(!jvm.runs.includes("route-resume"));
+  for (const card of ["NE-38rj", "NE-38rs", "NE-07j", "NE-03"]) assert.match(card, CARD_RE);
+  for (const bad of ["NE-3", "NE-38rsx", "later", "A-61"]) assert.doesNotMatch(bad, CARD_RE);
 });

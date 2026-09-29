@@ -25,6 +25,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { checkAll, record, runMutation, loadMutations, stableJson, main } from "./record.mjs";
 import { loadFixtures } from "../../player/parity/runner.js";
+import { CARD_RE } from "../../player/parity/coverage.js";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 
@@ -397,14 +398,14 @@ test("--check holds every recorded family to exactly one of the JVM's runs and i
 
 /* ---------- --mutate ---------- */
 
-test("the four named mutation rules exist, and each anchor occurs exactly once in its file", () => {
+test("the five named mutation rules exist, and each anchor occurs exactly once in its file", () => {
   const rules = loadMutations();
-  assert.deepStrictEqual(Object.keys(rules), ["seam-gap", "never-early", "15/30", "pause-silence"]);
+  assert.deepStrictEqual(Object.keys(rules), ["seam-gap", "never-early", "15/30", "pause-silence", "route-listener"]);
   for (const [name, r] of Object.entries(rules)) {
     const src = fs.readFileSync(path.join(ROOT, r.patch.file), "utf8");
     assert.equal(src.split(r.patch.find).length - 1, 1, `${name}: anchor drifted in ${r.patch.file}`);
     assert.notEqual(r.patch.find, r.patch.replace, name);
-    assert.match(r.recordedBy, /^NE-\d{2}[a-z]?$/, name);
+    assert.match(r.recordedBy, CARD_RE, name);
   }
 });
 
@@ -444,6 +445,19 @@ test("--mutate on the pause-silence rule fails both the original JS test and the
      pause-silences-an-audible-element scenario loses its `pause`. MUTATION:
      delete that scenario -> "fixture: ... still pass". */
   const r = runMutation("pause-silence", loadMutations()["pause-silence"], { root: ROOT });
+  assert.equal(r.js, "killed", r.detail.join("\n"));
+  assert.equal(r.fixture, "killed", r.detail.join("\n"));
+  assert.equal(r.killed, true);
+});
+
+test("--mutate on the route-listener rule fails both the original JS test and the route-resume family", () => {
+  /* NE-38rj's acceptance: the founder's Q5 rule (a listener's pause is never
+     resumed) is held by a case, not only by a sentence. The mutant is main's
+     EngineCore.onRoute guard before NE-38rs, which lets a listener's pause
+     through; the authored decide-listener-paused case turns red, as does
+     route-resume.test.js. MUTATION: drop that authored case and the replay
+     case beside it -> "fixture: ... still pass". */
+  const r = runMutation("route-listener", loadMutations()["route-listener"], { root: ROOT });
   assert.equal(r.js, "killed", r.detail.join("\n"));
   assert.equal(r.fixture, "killed", r.detail.join("\n"));
   assert.equal(r.killed, true);
