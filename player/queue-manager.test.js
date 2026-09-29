@@ -2291,6 +2291,24 @@ test("NE-45j: an episode left to its natural end warms the item after it too", a
   m.dispose();
 });
 
+test("NE-45j: a rendered line that fails WHILE SOUNDING warms the clip after it when speech takes over", async () => {
+  /* The line's file failed before its window opened, and that window never
+     will (the deck holding it failed), so the spoken fallback is a spoken
+     line's start like any other: the deck is idle while the synthesiser
+     speaks. MUTATION: delete the `_warmNextSegment("line-start")` in
+     `_speakInsteadMidLine` -> nothing is warmed and the clip loads cold. */
+  const tts = fakeTts();
+  const { m, backend } = prefetching({ tts, queue: [renderedLine(), THREE[1]].map((i) => ({ ...i })) });
+  await m.play(0);
+  assert.equal(tts.calls.length, 0, "precondition: the file is playing");
+  assert.deepStrictEqual(backend.prefetches(), [], "precondition: the line's window has not opened");
+  backend.onError("media error 2");
+  await tick();
+  assert.equal(tts.calls.length, 1, "precondition: the line is spoken instead");
+  assert.deepStrictEqual(backend.prefetches(), ["prefetch:s1@300"], "warmed as speech takes over, at the clip's own in-point");
+  m.dispose();
+});
+
 test("a window that opens while nothing is playing warms nothing", async () => {
   const { m, backend } = prefetching();
   await m.play(0);

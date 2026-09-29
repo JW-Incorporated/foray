@@ -2074,6 +2074,11 @@ export class PlayerQueueManager {
       return this._abandonSpeech(mine, `narration.fallback.superseded ${item.id} — the player moved on while speak() was in flight`);
     }
     this._beginSynthNarration(item, { fallback: true });
+    // §11 (NE-45j): the line is SPOKEN now, and its file's window will never
+    // open (the deck that held it failed), so what follows it is prepared
+    // here, as at any spoken line's start. A warm the window already made is
+    // `prefetchDecision`'s "already", not a second fetch.
+    this._warmNextSegment("line-start");
     return undefined;
   }
 

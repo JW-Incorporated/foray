@@ -1,6 +1,7 @@
 {
   "//": "Burn-down only (plan §6.1). Covered-suite tests with no fixture case and no XCTest yet: suite stem -> test name -> {card, family}. `card` will port it; `family` is the fixture family it will be recorded into, and is what the capability gate charges it to. Filled by record.mjs --classify with each suite's default (coverage.js COVERED_SUITES); later cards re-tag.",
   "queue-manager": {
+    "NE-45j: a rendered line that fails WHILE SOUNDING warms the clip after it when speech takes over": { "card": "NE-39j", "family": "manager-remainder" },
     "NE-45j: an episode left to its natural end warms the item after it too": { "card": "NE-39j", "family": "manager-remainder" },
     "NE-45j: during a rendered line, the window warms the clip after it": { "card": "NE-39j", "family": "manager-remainder" },
     "NE-45j: the clip after a SPOKEN line is warmed when the line starts — the deck is idle while it speaks": { "card": "NE-39j", "family": "manager-remainder" },
