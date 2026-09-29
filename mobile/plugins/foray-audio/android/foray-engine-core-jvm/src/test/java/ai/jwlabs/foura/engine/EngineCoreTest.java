@@ -13,6 +13,7 @@ import ai.jwlabs.foura.engine.Vocabulary.Source;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Predicate;
 import org.junit.Test;
 
@@ -44,9 +45,18 @@ public class EngineCoreTest {
             core = new EngineCore(config);
         }
 
+        Host(Map<String, ResumeRules.StoredPosition> positions) {
+            core = new EngineCore(new EngineConfig("test"), positions);
+        }
+
         /** One turn: the input, then the activation's answer if it asked. */
         List<EngineCommand> send(EngineInput input) {
-            monoMs += 1000;
+            return send(input, 1000);
+        }
+
+        /** One turn, {@code afterMs} on the monotonic clock after the last. */
+        List<EngineCommand> send(EngineInput input, double afterMs) {
+            monoMs += afterMs;
             List<EngineCommand> all = new ArrayList<>(core.handle(input, new EngineNow(WALL_MS, monoMs, reading, bgRemainingMs)));
             Integer id = null;
             for (EngineCommand c : all) if (c instanceof EngineCommand.SessionActivate a) id = a.requestId();
@@ -116,7 +126,11 @@ public class EngineCoreTest {
 
     /** A host playing {@code ids[0]} (queued with the rest), confirmed audible. */
     static Host playing(String... ids) {
-        Host host = new Host();
+        return playing(new EngineConfig("test"), ids);
+    }
+
+    static Host playing(EngineConfig config, String... ids) {
+        Host host = new Host(config);
         host.send(load(ids.length == 0 ? new String[] {"a"} : ids));
         host.send(playIndex(0));
         host.land();
@@ -461,5 +475,378 @@ public class EngineCoreTest {
         assertTrue(SessionPolicy.AUDIBLE_COMMANDS.contains(EngineCommand.turnName(new EngineCommand.Speak("hi", null))));
         assertFalse(SessionPolicy.AUDIBLE_COMMANDS.contains(EngineCommand.turnName(new EngineCommand.Deck(
                 new DeckCommand.Load(1, "a", null, 0, false)))));
+    }
+
+    // ---- ported from the Swift EngineCoreTests (NE-14s, NE-16g): the rest of what the fixtures cannot see
+
+    static EngineInput session(EngineInput.SessionEvent event) {
+        return new EngineInput.Session(event);
+    }
+
+    static EngineInput remote(MediaMapping.RemoteCommand command) {
+        return new EngineInput.Remote(new EngineInput.RemotePress(command));
+    }
+
+    static boolean isDeactivate(EngineCommand c) {
+        return c instanceof EngineCommand.SessionDeactivate;
+    }
+
+    static boolean isSeek(EngineCommand c) {
+        return c instanceof EngineCommand.Deck d && d.command() instanceof DeckCommand.Seek;
+    }
+
+    static boolean loadsAt(List<EngineCommand> commands, double startSec) {
+        return index(commands, c -> c instanceof EngineCommand.Deck d && d.command() instanceof DeckCommand.Load l
+                && l.startSec() == startSec) >= 0;
+    }
+
+    /** The diag rows of one kind in a turn, in order. */
+    static List<EngineCommand.DiagEntry> rows(String kind, List<EngineCommand> commands) {
+        List<EngineCommand.DiagEntry> found = new ArrayList<>();
+        for (EngineCommand c : commands) {
+            if (c instanceof EngineCommand.Diag d && d.entry().kind().equals(kind)) found.add(d.entry());
+        }
+        return found;
+    }
+
+    static List<EngineCommand> deckOnly(List<EngineCommand> commands) {
+        return commands.stream().filter(c -> c instanceof EngineCommand.Deck).toList();
+    }
+
+    static EngineContract.Command episode(String id) {
+        return new EngineContract.Command.PlayEpisode(
+                obj("id", JsonNode.str(id), "audio_url", JsonNode.str("https://cdn.example/" + id + ".mp3")), null, null,
+                obj("id", JsonNode.str(id)));
+    }
+
+    /** The stop paths the combined test above does not reach, each with what else it must do. */
+    @Test
+    public void theOtherStopPathsWriteTheirCauseFirst() {
+        Host error = playing();
+        List<EngineCommand> failed = error.send(new EngineInput.Deck(new DeckEvent.Failed(error.lastLoad, "decode")));
+        assertCauseFirst(Vocabulary.StopCause.ERROR, failed);
+        assertTrue(failed.toString(), failed.contains(new EngineCommand.Emit(new EngineCommand.EngineEvent.Error("load", "decode"))));
+
+        Host deadline = new Host();
+        deadline.send(load("a"));
+        deadline.send(playIndex(0));
+        assertCauseFirst(Vocabulary.StopCause.LOAD_DEADLINE,
+                deadline.send(new EngineInput.Deck(new DeckEvent.DeadlineExceeded(deadline.lastLoad, 20000))));
+        assertEquals("idle", deadline.core.state().stateType());
+
+        Host ended = playing();
+        List<EngineCommand> end = ended.send(new EngineInput.Deck(new DeckEvent.Ended(ended.lastLoad)));
+        assertTrue("an episode that simply ends releases the session with notify: " + end,
+                end.contains(new EngineCommand.SessionDeactivate(true)));
+
+        List<EngineCommand> closed = playing().send(new EngineContract.Command.Stop(true));
+        assertTrue(closed.toString(), closed.contains(new EngineCommand.SessionDeactivate(true)));
+
+        List<EngineCommand> deleted = playing().send(new EngineContract.Command.Stop(false));
+        assertCauseFirst(Vocabulary.StopCause.DATA_DELETION, deleted);
+        assertEquals("a deletion writes nothing back", -1, index(deleted, c -> c instanceof EngineCommand.WritePosition));
+
+        assertCauseFirst(Vocabulary.StopCause.RELINQUISH,
+                playing().send(new EngineContract.Command.Relinquish(EngineContract.RelinquishCap.ALL)));
+    }
+
+    /** A media-services reset lands paused and NOT resumable: the deck holds nothing. */
+    @Test
+    public void aMediaServicesResetIsNotResumable() {
+        Host host = playing();
+        host.send(session(new EngineInput.SessionEvent.MediaServicesReset()));
+        assertEquals(new PlayerQueueState.Interrupted(item("a").ref(), false), host.core.state().player);
+        assertNull("the deck holds nothing after a reset", host.core.state().loadedId);
+        assertEquals("not resumable", -1,
+                index(host.send(session(new EngineInput.SessionEvent.InterruptionEnded(true))), EngineCoreTest::isLoad));
+    }
+
+    /** Grace that runs out ends the span and pauses, and a load landing after it plays nothing. */
+    @Test
+    public void anExpiredGraceStopsWithItsCause() {
+        Host host = playing();
+        host.send(EngineContract.Command.PAUSE);
+        host.send(remote(MediaMapping.RemoteCommand.PLAY));
+        assertEquals(GraceReason.REMOTE_PLAY, host.core.state().grace);
+        List<EngineCommand> out = host.send(new EngineInput.Timer(EngineTimer.GRACE_EXPIRED));
+        assertTrue(out.toString(), stopRow(Vocabulary.StopCause.GRACE_EXPIRED, out) >= 0);
+        assertTrue(out.contains(new EngineCommand.GraceEnd(GraceOutcome.EXPIRED)));
+        assertEquals("a load landing after the grace expired plays nothing", -1, index(host.land(), EngineCoreTest::isPlay));
+    }
+
+    /** A stop of nothing is not a stop: no row when nothing ran. */
+    @Test
+    public void noCauseRowWhenNothingWasRunning() {
+        List<EngineCommand> out = new Host().send(session(new EngineInput.SessionEvent.InterruptionBegan("appWasSuspended")));
+        assertEquals(out.toString(), 0, rows("stop", out).size());
+    }
+
+    /**
+     * An interruption's resume, a KNOWN car coming back and a cold play each open their grace
+     * span. Headphones plugged back in (a route never seen as a car) resume nothing (corner
+     * case #13): no fixture drives a route coming back, so this is the only thing that
+     * notices a core resuming on any route.
+     */
+    @Test
+    public void resumesAndColdPlaysOpenGraceAndOnlyAKnownCarResumes() {
+        Host host = playing();
+        host.send(session(new EngineInput.SessionEvent.InterruptionBegan("default")));
+        assertTrue(host.send(session(new EngineInput.SessionEvent.InterruptionEnded(true)))
+                .contains(new EngineCommand.GraceBegin(GraceReason.INTERRUPTION_RESUME)));
+
+        Host car = playing();
+        car.send(session(new EngineInput.SessionEvent.Route(new EngineInput.RouteChange(true, "Civic", true))));
+        List<EngineCommand> back = car.send(session(new EngineInput.SessionEvent.Route(new EngineInput.RouteChange(false, "Civic", false))));
+        assertTrue(back.toString(), back.contains(new EngineCommand.GraceBegin(GraceReason.ROUTE_RESUME)));
+        assertTrue("the known car resumes: " + back, index(back, EngineCoreTest::isLoad) >= 0);
+
+        Host phones = playing();
+        phones.send(session(new EngineInput.SessionEvent.Route(new EngineInput.RouteChange(true, "AirPods", false))));
+        List<EngineCommand> plugged = phones.send(session(new EngineInput.SessionEvent.Route(
+                new EngineInput.RouteChange(false, "AirPods", false))));
+        assertEquals("headphones plugged in never resume: " + plugged, -1, index(plugged, EngineCoreTest::isLoad));
+        assertEquals(-1, index(plugged, c -> c instanceof EngineCommand.SessionActivate));
+        assertEquals(-1, index(plugged, c -> c instanceof EngineCommand.GraceBegin));
+        assertEquals("interrupted", phones.core.state().stateType());
+
+        Host cold = new Host();
+        assertTrue(cold.send(new EngineInput.Lifecycle(new EngineInput.LifecycleEvent.ColdLaunch(List.of(item("a")), 0, true)))
+                .contains(new EngineCommand.GraceBegin(GraceReason.COLD_PLAY)));
+    }
+
+    /**
+     * The H-1 verdict reads the {@code remote} row: a car's play in the background says
+     * {@code grace=y} with the budget the host read, although the span opens only while the
+     * press is handled, and the row still leads the turn (D-4). A pause says {@code grace=n}.
+     */
+    @Test
+    public void theRemoteRowSaysWhetherThePressIsCovered() {
+        Host host = playing();
+        host.send(EngineContract.Command.PAUSE);
+        host.send(new EngineInput.Lifecycle(new EngineInput.LifecycleEvent.Background()));
+        host.bgRemainingMs = 29_400.4;
+        List<EngineCommand> press = host.send(new EngineInput.Remote(
+                new EngineInput.RemotePress(MediaMapping.RemoteCommand.PLAY, null, "carAudio", true)));
+        assertTrue("the remote row is the turn's first command: " + press,
+                press.get(0) instanceof EngineCommand.Diag d && d.entry().kind().equals("remote"));
+        EngineCommand.DiagEntry row = rows("remote", press).get(0);
+        assertEquals(JsonNode.str("y"), row.field("grace"));
+        assertEquals(JsonNode.str("remote-play"), row.field("graceReason"));
+        assertEquals(JsonNode.num(29_400), row.field("bgRemainingMs"));
+        assertEquals(JsonNode.str("carAudio"), row.field("route"));
+        assertEquals("the state the press found", JsonNode.str("interrupted"), row.field("state"));
+
+        host.land();
+        host.confirm();
+        EngineCommand.DiagEntry paused = rows("remote", host.send(remote(MediaMapping.RemoteCommand.PAUSE))).get(0);
+        assertEquals(JsonNode.str("n"), paused.field("grace"));
+        assertEquals(JsonNode.NULL, paused.field("graceReason"));
+
+        host.bgRemainingMs = null;
+        EngineCommand.DiagEntry foreground = rows("remote", host.send(remote(MediaMapping.RemoteCommand.PAUSE))).get(0);
+        assertEquals("the foreground has no budget to report", JsonNode.NULL, foreground.field("bgRemainingMs"));
+    }
+
+    /**
+     * Each resume writes one {@code resume} row (interruption or route) and a cold play one
+     * {@code cold-play} row, as its span opens and before the activation it waits on.
+     */
+    @Test
+    public void resumeAndColdPlayRowsCarryGrace() {
+        Host host = playing();
+        host.bgRemainingMs = 27_000.0;
+        host.send(session(new EngineInput.SessionEvent.InterruptionBegan("default")));
+        List<EngineCommand> resumed = host.send(session(new EngineInput.SessionEvent.InterruptionEnded(true)));
+        List<EngineCommand.DiagEntry> resumes = rows("resume", resumed);
+        assertEquals(resumed.toString(), 1, resumes.size());
+        EngineCommand.DiagEntry resume = resumes.get(0);
+        assertEquals(JsonNode.str("interruption"), resume.field("kind"));
+        assertEquals(JsonNode.str("a"), resume.field("item"));
+        assertEquals(JsonNode.str("y"), resume.field("grace"));
+        assertEquals(JsonNode.str("interruption-resume"), resume.field("graceReason"));
+        assertEquals(JsonNode.num(27_000), resume.field("bgRemainingMs"));
+        int activate = index(resumed, c -> c instanceof EngineCommand.SessionActivate);
+        int at = index(resumed, c -> c instanceof EngineCommand.Diag d && d.entry().kind().equals("resume"));
+        if (activate >= 0) assertTrue("the row is written before the activation it waits on", at < activate);
+
+        Host car = playing();
+        car.bgRemainingMs = 12_000.0;
+        car.send(session(new EngineInput.SessionEvent.Route(new EngineInput.RouteChange(true, "Civic", true))));
+        List<EngineCommand> back = car.send(session(new EngineInput.SessionEvent.Route(new EngineInput.RouteChange(false, "Civic", false))));
+        EngineCommand.DiagEntry route = rows("resume", back).get(0);
+        assertEquals(JsonNode.str("route"), route.field("kind"));
+        assertEquals(JsonNode.str("y"), route.field("grace"));
+        assertEquals(JsonNode.str("route-resume"), route.field("graceReason"));
+        assertEquals(JsonNode.num(12_000), route.field("bgRemainingMs"));
+
+        Host cold = new Host();
+        cold.bgRemainingMs = 25_000.0;
+        List<EngineCommand> launched = cold.send(new EngineInput.Lifecycle(
+                new EngineInput.LifecycleEvent.ColdLaunch(List.of(item("a")), 0, true)));
+        EngineCommand.DiagEntry coldRow = rows("cold-play", launched).get(0);
+        assertEquals(JsonNode.str("a"), coldRow.field("item"));
+        assertEquals(JsonNode.num(0), coldRow.field("index"));
+        assertEquals(JsonNode.str("y"), coldRow.field("grace"));
+        assertEquals(JsonNode.str("cold-play"), coldRow.field("graceReason"));
+        assertEquals(JsonNode.num(25_000), coldRow.field("bgRemainingMs"));
+
+        // A foreground tap play is no resume and no cold play: no such rows.
+        Host tap = new Host();
+        tap.send(load("a"));
+        List<EngineCommand> played = tap.send(playIndex(0));
+        assertTrue(played.toString(), rows("resume", played).isEmpty() && rows("cold-play", played).isEmpty());
+    }
+
+    /** The resume is in place, INTERRUPTION_REWIND_SEC back, and a mic mute is a row, not a stop. */
+    @Test
+    public void interruptionsByReason() {
+        Host host = playing();
+        host.reading.positionSec = 42.5;
+        List<EngineCommand> muted = host.send(session(new EngineInput.SessionEvent.InterruptionBegan("builtInMicMuted")));
+        assertEquals("a muted mic takes nothing away", -1, firstSilencing(muted));
+        assertEquals(SessionPolicy.Phase.ACTIVE, host.core.state().session);
+        host.send(session(new EngineInput.SessionEvent.InterruptionBegan("default")));
+        List<EngineCommand> resumed = host.send(session(new EngineInput.SessionEvent.InterruptionEnded(true)));
+        assertTrue(resumed.toString(), loadsAt(resumed, 41));
+    }
+
+    /**
+     * Plan §4.3: a pause the deck reports, followed within 500 ms by the route going away, is
+     * the route's: a later call's should-resume does not bring it back (corner case #13).
+     */
+    @Test
+    public void anUncommandedPauseThenARouteLossIsTheRoutes() {
+        Host host = playing();
+        host.reading.audible = false;
+        host.send(new EngineInput.Deck(new DeckEvent.PausedUncommanded(host.lastLoad, 3)));
+        assertFalse(host.core.state().pausedByRoute);
+        List<EngineCommand> route = host.send(
+                session(new EngineInput.SessionEvent.Route(new EngineInput.RouteChange(true, null, false))), 200);
+        assertTrue(route.toString(),
+                rows("session", route).stream().anyMatch(e -> JsonNode.str("route-attributed").equals(e.field("kind"))));
+        assertEquals(-1, index(host.send(session(new EngineInput.SessionEvent.InterruptionEnded(true))), EngineCoreTest::isLoad));
+    }
+
+    /** Toggle reads the deck, not only the belief: an audible deck behind a paused machine is paused by the press. */
+    @Test
+    public void toggleFromNativeTruth() {
+        Host host = playing();
+        host.send(EngineContract.Command.PAUSE);
+        host.reading.audible = true;
+        List<EngineCommand> out = host.send(EngineContract.Command.TOGGLE);
+        assertTrue(out.toString(), index(out, EngineCoreTest::isPause) >= 0);
+        assertEquals(-1, index(out, EngineCoreTest::isLoad));
+        host.reading.audible = false;
+        assertTrue("a silent deck: the press plays", index(host.send(EngineContract.Command.TOGGLE), EngineCoreTest::isLoad) >= 0);
+    }
+
+    /** A remote stop is a pause (T-7): nothing is torn down, nothing released. */
+    @Test
+    public void aRemoteStopIsAPause() {
+        Host host = playing();
+        List<EngineCommand> out = host.send(remote(MediaMapping.RemoteCommand.STOP));
+        assertTrue(index(out, EngineCoreTest::isPause) >= 0);
+        assertEquals(-1, index(out, EngineCoreTest::isDeactivate));
+        assertTrue(stopRow(Vocabulary.StopCause.PAUSE, out) >= 0);
+        assertEquals("interrupted", host.core.state().stateType());
+    }
+
+    /** T-8: a second press inside the window is RECORDED as a dup candidate and still handled. */
+    @Test
+    public void duplicateRemotePressesAreRecordedNotDropped() {
+        Host host = playing();
+        EngineInput skip = remote(MediaMapping.RemoteCommand.SKIP_FORWARD);
+        assertEquals(JsonNode.str("n"), rows("remote", host.send(skip, 5000)).get(0).field("dupCandidate"));
+        List<EngineCommand> second = host.send(skip, 120);
+        assertEquals(JsonNode.str("y"), rows("remote", second).get(0).field("dupCandidate"));
+        assertTrue("handled, not dropped", index(second, EngineCoreTest::isSeek) >= 0);
+        assertEquals(JsonNode.str("n"), rows("remote", host.send(skip, 900)).get(0).field("dupCandidate"));
+    }
+
+    /** The rate reaches the deck on every play, including a resume. */
+    @Test
+    public void rateOnEveryPlay() {
+        Host host = playing();
+        host.send(new EngineInput.Queue(new QueueInput.SetRate(1.5)));
+        host.send(session(new EngineInput.SessionEvent.InterruptionBegan("default")));
+        host.send(session(new EngineInput.SessionEvent.InterruptionEnded(true)));
+        assertEquals(Arrays.asList(new EngineCommand.Deck(new DeckCommand.SetRate(1.5)), new EngineCommand.Deck(DeckCommand.PLAY)),
+                deckOnly(host.land()));
+    }
+
+    /** Seeks with nothing loaded ride on the next load; seeks while loading are held for it; while paused they move the deck. */
+    @Test
+    public void seeksWhileIdleLoadingAndPaused() {
+        Host idle = new Host();
+        idle.send(new EngineInput.Lifecycle(new EngineInput.LifecycleEvent.ColdLaunch(List.of(item("a")), 0, false)));
+        List<EngineCommand> pended = idle.send(new EngineContract.Command.SeekTo(600));
+        assertEquals("nothing loaded: nothing to seek", List.of(), deckOnly(pended));
+        assertTrue(loadsAt(idle.send(EngineContract.Command.PLAY), 600));
+
+        Host loading = new Host();
+        loading.send(load("a"));
+        loading.send(playIndex(0));
+        assertEquals("held for the load", -1, index(loading.send(new EngineContract.Command.SeekTo(90)), EngineCoreTest::isSeek));
+        assertEquals(Arrays.asList(new EngineCommand.Deck(new DeckCommand.SetRate(1)), new EngineCommand.Deck(new DeckCommand.Seek(90)),
+                new EngineCommand.Deck(DeckCommand.PLAY)), deckOnly(loading.land()));
+
+        Host paused = playing();
+        paused.send(EngineContract.Command.PAUSE);
+        List<EngineCommand> moved = paused.send(new EngineContract.Command.SeekTo(120));
+        assertTrue(moved.toString(), moved.contains(new EngineCommand.Deck(new DeckCommand.Seek(120))));
+        assertEquals("a seek while paused stays paused", -1, index(moved, EngineCoreTest::isPlay));
+    }
+
+    /**
+     * Audit round 2, p-impatient-1: a nudge tapped while a resumed episode is still loading
+     * steps from the second the load will land on, never from 0:00.
+     */
+    @Test
+    public void aNudgeDuringAColdLoadStepsFromWhereTheLoadLands() {
+        Host host = new Host(Map.of("a", new ResumeRules.StoredPosition(2280, null)));
+        host.send(load("a"));
+        List<EngineCommand> started = host.send(playIndex(0));
+        assertTrue("the cold load resumes: " + started, loadsAt(started, 2280));
+        List<EngineCommand> nudged = host.send(new EngineContract.Command.SeekBy(-15));
+        assertEquals("held for the load: " + nudged, -1, index(nudged, EngineCoreTest::isSeek));
+        List<EngineCommand> landed = host.land();
+        assertTrue("15 s before the resume point: " + landed, landed.contains(new EngineCommand.Deck(new DeckCommand.Seek(2265))));
+    }
+
+    /**
+     * Audit round 2, player-3: a scrub made while paused is written for the outgoing episode
+     * before playing another one moves the queue on.
+     */
+    @Test
+    public void playingAnotherEpisodeKeepsAScrubMadeWhilePaused() {
+        Host host = new Host();
+        host.send(episode("a"));
+        host.land();
+        host.confirm();
+        host.reading.positionSec = 600.0;
+        host.send(EngineContract.Command.PAUSE);
+        host.send(new EngineContract.Command.SeekTo(1800));
+        assertEquals("precondition: the deck moved", Double.valueOf(1800), host.reading.positionSec);
+        List<EngineCommand> left = host.send(episode("b"));
+        int wrote = index(left, c -> c instanceof EngineCommand.WritePosition w && w.write().itemId().equals("a")
+                && w.write().seconds() == 1800);
+        int loadB = index(left, c -> c instanceof EngineCommand.Deck d && d.command() instanceof DeckCommand.Load l
+                && l.itemId().equals("b"));
+        assertTrue("the scrub is what was kept: " + left, wrote >= 0);
+        assertTrue(left.toString(), loadB >= 0);
+        assertTrue("written before the queue moved on", wrote < loadB);
+    }
+
+    /** Hold policy {@code none}: the pause releases the session (no notify) after the deck is silent; the next play activates again. */
+    @Test
+    public void holdPolicyNoneReleasesAtPause() {
+        Host host = playing(new EngineConfig("test", SessionPolicy.HoldPolicy.NONE, null));
+        List<EngineCommand> out = host.send(EngineContract.Command.PAUSE);
+        int pause = index(out, EngineCoreTest::isPause);
+        int release = index(out, c -> c.equals(new EngineCommand.SessionDeactivate(false)));
+        assertTrue(out.toString(), pause >= 0 && release >= 0);
+        assertTrue("silent before released", pause < release);
+        List<EngineCommand> again = host.send(EngineContract.Command.PLAY);
+        assertEquals(again.toString(), 1, again.stream().filter(c -> c instanceof EngineCommand.SessionActivate).count());
     }
 }

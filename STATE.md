@@ -35,8 +35,21 @@ owed to A-24, but its cases are `contractAccepts` on the schema's snapshot paylo
 contract module A-28 ports (with `contract` and `handshake`), so it is now owed to A-28.
 
 **Executed locally:** `javac --release 21 -Xlint:all -Werror` and JUnit on a portable Temurin 21 in the session
-scratchpad (plain `javac`, not Gradle): 70 JUnit cases green; the parity report shows 862 passed, 0 failed, 0 pending,
+scratchpad (plain `javac`, not Gradle): 87 JUnit cases green; the parity report shows 862 passed, 0 failed, 0 pending,
 0 stale. `record.mjs --check`: 1836 cases, all match.
+
+**Review (adversarial pass).** Mutations were made in the core itself, not in its output:
+- Deleting the activation in `begin` and the `startPlayback` guard leaves every op log the same as the JS. The driver's
+  per-turn audible-start check is the only thing that fails: 37 cases go red with `!audible-start:deckPlay@inactive`.
+- Ignoring the interruption rewind turns 2 `manager-episode` cases red.
+- Two `DeckPolicy` edits turn 5 `deck-episode` cases red.
+- Resuming on ANY route that comes back, not only a known car (corner case #13), passed everything. No fixture drives a
+  route coming back.
+
+That last gap was closed by porting the 17 Swift `EngineCoreTests` that the JVM suite had left out: the rest of the stop
+causes, the known-car and headphones resume, the grace rows (`remote`, `resume`, `cold-play`), interruption reasons,
+route attribution, toggle from native truth, the remote stop, duplicate presses, rate on every play, the seeks, the cold
+nudge, the scrub flush and hold policy `none`. The headphones case now goes red under that mutation.
 
 No device, and no request to Joey (D-A3).
 ### 2026-09-29 — `engine/m3`: iOS M3 re-planned; Android Track A4 added
