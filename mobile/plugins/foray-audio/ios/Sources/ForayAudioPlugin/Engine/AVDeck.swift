@@ -92,6 +92,19 @@ final class AVDeck: DeckDriving {
     /// core's 500 ms route-attribution window (plan §4.3).
     static let pauseSettleSec: Double = 0.25
 
+    /// How long the deck may have been idle (not playing, not loading) and
+    /// still treat a same-source load as a seek in the held item. Past it the
+    /// load is cold, exactly as before same-source reuse existed. The field's
+    /// proven path is a car resuming 4a after HOURS parked (the milestone-1
+    /// car test, build 2026092706, where every load was cold), and a held
+    /// item that old has had its connection and possibly its signed redirect
+    /// expire behind a `.readyToPlay` status, so the buffer it would keep is
+    /// not worth the risk of an item that fails mid-drive. The pause the
+    /// 2026-09-28 paste refetched after (12 s) is well inside it.
+    /// PROVISIONAL: the `attach` row's `idleSec` and `cold` say how often it
+    /// decides. Measured on a clock that runs while the phone sleeps.
+    static let defaultReuseMaxIdleSec: Double = 600 // MEASURE: NE-38, from the attach/reuse rows.
+
     /// Bound on `primitives`, the test-visible log of AVPlayer calls.
     private static let primitiveCap = 256
 
@@ -130,6 +143,13 @@ final class AVDeck: DeckDriving {
         /// two-deck spike turns it off, because each of its trials measures a
         /// COLD gate on the same fixture.
         var reusesSameSource: Bool
+        /// See `defaultReuseMaxIdleSec`.
+        var reuseMaxIdleSec: Double
+        /// The clock idleness is read from, in ms. NOT `nowMs`: uptime stops
+        /// while the device sleeps, and a phone parked all day sleeps for most
+        /// of it, so uptime would call an eight-hour-old item fresh.
+        /// Injectable so a test can age the held item.
+        var idleClockMs: () -> Double
 
         init(
             loadDeadlineSec: Double = AVDeck.defaultLoadDeadlineSec,
@@ -140,7 +160,9 @@ final class AVDeck: DeckDriving {
             after: @escaping (_ sec: Double, _ work: DispatchWorkItem) -> Void = AVDeck.mainQueueAfter,
             nowMs: @escaping () -> Double = AVDeck.uptimeMs,
             diag: @escaping (DiagEntry) -> Void = { _ in },
-            reusesSameSource: Bool = true
+            reusesSameSource: Bool = true,
+            reuseMaxIdleSec: Double = AVDeck.defaultReuseMaxIdleSec,
+            idleClockMs: @escaping () -> Double = AVDeck.continuousMs
         ) {
             self.loadDeadlineSec = loadDeadlineSec
             self.sessionIsActive = sessionIsActive
@@ -151,6 +173,8 @@ final class AVDeck: DeckDriving {
             self.nowMs = nowMs
             self.diag = diag
             self.reusesSameSource = reusesSameSource
+            self.reuseMaxIdleSec = reuseMaxIdleSec
+            self.idleClockMs = idleClockMs
         }
     }
 
@@ -166,6 +190,12 @@ final class AVDeck: DeckDriving {
     /// Production's clock: uptime, which never jumps when the wall clock is set.
     static func uptimeMs() -> Double {
         Double(DispatchTime.now().uptimeNanoseconds) / 1_000_000
+    }
+
+    /// A monotonic clock that keeps counting while the device sleeps
+    /// (Darwin's CLOCK_MONOTONIC; `uptimeMs` does not).
+    static func continuousMs() -> Double {
+        Double(clock_gettime_nsec_np(CLOCK_MONOTONIC)) / 1_000_000
     }
 
     /// P-7: precise timing is chosen per load by the core (provisional:
@@ -238,6 +268,10 @@ final class AVDeck: DeckDriving {
     /// rows say where the time went, or where it stopped.
     private var gateStep = "idle"
     private var gateMarks: [JSONMember] = []
+    /// `config.idleClockMs()` when the held item was last live: loading,
+    /// ready, commanded, or observed playing or stopping. What
+    /// `reuseMaxIdleSec` is measured from.
+    private var lastLiveMs: Double = 0
 
     /// The attached item's duration, when AVFoundation knows a finite one.
     private var itemDurationSec: Double? {
@@ -337,11 +371,16 @@ final class AVDeck: DeckDriving {
         // the gate, at the wrong offset, and with no preroll.
         intendsToPlay = false
         if player.rate != 0 {
+            // It was sounding up to this instant: live, however long ago the
+            // last command was.
+            noteLive()
             record("pause (load)")
             player.pause()
         }
-        if let urlString, holdsHealthy(urlString, preciseTiming: preciseTiming) {
-            reuse(token: newToken, startSec: startSec)
+        let idleSec = item == nil ? nil : max(0, (config.idleClockMs() - lastLiveMs) / 1000)
+        let cold = coldReason(urlString, preciseTiming: preciseTiming, idleSec: idleSec)
+        if cold == nil {
+            reuse(token: newToken, startSec: startSec, idleSec: idleSec)
             return
         }
         detachItem()
@@ -380,26 +419,45 @@ final class AVDeck: DeckDriving {
         self.item = item
         loadedURL = urlString
         loadedPreciseTiming = preciseTiming
+        noteLive()
         observe(item: item, generation: generation)
         armDeadline(generation: generation)
         record("attach")
         deckRow("attach", newToken, [
             JSONMember("startSec", Self.secNode(targetStartSec)),
             JSONMember("precise", .bool(preciseTiming)),
-            JSONMember("host", Self.hostNode(url.host))
+            JSONMember("host", Self.hostNode(url.host)),
+            // Why this load did not keep the held item (`no-item` when there
+            // was none), and how long that item had been idle.
+            JSONMember("cold", .string(cold ?? "no-item")),
+            JSONMember("idleSec", Self.secNode(idleSec))
         ])
         player.replaceCurrentItem(with: item)
         loadDuration(of: asset, generation: generation)
     }
 
     /// `DeckPolicy.sameSourceIsSeek` from what this deck holds: the same URL
-    /// (and the same timing option, which is the asset's), an item whose
-    /// duration and both statuses are in, and no error on it.
-    private func holdsHealthy(_ url: String, preciseTiming: Bool) -> Bool {
-        guard config.reusesSameSource, let item, preciseTiming == loadedPreciseTiming else { return false }
-        let hasMetadata = durationKnown && item.status == .readyToPlay && player.status == .readyToPlay
+    /// (and the same timing option, which is the asset's), an item still on
+    /// the player whose duration and both statuses are in, no error on it,
+    /// and not idle past `reuseMaxIdleSec`. Nil means keep the item; any
+    /// other answer is why the load is cold, as a row token.
+    private func coldReason(_ url: String?, preciseTiming: Bool, idleSec: Double?) -> String? {
+        guard config.reusesSameSource else { return "off" }
+        guard let item, player.currentItem === item else { return "no-item" }
+        guard let url, url == loadedURL else { return "other-source" }
+        guard preciseTiming == loadedPreciseTiming else { return "timing" }
         let failed = stage == .failed || item.status == .failed || item.error != nil
+        if failed { return "failed" }
+        let hasMetadata = durationKnown && item.status == .readyToPlay && player.status == .readyToPlay
+        if !hasMetadata { return "not-ready" }
+        guard let idleSec, idleSec <= config.reuseMaxIdleSec else { return "stale" }
         return DeckPolicy.sameSourceIsSeek(loadedUrl: loadedURL, url: url, hasMetadata: hasMetadata, failed: failed)
+            ? nil : "policy"
+    }
+
+    /// The held item is live now (see `lastLiveMs`).
+    private func noteLive() {
+        lastLiveMs = config.idleClockMs()
     }
 
     /// Same source: keep the item and its buffer, and run the SAME gate under
@@ -409,7 +467,7 @@ final class AVDeck: DeckDriving {
     /// `advanceIfReady` like any load's (duration and both statuses are in),
     /// so the one path to `preroll(` is unchanged. The out-point lives on the
     /// item, and a load drops it (`DeckCommand.load`), so it is disarmed here.
-    private func reuse(token newToken: DeckToken, startSec: Double) {
+    private func reuse(token newToken: DeckToken, startSec: Double, idleSec: Double?) {
         let fromSec = player.currentTime().seconds
         deadline?.cancel()
         deadline = nil
@@ -427,6 +485,7 @@ final class AVDeck: DeckDriving {
         reusedItem = true
         gateStep = "readiness"
         gateMarks = []
+        noteLive()
         guard let item else { return }
         item.forwardPlaybackEndTime = .invalid
         unobserveItem()
@@ -436,7 +495,8 @@ final class AVDeck: DeckDriving {
         deckRow("reuse", newToken, [
             JSONMember("startSec", Self.secNode(targetStartSec)),
             JSONMember("fromSec", Self.secNode(fromSec)),
-            JSONMember("bufferedAheadSec", Self.secNode(bufferedAhead(of: targetStartSec)))
+            JSONMember("bufferedAheadSec", Self.secNode(bufferedAhead(of: targetStartSec))),
+            JSONMember("idleSec", Self.secNode(idleSec))
         ])
         advanceIfReady()
     }
@@ -594,6 +654,7 @@ final class AVDeck: DeckDriving {
         deadline = nil
         stage = .ready
         gateStep = "ready"
+        noteLive()
         let landed = player.currentTime().seconds
         let elapsed = msSinceLoadStarted()
         deckRow("ready", token, [
@@ -673,6 +734,7 @@ final class AVDeck: DeckDriving {
         }
         intendsToPlay = true
         reachedEnd = false
+        noteLive()
         // Voids any pause suspicion armed before this play (see
         // `checkUncommandedPause`): that stop is superseded by the command.
         playSeq += 1
@@ -697,6 +759,7 @@ final class AVDeck: DeckDriving {
 
     private func pause() {
         intendsToPlay = false
+        noteLive()
         record("pause")
         player.pause()
     }
@@ -870,6 +933,9 @@ final class AVDeck: DeckDriving {
         }
         let reason = status == .waiting ? player.reasonForWaitingToPlay?.rawValue : nil
         if status != lastTimeControl || reason != lastWaitingReason {
+            // Playing, waiting, or the moment it stopped (an interruption, a
+            // route): the item was live up to here.
+            noteLive()
             lastTimeControl = status
             lastWaitingReason = reason
             // The row the 2026-09-28 paste did not have: a "playing" engine
@@ -959,6 +1025,7 @@ final class AVDeck: DeckDriving {
         guard gen == generation, let token else { return }
         reachedEnd = true
         intendsToPlay = false
+        noteLive()
         emit(.ended(token: token))
     }
 

@@ -67,7 +67,8 @@ final class AVDeckTests: XCTestCase {
     private func makeDeck(
         deadlineSec: Double = AVDeckTests.testDeadlineSec,
         timers: VirtualDeckTimers? = nil,
-        makeAsset: ((URL, Bool) -> AVURLAsset)? = nil
+        makeAsset: ((URL, Bool) -> AVURLAsset)? = nil,
+        idleClockMs: (() -> Double)? = nil
     ) -> AVDeck {
         var config = AVDeck.Config(
             loadDeadlineSec: deadlineSec,
@@ -81,6 +82,7 @@ final class AVDeckTests: XCTestCase {
             config.nowMs = { timers.nowMs }
         }
         config.diag = { [unowned self] in self.diags.append($0) }
+        if let idleClockMs { config.idleClockMs = idleClockMs }
         let deck = AVDeck(config: config)
         deck.onEvent = { [unowned self] event in
             // Timestamped in the log, so a slow CI load shows WHERE it was slow.
@@ -318,7 +320,7 @@ final class AVDeckTests: XCTestCase {
     /// duration load. A different URL, or a different timing option, is a
     /// cold load again. The 2026-09-28 paste is why: every play after a pause
     /// refetched a 2 h 20 m file from scratch, and the second one missed the
-    /// 20 s deadline. TO SEE IT FAIL: drop the `holdsHealthy` branch at the
+    /// 20 s deadline. TO SEE IT FAIL: drop the `coldReason` branch at the
     /// top of `load(...)`.
     func testASameSourceLoadKeepsTheItemAndRunsTheGate() throws {
         let url = try fixture("click-cbr", "mp3")
@@ -364,6 +366,41 @@ final class AVDeckTests: XCTestCase {
         deck.send(.loadURL(token: 4, url: try fixture("click", "wav"), startSec: 0, preciseTiming: false))
         XCTAssertFalse(deck.player.currentItem === cold, "a different URL reused the item")
         guard readyEvent(4) != nil else { return }
+        let colds = diags.filter { $0.kind == "deck" && $0[field: "kind"] == .string("attach") }
+            .map { $0[field: "cold"] }
+        XCTAssertEqual(colds, [.string("timing"), .string("other-source")], "\(diags)")
+    }
+
+    /// A held item idle past `reuseMaxIdleSec` is NOT reused: the load is
+    /// cold, as every load was before same-source reuse. The milestone-1 car
+    /// test passed on a cold resume after a day parked; an item that old may
+    /// sit at `.readyToPlay` over a dead connection or an expired signed
+    /// redirect, and fail mid-drive. TO SEE IT FAIL: drop the `stale` guard
+    /// in `coldReason`.
+    func testASameSourceLoadAfterALongIdleIsCold() throws {
+        var clockMs: Double = 0
+        deck.send(.unload)
+        deck = makeDeck(idleClockMs: { clockMs })
+        let url = try fixture("click-cbr", "mp3")
+        guard loadAndWaitReady(url, token: 1, startSec: 3) != nil else { return }
+        let item = try XCTUnwrap(deck.player.currentItem)
+        deck.send(.play)
+        deck.send(.pause)
+        // Let every observation of that play and pause land first: each one
+        // is "live" at the clock's current reading.
+        spin(0.5)
+        clockMs += (AVDeck.defaultReuseMaxIdleSec + 1) * 1000
+        diags.removeAll()
+
+        deck.send(.loadURL(token: 2, url: url, startSec: 10, preciseTiming: true))
+        XCTAssertFalse(deck.player.currentItem === item, "an item idle past the bound was reused")
+        let attach = try XCTUnwrap(diags.last { $0.kind == "deck" && $0[field: "kind"] == .string("attach") },
+                                   "no attach row: \(diags)")
+        XCTAssertEqual(attach[field: "cold"], .string("stale"))
+        XCTAssertEqual(attach[field: "idleSec"], .number(AVDeck.defaultReuseMaxIdleSec + 1))
+        XCTAssertNil(DiagGate.admit(attach)?[field: DiagGate.droppedField], "the gate dropped part of \(attach)")
+        guard let ready = readyEvent(2) else { return }
+        XCTAssertEqual(ready.landedSec, 10, accuracy: 0.1)
     }
 
     // MARK: - Rate
