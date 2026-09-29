@@ -26,11 +26,13 @@ import {
   INSETS_EXPRESSION,
   INSTRUMENT_EXPRESSION,
   DIAGNOSTICS_EXPRESSION,
+  KNOWN_FAILURES,
   PKG,
   PRESSES,
   SCENARIOS,
   SHOW,
   STATE_EXPRESSION,
+  applyKnown,
   center,
   fixtureDocs,
   foregroundService,
@@ -457,4 +459,27 @@ test("arguments: a scenario and an evidence directory, or a sentence saying whic
   assert.throws(() => parseArgs(["play", "--art"]), /--art needs a value/);
   assert.throws(() => parseArgs(["play", "--art", "x", "--wat"]), /unknown argument --wat/);
   assert.equal(parseArgs(["summary", "--art", "x"]).scenario, "summary");
+});
+
+test("a known product defect is reported as expected-fail, and only the failure it names", () => {
+  /* MUTATION: match A04-F2 on any notification failure -> the tap case below
+     is excused and fails. MUTATION: drop `knownNotReproduced` -> a fixed defect
+     keeps its entry forever and fails the last assertion.
+     The job exists to find these; excusing more than the one sentence would
+     let the next defect in the same scenario through with the first one's
+     permission. */
+  const both = ["no back-15 button", "no forward-30 button"];
+  const known = applyKnown("notification", both);
+  assert.equal(known.ok, true);
+  assert.deepEqual(known.expectedFailures.map((e) => e.id), ["A04-F2", "A04-F2"]);
+  const plus = applyKnown("notification", [...both, "the page is still playing after the tap on pause"]);
+  assert.equal(plus.ok, false);
+  assert.deepEqual(plus.failures, ["the page is still playing after the tap on pause"]);
+  assert.equal(applyKnown("play", ["no back-15 button"]).ok, false, "a known failure belongs to its scenario only");
+  assert.deepEqual(applyKnown("notification", []).knownNotReproduced, ["A04-F2"]);
+  for (const k of KNOWN_FAILURES) {
+    assert.ok(SCENARIOS.some(([id]) => id === k.scenario), `${k.id} names an unknown scenario`);
+    assert.match(k.what, /\brun/, `${k.id} must name the run that showed it`);
+  }
+  assert.match(summaryMarkdown({ notification: { ok: true, expectedFailures: [{ id: "A04-F2" }] } }), /\*\*pass\*\* \(expected-fail: A04-F2\)/);
 });

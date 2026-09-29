@@ -754,41 +754,80 @@ function pressDone(kind, before) {
   };
 }
 
-/** (c) Every transport press, by both routes, reaches the page. */
+/** (c) Every transport press, by both routes, reaches the page.
+ *
+ *  Run with the app in the BACKGROUND (Home, screen on), which is where a lock
+ *  screen, a headset or a car sends them from. Each press starts from a state
+ *  the page itself set up (`ensureRunning`), so one failed press cannot make
+ *  the next one meaningless: a Media3 player that believes it is paused ignores
+ *  a pause, and that would read as the pause never arriving.
+ *
+ *  First, a FOREGROUND CONTROL, recorded and never gated: pause then play with
+ *  the app on screen. It says whether a background failure below is about the
+ *  background, which is the first question a fix will ask. */
 async function transport(ctx) {
   wakeAndUnlock();
-  await sleep(1500);
-  /* A known start: clip 1, running. Pressing the page's own controls here is
-     setting up the scenario, not part of what is measured. */
-  await page(ctx, jumpExpression(0), { gesture: true });
-  let s = await waitFor(ctx, (x) => x.foray && x.foray.index === 0 && x.foray.running && !x.foray.loading, 15000);
+  await sleep(1000);
+  shell("am", "start", "-n", `${ctx.pkg}/.MainActivity`);
+  await sleep(2000);
+  await ensureRunning(ctx);
+  const control = [];
+  for (const p of PRESSES.filter((x) => x.route === "dispatch" && (x.kind === "pause" || x.kind === "play"))) {
+    control.push(await press(ctx, p));
+    await sleep(1500);
+  }
+  shell("input", "keyevent", "KEYCODE_HOME");
+  await sleep(2000);
   const presses = [];
   for (const p of PRESSES) {
-    if (p.kind === "next" && s.foray && s.foray.index >= CLIPS.length - 1) {
-      await page(ctx, jumpExpression(0), { gesture: true });
-      s = await waitFor(ctx, (x) => x.foray && x.foray.index === 0 && x.foray.running && !x.foray.loading, 15000);
-    }
+    if (p.kind !== "play") await ensureRunning(ctx, { notLast: p.kind === "next" });
     if (p.kind === "previous") await sleep(GATES.previousSettleMs);
-    const before = await state(ctx);
-    const out = shell(...p.args);
-    const after = await waitFor(ctx, pressDone(p.kind, before), GATES.pressTimeoutMs);
-    const v = verdictPress({ kind: p.kind, before, after, sinceRemote: before.remote.length });
-    presses.push({
-      route: p.route,
-      press: p.args.join(" "),
-      ok: v.ok,
-      failures: v.failures,
-      output: String(out).trim().slice(0, 200),
-      before: before.foray,
-      after: after.foray,
-      remote: after.remote.slice(before.remote.length),
-    });
-    s = after;
+    presses.push(await press(ctx, p));
     await sleep(1500);
   }
   const failures = presses.filter((p) => !p.ok).map((p) => `${p.press}: ${p.failures.join("; ")}`);
   save(ctx, "c-dumpsys-media_session.txt", shell("dumpsys", "media_session"));
-  return { ok: failures.length === 0, failures, measured: { presses }, evidence: ["c-dumpsys-media_session.txt"] };
+  return {
+    ok: failures.length === 0,
+    failures,
+    measured: { foregroundControl: control, presses },
+    evidence: ["c-dumpsys-media_session.txt"],
+  };
+}
+
+/** One press, and what the page did with it. */
+async function press(ctx, p) {
+  const before = await state(ctx);
+  const out = shell(...p.args);
+  const after = await waitFor(ctx, pressDone(p.kind, before), GATES.pressTimeoutMs);
+  const v = verdictPress({ kind: p.kind, before, after, sinceRemote: before.remote.length });
+  return {
+    route: p.route,
+    kind: p.kind,
+    press: p.args.join(" "),
+    ok: v.ok,
+    failures: v.failures,
+    output: String(out).trim().slice(0, 200),
+    visibility: after.visibility,
+    before: before.foray,
+    after: after.foray,
+    element: after.element,
+    remote: after.remote.slice(before.remote.length),
+  };
+}
+
+/** Set up a press: the Foray running and not loading, moved by the page's own
+ *  running-order call when it is not. A jump to a DIFFERENT clip, because a
+ *  fresh load is the one thing measured to start reliably. */
+async function ensureRunning(ctx, { notLast = false } = {}) {
+  let s = await state(ctx);
+  const ready = (x) => x.foray && x.foray.running && !x.foray.loading;
+  if (ready(s) && !(notLast && s.foray.index >= CLIPS.length - 1)) return s;
+  const from = s.foray ? s.foray.index : 0;
+  const to = notLast ? (from + 1) % (CLIPS.length - 1) : (from + 1) % CLIPS.length;
+  await page(ctx, jumpExpression(to), { gesture: true });
+  s = await waitFor(ctx, (x) => ready(x) && x.foray.index === to, 15000);
+  return s;
 }
 
 async function dumpUi(ctx, name) {
@@ -807,71 +846,91 @@ async function dumpUi(ctx, name) {
   return { xml: null, attempts };
 }
 
+/** Read one shade layout. A PLAYING media panel animates its progress bar and
+ *  `uiautomator dump` refuses a screen that never goes idle ("could not get
+ *  idle state", every time on run 36549143331), so the fallback reads it paused
+ *  and resumes: the play button is then where pause will be. */
+async function readShade(ctx, how, log) {
+  shell("cmd", "statusbar", how);
+  await sleep(2500);
+  const shot = adb(["exec-out", "screencap", "-p"], { binary: true });
+  if (pngInfo(shot.stdout)) save(ctx, `d-shade-${how}.png`, shot.stdout);
+  let dump = await dumpUi(ctx, `d-window-${how}.xml`);
+  log.push({ how, dump: dump.attempts });
+  let paused = false;
+  if (!dump.xml) {
+    shell("cmd", "media_session", "dispatch", "pause");
+    await waitFor(ctx, (x) => x.episodePlaying === false, GATES.pressTimeoutMs);
+    dump = await dumpUi(ctx, `d-window-${how}-paused.xml`);
+    log.push({ how, pausedDump: dump.attempts });
+    paused = true;
+  }
+  return { how, paused, xml: dump.xml };
+}
+
 /** (d) The shade's media controls: our title, our show, the 15/30 pair, and a
- *  pause that pauses the page. */
+ *  pause that pauses the page.
+ *
+ *  With the app ON SCREEN and the shade pulled over it, the way a listener
+ *  checks what is playing without leaving the app. The background path to the
+ *  same session is (c)'s. */
 async function notification(ctx) {
   wakeAndUnlock();
   await sleep(1000);
+  shell("am", "start", "-n", `${ctx.pkg}/.MainActivity`);
+  await sleep(2000);
   /* The single episode: its controls are ↺15, play/pause, 30↻ (the pair is
      what a lone episode gets instead of previous/next). */
   const started = await page(ctx, startEpisodeExpression(), { gesture: true, timeoutMs: 45000 });
-  let s = await waitFor(ctx, (x) => x.episodePlaying && x.payload && x.payload.title === EPISODE.title, 15000);
+  const s = await waitFor(ctx, (x) => x.episodePlaying && x.payload && x.payload.title === EPISODE.title, 15000);
   const expected = { title: s.payload?.title ?? EPISODE.title, artist: s.payload?.artist ?? SHOW };
   const log = [];
-  let controls = null;
-  let dump = null;
-  let tapped = null;
+  let chosen = null;
   for (const how of ["expand-notifications", "expand-settings"]) {
-    shell("cmd", "statusbar", how);
-    await sleep(2500);
-    const shot = adb(["exec-out", "screencap", "-p"], { binary: true });
-    if (pngInfo(shot.stdout)) save(ctx, `d-shade-${how}.png`, shot.stdout);
-    dump = await dumpUi(ctx, `d-window-${how}.xml`);
-    log.push({ how, dump: dump.attempts });
-    let viaPausedDump = false;
-    if (!dump.xml) {
-      /* A PLAYING media panel animates its progress bar, and `uiautomator dump`
-         refuses a screen that never goes idle. Read it paused instead, find the
-         play button, resume, and tap the same place, which is now pause. */
-      shell("cmd", "media_session", "dispatch", "pause");
-      await waitFor(ctx, (x) => x.episodePlaying === false, GATES.pressTimeoutMs);
-      dump = await dumpUi(ctx, `d-window-${how}-paused.xml`);
-      log.push({ how, pausedDump: dump.attempts });
-      viaPausedDump = true;
-    }
-    if (!dump.xml) continue;
-    const nodes = uiNodes(dump.xml);
-    controls = mediaControls(nodes, expected);
-    if (!(controls.title && (controls.pause || controls.play))) {
-      log.push({ how, found: Object.fromEntries(Object.entries(controls).map(([k, v]) => [k, !!v])) });
-      if (viaPausedDump) {
-        shell("cmd", "media_session", "dispatch", "play");
-        await waitFor(ctx, (x) => x.episodePlaying === true, GATES.pressTimeoutMs);
-      }
-      continue;
-    }
-    if (viaPausedDump) {
+    const read = await readShade(ctx, how, log);
+    if (read.paused) {
       shell("cmd", "media_session", "dispatch", "play");
       await waitFor(ctx, (x) => x.episodePlaying === true, GATES.pressTimeoutMs);
     }
-    const button = controls.pause ?? controls.play;
+    if (!read.xml) continue;
+    const controls = mediaControls(uiNodes(read.xml), expected);
+    log.push({ how, found: Object.fromEntries(Object.entries(controls).map(([k, v]) => [k, !!v])) });
+    const usable = controls.title && (controls.pause || controls.play);
+    const complete = usable && controls.back15 && controls.forward30;
+    if (usable && (!chosen || complete)) chosen = { how, controls, paused: read.paused };
+    if (complete) break;
+  }
+  let tapped = null;
+  if (chosen) {
+    shell("cmd", "statusbar", chosen.how);
+    await sleep(2000);
+    const button = chosen.controls.pause ?? chosen.controls.play;
     const before = await state(ctx);
     const at = center(button.bounds);
     shell("input", "tap", String(at.x), String(at.y));
-    tapped = { at, label: button.desc || button.text, viaPausedDump, sinceRemote: before.remote.length };
-    break;
+    tapped = {
+      how: chosen.how, at, label: button.desc || button.text, viaPausedDump: chosen.paused,
+      sinceRemote: before.remote.length, playingBefore: before.episodePlaying,
+    };
   }
   const after = tapped
     ? await waitFor(ctx, (x) => x.episodePlaying === false, GATES.pressTimeoutMs)
     : await state(ctx);
   shell("cmd", "statusbar", "collapse");
+  const sessionsDump = shell("dumpsys", "media_session");
+  save(ctx, "d-dumpsys-media_session.txt", sessionsDump);
+  const ours = mediaSessions(sessionsDump).sessions.find((x) => x.package === ctx.pkg) ?? null;
+  const controls = chosen?.controls ?? null;
   const v = verdictNotification({ controls, expected, tapped, after, sinceRemote: tapped?.sinceRemote ?? 0 });
   const found = controls
     ? Object.fromEntries(Object.entries(controls).map(([k, n]) => [k, n ? { text: n.text, desc: n.desc, id: n.id, bounds: n.bounds } : null]))
     : null;
   return {
     ...v,
-    measured: { started, expected, found, tapped, log, after: { episodePlaying: after.episodePlaying, remote: after.remote.slice(tapped?.sinceRemote ?? 0) } },
+    measured: {
+      started, expected, found, tapped, log, sessionCustomActions: ours?.customActions ?? null,
+      after: { episodePlaying: after.episodePlaying, visibility: after.visibility, remote: after.remote.slice(tapped?.sinceRemote ?? 0) },
+    },
     evidence: fs.readdirSync(ctx.art).filter((f) => f.startsWith("d-")),
   };
 }
@@ -900,6 +959,39 @@ async function collect(ctx) {
   };
 }
 
+/** PRODUCT DEFECTS THIS JOB FOUND, each reported as EXPECTED-FAIL instead of
+ *  failing its step, so the job can guard everything else while the fix is
+ *  its own card. An entry names the one failure sentence it covers and the run
+ *  that showed it; any OTHER failure in the same scenario still fails the step.
+ *  NOT STRICT: a known failure that stops reproducing is printed as a notice
+ *  (the fix deletes the entry), because a strict one would turn red on a fix.
+ *  `docs/android-emulator-measurements.md` §5 has the evidence for each. */
+export const KNOWN_FAILURES = Object.freeze([
+  Object.freeze({
+    id: "A04-F2",
+    scenario: "notification",
+    match: /^no (back-15|forward-30) button$/,
+    what:
+      "the system media controls (API 33+) draw no 15/30 buttons: our Media3 session publishes `custom actions=[]`, " +
+      "so the media button preferences never reach the platform session (runs 36549143331, dumpsys media_session)",
+  }),
+]);
+
+/** Split a scenario's failures into the known and the rest. Pure. */
+export function applyKnown(scenario, failures, known = KNOWN_FAILURES) {
+  const expectedFailures = [];
+  const remaining = [];
+  for (const f of failures ?? []) {
+    const k = known.find((x) => x.scenario === scenario && x.match.test(f));
+    if (k) expectedFailures.push({ id: k.id, failure: f });
+    else remaining.push(f);
+  }
+  const knownNotReproduced = known
+    .filter((k) => k.scenario === scenario && !expectedFailures.some((e) => e.id === k.id))
+    .map((k) => k.id);
+  return { ok: remaining.length === 0, failures: remaining, expectedFailures, knownNotReproduced };
+}
+
 /** The card's letters, in its order, for the run's summary. */
 export const SCENARIOS = Object.freeze([
   ["play", "(a) play a bundled clip"],
@@ -914,7 +1006,9 @@ export function summaryMarkdown(verdicts) {
   const lines = ["| Scenario | Verdict | Failures |", "|---|---|---|"];
   for (const [id, label] of SCENARIOS) {
     const v = verdicts[id];
-    const verdict = !v ? "not run" : v.ok ? "**pass**" : "**FAIL**";
+    const xf = (v?.expectedFailures ?? []).map((e) => e.id);
+    const tail = xf.length ? ` (expected-fail: ${[...new Set(xf)].join(", ")})` : "";
+    const verdict = !v ? "not run" : v.ok ? `**pass**${tail}` : `**FAIL**${tail}`;
     const why = v && !v.ok ? (v.failures ?? []).join("; ").replace(/\|/g, "\\|").slice(0, 400) : "";
     lines.push(`| ${label} | ${verdict} | ${why} |`);
   }
@@ -970,6 +1064,9 @@ async function main(argv) {
   let code;
   try {
     result = await RUNNERS[args.scenario](ctx);
+    /* A scenario that RAN has its failures sorted into known and new; one
+       that could not run (the catch below) is never excused. */
+    result = { ...result, ...applyKnown(args.scenario, result.failures) };
     code = result.ok ? 0 : 1;
   } catch (e) {
     result = { ok: false, failures: [`the scenario could not run: ${String(e?.message ?? e)}`], error: String(e?.stack ?? e) };
@@ -984,6 +1081,13 @@ async function main(argv) {
     for (const f of verdict.failures) console.error(`  - ${f}`);
   } else {
     console.log(`\n${args.scenario}: pass`);
+  }
+  for (const e of verdict.expectedFailures ?? []) {
+    const k = KNOWN_FAILURES.find((x) => x.id === e.id);
+    console.log(`::warning title=${e.id} (expected-fail)::${args.scenario}: ${e.failure} (${k?.what ?? ""})`);
+  }
+  for (const id of verdict.knownNotReproduced ?? []) {
+    console.log(`::notice title=${id} did not reproduce::${args.scenario} no longer shows ${id}; if its fix has landed, delete its KNOWN_FAILURES entry`);
   }
   return code;
 }
