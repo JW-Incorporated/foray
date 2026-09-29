@@ -572,7 +572,11 @@ final class TwoDeckPrerollTests: XCTestCase {
             sessionIsActive: { true },
             writeRow: { [unowned self] in self.deckRows.append("\(name) \($0)") },
             debugFault: { [unowned self] in self.faults.append("\(name) \($0)") },
-            makeAsset: makeAsset ?? AVDeck.defaultAsset
+            makeAsset: makeAsset ?? AVDeck.defaultAsset,
+            // Every trial measures a COLD gate, and the reps load the same
+            // fixture back to back: same-source reuse would turn the second
+            // one into a seek in the first one's buffer.
+            reusesSameSource: false
         )
         let deck = AVDeck(config: config)
         deck.onEvent = { [unowned self] event in
