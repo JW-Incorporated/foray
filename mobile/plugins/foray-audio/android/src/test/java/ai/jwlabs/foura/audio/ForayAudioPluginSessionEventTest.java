@@ -51,4 +51,26 @@ public class ForayAudioPluginSessionEventTest {
         assertEquals("audio", event.getString("producer"));
         assertEquals(1_700_000_000_000L, event.getLong("at"));
     }
+
+    @Test
+    public void factsRideBesideTheFourKeys_andNeverOverwriteThem() throws Exception {
+        // A-09: the Lane B facts (ports, app state, availMb, other, durMs), written the
+        // way the Swift writes `extra` -- first, so the fixed keys win. MUTATION: put
+        // the facts after the four keys -> a fact named `kind` rewrites the row's kind.
+        java.util.Map<String, Object> facts = new java.util.LinkedHashMap<>();
+        facts.put("from", "speaker");
+        facts.put("to", "a2dp");
+        facts.put("other", true);
+        facts.put("availMb", 96L);
+        facts.put("kind", "spoofed");
+        JSObject event = ForayAudioPlugin.sessionEvent(
+            SessionMonitor.KIND_ROUTE_CHANGE, SessionMonitor.REASON_NEW_DEVICE, facts, 1_700_000_000_000L);
+        assertEquals("routeChange", event.getString("kind"));
+        assertEquals("new-device", event.getString("reason"));
+        assertEquals("speaker", event.getString("from"));
+        assertEquals("a2dp", event.getString("to"));
+        assertEquals(true, event.getBoolean("other"));
+        assertEquals(96L, event.getLong("availMb"));
+        assertEquals("audio", event.getString("producer"));
+    }
 }

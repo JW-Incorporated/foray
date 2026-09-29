@@ -8,6 +8,9 @@ import androidx.annotation.MainThread;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import java.util.Collections;
+import java.util.Map;
+
 /**
  * The one place the page's now-playing state lives, and the one channel a transport
  * press travels back down.
@@ -92,6 +95,20 @@ final class NowPlayingHub {
      */
     interface SessionSink {
         void onSession(@NonNull String kind, @NonNull String reason);
+
+        /**
+         * The same event with the Lane B facts the iOS plugin writes beside
+         * {@code kind}/{@code reason} (A-09): {@code to}/{@code from} port tokens, the
+         * {@code app} state, {@code availMb}, {@code other}, {@code durMs}. Closed
+         * tokens, numbers and booleans only -- {@code diagnostic-log.js} admits each
+         * by its own set and drops the rest.
+         *
+         * <p>A default so every existing sink (and every lambda in the suites) keeps
+         * compiling; the plugin overrides it.
+         */
+        default void onSession(@NonNull String kind, @NonNull String reason, @NonNull Map<String, Object> facts) {
+            onSession(kind, reason);
+        }
     }
 
     /** The two origins, spelled as `REMOTE_ORIGINS` in `player/diagnostic-log.js`
@@ -171,13 +188,20 @@ final class NowPlayingHub {
      * caused.
      */
     static void dispatchSession(@NonNull String kind, @NonNull String reason) {
+        dispatchSession(kind, reason, Collections.emptyMap());
+    }
+
+    /** {@link #dispatchSession(String, String)} with facts (A-09). Same drop rule, same
+     *  containment; any thread (the monitors call it on main, the plugin's
+     *  {@code start} on the bridge's worker pool). */
+    static void dispatchSession(@NonNull String kind, @NonNull String reason, @NonNull Map<String, Object> facts) {
         final SessionSink target = sessionSink;
         if (target == null) {
             Log.w(TAG, "session " + kind + "/" + reason + " arrived with no page listening");
             return;
         }
         try {
-            target.onSession(kind, reason);
+            target.onSession(kind, reason, facts);
         } catch (Exception e) {
             /* Same rule as a transport press: this runs on the main thread inside a
                broadcast receiver, and failing to tell the page must not kill the app. */
