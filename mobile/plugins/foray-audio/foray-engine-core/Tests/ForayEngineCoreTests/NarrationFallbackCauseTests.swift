@@ -128,7 +128,7 @@ final class NarrationFallbackCauseTests: XCTestCase {
     /// `stopCause`, of which no fallback cause is a member.
     /// TO SEE IT FAIL: drop the `narration` case from
     /// `DiagGate.vocabularySet` (every cause is then dropped and named in
-    /// `dropped`).
+    /// `dropped`), or name the row's `where` field `at` again.
     func testTheGateKeepsEveryFallbackCauseOnTheRow() throws {
         for cause in Cause.allCases {
             var host = ForayCatchUpTests.host([ForayCatchUpTests.rendered(0), ForayCatchUpTests.clip(1, "a", 100, 200)])
@@ -136,6 +136,9 @@ final class NarrationFallbackCauseTests: XCTestCase {
             let row = try XCTUnwrap(Self.fallbackRows(out).first, "\(cause): \(out)")
             let admitted = try XCTUnwrap(DiagGate.admit(row), "\(cause)")
             XCTAssertEqual(admitted[field: "cause"], .string(cause.rawValue), "\(cause): \(admitted)")
+            // Where it fell back survives too (`at` would not: it is the ring
+            // row's wall clock).
+            XCTAssertEqual(admitted[field: "where"], .string("load"), "\(cause): \(admitted)")
             XCTAssertNil(admitted[field: DiagGate.droppedField], "\(cause): nothing withheld: \(admitted)")
         }
         // Still a closed set: a stop cause is not a fallback cause.

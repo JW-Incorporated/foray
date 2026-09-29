@@ -1212,7 +1212,8 @@ public struct EngineCore {
     /// file failed (`timeout`, `http-4xx`, `http-5xx`, `offline`, `decode`,
     /// `other`), so a drive's paste says whether the fallback was the network,
     /// the narration host or the file. `reason=` stays as it was (`timeout`
-    /// for the load deadline, else `failed`).
+    /// for the load deadline, else `failed`); `where=` is `load`, `bridge` or
+    /// `playing`.
     private mutating func fallBackToScript(_ token: DeckToken, isPending: Bool, cause: Vocabulary.StopCause,
                                            why: Vocabulary.NarrationFallbackCause) -> Bool {
         guard config.forayTapeEnabled else { return false }
@@ -1237,7 +1238,12 @@ public struct EngineCore {
         }
         diag("narration", [JSONMember("kind", .string("fallback")),
                            JSONMember("reason", .string(cause == .loadDeadline ? "timeout" : "failed")),
-                           JSONMember("at", .string(at)),
+                           // `where`, not `at`: `at` is the ring row's wall
+                           // clock (DiagRow.headerKeys), so DiagGate drops a
+                           // field of that name and the paste never said
+                           // whether the load, a bridge or a sounding line fell
+                           // back (NE-39n review).
+                           JSONMember("where", .string(at)),
                            JSONMember("cause", .string(why.rawValue))])
         // A file that failed mid-line: silence the deck under it first.
         if at == "playing" { deckCommand(.pause) }
