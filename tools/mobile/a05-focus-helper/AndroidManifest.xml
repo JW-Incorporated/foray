@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A-05 (h): the "other app" that takes audio focus from 4a on the CI emulator.
+     Built in the android-playback job with javac, d8 and aapt2 (no Gradle), and
+     installed only on that emulator. It never ships and holds no permission. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="ai.jwlabs.a05focus">
+    <application android:label="A-05 focus helper" android:hasCode="true" android:allowBackup="false">
+        <activity
+            android:name=".FocusActivity"
+            android:exported="true"
+            android:launchMode="singleTask" />
+    </application>
+</manifest>

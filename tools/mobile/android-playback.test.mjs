@@ -18,39 +18,67 @@ import path from "node:path";
 import vm from "node:vm";
 import { fileURLToPath } from "node:url";
 import {
+  AIRPLANE_FORAY,
   CLIPS,
+  DOZE_FORAY,
   EPISODE,
   FIXTURE_PATH,
   FORAY_ID,
   GATES,
+  HELPER_PKG,
   INSETS_EXPRESSION,
   INSTRUMENT_EXPRESSION,
   DIAGNOSTICS_EXPRESSION,
   KNOWN_FAILURES,
+  LONG_FORAY,
+  NARRATION_LINES,
+  NARRATION_PATH,
   PKG,
   PRESSES,
   SCENARIOS,
+  SEAMS_FORAY,
   SHOW,
   STATE_EXPRESSION,
+  UNREACHABLE_NARRATION_URL,
+  a15Trigger,
+  advanced,
   applyKnown,
+  buildForay,
+  callState,
   center,
+  currentFocus,
   fixtureDocs,
+  focusPhase,
+  focusStack,
   foregroundService,
+  intLine,
   killLine,
   jumpExpression,
+  mediaButtonRoute,
   mediaControls,
   mediaSessions,
   parseArgs,
   pngInfo,
+  receiverOf,
+  ringExpression,
+  seamStats,
   startEpisodeExpression,
   startForayExpression,
   summaryMarkdown,
   uiNodes,
+  verdictAirplane,
+  verdictBack,
   verdictBackground,
+  verdictCall,
+  verdictDoze,
+  verdictFocus,
+  verdictKill,
   verdictNotification,
   verdictPlay,
   verdictPress,
+  verdictSeams,
   wakefulness,
+  wasPlaying,
 } from "./android-playback.mjs";
 import { findForay, indexSegments, indexSources, resolveForay } from "../../player/foray-resolve.js";
 import { CLICK_TRACK_DIR } from "../audio/click-tracks.mjs";
@@ -60,6 +88,7 @@ const ROOT = path.resolve(HERE, "..", "..");
 const FIX = path.join(HERE, "fixtures", "android-playback");
 const SERVICES = fs.readFileSync(path.join(FIX, "a03-dumpsys-activity-services.txt"), "utf8");
 const SESSIONS = fs.readFileSync(path.join(FIX, "a03-dumpsys-media_session.txt"), "utf8");
+const AUDIO = fs.readFileSync(path.join(FIX, "run36551857323-dumpsys-audio-focus.txt"), "utf8");
 
 /* ─────────────────────────── the fixture Foray ─────────────────────────── */
 
@@ -478,9 +507,13 @@ test("the start expressions call the page's own player with the fixture", () => 
   assert.ok(e.includes(EPISODE.title));
 });
 
-test("the summary lists all five scenarios in the card's order, and escapes a pipe", () => {
+test("the summary lists all twelve scenarios in the cards' order, and escapes a pipe", () => {
   /* MUTATION: drop a scenario from SCENARIOS -> fails. */
-  assert.deepEqual(SCENARIOS.map(([id]) => id), ["play", "background", "transport", "notification", "first-launch"]);
+  assert.deepEqual(SCENARIOS.map(([id]) => id), [
+    "play", "background", "transport", "notification", "first-launch",
+    "seams", "doze", "focus", "call", "kill", "airplane", "back-home",
+  ]);
+  SCENARIOS.forEach(([, label], i) => assert.ok(label.startsWith(`(${"abcdefghijkl"[i]})`), `${label} is not letter ${"abcdefghijkl"[i]}`));
   const md = summaryMarkdown({ play: { ok: true }, background: { ok: false, failures: ["a | b"] } });
   assert.match(md, /\(a\) play a bundled clip \| \*\*pass\*\*/);
   assert.match(md, /\(b\).*\*\*FAIL\*\* \| a \\\| b/);
@@ -496,6 +529,7 @@ test("arguments: a scenario and an evidence directory, or a sentence saying whic
   assert.throws(() => parseArgs(["play", "--art"]), /--art needs a value/);
   assert.throws(() => parseArgs(["play", "--art", "x", "--wat"]), /unknown argument --wat/);
   assert.equal(parseArgs(["summary", "--art", "x"]).scenario, "summary");
+  for (const [id] of SCENARIOS) assert.equal(parseArgs([id, "--art", "x"]).scenario, id, `${id} has no runner`);
 });
 
 test("a known product defect is reported as expected-fail, and only the failure it names", () => {
@@ -533,4 +567,282 @@ test("a known product defect is reported as expected-fail, and only the failure 
     assert.match(k.what, /\brun/, `${k.id} must name the run that showed it`);
   }
   assert.match(summaryMarkdown({ notification: { ok: true, expectedFailures: [{ id: "A04-F2" }] } }), /\*\*pass\*\* \(expected-fail: A04-F2\)/);
+});
+
+/* ═══════════════════════════════ A-05 ═══════════════════════════════ */
+
+const resolveFixture = (fx) => {
+  const doc = findForay(fx.forays, fx.id, { unlocked: [fx.id] });
+  assert.ok(doc, `${fx.id} is not findable`);
+  return resolveForay(doc, { segments: indexSegments(fx.segments), sources: indexSources(fx.sources) });
+};
+
+test("A-05: every fixture Foray resolves through the player's own join, rendered lines included", () => {
+  /* MUTATION: drop `script` and `audio_url` from a line -> the queue drops it
+     ("narration has no asset or script") and fails. MUTATION: give two clips
+     one segment id -> fails. (f) is a clip / line / clip Foray, so a line the
+     join refused would turn every seam into a clip-to-clip one. */
+  const seams = resolveFixture(SEAMS_FORAY);
+  assert.deepEqual(seams.unplayable, []);
+  assert.equal(seams.playable.length, 7);
+  const lines = seams.playable.filter((p) => p.kind === "tts");
+  assert.deepEqual(lines.map((l) => l.audio_url), NARRATION_LINES.map((l) => `https://localhost${NARRATION_PATH}${l.file}`));
+  seams.playable.forEach((p, i) => assert.equal(p.kind === "tts", i % 2 === 1, `item ${i} is out of the clip / line order`));
+  /* Every clip before a line is at least 20 s, the floor under which the web
+     lane's narration warm (PR #867) does not start: the seams are a real
+     Foray's, warm included. */
+  for (const clip of SEAMS_FORAY.segments.segments) assert.ok(clip.end_sec - clip.start_sec >= 20);
+  assert.equal(resolveFixture(DOZE_FORAY).playable.length, 6);
+  assert.ok(resolveFixture(DOZE_FORAY).totalSec * 1000 > GATES.dozeWaitMs + 60000, "the Doze Foray must outlast five minutes");
+  assert.equal(resolveFixture(LONG_FORAY).playable.length, 3);
+  const air = resolveFixture(AIRPLANE_FORAY);
+  assert.deepEqual(air.playable.map((p) => p.kind === "tts"), [false, true, false]);
+  assert.equal(air.playable[1].audio_url, UNREACHABLE_NARRATION_URL);
+  assert.ok(air.playable[1].script.length > 0, "the fallback needs a script to speak");
+  const profile = JSON.parse(fs.readFileSync(path.join(ROOT, "tools/narration/render-profile.json"), "utf8"));
+  assert.ok(UNREACHABLE_NARRATION_URL.startsWith(`${profile.public_base}/${profile.key_prefix}/`), "the line has a real line's shape");
+  assert.ok(NARRATION_LINES.every((l) => l.file.endsWith(`.${profile.render.encode.container}`)));
+  const ids = new Set();
+  for (const fx of [SEAMS_FORAY, DOZE_FORAY, LONG_FORAY, AIRPLANE_FORAY]) {
+    for (const seg of fx.segments.segments) {
+      assert.equal(ids.has(seg.id), false, `${seg.id} is used twice`);
+      ids.add(seg.id);
+    }
+  }
+  const one = buildForay({ id: "x", title: "x", items: [{ clip: CLIPS[0], endSec: 5 }] });
+  assert.equal(one.sources.sources[0].audio_url, `https://localhost${FIXTURE_PATH}${CLIPS[0].file}`);
+});
+
+test("A-05: the focus stack is read from API 34's real dumpsys audio (run 36551857323)", () => {
+  /* MUTATION: read the top as the FIRST entry -> the two-entry case fails
+     (the platform prints "last is top of stack"). MUTATION: keep reading past
+     the stack's end -> the empty case picks up nothing, but a later
+     `source:` line elsewhere in the dump would; the blank-line case pins it. */
+  const f = focusStack(AUDIO);
+  assert.equal(f.found, true);
+  assert.equal(f.entries.length, 1);
+  assert.deepEqual(
+    { pack: f.top.pack, gain: f.top.gain, loss: f.top.loss, uid: f.top.uid, usage: f.top.usage },
+    { pack: PKG, gain: "GAIN", loss: "none", uid: 10192, usage: "USAGE_MEDIA" }
+  );
+  assert.match(f.top.client, /AudioFocusDelegate/, "WebView's own focus client, as A-03 found");
+  assert.equal(f.inRingOrCall, false);
+  const ours = AUDIO.split(/\r?\n/).find((l) => l.includes("-- pack: ai.jwlabs.foura"));
+  const helper = ours.replace("pack: ai.jwlabs.foura", `pack: ${HELPER_PKG}`).replace("AudioFocusDelegate", "Helper");
+  const lost = ours.replace("loss: none", "loss: LOSS_TRANSIENT");
+  const two = focusStack(AUDIO.replace(ours, `${lost}\n${helper}`).replace("In ring or call: false", "In ring or call: true"));
+  assert.deepEqual(two.entries.map((e) => [e.pack, e.loss]), [[PKG, "LOSS_TRANSIENT"], [HELPER_PKG, "none"]]);
+  assert.equal(two.top.pack, HELPER_PKG);
+  assert.equal(two.inRingOrCall, true);
+  const empty = focusStack(AUDIO.replace(ours + "\n", ""));
+  assert.deepEqual([empty.found, empty.entries.length, empty.top], [true, 0, null]);
+  assert.equal(focusStack("no focus here").found, false);
+});
+
+test("A-05: the media button route, the call state, the focused window and a bucket are read from their dumps", () => {
+  /* MUTATION: take the Global priority session as the button session -> fails
+     (telecom is not who gets a media key). MUTATION: read `null` as a receiver
+     name -> fails. */
+  const r = mediaButtonRoute(SESSIONS);
+  assert.deepEqual(r, { session: `${PKG}/androidx.media3.session.id.foray`, sessionPackage: PKG, lastReceiver: null });
+  const yt = mediaButtonRoute(SESSIONS.replace("Last MediaButtonReceiver: null", "Last MediaButtonReceiver: MBR {pkg=com.google.android.apps.youtube.music}"));
+  assert.equal(yt.lastReceiver, "MBR {pkg=com.google.android.apps.youtube.music}");
+  assert.equal(callState("  mCallState=1\n  mRingingCallState=0"), "RINGING");
+  assert.equal(callState("mCallState=2"), "OFFHOOK");
+  assert.equal(callState("mCallState=0"), "IDLE");
+  assert.equal(callState("nothing"), null);
+  assert.deepEqual(currentFocus("  mCurrentFocus=Window{2c1e3a1 u0 ai.jwlabs.foura/ai.jwlabs.foura.MainActivity}"),
+    { found: true, window: "ai.jwlabs.foura/ai.jwlabs.foura.MainActivity", pkg: PKG });
+  assert.equal(currentFocus("mCurrentFocus=Window{9 u0 com.google.android.apps.nexuslauncher/com.google.android.apps.nexuslauncher.NexusLauncherActivity}").pkg,
+    "com.google.android.apps.nexuslauncher");
+  assert.deepEqual(currentFocus("mCurrentFocus=Window{9 u0 NotificationShade}"), { found: true, window: "NotificationShade", pkg: null });
+  assert.deepEqual(currentFocus("mCurrentFocus=null"), { found: true, window: null, pkg: null });
+  assert.equal(currentFocus("").found, false);
+  assert.equal(intLine("40\n"), 40);
+  assert.equal(intLine("Error: no such package"), null);
+});
+
+const seam = (seq, gap, extra = {}) => ({ type: "seam", seq, wall: seq, fromId: `a${seq}`, toId: `b${seq}`, observedGapMs: gap, hiddenAtBoundary: true, stages: [], ...extra });
+
+test("A-05 (f): seam statistics count a seam that never became audible as the worst, and leave out cuts and the queue's end", () => {
+  /* MUTATION: compute p95 over measured gaps only -> the never-started case
+     reads 1200 ms and fails. MUTATION: count the end-of-queue row -> the
+     seam count fails. D-A4 is decided on this p95, so a stall that fell out
+     of it would read as a good number. */
+  const rows = [seam(1, 800), seam(2, 1200), seam(3, 600), seam(4, 3000), seam(5, 900), seam(6, 1000),
+    { type: "outPoint", seq: 7 }, seam(8, null, { endOfQueue: true })];
+  const st = seamStats(rows);
+  assert.deepEqual([st.seams, st.measured, st.neverStarted, st.cut], [6, 6, 0, 0]);
+  assert.deepEqual(st.gapsMs, [600, 800, 900, 1000, 1200, 3000]);
+  assert.equal(st.p50Ms, 900);
+  assert.equal(st.p95Ms, 3000);
+  assert.equal(st.maxMs, 3000);
+  assert.equal(st.hiddenAtBoundary, 6);
+  assert.deepEqual(a15Trigger(st), { triggered: false, why: "p95 3000 ms <= 4000 ms" });
+  const stalled = seamStats([...rows, seam(9, null, { lastStage: "load.deadline" })]);
+  assert.equal(stalled.neverStarted, 1);
+  assert.equal(stalled.p95Ms, "never audible");
+  assert.equal(a15Trigger(stalled).triggered, true);
+  const cut = seamStats([seam(1, 500), seam(2, null, { cutBy: "pause" })]);
+  assert.deepEqual([cut.seams, cut.measured, cut.cut, cut.neverStarted, cut.p95Ms], [2, 1, 1, 0, 500]);
+  assert.equal(a15Trigger(seamStats([seam(1, 4001)])).triggered, true);
+  assert.equal(a15Trigger(seamStats([seam(1, 4000)])).triggered, false, "the line is > 4 s, not >=");
+  assert.equal(a15Trigger(seamStats([])).triggered, null);
+});
+
+test("A-05 (f): recorded, not gated: the verdict fails only when there was nothing to record", () => {
+  /* MUTATION: fail (f) on p95 > 4 s -> the slow case fails. The card says
+     "Record them; do not gate yet". */
+  const slow = seamStats([seam(1, 9000), seam(2, 11000)]);
+  const ok = verdictSeams({ started: { ok: true }, wake: "Asleep", stats: slow });
+  assert.equal(ok.ok, true);
+  assert.equal(ok.recorded.triggered, true);
+  assert.match(verdictSeams({ started: { ok: true }, wake: "Awake", stats: slow }).failures.join(), /screen did not go off/);
+  assert.match(verdictSeams({ started: { ok: false }, wake: "Asleep", stats: slow }).failures.join(), /did not start/);
+  assert.match(verdictSeams({ started: { ok: true }, wake: "Asleep", stats: seamStats([]) }).failures.join(), /no seam row/);
+  assert.match(verdictSeams({ started: { ok: true }, wake: "Asleep", stats: null }).failures.join(), /could not be read/);
+});
+
+test("A-05 (g): Doze passes on four minutes of clock in the same process, and fails on each thing it gates", () => {
+  /* MUTATION: drop the deep-idle check -> the "not entered" case passes.
+     MUTATION: gate on 60 s instead of 240 -> the frozen-clock case passes. */
+  const first = { at: 0, foray: { elapsedSec: 10 } };
+  const last = { at: 300000, foray: { elapsedSec: 309 } };
+  const service = { found: true, isForeground: true, mediaPlayback: true };
+  const base = { first, last, wake: "Asleep", deep: "IDLE", bucket: 40, pidBefore: "1", pidAfter: "1", service };
+  assert.deepEqual(verdictDoze(base).failures, []);
+  assert.match(verdictDoze({ ...base, deep: "ACTIVE" }).failures.join(), /Doze was not entered/);
+  assert.match(verdictDoze({ ...base, bucket: 10 }).failures.join(), /not rare/);
+  assert.match(verdictDoze({ ...base, wake: "Awake" }).failures.join(), /screen did not go off/);
+  assert.match(verdictDoze({ ...base, last: { at: 300000, foray: { elapsedSec: 60 } } }).failures.join(), /the gate is 240 s/);
+  assert.match(verdictDoze({ ...base, last: { at: 120000, foray: { elapsedSec: 129 } } }).failures.join(), /stopped answering/);
+  assert.match(verdictDoze({ ...base, pidAfter: "2", killedBy: "Killing 1:x" }).failures.join(), /died in Doze \(Killing 1:x\)/);
+  assert.match(verdictDoze({ ...base, service: { found: true, isForeground: false, mediaPlayback: true } }).failures.join(), /not a mediaPlayback foreground service/);
+});
+
+const at = (t, src = "https://localhost/a04/click-cbr.mp3", extra = {}) => ({ element: { t, src, paused: false }, foray: { running: true }, remote: [], ...extra });
+
+test("A-05 (h): a focus phase says whether we paused and came back; the verdict fails only when the helper got no focus", () => {
+  /* MUTATION: read "granted" from any helper line -> the refused case passes.
+     MUTATION: compare clocks across two files -> the seam case reads as
+     playing. */
+  assert.equal(advanced(at(1), at(5)), 4);
+  assert.equal(advanced(at(1), at(5, "https://localhost/a04/click-vbr-xing.mp3")), null, "two files' clocks are not one clock");
+  assert.equal(wasPlaying(at(1), at(5)), true);
+  assert.equal(wasPlaying(at(1), at(1.5)), false);
+  const stackOurs = focusStack(AUDIO);
+  const ours = AUDIO.split(/\r?\n/).find((l) => l.includes("-- pack: ai.jwlabs.foura"));
+  const held = focusStack(AUDIO.replace(ours, `${ours.replace("loss: none", "loss: LOSS_TRANSIENT")}\n${ours.replace("pack: ai.jwlabs.foura", `pack: ${HELPER_PKG}`)}`));
+  const p = focusPhase({
+    mode: "transient", stackBefore: stackOurs, stackHeld: held, stackAfter: stackOurs,
+    sPre: at(10), s0: at(14), s1: at(18), s2: at(18.2), s3: at(18.5), s4: at(22.5),
+    helperLog: ["mode=transient result=1", "mode=abandon result=1"],
+  });
+  assert.equal(p.helperGranted, true);
+  assert.equal(p.before.playing, true);
+  assert.equal(p.whileHeld.top, HELPER_PKG);
+  assert.equal(p.whileHeld.ourEntries[0].loss, "LOSS_TRANSIENT");
+  assert.equal(p.whileHeld.playing, false);
+  assert.equal(p.afterAbandon.playing, true);
+  const v = verdictFocus({ phases: [p] });
+  assert.equal(v.ok, true);
+  assert.deepEqual(v.recorded, [{ mode: "transient", playingBefore: true, heldFocusBefore: true, ourLossWhileHeld: "LOSS_TRANSIENT", pausedWhileHeld: true, resumedAfterAbandon: true }]);
+  const refused = focusPhase({ mode: "gain", helperLog: ["mode=gain result=0"], s0: at(1), s4: at(2) });
+  assert.match(verdictFocus({ phases: [refused] }).failures.join(), /gain: the helper's AUDIOFOCUS request was not granted/);
+  assert.match(verdictFocus({ phases: [] }).failures.join(), /no focus phase ran/);
+});
+
+test("A-05 (i): the call verdict fails only when the emulator's call did not ring, answer and hang up", () => {
+  /* MUTATION: drop the OFFHOOK check -> a call that was never answered
+     passes, and its "in-call" values would be about ringing. */
+  const phase = (name, cs, playing) => ({ name, callState: cs, playing, running: playing, top: PKG, ourEntries: [{ loss: "none" }], inRingOrCall: cs !== "IDLE" });
+  const phases = [phase("before", "IDLE", true), phase("ringing", "RINGING", false), phase("in-call", "OFFHOOK", false), phase("ended", "IDLE", false), phase("ended+10s", "IDLE", true)];
+  const v = verdictCall({ phases });
+  assert.equal(v.ok, true);
+  assert.deepEqual([v.recorded.ringing.playing, v.recorded.inCall.playing, v.recorded.endedLater.playing], [false, false, true]);
+  assert.match(verdictCall({ phases: phases.map((p) => (p.name === "in-call" ? { ...p, callState: "RINGING" } : p)) }).failures.join(), /in-call: mCallState is RINGING, not OFFHOOK/);
+  assert.match(verdictCall({ phases: phases.filter((p) => p.name !== "ringing") }).failures.join(), /the ringing phase did not run/);
+});
+
+test("A-05 (j): who got the play, and the force-stop control is the only gate", () => {
+  /* MUTATION: drop the force-stop pid check -> a control that left the
+     process running passes. MUTATION: prefer the button session over a
+     PLAYING one -> the YouTube Music case names us. */
+  const sessions = mediaSessions(SESSIONS);
+  assert.deepEqual(receiverOf(sessions, mediaButtonRoute(SESSIONS)), { by: "a PLAYING session", pkg: PKG });
+  const ytPlaying = { sessions: [{ package: "com.google.android.apps.youtube.music", state: "PLAYING" }, { package: PKG, state: "PAUSED" }] };
+  assert.equal(receiverOf(ytPlaying, { sessionPackage: PKG }).pkg, "com.google.android.apps.youtube.music");
+  assert.deepEqual(receiverOf({ sessions: [{ package: PKG, state: "PAUSED" }] }, { sessionPackage: PKG }), { by: "the media button session (not playing)", pkg: PKG });
+  assert.equal(receiverOf({ sessions: [] }, { sessionPackage: null }).pkg, null);
+  const leg = (name, extra) => ({ leg: name, pidBefore: "1", killed: true, routeBefore: { session: `${PKG}/x`, lastReceiver: null }, receivedBy: { pkg: null }, pidAfterKill: null, pidAfterDispatch: null, ...extra });
+  const legs = [leg("am-kill", { killed: false, pidAfterKill: "1", pidAfterDispatch: "1", pagePlaying: false }), leg("sigkill", { pidAfterDispatch: "7" }), leg("force-stop")];
+  const v = verdictKill({ legs });
+  assert.equal(v.ok, true);
+  assert.deepEqual(v.recorded.map((r) => [r.leg, r.killed, r.restarted]), [["am-kill", false, false], ["sigkill", true, true], ["force-stop", true, false]]);
+  assert.match(verdictKill({ legs: [legs[0], legs[1], leg("force-stop", { pidAfterKill: "1" })] }).failures.join(), /force-stop left our process running/);
+  assert.match(verdictKill({ legs: [legs[0], legs[1], leg("force-stop", { pidAfterDispatch: "9" })] }).failures.join(), /brought our process back/);
+  assert.match(verdictKill({ legs: [legs[0]] }).failures.join(), /force-stop leg did not run/);
+});
+
+test("A-05 (k): the airplane fallback passes when the line is spoken or skipped in time and the Foray goes on", () => {
+  /* MUTATION: accept a decision at any time -> the late case passes.
+     MUTATION: pass a spoken line whose Foray never reached the next clip ->
+     the stalled-after case passes. */
+  const base = { airplane: true, reachedLine: true, decision: { kind: "spoken", ms: 900 }, landed: true, final: { foray: { index: 2, running: true } } };
+  assert.deepEqual(verdictAirplane(base).failures, []);
+  assert.deepEqual(verdictAirplane({ ...base, decision: { kind: "skipped", ms: 1200 } }).failures, []);
+  assert.match(verdictAirplane({ ...base, decision: { kind: "spoken", ms: GATES.airplaneDecisionMs + 1 } }).failures.join(), /the deadline is/);
+  assert.match(verdictAirplane({ ...base, decision: null }).failures.join(), /neither spoken nor skipped/);
+  assert.match(verdictAirplane({ ...base, decision: { kind: "stopped", ms: 400, error: "load failed" } }).failures.join(), /stopped at the line/);
+  assert.match(verdictAirplane({ ...base, landed: false }).failures.join(), /did not go on to the clip/);
+  assert.match(verdictAirplane({ ...base, airplane: false }).failures.join(), /airplane mode did not engage/);
+  assert.match(verdictAirplane({ ...base, reachedLine: false }).failures.join(), /never reached the narration line/);
+  assert.equal(GATES.airplaneDecisionMs, 15000, "the visible load deadline (10 s) plus 5 s");
+});
+
+test("A-05 (l): Back on Home passes when the app left, the process stayed and the clock kept moving", () => {
+  /* MUTATION: drop the clock check -> the pre-A-07 exit (process cached,
+     service stopped, silence) passes on pid alone. */
+  const service = { found: true, isForeground: true, mediaPlayback: true };
+  const base = { left: true, presses: 1, pidBefore: "1", pidAfter: "1", first: at(10), last: at(14), service };
+  assert.deepEqual(verdictBack(base).failures, []);
+  assert.match(verdictBack({ ...base, left: false, presses: 5 }).failures.join(), /never left the app in 5 presses/);
+  assert.match(verdictBack({ ...base, last: at(10.2) }).failures.join(), /the audio stopped/);
+  assert.match(verdictBack({ ...base, pidAfter: null }).failures.join(), /Back ended the process/);
+  assert.match(verdictBack({ ...base, service: { found: false } }).failures.join(), /not a mediaPlayback foreground service/);
+  assert.equal(KNOWN_FAILURES.some((k) => k.scenario === "back-home"), false, "A-07 is merged: (l) is gated, not expected-fail");
+});
+
+test("A-05: the ring read and the speech instrument run in a fake page", () => {
+  /* MUTATION: filter the ring on `seq >= since` -> the row that marked the
+     start is counted again. MUTATION: stop passing the plugin call through
+     -> the fake bridge's answer is lost and fails. */
+  const store = { cp_diag: JSON.stringify({ seq: 12, dropped: 0, entries: [
+    { seq: 10, type: "seam", observedGapMs: 1 }, { seq: 11, type: "nowplaying" }, { seq: 12, type: "narration", reason: "network" },
+  ] }) };
+  const ls = { getItem: (k) => store[k] ?? null };
+  const r = vm.runInContext(ringExpression(10), vm.createContext({ localStorage: ls, JSON }));
+  assert.equal(r.ok, true);
+  assert.equal(r.seq, 12);
+  assert.deepEqual(r.entries.map((e) => e.seq), [12]);
+  assert.equal(vm.runInContext(ringExpression(Number.MAX_SAFE_INTEGER), vm.createContext({ localStorage: ls, JSON })).entries.length, 0);
+  assert.equal(vm.runInContext(ringExpression(0), vm.createContext({ localStorage: { getItem: () => null }, JSON })).ok, false);
+
+  const calls = [];
+  const Capacitor = { nativePromise: (plugin, method, opts) => { calls.push([plugin, method, opts?.text]); return Promise.resolve({ voice: "en-us-x" }); } };
+  const window = { addEventListener: () => {}, Capacitor, ForayPlayer: {}, ForayMediaSession: null };
+  class HTMLMediaElement { play() { return "p"; } }
+  const ctx = vm.createContext({ window, HTMLMediaElement, navigator: {}, document: { visibilityState: "visible" }, Date, Promise });
+  vm.runInContext(INSTRUMENT_EXPRESSION, ctx);
+  const answer = window.Capacitor.nativePromise("ForayTts", "speak", { text: "hello" });
+  window.Capacitor.nativePromise("ForayAudio", "state", {});
+  vm.runInContext(INSTRUMENT_EXPRESSION, ctx);
+  window.Capacitor.nativePromise("ForayTts", "speak", { text: "again" });
+  assert.deepEqual(calls.map((c) => c[1]), ["speak", "state", "speak"], "every call passes through, once, after a second install");
+  return answer.then((a) => {
+    assert.equal(a.voice, "en-us-x");
+    const s = JSON.parse(JSON.stringify(vm.runInContext(STATE_EXPRESSION, ctx)));
+    assert.deepEqual(s.tts.map((t) => [t.method, t.ok]), [["speak", true], ["speak", true]], "only ForayTts calls are recorded");
+    assert.equal(s.tts[0].voice, "en-us-x");
+  });
 });
