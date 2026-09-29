@@ -195,6 +195,8 @@ These are the same as `docs/native-engine-plan.md` §12, adapted:
 - **Acceptance:** HUMAN-ACTIONS lints clean. `grep -n "#11" docs/android-release.md` points at the new item. #18
   and #12 are in HUMAN-ACTIONS-DONE with reasons.
 - **Device check:** none.
+- **Status (2026-09-29): done.** Filed as HUMAN-ACTIONS #127, marked not issued until after A-42 (D-A3). #18 closed
+  (done, run 36203157867) and #12 closed (skip, superseded) in HUMAN-ACTIONS-DONE. #127 already names the A-14 script path, `docs/android-device-pass.md`.
 
 #### A-02 · Emulator launch smoke on every player/app PR — **S**
 - **Depends on:** none (governed path).
@@ -574,7 +576,7 @@ become gates.
 | H-5 | Founder (store scope only) | Submit to Play's Android Auto review (A-51). | — | $0 | A3 only. |
 | — | Orchestrator | Apply `founder-approved` to the governed-path PRs (A-02, A-04, A-05, A-06, A-10) under the standing approval, after verifying them. Agents never self-apply it. | — | — | Those PRs' merge. |
 
-HUMAN-ACTIONS #18 and #12 need nothing from you. A-01 closes them.
+HUMAN-ACTIONS #18 and #12 needed nothing from you. A-01 closed them, and filed the Android device pass as #127 (not issued until after A-42).
 
 ---
 

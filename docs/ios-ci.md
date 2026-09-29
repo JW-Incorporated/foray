@@ -233,7 +233,8 @@ does not block Capacitor's bridge injection. That is what `docs/mobile-shell.md`
 §5 *reasoned* and nobody had run. It says nothing about Android, which injects an
 inline `<script>` into the served HTML from a `https://localhost` origin — a
 different mechanism, and the one §5's risk is actually about. That is
-`HUMAN-ACTIONS.md` #18 and it stays open. `bridgeVerdict()` carries both halves of
+`HUMAN-ACTIONS.md` #18, since closed: the Android emulator smoke (`android-release`
+run 36203157867) logged `hasCapacitor: true` under the real CSP. `bridgeVerdict()` carries both halves of
 that sentence in its own output so the claim cannot creep in a retelling.
 
 **And a `bridge-blocked` result does not automatically mean the CSP.** On iOS the
