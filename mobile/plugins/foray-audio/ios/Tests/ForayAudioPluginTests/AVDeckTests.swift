@@ -560,13 +560,16 @@ final class AVDeckTests: XCTestCase {
         XCTAssertFalse(events.contains(where: settled), "the line's deadline fired early: \(events)")
         timers.advance(ms: 1)
         let hit = events.first {
-            if case .deadlineExceeded(9, _) = $0 { return true }
+            if case .deadlineExceeded(9, _, _) = $0 { return true }
             return false
         }
-        guard case let .deadlineExceeded(_, afterMs)? = hit else {
+        guard case let .deadlineExceeded(_, afterMs, cause)? = hit else {
             return XCTFail("no deadlineExceeded(token: 9) at 8 s; events: \(events)")
         }
         XCTAssertEqual(afterMs, Int(deadlineMs))
+        // NE-39n: a line's deadline with nothing in the error log reads
+        // `timeout`, the cause its fallback row will carry.
+        XCTAssertEqual(cause, .timeout)
         let row = try XCTUnwrap(diags.last { $0.kind == "deck" && $0[field: "kind"] == .string("deadline") },
                                 "no deck kind=deadline row: \(diags)")
         XCTAssertEqual(row[field: "class"], .string("line"))
