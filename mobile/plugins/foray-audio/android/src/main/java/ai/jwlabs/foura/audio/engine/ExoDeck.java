@@ -173,11 +173,13 @@ public final class ExoDeck implements DeckDriving {
 
     /**
      * Progressive sources over {@code dataSources}. {@code preciseTiming} (the core's choice:
-     * bounded segments and local files) turns on MP3 INDEX SEEKING, which lands a VBR file with
-     * no seek table on the frame the time names by reading up to it, instead of estimating a
-     * byte offset from the first frame's bitrate. The approximate path is Media3's default
-     * (constant-bitrate seeking when there is no table). docs/android-emulator-measurements.md
-     * §8 has what each one costs in in-point error on the click tracks.
+     * bounded segments and local files) adds MP3 INDEX SEEKING. In Media3 1.11 that is a
+     * FALLBACK, not an override: Mp3Extractor takes the file's own seek map first (an MLLT
+     * tag, a Xing / VBRI table, else a constant-bitrate estimate) and builds an index (reading
+     * up to the target) only when that map is unseekable. So a VBR file with no table is
+     * sought by the constant-bitrate estimate on BOTH paths.
+     * docs/android-emulator-measurements.md §8 has what that costs in in-point error on the
+     * click tracks, per path; a precise VBR seek is A-40's to decide (the Foray in-points).
      */
     public static MediaSourceMaker progressive(DataSource.Factory dataSources) {
         ProgressiveMediaSource.Factory precise = new ProgressiveMediaSource.Factory(dataSources,

@@ -101,9 +101,14 @@ public class ExoDeckTest {
             h.deck.send(DeckCommand.PLAY);
             assertEquals(1.5f, h.player.getPlaybackParameters().speed, 0);
             assertTrue(h.deck.primitives().contains("play rate=1.5"));
+            h.runUntil(() -> h.player.isPlaying());
+            long t0 = h.clock.elapsedRealtime();
+            double p0 = h.deck.reading().positionSec;
             h.runFor(2000);
-            double at = h.deck.reading().positionSec;
-            assertTrue("1.5x for 2 s of wall clock is 3 s of content: " + at, at >= 12.9 && at <= 13.1);
+            double content = h.deck.reading().positionSec - p0;
+            double wall = (h.clock.elapsedRealtime() - t0) / 1000.0;
+            assertTrue("1.5x plays 1.5 s of content a second: " + content + " s in " + wall + " s",
+                    Math.abs(content / wall - 1.5) <= 0.05);
             h.deck.send(new DeckCommand.SetRate(0));
             DeckEvent.Refused refused = h.find(DeckEvent.Refused.class);
             assertNotNull(refused);

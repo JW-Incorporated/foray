@@ -87,16 +87,14 @@ public class ExoDeckMeasurementTest {
                     double window = Math.min(HEARD_WINDOW_SEC, fixture.durationSec - requested - 0.5);
                     if (window < 10.5) continue;
                     trials++;
-                    JSONObject trial = measureInPoint(fixture, precise, requested, window);
-                    IN_TRIALS.add(trial);
-                    System.out.println("A25-json in " + trial);
+                    measureInPoint(fixture, precise, requested, window);
                 }
             }
         }
         assertTrue("the in-point rig ran no trial", trials > 0);
     }
 
-    private JSONObject measureInPoint(ClickTracks.Fixture fixture, boolean precise, double requested, double window) throws Exception {
+    private void measureInPoint(ClickTracks.Fixture fixture, boolean precise, double requested, double window) throws Exception {
         try (DeckHarness h = new DeckHarness()) {
             // 2x halves the virtual playback the heard window takes; where a load lands does not depend on the rate.
             h.deck.send(new DeckCommand.SetRate(2.0));
@@ -141,6 +139,9 @@ public class ExoDeckMeasurementTest {
                     .put("seekMapOffsetMs", round1(seekMapOffsetMs))
                     .put("inPointErrorMs", round1(errorMs))
                     .put("candidates", where.candidates);
+            // Recorded before it is judged, so a failing trial is in the report too.
+            IN_TRIALS.add(trial);
+            System.out.println("A25-json in " + trial);
             assertEquals("the deck reports the start it was asked for", requested, ready.landedSec(), 0.0005);
             if (exactSeekMap(fixture)) {
                 // An exact seek map labels every sample with its real place, and the first
@@ -148,7 +149,6 @@ public class ExoDeckMeasurementTest {
                 assertEquals(fixture + " " + trial, 0, seekMapOffsetMs, 0.5);
                 assertTrue(fixture + " " + trial, errorMs >= -0.5 && errorMs <= MP3_FRAME_SEC * 1000 + 0.5);
             }
-            return trial;
         }
     }
 
@@ -159,16 +159,14 @@ public class ExoDeckMeasurementTest {
             for (double rate : RATES) {
                 for (Set<OutPointLayer> layers : layerSets()) {
                     trials++;
-                    JSONObject trial = measureOutPoint(fixture, rate, layers);
-                    OUT_TRIALS.add(trial);
-                    System.out.println("A25-json out " + trial);
+                    measureOutPoint(fixture, rate, layers);
                 }
             }
         }
         assertTrue("the out-point rig ran no trial", trials > 0);
     }
 
-    private JSONObject measureOutPoint(ClickTracks.Fixture fixture, double rate, Set<OutPointLayer> layers) throws Exception {
+    private void measureOutPoint(ClickTracks.Fixture fixture, double rate, Set<OutPointLayer> layers) throws Exception {
         try (DeckHarness h = new DeckHarness(c -> c.outPointLayers = EnumSet.copyOf(layers))) {
             h.deck.send(new DeckCommand.SetRate(rate));
             h.deck.send(new DeckCommand.Load(1, "seg-1", fixture.uri().toString(), OUT_POINT_SEC - LEAD_IN_SEC, true));
@@ -196,12 +194,13 @@ public class ExoDeckMeasurementTest {
                     .put("positionErrorMs", round1((atStopSec - OUT_POINT_SEC) * 1000))
                     .put("settledSec", round3(settledSec))
                     .put("earlyReports", early);
+            OUT_TRIALS.add(trial);
+            System.out.println("A25-json out " + trial);
             // NEVER EARLY (plan §4.3 P-2): not at the stop, and not once the player settles.
             assertTrue(what + ": stopped early " + trial, atStopSec >= OUT_POINT_SEC - NEVER_EARLY_TOLERANCE_SEC);
             assertTrue(what + ": settled early " + trial, settledSec >= OUT_POINT_SEC - NEVER_EARLY_TOLERANCE_SEC);
             assertTrue(what + ": the overshoot row is never negative", DeckHarness.num(stop, "overshootMs") >= 0);
             assertTrue(what + ": a layer that is off stopped it", layers.contains(layerOf(DeckHarness.str(stop, "layer"))));
-            return trial;
         }
     }
 

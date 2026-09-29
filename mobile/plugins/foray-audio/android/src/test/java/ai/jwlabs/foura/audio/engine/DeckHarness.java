@@ -66,9 +66,31 @@ final class DeckHarness implements AutoCloseable {
         });
     }
 
-    /** Run the main looper (and so the fake clock) until the condition holds. */
+    /**
+     * Run the main looper (and so the fake clock) until the condition holds.
+     *
+     * <p>THE NUDGE. An auto-advancing FakeClock only jumps to its next message when that is at
+     * most a second away, and only messages keep it moving. A playing player posts one every
+     * 10 ms, but an idle one (after a deadline cleared it) or one whose load is blocked posts
+     * nothing near, and then a deck timer seconds out would never come due. So when the clock
+     * has not moved for a while, it is moved 10 ms by hand, the cadence Media3's own work loop
+     * keeps.
+     */
     void runUntil(BooleanSupplier condition) throws TimeoutException {
-        RobolectricUtil.runMainLooperUntil(condition::getAsBoolean);
+        long[] last = {clock.elapsedRealtime()};
+        int[] still = {0};
+        RobolectricUtil.runMainLooperUntil(() -> {
+            if (condition.getAsBoolean()) return true;
+            long now = clock.elapsedRealtime();
+            if (now != last[0]) {
+                last[0] = now;
+                still[0] = 0;
+            } else if (++still[0] >= 20) {
+                still[0] = 0;
+                clock.advanceTime(10);
+            }
+            return false;
+        });
     }
 
     /** Let {@code ms} of virtual time pass. */

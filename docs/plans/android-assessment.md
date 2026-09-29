@@ -682,7 +682,7 @@ A-61, A-62, A-64, A-66 (+ NE-39j) ─ A-63 ─ A-67 ─ A-68 ─ A-69 (gated)
 - **Device check:** A-67's script, route block.
 
 #### A-62 · Prepare across narration seams on the Media3 deck (mirrors NE-45s) — **M**
-- **Depends on:** A-42, NE-45j (its new `prepare` ids are `cases` owed to A-62 once A-25 has ported the family)
+- **Depends on:** A-42, NE-45j (its new `prepare` ids are `cases` owed to A-62 once A-40 has ported the family: A-25 handed `prepare` to A-40, because its cases run the Foray tape through the engine)
 - **Human-gated:** no.
 - **Files:** the Foray tape from A-40 (an ExoPlayer playlist with `ClippingConfiguration`, or a deck pair, whichever A-40 chose), the JVM `DeckPolicy.warmsAcross`, the packed `seam` rows, and Robolectric tests.
 - **Ask:** Port `warmsAcross`. A rendered line is a `MediaItem` like a clip.
