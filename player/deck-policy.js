@@ -374,3 +374,5 @@ export function recoveryLoadedOps({ superseded, stopped, boundarySec }) {
 export function recoveryFailedOps({ superseded, stopped }) {
   return superseded || stopped ? [] : [RECOVERY.REPORT];
 }
+
+// A-02 throwaway: a player/-only change to show android-smoke fires on it. Never merged.
