@@ -7,6 +7,51 @@ docs/. Completed workstreams move to their plan doc's retro section.
 
 ## Active workstreams
 
+### 2026-09-29 — `android/a-24-enginecore-episodes`: A-24, EngineCore for episodes on the JVM
+
+Owned: `foray-engine-core-jvm`'s engine core (`EngineCore` and its input, command, state and deck vocabulary),
+`DeckPolicy`, the `manager-episode` and `deck-episode` runners, and three entries of `player/parity/jvm-pending.json`.
+Card A-24 of `docs/plans/android-assessment.md` (Track A1).
+
+**What was ported**, from `ForayEngineCore` on `origin/main` (engine/m2 differs from main only in contract files):
+`EngineCore.handle(input, now) -> [EngineCommand]` for episodes, with `EngineInput`, `EngineCommand`, `EngineState`,
+`EngineItem`, `EngineConfig`, `EngineTimer`, `DeckCommand` / `DeckEvent` / `DeckReading` / `EngineNow`, the typed
+command set in `EngineContract` (refusals, relinquish caps, the continuation hop), and `DeckPolicy`'s episode rules.
+The port is the Swift core with the Foray tape OFF: every tape, narration, jingle and silence path is a no-op there,
+so they are left out, and A-40 / A-41 add them at the call sites the Swift core names. Rebuilding a core from the
+restore record stays with A-27; decoding engineSend payloads stays with A-28.
+
+**The audible-start invariant.** Every play goes through `begin`, which asks `SessionPolicy`; a play that needs the
+session parks behind `sessionActivate` until the answer comes back in the same turn, and `startPlayback` refuses without
+an active session. `EngineScenarioDriver` (the JVM twin of the Swift driver) checks
+`SessionPolicy.audibleStartViolations` on every turn of every scenario, plus play-only-after-ready, one audible source,
+and every grace span closed. Under mutation (`PLAY_WHILE_LOST`: a `deckPlay` at the head of a turn that begins
+`lostToInterruption`) `manager-episode/declined-call-resumes-answered-call-stays-paused` goes red with
+`!audible-start:deckPlay@lostToInterruption`, and `PLAY_ON_LOAD` turns `play-loads-then-starts` red with
+`!deck-play-before-ready`; only `manager-episode` cases fail (`EngineScenarioDriverTest`).
+
+**The books.** `manager-episode` (44 cases) and `deck-episode` (58) moved to `runs`: 0 owed, 0 failed. `snapshot` was
+owed to A-24, but its cases are `contractAccepts` on the schema's snapshot payloads and `extrapolate`, which is the
+contract module A-28 ports (with `contract` and `handshake`), so it is now owed to A-28.
+
+**Executed locally:** `javac --release 21 -Xlint:all -Werror` and JUnit on a portable Temurin 21 in the session
+scratchpad (plain `javac`, not Gradle): 87 JUnit cases green; the parity report shows 862 passed, 0 failed, 0 pending,
+0 stale. `record.mjs --check`: 1836 cases, all match.
+
+**Review (adversarial pass).** Mutations were made in the core itself, not in its output:
+- Deleting the activation in `begin` and the `startPlayback` guard leaves every op log the same as the JS. The driver's
+  per-turn audible-start check is the only thing that fails: 37 cases go red with `!audible-start:deckPlay@inactive`.
+- Ignoring the interruption rewind turns 2 `manager-episode` cases red.
+- Two `DeckPolicy` edits turn 5 `deck-episode` cases red.
+- Resuming on ANY route that comes back, not only a known car (corner case #13), passed everything. No fixture drives a
+  route coming back.
+
+That last gap was closed by porting the 17 Swift `EngineCoreTests` that the JVM suite had left out: the rest of the stop
+causes, the known-car and headphones resume, the grace rows (`remote`, `resume`, `cold-play`), interruption reasons,
+route attribution, toggle from native truth, the remote stop, duplicate presses, rate on every play, the seeks, the cold
+nudge, the scrub flush and hold policy `none`. The headphones case now goes red under that mutation.
+
+No device, and no request to Joey (D-A3).
 ### 2026-09-29 — `engine/m3`: iOS M3 re-planned; Android Track A4 added
 
 **The ask.** The founder, 2026-09-29: *"It's going to be a while until I get to those human actions. keep progressing towards milestone 3 for both iPhone and android"*.
