@@ -222,6 +222,9 @@ const ACKNOWLEDGED_UNDENIED_GATES = {
   // adb in an advisory job that reads no secret and uploads only its evidence.
   // A neutered copy can only make that advisory job greener than it should be.
   "tools/mobile/android-playback.mjs": "advisory emulator scenario runner (A-04); drives a debug APK, holds no secret, cannot alter build/signing output",
+  // A-26: the same job's native-engine leg, the same trade: it drives the DEBUG APK's
+  // engine over adb (a debug-only receiver) and reads its dump, in the advisory job.
+  "tools/mobile/android-native-playback.mjs": "advisory emulator scenario runner (A-26 native leg); drives a debug APK, holds no secret, cannot alter build/signing output",
   // nightly-refresh.yml / nightly-watch.yml run with `contents: write` (they
   // commit refreshed data), not a founder-merge decision — an accepted T3
   // trade per the file's own tiering above, bounded by main's branch

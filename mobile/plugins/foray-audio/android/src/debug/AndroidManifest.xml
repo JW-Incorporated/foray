@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  DEBUG BUILDS ONLY: AGP merges src/debug/ into the library's debug variant, which only the app's
+  debug build consumes, so a release APK or bundle carries neither this receiver nor its class.
+
+  A-26 (docs/plans/android-assessment.md §5.4): the native-mode leg of android-playback.yml drives
+  the native engine through this receiver over adb, until A-28 gives the page its own way in.
+  Exported because `adb shell am broadcast` runs as the shell user, which cannot reach an
+  unexported component; it is a debug build's test hook, never shipped.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application>
+        <receiver
+            android:name="ai.jwlabs.foura.audio.EngineDriveReceiver"
+            android:exported="true" />
+    </application>
+</manifest>

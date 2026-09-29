@@ -181,7 +181,7 @@ function legs() {
     .split(/\n(?= {10}- )/)
     .map((chunk) => {
       const field = (k) => new RegExp(`^ {10}(?:- | {2})${k}: (.+)$`, "m").exec(chunk)?.[1]?.trim() ?? null;
-      return { api: Number(field("api")), image: field("image"), timeout: Number(field("timeout")) };
+      return { api: Number(field("api")), image: field("image"), timeout: Number(field("timeout")), mode: field("mode") };
     });
 }
 
@@ -192,7 +192,7 @@ test("A-06: two legs, API 34 (the smoke's image, fast) and API 36 (current, allo
      cancel API 34's verdicts). MUTATION: raise the API 34 ceiling to 45 ->
      fails. MUTATION: hardcode `EMULATOR_IMAGE` again -> fails (both legs would
      boot the same image under two names). */
-  const L = legs();
+  const L = legs().filter((l) => l.mode === "js");
   assert.deepEqual(L.map((l) => l.api), [34, 36]);
   const smokeImage = /^ {6}EMULATOR_IMAGE: (.+)$/m.exec(SMK)?.[1];
   assert.equal(L[0].image, smokeImage, "the fast leg is the smoke's image");
@@ -203,7 +203,9 @@ test("A-06: two legs, API 34 (the smoke's image, fast) and API 36 (current, allo
   assert.match(block(PYML, "strategy", 4), /^ {6}fail-fast: false$/m);
   assert.match(PYML, /^ {6}EMULATOR_IMAGE: \$\{\{ matrix\.image \}\}$/m);
   assert.match(PYML, /^ {6}API_LEVEL: \$\{\{ matrix\.api \}\}$/m);
-  assert.match(PYML, /^ {4}name: android-playback \(API \$\{\{ matrix\.api \}\}\)$/m, "each leg's check says its API level");
+  /* The JS legs' check names are unchanged by A-26's third leg (the suffix is empty for them). */
+  assert.match(PYML, /^ {4}name: android-playback \(API \$\{\{ matrix\.api \}\}\$\{\{ matrix\.mode == 'native' && ', native engine' \|\| '' \}\}\)$/m,
+    "each leg's check says its API level, and the native leg says so");
 });
 
 test("A-06: each leg proves its device is its API level, and uploads and summarises under its own name", () => {
@@ -221,7 +223,7 @@ test("A-06: each leg proves its device is its API level, and uploads and summari
   const at = PLY.indexOf("- name: The device is the leg's API level");
   assert.ok(at > PLY.indexOf("- name: Boot it") && at < PLY.indexOf("- name: Install the app and start it"));
   const up = step(PLY, "Upload the playback evidence");
-  assert.match(up, /^ {10}name: foray-android-playback-api\$\{\{ matrix\.api \}\}$/m);
+  assert.match(up, /^ {10}name: foray-android-playback-api\$\{\{ matrix\.api \}\}\$\{\{ matrix\.mode == 'native' && '-native' \|\| '' \}\}$/m);
   const summary = playStep("What the scenarios established");
   assert.match(summary, /API \$\{API_LEVEL\}/, "the summary names its leg");
   assert.equal(/API 34 emulator/.test(summary), false, "the summary does not claim API 34 on the API 36 leg");
@@ -267,7 +269,7 @@ test("A-04: every scenario is its own step, runs after a launch whatever came be
     assert.ok(s, `no step runs the ${id} scenario`);
     const c = code(s);
     assert.match(c, new RegExp(`^ {8}id: ${id}$`, "m"), `the ${id} step needs its own id`);
-    assert.match(c, /^ {8}if: \$\{\{ !cancelled\(\) && steps\.launch\.outcome == 'success' \}\}$/m, `${id} runs after a launch, whatever the scenario before it did`);
+    assert.match(c, /^ {8}if: \$\{\{ matrix\.mode == 'js' && !cancelled\(\) && steps\.launch\.outcome == 'success' \}\}$/m, `${id} runs after a launch, whatever the scenario before it did, on the JS legs`);
     const run = /^ {8}run: (.+)$/m.exec(c)?.[1];
     assert.equal(run, `node tools/mobile/android-playback.mjs ${id} --art "$ART"`, `${id}'s verdict must be its step's`);
   }
@@ -291,7 +293,7 @@ test("A-04: the evidence is collected whenever there was a device, and the summa
      MUTATION: delete the "What it does not prove" line -> fails. */
   const collect = playStep("Collect the logcat");
   assert.ok(collect);
-  assert.match(collect, /if: \$\{\{ !cancelled\(\) && \(steps\.launch\.outcome == 'success' \|\| steps\.launch\.outcome == 'failure'\) \}\}/);
+  assert.match(collect, /if: \$\{\{ matrix\.mode == 'js' && !cancelled\(\) && \(steps\.launch\.outcome == 'success' \|\| steps\.launch\.outcome == 'failure'\) \}\}/);
   assert.match(collect, /android-playback\.mjs collect --art "\$ART"/);
   const summary = playStep("What the scenarios established");
   assert.match(summary, /^ {8}if: always\(\)$/m);
@@ -387,4 +389,41 @@ test("A-05: the focus helper is built from its committed source without Gradle, 
   const at = PLY.indexOf("- name: Build the A-05 focus helper");
   assert.ok(at > PLY.indexOf("- name: The SDK") || at > PLY.indexOf("- name: The Android SDK"));
   assert.ok(at < PLY.indexOf("- name: Install the app and start it"));
+});
+
+test("A-26: a third leg runs the native engine's scenarios, every one gated, and none of the JS lane's", async () => {
+  /* MUTATION: drop the native leg -> fails. MUTATION: `|| true` on a native step, or drop
+     `!cancelled()` from one -> fails. MUTATION: remove the (h) native step -> fails (the card
+     names (a)-(d), (g), (h) and (i)). MUTATION: run a JS scenario on the native leg (drop its
+     `matrix.mode == 'js'`) -> the A-04 test above fails. */
+  const { SCENARIOS: NATIVE } = await import("./android-native-playback.mjs");
+  const native = legs().filter((l) => l.mode === "native");
+  assert.equal(native.length, 1, "one native leg");
+  assert.equal(native[0].api, 34, "the fast image");
+  assert.equal(native[0].image, "system-images;android-34;google_apis;x86_64");
+  assert.ok(native[0].timeout > 30 && native[0].timeout <= 45, "room for the build, the boot and ~12 min of scenarios, not unbounded");
+  assert.equal(legs().filter((l) => l.mode !== "js" && l.mode !== "native").length, 0, "every leg names its mode");
+  assert.match(PYML, /^ {6}MODE: \$\{\{ matrix\.mode \}\}$/m);
+  const steps = PLY.split(/\n(?= {6}- (?:name|uses):)/).filter((c) => /node tools\/mobile\/android-native-playback\.mjs (?!collect|summary)/.test(c));
+  assert.deepEqual(NATIVE.map(([id]) => id), ["play", "background", "transport", "notification", "doze", "focus", "call"]);
+  assert.equal(steps.length, NATIVE.length, "one step per native scenario");
+  let last = PLY.indexOf("android-playback.mjs collect ");
+  for (const [id] of NATIVE) {
+    const s = steps.find((c) => new RegExp(`android-native-playback\.mjs ${id} `).test(c));
+    assert.ok(s, `no step runs the native ${id} scenario`);
+    const c = code(s);
+    assert.match(c, new RegExp(`^ {8}id: native-${id}$`, "m"));
+    assert.match(c, /^ {8}if: \$\{\{ matrix\.mode == 'native' && !cancelled\(\) && steps\.launch\.outcome == 'success' \}\}$/m, `native ${id} runs after a launch whatever came before`);
+    assert.equal(/^ {8}run: (.+)$/m.exec(c)?.[1], `node tools/mobile/android-native-playback.mjs ${id} --art "$ART"`, `native ${id}'s verdict is its step's`);
+    const at = PLY.indexOf(`android-native-playback.mjs ${id} `);
+    assert.ok(at > last, `native ${id} is in the card's order`);
+    last = at;
+  }
+  const collect = playStep("Collect the native engine's dump");
+  assert.ok(collect, "the native leg collects its evidence");
+  assert.match(collect, /if: \$\{\{ matrix\.mode == 'native' && !cancelled\(\) && \(steps\.launch\.outcome == 'success' \|\| steps\.launch\.outcome == 'failure'\) \}\}/);
+  assert.ok(PLY.indexOf("android-native-playback.mjs collect ") > last);
+  const summary = playStep("What the scenarios established");
+  assert.match(summary, /if \[ "\$\{MODE:-js\}" = "native" \]; then/);
+  assert.match(summary, /android-native-playback\.mjs summary --art "\$ART"/);
 });
