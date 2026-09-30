@@ -37,6 +37,13 @@ into `android/native`.
 - `EngineOwnership` boots the bound service from the record (`restoreIfCold`) before it answers the page's first
   call. That is NE-24's order.
 - (j) runs before A-28's page door, which stays last. (j) leaves the app force-stopped.
+- CI on the merged head `c4de6b25`:
+  - `android-build` 36672959220: foray-audio 130 cases, 0 skipped. Attempt 1 failed, and so did the one before
+    it (36672347357), on A-25's `ExoDeckTest.theGateHoldsItsOwnWakeLock…` with a `TimeoutException`. That test
+    races its virtual clock against the playback thread, and a rerun of the failed job passed.
+  - `android-playback` 36672959273: all three legs green. The native job 109751825092 passed (j) (0.02–0.31 s from
+    the saved position) and A-28's page door. The door's engine dump shows `coldBoot painted`: the relaunched native
+    lane booted from (j)'s record before the page's hello.
 
 **Paths.** `.github/workflows/android-playback.yml` (the (j) step) is a governed path. It merges into `android/native`,
 and the orchestrator reviews it on the final `android/native` → `main` PR. Nothing is self-labelled.
