@@ -177,8 +177,9 @@
 # airplane mode, an episode that cannot load stopped by the engine within the
 # deck's load deadline with a bundled one playing after, and a Foray tapped in the
 # native lane relinquished to the page's player, whose rendered line falls back in
-# time (both gated). About six more minutes; the ceiling holds. The numbers are in
-# `docs/android-emulator-measurements.md` §11.
+# time (both gated). The leg took 21 min 42 s with all thirteen steps (run
+# 36693793704), against 17 min 43 s before (run 36688133433), so the 40-minute
+# ceiling holds. The numbers are in `docs/android-emulator-measurements.md` §11.
 #
 # `fail-fast: false`, so a red leg never cancels the other's verdicts. Each leg
 # checks that the device it booted really is its API level before installing
