@@ -80,6 +80,17 @@ import java.util.Objects;
  * the page's bridge still refuses {@code playForay} ({@code foray} is not advertised), so only the
  * debug driver reaches it.
  *
+ * <h2>THE BEAT HOLDS THE CPU (A-40 review)</h2>
+ *
+ * Between two segments NO player plays: the outgoing deck paused at its out-point (Media3's wake
+ * mode lets its lock go with play-when-ready), and the incoming one, promoted warm, never gated a
+ * load (ExoDeck's gate lock is held only while a load gates). So the seam beat, a handler timer on
+ * uptime, would run with no lock at all, and with the screen off the CPU may suspend inside it and
+ * the next segment start late or not until something else wakes the phone. The host therefore
+ * holds a {@link BeatAwake} exactly while the core reads {@code inSeamGap}, re-synced after every
+ * turn and let go at teardown. The beat is bounded by the core (its own timer, the jingle's
+ * ceiling, and every transport action cuts it), so the lock is too.
+ *
  * <h2>TERMINAL</h2>
  *
  * When a turn leaves the core relinquished, the host tears down the deck, every timer and the
@@ -154,6 +165,8 @@ public final class ForayEngineHost {
     private double graceSinceMs;
     private SurfaceListener surfaceListener;
     private Runnable turnListener;
+    private BeatAwake beatAwake;
+    private boolean beatHeld;
     private Surface surface;
     private int surfaceSeq;
     private int activations;
@@ -226,6 +239,32 @@ public final class ForayEngineHost {
         return Collections.unmodifiableSet(timers.keySet());
     }
 
+    /** Holds the CPU awake through the seam beat; see THE BEAT HOLDS THE CPU. */
+    public interface BeatAwake {
+        void setStayAwake(boolean stayAwake);
+    }
+
+    /** The lock the host holds while the seam beat runs (the service's: a partial wake lock). Null: none. */
+    public void setBeatAwake(BeatAwake awake) {
+        if (beatHeld && beatAwake != null) beatAwake.setStayAwake(false);
+        beatHeld = false;
+        beatAwake = awake;
+        syncBeatAwake();
+    }
+
+    /** Whether the host holds the beat's lock now (tests and the diagnostics). */
+    public boolean holdsBeatWakeLock() {
+        return beatHeld;
+    }
+
+    /** The beat's lock is held exactly while the core's seam beat runs, on a live host. */
+    private void syncBeatAwake() {
+        boolean want = beatAwake != null && !tornDown && core.state().inSeamGap();
+        if (want == beatHeld) return;
+        beatHeld = want;
+        beatAwake.setStayAwake(want);
+    }
+
     public void setSurfaceListener(SurfaceListener listener) {
         surfaceListener = listener;
         if (listener != null && !tornDown) listener.onSurface(surface);
@@ -252,6 +291,7 @@ public final class ForayEngineHost {
         seams.deck.setListener(null);
         seams.deck.invalidate();
         inbox.clear();
+        syncBeatAwake();
         SurfaceListener listener = surfaceListener;
         surfaceListener = null;
         if (listener != null) listener.onSurface(surface);
@@ -315,6 +355,7 @@ public final class ForayEngineHost {
         List<String> failures = runTurn(input);
         drain();
         publishSurface();
+        syncBeatAwake();
         if (!tornDown) turned();
         return new Verdict(failures, false);
     }

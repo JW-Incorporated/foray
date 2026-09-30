@@ -34,10 +34,13 @@ public class ForayEngineHostForayTest {
         final List<String> lines = new ArrayList<>();
         final EngineLog log = new EngineLog(() -> 0, lines::add);
         final ForayEngineHost host;
+        /** Every stay-awake the host asked of the beat's lock, in order. */
+        final List<Boolean> awake = new ArrayList<>();
 
         Rig(boolean tape) {
             EngineConfig config = new EngineConfig("test").withForayTape(tape, false);
             host = new ForayEngineHost(new EngineSeams(deck, session, timing, log), config);
+            host.setBeatAwake(awake::add);
             host.start();
         }
 
@@ -101,6 +104,8 @@ public class ForayEngineHostForayTest {
         assertEquals("the next clip loads inside the beat", "f1#1", second.itemId());
         assertEquals(300, second.startSec(), 0);
         assertTrue(rig.host.state().inSeamGap());
+        assertTrue("no player plays in the beat, so the host holds the CPU", rig.host.holdsBeatWakeLock());
+        assertEquals(List.of(true), rig.awake);
         rig.timing.mono += 120;
         rig.deck.emit(new DeckEvent.Ready(second.token(), 300, true, 1));
         assertEquals("ready alone does not start it: the beat still runs", 1, rig.deck.count(DeckCommand.Play.class));
@@ -112,6 +117,8 @@ public class ForayEngineHostForayTest {
         }
         assertEquals("the beat's end starts the second clip", 2, rig.deck.count(DeckCommand.Play.class));
         assertFalse(rig.host.state().inSeamGap());
+        assertFalse("the beat's lock goes once the clip plays", rig.host.holdsBeatWakeLock());
+        assertEquals(List.of(true, false), rig.awake);
         String rows = rig.rows();
         assertTrue(rows, rows.contains("\"askedGapMs\":500"));
         assertTrue(rows, rows.contains("\"observedGapMs\":500"));
@@ -133,6 +140,38 @@ public class ForayEngineHostForayTest {
         DeckCommand.Load next = lastLoad(rig.deck);
         assertEquals("the line is stepped over", "f1#2", next.itemId());
         assertTrue(rig.rows(), rig.rows().contains("\"kind\":\"unsupported\""));
+    }
+
+    /**
+     * The beat's lock is bounded by the beat: a pause inside it cuts the beat and lets the lock go,
+     * and a teardown inside it lets it go too. TO SEE IT FAIL: drop the host's re-sync after a turn,
+     * or at teardown (a partial wake lock held for good, the battery with it).
+     */
+    @Test
+    public void theBeatsLockGoesWithTheBeatOnAPauseAndATeardown() {
+        Rig rig = new Rig(true);
+        rig.playForay(clip(0, "a", 100, 200), clip(1, "b", 300, 400), clip(2, "c", 500, 600));
+        DeckCommand.Load first = lastLoad(rig.deck);
+        rig.deck.emit(new DeckEvent.Ready(first.token(), 100, true, 1));
+        assertFalse("a playing clip needs no beat lock (Media3's wake mode holds the CPU)", rig.host.holdsBeatWakeLock());
+        rig.deck.reading.positionSec = 200.0;
+        rig.deck.emit(new DeckEvent.Ended(first.token()));
+        assertTrue(rig.host.holdsBeatWakeLock());
+        rig.host.handle(new EngineInput.Command(EngineContract.Command.PAUSE, Vocabulary.Source.TAP));
+        assertFalse("a pause cuts the beat", rig.host.state().inSeamGap());
+        assertFalse("and the lock goes with it", rig.host.holdsBeatWakeLock());
+        assertEquals(List.of(true, false), rig.awake);
+
+        Rig torn = new Rig(true);
+        torn.playForay(clip(0, "a", 100, 200), clip(1, "b", 300, 400));
+        DeckCommand.Load a = lastLoad(torn.deck);
+        torn.deck.emit(new DeckEvent.Ready(a.token(), 100, true, 1));
+        torn.deck.reading.positionSec = 200.0;
+        torn.deck.emit(new DeckEvent.Ended(a.token()));
+        assertTrue(torn.host.holdsBeatWakeLock());
+        torn.host.teardown();
+        assertFalse("a teardown inside the beat lets the lock go", torn.host.holdsBeatWakeLock());
+        assertEquals(List.of(true, false), torn.awake);
     }
 
     /** Without the tape (a core built as M1's), playForay is refused {@code capability-off}. */

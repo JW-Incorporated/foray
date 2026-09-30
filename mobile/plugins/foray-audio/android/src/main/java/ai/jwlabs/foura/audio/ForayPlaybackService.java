@@ -290,6 +290,10 @@ public class ForayPlaybackService extends MediaSessionService {
         if (launch != null) builder.setSessionActivity(launch);
         session = builder.build();
         engine.setSurfaceListener(surface -> facade.refresh());
+        /* A-40 review: the seam beat holds the CPU (ForayEngineHost, THE BEAT HOLDS THE CPU). Between
+           two segments no player plays, so no Media3 lock is held; Media3's own managers again, on
+           the first player's playback looper, whose release runs after the teardown lets this go. */
+        engine.setBeatAwake(ExoDeck.systemGateAwake(this, built)::setStayAwake);
         engine.start();
         Player.Listener listener = new Player.Listener() {
             @Override
