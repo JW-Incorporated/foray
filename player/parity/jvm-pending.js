@@ -4,8 +4,9 @@
    The Android engine's core is a Java port of ForayEngineCore
    (mobile/plugins/foray-audio/android/foray-engine-core-jvm), held to the SAME
    fixtures as the Swift one by a JVM ParitySuite that android-build.yml runs.
-   swift-pending.json keeps the Swift books; this file keeps the JVM's, in two
-   grains because the JVM starts with almost nothing ported:
+   swift-pending.json kept the Swift books until NE-39s (M3) burned them to
+   nothing and deleted them; this file keeps the JVM's, and STAYS (A-63 retires
+   it), in two grains because the JVM starts with almost nothing ported:
 
      "families": { "<family>": "A-23" }   the whole family is owed: no JVM runner
                                           yet, so every id it has or will have is
@@ -27,14 +28,15 @@
 
    The JVM runner fails when a case not owed fails, when an owed case passes
    (stale: burn the entry down), and when a manifest id is neither run nor owed.
-   record.mjs keeps these books from the JS side exactly as it keeps
+   record.mjs keeps these books from the JS side exactly as it kept
    swift-pending's: a new or changed case in a family the JVM runs, or a brand-new
    family, is handed to the Android card named by --jvm-card, so a JS rule change
    never turns android-build red; it hands the JVM card a list.
 
-   A family that unported.json says covered-suite tests will be recorded into may
-   be owed here before it has a fixture (the JS side owes those tests first), so
-   the card that records it needs no --jvm-card. */
+   Until NE-39s a family that unported.json said covered-suite tests would be
+   recorded into could be owed here ahead of its fixtures. unported.json is
+   retired, so that set is always empty (`unportedFamilies({})`); the parameter
+   stays so a book written before the retirement is still judged the same way. */
 
 import fs from "node:fs";
 import path from "node:path";
@@ -104,7 +106,7 @@ export function checkJvmPending(jvm, { familyOf, families, jsOnlyFamilies, unpor
   }
   for (const [family, card] of Object.entries(jvm.families)) {
     if (!families.has(family) && !unported.has(family)) {
-      problems.push(`jvm-pending: family ${family} is neither recorded nor named in unported.json: delete the entry`);
+      problems.push(`jvm-pending: family ${family} is not recorded: delete the entry`);
     }
     if (jsOnlyFamilies.has(family)) problems.push(`jvm-pending: family ${family} is jsOnly; no JVM card can owe it`);
     if (!JVM_CARD_RE.test(card)) problems.push(`jvm-pending: family ${family} is tagged ${JSON.stringify(card)}, not an Android card id`);

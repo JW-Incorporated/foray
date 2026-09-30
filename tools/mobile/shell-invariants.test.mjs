@@ -110,6 +110,13 @@ const ROOT = path.resolve(HERE, "..", "..");
 const MOBILE = path.join(ROOT, "mobile");
 
 const readJson = (p) => JSON.parse(fs.readFileSync(p, "utf8"));
+/* NE-39s retired player/parity/swift-pending.json: nothing can be owed, so the
+   Swift-port pins below read it only if it has come back (coverage.test.js and
+   record.mjs --check are red on that by themselves) and see nothing owed. */
+const retiredSwiftPending = () => {
+  const file = path.join(ROOT, "player/parity/swift-pending.json");
+  return fs.existsSync(file) ? readJson(file) : {};
+};
 const rootPkg = readJson(path.join(ROOT, "package.json"));
 const capConfig = readJson(path.join(MOBILE, "capacitor.config.json"));
 
@@ -2808,7 +2815,8 @@ test("NE-01: the page never configures a Preferences group, so the engine's Capa
  *
  * docs/native-engine-plan.md §6.4 and card NE-05. `ForayEngineParity` reads
  * `player/parity/` IN PLACE, runs each family through its FamilyRunner, keeps
- * the swift-pending books and writes parity-report.json; a thin XCTest wrapper
+ * the books (swift-pending.json until NE-39s retired it; nothing is owed since)
+ * and writes parity-report.json; a thin XCTest wrapper
  * in the core's own tests and another in ForayAudioPluginTests (the step
  * ios-kit already runs, the zero-.github fallback) turn the results into one
  * XCTFail per case. The Swift is executed by CI only; these pins keep what
@@ -3021,7 +3029,7 @@ test("NE-12s: both wrappers require the media-episode runner, the registry holds
   assert.ok(all, "ParityFamilies.all is missing");
   assert.ok(all[1].includes("MediaEpisodeFamily.runner"), "ParityFamilies.all has no MediaEpisodeFamily.runner");
 
-  const pending = JSON.parse(fs.readFileSync(path.join(ROOT, "player/parity/swift-pending.json"), "utf8"));
+  const pending = retiredSwiftPending();
   assert.deepEqual(Object.keys(pending).filter((id) => id.startsWith("media-episode/")), [],
     "media-episode is ported (NE-12s): no id of it may be pending");
   const manifest = JSON.parse(fs.readFileSync(path.join(ROOT, "player/parity/manifest.json"), "utf8"));
@@ -3069,7 +3077,7 @@ test("NE-14s: both wrappers require the deck-episode and manager-episode runners
     assert.ok(all[1].includes(runner), `ParityFamilies.all has no ${runner}`);
   }
 
-  const pending = JSON.parse(fs.readFileSync(path.join(ROOT, "player/parity/swift-pending.json"), "utf8"));
+  const pending = retiredSwiftPending();
   const owed = Object.keys(pending).filter((id) =>
     ["manager-episode/", "deck-episode/", "session-invariant/", "transport/"].some((prefix) => id.startsWith(prefix)));
   assert.deepEqual(owed, [], "manager-episode, deck-episode, session-invariant and transport are ported (NE-14s): none may be pending");
@@ -4711,8 +4719,8 @@ function engineDefaultRefusal(engineDefault, stateText) {
   }
   const caps = engineDefault.capabilities ?? [];
   /* NE-37, the M2 flip: `foray` joins M1's three. Narration and the interlude
-     are families of `foray` (player/parity/capabilities.json), and
-     `remainder` is a bookkeeping gate no build may ship. */
+     are families of `foray` (player/parity/capabilities.json); `remainder`
+     was a bookkeeping gate no build could ship, retired by NE-39s. */
   const allowed = ["episode", "continuation", "restore", "foray"];
   const extra = caps.filter((c) => !allowed.includes(c));
   if (extra.length) return `the M2 native default may advertise only ${allowed.join(", ")}; it also lists ${extra.join(", ")}`;

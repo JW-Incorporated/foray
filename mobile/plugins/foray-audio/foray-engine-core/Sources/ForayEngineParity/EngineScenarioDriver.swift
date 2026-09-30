@@ -71,15 +71,15 @@ import ForayEngineCore
 ///     like FakeBackend's, is written when it lands;
 ///   - `setup.backend.slowFirstPlay`: the first play's confirmation waits for
 ///     the next pause (SlowPlayBackend);
-///   - `setup.tts.pause: "held"` with a `tts: "releasePause"` step (the JS
-///     bridge's round trip; in process there is none, so the pause is
-///     effective at once and the release only has to find it held);
-///   - `setup.settledEvents`: `event.settled:<state>` after every top-level
-///     turn, the snapshot the surface paints from;
 ///   - `setup.telemetry: ["rate.snapped"]`: the core's `rate kind=snapped`
 ///     diagnostics row, written as the JS telemetry line
 ///     `telemetry:rate.snapped requested=<JSON> applied=<r>`;
 ///   - the `positionTimer` view: whether the periodic position writer is armed.
+/// Two of NE-39j's shapes are REFUSED, because what they model is the JS
+/// manager's awaits, which one synchronous native turn does not have (their
+/// cases are the jsOnly `manager-await` family): `setup.tts.pause: "held"`
+/// (a load parked on the synthesiser's pause round trip) and
+/// `setup.settledEvents` (onStateSettled counted per `_handle` frame).
 public struct EngineScenarioDriver {
     /// A deliberately broken core, for the mutation tests (card NE-14s): the
     /// fault is injected into the core's OUTPUT, so what is proven is that the
@@ -177,7 +177,10 @@ final class ScenarioWorld {
     static let setupKeys: Set<String> = ["target", "positions", "positionEvents", "rate", "backend", "catalogue", "session",
                                          "seamGapSec", "view", "scheduler", "seamGapEvents", "forayBuild", "capabilities",
                                          "tts", "interlude", "interludeEnabled", "voice", "narrationTicks", "preview",
-                                         "settledEvents", "telemetry"]
+                                         "telemetry"]
+    /// NE-39j's shapes of the JS manager's awaits, refused with the reason
+    /// (their cases are the jsOnly `manager-await` family).
+    static let awaitOnly = "it models the JS manager's awaits, which a synchronous native turn does not have (the jsOnly manager-await family)"
     /// runner.js `TELEMETRY_EVENTS`: the telemetry lines a scenario may record.
     static let telemetryEvents: Set<String> = ["rate.snapped"]
     /// runner.js `VIEW_KEYS`: what a Foray scenario may add to its checkpoints.
@@ -275,9 +278,6 @@ final class ScenarioWorld {
     /// until the next pause.
     var slowFirstPlay: Bool
     var heldConfirmation: DeckToken?
-    /// `setup.settledEvents` and the turn depth (only a top-level turn settles).
-    let settledEvents: Bool
-    var feedDepth = 0
     /// `setup.telemetry` and the value the last `setRate` was handed, as the
     /// page handed it (a snapped row names the REQUEST, a string included).
     let telemetry: Set<String>
@@ -304,6 +304,12 @@ final class ScenarioWorld {
     init(setup: JSValue, mutation: EngineScenarioDriver.Mutation?, forayTape: Bool, caseId: String,
          context: Codec.Context) throws {
         guard case let .object(fields) = setup else { throw HarnessError("E_BAD_CASE", "setup must be an object") }
+        if fields["settledEvents"] != nil {
+            throw HarnessError("E_BAD_CASE", "setup.settledEvents is refused: \(ScenarioWorld.awaitOnly); the native snapshot follows every turn (ForayEngineHostTests)")
+        }
+        if setup["tts"]["pause"] == .string("held") {
+            throw HarnessError("E_BAD_CASE", "setup.tts.pause \"held\" is refused: \(ScenarioWorld.awaitOnly)")
+        }
         for key in fields.keys where !ScenarioWorld.setupKeys.contains(key) {
             throw HarnessError("E_BAD_CASE", "setup.\(key) is not implemented by the Swift scenario driver (M2: narration and the interlude are NE-31s)")
         }
@@ -430,7 +436,6 @@ final class ScenarioWorld {
             throw HarnessError("E_BAD_CASE", "setup.backend.coldLoadMs needs the manager target on setup.scheduler = \"manual\", without holdLoads")
         }
         slowFirstPlay = backend["slowFirstPlay"] == .bool(true)
-        settledEvents = setup["settledEvents"] == .bool(true)
         var events: Set<String> = []
         switch setup["telemetry"] {
         case .undefined: break
@@ -516,14 +521,9 @@ final class ScenarioWorld {
             guard let seq = fake.previous else { throw HarnessError("E_BAD_CASE", "no earlier utterance to finish") }
             feed(narratorEnd(.finished(seq: seq)))
         case "releasePause":
-            // fakes.js `releasePause`: answer every held pause. In process the
-            // pause took effect when it was commanded; what is checked here is
-            // that the case's pause was actually made.
-            guard fake.heldPauses > 0 else { throw HarnessError("E_BAD_CASE", "no held tts pause to release") }
-            fake.heldPauses = 0
-            narrator = fake
+            throw HarnessError("E_BAD_CASE", "tts \"releasePause\" is refused: \(ScenarioWorld.awaitOnly)")
         default:
-            throw HarnessError("E_BAD_CASE", "unknown tts event \(fields["tts"] ?? .null) (finish, silent, releasePause)")
+            throw HarnessError("E_BAD_CASE", "unknown tts event \(fields["tts"] ?? .null) (finish, silent)")
         }
     }
 
@@ -1000,12 +1000,6 @@ final class ScenarioWorld {
     /// answer to any activation it asked for. The audible-start rule is
     /// checked over the whole turn, from the session the turn began with.
     func feed(_ input: EngineInput) {
-        feedDepth += 1
-        defer {
-            feedDepth -= 1
-            // `onStateSettled`: after every top-level turn, the state it settled.
-            if feedDepth == 0 && settledEvents { ops.append("event.settled:\(core.state.stateType)") }
-        }
         let entry = core.state.session
         runningAtEntry = core.state.isRunning
         var names: [String] = []
@@ -1454,7 +1448,6 @@ final class ScenarioWorld {
         case .pause:
             guard fake.transport else { break }
             ops.append("tts.pause")
-            if fake.pauseHeld { fake.heldPauses += 1 }
             if !fake.pauseRejects && fake.word == .speaking { fake.word = .paused }
             if !fake.pauseRejects { narrationSpeaking = false }
         case let .resume(seq):
@@ -1546,9 +1539,6 @@ struct FakeNarrator {
     /// The bridge offers pause/resume/stop (a shell built before L-05 does not).
     let transport: Bool
     let pauseRejects: Bool
-    /// NE-39s: `pause: "held"`, a pause answered only by `tts: "releasePause"`.
-    let pauseHeld: Bool
-    var heldPauses = 0
     /// What `resume` answers, when the case says (`{accepted, fromStart, reason}`).
     let resumeAnswer: JSValue?
     /// The bridge answers `state()`.
@@ -1564,7 +1554,6 @@ struct FakeNarrator {
         onFinished = shape["onFinished"] != .bool(false)
         transport = shape["transport"] != .bool(false)
         pauseRejects = shape["pause"] == .string("rejects")
-        pauseHeld = shape["pause"] == .string("held")
         if case .object = shape["resume"] { resumeAnswer = shape["resume"] } else { resumeAnswer = nil }
         stateful = shape["state"] == .bool(true)
     }

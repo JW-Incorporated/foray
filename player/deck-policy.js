@@ -20,8 +20,9 @@
    here; it is the proof.
 
    JS IS THE REFERENCE (plan §6). A rule change here is a JS PR that re-records
-   `player/parity/fixtures/deck-episode/`, which hands the changed ids to
-   swift-pending.json; the Swift port follows. The never-early rule
+   `player/parity/fixtures/deck-episode/`, and the Swift port lands in the
+   same change (since NE-39s nothing can be owed: engine-parity holds it to the
+   re-recorded cases). The never-early rule
    (`fineWakeAction`) and the numbers are AUTHORED cases: record.mjs refuses to
    overwrite them.
 

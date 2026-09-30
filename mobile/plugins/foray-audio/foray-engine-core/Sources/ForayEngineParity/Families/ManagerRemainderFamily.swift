@@ -14,13 +14,16 @@ import ForayEngineCore
 ///     costs the load and never the segment. `prefetch:<id>@<s>` is the
 ///     core's `.prepare` (the ASK), not the standby deck's decision, which
 ///     the `prepare` families assert.
-///   - transport.json: the rest (the rate getter and its snap row, the
-///     position writer, stop's silence behind a paused machine, the settled
-///     snapshot after every turn).
+///   - transport.json: the rest (an unknown ref errors to idle, the rate
+///     getter and its snap row, the position writer, stop's silence behind a
+///     paused machine (player-core-7), and a play settling mid-skip-back
+///     keeping the restart).
 ///
 /// What the driver adds for these cases (backend prefetch, cold loads, the
-/// slow first play, the held synthesiser pause, settled events, telemetry,
-/// the `positionTimer` view) is in `EngineScenarioDriver`'s header.
+/// slow first play, telemetry, the `positionTimer` view) is in
+/// `EngineScenarioDriver`'s header. Two NE-39j cases pinned the JS manager's
+/// awaits and are the jsOnly `manager-await` family instead; their native
+/// forms are XCTests (ForayCatchUpTests, ForayEngineHostTests).
 public enum ManagerRemainderFamily {
     public static let runner = makeRunner()
 

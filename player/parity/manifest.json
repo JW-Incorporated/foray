@@ -795,6 +795,15 @@
         "lexicon/bundled-lexicon-sake"
       ]
     },
+    "manager-await": {
+      "files": {
+        "player/parity/fixtures/manager-await/interleaves.json": "4047495a682ace04a6ecb5f095dd5065bb825ac64ad68cb912499a7038eb42d4"
+      },
+      "ids": [
+        "manager-await/a-skip-load-a-newer-skip-replaced-is-dropped",
+        "manager-await/the-settled-hook-fires-after-every-handled-event"
+      ]
+    },
     "manager-episode": {
       "files": {
         "player/parity/fixtures/manager-episode/last-episode-row.json": "a21f5bf2c1cc037c4d84285d9d3dbb9f6ad0b5b87a6c3f36c8e2943cfb5fa454",
@@ -998,7 +1007,7 @@
     },
     "manager-remainder": {
       "files": {
-        "player/parity/fixtures/manager-remainder/transport.json": "24f8808cf8e6da46d73a19a1551f10382a51058bf9325b32c4d398c844e6fda2",
+        "player/parity/fixtures/manager-remainder/transport.json": "a0381f383cc4878322b20291fc5366e51c4ab16c41e3b72dfdd1a87e5b7c9b4a",
         "player/parity/fixtures/manager-remainder/warming.json": "462ef49b1d5e27d193352f50736acdddb6f9eef7db3b75ae4798168309a928c4"
       },
       "ids": [
@@ -1007,9 +1016,7 @@
         "manager-remainder/the-rate-getter-reports-the-chosen-speed",
         "manager-remainder/a-snapped-rate-says-so",
         "manager-remainder/stop-is-silence-behind-a-paused-machine",
-        "manager-remainder/a-skip-load-a-newer-skip-replaced-is-dropped",
         "manager-remainder/a-play-settling-mid-skip-back-keeps-the-restart",
-        "manager-remainder/the-settled-hook-fires-after-every-handled-event",
         "manager-remainder/the-window-warms-the-next-segment-at-its-in-point",
         "manager-remainder/each-window-warms-what-its-boundary-advances-to",
         "manager-remainder/the-last-item-warms-nothing",

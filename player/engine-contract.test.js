@@ -318,10 +318,13 @@ test("the six NE-11j families are recorded, charged to the episode capability, a
   // wrappers, tools/mobile/shell-invariants.test.mjs) must now execute them.
   // The episode capability requires zero pending in these families, so an id
   // that drifted back to "owed" is a gate problem, not a bookkeeping one.
-  // A later JS rule change re-adds its ids here through record.mjs
-  // --port-card; this test then names the card that must burn them down.
-  // MUTATION: re-add one of these ids to swift-pending.json -> red.
-  const pending = readParity("swift-pending.json");
+  // NE-39s retired swift-pending.json: nothing can be owed any more, so a
+  // later JS rule change carries its Swift port and engine-parity holds it.
+  // The list is read only if it has come back (coverage.test.js and
+  // record.mjs --check are red on that by themselves).
+  // MUTATION: commit swift-pending.json owing one of these ids -> red.
+  const pendingFile = path.join(ROOT, "player/parity/swift-pending.json");
+  const pending = fs.existsSync(pendingFile) ? readParity("swift-pending.json") : {};
   const manifest = readParity("manifest.json");
   const episode = readParity("capabilities.json").episode;
   for (const fam of NE11J_FAMILIES) {

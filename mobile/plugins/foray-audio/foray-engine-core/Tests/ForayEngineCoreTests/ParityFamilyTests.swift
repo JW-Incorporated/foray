@@ -109,7 +109,7 @@ final class ParityFamilyTests: XCTestCase {
 
     /// Recorded by NE-39j, ported by NE-39s: the rest of queue-manager (the
     /// warming rules, the rate getter and its snap row, the position writer,
-    /// stop's silence, the settled snapshot). It must RUN, with nothing owed.
+    /// stop's silence, an unknown ref). It must RUN, with nothing owed.
     func testManagerRemainderFamily() { assertParityFamily("manager-remainder", requireRunner: true) }
 
     /// Every family in manifest.json, including ones no method above names:

@@ -3,14 +3,21 @@
    to classify.
 
    THE RULE. Every top-level test() in the fifteen covered suites is accounted
-   for in exactly one of four ways:
+   for in exactly one of these ways:
 
      - a fixture case lists it in `covers[]`, or xctest.json maps it to a named
        XCTest method (the two may combine: a rule can have a fixture AND a
        Simulator test), or facades.json maps it to a JS-only facade test (below)
        — it is PORTED;
-     - exclusions.json names it with a closed reason — it has no Swift meaning;
-     - unported.json names it with the card that will port it — it is owed.
+     - exclusions.json names it with a closed reason — it has no Swift meaning.
+
+   Until NE-39s (M3) there was a third, unported.json: a test owed to the card
+   that would port it, beside swift-pending.json's owed CASES. NE-39s burned
+   both down to nothing and deleted them (RETIRED_BOOKS), so nothing can be
+   owed any more: a new covered test is fixtured, mapped or excluded in the
+   change that adds it, and a JS rule change carries its Swift port. The
+   `unported` and `pending` books below are read as empty; the harness tests
+   still fill them in memory, so the rules that judged them keep their proofs.
 
    A test in none of them is a rule the Swift engine could silently drop, which
    is the whole failure this deck exists to prevent (plan §8 R6). A test in two
@@ -247,13 +254,26 @@ export function xctestProblems(root, xctest, methods = swiftTestMethods(swiftTes
 
 /* ---------- the parity data files ---------- */
 
+/** The burn-down lists NE-39s deleted (plan §6.1). coverage.test.js requires
+    both absent, `record.mjs --check` refuses a tree holding either, and the
+    Swift loader (ForayEngineParity `ParityData.load`) refuses to run on one. */
+export const RETIRED_BOOKS = Object.freeze(["swift-pending.json", "unported.json"]);
+
+/** The retired lists present under `root` (none, on a healthy tree). */
+export function retiredBooksOnDisk(root) {
+  return RETIRED_BOOKS.filter((f) => fs.existsSync(path.join(root, PARITY_DIR, f)));
+}
+
 export function loadParityData(root) {
   const rd = (f) => readJson(root, `${PARITY_DIR}/${f}`);
   return {
     manifest: rd("manifest.json"),
     exclusions: rd("exclusions.json"),
-    unported: rd("unported.json"),
-    pending: rd("swift-pending.json"),
+    /* Retired by NE-39s: nothing is owed, so both books are empty. A file that
+       comes back is NOT read (it would quietly owe again); coverage.test.js and
+       record.mjs --check name it instead. */
+    unported: {},
+    pending: {},
     capabilities: rd("capabilities.json"),
     floors: rd("floors.json"),
     xctest: rd("xctest.json"),
@@ -346,7 +366,7 @@ export function classify(root, data = loadParityData(root), fixtures = loadFixtu
       const ported = st.covered.length > 0 || Boolean(st.xctest) || Boolean(st.facade);
       const ways = [ported, Boolean(st.excluded), Boolean(st.unported)].filter(Boolean).length;
       const label = `${suiteFile(stem)} :: ${JSON.stringify(name)}`;
-      if (ways === 0) problems.push(`${label} is in no case's covers[], no xctest mapping, exclusions.json or unported.json`);
+      if (ways === 0) problems.push(`${label} is in no case's covers[], no xctest mapping and no exclusions.json entry (unported.json was retired by NE-39s: fixture, map or exclude it in this change)`);
       else if (ways > 1) {
         const where = [ported && "ported", st.excluded && "excluded", st.unported && "unported"].filter(Boolean).join(" + ");
         problems.push(`${label} is ${where}; a test is accounted for exactly one way (burn down the stale entry)`);
