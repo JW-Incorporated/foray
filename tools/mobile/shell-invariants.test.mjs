@@ -2738,15 +2738,15 @@ test("NE-01: foray-audio links the core by path, keeps ONE product, and its test
   assert.match(fs.readFileSync(wrapper, "utf8"), /ParityRunner\.run\(/, "the Simulator-side parity wrapper runs nothing");
 });
 
-test("NE-01: engineHello is iOS-only, answers from the core and always resolves", () => {
+test("NE-01: engineHello answers from the core and always resolves (iOS; Android since A-28 is pinned below)", () => {
   /* The first of the engine's three bridge methods (§5.1). NE-01 stubbed it
      as `{mode: "legacy", reason: "not-built"}`; since NE-20 the answer is the
      bridge's, and every answer (legacy or native) is still built by
      ForayEngineCore (`EngineBridgeRules`), which is what makes the app build
-     prove the plugin links the nested package. Android never gains it (§4.1).
+     prove the plugin links the nested package. Android gained the method in
+     A-28 (docs/plans/android-assessment.md §5.4); its half is the A-28 test.
      MUTATION: drop the CAPPluginMethod line, make the body `call.reject(...)`,
-     build the answer in the plugin, or add `engineHello` to the Java; each
-     fails. */
+     or build the answer in the plugin; each fails. */
   const swift = fs.readFileSync(AUDIO_SWIFT, "utf8");
   const declared = [...swift.matchAll(/CAPPluginMethod\(name:\s*"(\w+)"/g)].map((m) => m[1]);
   assert.ok(declared.includes("engineHello"), "ForayAudioPlugin.swift does not declare engineHello as a CAPPluginMethod");
@@ -2763,11 +2763,6 @@ test("NE-01: engineHello is iOS-only, answers from the core and always resolves"
   assert.match(core, /notBuiltMode\s*=\s*"legacy"/);
   assert.match(core, /notBuiltReason\s*=\s*"not-built"/);
 
-  const java = fs.readFileSync(
-    path.join(PLUGIN_DIR, "android/src/main/java/ai/jwlabs/foura/audio/ForayAudioPlugin.java"),
-    "utf8"
-  );
-  assert.doesNotMatch(java, /\bengineHello\b/, "the engine's bridge methods are iOS only; Android never gains them");
 });
 
 test("NE-01: the Preferences pin is test-only, cannot reach the app's package graph, and cannot compile out in silence", () => {
@@ -4562,7 +4557,7 @@ test("NE-24: the AppDelegate's line is the plugin's public cold path, the boot p
 
 test("NE-20: the bridge's method and event names are engine-contract.js's, the plugin hops to main and always resolves, and nothing leaves a hidden page", async () => {
   /* MUTATION: rename a CAPPluginMethod or drop one; `call.reject(` in any of
-     the three; call the bridge off main; add engineSend to the Java; rename
+     the three; call the bridge off main; rename
      the event (`EngineBridgeRules.eventName`) or ENGINE_EVENT; add an event
      type the contract does not list; import UIKit into EngineBridge.swift;
      deliver an engine or diag event without the visibility guard; advertise
@@ -4585,10 +4580,7 @@ test("NE-20: the bridge's method and event names are engine-contract.js's, the p
       `${method} must resolve with the bridge's answer`);
     assert.doesNotMatch(body, /\.reject\(/, `${method} must never reject (the plugin's every-method-resolves rule)`);
   }
-  const java = fs.readFileSync(path.join(PLUGIN_DIR, "android/src/main/java/ai/jwlabs/foura/audio/ForayAudioPlugin.java"), "utf8");
-  for (const method of BRIDGE_METHODS) {
-    assert.doesNotMatch(java, new RegExp(String.raw`\b${method}\b`), `${method} is iOS only; Android never gains it`);
-  }
+  /* Android's half (A-28) is pinned by the A-28 test at the end of this file. */
 
   const contract = stripSwiftComments(fs.readFileSync(path.join(CORE_DIR, "Sources/ForayEngineCore/Contract/EngineContract.swift"), "utf8"));
   const caseNames = (enumName) => {
@@ -4969,7 +4961,7 @@ test("A-26: the native engine's MediaSessionService is a Media3 service over the
   const facade = strip(fs.readFileSync(path.join(engineDir, "EnginePlayer.java"), "utf8"));
   assert.match(facade, /class EnginePlayer extends SimpleBasePlayer\b/);
   assert.doesNotMatch(facade, /\.setUri\(|\.play\(\)/, "the facade plays nothing and names no URI a controller could play");
-  for (const f of ["ForayEngineHost.java", "EngineSeams.java"]) {
+  for (const f of ["ForayEngineHost.java", "EngineSeams.java", "EngineBridge.java", "EngineLane.java"]) {
     assert.doesNotMatch(strip(fs.readFileSync(path.join(engineDir, f), "utf8")), /^import android\./m, `${f} is pure JVM`);
   }
 
@@ -4996,4 +4988,86 @@ test("A-26: the native engine's MediaSessionService is a Media3 service over the
 
   const defaults = readJson(path.join(MOBILE, "ENGINE_DEFAULT.json"));
   assert.equal(defaults.android.mode, "js", "Android stays on the JS lane until A-31");
+});
+
+/* ─────────── A-28: the Android bridge (engineHello, engineSend, engineRead, the "engine" event) ───────────
+ *
+ * docs/plans/android-assessment.md §5.4, card A-28. EngineBridgeTest (foray-audio, JUnit) and
+ * EngineBridgeRulesTest (the JVM core) prove what the bridge answers; these pin what no JVM test
+ * can see: the names the page and the Java must agree on, the plugin's thread discipline, the
+ * lane's default held to mobile/ENGINE_DEFAULT.json, and the capability gate against the JVM
+ * parity books. */
+
+test("A-28: Android's plugin answers the engine's three methods through the bridge, on main, always resolving; the lane stays off by default", async () => {
+  /* MUTATION: drop @PluginMethod from one method, answer without the bridge, `call.reject(` in
+     one, call the bridge off main; rename EVENT_NAME; deliver an event without the visibility
+     guard; set BUILD_DEFAULT_NATIVE true (or list a capability ENGINE_DEFAULT's android block
+     does not); advertise `episode` while jvm-pending still owes engine-mode (A-29); drop
+     "android" from HELLO_PLATFORMS or from durable-store's ENGINE_SHELL_PLATFORMS. Each fails. */
+  const { BRIDGE_METHODS, CAPABILITIES, HELLO_PLATFORMS } = await import("../../player/engine-contract.js");
+  const { ENGINE_EVENT } = await import("../../player/native-engine.js");
+  const { ENGINE_SHELL_PLATFORMS } = await import("../../player/durable-store.js");
+  assert.ok(HELLO_PLATFORMS.includes("android"), "the page asks an Android shell engineHello since A-28");
+  assert.deepEqual([...ENGINE_SHELL_PLATFORMS], [...HELLO_PLATFORMS], "the store defers exactly where the page asks");
+
+  const audioDir = path.join(PLUGIN_DIR, "android", "src", "main", "java", "ai", "jwlabs", "foura", "audio");
+  const plugin = stripJavaComments(fs.readFileSync(path.join(audioDir, "ForayAudioPlugin.java"), "utf8"));
+  const verbs = { engineHello: "hello", engineSend: "send", engineRead: "read" };
+  assert.deepEqual(Object.keys(verbs), [...BRIDGE_METHODS]);
+  for (const method of BRIDGE_METHODS) {
+    const at = plugin.search(new RegExp(String.raw`@PluginMethod\s+public void ${method}\(PluginCall call\) \{`));
+    assert.ok(at >= 0, `ForayAudioPlugin.java has no @PluginMethod ${method}(PluginCall)`);
+    const body = plugin.slice(at, plugin.indexOf("\n    }", at));
+    assert.match(body, /JsonNode payload = enginePayload\(call\);/, `${method} reads the options as the core's JSON`);
+    assert.match(body, new RegExp(String.raw`engineCall\(call, bridge -> bridge\.${verbs[method]}\(payload\)`), `${method} answers through the bridge`);
+    assert.doesNotMatch(body, /\.reject\(/, `${method} must never reject`);
+  }
+  const engineCall = plugin.slice(plugin.indexOf("private void engineCall("), plugin.indexOf("static EngineBridge bridgeOnMain("));
+  assert.match(engineCall, /new Handler\(Looper\.getMainLooper\(\)\)\.post\(/, "the bridge is called on main");
+  assert.match(engineCall, /EngineOwnership\.shared\(context\)\.whenReady\(/, "a call waits for the lane's engine");
+  assert.equal((engineCall.match(/call\.resolve\(jsObject\(/g) || []).length, 2, "the answer and the fallback both resolve");
+  assert.doesNotMatch(engineCall, /\.reject\(/);
+  assert.match(plugin, /notifyListeners\(EngineBridgeRules\.EVENT_NAME, jsObject\(event\)\)/, "engine events ride on the one event name");
+
+  const coreDir = path.join(PLUGIN_DIR, "android", "foray-engine-core-jvm", "src", "main", "java", "ai", "jwlabs", "foura", "engine");
+  const rules = stripJavaComments(fs.readFileSync(path.join(coreDir, "EngineBridgeRules.java"), "utf8"));
+  assert.equal(/EVENT_NAME = "(\w+)"/.exec(rules)?.[1], ENGINE_EVENT, "the Java event name and native-engine.js ENGINE_EVENT disagree");
+  const advertised = /ADVERTISED_CAPABILITIES = Collections\.unmodifiableList\(\s*new ArrayList<>\(([^;]*)\)\);/.exec(rules);
+  assert.ok(advertised, "EngineBridgeRules.java must declare ADVERTISED_CAPABILITIES where this test reads it");
+  const claimed = [...advertised[1].matchAll(/"([^"]+)"/g)].map((m) => m[1]);
+  /* THE JVM'S CAPABILITY GATE (plan §6.6, read against the JVM books): a capability is claimed
+     only when no family listed under it is owed to an Android card, whole or by case. */
+  const capabilities = readJson(path.join(ROOT, "player", "parity", "capabilities.json"));
+  const jvm = readJson(path.join(ROOT, "player", "parity", "jvm-pending.json"));
+  const owedCases = Object.keys(jvm.cases ?? {});
+  for (const cap of claimed) {
+    assert.ok(CAPABILITIES.includes(cap), `ADVERTISED_CAPABILITIES names ${cap}, which engine-contract.js CAPABILITIES does not define`);
+    for (const family of capabilities[cap] ?? []) {
+      assert.ok(!(family in (jvm.families ?? {})), `Android advertises ${cap}, but the JVM still owes ${family} to ${jvm.families?.[family]}`);
+      assert.ok(!owedCases.some((id) => id.startsWith(`${family}/`)), `Android advertises ${cap}, but the JVM still owes cases in ${family}`);
+    }
+  }
+
+  const engineDir = path.join(audioDir, "engine");
+  const bridge = stripJavaComments(fs.readFileSync(path.join(engineDir, "EngineBridge.java"), "utf8"));
+  const bodyOf = (name) => {
+    const at = bridge.indexOf(`private void ${name}(`);
+    assert.ok(at >= 0, `EngineBridge.java has no ${name}`);
+    return bridge.slice(at, bridge.indexOf("\n    }", at));
+  };
+  assert.match(bodyOf("engineEmitted"), /if \(!coalescer\.visible\(\)\) return;\s*deliver\.accept\(/, "an engine event leaves only to a visible page");
+  assert.match(bodyOf("liveRow"), /if \(!coalescer\.visible\(\) \|\| !EngineBridgeRules\.LIVE_DIAG_KINDS\.contains\(kind\)\) return;\s*deliver\.accept\(/);
+  assert.match(bodyOf("transitioned"), /if \(coalescer\.visible\(\)\) deliver\.accept\(EngineBridgeRules\.modeChangedEvent/);
+  assert.match(bodyOf("apply"), /case EMIT -> deliver\.accept\(EngineBridgeRules\.snapshotEvent\(snapshot\(\)\)\)/, "a snapshot event leaves only on the coalescer's word");
+  assert.equal((bridge.match(/\bdeliver\.accept\(/g) || []).length, 4, "every deliver.accept( is one of the four above");
+
+  /* THE LANE IS OFF BY DEFAULT, and says what ENGINE_DEFAULT says: A-31 flips both. */
+  const lane = stripJavaComments(fs.readFileSync(path.join(engineDir, "EngineLane.java"), "utf8"));
+  const defaults = readJson(path.join(MOBILE, "ENGINE_DEFAULT.json"));
+  assert.equal(/BUILD_DEFAULT_NATIVE = (true|false);/.exec(lane)?.[1], String(defaults.android.mode === "native"),
+    "EngineLane.BUILD_DEFAULT_NATIVE must say what ENGINE_DEFAULT.json's android block says");
+  const declared = /DECLARED_CAPABILITIES = ([^;]*);/.exec(lane)?.[1] ?? "";
+  const declaredList = /emptyList\(\)/.test(declared) ? [] : [...declared.matchAll(/"([^"]+)"/g)].map((m) => m[1]);
+  assert.deepEqual(declaredList, defaults.android.capabilities ?? [], "EngineLane.DECLARED_CAPABILITIES must be ENGINE_DEFAULT.json's android capabilities");
+  assert.match(lane, /OVERRIDE_KEY = "ForayEngine\.modeOverride"/, "the Developer setting is stored under iOS's key");
 });

@@ -522,13 +522,13 @@ test("the decision: the client's own when it has one; not-ios and no-method need
   const ios = fakeCapacitor();
   assert.deepEqual(pageEngineDecision({ engine: { decision: NATIVE_DECISION }, capacitor: ios }), NATIVE_DECISION);
   assert.deepEqual(pageEngineDecision({ capacitor: null }), { mode: "js", reason: "not-ios", hello: null });
-  /* A-20 (docs/plans/android-assessment.md): Android is an engine platform
-     now, but the page does not ask it until A-28 (HELLO_PLATFORMS), so the
-     header's `not-ios` becomes `no-method` — still the JS player, no hello.
-     MUTATION: add "android" to HELLO_PLATFORMS -> `undecided` -> red. */
+  /* A-28 (docs/plans/android-assessment.md): the page asks an Android shell
+     too (HELLO_PLATFORMS), so before its hello settles the header says
+     `undecided`, as on iOS — not a guessed `no-method`.
+     MUTATION: drop "android" from HELLO_PLATFORMS -> `no-method` -> red. */
   const android = fakeCapacitor({ platform: "android" });
-  assert.deepEqual(pageEngineDecision({ capacitor: android }), { mode: "js", reason: "no-method", hello: null });
-  assert.equal(engineBridgePresent(android), false, "the page does not ask an Android shell yet");
+  assert.deepEqual(pageEngineDecision({ capacitor: android }), { mode: "js", reason: "undecided", hello: null });
+  assert.equal(engineBridgePresent(android), true, "the page asks an Android shell since A-28");
   assert.deepEqual(pageEngineDecision({ capacitor: fakeCapacitor({ plugin: false }) }), { mode: "js", reason: "no-method", hello: null });
   assert.deepEqual(pageEngineDecision({ capacitor: ios }), { mode: "js", reason: "undecided", hello: null });
   assert.equal(engineBridgePresent(ios), true);
@@ -538,13 +538,13 @@ test("the decision: the client's own when it has one; not-ios and no-method need
   assert.equal(view.snapshot.holdPolicy, "none");
 });
 
-test("no engine to ask (the web, Android): no bridge call, and the header says why", async () => {
+test("no engine client to ask (the web; an engine shell before its client exists): no bridge call, and the header says why", async () => {
   /* MUTATION: read whenever a Capacitor exists. The Android call count fails. */
   const android = fakeCapacitor({ platform: "android" });
   const text = await engineDiagnosticReport({ record: () => pageRecord(1, () => T0), engine: null, capacitor: android });
   assert.equal(android.calls.length, 0);
-  // A-20: Android is an engine platform the page does not ask yet: no-method.
-  assert.match(text.split("\n")[2], /^engine=js reason=no-method /);
+  // A-28: Android is asked engineHello now, so with no decision yet the header says so.
+  assert.match(text.split("\n")[2], /^engine=js reason=undecided /);
   assert.doesNotMatch(text, /^engine rows/m);
   const web = await engineDiagnosticReport({ record: () => pageRecord(1, () => T0), engine: null, capacitor: null });
   assert.match(web.split("\n")[2], /^engine=js reason=not-ios /);

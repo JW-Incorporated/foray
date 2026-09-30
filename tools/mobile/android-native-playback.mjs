@@ -36,13 +36,28 @@
  *   node tools/mobile/android-native-playback.mjs <scenario> --art DIR [--pkg ai.jwlabs.foura]
  *
  * Scenarios: `play` (a), `background` (b), `transport` (c), `notification` (d),
- * `doze` (g), `focus` (h), `call` (i), and `collect` / `summary`. Every one is
- * GATED here (the card: "must be green on (a)–(d), (g), (h) and (i)"). Each
+ * `doze` (g), `focus` (h), `call` (i), `bridge` (A-28), and `collect` / `summary`.
+ * Every one is GATED here (the card: "must be green on (a)–(d), (g), (h) and
+ * (i)"; A-28's: "the emulator native leg logs `engine mode native` in the Copy
+ * paste"). Each
  * prints its verdict as JSON, writes `DIR/verdict-native-<scenario>.json`, and
  * exits 0 (pass), 1 (the verdict failed) or 2 (it could not run).
  *
  * The pure half (the queue, the dump and broadcast parsers, the verdicts) is
  * exported and pinned by `android-native-playback.test.mjs`.
+ *
+ * ── THE PAGE'S DOOR (A-28) ───────────────────────────────────────────────────
+ *
+ * `bridge` is the one scenario that goes through the PAGE, over Chrome DevTools
+ * (the JS runner's `connect` / `page`): since A-28 the page asks the Android
+ * engine `engineHello`. It reads the stock launch's lane (the engine's legacy
+ * answer: the JS player, with the Developer engine row showing Automatic), turns
+ * the Developer engine setting to Native through the page's own Developer
+ * command (`ForayPlayer.engineDeveloperSend`, the row a listener taps), restarts
+ * the app, and reads the diagnostics Copy: `engine=native … reason=override` in
+ * its header, an `engineMode native` row in its timeline, and the engine's ring
+ * read into it. It runs LAST, after the adb-driven scenarios, and puts the
+ * setting back to Automatic.
  */
 
 import fs from "node:fs";
@@ -72,7 +87,13 @@ import {
   pngInfo,
   uiNodes,
   wakefulness,
+  DIAGNOSTICS_EXPRESSION,
+  connect as connectPage,
+  page as evalPage,
 } from "./android-playback.mjs";
+
+/** Where the page's DevTools socket is forwarded (the JS runner's default). */
+export const DEVTOOLS_ENDPOINT = "http://127.0.0.1:9222";
 
 /** The engine's service, as `dumpsys activity services` names it and as a component. */
 export const SERVICE = "ForayPlaybackService";
@@ -184,6 +205,85 @@ export function moved(a, b) {
 export function playingBetween(a, b) {
   const d = moved(a, b);
   return d == null ? null : d >= GATES.playingMinAdvanceSec;
+}
+
+/* ─────────────────────────── the page's door (A-28) ─────────────────────────── */
+
+/** The page's lane once its hello settled, and the Developer engine row's view
+ *  (`ForayPlayer.engineDeveloperStatus`: `{lane, override, holdPolicy, commands}`). */
+export const ENGINE_STATUS_EXPRESSION = `(async () => {
+  const deadline = Date.now() + 20000;
+  while (!(window.ForayPlayer && typeof window.ForayPlayer.whenEngineReady === "function") && Date.now() < deadline) {
+    await new Promise((r) => setTimeout(r, 250));
+  }
+  const P = window.ForayPlayer;
+  if (!P || typeof P.whenEngineReady !== "function") return { error: "no ForayPlayer on window" };
+  const lane = await P.whenEngineReady();
+  const status = typeof P.engineDeveloperStatus === "function" ? P.engineDeveloperStatus() : null;
+  return { lane, status };
+})()`;
+
+/** The Developer engine setting, through the page's own Developer command: the
+ *  row a listener taps ('Playback engine: Automatic / Native / Web'). */
+export function overrideExpression(mode) {
+  return `(async () => {
+  const P = window.ForayPlayer;
+  if (!P || typeof P.engineDeveloperSend !== "function") return { error: "no engineDeveloperSend on window.ForayPlayer" };
+  const reply = await P.engineDeveloperSend("setModeOverride", { mode: ${JSON.stringify(mode)} });
+  return reply ? { ok: reply.ok === true, reason: reply.reason ?? null } : { error: "the page sent nothing (no Developer engine row)" };
+})()`;
+}
+
+/** What a diagnostics Copy says about the engine: the header line
+ *  (`engineHeaderLine`), the `engineMode` rows of the timeline (L22), and
+ *  whether the engine's ring was read into it (NE-26). */
+export function copyFacts(text) {
+  const t = String(text ?? "");
+  const header = /^engine=.*$/m.exec(t)?.[0] ?? null;
+  const field = (name) => new RegExp(`(?:^|\\s)${name}=(\\S+)`).exec(header ?? "")?.[1] ?? null;
+  const modeRows = [...t.matchAll(/^#\s*\d+\s+\S+\s+engineMode\s+(native|js)\s+\(([^)]*)\)\s*$/gm)]
+    .map((m) => ({ mode: m[1], reason: m[2] }));
+  const rowsLine = /^engine rows (\d+) of \d+/m.exec(t);
+  const notRead = /^engine rows not read \(([^)]*)\)/m.exec(t);
+  return {
+    header,
+    lane: field("engine"),
+    reason: field("reason"),
+    caps: field("caps"),
+    proto: field("proto"),
+    modeRows,
+    engineRows: rowsLine ? Number(rowsLine[1]) : null,
+    readError: notRead ? notRead[1] : null,
+  };
+}
+
+/** A-28's verdict: the stock launch is the engine's legacy lane, the Developer
+ *  override is stored, and the relaunched page drives the native engine, which
+ *  the Copy paste says in its header and in an `engineMode native` row. */
+export function verdictBridge({ stock, override, after, copy, service }) {
+  const failures = [];
+  if (!stock || stock.error) failures.push(`the stock launch could not be read: ${stock?.error ?? "no answer"}`);
+  else {
+    if (stock.lane !== "js") failures.push(`a stock Android launch must run the page's player; its lane is ${stock.lane}`);
+    if (stock.status?.lane !== "js" || stock.status?.override !== "auto") {
+      failures.push(`the stock launch's engine did not answer legacy/build-default (Developer row ${JSON.stringify(stock.status)})`);
+    }
+  }
+  if (!override || override.ok !== true) failures.push(`the Developer engine setting was not stored: ${JSON.stringify(override)}`);
+  if (!after || after.error) failures.push(`the relaunched page could not be read: ${after?.error ?? "no answer"}`);
+  else {
+    if (after.lane !== "native") failures.push(`after the override the page's lane is ${after.lane}, not native`);
+    if (after.status?.override !== "native") failures.push(`the Developer row does not read Native after the override: ${JSON.stringify(after.status)}`);
+  }
+  if (copy.lane !== "native") failures.push(`the Copy header is not engine=native: ${copy.header ?? "(no engine= line)"}`);
+  else {
+    if (copy.reason !== "override") failures.push(`the Copy header's reason is ${copy.reason}, not override`);
+    if (copy.proto !== "1") failures.push(`the Copy header's protocol is ${copy.proto}, not 1`);
+  }
+  if (!copy.modeRows.some((r) => r.mode === "native")) failures.push("the Copy paste has no `engineMode native` row");
+  if (copy.engineRows == null) failures.push(`the Copy did not read the engine's ring: ${copy.readError ?? "no engine rows line"}`);
+  engineFailures(service, failures);
+  return { ok: failures.length === 0, failures };
 }
 
 /* ───────────────────────────── verdicts ───────────────────────────── */
@@ -362,6 +462,7 @@ export const SCENARIOS = Object.freeze([
   ["doze", "(g) native: Doze, unplugged, rare bucket, 5 min"],
   ["focus", "(h) native: another app takes audio focus; pause, and resume after a transient loss"],
   ["call", "(i) native: a phone call; pause, and resume after it"],
+  ["bridge", "(A-28) native: the page asks the engine; the Developer override; `engine mode native` in the Copy"],
 ]);
 
 export function summaryMarkdown(verdicts) {
@@ -765,6 +866,55 @@ async function call(ctx) {
   return { ...v, measured: { number, emu, phases }, evidence: fs.readdirSync(ctx.art).filter((f) => f.startsWith("i-")) };
 }
 
+/** A-28: the page's door. See the header. */
+async function bridge(ctx) {
+  ctx.endpoint = ctx.endpoint ?? DEVTOOLS_ENDPOINT;
+  await prepare(ctx);
+  ctx.target = (await connectPage(ctx, { timeoutMs: 90000 })).target;
+  const stock = await evalPage(ctx, ENGINE_STATUS_EXPRESSION, { timeoutMs: 45000 });
+  save(ctx, "bridge-stock.json", JSON.stringify(stock, null, 2));
+  const override = await evalPage(ctx, overrideExpression("native"), { timeoutMs: 30000 });
+
+  // The lane is decided once per process: the setting applies at the next launch.
+  shell("am", "force-stop", ctx.pkg);
+  await sleep(1500);
+  ctx.target = null;
+  await prepare(ctx);
+  ctx.target = (await connectPage(ctx, { timeoutMs: 90000 })).target;
+  let after = null;
+  try {
+    after = await evalPage(ctx, ENGINE_STATUS_EXPRESSION, { timeoutMs: 45000 });
+  } catch (e) {
+    after = { error: String(e?.message ?? e) };
+  }
+  // Let the attach finish (the rows read, the first snapshot) before Copy.
+  await sleep(3000);
+  let text;
+  try {
+    text = String(await evalPage(ctx, DIAGNOSTICS_EXPRESSION, { timeoutMs: 30000 }));
+  } catch (e) {
+    text = `(the page could not be asked: ${String(e?.message ?? e)})`;
+  }
+  save(ctx, "bridge-diagnostics-copy.txt", text);
+  const copy = copyFacts(text);
+  const service = engine(ctx);
+  save(ctx, "bridge-engine-dump.txt", shell("dumpsys", "activity", "service", SERVICE_COMPONENT.replace(PKG, ctx.pkg)));
+  const v = verdictBridge({ stock, override, after, copy, service });
+
+  // Leave the device as the other scenarios expect it: Automatic (best effort; the next launch).
+  let reset = null;
+  try {
+    reset = await evalPage(ctx, overrideExpression("auto"), { timeoutMs: 20000 });
+  } catch (e) {
+    reset = { error: String(e?.message ?? e) };
+  }
+  return {
+    ...v,
+    measured: { stock, override, after, copy, service, reset },
+    evidence: ["bridge-stock.json", "bridge-diagnostics-copy.txt", "bridge-engine-dump.txt"],
+  };
+}
+
 /** The evidence: the engine's dump and rows, logcat, the system's view. Never fails. */
 async function collect(ctx) {
   save(ctx, "native-engine-dump.txt", shell("dumpsys", "activity", "service", SERVICE_COMPONENT.replace(PKG, ctx.pkg)));
@@ -788,7 +938,7 @@ function summary(ctx) {
   console.log(summaryMarkdown(verdicts));
 }
 
-const RUNNERS = { play, background, transport, notification, doze, focus, call, collect };
+const RUNNERS = { play, background, transport, notification, doze, focus, call, bridge, collect };
 
 export function parseArgs(argv) {
   const [scenario, ...rest] = argv;

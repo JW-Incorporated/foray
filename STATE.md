@@ -7,6 +7,27 @@ docs/. Completed workstreams move to their plan doc's retro section.
 
 ## Active workstreams
 
+### 2026-09-29 — `android/a-28-bridge-page-client`: A-28, the Android bridge and page client
+
+Owned: foray-audio's `EngineBridge`, `EngineLane`, `EngineOwnership` and the three engine `@PluginMethod`s on
+`ForayAudioPlugin`, plus `EngineLog`'s DiagRow ring. In the JVM core: `ContractDecoding`, `EngineBridgeRules` and
+`TokenAdmission`, and the `contract` / `snapshot` / `handshake` / `diag-tokens` runners. On the page:
+`HELLO_PLATFORMS` and `ENGINE_SHELL_PLATFORMS`. The runner: the native leg's `bridge` scenario. Card A-28 of
+`docs/plans/android-assessment.md` (Track A1), on `android/native`.
+
+**What changed.**
+- **The plugin.** Android's plugin answers `engineHello`, `engineSend` and `engineRead` (protocol v1) through a JVM
+  twin of the iOS bridge, and emits the coalesced `engine` event.
+- **The page.** The page asks an Android shell engineHello. The Android engine answers `legacy` by default, so a
+  stock launch runs the JS player exactly as before, with `engine=js reason=engine-legacy` in the Copy.
+- **Native lane.** Native is reached only by the Developer engine setting until A-31. In it, episodes relinquish to
+  the JS player: `episode` is not advertised until A-29 clears `engine-mode` on the JVM.
+
+**Paths.** `.github/workflows/android-playback.yml` and `tools/mobile/**` are governed. Per the orchestrator, the
+card merges into `android/native`, and governed paths are reviewed on the final `android/native` → `main` PR.
+
+No device, and no request to Joey (D-A3).
+
 ### 2026-09-29 — `android/a-26-playback-service`: A-26, the native engine's MediaSessionService shell
 
 Owned: foray-audio's `ForayPlaybackService` and the engine package's `ForayEngineHost`, `EnginePlayer`, `EngineSeams`,
