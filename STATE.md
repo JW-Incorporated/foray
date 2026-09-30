@@ -30,6 +30,14 @@ into `android/native`.
   The native service switches it on before building its session. It starts the service only when there is a record
   to resume.
 
+**Joined to A-28**, which merged into `android/native` first (merge commit `2738d77d`):
+- The process's store (`ForayPlaybackService.processStore`, over `EngineLog.process()`) is also the bridge's
+  `Records`. `engineRead("rows")` answers from the persisted rows. The bridge's purge, in any lane, also removes the
+  persisted rows and the restore record. A-28's in-memory records could not know about either.
+- `EngineOwnership` boots the bound service from the record (`restoreIfCold`) before it answers the page's first
+  call. That is NE-24's order.
+- (j) runs before A-28's page door, which stays last. (j) leaves the app force-stopped.
+
 **Paths.** `.github/workflows/android-playback.yml` (the (j) step) is a governed path. It merges into `android/native`,
 and the orchestrator reviews it on the final `android/native` → `main` PR. Nothing is self-labelled.
 

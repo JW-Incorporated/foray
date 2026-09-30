@@ -585,8 +585,12 @@ Rejected alternatives:
     after a SIGKILL (through the restarted service's session).
   - **Found.** The force-stop control does not hold on API 34: the receiver is still sent the key, and 4a plays.
     This is A-67's to record.
-  - **Handed on.** A-28's hello boots a cold service from the same record (`restoreIfCold`). The page's durable
-    diagnostics ring stays A-28's. The Bluetooth car check is **not executed** (D-A3).
+  - **Joined to A-28 (merged first).**
+    - The process's store is also the page bridge's records, so `engineRead("rows")` answers from the persisted
+      rows, and a "Delete my data" in any lane removes the rows and the restore record.
+    - The native lane's owner boots the service from the record before the page's first bridge call is answered.
+      That is NE-24's order, so the hello carries the restored queue and the undrained pending events.
+  - **Not executed.** The Bluetooth car check (D-A3).
 
 #### A-28 · Android bridge and page client — **M**
 - **Depends on:** A-26.

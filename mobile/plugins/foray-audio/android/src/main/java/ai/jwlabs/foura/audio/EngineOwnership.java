@@ -186,6 +186,12 @@ final class EngineOwnership implements EngineBridge.Owner {
                 try {
                     controller = future.get();
                     decidedRow();
+                    /* A-27, NE-24's order: the engine boots from its restore record BEFORE the
+                       page's first bridge call is answered, so the hello's snapshot carries the
+                       restored queue and the page drains the pending events a process death left.
+                       Once per service, and a no-op after any input. */
+                    ForayPlaybackService service = ForayPlaybackService.current();
+                    if (service != null) service.restoreIfCold();
                 } catch (Exception e) {
                     Log.w(TAG, "could not bind ForayPlaybackService; this process runs the page's player", e);
                     connectFailed = true;
