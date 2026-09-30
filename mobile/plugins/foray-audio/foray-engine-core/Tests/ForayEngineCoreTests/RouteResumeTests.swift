@@ -223,6 +223,26 @@ final class RouteResumeTests: XCTestCase {
         XCTAssertFalse(resumed(back))
     }
 
+    /// A second and a half heard through CarPlay, then a stall (`.waiting`)
+    /// with no position tick in between (they are 15 s apart), then half a
+    /// second more and the car off: the car WAS heard for a second, so it is
+    /// known and its return resumes. The stall must not throw the first span
+    /// away when the second one starts.
+    /// TO SEE IT FAIL: drop the known-set update from `stopHearing`.
+    func testAStallDoesNotForgetASecondAlreadyHeard() throws {
+        var car = RouteResumeTests.playing(through: RouteResumeTests.carPlay)
+        let token = try XCTUnwrap(car.lastLoad)
+        car.reading.audible = false
+        car.send(.deck(.timeControl(token: token, status: .waiting, waitingReason: nil)), after: 1_500)
+        car.reading.audible = true
+        car.send(.deck(.timeControl(token: token, status: .playing, waitingReason: nil)), after: 300)
+        let lost = car.send(.session(.route(RouteResumeTests.lost(RouteResumeTests.carPlay))), after: 500)
+        XCTAssertEqual(RouteResumeTests.rows("route", lost).first?[field: "known"], .bool(true), "\(lost)")
+        let back = car.send(.session(.route(RouteResumeTests.back(RouteResumeTests.carPlay))))
+        XCTAssertEqual(try backRow(back)[field: "why"], .string("route-back"))
+        XCTAssertTrue(resumed(back), "\(back)")
+    }
+
     /// Either order (plan §4.3): the deck's own pause arrives first and is
     /// blamed on the system, then the route goes within 500 ms. It is still
     /// the loss of a PLAYING route, so the car's return resumes it.
