@@ -102,7 +102,7 @@ public enum EngineConstants {
         /// `HANDSHAKE_REASONS`
         public static let handshakeReasons: [String] = ["native", "not-ios", "no-method", "no-hello", "bad-hello", "engine-legacy", "protocol-mismatch"]
         /// `HELLO_PLATFORMS`
-        public static let helloPlatforms: [String] = ["ios"]
+        public static let helloPlatforms: [String] = ["ios", "android"]
         /// `HOLD_POLICY_KINDS`
         public static let holdPolicyKinds: [String] = ["forever", "none", "until"]
         /// `MODE_OVERRIDES`

@@ -82,9 +82,10 @@ import java.util.concurrent.atomic.AtomicReference;
  *
  * <h2>WHO STARTS IT</h2>
  *
- * Nothing in a shipping build yet. Native mode on Android is off ({@code mobile/ENGINE_DEFAULT.json}
- * {@code android: js}, A-20) and the page's native branch is A-28's; until then the only client is
- * the DEBUG build's {@code EngineDriveReceiver} ({@code src/debug}), which the native-mode leg of
+ * The page's bridge (A-28): {@code EngineOwnership} binds it with a {@code MediaController} when
+ * the process's lane is native, which on Android is only by the Developer engine setting until
+ * A-31 ({@code mobile/ENGINE_DEFAULT.json} {@code android: js}). The DEBUG build's
+ * {@code EngineDriveReceiver} ({@code src/debug}) is a second client, which the native-mode leg of
  * {@code android-playback.yml} drives over adb. A client binds with a {@code MediaController}
  * (the Media3 way: the service is created bound, and Media3 promotes it to the foreground when the
  * facade reports playing).
@@ -120,7 +121,8 @@ public class ForayPlaybackService extends MediaSessionService {
     @Nullable private MediaSession session;
     @Nullable private Player.Listener focusListener;
     private final FocusMapping focus = new FocusMapping();
-    private final EngineLog log = new EngineLog();
+    /** The process's log (A-28): the page's bridge reads its ring and shared rows in every lane. */
+    private final EngineLog log = EngineLog.process();
 
     /** The live service, or null. Main thread. */
     @Nullable
@@ -268,7 +270,7 @@ public class ForayPlaybackService extends MediaSessionService {
         }
     }
 
-    // ---- what a client (the debug driver today, the bridge in A-28) calls, on main
+    // ---- what a client (the page's bridge, the debug driver) calls, on main
 
     /** Run one input through the engine. Null when there is no engine. */
     @Nullable

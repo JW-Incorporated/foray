@@ -187,24 +187,28 @@ test("decideMode: native only on iOS with the method, a well-formed native hello
   assert.equal(decideMode({ platform: "web", methodPresent: true, hello: native }).reason, "not-ios");
 });
 
-test("decideMode (A-20): Android drives a native engine only on protocol 1; the page does not ask it yet, so it stays js", () => {
-  /* docs/plans/android-assessment.md A-20. The contract lets an Android shell
-     answer engineHello exactly as iOS does; HELLO_PLATFORMS keeps the page from
-     asking until A-28, so today's Android is methodPresent false: `no-method`,
-     the JS player, nothing to relinquish — the lane it always had, where the
-     token used to be `not-ios`.
+test("decideMode (A-20, A-28): Android drives a native engine only on protocol 1, and the page asks it since A-28", () => {
+  /* docs/plans/android-assessment.md A-20 and A-28. The contract lets an
+     Android shell answer engineHello exactly as iOS does, and since A-28 the
+     page asks it (HELLO_PLATFORMS): its plugin has the three methods. The
+     native LANE is still off by default there — the Android engine answers
+     legacy (ENGINE_DEFAULT android: js) — so a stock Android launch is
+     `engine-legacy`: the JS player, nothing to relinquish.
      MUTATION: keep `platform !== "ios"` in decideMode -> the native case is
-     js/not-ios -> red. Add "android" to HELLO_PLATFORMS -> red below. */
+     js/not-ios -> red. Drop "android" from HELLO_PLATFORMS -> red below. */
   const native = contractSchemaDocument().$defs.helloResponse["x-examples"].valid.native;
   const android = (methodPresent, hello) => decideMode({ platform: "android", methodPresent, hello });
   assert.deepStrictEqual(android(true, native), { mode: "native", reason: "native", relinquish: false });
   assert.deepStrictEqual(android(true, { ...native, protocol: 2 }), { mode: "js", reason: "protocol-mismatch", relinquish: true });
   assert.deepStrictEqual(android(true, { mode: "legacy", reason: "not-built" }), { mode: "js", reason: "engine-legacy", relinquish: false });
   assert.deepStrictEqual(android(true, null), { mode: "js", reason: "no-hello", relinquish: true });
-  // Today's Android: the page never asks, so no method — and still js.
+  // A stock Android launch: the engine's legacy answer, and still js.
+  assert.deepStrictEqual(android(true, { mode: "legacy", reason: "build-default", protocol: 1 }),
+    { mode: "js", reason: "engine-legacy", relinquish: false });
+  // A binary built before A-28 has no method: js, nothing to relinquish.
   assert.deepStrictEqual(android(false, null), { mode: "js", reason: "no-method", relinquish: false });
   assert.deepStrictEqual([...ENGINE_PLATFORMS], ["ios", "android"]);
-  assert.deepStrictEqual([...HELLO_PLATFORMS], ["ios"], "A-28 adds android here, with the plugin's engine methods");
+  assert.deepStrictEqual([...HELLO_PLATFORMS], ["ios", "android"], "A-28 added android, with the plugin's engine methods");
   assert.ok(Object.isFrozen(ENGINE_PLATFORMS) && Object.isFrozen(HELLO_PLATFORMS));
 });
 

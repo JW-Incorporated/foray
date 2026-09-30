@@ -59,6 +59,14 @@ import java.util.Objects;
  * One object is both iOS's remote-command registry and its Now Playing writer here, because on
  * Android the session player is both.
  *
+ * <h2>THE BRIDGE LISTENS (A-28)</h2>
+ *
+ * The page's bridge ({@link EngineBridge}) hears every turn through the one
+ * {@link #setTurnListener turn listener}: after each input handled to the end (the surface is
+ * published first), and once more at teardown. It reads the snapshot's content from
+ * {@link #core()} and {@link #deckReading()}; it never changes anything but through
+ * {@link #handle}.
+ *
  * <h2>TERMINAL</h2>
  *
  * When a turn leaves the core relinquished, the host tears down the deck, every timer and the
@@ -105,6 +113,7 @@ public final class ForayEngineHost {
     private EngineCommand.GraceReason graceReason;
     private double graceSinceMs;
     private SurfaceListener surfaceListener;
+    private Runnable turnListener;
     private Surface surface;
     private int surfaceSeq;
     private int activations;
@@ -122,6 +131,35 @@ public final class ForayEngineHost {
     /** The core's state, for READING only (the dump, the tests). */
     public EngineState state() {
         return core.state();
+    }
+
+    /** The core, for READING only: the bridge's snapshot body (A-28). */
+    public EngineCore core() {
+        return core;
+    }
+
+    /** The deck's reading now, or idle once torn down (the deck is gone). */
+    public ai.jwlabs.foura.engine.DeckReading deckReading() {
+        return tornDown ? ai.jwlabs.foura.engine.DeckReading.idle() : seams.deck.reading();
+    }
+
+    /**
+     * Told after every input handled to the end, and once at teardown, on the host's thread: the
+     * page's bridge (A-28), which stamps a snapshot and decides whether an event may leave. One
+     * listener; null clears it.
+     */
+    public void setTurnListener(Runnable listener) {
+        turnListener = listener;
+    }
+
+    private void turned() {
+        Runnable listener = turnListener;
+        if (listener == null) return;
+        try {
+            listener.run();
+        } catch (RuntimeException ignored) {
+            // A listener that throws must never cost the engine a turn.
+        }
     }
 
     /** The surface as the last turn left it. */
@@ -172,6 +210,7 @@ public final class ForayEngineHost {
         SurfaceListener listener = surfaceListener;
         surfaceListener = null;
         if (listener != null) listener.onSurface(surface);
+        turned();
     }
 
     // ---- inputs
@@ -186,6 +225,7 @@ public final class ForayEngineHost {
         List<String> failures = runTurn(input);
         drain();
         publishSurface();
+        if (!tornDown) turned();
         return new Verdict(failures, false);
     }
 

@@ -1,5 +1,7 @@
-/* The page's client for the native iOS playback engine (docs/native-engine-plan.md
-   §4.6, §5; card NE-21).
+/* The page's client for the native playback engine (docs/native-engine-plan.md
+   §4.6, §5; card NE-21): the Swift engine on iOS, and since A-28 the Media3
+   engine on Android (docs/plans/android-assessment.md §5.4), which speaks the
+   same protocol v1 through the same three methods on its ForayAudio plugin.
 
    WHAT THIS MODULE IS. The one place the page talks to the engine: the three
    bridge methods (engineHello, engineSend, engineRead), the "engine" event, and
@@ -257,11 +259,10 @@ export function createNativeEngine({
     if (helloPromise) return helloPromise;
     helloPromise = (async () => {
       const platform = bridge.platform;
-      /* Only a platform in HELLO_PLATFORMS is asked (A-20's flag: iOS until
-         A-28 gives Android's plugin the methods). An Android shell's bridge is
-         `available` — ForayAudio is on it — but it has no engineHello, so it
-         is `methodPresent: false`: `no-method`, the JS player, no relinquish
-         sent to a plugin that could not take one. */
+      /* Only a platform in HELLO_PLATFORMS is asked (A-20's flag: iOS, and
+         Android since A-28 gave its plugin the methods). A shell outside it
+         (the web) is `methodPresent: false`: the JS player, no relinquish sent
+         to a plugin that could not take one. */
       let methodPresent = HELLO_PLATFORMS.includes(platform) && bridge.available;
       let answer = null;
       if (methodPresent) {

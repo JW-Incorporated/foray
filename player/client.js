@@ -259,11 +259,11 @@ const storage = createDurableStore({
      2026-09-24 "Option A"). Null on the web, and on a shell build without the
      plugin — where the token stays in the tiers above, as before. */
   vault: vaultTier(typeof window !== "undefined" ? window.Capacitor : null),
-  /* Inside the iOS shell only: the native engine's rows (`cp_pos:`,
-     `cp_foray:`, `cp_last_episode`) are DEFERRED from this line on — read,
-     never written down — until the page knows which lane plays (NE-23,
-     native-engine plan §4.6). A stale page must not be able to push its
-     mirror over a row the engine wrote. Empty on the web and on Android. */
+  /* Inside an engine shell only (iOS, and Android since A-28): the native
+     engine's rows (`cp_pos:`, `cp_foray:`, `cp_last_episode`) are DEFERRED
+     from this line on — read, never written down — until the page knows which
+     lane plays (NE-23, native-engine plan §4.6). A stale page must not be able
+     to push its mirror over a row the engine wrote. Empty on the web. */
   deferredPrefixes: deferredPrefixesFor(typeof window !== "undefined" ? window.Capacitor : null, OWNED_PREFIXES),
   onFault: (fault, health) => {
     // The player cannot fix a dead tier. What it must not do is hide one.
@@ -297,24 +297,32 @@ const storage = createDurableStore({
              `cp_last_episode` for the rest of the process, and the page's copy
              of them is REPLACED by the engine's (`adoptOwnedSet`). The player
              is built over the facades (native-facades.js), which send intents
-             and paint from snapshots. The iOS lock-screen shim
-             (foray-media-session.js) is uninstalled: the engine's
-             RemoteSurface owns Now Playing, and two owners of it is the
-             defect.
+             and paint from snapshots. The lock-screen shim
+             (foray-media-session.js) is uninstalled: the engine's surface
+             owns Now Playing (iOS: RemoteSurface; Android: the Media3
+             session of ForayPlaybackService, A-26), and two owners of it is
+             the defect.
      js      the store is released (the deferred migration runs), and the page
              is today's player. A timeout, a rejection or a protocol mismatch
              lands here too, after native-engine.js has SENT relinquish{cap:
              "all"}, so an engine that might be running stops before a single
              element exists.
 
-   Off the iOS shell (the web, Android) there is no engine and no question: the
+   ANDROID ASKS TOO, since A-28 (docs/plans/android-assessment.md §5.4): its
+   ForayAudio plugin speaks the same protocol v1 over the Media3 engine. Its
+   engine answers `legacy` by default (mobile/ENGINE_DEFAULT.json `android: js`
+   until A-31), so the lane there is the JS player unless the Developer engine
+   setting asked for native; the hello is answered on the plugin's main-thread
+   hop, so the wait is one bridge round trip.
+
+   Off an engine shell (the web) there is no engine and no question: the
    lane is JS from this line, the store is released before hydration exactly
    as it was before NE-23, and every path below stays synchronous. */
 const engineCapacitor = typeof window !== "undefined" ? window.Capacitor ?? null : null;
 const engineShell = deferredPrefixesFor(engineCapacitor, OWNED_PREFIXES).length > 0;
-/** "native" | "js", or null while the handshake is in flight (iOS shell only). */
+/** "native" | "js", or null while the handshake is in flight (engine shells only). */
 let engineMode = engineShell ? null : "js";
-/** The page's one engine client (native-engine.js), on the iOS shell only. */
+/** The page's one engine client (native-engine.js), on an engine shell only (iOS, Android). */
 let engine = null;
 /** `{manager, backend, dispose}` while the native lane is booted. */
 let engineFacades = null;
@@ -390,8 +398,8 @@ async function onEngineDecision(decision) {
    and the session probe (NE-25c). app.js draws them; this file is the only
    thing that may send their commands, and it sends nothing else for them.
 
-   WHICH ROWS EXIST. None off the iOS shell (the web, Android: `engine` is
-   null) and none on a shell whose binary has no engine methods (`no-method`).
+   WHICH ROWS EXIST. None off an engine shell (the web: `engine` is null) and
+   none on a shell whose binary has no engine methods (`no-method`).
    The engine setting alone wherever the bridge answers but the page runs the
    JS player: the native side takes setModeOverride in every lane, because it
    is how a listener on the web player asks for the native one at the next
@@ -575,7 +583,7 @@ function mediaFacts() {
 
 /* L22 (log-gaps 2026-09-26): WHERE THE ENGINE DECISION LANDED, as a row in
    the timeline — the header's `engine=` line says which lane this page is in
-   NOW, and nothing said when it committed. iOS shell only (elsewhere the lane
+   NOW, and nothing said when it committed. Engine shells only (elsewhere the lane
    is JS from the first line and there is no decision to record), and after
    hydration like every other write. The reason is the engine's own when it
    answered native (`build-default`, `override`), the page's otherwise. */
@@ -4303,6 +4311,16 @@ const ForayPlayer = {
        `engineMode` is "js" from module load and this never happens, so the
        gesture rule below is untouched — nothing is awaited before it. */
     if (engineMode === null) return engineModeReady.then(() => ForayPlayer.play(item, opts));
+    /* WITHOUT ITS 'episode' CAPABILITY THE ENGINE DOES NOT PLAY EPISODES
+       (A-28: the Android engine advertises it only once its parity books owe
+       nothing for it, A-29). The tap runs the ordered relinquish (§4.6), the
+       same path a Foray without `foray` takes, and the episode plays in
+       today's player: never a `playEpisode` the engine would refuse
+       `capability-off`, which is a dead play button. Every iOS engine
+       advertises `episode` (NE-27b), so this never runs there. */
+    if (engineMode === "native" && !engineCan("episode")) {
+      return relinquishToJs("episode").then(() => ForayPlayer.play(item, opts));
+    }
     if (!ensureBooted()) return false;
     // BEFORE the first await, always. See `notePlayGesture` (#225).
     backend.notePlayGesture();
@@ -4678,13 +4696,13 @@ const ForayPlayer = {
     return sendEnginePlan(plan);
   },
 
-  /** True while the iOS shell has not yet heard which lane plays. app.js asks
+  /** True while an engine shell has not yet heard which lane plays. app.js asks
       this before restoring the ribbon, and awaits `whenEngineReady` if so. */
   engineModePending() {
     return engineMode === null;
   },
 
-  /** Resolves "native" or "js" once the lane is known (at once off iOS). */
+  /** Resolves "native" or "js" once the lane is known (at once off an engine shell). */
   whenEngineReady() {
     return engineModeReady.then(() => engineMode);
   },

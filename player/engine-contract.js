@@ -705,12 +705,16 @@ export function helloRequest(pageBuild) {
     name because it is on the wire of every Copy paste since NE-26. */
 export const ENGINE_PLATFORMS = Object.freeze(["ios", "android"]);
 
-/** The platforms whose shell the PAGE asks engineHello (A-20's flag). Only
-    iOS today: Android's ForayAudio plugin has no engine methods until A-28,
-    which adds "android" here. Until then the page never asks an Android shell,
-    so `methodPresent` is false there and decideMode answers `no-method` — the
-    JS player, nothing to relinquish, exactly the lane Android always had. */
-export const HELLO_PLATFORMS = Object.freeze(["ios"]);
+/** The platforms whose shell the PAGE asks engineHello (A-20's flag). iOS,
+    and Android since A-28 (docs/plans/android-assessment.md §5.4), whose
+    ForayAudio plugin answers the three engine methods. The native LANE stays
+    off by default there: the Android engine answers `{mode: "legacy", reason:
+    "build-default"}` (mobile/ENGINE_DEFAULT.json `android: js`) until A-31,
+    so decideMode answers `engine-legacy` — the JS player, nothing to
+    relinquish — unless the Developer engine setting asked for native. An
+    Android binary built before A-28 rejects the call UNIMPLEMENTED, which
+    native-engine.js reads as `no-method`. */
+export const HELLO_PLATFORMS = Object.freeze(["ios", "android"]);
 
 /** Why decideMode answered what it did, one token per outcome. */
 export const HANDSHAKE_REASONS = Object.freeze([
@@ -724,8 +728,9 @@ export const HANDSHAKE_REASONS = Object.freeze([
  *     platform       Capacitor.getPlatform(): one of ENGINE_PLATFORMS ("ios",
  *                    "android") may have an engine; anything else is `not-ios`
  *     methodPresent  whether the plugin answers engineHello at all (an older
- *                    binary does not, and neither does any Android binary
- *                    before A-28: the page does not ask — HELLO_PLATFORMS)
+ *                    binary does not: an Android binary before A-28 rejects
+ *                    it UNIMPLEMENTED; a platform outside HELLO_PLATFORMS is
+ *                    never asked)
  *     hello          engineHello's answer, or null for a timeout (5 s) or a
  *                    rejection
  *

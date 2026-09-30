@@ -128,7 +128,7 @@ public final class EngineConstants {
         /** {@code HANDSHAKE_REASONS} */
         public static final List<String> HANDSHAKE_REASONS = Collections.unmodifiableList(Arrays.asList("native", "not-ios", "no-method", "no-hello", "bad-hello", "engine-legacy", "protocol-mismatch"));
         /** {@code HELLO_PLATFORMS} */
-        public static final List<String> HELLO_PLATFORMS = Collections.unmodifiableList(Arrays.asList("ios"));
+        public static final List<String> HELLO_PLATFORMS = Collections.unmodifiableList(Arrays.asList("ios", "android"));
         /** {@code HOLD_POLICY_KINDS} */
         public static final List<String> HOLD_POLICY_KINDS = Collections.unmodifiableList(Arrays.asList("forever", "none", "until"));
         /** {@code MODE_OVERRIDES} */

@@ -109,9 +109,9 @@
       page's stale localStorage copy down over the engine's newer row, and
       re-push a row the engine had deleted. So those prefixes are DEFERRED from
       the moment the store is constructed — see "single writer" below: read,
-      never written down, until the page knows which lane plays. Only the iOS
-      shell passes them (`deferredPrefixesFor`); the web and Android build the
-      store exactly as before.
+      never written down, until the page knows which lane plays. Only the
+      engine shells pass them (`deferredPrefixesFor`: iOS, and Android since
+      A-28); the web builds the store exactly as before.
 
    ── What this does NOT fix, stated rather than assumed ─────────────────────
    IndexedDB is not immune to eviction. Safari's ~7-day sweep covers ALL
@@ -440,14 +440,24 @@ export const OWNERSHIP_RELEASED = "released";
 export const OWNER_TIER = "engine";
 export const EXTERNALLY_OWNED = "externally-owned";
 
+/** The shells whose page asks engineHello, so whose store defers the engine's
+    rows until the answer: engine-contract.js HELLO_PLATFORMS, spelled here
+    rather than imported (the store imports nothing), and durable-store.test.js
+    pins the two lists equal. Android since A-28 (docs/plans/android-assessment.md
+    §5.4): its plugin answers the hello, and a legacy answer releases the
+    store at once. */
+export const ENGINE_SHELL_PLATFORMS = Object.freeze(["ios", "android"]);
+
 /**
- * The prefixes a store should defer from construction: `prefixes` inside the
- * iOS Capacitor shell, where the native engine exists, and none anywhere else.
+ * The prefixes a store should defer from construction: `prefixes` inside a
+ * Capacitor shell whose page asks the native engine which lane plays
+ * (`ENGINE_SHELL_PLATFORMS`: iOS, and Android since A-28), and none anywhere
+ * else.
  *
- * The web has no engine, and Android has none yet (its Media3 engine is
- * docs/plans/android-assessment.md track A1; A-28 extends this with the page's
- * HELLO_PLATFORMS): deferring there would hold back a migration nothing
- * releases. `getPlatform()`
+ * The web has no engine: deferring there would hold back a migration nothing
+ * releases. On an engine shell the page's handshake always releases it: a
+ * native answer adopts the engine's rows, any other answer (legacy, a
+ * timeout, a rejection) releases the store to the page. `getPlatform()`
  * is Capacitor's own answer ("ios" | "android" | "web"); a bridge without it is
  * an older shell that predates the engine, and defers nothing.
  *
@@ -459,7 +469,7 @@ export function deferredPrefixesFor(bridge, prefixes) {
   if (typeof bridge.isNativePlatform === "function" && !bridge.isNativePlatform()) return [];
   let platform = null;
   try { platform = bridge.getPlatform(); } catch (_) { return []; }
-  return platform === "ios" && Array.isArray(prefixes) ? [...prefixes] : [];
+  return ENGINE_SHELL_PLATFORMS.includes(platform) && Array.isArray(prefixes) ? [...prefixes] : [];
 }
 
 /**

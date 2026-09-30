@@ -1833,22 +1833,23 @@ function iosStore({ local = {}, native = {}, idb = {}, gate = null, onFault = nu
 /** What `engineRead("rows")` answers: every engine row UserDefaults holds. */
 const engineRows = (native) => Object.fromEntries([...native.store].filter(([k]) => isOwnerKey(k)));
 
-test("SINGLE WRITER: deferral is for the iOS shell only — not the web, not Android, not an older shell", () => {
-  /* MUTATION: answer the prefixes for any native platform -> Android defers a
-     migration nothing on Android will ever release, and its positions stop
-     reaching SharedPreferences. */
+test("SINGLE WRITER: deferral is for the engine shells only (iOS, Android since A-28) — not the web, not an older shell", () => {
+  /* MUTATION: answer the prefixes for any platform -> the web defers a
+     migration nothing on the web will ever release. Drop "android" -> an
+     Android page that asks the engine would write rows the engine may own. */
   const shell = (platform, native = true) => ({ getPlatform: () => platform, isNativePlatform: () => native });
   assert.deepEqual(deferredPrefixesFor(null, OWNED_PREFIXES), [], "a browser tab has no window.Capacitor");
   assert.deepEqual(deferredPrefixesFor({}, OWNED_PREFIXES), [], "a shell with no getPlatform predates the engine");
-  assert.deepEqual(deferredPrefixesFor(shell("android"), OWNED_PREFIXES), []);
+  assert.deepEqual(deferredPrefixesFor(shell("android"), OWNED_PREFIXES), [...OWNED_PREFIXES]);
   assert.deepEqual(deferredPrefixesFor(shell("web", false), OWNED_PREFIXES), []);
+  assert.deepEqual(deferredPrefixesFor(shell("web"), OWNED_PREFIXES), []);
   assert.deepEqual(deferredPrefixesFor({ getPlatform() { throw new Error("x"); } }, OWNED_PREFIXES), []);
   assert.deepEqual(deferredPrefixesFor(shell("ios"), OWNED_PREFIXES), [...OWNED_PREFIXES]);
   /* A-20: the store defers exactly on the platforms the page asks engineHello
      (engine-contract.js HELLO_PLATFORMS). client.js builds the engine only
      where the store defers, so a platform in one list and not the other is
-     a hello nobody sends, or rows held for an engine nobody asks. A-28 adds
-     "android" to both. MUTATION: add "android" to HELLO_PLATFORMS alone -> red. */
+     a hello nobody sends, or rows held for an engine nobody asks. A-28 added
+     "android" to both. MUTATION: drop "android" from either list alone -> red. */
   for (const platform of ["ios", "android", "web"]) {
     assert.equal(deferredPrefixesFor(shell(platform), OWNED_PREFIXES).length > 0, HELLO_PLATFORMS.includes(platform), platform);
   }

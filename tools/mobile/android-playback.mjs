@@ -1156,8 +1156,9 @@ function killReason(pid, pkg) {
 }
 
 /** Forward the page's DevTools socket (found, not name-assumed, as in
- *  `android-smoke.yml`) and return the page target. */
-async function connect(ctx, { timeoutMs = 60000 } = {}) {
+ *  `android-smoke.yml`) and return the page target. Exported for the native
+ *  runner's page-side scenario (A-28). */
+export async function connect(ctx, { timeoutMs = 60000 } = {}) {
   const deadline = Date.now() + timeoutMs;
   let last = "no attempt";
   while (Date.now() < deadline) {
@@ -1182,7 +1183,7 @@ async function connect(ctx, { timeoutMs = 60000 } = {}) {
   throw new Error(`could not reach the page over DevTools: ${last}`);
 }
 
-async function page(ctx, expression, { gesture = false, timeoutMs = 30000 } = {}) {
+export async function page(ctx, expression, { gesture = false, timeoutMs = 30000 } = {}) {
   if (!ctx.target) ({ target: ctx.target } = await connect(ctx));
   try {
     return await evaluate(ctx.target.webSocketDebuggerUrl, expression, timeoutMs, { userGesture: gesture });

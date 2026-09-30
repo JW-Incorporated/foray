@@ -576,6 +576,27 @@ Rejected alternatives:
 - **Acceptance:** Node tests for the Android handshake. The emulator native leg logs `engine mode native` in the
   Copy paste.
 - **Device check:** none until A-31.
+- **Status (2026-09-29): done in its PR, evidence in `STATE.md` (A-28 entry).**
+  - **The bridge.** `EngineBridge` (foray-audio, pure JVM) is the iOS NE-20 bridge on the JVM: hello, send and read
+    always answer, an invalid send is `unknown-cmd`, a `cmd` row with its source before anything no-ops (D-4),
+    `seqGap`, the refusal row (L02), the relinquish hand-back, and events coalesced to ≤ 1 Hz and withheld from a
+    hidden page. The payload shapes, Snapshot v1 and the coalescer are the core's (`EngineBridgeRules`), and the
+    decoder is `ContractDecoding`, so `contract`, `snapshot`, `handshake` and `diag-tokens` moved to `runs` in
+    `jvm-pending.json`. The plugin's three `@PluginMethod`s hop to main and always resolve.
+  - **The lane.** `EngineOwnership` (Android) decides once per process from `EngineLane`: the build default
+    (`ENGINE_DEFAULT` android `js`, pinned) and the Developer engine setting (`ForayEngine.modeOverride`, iOS's
+    key). In the native lane it binds `ForayPlaybackService` with a `MediaController` before answering. The
+    crash-loop sentinel and the hello watchdog stay A-29's.
+  - **The page.** `HELLO_PLATFORMS` and the store's `ENGINE_SHELL_PLATFORMS` gained `android`. A stock launch is
+    `engine-legacy`, which is the JS player with nothing relinquished. The page's visibility is the engine's
+    lifecycle on Android (`setPageVisible` also feeds `background` / `foreground`).
+  - **Capabilities.** The binary advertises only `continuation`. `episode` waits on `engine-mode` (A-29), and a
+    shell invariant holds the literal to the JVM books. So a native lane relinquishes an episode tap to the JS
+    player (the new `engineCan("episode")` guard in `ForayPlayer.play`, which never runs on iOS), as a Foray tap
+    does without `foray`.
+  - **The emulator.** The native leg's last scenario, `bridge`, reads the stock lane over DevTools and turns the
+    Developer setting to Native through the page. It then relaunches and requires `engine=native … reason=override`
+    and an `engineMode native` row in the Copy.
 
 #### A-29 · Ownership and fallback (a subset of NE-17) — **M**
 - **Depends on:** A-28.
