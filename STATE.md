@@ -20,6 +20,14 @@ docs/. Completed workstreams move to their plan doc's retro section.
 
 **Owned while it runs:** `mobile/plugins/foray-audio/**` (engine) and the parity families `route-resume`, `prepare` and `manager-remainder`.
 
+### 2026-09-29 — `engine/ne-46-silence-late-timer`: NE-46, the silence node stays off; the late-timer row
+
+**The decision (provisional, M3).** `EngineConfig.silenceNodeEnabled` stays `false`. Four reasons: App Review 2.5.4 (R21); no suspension inside a seam has been observed (the M1 car test #114, the 2026-09-28 paste); BackgroundGrace holds a task across every silent span; NE-45 shrinks silent spans to the beat. `SilenceNode.swift`'s header states it, and an XCTest (`LateTimerTests.testTheSilenceNodeFlagDefaultsToFalse`) and a shell invariant pin it.
+- **The detector.** `EngineCore.noteLateness`, before each input is handled: a one-shot engine timer (the seam beat, the silence cap, the narration tick, from a ledger of the turn's own `timerArm`/`timerCancel`) or the deck's load deadline (`afterMs` against `EngineConfig.loadDeadlineMs`, which the boot fills from `AVDeck`'s P-13 values) that arrives more than `NARRATION_SUSPEND_GAP_MS` (5 s) late while grace is held writes `grace kind=late timer= lateMs= inSeam=y|n bgRemainingMs= reason= clock=mono|wall`. It decides nothing. Lateness is the larger of the uptime and the wall-clock readings: uptime (and the host's dispatch timers) stops while the device sleeps, so a suspension on a locked phone that then slept is late only on the wall clock (`clock=wall`).
+- **The rule for turning it on.** Only if a drive paste shows at least one `grace kind=late inSeam=y` row (NE-38e verdict `suspension-in-seam`). The change is then a one-line flag PR (`config.silenceNodeEnabled = true` in `EngineBoot`) that cites the paste, and the NE-34 App Review note must already be in the submission notes.
+
+**Device check (human, not blocking):** the `grace` rows of #128 and of the NE-40 drive, read by `engine-report.mjs`'s `suspension-in-seam` verdict. No new on-device step.
+
 ### 2026-09-29 — `engine/ne-39n-next-fallback-cause`: NE-39n, Next lands on a narration line; the fallback's cause
 
 **The Next decision (provisional ruling, M3).** Next goes to the NEXT ITEM, a narration line included, on every surface: the page's button, the web lock screen, the car and the iPhone lock screen. From a clip whose next item is a line, Next lands on the line. From a line, it lands on the item after it.
