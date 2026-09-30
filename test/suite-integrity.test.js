@@ -1697,8 +1697,10 @@ const FLOORS = {
      pass, fail and no-coverage), the proposal's arithmetic, the 2026-09-28
      excerpt fixture (no-coverage everywhere, never a pass), the synthetic M3
      drive fixture, --strict on an M3 fail, and the pin to the Swift constants
-     each `// MEASURE: verdict=` names. */
-  "tools/mobile/engine-report.test.mjs": 43,
+     each `// MEASURE: verdict=` names. Review: 43 -> 44, rate-latch also
+     judges buffering=y (the #866 latch itself) by the clock and the deck's
+     time-control rows. */
+  "tools/mobile/engine-report.test.mjs": 44,
   "tools/mobile/ios-workflow.test.mjs": 46, // ci-release-12 (round-3 audit): +1 -- no npm install under mobile/ on either iOS path; 45 -> 46 // NE-17: +1 -- the plist step keeps the bare injector run and its --check, which carry ForayEngineDefault, with no --engine-default override // NE-06: +1 -- the parity fixtures and recorder are negated out of the path filter, below the patterns they narrow // +4 (2026-09-13): the MinimumOSVersion patch runs before both builds, off one resolved SwiftPM tree, with the deployment target READ not written, and the built device bundle is read back
 
   "tools/mobile/probe/install-probe.test.mjs": 50, // NE-36 (2026-09-25): the native phase, its audio base, its page and its Foray; 39 -> 50

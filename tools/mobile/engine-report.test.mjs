@@ -595,11 +595,12 @@ test("reuse-idle: trouble on the reuse's token within 30 s fails; stale loads ar
 test("rate-latch: rate 0 for over 3 s while playing with the clock advancing fails (#866); honest spans pass", () => {
   const latched = m3(paste([npRow({ rate: 0, via: "state", elapsedSec: 100 }), { ...npRow({ rate: 1, elapsedSec: 104.2 }), dt: 4_000 }]), "rate-latch");
   assert.equal(latched.verdict, "fail");
-  assert.match(latched.why, /#1→#2 4000ms, elapsedSec \+4.2/);
+  assert.match(latched.why, /#1→#2 4000ms buffering=n, elapsedSec \+4.2/);
   const short = m3(paste([npRow({ rate: 0, elapsedSec: 100 }), { ...npRow({ elapsedSec: 101.5 }), dt: 1_500 }]), "rate-latch");
   assert.equal(short.verdict, "pass", short.why);
-  // Buffering (the stall latch, P-14) and a clock that stood still are honest rate 0.
-  assert.equal(m3(paste([npRow({ rate: 0, buffering: true }), { ...npRow({ elapsedSec: 106 }), dt: 6_000 }]), "rate-latch").verdict, "pass");
+  // An honest stall (P-14): buffering=y, the deck waiting and the clock standing still.
+  assert.equal(m3(paste([deck("time-control", 1, { status: "waiting", reason: "minimize-stalls" }), npRow({ rate: 0, buffering: true }),
+    { ...npRow({ elapsedSec: 100.4 }), dt: 6_000 }]), "rate-latch").verdict, "pass");
   assert.equal(m3(paste([npRow({ rate: 0 }), { ...npRow({ elapsedSec: 100 }), dt: 9_000 }]), "rate-latch").verdict, "pass");
   // A jump further than the span could play is a seek, not a latch.
   assert.equal(m3(paste([npRow({ rate: 0 }), { ...npRow({ elapsedSec: 160 }), dt: 5_000 }]), "rate-latch").verdict, "pass");
@@ -608,6 +609,27 @@ test("rate-latch: rate 0 for over 3 s while playing with the clock advancing fai
   assert.equal(m3(paste([{ kind: "nowplaying", title: "E", artist: "S", album: "", state: "playing", rate: 0, via: "state" }]), "rate-latch").verdict, "no-coverage",
     "a row without engineState= (before #866) judges nothing");
   assert.equal(m3(paste([npRow({ rate: 0, engineState: "loadingItem" })]), "rate-latch").verdict, "no-coverage", "never shown running");
+});
+
+test("rate-latch catches the #866 latch itself: buffering=y stuck on while the deck plays", () => {
+  // The race #866 fixed: the deck reports playing, a late stall latches buffering=y, and the lock
+  // screen sits at rate 0 while the clock runs at play pace.
+  const clock = m3(paste([deck("time-control", 1, { status: "playing" }), npRow({ rate: 0, buffering: true, via: "rate", elapsedSec: 100 }),
+    { ...npRow({ elapsedSec: 106 }), dt: 6_000 }]), "rate-latch");
+  assert.equal(clock.verdict, "fail", clock.why);
+  assert.match(clock.why, /#2→#3 6000ms buffering=y, elapsedSec \+6, deck playing 6000ms \(#1\)/);
+  // The deck rule alone: no later nowplaying row (the Copy was taken mid-latch), but the deck said playing for 8 s.
+  const open = m3(paste([npRow({ elapsedSec: 90 }), deck("time-control", 1, { status: "playing" }), npRow({ rate: 0, buffering: true, via: "rate" }),
+    { kind: "remote", cmd: "play", status: "success", dt: 8_000 }]), "rate-latch");
+  assert.equal(open.verdict, "fail", open.why);
+  assert.match(open.why, /#3→end 8000ms buffering=y, deck playing 8000ms/);
+  // The deck going to waiting inside the span ends its playing stretch: a real stall after 2 s is honest.
+  assert.equal(m3(paste([npRow({ elapsedSec: 90 }), deck("time-control", 1, { status: "playing" }), npRow({ rate: 0, buffering: true, via: "rate" }),
+    { ...deck("time-control", 1, { status: "waiting" }), dt: 2_000 }, { ...npRow({ elapsedSec: 101 }), dt: 8_000 }]), "rate-latch").verdict, "pass");
+  // buffering=y with the clock creeping (under half the wall time) is a stall that played a little, not a latch.
+  assert.equal(m3(paste([npRow({ rate: 0, buffering: true }), { ...npRow({ elapsedSec: 102 }), dt: 8_000 }]), "rate-latch").verdict, "pass");
+  // A relaunch ends a span: the restored row after a boot is not the rate before it.
+  assert.equal(m3(paste([bootRow(), npRow({ elapsedSec: 90 }), npRow({ rate: 0, elapsedSec: 100 }), { ...bootRow(), dt: 60_000 }, { ...npRow({ elapsedSec: 160 }), dt: 2_000 }]), "rate-latch").verdict, "pass");
 });
 
 test("resume-latency: heldMs split cold vs reuse; an expired span fails; an unclassified span is no-coverage", () => {

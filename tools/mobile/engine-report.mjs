@@ -713,6 +713,7 @@ export function m1Exit(parsed) {
  *   deck deadline token= afterMs= step= class= reuse= …the access fields
  *   deck access|stalled|failed token= … wwan=<media requests over cellular>
  *   nowplaying    … via= state= rate= elapsedSec= buffering= engineState= listenRate=
+ *   deck time-control token= status=playing|waiting|paused reason= positionSec=  (#866)
  *   grace begin   reason= low=y|n bgRemainingMs=
  *   grace end|expired outcome= reason= heldMs=
  *   grace late    timer= lateMs= inSeam=y|n bgRemainingMs=                    (NE-46)
@@ -920,50 +921,103 @@ function reuseVerdict(ri) {
 }
 
 /**
- * The rate-0 spans: a `nowplaying` row with engineState=playing buffering=n
- * rate=0, up to the next nowplaying row. The span LATCHED when it lasted
- * longer than RATE_LATCH_MAX_MS and elapsedSec moved forward across it by at
- * least RATE_LATCH_MIN_ADVANCE_SEC and no further than the span could play
- * (a longer jump is a seek, which says nothing about the rate). A span with no
- * nowplaying row after it is open, and judged by nothing.
+ * The rate-0 spans: a `nowplaying` row with engineState=playing and rate=0, up
+ * to the next nowplaying row of the same boot (a relaunch ends a span, since
+ * the restored row's elapsedSec says nothing about the rate before it). A span
+ * LATCHED when it lasted longer than RATE_LATCH_MAX_MS and either
+ *   - the clock ran: elapsedSec moved forward across it by at least
+ *     RATE_LATCH_MIN_ADVANCE_SEC (with buffering=y, at least half the span's
+ *     wall time too, since an honest stall stands still) and no further than
+ *     the span could play (a longer jump is a seek, which says nothing about
+ *     the rate); or
+ *   - the deck said so: its latest `deck time-control` row read
+ *     status=playing for longer than RATE_LATCH_MAX_MS inside the span.
+ * buffering=y is judged too, because it is the #866 latch itself: the core's
+ * `buffering` stuck on after a stall that landed behind the deck's `playing`,
+ * so the lock screen sat at rate 0 while audio played. An honest stall is
+ * buffering=y with the deck waiting and the clock still. A span with no later
+ * nowplaying row (open, to the end of its boot) is judged by the deck rule only.
  */
 export function rateLatch(parsed) {
-  const nps = parsed.engineRows.filter((r) => r.kind === "nowplaying" && "engineState" in r.f);
-  const spans = [];
-  nps.forEach((r, k) => {
-    if (r.f.engineState !== "playing" || r.f.buffering !== false || num(r.f.rate) !== 0) return;
-    const next = nps[k + 1] ?? null;
-    if (!next) {
-      spans.push({ row: r, next: null, durationMs: null, advanceSec: null, latched: false, open: true });
-      return;
+  const rows = parsed.engineRows;
+  const nps = [];
+  const tcs = [];
+  const bootEnd = [];
+  let boot = 0;
+  for (const r of rows) {
+    if (r.kind === "build") {
+      if (bootEnd[boot] === undefined) bootEnd[boot] = r.t;
+      boot++;
     }
-    const durationMs = next.t - r.t;
-    const a = num(r.f.elapsedSec);
-    const b = num(next.f.elapsedSec);
-    const advanceSec = a != null && b != null ? Math.round((b - a) * 1000) / 1000 : null;
-    const speed = Math.max(num(r.f.listenRate) ?? 1, 1);
-    const plausible = advanceSec != null && advanceSec >= RATE_LATCH_MIN_ADVANCE_SEC
-      && advanceSec <= (durationMs / 1000) * speed * 1.1 + 2;
-    spans.push({ row: r, next, durationMs, advanceSec, latched: durationMs > RATE_LATCH_MAX_MS && plausible, open: false });
+    if (r.kind === "nowplaying" && "engineState" in r.f) nps.push({ r, boot });
+    if (isEvent(r, "deck", "time-control") && typeof r.f.status === "string") tcs.push({ r, boot });
+  }
+  const lastT = rows.length ? rows[rows.length - 1].t : null;
+  /** The longest stretch of [from, to] in which the deck's latest time-control row (this boot) said playing. */
+  const deckPlaying = (from, to, b) => {
+    let status = null;
+    let since = from;
+    let best = { ms: 0, row: null };
+    let row = null;
+    for (const { r, boot: rb } of tcs) {
+      if (rb !== b) continue;
+      if (r.t <= from) { status = r.f.status; row = r; continue; }
+      if (r.t >= to) break;
+      if (status === "playing" && r.t - since > best.ms) best = { ms: r.t - since, row };
+      status = r.f.status;
+      row = r;
+      since = r.t;
+    }
+    if (status === "playing" && to - since > best.ms) best = { ms: to - since, row };
+    return best;
+  };
+  const spans = [];
+  nps.forEach(({ r, boot: b }, k) => {
+    if (r.f.engineState !== "playing" || num(r.f.rate) !== 0) return;
+    const buffering = r.f.buffering === true;
+    if (!buffering && r.f.buffering !== false) return;
+    const after = nps[k + 1];
+    const next = after && after.boot === b ? after.r : null;
+    const endT = next ? next.t : (bootEnd[b] ?? lastT);
+    const durationMs = endT - r.t;
+    let advanceSec = null;
+    let clockRan = false;
+    if (next) {
+      const a = num(r.f.elapsedSec);
+      const z = num(next.f.elapsedSec);
+      advanceSec = a != null && z != null ? Math.round((z - a) * 1000) / 1000 : null;
+      const speed = Math.max(num(r.f.listenRate) ?? 1, 1);
+      const floor = buffering ? Math.max(RATE_LATCH_MIN_ADVANCE_SEC, durationMs / 2000) : RATE_LATCH_MIN_ADVANCE_SEC;
+      clockRan = advanceSec != null && advanceSec >= floor && advanceSec <= (durationMs / 1000) * speed * 1.1 + 2;
+    }
+    const deck = deckPlaying(r.t, endT, b);
+    const deckRan = deck.ms > RATE_LATCH_MAX_MS;
+    spans.push({
+      row: r, next, buffering, durationMs, advanceSec, deckPlayingMs: deck.ms, deckRow: deckRan ? deck.row : null,
+      latched: durationMs > RATE_LATCH_MAX_MS && (clockRan || deckRan), open: !next,
+    });
   });
-  const running = nps.filter((r) => r.f.engineState === "playing" && r.f.buffering === false && (num(r.f.rate) ?? 0) > 0);
-  return { rows: nps, spans, running };
+  const running = nps.map((x) => x.r).filter((r) => r.f.engineState === "playing" && r.f.buffering === false && (num(r.f.rate) ?? 0) > 0);
+  return { rows: nps.map((x) => x.r), spans, running };
 }
+
+const spanText = (s) => `#${s.row.seq}→${s.next ? `#${s.next.seq}` : "end"} ${s.durationMs}ms buffering=${s.buffering ? "y" : "n"}`
+  + `${s.advanceSec == null ? "" : `, elapsedSec +${s.advanceSec}`}${s.deckPlayingMs ? `, deck playing ${s.deckPlayingMs}ms${s.deckRow ? ` (#${s.deckRow.seq})` : ""}` : ""}`;
 
 function rateLatchVerdict(rl) {
   if (!rl.rows.length) return m3Verdict("rate-latch", "no-coverage", "no `nowplaying` row carries engineState= (the #866 rows)");
   const latched = rl.spans.filter((s) => s.latched);
   if (latched.length) {
-    return m3Verdict("rate-latch", "fail", `${latched.length} spans published rate=0 while playing (buffering=n) and the clock advanced: `
-      + latched.map((s) => `#${s.row.seq}→#${s.next.seq} ${s.durationMs}ms, elapsedSec +${s.advanceSec}`).join("; "),
-    latched.flatMap((s) => [s.row, s.next]));
+    return m3Verdict("rate-latch", "fail", `${latched.length} spans published rate=0 while playing for over ${RATE_LATCH_MAX_MS / 1000} s with the clock running or the deck playing: `
+      + latched.map(spanText).join("; "),
+    latched.flatMap((s) => [s.row, s.next, s.deckRow]));
   }
   if (!rl.running.length) {
     return m3Verdict("rate-latch", "no-coverage", `${rl.rows.length} nowplaying rows, none with engineState=playing buffering=n rate>0: the lock screen was never shown running`, rl.rows.slice(0, 1));
   }
   const open = rl.spans.filter((s) => s.open).length;
-  return m3Verdict("rate-latch", "pass", `${rl.running.length} Now Playing writes running; ${rl.spans.length} rate-0 spans while playing, none over ${RATE_LATCH_MAX_MS / 1000} s with the clock advancing`
-    + (open ? ` (${open} open at the end of the paste, unjudged)` : ""), [rl.running[0], ...rl.spans.map((s) => s.row)]);
+  return m3Verdict("rate-latch", "pass", `${rl.running.length} Now Playing writes running; ${rl.spans.length} rate-0 spans while playing, none over ${RATE_LATCH_MAX_MS / 1000} s with the clock running or the deck playing`
+    + (open ? ` (${open} open at the end of a boot, judged by the deck rows only)` : ""), [rl.running[0], ...rl.spans.map((s) => s.row)]);
 }
 
 /**
@@ -1400,10 +1454,8 @@ function m3Section(m, L) {
   }
   L.push("");
 
-  L.push(`Now Playing rate-0 spans while playing (buffering=n): ${m.rate.spans.length}`);
-  for (const s of m.rate.spans) {
-    L.push(`- #${s.row.seq}${s.next ? `→#${s.next.seq} ${s.durationMs}ms, elapsedSec ${s.advanceSec == null ? "—" : `+${s.advanceSec}`}` : " open to the end of the paste"}${s.latched ? " **LATCHED**" : ""}`);
-  }
+  L.push(`Now Playing rate-0 spans while playing: ${m.rate.spans.length} (buffering=y ${m.rate.spans.filter((x) => x.buffering).length})`);
+  for (const s of m.rate.spans) L.push(`- ${spanText(s)}${s.latched ? " **LATCHED**" : ""}`);
   L.push("");
 
   L.push(`Route back: ${m.backs.length}`);
