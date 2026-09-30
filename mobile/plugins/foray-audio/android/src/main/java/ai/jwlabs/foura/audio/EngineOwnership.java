@@ -149,16 +149,8 @@ final class EngineOwnership implements EngineBridge.Owner {
         main.post(() -> {
             MediaController c = controller;
             controller = null;
-            try {
-                if (c != null) c.release();
-            } catch (RuntimeException e) {
-                Log.w(TAG, "releasing the engine's controller failed", e);
-            }
-            try {
-                app.stopService(new Intent(app, ForayPlaybackService.class));
-            } catch (RuntimeException e) {
-                Log.w(TAG, "stopping the engine's service failed", e);
-            }
+            if (c != null) releaseQuietly(c);
+            stopServiceQuietly();
         });
     }
 
@@ -166,51 +158,92 @@ final class EngineOwnership implements EngineBridge.Owner {
 
     /**
      * Run {@code then} once a bridge call can be answered: at once in the legacy lane, after a
-     * relinquish, or when the service is already hosting; otherwise once the service is bound, or
-     * after {@link #CONNECT_TIMEOUT_MS} without it (the hello then says {@code not-built}, and the
-     * page runs its own player). Main thread.
+     * relinquish, after the binding failed, or once the binding exists; otherwise once the service
+     * is bound, or after {@link #CONNECT_TIMEOUT_MS} without it (the hello then says
+     * {@code not-built}, and the page runs its own player). Main thread.
+     *
+     * <p>EVERY CALL IS ANSWERED. Once the controller is connected the call runs at once, even if
+     * the service is gone by then (its host was torn down with it: the bridge answers from the
+     * owner's record, {@code relinquished} / {@code downgrade}). Waiting on the service there
+     * would park the call behind a connection that already happened, and the plugin's promise
+     * would never resolve.
+     *
+     * <p>A LATE BINDING IS UNDONE. When the timeout answered first, the page was told there is no
+     * engine and runs its own player; a binding that completes after that is released and the
+     * service stopped, so the process never holds a second media session beside the legacy one.
      */
     void whenReady(@NonNull Runnable then) {
-        if (!decideOnce().isNative() || relinquished || connectFailed
-                || (controller != null && ForayPlaybackService.current() != null)) {
+        if (!decideOnce().isNative() || relinquished || connectFailed || controller != null) {
             then.run();
             return;
         }
         waiting.add(then);
         if (connecting != null) return;
+        final ListenableFuture<MediaController> future;
         try {
             SessionToken token = new SessionToken(app, new ComponentName(app, ForayPlaybackService.class));
-            ListenableFuture<MediaController> future = new MediaController.Builder(app, token).buildAsync();
-            connecting = future;
-            future.addListener(() -> {
-                try {
-                    controller = future.get();
-                    decidedRow();
-                    /* A-27, NE-24's order: the engine boots from its restore record BEFORE the
-                       page's first bridge call is answered, so the hello's snapshot carries the
-                       restored queue and the page drains the pending events a process death left.
-                       Once per service, and a no-op after any input. */
-                    ForayPlaybackService service = ForayPlaybackService.current();
-                    if (service != null) service.restoreIfCold();
-                } catch (Exception e) {
-                    Log.w(TAG, "could not bind ForayPlaybackService; this process runs the page's player", e);
-                    connectFailed = true;
-                }
-                flush();
-            }, ContextCompat.getMainExecutor(app));
+            future = new MediaController.Builder(app, token).buildAsync();
         } catch (RuntimeException e) {
             Log.w(TAG, "could not start binding ForayPlaybackService", e);
             connectFailed = true;
             flush();
             return;
         }
+        connecting = future;
+        future.addListener(() -> {
+            MediaController bound = null;
+            try {
+                bound = future.get();
+            } catch (Exception e) {
+                if (!connectFailed) Log.w(TAG, "could not bind ForayPlaybackService; this process runs the page's player", e);
+            }
+            if (bound != null && (connectFailed || relinquished)) {
+                // Too late: the page was already answered without the engine (or gave it back).
+                Log.w(TAG, "ForayPlaybackService bound after the page was answered; releasing it");
+                releaseQuietly(bound);
+                stopServiceQuietly();
+                bound = null;
+            }
+            if (bound != null) {
+                controller = bound;
+                decidedRow();
+                /* A-27, NE-24's order: the engine boots from its restore record BEFORE the page's
+                   first bridge call is answered, so the hello's snapshot carries the restored
+                   queue and the page drains the pending events a process death left. Once per
+                   service, and a no-op after any input. */
+                ForayPlaybackService service = ForayPlaybackService.current();
+                if (service != null) service.restoreIfCold();
+            } else {
+                connectFailed = true;
+            }
+            flush();
+        }, ContextCompat.getMainExecutor(app));
         main.postDelayed(() -> {
-            if (controller == null && !waiting.isEmpty()) {
+            if (controller == null && !connectFailed) {
                 Log.w(TAG, "ForayPlaybackService did not bind in " + CONNECT_TIMEOUT_MS + " ms");
                 connectFailed = true;
+                // Cancels a binding still in flight, or releases one that completed unseen.
+                MediaController.releaseFuture(future);
+                stopServiceQuietly();
                 flush();
             }
         }, CONNECT_TIMEOUT_MS);
+    }
+
+    private static void releaseQuietly(MediaController c) {
+        try {
+            c.release();
+        } catch (RuntimeException e) {
+            Log.w(TAG, "releasing the engine's controller failed", e);
+        }
+    }
+
+    private void stopServiceQuietly() {
+        try {
+            app.stopService(new Intent(app, ForayPlaybackService.class));
+        } catch (RuntimeException e) {
+            Log.w(TAG, "stopping the engine's service failed", e);
+        }
     }
 
     private void flush() {

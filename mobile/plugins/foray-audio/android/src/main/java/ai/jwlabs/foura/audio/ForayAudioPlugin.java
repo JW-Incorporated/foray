@@ -568,15 +568,6 @@ public class ForayAudioPlugin extends Plugin {
         }
     }
 
-    /**
-     * Stop the service when the Activity hosting the bridge goes away.
-     *
-     * <p>Without this, a destroyed Activity leaves a foreground service — and its
-     * notification — running with no WebView left to ask it to stop, which is a
-     * battery bug that looks exactly like the thing this plugin was added to fix.
-     * The manifest's {@code stopWithTask="true"} covers the swipe-away case; this
-     * covers the rest.
-     */
     // ---- A-28: the native engine's bridge (docs/native-engine-plan.md §5.1-§5.4)
 
     /**
@@ -674,6 +665,15 @@ public class ForayAudioPlugin extends Plugin {
         }
     }
 
+    /**
+     * Stop the service when the Activity hosting the bridge goes away.
+     *
+     * <p>Without this, a destroyed Activity leaves a foreground service — and its
+     * notification — running with no WebView left to ask it to stop, which is a
+     * battery bug that looks exactly like the thing this plugin was added to fix.
+     * The manifest's {@code stopWithTask="true"} covers the swipe-away case; this
+     * covers the rest.
+     */
     @Override
     protected void handleOnDestroy() {
         /* IDENTITY-CHECKED inside the hub, not cleared unconditionally: an Activity
