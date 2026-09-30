@@ -56,8 +56,8 @@
             android:stopWithTask="true" />
 
         <!-- A-26 (docs/plans/android-assessment.md §5.4): the NATIVE engine's service, a Media3
-             MediaSessionService. Native mode only (A-20 keeps Android on `js` until A-31), and
-             then it replaces the service above, which stays exactly as it is for the JS lane.
+             MediaSessionService. Native mode only (the stock lane since A-31), and then it
+             replaces the service above, which stays exactly as it is for the JS lane.
              DECLARED SECOND ON PURPOSE: shell-invariants reads the FIRST <service> as the legacy
              one. Not exported: its clients are this app's own (a MediaController binds it by
              component, and Media3's notification and media-button PendingIntents run as this

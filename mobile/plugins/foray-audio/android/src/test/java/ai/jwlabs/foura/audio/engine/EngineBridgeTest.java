@@ -223,8 +223,9 @@ public class EngineBridgeTest {
 
     @Test
     public void aCapabilityTheBuildDoesNotDeclareIsRefusedOnRecord() {
-        // The stock build declares nothing (mobile/ENGINE_DEFAULT.json's android block), so a
-        // playEpisode is refused capability-off and the page relinquishes to its own player.
+        // A build that does not declare episode (Android's before A-31, whose ENGINE_DEFAULT.json
+        // block declared nothing) refuses a playEpisode capability-off, and the page relinquishes
+        // to its own player.
         Rig r = new Rig(true, Collections.singletonList("continuation"));
         r.hello();
         assertEquals(Collections.singletonList("continuation"), r.bridge.capabilities());

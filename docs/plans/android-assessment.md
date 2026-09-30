@@ -685,6 +685,25 @@ Rejected alternatives:
 - **Acceptance:** The device-pass record in `docs/field-records/` is green on H-1 (pause and resume from the car),
   H-3 (call), navigation prompts, and the negative control.
 - **Device check:** Joey's pass plus the car drive.
+- **Status (2026-09-30): the engineering flip is done in its PR, evidence in `STATE.md` (A-31 entry). The device
+  acceptance is NOT EXECUTED.**
+  - **The flip.** `ENGINE_DEFAULT.json` android is `native` with `episode` and `continuation`. `EngineLane`'s two
+    literals say the same, and a stock launch is the native lane (`build-default`). It rests on A-30's all-green run
+    36693793704. shell-invariants replaces "android stays js until A-31" with a record rule: the dated `A-31 flip` line
+    in `STATE.md` must name a run id and quote the founder's ruling. The block may declare only `episode` and
+    `continuation` until A-42.
+  - **The emulator.**
+    - The native leg's engine scenarios run in the stock lane (Automatic).
+    - `bridge` reads a stock launch as `native / build-default` with `episode` advertised. It plays an episode through
+      the page's own `ForayPlayer.play` and requires the engine to be the one playing it. Then it requires the
+      Developer setting Web to return the JS lane.
+    - The JS legs pin Web in their first step, so they keep measuring the page's player, which is still the fallback
+      lane.
+    - Run 36706526452 is green on all three legs (`docs/android-emulator-measurements.md` §12).
+  - **Not executed (D-A3, D-A5).** The acceptance above (the Joey device pass on H-1, H-3, navigation prompts and the
+    negative control) and the founder car drive did not run. D-A3 holds every device pass until A-42, and D-A5 approves
+    no spend for the car phone. Both go to the post-A-42 pass through HUMAN-ACTIONS #127, which is not issued. The
+    DECISIONS entry (G-7) is a separate founder-approved PR.
 
 ### 5.5 Track A2: native Forays (mirrors iOS M2)
 

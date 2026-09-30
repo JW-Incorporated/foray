@@ -496,8 +496,9 @@ export function injectNonExemptEncryption(xml, value = false) {
  * THE SOURCE OF TRUTH is `mobile/ENGINE_DEFAULT.json`, PER PLATFORM since A-20
  * (docs/plans/android-assessment.md): {"ios": {...}, "android": {...}}. This
  * script writes the `ios` block ({"mode": "js"} until NE-27 flipped it); the
- * `android` block stays "js" (the legacy lane) until A-31 flips it, and
- * nothing reads it before the Android engine exists (A-26..A-28). Each block
+ * `android` block was "js" (the legacy lane) until A-31 flipped it to native
+ * for episodes, and no build step writes it: `EngineLane.java` carries it as
+ * literals that shell-invariants holds to this file. Each block
  * carries its mode next to the capabilities the build advertises
  * (`ForayEngineCapabilities`; `player/parity/coverage.js` refuses a
  * capability whose fixtures are still pending). Both CI invocations of this

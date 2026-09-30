@@ -579,8 +579,10 @@ public class OwnershipCoreTest {
         looping.map.put(OwnershipCore.KEY_SENTINEL, "earlier");
         assertFalse(new Process(looping, "L3").core.peekDecision().isNative());
         assertEquals(0, looping.writes);
-        // And the stock build, with nothing stored: the JS lane (A-20 keeps Android on js until A-31).
+        // And a js-default build, with nothing stored: the JS lane (Android's default until A-31).
         assertFalse(new Process(new MapKeys(), "L1").core.peekDecision().isNative());
+        // The stock build since A-31 (EngineLane.BUILD_DEFAULT_NATIVE), with nothing stored: native.
+        assertTrue(new Process(new MapKeys(), EngineMode.BuildDefault.NATIVE, BUILD, "L1n").core.peekDecision().isNative());
         assertEquals(OwnershipCore.stored(keys), p.core.stored());
     }
 }

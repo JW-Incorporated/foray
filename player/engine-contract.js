@@ -707,11 +707,12 @@ export const ENGINE_PLATFORMS = Object.freeze(["ios", "android"]);
 
 /** The platforms whose shell the PAGE asks engineHello (A-20's flag). iOS,
     and Android since A-28 (docs/plans/android-assessment.md §5.4), whose
-    ForayAudio plugin answers the three engine methods. The native LANE stays
-    off by default there: the Android engine answers `{mode: "legacy", reason:
-    "build-default"}` (mobile/ENGINE_DEFAULT.json `android: js`) until A-31,
-    so decideMode answers `engine-legacy` — the JS player, nothing to
-    relinquish — unless the Developer engine setting asked for native. An
+    ForayAudio plugin answers the three engine methods. Until A-31 the Android
+    engine answered `{mode: "legacy", reason: "build-default"}` by default, so
+    decideMode answered `engine-legacy` — the JS player, nothing to relinquish;
+    since A-31 (mobile/ENGINE_DEFAULT.json `android: native`) a stock launch is
+    the native lane for episodes, and the Developer setting's Web is the
+    legacy answer. An
     Android binary built before A-28 rejects the call UNIMPLEMENTED, which
     native-engine.js reads as `no-method`. */
 export const HELLO_PLATFORMS = Object.freeze(["ios", "android"]);

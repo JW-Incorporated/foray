@@ -60,7 +60,7 @@
  *     said the opposite ("a second, real audio pipeline in a process whose whole design
  *     is that the page owns the one that exists"), and that stays true of the JS lane:
  *     the deck is wired to nothing until A-26's MediaSessionService drives it in native
- *     mode, behind the A-20 contract gate (mobile/ENGINE_DEFAULT.json: android mode `js`).
+ *     mode, behind the A-20 contract gate (mobile/ENGINE_DEFAULT.json: android `native` since A-31).
  *     It brings media3-extractor, -decoder, -container and -datasource (the progressive
  *     MP3/WAV path) and androidx.exifinterface.
  *   - project(':foray-engine-core-jvm') — the engine's pure-JVM core (A-21..A-24): the

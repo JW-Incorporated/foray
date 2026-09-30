@@ -51,14 +51,17 @@
  *
  * `bridge` is the one scenario that goes through the PAGE, over Chrome DevTools
  * (the JS runner's `connect` / `page`): since A-28 the page asks the Android
- * engine `engineHello`. It reads the stock launch's lane (the engine's legacy
- * answer: the JS player, with the Developer engine row showing Automatic), turns
- * the Developer engine setting to Native through the page's own Developer
- * command (`ForayPlayer.engineDeveloperSend`, the row a listener taps), restarts
- * the app, and reads the diagnostics Copy: `engine=native … reason=override` in
- * its header, an `engineMode native` row in its timeline, and the engine's ring
- * read into it. It runs after the adb-driven scenarios, and puts the
- * setting back to Automatic.
+ * engine `engineHello`. Since A-31 (the A1 flip) it reads a STOCK launch (the
+ * Developer engine row on Automatic) as the native lane: the page's lane is
+ * native, and the diagnostics Copy says `engine=native … caps=episode,continuation
+ * reason=build-default` in its header, holds an `engineMode native` row and has
+ * the engine's ring read into it. Then the flip itself, end to end: an episode
+ * started by the page's own `ForayPlayer.play` (the episode row's call) is the
+ * item the ENGINE is playing, in `ForayPlaybackService`, with the legacy service
+ * not running. Last, the way back: the Developer engine setting to Web through
+ * the page's own Developer command (`ForayPlayer.engineDeveloperSend`, the row a
+ * listener taps), a relaunch, and the page's lane is the JS player. It runs after
+ * the adb-driven scenarios, and puts the setting back to Automatic.
  *
  * ── THE FALLBACK (A-29) ──────────────────────────────────────────────────────
  *
@@ -90,10 +93,11 @@
  *
  *   - THE LANE. Until A-30 the adb-driven scenarios drove the service from a
  *     process whose page was in the stock JS lane. Now every engine scenario
- *     stores the Developer setting Native first (the driver's `override`, which
- *     also clears the strikes) and starts the app in a fresh process when the
- *     running one is not native, so the page, the owner, the receiver and the
- *     service are the ones A-31's flip ships. Every dump the scenario reads must
+ *     stores the Developer setting first (the driver's `override`, which also
+ *     clears the strikes: Native until A-31, Automatic since, because the stock
+ *     lane IS native) and starts the app in a fresh process when the running one
+ *     is not native, so the page, the owner, the receiver and the service are
+ *     the ones A-31's flip ships. Every dump the scenario reads must
  *     say `nativeLane: true` (the service's own reading of
  *     `EngineOwnership.engineLane`), or the scenario fails: a leg that silently
  *     ran in the JS lane cannot pass as native.
@@ -155,7 +159,12 @@ import {
   connect as connectPage,
   firstLaunchScenario,
   page as evalPage,
+  ENGINE_STATUS_EXPRESSION,
+  broadcastResult,
 } from "./android-playback.mjs";
+
+/* A-31 moved these two to the JS runner, whose first step pins the JS lane with them. */
+export { ENGINE_STATUS_EXPRESSION, broadcastResult };
 
 /** Where the page's DevTools socket is forwarded (the JS runner's default). */
 export const DEVTOOLS_ENDPOINT = "http://127.0.0.1:9222";
@@ -284,28 +293,6 @@ export function engineDump(text) {
   return { state, rows };
 }
 
-/** `am broadcast`'s answer: `Broadcast completed: result=1, data="{…}"`. */
-export function broadcastResult(out) {
-  const text = String(out ?? "");
-  /* `am` prints the data between quotes WITHOUT escaping it, so the data is everything up to the
-     last quote on its line (greedy); an escaped form is tried second. */
-  const m = /Broadcast completed: result=(-?\d+)(?:, data="(.*)")?[ \t]*$/m.exec(text);
-  if (!m) return { delivered: false, result: null, answer: null };
-  let answer = null;
-  if (m[2] != null) {
-    answer = { raw: m[2] };
-    for (const raw of [m[2], m[2].replace(/\\"/g, '"').replace(/\\\\/g, "\\")]) {
-      try {
-        answer = JSON.parse(raw);
-        break;
-      } catch {
-        /* try the next spelling */
-      }
-    }
-  }
-  return { delivered: true, result: Number(m[1]), answer };
-}
-
 /** Our session in `dumpsys media_session`: the engine's (Media3 names it by its id). */
 export function ourSession(sessions, pkg = PKG) {
   const ours = (sessions?.sessions ?? []).filter((s) => s.package === pkg);
@@ -327,20 +314,6 @@ export function playingBetween(a, b) {
 }
 
 /* ─────────────────────────── the page's door (A-28) ─────────────────────────── */
-
-/** The page's lane once its hello settled, and the Developer engine row's view
- *  (`ForayPlayer.engineDeveloperStatus`: `{lane, override, holdPolicy, commands}`). */
-export const ENGINE_STATUS_EXPRESSION = `(async () => {
-  const deadline = Date.now() + 20000;
-  while (!(window.ForayPlayer && typeof window.ForayPlayer.whenEngineReady === "function") && Date.now() < deadline) {
-    await new Promise((r) => setTimeout(r, 250));
-  }
-  const P = window.ForayPlayer;
-  if (!P || typeof P.whenEngineReady !== "function") return { error: "no ForayPlayer on window" };
-  const lane = await P.whenEngineReady();
-  const status = typeof P.engineDeveloperStatus === "function" ? P.engineDeveloperStatus() : null;
-  return { lane, status };
-})()`;
 
 /** The Developer engine setting, through the page's own Developer command: the
  *  row a listener taps ('Playback engine: Automatic / Native / Web'). */
@@ -376,32 +349,68 @@ export function copyFacts(text) {
   };
 }
 
-/** A-28's verdict: the stock launch is the engine's legacy lane, the Developer
- *  override is stored, and the relaunched page drives the native engine, which
- *  the Copy paste says in its header and in an `engineMode native` row. */
-export function verdictBridge({ stock, override, after, copy, service }) {
+/** A-31: the episode the page plays through its own `ForayPlayer.play` (the episode row's call),
+ *  as the engine's deck reads a bundled asset: the (d) click track, whole. Its id is the flip's
+ *  own, so the engine's `item` names this play and no driver's. */
+export const PAGE_EPISODE = Object.freeze({
+  id: "a31-page-episode",
+  title: EPISODE.title,
+  show: SHOW,
+  audio_url: `${ASSET_BASE}${EPISODE.file}`,
+  duration_sec: 90,
+});
+
+/** The page plays `item` through `ForayPlayer.play`, as a tap on an episode row does. */
+export function pagePlayExpression(item = PAGE_EPISODE) {
+  return `(async () => {
+  const P = window.ForayPlayer;
+  if (!P || typeof P.play !== "function") return { ok: false, error: "window.ForayPlayer.play is missing" };
+  try {
+    const answered = await P.play(${JSON.stringify(item)});
+    return { ok: true, answered };
+  } catch (e) {
+    return { ok: false, error: String((e && e.message) || e) };
+  }
+})()`;
+}
+
+/** A-28's verdict, as A-31 made it: a STOCK launch is the native lane (the page, the Developer
+ *  row on Automatic, and the Copy: `engine=native`, `reason=build-default`, `episode` in its caps,
+ *  an `engineMode native` row, the ring read); the page's own episode play is the item the engine
+ *  is playing (`played`: the page's answer and the engine's dump after it); and the Developer
+ *  setting's Web, stored through the page, puts the relaunched page on the JS player. */
+export function verdictBridge({ stock, copy, played, override, after, service }) {
   const failures = [];
   if (!stock || stock.error) failures.push(`the stock launch could not be read: ${stock?.error ?? "no answer"}`);
   else {
-    if (stock.lane !== "js") failures.push(`a stock Android launch must run the page's player; its lane is ${stock.lane}`);
-    if (stock.status?.lane !== "js" || stock.status?.override !== "auto") {
-      failures.push(`the stock launch's engine did not answer legacy/build-default (Developer row ${JSON.stringify(stock.status)})`);
+    if (stock.lane !== "native") failures.push(`a stock Android launch must be the native lane since A-31; its lane is ${stock.lane}`);
+    if (stock.status?.lane !== "native" || stock.status?.override !== "auto") {
+      failures.push(`the stock launch's engine did not answer native/build-default (Developer row ${JSON.stringify(stock.status)})`);
     }
   }
-  if (!override || override.ok !== true) failures.push(`the Developer engine setting was not stored: ${JSON.stringify(override)}`);
-  if (!after || after.error) failures.push(`the relaunched page could not be read: ${after?.error ?? "no answer"}`);
+  if (copy.lane !== "native") failures.push(`the stock Copy header is not engine=native: ${copy.header ?? "(no engine= line)"}`);
   else {
-    if (after.lane !== "native") failures.push(`after the override the page's lane is ${after.lane}, not native`);
-    if (after.status?.override !== "native") failures.push(`the Developer row does not read Native after the override: ${JSON.stringify(after.status)}`);
-  }
-  if (copy.lane !== "native") failures.push(`the Copy header is not engine=native: ${copy.header ?? "(no engine= line)"}`);
-  else {
-    if (copy.reason !== "override") failures.push(`the Copy header's reason is ${copy.reason}, not override`);
+    if (copy.reason !== "build-default") failures.push(`the stock Copy header's reason is ${copy.reason}, not build-default`);
     if (copy.proto !== "1") failures.push(`the Copy header's protocol is ${copy.proto}, not 1`);
+    if (!String(copy.caps ?? "").split(",").includes("episode")) failures.push(`the stock engine does not advertise episode (caps=${copy.caps})`);
   }
   if (!copy.modeRows.some((r) => r.mode === "native")) failures.push("the Copy paste has no `engineMode native` row");
   if (copy.engineRows == null) failures.push(`the Copy did not read the engine's ring: ${copy.readError ?? "no engine rows line"}`);
+  if (!played || !played.page || played.page.ok !== true) failures.push(`the page's ForayPlayer.play did not run: ${JSON.stringify(played?.page ?? null)}`);
+  const e = played?.engine;
+  if (!e) failures.push("the engine could not be read after the page's play");
+  else if (e.item !== PAGE_EPISODE.id) {
+    failures.push(`the engine holds ${JSON.stringify(e.item)}, not the page's episode ${PAGE_EPISODE.id}: the tap did not reach the engine`);
+  } else if (!(e.running === true && e.exoPlaying === true && Number(e.positionSec) > 0)) {
+    failures.push(`the engine holds the page's episode but is not playing it (${e.state}, exoPlaying ${e.exoPlaying}, at ${e.positionSec} s)`);
+  }
   engineFailures(service, failures);
+  if (!override || override.ok !== true) failures.push(`the Developer engine setting Web was not stored: ${JSON.stringify(override)}`);
+  if (!after || after.error) failures.push(`the relaunched page could not be read: ${after?.error ?? "no answer"}`);
+  else {
+    if (after.lane !== "js") failures.push(`after the Developer setting Web the page's lane is ${after.lane}, not js`);
+    if (after.status?.override !== "web") failures.push(`the Developer row does not read Web after the override: ${JSON.stringify(after.status)}`);
+  }
   return { ok: failures.length === 0, failures };
 }
 
@@ -498,6 +507,10 @@ export function verdictFallback({ setup, launches }) {
 }
 
 /* ─────────────────────────── A-30: the lane, (e), (f), (k) ─────────────────────────── */
+
+/** The Developer setting the lane scenarios store: Automatic, the build's default, which is the
+ *  native lane since A-31 (the A1 flip; `mobile/ENGINE_DEFAULT.json` android `native`). */
+export const STOCK_MODE = "auto";
 
 /** The scenarios that must run in the native LANE: every dump they read says `nativeLane: true`.
  *  Not `bridge` and `fallback`, which set the lane themselves and read it from the page. */
@@ -752,7 +765,13 @@ export function verdictFirstLaunch({ launch, status, service }) {
   const failures = [...(launch?.failures ?? [])];
   if (!launch) failures.push("the first-launch probe did not run");
   if (!status || status.error) failures.push(`the page's lane could not be read: ${status?.error ?? "no answer"}`);
-  else if (status.lane !== "native") failures.push(`the page's lane is ${status.lane}, not native`);
+  else {
+    if (status.lane !== "native") failures.push(`the page's lane is ${status.lane}, not native`);
+    /* A-31: the stock lane, not an override: the Developer row reads Automatic. */
+    if (status.status?.override !== STOCK_MODE) {
+      failures.push(`the first launch is not a stock launch: the Developer row reads ${JSON.stringify(status.status?.override)}, not "auto"`);
+    }
+  }
   engineFailures(service, failures);
   return { ok: failures.length === 0, failures };
 }
@@ -1003,7 +1022,7 @@ export const SCENARIOS = Object.freeze([
   ["call", "(i) native: a phone call; pause, and resume after it"],
   ["kill", "(j) native: paused, on Home, the process ended; a media play resumes 4a at the saved position"],
   ["airplane", "(k) native: airplane mode; an unloadable episode stops in time; a Foray relinquishes and its line falls back"],
-  ["bridge", "(A-28) native: the page asks the engine; the Developer override; `engine mode native` in the Copy"],
+  ["bridge", "(A-28, A-31) stock launch: the native lane by default; the page's own episode play is the engine's; the Developer setting Web returns the JS lane"],
   ["fallback", "(A-29) native: the engine throws at hello; the page falls back to js with a fault row; 3 strikes pin the JS lane"],
 ]);
 
@@ -1039,15 +1058,16 @@ function wakeAndUnlock() {
   shell("wm", "dismiss-keyguard");
 }
 
-/** A-30: the native LANE for a scenario that drives the engine. The Developer setting Native is
- *  stored through the owner (the driver's `override`, which also clears the strikes and the pin),
- *  and a process that is not already in the native lane is stopped, so the next launch decides
- *  it. `fresh` stops the app whatever it was: (e)'s first launch. Once per scenario. */
+/** A-30: the native LANE for a scenario that drives the engine. Since A-31 that is the STOCK lane:
+ *  the Developer setting Automatic is stored through the owner (the driver's `override`, which
+ *  also clears the strikes and the pin), and a process that is not already in the native lane is
+ *  stopped, so the next launch decides it from the build's default. `fresh` stops the app
+ *  whatever it was: (e)'s first launch. Once per scenario. */
 async function ensureNativeLane(ctx, { fresh = false } = {}) {
   if (ctx.laneReady && !fresh) return;
   ctx.laneReady = true;
   const now = pidOf(ctx.pkg) ? engine(ctx, { track: false }) : null;
-  ctx.laneSetup = drive(ctx, "override", ["--es", "mode", "native"]);
+  ctx.laneSetup = drive(ctx, "override", ["--es", "mode", STOCK_MODE]);
   if (fresh || now?.nativeLane !== true) {
     shell("am", "force-stop", ctx.pkg);
     await sleep(1500);
@@ -1489,16 +1509,16 @@ async function killLeg(ctx, leg, kill) {
   };
 }
 
-/** (j). IN THE NATIVE LANE (A-27 review): the Developer engine setting is Native for the
- *  scenario, and the app starts from stopped, so the page decides the native lane, as a listener
- *  who chose it has. The cold path is the native lane's alone: a car's PLAY into a process whose
- *  lane is the page's player (the stock JS lane the other native scenarios drive the service
- *  from) is dropped by the receiver, whatever record the native engine left. */
+/** (j). IN THE NATIVE LANE (A-27 review): the Developer engine setting is Automatic for the
+ *  scenario, which since A-31 is the native lane (Native before it), and the app starts from
+ *  stopped, so the page decides the native lane, as a stock launch does. The cold path is the
+ *  native lane's alone: a car's PLAY into a process whose lane is the page's player (the
+ *  Developer setting's Web) is dropped by the receiver, whatever record the native engine left. */
 async function kill(ctx) {
   const legs = [];
   const setup = [];
   try {
-    setup.push(drive(ctx, "override", ["--es", "mode", "native"]));
+    setup.push(drive(ctx, "override", ["--es", "mode", STOCK_MODE]));
     shell("am", "force-stop", ctx.pkg);
     await sleep(1500);
     const how = {
@@ -1521,7 +1541,7 @@ async function kill(ctx) {
     }
     /* And ours: the last leg left 4a playing in a process the receiver started. The next
        scenario (A-28's page door) starts from a stopped app, as a launch does, in the stock
-       lane: the setting goes back to Automatic (which also clears the strikes and the pin). */
+       lane: the setting stays Automatic (which also clears the strikes and the pin). */
     drive(ctx, "override", ["--es", "mode", "auto"]);
     shell("am", "force-stop", ctx.pkg);
   }
@@ -1529,11 +1549,10 @@ async function kill(ctx) {
   return { ...v, measured: { setup, legs }, evidence: fs.readdirSync(ctx.art).filter((f) => f.startsWith("j-")) };
 }
 
-/** A-28: the page's door. See the header. */
+/** A-28: the page's door, and since A-31 the flip's own proof. See the header. */
 async function bridge(ctx) {
   ctx.endpoint = ctx.endpoint ?? DEVTOOLS_ENDPOINT;
-  /* A-30: the scenarios before this one run in the native lane. The stock launch this reads
-     first is Automatic, from a stopped app, whatever ran before. */
+  /* The stock launch this reads first is Automatic, from a stopped app, whatever ran before. */
   const stockSetup = drive(ctx, "override", ["--es", "mode", "auto"]);
   shell("am", "force-stop", ctx.pkg);
   await sleep(1500);
@@ -1541,9 +1560,36 @@ async function bridge(ctx) {
   ctx.target = (await connectPage(ctx, { timeoutMs: 90000 })).target;
   const stock = await evalPage(ctx, ENGINE_STATUS_EXPRESSION, { timeoutMs: 45000 });
   save(ctx, "bridge-stock.json", JSON.stringify(stock, null, 2));
-  const override = await evalPage(ctx, overrideExpression("native"), { timeoutMs: 30000 });
+  // Let the attach finish (the rows read, the first snapshot) before Copy.
+  await sleep(3000);
+  let text;
+  try {
+    text = String(await evalPage(ctx, DIAGNOSTICS_EXPRESSION, { timeoutMs: 30000 }));
+  } catch (e) {
+    text = `(the page could not be asked: ${String(e?.message ?? e)})`;
+  }
+  save(ctx, "bridge-diagnostics-copy.txt", text);
+  const copy = copyFacts(text);
 
-  // The lane is decided once per process: the setting applies at the next launch.
+  /* A-31: the page's own episode play, in the stock lane, is the engine's. */
+  let page;
+  try {
+    page = await evalPage(ctx, pagePlayExpression(PAGE_EPISODE), { gesture: true, timeoutMs: 45000 });
+  } catch (e) {
+    page = { ok: false, error: String(e?.message ?? e) };
+  }
+  const playing = await waitFor(ctx, (st) => !!st && st.item === PAGE_EPISODE.id && isPlaying(st), 20000);
+  const played = { page, engine: playing };
+  save(ctx, "bridge-engine-dump.txt", shell("dumpsys", "activity", "service", SERVICE_COMPONENT.replace(PKG, ctx.pkg)));
+  const service = engine(ctx);
+
+  /* The way back: the Developer setting Web, through the page, applies at the next launch. */
+  let override;
+  try {
+    override = await evalPage(ctx, overrideExpression("web"), { timeoutMs: 30000 });
+  } catch (e) {
+    override = { error: String(e?.message ?? e) };
+  }
   shell("am", "force-stop", ctx.pkg);
   await sleep(1500);
   ctx.target = null;
@@ -1555,19 +1601,8 @@ async function bridge(ctx) {
   } catch (e) {
     after = { error: String(e?.message ?? e) };
   }
-  // Let the attach finish (the rows read, the first snapshot) before Copy.
-  await sleep(3000);
-  let text;
-  try {
-    text = String(await evalPage(ctx, DIAGNOSTICS_EXPRESSION, { timeoutMs: 30000 }));
-  } catch (e) {
-    text = `(the page could not be asked: ${String(e?.message ?? e)})`;
-  }
-  save(ctx, "bridge-diagnostics-copy.txt", text);
-  const copy = copyFacts(text);
-  const service = engine(ctx);
-  save(ctx, "bridge-engine-dump.txt", shell("dumpsys", "activity", "service", SERVICE_COMPONENT.replace(PKG, ctx.pkg)));
-  const v = verdictBridge({ stock, override, after, copy, service });
+  save(ctx, "bridge-after-web.json", JSON.stringify(after, null, 2));
+  const v = verdictBridge({ stock, copy, played, override, after, service });
   if (!stockSetup?.answer?.ok) v.failures.unshift(`the Developer setting could not be put to Automatic first: ${JSON.stringify(stockSetup)}`);
   v.ok = v.failures.length === 0;
 
@@ -1580,8 +1615,8 @@ async function bridge(ctx) {
   }
   return {
     ...v,
-    measured: { stock, override, after, copy, service, reset },
-    evidence: ["bridge-stock.json", "bridge-diagnostics-copy.txt", "bridge-engine-dump.txt"],
+    measured: { stock, copy, played, service, override, after, reset },
+    evidence: ["bridge-stock.json", "bridge-diagnostics-copy.txt", "bridge-engine-dump.txt", "bridge-after-web.json"],
   };
 }
 

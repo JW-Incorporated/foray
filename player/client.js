@@ -309,11 +309,11 @@ const storage = createDurableStore({
              element exists.
 
    ANDROID ASKS TOO, since A-28 (docs/plans/android-assessment.md §5.4): its
-   ForayAudio plugin speaks the same protocol v1 over the Media3 engine. Its
-   engine answers `legacy` by default (mobile/ENGINE_DEFAULT.json `android: js`
-   until A-31), so the lane there is the JS player unless the Developer engine
-   setting asked for native; the hello is answered on the plugin's main-thread
-   hop, so the wait is one bridge round trip.
+   ForayAudio plugin speaks the same protocol v1 over the Media3 engine. Since
+   A-31 its engine answers `native` by default for episodes
+   (mobile/ENGINE_DEFAULT.json `android: native`, no `foray` until A-42), so a
+   Foray there relinquishes to the JS player; the hello is answered on the
+   plugin's main-thread hop, so the wait is one bridge round trip.
 
    Off an engine shell (the web) there is no engine and no question: the
    lane is JS from this line, the store is released before hydration exactly

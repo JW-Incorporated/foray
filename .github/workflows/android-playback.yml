@@ -181,6 +181,18 @@
 # 36693793704), against 17 min 43 s before (run 36688133433), so the 40-minute
 # ceiling holds. The numbers are in `docs/android-emulator-measurements.md` §11.
 #
+# A-31, the A1 flip: `mobile/ENGINE_DEFAULT.json` android is `native` for
+# episodes, so a STOCK launch is the native lane. The native leg's engine
+# scenarios now store the Developer setting Automatic (the stock lane) rather
+# than Native, and (e) requires the Developer row on Automatic. `bridge` reads a
+# stock launch as `native / build-default` with `episode` advertised, plays an
+# episode through the page's own `ForayPlayer.play` and requires the ENGINE to be
+# playing it, then sets the Developer setting to Web and requires the JS lane
+# after a relaunch. The JS legs' first step, (e), stores Web through the debug
+# driver and relaunches, so they keep measuring the page's own player (still the
+# lane Web, the crash-loop guard and a relinquish fall back to), gated on the
+# lane reading `js`.
+#
 # `fail-fast: false`, so a red leg never cancels the other's verdicts. Each leg
 # checks that the device it booted really is its API level before installing
 # anything, and uploads its own artifact. The differences between the legs are
@@ -671,11 +683,12 @@ jobs:
         if: ${{ matrix.mode == 'native' && !cancelled() && steps.launch.outcome == 'success' }}
         run: node tools/mobile/android-native-playback.mjs airplane --art "$ART"
 
-      # A-28: the page's door. Since A-28 the page asks the Android engine
-      # engineHello; this reads the stock lane (legacy), turns the Developer engine
-      # setting to Native through the page, relaunches, and requires the Copy
-      # paste to say `engine=native` and hold an `engineMode native` row.
-      - name: (A-28) native — the page asks the engine, the Developer override, and engine mode native in the Copy
+      # A-28: the page's door, and since A-31 the flip's proof. A stock launch is
+      # the native lane (`engine=native … reason=build-default`, `episode` in the
+      # caps, an `engineMode native` row); an episode the page plays with its own
+      # ForayPlayer.play is the one the engine plays; the Developer setting Web,
+      # through the page, returns the JS lane at the next launch.
+      - name: (A-28, A-31) native — a stock launch is the native lane, the page's episode plays on the engine, and Web returns the JS lane
         id: native-bridge
         if: ${{ matrix.mode == 'native' && !cancelled() && steps.launch.outcome == 'success' }}
         run: node tools/mobile/android-native-playback.mjs bridge --art "$ART"
@@ -706,10 +719,10 @@ jobs:
               echo
               node tools/mobile/android-native-playback.mjs summary --art "$ART"
               echo
-              echo "**This leg** runs in the native lane (the Developer engine setting, Native) and"
-              echo "drives ForayPlaybackService through the debug build's EngineDriveReceiver, because"
-              echo "the page's native lane plays no episode until A-31 declares the capability; the"
-              echo "first-launch, airplane, bridge and fallback steps also go through the page."
+              echo "**This leg** runs in the stock lane, which is native since A-31 (the Developer"
+              echo "engine setting, Automatic), and drives ForayPlaybackService through the debug"
+              echo "build's EngineDriveReceiver; the first-launch, airplane, bridge and fallback steps"
+              echo "also go through the page, and bridge plays an episode with the page's own play."
             else
               echo "## Android playback scenarios (A-04, A-05), API ${API_LEVEL}"
               echo

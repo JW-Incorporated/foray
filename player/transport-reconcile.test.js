@@ -2326,9 +2326,9 @@ test("REPORT 1: a route that DISAPPEARED pauses the transport and writes where i
 });
 
 /** The Android Capacitor shell, as far as the page's boot reads it: platform
-    `android`, whose engine answers the page's engineHello `legacy` (A-28: the
-    stock answer while ENGINE_DEFAULT says `android: js`), so the page's own
-    player owns the session events. The Preferences tier answers empty. */
+    `android`, whose engine answers the page's engineHello `legacy` (A-28's
+    stock answer while ENGINE_DEFAULT said `android: js`, and the Developer
+    setting's Web since A-31), so the page's own player owns the session events. The Preferences tier answers empty. */
 function androidShell() {
   return {
     getPlatform: () => "android",

@@ -795,3 +795,29 @@ These are local assets. A network episode adds its fetch, which the device pass 
   - the Foray landed on the next clip 3.9 s after that.
 
   A-41 moves the narration fallback into the engine, and its acceptance runs (k) through the engine instead.
+
+## 12. A-31: the A1 flip, a stock launch in the native lane
+
+Run 36706526452 (attempt 2). Card A-31 of `docs/plans/android-assessment.md` sets `mobile/ENGINE_DEFAULT.json`
+android to `native` with `episode` and `continuation`, and `EngineLane` to match. So a stock launch, with the
+Developer engine setting on Automatic, is the native lane. All three legs are green.
+
+- **The native leg** (job 109866270019, 21 min 49 s). Every step is green. The eleven lane scenarios now store the
+  Developer setting Automatic (`{"ok":true,"override":"auto"}` each), not Native. Every dump they read said
+  `nativeLane: true`, so the stock lane is the one they measured.
+  - (e): the page's lane was `native` and the Developer row read Automatic.
+  - `bridge`, stock launch: the Copy header was `engine=native v1.0.0 proto=1 caps=episode,continuation
+    reason=build-default strikes=0 hold=forever`, with `engineMode native (build-default)` rows and the engine's ring
+    read (4 rows).
+  - `bridge`, the flip end to end: the page's own `ForayPlayer.play` answered `true`, and the engine's dump then held
+    `a31-page-episode`, `playing`, at 0.30 s, in `ForayPlaybackService`, with no legacy service.
+  - `bridge`, the way back: the Developer setting Web, stored through the page, gave a relaunched page the `js` lane
+    with the row on Web. The setting was then put back to Automatic.
+- **The JS legs** (API 34, job 109866271533, 18 min 55 s; API 36, job 109866270354, 21 min 1 s). Their first step
+  now stores Web through the debug driver and relaunches. It read the page's lane as `js` with the row on Web on both
+  legs, and every scenario after ran on the page's player, as before the flip.
+- **One flake, rerun.** On attempt 1 the API 36 JS leg's (c) failed: `input keyevent KEYCODE_MEDIA_PAUSE` and `PLAY`
+  reached the page as no `foray:remote` row. The system's media button session was still our legacy one
+  (`androidx.media3.session.id.foray`). NEXT and PREVIOUS did reach it. The rerun passed (c) and every other step.
+  The same leg passed (c) on run 36699722800 before this card. The native leg's attempt 1 never ran: Maven Central
+  answered 403 to the Gradle build.

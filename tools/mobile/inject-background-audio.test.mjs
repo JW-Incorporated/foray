@@ -632,6 +632,8 @@ const JS_DEFAULT = Object.freeze({ mode: "js", capabilities: [] });
     commits (plan §9a, OQ-9's default, recorded in STATE.md; shell-invariants
     holds the record). */
 const M2_DEFAULT = Object.freeze({ mode: "native", capabilities: ["episode", "continuation", "restore", "foray"] });
+/** Android's block since A-31, the A1 flip: native for episodes. */
+const A1_DEFAULT = Object.freeze({ mode: "native", capabilities: ["episode", "continuation"] });
 
 test("the committed ENGINE_DEFAULT.json is the M2 native default NE-37 flipped, and the script reads THAT file", () => {
   /* MUTATION: point ENGINE_DEFAULT_FILE anywhere else, commit "js" again, or
@@ -640,10 +642,12 @@ test("the committed ENGINE_DEFAULT.json is the M2 native default NE-37 flipped, 
   assert.equal(path.resolve(ENGINE_DEFAULT_FILE), path.resolve(repoFile));
   assert.deepEqual(parseEngineDefault(fs.readFileSync(repoFile, "utf8")), M2_DEFAULT);
   /* A-20 (docs/plans/android-assessment.md): the file is per platform. The
-     plist gets the ios block; Android's is js, the legacy lane, until A-31.
-     MUTATION: commit android "native", or read the android block by default. */
-  assert.deepEqual(parseEngineDefaults(fs.readFileSync(repoFile, "utf8")), { ios: M2_DEFAULT, android: JS_DEFAULT });
-  assert.deepEqual(parseEngineDefault(fs.readFileSync(repoFile, "utf8"), "android"), JS_DEFAULT);
+     plist gets the ios block; Android's was js, the legacy lane, until A-31
+     flipped it to native for episodes (no foray until A-42).
+     MUTATION: commit android "js" or add foray to it, or read the android
+     block by default. */
+  assert.deepEqual(parseEngineDefaults(fs.readFileSync(repoFile, "utf8")), { ios: M2_DEFAULT, android: A1_DEFAULT });
+  assert.deepEqual(parseEngineDefault(fs.readFileSync(repoFile, "utf8"), "android"), A1_DEFAULT);
 });
 
 test("a generated plist has no engine default: the app reads that as js (no-plist-key)", () => {

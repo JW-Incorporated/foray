@@ -38,6 +38,9 @@ import {
   verdictFallback,
   overrideExpression,
   verdictBridge,
+  PAGE_EPISODE,
+  STOCK_MODE,
+  pagePlayExpression,
   DUMP_PREFIX,
   EPISODE_QUEUE,
   KILL,
@@ -296,15 +299,17 @@ test("A-27 (j): a kill-then-play must bring 4a back at the saved position; force
   assert.equal(verdictKill({ legs: good, setup: [{ ...stored, answer: { ok: false, failures: ["bad-mode:x"] } }] }).ok, false);
 });
 
-test("A-27 review (j): the scenario stores Native first and puts Automatic back, whatever happened", () => {
-  /* MUTATION: drop either drive, or move the reset out of the finally. */
+test("A-27 review (j): the scenario stores the stock (native) lane first and puts Automatic back, whatever happened", () => {
+  /* MUTATION: drop either drive, or move the reset out of the finally. A-31: the lane it stores
+     is the stock one, Automatic, which is native since the flip. */
   const src = fs.readFileSync(new URL("./android-native-playback.mjs", import.meta.url), "utf8");
   const body = /\nasync function kill\(ctx\) \{([\s\S]*?)\n\}\n/.exec(src)?.[1] ?? "";
-  const native = body.indexOf('drive(ctx, "override", ["--es", "mode", "native"])');
+  const native = body.indexOf('drive(ctx, "override", ["--es", "mode", STOCK_MODE])');
   const firstLeg = body.indexOf("killLeg(ctx");
   const fin = body.indexOf("} finally {");
   const auto = body.indexOf('drive(ctx, "override", ["--es", "mode", "auto"])');
-  assert.ok(native >= 0 && native < firstLeg, "Native is stored before the first leg");
+  assert.equal(STOCK_MODE, "auto", "A-31: the stock lane is the native lane");
+  assert.ok(native >= 0 && native < firstLeg, "the stock lane is stored before the first leg");
   assert.ok(fin >= 0 && auto > fin, "Automatic is put back in the finally");
   assert.match(body, /verdictKill\(\{ legs, setup \}\)/, "and the setup is judged");
 });
@@ -337,9 +342,21 @@ const NATIVE_COPY = [
   "engine rows 4 of 2000, #1..#4",
 ].join("\n");
 
-const STOCK = { lane: "js", status: { lane: "js", override: "auto", holdPolicy: null, commands: ["setModeOverride"] } };
-const AFTER = { lane: "native", status: { lane: "native", override: "native", holdPolicy: "forever", commands: [] } };
+/* A-31: a stock launch's Copy, the native lane by the build's default. */
+const STOCK_COPY = [
+  "#   1 12:00:00.000 boot       web=abc",
+  "#   2 12:00:00.400 engineMode native (native)",
+  "engine=native v1.0.0 proto=1 caps=episode,continuation reason=build-default strikes=0 hold=forever build=2026093001 | web=abc",
+  "engine rows 6 of 2000, #1..#6",
+].join("\n");
+
+const STOCK = { lane: "native", status: { lane: "native", override: "auto", holdPolicy: "forever", commands: ["setModeOverride"] } };
+const AFTER = { lane: "js", status: { lane: "js", override: "web", holdPolicy: null, commands: ["setModeOverride"] } };
 const HOSTING = { hosting: true, legacyRunning: false };
+const PLAYED = {
+  page: { ok: true, answered: true },
+  engine: { item: "a31-page-episode", state: "playing", running: true, exoPlaying: true, positionSec: 1.8 },
+};
 
 test("A-28: the Copy's engine facts are read from its header, its timeline and its ring line", () => {
   /* MUTATION: read the lane from anywhere but the `engine=` header, or accept an engineMode js
@@ -359,27 +376,46 @@ test("A-28: the Copy's engine facts are read from its header, its timeline and i
   assert.equal(copyFacts("").header, null);
 });
 
-test("A-28: the verdict passes the stock legacy lane, the stored override and a native Copy, and fails each gap", () => {
-  /* MUTATION: drop any one check in verdictBridge; its case below stays green. */
-  const good = { stock: STOCK, override: { ok: true }, after: AFTER, copy: copyFacts(NATIVE_COPY), service: HOSTING };
+test("A-31: the verdict passes a native stock launch, the page's episode on the engine and Web's way back, and fails each gap", () => {
+  /* MUTATION: drop any one check in verdictBridge; its case below stays green. The pre-A-31
+     verdict (a stock launch in the JS lane, an override to Native) fails here on its first line. */
+  const good = { stock: STOCK, copy: copyFacts(STOCK_COPY), played: PLAYED, override: { ok: true }, after: AFTER, service: HOSTING };
   assert.deepEqual(verdictBridge(good), { ok: true, failures: [] });
   const fails = (patch, re) => {
     const v = verdictBridge({ ...good, ...patch });
     assert.equal(v.ok, false, JSON.stringify(patch));
     assert.ok(v.failures.some((f) => re.test(f)), `${JSON.stringify(patch)} -> ${v.failures.join("; ")}`);
   };
-  fails({ stock: { lane: "native", status: STOCK.status } }, /stock Android launch must run the page's player/);
-  fails({ stock: { lane: "js", status: { lane: "js", override: "native" } } }, /legacy\/build-default/);
+  fails({ stock: { lane: "js", status: STOCK.status } }, /stock Android launch must be the native lane since A-31; its lane is js/);
+  fails({ stock: { lane: "native", status: { lane: "native", override: "native" } } }, /native\/build-default/);
   fails({ stock: { error: "no ForayPlayer on window" } }, /stock launch could not be read/);
-  fails({ override: { ok: false, reason: "capability-off" } }, /was not stored/);
-  fails({ after: { lane: "js", status: AFTER.status } }, /lane is js, not native/);
-  fails({ copy: copyFacts(NATIVE_COPY.replace("engine=native v1.0.0 proto=1 caps=none reason=override", "engine=js reason=engine-legacy")) },
-    /not engine=native/);
-  fails({ copy: copyFacts(NATIVE_COPY.replace("reason=override", "reason=build-default")) }, /not override/);
-  fails({ copy: copyFacts(NATIVE_COPY.replace("engineMode native (override)", "engineMode js (engine-legacy)")) }, /engineMode native/);
-  fails({ copy: copyFacts(NATIVE_COPY.replace("engine rows 4 of 2000, #1..#4", "engine rows not read (timeout)")) }, /did not read the engine's ring: timeout/);
+  fails({ copy: copyFacts(STOCK_COPY.replace(/engine=native .* reason=build-default/, "engine=js reason=engine-legacy")) }, /not engine=native/);
+  fails({ copy: copyFacts(STOCK_COPY.replace("reason=build-default", "reason=override")) }, /reason is override, not build-default/);
+  fails({ copy: copyFacts(STOCK_COPY.replace("caps=episode,continuation", "caps=continuation")) }, /does not advertise episode/);
+  fails({ copy: copyFacts(STOCK_COPY.replace("engineMode native (native)", "engineMode js (engine-legacy)")) }, /engineMode native/);
+  fails({ copy: copyFacts(STOCK_COPY.replace("engine rows 6 of 2000, #1..#6", "engine rows not read (timeout)")) }, /did not read the engine's ring: timeout/);
+  fails({ played: { ...PLAYED, page: { ok: false, error: "window.ForayPlayer.play is missing" } } }, /ForayPlayer\.play did not run/);
+  fails({ played: { ...PLAYED, engine: null } }, /could not be read after the page's play/);
+  fails({ played: { ...PLAYED, engine: { ...PLAYED.engine, item: "a26-0" } } }, /did not reach the engine/);
+  fails({ played: { ...PLAYED, engine: { ...PLAYED.engine, item: null } } }, /did not reach the engine/);
+  fails({ played: { ...PLAYED, engine: { ...PLAYED.engine, exoPlaying: false } } }, /not playing it/);
+  fails({ played: { ...PLAYED, engine: { ...PLAYED.engine, positionSec: 0 } } }, /not playing it/);
   fails({ service: null }, /not running/);
-  fails({ service: { hosting: false } }, /not hosting/);
+  fails({ service: { hosting: true, legacyRunning: true } }, /legacy PlaybackKeepAliveService is running/);
+  fails({ override: { ok: false, reason: "capability-off" } }, /Web was not stored/);
+  fails({ after: { lane: "native", status: AFTER.status } }, /lane is native, not js/);
+  fails({ after: { lane: "js", status: { ...AFTER.status, override: "auto" } } }, /does not read Web/);
+  fails({ after: { error: "timeout" } }, /relaunched page could not be read: timeout/);
+});
+
+test("A-31: the page's episode is the flip's own id over a bundled asset, played through ForayPlayer.play", () => {
+  /* MUTATION: an https or app-origin URL the deck cannot read offline; the driver's id prefix;
+     a raw engineSend instead of the page's own play. */
+  assert.equal(PAGE_EPISODE.id, "a31-page-episode");
+  assert.ok(PAGE_EPISODE.audio_url.startsWith(ASSET_BASE), PAGE_EPISODE.audio_url);
+  const expr = pagePlayExpression();
+  assert.match(expr, /P\.play\(\{"id":"a31-page-episode"/);
+  assert.doesNotMatch(expr, /engineSend|nativePromise/);
 });
 
 test("A-28: the page expressions go through the page's own Developer row, and the CLI takes the scenario", () => {
@@ -563,7 +599,9 @@ test("A-30: the lane is stored before the app starts, and the page's door starts
     "the lane is set before the launch");
   assert.match(prep, /LANE_SCENARIOS\.includes\(ctx\.scenario\)/);
   const ensure = /\nasync function ensureNativeLane\(ctx, \{ fresh = false \} = \{\}\) \{([\s\S]*?)\n\}\n/.exec(src)?.[1] ?? "";
-  assert.match(ensure, /drive\(ctx, "override", \["--es", "mode", "native"\]\)/);
+  /* A-31: the lane scenarios run in the stock lane (Automatic), which is native since the flip. */
+  assert.match(ensure, /drive\(ctx, "override", \["--es", "mode", STOCK_MODE\]\)/);
+  assert.equal(STOCK_MODE, "auto");
   assert.match(ensure, /if \(fresh \|\| now\?\.nativeLane !== true\) \{\s*shell\("am", "force-stop", ctx\.pkg\);/);
   const bridge = /\nasync function bridge\(ctx\) \{([\s\S]*?)\n\}\n/.exec(src)?.[1] ?? "";
   const auto = bridge.indexOf('drive(ctx, "override", ["--es", "mode", "auto"])');
@@ -722,8 +760,10 @@ test("A-30 (k): both halves are gated, and the Foray must go through the relinqu
 
 test("A-30 (e): the first launch is the JS leg's verdict plus the native lane and a hosting engine", () => {
   /* MUTATION: drop the lane check, or the engine check. */
-  const good = { launch: { ok: true, failures: [] }, status: { lane: "native" }, service: { hosting: true, legacyRunning: false } };
+  const good = { launch: { ok: true, failures: [] }, status: { lane: "native", status: { lane: "native", override: "auto" } }, service: { hosting: true, legacyRunning: false } };
   assert.equal(verdictFirstLaunch(good).ok, true);
+  /* A-31: a first launch in the native lane by an override is not the stock launch. */
+  assert.match(verdictFirstLaunch({ ...good, status: { lane: "native", status: { lane: "native", override: "native" } } }).failures[0], /not a stock launch/);
   assert.match(verdictFirstLaunch({ ...good, launch: { ok: false, failures: ["screencap returned no PNG"] } }).failures[0], /screencap/);
   assert.match(verdictFirstLaunch({ ...good, status: { lane: "js" } }).failures[0], /lane is js, not native/);
   assert.match(verdictFirstLaunch({ ...good, status: { error: "timeout" } }).failures[0], /could not be read: timeout/);
