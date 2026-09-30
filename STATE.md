@@ -87,6 +87,33 @@ workflow (14), `shell-invariants` (127), `app-name` + `suite-integrity` (421), a
 match).
 
 No device and no request to Joey (D-A3). The Bluetooth car check is **not executed**.
+### 2026-09-30 — `android/a-29-ownership-fallback`: A-29, ownership and fallback (the Android subset of NE-17)
+
+Owned: foray-audio's `OwnershipCore` (new, pure JVM), `EngineOwnership`, `EngineFaults` (new, a debug-only mutation
+seam) and `EngineLane`; the bridge's hello fault path and two `Owner` methods (`engineTurned`, `engineFaulted`); the
+plugin's `load()` / `handleOnPause`. In the JVM core: `EngineMode` (new) and the `engine-mode` runner. The runner: the
+native leg's `fallback` scenario and the debug driver's `fault` / `override` / `keys` commands. Card A-29 of
+`docs/plans/android-assessment.md` (Track A1), on `android/native`.
+
+**What changed.**
+- **The decision.** `engine-mode` is ported (`EngineMode.decide` / `trace`) and moved to `runs` in `jvm-pending.json`
+  (31 cases). The owner decides ONCE per process at the plugin's `load()`, over iOS's private keys
+  (`ForayEngine.strikes` / `.sentinel` / `.stickyLegacyBuild` / `.modeOverride`, SharedPreferences `ForayEngine`), pinned
+  to the versionCode, and writes the sentinel before a native engine boots.
+- **Healthy markers.** The engine's first completed turn, 5 s after the service binds, or the Activity pausing.
+- **The hello watchdog.** 10 s without a hello after the page loads is a page-health strike; 15 s with the engine idle
+  relinquishes (a running engine defers).
+- **The fault.** An engine that throws while answering engineHello gives the process back (a `mode kind=fault` row, a
+  page-health strike, the relinquish, the service stopped), and the page is told `legacy / downgrade`: the JS player,
+  never silence. Three such launches pin the build to the JS lane (crash-loop, sticky until the versionCode changes).
+- **Capabilities.** The binary may now claim `episode` (its families all run on the JVM). Nothing declares it yet
+  (ENGINE_DEFAULT's android block is still empty), so no stock or override launch changes.
+
+**Paths.** `.github/workflows/android-playback.yml` and `tools/mobile/**` are governed. Per the orchestrator, the
+card merges into `android/native`, and governed paths are reviewed on the final `android/native` → `main` PR.
+
+No device, and no request to Joey (D-A3).
+
 ### 2026-09-29 — `android/a-28-bridge-page-client`: A-28, the Android bridge and page client
 
 Owned: foray-audio's `EngineBridge`, `EngineLane`, `EngineOwnership` and the three engine `@PluginMethod`s on

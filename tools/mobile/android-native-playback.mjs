@@ -36,11 +36,11 @@
  *   node tools/mobile/android-native-playback.mjs <scenario> --art DIR [--pkg ai.jwlabs.foura]
  *
  * Scenarios: `play` (a), `background` (b), `transport` (c), `notification` (d),
- * `doze` (g), `focus` (h), `call` (i), `kill` (j, A-27), `bridge` (A-28), and
- * `collect` / `summary`. Every one is GATED here (A-26: "must be green on
- * (a)–(d), (g), (h) and (i)"; A-27: "(j) in native mode: after `am kill`,
- * dispatching `play` resumes 4a at the saved position. Gated."; A-28's: "the
- * emulator native leg logs `engine mode native` in the Copy paste"). Each
+ * `doze` (g), `focus` (h), `call` (i), `kill` (j, A-27), `bridge` (A-28),
+ * `fallback` (A-29), and `collect` / `summary`. Every one is GATED here (A-26:
+ * "must be green on (a)–(d), (g), (h) and (i)"; A-27: "(j) in native mode: after
+ * `am kill`, dispatching `play` resumes 4a at the saved position. Gated."; A-28's:
+ * "the emulator native leg logs `engine mode native` in the Copy paste"). Each
  * prints its verdict as JSON, writes `DIR/verdict-native-<scenario>.json`, and
  * exits 0 (pass), 1 (the verdict failed) or 2 (it could not run).
  *
@@ -57,8 +57,31 @@
  * command (`ForayPlayer.engineDeveloperSend`, the row a listener taps), restarts
  * the app, and reads the diagnostics Copy: `engine=native … reason=override` in
  * its header, an `engineMode native` row in its timeline, and the engine's ring
- * read into it. It runs LAST, after the adb-driven scenarios, and puts the
+ * read into it. It runs after the adb-driven scenarios, and puts the
  * setting back to Automatic.
+ *
+ * ── THE FALLBACK (A-29) ──────────────────────────────────────────────────────
+ *
+ * `fallback` runs LAST. It proves the card's acceptance, "an emulator mutation
+ * (engine throws at hello) falls back to `js` with a diagnostics row", and the
+ * strike rule behind it, over four launches of the app:
+ *
+ *   - the debug driver turns the Developer setting to Native (through the owner,
+ *     so the strikes start at 0) and arms the engine's debug fault
+ *     (`EngineFaults`: the engine throws while answering engineHello);
+ *   - launches 1–3: the lane is native (`reason=override strikes=n-1`), the hello
+ *     throws, and the engine gives the process back: a `mode kind=fault at=hello`
+ *     row, a page-health strike (`strikes=n`), the core's `mode reason=downgrade
+ *     cap=all` row, and the engine's service stopped. The page runs its own player
+ *     (lane `js`, an `engineMode js` row in its Copy), and on the first launch the
+ *     legacy service STARTS when the page asks for it: a fallback, not silence;
+ *   - launch 4: three strikes pin the build to the JS lane (`mode=legacy
+ *     reason=crash-loop strikes=3`, sticky to the versionCode), and the engine's
+ *     service never starts.
+ *
+ * The facts are read from logcat (`ForayEngine` rows and `ForayEngine.owner`
+ * lines) and from the driver's `keys` answer; the fault and the setting are put
+ * back afterwards whatever happened.
  */
 
 import fs from "node:fs";
@@ -343,6 +366,98 @@ export function verdictBridge({ stock, override, after, copy, service }) {
   return { ok: failures.length === 0, failures };
 }
 
+/* ─────────────────────────── the fallback (A-29) ─────────────────────────── */
+
+/** The page asks the legacy service to start, reads it, and stops it: what the JS
+ *  player's first play does after the engine gave the process back. */
+export const LEGACY_START_EXPRESSION = `(async () => {
+  const C = window.Capacitor;
+  if (!C || typeof C.nativePromise !== "function") return { error: "no Capacitor.nativePromise on window" };
+  const started = await C.nativePromise("ForayAudio", "start", {});
+  await new Promise((r) => setTimeout(r, 1500));
+  const state = await C.nativePromise("ForayAudio", "state", {});
+  const stopped = await C.nativePromise("ForayAudio", "stop", {});
+  return { started, state, stopped };
+})()`;
+
+/** What one launch's logcat (`-s ForayEngine ForayEngine.owner`) says the owner did:
+ *  its decision line, and the engine's `mode` rows (the JSON after ` mode `). */
+export function ownerFacts(text) {
+  const t = String(text ?? "");
+  const d = /ForayEngine\.owner mode=(\w+) reason=([\w-]+) strikes=(\d+) sentinelWasSet=([yn]) sticky=(\S+)/.exec(t);
+  const rows = [];
+  for (const m of t.matchAll(/ mode (\{.*\})\s*$/gm)) {
+    try {
+      rows.push(JSON.parse(m[1]));
+    } catch {
+      /* a line cut by logcat: not a row */
+    }
+  }
+  return {
+    decision: d
+      ? { mode: d[1], reason: d[2], strikes: Number(d[3]), sentinelWasSet: d[4] === "y", sticky: d[5] === "null" ? null : d[5] }
+      : null,
+    fault: rows.find((r) => r.kind === "fault") ?? null,
+    pageHealth: rows.find((r) => r.reason === "page-health") ?? null,
+    downgrade: rows.find((r) => r.reason === "downgrade") ?? null,
+    armed: /DEBUG fault armed: hello-throws/.test(t),
+  };
+}
+
+/** A-29's verdict over the four launches. See the header. */
+export function verdictFallback({ setup, launches }) {
+  const failures = [];
+  for (const [i, s] of (setup ?? []).entries()) {
+    if (!s?.answer || s.answer.ok !== true) failures.push(`setup step ${i + 1} was not taken: ${JSON.stringify(s)}`);
+  }
+  const all = launches ?? [];
+  if (all.length !== 4) failures.push(`expected 4 launches, ran ${all.length}`);
+  for (const l of all) {
+    const f = l.facts ?? {};
+    const tag = `launch ${l.n}`;
+    const lane = l.status?.lane ?? null;
+    if (l.status?.error || lane == null) failures.push(`${tag}: the page's lane could not be read: ${l.status?.error ?? "no answer"}`);
+    else if (lane !== "js") failures.push(`${tag}: the page's lane is ${lane}; a broken engine must leave the page on the JS player`);
+    if (l.engineService) failures.push(`${tag}: ForayPlaybackService is still running after the fallback`);
+    if (!(l.copy?.modeRows ?? []).some((r) => r.mode === "js")) failures.push(`${tag}: the page's Copy has no \`engineMode js\` row`);
+    if (!f.decision) {
+      failures.push(`${tag}: no ForayEngine.owner decision line in logcat`);
+      continue;
+    }
+    if (l.n <= 3) {
+      if (f.decision.mode !== "native" || f.decision.reason !== "override") {
+        failures.push(`${tag}: the lane was ${f.decision.mode}/${f.decision.reason}, not native/override`);
+      }
+      if (f.decision.strikes !== l.n - 1) failures.push(`${tag}: decided with ${f.decision.strikes} strikes, expected ${l.n - 1}`);
+      if (!f.armed) failures.push(`${tag}: the debug fault was not armed`);
+      if (!f.fault || f.fault.at !== "hello") failures.push(`${tag}: no \`mode kind=fault at=hello\` row`);
+      if (!f.pageHealth || f.pageHealth.strikes !== l.n) {
+        failures.push(`${tag}: no page-health strike to ${l.n}: ${JSON.stringify(f.pageHealth)}`);
+      }
+      if (!f.downgrade || f.downgrade.cap !== "all") failures.push(`${tag}: the engine did not relinquish (no mode reason=downgrade cap=all row)`);
+      const stored = l.keys?.["ForayEngine.strikes"];
+      if (stored !== String(l.n)) failures.push(`${tag}: the stored strikes are ${stored}, not ${l.n}`);
+    } else {
+      if (f.decision.mode !== "legacy" || f.decision.reason !== "crash-loop") {
+        failures.push(`${tag}: three strikes must pin the JS lane (crash-loop); decided ${f.decision.mode}/${f.decision.reason}`);
+      }
+      if (f.decision.strikes !== 3) failures.push(`${tag}: decided with ${f.decision.strikes} strikes, expected 3`);
+      const pin = l.keys?.["ForayEngine.stickyLegacyBuild"];
+      if (!f.decision.sticky || pin !== f.decision.sticky) {
+        failures.push(`${tag}: the crash loop is not sticky to this build: ${f.decision.sticky} / ${pin}`);
+      }
+      if (f.fault) failures.push(`${tag}: a pinned build must not reach the engine at all, yet a fault row was written`);
+    }
+    if (l.n === 1) {
+      const st = l.legacy?.started;
+      if (!st || st.started !== true) {
+        failures.push(`launch 1: the legacy service did not start after the fallback: ${JSON.stringify(l.legacy)}`);
+      }
+    }
+  }
+  return { ok: failures.length === 0, failures };
+}
+
 /* ───────────────────────────── verdicts ───────────────────────────── */
 
 function engineFailures(state, failures) {
@@ -573,6 +688,7 @@ export const SCENARIOS = Object.freeze([
   ["call", "(i) native: a phone call; pause, and resume after it"],
   ["kill", "(j) native: paused, on Home, the process ended; a media play resumes 4a at the saved position"],
   ["bridge", "(A-28) native: the page asks the engine; the Developer override; `engine mode native` in the Copy"],
+  ["fallback", "(A-29) native: the engine throws at hello; the page falls back to js with a fault row; 3 strikes pin the JS lane"],
 ]);
 
 export function summaryMarkdown(verdicts) {
@@ -1117,6 +1233,70 @@ async function bridge(ctx) {
   };
 }
 
+/** A-29: the engine throws at hello, over four launches. See the header. */
+async function fallback(ctx) {
+  ctx.endpoint = ctx.endpoint ?? DEVTOOLS_ENDPOINT;
+  const setup = [];
+  const launches = [];
+  try {
+    // The driver's owner commands bind nothing: the lane is decided at the next launch.
+    setup.push(drive(ctx, "override", ["--es", "mode", "native"]));
+    setup.push(drive(ctx, "fault", ["--es", "fault", "hello-throws"]));
+    for (let n = 1; n <= 4; n += 1) {
+      shell("am", "force-stop", ctx.pkg);
+      await sleep(1500);
+      adb(["logcat", "-c"]);
+      ctx.target = null;
+      await prepare(ctx);
+      ctx.target = (await connectPage(ctx, { timeoutMs: 90000 })).target;
+      let status;
+      try {
+        status = await evalPage(ctx, ENGINE_STATUS_EXPRESSION, { timeoutMs: 45000 });
+      } catch (e) {
+        status = { error: String(e?.message ?? e) };
+      }
+      /* Past the healthy marker's 5 s run-loop leg, so the sentinel is settled before the next
+         launch reads it, and past the hand-over's posted stop. */
+      await sleep(6000);
+      let legacy = null;
+      if (n === 1) {
+        try {
+          legacy = await evalPage(ctx, LEGACY_START_EXPRESSION, { timeoutMs: 30000 });
+        } catch (e) {
+          legacy = { error: String(e?.message ?? e) };
+        }
+      }
+      let text;
+      try {
+        text = String(await evalPage(ctx, DIAGNOSTICS_EXPRESSION, { timeoutMs: 30000 }));
+      } catch (e) {
+        text = `(the page could not be asked: ${String(e?.message ?? e)})`;
+      }
+      save(ctx, `fallback-${n}-diagnostics-copy.txt`, text);
+      const log = adb(["logcat", "-d", "-s", "ForayEngine", "ForayEngine.owner"]).stdout;
+      save(ctx, `fallback-${n}-logcat.txt`, log);
+      const svc = shell("dumpsys", "activity", "services", ctx.pkg);
+      save(ctx, `fallback-${n}-services.txt`, svc);
+      const keys = drive(ctx, "keys").answer;
+      launches.push({
+        n, status, legacy, keys, facts: ownerFacts(log), copy: copyFacts(text),
+        engineService: /ForayPlaybackService/.test(svc),
+      });
+    }
+  } finally {
+    // Put the device back whatever happened: no fault, Automatic (which also clears the strikes and the pin).
+    drive(ctx, "fault", ["--es", "fault", "none"]);
+    drive(ctx, "override", ["--es", "mode", "auto"]);
+    shell("am", "force-stop", ctx.pkg);
+  }
+  const v = verdictFallback({ setup, launches });
+  return {
+    ...v,
+    measured: { setup, launches },
+    evidence: fs.readdirSync(ctx.art).filter((f) => f.startsWith("fallback-")),
+  };
+}
+
 /** The evidence: the engine's dump and rows, logcat, the system's view. Never fails. */
 async function collect(ctx) {
   save(ctx, "native-engine-dump.txt", shell("dumpsys", "activity", "service", SERVICE_COMPONENT.replace(PKG, ctx.pkg)));
@@ -1140,7 +1320,7 @@ function summary(ctx) {
   console.log(summaryMarkdown(verdicts));
 }
 
-const RUNNERS = { play, background, transport, notification, doze, focus, call, kill, bridge, collect };
+const RUNNERS = { play, background, transport, notification, doze, focus, call, kill, bridge, fallback, collect };
 
 export function parseArgs(argv) {
   const [scenario, ...rest] = argv;

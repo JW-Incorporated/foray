@@ -17,7 +17,10 @@ import {
   DEVTOOLS_ENDPOINT,
   DOZE_QUEUE,
   ENGINE_STATUS_EXPRESSION,
+  LEGACY_START_EXPRESSION,
   copyFacts,
+  ownerFacts,
+  verdictFallback,
   overrideExpression,
   verdictBridge,
   DUMP_PREFIX,
@@ -207,8 +210,9 @@ test("A-26: small helpers and the CLI", () => {
   assert.equal(moved(S({ positionSec: 1 }), S({ positionSec: 3.5 })), 2.5);
   assert.equal(moved(S({ positionSec: 1 }), S({ item: "other", positionSec: 3 })), null, "a different item is not comparable");
   assert.equal(ourSession({ sessions: [{ package: "x", state: "PLAYING" }, { package: PKG, state: "PAUSED" }] }).state, "PAUSED");
-  assert.deepEqual(SCENARIOS.map(([id]) => id), ["play", "background", "transport", "notification", "doze", "focus", "call", "kill", "bridge"],
-    "A-26's (a)-(d), (g), (h), (i), A-27's (j), then A-28's page door");
+  assert.deepEqual(SCENARIOS.map(([id]) => id),
+    ["play", "background", "transport", "notification", "doze", "focus", "call", "kill", "bridge", "fallback"],
+    "A-26's (a)-(d), (g), (h), (i), A-27's (j), then A-28's page door, then A-29's fallback");
   assert.match(summaryMarkdown({ play: { ok: true } }), /\| \(a\) native[^|]*\| \*\*pass\*\* \|/);
   assert.equal(parseArgs(["play", "--art", "d"]).art, "d");
   assert.throws(() => parseArgs(["seams", "--art", "d"]), /first argument/);
@@ -353,4 +357,111 @@ test("A-28: the page expressions go through the page's own Developer row, and th
   assert.match(ENGINE_STATUS_EXPRESSION, /engineDeveloperStatus\(\)/);
   assert.equal(DEVTOOLS_ENDPOINT, "http://127.0.0.1:9222");
   assert.equal(parseArgs(["bridge", "--art", "d"]).scenario, "bridge");
+});
+
+/* ─────────── A-29: the fallback ─────────── */
+
+/* Logcat as `adb logcat -d -s ForayEngine ForayEngine.owner` prints one faulted native launch:
+   the owner's decision line, then the engine's rows (EngineLog: `seq iso kind {json}`). */
+function faultLog(n, { decision = `mode=native reason=override strikes=${n - 1} sentinelWasSet=n sticky=null`, rows } = {}) {
+  const at = "09-30 12:00:00.000  4242  4242";
+  const lines = [
+    `${at} W ForayEngine.owner: ForayEngine.owner DEBUG fault armed: hello-throws`,
+    `${at} I ForayEngine.owner: ForayEngine.owner ${decision}`,
+    ...(rows ?? [
+      `{"mode":"native","reason":"override","strikes":${n - 1},"sentinelWasSet":"n","build":"2026093001"}`,
+      '{"kind":"fault","at":"hello","error":"Injected"}',
+      `{"reason":"page-health","strikes":${n}}`,
+      '{"reason":"downgrade","cap":"all"}',
+    ]).map((r, i) => `${at} I ForayEngine: ${i + 1} 2026-09-30T12:00:00.000Z mode ${r}`),
+    `${at} I ForayEngine.owner: ForayEngine.owner relinquish cap=all source=restore failures=[]`,
+  ];
+  return lines.join("\n");
+}
+
+const JS_COPY = copyFacts("#   2 12:00:00.400 engineMode js (engine-legacy)\nengine=js reason=engine-legacy strikes=1 build=? | web=x");
+
+function launchOf(n) {
+  const pinned = n === 4;
+  return {
+    n,
+    status: { lane: "js", status: { lane: "js", override: "native" } },
+    legacy: n === 1 ? { started: { alreadyRunning: false, started: true, reason: "" } } : null,
+    keys: pinned
+      ? { ok: true, "ForayEngine.strikes": "3", "ForayEngine.stickyLegacyBuild": "2026093001" }
+      : { ok: true, "ForayEngine.strikes": String(n) },
+    facts: ownerFacts(pinned
+      ? faultLog(4, { decision: "mode=legacy reason=crash-loop strikes=3 sentinelWasSet=n sticky=2026093001", rows: [] })
+      : faultLog(n)),
+    copy: JS_COPY,
+    engineService: false,
+  };
+}
+
+const GOOD_FALLBACK = {
+  setup: [{ answer: { ok: true, override: "native" } }, { answer: { ok: true, fault: "hello-throws" } }],
+  launches: [1, 2, 3, 4].map(launchOf),
+};
+
+test("A-29: ownerFacts reads the decision line and the engine's mode rows from logcat", () => {
+  /* MUTATION: read the strikes from the wrong group, parse the rows without the ` mode ` anchor
+     (a cmd row with a `reason` would pass for a downgrade), or read `sticky=null` as a pin. */
+  const f = ownerFacts(faultLog(2));
+  assert.deepEqual(f.decision, { mode: "native", reason: "override", strikes: 1, sentinelWasSet: false, sticky: null });
+  assert.deepEqual(f.fault, { kind: "fault", at: "hello", error: "Injected" });
+  assert.deepEqual(f.pageHealth, { reason: "page-health", strikes: 2 });
+  assert.deepEqual(f.downgrade, { reason: "downgrade", cap: "all" });
+  assert.equal(f.armed, true);
+  const cmd = ownerFacts('x I ForayEngine: 3 2026-09-30T12:00:00.000Z cmd {"cmd":"play","reason":"downgrade"}');
+  assert.equal(cmd.downgrade, null, "only a mode row is a downgrade");
+  const pinned = ownerFacts("x I ForayEngine.owner: ForayEngine.owner mode=legacy reason=crash-loop strikes=3 sentinelWasSet=y sticky=2026093001");
+  assert.deepEqual(pinned.decision, { mode: "legacy", reason: "crash-loop", strikes: 3, sentinelWasSet: true, sticky: "2026093001" });
+  assert.equal(ownerFacts("").decision, null);
+});
+
+test("A-29: the fallback verdict passes three faulted native launches and a pinned fourth, and fails each gap", () => {
+  /* MUTATION: drop any one check in verdictFallback; its case below stays green. */
+  assert.deepEqual(verdictFallback(GOOD_FALLBACK), { ok: true, failures: [] });
+  const fails = (mutate, re) => {
+    const input = structuredClone(GOOD_FALLBACK);
+    mutate(input);
+    const v = verdictFallback(input);
+    assert.equal(v.ok, false, String(mutate));
+    assert.ok(v.failures.some((f) => re.test(f)), `${String(mutate)} -> ${v.failures.join("; ")}`);
+  };
+  fails((i) => { i.setup[1].answer.ok = false; }, /setup step 2/);
+  fails((i) => { i.launches.pop(); }, /expected 4 launches/);
+  fails((i) => { i.launches[0].status = { lane: "native" }; }, /launch 1: the page's lane is native/);
+  fails((i) => { i.launches[1].status = { error: "no ForayPlayer on window" }; }, /launch 2: the page's lane could not be read/);
+  fails((i) => { i.launches[0].engineService = true; }, /still running after the fallback/);
+  fails((i) => { i.launches[2].copy = copyFacts(""); }, /launch 3: the page's Copy has no `engineMode js` row/);
+  fails((i) => { i.launches[0].facts = ownerFacts(""); }, /launch 1: no ForayEngine.owner decision line/);
+  fails((i) => { i.launches[1].facts.decision.mode = "legacy"; }, /launch 2: the lane was legacy\/override/);
+  fails((i) => { i.launches[1].facts.decision.strikes = 0; }, /launch 2: decided with 0 strikes, expected 1/);
+  fails((i) => { i.launches[0].facts.armed = false; }, /launch 1: the debug fault was not armed/);
+  fails((i) => { i.launches[0].facts.fault = null; }, /launch 1: no `mode kind=fault at=hello` row/);
+  fails((i) => { i.launches[2].facts.pageHealth = { reason: "page-health", strikes: 1 }; }, /launch 3: no page-health strike to 3/);
+  fails((i) => { i.launches[0].facts.downgrade = null; }, /launch 1: the engine did not relinquish/);
+  fails((i) => { i.launches[1].keys["ForayEngine.strikes"] = "0"; }, /launch 2: the stored strikes are 0, not 2/);
+  fails((i) => { i.launches[3].facts.decision.reason = "override"; i.launches[3].facts.decision.mode = "native"; },
+    /launch 4: three strikes must pin the JS lane/);
+  fails((i) => { i.launches[3].facts.decision.strikes = 2; }, /launch 4: decided with 2 strikes, expected 3/);
+  fails((i) => { i.launches[3].keys["ForayEngine.stickyLegacyBuild"] = null; }, /launch 4: the crash loop is not sticky/);
+  fails((i) => { i.launches[3].facts.fault = { kind: "fault", at: "hello" }; }, /launch 4: a pinned build must not reach the engine/);
+  fails((i) => { i.launches[0].legacy = { started: { started: false, reason: "native-engine" } }; },
+    /launch 1: the legacy service did not start after the fallback/);
+});
+
+test("A-29: the fallback's page expression asks the legacy service through the plugin and stops it, and the driver's commands exist", () => {
+  /* MUTATION: ask for a start without the stop (the next scenario inherits a running service),
+     or rename a driver command in the Java only. */
+  assert.match(LEGACY_START_EXPRESSION, /nativePromise\("ForayAudio", "start", \{\}\)/);
+  assert.match(LEGACY_START_EXPRESSION, /nativePromise\("ForayAudio", "stop", \{\}\)/);
+  const receiver = read("src/debug/java/ai/jwlabs/foura/audio/EngineDriveReceiver.java");
+  for (const cmd of ["fault", "override", "keys"]) assert.match(receiver, new RegExp(`case "${cmd}" ->`), `the driver has no ${cmd} command`);
+  assert.match(read("src/main/java/ai/jwlabs/foura/audio/engine/EngineFaults.java"), /HELLO = "hello-throws"/);
+  assert.match(read("src/main/java/ai/jwlabs/foura/audio/EngineOwnership.java"),
+    /"ForayEngine\.owner mode=" \+ d\.mode\(\)\.token \+ " reason=" \+ d\.reason\(\)\.token \+ " strikes=" \+ d\.strikes\(\)/,
+    "ownerFacts reads the owner's decision line as EngineOwnership writes it");
+  assert.equal(parseArgs(["fallback", "--art", "d"]).scenario, "fallback");
 });
