@@ -132,11 +132,17 @@ enum DeckPairFamily {
 
     /// `warmsAcross({from = null, to = null} = {})` (NE-45j; card NE-45s):
     /// `!from || !to` is truthiness, then `typeof to.audio_url === "string" &&
-    /// to.audio_url.length > 0`.
+    /// to.audio_url.length > 0`, then `to.kind === TTS || itemBounds({startSec:
+    /// to.start_sec, endSec: to.end_sec}) != null` (a whole episode is never
+    /// prepared; M3 review).
     static func warmsAcross(_ args: [JSValue]) throws -> CallOutcome {
         guard let s = ArgReading.objectParam(ArgReading.arg(args, 0), hasDefault: true) else { return .threw("TypeError") }
         let to = s["to"]
+        let bounds = to.isTruthy
+            ? ItemBounds.make(startSec: to["start_sec"].numberValue, endSec: to["end_sec"].numberValue) : nil
         return .returned(.bool(DeckPolicy.warmsAcross(hasFrom: s["from"].isTruthy, hasTo: to.isTruthy,
-                                                      toAudioUrl: to.isTruthy ? to["audio_url"].stringValue : nil)))
+                                                      toAudioUrl: to.isTruthy ? to["audio_url"].stringValue : nil,
+                                                      toIsLine: to.isTruthy && to["kind"].stringValue == "tts",
+                                                      toHasBounds: bounds != nil)))
     }
 }

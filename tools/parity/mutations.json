@@ -49,8 +49,8 @@
       "why": "The next item is prepared when it has a FILE, whatever the beat (deck-policy.js warmsAcross, NE-45j), so a rendered narration line and the clip after it are both prepared and clip -> line -> clip is two handovers, not two cold loads. The mutant is the rule it replaced: warm only a segment-to-segment seam (the beat's rule, seam-gap.js).",
       "patch": {
         "file": "player/deck-policy.js",
-        "find": "  return typeof to.audio_url === \"string\" && to.audio_url.length > 0;",
-        "replace": "  return to.kind !== \"tts\" && from.kind !== \"tts\" && from.end_sec != null && to.end_sec != null;"
+        "find": "  if (!(typeof to.audio_url === \"string\" && to.audio_url.length > 0)) return false;",
+        "replace": "  if (!(to.kind !== \"tts\" && from.kind !== \"tts\" && from.end_sec != null && to.end_sec != null)) return false;"
       },
       "jsTest": { "suite": "queue-manager", "name": "a rendered line is warmed across its seam, whatever the beat; a spoken one has no file to warm" },
       "family": "prepare-narration",

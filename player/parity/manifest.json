@@ -1324,7 +1324,7 @@
     },
     "prepare-narration": {
       "files": {
-        "player/parity/fixtures/prepare-narration/policy.json": "4c1aad687f1f0884810de383f3a17d2fdf1b363e8ea55ef19ddd63af8bf232dc",
+        "player/parity/fixtures/prepare-narration/policy.json": "629095884107f2cf64517fbd75484cb6e85a5d53b1e0a3cc935e2e6d16d6f9ef",
         "player/parity/fixtures/prepare-narration/seams.json": "e3b18c68dd554b5a2ec56461ed15461a0da42595573ac68173d3a0c1a81fd35b"
       },
       "ids": [
@@ -1335,6 +1335,8 @@
         "prepare-narration/warms-natural-end-to-clip",
         "prepare-narration/spoken-line-is-not-warmed",
         "prepare-narration/empty-url-is-not-warmed",
+        "prepare-narration/a-whole-episode-is-not-warmed",
+        "prepare-narration/an-episode-after-an-episode-is-not-warmed",
         "prepare-narration/the-last-item-warms-nothing",
         "prepare-narration/window-from-duration-shut-outside-the-lead",
         "prepare-narration/window-from-duration-open-inside-the-lead",

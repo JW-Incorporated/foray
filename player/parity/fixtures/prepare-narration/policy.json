@@ -149,6 +149,38 @@
       "expect": { "return": false }
     },
     {
+      "id": "prepare-narration/a-whole-episode-is-not-warmed",
+      "covers": [],
+      "note": "M3 review: a plain episode queue's next episode (no bounds, not a line) is never prepared. M1's continuation loads it cold at its own resume position, as before NE-45j (seamGapSec never warmed one).",
+      "call": "warmsAcross",
+      "args": [
+        {
+          "from": {
+            "id": "s0",
+            "kind": "episode",
+            "audio_url": "https://cdn.test/a.mp3",
+            "start_sec": 100,
+            "end_sec": 200
+          },
+          "to": { "id": "e2", "kind": "episode", "audio_url": "https://cdn.test/e2.mp3" }
+        }
+      ],
+      "expect": { "return": false }
+    },
+    {
+      "id": "prepare-narration/an-episode-after-an-episode-is-not-warmed",
+      "covers": [],
+      "note": "The M1 shape: an episode's natural end opens a window (its duration), and the next whole episode is still not prepared.",
+      "call": "warmsAcross",
+      "args": [
+        {
+          "from": { "id": "e1", "kind": "episode", "audio_url": "https://cdn.test/e.mp3" },
+          "to": { "id": "e2", "kind": "episode", "audio_url": "https://cdn.test/e2.mp3" }
+        }
+      ],
+      "expect": { "return": false }
+    },
+    {
       "id": "prepare-narration/the-last-item-warms-nothing",
       "covers": [],
       "note": "A Foray does not chain.",

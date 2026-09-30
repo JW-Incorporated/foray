@@ -42,6 +42,14 @@ test("warmsAcross: the item after an episode's natural end is prepared", () => {
   assert.equal(warmsAcross({ from: episode(), to: clip("s1") }), true);
 });
 
+test("warmsAcross: a whole episode is never prepared (M1's continuation stays a cold load at its resume position)", () => {
+  assert.equal(warmsAcross({ from: clip("s0"), to: episode("e2") }), false, "a slice before a whole episode");
+  assert.equal(warmsAcross({ from: episode("e1"), to: episode("e2") }), false, "the M1 shape: episode after episode");
+  assert.equal(warmsAcross({ from: spoken(), to: episode("e2") }), false, "an M1 spoken bridge does not warm the episode after it");
+  assert.equal(warmsAcross({ from: clip("s0"), to: { ...clip("s1"), end_sec: 50 } }), false, "malformed bounds (end before start) are no slice");
+  assert.equal(warmsAcross({ from: episode("e1"), to: rendered() }), true, "a rendered line needs no bounds");
+});
+
 test("warmsAcross: the Foray's last item prepares nothing — a Foray does not chain", () => {
   assert.equal(warmsAcross({ from: clip("s0"), to: null }), false);
   assert.equal(warmsAcross({ from: null, to: clip("s1") }), false, "nothing playing, no seam");

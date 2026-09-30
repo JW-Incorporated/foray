@@ -258,15 +258,24 @@ extension DeckPolicy {
     /// Until NE-45s this question was `SeamGap.gapSec(...) > 0`, which left
     /// every narration seam cold: clip -> line -> clip paid two cold loads.
     ///
+    /// A WHOLE EPISODE IS NEVER PREPARED (M3 review, 2026-09-30): only a
+    /// Foray's next slice (`toHasBounds`, `ItemBounds.make`) or a narration
+    /// line (`toIsLine`, `kind == "tts"`) is. M1's episode-to-episode
+    /// continuation (car-proven, HUMAN-ACTIONS #114) stays a cold load at the
+    /// episode's own resume position, as it was before NE-45s; a warm at 0
+    /// would miss any episode resumed part-way, after fetching it.
+    ///
     /// `toAudioUrl` is `to.audio_url` when there is a `to` (nil: none, or not
     /// a string); JavaScript's `typeof ... === "string" && length > 0`.
-    public static func warmsAcross(hasFrom: Bool, hasTo: Bool, toAudioUrl: String?) -> Bool {
-        guard hasFrom, hasTo, let toAudioUrl else { return false }
-        return !toAudioUrl.isEmpty
+    public static func warmsAcross(hasFrom: Bool, hasTo: Bool, toAudioUrl: String?,
+                                   toIsLine: Bool, toHasBounds: Bool) -> Bool {
+        guard hasFrom, hasTo, let toAudioUrl, !toAudioUrl.isEmpty else { return false }
+        return toIsLine || toHasBounds
     }
 
     /// `warmsAcross` over two queue items.
     public static func warmsAcross(from: EngineItem?, to: EngineItem?) -> Bool {
-        warmsAcross(hasFrom: from != nil, hasTo: to != nil, toAudioUrl: to?.audioUrl)
+        warmsAcross(hasFrom: from != nil, hasTo: to != nil, toAudioUrl: to?.audioUrl,
+                    toIsLine: to?.kind == .tts, toHasBounds: to?.bounds != nil)
     }
 }

@@ -76,6 +76,8 @@
  * and only stops on a genuine crossing — and it cannot spin, because a wake with
  * no progress stands the stage down.
  */
+import { TTS, itemBounds } from "./queue-state.js";
+
 export const OUT_POINT_ARM_LEAD_SEC = 2.0;
 /** Browsers clamp nested timeouts to ~4 ms; asking for less just burns wakeups. */
 export const OUT_POINT_MIN_TIMER_MS = 4;
@@ -800,7 +802,9 @@ export function prefetchWindowOpens({
  * file to fetch: a clip, a rendered narration line (`audio_url`), anything
  * with a source. A spoken, script-only line has no file, so it prepares
  * nothing — the synthesiser speaks it. The Foray's last item prepares nothing
- * (there is no `to`), because a Foray does not chain.
+ * (there is no `to`), because a Foray does not chain. A whole episode (no
+ * bounds, not a line) prepares nothing either: M1's episode-to-episode
+ * continuation stays a cold load at the episode's resume position.
  *
  * WHY NOT THE BEAT ANY MORE. Until NE-45j this question was
  * `seamGapSec(seam) > 0` (seam-gap.js): warm exactly the seams that get a
@@ -827,5 +831,13 @@ export function prefetchWindowOpens({
  */
 export function warmsAcross({ from = null, to = null } = {}) {
   if (!from || !to) return false;
-  return typeof to.audio_url === "string" && to.audio_url.length > 0;
+  if (!(typeof to.audio_url === "string" && to.audio_url.length > 0)) return false;
+  // A WHOLE EPISODE IS NEVER PREPARED (M3 review, 2026-09-30). What a seam
+  // prepares is a Foray's next SLICE (a clip with bounds) or a narration line
+  // (`kind: "tts"`). A plain episode queue's next episode (M1's continuation,
+  // car-proven in HUMAN-ACTIONS #114) is loaded cold at its own resume
+  // position, exactly as before NE-45j: the old rule (`seamGapSec > 0`) never
+  // warmed one either, and a warm at offset 0 would miss any episode resumed
+  // part-way, after fetching it.
+  return to.kind === TTS || itemBounds({ startSec: to.start_sec, endSec: to.end_sec }) != null;
 }
