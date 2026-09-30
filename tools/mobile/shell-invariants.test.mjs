@@ -1528,7 +1528,7 @@ test("the plugin's Gradle dependencies are androidx only, and each is named in t
   const coords = [
     ...gradle.matchAll(/^\s*(?:implementation|api|compileOnly|runtimeOnly)\s+["']([^"']+)["']/gm),
   ].map((m) => m[1]);
-  const allowed = [/^androidx\.appcompat:appcompat:/, /^androidx\.media3:media3-(session|common):/];
+  const allowed = [/^androidx\.appcompat:appcompat:/, /^androidx\.media3:media3-(session|common|exoplayer):/];
   const header = gradle.slice(0, gradle.indexOf("*/"));
   for (const c of coords) {
     assert.ok(
@@ -1541,15 +1541,12 @@ test("the plugin's Gradle dependencies are androidx only, and each is named in t
       "the plugin declares " + c + " and the build.gradle header does not mention " + artefact
     );
   }
-  /* NOT exoplayer and NOT ui, which are the two easy mistakes: one puts a second real
-     audio pipeline in a process whose whole design is that the page owns the only one,
-     and the other is ~1 MB of PlayerView for a notification built with
-     NotificationCompat. */
+  /* NOT ui: ~1 MB of PlayerView for a notification built with NotificationCompat.
+     media3-exoplayer WAS on this list until A-25 (docs/plans/android-assessment.md §5.4),
+     when the native engine got its deck (engine/ExoDeck.java); the A-25 test below pins
+     what that player may and may not do. */
   for (const c of coords) {
-    assert.ok(
-      !/media3-(exoplayer|ui)/.test(c),
-      "the plugin declares " + c + ": there is no player to build and no view to inflate here"
-    );
+    assert.ok(!/media3-ui/.test(c), "the plugin declares " + c + ": there is no view to inflate here");
   }
   /* A FIXED VERSION, not a range. `1.+` or `latest.release` makes the lock screen's
      behaviour a function of the day the APK was built, which is the one property a
@@ -1579,7 +1576,12 @@ test("the plugin's Gradle dependencies are androidx only, and each is named in t
      — had silently gone. That build fails, so it is not the worst kind of hole; but a
      test whose whole subject is the dependency list should not need the compiler to
      notice a missing dependency. */
-  for (const required of ["androidx.appcompat:appcompat:", "androidx.media3:media3-session:", "androidx.media3:media3-common:"]) {
+  for (const required of [
+    "androidx.appcompat:appcompat:",
+    "androidx.media3:media3-session:",
+    "androidx.media3:media3-common:",
+    "androidx.media3:media3-exoplayer:",
+  ]) {
     assert.ok(
       coords.some((c) => c.startsWith(required)),
       "the plugin no longer declares " + required + ", which it compiles against"
@@ -2602,6 +2604,64 @@ test("A-21: foray-engine-core-jvm is a pure JVM module that cap add android link
     );
   }
   assert.ok(!main.some((f) => /AndroidManifest\.xml$/.test(f)), "a java-library has no manifest");
+});
+
+test("A-25: the ExoPlayer deck sits behind DeckDriving, holds its wake mode, and starts audio in one place", () => {
+  /* docs/plans/android-assessment.md A-25. The deck is foray-audio's (the platform half), and
+     the core it speaks to is the pure-JVM module, linked by project path, never the other way
+     round (the A-21 test above pins that the core has no main dependency).
+     - setWakeMode(C.WAKE_MODE_NETWORK): the card's requirement, the thing that keeps the CPU
+       and the Wi-Fi radio up across a screen-off seam; Media3 needs WAKE_LOCK to hold it, so
+       the library manifest declares it.
+     - SeekParameters.EXACT: an in-point is a place in the content, not the nearest sync point.
+     - ONE AUDIBLE START. `player.play()` appears once, in applyRateAndPlay (the rate is
+       re-applied on every play), and nothing sets play-when-ready true behind it: the
+       twin of the iOS "preroll( only in prerollWhenReady" pin, because a second start path
+       is how audio escapes the readiness gate.
+     - The tests are the card's harness: media3-test-utils and -robolectric at the one Media3
+       version, and the click tracks read in place from the iOS fixtures.
+     MUTATION: drop the wake mode, the gate's own locks, a second `.play()`,
+     `setPlayWhenReady(true)`, the WAKE_LOCK line, the core project dependency, or the
+     test-utils lines; each fails here. */
+  const android = path.join(PLUGIN_DIR, "android");
+  const gradle = fs.readFileSync(path.join(android, "build.gradle"), "utf8");
+  const code = gradle.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");
+  assert.match(code, /implementation project\(':foray-engine-core-jvm'\)/, "foray-audio must link the engine core by project path");
+  for (const a of ["media3-test-utils", "media3-test-utils-robolectric"]) {
+    assert.ok(code.includes(`testImplementation "androidx.media3:${a}:$` + `media3Version"`), `${a} at the one Media3 version`);
+  }
+  assert.match(code, /systemProperty 'foray\.clicktracks\.dir'/, "the click tracks reach the tests in place");
+
+  const engineDir = path.join(android, "src", "main", "java", "ai", "jwlabs", "foura", "audio", "engine");
+  const strip = (src) =>
+    src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "").replace(/"(?:[^"\\n]|\.)*"/g, '""');
+  const deck = strip(fs.readFileSync(path.join(engineDir, "ExoDeck.java"), "utf8"));
+  assert.match(deck, /class ExoDeck implements DeckDriving\b/);
+  assert.match(deck, /setWakeMode\(C\.WAKE_MODE_NETWORK\)/, "the deck must hold the network wake mode");
+  /* The wake mode holds nothing while play-when-ready is off, which is the whole gate: the deck
+     holds its own CPU and Wi-Fi locks from the attach until the gate ends, or a screen-off seam
+     loads with the CPU free to sleep and the P-13 deadline (an uptime timer) never fires. */
+  assert.match(deck, /new WakeLockManager\(/, "the gate holds its own CPU wake lock");
+  assert.match(deck, /new WifiLockManager\(/, "the gate holds its own Wi-Fi lock");
+  assert.match(deck, /stage == Stage\.LOADING && !invalidated/, "the gate lock is held exactly while a load gates");
+  assert.match(deck, /setSeekParameters\(SeekParameters\.EXACT\)/, "in-points are exact");
+  assert.equal((deck.match(/\.play\(\)/g) || []).length, 1, "ExoDeck starts audio in exactly one place");
+  assert.doesNotMatch(deck, /setPlayWhenReady\(\s*true\s*\)/, "no second start path around the readiness gate");
+  assert.doesNotMatch(deck, /import com\.getcapacitor\./, "the deck is engine code, not bridge code");
+  const seam = strip(fs.readFileSync(path.join(engineDir, "DeckDriving.java"), "utf8"));
+  assert.match(seam, /interface DeckDriving\b/);
+  assert.doesNotMatch(seam, /import androidx\.media3\./, "the seam names no Media3 type: a fake stands behind it too");
+
+  const manifest = fs.readFileSync(path.join(android, "src", "main", "AndroidManifest.xml"), "utf8");
+  assert.match(manifest, /<uses-permission android:name="android\.permission\.WAKE_LOCK" \/>/, "WAKE_MODE_NETWORK needs WAKE_LOCK");
+
+  const testDir = path.join(android, "src", "test", "java", "ai", "jwlabs", "foura", "audio", "engine");
+  for (const name of ["ExoDeckTest.java", "ExoDeckMeasurementTest.java"]) {
+    assert.ok(fs.existsSync(path.join(testDir, name)), `${name} is the card's acceptance and is missing`);
+  }
+  const harness = fs.readFileSync(path.join(testDir, "DeckHarness.java"), "utf8");
+  assert.match(harness, /new TestExoPlayerBuilder\(/, "the deck is tested on media3-test-utils' player");
+  assert.match(harness, /new FakeClock\(/, "in virtual time");
 });
 
 test("A-23: the JVM core's main code keeps to the API 24 library surface, and reads its numbers from the generated constants", () => {
@@ -4912,4 +4972,72 @@ test("no Package.swift under mobile/plugins declares `resources:` on a shipping 
   assert.ok(testTargetResources >= 1, "the scan no longer sees the click tracks' test-target resources: it has gone blind");
   assert.equal(fs.existsSync(path.join(PLUGIN_DIR, "ios/Sources/ForayAudioPlugin/Resources")), false,
     "ForayAudioPlugin has a Resources/ directory again: nothing may ship from it");
+});
+
+test("A-26: the native engine's MediaSessionService is a Media3 service over the facade, speech with focus handled, and inert until native mode", () => {
+  /* docs/plans/android-assessment.md A-26. What each line pins:
+     - ForayPlaybackService IS a MediaSessionService, declared SECOND in the library manifest (the
+       tests above read the first <service> as the legacy one), mediaPlayback, not exported, with
+       the MediaSessionService intent filter a SessionToken needs to bind it;
+     - its session player is the EnginePlayer facade (a SimpleBasePlayer that plays nothing: no URI,
+       no .play()), its notification the DefaultMediaNotificationProvider, its buttons the 15/30 pair;
+     - the deck's player is configured in ONE place (EngineAudio): CONTENT_TYPE_SPEECH, USAGE_MEDIA,
+       handleAudioFocus true, becoming-noisy handled;
+     - in native mode it replaces the legacy service: the plugin's start() refuses while it hosts;
+     - the adb driver is DEBUG-ONLY: src/debug, never src/main, never the main manifest;
+     - the host and its seams are pure JVM (their turn discipline is unit-tested without Android);
+     - and Android stays on the JS lane (ENGINE_DEFAULT android: js) until A-31.
+     MUTATION: extend Service instead; declare it first; export it; drop the intent filter; build
+     the deck's player without speech attributes or with handleAudioFocus false; move the receiver
+     into src/main; drop the plugin's guard; flip ENGINE_DEFAULT android to native. Each fails here. */
+  const android = path.join(PLUGIN_DIR, "android");
+  const strip = (src) => src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");
+  const audioDir = path.join(android, "src", "main", "java", "ai", "jwlabs", "foura", "audio");
+  const service = strip(fs.readFileSync(path.join(audioDir, "ForayPlaybackService.java"), "utf8"));
+  assert.match(service, /public class ForayPlaybackService extends MediaSessionService\b/);
+  assert.match(service, /new MediaSession\.Builder\(this, facade\)/, "the session's player is the facade");
+  assert.match(service, /\.setMediaButtonPreferences\(seekButtons\(\)\)/);
+  assert.match(service, /ICON_SKIP_BACK_15/);
+  assert.match(service, /ICON_SKIP_FORWARD_30/);
+  assert.match(service, /new DefaultMediaNotificationProvider\.Builder\(this\)/);
+  assert.match(service, /EngineAudio\.configure\(built\)/, "the deck's player gets the card's audio settings");
+  assert.match(service, /public MediaSession onGetSession\(/);
+
+  const engineDir = path.join(audioDir, "engine");
+  const audio = strip(fs.readFileSync(path.join(engineDir, "EngineAudio.java"), "utf8"));
+  assert.match(audio, /setContentType\(C\.AUDIO_CONTENT_TYPE_SPEECH\)/);
+  assert.match(audio, /setUsage\(C\.USAGE_MEDIA\)/);
+  assert.match(audio, /setAudioAttributes\(speech\(\),\s*true\)/, "handleAudioFocus is on");
+  assert.match(audio, /setHandleAudioBecomingNoisy\(true\)/);
+
+  const facade = strip(fs.readFileSync(path.join(engineDir, "EnginePlayer.java"), "utf8"));
+  assert.match(facade, /class EnginePlayer extends SimpleBasePlayer\b/);
+  assert.doesNotMatch(facade, /\.setUri\(|\.play\(\)/, "the facade plays nothing and names no URI a controller could play");
+  for (const f of ["ForayEngineHost.java", "EngineSeams.java"]) {
+    assert.doesNotMatch(strip(fs.readFileSync(path.join(engineDir, f), "utf8")), /^import android\./m, `${f} is pure JVM`);
+  }
+
+  const manifest = fs.readFileSync(path.join(android, "src", "main", "AndroidManifest.xml"), "utf8");
+  const services = [...manifest.matchAll(/<service\b[\s\S]*?(?:\/>|<\/service>)/g)].map((m) => m[0]);
+  assert.equal(services.length, 2, "the legacy service and the engine's");
+  assert.match(services[0], /PlaybackKeepAliveService/, "the legacy service stays first");
+  const svc = services[1];
+  assert.match(svc, /android:name="ai\.jwlabs\.foura\.audio\.ForayPlaybackService"/);
+  assert.match(svc, /android:foregroundServiceType="mediaPlayback"/);
+  assert.match(svc, /android:exported="false"/);
+  assert.match(svc, /<action android:name="androidx\.media3\.session\.MediaSessionService" \/>/);
+  assert.doesNotMatch(manifest, /EngineDriveReceiver/, "the adb driver is not in the main manifest");
+
+  assert.ok(fs.existsSync(path.join(android, "src", "debug", "java", "ai", "jwlabs", "foura", "audio", "EngineDriveReceiver.java")));
+  assert.equal(fs.existsSync(path.join(audioDir, "EngineDriveReceiver.java")), false, "the adb driver never ships: src/debug only");
+  assert.match(fs.readFileSync(path.join(android, "src", "debug", "AndroidManifest.xml"), "utf8"), /EngineDriveReceiver/);
+
+  const plugin = strip(fs.readFileSync(path.join(audioDir, "ForayAudioPlugin.java"), "utf8"));
+  const start = plugin.slice(plugin.indexOf("public void start(PluginCall call)"));
+  assert.ok(start.indexOf("ForayPlaybackService.isHosting()") > 0
+    && start.indexOf("ForayPlaybackService.isHosting()") < start.indexOf("startForegroundService"),
+    "start() refuses the legacy service while the native engine hosts, before it asks for one");
+
+  const defaults = readJson(path.join(MOBILE, "ENGINE_DEFAULT.json"));
+  assert.equal(defaults.android.mode, "js", "Android stays on the JS lane until A-31");
 });

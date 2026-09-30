@@ -7,6 +7,156 @@ docs/. Completed workstreams move to their plan doc's retro section.
 
 ## Active workstreams
 
+### 2026-09-29 — `android/a-26-playback-service`: A-26, the native engine's MediaSessionService shell
+
+Owned: foray-audio's `ForayPlaybackService` and the engine package's `ForayEngineHost`, `EnginePlayer`, `EngineSeams`,
+`EngineAudio`, `FocusMapping`, `EngineLog` and `HandlerTiming`, with their tests; the debug-only `src/debug`
+`EngineDriveReceiver`; `tools/mobile/android-native-playback.mjs`; and the native leg of `android-playback.yml`.
+Card A-26 of `docs/plans/android-assessment.md` (Track A1), PR #900.
+
+**The service.** It is a Media3 `MediaSessionService`. It hosts the engine and publishes one session.
+- **The host.** `ForayEngineHost` is the iOS `ForayEngine` shell on the JVM: activation answered inside its own turn,
+  an input raised mid-turn queued behind it, timers, grace as rows, the `remote kind=status` row, and a terminal
+  teardown.
+- **The session player.** `EnginePlayer` is a `SimpleBasePlayer` facade over `commandAvailability` and `sessionView`,
+  with a neighbourhood timeline as in `WebViewPlayer`. Every command it gets becomes an `EngineInput.remote`.
+- **The notification.** `DefaultMediaNotificationProvider`, with the 15/30 pair as media button preferences, granted
+  to every controller.
+- **The deck's player.** `EngineAudio` sets speech, USAGE_MEDIA, `handleAudioFocus` and becoming noisy. `FocusMapping`
+  reads what Media3 did from the player:
+  - a transient loss is `interruptionBegan`, and its suppression lifting (heard even while paused, because Media3
+    keeps LOSS_TRANSIENT through a pause) is `interruptionEnded(true)`;
+  - a permanent loss is an interruption with no end;
+  - becoming noisy is a lost route.
+- **Replacing the legacy service.** While the service hosts, `ForayAudioPlugin.start()` refuses the legacy service,
+  and `onCreate` stops one that is running.
+- **Still off.** `ENGINE_DEFAULT` android is `js`, and nothing in a release build starts the service.
+
+**Paths.** `.github/workflows/android-playback.yml`, `tools/ci/path-policy.test.mjs` (the new runner is acknowledged
+beside `android-playback.mjs`) and the build.gradle header comment are governed paths. This PR waits on
+`founder-approved`.
+
+**CI**, green on head `4858dcd5` (the code; the later commits add docs, floors and one `volatile`, and re-ran it):
+- `android-build` run 36647752649: `:foray-audio:testDebugUnitTest` ran 98 cases, 0 skipped, 29 of them this card's
+  (`ForayEngineHostTest` 8, `FocusMappingTest` 6, `EnginePlayerTest` 5, `FocusIntegrationTest` 3,
+  `ForayPlaybackServiceTest` 7). `assembleDebug` and `assembleRelease` pass.
+- `android-playback` run 36647752638: the native leg (job 109674560375, 14 min 7 s) is green on (a)–(d), (g), (h) and
+  (i), all gated. Both JS legs are unchanged and green. The numbers are in `docs/android-emulator-measurements.md` §9.
+- CI `data-and-site` failed on the first run: the string census (12 → 13) and the new suite's floor. Both are fixed in
+  the second commit.
+
+**Executed locally:**
+- a compile-only `javac` of foray-audio's main, debug and test sources against android-36, Media3 1.11.0 (session
+  included) and lifecycle 2.8.0 (no Gradle);
+- `ForayEngineHostTest` and `FocusMappingTest` on the scratchpad JDK: 14 of 14;
+- `node --test` over the native runner (12), the workflow test (14), `android-playback` (35), `path-policy` (110),
+  `shell-invariants` A-26 and the manifest tests, `suite-integrity` and `app-name` (421).
+
+No device, and no request to Joey (D-A3).
+
+### 2026-09-29 — `android/a-25-exoplayer-deck`: A-25, the ExoPlayer deck behind a DeckDriving seam
+
+Owned: foray-audio's `engine/` package (`DeckDriving`, `ExoDeck` and their Robolectric tests), the rest of the JVM
+`DeckPolicy` (the out-point reducer, the deck's guards, the standby deck's decisions), the `outpoint` and `deck` runners,
+and three entries of `player/parity/jvm-pending.json`. Card A-25 of `docs/plans/android-assessment.md` (Track A1), PR #898.
+
+**The deck.** It is the Media3 twin of AVDeck, and it speaks the core's `DeckCommand` / `DeckEvent`. It does:
+- a readiness-gated load (READY with play-when-ready off is the preroll; `play` is refused before it);
+- position readings (the target while gating), and the rate, held and re-applied on every play;
+- a load deadline on the player's own clock;
+- same-source reuse (a seek in the held source, and the `attach` row says why a load was cold);
+- the uncommanded-pause settle, and stall → waiting;
+- the out-point, from `DeckPolicy.outPointStep`: a `PlayerMessage` boundary and the watchdog. `endTime` has no Media3
+  counterpart on a live source, so its ops are no-ops.
+
+`setWakeMode(C.WAKE_MODE_NETWORK)` is set, and the library manifest now declares WAKE_LOCK. The deck is wired to nothing
+yet: A-26's service drives it.
+
+**Review fix: the gate holds its own wake lock.** Media3's wake mode holds its locks only while play-when-ready is on
+(`ExoPlayerImpl.updateWakeAndWifiLock`, read from the 1.11 bytecode), and the gate keeps play-when-ready off for the
+whole load. So a screen-off seam would have loaded with the CPU free to suspend, and the P-13 deadline (an uptime
+handler timer) could not fire while it slept. The deck now holds its own CPU and Wi-Fi locks (Media3's
+`WakeLockManager` / `WifiLockManager`, binder calls on the playback looper) from the attach or reuse until the gate
+ends: ready (released after the event, so a play inside it posts Media3's lock first), failed, the deadline, an unload
+or `invalidate()`. `Config.context` is now required (or `Config.gateAwake`). `ExoDeckTest` pins it, and so does the
+A-25 shell invariant.
+
+**Paths.** `mobile/plugins/foray-audio/android/build.gradle` is a governed path. It adds media3-exoplayer, the core by
+project path, media3-test-utils(-robolectric), and Robolectric 4.16 (what test-utils 1.11.0 needs). So this PR waits on
+`founder-approved`.
+
+**The books.** `outpoint` (50 cases) and `deck` (77) moved to `runs`: 0 owed, 0 failed. `prepare` was owed to A-25, but
+its cases run the Foray tape through the engine (ForayTapeRunner, target `engine`), so it is now owed to A-40, and
+A-62's note says so.
+
+**CI** (run 36633382530, job 109627870662, head `e05fb324`), green:
+- `:foray-audio:testDebugUnitTest`: 68 cases, 0 skipped, including the 15 `ExoDeckTest` and 2 `ExoDeckMeasurementTest` cases.
+- `:foray-engine-core-jvm:test`: 87 cases.
+- JVM parity: 989 passed, and failed, pending, stale and unaccounted all 0. The mutation still turns it red.
+- `assembleDebug` / `assembleRelease` pass.
+
+**Measured** (docs/android-emulator-measurements.md §8, Robolectric and virtual time, not the emulator):
+- In-points on exact seek maps (CBR MP3, WAV) are never early and 0 to 1 sample late.
+- The Xing-TOC VBR landed 186 to 629 ms early. The no-table VBR landed up to 20 s early.
+- `preciseTiming` does not change the VBR result, because Media3 1.11's index seeking is only a fallback. A-40 must
+  solve this for Foray in-points.
+- Out-points: 24 trials, never early. The boundary layer settled at +0 ms; the watchdog alone at +2 ms (1x) and
+  +4 ms (2x).
+
+**Executed locally:**
+- core `javac -Werror` and JUnit on the scratchpad Temurin: 87 green, parity 989 passed;
+- `record.mjs --check`: 1836 match;
+- `node --test` over the parity and suite-integrity tests: 2363/2363;
+- `shell-invariants`: the new A-25 test and the updated dependency test pass;
+- a compile-only `javac` of the deck and its tests against android-36 and the Media3 1.11.0 jars (no Gradle).
+
+No device, and no request to Joey (D-A3).
+
+### 2026-09-29 — `android/a-24-enginecore-episodes`: A-24, EngineCore for episodes on the JVM
+
+Owned: `foray-engine-core-jvm`'s engine core (`EngineCore` and its input, command, state and deck vocabulary),
+`DeckPolicy`, the `manager-episode` and `deck-episode` runners, and three entries of `player/parity/jvm-pending.json`.
+Card A-24 of `docs/plans/android-assessment.md` (Track A1).
+
+**What was ported**, from `ForayEngineCore` on `origin/main` (engine/m2 differs from main only in contract files):
+`EngineCore.handle(input, now) -> [EngineCommand]` for episodes, with `EngineInput`, `EngineCommand`, `EngineState`,
+`EngineItem`, `EngineConfig`, `EngineTimer`, `DeckCommand` / `DeckEvent` / `DeckReading` / `EngineNow`, the typed
+command set in `EngineContract` (refusals, relinquish caps, the continuation hop), and `DeckPolicy`'s episode rules.
+The port is the Swift core with the Foray tape OFF: every tape, narration, jingle and silence path is a no-op there,
+so they are left out, and A-40 / A-41 add them at the call sites the Swift core names. Rebuilding a core from the
+restore record stays with A-27; decoding engineSend payloads stays with A-28.
+
+**The audible-start invariant.** Every play goes through `begin`, which asks `SessionPolicy`; a play that needs the
+session parks behind `sessionActivate` until the answer comes back in the same turn, and `startPlayback` refuses without
+an active session. `EngineScenarioDriver` (the JVM twin of the Swift driver) checks
+`SessionPolicy.audibleStartViolations` on every turn of every scenario, plus play-only-after-ready, one audible source,
+and every grace span closed. Under mutation (`PLAY_WHILE_LOST`: a `deckPlay` at the head of a turn that begins
+`lostToInterruption`) `manager-episode/declined-call-resumes-answered-call-stays-paused` goes red with
+`!audible-start:deckPlay@lostToInterruption`, and `PLAY_ON_LOAD` turns `play-loads-then-starts` red with
+`!deck-play-before-ready`; only `manager-episode` cases fail (`EngineScenarioDriverTest`).
+
+**The books.** `manager-episode` (44 cases) and `deck-episode` (58) moved to `runs`: 0 owed, 0 failed. `snapshot` was
+owed to A-24, but its cases are `contractAccepts` on the schema's snapshot payloads and `extrapolate`, which is the
+contract module A-28 ports (with `contract` and `handshake`), so it is now owed to A-28.
+
+**Executed locally:** `javac --release 21 -Xlint:all -Werror` and JUnit on a portable Temurin 21 in the session
+scratchpad (plain `javac`, not Gradle): 87 JUnit cases green; the parity report shows 862 passed, 0 failed, 0 pending,
+0 stale. `record.mjs --check`: 1836 cases, all match.
+
+**Review (adversarial pass).** Mutations were made in the core itself, not in its output:
+- Deleting the activation in `begin` and the `startPlayback` guard leaves every op log the same as the JS. The driver's
+  per-turn audible-start check is the only thing that fails: 37 cases go red with `!audible-start:deckPlay@inactive`.
+- Ignoring the interruption rewind turns 2 `manager-episode` cases red.
+- Two `DeckPolicy` edits turn 5 `deck-episode` cases red.
+- Resuming on ANY route that comes back, not only a known car (corner case #13), passed everything. No fixture drives a
+  route coming back.
+
+That last gap was closed by porting the 17 Swift `EngineCoreTests` that the JVM suite had left out: the rest of the stop
+causes, the known-car and headphones resume, the grace rows (`remote`, `resume`, `cold-play`), interruption reasons,
+route attribution, toggle from native truth, the remote stop, duplicate presses, rate on every play, the seeks, the cold
+nudge, the scrub flush and hold policy `none`. The headphones case now goes red under that mutation.
+
+No device, and no request to Joey (D-A3).
 ### 2026-09-29 — `engine/m3`: iOS M3 re-planned; Android Track A4 added
 
 **The ask.** The founder, 2026-09-29: *"It's going to be a while until I get to those human actions. keep progressing towards milestone 3 for both iPhone and android"*.

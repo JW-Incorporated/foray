@@ -235,6 +235,16 @@ public class ForayAudioPlugin extends Plugin {
            the method that answers "is it running?" honestly, because by the time
            anyone calls it, onStartCommand has run. */
         result.put("alreadyRunning", PlaybackKeepAliveService.isRunning());
+        if (ForayPlaybackService.isHosting()) {
+            /* A-26: IN NATIVE MODE THE ENGINE'S SERVICE REPLACES THIS ONE. ForayPlaybackService
+               owns the media session and the foreground; a legacy start now would publish a
+               second session and a second notification over it. Refused, with the reason, and
+               nothing started. (Unreachable until native mode exists on Android: A-28.) */
+            result.put("started", false);
+            result.put("reason", "native-engine");
+            call.resolve(result);
+            return;
+        }
         try {
             ContextCompat.startForegroundService(context, serviceIntent(context));
             result.put("started", true);

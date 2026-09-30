@@ -745,7 +745,7 @@ test("NE-45j/NE-45s: prepare-narration is authored against reference-engine, kee
     "NE-45s moved prepare-narration to foray (and NE-39s retired the remainder gate)");
   const jvm = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, "player/parity/jvm-pending.json"), "utf8"));
   assert.equal(jvm.families["prepare-narration"], "A-62", "the JVM owes it whole to A-62");
-  assert.equal(jvm.families.prepare, "A-25", "prepare itself stays owed whole to A-25");
+  assert.equal(jvm.families.prepare, "A-40", "prepare itself stays owed whole to A-40 (A-25 handed it on)");
 });
 
 test("every capability the engine advertises has zero pending and zero unported entries", () => {

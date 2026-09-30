@@ -491,6 +491,15 @@ Rejected alternatives:
   pass.
 - **Acceptance:** Those families are 0 pending, and the invariant test fails under mutation.
 - **Device check:** none.
+- **Status (2026-09-29): done in its PR, evidence in `STATE.md` (A-24 entry).** `EngineCore` (main code, Java 21 over
+  the API 24 surface) is the Swift core's episode path with the Foray tape off, plus its input, command, state and
+  deck vocabulary, the typed command set (`EngineContract`) and `DeckPolicy`'s episode rules. `manager-episode` and
+  `deck-episode` moved to `runs` in `jvm-pending.json` (102 cases, all passing). `EngineScenarioDriver` checks the
+  audible-start invariant on every scenario turn, and `EngineScenarioDriverTest` turns named cases red under the Swift
+  driver's two mutations (a play while lost to an interruption, a play before ready). `snapshot` moved from A-24 to
+  A-28: its cases are the contract's `contractAccepts` and `extrapolate`, which A-28 ports with `contract` and
+  `handshake`. The restore-record rebuild (`EngineCore.restoring`) is A-27's; the tape and the overlay are A-40's and
+  A-41's.
 
 #### A-25 · ExoPlayer deck adapter behind a DeckDriving seam — **L**
 - **Depends on:** A-24.
@@ -500,6 +509,19 @@ Rejected alternatives:
   → buffering.
 - **Acceptance:** Robolectric green in CI. In-point and out-point error are reported in the measurements doc.
 - **Device check:** none.
+- **Status (2026-09-29): done in its PR, evidence in `STATE.md` (A-25 entry) and
+  `docs/android-emulator-measurements.md` §8.** `DeckDriving` and `ExoDeck` live in foray-audio
+  (`.../audio/engine/`). The deck gates the load on Media3's READY with play-when-ready off (the
+  preroll), reads the position, holds the rate and re-applies it on every play, and enforces a load
+  deadline on the player's clock. It also does same-source reuse, the uncommanded-pause settle and
+  stall → waiting, and it sets `setWakeMode(C.WAKE_MODE_NETWORK)` (WAKE_LOCK declared). The
+  out-point runs `DeckPolicy.outPointStep` over two Media3 layers: a `PlayerMessage` boundary and
+  the watchdog. `endTime` has no live Media3 counterpart. `DeckPolicy` gained the out-point reducer,
+  the deck's guards and the standby deck's decisions, so `outpoint` (50) and `deck` (77) moved to
+  `runs`. `prepare` runs the Foray tape through the engine, so it is now owed to **A-40**.
+  Measured: exact seek maps are never early and at most one sample late. Media3's VBR seek maps are
+  early by 0.2–0.6 s with a Xing TOC and by seconds without one, whether or not `preciseTiming` is
+  set, and that is A-40's to solve for Foray in-points.
 
 #### A-26 · `ForayPlaybackService` (MediaSessionService) shell — **L**
 - **Depends on:** A-25.
@@ -515,6 +537,27 @@ Rejected alternatives:
 - **Acceptance:** Robolectric covers the session commands and the focus mapping. A-04/A-05 scenarios run in a
   native-mode leg, which must be green on (a)–(d), (g), (h) and (i).
 - **Device check:** none until A-31.
+- **Status (2026-09-29): done in its PR (#900), evidence in `STATE.md` (A-26 entry) and
+  `docs/android-emulator-measurements.md` §9.**
+  - **What was built.** `ForayPlaybackService` (foray-audio, a `MediaSessionService`) hosts the engine through
+    `ForayEngineHost`, the JVM twin of the iOS `ForayEngine` shell, over the A-24 core and the A-25 deck. The session
+    player is `EnginePlayer`, a `SimpleBasePlayer` facade over the core's `commandAvailability` and `sessionView`.
+    Every command it gets is an `EngineInput.remote`.
+  - **Audio.** The deck's player is set up by `EngineAudio`: speech, media usage, `handleAudioFocus` and becoming
+    noisy. `FocusMapping` turns what Media3 did into the core's session events:
+    - a transient loss, or a duck on speech, is `interruptionBegan`, and its gain is `interruptionEnded(shouldResume)`;
+    - a permanent loss has no end;
+    - becoming noisy is a lost route.
+  - **Replacing the legacy service.** While the service hosts, `ForayAudioPlugin.start()` refuses the legacy
+    service, and `onCreate` stops one that is running.
+  - **The native-mode leg.** The page has no way into the engine until A-28. The native-mode leg (a third
+    `android-playback.yml` leg) drives the engine through a debug-only `EngineDriveReceiver` over adb and reads the
+    service's `dumpsys` line: `tools/mobile/android-native-playback.mjs`.
+  - **Evidence.** `:foray-audio:testDebugUnitTest` runs 29 new cases, Robolectric and plain JUnit (98 in all, 0 skipped). The native
+    leg (run 36647752638, job 109674560375) is green on (a)–(d), (g), (h) and (i), all gated. It publishes the 15/30
+    pair as the platform session's custom actions, which is A04-F2 fixed for the native lane.
+  - **Handed on.** Persisting the rows and the restore record is A-27's. The page's bridge is A-28's. Lifecycle
+    inputs (background and foreground) come with A-28's page visibility.
 
 #### A-27 · Store, restore record, playback resumption, MediaButtonReceiver — **M**
 - **Depends on:** A-26.
@@ -673,7 +716,7 @@ A-61, A-62, A-64, A-66 (+ NE-39j) ─ A-63 ─ A-67 ─ A-68 ─ A-69 (gated)
 - **Device check:** A-67's script, route block.
 
 #### A-62 · Prepare across narration seams on the Media3 deck (mirrors NE-45s) — **M**
-- **Depends on:** A-42, NE-45j (it recorded its cases as a sibling family, `prepare-narration`, which `jvm-pending.json` owes whole to A-62; `prepare` itself stays owed whole to A-25)
+- **Depends on:** A-42, NE-45j (it recorded its cases as a sibling family, `prepare-narration`, which `jvm-pending.json` owes whole to A-62; `prepare` itself stays owed whole to A-40, because A-25 handed it on: its cases run the Foray tape through the engine)
 - **Human-gated:** no.
 - **Files:** the Foray tape from A-40 (an ExoPlayer playlist with `ClippingConfiguration`, or a deck pair, whichever A-40 chose), the JVM `DeckPolicy.warmsAcross`, the packed `seam` rows, and Robolectric tests.
 - **Ask:** Port `warmsAcross`. A rendered line is a `MediaItem` like a clip.

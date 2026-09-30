@@ -41,6 +41,11 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- A-25: the native engine's ExoPlayer deck (engine/ExoDeck.java) sets
+         setWakeMode(C.WAKE_MODE_NETWORK), so the CPU and the Wi-Fi radio stay up while it
+         plays with the screen off, and Media3 needs WAKE_LOCK to hold those locks. A normal
+         (install-time) permission: no prompt and no Play declaration. -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
 
     <application>
         <service
@@ -49,6 +54,25 @@
             android:exported="false"
             android:foregroundServiceType="mediaPlayback"
             android:stopWithTask="true" />
+
+        <!-- A-26 (docs/plans/android-assessment.md §5.4): the NATIVE engine's service, a Media3
+             MediaSessionService. Native mode only (A-20 keeps Android on `js` until A-31), and
+             then it replaces the service above, which stays exactly as it is for the JS lane.
+             DECLARED SECOND ON PURPOSE: shell-invariants reads the FIRST <service> as the legacy
+             one. Not exported: its clients are this app's own (a MediaController binds it by
+             component, and Media3's notification and media-button PendingIntents run as this
+             app); A-27's playback resumption and A-50's Android Auto are what would open it.
+             The intent filter is the one Media3's SessionToken requires to bind. No
+             stopWithTask: Media3's own onTaskRemoved stops it when nothing plays. -->
+        <service
+            android:name="ai.jwlabs.foura.audio.ForayPlaybackService"
+            android:description="@string/foray_engine_service_description"
+            android:exported="false"
+            android:foregroundServiceType="mediaPlayback">
+            <intent-filter>
+                <action android:name="androidx.media3.session.MediaSessionService" />
+            </intent-filter>
+        </service>
     </application>
 
 </manifest>

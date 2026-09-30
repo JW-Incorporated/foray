@@ -35,4 +35,6 @@
     <string name="foray_action_stop">Stop</string>
     <string name="foray_action_seek_back">Back 15 seconds</string>
     <string name="foray_action_seek_forward">Forward 30 seconds</string>
+    <!-- A-26: the native engine's MediaSessionService (native mode only; the JS lane keeps the service above). -->
+    <string name="foray_engine_service_description">Plays a foray on the native engine while the app is in the background.</string>
 </resources>

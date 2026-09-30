@@ -1886,7 +1886,7 @@ Read first: `CLAUDE.md`, this deck, the Tier 2 requirements, `docs/ios-native-pl
   - `player/parity/fixtures/prepare/*` — as built, a sibling family `player/parity/fixtures/prepare-narration/` (`seams.json`: authored engine seams; `policy.json`: `warmsAcross` and the duration window). `prepare` is charged to `foray`, which the M2 build advertises and which may owe nothing, so the new ids could not be pending there; the family is parked under the unadvertised `remainder` gate, keeps its `n.*` tokens (`NATIVE_TOKEN_FAMILIES`, JS, Swift and Java), and NE-45s moved it to `foray`. A same-source prepare on the standby is written `n.prepare-seek:<id>@<s>`.
   - `queue-manager.test.js`: the two warming tests that assert the old rule ("a bridged seam is not warmed", "warming follows the SAME rule as the beat") are re-authored to the new rule
   - `deck-policy.test.js`
-  - the books: `swift-pending.json` (`--port-card NE-45s`) and `jvm-pending.json` (`prepare` stays owed whole to A-25; once A-25 has ported it, new ids are `cases` owed to A-62)
+  - the books: `swift-pending.json` (`--port-card NE-45s`) and `jvm-pending.json` (`prepare` stays owed whole to A-40, which A-25 handed it to; once A-40 has ported it, new ids are `cases` owed to A-62)
 - **Ask:** The new rule:
   - The next item is warmed when it has a file (a clip, or a rendered line with `audio_url`), whatever the beat.
   - A spoken (script-only) line warms nothing. The item after a spoken line is warmed when the line **starts**, because the standby deck is idle while the synthesiser speaks.
