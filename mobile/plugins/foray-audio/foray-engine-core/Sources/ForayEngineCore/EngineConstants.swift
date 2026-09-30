@@ -317,6 +317,14 @@ public enum EngineConstants {
         public static let tts: String = "tts"
     }
 
+    /// `player/route-resume.js`
+    public enum RouteResume {
+        /// `ROUTE_RESUME_BLUETOOTH_DEFAULT`
+        public static let routeResumeBluetoothDefault: Bool = false
+        /// `ROUTE_RESUME_MAX_LOST_SEC`
+        public static let routeResumeMaxLostSec: Double = 86400
+    }
+
     /// `player/seam-gap.js`
     public enum SeamGap {
         /// `AUTO_ADVANCE`

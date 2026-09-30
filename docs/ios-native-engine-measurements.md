@@ -873,6 +873,15 @@ constants.
 | Pause hold (OQ-12) | `SessionPolicy.HoldPolicy.default` | **`.forever`**, unchanged (the §9a default) | #114 passed on `.forever`: after a day parked, the car's play resumed 4a. The HA #108 baseline shows a held session is necessary but not sufficient. The Developer "Pause hold: none" arm stays. | The H-1 block's rows against the H-1b block's (`hold=` in the Copy header, each car `remote play` and whether 4a resumed, `grace heldMs`) → G-5 (the founder's OQ-12 ruling) |
 | P-14 stall display | `EngineCore.bufferingWhileWaiting` | **buffering while `waitingToPlayAtSpecifiedRate`**, no debounce (as #866 ships it) | #866: the per-item Now Playing rate latch publishes a buffering stall honestly. | `deck kind=time-control status=waiting reason=` against `nowplaying via=rate` → `rate-latch` |
 
+Two more provisional values are JS, not Swift, so the grep above does not list
+them. They are the route-resume reference's (`player/route-resume.js`,
+NE-38rj), generated into `EngineConstants.RouteResume` for NE-38rs and A-61:
+
+| Value | Constant | Provisional | Evidence it rests on | Settled by (rows → NE-38e verdict) |
+|---|---|---|---|---|
+| Route-resume loss age | `ROUTE_RESUME_MAX_LOST_SEC` | **24 h** | A day at work (#114, passed on M1) is about 9-10 h; a night parked is about 14 h. Measured on the wall clock, never uptime. | `route kind=back lostSec=` → `route-back` |
+| Bluetooth arm | `ROUTE_RESUME_BLUETOOTH_DEFAULT` | **off** | The founder's A2DP car sends its own play 7.4 s after connecting (2026-09-28 paste, e#83 → e#85), and AirPods are A2DP too. | the ms from `route kind=back` to the next `remote play` → `route-back` |
+
 **The deadline class.** The core names a class on every load it issues. The
 deck maps the class to seconds (`AVDeck.Config.deadlineSec(for:)`):
 
