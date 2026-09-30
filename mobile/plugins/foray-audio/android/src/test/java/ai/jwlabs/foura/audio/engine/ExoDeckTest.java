@@ -198,9 +198,11 @@ public class ExoDeckTest {
         List<Boolean> awake = new ArrayList<>();
         List<Boolean> heldAtReady = new ArrayList<>();
         GatedDataSource.Gate gate = new GatedDataSource.Gate(0);
+        List<ExoDeck.Config> config = new ArrayList<>();
         try (DeckHarness h = new DeckHarness(GatedDataSource.factory(gate), c -> {
             c.gateAwake = awake::add;
             c.loadDeadlineSec = 3;
+            config.add(c);
         })) {
             h.deck.setListener(event -> {
                 h.events.add(event);
@@ -214,6 +216,13 @@ public class ExoDeckTest {
             assertEquals("the deadline lets it go", List.of(true, false), awake);
 
             gate.open();
+            /* The second load must reach READY, so its deadline must not race it. The deadline runs
+               on the auto-advancing FakeClock and the loader reads the file on a real thread: on a
+               busy runner virtual time jumped past 3 s before the file was read, the deadline fired
+               instead of ready, and the wait below timed out (A-27's merged head, android-build
+               36672347357, 36672959220 and 36674783999, each passing on a rerun). The deck reads the
+               deadline at each load, so the first load keeps its 3 s. */
+            config.get(0).loadDeadlineSec = 600;
             int from = h.events.size();
             h.deck.send(load(2, CBR, 5.0));
             assertEquals(List.of(true, false, true), awake);
