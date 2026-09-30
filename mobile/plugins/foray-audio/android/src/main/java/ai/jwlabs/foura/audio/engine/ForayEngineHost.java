@@ -72,13 +72,22 @@ import java.util.Objects;
  *
  * The service builds the core with the tape on ({@link EngineConfig#forayTapeEnabled}) over a
  * {@link DeckPair}, so a {@code playForay} that reaches the core plays: the seam beat and the
- * narration pulse are ordinary timers here, and the deck pair answers {@code prepare}. What the
- * host does NOT have yet is a synthesiser and a jingle player (A-41, with rendered narration's
- * Phase 4): a spoken line is answered {@code failed} at once, as the JS tape answers a bridge with
- * no on-device TTS plugin, so the core steps over it (a bridge) or reports the load (a first line);
- * the jingle is off ({@code interludeAvailable} false), and the silence node is off. Until A-42
+ * narration pulse are ordinary timers here, and the deck pair answers {@code prepare}. Until A-42
  * the page's bridge still refuses {@code playForay} ({@code foray} is not advertised), so only the
  * debug driver reaches it.
+ *
+ * <h2>THE NARRATION AND THE JINGLE (A-41)</h2>
+ *
+ * A RENDERED line (one with an {@code audio_url}) is an ordinary file on the deck: the core loads
+ * it like a segment, and its §14 fallback (the file failed or missed its deadline) asks the
+ * synthesiser to read the line's script instead. A SPOKEN line, the fallback and the voice
+ * picker's audition all go to the {@link EngineSeams.Speaking speaker} ({@link SpeechNarrator}
+ * over {@code TextToSpeech}), whose answers come back as {@code narrator} inputs queued behind the
+ * turn that asked. The seam's jingle goes to the {@link EngineSeams.InterludePlaying jingle
+ * player} ({@link InterludePlayer}); its end shrinks the seam back to the beat. A host built with
+ * neither (the tests, a build whose asset is missing) keeps A-40's behaviour: a spoken line is
+ * answered {@code failed} at once, so the core steps over it, and a jingle start ends at once. The
+ * silence node stays off.
  *
  * <h2>THE BEAT HOLDS THE CPU (A-40 review)</h2>
  *
@@ -275,6 +284,24 @@ public final class ForayEngineHost {
         if (started || tornDown) return;
         started = true;
         seams.deck.setListener(event -> handle(new EngineInput.Deck(event)));
+        if (seams.speaker != null) {
+            seams.speaker.setListener(new EngineSeams.SpeakingListener() {
+                @Override
+                public void onNarratorEvent(EngineInput.NarratorEvent event) {
+                    handle(new EngineInput.Narrator(event));
+                }
+
+                @Override
+                public void onAuditionEnded(String end) {
+                    // The core has no input for an audition's end: a row, so a Copy says how it ended.
+                    seams.output.diag(new EngineCommand.DiagEntry("speaker", java.util.Arrays.asList(
+                            JsonNode.member("kind", JsonNode.str("audition-end")), JsonNode.member("end", JsonNode.str(end)))));
+                }
+            });
+        }
+        if (seams.interlude != null) {
+            seams.interlude.setOnEnded(reason -> handle(new EngineInput.Interlude(new EngineInput.InterludeEvent.Ended(reason))));
+        }
         publishSurface();
     }
 
@@ -290,6 +317,15 @@ public final class ForayEngineHost {
         graceReason = null;
         seams.deck.setListener(null);
         seams.deck.invalidate();
+        // Nothing sounds past a teardown: the synthesiser and the jingle go with the deck.
+        if (seams.speaker != null) {
+            seams.speaker.setListener(null);
+            seams.speaker.release();
+        }
+        if (seams.interlude != null) {
+            seams.interlude.setOnEnded(null);
+            seams.interlude.release();
+        }
         inbox.clear();
         syncBeatAwake();
         SurfaceListener listener = surfaceListener;
@@ -453,10 +489,14 @@ public final class ForayEngineHost {
             case EngineCommand.AppendEvent e -> seams.output.appendEvent(e.event());
             case EngineCommand.WriteRestore w -> seams.output.writeRestore(w.record());
             case EngineCommand.Speak s -> {
-                // An audition line (engineSend audition): the synthesiser behind the engine is
-                // A-41's. Written down rather than dropped, so a Copy says why nothing spoke.
-                seams.output.diag(new EngineCommand.DiagEntry("speak", Collections.singletonList(
-                        JsonNode.member("kind", JsonNode.str("unsupported")))));
+                // An audition line (engineSend audition), on the one synthesiser. With none, written
+                // down rather than dropped, so a Copy says why nothing spoke.
+                if (seams.speaker != null) {
+                    seams.speaker.speak(s.text(), s.voiceId());
+                } else {
+                    seams.output.diag(new EngineCommand.DiagEntry("speak", Collections.singletonList(
+                            JsonNode.member("kind", JsonNode.str("unsupported")))));
+                }
             }
             case EngineCommand.Emit e -> seams.output.emit(e.event());
             case EngineCommand.Diag d -> seams.output.diag(d.entry());
@@ -464,13 +504,7 @@ public final class ForayEngineHost {
                 return Collections.singletonList(f.reason());
             }
             case EngineCommand.Narration n -> narration(n.command());
-            case EngineCommand.Interlude i -> {
-                // No jingle player (A-41): the core arms none with interludeAvailable off. One that
-                // arrives anyway ends at once, as a refused start does, so the beat never waits on it.
-                if (i.command() == EngineCommand.InterludeCommand.START) {
-                    handle(new EngineInput.Interlude(new EngineInput.InterludeEvent.Ended("refused")));
-                }
-            }
+            case EngineCommand.Interlude i -> interlude(i.command());
             // The silence node is off (silenceNodeEnabled false): nothing to render.
             case EngineCommand.SilenceStart s -> {}
             case EngineCommand.SilenceStop s -> {}
@@ -481,13 +515,41 @@ public final class ForayEngineHost {
     }
 
     /**
-     * The narrating overlay's synthesiser (A-41's: Android {@code TextToSpeech} behind the engine).
-     * Until it exists a spoken line is refused at once, as the JS tape's bridge answers with no
-     * on-device TTS plugin, so the core steps over a bridge and reports a first line; nothing
-     * ever starts, so a pause, a stop or a discard has nothing to act on. Queued behind the current
-     * turn, as any answer a seam gives while a turn is being interpreted.
+     * The jingle (A-41's {@link InterludePlayer}). The core asks only when {@code interludeAvailable}
+     * is on and its session is active; the player checks the session again. A start that is refused
+     * (or a host with no player) ends at once, queued behind this turn, so the beat never waits on a
+     * jingle that will not sound.
+     */
+    private void interlude(EngineCommand.InterludeCommand command) {
+        EngineSeams.InterludePlaying player = seams.interlude;
+        switch (command) {
+            case START -> {
+                if (player == null || !player.start()) {
+                    handle(new EngineInput.Interlude(new EngineInput.InterludeEvent.Ended("refused")));
+                }
+            }
+            case STOP -> {
+                if (player != null) player.stop();
+            }
+            case RELEASE -> {
+                if (player != null) player.release();
+            }
+        }
+    }
+
+    /**
+     * The narrating overlay's synthesiser: {@link SpeechNarrator} over Android {@code TextToSpeech}
+     * (A-41), the same one that speaks an audition; its answers come back through the listener set at
+     * {@link #start}, after this turn. With no speaker a spoken line is refused at once, as the JS
+     * tape's bridge answers with no on-device TTS plugin, so the core steps over a bridge and reports a
+     * first line; nothing ever starts, so a pause, a stop or a discard has nothing to act on. Queued
+     * behind the current turn, as any answer a seam gives while a turn is being interpreted.
      */
     private void narration(EngineCommand.NarrationCommand command) {
+        if (seams.speaker != null) {
+            seams.speaker.narrate(command);
+            return;
+        }
         switch (command) {
             case EngineCommand.NarrationCommand.Speak s -> {
                 seams.output.diag(new EngineCommand.DiagEntry("speak", java.util.Arrays.asList(JsonNode.member("kind", JsonNode.str("unsupported")),

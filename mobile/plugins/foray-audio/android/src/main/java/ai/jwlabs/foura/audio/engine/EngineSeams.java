@@ -1,6 +1,7 @@
 package ai.jwlabs.foura.audio.engine;
 
 import ai.jwlabs.foura.engine.EngineCommand;
+import ai.jwlabs.foura.engine.EngineInput;
 import ai.jwlabs.foura.engine.RestoreRecord;
 import ai.jwlabs.foura.engine.Rows;
 
@@ -16,11 +17,17 @@ import ai.jwlabs.foura.engine.Rows;
  *
  * <p>WHAT IS NOT HERE, AND WHERE IT GOES. iOS also has a background-task seam (grace spans
  * are UIKit background tasks), a remote-command registry (MPRemoteCommandCenter), a Now Playing
- * writer, a speaker, an interlude and a silence node. On Android: a grace span is a row only
- * (a mediaPlayback foreground service has no background budget to borrow); the remote surface
- * and Now Playing are ONE object, the Media3 session's player ({@link EnginePlayer}), which reads
- * the host's {@link ForayEngineHost.Surface} after every turn; speech, interludes and the tape
- * are A-40's and A-41's.
+ * writer and a silence node. On Android: a grace span is a row only (a mediaPlayback foreground
+ * service has no background budget to borrow); the remote surface and Now Playing are ONE object,
+ * the Media3 session's player ({@link EnginePlayer}), which reads the host's
+ * {@link ForayEngineHost.Surface} after every turn; the silence node stays off (its flag is off on
+ * iOS too).
+ *
+ * <p>THE SPEAKER AND THE JINGLE (A-41), the iOS {@code Speaking} and {@code InterludePlaying}: the
+ * service's are {@link SpeechNarrator} over Android {@code TextToSpeech} and {@link InterludePlayer}
+ * over the bundled jingle. Both are OPTIONAL here: a host built without a speaker answers a spoken
+ * line {@code failed} (the core steps over it, as the JS tape does with no TTS plugin), and one
+ * without a jingle player builds its core with {@code interludeAvailable} off.
  */
 public final class EngineSeams {
     /** What {@link Session#activate()} answered. {@code error} is a contract token or null. */
@@ -86,15 +93,80 @@ public final class EngineSeams {
         void diag(EngineCommand.DiagEntry entry);
     }
 
+    /**
+     * The engine's one synthesiser (A-41; the iOS {@code Speaking}): the voice picker's audition and
+     * every line of a Foray's narration the core asks for, answered with the core's
+     * {@link EngineInput.NarratorEvent}s keyed by the utterance {@code seq}. Every call is on the
+     * host's thread, and so is every answer.
+     */
+    public interface Speaking {
+        /**
+         * Where the answers go: a line of narration's events, and the end of an AUDITION line (which
+         * the core has no input for). Set at the host's start, cleared (null) at its teardown.
+         */
+        void setListener(SpeakingListener listener);
+
+        /** The audition: audible, and the core emits it only after an activation (OQ-5). */
+        void speak(String text, String voiceId);
+
+        void stopSpeaking();
+
+        /** Carry out one of the core's narration commands. An answer given at once is queued by the host behind the turn. */
+        void narrate(EngineCommand.NarrationCommand command);
+
+        /** Silence everything and let the synthesiser go (the host's teardown). */
+        void release();
+    }
+
+    /** What a {@link Speaking} says, on the host's thread. */
+    public interface SpeakingListener {
+        void onNarratorEvent(EngineInput.NarratorEvent event);
+
+        /** An audition line ended: {@code finished}, {@code cancelled} or {@code failed}. */
+        void onAuditionEnded(String end);
+    }
+
+    /**
+     * The seam's jingle (A-41; the iOS {@code InterludePlaying}): one short bundled asset at 1.0x.
+     * The core decides WHEN; the conformer only plays it and says when it stopped sounding.
+     */
+    public interface InterludePlaying {
+        /**
+         * The jingle stopped sounding by itself, on the host's thread, at most once per accepted
+         * {@link #start}: {@code ended}, {@code error} or {@code ceiling}. Never for a {@link #stop} or a
+         * {@link #release}. Set at the host's start, cleared (null) at its teardown.
+         */
+        void setOnEnded(java.util.function.Consumer<String> onEnded);
+
+        /** Start from the first frame. Audible: false (and a row) when the session is not active or the asset cannot play. */
+        boolean start();
+
+        /** Silence it without an end report (a transport action cut the beat). */
+        void stop();
+
+        /** Stop and let the player go (the engine's teardown). */
+        void release();
+    }
+
     public final DeckDriving deck;
     public final Session session;
     public final Timing timing;
     public final Output output;
+    /** The synthesiser, or null: a spoken line is then answered {@code failed} at once. */
+    public final Speaking speaker;
+    /** The jingle player, or null: the core is then built with {@code interludeAvailable} off. */
+    public final InterludePlaying interlude;
 
     public EngineSeams(DeckDriving deck, Session session, Timing timing, Output output) {
+        this(deck, session, timing, output, null, null);
+    }
+
+    public EngineSeams(DeckDriving deck, Session session, Timing timing, Output output, Speaking speaker, InterludePlaying interlude) {
         this.deck = java.util.Objects.requireNonNull(deck, "deck");
         this.session = java.util.Objects.requireNonNull(session, "session");
         this.timing = java.util.Objects.requireNonNull(timing, "timing");
         this.output = java.util.Objects.requireNonNull(output, "output");
+        this.speaker = speaker;
+        this.interlude = interlude;
     }
 }

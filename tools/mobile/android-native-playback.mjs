@@ -124,16 +124,36 @@
  *     playing`, the 0.5 s beat included, with the engine's own packed `seam`
  *     row beside it (the gap the core measured, and whether the standby deck
  *     had the segment). Gated on every seam crossed, hidden, in one process,
- *     with p95 <= 1 s (A-40's acceptance).
+ *     with p95 <= 1 s (A-40's acceptance). Since A-41 a seam across two
+ *     sources carries the interlude JINGLE (the engine's own player, the
+ *     bundled asset), which is sound, not silence: the gated number is the
+ *     SILENCE (the gap less the jingle's span, from its `interlude
+ *     kind=started` row to its end row), the raw gap is recorded beside it,
+ *     and the jingle must have sounded on at least one seam.
  *   - (k) `airplane`: two halves, both gated. The ENGINE's: in airplane mode an
  *     episode whose file cannot load is stopped by the engine (a `stop` row with
  *     cause `error` or `load-deadline`) within the deck's load deadline plus
  *     slack, nothing is left playing or claiming PLAYING, and a bundled episode
  *     then plays. The PAGE's: a Foray tapped in the native lane is relinquished
- *     to the page's player (the binary advertises no `foray` until A-40/A-41),
+ *     to the page's player (the binary advertises no `foray` until A-42),
  *     and the JS leg's own (k) runs on it: the rendered line that cannot load is
  *     spoken or skipped in time, and the Copy logs `engineMode js
- *     (relinquished)`. A-41 moves the narration fallback into the engine.
+ *     (relinquished)`.
+ *
+ * ── A-41: (k) THROUGH THE ENGINE ────────────────────────────────────────────
+ *
+ * Card A-41: "Rendered narration plays as ordinary files. TextToSpeech becomes a
+ * seam behind the engine, used only when a file is missing." Acceptance: "A-05
+ * (k) is green in native mode." So (k) gains a third half, the ENGINE'S FORAY,
+ * still in airplane mode: the debug driver's `foray` (the contract's
+ * playForay) hands the engine a clip, a RENDERED line on a bundled file (the
+ * job's `a05/` .m4a), a clip, a rendered line on the network (which airplane
+ * mode cannot load), and a clip to land on. Gated: the bundled line is heard as
+ * a FILE on the deck (the dump shows it as the audible item); the network line
+ * falls back (`narration kind=fallback` at the bridge) within the deadline and
+ * its script is SPOKEN by the engine's own synthesiser (`speaker
+ * kind=line-started`) or skipped, as the JS leg's (k) allows; and the Foray
+ * lands on its last clip, playing, in the engine, in one process.
  */
 
 import fs from "node:fs";
@@ -167,6 +187,9 @@ import {
   wakefulness,
   DIAGNOSTICS_EXPRESSION,
   airplaneScenario,
+  NARRATION_LINES,
+  UNREACHABLE_NARRATION_URL,
+  UNREACHABLE_SCRIPT,
   connect as connectPage,
   firstLaunchScenario,
   page as evalPage,
@@ -539,8 +562,12 @@ export const NATIVE_GATES = Object.freeze({
   airplaneDecisionMs: 25000,
   /** (k): how long a bundled episode has to sound after the failure, still in airplane mode. */
   recoveryMs: 20000,
-  /** A-40 (f): the Foray tape's bar, "p95 seam <= 1 s with the screen off" (the 0.5 s beat included). */
+  /** A-40 (f): the Foray tape's bar, "p95 seam <= 1 s with the screen off" (the 0.5 s beat included;
+   *  since A-41 the jingle's span is not silence and is taken out). */
   foraySeamP95Ms: 1000,
+  /** A-41 (k): how long the engine's Foray has, from its start, to land on its last clip. Its
+   *  clips and bundled line are about 17 s; the network line's decision is inside the 25 s gate. */
+  airplaneForayLandMs: 60000,
 });
 
 /** (f): one episode item, bounded or whole. */
@@ -591,6 +618,33 @@ export const FORAY_SEAMS_FORAY = Object.freeze({
     foraySegment(CLIPS[1], 5, 30, 38),
     foraySegment(CLIPS[2], 6, 20, 28),
     foraySegment(CLIPS[0], 7, 60, 68),
+  ]),
+});
+
+/** A-41 (k): where the job puts the rendered-narration fixtures in the APK (the JS leg's `a05/`),
+ *  as the deck reads an asset. */
+export const NARRATION_ASSET_BASE = "asset:///public/a05/";
+
+/** A-41 (k): one rendered line of a Foray, in the shape the page's build gives the engine: a `tts`
+ *  item with its file and its script (so a file that fails can be spoken instead). */
+function renderedLine(i, url, script, sec) {
+  return Object.freeze({
+    id: `a41-air#${i}`, kind: "tts", audio_url: url, title: "", script, duration_sec: sec, duration_source: "rendered",
+  });
+}
+
+/** A-41 (k): the engine's own Foray in airplane mode. A 6 s clip; a rendered line on a BUNDLED file
+ *  (heard as a file on the deck); a 6 s clip; a rendered line on the NETWORK, which airplane mode
+ *  cannot load (its script falls back to the engine's synthesiser); a clip to land on. */
+export const AIRPLANE_ENGINE_FORAY = Object.freeze({
+  forayId: "a41-airplane",
+  title: "A-41 airplane",
+  items: Object.freeze([
+    Object.freeze({ ...foraySegment(CLIPS[0], 0, 0, 6), id: "a41-air#0" }),
+    renderedLine(1, `${NARRATION_ASSET_BASE}${NARRATION_LINES[0].file}`, NARRATION_LINES[0].script, NARRATION_LINES[0].sec),
+    Object.freeze({ ...foraySegment(CLIPS[1], 2, 0, 6), id: "a41-air#2" }),
+    renderedLine(3, UNREACHABLE_NARRATION_URL, UNREACHABLE_SCRIPT, 4),
+    Object.freeze({ ...foraySegment(CLIPS[2], 4, 0, 40), id: "a41-air#4" }),
   ]),
 });
 
@@ -774,7 +828,20 @@ export function foraySeams(rows) {
     const j = r.json ?? {};
     if (commanded(r) && open) open.commanded = true;
     if (r.kind === "outPoint" && j.kind === "stop") {
-      open = { fromToken: j.token, endAt: r.at, overshootMs: typeof j.overshootMs === "number" ? j.overshootMs : null, seamRow: null, commanded: false };
+      open = {
+        fromToken: j.token, endAt: r.at, overshootMs: typeof j.overshootMs === "number" ? j.overshootMs : null, seamRow: null, commanded: false,
+        jingleAt: null, jingleEndAt: null, jingleEnd: null,
+      };
+      continue;
+    }
+    /* A-41: the jingle the seam carried, from the core's `interlude kind=started` to its end
+       (`ended`, the host's `ceiling`, or a `cut`). Sound, not silence. */
+    if (r.kind === "interlude" && open) {
+      if (j.kind === "started" && open.jingleAt == null) open.jingleAt = r.at;
+      else if ((j.kind === "ended" || j.kind === "cut" || j.kind === "ceiling") && open.jingleAt != null && open.jingleEndAt == null) {
+        open.jingleEndAt = r.at;
+        open.jingleEnd = j.kind === "ended" ? (j.why ?? "ended") : j.kind;
+      }
       continue;
     }
     if (r.kind === "seam" && open && !open.seamRow) {
@@ -786,8 +853,12 @@ export function foraySeams(rows) {
       continue;
     }
     if (r.kind === "deck" && j.kind === "time-control" && j.status === "playing" && open && j.token !== open.fromToken) {
+      const gapMs = r.at - open.endAt;
+      const jingleMs = open.jingleAt != null ? (open.jingleEndAt ?? r.at) - open.jingleAt : null;
       seams.push({
-        fromToken: open.fromToken, toToken: j.token, gapMs: r.at - open.endAt, overshootMs: open.overshootMs,
+        fromToken: open.fromToken, toToken: j.token, gapMs, overshootMs: open.overshootMs,
+        jingle: open.jingleAt != null, jingleMs, jingleEnd: open.jingleEnd,
+        silenceMs: jingleMs != null ? Math.max(0, gapMs - jingleMs) : gapMs,
         observedGapMs: open.seamRow?.observedGapMs ?? null, askedGapMs: open.seamRow?.askedGapMs ?? null,
         prepared: open.seamRow?.prepared ?? null, stages: open.seamRow?.stages ?? [], commanded: open.commanded, at: r.iso,
       });
@@ -797,11 +868,14 @@ export function foraySeams(rows) {
   return seams;
 }
 
-/** A-40 (f): the numbers, over the seams no command touched: all, and prepared (handed over) vs not. Pure. */
+/** A-40 (f): the numbers, over the seams no command touched: all, and prepared (handed over) vs not.
+ *  The SILENCE is what is measured (A-41: a seam's jingle is sound, so its span is taken out; a seam
+ *  with none is its whole gap); the raw gaps are `gap`. Pure. */
 export function foraySeamStats(seams) {
   const clean = (seams ?? []).filter((s) => !s.commanded && typeof s.gapMs === "number");
-  const stat = (list) => {
-    const gaps = list.map((s) => s.gapMs).sort((a, b) => a - b);
+  const silence = (s) => (typeof s.silenceMs === "number" ? s.silenceMs : s.gapMs);
+  const stat = (list, of = silence) => {
+    const gaps = list.map(of).sort((a, b) => a - b);
     return { count: gaps.length, minMs: gaps[0] ?? null, medianMs: nearestRank(gaps, 50), p95Ms: nearestRank(gaps, 95), maxMs: gaps[gaps.length - 1] ?? null };
   };
   return {
@@ -809,10 +883,14 @@ export function foraySeamStats(seams) {
     commanded: (seams ?? []).length - clean.length,
     prepared: stat(clean.filter((s) => s.prepared === true)),
     unprepared: stat(clean.filter((s) => s.prepared !== true)),
+    gap: stat(clean, (s) => s.gapMs),
+    jingles: clean.filter((s) => s.jingle === true).length,
+    jingle: stat(clean.filter((s) => s.jingle === true), (s) => s.jingleMs),
   };
 }
 
-/** A-40 (f) GATED: every seam crossed, hidden, in one process, and p95 <= 1 s. */
+/** A-40 (f) GATED: every seam crossed, hidden, in one process, and p95 <= 1 s of silence. A-41: the
+ *  jingle shipped (the dump's `interlude.available`) and sounded on at least one seam. */
 export function verdictForaySeams({ drive, wake, pidBefore, pidAfter, last, seams, pair, foray = FORAY_SEAMS_FORAY }) {
   const failures = [];
   const n = foray.items.length;
@@ -825,9 +903,11 @@ export function verdictForaySeams({ drive, wake, pidBefore, pidAfter, last, seam
   const stats = foraySeamStats(seams);
   if (stats.count < n - 1) failures.push(`${stats.count} of the Foray's ${n - 1} seams were read from the engine's rows (${stats.commanded} with a command between)`);
   if (stats.count && !(stats.p95Ms <= NATIVE_GATES.foraySeamP95Ms)) {
-    failures.push(`p95 seam ${stats.p95Ms} ms is over the ${NATIVE_GATES.foraySeamP95Ms} ms bar`);
+    failures.push(`p95 seam ${stats.p95Ms} ms is over the ${NATIVE_GATES.foraySeamP95Ms} ms bar (silence: the jingle's span is taken out)`);
   }
   if (!pair || !(pair.swaps > 0)) failures.push(`the deck pair handed over no seam (${JSON.stringify(pair)})`);
+  if (last?.interlude?.available !== true) failures.push(`the engine has no jingle player (interlude ${JSON.stringify(last?.interlude ?? null)}): the asset did not ship or is not the pinned one`);
+  else if (!(stats.jingles > 0)) failures.push("no seam carried the jingle (no `interlude kind=started` row inside a seam)");
   return { ok: failures.length === 0, failures, recorded: stats };
 }
 
@@ -863,10 +943,58 @@ export function airplaneFacts(rows, sinceSeq) {
   };
 }
 
+/** A-41 (k), the engine's Foray: what its rows after the mark say. The fallback is the core's
+ *  `narration kind=fallback` row; its boundary is the last out-point stop before it (the clip
+ *  before the line ran out, which is when the line became the Foray's focus); the speech is the
+ *  synthesiser's `speaker kind=line-started` row after it; a synthesiser that could not speak
+ *  writes one of the refusal rows instead, and the core then steps over the line. Pure. */
+export function airplaneForayFacts(rows, sinceSeq) {
+  const after = (rows ?? []).filter((r) => r.seq > sinceSeq);
+  const fi = after.findIndex((r) => r.kind === "narration" && r.json?.kind === "fallback");
+  const fallback = fi >= 0 ? after[fi] : null;
+  const boundary = fi >= 0 ? [...after.slice(0, fi)].reverse().find((r) => r.kind === "outPoint" && r.json?.kind === "stop") ?? null : null;
+  const later = fi >= 0 ? after.slice(fi + 1) : [];
+  const spoke = later.find((r) => r.kind === "speaker" && r.json?.kind === "line-started") ?? null;
+  const REFUSALS = ["init-failed", "speak-refused", "start-refused", "engine-error", "line-failed"];
+  const refused = later.find((r) => r.kind === "speaker" && REFUSALS.includes(r.json?.kind)) ?? null;
+  const from = boundary ?? null;
+  return {
+    fallback: fallback ? { reason: fallback.json.reason ?? null, at: fallback.json.at ?? null, iso: fallback.iso } : null,
+    boundaryAt: boundary?.iso ?? null,
+    decisionMs: fallback && from ? fallback.at - from.at : null,
+    spoken: spoke ? { iso: spoke.iso, engine: spoke.json.engine ?? null, ms: from ? spoke.at - from.at : null } : null,
+    refused: refused ? { kind: refused.json.kind, iso: refused.iso } : null,
+    speakerRows: after.filter((r) => r.kind === "speaker").map((r) => r.json),
+  };
+}
+
+/** A-41 (k) GATED: the engine's Foray in airplane mode. The bundled rendered line is heard as a
+ *  file; the network one falls back at its bridge within the deadline, and its script is spoken
+ *  (or skipped: a synthesiser that could not speak); the Foray lands on its last clip, playing, in
+ *  the engine. */
+export function verdictAirplaneForay({ drive, facts, renderedAudible, landed, last, pidBefore, pidAfter, foray = AIRPLANE_ENGINE_FORAY }) {
+  const failures = [];
+  const n = foray.items.length;
+  if (!drive?.answer?.ok) failures.push(`the driver's playForay did not play: ${JSON.stringify(drive)}`);
+  if (!renderedAudible) failures.push(`the bundled rendered line (${foray.items[1].id}) was never the audible item: it did not play as a file`);
+  if (!facts?.fallback) failures.push("the network line did not fall back (no `narration kind=fallback` row)");
+  else {
+    if (facts.fallback.at !== "bridge") failures.push(`the fallback was at ${facts.fallback.at}, not the bridge`);
+    if (!(facts.decisionMs <= NATIVE_GATES.airplaneDecisionMs)) {
+      failures.push(`the line fell back ${facts.decisionMs} ms after the clip before it ran out; the deadline is ${NATIVE_GATES.airplaneDecisionMs} ms`);
+    }
+    if (!facts.spoken && !facts.refused && !landed) failures.push("the fallen-back line was neither spoken by the engine's synthesiser nor skipped");
+  }
+  if (!landed) failures.push(`the Foray did not land on its last clip (index ${n - 1}) playing within ${NATIVE_GATES.airplaneForayLandMs} ms (last index ${last?.index}, running ${last?.running})`);
+  if (last && last.forayId !== foray.forayId) failures.push(`the engine was not playing the Foray (forayId ${JSON.stringify(last?.forayId)})`);
+  if (pidBefore && pidAfter !== pidBefore) failures.push(`the pid changed from ${pidBefore} to ${pidAfter}`);
+  return { ok: failures.length === 0, failures, outcome: facts?.spoken ? "spoken" : facts?.refused ? "skipped" : landed ? "skipped" : null };
+}
+
 /** (k) GATED: the engine's half (an unloadable episode stops in time, nothing claims to play,
  *  a bundled one plays after), and the page's (a Foray in the native lane relinquishes to the
  *  page's player, whose (k) passes, and the Copy says so). */
-export function verdictAirplane({ airplane, facts, after, session, recovered, laneBefore, foray, copy }) {
+export function verdictAirplane({ airplane, facts, after, session, recovered, laneBefore, foray, copy, engineForay }) {
   const failures = [];
   if (airplane !== true) failures.push("airplane mode did not engage (settings global airplane_mode_on is not 1)");
   if (!facts?.attachAt) failures.push("the engine never started loading the unreachable episode");
@@ -880,6 +1008,9 @@ export function verdictAirplane({ airplane, facts, after, session, recovered, la
   else if (after.running !== false || after.exoPlaying === true) failures.push(`after the failure the engine is ${after.state} (running ${after.running}, exoPlaying ${after.exoPlaying})`);
   if (session?.state === "PLAYING") failures.push("after the failure our media session still says PLAYING");
   if (!recovered) failures.push(`a bundled episode did not play within ${NATIVE_GATES.recoveryMs / 1000} s of the failure`);
+  /* A-41: the engine's own Foray, its rendered lines a file and a fallback. */
+  if (!engineForay) failures.push("the engine's Foray half did not run");
+  else if (!engineForay.ok) failures.push(...(engineForay.failures ?? []).map((f) => `engine foray: ${f}`));
   if (laneBefore !== "native") failures.push(`the page's lane before the Foray was ${laneBefore}, not native`);
   if (!foray) failures.push("the page's Foray half did not run");
   else if (!foray.ok) failures.push(...(foray.failures ?? []).map((f) => `foray: ${f}`));
@@ -1151,7 +1282,7 @@ export const SCENARIOS = Object.freeze([
   ["focus", "(h) native: another app takes audio focus; pause, and resume after a transient loss"],
   ["call", "(i) native: a phone call; pause, and resume after it"],
   ["kill", "(j) native: paused, on Home, the process ended; a media play resumes 4a at the saved position"],
-  ["airplane", "(k) native: airplane mode; an unloadable episode stops in time; a Foray relinquishes and its line falls back"],
+  ["airplane", "(k) native: airplane mode; an unloadable episode stops in time; the engine's Foray plays a rendered line as a file and speaks the one that cannot load; a page Foray relinquishes and its line falls back"],
   ["bridge", "(A-28, A-31) stock launch: the native lane by default; the page's own episode play is the engine's; the Developer setting Web returns the JS lane"],
   ["fallback", "(A-29) native: the engine throws at hello; the page falls back to js with a fault row; 3 strikes pin the JS lane"],
 ]);
@@ -1944,7 +2075,41 @@ async function foraySeamsScenario(ctx) {
   };
 }
 
-/** (k) Airplane mode: the engine's half, then the page's. See the header. */
+/** A-41 (k): the engine's own Foray in airplane mode (the caller turned it on). See the header. */
+async function airplaneEngineForay(ctx) {
+  const before = dumpRows(ctx);
+  const since = before.length ? before[before.length - 1].seq : 0;
+  const d = drive(ctx, "foray", ["--es", "foray", queueArg(AIRPLANE_ENGINE_FORAY)]);
+  const pidBefore = pidOf(ctx.pkg);
+  const items = AIRPLANE_ENGINE_FORAY.items;
+  const lastIndex = items.length - 1;
+  const until = Date.now() + NATIVE_GATES.airplaneForayLandMs;
+  const trail = [];
+  let renderedAudible = false;
+  let landed = false;
+  let last = null;
+  while (Date.now() < until) {
+    await sleep(500);
+    const s = engine(ctx);
+    if (!s) continue;
+    last = s;
+    trail.push({ at: s.at, index: s.index, item: s.item, audible: s.audible, running: s.running, exoPlaying: s.exoPlaying, inSeamGap: s.inSeamGap });
+    if (s.item === items[1].id && s.audible === true) renderedAudible = true;
+    if (s.index === lastIndex && isPlaying(s)) {
+      landed = true;
+      break;
+    }
+  }
+  const pidAfter = pidOf(ctx.pkg);
+  const rows = dumpRows(ctx);
+  save(ctx, "k-foray-engine-rows.txt", rows.filter((r) => r.seq > since).map((r) => `${r.seq} ${r.iso} ${r.kind} ${r.body}`).join("\n") + "\n");
+  const facts = airplaneForayFacts(rows, since);
+  drive(ctx, "pause");
+  const v = verdictAirplaneForay({ drive: d, facts, renderedAudible, landed, last, pidBefore, pidAfter });
+  return { ...v, measured: { drive: d, facts, renderedAudible, landed, speaker: last?.speaker ?? null, trail } };
+}
+
+/** (k) Airplane mode: the engine's half, the engine's Foray (A-41), then the page's. See the header. */
 async function airplane(ctx) {
   ctx.endpoint = ctx.endpoint ?? DEVTOOLS_ENDPOINT;
   const set = {};
@@ -1953,6 +2118,7 @@ async function airplane(ctx) {
   let session = null;
   let recovered = null;
   let flag = null;
+  let engineForay = null;
   try {
     set.enable = shell("cmd", "connectivity", "airplane-mode", "enable").trim();
     await sleep(2000);
@@ -1978,6 +2144,8 @@ async function airplane(ctx) {
     const r = await waitFor(ctx, isPlaying, NATIVE_GATES.recoveryMs);
     recovered = isPlaying(r) ? { item: r.item, positionSec: r.positionSec } : null;
     set.pause = drive(ctx, "pause");
+    /* A-41: the engine's own Foray, still in airplane mode. */
+    engineForay = await airplaneEngineForay(ctx);
   } finally {
     set.disable = shell("cmd", "connectivity", "airplane-mode", "disable").trim();
   }
@@ -2010,16 +2178,17 @@ async function airplane(ctx) {
   save(ctx, "k-diagnostics-copy.txt", text);
   const copy = copyFacts(text);
   const v = verdictAirplane({
-    airplane: flag === "1", facts, after, session, recovered, laneBefore: lane?.lane ?? lane?.error ?? null, foray, copy,
+    airplane: flag === "1", facts, after, session, recovered, laneBefore: lane?.lane ?? lane?.error ?? null, foray, copy, engineForay,
   });
   return {
     ...v,
     measured: {
       set, airplaneModeOn: flag,
       engine: { facts, after: after && { state: after.state, running: after.running, exoPlaying: after.exoPlaying }, session, recovered },
+      engineForay: engineForay && { ok: engineForay.ok, failures: engineForay.failures, outcome: engineForay.outcome, measured: engineForay.measured },
       page: { lane, foray: foray && { ok: foray.ok, failures: foray.failures, measured: foray.measured }, modeRows: copy.modeRows },
     },
-    evidence: ["k-dumpsys-media_session.txt", "k-engine-rows.txt", "k-diagnostics-copy.txt", ...(foray?.evidence ?? [])],
+    evidence: ["k-dumpsys-media_session.txt", "k-engine-rows.txt", "k-foray-engine-rows.txt", "k-diagnostics-copy.txt", ...(foray?.evidence ?? [])],
   };
 }
 

@@ -58,6 +58,12 @@ public record EngineConfig(String build, SessionPolicy.HoldPolicy holdPolicy, Do
                 narrationFollowsListenerRate, narrationPulse, interludeAvailable, interludeEnabled, silenceNodeEnabled, voiceId);
     }
 
+    /** This config with the jingle player's presence switched (A-41: the host has one only when its pinned asset shipped). */
+    public EngineConfig withInterludeAvailable(boolean available) {
+        return new EngineConfig(build, holdPolicy, rate, forayTapeEnabled, seamGapSec, deckPairEnabled, narrationFollowsListenerRate,
+                narrationPulse, available, interludeEnabled, silenceNodeEnabled, voiceId);
+    }
+
     /** This config with the Foray tape (and, for a host, the deck pair) switched. */
     public EngineConfig withForayTape(boolean tape, boolean deckPair) {
         return new EngineConfig(build, holdPolicy, rate, tape, seamGapSec, deckPair, narrationFollowsListenerRate, narrationPulse,

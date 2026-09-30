@@ -11,9 +11,13 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { CLIPS, GATES, PKG, SHOW } from "./android-playback.mjs";
+import { CLIPS, GATES, NARRATION_LINES, PKG, SHOW, UNREACHABLE_NARRATION_URL, UNREACHABLE_SCRIPT } from "./android-playback.mjs";
 import {
+  AIRPLANE_ENGINE_FORAY,
   ASSET_BASE,
+  NARRATION_ASSET_BASE,
+  airplaneForayFacts,
+  verdictAirplaneForay,
   DEVTOOLS_ENDPOINT,
   DOZE_QUEUE,
   ENGINE_STATUS_EXPRESSION,
@@ -754,7 +758,7 @@ test("A-30 (k): both halves are gated, and the Foray must go through the relinqu
   const good = {
     airplane: true, facts: { attachAt: "x", stop: { cause: "error" }, decisionMs: 6500, sounded: false },
     after: { state: "idle", running: false, exoPlaying: false }, session: { state: "PAUSED" }, recovered: { item: "a26-0" },
-    laneBefore: "native", foray: { ok: true, failures: [] }, copy,
+    laneBefore: "native", foray: { ok: true, failures: [] }, copy, engineForay: { ok: true, failures: [] },
   };
   assert.equal(verdictAirplane(good).ok, true, JSON.stringify(verdictAirplane(good).failures));
   const bad = (patch, re) => {
@@ -775,6 +779,90 @@ test("A-30 (k): both halves are gated, and the Foray must go through the relinqu
   bad({ foray: { ok: false, failures: ["the line was neither spoken nor skipped within 15000 ms"] } }, /^foray: the line was neither spoken/);
   bad({ foray: null }, /Foray half did not run/);
   bad({ copy: copyFacts("#   2 12:00:00.400 engineMode native (override)") }, /no `engineMode js \(relinquished\)` row/);
+  /* A-41: the engine's own Foray is gated too. */
+  bad({ engineForay: null }, /engine's Foray half did not run/);
+  bad({ engineForay: { ok: false, failures: ["the network line did not fall back"] } }, /^engine foray: the network line did not fall back/);
+});
+
+/* ─────────────────────────── A-41: (k) through the engine ─────────────────────────── */
+
+test("A-41 (k): the engine's Foray is a clip, a bundled rendered line, a clip, a network line, a clip to land on", () => {
+  /* MUTATION: put the bundled line on the network (it could not play as a file in airplane mode);
+     put the network line on an asset (nothing would fall back); drop a line's script (a failed file
+     could not be spoken); give two items one id. */
+  const { forayId, items } = AIRPLANE_ENGINE_FORAY;
+  assert.equal(forayId, "a41-airplane");
+  assert.equal(items.length, 5);
+  assert.equal(new Set(items.map((i) => i.id)).size, items.length);
+  assert.deepEqual(items.map((i) => i.kind), ["episode", "tts", "episode", "tts", "episode"]);
+  for (const i of [0, 2, 4]) {
+    assert.ok(items[i].audio_url.startsWith(ASSET_BASE), items[i].audio_url);
+    assert.ok(items[i].end_sec > items[i].start_sec);
+  }
+  assert.equal(NARRATION_ASSET_BASE, "asset:///public/a05/", "the job copies the rendered fixtures to the APK's public/a05/");
+  assert.equal(items[1].audio_url, `${NARRATION_ASSET_BASE}${NARRATION_LINES[0].file}`);
+  assert.equal(items[1].script, NARRATION_LINES[0].script);
+  assert.equal(items[3].audio_url, UNREACHABLE_NARRATION_URL);
+  assert.ok(items[3].audio_url.startsWith("https://"), "the network, not an asset");
+  assert.equal(items[3].script, UNREACHABLE_SCRIPT);
+  for (const i of [1, 3]) assert.ok(items[i].script.trim().length > 0, "a rendered line carries its script");
+  assert.equal(new Set([0, 2, 4].map((i) => items[i].source_item_id)).size, 3, "three sources: the seams into a clip carry the jingle");
+});
+
+/* Rows in the shape the Android engine writes them for that Foray, from the mark on. */
+const AIR_FORAY_ROWS = [
+  '50 2026-09-30T00:00:00.000Z deck {"kind":"attach","token":1,"cold":"no-item"}',
+  '51 2026-09-30T00:00:06.000Z outPoint {"kind":"stop","layer":"boundary","overshootMs":3,"rate":1,"token":1}',
+  '52 2026-09-30T00:00:06.600Z deck {"kind":"time-control","token":2,"status":"playing"}',
+  '53 2026-09-30T00:00:17.000Z outPoint {"kind":"stop","layer":"boundary","overshootMs":2,"rate":1,"token":3}',
+  '54 2026-09-30T00:00:17.050Z deck {"kind":"attach","token":4,"cold":"other-source"}',
+  '55 2026-09-30T00:00:20.300Z deck {"kind":"failed","token":4,"code":2001}',
+  '56 2026-09-30T00:00:20.301Z narration {"kind":"fallback","reason":"failed","at":"bridge"}',
+  '57 2026-09-30T00:00:20.420Z speaker {"kind":"line-started","engine":"com.google.android.tts"}',
+  '58 2026-09-30T00:00:23.900Z narration {"kind":"ended","why":"finished"}',
+].map(parseEngineRow);
+
+test("A-41 (k): the engine's Foray facts are the fallback, the out-point before it, and the synthesiser's rows after it", () => {
+  /* MUTATION: time the fallback from the first out-point (the clip before the bundled line); read a
+     line-started row from before the fallback; lose the refusal rows. */
+  const f = airplaneForayFacts(AIR_FORAY_ROWS, 49);
+  assert.deepEqual(f.fallback, { reason: "failed", at: "bridge", iso: "2026-09-30T00:00:20.301Z" });
+  assert.equal(f.boundaryAt, "2026-09-30T00:00:17.000Z");
+  assert.equal(f.decisionMs, 3301);
+  assert.deepEqual(f.spoken, { iso: "2026-09-30T00:00:20.420Z", engine: "com.google.android.tts", ms: 3420 });
+  assert.equal(f.refused, null);
+  const refused = airplaneForayFacts([...AIR_FORAY_ROWS.slice(0, 7), parseEngineRow('59 2026-09-30T00:00:20.305Z speaker {"kind":"init-failed","status":"-1"}')], 49);
+  assert.equal(refused.spoken, null);
+  assert.deepEqual(refused.refused, { kind: "init-failed", iso: "2026-09-30T00:00:20.305Z" });
+  assert.equal(airplaneForayFacts(AIR_FORAY_ROWS, 56).fallback, null, "rows before the mark do not count");
+});
+
+test("A-41 (k): GATED on the bundled line heard as a file, the network one falling back at its bridge in time, and a landing", () => {
+  /* MUTATION: drop any one check; each failing input below turns red for its own reason. */
+  const facts = airplaneForayFacts(AIR_FORAY_ROWS, 49);
+  const good = {
+    drive: { answer: { ok: true } }, facts, renderedAudible: true, landed: true,
+    last: { index: 4, forayId: AIRPLANE_ENGINE_FORAY.forayId, running: true }, pidBefore: "7", pidAfter: "7",
+  };
+  const v = verdictAirplaneForay(good);
+  assert.equal(v.ok, true, JSON.stringify(v.failures));
+  assert.equal(v.outcome, "spoken");
+  const bad = (patch, re) => {
+    const r = verdictAirplaneForay({ ...good, ...patch });
+    assert.equal(r.ok, false);
+    assert.ok(r.failures.some((f) => re.test(f)), `${re} not in ${JSON.stringify(r.failures)}`);
+  };
+  bad({ drive: { answer: { ok: false } } }, /playForay did not play/);
+  bad({ renderedAudible: false }, /did not play as a file/);
+  bad({ facts: { ...facts, fallback: null } }, /did not fall back/);
+  bad({ facts: { ...facts, fallback: { ...facts.fallback, at: "load" } } }, /at load, not the bridge/);
+  bad({ facts: { ...facts, decisionMs: NATIVE_GATES.airplaneDecisionMs + 1 } }, /deadline is 25000 ms/);
+  bad({ landed: false, facts: { ...facts, spoken: null } }, /neither spoken by the engine's synthesiser nor skipped/);
+  bad({ landed: false }, /did not land on its last clip/);
+  bad({ last: { index: 4, forayId: null } }, /not playing the Foray/);
+  bad({ pidAfter: "8" }, /pid changed/);
+  /* A synthesiser that could not speak is a skip, as the JS leg's (k) allows. */
+  assert.equal(verdictAirplaneForay({ ...good, facts: { ...facts, spoken: null, refused: { kind: "init-failed" } } }).outcome, "skipped");
 });
 
 test("A-30 (e): the first launch is the JS leg's verdict plus the native lane and a hosting engine", () => {
@@ -854,22 +942,57 @@ test("A-40 (f): a Foray seam runs from the out-point stop to the next load's fir
   assert.equal(st.unprepared.count, 1);
 });
 
+test("A-41 (f): a seam's jingle is sound, not silence: its span from the started row to its end is taken out", () => {
+  /* MUTATION: count the jingle as silence (the gap would be the gated number); end the span at the
+     next playing instead of the jingle's end row; lose a seam whose jingle was cut. */
+  const rows = [
+    '30 2026-09-30T00:00:08.000Z outPoint {"kind":"stop","layer":"boundary","overshootMs":4,"rate":1,"token":1}',
+    '31 2026-09-30T00:00:08.002Z interlude {"kind":"started"}',
+    '32 2026-09-30T00:00:08.100Z prepare {"kind":"promote","token":2}',
+    '33 2026-09-30T00:00:11.050Z interlude {"kind":"ended","why":"ended"}',
+    '34 2026-09-30T00:00:11.080Z seam {"observedGapMs":3080,"askedGapMs":500,"prepared":true,"stages":["play"]}',
+    '35 2026-09-30T00:00:11.120Z deck {"kind":"time-control","token":2,"status":"playing"}',
+    '36 2026-09-30T00:00:19.120Z outPoint {"kind":"stop","layer":"boundary","overshootMs":2,"rate":1,"token":2}',
+    '37 2026-09-30T00:00:19.121Z interlude {"kind":"skipped"}',
+    '38 2026-09-30T00:00:19.700Z deck {"kind":"time-control","token":3,"status":"playing"}',
+  ].map(parseEngineRow);
+  const seams = foraySeams(rows);
+  assert.equal(seams.length, 2);
+  assert.deepEqual(seams.map((s) => s.gapMs), [3120, 580]);
+  assert.deepEqual(seams.map((s) => s.jingle), [true, false]);
+  assert.deepEqual(seams.map((s) => s.jingleMs), [3048, null]);
+  assert.deepEqual(seams.map((s) => s.silenceMs), [72, 580]);
+  assert.equal(seams[0].jingleEnd, "ended");
+  const st = foraySeamStats(seams);
+  assert.equal(st.p95Ms, 580, "the gate reads the silence");
+  assert.equal(st.gap.p95Ms, 3120);
+  assert.equal(st.jingles, 1);
+});
+
 test("A-40 (f): GATED on every seam crossed, hidden, in one process, on the pair, with p95 <= 1 s", () => {
   /* MUTATION: drop the p95 gate (a 1.2 s seam passes); pass with no handover; pass a Foray that
      stopped short or with another forayId; pass with the screen on. */
   const n = FORAY_SEAMS_FORAY.items.length;
-  const seams = Array.from({ length: n - 1 }, (_, i) => ({ gapMs: 520 + i * 10, prepared: i !== 3, commanded: false }));
+  /* A-41: the cross-source seams carry the 3 s jingle, which is sound: the gate is the silence. */
+  const seams = Array.from({ length: n - 1 }, (_, i) => (i === 3
+    ? { gapMs: 520 + i * 10, prepared: false, commanded: false, jingle: false, jingleMs: null, silenceMs: 520 + i * 10 }
+    : { gapMs: 3520 + i * 10, prepared: true, commanded: false, jingle: true, jingleMs: 3000, silenceMs: 520 + i * 10 }));
   const good = {
     drive: { answer: { ok: true } }, wake: "Asleep", pidBefore: "1", pidAfter: "1",
-    last: { index: n - 1, forayId: FORAY_SEAMS_FORAY.forayId }, seams, pair: { active: 1, swaps: 6, available: true },
+    last: { index: n - 1, forayId: FORAY_SEAMS_FORAY.forayId, interlude: { available: true, sounding: false } }, seams,
+    pair: { active: 1, swaps: 6, available: true },
   };
   assert.equal(verdictForaySeams(good).ok, true, JSON.stringify(verdictForaySeams(good).failures));
   assert.equal(NATIVE_GATES.foraySeamP95Ms, 1000);
-  const slow = seams.map((s, i) => (i === 2 ? { ...s, gapMs: 1200 } : s));
+  const slow = seams.map((s, i) => (i === 2 ? { ...s, gapMs: 4200, silenceMs: 1200 } : s));
   assert.match(verdictForaySeams({ ...good, seams: slow }).failures[0], /p95 seam 1200 ms is over the 1000 ms bar/);
+  assert.equal(foraySeamStats(seams).gap.p95Ms, 3580, "the raw gaps, jingle included, are recorded");
+  assert.equal(foraySeamStats(seams).jingles, 6);
+  assert.match(verdictForaySeams({ ...good, last: { ...good.last, interlude: { available: false } } }).failures[0], /no jingle player/);
+  assert.match(verdictForaySeams({ ...good, seams: seams.map((s) => ({ ...s, jingle: false })) }).failures[0], /no seam carried the jingle/);
   assert.match(verdictForaySeams({ ...good, pair: { swaps: 0 } }).failures[0], /handed over no seam/);
-  assert.match(verdictForaySeams({ ...good, last: { index: 3, forayId: "a40-foray" } }).failures[0], /stopped at item 3/);
-  assert.match(verdictForaySeams({ ...good, last: { index: n - 1, forayId: null } }).failures[0], /not playing the Foray/);
+  assert.match(verdictForaySeams({ ...good, last: { ...good.last, index: 3 } }).failures[0], /stopped at item 3/);
+  assert.match(verdictForaySeams({ ...good, last: { ...good.last, forayId: null } }).failures[0], /not playing the Foray/);
   assert.match(verdictForaySeams({ ...good, wake: "Awake" }).failures[0], /screen did not go off/);
   assert.match(verdictForaySeams({ ...good, seams: seams.slice(0, 4) }).failures[0], /4 of the Foray's 7 seams/);
   assert.match(verdictForaySeams({ ...good, drive: { answer: { ok: false } } }).failures[0], /playForay did not play/);
@@ -886,4 +1009,22 @@ test("A-40 (f): the debug driver's foray is the contract's playForay, and the se
   assert.match(service, /attach\(new ExoPlayer\.Builder\(this\)\.build\(\), new ExoPlayer\.Builder\(this\)\.build\(\)\)/,
     "the service builds the Foray tape's deck pair");
   assert.match(service, /withForayTape\(true, standby != null\)/, "the engine is built with the tape on");
+});
+
+test("A-41: the service builds the engine's synthesiser and jingle, and its dump says whether each is there", () => {
+  /* MUTATION: build the host without the speaker or the jingle (A-40's refuse-at-once shape);
+     hard-code interludeAvailable (a seam would wait on a jingle that never sounds); drop the dump's
+     `interlude` (the (f) gate reads `interlude.available`) or `speaker`. */
+  const service = read("src/main/java/ai/jwlabs/foura/audio/ForayPlaybackService.java");
+  assert.match(service, /new EngineSeams\(deck, new SessionSeam\(\), timing, kept, narrator, interlude\)/);
+  assert.match(service, /withInterludeAvailable\(interlude != null\)/);
+  assert.match(service, /InterludePlayer interlude = MediaJingle\.make\(/);
+  assert.match(service, /speakerConfig\.lexicon = SpeechLexicon\.load\(getAssets\(\)\);/);
+  assert.match(service, /JsonNode\.member\("interlude", new JsonNode\.Obj\(im\)\)/);
+  assert.match(service, /im\.add\(JsonNode\.member\("available", /);
+  assert.match(service, /JsonNode\.member\("speaker", /);
+  const host = read("src/main/java/ai/jwlabs/foura/audio/engine/ForayEngineHost.java");
+  assert.match(host, /seams\.speaker\.narrate\(command\);/, "every narration command goes to the speaker when there is one");
+  assert.match(host, /seams\.speaker\.release\(\);/, "the teardown lets the synthesiser go");
+  assert.match(host, /seams\.interlude\.release\(\);/, "and the jingle");
 });

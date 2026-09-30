@@ -92,3 +92,35 @@ test("the App Review note (for NE-37) states what the code does: a 3 s jingle st
   assert.match(swift, /numberOfLoops = 0/, "the note says the jingle is never looped");
   assert.match(swift, /ceilingMs: Double = Interlude\.ceilingSec \* 1000/, "the note says the jingle is stopped at the ceiling");
 });
+
+/* A-41 (docs/plans/android-assessment.md §5.5): the Android engine plays the same
+ * jingle. foray-audio's build.gradle ships player/assets/ (and the lexicon's
+ * directory) as the module's assets, read in place, so there is still one copy;
+ * InterludePlayer.java carries the same pin and MediaJingle.make hashes the
+ * asset before any player exists. The Robolectric half (EngineAssetsTest) finds
+ * and hashes the merged asset; android-build.yml hashes it inside the APK. */
+const PLAYER_JAVA = path.join(PLUGIN_DIR, "android/src/main/java/ai/jwlabs/foura/audio/engine/InterludePlayer.java");
+const JINGLE_JAVA = path.join(PLUGIN_DIR, "android/src/main/java/ai/jwlabs/foura/audio/engine/MediaJingle.java");
+const GRADLE = path.join(PLUGIN_DIR, "android/build.gradle");
+
+test("A-41: InterludePlayer.java carries the same pin, make() checks it, and build.gradle ships the one copy", () => {
+  /* MUTATION: change ASSET_SHA256 in the Java; drop the hash check from make();
+     copy the WAV into the module instead of reading player/assets/ in place;
+     put a second file in player/assets/ (it would ship at the assets' root). */
+  const java = fs.readFileSync(PLAYER_JAVA, "utf8");
+  assert.deepEqual([...java.matchAll(/ASSET_SHA256 = "([0-9a-f]{64})"/g)].map((m) => m[1]), [INTERLUDE_SHA256]);
+  assert.match(java, /ASSET_NAME = "interlude-placeholder\.wav"/);
+  assert.equal(path.basename(INTERLUDE_SOURCE), "interlude-placeholder.wav");
+  const make = fs.readFileSync(JINGLE_JAVA, "utf8");
+  assert.match(make, /if \(!InterludePlayer\.ASSET_SHA256\.equals\(hash\)\) \{\s*unavailable\(diag, "hash-mismatch"\);\s*return null;/);
+  const gradle = fs.readFileSync(GRADLE, "utf8");
+  assert.match(gradle, /new File\(forayRepoRoot, 'player\/assets'\)/);
+  assert.match(gradle, /new File\(forayRepoRoot, 'mobile\/plugins\/foray-tts\/lexicon'\)/);
+  assert.match(gradle, /assets\.srcDirs \+= forayEngineAssets/);
+  assert.deepEqual(fs.readdirSync(path.join(ROOT, path.dirname(INTERLUDE_SOURCE))), ["interlude-placeholder.wav"],
+    "player/assets/ ships whole at the app's assets root: one file");
+  assert.deepEqual(fs.readdirSync(path.join(ROOT, "mobile/plugins/foray-tts/lexicon")), ["hard-terms.json"],
+    "the lexicon's directory ships whole at the app's assets root: one file");
+  const found = fs.readdirSync(path.join(PLUGIN_DIR, "android"), { recursive: true }).filter((f) => String(f).endsWith(".wav"));
+  assert.deepEqual(found, [], "no second copy of the jingle in the Android module");
+});
