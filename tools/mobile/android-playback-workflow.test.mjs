@@ -405,8 +405,9 @@ test("A-26: a third leg runs the native engine's scenarios, every one gated, and
   assert.equal(legs().filter((l) => l.mode !== "js" && l.mode !== "native").length, 0, "every leg names its mode");
   assert.match(PYML, /^ {6}MODE: \$\{\{ matrix\.mode \}\}$/m);
   const steps = PLY.split(/\n(?= {6}- (?:name|uses):)/).filter((c) => /node tools\/mobile\/android-native-playback\.mjs (?!collect|summary)/.test(c));
-  assert.deepEqual(NATIVE.map(([id]) => id), ["play", "background", "transport", "notification", "doze", "focus", "call", "bridge"],
-    "A-26's (a)-(d), (g), (h), (i), then A-28's page door, last");
+  assert.deepEqual(NATIVE.map(([id]) => id),
+    ["play", "background", "transport", "notification", "doze", "focus", "call", "bridge", "fallback"],
+    "A-26's (a)-(d), (g), (h), (i), then A-28's page door, then A-29's fallback, last");
   assert.equal(steps.length, NATIVE.length, "one step per native scenario");
   let last = PLY.indexOf("android-playback.mjs collect ");
   for (const [id] of NATIVE) {

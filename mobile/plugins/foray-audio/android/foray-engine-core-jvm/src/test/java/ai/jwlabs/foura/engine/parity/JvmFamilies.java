@@ -115,8 +115,14 @@ public final class JvmFamilies {
     public static final FamilyRunner HANDSHAKE = ContractFamilies.handshake();
     public static final FamilyRunner DIAG_TOKENS = ContractFamilies.diagTokens();
 
+    /*
+     * A-29: the lane's once-per-process decision and its strike rules across launches
+     * (EngineMode, main code), which foray-audio's EngineOwnership wraps.
+     */
+    public static final FamilyRunner ENGINE_MODE = EngineModeFamily.runner();
+
     /** Every registered runner. */
     public static final List<FamilyRunner> ALL = List.of(COMPARE, NUMBER_FORMAT, QUEUE_STATE, RATE, RESUME_RULES, TRANSPORT, ROWS,
             SESSION, SESSION_INVARIANT, MEDIA_EPISODE, MANAGER_EPISODE, DECK_EPISODE, OUTPOINT, DECK, CONTRACT, SNAPSHOT, HANDSHAKE,
-            DIAG_TOKENS);
+            DIAG_TOKENS, ENGINE_MODE);
 }

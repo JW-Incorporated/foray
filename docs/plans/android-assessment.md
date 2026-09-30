@@ -605,6 +605,30 @@ Rejected alternatives:
 - **Acceptance:** Parity families for ownership are green on the JVM. An emulator mutation (engine throws at
   hello) falls back to `js` with a diagnostics row.
 - **Device check:** none.
+- **Status (2026-09-30): done in its PR, evidence in `STATE.md` (A-29 entry).**
+  - **The family.** `EngineMode` (JVM core) is the Swift `EngineMode` on the JVM: `decide` and `trace`. `engine-mode`
+    moved to `runs` in `jvm-pending.json` (31 cases, all passing), and `EngineModeFamilyTest` turns named cases red
+    under four mutations (a strike per launch, a pin that outlives its build, an override over the crash loop, a
+    page-health strike the healthy marker erases).
+  - **The owner.** `OwnershipCore` (foray-audio, pure JVM) holds every rule; `EngineOwnership` moves values in and out
+    and binds the service. The lane is decided at the plugin's `load()` (one strike accounting per process), over
+    iOS's private keys, with the sentinel written before a native boot. In the native lane the service is bound at
+    launch, so the engine exists before the page's hello, as on iOS.
+  - **Healthy markers:** the engine's first completed turn, 5 s after the bind, or the Activity's pause.
+  - **The watchdog:** armed by the page load (the plugin's `load()`, always before the page's scripts): 10 s → a
+    page-health strike, 15 s with the engine idle → a relinquish (deferred while it runs).
+  - **The fallback.** A hello the engine throws on is a fault row, a page-health strike and a terminal relinquish; the
+    page is answered `legacy / downgrade` and runs the JS player, and the legacy service may start again. A second
+    relinquish is refused.
+  - **The emulator.** The native leg's last scenario, `fallback`, arms the debug fault (`EngineFaults`, armed only in a
+    debuggable build) with the Developer setting on Native, then launches four times: launches 1–3 fall back to `js`
+    with the fault row, the downgrade row and strikes 1, 2, 3 (and on launch 1 the legacy service starts); launch 4 is
+    `legacy / crash-loop` with the pin set to the versionCode.
+  - **Capabilities.** `episode` joins `continuation` in what the binary may advertise; nothing declares it until the
+    flip card, so the stock and override lanes are unchanged.
+  - **Not here.** The cold path's service start (A-27's media button receiver and playback resumption) does not consult
+    the owner yet: a process started by a car's PLAY with no Activity decides at its first page. That is A-30's to
+    wire once A-27 is on `android/native`.
 
 #### A-30 · Native-mode emulator scenarios green — **S**
 - **Depends on:** A-27, A-29.

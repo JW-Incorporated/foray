@@ -3,7 +3,6 @@
   "cases": {},
   "families": {
     "default-voice": "A-41",
-    "engine-mode": "A-29",
     "foray-clock": "A-40",
     "foray-progress": "A-40",
     "foray-structure": "A-40",
@@ -23,6 +22,7 @@
     "deck",
     "deck-episode",
     "diag-tokens",
+    "engine-mode",
     "handshake",
     "manager-episode",
     "media-episode",

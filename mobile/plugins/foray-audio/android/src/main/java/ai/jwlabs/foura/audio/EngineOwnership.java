@@ -1,18 +1,21 @@
 package ai.jwlabs.foura.audio;
 
 import ai.jwlabs.foura.audio.engine.EngineBridge;
+import ai.jwlabs.foura.audio.engine.EngineFaults;
 import ai.jwlabs.foura.audio.engine.EngineLane;
 import ai.jwlabs.foura.audio.engine.EngineLog;
 import ai.jwlabs.foura.audio.engine.ForayEngineHost;
-import ai.jwlabs.foura.engine.EngineCommand;
+import ai.jwlabs.foura.audio.engine.HandlerTiming;
+import ai.jwlabs.foura.audio.engine.OwnershipCore;
 import ai.jwlabs.foura.engine.EngineContract;
-import ai.jwlabs.foura.engine.EngineInput;
-import ai.jwlabs.foura.engine.JsonNode;
+import ai.jwlabs.foura.engine.EngineMode;
 import ai.jwlabs.foura.engine.Vocabulary;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.ApplicationInfo;
+import android.content.pm.PackageInfo;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
@@ -20,31 +23,39 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.OptIn;
 import androidx.core.content.ContextCompat;
+import androidx.core.content.pm.PackageInfoCompat;
 import androidx.media3.common.util.UnstableApi;
 import androidx.media3.session.MediaController;
 import androidx.media3.session.SessionToken;
 import com.google.common.util.concurrent.ListenableFuture;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
+import java.util.UUID;
 
 /**
- * WHO PLAYS THIS PROCESS on Android (card A-28, docs/plans/android-assessment.md §5.4): the
- * bridge's {@link EngineBridge.Owner}, one per process, on main. The Android counterpart of the
- * iOS {@code EngineOwnership} (NE-17), cut to what A-28 needs:
+ * WHO PLAYS THIS PROCESS on Android (cards A-28 and A-29, docs/plans/android-assessment.md §5.4):
+ * the bridge's {@link EngineBridge.Owner}, one per process, on main. The Android counterpart of the
+ * iOS {@code EngineOwnership} (NE-17). Every rule is {@link OwnershipCore}'s (pure JVM, tested
+ * whole); this class moves values in and out of it and does what only Android can:
  * <ul>
- *   <li>the lane, decided ONCE per process from the build's default and the Developer engine
- *       setting ({@link EngineLane}); the crash-loop sentinel and the hello watchdog are A-29's;</li>
+ *   <li>the lane, decided ONCE per process ({@link OwnershipCore#decideOnce}, A-29): the build's
+ *       default, the Developer engine setting, and the crash-loop sentinel and strikes, over the
+ *       engine-private keys in the {@code ForayEngine} SharedPreferences file (iOS's key names),
+ *       a sticky pin pinned to the build's versionCode. Whichever entry point runs first decides:
+ *       the plugin's {@code load()} ({@link #launched}) or a bridge call;</li>
  *   <li>in the native lane, the engine: {@link ForayPlaybackService}, bound with a
- *       {@link MediaController} (the Media3 way; the service is created bound, and Media3 promotes
- *       it to the foreground when it plays). The binding is held for the life of the process, so
- *       the engine outlives a hidden page, and a bridge call waits for it
- *       ({@link #whenReady});</li>
+ *       {@link MediaController} as soon as the lane is decided at a launch (the Media3 way; the
+ *       service is created bound, and Media3 promotes it to the foreground when it plays). The
+ *       binding is held for the life of the process, so the engine outlives a hidden page, and a
+ *       bridge call waits for it ({@link #whenReady});</li>
+ *   <li>the healthy markers, the hello watchdog and the page-health strike (A-29), on the main
+ *       looper's timing;</li>
  *   <li>the Developer setting, stored for the next launch;</li>
  *   <li>the one-way relinquish: the core goes terminal, the binding is released and the service
  *       stopped, so the legacy {@code PlaybackKeepAliveService} is the only session again. The
  *       torn-down host is remembered, so the bridge keeps answering {@code relinquished} and a
- *       later hello {@code downgrade}.</li>
+ *       later hello {@code downgrade}. A fault while answering the hello takes the same path
+ *       (A-29): the page runs its own player, never silence.</li>
  * </ul>
  */
 @OptIn(markerClass = UnstableApi.class)
@@ -52,22 +63,41 @@ final class EngineOwnership implements EngineBridge.Owner {
     private static final String TAG = "ForayEngine.owner";
     /** How long a bridge call waits for the service before it is answered without one. */
     static final long CONNECT_TIMEOUT_MS = 3000;
+    /**
+     * The debug-only fault the emulator's fallback scenario arms ({@link EngineFaults}). Written
+     * only by the debug build's {@code EngineDriveReceiver}, and read only when the app is
+     * debuggable.
+     */
+    static final String DEBUG_FAULT_KEY = "ForayEngine.debugFault";
 
     @Nullable private static EngineOwnership shared;
 
     private final Context app;
     private final Handler main = new Handler(Looper.getMainLooper());
-    @Nullable private EngineBridge.Decision decided;
+    private final OwnershipCore core;
     @Nullable private MediaController controller;
     @Nullable private ListenableFuture<MediaController> connecting;
     private final List<Runnable> waiting = new ArrayList<>();
     private boolean connectFailed;
     /** The host this process's engine ran on, kept after a relinquish tore it down. */
     @Nullable private ForayEngineHost lastHost;
-    private boolean relinquished;
+    private boolean handedOver;
+    private boolean decidedLogged;
 
     private EngineOwnership(Context context) {
         app = context.getApplicationContext();
+        core = new OwnershipCore(new PrefsKeys(), launchOf(app), new HandlerTiming(Looper.getMainLooper()),
+                entry -> EngineLog.process().diag(entry), new OwnershipCore.Platform() {
+                    @Override
+                    public ForayEngineHost engine() {
+                        return EngineOwnership.this.engine();
+                    }
+
+                    @Override
+                    public void handOver() {
+                        EngineOwnership.this.handOver();
+                    }
+                });
     }
 
     /** The process's owner. Main thread. */
@@ -80,21 +110,79 @@ final class EngineOwnership implements EngineBridge.Owner {
         return app.getSharedPreferences(EngineLane.PREFS, Context.MODE_PRIVATE);
     }
 
+    /** The engine-private keys: synchronous ({@code commit}), so a strike cannot be lost to a crash a moment later. */
+    private final class PrefsKeys implements OwnershipCore.Keys {
+        @Override
+        public String get(String key) {
+            return prefs().getString(key, null);
+        }
+
+        @Override
+        public void put(String key, String value) {
+            SharedPreferences.Editor e = prefs().edit();
+            if (value == null) e.remove(key);
+            else e.putString(key, value);
+            e.commit();
+        }
+    }
+
+    /** The launch's inputs: the build's default (mobile/ENGINE_DEFAULT.json, pinned in EngineLane) and its versionCode. */
+    private static OwnershipCore.Launch launchOf(Context app) {
+        String build = "";
+        try {
+            PackageInfo info = app.getPackageManager().getPackageInfo(app.getPackageName(), 0);
+            build = Long.toString(PackageInfoCompat.getLongVersionCode(info));
+        } catch (Exception e) {
+            Log.w(TAG, "could not read the build's versionCode; a sticky pin has nothing to pin to", e);
+        }
+        return new OwnershipCore.Launch(EngineLane.BUILD_DEFAULT_NATIVE ? EngineMode.BuildDefault.NATIVE : EngineMode.BuildDefault.JS,
+                build, UUID.randomUUID().toString(), true);
+    }
+
+    private boolean debuggable() {
+        return (app.getApplicationInfo().flags & ApplicationInfo.FLAG_DEBUGGABLE) != 0;
+    }
+
+    /**
+     * The plugin loaded, which is a new Activity and so a new page (main thread): decide, boot the
+     * engine in the native lane, and arm the page's hello watchdog. The decision is once per
+     * process; the page's watchdog is once per Activity.
+     */
+    void launched() {
+        decideOnce();
+        if (core.isNative() && !core.isRelinquished()) {
+            whenReady(() -> { });
+            core.pageLoaded(true);
+        }
+    }
+
+    /** The Activity paused: the resign-or-background healthy marker. Main thread. */
+    void backgrounded() {
+        core.backgrounded();
+    }
+
     // ---- EngineBridge.Owner
 
     @Override
     public EngineBridge.Decision decideOnce() {
-        if (decided == null) {
-            String raw = null;
-            try {
-                raw = prefs().getString(EngineLane.OVERRIDE_KEY, null);
-            } catch (RuntimeException e) {
-                Log.w(TAG, "could not read the engine setting; the build's default decides", e);
+        if (!decidedLogged) {
+            decidedLogged = true;
+            if (debuggable()) {
+                // The emulator's mutation (A-29). A release build is never debuggable, and nothing
+                // in it writes the key.
+                try {
+                    EngineFaults.arm(prefs().getString(DEBUG_FAULT_KEY, null));
+                } catch (RuntimeException e) {
+                    Log.w(TAG, "could not read the debug fault", e);
+                }
+                if (EngineFaults.armed() != null) Log.w(TAG, "ForayEngine.owner DEBUG fault armed: " + EngineFaults.armed());
             }
-            decided = EngineLane.decide(EngineLane.BUILD_DEFAULT_NATIVE, raw);
-            Log.i(TAG, "ForayEngine.owner mode=" + decided.mode() + " reason=" + decided.reason().token);
+            EngineMode.Stored before = core.stored();
+            EngineMode.Decision d = core.decideOnce();
+            Log.i(TAG, "ForayEngine.owner mode=" + d.mode().token + " reason=" + d.reason().token + " strikes=" + d.strikes()
+                    + " sentinelWasSet=" + (before.sentinel() ? "y" : "n") + " sticky=" + d.stickyLegacyBuild());
         }
-        return decided;
+        return core.laneDecision();
     }
 
     @Nullable
@@ -108,33 +196,34 @@ final class EngineOwnership implements EngineBridge.Owner {
 
     @Override
     public void helloReceived() {
-        // The hello watchdog (a page that never says hello gives the audio back) is A-29's.
+        core.helloReceived();
+    }
+
+    @Override
+    public void engineTurned() {
+        core.engineTurned();
+    }
+
+    @Override
+    public void engineFaulted(String at, RuntimeException error) {
+        Log.w(TAG, "ForayEngine.owner fault at=" + at + "; the process goes back to the page's player", error);
+        core.engineFaulted(at, error);
     }
 
     @Override
     public void setModeOverride(String mode) {
         try {
-            prefs().edit().putString(EngineLane.OVERRIDE_KEY, EngineLane.storedOverride(mode)).commit();
+            core.setModeOverride(mode);
         } catch (RuntimeException e) {
             Log.w(TAG, "could not store the engine setting", e);
         }
-        List<JsonNode.Member> fields = new ArrayList<>();
-        fields.add(JsonNode.member("kind", JsonNode.str("set-override")));
-        fields.add(JsonNode.member("override", JsonNode.str(EngineLane.storedOverride(mode))));
-        if (engine() != null) EngineLog.process().diag(new EngineCommand.DiagEntry("mode", fields));
         Log.i(TAG, "ForayEngine.owner set-override=" + EngineLane.storedOverride(mode));
     }
 
     @Override
     public ForayEngineHost.Verdict relinquish(EngineContract.RelinquishCap cap, Vocabulary.Source source) {
-        ForayEngineHost host = engine();
-        if (host == null || host.isTornDown()) {
-            return new ForayEngineHost.Verdict(Collections.singletonList(EngineContract.Refusal.RELINQUISHED.token), false);
-        }
-        ForayEngineHost.Verdict verdict = host.handle(new EngineInput.Command(new EngineContract.Command.Relinquish(cap), source));
-        // Queued behind a turn in progress: the host tears down when the core gets to it.
-        if (!verdict.deferred()) host.teardown();
-        handOver();
+        ForayEngineHost.Verdict verdict = core.relinquish(cap, source);
+        Log.i(TAG, "ForayEngine.owner relinquish cap=" + cap.token + " source=" + source.token + " failures=" + verdict.failures());
         return verdict;
     }
 
@@ -144,8 +233,8 @@ final class EngineOwnership implements EngineBridge.Owner {
      * only media session. Posted, so the answer to the relinquish leaves first.
      */
     private void handOver() {
-        if (relinquished) return;
-        relinquished = true;
+        if (handedOver) return;
+        handedOver = true;
         main.post(() -> {
             MediaController c = controller;
             controller = null;
@@ -173,7 +262,7 @@ final class EngineOwnership implements EngineBridge.Owner {
      * service stopped, so the process never holds a second media session beside the legacy one.
      */
     void whenReady(@NonNull Runnable then) {
-        if (!decideOnce().isNative() || relinquished || connectFailed || controller != null) {
+        if (!decideOnce().isNative() || core.isRelinquished() || connectFailed || controller != null) {
             then.run();
             return;
         }
@@ -197,7 +286,7 @@ final class EngineOwnership implements EngineBridge.Owner {
             } catch (Exception e) {
                 if (!connectFailed) Log.w(TAG, "could not bind ForayPlaybackService; this process runs the page's player", e);
             }
-            if (bound != null && (connectFailed || relinquished)) {
+            if (bound != null && (connectFailed || core.isRelinquished())) {
                 // Too late: the page was already answered without the engine (or gave it back).
                 Log.w(TAG, "ForayPlaybackService bound after the page was answered; releasing it");
                 releaseQuietly(bound);
@@ -206,7 +295,8 @@ final class EngineOwnership implements EngineBridge.Owner {
             }
             if (bound != null) {
                 controller = bound;
-                decidedRow();
+                // The engine exists: the healthy marker's run-loop leg starts now (A-29).
+                core.engineBooted();
             } else {
                 connectFailed = true;
             }
@@ -250,16 +340,5 @@ final class EngineOwnership implements EngineBridge.Owner {
                 Log.w(TAG, "a bridge call failed after the service bound", e);
             }
         }
-    }
-
-    /** The lane's decision, as the ring's {@code mode} row (the Copy header reads it), once the engine exists. */
-    private void decidedRow() {
-        EngineBridge.Decision d = decideOnce();
-        List<JsonNode.Member> fields = new ArrayList<>();
-        fields.add(JsonNode.member("kind", JsonNode.str("decide")));
-        fields.add(JsonNode.member("mode", JsonNode.str(d.mode())));
-        fields.add(JsonNode.member("reason", JsonNode.str(d.reason().token)));
-        fields.add(JsonNode.member("build", JsonNode.str(ForayPlaybackService.buildName(app))));
-        EngineLog.process().diag(new EngineCommand.DiagEntry("mode", fields));
     }
 }

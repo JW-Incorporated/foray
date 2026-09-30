@@ -92,6 +92,19 @@ public final class EngineBridge {
         /** The page claimed the engine (the hello watchdog, A-29, stands down). */
         void helloReceived();
 
+        /**
+         * The engine completed a turn (A-29: the first-input healthy marker, which clears the
+         * crash-loop sentinel).
+         */
+        void engineTurned();
+
+        /**
+         * The engine threw while answering the page ({@code at}: {@code hello}). The owner gives
+         * the process back (A-29): a fault row, a page-health strike and the relinquish. Must not
+         * throw.
+         */
+        void engineFaulted(String at, RuntimeException error);
+
         /** The Developer engine setting ({@code MODE_OVERRIDES}), for the next launch. */
         void setModeOverride(String mode);
 
@@ -183,9 +196,19 @@ public final class EngineBridge {
         Decision decision = owner.decideOnce();
         ForayEngineHost engine = liveEngine();
         if (engine == null) return EngineBridgeRules.legacyHello(legacyReason(decision));
-        EngineState state = engine.state();
-        return EngineBridgeRules.nativeHello(decision.reason(), capabilities(), snapshot(), state.advanceLog,
-                state.pendingEvents);
+        try {
+            EngineFaults.check(EngineFaults.HELLO);
+            EngineState state = engine.state();
+            return EngineBridgeRules.nativeHello(decision.reason(), capabilities(), snapshot(), state.advanceLog,
+                    state.pendingEvents);
+        } catch (RuntimeException e) {
+            // A-29: AN ENGINE THAT CANNOT ANSWER GIVES THE PROCESS BACK, and the page is told so. The
+            // owner relinquishes (the service stops, so the legacy one may start), and `legacy /
+            // downgrade` is an answer the page's decideMode reads as "run the JS player": the
+            // fallback is the old player, never silence.
+            owner.engineFaulted("hello", e);
+            return EngineBridgeRules.legacyHello(Vocabulary.ModeReason.DOWNGRADE);
+        }
     }
 
     // ---- engineSend
@@ -365,6 +388,7 @@ public final class EngineBridge {
     /** After every input the engine handled, and at its teardown. */
     private void transitioned() {
         ForayEngineHost engine = owner.engine();
+        if (engine != null && !engine.isTornDown()) owner.engineTurned();
         if (engine != null && engine.isTornDown() && !handBackAnnounced) {
             handBackAnnounced = true;
             if (coalescer.visible()) deliver.accept(EngineBridgeRules.modeChangedEvent(Vocabulary.ModeReason.DOWNGRADE));

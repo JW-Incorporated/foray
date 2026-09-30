@@ -1,6 +1,7 @@
 package ai.jwlabs.foura.engine;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -39,21 +40,24 @@ public final class EngineBridgeRules {
      * JVM parity books let it claim. The gate is the Swift literal's (plan §6.6), read against
      * player/parity/jvm-pending.json instead of swift-pending.json: shell-invariants refuses an
      * entry here any of whose families ({@code player/parity/capabilities.json}) the JVM still
-     * owes. So, at A-28:
+     * owes. So, at A-29:
      * <ul>
-     *   <li>{@code episode}: the core plays episodes (A-24), but {@code engine-mode} (the lane's
-     *       once-per-process decision) is owed to A-29, which adds it;</li>
+     *   <li>{@code episode}: the core plays episodes (A-24), and {@code engine-mode} (the lane's
+     *       once-per-process decision, with the crash-loop guard) is ported by A-29, so every
+     *       family under it runs on the JVM;</li>
      *   <li>{@code continuation}: the hop walk is the core's (A-24), and its families owe
      *       nothing on the JVM;</li>
      *   <li>{@code restore} (A-27, the cold path) and {@code foray} (A-40, the tape) are
      *       neither implemented nor clear.</li>
      * </ul>
-     * A capability missing here is refused {@code capability-off} by {@code engineSend}, and the
-     * page relinquishes to its own player when the one it needs is missing (client.js
-     * {@code engineCan}), exactly as it did on iOS before NE-27b.
+     * What a build ADVERTISES is this ∩ what it DECLARES (mobile/ENGINE_DEFAULT.json's android
+     * block, empty until the flip card), so claiming {@code episode} here changes no stock or
+     * override launch by itself. A capability missing from the hello is refused
+     * {@code capability-off} by {@code engineSend}, and the page relinquishes to its own player
+     * when the one it needs is missing (client.js {@code engineCan}).
      */
     public static final List<String> ADVERTISED_CAPABILITIES = Collections.unmodifiableList(
-            new ArrayList<>(Collections.singletonList("continuation")));
+            new ArrayList<>(Arrays.asList("episode", "continuation")));
 
     /** {@code declared ∩ ADVERTISED_CAPABILITIES}, in the contract's order. Null declares nothing. */
     public static List<String> capabilities(List<String> declared) {
