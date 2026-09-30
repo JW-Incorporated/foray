@@ -202,10 +202,14 @@ public final class SpeechNarrator implements EngineSeams.Speaking {
         switch (command) {
             case EngineCommand.NarrationCommand.Speak s -> {
                 if (s.text() == null || s.text().isEmpty()) {
+                    refusedRow("empty-text");
                     event(new EngineInput.NarratorEvent.Failed(s.seq(), "empty text"));
                     return;
                 }
                 if (output.failed()) {
+                    // A-41 review: said at the line, not only at the init that failed long before,
+                    // so a Copy (and the emulator's (k)) reads why this line was stepped over.
+                    refusedRow("no-synthesiser");
                     event(new EngineInput.NarratorEvent.Failed(s.seq(), "no-synthesiser"));
                     return;
                 }
@@ -326,6 +330,11 @@ public final class SpeechNarrator implements EngineSeams.Speaking {
                     JsonNode.member("kind", JsonNode.str("line-failed")))));
         }
         event(end == End.CANCELLED ? new EngineInput.NarratorEvent.Cancelled(line.seq()) : new EngineInput.NarratorEvent.Finished(line.seq()));
+    }
+
+    private void refusedRow(String why) {
+        config.diag.accept(new EngineCommand.DiagEntry("speaker", Arrays.asList(
+                JsonNode.member("kind", JsonNode.str("line-refused")), JsonNode.member("why", JsonNode.str(why)))));
     }
 
     private void event(EngineInput.NarratorEvent event) {

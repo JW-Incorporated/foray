@@ -834,6 +834,9 @@ test("A-41 (k): the engine's Foray facts are the fallback, the out-point before 
   const refused = airplaneForayFacts([...AIR_FORAY_ROWS.slice(0, 7), parseEngineRow('59 2026-09-30T00:00:20.305Z speaker {"kind":"init-failed","status":"-1"}')], 49);
   assert.equal(refused.spoken, null);
   assert.deepEqual(refused.refused, { kind: "init-failed", iso: "2026-09-30T00:00:20.305Z" });
+  /* A-41 review: a synthesiser whose init failed long before says so AT the line (line-refused). */
+  const atLine = airplaneForayFacts([...AIR_FORAY_ROWS.slice(0, 7), parseEngineRow('59 2026-09-30T00:00:20.305Z speaker {"kind":"line-refused","why":"no-synthesiser"}')], 49);
+  assert.deepEqual(atLine.refused, { kind: "line-refused", iso: "2026-09-30T00:00:20.305Z" });
   assert.equal(airplaneForayFacts(AIR_FORAY_ROWS, 56).fallback, null, "rows before the mark do not count");
 });
 
@@ -857,12 +860,16 @@ test("A-41 (k): GATED on the bundled line heard as a file, the network one falli
   bad({ facts: { ...facts, fallback: null } }, /did not fall back/);
   bad({ facts: { ...facts, fallback: { ...facts.fallback, at: "load" } } }, /at load, not the bridge/);
   bad({ facts: { ...facts, decisionMs: NATIVE_GATES.airplaneDecisionMs + 1 } }, /deadline is 25000 ms/);
-  bad({ landed: false, facts: { ...facts, spoken: null } }, /neither spoken by the engine's synthesiser nor skipped/);
+  bad({ landed: false, facts: { ...facts, spoken: null } }, /neither spoken by the engine's synthesiser nor refused/);
+  /* A-41 review MUTATION: a host with no speaker steps over the line and still lands; that is the
+     feature deleted, and it fails. */
+  bad({ facts: { ...facts, spoken: null, refused: null } }, /neither spoken by the engine's synthesiser nor refused/);
   bad({ landed: false }, /did not land on its last clip/);
   bad({ last: { index: 4, forayId: null } }, /not playing the Foray/);
   bad({ pidAfter: "8" }, /pid changed/);
   /* A synthesiser that could not speak is a skip, as the JS leg's (k) allows. */
   assert.equal(verdictAirplaneForay({ ...good, facts: { ...facts, spoken: null, refused: { kind: "init-failed" } } }).outcome, "skipped");
+  assert.equal(verdictAirplaneForay({ ...good, facts: { ...facts, spoken: null, refused: { kind: "line-refused" } } }).ok, true);
 });
 
 test("A-30 (e): the first launch is the JS leg's verdict plus the native lane and a hosting engine", () => {

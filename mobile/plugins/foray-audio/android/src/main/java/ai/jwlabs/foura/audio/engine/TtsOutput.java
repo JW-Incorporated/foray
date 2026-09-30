@@ -218,8 +218,16 @@ public final class TtsOutput implements SpeechNarrator.Output {
 
     @Override
     public SpeechNarrator.Resumed resume() {
-        if (line == null || !held || tts == null || !ready) return SpeechNarrator.Resumed.REFUSED;
+        if (line == null || !held || tts == null || initFailed) return SpeechNarrator.Resumed.REFUSED;
         held = false;
+        if (!ready) {
+            /* A-41 review: paused before init answered (the pause dropped the held start). Refusing
+               here would leave the line held for good once init succeeds, with nobody to resume it;
+               so it is spoken from its first word when init answers, as a first start is. */
+            boundary = 0;
+            pendingStart = true;
+            return SpeechNarrator.Resumed.FROM_START;
+        }
         String text = line.text();
         /* The rest of the PLAIN line from the word in flight; a marked-up line, or one the engine
            reported no boundary for, is re-spoken whole (an SSML tail would be half a tag). */

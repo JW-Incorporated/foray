@@ -947,7 +947,8 @@ export function airplaneFacts(rows, sinceSeq) {
  *  `narration kind=fallback` row; its boundary is the last out-point stop before it (the clip
  *  before the line ran out, which is when the line became the Foray's focus); the speech is the
  *  synthesiser's `speaker kind=line-started` row after it; a synthesiser that could not speak
- *  writes one of the refusal rows instead, and the core then steps over the line. Pure. */
+ *  writes one of the refusal rows instead (`line-refused` at the line itself since the A-41
+ *  review), and the core then steps over the line. Pure. */
 export function airplaneForayFacts(rows, sinceSeq) {
   const after = (rows ?? []).filter((r) => r.seq > sinceSeq);
   const fi = after.findIndex((r) => r.kind === "narration" && r.json?.kind === "fallback");
@@ -955,7 +956,7 @@ export function airplaneForayFacts(rows, sinceSeq) {
   const boundary = fi >= 0 ? [...after.slice(0, fi)].reverse().find((r) => r.kind === "outPoint" && r.json?.kind === "stop") ?? null : null;
   const later = fi >= 0 ? after.slice(fi + 1) : [];
   const spoke = later.find((r) => r.kind === "speaker" && r.json?.kind === "line-started") ?? null;
-  const REFUSALS = ["init-failed", "speak-refused", "start-refused", "engine-error", "line-failed"];
+  const REFUSALS = ["init-failed", "speak-refused", "start-refused", "engine-error", "line-failed", "line-refused"];
   const refused = later.find((r) => r.kind === "speaker" && REFUSALS.includes(r.json?.kind)) ?? null;
   const from = boundary ?? null;
   return {
@@ -983,12 +984,15 @@ export function verdictAirplaneForay({ drive, facts, renderedAudible, landed, la
     if (!(facts.decisionMs <= NATIVE_GATES.airplaneDecisionMs)) {
       failures.push(`the line fell back ${facts.decisionMs} ms after the clip before it ran out; the deadline is ${NATIVE_GATES.airplaneDecisionMs} ms`);
     }
-    if (!facts.spoken && !facts.refused && !landed) failures.push("the fallen-back line was neither spoken by the engine's synthesiser nor skipped");
+    /* A-41 review: the line must have REACHED the engine's synthesiser (a line it spoke, or a
+       refusal row it wrote). Landing on the last clip is not enough: a host with no speaker steps
+       over the line and still lands, which is the feature deleted. */
+    if (!facts.spoken && !facts.refused) failures.push("the fallen-back line was neither spoken by the engine's synthesiser nor refused by it (no `speaker` row after the fallback)");
   }
   if (!landed) failures.push(`the Foray did not land on its last clip (index ${n - 1}) playing within ${NATIVE_GATES.airplaneForayLandMs} ms (last index ${last?.index}, running ${last?.running})`);
   if (last && last.forayId !== foray.forayId) failures.push(`the engine was not playing the Foray (forayId ${JSON.stringify(last?.forayId)})`);
   if (pidBefore && pidAfter !== pidBefore) failures.push(`the pid changed from ${pidBefore} to ${pidAfter}`);
-  return { ok: failures.length === 0, failures, outcome: facts?.spoken ? "spoken" : facts?.refused ? "skipped" : landed ? "skipped" : null };
+  return { ok: failures.length === 0, failures, outcome: facts?.spoken ? "spoken" : facts?.refused ? "skipped" : null };
 }
 
 /** (k) GATED: the engine's half (an unloadable episode stops in time, nothing claims to play,

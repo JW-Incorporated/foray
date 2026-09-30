@@ -256,6 +256,10 @@ public class SpeechNarratorTest {
         rig.output.failed = true;
         rig.narrate(speak(2, "No engine.", null));
         assertEquals(new EngineInput.NarratorEvent.Failed(2, "no-synthesiser"), rig.events.get(1));
+        // A-41 review: the refusal is said at the line (the emulator's (k) reads it as "skipped").
+        String rows = String.join(" | ", rig.rows);
+        assertTrue(rows, rig.rows.contains("speaker {\"kind\":\"line-refused\",\"why\":\"empty-text\"}"));
+        assertTrue(rows, rig.rows.contains("speaker {\"kind\":\"line-refused\",\"why\":\"no-synthesiser\"}"));
         rig.output.failed = false;
         rig.output.refuseStart = true;
         rig.narrate(speak(3, "Refused.", null));

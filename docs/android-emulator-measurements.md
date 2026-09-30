@@ -906,3 +906,10 @@ The APK carries both bundled files at the assets root: `interlude-placeholder.wa
 - **Not measured here:** the device check (the airplane-mode fallback on the Pixel, D-A3), and whether Android's
   engine honours the lexicon's `<phoneme>` markup. Android documents no phoneme attribute. The only authored IPA
   is `sake`.
+- **A-41 review** (follow-up to #921). (k)'s engine half now requires the fallen-back line to have reached the
+  engine's synthesiser: a `speaker kind=line-started` row, or a refusal row after the fallback. Before, landing on
+  the last clip also counted, and a host with no speaker lands too. The narrator now writes
+  `speaker kind=line-refused why=no-synthesiser` at the line itself. The host's partial wake lock also covers a
+  spoken line while it is the running playhead, since no deck plays then. The service feeds a lost route when
+  headphones come out while no deck plays (a spoken line, or the jingle), because Media3's becoming-noisy
+  receiver is on only while a deck plays.

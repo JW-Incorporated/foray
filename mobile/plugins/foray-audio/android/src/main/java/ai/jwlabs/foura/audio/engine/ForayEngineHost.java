@@ -100,6 +100,14 @@ import java.util.Objects;
  * turn and let go at teardown. The beat is bounded by the core (its own timer, the jingle's
  * ceiling, and every transport action cuts it), so the lock is too.
  *
+ * <p>A SPOKEN LINE IS THE SAME CASE (A-41 review). While a spoken line (a bridge, or a rendered
+ * line's fallback) is the Foray's playhead, no deck plays either: the synthesiser is
+ * {@code TextToSpeech}, in ANOTHER process, and nothing in this one holds the CPU while it
+ * synthesises (about 2 s on the emulator before the first word), between its callbacks, or while
+ * the line's own timers run. So the same lock is held while the core runs with a spoken line as its
+ * playhead ({@code isNarrationPlayhead} and running), and goes with a pause, a stop or the next
+ * item's load landing.
+ *
  * <h2>TERMINAL</h2>
  *
  * When a turn leaves the core relinquished, the host tears down the deck, every timer and the
@@ -266,9 +274,13 @@ public final class ForayEngineHost {
         return beatHeld;
     }
 
-    /** The beat's lock is held exactly while the core's seam beat runs, on a live host. */
+    /**
+     * The beat's lock is held exactly while the core's seam beat runs, or while a spoken line is the
+     * running playhead (A-41 review), on a live host.
+     */
     private void syncBeatAwake() {
-        boolean want = beatAwake != null && !tornDown && core.state().inSeamGap();
+        EngineState st = core.state();
+        boolean want = beatAwake != null && !tornDown && (st.inSeamGap() || (st.isNarrationPlayhead() && st.isRunning()));
         if (want == beatHeld) return;
         beatHeld = want;
         beatAwake.setStayAwake(want);

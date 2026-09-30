@@ -43,6 +43,17 @@ import java.util.List;
  *       resume by itself, corner case #13).</li>
  * </ul>
  *
+ * <h2>BECOMING NOISY WITH NO DECK PLAYING (A-41 review)</h2>
+ *
+ * Media3 listens for {@code ACTION_AUDIO_BECOMING_NOISY} only while its player has play-when-ready
+ * on. A Foray is audible with no deck playing in two places: a SPOKEN line ({@code TextToSpeech}, in
+ * another process) and the seam's JINGLE ({@code MediaPlayer}), both with the outgoing deck paused at
+ * its out-point. Headphones pulled out there would leave the line or the jingle on the phone's
+ * speaker, where iOS (whose route change is the session's, not a player's) pauses. So the service
+ * keeps its own receiver and asks {@link #onBecomingNoisyOffDeck}: the lost route is fed only when
+ * the engine is running and the deck is NOT playing (when it is, Media3's receiver already answers
+ * through {@link #onPlayWhenReadyChanged}, and the core's pause makes a second report not running).
+ *
  * <h2>WHAT IS NOT AN END</h2>
  *
  * The suppression also lifts when the player goes IDLE (an unload releases focus: Media3's
@@ -97,6 +108,16 @@ public final class FocusMapping {
         transientOpen = false;
         if (playbackState == Player.STATE_IDLE) return Collections.emptyList();
         return one(new EngineInput.SessionEvent.InterruptionEnded(true));
+    }
+
+    /**
+     * The service's own {@code ACTION_AUDIO_BECOMING_NOISY} receiver (see BECOMING NOISY WITH NO
+     * DECK PLAYING): a lost route when the engine is running ({@code EngineState.isRunning}) and the
+     * active deck's play-when-ready is off, and nothing otherwise.
+     */
+    public static List<EngineInput.SessionEvent> onBecomingNoisyOffDeck(boolean deckPlayWhenReady, boolean engineRunning) {
+        if (deckPlayWhenReady || !engineRunning) return Collections.emptyList();
+        return one(new EngineInput.SessionEvent.Route(new EngineInput.RouteChange(true, null, false, null)));
     }
 
     private static List<EngineInput.SessionEvent> one(EngineInput.SessionEvent event) {
