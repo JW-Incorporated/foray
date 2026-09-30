@@ -134,10 +134,22 @@ public final class ForayEngineHost {
      * What the remote surface shows after a turn: the enabled commands (with the founder's skip
      * pair), and the session view (null when there is nothing to show, which is also when
      * {@code availability.clearsNowPlaying()}). {@code seq} counts surfaces, so a reader can tell
-     * two identical ones apart.
+     * two identical ones apart. {@code listeningRate} (A-60) is the listener's speed
+     * ({@code EngineState.rate}), which the session publishes whatever the view's clock is doing:
+     * the view's rate is 0 through a stall, and the listener's speed is not.
      */
     public record Surface(MediaMapping.CommandAvailability availability, MediaMapping.SessionView view,
-                          boolean buffering, int seq) {}
+                          boolean buffering, int seq, double listeningRate) {
+        /** A surface whose listening speed is the view's running rate (1 when the clock stands still). */
+        public Surface(MediaMapping.CommandAvailability availability, MediaMapping.SessionView view, boolean buffering, int seq) {
+            this(availability, view, buffering, seq, viewRate(view));
+        }
+
+        private static double viewRate(MediaMapping.SessionView view) {
+            MediaMapping.PositionState position = view == null ? null : view.positionState();
+            return position != null && position.playbackRate() > 0 ? position.playbackRate() : 1;
+        }
+    }
 
     /** Told after every turn (and once at start), on the host's thread. */
     public interface SurfaceListener {
@@ -687,7 +699,7 @@ public final class ForayEngineHost {
             MediaMapping.View mv = core.mediaView(seams.deck.reading(), seams.timing.monoMs());
             if (mv != null) view = MediaMapping.sessionView(mv);
         }
-        return new Surface(availability, view, core.state().buffering, seq);
+        return new Surface(availability, view, core.state().buffering, seq, core.state().rate);
     }
 
     private void publishSurface() {

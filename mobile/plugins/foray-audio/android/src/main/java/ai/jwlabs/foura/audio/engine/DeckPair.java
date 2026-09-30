@@ -1,6 +1,7 @@
 package ai.jwlabs.foura.audio.engine;
 
 import ai.jwlabs.foura.engine.DeckCommand;
+import ai.jwlabs.foura.engine.DeckDeadlineClass;
 import ai.jwlabs.foura.engine.DeckEvent;
 import ai.jwlabs.foura.engine.DeckPolicy;
 import ai.jwlabs.foura.engine.DeckReading;
@@ -172,7 +173,7 @@ public final class DeckPair implements DeckDriving {
         if (invalidated) return;
         switch (command) {
             case DeckCommand.Load c -> load(c);
-            case DeckCommand.Prepare c -> prepare(c.itemId(), c.url(), c.startSec());
+            case DeckCommand.Prepare c -> prepare(c.itemId(), c.url(), c.startSec(), c.deadlineClass());
             case DeckCommand.SetRate c -> {
                 // Both decks: the standby primes at the rate it will play at.
                 if (c.rate() > 0 && Double.isFinite(c.rate())) rate = c.rate();
@@ -210,7 +211,7 @@ public final class DeckPair implements DeckDriving {
 
     // ---- prepare
 
-    private void prepare(String itemId, String url, double startSec) {
+    private void prepare(String itemId, String url, double startSec, DeckDeadlineClass deadlineClass) {
         double offset = DeckPolicy.warmOffset(startSec);
         DeckPolicy.PrefetchDecision decision = DeckPolicy.prefetchDecision(available, url, decks[activeIndex].loadedUrl(),
                 warmLoad == null ? null : warmLoad.warm, offset);
@@ -226,8 +227,10 @@ public final class DeckPair implements DeckDriving {
         standby.setPrepareWindowAvailable(false);
         standby.send(new DeckCommand.SetRate(rate));
         // Precise timing: a prepared item is the next SEGMENT of a Foray (P-7: precise for bounded
-        // segments). A precise source promoted for an approximate ask is never worse.
-        standby.send(new DeckCommand.Load(token, itemId, url, offset, true));
+        // segments). A precise source promoted for an approximate ask is never worse. The warm load
+        // runs under the item's own P-13 class (A-60, NE-38): a prepared line gives up at a line's
+        // deadline, exactly as its own load would.
+        standby.send(new DeckCommand.Load(token, itemId, url, offset, true, deadlineClass));
     }
 
     // ---- load: promote or degrade

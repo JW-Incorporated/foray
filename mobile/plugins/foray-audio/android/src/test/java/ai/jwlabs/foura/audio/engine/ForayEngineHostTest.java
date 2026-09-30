@@ -296,6 +296,36 @@ public class ForayEngineHostTest {
         assertFalse("a remote stop is never enabled (T-7)", s.availability().isEnabled(MediaMapping.RemoteCommand.STOP));
     }
 
+    /**
+     * Card A-60: the surface carries the listener's speed through a stall. The view's clock rate is
+     * 0 while the deck waits (the lock screen's clock stands still), and the listening rate the
+     * session publishes stays the listener's. TO SEE IT FAIL: build the host's surface with the
+     * four-argument form (the listening rate then reads 1 through the stall).
+     */
+    @Test
+    public void theSurfaceCarriesTheListeningSpeedThroughAStall() {
+        Rig r = new Rig();
+        r.host.handle(load("a"));
+        r.host.handle(playIndex(0));
+        r.deck.emit(new DeckEvent.Ready(r.deck.lastToken, 0, true, 5));
+        r.deck.emit(new DeckEvent.TimeControl(r.deck.lastToken, DeckEvent.TimeControlStatus.PLAYING, null));
+        r.host.handle(new EngineInput.Command(new EngineContract.Command.SetRate(1.5), Vocabulary.Source.TAP));
+        ForayEngineHost.Surface playing = r.host.surface();
+        assertEquals(1.5, playing.listeningRate(), 0);
+        assertEquals(1.5, playing.view().positionState().playbackRate(), 0);
+
+        r.deck.emit(new DeckEvent.Stalled(r.deck.lastToken));
+        r.deck.emit(new DeckEvent.TimeControl(r.deck.lastToken, DeckEvent.TimeControlStatus.WAITING, "buffering"));
+        ForayEngineHost.Surface stalled = r.host.surface();
+        assertTrue(stalled.buffering());
+        assertEquals("the clock stands still", 0, stalled.view().positionState().playbackRate(), 0);
+        assertEquals("the listener's speed does not", 1.5, stalled.listeningRate(), 0);
+
+        r.deck.emit(new DeckEvent.TimeControl(r.deck.lastToken, DeckEvent.TimeControlStatus.PLAYING, null));
+        assertFalse(r.host.surface().buffering());
+        assertEquals(1.5, r.host.surface().view().positionState().playbackRate(), 0);
+    }
+
     @Test
     public void timersAreArmedThroughTheSeamAndCancelledAtTeardown() {
         Rig r = new Rig();

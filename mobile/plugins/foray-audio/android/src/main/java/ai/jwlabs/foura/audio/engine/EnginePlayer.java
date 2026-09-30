@@ -45,6 +45,8 @@ import java.util.List;
  *       {@code none} is an empty timeline, IDLE.</li>
  *   <li>The clock: the view's position state (the episode's own), which Media3 extrapolates at
  *       the rate given, so the host publishes a surface per turn, not per second.</li>
+ *   <li>The speed: the listener's ({@link #publishedSpeed}), while playing and while buffering
+ *       alike; Media3 publishes 0 for the buffering itself (A-60).</li>
  * </ul>
  *
  * <h2>THE TIMELINE IS A NEIGHBOURHOOD, AS IN {@code WebViewPlayer}</h2>
@@ -139,7 +141,7 @@ public final class EnginePlayer extends SimpleBasePlayer {
            load in flight. That is BUFFERING, the one Media3 state that keeps play-when-ready (the
            controls still say pause) and stops extrapolating the playhead. */
         boolean stalled = playing && (surface.buffering() || (position != null && position.playbackRate() == 0));
-        float speed = position != null && position.playbackRate() > 0 ? (float) position.playbackRate() : 1f;
+        float speed = publishedSpeed(surface);
         int before = availability.isEnabled(MediaMapping.RemoteCommand.PREVIOUS_TRACK) ? 1 : 0;
         int after = availability.isEnabled(MediaMapping.RemoteCommand.NEXT_TRACK) ? 1 : 0;
         return state
@@ -150,6 +152,23 @@ public final class EnginePlayer extends SimpleBasePlayer {
                 .setPlaybackState(stalled ? Player.STATE_BUFFERING : Player.STATE_READY)
                 .setPlayWhenReady(playing, Player.PLAY_WHEN_READY_CHANGE_REASON_USER_REQUEST)
                 .build();
+    }
+
+    /**
+     * THE PUBLISHED SPEED (card A-60, the Android side of #866's rate latch). The facade's
+     * playback parameters carry the LISTENER'S speed at all times, never the view's clock rate:
+     * the view's rate is 0 through a stall or a load, and that 0 is said by the state instead
+     * (BUFFERING). Media3's session derives what it publishes from the player
+     * ({@code MediaSessionLegacyStub.createPlaybackStateCompat}, 1.11.0: the platform
+     * {@code PlaybackState}'s speed is {@code isPlaying() ? speed : 0}, and the speed itself rides
+     * in its extras), so a lock screen or a car reads the listening speed while playing and 0
+     * only while buffering or paused, and nothing can latch 0 behind a playing clock: iOS's
+     * rate-0 latch cannot recur as such. A non-positive or non-finite speed (never the core's) is
+     * published as 1.
+     */
+    static float publishedSpeed(@NonNull ForayEngineHost.Surface surface) {
+        double rate = surface.listeningRate();
+        return rate > 0 && Double.isFinite(rate) ? (float) rate : 1f;
     }
 
     private boolean canResume() {

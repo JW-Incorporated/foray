@@ -875,6 +875,17 @@ A-61, A-62, A-64, A-66 (+ NE-39j) ─ A-63 ─ A-67 ─ A-68 ─ A-69 (gated)
     - DiagGate admits the rows.
   - `engine-report.mjs` gives the new verdicts over an emulator paste (the A-05 artifacts), with the run id.
 - **Device check:** none. A-68 reads Joey's pastes.
+- **Status (2026-09-30): done in its PR (#926). The evidence is in `STATE.md` (A-60 entry) and
+  `docs/android-emulator-measurements.md` §16.**
+  - **The values.** 20 s, 8 s, 600 s and the P-14 stall display are each tagged `// MEASURE: verdict=<id>`. The core
+    names `DeckDeadlineClass` on every load and prepare.
+  - **The published speed.** The facade carries the listening speed. Media3 publishes 0 only while buffering.
+  - **What the card did not name.** Android Copies could not feed any NE-38e verdict: the Android ring dropped every
+    row's sub-kind. `DiagGate` is now ported to the JVM core, and `EngineLog` applies it as iOS's `DiagRing` does.
+  - **The verdicts.** NE-38e's tool is on `engine/m3`, not yet on this branch. It was run merged with A-60's
+    Android reader over run 36786830313's native artifacts: `P13-clip`, `P13-line`, `reuse-idle` and
+    `narration-fallback` have coverage and pass on bundled assets, which settles nothing.
+  - **Not executed:** the device check (A-68, D-A3).
 
 #### A-61 · Route resume on the JVM core, from Android's device callbacks (mirrors NE-38rs) — **M**
 - **Depends on:** A-42, NE-38rj (the `route-resume` family, owed to A-61 in `jvm-pending.json`)
