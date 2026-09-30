@@ -2629,7 +2629,19 @@ test("A-25: the ExoPlayer deck sits behind DeckDriving, holds its wake mode, and
   const strip = (src) =>
     src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "").replace(/"(?:[^"\\n]|\.)*"/g, '""');
   const deck = strip(fs.readFileSync(path.join(engineDir, "ExoDeck.java"), "utf8"));
-  assert.match(deck, /class ExoDeck implements DeckDriving\b/);
+  /* A-40: one of the Foray tape's deck pair, PairableDeck is DeckDriving plus what the pair asks. */
+  assert.match(deck, /class ExoDeck implements (DeckDriving|PairableDeck)\b/);
+  const pairable = strip(fs.readFileSync(path.join(engineDir, "PairableDeck.java"), "utf8"));
+  assert.match(pairable, /interface PairableDeck extends DeckDriving\b/);
+  assert.doesNotMatch(pairable, /import androidx\.media3\./, "the pair's seam names no Media3 type: fakes stand behind it too");
+  /* A-40: the deck pair ROUTES; it never starts audio of its own. The one play it sends is the
+     core's own, forwarded to the deck that holds the player role (NEVER TWO AUDIBLE: the
+     handover pauses the outgoing deck and plays nothing). MUTATION: send DeckCommand.PLAY from
+     the handover, or import Media3 into the pair; each fails here. */
+  const pair = strip(fs.readFileSync(path.join(engineDir, "DeckPair.java"), "utf8"));
+  assert.doesNotMatch(pair, /DeckCommand\.PLAY\b/, "the pair never commands a play of its own");
+  assert.doesNotMatch(pair, /import androidx\.media3\./, "the pair is routing, not a player");
+  assert.match(pair, /case PAUSE_OUTGOING -> \{\s*[^}]*outgoing\.send\(DeckCommand\.PAUSE\);/, "the handover pauses the outgoing deck");
   assert.match(deck, /setWakeMode\(C\.WAKE_MODE_NETWORK\)/, "the deck must hold the network wake mode");
   /* The wake mode holds nothing while play-when-ready is off, which is the whole gate: the deck
      holds its own CPU and Wi-Fi locks from the attach until the gate ends, or a screen-off seam

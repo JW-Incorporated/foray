@@ -1,5 +1,7 @@
 package ai.jwlabs.foura.audio;
 
+import ai.jwlabs.foura.audio.engine.DeckDriving;
+import ai.jwlabs.foura.audio.engine.DeckPair;
 import ai.jwlabs.foura.audio.engine.EngineAudio;
 import ai.jwlabs.foura.audio.engine.EngineLog;
 import ai.jwlabs.foura.audio.engine.EnginePlayer;
@@ -122,6 +124,16 @@ import java.util.concurrent.atomic.AtomicReference;
  * it), because the core and the player are confined there. The native-mode scenarios read it; so
  * can a device pass. Since A-30 it also says whether the process is in the native lane
  * ({@code nativeLane}, {@link EngineOwnership#engineLane}), which every native scenario gates on.
+ *
+ * <h2>THE FORAY TAPE (A-40)</h2>
+ *
+ * The engine is built with the Foray tape on, over a {@link DeckPair} of two ExoPlayers: the
+ * playing deck and the standby one the core warms at the next segment's in-point while the first
+ * is still audible. Both players are configured alike ({@link EngineAudio}); the focus listener
+ * follows the deck that holds the player role, so the paused outgoing deck losing focus to the
+ * incoming one at a handover is never read as an interruption. An episode never warms the
+ * standby: it plays through the active deck exactly as before. The page cannot reach a Foray
+ * until A-42 advertises {@code foray}; the debug driver can.
  */
 @OptIn(markerClass = UnstableApi.class)
 public class ForayPlaybackService extends MediaSessionService {
@@ -138,8 +150,13 @@ public class ForayPlaybackService extends MediaSessionService {
 
     @Nullable private static volatile ForayPlaybackService current;
 
+    /** The player of the deck that holds the player role (the focus listener's). */
     @Nullable private ExoPlayer exo;
-    @Nullable private ExoDeck deck;
+    /** Every player the service built (one, or the pair's two), for the release. */
+    private final List<ExoPlayer> players = new ArrayList<>();
+    @Nullable private DeckDriving deck;
+    /** The Foray tape's deck pair (A-40), or null with one deck. */
+    @Nullable private DeckPair pair;
     /** Volatile: {@link #isHosting()} is read by the plugin's bridge thread; every other use is on main. */
     @Nullable private volatile ForayEngineHost host;
     @Nullable private EnginePlayer player;
@@ -185,7 +202,8 @@ public class ForayPlaybackService extends MediaSessionService {
            service by another door never arms a car's PLAY for the native engine. */
         if (EngineOwnership.engineLane(this)) ForayMediaButtonReceiver.setEnabled(this, true);
         try {
-            attach(new ExoPlayer.Builder(this).build());
+            // A-40: the Foray tape's deck pair, the second player the standby deck.
+            attach(new ExoPlayer.Builder(this).build(), new ExoPlayer.Builder(this).build());
         } catch (RuntimeException e) {
             Log.w(TAG, "could not build the native engine; the service holds no session", e);
             release();
@@ -206,23 +224,40 @@ public class ForayPlaybackService extends MediaSessionService {
     }
 
     /**
-     * Build the engine over {@code built}: the deck, the host, the facade and the session, and
-     * the focus listener. Package-private so a test hands in a {@code TestExoPlayerBuilder}
-     * player instead.
+     * Build the engine over {@code built} alone: one deck, no standby. Package-private so a test
+     * hands in a {@code TestExoPlayerBuilder} player instead.
      */
     void attach(@NonNull ExoPlayer built) {
+        attach(built, null);
+    }
+
+    /**
+     * Build the engine over {@code built} and, for the Foray tape's deck pair (A-40), the
+     * {@code standby} player: the decks, the host, the facade and the session, and the focus
+     * listener on the deck that plays. With no standby it is one deck, as in A-26.
+     */
+    void attach(@NonNull ExoPlayer built, @Nullable ExoPlayer standby) {
         exo = built;
+        players.add(built);
         EngineAudio.configure(built);
-        ExoDeck.Config config = new ExoDeck.Config();
-        config.context = this;
-        config.mediaSources = ExoDeck.progressive(new DefaultDataSource.Factory(this));
-        config.diag = log::diag;
-        config.sessionIsActive = () -> session != null;
-        deck = new ExoDeck(built, config);
+        ExoDeck first = new ExoDeck(built, deckConfig());
+        if (standby != null) {
+            players.add(standby);
+            EngineAudio.configure(standby);
+            ExoDeck second = new ExoDeck(standby, deckConfig());
+            DeckPair.Config pairConfig = new DeckPair.Config();
+            pairConfig.diag = log::diag;
+            pairConfig.onActiveChanged = this::activeDeckChanged;
+            pair = new DeckPair(first, second, pairConfig);
+            deck = pair;
+        } else {
+            deck = first;
+        }
         EngineStore kept = processStore(this);
         store = kept;
         EngineSeams seams = new EngineSeams(deck, new SessionSeam(), new HandlerTiming(Looper.getMainLooper()), kept);
-        ForayEngineHost engine = new ForayEngineHost(seams, new EngineConfig(buildName(this)));
+        // A-40: the Foray tape on (the core refuses playForay without it), over the pair when there is one.
+        ForayEngineHost engine = new ForayEngineHost(seams, new EngineConfig(buildName(this)).withForayTape(true, standby != null));
         host = engine;
         EnginePlayer facade = new EnginePlayer(Looper.getMainLooper(), new EnginePlayer.Engine() {
             @Override
@@ -270,6 +305,31 @@ public class ForayPlaybackService extends MediaSessionService {
         };
         focusListener = listener;
         built.addListener(listener);
+    }
+
+    private ExoDeck.Config deckConfig() {
+        ExoDeck.Config config = new ExoDeck.Config();
+        config.context = this;
+        config.mediaSources = ExoDeck.progressive(new DefaultDataSource.Factory(this));
+        config.diag = log::diag;
+        config.sessionIsActive = () -> session != null;
+        return config;
+    }
+
+    /**
+     * A handover gave the player role to the other deck: the focus listener moves with it, so what
+     * the ENGINE hears about focus is always the playing deck's. The outgoing deck, paused, loses
+     * focus to the incoming one when that one plays, and that loss is nobody's interruption.
+     */
+    private void activeDeckChanged(int index) {
+        if (index < 0 || index >= players.size()) return;
+        ExoPlayer next = players.get(index);
+        ExoPlayer previous = exo;
+        Player.Listener listener = focusListener;
+        if (next == previous) return;
+        if (previous != null && listener != null) previous.removeListener(listener);
+        exo = next;
+        if (listener != null) next.addListener(listener);
     }
 
     private void feed(List<EngineInput.SessionEvent> events) {
@@ -370,16 +430,18 @@ public class ForayPlaybackService extends MediaSessionService {
         ExoPlayer p = exo;
         exo = null;
         deck = null;
+        pair = null;
         store = null;
-        if (p != null) {
-            if (focusListener != null) p.removeListener(focusListener);
-            focusListener = null;
+        if (p != null && focusListener != null) p.removeListener(focusListener);
+        focusListener = null;
+        for (ExoPlayer built : new ArrayList<>(players)) {
             try {
-                p.release();
+                built.release();
             } catch (RuntimeException e) {
-                Log.w(TAG, "releasing the player failed", e);
+                Log.w(TAG, "releasing a player failed", e);
             }
         }
+        players.clear();
     }
 
     // ---- the cold path (A-27)
@@ -664,6 +726,21 @@ public class ForayPlaybackService extends MediaSessionService {
             m.add(JsonNode.member("playbackState", view == null ? JsonNode.NULL : JsonNode.str(view.playbackState())));
             m.add(JsonNode.member("title", view == null ? JsonNode.NULL : JsonNode.str(view.metadata().title())));
             m.add(JsonNode.member("artist", view == null ? JsonNode.NULL : JsonNode.str(view.metadata().artist())));
+        }
+        DeckPair tape = pair;
+        if (tape != null) {
+            // A-40: which deck plays, how many handovers, and whether warming stood down.
+            List<JsonNode.Member> pm = new ArrayList<>();
+            pm.add(JsonNode.member("active", JsonNode.num(tape.activeIndex())));
+            pm.add(JsonNode.member("swaps", JsonNode.num(tape.swaps())));
+            pm.add(JsonNode.member("available", JsonNode.bool(tape.available())));
+            m.add(JsonNode.member("pair", new JsonNode.Obj(pm)));
+        }
+        if (engine != null) {
+            EngineState st = engine.state();
+            m.add(JsonNode.member("forayId", st.forayId == null ? JsonNode.NULL : JsonNode.str(st.forayId)));
+            m.add(JsonNode.member("inSeamGap", JsonNode.bool(st.inSeamGap())));
+            m.add(JsonNode.member("skippedSegments", JsonNode.num(st.skippedSegments)));
         }
         ExoPlayer p = exo;
         if (p != null) {

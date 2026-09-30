@@ -658,6 +658,15 @@ jobs:
         if: ${{ matrix.mode == 'native' && !cancelled() && steps.launch.outcome == 'success' }}
         run: node tools/mobile/android-native-playback.mjs seams --art "$ART"
 
+      # A-40: the Foray tape. A Foray (the page's build of eight segments over the
+      # click tracks) handed to the engine through the debug driver's playForay
+      # (the page's bridge refuses one until A-42), played hidden on the deck
+      # pair. Gated: every seam crossed, screen off, one process, p95 <= 1 s.
+      - name: (f) native Foray — hidden Foray seams on the deck pair, the screen off, p95 at or under 1 s
+        id: native-foray-seams
+        if: ${{ matrix.mode == 'native' && !cancelled() && steps.launch.outcome == 'success' }}
+        run: node tools/mobile/android-native-playback.mjs foray-seams --art "$ART"
+
       - name: (g) native — Doze, unplugged, in the rare bucket, and still playing after 5 minutes
         id: native-doze
         if: ${{ matrix.mode == 'native' && !cancelled() && steps.launch.outcome == 'success' }}

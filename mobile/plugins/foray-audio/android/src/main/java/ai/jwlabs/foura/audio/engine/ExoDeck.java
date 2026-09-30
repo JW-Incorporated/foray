@@ -8,6 +8,7 @@ import ai.jwlabs.foura.engine.DeckPolicy.OutPointLayer;
 import ai.jwlabs.foura.engine.DeckPolicy.OutPointOp;
 import ai.jwlabs.foura.engine.DeckReading;
 import ai.jwlabs.foura.engine.EngineCommand;
+import ai.jwlabs.foura.engine.EngineConstants;
 import ai.jwlabs.foura.engine.JSWriter;
 import ai.jwlabs.foura.engine.JsonNode;
 import android.content.Context;
@@ -152,9 +153,19 @@ import java.util.function.Consumer;
  * failed, the deadline, an unload or {@link #invalidate()}. The deadline bounds how long that
  * is. The locks are released AFTER {@code ready} is delivered, so a host that plays inside
  * that callback has Media3's own lock posted before this one is let go.
+ *
+ * <h2>ONE OF A PAIR (A-40)</h2>
+ *
+ * <p>The Foray tape plays through a {@link DeckPair} of two of these ({@link PairableDeck}). The
+ * playing deck opens the PREFETCH WINDOW ({@code prepareWindow}) with one more one-shot timer,
+ * {@code PREFETCH_LEAD_SEC} of wall clock before its boundary ({@code DeckPolicy.prefetchWindowDelayMs},
+ * re-derived after every watch step), only while it is audible toward an armed boundary and only
+ * when the pair has a standby deck to prepare ({@link #setPrepareWindowAvailable}). The standby
+ * deck's load is an ordinary gated load under a negative token; at the handover it adopts the
+ * core's token ({@link #adopt}). A lone deck never opens the window, and ignores {@code prepare}.
  */
 @OptIn(markerClass = UnstableApi.class)
-public final class ExoDeck implements DeckDriving {
+public final class ExoDeck implements PairableDeck {
     private static final String TAG = "ForayEngine.ExoDeck";
 
     /**
@@ -344,6 +355,12 @@ public final class ExoDeck implements DeckDriving {
     private PlayerMessage boundaryMessage;
     private Timer watchdog;
 
+    /** A-40: this deck may open the prefetch window (the pair's playing deck with a standby to warm). */
+    private boolean prepareWindowAvailable;
+    /** The prefetch window's one timer, and whether it opened for the current boundary. */
+    private Timer windowTimer;
+    private boolean windowOpened;
+
     public ExoDeck(@NonNull ExoPlayer player, @NonNull Config config) {
         if (config.mediaSources == null) throw new IllegalArgumentException("ExoDeck needs Config.mediaSources");
         if (config.gateAwake == null && config.context == null) {
@@ -379,8 +396,65 @@ public final class ExoDeck implements DeckDriving {
             case DeckCommand.SetRate c -> setRate(c.rate());
             case DeckCommand.SetOutPoint c -> setOutPoint(c.sec());
             case DeckCommand.Unload c -> unload();
+            // A lone deck has no standby to warm; the DeckPair intercepts prepare before a deck sees it.
+            case DeckCommand.Prepare c -> record("prepare (no standby)");
         }
         syncGateAwake();
+    }
+
+    // ---------------------------------------------------------------- one of a pair (A-40)
+
+    @Override
+    public boolean isReady() {
+        return !invalidated && stage == Stage.READY && token != null;
+    }
+
+    @Override
+    @Nullable
+    public String loadedUrl() {
+        return loadedUrl;
+    }
+
+    @Override
+    public void setPrepareWindowAvailable(boolean available) {
+        if (available == prepareWindowAvailable) return;
+        prepareWindowAvailable = available;
+        rearmPrepareWindow();
+    }
+
+    @Override
+    public void adopt(int newToken) {
+        checkThread();
+        if (invalidated || token == null) return;
+        record("adopt " + newToken);
+        token = newToken;
+        watch.token = newToken;
+        if (pendingSeek != null) pendingSeek = new PendingSeek(pendingSeek.generation, newToken);
+    }
+
+    /**
+     * The prefetch window's one timer ({@code DeckPolicy.prefetchWindowDelayMs}), re-derived after
+     * every watch step: once per boundary, only while this deck is audible toward an armed boundary,
+     * and only with a standby deck. The AVDeck {@code rearmPrepareWindow}.
+     */
+    private void rearmPrepareWindow() {
+        if (windowTimer != null) windowTimer.cancel();
+        windowTimer = null;
+        if (invalidated || token == null || stage != Stage.READY) return;
+        Double delay = DeckPolicy.prefetchWindowDelayMs(prepareWindowAvailable, watch.outPointSec, watch.armed && !watch.fired,
+                !watch.playing, playheadSec(), watch.rate, EngineConstants.HtmlAudioBackend.PREFETCH_LEAD_SEC, windowOpened);
+        if (delay == null) return;
+        if (delay <= 0) {
+            windowOpened = true;
+            emit(new DeckEvent.PrepareWindow(token));
+            return;
+        }
+        int gen = generation;
+        windowTimer = new Timer(() -> {
+            windowTimer = null;
+            if (gen == generation) rearmPrepareWindow();
+        });
+        handler.postDelayed(windowTimer, (long) Math.ceil(delay));
     }
 
     /**
@@ -408,6 +482,8 @@ public final class ExoDeck implements DeckDriving {
         unload();
         cancelWatchdog();
         cancelBoundary();
+        if (windowTimer != null) windowTimer.cancel();
+        windowTimer = null;
         invalidated = true;
         listener = null;
         player.removeListener(playerListener);
@@ -933,6 +1009,7 @@ public final class ExoDeck implements DeckDriving {
         DeckPolicy.OutPointStep result = DeckPolicy.outPointStep(watch, event);
         watch = result.state();
         for (OutPointOp op : result.ops()) apply(op);
+        rearmPrepareWindow();
     }
 
     private void apply(OutPointOp op) {
@@ -1015,6 +1092,9 @@ public final class ExoDeck implements DeckDriving {
     private void resetOutPoint() {
         cancelBoundary();
         cancelWatchdog();
+        if (windowTimer != null) windowTimer.cancel();
+        windowTimer = null;
+        windowOpened = false;
         double heldRate = watch.rate;
         watch = new DeckPolicy.OutPointWatch();
         watch.rate = heldRate;

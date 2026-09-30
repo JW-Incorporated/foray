@@ -10,9 +10,9 @@ import java.util.Set;
 /**
  * The engine's composite state (docs/native-engine-plan.md §4.2): the six reducer states
  * plus everything the JS manager keeps beside its reducer, as one value. The JVM twin of
- * {@code EngineState} in ForayEngineCore (Engine/EngineState.swift, NE-14s), the episode
- * subset: the Foray tape's fields (the seam beat, the load-time ladder, {@code cp_foray})
- * arrive with A-40 and the narrating overlay's with A-41.
+ * {@code EngineState} in ForayEngineCore (Engine/EngineState.swift, NE-14s): the episode
+ * fields (A-24), and the Foray tape's (the seam beat, the load-time ladder, {@code cp_foray})
+ * and the narrating overlay's and the jingle's (A-40).
  *
  * <p>Every field the JS manager has is named after it, so the port can be read against
  * {@code player/queue-manager.js} line for line.
@@ -103,7 +103,7 @@ public final class EngineState {
     /** {@code lastEpisodeRow} as the page sent it, stored verbatim plus {@code updated_at} when its item actually plays. */
     public JsonNode lastEpisodeRow;
     public boolean lastEpisodeRowWritten = false;
-    /** The Foray being played; always null until the Foray tape (A-40). */
+    /** The Foray being played (A-40), null for an episode. */
     public String forayId;
     /**
      * The listener closed the player, or deleted their data: the snapshot's {@code mode} is
@@ -112,12 +112,72 @@ public final class EngineState {
      */
     public boolean closed = false;
 
-    // ---- preferences the narrating overlay reads (A-41 speaks with them)
+    // ---- the Foray tape (A-40, the Swift NE-30s)
+
+    /**
+     * {@code _gapUntil}: the seam beat's ABSOLUTE deadline on the monotonic clock, stamped at the
+     * out-point, so the next load runs INSIDE the beat. Non-null exactly while a beat is running.
+     */
+    public Double gapUntilMono;
+    /** When the beat was armed (the out-point) and the gap it asked for, for the packed seam row. */
+    public Double gapArmedAtMono;
+    public double gapAskedMs = 0;
+    /** {@code _gapFinish}: the load whose {@code itemLoaded} waits out the beat's remainder, by its token. */
+    public Integer gapParkedToken;
+    /** {@code _gapCut}: a transport action cut the beat; the parked wait is released after its own load. */
+    public boolean gapCut = false;
+    public boolean seamTimerArmed = false;
+    /** {@code _forayOptions}: what the load-time ladder reads. */
+    public boolean forayIsLocalFile = false;
+    public boolean forayAllowAdPad = false;
+    /** The Foray's title, for its {@code cp_foray} row and the lock screen. */
+    public String forayTitle;
+    /** The item the standby deck was last asked to prepare. */
+    public String preparedItemId;
+    /** The deck pair's report on the load in flight ({@code prepared}), for the packed seam row. */
+    public DeckPrepareReport deckPrepare;
+    /** Segments ADR-0007's ladder refused at load (the snapshot's {@code skippedSegments}). */
+    public int skippedSegments = 0;
+    /** The {@code cp_foray} write throttle. */
+    public ForayProgressRules.WriteThrottle forayThrottle = new ForayProgressRules.WriteThrottle();
+    /** A finished Foray's row is marked once. */
+    public boolean forayFinishedWritten = false;
+
+    /** {@code inSeamGap}: a beat is running. */
+    public boolean inSeamGap() {
+        return gapUntilMono != null;
+    }
+
+    // ---- the narrating overlay and the jingle (A-40's core rules; the host's synthesiser is A-41's)
 
     /** {@code _voice}: the listener's narration voice, or null for the synthesiser's own pick. Kept in the restore record. */
     public String voiceId;
+    /** Whether the last line spoke in another voice than asked (V-01); null until one spoke, and after a failed speak. */
+    public Boolean lastVoiceFallback;
+    /** The spoken line the loaded item IS, from the synthesiser accepting it until a deck item's load lands. */
+    public SpokenLine narration;
+    /** Section 14: the id of the RENDERED line being spoken from its script because its file failed. */
+    public String fallbackSpokenId;
+    /** The last utterance {@code seq} stamped ({@code _speakSeq}). */
+    public int speakSeq = 0;
+    /** {@code _advancedSpeakSeq}: the utterance already advanced past (each line advances at most once). */
+    public Integer advancedSpeakSeq;
+    public boolean narrationTickArmed = false;
+    /** A speed tap that landed while a spoken line was audible (corner case #18); the deck gets it when the line ends. */
+    public Double pendingRate;
     /** {@code _interludeEnabled}: the listener's {@code cp_interlude}. */
     public boolean interludeEnabled = true;
+    /** {@code _interludeActive}: the jingle is sounding (a subset of {@code inSeamGap}). */
+    public boolean inInterlude = false;
+    /** {@code _beatUntil}: the BEAT's own deadline while the jingle stretches it. */
+    public Double beatUntilMono;
+    /** The silence node is running (flagged off). */
+    public boolean silenceActive = false;
+
+    /** {@code isNarrationPlayhead}: a spoken line is the playhead. */
+    public boolean isNarrationPlayhead() {
+        return narration != null;
+    }
 
     // ---- the app around the engine
 
@@ -165,10 +225,51 @@ public final class EngineState {
     /**
      * A load in flight, and the second it was asked to land on: until the deck holds the
      * item, that is where the listener is (client.js {@code episodePositionSec}'s
-     * {@code loadingStart}, audit round 2 p-impatient-1). A rendered bridge and a spoken
-     * line load differently; they arrive with A-40 and A-41.
+     * {@code loadingStart}, audit round 2 p-impatient-1).
+     *
+     * <p>{@code bridge}: a rendered narration bridge, which plays the moment it lands with no
+     * {@code itemLoaded}. {@code spokenSeq}: a SPOKEN line, whose {@code started} / {@code failed}
+     * for that utterance is this load landing or failing (null for a deck load). {@code fallback}:
+     * a rendered line read from its script because its file failed (section 14).
      */
-    public record PendingLoad(int token, String itemId, double startSec) {}
+    public record PendingLoad(int token, String itemId, double startSec, boolean bridge, Integer spokenSeq, boolean fallback) {
+        public PendingLoad(int token, String itemId, double startSec) {
+            this(token, itemId, startSec, false, null, false);
+        }
+    }
+
+    /**
+     * A spoken line the playhead is on: queue-manager.js {@code _loadedIsSynth},
+     * {@code _narrationStartedAtMs}, {@code _narrationPaused} and {@code _narrationPausedAtMs}
+     * as one value. Its clock is WALL time since the line started, frozen while it is paused
+     * and shifted forward by the pause on resume. Mutable; the core alone writes it.
+     */
+    public static final class SpokenLine {
+        public final int seq;
+        public final String itemId;
+        public double startedAtMono;
+        public boolean paused;
+        public Double pausedAtMono;
+        /** When the pulse armed last was due, to tell a suspended process from a busy one. */
+        public Double tickDueAtMono;
+        /** The synthesiser said {@code didFinish} for it. */
+        public boolean finished;
+
+        public SpokenLine(int seq, String itemId, double startedAtMono) {
+            this.seq = seq;
+            this.itemId = itemId;
+            this.startedAtMono = startedAtMono;
+        }
+
+        /** {@code narrationElapsedSec} at {@code monoMs}. */
+        public double elapsedSec(double monoMs) {
+            double at = paused ? (pausedAtMono != null ? pausedAtMono : monoMs) : monoMs;
+            return Math.max(0, (at - startedAtMono) / 1000);
+        }
+    }
+
+    /** What the deck pair said about one load ({@code prepared}). */
+    public record DeckPrepareReport(int token, boolean hit, List<Vocabulary.Stage> stages) {}
 
     /** A play-ish intent waiting for its activation's answer. */
     public record PendingActivation(int requestId, DeferredIntent intent, Vocabulary.Source source) {}

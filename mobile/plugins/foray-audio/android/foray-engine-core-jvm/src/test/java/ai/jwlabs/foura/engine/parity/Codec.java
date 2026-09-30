@@ -40,6 +40,11 @@ public final class Codec {
             this.repoRoot = repoRoot;
         }
 
+        /** The repo root, or null for a run that has none (A-40: the page's Foray builds are read from it). */
+        public Path repoRoot() {
+            return repoRoot;
+        }
+
         /** codec.js committedForay: data/forays.json, read once per context. */
         Json committedForay(String id) {
             if (forays == null) {

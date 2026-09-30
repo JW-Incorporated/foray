@@ -6,12 +6,12 @@ package ai.jwlabs.foura.engine;
  * carries the token of the load it belongs to, so a superseded load's late callback is
  * recognisably stale.
  *
- * <p>{@code prepareWindow} and {@code prepared} (the standby deck's reports) arrive with
- * the Foray tape (A-40).
+ * <p>{@code prepareWindow} and {@code prepared} are the deck pair's (A-40): the boundary is the
+ * prefetch lead away, and what the standby deck did for a load.
  */
 public sealed interface DeckEvent permits DeckEvent.DurationLoaded, DeckEvent.Ready, DeckEvent.NotReady,
         DeckEvent.DeadlineExceeded, DeckEvent.Failed, DeckEvent.Refused, DeckEvent.TimeControl, DeckEvent.PausedUncommanded,
-        DeckEvent.Seeked, DeckEvent.Stalled, DeckEvent.Ended {
+        DeckEvent.Seeked, DeckEvent.Stalled, DeckEvent.Ended, DeckEvent.PrepareWindow, DeckEvent.Prepared {
 
     /** {@code timeControlStatus} as the core reads it (waiting is buffering). */
     enum TimeControlStatus {
@@ -54,4 +54,37 @@ public sealed interface DeckEvent permits DeckEvent.DurationLoaded, DeckEvent.Re
 
     /** The item played to its end (or to its out-point): one end, one path. */
     record Ended(int token) implements DeckEvent {}
+
+    /** The playing deck's out-point is the prefetch lead away: the core may ask for a {@code prepare}. */
+    record PrepareWindow(int token) implements DeckEvent {}
+
+    /**
+     * What the standby deck did for the load {@code token}: {@code hit} when its warm load was
+     * promoted, and the stages it reached. Sent before that load's {@code ready} (or instead of
+     * nothing, on a miss); the packed seam row reports it.
+     */
+    record Prepared(int token, boolean hit, java.util.List<Vocabulary.Stage> stages) implements DeckEvent {
+        public Prepared {
+            stages = java.util.Collections.unmodifiableList(new java.util.ArrayList<>(stages));
+        }
+    }
+
+    /** The load token an event carries, or null ({@code refused} carries none). */
+    static Integer tokenOf(DeckEvent event) {
+        return switch (event) {
+            case DurationLoaded e -> e.token();
+            case Ready e -> e.token();
+            case NotReady e -> e.token();
+            case DeadlineExceeded e -> e.token();
+            case Failed e -> e.token();
+            case Refused e -> null;
+            case TimeControl e -> e.token();
+            case PausedUncommanded e -> e.token();
+            case Seeked e -> e.token();
+            case Stalled e -> e.token();
+            case Ended e -> e.token();
+            case PrepareWindow e -> e.token();
+            case Prepared e -> e.token();
+        };
+    }
 }
