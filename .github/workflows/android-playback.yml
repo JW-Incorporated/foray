@@ -147,11 +147,18 @@
 # engine) through the DEBUG build's `EngineDriveReceiver` over `adb shell am
 # broadcast`, and reads the engine from the service's own `dumpsys` line:
 # `tools/mobile/android-native-playback.mjs`. The same boot, APK and click tracks
-# as the JS legs; its seven scenario steps are all GATED, and its JS-lane steps
+# as the JS legs; its eight scenario steps are all GATED, and its JS-lane steps
 # are skipped (the JS legs run those). One API level, because the engine is the
 # same Java on both and the fast image keeps it to one more job; its ceiling
-# covers the build, the boot and about twelve minutes of scenarios, five of them
-# (g)'s Doze.
+# covers the build, the boot and about fifteen minutes of scenarios, five of them
+# (g)'s Doze. A-26 measured the leg at 14 min 7 s with seven (run 36647752638).
+#
+# A-27 added (j): a paused 4a, on Home, ended by `am kill`, by a SIGKILL from the
+# app's own uid and by `am force-stop`, then `cmd media_session dispatch play`.
+# The first two must resume 4a at the saved position (gated): the card's
+# acceptance, and the cold path through the media button receiver and Media3's
+# playback resumption from the engine's restore record. The force-stop leg is the
+# negative control, recorded only. About three minutes.
 #
 # `fail-fast: false`, so a red leg never cancels the other's verdicts. Each leg
 # checks that the device it booted really is its API level before installing
@@ -622,6 +629,11 @@ jobs:
         if: ${{ matrix.mode == 'native' && !cancelled() && steps.launch.outcome == 'success' }}
         run: node tools/mobile/android-native-playback.mjs call --art "$ART"
 
+      - name: (j) native — paused, on Home, the process ended; a media play resumes 4a at the saved position
+        id: native-kill
+        if: ${{ matrix.mode == 'native' && !cancelled() && steps.launch.outcome == 'success' }}
+        run: node tools/mobile/android-native-playback.mjs kill --art "$ART"
+
       - name: Collect the native engine's dump, its logcat and the system's view
         if: ${{ matrix.mode == 'native' && !cancelled() && (steps.launch.outcome == 'success' || steps.launch.outcome == 'failure') }}
         run: node tools/mobile/android-native-playback.mjs collect --art "$ART"
@@ -634,7 +646,7 @@ jobs:
           mkdir -p "$ART"
           {
             if [ "${MODE:-js}" = "native" ]; then
-              echo "## Android playback scenarios, NATIVE engine (A-26), API ${API_LEVEL}"
+              echo "## Android playback scenarios, NATIVE engine (A-26, A-27), API ${API_LEVEL}"
               echo
               node tools/mobile/android-native-playback.mjs summary --art "$ART"
               echo

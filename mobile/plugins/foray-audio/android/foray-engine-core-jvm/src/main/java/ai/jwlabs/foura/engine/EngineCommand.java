@@ -170,6 +170,32 @@ public sealed interface EngineCommand permits EngineCommand.Deck, EngineCommand.
             members.add(JsonNode.member("at", JsonNode.num(atMs)));
             return new JsonNode.Obj(members);
         }
+
+        /**
+         * An entry read back from the restore record (card A-27; Swift
+         * {@code PendingEvent(restored:)}), or null for one this build cannot trust: a
+         * {@code seq} that is not a non-negative integer, no kind, no episode id, or a
+         * non-finite {@code seconds} or {@code at}. A duration that is not a finite number is
+         * none.
+         */
+        public static PendingEvent restored(JsonNode node) {
+            if (node == null) return null;
+            Double seq = node.get("seq") == null ? null : node.get("seq").numberValue();
+            String kind = node.get("kind") == null ? null : node.get("kind").stringValue();
+            String episodeId = node.get("episode_id") == null ? null : node.get("episode_id").stringValue();
+            Double seconds = node.get("seconds") == null ? null : node.get("seconds").numberValue();
+            Double at = node.get("at") == null ? null : node.get("at").numberValue();
+            if (!isCount(seq) || kind == null || episodeId == null || episodeId.isEmpty()) return null;
+            if (seconds == null || !Double.isFinite(seconds) || at == null || !Double.isFinite(at)) return null;
+            Double duration = node.get("duration") == null ? null : node.get("duration").numberValue();
+            if (duration != null && !Double.isFinite(duration)) duration = null;
+            return new PendingEvent(seq.intValue(), kind, episodeId, seconds, duration, at);
+        }
+    }
+
+    /** {@code ContractRead.nonNegativeInt}: a finite, whole, non-negative number (that fits an int). */
+    private static boolean isCount(Double value) {
+        return value != null && Double.isFinite(value) && value >= 0 && value == Math.rint(value) && value <= Integer.MAX_VALUE;
     }
 
     /** One walked continuation hop (plan §5.5): the page applies it on attach, idempotently, and acks it by {@code seq}. */
@@ -186,6 +212,24 @@ public sealed interface EngineCommand permits EngineCommand.Deck, EngineCommand.
             members.add(JsonNode.member("seq", JsonNode.num(seq)));
             members.add(JsonNode.member("at", JsonNode.num(atMs)));
             return new JsonNode.Obj(members);
+        }
+
+        /**
+         * An entry read back from the restore record (card A-27; Swift
+         * {@code AdvanceEntry(restored:)}): {@code seq} and {@code at}, and the hop itself as
+         * {@code $defs.hop} reads it ({@code planSeq} and {@code hopSeq} non-negative integers,
+         * a non-empty {@code nextId}; the rest kept as stored). Null for anything else.
+         */
+        public static AdvanceEntry restored(JsonNode node) {
+            if (node == null || node.members() == null) return null;
+            Double seq = node.get("seq") == null ? null : node.get("seq").numberValue();
+            Double at = node.get("at") == null ? null : node.get("at").numberValue();
+            Double planSeq = node.get("planSeq") == null ? null : node.get("planSeq").numberValue();
+            Double hopSeq = node.get("hopSeq") == null ? null : node.get("hopSeq").numberValue();
+            String nextId = node.get("nextId") == null ? null : node.get("nextId").stringValue();
+            if (!isCount(seq) || at == null || !Double.isFinite(at)) return null;
+            if (!isCount(planSeq) || !isCount(hopSeq) || nextId == null || nextId.isEmpty()) return null;
+            return new AdvanceEntry(seq.intValue(), new EngineContract.Hop(planSeq.intValue(), hopSeq.intValue(), nextId, node), at);
         }
     }
 

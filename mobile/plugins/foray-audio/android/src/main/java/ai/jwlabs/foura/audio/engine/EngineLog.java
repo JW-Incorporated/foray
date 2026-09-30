@@ -13,11 +13,12 @@ import java.util.function.Consumer;
 import java.util.function.DoubleSupplier;
 
 /**
- * {@link EngineSeams.Output} until A-27 (card A-26): every write is a line, kept in a bounded
- * ring (the service's {@code dump}, read by the native-mode scenario runner and by a device pass)
- * and written to logcat under {@link #TAG}. Nothing is persisted: the position store, the restore
- * record and the pending-event log are A-27's {@code EngineStore}, and the page's diagnostics ring
- * is A-28's bridge.
+ * The engine's rows (card A-26): every write is a line, kept in a bounded ring (the service's
+ * {@code dump}, read by the native-mode scenario runner and by a device pass) and written to
+ * logcat under {@link #TAG}. Since A-27 the service's {@link EngineSeams.Output} is
+ * {@link EngineStore}, which persists the position rows and the restore record and writes each
+ * one here as a line too; this class alone is still an {@code Output} for the host's plain-JVM
+ * tests. Nothing here is persisted: the page's durable diagnostics ring is A-28's bridge.
  *
  * <p>Tokens and numbers only, as every engine row is: an item's id may appear, a URL or a title
  * never does (the core's rows already keep to that; this class adds nothing to them).

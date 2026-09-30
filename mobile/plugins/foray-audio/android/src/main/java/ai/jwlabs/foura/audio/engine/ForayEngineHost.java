@@ -10,6 +10,7 @@ import ai.jwlabs.foura.engine.EngineState;
 import ai.jwlabs.foura.engine.EngineTimer;
 import ai.jwlabs.foura.engine.JsonNode;
 import ai.jwlabs.foura.engine.MediaMapping;
+import ai.jwlabs.foura.engine.RestoreRecord;
 import ai.jwlabs.foura.engine.ResumeRules;
 import ai.jwlabs.foura.engine.SessionPolicy;
 import java.util.ArrayDeque;
@@ -94,12 +95,39 @@ public final class ForayEngineHost {
         void onSurface(Surface surface);
     }
 
+    /**
+     * What a cold boot found in the restore record (card A-27): the Swift
+     * {@code ForayEngine.ColdBootOutcome}, token for token, because the {@code restore} row
+     * that says which one is the same row on both platforms.
+     */
+    public enum ColdBootOutcome {
+        /** A record with a queue: the session is painted paused at the recorded position, nothing activated. */
+        PAINTED("painted"),
+        /** No record, or one this build cannot trust: a play answers {@code noActionableNowPlayingItem}. */
+        NO_RECORD("none"),
+        /** {@code {mode: "relinquished"}} (plan §4.6 step 6): the legacy lane owns playback. */
+        RELINQUISHED("relinquished"),
+        /** A Foray record (A-40's), or a queue whose items this build cannot read. */
+        UNPLAYABLE("unplayable"),
+        /** An input was already handled, or the engine is not started or is torn down: the core is never replaced. */
+        LATE("late");
+
+        public final String token;
+
+        ColdBootOutcome(String token) {
+            this.token = token;
+        }
+    }
+
     private final EngineSeams seams;
-    private final EngineCore core;
+    /** Replaced once, by {@link #coldBoot}, before any input; never after. */
+    private EngineCore core;
     private final ArrayDeque<EngineInput> inbox = new ArrayDeque<>();
     private int depth;
     private boolean started;
     private boolean tornDown;
+    /** An input has been handled: from then on the core is the one the inputs built, and a cold boot is late. */
+    private boolean handledAny;
     private final Map<EngineTimer, EngineSeams.Cancellable> timers = new EnumMap<>(EngineTimer.class);
     /** The open grace span's reason and start (monotonic), for the {@code grace} rows' heldMs. */
     private EngineCommand.GraceReason graceReason;
@@ -131,6 +159,11 @@ public final class ForayEngineHost {
 
     public boolean isTornDown() {
         return tornDown;
+    }
+
+    /** Whether any input has reached the core yet (a cold boot after one is {@link ColdBootOutcome#LATE}). */
+    public boolean hasHandledInput() {
+        return handledAny;
     }
 
     /** How many times the session seam was asked to activate. */
@@ -172,6 +205,51 @@ public final class ForayEngineHost {
         SurfaceListener listener = surfaceListener;
         surfaceListener = null;
         if (listener != null) listener.onSurface(surface);
+    }
+
+    // ---- the cold path (A-27)
+
+    /**
+     * Plan §4.5, the cold path, the JVM twin of the Swift {@code ForayEngine.coldBoot} (NE-24):
+     * rebuild the core from the private restore record, BEFORE any input, and hand it the queue
+     * as {@code lifecycle(coldLaunch(autoplay: false))}, so the session's commands and its
+     * paused entry (the recorded item at the recorded position) are published with no
+     * activation and nothing sent to the deck (S-3). The play that follows (a car's, through
+     * Media3's playback resumption) is an ordinary remote press: it activates once and loads at
+     * the recorded offset.
+     *
+     * <p>Writes one {@code restore kind=cold-boot record=<outcome>} row (with {@code index} and
+     * {@code items} when it painted), except when it is late: a boot after the first input
+     * never replaces the core an input is already driving, and says nothing.
+     */
+    public ColdBootOutcome coldBoot(RestoreRecord record) {
+        ColdBootOutcome outcome;
+        EngineCore.ColdRestore restored = null;
+        if (!started || tornDown || handledAny || depth > 0) {
+            outcome = ColdBootOutcome.LATE;
+        } else if (record == null) {
+            outcome = ColdBootOutcome.NO_RECORD;
+        } else if (record.mode() == RestoreRecord.Mode.RELINQUISHED) {
+            outcome = ColdBootOutcome.RELINQUISHED;
+        } else {
+            restored = EngineCore.restoring(record, core.config());
+            outcome = restored == null ? ColdBootOutcome.UNPLAYABLE : ColdBootOutcome.PAINTED;
+        }
+        if (outcome != ColdBootOutcome.LATE) {
+            List<JsonNode.Member> fields = new ArrayList<>();
+            fields.add(JsonNode.member("kind", JsonNode.str("cold-boot")));
+            fields.add(JsonNode.member("record", JsonNode.str(outcome.token)));
+            if (restored != null) {
+                fields.add(JsonNode.member("index", JsonNode.num(restored.index())));
+                fields.add(JsonNode.member("items", JsonNode.num(restored.queue().size())));
+            }
+            seams.output.diag(new EngineCommand.DiagEntry("restore", fields));
+        }
+        if (restored != null) {
+            core = restored.core();
+            handle(new EngineInput.Lifecycle(new EngineInput.LifecycleEvent.ColdLaunch(restored.queue(), restored.index(), false)));
+        }
+        return outcome;
     }
 
     // ---- inputs
@@ -236,6 +314,7 @@ public final class ForayEngineHost {
     }
 
     private List<String> runTurn(EngineInput input) {
+        handledAny = true;
         depth += 1;
         List<String> failures = new ArrayList<>();
         try {

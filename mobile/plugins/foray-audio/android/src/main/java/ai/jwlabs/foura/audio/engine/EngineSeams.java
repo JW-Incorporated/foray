@@ -10,8 +10,8 @@ import ai.jwlabs.foura.engine.Rows;
  * (ForayAudioPlugin/Engine/Seams.swift, NE-15h), cut down to what an Android episode needs.
  *
  * <p>The production conformers are the service's ({@code ForayPlaybackService}): the
- * {@link ExoDeck}, a {@link HandlerTiming} on the main looper, an {@link EngineLog}, and a session
- * that answers for the Media3 session. A test stands a recorder behind each one, so the host's
+ * {@link ExoDeck}, a {@link HandlerTiming} on the main looper, an {@link EngineStore} (over an
+ * {@link EngineLog}), and a session that answers for the Media3 session. A test stands a recorder behind each one, so the host's
  * turn discipline runs on a plain JVM.
  *
  * <p>WHAT IS NOT HERE, AND WHERE IT GOES. iOS also has a background-task seam (grace spans
@@ -68,9 +68,9 @@ public final class EngineSeams {
     }
 
     /**
-     * Where the core's writes go. Until A-27 (EngineStore) every one is a row in the ring and
-     * logcat, and nothing is persisted: the restore record, the position store and the
-     * pending-event log are that card's.
+     * Where the core's writes go: {@link EngineStore} in the service (A-27: the shared position
+     * rows and the restore record, committed before the write returns, and every write a row in
+     * the ring), {@link EngineLog} alone in the host's plain-JVM tests.
      */
     public interface Output {
         void writePosition(EngineCommand.PositionWrite write);
