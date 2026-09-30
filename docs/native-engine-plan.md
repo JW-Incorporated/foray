@@ -1880,7 +1880,7 @@ Read first: `CLAUDE.md`, this deck, the Tier 2 requirements, `docs/ios-native-pl
   - `player/queue-manager.js` `_warmNextSegment`: `warmsAcross` replaces the `seamGapSec(seam) > 0` gate
   - `player/seam-gap.js`: its "warming follows the beat" coupling note now points at `deck-policy.js`
   - `player/parity/reference-engine.js`: `WarmingBackend` warms on a natural end too
-  - `player/parity/fixtures/prepare/*` — as built, a sibling family `player/parity/fixtures/prepare-narration/` (`seams.json`: authored engine seams; `policy.json`: `warmsAcross` and the duration window). `prepare` is charged to `foray`, which the M2 build advertises and which may owe nothing, so the new ids could not be pending there; the family is parked under the unadvertised `remainder` gate, keeps its `n.*` tokens (`NATIVE_TOKEN_FAMILIES`, JS, Swift and Java), and NE-45s moves it to `foray` or folds it into `prepare`. A same-source prepare on the standby is written `n.prepare-seek:<id>@<s>`.
+  - `player/parity/fixtures/prepare/*` — as built, a sibling family `player/parity/fixtures/prepare-narration/` (`seams.json`: authored engine seams; `policy.json`: `warmsAcross` and the duration window). `prepare` is charged to `foray`, which the M2 build advertises and which may owe nothing, so the new ids could not be pending there; the family is parked under the unadvertised `remainder` gate, keeps its `n.*` tokens (`NATIVE_TOKEN_FAMILIES`, JS, Swift and Java), and NE-45s moved it to `foray`. A same-source prepare on the standby is written `n.prepare-seek:<id>@<s>`.
   - `queue-manager.test.js`: the two warming tests that assert the old rule ("a bridged seam is not warmed", "warming follows the SAME rule as the beat") are re-authored to the new rule
   - `deck-policy.test.js`
   - the books: `swift-pending.json` (`--port-card NE-45s`) and `jvm-pending.json` (`prepare` stays owed whole to A-25; once A-25 has ported it, new ids are `cases` owed to A-62)
@@ -1919,6 +1919,7 @@ Read first: `CLAUDE.md`, this deck, the Tier 2 requirements, `docs/ios-native-pl
     - it gets no `narrationPulse`, because the deck has a position.
   - A prepared line whose file fails falls back to speech at its turn, exactly as a cold one does (NE-37c's fresh-token rule).
   - Opens with `hold`.
+  - *As built:* `prepare-narration` passes in Swift (`PrepareNarrationFamily`: the `deck-policy.js` half through the deck-pair readers plus `warmsAcross`, the seams through the engine-target driver, whose standby now remembers its source and whose window opens from a duration and at a load's first play) and moved from `remainder` to `foray`. Every seam packs one row (`EngineCore.packSeamRow`, from a `SeamMark` stamped at the item's end): `from`, `to` and `prepare=hit|miss|none` are appended after the old fields. A rendered line's end in the background holds the same `seam`/`prepare-miss` grace a clip's out-point does. The DeckPair's `prefetch` row gains `reuse` (a same-source prepare on the demoted deck) and `class`. A spoken line followed by a clip from the same source as the clip before it reads `prepare=none` (the playing deck seeks the source it holds), not a miss.
 - **Acceptance:**
   - `prepare` passes in Swift, with nothing pending.
   - Simulator XCTests on local files:

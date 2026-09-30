@@ -230,14 +230,18 @@ final class ForayTapeTests: XCTestCase {
         let hit = try XCTUnwrap(seam(.prepared(token: 0, hit: true, stages: [.attach, .duration, .readiness, .seek, .preroll, .ready])))
         XCTAssertTrue(hit.prepared)
         XCTAssertEqual(hit.stages, [.attach, .duration, .readiness, .seek, .preroll, .ready, .play])
+        XCTAssertEqual([hit.from, hit.to], [.clip, .clip], "NE-45s: the row names what the seam joins")
+        XCTAssertEqual(hit.prepare, .hit)
 
         let miss = try XCTUnwrap(seam(.prepared(token: 0, hit: false, stages: [.attach])))
         XCTAssertFalse(miss.prepared, "a prepare asked is not a prepare hit")
         XCTAssertEqual(miss.stages, [.attach, .play])
+        XCTAssertEqual(miss.prepare, .miss)
 
         let single = try XCTUnwrap(seam(nil))
         XCTAssertTrue(single.prepared, "one deck: the row keeps its pre-NE-32 meaning (the item was asked for)")
         XCTAssertEqual(single.stages, [.ready, .play])
+        XCTAssertEqual(single.prepare, .unprepared, "no standby deck said hit or miss: nothing was prepared")
 
         // A report about another load is dropped.
         let stale = try XCTUnwrap(seam(.prepared(token: -7, hit: false, stages: [.deadline])))

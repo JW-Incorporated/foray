@@ -90,6 +90,12 @@ final class ParityFamilyTests: XCTestCase {
     func testManagerForayFamily() { assertParityFamily("manager-foray", requireRunner: true) }
     func testPrepareFamily() { assertParityFamily("prepare", requireRunner: true) }
 
+    /// Recorded by NE-45j, ported by NE-45s: the prepare family's seams with
+    /// a narration line in them (a rendered line is an ordinary deck item; the
+    /// clip after a spoken line is prepared at the line's start) and
+    /// `warmsAcross`. It must RUN, with nothing pending.
+    func testPrepareNarrationFamily() { assertParityFamily("prepare-narration", requireRunner: true) }
+
     /// Ported by NE-33: the default voice (the Samantha ruling) and the
     /// pronunciation lexicon's matcher (`SpeechRules`), and what reaches the
     /// synthesiser (1x, the chosen voice) through `EngineCore`. Each must RUN.

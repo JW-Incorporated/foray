@@ -71,6 +71,11 @@ import os
 /// The same watch opens the PREFETCH WINDOW (`.prepareWindow`) with one more
 /// one-shot timer, `PREFETCH_LEAD_SEC` of wall clock before the boundary, but
 /// only when a DeckPair has a standby deck to prepare (`prepareWindowAvailable`).
+/// An item with NO out-point (a rendered narration line, an episode left to
+/// its natural end) has a boundary too: its duration (NE-45s,
+/// `DeckPolicy.windowBoundarySec`), so the clip after a rendered line is
+/// prepared while the line plays, and a line shorter than the lead opens its
+/// window at its first play.
 ///
 /// ── SAME SOURCE IS A SEEK, NOT A LOAD (`DeckPolicy.sameSourceIsSeek`) ─────
 ///
@@ -1432,7 +1437,8 @@ final class AVDeck: DeckDriving {
 
     /// The prefetch window's one timer (`DeckPolicy.prefetchWindowDelayMs`),
     /// re-derived after every watch step: once per boundary, only while this
-    /// deck is audible toward an armed boundary, and only with a standby deck.
+    /// deck is audible toward a boundary (an armed out-point, or the item's
+    /// duration when it has none), and only with a standby deck.
     private func rearmPrepareWindow() {
         windowTimer?.cancel()
         windowTimer = nil
@@ -1441,7 +1447,7 @@ final class AVDeck: DeckDriving {
                 available: prepareWindowAvailable, outPointSec: watch.outPointSec,
                 armed: watch.armed && !watch.fired, paused: !watch.playing, atSec: playheadSec,
                 rate: watch.rate, leadSec: EngineConstants.HtmlAudioBackend.prefetchLeadSec,
-                alreadyOpened: windowOpened) else { return }
+                alreadyOpened: windowOpened, durationSec: itemDurationSec) else { return }
         if delay <= 0 {
             openPrepareWindow()
             return

@@ -22,9 +22,10 @@ public struct EngineConfig: Equatable {
     /// NE-32's DeckPair: two decks, the standby one prepared and prerolled at
     /// the next segment's in-point while the current one is audible. OFF by
     /// default; the shipping boot turns it on since NE-37 (plan §4.3). The
-    /// core decides nothing on it (it prepares when the
-    /// deck opens the prefetch window, and a single deck never opens one); the
-    /// host reads it to choose which deck it builds.
+    /// core decides nothing on it (it prepares when the deck opens the
+    /// prefetch window, which a single deck never opens, and at a spoken
+    /// line's start, NE-45s, which a single deck ignores); the host reads it
+    /// to choose which deck it builds.
     public var deckPairEnabled: Bool
     /// NE-31s, OQ-3 (founder, 2026-09-24: "1x for now, but maybe we change
     /// later"): a spoken line is uttered at `NARRATION_RATE` whatever the
@@ -1107,11 +1108,18 @@ public struct EngineCore {
         case .seeked: break
         case let .prepareWindow(token):
             guard token == state.loadedToken else { return }
-            warmNextSegment()
+            warmNextSegment(at: "window")
         case let .prepared(token, hit, stages):
             // Only the load in flight is described; a stale report is dropped.
-            guard state.pendingLoad?.token == token else { return }
+            guard let pending = state.pendingLoad, pending.token == token else { return }
             state.deckPrepare = DeckPrepareReport(token: token, hit: hit, stages: stages)
+            // NE-45s: the seam this load crosses says hit or miss, whichever
+            // way the item then becomes audible (a line whose prepared file
+            // failed is still a miss when it is spoken instead).
+            if var mark = state.seamMark, mark.toItemId == pending.itemId {
+                mark.prepare = hit ? .hit : .miss
+                state.seamMark = mark
+            }
         }
     }
 
@@ -1143,6 +1151,10 @@ public struct EngineCore {
         endSpokenLine()
         if pending.bridge {
             // A rendered bridge plays the moment it lands (`_playTransitionBridge`).
+            // NE-45s: it is a deck seam like any other, so it packs a seam row.
+            let report = state.deckPrepare.flatMap { $0.token == token ? $0 : nil }
+            state.deckPrepare = nil
+            packSeamRow(armedAt: nil, report: report)
             return startPlayback()
         }
         guard config.forayTapeEnabled, let item = state.queue.first(where: { $0.id == pending.itemId }) else {
@@ -1293,7 +1305,19 @@ public struct EngineCore {
             // A bridge marks its own seam, so no beat; but narration -> segment
             // DOES get the jingle (§13): the founder's "between podcasts" mark
             // comes after the narrator's line, before the next tape starts.
-            if let next { armInterlude(from: state.currentItem, to: next.item) }
+            if let next {
+                armInterlude(from: state.currentItem, to: next.item)
+                if config.forayTapeEnabled, let from = state.currentItem {
+                    markSeam(from: from, to: next.item)
+                    // NE-45s: a RENDERED line's end is a deck seam, and in the
+                    // background it holds the same span a clip's out-point
+                    // does (a spoken line's end already opened
+                    // `narration-handover`, and a span is never begun twice).
+                    if state.backgrounded {
+                        beginGrace(state.preparedItemId == next.item.id ? .seam : .prepareMiss)
+                    }
+                }
+            }
             dispatch(.itemEnded(next: next?.item.ref, bridged: false))
         case .playing:
             // THE OUT-POINT AND A NATURAL END ARE ONE END: the deck reports
@@ -1307,6 +1331,7 @@ public struct EngineCore {
                     // next load in this same turn, and the whole point is for
                     // that load to happen inside the beat.
                     armSeamGap(from: from, to: next.item, bridged: bridged)
+                    markSeam(from: from, to: next.item)
                     // And the jingle in the same instant, for the same reason
                     // (§13), after the beat so its deadline is the floor.
                     armInterlude(from: from, to: next.item)
@@ -1893,6 +1918,7 @@ public struct EngineCore {
         state.startingHop = nil
         state.closed = false
         state.preparedItemId = nil
+        state.seamMark = nil
         state.skippedSegments = 0
         state.forayFinishedWritten = false
         state.forayThrottle.clear(forayId: args.forayId)
@@ -1932,26 +1958,51 @@ public struct EngineCore {
         forayScrub(to: target, source: source)
     }
 
-    /// `_warmNextSegment`: the deck says the boundary is the prefetch lead
-    /// away. Name the item that boundary will advance to and its in-point, so
-    /// the standby deck can load it while this one is still audible. Only a
-    /// running item approaches a boundary, and only the transitions that get
-    /// a beat are warmed (the beat's own rule, CALLED, so the two cannot
-    /// drift): a Foray's last item prepares nothing, since a Foray never
-    /// chains.
-    private mutating func warmNextSegment() {
-        guard config.forayTapeEnabled, case .playing = state.player, let from = state.currentItem else { return }
-        guard let next = nextItem(from: cursor, skipBridges: false) else {
-            return diag("prepare", [JSONMember("kind", .string("none"))])
+    /// `_warmNextSegment(at)`: name the item the next boundary will advance
+    /// to and its in-point, so the standby deck can load it while this one is
+    /// still audible. Two callers (queue-manager.js §11, NE-45j; card NE-45s):
+    ///
+    ///   - the deck's `.prepareWindow` (`at: "window"`), the prefetch lead
+    ///     before the boundary: the out-point, or the file's end for an item
+    ///     with none (a rendered line, an episode's natural end);
+    ///   - the START of a SPOKEN line (`at: "line-start"`), because the
+    ///     synthesiser is audible and the deck is idle.
+    ///
+    /// WARMING FOLLOWS THE FILE, NOT THE BEAT (`DeckPolicy.warmsAcross`): the
+    /// next item is prepared when it has a file (a clip, or a rendered line),
+    /// whatever the beat says. It used to be `SeamGap.gapSec(...) > 0`, which
+    /// warmed only clip -> clip seams and left clip -> line -> clip two cold
+    /// loads (the M2 leftover). A spoken line has no file and prepares
+    /// nothing; a Foray's last item prepares nothing, since a Foray never
+    /// chains. Only an AUDIBLE item approaches a boundary: a playing one, or a
+    /// line bridging a seam (`transitioning`), and what follows it is counted
+    /// the way `itemEnded` counts it from each state.
+    private mutating func warmNextSegment(at: String) {
+        guard config.forayTapeEnabled, let from = state.currentItem else { return }
+        let bridging: Bool
+        switch state.player {
+        case .playing: bridging = false
+        case .transitioning: bridging = true
+        case .idle, .loadingItem, .interrupted, .ended: return
         }
-        let sec = SeamGap.gapSec(from: from.seam, to: next.item.seam, bridged: next.item.kind == .tts,
-                                 cause: SeamGap.autoAdvance, gapSec: config.seamGapSec)
-        guard sec > 0 else {
-            return diag("prepare", [JSONMember("kind", .string("skipped")), JSONMember("item", .string(next.item.id))])
+        guard let next = nextItem(from: cursor, skipBridges: bridging) else {
+            return diag("prepare", [JSONMember("kind", .string("none")), JSONMember("where", .string(at))])
+        }
+        guard DeckPolicy.warmsAcross(from: from, to: next.item) else {
+            return diag("prepare", [JSONMember("kind", .string("skipped")), JSONMember("item", .string(next.item.id)),
+                                    JSONMember("where", .string(at))])
         }
         state.preparedItemId = next.item.id
         deckCommand(.prepare(itemId: next.item.id, url: next.item.audioUrl, startSec: next.item.bounds?.startSec ?? 0,
                              deadlineClass: DeckDeadlineClass(next.item)))
+    }
+
+    /// NE-45s: the seam an item's end just crossed, remembered until the next
+    /// item is audible, so every seam (clip -> clip, clip -> line, line -> clip)
+    /// packs ONE row with its kinds and whether the standby was ready.
+    private mutating func markSeam(from: EngineItem, to: EngineItem) {
+        state.seamMark = SeamMark(from: SeamRow.ItemKind(from), to: SeamRow.ItemKind(to), toItemId: to.id,
+                                  endedAtMono: now.monoMs)
     }
 
     // MARK: the seam beat (queue-manager.js §10)
@@ -2034,16 +2085,40 @@ public struct EngineCore {
         // prepare HIT); without one the row says what it always said.
         let report = state.deckPrepare.flatMap { $0.token == state.loadedToken ? $0 : nil }
         state.deckPrepare = nil
-        if let armedAt {
-            let row = SeamRow(observedGapMs: now.monoMs - armedAt, askedGapMs: state.gapAskedMs,
-                              prepared: report?.hit
-                                  ?? (state.preparedItemId != nil && state.preparedItemId == state.loadedId),
-                              grace: state.grace != nil, bgRemainingMs: now.bgRemainingMs.map { $0.rounded() },
-                              stages: report.map { $0.stages + [.play] } ?? [.ready, .play])
-            out.append(.diag(row.entry))
-        }
+        packSeamRow(armedAt: armedAt, report: report)
         stopSilence("landed")
         dispatch(.itemLoaded)
+        // §11 (NE-45j): a SPOKEN line leaves the deck idle, so what follows it
+        // is prepared now, at the line's start (`_loadItem`).
+        if case .playing = state.player, let line = state.narration, line.itemId == state.loadedId {
+            warmNextSegment(at: "line-start")
+        }
+    }
+
+    /// The packed `seam` row (plan §13 item 37; NE-45s), written when the item
+    /// after a seam becomes audible: a beat's seam (`armedAt`, stamped at the
+    /// out-point) or any seam `markSeam` remembered, a line's included, which
+    /// has no beat and so no row before NE-45s. The row names the seam's kinds
+    /// (`from`, `to`: clip or line) and `prepare`: `hit` (the standby was
+    /// promoted), `miss` (it was prepared and the item still loaded cold) or
+    /// `none` (nothing was prepared: one deck, a spoken line, a same-source
+    /// seek on the playing deck).
+    private mutating func packSeamRow(armedAt: Double?, report: DeckPrepareReport?) {
+        let mark = state.seamMark.flatMap { $0.toItemId == state.loadedId ? $0 : nil }
+        state.seamMark = nil
+        guard let start = armedAt ?? mark?.endedAtMono else { return }
+        let spoken = state.narration.map { $0.itemId == state.loadedId } ?? false
+        var row = SeamRow(observedGapMs: now.monoMs - start, askedGapMs: armedAt != nil ? state.gapAskedMs : 0,
+                          prepared: report?.hit
+                              ?? (!spoken && state.preparedItemId != nil && state.preparedItemId == state.loadedId),
+                          grace: state.grace != nil, bgRemainingMs: now.bgRemainingMs.map { $0.rounded() },
+                          stages: report.map { $0.stages + [.play] } ?? (spoken ? [.play] : [.ready, .play]))
+        if let mark {
+            row.from = mark.from
+            row.to = mark.to
+            row.prepare = mark.prepare ?? .unprepared
+        }
+        out.append(.diag(row.entry))
     }
 
     /// `_cutSeamGap(why)`: EVERY transport action ends a running beat (the
@@ -2056,6 +2131,8 @@ public struct EngineCore {
         stopInterlude(why)
         stopSilence(why)
         setGapDeadline(nil)
+        // NE-45s: the seam the listener moved during is not a seam any more.
+        state.seamMark = nil
         guard state.gapParkedToken != nil, !state.gapCut else { return }
         state.gapCut = true
         if state.seamTimerArmed {
@@ -2251,7 +2328,16 @@ public struct EngineCore {
         }
         // The line is audible: a span covering its start is over.
         if state.grace != nil { endGrace(.playing) }
-        if pending.bridge { return }
+        if pending.bridge {
+            // NE-45s: a spoken bridge is a seam's audible start (its row says
+            // `to=line prepare=none`, or `miss` for a rendered line whose
+            // prepared file failed), and the deck is idle while it is spoken,
+            // so the clip after it is prepared NOW (`_playTransitionBridge`,
+            // and `_speakInsteadMidLine` for a file that failed while sounding).
+            packSeamRow(armedAt: nil, report: nil)
+            warmNextSegment(at: "line-start")
+            return
+        }
         landed(item, token: pending.token)
     }
 

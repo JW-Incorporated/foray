@@ -96,8 +96,37 @@ public struct DiagRow: Equatable {
 ///                  foreground, where UIKit reports an unbounded value)
 ///   stages         the load stages the standby deck reached, in order
 ///                  (`Vocabulary.Stage`), so a miss says WHERE it missed
+///   from, to       (NE-45s) what the seam joins: `clip` or `line` (a
+///                  narration line, rendered or spoken). Absent on a row from
+///                  before NE-45s, and on a beat cut short by the listener
+///   prepare        (NE-45s) `hit` (the standby deck was promoted), `miss`
+///                  (it was prepared and the item still loaded cold), `none`
+///                  (nothing was prepared: one deck, a spoken line, the same
+///                  source seeked on the playing deck). engine-report.mjs's
+///                  `seam-kinds` verdict reads the three.
 public struct SeamRow: Equatable {
     public static let kind = "seam"
+
+    /// What a seam joins (`from=`, `to=`).
+    public enum ItemKind: String, Equatable, Sendable, CaseIterable {
+        case clip
+        case line
+
+        /// A narration item (`kind: "tts"`) is a line, rendered or spoken;
+        /// anything else is a clip.
+        public init(_ item: EngineItem) {
+            self = item.kind == .tts ? .line : .clip
+        }
+    }
+
+    /// Whether the standby deck had the item ready (`prepare=`).
+    public enum Prepare: String, Equatable, Sendable, CaseIterable {
+        case hit
+        case miss
+        /// Not `none`: a case of that name reads as `Optional.none` wherever
+        /// a `Prepare?` is expected.
+        case unprepared = "none"
+    }
 
     public var observedGapMs: Double?
     public var askedGapMs: Double
@@ -105,19 +134,26 @@ public struct SeamRow: Equatable {
     public var grace: Bool
     public var bgRemainingMs: Double?
     public var stages: [Vocabulary.Stage]
+    public var from: ItemKind?
+    public var to: ItemKind?
+    public var prepare: Prepare?
 
     public init(observedGapMs: Double?, askedGapMs: Double, prepared: Bool, grace: Bool,
-                bgRemainingMs: Double?, stages: [Vocabulary.Stage]) {
+                bgRemainingMs: Double?, stages: [Vocabulary.Stage],
+                from: ItemKind? = nil, to: ItemKind? = nil, prepare: Prepare? = nil) {
         self.observedGapMs = observedGapMs
         self.askedGapMs = askedGapMs
         self.prepared = prepared
         self.grace = grace
         self.bgRemainingMs = bgRemainingMs
         self.stages = stages
+        self.from = from
+        self.to = to
+        self.prepare = prepare
     }
 
     public var fields: [JSONMember] {
-        [
+        var members = [
             JSONMember("observedGapMs", Rows.finiteOrNull(observedGapMs)),
             JSONMember("askedGapMs", .number(askedGapMs)),
             JSONMember("prepared", .bool(prepared)),
@@ -125,6 +161,10 @@ public struct SeamRow: Equatable {
             JSONMember("bgRemainingMs", Rows.finiteOrNull(bgRemainingMs)),
             JSONMember("stages", .array(stages.map { JSONNode.string($0.rawValue) }))
         ]
+        if let from { members.append(JSONMember("from", .string(from.rawValue))) }
+        if let to { members.append(JSONMember("to", .string(to.rawValue))) }
+        if let prepare { members.append(JSONMember("prepare", .string(prepare.rawValue))) }
+        return members
     }
 
     public func row(seq: Int, wallMs: Double, monoMs: Double) -> DiagRow {
@@ -155,5 +195,9 @@ public struct SeamRow: Equatable {
             guard let token = try? Vocabulary.admit(node.stringValue, into: "stage") else { return nil }
             return Vocabulary.Stage(rawValue: token)
         }
+        // NE-45s's fields are optional: a row from before them still reads.
+        self.from = row[field: "from"]?.stringValue.flatMap(ItemKind.init(rawValue:))
+        self.to = row[field: "to"]?.stringValue.flatMap(ItemKind.init(rawValue:))
+        self.prepare = row[field: "prepare"]?.stringValue.flatMap(Prepare.init(rawValue:))
     }
 }

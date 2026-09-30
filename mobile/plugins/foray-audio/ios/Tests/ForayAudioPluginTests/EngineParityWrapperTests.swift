@@ -82,6 +82,8 @@ final class EngineParityWrapperTests: XCTestCase {
     func testDeckFamily() { assertParityFamily("deck", requireRunner: true) }
     func testManagerForayFamily() { assertParityFamily("manager-foray", requireRunner: true) }
     func testPrepareFamily() { assertParityFamily("prepare", requireRunner: true) }
+    /// NE-45s: the prepare seams with a narration line in them.
+    func testPrepareNarrationFamily() { assertParityFamily("prepare-narration", requireRunner: true) }
 
     /// NE-33: the default voice, the lexicon and the speech rate as the app links them.
     func testDefaultVoiceFamily() { assertParityFamily("default-voice", requireRunner: true) }

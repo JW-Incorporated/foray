@@ -31,8 +31,13 @@ import ForayEngineCore
 /// `runEngineScenario`) always runs on the manual clock and drives the core
 /// through the CONTRACT (engineSend payloads), with a standby deck that
 /// prepares and hands over as reference-engine.js's WarmingBackend does; its
-/// op log holds only the deck's tokens and `n.prepare:` / `n.handover:`,
-/// which the prepare family asserts rather than strips.
+/// op log holds only the deck's tokens and `n.prepare:` / `n.prepare-seek:` /
+/// `n.handover:`, which the prepare families assert rather than strip. Since
+/// NE-45s the standby deck REMEMBERS its source (a handover demotes the
+/// outgoing deck without dropping what it holds, so a prepare of that source
+/// is a same-source seek, `n.prepare-seek:`), the window opens for an item
+/// with no out-point from its duration, and a load already inside its window
+/// at its first play opens it then (WarmingBackend `_windowAtStart`).
 ///
 /// THE DRIVER ALSO CHECKS WHAT NO OP LOG CAN SHOW (plan §4.4, card NE-14s):
 ///   - the audible-start invariant on EVERY turn (`SessionPolicy
@@ -195,6 +200,18 @@ final class ScenarioWorld {
     /// The standby deck (reference-engine.js WarmingBackend), engine target only.
     var warm: DeckPolicy.Warm?
     var currentUrl: String?
+    /// WarmingBackend `_standbyUrl` (NE-45j): the source the standby deck
+    /// holds, what it last prepared or what the last handover demoted onto it.
+    var standbyUrl: String?
+    /// WarmingBackend `_loadCount` / `_windowCheckedFor`: one automatic window
+    /// check per load, at its first play.
+    var loadCount = 0
+    var windowCheckedFor: Int?
+    /// WarmingBackend `rate`: the deck's own, for the window's wall clock.
+    var deckRate: Double = 1
+    /// A window that opened at a play, fed to the core when that turn is over
+    /// (the JS calls it from inside `play()`, after the reducer moved).
+    var windowAtStart: DeckToken?
     /// The core's timers that are armed, and when each is due (monotonic).
     var timerDue: [EngineTimer: Double] = [:]
     /// The synthesiser and the jingle player (NE-31s), nil when not wired.
@@ -285,6 +302,9 @@ final class ScenarioWorld {
             throw HarnessError("E_BAD_CASE", "view \"narrationTicks\" needs setup.narrationTicks = true")
         }
         switch setup["tts"] {
+        // reference-engine.js always wires fakeTts (`this.tts = fakeTts({log})`),
+        // so on the engine target a spoken line is spoken without asking.
+        case .undefined where target == "engine": narrator = FakeNarrator(shape: .object([:]))
         case .undefined, .null, .bool(false): narrator = nil
         case .bool(true): narrator = FakeNarrator(shape: .object([:]))
         case .object: narrator = FakeNarrator(shape: setup["tts"])
@@ -760,9 +780,11 @@ final class ScenarioWorld {
         case "ended", "error", "time", "duration":
             try deck(fields)
         case "window":
-            // WarmingBackend `openPrefetchWindow`: only an armed out-point on
-            // an audible deck has a boundary to approach.
-            if deckOutPoint != nil && reading.audible, let token = deckToken {
+            // WarmingBackend `openPrefetchWindow`: an audible deck with a
+            // boundary to approach: an out-point or, for an item with none (a
+            // rendered line, an episode's natural end), its duration (NE-45j).
+            let hasDuration = reading.durationSec.map { $0.isFinite && $0 > 0 } ?? false
+            if (deckOutPoint != nil || hasDuration) && reading.audible, let token = deckToken {
                 feed(.deck(.prepareWindow(token: token)))
             }
         case "stall":
@@ -897,6 +919,12 @@ final class ScenarioWorld {
         for violation in SessionPolicy.audibleStartViolations(sessionAtEntry: entry, turn: names) {
             broke("audible-start:\(violation.cmd)@\(entry.rawValue)")
         }
+        // WarmingBackend `_windowAtStart`: a play that found its item already
+        // inside the window opens it, once per load, as its own event.
+        if let token = windowAtStart {
+            windowAtStart = nil
+            feed(.deck(.prepareWindow(token: token)))
+        }
     }
 
     static func activationRequest(_ command: EngineCommand) -> Int? {
@@ -1027,9 +1055,15 @@ final class ScenarioWorld {
                 // and in-point warm is a handover, said BEFORE the load.
                 let offset = JSMath.round(DeckPolicy.warmOffset(startSec))
                 let promotion = DeckPolicy.warmPromotion(warm: warm, url: url, offsetSec: offset, canPlay: true, atSec: offset)
-                if promotion == .promote { ops.append("n.handover:\(itemId)@\(ScenarioWorld.number(offset))") }
+                if promotion == .promote {
+                    ops.append("n.handover:\(itemId)@\(ScenarioWorld.number(offset))")
+                    // The roles swap: the outgoing deck, and what it holds, is
+                    // the standby now (`handoverSteps` keeps the buffer).
+                    standbyUrl = currentUrl
+                }
                 warm = nil
                 currentUrl = url
+                loadCount += 1
             }
             // A load re-points the element: paused, at the offset, no boundary.
             deckItemId = itemId
@@ -1052,6 +1086,7 @@ final class ScenarioWorld {
             trackAudible()
             ops.append("play")
             if let token = deckToken { confirmations.append(token) }
+            if engineTarget { checkWindowAtStart() }
         case .pause:
             reading.audible = false
             ops.append("pause")
@@ -1059,6 +1094,7 @@ final class ScenarioWorld {
             reading.positionSec = toSec
             ops.append("seek:\(ScenarioWorld.rounded(toSec))")
         case let .setRate(rate):
+            if rate.isFinite && rate > 0 { deckRate = rate }
             ops.append("rate:\(ScenarioWorld.number(rate))")
         case let .setOutPoint(sec):
             deckOutPoint = sec
@@ -1079,8 +1115,12 @@ final class ScenarioWorld {
             case .already:
                 warm?.itemId = itemId
             case .start:
+                // NE-45j: preparing the source the standby already holds is a
+                // same-source SEEK there (AVDeck `sameSourceIsSeek`), not a fetch.
+                let seek = standbyUrl == url
                 warm = DeckPolicy.Warm(itemId: itemId, url: url ?? "", offsetSec: offset, ready: true, failed: false)
-                ops.append("n.prepare:\(itemId)@\(ScenarioWorld.number(offset))")
+                standbyUrl = url
+                ops.append("\(seek ? "n.prepare-seek" : "n.prepare"):\(itemId)@\(ScenarioWorld.number(offset))")
             case .unavailable, .noUrl, .sameEpisode:
                 break
             }
@@ -1118,6 +1158,19 @@ final class ScenarioWorld {
         case .pause, .seek, .setRate, .setOutPoint, .prepare:
             native("n.preview.\(command)")
         }
+    }
+
+    /// WarmingBackend `_windowAtStart`, at a play: once per load, an item
+    /// already inside its window (shorter than the lead, or started within
+    /// it) opens it now. Fed when this turn is over (`feed`).
+    private func checkWindowAtStart() {
+        guard windowCheckedFor != loadCount else { return }
+        windowCheckedFor = loadCount
+        let opens = DeckPolicy.prefetchWindowOpens(
+            available: true, outPointSec: deckOutPoint, armed: deckOutPoint != nil, paused: false,
+            atSec: reading.positionSec ?? 0, rate: deckRate, leadSec: EngineConstants.HtmlAudioBackend.prefetchLeadSec,
+            durationSec: reading.durationSec)
+        if opens, let token = deckToken { windowAtStart = token }
     }
 
     /// A load lands (or fails). A superseded load's answer is still delivered,
