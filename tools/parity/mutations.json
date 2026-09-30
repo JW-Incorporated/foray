@@ -75,7 +75,7 @@
         "replace": "    if (false) {"
       },
       "jsTest": { "suite": "queue-manager", "name": "a skip's load that a newer skip already replaced is dropped, not run after it (player-core-9)" },
-      "family": "manager-remainder",
+      "family": "manager-await",
       "recordedBy": "NE-39j"
     }
   }

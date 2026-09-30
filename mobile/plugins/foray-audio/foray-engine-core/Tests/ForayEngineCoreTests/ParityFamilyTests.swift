@@ -107,6 +107,11 @@ final class ParityFamilyTests: XCTestCase {
     /// classes and keys, and the reducer's replays. It must RUN.
     func testRouteResumeFamily() { assertParityFamily("route-resume", requireRunner: true) }
 
+    /// Recorded by NE-39j, ported by NE-39s: the rest of queue-manager (the
+    /// warming rules, the rate getter and its snap row, the position writer,
+    /// stop's silence, an unknown ref). It must RUN, with nothing owed.
+    func testManagerRemainderFamily() { assertParityFamily("manager-remainder", requireRunner: true) }
+
     /// Every family in manifest.json, including ones no method above names:
     /// every id executed or owed, no stale pending entry, no whole-tree
     /// problem. And something must have RUN: zero failures from a runner that

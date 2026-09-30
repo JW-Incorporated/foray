@@ -88,7 +88,7 @@ Source: the founder's diagnostics, build 2026092327, iPhone, in the car, 2026-09
 | Who owns what (A-1) | The engine owns queue, bounds, seam, interlude, narration, rate, positions, remote commands, Now Playing and the session. The page owns *decisions*: `buildForayQueue`, "Jump back in" math, continuation hops, voice choice (including `pickDefaultVoice`), and the UI. |
 | One audio producer (A-2) | Native mode builds no `HtmlAudioBackend`, interlude element or `PlayerQueueManager`, writes no `navigator.mediaSession`, and never calls `ForayTts.speak` (audition goes through the engine). The page builds nothing audible until `engineModeReady` resolves. |
 | Session (S-1..S-9) | Activation only on a user-caused play. **No audible start without an active session** is a core invariant with fixtures (§4.4). A pause does not deactivate under the default `pauseHoldPolicy = .forever`. A long-idle release is routed as OQ-12, because it amends S-4. |
-| Parity (V-1..V-3) | JS is the reference. A rule change is JS, then re-record, then Swift. A JS PR adds new case ids to `swift-pending.json` automatically, and the Swift PR burns them down. Fixtures are read in place. |
+| Parity (V-1..V-3) | JS is the reference. A rule change is JS, then re-record, then Swift. Through M2 a JS PR added new case ids to `swift-pending.json` automatically, and the Swift PR burned them down; NE-39s (M3) burned the list to nothing and deleted it, so since then the Swift port lands in the same change. Fixtures are read in place. |
 | Continuation (C-2) | `planAfterEnded` is extracted into `player/continuation.js` but not ported to Swift. JS precomputes K = 8 hops plus `autoAdvance`, and the engine walks them. |
 | De-dup (T-8) | Record `dupCandidate` without dropping anything; DV-6 decides. |
 | Narration rate (R-4 / OQ-3) | 1x (founder, 2026-09-24): synthesized narration speaks at 1x whatever the listener's rate, as the JS reference does since `fix/narration-1x` (`NARRATION_RATE`). `narrationFollowsListenerRate = false`; the switch stays so "maybe we change later" is one flag. |
@@ -411,13 +411,15 @@ Reason tokens: `not-loaded`, `no-next`, `no-previous`, `ended`, `refused-structu
 
 **The rule.** JS is the reference and fixtures are the contract. A behaviour change is a JS change plus a re-record in a JS PR, which **adds the affected ids to `swift-pending.json` tagged with the port card**, followed by a Swift PR that burns them down. The capability gate (step 6) stops an advertised capability from shipping with anything pending.
 
+**Since NE-39s (M3) nothing can be owed.** NE-39s burned `swift-pending.json` and `unported.json` to nothing and deleted them. `coverage.test.js` requires both absent, `record.mjs --check` is red on either, and the Swift loader refuses to run on either. So a behaviour change is now one change: the JS, the re-record and the Swift port. `record.mjs` refuses `--port-card` and `--classify`, and engine-parity is red on a re-recorded case until its port lands. A rule that exists only because the JS manager awaits (a load parked on a bridge round trip) is recorded into a `jsOnly` family, as `manager-await` is, and its native form is an XCTest named in the case's note. `jvm-pending.json` stays: it is Android's book, and A-63 retires it.
+
 1. **Layout.** Under `player/parity/`:
    - `schema/`
    - `fixtures/<family>/*.json`
    - `manifest.json`, recorded
    - `exclusions.json`, closed reasons: `webview-only`, `dom-only`, `text-pin`, `js-module-shape`
-   - `unported.json`, JS tests that have no fixture or XCTest yet, each tagged with a card; burn-down only
-   - `swift-pending.json`, burn-down only
+   - `unported.json`, JS tests that have no fixture or XCTest yet, each tagged with a card; burn-down only. **Deleted by NE-39s.**
+   - `swift-pending.json`, burn-down only. **Deleted by NE-39s.**
    - `jvm-pending.json`, burn-down only: the Android JVM port's books (A-22, `docs/plans/android-assessment.md` §5.4). A family the JVM does not run is owed whole, a family it runs is listed in `runs`, and `--check` holds every recorded family to exactly one of the two; `record.mjs --jvm-card` hands a case new in a family it runs, or a new family, to an Android card. Rules in `player/parity/jvm-pending.js`.
    - `capabilities.json`
    - `floors.json`
@@ -439,7 +441,7 @@ Reason tokens: `not-loaded`, `no-next`, `no-previous`, `ended`, `refused-structu
      - the `prepare` family;
      - named Simulator XCTests;
      - JS-only facade tests (for `transport-reconcile`, run against `reference-engine`).
-6. **Capability gate.** `capabilities.json` requires zero `swift-pending` and zero `unported` entries for these families:
+6. **Capability gate.** `capabilities.json` requires zero `swift-pending` and zero `unported` entries for these families (both lists are deleted since NE-39s, so every family is either run by Swift whole or `jsOnly`; NE-39s also retired the unadvertised `remainder` gate and charged `manager-remainder` and `manager-await` to `foray`):
 
    | Capability | Families |
    |---|---|
@@ -2030,6 +2032,20 @@ Read first: `CLAUDE.md`, this deck, the Tier 2 requirements, `docs/ios-native-pl
   - Neither pending file exists, and `coverage.test.js` requires that.
   - The de-dup evidence is linked in the PR and drafted for NE-40d.
 - **Device check:** reads the DV-6 rows.
+- **Status (2026-09-29):** built on `engine/m3`. The Swift `ManagerRemainderFamily` runner (the Foray tape on) runs `manager-remainder` whole: **20 cases, JS 20 = Swift 20**. The first CI run passed 18 of the 22 NE-39j cases as they stood. The other four went like this:
+  - **Stop behind a paused machine (player-core-7) was a real gap.** `EngineCore.stop` now pauses a deck that is audible while the machine says stopped, by the deck's own word, as `pause()` already did.
+  - **The unknown ref** is re-recorded onto a path both sides share: an OS interruption pauses `a`, the queue is replaced, and the interruption's end resumes `a`, which errors to idle. Deleting the JS error path turns the case red.
+  - **Player-core-9 and round 2's `onStateSettled`** pin how the JS manager's awaits interleave: a load parked on the synthesiser's pause, and the hook counted per `_handle` frame. A synchronous native turn has neither. Both cases moved, expects unchanged, into a new `jsOnly` family, `manager-await`, which is charged to `foray` and owed to no book. `mutations.json`'s stale-load rule is killed there. Their native forms are XCTests: `ForayCatchUpTests/testTwoNextsFromASpokenLineLoadTheNewestTargetAndTheFirstLoadPlaysNothing` and `ForayEngineHostTests/testTheSurfaceIsToldAfterEveryInputTheNaturalEndIncluded`.
+
+  The driver learned NE-39j's manager-target shapes: backend `prefetch` (the core's `.prepare` logged as the ask `prefetch:<id>@<s>`, a warm key landing at once), `deck: "window"` (`.prepareWindow`), `coldLoadMs` on the manual clock (the `load:` op written when it lands), `slowFirstPlay`, `telemetry: ["rate.snapped"]` (from the `rate kind=snapped` row) and the `positionTimer` view. It refuses `settledEvents` and `tts.pause: "held"` with the reason.
+
+  `swift-pending.json` and `unported.json` are deleted:
+  - `coverage.js` loads both as empty;
+  - `record.mjs` refuses `--port-card` and `--classify`, and `--check` is red on either file coming back;
+  - `ParityData.load` (Swift) refuses a tree holding either;
+  - the JVM loader tolerates `unported.json`'s absence.
+
+  `remainder` is retired and `jvm-pending.json` stays (A-63). De-dup: record-only, no change to `EngineCore`/`RemoteSurface`; the entry for NE-40d is drafted below.
 
 #### NE-40 · Stop-cause audit, the `.longFormAudio` trial flag, the M3 merge and build, and the M3 script — **M**
 - **Milestone:** M3
@@ -2088,6 +2104,12 @@ Read first: `CLAUDE.md`, this deck, the Tier 2 requirements, `docs/ios-native-pl
   - the Next-over-narration ruling (NE-39n).
 
   Batch it with a label sitting. If the M3 Android entry (A-69) is ready, it can ride in the same PR.
+- **Draft: the de-dup entry (NE-39s, 2026-09-29).** NE-40d copies it into `docs/DECISIONS.md` once NE-38e's `dup` verdict has read the G-6 drive:
+  > **Remote de-dup (DV-6, OQ-7): record-only, no drop guard.** The engine records `dupCandidate` on every `remote` row (`y` for the same command inside `REMOTE_DUPLICATE_WINDOW_MS`, 500 ms) and drops nothing; the press is still handled. The iOS native path's 500 ms window stays until NE-41 retires it.
+  >
+  > *Evidence.* Every remote row in the 2026-09-28 car paste (PR #866; `diag-2026-09-28-wacky.txt`) has `dupCandidate=n`. The car's repeated plays are separate presses seconds apart, not one press delivered twice: e#85 and e#89 (15:13:10.171 and 15:13:15.188, 5 s apart, the second finding `state=loadingItem`) retried a resume that stayed silent, and e#116, e#118 and e#120 (the founder's second paste, quoted in PR #866) came while 4a was playing and Now Playing still said rate 0 (the stall latch #866 fixed), so the car read "paused" and pressed again. A guard wide enough to catch either would drop real presses; the fix for the second kind is the rate latch, not a drop.
+  >
+  > *What settles it.* NE-38e's `dup` verdict on the G-6 drive: the `dupCandidate=y` count and the ms between presses of one command. A `y` on the drive reopens the question; zero `y` confirms record-only, and NE-41 then retires the 500 ms window.
 - **Acceptance:** merged with `founder-approved` and linked in `STATE.md`.
 - **Device check:** none.
 

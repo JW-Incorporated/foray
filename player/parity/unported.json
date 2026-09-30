@@ -1,3 +1,0 @@
-{
-  "//": "Burn-down only (plan §6.1). Covered-suite tests with no fixture case and no XCTest yet: suite stem -> test name -> {card, family}. `card` will port it; `family` is the fixture family it will be recorded into, and is what the capability gate charges it to. Filled by record.mjs --classify with each suite's default (coverage.js COVERED_SUITES); later cards re-tag."
-}

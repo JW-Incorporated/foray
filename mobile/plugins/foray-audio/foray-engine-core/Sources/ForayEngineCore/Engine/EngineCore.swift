@@ -624,6 +624,16 @@ public struct EngineCore {
         dispatch(.stop)
         narrationStopping = false
         suppressSave = false
+        // THE POSTCONDITION OF STOP IS SILENCE TOO (audit round 3,
+        // player-core-7; NE-39s ports it): from `interrupted` or `loadingItem`
+        // the reducer's stop emits no pause, because it believes nothing is
+        // audible, and in the #689 drift the deck is. `pause()`'s rule, by
+        // the deck's own word, never the reverse.
+        if audibleNow {
+            diag("pause", [JSONMember("kind", .string("forced")),
+                           JSONMember("why", .string("the deck was audible while the machine said stopped"))])
+            deckCommand(.pause)
+        }
         if wasSpeaking { stopNarration() }
         applySession(SessionPolicy.transition(from: state.session, on: persist ? .close : .dataDeletion,
                                               holdPolicy: state.holdPolicy))

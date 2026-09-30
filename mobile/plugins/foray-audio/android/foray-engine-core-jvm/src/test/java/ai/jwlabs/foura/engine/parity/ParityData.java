@@ -171,7 +171,10 @@ public final class ParityData {
         }
 
         // unported.json: suite stem -> test name -> {card, family}; "//" keys are commentary.
-        Json unported = read(parityDir.resolve("unported.json"));
+        // NE-39s (M3) burned it to nothing and deleted it, so on the real tree nothing is
+        // read and unportedFamilies stays empty; a tree that still has one is read as before.
+        Path unportedFile = parityDir.resolve("unported.json");
+        Json unported = Files.isRegularFile(unportedFile) ? read(unportedFile) : Json.parse("{}");
         for (Map.Entry<String, Json> suite : unported.asMap().entrySet()) {
             if (suite.getKey().startsWith("//") || suite.getValue().asMap() == null) continue;
             for (Json entry : suite.getValue().asMap().values()) {

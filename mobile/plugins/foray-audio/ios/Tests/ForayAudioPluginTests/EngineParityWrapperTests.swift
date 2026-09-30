@@ -93,6 +93,9 @@ final class EngineParityWrapperTests: XCTestCase {
     /// NE-38rs: route resume as the app links it.
     func testRouteResumeFamily() { assertParityFamily("route-resume", requireRunner: true) }
 
+    /// NE-39s: the manager remainder as the app links it.
+    func testManagerRemainderFamily() { assertParityFamily("manager-remainder", requireRunner: true) }
+
     /// Every family in manifest.json, including any recorded after this file
     /// was written: executed or owed, nothing stale, nothing dropped.
     func testEveryManifestFamilyIsExecutedOrPending() throws {

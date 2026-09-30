@@ -15,7 +15,7 @@
     },
     "note": { "description": "Free text for a human reader. Never read by a runner.", "type": "string" },
     "jsOnly": {
-      "description": "true: the family pins a JS rule that is deliberately never ported to Swift (plan §5.5 C-2: continuation hops are computed by the page, and the engine only walks them). record.mjs records it without a --port-card and never adds its ids to swift-pending.json; a pending entry naming one is a --check problem. The Swift runner skips these files by this flag rather than counting their ids as owed. Every file of a family must agree.",
+      "description": "true: the family pins a JS rule that is deliberately never ported to Swift: plan §5.5 C-2's continuation hops (computed by the page, only walked by the engine), and since NE-39s manager-await (the JS manager's awaits: a load parked on the synthesiser's pause, onStateSettled per _handle frame, which a synchronous native turn does not have; each case's note names the XCTest holding the native form). The Swift and JVM runners skip these files by this flag and no book may owe their ids. Every file of a family must agree.",
       "type": "boolean"
     },
     "cases": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/case" } }
@@ -23,7 +23,7 @@
   "$defs": {
     "family": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
     "caseId": {
-      "description": "<family>/<slug>. Unique across every fixture file. Never reused for a different rule: swift-pending.json and parity-report.json refer to cases by id.",
+      "description": "<family>/<slug>. Unique across every fixture file. Never reused for a different rule: parity-report.json and jvm-pending.json refer to cases by id (as swift-pending.json did until NE-39s).",
       "type": "string",
       "pattern": "^[a-z][a-z0-9-]*/[a-z0-9][a-z0-9.-]*$"
     },

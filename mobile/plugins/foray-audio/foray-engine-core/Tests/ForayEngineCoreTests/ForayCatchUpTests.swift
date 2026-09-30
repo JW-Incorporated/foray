@@ -580,4 +580,43 @@ final class ForayCatchUpTests: XCTestCase {
         host.land()
         XCTAssertFalse(host.core.state.buffering, "the new clip's own reports decide")
     }
+
+    // MARK: - NE-39s: player-core-9's native form
+
+    /// queue-manager.js "a skip's load that a newer skip already replaced is
+    /// dropped, not run after it (player-core-9)". In JS the first Next's load
+    /// is PARKED on the synthesiser's pause (a bridge round trip) and must not
+    /// run after the second Next's; that fixture is the jsOnly `manager-await`
+    /// family, since no native turn parks a load. Natively each Next issues its
+    /// load in its own turn, so the first load is already on the deck when the
+    /// second supersedes it. The rule here: the superseded load, landing late,
+    /// starts nothing; the newest target is what becomes audible, and the index
+    /// agrees with the state.
+    /// TO SEE IT FAIL: drop the `pending.token == token` guard in `onReady`.
+    func testTwoNextsFromASpokenLineLoadTheNewestTargetAndTheFirstLoadPlaysNothing() throws {
+        var out: [EngineCommand] = []
+        var host = ForayCatchUpTests.host([ForayCatchUpTests.line(0, "the opening line"),
+                                           ForayCatchUpTests.clip(1, "a", 100, 200),
+                                           ForayCatchUpTests.clip(2, "a", 400, 500)], out: &out)
+        guard let seq = NarrationOverlayTests.spokenSeq(out) else { return XCTFail("nothing spoken: \(out)") }
+        host.send(.narrator(.started(seq: seq, voiceFallback: false)), after: 0)
+        XCTAssertTrue(host.core.state.isNarrationPlayhead, "precondition: a spoken line is the playhead")
+
+        let first = host.send(try EngineCoreTests.command("next"))
+        XCTAssertEqual(ForayTapeTests.loads(first), ["f1#1@100"], "\(first)")
+        let firstToken = try XCTUnwrap(host.lastLoad)
+        let second = host.send(try EngineCoreTests.command("next"))
+        XCTAssertEqual(ForayTapeTests.loads(second), ["f1#2@400"], "the second Next loads the newest target: \(second)")
+        let secondToken = try XCTUnwrap(host.lastLoad)
+        XCTAssertNotEqual(firstToken, secondToken)
+
+        let late = host.land(firstToken)
+        XCTAssertFalse(late.contains(.deck(.play)), "a superseded load starts nothing: \(late)")
+        XCTAssertEqual(ForayTapeTests.loads(late), [], "and loads nothing after the newer one: \(late)")
+        let landed = host.land(secondToken)
+        XCTAssertTrue(landed.contains(.deck(.play)), "the newest target plays: \(landed)")
+        XCTAssertEqual(host.core.state.currentIndex, 2, "the index agrees with the state")
+        XCTAssertEqual(host.core.state.loadedId, "f1#2")
+        XCTAssertEqual(host.core.state.stateType, "playing")
+    }
 }

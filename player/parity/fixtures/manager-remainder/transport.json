@@ -1,29 +1,19 @@
 {
   "family": "manager-remainder",
-  "note": "NE-39j: the rest of the queue-manager remainder: an unknown ref, the position timer, the rate getter and its snap line, player-core-7 and -9, and the two audit round 2 rules. Recorded from the real PlayerQueueManager over the shared fakes. Port card NE-39s; JVM A-40 (owed whole).",
+  "note": "NE-39j: the rest of the queue-manager remainder: an unknown ref, the position timer, the rate getter and its snap line, player-core-7, and audit round 2's armed restart. Recorded from the real PlayerQueueManager over the shared fakes. Port card NE-39s; JVM A-40 (owed whole). NE-39s: player-core-9 and round 2's onStateSettled are held by XCTests instead (xctest.json): both pin how the JS manager's awaits interleave, which one synchronous native turn does not have.",
   "cases": [
     {
       "id": "manager-remainder/an-unknown-ref-errors-to-idle-rather-than-hanging",
       "covers": ["queue-manager::an unknown ref surfaces as an error rather than hanging"],
-      "note": "A load whose item is no longer in the queue. A Next from a spoken line waits on the synthesiser's pause, the queue is replaced meanwhile, and when the pause answers the load finds no item for its ref: it errors to idle, and never hangs in loading.",
-      "setup": { "target": "manager", "tts": { "pause": "held" } },
+      "note": "A load whose item is no longer in the queue. An OS interruption pauses a, the queue is replaced meanwhile, and the interruption's end resumes the item it paused: the load finds no item for its ref and errors to idle, never hanging in loading. NE-39s moved the case onto this path, which the engine shares; NE-39j's (a Next waiting on the synthesiser's pause while the queue changes) exists only where that pause is an awaited bridge round trip, and a native turn loads in the same turn as its event.",
+      "setup": { "target": "manager" },
       "steps": [
-        {
-          "call": "loadQueue",
-          "args": [
-            [
-              { "$tts": ["line", { "audio_url": null, "script": "A line." }] },
-              { "$ep": ["b"] }
-            ]
-          ]
-        },
+        { "call": "loadQueue", "args": [[{ "$ep": ["a"] }]] },
         { "call": "play", "args": [0] },
-        { "checkpoint": "speaking" },
-        { "call": "skipToNext", "await": false },
-        { "settle": 2 },
+        { "session": "interruptionBegan" },
+        { "checkpoint": "interrupted" },
         { "call": "loadQueue", "args": [[{ "$ep": ["other"] }]] },
-        { "tts": "releasePause" },
-        { "settle": 3 },
+        { "session": "interruptionEnded", "shouldResume": true },
         { "checkpoint": "after" }
       ],
       "expect": {
@@ -32,19 +22,19 @@
             "inInterlude": false,
             "inSeamGap": false,
             "index": 0,
-            "name": "speaking",
-            "ops": ["tts.speak:A line.@1"],
-            "playhead": "line",
+            "name": "interrupted",
+            "ops": ["load:a@0", "rate:1", "play", "store.save:a@0", "pause"],
+            "playhead": "a",
             "rate": 1,
-            "state": "playing"
+            "state": "interrupted"
           },
           {
             "inInterlude": false,
             "inSeamGap": false,
             "index": -1,
             "name": "after",
-            "ops": ["tts.pause"],
-            "playhead": "line",
+            "ops": ["pause"],
+            "playhead": "a",
             "rate": 1,
             "state": "idle"
           },
@@ -54,12 +44,12 @@
             "index": -1,
             "name": "end",
             "ops": [],
-            "playhead": "line",
+            "playhead": "a",
             "rate": 1,
             "state": "idle"
           }
         ],
-        "ops": ["tts.speak:A line.@1", "tts.pause"]
+        "ops": ["load:a@0", "rate:1", "play", "store.save:a@0", "pause", "pause"]
       }
     },
     {
@@ -334,91 +324,6 @@
       }
     },
     {
-      "id": "manager-remainder/a-skip-load-a-newer-skip-replaced-is-dropped",
-      "covers": [
-        "queue-manager::a skip's load that a newer skip already replaced is dropped, not run after it (player-core-9)"
-      ],
-      "note": "Two Nexts from a spoken line: the first waits on the synthesiser's pause, the second's load runs meanwhile, and the first's load, when its pause answers, is stale and dropped. The newest target is the last load, and the index agrees.",
-      "setup": { "target": "manager", "tts": { "pause": "held" } },
-      "steps": [
-        {
-          "call": "loadQueue",
-          "args": [
-            [
-              { "$tts": ["nar-1", { "audio_url": null, "script": "the opening line" }] },
-              {
-                "$seg": [
-                  "s1",
-                  100,
-                  200,
-                  { "audio_url": "https://cdn.example/a.mp3", "rate": 1 }
-                ]
-              },
-              {
-                "$seg": [
-                  "s2",
-                  400,
-                  500,
-                  { "audio_url": "https://cdn.example/a.mp3", "rate": 1 }
-                ]
-              }
-            ]
-          ]
-        },
-        { "call": "play", "args": [0] },
-        { "checkpoint": "speaking" },
-        { "call": "skipToNext", "await": false },
-        { "settle": 1 },
-        { "call": "skipToNext", "await": false },
-        { "settle": 1 },
-        { "tts": "releasePause" },
-        { "settle": 3 },
-        { "checkpoint": "after" }
-      ],
-      "expect": {
-        "checkpoints": [
-          {
-            "inInterlude": false,
-            "inSeamGap": false,
-            "index": 0,
-            "name": "speaking",
-            "ops": ["tts.speak:the opening line@1"],
-            "playhead": "nar-1",
-            "rate": 1,
-            "state": "playing"
-          },
-          {
-            "inInterlude": false,
-            "inSeamGap": false,
-            "index": 2,
-            "name": "after",
-            "ops": ["tts.pause", "load:s2@400", "rate:1", "outPoint:500", "play"],
-            "playhead": "s2",
-            "rate": 1,
-            "state": "playing"
-          },
-          {
-            "inInterlude": false,
-            "inSeamGap": false,
-            "index": 2,
-            "name": "end",
-            "ops": [],
-            "playhead": "s2",
-            "rate": 1,
-            "state": "playing"
-          }
-        ],
-        "ops": [
-          "tts.speak:the opening line@1",
-          "tts.pause",
-          "load:s2@400",
-          "rate:1",
-          "outPoint:500",
-          "play"
-        ]
-      }
-    },
-    {
       "id": "manager-remainder/a-play-settling-mid-skip-back-keeps-the-restart",
       "covers": [
         "queue-manager::ROUND 2 review: a play settling mid-skip-back does not wipe the skip's armed restart offset"
@@ -477,69 +382,6 @@
           "load:a@0",
           "rate:1",
           "play"
-        ]
-      }
-    },
-    {
-      "id": "manager-remainder/the-settled-hook-fires-after-every-handled-event",
-      "covers": [
-        "queue-manager::ROUND 2 player-1: onStateSettled fires after EVERY handled event, with the settled state"
-      ],
-      "note": "The surface repaints on the settled state after every event, the natural end of an episode included, which produces no media event after it.",
-      "setup": { "target": "manager", "settledEvents": true },
-      "steps": [
-        { "call": "loadQueue", "args": [[{ "$ep": ["a"] }]] },
-        { "call": "play", "args": [0] },
-        { "checkpoint": "playing" },
-        { "deck": "ended", "reason": "natural" },
-        { "checkpoint": "ended" }
-      ],
-      "expect": {
-        "checkpoints": [
-          {
-            "inInterlude": false,
-            "inSeamGap": false,
-            "index": 0,
-            "name": "playing",
-            "ops": [
-              "load:a@0",
-              "rate:1",
-              "play",
-              "event.settled:playing",
-              "event.settled:playing"
-            ],
-            "playhead": "a",
-            "rate": 1,
-            "state": "playing"
-          },
-          {
-            "inInterlude": false,
-            "inSeamGap": false,
-            "index": 0,
-            "name": "ended",
-            "ops": ["event.settled:ended"],
-            "playhead": "a",
-            "rate": 1,
-            "state": "ended"
-          },
-          {
-            "inInterlude": false,
-            "inSeamGap": false,
-            "index": 0,
-            "name": "end",
-            "ops": [],
-            "playhead": "a",
-            "rate": 1,
-            "state": "ended"
-          }
-        ],
-        "ops": [
-          "load:a@0",
-          "rate:1",
-          "play",
-          "event.settled:playing",
-          "event.settled:playing",
-          "event.settled:ended"
         ]
       }
     }

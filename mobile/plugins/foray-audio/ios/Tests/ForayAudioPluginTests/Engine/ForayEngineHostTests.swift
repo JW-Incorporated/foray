@@ -335,6 +335,36 @@ final class ForayEngineHostTests: XCTestCase {
         engine.teardown()
     }
 
+    // MARK: - The surface is told after every input (NE-39s)
+
+    /// queue-manager.js "ROUND 2 player-1: onStateSettled fires after EVERY
+    /// handled event, with the settled state": the page used to repaint only
+    /// on media events, and an episode's natural end moves the machine to
+    /// `ended` with no media event after it. The JS fixture counts the hook
+    /// per `_handle` frame, which follows the manager's awaits (the jsOnly
+    /// `manager-await` family); natively the bridge re-reads the snapshot on
+    /// `onTransition`, which runs after EVERY input the host handled to the
+    /// end, the deck's own reports included, with the state it settled.
+    /// TO SEE IT FAIL: call `onTransition` only for commands, or before the
+    /// turn runs (the state read is then the one before the end).
+    @MainActor
+    func testTheSurfaceIsToldAfterEveryInputTheNaturalEndIncluded() throws {
+        let world = FakeWorld()
+        let engine = playing(world)
+        var seen: [String] = []
+        engine.onTransition = { [unowned engine] in seen.append(engine.state.stateType) }
+        let token = try XCTUnwrap(world.deck.lastToken)
+
+        world.deck.report(.timeControl(token: token, status: .playing, waitingReason: nil))
+        XCTAssertEqual(seen, ["playing"], "the deck's own report is an input too")
+
+        world.deck.reading.audible = false
+        world.deck.reading.ended = true
+        world.deck.report(.ended(token: token))
+        XCTAssertEqual(seen, ["playing", "ended"], "the end, which no media event follows, is told too, as `ended`")
+        withExtendedLifetime(engine) {}
+    }
+
     // MARK: - Timers
 
     /// The position cadence is armed while playing and fires through the core
