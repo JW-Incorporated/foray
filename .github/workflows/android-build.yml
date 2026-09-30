@@ -466,8 +466,11 @@ jobs:
 
           mutant="$RUNNER_TEMP/jvm-parity-mutant"
           rm -rf "$mutant"
-          mkdir -p "$mutant/player"
+          mkdir -p "$mutant/player" "$mutant/data"
           cp -R ../../player/parity "$mutant/player/parity"
+          # A-40: the Foray families read the committed Forays ($foray, forays.js) from the
+          # repo root, so the copy carries data/forays.json beside player/parity.
+          cp ../../data/forays.json "$mutant/data/forays.json"
           node -e '
             const fs = require("fs");
             const file = process.argv[1];
