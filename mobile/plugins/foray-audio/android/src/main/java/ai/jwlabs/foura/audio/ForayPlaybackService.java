@@ -114,7 +114,8 @@ public class ForayPlaybackService extends MediaSessionService {
 
     @Nullable private ExoPlayer exo;
     @Nullable private ExoDeck deck;
-    @Nullable private ForayEngineHost host;
+    /** Volatile: {@link #isHosting()} is read by the plugin's bridge thread; every other use is on main. */
+    @Nullable private volatile ForayEngineHost host;
     @Nullable private EnginePlayer player;
     @Nullable private MediaSession session;
     @Nullable private Player.Listener focusListener;

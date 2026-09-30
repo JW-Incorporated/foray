@@ -553,7 +553,7 @@ Rejected alternatives:
   - **The native-mode leg.** The page has no way into the engine until A-28. The native-mode leg (a third
     `android-playback.yml` leg) drives the engine through a debug-only `EngineDriveReceiver` over adb and reads the
     service's `dumpsys` line: `tools/mobile/android-native-playback.mjs`.
-  - **Evidence.** Robolectric: 30 new cases in `:foray-audio:testDebugUnitTest` (98 in all, 0 skipped). The native
+  - **Evidence.** `:foray-audio:testDebugUnitTest` runs 29 new cases, Robolectric and plain JUnit (98 in all, 0 skipped). The native
     leg (run 36647752638, job 109674560375) is green on (a)–(d), (g), (h) and (i), all gated. It publishes the 15/30
     pair as the platform session's custom actions, which is A04-F2 fixed for the native lane.
   - **Handed on.** Persisting the rows and the restore record is A-27's. The page's bridge is A-28's. Lifecycle

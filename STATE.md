@@ -36,8 +36,8 @@ Card A-26 of `docs/plans/android-assessment.md` (Track A1), PR #900.
 beside `android-playback.mjs`) and the build.gradle header comment are governed paths. This PR waits on
 `founder-approved`.
 
-**CI** (head `4858dcd5`, before the docs and floor commit), green:
-- `android-build` run 36647752649: `:foray-audio:testDebugUnitTest` ran 98 cases, 0 skipped, 30 of them new
+**CI**, green on head `4858dcd5` (the code; the later commits add docs, floors and one `volatile`, and re-ran it):
+- `android-build` run 36647752649: `:foray-audio:testDebugUnitTest` ran 98 cases, 0 skipped, 29 of them this card's
   (`ForayEngineHostTest` 8, `FocusMappingTest` 6, `EnginePlayerTest` 5, `FocusIntegrationTest` 3,
   `ForayPlaybackServiceTest` 7). `assembleDebug` and `assembleRelease` pass.
 - `android-playback` run 36647752638: the native leg (job 109674560375, 14 min 7 s) is green on (a)–(d), (g), (h) and
