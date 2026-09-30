@@ -7,6 +7,45 @@ docs/. Completed workstreams move to their plan doc's retro section.
 
 ## Active workstreams
 
+### 2026-09-30 — `android/a-60-provisional-field-values`: A-60, provisional field values and their rows (Android M3)
+
+Owned: `ExoDeck`'s P-13 and reuse constants and its `class=` rows, `DeckDeadlineClass` and `DiagGate` in
+`foray-engine-core-jvm`, `EngineLog`'s DiagRow gate, `EnginePlayer`'s published speed, and `engine-report.mjs`'s
+Android reader. Card A-60 of `docs/plans/android-assessment.md` (Track A4), PR #926, into `android/native`. It mirrors
+NE-38 (#892) and NE-38e (#899) on `engine/m3`.
+
+**What changed.**
+- **P-13 per class.** Clip or episode 20 s, rendered line 8 s. Same-source reuse 600 s. The P-14 stall display is on.
+  Each is `// MEASURE: verdict=P13-clip|P13-line|reuse-idle|rate-latch`, with iOS's values. The core names the class;
+  `DeckPair`'s warm load keeps it.
+- **The published speed.** The facade always carries the listening speed (`Surface.listeningRate`); a stall
+  published 1x before. Media3 publishes it while playing and 0 only while buffering.
+- **DiagGate on Android.** The Android DiagRow ring dropped every row's sub-kind, so no Android Copy could feed an
+  NE-38e verdict. The gate is now ported to the JVM core and applied in `EngineLog`. `ExoDeck`'s `errName` is
+  renamed `errToken`.
+- **`engine-report.mjs` reads an Android paste.** It reads the text ring's rows files, the service's dump and logcat.
+  The Android Copy was already in the iOS format.
+
+**Executed in CI** (head `22ecce6e`):
+- android-build run 36786830308: android-shell green. foray-audio 198 cases (+9: `ExoDeckFieldValuesTest`, the
+  published speed, the line's 8 s TTS fallback, the stall surface). The JVM core has 124 (+6, `DiagGateTest`). JVM
+  parity: 1778 passed, 0 pending.
+- android-playback run 36786830313: all three legs green (native job 110130136766).
+- CI, android-smoke and pr-hygiene are green.
+
+**Executed locally:**
+- `node --test` for `tools/mobile/engine-report-android.test.mjs` (6), `engine-report.test.mjs` (26) and
+  `test/suite-integrity.test.js`.
+- `engine-report.mjs`, merged with NE-38e's (`git merge-file`, no conflicts), over run 36786830313's native artifacts:
+  `P13-clip`, `P13-line`, `reuse-idle` and `narration-fallback` pass. The same Copy from run 36779471865 (A-42) reads
+  no-coverage on all four.
+
+**Not executed.** The device check (A-68 reads Joey's pastes; D-A3).
+
+**Left for later cards.** The gate now names two fields it withholds:
+- `at` on `narration fallback` and on an injected `mode` fault. The rename to `where` is A-64's (NE-39n).
+- A Foray item id with `#` on one `stop` row, which is A-67's to decide.
+
 ### 2026-09-30 — `android/a-42-native-forays`: A-42, the A2 flip (native Forays on Android)
 
 Owned: `mobile/ENGINE_DEFAULT.json`'s `android` block, `EngineLane.java`'s two literals,

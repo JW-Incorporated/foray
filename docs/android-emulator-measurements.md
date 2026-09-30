@@ -948,3 +948,76 @@ Card A-42 declares `foray` (and `restore`) for Android, so a Foray the page play
 - **`foray-seams`.** Silence p95 506 ms. Every other native verdict is green.
 - **The JS legs** (API 34, job 110091118025; API 36, job 110091117947) are green. They pin Web in their first step,
   so the flip does not reach them.
+
+## 16. A-60: provisional field values, their rows, and the Android paste
+
+Card A-60 mirrors iOS NE-38 and NE-38e on the Media3 deck. Every value M3 ships before Joey's pastes exist is
+provisional: it is a named constant tagged `// MEASURE: verdict=<id>`, and it names the NE-38e verdict and the rows
+that settle it. Android uses iOS's values, because no emulator measurement argues against them. A-68 settles them.
+
+| Value | Android constant | Android | iOS | Verdict | Rows that settle it |
+|---|---|---|---|---|---|
+| P-13, clip or episode | `ExoDeck.DEFAULT_LOAD_DEADLINE_SEC` | 20 s | 20 s | `P13-clip` | `deck ready elapsedMs marks` of cold loads; `deck deadline step= class=clip` |
+| P-13, rendered line | `ExoDeck.DEFAULT_LINE_LOAD_DEADLINE_SEC` | 8 s | 8 s | `P13-line` | the same rows with `class=line` |
+| Same-source reuse limit | `ExoDeck.DEFAULT_REUSE_MAX_IDLE_SEC` | 600 s | 600 s | `reuse-idle` | `deck reuse idleSec=`, then `failed`/`deadline`/`stalled` on its token within 30 s; `deck attach cold=stale idleSec=` |
+| P-14 stall display | `EngineCore.BUFFERING_WHILE_WAITING` | on | on | `rate-latch` | `deck time-control status=waiting reason=` |
+
+- **Which deadline a load gets.** The JVM core names a class on every `Load` and `Prepare` (`DeckDeadlineClass.of`): a
+  `tts` item is a `line`, and everything else is a `clip`. The deck maps the class to seconds. `DeckPair`'s warm load
+  runs under the item's own class. A line whose deadline passes is read aloud by `TextToSpeech` on a fresh token
+  (`narration kind=fallback reason=timeout`).
+- **The published speed.** Media3's session derives its speed from the facade: the platform `PlaybackState` speed is
+  `isPlaying ? speed : 0` (media3 1.11.0 `MediaSessionLegacyStub`). So iOS's latch, where the rate stuck at 0 while the
+  clock ran, cannot happen here in the same form.
+  - The facade now carries the listening speed at all times. Before A-60, a stall published 1x.
+  - It is READY while playing, so the session publishes the listening speed.
+  - It is BUFFERING through a stall, so the session publishes 0.
+- **The ring's gate.** `DiagGate` is ported to the JVM core, and `EngineLog` applies it to the DiagRow ring that the
+  page's Copy prints. Before A-60 the Android ring dropped every row's sub-kind as a header shadow. A Copy printed
+  `deck src=engine token=1 …` with nothing saying which deck row it was, so no NE-38e verdict could read an Android
+  Copy.
+
+**Robolectric** (android-build run 36786830308, android-shell green: foray-audio 198 cases, +9; the JVM core 124, +6;
+JVM parity 1778 passed, 0 pending):
+- `ExoDeckFieldValuesTest`:
+  - a line whose file never arrives is given up at exactly 8000 ms, and its row says `class=line`;
+  - a clip whose file arrives at 19 s is ready, with no deadline through 21 s. This test uses a manual FakeClock,
+    stepped by hand;
+  - a reuse after 590 s idle is a seek (`idleSec=590`), and after 610 s it is cold (`cold=stale idleSec=610`);
+  - every deck row passes the gate whole, including through `EngineLog`.
+- `ForayEngineHostNarrationTest.aRenderedLinesEightSecondDeadlineIsReadAloud`: the loads name their classes, and a
+  line's 8 s deadline is spoken with `reason=timeout`.
+- `EnginePlayerTest`: the published speed is 1.5 while playing, 0 while buffering, and 1.5 again afterwards.
+- `DiagGateTest`.
+
+**The emulator** (android-playback run 36786830313, head `22ecce6e`): all three legs are green. The native leg (job
+110130136766) took 24 min 22 s.
+- **The rows.** The Android Copy now prints the sub-kind with iOS's tokens:
+  - `deck src=engine attach token=1 … cold=no-item idleSec=— class=clip`;
+  - `ready … elapsedMs=202ms … class=clip`.
+
+  Rendered lines load as `class=line` (`k-foray-engine-rows.txt` #31, #34: ready in 85 ms).
+- **`engine-report.mjs` over the paste.** It now reads the text ring as the scenarios save it (`*-engine-rows.txt`), as
+  the service's dump prints it (`ForayEngine.row …`) and as logcat carries it. The Copy was already in the iOS format.
+  NE-38e's M3 verdicts are on `engine/m3`, not yet on this branch. The tool merged with A-60's reader has no conflicts
+  (`git merge-file`), and it gives:
+
+  | Paste | P13-clip | P13-line | reuse-idle | narration-fallback |
+  |---|---|---|---|---|
+  | `k-diagnostics-copy.txt` (the page's Copy) | pass, cold n 3, p95 202 ms | pass, n 1, 84 ms | no-coverage | pass, 2 line loads; 1 fallback without `cause=` (A-64) |
+  | `k-foray-engine-rows.txt` | pass, n 2, p95 94 ms | pass, n 1, 85 ms | pass, 1 reuse | pass |
+  | `f-foray-engine-rows.txt` | pass, n 7, p95 89 ms | no-coverage | pass, 1 reuse | no-coverage |
+  | `f-engine-rows.txt` | pass, n 5, p95 89 ms | no-coverage | pass, 3 reuses, idle max 3.2 s | no-coverage |
+
+  - `rate-latch`, `seam-kinds` and `suspension-in-seam` are no-coverage on every paste. Android writes no `nowplaying`
+    rows (the session is Media3's; see above), and the seam `from=`/`to=` and late-timer rows are A-62's and A-65's.
+  - The same Copy from A-42's run 36779471865 is no-coverage on all four verdicts, because the sub-kind was missing.
+- **What these numbers are not.** Cold loads of files bundled in the APK take 70-200 ms. They say nothing about a
+  podcast CDN on a phone, so the tool's printed proposals (1 s) settle nothing. A-68 settles each value from Joey's
+  pastes (D-A3).
+- **What the gate now names.** The gate withholds a field it cannot carry, and each one is now named in the row
+  instead of vanishing:
+  - `narration fallback` and an injected `mode` fault carry `at`, the DiagRow's wall-clock key (`withheld=at`).
+    NE-39n renames it `where` on iOS; the JVM port of that rename is A-64's.
+  - One `stop` row withheld `item`, a Foray item id with `#`, which is not a token. It is the same on iOS; A-67's
+    stop-cause audit is where that is decided.
