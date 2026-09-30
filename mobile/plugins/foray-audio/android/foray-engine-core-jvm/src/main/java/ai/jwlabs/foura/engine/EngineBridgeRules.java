@@ -51,8 +51,8 @@ public final class EngineBridgeRules {
      *       neither implemented nor clear.</li>
      * </ul>
      * What a build ADVERTISES is this ∩ what it DECLARES (mobile/ENGINE_DEFAULT.json's android
-     * block, empty until the flip card), so claiming {@code episode} here changes no stock or
-     * override launch by itself. A capability missing from the hello is refused
+     * block: nothing until A-31, {@code episode} and {@code continuation} since that flip), so a
+     * claim here changes no launch by itself. A capability missing from the hello is refused
      * {@code capability-off} by {@code engineSend}, and the page relinquishes to its own player
      * when the one it needs is missing (client.js {@code engineCan}).
      */
