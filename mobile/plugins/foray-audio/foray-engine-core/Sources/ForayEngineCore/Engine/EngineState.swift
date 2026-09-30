@@ -222,6 +222,24 @@ public struct EngineState: Equatable {
     public var pageVisible = true
     /// BackgroundGrace: `held(reason)` from begin to end.
     public var grace: GraceReason?
+    /// NE-46, the late-timer detector: when each armed ONE-SHOT engine timer
+    /// is due on the monotonic clock (the turn's `monoMs` plus its
+    /// `afterMs`), kept from the `.timerArm` the core emitted until it fires
+    /// or is cancelled. A timer that arrives more than
+    /// `NARRATION_SUSPEND_GAP_MS` after this while grace is held writes
+    /// `grace kind=late`. Repeating timers are not kept.
+    public var timerDueMono: [EngineTimer: Double] = [:]
+    /// The same due times on the WALL clock: uptime stops while the device
+    /// sleeps, so a suspension followed by sleep is late only on this one.
+    public var timerDueWall: [EngineTimer: Double] = [:]
+    /// NE-46: the P-13 class of the newest `.load` (the one `lastToken`
+    /// names), so a late `.deadlineExceeded` for it can be measured against
+    /// its own deadline (`EngineConfig.loadDeadlineMs`).
+    public var lastLoadClass: DeckDeadlineClass?
+    /// NE-46: the wall clock when that `.load` was commanded. The deck's
+    /// `afterMs` is on uptime, which stops while the device sleeps; this is
+    /// the other half of the two-clock check.
+    public var lastLoadWallMs: Double?
     /// The last remote press, for `dupCandidate` (recorded, never dropped).
     public var lastRemote: LastRemote?
 

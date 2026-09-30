@@ -76,6 +76,14 @@ final class UIKitBackgroundTasks: BackgroundTaskAPI {
 /// anyway, after the host's handler has run. And ending is idempotent: a task
 /// is ended at most once, because UIKit logs a second end as a programming
 /// error.
+///
+/// WHETHER IT IS ENOUGH (card NE-46). A span held here is meant to keep the
+/// process running through a silent seam; if iOS suspends it anyway, every
+/// engine timer due in that span arrives late. The core measures that (a
+/// timer more than `NARRATION_SUSPEND_GAP_MS` late while a span is held
+/// writes `grace kind=late timer= lateMs= inSeam=y|n bgRemainingMs=`), and
+/// one `inSeam=y` row in a drive is the only evidence that turns the silence
+/// node on (SilenceNode.swift's header).
 final class BackgroundGrace: BackgroundTasking {
 
     private let api: BackgroundTaskAPI

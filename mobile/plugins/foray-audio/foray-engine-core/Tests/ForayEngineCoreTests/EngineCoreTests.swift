@@ -22,7 +22,9 @@ final class EngineCoreTests: XCTestCase {
         var bgRemainingMs: Double?
         /// The current output route the host reads (NE-38rs; nil: none).
         var route: RoutePort?
-        /// The wall clock (NE-38rs measures a loss's age on it).
+        /// The wall clock. It stands still unless a test moves it (NE-46: the
+        /// device slept, so uptime did not advance and the wall clock did;
+        /// NE-38rs measures a loss's age on it).
         var wallMs: Double = 1_790_000_000_000
 
         init(config: EngineConfig = EngineConfig(build: "test"),
