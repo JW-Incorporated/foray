@@ -675,6 +675,20 @@ test("A-30 (f): a seam runs from the outgoing load's end to the incoming load's 
     '8 2026-09-30T00:01:31.060Z deck {"kind":"time-control","token":2,"status":"playing"}',
   ].map(parseEngineRow);
   const [n] = episodeSeams(natural);
+  /* A-40: a segment queue plays on the deck pair, and a prepared segment is handed over with no
+     attach: the pair's `prepare kind=promote` row is the incoming load's. MUTATION: drop it from
+     episodeSeams, and the handed-over seam is never read (A-40's first run read 4 of 7). */
+  const handed = episodeSeams([
+    '1 2026-09-30T00:00:00.000Z deck {"kind":"attach","token":1,"cold":"no-item"}',
+    '2 2026-09-30T00:00:00.100Z deck {"kind":"time-control","token":1,"status":"playing"}',
+    '3 2026-09-30T00:00:12.100Z outPoint {"kind":"stop","layer":"boundary","overshootMs":3,"rate":1,"token":1}',
+    '4 2026-09-30T00:00:12.102Z prepare {"kind":"promote","token":2}',
+    '5 2026-09-30T00:00:12.610Z deck {"kind":"time-control","token":2,"status":"playing"}',
+  ].map(parseEngineRow));
+  assert.equal(handed.length, 1);
+  assert.equal(handed[0].via, "handover");
+  assert.equal(handed[0].gapMs, 510, "the out-point to the incoming deck playing, the beat included");
+  assert.equal(handed[0].endFrom, "outPoint");
   assert.equal(n.gapMs, 60, "a stall that recovered is not the end; the pause after it is");
   assert.equal(n.via, "reuse");
   assert.equal(n.cold, "same-source");

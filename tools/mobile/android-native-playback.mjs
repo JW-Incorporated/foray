@@ -655,8 +655,10 @@ function commanded(r) {
  * `time-control` away from playing after it played, or its `outPoint` stop, whichever came
  * first; the next load's `attach`/`reuse` when neither was written) to the incoming load's first
  * `time-control playing`. `via` is the incoming load's row (`attach` for a new source, `reuse`
- * for the same one), `cold` the attach's reason. A seam with a command between is `commanded`
- * (a press, not a seam), and kept apart. Pure.
+ * for the same one, `handover` for a segment the deck pair had prepared on its standby deck,
+ * A-40: the pair writes `prepare kind=promote` for the core's token and no attach), `cold` the
+ * attach's reason. A seam with a command between is `commanded` (a press, not a seam), and kept
+ * apart. Pure.
  */
 export function episodeSeams(rows) {
   const seams = [];
@@ -671,6 +673,13 @@ export function episodeSeams(rows) {
     if (commanded(r)) {
       dirty = true;
       if (pending) pending.commanded = true;
+    }
+    if (promoted(r, playing)) {
+      pending = {
+        token: j.token, fromToken: playing.token, via: "handover", cold: "prepared", attachAt: r.at,
+        endAt: endAt ?? r.at, endFrom: endAt != null ? endFrom : "promote", overshootMs, commanded: dirty, readyMs: 0,
+      };
+      continue;
     }
     if (r.kind === "outPoint" && j.kind === "stop" && playing && j.token === playing.token) {
       overshootMs = typeof j.overshootMs === "number" ? j.overshootMs : null;
@@ -718,6 +727,12 @@ export function episodeSeams(rows) {
     }
   }
   return seams;
+}
+
+/* A-40: the deck pair's promotion is the incoming load's row when the standby deck had the
+   segment (a `prepare` row, not a `deck` one, so episodeSeams reads it here). */
+function promoted(r, playing) {
+  return r.kind === "prepare" && r.json?.kind === "promote" && playing && r.json.token !== playing.token;
 }
 
 function nearestRank(sorted, p) {
