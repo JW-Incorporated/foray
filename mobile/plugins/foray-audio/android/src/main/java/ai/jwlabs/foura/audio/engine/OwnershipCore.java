@@ -27,7 +27,7 @@ import java.util.function.Consumer;
  *       against itself. Once per process: every later call returns the same answer and writes
  *       nothing.</li>
  *   <li><b>The healthy marker</b> (the first turn the engine completes, 5 s after it boots, or the
- *       Activity pausing) clears the sentinel and resets the strikes. A strike is counted only
+ *       Activity pausing once it has booted) clears the sentinel and resets the strikes. A strike is counted only
  *       for a native boot that never reached one, so three crashing boots in a row pin the build
  *       to the JS lane (sticky until the build number changes) and a healthy one never counts.</li>
  *   <li><b>The hello watchdog</b>: a page that does not say engineHello within 15 s of loading, while
@@ -260,9 +260,15 @@ public final class OwnershipCore {
      * Whichever marker comes first clears the sentinel and resets the strikes, once. After a
      * page-health strike the reset is withheld: a page that is broken on every launch must still
      * reach the JS lane, even though its native boot was healthy.
+     *
+     * <p>ONLY ONCE THE ENGINE EXISTS ({@link #engineBooted()}), as on iOS, where the markers are
+     * armed by the boot itself. On Android the service binds asynchronously after the decision,
+     * so an Activity pause can come first (a permission dialog, the screen going off during a cold
+     * start); it proves nothing about a boot that has not happened, and clearing the sentinel then
+     * would forgive a service that goes on to crash the process, or never binds, on every launch.
      */
     public void markHealthy(HealthyMarker marker) {
-        if (decision == null || !decision.isNative() || healthyMarked) return;
+        if (decision == null || !decision.isNative() || !booted || healthyMarked) return;
         healthyMarked = true;
         cancel(healthyTimer);
         healthyTimer = null;

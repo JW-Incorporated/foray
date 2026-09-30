@@ -258,6 +258,35 @@ public class OwnershipCoreTest {
         assertTrue(markers.get(2), markers.get(2).contains("\"marker\":\"first-input\""));
     }
 
+    /**
+     * A pause before the service bound is not a healthy boot (iOS arms its markers at the boot).
+     * TO SEE IT FAIL: drop the {@code booted} check in {@code markHealthy}.
+     */
+    @Test
+    public void aPauseBeforeTheEngineExistsForgivesNothing() {
+        MapKeys keys = nativeOverride();
+        keys.map.put(OwnershipCore.KEY_STRIKES, "1");
+        keys.map.put(OwnershipCore.KEY_SENTINEL, "earlier");
+        Process p = new Process(keys, "L1");
+        assertEquals(2, p.core.decideOnce().strikes());
+        p.core.backgrounded(); // a permission dialog, or the screen off, while the service is still binding
+        p.core.engineTurned();
+        assertEquals("the sentinel stands: the boot has not happened", "L1", keys.map.get(OwnershipCore.KEY_SENTINEL));
+        assertEquals("and the strikes stand", "2", keys.map.get(OwnershipCore.KEY_STRIKES));
+        assertFalse(p.rows().toString(), p.rows().stream().anyMatch(r -> r.contains("\"healthy\"")));
+        // A service that never binds (or dies binding) is still a strike at the next launch.
+        assertEquals(3, new Process(keys, "L2").core.decideOnce().strikes());
+
+        // Once it exists, the same pause is the marker.
+        MapKeys fresh = nativeOverride();
+        Process q = new Process(fresh, "M1");
+        q.core.decideOnce();
+        q.boot();
+        q.core.backgrounded();
+        assertNull(fresh.map.get(OwnershipCore.KEY_SENTINEL));
+        assertTrue(q.rows().toString(), q.rows().stream().anyMatch(r -> r.contains("\"marker\":\"resign-or-background\"")));
+    }
+
     @Test
     public void theDeveloperSettingClearsStrikesAndTheStickyPin() {
         MapKeys keys = new MapKeys();
@@ -294,7 +323,11 @@ public class OwnershipCoreTest {
                 p = new Process(keys, l.buildDefault(), l.currentBuild(), "L" + (++launch));
                 p.core.decideOnce();
             } else if (e instanceof EngineMode.Event.Healthy) {
-                if (p != null) p.core.backgrounded();
+                // A marker counts only once the engine exists: bind it, then pause the Activity.
+                if (p != null) {
+                    if (p.host == null && p.core.isNative()) p.boot();
+                    p.core.backgrounded();
+                }
             } else if (e instanceof EngineMode.Event.PageHealth) {
                 // No hello within 10 s of a foreground page load.
                 if (p != null) {
