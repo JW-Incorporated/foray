@@ -190,10 +190,10 @@ test("decideMode: native only on iOS with the method, a well-formed native hello
 test("decideMode (A-20, A-28): Android drives a native engine only on protocol 1, and the page asks it since A-28", () => {
   /* docs/plans/android-assessment.md A-20 and A-28. The contract lets an
      Android shell answer engineHello exactly as iOS does, and since A-28 the
-     page asks it (HELLO_PLATFORMS): its plugin has the three methods. The
-     native LANE is still off by default there — the Android engine answers
-     legacy (ENGINE_DEFAULT android: js) — so a stock Android launch is
-     `engine-legacy`: the JS player, nothing to relinquish.
+     page asks it (HELLO_PLATFORMS): its plugin has the three methods. An
+     Android engine that answers legacy (the stock answer until A-31, and the
+     Developer setting's Web since) is `engine-legacy`: the JS player, nothing
+     to relinquish.
      MUTATION: keep `platform !== "ios"` in decideMode -> the native case is
      js/not-ios -> red. Drop "android" from HELLO_PLATFORMS -> red below. */
   const native = contractSchemaDocument().$defs.helloResponse["x-examples"].valid.native;

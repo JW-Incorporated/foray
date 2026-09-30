@@ -136,10 +136,10 @@ test("a REJECTED hello resolves 'js' with a relinquish; an UNIMPLEMENTED one (an
 
   /* A-28 (docs/plans/android-assessment.md): the page asks an Android shell
      engineHello, exactly as it asks iOS. A binary built before A-28 answers
-     UNIMPLEMENTED, which is `no-method` with nothing relinquished; the stock
-     A-28 binary answers legacy (ENGINE_DEFAULT android: js), which is the JS
-     player with nothing relinquished; and a native answer on protocol 1 is the
-     native lane. MUTATION: drop "android" from HELLO_PLATFORMS -> no hello is
+     UNIMPLEMENTED, which is `no-method` with nothing relinquished; a legacy
+     answer (the A-28 binary's stock one, and the Developer setting's Web since
+     A-31) is the JS player with nothing relinquished; and a native answer on
+     protocol 1 (the stock answer since A-31) is the native lane. MUTATION: drop "android" from HELLO_PLATFORMS -> no hello is
      asked and the native case is `no-method` -> red. */
   const oldAndroid = fakeCapacitor({ platform: "android", hello: "unimplemented" });
   const c = await createNativeEngine({ capacitor: oldAndroid, scheduler: manualScheduler() }).engineModeReady;

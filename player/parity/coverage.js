@@ -371,7 +371,7 @@ export function capabilityFamilies(capabilities) {
     says js) and the Swift source's `advertisedCapabilities` array literal
     (EngineBridgeRules.swift). Since NE-27b both say episode, continuation and
     restore for iOS; since NE-37 (the M2 flip) foray too. Android's block
-    advertises nothing until A-31. */
+    advertises episode and continuation since A-31 (the A1 flip). */
 export function advertisedCapabilities(root) {
   const out = new Map();
   const def = path.join(root, "mobile", "ENGINE_DEFAULT.json");

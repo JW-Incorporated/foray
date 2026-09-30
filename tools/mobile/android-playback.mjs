@@ -1232,6 +1232,72 @@ function wakeAndUnlock() {
   shell("wm", "dismiss-keyguard");
 }
 
+/* ─────────────────────────── A-31: the JS legs' lane ─────────────────────────── */
+
+/** The debug build's engine driver (`src/debug`, never shipped): its `override` command stores
+ *  the Developer engine setting through the owner, as the page's row does. */
+export const DRIVER_COMPONENT = `${PKG}/ai.jwlabs.foura.audio.EngineDriveReceiver`;
+
+/** The Developer engine setting the JS legs run under. Since A-31 (the A1 flip) a stock Android
+ *  launch is the NATIVE lane (`mobile/ENGINE_DEFAULT.json` android `native`), and these scenarios
+ *  measure the page's own player, which is still the lane a Web setting, the crash-loop guard
+ *  and a relinquish fall back to. So the first step stores Web and relaunches, and every later
+ *  launch of the leg (the kills in (j) included) decides the JS lane from it. The native leg
+ *  (`android-native-playback.mjs`) measures the stock lane. */
+export const JS_LANE_MODE = "web";
+
+/** The page's lane once its hello settled, and the Developer engine row's view
+ *  (`ForayPlayer.engineDeveloperStatus`: `{lane, override, holdPolicy, commands}`). */
+export const ENGINE_STATUS_EXPRESSION = `(async () => {
+  const deadline = Date.now() + 20000;
+  while (!(window.ForayPlayer && typeof window.ForayPlayer.whenEngineReady === "function") && Date.now() < deadline) {
+    await new Promise((r) => setTimeout(r, 250));
+  }
+  const P = window.ForayPlayer;
+  if (!P || typeof P.whenEngineReady !== "function") return { error: "no ForayPlayer on window" };
+  const lane = await P.whenEngineReady();
+  const status = typeof P.engineDeveloperStatus === "function" ? P.engineDeveloperStatus() : null;
+  return { lane, status };
+})()`;
+
+/** `am broadcast`'s answer: `Broadcast completed: result=1, data="{…}"`. */
+export function broadcastResult(out) {
+  const text = String(out ?? "");
+  /* `am` prints the data between quotes WITHOUT escaping it, so the data is everything up to the
+     last quote on its line (greedy); an escaped form is tried second. */
+  const m = /Broadcast completed: result=(-?\d+)(?:, data="(.*)")?[ \t]*$/m.exec(text);
+  if (!m) return { delivered: false, result: null, answer: null };
+  let answer = null;
+  if (m[2] != null) {
+    answer = { raw: m[2] };
+    for (const raw of [m[2], m[2].replace(/\\"/g, '"').replace(/\\\\/g, "\\")]) {
+      try {
+        answer = JSON.parse(raw);
+        break;
+      } catch {
+        /* try the next spelling */
+      }
+    }
+  }
+  return { delivered: true, result: Number(m[1]), answer };
+}
+
+/** Why the JS leg is not in the JS lane, or []: the setting was stored (`stored`, the driver's
+ *  answer) and the relaunched page reads the JS lane with the Developer row on Web. Pure. */
+export function jsLaneFailures(lane) {
+  const failures = [];
+  if (lane?.stored?.answer?.ok !== true) {
+    failures.push(`the Developer engine setting Web was not stored through the debug driver: ${JSON.stringify(lane?.stored ?? null)}`);
+  }
+  const st = lane?.status;
+  if (!st || st.error) failures.push(`the JS leg's lane could not be read: ${st?.error ?? "no answer"}`);
+  else {
+    if (st.lane !== "js") failures.push(`the JS leg's page is in the ${st.lane} lane, not js (A-31 made native the stock lane; this leg measures the page's player)`);
+    if (st.status?.override !== JS_LANE_MODE) failures.push(`the Developer row reads ${JSON.stringify(st.status?.override)}, not ${JSON.stringify(JS_LANE_MODE)}`);
+  }
+  return failures;
+}
+
 /* ───────────────────────────── scenarios ───────────────────────────── */
 
 /** (e) The first screen after launch, as a PNG: the edge-to-edge evidence. */
@@ -1262,6 +1328,39 @@ async function firstLaunch(ctx) {
     },
     evidence: png ? ["first-launch.png"] : [],
   };
+}
+
+/** A-31: store the Developer setting Web through the debug driver, and relaunch so the process
+ *  decides the JS lane; then read the page's lane. */
+async function pinJsLane(ctx) {
+  const out = adb(["shell", "am", "broadcast", "-n", DRIVER_COMPONENT.replace(PKG, ctx.pkg),
+    "--es", "cmd", "override", "--es", "mode", JS_LANE_MODE], { timeoutMs: 30000 });
+  const stored = broadcastResult(`${out.stdout}${out.stderr}`);
+  shell("am", "force-stop", ctx.pkg);
+  await sleep(1500);
+  wakeAndUnlock();
+  await sleep(800);
+  shell("am", "start", "-W", "-n", `${ctx.pkg}/.MainActivity`);
+  await sleep(1500);
+  ctx.target = null;
+  ctx.pid = pidOf(ctx.pkg);
+  let status;
+  try {
+    status = await page(ctx, ENGINE_STATUS_EXPRESSION, { timeoutMs: 90000 });
+  } catch (e) {
+    status = { error: String(e?.message ?? e) };
+  }
+  return { stored, status };
+}
+
+/** (e) on the JS legs: the JS lane first (A-31), then the first-launch screen, from the
+ *  relaunch. The lane is gated: a leg that silently ran in the native lane cannot pass as the
+ *  page's player. */
+async function jsFirstLaunch(ctx) {
+  const lane = await pinJsLane(ctx);
+  const v = await firstLaunch(ctx);
+  const failures = [...jsLaneFailures(lane), ...v.failures];
+  return { ...v, ok: failures.length === 0, failures, measured: { ...v.measured, lane } };
 }
 
 /** (a) Play a bundled clip through the real player. */
@@ -2135,7 +2234,7 @@ function summary(ctx) {
 export { firstLaunch as firstLaunchScenario, airplane as airplaneScenario };
 
 const RUNNERS = {
-  "first-launch": firstLaunch, play, background, transport, notification,
+  "first-launch": jsFirstLaunch, play, background, transport, notification,
   seams, doze, focus, call, kill, airplane, "back-home": backHome,
   collect,
 };

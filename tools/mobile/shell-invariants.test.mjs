@@ -4735,6 +4735,32 @@ function engineDefaultRefusal(engineDefault, stateText) {
   return null;
 }
 
+/* A-31 (docs/plans/android-assessment.md §5.4, the A1 flip): Android's
+   block may say `native` only when STATE.md records the flip as a line of its
+   own, naming the A-30 run whose every native-mode verdict was green and
+   quoting the founder's ruling it rests on:
+     A-31 flip (<date>): android native default for episodes ... run <id> ... "<the ruling, quoted>" ...
+   The same shape as OQ-9's record: the default and the permission are two
+   edits a reviewer sees in two files. Until A-42 (the A2 flip) the Android
+   default may advertise only episode and continuation: the binary claims no
+   more (EngineBridgeRules.ADVERTISED_CAPABILITIES), and the JVM books still
+   owe the foray families to A-40 and A-41. */
+const A31_FLIP_RE = /^A-31 flip \(\d{4}-\d{2}-\d{2}\): android native default for episodes\b.*\brun \d{6,}\b.*"[^"]+"/m;
+
+/** Why Android's `engineDefault` may not ship with `stateText`, or null when it may. */
+function androidDefaultRefusal(engineDefault, stateText) {
+  if (engineDefault?.mode !== "native") return null;
+  if (!A31_FLIP_RE.test(stateText)) {
+    return 'mobile/ENGINE_DEFAULT.json says android "native", but STATE.md records no line "A-31 flip (<date>): android native default for episodes ... run <id> ..." carrying the ruling in double quotes';
+  }
+  const caps = engineDefault.capabilities ?? [];
+  const allowed = ["episode", "continuation"];
+  const extra = caps.filter((c) => !allowed.includes(c));
+  if (extra.length) return `the A1 Android default may advertise only ${allowed.join(", ")}; it also lists ${extra.join(", ")}`;
+  if (!caps.includes("episode")) return "the A1 Android default is native for episodes: it must declare episode";
+  return null;
+}
+
 test("NE-27: ENGINE_DEFAULT says native only when STATE.md records the OQ-9 answer", () => {
   /* MUTATIONS: commit {"mode":"native"} with STATE.md's OQ-9 line deleted ->
      red; keep the line but drop its quoted ruling -> red; add "remainder" (or
@@ -4750,16 +4776,29 @@ test("NE-27: ENGINE_DEFAULT says native only when STATE.md records the OQ-9 answ
   assert.equal(engineDefaultRefusal({ mode: "native", capabilities: ["episode", "continuation", "restore", "foray"] }, record), null);
   assert.match(engineDefaultRefusal({ mode: "native", capabilities: ["episode", "remainder"] }, record) ?? "", /remainder/);
   assert.match(engineDefaultRefusal({ mode: "native", capabilities: ["foray", "narration"] }, record) ?? "", /narration/);
+  /* A-31's record, the same way. MUTATION: commit android "native" with
+     STATE.md's A-31 flip line deleted, without its run id or its quoted
+     ruling, or with foray (A-42's) in the block -> red. */
+  const flip = 'A-31 flip (2026-09-30): android native default for episodes, backed by run 36693793704, "move to native engine".';
+  assert.equal(androidDefaultRefusal({ mode: "js", capabilities: [] }, ""), null, "a js default needs no record");
+  assert.match(androidDefaultRefusal({ mode: "native", capabilities: ["episode"] }, "") ?? "", /A-31 flip/);
+  assert.match(androidDefaultRefusal({ mode: "native", capabilities: ["episode"] }, flip.replace(" run 36693793704", "")) ?? "", /A-31 flip/);
+  assert.match(androidDefaultRefusal({ mode: "native", capabilities: ["episode"] }, flip.replace(/"[^"]+"/, "unquoted")) ?? "", /A-31 flip/);
+  assert.match(androidDefaultRefusal({ mode: "native", capabilities: ["episode"] }, "  " + flip) ?? "", /A-31 flip/, "the record is a line of its own");
+  assert.equal(androidDefaultRefusal({ mode: "native", capabilities: ["episode", "continuation"] }, flip), null);
+  assert.match(androidDefaultRefusal({ mode: "native", capabilities: ["episode", "continuation", "foray"] }, flip) ?? "", /foray/);
+  assert.match(androidDefaultRefusal({ mode: "native", capabilities: ["continuation"] }, flip) ?? "", /must declare episode/);
 
   /* Per platform since A-20 (docs/plans/android-assessment.md): the OQ-9 rule
-     reads the `ios` block. The `android` block is js (the legacy lane) until
-     A-31 flips it, after the Android engine is fully operational, Joey's device
-     pass and a founder car drive; A-31 replaces this pin with its own record.
-     MUTATION: commit android "native" -> red. */
+     reads the `ios` block. The `android` block has its own record since A-31
+     (the A1 flip): androidDefaultRefusal, above. */
   const committed = JSON.parse(fs.readFileSync(ENGINE_DEFAULT_JSON, "utf8"));
-  const refusal = engineDefaultRefusal(committed.ios, fs.readFileSync(STATE_MD, "utf8").replace(/\r\n/g, "\n"));
+  const stateText = fs.readFileSync(STATE_MD, "utf8").replace(/\r\n/g, "\n");
+  const refusal = engineDefaultRefusal(committed.ios, stateText);
   assert.equal(refusal, null, refusal ?? "");
-  assert.deepEqual(committed.android, { mode: "js", capabilities: [] }, "android stays js until A-31");
+  const androidRefusal = androidDefaultRefusal(committed.android, stateText);
+  assert.equal(androidRefusal, null, androidRefusal ?? "");
+  assert.deepEqual(committed.android, { mode: "native", capabilities: ["episode", "continuation"] }, "A-31: Android's default is native for episodes");
 
   /* NE-37, the M2 flip: a default that grants `foray` needs a boot that plays
      one. The core's flags stay OFF (headless tests and the parity driver build
@@ -4934,10 +4973,12 @@ test("A-26: the native engine's MediaSessionService is a Media3 service over the
      - in native mode it replaces the legacy service: the plugin's start() refuses while it hosts;
      - the adb driver is DEBUG-ONLY: src/debug, never src/main, never the main manifest;
      - the host and its seams are pure JVM (their turn discipline is unit-tested without Android);
-     - and Android stays on the JS lane (ENGINE_DEFAULT android: js) until A-31.
+     - and (since A-31) Android's default is the native lane, held by the NE-27 test to its
+       STATE.md record.
      MUTATION: extend Service instead; declare it first; export it; drop the intent filter; build
      the deck's player without speech attributes or with handleAudioFocus false; move the receiver
-     into src/main; drop the plugin's guard; flip ENGINE_DEFAULT android to native. Each fails here. */
+     into src/main; drop the plugin's guard; make ENGINE_DEFAULT android native without episode, or
+     declare episode in a js block. Each fails here. */
   const android = path.join(PLUGIN_DIR, "android");
   const strip = (src) => src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");
   const audioDir = path.join(android, "src", "main", "java", "ai", "jwlabs", "foura", "audio");
@@ -4987,7 +5028,8 @@ test("A-26: the native engine's MediaSessionService is a Media3 service over the
     "start() refuses the legacy service while the native engine hosts, before it asks for one");
 
   const defaults = readJson(path.join(MOBILE, "ENGINE_DEFAULT.json"));
-  assert.equal(defaults.android.mode, "js", "Android stays on the JS lane until A-31");
+  assert.equal(defaults.android.mode === "native", (defaults.android.capabilities ?? []).includes("episode"),
+    "A-31: Android's native default is the episode engine, and only a native block declares episode");
 });
 
 /* ─────────── A-28: the Android bridge (engineHello, engineSend, engineRead, the "engine" event) ───────────
@@ -4998,10 +5040,10 @@ test("A-26: the native engine's MediaSessionService is a Media3 service over the
  * lane's default held to mobile/ENGINE_DEFAULT.json, and the capability gate against the JVM
  * parity books. */
 
-test("A-28: Android's plugin answers the engine's three methods through the bridge, on main, always resolving; the lane stays off by default", async () => {
+test("A-28: Android's plugin answers the engine's three methods through the bridge, on main, always resolving; the lane says what ENGINE_DEFAULT says", async () => {
   /* MUTATION: drop @PluginMethod from one method, answer without the bridge, `call.reject(` in
      one, call the bridge off main; rename EVENT_NAME; deliver an event without the visibility
-     guard; set BUILD_DEFAULT_NATIVE true (or list a capability ENGINE_DEFAULT's android block
+     guard; set BUILD_DEFAULT_NATIVE to disagree with ENGINE_DEFAULT (or list a capability its android block
      does not); advertise `episode` while jvm-pending still owes engine-mode (A-29); drop
      "android" from HELLO_PLATFORMS or from durable-store's ENGINE_SHELL_PLATFORMS. Each fails. */
   const { BRIDGE_METHODS, CAPABILITIES, HELLO_PLATFORMS } = await import("../../player/engine-contract.js");
@@ -5061,7 +5103,7 @@ test("A-28: Android's plugin answers the engine's three methods through the brid
   assert.match(bodyOf("apply"), /case EMIT -> deliver\.accept\(EngineBridgeRules\.snapshotEvent\(snapshot\(\)\)\)/, "a snapshot event leaves only on the coalescer's word");
   assert.equal((bridge.match(/\bdeliver\.accept\(/g) || []).length, 4, "every deliver.accept( is one of the four above");
 
-  /* THE LANE IS OFF BY DEFAULT, and says what ENGINE_DEFAULT says: A-31 flips both. */
+  /* THE LANE says what ENGINE_DEFAULT says: A-31 flipped both to native for episodes. */
   const lane = stripJavaComments(fs.readFileSync(path.join(engineDir, "EngineLane.java"), "utf8"));
   const defaults = readJson(path.join(MOBILE, "ENGINE_DEFAULT.json"));
   assert.equal(/BUILD_DEFAULT_NATIVE = (true|false);/.exec(lane)?.[1], String(defaults.android.mode === "native"),

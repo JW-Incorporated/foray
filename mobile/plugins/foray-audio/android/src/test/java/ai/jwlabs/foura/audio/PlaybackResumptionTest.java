@@ -63,8 +63,8 @@ public class PlaybackResumptionTest {
         context.getSharedPreferences(EngineStore.PRIVATE_FILE, Context.MODE_PRIVATE).edit().clear().commit();
         context.getSharedPreferences(EngineStore.SHARED_FILE, Context.MODE_PRIVATE).edit().clear().commit();
         resetOwner();
-        /* The native lane, as a listener who chose Native in the Developer drawer has it (the
-           stock build is the JS lane until A-31): the cold path is the native lane's alone. */
+        /* The native lane, as a listener who chose Native in the Developer drawer has it (and,
+           since A-31, as the stock build has it): the cold path is the native lane's alone. */
         setOverride("native");
     }
 
@@ -131,20 +131,21 @@ public class PlaybackResumptionTest {
     }
 
     /**
-     * A-27 review: the record outlives the lane. A listener who put the Developer engine back to
-     * Automatic (the stock JS lane) or to Web still has the record the native engine wrote, and a
-     * car's PLAY must not boot the native engine from it. TO SEE IT FAIL: drop the lane from
-     * {@code ForayMediaButtonReceiver.answersColdPress} or from the service's {@code onCreate}.
+     * A-27 review: the record outlives the lane. A listener who put the Developer engine to Web
+     * still has the record the native engine wrote, and a car's PLAY must not boot the native engine
+     * from it. Automatic is the native lane since A-31 (the A1 flip), so it answers. TO SEE IT FAIL:
+     * drop the lane from {@code ForayMediaButtonReceiver.answersColdPress} or from the service's
+     * {@code onCreate}; or flip {@code EngineLane.BUILD_DEFAULT_NATIVE} back without this test.
      */
     @Test
     public void inTheJsLaneTheRecordAnswersNoPress() {
         storeRecord(754);
         ForayMediaButtonReceiver receiver = new ForayMediaButtonReceiver();
         assertTrue("the native lane resumes it", receiver.shouldStartForegroundService(context, playKey()));
-        for (String mode : new String[] {"auto", "web"}) {
-            setOverride(mode);
-            assertFalse(mode + ": the JS lane's", receiver.shouldStartForegroundService(context, playKey()));
-        }
+        setOverride("auto");
+        assertTrue("A-31: Automatic is the native lane, and resumes it", receiver.shouldStartForegroundService(context, playKey()));
+        setOverride("web");
+        assertFalse("web: the JS lane's", receiver.shouldStartForegroundService(context, playKey()));
         create();
         assertFalse("a JS-lane process that starts the service never arms the receiver",
                 ForayMediaButtonReceiver.isEnabled(context));
@@ -158,7 +159,7 @@ public class PlaybackResumptionTest {
     @Test
     public void aJsLaneDecisionSwitchesTheReceiverOff() {
         ForayMediaButtonReceiver.setEnabled(context, true);
-        setOverride("auto");
+        setOverride("web");
         assertEquals("legacy", EngineOwnership.shared(context).decideOnce().mode());
         assertFalse(ForayMediaButtonReceiver.isEnabled(context));
     }
@@ -172,7 +173,7 @@ public class PlaybackResumptionTest {
      */
     @Test
     public void aMediaButtonStartWithNothingToResumeIsDeclined() {
-        setOverride("auto");
+        setOverride("web");
         controller = Robolectric.buildService(ForayPlaybackService.class, playKey()).create().startCommand(0, 1);
         ForayPlaybackService s = controller.get();
         shadowOf(Looper.getMainLooper()).idle();

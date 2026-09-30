@@ -7,6 +7,37 @@ docs/. Completed workstreams move to their plan doc's retro section.
 
 ## Active workstreams
 
+### 2026-09-30 — `android/a-31-native-default`: A-31, the A1 flip (native default for Android episodes)
+
+Owned: `mobile/ENGINE_DEFAULT.json`'s `android` block, `EngineLane.java`'s two literals, the A-31 record rule in
+`tools/mobile/shell-invariants.test.mjs`, and the lanes of `.github/workflows/android-playback.yml`'s legs. Card A-31
+of `docs/plans/android-assessment.md` (Track A1), into `android/native`.
+
+A-31 flip (2026-09-30): android native default for episodes, backed by run 36693793704 (A-30: every native-mode verdict green), on the founder's ruling "android also needs to move to native engine (or whatever is best)… start work on that in parallel to bring it up to the same maturity level (sans testing) as the iphone app".
+
+**What changed.**
+- **The default.** `ENGINE_DEFAULT.json` android is `{"mode": "native", "capabilities": ["episode", "continuation"]}`,
+  and `EngineLane.BUILD_DEFAULT_NATIVE` / `DECLARED_CAPABILITIES` say the same (shell-invariants holds the pair). A
+  stock launch is the native lane (`native / build-default`), and an episode tap plays on `ForayPlaybackService`. A
+  Foray still relinquishes to the page's player (no `foray` until A-42). The Developer setting's Web, the crash-loop
+  guard (three strikes) and a terminal relinquish still put a process on the JS player.
+- **The record rule.** The NE-27 test's "android stays js until A-31" pin is replaced by the line above: android may
+  say `native` only with a dated `A-31 flip` line naming a run id and quoting the ruling, and may declare only
+  `episode` and `continuation` until A-42.
+- **The emulator legs.**
+  - The native leg's engine scenarios run in the stock lane (the Developer setting Automatic), not the override.
+  - `bridge` now reads a stock launch as `native / build-default` with `episode` in the Copy's caps. It plays an
+    episode through the page's own `ForayPlayer.play` and requires the engine to be the one playing it. Then it sets
+    the Developer setting to Web and requires the JS lane after a relaunch.
+  - The JS legs (A-04/A-05) pin the Web setting in their first step (`first-launch`), so they keep measuring the JS
+    player, which is still the fallback lane.
+
+**Not executed (D-A3, D-A5).** The card's acceptance is the Joey device pass (H-1 pause and resume from the car, H-3
+a call, navigation prompts, the negative control) plus one founder Android car drive. The founder's ruling holds
+every device pass until A-42 (D-A3) and approves no spend for the car phone (D-A5), so neither ran. Both go to the
+post-A-42 device pass through HUMAN-ACTIONS #127, which is not issued. The DECISIONS entry (the G-7 rule) is a
+separate founder-approved PR, not this one.
+
 ### 2026-09-30 — `android/a-30-native-scenarios`: A-30, native-mode emulator scenarios green
 
 Owned: the native leg of `.github/workflows/android-playback.yml` and `tools/mobile/android-native-playback.mjs`

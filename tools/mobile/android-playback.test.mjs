@@ -918,3 +918,29 @@ test("A-05 (f): the instrument logs each element's playing and ended, and the lo
   ]);
   assert.equal(vm.runInContext(mediaLogExpression(0), ctx).length, 2, "one listener per element, however often it plays");
 });
+
+test("A-31: the JS legs pin the Web setting first, so they measure the page's player under a native stock lane", async () => {
+  /* Since A-31 a stock Android launch is the native lane, and every scenario in this runner drives
+     the page's own player. MUTATION: point first-launch back at the plain firstLaunch; drop the
+     force-stop between storing Web and the relaunch; store any mode but web; pass a lane read as
+     native or an override that is not Web. Each fails here. */
+  const { JS_LANE_MODE, DRIVER_COMPONENT, jsLaneFailures, PKG } = await import("./android-playback.mjs");
+  assert.equal(JS_LANE_MODE, "web");
+  assert.equal(DRIVER_COMPONENT, `${PKG}/ai.jwlabs.foura.audio.EngineDriveReceiver`);
+  const src = fs.readFileSync(new URL("./android-playback.mjs", import.meta.url), "utf8");
+  assert.match(src, /"first-launch": jsFirstLaunch,/, "the JS leg's first step pins the lane");
+  const pin = /\nasync function pinJsLane\(ctx\) \{([\s\S]*?)\n\}\n/.exec(src)?.[1] ?? "";
+  const store = pin.indexOf('"--es", "cmd", "override", "--es", "mode", JS_LANE_MODE');
+  const stop = pin.indexOf('shell("am", "force-stop", ctx.pkg)');
+  const start = pin.indexOf('"am", "start"');
+  assert.ok(store >= 0 && store < stop && stop < start, "stored, stopped, then relaunched: the lane is decided once per process");
+
+  const stored = { delivered: true, result: 1, answer: { ok: true, override: "web" } };
+  const status = { lane: "js", status: { lane: "js", override: "web" } };
+  assert.deepEqual(jsLaneFailures({ stored, status }), []);
+  assert.match(jsLaneFailures({ stored: { delivered: false, result: null, answer: null }, status })[0], /Web was not stored/);
+  assert.match(jsLaneFailures({ stored, status: { lane: "native", status: { lane: "native", override: "web" } } })[0], /native lane, not js/);
+  assert.match(jsLaneFailures({ stored, status: { lane: "js", status: { lane: "js", override: "auto" } } })[0], /not "web"/);
+  assert.match(jsLaneFailures({ stored, status: { error: "timeout" } })[0], /could not be read: timeout/);
+  assert.match(jsLaneFailures(null).join("; "), /not stored.*could not be read/);
+});

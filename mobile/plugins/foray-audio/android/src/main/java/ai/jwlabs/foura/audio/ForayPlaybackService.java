@@ -92,8 +92,8 @@ import java.util.concurrent.atomic.AtomicReference;
  * <h2>WHO STARTS IT</h2>
  *
  * The page's bridge (A-28): {@code EngineOwnership} binds it with a {@code MediaController} when
- * the process's lane is native, which on Android is only by the Developer engine setting until
- * A-31 ({@code mobile/ENGINE_DEFAULT.json} {@code android: js}). The DEBUG build's
+ * the process's lane is native, which on Android is the build's default since A-31
+ * ({@code mobile/ENGINE_DEFAULT.json} {@code android: native}). The DEBUG build's
  * {@code EngineDriveReceiver} ({@code src/debug}) is a second client, which the native-mode leg of
  * {@code android-playback.yml} drives over adb. A client binds with a {@code MediaController}
  * (the Media3 way: the service is created bound, and Media3 promotes it to the foreground when the
