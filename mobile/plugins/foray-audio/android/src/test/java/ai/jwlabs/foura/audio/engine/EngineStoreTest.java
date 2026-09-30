@@ -195,4 +195,33 @@ public class EngineStoreTest {
         assertNull(prefs(EngineStore.SHARED_FILE).getString("cp_pos:ep-1", null));
         assertTrue("the rings too", store.log().diagnosticRows().isEmpty());
     }
+
+    /**
+     * A-31 review: THE FLIP'S UPGRADE. Since A-31 a listener who updates from a JS-lane build
+     * starts in the native lane, and the page's attach replaces its copy of the owned rows with
+     * what {@code engineRead("rows")} answers (durable-store's {@code adoptOwnedSet}, replace-set).
+     * So the rows the JS lane wrote through {@code @capacitor/preferences} (its default group,
+     * bare keys, {@code putString} + {@code apply()}) must be exactly what the first native
+     * process answers, or every saved position, Foray progress and the last episode is dropped
+     * on the first launch after the update. The page's other keys stay out of the answer. TO SEE
+     * IT FAIL: read the rows from the engine's own file or from the log's memory, prefix the
+     * keys, or answer only rows this process wrote.
+     */
+    @Test
+    public void theFirstNativeProcessAnswersTheRowsTheJsLaneWrote() {
+        prefs(EngineStore.SHARED_FILE).edit()
+                .putString("cp_pos:ep-7", "{\"seconds\":1234.5,\"at\":1790000000000}")
+                .putString("cp_foray:f-2", "{\"elapsed\":61}")
+                .putString("cp_last_episode", "{\"id\":\"ep-7\"}")
+                .putString("cp_rate", "1.5")
+                .apply();
+        Map<String, String> rows = store().sharedRows(Rows.OWNED_PREFIXES);
+        assertEquals(3, rows.size());
+        assertEquals("{\"seconds\":1234.5,\"at\":1790000000000}", rows.get("cp_pos:ep-7"));
+        assertEquals("{\"elapsed\":61}", rows.get("cp_foray:f-2"));
+        assertEquals("{\"id\":\"ep-7\"}", rows.get("cp_last_episode"));
+        assertFalse("the page's own keys are not the engine's rows", rows.containsKey("cp_rate"));
+        assertEquals("a prefix narrows it", 1, store().sharedRows(Arrays.asList("cp_pos:")).size());
+        assertEquals("the page's file is untouched by the read", "1.5", prefs(EngineStore.SHARED_FILE).getString("cp_rate", null));
+    }
 }
