@@ -57,6 +57,20 @@ public class EngineBridgeTest {
             hellos++;
         }
 
+        int turns;
+        final List<String> faults = new ArrayList<>();
+
+        @Override
+        public void engineTurned() {
+            turns++;
+        }
+
+        @Override
+        public void engineFaulted(String at, RuntimeException error) {
+            faults.add(at + ":" + error.getClass().getSimpleName());
+            relinquish(EngineContract.RelinquishCap.ALL, Vocabulary.Source.RESTORE);
+        }
+
         @Override
         public void setModeOverride(String mode) {
             overrides.add(mode);
@@ -129,8 +143,8 @@ public class EngineBridgeTest {
         }
 
         /**
-         * A playing episode. Through the host, as a tap on the engine's own queue: the bridge's
-         * playEpisode is refused capability-off at A-28 (see theBinaryAdvertisesOnlyWhatItsBooksAllow).
+         * A playing episode. Through the host, as a tap on the engine's own queue, so a test of
+         * something else does not depend on what the build declares.
          */
         void playEpisode(String id) {
             assertTrue(host.handle(ForayEngineHostTest.load(id)).ok());
@@ -197,9 +211,21 @@ public class EngineBridgeTest {
 
     @Test
     public void theBinaryAdvertisesOnlyWhatItsBooksAllow() {
-        // Declared everything; A-28's binary claims continuation alone (episode waits on A-29's
-        // engine-mode family), so a playEpisode is refused capability-off and the page relinquishes.
+        // Declared everything; since A-29 cleared engine-mode on the JVM the binary claims episode
+        // and continuation, and never restore (A-27) or foray (A-40).
         Rig r = nativeRig();
+        r.hello();
+        assertEquals(Arrays.asList("episode", "continuation"), r.bridge.capabilities());
+        JsonNode reply = r.send("playEpisode", playEpisodeArgs("a"));
+        assertEquals("an advertised episode reaches the engine: " + JSWriter.stringify(reply), JsonNode.TRUE, reply.get("ok"));
+        assertTrue("the deck loads it", r.deck.sent.stream().anyMatch(c -> c instanceof DeckCommand.Load));
+    }
+
+    @Test
+    public void aCapabilityTheBuildDoesNotDeclareIsRefusedOnRecord() {
+        // The stock build declares nothing (mobile/ENGINE_DEFAULT.json's android block), so a
+        // playEpisode is refused capability-off and the page relinquishes to its own player.
+        Rig r = new Rig(true, Collections.singletonList("continuation"));
         r.hello();
         assertEquals(Collections.singletonList("continuation"), r.bridge.capabilities());
         JsonNode reply = r.send("playEpisode", playEpisodeArgs("a"));
@@ -399,6 +425,6 @@ public class EngineBridgeTest {
 
     /** The binary's claim, spelled once for the hello test above. */
     static final class EngineBridgeRulesJvm {
-        static final String ADVERTISED = "[\"continuation\"]";
+        static final String ADVERTISED = "[\"episode\",\"continuation\"]";
     }
 }

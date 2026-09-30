@@ -4961,7 +4961,7 @@ test("A-26: the native engine's MediaSessionService is a Media3 service over the
   const facade = strip(fs.readFileSync(path.join(engineDir, "EnginePlayer.java"), "utf8"));
   assert.match(facade, /class EnginePlayer extends SimpleBasePlayer\b/);
   assert.doesNotMatch(facade, /\.setUri\(|\.play\(\)/, "the facade plays nothing and names no URI a controller could play");
-  for (const f of ["ForayEngineHost.java", "EngineSeams.java", "EngineBridge.java", "EngineLane.java"]) {
+  for (const f of ["ForayEngineHost.java", "EngineSeams.java", "EngineBridge.java", "EngineLane.java", "OwnershipCore.java", "EngineFaults.java"]) {
     assert.doesNotMatch(strip(fs.readFileSync(path.join(engineDir, f), "utf8")), /^import android\./m, `${f} is pure JVM`);
   }
 
@@ -5070,4 +5070,67 @@ test("A-28: Android's plugin answers the engine's three methods through the brid
   const declaredList = /emptyList\(\)/.test(declared) ? [] : [...declared.matchAll(/"([^"]+)"/g)].map((m) => m[1]);
   assert.deepEqual(declaredList, defaults.android.capabilities ?? [], "EngineLane.DECLARED_CAPABILITIES must be ENGINE_DEFAULT.json's android capabilities");
   assert.match(lane, /OVERRIDE_KEY = "ForayEngine\.modeOverride"/, "the Developer setting is stored under iOS's key");
+});
+
+/* ─────────── A-29: ownership and fallback (the Android subset of NE-17) ───────────
+ *
+ * docs/plans/android-assessment.md §5.4, card A-29. OwnershipCoreTest (foray-audio, JUnit) and
+ * the engine-mode family (the JVM parity runner) prove the rules; these pin what no JVM test can
+ * see: the lane is decided at launch and the Activity's pause is a healthy marker, the owner's
+ * keys are iOS's names, and the emulator's fault can never be armed in a release build. */
+
+test("A-29: the lane is decided at launch with iOS's private keys, and the debug fault is armed only in a debuggable build", async () => {
+  /* MUTATION: drop `launched()` from load(), or `backgrounded()` from handleOnPause; rename a
+     private key; arm EngineFaults without the FLAG_DEBUGGABLE guard, or from anywhere but the
+     owner; write the fault key from main code; move the driver out of src/debug. Each fails. */
+  const android = path.join(PLUGIN_DIR, "android");
+  const audioDir = path.join(android, "src", "main", "java", "ai", "jwlabs", "foura", "audio");
+  const engineDir = path.join(audioDir, "engine");
+  const plugin = stripJavaComments(fs.readFileSync(path.join(audioDir, "ForayAudioPlugin.java"), "utf8"));
+  const load = plugin.slice(plugin.indexOf("public void load() {"), plugin.indexOf("\n    }", plugin.indexOf("public void load() {")));
+  assert.match(load, /EngineOwnership\.shared\(getContext\(\)\)\.launched\(\);/, "load() decides the lane (and boots a native engine) at launch");
+  const pause = plugin.slice(plugin.indexOf("protected void handleOnPause() {"));
+  assert.match(pause.slice(0, pause.indexOf("\n    }")), /EngineOwnership\.shared\(getContext\(\)\)\.backgrounded\(\);/,
+    "the Activity's pause is the resign-or-background healthy marker");
+
+  const core = stripJavaComments(fs.readFileSync(path.join(engineDir, "OwnershipCore.java"), "utf8"));
+  assert.match(core, /KEY_OVERRIDE = EngineLane\.OVERRIDE_KEY;/);
+  assert.match(core, /KEY_STRIKES = "ForayEngine\.strikes";/);
+  assert.match(core, /KEY_SENTINEL = "ForayEngine\.sentinel";/);
+  assert.match(core, /KEY_STICKY = "ForayEngine\.stickyLegacyBuild";/);
+  assert.match(core, /HEALTHY_RUN_LOOP_MS = 5_000;/);
+  assert.match(core, /PAGE_HEALTH_MS = 10_000;/);
+  const { HELLO_TIMEOUT_MS } = await import("../../player/native-engine.js");
+  assert.ok(15_000 > HELLO_TIMEOUT_MS, "the engine's watchdog is longer than the page's own hello bound");
+  assert.match(core, /HELLO_WATCHDOG_MS = 15_000;/);
+  for (const f of ["OwnershipCore.java", "EngineFaults.java"]) {
+    assert.doesNotMatch(fs.readFileSync(path.join(engineDir, f), "utf8"), /^import android\./m, `${f} is pure JVM`);
+  }
+
+  /* THE FAULT IS A DEBUG-ONLY MUTATION. */
+  const mainFiles = [];
+  const walk = (dir) => {
+    for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+      const p = path.join(dir, e.name);
+      if (e.isDirectory()) walk(p);
+      else if (e.name.endsWith(".java")) mainFiles.push(p);
+    }
+  };
+  walk(path.join(android, "src", "main"));
+  const arming = mainFiles.filter((f) => /EngineFaults\.arm\(/.test(stripJavaComments(fs.readFileSync(f, "utf8"))));
+  assert.deepEqual(arming.map((f) => path.basename(f)), ["EngineOwnership.java"], "only the owner arms the fault in main code");
+  const owner = stripJavaComments(fs.readFileSync(path.join(audioDir, "EngineOwnership.java"), "utf8"));
+  const armAt = owner.indexOf("EngineFaults.arm(");
+  const guard = owner.lastIndexOf("if (debuggable())", armAt);
+  assert.ok(guard >= 0 && armAt - guard < 400, "EngineFaults.arm runs only inside `if (debuggable())`");
+  assert.match(owner, /private boolean debuggable\(\) \{\s*return \(app\.getApplicationInfo\(\)\.flags & ApplicationInfo\.FLAG_DEBUGGABLE\) != 0;/);
+  const writers = mainFiles.filter((f) => /DEBUG_FAULT_KEY\s*,/.test(stripJavaComments(fs.readFileSync(f, "utf8")).replace(/getString\(DEBUG_FAULT_KEY,/g, "")));
+  assert.deepEqual(writers, [], "no main code writes the debug fault key");
+  const receiver = fs.readFileSync(path.join(android, "src", "debug", "java", "ai", "jwlabs", "foura", "audio", "EngineDriveReceiver.java"), "utf8");
+  assert.match(receiver, /putString\(EngineOwnership\.DEBUG_FAULT_KEY, fault\)/, "the debug driver is what arms the next launch");
+
+  /* The bridge answers a hello the engine threw on with legacy/downgrade, after the owner gave the process back. */
+  const bridge = stripJavaComments(fs.readFileSync(path.join(engineDir, "EngineBridge.java"), "utf8"));
+  const hello = bridge.slice(bridge.indexOf("public JsonNode hello(JsonNode payload) {"), bridge.indexOf("// ---- engineSend"));
+  assert.match(hello, /catch \(RuntimeException e\) \{\s*owner\.engineFaulted\("hello", e\);\s*return EngineBridgeRules\.legacyHello\(Vocabulary\.ModeReason\.DOWNGRADE\);/);
 });

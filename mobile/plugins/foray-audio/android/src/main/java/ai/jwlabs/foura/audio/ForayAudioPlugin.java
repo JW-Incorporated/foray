@@ -219,6 +219,32 @@ public class ForayAudioPlugin extends Plugin {
         SessionMonitor.install(getContext());
 
         engineListener = this;
+
+        /* A-29: THE LANE IS DECIDED AT LAUNCH, as on iOS, so the crash-loop sentinel is written
+           before a native engine boots (a boot that crashes the process has already been counted)
+           and the hello watchdog starts with the page. In the native lane this binds the engine's
+           service now; in the stock (legacy) lane it reads the keys and does nothing else. load()
+           runs on main (Capacitor builds the bridge in the Activity's onCreate). Never throws into
+           the Activity: an owner that failed leaves the bridge's own fallbacks in place. */
+        try {
+            EngineOwnership.shared(getContext()).launched();
+        } catch (RuntimeException e) {
+            Log.w(TAG, "the engine owner failed at launch; the page decides on its own", e);
+        }
+    }
+
+    /**
+     * A-29: the Activity paused (the listener left, or the screen went off). For a native engine
+     * that has come this far, that is the healthy marker: the crash-loop sentinel is cleared.
+     */
+    @Override
+    protected void handleOnPause() {
+        super.handleOnPause();
+        try {
+            EngineOwnership.shared(getContext()).backgrounded();
+        } catch (RuntimeException e) {
+            Log.w(TAG, "the engine owner failed at pause", e);
+        }
     }
 
     /**

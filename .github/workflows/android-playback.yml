@@ -625,7 +625,7 @@ jobs:
         if: ${{ matrix.mode == 'native' && !cancelled() && steps.launch.outcome == 'success' }}
         run: node tools/mobile/android-native-playback.mjs call --art "$ART"
 
-      # A-28: the page's door, last. Since A-28 the page asks the Android engine
+      # A-28: the page's door. Since A-28 the page asks the Android engine
       # engineHello; this reads the stock lane (legacy), turns the Developer engine
       # setting to Native through the page, relaunches, and requires the Copy
       # paste to say `engine=native` and hold an `engineMode native` row.
@@ -633,6 +633,16 @@ jobs:
         id: native-bridge
         if: ${{ matrix.mode == 'native' && !cancelled() && steps.launch.outcome == 'success' }}
         run: node tools/mobile/android-native-playback.mjs bridge --art "$ART"
+
+      # A-29: ownership and fallback, last. The debug build's engine is told to
+      # throw at engineHello; over three native launches the page must fall back
+      # to its own player with a fault row and a page-health strike each (and the
+      # legacy service must start), and the fourth launch must be pinned to the
+      # JS lane by the crash-loop guard.
+      - name: (A-29) native — the engine throws at hello; the page falls back to js with a fault row; three strikes pin the JS lane
+        id: native-fallback
+        if: ${{ matrix.mode == 'native' && !cancelled() && steps.launch.outcome == 'success' }}
+        run: node tools/mobile/android-native-playback.mjs fallback --art "$ART"
 
       - name: Collect the native engine's dump, its logcat and the system's view
         if: ${{ matrix.mode == 'native' && !cancelled() && (steps.launch.outcome == 'success' || steps.launch.outcome == 'failure') }}

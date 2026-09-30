@@ -1,22 +1,20 @@
 package ai.jwlabs.foura.audio.engine;
 
 import ai.jwlabs.foura.engine.EngineContract;
-import ai.jwlabs.foura.engine.Vocabulary;
 import java.util.Collections;
 import java.util.List;
 
 /**
- * WHICH LANE AN ANDROID PROCESS PLAYS THROUGH (card A-28, docs/plans/android-assessment.md §5.4),
- * before ownership: the build's default and the Developer engine setting, and nothing else. Pure.
+ * THE LANE'S BUILD-TIME INPUTS on Android (cards A-28 and A-29, docs/plans/android-assessment.md
+ * §5.4): the build's default, what it declares, and where the Developer engine setting lives.
+ * Pure. The decision itself is {@code EngineMode.decide} (the {@code engine-mode} family, ported by
+ * A-29), made once per process by {@link OwnershipCore} with the crash-loop sentinel, the strikes
+ * and the sticky pin.
  *
- * <p>WHAT IS NOT HERE, AND WHY IT IS SAFE WITHOUT IT. iOS decides with {@code decideEngineMode}
- * (the {@code engine-mode} family): a crash-loop sentinel that pins a build to legacy after three
- * strikes, and the hello watchdog. Those are A-29's ("ownership and fallback"), which ports that
- * family and replaces {@link #decide} with it. Until then the native lane is reached ONLY through
- * the Developer override: {@link #BUILD_DEFAULT_NATIVE} is false, as mobile/ENGINE_DEFAULT.json's
- * {@code android} block says ({@code "mode": "js"} until A-31), and shell-invariants holds the two
- * together. A listener who never opened the Developer drawer runs the JS player, exactly as before
- * A-28.
+ * <p>Until A-31 the native lane is reached ONLY through the Developer override:
+ * {@link #BUILD_DEFAULT_NATIVE} is false, as mobile/ENGINE_DEFAULT.json's {@code android} block says
+ * ({@code "mode": "js"}), and shell-invariants holds the two together. A listener who never opened
+ * the Developer drawer runs the JS player, exactly as before A-28.
  */
 public final class EngineLane {
     private EngineLane() {}
@@ -42,17 +40,5 @@ public final class EngineLane {
     /** A stored override, read as the JS reads {@code MODE_OVERRIDES.includes(v) ? v : "auto"}. */
     public static String storedOverride(String raw) {
         return raw != null && EngineContract.MODE_OVERRIDES.contains(raw) ? raw : "auto";
-    }
-
-    /**
-     * The lane: the override when it names one ({@code native} or {@code web}), else the build's
-     * default, each with the reason a hello reports.
-     */
-    public static EngineBridge.Decision decide(boolean buildDefaultNative, String rawOverride) {
-        String override = storedOverride(rawOverride);
-        if (override.equals("native")) return new EngineBridge.Decision(EngineContract.MODE_NATIVE, Vocabulary.ModeReason.OVERRIDE);
-        if (override.equals("web")) return new EngineBridge.Decision(EngineContract.MODE_LEGACY, Vocabulary.ModeReason.OVERRIDE);
-        return new EngineBridge.Decision(buildDefaultNative ? EngineContract.MODE_NATIVE : EngineContract.MODE_LEGACY,
-                Vocabulary.ModeReason.BUILD_DEFAULT);
     }
 }

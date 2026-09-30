@@ -1,6 +1,9 @@
 package ai.jwlabs.foura.audio;
 
+import ai.jwlabs.foura.audio.engine.EngineFaults;
+import ai.jwlabs.foura.audio.engine.EngineLane;
 import ai.jwlabs.foura.audio.engine.ForayEngineHost;
+import ai.jwlabs.foura.audio.engine.OwnershipCore;
 import ai.jwlabs.foura.engine.EngineContract;
 import ai.jwlabs.foura.engine.EngineInput;
 import ai.jwlabs.foura.engine.EngineItem;
@@ -10,6 +13,7 @@ import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.util.Base64;
 import android.util.Log;
 import androidx.annotation.OptIn;
@@ -42,6 +46,18 @@ import java.util.List;
  * <p>It decides nothing and bypasses nothing: every input goes through
  * {@code ForayEngineHost.handle}, so the audible-start invariant, the session and the deck are
  * exactly the ones a real client would get.
+ *
+ * <p>A-29 adds three commands that bind nothing (the lane's fallback scenario sets them up before
+ * the app is launched, and reads them after):
+ * <pre>
+ *   adb shell am broadcast -n … --es cmd fault --es fault hello-throws|none
+ *   adb shell am broadcast -n … --es cmd override --es mode auto|native|web
+ *   adb shell am broadcast -n … --es cmd keys
+ * </pre>
+ * {@code fault} arms the engine's debug mutation for the next launch ({@code EngineFaults}: the
+ * engine throws while answering engineHello). {@code override} is the Developer engine setting,
+ * through the owner (so strikes and the sticky pin clear, exactly as the page's row does).
+ * {@code keys} answers the engine-private keys as stored.
  */
 @OptIn(markerClass = UnstableApi.class)
 public final class EngineDriveReceiver extends BroadcastReceiver {
@@ -52,8 +68,15 @@ public final class EngineDriveReceiver extends BroadcastReceiver {
 
     @Override
     public void onReceive(Context context, Intent intent) {
-        PendingResult pending = goAsync();
         Context app = context.getApplicationContext();
+        String owned = ownerCommand(app, intent);
+        if (owned != null) {
+            Log.i(TAG, "cmd=" + intent.getStringExtra("cmd") + " " + owned);
+            setResultCode(1);
+            setResultData(owned);
+            return;
+        }
+        PendingResult pending = goAsync();
         Runnable drive = () -> {
             String answer;
             try {
@@ -85,6 +108,47 @@ public final class EngineDriveReceiver extends BroadcastReceiver {
             }
             drive.run();
         }, ContextCompat.getMainExecutor(app));
+    }
+
+    /**
+     * A-29's commands, which touch the lane's keys and never the service: the answer, or null for
+     * a command that drives the engine. On main (a receiver's onReceive).
+     */
+    private static String ownerCommand(Context app, Intent intent) {
+        String cmd = intent.getStringExtra("cmd");
+        if (cmd == null) return null;
+        SharedPreferences prefs = app.getSharedPreferences(EngineLane.PREFS, Context.MODE_PRIVATE);
+        switch (cmd) {
+            case "fault" -> {
+                String fault = intent.getStringExtra("fault");
+                boolean known = EngineFaults.HELLO.equals(fault);
+                SharedPreferences.Editor e = prefs.edit();
+                if (known) e.putString(EngineOwnership.DEBUG_FAULT_KEY, fault);
+                else e.remove(EngineOwnership.DEBUG_FAULT_KEY);
+                boolean ok = e.commit();
+                return "{\"ok\":" + ok + ",\"fault\":" + (known ? JSWriter.quote(fault) : "null") + "}";
+            }
+            case "override" -> {
+                String mode = intent.getStringExtra("mode");
+                if (mode == null || !EngineContract.MODE_OVERRIDES.contains(mode)) {
+                    return "{\"ok\":false,\"failures\":[" + JSWriter.quote("bad-mode:" + mode) + "]}";
+                }
+                EngineOwnership.shared(app).setModeOverride(mode);
+                return "{\"ok\":true,\"override\":" + JSWriter.quote(mode) + "}";
+            }
+            case "keys" -> {
+                StringBuilder out = new StringBuilder("{\"ok\":true");
+                for (String key : new String[] {OwnershipCore.KEY_OVERRIDE, OwnershipCore.KEY_STRIKES, OwnershipCore.KEY_SENTINEL,
+                        OwnershipCore.KEY_STICKY, EngineOwnership.DEBUG_FAULT_KEY}) {
+                    String v = prefs.getString(key, null);
+                    out.append(',').append(JSWriter.quote(key)).append(':').append(v == null ? "null" : JSWriter.quote(v));
+                }
+                return out.append('}').toString();
+            }
+            default -> {
+                return null;
+            }
+        }
     }
 
     /** One input, on main. */
