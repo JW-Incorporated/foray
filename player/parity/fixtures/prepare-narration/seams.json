@@ -1,0 +1,566 @@
+{
+  "family": "prepare-narration",
+  "note": "NE-45j: the prepare family's seams with a narration line in them (docs/native-engine-plan.md NE-45j). The next item is prepared when it has a FILE (deck-policy.js warmsAcross), whatever the beat; a spoken line prepares nothing and the item after it is prepared at the line's start; an item with no out-point opens its window from its duration. Audible-level seams with the native-only n.prepare: / n.prepare-seek: / n.handover: tokens ASSERTED (compare.js NATIVE_TOKEN_FAMILIES), run against player/parity/reference-engine.js. Authored, like prepare. Port card NE-45s (it moves this family to the foray capability, or folds it into prepare, once it passes in Swift); JVM A-62.",
+  "cases": [
+    {
+      "id": "prepare-narration/clip-line-clip-in-one-episode-prepares-the-second-clip-by-a-seek",
+      "covers": [],
+      "authored": true,
+      "note": "The NE-45j card's own case. Both clips are from a.mp3. The line is prepared inside the first clip's window (n.prepare, a fetch of its own file) and handed over at the out-point with no beat (a line is its own marker). The handover demotes the deck holding a.mp3 to standby WITHOUT dropping it, so when the line's window opens (from its 20 s duration: it has no out-point) the second clip is prepared by a same-source SEEK on the standby (n.prepare-seek), and at the line's natural end it is handed over at its in-point, 300.",
+      "setup": { "target": "engine", "backend": { "durationById": { "n1": 20 } } },
+      "steps": [
+        {
+          "call": "playForay",
+          "args": {
+            "forayId": "f1",
+            "title": "A Foray",
+            "items": [
+              {
+                "type": "segment",
+                "id": "s0",
+                "audio_url": "https://cdn.test/a.mp3",
+                "start_sec": 100,
+                "end_sec": 200,
+                "duration_sec": 3600
+              },
+              {
+                "type": "narration",
+                "id": "n1",
+                "audio_url": "https://cdn.test/n1.m4a",
+                "script": "A line.",
+                "duration_sec": 20
+              },
+              {
+                "type": "segment",
+                "id": "s1",
+                "audio_url": "https://cdn.test/a.mp3",
+                "start_sec": 300,
+                "end_sec": 400,
+                "duration_sec": 3600
+              }
+            ],
+            "buildReport": {},
+            "isLocalFile": false,
+            "allowAdPad": false,
+            "voiceId": null
+          }
+        },
+        { "deck": "time", "sec": 190 },
+        { "deck": "window" },
+        { "checkpoint": "line-prepared" },
+        { "deck": "time", "sec": 200 },
+        { "deck": "ended", "reason": "outPoint" },
+        { "checkpoint": "line" },
+        { "deck": "time", "sec": 10 },
+        { "deck": "window" },
+        { "checkpoint": "clip-prepared" },
+        { "deck": "time", "sec": 20 },
+        { "deck": "ended", "reason": "natural" },
+        { "checkpoint": "clip" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "line-prepared",
+            "nowMs": 0,
+            "ops": ["load:f1#0@100", "rate:1", "outPoint:200", "play", "n.prepare:n1@0"],
+            "playhead": "f1#0",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "line",
+            "nowMs": 0,
+            "ops": ["rate:1", "n.handover:n1@0", "load:n1@0", "play"],
+            "playhead": "n1",
+            "rate": 1,
+            "state": "transitioning"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "clip-prepared",
+            "nowMs": 0,
+            "ops": ["n.prepare-seek:f1#2@300"],
+            "playhead": "n1",
+            "rate": 1,
+            "state": "transitioning"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 2,
+            "name": "clip",
+            "nowMs": 0,
+            "ops": [
+              "rate:1",
+              "n.handover:f1#2@300",
+              "load:f1#2@300",
+              "rate:1",
+              "outPoint:400",
+              "play"
+            ],
+            "playhead": "f1#2",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 2,
+            "name": "end",
+            "nowMs": 0,
+            "ops": [],
+            "playhead": "f1#2",
+            "rate": 1,
+            "state": "playing"
+          }
+        ],
+        "ops": [
+          "load:f1#0@100",
+          "rate:1",
+          "outPoint:200",
+          "play",
+          "n.prepare:n1@0",
+          "rate:1",
+          "n.handover:n1@0",
+          "load:n1@0",
+          "play",
+          "n.prepare-seek:f1#2@300",
+          "rate:1",
+          "n.handover:f1#2@300",
+          "load:f1#2@300",
+          "rate:1",
+          "outPoint:400",
+          "play"
+        ]
+      }
+    },
+    {
+      "id": "prepare-narration/clip-line-clip-across-two-episodes-prepares-both-seams",
+      "covers": [],
+      "authored": true,
+      "note": "The same shape over two episodes: the second clip's source (b.mp3) is not what the standby holds (a.mp3, demoted at the first handover), so its prepare is a fetch (n.prepare), and both seams are handovers: no cold load at either boundary.",
+      "setup": { "target": "engine", "backend": { "durationById": { "n1": 20 } } },
+      "steps": [
+        {
+          "call": "playForay",
+          "args": {
+            "forayId": "f1",
+            "title": "A Foray",
+            "items": [
+              {
+                "type": "segment",
+                "id": "s0",
+                "audio_url": "https://cdn.test/a.mp3",
+                "start_sec": 100,
+                "end_sec": 200,
+                "duration_sec": 3600
+              },
+              {
+                "type": "narration",
+                "id": "n1",
+                "audio_url": "https://cdn.test/n1.m4a",
+                "script": "A line.",
+                "duration_sec": 20
+              },
+              {
+                "type": "segment",
+                "id": "s1",
+                "audio_url": "https://cdn.test/b.mp3",
+                "start_sec": 300,
+                "end_sec": 400,
+                "duration_sec": 3600
+              }
+            ],
+            "buildReport": {},
+            "isLocalFile": false,
+            "allowAdPad": false,
+            "voiceId": null
+          }
+        },
+        { "deck": "time", "sec": 190 },
+        { "deck": "window" },
+        { "deck": "time", "sec": 200 },
+        { "deck": "ended", "reason": "outPoint" },
+        { "checkpoint": "line" },
+        { "deck": "time", "sec": 10 },
+        { "deck": "window" },
+        { "checkpoint": "clip-prepared" },
+        { "deck": "time", "sec": 20 },
+        { "deck": "ended", "reason": "natural" },
+        { "checkpoint": "clip" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "line",
+            "nowMs": 0,
+            "ops": [
+              "load:f1#0@100",
+              "rate:1",
+              "outPoint:200",
+              "play",
+              "n.prepare:n1@0",
+              "rate:1",
+              "n.handover:n1@0",
+              "load:n1@0",
+              "play"
+            ],
+            "playhead": "n1",
+            "rate": 1,
+            "state": "transitioning"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "clip-prepared",
+            "nowMs": 0,
+            "ops": ["n.prepare:f1#2@300"],
+            "playhead": "n1",
+            "rate": 1,
+            "state": "transitioning"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 2,
+            "name": "clip",
+            "nowMs": 0,
+            "ops": [
+              "rate:1",
+              "n.handover:f1#2@300",
+              "load:f1#2@300",
+              "rate:1",
+              "outPoint:400",
+              "play"
+            ],
+            "playhead": "f1#2",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 2,
+            "name": "end",
+            "nowMs": 0,
+            "ops": [],
+            "playhead": "f1#2",
+            "rate": 1,
+            "state": "playing"
+          }
+        ],
+        "ops": [
+          "load:f1#0@100",
+          "rate:1",
+          "outPoint:200",
+          "play",
+          "n.prepare:n1@0",
+          "rate:1",
+          "n.handover:n1@0",
+          "load:n1@0",
+          "play",
+          "n.prepare:f1#2@300",
+          "rate:1",
+          "n.handover:f1#2@300",
+          "load:f1#2@300",
+          "rate:1",
+          "outPoint:400",
+          "play"
+        ]
+      }
+    },
+    {
+      "id": "prepare-narration/a-spoken-line-prepares-nothing-and-the-clip-after-it-is-prepared-at-its-start",
+      "covers": [],
+      "authored": true,
+      "note": "A script-only line has no file: the first clip's window prepares nothing. The seam speaks the line (tts.speak), and because the deck is idle while the synthesiser speaks, the clip after it is prepared at the line's START (n.prepare), not at a window.",
+      "setup": { "target": "engine" },
+      "steps": [
+        {
+          "call": "playForay",
+          "args": {
+            "forayId": "f1",
+            "title": "A Foray",
+            "items": [
+              {
+                "type": "segment",
+                "id": "s0",
+                "audio_url": "https://cdn.test/a.mp3",
+                "start_sec": 100,
+                "end_sec": 200,
+                "duration_sec": 3600
+              },
+              { "type": "narration", "id": "n1", "script": "A line." },
+              {
+                "type": "segment",
+                "id": "s1",
+                "audio_url": "https://cdn.test/b.mp3",
+                "start_sec": 300,
+                "end_sec": 400,
+                "duration_sec": 3600
+              }
+            ],
+            "buildReport": {},
+            "isLocalFile": false,
+            "allowAdPad": false,
+            "voiceId": null
+          }
+        },
+        { "deck": "time", "sec": 190 },
+        { "deck": "window" },
+        { "checkpoint": "nothing-to-prepare" },
+        { "deck": "time", "sec": 200 },
+        { "deck": "ended", "reason": "outPoint" },
+        { "checkpoint": "line-started" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "nothing-to-prepare",
+            "nowMs": 0,
+            "ops": ["load:f1#0@100", "rate:1", "outPoint:200", "play"],
+            "playhead": "f1#0",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "line-started",
+            "nowMs": 0,
+            "ops": ["tts.speak:A line.@1", "n.prepare:f1#2@300"],
+            "playhead": "n1",
+            "rate": 1,
+            "state": "transitioning"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "end",
+            "nowMs": 0,
+            "ops": [],
+            "playhead": "n1",
+            "rate": 1,
+            "state": "transitioning"
+          }
+        ],
+        "ops": [
+          "load:f1#0@100",
+          "rate:1",
+          "outPoint:200",
+          "play",
+          "tts.speak:A line.@1",
+          "n.prepare:f1#2@300"
+        ]
+      }
+    },
+    {
+      "id": "prepare-narration/a-line-shorter-than-the-lead-prepares-the-next-clip-at-its-start",
+      "covers": [],
+      "authored": true,
+      "note": "An 8 s rendered line is shorter than PREFETCH_LEAD_SEC, so it is inside its window from its first tick: the clip after it is prepared as the line starts playing, with no window step.",
+      "setup": { "target": "engine", "backend": { "durationById": { "n1": 8 } } },
+      "steps": [
+        {
+          "call": "playForay",
+          "args": {
+            "forayId": "f1",
+            "title": "A Foray",
+            "items": [
+              {
+                "type": "segment",
+                "id": "s0",
+                "audio_url": "https://cdn.test/a.mp3",
+                "start_sec": 100,
+                "end_sec": 200,
+                "duration_sec": 3600
+              },
+              {
+                "type": "narration",
+                "id": "n1",
+                "audio_url": "https://cdn.test/n1.m4a",
+                "script": "A line.",
+                "duration_sec": 8
+              },
+              {
+                "type": "segment",
+                "id": "s1",
+                "audio_url": "https://cdn.test/b.mp3",
+                "start_sec": 300,
+                "end_sec": 400,
+                "duration_sec": 3600
+              }
+            ],
+            "buildReport": {},
+            "isLocalFile": false,
+            "allowAdPad": false,
+            "voiceId": null
+          }
+        },
+        { "deck": "time", "sec": 190 },
+        { "deck": "window" },
+        { "deck": "time", "sec": 200 },
+        { "deck": "ended", "reason": "outPoint" },
+        { "checkpoint": "line" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "line",
+            "nowMs": 0,
+            "ops": [
+              "load:f1#0@100",
+              "rate:1",
+              "outPoint:200",
+              "play",
+              "n.prepare:n1@0",
+              "rate:1",
+              "n.handover:n1@0",
+              "load:n1@0",
+              "play",
+              "n.prepare:f1#2@300"
+            ],
+            "playhead": "n1",
+            "rate": 1,
+            "state": "transitioning"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "end",
+            "nowMs": 0,
+            "ops": [],
+            "playhead": "n1",
+            "rate": 1,
+            "state": "transitioning"
+          }
+        ],
+        "ops": [
+          "load:f1#0@100",
+          "rate:1",
+          "outPoint:200",
+          "play",
+          "n.prepare:n1@0",
+          "rate:1",
+          "n.handover:n1@0",
+          "load:n1@0",
+          "play",
+          "n.prepare:f1#2@300"
+        ]
+      }
+    },
+    {
+      "id": "prepare-narration/a-line-that-ends-the-foray-prepares-nothing",
+      "covers": [],
+      "authored": true,
+      "note": "The Foray's last item prepares nothing, a line included: its window opens (from its duration) and there is no next item.",
+      "setup": { "target": "engine", "backend": { "durationById": { "n1": 20 } } },
+      "steps": [
+        {
+          "call": "playForay",
+          "args": {
+            "forayId": "f1",
+            "title": "A Foray",
+            "items": [
+              {
+                "type": "segment",
+                "id": "s0",
+                "audio_url": "https://cdn.test/a.mp3",
+                "start_sec": 100,
+                "end_sec": 200,
+                "duration_sec": 3600
+              },
+              {
+                "type": "narration",
+                "id": "n1",
+                "audio_url": "https://cdn.test/n1.m4a",
+                "script": "A line.",
+                "duration_sec": 20
+              }
+            ],
+            "buildReport": {},
+            "isLocalFile": false,
+            "allowAdPad": false,
+            "voiceId": null
+          }
+        },
+        { "deck": "time", "sec": 190 },
+        { "deck": "window" },
+        { "deck": "time", "sec": 200 },
+        { "deck": "ended", "reason": "outPoint" },
+        { "deck": "time", "sec": 10 },
+        { "deck": "window" },
+        { "checkpoint": "last" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "last",
+            "nowMs": 0,
+            "ops": [
+              "load:f1#0@100",
+              "rate:1",
+              "outPoint:200",
+              "play",
+              "n.prepare:n1@0",
+              "rate:1",
+              "n.handover:n1@0",
+              "load:n1@0",
+              "play"
+            ],
+            "playhead": "n1",
+            "rate": 1,
+            "state": "transitioning"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "end",
+            "nowMs": 0,
+            "ops": [],
+            "playhead": "n1",
+            "rate": 1,
+            "state": "transitioning"
+          }
+        ],
+        "ops": [
+          "load:f1#0@100",
+          "rate:1",
+          "outPoint:200",
+          "play",
+          "n.prepare:n1@0",
+          "rate:1",
+          "n.handover:n1@0",
+          "load:n1@0",
+          "play"
+        ]
+      }
+    }
+  ]
+}

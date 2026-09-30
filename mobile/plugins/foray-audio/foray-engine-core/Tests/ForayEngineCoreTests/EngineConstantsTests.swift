@@ -58,7 +58,7 @@ final class EngineConstantsTests: XCTestCase {
     /// declaration order, which is what the diag-tokens family's reads record.
     func testSetsAreTheEnumsInOrder() {
         XCTAssertEqual(Set(Vocabulary.sets.keys), Set(Vocabulary.setNames))
-        XCTAssertEqual(Vocabulary.setNames.count, 8)
+        XCTAssertEqual(Vocabulary.setNames.count, 9)
         XCTAssertEqual(Vocabulary.sets["interruptionReason"],
                        ["default", "appWasSuspended", "builtInMicMuted", "unknown"])
         // L13: the detail set keeps the contract's three, spelled the same.

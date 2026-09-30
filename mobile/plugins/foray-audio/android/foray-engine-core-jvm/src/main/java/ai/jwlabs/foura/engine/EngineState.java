@@ -2,10 +2,8 @@ package ai.jwlabs.foura.engine;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 /**
  * The engine's composite state (docs/native-engine-plan.md §4.2): the six reducer states
@@ -64,8 +62,25 @@ public final class EngineState {
     public boolean pausedByListener = false;
     /** {@code _pausedByRoute}: a route went away (corner case #13); only a press or a known car route clears it. */
     public boolean pausedByRoute = false;
-    /** {@code _knownCarRoutes}. */
-    public Set<String> knownCarRoutes = new HashSet<>();
+
+    // ---- route resume (A-61, the Swift NE-38rs state; player/route-resume.js)
+
+    /**
+     * The routes our audio has been heard through (salted SHA-256 keys, least recently used
+     * first), seeded from {@code EngineConfig.knownRoutes} and persisted by the host in
+     * {@code ForayEngine.knownRoutes} whenever it changes.
+     */
+    public RouteResume.KnownRoutes knownRoutes = new RouteResume.KnownRoutes();
+    /** route-resume.js's reducer: what last paused us, which route was lost and when (wall clock), and whether the engine means to be playing. */
+    public RouteResume.State routeResume = new RouteResume.State(false);
+    /**
+     * The reducer as it was before an uncommanded pause was blamed on the system, so a route loss
+     * that follows within the 500 ms attribution window is still the loss of a PLAYING route
+     * (plan §4.3: either order).
+     */
+    public RouteResumeSnapshot routeResumeBeforePause;
+    /** The route the deck became audible through, and when: it is known once heard for {@code RouteResume.KNOWN_AFTER_MS}. */
+    public HeardRoute heardRoute;
     /** For the 500 ms route attribution of an uncommanded pause (plan §4.3). */
     public Double lastRouteLostAtMono;
     public Double lastUncommandedPauseAtMono;
@@ -305,4 +320,18 @@ public final class EngineState {
     }
 
     public record LastRemote(MediaMapping.RemoteCommand command, double atMono) {}
+
+    /** A-61 (NE-38rs): {@code routeResume} before a system-blamed pause, and when. */
+    public record RouteResumeSnapshot(RouteResume.State state, double atMono) {}
+
+    /**
+     * A-61 (NE-38rs): the route a playing deck is heard through (its hashed key), from when, and
+     * until when if the deck stopped (a pause, a stall, the system).
+     */
+    public record HeardRoute(String key, double sinceMono, Double untilMono) {
+        /** How long it was heard, at {@code monoMs}. */
+        public double heardMs(double monoMs) {
+            return (untilMono != null ? untilMono : monoMs) - sinceMono;
+        }
+    }
 }

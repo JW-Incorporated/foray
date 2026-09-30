@@ -2,7 +2,7 @@
 
 <!-- ha-format: 2 -->
 
-> **31 open.** Closed items are in `HUMAN-ACTIONS-DONE.md` — you never need it.
+> **32 open.** Closed items are in `HUMAN-ACTIONS-DONE.md` — you never need it.
 > To close one: reply `done` (or `skip <why>`) to its card in the project's human-action channel.
 > Anything else you reply is forwarded to a thread on the card.
 
@@ -20,6 +20,22 @@
 **Worked if:** the next scheduled `nightly-refresh` run is green, a `nightly/<date>` PR opens the same day, and `nightly-watch` is green that evening.
 
 **Spark note (2026-09-28):** under the Spark direction (`docs/DECISIONS.md` 2026-09-28) the nightly step moves to the Spark (Phase 5). Step 2, dropping or recovering the stranded 2026-09-14 digest, must be decided before the first Spark nightly runs, even if the routine stays off until then.
+
+## #129 🟡 [DECIDE] Drive the M3 test on the first TestFlight build after `engine/m3` merges (~2 drives)
+<!-- ha filed=2026-09-30 kind=default -->
+
+**Why:** M3 makes the car-resume rules final: 4a relaunching after iOS closed it (DV-7a), a car switched off and on, and the provisional timings. Only your car can show them; the pastes settle the values.
+
+**Steps:**
+1. Use build **Claude adds here** (or later). TestFlight → 4a → Automatic Updates off.
+2. Follow `docs/native-engine-m3-drive-test.md`: step 0, then the 10-minute desk pre-flight.
+3. DV-7a: play, pause, Developer → Simulate system termination, then lock the phone (4a closes itself). Press the car's play.
+4. DV-7b: force-quit 4a from the app switcher, then press the car's play. Note who plays.
+5. Switch the car off while 4a plays; wait 10+ min; switch it on. Then pause in the app, off and on again.
+6. Battery: an hour native, an hour on Developer → Playback engine: Web (Settings → Battery).
+7. Parked, after each block: Developer → Playback diagnostics → Copy; paste here with the route.
+
+**Worked if:** after the simulated termination the car's play starts 4a (`launch=background`), and a paused 4a stays paused when the car comes back.
 
 ## #128 🟡 [DECIDE] Drive a Foray in the car on the first TestFlight build after `engine/m2` merges (~2 drives)
 <!-- ha filed=2026-09-28 kind=default -->

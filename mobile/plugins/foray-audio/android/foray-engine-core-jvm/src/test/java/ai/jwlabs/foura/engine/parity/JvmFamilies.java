@@ -149,9 +149,15 @@ public final class JvmFamilies {
     public static final FamilyRunner LEXICON = SpeechFamilies.lexicon();
     public static final FamilyRunner SPEECH_RATE = SpeechFamilies.speechRate();
 
+    /*
+     * A-61: route resume (RouteResume, main code): route-resume.js's decision, its reducer and the
+     * replay the family records, the policy EngineCore.onRoute runs (the JVM twin of NE-38rs).
+     */
+    public static final FamilyRunner ROUTE_RESUME = RouteResumeFamily.runner();
+
     /** Every registered runner. */
     public static final List<FamilyRunner> ALL = List.of(COMPARE, NUMBER_FORMAT, QUEUE_STATE, RATE, RESUME_RULES, TRANSPORT, ROWS,
             SESSION, SESSION_INVARIANT, MEDIA_EPISODE, MANAGER_EPISODE, DECK_EPISODE, OUTPOINT, DECK, CONTRACT, SNAPSHOT, HANDSHAKE,
             DIAG_TOKENS, ENGINE_MODE, SEAM_GAP, SEEK_POLICY, INTERLUDE, FORAY_CLOCK, FORAY_STRUCTURE, FORAY_PROGRESS, MEDIA,
-            MANAGER_FORAY, PREPARE, DEFAULT_VOICE, LEXICON, SPEECH_RATE);
+            MANAGER_FORAY, PREPARE, DEFAULT_VOICE, LEXICON, SPEECH_RATE, ROUTE_RESUME);
 }

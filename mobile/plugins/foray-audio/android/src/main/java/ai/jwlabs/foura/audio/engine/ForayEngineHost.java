@@ -12,6 +12,7 @@ import ai.jwlabs.foura.engine.JsonNode;
 import ai.jwlabs.foura.engine.MediaMapping;
 import ai.jwlabs.foura.engine.RestoreRecord;
 import ai.jwlabs.foura.engine.ResumeRules;
+import ai.jwlabs.foura.engine.RouteResume;
 import ai.jwlabs.foura.engine.SessionPolicy;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -199,11 +200,52 @@ public final class ForayEngineHost {
     private Surface surface;
     private int surfaceSeq;
     private int activations;
+    /** The known routes the store last heard (A-61), persisted when a turn changes them. */
+    private List<String> storedKnownRoutes;
 
     public ForayEngineHost(EngineSeams seams, EngineConfig config, Map<String, ResumeRules.StoredPosition> positions) {
         this.seams = Objects.requireNonNull(seams, "seams");
-        this.core = new EngineCore(config, positions);
+        this.core = new EngineCore(withKnownRoutes(config, seams.knownRoutes), positions);
+        storedKnownRoutes = core.config().knownRoutes();
         surface = computeSurface(surfaceSeq);
+    }
+
+    /**
+     * A-61 (the Swift ForayEngine init, NE-38rs): the install's salt and the routes our audio was
+     * heard through, from {@code ForayEngine.knownRoutes}; a new salt when there is none (it is
+     * written with the first known route). A config that already carries a salt and no store
+     * (a test) keeps its own.
+     */
+    static EngineConfig withKnownRoutes(EngineConfig config, EngineSeams.KnownRoutesStoring store) {
+        RouteResume.Stored stored = null;
+        if (store != null) {
+            try {
+                stored = store.loadKnownRoutes();
+            } catch (RuntimeException e) {
+                stored = null;
+            }
+        }
+        if (stored != null) return config.withRouteResume(config.routeResumeBluetooth(), stored.salt(), stored.keys());
+        String salt = RouteResume.isSalt(config.routeSalt()) ? config.routeSalt() : RouteResume.newSalt();
+        return config.withRouteResume(config.routeResumeBluetooth(), salt, config.knownRoutes());
+    }
+
+    /**
+     * A-61: the core's known routes are the host's to keep, in the private key, whenever a turn
+     * changed them (a route heard for a second, a data deletion). An empty set removes the key, so
+     * a deletion leaves nothing behind.
+     */
+    private void persistKnownRoutesIfChanged() {
+        List<String> keys = core.state().knownRoutes.keys();
+        if (keys.equals(storedKnownRoutes)) return;
+        storedKnownRoutes = keys;
+        EngineSeams.KnownRoutesStoring store = seams.knownRoutes;
+        if (store == null) return;
+        try {
+            store.saveKnownRoutes(keys.isEmpty() ? null : new RouteResume.Stored(core.config().routeSalt(), keys));
+        } catch (RuntimeException ignored) {
+            // A failed write must never cost the engine a turn (the store writes its own fault row).
+        }
     }
 
     public ForayEngineHost(EngineSeams seams, EngineConfig config) {
@@ -479,12 +521,23 @@ public final class ForayEngineHost {
         } finally {
             depth -= 1;
         }
+        persistKnownRoutesIfChanged();
         if (core.state().session == SessionPolicy.Phase.RELINQUISHED) teardown();
         return failures;
     }
 
     private EngineNow now() {
-        return new EngineNow(seams.timing.wallMs(), seams.timing.monoMs(), seams.deck.reading());
+        // A-61: the current route, the one a playing deck is heard through (null: none known).
+        EngineInput.RoutePort route = null;
+        if (seams.routes != null) {
+            try {
+                route = seams.routes.currentRoute();
+            } catch (RuntimeException ignored) {
+                route = null;
+            }
+        }
+        return new EngineNow(seams.timing.wallMs(), seams.timing.monoMs(), seams.deck.reading(), null,
+                ai.jwlabs.foura.engine.NarratorReading.UNKNOWN, route);
     }
 
     /** Every command has a case: a command the host drops is a stuck player. */

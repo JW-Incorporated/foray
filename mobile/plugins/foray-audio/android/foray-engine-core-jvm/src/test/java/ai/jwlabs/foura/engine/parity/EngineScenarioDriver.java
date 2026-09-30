@@ -688,10 +688,14 @@ public final class EngineScenarioDriver {
                     feed(new EngineInput.Session(new EngineInput.SessionEvent.InterruptionEnded(b.value())));
                 }
                 case "routeLost", "routeAvailable" -> {
-                    Json routeName = fields.get("routeName");
+                    // No fixture names a port: the JS lanes never resume on a reconnect, and this
+                    // driver's EngineNow has no route, so no route ever becomes known here (route
+                    // resume is the route-resume family's, A-61; the Swift driver since NE-38rs).
+                    Json portType = fields.get("portType");
+                    Json portUID = fields.get("portUID");
                     feed(new EngineInput.Session(new EngineInput.SessionEvent.Route(new EngineInput.RouteChange(
-                            event.equals("routeLost"), routeName == null ? null : routeName.asString(),
-                            fields.get("isCarRoute") instanceof Json.Bool car && car.value()))));
+                            event.equals("routeLost"), portType == null ? null : portType.asString(),
+                            portUID == null ? null : portUID.asString()))));
                 }
                 case "mediaServicesReset" -> feed(new EngineInput.Session(new EngineInput.SessionEvent.MediaServicesReset()));
                 default -> throw new HarnessError("E_BAD_CASE", "unknown session event \"" + event + "\"");

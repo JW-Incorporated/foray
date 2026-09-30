@@ -4,16 +4,19 @@
    in JS tests. A rule the Swift side never heard of is not a failing test — it
    is a missing one, and nothing goes red. So every top-level test() in the
    fifteen covered suites (player/parity/coverage.js COVERED_SUITES) must be
-   accounted for: fixtured (a case's covers[]), mapped to a named XCTest,
-   excluded with a closed reason, or owed in unported.json with a card. Adding
-   a test to a covered suite therefore turns this red until someone decides
-   which of the four it is — which is the point.
+   accounted for: fixtured (a case's covers[]), mapped to a named XCTest, or
+   excluded with a closed reason. Until NE-39s (M3) a fourth way was to owe it
+   in unported.json with a card, and a case could be owed to a Swift card in
+   swift-pending.json; NE-39s burned both lists to nothing and deleted them,
+   and this file requires them absent. Adding a test to a covered suite
+   therefore turns this red until someone decides which of the three it is —
+   which is the point.
 
    The same file enforces the bookkeeping that makes those lists honest:
-   manifest hashes match the fixture bytes, every pending/unported/xctest entry
-   names something that exists, every family is charged to a capability, a
-   capability the engine advertises has nothing owed, and the recorded floors
-   hold. Every check below names the mutation that turns it red. */
+   manifest hashes match the fixture bytes, every xctest entry names something
+   that exists, every family is charged to a capability, a capability the
+   engine advertises has nothing owed, and the recorded floors hold. Every
+   check below names the mutation that turns it red. */
 
 import test from "node:test";
 import assert from "node:assert/strict";
@@ -24,8 +27,9 @@ import { REPO_ROOT, loadFixtures } from "./runner.js";
 import {
   COVERED_SUITES, EXCLUSION_REASONS, CARD_RE, classify, loadParityData, computeManifest, xctestProblems,
   swiftTestMethods, topLevelTests, capabilityFamilies, capabilityGate, advertisedCapabilities, counts,
-  readCoveredSuites, facadeProblems, FACADE_MAPPED_SUITES, FACADE_SUITES,
+  readCoveredSuites, facadeProblems, FACADE_MAPPED_SUITES, FACADE_SUITES, RETIRED_BOOKS, retiredBooksOnDisk, swiftTestFiles,
 } from "./coverage.js";
+import { NATIVE_TOKEN_FAMILIES } from "./compare.js";
 
 const DATA = loadParityData(REPO_ROOT);
 const FIXTURES = loadFixtures(REPO_ROOT);
@@ -94,10 +98,10 @@ test("exclusions carry a closed reason and a sentence; unported entries carry a 
   }
 });
 
-test("the fifteen covered suites are the plan's fifteen, and each not-yet-written one names its card", () => {
+test("the covered suites are the plan's fifteen and NE-38rj's route-resume, and each not-yet-written one names its card", () => {
   assert.deepStrictEqual(Object.keys(COVERED_SUITES).sort(), [
     "continuation", "foray-playback", "foray-progress", "html-audio-backend", "interlude", "media-session",
-    "playback-rate", "position-store", "queue-manager", "queue-state", "seam-gap", "seek-policy",
+    "playback-rate", "position-store", "queue-manager", "queue-state", "route-resume", "seam-gap", "seek-policy",
     "transport-policy", "transport-reconcile", "tts-bridge",
   ]);
   for (const [stem, cfg] of Object.entries(COVERED_SUITES)) {
@@ -116,6 +120,7 @@ const RECORDED_SUITES = Object.freeze({
   "queue-state": { family: "queue-state", card: "NE-07j" },
   "playback-rate": { family: "rate", card: "NE-07j" },
   "continuation": { family: "continuation", card: "NE-13" },
+  "route-resume": { family: "route-resume", card: "NE-38rj" },
 });
 
 test("a suite whose recording card has landed owes nothing, and is fixtured into its own family only", () => {
@@ -155,7 +160,14 @@ test("media-session is wholly classified: media-episode, an exclusion, or NE-29j
     const label = `media-session :: ${JSON.stringify(name)}`;
     if (st.covered.length) {
       tally.fixtured++;
-      for (const id of st.covered) assert.ok(id.startsWith("media-episode/") || id.startsWith("media/"), `${label} is covered by ${id}, outside media-episode and media`);
+      // NE-39n: a press over a Foray WITH a narration line runs in
+      // manager-foray (`remote-*` cases only), because only the Foray-tape
+      // driver reads the page's build of such a Foray; still the foray
+      // capability, still EngineCore's remote handlers.
+      for (const id of st.covered) {
+        assert.ok(id.startsWith("media-episode/") || id.startsWith("media/") || id.startsWith("manager-foray/remote-"),
+          `${label} is covered by ${id}, outside media-episode, media and manager-foray's remote-* cases`);
+      }
     } else if (st.excluded) tally.excluded++;
     else {
       assert.fail(`${label} must be fixtured or excluded; it is ${JSON.stringify(st.unported ?? "in no list")}`);
@@ -167,6 +179,7 @@ test("media-session is wholly classified: media-episode, an exclusion, or NE-29j
   // the half NE-29j owes can never hold the episode capability back (plan §6.6).
   assert.ok(DATA.capabilities.episode.includes("media-episode"));
   assert.ok(DATA.capabilities.foray.includes("media") && !DATA.capabilities.episode.includes("media"));
+  assert.ok(DATA.capabilities.foray.includes("manager-foray") && !DATA.capabilities.episode.includes("manager-foray"));
 });
 
 test("seam-gap, interlude and seek-policy are wholly classified, own no unported entry, outpoint is recorded, and none of the four owes Swift anything", () => {
@@ -523,18 +536,41 @@ test("the Swift grep attributes methods to their class and ignores non-test func
 
 test("the manifest's hashes and ids match the fixture bytes on disk", () => {
   // MUTATION: hand-edit any recorded expect -> the file's sha256 no longer
-  // matches, and this is red until record.mjs re-records it (which also puts
-  // the id into swift-pending.json).
+  // matches, and this is red until record.mjs re-records it (and, since
+  // NE-39s, the Swift runner holds the change to the re-recorded case).
   assert.deepStrictEqual(computeManifest(REPO_ROOT, FIXTURES), DATA.manifest);
 });
 
-test("every swift-pending id names a recorded case and is tagged with a card", () => {
-  const ids = new Set(Object.values(DATA.manifest.families).flatMap((f) => f.ids));
-  for (const [id, card] of Object.entries(DATA.pending)) {
-    if (id.startsWith("//")) continue;
-    assert.ok(ids.has(id), `${id} is pending but no fixture case has that id`);
-    assert.match(card, CARD_RE, id);
+test("NE-39s: swift-pending.json and unported.json are deleted, stay deleted, and are never read", () => {
+  /* The card's acceptance: "Neither pending file exists, and coverage.test.js
+     requires that." Nothing can be owed any more: a JS rule change carries its
+     Swift port (engine-parity is red on the case until it does), and a new
+     covered test is fixtured, mapped or excluded in the change that adds it.
+     jvm-pending.json STAYS: it is Android's book (A-63 retires it).
+     MUTATION: commit either file (even `{}`) -> red here, in record.mjs
+     --check, and in the Swift loader; make loadParityData read one -> red. */
+  assert.deepStrictEqual([...RETIRED_BOOKS], ["swift-pending.json", "unported.json"]);
+  assert.deepStrictEqual(retiredBooksOnDisk(REPO_ROOT), [], "a retired burn-down list is back on disk");
+  assert.deepStrictEqual(DATA.pending, {}, "nothing is owed to a Swift card");
+  assert.deepStrictEqual(DATA.unported, {}, "no covered test is owed");
+  assert.ok(fs.existsSync(path.join(REPO_ROOT, "player/parity/jvm-pending.json")), "the JVM's books stay (A-63)");
+
+  // The detector has teeth: a scratch parity dir holding either file is named.
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "parity-retired-"));
+  try {
+    fs.mkdirSync(path.join(root, "player", "parity"), { recursive: true });
+    assert.deepStrictEqual(retiredBooksOnDisk(root), []);
+    fs.writeFileSync(path.join(root, "player", "parity", "unported.json"), "{}\n");
+    assert.deepStrictEqual(retiredBooksOnDisk(root), ["unported.json"]);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
   }
+
+  // The Swift loader refuses a tree holding either (ForayEngineParity).
+  const loader = fs.readFileSync(path.join(REPO_ROOT,
+    "mobile/plugins/foray-audio/foray-engine-core/Sources/ForayEngineParity/Fixtures.swift"), "utf8");
+  assert.match(loader, /retiredBooks = \["swift-pending\.json", "unported\.json"\]/);
+  assert.doesNotMatch(loader, /read\("swift-pending\.json"\)/, "the Swift loader must not read the retired list");
 });
 
 /* queue-manager and html-audio-backend were classified whole by NE-14j (plan
@@ -553,11 +589,16 @@ test("every swift-pending id names a recorded case and is tagged with a card", (
    reach, a deadline mid-transition, NE-31s mapped to an XCTest);
    html-audio-backend owes nothing. NE-31j recorded the narration
    half: manager-foray (the overlay, the jingle's clock) and speech-rate (what
-   reaches the synthesiser). */
+   reaches the synthesiser). NE-39j recorded the M3 remainder into
+   manager-remainder (the warming rules, the position timer, the rate getter
+   and its snap line, player-core-7 and -9, audit round 2), so queue-manager
+   owes nothing now either. NE-39s ported it and moved player-core-9 and round
+   2's onStateSettled into the jsOnly manager-await family (the JS manager's
+   awaits; their native forms are XCTests). */
 const MANAGER_DECK_OWED = Object.freeze({
-  "queue-manager": { fixtured: ["manager-episode", "manager-foray", "speech-rate"], mustOwe: true, owed: [
-    { card: "NE-39j", family: "manager-remainder" },
-  ] },
+  "queue-manager": {
+    fixtured: ["manager-episode", "manager-foray", "speech-rate", "manager-remainder", "manager-await"], mustOwe: false, owed: [],
+  },
   "html-audio-backend": {
     fixtured: ["deck-episode", "deck", "prepare", "manager-episode", "manager-foray"], mustOwe: false, owed: [],
   },
@@ -605,16 +646,108 @@ test("every family a fixture, an unported entry or a pending id uses is charged 
   assert.deepStrictEqual(loose, [], "a family no capability names can hold owed work that no gate reads");
 });
 
+test("NE-39s: manager-remainder runs in Swift whole, under foray; manager-await is JS only; the JVM owes manager-remainder whole to A-63", () => {
+  /* NE-39j recorded the queue-manager remainder (22 cases) pending for NE-39s.
+     NE-39s ported 20 through the Swift ManagerRemainderFamily runner (the
+     Foray tape on), one of them (the unknown ref) moved onto the interruption
+     path both sides share, and moved the two that pin the JS manager's awaits
+     (player-core-9's parked load, onStateSettled per `_handle` frame) into the
+     jsOnly manager-await family, whose native forms are XCTests. The card's
+     acceptance, "the manager family's JS and Swift counts are equal": every
+     manager-remainder id is a Swift case (nothing can be owed, and a family
+     is jsOnly whole or not at all), the floor is the count, and both XCTest
+     wrappers REQUIRE the runner.
+     MUTATION: mark a manager-remainder file jsOnly -> red; unregister
+     ManagerRemainderFamily.runner or drop a wrapper's requirement -> red; move
+     manager-remainder into jvm-pending runs -> red; put it back under a
+     `remainder` capability -> red. */
+  const files = FIXTURES.filter((f) => f.family === "manager-remainder");
+  const cases = files.flatMap((f) => f.doc.cases);
+  assert.equal(cases.length, 20, `manager-remainder holds the ported remainder (${cases.length} cases)`);
+  assert.ok(files.every((f) => f.doc.jsOnly !== true), "manager-remainder is Swift's, whole");
+  assert.equal(JSON.parse(fs.readFileSync(path.join(REPO_ROOT, "player/parity/floors.json"), "utf8")).families["manager-remainder"],
+    cases.length, "the floor is the count the Swift runner must reach");
+  for (const c of cases) {
+    assert.equal(c.setup?.target, "manager", `${c.id} drives the real manager`);
+    assert.ok(c.covers.every((cv) => cv.startsWith("queue-manager::")), `${c.id} stands for queue-manager tests`);
+  }
+  const awaits = FIXTURES.filter((f) => f.family === "manager-await");
+  assert.ok(awaits.length > 0 && awaits.every((f) => f.doc.jsOnly === true), "manager-await is JS only");
+  const awaitCases = awaits.flatMap((f) => f.doc.cases);
+  assert.deepStrictEqual(awaitCases.map((c) => c.id).sort(), [
+    "manager-await/a-skip-load-a-newer-skip-replaced-is-dropped",
+    "manager-await/the-settled-hook-fires-after-every-handled-event",
+  ]);
+  for (const c of awaitCases) assert.match(c.note, /JS ONLY \(NE-39s\)[\s\S]*(ForayCatchUpTests|ForayEngineHostTests)\//, `${c.id} names its native XCTest`);
+
+  const core = "mobile/plugins/foray-audio/foray-engine-core";
+  const registry = fs.readFileSync(path.join(REPO_ROOT, core, "Sources/ForayEngineParity/FamilyRunner.swift"), "utf8");
+  assert.match(registry, /ManagerRemainderFamily\.runner/, "the Swift registry runs manager-remainder");
+  for (const wrapper of [`${core}/Tests/ForayEngineCoreTests/ParityFamilyTests.swift`,
+    "mobile/plugins/foray-audio/ios/Tests/ForayAudioPluginTests/EngineParityWrapperTests.swift"]) {
+    assert.match(fs.readFileSync(path.join(REPO_ROOT, wrapper), "utf8"),
+      /assertParityFamily\("manager-remainder", requireRunner: true\)/, `${wrapper} requires the runner`);
+  }
+  const swiftTests = swiftTestMethods(swiftTestFiles(REPO_ROOT));
+  for (const m of ["ForayCatchUpTests/testTwoNextsFromASpokenLineLoadTheNewestTargetAndTheFirstLoadPlaysNothing",
+    "ForayEngineHostTests/testTheSurfaceIsToldAfterEveryInputTheNaturalEndIncluded"]) {
+    assert.ok(swiftTests.has(m), `the native form ${m} exists`);
+  }
+
+  const jvm = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, "player/parity/jvm-pending.json"), "utf8"));
+  // A-40 ported the Foray tape and re-booked the whole family to A-63 (the manager remainder, plan §5.7).
+  assert.equal(jvm.families["manager-remainder"], "A-63");
+  assert.ok(!jvm.runs.includes("manager-remainder"));
+  assert.equal(jvm.families["manager-await"], undefined, "a jsOnly family is owed to nobody");
+  assert.ok(DATA.capabilities.foray.includes("manager-remainder") && DATA.capabilities.foray.includes("manager-await"));
+});
+
 test("capabilities.json holds the plan §6.6 map", () => {
-  assert.deepStrictEqual(Object.keys(DATA.capabilities).filter((k) => !k.startsWith("//")), ["episode", "continuation", "restore", "foray", "remainder"]);
+  assert.deepStrictEqual(Object.keys(DATA.capabilities).filter((k) => !k.startsWith("//")), ["episode", "continuation", "restore", "foray"]);
   assert.ok(DATA.capabilities.foray.includes("seam-gap"));
   assert.ok(DATA.capabilities.episode.includes("manager-episode"));
-  /* `remainder` (NE-14j) holds only the M3 manager remainder NE-39j owes, so the
-     episode and foray capabilities never wait on it; nothing may ever advertise
-     it. MUTATION: add "remainder" to the advertised list -> the next test's
-     gate is red for as long as NE-39j owes anything. */
-  assert.deepStrictEqual(DATA.capabilities.remainder, ["compare", "manager-remainder"]);
-  assert.ok(!advertisedCapabilities(REPO_ROOT).has("remainder"), "the remainder is a bookkeeping gate, never a capability a build ships");
+  /* `remainder` (NE-14j) was the unadvertised gate M3's owed families waited
+     under: prepare-narration until NE-45s moved it to foray, route-resume
+     until NE-38rs moved it to episode, manager-remainder until NE-39s moved it
+     to foray and retired the gate with the lists. MUTATION: put a
+     `remainder` key back -> red. */
+  assert.equal(DATA.capabilities.remainder, undefined, "NE-39s retired the remainder gate");
+  assert.ok(!advertisedCapabilities(REPO_ROOT).has("remainder"), "the remainder was a bookkeeping gate, never a capability a build ships");
+});
+
+test("NE-45j/NE-45s: prepare-narration is authored against reference-engine, keeps its n.* tokens, passes in Swift under foray, and is owed whole to A-62", () => {
+  /* NE-45j recorded the family green in JS with its ids pending for NE-45s;
+     NE-45s ported it (the Swift PrepareNarrationFamily runner, registered and
+     required in ParityFamilyTests and the iOS wrapper) and moved it from the
+     unadvertised `remainder` gate to `foray`, the capability whose rule it is,
+     so the advertised-capability gate now holds it to zero owed. It is the
+     prepare family's seams with a line in them, so it is held to prepare's
+     rules (authored, run on the engine target, T on every checkpoint, n.*
+     asserted). MUTATION: put one prepare-narration id back in
+     swift-pending.json -> red here and in the advertised gate; move the family
+     back under `remainder` -> red; take "prepare-narration" out of
+     NATIVE_TOKEN_FAMILIES -> red. */
+  const files = FIXTURES.filter((f) => f.family === "prepare-narration");
+  assert.ok(files.length > 0, "prepare-narration is recorded");
+  const cases = files.flatMap((f) => f.doc.cases);
+  for (const c of cases) assert.equal(DATA.pending[c.id], undefined, `${c.id} is not owed: NE-45s ported it`);
+  const seams = cases.filter((c) => c.setup?.target === "engine");
+  assert.ok(seams.length > 0, "the family holds engine seams");
+  for (const c of seams) {
+    assert.equal(c.authored, true, `${c.id} must be authored (the prepare timing)`);
+    assert.ok(c.expect.checkpoints.every((k) => typeof k.nowMs === "number"), `${c.id}: every checkpoint carries T`);
+  }
+  const ops = seams.flatMap((c) => c.expect.ops);
+  for (const token of ["n.prepare:", "n.prepare-seek:", "n.handover:"]) {
+    assert.ok(ops.some((o) => o.startsWith(token)), `the family asserts ${token}`);
+  }
+  assert.ok(NATIVE_TOKEN_FAMILIES.includes("prepare-narration"), "compare.js keeps its n.* tokens");
+  assert.ok(DATA.capabilities.foray.includes("prepare-narration") && DATA.capabilities.remainder === undefined,
+    "NE-45s moved prepare-narration to foray (and NE-39s retired the remainder gate)");
+  const jvm = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, "player/parity/jvm-pending.json"), "utf8"));
+  assert.equal(jvm.families["prepare-narration"], "A-62", "the JVM owes it whole to A-62");
+  assert.equal(jvm.families.prepare, undefined, "prepare itself the JVM runs since A-40 (A-25 handed it on)");
+  assert.ok(jvm.runs.includes("prepare"));
 });
 
 test("every capability the engine advertises has zero pending and zero unported entries", () => {
@@ -718,4 +851,27 @@ test("NE-33: speech-rate, lexicon and default-voice owe nothing, the lexicon fam
     for (const c of f.doc.cases) assert.equal(c.call, "buildIpaOverrides");
   }
   for (const [id, card] of Object.entries(DATA.pending)) assert.notEqual(card, "NE-33", `${id} is still owed to NE-33`);
+});
+
+test("NE-38rs: route-resume owes Swift nothing, is charged to episode, and the JVM runs it since A-61", () => {
+  /* NE-38rj recorded the family owed whole to NE-38rs and parked it under the
+     unadvertised `remainder` gate; NE-38rs (the Swift port, RouteResumeFamily)
+     burns every id and moves the family to episode, which the M2 build
+     advertises, so from now on a route-resume case the Swift runner does not
+     pass is red on the episode gate. A-61 (RouteResume.java, RouteResumeFamily)
+     ported it to the JVM and moved it to jvm-pending.json's runs.
+     MUTATION: put one route-resume id back in swift-pending.json -> red here and
+     in the advertised-capability gate; leave the family under remainder -> red;
+     owe it to an Android card again -> red. */
+  const cases = FIXTURES.filter((f) => f.family === "route-resume").flatMap((f) => f.doc.cases);
+  assert.ok(cases.length >= 12, `the family records at least 12 cases, not ${cases.length}`);
+  for (const c of cases) assert.equal(DATA.pending[c.id], undefined, `${c.id} is still owed to ${DATA.pending[c.id]}`);
+  for (const [id, card] of Object.entries(DATA.pending)) assert.notEqual(card, "NE-38rs", `${id} is still owed to NE-38rs`);
+  assert.ok(DATA.capabilities.episode.includes("route-resume"), "a car resumes whatever was playing: an episode rule");
+  assert.equal(DATA.capabilities.remainder, undefined, "NE-39s retired the remainder gate");
+  const jvm = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, "player", "parity", "jvm-pending.json"), "utf8"));
+  assert.equal(jvm.families["route-resume"], undefined, "A-61 burned it down");
+  assert.ok(jvm.runs.includes("route-resume"));
+  for (const card of ["NE-38rj", "NE-38rs", "NE-07j", "NE-03"]) assert.match(card, CARD_RE);
+  for (const bad of ["NE-3", "NE-38rsx", "later", "A-61"]) assert.doesNotMatch(bad, CARD_RE);
 });

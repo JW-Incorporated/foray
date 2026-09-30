@@ -1,5 +1,8 @@
 package ai.jwlabs.foura.engine;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.Objects;
 
 /**
@@ -30,13 +33,35 @@ import java.util.Objects;
  *   <li>{@code silenceNodeEnabled}: the silence node, OFF.</li>
  *   <li>{@code voiceId}: the listener's narration voice at boot, null for the synthesiser's pick.</li>
  * </ul>
+ *
+ * <p>ROUTE RESUME (A-61, the Swift NE-38rs fields):
+ * <ul>
+ *   <li>{@code routeResumeBluetooth}: the Bluetooth arm ({@code ROUTE_RESUME_BLUETOOTH_DEFAULT}),
+ *       OFF. The service reads it from mobile/ENGINE_DEFAULT.json's android block through
+ *       {@code EngineLane.ROUTE_RESUME_BLUETOOTH}, which shell-invariants holds to the file.</li>
+ *   <li>{@code routeSalt}: the install's salt for route keys ({@link RouteResume#hashedKey}), kept
+ *       beside the known set in {@code ForayEngine.knownRoutes}; empty in a headless core.</li>
+ *   <li>{@code knownRoutes}: the known set the host read back from that key.</li>
+ * </ul>
  */
 public record EngineConfig(String build, SessionPolicy.HoldPolicy holdPolicy, Double rate, boolean forayTapeEnabled,
                            double seamGapSec, boolean deckPairEnabled, boolean narrationFollowsListenerRate, boolean narrationPulse,
-                           boolean interludeAvailable, boolean interludeEnabled, boolean silenceNodeEnabled, String voiceId) {
+                           boolean interludeAvailable, boolean interludeEnabled, boolean silenceNodeEnabled, String voiceId,
+                           boolean routeResumeBluetooth, String routeSalt, List<String> knownRoutes) {
     public EngineConfig {
         Objects.requireNonNull(build, "build");
         Objects.requireNonNull(holdPolicy, "holdPolicy");
+        if (routeSalt == null) routeSalt = "";
+        knownRoutes = knownRoutes == null ? Collections.<String>emptyList()
+                : Collections.unmodifiableList(new ArrayList<>(knownRoutes));
+    }
+
+    /** Everything up to the voice, with route resume at its defaults: the arm off, no salt, nothing known. */
+    public EngineConfig(String build, SessionPolicy.HoldPolicy holdPolicy, Double rate, boolean forayTapeEnabled,
+                        double seamGapSec, boolean deckPairEnabled, boolean narrationFollowsListenerRate, boolean narrationPulse,
+                        boolean interludeAvailable, boolean interludeEnabled, boolean silenceNodeEnabled, String voiceId) {
+        this(build, holdPolicy, rate, forayTapeEnabled, seamGapSec, deckPairEnabled, narrationFollowsListenerRate, narrationPulse,
+                interludeAvailable, interludeEnabled, silenceNodeEnabled, voiceId, RouteResume.BLUETOOTH_DEFAULT, "", null);
     }
 
     /** M1's episode engine: the tape and everything behind it off. */
@@ -55,18 +80,28 @@ public record EngineConfig(String build, SessionPolicy.HoldPolicy holdPolicy, Do
     /** This config with the listener's stored speed replaced (a cold boot's record carries its own). */
     public EngineConfig withRate(Double newRate) {
         return new EngineConfig(build, holdPolicy, newRate, forayTapeEnabled, seamGapSec, deckPairEnabled,
-                narrationFollowsListenerRate, narrationPulse, interludeAvailable, interludeEnabled, silenceNodeEnabled, voiceId);
+                narrationFollowsListenerRate, narrationPulse, interludeAvailable, interludeEnabled, silenceNodeEnabled, voiceId,
+                routeResumeBluetooth, routeSalt, knownRoutes);
     }
 
     /** This config with the jingle player's presence switched (A-41: the host has one only when its pinned asset shipped). */
     public EngineConfig withInterludeAvailable(boolean available) {
         return new EngineConfig(build, holdPolicy, rate, forayTapeEnabled, seamGapSec, deckPairEnabled, narrationFollowsListenerRate,
-                narrationPulse, available, interludeEnabled, silenceNodeEnabled, voiceId);
+                narrationPulse, available, interludeEnabled, silenceNodeEnabled, voiceId, routeResumeBluetooth, routeSalt, knownRoutes);
     }
 
     /** This config with the Foray tape (and, for a host, the deck pair) switched. */
     public EngineConfig withForayTape(boolean tape, boolean deckPair) {
         return new EngineConfig(build, holdPolicy, rate, tape, seamGapSec, deckPair, narrationFollowsListenerRate, narrationPulse,
-                interludeAvailable, interludeEnabled, silenceNodeEnabled, voiceId);
+                interludeAvailable, interludeEnabled, silenceNodeEnabled, voiceId, routeResumeBluetooth, routeSalt, knownRoutes);
+    }
+
+    /**
+     * This config with route resume's inputs (A-61): the Bluetooth arm, the install's salt and the
+     * known set the host read back from {@code ForayEngine.knownRoutes}.
+     */
+    public EngineConfig withRouteResume(boolean bluetooth, String salt, List<String> known) {
+        return new EngineConfig(build, holdPolicy, rate, forayTapeEnabled, seamGapSec, deckPairEnabled, narrationFollowsListenerRate,
+                narrationPulse, interludeAvailable, interludeEnabled, silenceNodeEnabled, voiceId, bluetooth, salt, known);
     }
 }

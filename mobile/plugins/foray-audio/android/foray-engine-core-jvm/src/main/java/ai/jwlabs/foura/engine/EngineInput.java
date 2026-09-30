@@ -155,13 +155,39 @@ public sealed interface EngineInput permits EngineInput.Command, EngineInput.Que
     record SessionResult(int requestId, boolean ok, String error, Double activateMs) {}
 
     /**
-     * A route change as the rules read it. {@code oldDeviceUnavailable}: headphones out, the
-     * car switched off. {@code routeName}: what "a known car" is remembered by (corner case
-     * #13). {@code portType}: for the {@code session} row (never the name).
+     * A route change as the rules read it (the Swift {@code RouteChange} since NE-38rs; A-61). The
+     * port is the one that MATTERS: the one that went away on a loss, the one that arrived
+     * otherwise. {@code oldDeviceUnavailable}: headphones out, the car switched off.
+     * {@code portType}: the port's type token (the {@code session} and {@code route} rows carry
+     * it). {@code portUID}: what a known route is remembered by (on Android the device's address),
+     * never its name; the core hashes it with the install's salt before anything keeps or writes
+     * it, and it never reaches a row (plan §10, DiagGate). {@code routeClass}: car, bluetooth or
+     * other, as the host read it (Android classes the device itself, car mode included); null
+     * classes it by {@code portType} ({@link RouteResume#routeClass}, the iOS port names).
      */
-    record RouteChange(boolean oldDeviceUnavailable, String routeName, boolean isCarRoute, String portType) {
-        public RouteChange(boolean oldDeviceUnavailable, String routeName, boolean isCarRoute) {
-            this(oldDeviceUnavailable, routeName, isCarRoute, null);
+    record RouteChange(boolean oldDeviceUnavailable, String portType, String portUID, RouteResume.RouteClass routeClass) {
+        public RouteChange {
+            if (routeClass == null) routeClass = RouteResume.routeClass(portType);
+        }
+
+        public RouteChange(boolean oldDeviceUnavailable, String portType, String portUID) {
+            this(oldDeviceUnavailable, portType, portUID, null);
+        }
+
+        /** A route change that names no port (A-26's BECOMING_NOISY with nothing tracked). */
+        public RouteChange(boolean oldDeviceUnavailable) {
+            this(oldDeviceUnavailable, null, null, null);
+        }
+    }
+
+    /**
+     * Where our audio goes right now, as the host reads it for every input
+     * ({@link EngineNow#route}): the route a playing deck is heard through, which is how a route
+     * becomes known (NE-38rs, A-61). {@code uid} is hashed before it is kept; never a row.
+     */
+    record RoutePort(String portType, String uid) {
+        public RoutePort {
+            Objects.requireNonNull(portType, "portType");
         }
     }
 

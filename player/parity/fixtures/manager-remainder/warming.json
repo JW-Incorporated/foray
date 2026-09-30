@@ -1,0 +1,1173 @@
+{
+  "family": "manager-remainder",
+  "note": "NE-39j: the queue-manager warming rules (§11, as NE-45j rewrote them), recorded from the real PlayerQueueManager over the shared FakeBackend with the web lane's prefetch contract opted in (setup.backend.prefetch, fakes.js). prefetch:<id>@<s> is the manager's ASK: which item the next boundary advances to, and at which in-point. Whether the deck then fetches, seeks or declines is the prepare families' n.prepare, asserted at the audible level. Port card NE-39s; JVM A-40 (owed whole).",
+  "cases": [
+    {
+      "id": "manager-remainder/the-window-warms-the-next-segment-at-its-in-point",
+      "covers": ["queue-manager::the window warms the next segment, at its own in-point"],
+      "note": "The next segment's start_sec is the offset: not 0, and not a saved position.",
+      "setup": { "target": "manager", "backend": { "prefetch": true } },
+      "steps": [
+        {
+          "call": "loadQueue",
+          "args": [
+            [
+              {
+                "$seg": [
+                  "s0",
+                  100,
+                  200,
+                  { "audio_url": "https://cdn.example/a.mp3", "rate": 1 }
+                ]
+              },
+              {
+                "$seg": [
+                  "s1",
+                  300,
+                  400,
+                  { "audio_url": "https://cdn.example/b.mp3", "rate": 1 }
+                ]
+              },
+              {
+                "$seg": [
+                  "s2",
+                  500,
+                  600,
+                  { "audio_url": "https://cdn.example/c.mp3", "rate": 1 }
+                ]
+              }
+            ]
+          ]
+        },
+        { "call": "play", "args": [0] },
+        { "deck": "window" },
+        { "checkpoint": "window" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "window",
+            "ops": ["load:s0@100", "rate:1", "outPoint:200", "play", "prefetch:s1@300"],
+            "playhead": "s0",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "end",
+            "ops": [],
+            "playhead": "s0",
+            "rate": 1,
+            "state": "playing"
+          }
+        ],
+        "ops": ["load:s0@100", "rate:1", "outPoint:200", "play", "prefetch:s1@300"]
+      }
+    },
+    {
+      "id": "manager-remainder/each-window-warms-what-its-boundary-advances-to",
+      "covers": [
+        "queue-manager::each boundary warms the item that boundary will actually advance to"
+      ],
+      "note": "After a Next, the next window warms the item after the NEW current one.",
+      "setup": { "target": "manager", "backend": { "prefetch": true } },
+      "steps": [
+        {
+          "call": "loadQueue",
+          "args": [
+            [
+              {
+                "$seg": [
+                  "s0",
+                  100,
+                  200,
+                  { "audio_url": "https://cdn.example/a.mp3", "rate": 1 }
+                ]
+              },
+              {
+                "$seg": [
+                  "s1",
+                  300,
+                  400,
+                  { "audio_url": "https://cdn.example/b.mp3", "rate": 1 }
+                ]
+              },
+              {
+                "$seg": [
+                  "s2",
+                  500,
+                  600,
+                  { "audio_url": "https://cdn.example/c.mp3", "rate": 1 }
+                ]
+              }
+            ]
+          ]
+        },
+        { "call": "play", "args": [0] },
+        { "deck": "window" },
+        { "checkpoint": "first" },
+        { "call": "skipToNext" },
+        { "deck": "window" },
+        { "checkpoint": "second" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "first",
+            "ops": ["load:s0@100", "rate:1", "outPoint:200", "play", "prefetch:s1@300"],
+            "playhead": "s0",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "second",
+            "ops": [
+              "pause",
+              "load:s1@300",
+              "rate:1",
+              "outPoint:400",
+              "play",
+              "prefetch:s2@500"
+            ],
+            "playhead": "s1",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "end",
+            "ops": [],
+            "playhead": "s1",
+            "rate": 1,
+            "state": "playing"
+          }
+        ],
+        "ops": [
+          "load:s0@100",
+          "rate:1",
+          "outPoint:200",
+          "play",
+          "prefetch:s1@300",
+          "pause",
+          "load:s1@300",
+          "rate:1",
+          "outPoint:400",
+          "play",
+          "prefetch:s2@500"
+        ]
+      }
+    },
+    {
+      "id": "manager-remainder/the-last-item-warms-nothing",
+      "covers": ["queue-manager::nothing is warmed on the last item — a Foray does not chain"],
+      "note": "Principle 1, no autoplay chains: there is nothing after the last item to warm.",
+      "setup": { "target": "manager", "backend": { "prefetch": true } },
+      "steps": [
+        {
+          "call": "loadQueue",
+          "args": [
+            [
+              {
+                "$seg": [
+                  "s0",
+                  100,
+                  200,
+                  { "audio_url": "https://cdn.example/a.mp3", "rate": 1 }
+                ]
+              },
+              {
+                "$seg": [
+                  "s1",
+                  300,
+                  400,
+                  { "audio_url": "https://cdn.example/b.mp3", "rate": 1 }
+                ]
+              },
+              {
+                "$seg": [
+                  "s2",
+                  500,
+                  600,
+                  { "audio_url": "https://cdn.example/c.mp3", "rate": 1 }
+                ]
+              }
+            ]
+          ]
+        },
+        { "call": "play", "args": [2] },
+        { "deck": "window" },
+        { "checkpoint": "window" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 2,
+            "name": "window",
+            "ops": ["load:s2@500", "rate:1", "outPoint:600", "play"],
+            "playhead": "s2",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 2,
+            "name": "end",
+            "ops": [],
+            "playhead": "s2",
+            "rate": 1,
+            "state": "playing"
+          }
+        ],
+        "ops": ["load:s2@500", "rate:1", "outPoint:600", "play"]
+      }
+    },
+    {
+      "id": "manager-remainder/a-rendered-line-is-warmed-across-its-seam",
+      "covers": [
+        "queue-manager::a rendered line is warmed across its seam, whatever the beat; a spoken one has no file to warm"
+      ],
+      "note": "deck-policy.js warmsAcross: the next item is prepared when it has a FILE. A seam with a line in it gets no beat, and is warmed anyway, at 0 of the line's own file.",
+      "setup": { "target": "manager", "backend": { "prefetch": true } },
+      "steps": [
+        {
+          "call": "loadQueue",
+          "args": [
+            [
+              {
+                "$seg": [
+                  "s0",
+                  100,
+                  200,
+                  { "audio_url": "https://cdn.example/a.mp3", "rate": 1 }
+                ]
+              },
+              {
+                "$tts": [
+                  "line",
+                  { "audio_url": "https://cdn.example/line.m4a", "script": "A line." }
+                ]
+              },
+              {
+                "$seg": [
+                  "s1",
+                  300,
+                  400,
+                  { "audio_url": "https://cdn.example/b.mp3", "rate": 1 }
+                ]
+              }
+            ]
+          ]
+        },
+        { "call": "play", "args": [0] },
+        { "deck": "window" },
+        { "checkpoint": "window" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "window",
+            "ops": ["load:s0@100", "rate:1", "outPoint:200", "play", "prefetch:line@0"],
+            "playhead": "s0",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "end",
+            "ops": [],
+            "playhead": "s0",
+            "rate": 1,
+            "state": "playing"
+          }
+        ],
+        "ops": ["load:s0@100", "rate:1", "outPoint:200", "play", "prefetch:line@0"]
+      }
+    },
+    {
+      "id": "manager-remainder/a-spoken-line-has-no-file-to-warm",
+      "covers": [
+        "queue-manager::a rendered line is warmed across its seam, whatever the beat; a spoken one has no file to warm"
+      ],
+      "note": "A script-only line is spoken by the synthesiser: there is nothing to fetch, so the window asks for nothing.",
+      "setup": { "target": "manager", "backend": { "prefetch": true } },
+      "steps": [
+        {
+          "call": "loadQueue",
+          "args": [
+            [
+              {
+                "$seg": [
+                  "s0",
+                  100,
+                  200,
+                  { "audio_url": "https://cdn.example/a.mp3", "rate": 1 }
+                ]
+              },
+              { "$tts": ["line", { "audio_url": null, "script": "A line." }] },
+              {
+                "$seg": [
+                  "s1",
+                  300,
+                  400,
+                  { "audio_url": "https://cdn.example/b.mp3", "rate": 1 }
+                ]
+              }
+            ]
+          ]
+        },
+        { "call": "play", "args": [0] },
+        { "deck": "window" },
+        { "checkpoint": "window" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "window",
+            "ops": ["load:s0@100", "rate:1", "outPoint:200", "play"],
+            "playhead": "s0",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "end",
+            "ops": [],
+            "playhead": "s0",
+            "rate": 1,
+            "state": "playing"
+          }
+        ],
+        "ops": ["load:s0@100", "rate:1", "outPoint:200", "play"]
+      }
+    },
+    {
+      "id": "manager-remainder/with-no-beat-the-next-clip-is-still-warmed",
+      "covers": [
+        "queue-manager::warming does not follow the beat any more: with no beat at all the next clip is still warmed"
+      ],
+      "note": "NE-45j: warming used to be seamGapSec(...) > 0. The beat decides the silence; whether the next file is ready when it ends is a separate question.",
+      "setup": { "target": "manager", "backend": { "prefetch": true }, "seamGapSec": 0 },
+      "steps": [
+        {
+          "call": "loadQueue",
+          "args": [
+            [
+              {
+                "$seg": [
+                  "s0",
+                  100,
+                  200,
+                  { "audio_url": "https://cdn.example/a.mp3", "rate": 1 }
+                ]
+              },
+              {
+                "$seg": [
+                  "s1",
+                  300,
+                  400,
+                  { "audio_url": "https://cdn.example/b.mp3", "rate": 1 }
+                ]
+              },
+              {
+                "$seg": [
+                  "s2",
+                  500,
+                  600,
+                  { "audio_url": "https://cdn.example/c.mp3", "rate": 1 }
+                ]
+              }
+            ]
+          ]
+        },
+        { "call": "play", "args": [0] },
+        { "deck": "window" },
+        { "checkpoint": "window" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "window",
+            "ops": ["load:s0@100", "rate:1", "outPoint:200", "play", "prefetch:s1@300"],
+            "playhead": "s0",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "end",
+            "ops": [],
+            "playhead": "s0",
+            "rate": 1,
+            "state": "playing"
+          }
+        ],
+        "ops": ["load:s0@100", "rate:1", "outPoint:200", "play", "prefetch:s1@300"]
+      }
+    },
+    {
+      "id": "manager-remainder/the-clip-after-a-spoken-line-is-warmed-when-the-line-starts",
+      "covers": [
+        "queue-manager::NE-45j: the clip after a SPOKEN line is warmed when the line starts — the deck is idle while it speaks"
+      ],
+      "note": "No window is needed: the deck is idle while the synthesiser speaks, so the clip after the line is asked for at the line's start, at the clip's own in-point.",
+      "setup": { "target": "manager", "backend": { "prefetch": true }, "tts": true },
+      "steps": [
+        {
+          "call": "loadQueue",
+          "args": [
+            [
+              {
+                "$seg": [
+                  "s0",
+                  100,
+                  200,
+                  { "audio_url": "https://cdn.example/a.mp3", "rate": 1 }
+                ]
+              },
+              { "$tts": ["line", { "audio_url": null, "script": "A line." }] },
+              {
+                "$seg": [
+                  "s1",
+                  300,
+                  400,
+                  { "audio_url": "https://cdn.example/b.mp3", "rate": 1 }
+                ]
+              }
+            ]
+          ]
+        },
+        { "call": "play", "args": [0] },
+        { "checkpoint": "clip" },
+        { "deck": "ended", "reason": "outPoint" },
+        { "checkpoint": "line-started" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "clip",
+            "ops": ["load:s0@100", "rate:1", "outPoint:200", "play"],
+            "playhead": "s0",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "line-started",
+            "ops": ["tts.speak:A line.@1", "prefetch:s1@300"],
+            "playhead": "line",
+            "rate": 1,
+            "state": "transitioning"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "end",
+            "ops": [],
+            "playhead": "line",
+            "rate": 1,
+            "state": "transitioning"
+          }
+        ],
+        "ops": [
+          "load:s0@100",
+          "rate:1",
+          "outPoint:200",
+          "play",
+          "tts.speak:A line.@1",
+          "prefetch:s1@300"
+        ]
+      }
+    },
+    {
+      "id": "manager-remainder/during-a-rendered-line-the-window-warms-the-clip-after-it",
+      "covers": [
+        "queue-manager::NE-45j: during a rendered line, the window warms the clip after it"
+      ],
+      "note": "A rendered line has no out-point; its window opens from the file's duration, and what that boundary advances to is the clip after the line.",
+      "setup": { "target": "manager", "backend": { "prefetch": true } },
+      "steps": [
+        {
+          "call": "loadQueue",
+          "args": [
+            [
+              {
+                "$seg": [
+                  "s0",
+                  100,
+                  200,
+                  { "audio_url": "https://cdn.example/a.mp3", "rate": 1 }
+                ]
+              },
+              {
+                "$tts": [
+                  "line",
+                  { "audio_url": "https://cdn.example/line.m4a", "script": "A line." }
+                ]
+              },
+              {
+                "$seg": [
+                  "s1",
+                  300,
+                  400,
+                  { "audio_url": "https://cdn.example/b.mp3", "rate": 1 }
+                ]
+              }
+            ]
+          ]
+        },
+        { "call": "play", "args": [0] },
+        { "deck": "ended", "reason": "outPoint" },
+        { "checkpoint": "line" },
+        { "deck": "window" },
+        { "checkpoint": "window" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "line",
+            "ops": [
+              "load:s0@100",
+              "rate:1",
+              "outPoint:200",
+              "play",
+              "rate:1",
+              "load:line@0",
+              "play"
+            ],
+            "playhead": "line",
+            "rate": 1,
+            "state": "transitioning"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "window",
+            "ops": ["prefetch:s1@300"],
+            "playhead": "line",
+            "rate": 1,
+            "state": "transitioning"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "end",
+            "ops": [],
+            "playhead": "line",
+            "rate": 1,
+            "state": "transitioning"
+          }
+        ],
+        "ops": [
+          "load:s0@100",
+          "rate:1",
+          "outPoint:200",
+          "play",
+          "rate:1",
+          "load:line@0",
+          "play",
+          "prefetch:s1@300"
+        ]
+      }
+    },
+    {
+      "id": "manager-remainder/an-episode-left-to-its-natural-end-warms-the-item-after-it",
+      "covers": [
+        "queue-manager::NE-45j: an episode left to its natural end warms the item after it too"
+      ],
+      "note": "No out-point, so no beat (an unbounded episode is not a seam), and still a file to prepare before the file runs out.",
+      "setup": { "target": "manager", "backend": { "prefetch": true } },
+      "steps": [
+        {
+          "call": "loadQueue",
+          "args": [
+            [
+              {
+                "$ep": ["whole", { "audio_url": "https://cdn.example/w.mp3", "rate": 1 }]
+              },
+              {
+                "$seg": [
+                  "s1",
+                  300,
+                  400,
+                  { "audio_url": "https://cdn.example/b.mp3", "rate": 1 }
+                ]
+              }
+            ]
+          ]
+        },
+        { "call": "play", "args": [0] },
+        { "deck": "window" },
+        { "checkpoint": "window" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "window",
+            "ops": ["load:whole@0", "rate:1", "play", "prefetch:s1@300"],
+            "playhead": "whole",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "end",
+            "ops": [],
+            "playhead": "whole",
+            "rate": 1,
+            "state": "playing"
+          }
+        ],
+        "ops": ["load:whole@0", "rate:1", "play", "prefetch:s1@300"]
+      }
+    },
+    {
+      "id": "manager-remainder/a-rendered-line-failing-while-sounding-warms-the-clip-as-speech-takes-over",
+      "covers": [
+        "queue-manager::NE-45j: a rendered line that fails WHILE SOUNDING warms the clip after it when speech takes over"
+      ],
+      "note": "The line's file failed before its window opened, and that window never will: the spoken fallback is a spoken line's start like any other, so the clip after it is asked for then.",
+      "setup": { "target": "manager", "backend": { "prefetch": true }, "tts": true },
+      "steps": [
+        {
+          "call": "loadQueue",
+          "args": [
+            [
+              {
+                "$tts": [
+                  "line",
+                  { "audio_url": "https://cdn.example/line.m4a", "script": "A line." }
+                ]
+              },
+              {
+                "$seg": [
+                  "s1",
+                  300,
+                  400,
+                  { "audio_url": "https://cdn.example/b.mp3", "rate": 1 }
+                ]
+              }
+            ]
+          ]
+        },
+        { "call": "play", "args": [0] },
+        { "checkpoint": "line-playing" },
+        { "deck": "error", "message": "media error 2" },
+        { "checkpoint": "spoken-instead" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "line-playing",
+            "ops": ["load:line@0", "rate:1", "play"],
+            "playhead": "line",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "spoken-instead",
+            "ops": ["pause", "tts.speak:A line.@1", "prefetch:s1@300"],
+            "playhead": "line",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "end",
+            "ops": [],
+            "playhead": "line",
+            "rate": 1,
+            "state": "playing"
+          }
+        ],
+        "ops": [
+          "load:line@0",
+          "rate:1",
+          "play",
+          "pause",
+          "tts.speak:A line.@1",
+          "prefetch:s1@300"
+        ]
+      }
+    },
+    {
+      "id": "manager-remainder/a-window-while-paused-warms-nothing",
+      "covers": ["queue-manager::a window that opens while nothing is playing warms nothing"],
+      "note": "Only an audible item is approaching a boundary.",
+      "setup": { "target": "manager", "backend": { "prefetch": true } },
+      "steps": [
+        {
+          "call": "loadQueue",
+          "args": [
+            [
+              {
+                "$seg": [
+                  "s0",
+                  100,
+                  200,
+                  { "audio_url": "https://cdn.example/a.mp3", "rate": 1 }
+                ]
+              },
+              {
+                "$seg": [
+                  "s1",
+                  300,
+                  400,
+                  { "audio_url": "https://cdn.example/b.mp3", "rate": 1 }
+                ]
+              },
+              {
+                "$seg": [
+                  "s2",
+                  500,
+                  600,
+                  { "audio_url": "https://cdn.example/c.mp3", "rate": 1 }
+                ]
+              }
+            ]
+          ]
+        },
+        { "call": "play", "args": [0] },
+        { "call": "pause" },
+        { "deck": "window" },
+        { "checkpoint": "window" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "window",
+            "ops": ["load:s0@100", "rate:1", "outPoint:200", "play", "pause"],
+            "playhead": "s0",
+            "rate": 1,
+            "state": "interrupted"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "end",
+            "ops": [],
+            "playhead": "s0",
+            "rate": 1,
+            "state": "interrupted"
+          }
+        ],
+        "ops": ["load:s0@100", "rate:1", "outPoint:200", "play", "pause"]
+      }
+    },
+    {
+      "id": "manager-remainder/a-warmed-seam-is-the-beat",
+      "covers": [
+        "queue-manager::a warmed seam is the beat; an unwarmed one is the load — measured on the virtual clock"
+      ],
+      "note": "A cold load costs 9,153 ms on the scenario clock (the device measurement, run 32036295743). The first segment's own load is cold; then the window warms s1, and from the out-point the next segment is silent through 499 ms and audible at 500 ms: the authored beat, still honoured.",
+      "setup": {
+        "target": "manager",
+        "scheduler": "manual",
+        "backend": { "prefetch": true, "coldLoadMs": 9153 }
+      },
+      "steps": [
+        {
+          "call": "loadQueue",
+          "args": [
+            [
+              {
+                "$seg": [
+                  "s0",
+                  100,
+                  200,
+                  { "audio_url": "https://cdn.example/a.mp3", "rate": 1 }
+                ]
+              },
+              {
+                "$seg": [
+                  "s1",
+                  300,
+                  400,
+                  { "audio_url": "https://cdn.example/b.mp3", "rate": 1 }
+                ]
+              },
+              {
+                "$seg": [
+                  "s2",
+                  500,
+                  600,
+                  { "audio_url": "https://cdn.example/c.mp3", "rate": 1 }
+                ]
+              }
+            ]
+          ]
+        },
+        { "call": "play", "args": [0], "await": false },
+        { "clock": 9153 },
+        { "settle": 2 },
+        { "checkpoint": "first-audible" },
+        { "deck": "window" },
+        { "deck": "ended", "reason": "outPoint" },
+        { "checkpoint": "boundary" },
+        { "clock": 499 },
+        { "checkpoint": "silent" },
+        { "clock": 1 },
+        { "settle": 2 },
+        { "checkpoint": "audible" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "first-audible",
+            "ops": ["load:s0@100", "rate:1", "outPoint:200", "play"],
+            "playhead": "s0",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": true,
+            "index": 1,
+            "name": "boundary",
+            "ops": ["prefetch:s1@300", "load:s1@300"],
+            "playhead": "s1",
+            "rate": 1,
+            "state": "loadingItem"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": true,
+            "index": 1,
+            "name": "silent",
+            "ops": [],
+            "playhead": "s1",
+            "rate": 1,
+            "state": "loadingItem"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "audible",
+            "ops": ["rate:1", "outPoint:400", "play"],
+            "playhead": "s1",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "end",
+            "ops": [],
+            "playhead": "s1",
+            "rate": 1,
+            "state": "playing"
+          }
+        ],
+        "ops": [
+          "load:s0@100",
+          "rate:1",
+          "outPoint:200",
+          "play",
+          "prefetch:s1@300",
+          "load:s1@300",
+          "rate:1",
+          "outPoint:400",
+          "play"
+        ]
+      }
+    },
+    {
+      "id": "manager-remainder/an-unwarmed-seam-is-the-load",
+      "covers": [
+        "queue-manager::a warmed seam is the beat; an unwarmed one is the load — measured on the virtual clock"
+      ],
+      "note": "No window, so nothing is warm: the load starts at the boundary and the seam is the load (9,153 ms), not the beat. Silent at 500 ms and at 9,152 ms, audible at 9,153 ms.",
+      "setup": {
+        "target": "manager",
+        "scheduler": "manual",
+        "backend": { "prefetch": true, "coldLoadMs": 9153 }
+      },
+      "steps": [
+        {
+          "call": "loadQueue",
+          "args": [
+            [
+              {
+                "$seg": [
+                  "s0",
+                  100,
+                  200,
+                  { "audio_url": "https://cdn.example/a.mp3", "rate": 1 }
+                ]
+              },
+              {
+                "$seg": [
+                  "s1",
+                  300,
+                  400,
+                  { "audio_url": "https://cdn.example/b.mp3", "rate": 1 }
+                ]
+              },
+              {
+                "$seg": [
+                  "s2",
+                  500,
+                  600,
+                  { "audio_url": "https://cdn.example/c.mp3", "rate": 1 }
+                ]
+              }
+            ]
+          ]
+        },
+        { "call": "play", "args": [0], "await": false },
+        { "clock": 9153 },
+        { "settle": 2 },
+        { "checkpoint": "first-audible" },
+        { "deck": "ended", "reason": "outPoint" },
+        { "checkpoint": "boundary" },
+        { "clock": 500 },
+        { "checkpoint": "beat-spent" },
+        { "clock": 8652 },
+        { "checkpoint": "still-loading" },
+        { "clock": 1 },
+        { "settle": 2 },
+        { "checkpoint": "audible" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "first-audible",
+            "ops": ["load:s0@100", "rate:1", "outPoint:200", "play"],
+            "playhead": "s0",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": true,
+            "index": 1,
+            "name": "boundary",
+            "ops": [],
+            "playhead": "s0",
+            "rate": 1,
+            "state": "loadingItem"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": true,
+            "index": 1,
+            "name": "beat-spent",
+            "ops": [],
+            "playhead": "s0",
+            "rate": 1,
+            "state": "loadingItem"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": true,
+            "index": 1,
+            "name": "still-loading",
+            "ops": [],
+            "playhead": "s0",
+            "rate": 1,
+            "state": "loadingItem"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "audible",
+            "ops": ["load:s1@300", "rate:1", "outPoint:400", "play"],
+            "playhead": "s1",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "end",
+            "ops": [],
+            "playhead": "s1",
+            "rate": 1,
+            "state": "playing"
+          }
+        ],
+        "ops": [
+          "load:s0@100",
+          "rate:1",
+          "outPoint:200",
+          "play",
+          "load:s1@300",
+          "rate:1",
+          "outPoint:400",
+          "play"
+        ]
+      }
+    },
+    {
+      "id": "manager-remainder/losing-the-race-costs-the-load-and-never-the-segment",
+      "covers": [
+        "queue-manager::losing the race costs what it costs today, and never the segment"
+      ],
+      "note": "The window asks, and the warm load is not ready by the boundary, so the load takes the ordinary path: the seam is long, and nothing else changes. Advanced by exactly one, at s1's own in-point, with its own out-point armed.",
+      "setup": {
+        "target": "manager",
+        "scheduler": "manual",
+        "backend": { "prefetch": "loses", "coldLoadMs": 9153 },
+        "view": ["outPoint"]
+      },
+      "steps": [
+        {
+          "call": "loadQueue",
+          "args": [
+            [
+              {
+                "$seg": [
+                  "s0",
+                  100,
+                  200,
+                  { "audio_url": "https://cdn.example/a.mp3", "rate": 1 }
+                ]
+              },
+              {
+                "$seg": [
+                  "s1",
+                  300,
+                  400,
+                  { "audio_url": "https://cdn.example/b.mp3", "rate": 1 }
+                ]
+              },
+              {
+                "$seg": [
+                  "s2",
+                  500,
+                  600,
+                  { "audio_url": "https://cdn.example/c.mp3", "rate": 1 }
+                ]
+              }
+            ]
+          ]
+        },
+        { "call": "play", "args": [0], "await": false },
+        { "clock": 9153 },
+        { "settle": 2 },
+        { "checkpoint": "first-audible" },
+        { "deck": "window" },
+        { "deck": "ended", "reason": "outPoint" },
+        { "clock": 9153 },
+        { "settle": 2 },
+        { "checkpoint": "next-segment" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "first-audible",
+            "ops": ["load:s0@100", "rate:1", "outPoint:200", "play"],
+            "outPoint": 200,
+            "playhead": "s0",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "next-segment",
+            "ops": ["prefetch:s1@300", "load:s1@300", "rate:1", "outPoint:400", "play"],
+            "outPoint": 400,
+            "playhead": "s1",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "end",
+            "ops": [],
+            "outPoint": 400,
+            "playhead": "s1",
+            "rate": 1,
+            "state": "playing"
+          }
+        ],
+        "ops": [
+          "load:s0@100",
+          "rate:1",
+          "outPoint:200",
+          "play",
+          "prefetch:s1@300",
+          "load:s1@300",
+          "rate:1",
+          "outPoint:400",
+          "play"
+        ]
+      }
+    }
+  ]
+}

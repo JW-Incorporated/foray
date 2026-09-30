@@ -17,8 +17,9 @@ import Foundation
  * the real JS writers, NE-10j) runs each one against the recorded bytes.
  *
  * THE RULE, as for every port: JS is the reference. A change to a row is a JS
- * change, a re-record (which puts the ids in swift-pending.json), then this
- * file. Nothing here may decide something the JS does not.
+ * change and a re-record, with this file in the same change (NE-39s retired
+ * swift-pending.json: nothing can be owed). Nothing here may decide something
+ * the JS does not.
  *
  * The time a row is stamped with is the caller's (`updatedAt`, from
  * `Rows.timestamp(epochMs:)`), exactly as the JS writers take theirs from an

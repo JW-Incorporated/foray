@@ -49,6 +49,7 @@ import {
   parseEngineDefault,
   parseEngineDefaults,
   rootEntries,
+  validateEngineDefault,
 } from "./inject-background-audio.mjs";
 
 /** What `npx cap add ios` writes, trimmed to the keys that matter here. */
@@ -631,10 +632,14 @@ const JS_DEFAULT = Object.freeze({ mode: "js", capabilities: [] });
 /** NE-37, the M2 flip (after NE-27b's M1 flip): what mobile/ENGINE_DEFAULT.json
     commits (plan §9a, OQ-9's default, recorded in STATE.md; shell-invariants
     holds the record). */
-const M2_DEFAULT = Object.freeze({ mode: "native", capabilities: ["episode", "continuation", "restore", "foray"] });
+const M2_DEFAULT = Object.freeze({ mode: "native", capabilities: ["episode", "continuation", "restore", "foray"],
+  // NE-38rs: route resume's Bluetooth arm, OFF (// MEASURE: verdict=route-back).
+  routeResumeBluetooth: false });
 /** Android's block since A-42, the A2 flip: native for Forays too, iOS's M2 four (A-31, the A1
-    flip, was episode and continuation). */
-const A2_DEFAULT = Object.freeze({ mode: "native", capabilities: ["episode", "continuation", "restore", "foray"] });
+    flip, was episode and continuation). A-61: route resume's Bluetooth arm OFF on Android too
+    (D-A9: BLUETOOTH_CONNECT is not requested). */
+const A2_DEFAULT = Object.freeze({ mode: "native", capabilities: ["episode", "continuation", "restore", "foray"],
+  routeResumeBluetooth: false });
 
 test("the committed ENGINE_DEFAULT.json is the M2 native default NE-37 flipped, and the script reads THAT file", () => {
   /* MUTATION: point ENGINE_DEFAULT_FILE anywhere else, commit "js" again, or
@@ -765,6 +770,29 @@ test("assertEngineDefault is a real function, and it rejects what it should", ()
   assert.throws(() => assertEngineDefault(good, { mode: "native", capabilities: ["episode"] }), PlistError);
 });
 
+test("NE-38rs: routeResumeBluetooth is written as a plist boolean only when the block names it, and follows the block", () => {
+  /* EngineBoot reads ForayEngineRouteResumeBluetooth (absent: the engine's
+     default, OFF). MUTATION: always write the key (a block without the flag
+     then reads back with one), skip the removal (a plist from an earlier
+     block keeps an arm the file no longer names), or accept a non-boolean. */
+  const on = injectEngineDefault(CAPACITOR_PLIST, { mode: "native", capabilities: [], routeResumeBluetooth: true });
+  assert.match(on.xml, /<key>ForayEngineRouteResumeBluetooth<\/key>\s*<true\/>/);
+  assert.deepEqual(engineDefault(on.xml), { mode: "native", capabilities: [], routeResumeBluetooth: true });
+  const off = injectEngineDefault(on.xml, { mode: "native", capabilities: [], routeResumeBluetooth: false });
+  assert.ok(off.changed);
+  assert.deepEqual(engineDefault(off.xml), { mode: "native", capabilities: [], routeResumeBluetooth: false });
+  assert.equal(injectEngineDefault(off.xml, { mode: "native", capabilities: [], routeResumeBluetooth: false }).changed, false);
+  const gone = injectEngineDefault(off.xml, { mode: "native", capabilities: [] });
+  assert.doesNotMatch(gone.xml, /ForayEngineRouteResumeBluetooth/);
+  assert.deepEqual(engineDefault(gone.xml), { mode: "native", capabilities: [] });
+  assert.equal(gone.xml, injectEngineDefault(CAPACITOR_PLIST, { mode: "native", capabilities: [] }).xml,
+    "removing the key leaves the plist exactly as if it was never written");
+  assert.throws(() => assertEngineDefault(on.xml, { mode: "native", capabilities: [] }), PlistError, "an extra arm passed");
+  assert.throws(() => validateEngineDefault({ mode: "native", routeResumeBluetooth: "false" }), PlistError);
+  assert.deepEqual(validateEngineDefault({ mode: "js", routeResumeBluetooth: false }),
+    { mode: "js", capabilities: [], routeResumeBluetooth: false });
+});
+
 /* ─────────── the CLI, as both CI invocations run it ─────────── */
 
 const SCRIPT = fileURLToPath(new URL("./inject-background-audio.mjs", import.meta.url));
@@ -793,7 +821,7 @@ test("the CI invocations write the engine default and --check prints ForayEngine
     assert.equal(encryption.status, 0, encryption.stderr);
     const check = run([plist, "--check", "--encryption", "false"]);
     assert.equal(check.status, 0, check.stderr);
-    assert.match(check.stdout, /ForayEngineDefault=native ForayEngineCapabilities=\["episode","continuation","restore","foray"\]/);
+    assert.match(check.stdout, /ForayEngineDefault=native ForayEngineCapabilities=\["episode","continuation","restore","foray"\] ForayEngineRouteResumeBluetooth=false/);
     assert.deepEqual(engineDefault(fs.readFileSync(plist, "utf8")), M2_DEFAULT);
 
     // A plist whose engine default was changed by hand fails --check.

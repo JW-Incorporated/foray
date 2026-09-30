@@ -49,8 +49,9 @@ import {
 } from "../engine-contract.js";
 import { PlayerQueueManager } from "../queue-manager.js";
 import { PositionStore } from "../position-store.js";
-import { OpLog, FakeBackend, MemoryStore, fakeTts } from "./fakes.js";
-import { warmOffset, prefetchDecision, warmPromotion } from "../deck-policy.js";
+import { OpLog, FakeBackend, MemoryStore, fakeTts, fakePreview } from "./fakes.js";
+import { warmOffset, prefetchDecision, warmPromotion, prefetchWindowOpens } from "../deck-policy.js";
+import { PREFETCH_LEAD_SEC } from "../html-audio-backend.js";
 import { structuralCheck } from "../foray-structure.js";
 import { segmentAtElapsed, forayElapsed } from "../foray-resolve.js";
 import { forayRuntimeSec } from "../foray-queue.js";
@@ -78,7 +79,7 @@ const clone = (v) => (v === undefined ? undefined : JSON.parse(JSON.stringify(v)
 
 /**
  * FakeBackend with the warm handover. Same tokens as FakeBackend (the manager
- * suites' grammar), plus the native-only `n.prepare:<id>@<s>` when a segment is
+ * suites' grammar), plus the native-only `n.prepare:<id>@<s>` when an item is
  * warmed and `n.handover:<id>@<s>` when a load finds it warm.
  *
  * THE DECISIONS ARE THE REAL ONES (NE-30j). Whether to warm and whether a warm
@@ -88,12 +89,34 @@ const clone = (v) => (v === undefined ? undefined : JSON.parse(JSON.stringify(v)
  * same-source seek covers it), and a load is handed over only for the SOURCE
  * and in-point that were warmed. A warm load here is ready at once: there is no
  * network, so the race is always won; losing it is the deck family's case.
+ *
+ * THE STANDBY DECK REMEMBERS ITS SOURCE (NE-45j). A handover demotes the
+ * outgoing deck to standby WITHOUT dropping what it holds (`handoverSteps`:
+ * the buffer is kept), so across clip -> line -> clip in ONE episode the
+ * standby still holds that episode when the line's window opens. Preparing
+ * the second clip there is a same-source SEEK on the standby, not a fetch —
+ * DeckPair sends the standby a load, and AVDeck's `sameSourceIsSeek` turns it
+ * into a seek — and it is written `n.prepare-seek:<id>@<s>`.
+ *
+ * THE WINDOW (NE-45j). `window` is the deck's playhead watch firing: it opens
+ * for an armed out-point and, since NE-45j, for an item with none (a rendered
+ * line, an episode's natural end) from its duration. And an item shorter than
+ * `PREFETCH_LEAD_SEC` is inside its window from its first tick, so `play()`
+ * asks deck-policy.js `prefetchWindowOpens` once per load: such an item warms
+ * at its start without a scenario having to say so.
  */
 export class WarmingBackend extends FakeBackend {
   constructor(opts = {}) {
     super(opts);
     this._warm = null;
     this._currentUrl = null;
+    /** The source the standby deck holds: what it last prepared, or what the
+        last handover demoted onto it. */
+    this._standbyUrl = null;
+    /** One automatic window check per load (the `alreadyOpened` input). */
+    this._loadCount = 0;
+    this._windowCheckedFor = null;
+    this.rate = 1;
     /** Assigned by the manager when `prefetch` exists (queue-manager.js §11). */
     this.onPrefetchWindow = null;
     this.ended = false;
@@ -105,8 +128,10 @@ export class WarmingBackend extends FakeBackend {
     });
     if (decision === "already") { this._warm.id = item.id; return true; }
     if (decision !== "start") return false;
+    const seek = this._standbyUrl === item.audio_url;
     this._warm = { id: item.id, url: item.audio_url, offset, ready: true, failed: false };
-    this.log.push(`n.prepare:${item.id}@${offset}`);
+    this._standbyUrl = item.audio_url;
+    this.log.push(`${seek ? "n.prepare-seek" : "n.prepare"}:${item.id}@${offset}`);
     return true;
   }
   async load(item, opts = {}) {
@@ -114,15 +139,42 @@ export class WarmingBackend extends FakeBackend {
     const warm = this._warm;
     this._warm = null;
     const verdict = warmPromotion({ warm, url: item?.audio_url, offsetSec: offset, canPlay: true, atSec: offset });
-    if (verdict === "promote") this.log.push(`n.handover:${item.id}@${offset}`);
+    if (verdict === "promote") {
+      this.log.push(`n.handover:${item.id}@${offset}`);
+      // The roles swap: the outgoing deck, and what it holds, is the standby.
+      this._standbyUrl = this._currentUrl;
+    }
     this.ended = false;
     this._currentUrl = item?.audio_url ?? null;
+    this._loadCount++;
     return super.load(item, opts);
   }
-  /** The playhead is PREFETCH_LEAD_SEC from an armed out-point while audible:
-      what html-audio-backend.js's `_maybeOpenPrefetchWindow` answers. */
+  setRate(rate) {
+    if (typeof rate === "number" && Number.isFinite(rate) && rate > 0) this.rate = rate;
+    super.setRate(rate);
+  }
+  play() {
+    super.play();
+    this._windowAtStart();
+  }
+  /** The first tick of a load: an item already inside its window (shorter
+      than the lead, or started within it) opens it now, once. */
+  _windowAtStart() {
+    if (this._windowCheckedFor === this._loadCount) return;
+    this._windowCheckedFor = this._loadCount;
+    const opens = prefetchWindowOpens({
+      available: true, outPointSec: this.outPoint, armed: this.outPoint != null, paused: this.paused,
+      atSec: this.currentTime, rate: this.rate, leadSec: PREFETCH_LEAD_SEC, durationSec: this.duration,
+    });
+    if (opens) this.onPrefetchWindow?.();
+  }
+  /** The playhead is PREFETCH_LEAD_SEC from the boundary while audible: what
+      html-audio-backend.js's `_maybeOpenPrefetchWindow` answers. The boundary
+      is an armed out-point or, for an item with none, its duration (NE-45j). */
   openPrefetchWindow() {
-    if (this.outPoint == null || this.paused) return false;
+    if (this.paused) return false;
+    const duration = this.duration;
+    if (this.outPoint == null && !(Number.isFinite(duration) && duration > 0)) return false;
     this.onPrefetchWindow?.();
     return true;
   }
@@ -153,6 +205,7 @@ const viaOf = (source) => (source === "remote" ? "remote" : source === "autoresu
  * @param {object} [opts.catalogue]       item_id -> episode row, a Foray's resolver table
  * @param {OpLog} [opts.log]              the shared op log
  * @param {object} [opts.backend]         FakeBackend options (failLoadFor, durationById, ...)
+ * @param {object} [opts.preview]         the preview deck's options (fakes.js fakePreview: failUrls)
  */
 export class ReferenceEngine {
   constructor({
@@ -160,7 +213,7 @@ export class ReferenceEngine {
     mode = "native", reason = "build-default", protocol = PROTOCOL,
     scheduler = realScheduler(), now = () => Date.now(),
     activation = () => ({ ok: true }),
-    catalogue = {}, log = new OpLog(), backend = {},
+    catalogue = {}, log = new OpLog(), backend = {}, preview = {},
     holdPolicy = DEFAULT_HOLD_POLICY, seamGapSec,
   } = {}) {
     this.log = log;
@@ -179,6 +232,9 @@ export class ReferenceEngine {
     this.storage = new MemoryStore();
     this.backend = new WarmingBackend({ log, ...backend });
     this.tts = fakeTts({ log });
+    /** NE-47: the deck a rendered voice preview plays on, apart from the main
+        deck, so a preview never touches the item a paused Foray holds. */
+    this.preview = fakePreview({ log, ...preview });
     this.positions = new PositionStore({
       storage: this.storage,
       now: () => new Date(this.now()),
@@ -310,7 +366,10 @@ export class ReferenceEngine {
     this._transition();
   }
 
-  dispose() { this.manager.dispose(); }
+  dispose() {
+    this._stopPreview();
+    this.manager.dispose();
+  }
 
   /* ---------- the snapshot (§5.3) ---------- */
 
@@ -436,6 +495,9 @@ export class ReferenceEngine {
       session is active, or the refusal reason when activation failed — in
       which case the caller must issue NO audible command. */
   _ensureSession(via) {
+    // Anything but an audition starting to play cuts a preview in flight
+    // (EngineCore.begin): one thing sounds at a time.
+    if (via !== "auditionTap") this._stopPreview();
     const t = this._session({ kind: "userPlay", via });
     if (!t.actions.includes("activate")) return null;
     const answer = this.activation() ?? { ok: true };
@@ -509,6 +571,7 @@ export class ReferenceEngine {
           if (!this.playing) return "not-loaded";
           if (this.playing.kind === "foray") {
             if (m.currentIndex >= m.queue.length - 1) return "no-next";
+            this._stopPreview();
             await m.skipToNext();
             return null;
           }
@@ -516,6 +579,7 @@ export class ReferenceEngine {
           return this._walk(source);
         case "previous":
           if (!this.playing || !this._currentItem()) return "no-previous";
+          this._stopPreview();
           await m.skipToPrevious();
           return null;
         case "seekBy": case "seekTo": {
@@ -527,9 +591,11 @@ export class ReferenceEngine {
         }
         case "jump":
           if (!this.playing || args.index >= m.queue.length) return "not-loaded";
+          this._stopPreview();
           await m.play(args.index);
           return null;
         case "stop":
+          this._stopPreview();
           await m.stop();
           this._session({ kind: args.persist === false ? "dataDeletion" : "close" });
           if (args.persist === false) this._purge();
@@ -553,17 +619,37 @@ export class ReferenceEngine {
           // Now Playing painted at rate 0 WITHOUT activation (S-3): no session edge.
           this._row({ kind: "nowplaying", restore: true });
           return null;
-        case "purge": this._purge(); return null;
+        case "purge": this._stopPreview(); this._purge(); return null;
         case "relinquish": await this._relinquish(args.cap); return null;
         case "audition": {
           if (this._running()) return "engine-busy";
           const failed = this._ensureSession("auditionTap");
           if (failed) return failed;
-          await this.tts.speak(args.text, { rate: 1, ...(args.voiceId ? { voice: args.voiceId } : {}) });
+          const speak = () => this.tts.speak(args.text, { rate: 1, ...(args.voiceId ? { voice: args.voiceId } : {}) });
+          // No url: spoken, exactly as before NE-47 (the Apple voice).
+          if (typeof args.url !== "string") { this._stopPreview(); await speak(); return null; }
+          /* NE-47 (Spark §3.3): the voice's RENDERED preview plays on the
+             preview deck, under the activation this tap just made. A file
+             that will not load is spoken instead: the listener always hears
+             the line. Either way the command itself succeeded. */
+          try {
+            await this.preview.load(args.url);
+          } catch {
+            this._row({ kind: "audition", event: "fallback" });
+            await speak();
+            return null;
+          }
+          this.preview.play();
           return null;
         }
         case "setModeOverride": this.modeOverride = args.mode; return null;
         case "setHoldPolicy": this.holdPolicy = args.policy; return null;
+        /* NE-40 (DV-8): the native host stores the route-sharing choice for
+           the next launch; the reference keeps it and says so. */
+        case "setRouteSharing":
+          this.routeSharing = args.policy;
+          this._row({ kind: "session", event: "route-sharing", policy: args.policy, applies: "next-launch" });
+          return null;
         case "probeSession": this._row({ kind: "probe" }); return null;
         /* Developer only (NE-24, DV-7a): the native engine persists its
            restore record and exits at the next background entry while
@@ -686,6 +772,9 @@ export class ReferenceEngine {
     }).catch(() => {});
   }
 
+  /** Cut a preview in flight (NE-47): logs `preview.stop` only when one is. */
+  _stopPreview() { this.preview.stop(); }
+
   _purge() {
     for (const k of [...this.storage.map.keys()]) {
       if (OWNED_PREFIXES.some((p) => k.startsWith(p))) this.storage.removeItem(k);
@@ -697,6 +786,7 @@ export class ReferenceEngine {
   /** §4.6's native side, in its order: stop with persistence, keep the session
       (no deactivate, no notify), go terminal, say so. */
   async _relinquish(cap) {
+    this._stopPreview();
     await this.manager.stop();
     this._session({ kind: "relinquish" });
     this.relinquished = true;

@@ -3,6 +3,7 @@ package ai.jwlabs.foura.audio.engine;
 import ai.jwlabs.foura.engine.EngineCommand;
 import ai.jwlabs.foura.engine.EngineInput;
 import ai.jwlabs.foura.engine.RestoreRecord;
+import ai.jwlabs.foura.engine.RouteResume;
 import ai.jwlabs.foura.engine.Rows;
 
 /**
@@ -148,6 +149,29 @@ public final class EngineSeams {
         void release();
     }
 
+    /**
+     * Where our audio goes now (A-61, the Swift {@code SessionControlling.currentRoute} of
+     * NE-38rs), read for every input ({@code EngineNow.route}): the route a playing deck is heard
+     * through, which is how a route becomes known. The service's is its {@code RouteWatcher}.
+     */
+    public interface RouteReading {
+        /** The current output route, or null when the host cannot say. */
+        EngineInput.RoutePort currentRoute();
+    }
+
+    /**
+     * Where route resume's known set lives between launches (A-61, the Swift
+     * {@code KnownRoutesStoring}): the engine-private key {@code ForayEngine.knownRoutes}
+     * ({@link EngineStore}), never the page's file, with the install's salt beside the salted keys.
+     * The host reads it once at construction and writes it whenever a turn changed the core's set;
+     * null removes the key (an empty set, a data deletion).
+     */
+    public interface KnownRoutesStoring {
+        RouteResume.Stored loadKnownRoutes();
+
+        void saveKnownRoutes(RouteResume.Stored stored);
+    }
+
     public final DeckDriving deck;
     public final Session session;
     public final Timing timing;
@@ -156,17 +180,33 @@ public final class EngineSeams {
     public final Speaking speaker;
     /** The jingle player, or null: the core is then built with {@code interludeAvailable} off. */
     public final InterludePlaying interlude;
+    /** The current route (A-61), or null: no route ever becomes known, so none ever resumes. */
+    public final RouteReading routes;
+    /** The known routes' private key (A-61), or null (most tests): a fresh salt per engine, and nothing persisted. */
+    public final KnownRoutesStoring knownRoutes;
 
     public EngineSeams(DeckDriving deck, Session session, Timing timing, Output output) {
         this(deck, session, timing, output, null, null);
     }
 
     public EngineSeams(DeckDriving deck, Session session, Timing timing, Output output, Speaking speaker, InterludePlaying interlude) {
+        this(deck, session, timing, output, speaker, interlude, null, null);
+    }
+
+    public EngineSeams(DeckDriving deck, Session session, Timing timing, Output output, Speaking speaker, InterludePlaying interlude,
+                       RouteReading routes, KnownRoutesStoring knownRoutes) {
         this.deck = java.util.Objects.requireNonNull(deck, "deck");
         this.session = java.util.Objects.requireNonNull(session, "session");
         this.timing = java.util.Objects.requireNonNull(timing, "timing");
         this.output = java.util.Objects.requireNonNull(output, "output");
         this.speaker = speaker;
         this.interlude = interlude;
+        this.routes = routes;
+        this.knownRoutes = knownRoutes;
+    }
+
+    /** These seams with route resume's two (A-61). */
+    public EngineSeams withRoutes(RouteReading routes, KnownRoutesStoring knownRoutes) {
+        return new EngineSeams(deck, session, timing, output, speaker, interlude, routes, knownRoutes);
     }
 }

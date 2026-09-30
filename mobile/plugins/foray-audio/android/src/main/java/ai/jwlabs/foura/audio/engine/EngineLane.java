@@ -36,6 +36,14 @@ public final class EngineLane {
      */
     public static final List<String> DECLARED_CAPABILITIES = Collections.unmodifiableList(Arrays.asList("episode", "continuation", "restore", "foray"));
 
+    /**
+     * mobile/ENGINE_DEFAULT.json {@code android.routeResumeBluetooth} (A-61): route resume's
+     * Bluetooth arm, OFF as on iOS (NE-38rs). Reading a Bluetooth device's class, to tell a car from
+     * headphones, needs {@code BLUETOOTH_CONNECT}, which is not requested (D-A9: no). Pinned to the
+     * file like the mode; an absent key in the file is the core's default (off).
+     */
+    public static final boolean ROUTE_RESUME_BLUETOOTH = false;
+
     /** Where the Developer engine setting is stored (SharedPreferences), and its key: iOS's names. */
     public static final String PREFS = "ForayEngine";
     public static final String OVERRIDE_KEY = "ForayEngine.modeOverride";

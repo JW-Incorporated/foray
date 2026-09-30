@@ -3,6 +3,7 @@ package ai.jwlabs.foura.audio;
 import ai.jwlabs.foura.audio.engine.DeckDriving;
 import ai.jwlabs.foura.audio.engine.DeckPair;
 import ai.jwlabs.foura.audio.engine.EngineAudio;
+import ai.jwlabs.foura.audio.engine.EngineLane;
 import ai.jwlabs.foura.audio.engine.EngineLog;
 import ai.jwlabs.foura.audio.engine.EnginePlayer;
 import ai.jwlabs.foura.audio.engine.EngineSeams;
@@ -28,12 +29,16 @@ import ai.jwlabs.foura.engine.JsonNode;
 import ai.jwlabs.foura.engine.MediaMapping;
 import ai.jwlabs.foura.engine.RestoreRecord;
 import android.app.Notification;
+import android.app.UiModeManager;
 import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.ServiceInfo;
+import android.content.res.Configuration;
+import android.media.AudioDeviceCallback;
+import android.media.AudioDeviceInfo;
 import android.media.AudioManager;
 import android.os.Build;
 import android.os.Bundle;
@@ -189,6 +194,11 @@ public class ForayPlaybackService extends MediaSessionService {
     /** A-41 review: headphones out while no deck plays (a spoken line, the jingle); see {@link FocusMapping}. */
     @Nullable private BroadcastReceiver noisyReceiver;
     private final FocusMapping focus = new FocusMapping();
+    /** A-61: route resume's ears (the devices added and removed, car mode), and its device callback. */
+    @Nullable private RouteWatcher routes;
+    @Nullable private AudioDeviceCallback deviceCallback;
+    /** Car mode as {@link #onConfigurationChanged} last saw it, so only a change reports. */
+    private boolean lastCarMode;
     /** The process's log (A-28): the page's bridge reads its ring and shared rows in every lane. */
     private final EngineLog log = EngineLog.process();
     /** The process's store over that log (A-27): what the engine keeps across a process death. */
@@ -294,11 +304,19 @@ public class ForayPlaybackService extends MediaSessionService {
         SpeechNarrator narrator = new SpeechNarrator(tts, speakerConfig);
         InterludePlayer interlude = MediaJingle.make(this, () -> session != null, log::diag, timing);
         jingle = interlude;
-        EngineSeams seams = new EngineSeams(deck, new SessionSeam(), timing, kept, narrator, interlude);
+        /* A-61: route resume. The watcher is the current route the core reads on every turn, and the
+           store keeps the known routes (ForayEngine.knownRoutes) with the install's salt. */
+        RouteWatcher watcher = new RouteWatcher(this::inCarMode, timing::monoMs);
+        routes = watcher;
+        lastCarMode = inCarMode();
+        EngineSeams seams = new EngineSeams(deck, new SessionSeam(), timing, kept, narrator, interlude).withRoutes(watcher, kept);
         // A-40: the Foray tape on (the core refuses playForay without it), over the pair when there is one.
         // A-41: the jingle only when its player exists.
+        // A-61: the Bluetooth arm as mobile/ENGINE_DEFAULT.json's android block says (off); the host
+        // adds the install's salt and the known routes from the store.
         ForayEngineHost engine = new ForayEngineHost(seams, new EngineConfig(buildName(this))
-                .withForayTape(true, standby != null).withInterludeAvailable(interlude != null));
+                .withForayTape(true, standby != null).withInterludeAvailable(interlude != null)
+                .withRouteResume(EngineLane.ROUTE_RESUME_BLUETOOTH, "", null));
         host = engine;
         EnginePlayer facade = new EnginePlayer(Looper.getMainLooper(), new EnginePlayer.Engine() {
             @Override
@@ -351,6 +369,102 @@ public class ForayPlaybackService extends MediaSessionService {
         focusListener = listener;
         built.addListener(listener);
         registerNoisyReceiver();
+        registerDeviceCallback(watcher);
+    }
+
+    /**
+     * A-61: the devices added and removed, for route resume ({@link RouteWatcher}). SEEDED BEFORE
+     * REGISTERING, as SessionMonitor is: the platform answers a registration with an added call for
+     * every device already present, and those are not routes coming back. Wrapped: a callback that
+     * cannot register costs route resume, never the service.
+     */
+    private void registerDeviceCallback(@NonNull RouteWatcher watcher) {
+        if (deviceCallback != null) return;
+        try {
+            AudioManager audio = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
+            if (audio == null) return;
+            watcher.seed(devices(audio.getDevices(AudioManager.GET_DEVICES_OUTPUTS)));
+            AudioDeviceCallback callback = new AudioDeviceCallback() {
+                @Override
+                public void onAudioDevicesAdded(AudioDeviceInfo[] added) {
+                    feedRoutes(watcher.onAdded(devices(added)));
+                }
+
+                @Override
+                public void onAudioDevicesRemoved(AudioDeviceInfo[] removed) {
+                    feedRoutes(watcher.onRemoved(devices(removed)));
+                }
+            };
+            audio.registerAudioDeviceCallback(callback, new Handler(Looper.getMainLooper()));
+            deviceCallback = callback;
+        } catch (RuntimeException e) {
+            Log.w(TAG, "could not observe audio devices; route resume will not hear a car", e);
+        }
+    }
+
+    private void unregisterDeviceCallback() {
+        AudioDeviceCallback callback = deviceCallback;
+        deviceCallback = null;
+        if (callback == null) return;
+        try {
+            AudioManager audio = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
+            if (audio != null) audio.unregisterAudioDeviceCallback(callback);
+        } catch (RuntimeException e) {
+            Log.w(TAG, "unregistering the device callback failed", e);
+        }
+    }
+
+    /** The outputs among {@code infos}, as the watcher keeps them (a source, a microphone, is never one). */
+    @NonNull
+    static List<RouteWatcher.Device> devices(@Nullable AudioDeviceInfo[] infos) {
+        List<RouteWatcher.Device> out = new ArrayList<>();
+        if (infos == null) return out;
+        for (AudioDeviceInfo d : infos) {
+            if (d != null && (d.isSink() || !d.isSource())) out.add(RouteWatcher.Device.of(d));
+        }
+        return out;
+    }
+
+    /** Car UI mode ({@code UiModeManager}): Android Auto's projection, or a car dock. */
+    private boolean inCarMode() {
+        try {
+            UiModeManager ui = (UiModeManager) getSystemService(Context.UI_MODE_SERVICE);
+            return ui != null && ui.getCurrentModeType() == Configuration.UI_MODE_TYPE_CAR;
+        } catch (RuntimeException e) {
+            return false;
+        }
+    }
+
+    /** A-61: entering car mode reports the current route again, classed {@code car} ({@link RouteWatcher#onCarMode}). */
+    @Override
+    public void onConfigurationChanged(@NonNull Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+        RouteWatcher watcher = routes;
+        if (watcher == null) return;
+        boolean car = (newConfig.uiMode & Configuration.UI_MODE_TYPE_MASK) == Configuration.UI_MODE_TYPE_CAR;
+        if (car == lastCarMode) return;
+        lastCarMode = car;
+        feedRoutes(watcher.onCarMode(car));
+    }
+
+    /** The watcher for the tests (null once released). */
+    @Nullable
+    RouteWatcher routeWatcher() {
+        return routes;
+    }
+
+    /** BECOMING_NOISY as FocusMapping reports it: a loss that names no port, which {@link #feed} has the watcher name. */
+    void becomingNoisy() {
+        List<EngineInput.SessionEvent> events = new ArrayList<>(1);
+        events.add(new EngineInput.SessionEvent.Route(new EngineInput.RouteChange(true)));
+        feed(events);
+    }
+
+    /** Route changes from the watcher, as the core's session events. */
+    void feedRoutes(@NonNull List<EngineInput.RouteChange> changes) {
+        List<EngineInput.SessionEvent> events = new ArrayList<>(changes.size());
+        for (EngineInput.RouteChange change : changes) events.add(new EngineInput.SessionEvent.Route(change));
+        feed(events);
     }
 
     /**
@@ -420,7 +534,18 @@ public class ForayPlaybackService extends MediaSessionService {
     private void feed(List<EngineInput.SessionEvent> events) {
         ForayEngineHost engine = host;
         if (engine == null) return;
-        for (EngineInput.SessionEvent event : events) engine.handle(new EngineInput.Session(event));
+        RouteWatcher watcher = routes;
+        for (EngineInput.SessionEvent event : events) {
+            /* A-61: a BECOMING_NOISY loss names no port (FocusMapping reads only the player); the
+               watcher names the route that is going, or drops it when a removal already said so. */
+            if (watcher != null && event instanceof EngineInput.SessionEvent.Route r && r.change().oldDeviceUnavailable()
+                    && r.change().portType() == null) {
+                EngineInput.RouteChange named = watcher.onNoisy();
+                if (named == null) continue;
+                event = new EngineInput.SessionEvent.Route(named);
+            }
+            engine.handle(new EngineInput.Session(event));
+        }
     }
 
     @Nullable
@@ -496,6 +621,8 @@ public class ForayPlaybackService extends MediaSessionService {
 
     private void release() {
         unregisterNoisyReceiver();
+        unregisterDeviceCallback();
+        routes = null;
         ForayEngineHost engine = host;
         host = null;
         if (engine != null) engine.teardown();
@@ -804,6 +931,11 @@ public class ForayPlaybackService extends MediaSessionService {
             m.add(JsonNode.member("buffering", JsonNode.bool(st.buffering)));
             m.add(JsonNode.member("activations", JsonNode.num(engine.activations())));
             m.add(JsonNode.member("focusTransientOpen", JsonNode.bool(focus.transientOpen())));
+            // A-61: the route the watcher tracks (port and class, never an address), the known set's size.
+            RouteWatcher watcher = routes;
+            m.add(JsonNode.member("route", watcher == null ? JsonNode.NULL : JsonNode.str(watcher.describe())));
+            m.add(JsonNode.member("knownRoutes", JsonNode.num(st.knownRoutes.keys().size())));
+            m.add(JsonNode.member("routePausedBy", JsonNode.str(st.routeResume.pausedBy().token)));
             ForayEngineHost.Surface surface = engine.freshSurface();
             List<JsonNode> enabled = new ArrayList<>();
             for (MediaMapping.RemoteCommand c : MediaMapping.RemoteCommand.values()) {

@@ -627,7 +627,7 @@ export const STOCK_MODE = "auto";
 /** The scenarios that must run in the native LANE: every dump they read says `nativeLane: true`.
  *  Not `bridge` and `fallback`, which set the lane themselves and read it from the page. */
 export const LANE_SCENARIOS = Object.freeze(["first-launch", "play", "background", "transport", "notification", "seams",
-  "foray-seams", "doze", "focus", "call", "kill", "airplane"]);
+  "foray-seams", "doze", "focus", "call", "kill", "airplane", "route"]);
 
 /** A-30's numbers. */
 export const NATIVE_GATES = Object.freeze({
@@ -1355,6 +1355,46 @@ export function verdictKill({ legs, setup }) {
   return { ok: failures.length === 0, failures, recorded };
 }
 
+/* ── A-61: route resume, with a virtual output device ─────────────────────────
+   The emulator has no Bluetooth, and adb cannot add an audio output, so the debug driver hands the
+   service's RouteWatcher a VIRTUAL device (`--es cmd route --es op added|removed|noisy`), exactly
+   as the platform's AudioDeviceCallback hands it a real one; car mode is the real one
+   (`cmd uimode car yes`). The watcher, the core's policy and the store are the real ones. Without
+   car mode on the emulator the scenario records no-coverage instead of failing. */
+
+/** The virtual car: an A2DP output (AudioDeviceInfo.TYPE_BLUETOOTH_A2DP = 8) with an address. */
+export const ROUTE_DEVICE = Object.freeze({ type: 8, id: 6101, address: "02:00:00:0A:61:01" });
+
+/** The `route` rows (`route kind=lost|back ...`) among parsed engine rows, oldest first. */
+export function routeRowsOf(rows) {
+  return (rows ?? []).filter((r) => r?.kind === "route" && r.json).map((r) => ({ seq: r.seq, ...r.json }));
+}
+
+/** A-61's verdict: in car mode, the car's loss pauses and its return resumes EXACTLY once; after a
+ *  listener's pause the same loss and return resume nothing (Q5); no route row carries the address. */
+export function verdictRoute({ carMode, car, listener, rows, since = 0, address = ROUTE_DEVICE.address }) {
+  if (carMode !== true) {
+    return { ok: true, failures: [], coverage: "no-coverage", recorded: { why: "the emulator did not enter car mode (`cmd uimode car yes`), so no route is a car" } };
+  }
+  const failures = [];
+  const routes = routeRowsOf(rows).filter((r) => r.seq > since);
+  if (JSON.stringify(routes).includes(address)) failures.push("a route row carries the device's address (DiagGate)");
+  const lost = routes.filter((r) => r.kind === "lost" && r.class === "car");
+  const resumes = routes.filter((r) => r.kind === "back" && r.decision === "resume");
+  const listenerBacks = routes.filter((r) => r.kind === "back" && r.why === "listener-paused");
+  if (!lost.length) failures.push("no `route kind=lost class=car` row");
+  else if (lost[0].known !== true) failures.push("the car was not known when it went, after 2.5 s of our audio through it");
+  if (car?.pausedAfterLoss !== true) failures.push("the car's loss did not pause the engine");
+  if (car?.playingAfterBack !== true) failures.push("the car coming back did not resume it");
+  if (resumes.length !== 1) failures.push(`${resumes.length} route resumes; exactly one expected, the car's`);
+  if (listener?.running !== false) failures.push("a listener's pause was resumed when the device came back");
+  if (!listenerBacks.length) failures.push("no `route kind=back why=listener-paused` row after the listener's pause");
+  return {
+    ok: failures.length === 0, failures, coverage: "virtual-device",
+    recorded: { routes: routes.map(({ seq, kind, class: cls, known, decision, why, pausedBy, lostSec }) => ({ seq, kind, class: cls, known, decision, why, pausedBy, lostSec })) },
+  };
+}
+
 export const SCENARIOS = Object.freeze([
   ["first-launch", "(e) native: a first launch in the native lane, as a screenshot, with the engine up"],
   ["play", "(a) native: a clip plays in a mediaPlayback service, published"],
@@ -1368,6 +1408,7 @@ export const SCENARIOS = Object.freeze([
   ["call", "(i) native: a phone call; pause, and resume after it"],
   ["kill", "(j) native: paused, on Home, the process ended; a media play resumes 4a at the saved position"],
   ["airplane", "(k) native: airplane mode; an unloadable episode stops in time; the engine's Foray, handed over and then built by the page (A-42), plays a rendered line as a file and speaks the one that cannot load"],
+  ["route", "(A-61) native: route resume with a virtual car-mode output: lost and back resumes once; after a listener's pause it stays paused"],
   ["bridge", "(A-28, A-31, A-42) stock launch: the native lane by default; the page's own episode and Foray plays are the engine's; the Developer setting Web returns the JS lane"],
   ["fallback", "(A-29) native: the engine throws at hello; the page falls back to js with a fault row; 3 strikes pin the JS lane"],
 ]);
@@ -2325,6 +2366,58 @@ async function airplane(ctx) {
   };
 }
 
+/** One virtual-device step for route resume (A-61): `added`, `removed` or `noisy`. */
+function routeStep(ctx, op) {
+  return drive(ctx, "route", ["--es", "op", op, "--ei", "type", String(ROUTE_DEVICE.type), "--ei", "id", String(ROUTE_DEVICE.id),
+    "--es", "address", ROUTE_DEVICE.address]);
+}
+
+/** (A-61) Route resume with a virtual car-mode output. See ROUTE_DEVICE. */
+async function route(ctx) {
+  const steps = {};
+  const car = {};
+  const listener = {};
+  let carMode = false;
+  let since = 0;
+  let rows = [];
+  try {
+    await startQueue(ctx, LONG_QUEUE);
+    const before = dumpRows(ctx);
+    since = before.length ? before[before.length - 1].seq : 0;
+    steps.carOn = shell("cmd", "uimode", "car", "yes").trim();
+    await sleep(2000);
+    carMode = /\bcar=true\b/.test(String(engine(ctx)?.route ?? ""));
+
+    // The car: connected while we play, heard for 2.5 s, lost (BECOMING_NOISY, then the removal), back.
+    steps.carAdded = routeStep(ctx, "added");
+    await sleep(2500);
+    steps.carNoisy = routeStep(ctx, "noisy");
+    const paused = await waitFor(ctx, (s) => s?.running === false, 5000);
+    car.pausedAfterLoss = paused?.running === false;
+    steps.carRemoved = routeStep(ctx, "removed");
+    await sleep(2000);
+    steps.carBack = routeStep(ctx, "added");
+    const resumed = await waitFor(ctx, isPlaying, 20000);
+    car.playingAfterBack = isPlaying(resumed);
+
+    // The listener pauses; the same car goes and comes back: it stays paused (Q5).
+    steps.listenerPause = drive(ctx, "pause");
+    await waitFor(ctx, (s) => s?.running === false, 5000);
+    steps.listenerNoisy = routeStep(ctx, "noisy");
+    steps.listenerRemoved = routeStep(ctx, "removed");
+    await sleep(1000);
+    steps.listenerBack = routeStep(ctx, "added");
+    await sleep(3000);
+    listener.running = engine(ctx)?.running ?? null;
+    rows = dumpRows(ctx);
+  } finally {
+    steps.carOff = shell("cmd", "uimode", "car", "no").trim();
+  }
+  save(ctx, "route-engine-rows.txt", rows.filter((r) => r.seq > since).map((r) => `${r.seq} ${r.iso} ${r.kind} ${r.body}`).join("\n") + "\n");
+  const v = verdictRoute({ carMode, car, listener, rows, since });
+  return { ...v, measured: { carMode, car, listener, steps }, evidence: ["route-engine-rows.txt"] };
+}
+
 /** The evidence: the engine's dump and rows, logcat, the system's view. Never fails. */
 async function collect(ctx) {
   save(ctx, "native-engine-dump.txt", shell("dumpsys", "activity", "service", SERVICE_COMPONENT.replace(PKG, ctx.pkg)));
@@ -2350,7 +2443,7 @@ function summary(ctx) {
 
 const RUNNERS = {
   "first-launch": firstLaunch, play, background, transport, notification, seams, "foray-seams": foraySeamsScenario, doze, focus, call, kill, airplane,
-  bridge, fallback, collect,
+  route, bridge, fallback, collect,
 };
 
 export function parseArgs(argv) {

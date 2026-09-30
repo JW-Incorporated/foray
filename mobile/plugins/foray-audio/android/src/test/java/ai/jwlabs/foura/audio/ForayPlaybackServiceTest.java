@@ -11,8 +11,17 @@ import ai.jwlabs.foura.audio.engine.EnginePlayer;
 import ai.jwlabs.foura.engine.EngineInput;
 import ai.jwlabs.foura.engine.EngineItem;
 import ai.jwlabs.foura.engine.MediaMapping;
+import android.content.Context;
+import android.media.AudioDeviceInfo;
+import android.media.AudioManager;
 import android.os.Bundle;
+import android.os.Looper;
 import androidx.media3.common.C;
+import androidx.test.core.app.ApplicationProvider;
+import java.util.Collections;
+import org.robolectric.Shadows;
+import org.robolectric.shadows.AudioDeviceInfoBuilder;
+import org.robolectric.shadows.ShadowAudioManager;
 import androidx.media3.common.Player;
 import androidx.media3.session.CommandButton;
 import androidx.media3.session.MediaSession;
@@ -119,6 +128,37 @@ public class ForayPlaybackServiceTest {
         assertTrue(text, text.contains("\"engine\":\"android-native\""));
         assertTrue(text, text.contains("\"hosting\":true"));
         assertTrue(text, text.contains("\"state\":\"idle\""));
+    }
+
+    /**
+     * A-61: the service's AudioDeviceCallback feeds route resume's watcher from the platform's
+     * devices (ShadowAudioManager's), seeded with what was already there, and the core reads the
+     * route on its next turn; the dump says the route's port and class, never an address. TO SEE IT
+     * FAIL: skip registerDeviceCallback in attach, or register it without the seed.
+     */
+    @Test
+    public void theServiceHearsOutputDevicesAddedAndRemoved() {
+        ShadowAudioManager audio = Shadows.shadowOf((AudioManager) ApplicationProvider.getApplicationContext()
+                .getSystemService(Context.AUDIO_SERVICE));
+        AudioDeviceInfo speaker = AudioDeviceInfoBuilder.newBuilder().setType(AudioDeviceInfo.TYPE_BUILTIN_SPEAKER).build();
+        audio.setOutputDevices(Collections.singletonList(speaker));
+        ForayPlaybackService s = create();
+        RouteWatcher watcher = s.routeWatcher();
+        assertNotNull(watcher);
+        assertEquals("seeded with the speaker, and no event for it", "speaker", watcher.currentRoute().portType());
+
+        AudioDeviceInfo car = AudioDeviceInfoBuilder.newBuilder().setType(AudioDeviceInfo.TYPE_BLUETOOTH_A2DP).build();
+        audio.addOutputDevice(car, true);
+        Shadows.shadowOf(Looper.getMainLooper()).idle();
+        assertEquals("a2dp", watcher.currentRoute().portType());
+        StringWriter out = new StringWriter();
+        s.dump(null, new PrintWriter(out), new String[0]);
+        assertTrue(out.toString(), out.toString().contains("route=a2dp class=bluetooth"));
+        assertTrue("the route change reached the core as a session row", String.join("\n", s.rows()).contains("\"port\":\"a2dp\""));
+
+        audio.removeOutputDevice(car, true);
+        Shadows.shadowOf(Looper.getMainLooper()).idle();
+        assertEquals("speaker", watcher.currentRoute().portType());
     }
 
     @Test

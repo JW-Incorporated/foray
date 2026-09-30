@@ -288,13 +288,29 @@ test("a missing bridge asset never stalls the queue", async () => {
   assert.ok(backend.loads().includes("load:b"), "must advance past the broken bridge to the real item");
 });
 
-test("skipToNext steps over a bridge rather than playing it alone", async () => {
+/* NE-39n (2026-09-29): Next is the next item, a narration line included — the
+   page's `forayNext` (client.js, `play(index + 1)`, audit round 3 player-core-6)
+   and so the web lock screen always landed on the line, and the engine's own
+   Next (the car, the iPhone lock screen) now answers the same. This test used
+   to pin the opposite ("skipToNext steps over a bridge"). */
+test("skipToNext lands on a bridge: Next is the next item, a line included (NE-39n)", async () => {
   const { m, backend } = make({ strategy: PICKED_FIRST });
   m.setQueueFromPick(ep("a"), { others: [tts("bridge"), ep("b")] });
   await m.play(0);
   backend.calls.length = 0;
   await m.skipToNext();
+  assert.deepStrictEqual(backend.loads(), ["load:bridge"]);
+  assert.equal(m.currentIndex, 1);
+});
+
+test("skipToNext from a bridge lands on the item after it (NE-39n)", async () => {
+  const { m, backend } = make({ strategy: PICKED_FIRST });
+  m.setQueueFromPick(ep("a"), { others: [tts("bridge"), ep("b")] });
+  await m.play(1);
+  backend.calls.length = 0;
+  await m.skipToNext();
   assert.deepStrictEqual(backend.loads(), ["load:b"]);
+  assert.equal(m.currentIndex, 2);
 });
 
 /* ---------- interruption (corner case #11) ---------- */
@@ -2177,11 +2193,16 @@ function prefetching(opts = {}) {
   const log = [];
   const m = new PlayerQueueManager({
     backend, telemetry: (t) => log.push(t), scheduler,
-    seamGapSec: opts.seamGapSec, onSeamGapChange: opts.onSeamGapChange,
+    seamGapSec: opts.seamGapSec, onSeamGapChange: opts.onSeamGapChange, tts: opts.tts,
   });
   m.loadQueue(opts.queue ?? THREE.map((s) => ({ ...s })));
   return { m, backend, log, scheduler };
 }
+
+/** NE-45j's two kinds of line, as queue items: one with a rendered file, and
+    one with only a script for the synthesiser. */
+const renderedLine = (id = "line") => ({ id, kind: "tts", audio_url: `https://cdn.example/${id}.m4a`, script: "A line." });
+const spokenLine = (id = "line") => ({ id, kind: "tts", audio_url: null, script: "A line." });
 
 test("the window warms the next segment, at its own in-point", async () => {
   const { m, backend } = prefetching();
@@ -2213,25 +2234,94 @@ test("nothing is warmed on the last item — a Foray does not chain", async () =
   m.dispose();
 });
 
-test("a bridged seam is not warmed — narration is the marker and it is ours", async () => {
-  const queue = [THREE[0], tts("bridge"), THREE[1]].map((i) => ({ ...i }));
-  const { m, backend, log } = prefetching({ queue });
-  await m.play(0);
-  backend.openPrefetchWindow();
-  assert.deepStrictEqual(backend.prefetches(), []);
-  assert.ok(log.some((l) => /prefetch\.skipped/.test(l)));
-  m.dispose();
+test("a rendered line is warmed across its seam, whatever the beat; a spoken one has no file to warm", async () => {
+  /* NE-45j. The rule is deck-policy.js `warmsAcross`: the next item is
+     prepared when it has a FILE. A seam with a line in it gets no beat
+     (seam-gap.js), and until NE-45j that meant no warm either, so clip -> line
+     -> clip paid two cold loads. MUTATION: `warmsAcross` back to the beat rule
+     (tools/parity/mutations.json "warm-across") -> the rendered line is not
+     warmed. */
+  const rendered = prefetching({ queue: [THREE[0], renderedLine(), THREE[1]].map((i) => ({ ...i })) });
+  await rendered.m.play(0);
+  rendered.backend.openPrefetchWindow();
+  assert.deepStrictEqual(rendered.backend.prefetches(), ["prefetch:line@0"], "a rendered line starts at 0 of its own file");
+  rendered.m.dispose();
+
+  const spoken = prefetching({ queue: [THREE[0], spokenLine(), THREE[1]].map((i) => ({ ...i })) });
+  await spoken.m.play(0);
+  spoken.backend.openPrefetchWindow();
+  assert.deepStrictEqual(spoken.backend.prefetches(), [], "the synthesiser speaks it; there is nothing to fetch");
+  assert.ok(spoken.log.some((l) => /^prefetch\.skipped line: a spoken line has no file/.test(l)), spoken.log.join("\n"));
+  spoken.m.dispose();
 });
 
-test("warming follows the SAME rule as the beat, so the two cannot drift", async () => {
-  // Eligibility is `seamGapSec(...) > 0` — the one decision in seam-gap.js —
-  // rather than a second copy of "is this a segment-to-segment seam". Collapse
-  // the beat and warming goes with it, which is the observable proof they are
-  // one rule.
+test("warming does not follow the beat any more: with no beat at all the next clip is still warmed", async () => {
+  // NE-45j. It used to be `seamGapSec(...) > 0`, so collapsing the beat
+  // collapsed warming with it. The beat decides the SILENCE; whether the next
+  // file is ready when the silence ends is a separate question.
   const { m, backend } = prefetching({ seamGapSec: 0 });
   await m.play(0);
   backend.openPrefetchWindow();
-  assert.deepStrictEqual(backend.prefetches(), [], "no beat means no seam to cover");
+  assert.deepStrictEqual(backend.prefetches(), ["prefetch:s1@300"], "no beat, and the seam still loads warm");
+  m.dispose();
+});
+
+test("NE-45j: the clip after a SPOKEN line is warmed when the line starts — the deck is idle while it speaks", async () => {
+  const tts = fakeTts();
+  const { m, backend } = prefetching({ tts, queue: [THREE[0], spokenLine(), THREE[1]].map((i) => ({ ...i })) });
+  await m.play(0);
+  assert.deepStrictEqual(backend.prefetches(), [], "precondition: nothing is warmed before a window");
+  const ended = backend.onItemEnded(END_OUT_POINT);
+  await ended;
+  await tick();
+  assert.equal(m.state.type, "transitioning", "precondition: the line is speaking");
+  assert.equal(tts.calls.length, 1, "precondition: the line reached the synthesiser");
+  assert.deepStrictEqual(backend.prefetches(), ["prefetch:s1@300"], "warmed at the line's start, at the clip's own in-point");
+  m.dispose();
+});
+
+test("NE-45j: during a rendered line, the window warms the clip after it", async () => {
+  // A rendered line has no out-point; the deck opens its window from the
+  // file's duration (deck-policy.js `prefetchWindowOpens`), and what the
+  // boundary advances to is the clip after the line.
+  const { m, backend } = prefetching({ queue: [THREE[0], renderedLine(), THREE[1]].map((i) => ({ ...i })) });
+  await m.play(0);
+  const ended = backend.onItemEnded(END_OUT_POINT);
+  await ended;
+  await tick();
+  assert.equal(m.state.type, "transitioning", "precondition: the rendered line is playing");
+  assert.ok(backend.calls.includes("load:line@0"), `precondition: ${backend.calls}`);
+  backend.openPrefetchWindow();
+  assert.deepStrictEqual(backend.prefetches(), ["prefetch:s1@300"]);
+  m.dispose();
+});
+
+test("NE-45j: an episode left to its natural end warms the item after it too", async () => {
+  // No out-point, so no beat (seam-gap.js: an unbounded episode is not a
+  // seam) — and still a file to prepare before the file runs out.
+  const queue = [{ id: "whole", kind: "episode", rate: 1.0, audio_url: "https://cdn.example/w.mp3" }, THREE[1]].map((i) => ({ ...i }));
+  const { m, backend } = prefetching({ queue });
+  await m.play(0);
+  backend.openPrefetchWindow();
+  assert.deepStrictEqual(backend.prefetches(), ["prefetch:s1@300"]);
+  m.dispose();
+});
+
+test("NE-45j: a rendered line that fails WHILE SOUNDING warms the clip after it when speech takes over", async () => {
+  /* The line's file failed before its window opened, and that window never
+     will (the deck holding it failed), so the spoken fallback is a spoken
+     line's start like any other: the deck is idle while the synthesiser
+     speaks. MUTATION: delete the `_warmNextSegment("line-start")` in
+     `_speakInsteadMidLine` -> nothing is warmed and the clip loads cold. */
+  const tts = fakeTts();
+  const { m, backend } = prefetching({ tts, queue: [renderedLine(), THREE[1]].map((i) => ({ ...i })) });
+  await m.play(0);
+  assert.equal(tts.calls.length, 0, "precondition: the file is playing");
+  assert.deepStrictEqual(backend.prefetches(), [], "precondition: the line's window has not opened");
+  backend.onError("media error 2");
+  await tick();
+  assert.equal(tts.calls.length, 1, "precondition: the line is spoken instead");
+  assert.deepStrictEqual(backend.prefetches(), ["prefetch:s1@300"], "warmed as speech takes over, at the clip's own in-point");
   m.dispose();
 });
 
@@ -3854,16 +3944,18 @@ test("§15: nothing is warmed when the next item is a clip or a script-only line
   assert.deepEqual(warmsOf(backend), []);
 });
 
-test("§15: a skip past the warmed line cancels it, and the new next line is warmed", async () => {
+test("§15: a jump past the warmed line cancels it, and the new next line is warmed", async () => {
   const { m, backend } = make({ backendClass: WarmingBackend });
   await m.playForay(foray([
     fseg(), RLINE(), fseg({ start_sec: 400, end_sec: 500 }), RLINE({ id: "nar-2" }), fseg({ start_sec: 700, end_sec: 800 }),
   ]), { resolveItem });
-  await m.skipToNext(); // Next clip steps over the line to foray-1#2
+  // A jump past the line (Next lands ON the line since NE-39n, which is the
+  // "arriving at the warmed line" case below).
+  await m.play(2);
   assert.deepEqual(warmsOf(backend), ["warm:nar-1", "cancel:nar-1:load:foray-1#2", "warm:nar-2"]);
   assert.ok(
     backend.calls.indexOf("cancel:nar-1:load:foray-1#2") < backend.calls.indexOf("load:foray-1#2@400"),
-    "cancelled BEFORE the skip's own load asks for the media queue"
+    "cancelled BEFORE the jump's own load asks for the media queue"
   );
 });
 

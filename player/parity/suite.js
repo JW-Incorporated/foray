@@ -5,8 +5,8 @@
    every fixture case whose `covers[]` names it, against the real module, and
    compares with the recorded `expect`. So one file is both the JS assertion and
    the Swift case, and the two cannot drift: a JS change that moves a rule turns
-   the test red until `record.mjs` re-records it, and re-recording hands the
-   changed ids to swift-pending.json for the Swift port.
+   the test red until `record.mjs` re-records it, and the Swift port of the
+   changed ids lands in the same change (NE-39s retired swift-pending.json).
 
    A test that no case covers FAILS rather than passing empty: a top-level test
    with nothing behind it would read as coverage and assert nothing. The
