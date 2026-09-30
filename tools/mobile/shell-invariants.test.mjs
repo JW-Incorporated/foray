@@ -5221,26 +5221,27 @@ test("A-28: Android's plugin answers the engine's three methods through the brid
   const capabilities = readJson(path.join(ROOT, "player", "parity", "capabilities.json"));
   const jvm = readJson(path.join(ROOT, "player", "parity", "jvm-pending.json"));
   const owedCases = Object.keys(jvm.cases ?? {});
-  /* A-61, the engine/m3 merge: iOS M3 added two families to `foray` AFTER Android's A2 flip (A-42)
-     claimed it: prepare-narration (NE-45j, owed to A-62) and manager-remainder (NE-39j, owed to
-     A-63). The JVM plays Forays without them, as it did at the flip, and Track A4 (plan §5.7) is the
-     card set that ports them. They are the only owed families a claimed capability may carry, each
-     only while its card still owes it, so the list can only shrink: a family burned down fails
-     here until it leaves the list, and A-63 (the empty book) leaves it empty.
-     MUTATION: owe another foray family to an A-6x card, or burn prepare-narration down and keep it
-     listed; each fails. */
-  const M3_OWED_AFTER_FLIP = { "prepare-narration": "A-62", "manager-remainder": "A-63" };
-  for (const [family, card] of Object.entries(M3_OWED_AFTER_FLIP)) {
-    assert.equal(jvm.families?.[family], card, `${family} is no longer owed to ${card}: drop it from M3_OWED_AFTER_FLIP`);
-  }
+  /* A-61, the engine/m3 merge: iOS M3 (NE-38..NE-47) added families and cases under capabilities
+     Android already claims (`episode` since A-31, `foray` since A-42): whole families
+     (prepare-narration, manager-remainder) and new cases in families the JVM runs (the audition
+     URL, route sharing, the fallback's cause). The JVM plays both capabilities as it did at the
+     flips, and Track A4 (plan §5.7, cards A-60..A-68) is the card set that ports M3. So a claimed
+     capability may carry owed families and cases ONLY when a Track A4 card owes them; anything
+     owed to an earlier card still blocks the claim. The JVM runner keeps the books honest both
+     ways (an owed case that passes is red), and A-63 empties them.
+     MUTATION: owe a foray or episode family or case to a pre-A4 card (A-40), or widen TRACK_A4;
+     each fails. */
+  const TRACK_A4 = /^A-6[0-8]$/;
   for (const cap of claimed) {
     assert.ok(CAPABILITIES.includes(cap), `ADVERTISED_CAPABILITIES names ${cap}, which engine-contract.js CAPABILITIES does not define`);
     for (const family of capabilities[cap] ?? []) {
-      if (cap === "foray" && family in M3_OWED_AFTER_FLIP) continue;
-      assert.ok(!(family in (jvm.families ?? {})), `Android advertises ${cap}, but the JVM still owes ${family} to ${jvm.families?.[family]}`);
-      assert.ok(!owedCases.some((id) => id.startsWith(`${family}/`)), `Android advertises ${cap}, but the JVM still owes cases in ${family}`);
+      const owner = jvm.families?.[family];
+      assert.ok(owner === undefined || TRACK_A4.test(owner), `Android advertises ${cap}, but the JVM still owes ${family} to ${owner}`);
+      const blocking = owedCases.filter((id) => id.startsWith(`${family}/`) && !TRACK_A4.test(jvm.cases[id]));
+      assert.deepEqual(blocking, [], `Android advertises ${cap}, but the JVM still owes cases in ${family} to a card before Track A4`);
     }
   }
+  assert.ok(!TRACK_A4.test("A-40") && !TRACK_A4.test("A-69") && TRACK_A4.test("A-61"), "Track A4 is A-60..A-68 (A-69 is the DECISIONS entry)");
 
   const engineDir = path.join(audioDir, "engine");
   const bridge = stripJavaComments(fs.readFileSync(path.join(engineDir, "EngineBridge.java"), "utf8"));

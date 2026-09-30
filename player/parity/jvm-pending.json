@@ -1,6 +1,16 @@
 {
   "//": "The JVM parity runner's burn-down books (card A-22, docs/plans/android-assessment.md §5.4; the rules are in player/parity/jvm-pending.js). runs: the families the JVM has a runner for (JvmFamilies.ALL). families: a whole fixture family the JVM does not run yet -> the Android card that ports it. cases: one case owed inside a family the JVM does run -> its card. Every recorded family that is not jsOnly is in exactly one of runs and families (record.mjs --check). The JVM runner (foray-engine-core-jvm ParitySuite, android-build.yml) fails when a case not owed fails, when an owed case passes (stale: delete the entry), when a manifest id is neither run nor owed, and when runs disagrees with its runners. record.mjs --jvm-card hands a case new or changed in a family the JVM runs, or a family it neither runs nor owes, to a card. jsOnly families are never owed. These books stay after NE-39s retired the Swift ones (swift-pending.json, unported.json): A-63 retires them. A porting card moves its family from families to runs in the same change as its runner.",
-  "cases": {},
+  "cases": {
+    "contract/send-request-invalid-audition-url-lookalike-host": "A-66",
+    "contract/send-request-invalid-audition-url-not-https": "A-66",
+    "contract/send-request-invalid-audition-url-null": "A-66",
+    "contract/send-request-invalid-audition-url-off-host": "A-66",
+    "contract/send-request-invalid-audition-url-with-query": "A-66",
+    "contract/send-request-valid-set-route-sharing-long-form": "A-67",
+    "diag-tokens/narration-fallback-cause-tokens": "A-64",
+    "manager-foray/audition-url-plays-the-rendered-preview": "A-66",
+    "manager-foray/audition-url-that-fails-is-spoken": "A-66"
+  },
   "families": { "manager-remainder": "A-63", "prepare-narration": "A-62" },
   "runs": [
     "compare",

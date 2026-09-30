@@ -646,7 +646,7 @@ test("every family a fixture, an unported entry or a pending id uses is charged 
   assert.deepStrictEqual(loose, [], "a family no capability names can hold owed work that no gate reads");
 });
 
-test("NE-39s: manager-remainder runs in Swift whole, under foray; manager-await is JS only; the JVM owes manager-remainder whole to A-40", () => {
+test("NE-39s: manager-remainder runs in Swift whole, under foray; manager-await is JS only; the JVM owes manager-remainder whole to A-63", () => {
   /* NE-39j recorded the queue-manager remainder (22 cases) pending for NE-39s.
      NE-39s ported 20 through the Swift ManagerRemainderFamily runner (the
      Foray tape on), one of them (the unknown ref) moved onto the interruption
@@ -695,7 +695,8 @@ test("NE-39s: manager-remainder runs in Swift whole, under foray; manager-await 
   }
 
   const jvm = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, "player/parity/jvm-pending.json"), "utf8"));
-  assert.equal(jvm.families["manager-remainder"], "A-40");
+  // A-40 ported the Foray tape and re-booked the whole family to A-63 (the manager remainder, plan §5.7).
+  assert.equal(jvm.families["manager-remainder"], "A-63");
   assert.ok(!jvm.runs.includes("manager-remainder"));
   assert.equal(jvm.families["manager-await"], undefined, "a jsOnly family is owed to nobody");
   assert.ok(DATA.capabilities.foray.includes("manager-remainder") && DATA.capabilities.foray.includes("manager-await"));
@@ -745,7 +746,8 @@ test("NE-45j/NE-45s: prepare-narration is authored against reference-engine, kee
     "NE-45s moved prepare-narration to foray (and NE-39s retired the remainder gate)");
   const jvm = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, "player/parity/jvm-pending.json"), "utf8"));
   assert.equal(jvm.families["prepare-narration"], "A-62", "the JVM owes it whole to A-62");
-  assert.equal(jvm.families.prepare, "A-40", "prepare itself stays owed whole to A-40 (A-25 handed it on)");
+  assert.equal(jvm.families.prepare, undefined, "prepare itself the JVM runs since A-40 (A-25 handed it on)");
+  assert.ok(jvm.runs.includes("prepare"));
 });
 
 test("every capability the engine advertises has zero pending and zero unported entries", () => {
@@ -851,15 +853,16 @@ test("NE-33: speech-rate, lexicon and default-voice owe nothing, the lexicon fam
   for (const [id, card] of Object.entries(DATA.pending)) assert.notEqual(card, "NE-33", `${id} is still owed to NE-33`);
 });
 
-test("NE-38rs: route-resume owes Swift nothing, is charged to episode, and is still owed whole to A-61", () => {
+test("NE-38rs: route-resume owes Swift nothing, is charged to episode, and the JVM runs it since A-61", () => {
   /* NE-38rj recorded the family owed whole to NE-38rs and parked it under the
      unadvertised `remainder` gate; NE-38rs (the Swift port, RouteResumeFamily)
      burns every id and moves the family to episode, which the M2 build
      advertises, so from now on a route-resume case the Swift runner does not
-     pass is red on the episode gate. The JVM still owes it whole to A-61.
+     pass is red on the episode gate. A-61 (RouteResume.java, RouteResumeFamily)
+     ported it to the JVM and moved it to jvm-pending.json's runs.
      MUTATION: put one route-resume id back in swift-pending.json -> red here and
      in the advertised-capability gate; leave the family under remainder -> red;
-     move it to jvm-pending.json's runs -> red. */
+     owe it to an Android card again -> red. */
   const cases = FIXTURES.filter((f) => f.family === "route-resume").flatMap((f) => f.doc.cases);
   assert.ok(cases.length >= 12, `the family records at least 12 cases, not ${cases.length}`);
   for (const c of cases) assert.equal(DATA.pending[c.id], undefined, `${c.id} is still owed to ${DATA.pending[c.id]}`);
@@ -867,8 +870,8 @@ test("NE-38rs: route-resume owes Swift nothing, is charged to episode, and is st
   assert.ok(DATA.capabilities.episode.includes("route-resume"), "a car resumes whatever was playing: an episode rule");
   assert.equal(DATA.capabilities.remainder, undefined, "NE-39s retired the remainder gate");
   const jvm = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, "player", "parity", "jvm-pending.json"), "utf8"));
-  assert.equal(jvm.families["route-resume"], "A-61");
-  assert.ok(!jvm.runs.includes("route-resume"));
+  assert.equal(jvm.families["route-resume"], undefined, "A-61 burned it down");
+  assert.ok(jvm.runs.includes("route-resume"));
   for (const card of ["NE-38rj", "NE-38rs", "NE-07j", "NE-03"]) assert.match(card, CARD_RE);
   for (const bad of ["NE-3", "NE-38rsx", "later", "A-61"]) assert.doesNotMatch(bad, CARD_RE);
 });
