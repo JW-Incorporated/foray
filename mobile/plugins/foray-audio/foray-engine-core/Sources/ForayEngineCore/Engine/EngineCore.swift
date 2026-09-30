@@ -1307,7 +1307,8 @@ public struct EngineCore {
             // comes after the narrator's line, before the next tape starts.
             if let next {
                 armInterlude(from: state.currentItem, to: next.item)
-                if config.forayTapeEnabled, let from = state.currentItem {
+                if config.forayTapeEnabled, let from = state.currentItem,
+                   EngineCore.isForaySeam(from: from, to: next.item) {
                     markSeam(from: from, to: next.item)
                     // NE-45s: a RENDERED line's end is a deck seam, and in the
                     // background it holds the same span a clip's out-point
@@ -1331,7 +1332,14 @@ public struct EngineCore {
                     // next load in this same turn, and the whole point is for
                     // that load to happen inside the beat.
                     armSeamGap(from: from, to: next.item, bridged: bridged)
-                    markSeam(from: from, to: next.item)
+                    // NE-45s: a Foray seam is remembered for its row: one with
+                    // a beat (as before) or a clip's end into a line (no beat,
+                    // and no row before). An episode's end in a plain queue,
+                    // and a bridge after one, are not Foray seams and write
+                    // nothing (the Foray tape leaves episode paths unchanged).
+                    if state.gapArmedAtMono != nil || (bridged && EngineCore.isForaySeam(from: from, to: next.item)) {
+                        markSeam(from: from, to: next.item)
+                    }
                     // And the jingle in the same instant, for the same reason
                     // (§13), after the beat so its deadline is the floor.
                     armInterlude(from: from, to: next.item)
@@ -1995,6 +2003,13 @@ public struct EngineCore {
         state.preparedItemId = next.item.id
         deckCommand(.prepare(itemId: next.item.id, url: next.item.audioUrl, startSec: next.item.bounds?.startSec ?? 0,
                              deadlineClass: DeckDeadlineClass(next.item)))
+    }
+
+    /// A seam that touches a Foray SEGMENT (a bounded slice): a Foray's line
+    /// seams are always next to one, and a plain episode queue's (M1's
+    /// bridges between whole episodes) never are.
+    static func isForaySeam(from: EngineItem, to: EngineItem) -> Bool {
+        from.bounds != nil || to.bounds != nil
     }
 
     /// NE-45s: the seam an item's end just crossed, remembered until the next
