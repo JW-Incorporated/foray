@@ -273,6 +273,25 @@ test("A-27 (j): a kill-then-play must bring 4a back at the saved position; force
   assert.equal(verdictKill({ legs: swap("force-stop", { resumed: good[0].resumed, pidAfterDispatch: "300" }) }).ok, true, "the control is never gated");
   const later = swap("sigkill", { resumed: { ...good[2].resumed, positionSec: 18.4 + 6, afterMs: 5000 } });
   assert.equal(verdictKill({ legs: later }).ok, true, "a slow resume may have played on for as long as it took");
+
+  /* A-27 review: (j) runs in the native lane. MUTATION: drop the setup check from verdictKill. */
+  const stored = { delivered: true, result: 0, answer: { ok: true, override: "native" } };
+  assert.equal(verdictKill({ legs: good, setup: [stored] }).ok, true);
+  assert.equal(verdictKill({ legs: good, setup: [{ delivered: false, result: null, answer: null }] }).ok, false, "the setting was never stored");
+  assert.equal(verdictKill({ legs: good, setup: [{ ...stored, answer: { ok: false, failures: ["bad-mode:x"] } }] }).ok, false);
+});
+
+test("A-27 review (j): the scenario stores Native first and puts Automatic back, whatever happened", () => {
+  /* MUTATION: drop either drive, or move the reset out of the finally. */
+  const src = fs.readFileSync(new URL("./android-native-playback.mjs", import.meta.url), "utf8");
+  const body = /\nasync function kill\(ctx\) \{([\s\S]*?)\n\}\n/.exec(src)?.[1] ?? "";
+  const native = body.indexOf('drive(ctx, "override", ["--es", "mode", "native"])');
+  const firstLeg = body.indexOf("killLeg(ctx");
+  const fin = body.indexOf("} finally {");
+  const auto = body.indexOf('drive(ctx, "override", ["--es", "mode", "auto"])');
+  assert.ok(native >= 0 && native < firstLeg, "Native is stored before the first leg");
+  assert.ok(fin >= 0 && auto > fin, "Automatic is put back in the finally");
+  assert.match(body, /verdictKill\(\{ legs, setup \}\)/, "and the setup is judged");
 });
 
 test("A-27 (j): the dump fields the runner reads are the ones the Java writes", () => {

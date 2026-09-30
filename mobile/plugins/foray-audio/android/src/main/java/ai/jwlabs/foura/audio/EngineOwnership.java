@@ -106,6 +106,47 @@ final class EngineOwnership implements EngineBridge.Owner {
         return shared;
     }
 
+    /**
+     * Whether this process's lane is the native engine's (A-27 review), asked by the doors that
+     * are not a launch: {@link ForayMediaButtonReceiver} before it starts the service for a car's
+     * PLAY, and {@link ForayPlaybackService} before it answers a media button start or switches
+     * the receiver on. The process's own decision when it made one (and not after a relinquish);
+     * otherwise the one {@link OwnershipCore#decideOnce} WOULD make from the stored keys, read and
+     * never written ({@link OwnershipCore#peekDecision}), so a press counts no strike and a
+     * process a car started decides nothing for the page that may load in it later.
+     *
+     * <p>WHY. The restore record outlives the lane. A listener who set the Developer engine back
+     * to Automatic, or a build the crash-loop guard pinned to the JS lane, still has the record
+     * the native engine wrote; without this a car's PLAY would boot the native engine from it in
+     * a process whose lane is the page's player. On iOS the cold path is the native lane's alone.
+     * Main thread; never throws (false when the keys cannot be read).
+     */
+    static boolean engineLane(@NonNull Context context) {
+        try {
+            Context app = context.getApplicationContext() != null ? context.getApplicationContext() : context;
+            EngineOwnership owner = shared;
+            if (owner != null && owner.app == app) {
+                return !owner.core.isRelinquished() && owner.core.peekDecision().isNative();
+            }
+            SharedPreferences prefs = app.getSharedPreferences(EngineLane.PREFS, Context.MODE_PRIVATE);
+            EngineMode.Stored stored = OwnershipCore.stored(new OwnershipCore.Keys() {
+                @Override
+                public String get(String key) {
+                    return prefs.getString(key, null);
+                }
+
+                @Override
+                public void put(String key, String value) {
+                    throw new UnsupportedOperationException("the lane is only read here");
+                }
+            });
+            return OwnershipCore.wouldDecide(stored, launchOf(app)).isNative();
+        } catch (RuntimeException e) {
+            Log.w(TAG, "could not read the lane; the engine answers no press", e);
+            return false;
+        }
+    }
+
     private SharedPreferences prefs() {
         return app.getSharedPreferences(EngineLane.PREFS, Context.MODE_PRIVATE);
     }
@@ -181,6 +222,13 @@ final class EngineOwnership implements EngineBridge.Owner {
             EngineMode.Decision d = core.decideOnce();
             Log.i(TAG, "ForayEngine.owner mode=" + d.mode().token + " reason=" + d.reason().token + " strikes=" + d.strikes()
                     + " sentinelWasSet=" + (before.sentinel() ? "y" : "n") + " sticky=" + d.stickyLegacyBuild());
+            if (!d.isNative()) {
+                /* A-27 review: a JS-lane process switches the media button receiver off before its
+                   own session is built (the page's first play), because Media3 hands an enabled
+                   manifest receiver to every session the app builds. An earlier native process
+                   may have left it on, with a record behind it. */
+                ForayMediaButtonReceiver.setEnabled(app, false);
+            }
         }
         return core.laneDecision();
     }

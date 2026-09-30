@@ -156,6 +156,10 @@ public final class OwnershipCore {
 
     /** A stored value as the JS reads it: an empty string is absent. */
     private String read(String key) {
+        return read(keys, key);
+    }
+
+    private static String read(Keys keys, String key) {
         String v;
         try {
             v = keys.get(key);
@@ -171,7 +175,11 @@ public final class OwnershipCore {
 
     /** Stored as a decimal string; anything unreadable or negative reads as 0. */
     private int strikes() {
-        String raw = read(KEY_STRIKES);
+        return strikes(keys);
+    }
+
+    private static int strikes(Keys keys) {
+        String raw = read(keys, KEY_STRIKES);
         if (raw == null) return 0;
         try {
             return Math.max(0, Integer.parseInt(raw.trim()));
@@ -186,8 +194,13 @@ public final class OwnershipCore {
 
     /** The state {@link EngineMode#trace} folds, as stored now: what the tests compare the owner against. */
     public EngineMode.Stored stored() {
-        return new EngineMode.Stored(EngineMode.ModeOverride.stored(read(KEY_OVERRIDE)), strikes(), read(KEY_SENTINEL) != null,
-                read(KEY_STICKY));
+        return stored(keys);
+    }
+
+    /** {@link #stored()} over any keys: what {@link #wouldDecide} reads in a process with no owner (A-27 review). */
+    public static EngineMode.Stored stored(Keys keys) {
+        return new EngineMode.Stored(EngineMode.ModeOverride.stored(read(keys, KEY_OVERRIDE)), strikes(keys),
+                read(keys, KEY_SENTINEL) != null, read(keys, KEY_STICKY));
     }
 
     // ---- decideOnce
@@ -200,8 +213,7 @@ public final class OwnershipCore {
     public EngineMode.Decision decideOnce() {
         if (decision != null) return decision;
         EngineMode.Stored s = stored();
-        EngineMode.Decision d = EngineMode.decide(new EngineMode.Inputs(launch.buildDefault(), s.modeOverride(), s.sentinel(),
-                s.strikes(), s.stickyLegacyBuild(), launch.currentBuild(), launch.built()));
+        EngineMode.Decision d = wouldDecide(s, launch);
         try {
             if (d.strikes() != s.strikes()) setStrikes(d.strikes());
             if (!Objects.equals(d.stickyLegacyBuild(), s.stickyLegacyBuild())) write(KEY_STICKY, d.stickyLegacyBuild());
@@ -218,6 +230,25 @@ public final class OwnershipCore {
         f.add(JsonNode.member("build", JsonNode.str(launch.currentBuild())));
         row(f);
         return d;
+    }
+
+    /**
+     * The lane this process decided, or, before it has decided, the lane {@link #decideOnce()}
+     * WOULD decide now: read, never written, so asking counts no strike and moves no sentinel.
+     * What a door that is not a launch asks (A-27 review: the media button receiver and the
+     * service a car's PLAY starts in a process with no page): the native engine answers a press
+     * only in a process whose lane is native, as on iOS, where the cold path is the native
+     * lane's alone.
+     */
+    public EngineMode.Decision peekDecision() {
+        if (decision != null) return decision;
+        return wouldDecide(stored(), launch);
+    }
+
+    /** {@link EngineMode#decide} over these stored keys and this launch. Pure. */
+    public static EngineMode.Decision wouldDecide(EngineMode.Stored s, Launch launch) {
+        return EngineMode.decide(new EngineMode.Inputs(launch.buildDefault(), s.modeOverride(), s.sentinel(),
+                s.strikes(), s.stickyLegacyBuild(), launch.currentBuild(), launch.built()));
     }
 
     /** The decision as the bridge reads it. */
