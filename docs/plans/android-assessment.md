@@ -537,6 +537,27 @@ Rejected alternatives:
 - **Acceptance:** Robolectric covers the session commands and the focus mapping. A-04/A-05 scenarios run in a
   native-mode leg, which must be green on (a)–(d), (g), (h) and (i).
 - **Device check:** none until A-31.
+- **Status (2026-09-29): done in its PR (#900), evidence in `STATE.md` (A-26 entry) and
+  `docs/android-emulator-measurements.md` §9.**
+  - **What was built.** `ForayPlaybackService` (foray-audio, a `MediaSessionService`) hosts the engine through
+    `ForayEngineHost`, the JVM twin of the iOS `ForayEngine` shell, over the A-24 core and the A-25 deck. The session
+    player is `EnginePlayer`, a `SimpleBasePlayer` facade over the core's `commandAvailability` and `sessionView`.
+    Every command it gets is an `EngineInput.remote`.
+  - **Audio.** The deck's player is set up by `EngineAudio`: speech, media usage, `handleAudioFocus` and becoming
+    noisy. `FocusMapping` turns what Media3 did into the core's session events:
+    - a transient loss, or a duck on speech, is `interruptionBegan`, and its gain is `interruptionEnded(shouldResume)`;
+    - a permanent loss has no end;
+    - becoming noisy is a lost route.
+  - **Replacing the legacy service.** While the service hosts, `ForayAudioPlugin.start()` refuses the legacy
+    service, and `onCreate` stops one that is running.
+  - **The native-mode leg.** The page has no way into the engine until A-28. The native-mode leg (a third
+    `android-playback.yml` leg) drives the engine through a debug-only `EngineDriveReceiver` over adb and reads the
+    service's `dumpsys` line: `tools/mobile/android-native-playback.mjs`.
+  - **Evidence.** Robolectric: 30 new cases in `:foray-audio:testDebugUnitTest` (98 in all, 0 skipped). The native
+    leg (run 36647752638, job 109674560375) is green on (a)–(d), (g), (h) and (i), all gated. It publishes the 15/30
+    pair as the platform session's custom actions, which is A04-F2 fixed for the native lane.
+  - **Handed on.** Persisting the rows and the restore record is A-27's. The page's bridge is A-28's. Lifecycle
+    inputs (background and foreground) come with A-28's page visibility.
 
 #### A-27 · Store, restore record, playback resumption, MediaButtonReceiver — **M**
 - **Depends on:** A-26.

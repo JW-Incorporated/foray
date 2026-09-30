@@ -7,6 +7,53 @@ docs/. Completed workstreams move to their plan doc's retro section.
 
 ## Active workstreams
 
+### 2026-09-29 — `android/a-26-playback-service`: A-26, the native engine's MediaSessionService shell
+
+Owned: foray-audio's `ForayPlaybackService` and the engine package's `ForayEngineHost`, `EnginePlayer`, `EngineSeams`,
+`EngineAudio`, `FocusMapping`, `EngineLog` and `HandlerTiming`, with their tests; the debug-only `src/debug`
+`EngineDriveReceiver`; `tools/mobile/android-native-playback.mjs`; and the native leg of `android-playback.yml`.
+Card A-26 of `docs/plans/android-assessment.md` (Track A1), PR #900.
+
+**The service.** It is a Media3 `MediaSessionService`. It hosts the engine and publishes one session.
+- **The host.** `ForayEngineHost` is the iOS `ForayEngine` shell on the JVM: activation answered inside its own turn,
+  an input raised mid-turn queued behind it, timers, grace as rows, the `remote kind=status` row, and a terminal
+  teardown.
+- **The session player.** `EnginePlayer` is a `SimpleBasePlayer` facade over `commandAvailability` and `sessionView`,
+  with a neighbourhood timeline as in `WebViewPlayer`. Every command it gets becomes an `EngineInput.remote`.
+- **The notification.** `DefaultMediaNotificationProvider`, with the 15/30 pair as media button preferences, granted
+  to every controller.
+- **The deck's player.** `EngineAudio` sets speech, USAGE_MEDIA, `handleAudioFocus` and becoming noisy. `FocusMapping`
+  reads what Media3 did from the player:
+  - a transient loss is `interruptionBegan`, and its suppression lifting (heard even while paused, because Media3
+    keeps LOSS_TRANSIENT through a pause) is `interruptionEnded(true)`;
+  - a permanent loss is an interruption with no end;
+  - becoming noisy is a lost route.
+- **Replacing the legacy service.** While the service hosts, `ForayAudioPlugin.start()` refuses the legacy service,
+  and `onCreate` stops one that is running.
+- **Still off.** `ENGINE_DEFAULT` android is `js`, and nothing in a release build starts the service.
+
+**Paths.** `.github/workflows/android-playback.yml`, `tools/ci/path-policy.test.mjs` (the new runner is acknowledged
+beside `android-playback.mjs`) and the build.gradle header comment are governed paths. This PR waits on
+`founder-approved`.
+
+**CI** (head `4858dcd5`, before the docs and floor commit), green:
+- `android-build` run 36647752649: `:foray-audio:testDebugUnitTest` ran 98 cases, 0 skipped, 30 of them new
+  (`ForayEngineHostTest` 8, `FocusMappingTest` 6, `EnginePlayerTest` 5, `FocusIntegrationTest` 3,
+  `ForayPlaybackServiceTest` 7). `assembleDebug` and `assembleRelease` pass.
+- `android-playback` run 36647752638: the native leg (job 109674560375, 14 min 7 s) is green on (a)–(d), (g), (h) and
+  (i), all gated. Both JS legs are unchanged and green. The numbers are in `docs/android-emulator-measurements.md` §9.
+- CI `data-and-site` failed on the first run: the string census (12 → 13) and the new suite's floor. Both are fixed in
+  the second commit.
+
+**Executed locally:**
+- a compile-only `javac` of foray-audio's main, debug and test sources against android-36, Media3 1.11.0 (session
+  included) and lifecycle 2.8.0 (no Gradle);
+- `ForayEngineHostTest` and `FocusMappingTest` on the scratchpad JDK: 14 of 14;
+- `node --test` over the native runner (12), the workflow test (14), `android-playback` (35), `path-policy` (110),
+  `shell-invariants` A-26 and the manifest tests, `suite-integrity` and `app-name` (421).
+
+No device, and no request to Joey (D-A3).
+
 ### 2026-09-29 — `android/a-25-exoplayer-deck`: A-25, the ExoPlayer deck behind a DeckDriving seam
 
 Owned: foray-audio's `engine/` package (`DeckDriving`, `ExoDeck` and their Robolectric tests), the rest of the JVM

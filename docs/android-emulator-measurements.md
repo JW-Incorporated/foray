@@ -625,3 +625,38 @@ AVFoundation's boundary observer, which fired 0.1 to 0.6 ms past the boundary an
 14 to 236 ms. Here the virtual clock fires every timer exactly on time, so the watchdog's real
 overshoot, its timer jitter, is not measured on Android until the emulator leg runs it.
 
+
+## 9. A-26: the native engine's leg of `android-playback`
+
+**Run:** `android-playback` run 36647752638, job 109674560375, `android-playback (API 34, native engine)`, PR #900.
+The leg took 14 min 7 s, against 20 min 1 s and 19 min 4 s for the two JS legs in the same run. The evidence is the
+run's `foray-android-playback-api34-native` artefact: the `verdict-native-*.json` files, `native-engine-dump.txt`
+(the service's own dump, with the engine's last rows) and `logcat-ForayEngine.txt`.
+
+**What drove what.** `ForayPlaybackService` hosted the engine: the A-24 core, the A-25 `ExoDeck` and the
+`EnginePlayer` session facade. The DEBUG build's `EngineDriveReceiver` handed it a queue of the click tracks, as
+`asset:///public/a04/…`, and a TAP play over `adb shell am broadcast`. Everything after that was the system acting
+on the engine's Media3 session: media keys, the shade, the focus helper, the modem and Doze. The runner is
+`tools/mobile/android-native-playback.mjs`, and it reads the engine from `dumpsys activity service …/ForayPlaybackService`.
+
+Every scenario is **gated** in native mode (the card).
+
+| Scenario | Result | Measured |
+|---|---|---|
+| (a) play | pass | The playhead moved 5.00 s in 5 s. `ForayPlaybackService` was a foreground service with `types=2` (mediaPlayback). Our session was PLAYING, described as `A-04 click one, 4a CI fixtures`. The legacy service was not running. |
+| (b) Home, then screen off | pass | 60.13 s of the queue in about 60 s, `mWakefulness=Asleep`, same pid (5334). |
+| (c) presses | pass, 10 of 10 | A foreground control (pause, then play) and, with the app on Home, `cmd media_session dispatch` and `KEYCODE_MEDIA_*`, each of pause, play, next and previous. Next moved to the next item. Previous restarted the item, and the deck was ready again in 53–63 ms (same-source reuse). |
+| (d) system controls | pass | Title `A-04 single episode`, show `4a CI fixtures`, **Back 15 seconds** and **Forward 30 seconds**. The platform session's custom actions carried both, which is A04-F2's gap closed for this lane. A tap on the shade's pause paused the engine. |
+| (g) Doze | pass | 299.05 s of the queue in 300 s: deep IDLE, bucket 40 (rare), screen asleep, same pid. Three item seams crossed while dozing. |
+| (h) focus, transient | pass | We held AUDIOFOCUS while playing. We lost it transiently and paused while the helper held it (`LOSS_TRANSIENT`), and resumed after it abandoned. |
+| (h) focus, permanent | pass | Paused while the helper held AUDIOFOCUS_GAIN. Media3 abandoned our request, so there was no stack entry, and no resume followed (none is owed). |
+| (i) call | pass | Before the call: playing. Ringing: paused (`LOSS_TRANSIENT`). In the call: paused. Within 3 s of hang-up: playing. |
+
+**Against the JS lane (§7).** (h) and (i) behave the same way on the two lanes. The difference is where the decision
+is made. On the JS lane, WebView's own focus handling pauses and resumes the element. In native mode, Media3 reports
+the loss through `FocusMapping`, the core rules on it (a transient loss is an interruption, and its gain resumes
+with the 1.5 s rewind), and the deck carries it out. So the pause, the resume and their reasons are rows in the
+engine's ring (`session kind=interruption`, `stop cause=interruption`). They are not inferred.
+
+**What this leg does not prove.** Anything a phone adds (§6.4 of `docs/research/mp1-background-audio.md`). It also
+does not prove the page's path into the engine, which is A-28's. The driver is a debug-only stand-in for that path.

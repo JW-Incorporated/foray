@@ -773,11 +773,12 @@ test("no Android string capitalises the unit, and none of them says the old app 
   const entries = [
     ...read(rel).matchAll(/<string name="([^"]+)">([^<]*)<\/string>/g),
   ].map((m) => ({ name: m[1], value: m[2] }));
-  /* 12 since audit round 2 (native-7): the notification's ↺15 / 30↻ labels. */
+  /* 12 since audit round 2 (native-7): the notification's ↺15 / 30↻ labels.
+     13 since A-26: the native engine's service description (running-services UI). */
   assert.equal(
     entries.length,
-    12,
-    `expected 12 <string> entries, found ${entries.length}: ` +
+    13,
+    `expected 13 <string> entries, found ${entries.length}: ` +
       entries.map((e) => e.name).join(", ")
   );
   for (const e of entries) {
@@ -790,6 +791,7 @@ test("no Android string capitalises the unit, and none of them says the old app 
   for (const name of [
     "foray_playback_service_description",
     "foray_playback_channel_description",
+    "foray_engine_service_description",
   ]) {
     const e = entries.find((x) => x.name === name);
     assert.ok(e, `${name} is gone from the string table`);
