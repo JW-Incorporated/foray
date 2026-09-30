@@ -3013,8 +3013,14 @@ function newestEngineRow(rows, kind, pick = () => true) {
 /**
  * The engine header line (card NE-26):
  *
- *   engine=native v<ver> proto=<n> caps=<list> reason=<r> strikes=<n> hold=<policy> build=<CFBundleVersion> | web=<build-stamp>
+ *   engine=native v<ver> proto=<n> caps=<list> reason=<r> strikes=<n> hold=<policy> [routeSharing=<p>] build=<CFBundleVersion> | web=<build-stamp>
  *   engine=js reason=<r> [strikes=<n>] build=<CFBundleVersion> | web=<build-stamp>
+ *
+ * `routeSharing` (NE-40, DV-8) is the audio session's route-sharing policy the
+ * engine's `build` row says this launch ran (`default`, or `longFormAudio`
+ * while the Developer trial is on). It is printed only when that row carries
+ * it: an older build's row, and the Android engine's, do not, and a missing
+ * value is left out rather than guessed.
  *
  * ONE LINE, key=value, because it is read twice: by a founder on a phone, and by
  * tools/mobile/engine-report.mjs (NE-26r), whose header check is exactly
@@ -3067,8 +3073,9 @@ export function engineHeaderLine(engine, running = null) {
   const caps = Array.isArray(hello?.capabilities)
     ? (hello.capabilities.length ? hello.capabilities.join(",") : "none")
     : "?";
+  const sharing = typeof buildRow?.routeSharing === "string" ? ` routeSharing=${buildRow.routeSharing}` : "";
   return `engine=native v${ver} proto=${proto} caps=${caps} reason=${why}` +
-    ` strikes=${strikes ?? "?"} hold=${hold} build=${bundle} | ${web}`;
+    ` strikes=${strikes ?? "?"} hold=${hold}${sharing} build=${bundle} | ${web}`;
 }
 
 /** The median of a sorted list, or null. */

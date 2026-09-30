@@ -160,6 +160,24 @@ test("native mode with only the ring to go on: version and protocol from the bui
   assert.match(engineHeaderLine({ decision: { mode: "native", reason: "native", hello: {} }, rows: relaunched }), / hold=forever /);
 });
 
+test("NE-40: the header says which route sharing the launch ran, from the newest build row, and only when it says one", () => {
+  /* DV-8's trial is read from the Copy: `routeSharing=longFormAudio` is the
+     arm, `default` the control. A build row without the field (an older
+     build, the Android engine) prints nothing rather than a guess.
+     MUTATION 1: read the OLDEST build row. The relaunch assertion fails.
+     MUTATION 2: print `routeSharing=?` when the row has none. The last fails. */
+  const build = (seq, routeSharing) => erow(seq, T0 + seq, "build", {
+    engineVersion: "1.0.0", protocol: 1, bundleVersion: "2026100101", launch: "foreground", pitch: "timeDomain", hold: "forever",
+    ...(routeSharing ? { routeSharing } : {}),
+  });
+  const decision = { mode: "native", reason: "native", hello: {} };
+  assert.equal(engineHeaderLine({ decision, rows: [build(1, "default")] }),
+    "engine=native v1.0.0 proto=1 caps=? reason=native strikes=? hold=forever routeSharing=default build=2026100101 | web=?");
+  assert.match(engineHeaderLine({ decision, rows: [build(1, "default"), build(2, "longFormAudio")] }),
+    / hold=forever routeSharing=longFormAudio build=2026100101 /, "the relaunch after the Developer tap runs the trial");
+  assert.doesNotMatch(engineHeaderLine({ decision, rows: [build(1)] }), /routeSharing/);
+});
+
 test("JS mode: the header reads engine=js with the reason, and keeps strikes when the engine's rows carry them", () => {
   /* A crash-loop downgrade is a JS page with strikes behind it.
      MUTATION 1: print the native fields in JS mode (`v? proto=?`). The first

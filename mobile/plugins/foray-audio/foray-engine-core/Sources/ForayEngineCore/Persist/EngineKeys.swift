@@ -14,8 +14,8 @@ import Foundation
  * never enumerates, and the page reaches it only through `engineRead` /
  * `engineSend` (§4.6).
  *
- * The names are §4.6's list, verbatim, plus NE-38rs's known routes;
- * `test/data-deletion.test.js` purges the same seven names and `tools/mobile/shell-invariants.test.mjs` holds the two
+ * The names are §4.6's list, verbatim, plus NE-38rs's known routes and
+ * NE-40's route-sharing trial; `test/data-deletion.test.js` purges the same eight names and `tools/mobile/shell-invariants.test.mjs` holds the two
  * lists equal, because NE-27's privacy text will enumerate them and a key that
  * is written but not listed is a key a deletion forgets. */
 
@@ -37,6 +37,10 @@ public enum EnginePrivateKey: String, CaseIterable, Sendable {
     /// salted SHA-256 keys of a port type and UID, and the install's salt.
     /// Never a route's name or raw UID.
     case knownRoutes = "ForayEngine.knownRoutes"
+    /// The Developer route-sharing trial (`engineSend setRouteSharing`, NE-40,
+    /// DV-8): `default` or `longFormAudio`, read once at the next launch's
+    /// boot. Absent (every install that never used the row): the default.
+    case routeSharing = "ForayEngine.routeSharing"
 }
 
 public enum EngineKeys {

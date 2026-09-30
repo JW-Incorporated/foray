@@ -458,8 +458,25 @@ final class ForayEngine {
         }
         persistHoldPolicyIfChanged()
         persistKnownRoutesIfChanged()
+        if case let .command(.setRouteSharing(policy), _) = input { persistRouteSharing(policy) }
         if core.state.session == .relinquished { teardown() }
         return failures
+    }
+
+    /// NE-40, DV-8: the Developer route-sharing trial is the host's to keep
+    /// (the core decides nothing on it). Stored now, applied at the next
+    /// launch's boot, where the session owner sets its category; the row says
+    /// both what was chosen and what this launch is still running, so a Copy
+    /// taken before the restart cannot be misread as the trial.
+    private func persistRouteSharing(_ policy: EngineContract.RouteSharingPolicy) {
+        seams.routeSharing?.saveRouteSharing(policy)
+        let running: EngineContract.RouteSharingPolicy = core.config.routeSharingLongForm ? .longFormAudio : .standard
+        seams.output.diag(DiagEntry(kind: "session", fields: [
+            JSONMember("kind", .string("route-sharing")),
+            JSONMember("policy", .string(policy.rawValue)),
+            JSONMember("running", .string(running.rawValue)),
+            JSONMember("applies", .string("next-launch"))
+        ]))
     }
 
     /// `setHoldPolicy` is the core's to apply (`state.holdPolicy`) and the

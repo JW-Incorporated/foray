@@ -112,7 +112,7 @@ public final class EngineConstants {
         /** {@code CAPABILITIES} */
         public static final List<String> CAPABILITIES = Collections.unmodifiableList(Arrays.asList("episode", "continuation", "restore", "foray"));
         /** {@code COMMANDS} */
-        public static final List<String> COMMANDS = Collections.unmodifiableList(Arrays.asList("playEpisode", "playForay", "setContinuation", "play", "pause", "toggle", "next", "previous", "seekBy", "seekTo", "jump", "stop", "setRate", "setVoice", "setInterludeEnabled", "setPageVisible", "ackAdvances", "ackEvents", "restoreBar", "purge", "relinquish", "audition", "setModeOverride", "setHoldPolicy", "probeSession", "simulateTermination"));
+        public static final List<String> COMMANDS = Collections.unmodifiableList(Arrays.asList("playEpisode", "playForay", "setContinuation", "play", "pause", "toggle", "next", "previous", "seekBy", "seekTo", "jump", "stop", "setRate", "setVoice", "setInterludeEnabled", "setPageVisible", "ackAdvances", "ackEvents", "restoreBar", "purge", "relinquish", "audition", "setModeOverride", "setHoldPolicy", "probeSession", "simulateTermination", "setRouteSharing"));
         /** {@code CONTRACT_KINDS} */
         public static final List<String> CONTRACT_KINDS = Collections.unmodifiableList(Arrays.asList("helloRequest", "helloResponse", "sendRequest", "sendResponse", "readRequest", "rowsResponse", "diagnosticsResponse", "snapshot", "event"));
         /** {@code DEFAULT_HOLD_POLICY} */
@@ -151,6 +151,8 @@ public final class EngineConstants {
         public static final List<String> REFUSALS = Collections.unmodifiableList(Arrays.asList("not-loaded", "no-next", "no-previous", "ended", "refused-structure", "capability-off", "session-failed:cannot-interrupt-others", "session-failed:cannot-start-playing", "session-failed:other", "engine-busy", "relinquished", "unknown-cmd"));
         /** {@code RELINQUISH_CAPS} */
         public static final List<String> RELINQUISH_CAPS = Collections.unmodifiableList(Arrays.asList("episode", "continuation", "restore", "foray", "all"));
+        /** {@code ROUTE_SHARING_POLICIES} */
+        public static final List<String> ROUTE_SHARING_POLICIES = Collections.unmodifiableList(Arrays.asList("default", "longFormAudio"));
         /** {@code SESSION_ACTIONS} */
         public static final List<String> SESSION_ACTIONS = Collections.unmodifiableList(Arrays.asList("activate", "deactivate", "deactivate-notify", "reapply-category", "rebuild", "command-failed"));
         /** {@code SESSION_INPUTS} */

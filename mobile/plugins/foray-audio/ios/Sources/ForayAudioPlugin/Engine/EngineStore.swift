@@ -124,6 +124,20 @@ final class EngineStore: EngineOutput {
         set(stored?.serialized, for: .knownRoutes)
     }
 
+    // MARK: - The route-sharing trial (NE-40)
+
+    /// `ForayEngine.routeSharing`, or nil for none or a value this build
+    /// cannot read (the default then stands; never a guess).
+    func loadRouteSharing() -> EngineContract.RouteSharingPolicy? {
+        string(.routeSharing).flatMap(EngineContract.RouteSharingPolicy.init(rawValue:))
+    }
+
+    /// Written synchronously, like the mode override: a Developer tap followed
+    /// by a force-quit must not lose the choice to a write-behind.
+    func saveRouteSharing(_ policy: EngineContract.RouteSharingPolicy) {
+        set(policy.rawValue, for: .routeSharing)
+    }
+
     // MARK: - Lifecycle and deletion
 
     /// Persist `UserDefaults`' in-memory copy now: at `didEnterBackground`
@@ -197,3 +211,6 @@ final class EngineStore: EngineOutput {
 
 /// NE-38rs: the host persists the known routes through the store.
 extension EngineStore: KnownRoutesStoring {}
+
+/// NE-40: and the Developer route-sharing trial.
+extension EngineStore: RouteSharingStoring {}

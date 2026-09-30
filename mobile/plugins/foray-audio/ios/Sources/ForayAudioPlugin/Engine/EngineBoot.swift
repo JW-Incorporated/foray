@@ -45,16 +45,30 @@ enum EngineBoot {
         (info?[routeResumeBluetoothKey] as? Bool) ?? RouteResume.bluetoothDefault
     }
 
+    /// NE-40, DV-8: the `.longFormAudio` route-sharing trial, from the
+    /// Developer row's stored choice ONLY. Nothing stored, or `default`, is
+    /// OFF: M1's car win happened on the default route sharing, so no build,
+    /// plist or ENGINE_DEFAULT value turns it on; only a Developer tap does,
+    /// and only from the next launch.
+    static func routeSharingLongForm(_ stored: EngineContract.RouteSharingPolicy?) -> Bool {
+        stored == .longFormAudio
+    }
+
     /// Build the process's engine in native mode. The `build` row is written
     /// FIRST, before any seam writes its own (BuildRow's rule), so every
     /// paste says which engine and which launch produced the rows under it.
     @MainActor
     static func makeEngine(store: EngineStore, timing: MainQueueTiming, bundleVersion: String) -> ForayEngine {
         let holdPolicy = HoldPolicyStore()
+        // NE-40: the route-sharing trial is read BEFORE the build row, which
+        // says which policy this launch runs (`routeSharing=`), and before the
+        // session owner, which sets its category at construction.
+        let longForm = EngineBoot.routeSharingLongForm(store.loadRouteSharing())
         store.diagnostics.build(BuildRow(
             engineVersion: EngineBridgeRules.engineVersion, bundleVersion: bundleVersion,
             launch: UIKitOwnershipLifecycle.launchedInBackground ? .background : .foreground,
             holdPolicy: holdPolicy.load() ?? .default,
+            routeSharing: longForm ? EngineContract.RouteSharingPolicy.longFormAudio : .standard,
             // L09/L28: which phone, which iOS, and how it was at boot
             // (DeviceFacts, ForayAudioPlugin.swift: the platform reads).
             hw: DeviceFacts.machine(),
@@ -63,8 +77,11 @@ enum EngineBoot {
             thermal: DeviceFacts.thermalToken(ProcessInfo.processInfo.thermalState),
             availMb: DeviceFacts.availableMemoryMb()))
 
-        let session = AudioSessionOwner(config: AudioSessionOwner.Config(diag: { store.diag($0) }))
+        let session = AudioSessionOwner(config: AudioSessionOwner.Config(longFormAudio: longForm,
+                                                                         diag: { store.diag($0) }))
         var config = EngineConfig(build: bundleVersion)
+        // NE-40: OFF unless the Developer row stored the trial (above).
+        config.routeSharingLongForm = longForm
         // NE-37, THE M2 FLIP: the app's engine plays Forays. The core's own
         // defaults stay OFF (every headless test and the parity driver build
         // one without them); the shipping boot turns on the Foray tape
@@ -133,6 +150,7 @@ enum EngineBoot {
             output: store,
             holdPolicy: holdPolicy,
             knownRoutes: store,
+            routeSharing: store,
             interlude: interlude,
             silence: silence,
             preview: preview,

@@ -103,7 +103,7 @@
     },
     "contract": {
       "files": {
-        "player/parity/fixtures/contract/contract.json": "2e8b4e5eb0f916a7a4181eec3632473b11a22ff82b18a2ea764b88f7140a1b39"
+        "player/parity/fixtures/contract/contract.json": "e2d988902254b0508b983187b70e7bdd5b45bbfef5db3214e115d16c9e6c554f"
       },
       "ids": [
         "contract/bridge-methods",
@@ -129,6 +129,7 @@
         "contract/send-request-valid-play-episode",
         "contract/send-request-valid-relinquish-foray",
         "contract/send-request-valid-set-hold-until",
+        "contract/send-request-valid-set-route-sharing-long-form",
         "contract/send-request-valid-set-continuation",
         "contract/send-request-valid-stop-data-deletion",
         "contract/send-request-valid-audition-spoken",
@@ -142,6 +143,7 @@
         "contract/send-request-invalid-play-episode-without-row",
         "contract/send-request-invalid-negative-seq",
         "contract/send-request-invalid-override-unknown-mode",
+        "contract/send-request-invalid-route-sharing-unknown-policy",
         "contract/send-request-invalid-audition-url-not-https",
         "contract/send-request-invalid-audition-url-off-host",
         "contract/send-request-invalid-audition-url-with-query",
