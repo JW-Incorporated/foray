@@ -141,8 +141,9 @@ import java.util.concurrent.atomic.AtomicReference;
  * is still audible. Both players are configured alike ({@link EngineAudio}); the focus listener
  * follows the deck that holds the player role, so the paused outgoing deck losing focus to the
  * incoming one at a handover is never read as an interruption. An episode never warms the
- * standby: it plays through the active deck exactly as before. The page cannot reach a Foray
- * until A-42 advertises {@code foray}; the debug driver can.
+ * standby: it plays through the active deck exactly as before. Since A-42 (the A2 flip) the
+ * build advertises {@code foray}, so the page's own Foray tap plays here; the debug driver can
+ * still hand one over.
  *
  * <h2>THE NARRATOR AND THE JINGLE (A-41)</h2>
  *

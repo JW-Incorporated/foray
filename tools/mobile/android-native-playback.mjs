@@ -63,6 +63,12 @@
  * listener taps), a relaunch, and the page's lane is the JS player. It runs after
  * the adb-driven scenarios, and puts the setting back to Automatic.
  *
+ * Since A-42 (the A2 flip) the stock launch advertises `foray` too, and `bridge`
+ * plays a Foray through the page's own `ForayPlayer.playForay` (the Foray page's
+ * main button's call) between the episode and the way back: the ENGINE must be the
+ * one playing it (its `forayId` in the dump), cross a seam of it, and the page's
+ * lane must still be native afterwards (a relinquish would have put it on js).
+ *
  * ── THE FALLBACK (A-29) ──────────────────────────────────────────────────────
  *
  * `fallback` runs LAST. It proves the card's acceptance, "an emulator mutation
@@ -134,11 +140,9 @@
  *     episode whose file cannot load is stopped by the engine (a `stop` row with
  *     cause `error` or `load-deadline`) within the deck's load deadline plus
  *     slack, nothing is left playing or claiming PLAYING, and a bundled episode
- *     then plays. The PAGE's: a Foray tapped in the native lane is relinquished
- *     to the page's player (the binary advertises no `foray` until A-42),
- *     and the JS leg's own (k) runs on it: the rendered line that cannot load is
- *     spoken or skipped in time, and the Copy logs `engineMode js
- *     (relinquished)`.
+ *     then plays. The PAGE's: until A-42 a Foray tapped in the native lane was
+ *     relinquished to the page's player (the binary advertised no `foray`), and
+ *     the JS leg's own (k) ran on it; since A-42 it is the ENGINE's (below).
  *
  * ── A-41: (k) THROUGH THE ENGINE ────────────────────────────────────────────
  *
@@ -154,6 +158,19 @@
  * its script is SPOKEN by the engine's own synthesiser (`speaker
  * kind=line-started`) or skipped, as the JS leg's (k) allows; and the Foray
  * lands on its last clip, playing, in the engine, in one process.
+ *
+ * ── A-42: THE PAGE'S FORAY IS THE ENGINE'S ─────────────────────────────────
+ *
+ * Card A-42 (the A2 flip): Android advertises `foray`, so a Foray tapped on the
+ * page plays on the engine, as on iOS since NE-37. (k)'s page half is therefore
+ * the A-41 Foray again, BUILT BY THE PAGE (`buildForay`, `ForayPlayer.resolve`,
+ * `ForayPlayer.playForay`) instead of handed over by the debug driver, in a fresh
+ * native-lane process in airplane mode, with the same gates (the bundled line a
+ * file, the network line's fallback at its bridge in time and spoken by the
+ * engine, the landing), plus: the engine holds the PAGE's Foray, and the Copy has
+ * no `engineMode js (relinquished)` row. The page's clips and lines point at the
+ * APK's own assets (`asset:///public/…`), because the page's `https://localhost`
+ * origin is the WebView's and the engine's deck cannot fetch it.
  */
 
 import fs from "node:fs";
@@ -186,8 +203,9 @@ import {
   uiNodes,
   wakefulness,
   DIAGNOSTICS_EXPRESSION,
-  airplaneScenario,
   NARRATION_LINES,
+  buildForay,
+  startForayExpression,
   UNREACHABLE_NARRATION_URL,
   UNREACHABLE_SCRIPT,
   connect as connectPage,
@@ -408,12 +426,52 @@ export function pagePlayExpression(item = PAGE_EPISODE) {
 })()`;
 }
 
+/** A-42: where a page-built Foray's clips and lines point, so the engine's deck reads the APK's own
+ *  assets (`asset:///public/a04/…`, `…/a05/…`). The page's `https://localhost` origin is the
+ *  WebView's; the engine's ExoPlayer cannot fetch it. */
+export const PAGE_ASSET_ORIGIN = "asset:///public";
+
+/** A-42 (the A2 flip): the Foray `bridge` plays through the page's own `ForayPlayer.playForay`:
+ *  three click-track clips, two seams across sources. Its id is the flip's own. */
+export const PAGE_FORAY = Object.freeze(buildForay({
+  id: "a42-page-foray",
+  title: "A-42 page Foray",
+  origin: PAGE_ASSET_ORIGIN,
+  items: [{ clip: CLIPS[0], endSec: 8 }, { clip: CLIPS[1], endSec: 8 }, { clip: CLIPS[2], endSec: 40 }],
+}));
+
+/** A-42 (k): AIRPLANE_ENGINE_FORAY's shape, built by the page: a 6 s clip, a rendered line on a
+ *  BUNDLED file, a 6 s clip, a rendered line on the NETWORK (airplane mode cannot load it), a clip
+ *  to land on. */
+export const PAGE_AIRPLANE_FORAY = Object.freeze(buildForay({
+  id: "a42-page-air",
+  title: "A-42 page airplane",
+  origin: PAGE_ASSET_ORIGIN,
+  items: [
+    { clip: CLIPS[0], endSec: 6 },
+    { line: NARRATION_LINES[0] },
+    { clip: CLIPS[1], endSec: 6 },
+    { url: UNREACHABLE_NARRATION_URL, script: UNREACHABLE_SCRIPT, sec: 4 },
+    { clip: CLIPS[2], endSec: 40 },
+  ],
+}));
+
+/** The queue the page's build (`buildForayQueue`) makes of `docs`, as the engine's dump names it:
+ *  `{forayId, items: [{id}]}`, a clip `<foray>#<index>` and a line its own authored id. */
+export function pageForayQueue(docs) {
+  const items = docs.forays.forays[0].items.map((it, i) => ({ id: it.type === "narration" ? it.id : `${docs.id}#${i}` }));
+  return { forayId: docs.id, items };
+}
+
 /** A-28's verdict, as A-31 made it: a STOCK launch is the native lane (the page, the Developer
  *  row on Automatic, and the Copy: `engine=native`, `reason=build-default`, `episode` in its caps,
  *  an `engineMode native` row, the ring read); the page's own episode play is the item the engine
  *  is playing (`played`: the page's answer and the engine's dump after it); and the Developer
- *  setting's Web, stored through the page, puts the relaunched page on the JS player. */
-export function verdictBridge({ stock, copy, played, override, after, service }) {
+ *  setting's Web, stored through the page, puts the relaunched page on the JS player. Since A-42
+ *  (`foray`): the stock engine advertises `foray`, and the page's own Foray (`forayPlayed`: the
+ *  page's answer, the engine once it sounds, the engine past a seam, the page's lane after) is the
+ *  engine's, with no relinquish. */
+export function verdictBridge({ stock, copy, played, forayPlayed, override, after, service }) {
   const failures = [];
   if (!stock || stock.error) failures.push(`the stock launch could not be read: ${stock?.error ?? "no answer"}`);
   else {
@@ -426,7 +484,9 @@ export function verdictBridge({ stock, copy, played, override, after, service })
   else {
     if (copy.reason !== "build-default") failures.push(`the stock Copy header's reason is ${copy.reason}, not build-default`);
     if (copy.proto !== "1") failures.push(`the Copy header's protocol is ${copy.proto}, not 1`);
-    if (!String(copy.caps ?? "").split(",").includes("episode")) failures.push(`the stock engine does not advertise episode (caps=${copy.caps})`);
+    for (const cap of ["episode", "foray"]) {
+      if (!String(copy.caps ?? "").split(",").includes(cap)) failures.push(`the stock engine does not advertise ${cap} (caps=${copy.caps})`);
+    }
   }
   if (!copy.modeRows.some((r) => r.mode === "native")) failures.push("the Copy paste has no `engineMode native` row");
   if (copy.engineRows == null) failures.push(`the Copy did not read the engine's ring: ${copy.readError ?? "no engine rows line"}`);
@@ -439,6 +499,24 @@ export function verdictBridge({ stock, copy, played, override, after, service })
     failures.push(`the engine holds the page's episode but is not playing it (${e.state}, exoPlaying ${e.exoPlaying}, at ${e.positionSec} s)`);
   }
   engineFailures(service, failures);
+  /* A-42: the page's own Foray is the engine's. */
+  const fp = forayPlayed;
+  if (!fp?.page || fp.page.ok !== true) failures.push(`the page's ForayPlayer.playForay did not run: ${JSON.stringify(fp?.page ?? null)}`);
+  else if (fp.page.playable !== PAGE_FORAY.segments.segments.length) {
+    failures.push(`the page resolved ${fp.page.playable} playable clips of ${PAGE_FORAY.segments.segments.length} (unplayable: ${JSON.stringify(fp.page.unplayable)})`);
+  }
+  const f = fp?.engine;
+  if (!f) failures.push("the engine could not be read after the page's Foray");
+  else if (f.forayId !== PAGE_FORAY.id) {
+    failures.push(`the engine holds Foray ${JSON.stringify(f.forayId)}, not the page's ${PAGE_FORAY.id}: the Foray tap did not reach the engine`);
+  } else if (!(f.running === true && f.exoPlaying === true && Number(f.positionSec) > 0)) {
+    failures.push(`the engine holds the page's Foray but is not playing it (${f.state}, exoPlaying ${f.exoPlaying}, at ${f.positionSec} s)`);
+  }
+  const c = fp?.crossed;
+  if (!(c && c.forayId === PAGE_FORAY.id && Number(c.index) >= 1 && c.running === true && c.exoPlaying === true)) {
+    failures.push(`the engine did not cross a seam of the page's Foray (last index ${c?.index ?? null}, forayId ${JSON.stringify(c?.forayId ?? null)})`);
+  }
+  if (fp && fp.laneAfter !== "native") failures.push(`after the page's Foray the page's lane is ${fp.laneAfter}, not native: the tap relinquished`);
   if (!override || override.ok !== true) failures.push(`the Developer engine setting Web was not stored: ${JSON.stringify(override)}`);
   if (!after || after.error) failures.push(`the relaunched page could not be read: ${after?.error ?? "no answer"}`);
   else {
@@ -973,10 +1051,11 @@ export function airplaneForayFacts(rows, sinceSeq) {
  *  file; the network one falls back at its bridge within the deadline, and its script is spoken
  *  (or skipped: a synthesiser that could not speak); the Foray lands on its last clip, playing, in
  *  the engine. */
-export function verdictAirplaneForay({ drive, facts, renderedAudible, landed, last, pidBefore, pidAfter, foray = AIRPLANE_ENGINE_FORAY }) {
+export function verdictAirplaneForay({ drive, facts, renderedAudible, landed, last, pidBefore, pidAfter, foray = AIRPLANE_ENGINE_FORAY,
+  via = "the driver's playForay" }) {
   const failures = [];
   const n = foray.items.length;
-  if (!drive?.answer?.ok) failures.push(`the driver's playForay did not play: ${JSON.stringify(drive)}`);
+  if (!drive?.answer?.ok) failures.push(`${via} did not play: ${JSON.stringify(drive)}`);
   if (!renderedAudible) failures.push(`the bundled rendered line (${foray.items[1].id}) was never the audible item: it did not play as a file`);
   if (!facts?.fallback) failures.push("the network line did not fall back (no `narration kind=fallback` row)");
   else {
@@ -996,8 +1075,9 @@ export function verdictAirplaneForay({ drive, facts, renderedAudible, landed, la
 }
 
 /** (k) GATED: the engine's half (an unloadable episode stops in time, nothing claims to play,
- *  a bundled one plays after), and the page's (a Foray in the native lane relinquishes to the
- *  page's player, whose (k) passes, and the Copy says so). */
+ *  a bundled one plays after), the engine's own Foray (A-41), and the page's (A-42: a Foray the
+ *  page builds and plays in the native lane is the ENGINE's, passes the same gates, and is never
+ *  relinquished). */
 export function verdictAirplane({ airplane, facts, after, session, recovered, laneBefore, foray, copy, engineForay }) {
   const failures = [];
   if (airplane !== true) failures.push("airplane mode did not engage (settings global airplane_mode_on is not 1)");
@@ -1017,10 +1097,11 @@ export function verdictAirplane({ airplane, facts, after, session, recovered, la
   else if (!engineForay.ok) failures.push(...(engineForay.failures ?? []).map((f) => `engine foray: ${f}`));
   if (laneBefore !== "native") failures.push(`the page's lane before the Foray was ${laneBefore}, not native`);
   if (!foray) failures.push("the page's Foray half did not run");
-  else if (!foray.ok) failures.push(...(foray.failures ?? []).map((f) => `foray: ${f}`));
-  if (!(copy?.modeRows ?? []).some((r) => r.mode === "js" && r.reason === "relinquished")) {
-    failures.push("the Copy has no `engineMode js (relinquished)` row: the Foray tap did not go through the relinquish");
+  else if (!foray.ok) failures.push(...(foray.failures ?? []).map((f) => `page foray: ${f}`));
+  if ((copy?.modeRows ?? []).some((r) => r.mode === "js" && r.reason === "relinquished")) {
+    failures.push("the Copy has an `engineMode js (relinquished)` row: the page's Foray was handed back to the JS player");
   }
+  if (copy?.lane !== "native") failures.push(`the Copy after the page's Foray is not engine=native: ${copy?.header ?? "(no engine= line)"}`);
   return { ok: failures.length === 0, failures };
 }
 
@@ -1286,8 +1367,8 @@ export const SCENARIOS = Object.freeze([
   ["focus", "(h) native: another app takes audio focus; pause, and resume after a transient loss"],
   ["call", "(i) native: a phone call; pause, and resume after it"],
   ["kill", "(j) native: paused, on Home, the process ended; a media play resumes 4a at the saved position"],
-  ["airplane", "(k) native: airplane mode; an unloadable episode stops in time; the engine's Foray plays a rendered line as a file and speaks the one that cannot load; a page Foray relinquishes and its line falls back"],
-  ["bridge", "(A-28, A-31) stock launch: the native lane by default; the page's own episode play is the engine's; the Developer setting Web returns the JS lane"],
+  ["airplane", "(k) native: airplane mode; an unloadable episode stops in time; the engine's Foray, handed over and then built by the page (A-42), plays a rendered line as a file and speaks the one that cannot load"],
+  ["bridge", "(A-28, A-31, A-42) stock launch: the native lane by default; the page's own episode and Foray plays are the engine's; the Developer setting Web returns the JS lane"],
   ["fallback", "(A-29) native: the engine throws at hello; the page falls back to js with a fault row; 3 strikes pin the JS lane"],
 ]);
 
@@ -1848,6 +1929,26 @@ async function bridge(ctx) {
   save(ctx, "bridge-engine-dump.txt", shell("dumpsys", "activity", "service", SERVICE_COMPONENT.replace(PKG, ctx.pkg)));
   const service = engine(ctx);
 
+  /* A-42: the page's own Foray, in the stock lane, is the engine's, across a seam, unrelinquished. */
+  let forayPage;
+  try {
+    forayPage = await evalPage(ctx, startForayExpression(PAGE_FORAY, PAGE_FORAY.id), { gesture: true, timeoutMs: 45000 });
+  } catch (e) {
+    forayPage = { ok: false, error: String(e?.message ?? e) };
+  }
+  const onPageForay = (st) => !!st && st.forayId === PAGE_FORAY.id && isPlaying(st);
+  const forayEngine = await waitFor(ctx, onPageForay, 20000);
+  const crossed = await waitFor(ctx, (st) => onPageForay(st) && Number(st.index) >= 1, 30000);
+  save(ctx, "bridge-foray-engine-dump.txt", shell("dumpsys", "activity", "service", SERVICE_COMPONENT.replace(PKG, ctx.pkg)));
+  let laneAfter;
+  try {
+    laneAfter = (await evalPage(ctx, ENGINE_STATUS_EXPRESSION, { timeoutMs: 30000 }))?.lane ?? null;
+  } catch (e) {
+    laneAfter = `(unread: ${String(e?.message ?? e)})`;
+  }
+  const forayPlayed = { page: forayPage, engine: forayEngine, crossed, laneAfter };
+  drive(ctx, "pause");
+
   /* The way back: the Developer setting Web, through the page, applies at the next launch. */
   let override;
   try {
@@ -1867,7 +1968,7 @@ async function bridge(ctx) {
     after = { error: String(e?.message ?? e) };
   }
   save(ctx, "bridge-after-web.json", JSON.stringify(after, null, 2));
-  const v = verdictBridge({ stock, copy, played, override, after, service });
+  const v = verdictBridge({ stock, copy, played, forayPlayed, override, after, service });
   if (!stockSetup?.answer?.ok) v.failures.unshift(`the Developer setting could not be put to Automatic first: ${JSON.stringify(stockSetup)}`);
   v.ok = v.failures.length === 0;
 
@@ -1880,8 +1981,8 @@ async function bridge(ctx) {
   }
   return {
     ...v,
-    measured: { stock, copy, played, service, override, after, reset },
-    evidence: ["bridge-stock.json", "bridge-diagnostics-copy.txt", "bridge-engine-dump.txt", "bridge-after-web.json"],
+    measured: { stock, copy, played, forayPlayed, service, override, after, reset },
+    evidence: ["bridge-stock.json", "bridge-diagnostics-copy.txt", "bridge-engine-dump.txt", "bridge-foray-engine-dump.txt", "bridge-after-web.json"],
   };
 }
 
@@ -2081,11 +2182,33 @@ async function foraySeamsScenario(ctx) {
 
 /** A-41 (k): the engine's own Foray in airplane mode (the caller turned it on). See the header. */
 async function airplaneEngineForay(ctx) {
+  return watchAirplaneForay(ctx, AIRPLANE_ENGINE_FORAY, async () => drive(ctx, "foray", ["--es", "foray", queueArg(AIRPLANE_ENGINE_FORAY)]),
+    { rowsFile: "k-foray-engine-rows.txt", via: "the driver's playForay" });
+}
+
+/** A-42 (k): the same Foray, built and played by the PAGE (its own `ForayPlayer.playForay`), which
+ *  the engine plays since the A2 flip. */
+async function airplanePageForay(ctx) {
+  const foray = pageForayQueue(PAGE_AIRPLANE_FORAY);
+  return watchAirplaneForay(ctx, foray, async () => {
+    let page;
+    try {
+      page = await evalPage(ctx, startForayExpression(PAGE_AIRPLANE_FORAY, PAGE_AIRPLANE_FORAY.id), { gesture: true, timeoutMs: 45000 });
+    } catch (e) {
+      page = { ok: false, error: String(e?.message ?? e) };
+    }
+    return { answer: { ok: page?.ok === true }, page };
+  }, { rowsFile: "k-page-foray-engine-rows.txt", via: "the page's ForayPlayer.playForay" });
+}
+
+/** A Foray in airplane mode, started by `start`, watched until it lands on its last clip: the
+ *  engine's rows after the mark, and the verdict. */
+async function watchAirplaneForay(ctx, foray, start, { rowsFile, via }) {
   const before = dumpRows(ctx);
   const since = before.length ? before[before.length - 1].seq : 0;
-  const d = drive(ctx, "foray", ["--es", "foray", queueArg(AIRPLANE_ENGINE_FORAY)]);
+  const d = await start();
   const pidBefore = pidOf(ctx.pkg);
-  const items = AIRPLANE_ENGINE_FORAY.items;
+  const items = foray.items;
   const lastIndex = items.length - 1;
   const until = Date.now() + NATIVE_GATES.airplaneForayLandMs;
   const trail = [];
@@ -2106,10 +2229,10 @@ async function airplaneEngineForay(ctx) {
   }
   const pidAfter = pidOf(ctx.pkg);
   const rows = dumpRows(ctx);
-  save(ctx, "k-foray-engine-rows.txt", rows.filter((r) => r.seq > since).map((r) => `${r.seq} ${r.iso} ${r.kind} ${r.body}`).join("\n") + "\n");
+  save(ctx, rowsFile, rows.filter((r) => r.seq > since).map((r) => `${r.seq} ${r.iso} ${r.kind} ${r.body}`).join("\n") + "\n");
   const facts = airplaneForayFacts(rows, since);
   drive(ctx, "pause");
-  const v = verdictAirplaneForay({ drive: d, facts, renderedAudible, landed, last, pidBefore, pidAfter });
+  const v = verdictAirplaneForay({ drive: d, facts, renderedAudible, landed, last, pidBefore, pidAfter, foray, via });
   return { ...v, measured: { drive: d, facts, renderedAudible, landed, speaker: last?.speaker ?? null, trail } };
 }
 
@@ -2154,8 +2277,8 @@ async function airplane(ctx) {
     set.disable = shell("cmd", "connectivity", "airplane-mode", "disable").trim();
   }
 
-  /* The page's half, in a fresh native-lane process: the Foray tap relinquishes to the page's
-     player, and the JS leg's (k) runs on it (it turns airplane mode on and off itself). */
+  /* The page's half (A-42), in a fresh native-lane process: the page builds the same Foray and
+     plays it with its own ForayPlayer.playForay, which the engine plays since the A2 flip. */
   shell("am", "force-stop", ctx.pkg);
   await sleep(1500);
   ctx.target = null;
@@ -2169,9 +2292,15 @@ async function airplane(ctx) {
   }
   let foray;
   try {
-    foray = await airplaneScenario(ctx);
+    set.pageEnable = shell("cmd", "connectivity", "airplane-mode", "enable").trim();
+    await sleep(2000);
+    set.pageAirplaneModeOn = shell("settings", "get", "global", "airplane_mode_on").trim();
+    foray = await airplanePageForay(ctx);
+    if (set.pageAirplaneModeOn !== "1") foray = { ...foray, ok: false, failures: [...(foray.failures ?? []), "airplane mode did not engage for the page's Foray"] };
   } catch (e) {
-    foray = { ok: false, failures: [`the scenario could not run: ${String(e?.message ?? e)}`] };
+    foray = { ok: false, failures: [`the page's Foray could not run: ${String(e?.message ?? e)}`] };
+  } finally {
+    set.pageDisable = shell("cmd", "connectivity", "airplane-mode", "disable").trim();
   }
   let text;
   try {
@@ -2190,9 +2319,9 @@ async function airplane(ctx) {
       set, airplaneModeOn: flag,
       engine: { facts, after: after && { state: after.state, running: after.running, exoPlaying: after.exoPlaying }, session, recovered },
       engineForay: engineForay && { ok: engineForay.ok, failures: engineForay.failures, outcome: engineForay.outcome, measured: engineForay.measured },
-      page: { lane, foray: foray && { ok: foray.ok, failures: foray.failures, measured: foray.measured }, modeRows: copy.modeRows },
+      page: { lane, foray: foray && { ok: foray.ok, failures: foray.failures, outcome: foray.outcome, measured: foray.measured }, modeRows: copy.modeRows, copyLane: copy.lane },
     },
-    evidence: ["k-dumpsys-media_session.txt", "k-engine-rows.txt", "k-foray-engine-rows.txt", "k-diagnostics-copy.txt", ...(foray?.evidence ?? [])],
+    evidence: ["k-dumpsys-media_session.txt", "k-engine-rows.txt", "k-foray-engine-rows.txt", "k-page-foray-engine-rows.txt", "k-diagnostics-copy.txt"],
   };
 }
 

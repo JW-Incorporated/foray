@@ -91,13 +91,19 @@ public class EngineBridgeTest {
         final FakeTiming timing = new FakeTiming();
         final List<String> lines = new ArrayList<>();
         final EngineLog log = new EngineLog(timing::wallMs, timing::monoMs, lines::add);
-        final ForayEngineHost host = new ForayEngineHost(new EngineSeams(deck, session, timing, log), new EngineConfig("test"));
+        final ForayEngineHost host;
         final FakeOwner owner = new FakeOwner();
         final List<JsonNode> events = new ArrayList<>();
         final EngineBridge bridge;
         int cmdSeq;
 
         Rig(boolean nativeLane, List<String> declared) {
+            this(nativeLane, declared, new EngineConfig("test"));
+        }
+
+        /** With {@code config}: the service's own (the Foray tape on, A-40) for a Foray through the bridge. */
+        Rig(boolean nativeLane, List<String> declared, EngineConfig config) {
+            host = new ForayEngineHost(new EngineSeams(deck, session, timing, log), config);
             host.start();
             // The legacy lane has no engine: the service is never bound there.
             if (nativeLane) owner.host = host;
@@ -211,14 +217,52 @@ public class EngineBridgeTest {
 
     @Test
     public void theBinaryAdvertisesOnlyWhatItsBooksAllow() {
-        // Declared everything; since A-29 cleared engine-mode on the JVM the binary claims episode
-        // and continuation, and never restore (A-27) or foray (A-40).
+        // Declared everything; since A-42 (the A2 flip) the JVM books owe nothing under any of
+        // iOS's M2 four, so the binary claims all of them: episode, continuation, restore, foray.
         Rig r = nativeRig();
         r.hello();
-        assertEquals(Arrays.asList("episode", "continuation"), r.bridge.capabilities());
+        assertEquals(Arrays.asList("episode", "continuation", "restore", "foray"), r.bridge.capabilities());
         JsonNode reply = r.send("playEpisode", playEpisodeArgs("a"));
         assertEquals("an advertised episode reaches the engine: " + JSWriter.stringify(reply), JsonNode.TRUE, reply.get("ok"));
         assertTrue("the deck loads it", r.deck.sent.stream().anyMatch(c -> c instanceof DeckCommand.Load));
+    }
+
+    /** The page's playForay args (engine-contract.js COMMAND_ARGS.playForay): two clips of a built Foray. */
+    static JsonNode playForayArgs() {
+        List<JsonNode> clips = new ArrayList<>();
+        for (int i = 0; i < 2; i++) {
+            clips.add(obj("id", JsonNode.str("f1#" + i), "kind", JsonNode.str("episode"), "title", JsonNode.str("Clip " + i),
+                    "show", JsonNode.str("A show"), "audio_url", JsonNode.str("https://cdn.example/c" + i + ".mp3"),
+                    "start_sec", JsonNode.num(100), "end_sec", JsonNode.num(200), "duration_sec", JsonNode.num(3600)));
+        }
+        return obj("forayId", JsonNode.str("f1"), "title", JsonNode.str("A Foray"), "items", new JsonNode.Arr(clips),
+                "buildReport", new JsonNode.Obj(List.of()), "isLocalFile", JsonNode.FALSE, "allowAdPad", JsonNode.FALSE,
+                "voiceId", JsonNode.NULL);
+    }
+
+    /**
+     * A-42 (the A2 flip): the page's own playForay, through the bridge, plays on the engine of a
+     * build that declares {@code foray}, as the service builds it (the tape on); a build that does
+     * not declare it (Android's before A-42) refuses it {@code capability-off}, so the page
+     * relinquishes the Foray to its own player. MUTATION: drop "foray" from
+     * EngineBridgeRules.ADVERTISED_CAPABILITIES -> the first reply is capability-off.
+     */
+    @Test
+    public void aForayThroughTheBridgePlaysOnTheEngineOnlyWhenTheBuildDeclaresForay() {
+        EngineConfig service = new EngineConfig("test").withForayTape(true, false);
+        Rig r = new Rig(true, ALL, service);
+        r.hello();
+        JsonNode reply = r.send("playForay", playForayArgs());
+        assertEquals("a declared foray reaches the engine: " + JSWriter.stringify(reply), JsonNode.TRUE, reply.get("ok"));
+        assertEquals("f1", r.host.core().state().forayId);
+        assertTrue("the deck loads the first clip at its in-point", r.deck.sent.stream()
+                .anyMatch(c -> c instanceof DeckCommand.Load l && l.itemId().equals("f1#0") && Math.abs(l.startSec() - 100) < 0.01));
+
+        Rig before = new Rig(true, Arrays.asList("episode", "continuation"), service);
+        before.hello();
+        JsonNode refused = before.send("playForay", playForayArgs());
+        assertEquals("capability-off", refused.get("reason").stringValue());
+        assertTrue("nothing reached the deck", before.deck.sent.isEmpty());
     }
 
     @Test
@@ -426,6 +470,6 @@ public class EngineBridgeTest {
 
     /** The binary's claim, spelled once for the hello test above. */
     static final class EngineBridgeRulesJvm {
-        static final String ADVERTISED = "[\"episode\",\"continuation\"]";
+        static final String ADVERTISED = "[\"episode\",\"continuation\",\"restore\",\"foray\"]";
     }
 }

@@ -794,6 +794,21 @@ Rejected alternatives:
 #### A-42 · A2 flip: native Forays on Android — **S**
 - **Depends on:** A-41, a device pass, and a founder car drive.
 - **Ask and acceptance:** The same shape as A-31, for Forays.
+- **Status (2026-09-30): the engineering flip is done in its PR, evidence in `STATE.md` (A-42 entry). The device
+  acceptance is NOT EXECUTED.**
+  - **The flip.** `ENGINE_DEFAULT.json` android declares iOS's M2 four: `episode`, `continuation`, `restore` and
+    `foray`. `EngineLane` and `EngineBridgeRules.ADVERTISED_CAPABILITIES` say the same, so a Foray tapped on the page
+    plays on the engine. shell-invariants requires a dated `A-42 flip` line in `STATE.md` (a run id and the quoted
+    ruling) for `foray` or `restore`, and pins the service's tape to the grant.
+  - **Found in A-40, fixed here:** a lock-screen or car scrub or skip in a native Foray took the episode path in
+    source seconds. The JVM core now routes it on the Foray's clock, as the page does. The Swift core has the same
+    routing; that is iOS's.
+  - **The emulator.** `bridge` plays a Foray through the page's own `ForayPlayer.playForay` and requires the engine to
+    play it across a seam, unrelinquished. (k)'s page half is the page's own airplane Foray on the engine. Run
+    36775164730 is green on all three legs (`docs/android-emulator-measurements.md` §15).
+  - **Not executed (D-A3, D-A5).** The device-pass record (H-1, H-3, navigation prompts, the negative control) and the
+    founder car drive did not run. A-42 is the point D-A3 names, so the orchestrator may now issue #127; the car drive
+    needs spend D-A5 does not approve. The DECISIONS entry (G-7) is a separate founder-approved PR.
 
 ### 5.6 Track A3: Android Auto (only when store launch returns to scope)
 

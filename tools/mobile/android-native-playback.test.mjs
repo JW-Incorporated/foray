@@ -14,6 +14,10 @@ import { fileURLToPath } from "node:url";
 import { CLIPS, GATES, NARRATION_LINES, PKG, SHOW, UNREACHABLE_NARRATION_URL, UNREACHABLE_SCRIPT } from "./android-playback.mjs";
 import {
   AIRPLANE_ENGINE_FORAY,
+  PAGE_AIRPLANE_FORAY,
+  PAGE_ASSET_ORIGIN,
+  PAGE_FORAY,
+  pageForayQueue,
   ASSET_BASE,
   NARRATION_ASSET_BASE,
   airplaneForayFacts,
@@ -351,11 +355,11 @@ const NATIVE_COPY = [
   "engine rows 4 of 2000, #1..#4",
 ].join("\n");
 
-/* A-31: a stock launch's Copy, the native lane by the build's default. */
+/* A-31: a stock launch's Copy, the native lane by the build's default; since A-42 with iOS's M2 four. */
 const STOCK_COPY = [
   "#   1 12:00:00.000 boot       web=abc",
   "#   2 12:00:00.400 engineMode native (native)",
-  "engine=native v1.0.0 proto=1 caps=episode,continuation reason=build-default strikes=0 hold=forever build=2026093001 | web=abc",
+  "engine=native v1.0.0 proto=1 caps=episode,continuation,restore,foray reason=build-default strikes=0 hold=forever build=2026093001 | web=abc",
   "engine rows 6 of 2000, #1..#6",
 ].join("\n");
 
@@ -365,6 +369,13 @@ const HOSTING = { hosting: true, legacyRunning: false };
 const PLAYED = {
   page: { ok: true, answered: true },
   engine: { item: "a31-page-episode", state: "playing", running: true, exoPlaying: true, positionSec: 1.8 },
+};
+/* A-42: the page's own Foray, as bridge reads it. */
+const FORAY_PLAYED = {
+  page: { ok: true, playable: 3, unplayable: [] },
+  engine: { forayId: "a42-page-foray", item: "a42-page-foray#0", index: 0, state: "playing", running: true, exoPlaying: true, positionSec: 1.2 },
+  crossed: { forayId: "a42-page-foray", item: "a42-page-foray#1", index: 1, state: "playing", running: true, exoPlaying: true, positionSec: 0.9 },
+  laneAfter: "native",
 };
 
 test("A-28: the Copy's engine facts are read from its header, its timeline and its ring line", () => {
@@ -385,10 +396,11 @@ test("A-28: the Copy's engine facts are read from its header, its timeline and i
   assert.equal(copyFacts("").header, null);
 });
 
-test("A-31: the verdict passes a native stock launch, the page's episode on the engine and Web's way back, and fails each gap", () => {
+test("A-31, A-42: the verdict passes a native stock launch, the page's episode and Foray on the engine and Web's way back, and fails each gap", () => {
   /* MUTATION: drop any one check in verdictBridge; its case below stays green. The pre-A-31
-     verdict (a stock launch in the JS lane, an override to Native) fails here on its first line. */
-  const good = { stock: STOCK, copy: copyFacts(STOCK_COPY), played: PLAYED, override: { ok: true }, after: AFTER, service: HOSTING };
+     verdict (a stock launch in the JS lane, an override to Native) fails here on its first line;
+     the pre-A-42 build (no foray advertised, the Foray relinquished) fails on the foray lines. */
+  const good = { stock: STOCK, copy: copyFacts(STOCK_COPY), played: PLAYED, forayPlayed: FORAY_PLAYED, override: { ok: true }, after: AFTER, service: HOSTING };
   assert.deepEqual(verdictBridge(good), { ok: true, failures: [] });
   const fails = (patch, re) => {
     const v = verdictBridge({ ...good, ...patch });
@@ -401,6 +413,16 @@ test("A-31: the verdict passes a native stock launch, the page's episode on the 
   fails({ copy: copyFacts(STOCK_COPY.replace(/engine=native .* reason=build-default/, "engine=js reason=engine-legacy")) }, /not engine=native/);
   fails({ copy: copyFacts(STOCK_COPY.replace("reason=build-default", "reason=override")) }, /reason is override, not build-default/);
   fails({ copy: copyFacts(STOCK_COPY.replace("caps=episode,continuation", "caps=continuation")) }, /does not advertise episode/);
+  fails({ copy: copyFacts(STOCK_COPY.replace("caps=episode,continuation,restore,foray", "caps=episode,continuation")) }, /does not advertise foray/);
+  fails({ forayPlayed: { ...FORAY_PLAYED, page: { ok: false, error: "window.ForayPlayer.playForay is missing" } } }, /playForay did not run/);
+  fails({ forayPlayed: { ...FORAY_PLAYED, page: { ok: true, playable: 2, unplayable: ["no-source"] } } }, /resolved 2 playable clips of 3/);
+  fails({ forayPlayed: { ...FORAY_PLAYED, engine: null } }, /could not be read after the page's Foray/);
+  fails({ forayPlayed: { ...FORAY_PLAYED, engine: { ...FORAY_PLAYED.engine, forayId: null } } }, /the Foray tap did not reach the engine/);
+  fails({ forayPlayed: { ...FORAY_PLAYED, engine: { ...FORAY_PLAYED.engine, exoPlaying: false } } }, /holds the page's Foray but is not playing it/);
+  fails({ forayPlayed: { ...FORAY_PLAYED, crossed: { ...FORAY_PLAYED.crossed, index: 0 } } }, /did not cross a seam/);
+  fails({ forayPlayed: { ...FORAY_PLAYED, crossed: null } }, /did not cross a seam/);
+  fails({ forayPlayed: { ...FORAY_PLAYED, laneAfter: "js" } }, /lane is js, not native: the tap relinquished/);
+  fails({ forayPlayed: undefined }, /playForay did not run/);
   fails({ copy: copyFacts(STOCK_COPY.replace("engineMode native (native)", "engineMode js (engine-legacy)")) }, /engineMode native/);
   fails({ copy: copyFacts(STOCK_COPY.replace("engine rows 6 of 2000, #1..#6", "engine rows not read (timeout)")) }, /did not read the engine's ring: timeout/);
   fails({ played: { ...PLAYED, page: { ok: false, error: "window.ForayPlayer.play is missing" } } }, /ForayPlayer\.play did not run/);
@@ -415,6 +437,28 @@ test("A-31: the verdict passes a native stock launch, the page's episode on the 
   fails({ after: { lane: "native", status: AFTER.status } }, /lane is native, not js/);
   fails({ after: { lane: "js", status: { ...AFTER.status, override: "auto" } } }, /does not read Web/);
   fails({ after: { error: "timeout" } }, /relaunched page could not be read: timeout/);
+});
+
+test("A-42: the page's Foray is the page's own build over the APK's assets, and its queue ids are the build's", () => {
+  /* MUTATION: point the page's Foray at the WebView's https://localhost origin (the engine's deck
+     cannot fetch it) or the network; give the airplane Foray's bundled line a network URL or its
+     network line an asset; name a clip's queue id anything but <foray>#<index>. */
+  assert.equal(PAGE_ASSET_ORIGIN, "asset:///public");
+  assert.equal(PAGE_FORAY.id, "a42-page-foray");
+  for (const s of PAGE_FORAY.sources.sources) assert.ok(s.audio_url.startsWith(ASSET_BASE), s.audio_url);
+  assert.equal(PAGE_FORAY.segments.segments.length, 3);
+  assert.equal(new Set(PAGE_FORAY.sources.sources.map((s) => s.audio_url)).size, 3, "three sources: each seam crosses sources");
+  const air = PAGE_AIRPLANE_FORAY.forays.forays[0].items;
+  assert.deepEqual(air.map((i) => i.type), ["segment", "narration", "segment", "narration", "segment"]);
+  assert.equal(air[1].audio_url, `${NARRATION_ASSET_BASE}${NARRATION_LINES[0].file}`);
+  assert.equal(air[1].script, NARRATION_LINES[0].script);
+  assert.equal(air[3].audio_url, UNREACHABLE_NARRATION_URL);
+  assert.equal(air[3].script, UNREACHABLE_SCRIPT);
+  for (const s of PAGE_AIRPLANE_FORAY.sources.sources) assert.ok(s.audio_url.startsWith(ASSET_BASE), s.audio_url);
+  assert.deepEqual(pageForayQueue(PAGE_AIRPLANE_FORAY), {
+    forayId: "a42-page-air",
+    items: [{ id: "a42-page-air#0" }, { id: "a42-page-air-line-1" }, { id: "a42-page-air#2" }, { id: "a42-page-air-line-3" }, { id: "a42-page-air#4" }],
+  });
 });
 
 test("A-31: the page's episode is the flip's own id over a bundled asset, played through ForayPlayer.play", () => {
@@ -752,9 +796,10 @@ test("A-30 (k): the engine's half reads the load, the stop and whether anything 
     "the gate is the deck's own deadline");
 });
 
-test("A-30 (k): both halves are gated, and the Foray must go through the relinquish", () => {
-  /* MUTATION: drop any one check; each failing input below turns red for its own reason. */
-  const copy = copyFacts("#   2 12:00:00.400 engineMode native (override)\n#   9 12:00:09.000 engineMode js (relinquished)\nengine=js reason=override");
+test("A-30, A-42 (k): every half is gated, and the page's Foray is the engine's, never relinquished", () => {
+  /* MUTATION: drop any one check; each failing input below turns red for its own reason. The
+     pre-A-42 page half (the Foray relinquished to the JS player) fails on the Copy lines. */
+  const copy = copyFacts("#   2 12:00:00.400 engineMode native (native)\nengine=native v1.0.0 proto=1 caps=episode,continuation,restore,foray reason=build-default");
   const good = {
     airplane: true, facts: { attachAt: "x", stop: { cause: "error" }, decisionMs: 6500, sounded: false },
     after: { state: "idle", running: false, exoPlaying: false }, session: { state: "PAUSED" }, recovered: { item: "a26-0" },
@@ -776,9 +821,11 @@ test("A-30 (k): both halves are gated, and the Foray must go through the relinqu
   bad({ session: { state: "PLAYING" } }, /still says PLAYING/);
   bad({ recovered: null }, /bundled episode did not play/);
   bad({ laneBefore: "js" }, /lane before the Foray was js/);
-  bad({ foray: { ok: false, failures: ["the line was neither spoken nor skipped within 15000 ms"] } }, /^foray: the line was neither spoken/);
+  bad({ foray: { ok: false, failures: ["the network line did not fall back"] } }, /^page foray: the network line did not fall back/);
   bad({ foray: null }, /Foray half did not run/);
-  bad({ copy: copyFacts("#   2 12:00:00.400 engineMode native (override)") }, /no `engineMode js \(relinquished\)` row/);
+  bad({ copy: copyFacts("#   2 12:00:00.400 engineMode native (native)\n#   9 12:00:09.000 engineMode js (relinquished)\nengine=native reason=build-default") },
+    /has an `engineMode js \(relinquished\)` row/);
+  bad({ copy: copyFacts("#   2 12:00:00.400 engineMode native (native)\nengine=js reason=relinquished") }, /not engine=native/);
   /* A-41: the engine's own Foray is gated too. */
   bad({ engineForay: null }, /engine's Foray half did not run/);
   bad({ engineForay: { ok: false, failures: ["the network line did not fall back"] } }, /^engine foray: the network line did not fall back/);
@@ -855,7 +902,15 @@ test("A-41 (k): GATED on the bundled line heard as a file, the network one falli
     assert.equal(r.ok, false);
     assert.ok(r.failures.some((f) => re.test(f)), `${re} not in ${JSON.stringify(r.failures)}`);
   };
-  bad({ drive: { answer: { ok: false } } }, /playForay did not play/);
+  bad({ drive: { answer: { ok: false } } }, /the driver's playForay did not play/);
+  /* A-42: the same verdict judges the page's own Foray, by its build's ids. */
+  const pageForay = pageForayQueue(PAGE_AIRPLANE_FORAY);
+  assert.equal(verdictAirplaneForay({ ...good, foray: pageForay, via: "the page's ForayPlayer.playForay",
+    last: { index: 4, forayId: "a42-page-air", running: true } }).ok, true);
+  const pageBad = verdictAirplaneForay({ ...good, foray: pageForay, via: "the page's ForayPlayer.playForay", drive: { answer: { ok: false } } });
+  assert.ok(pageBad.failures.some((f) => /^the page's ForayPlayer\.playForay did not play/.test(f)), JSON.stringify(pageBad.failures));
+  assert.ok(verdictAirplaneForay({ ...good, foray: pageForay }).failures.some((f) => /not playing the Foray/.test(f)),
+    "the engine's own Foray is not the page's");
   bad({ renderedAudible: false }, /did not play as a file/);
   bad({ facts: { ...facts, fallback: null } }, /did not fall back/);
   bad({ facts: { ...facts, fallback: { ...facts.fallback, at: "load" } } }, /at load, not the bridge/);

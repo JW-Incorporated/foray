@@ -913,3 +913,38 @@ The APK carries both bundled files at the assets root: `interlude-placeholder.wa
   spoken line while it is the running playhead, since no deck plays then. The service feeds a lost route when
   headphones come out while no deck plays (a spoken line, or the jingle), because Media3's becoming-noisy
   receiver is on only while a deck plays.
+
+## 15. A-42: the A2 flip, the page's own Forays on the engine
+
+Run 36775164730, head `de4883c7`. All three legs are green on the first attempt. The native leg (job 110091117568)
+took 35 min 44 s. Its scenarios took about 20 min, as before. The step that renders the A-05 narration fixtures took
+11 min 24 s on this runner, against about a minute before. That step is unchanged here, so the number is the
+runner's. It is still under the 40-minute ceiling, and worth watching.
+
+Card A-42 declares `foray` (and `restore`) for Android, so a Foray the page plays is the engine's.
+
+- **`bridge`.**
+  - The stock launch's Copy says `engine=native v1.0.0 proto=1 caps=episode,continuation,restore,foray
+    reason=build-default`.
+  - The page's own episode play is the engine's, as in §12.
+  - The page then played `a42-page-foray` through its own `ForayPlayer.playForay`. Its build was three click-track
+    clips over the APK's assets, and `ForayPlayer.resolve` found 3 of 3 playable.
+  - The engine held `a42-page-foray`, playing clip 0 on ExoPlayer. It crossed into clip 1 (`a42-page-foray#1`,
+    index 1, playing) about 11 s later.
+  - The page's lane afterwards was still `native`: nothing was relinquished.
+- **(k), the page's half.** The page built A-41's airplane Foray (clip, bundled rendered line, clip, network line,
+  clip) as `a42-page-air` and played it with airplane mode on (`airplane_mode_on` 1).
+  - The bundled line played as a file on the deck.
+  - The network line fell back: `narration kind=fallback reason=failed at=bridge`, 3068 ms after the clip before it
+    ran out.
+  - The engine's synthesiser spoke its script 4832 ms after the out-point (`speaker kind=line-started`,
+    `com.google.android.tts`).
+  - The Foray landed on its last clip, playing, in one process.
+  - The Copy afterwards is `engine=native`. It holds six `engineMode native (build-default)` rows and no
+    `engineMode js (relinquished)`.
+  - Until A-42 this half was the JS leg's (k), run on a Foray relinquished to the page's player.
+- **(k)'s other halves.** The engine's own Foray (the debug driver's) fell back in 3038 ms and was spoken 4886 ms
+  after the out-point.
+- **`foray-seams`.** Silence p95 506 ms. Every other native verdict is green.
+- **The JS legs** (API 34, job 110091118025; API 36, job 110091117947) are green. They pin Web in their first step,
+  so the flip does not reach them.

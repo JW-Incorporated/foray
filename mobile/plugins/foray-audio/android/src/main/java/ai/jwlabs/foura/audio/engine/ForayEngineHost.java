@@ -72,9 +72,9 @@ import java.util.Objects;
  *
  * The service builds the core with the tape on ({@link EngineConfig#forayTapeEnabled}) over a
  * {@link DeckPair}, so a {@code playForay} that reaches the core plays: the seam beat and the
- * narration pulse are ordinary timers here, and the deck pair answers {@code prepare}. Until A-42
- * the page's bridge still refuses {@code playForay} ({@code foray} is not advertised), so only the
- * debug driver reaches it.
+ * narration pulse are ordinary timers here, and the deck pair answers {@code prepare}. Since A-42
+ * the build advertises {@code foray}, so the page's own {@code playForay} reaches it through the
+ * bridge (until then only the debug driver did).
  *
  * <h2>THE NARRATION AND THE JINGLE (A-41)</h2>
  *

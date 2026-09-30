@@ -42,9 +42,10 @@ import java.util.List;
  *
  * <p>{@code foray} (A-40) is the contract's {@code playForay} with the page's BUILD of a Foray
  * (the items as {@code buildForayQueue} emits them): the Foray tape's (f) scenario drives the
- * engine's deck pair with it, because the page's bridge refuses {@code playForay} until A-42
- * advertises {@code foray}. It goes through the core like any page command: the structural check,
- * the session, the beat and the pair are the real ones.
+ * engine's deck pair with it, written before the page's bridge could (it refused {@code playForay}
+ * until A-42 advertised {@code foray}; the page's own Foray is the native leg's {@code bridge} and
+ * (k) since). It goes through the core like any page command: the structural check, the session,
+ * the beat and the pair are the real ones.
  *
  * <p>{@code task-removed} (A-27) is the listener swiping 4a away, as the service hears it: the
  * driver lets go of its binding and hands the service {@code onTaskRemoved}, Media3's own

@@ -7,6 +7,71 @@ docs/. Completed workstreams move to their plan doc's retro section.
 
 ## Active workstreams
 
+### 2026-09-30 — `android/a-42-native-forays`: A-42, the A2 flip (native Forays on Android)
+
+Owned: `mobile/ENGINE_DEFAULT.json`'s `android` block, `EngineLane.java`'s two literals,
+`EngineBridgeRules.ADVERTISED_CAPABILITIES`, the A-42 record rule in `tools/mobile/shell-invariants.test.mjs`, the JVM
+core's remote seek routing (`EngineCore.onRemote`), and the native leg's `bridge` and (k) page half. Card A-42 of
+`docs/plans/android-assessment.md` (Track A2), into `android/native`.
+
+A-42 flip (2026-09-30): android native Forays, backed by run 36775164730 (every native-mode verdict green, the page's own Foray on the engine in bridge and in airplane mode included; A-41's run 36758069597 before it), on the founder's rulings "android also needs to move to native engine (or whatever is best)… start work on that in parallel to bring it up to the same maturity level (sans testing) as the iphone app" and "don't have joey test until the native engine is fully operational".
+
+**What changed.**
+- **The default.** `ENGINE_DEFAULT.json` android is `{"mode": "native", "capabilities": ["episode", "continuation",
+  "restore", "foray"]}`, iOS's M2 four. `EngineLane.DECLARED_CAPABILITIES` and
+  `EngineBridgeRules.ADVERTISED_CAPABILITIES` say the same. A stock launch advertises `foray`, so a Foray tapped on the
+  page plays on `ForayPlaybackService` (the tape on the deck pair, rendered lines as files, the TTS fallback, the
+  jingle), as on iOS since NE-37. `restore` joins because its families all run on the JVM and A-27 built the cold path
+  (the A-31 review's note); no command or page branch is gated on it.
+- **The record rule.** shell-invariants: android may declare `foray` or `restore` only with a dated `A-42 flip` line
+  (the one above) naming a run id and quoting the ruling, on top of A-31's line. It also pins that the service builds
+  its core with the Foray tape on exactly when the default grants `foray`, and never sets the held flags.
+- **A remote seek in a Foray is on the Foray's clock** (the JVM core). A-40 found that a lock-screen or car scrub
+  (`changePlaybackPosition`) or skip during a native Foray took the EPISODE path in source seconds, while the surface
+  publishes the Foray's clock. That was moot until A-42 advertised `foray`; now it would have sent a notification scrub
+  to 20:00 of a Foray to second 1200 of the current clip's source episode, past its out-point. `onRemote` now routes
+  both through `forayScrub` / `forayNudge` in a Foray, as client.js's `forayMediaSurface` does (`foraySeek`,
+  `nudgeBy`). `EngineCoreTest.aRemoteScrubOrSkipInAForayIsOnTheForayClock` goes red on A-40's routing. **The Swift core
+  has the same routing** (`EngineCore.swift` `onRemote`, on main and on `engine/m3`); that is iOS's to fix.
+- **The emulator (native leg).**
+  - `bridge`: the Copy's caps must include `foray`. After the page's episode, the page plays a three-clip Foray through
+    its own `ForayPlayer.playForay` (over the APK's assets); the engine must hold it (`forayId`), cross a seam of it, and
+    the page's lane must still be native.
+  - (k): the page half is no longer the JS leg's (k) on a relinquished Foray. The page builds A-41's airplane Foray
+    (clip, bundled rendered line, clip, network line, clip) and plays it in airplane mode; the engine must play the
+    bundled line as a file, fall back on the network one at its bridge in time and speak it (or refuse it on record),
+    and land on the last clip, and the Copy must carry no `engineMode js (relinquished)` row.
+- **Robolectric/JVM.** `EngineBridgeTest`: the binary claims the four, and a `playForay` through the bridge reaches a
+  tape-on engine while a build without `foray` refuses it `capability-off`.
+
+**Executed locally:**
+- JDK 21 `javac` + JUnit of `:foray-engine-core-jvm` (no Gradle): `EngineCoreTest` 37 of 37 (the new test red with
+  A-40's `onRemote` restored), `ForayTapeScenarioTest` 8 of 8.
+- The foray-audio compile (main, debug, tests) against android-36 and the Media3 jars; `EngineBridgeTest` and
+  `ForayEngineHostForayTest` on a plain JVM: 19 of 19.
+- `node --test`: the native runner (42), the playback workflow (14), shell-invariants, inject-background-audio.
+
+**Executed in CI** (head `de4883c7`, all green on the first attempt):
+- android-playback run 36775164730: all three legs green (native job 110091117568; API 34 JS 110091118025; API 36
+  JS 110091117947). Details in `docs/android-emulator-measurements.md` §15.
+  - `bridge`: the stock Copy says `caps=episode,continuation,restore,foray reason=build-default`. The page's own
+    `ForayPlayer.playForay` resolved 3 of 3 clips, the engine held `a42-page-foray` and was playing clip 0, crossed
+    into clip 1 about 11 s later, and the page's lane was still native.
+  - (k) page half: the page-built airplane Foray played on the engine. The bundled line was heard as a file; the
+    network line fell back at its bridge 3068 ms after the out-point, and the engine's TTS spoke it 4832 ms after
+    (`com.google.android.tts`); it landed on the last clip. Six `engineMode native (build-default)` rows, no
+    relinquish.
+  - `foray-seams` silence p95 506 ms; every other native verdict green.
+- android-build run 36775164698: android-shell green, JVM parity 1778 passed, 0 pending, 0 failed.
+- CI, ios-build, android-smoke and pr-hygiene are green.
+
+**Not executed (D-A3, D-A5).** The card's acceptance is a device-pass record in `docs/field-records/` green on H-1
+(pause and resume from the car), H-3 (a call), navigation prompts and the negative control, plus one founder Android
+car drive. Neither ran. With this flip the Android native engine is fully operational in the ruling's sense, so the
+orchestrator (never an agent) may now issue Joey's pass through HUMAN-ACTIONS #127 (the A-14 script); the car drive
+needs the car phone D-A5 does not fund. The DECISIONS entry (the G-7 rule) is a separate founder-approved PR, not
+this one.
+
 ### 2026-09-30 — `android/a-41-rendered-narration`: A-41, rendered narration, the TTS fallback seam and interludes (Android)
 
 Owned: `SpeechRules` (JVM core) and the JVM speech families; in foray-audio, `SpeechNarrator`/`TtsOutput`,
