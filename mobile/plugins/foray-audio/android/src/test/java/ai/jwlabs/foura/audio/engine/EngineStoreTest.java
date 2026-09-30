@@ -189,7 +189,8 @@ public class EngineStoreTest {
         assertEquals("{\"seconds\":12}", relaunched.sharedRows(Arrays.asList("cp_pos:")).get("cp_pos:ep-1"));
         assertEquals(1, store.diagnosticRows().size());
 
-        relaunched.purge();
+        EngineBridge.Records records = store;
+        records.purge();
         assertTrue(prefs(EngineStore.PRIVATE_FILE).getAll().isEmpty());
         assertNull(prefs(EngineStore.SHARED_FILE).getString("cp_pos:ep-1", null));
         assertTrue("the rings too", store.log().diagnosticRows().isEmpty());
