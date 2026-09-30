@@ -140,10 +140,10 @@ final class DeckPair: DeckDriving {
         dispatchPrecondition(condition: .onQueue(.main))
         guard !invalidated else { return }
         switch command {
-        case let .load(token, itemId, url, startSec, preciseTiming):
+        case let .load(token, itemId, url, startSec, preciseTiming, _):
             load(command, token: token, itemId: itemId, url: url, startSec: startSec, preciseTiming: preciseTiming)
-        case let .prepare(itemId, url, startSec):
-            prepare(itemId: itemId, url: url, startSec: startSec)
+        case let .prepare(itemId, url, startSec, deadlineClass):
+            prepare(itemId: itemId, url: url, startSec: startSec, deadlineClass: deadlineClass)
         case let .setRate(newRate):
             // Both decks: the standby primes at the rate it will play at.
             // AVDeck refuses a non-positive rate itself, and says so.
@@ -181,7 +181,7 @@ final class DeckPair: DeckDriving {
 
     // MARK: - Prepare
 
-    private func prepare(itemId: String, url: String?, startSec: Double) {
+    private func prepare(itemId: String, url: String?, startSec: Double, deadlineClass: DeckDeadlineClass) {
         let offset = DeckPolicy.warmOffset(startSec)
         let decision = DeckPolicy.prefetchDecision(
             available: available, url: url, currentUrl: decks[activeIndex].loadedURL,
@@ -201,8 +201,11 @@ final class DeckPair: DeckDriving {
         standby.send(.setRate(rate))
         // Precise timing: a prepared item is the next SEGMENT of a Foray, and
         // P-7's provisional rule is precise for bounded segments. A precise
-        // asset promoted for an approximate ask is never worse.
-        standby.send(.load(token: token, itemId: itemId, url: url, startSec: offset, preciseTiming: true))
+        // asset promoted for an approximate ask is never worse. The warm load
+        // runs under the item's own P-13 class (NE-38): a prepared line gives
+        // up at a line's deadline, exactly as its own load would.
+        standby.send(.load(token: token, itemId: itemId, url: url, startSec: offset, preciseTiming: true,
+                           deadlineClass: deadlineClass))
     }
 
     // MARK: - Load: promote or degrade
@@ -350,7 +353,7 @@ private extension DeckEvent {
     var deckToken: DeckToken? {
         switch self {
         case let .durationLoaded(token, _), let .ready(token, _, _, _), let .notReady(token, _, _),
-             let .deadlineExceeded(token, _), let .failed(token, _), let .timeControl(token, _, _),
+             let .deadlineExceeded(token, _, _), let .failed(token, _, _), let .timeControl(token, _, _),
              let .pausedUncommanded(token, _), let .seeked(token, _, _), let .stalled(token),
              let .ended(token), let .prepareWindow(token), let .prepared(token, _, _):
             return token

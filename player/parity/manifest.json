@@ -366,7 +366,7 @@
     },
     "diag-tokens": {
       "files": {
-        "player/parity/fixtures/diag-tokens/diag-tokens.json": "38389e9831b3e46b921b8aad8d959749d5a527aeff9f0377638743525db1366e"
+        "player/parity/fixtures/diag-tokens/diag-tokens.json": "d4eb1dbc5470109cdd303066f17d093f9901fd84b8770ca53d90128a0b822d3d"
       },
       "ids": [
         "diag-tokens/set-names",
@@ -377,6 +377,7 @@
         "diag-tokens/source-tokens",
         "diag-tokens/mode-reason-tokens",
         "diag-tokens/fault-kind-tokens",
+        "diag-tokens/narration-fallback-cause-tokens",
         "diag-tokens/admit-stage-ready",
         "diag-tokens/admit-session-error-other",
         "diag-tokens/admit-interruption-reason-app-was-suspended",
@@ -386,6 +387,8 @@
         "diag-tokens/admit-mode-reason-no-plist-key",
         "diag-tokens/admit-mode-reason-not-built",
         "diag-tokens/admit-fault-kind-implicit-activation",
+        "diag-tokens/admit-narration-fallback-cause-offline",
+        "diag-tokens/admit-narration-fallback-cause-status-is-not-a-token",
         "diag-tokens/admit-wrong-set",
         "diag-tokens/admit-case-folded",
         "diag-tokens/admit-padded",
@@ -795,7 +798,7 @@
     "manager-episode": {
       "files": {
         "player/parity/fixtures/manager-episode/last-episode-row.json": "a21f5bf2c1cc037c4d84285d9d3dbb9f6ad0b5b87a6c3f36c8e2943cfb5fa454",
-        "player/parity/fixtures/manager-episode/scenarios.json": "c56575541a249556027900a148a952fc5420f047ad1c7378677de26efb8f6263"
+        "player/parity/fixtures/manager-episode/scenarios.json": "3c14b3eaaf40bf256f5ed0760be99db8f557ae9b5b50e848294deb75d6ad5a2c"
       },
       "ids": [
         "manager-episode/last-episode-row-full-snapshot",
@@ -849,8 +852,9 @@
         "player/parity/fixtures/manager-foray/audition-url.json": "5da3b1546e82543c44560edd3e37468401e876ea0e9311bc3da6210cfe4be317",
         "player/parity/fixtures/manager-foray/audition.json": "9c1eed332cf0db001efc1de1e1b0c27f1bd50fef9c49202229d8312c9adcfb60",
         "player/parity/fixtures/manager-foray/jingle.json": "c9016c928cfc2dd0a8c3429124dbc5da2b6775b2161601a3aedaed4b74f4fff2",
-        "player/parity/fixtures/manager-foray/narration.json": "bd2cd5bceee72c4d448cd00b4ff748960c7c595b985e7afdf78f7bcadae02332",
+        "player/parity/fixtures/manager-foray/narration.json": "dd05be479486a191ea10810cea5c9da26763ae2d4571551dade5b33439edb401",
         "player/parity/fixtures/manager-foray/real-forays.json": "ce2d584ca45514c92c7a0b9095d4566d40429fb180f17faa352c202c4c88b6f4",
+        "player/parity/fixtures/manager-foray/remote-next.json": "e5eaf96acf68a5bc0092e6eaee63115a002ae278232026f3e8380f838c6c6765",
         "player/parity/fixtures/manager-foray/tape.json": "bffeb969f00fbe7d2b5c1a7a8fcd450f2ddc43b04e53428eeb320ceffa38bf73"
       },
       "ids": [
@@ -874,7 +878,8 @@
         "manager-foray/pause-under-a-slow-load-cuts-the-jingle-at-once",
         "manager-foray/an-episode-then-a-bridge-plays-the-bridge",
         "manager-foray/a-missing-bridge-never-stalls-the-queue",
-        "manager-foray/next-steps-over-a-bridge",
+        "manager-foray/next-lands-on-a-bridge",
+        "manager-foray/next-from-a-bridge-lands-on-the-item-after-it",
         "manager-foray/a-bridge-starts-at-zero",
         "manager-foray/rendered-narration-plays-at-1x-with-no-out-point",
         "manager-foray/a-script-only-line-is-spoken-not-loaded",
@@ -940,6 +945,8 @@
         "manager-foray/foray-2-1.5x-holds-through-every-seam",
         "manager-foray/foray-2-2x-mid-foray-survives-every-later-seam",
         "manager-foray/foray-2-the-beat-is-wall-clock-at-2x",
+        "manager-foray/remote-nexttrack-onto-a-line",
+        "manager-foray/remote-nexttrack-from-a-line",
         "manager-foray/a-segment-loads-at-its-in-point",
         "manager-foray/the-out-point-is-armed-before-play",
         "manager-foray/a-whole-episode-arms-nothing",
@@ -1278,6 +1285,35 @@
         "prepare/at-2x-the-beat-is-still-500ms-of-wall-clock"
       ]
     },
+    "prepare-narration": {
+      "files": {
+        "player/parity/fixtures/prepare-narration/policy.json": "4c1aad687f1f0884810de383f3a17d2fdf1b363e8ea55ef19ddd63af8bf232dc",
+        "player/parity/fixtures/prepare-narration/seams.json": "e3b18c68dd554b5a2ec56461ed15461a0da42595573ac68173d3a0c1a81fd35b"
+      },
+      "ids": [
+        "prepare-narration/warms-clip-to-clip",
+        "prepare-narration/warms-clip-to-rendered-line",
+        "prepare-narration/warms-rendered-line-to-clip",
+        "prepare-narration/warms-spoken-line-to-clip",
+        "prepare-narration/warms-natural-end-to-clip",
+        "prepare-narration/spoken-line-is-not-warmed",
+        "prepare-narration/empty-url-is-not-warmed",
+        "prepare-narration/the-last-item-warms-nothing",
+        "prepare-narration/window-from-duration-shut-outside-the-lead",
+        "prepare-narration/window-from-duration-open-inside-the-lead",
+        "prepare-narration/window-from-duration-at-a-natural-end",
+        "prepare-narration/window-shorter-than-the-lead-opens-at-the-start",
+        "prepare-narration/window-from-duration-is-wall-clock-at-2x",
+        "prepare-narration/window-no-duration-no-boundary",
+        "prepare-narration/window-duration-never-stands-in-for-an-unarmed-out-point",
+        "prepare-narration/window-from-duration-shut-while-paused",
+        "prepare-narration/clip-line-clip-in-one-episode-prepares-the-second-clip-by-a-seek",
+        "prepare-narration/clip-line-clip-across-two-episodes-prepares-both-seams",
+        "prepare-narration/a-spoken-line-prepares-nothing-and-the-clip-after-it-is-prepared-at-its-start",
+        "prepare-narration/a-line-shorter-than-the-lead-prepares-the-next-clip-at-its-start",
+        "prepare-narration/a-line-that-ends-the-foray-prepares-nothing"
+      ]
+    },
     "queue-state": {
       "files": {
         "player/parity/fixtures/queue-state/queue-state.json": "4df9d1b0e362130491fad057544179b395cf733e891cfb0a5d641126edc8da51"
@@ -1532,6 +1568,62 @@
         "resume-rules/first-save-at-zero-emits",
         "resume-rules/after-a-zero-event-emits-again",
         "resume-rules/null-last-is-none"
+      ]
+    },
+    "route-resume": {
+      "files": {
+        "player/parity/fixtures/route-resume/policy.json": "890e7f8537117561ec6967370c27af273c07650735e904385651bdaaa94216d4",
+        "player/parity/fixtures/route-resume/sequences.json": "7f80d4e12d108f4033ce9c15ad43ff6f7f9737d356a7f982a132004ad3daa810"
+      },
+      "ids": [
+        "route-resume/max-lost-is-24h",
+        "route-resume/bluetooth-arm-default-off",
+        "route-resume/class-caraudio",
+        "route-resume/class-bluetootha2dpoutput",
+        "route-resume/class-bluetoothhfp",
+        "route-resume/class-bluetoothle",
+        "route-resume/class-headphones",
+        "route-resume/class-speaker",
+        "route-resume/class-airplay",
+        "route-resume/class-usbaudio",
+        "route-resume/class-none",
+        "route-resume/key-port-and-uid",
+        "route-resume/key-no-uid",
+        "route-resume/key-no-port",
+        "route-resume/decide-known-car-back",
+        "route-resume/decide-listener-paused",
+        "route-resume/decide-interrupted",
+        "route-resume/decide-system-paused",
+        "route-resume/decide-not-paused",
+        "route-resume/decide-no-loss",
+        "route-resume/decide-different-car",
+        "route-resume/decide-no-uid",
+        "route-resume/decide-unknown-car",
+        "route-resume/decide-bluetooth-arm-off",
+        "route-resume/decide-bluetooth-arm-default",
+        "route-resume/decide-bluetooth-arm-on",
+        "route-resume/decide-headphones",
+        "route-resume/decide-exactly-24h",
+        "route-resume/decide-25h",
+        "route-resume/decide-age-unknown",
+        "route-resume/car-lost-and-back",
+        "route-resume/listener-pause-then-car-lost-and-back",
+        "route-resume/call-during-the-loss",
+        "route-resume/system-pause-during-the-loss",
+        "route-resume/press-after-the-loss",
+        "route-resume/play-press-after-the-loss",
+        "route-resume/unknown-car",
+        "route-resume/bluetooth-arm-off",
+        "route-resume/bluetooth-arm-on",
+        "route-resume/headphones",
+        "route-resume/lost-25h-ago",
+        "route-resume/different-car-back",
+        "route-resume/second-back-after-a-resume",
+        "route-resume/back-while-load-pending",
+        "route-resume/lost-again-after-a-resume",
+        "route-resume/lost-while-already-paused",
+        "route-resume/lost-after-a-call",
+        "route-resume/unknown-event"
       ]
     },
     "rows": {

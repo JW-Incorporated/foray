@@ -31,7 +31,9 @@ enum EngineBoot {
     /// cellular link. The `deck` rows with `lane=preview` carry the load's
     /// time to ready (`elapsedMs`) and any `deadlineExceeded`; the first
     /// week of rendered-voice previews settles it.
-    static let previewLoadDeadlineSec: Double = 6 // MEASURE: NE-47, from the lane=preview time-to-ready rows.
+    /// Both deadline classes (NE-38) get it on the preview deck: a preview
+    /// is a preview whatever class its load names. Table: measurements §12.
+    static let previewLoadDeadlineSec: Double = 6 // MEASURE: verdict=preview-load (NE-47). Rows: deck kind=ready elapsedMs lane=preview, deck kind=deadline lane=preview, audition kind=fallback reason=timeout.
 
     /// Build the process's engine in native mode. The `build` row is written
     /// FIRST, before any seam writes its own (BuildRow's rule), so every
@@ -91,7 +93,8 @@ enum EngineBoot {
         // deck's. A preview is a few seconds of a voice: a load that has not
         // answered inside `previewLoadDeadlineSec` is spoken instead.
         let preview = AVDeck(config: AVDeck.Config(
-            loadDeadlineSec: EngineBoot.previewLoadDeadlineSec, sessionIsActive: sessionIsActive,
+            loadDeadlineSec: EngineBoot.previewLoadDeadlineSec, lineLoadDeadlineSec: EngineBoot.previewLoadDeadlineSec,
+            sessionIsActive: sessionIsActive,
             diag: { store.diag(DiagEntry(kind: $0.kind, fields: $0.fields + [JSONMember("lane", .string("preview"))])) },
             reusesSameSource: false))
         let seams = EngineSeams(

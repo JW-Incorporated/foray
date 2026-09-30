@@ -367,6 +367,16 @@ public final class EngineConstants {
         public static final String TTS = "tts";
     }
 
+    /** {@code player/route-resume.js} */
+    public static final class RouteResume {
+        private RouteResume() {}
+
+        /** {@code ROUTE_RESUME_BLUETOOTH_DEFAULT} */
+        public static final boolean ROUTE_RESUME_BLUETOOTH_DEFAULT = false;
+        /** {@code ROUTE_RESUME_MAX_LOST_SEC} */
+        public static final double ROUTE_RESUME_MAX_LOST_SEC = 86400.0;
+    }
+
     /** {@code player/seam-gap.js} */
     public static final class SeamGap {
         private SeamGap() {}

@@ -358,6 +358,10 @@
     "D2: keepPitch sets the prefixed flags only where the engine has them, and never throws": {
       "reason": "dom-only",
       "why": "`preservesPitch` and its vendor-prefixed flags on the HTMLMediaElement. AVDeck keeps pitch at every rate by setting `audioTimePitchAlgorithm = .timeDomain` on every item it makes (AVDeck.load)."
+    },
+    "NE-45j: the web lane prepares nothing across a narration seam — prefetch stays parked": {
+      "reason": "webview-only",
+      "why": "Pins that the WEB lane stays parked: the production HtmlAudioBackend (no second element) is never asked to prefetch across a narration seam, from a window or from the line-start warm. The native standby deck does prepare there; that rule is the prepare-narration family (NE-45s)."
     }
   },
   "interlude": {
@@ -817,7 +821,7 @@
       "reason": "webview-only",
       "why": "Section 15 is the web lane's narration warm: HtmlAudioBackend.warmNarration fetches the next rendered file on a spare muted element that is never played or promoted. queue-manager.js checks the capability and says so: a backend without it (every fake, the native engine) behaves exactly as before. The engine's own prefetch is NE-32's DeckPair standby, pinned by the deck and prepare families and DeckPairTests."
     },
-    "§15: a skip past the warmed line cancels it, and the new next line is warmed": {
+    "§15: a jump past the warmed line cancels it, and the new next line is warmed": {
       "reason": "webview-only",
       "why": "Section 15 is the web lane's narration warm: HtmlAudioBackend.warmNarration fetches the next rendered file on a spare muted element that is never played or promoted. queue-manager.js checks the capability and says so: a backend without it (every fake, the native engine) behaves exactly as before. The engine's own prefetch is NE-32's DeckPair standby, pinned by the deck and prepare families and DeckPairTests."
     },
@@ -850,6 +854,12 @@
     "reduce never mutates the state it is given": {
       "reason": "js-module-shape",
       "why": "Pins that the JS reducer leaves its argument object untouched. The Swift PlayerQueueState is an enum value type passed by value, so a reducer that mutates its input cannot be written; every transition's output is pinned by the queue-state family instead."
+    }
+  },
+  "route-resume": {
+    "neither queue-manager.js nor client.js imports route-resume.js: the JS lanes never resume on a reconnect": {
+      "reason": "js-module-shape",
+      "why": "Pins that player/queue-manager.js and player/client.js do not import or name route-resume.js, so the web and Android JS lanes keep 'a reconnect never resumes' (player-core-10); the native engines have neither file, and their port of the rule is checked by the route-resume family instead."
     }
   },
   "seam-gap": {

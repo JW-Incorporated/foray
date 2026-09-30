@@ -56,6 +56,9 @@ export const COVERED_SUITES = Object.freeze({
   "tts-bridge": { card: "NE-31j", family: "speech-rate" },
   "foray-playback": { card: "NE-30j", family: "manager-foray" },
   "transport-reconcile": { card: "NE-21", family: "manager-episode" },
+  /* NE-38rj: the route-resume reference (founder Q5), fixture-first like
+     transport-policy. Owed to NE-38rs (iOS) and, on the JVM, to A-61. */
+  "route-resume": { card: "NE-38rs", family: "route-resume" },
 });
 
 /* ---------- JS-only facade mappings (plan §6.5; NE-21) ----------
@@ -118,8 +121,9 @@ export function facadeProblems(root, facades) {
 /** The closed exclusion reasons (plan §6.1). */
 export const EXCLUSION_REASONS = Object.freeze(["webview-only", "dom-only", "text-pin", "js-module-shape"]);
 
-/** A card id as the deck spells them: NE-03, NE-07j, NE-14s, NE-16g, NE-26r. */
-export const CARD_RE = /^NE-\d{2}[a-z]?$/;
+/** A card id as the deck spells them: NE-03, NE-07j, NE-14s, NE-16g, NE-26r,
+    and the M3 re-plan's two-letter halves, NE-38rj / NE-38rs (plan §14 Track M3). */
+export const CARD_RE = /^NE-\d{2}[a-z]{0,2}$/;
 
 export const suiteFile = (stem) => `player/${stem}.test.js`;
 

@@ -299,10 +299,10 @@ final class DeckPairSeamTests: XCTestCase {
                     seams[index - 1].playingAtMs = now
                     seams[index - 1].rateAtPlaying = decks[pair.activeIndex].player.rate
                 }
-            case let .failed(t, message):
+            case let .failed(t, message, _):
                 failures.append("load \(t) failed: \(message)")
                 done = true
-            case let .deadlineExceeded(t, afterMs):
+            case let .deadlineExceeded(t, afterMs, _):
                 failures.append("load \(t) missed its deadline after \(afterMs) ms")
                 done = true
             default:

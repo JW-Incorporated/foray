@@ -282,7 +282,7 @@ final class EngineBridgeTests: XCTestCase {
         accepted(.sendResponse, reply)
         XCTAssertEqual(reply["ok"], .bool(true), JSWriter.stringify(reply))
         XCTAssertEqual(rig.world.session.activateCalls, 1)
-        guard case let .load(token, _, url, startSec, _)? = preview.sent.first else {
+        guard case let .load(token, _, url, startSec, _, _)? = preview.sent.first else {
             return XCTFail("no preview load: \(preview.sent)")
         }
         XCTAssertEqual(url, Self.previewURL)

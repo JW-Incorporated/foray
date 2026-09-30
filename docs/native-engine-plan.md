@@ -1794,7 +1794,7 @@ Read first: `CLAUDE.md`, this deck, the Tier 2 requirements, `docs/ios-native-pl
 - **Files:**
   - `player/route-resume.js` (new and pure). It is **not wired** into `queue-manager.js` or `client.js`: the web and Android JS lanes keep "a reconnect never resumes" (player-core-10).
   - `player/route-resume.test.js`
-  - `player/parity/fixtures/route-resume/*.json`, `manifest.json`, `capabilities.json` (charged to `episode`), `coverage.js` `COVERED_SUITES`
+  - `player/parity/fixtures/route-resume/*.json`, `manifest.json`, `capabilities.json` (an `episode` rule, but charged to the unadvertised `remainder` gate while it is owed: the M2 build advertises `episode`, which may owe nothing; NE-38rs moves it), `coverage.js` `COVERED_SUITES`
   - the books: `swift-pending.json` (`--port-card NE-38rs`) and `jvm-pending.json` (`families["route-resume"] = "A-61"`, `--jvm-card A-61`)
   - `tools/parity/gen-constants.mjs` (the two constants)
   - the floor in `test/suite-integrity.test.js`
@@ -1845,6 +1845,7 @@ Read first: `CLAUDE.md`, this deck, the Tier 2 requirements, `docs/ios-native-pl
   - `Engine/EngineStore.swift`: a private key, `ForayEngine.knownRoutes`
   - `mobile/ENGINE_DEFAULT.json` and the `EngineConfig` flag `routeResumeBluetooth: false`
   - the `ForayEngineParity` runner for `route-resume`
+  - `player/parity/capabilities.json`: move `route-resume` from `remainder` to `episode` (NE-38rj parked it there while owed), and the NE-38rj test in `coverage.test.js` with it
   - XCTests: `RouteResumeTests`, `AudioSessionOwnerTests`
 - **Ask:**
   - Replace the current branch with the policy.
@@ -1856,7 +1857,9 @@ Read first: `CLAUDE.md`, this deck, the Tier 2 requirements, `docs/ios-native-pl
 
     Never a name or a raw UID (DiagGate).
   - A resume is `begin(.routeResume, source: .autoresume)`, with grace, like a car's press.
+  - `lostSec` is measured on the wall clock (`Date()`), never on uptime (`ProcessInfo.systemUptime`, `DispatchTime`), which stops while the phone sleeps: a phone asleep overnight in a parked car would otherwise read a two-day loss as minutes old (route-resume.js, THE CLOCK). A negative age is refused.
   - Burn down `route-resume`. Opens with `hold`.
+  - The reference is `routeResumeDecision` plus the reducer `routeResumeStep` (replayed by `routeResumeReplay` in the `sequences` fixtures): the reducer is how `pausedBy` and the one-resume-per-loss rule are tracked, so `EngineCore` tracks them the same way.
 - **Acceptance:**
   - `route-resume` passes in the Swift runner, with nothing pending.
   - XCTests:
@@ -1877,7 +1880,7 @@ Read first: `CLAUDE.md`, this deck, the Tier 2 requirements, `docs/ios-native-pl
   - `player/queue-manager.js` `_warmNextSegment`: `warmsAcross` replaces the `seamGapSec(seam) > 0` gate
   - `player/seam-gap.js`: its "warming follows the beat" coupling note now points at `deck-policy.js`
   - `player/parity/reference-engine.js`: `WarmingBackend` warms on a natural end too
-  - `player/parity/fixtures/prepare/*`
+  - `player/parity/fixtures/prepare/*` — as built, a sibling family `player/parity/fixtures/prepare-narration/` (`seams.json`: authored engine seams; `policy.json`: `warmsAcross` and the duration window). `prepare` is charged to `foray`, which the M2 build advertises and which may owe nothing, so the new ids could not be pending there; the family is parked under the unadvertised `remainder` gate, keeps its `n.*` tokens (`NATIVE_TOKEN_FAMILIES`, JS, Swift and Java), and NE-45s moves it to `foray` or folds it into `prepare`. A same-source prepare on the standby is written `n.prepare-seek:<id>@<s>`.
   - `queue-manager.test.js`: the two warming tests that assert the old rule ("a bridged seam is not warmed", "warming follows the SAME rule as the beat") are re-authored to the new rule
   - `deck-policy.test.js`
   - the books: `swift-pending.json` (`--port-card NE-45s`) and `jvm-pending.json` (`prepare` stays owed whole to A-25; once A-25 has ported it, new ids are `cases` owed to A-62)
@@ -1909,7 +1912,7 @@ Read first: `CLAUDE.md`, this deck, the Tier 2 requirements, `docs/ios-native-pl
   - XCTests: `DeckPairTests`, and `ForayCatchUpTests` extended
   - the Swift `prepare` runner
 - **Ask:**
-  - Port NE-45j. A rendered line becomes an ordinary deck item from end to end:
+  - Port NE-45j (`prepare-narration`: burn it down, then move it from `remainder` to `foray` in `capabilities.json`, with the NE-45j test in `coverage.test.js`). A rendered line becomes an ordinary deck item from end to end:
     - it is prepared on the standby and swaps like a clip;
     - its seam row is packed like a clip's (`seam from=clip|line to=clip|line prepare=hit|miss|none`);
     - its load uses the `line` deadline class;

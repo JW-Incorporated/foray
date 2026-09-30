@@ -172,6 +172,71 @@ final class ForayCatchUpTests: XCTestCase {
         XCTAssertEqual(host.core.state.stateType, "interrupted", "and nothing else moves")
     }
 
+    // MARK: - NE-38: the load's P-13 deadline class
+
+    /// The core names the class of every load it issues: a rendered line's
+    /// own load, and a rendered bridge's, are `line` (8 s on the deck); a clip
+    /// is `clip` (20 s); and the prepare of a clip is `clip`. A spoken line
+    /// never reaches a deck at all.
+    /// TO SEE IT FAIL: issue `.load` without `deadlineClass` in `load(_:)` or
+    /// `playTransitionBridge`.
+    func testEveryLoadNamesItsDeadlineClass() throws {
+        func classes(_ out: [EngineCommand]) -> [String] {
+            out.compactMap {
+                switch $0 {
+                case let .deck(.load(_, itemId, _, _, _, deadlineClass)): return "load:\(itemId):\(deadlineClass.rawValue)"
+                case let .deck(.prepare(itemId, _, _, deadlineClass)): return "prepare:\(itemId):\(deadlineClass.rawValue)"
+                default: return nil
+                }
+            }
+        }
+        var out: [EngineCommand] = []
+        _ = ForayCatchUpTests.host([ForayCatchUpTests.rendered(0), ForayCatchUpTests.clip(1, "a", 100, 200)], out: &out)
+        XCTAssertEqual(classes(out), ["load:f1#0:line"])
+
+        var host = ForayCatchUpTests.host([ForayCatchUpTests.clip(0, "a", 100, 200), ForayCatchUpTests.rendered(1),
+                                           ForayCatchUpTests.clip(2, "b", 300, 400)], out: &out)
+        XCTAssertEqual(classes(out), ["load:f1#0:clip"])
+        host.land()
+        host.confirm()
+        XCTAssertEqual(classes(ForayCatchUpTests.endClip(&host)), ["load:f1#1:line"], "a rendered bridge is a line")
+
+        var clips = Host(config: ForayTapeTests.tape)
+        clips.send(try EngineCoreTests.command("playForay", ForayTapeTests.forayArgs(ForayTapeTests.twoClips)))
+        clips.land()
+        clips.confirm()
+        let window = clips.send(.deck(.prepareWindow(token: clips.lastLoad ?? 0)))
+        XCTAssertEqual(classes(window), ["prepare:f1#1:clip"], "\(window)")
+
+        XCTAssertEqual(DeckDeadlineClass(ForayCatchUpTests.rendered(3)), .line)
+        XCTAssertEqual(DeckDeadlineClass(ForayCatchUpTests.clip(3, "c", 0, 10)), .clip)
+    }
+
+    /// NE-38: a rendered line whose load is still pending at the line's 8 s
+    /// (the deck's `.deadlineExceeded`, class `line`) is read aloud from its
+    /// script on a FRESH token, and the `narration kind=fallback` row says
+    /// `reason=timeout`. The deck's half (the 8 s, the `class=line` row) is
+    /// AVDeckTests `testARenderedLineThatNeverLoadsHitsTheLineDeadlineAtEightSeconds`.
+    /// TO SEE IT FAIL: speak the fallback under the file's token.
+    func testARenderedLinesDeadlineFallsBackToSpeechOnAFreshToken() {
+        var out: [EngineCommand] = []
+        var host = ForayCatchUpTests.host([ForayCatchUpTests.rendered(0), ForayCatchUpTests.clip(1, "a", 100, 200)], out: &out)
+        let fileToken = host.lastLoad ?? 0
+        XCTAssertTrue(out.contains { if case .deck(.load(fileToken, _, _, _, _, .line)) = $0 { return true }; return false },
+                      "\(out)")
+        let fell = host.send(.deck(.deadlineExceeded(token: fileToken, afterMs: 8_000)), after: 8_000)
+        guard let seq = NarrationOverlayTests.spokenSeq(fell) else { return XCTFail("no fallback speak: \(fell)") }
+        XCTAssertEqual(NarrationOverlayTests.speaks(fell).first,
+                       .speak(seq: seq, text: "the line read aloud", voiceId: nil, utteranceRate: 1))
+        XCTAssertGreaterThan(host.core.state.lastToken, fileToken, "the spoken line rides on a fresh token")
+        XCTAssertNotEqual(host.core.state.pendingLoad?.token, fileToken)
+        XCTAssertTrue(fell.contains {
+            guard case let .diag(entry) = $0, entry.kind == "narration" else { return false }
+            return entry[field: "kind"] == .string("fallback") && entry[field: "reason"] == .string("timeout")
+        }, "\(fell)")
+        XCTAssertFalse(fell.contains { if case .emit(.error) = $0 { return true }; return false }, "\(fell)")
+    }
+
     // MARK: - §14: late reports about a file already given up on
 
     /// queue-manager.js §14 "a LATE error from a file that timed out does not

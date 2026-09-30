@@ -50,7 +50,8 @@ import {
 import { PlayerQueueManager } from "../queue-manager.js";
 import { PositionStore } from "../position-store.js";
 import { OpLog, FakeBackend, MemoryStore, fakeTts, fakePreview } from "./fakes.js";
-import { warmOffset, prefetchDecision, warmPromotion } from "../deck-policy.js";
+import { warmOffset, prefetchDecision, warmPromotion, prefetchWindowOpens } from "../deck-policy.js";
+import { PREFETCH_LEAD_SEC } from "../html-audio-backend.js";
 import { structuralCheck } from "../foray-structure.js";
 import { segmentAtElapsed, forayElapsed } from "../foray-resolve.js";
 import { forayRuntimeSec } from "../foray-queue.js";
@@ -78,7 +79,7 @@ const clone = (v) => (v === undefined ? undefined : JSON.parse(JSON.stringify(v)
 
 /**
  * FakeBackend with the warm handover. Same tokens as FakeBackend (the manager
- * suites' grammar), plus the native-only `n.prepare:<id>@<s>` when a segment is
+ * suites' grammar), plus the native-only `n.prepare:<id>@<s>` when an item is
  * warmed and `n.handover:<id>@<s>` when a load finds it warm.
  *
  * THE DECISIONS ARE THE REAL ONES (NE-30j). Whether to warm and whether a warm
@@ -88,12 +89,34 @@ const clone = (v) => (v === undefined ? undefined : JSON.parse(JSON.stringify(v)
  * same-source seek covers it), and a load is handed over only for the SOURCE
  * and in-point that were warmed. A warm load here is ready at once: there is no
  * network, so the race is always won; losing it is the deck family's case.
+ *
+ * THE STANDBY DECK REMEMBERS ITS SOURCE (NE-45j). A handover demotes the
+ * outgoing deck to standby WITHOUT dropping what it holds (`handoverSteps`:
+ * the buffer is kept), so across clip -> line -> clip in ONE episode the
+ * standby still holds that episode when the line's window opens. Preparing
+ * the second clip there is a same-source SEEK on the standby, not a fetch —
+ * DeckPair sends the standby a load, and AVDeck's `sameSourceIsSeek` turns it
+ * into a seek — and it is written `n.prepare-seek:<id>@<s>`.
+ *
+ * THE WINDOW (NE-45j). `window` is the deck's playhead watch firing: it opens
+ * for an armed out-point and, since NE-45j, for an item with none (a rendered
+ * line, an episode's natural end) from its duration. And an item shorter than
+ * `PREFETCH_LEAD_SEC` is inside its window from its first tick, so `play()`
+ * asks deck-policy.js `prefetchWindowOpens` once per load: such an item warms
+ * at its start without a scenario having to say so.
  */
 export class WarmingBackend extends FakeBackend {
   constructor(opts = {}) {
     super(opts);
     this._warm = null;
     this._currentUrl = null;
+    /** The source the standby deck holds: what it last prepared, or what the
+        last handover demoted onto it. */
+    this._standbyUrl = null;
+    /** One automatic window check per load (the `alreadyOpened` input). */
+    this._loadCount = 0;
+    this._windowCheckedFor = null;
+    this.rate = 1;
     /** Assigned by the manager when `prefetch` exists (queue-manager.js §11). */
     this.onPrefetchWindow = null;
     this.ended = false;
@@ -105,8 +128,10 @@ export class WarmingBackend extends FakeBackend {
     });
     if (decision === "already") { this._warm.id = item.id; return true; }
     if (decision !== "start") return false;
+    const seek = this._standbyUrl === item.audio_url;
     this._warm = { id: item.id, url: item.audio_url, offset, ready: true, failed: false };
-    this.log.push(`n.prepare:${item.id}@${offset}`);
+    this._standbyUrl = item.audio_url;
+    this.log.push(`${seek ? "n.prepare-seek" : "n.prepare"}:${item.id}@${offset}`);
     return true;
   }
   async load(item, opts = {}) {
@@ -114,15 +139,42 @@ export class WarmingBackend extends FakeBackend {
     const warm = this._warm;
     this._warm = null;
     const verdict = warmPromotion({ warm, url: item?.audio_url, offsetSec: offset, canPlay: true, atSec: offset });
-    if (verdict === "promote") this.log.push(`n.handover:${item.id}@${offset}`);
+    if (verdict === "promote") {
+      this.log.push(`n.handover:${item.id}@${offset}`);
+      // The roles swap: the outgoing deck, and what it holds, is the standby.
+      this._standbyUrl = this._currentUrl;
+    }
     this.ended = false;
     this._currentUrl = item?.audio_url ?? null;
+    this._loadCount++;
     return super.load(item, opts);
   }
-  /** The playhead is PREFETCH_LEAD_SEC from an armed out-point while audible:
-      what html-audio-backend.js's `_maybeOpenPrefetchWindow` answers. */
+  setRate(rate) {
+    if (typeof rate === "number" && Number.isFinite(rate) && rate > 0) this.rate = rate;
+    super.setRate(rate);
+  }
+  play() {
+    super.play();
+    this._windowAtStart();
+  }
+  /** The first tick of a load: an item already inside its window (shorter
+      than the lead, or started within it) opens it now, once. */
+  _windowAtStart() {
+    if (this._windowCheckedFor === this._loadCount) return;
+    this._windowCheckedFor = this._loadCount;
+    const opens = prefetchWindowOpens({
+      available: true, outPointSec: this.outPoint, armed: this.outPoint != null, paused: this.paused,
+      atSec: this.currentTime, rate: this.rate, leadSec: PREFETCH_LEAD_SEC, durationSec: this.duration,
+    });
+    if (opens) this.onPrefetchWindow?.();
+  }
+  /** The playhead is PREFETCH_LEAD_SEC from the boundary while audible: what
+      html-audio-backend.js's `_maybeOpenPrefetchWindow` answers. The boundary
+      is an armed out-point or, for an item with none, its duration (NE-45j). */
   openPrefetchWindow() {
-    if (this.outPoint == null || this.paused) return false;
+    if (this.paused) return false;
+    const duration = this.duration;
+    if (this.outPoint == null && !(Number.isFinite(duration) && duration > 0)) return false;
     this.onPrefetchWindow?.();
     return true;
   }
