@@ -77,12 +77,34 @@ public class ParityBooksTest {
         return null;
     }
 
-    /** A family owed whole, with at least one case. */
-    private static String owedFamily(ParityData data) {
-        for (String family : data.pendingFamilies.keySet()) {
-            if (data.manifest.containsKey(family) && !data.manifest.get(family).isEmpty()) return family;
+    /** A tree whose books owe {@code family} whole (with at least one case), and the runners that do not run it. */
+    private record Owed(ParityData data, String family, List<FamilyRunner> runners) {
+        SuiteReport run() {
+            return new ParitySuite(data, runners).run();
         }
-        throw new AssertionError("precondition: jvm-pending.json owes no recorded family");
+    }
+
+    /** The family A-41 ported last: un-ported in memory when the real books owe nothing recorded. */
+    private static final String UNPORTED = "lexicon";
+
+    /**
+     * A family owed whole, with at least one case. Since A-41 the JVM runs every recorded family, so
+     * when the real books owe none, one it runs is un-ported IN MEMORY (its runner dropped, its "runs"
+     * entry moved to the families owed): a porting card's before state.
+     */
+    private static Owed owed() {
+        ParityData data = fresh();
+        for (String family : data.pendingFamilies.keySet()) {
+            if (data.manifest.containsKey(family) && !data.manifest.get(family).isEmpty()) return new Owed(data, family, JvmFamilies.ALL);
+        }
+        assertTrue("precondition: the JVM runs " + UNPORTED, data.runs.remove(UNPORTED));
+        data.pendingFamilies.put(UNPORTED, "A-41");
+        List<FamilyRunner> runners = new ArrayList<>();
+        for (FamilyRunner r : JvmFamilies.ALL) if (!r.family().equals(UNPORTED)) runners.add(r);
+        Owed o = new Owed(data, UNPORTED, runners);
+        SuiteReport balanced = o.run();
+        assertTrue("precondition: the un-ported books balance: " + String.join("; ", balanced.problems()), balanced.ok());
+        return o;
     }
 
     @Test
@@ -154,10 +176,11 @@ public class ParityBooksTest {
     @Test
     public void anIdNeitherRunNorOwedIsUnaccountedAndRed() {
         // What a JVM card that registers nothing but deletes its pending entry would do.
-        ParityData data = fresh();
-        String family = owedFamily(data);
+        Owed o = owed();
+        ParityData data = o.data();
+        String family = o.family();
         data.pendingFamilies.remove(family);
-        SuiteReport report = run(data);
+        SuiteReport report = o.run();
         String id = data.manifest.get(family).get(0);
         assertEquals(Outcome.UNACCOUNTED, report.result(id).outcome());
         assertEquals(data.manifest.get(family).size(), report.summary(family).failed());
@@ -166,13 +189,14 @@ public class ParityBooksTest {
 
     @Test
     public void pendingEntriesMustNameRealThingsWithAndroidCards() {
-        ParityData data = fresh();
-        String owed = owedFamily(data);
+        Owed o = owed();
+        ParityData data = o.data();
+        String owed = o.family();
         data.pendingFamilies.put("no-such-family", "A-23");
         data.pendingCases.put("no-such/case", "A-23");
         data.pendingCases.put(data.manifest.get(owed).get(0), "A-24");
         data.pendingFamilies.put(owed, "NE-05");
-        SuiteReport report = run(data);
+        SuiteReport report = o.run();
         assertTrue(hasProblem(report, "owes family no-such-family, which neither manifest.json nor unported.json names"));
         assertTrue(hasProblem(report, "owes no-such/case, which names no fixture case"));
         assertTrue(hasProblem(report, "and its whole family " + owed));
@@ -224,10 +248,10 @@ public class ParityBooksTest {
         assertTrue(hasProblem(a, "registered for family " + NUMBER_FORMAT + ", but jvm-pending.json \"runs\" does not list it"));
         assertFalse(a.ok());
 
-        ParityData extra = fresh();
-        String owed = owedFamily(extra);
-        extra.runs.add(owed);
-        SuiteReport b = run(extra);
+        Owed o = owed();
+        String owed = o.family();
+        o.data().runs.add(owed);
+        SuiteReport b = o.run();
         assertTrue(hasProblem(b, "\"runs\" lists family " + owed + ", but no JVM runner is registered for it"));
         assertFalse(b.ok());
     }

@@ -761,6 +761,35 @@ Rejected alternatives:
 - **Acceptance:** The narration, interlude and tts-bridge parity families are green. A-05 (k) is green in native
   mode.
 - **Device check:** airplane-mode fallback on the Pixel.
+- **Status (2026-09-30): done in its PR (#921), evidence in `STATE.md` (A-41 entry) and
+  `docs/android-emulator-measurements.md` §14.**
+  - **Narration Phase 4 was not waited on.** That phase is the on-device model's removal (A-10's trigger). It is
+    not a prerequisite for playing rendered files, and iOS M2 shipped rendered narration without it. Kokoro/ORT
+    stay (A-10).
+  - **The books.** `default-voice`, `lexicon` and `speech-rate` (the speech families NE-33 recorded) run on the
+    JVM (`SpeechRules`, `SpeechFamilies`). `interlude` was already A-40's. `jvm-pending.json` now owes only
+    `manager-remainder` (A-63), which has no fixtures on main.
+  - **Rendered narration is a file.** The core already loaded a rendered line on the deck like a segment. The
+    emulator now shows it: a bundled `.m4a` line plays as the deck's audible item.
+  - **The TTS fallback seam.** `SpeechNarrator` wraps Android `TextToSpeech` (`TtsOutput`, in the service's
+    process) behind `EngineSeams.Speaking`. It speaks three things: a spoken line, a rendered line whose file
+    failed or missed its deadline (§14), and the audition.
+    - Voices follow `SpeechRules`: the requested voice, else the Samantha rule, else the synthesiser's best
+      offline voice.
+    - Hard terms are marked up with the bundled lexicon, the legacy lane's SSML.
+    - Android has no pause. A resume continues from the last word boundary (`continued`), or re-speaks the line
+      (`fromStart`).
+  - **Interludes.** `InterludePlayer` (the NE-34 rules) runs over a `MediaPlayer` on the bundled, hash-pinned
+    jingle. The service turns `interludeAvailable` on only when the asset shipped. foray-audio's `build.gradle`
+    ships `player/assets/` and the lexicon directory in place, so there is one copy of each.
+  - **The emulator** (run 36754688003, all three legs green):
+    - `foray-seams` now gates the silence, because the jingle is sound. Six jingles, silence p95 507 ms.
+    - (k) runs the engine's own Foray in airplane mode:
+      - the bundled line was heard as a file;
+      - the network line fell back at its bridge 3.1 s after the out-point;
+      - the engine's TTS spoke its script (`com.google.android.tts`);
+      - the Foray landed on its last clip.
+  - **Not executed:** the device check (D-A3).
 
 #### A-42 · A2 flip: native Forays on Android — **S**
 - **Depends on:** A-41, a device pass, and a founder car drive.

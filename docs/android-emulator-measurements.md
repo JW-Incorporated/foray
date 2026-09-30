@@ -860,3 +860,49 @@ with every seam crossed and the pair swapping at least once. All three legs are 
   - A spoken bridge. The host has no synthesiser until A-41, so it answers a spoken line `failed` and the core steps
     over it.
   - The device check, a locked Foray on the Pixel (D-A3). No device passes happen until A-42.
+
+## 14. A-41: rendered narration, the TTS fallback and the jingle, in the engine
+
+Run 36754688003, head `ca843873`. All three legs are green. The native leg (job 110021817120) took 23 min 50 s.
+
+Card A-41 of `docs/plans/android-assessment.md` gives the native engine two things:
+- its own synthesiser: `SpeechNarrator` over Android `TextToSpeech`;
+- its own jingle player: `InterludePlayer` over a `MediaPlayer` on the bundled, SHA-256-pinned jingle.
+
+The APK carries both bundled files at the assets root: `interlude-placeholder.wav` (529,244 bytes) and
+`hard-terms.json`.
+
+- **`foray-seams`, now with the jingle.** It is the same 8-segment Foray as §13, on Home with the screen off.
+  - Six of the seven seams cross sources, so each carries the jingle. Each jingle sounded for 3072–3091 ms and ended
+    on its own (`interlude kind=ended why=ended`). No jingle hit the 4.5 s ceiling.
+  - The seam inside one source was `skipped`, as the rule says.
+  - The raw gap from the out-point to the next segment playing: median 3084 ms, p95 3101 ms. That is the jingle.
+  - The **silence**, which is the gap less the jingle's span: min 9, median 10, p95 **507** ms. The p95 is the
+    no-jingle seam, whose 0.5 s beat is its whole gap. The gate is on the silence, and it is still ≤ 1 s.
+  - With the jingle, a seam's silence is about 10 ms. The standby deck is warm long before the jingle ends, so
+    the jingle's end starts the segment at once.
+  - All 7 seams were prepared. The pair ended at `{active: 0, swaps: 10}`, and the device was `Asleep` throughout.
+- **(k) through the engine.** This is the third half of the airplane scenario, still in airplane mode. The debug
+  driver's `foray` hands the engine five items: a 6 s clip, a rendered line on a bundled `.m4a` (`public/a05/`), a
+  6 s clip, a rendered line on the network, and a clip to land on.
+  - The bundled rendered line attached at the clip's out-point and was playing 146 ms later. It played its 5 s
+    as the deck's audible item: **a file**, not speech.
+  - The line to the next clip carried the jingle (3.17 s).
+  - The network line failed at the deck (`ERROR_CODE_IO_NETWORK_CONNECTION_FAILED`). The core wrote
+    `narration kind=fallback reason=failed at=bridge` **3057 ms** after the clip before it ran out. The gate is
+    25 s.
+  - The engine's synthesiser started speaking the script 1.8 s later (`speaker kind=line-started`,
+    `com.google.android.tts`), 4.9 s after the out-point. The line finished (`narration kind=ended
+    why=finished`), and the jingle played.
+  - The Foray landed on its last clip, playing, in the same process.
+  - The service's dump said `speaker: {ready: true, engine: com.google.android.tts}`.
+- **(k)'s other halves are unchanged.** The engine stopped the unreachable episode 3094 ms after its attach. On
+  the page's half, the page's player spoke its line 36 ms after the out-point.
+- **The JS legs** (API 34, job 110021816658; API 36, job 110021817001) are green.
+- **Repeated** on head `df182eaf` (run 36758069597, native job 110033292766), with all three legs green.
+  - `foray-seams`: silence median 7 ms, p95 503 ms; raw gap p95 3098 ms; six jingles of 3077–3092 ms.
+  - (k): the fallback 3043 ms after the out-point, spoken 4394 ms after it; the bundled line heard as a file; the
+    Foray landed.
+- **Not measured here:** the device check (the airplane-mode fallback on the Pixel, D-A3), and whether Android's
+  engine honours the lexicon's `<phoneme>` markup. Android documents no phoneme attribute. The only authored IPA
+  is `sake`.

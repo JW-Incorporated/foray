@@ -139,9 +139,19 @@ public final class JvmFamilies {
     public static final FamilyRunner MANAGER_FORAY = ForayTapeFamilies.managerForay();
     public static final FamilyRunner PREPARE = ForayTapeFamilies.prepare();
 
+    /*
+     * A-41: the narrator's rules (SpeechRules, main code): the default voice (the founder's Samantha
+     * ruling, player/default-voice.js), the pronunciation lexicon's matcher (foray-tts.js
+     * buildIpaOverrides), and what reaches the synthesiser (the text, the voice, 1x whatever the
+     * listener's speed) through EngineCore with the Foray tape on.
+     */
+    public static final FamilyRunner DEFAULT_VOICE = SpeechFamilies.defaultVoice();
+    public static final FamilyRunner LEXICON = SpeechFamilies.lexicon();
+    public static final FamilyRunner SPEECH_RATE = SpeechFamilies.speechRate();
+
     /** Every registered runner. */
     public static final List<FamilyRunner> ALL = List.of(COMPARE, NUMBER_FORMAT, QUEUE_STATE, RATE, RESUME_RULES, TRANSPORT, ROWS,
             SESSION, SESSION_INVARIANT, MEDIA_EPISODE, MANAGER_EPISODE, DECK_EPISODE, OUTPOINT, DECK, CONTRACT, SNAPSHOT, HANDSHAKE,
             DIAG_TOKENS, ENGINE_MODE, SEAM_GAP, SEEK_POLICY, INTERLUDE, FORAY_CLOCK, FORAY_STRUCTURE, FORAY_PROGRESS, MEDIA,
-            MANAGER_FORAY, PREPARE);
+            MANAGER_FORAY, PREPARE, DEFAULT_VOICE, LEXICON, SPEECH_RATE);
 }

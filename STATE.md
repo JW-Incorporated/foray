@@ -7,6 +7,60 @@ docs/. Completed workstreams move to their plan doc's retro section.
 
 ## Active workstreams
 
+### 2026-09-30 — `android/a-41-rendered-narration`: A-41, rendered narration, the TTS fallback seam and interludes (Android)
+
+Owned: `SpeechRules` (JVM core) and the JVM speech families; in foray-audio, `SpeechNarrator`/`TtsOutput`,
+`InterludePlayer`/`MediaJingle`, `SpeechLexicon`, `EngineSeams`' speaker and jingle seams, and the host's and the
+service's wiring; the module's bundled assets in `build.gradle`; and the native leg's `foray-seams` silence gate
+and (k) engine Foray. Card A-41 of `docs/plans/android-assessment.md` (Track A2), PR #921, into `android/native`.
+
+**What changed.**
+- **The books.** `default-voice`, `lexicon` and `speech-rate` run on the JVM. `jvm-pending.json` owes only
+  `manager-remainder` (A-63). `record.test.mjs` and `ParityBooksTest` build their "owed whole" precondition in a
+  scratch or in-memory tree, because no recorded family is owed any more.
+- **The narrator.** Android `TextToSpeech` sits behind the engine (`EngineSeams.Speaking`). It speaks a spoken line,
+  a rendered line whose file failed (§14), and the audition. A rendered line whose file plays is never spoken: it
+  is a file on the deck.
+- **The jingle.** It is on for Forays: the service's core has `interludeAvailable` when the pinned asset shipped.
+  The jingle and the lexicon ship from the repo in place through foray-audio's `build.gradle`. `android-build.yml`
+  checks both are in the APK and hashes the jingle.
+- **Narration Phase 4 was not waited on.** It is A-10's trigger (Kokoro/ORT removal), not a prerequisite for
+  rendered files. Kokoro/ORT stay.
+
+**Executed locally:**
+- JDK 21 `javac` + JUnit of `:foray-engine-core-jvm` (no Gradle): 117 of 117. Every family is 0 owed, and the three
+  speech families pass all 64 cases.
+- The foray-audio compile (main, debug, tests) against android-36 and the Media3 jars, and its plain-JVM
+  narrator/jingle/host tests: 27 of 27.
+- `record.mjs --check`: 1836 match.
+- `node --test`:
+  - the native runner: 41;
+  - the record tests: 22;
+  - `interlude-asset`: 5;
+  - shell-invariants: 128 of 129. The one failure is the service-worker test "a phone browsing the real website",
+    which also fails on this Windows machine without this change.
+
+**Executed in CI** (head `ca843873`):
+- android-playback run 36754688003: all three legs green.
+  - `foray-seams`: silence p95 507 ms, six jingles of 3.07–3.09 s.
+  - (k) engine Foray: the bundled line was heard as a file, the network line fell back in 3.1 s, the engine's TTS
+    spoke it, and the Foray landed on its last clip.
+  - Details in `docs/android-emulator-measurements.md` §14.
+- CI run 36754688147 is green. The first android-build run failed only on `ParityBooksTest`'s precondition, which
+  is fixed in the next commit.
+
+**Executed in CI** (head `df182eaf`, the fix):
+- android-build run 36758069690: android-shell green, with JVM parity at 1778 passed, 0 pending, 0 failed.
+  foray-audio ran 186 test cases, 0 skipped.
+- android-playback run 36758069597: all three legs green again.
+  - `foray-seams`: silence p95 503 ms, six jingles.
+  - (k): fell back in 3.0 s and was spoken 4.4 s after the out-point.
+- android-smoke, pr-hygiene and ios-build are green.
+- CI run 36758069648 is green after one `--failed` rerun of the iOS DeckPairSeamTests timing flake (1348 ms against
+  a 750 ms budget, Swift only, which this change does not touch).
+
+**Not executed:** the device check, the airplane-mode fallback on the Pixel (D-A3, until A-42).
+
 ### 2026-09-30 — `android/a-40-foray-tape`: A-40, the Foray tape on Android (the JVM core, the deck pair, the Foray families)
 
 Owned: the Foray tape in `foray-engine-core-jvm` (`EngineCore`'s Foray paths and the new policy classes `SeamGap`,

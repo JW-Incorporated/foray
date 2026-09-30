@@ -11,6 +11,11 @@ import ai.jwlabs.foura.audio.engine.ExoDeck;
 import ai.jwlabs.foura.audio.engine.FocusMapping;
 import ai.jwlabs.foura.audio.engine.ForayEngineHost;
 import ai.jwlabs.foura.audio.engine.HandlerTiming;
+import ai.jwlabs.foura.audio.engine.InterludePlayer;
+import ai.jwlabs.foura.audio.engine.MediaJingle;
+import ai.jwlabs.foura.audio.engine.SpeechLexicon;
+import ai.jwlabs.foura.audio.engine.SpeechNarrator;
+import ai.jwlabs.foura.audio.engine.TtsOutput;
 import ai.jwlabs.foura.engine.DeckReading;
 import ai.jwlabs.foura.engine.EngineCommand;
 import ai.jwlabs.foura.engine.EngineConfig;
@@ -134,6 +139,17 @@ import java.util.concurrent.atomic.AtomicReference;
  * incoming one at a handover is never read as an interruption. An episode never warms the
  * standby: it plays through the active deck exactly as before. The page cannot reach a Foray
  * until A-42 advertises {@code foray}; the debug driver can.
+ *
+ * <h2>THE NARRATOR AND THE JINGLE (A-41)</h2>
+ *
+ * A rendered narration line is an ordinary file on the deck pair. The engine's own synthesiser
+ * ({@link SpeechNarrator} over {@link TtsOutput}, Android {@code TextToSpeech} in this process) speaks
+ * a spoken line, a rendered line's fallback (its file failed or missed its deadline) and the voice
+ * picker's audition, with the bundled lexicon ({@link SpeechLexicon}). The seam's jingle is
+ * {@link InterludePlayer} on the bundled, hash-pinned asset ({@link MediaJingle}); when the asset is
+ * missing or differs, the core is built with {@code interludeAvailable} off and no seam waits on a
+ * jingle. Both are released with the engine at its teardown. The dump says whether the synthesiser
+ * answered ({@code speaker}) and whether the jingle is there ({@code interlude}).
  */
 @OptIn(markerClass = UnstableApi.class)
 public class ForayPlaybackService extends MediaSessionService {
@@ -157,6 +173,9 @@ public class ForayPlaybackService extends MediaSessionService {
     @Nullable private DeckDriving deck;
     /** The Foray tape's deck pair (A-40), or null with one deck. */
     @Nullable private DeckPair pair;
+    /** A-41: the engine's synthesiser (for the dump), and its jingle player (null when the asset did not ship). */
+    @Nullable private TtsOutput speech;
+    @Nullable private InterludePlayer jingle;
     /** Volatile: {@link #isHosting()} is read by the plugin's bridge thread; every other use is on main. */
     @Nullable private volatile ForayEngineHost host;
     @Nullable private EnginePlayer player;
@@ -255,9 +274,24 @@ public class ForayPlaybackService extends MediaSessionService {
         }
         EngineStore kept = processStore(this);
         store = kept;
-        EngineSeams seams = new EngineSeams(deck, new SessionSeam(), new HandlerTiming(Looper.getMainLooper()), kept);
+        HandlerTiming timing = new HandlerTiming(Looper.getMainLooper());
+        /* A-41: the engine's synthesiser (TextToSpeech in this process, with the bundled lexicon) and
+           the seam's jingle (the bundled, pinned asset; null when it did not ship). Each checks the
+           session answer before it sounds, as the deck does. */
+        TtsOutput tts = new TtsOutput(this, Looper.getMainLooper(), log::diag);
+        speech = tts;
+        SpeechNarrator.Config speakerConfig = new SpeechNarrator.Config();
+        speakerConfig.sessionIsActive = () -> session != null;
+        speakerConfig.diag = log::diag;
+        speakerConfig.lexicon = SpeechLexicon.load(getAssets());
+        SpeechNarrator narrator = new SpeechNarrator(tts, speakerConfig);
+        InterludePlayer interlude = MediaJingle.make(this, () -> session != null, log::diag, timing);
+        jingle = interlude;
+        EngineSeams seams = new EngineSeams(deck, new SessionSeam(), timing, kept, narrator, interlude);
         // A-40: the Foray tape on (the core refuses playForay without it), over the pair when there is one.
-        ForayEngineHost engine = new ForayEngineHost(seams, new EngineConfig(buildName(this)).withForayTape(true, standby != null));
+        // A-41: the jingle only when its player exists.
+        ForayEngineHost engine = new ForayEngineHost(seams, new EngineConfig(buildName(this))
+                .withForayTape(true, standby != null).withInterludeAvailable(interlude != null));
         host = engine;
         EnginePlayer facade = new EnginePlayer(Looper.getMainLooper(), new EnginePlayer.Engine() {
             @Override
@@ -435,6 +469,8 @@ public class ForayPlaybackService extends MediaSessionService {
         exo = null;
         deck = null;
         pair = null;
+        speech = null;
+        jingle = null;
         store = null;
         if (p != null && focusListener != null) p.removeListener(focusListener);
         focusListener = null;
@@ -745,7 +781,16 @@ public class ForayPlaybackService extends MediaSessionService {
             m.add(JsonNode.member("forayId", st.forayId == null ? JsonNode.NULL : JsonNode.str(st.forayId)));
             m.add(JsonNode.member("inSeamGap", JsonNode.bool(st.inSeamGap())));
             m.add(JsonNode.member("skippedSegments", JsonNode.num(st.skippedSegments)));
+            m.add(JsonNode.member("inInterlude", JsonNode.bool(st.inInterlude)));
         }
+        // A-41: whether the engine's synthesiser answered (and which engine), and whether the jingle shipped.
+        TtsOutput tts = speech;
+        m.add(JsonNode.member("speaker", tts == null ? JsonNode.NULL : new JsonNode.Obj(tts.describe())));
+        InterludePlayer interlude = jingle;
+        List<JsonNode.Member> im = new ArrayList<>();
+        im.add(JsonNode.member("available", JsonNode.bool(interlude != null)));
+        im.add(JsonNode.member("sounding", JsonNode.bool(interlude != null && interlude.isSounding())));
+        m.add(JsonNode.member("interlude", new JsonNode.Obj(im)));
         ExoPlayer p = exo;
         if (p != null) {
             m.add(JsonNode.member("exoPlayWhenReady", JsonNode.bool(p.getPlayWhenReady())));

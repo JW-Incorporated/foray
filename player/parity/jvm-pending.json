@@ -1,17 +1,13 @@
 {
   "//": "The JVM parity runner's burn-down books (card A-22, docs/plans/android-assessment.md §5.4; the rules are in player/parity/jvm-pending.js). runs: the families the JVM has a runner for (JvmFamilies.ALL). families: a whole fixture family the JVM does not run yet -> the Android card that ports it. cases: one case owed inside a family the JVM does run -> its card. Every recorded family that is not jsOnly is in exactly one of runs and families (record.mjs --check). The JVM runner (foray-engine-core-jvm ParitySuite, android-build.yml) fails when a case not owed fails, when an owed case passes (stale: delete the entry), when a manifest id is neither run nor owed, and when runs disagrees with its runners. record.mjs --jvm-card hands a case new or changed in a family the JVM runs, or a family it neither runs nor owes, to a card. jsOnly families are never owed. A family unported.json will record into may be owed ahead of its fixtures. A porting card moves its family from families to runs in the same change as its runner.",
   "cases": {},
-  "families": {
-    "default-voice": "A-41",
-    "lexicon": "A-41",
-    "manager-remainder": "A-63",
-    "speech-rate": "A-41"
-  },
+  "families": { "manager-remainder": "A-63" },
   "runs": [
     "compare",
     "contract",
     "deck",
     "deck-episode",
+    "default-voice",
     "diag-tokens",
     "engine-mode",
     "foray-clock",
@@ -19,6 +15,7 @@
     "foray-structure",
     "handshake",
     "interlude",
+    "lexicon",
     "manager-episode",
     "manager-foray",
     "media",
@@ -35,6 +32,7 @@
     "session",
     "session-invariant",
     "snapshot",
+    "speech-rate",
     "transport"
   ]
 }

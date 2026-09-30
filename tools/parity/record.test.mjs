@@ -310,11 +310,22 @@ test("a --port-card that is not a card id is refused", async () => {
 const NUMBER_FORMAT = "player/parity/fixtures/number-format/number-format.json";
 const JVM = "player/parity/jvm-pending.json";
 
+/** The books with `names` moved from "runs" back to owed WHOLE (to A-41, the card that ported
+ *  them): the "before" state these tests need. Since A-41 the JVM runs every recorded family, so a
+ *  family owed whole with fixtures exists only in a scratch tree. */
+function oweWhole(books, names) {
+  const families = { ...books.families };
+  for (const name of names) families[name] = "A-41";
+  return { ...books, families, runs: books.runs.filter((f) => !names.includes(f)) };
+}
+
 test("a case new in a family the JVM runs is refused without --jvm-card and owed to it with one; a whole-owed family needs none", async () => {
   const root = scratch();
   try {
     assert.equal(readJ(root, JVM).families["number-format"], undefined, "precondition: the JVM runs number-format");
+    writeJ(root, JVM, oweWhole(readJ(root, JVM), ["default-voice"]));
     assert.equal(readJ(root, JVM).families["default-voice"], "A-41", "precondition: default-voice is owed whole");
+    assert.deepStrictEqual((await checkAll({ root })).problems, [], "precondition: the scratch books are --check clean");
 
     const nf = readJ(root, NUMBER_FORMAT);
     nf.cases.push({ id: "number-format/brand-new-2.5", covers: [], call: "jsonNumber", args: [2.5] });
@@ -355,7 +366,7 @@ test("a case new in a family the JVM runs is refused without --jvm-card and owed
 test("--check is red on JVM books that name nothing, owe a jsOnly family, use a non-Android card, or owe a case twice", async () => {
   const root = scratch();
   try {
-    const jvm = readJ(root, JVM);
+    const jvm = oweWhole(readJ(root, JVM), ["default-voice"]);
     writeJ(root, JVM, {
       ...jvm,
       cases: { "no-such/case": "A-23", "default-voice/name-is-samantha": "A-41", "number-format/zero": "NE-10s" },
@@ -381,9 +392,10 @@ test("--check holds every recorded family to exactly one of the JVM's runs and i
      with ci.yml green and only the non-required android-build red. */
   const root = scratch();
   try {
-    const jvm = readJ(root, JVM);
+    // The before state of a porting card (A-41 ported both): default-voice and lexicon owed whole.
+    const jvm = oweWhole(readJ(root, JVM), ["default-voice", "lexicon"]);
     // Preconditions, as data rather than a list a porting card must edit: the JVM runs
-    // compare, and still owes default-voice and lexicon (A-41; A-40 ported interlude and seam-gap).
+    // compare, and owes default-voice and lexicon.
     assert.ok(jvm.runs.includes("compare"), "precondition: the JVM runs compare");
     assert.ok(jvm.families["default-voice"] && jvm.families.lexicon, "precondition: default-voice and lexicon are still owed whole");
     const families = { ...jvm.families };

@@ -128,6 +128,26 @@ ext {
    reads player/parity/ in place: nothing is copied into this module. */
 def forayClickTracks = file('../ios/Tests/ForayAudioPluginTests/Fixtures/ClickTracks')
 
+/* A-41: THE ENGINE'S TWO BUNDLED FILES, read IN PLACE from the repo into the app's assets, so
+   there is one copy of each: the seam jingle (player/assets/interlude-placeholder.wav, the web's
+   own, which engine/InterludePlayer.java plays after hashing it against its pin) and the
+   pronunciation lexicon (mobile/plugins/foray-tts/lexicon/hard-terms.json, which
+   engine/SpeechLexicon.java parses). Each directory holds only that file, and each lands at the
+   assets' root. The repo root is the first ancestor of this directory (canonical, so a symlinked
+   module still walks the real checkout) that holds the jingle, as the JVM core finds
+   player/parity/. With no checkout around it (nothing in this repo builds that way) there are no
+   such assets, and the engine runs with no jingle and no lexicon, which each says in a row. */
+def forayRepoRoot = {
+    for (def dir = projectDir.canonicalFile; dir != null; dir = dir.parentFile) {
+        if (new File(dir, 'player/assets/interlude-placeholder.wav').isFile()) return dir
+    }
+    return null
+}()
+def forayEngineAssets = forayRepoRoot == null ? [] : [
+    new File(forayRepoRoot, 'player/assets'),
+    new File(forayRepoRoot, 'mobile/plugins/foray-tts/lexicon'),
+]
+
 apply plugin: 'com.android.library'
 
 android {
@@ -145,6 +165,11 @@ android {
     }
     lintOptions {
         abortOnError = false
+    }
+    sourceSets {
+        main {
+            assets.srcDirs += forayEngineAssets
+        }
     }
     compileOptions {
         /* 21 because capacitor-android compiles at 21 and Capacitor 8 requires JDK
