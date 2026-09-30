@@ -37,7 +37,7 @@ final class ForayTapeTests: XCTestCase {
 
     static func loads(_ out: [EngineCommand]) -> [String] {
         out.compactMap {
-            if case let .deck(.load(_, itemId, _, startSec, _)) = $0 { return "\(itemId)@\(JSWriter.numberToString(startSec))" }
+            if case let .deck(.load(_, itemId, _, startSec, _, _)) = $0 { return "\(itemId)@\(JSWriter.numberToString(startSec))" }
             return nil
         }
     }
@@ -183,6 +183,22 @@ final class ForayTapeTests: XCTestCase {
         XCTAssertFalse(late.contains(.deck(.play)), "a stale timer starts nothing")
     }
 
+    /// M3 review (2026-09-30): an episode's natural end opens the prefetch
+    /// window (NE-45s, from its duration), but a plain episode queue's next
+    /// WHOLE episode is never prepared on the standby: M1's continuation stays
+    /// a cold load at that episode's own resume position, as before NE-45s.
+    func testAnEpisodeQueuesWindowPreparesNoWholeEpisode() {
+        var host = Host(config: ForayTapeTests.tape)
+        host.send(.queue(.load(["a", "b"].map { EngineCoreTests.item($0) })))
+        host.send(.queue(.playIndex(0, startSec: nil, source: .tap)))
+        host.land()
+        host.confirm()
+        XCTAssertEqual(host.core.state.stateType, "playing")
+        let window = host.send(.deck(.prepareWindow(token: host.lastLoad ?? 0)))
+        XCTAssertFalse(window.contains { if case .deck(.prepare) = $0 { return true }; return false }, "\(window)")
+        XCTAssertNil(host.core.state.preparedItemId)
+    }
+
     /// Backgrounded, the seam holds a grace span from the out-point until the
     /// next clip is audible: `seam` when the standby deck was asked to prepare
     /// it, `prepare-miss` when not.
@@ -230,14 +246,18 @@ final class ForayTapeTests: XCTestCase {
         let hit = try XCTUnwrap(seam(.prepared(token: 0, hit: true, stages: [.attach, .duration, .readiness, .seek, .preroll, .ready])))
         XCTAssertTrue(hit.prepared)
         XCTAssertEqual(hit.stages, [.attach, .duration, .readiness, .seek, .preroll, .ready, .play])
+        XCTAssertEqual([hit.from, hit.to], [.clip, .clip], "NE-45s: the row names what the seam joins")
+        XCTAssertEqual(hit.prepare, .hit)
 
         let miss = try XCTUnwrap(seam(.prepared(token: 0, hit: false, stages: [.attach])))
         XCTAssertFalse(miss.prepared, "a prepare asked is not a prepare hit")
         XCTAssertEqual(miss.stages, [.attach, .play])
+        XCTAssertEqual(miss.prepare, .miss)
 
         let single = try XCTUnwrap(seam(nil))
         XCTAssertTrue(single.prepared, "one deck: the row keeps its pre-NE-32 meaning (the item was asked for)")
         XCTAssertEqual(single.stages, [.ready, .play])
+        XCTAssertEqual(single.prepare, .unprepared, "no standby deck said hit or miss: nothing was prepared")
 
         // A report about another load is dropped.
         let stale = try XCTUnwrap(seam(.prepared(token: -7, hit: false, stages: [.deadline])))

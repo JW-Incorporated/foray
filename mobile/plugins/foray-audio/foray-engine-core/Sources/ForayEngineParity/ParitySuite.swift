@@ -4,7 +4,9 @@ import Foundation
 ///
 /// It walks `manifest.json` family by family, runs every case a registered
 /// `FamilyRunner` can run, compares with the ported `Comparator`, and keeps
-/// the books against `swift-pending.json`. Results come back AS DATA (a
+/// the books (`swift-pending.json` until NE-39s deleted it; the `pending`
+/// book is empty on every real run since, and filled only by the harness
+/// tests that prove the rules below). Results come back AS DATA (a
 /// `SuiteReport`); the XCTest wrappers turn them into one `XCTFail` per case,
 /// and `parity-report.json` carries them to CI.
 ///
@@ -94,7 +96,7 @@ public struct ParitySuite {
                     familyResults.append(owedBy != nil
                         ? CaseResult(id: id, family: family, outcome: .notPorted, detail: "owed by \(owedBy!) (\(why))")
                         : CaseResult(id: id, family: family, outcome: .unaccounted,
-                                     detail: "neither executed nor in swift-pending.json (\(why))"))
+                                     detail: "neither executed nor owed; nothing may be owed since NE-39s (\(why))"))
                     continue
                 }
                 let (testCase, file) = entry

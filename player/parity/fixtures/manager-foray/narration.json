@@ -119,9 +119,11 @@
       }
     },
     {
-      "id": "manager-foray/next-steps-over-a-bridge",
-      "covers": ["queue-manager::skipToNext steps over a bridge rather than playing it alone"],
-      "note": "A listener's next lands on the real item, never on the transition line alone.",
+      "id": "manager-foray/next-lands-on-a-bridge",
+      "covers": [
+        "queue-manager::skipToNext lands on a bridge: Next is the next item, a line included (NE-39n)"
+      ],
+      "note": "NE-39n: a listener's next is the next item, the line included (client.js forayNext, the web lock screen's answer). It used to step over the line.",
       "setup": { "target": "manager" },
       "steps": [
         {
@@ -148,9 +150,69 @@
           {
             "inInterlude": false,
             "inSeamGap": false,
+            "index": 1,
+            "name": "next",
+            "ops": ["store.save:a@0", "pause", "load:bridge@0", "rate:1", "play"],
+            "playhead": "bridge",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "end",
+            "ops": [],
+            "playhead": "bridge",
+            "rate": 1,
+            "state": "playing"
+          }
+        ],
+        "ops": [
+          "load:a@0",
+          "rate:1",
+          "play",
+          "store.save:a@0",
+          "pause",
+          "load:bridge@0",
+          "rate:1",
+          "play"
+        ]
+      }
+    },
+    {
+      "id": "manager-foray/next-from-a-bridge-lands-on-the-item-after-it",
+      "covers": ["queue-manager::skipToNext from a bridge lands on the item after it (NE-39n)"],
+      "note": "NE-39n: from a line, next is the item after it (here the next clip).",
+      "setup": { "target": "manager" },
+      "steps": [
+        {
+          "call": "loadQueue",
+          "args": [[{ "$ep": ["a"] }, { "$tts": ["bridge"] }, { "$ep": ["b"] }]]
+        },
+        { "call": "play", "args": [1] },
+        { "checkpoint": "line" },
+        { "call": "skipToNext" },
+        { "checkpoint": "next" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "line",
+            "ops": ["load:bridge@0", "rate:1", "play"],
+            "playhead": "bridge",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
             "index": 2,
             "name": "next",
-            "ops": ["store.save:a@0", "pause", "load:b@0", "rate:1", "play"],
+            "ops": ["store.save:bridge@0", "pause", "load:b@0", "rate:1", "play"],
             "playhead": "b",
             "rate": 1,
             "state": "playing"
@@ -167,10 +229,10 @@
           }
         ],
         "ops": [
-          "load:a@0",
+          "load:bridge@0",
           "rate:1",
           "play",
-          "store.save:a@0",
+          "store.save:bridge@0",
           "pause",
           "load:b@0",
           "rate:1",
@@ -4263,7 +4325,9 @@
     },
     {
       "id": "manager-foray/a-jump-onto-a-line-whose-file-fails-speaks-it",
-      "covers": ["queue-manager::§14: jumping onto a line whose file fails speaks it (the jump case)"],
+      "covers": [
+        "queue-manager::§14: jumping onto a line whose file fails speaks it (the jump case)"
+      ],
       "note": "§14: a jump onto a rendered line whose file fails speaks its script. NE-37c.",
       "setup": {
         "target": "manager",

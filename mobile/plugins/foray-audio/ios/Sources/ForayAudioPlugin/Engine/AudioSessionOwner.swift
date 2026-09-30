@@ -27,7 +27,7 @@ protocol AudioSessionAPI: AnyObject {
 
 extension AVAudioSession: AudioSessionAPI {
     var outputPorts: [AudioSessionOwner.Port] {
-        currentRoute.outputs.map { AudioSessionOwner.Port(type: $0.portType.rawValue, name: $0.portName) }
+        currentRoute.outputs.map { AudioSessionOwner.Port(type: $0.portType.rawValue, uid: $0.uid) }
     }
 }
 
@@ -45,7 +45,9 @@ extension AVAudioSession: AudioSessionAPI {
 ///   - BOOT: category `.playback`, mode `.spokenAudio`, no options, and NO
 ///     activation (S-3: painting a restored Now Playing entry must not
 ///     silence the listener's other app). `.longFormAudio` route sharing
-///     sits behind `Config.longFormAudio`, off until DV-8.
+///     sits behind `Config.longFormAudio`, which the boot sets from
+///     `EngineConfig.routeSharingLongForm` (NE-40): OFF unless the Developer
+///     row stored the DV-8 trial, and then only from the next launch.
 ///   - ACTIVATE only when asked (the core asks only for a user-caused play,
 ///     S-1), synchronously, timed: `activateMs` rides back to the core in the
 ///     same turn and into every `session` row; a device p95 over 100 ms is what
@@ -68,18 +70,21 @@ extension AVAudioSession: AudioSessionAPI {
 /// whether the engine was running when it arrived (`stale=y`).
 final class AudioSessionOwner: SessionControlling {
 
-    /// One output port: the type goes in rows (`carAudio`, `bluetoothA2DP`),
-    /// the name only into the core's known-car memory, never into a row
-    /// (plan §10: port types instead of route names).
+    /// One output port: the type goes in rows (`CarAudio`,
+    /// `BluetoothA2DPOutput`); the UID only to the core, which hashes it with
+    /// the install's salt before its known-route memory keeps it (NE-38rs), so
+    /// it never reaches a row (plan §10: port types instead of identities).
+    /// The port's NAME is not read at all: it is often its owner's.
     struct Port: Equatable {
         var type: String
-        var name: String
+        var uid: String
     }
 
     struct Config {
         /// DV-8's `.longFormAudio` route-sharing trial. OFF: `.spokenAudio`
-        /// with default routing is Apple's podcast guidance, and the trial is
-        /// an M3 card (NE-40).
+        /// with default routing is Apple's podcast guidance, and M1's car win
+        /// happened on it. NE-40's Developer row turns it on for a drive
+        /// (`EngineConfig.routeSharingLongForm`, read at the boot).
         var longFormAudio: Bool
         /// Monotonic milliseconds, for `activateMs`.
         var monoMs: () -> Double
@@ -246,7 +251,7 @@ final class AudioSessionOwner: SessionControlling {
         let info = note.userInfo
         let reasonRaw = Self.uint(info?[AVAudioSessionRouteChangeReasonKey])
         let previous = (info?[AVAudioSessionRouteChangePreviousRouteKey] as? AVAudioSessionRouteDescription)?
-            .outputs.first.map { Port(type: $0.portType.rawValue, name: $0.portName) }
+            .outputs.first.map { Port(type: $0.portType.rawValue, uid: $0.uid) }
         let current = api.outputPorts.first
         guard let change = Self.routeChange(reasonRaw: reasonRaw, current: current, previous: previous) else {
             // A category or override change moves no device: written down
@@ -318,20 +323,27 @@ final class AudioSessionOwner: SessionControlling {
     /// A route change the rules act on: a device went away (headphones out,
     /// the car switched off: the LOST port is the one that matters) or one
     /// arrived (the car connecting: the NEW port). Every other reason
-    /// (category, override, wake, configuration) is nil.
+    /// (category, override, wake, configuration) is nil. The port's type, its
+    /// UID and its class (`RouteResume.routeClass`: car, bluetooth, other)
+    /// ride to the core, which keys a known route by a salted hash of type and
+    /// UID (NE-38rs).
     static func routeChange(reasonRaw: UInt?, current: Port?, previous: Port?) -> RouteChange? {
         guard let reasonRaw, let reason = AVAudioSession.RouteChangeReason(rawValue: reasonRaw) else { return nil }
-        let car = AVAudioSession.Port.carAudio.rawValue
+        let port: Port?
         switch reason {
-        case .oldDeviceUnavailable:
-            return RouteChange(oldDeviceUnavailable: true, routeName: previous?.name,
-                               isCarRoute: previous?.type == car, portType: previous?.type)
-        case .newDeviceAvailable:
-            return RouteChange(oldDeviceUnavailable: false, routeName: current?.name,
-                               isCarRoute: current?.type == car, portType: current?.type)
-        default:
-            return nil
+        case .oldDeviceUnavailable: port = previous
+        case .newDeviceAvailable: port = current
+        default: return nil
         }
+        return RouteChange(oldDeviceUnavailable: reason == .oldDeviceUnavailable, portType: port?.type,
+                           portUID: port?.uid, routeClass: RouteResume.routeClass(port?.type))
+    }
+
+    /// Where our audio goes now (the current route's first output), for the
+    /// host's `EngineNow.route` (NE-38rs: the route a playing deck is heard
+    /// through).
+    var currentRoute: RoutePort? {
+        api.outputPorts.first.map { RoutePort(portType: $0.type, uid: $0.uid) }
     }
 
     /// Every `AVAudioSession.ErrorCode` the rows name (L13), paired with its

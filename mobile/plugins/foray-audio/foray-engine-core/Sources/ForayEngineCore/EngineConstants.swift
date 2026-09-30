@@ -86,7 +86,7 @@ public enum EngineConstants {
         /// `CAPABILITIES`
         public static let capabilities: [String] = ["episode", "continuation", "restore", "foray"]
         /// `COMMANDS`
-        public static let commands: [String] = ["playEpisode", "playForay", "setContinuation", "play", "pause", "toggle", "next", "previous", "seekBy", "seekTo", "jump", "stop", "setRate", "setVoice", "setInterludeEnabled", "setPageVisible", "ackAdvances", "ackEvents", "restoreBar", "purge", "relinquish", "audition", "setModeOverride", "setHoldPolicy", "probeSession", "simulateTermination"]
+        public static let commands: [String] = ["playEpisode", "playForay", "setContinuation", "play", "pause", "toggle", "next", "previous", "seekBy", "seekTo", "jump", "stop", "setRate", "setVoice", "setInterludeEnabled", "setPageVisible", "ackAdvances", "ackEvents", "restoreBar", "purge", "relinquish", "audition", "setModeOverride", "setHoldPolicy", "probeSession", "simulateTermination", "setRouteSharing"]
         /// `CONTRACT_KINDS`
         public static let contractKinds: [String] = ["helloRequest", "helloResponse", "sendRequest", "sendResponse", "readRequest", "rowsResponse", "diagnosticsResponse", "snapshot", "event"]
         /// `DEFAULT_HOLD_POLICY`
@@ -107,6 +107,8 @@ public enum EngineConstants {
         public static let holdPolicyKinds: [String] = ["forever", "none", "until"]
         /// `MODE_OVERRIDES`
         public static let modeOverrides: [String] = ["auto", "native", "web"]
+        /// `NARRATION_PUBLIC_BASE`
+        public static let narrationPublicBase: String = "https://audio.jwlabs.ai"
         /// `OWNED_PREFIXES`
         public static let ownedPrefixes: [String] = ["cp_pos:", "cp_foray:", "cp_last_episode"]
         /// `PAGE_MODES`
@@ -123,6 +125,8 @@ public enum EngineConstants {
         public static let refusals: [String] = ["not-loaded", "no-next", "no-previous", "ended", "refused-structure", "capability-off", "session-failed:cannot-interrupt-others", "session-failed:cannot-start-playing", "session-failed:other", "engine-busy", "relinquished", "unknown-cmd"]
         /// `RELINQUISH_CAPS`
         public static let relinquishCaps: [String] = ["episode", "continuation", "restore", "foray", "all"]
+        /// `ROUTE_SHARING_POLICIES`
+        public static let routeSharingPolicies: [String] = ["default", "longFormAudio"]
         /// `SESSION_ACTIONS`
         public static let sessionActions: [String] = ["activate", "deactivate", "deactivate-notify", "reapply-category", "rebuild", "command-failed"]
         /// `SESSION_INPUTS`
@@ -315,6 +319,14 @@ public enum EngineConstants {
         public static let episode: String = "episode"
         /// `TTS`
         public static let tts: String = "tts"
+    }
+
+    /// `player/route-resume.js`
+    public enum RouteResume {
+        /// `ROUTE_RESUME_BLUETOOTH_DEFAULT`
+        public static let routeResumeBluetoothDefault: Bool = false
+        /// `ROUTE_RESUME_MAX_LOST_SEC`
+        public static let routeResumeMaxLostSec: Double = 86400
     }
 
     /// `player/seam-gap.js`

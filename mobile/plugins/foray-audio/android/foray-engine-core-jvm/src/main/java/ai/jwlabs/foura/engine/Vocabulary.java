@@ -218,8 +218,31 @@ public final class Vocabulary {
         }
     }
 
+    /** {@code narrationFallbackCause} */
+    public enum NarrationFallbackCause {
+        TIMEOUT("timeout"),
+        HTTP4XX("http-4xx"),
+        HTTP5XX("http-5xx"),
+        OFFLINE("offline"),
+        DECODE("decode"),
+        OTHER("other");
+
+        /** The token, as the JS set spells it. */
+        public final String token;
+
+        NarrationFallbackCause(String token) {
+            this.token = token;
+        }
+
+        /** The member spelled {@code token}, or null for a token outside the set. */
+        public static NarrationFallbackCause of(String token) {
+            for (NarrationFallbackCause v : values()) if (v.token.equals(token)) return v;
+            return null;
+        }
+    }
+
     /** Every set's name, in the JS declaration order. */
-    public static final List<String> SET_NAMES = Collections.unmodifiableList(Arrays.asList("stage", "sessionError", "sessionErrorDetail", "interruptionReason", "stopCause", "source", "modeReason", "faultKind"));
+    public static final List<String> SET_NAMES = Collections.unmodifiableList(Arrays.asList("stage", "sessionError", "sessionErrorDetail", "interruptionReason", "stopCause", "source", "modeReason", "faultKind", "narrationFallbackCause"));
 
     /** Every set's tokens, by set name, in the JS declaration order. */
     public static final Map<String, List<String>> SETS;
@@ -234,6 +257,7 @@ public final class Vocabulary {
         sets.put("source", Collections.unmodifiableList(Arrays.asList("tap", "remote", "reconcile", "session", "restore", "autoadvance", "autoresume", "audition")));
         sets.put("modeReason", Collections.unmodifiableList(Arrays.asList("build-default", "override", "no-plist-key", "not-built", "crash-loop", "page-health", "downgrade")));
         sets.put("faultKind", Collections.unmodifiableList(Arrays.asList("implicit-activation", "externally-owned")));
+        sets.put("narrationFallbackCause", Collections.unmodifiableList(Arrays.asList("timeout", "http-4xx", "http-5xx", "offline", "decode", "other")));
         SETS = Collections.unmodifiableMap(sets);
     }
 }

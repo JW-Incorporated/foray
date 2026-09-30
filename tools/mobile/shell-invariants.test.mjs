@@ -110,6 +110,13 @@ const ROOT = path.resolve(HERE, "..", "..");
 const MOBILE = path.join(ROOT, "mobile");
 
 const readJson = (p) => JSON.parse(fs.readFileSync(p, "utf8"));
+/* NE-39s retired player/parity/swift-pending.json: nothing can be owed, so the
+   Swift-port pins below read it only if it has come back (coverage.test.js and
+   record.mjs --check are red on that by themselves) and see nothing owed. */
+const retiredSwiftPending = () => {
+  const file = path.join(ROOT, "player/parity/swift-pending.json");
+  return fs.existsSync(file) ? readJson(file) : {};
+};
 const rootPkg = readJson(path.join(ROOT, "package.json"));
 const capConfig = readJson(path.join(MOBILE, "capacitor.config.json"));
 
@@ -2875,7 +2882,8 @@ test("NE-01: the page never configures a Preferences group, so the engine's Capa
  *
  * docs/native-engine-plan.md §6.4 and card NE-05. `ForayEngineParity` reads
  * `player/parity/` IN PLACE, runs each family through its FamilyRunner, keeps
- * the swift-pending books and writes parity-report.json; a thin XCTest wrapper
+ * the books (swift-pending.json until NE-39s retired it; nothing is owed since)
+ * and writes parity-report.json; a thin XCTest wrapper
  * in the core's own tests and another in ForayAudioPluginTests (the step
  * ios-kit already runs, the zero-.github fallback) turn the results into one
  * XCTFail per case. The Swift is executed by CI only; these pins keep what
@@ -3088,7 +3096,7 @@ test("NE-12s: both wrappers require the media-episode runner, the registry holds
   assert.ok(all, "ParityFamilies.all is missing");
   assert.ok(all[1].includes("MediaEpisodeFamily.runner"), "ParityFamilies.all has no MediaEpisodeFamily.runner");
 
-  const pending = JSON.parse(fs.readFileSync(path.join(ROOT, "player/parity/swift-pending.json"), "utf8"));
+  const pending = retiredSwiftPending();
   assert.deepEqual(Object.keys(pending).filter((id) => id.startsWith("media-episode/")), [],
     "media-episode is ported (NE-12s): no id of it may be pending");
   const manifest = JSON.parse(fs.readFileSync(path.join(ROOT, "player/parity/manifest.json"), "utf8"));
@@ -3136,7 +3144,7 @@ test("NE-14s: both wrappers require the deck-episode and manager-episode runners
     assert.ok(all[1].includes(runner), `ParityFamilies.all has no ${runner}`);
   }
 
-  const pending = JSON.parse(fs.readFileSync(path.join(ROOT, "player/parity/swift-pending.json"), "utf8"));
+  const pending = retiredSwiftPending();
   const owed = Object.keys(pending).filter((id) =>
     ["manager-episode/", "deck-episode/", "session-invariant/", "transport/"].some((prefix) => id.startsWith(prefix)));
   assert.deepEqual(owed, [], "manager-episode, deck-episode, session-invariant and transport are ported (NE-14s): none may be pending");
@@ -3671,7 +3679,7 @@ test("NE-19: only EngineStore touches UserDefaults in the engine, its shared wri
   assert.match(lifecycle, /case \.terminating:\s*flushPosition\(\)/, "willTerminate flushes the playhead");
 });
 
-test("NE-19: the engine's private keys are §4.6's six, outside CapacitorStorage., the ones Delete my data purges, and the ring is a capped file in Application Support", () => {
+test("NE-19: the engine's private keys are §4.6's six, NE-38rs's known routes and NE-40's route-sharing trial, outside CapacitorStorage., the ones Delete my data purges, and the ring is a capped file in Application Support", () => {
   /* NE-27's privacy text will enumerate these keys, and test/data-deletion
      .test.js purges them BY NAME; a key the Swift writes that the deletion
      list does not name is a key a deletion forgets.
@@ -3684,7 +3692,8 @@ test("NE-19: the engine's private keys are §4.6's six, outside CapacitorStorage
   assert.ok(fake, "test/data-deletion.test.js's fakeEngine private map is missing");
   const jsKeys = [...fake[1].matchAll(/\["(ForayEngine\.\w+)"/g)].map((m) => m[1]);
   assert.deepEqual(swiftKeys, ["ForayEngine.modeOverride", "ForayEngine.strikes", "ForayEngine.sentinel",
-    "ForayEngine.stickyLegacyBuild", "ForayEngine.restore", "ForayEngine.holdPolicy"], "plan §4.6's list");
+    "ForayEngine.stickyLegacyBuild", "ForayEngine.restore", "ForayEngine.holdPolicy",
+    "ForayEngine.knownRoutes", "ForayEngine.routeSharing"], "plan §4.6's list, plus NE-38rs's known routes and NE-40's route-sharing trial");
   assert.deepEqual(swiftKeys, jsKeys, "the Swift private keys and the deletion test's list differ");
   for (const key of swiftKeys) assert.ok(!key.startsWith("CapacitorStorage."), key);
   assert.match(keys, /privatePrefix = "ForayEngine\."/);
@@ -3986,7 +3995,7 @@ test("NE-32: DeckPair ships off, never touches a player, and the out-point's thr
      with anything but `config.schedule(.watchdog`; let the pair play a deck in
      the handover. Each fails here. */
   const core = stripSwiftComments(fs.readFileSync(path.join(CORE_DIR, "Sources/ForayEngineCore/Engine/EngineCore.swift"), "utf8"));
-  assert.match(core, /deckPairEnabled: Bool = false\)/, "EngineConfig.deckPairEnabled defaults OFF in the core (EngineBoot turns it on, NE-37)");
+  assert.match(core, /deckPairEnabled: Bool = false[,)]/, "EngineConfig.deckPairEnabled defaults OFF in the core (EngineBoot turns it on, NE-37)");
 
   const boot = stripSwiftComments(fs.readFileSync(path.join(ENGINE_DIR, "EngineBoot.swift"), "utf8"));
   assert.match(boot, /config\.deckPairEnabled\s*\?\s*DeckPair\.make\(/, "the boot builds a DeckPair only behind the flag");
@@ -4130,6 +4139,85 @@ test("NE-34: the jingle and the silence node sound only with the session, stop t
   const teardown = swiftFuncBody(host, "teardown") ?? "";
   assert.match(teardown, /seams\.interlude\?\.release\(\)/);
   assert.match(teardown, /seams\.silence\?\.stop\(\)/);
+});
+
+test("NE-40: every stopRow call site in the engine core has a StopCauseTests entry, and the .longFormAudio trial ships OFF", () => {
+  /* The D-5 audit (plan §14 NE-40). StopCauseTests.swift is the table of every
+     stop path, each naming the EngineCore function that writes its `stop` row
+     (`site: "<func>"`); a new `stopRow(` call in a function the table does not
+     name is a stop path nobody audited. And the DV-8 trial: EngineConfig's
+     `routeSharingLongForm` defaults false, the shipping boot sets it ONLY from
+     the Developer row's stored choice, and nothing else (ENGINE_DEFAULT, the
+     plist, a literal `true`) can turn it on.
+     MUTATION: add a `stopRow(.error)` to a function the table does not name;
+     delete a `site:` from the table; default `routeSharingLongForm` to true;
+     write `config.routeSharingLongForm = true` in EngineBoot; make
+     `routeSharingLongForm(_:)` answer anything but `stored == .longFormAudio`;
+     add a routeSharing key to ENGINE_DEFAULT.json. Each fails here. */
+  const core = stripSwiftComments(fs.readFileSync(CORE_ENGINE_SWIFT, "utf8"));
+  const lines = core.split("\n");
+  const sites = new Set();
+  lines.forEach((line, i) => {
+    if (!/\bstopRow\(/.test(line) || /func stopRow\(/.test(line)) return;
+    for (let j = i; j >= 0; j--) {
+      const m = /\bfunc (\w+)\(/.exec(lines[j]);
+      if (m) { sites.add(m[1]); return; }
+    }
+    assert.fail(`a stopRow( call at line ${i + 1} is outside any func`);
+  });
+  assert.ok(sites.size >= 13, `found ${sites.size} stop sites: ${[...sites].join(", ")}`);
+  const table = fs.readFileSync(path.join(CORE_DIR, "Tests/ForayEngineCoreTests/StopCauseTests.swift"), "utf8");
+  const named = new Set([...table.matchAll(/site: "(\w+)"/g)].map((m) => m[1]));
+  for (const site of sites) assert.ok(named.has(site), `EngineCore.${site}() writes a stop row but StopCauseTests has no path with site: "${site}"`);
+  for (const site of named) assert.ok(sites.has(site), `StopCauseTests names site: "${site}", which writes no stop row`);
+  assert.match(table, /static func disposition\(_ cause: Vocabulary\.StopCause\) -> Disposition \{\s*switch cause \{/);
+  assert.doesNotMatch(swiftFuncBody(table, "disposition") ?? "", /default:/, "the disposition switch stays exhaustive: a new cause is a compile error");
+
+  assert.match(core, /routeSharingLongForm: Bool = false/, "EngineConfig.routeSharingLongForm defaults OFF");
+  const boot = stripSwiftComments(fs.readFileSync(path.join(ENGINE_DIR, "EngineBoot.swift"), "utf8"));
+  assert.doesNotMatch(boot, /routeSharingLongForm\s*=\s*true|longFormAudio:\s*true/, "the shipping boot never turns the trial on by itself");
+  assert.match(swiftFuncBody(boot, "routeSharingLongForm") ?? "", /^\{\s*stored == \.longFormAudio\s*\}$/, "only the stored Developer choice turns it on");
+  assert.match(boot, /let longForm = EngineBoot\.routeSharingLongForm\(store\.loadRouteSharing\(\)\)/);
+  assert.match(boot, /config\.routeSharingLongForm = longForm/);
+  assert.match(boot, /AudioSessionOwner\.Config\(longFormAudio: longForm,/, "the session owner is built with the same reading");
+  assert.ok(boot.indexOf("let longForm =") < boot.indexOf("store.diagnostics.build(BuildRow("), "read before the build row, which says it");
+  assert.match(boot, /routeSharing: longForm \? EngineContract\.RouteSharingPolicy\.longFormAudio : \.standard/, "the build row says which policy the launch ran");
+  assert.doesNotMatch(fs.readFileSync(path.join(ROOT, "mobile", "ENGINE_DEFAULT.json"), "utf8"), /routeSharing|longForm/i, "no build default can turn the trial on");
+});
+
+test("NE-46: the silence node stays off, its header states the enable rule, and the late-timer detector runs before the input", () => {
+  /* The provisional decision (plan §14 NE-46): `silenceNodeEnabled` stays
+     false, and only a drive paste with a `grace kind=late inSeam=y` row can
+     justify a one-line flip. MUTATION: default the flag to true, set it true
+     in EngineBoot, drop the rule from SilenceNode's header, move
+     noteLateness after route(input) (the seam and the span it closes are
+     gone by then), compare against anything but NARRATION_SUSPEND_GAP_MS, or
+     stop feeding the deck's deadlines to the core. Each fails here. */
+  const coreSrc = stripSwiftComments(fs.readFileSync(path.join(CORE_DIR, "Sources/ForayEngineCore/Engine/EngineCore.swift"), "utf8"));
+  assert.match(coreSrc, /silenceNodeEnabled: Bool = false/, "EngineConfig.silenceNodeEnabled defaults OFF");
+  const boot = stripSwiftComments(fs.readFileSync(path.join(ENGINE_DIR, "EngineBoot.swift"), "utf8"));
+  assert.doesNotMatch(boot, /silenceNodeEnabled\s*=\s*true/, "the shipping boot never turns the silence node on without the NE-46 evidence");
+  assert.match(boot, /config\.loadDeadlineMs = \[\.clip: AVDeck\.defaultLoadDeadlineSec \* 1000,\s*\.line: AVDeck\.defaultLineLoadDeadlineSec \* 1000\]/,
+    "the core measures a late load deadline against the deck's own P-13 deadlines");
+  const header = fs.readFileSync(path.join(ENGINE_DIR, "SilenceNode.swift"), "utf8");
+  for (const needle of ["THE DECISION (card NE-46", "2.5.4", "grace kind=late inSeam=y", "NARRATION_SUSPEND_GAP_MS", "one-line PR", "App Review note"]) {
+    assert.ok(header.includes(needle), `SilenceNode.swift's header no longer states the NE-46 rule (${needle})`);
+  }
+  const handle = swiftFuncBody(coreSrc, "handle") ?? "";
+  assert.ok(handle.indexOf("noteLateness(input)") >= 0 && handle.indexOf("noteLateness(input)") < handle.indexOf("route(input)"),
+    "lateness is measured before the input is handled");
+  assert.match(handle, /ledgerTimers\(\)/, "every turn's timer arms and cancels reach the ledger");
+  const late = swiftFuncBody(coreSrc, "lateRow") ?? "";
+  assert.match(late, /let gap = EngineConstants\.QueueManager\.narrationSuspendGapMs[\s\S]*lateMs > gap/, "the threshold is NARRATION_SUSPEND_GAP_MS");
+  /* Uptime stops while the device sleeps: the lateness is the larger of the
+     monotonic and the wall-clock readings. MUTATION: drop the wall half. */
+  assert.match(late, /Swift\.max\(mono, wall\)/, "a suspension followed by sleep is late only on the wall clock");
+  const ledger = swiftFuncBody(coreSrc, "ledgerTimers") ?? "";
+  assert.match(ledger, /timerDueWall\[timer\] = repeating \? nil : now\.wallMs \+ afterMs/, "the ledger keeps the wall-clock due time");
+  assert.match(late, /guard let reason = state\.grace/, "only while grace is held");
+  for (const field of ["\"late\"", "\"timer\"", "\"lateMs\"", "\"inSeam\"", "\"bgRemainingMs\""]) {
+    assert.ok(late.includes(field), `the grace late row lost ${field}`);
+  }
 });
 
 test("NE-25c: one synthesizer configuration, a platform-free probe reached only through probeSession, and a smoke on the production pieces", () => {
@@ -4739,8 +4827,8 @@ function engineDefaultRefusal(engineDefault, stateText) {
   }
   const caps = engineDefault.capabilities ?? [];
   /* NE-37, the M2 flip: `foray` joins M1's three. Narration and the interlude
-     are families of `foray` (player/parity/capabilities.json), and
-     `remainder` is a bookkeeping gate no build may ship. */
+     are families of `foray` (player/parity/capabilities.json); `remainder`
+     was a bookkeeping gate no build could ship, retired by NE-39s. */
   const allowed = ["episode", "continuation", "restore", "foray"];
   const extra = caps.filter((c) => !allowed.includes(c));
   if (extra.length) return `the M2 native default may advertise only ${allowed.join(", ")}; it also lists ${extra.join(", ")}`;

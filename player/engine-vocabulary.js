@@ -138,6 +138,25 @@ export const MODE_REASONS = Object.freeze([
     owns (`externally-owned`, NE-23). NE-26r counts both on every paste. */
 export const FAULT_KINDS = Object.freeze(["implicit-activation", "externally-owned"]);
 
+/** Why a rendered narration line's FILE failed, so the phone's voice read it
+    instead: the `cause=` of a `narration kind=fallback` row (NE-39n). Mapped by
+    AVDeck from its own `failed` and `deadline` row fields (the error's domain
+    and code and its underlying one, and the error log's `logStatus`), never
+    from free text:
+      timeout   the load passed its deadline (P-13), or the URL loader timed out
+      http-4xx  the server answered 4xx (a missing or refused file)
+      http-5xx  the server answered 5xx
+      offline   no network: not connected, cellular data refused, roaming off,
+                or the connection lost mid-transfer (airplane mode)
+      decode    the bytes arrived and are not playable audio
+      other     none of the above; each one is a mapping to extend from the
+                field (the row still carries the deck row it came from)
+    Order of precedence when more than one applies: a server's status first
+    (it answered), then offline, then timeout, then decode. */
+export const NARRATION_FALLBACK_CAUSES = Object.freeze([
+  "timeout", "http-4xx", "http-5xx", "offline", "decode", "other",
+]);
+
 /** Every set, by the name `admitToken` takes. The names are the Swift enum
     names in lower camel case (`stopCause` -> `Vocabulary.StopCause`). */
 export const VOCABULARY = Object.freeze({
@@ -149,6 +168,7 @@ export const VOCABULARY = Object.freeze({
   source: SOURCES,
   modeReason: MODE_REASONS,
   faultKind: FAULT_KINDS,
+  narrationFallbackCause: NARRATION_FALLBACK_CAUSES,
 });
 
 /** The set names, in declaration order. */
