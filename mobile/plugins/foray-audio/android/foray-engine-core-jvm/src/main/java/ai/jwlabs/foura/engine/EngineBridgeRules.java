@@ -40,24 +40,27 @@ public final class EngineBridgeRules {
      * JVM parity books let it claim. The gate is the Swift literal's (plan §6.6), read against
      * player/parity/jvm-pending.json instead of swift-pending.json: shell-invariants refuses an
      * entry here any of whose families ({@code player/parity/capabilities.json}) the JVM still
-     * owes. So, at A-29:
+     * owes. So, since A-42 (the A2 flip), iOS's M2 four:
      * <ul>
      *   <li>{@code episode}: the core plays episodes (A-24), and {@code engine-mode} (the lane's
      *       once-per-process decision, with the crash-loop guard) is ported by A-29, so every
      *       family under it runs on the JVM;</li>
      *   <li>{@code continuation}: the hop walk is the core's (A-24), and its families owe
      *       nothing on the JVM;</li>
-     *   <li>{@code restore} (A-27, the cold path) and {@code foray} (A-40, the tape) are
-     *       neither implemented nor clear.</li>
+     *   <li>{@code restore}: the cold path and the restore record are A-27's, and its families
+     *       (compare, rows, resume-rules, engine-mode) all run on the JVM;</li>
+     *   <li>{@code foray}: the Foray tape and the deck pair are A-40's, the rendered narration,
+     *       the TTS fallback seam and the jingle A-41's, and every family under it runs on the
+     *       JVM (0 owed).</li>
      * </ul>
      * What a build ADVERTISES is this ∩ what it DECLARES (mobile/ENGINE_DEFAULT.json's android
-     * block: nothing until A-31, {@code episode} and {@code continuation} since that flip), so a
-     * claim here changes no launch by itself. A capability missing from the hello is refused
+     * block: nothing until A-31, {@code episode} and {@code continuation} from that flip, all
+     * four since A-42), so a claim here changes no launch by itself. A capability missing from the hello is refused
      * {@code capability-off} by {@code engineSend}, and the page relinquishes to its own player
      * when the one it needs is missing (client.js {@code engineCan}).
      */
     public static final List<String> ADVERTISED_CAPABILITIES = Collections.unmodifiableList(
-            new ArrayList<>(Arrays.asList("episode", "continuation")));
+            new ArrayList<>(Arrays.asList("episode", "continuation", "restore", "foray")));
 
     /** {@code declared ∩ ADVERTISED_CAPABILITIES}, in the contract's order. Null declares nothing. */
     public static List<String> capabilities(List<String> declared) {

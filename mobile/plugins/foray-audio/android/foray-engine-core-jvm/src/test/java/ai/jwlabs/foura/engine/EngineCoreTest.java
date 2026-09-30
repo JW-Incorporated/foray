@@ -849,4 +849,56 @@ public class EngineCoreTest {
         List<EngineCommand> again = host.send(EngineContract.Command.PLAY);
         assertEquals(again.toString(), 1, again.stream().filter(c -> c instanceof EngineCommand.SessionActivate).count());
     }
+
+    // ---- A-42: a remote press in a Foray is on the Foray's clock
+
+    /** A clip of a built Foray ({@code f1#<index>}), as ForayTapeScenarioTest.clip. */
+    static JsonNode forayClip(int index, double start, double end) {
+        return obj("id", JsonNode.str("f1#" + index), "kind", JsonNode.str("episode"),
+                "audio_url", JsonNode.str("https://cdn.test/c" + index + ".mp3"),
+                "start_sec", JsonNode.num(start), "end_sec", JsonNode.num(end), "duration_sec", JsonNode.num(3600));
+    }
+
+    /** What the deck is told after {@code press}, in a three-clip Foray (100 s each) playing clip 0 at source {@code atSec}. */
+    static List<DeckCommand> deckAfterRemoteInAForay(double atSec, EngineInput.RemotePress press) {
+        Host host = new Host(new EngineConfig("test").withForayTape(true, false));
+        host.send(new EngineContract.Command.PlayForay("f1", "Three",
+                List.of(forayClip(0, 100, 200), forayClip(1, 300, 400), forayClip(2, 500, 600)),
+                new JsonNode.Obj(List.of()), null, false, false, null));
+        host.land();
+        host.confirm();
+        assertTrue("the Foray is playing clip 0", host.core.state().isRunning() && host.core.state().currentIndex == 0);
+        host.reading.positionSec = atSec;
+        List<DeckCommand> deck = new ArrayList<>();
+        for (EngineCommand c : host.send(new EngineInput.Remote(press))) {
+            if (c instanceof EngineCommand.Deck d) deck.add(d.command());
+        }
+        return deck;
+    }
+
+    /**
+     * A lock-screen or car press in a Foray is on the FORAY's clock, the one the surface publishes
+     * ({@code forayMediaView}), as client.js's forayMediaSurface routes it (foraySeek, nudgeBy). A
+     * scrub to 150 s is 50 s into the second clip (source 350); a 30 s skip from clip 0's source
+     * second 190 (Foray 90) is 20 s into the second clip (source 320). MUTATION: send the remote
+     * changePlaybackPosition or skip down the episode path (A-40's onRemote): the scrub seeks clip
+     * 0's source to 150, and the skip to 220, past its 200 s out-point into the rest of the episode.
+     */
+    @Test
+    public void aRemoteScrubOrSkipInAForayIsOnTheForayClock() {
+        List<DeckCommand> scrub = deckAfterRemoteInAForay(110,
+                new EngineInput.RemotePress(MediaMapping.RemoteCommand.CHANGE_PLAYBACK_POSITION, 150.0, null, true));
+        assertTrue("a scrub to Foray 150 s loads the second clip at source 350: " + scrub, scrub.stream().anyMatch(
+                c -> c instanceof DeckCommand.Load l && l.itemId().equals("f1#1") && Math.abs(l.startSec() - 350) < 0.01));
+        assertFalse("never clip 0's source second 150: " + scrub, scrub.stream().anyMatch(c -> c instanceof DeckCommand.Seek));
+        List<DeckCommand> skip = deckAfterRemoteInAForay(190,
+                new EngineInput.RemotePress(MediaMapping.RemoteCommand.SKIP_FORWARD, null, null, true));
+        assertTrue("a 30 s skip from Foray 90 s loads the second clip at source 320: " + skip, skip.stream().anyMatch(
+                c -> c instanceof DeckCommand.Load l && l.itemId().equals("f1#1") && Math.abs(l.startSec() - 320) < 0.01));
+        assertFalse("never past clip 0's out-point: " + skip, skip.stream().anyMatch(c -> c instanceof DeckCommand.Seek));
+        List<DeckCommand> back = deckAfterRemoteInAForay(150,
+                new EngineInput.RemotePress(MediaMapping.RemoteCommand.SKIP_BACKWARD, null, null, true));
+        assertTrue("a 15 s skip back inside clip 0 is a seek on its source (Foray 50 s -> source 135): " + back, back.stream().anyMatch(
+                c -> c instanceof DeckCommand.Seek s && Math.abs(s.toSec() - 135) < 0.01));
+    }
 }

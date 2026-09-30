@@ -193,6 +193,17 @@
 # lane Web, the crash-loop guard and a relinquish fall back to), gated on the
 # lane reading `js`.
 #
+# A-42, the A2 flip: `mobile/ENGINE_DEFAULT.json` android declares `foray` (and
+# `restore`: iOS's M2 four), so a Foray the page plays is the ENGINE's. `bridge`
+# now also plays a Foray through the page's own `ForayPlayer.playForay` and
+# requires the engine to hold it (its `forayId`), cross a seam of it, and the
+# page's lane to stay native. (k)'s page half is no longer the JS leg's (k) on a
+# relinquished Foray: the page builds A-41's airplane Foray (a clip, a bundled
+# rendered line, a clip, a network line, a clip) over the APK's assets and plays
+# it, in airplane mode, and the engine must play the bundled line as a file,
+# fall back on the network one at its bridge in time and speak it, land on the
+# last clip, and the Copy must carry no `engineMode js (relinquished)` row.
+#
 # `fail-fast: false`, so a red leg never cancels the other's verdicts. Each leg
 # checks that the device it booted really is its API level before installing
 # anything, and uploads its own artifact. The differences between the legs are
@@ -660,8 +671,9 @@ jobs:
 
       # A-40: the Foray tape. A Foray (the page's build of eight segments over the
       # click tracks) handed to the engine through the debug driver's playForay
-      # (the page's bridge refuses one until A-42), played hidden on the deck
-      # pair. Gated: every seam crossed, screen off, one process, p95 <= 1 s.
+      # (written before the page's bridge could: it refused one until A-42),
+      # played hidden on the deck pair. Gated: every seam crossed, screen off,
+      # one process, p95 <= 1 s.
       - name: (f) native Foray — hidden Foray seams on the deck pair, the screen off, p95 at or under 1 s
         id: native-foray-seams
         if: ${{ matrix.mode == 'native' && !cancelled() && steps.launch.outcome == 'success' }}
@@ -687,17 +699,18 @@ jobs:
         if: ${{ matrix.mode == 'native' && !cancelled() && steps.launch.outcome == 'success' }}
         run: node tools/mobile/android-native-playback.mjs kill --art "$ART"
 
-      - name: (k) native — airplane mode; an unloadable episode stops in time; a Foray relinquishes and its line falls back
+      - name: (k) native — airplane mode; an unloadable episode stops in time; the engine's and the page's Forays fall back on the line that cannot load
         id: native-airplane
         if: ${{ matrix.mode == 'native' && !cancelled() && steps.launch.outcome == 'success' }}
         run: node tools/mobile/android-native-playback.mjs airplane --art "$ART"
 
-      # A-28: the page's door, and since A-31 the flip's proof. A stock launch is
-      # the native lane (`engine=native … reason=build-default`, `episode` in the
-      # caps, an `engineMode native` row); an episode the page plays with its own
-      # ForayPlayer.play is the one the engine plays; the Developer setting Web,
+      # A-28: the page's door, and since A-31 and A-42 the flips' proof. A stock
+      # launch is the native lane (`engine=native … reason=build-default`,
+      # `episode` and `foray` in the caps, an `engineMode native` row); an episode
+      # the page plays with its own ForayPlayer.play, and a Foray it plays with
+      # ForayPlayer.playForay, are the engine's; the Developer setting Web,
       # through the page, returns the JS lane at the next launch.
-      - name: (A-28, A-31) native — a stock launch is the native lane, the page's episode plays on the engine, and Web returns the JS lane
+      - name: (A-28, A-31, A-42) native — a stock launch is the native lane, the page's episode and Foray play on the engine, and Web returns the JS lane
         id: native-bridge
         if: ${{ matrix.mode == 'native' && !cancelled() && steps.launch.outcome == 'success' }}
         run: node tools/mobile/android-native-playback.mjs bridge --art "$ART"

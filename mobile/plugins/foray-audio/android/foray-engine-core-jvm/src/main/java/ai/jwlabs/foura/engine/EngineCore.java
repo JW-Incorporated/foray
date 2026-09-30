@@ -434,20 +434,8 @@ public final class EngineCore {
             case EngineContract.Command.Toggle c -> toggle(source);
             case EngineContract.Command.Next c -> next(source);
             case EngineContract.Command.Previous c -> previous(source);
-            case EngineContract.Command.SeekBy c -> {
-                if (forayTransport()) {
-                    forayNudge(c.deltaSec(), source);
-                } else {
-                    seekBy(c.deltaSec(), source);
-                }
-            }
-            case EngineContract.Command.SeekTo c -> {
-                if (forayTransport()) {
-                    forayScrub(c.sec(), source);
-                } else {
-                    seekTo(c.sec(), source);
-                }
-            }
+            case EngineContract.Command.SeekBy c -> nudge(c.deltaSec(), source);
+            case EngineContract.Command.SeekTo c -> scrub(c.sec(), source);
             case EngineContract.Command.Jump c -> playIndex(c.index(), null, source);
             case EngineContract.Command.Stop c -> stop(c.persist(), source);
             case EngineContract.Command.SetRate c -> setRate(c.rate());
@@ -648,6 +636,33 @@ public final class EngineCore {
     }
 
     /**
+     * A nudge ({@code seekBy}, a lock-screen or car skip) on the clock the listener sees: the
+     * Foray's in a Foray ({@link #forayNudge}), else the episode's ({@link #seekBy}).
+     */
+    private void nudge(double deltaSec, Source source) {
+        if (forayTransport()) {
+            forayNudge(deltaSec, source);
+        } else {
+            seekBy(deltaSec, source);
+        }
+    }
+
+    /**
+     * A scrub ({@code seekTo}, a lock-screen or car {@code changePlaybackPosition}) on the clock
+     * the listener sees. In a Foray the surface publishes the FORAY's clock, so a scrub to 20:00
+     * of a 50-minute Foray is 20:00 of the Foray ({@link #forayScrub}), never second 1200 of the
+     * clip's source episode, which would seek past the clip's out-point into a stranger's audio
+     * (A-42; found in A-40 and moot until Android advertised {@code foray}).
+     */
+    private void scrub(double sec, Source source) {
+        if (forayTransport()) {
+            forayScrub(sec, source);
+        } else {
+            seekTo(sec, source);
+        }
+    }
+
+    /**
      * {@code seekTo} from the page or the lock screen: clamped the way the page clamps an
      * episode seek, then {@code seekAction}: with nothing loaded to seek in, the target is
      * WRITTEN DOWN as the next play's own start.
@@ -843,13 +858,16 @@ public final class EngineCore {
                 case TOGGLE_PLAY_PAUSE -> toggle(Source.REMOTE);
                 case NEXT_TRACK -> next(Source.REMOTE);
                 case PREVIOUS_TRACK -> previous(Source.REMOTE);
-                case SKIP_FORWARD -> seekBy(press.value() != null ? press.value() : steps.forwardSec(), Source.REMOTE);
-                case SKIP_BACKWARD -> seekBy(-(press.value() != null ? press.value() : steps.backwardSec()), Source.REMOTE);
+                // A-42: a press is on the clock the surface PUBLISHED, which in a Foray is the
+                // Foray's (forayMediaView), so it takes the page's own path: client.js's
+                // forayMediaSurface steps with nudgeBy and scrubs with foraySeek.
+                case SKIP_FORWARD -> nudge(press.value() != null ? press.value() : steps.forwardSec(), Source.REMOTE);
+                case SKIP_BACKWARD -> nudge(-(press.value() != null ? press.value() : steps.backwardSec()), Source.REMOTE);
                 case CHANGE_PLAYBACK_POSITION -> {
                     if (press.value() == null) {
                         refuse(Refusal.NOT_LOADED);
                     } else {
-                        seekTo(press.value(), Source.REMOTE);
+                        scrub(press.value(), Source.REMOTE);
                     }
                 }
                 case STOP -> {

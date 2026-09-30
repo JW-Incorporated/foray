@@ -711,8 +711,8 @@ export const ENGINE_PLATFORMS = Object.freeze(["ios", "android"]);
     engine answered `{mode: "legacy", reason: "build-default"}` by default, so
     decideMode answered `engine-legacy` — the JS player, nothing to relinquish;
     since A-31 (mobile/ENGINE_DEFAULT.json `android: native`) a stock launch is
-    the native lane for episodes, and the Developer setting's Web is the
-    legacy answer. An
+    the native lane for episodes, since A-42 for Forays too, and the Developer
+    setting's Web is the legacy answer. An
     Android binary built before A-28 rejects the call UNIMPLEMENTED, which
     native-engine.js reads as `no-method`. */
 export const HELLO_PLATFORMS = Object.freeze(["ios", "android"]);

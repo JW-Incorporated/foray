@@ -4753,11 +4753,18 @@ function engineDefaultRefusal(engineDefault, stateText) {
    quoting the founder's ruling it rests on:
      A-31 flip (<date>): android native default for episodes ... run <id> ... "<the ruling, quoted>" ...
    The same shape as OQ-9's record: the default and the permission are two
-   edits a reviewer sees in two files. Until A-42 (the A2 flip) the Android
-   default may advertise only episode and continuation: the binary claims no
-   more (EngineBridgeRules.ADVERTISED_CAPABILITIES), and the JVM books still
-   owe the foray families to A-40 and A-41. */
+   edits a reviewer sees in two files. The A1 default may advertise only
+   episode and continuation.
+
+   A-42 (§5.5, the A2 flip) is the same rule for Forays: the block may also
+   declare `foray` and `restore` (iOS's M2 four) only when STATE.md records
+   its own line, naming the run whose every native-mode verdict (the page's
+   own Foray on the engine included) was green:
+     A-42 flip (<date>): android native Forays ... run <id> ... "<the ruling, quoted>" ...
+   The binary's claim (EngineBridgeRules.ADVERTISED_CAPABILITIES) is gated on
+   the JVM books separately, in the A-28 test below. */
 const A31_FLIP_RE = /^A-31 flip \(\d{4}-\d{2}-\d{2}\): android native default for episodes\b.*\brun \d{6,}\b.*"[^"]+"/m;
+const A42_FLIP_RE = /^A-42 flip \(\d{4}-\d{2}-\d{2}\): android native Forays\b.*\brun \d{6,}\b.*"[^"]+"/m;
 
 /** Why Android's `engineDefault` may not ship with `stateText`, or null when it may. */
 function androidDefaultRefusal(engineDefault, stateText) {
@@ -4766,10 +4773,14 @@ function androidDefaultRefusal(engineDefault, stateText) {
     return 'mobile/ENGINE_DEFAULT.json says android "native", but STATE.md records no line "A-31 flip (<date>): android native default for episodes ... run <id> ..." carrying the ruling in double quotes';
   }
   const caps = engineDefault.capabilities ?? [];
-  const allowed = ["episode", "continuation"];
+  const a2 = caps.includes("foray") || caps.includes("restore");
+  if (a2 && !A42_FLIP_RE.test(stateText)) {
+    return 'mobile/ENGINE_DEFAULT.json declares android foray/restore, but STATE.md records no line "A-42 flip (<date>): android native Forays ... run <id> ..." carrying the ruling in double quotes';
+  }
+  const allowed = a2 ? ["episode", "continuation", "restore", "foray"] : ["episode", "continuation"];
   const extra = caps.filter((c) => !allowed.includes(c));
-  if (extra.length) return `the A1 Android default may advertise only ${allowed.join(", ")}; it also lists ${extra.join(", ")}`;
-  if (!caps.includes("episode")) return "the A1 Android default is native for episodes: it must declare episode";
+  if (extra.length) return `the ${a2 ? "A2" : "A1"} Android default may advertise only ${allowed.join(", ")}; it also lists ${extra.join(", ")}`;
+  if (!caps.includes("episode")) return "the Android native default is native for episodes: it must declare episode";
   return null;
 }
 
@@ -4798,8 +4809,22 @@ test("NE-27: ENGINE_DEFAULT says native only when STATE.md records the OQ-9 answ
   assert.match(androidDefaultRefusal({ mode: "native", capabilities: ["episode"] }, flip.replace(/"[^"]+"/, "unquoted")) ?? "", /A-31 flip/);
   assert.match(androidDefaultRefusal({ mode: "native", capabilities: ["episode"] }, "  " + flip) ?? "", /A-31 flip/, "the record is a line of its own");
   assert.equal(androidDefaultRefusal({ mode: "native", capabilities: ["episode", "continuation"] }, flip), null);
-  assert.match(androidDefaultRefusal({ mode: "native", capabilities: ["episode", "continuation", "foray"] }, flip) ?? "", /foray/);
+  assert.match(androidDefaultRefusal({ mode: "native", capabilities: ["episode", "continuation", "foray"] }, flip) ?? "", /A-42 flip/);
+  assert.match(androidDefaultRefusal({ mode: "native", capabilities: ["episode", "restore"] }, flip) ?? "", /A-42 flip/);
   assert.match(androidDefaultRefusal({ mode: "native", capabilities: ["continuation"] }, flip) ?? "", /must declare episode/);
+  /* A-42's record, the same way. MUTATION: declare foray (or restore) with STATE.md's A-42 flip
+     line deleted, without its run id or its quoted ruling, or not on a line of its own; list
+     anything past the four; or drop the A-31 line it builds on -> red. */
+  const a2 = ["episode", "continuation", "restore", "foray"];
+  const flip2 = 'A-42 flip (2026-09-30): android native Forays, backed by run 36760000000, "fully operational".';
+  const both = `${flip}\n${flip2}`;
+  assert.equal(androidDefaultRefusal({ mode: "native", capabilities: a2 }, both), null);
+  assert.match(androidDefaultRefusal({ mode: "native", capabilities: a2 }, flip2) ?? "", /A-31 flip/, "A-42 builds on A-31's record");
+  assert.match(androidDefaultRefusal({ mode: "native", capabilities: a2 }, `${flip}\n${flip2.replace(" run 36760000000", "")}`) ?? "", /A-42 flip/);
+  assert.match(androidDefaultRefusal({ mode: "native", capabilities: a2 }, `${flip}\n${flip2.replace(/"[^"]+"/, "unquoted")}`) ?? "", /A-42 flip/);
+  assert.match(androidDefaultRefusal({ mode: "native", capabilities: a2 }, `${flip}\n  ${flip2}`) ?? "", /A-42 flip/, "the record is a line of its own");
+  assert.match(androidDefaultRefusal({ mode: "native", capabilities: [...a2, "remainder"] }, both) ?? "", /remainder/);
+  assert.match(androidDefaultRefusal({ mode: "native", capabilities: ["continuation", "foray"] }, both) ?? "", /must declare episode/);
 
   /* Per platform since A-20 (docs/plans/android-assessment.md): the OQ-9 rule
      reads the `ios` block. The `android` block has its own record since A-31
@@ -4810,7 +4835,19 @@ test("NE-27: ENGINE_DEFAULT says native only when STATE.md records the OQ-9 answ
   assert.equal(refusal, null, refusal ?? "");
   const androidRefusal = androidDefaultRefusal(committed.android, stateText);
   assert.equal(androidRefusal, null, androidRefusal ?? "");
-  assert.deepEqual(committed.android, { mode: "native", capabilities: ["episode", "continuation"] }, "A-31: Android's default is native for episodes");
+  assert.deepEqual(committed.android, { mode: "native", capabilities: ["episode", "continuation", "restore", "foray"] },
+    "A-42: Android's default is native for episodes and Forays, iOS's M2 four");
+  /* A-42: a default that grants `foray` needs a service that plays one. The Android service turns
+     the Foray tape on (A-40) over the deck pair whenever it has a standby deck, and the jingle
+     only when its player exists (A-41); it never turns on the held flags. MUTATION: build the
+     service's core without the tape (or with it off) while ENGINE_DEFAULT grants foray. */
+  const service = stripJavaComments(fs.readFileSync(path.join(PLUGIN_DIR, "android", "src", "main", "java", "ai", "jwlabs", "foura",
+    "audio", "ForayPlaybackService.java"), "utf8"));
+  assert.equal(/\.withForayTape\(true, standby != null\)/.test(service), (committed.android.capabilities ?? []).includes("foray"),
+    "ENGINE_DEFAULT.json grants android foray exactly when ForayPlaybackService builds its core with the Foray tape on");
+  for (const held of ["silenceNodeEnabled", "narrationFollowsListenerRate"]) {
+    assert.doesNotMatch(service, new RegExp(held), `the service must leave ${held} at the core's default (off)`);
+  }
 
   /* NE-37, the M2 flip: a default that grants `foray` needs a boot that plays
      one. The core's flags stay OFF (headless tests and the parity driver build

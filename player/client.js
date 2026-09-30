@@ -310,10 +310,11 @@ const storage = createDurableStore({
 
    ANDROID ASKS TOO, since A-28 (docs/plans/android-assessment.md §5.4): its
    ForayAudio plugin speaks the same protocol v1 over the Media3 engine. Since
-   A-31 its engine answers `native` by default for episodes
-   (mobile/ENGINE_DEFAULT.json `android: native`, no `foray` until A-42), so a
-   Foray there relinquishes to the JS player; the hello is answered on the
-   plugin's main-thread hop, so the wait is one bridge round trip.
+   A-31 its engine answers `native` by default for episodes, and since A-42
+   (the A2 flip) it advertises `foray` too (mobile/ENGINE_DEFAULT.json
+   `android`: iOS's M2 four), so a Foray there plays on the engine exactly as
+   on iOS; the hello is answered on the plugin's main-thread hop, so the wait
+   is one bridge round trip.
 
    Off an engine shell (the web) there is no engine and no question: the
    lane is JS from this line, the store is released before hydration exactly
@@ -5276,7 +5277,7 @@ const ForayPlayer = {
     const again = () => ForayPlayer.playForay(resolved, { startIndex, startElapsedSec, onChange, discoverDoc });
     if (engineMode === null) return engineModeReady.then(again);
     /* WITHOUT ITS 'foray' CAPABILITY THE ENGINE DOES NOT PLAY FORAYS (M1, and
-       M2 until NE-37 advertises it). The tap runs the ordered relinquish
+       M2 until NE-37 advertises it; Android until A-42). The tap runs the ordered relinquish
        (§4.6) and the Foray plays in today's player — relinquished BEFORE a
        single element is built, so there is never an engine and an <audio>
        element producing at once. WITH it (NE-35) the page builds the Foray
