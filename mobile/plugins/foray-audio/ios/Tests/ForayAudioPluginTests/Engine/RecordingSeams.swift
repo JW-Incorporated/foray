@@ -56,6 +56,9 @@ final class FakeSession: SessionControlling {
     let log: SeamLog
     /// What the next `activate()` answers.
     var answer = SessionActivation(ok: true, activateMs: 2)
+    /// The current output route the host reads for every input (NE-38rs).
+    var route: RoutePort?
+    var currentRoute: RoutePort? { route }
     private(set) var activateCalls = 0
     private(set) var deactivations: [Bool] = []
     private var observers: [(FakeObservation, (SessionEvent) -> Void)] = []
@@ -519,6 +522,9 @@ final class FakeWorld {
     /// Nil unless a test gives the world one (NE-16): the host then runs
     /// without persistence, as most tests want.
     var holdPolicyStore: FakeHoldPolicyStore?
+    /// Nil unless a test gives the world one (NE-38rs): the host then keeps
+    /// the known routes in memory only, with a fresh salt.
+    var knownRoutesStore: KnownRoutesStoring?
     /// Nil unless a test gives the world one (NE-34): the host then answers
     /// every jingle start `refused` and renders no silence, as the M1 world did.
     var interlude: InterludePlaying?
@@ -530,6 +536,6 @@ final class FakeWorld {
     var seams: EngineSeams {
         EngineSeams(session: session, background: background, remote: remote, nowPlaying: nowPlaying,
                     deck: deck, speaker: speaker, timing: timing, output: output, holdPolicy: holdPolicyStore,
-                    interlude: interlude, silence: silence, preview: preview)
+                    knownRoutes: knownRoutesStore, interlude: interlude, silence: silence, preview: preview)
     }
 }

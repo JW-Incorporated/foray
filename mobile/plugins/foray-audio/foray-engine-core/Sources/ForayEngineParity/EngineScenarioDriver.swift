@@ -620,9 +620,13 @@ final class ScenarioWorld {
             }
             feed(.session(.interruptionEnded(shouldResume: shouldResume)))
         case "routeLost", "routeAvailable":
+            // No fixture names a port: the JS lanes never resume on a
+            // reconnect, and this driver's EngineNow has no route, so no
+            // route ever becomes known here (route resume is the
+            // `route-resume` family's, NE-38rs).
             feed(.session(.route(RouteChange(oldDeviceUnavailable: event == "routeLost",
-                                             routeName: fields["routeName"]?.stringValue,
-                                             isCarRoute: fields["isCarRoute"] == .bool(true)))))
+                                             portType: fields["portType"]?.stringValue,
+                                             portUID: fields["portUID"]?.stringValue))))
         case "mediaServicesReset":
             feed(.session(.mediaServicesReset))
         default:

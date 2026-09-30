@@ -69,13 +69,30 @@ public struct EngineConfig: Equatable {
     /// session instead. OFF. The core decides nothing on it; the host reads
     /// it to choose the narrator's output.
     public var speechDirect: Bool
+    /// NE-38rs, the Bluetooth arm of route resume
+    /// (`ROUTE_RESUME_BLUETOOTH_DEFAULT`): whether a known Bluetooth route
+    /// (A2DP, HFP, LE) that comes back after it paused us resumes by itself.
+    /// OFF, provisional (measurements §12, NE-38e verdict `route-back`: the ms
+    /// from a Bluetooth `route kind=back` to the car's own `remote play`). The
+    /// founder's car is A2DP and sends its own play 7.4 s after connecting,
+    /// and AirPods are A2DP too. The shipping boot reads it from the plist
+    /// (`ForayEngineRouteResumeBluetooth`, from mobile/ENGINE_DEFAULT.json).
+    public var routeResumeBluetooth: Bool
+    /// NE-38rs: the install's salt for route keys (`RouteResume.hashedKey`),
+    /// kept beside the known set in `ForayEngine.knownRoutes`. Empty in a
+    /// headless core (tests, the parity driver).
+    public var routeSalt: String
+    /// NE-38rs: the known set the host read back from `ForayEngine.knownRoutes`.
+    public var knownRoutes: [String]
 
     public init(build: String = "", holdPolicy: SessionPolicy.HoldPolicy = .default, rate: Double? = nil,
                 forayTapeEnabled: Bool = false, seamGapSec: Double = SeamGap.defaultGapSec,
                 narrationFollowsListenerRate: Bool = false, narrationPulse: Bool = true,
                 interludeAvailable: Bool = false, interludeEnabled: Bool = true,
                 silenceNodeEnabled: Bool = false, voiceId: String? = nil, speechDirect: Bool = false,
-                loadDeadlineMs: [DeckDeadlineClass: Double] = [:], deckPairEnabled: Bool = false) {
+                routeResumeBluetooth: Bool = RouteResume.bluetoothDefault, routeSalt: String = "",
+                knownRoutes: [String] = [], loadDeadlineMs: [DeckDeadlineClass: Double] = [:],
+                deckPairEnabled: Bool = false) {
         self.build = build
         self.holdPolicy = holdPolicy
         self.rate = rate
@@ -89,6 +106,9 @@ public struct EngineConfig: Equatable {
         self.silenceNodeEnabled = silenceNodeEnabled
         self.voiceId = voiceId
         self.speechDirect = speechDirect
+        self.routeResumeBluetooth = routeResumeBluetooth
+        self.routeSalt = routeSalt
+        self.knownRoutes = knownRoutes
         self.loadDeadlineMs = loadDeadlineMs
     }
 }
@@ -174,6 +194,7 @@ public struct EngineCore {
         initial.positions = positions
         initial.interludeEnabled = config.interludeEnabled
         initial.voiceId = EngineCore.voice(config.voiceId)
+        initial.knownRoutes = RouteResume.KnownRoutes(config.knownRoutes)
         state = initial
     }
 
@@ -264,6 +285,7 @@ public struct EngineCore {
         deck = now.deck
         out = []
         deckMovedThisTurn = false
+        noteHeard()
         if case let .sessionResult(result) = input {
             onSessionResult(result)
         } else {
@@ -280,7 +302,10 @@ public struct EngineCore {
             noteLateness(input)
             route(input)
         }
-        if state.session != .relinquished && !state.tornDown { settleTurn() }
+        if state.session != .relinquished && !state.tornDown {
+            settleRouteResume()
+            settleTurn()
+        }
         ledgerTimers()
         let result = out
         out = []
@@ -306,6 +331,7 @@ public struct EngineCore {
     // MARK: - Page commands
 
     private mutating func onCommand(_ command: EngineContract.Command, source: EngineSource) {
+        if let press = pressName(command) { routePress(press) }
         switch command {
         case let .playEpisode(item, startSec, _, lastEpisodeRow):
             guard let episode = EngineItem(node: item.node) else { return refuse(.notLoaded) }
@@ -398,6 +424,11 @@ public struct EngineCore {
     }
 
     private mutating func onQueue(_ input: QueueInput) {
+        switch input {
+        case .playIndex: routePress("play")
+        case .seek: routePress("seek")
+        case .load, .loadForay, .setRate: break
+        }
         switch input {
         case let .load(items):
             // `loadQueue(items)`: the queue is replaced, nothing loads.
@@ -596,6 +627,12 @@ public struct EngineCore {
         applySession(SessionPolicy.transition(from: state.session, on: persist ? .close : .dataDeletion,
                                               holdPolicy: state.holdPolicy))
         if !persist {
+            // Delete my data forgets the routes too (the host removes
+            // `ForayEngine.knownRoutes` when the set is empty).
+            state.knownRoutes = RouteResume.KnownRoutes()
+            state.routeResume = RouteResume.State(playing: false)
+            state.routeResumeBeforePause = nil
+            state.heardRoute = nil
             state.positions = [:]
             state.eventMarks = [:]
             state.pendingEvents = []
@@ -718,6 +755,9 @@ public struct EngineCore {
         let rowAt = out.count
         diag("remote", fields + graceFields())
         defer { out[rowAt] = .diag(DiagEntry(kind: "remote", fields: fields + graceFields())) }
+        // Any press after a loss clears it: the listener (or the car) has
+        // taken charge (route-resume.js "press").
+        routePress(remotePressName(press.command))
         let steps = MediaMapping.SeekSteps()
         switch press.command {
         case .play: play(source: .remote)
@@ -1361,8 +1401,12 @@ public struct EngineCore {
         case .playing:
             state.buffering = false
             if state.grace != nil { endGrace(.playing) }
-        case .waiting: if EngineCore.bufferingWhileWaiting { state.buffering = true }
-        case .paused: break
+            routeResumeStep(.playing)
+            startHearing()
+        case .waiting:
+            if EngineCore.bufferingWhileWaiting { state.buffering = true }
+            stopHearing()
+        case .paused: stopHearing()
         }
     }
 
@@ -1373,6 +1417,7 @@ public struct EngineCore {
     private mutating func onUncommandedPause(_ token: DeckToken) {
         guard token == state.loadedToken else { return }
         state.lastUncommandedPauseAtMono = now.monoMs
+        stopHearing()
         deck.audible = false
         var routeAttributed = false
         if let lost = state.lastRouteLostAtMono {
@@ -1402,6 +1447,16 @@ public struct EngineCore {
             return diag("reconcile", [JSONMember("kind", .string("skipped-ended"))])
         }
         stopRow(routeAttributed ? .routeChange : .systemPause)
+        // Route resume (NE-38rs): a pause the route is blamed for was already
+        // the loss's (`onRoute` stepped it). One blamed on the system is the
+        // system's, unless a route loss follows inside the attribution window,
+        // which restores the reducer from this snapshot (either order).
+        if !routeAttributed {
+            if unexplainedPause {
+                state.routeResumeBeforePause = RouteResumeSnapshot(state: state.routeResume, atMono: now.monoMs)
+            }
+            routeResumeStep(.system)
+        }
         // The OS took the audio; the listener did not press anything.
         state.pausedByListener = false
         // WHO took it decides whether a should-resume may bring it back: a
@@ -1449,6 +1504,8 @@ public struct EngineCore {
         }
         cutSeamGap("interruption")
         stopRow(.interruption)
+        // A call or Siri clears a loss's eligibility (route-resume.js).
+        routeResumeStep(.interruption)
         applySession(transition)
         dispatch(.interruptionBegan)
         releaseSeamGap()
@@ -1492,14 +1549,27 @@ public struct EngineCore {
     }
 
     /// `routeChanged(...)` (corner case #13): a lost route pauses and is not
-    /// resumable by a later call; a route reappearing resumes only a car this
-    /// engine has seen before, never headphones being plugged in.
+    /// resumable by a later call. A route coming back resumes ONLY under the
+    /// founder's Q5 rule (NE-38rs, `RouteResume`): the last pause was the loss
+    /// of THAT route (same salted key), the route is known (our audio was heard
+    /// through it for a second), the loss is under 24 h old on the wall clock,
+    /// and it is a car (CarPlay; Bluetooth only behind `routeResumeBluetooth`,
+    /// OFF). A listener's pause, a call, Siri or a system pause never resumes.
+    /// Every loss and every return writes a `route` row with the decision.
     private mutating func onRoute(_ change: RouteChange) {
-        if change.isCarRoute, let name = change.routeName { state.knownCarRoutes.insert(name) }
         diag("session", [JSONMember("kind", .string("route")),
                          JSONMember("oldDeviceUnavailable", .bool(change.oldDeviceUnavailable)),
                          JSONMember("port", change.portType.map { JSONNode.string($0) } ?? .null)])
+        let key = routeKey(change.portType, change.portUID)
         if change.oldDeviceUnavailable {
+            // Heard through the route that just went away for long enough? The
+            // deck may already have stopped (either order), so the span ends
+            // where it stopped, not now.
+            if let heard = state.heardRoute, heard.key == key,
+               heard.heardMs(atMono: now.monoMs) >= RouteResume.knownAfterMs {
+                state.knownRoutes.use(heard.key)
+            }
+            state.heardRoute = nil
             state.lastRouteLostAtMono = now.monoMs
             state.pausedByRoute = true
             if let paused = state.lastUncommandedPauseAtMono, now.monoMs - paused >= 0,
@@ -1507,7 +1577,17 @@ public struct EngineCore {
                 // The deck's pause came first and was reconciled as the
                 // system's; the route is why (plan §4.3, either order).
                 diag("session", [JSONMember("kind", .string("route-attributed")), JSONMember("to", .string("pause"))])
+                if let before = state.routeResumeBeforePause, before.atMono == paused {
+                    state.routeResume = before.state
+                }
             }
+            state.routeResumeBeforePause = nil
+            routeResumeStep(.lost(port: change.portType, key: key, atSec: wallSec))
+            diag("route", [JSONMember("kind", .string("lost")),
+                           JSONMember("port", change.portType.map { JSONNode.string($0) } ?? .null),
+                           JSONMember("class", .string(change.routeClass.rawValue)),
+                           JSONMember("key", RouteResume.rowKey(key).map { JSONNode.string($0) } ?? .null),
+                           JSONMember("known", .bool(state.knownRoutes.contains(key)))])
             // A beat that outlived a lost route would start audio into a dead
             // route the moment its timer fired.
             cutSeamGap("routeLost")
@@ -1520,13 +1600,120 @@ public struct EngineCore {
             // transport-reconcile's "THE POSITION THE ROUTE DIED AT IS
             // WRITTEN"). An unknown playhead still writes nothing.
             persistForay(force: true)
-        } else {
-            dispatch(.routeChanged(oldDeviceUnavailable: false))
+            return
         }
-        guard !change.oldDeviceUnavailable, let name = change.routeName, state.knownCarRoutes.contains(name),
-              state.currentItem != nil, case .interrupted(_, true) = state.player else { return }
-        diag("session", [JSONMember("kind", .string("route-resume")), JSONMember("knownCar", .bool(true))])
-        begin(.routeResume, source: .autoresume)
+        dispatch(.routeChanged(oldDeviceUnavailable: false))
+        state.heardRoute = nil
+        let known = state.knownRoutes.contains(key)
+        let pausedBy = state.routeResume.pausedBy
+        let lostSec: Double? = state.routeResume.lost?.atSec.map { wallSec - $0 }
+        var decision = routeResumeStep(.back(port: change.portType, key: key, known: known, atSec: wallSec))
+            ?? RouteResume.Decision(resume: false, why: RouteResume.Why.notPaused)
+        if decision.resume && state.currentItem == nil {
+            // Nothing to resume (not expected: a loss arms only while playing).
+            decision = RouteResume.Decision(resume: false, why: "no-item")
+        }
+        diag("route", [JSONMember("kind", .string("back")),
+                       JSONMember("port", change.portType.map { JSONNode.string($0) } ?? .null),
+                       JSONMember("class", .string(change.routeClass.rawValue)),
+                       JSONMember("key", RouteResume.rowKey(key).map { JSONNode.string($0) } ?? .null),
+                       JSONMember("known", .bool(known)),
+                       JSONMember("lostSec", Rows.finiteOrNull(lostSec.map { ($0 * 10).rounded() / 10 })),
+                       JSONMember("pausedBy", .string(pausedBy.rawValue)),
+                       JSONMember("decision", .string(decision.resume ? "resume" : "no")),
+                       JSONMember("why", .string(decision.why))])
+        if decision.resume {
+            // Like a car's press: grace from this moment, then the activation.
+            begin(.routeResume, source: .autoresume)
+        } else if audibleNow, state.isRunning, let key {
+            // Playing on through a route that just arrived (a car connecting
+            // while the phone plays): heard through it from now.
+            state.heardRoute = HeardRoute(key: key, sinceMono: now.monoMs, untilMono: nil)
+        }
+    }
+
+    // MARK: - Route resume's bookkeeping (NE-38rs)
+
+    /// Wall-clock seconds: a loss's age must keep counting while the phone
+    /// sleeps (route-resume.js THE CLOCK), which uptime does not.
+    private var wallSec: Double { now.wallMs / 1000 }
+
+    /// A port's salted key, or nil for a port with no UID.
+    private func routeKey(_ portType: String?, _ uid: String?) -> String? {
+        RouteResume.hashedKey(portType: portType, uid: uid, salt: config.routeSalt)
+    }
+
+    /// One event through route-resume.js's reducer.
+    @discardableResult
+    private mutating func routeResumeStep(_ event: RouteResume.Event) -> RouteResume.Decision? {
+        let result = RouteResume.step(state.routeResume, event, bluetoothArm: config.routeResumeBluetooth)
+        state.routeResume = result.state
+        return result.decision
+    }
+
+    /// A press: "pause", "play", or any other name (a skip, a seek).
+    private mutating func routePress(_ command: String) {
+        routeResumeStep(.press(command: command))
+    }
+
+    /// What a page command is as a press, if it is one. A toggle is whichever
+    /// way it will go (the same native truth `toggle` reads).
+    private func pressName(_ command: EngineContract.Command) -> String? {
+        switch command {
+        case .playEpisode, .playForay, .play, .jump: return "play"
+        case .pause, .stop, .purge: return "pause"
+        case .toggle: return state.isRunning || audibleNow ? "pause" : "play"
+        case .next: return "next"
+        case .previous: return "previous"
+        case .seekBy, .seekTo: return "seek"
+        default: return nil
+        }
+    }
+
+    /// A remote command as a press (a remote stop is a pause, T-7).
+    private func remotePressName(_ command: MediaMapping.RemoteCommand) -> String {
+        switch command {
+        case .play: return "play"
+        case .pause, .stop: return "pause"
+        case .togglePlayPause: return state.isRunning || audibleNow ? "pause" : "play"
+        default: return command.rawValue
+        }
+    }
+
+    /// The deck became audible (`.playing` for the loaded token): the route it
+    /// is heard through starts (or continues) a heard span.
+    private mutating func startHearing() {
+        guard let route = now.route, let key = routeKey(route.portType, route.uid) else {
+            state.heardRoute = nil
+            return
+        }
+        if let heard = state.heardRoute, heard.key == key, heard.untilMono == nil { return }
+        state.heardRoute = HeardRoute(key: key, sinceMono: now.monoMs, untilMono: nil)
+    }
+
+    /// The deck stopped being audible: the span ends here (kept, so a loss
+    /// that arrives just after the pause still counts what was heard).
+    private mutating func stopHearing() {
+        guard var heard = state.heardRoute, heard.untilMono == nil else { return }
+        heard.untilMono = now.monoMs
+        state.heardRoute = heard
+    }
+
+    /// At the top of every turn: a span heard for `knownAfterMs` through the
+    /// route that is still current makes that route known (once per span).
+    private mutating func noteHeard() {
+        guard let heard = state.heardRoute, heard.untilMono == nil, now.deck.audible,
+              heard.heardMs(atMono: now.monoMs) >= RouteResume.knownAfterMs,
+              let route = now.route, heard.key == routeKey(route.portType, route.uid) else { return }
+        state.knownRoutes.use(heard.key)
+    }
+
+    /// At the end of every turn: an intent to play that did not survive the
+    /// turn (a refused activation, a failed load, the queue's end) is the
+    /// system's pause to the reducer, so it can never be a route's.
+    private mutating func settleRouteResume() {
+        guard state.routeResume.playing, state.pendingActivation == nil, !state.isRunning, !audibleNow else { return }
+        routeResumeStep(.system)
     }
 
     /// Media services were reset: the session is gone and every AVFoundation
@@ -1536,6 +1723,7 @@ public struct EngineCore {
     private mutating func onMediaServicesReset() {
         let transition = SessionPolicy.transition(from: state.session, on: .mediaServicesReset, holdPolicy: state.holdPolicy)
         stopRow(.mediaServicesReset)
+        routeResumeStep(.system)
         applySession(transition)
         dispatch(.interruptionBegan)
         dispatch(.interruptionEnded(shouldResume: false))
@@ -1560,7 +1748,11 @@ public struct EngineCore {
                 return diag("restore", [JSONMember("kind", .string("bad-index"))])
             }
             state.currentIndex = index
-            if autoplay { begin(.coldPlay, source: .restore) }
+            if autoplay {
+                // The car's play that relaunched us: a press (route-resume.js).
+                routePress("play")
+                begin(.coldPlay, source: .restore)
+            }
         case .background:
             state.backgrounded = true
             flushPosition()
@@ -2291,6 +2483,8 @@ public struct EngineCore {
         switch event {
         case let .started(seq, voiceFallback):
             narrationStarted(seq, voiceFallback: voiceFallback)
+            // A spoken line of ours is audible (route-resume.js "playing").
+            if state.narration?.seq == seq { routeResumeStep(.playing) }
         case let .failed(seq, _):
             guard let pending = state.pendingLoad, pending.spokenSeq == seq else {
                 return diag("narration", [JSONMember("kind", .string("superseded-failure")), JSONMember("seq", .number(Double(seq)))])

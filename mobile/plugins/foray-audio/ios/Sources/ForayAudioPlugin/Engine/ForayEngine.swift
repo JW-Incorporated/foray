@@ -132,6 +132,9 @@ final class ForayEngine {
     /// the core with a different one is persisted, once.
     private var storedHoldPolicy: SessionPolicy.HoldPolicy
 
+    /// The known routes the store last heard (NE-38rs), persisted the same way.
+    private var storedKnownRoutes: [String]
+
     /// A stored `pauseHoldPolicy` (the Developer row, `engineSend
     /// setHoldPolicy`) outranks the config's: the config carries the build's
     /// default, the key carries what the founder chose on this phone.
@@ -140,6 +143,13 @@ final class ForayEngine {
         var config = config
         if let stored = seams.holdPolicy?.load() { config.holdPolicy = stored }
         storedHoldPolicy = config.holdPolicy
+        // NE-38rs: the install's salt and the routes our audio was heard
+        // through, from `ForayEngine.knownRoutes`; a new salt when there is
+        // none (it is written with the first known route).
+        let routes = seams.knownRoutes?.loadKnownRoutes()
+        config.routeSalt = routes?.salt ?? RouteResume.newSalt()
+        config.knownRoutes = routes?.keys ?? []
+        storedKnownRoutes = config.knownRoutes
         core = EngineCore(config: config, positions: positions)
     }
 
@@ -447,6 +457,7 @@ final class ForayEngine {
             failures += interpret(command)
         }
         persistHoldPolicyIfChanged()
+        persistKnownRoutesIfChanged()
         if core.state.session == .relinquished { teardown() }
         return failures
     }
@@ -465,6 +476,17 @@ final class ForayEngine {
         ]))
     }
 
+    /// NE-38rs: the core's known routes are the host's to keep, in the
+    /// private key, whenever a turn changed them (a route heard for a second,
+    /// a data deletion). An empty set removes the key, so a deletion leaves
+    /// nothing behind.
+    private func persistKnownRoutesIfChanged() {
+        let keys = core.state.knownRoutes.keys
+        guard keys != storedKnownRoutes else { return }
+        storedKnownRoutes = keys
+        seams.knownRoutes?.saveKnownRoutes(keys.isEmpty ? nil : RouteResume.Stored(salt: core.config.routeSalt, keys: keys))
+    }
+
     /// Both clocks and the deck's reading at the moment the input is handled
     /// (`DeckReading`: the core asks the deck at the moment it decides, as the
     /// JS asks its element).
@@ -473,7 +495,7 @@ final class ForayEngine {
     /// the `remote`, `resume` and `cold-play` rows it writes for this input.
     private func now() -> EngineNow {
         EngineNow(wallMs: seams.timing.wallMs, monoMs: seams.timing.monoMs, deck: seams.deck.reading,
-                  bgRemainingMs: backgroundRemainingMs())
+                  bgRemainingMs: backgroundRemainingMs(), route: seams.session.currentRoute)
     }
 
     /// `backgroundTimeRemaining` in whole milliseconds; nil in the foreground

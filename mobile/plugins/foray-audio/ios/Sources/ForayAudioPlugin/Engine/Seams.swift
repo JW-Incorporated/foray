@@ -69,6 +69,13 @@ protocol SessionControlling: AnyObject {
     func rebuild()
     /// Interruptions, route changes and media-services resets, on main.
     func observe(_ handler: @escaping (SessionEvent) -> Void) -> EngineObservation
+    /// The current output route, read for every input (`EngineNow.route`,
+    /// NE-38rs). Nil when the seam cannot say (the default).
+    var currentRoute: RoutePort? { get }
+}
+
+extension SessionControlling {
+    var currentRoute: RoutePort? { nil }
 }
 
 // MARK: - Background time and the app's lifecycle (BackgroundGrace, NE-16g)
@@ -307,6 +314,18 @@ protocol HoldPolicyStoring: AnyObject {
     func save(_ policy: SessionPolicy.HoldPolicy)
 }
 
+// MARK: - The known routes' private key (NE-38rs)
+
+/// Where route resume's known set lives between launches: the engine-private
+/// `UserDefaults` key `ForayEngine.knownRoutes` (EngineStore), never under
+/// `CapacitorStorage.`, with the install's salt beside the salted keys. The
+/// host reads it once at construction and writes it whenever a turn changed
+/// the core's set; nil removes the key (an empty set, a data deletion).
+protocol KnownRoutesStoring: AnyObject {
+    func loadKnownRoutes() -> RouteResume.Stored?
+    func saveKnownRoutes(_ stored: RouteResume.Stored?)
+}
+
 /// Every seam the host drives, in one value, so a test builds the whole world
 /// out of fakes and the boot path (NE-17, NE-24) out of the real conformers.
 struct EngineSeams {
@@ -320,6 +339,10 @@ struct EngineSeams {
     var output: EngineOutput
     /// Optional so a world without persistence (most tests) needs no store.
     var holdPolicy: HoldPolicyStoring? = nil
+    /// The known routes and their salt (NE-38rs), in the private key
+    /// `ForayEngine.knownRoutes`. Nil (most tests): a fresh salt per engine
+    /// and nothing persisted.
+    var knownRoutes: KnownRoutesStoring? = nil
     /// The seam's jingle (NE-34). Nil: every `interlude(.start)` is answered
     /// `ended(refused)` at once, and the boot leaves `interludeAvailable` off.
     var interlude: InterludePlaying? = nil

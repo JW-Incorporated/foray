@@ -1870,6 +1870,7 @@ Read first: `CLAUDE.md`, this deck, the Tier 2 requirements, `docs/ios-native-pl
     - no row carries the raw UID.
   - ios-kit, engine-parity and ios-gate are green on the head SHA.
 - **Device check:** the NE-40 route block.
+- **Status 2026-09-29 (PR #904):** ported. `RouteResume` (Policy/RouteResume.swift) is route-resume.js line for line, plus the salted SHA-256 (plain Swift: the core is Foundation-only and runs on Linux), the LRU known set and its stored form `{v, salt, keys}`. The salt is per install and lives in `ForayEngine.knownRoutes` beside the keys, so a purge takes both; the host writes the key whenever a turn changes the set and removes it when the set is empty. The current route reaches the core as `EngineNow.route` (`SessionControlling.currentRoute`), which is how a `.playing` deck is heard through it. The Bluetooth arm ships through `mobile/ENGINE_DEFAULT.json` `ios.routeResumeBluetooth` → plist `ForayEngineRouteResumeBluetooth` → `EngineConfig.routeResumeBluetooth`. `route-resume` moved from `remainder` to `episode` with nothing pending; A-61 still owes the JVM port.
 
 #### NE-45j · Prepare across narration seams, the JS reference (JS) — **M**
 - **Milestone:** M3
@@ -2058,6 +2059,7 @@ Read first: `CLAUDE.md`, this deck, the Tier 2 requirements, `docs/ios-native-pl
     3. **Route resume (NE-38r):**
        - Play in the car and switch the car off while 4a plays. Wait at least 10 min, then switch the car on. With CarPlay, 4a resumes by itself. With Bluetooth, note whether the car sends play itself (`route-back`).
        - Then pause in the app, switch the car off and on again. 4a must **not** resume.
+       - Play at least a few seconds in the car first: a route becomes known only after 1 s of our audio through it. Each loss writes `route kind=lost port= key=<8 hex> known=`, and each return `route kind=back ... pausedBy= decision= why=` (NE-38rs). Expected: the first return reads `pausedBy=route` and, on CarPlay, `decision=resume why=route-back` (on Bluetooth `decision=no why=bluetooth-off`, then the car's own `remote play`); the second reads `pausedBy=listener decision=no why=listener-paused`.
     4. **Rendered Foray (when one is published):** screen off, through at least two clip → line → clip seams. Press the car's Next during a line. Turn on airplane mode for 10 s during a line: the line falls back to the phone's voice.
     5. **DV-11:** an hour of native playback, then an hour with the Developer JS toggle. Read Settings → Battery for each.
     6. **Regression:** H-1 (2, 10 and 30 min), H-1b, H-3 (a call placed by a second person), the navigation arm, and the Spotify negative control.
