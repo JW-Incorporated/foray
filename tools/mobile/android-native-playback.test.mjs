@@ -18,6 +18,7 @@ import {
   DOZE_QUEUE,
   ENGINE_STATUS_EXPRESSION,
   AIRPLANE_QUEUE,
+  FORAY_SEAMS_FORAY,
   LANE_SCENARIOS,
   NATIVE_GATES,
   SEAMS_QUEUE,
@@ -26,12 +27,15 @@ import {
   engineRowsFromLogcat,
   episodeSeamStats,
   episodeSeams,
+  foraySeamStats,
+  foraySeams,
   laneFailures,
   mergeRows,
   parseEngineRow,
   verdictAirplane,
   verdictFirstLaunch,
   verdictSeams,
+  verdictForaySeams,
   LEGACY_START_EXPRESSION,
   copyFacts,
   ownerFacts,
@@ -229,8 +233,9 @@ test("A-26: small helpers and the CLI", () => {
   assert.equal(moved(S({ positionSec: 1 }), S({ item: "other", positionSec: 3 })), null, "a different item is not comparable");
   assert.equal(ourSession({ sessions: [{ package: "x", state: "PLAYING" }, { package: PKG, state: "PAUSED" }] }).state, "PAUSED");
   assert.deepEqual(SCENARIOS.map(([id]) => id),
-    ["first-launch", "play", "background", "transport", "notification", "seams", "doze", "focus", "call", "kill", "airplane", "bridge", "fallback"],
-    "A-30's (e), A-26's (a)-(d), A-30's (f), A-26's (g), (h), (i), A-27's (j), A-30's (k), then A-28's page door, then A-29's fallback");
+    ["first-launch", "play", "background", "transport", "notification", "seams", "foray-seams", "doze", "focus", "call", "kill", "airplane",
+      "bridge", "fallback"],
+    "A-30's (e), A-26's (a)-(d), A-30's (f), A-40's Foray (f), A-26's (g), (h), (i), A-27's (j), A-30's (k), then A-28's page door, then A-29's fallback");
   assert.match(summaryMarkdown({ play: { ok: true } }), /\| \(a\) native[^|]*\| \*\*pass\*\* \|/);
   assert.equal(parseArgs(["play", "--art", "d"]).art, "d");
   assert.throws(() => parseArgs(["back-home", "--art", "d"]), /first argument/);
@@ -670,6 +675,20 @@ test("A-30 (f): a seam runs from the outgoing load's end to the incoming load's 
     '8 2026-09-30T00:01:31.060Z deck {"kind":"time-control","token":2,"status":"playing"}',
   ].map(parseEngineRow);
   const [n] = episodeSeams(natural);
+  /* A-40: a segment queue plays on the deck pair, and a prepared segment is handed over with no
+     attach: the pair's `prepare kind=promote` row is the incoming load's. MUTATION: drop it from
+     episodeSeams, and the handed-over seam is never read (A-40's first run read 4 of 7). */
+  const handed = episodeSeams([
+    '1 2026-09-30T00:00:00.000Z deck {"kind":"attach","token":1,"cold":"no-item"}',
+    '2 2026-09-30T00:00:00.100Z deck {"kind":"time-control","token":1,"status":"playing"}',
+    '3 2026-09-30T00:00:12.100Z outPoint {"kind":"stop","layer":"boundary","overshootMs":3,"rate":1,"token":1}',
+    '4 2026-09-30T00:00:12.102Z prepare {"kind":"promote","token":2}',
+    '5 2026-09-30T00:00:12.610Z deck {"kind":"time-control","token":2,"status":"playing"}',
+  ].map(parseEngineRow));
+  assert.equal(handed.length, 1);
+  assert.equal(handed[0].via, "handover");
+  assert.equal(handed[0].gapMs, 510, "the out-point to the incoming deck playing, the beat included");
+  assert.equal(handed[0].endFrom, "outPoint");
   assert.equal(n.gapMs, 60, "a stall that recovered is not the end; the pause after it is");
   assert.equal(n.via, "reuse");
   assert.equal(n.cold, "same-source");
@@ -771,4 +790,100 @@ test("A-30 (e): the first launch is the JS leg's verdict plus the native lane an
   assert.match(verdictFirstLaunch({ ...good, service: { hosting: false } }).failures[0], /not hosting/);
   assert.equal(parseArgs(["first-launch", "--art", "d"]).scenario, "first-launch");
   assert.equal(parseArgs(["airplane", "--art", "d"]).scenario, "airplane");
+});
+
+/* ─────────────────────────── A-40: the Foray tape's (f) ─────────────────────────── */
+
+test("A-40 (f): the Foray is the page's build of eight click-track segments, six seams across sources and one inside one", () => {
+  /* MUTATION: an https URL; a segment past its file; a bad-bounds segment (the core refuses the
+     whole Foray, refused-structure); drop the same-source seam; make two ids equal. */
+  const { forayId, title, items } = FORAY_SEAMS_FORAY;
+  assert.equal(forayId, "a40-foray");
+  assert.ok(title);
+  assert.equal(items.length, 8);
+  assert.equal(new Set(items.map((i) => i.id)).size, items.length, "every id once (J-4's duplicate-id)");
+  for (const it of items) {
+    assert.ok(it.audio_url.startsWith(ASSET_BASE), it.audio_url);
+    assert.ok(CLIPS.some((c) => it.audio_url.endsWith(c.file)));
+    assert.equal(it.kind, "episode");
+    assert.ok(Number.isFinite(it.start_sec) && it.start_sec >= 0 && it.end_sec > it.start_sec && it.end_sec <= it.duration_sec, it.id);
+    assert.equal(it.dai_suspected, false);
+    assert.equal(it.needs_drift_check, false);
+  }
+  const same = items.slice(1).filter((it, i) => it.audio_url === items[i].audio_url).length;
+  assert.equal(same, 1, "one seam inside one source (a seek, no warm)");
+  assert.ok(items.some((i) => i.audio_url.endsWith(CLIPS[2].file)), "one onto the VBR track with no seek table");
+});
+
+/* Rows in the shape the Android engine writes them: a handed-over seam, a same-source one, and one a press sat in. */
+const FORAY_ROWS = [
+  '10 2026-09-30T00:00:00.000Z deck {"kind":"attach","token":1,"cold":"no-item"}',
+  '11 2026-09-30T00:00:00.100Z deck {"kind":"time-control","token":1,"status":"playing"}',
+  '12 2026-09-30T00:00:00.120Z deck {"kind":"attach","token":-1,"cold":"no-item"}',
+  '13 2026-09-30T00:00:00.300Z deck {"kind":"time-control","token":-1,"status":"paused"}',
+  '14 2026-09-30T00:00:08.100Z outPoint {"kind":"stop","layer":"boundary","overshootMs":4,"rate":1,"token":1}',
+  '15 2026-09-30T00:00:08.101Z deck {"kind":"time-control","token":1,"status":"paused"}',
+  '16 2026-09-30T00:00:08.102Z prepare {"kind":"promote","token":2}',
+  '17 2026-09-30T00:00:08.603Z seam {"observedGapMs":501,"askedGapMs":500,"prepared":true,"grace":false,"bgRemainingMs":null,"stages":["attach","duration","readiness","seek","preroll","ready","play"]}',
+  '18 2026-09-30T00:00:08.640Z deck {"kind":"time-control","token":2,"status":"playing"}',
+  '19 2026-09-30T00:00:16.640Z outPoint {"kind":"stop","layer":"boundary","overshootMs":3,"rate":1,"token":2}',
+  '20 2026-09-30T00:00:16.650Z deck {"kind":"reuse","token":3}',
+  '21 2026-09-30T00:00:17.141Z seam {"observedGapMs":501,"askedGapMs":500,"prepared":false,"grace":false,"bgRemainingMs":null,"stages":["ready","play"]}',
+  '22 2026-09-30T00:00:17.300Z deck {"kind":"time-control","token":3,"status":"playing"}',
+  '23 2026-09-30T00:00:25.300Z outPoint {"kind":"stop","layer":"boundary","overshootMs":2,"rate":1,"token":3}',
+  '24 2026-09-30T00:00:25.310Z remote {"cmd":"pause"}',
+  '25 2026-09-30T00:00:26.500Z deck {"kind":"time-control","token":4,"status":"playing"}',
+].map(parseEngineRow);
+
+test("A-40 (f): a Foray seam runs from the out-point stop to the next load's first playing, with the engine's seam row beside it", () => {
+  /* MUTATION: measure from the seam row (drops the beat); close a seam on the outgoing token's own
+     playing; count the seam a press sat in; lose the prepared flag. */
+  const seams = foraySeams(FORAY_ROWS);
+  assert.equal(seams.length, 3);
+  assert.deepEqual(seams.map((s) => s.gapMs), [540, 660, 1200]);
+  assert.deepEqual(seams.map((s) => s.prepared), [true, false, null]);
+  assert.deepEqual(seams.map((s) => s.observedGapMs), [501, 501, null]);
+  assert.deepEqual(seams.map((s) => s.commanded), [false, false, true]);
+  assert.deepEqual(seams.map((s) => [s.fromToken, s.toToken]), [[1, 2], [2, 3], [3, 4]]);
+  assert.deepEqual(seams[0].stages.slice(-2), ["ready", "play"]);
+  const st = foraySeamStats(seams);
+  assert.equal(st.count, 2);
+  assert.equal(st.commanded, 1);
+  assert.equal(st.p95Ms, 660);
+  assert.equal(st.prepared.count, 1);
+  assert.equal(st.unprepared.count, 1);
+});
+
+test("A-40 (f): GATED on every seam crossed, hidden, in one process, on the pair, with p95 <= 1 s", () => {
+  /* MUTATION: drop the p95 gate (a 1.2 s seam passes); pass with no handover; pass a Foray that
+     stopped short or with another forayId; pass with the screen on. */
+  const n = FORAY_SEAMS_FORAY.items.length;
+  const seams = Array.from({ length: n - 1 }, (_, i) => ({ gapMs: 520 + i * 10, prepared: i !== 3, commanded: false }));
+  const good = {
+    drive: { answer: { ok: true } }, wake: "Asleep", pidBefore: "1", pidAfter: "1",
+    last: { index: n - 1, forayId: FORAY_SEAMS_FORAY.forayId }, seams, pair: { active: 1, swaps: 6, available: true },
+  };
+  assert.equal(verdictForaySeams(good).ok, true, JSON.stringify(verdictForaySeams(good).failures));
+  assert.equal(NATIVE_GATES.foraySeamP95Ms, 1000);
+  const slow = seams.map((s, i) => (i === 2 ? { ...s, gapMs: 1200 } : s));
+  assert.match(verdictForaySeams({ ...good, seams: slow }).failures[0], /p95 seam 1200 ms is over the 1000 ms bar/);
+  assert.match(verdictForaySeams({ ...good, pair: { swaps: 0 } }).failures[0], /handed over no seam/);
+  assert.match(verdictForaySeams({ ...good, last: { index: 3, forayId: "a40-foray" } }).failures[0], /stopped at item 3/);
+  assert.match(verdictForaySeams({ ...good, last: { index: n - 1, forayId: null } }).failures[0], /not playing the Foray/);
+  assert.match(verdictForaySeams({ ...good, wake: "Awake" }).failures[0], /screen did not go off/);
+  assert.match(verdictForaySeams({ ...good, seams: seams.slice(0, 4) }).failures[0], /4 of the Foray's 7 seams/);
+  assert.match(verdictForaySeams({ ...good, drive: { answer: { ok: false } } }).failures[0], /playForay did not play/);
+});
+
+test("A-40 (f): the debug driver's foray is the contract's playForay, and the service's dump says which deck plays", () => {
+  /* MUTATION: build a queue load instead of playForay (the tape's structural check would be
+     bypassed); drop the dump's pair or forayId; build the service with one deck or the tape off. */
+  const driver = read("src/debug/java/ai/jwlabs/foura/audio/EngineDriveReceiver.java");
+  assert.match(driver, /case "foray" -> \{[\s\S]*?new EngineContract\.Command\.PlayForay\(/);
+  const service = read("src/main/java/ai/jwlabs/foura/audio/ForayPlaybackService.java");
+  assert.match(service, /JsonNode\.member\("pair", new JsonNode\.Obj\(pm\)\)/);
+  assert.match(service, /JsonNode\.member\("forayId", /);
+  assert.match(service, /attach\(new ExoPlayer\.Builder\(this\)\.build\(\), new ExoPlayer\.Builder\(this\)\.build\(\)\)/,
+    "the service builds the Foray tape's deck pair");
+  assert.match(service, /withForayTape\(true, standby != null\)/, "the engine is built with the tape on");
 });

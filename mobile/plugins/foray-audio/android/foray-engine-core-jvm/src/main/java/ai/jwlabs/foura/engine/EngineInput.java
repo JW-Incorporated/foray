@@ -16,10 +16,13 @@ import java.util.Objects;
  * thread, and interprets what comes back. That single door is what lets a parity scenario
  * drive the same core the car drives.
  *
- * <p>The narrating overlay's and the jingle's inputs arrive with A-41 and A-40.
+ * <p>The narrating overlay's inputs ({@code narrator}) and the jingle's ({@code interlude}) came
+ * with the Foray tape (A-40), as the core's rules; the host's synthesiser and jingle player are
+ * A-41's.
  */
 public sealed interface EngineInput permits EngineInput.Command, EngineInput.Queue, EngineInput.Remote, EngineInput.Deck,
-        EngineInput.SessionAnswer, EngineInput.Session, EngineInput.Lifecycle, EngineInput.Timer {
+        EngineInput.SessionAnswer, EngineInput.Session, EngineInput.Lifecycle, EngineInput.Timer, EngineInput.Narrator,
+        EngineInput.Interlude {
 
     /** A page command (engineSend), with where it came from. */
     record Command(EngineContract.Command command, Vocabulary.Source source) implements EngineInput {
@@ -44,13 +47,60 @@ public sealed interface EngineInput permits EngineInput.Command, EngineInput.Que
 
     record Timer(EngineTimer timer) implements EngineInput {}
 
+    /** The synthesiser, about utterance {@code seq} (the identity the core stamped on {@code speak}). */
+    record Narrator(NarratorEvent event) implements EngineInput {}
+
+    /** The jingle player. */
+    record Interlude(InterludeEvent event) implements EngineInput {}
+
+    /** How the synthesiser answered {@code resume(seq)}. */
+    sealed interface NarrationResumeAnswer permits NarrationResumeAnswer.Continued, NarrationResumeAnswer.FromStart,
+            NarrationResumeAnswer.Refused, NarrationResumeAnswer.NoAnswer {
+        record Continued() implements NarrationResumeAnswer {}
+
+        /** The line is re-spoken from its first word: the clock restarts. */
+        record FromStart() implements NarrationResumeAnswer {}
+
+        record Refused(String reason) implements NarrationResumeAnswer {}
+
+        /** A bridge with no transport: nothing said, the clock continues. */
+        record NoAnswer() implements NarrationResumeAnswer {}
+
+        NarrationResumeAnswer CONTINUED = new Continued();
+        NarrationResumeAnswer FROM_START = new FromStart();
+        NarrationResumeAnswer NO_ANSWER = new NoAnswer();
+    }
+
+    /** The narration bridge's reports (player/tts-bridge.js), keyed by utterance {@code seq}. */
+    sealed interface NarratorEvent permits NarratorEvent.Started, NarratorEvent.Failed, NarratorEvent.Finished,
+            NarratorEvent.Cancelled, NarratorEvent.Resumed {
+        /** {@code speak} accepted: the line is the playhead. {@code voiceFallback}: another voice than asked. */
+        record Started(int seq, boolean voiceFallback) implements NarratorEvent {}
+
+        record Failed(int seq, String reason) implements NarratorEvent {}
+
+        /** {@code didFinish}: the line ran out. */
+        record Finished(int seq) implements NarratorEvent {}
+
+        /** A stop, a replacement or the session taken from under it: never an advance. */
+        record Cancelled(int seq) implements NarratorEvent {}
+
+        record Resumed(int seq, NarrationResumeAnswer answer) implements NarratorEvent {}
+    }
+
+    /** The jingle player's report: it ended ({@code ended}, {@code refused}, ...). */
+    sealed interface InterludeEvent permits InterludeEvent.Ended {
+        record Ended(String reason) implements InterludeEvent {}
+    }
+
     /**
      * The manager's own queue surface: a page-built queue and a play at an index. The
      * contract's {@code playEpisode} is this with a one-item queue, and a parity scenario's
      * {@code loadQueue} / {@code play(index)} / {@code setRate(anything)} arrive through it,
      * so the fixtures exercise the paths the contract commands take.
      */
-    sealed interface QueueInput permits QueueInput.Load, QueueInput.PlayIndex, QueueInput.SetRate, QueueInput.Seek {
+    sealed interface QueueInput permits QueueInput.Load, QueueInput.PlayIndex, QueueInput.SetRate, QueueInput.Seek,
+            QueueInput.LoadForay {
         /** {@code loadQueue(items)}: replace the queue; nothing loads or plays. */
         record Load(List<EngineItem> items) implements QueueInput {
             public Load {
@@ -66,6 +116,16 @@ public sealed interface EngineInput permits EngineInput.Command, EngineInput.Que
 
         /** {@code seek(seconds, {precise})} in the source's own seconds. */
         record Seek(double sec, boolean precise) implements QueueInput {}
+
+        /**
+         * {@code setQueueFromForay(foray, opts)} with the page's build: the same replacement, plus
+         * the options the load-time ladder reads.
+         */
+        record LoadForay(List<EngineItem> items, boolean isLocalFile, boolean allowAdPad) implements QueueInput {
+            public LoadForay {
+                items = Collections.unmodifiableList(new ArrayList<>(items));
+            }
+        }
     }
 
     /**

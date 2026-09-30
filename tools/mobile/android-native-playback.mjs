@@ -114,6 +114,17 @@
  *     item's first `time-control playing`. Gated only on the queue having
  *     crossed every seam, with the screen off, in one process; the gaps are
  *     recorded (A-40's 1 s bar is the Foray tape's, not this card's).
+ *   - (f) `foray-seams` (A-40), GATED: a Foray (the page's build of eight 8 s
+ *     segments over the click tracks, six seams across sources and one inside
+ *     one source) handed to the engine as the contract's `playForay` (the
+ *     debug driver's `foray`: the page's bridge refuses it until A-42), played
+ *     to its end with the app on Home and the screen off, on the Foray tape's
+ *     deck pair. Each seam is read from the engine's rows: from the outgoing
+ *     segment's out-point stop to the incoming one's first `time-control
+ *     playing`, the 0.5 s beat included, with the engine's own packed `seam`
+ *     row beside it (the gap the core measured, and whether the standby deck
+ *     had the segment). Gated on every seam crossed, hidden, in one process,
+ *     with p95 <= 1 s (A-40's acceptance).
  *   - (k) `airplane`: two halves, both gated. The ENGINE's: in airplane mode an
  *     episode whose file cannot load is stopped by the engine (a `stop` row with
  *     cause `error` or `load-deadline`) within the deck's load deadline plus
@@ -515,7 +526,7 @@ export const STOCK_MODE = "auto";
 /** The scenarios that must run in the native LANE: every dump they read says `nativeLane: true`.
  *  Not `bridge` and `fallback`, which set the lane themselves and read it from the page. */
 export const LANE_SCENARIOS = Object.freeze(["first-launch", "play", "background", "transport", "notification", "seams",
-  "doze", "focus", "call", "kill", "airplane"]);
+  "foray-seams", "doze", "focus", "call", "kill", "airplane"]);
 
 /** A-30's numbers. */
 export const NATIVE_GATES = Object.freeze({
@@ -528,6 +539,8 @@ export const NATIVE_GATES = Object.freeze({
   airplaneDecisionMs: 25000,
   /** (k): how long a bundled episode has to sound after the failure, still in airplane mode. */
   recoveryMs: 20000,
+  /** A-40 (f): the Foray tape's bar, "p95 seam <= 1 s with the screen off" (the 0.5 s beat included). */
+  foraySeamP95Ms: 1000,
 });
 
 /** (f): one episode item, bounded or whole. */
@@ -551,6 +564,35 @@ export const SEAMS_QUEUE = Object.freeze([
   seamItem(CLIPS[1], 6, null, null),
   seamItem(CLIPS[2], 7, 0, 10),
 ]);
+
+/** A-40 (f): one segment of a Foray, in the shape the page's build (`buildForayQueue`) gives
+ *  the engine: an episode slice with its in-point, out-point and source. */
+function foraySegment(clip, i, startSec, endSec) {
+  return Object.freeze({
+    id: `a40-foray#${i}`, kind: "episode", title: clip.title, show: SHOW, audio_url: `${ASSET_BASE}${clip.file}`,
+    start_sec: startSec, end_sec: endSec, authored_end_sec: endSec, source_item_id: clip.file, duration_sec: 90,
+    dai_suspected: false, needs_drift_check: false,
+  });
+}
+
+/** A-40 (f): eight 8 s segments over the three click tracks. Six seams cross sources (the deck
+ *  pair's handover: the standby deck prerolls the next segment while this one plays), one stays
+ *  inside one source (item 3 to 4: no warm, the playing deck seeks in its held source), and one
+ *  lands on the VBR track with no seek table. About 70 s. */
+export const FORAY_SEAMS_FORAY = Object.freeze({
+  forayId: "a40-foray",
+  title: "A-40 Foray seams",
+  items: Object.freeze([
+    foraySegment(CLIPS[0], 0, 0, 8),
+    foraySegment(CLIPS[1], 1, 0, 8),
+    foraySegment(CLIPS[2], 2, 0, 8),
+    foraySegment(CLIPS[0], 3, 20, 28),
+    foraySegment(CLIPS[0], 4, 40, 48),
+    foraySegment(CLIPS[1], 5, 30, 38),
+    foraySegment(CLIPS[2], 6, 20, 28),
+    foraySegment(CLIPS[0], 7, 60, 68),
+  ]),
+});
 
 /** (k): an episode on the network, in the shape a real one has, that airplane mode cannot
  *  load. The path names no object, so if airplane mode ever failed to engage the load would
@@ -613,8 +655,10 @@ function commanded(r) {
  * `time-control` away from playing after it played, or its `outPoint` stop, whichever came
  * first; the next load's `attach`/`reuse` when neither was written) to the incoming load's first
  * `time-control playing`. `via` is the incoming load's row (`attach` for a new source, `reuse`
- * for the same one), `cold` the attach's reason. A seam with a command between is `commanded`
- * (a press, not a seam), and kept apart. Pure.
+ * for the same one, `handover` for a segment the deck pair had prepared on its standby deck,
+ * A-40: the pair writes `prepare kind=promote` for the core's token and no attach), `cold` the
+ * attach's reason. A seam with a command between is `commanded` (a press, not a seam), and kept
+ * apart. Pure.
  */
 export function episodeSeams(rows) {
   const seams = [];
@@ -629,6 +673,13 @@ export function episodeSeams(rows) {
     if (commanded(r)) {
       dirty = true;
       if (pending) pending.commanded = true;
+    }
+    if (promoted(r, playing)) {
+      pending = {
+        token: j.token, fromToken: playing.token, via: "handover", cold: "prepared", attachAt: r.at,
+        endAt: endAt ?? r.at, endFrom: endAt != null ? endFrom : "promote", overshootMs, commanded: dirty, readyMs: 0,
+      };
+      continue;
     }
     if (r.kind === "outPoint" && j.kind === "stop" && playing && j.token === playing.token) {
       overshootMs = typeof j.overshootMs === "number" ? j.overshootMs : null;
@@ -678,6 +729,12 @@ export function episodeSeams(rows) {
   return seams;
 }
 
+/* A-40: the deck pair's promotion is the incoming load's row when the standby deck had the
+   segment (a `prepare` row, not a `deck` one, so episodeSeams reads it here). */
+function promoted(r, playing) {
+  return r.kind === "prepare" && r.json?.kind === "promote" && playing && r.json.token !== playing.token;
+}
+
 function nearestRank(sorted, p) {
   if (!sorted.length) return null;
   return sorted[Math.min(sorted.length - 1, Math.max(0, Math.ceil((p / 100) * sorted.length) - 1))];
@@ -700,6 +757,78 @@ export function episodeSeamStats(seams) {
     commanded: (seams ?? []).length - clean.length,
     byKind: Object.fromEntries(Object.entries(byKind).map(([k, v]) => [k, stat(v)])),
   };
+}
+
+/**
+ * A-40 (f): the Foray seams in the engine's rows. A seam runs from the outgoing segment's
+ * out-point stop (its `outPoint kind=stop` row) to the next `time-control playing` of another
+ * load (the incoming segment, on the deck the pair handed the role to, or the same deck's
+ * same-source seek). The engine's own packed `seam` row, written between the two, is kept beside
+ * it: the gap the core measured (out-point to the play it commanded) and whether the standby deck
+ * had the segment (`prepared`). A seam with a command between is `commanded`. Pure.
+ */
+export function foraySeams(rows) {
+  const seams = [];
+  let open = null;
+  for (const r of rows ?? []) {
+    const j = r.json ?? {};
+    if (commanded(r) && open) open.commanded = true;
+    if (r.kind === "outPoint" && j.kind === "stop") {
+      open = { fromToken: j.token, endAt: r.at, overshootMs: typeof j.overshootMs === "number" ? j.overshootMs : null, seamRow: null, commanded: false };
+      continue;
+    }
+    if (r.kind === "seam" && open && !open.seamRow) {
+      open.seamRow = {
+        observedGapMs: typeof j.observedGapMs === "number" ? j.observedGapMs : null,
+        askedGapMs: typeof j.askedGapMs === "number" ? j.askedGapMs : null,
+        prepared: j.prepared === true, stages: Array.isArray(j.stages) ? j.stages : [],
+      };
+      continue;
+    }
+    if (r.kind === "deck" && j.kind === "time-control" && j.status === "playing" && open && j.token !== open.fromToken) {
+      seams.push({
+        fromToken: open.fromToken, toToken: j.token, gapMs: r.at - open.endAt, overshootMs: open.overshootMs,
+        observedGapMs: open.seamRow?.observedGapMs ?? null, askedGapMs: open.seamRow?.askedGapMs ?? null,
+        prepared: open.seamRow?.prepared ?? null, stages: open.seamRow?.stages ?? [], commanded: open.commanded, at: r.iso,
+      });
+      open = null;
+    }
+  }
+  return seams;
+}
+
+/** A-40 (f): the numbers, over the seams no command touched: all, and prepared (handed over) vs not. Pure. */
+export function foraySeamStats(seams) {
+  const clean = (seams ?? []).filter((s) => !s.commanded && typeof s.gapMs === "number");
+  const stat = (list) => {
+    const gaps = list.map((s) => s.gapMs).sort((a, b) => a - b);
+    return { count: gaps.length, minMs: gaps[0] ?? null, medianMs: nearestRank(gaps, 50), p95Ms: nearestRank(gaps, 95), maxMs: gaps[gaps.length - 1] ?? null };
+  };
+  return {
+    ...stat(clean),
+    commanded: (seams ?? []).length - clean.length,
+    prepared: stat(clean.filter((s) => s.prepared === true)),
+    unprepared: stat(clean.filter((s) => s.prepared !== true)),
+  };
+}
+
+/** A-40 (f) GATED: every seam crossed, hidden, in one process, and p95 <= 1 s. */
+export function verdictForaySeams({ drive, wake, pidBefore, pidAfter, last, seams, pair, foray = FORAY_SEAMS_FORAY }) {
+  const failures = [];
+  const n = foray.items.length;
+  if (!drive?.answer?.ok) failures.push(`the driver's playForay did not play: ${JSON.stringify(drive)}`);
+  if (!/^(Asleep|Dozing)$/.test(String(wake ?? ""))) failures.push(`the screen did not go off: mWakefulness=${wake}`);
+  if (!pidBefore) failures.push("no app process before the screen went off");
+  else if (pidAfter !== pidBefore) failures.push(`the pid changed from ${pidBefore} to ${pidAfter}`);
+  if (!last || last.index !== n - 1) failures.push(`the Foray stopped at item ${last?.index}, not the last (${n - 1})`);
+  if (last && last.forayId !== foray.forayId) failures.push(`the engine was not playing the Foray (forayId ${JSON.stringify(last?.forayId)})`);
+  const stats = foraySeamStats(seams);
+  if (stats.count < n - 1) failures.push(`${stats.count} of the Foray's ${n - 1} seams were read from the engine's rows (${stats.commanded} with a command between)`);
+  if (stats.count && !(stats.p95Ms <= NATIVE_GATES.foraySeamP95Ms)) {
+    failures.push(`p95 seam ${stats.p95Ms} ms is over the ${NATIVE_GATES.foraySeamP95Ms} ms bar`);
+  }
+  if (!pair || !(pair.swaps > 0)) failures.push(`the deck pair handed over no seam (${JSON.stringify(pair)})`);
+  return { ok: failures.length === 0, failures, recorded: stats };
 }
 
 /** (f) RECORDED; gated only on the queue having crossed every seam, hidden, in one process. */
@@ -1017,6 +1146,7 @@ export const SCENARIOS = Object.freeze([
   ["transport", "(c) native: media_session dispatch + KEYCODE_MEDIA_*"],
   ["notification", "(d) native: system controls: title, show, 15/30, tap pause"],
   ["seams", "(f) native: hidden episode seams, screen off (recorded; gated on crossing every seam)"],
+  ["foray-seams", "(f) native Foray (A-40): hidden Foray seams on the deck pair, screen off, p95 <= 1 s"],
   ["doze", "(g) native: Doze, unplugged, rare bucket, 5 min"],
   ["focus", "(h) native: another app takes audio focus; pause, and resume after a transient loss"],
   ["call", "(i) native: a phone call; pause, and resume after it"],
@@ -1774,6 +1904,46 @@ async function seams(ctx) {
   };
 }
 
+/** A-40 (f): a Foray handed to the engine, played hidden on the deck pair. See the header. */
+async function foraySeamsScenario(ctx) {
+  await prepare(ctx);
+  const since = deviceIso();
+  const d = drive(ctx, "foray", ["--es", "foray", queueArg(FORAY_SEAMS_FORAY)]);
+  const started = await waitFor(ctx, isPlaying, 20000);
+  const pidBefore = pidOf(ctx.pkg);
+  shell("input", "keyevent", "KEYCODE_HOME");
+  await sleep(1500);
+  shell("input", "keyevent", "KEYCODE_SLEEP");
+  await sleep(2000);
+  const wake = wakefulness(dumpTo(ctx, "f-foray-dumpsys-power.txt", "dumpsys", "power"));
+  const items = FORAY_SEAMS_FORAY.items;
+  const lengthMs = items.reduce((sum, it) => sum + (it.end_sec - it.start_sec) * 1000, 0);
+  const deadline = Date.now() + lengthMs + NATIVE_GATES.seamsSlackMs;
+  const curve = [];
+  let last = engine(ctx);
+  let reachedLast = false;
+  while (Date.now() < deadline) {
+    await sleep(NATIVE_GATES.seamsPollMs);
+    const s = engine(ctx);
+    if (s) last = s;
+    curve.push({ at: s?.at, index: s?.index, positionSec: s?.positionSec, running: s?.running, state: s?.state, inSeamGap: s?.inSeamGap, pair: s?.pair });
+    if (s?.index === items.length - 1) reachedLast = true;
+    /* Done once the last segment has played and stopped: the Foray's final end. */
+    if (reachedLast && s && s.running === false) break;
+  }
+  const pidAfter = pidOf(ctx.pkg);
+  const rows = processRows(ctx, pidAfter ?? pidBefore, since);
+  save(ctx, "f-foray-engine-rows.txt", rows.map((r) => `${r.seq} ${r.iso} ${r.kind} ${r.body}`).join("\n") + "\n");
+  const found = foraySeams(rows);
+  wakeAndUnlock();
+  const v = verdictForaySeams({ drive: d, wake, pidBefore, pidAfter, last, seams: found, pair: last?.pair });
+  return {
+    ...v,
+    measured: { started: !!started, since, wake, pidBefore, pidAfter, seams: found, pair: last?.pair ?? null, curve, rows: rows.length },
+    evidence: ["f-foray-dumpsys-power.txt", "f-foray-engine-rows.txt"],
+  };
+}
+
 /** (k) Airplane mode: the engine's half, then the page's. See the header. */
 async function airplane(ctx) {
   ctx.endpoint = ctx.endpoint ?? DEVTOOLS_ENDPOINT;
@@ -1877,7 +2047,7 @@ function summary(ctx) {
 }
 
 const RUNNERS = {
-  "first-launch": firstLaunch, play, background, transport, notification, seams, doze, focus, call, kill, airplane,
+  "first-launch": firstLaunch, play, background, transport, notification, seams, "foray-seams": foraySeamsScenario, doze, focus, call, kill, airplane,
   bridge, fallback, collect,
 };
 

@@ -152,10 +152,12 @@ test("recording a new case writes its expect and adds its id to swift-pending.js
     assert.equal(refused.ok, false, "a new id without --port-card is refused");
     assert.match(refused.refusals.join("\n"), /pass --port-card/);
 
-    const r = await record({ root, portCard: "NE-28s", log: quiet });
+    // A-40: the JVM runs seam-gap too, so the new case is also handed to an Android card.
+    const r = await record({ root, portCard: "NE-28s", jvmCard: "A-63", log: quiet });
     assert.equal(r.ok, true, r.refusals.join("\n"));
     assert.deepStrictEqual(r.pendingAdded, ["seam-gap/brand-new"]);
     assert.equal(readJ(root, "player/parity/swift-pending.json")["seam-gap/brand-new"], "NE-28s");
+    assert.equal(readJ(root, "player/parity/jvm-pending.json").cases["seam-gap/brand-new"], "A-63");
     const rec = readJ(root, FIXTURE).cases.find((c) => c.id === "seam-gap/brand-new");
     assert.deepStrictEqual(rec.expect, { return: 1.25 });
     assert.ok(readJ(root, "player/parity/manifest.json").families["seam-gap"].ids.includes("seam-gap/brand-new"));
@@ -208,7 +210,8 @@ test("a JS change to a recorded (non-authored) case re-records it and puts it ba
     const mod = path.join(root, "player", "seam-gap.js");
     // A rule change: bridged seams get the beat too. Not an authored case.
     fs.writeFileSync(mod, fs.readFileSync(mod, "utf8").replace("  if (bridged) return 0;\n", ""));
-    const r = await record({ root, portCard: "NE-28s", log: quiet });
+    // A-40: the JVM runs seam-gap too, so the re-recorded case is owed to an Android card as well.
+    const r = await record({ root, portCard: "NE-28s", jvmCard: "A-63", log: quiet });
     assert.equal(r.ok, true, r.refusals.join("\n"));
     assert.deepStrictEqual(r.pendingAdded, ["seam-gap/bridged-no-beat"]);
     assert.deepStrictEqual(readJ(root, "player/parity/swift-pending.json"), { "seam-gap/bridged-no-beat": "NE-28s" });
@@ -311,7 +314,7 @@ test("a case new in a family the JVM runs is refused without --jvm-card and owed
   const root = scratch();
   try {
     assert.equal(readJ(root, JVM).families["number-format"], undefined, "precondition: the JVM runs number-format");
-    assert.equal(readJ(root, JVM).families["seam-gap"], "A-40", "precondition: seam-gap is owed whole");
+    assert.equal(readJ(root, JVM).families["default-voice"], "A-41", "precondition: default-voice is owed whole");
 
     const nf = readJ(root, NUMBER_FORMAT);
     nf.cases.push({ id: "number-format/brand-new-2.5", covers: [], call: "jsonNumber", args: [2.5] });
@@ -330,10 +333,11 @@ test("a case new in a family the JVM runs is refused without --jvm-card and owed
 
     // A case new in a family owed whole: the Swift card is handed it, the JVM books do not move.
     const jvmBefore = fs.readFileSync(path.join(root, JVM), "utf8");
-    const sg = readJ(root, FIXTURE);
-    sg.cases.push({ id: "seam-gap/brand-new-jvm", covers: [], call: "seamGapSec", args: [{ from: { $seg: ["a"] }, to: { $seg: ["b"] }, gapSec: 1.5 }] });
-    writeJ(root, FIXTURE, sg);
-    const owedWhole = await record({ root, portCard: "NE-28s", log: quiet });
+    const DV = "player/parity/fixtures/default-voice/default-voice.json";
+    const dv = readJ(root, DV);
+    dv.cases.push({ id: "default-voice/brand-new-jvm", covers: [], read: "DEFAULT_VOICE_NAME" });
+    writeJ(root, DV, dv);
+    const owedWhole = await record({ root, portCard: "NE-31s", log: quiet });
     assert.equal(owedWhole.ok, true, owedWhole.refusals.join("\n"));
     assert.equal(fs.readFileSync(path.join(root, JVM), "utf8"), jvmBefore);
 
@@ -354,14 +358,14 @@ test("--check is red on JVM books that name nothing, owe a jsOnly family, use a 
     const jvm = readJ(root, JVM);
     writeJ(root, JVM, {
       ...jvm,
-      cases: { "no-such/case": "A-23", "seam-gap/rule-is-0.5s": "A-40", "number-format/zero": "NE-10s" },
+      cases: { "no-such/case": "A-23", "default-voice/name-is-samantha": "A-41", "number-format/zero": "NE-10s" },
       families: { ...jvm.families, "no-such-family": "A-23", continuation: "A-40" },
     });
     const problems = (await checkAll({ root })).problems.join("\n");
     assert.match(problems, /jvm-pending: no-such\/case names no fixture case/);
     assert.match(problems, /jvm-pending: family no-such-family is neither recorded nor named in unported\.json/);
     assert.match(problems, /jvm-pending: family continuation is jsOnly/);
-    assert.match(problems, /jvm-pending: seam-gap\/rule-is-0\.5s is owed on its own and with its whole family seam-gap/);
+    assert.match(problems, /jvm-pending: default-voice\/name-is-samantha is owed on its own and with its whole family default-voice/);
     assert.match(problems, /jvm-pending: number-format\/zero is tagged "NE-10s", not an Android card id/);
     // And a family unported.json will record into may be owed ahead of its fixtures.
     assert.doesNotMatch(problems, /manager-remainder/);
@@ -379,15 +383,15 @@ test("--check holds every recorded family to exactly one of the JVM's runs and i
   try {
     const jvm = readJ(root, JVM);
     // Preconditions, as data rather than a list a porting card must edit: the JVM runs
-    // compare, and still owes interlude and seam-gap (A-41, A-40).
+    // compare, and still owes default-voice and lexicon (A-41; A-40 ported interlude and seam-gap).
     assert.ok(jvm.runs.includes("compare"), "precondition: the JVM runs compare");
-    assert.ok(jvm.families.interlude && jvm.families["seam-gap"], "precondition: interlude and seam-gap are still owed whole");
+    assert.ok(jvm.families["default-voice"] && jvm.families.lexicon, "precondition: default-voice and lexicon are still owed whole");
     const families = { ...jvm.families };
-    delete families.interlude;
-    writeJ(root, JVM, { ...jvm, families, runs: [...jvm.runs, "seam-gap", "continuation", "no-such-family"] });
+    delete families["default-voice"];
+    writeJ(root, JVM, { ...jvm, families, runs: [...jvm.runs, "lexicon", "continuation", "no-such-family"] });
     const problems = (await checkAll({ root })).problems.join("\n");
-    assert.match(problems, /jvm-pending: family interlude is recorded but the JVM neither runs it nor owes it/);
-    assert.match(problems, /jvm-pending: family seam-gap is both in "runs" and owed whole/);
+    assert.match(problems, /jvm-pending: family default-voice is recorded but the JVM neither runs it nor owes it/);
+    assert.match(problems, /jvm-pending: family lexicon is both in "runs" and owed whole/);
     assert.match(problems, /jvm-pending: "runs" lists family continuation, which is jsOnly/);
     assert.match(problems, /jvm-pending: "runs" lists family no-such-family, which is not recorded/);
   } finally {

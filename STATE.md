@@ -7,6 +7,59 @@ docs/. Completed workstreams move to their plan doc's retro section.
 
 ## Active workstreams
 
+### 2026-09-30 — `android/a-40-foray-tape`: A-40, the Foray tape on Android (the JVM core, the deck pair, the Foray families)
+
+Owned: the Foray tape in `foray-engine-core-jvm` (`EngineCore`'s Foray paths and the new policy classes `SeamGap`,
+`SeekPolicy`, `Interlude`, `ForayClock`/`ForayItem`, `StructuralCheck`, `ForayProgressRules`, `SeamRow`), the JVM
+parity runners for the Foray families, `DeckPair`/`PairableDeck` and `ExoDeck`'s pair hooks in foray-audio, the
+service's two-player build, the debug driver's `foray`, and the native leg's `foray-seams` step. Card A-40 of
+`docs/plans/android-assessment.md` (Track A2), PR #919, into `android/native`.
+
+**What changed.**
+- **The core.** The Swift core's Foray tape (NE-30s) is on the JVM behind `EngineConfig.forayTapeEnabled`:
+  - `playForay`, with J-4's structural check and a resume point on the Foray clock;
+  - ADR-0007's ladder at load;
+  - the seam beat, stamped at the out-point as an absolute deadline and cut by every transport action;
+  - the standby deck's `prepare`;
+  - the Foray transport;
+  - the packed `seam` row and `cp_foray`;
+  - the narrating overlay's and the jingle's rules (NE-31s).
+
+  With the tape off it is A-24's episode core exactly. A test pins that the tape changes no `manager-episode` op log.
+- **The books.** `seam-gap`, `seek-policy`, `interlude`, `foray-clock`, `foray-structure`, `foray-progress`,
+  `media`, `manager-foray` and `prepare` moved to `runs` in `jvm-pending.json` (0 owed).
+  - `interlude` is no longer A-41's.
+  - `manager-remainder`, which has no fixtures on main, is re-booked from A-40 to A-63.
+  - A-41 still owes `default-voice`, `lexicon` and `speech-rate`.
+- **The tape's shape: a deck pair** (A-62 builds on it). `DeckPair` holds two `ExoDeck`s, the iOS NE-32 shape and
+  policy.
+  - The playing deck opens the prefetch window; the standby prerolls the next segment.
+  - The handover pauses the outgoing deck before the roles swap.
+  - The service's focus listener follows the playing deck.
+- **The host** answers a spoken line `failed` (no synthesiser until A-41). The page still cannot reach a Foray:
+  `foray` is not advertised until A-42.
+- **The emulator.** The native leg's new `foray-seams` step plays an 8-segment Foray through the debug driver's
+  `playForay` on the pair, with the screen off. It is gated at p95 seam ≤ 1 s.
+
+**Executed locally:**
+- The JDK 21 `javac` + JUnit run of `:foray-engine-core-jvm` (no Gradle): 106 of 106, every A-40 family 0 owed.
+- The foray-audio compile (android-36 `android.jar` and the A-25 jar set) and its plain-JVM tests: 61 of 61.
+- `record.mjs --check`: 1836 match.
+- `node --test` of the native runner (36), the workflow (14), shell-invariants (129) and suite-integrity (400).
+
+**Executed in CI** (head `29e81477`):
+- android-build run 36731336880: android-shell green, with JVM parity at 1714 passed and 0 pending.
+- android-playback run 36731336922 (attempt 2): all three legs green.
+  - The native leg's `foray-seams`: 7 of 7 seams prepared on the pair, p95 513 ms, 10 swaps, screen off.
+  - The episode `seams` step: 7 of 7.
+
+  Details in `docs/android-emulator-measurements.md` §13.
+
+**Found, not fixed** (the same on iOS): a remote `changePlaybackPosition` or skip during a native Foray takes the
+episode seek path in source seconds, while Now Playing publishes the Foray clock. Moot until A-42 advertises `foray`.
+
+**Not executed:** the device check, a locked Foray on the Pixel with timed seams (D-A3).
+
 ### 2026-09-30 — `android/a-31-native-default`: A-31, the A1 flip (native default for Android episodes)
 
 Owned: `mobile/ENGINE_DEFAULT.json`'s `android` block, `EngineLane.java`'s two literals, the A-31 record rule in

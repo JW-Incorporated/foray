@@ -16,14 +16,16 @@ import java.util.Objects;
  * and "the save before the load" are claims about positions in this list, and the parity
  * driver and the JUnit tests assert them there.
  *
- * <p>The narrating overlay's commands, the jingle's and the silence node's arrive with
- * A-41 and A-40.
+ * <p>The narrating overlay's commands ({@code narration}, {@code narrationPulse}), the jingle's
+ * ({@code interlude}) and the silence node's came with the Foray tape (A-40), as the core's
+ * rules; the host's synthesiser and jingle player are A-41's.
  */
 public sealed interface EngineCommand permits EngineCommand.Deck, EngineCommand.SessionActivate, EngineCommand.SessionDeactivate,
         EngineCommand.SessionReapplyCategory, EngineCommand.SessionRebuild, EngineCommand.GraceBegin, EngineCommand.GraceEnd,
         EngineCommand.TimerArm, EngineCommand.TimerCancel, EngineCommand.WritePosition, EngineCommand.WriteRow,
         EngineCommand.AppendEvent, EngineCommand.WriteRestore, EngineCommand.Speak, EngineCommand.Emit, EngineCommand.Diag,
-        EngineCommand.CommandFailed {
+        EngineCommand.CommandFailed, EngineCommand.Narration, EngineCommand.Interlude, EngineCommand.SilenceStart,
+        EngineCommand.SilenceStop, EngineCommand.NarrationPulse {
 
     record Deck(DeckCommand command) implements EngineCommand {}
 
@@ -71,6 +73,48 @@ public sealed interface EngineCommand permits EngineCommand.Deck, EngineCommand.
     /** The command did not happen; the reason is a contract refusal token. */
     record CommandFailed(String reason) implements EngineCommand {}
 
+    /** The synthesiser, about one utterance (a spoken Foray line). */
+    record Narration(NarrationCommand command) implements EngineCommand {}
+
+    /** The jingle player. */
+    record Interlude(InterludeCommand command) implements EngineCommand {}
+
+    /** Digital silence across a silent seam, capped (NE-34's node, flagged off). */
+    record SilenceStart(double capMs) implements EngineCommand {}
+
+    record SilenceStop() implements EngineCommand {}
+
+    /** The surface's narration pulse ({@code onNarrationTick}): a repaint, not an act on the world. */
+    record NarrationPulse(double elapsedSec) implements EngineCommand {}
+
+    /** What the core asks the synthesiser, by the utterance's {@code seq}. */
+    sealed interface NarrationCommand permits NarrationCommand.Speak, NarrationCommand.Pause, NarrationCommand.Resume,
+            NarrationCommand.Stop, NarrationCommand.Discard {
+        /** Speak {@code text}; answered {@code started} or {@code failed} for {@code seq}. */
+        record Speak(int seq, String text, String voiceId, double utteranceRate) implements NarrationCommand {}
+
+        /** Hold at a word (L-05). */
+        record Pause(int seq) implements NarrationCommand {}
+
+        /** Continue the same utterance; answered {@code resumed}. */
+        record Resume(int seq) implements NarrationCommand {}
+
+        /** Silence it now; the line stays the playhead. */
+        record Stop(int seq) implements NarrationCommand {}
+
+        /** Forget a paused line nobody will continue (a deck item took the playhead). */
+        record Discard(int seq) implements NarrationCommand {}
+    }
+
+    /** What the core asks the jingle player. */
+    enum InterludeCommand {
+        START,
+        STOP,
+        RELEASE
+    }
+
+    EngineCommand SILENCE_STOP = new SilenceStop();
+
     EngineCommand SESSION_REAPPLY_CATEGORY = new SessionReapplyCategory();
     EngineCommand SESSION_REBUILD = new SessionRebuild();
 
@@ -82,6 +126,7 @@ public sealed interface EngineCommand permits EngineCommand.Deck, EngineCommand.
     static String turnName(EngineCommand command) {
         return switch (command) {
             case Deck d -> switch (d.command()) {
+                case DeckCommand.Prepare x -> "deckPrepare";
                 case DeckCommand.Load x -> "deckLoad";
                 case DeckCommand.Play x -> "deckPlay";
                 case DeckCommand.Pause x -> "deckPause";
@@ -106,6 +151,22 @@ public sealed interface EngineCommand permits EngineCommand.Deck, EngineCommand.
             case Emit x -> "emit";
             case Diag x -> "diag";
             case CommandFailed x -> "commandFailed";
+            case Narration n -> switch (n.command()) {
+                // Both make a line audible, so both are `speak` to the invariant.
+                case NarrationCommand.Speak x -> "speak";
+                case NarrationCommand.Resume x -> "speak";
+                case NarrationCommand.Pause x -> "narrationPause";
+                case NarrationCommand.Stop x -> "narrationStop";
+                case NarrationCommand.Discard x -> "narrationDiscard";
+            };
+            case Interlude i -> switch (i.command()) {
+                case START -> "interludeStart";
+                case STOP -> "interludeStop";
+                case RELEASE -> "interludeRelease";
+            };
+            case SilenceStart x -> "silenceStart";
+            case SilenceStop x -> "silenceStop";
+            case NarrationPulse x -> "narrationPulse";
         };
     }
 
@@ -113,7 +174,7 @@ public sealed interface EngineCommand permits EngineCommand.Deck, EngineCommand.
      * Why a grace span was begun: a span that is silent while the engine intends to play
      * (plan §4.4). The host holds the process awake (iOS: a background task; Android: the
      * foreground service, A-26) until the deck confirms playing, the intent ends, or the span
-     * expires. The seam spans arrive with A-40 and the narration handover with A-41.
+     * expires. The seam spans and the narration handover came with the Foray tape (A-40).
      */
     enum GraceReason {
         REMOTE_PLAY("remote-play"),
@@ -122,7 +183,13 @@ public sealed interface EngineCommand permits EngineCommand.Deck, EngineCommand.
         ROUTE_RESUME("route-resume"),
         COLD_PLAY("cold-play"),
         /** The next episode of a continuation chain loading after an end. */
-        AUTO_ADVANCE("auto-advance");
+        AUTO_ADVANCE("auto-advance"),
+        /** A Foray seam in the background whose next item the standby deck had prepared. */
+        SEAM("seam"),
+        /** A Foray seam in the background with no prepared next item. */
+        PREPARE_MISS("prepare-miss"),
+        /** A spoken line ended in the background and the next item is not audible yet. */
+        NARRATION_HANDOVER("narration-handover");
 
         public final String token;
 
@@ -248,12 +315,15 @@ public sealed interface EngineCommand permits EngineCommand.Deck, EngineCommand.
         }
     }
 
-    /** Events for the page (plan §5.4), best effort. {@code skipped} arrives with the Foray tape (A-40). */
-    sealed interface EngineEvent permits EngineEvent.Advanced, EngineEvent.Error {
+    /** Events for the page (plan §5.4), best effort. */
+    sealed interface EngineEvent permits EngineEvent.Advanced, EngineEvent.Error, EngineEvent.Skipped {
         /** A continuation hop was walked (source autoadvance, or a next press). */
         record Advanced(AdvanceEntry entry) implements EngineEvent {}
 
         /** {@code error{code}}: {@code chain-start} when a hop's start failed (C-6), {@code load} for any other failed item. */
         record Error(String code, String message) implements EngineEvent {}
+
+        /** ADR-0007's ladder refused a segment at load: it is never audible, and the Foray moves on. */
+        record Skipped(String itemId, int index, String reason) implements EngineEvent {}
     }
 }

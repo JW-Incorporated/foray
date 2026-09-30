@@ -715,6 +715,44 @@ Rejected alternatives:
 - **Acceptance:** The Foray parity families are 0 pending on the JVM. A-05 (f) in native mode shows p95 seam
   ≤ 1 s with the screen off.
 - **Device check:** a locked Foray on the Pixel with timed seams.
+- **Status (2026-09-30): done in its PR (#919), evidence in `STATE.md` (A-40 entry) and
+  `docs/android-emulator-measurements.md` §13.**
+  - **The core.** `EngineCore` (JVM) now carries the Swift core's Foray tape (NE-30s) behind
+    `EngineConfig.forayTapeEnabled`:
+    - `playForay` with J-4's `StructuralCheck`, and a resume point on the Foray clock;
+    - ADR-0007's ladder at load (`SeekPolicy`);
+    - the seam beat (`SeamGap`), stamped at the out-point as an absolute deadline and cut by every transport action;
+    - the standby deck's `prepare`;
+    - the Foray transport (previous, scrub and nudge on `ForayClock`);
+    - the packed `seam` row and the `cp_foray` cadence (`ForayProgressRules`);
+    - the narrating overlay's and the jingle's RULES (NE-31s): rendered and spoken bridges, the §14 fallback,
+      and `Interlude`.
+  - **The books.** `seam-gap`, `seek-policy`, `interlude`, `foray-clock`, `foray-structure`, `foray-progress`,
+    `media`, `manager-foray` and `prepare` moved to `runs` in `jvm-pending.json`, 0 owed.
+    - `interlude` was A-41's. Its policy is the tape's, so it came along, and A-41 no longer owes it.
+    - `manager-remainder` has no fixtures on main. It is re-booked to A-63, whose card already ports what A-40
+      leaves.
+    - `ForayTapeScenarioTest` turns named cases red under the four Foray mutations: the load after the beat,
+      cancel read as finish, a finish claiming the current line, and silence while not running.
+  - **THE TAPE'S SHAPE IS A DECK PAIR** (A-62 builds on it). `DeckPair` (foray-audio) holds two `ExoDeck`s, the
+    iOS NE-32 shape and policy.
+    - The playing deck opens the prefetch window `PREFETCH_LEAD_SEC` before its out-point, and the standby deck
+      prerolls the next segment at its in-point.
+    - `warmPromotion` promotes it at the boundary. The handover pauses the outgoing deck before the roles swap,
+      and plays nothing.
+    - The clipped playlist was rejected. A `ClippingConfiguration` is fixed when the source is built, but the
+      core arms the out-point after the load. The pair keeps A-25's never-early out-point on each deck.
+    - Both players handle focus, and the service's focus listener follows the playing deck.
+  - **The host** answers a spoken line `failed` at once (no synthesiser until A-41), so the core steps over it.
+    The jingle and the silence node are off. The page's bridge still refuses `playForay` until A-42 advertises
+    `foray`.
+  - **The emulator.** A new native step, `foray-seams`, runs an 8-segment Foray through the debug driver's
+    `playForay`, hidden on the pair. It is gated on p95 seam ≤ 1 s, with every seam crossed, the screen off and
+    one process.
+  - **Not solved: VBR in-points.** A-25 measured Media3's VBR seek maps as early. The standby loads with precise
+    timing, but the MP3 extractor's index seeking is a fallback, so a VBR file with a TOC is still sought by its
+    TOC.
+  - **Not executed:** the device check (D-A3).
 
 #### A-41 · Rendered narration files, TTS fallback seam, interludes — **L**
 - **Depends on:** A-40, narration Phase 4.
@@ -823,7 +861,7 @@ A-61, A-62, A-64, A-66 (+ NE-39j) ─ A-63 ─ A-67 ─ A-68 ─ A-69 (gated)
 #### A-62 · Prepare across narration seams on the Media3 deck (mirrors NE-45s) — **M**
 - **Depends on:** A-42, NE-45j (its new `prepare` ids are `cases` owed to A-62 once A-40 has ported the family: A-25 handed `prepare` to A-40, because its cases run the Foray tape through the engine)
 - **Human-gated:** no.
-- **Files:** the Foray tape from A-40 (an ExoPlayer playlist with `ClippingConfiguration`, or a deck pair, whichever A-40 chose), the JVM `DeckPolicy.warmsAcross`, the packed `seam` rows, and Robolectric tests.
+- **Files:** the Foray tape from A-40 (A-40 chose the DECK PAIR: `DeckPair` over two `ExoDeck`s), the JVM `DeckPolicy.warmsAcross`, the packed `seam` rows, and Robolectric tests.
 - **Ask:** Port `warmsAcross`. A rendered line is a `MediaItem` like a clip.
   - **Playlist:** ExoPlayer already buffers the next item, so the work is to keep rendered lines in the playlist and to prepare the clip after a *spoken* line at the line's start. A spoken line is a playlist boundary where the player idles while `TextToSpeech` speaks. That needs a second player, or Media3's `PreloadManager`.
   - **Deck pair:** port NE-45s as written.
@@ -839,7 +877,7 @@ A-61, A-62, A-64, A-66 (+ NE-39j) ─ A-63 ─ A-67 ─ A-68 ─ A-69 (gated)
 - **Human-gated:** no.
 - **Files:** the JVM runners for `manager-remainder` and any other family still owed, `player/parity/jvm-pending.json`, and `EngineCore` (the JVM port).
 - **Ask:**
-  - Port whatever of `manager-remainder` A-40 left, and every id still owed.
+  - Port whatever of `manager-remainder` A-40 left (all of it: A-40 re-booked the whole family to A-63), and every id still owed.
   - When `families` and `cases` are both empty, keep `jvm-pending.json` with `runs` only, and make `record.mjs --check` require empty books from then on.
   - **De-dup:** record `dupCandidate` on Media3 media-button deliveries, record-only (NE-39s's provisional decision). Android's legacy JS lane keeps its own window.
 - **Acceptance:**

@@ -68,6 +68,18 @@ import java.util.Objects;
  * {@link #core()} and {@link #deckReading()}; it never changes anything but through
  * {@link #handle}.
  *
+ * <h2>THE FORAY TAPE (A-40)</h2>
+ *
+ * The service builds the core with the tape on ({@link EngineConfig#forayTapeEnabled}) over a
+ * {@link DeckPair}, so a {@code playForay} that reaches the core plays: the seam beat and the
+ * narration pulse are ordinary timers here, and the deck pair answers {@code prepare}. What the
+ * host does NOT have yet is a synthesiser and a jingle player (A-41, with rendered narration's
+ * Phase 4): a spoken line is answered {@code failed} at once, as the JS tape answers a bridge with
+ * no on-device TTS plugin, so the core steps over it (a bridge) or reports the load (a first line);
+ * the jingle is off ({@code interludeAvailable} false), and the silence node is off. Until A-42
+ * the page's bridge still refuses {@code playForay} ({@code foray} is not advertised), so only the
+ * debug driver reaches it.
+ *
  * <h2>TERMINAL</h2>
  *
  * When a turn leaves the core relinquished, the host tears down the deck, every timer and the
@@ -410,8 +422,43 @@ public final class ForayEngineHost {
             case EngineCommand.CommandFailed f -> {
                 return Collections.singletonList(f.reason());
             }
+            case EngineCommand.Narration n -> narration(n.command());
+            case EngineCommand.Interlude i -> {
+                // No jingle player (A-41): the core arms none with interludeAvailable off. One that
+                // arrives anyway ends at once, as a refused start does, so the beat never waits on it.
+                if (i.command() == EngineCommand.InterludeCommand.START) {
+                    handle(new EngineInput.Interlude(new EngineInput.InterludeEvent.Ended("refused")));
+                }
+            }
+            // The silence node is off (silenceNodeEnabled false): nothing to render.
+            case EngineCommand.SilenceStart s -> {}
+            case EngineCommand.SilenceStop s -> {}
+            // The surface is re-read after every turn; a pulse needs nothing more.
+            case EngineCommand.NarrationPulse p -> {}
         }
         return Collections.emptyList();
+    }
+
+    /**
+     * The narrating overlay's synthesiser (A-41's: Android {@code TextToSpeech} behind the engine).
+     * Until it exists a spoken line is refused at once, as the JS tape's bridge answers with no
+     * on-device TTS plugin, so the core steps over a bridge and reports a first line; nothing
+     * ever starts, so a pause, a stop or a discard has nothing to act on. Queued behind the current
+     * turn, as any answer a seam gives while a turn is being interpreted.
+     */
+    private void narration(EngineCommand.NarrationCommand command) {
+        switch (command) {
+            case EngineCommand.NarrationCommand.Speak s -> {
+                seams.output.diag(new EngineCommand.DiagEntry("speak", java.util.Arrays.asList(JsonNode.member("kind", JsonNode.str("unsupported")),
+                        JsonNode.member("seq", JsonNode.num(s.seq())))));
+                handle(new EngineInput.Narrator(new EngineInput.NarratorEvent.Failed(s.seq(), "no-synthesiser")));
+            }
+            case EngineCommand.NarrationCommand.Resume r -> handle(new EngineInput.Narrator(
+                    new EngineInput.NarratorEvent.Resumed(r.seq(), EngineInput.NarrationResumeAnswer.NO_ANSWER)));
+            case EngineCommand.NarrationCommand.Pause p -> {}
+            case EngineCommand.NarrationCommand.Stop s -> {}
+            case EngineCommand.NarrationCommand.Discard d -> {}
+        }
     }
 
     // ---- grace (a row on Android)
@@ -469,7 +516,7 @@ public final class ForayEngineHost {
                 MediaMapping.commandAvailability(core.commandSnapshot(), MediaMapping.SeekSteps.DEFAULT);
         MediaMapping.SessionView view = null;
         if (!availability.clearsNowPlaying()) {
-            MediaMapping.View mv = core.mediaView(seams.deck.reading());
+            MediaMapping.View mv = core.mediaView(seams.deck.reading(), seams.timing.monoMs());
             if (mv != null) view = MediaMapping.sessionView(mv);
         }
         return new Surface(availability, view, core.state().buffering, seq);

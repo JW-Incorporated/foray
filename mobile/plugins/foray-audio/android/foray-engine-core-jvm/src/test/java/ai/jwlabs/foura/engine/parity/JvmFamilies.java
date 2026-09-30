@@ -121,8 +121,27 @@ public final class JvmFamilies {
      */
     public static final FamilyRunner ENGINE_MODE = EngineModeFamily.runner();
 
+    /*
+     * A-40: the Foray tape (EngineCore with forayTapeEnabled, main code) and its policies: the
+     * seam beat (SeamGap), ADR-0007's ladder (SeekPolicy), the jingle's rule (Interlude), the
+     * Foray clock (ForayClock), J-4's structural check (StructuralCheck), the Foray's resume
+     * rules (ForayProgressRules), the Foray half of the lock screen (media), and the tape's
+     * scenarios through the manager surface (manager-foray) and the contract with the standby
+     * deck (prepare).
+     */
+    public static final FamilyRunner SEAM_GAP = ForayFamilies.seamGap();
+    public static final FamilyRunner SEEK_POLICY = ForayFamilies.seekPolicy();
+    public static final FamilyRunner INTERLUDE = ForayFamilies.interlude();
+    public static final FamilyRunner FORAY_CLOCK = ForayFamilies.forayClock();
+    public static final FamilyRunner FORAY_STRUCTURE = ForayFamilies.forayStructure();
+    public static final FamilyRunner FORAY_PROGRESS = ForayProgressFamily.runner();
+    public static final FamilyRunner MEDIA = ForayFamilies.media();
+    public static final FamilyRunner MANAGER_FORAY = ForayTapeFamilies.managerForay();
+    public static final FamilyRunner PREPARE = ForayTapeFamilies.prepare();
+
     /** Every registered runner. */
     public static final List<FamilyRunner> ALL = List.of(COMPARE, NUMBER_FORMAT, QUEUE_STATE, RATE, RESUME_RULES, TRANSPORT, ROWS,
             SESSION, SESSION_INVARIANT, MEDIA_EPISODE, MANAGER_EPISODE, DECK_EPISODE, OUTPOINT, DECK, CONTRACT, SNAPSHOT, HANDSHAKE,
-            DIAG_TOKENS, ENGINE_MODE);
+            DIAG_TOKENS, ENGINE_MODE, SEAM_GAP, SEEK_POLICY, INTERLUDE, FORAY_CLOCK, FORAY_STRUCTURE, FORAY_PROGRESS, MEDIA,
+            MANAGER_FORAY, PREPARE);
 }

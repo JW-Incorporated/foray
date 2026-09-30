@@ -160,7 +160,7 @@ public final class EngineBridgeRules {
         return new JsonNode.Obj(m);
     }
 
-    /** The core's own events: a walked hop ({@code advanced}) and a failure ({@code error}). */
+    /** The core's own events: a walked hop ({@code advanced}), a failure ({@code error}) and a segment the ladder refused ({@code skipped}). */
     public static JsonNode event(EngineCommand.EngineEvent event) {
         List<JsonNode.Member> m = new ArrayList<>();
         switch (event) {
@@ -172,6 +172,13 @@ public final class EngineBridgeRules {
                 m.add(JsonNode.member("type", JsonNode.str("error")));
                 m.add(JsonNode.member("code", JsonNode.str(e.code())));
                 m.add(JsonNode.member("message", JsonNode.str(e.message() == null ? "" : e.message())));
+            }
+            case EngineCommand.EngineEvent.Skipped s -> {
+                // A-40: ADR-0007's ladder refused a segment at load.
+                m.add(JsonNode.member("type", JsonNode.str("skipped")));
+                m.add(JsonNode.member("itemId", JsonNode.str(s.itemId())));
+                m.add(JsonNode.member("index", JsonNode.num(s.index())));
+                m.add(JsonNode.member("reason", JsonNode.str(s.reason())));
             }
         }
         return new JsonNode.Obj(m);
@@ -209,14 +216,18 @@ public final class EngineBridgeRules {
     /**
      * The snapshot's CONTENT, from the core's state and the deck's reading at the moment it is
      * taken: everything but {@code seq} and the two capture stamps, which {@link SnapshotStamper}
-     * adds. The episode subset of the Swift {@code EngineSnapshot.body}: the Foray fields (seam
-     * gap, interlude, narration playhead, skipped segments) are false and zero until the tape
-     * (A-40) and the overlay (A-41).
+     * adds. The Swift {@code EngineSnapshot.body}, the Foray fields included since A-40 (the seam
+     * gap, the interlude, the narration playhead, the skipped segments, and the spoken line's
+     * clock when there is one and a clock was given).
      */
     public static final class EngineSnapshot {
         private EngineSnapshot() {}
 
         public static List<JsonNode.Member> body(EngineCore core, DeckReading deck, String lastError) {
+            return body(core, deck, lastError, null);
+        }
+
+        public static List<JsonNode.Member> body(EngineCore core, DeckReading deck, String lastError, Double monoMs) {
             EngineState state = core.state();
             String type = state.stateType();
             // A stopped engine keeps its queue (the reducer is idle); the page sees nothing loaded.
@@ -249,22 +260,22 @@ public final class EngineBridgeRules {
                 m.add(JsonNode.member("wasPlaying", JsonNode.bool(i.wasPlaying())));
             }
             m.add(JsonNode.member("running", JsonNode.bool(state.isRunning())));
-            m.add(JsonNode.member("inSeamGap", JsonNode.FALSE));
-            m.add(JsonNode.member("inInterlude", JsonNode.FALSE));
+            m.add(JsonNode.member("inSeamGap", JsonNode.bool(state.inSeamGap())));
+            m.add(JsonNode.member("inInterlude", JsonNode.bool(state.inInterlude)));
             m.add(JsonNode.member("buffering", JsonNode.bool(state.buffering)));
             m.add(JsonNode.member("ended", JsonNode.bool(type.equals("ended"))));
             m.add(JsonNode.member("positionSec", JsonNode.num(playhead)));
             m.add(JsonNode.member("durationSec", durationNode));
             m.add(JsonNode.member("sourceTimeSec", loaded ? JsonNode.num(playhead) : JsonNode.NULL));
             m.add(JsonNode.member("playheadItemId", state.loadedId == null ? JsonNode.NULL : JsonNode.str(state.loadedId)));
-            m.add(JsonNode.member("isNarrationPlayhead", JsonNode.FALSE));
+            m.add(JsonNode.member("isNarrationPlayhead", JsonNode.bool(state.isNarrationPlayhead())));
             m.add(JsonNode.member("rate", JsonNode.num(rate)));
             m.add(JsonNode.member("effectiveRate", JsonNode.num(effectiveRate)));
             m.add(JsonNode.member("canNext", JsonNode.bool(core.canNext())));
             m.add(JsonNode.member("canPrevious", JsonNode.bool(item != null && core.canPrevious())));
             m.add(JsonNode.member("autoAdvance", JsonNode.bool(state.autoAdvance)));
             m.add(JsonNode.member("lastError", lastError == null ? JsonNode.NULL : JsonNode.str(lastError)));
-            m.add(JsonNode.member("skippedSegments", JsonNode.num(0)));
+            m.add(JsonNode.member("skippedSegments", JsonNode.num(state.skippedSegments)));
             m.add(JsonNode.member("pendingAdvances", JsonNode.num(state.advanceLog.size())));
             m.add(JsonNode.member("pendingEvents", JsonNode.num(state.pendingEvents.size())));
             m.add(JsonNode.member("session", JsonNode.str(state.session.token)));
@@ -274,6 +285,11 @@ public final class EngineBridgeRules {
             np.add(JsonNode.member("artist", JsonNode.str(metadata == null ? "" : metadata.artist())));
             np.add(JsonNode.member("album", JsonNode.str(metadata == null ? "" : metadata.album())));
             m.add(JsonNode.member("nowPlaying", new JsonNode.Obj(np)));
+            // reference-engine.js: the spoken line's clock, when there is one.
+            Double elapsed = monoMs == null ? null : core.narrationElapsedSec(monoMs);
+            if (elapsed != null && Double.isFinite(elapsed) && elapsed >= 0) {
+                m.add(JsonNode.member("narrationElapsedSec", JsonNode.num(elapsed)));
+            }
             return m;
         }
 

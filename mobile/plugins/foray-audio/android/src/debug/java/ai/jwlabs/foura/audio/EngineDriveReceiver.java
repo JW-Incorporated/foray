@@ -8,6 +8,7 @@ import ai.jwlabs.foura.engine.EngineContract;
 import ai.jwlabs.foura.engine.EngineInput;
 import ai.jwlabs.foura.engine.EngineItem;
 import ai.jwlabs.foura.engine.JSWriter;
+import ai.jwlabs.foura.engine.JsonNode;
 import ai.jwlabs.foura.engine.Vocabulary;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
@@ -36,7 +37,14 @@ import java.util.List;
  *       --es cmd load --es queue &lt;base64 JSON array of items&gt; --ei index 0
  *   adb shell am broadcast -n … --es cmd pause|play|next|previous
  *   adb shell am broadcast -n … --es cmd task-removed
+ *   adb shell am broadcast -n … --es cmd foray --es foray &lt;base64 JSON {forayId, title, items}&gt;
  * </pre>
+ *
+ * <p>{@code foray} (A-40) is the contract's {@code playForay} with the page's BUILD of a Foray
+ * (the items as {@code buildForayQueue} emits them): the Foray tape's (f) scenario drives the
+ * engine's deck pair with it, because the page's bridge refuses {@code playForay} until A-42
+ * advertises {@code foray}. It goes through the core like any page command: the structural check,
+ * the session, the beat and the pair are the real ones.
  *
  * <p>{@code task-removed} (A-27) is the listener swiping 4a away, as the service hears it: the
  * driver lets go of its binding and hands the service {@code onTaskRemoved}, Media3's own
@@ -176,6 +184,18 @@ public final class EngineDriveReceiver extends BroadcastReceiver {
                     verdicts.add(service.handle(new EngineInput.Queue(
                             new EngineInput.QueueInput.PlayIndex(index, null, Vocabulary.Source.TAP))));
                 }
+            }
+            case "foray" -> {
+                String b64 = intent.getStringExtra("foray");
+                if (b64 == null) return "{\"ok\":false,\"failures\":[\"no-foray\"]}";
+                JsonNode foray = JsonNode.parse(new String(Base64.decode(b64, Base64.DEFAULT), StandardCharsets.UTF_8));
+                JsonNode rawItems = foray.get("items");
+                List<JsonNode> items = rawItems == null || rawItems.arrayValue() == null ? new ArrayList<>() : rawItems.arrayValue();
+                JsonNode id = foray.get("forayId");
+                JsonNode title = foray.get("title");
+                verdicts.add(tap(service, new EngineContract.Command.PlayForay(id == null || id.stringValue() == null ? "" : id.stringValue(),
+                        title == null ? null : title.stringValue(), items, new JsonNode.Obj(new ArrayList<>()), null, false, false,
+                        null)));
             }
             case "play" -> verdicts.add(tap(service, new EngineContract.Command.Play()));
             case "pause" -> verdicts.add(tap(service, new EngineContract.Command.Pause()));

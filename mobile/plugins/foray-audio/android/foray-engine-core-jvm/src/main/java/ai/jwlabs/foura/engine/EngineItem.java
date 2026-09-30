@@ -57,10 +57,61 @@ public final class EngineItem {
         return new QueueItemRef(id, kind, bounds());
     }
 
+    // ---- what a built Foray item carries (A-40)
+
+    /** The item as the seam rules read it. */
+    public SeamGap.SeamItem seam() {
+        return new SeamGap.SeamItem(startSec, endSec);
+    }
+
+    /** {@code needs_drift_check}, by truthiness (ADR-0007: the ladder runs at load). */
+    public boolean needsDriftCheck() {
+        JsonNode v = node.get("needs_drift_check");
+        return v != null && v.isTruthy();
+    }
+
+    /** {@code dai_suspected}, by truthiness. */
+    public boolean daiSuspected() {
+        JsonNode v = node.get("dai_suspected");
+        return v != null && v.isTruthy();
+    }
+
+    public Double referenceDurationSec() {
+        return number(node.get("reference_duration_sec"));
+    }
+
+    /** ADR-0008's pad. */
+    public Double adPadSec() {
+        return number(node.get("ad_pad_sec"));
+    }
+
+    /**
+     * §14: a RENDERED line (a file) that also carries its script, so a file that fails can be
+     * read aloud instead.
+     */
+    public boolean canSpeakInstead() {
+        if (kind != PlayerItemKind.TTS || audioUrl == null || jsTrim(audioUrl).isEmpty()) return false;
+        String script = string(node.get("script"));
+        return script != null && !jsTrim(script).isEmpty();
+    }
+
+    /** The item as the Foray clock and the structural check read it. */
+    public ForayItem forayItem() {
+        return ForayItem.of(node);
+    }
+
+    /** The item as the transport rules read it. */
+    public TransportPolicy.Item transportItem() {
+        JsonNode url = node.get("audio_url");
+        return new TransportPolicy.Item(startSec, endSec, number(node.get("authored_end_sec")), durationSec,
+                string(node.get("kind")), url != null && url.isTruthy());
+    }
+
     /**
      * {@code _isSynthNarration(item)}: a {@code tts} item with a non-empty {@code script} and
-     * no file. The narrating overlay speaks it (A-41); until then no rule here plays one,
-     * but the rate rule already reads it (a spoken line never takes the listener's rate).
+     * no file. The narrating overlay speaks it (the core's rules since A-40; the host's
+     * synthesiser is A-41's), and the rate rule reads it (a spoken line never takes the
+     * listener's rate).
      */
     public boolean isSynthNarration() {
         if (kind != PlayerItemKind.TTS || audioUrl != null) return false;
