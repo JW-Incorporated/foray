@@ -711,6 +711,7 @@ test("A-30 (k): both halves are gated, and the Foray must go through the relinqu
   bad({ facts: { ...good.facts, decisionMs: 25001 } }, /25001 ms after its load/);
   bad({ facts: { ...good.facts, sounded: true } }, /reported playing/);
   bad({ after: { state: "playing", running: true } }, /after the failure the engine is playing/);
+  bad({ after: null }, /dump did not answer/);
   bad({ session: { state: "PLAYING" } }, /still says PLAYING/);
   bad({ recovered: null }, /bundled episode did not play/);
   bad({ laneBefore: "js" }, /lane before the Foray was js/);

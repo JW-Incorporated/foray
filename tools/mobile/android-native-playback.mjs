@@ -733,7 +733,9 @@ export function verdictAirplane({ airplane, facts, after, session, recovered, la
     failures.push(`the engine stopped the unreachable episode ${facts.decisionMs} ms after its load; the deadline is ${NATIVE_GATES.airplaneDecisionMs} ms`);
   }
   if (facts?.sounded) failures.push("the unreachable episode reported playing");
-  if (after && (after.running !== false || after.exoPlaying === true)) failures.push(`after the failure the engine is ${after.state} (running ${after.running}, exoPlaying ${after.exoPlaying})`);
+  /* A-30 review: no dump after the failure is not "nothing left playing"; it is unread. */
+  if (!after) failures.push("after the failure the service's dump did not answer, so nothing shows the engine stopped");
+  else if (after.running !== false || after.exoPlaying === true) failures.push(`after the failure the engine is ${after.state} (running ${after.running}, exoPlaying ${after.exoPlaying})`);
   if (session?.state === "PLAYING") failures.push("after the failure our media session still says PLAYING");
   if (!recovered) failures.push(`a bundled episode did not play within ${NATIVE_GATES.recoveryMs / 1000} s of the failure`);
   if (laneBefore !== "native") failures.push(`the page's lane before the Foray was ${laneBefore}, not native`);
