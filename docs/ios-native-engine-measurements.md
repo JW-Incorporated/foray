@@ -883,6 +883,17 @@ NE-38rj), generated into `EngineConstants.RouteResume` for NE-38rs and A-61:
 | Route-resume loss age | `ROUTE_RESUME_MAX_LOST_SEC` | **24 h** | A day at work (#114, passed on M1) is about 9-10 h; a night parked is about 14 h. Measured on the wall clock, never uptime. | `route kind=back lostSec=` → `route-back` |
 | Bluetooth arm | `ROUTE_RESUME_BLUETOOTH_DEFAULT` | **off** | The founder's A2DP car sends its own play 7.4 s after connecting (2026-09-28 paste, e#83 → e#85), and AirPods are A2DP too. | the ms from `route kind=back` to the next `remote play` → `route-back` |
 
+NE-38rs ports them without a second tag: `RouteResume.maxLostSec` and
+`RouteResume.bluetoothDefault` read the generated constants, and the arm a
+build ships is `EngineConfig.routeResumeBluetooth`, which EngineBoot reads from
+the plist key `ForayEngineRouteResumeBluetooth` that
+`tools/mobile/inject-background-audio.mjs` writes from
+`mobile/ENGINE_DEFAULT.json`'s `ios.routeResumeBluetooth` (false). NE-38f
+turns the arm on by editing that one value. Two more values came with the
+port and are rules of the card, not field guesses: a route becomes known after
+**1 s** heard through it (`RouteResume.knownAfterMs`), and at most **8** are
+kept (`RouteResume.knownCap`).
+
 **The deadline class.** The core names a class on every load it issues. The
 deck maps the class to seconds (`AVDeck.Config.deadlineSec(for:)`):
 

@@ -3604,7 +3604,7 @@ test("NE-19: only EngineStore touches UserDefaults in the engine, its shared wri
   assert.match(lifecycle, /case \.terminating:\s*flushPosition\(\)/, "willTerminate flushes the playhead");
 });
 
-test("NE-19: the engine's private keys are §4.6's six, outside CapacitorStorage., the ones Delete my data purges, and the ring is a capped file in Application Support", () => {
+test("NE-19: the engine's private keys are §4.6's six and NE-38rs's known routes, outside CapacitorStorage., the ones Delete my data purges, and the ring is a capped file in Application Support", () => {
   /* NE-27's privacy text will enumerate these keys, and test/data-deletion
      .test.js purges them BY NAME; a key the Swift writes that the deletion
      list does not name is a key a deletion forgets.
@@ -3617,7 +3617,8 @@ test("NE-19: the engine's private keys are §4.6's six, outside CapacitorStorage
   assert.ok(fake, "test/data-deletion.test.js's fakeEngine private map is missing");
   const jsKeys = [...fake[1].matchAll(/\["(ForayEngine\.\w+)"/g)].map((m) => m[1]);
   assert.deepEqual(swiftKeys, ["ForayEngine.modeOverride", "ForayEngine.strikes", "ForayEngine.sentinel",
-    "ForayEngine.stickyLegacyBuild", "ForayEngine.restore", "ForayEngine.holdPolicy"], "plan §4.6's list");
+    "ForayEngine.stickyLegacyBuild", "ForayEngine.restore", "ForayEngine.holdPolicy",
+    "ForayEngine.knownRoutes"], "plan §4.6's list, plus NE-38rs's known routes");
   assert.deepEqual(swiftKeys, jsKeys, "the Swift private keys and the deletion test's list differ");
   for (const key of swiftKeys) assert.ok(!key.startsWith("CapacitorStorage."), key);
   assert.match(keys, /privatePrefix = "ForayEngine\."/);

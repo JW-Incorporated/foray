@@ -35,6 +35,16 @@ enum EngineBoot {
     /// is a preview whatever class its load names. Table: measurements §12.
     static let previewLoadDeadlineSec: Double = 6 // MEASURE: verdict=preview-load (NE-47). Rows: deck kind=ready elapsedMs lane=preview, deck kind=deadline lane=preview, audition kind=fallback reason=timeout.
 
+    /// The plist key the injector writes from `mobile/ENGINE_DEFAULT.json`'s
+    /// `ios.routeResumeBluetooth` (NE-38rs).
+    static let routeResumeBluetoothKey = "ForayEngineRouteResumeBluetooth"
+
+    /// The Bluetooth arm as the plist says it; a missing or non-boolean value
+    /// is the core's default (OFF).
+    static func routeResumeBluetooth(_ info: [String: Any]?) -> Bool {
+        (info?[routeResumeBluetoothKey] as? Bool) ?? RouteResume.bluetoothDefault
+    }
+
     /// Build the process's engine in native mode. The `build` row is written
     /// FIRST, before any seam writes its own (BuildRow's rule), so every
     /// paste says which engine and which launch produced the rows under it.
@@ -69,6 +79,11 @@ enum EngineBoot {
         // EngineBridgeRules.advertisedCapabilities).
         config.forayTapeEnabled = true
         config.deckPairEnabled = true
+        // NE-38rs: route resume's Bluetooth arm, from mobile/ENGINE_DEFAULT.json
+        // by way of the plist (tools/mobile/inject-background-audio.mjs). OFF
+        // (provisional, measurements §12, verdict route-back); absent reads as
+        // the core's default.
+        config.routeResumeBluetooth = EngineBoot.routeResumeBluetooth(Bundle.main.infoDictionary)
         let sessionIsActive = { session.phase == .active }
         // NE-34: the seam's jingle on the bundled asset (nil, and no jingle,
         // if the asset did not ship), and the silence node only behind its
@@ -112,6 +127,7 @@ enum EngineBoot {
             timing: timing,
             output: store,
             holdPolicy: holdPolicy,
+            knownRoutes: store,
             interlude: interlude,
             silence: silence,
             preview: preview,

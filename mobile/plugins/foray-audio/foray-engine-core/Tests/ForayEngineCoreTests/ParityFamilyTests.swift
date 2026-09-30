@@ -97,6 +97,10 @@ final class ParityFamilyTests: XCTestCase {
     func testLexiconFamily() { assertParityFamily("lexicon", requireRunner: true) }
     func testSpeechRateFamily() { assertParityFamily("speech-rate", requireRunner: true) }
 
+    /// Ported by NE-38rs: route resume (founder Q5), the decision, the port
+    /// classes and keys, and the reducer's replays. It must RUN.
+    func testRouteResumeFamily() { assertParityFamily("route-resume", requireRunner: true) }
+
     /// Every family in manifest.json, including ones no method above names:
     /// every id executed or owed, no stale pending entry, no whole-tree
     /// problem. And something must have RUN: zero failures from a runner that
