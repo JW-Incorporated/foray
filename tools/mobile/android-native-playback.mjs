@@ -82,6 +82,43 @@
  * The facts are read from logcat (`ForayEngine` rows and `ForayEngine.owner`
  * lines) and from the driver's `keys` answer; the fault and the setting are put
  * back afterwards whatever happened.
+ *
+ * ── A-30: THE WHOLE LEG IN THE NATIVE LANE, (e), (f) AND (k) ─────────────────
+ *
+ * Card A-30: "Make the native leg of A-04/A-05 required-green on (a)–(e) and
+ * (g)–(k). Record the seam numbers for episodes."
+ *
+ *   - THE LANE. Until A-30 the adb-driven scenarios drove the service from a
+ *     process whose page was in the stock JS lane. Now every engine scenario
+ *     stores the Developer setting Native first (the driver's `override`, which
+ *     also clears the strikes) and starts the app in a fresh process when the
+ *     running one is not native, so the page, the owner, the receiver and the
+ *     service are the ones A-31's flip ships. Every dump the scenario reads must
+ *     say `nativeLane: true` (the service's own reading of
+ *     `EngineOwnership.engineLane`), or the scenario fails: a leg that silently
+ *     ran in the JS lane cannot pass as native.
+ *   - (e) `first-launch`: a first launch in the native lane (from stopped), the
+ *     JS leg's own (e) through the page (the app reaches a usable screen, the
+ *     screenshot, the insets), plus the page's lane native and the service
+ *     already hosting the engine when the page is up.
+ *   - (f) `seams`, RECORDED: a queue of seven episode items (six segments over
+ *     the three click tracks, same-source and cross-source, then one whole
+ *     episode that ends at its file's end) played to its end with the app on
+ *     Home and the screen off. Each seam is read from the engine's own rows
+ *     (logcat `ForayEngine`, the device's clock): from the outgoing item's last
+ *     `time-control` away from playing (or its `outPoint` stop) to the incoming
+ *     item's first `time-control playing`. Gated only on the queue having
+ *     crossed every seam, with the screen off, in one process; the gaps are
+ *     recorded (A-40's 1 s bar is the Foray tape's, not this card's).
+ *   - (k) `airplane`: two halves, both gated. The ENGINE's: in airplane mode an
+ *     episode whose file cannot load is stopped by the engine (a `stop` row with
+ *     cause `error` or `load-deadline`) within the deck's load deadline plus
+ *     slack, nothing is left playing or claiming PLAYING, and a bundled episode
+ *     then plays. The PAGE's: a Foray tapped in the native lane is relinquished
+ *     to the page's player (the binary advertises no `foray` until A-40/A-41),
+ *     and the JS leg's own (k) runs on it: the rendered line that cannot load is
+ *     spoken or skipped in time, and the Copy logs `engineMode js
+ *     (relinquished)`. A-41 moves the narration fallback into the engine.
  */
 
 import fs from "node:fs";
@@ -114,7 +151,9 @@ import {
   uiNodes,
   wakefulness,
   DIAGNOSTICS_EXPRESSION,
+  airplaneScenario,
   connect as connectPage,
+  firstLaunchScenario,
   page as evalPage,
 } from "./android-playback.mjs";
 
@@ -458,6 +497,273 @@ export function verdictFallback({ setup, launches }) {
   return { ok: failures.length === 0, failures };
 }
 
+/* ─────────────────────────── A-30: the lane, (e), (f), (k) ─────────────────────────── */
+
+/** The scenarios that must run in the native LANE: every dump they read says `nativeLane: true`.
+ *  Not `bridge` and `fallback`, which set the lane themselves and read it from the page. */
+export const LANE_SCENARIOS = Object.freeze(["first-launch", "play", "background", "transport", "notification", "seams",
+  "doze", "focus", "call", "kill", "airplane"]);
+
+/** A-30's numbers. */
+export const NATIVE_GATES = Object.freeze({
+  /** (f): how often the hidden queue is looked at, and the slack past its own length. */
+  seamsPollMs: 5000,
+  seamsSlackMs: 90000,
+  /** (k): `ExoDeck.DEFAULT_LOAD_DEADLINE_SEC` (20 s, P-13), plus 5 s for the poll and the
+   *  broadcast. A load that fails sooner (Media3's retries give up) is decided sooner. */
+  loadDeadlineMs: 20000,
+  airplaneDecisionMs: 25000,
+  /** (k): how long a bundled episode has to sound after the failure, still in airplane mode. */
+  recoveryMs: 20000,
+});
+
+/** (f): one episode item, bounded or whole. */
+function seamItem(clip, i, startSec, endSec) {
+  const it = { id: `a30-seam-${i}`, kind: "episode", title: clip.title, show: SHOW, audio_url: `${ASSET_BASE}${clip.file}`, duration_sec: 90 };
+  if (endSec != null) Object.assign(it, { start_sec: startSec, end_sec: endSec });
+  return Object.freeze(it);
+}
+
+/** (f): six 12 s segments over the three click tracks (two seams inside one source, the rest
+ *  across sources, one onto the VBR track with no seek table), then the VBR-Xing track WHOLE,
+ *  which ends at its file's end as a real episode does, then a 10 s segment to land on. Seven
+ *  seams, about three minutes. */
+export const SEAMS_QUEUE = Object.freeze([
+  seamItem(CLIPS[0], 0, 0, 12),
+  seamItem(CLIPS[1], 1, 0, 12),
+  seamItem(CLIPS[1], 2, 30, 42),
+  seamItem(CLIPS[2], 3, 0, 12),
+  seamItem(CLIPS[0], 4, 20, 32),
+  seamItem(CLIPS[0], 5, 50, 62),
+  seamItem(CLIPS[1], 6, null, null),
+  seamItem(CLIPS[2], 7, 0, 10),
+]);
+
+/** (k): an episode on the network, in the shape a real one has, that airplane mode cannot
+ *  load. The path names no object, so if airplane mode ever failed to engage the load would
+ *  still fail (a 404), and the verdict says which it saw. */
+export const UNREACHABLE_EPISODE_URL = "https://audio.jwlabs.ai/e/a30-ci/unreachable.mp3";
+export const AIRPLANE_QUEUE = Object.freeze([
+  Object.freeze({ id: "a30-air-0", kind: "episode", title: "A-30 unreachable episode", show: SHOW, audio_url: UNREACHABLE_EPISODE_URL, duration_sec: 90 }),
+]);
+
+const ROW_RE = /(\d+) (\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z) (\S+)(?: (.*))?$/;
+
+/** One engine row (`EngineLog.line`: `seq iso kind body`), from the dump or from logcat. */
+export function parseEngineRow(text) {
+  const m = ROW_RE.exec(String(text ?? "").trim());
+  if (!m) return null;
+  const body = m[4] ?? "";
+  let json = null;
+  if (body.startsWith("{")) {
+    try {
+      json = JSON.parse(body);
+    } catch {
+      json = null;
+    }
+  }
+  return { seq: Number(m[1]), iso: m[2], at: Date.parse(m[2]), kind: m[3], body, json };
+}
+
+/** The engine's rows in `adb logcat -v threadtime -s ForayEngine`, for one pid when given. */
+export function engineRowsFromLogcat(text, pid = null) {
+  const rows = [];
+  for (const line of String(text ?? "").split(/\r?\n/)) {
+    const m = /^\S+ \S+\s+(\d+)\s+\d+ \w ForayEngine\s*: (.*)$/.exec(line);
+    if (!m || (pid && m[1] !== String(pid))) continue;
+    const r = parseEngineRow(m[2]);
+    if (r) rows.push(r);
+  }
+  return rows;
+}
+
+/** Rows from several reads of one process, once each, in the engine's order. */
+export function mergeRows(...lists) {
+  const seen = new Map();
+  for (const list of lists) for (const r of list ?? []) if (r) seen.set(`${r.seq}|${r.iso}`, r);
+  return [...seen.values()].sort((a, b) => a.seq - b.seq || a.at - b.at);
+}
+
+const ITEM_ENDS = new Set(["ended", "final-end"]);
+
+/** A listener's (or the page's) hand between two items: a remote press, a command that is not
+ *  the page's restore bookkeeping, or a stop that is not an item running out. */
+function commanded(r) {
+  if (r.kind === "remote") return !!r.json?.cmd;
+  if (r.kind === "cmd") return r.json?.source !== "restore";
+  if (r.kind === "stop") return !ITEM_ENDS.has(r.json?.cause);
+  return false;
+}
+
+/**
+ * (f): the item seams in the engine's rows. A seam runs from the outgoing load's end (its first
+ * `time-control` away from playing after it played, or its `outPoint` stop, whichever came
+ * first; the next load's `attach`/`reuse` when neither was written) to the incoming load's first
+ * `time-control playing`. `via` is the incoming load's row (`attach` for a new source, `reuse`
+ * for the same one), `cold` the attach's reason. A seam with a command between is `commanded`
+ * (a press, not a seam), and kept apart. Pure.
+ */
+export function episodeSeams(rows) {
+  const seams = [];
+  let playing = null;
+  let endAt = null;
+  let endFrom = null;
+  let overshootMs = null;
+  let dirty = false;
+  let pending = null;
+  for (const r of rows ?? []) {
+    const j = r.json ?? {};
+    if (commanded(r)) {
+      dirty = true;
+      if (pending) pending.commanded = true;
+    }
+    if (r.kind === "outPoint" && j.kind === "stop" && playing && j.token === playing.token) {
+      overshootMs = typeof j.overshootMs === "number" ? j.overshootMs : null;
+      if (endAt == null) {
+        endAt = r.at;
+        endFrom = "outPoint";
+      }
+      continue;
+    }
+    if (r.kind !== "deck") continue;
+    if (j.kind === "time-control") {
+      if (j.status === "playing") {
+        if (pending && j.token === pending.token) {
+          seams.push({
+            fromToken: pending.fromToken, toToken: pending.token, via: pending.via, cold: pending.cold,
+            gapMs: r.at - pending.endAt, loadMs: r.at - pending.attachAt, readyMs: pending.readyMs,
+            endFrom: pending.endFrom, overshootMs: pending.overshootMs, commanded: pending.commanded,
+            at: r.iso,
+          });
+          pending = null;
+        }
+        if (!playing || playing.token !== j.token) {
+          playing = { token: j.token };
+          endAt = null;
+          endFrom = null;
+          overshootMs = null;
+          dirty = false;
+        } else if (endAt != null) {
+          /* The same load playing again (a stall that recovered): not an end after all. */
+          endAt = null;
+          endFrom = null;
+        }
+      } else if (playing && j.token === playing.token && endAt == null) {
+        endAt = r.at;
+        endFrom = "time-control";
+      }
+    } else if ((j.kind === "attach" || j.kind === "reuse") && playing && j.token !== playing.token) {
+      pending = {
+        token: j.token, fromToken: playing.token, via: j.kind, cold: j.kind === "reuse" ? "same-source" : j.cold ?? null,
+        attachAt: r.at, endAt: endAt ?? r.at, endFrom: endAt != null ? endFrom : "attach", overshootMs,
+        commanded: dirty, readyMs: null,
+      };
+    } else if (j.kind === "ready" && pending && j.token === pending.token) {
+      pending.readyMs = typeof j.elapsedMs === "number" ? j.elapsedMs : null;
+    }
+  }
+  return seams;
+}
+
+function nearestRank(sorted, p) {
+  if (!sorted.length) return null;
+  return sorted[Math.min(sorted.length - 1, Math.max(0, Math.ceil((p / 100) * sorted.length) - 1))];
+}
+
+/** (f): the numbers, over the seams no command touched: all, and by kind of load. Pure. */
+export function episodeSeamStats(seams) {
+  const clean = (seams ?? []).filter((s) => !s.commanded && typeof s.gapMs === "number");
+  const stat = (list) => {
+    const gaps = list.map((s) => s.gapMs).sort((a, b) => a - b);
+    return { count: gaps.length, minMs: gaps[0] ?? null, medianMs: nearestRank(gaps, 50), p95Ms: nearestRank(gaps, 95), maxMs: gaps[gaps.length - 1] ?? null };
+  };
+  const byKind = {};
+  for (const s of clean) {
+    const k = s.via === "reuse" ? "same-source" : "cross-source";
+    (byKind[k] ??= []).push(s);
+  }
+  return {
+    ...stat(clean),
+    commanded: (seams ?? []).length - clean.length,
+    byKind: Object.fromEntries(Object.entries(byKind).map(([k, v]) => [k, stat(v)])),
+  };
+}
+
+/** (f) RECORDED; gated only on the queue having crossed every seam, hidden, in one process. */
+export function verdictSeams({ drive, wake, pidBefore, pidAfter, last, seams, items = SEAMS_QUEUE }) {
+  const failures = [];
+  if (!drive?.answer?.ok) failures.push(`the driver's load did not play: ${JSON.stringify(drive)}`);
+  if (!/^(Asleep|Dozing)$/.test(String(wake ?? ""))) failures.push(`the screen did not go off: mWakefulness=${wake}`);
+  if (!pidBefore) failures.push("no app process before the screen went off");
+  else if (pidAfter !== pidBefore) failures.push(`the pid changed from ${pidBefore} to ${pidAfter}`);
+  if (!last || last.index !== items.length - 1) failures.push(`the queue stopped at item ${last?.index}, not the last (${items.length - 1})`);
+  const stats = episodeSeamStats(seams);
+  if (stats.count < items.length - 1) {
+    failures.push(`${stats.count} of the queue's ${items.length - 1} seams were read from the engine's rows (${stats.commanded} with a command between)`);
+  }
+  return { ok: failures.length === 0, failures, recorded: stats };
+}
+
+/** (k), the engine's half: what the rows after the load say. Pure. */
+export function airplaneFacts(rows, sinceSeq) {
+  const after = (rows ?? []).filter((r) => r.seq > sinceSeq);
+  const attach = after.find((r) => r.kind === "deck" && (r.json?.kind === "attach" || r.json?.kind === "reuse")) ?? null;
+  const stop = after.find((r) => r.kind === "stop" && (r.json?.cause === "error" || r.json?.cause === "load-deadline")) ?? null;
+  const deck = after.filter((r) => r.kind === "deck" && (r.json?.kind === "failed" || r.json?.kind === "deadline")).map((r) => r.json);
+  const sounded = after.some((r) => r.kind === "deck" && r.json?.kind === "time-control" && r.json?.status === "playing"
+    && (!attach || r.json?.token === attach.json?.token));
+  return {
+    attachAt: attach?.iso ?? null,
+    stop: stop ? { cause: stop.json.cause, at: stop.iso } : null,
+    decisionMs: attach && stop ? stop.at - attach.at : null,
+    deck,
+    sounded,
+  };
+}
+
+/** (k) GATED: the engine's half (an unloadable episode stops in time, nothing claims to play,
+ *  a bundled one plays after), and the page's (a Foray in the native lane relinquishes to the
+ *  page's player, whose (k) passes, and the Copy says so). */
+export function verdictAirplane({ airplane, facts, after, session, recovered, laneBefore, foray, copy }) {
+  const failures = [];
+  if (airplane !== true) failures.push("airplane mode did not engage (settings global airplane_mode_on is not 1)");
+  if (!facts?.attachAt) failures.push("the engine never started loading the unreachable episode");
+  else if (!facts.stop) failures.push(`the engine did not stop the unreachable episode (no stop row with cause error or load-deadline within ${NATIVE_GATES.airplaneDecisionMs} ms)`);
+  else if (!(facts.decisionMs <= NATIVE_GATES.airplaneDecisionMs)) {
+    failures.push(`the engine stopped the unreachable episode ${facts.decisionMs} ms after its load; the deadline is ${NATIVE_GATES.airplaneDecisionMs} ms`);
+  }
+  if (facts?.sounded) failures.push("the unreachable episode reported playing");
+  if (after && (after.running !== false || after.exoPlaying === true)) failures.push(`after the failure the engine is ${after.state} (running ${after.running}, exoPlaying ${after.exoPlaying})`);
+  if (session?.state === "PLAYING") failures.push("after the failure our media session still says PLAYING");
+  if (!recovered) failures.push(`a bundled episode did not play within ${NATIVE_GATES.recoveryMs / 1000} s of the failure`);
+  if (laneBefore !== "native") failures.push(`the page's lane before the Foray was ${laneBefore}, not native`);
+  if (!foray) failures.push("the page's Foray half did not run");
+  else if (!foray.ok) failures.push(...(foray.failures ?? []).map((f) => `foray: ${f}`));
+  if (!(copy?.modeRows ?? []).some((r) => r.mode === "js" && r.reason === "relinquished")) {
+    failures.push("the Copy has no `engineMode js (relinquished)` row: the Foray tap did not go through the relinquish");
+  }
+  return { ok: failures.length === 0, failures };
+}
+
+/** (e) GATED: the JS leg's first-launch verdict, in the native lane, with the engine up. */
+export function verdictFirstLaunch({ launch, status, service }) {
+  const failures = [...(launch?.failures ?? [])];
+  if (!launch) failures.push("the first-launch probe did not run");
+  if (!status || status.error) failures.push(`the page's lane could not be read: ${status?.error ?? "no answer"}`);
+  else if (status.lane !== "native") failures.push(`the page's lane is ${status.lane}, not native`);
+  engineFailures(service, failures);
+  return { ok: failures.length === 0, failures };
+}
+
+/** A-30: every dump a native-lane scenario read said the process's lane is native. Pure. */
+export function laneFailures(scenario, seen) {
+  if (!LANE_SCENARIOS.includes(scenario)) return [];
+  const reads = seen ?? [];
+  if (!reads.length) return ["no dump said which lane the process was in (the service never answered with `nativeLane`)"];
+  const js = reads.filter((v) => v !== true).length;
+  return js ? [`${js} of ${reads.length} engine dumps said the process is not in the native lane`] : [];
+}
+
 /* ───────────────────────────── verdicts ───────────────────────────── */
 
 function engineFailures(state, failures) {
@@ -684,14 +990,17 @@ export function verdictKill({ legs, setup }) {
 }
 
 export const SCENARIOS = Object.freeze([
+  ["first-launch", "(e) native: a first launch in the native lane, as a screenshot, with the engine up"],
   ["play", "(a) native: a clip plays in a mediaPlayback service, published"],
   ["background", "(b) native: Home, then screen off, 60 s"],
   ["transport", "(c) native: media_session dispatch + KEYCODE_MEDIA_*"],
   ["notification", "(d) native: system controls: title, show, 15/30, tap pause"],
+  ["seams", "(f) native: hidden episode seams, screen off (recorded; gated on crossing every seam)"],
   ["doze", "(g) native: Doze, unplugged, rare bucket, 5 min"],
   ["focus", "(h) native: another app takes audio focus; pause, and resume after a transient loss"],
   ["call", "(i) native: a phone call; pause, and resume after it"],
   ["kill", "(j) native: paused, on Home, the process ended; a media play resumes 4a at the saved position"],
+  ["airplane", "(k) native: airplane mode; an unloadable episode stops in time; a Foray relinquishes and its line falls back"],
   ["bridge", "(A-28) native: the page asks the engine; the Developer override; `engine mode native` in the Copy"],
   ["fallback", "(A-29) native: the engine throws at hello; the page falls back to js with a fault row; 3 strikes pin the JS lane"],
 ]);
@@ -728,8 +1037,25 @@ function wakeAndUnlock() {
   shell("wm", "dismiss-keyguard");
 }
 
-/** The app on screen (a foreground app may start the foreground service), awake and unlocked. */
+/** A-30: the native LANE for a scenario that drives the engine. The Developer setting Native is
+ *  stored through the owner (the driver's `override`, which also clears the strikes and the pin),
+ *  and a process that is not already in the native lane is stopped, so the next launch decides
+ *  it. `fresh` stops the app whatever it was: (e)'s first launch. Once per scenario. */
+async function ensureNativeLane(ctx, { fresh = false } = {}) {
+  if (ctx.laneReady && !fresh) return;
+  ctx.laneReady = true;
+  const now = pidOf(ctx.pkg) ? engine(ctx, { track: false }) : null;
+  ctx.laneSetup = drive(ctx, "override", ["--es", "mode", "native"]);
+  if (fresh || now?.nativeLane !== true) {
+    shell("am", "force-stop", ctx.pkg);
+    await sleep(1500);
+  }
+}
+
+/** The app on screen (a foreground app may start the foreground service), awake and unlocked;
+ *  in the native lane for a scenario that must run there (A-30). */
 async function prepare(ctx) {
+  if (LANE_SCENARIOS.includes(ctx.scenario)) await ensureNativeLane(ctx);
   wakeAndUnlock();
   await sleep(800);
   shell("am", "start", "-W", "-n", `${ctx.pkg}/.MainActivity`);
@@ -749,11 +1075,13 @@ function loadQueue(ctx, items, index = 0) {
   return drive(ctx, "load", ["--es", "queue", queueArg(items), "--ei", "index", String(index)]);
 }
 
-/** The engine's state now, read from the service's dump, stamped with this runner's clock. */
-function engine(ctx) {
+/** The engine's state now, read from the service's dump, stamped with this runner's clock.
+ *  Every read notes the process's lane (A-30: `laneFailures` judges them). */
+function engine(ctx, { track = true } = {}) {
   const out = shell("dumpsys", "activity", "service", SERVICE_COMPONENT.replace(PKG, ctx.pkg));
   const { state, rows } = engineDump(out);
   ctx.lastRows = rows;
+  if (track && state && typeof state.nativeLane === "boolean") (ctx.laneSeen ??= []).push(state.nativeLane);
   return state ? { ...state, at: Date.now() } : null;
 }
 
@@ -1202,6 +1530,11 @@ async function kill(ctx) {
 /** A-28: the page's door. See the header. */
 async function bridge(ctx) {
   ctx.endpoint = ctx.endpoint ?? DEVTOOLS_ENDPOINT;
+  /* A-30: the scenarios before this one run in the native lane. The stock launch this reads
+     first is Automatic, from a stopped app, whatever ran before. */
+  const stockSetup = drive(ctx, "override", ["--es", "mode", "auto"]);
+  shell("am", "force-stop", ctx.pkg);
+  await sleep(1500);
   await prepare(ctx);
   ctx.target = (await connectPage(ctx, { timeoutMs: 90000 })).target;
   const stock = await evalPage(ctx, ENGINE_STATUS_EXPRESSION, { timeoutMs: 45000 });
@@ -1233,6 +1566,8 @@ async function bridge(ctx) {
   const service = engine(ctx);
   save(ctx, "bridge-engine-dump.txt", shell("dumpsys", "activity", "service", SERVICE_COMPONENT.replace(PKG, ctx.pkg)));
   const v = verdictBridge({ stock, override, after, copy, service });
+  if (!stockSetup?.answer?.ok) v.failures.unshift(`the Developer setting could not be put to Automatic first: ${JSON.stringify(stockSetup)}`);
+  v.ok = v.failures.length === 0;
 
   // Leave the device as the other scenarios expect it: Automatic (best effort; the next launch).
   let reset = null;
@@ -1312,6 +1647,175 @@ async function fallback(ctx) {
   };
 }
 
+/* ─────────────────────────── A-30: (e), (f), (k) ─────────────────────────── */
+
+/** The engine's rows in logcat for one process, merged with its dump's tail (the ring's last
+ *  rows, in case logcat rotated), from `sinceIso` on. */
+function processRows(ctx, pid, sinceIso = null) {
+  const log = adb(["logcat", "-d", "-v", "threadtime", "-s", "ForayEngine"]).stdout;
+  const dump = engineDump(shell("dumpsys", "activity", "service", SERVICE_COMPONENT.replace(PKG, ctx.pkg))).rows.map(parseEngineRow);
+  const since = sinceIso ? Date.parse(sinceIso) : -Infinity;
+  return mergeRows(engineRowsFromLogcat(log, pid), dump).filter((r) => r.at >= since);
+}
+
+/** The dump's rows now, parsed. */
+function dumpRows(ctx) {
+  return engineDump(shell("dumpsys", "activity", "service", SERVICE_COMPONENT.replace(PKG, ctx.pkg))).rows.map(parseEngineRow).filter(Boolean);
+}
+
+/** The device's wall clock, as the engine stamps its rows (whole seconds, floored). */
+function deviceIso() {
+  return shell("date", "-u", "+%Y-%m-%dT%H:%M:%S.000Z").trim();
+}
+
+/** (e) A first launch in the native lane: the JS leg's own (e) through the page, then the lane
+ *  and the engine. */
+async function firstLaunch(ctx) {
+  ctx.endpoint = ctx.endpoint ?? DEVTOOLS_ENDPOINT;
+  await ensureNativeLane(ctx, { fresh: true });
+  await prepare(ctx);
+  ctx.target = null;
+  const launch = await firstLaunchScenario(ctx);
+  let status;
+  try {
+    status = await evalPage(ctx, ENGINE_STATUS_EXPRESSION, { timeoutMs: 45000 });
+  } catch (e) {
+    status = { error: String(e?.message ?? e) };
+  }
+  /* In the native lane the owner binds the service at launch: it is hosting by the time the
+     page has answered, and the dump says so. */
+  let service = engine(ctx);
+  for (let i = 0; i < 10 && service?.hosting !== true; i += 1) {
+    await sleep(1000);
+    service = engine(ctx);
+  }
+  save(ctx, "e-engine-dump.txt", shell("dumpsys", "activity", "service", SERVICE_COMPONENT.replace(PKG, ctx.pkg)));
+  const v = verdictFirstLaunch({ launch, status, service });
+  return {
+    ...v,
+    measured: { ...launch?.measured, status, engine: service && { hosting: service.hosting, nativeLane: service.nativeLane, state: service.state } },
+    evidence: [...(launch?.evidence ?? []), "e-engine-dump.txt"],
+  };
+}
+
+/** (f) Hidden episode seams, RECORDED. See the header. */
+async function seams(ctx) {
+  await prepare(ctx);
+  const since = deviceIso();
+  const d = loadQueue(ctx, SEAMS_QUEUE, 0);
+  const started = await waitFor(ctx, isPlaying, 20000);
+  const pidBefore = pidOf(ctx.pkg);
+  shell("input", "keyevent", "KEYCODE_HOME");
+  await sleep(1500);
+  shell("input", "keyevent", "KEYCODE_SLEEP");
+  await sleep(2000);
+  const wake = wakefulness(dumpTo(ctx, "f-dumpsys-power.txt", "dumpsys", "power"));
+  const lengthMs = SEAMS_QUEUE.reduce((sum, it) => sum + ((it.end_sec ?? it.duration_sec) - (it.start_sec ?? 0)) * 1000, 0);
+  const deadline = Date.now() + lengthMs + NATIVE_GATES.seamsSlackMs;
+  const curve = [];
+  let last = engine(ctx);
+  let reachedLast = false;
+  while (Date.now() < deadline) {
+    await sleep(NATIVE_GATES.seamsPollMs);
+    const s = engine(ctx);
+    if (s) last = s;
+    curve.push({ at: s?.at, index: s?.index, positionSec: s?.positionSec, running: s?.running, state: s?.state });
+    if (s?.index === SEAMS_QUEUE.length - 1) reachedLast = true;
+    /* Done once the last item has played and stopped: the queue ran out. */
+    if (reachedLast && s && s.running === false) break;
+  }
+  const pidAfter = pidOf(ctx.pkg);
+  const rows = processRows(ctx, pidAfter ?? pidBefore, since);
+  save(ctx, "f-engine-rows.txt", rows.map((r) => `${r.seq} ${r.iso} ${r.kind} ${r.body}`).join("\n") + "\n");
+  const found = episodeSeams(rows);
+  wakeAndUnlock();
+  const v = verdictSeams({ drive: d, wake, pidBefore, pidAfter, last, seams: found });
+  return {
+    ...v,
+    measured: { started: !!started, since, wake, pidBefore, pidAfter, seams: found, curve, rows: rows.length },
+    evidence: ["f-dumpsys-power.txt", "f-engine-rows.txt"],
+  };
+}
+
+/** (k) Airplane mode: the engine's half, then the page's. See the header. */
+async function airplane(ctx) {
+  ctx.endpoint = ctx.endpoint ?? DEVTOOLS_ENDPOINT;
+  const set = {};
+  let facts = null;
+  let after = null;
+  let session = null;
+  let recovered = null;
+  let flag = null;
+  try {
+    set.enable = shell("cmd", "connectivity", "airplane-mode", "enable").trim();
+    await sleep(2000);
+    flag = shell("settings", "get", "global", "airplane_mode_on").trim();
+    await prepare(ctx);
+    const before = dumpRows(ctx);
+    const since = before.length ? before[before.length - 1].seq : 0;
+    set.load = loadQueue(ctx, AIRPLANE_QUEUE, 0);
+    const until = Date.now() + NATIVE_GATES.airplaneDecisionMs + 5000;
+    let rows = [];
+    while (Date.now() < until) {
+      await sleep(500);
+      rows = dumpRows(ctx);
+      facts = airplaneFacts(rows, since);
+      if (facts.stop) break;
+    }
+    await sleep(1500);
+    after = engine(ctx);
+    session = ourSession(mediaSessions(dumpTo(ctx, "k-dumpsys-media_session.txt", "dumpsys", "media_session")), ctx.pkg);
+    save(ctx, "k-engine-rows.txt", rows.filter((r) => r.seq > since).map((r) => `${r.seq} ${r.iso} ${r.kind} ${r.body}`).join("\n") + "\n");
+    /* Still in airplane mode: a bundled episode plays, so the failure left nothing wedged. */
+    set.recover = loadQueue(ctx, LONG_QUEUE, 0);
+    const r = await waitFor(ctx, isPlaying, NATIVE_GATES.recoveryMs);
+    recovered = isPlaying(r) ? { item: r.item, positionSec: r.positionSec } : null;
+    set.pause = drive(ctx, "pause");
+  } finally {
+    set.disable = shell("cmd", "connectivity", "airplane-mode", "disable").trim();
+  }
+
+  /* The page's half, in a fresh native-lane process: the Foray tap relinquishes to the page's
+     player, and the JS leg's (k) runs on it (it turns airplane mode on and off itself). */
+  shell("am", "force-stop", ctx.pkg);
+  await sleep(1500);
+  ctx.target = null;
+  await prepare(ctx);
+  ctx.target = (await connectPage(ctx, { timeoutMs: 90000 })).target;
+  let lane;
+  try {
+    lane = await evalPage(ctx, ENGINE_STATUS_EXPRESSION, { timeoutMs: 45000 });
+  } catch (e) {
+    lane = { error: String(e?.message ?? e) };
+  }
+  let foray;
+  try {
+    foray = await airplaneScenario(ctx);
+  } catch (e) {
+    foray = { ok: false, failures: [`the scenario could not run: ${String(e?.message ?? e)}`] };
+  }
+  let text;
+  try {
+    text = String(await evalPage(ctx, DIAGNOSTICS_EXPRESSION, { timeoutMs: 30000 }));
+  } catch (e) {
+    text = `(the page could not be asked: ${String(e?.message ?? e)})`;
+  }
+  save(ctx, "k-diagnostics-copy.txt", text);
+  const copy = copyFacts(text);
+  const v = verdictAirplane({
+    airplane: flag === "1", facts, after, session, recovered, laneBefore: lane?.lane ?? lane?.error ?? null, foray, copy,
+  });
+  return {
+    ...v,
+    measured: {
+      set, airplaneModeOn: flag,
+      engine: { facts, after: after && { state: after.state, running: after.running, exoPlaying: after.exoPlaying }, session, recovered },
+      page: { lane, foray: foray && { ok: foray.ok, failures: foray.failures, measured: foray.measured }, modeRows: copy.modeRows },
+    },
+    evidence: ["k-dumpsys-media_session.txt", "k-engine-rows.txt", "k-diagnostics-copy.txt", ...(foray?.evidence ?? [])],
+  };
+}
+
 /** The evidence: the engine's dump and rows, logcat, the system's view. Never fails. */
 async function collect(ctx) {
   save(ctx, "native-engine-dump.txt", shell("dumpsys", "activity", "service", SERVICE_COMPONENT.replace(PKG, ctx.pkg)));
@@ -1335,7 +1839,10 @@ function summary(ctx) {
   console.log(summaryMarkdown(verdicts));
 }
 
-const RUNNERS = { play, background, transport, notification, doze, focus, call, kill, bridge, fallback, collect };
+const RUNNERS = {
+  "first-launch": firstLaunch, play, background, transport, notification, seams, doze, focus, call, kill, airplane,
+  bridge, fallback, collect,
+};
 
 export function parseArgs(argv) {
   const [scenario, ...rest] = argv;
@@ -1367,6 +1874,14 @@ async function main(argv) {
   let code;
   try {
     result = await RUNNERS[args.scenario](ctx);
+    /* A-30: a scenario that must run in the native lane fails when any dump it read said
+       otherwise, or none said at all. */
+    const lane = laneFailures(args.scenario, ctx.laneSeen);
+    if (lane.length) result = { ...result, ok: false, failures: [...(result.failures ?? []), ...lane] };
+    if (LANE_SCENARIOS.includes(args.scenario)) {
+      const seen = ctx.laneSeen ?? [];
+      result = { ...result, lane: { reads: seen.length, native: seen.filter((v) => v === true).length, setup: ctx.laneSetup ?? null } };
+    }
     code = result.ok ? 0 : 1;
   } catch (e) {
     result = { ok: false, failures: [`the scenario could not run: ${String(e?.message ?? e)}`], error: String(e?.stack ?? e) };

@@ -660,6 +660,23 @@ Rejected alternatives:
   episodes.
 - **Acceptance:** One run id with every native-mode verdict green.
 - **Device check:** none.
+- **Status (2026-09-30): done in its PR (#914), evidence in `STATE.md` (A-30 entry) and
+  `docs/android-emulator-measurements.md` §11.**
+  - **One run.** Run 36693793704 (job 109816863446) is green on all thirteen native steps, each gated: (e), (a)–(d),
+    (f), (g)–(k), the A-28 page door and the A-29 fallback. The two JS legs in the same run are green too.
+  - **The native lane.** Every engine scenario now runs in the native lane: the Developer setting is Native and the
+    process is fresh. Each engine dump it reads must say `nativeLane: true`, a new field of the service's dump.
+  - **The new steps.**
+    - (e): a first launch in that lane, through the page.
+    - (k): gated on both halves. The engine stops an unloadable episode in airplane mode (3.3 s, `stop cause=error`),
+      and a bundled one plays after. A Foray relinquishes to the page's player, whose rendered line is spoken in time.
+  - **Episode seams, recorded as (f).** Seven seams with the screen off: min 80, median 97, p95 126 ms. Same-source
+    seams took 80 and 111 ms. The whole episode's natural end took 97 ms.
+  - **Handed on.** A-29's "the cold path's service start does not consult the owner" was already done by the A-27
+    review (#912): the receiver reads the lane with `peekDecision`.
+  - **For A-31.** The page's native lane still relinquishes an episode tap, because nothing declares `episode` until
+    the flip. So the leg hands episodes to the engine through the debug driver. When A-31 declares the capability,
+    (a)–(d) can go through the page's own play.
 
 #### A-31 · A1 flip: native default for Android episodes — **S**
 - **Depends on:** A-30, the Joey device pass on the native build, and one founder Android car drive (D-A5).

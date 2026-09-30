@@ -10,6 +10,8 @@ Cards add their own section. A-03 (can the emulator play audio at all?) wrote §
 records its API 36 differences in §6, and A-05 records its seam, focus, call and kill values in §7.
 A-25 (the native engine's ExoPlayer deck) records its in-point and out-point error in §8; those
 numbers come from Robolectric on the same runner, not from the emulator, and §8 says what that means.
+A-26, A-27 and A-30 record the native engine's leg in §9, §10 and §11. §11 has the one run with every native-mode
+verdict green, and the episode seam numbers.
 
 ## 1. A-03: the answer
 
@@ -700,3 +702,96 @@ the swipe leg exists. `am kill` left the process alive. The SIGKILL leg came bac
 session. Only the force-stop leg went through the receiver. That run's legs also shared item ids: the SIGKILL leg
 paused at 39.8 s, and the force-stop leg paused at 64.3 s, inside the near-end window, and resumed at 0. Each leg now
 has its own ids.
+
+## 11. A-30: the native leg in the native lane, every verdict green
+
+**Run:** `android-playback` run **36693793704**, job 109816863446, `android-playback (API 34, native engine)`,
+PR #914, head `1108710e`. All thirteen native steps are green, each gated, in one run. The leg took 21 min 42 s. The
+two JS legs in the same run took 19 min 23 s (API 34) and 20 min 32 s (API 36), and were also green. The evidence is
+the run's `foray-android-playback-api34-native` artefact: the `verdict-native-*.json` files, `f-engine-rows.txt`,
+`k-engine-rows.txt`, `k-diagnostics-copy.txt`, `e-engine-dump.txt` and `first-launch.png`.
+
+**What changed in how the leg runs.** Until A-30, the adb-driven scenarios drove `ForayPlaybackService` from a
+process whose page was in the stock JS lane. Now:
+- every engine scenario stores the Developer engine setting Native first (the driver's `override`, through the owner,
+  which also clears the strikes);
+- the app starts in a fresh process if the running one is not native;
+- the service's dump says `nativeLane` (`EngineOwnership.engineLane`), and every dump a scenario reads must say
+  `true`. 158 dumps across the eleven lane scenarios did.
+
+So the page, the owner, the media button receiver and the service are the ones A-31's flip ships. The page's own
+native lane does not play an episode yet: the binary advertises `episode`, but nothing declares it until A-31. The
+episodes are therefore still handed to the engine by the debug driver.
+
+| Scenario | Result | Measured |
+|---|---|---|
+| (e) first launch | pass | From stopped, in the native lane. The page was usable. The screenshot was 1080×2400, and the insets were `0px` on all four sides (API 34, as in §6). The page's lane was `native` (override), and the service was already hosting the engine (`idle`, `nativeLane: true`). |
+| (a) play | pass | 5.00 s in 5 s, in a mediaPlayback foreground service, and our session was PLAYING. |
+| (b) Home, then screen off | pass | 60.00 s of the queue in 60 s, `Asleep`, same pid. |
+| (c) presses | pass, 10 of 10 | The foreground control, then `cmd media_session dispatch` and `KEYCODE_MEDIA_*`, each of pause, play, next and previous. |
+| (d) system controls | pass | `A-04 single episode`, `4a CI fixtures`, **Back 15 seconds**, **Forward 30 seconds**. The shade's control paused the engine. |
+| (f) episode seams | pass (recorded) | See below. |
+| (g) Doze | pass | 298.98 s of the queue in 300 s, in deep IDLE, in the rare bucket, same pid. |
+| (h) focus | pass | A transient loss paused us (`LOSS_TRANSIENT`) and its end resumed us. A permanent loss paused us, and we stayed paused. |
+| (i) call | pass | Ringing and in the call: paused (`LOSS_TRANSIENT`). Within 3 s of hang-up: playing. |
+| (j) process ended, then play | pass | Saved → resumed: `am kill` 18.896 → 18.986 s (the process lived, the warm path). Swipe then `am kill` 18.561 → 18.561 s, through the receiver, 654 ms. SIGKILL 18.596 → 18.899 s, 631 ms. `am force-stop` (recorded only): 18.644 → 18.959 s, through the receiver again (A-67's finding stands). |
+| (k) airplane mode | pass | See below. |
+| (A-28) the page's door | pass | The stock launch is legacy / Automatic. The override gives `engine=native … reason=override` in the Copy. It now starts from Automatic itself, whatever ran before. |
+| (A-29) fallback | pass | Three faulted native launches fall back to `js`, and the fourth is pinned to the JS lane (crash-loop). |
+
+### (f) Episode seams with the screen off, recorded
+
+**The queue.** One process, the app on Home, `mWakefulness=Asleep`. There are eight items and seven seams:
+- six 12 s segments over the three click tracks: CBR, VBR-Xing, VBR-Xing again at 30 s, VBR with no seek table, then
+  CBR at 20 s and at 50 s;
+- the VBR-Xing track whole, played to its file's end;
+- a 10 s segment of the no-TOC track.
+
+The queue crossed every seam and ended (`state: ended`) on its last item.
+
+**How a gap is measured.** Each gap is read from the engine's own rows, all on the device's clock. It starts at the
+outgoing load's first `deck time-control` away from playing (the out-point's pause) and ends at the incoming load's
+first `deck time-control playing` (Media3's `isPlaying`).
+
+**The natural end.** A natural end writes no row of its own. The deck's `Ended` and the engine's next `attach` happen
+in one turn on the player's looper, so the attach stands for the end. The whole episode's last 15 s position write
+said 89.94 s at 09:15:46.526. The file is 90.07 s long, which puts the end at about 09:15:46.656, within 8 ms of the
+attach at 09:15:46.648.
+
+| # | Seam | Load | Gap (ms) | Attach → playing (ms) | Ready (ms) | Out-point overshoot (ms) |
+|---|---|---|---|---|---|---|
+| 1 | CBR 0–12 → Xing 0–12 | cross-source | 82 | 69 | 46 | 135 |
+| 2 | Xing 0–12 → Xing 30–42 | same-source (reuse) | 111 | 97 | 71 | 2 |
+| 3 | Xing 30–42 → no-TOC 0–12 | cross-source | 95 | 82 | 62 | 37 |
+| 4 | no-TOC 0–12 → CBR 20–32 | cross-source | 126 | 114 | 82 | 5 |
+| 5 | CBR 20–32 → CBR 50–62 | same-source (reuse) | 80 | 67 | 48 | 4 |
+| 6 | CBR 50–62 → Xing whole | cross-source | 117 | 104 | 76 | 2 |
+| 7 | Xing whole (natural end) → no-TOC 0–10 | cross-source | 97 | 97 | 67 | none (natural end) |
+
+**All seven:** min 80, median 97, p95 126 and max 126 ms. By kind:
+- same-source (2 seams): 80 and 111 ms;
+- cross-source (5 seams): median 97 ms, p95 126 ms.
+
+**What this settles:** a native episode queue moves from item to item with the screen off in about a tenth of a
+second of silence, whatever the source. That is well under A-40's 1 s bar, though that bar is the Foray tape's and is
+not gated here. On the JS lane, by contrast, Foray seams ran 3.1–3.4 s p95, most of it the interlude jingle (§7 (f)).
+These are local assets. A network episode adds its fetch, which the device pass measures (D-A3, not executed).
+
+### (k) Airplane mode, both halves gated
+
+- **The engine's half.** In airplane mode, the driver loaded one episode at
+  `https://audio.jwlabs.ai/e/a30-ci/unreachable.mp3`:
+  - The deck attached at 09:24:55.568 (host `audio.jwlabs.ai`).
+  - Media3 failed it with `ERROR_CODE_IO_NETWORK_CONNECTION_FAILED` (2001) at 09:24:58.867.
+  - The engine wrote `stop cause=error` 3303 ms after the attach, and emitted `Error[code=load]`. The gate is 25 s:
+    the deck's 20 s load deadline plus 5 s.
+  - Nothing sounded. The engine went to `idle` (not running), and our session said PAUSED, not PLAYING.
+  - Still in airplane mode, a bundled episode then played.
+- **The page's half.** A fresh native-lane process. The page's lane was `native` (override). A Foray tap went
+  through the relinquish, because the binary advertises no `foray` until A-40/A-41: the Copy logs `engineMode js
+  (relinquished)` after the six `engineMode native (override)` rows. The JS leg's own (k) then passed on the page's
+  player:
+  - the rendered line that could not load was **spoken** from its script, 42 ms after the first clip's out-point;
+  - the Foray landed on the next clip 3.9 s after that.
+
+  A-41 moves the narration fallback into the engine, and its acceptance runs (k) through the engine instead.

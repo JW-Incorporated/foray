@@ -2129,6 +2129,11 @@ function summary(ctx) {
   return null;
 }
 
+/* A-30: the native leg runs two of these in the NATIVE lane, through the page:
+   (e) the first screen, and (k) a Foray's rendered line in airplane mode (a native
+   lane without `foray` relinquishes the tap to this player). Same code, same verdict. */
+export { firstLaunch as firstLaunchScenario, airplane as airplaneScenario };
+
 const RUNNERS = {
   "first-launch": firstLaunch, play, background, transport, notification,
   seams, doze, focus, call, kill, airplane, "back-home": backHome,
