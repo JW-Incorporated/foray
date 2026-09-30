@@ -804,7 +804,8 @@ Rejected alternatives:
     source seconds. The JVM core now routes it on the Foray's clock, as the page does. The Swift core has the same
     routing; that is iOS's.
   - **The emulator.** `bridge` plays a Foray through the page's own `ForayPlayer.playForay` and requires the engine to
-    play it across a seam, unrelinquished. (k)'s page half is the page's own airplane Foray on the engine.
+    play it across a seam, unrelinquished. (k)'s page half is the page's own airplane Foray on the engine. Run
+    36775164730 is green on all three legs (`docs/android-emulator-measurements.md` §15).
   - **Not executed (D-A3, D-A5).** The device-pass record (H-1, H-3, navigation prompts, the negative control) and the
     founder car drive did not run. A-42 is the point D-A3 names, so the orchestrator may now issue #127; the car drive
     needs spend D-A5 does not approve. The DECISIONS entry (G-7) is a separate founder-approved PR.

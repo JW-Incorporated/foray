@@ -14,7 +14,7 @@ Owned: `mobile/ENGINE_DEFAULT.json`'s `android` block, `EngineLane.java`'s two l
 core's remote seek routing (`EngineCore.onRemote`), and the native leg's `bridge` and (k) page half. Card A-42 of
 `docs/plans/android-assessment.md` (Track A2), into `android/native`.
 
-A-42 flip (2026-09-30): android native Forays, backed by run 36758069597 (A-41: every native-mode verdict green, the engine's own Foray in airplane mode included), on the founder's rulings "android also needs to move to native engine (or whatever is best)… start work on that in parallel to bring it up to the same maturity level (sans testing) as the iphone app" and "don't have joey test until the native engine is fully operational".
+A-42 flip (2026-09-30): android native Forays, backed by run 36775164730 (every native-mode verdict green, the page's own Foray on the engine in bridge and in airplane mode included; A-41's run 36758069597 before it), on the founder's rulings "android also needs to move to native engine (or whatever is best)… start work on that in parallel to bring it up to the same maturity level (sans testing) as the iphone app" and "don't have joey test until the native engine is fully operational".
 
 **What changed.**
 - **The default.** `ENGINE_DEFAULT.json` android is `{"mode": "native", "capabilities": ["episode", "continuation",
@@ -50,6 +50,20 @@ A-42 flip (2026-09-30): android native Forays, backed by run 36758069597 (A-41: 
 - The foray-audio compile (main, debug, tests) against android-36 and the Media3 jars; `EngineBridgeTest` and
   `ForayEngineHostForayTest` on a plain JVM: 19 of 19.
 - `node --test`: the native runner (42), the playback workflow (14), shell-invariants, inject-background-audio.
+
+**Executed in CI** (head `de4883c7`, all green on the first attempt):
+- android-playback run 36775164730: all three legs green (native job 110091117568; API 34 JS 110091118025; API 36
+  JS 110091117947). Details in `docs/android-emulator-measurements.md` §15.
+  - `bridge`: the stock Copy says `caps=episode,continuation,restore,foray reason=build-default`. The page's own
+    `ForayPlayer.playForay` resolved 3 of 3 clips, the engine held `a42-page-foray` and was playing clip 0, crossed
+    into clip 1 about 11 s later, and the page's lane was still native.
+  - (k) page half: the page-built airplane Foray played on the engine. The bundled line was heard as a file; the
+    network line fell back at its bridge 3068 ms after the out-point, and the engine's TTS spoke it 4832 ms after
+    (`com.google.android.tts`); it landed on the last clip. Six `engineMode native (build-default)` rows, no
+    relinquish.
+  - `foray-seams` silence p95 506 ms; every other native verdict green.
+- android-build run 36775164698: android-shell green, JVM parity 1778 passed, 0 pending, 0 failed.
+- CI, ios-build, android-smoke and pr-hygiene are green.
 
 **Not executed (D-A3, D-A5).** The card's acceptance is a device-pass record in `docs/field-records/` green on H-1
 (pause and resume from the car), H-3 (a call), navigation prompts and the negative control, plus one founder Android
