@@ -2852,6 +2852,12 @@ export const ENGINE_ROW_KINDS = Object.freeze([
      preview-play, preview-ended, preview-stop with why, and fallback with
      reason failed|timeout and whether it was spoken). */
   "audition",
+  /* NE-38rs: route resume (founder Q5). A route going away while it played
+     (route kind=lost port= class= key=<8 hex> known=) and coming back
+     (route kind=back ... lostSec= pausedBy= decision=resume|no why=). The key
+     is 8 hex of a salted hash, never a name or a UID. NE-38e's route-back
+     verdict reads these. */
+  "route",
 ]);
 
 const ENGINE_HEADER_KEYS = new Set(["seq", "at", "mono", "kind", "event", "dropped"]);
