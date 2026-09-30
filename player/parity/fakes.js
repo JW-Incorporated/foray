@@ -38,7 +38,10 @@ const r = (s) => Math.round(s);
  * FakeBackend, plus a `log` argument so it can share the scenario's log.
  */
 export class FakeBackend {
-  constructor({ log = new OpLog(), failLoadFor = [], durationById = {}, duration = 3600, holdLoads = false, loadTurns = 0 } = {}) {
+  constructor({
+    log = new OpLog(), failLoadFor = [], durationById = {}, duration = 3600, holdLoads = false, loadTurns = 0,
+    prefetch = false, coldLoadMs = 0, scheduler = null, slowFirstPlay = false,
+  } = {}) {
     this.log = log;
     /** NE-30j. A load that takes a few MICROTASK turns before it starts —
         queue-manager.test.js's AsyncLoadBackend, "any real network load": the
@@ -66,12 +69,54 @@ export class FakeBackend {
     this.ended = false;
     this.onItemEnded = null;
     this.onError = null;
+    /** NE-39j. The web lane's prefetch contract, opt-in (`prefetch: true`),
+        as queue-manager.test.js's PrefetchBackend models it. The manager wires
+        `onPrefetchWindow` only for a backend that HAS a `prefetch` method
+        (queue-manager.js §11), so the method is put on the instance only when
+        a case asks, and every earlier case keeps a backend without one.
+          prefetch:<id>@<s>  the ASK: the manager naming the item the next
+                             boundary advances to, and its in-point. A later
+                             load of that item at that offset is warm.
+          prefetch "loses"   the ask is made and the bytes are never ready (the
+                             race lost), so the load takes the ordinary path.
+        `openPrefetchWindow()` is the deck's playhead watch firing
+        PREFETCH_LEAD_SEC before the boundary: the scenario's `deck: "window"`.
+        `coldLoadMs` (with the manual scheduler, which the runner hands in): a
+        load that finds nothing warm waits that long on the scenario's clock
+        before it lands — the 9,153 ms measured on the device (run
+        32036295743) — so a seam's length shows as where its `play` falls
+        between two clock steps. */
+    this._warmed = new Set();
+    this._coldLoadMs = Number.isInteger(coldLoadMs) && coldLoadMs > 0 ? coldLoadMs : 0;
+    this._scheduler = scheduler;
+    if (prefetch === true || prefetch === "loses") {
+      const loses = prefetch === "loses";
+      this.onPrefetchWindow = null;
+      this.prefetch = (item, { startOffset = 0 } = {}) => {
+        const key = `${item.id}@${r(startOffset)}`;
+        this.log.push(`prefetch:${key}`);
+        if (!loses) this._warmed.add(key);
+        return true;
+      };
+      this.openPrefetchWindow = () => { this.onPrefetchWindow?.(); };
+    }
+    /** NE-39j. queue-manager.test.js's SlowPlayBackend (`slowFirstPlay`): the
+        FIRST `play()` does not settle until the next `pause()`, which releases
+        it and then takes two turns of its own — a play still awaiting the
+        element while a skip-back sits between arming its restart and its load. */
+    this._slowFirstPlay = slowFirstPlay === true;
+    this._releasePlay = null;
   }
   get calls() { return this.log.ops; }
   get duration() { return this.durationById[this._loadedId] ?? this._duration; }
   set duration(v) { this._duration = v; }
   async load(item, { startOffset = 0 } = {}) {
     for (let i = 0; i < this.loadTurns; i++) await Promise.resolve();
+    const warm = this._warmed.delete(`${item.id}@${r(startOffset)}`);
+    if (!warm && this._coldLoadMs) {
+      if (!this._scheduler?.schedule) throw new Error("coldLoadMs needs the scenario's scheduler");
+      await new Promise((resolve) => this._scheduler.schedule(this._coldLoadMs, resolve));
+    }
     this._loadedId = item.id;
     this.outPoint = null; // contract: a load drops any armed boundary
     this.paused = true;
@@ -94,8 +139,24 @@ export class FakeBackend {
     else held.resolve();
     return true;
   }
-  play() { this.paused = false; this.ended = false; this.log.push("play"); }
-  pause() { this.paused = true; this.log.push("pause"); }
+  play() {
+    this.paused = false;
+    this.ended = false;
+    this.log.push("play");
+    if (!this._slowFirstPlay) return undefined;
+    this._slowFirstPlay = false;
+    return new Promise((resolve) => { this._releasePlay = resolve; });
+  }
+  pause() {
+    this.paused = true;
+    this.log.push("pause");
+    if (!this._releasePlay) return undefined;
+    // The pending play settles here, while whatever paused is mid-effects.
+    const release = this._releasePlay;
+    this._releasePlay = null;
+    release();
+    return tick().then(tick);
+  }
   seek(s) { this.currentTime = s; this.log.push(`seek:${r(s)}`); }
   setOutPoint(s) {
     this.outPoint = s;
@@ -181,7 +242,9 @@ export class MemoryStore {
  *   onFinished     false: the bridge has no `onFinished` at all (an older
  *                  shell) — no ticker, no auto-advance
  *   transport      false: no `pause`/`resume`/`stop` (a shell built before L-05)
- *   pause          "rejects": the pause call is made (`tts.pause`) and throws
+ *   pause          "rejects": the pause call is made (`tts.pause`) and throws;
+ *                  "held" (NE-39j): it is made and waits for the scenario's
+ *                  `tts: "releasePause"`
  *   resume         an answer object: what `resume` resolves (Android's
  *                  `{fromStart: true}`, an older shell's `{accepted: false}`)
  *   state          true: the bridge answers `state()` — `speaking` from a
@@ -197,6 +260,10 @@ export function fakeTts({
 } = {}) {
   const listeners = new Set();
   let word = "idle";
+  /** NE-39j. `pause: "held"`: each pause call waits until the scenario's
+      `tts: "releasePause"` answers it (the bridge round trip a real
+      synthesiser takes), so a second transport action can run meanwhile. */
+  const heldPauses = [];
   const bridge = {
     log,
     async speak(text, opts = {}) {
@@ -208,6 +275,12 @@ export function fakeTts({
     finish() { word = "idle"; for (const fn of [...listeners]) fn(); },
     /** The session was taken: the synthesiser is silent and reports nothing. */
     silence() { word = "idle"; },
+    /** Answer every held pause (`pause: "held"`). False when none was held. */
+    releasePause() {
+      if (!heldPauses.length) return false;
+      for (const resolve of heldPauses.splice(0)) resolve();
+      return true;
+    },
   };
   if (onFinished !== false) {
     bridge.onFinished = (fn) => {
@@ -219,6 +292,7 @@ export function fakeTts({
     bridge.pause = async () => {
       log.push("tts.pause");
       if (pause === "rejects") throw new Error("the bridge is gone");
+      if (pause === "held") await new Promise((resolve) => heldPauses.push(resolve));
       if (word === "speaking") word = "paused";
       return { ok: true, accepted: true, path: "native" };
     };
