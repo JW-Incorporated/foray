@@ -690,7 +690,7 @@ test("NATIVE: a play superseded while the engine loads answers false; the one th
 
 const engineCalls = (h) => h.order.filter((o) => o.startsWith("send:") || o === "engineHello" || o.startsWith("read:"));
 
-for (const platform of ["web", "android"]) {
+for (const platform of ["web"]) {
   test(`DEVELOPER (${platform}): no engine, so no rows and nothing is ever sent`, async (t) => {
     /* KILLING MUTATION: drop `if (!engine) return null;` from
        engineDeveloperStatus — it throws on `engine.decision` here, and a
@@ -707,6 +707,45 @@ for (const platform of ["web", "android"]) {
     assert.equal(cmds(h.ref).length, 0);
   });
 }
+
+/* A-28 (docs/plans/android-assessment.md): the page asks an Android shell
+   engineHello too, through the same client, facades and relinquish path. */
+
+test("ANDROID (A-28): the stock engine answers legacy, so the JS player plays and only the engine setting exists", async (t) => {
+  /* KILLING MUTATION: drop "android" from HELLO_PLATFORMS (or from the store's
+     ENGINE_SHELL_PLATFORMS) -> no hello, no Developer row -> red. */
+  const ref = createReferenceEngine({
+    scheduler: manualScheduler(), now: () => 1_790_000_000_000, mode: "legacy", reason: "build-default",
+  });
+  const h = await bootNative(t, { engine: ref, platform: "android" });
+  assert.equal(await h.client.whenEngineReady(), "js");
+  assert.deepEqual(engineCalls(h), ["engineHello"], "one hello, and nothing relinquished to a legacy engine");
+  const st = h.client.engineDeveloperStatus();
+  assert.deepEqual(st.commands, ["setModeOverride"]);
+  assert.equal(st.override, "auto", "a build-default launch reads Automatic");
+  const reply = await h.client.engineDeveloperSend("setModeOverride", { mode: "native" });
+  assert.equal(reply.ok, true, "the Developer setting reaches the Android engine in the legacy lane");
+  assert.equal(ref.modeOverride, "native");
+});
+
+test("ANDROID (A-28): a native engine without 'episode' is attached, and an episode tap relinquishes to the JS player first", async (t) => {
+  /* The Android binary advertises no `episode` until A-29 (its JVM books owe
+     engine-mode). KILLING MUTATION: drop the `engineCan("episode")` guard in
+     ForayPlayer.play -> a playEpisode the engine refuses capability-off, no
+     relinquish and no Audio -> red. */
+  const h = await bootNative(t, { platform: "android", capabilities: ["continuation"] });
+  assert.equal(await h.client.whenEngineReady(), "native", "the page's native branch runs on Android");
+  assert.deepEqual(h.win.ForayMediaSession.calls, ["uninstall"], "the engine's session owns the lock screen");
+  await h.client.play(episode());
+  await drain();
+  const at = (tok) => h.order.indexOf(tok);
+  assert.ok(at("send:relinquish") >= 0, "relinquish{cap:'episode'} was sent");
+  assert.equal(h.order.includes("send:playEpisode"), false, "never a playEpisode the engine would refuse");
+  assert.ok(at("Audio") > at("send:relinquish"), "the engine stopped before the first element existed");
+  assert.ok(h.ref.diagnostics.some((r) => r.kind === "mode" && r.reason === "downgrade" && r.cap === "episode"));
+  assert.ok(h.elements.some((e) => !e.paused), "and the episode plays in today's player");
+  assert.deepEqual(h.win.ForayMediaSession.calls, ["uninstall", "install"], "the legacy lock screen comes back");
+});
 
 test("DEVELOPER: while engineHello is unanswered there are no rows and nothing is sent", async (t) => {
   const h = await bootNative(t, { hello: "hold" });
