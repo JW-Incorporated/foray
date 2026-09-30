@@ -189,9 +189,22 @@ public class ForayEngineHostNarrationTest {
         rig.speech.end(SpeechNarrator.End.FINISHED);
         DeckCommand.Load next = rig.lastLoad();
         assertEquals("f1#2", next.itemId());
+        int playsBefore = rig.deck.count(DeckCommand.Play.class);
+        rig.timing.mono += 120;
         rig.deck.emit(new DeckEvent.Ready(next.token(), 500, true, 1));
-        assertFalse("the next clip playing lets it go", rig.host.holdsBeatWakeLock());
+        // The seam into the clip (its beat, and a jingle if it carries one) may still hold the lock
+        // as the seam's own; run it out, and then nothing holds it.
+        for (int round = 0; round < 3 && rig.deck.count(DeckCommand.Play.class) == playsBefore; round++) {
+            rig.timing.mono += 5_000;
+            for (ForayEngineHostTest.FakeTiming.Scheduled s : new ArrayList<>(rig.timing.live())) {
+                if (!s.repeating && s.afterMs > 0 && s.afterMs <= 5_000) s.fire.run();
+            }
+            if (rig.interlude.isSounding()) rig.jingle.onFinish.accept(true);
+        }
+        assertTrue("the next clip plays", rig.deck.count(DeckCommand.Play.class) > playsBefore);
         assertFalse(rig.host.state().isNarrationPlayhead());
+        assertFalse(rig.host.state().inSeamGap());
+        assertFalse("the next clip playing lets it go", rig.host.holdsBeatWakeLock());
     }
 
     /**
