@@ -84,8 +84,11 @@
  * where its default `BitmapLoader` lives. Guava-android is the large one; the APK
  * cost of all of it is measured in docs/android-native-code.md §4.
  *
- * NOT A `MediaSessionService`, EITHER, and that is a design decision rather than a
- * dependency one — PlaybackKeepAliveService.onBind's comment is the argument.
+ * THE JS LANE'S SERVICE IS NOT A `MediaSessionService`, and that is a design decision
+ * rather than a dependency one — PlaybackKeepAliveService.onBind's comment is the argument.
+ * THE NATIVE ENGINE'S IS (A-26, `ForayPlaybackService`): there the engine owns the audio, so
+ * Media3 owning the foreground lifecycle is the point, not a risk. Same media3-session
+ * artefact; nothing new is declared for it.
  *
  * NO `buildscript { }` BLOCK, unlike @capacitor/app's copy of this file, which
  * pins `com.android.tools.build:gradle:8.13.0` for its own standalone `./gradlew

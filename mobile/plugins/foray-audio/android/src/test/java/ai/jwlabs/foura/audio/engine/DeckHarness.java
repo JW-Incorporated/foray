@@ -5,6 +5,7 @@ import ai.jwlabs.foura.engine.EngineCommand;
 import ai.jwlabs.foura.engine.JsonNode;
 import android.content.Context;
 import androidx.annotation.OptIn;
+import androidx.media3.common.util.Clock;
 import androidx.media3.common.util.UnstableApi;
 import androidx.media3.datasource.DataSource;
 import androidx.media3.datasource.DefaultDataSource;
@@ -69,9 +70,17 @@ final class DeckHarness implements AutoCloseable {
         });
     }
 
+    /**
+     * The wall-time bound on a wait. The clock the player runs on is fake, but the bound is real:
+     * RobolectricUtil's 10 s default timed three of these cases out on a busy runner while the
+     * same cases passed on the runs either side (android-build run 36650414482, attempt 1). A
+     * minute only costs anything when the condition never holds.
+     */
+    static final long WAIT_MS = 60_000;
+
     /** Run the main looper (and so the auto-advancing fake clock) until the condition holds. */
     void runUntil(BooleanSupplier condition) throws TimeoutException {
-        RobolectricUtil.runMainLooperUntil(condition::getAsBoolean);
+        RobolectricUtil.runMainLooperUntil(condition::getAsBoolean, WAIT_MS, Clock.DEFAULT);
     }
 
     /**

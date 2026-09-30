@@ -4929,3 +4929,71 @@ test("no Package.swift under mobile/plugins declares `resources:` on a shipping 
   assert.equal(fs.existsSync(path.join(PLUGIN_DIR, "ios/Sources/ForayAudioPlugin/Resources")), false,
     "ForayAudioPlugin has a Resources/ directory again: nothing may ship from it");
 });
+
+test("A-26: the native engine's MediaSessionService is a Media3 service over the facade, speech with focus handled, and inert until native mode", () => {
+  /* docs/plans/android-assessment.md A-26. What each line pins:
+     - ForayPlaybackService IS a MediaSessionService, declared SECOND in the library manifest (the
+       tests above read the first <service> as the legacy one), mediaPlayback, not exported, with
+       the MediaSessionService intent filter a SessionToken needs to bind it;
+     - its session player is the EnginePlayer facade (a SimpleBasePlayer that plays nothing: no URI,
+       no .play()), its notification the DefaultMediaNotificationProvider, its buttons the 15/30 pair;
+     - the deck's player is configured in ONE place (EngineAudio): CONTENT_TYPE_SPEECH, USAGE_MEDIA,
+       handleAudioFocus true, becoming-noisy handled;
+     - in native mode it replaces the legacy service: the plugin's start() refuses while it hosts;
+     - the adb driver is DEBUG-ONLY: src/debug, never src/main, never the main manifest;
+     - the host and its seams are pure JVM (their turn discipline is unit-tested without Android);
+     - and Android stays on the JS lane (ENGINE_DEFAULT android: js) until A-31.
+     MUTATION: extend Service instead; declare it first; export it; drop the intent filter; build
+     the deck's player without speech attributes or with handleAudioFocus false; move the receiver
+     into src/main; drop the plugin's guard; flip ENGINE_DEFAULT android to native. Each fails here. */
+  const android = path.join(PLUGIN_DIR, "android");
+  const strip = (src) => src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");
+  const audioDir = path.join(android, "src", "main", "java", "ai", "jwlabs", "foura", "audio");
+  const service = strip(fs.readFileSync(path.join(audioDir, "ForayPlaybackService.java"), "utf8"));
+  assert.match(service, /public class ForayPlaybackService extends MediaSessionService\b/);
+  assert.match(service, /new MediaSession\.Builder\(this, facade\)/, "the session's player is the facade");
+  assert.match(service, /\.setMediaButtonPreferences\(seekButtons\(\)\)/);
+  assert.match(service, /ICON_SKIP_BACK_15/);
+  assert.match(service, /ICON_SKIP_FORWARD_30/);
+  assert.match(service, /new DefaultMediaNotificationProvider\.Builder\(this\)/);
+  assert.match(service, /EngineAudio\.configure\(built\)/, "the deck's player gets the card's audio settings");
+  assert.match(service, /public MediaSession onGetSession\(/);
+
+  const engineDir = path.join(audioDir, "engine");
+  const audio = strip(fs.readFileSync(path.join(engineDir, "EngineAudio.java"), "utf8"));
+  assert.match(audio, /setContentType\(C\.AUDIO_CONTENT_TYPE_SPEECH\)/);
+  assert.match(audio, /setUsage\(C\.USAGE_MEDIA\)/);
+  assert.match(audio, /setAudioAttributes\(speech\(\),\s*true\)/, "handleAudioFocus is on");
+  assert.match(audio, /setHandleAudioBecomingNoisy\(true\)/);
+
+  const facade = strip(fs.readFileSync(path.join(engineDir, "EnginePlayer.java"), "utf8"));
+  assert.match(facade, /class EnginePlayer extends SimpleBasePlayer\b/);
+  assert.doesNotMatch(facade, /\.setUri\(|\.play\(\)/, "the facade plays nothing and names no URI a controller could play");
+  for (const f of ["ForayEngineHost.java", "EngineSeams.java"]) {
+    assert.doesNotMatch(strip(fs.readFileSync(path.join(engineDir, f), "utf8")), /^import android\./m, `${f} is pure JVM`);
+  }
+
+  const manifest = fs.readFileSync(path.join(android, "src", "main", "AndroidManifest.xml"), "utf8");
+  const services = [...manifest.matchAll(/<service\b[\s\S]*?(?:\/>|<\/service>)/g)].map((m) => m[0]);
+  assert.equal(services.length, 2, "the legacy service and the engine's");
+  assert.match(services[0], /PlaybackKeepAliveService/, "the legacy service stays first");
+  const svc = services[1];
+  assert.match(svc, /android:name="ai\.jwlabs\.foura\.audio\.ForayPlaybackService"/);
+  assert.match(svc, /android:foregroundServiceType="mediaPlayback"/);
+  assert.match(svc, /android:exported="false"/);
+  assert.match(svc, /<action android:name="androidx\.media3\.session\.MediaSessionService" \/>/);
+  assert.doesNotMatch(manifest, /EngineDriveReceiver/, "the adb driver is not in the main manifest");
+
+  assert.ok(fs.existsSync(path.join(android, "src", "debug", "java", "ai", "jwlabs", "foura", "audio", "EngineDriveReceiver.java")));
+  assert.equal(fs.existsSync(path.join(audioDir, "EngineDriveReceiver.java")), false, "the adb driver never ships: src/debug only");
+  assert.match(fs.readFileSync(path.join(android, "src", "debug", "AndroidManifest.xml"), "utf8"), /EngineDriveReceiver/);
+
+  const plugin = strip(fs.readFileSync(path.join(audioDir, "ForayAudioPlugin.java"), "utf8"));
+  const start = plugin.slice(plugin.indexOf("public void start(PluginCall call)"));
+  assert.ok(start.indexOf("ForayPlaybackService.isHosting()") > 0
+    && start.indexOf("ForayPlaybackService.isHosting()") < start.indexOf("startForegroundService"),
+    "start() refuses the legacy service while the native engine hosts, before it asks for one");
+
+  const defaults = readJson(path.join(MOBILE, "ENGINE_DEFAULT.json"));
+  assert.equal(defaults.android.mode, "js", "Android stays on the JS lane until A-31");
+});
