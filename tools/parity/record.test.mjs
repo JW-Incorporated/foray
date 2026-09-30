@@ -405,9 +405,9 @@ test("--check holds every recorded family to exactly one of the JVM's runs and i
 
 /* ---------- --mutate ---------- */
 
-test("the six named mutation rules exist, and each anchor occurs exactly once in its file", () => {
+test("the seven named mutation rules exist, and each anchor occurs exactly once in its file", () => {
   const rules = loadMutations();
-  assert.deepStrictEqual(Object.keys(rules), ["seam-gap", "never-early", "15/30", "pause-silence", "warm-across", "route-listener"]);
+  assert.deepStrictEqual(Object.keys(rules), ["seam-gap", "never-early", "15/30", "pause-silence", "warm-across", "route-listener", "stale-load"]);
   for (const [name, r] of Object.entries(rules)) {
     const src = fs.readFileSync(path.join(ROOT, r.patch.file), "utf8");
     assert.equal(src.split(r.patch.find).length - 1, 1, `${name}: anchor drifted in ${r.patch.file}`);
@@ -478,6 +478,18 @@ test("--mutate on the route-listener rule fails both the original JS test and th
      route-resume.test.js. MUTATION: drop that authored case and the replay
      case beside it -> "fixture: ... still pass". */
   const r = runMutation("route-listener", loadMutations()["route-listener"], { root: ROOT });
+  assert.equal(r.js, "killed", r.detail.join("\n"));
+  assert.equal(r.fixture, "killed", r.detail.join("\n"));
+  assert.equal(r.killed, true);
+});
+
+test("--mutate on the stale-load rule fails both the original JS test and the manager-remainder family", () => {
+  /* NE-39j recorded manager-remainder, so player-core-9 is held by a case as
+     well as by queue-manager.test.js: without the stale-target check the first
+     skip's load (s1) runs after the second's (s2), and the recorded op log
+     loses its single load:s2@400. MUTATION: drop the
+     a-skip-load-a-newer-skip-replaced-is-dropped case -> "fixture: ... still pass". */
+  const r = runMutation("stale-load", loadMutations()["stale-load"], { root: ROOT });
   assert.equal(r.js, "killed", r.detail.join("\n"));
   assert.equal(r.fixture, "killed", r.detail.join("\n"));
   assert.equal(r.killed, true);

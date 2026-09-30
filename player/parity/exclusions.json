@@ -844,6 +844,14 @@
     "§15: pausing and resuming the clip before a warmed line keeps the warm — no refetch": {
       "reason": "webview-only",
       "why": "Section 15 is the web lane's narration warm: HtmlAudioBackend.warmNarration fetches the next rendered file on a spare muted element that is never played or promoted. queue-manager.js checks the capability and says so: a backend without it (every fake, the native engine) behaves exactly as before. The engine's own prefetch is NE-32's DeckPair standby, pinned by the deck and prepare families and DeckPairTests."
+    },
+    "a backend with no prefetch is never asked for one": {
+      "reason": "js-module-shape",
+      "why": "A backend without a prefetch method, and the manager's refusal to wire onPrefetchWindow to it (a capability check at construction). The native engine has one deck type, DeckPair, and its standby always prepares (the prepare and deck families, DeckPairTests), so there is no backend without prefetch for it to leave unasked. What the manager asks for when it does warm is the manager-remainder warming cases (NE-39j)."
+    },
+    "the position timer also runs while the ELEMENT plays behind a paused machine (founder report 1, 2026-09-22)": {
+      "reason": "webview-only",
+      "why": "On the web the lock screen or the car can resume the <audio> element directly, behind a machine that still says paused, so the periodic writer has to follow the element as well as the state. In native mode every remote press is an engine command (plan §4.5; EngineCore's remote handlers, the media family) and the deck is the engine's own, so its belief and its deck cannot part that way. The native rule, that the writer runs only while playing, is the manager-remainder position-timer case."
     }
   },
   "queue-state": {
