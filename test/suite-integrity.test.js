@@ -3012,8 +3012,10 @@ const SWIFT_FLOORS = {
      under grace writes `grace kind=late`, 4 s does not, the threshold is
      NARRATION_SUSPEND_GAP_MS exclusive, no grace no row, a cancel leaves the
      ledger, the load deadline late and on time) and the pin that the
-     silence node's flag defaults to false. */
-  "mobile/plugins/foray-audio/foray-engine-core/Tests/ForayEngineCoreTests/LateTimerTests.swift": 8,
+     silence node's flag defaults to false. Review: +2, a seam beat and a
+     load deadline late only on the wall clock (the device slept, uptime
+     stood still) write the row with clock=wall; 8 -> 10. */
+  "mobile/plugins/foray-audio/foray-engine-core/Tests/ForayEngineCoreTests/LateTimerTests.swift": 10,
 };
 
 for (const [rel, floor] of Object.entries(SWIFT_FLOORS)) {

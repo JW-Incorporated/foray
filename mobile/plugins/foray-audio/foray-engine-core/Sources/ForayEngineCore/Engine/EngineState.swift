@@ -203,10 +203,17 @@ public struct EngineState: Equatable {
     /// `NARRATION_SUSPEND_GAP_MS` after this while grace is held writes
     /// `grace kind=late`. Repeating timers are not kept.
     public var timerDueMono: [EngineTimer: Double] = [:]
+    /// The same due times on the WALL clock: uptime stops while the device
+    /// sleeps, so a suspension followed by sleep is late only on this one.
+    public var timerDueWall: [EngineTimer: Double] = [:]
     /// NE-46: the P-13 class of the newest `.load` (the one `lastToken`
     /// names), so a late `.deadlineExceeded` for it can be measured against
     /// its own deadline (`EngineConfig.loadDeadlineMs`).
     public var lastLoadClass: DeckDeadlineClass?
+    /// NE-46: the wall clock when that `.load` was commanded. The deck's
+    /// `afterMs` is on uptime, which stops while the device sleeps; this is
+    /// the other half of the two-clock check.
+    public var lastLoadWallMs: Double?
     /// The last remote press, for `dupCandidate` (recorded, never dropped).
     public var lastRemote: LastRemote?
 

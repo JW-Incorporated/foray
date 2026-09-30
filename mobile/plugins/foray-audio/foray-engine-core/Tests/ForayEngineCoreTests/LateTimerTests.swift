@@ -58,12 +58,13 @@ final class LateTimerTests: XCTestCase {
         let rows = LateTimerTests.lateRows(fired)
         XCTAssertEqual(rows.count, 1, "\(fired)")
         let row = try XCTUnwrap(rows.first)
-        XCTAssertEqual(row.fields.map(\.key), ["kind", "timer", "lateMs", "inSeam", "bgRemainingMs", "reason"])
+        XCTAssertEqual(row.fields.map(\.key), ["kind", "timer", "lateMs", "inSeam", "bgRemainingMs", "reason", "clock"])
         XCTAssertEqual(row[field: "timer"], .string("seam-beat"))
         XCTAssertEqual(row[field: "lateMs"], .number(6_000))
         XCTAssertEqual(row[field: "inSeam"], .string("y"))
         XCTAssertEqual(row[field: "bgRemainingMs"], .number(25_000))
         XCTAssertEqual(row[field: "reason"], .string("seam"))
+        XCTAssertEqual(row[field: "clock"], .string("mono"))
         // The row decides nothing: the seam still lands, as it would on time.
         XCTAssertTrue(fired.contains(.deck(.play)), "\(fired)")
         XCTAssertNil(host.core.state.timerDueMono[.seamBeat], "a fired one-shot leaves the ledger")
@@ -97,6 +98,27 @@ final class LateTimerTests: XCTestCase {
         var host = try heldSeam(background: false)
         XCTAssertNil(host.core.state.grace)
         XCTAssertEqual(LateTimerTests.lateRows(host.send(.timer(.seamBeat), after: 500 + 6_000)), [])
+    }
+
+    /// THE DEVICE SLEPT. Uptime (the core's `monoMs`, and the host's dispatch
+    /// timers) stops while the device sleeps, so a seam beat suspended on a
+    /// locked phone fires ON TIME by uptime however long the listener waited.
+    /// The wall clock still moved: 6 s late on it alone writes the row, with
+    /// `clock=wall`. TO SEE IT FAIL: measure on `monoMs` only.
+    func testASeamBeatLateOnlyOnTheWallClockWritesTheRow() throws {
+        var host = try heldSeam()
+        XCTAssertNotNil(host.core.state.timerDueWall[.seamBeat], "the ledger keeps the wall due time too")
+        host.wallMs += 500 + 6_000
+        let fired = host.send(.timer(.seamBeat), after: 500)
+        let row = try XCTUnwrap(LateTimerTests.lateRows(fired).first, "\(fired)")
+        XCTAssertEqual(row[field: "lateMs"], .number(6_000))
+        XCTAssertEqual(row[field: "inSeam"], .string("y"))
+        XCTAssertEqual(row[field: "clock"], .string("wall"))
+        XCTAssertNil(host.core.state.timerDueWall[.seamBeat])
+        // 4 s on the wall clock alone is still not a suspension.
+        var near = try heldSeam()
+        near.wallMs += 500 + 4_000
+        XCTAssertEqual(LateTimerTests.lateRows(near.send(.timer(.seamBeat), after: 500)), [])
     }
 
     /// A cancelled timer leaves the ledger, so a stale delivery after a cut
@@ -135,6 +157,29 @@ final class LateTimerTests: XCTestCase {
         XCTAssertEqual(row[field: "inSeam"], .string("y"))
         XCTAssertEqual(row[field: "bgRemainingMs"], .number(12_000))
         XCTAssertEqual(row[field: "reason"], .string("prepare-miss"))
+    }
+
+    /// The deck's `afterMs` is uptime too: a deadline that fired at 20 s of
+    /// uptime after 27 s on the wall clock (the device slept 7 s) is 7 s late.
+    func testALoadDeadlineLateOnlyOnTheWallClockWritesTheRow() throws {
+        var config = ForayTapeTests.tape
+        config.loadDeadlineMs = [.clip: 20_000, .line: 8_000]
+        var host = Host(config: config)
+        host.send(try EngineCoreTests.command("playForay", ForayTapeTests.forayArgs(ForayTapeTests.twoClips)))
+        host.land()
+        host.confirm()
+        host.send(.lifecycle(.background))
+        host.reading.audible = false
+        host.reading.ended = true
+        host.send(.deck(.ended(token: host.lastLoad ?? 0)), after: 0)
+        XCTAssertNotNil(host.core.state.grace)
+        let loadedAtWall = try XCTUnwrap(host.core.state.lastLoadWallMs)
+        host.wallMs = loadedAtWall + 27_000
+        let out = host.send(.deck(.deadlineExceeded(token: host.lastLoad ?? 0, afterMs: 20_000)), after: 20_000)
+        let row = try XCTUnwrap(LateTimerTests.lateRows(out).first, "\(out)")
+        XCTAssertEqual(row[field: "timer"], .string(EngineCore.loadDeadlineTimer))
+        XCTAssertEqual(row[field: "lateMs"], .number(7_000))
+        XCTAssertEqual(row[field: "clock"], .string("wall"))
     }
 
     /// On time (inside the gap), or with no deadline handed to the core (every

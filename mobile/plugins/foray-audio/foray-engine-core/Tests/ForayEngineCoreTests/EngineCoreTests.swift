@@ -20,6 +20,9 @@ final class EngineCoreTests: XCTestCase {
         var lastLoad: DeckToken?
         /// What the host read from `backgroundTimeRemaining` (nil: foreground).
         var bgRemainingMs: Double?
+        /// The wall clock. It stands still unless a test moves it (NE-46: the
+        /// device slept, so uptime did not advance and the wall clock did).
+        var wallMs: Double = 1_790_000_000_000
 
         init(config: EngineConfig = EngineConfig(build: "test"),
              positions: [String: ResumeRules.StoredPosition] = [:]) {
@@ -30,13 +33,13 @@ final class EngineCoreTests: XCTestCase {
         @discardableResult
         mutating func send(_ input: EngineInput, after ms: Double = 1000) -> [EngineCommand] {
             monoMs += ms
-            let now = EngineNow(wallMs: 1_790_000_000_000, monoMs: monoMs, deck: reading, bgRemainingMs: bgRemainingMs)
+            let now = EngineNow(wallMs: wallMs, monoMs: monoMs, deck: reading, bgRemainingMs: bgRemainingMs)
             var all = core.handle(input, now: now)
             if let id = all.compactMap(Host.activation).last {
                 all += core.handle(.sessionResult(SessionResult(requestId: id, ok: activationOK,
                                                                 error: activationOK ? nil : "cannot-interrupt-others",
                                                                 activateMs: 3)),
-                                   now: EngineNow(wallMs: 1_790_000_000_000, monoMs: monoMs, deck: reading,
+                                   now: EngineNow(wallMs: wallMs, monoMs: monoMs, deck: reading,
                                                   bgRemainingMs: bgRemainingMs))
             }
             for command in all {

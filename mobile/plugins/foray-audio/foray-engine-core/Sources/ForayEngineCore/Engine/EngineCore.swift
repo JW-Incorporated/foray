@@ -46,7 +46,7 @@ public struct EngineConfig: Equatable {
     /// test, the 2026-09-28 paste); BackgroundGrace holds a task across every
     /// silent span; NE-45 shrinks silent spans to the beat. It is turned on
     /// ONLY by a one-line flag PR that cites a drive paste with at least one
-    /// `grace kind=late inSeam=y` row (the detector is `noteLateTimer`), once
+    /// `grace kind=late inSeam=y` row (the detector is `noteLateness`), once
     /// the NE-34 App Review note is in the submission notes. SilenceNode.swift's
     /// header states the same rule.
     public var silenceNodeEnabled: Bool
@@ -1743,15 +1743,27 @@ public struct EngineCore {
     /// inSeam=y|n bgRemainingMs=`. A drive with an `inSeam=y` row is the
     /// evidence the flag flip needs (NE-38e verdict `suspension-in-seam`).
     /// The row decides nothing: the input is then handled exactly as before.
+    ///
+    /// TWO CLOCKS. `monoMs` is uptime, and uptime (like the host's dispatch
+    /// timers, which run on it) STOPS while the device sleeps. A process that
+    /// iOS suspends in a seam on a locked phone in a car is exactly the one
+    /// whose device may then sleep, and on uptime alone its timer would look
+    /// on time however long the listener waited. So each due time is also
+    /// kept on the wall clock, and the row fires on whichever clock is more
+    /// late; `clock=wall` says only the wall clock saw it (the device slept,
+    /// or, rarely, the wall clock was set under the drive).
     private mutating func noteLateness(_ input: EngineInput) {
         switch input {
         case let .timer(timer):
+            let dueWall = state.timerDueWall.removeValue(forKey: timer)
             guard let due = state.timerDueMono.removeValue(forKey: timer) else { return }
-            lateRow(timer: timer.rawValue, lateMs: now.monoMs - due)
+            lateRow(timer: timer.rawValue, monoLateMs: now.monoMs - due,
+                    wallLateMs: dueWall.map { now.wallMs - $0 })
         case let .deck(.deadlineExceeded(token, afterMs, _)):
             guard token == state.lastToken, let deadlineClass = state.lastLoadClass,
                   let deadlineMs = config.loadDeadlineMs[deadlineClass] else { return }
-            lateRow(timer: EngineCore.loadDeadlineTimer, lateMs: Double(afterMs) - deadlineMs)
+            lateRow(timer: EngineCore.loadDeadlineTimer, monoLateMs: Double(afterMs) - deadlineMs,
+                    wallLateMs: state.lastLoadWallMs.map { now.wallMs - $0 - deadlineMs })
         default:
             return
         }
@@ -1760,15 +1772,19 @@ public struct EngineCore {
     /// The `timer=` of a late load deadline (the deck runs it, not the core).
     public static let loadDeadlineTimer = "load-deadline"
 
-    private mutating func lateRow(timer: String, lateMs: Double) {
-        guard let reason = state.grace, lateMs.isFinite,
-              lateMs > EngineConstants.QueueManager.narrationSuspendGapMs else { return }
+    private mutating func lateRow(timer: String, monoLateMs: Double, wallLateMs: Double?) {
+        let gap = EngineConstants.QueueManager.narrationSuspendGapMs
+        let mono = monoLateMs.isFinite ? monoLateMs : -Double.infinity
+        let wall = wallLateMs.flatMap { $0.isFinite ? $0 : nil } ?? -Double.infinity
+        let lateMs = Swift.max(mono, wall)
+        guard let reason = state.grace, lateMs > gap else { return }
         diag("grace", [JSONMember("kind", .string("late")),
                        JSONMember("timer", .string(timer)),
                        JSONMember("lateMs", .number(lateMs.rounded())),
                        JSONMember("inSeam", .string(inSilentSeam ? "y" : "n")),
                        JSONMember("bgRemainingMs", Rows.finiteOrNull(now.bgRemainingMs.map { $0.rounded() })),
-                       JSONMember("reason", .string(reason.rawValue))])
+                       JSONMember("reason", .string(reason.rawValue)),
+                       JSONMember("clock", .string(mono > gap ? "mono" : "wall"))])
     }
 
     /// Between an out-point and the next item's audible start: a beat is
@@ -1790,8 +1806,10 @@ public struct EngineCore {
             switch command {
             case let .timerArm(timer, afterMs, repeating):
                 state.timerDueMono[timer] = repeating ? nil : now.monoMs + afterMs
+                state.timerDueWall[timer] = repeating ? nil : now.wallMs + afterMs
             case let .timerCancel(timer):
                 state.timerDueMono[timer] = nil
+                state.timerDueWall[timer] = nil
             default:
                 continue
             }
@@ -1860,6 +1878,7 @@ public struct EngineCore {
         switch command {
         case let .load(_, _, _, startSec, _, deadlineClass):
             state.lastLoadClass = deadlineClass
+            state.lastLoadWallMs = now.wallMs
             deck.positionSec = startSec
             deck.audible = false
             deck.ended = false

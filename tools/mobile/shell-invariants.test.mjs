@@ -4088,7 +4088,12 @@ test("NE-46: the silence node stays off, its header states the enable rule, and 
     "lateness is measured before the input is handled");
   assert.match(handle, /ledgerTimers\(\)/, "every turn's timer arms and cancels reach the ledger");
   const late = swiftFuncBody(coreSrc, "lateRow") ?? "";
-  assert.match(late, /lateMs > EngineConstants\.QueueManager\.narrationSuspendGapMs/, "the threshold is NARRATION_SUSPEND_GAP_MS");
+  assert.match(late, /let gap = EngineConstants\.QueueManager\.narrationSuspendGapMs[\s\S]*lateMs > gap/, "the threshold is NARRATION_SUSPEND_GAP_MS");
+  /* Uptime stops while the device sleeps: the lateness is the larger of the
+     monotonic and the wall-clock readings. MUTATION: drop the wall half. */
+  assert.match(late, /Swift\.max\(mono, wall\)/, "a suspension followed by sleep is late only on the wall clock");
+  const ledger = swiftFuncBody(coreSrc, "ledgerTimers") ?? "";
+  assert.match(ledger, /timerDueWall\[timer\] = repeating \? nil : now\.wallMs \+ afterMs/, "the ledger keeps the wall-clock due time");
   assert.match(late, /guard let reason = state\.grace/, "only while grace is held");
   for (const field of ["\"late\"", "\"timer\"", "\"lateMs\"", "\"inSeam\"", "\"bgRemainingMs\""]) {
     assert.ok(late.includes(field), `the grace late row lost ${field}`);

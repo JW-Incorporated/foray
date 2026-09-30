@@ -222,8 +222,8 @@ test("each engine kind the card names has its line: session, remote, mode, seam,
   assert.equal(engineLineFor(erow(11, at, "grace", { event: "begin", reason: "seam", task: "ok", bgRemainingMs: null })),
     "e#11   12:00:01.234 grace      src=engine begin reason=seam task=ok bgRemainingMs=—");
   /* NE-46: the late-timer row the silence node's enable rule reads. */
-  assert.equal(engineLineFor(erow(11, at, "grace", { event: "late", timer: "seam-beat", lateMs: 6000, inSeam: "y", bgRemainingMs: 25000, reason: "seam" })),
-    "e#11   12:00:01.234 grace      src=engine late reason=seam timer=seam-beat lateMs=6000ms inSeam=y bgRemainingMs=25000ms");
+  assert.equal(engineLineFor(erow(11, at, "grace", { event: "late", timer: "seam-beat", lateMs: 6000, inSeam: "y", bgRemainingMs: 25000, reason: "seam", clock: "wall" })),
+    "e#11   12:00:01.234 grace      src=engine late reason=seam timer=seam-beat lateMs=6000ms inSeam=y bgRemainingMs=25000ms clock=wall");
   assert.equal(engineLineFor(erow(12, at, "probe", { event: "speech-then-play", ok: true, activateMs: 40 })),
     "e#12   12:00:01.234 probe      src=engine speech-then-play ok=y activateMs=40ms");
   assert.equal(engineLineFor(erow(13, at, "lifecycle", { event: "didEnterBackground", state: "playing" })),

@@ -72,7 +72,8 @@ final class AVSilenceEngine: SilenceEngineAPI {
 /// cap, the narration tick, a load deadline) that fired more than
 /// `NARRATION_SUSPEND_GAP_MS` (5 s) late inside a silent seam while grace was
 /// held, i.e. the process was suspended DESPITE grace (EngineCore
-/// `noteLateness`; NE-38e's `suspension-in-seam` verdict reads it). The flip
+/// `noteLateness`, on uptime AND the wall clock, because uptime stops while
+/// the device sleeps; NE-38e's `suspension-in-seam` verdict reads it). The flip
 /// is a one-line PR (`silenceNodeEnabled = true` in EngineBoot) that cites the
 /// paste, and the NE-34 App Review note must already be in the submission
 /// notes. Nothing else turns it on.
