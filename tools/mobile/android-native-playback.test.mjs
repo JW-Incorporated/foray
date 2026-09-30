@@ -168,7 +168,7 @@ test("A-26 (d): the system controls must carry 15/30 in native mode (A04-F2 is t
   assert.equal(verdictNotification({ ...ok, tapped: null }).ok, false);
 });
 
-test("A-26 (h): a transient loss must pause and resume; a permanent one must pause", () => {
+test("A-26 (h): a transient loss must pause and resume; a permanent one must pause and stay paused", () => {
   /* MUTATION: drop the transient resume gate (the card's "a duck becomes pause-and-resume"). */
   const stack = (loss) => ({ entries: [{ pack: PKG, loss }], top: { pack: PKG } });
   const w = (a, b) => [S({ positionSec: a }), S({ positionSec: b })];
@@ -180,6 +180,8 @@ test("A-26 (h): a transient loss must pause and resume; a permanent one must pau
   assert.equal(verdictFocus({ phases: [phase("transient", w(6, 6), w(6, 6))] }).ok, false, "never came back");
   const noFocus = focusPhase({ mode: "gain", stackBefore: { entries: [] }, before: w(1, 5), held: w(6, 6), after: w(6, 6), helperLog: ["mode=gain result=1"] });
   assert.equal(verdictFocus({ phases: [noFocus] }).ok, false, "we held no focus: handleAudioFocus is off");
+  /* MUTATION: drop the permanent loss's no-resume gate (FocusMapping maps a lift after AUDIOFOCUS_LOSS as an end). */
+  assert.equal(verdictFocus({ phases: [phase("gain", w(6, 6), w(8, 12))] }).ok, false, "a permanent loss came back by itself");
 });
 
 test("A-26 (i): the call pauses us and its end resumes us", () => {

@@ -8,10 +8,12 @@ import static org.robolectric.Shadows.shadowOf;
 
 import ai.jwlabs.foura.engine.EngineInput;
 import android.content.Context;
+import android.content.Intent;
 import android.media.AudioManager;
 import androidx.annotation.OptIn;
 import androidx.media3.common.MediaItem;
 import androidx.media3.common.Player;
+import androidx.media3.common.util.Clock;
 import androidx.media3.common.util.UnstableApi;
 import androidx.media3.datasource.DefaultDataSource;
 import androidx.media3.exoplayer.ExoPlayer;
@@ -22,6 +24,8 @@ import androidx.media3.test.utils.robolectric.RobolectricUtil;
 import androidx.test.core.app.ApplicationProvider;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.TimeoutException;
+import java.util.function.BooleanSupplier;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -72,12 +76,21 @@ public class FocusIntegrationTest {
                 .createMediaSource(MediaItem.fromUri(cbr.uri())));
         player.prepare();
         player.play();
-        RobolectricUtil.runMainLooperUntil(() -> player.isPlaying());
+        until(() -> player.isPlaying());
     }
 
     @After
     public void tearDown() {
         player.release();
+    }
+
+    /**
+     * Run the main looper until the condition holds. The FakeClock is virtual, but the bound is
+     * wall time, and RobolectricUtil's 10 s default is what timed A-25's ExoDeckTest out on a
+     * busy runner (android-build run 36650414482, attempt 1): a minute costs nothing when green.
+     */
+    static void until(BooleanSupplier condition) throws TimeoutException {
+        RobolectricUtil.runMainLooperUntil(condition::getAsBoolean, DeckHarness.WAIT_MS, Clock.DEFAULT);
     }
 
     private ShadowAudioManager.AudioFocusRequest request() {
@@ -88,7 +101,7 @@ public class FocusIntegrationTest {
     }
 
     private <T extends EngineInput.SessionEvent> T await(Class<T> type) throws Exception {
-        RobolectricUtil.runMainLooperUntil(() -> events.stream().anyMatch(type::isInstance));
+        until(() -> events.stream().anyMatch(type::isInstance));
         for (EngineInput.SessionEvent e : events) if (type.isInstance(e)) return type.cast(e);
         throw new AssertionError("no " + type.getSimpleName());
     }
@@ -108,7 +121,7 @@ public class FocusIntegrationTest {
         ShadowAudioManager.AudioFocusRequest r = request();
         r.listener.onAudioFocusChange(AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK);
         await(EngineInput.SessionEvent.InterruptionBegan.class);
-        RobolectricUtil.runMainLooperUntil(() -> !player.isPlaying());
+        until(() -> !player.isPlaying());
         assertEquals("paused, not ducked", Player.PLAYBACK_SUPPRESSION_REASON_TRANSIENT_AUDIO_FOCUS_LOSS,
                 player.getPlaybackSuppressionReason());
         // The engine's answer to the interruption is to pause the deck; the end must still be heard.
@@ -125,7 +138,47 @@ public class FocusIntegrationTest {
         r.listener.onAudioFocusChange(AudioManager.AUDIOFOCUS_LOSS);
         await(EngineInput.SessionEvent.InterruptionBegan.class);
         assertFalse(player.getPlayWhenReady());
-        RobolectricUtil.runMainLooperUntil(() -> true);
+        until(() -> true);
         assertFalse("no end was mapped", events.stream().anyMatch(e -> e instanceof EngineInput.SessionEvent.InterruptionEnded));
+    }
+
+    @Test
+    public void aTransientLossThatBecomesPermanentIsNeverEnded() throws Exception {
+        /* The call that ends in another app's music: LOSS_TRANSIENT, the core pauses the deck,
+           then AUDIOFOCUS_LOSS. Media3 1.11 lifts the transient suppression as it abandons focus,
+           and the lift is not the system giving focus back. It reads right only because Media3
+           reports the permanent loss (play-when-ready's reason becomes AUDIO_FOCUS_LOSS) BEFORE
+           the lift, in the same update, which closes the transient span first. MUTATION: map
+           the lift before the reason, or ignore a reason change with play-when-ready already
+           false, and this resumes the deck over the other app. */
+        ShadowAudioManager.AudioFocusRequest r = request();
+        r.listener.onAudioFocusChange(AudioManager.AUDIOFOCUS_LOSS_TRANSIENT);
+        await(EngineInput.SessionEvent.InterruptionBegan.class);
+        player.pause();
+        until(() -> !player.isPlaying());
+        assertTrue(focus.transientOpen());
+        r.listener.onAudioFocusChange(AudioManager.AUDIOFOCUS_LOSS);
+        until(() -> events.stream().filter(e -> e instanceof EngineInput.SessionEvent.InterruptionBegan).count() >= 2);
+        until(() -> player.getPlaybackSuppressionReason() == Player.PLAYBACK_SUPPRESSION_REASON_NONE);
+        assertFalse("the permanent loss closed the transient span", focus.transientOpen());
+        assertFalse("no end was mapped: nothing resumes over the app that took focus",
+                events.stream().anyMatch(e -> e instanceof EngineInput.SessionEvent.InterruptionEnded));
+    }
+
+    @Test
+    public void becomingNoisyIsALostRouteAndThePlayerPauses() throws Exception {
+        /* setHandleAudioBecomingNoisy(true) on the configured player, end to end: Media3 registers
+           its receiver on the playback thread, so the broadcast is repeated until it lands.
+           MUTATION: drop setHandleAudioBecomingNoisy from EngineAudio.configure and this times
+           out with the player still playing. */
+        until(() -> {
+            if (events.stream().noneMatch(e -> e instanceof EngineInput.SessionEvent.Route)) {
+                context.sendBroadcast(new Intent(AudioManager.ACTION_AUDIO_BECOMING_NOISY));
+            }
+            return events.stream().anyMatch(e -> e instanceof EngineInput.SessionEvent.Route);
+        });
+        EngineInput.SessionEvent.Route route = await(EngineInput.SessionEvent.Route.class);
+        assertTrue("headphones out is the old device gone", route.change().oldDeviceUnavailable());
+        assertFalse("Media3 paused the deck's player", player.getPlayWhenReady());
     }
 }

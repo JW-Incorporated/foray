@@ -310,7 +310,7 @@ export function focusPhase({ mode, stackBefore, stackHeld, stackAfter, before, h
 }
 
 /** (h) GATED in native mode: we hold focus while playing; a transient loss (a duck on speech
- *  included) pauses us and its end resumes us; a permanent loss pauses us. */
+ *  included) pauses us and its end resumes us; a permanent loss pauses us and never resumes. */
 export function verdictFocus({ phases }) {
   const failures = [];
   if (!phases?.length) failures.push("no focus phase ran");
@@ -323,6 +323,9 @@ export function verdictFocus({ phases }) {
     if (!p.before.ourEntries.length) failures.push(`${p.mode}: we held no audio focus while playing (the deck's handleAudioFocus)`);
     if (p.whileHeld.playing !== false) failures.push(`${p.mode}: still playing while the helper held focus`);
     if (p.mode === "transient" && p.afterAbandon.playing !== true) failures.push("transient: did not resume after the helper abandoned focus");
+    /* A permanent loss is an interruption with no end (FocusMapping): the helper letting go
+       gives us nothing back, so nothing may start playing again by itself. */
+    if (p.mode === "gain" && p.afterAbandon.playing !== false) failures.push("gain: a permanent loss resumed by itself after the helper abandoned focus");
   }
   const recorded = (phases ?? []).map((p) => ({
     mode: p.mode, heldFocusBefore: p.before.ourEntries.length > 0, pausedWhileHeld: p.whileHeld.playing === false,
