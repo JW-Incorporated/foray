@@ -161,7 +161,7 @@ public class EngineStoreTest {
         prefs(EngineStore.PRIVATE_FILE).edit().putString("ForayEngine.someFutureKey", "later").commit();
         prefs(EngineStore.SHARED_FILE).edit().putString("cp_rate", "1.5").putString("cp_engine_applied", "{}").commit();
 
-        List<String> removed = store.purge();
+        List<String> removed = store.purgeStored();
         assertEquals(Arrays.asList("ForayEngine.restore", "ForayEngine.someFutureKey", "cp_foray:f-1", "cp_last_episode", "cp_pos:ep-1"),
                 removed);
         assertTrue(prefs(EngineStore.PRIVATE_FILE).getAll().isEmpty());
@@ -171,5 +171,27 @@ public class EngineStoreTest {
         assertNull(store.restoreRecord());
         assertEquals(Arrays.asList(false), switched);
         assertTrue(store.sharedRows(null).isEmpty());
+    }
+
+    /**
+     * The store is the page bridge's records (A-28): {@code engineRead("rows")} is the persisted
+     * rows, a new process included, and the bridge's purge removes them and the log's rings. TO SEE
+     * IT FAIL: answer rows from the log's memory (a new process would read nothing), or purge only
+     * the log.
+     */
+    @Test
+    public void asTheBridgesRecordsItAnswersFromDiskAndPurgesEverything() {
+        EngineStore store = store();
+        assertTrue(store.writeShared(new Rows.StoredRow("cp_pos:ep-1", "{\"seconds\":12}")));
+        store.writeRestore(ColdPathTest.record(754));
+        store.diag(new ai.jwlabs.foura.engine.EngineCommand.DiagEntry("remote", new ArrayList<>()));
+        EngineBridge.Records relaunched = store();
+        assertEquals("{\"seconds\":12}", relaunched.sharedRows(Arrays.asList("cp_pos:")).get("cp_pos:ep-1"));
+        assertEquals(1, store.diagnosticRows().size());
+
+        relaunched.purge();
+        assertTrue(prefs(EngineStore.PRIVATE_FILE).getAll().isEmpty());
+        assertNull(prefs(EngineStore.SHARED_FILE).getString("cp_pos:ep-1", null));
+        assertTrue("the rings too", store.log().diagnosticRows().isEmpty());
     }
 }

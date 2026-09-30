@@ -309,6 +309,11 @@ public final class EngineCore {
                 state.startingHop = null;
                 playIndex(0, c.startSec(), source);
             }
+            // The Foray tape is A-40's: a playForay that reaches the core is refused as the
+            // bridge refuses one when `foray` is not advertised (it never is before A-40).
+            case EngineContract.Command.PlayForay c -> refuse(Refusal.CAPABILITY_OFF);
+            // The Developer engine setting is the bridge's (it works in every lane); nothing here.
+            case EngineContract.Command.SetModeOverride c -> {}
             case EngineContract.Command.SetContinuation c -> {
                 state.planSeq = c.planSeq();
                 state.autoAdvance = c.autoAdvance();

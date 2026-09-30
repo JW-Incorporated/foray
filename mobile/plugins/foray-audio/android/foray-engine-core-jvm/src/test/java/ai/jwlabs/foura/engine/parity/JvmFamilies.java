@@ -105,7 +105,18 @@ public final class JvmFamilies {
     public static final FamilyRunner OUTPOINT = DeckFamilies.outpoint();
     public static final FamilyRunner DECK = DeckFamilies.deck();
 
+    /*
+     * A-28: the contract the Android bridge speaks (ContractDecoding, main code): every
+     * payload's accept / refuse answer, the page's decideMode and extrapolate, and the
+     * diagnostics rows' closed vocabularies (TokenAdmission).
+     */
+    public static final FamilyRunner CONTRACT = ContractFamilies.contract();
+    public static final FamilyRunner SNAPSHOT = ContractFamilies.snapshot();
+    public static final FamilyRunner HANDSHAKE = ContractFamilies.handshake();
+    public static final FamilyRunner DIAG_TOKENS = ContractFamilies.diagTokens();
+
     /** Every registered runner. */
     public static final List<FamilyRunner> ALL = List.of(COMPARE, NUMBER_FORMAT, QUEUE_STATE, RATE, RESUME_RULES, TRANSPORT, ROWS,
-            SESSION, SESSION_INVARIANT, MEDIA_EPISODE, MANAGER_EPISODE, DECK_EPISODE, OUTPOINT, DECK);
+            SESSION, SESSION_INVARIANT, MEDIA_EPISODE, MANAGER_EPISODE, DECK_EPISODE, OUTPOINT, DECK, CONTRACT, SNAPSHOT, HANDSHAKE,
+            DIAG_TOKENS);
 }

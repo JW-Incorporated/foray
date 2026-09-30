@@ -36,8 +36,10 @@ import java.util.function.Consumer;
  *       {@code UserDefaults}. Outside the page's file, so the Preferences plugin (and the
  *       DurableStore above it) never hydrates, mirrors or clobbers them.</li>
  * </ul>
- * The diagnostics ring stays {@link EngineLog}'s (in memory, the service's dump and logcat): the
- * page's durable copy of it is A-28's bridge.
+ * The diagnostics rings stay {@link EngineLog}'s (in memory: the service's dump and logcat, and
+ * the DiagRow ring the page's bridge reads). The store is the bridge's {@link EngineBridge.Records}
+ * too (A-28): {@code engineRead("rows")} answers from the persisted rows, as the iOS store answers
+ * from {@code UserDefaults}, and a purge removes them.
  *
  * <h2>SYNCHRONOUS</h2>
  * Every write is {@code commit()}ed before the call returns: no {@code apply()}, no debounce, no
@@ -49,7 +51,7 @@ import java.util.function.Consumer;
  *
  * <p>Main-confined like the host that drives it.
  */
-public final class EngineStore implements EngineSeams.Output {
+public final class EngineStore implements EngineSeams.Output, EngineBridge.Records {
     /** {@code @capacitor/preferences}' file on Android ({@code PreferencesConfiguration}'s default group). */
     public static final String SHARED_FILE = "CapacitorStorage";
     /** The engine's own file. */
@@ -136,6 +138,7 @@ public final class EngineStore implements EngineSeams.Output {
      * Every shared ENGINE row under the given row-key prefixes (all of {@code OWNED_PREFIXES}
      * when none are given): what {@code engineRead("rows", prefixes)} answers (A-28).
      */
+    @Override
     public Map<String, String> sharedRows(List<String> prefixes) {
         List<String> wanted = prefixes == null ? Rows.OWNED_PREFIXES : prefixes;
         Map<String, String> rows = new TreeMap<>();
@@ -199,7 +202,7 @@ public final class EngineStore implements EngineSeams.Output {
      * ({@code cp_rate}, {@code cp_engine_applied}, ...) are the page's to clear. Returns what it
      * removed, sorted, so the caller and the tests can enumerate it.
      */
-    public List<String> purge() {
+    public List<String> purgeStored() {
         List<String> removed = new ArrayList<>();
         SharedPreferences.Editor sharedEdit = shared.edit();
         for (String key : shared.getAll().keySet()) {
@@ -220,6 +223,26 @@ public final class EngineStore implements EngineSeams.Output {
         Collections.sort(removed);
         setResumable(false);
         return removed;
+    }
+
+    // ---- EngineBridge.Records (A-28)
+
+    /** The page's diagnostics ring: the log's DiagRows. */
+    @Override
+    public List<JsonNode> diagnosticRows() {
+        return log.diagnosticRows();
+    }
+
+    /** "Delete my data" (the bridge's, in any lane): everything stored, then the log's rings. */
+    @Override
+    public void purge() {
+        purgeStored();
+        log.purge();
+    }
+
+    @Override
+    public void setListener(EngineBridge.Records.Listener listener) {
+        log.setListener(listener);
     }
 
     // ---- EngineSeams.Output

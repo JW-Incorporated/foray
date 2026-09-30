@@ -14,7 +14,12 @@ import { fileURLToPath } from "node:url";
 import { CLIPS, GATES, PKG, SHOW } from "./android-playback.mjs";
 import {
   ASSET_BASE,
+  DEVTOOLS_ENDPOINT,
   DOZE_QUEUE,
+  ENGINE_STATUS_EXPRESSION,
+  copyFacts,
+  overrideExpression,
+  verdictBridge,
   DUMP_PREFIX,
   EPISODE_QUEUE,
   KILL,
@@ -202,8 +207,8 @@ test("A-26: small helpers and the CLI", () => {
   assert.equal(moved(S({ positionSec: 1 }), S({ positionSec: 3.5 })), 2.5);
   assert.equal(moved(S({ positionSec: 1 }), S({ item: "other", positionSec: 3 })), null, "a different item is not comparable");
   assert.equal(ourSession({ sessions: [{ package: "x", state: "PLAYING" }, { package: PKG, state: "PAUSED" }] }).state, "PAUSED");
-  assert.deepEqual(SCENARIOS.map(([id]) => id), ["play", "background", "transport", "notification", "doze", "focus", "call", "kill"],
-    "A-26's (a)-(d), (g), (h), (i), then A-27's (j)");
+  assert.deepEqual(SCENARIOS.map(([id]) => id), ["play", "background", "transport", "notification", "doze", "focus", "call", "kill", "bridge"],
+    "A-26's (a)-(d), (g), (h), (i), A-27's (j), then A-28's page door");
   assert.match(summaryMarkdown({ play: { ok: true } }), /\| \(a\) native[^|]*\| \*\*pass\*\* \|/);
   assert.equal(parseArgs(["play", "--art", "d"]).art, "d");
   assert.throws(() => parseArgs(["seams", "--art", "d"]), /first argument/);
@@ -283,4 +288,69 @@ test("A-27 (j): the dump fields the runner reads are the ones the Java writes", 
     "the swipe lets go of the binding, then is Media3's onTaskRemoved");
   const receiver = read("src/main/java/ai/jwlabs/foura/audio/ForayMediaButtonReceiver.java");
   assert.match(receiver, /"media-button receiver " \+ \(resumable \? "start" : "drop"\)/, "the logcat line the swipe leg counts");
+});
+
+/* ─────────── A-28: the page's door ─────────── */
+
+const NATIVE_COPY = [
+  "#   1 12:00:00.000 boot       web=abc",
+  "#   2 12:00:00.400 engineMode native (override)",
+  "engine=native v1.0.0 proto=1 caps=none reason=override strikes=? hold=forever build=2026092901 | web=abc",
+  "engine rows 4 of 2000, #1..#4",
+].join("\n");
+
+const STOCK = { lane: "js", status: { lane: "js", override: "auto", holdPolicy: null, commands: ["setModeOverride"] } };
+const AFTER = { lane: "native", status: { lane: "native", override: "native", holdPolicy: "forever", commands: [] } };
+const HOSTING = { hosting: true, legacyRunning: false };
+
+test("A-28: the Copy's engine facts are read from its header, its timeline and its ring line", () => {
+  /* MUTATION: read the lane from anywhere but the `engine=` header, or accept an engineMode js
+     row as native. Each fails. */
+  const f = copyFacts(NATIVE_COPY);
+  assert.equal(f.lane, "native");
+  assert.equal(f.reason, "override");
+  assert.equal(f.proto, "1");
+  assert.equal(f.caps, "none");
+  assert.deepEqual(f.modeRows, [{ mode: "native", reason: "override" }]);
+  assert.equal(f.engineRows, 4);
+  const js = copyFacts("#   2 12:00:00.400 engineMode js (engine-legacy)\nengine=js reason=engine-legacy build=? | web=x\nengine rows not read (no-engine)");
+  assert.equal(js.lane, "js");
+  assert.deepEqual(js.modeRows, [{ mode: "js", reason: "engine-legacy" }]);
+  assert.equal(js.engineRows, null);
+  assert.equal(js.readError, "no-engine");
+  assert.equal(copyFacts("").header, null);
+});
+
+test("A-28: the verdict passes the stock legacy lane, the stored override and a native Copy, and fails each gap", () => {
+  /* MUTATION: drop any one check in verdictBridge; its case below stays green. */
+  const good = { stock: STOCK, override: { ok: true }, after: AFTER, copy: copyFacts(NATIVE_COPY), service: HOSTING };
+  assert.deepEqual(verdictBridge(good), { ok: true, failures: [] });
+  const fails = (patch, re) => {
+    const v = verdictBridge({ ...good, ...patch });
+    assert.equal(v.ok, false, JSON.stringify(patch));
+    assert.ok(v.failures.some((f) => re.test(f)), `${JSON.stringify(patch)} -> ${v.failures.join("; ")}`);
+  };
+  fails({ stock: { lane: "native", status: STOCK.status } }, /stock Android launch must run the page's player/);
+  fails({ stock: { lane: "js", status: { lane: "js", override: "native" } } }, /legacy\/build-default/);
+  fails({ stock: { error: "no ForayPlayer on window" } }, /stock launch could not be read/);
+  fails({ override: { ok: false, reason: "capability-off" } }, /was not stored/);
+  fails({ after: { lane: "js", status: AFTER.status } }, /lane is js, not native/);
+  fails({ copy: copyFacts(NATIVE_COPY.replace("engine=native v1.0.0 proto=1 caps=none reason=override", "engine=js reason=engine-legacy")) },
+    /not engine=native/);
+  fails({ copy: copyFacts(NATIVE_COPY.replace("reason=override", "reason=build-default")) }, /not override/);
+  fails({ copy: copyFacts(NATIVE_COPY.replace("engineMode native (override)", "engineMode js (engine-legacy)")) }, /engineMode native/);
+  fails({ copy: copyFacts(NATIVE_COPY.replace("engine rows 4 of 2000, #1..#4", "engine rows not read (timeout)")) }, /did not read the engine's ring: timeout/);
+  fails({ service: null }, /not running/);
+  fails({ service: { hosting: false } }, /not hosting/);
+});
+
+test("A-28: the page expressions go through the page's own Developer row, and the CLI takes the scenario", () => {
+  /* The override is the row a listener taps (engineDeveloperSend), never a raw engineSend the
+     page's client did not count; and the status waits for the page to boot. */
+  assert.match(overrideExpression("native"), /engineDeveloperSend\("setModeOverride", \{ mode: "native" \}\)/);
+  assert.doesNotMatch(overrideExpression("native"), /nativePromise|engineSend"/);
+  assert.match(ENGINE_STATUS_EXPRESSION, /whenEngineReady\(\)/);
+  assert.match(ENGINE_STATUS_EXPRESSION, /engineDeveloperStatus\(\)/);
+  assert.equal(DEVTOOLS_ENDPOINT, "http://127.0.0.1:9222");
+  assert.equal(parseArgs(["bridge", "--art", "d"]).scenario, "bridge");
 });

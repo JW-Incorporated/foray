@@ -1,9 +1,20 @@
 package ai.jwlabs.foura.audio;
 
+import ai.jwlabs.foura.audio.engine.EngineBridge;
+import ai.jwlabs.foura.audio.engine.EngineLane;
+import ai.jwlabs.foura.audio.engine.EngineLog;
+import ai.jwlabs.foura.audio.engine.HandlerTiming;
+import ai.jwlabs.foura.engine.EngineBridgeRules;
+import ai.jwlabs.foura.engine.EngineContract;
+import ai.jwlabs.foura.engine.JSWriter;
+import ai.jwlabs.foura.engine.JsonNode;
+import ai.jwlabs.foura.engine.Vocabulary;
 import android.Manifest;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Build;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.Log;
 
 import androidx.core.app.NotificationManagerCompat;
@@ -18,6 +29,10 @@ import com.getcapacitor.annotation.Permission;
 import com.getcapacitor.annotation.PermissionCallback;
 
 import java.util.Map;
+import java.util.function.Function;
+import java.util.function.Supplier;
+
+import org.json.JSONException;
 
 /**
  * The bridge half of `foray-audio`: the methods that start, stop and report the
@@ -64,6 +79,16 @@ import java.util.Map;
  * the injected bridge's own {@code Capacitor.addListener} — no {@code @capacitor/core}
  * proxy, for the same reason the rest of this plugin is called through
  * {@code nativePromise}: this repo has no bundler.
+ *
+ * <h2>A-28's addition: the native engine's three methods</h2>
+ *
+ * {@code engineHello}, {@code engineSend} and {@code engineRead}, and the {@code engine} event,
+ * speaking protocol v1 (docs/native-engine-plan.md §5), exactly as the iOS plugin does, so the
+ * page's engine client (player/native-engine.js) runs unchanged on Android. Each one converts
+ * Capacitor's options to the core's JSON, hops to MAIN (the engine and its owner are confined
+ * there), answers through {@link EngineBridge}, and RESOLVES, like every method here: the answer
+ * is data, and a bridge that could not run answers with the core's own fallback payload. See
+ * docs/plans/android-assessment.md §5.4 (A-28).
  */
 @CapacitorPlugin(
     name = "ForayAudio",
@@ -110,6 +135,14 @@ public class ForayAudioPlugin extends Plugin {
 
     /** The A-08 twin of {@link #sink}, for system events. */
     private NowPlayingHub.SessionSink sessionSink;
+
+    /** A-28: the process's engine bridge, built on main at the first engine call. Main only. */
+    private static EngineBridge engineBridge;
+
+    /** A-28: the plugin the {@code engine} event goes out through, the newest one loaded. An
+     *  Activity recreation loads the new plugin before destroying the old one, so the clear in
+     *  {@code handleOnDestroy} is identity-checked, as the hub's sinks are. */
+    private static volatile ForayAudioPlugin engineListener;
 
     /**
      * Register the two things that must outlive a single bridge call.
@@ -184,6 +217,8 @@ public class ForayAudioPlugin extends Plugin {
            raised through the same sink. Process-wide and idempotent: an Activity
            recreation constructs a second plugin, and the monitors outlive both. */
         SessionMonitor.install(getContext());
+
+        engineListener = this;
     }
 
     /**
@@ -239,7 +274,8 @@ public class ForayAudioPlugin extends Plugin {
             /* A-26: IN NATIVE MODE THE ENGINE'S SERVICE REPLACES THIS ONE. ForayPlaybackService
                owns the media session and the foreground; a legacy start now would publish a
                second session and a second notification over it. Refused, with the reason, and
-               nothing started. (Unreachable until native mode exists on Android: A-28.) */
+               nothing started. (Reachable since A-28, in a process whose lane is native: the
+               page's shim is uninstalled there, so only a stray call can get here.) */
             result.put("started", false);
             result.put("reason", "native-engine");
             call.resolve(result);
@@ -541,6 +577,103 @@ public class ForayAudioPlugin extends Plugin {
      * The manifest's {@code stopWithTask="true"} covers the swipe-away case; this
      * covers the rest.
      */
+    // ---- A-28: the native engine's bridge (docs/native-engine-plan.md §5.1-§5.4)
+
+    /**
+     * The page's first question to the native engine: which lane plays this process, and, when it
+     * is the engine's, everything the page needs to attach. In the native lane the answer waits
+     * for {@code ForayPlaybackService} to bind ({@code EngineOwnership.whenReady}, bounded); the
+     * page's own bound is five seconds.
+     */
+    @PluginMethod
+    public void engineHello(PluginCall call) {
+        JsonNode payload = enginePayload(call);
+        engineCall(call, bridge -> bridge.hello(payload),
+            () -> EngineBridgeRules.legacyHello(Vocabulary.ModeReason.NOT_BUILT));
+    }
+
+    /** One command, always answered {@code {ok, reason?, snapshot}}. */
+    @PluginMethod
+    public void engineSend(PluginCall call) {
+        JsonNode payload = enginePayload(call);
+        engineCall(call, bridge -> bridge.send(payload),
+            () -> EngineBridgeRules.sendResponse(EngineContract.Refusal.RELINQUISHED.token, EngineBridge.emptySnapshot()));
+    }
+
+    /** The snapshot, the engine's shared rows, or its diagnostics ring. */
+    @PluginMethod
+    public void engineRead(PluginCall call) {
+        JsonNode payload = enginePayload(call);
+        engineCall(call, bridge -> bridge.read(payload),
+            () -> EngineBridgeRules.rowsResponse(java.util.Collections.<String, String>emptyMap()));
+    }
+
+    /** Hop to main, wait for the lane's engine, answer through the bridge, and always resolve. */
+    private void engineCall(PluginCall call, Function<EngineBridge, JsonNode> body, Supplier<JsonNode> fallback) {
+        final Context context = getContext();
+        new Handler(Looper.getMainLooper()).post(() -> {
+            try {
+                EngineOwnership.shared(context).whenReady(() -> {
+                    JsonNode answer;
+                    try {
+                        answer = body.apply(bridgeOnMain(context));
+                    } catch (RuntimeException e) {
+                        Log.w(TAG, "the engine bridge failed; answering with its fallback", e);
+                        answer = fallback.get();
+                    }
+                    call.resolve(jsObject(answer));
+                });
+            } catch (RuntimeException e) {
+                Log.w(TAG, "the engine owner failed; answering with the bridge's fallback", e);
+                call.resolve(jsObject(fallback.get()));
+            }
+        });
+    }
+
+    /** The bridge, built once per process on main, over the process's owner and log. */
+    static EngineBridge bridgeOnMain(Context context) {
+        if (engineBridge == null) {
+            engineBridge = new EngineBridge(EngineOwnership.shared(context), ForayPlaybackService.processStore(context),
+                new HandlerTiming(Looper.getMainLooper()), EngineLane.DECLARED_CAPABILITIES,
+                ForayAudioPlugin::notifyEngineEvent);
+        }
+        return engineBridge;
+    }
+
+    /** The {@code engine} event (native-engine.js {@code ENGINE_EVENT}). Best effort. */
+    private static void notifyEngineEvent(JsonNode event) {
+        ForayAudioPlugin plugin = engineListener;
+        if (plugin == null) return;
+        try {
+            plugin.notifyListeners(EngineBridgeRules.EVENT_NAME, jsObject(event));
+        } catch (RuntimeException e) {
+            Log.w(TAG, "could not deliver an engine event", e);
+        }
+    }
+
+    /**
+     * A call's options as the core reads JSON: Capacitor's own JSON text, parsed by the core's
+     * {@code JSON.parse} twin, which keeps a boolean and a number apart. Anything unreadable is
+     * {@code null}, which every decoder refuses.
+     */
+    static JsonNode enginePayload(PluginCall call) {
+        try {
+            JSObject data = call.getData();
+            return data == null ? JsonNode.NULL : JsonNode.parse(data.toString());
+        } catch (RuntimeException e) {
+            return JsonNode.NULL;
+        }
+    }
+
+    /** The core's JSON as Capacitor's object, through the same bytes the iOS plugin writes. */
+    static JSObject jsObject(JsonNode node) {
+        try {
+            return new JSObject(JSWriter.stringify(node));
+        } catch (JSONException e) {
+            return new JSObject();
+        }
+    }
+
     @Override
     protected void handleOnDestroy() {
         /* IDENTITY-CHECKED inside the hub, not cleared unconditionally: an Activity
@@ -551,6 +684,7 @@ public class ForayAudioPlugin extends Plugin {
         sink = null;
         NowPlayingHub.clearSessionSink(sessionSink);
         sessionSink = null;
+        if (engineListener == this) engineListener = null;
         stopServiceQuietly();
         super.handleOnDestroy();
     }

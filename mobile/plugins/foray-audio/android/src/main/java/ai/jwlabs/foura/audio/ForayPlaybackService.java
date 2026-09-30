@@ -86,9 +86,10 @@ import java.util.concurrent.atomic.AtomicReference;
  *
  * <h2>WHO STARTS IT</h2>
  *
- * Nothing in a shipping build yet. Native mode on Android is off ({@code mobile/ENGINE_DEFAULT.json}
- * {@code android: js}, A-20) and the page's native branch is A-28's; until then the only client is
- * the DEBUG build's {@code EngineDriveReceiver} ({@code src/debug}), which the native-mode leg of
+ * The page's bridge (A-28): {@code EngineOwnership} binds it with a {@code MediaController} when
+ * the process's lane is native, which on Android is only by the Developer engine setting until
+ * A-31 ({@code mobile/ENGINE_DEFAULT.json} {@code android: js}). The DEBUG build's
+ * {@code EngineDriveReceiver} ({@code src/debug}) is a second client, which the native-mode leg of
  * {@code android-playback.yml} drives over adb. A client binds with a {@code MediaController}
  * (the Media3 way: the service is created bound, and Media3 promotes it to the foreground when the
  * facade reports playing).
@@ -139,7 +140,9 @@ public class ForayPlaybackService extends MediaSessionService {
     @Nullable private MediaSession session;
     @Nullable private Player.Listener focusListener;
     private final FocusMapping focus = new FocusMapping();
-    private final EngineLog log = new EngineLog();
+    /** The process's log (A-28): the page's bridge reads its ring and shared rows in every lane. */
+    private final EngineLog log = EngineLog.process();
+    /** The process's store over that log (A-27): what the engine keeps across a process death. */
     @Nullable private EngineStore store;
     /** What the cold boot found, once it ran (the dump; null until then). */
     @Nullable private ForayEngineHost.ColdBootOutcome coldBoot;
@@ -208,7 +211,7 @@ public class ForayPlaybackService extends MediaSessionService {
         config.diag = log::diag;
         config.sessionIsActive = () -> session != null;
         deck = new ExoDeck(built, config);
-        EngineStore kept = new EngineStore(this, log, resumable -> ForayMediaButtonReceiver.setEnabled(this, resumable));
+        EngineStore kept = processStore(this);
         store = kept;
         EngineSeams seams = new EngineSeams(deck, new SessionSeam(), new HandlerTiming(Looper.getMainLooper()), kept);
         ForayEngineHost engine = new ForayEngineHost(seams, new EngineConfig(buildName(this)));
@@ -315,6 +318,26 @@ public class ForayPlaybackService extends MediaSessionService {
 
     // ---- the cold path (A-27)
 
+    @Nullable private static EngineStore processStore;
+    /** The application the store was built over (a test's Robolectric application changes per test). */
+    @Nullable private static Context processStoreContext;
+
+    /**
+     * The process's store (A-27), over the process's log: the service's output and the page
+     * bridge's records, so {@code engineRead("rows")} answers with the persisted rows and a
+     * "Delete my data" in any lane removes what an earlier native session stored. When it stops
+     * (or starts again) holding a record a PLAY can resume, it switches the media button receiver.
+     * Main thread.
+     */
+    static EngineStore processStore(Context context) {
+        Context app = context.getApplicationContext() != null ? context.getApplicationContext() : context;
+        if (processStore == null || processStoreContext != app) {
+            processStore = new EngineStore(app, EngineLog.process(), resumable -> ForayMediaButtonReceiver.setEnabled(app, resumable));
+            processStoreContext = app;
+        }
+        return processStore;
+    }
+
     /**
      * The host's cold boot from the stored restore record, once, before any input: the Media3
      * resumption's (through the facade), and A-28's page attach. Later calls are {@code LATE}
@@ -366,7 +389,7 @@ public class ForayPlaybackService extends MediaSessionService {
                 ImmutableList.of(item), 0, Math.round(record.offsetSec() * 1000)));
     }
 
-    // ---- what a client (the debug driver today, the bridge in A-28) calls, on main
+    // ---- what a client (the page's bridge, the debug driver) calls, on main
 
     /** Run one input through the engine. Null when there is no engine. */
     @Nullable

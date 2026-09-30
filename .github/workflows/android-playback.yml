@@ -146,8 +146,11 @@
 # leg drives `ForayPlaybackService` (the Media3 MediaSessionService that hosts the
 # engine) through the DEBUG build's `EngineDriveReceiver` over `adb shell am
 # broadcast`, and reads the engine from the service's own `dumpsys` line:
-# `tools/mobile/android-native-playback.mjs`. The same boot, APK and click tracks
-# as the JS legs; its eight scenario steps are all GATED, and its JS-lane steps
+# `tools/mobile/android-native-playback.mjs`. Since A-28 the page has that door
+# (engineHello / engineSend / engineRead on the Android plugin): the leg's last
+# scenario, `bridge`, goes through the page over DevTools and requires the
+# diagnostics Copy to log the native engine mode. The same boot, APK and click tracks
+# as the JS legs; its nine scenario steps are all GATED, and its JS-lane steps
 # are skipped (the JS legs run those). One API level, because the engine is the
 # same Java on both and the fast image keeps it to one more job; its ceiling
 # covers the build, the boot and about fifteen minutes of scenarios, five of them
@@ -635,6 +638,15 @@ jobs:
         id: native-kill
         if: ${{ matrix.mode == 'native' && !cancelled() && steps.launch.outcome == 'success' }}
         run: node tools/mobile/android-native-playback.mjs kill --art "$ART"
+
+      # A-28: the page's door, last. Since A-28 the page asks the Android engine
+      # engineHello; this reads the stock lane (legacy), turns the Developer engine
+      # setting to Native through the page, relaunches, and requires the Copy
+      # paste to say `engine=native` and hold an `engineMode native` row.
+      - name: (A-28) native — the page asks the engine, the Developer override, and engine mode native in the Copy
+        id: native-bridge
+        if: ${{ matrix.mode == 'native' && !cancelled() && steps.launch.outcome == 'success' }}
+        run: node tools/mobile/android-native-playback.mjs bridge --art "$ART"
 
       - name: Collect the native engine's dump, its logcat and the system's view
         if: ${{ matrix.mode == 'native' && !cancelled() && (steps.launch.outcome == 'success' || steps.launch.outcome == 'failure') }}
