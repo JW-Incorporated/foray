@@ -1,5 +1,6 @@
 package ai.jwlabs.foura.audio.engine;
 
+import ai.jwlabs.foura.engine.DiagGate;
 import ai.jwlabs.foura.engine.EngineCommand;
 import ai.jwlabs.foura.engine.JSWriter;
 import ai.jwlabs.foura.engine.JsonNode;
@@ -141,23 +142,36 @@ public final class EngineLog implements EngineSeams.Output, EngineBridge.Records
         }
     }
 
+    /**
+     * The text line keeps the entry as the engine wrote it (the scenario runners read its
+     * {@code kind}); the DiagRow the page reads is the entry as {@link DiagGate#admit} lets it
+     * through (card A-60), as iOS's {@code DiagRing.append} stores it: the sub-kind as
+     * {@code event}, and every refused field named in {@code dropped}. A row the gate refuses
+     * whole (its kind is not a token) is stored as {@code diag event=row-refused}, never
+     * silently lost.
+     */
     @Override
     public void diag(EngineCommand.DiagEntry entry) {
         line(entry.kind(), JSWriter.stringify(new JsonNode.Obj(entry.fields())));
+        EngineCommand.DiagEntry admitted = DiagGate.admit(entry);
+        if (admitted == null) {
+            admitted = new EngineCommand.DiagEntry("diag",
+                    java.util.Collections.singletonList(JsonNode.member(DiagGate.SUB_KIND_FIELD, JsonNode.str("row-refused"))));
+        }
         rowSeq += 1;
         List<JsonNode.Member> members = new ArrayList<>();
         members.add(JsonNode.member("seq", JsonNode.num(rowSeq)));
         members.add(JsonNode.member("at", JsonNode.num(wallMs.getAsDouble())));
         members.add(JsonNode.member("mono", JsonNode.num(monoMs.getAsDouble())));
-        members.add(JsonNode.member("kind", JsonNode.str(entry.kind())));
-        for (JsonNode.Member m : entry.fields()) if (!HEADER_KEYS.contains(m.key())) members.add(m);
+        members.add(JsonNode.member("kind", JsonNode.str(admitted.kind())));
+        for (JsonNode.Member m : admitted.fields()) if (!HEADER_KEYS.contains(m.key())) members.add(m);
         JsonNode row = new JsonNode.Obj(members);
         rows.addLast(row);
         while (rows.size() > ROW_CAPACITY) rows.removeFirst();
         EngineBridge.Records.Listener l = listener;
         if (l != null) {
             try {
-                l.onRow(row, entry.kind());
+                l.onRow(row, admitted.kind());
             } catch (RuntimeException ignored) {
                 // Best effort, as above.
             }

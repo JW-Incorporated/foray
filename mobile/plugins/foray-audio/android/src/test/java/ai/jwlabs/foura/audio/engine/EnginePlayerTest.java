@@ -80,6 +80,32 @@ public class EnginePlayerTest {
                 MediaMapping.sessionView(v), buffering, 1);
     }
 
+    /** An episode at the listener's {@code rate}, as the host publishes it (A-60): the view's clock rate is 0 through a stall, the listening rate is not. */
+    static ForayEngineHost.Surface episodeAt(double rate, boolean playing, boolean buffering) {
+        MediaMapping.CommandSnapshot snap = new MediaMapping.CommandSnapshot(MediaMapping.CommandSnapshot.Mode.EPISODE,
+                false, true, true, false);
+        MediaMapping.View v = new MediaMapping.View();
+        v.item = new MediaMapping.Item("episode", "An episode", "A show");
+        v.durationSec = 90.0;
+        v.positionSec = 12.0;
+        v.playbackRate = rate;
+        v.playing = playing;
+        v.buffering = buffering;
+        return new ForayEngineHost.Surface(MediaMapping.commandAvailability(snap, MediaMapping.SeekSteps.DEFAULT),
+                MediaMapping.sessionView(v), buffering, 1, rate);
+    }
+
+    /**
+     * What Media3's session publishes as the platform speed for this player
+     * ({@code MediaSessionLegacyStub.createPlaybackStateCompat}, media3 1.11.0:
+     * {@code player.isPlaying() && canReadPositions ? speed : 0}). The session reads the facade;
+     * this reads the facade the same way, so the pin is on what the facade tells it.
+     */
+    static float sessionSpeed(Player p) {
+        boolean canReadPositions = p.isCommandAvailable(Player.COMMAND_GET_CURRENT_MEDIA_ITEM) && !p.isCurrentMediaItemLive();
+        return p.isPlaying() && canReadPositions ? p.getPlaybackParameters().speed : 0f;
+    }
+
     private static EnginePlayer facade(FakeEngine engine) {
         return new EnginePlayer(Looper.getMainLooper(), engine);
     }
@@ -142,6 +168,56 @@ public class EnginePlayerTest {
         assertEquals(Player.STATE_BUFFERING, p.getPlaybackState());
         assertTrue("the controls still say pause", p.getPlayWhenReady());
         p.release();
+    }
+
+    /**
+     * Card A-60, the Android side of #866's rate latch. A Media3 session derives its state from the
+     * player, so the latch iOS had (Now Playing's rate stuck at 0 while the clock ran) cannot recur
+     * as such; what is pinned is what the facade tells the session: the LISTENING speed in its
+     * playback parameters at all times, READY and playing while playing (published: the listening
+     * speed), and BUFFERING through a stall (published: 0), and the listening speed again the moment
+     * it plays. TO SEE IT FAIL: take the speed from the view's clock rate (a stall then says 1x,
+     * and a 1.5x listener's session reads 1x while buffering), or leave a stall READY (published:
+     * the speed, with the clock standing still).
+     */
+    @Test
+    public void theSessionPublishesTheListeningSpeedWhilePlayingAndZeroOnlyWhileBuffering() {
+        FakeEngine e = new FakeEngine();
+        e.surface = episodeAt(1.5, true, false);
+        EnginePlayer p = facade(e);
+        assertEquals(Player.STATE_READY, p.getPlaybackState());
+        assertTrue(p.isPlaying());
+        assertEquals(1.5f, p.getPlaybackParameters().speed, 0);
+        assertEquals("playing: the listening speed", 1.5f, sessionSpeed(p), 0);
+
+        e.surface = episodeAt(1.5, true, true);
+        p.refresh();
+        assertEquals(Player.STATE_BUFFERING, p.getPlaybackState());
+        assertTrue("the controls still say pause", p.getPlayWhenReady());
+        assertFalse(p.isPlaying());
+        assertEquals("the listener's speed is still the listener's", 1.5f, p.getPlaybackParameters().speed, 0);
+        assertEquals("buffering: 0, the clock stands still", 0f, sessionSpeed(p), 0);
+
+        e.surface = episodeAt(1.5, true, false);
+        p.refresh();
+        assertTrue(p.isPlaying());
+        assertEquals("playing again: the listening speed, nothing latched", 1.5f, sessionSpeed(p), 0);
+
+        e.surface = episodeAt(1.5, false, false);
+        p.refresh();
+        assertEquals("paused is READY with play-when-ready off", Player.STATE_READY, p.getPlaybackState());
+        assertEquals(0f, sessionSpeed(p), 0);
+        assertEquals(1.5f, p.getPlaybackParameters().speed, 0);
+        p.release();
+    }
+
+    /** A surface with no listening rate (a test's, or a host's before its first turn) publishes 1x, never 0. */
+    @Test
+    public void aSurfaceWithNoListeningRatePublishesOneX() {
+        assertEquals(1f, EnginePlayer.publishedSpeed(episode(true, false, true)), 0);
+        assertEquals(1f, EnginePlayer.publishedSpeed(episodeAt(0, true, false)), 0);
+        assertEquals(1f, EnginePlayer.publishedSpeed(episodeAt(Double.NaN, true, false)), 0);
+        assertEquals(2f, EnginePlayer.publishedSpeed(episodeAt(2, true, true)), 0);
     }
 
     @Test

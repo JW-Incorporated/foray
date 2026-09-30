@@ -83,6 +83,17 @@ public final class EngineCore {
     public static final int PENDING_EVENTS_CAP = 512;
     /** Walked hops the page has not acked; the chain the page sends is K = 8 long. */
     public static final int ADVANCE_LOG_CAP = 64;
+    /**
+     * P-14, the stall display (plan §4.3; #866), the Swift {@code EngineCore.bufferingWhileWaiting}
+     * (NE-38): the surface shows {@code buffering} from the moment the deck reports waiting (a
+     * {@code deck kind=time-control status=waiting reason=} row) until it reports playing again,
+     * with no debounce. PROVISIONAL (card A-60): on Android the session derives its speed from
+     * the facade ({@code EnginePlayer}), which publishes the listening speed while playing and 0
+     * only while buffering, so iOS's rate-0 latch cannot recur as such. Settled by the
+     * {@code time-control} rows (NE-38e verdict {@code rate-latch}, A-68); false would show a
+     * stall as playing.
+     */
+    public static final boolean BUFFERING_WHILE_WAITING = true; // MEASURE: verdict=rate-latch (NE-38e). Rows: deck kind=time-control status=waiting reason=.
     /** DiagGate's {@code tokenMax}: the longest free token a row carries as itself. */
     static final int DIAG_TOKEN_MAX = 64;
 
@@ -1230,7 +1241,7 @@ public final class EngineCore {
             return;
         }
         state.pendingLoad = new PendingLoad(token, item.id, startSec);
-        deckCommand(new DeckCommand.Load(token, item.id, item.audioUrl, startSec, bounds != null));
+        deckCommand(new DeckCommand.Load(token, item.id, item.audioUrl, startSec, bounds != null, DeckDeadlineClass.of(item)));
     }
 
     /**
@@ -1545,7 +1556,9 @@ public final class EngineCore {
                 state.buffering = false;
                 if (state.grace != null) endGrace(GraceOutcome.PLAYING);
             }
-            case WAITING -> state.buffering = true;
+            case WAITING -> {
+                if (BUFFERING_WHILE_WAITING) state.buffering = true;
+            }
             case PAUSED -> {}
         }
     }
@@ -2219,7 +2232,8 @@ public final class EngineCore {
         }
         state.preparedItemId = next.item().id;
         ItemBounds bounds = next.item().bounds();
-        deckCommand(new DeckCommand.Prepare(next.item().id, next.item().audioUrl, bounds != null ? bounds.startSec() : 0));
+        deckCommand(new DeckCommand.Prepare(next.item().id, next.item().audioUrl, bounds != null ? bounds.startSec() : 0,
+                DeckDeadlineClass.of(next.item())));
     }
 
     // ---- the seam beat (queue-manager.js §10)
@@ -2409,7 +2423,7 @@ public final class EngineCore {
             return;
         }
         state.pendingLoad = new PendingLoad(token, bridge.id, 0, true, null, false);
-        deckCommand(new DeckCommand.Load(token, bridge.id, bridge.audioUrl, 0, false));
+        deckCommand(new DeckCommand.Load(token, bridge.id, bridge.audioUrl, 0, false, DeckDeadlineClass.of(bridge)));
     }
 
     /** {@code _advancePastBridgeFailure}: the item after the bridge, bridges skipped. */

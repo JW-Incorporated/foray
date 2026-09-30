@@ -31,7 +31,7 @@ import java.util.function.Consumer;
 @OptIn(markerClass = UnstableApi.class)
 final class DeckHarness implements AutoCloseable {
     final Context context = ApplicationProvider.getApplicationContext();
-    final FakeClock clock = new FakeClock(/* isAutoAdvancing= */ true);
+    final FakeClock clock;
     final CapturingAudioRenderer renderer = new CapturingAudioRenderer();
     final ExoPlayer player;
     final ExoDeck deck;
@@ -53,6 +53,16 @@ final class DeckHarness implements AutoCloseable {
 
     /** {@code dataSources} null: the default source (file URIs). */
     DeckHarness(DataSource.Factory dataSources, Consumer<ExoDeck.Config> tweak) {
+        this(new FakeClock(/* isAutoAdvancing= */ true), dataSources, tweak);
+    }
+
+    /**
+     * On a clock of the test's own: A-60's deadline tests move a MANUAL clock by hand
+     * ({@link #stepTo}), so a load that lands at 19 s lands there and not wherever an
+     * auto-advancing clock had run to while the loader thread read the file.
+     */
+    DeckHarness(FakeClock clock, DataSource.Factory dataSources, Consumer<ExoDeck.Config> tweak) {
+        this.clock = clock;
         player = new TestExoPlayerBuilder(context).setClock(clock).setRenderers(renderer).build();
         ExoDeck.Config config = new ExoDeck.Config();
         config.mediaSources = ExoDeck.progressive(dataSources != null ? dataSources : new DefaultDataSource.Factory(context));
@@ -94,6 +104,23 @@ final class DeckHarness implements AutoCloseable {
             clock.advanceTime(10);
             ShadowLooper.idleMainLooper();
         }
+    }
+
+    /**
+     * A MANUAL clock ({@code new FakeClock(false)}) moved to {@code untilMs} in {@code stepMs} steps,
+     * the main looper run after each and {@code realMsPerStep} of real time given to the player's
+     * own threads (the loader reads the file on one). Stops early, between steps, once {@code stop}
+     * holds; returns whether it did.
+     */
+    boolean stepTo(long untilMs, long stepMs, long realMsPerStep, BooleanSupplier stop) throws InterruptedException {
+        while (clock.elapsedRealtime() < untilMs) {
+            if (stop.getAsBoolean()) return true;
+            clock.advanceTime(Math.min(stepMs, untilMs - clock.elapsedRealtime()));
+            ShadowLooper.idleMainLooper();
+            if (realMsPerStep > 0) Thread.sleep(realMsPerStep);
+            ShadowLooper.idleMainLooper();
+        }
+        return stop.getAsBoolean();
     }
 
     /** Let {@code ms} of virtual time pass. */

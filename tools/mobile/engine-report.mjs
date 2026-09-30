@@ -168,6 +168,40 @@ function parseJsonRow(line) {
   return { seq: o.seq, t: o.at, epoch: true, kind: o.kind, event: typeof o.event === "string" ? o.event : null, f };
 }
 
+/* AN ANDROID PASTE (card A-60, docs/plans/android-assessment.md §5.7). The Android
+ * engine's own text ring (EngineLog.java) is one line per write,
+ *   `<seq> <ISO-8601 UTC> <kind> <body>`,
+ * as the emulator scenarios save it (`*-engine-rows.txt`), as the service's
+ * `dumpsys activity service …ForayPlaybackService` prints it (`ForayEngine.row `
+ * before each line), and as logcat carries it (`… I ForayEngine: `). A diag
+ * row's body is its JSON with the sub-kind still named `kind` (the ring's gate,
+ * DiagGate, writes it as `event` only on the DiagRow the page reads), so it is
+ * read here the way the gate would store it: `deck {"kind":"attach",…}` is a
+ * `deck` row whose event is `attach`. The other writes (`position`, `row`,
+ * `restore`, `emit`, and `event`, the pending-events log) are not diag rows.
+ * The page's Copy on Android is the iOS format and needs nothing of this. */
+const ANDROID_LINE = /^(?:.*?\bForayEngine(?:\.row|:)\s+)?(\d+)\s+(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z)\s+(\S+)\s+(\{.*\})$/;
+/** EngineLog.CAPACITY: the Android text ring's size, in LINES (every write, not only diag rows). */
+export const ANDROID_TEXT_RING_CAPACITY = 400;
+
+/** An Android text-ring line as a row, or null (not a diag row, or not JSON). */
+function parseAndroidRow(m) {
+  if (m[3] === "event") return null;
+  let o;
+  try { o = JSON.parse(m[4]); } catch { return null; }
+  if (!o || typeof o !== "object" || Array.isArray(o)) return null;
+  const t = Date.parse(m[2]);
+  if (!Number.isFinite(t)) return null;
+  let event = typeof o.kind === "string" ? o.kind : null;
+  const f = {};
+  for (const [k, v] of Object.entries(o)) {
+    if (k === "event" && event == null && typeof v === "string") event = v;
+    if (["seq", "at", "mono", "kind", "event"].includes(k)) continue;
+    f[k] = normalizeRaw(v);
+  }
+  return { seq: +m[1], t, epoch: true, android: true, kind: m[3], event, f };
+}
+
 function parseHeaderRest(rest) {
   const out = {};
   const [left, web] = rest.split("|");
@@ -199,6 +233,7 @@ export function parsePaste(text) {
   let header = null;
   let ring = null;
   let unparsed = 0;
+  let androidRows = 0;
   lines.forEach((raw, i) => {
     const line = raw.trim();
     if (!line) return;
@@ -216,6 +251,11 @@ export function parsePaste(text) {
       return;
     }
     if (/^engine rows /.test(line)) { notes.push(line); return; }
+    if ((m = ANDROID_LINE.exec(line))) {
+      const row = parseAndroidRow(m);
+      if (row) { row.line = i + 1; engineRows.push(row); androidRows++; }
+      return;
+    }
     if (line.startsWith("{")) {
       const row = parseJsonRow(line);
       if (row) { row.line = i + 1; engineRows.push(row); } else unparsed++;
@@ -233,6 +273,20 @@ export function parsePaste(text) {
     // Header prose ("4a playback diagnostics", counts, "Local only…") is not a row.
   });
   engineRows.sort((a, b) => a.seq - b.seq);
+  /* An Android text ring numbers every write, so the seqs between two diag rows
+     are positions, restores and events, not lost rows: its accounting is the
+     LINES before the first one kept (the 400-line ring's eviction, or a dump's
+     tail), never the gaps. Evicted lines make every seam verdict `incomplete`. */
+  if (androidRows && !ring) {
+    const seqs = engineRows.filter((r) => r.android).map((r) => r.seq);
+    const first = Math.min(...seqs);
+    ring = {
+      count: androidRows, capacity: ANDROID_TEXT_RING_CAPACITY, first, last: Math.max(...seqs),
+      evicted: first > 1 ? first - 1 : 0, missing: 0, android: true,
+    };
+    notes.push(`android text ring: ${androidRows} diag rows of lines #${first}..#${ring.last}`
+      + (ring.evicted ? `, ${ring.evicted} earlier lines not in the paste` : ""));
+  }
   // A Copy line carries a time of day: unwrap a drive that crossed midnight UTC.
   let offset = 0;
   let prev = null;

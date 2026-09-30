@@ -11,6 +11,7 @@ import ai.jwlabs.foura.audio.engine.ForayEngineHostTest.FakeTiming;
 import ai.jwlabs.foura.audio.engine.InterludePlayerTest.FakeJingle;
 import ai.jwlabs.foura.audio.engine.SpeechNarratorTest.FakeOutput;
 import ai.jwlabs.foura.engine.DeckCommand;
+import ai.jwlabs.foura.engine.DeckDeadlineClass;
 import ai.jwlabs.foura.engine.DeckEvent;
 import ai.jwlabs.foura.engine.EngineConfig;
 import ai.jwlabs.foura.engine.EngineContract;
@@ -135,6 +136,52 @@ public class ForayEngineHostNarrationTest {
         assertEquals("the script is read instead", "Read me instead.", rig.speech.line.text());
         rig.speech.end(SpeechNarrator.End.FINISHED);
         assertEquals("f1#2", rig.lastLoad().itemId());
+    }
+
+    /**
+     * Card A-60 (mirrors NE-38's ForayCatchUpTests): the core names the P-13 class of every load,
+     * a clip's {@code clip} and a rendered line's {@code line} (the deck gives a line 8 s, a clip
+     * 20 s: ExoDeckFieldValuesTest); and a line whose load is still pending at its 8 s is read
+     * aloud from its script by the synthesiser (TextToSpeech) on a FRESH token, the fallback row
+     * saying {@code reason=timeout}. The page's ring stores that row whole, its sub-kind as
+     * {@code event}. TO SEE IT FAIL: issue the line's load without its class, or speak the
+     * fallback under the file's token.
+     */
+    @Test
+    public void aRenderedLinesEightSecondDeadlineIsReadAloud() {
+        Rig rig = new Rig();
+        rig.playForay(clip(0, "a", 100, 200), rendered(1, "https://audio.test/n/line.m4a", "Read me instead."), clip(2, "c", 500, 600));
+        assertEquals("a clip's load is a clip", DeckDeadlineClass.CLIP, rig.lastLoad().deadlineClass());
+        rig.runFirstClip();
+        DeckCommand.Load line = rig.lastLoad();
+        assertEquals("f1#1", line.itemId());
+        assertEquals("a rendered line's load is a line", DeckDeadlineClass.LINE, line.deadlineClass());
+        assertEquals(null, rig.speech.line);
+        rig.timing.mono += 8_000;
+        rig.deck.emit(new DeckEvent.DeadlineExceeded(line.token(), 8_000));
+        assertEquals("the script is read aloud instead", "Read me instead.", rig.speech.line == null ? null : rig.speech.line.text());
+        assertTrue("on a fresh token", rig.host.state().lastToken > line.token());
+        assertTrue(rig.rows(), rig.rows().contains("\"kind\":\"fallback\""));
+        assertTrue(rig.rows(), rig.rows().contains("\"reason\":\"timeout\""));
+        boolean stored = false;
+        for (JsonNode row : rig.log.diagnosticRows()) {
+            if (!"narration".equals(row.get("kind").stringValue())) continue;
+            JsonNode event = row.get("event");
+            JsonNode reason = row.get("reason");
+            if (event != null && "fallback".equals(event.stringValue()) && reason != null && "timeout".equals(reason.stringValue())) {
+                stored = true;
+                /* The one field the gate withholds is `at` (where the line was): `at` is the DiagRow's
+                   wall clock, so the ring could never carry it (before A-60 it vanished without a word).
+                   NE-39n renames it `where` on iOS; its JVM port is A-64's. */
+                JsonNode dropped = row.get("dropped");
+                if (dropped != null) assertEquals("only `at` is withheld: " + row, "[\"at\"]", ai.jwlabs.foura.engine.JSWriter.stringify(dropped));
+            }
+        }
+        assertTrue("the page's ring has the fallback, sub-kind and all: " + rig.log.diagnosticRows(), stored);
+        rig.speech.end(SpeechNarrator.End.FINISHED);
+        DeckCommand.Load next = rig.lastLoad();
+        assertEquals("the spoken line's end moves the Foray on", "f1#2", next.itemId());
+        assertEquals(DeckDeadlineClass.CLIP, next.deadlineClass());
     }
 
     /**
