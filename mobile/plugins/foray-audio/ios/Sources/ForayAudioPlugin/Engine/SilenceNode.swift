@@ -55,8 +55,27 @@ final class AVSilenceEngine: SilenceEngineAPI {
 }
 
 /// THE REAL `SilenceRendering` (card NE-34; docs/native-engine-plan.md §14),
-/// behind `EngineConfig.silenceNodeEnabled`, OFF. It is enabled in a follow-up
-/// only if the drive rows show a suspension inside a silent seam.
+/// behind `EngineConfig.silenceNodeEnabled`, OFF.
+///
+/// THE DECISION (card NE-46, provisional, M3): IT STAYS OFF, because
+///   - App Review 2.5.4 (R21): background audio that renders nothing audible
+///     is what review refuses, capped or not;
+///   - no suspension inside a seam has been observed, neither in the M1 car
+///     test (#114) nor in the 2026-09-28 paste;
+///   - BackgroundGrace holds a task across every silent span (`seam`,
+///     `prepare-miss`, `narration-handover`);
+///   - NE-45 shrinks silent spans to the beat (the standby deck is prepared
+///     across narration seams).
+///
+/// THE RULE FOR TURNING IT ON. Only if a drive paste shows at least one
+/// `grace kind=late inSeam=y` row: an engine timer (the seam beat, the silence
+/// cap, the narration tick, a load deadline) that fired more than
+/// `NARRATION_SUSPEND_GAP_MS` (5 s) late inside a silent seam while grace was
+/// held, i.e. the process was suspended DESPITE grace (EngineCore
+/// `noteLateness`; NE-38e's `suspension-in-seam` verdict reads it). The flip
+/// is a one-line PR (`silenceNodeEnabled = true` in EngineBoot) that cites the
+/// paste, and the NE-34 App Review note must already be in the submission
+/// notes. Nothing else turns it on.
 ///
 /// THE CAP IS THE POINT. A silence node that runs until the next item is
 /// audible would keep an app with a dead network "playing" nothing for as

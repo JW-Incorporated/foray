@@ -41,9 +41,22 @@ public struct EngineConfig: Equatable {
     /// `cp_interlude` as read at boot (`interludeEnabled`, default on).
     public var interludeEnabled: Bool
     /// The silence node (NE-34), capped at `INTERLUDE_CEILING_SEC` from the
-    /// out-point. OFF: it is enabled in a follow-up only if a suspension is
-    /// shown (plan §14 NE-34).
+    /// out-point. OFF, and the decision is NE-46's (provisional, M3): App
+    /// Review 2.5.4 (R21); no suspension inside a seam observed (the M1 car
+    /// test, the 2026-09-28 paste); BackgroundGrace holds a task across every
+    /// silent span; NE-45 shrinks silent spans to the beat. It is turned on
+    /// ONLY by a one-line flag PR that cites a drive paste with at least one
+    /// `grace kind=late inSeam=y` row (the detector is `noteLateTimer`), once
+    /// the NE-34 App Review note is in the submission notes. SilenceNode.swift's
+    /// header states the same rule.
     public var silenceNodeEnabled: Bool
+    /// NE-46: each P-13 load deadline in ms, by class, as the host's deck runs
+    /// it (`AVDeck.defaultLoadDeadlineSec`, `defaultLineLoadDeadlineSec`), so
+    /// a `.deadlineExceeded` that arrives late (the process was suspended past
+    /// it) can say so in a `grace kind=late timer=load-deadline` row. Empty
+    /// (the default, every headless test and the parity driver): no load
+    /// deadline is checked for lateness. The core decides nothing on it.
+    public var loadDeadlineMs: [DeckDeadlineClass: Double]
     /// The listener's narration voice at boot (`voice`), nil for the
     /// synthesiser's own pick.
     public var voiceId: String?
@@ -62,7 +75,7 @@ public struct EngineConfig: Equatable {
                 narrationFollowsListenerRate: Bool = false, narrationPulse: Bool = true,
                 interludeAvailable: Bool = false, interludeEnabled: Bool = true,
                 silenceNodeEnabled: Bool = false, voiceId: String? = nil, speechDirect: Bool = false,
-                deckPairEnabled: Bool = false) {
+                loadDeadlineMs: [DeckDeadlineClass: Double] = [:], deckPairEnabled: Bool = false) {
         self.build = build
         self.holdPolicy = holdPolicy
         self.rate = rate
@@ -76,6 +89,7 @@ public struct EngineConfig: Equatable {
         self.silenceNodeEnabled = silenceNodeEnabled
         self.voiceId = voiceId
         self.speechDirect = speechDirect
+        self.loadDeadlineMs = loadDeadlineMs
     }
 }
 
@@ -261,9 +275,13 @@ public struct EngineCore {
                 diag("session", [JSONMember("kind", .string("activation-abandoned")),
                                  JSONMember("requestId", .number(Double(parked.requestId)))])
             }
+            // NE-46: measured BEFORE the input is handled, while the seam and
+            // the grace span it may close are still what the timer found.
+            noteLateness(input)
             route(input)
         }
         if state.session != .relinquished && !state.tornDown { settleTurn() }
+        ledgerTimers()
         let result = out
         out = []
         return result
@@ -1713,6 +1731,73 @@ public struct EngineCore {
         out.append(.graceEnd(outcome))
     }
 
+    // MARK: - The late-timer detector (NE-46)
+
+    /// NE-46: every engine timer that fires while grace is held compares its
+    /// due time with now: the seam beat, the silence cap, the narration tick
+    /// (each from the ledger `ledgerTimers` keeps), and the load deadline
+    /// (the deck's own `afterMs` against `EngineConfig.loadDeadlineMs` for
+    /// the load's class). More than `NARRATION_SUSPEND_GAP_MS` late means the
+    /// process was SUSPENDED despite the task grace held, and that is the one
+    /// thing the silence node exists for: `grace kind=late timer= lateMs=
+    /// inSeam=y|n bgRemainingMs=`. A drive with an `inSeam=y` row is the
+    /// evidence the flag flip needs (NE-38e verdict `suspension-in-seam`).
+    /// The row decides nothing: the input is then handled exactly as before.
+    private mutating func noteLateness(_ input: EngineInput) {
+        switch input {
+        case let .timer(timer):
+            guard let due = state.timerDueMono.removeValue(forKey: timer) else { return }
+            lateRow(timer: timer.rawValue, lateMs: now.monoMs - due)
+        case let .deck(.deadlineExceeded(token, afterMs, _)):
+            guard token == state.lastToken, let deadlineClass = state.lastLoadClass,
+                  let deadlineMs = config.loadDeadlineMs[deadlineClass] else { return }
+            lateRow(timer: EngineCore.loadDeadlineTimer, lateMs: Double(afterMs) - deadlineMs)
+        default:
+            return
+        }
+    }
+
+    /// The `timer=` of a late load deadline (the deck runs it, not the core).
+    public static let loadDeadlineTimer = "load-deadline"
+
+    private mutating func lateRow(timer: String, lateMs: Double) {
+        guard let reason = state.grace, lateMs.isFinite,
+              lateMs > EngineConstants.QueueManager.narrationSuspendGapMs else { return }
+        diag("grace", [JSONMember("kind", .string("late")),
+                       JSONMember("timer", .string(timer)),
+                       JSONMember("lateMs", .number(lateMs.rounded())),
+                       JSONMember("inSeam", .string(inSilentSeam ? "y" : "n")),
+                       JSONMember("bgRemainingMs", Rows.finiteOrNull(now.bgRemainingMs.map { $0.rounded() })),
+                       JSONMember("reason", .string(reason.rawValue))])
+    }
+
+    /// Between an out-point and the next item's audible start: a beat is
+    /// running (or its parked load waits), or the span grace holds is a
+    /// seam's (`seam`, `prepare-miss`, or the handover after a spoken line).
+    private var inSilentSeam: Bool {
+        if state.inSeamGap || state.gapParkedToken != nil { return true }
+        switch state.grace {
+        case .seam?, .prepareMiss?, .narrationHandover?: return true
+        default: return false
+        }
+    }
+
+    /// After every turn: when each one-shot timer the turn armed is due, and
+    /// which it cancelled. Read from the commands themselves, so no arm site
+    /// can forget it.
+    private mutating func ledgerTimers() {
+        for command in out {
+            switch command {
+            case let .timerArm(timer, afterMs, repeating):
+                state.timerDueMono[timer] = repeating ? nil : now.monoMs + afterMs
+            case let .timerCancel(timer):
+                state.timerDueMono[timer] = nil
+            default:
+                continue
+            }
+        }
+    }
+
     /// Apply a `SessionPolicy` transition: the phase, its actions as commands,
     /// and its row.
     private mutating func applySession(_ transition: SessionPolicy.Transition) {
@@ -1773,7 +1858,8 @@ public struct EngineCore {
     private mutating func deckCommand(_ command: DeckCommand) {
         out.append(.deck(command))
         switch command {
-        case let .load(_, _, _, startSec, _, _):
+        case let .load(_, _, _, startSec, _, deadlineClass):
+            state.lastLoadClass = deadlineClass
             deck.positionSec = startSec
             deck.audible = false
             deck.ended = false

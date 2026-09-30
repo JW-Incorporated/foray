@@ -4065,6 +4065,36 @@ test("NE-34: the jingle and the silence node sound only with the session, stop t
   assert.match(teardown, /seams\.silence\?\.stop\(\)/);
 });
 
+test("NE-46: the silence node stays off, its header states the enable rule, and the late-timer detector runs before the input", () => {
+  /* The provisional decision (plan §14 NE-46): `silenceNodeEnabled` stays
+     false, and only a drive paste with a `grace kind=late inSeam=y` row can
+     justify a one-line flip. MUTATION: default the flag to true, set it true
+     in EngineBoot, drop the rule from SilenceNode's header, move
+     noteLateness after route(input) (the seam and the span it closes are
+     gone by then), compare against anything but NARRATION_SUSPEND_GAP_MS, or
+     stop feeding the deck's deadlines to the core. Each fails here. */
+  const coreSrc = stripSwiftComments(fs.readFileSync(path.join(CORE_DIR, "Sources/ForayEngineCore/Engine/EngineCore.swift"), "utf8"));
+  assert.match(coreSrc, /silenceNodeEnabled: Bool = false/, "EngineConfig.silenceNodeEnabled defaults OFF");
+  const boot = stripSwiftComments(fs.readFileSync(path.join(ENGINE_DIR, "EngineBoot.swift"), "utf8"));
+  assert.doesNotMatch(boot, /silenceNodeEnabled\s*=\s*true/, "the shipping boot never turns the silence node on without the NE-46 evidence");
+  assert.match(boot, /config\.loadDeadlineMs = \[\.clip: AVDeck\.defaultLoadDeadlineSec \* 1000,\s*\.line: AVDeck\.defaultLineLoadDeadlineSec \* 1000\]/,
+    "the core measures a late load deadline against the deck's own P-13 deadlines");
+  const header = fs.readFileSync(path.join(ENGINE_DIR, "SilenceNode.swift"), "utf8");
+  for (const needle of ["THE DECISION (card NE-46", "2.5.4", "grace kind=late inSeam=y", "NARRATION_SUSPEND_GAP_MS", "one-line PR", "App Review note"]) {
+    assert.ok(header.includes(needle), `SilenceNode.swift's header no longer states the NE-46 rule (${needle})`);
+  }
+  const handle = swiftFuncBody(coreSrc, "handle") ?? "";
+  assert.ok(handle.indexOf("noteLateness(input)") >= 0 && handle.indexOf("noteLateness(input)") < handle.indexOf("route(input)"),
+    "lateness is measured before the input is handled");
+  assert.match(handle, /ledgerTimers\(\)/, "every turn's timer arms and cancels reach the ledger");
+  const late = swiftFuncBody(coreSrc, "lateRow") ?? "";
+  assert.match(late, /lateMs > EngineConstants\.QueueManager\.narrationSuspendGapMs/, "the threshold is NARRATION_SUSPEND_GAP_MS");
+  assert.match(late, /guard let reason = state\.grace/, "only while grace is held");
+  for (const field of ["\"late\"", "\"timer\"", "\"lateMs\"", "\"inSeam\"", "\"bgRemainingMs\""]) {
+    assert.ok(late.includes(field), `the grace late row lost ${field}`);
+  }
+});
+
 test("NE-25c: one synthesizer configuration, a platform-free probe reached only through probeSession, and a smoke on the production pieces", () => {
   /* DV-9 (plan §10) is answered on the founder's phone by the Developer
      session probe, and NE-33 picks SpeechNarrator's path from that one row.

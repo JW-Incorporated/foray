@@ -48,8 +48,9 @@ enum EngineBoot {
         // defaults stay OFF (every headless test and the parity driver build
         // one without them); the shipping boot turns on the Foray tape
         // (NE-30s) and the two-deck pair with its prepared standby (NE-32).
-        // The rest stay off on purpose: the silence node until H-2 rows show a
-        // suspension (NE-34), the direct synthesizer until DV-9 answers
+        // The rest stay off on purpose: the silence node until a drive paste
+        // shows a `grace kind=late inSeam=y` row (NE-46's rule; SilenceNode.swift's
+        // header), the direct synthesizer until DV-9 answers
         // (NE-33), and SPOKEN narration at the listener's speed until the
         // founder changes his 1x ruling (OQ-3; a RENDERED line, one with an
         // `audio_url`, follows the listener's speed since D2, 2026-09-28, with
@@ -58,6 +59,10 @@ enum EngineBoot {
         // EngineBridgeRules.advertisedCapabilities).
         config.forayTapeEnabled = true
         config.deckPairEnabled = true
+        // NE-46: the deck's own P-13 deadlines, so a load deadline that fires
+        // late while grace is held writes `grace kind=late timer=load-deadline`.
+        config.loadDeadlineMs = [.clip: AVDeck.defaultLoadDeadlineSec * 1000,
+                                 .line: AVDeck.defaultLineLoadDeadlineSec * 1000]
         let sessionIsActive = { session.phase == .active }
         // NE-34: the seam's jingle on the bundled asset (nil, and no jingle,
         // if the asset did not ship), and the silence node only behind its
