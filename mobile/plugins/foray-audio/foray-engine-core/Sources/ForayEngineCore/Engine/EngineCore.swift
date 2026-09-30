@@ -2618,10 +2618,10 @@ public struct EngineCore {
             state.preview?.playing = true
             diag("audition", [JSONMember("kind", .string("preview-play")), JSONMember("token", .number(Double(token)))])
             out.append(.preview(.play))
-        case let .failed(token, _):
+        case let .failed(token, _, _):
             guard token == preview.token else { return }
             previewFailed(preview, reason: "failed")
-        case let .deadlineExceeded(token, _):
+        case let .deadlineExceeded(token, _, _):
             guard token == preview.token else { return }
             previewFailed(preview, reason: "timeout")
         case let .ended(token):
