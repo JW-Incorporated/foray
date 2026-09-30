@@ -325,6 +325,9 @@ public class ForayPlaybackService extends MediaSessionService {
         ForayEngineHost engine = host;
         EngineStore kept = store;
         if (engine == null || kept == null) return null;
+        /* Once per service: a boot that found nothing (no record) leaves the core untouched, and
+           asking again would only repeat its row. */
+        if (coldBoot != null) return ForayEngineHost.ColdBootOutcome.LATE;
         ForayEngineHost.ColdBootOutcome outcome = engine.coldBoot(kept.restoreRecord());
         if (outcome != ForayEngineHost.ColdBootOutcome.LATE) coldBoot = outcome;
         return outcome;
