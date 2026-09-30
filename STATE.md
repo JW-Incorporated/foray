@@ -38,9 +38,14 @@ into `android/native`.
   call. That is NE-24's order.
 - (j) runs before A-28's page door, which stays last. (j) leaves the app force-stopped.
 - CI on the merged head `c4de6b25`:
-  - `android-build` 36672959220: foray-audio 130 cases, 0 skipped. Attempt 1 failed, and so did the one before
-    it (36672347357), on A-25's `ExoDeckTest.theGateHoldsItsOwnWakeLock…` with a `TimeoutException`. That test
-    races its virtual clock against the playback thread, and a rerun of the failed job passed.
+  - `android-build` 36672959220: foray-audio 130 cases, 0 skipped. Attempt 1 failed, as did 36672347357 and
+    36674783999 (3 of 5 first attempts on the merged tree), on A-25's
+    `ExoDeckTest.theGateHoldsItsOwnWakeLock…` with a `TimeoutException`. Each passed on a rerun.
+  - **The cause, and the fix in this PR.** That test's second load kept the 3 s deadline. The deadline runs on the
+    auto-advancing FakeClock, while the loader reads the file on a real thread, so on a busy runner the deadline
+    fired before the load was ready. The test now lifts the deadline to 600 s before that load. The deck reads it at
+    each load, so the first load keeps its 3 s. `android-build` 36677398176 on head `3ae220bb` passed on the
+    first attempt.
   - `android-playback` 36672959273: all three legs green. The native job 109751825092 passed (j) (0.02–0.31 s from
     the saved position) and A-28's page door. The door's engine dump shows `coldBoot painted`: the relaunched native
     lane booted from (j)'s record before the page's hello.
