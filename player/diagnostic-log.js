@@ -2963,7 +2963,9 @@ const ENGINE_LINES = {
     `asked ${ms(r.askedGapMs)}`,
     ...engineFields(r, ["prepared", "grace", "bgRemainingMs", "stages"], ["observedGapMs", "askedGapMs"]),
   ],
-  grace: (r) => [r.event ?? "?", ...engineFields(r, ["reason", "task", "bgRemainingMs"])],
+  /* NE-46: a `late` row reads timer, lateMs and inSeam before the budget, the
+     card's own order (`grace late timer= lateMs= inSeam=y|n bgRemainingMs=`). */
+  grace: (r) => [r.event ?? "?", ...engineFields(r, ["reason", "task", "timer", "lateMs", "inSeam", "bgRemainingMs"])],
   /* L01: the command's name first, then who sent it and its place in the
      page's count; `result=` is the engine's refusal (Lane B writes a second
      row only then) and `seqGap` a count that skipped. An unparseable payload
