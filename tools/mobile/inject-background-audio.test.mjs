@@ -636,8 +636,10 @@ const M2_DEFAULT = Object.freeze({ mode: "native", capabilities: ["episode", "co
   // NE-38rs: route resume's Bluetooth arm, OFF (// MEASURE: verdict=route-back).
   routeResumeBluetooth: false });
 /** Android's block since A-42, the A2 flip: native for Forays too, iOS's M2 four (A-31, the A1
-    flip, was episode and continuation). */
-const A2_DEFAULT = Object.freeze({ mode: "native", capabilities: ["episode", "continuation", "restore", "foray"] });
+    flip, was episode and continuation). A-61: route resume's Bluetooth arm OFF on Android too
+    (D-A9: BLUETOOTH_CONNECT is not requested). */
+const A2_DEFAULT = Object.freeze({ mode: "native", capabilities: ["episode", "continuation", "restore", "foray"],
+  routeResumeBluetooth: false });
 
 test("the committed ENGINE_DEFAULT.json is the M2 native default NE-37 flipped, and the script reads THAT file", () => {
   /* MUTATION: point ENGINE_DEFAULT_FILE anywhere else, commit "js" again, or

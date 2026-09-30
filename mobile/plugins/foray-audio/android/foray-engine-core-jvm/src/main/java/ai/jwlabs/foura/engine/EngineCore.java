@@ -113,6 +113,7 @@ public final class EngineCore {
         state.positions = new HashMap<>(positions);
         state.interludeEnabled = config.interludeEnabled();
         state.voiceId = voice(config.voiceId());
+        state.knownRoutes = new RouteResume.KnownRoutes(config.knownRoutes());
     }
 
     public EngineCore(EngineConfig config) {
@@ -357,6 +358,7 @@ public final class EngineCore {
         deck = at.deck().copy();
         out = new ArrayList<>();
         deckMovedThisTurn = false;
+        noteHeard();
         if (input instanceof EngineInput.SessionAnswer answer) {
             onSessionResult(answer.result());
         } else {
@@ -370,7 +372,10 @@ public final class EngineCore {
             }
             route(input);
         }
-        if (state.session != SessionPolicy.Phase.RELINQUISHED && !state.tornDown) settleTurn();
+        if (state.session != SessionPolicy.Phase.RELINQUISHED && !state.tornDown) {
+            settleRouteResume();
+            settleTurn();
+        }
         List<EngineCommand> result = Collections.unmodifiableList(out);
         out = new ArrayList<>();
         return result;
@@ -394,6 +399,8 @@ public final class EngineCore {
     // ---- page commands
 
     private void onCommand(EngineContract.Command command, Source source) {
+        String press = pressName(command);
+        if (press != null) routePress(press);
         switch (command) {
             case EngineContract.Command.PlayEpisode c -> {
                 EngineItem episode = EngineItem.of(c.item());
@@ -492,6 +499,9 @@ public final class EngineCore {
     }
 
     private void onQueue(QueueInput input) {
+        // The manager surface's own presses (route-resume.js "press"): a play and a seek.
+        if (input instanceof QueueInput.PlayIndex) routePress("play");
+        else if (input instanceof QueueInput.Seek) routePress("seek");
         switch (input) {
             case QueueInput.Load q -> {
                 // `loadQueue(items)`: the queue is replaced, nothing loads.
@@ -740,6 +750,12 @@ public final class EngineCore {
                     new SessionPolicy.Input.Simple(persist ? SessionPolicy.InputKind.CLOSE : SessionPolicy.InputKind.DATA_DELETION),
                     state.holdPolicy));
             if (!persist) {
+                // Delete my data forgets the routes too (the host removes ForayEngine.knownRoutes
+                // when the set is empty; A-61, NE-38rs).
+                state.knownRoutes = new RouteResume.KnownRoutes();
+                state.routeResume = new RouteResume.State(false);
+                state.routeResumeBeforePause = null;
+                state.heardRoute = null;
                 state.positions.clear();
                 state.eventMarks.clear();
                 state.pendingEvents.clear();
@@ -856,6 +872,9 @@ public final class EngineCore {
                 m("state", str(state.stateType())));
         int rowAt = out.size();
         out.add(new EngineCommand.Diag(new DiagEntry("remote", concat(fields, graceFields()))));
+        // Any press after a loss clears it: the listener (or the car) has taken charge
+        // (route-resume.js "press").
+        routePress(remotePressName(press.command()));
         try {
             MediaMapping.SeekSteps steps = MediaMapping.SeekSteps.DEFAULT;
             switch (press.command()) {
@@ -1551,9 +1570,15 @@ public final class EngineCore {
             case PLAYING -> {
                 state.buffering = false;
                 if (state.grace != null) endGrace(GraceOutcome.PLAYING);
+                // Our audio is audible (route-resume.js "playing"), heard through the current route.
+                routeResumeStep(RouteResume.Event.PLAYING);
+                startHearing();
             }
-            case WAITING -> state.buffering = true;
-            case PAUSED -> {}
+            case WAITING -> {
+                state.buffering = true;
+                stopHearing();
+            }
+            case PAUSED -> stopHearing();
         }
     }
 
@@ -1565,6 +1590,7 @@ public final class EngineCore {
     private void onUncommandedPause(int token) {
         if (!isLoadedToken(token)) return;
         state.lastUncommandedPauseAtMono = now.monoMs();
+        stopHearing();
         deck.audible = false;
         boolean routeAttributed = false;
         if (state.lastRouteLostAtMono != null) {
@@ -1600,6 +1626,14 @@ public final class EngineCore {
             return;
         }
         stopRow(routeAttributed ? StopCause.ROUTE_CHANGE : StopCause.SYSTEM_PAUSE, null);
+        // Route resume (A-61, NE-38rs): a pause the route is blamed for was already the loss's
+        // (onRoute stepped it). One blamed on the system is the system's, unless a route loss
+        // follows inside the attribution window, which restores the reducer from this snapshot
+        // (either order).
+        if (!routeAttributed) {
+            if (unexplainedPause) state.routeResumeBeforePause = new EngineState.RouteResumeSnapshot(state.routeResume, now.monoMs());
+            routeResumeStep(RouteResume.Event.SYSTEM);
+        }
         // The OS took the audio; the listener did not press anything.
         state.pausedByListener = false;
         // WHO took it decides whether a should-resume may bring it back (#263, corner case #13).
@@ -1641,6 +1675,8 @@ public final class EngineCore {
         }
         cutSeamGap("interruption");
         stopRow(StopCause.INTERRUPTION, null);
+        // A call or the assistant clears a loss's eligibility (route-resume.js).
+        routeResumeStep(RouteResume.Event.INTERRUPTION);
         applySession(transition);
         dispatch(PlayerEvent.INTERRUPTION_BEGAN);
         releaseSeamGap();
@@ -1684,22 +1720,43 @@ public final class EngineCore {
     }
 
     /**
-     * {@code routeChanged(...)} (corner case #13): a lost route pauses and is not resumable by
-     * a later call; a route reappearing resumes only a car this engine has seen before, never
-     * headphones being plugged in.
+     * {@code routeChanged(...)} (corner case #13): a lost route pauses and is not resumable by a
+     * later call. A route coming back resumes ONLY under the founder's Q5 rule (A-61, the Swift
+     * NE-38rs, {@link RouteResume}): the last pause was the loss of THAT route (same salted key),
+     * the route is known (our audio was heard through it for a second), the loss is under 24 h old
+     * on the wall clock, and it is a car (car mode on Android; Bluetooth only behind
+     * {@code routeResumeBluetooth}, OFF). A listener's pause, a call, the assistant or a system
+     * pause never resumes. Every loss and every return writes a {@code route} row with the
+     * decision, and the row's key is 8 hex of the salted hash, never an address or a name.
      */
     private void onRoute(RouteChange change) {
-        if (change.isCarRoute() && change.routeName() != null) state.knownCarRoutes.add(change.routeName());
         diag("session", m("kind", str("route")), m("oldDeviceUnavailable", JsonNode.bool(change.oldDeviceUnavailable())),
                 m("port", change.portType() == null ? JsonNode.NULL : str(change.portType())));
+        String key = routeKey(change.portType(), change.portUID());
         if (change.oldDeviceUnavailable()) {
+            // Heard through the route that just went away for long enough? The deck may already
+            // have stopped (either order), so the span ends where it stopped, not now.
+            EngineState.HeardRoute heard = state.heardRoute;
+            if (heard != null && heard.key().equals(key) && heard.heardMs(now.monoMs()) >= RouteResume.KNOWN_AFTER_MS) {
+                state.knownRoutes = state.knownRoutes.use(heard.key());
+            }
+            state.heardRoute = null;
             state.lastRouteLostAtMono = now.monoMs();
             state.pausedByRoute = true;
             Double paused = state.lastUncommandedPauseAtMono;
             if (paused != null && now.monoMs() - paused >= 0 && now.monoMs() - paused <= ROUTE_ATTRIBUTION_MS) {
                 // The deck's pause came first and was reconciled as the system's; the route is why.
                 diag("session", m("kind", str("route-attributed")), m("to", str("pause")));
+                EngineState.RouteResumeSnapshot before = state.routeResumeBeforePause;
+                if (before != null && before.atMono() == paused) state.routeResume = before.state();
             }
+            state.routeResumeBeforePause = null;
+            routeResumeStep(new RouteResume.Event.Lost(change.portType(), key, change.routeClass(), wallSec()));
+            diag("route", m("kind", str("lost")),
+                    m("port", change.portType() == null ? JsonNode.NULL : str(change.portType())),
+                    m("class", str(change.routeClass().token)),
+                    m("key", key == null ? JsonNode.NULL : str(RouteResume.rowKey(key))),
+                    m("known", JsonNode.bool(state.knownRoutes.contains(key))));
             // A beat that outlived a lost route would start audio into a dead route.
             cutSeamGap("routeLost");
             stopRow(StopCause.ROUTE_CHANGE, null);
@@ -1707,16 +1764,147 @@ public final class EngineCore {
             releaseSeamGap();
             // The clock stops with the route: write the Foray's position NOW.
             persistForay(true);
-        } else {
-            dispatch(new PlayerEvent.RouteChanged(false));
-        }
-        if (change.oldDeviceUnavailable() || change.routeName() == null || !state.knownCarRoutes.contains(change.routeName())
-                || state.currentItem() == null) {
             return;
         }
-        if (!(state.player instanceof PlayerQueueState.Interrupted i) || !i.wasPlaying()) return;
-        diag("session", m("kind", str("route-resume")), m("knownCar", JsonNode.TRUE));
-        begin(DeferredIntent.ROUTE_RESUME, Source.AUTORESUME);
+        dispatch(new PlayerEvent.RouteChanged(false));
+        state.heardRoute = null;
+        boolean known = state.knownRoutes.contains(key);
+        RouteResume.PausedBy pausedBy = state.routeResume.pausedBy();
+        RouteResume.Loss loss = state.routeResume.lost();
+        Double lostSec = loss == null || loss.atSec() == null ? null : wallSec() - loss.atSec();
+        RouteResume.Decision decision = routeResumeStep(new RouteResume.Event.Back(change.portType(), key, change.routeClass(),
+                known, wallSec()));
+        if (decision == null) decision = new RouteResume.Decision(false, RouteResume.Why.NOT_PAUSED);
+        if (decision.resume() && state.currentItem() == null) {
+            // Nothing to resume (not expected: a loss arms only while playing).
+            decision = new RouteResume.Decision(false, RouteResume.Why.NO_ITEM);
+        }
+        diag("route", m("kind", str("back")),
+                m("port", change.portType() == null ? JsonNode.NULL : str(change.portType())),
+                m("class", str(change.routeClass().token)),
+                m("key", key == null ? JsonNode.NULL : str(RouteResume.rowKey(key))),
+                m("known", JsonNode.bool(known)),
+                m("lostSec", Rows.finiteOrNull(lostSec == null ? null : roundHalfAwayFromZero(lostSec * 10) / 10)),
+                m("pausedBy", str(pausedBy.token)),
+                m("decision", str(decision.resume() ? "resume" : "no")),
+                m("why", str(decision.why())));
+        if (decision.resume()) {
+            // Like a car's press: grace from this moment, then the activation.
+            begin(DeferredIntent.ROUTE_RESUME, Source.AUTORESUME);
+        } else if (audibleNow() && state.isRunning() && key != null) {
+            // Playing on through a route that just arrived (a car connecting while the phone
+            // plays): heard through it from now.
+            state.heardRoute = new EngineState.HeardRoute(key, now.monoMs(), null);
+        }
+    }
+
+    // ---- route resume's bookkeeping (A-61, the Swift NE-38rs)
+
+    /**
+     * Wall-clock seconds: a loss's age must keep counting while the phone sleeps (route-resume.js
+     * THE CLOCK), which uptime does not.
+     */
+    private double wallSec() {
+        return now.wallMs() / 1000;
+    }
+
+    /** A port's salted key, or null for a port with no address. */
+    private String routeKey(String portType, String uid) {
+        return RouteResume.hashedKey(portType, uid, config.routeSalt());
+    }
+
+    /** One event through route-resume.js's reducer; the decision a {@code back} asked for, else null. */
+    private RouteResume.Decision routeResumeStep(RouteResume.Event event) {
+        RouteResume.Step result = RouteResume.step(state.routeResume, event, config.routeResumeBluetooth());
+        state.routeResume = result.state();
+        return result.decision();
+    }
+
+    /** A press: "pause", "play", or any other name (a skip, a seek). */
+    private void routePress(String command) {
+        routeResumeStep(new RouteResume.Event.Press(command));
+    }
+
+    /** What a page command is as a press, if it is one. A toggle is whichever way it will go (the same truth {@code toggle} reads). */
+    private String pressName(EngineContract.Command command) {
+        return switch (command) {
+            case EngineContract.Command.PlayEpisode c -> "play";
+            case EngineContract.Command.PlayForay c -> "play";
+            case EngineContract.Command.Play c -> "play";
+            case EngineContract.Command.Jump c -> "play";
+            case EngineContract.Command.Pause c -> "pause";
+            case EngineContract.Command.Stop c -> "pause";
+            case EngineContract.Command.Purge c -> "pause";
+            case EngineContract.Command.Toggle c -> state.isRunning() || audibleNow() ? "pause" : "play";
+            case EngineContract.Command.Next c -> "next";
+            case EngineContract.Command.Previous c -> "previous";
+            case EngineContract.Command.SeekBy c -> "seek";
+            case EngineContract.Command.SeekTo c -> "seek";
+            default -> null;
+        };
+    }
+
+    /** A remote command as a press (a remote stop is a pause, T-7). */
+    private String remotePressName(MediaMapping.RemoteCommand command) {
+        return switch (command) {
+            case PLAY -> "play";
+            case PAUSE, STOP -> "pause";
+            case TOGGLE_PLAY_PAUSE -> state.isRunning() || audibleNow() ? "pause" : "play";
+            default -> remoteToken(command);
+        };
+    }
+
+    /** The deck became audible (playing for the loaded token): the route it is heard through starts (or continues) a heard span. */
+    private void startHearing() {
+        EngineInput.RoutePort route = now.route();
+        String key = route == null ? null : routeKey(route.portType(), route.uid());
+        if (key == null) {
+            state.heardRoute = null;
+            return;
+        }
+        EngineState.HeardRoute heard = state.heardRoute;
+        if (heard != null && heard.key().equals(key) && heard.untilMono() == null) return;
+        state.heardRoute = new EngineState.HeardRoute(key, now.monoMs(), null);
+    }
+
+    /**
+     * The deck stopped being audible: the span ends here (kept, so a loss that arrives just after
+     * the pause still counts what was heard). A span that already reached
+     * {@code KNOWN_AFTER_MS} through the route that is STILL current makes it known here (the
+     * NE-38rs review: the next playing starts a new span from zero, and the position tick that
+     * {@link #noteHeard} otherwise rides is seconds apart). A span whose route has already
+     * changed (the pause came first, plan §4.3) is left for the loss to count.
+     */
+    private void stopHearing() {
+        EngineState.HeardRoute heard = state.heardRoute;
+        if (heard == null || heard.untilMono() != null) return;
+        EngineState.HeardRoute ended = new EngineState.HeardRoute(heard.key(), heard.sinceMono(), now.monoMs());
+        state.heardRoute = ended;
+        EngineInput.RoutePort route = now.route();
+        if (ended.heardMs(now.monoMs()) >= RouteResume.KNOWN_AFTER_MS && route != null
+                && ended.key().equals(routeKey(route.portType(), route.uid()))) {
+            state.knownRoutes = state.knownRoutes.use(ended.key());
+        }
+    }
+
+    /** At the top of every turn: a span heard for {@code KNOWN_AFTER_MS} through the route that is still current makes that route known. */
+    private void noteHeard() {
+        EngineState.HeardRoute heard = state.heardRoute;
+        EngineInput.RoutePort route = now.route();
+        if (heard == null || heard.untilMono() != null || !now.deck().audible || route == null) return;
+        if (heard.heardMs(now.monoMs()) < RouteResume.KNOWN_AFTER_MS) return;
+        if (!heard.key().equals(routeKey(route.portType(), route.uid()))) return;
+        state.knownRoutes = state.knownRoutes.use(heard.key());
+    }
+
+    /**
+     * At the end of every turn: an intent to play that did not survive the turn (a refused
+     * activation, a failed load, the queue's end) is the system's pause to the reducer, so it can
+     * never be a route's.
+     */
+    private void settleRouteResume() {
+        if (!state.routeResume.playing() || state.pendingActivation != null || state.isRunning() || audibleNow()) return;
+        routeResumeStep(RouteResume.Event.SYSTEM);
     }
 
     /**
@@ -1728,6 +1916,7 @@ public final class EngineCore {
         SessionPolicy.Transition transition = SessionPolicy.transition(state.session,
                 new SessionPolicy.Input.Simple(SessionPolicy.InputKind.MEDIA_SERVICES_RESET), state.holdPolicy);
         stopRow(StopCause.MEDIA_SERVICES_RESET, null);
+        routeResumeStep(RouteResume.Event.SYSTEM);
         applySession(transition);
         dispatch(PlayerEvent.INTERRUPTION_BEGAN);
         dispatch(new PlayerEvent.InterruptionEnded(false));
@@ -1752,7 +1941,11 @@ public final class EngineCore {
                     return;
                 }
                 state.currentIndex = e.index();
-                if (e.autoplay()) begin(DeferredIntent.COLD_PLAY, Source.RESTORE);
+                if (e.autoplay()) {
+                    // The car's play that relaunched us: a press (route-resume.js).
+                    routePress("play");
+                    begin(DeferredIntent.COLD_PLAY, Source.RESTORE);
+                }
             }
             case LifecycleEvent.Background e -> {
                 state.backgrounded = true;
@@ -2472,7 +2665,11 @@ public final class EngineCore {
     private void onNarrator(NarratorEvent event) {
         if (!config.forayTapeEnabled()) return;
         switch (event) {
-            case NarratorEvent.Started e -> narrationStarted(e.seq(), e.voiceFallback());
+            case NarratorEvent.Started e -> {
+                narrationStarted(e.seq(), e.voiceFallback());
+                // A spoken line of ours is audible (route-resume.js "playing").
+                if (state.narration != null && state.narration.seq == e.seq()) routeResumeStep(RouteResume.Event.PLAYING);
+            }
             case NarratorEvent.Failed e -> {
                 PendingLoad pending = state.pendingLoad;
                 if (pending == null || pending.spokenSeq() == null || pending.spokenSeq() != e.seq()) {

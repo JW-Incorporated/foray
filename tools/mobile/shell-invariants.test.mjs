@@ -4923,8 +4923,10 @@ test("NE-27: ENGINE_DEFAULT says native only when STATE.md records the OQ-9 answ
   assert.equal(refusal, null, refusal ?? "");
   const androidRefusal = androidDefaultRefusal(committed.android, stateText);
   assert.equal(androidRefusal, null, androidRefusal ?? "");
-  assert.deepEqual(committed.android, { mode: "native", capabilities: ["episode", "continuation", "restore", "foray"] },
-    "A-42: Android's default is native for episodes and Forays, iOS's M2 four");
+  /* A-61 added the android block's `routeResumeBluetooth` (off, D-A9) and its "//" note. */
+  const androidBlock = Object.fromEntries(Object.entries(committed.android).filter(([k]) => !k.startsWith("//")));
+  assert.deepEqual(androidBlock, { mode: "native", capabilities: ["episode", "continuation", "restore", "foray"], routeResumeBluetooth: false },
+    "A-42: Android's default is native for episodes and Forays, iOS's M2 four; A-61: route resume's Bluetooth arm off");
   /* A-42: a default that grants `foray` needs a service that plays one. The Android service turns
      the Foray tape on (A-40) over the deck pair whenever it has a standby deck, and the jingle
      only when its player exists (A-41); it never turns on the held flags. MUTATION: build the
@@ -5219,9 +5221,22 @@ test("A-28: Android's plugin answers the engine's three methods through the brid
   const capabilities = readJson(path.join(ROOT, "player", "parity", "capabilities.json"));
   const jvm = readJson(path.join(ROOT, "player", "parity", "jvm-pending.json"));
   const owedCases = Object.keys(jvm.cases ?? {});
+  /* A-61, the engine/m3 merge: iOS M3 added two families to `foray` AFTER Android's A2 flip (A-42)
+     claimed it: prepare-narration (NE-45j, owed to A-62) and manager-remainder (NE-39j, owed to
+     A-63). The JVM plays Forays without them, as it did at the flip, and Track A4 (plan §5.7) is the
+     card set that ports them. They are the only owed families a claimed capability may carry, each
+     only while its card still owes it, so the list can only shrink: a family burned down fails
+     here until it leaves the list, and A-63 (the empty book) leaves it empty.
+     MUTATION: owe another foray family to an A-6x card, or burn prepare-narration down and keep it
+     listed; each fails. */
+  const M3_OWED_AFTER_FLIP = { "prepare-narration": "A-62", "manager-remainder": "A-63" };
+  for (const [family, card] of Object.entries(M3_OWED_AFTER_FLIP)) {
+    assert.equal(jvm.families?.[family], card, `${family} is no longer owed to ${card}: drop it from M3_OWED_AFTER_FLIP`);
+  }
   for (const cap of claimed) {
     assert.ok(CAPABILITIES.includes(cap), `ADVERTISED_CAPABILITIES names ${cap}, which engine-contract.js CAPABILITIES does not define`);
     for (const family of capabilities[cap] ?? []) {
+      if (cap === "foray" && family in M3_OWED_AFTER_FLIP) continue;
       assert.ok(!(family in (jvm.families ?? {})), `Android advertises ${cap}, but the JVM still owes ${family} to ${jvm.families?.[family]}`);
       assert.ok(!owedCases.some((id) => id.startsWith(`${family}/`)), `Android advertises ${cap}, but the JVM still owes cases in ${family}`);
     }
@@ -5249,6 +5264,21 @@ test("A-28: Android's plugin answers the engine's three methods through the brid
   const declaredList = /emptyList\(\)/.test(declared) ? [] : [...declared.matchAll(/"([^"]+)"/g)].map((m) => m[1]);
   assert.deepEqual(declaredList, defaults.android.capabilities ?? [], "EngineLane.DECLARED_CAPABILITIES must be ENGINE_DEFAULT.json's android capabilities");
   assert.match(lane, /OVERRIDE_KEY = "ForayEngine\.modeOverride"/, "the Developer setting is stored under iOS's key");
+
+  /* A-61: route resume's Bluetooth arm, OFF on Android as on iOS (NE-38rs), and D-A9's "no": no
+     plugin asks for BLUETOOTH_CONNECT, the permission that reading a device's class would need.
+     The service builds its core with the lane's literal, which says what the file says.
+     MUTATION: android.routeResumeBluetooth true in ENGINE_DEFAULT.json, the literal true, the
+     service passing `true`, or a <uses-permission> for BLUETOOTH_CONNECT; each fails here. */
+  assert.equal(defaults.android.routeResumeBluetooth, false, "ENGINE_DEFAULT.json's android block keeps the Bluetooth arm off (D-A9)");
+  assert.equal(/ROUTE_RESUME_BLUETOOTH = (true|false);/.exec(lane)?.[1], String(defaults.android.routeResumeBluetooth === true),
+    "EngineLane.ROUTE_RESUME_BLUETOOTH must say what ENGINE_DEFAULT.json's android block says");
+  const service = stripJavaComments(fs.readFileSync(path.join(audioDir, "ForayPlaybackService.java"), "utf8"));
+  assert.match(service, /\.withRouteResume\(EngineLane\.ROUTE_RESUME_BLUETOOTH,/, "the service's core takes the arm from the lane");
+  for (const plugin of ["foray-audio", "foray-tts", "foray-vault"]) {
+    const manifest = fs.readFileSync(path.join(MOBILE, "plugins", plugin, "android", "src", "main", "AndroidManifest.xml"), "utf8");
+    assert.doesNotMatch(manifest, /BLUETOOTH_CONNECT/, `${plugin} asks for BLUETOOTH_CONNECT (D-A9: no)`);
+  }
 });
 
 /* ─────────── A-29: ownership and fallback (the Android subset of NE-17) ───────────

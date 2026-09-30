@@ -901,6 +901,14 @@ A-61, A-62, A-64, A-66 (+ NE-39j) ─ A-63 ─ A-67 ─ A-68 ─ A-69 (gated)
     - the keys survive a store reload.
   - An `android-playback` step adds and removes a virtual device, where the emulator allows it. Otherwise it is recorded as no-coverage.
 - **Device check:** A-67's script, route block.
+- **Status (2026-09-30, A-61 PR):** done on `android/native`, with engine/m3 merged in for NE-38rj's family (a cherry-pick of #894 alone conflicts; engine/m3 goes to main as #913 anyway). NE-38rs (#904, #908) is the iOS reference, ported line for line:
+  - `RouteResume.java` is route-resume.js's decision, reducer and replay, plus the salted SHA-256 keys (`MessageDigest`), the LRU set of 8 and the stored form (`{"v":1,"salt":…,"keys":[…]}`, the Swift bytes). The `route-resume` family is in the JVM's `runs`.
+  - `EngineCore.onRoute` follows NE-38rs: presses, interruptions, system pauses and playing feed the reducer; a route is known after 1 s heard through it (`EngineNow.route`); the loss's age is wall-clock; `route kind=lost|back … decision= why=` rows carry 8 hex of the key, never an address.
+  - The host (`RouteWatcher` in the service) keys a device by its `SESSION_PORTS` token and its address; BECOMING_NOISY stays the pause and names the route that is going, and the removal after it adds nothing. The class is `car` in car UI mode (entering it reports the current route again, so a car whose projection starts after its Bluetooth resumes then), `bluetooth` for A2DP, SCO and LE, `other` otherwise. `BLUETOOTH_CONNECT` is not requested (D-A9), and `mobile/ENGINE_DEFAULT.json` android carries `routeResumeBluetooth: false`.
+  - `EngineStore` keeps `ForayEngine.knownRoutes`; a purge takes it with every other private key.
+  - The capability gate (shell-invariants, A-28) tolerates exactly two owed `foray` families that iOS M3 added after the A2 flip, prepare-narration (A-62) and manager-remainder (A-63), each only while its card owes it.
+  - Emulator: the native leg's `route` step drives a VIRTUAL A2DP device through the debug driver (the emulator has no Bluetooth, and adb cannot add an output) in real car mode (`cmd uimode car yes`); without car mode it records no-coverage.
+  - Open for the device pass (A-67): a resume that starts the foreground service from the background after a long loss, on Android 12+.
 
 #### A-62 · Prepare across narration seams on the Media3 deck (mirrors NE-45s) — **M**
 - **Depends on:** A-42, NE-45j (it recorded its cases as a sibling family, `prepare-narration`, which `jvm-pending.json` owes whole to A-62; `prepare` itself stays owed whole to A-40, because A-25 handed it on: its cases run the Foray tape through the engine)

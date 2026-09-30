@@ -408,8 +408,8 @@ test("A-26: a third leg runs the native engine's scenarios, every one gated, and
   const steps = PLY.split(/\n(?= {6}- (?:name|uses):)/).filter((c) => /node tools\/mobile\/android-native-playback\.mjs (?!collect|summary)/.test(c));
   assert.deepEqual(NATIVE.map(([id]) => id),
     ["first-launch", "play", "background", "transport", "notification", "seams", "foray-seams", "doze", "focus", "call", "kill", "airplane",
-      "bridge", "fallback"],
-    "A-30's (e), A-26's (a)-(d), A-30's (f), A-40's Foray (f), A-26's (g), (h), (i), A-27's (j), A-30's (k), then A-28's page door, then A-29's fallback, last");
+      "route", "bridge", "fallback"],
+    "A-30's (e), A-26's (a)-(d), A-30's (f), A-40's Foray (f), A-26's (g), (h), (i), A-27's (j), A-30's (k), A-61's route resume, then A-28's page door, then A-29's fallback, last");
   assert.equal(steps.length, NATIVE.length, "one step per native scenario");
   let last = PLY.indexOf("android-playback.mjs collect ");
   for (const [id] of NATIVE) {

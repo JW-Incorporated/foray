@@ -5,6 +5,7 @@ import ai.jwlabs.foura.engine.EngineConfig;
 import ai.jwlabs.foura.engine.EngineCore;
 import ai.jwlabs.foura.engine.JsonNode;
 import ai.jwlabs.foura.engine.RestoreRecord;
+import ai.jwlabs.foura.engine.RouteResume;
 import ai.jwlabs.foura.engine.Rows;
 import android.content.Context;
 import android.content.SharedPreferences;
@@ -31,7 +32,8 @@ import java.util.function.Consumer;
  *       a position the page reads, byte for byte, when the listener switches engines (plan
  *       §4.6). The engine writes NO other key in that file: {@link #writeShared} refuses one
  *       outside {@code OWNED_PREFIXES} with a {@code fault} row.</li>
- *   <li><b>PRIVATE</b> the restore record (and, with A-29, the ownership keys), in the engine's
+ *   <li><b>PRIVATE</b> the restore record (and, with A-29, the ownership keys, and with A-61 route
+ *       resume's known routes, {@value #KEY_KNOWN_ROUTES}), in the engine's
  *       own file {@value #PRIVATE_FILE}, under the same {@code ForayEngine.*} names iOS uses in
  *       {@code UserDefaults}. Outside the page's file, so the Preferences plugin (and the
  *       DurableStore above it) never hydrates, mirrors or clobbers them.</li>
@@ -51,7 +53,7 @@ import java.util.function.Consumer;
  *
  * <p>Main-confined like the host that drives it.
  */
-public final class EngineStore implements EngineSeams.Output, EngineBridge.Records {
+public final class EngineStore implements EngineSeams.Output, EngineBridge.Records, EngineSeams.KnownRoutesStoring {
     /** {@code @capacitor/preferences}' file on Android ({@code PreferencesConfiguration}'s default group). */
     public static final String SHARED_FILE = "CapacitorStorage";
     /** The engine's own file. */
@@ -60,6 +62,13 @@ public final class EngineStore implements EngineSeams.Output, EngineBridge.Recor
     public static final String PRIVATE_PREFIX = "ForayEngine.";
     /** The cold path's restore record ({@code EnginePrivateKey.restore}). */
     public static final String KEY_RESTORE = PRIVATE_PREFIX + "restore";
+    /**
+     * Route resume's known routes (A-61, the iOS {@code EnginePrivateKey.knownRoutes} of NE-38rs,
+     * {@code RouteResume.Stored}): at most 8 salted SHA-256 keys of a device type and address, and
+     * the install's salt. Never a device's name or raw address. A purge takes it with every other
+     * key in this file.
+     */
+    public static final String KEY_KNOWN_ROUTES = PRIVATE_PREFIX + "knownRoutes";
 
     private final SharedPreferences shared;
     private final SharedPreferences own;
@@ -190,6 +199,36 @@ public final class EngineStore implements EngineSeams.Output, EngineBridge.Recor
         try {
             return RestoreRecord.parse(prefs.getString(KEY_RESTORE, null));
         } catch (RuntimeException e) {
+            return null;
+        }
+    }
+
+    // ---- route resume's known routes (A-61)
+
+    /** {@value #KEY_KNOWN_ROUTES}, or null for none or a value this build cannot trust ({@link RouteResume.Stored#parse}). */
+    @Override
+    public RouteResume.Stored loadKnownRoutes() {
+        try {
+            return RouteResume.Stored.parse(own.getString(KEY_KNOWN_ROUTES, null));
+        } catch (RuntimeException e) {
+            return null;
+        }
+    }
+
+    /** Written synchronously ({@code commit()}); null (an empty set) removes the key. */
+    @Override
+    public void saveKnownRoutes(RouteResume.Stored stored) {
+        SharedPreferences.Editor edit = own.edit();
+        if (stored == null) edit.remove(KEY_KNOWN_ROUTES);
+        else edit.putString(KEY_KNOWN_ROUTES, stored.serialized());
+        if (!edit.commit()) failed("known-routes");
+    }
+
+    /** The stored string, for the dump and the tests. */
+    public String knownRoutesRaw() {
+        try {
+            return own.getString(KEY_KNOWN_ROUTES, null);
+        } catch (ClassCastException e) {
             return null;
         }
     }

@@ -8,6 +8,8 @@
   },
   "android": {
     "mode": "native",
-    "capabilities": ["episode", "continuation", "restore", "foray"]
+    "capabilities": ["episode", "continuation", "restore", "foray"],
+    "//routeResumeBluetooth": "A-61: route resume's Bluetooth arm, OFF as on iOS (EngineLane.ROUTE_RESUME_BLUETOOTH, which shell-invariants holds to this value). Telling a car's Bluetooth from headphones would need the BLUETOOTH_CONNECT runtime permission, which is not requested (D-A9: no); car mode (Android Auto) is the car class.",
+    "routeResumeBluetooth": false
   }
 }

@@ -18,6 +18,9 @@ import {
   PAGE_ASSET_ORIGIN,
   PAGE_FORAY,
   pageForayQueue,
+  ROUTE_DEVICE,
+  routeRowsOf,
+  verdictRoute,
   ASSET_BASE,
   NARRATION_ASSET_BASE,
   airplaneForayFacts,
@@ -242,8 +245,8 @@ test("A-26: small helpers and the CLI", () => {
   assert.equal(ourSession({ sessions: [{ package: "x", state: "PLAYING" }, { package: PKG, state: "PAUSED" }] }).state, "PAUSED");
   assert.deepEqual(SCENARIOS.map(([id]) => id),
     ["first-launch", "play", "background", "transport", "notification", "seams", "foray-seams", "doze", "focus", "call", "kill", "airplane",
-      "bridge", "fallback"],
-    "A-30's (e), A-26's (a)-(d), A-30's (f), A-40's Foray (f), A-26's (g), (h), (i), A-27's (j), A-30's (k), then A-28's page door, then A-29's fallback");
+      "route", "bridge", "fallback"],
+    "A-30's (e), A-26's (a)-(d), A-30's (f), A-40's Foray (f), A-26's (g), (h), (i), A-27's (j), A-30's (k), A-61's route resume, then A-28's page door, then A-29's fallback");
   assert.match(summaryMarkdown({ play: { ok: true } }), /\| \(a\) native[^|]*\| \*\*pass\*\* \|/);
   assert.equal(parseArgs(["play", "--art", "d"]).art, "d");
   assert.throws(() => parseArgs(["back-home", "--art", "d"]), /first argument/);
@@ -1089,4 +1092,35 @@ test("A-41: the service builds the engine's synthesiser and jingle, and its dump
   assert.match(host, /seams\.speaker\.narrate\(command\);/, "every narration command goes to the speaker when there is one");
   assert.match(host, /seams\.speaker\.release\(\);/, "the teardown lets the synthesiser go");
   assert.match(host, /seams\.interlude\.release\(\);/, "and the jingle");
+});
+
+test("A-61: route resume's emulator verdict: in car mode one resume for the car, none after a listener's pause, and no address in a row", () => {
+  /* MUTATION: count every `route back` as a resume, drop the listener check, or let a row carry the
+     address; each fails. Without car mode it is no-coverage, never a pass that proved something. */
+  const row = (seq, json) => ({ seq, iso: "2026-09-30T00:00:00.000Z", kind: "route", body: JSON.stringify(json), json });
+  const rows = [
+    row(10, { kind: "back", port: "a2dp", class: "car", key: "0a1b2c3d", known: false, pausedBy: "none", decision: "no", why: "not-paused" }),
+    row(11, { kind: "lost", port: "a2dp", class: "car", key: "0a1b2c3d", known: true }),
+    row(12, { kind: "back", port: "a2dp", class: "car", key: "0a1b2c3d", known: true, lostSec: 4.1, pausedBy: "route", decision: "resume", why: "route-back" }),
+    row(13, { kind: "lost", port: "a2dp", class: "car", key: "0a1b2c3d", known: true }),
+    row(14, { kind: "back", port: "a2dp", class: "car", key: "0a1b2c3d", known: true, lostSec: 1, pausedBy: "listener", decision: "no", why: "listener-paused" }),
+  ];
+  const good = { carMode: true, car: { pausedAfterLoss: true, playingAfterBack: true }, listener: { running: false }, rows, since: 5 };
+  const v = verdictRoute(good);
+  assert.deepEqual(v.failures, []);
+  assert.equal(v.coverage, "virtual-device");
+  assert.equal(routeRowsOf(rows).length, 5);
+  assert.match(verdictRoute({ ...good, rows: [...rows, row(15, { kind: "back", class: "car", decision: "resume", why: "route-back" })] }).failures.join(";"),
+    /2 route resumes/);
+  assert.match(verdictRoute({ ...good, listener: { running: true } }).failures.join(";"), /listener's pause was resumed/);
+  assert.match(verdictRoute({ ...good, rows: rows.filter((r) => r.seq !== 14) }).failures.join(";"), /why=listener-paused/);
+  const leaked = rows.map((r) => (r.seq === 11 ? row(11, { ...r.json, key: ROUTE_DEVICE.address }) : r));
+  assert.match(verdictRoute({ ...good, rows: leaked }).failures.join(";"), /address/);
+  assert.match(verdictRoute({ ...good, car: { pausedAfterLoss: true, playingAfterBack: false } }).failures.join(";"), /did not resume/);
+  const none = verdictRoute({ ...good, carMode: false });
+  assert.equal(none.ok, true);
+  assert.equal(none.coverage, "no-coverage");
+  // The driver's command and the service's hooks it drives are the real ones.
+  const driver = read("src/debug/java/ai/jwlabs/foura/audio/EngineDriveReceiver.java");
+  assert.match(driver, /case "route" -> \{[\s\S]*?service\.routeWatcher\(\)[\s\S]*?watcher\.onAdded[\s\S]*?watcher\.onRemoved[\s\S]*?service\.becomingNoisy\(\)/);
 });
