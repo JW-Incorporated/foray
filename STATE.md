@@ -7,6 +7,32 @@ docs/. Completed workstreams move to their plan doc's retro section.
 
 ## Active workstreams
 
+### 2026-09-30 — `android/a-30-native-scenarios`: A-30, native-mode emulator scenarios green
+
+Owned: the native leg of `.github/workflows/android-playback.yml` and `tools/mobile/android-native-playback.mjs`
+(the lane, the (e), (f) and (k) scenarios, `bridge`'s reset), the JS runner's two exports (`firstLaunchScenario`,
+`airplaneScenario`), and the `nativeLane` field of `ForayPlaybackService`'s dump. Card A-30 of
+`docs/plans/android-assessment.md` (Track A1), PR #914, into `android/native`.
+
+**What changed.**
+- **The native lane.** Every engine scenario of the native leg now runs in the native lane. It stores the Developer
+  setting Native, starts a fresh process when the running one is not native, and fails if any engine dump it reads
+  says `nativeLane: false`.
+- **Three new native steps.**
+  - (e): a first launch in the native lane, through the page, with the engine hosting.
+  - (f): the hidden episode seams, recorded; gated only on crossing every seam in one process.
+  - (k): gated. The engine stops an unloadable episode in airplane mode within the load deadline, and a bundled one
+    plays after. A Foray tapped in the native lane relinquishes to the page's player, whose rendered line falls back
+    in time.
+
+**Evidence.** Run 36693793704 has every native-mode verdict green. Seams: 7, p95 126 ms. Numbers in
+`docs/android-emulator-measurements.md` §11.
+
+**Paths.** `.github/workflows/android-playback.yml` and `tools/mobile/**` are governed. Per the orchestrator, the
+card merges into `android/native`, and governed paths are reviewed on the final `android/native` → `main` PR.
+
+No device, and no request to Joey (D-A3).
+
 ### 2026-09-30 — `android/a-27r-review`: A-27 review, the cold path is the native lane's alone
 
 Adversarial review of A-27 (#905, already merged into `android/native`). Owned: `ForayMediaButtonReceiver`,
