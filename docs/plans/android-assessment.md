@@ -749,6 +749,7 @@ A-61, A-62, A-64, A-66 (+ NE-39j) ─ A-63 ─ A-67 ─ A-68 ─ A-69 (gated)
 - **Ask:** Port NE-39n's ruling: the engine's Next lands on the next item, a narration line included. Map the causes to the same tokens.
 - **Acceptance:** the NE-39n cases pass on the JVM. Robolectric maps each `PlaybackException` class to its cause.
 - **Device check:** A-67's script.
+- **Status (2026-09-30, M3 integration PR):** the Next half is done. The main merge put `manager-episode` in the JVM's `runs`, and NE-39n had re-recorded `manager-episode/every-effect-has-a-handler`, so `EngineCore.java` now flips the same three `skipBridges` calls (`canNext`, `next`, `SkipNext`) as the Swift core and the case passes; nothing is owed. The fallback-cause half (the `PlaybackException` mapping) is still open.
 
 #### A-65 · Keep-alive across silent seams: the Android twin of the silence-node decision (mirrors NE-46) — **S**
 - **Depends on:** A-60
