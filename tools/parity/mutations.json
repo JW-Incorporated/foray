@@ -66,6 +66,17 @@
       "jsTest": { "suite": "route-resume", "name": "a listener's pause is never resumed, even when the car is then lost and comes back" },
       "family": "route-resume",
       "recordedBy": "NE-38rj"
+    },
+    "stale-load": {
+      "why": "A skip's load that a newer skip already replaced is dropped, not run after it (player-core-9; queue-manager.js _loadItem's stale-target check): the reducer's target is the authority on what loads. The mutant drops the check, so two skips from a speaking line load the first skip's target last and land it into the second's loadingItem.",
+      "patch": {
+        "file": "player/queue-manager.js",
+        "find": "    if (!sameItemRef(focus, ref)) {",
+        "replace": "    if (false) {"
+      },
+      "jsTest": { "suite": "queue-manager", "name": "a skip's load that a newer skip already replaced is dropped, not run after it (player-core-9)" },
+      "family": "manager-remainder",
+      "recordedBy": "NE-39j"
     }
   }
 }

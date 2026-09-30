@@ -1,0 +1,547 @@
+{
+  "family": "manager-remainder",
+  "note": "NE-39j: the rest of the queue-manager remainder: an unknown ref, the position timer, the rate getter and its snap line, player-core-7 and -9, and the two audit round 2 rules. Recorded from the real PlayerQueueManager over the shared fakes. Port card NE-39s; JVM A-40 (owed whole).",
+  "cases": [
+    {
+      "id": "manager-remainder/an-unknown-ref-errors-to-idle-rather-than-hanging",
+      "covers": ["queue-manager::an unknown ref surfaces as an error rather than hanging"],
+      "note": "A load whose item is no longer in the queue. A Next from a spoken line waits on the synthesiser's pause, the queue is replaced meanwhile, and when the pause answers the load finds no item for its ref: it errors to idle, and never hangs in loading.",
+      "setup": { "target": "manager", "tts": { "pause": "held" } },
+      "steps": [
+        {
+          "call": "loadQueue",
+          "args": [
+            [
+              { "$tts": ["line", { "audio_url": null, "script": "A line." }] },
+              { "$ep": ["b"] }
+            ]
+          ]
+        },
+        { "call": "play", "args": [0] },
+        { "checkpoint": "speaking" },
+        { "call": "skipToNext", "await": false },
+        { "settle": 2 },
+        { "call": "loadQueue", "args": [[{ "$ep": ["other"] }]] },
+        { "tts": "releasePause" },
+        { "settle": 3 },
+        { "checkpoint": "after" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "speaking",
+            "ops": ["tts.speak:A line.@1"],
+            "playhead": "line",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": -1,
+            "name": "after",
+            "ops": ["tts.pause"],
+            "playhead": "line",
+            "rate": 1,
+            "state": "idle"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": -1,
+            "name": "end",
+            "ops": [],
+            "playhead": "line",
+            "rate": 1,
+            "state": "idle"
+          }
+        ],
+        "ops": ["tts.speak:A line.@1", "tts.pause"]
+      }
+    },
+    {
+      "id": "manager-remainder/the-position-timer-runs-only-while-playing",
+      "covers": ["queue-manager::the position timer runs only while playing"],
+      "note": "The periodic position writer is armed while playing and disarmed by a pause.",
+      "setup": { "target": "manager", "view": ["positionTimer"] },
+      "steps": [
+        { "call": "loadQueue", "args": [[{ "$ep": ["a"] }]] },
+        { "checkpoint": "idle" },
+        { "call": "play", "args": [0] },
+        { "checkpoint": "playing" },
+        { "call": "pause" },
+        { "checkpoint": "paused" },
+        { "call": "resume" },
+        { "checkpoint": "resumed" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": -1,
+            "name": "idle",
+            "ops": [],
+            "playhead": null,
+            "positionTimer": false,
+            "rate": 1,
+            "state": "idle"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "playing",
+            "ops": ["load:a@0", "rate:1", "play"],
+            "playhead": "a",
+            "positionTimer": true,
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "paused",
+            "ops": ["store.save:a@0", "pause"],
+            "playhead": "a",
+            "positionTimer": false,
+            "rate": 1,
+            "state": "interrupted"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "resumed",
+            "ops": ["load:a@0", "rate:1", "play"],
+            "playhead": "a",
+            "positionTimer": true,
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "end",
+            "ops": [],
+            "playhead": "a",
+            "positionTimer": true,
+            "rate": 1,
+            "state": "playing"
+          }
+        ],
+        "ops": [
+          "load:a@0",
+          "rate:1",
+          "play",
+          "store.save:a@0",
+          "pause",
+          "load:a@0",
+          "rate:1",
+          "play"
+        ]
+      }
+    },
+    {
+      "id": "manager-remainder/the-rate-getter-reports-the-chosen-speed",
+      "covers": [
+        "queue-manager::the rate getter reports the CHOSEN speed, which is what a label is painted from"
+      ],
+      "note": "Normal speed until someone says otherwise; then the chosen speed, before a load and after one (never the element's live rate, which a load resets).",
+      "setup": { "target": "manager" },
+      "steps": [
+        { "call": "loadQueue", "args": [[{ "$ep": ["a"] }]] },
+        { "checkpoint": "default" },
+        { "call": "setRate", "args": [1.25] },
+        { "checkpoint": "chosen" },
+        { "call": "play", "args": [0] },
+        { "checkpoint": "after-load" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": -1,
+            "name": "default",
+            "ops": [],
+            "playhead": null,
+            "rate": 1,
+            "state": "idle"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": -1,
+            "name": "chosen",
+            "ops": ["rate:1.25"],
+            "playhead": null,
+            "rate": 1.25,
+            "state": "idle"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "after-load",
+            "ops": ["load:a@0", "rate:1.25", "play"],
+            "playhead": "a",
+            "rate": 1.25,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "end",
+            "ops": [],
+            "playhead": "a",
+            "rate": 1.25,
+            "state": "playing"
+          }
+        ],
+        "ops": ["rate:1.25", "load:a@0", "rate:1.25", "play"]
+      }
+    },
+    {
+      "id": "manager-remainder/a-snapped-rate-says-so",
+      "covers": ["queue-manager::a snapped value SAYS so, so a stale stored rate is discoverable"],
+      "note": "Off the ladder (1.6 -> 1.5) and a numeric STRING (\"2\" -> 1) each say they were snapped; a value already on the ladder (1.75) is not a snap and says nothing.",
+      "setup": { "target": "manager", "telemetry": ["rate.snapped"] },
+      "steps": [
+        { "call": "setRate", "args": [1.6] },
+        { "checkpoint": "off-ladder" },
+        { "call": "setRate", "args": ["2"] },
+        { "checkpoint": "string" },
+        { "call": "setRate", "args": [1.75] },
+        { "checkpoint": "on-ladder" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": -1,
+            "name": "off-ladder",
+            "ops": ["telemetry:rate.snapped requested=1.6 applied=1.5", "rate:1.5"],
+            "playhead": null,
+            "rate": 1.5,
+            "state": "idle"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": -1,
+            "name": "string",
+            "ops": ["telemetry:rate.snapped requested=\"2\" applied=1", "rate:1"],
+            "playhead": null,
+            "rate": 1,
+            "state": "idle"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": -1,
+            "name": "on-ladder",
+            "ops": ["rate:1.75"],
+            "playhead": null,
+            "rate": 1.75,
+            "state": "idle"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": -1,
+            "name": "end",
+            "ops": [],
+            "playhead": null,
+            "rate": 1.75,
+            "state": "idle"
+          }
+        ],
+        "ops": [
+          "telemetry:rate.snapped requested=1.6 applied=1.5",
+          "rate:1.5",
+          "telemetry:rate.snapped requested=\"2\" applied=1",
+          "rate:1",
+          "rate:1.75"
+        ]
+      }
+    },
+    {
+      "id": "manager-remainder/stop-is-silence-behind-a-paused-machine",
+      "covers": [
+        "queue-manager::stop() is silence even when the machine believed it was already paused (player-core-7)"
+      ],
+      "note": "The #689 drift: the element is audible while the machine says interrupted, and the reducer's stop from there emits no pause. stop() reads the element, so the element is paused.",
+      "setup": { "target": "manager" },
+      "steps": [
+        { "call": "loadQueue", "args": [[{ "$ep": ["a"] }]] },
+        { "call": "play", "args": [0] },
+        { "call": "pause" },
+        { "checkpoint": "paused" },
+        { "deck": "audible", "audible": true },
+        { "call": "stop" },
+        { "checkpoint": "stopped" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "paused",
+            "ops": ["load:a@0", "rate:1", "play", "store.save:a@0", "pause"],
+            "playhead": "a",
+            "rate": 1,
+            "state": "interrupted"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "stopped",
+            "ops": ["store.save:a@0", "pause"],
+            "playhead": "a",
+            "rate": 1,
+            "state": "idle"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "end",
+            "ops": [],
+            "playhead": "a",
+            "rate": 1,
+            "state": "idle"
+          }
+        ],
+        "ops": [
+          "load:a@0",
+          "rate:1",
+          "play",
+          "store.save:a@0",
+          "pause",
+          "store.save:a@0",
+          "pause"
+        ]
+      }
+    },
+    {
+      "id": "manager-remainder/a-skip-load-a-newer-skip-replaced-is-dropped",
+      "covers": [
+        "queue-manager::a skip's load that a newer skip already replaced is dropped, not run after it (player-core-9)"
+      ],
+      "note": "Two Nexts from a spoken line: the first waits on the synthesiser's pause, the second's load runs meanwhile, and the first's load, when its pause answers, is stale and dropped. The newest target is the last load, and the index agrees.",
+      "setup": { "target": "manager", "tts": { "pause": "held" } },
+      "steps": [
+        {
+          "call": "loadQueue",
+          "args": [
+            [
+              { "$tts": ["nar-1", { "audio_url": null, "script": "the opening line" }] },
+              {
+                "$seg": [
+                  "s1",
+                  100,
+                  200,
+                  { "audio_url": "https://cdn.example/a.mp3", "rate": 1 }
+                ]
+              },
+              {
+                "$seg": [
+                  "s2",
+                  400,
+                  500,
+                  { "audio_url": "https://cdn.example/a.mp3", "rate": 1 }
+                ]
+              }
+            ]
+          ]
+        },
+        { "call": "play", "args": [0] },
+        { "checkpoint": "speaking" },
+        { "call": "skipToNext", "await": false },
+        { "settle": 1 },
+        { "call": "skipToNext", "await": false },
+        { "settle": 1 },
+        { "tts": "releasePause" },
+        { "settle": 3 },
+        { "checkpoint": "after" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "speaking",
+            "ops": ["tts.speak:the opening line@1"],
+            "playhead": "nar-1",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 2,
+            "name": "after",
+            "ops": ["tts.pause", "load:s2@400", "rate:1", "outPoint:500", "play"],
+            "playhead": "s2",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 2,
+            "name": "end",
+            "ops": [],
+            "playhead": "s2",
+            "rate": 1,
+            "state": "playing"
+          }
+        ],
+        "ops": [
+          "tts.speak:the opening line@1",
+          "tts.pause",
+          "load:s2@400",
+          "rate:1",
+          "outPoint:500",
+          "play"
+        ]
+      }
+    },
+    {
+      "id": "manager-remainder/a-play-settling-mid-skip-back-keeps-the-restart",
+      "covers": [
+        "queue-manager::ROUND 2 review: a play settling mid-skip-back does not wipe the skip's armed restart offset"
+      ],
+      "note": "The first play is still awaiting the element when Previous arms its restart at 0, and it settles inside the skip's pause. The restart survives: the reload is at 0, not at the 1234 s just saved.",
+      "setup": { "target": "manager", "backend": { "slowFirstPlay": true } },
+      "steps": [
+        { "call": "loadQueue", "args": [[{ "$ep": ["a"] }]] },
+        { "call": "play", "args": [0], "await": false },
+        { "settle": 2 },
+        { "checkpoint": "play-pending" },
+        { "deck": "time", "sec": 1234 },
+        { "call": "skipToPrevious" },
+        { "settle": 2 },
+        { "checkpoint": "restarted" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "play-pending",
+            "ops": ["load:a@0", "rate:1", "play"],
+            "playhead": "a",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "restarted",
+            "ops": ["store.save:a@1234", "pause", "load:a@0", "rate:1", "play"],
+            "playhead": "a",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "end",
+            "ops": [],
+            "playhead": "a",
+            "rate": 1,
+            "state": "playing"
+          }
+        ],
+        "ops": [
+          "load:a@0",
+          "rate:1",
+          "play",
+          "store.save:a@1234",
+          "pause",
+          "load:a@0",
+          "rate:1",
+          "play"
+        ]
+      }
+    },
+    {
+      "id": "manager-remainder/the-settled-hook-fires-after-every-handled-event",
+      "covers": [
+        "queue-manager::ROUND 2 player-1: onStateSettled fires after EVERY handled event, with the settled state"
+      ],
+      "note": "The surface repaints on the settled state after every event, the natural end of an episode included, which produces no media event after it.",
+      "setup": { "target": "manager", "settledEvents": true },
+      "steps": [
+        { "call": "loadQueue", "args": [[{ "$ep": ["a"] }]] },
+        { "call": "play", "args": [0] },
+        { "checkpoint": "playing" },
+        { "deck": "ended", "reason": "natural" },
+        { "checkpoint": "ended" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "playing",
+            "ops": [
+              "load:a@0",
+              "rate:1",
+              "play",
+              "event.settled:playing",
+              "event.settled:playing"
+            ],
+            "playhead": "a",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "ended",
+            "ops": ["event.settled:ended"],
+            "playhead": "a",
+            "rate": 1,
+            "state": "ended"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "end",
+            "ops": [],
+            "playhead": "a",
+            "rate": 1,
+            "state": "ended"
+          }
+        ],
+        "ops": [
+          "load:a@0",
+          "rate:1",
+          "play",
+          "event.settled:playing",
+          "event.settled:playing",
+          "event.settled:ended"
+        ]
+      }
+    }
+  ]
+}
