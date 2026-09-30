@@ -394,7 +394,8 @@ test("A-05: the focus helper is built from its committed source without Gradle, 
 test("A-26: a third leg runs the native engine's scenarios, every one gated, and none of the JS lane's", async () => {
   /* MUTATION: drop the native leg -> fails. MUTATION: `|| true` on a native step, or drop
      `!cancelled()` from one -> fails. MUTATION: remove the (h) native step -> fails (the card
-     names (a)-(d), (g), (h) and (i)). MUTATION: run a JS scenario on the native leg (drop its
+     names (a)-(d), (g), (h) and (i)). MUTATION: remove A-30's (e) or (k) native step -> fails
+     (A-30: "required-green on (a)-(e) and (g)-(k)"). MUTATION: run a JS scenario on the native leg (drop its
      `matrix.mode == 'js'`) -> the A-04 test above fails. */
   const { SCENARIOS: NATIVE } = await import("./android-native-playback.mjs");
   const native = legs().filter((l) => l.mode === "native");
@@ -406,8 +407,8 @@ test("A-26: a third leg runs the native engine's scenarios, every one gated, and
   assert.match(PYML, /^ {6}MODE: \$\{\{ matrix\.mode \}\}$/m);
   const steps = PLY.split(/\n(?= {6}- (?:name|uses):)/).filter((c) => /node tools\/mobile\/android-native-playback\.mjs (?!collect|summary)/.test(c));
   assert.deepEqual(NATIVE.map(([id]) => id),
-    ["play", "background", "transport", "notification", "doze", "focus", "call", "kill", "bridge", "fallback"],
-    "A-26's (a)-(d), (g), (h), (i), A-27's (j), then A-28's page door, then A-29's fallback, last");
+    ["first-launch", "play", "background", "transport", "notification", "seams", "doze", "focus", "call", "kill", "airplane", "bridge", "fallback"],
+    "A-30's (e), A-26's (a)-(d), A-30's (f), A-26's (g), (h), (i), A-27's (j), A-30's (k), then A-28's page door, then A-29's fallback, last");
   assert.equal(steps.length, NATIVE.length, "one step per native scenario");
   let last = PLY.indexOf("android-playback.mjs collect ");
   for (const [id] of NATIVE) {

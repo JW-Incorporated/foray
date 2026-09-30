@@ -165,6 +165,21 @@
 # SIGKILL through the restarted service's session. `am force-stop` is the negative
 # control, recorded only. About three minutes.
 #
+# A-30 made the leg the native LANE's, and added three steps. Every engine
+# scenario now stores the Developer engine setting Native first and runs in a
+# process whose lane is native (the page, the owner, the media button receiver
+# and the service are the ones A-31's flip ships); every engine dump it reads must
+# say `nativeLane: true`, or it fails. The new steps: (e) a first launch in the
+# native lane (the JS leg's screenshot and insets through the page, plus the lane
+# and the engine hosting); (f) the hidden EPISODE seams, a seven-seam queue played
+# to its end with the screen off, each gap read from the engine's own rows
+# (recorded, and gated only on crossing every seam in one process); and (k) in
+# airplane mode, an episode that cannot load stopped by the engine within the
+# deck's load deadline with a bundled one playing after, and a Foray tapped in the
+# native lane relinquished to the page's player, whose rendered line falls back in
+# time (both gated). About six more minutes; the ceiling holds. The numbers are in
+# `docs/android-emulator-measurements.md` §11.
+#
 # `fail-fast: false`, so a red leg never cancels the other's verdicts. Each leg
 # checks that the device it booted really is its API level before installing
 # anything, and uploads its own artifact. The differences between the legs are
@@ -598,6 +613,12 @@ jobs:
       # ── A-26: the native engine's leg (`matrix.mode == 'native'`). The same
       # discipline as the JS scenarios: one step each, each after a launch
       # whatever the one before did, none of them silenced, and every one GATED.
+      # A-30: every engine scenario runs in the native LANE (see the header).
+
+      - name: (e) native — a first launch in the native lane, as a screenshot, with the engine up
+        id: native-first-launch
+        if: ${{ matrix.mode == 'native' && !cancelled() && steps.launch.outcome == 'success' }}
+        run: node tools/mobile/android-native-playback.mjs first-launch --art "$ART"
 
       - name: (a) native — the engine plays a clip, in a mediaPlayback service, published to the system
         id: native-play
@@ -619,6 +640,11 @@ jobs:
         if: ${{ matrix.mode == 'native' && !cancelled() && steps.launch.outcome == 'success' }}
         run: node tools/mobile/android-native-playback.mjs notification --art "$ART"
 
+      - name: (f) native — hidden episode seams, the screen off, every seam crossed (gaps recorded)
+        id: native-seams
+        if: ${{ matrix.mode == 'native' && !cancelled() && steps.launch.outcome == 'success' }}
+        run: node tools/mobile/android-native-playback.mjs seams --art "$ART"
+
       - name: (g) native — Doze, unplugged, in the rare bucket, and still playing after 5 minutes
         id: native-doze
         if: ${{ matrix.mode == 'native' && !cancelled() && steps.launch.outcome == 'success' }}
@@ -639,6 +665,10 @@ jobs:
         if: ${{ matrix.mode == 'native' && !cancelled() && steps.launch.outcome == 'success' }}
         run: node tools/mobile/android-native-playback.mjs kill --art "$ART"
 
+      - name: (k) native — airplane mode; an unloadable episode stops in time; a Foray relinquishes and its line falls back
+        id: native-airplane
+        if: ${{ matrix.mode == 'native' && !cancelled() && steps.launch.outcome == 'success' }}
+        run: node tools/mobile/android-native-playback.mjs airplane --art "$ART"
 
       # A-28: the page's door. Since A-28 the page asks the Android engine
       # engineHello; this reads the stock lane (legacy), turns the Developer engine
@@ -671,12 +701,14 @@ jobs:
           mkdir -p "$ART"
           {
             if [ "${MODE:-js}" = "native" ]; then
-              echo "## Android playback scenarios, NATIVE engine (A-26, A-27), API ${API_LEVEL}"
+              echo "## Android playback scenarios, NATIVE engine (A-26..A-30), API ${API_LEVEL}"
               echo
               node tools/mobile/android-native-playback.mjs summary --art "$ART"
               echo
-              echo "**This leg** drives ForayPlaybackService (the native engine, A-21..A-26) through"
-              echo "the debug build's EngineDriveReceiver, because the page's way in is A-28's."
+              echo "**This leg** runs in the native lane (the Developer engine setting, Native) and"
+              echo "drives ForayPlaybackService through the debug build's EngineDriveReceiver, because"
+              echo "the page's native lane plays no episode until A-31 declares the capability; the"
+              echo "first-launch, airplane, bridge and fallback steps also go through the page."
             else
               echo "## Android playback scenarios (A-04, A-05), API ${API_LEVEL}"
               echo

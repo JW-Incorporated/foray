@@ -255,6 +255,7 @@ public class PlaybackResumptionTest {
         String text = dump(s);
         assertTrue(text, text.contains("\"coldBoot\":\"painted\""));
         assertTrue(text, text.contains("\"mediaButtonReceiver\":true"));
+        assertTrue("A-30: the dump says the process is in the native lane", text.contains("\"nativeLane\":true"));
         String rows = String.join("\n", s.rows());
         assertTrue(rows, rows.contains("resumption {\"kind\":\"answer\",\"forPlayback\":false,\"record\":\"episode\",\"item\":\"a\",\"offsetSec\":754}"));
         assertTrue(rows, rows.contains("\"kind\":\"cold-boot\",\"record\":\"painted\""));

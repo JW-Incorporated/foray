@@ -120,7 +120,8 @@ import java.util.concurrent.atomic.AtomicReference;
  * prints one {@code ForayEngine {json}} line (the core's state, the deck's playhead, the surface)
  * and the engine's last rows. It is read on the main thread (the dump waits up to two seconds for
  * it), because the core and the player are confined there. The native-mode scenarios read it; so
- * can a device pass.
+ * can a device pass. Since A-30 it also says whether the process is in the native lane
+ * ({@code nativeLane}, {@link EngineOwnership#engineLane}), which every native scenario gates on.
  */
 @OptIn(markerClass = UnstableApi.class)
 public class ForayPlaybackService extends MediaSessionService {
@@ -634,6 +635,9 @@ public class ForayPlaybackService extends MediaSessionService {
         m.add(JsonNode.member("recordOffsetSec", record == null ? JsonNode.NULL : JsonNode.num(record.offsetSec())));
         m.add(JsonNode.member("coldBoot", coldBoot == null ? JsonNode.NULL : JsonNode.str(coldBoot.token)));
         m.add(JsonNode.member("mediaButtonReceiver", JsonNode.bool(ForayMediaButtonReceiver.isEnabled(this))));
+        // A-30: the process's lane, as the receiver reads it (never written here). The native-mode
+        // scenarios gate on it, so a leg that silently ran in the JS lane cannot pass as native.
+        m.add(JsonNode.member("nativeLane", JsonNode.bool(EngineOwnership.engineLane(this))));
         if (engine != null) {
             EngineState st = engine.state();
             DeckReading reading = deck != null ? deck.reading() : DeckReading.idle();

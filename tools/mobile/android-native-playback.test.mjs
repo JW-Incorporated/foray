@@ -17,6 +17,21 @@ import {
   DEVTOOLS_ENDPOINT,
   DOZE_QUEUE,
   ENGINE_STATUS_EXPRESSION,
+  AIRPLANE_QUEUE,
+  LANE_SCENARIOS,
+  NATIVE_GATES,
+  SEAMS_QUEUE,
+  UNREACHABLE_EPISODE_URL,
+  airplaneFacts,
+  engineRowsFromLogcat,
+  episodeSeamStats,
+  episodeSeams,
+  laneFailures,
+  mergeRows,
+  parseEngineRow,
+  verdictAirplane,
+  verdictFirstLaunch,
+  verdictSeams,
   LEGACY_START_EXPRESSION,
   copyFacts,
   ownerFacts,
@@ -211,11 +226,11 @@ test("A-26: small helpers and the CLI", () => {
   assert.equal(moved(S({ positionSec: 1 }), S({ item: "other", positionSec: 3 })), null, "a different item is not comparable");
   assert.equal(ourSession({ sessions: [{ package: "x", state: "PLAYING" }, { package: PKG, state: "PAUSED" }] }).state, "PAUSED");
   assert.deepEqual(SCENARIOS.map(([id]) => id),
-    ["play", "background", "transport", "notification", "doze", "focus", "call", "kill", "bridge", "fallback"],
-    "A-26's (a)-(d), (g), (h), (i), A-27's (j), then A-28's page door, then A-29's fallback");
+    ["first-launch", "play", "background", "transport", "notification", "seams", "doze", "focus", "call", "kill", "airplane", "bridge", "fallback"],
+    "A-30's (e), A-26's (a)-(d), A-30's (f), A-26's (g), (h), (i), A-27's (j), A-30's (k), then A-28's page door, then A-29's fallback");
   assert.match(summaryMarkdown({ play: { ok: true } }), /\| \(a\) native[^|]*\| \*\*pass\*\* \|/);
   assert.equal(parseArgs(["play", "--art", "d"]).art, "d");
-  assert.throws(() => parseArgs(["seams", "--art", "d"]), /first argument/);
+  assert.throws(() => parseArgs(["back-home", "--art", "d"]), /first argument/);
   assert.throws(() => parseArgs(["play"]), /--art/);
 });
 
@@ -483,4 +498,236 @@ test("A-29: the fallback's page expression asks the legacy service through the p
     /"ForayEngine\.owner mode=" \+ d\.mode\(\)\.token \+ " reason=" \+ d\.reason\(\)\.token \+ " strikes=" \+ d\.strikes\(\)/,
     "ownerFacts reads the owner's decision line as EngineOwnership writes it");
   assert.equal(parseArgs(["fallback", "--art", "d"]).scenario, "fallback");
+});
+
+/* ─────────── A-30: the native lane, (e), (f), (k) ─────────── */
+
+/* The engine's rows from run 36688133433's native (g) Doze (verdict-native-doze.json): a tap
+   pause and a play of the same item (a press, not a seam), a load of item 0 after a remote pause,
+   then three out-point seams crossed while dozing, each to a new source. As logcat prints them. */
+const DOZE_ROWS = [
+  '96 2026-09-30T08:18:41.402Z stop {"cause":"pause","source":"tap","item":"a26-ep-0","positionSec":30.193,"state":"playing"}',
+  '97 2026-09-30T08:18:41.426Z deck {"kind":"time-control","token":9,"status":"paused","reason":null,"step":"ready","positionSec":30.193,"bufferedAheadSec":59.879,"suppressed":0,"rate":1}',
+  '98 2026-09-30T08:18:44.167Z deck {"kind":"reuse","token":10,"startSec":30.391,"fromSec":30.391,"bufferedAheadSec":59.681,"idleSec":2.745}',
+  '99 2026-09-30T08:18:44.170Z deck {"kind":"time-control","token":10,"status":"paused","reason":null,"step":"seek","positionSec":30.391,"bufferedAheadSec":59.681,"suppressed":0,"rate":1}',
+  '100 2026-09-30T08:18:44.184Z deck {"kind":"ready","token":10,"landedSec":30.391,"targetSec":30.391,"prerolled":true,"reuse":true,"elapsedMs":14,"attempts":0,"marks":{"readiness":14,"ready":14},"bufferedAheadSec":59.681}',
+  '102 2026-09-30T08:18:44.198Z deck {"kind":"time-control","token":10,"status":"playing","reason":null,"step":"ready","positionSec":30.391,"bufferedAheadSec":59.681,"suppressed":0,"rate":1}',
+  '103 2026-09-30T08:18:46.590Z remote {"cmd":"pause","dupCandidate":"n","route":null,"thread":"main","state":"playing","grace":"n","graceReason":null,"bgRemainingMs":null}',
+  '104 2026-09-30T08:18:46.592Z stop {"cause":"pause","source":"remote","item":"a26-ep-0","positionSec":32.735,"state":"playing"}',
+  '105 2026-09-30T08:18:46.595Z deck {"kind":"time-control","token":10,"status":"paused","reason":null,"step":"ready","positionSec":32.745,"bufferedAheadSec":57.327,"suppressed":0,"rate":1}',
+  '106 2026-09-30T08:18:46.650Z remote {"kind":"status","cmd":"pause","status":"success"}',
+  '107 2026-09-30T08:18:49.662Z deck {"kind":"reuse","token":11,"startSec":0,"fromSec":32.745,"bufferedAheadSec":57.327,"idleSec":3.066}',
+  '109 2026-09-30T08:18:49.741Z deck {"kind":"ready","token":11,"landedSec":0,"targetSec":0,"prerolled":true,"reuse":true,"elapsedMs":80,"attempts":0,"marks":{"readiness":80,"ready":80},"bufferedAheadSec":90.036}',
+  '110 2026-09-30T08:18:49.757Z restore write',
+  '111 2026-09-30T08:18:49.761Z deck {"kind":"time-control","token":11,"status":"playing","reason":null,"step":"ready","positionSec":0,"bufferedAheadSec":90.036,"suppressed":0,"rate":1}',
+  '112 2026-09-30T08:20:15.088Z deck {"kind":"time-control","token":11,"status":"paused","reason":null,"step":"ready","positionSec":85.241,"bufferedAheadSec":4.831,"suppressed":0,"rate":1}',
+  '113 2026-09-30T08:20:15.090Z outPoint {"kind":"stop","layer":"boundary","overshootMs":241,"rate":1,"token":11}',
+  '114 2026-09-30T08:20:15.091Z deck {"kind":"attach","token":12,"startSec":0,"precise":true,"host":null,"cold":"other-source","idleSec":0.004}',
+  '117 2026-09-30T08:20:15.144Z deck {"kind":"ready","token":12,"landedSec":0,"targetSec":0,"prerolled":true,"reuse":false,"elapsedMs":52,"attempts":0,"marks":{"duration":46,"readiness":52,"ready":52},"bufferedAheadSec":12.528}',
+  '119 2026-09-30T08:20:15.162Z deck {"kind":"time-control","token":12,"status":"playing","reason":null,"step":"ready","positionSec":0,"bufferedAheadSec":12.528,"suppressed":0,"rate":1}',
+  '120 2026-09-30T08:21:40.342Z deck {"kind":"time-control","token":12,"status":"paused","reason":null,"step":"ready","positionSec":85.132,"bufferedAheadSec":4.939,"suppressed":0,"rate":1}',
+  '121 2026-09-30T08:21:40.343Z outPoint {"kind":"stop","layer":"boundary","overshootMs":132,"rate":1,"token":12}',
+  '122 2026-09-30T08:21:40.345Z deck {"kind":"attach","token":13,"startSec":0,"precise":true,"host":null,"cold":"other-source","idleSec":0.003}',
+  '125 2026-09-30T08:21:40.410Z deck {"kind":"ready","token":13,"landedSec":0,"targetSec":0,"prerolled":true,"reuse":false,"elapsedMs":66,"attempts":0,"marks":{"duration":57,"readiness":66,"ready":66},"bufferedAheadSec":22.032}',
+  '127 2026-09-30T08:21:40.427Z deck {"kind":"time-control","token":13,"status":"playing","reason":null,"step":"ready","positionSec":0,"bufferedAheadSec":22.032,"suppressed":0,"rate":1}',
+  '128 2026-09-30T08:23:05.708Z deck {"kind":"time-control","token":13,"status":"paused","reason":null,"step":"ready","positionSec":85.225,"bufferedAheadSec":66.839,"suppressed":0,"rate":1}',
+  '129 2026-09-30T08:23:05.709Z outPoint {"kind":"stop","layer":"boundary","overshootMs":225,"rate":1,"token":13}',
+  '130 2026-09-30T08:23:05.711Z deck {"kind":"attach","token":14,"startSec":0,"precise":true,"host":null,"cold":"other-source","idleSec":0.006}',
+  '133 2026-09-30T08:23:05.777Z deck {"kind":"ready","token":14,"landedSec":0,"targetSec":0,"prerolled":true,"reuse":false,"elapsedMs":66,"attempts":0,"marks":{"duration":58,"readiness":66,"ready":66},"bufferedAheadSec":35.964}',
+  '135 2026-09-30T08:23:05.799Z deck {"kind":"time-control","token":14,"status":"playing","reason":null,"step":"ready","positionSec":0,"bufferedAheadSec":35.964,"suppressed":0,"rate":1}',
+];
+const logcatOf = (rows, pid = 5488) => rows.map((r) => `09-30 08:20:15.091  ${pid}  ${pid} I ForayEngine: ${r}`).join("\n");
+
+test("A-30: the dump says which lane the process is in, and every lane scenario is judged on it", () => {
+  /* MUTATION: rename nativeLane in the service only; drop a scenario from LANE_SCENARIOS; pass a
+     scenario that read no lane at all, or one JS-lane read among native ones. */
+  const service = read("src/main/java/ai/jwlabs/foura/audio/ForayPlaybackService.java");
+  assert.match(service, /JsonNode\.member\("nativeLane", JsonNode\.bool\(EngineOwnership\.engineLane\(this\)\)\)/);
+  assert.deepEqual([...LANE_SCENARIOS].sort(),
+    SCENARIOS.map(([id]) => id).filter((id) => id !== "bridge" && id !== "fallback").sort(),
+    "every engine scenario runs in the native lane; the page's door and the fallback set their own");
+  assert.deepEqual(laneFailures("play", [true, true, true]), []);
+  assert.match(laneFailures("play", [true, false, true])[0], /1 of 3 engine dumps said the process is not in the native lane/);
+  assert.match(laneFailures("doze", [])[0], /no dump said which lane/);
+  assert.match(laneFailures("seams", undefined)[0], /no dump said which lane/);
+  assert.deepEqual(laneFailures("bridge", []), [], "the page's door is not a lane scenario");
+  assert.deepEqual(laneFailures("fallback", [false]), []);
+});
+
+test("A-30: the lane is stored before the app starts, and the page's door starts from Automatic", () => {
+  /* MUTATION: call ensureNativeLane after `am start` in prepare; drop the force-stop for a process
+     that is not native; drop bridge's reset (it would read the native lane as the stock one). */
+  const src = fs.readFileSync(new URL("./android-native-playback.mjs", import.meta.url), "utf8");
+  const prep = /\nasync function prepare\(ctx\) \{([\s\S]*?)\n\}\n/.exec(src)?.[1] ?? "";
+  assert.ok(prep.indexOf("ensureNativeLane(ctx)") >= 0 && prep.indexOf("ensureNativeLane(ctx)") < prep.indexOf('"am", "start"'),
+    "the lane is set before the launch");
+  assert.match(prep, /LANE_SCENARIOS\.includes\(ctx\.scenario\)/);
+  const ensure = /\nasync function ensureNativeLane\(ctx, \{ fresh = false \} = \{\}\) \{([\s\S]*?)\n\}\n/.exec(src)?.[1] ?? "";
+  assert.match(ensure, /drive\(ctx, "override", \["--es", "mode", "native"\]\)/);
+  assert.match(ensure, /if \(fresh \|\| now\?\.nativeLane !== true\) \{\s*shell\("am", "force-stop", ctx\.pkg\);/);
+  const bridge = /\nasync function bridge\(ctx\) \{([\s\S]*?)\n\}\n/.exec(src)?.[1] ?? "";
+  const auto = bridge.indexOf('drive(ctx, "override", ["--es", "mode", "auto"])');
+  assert.ok(auto >= 0 && auto < bridge.indexOf("await prepare(ctx)"), "bridge puts Automatic back before its stock launch");
+  assert.match(src, /const lane = laneFailures\(args\.scenario, ctx\.laneSeen\);/, "main judges the lane");
+});
+
+test("A-30 (f): the seams queue is the click tracks, segments then a whole episode, seven seams", () => {
+  /* MUTATION: an https URL; a segment past its file; drop the whole episode (no natural end). */
+  assert.equal(SEAMS_QUEUE.length, 8);
+  assert.equal(new Set(SEAMS_QUEUE.map((i) => i.id)).size, SEAMS_QUEUE.length);
+  for (const it of SEAMS_QUEUE) {
+    assert.ok(it.audio_url.startsWith(ASSET_BASE), it.audio_url);
+    assert.ok(CLIPS.some((c) => it.audio_url.endsWith(c.file)));
+    assert.equal(it.kind, "episode");
+    if (it.end_sec != null) assert.ok(it.start_sec >= 0 && it.end_sec > it.start_sec && it.end_sec <= it.duration_sec);
+  }
+  const whole = SEAMS_QUEUE.filter((i) => i.end_sec == null);
+  assert.equal(whole.length, 1, "one whole episode, which ends at its file's end");
+  assert.equal(whole[0].start_sec, undefined, "whole: no in-point either");
+  const same = SEAMS_QUEUE.slice(1).filter((it, i) => it.audio_url === SEAMS_QUEUE[i].audio_url).length;
+  assert.equal(same, 2, "two seams inside one source");
+  assert.ok(SEAMS_QUEUE.some((i) => i.audio_url.endsWith(CLIPS[2].file)), "one onto the VBR track with no seek table");
+});
+
+test("A-30 (f): engine rows parse from the dump and from logcat, once each, in order", () => {
+  /* MUTATION: parse the body as JSON when it is not an object; keep another pid's rows; keep a
+     row twice when the dump and logcat both carry it. */
+  const r = parseEngineRow(DOZE_ROWS[13]);
+  assert.equal(r.seq, 111);
+  assert.equal(r.kind, "deck");
+  assert.equal(r.json.status, "playing");
+  assert.equal(r.at, Date.parse("2026-09-30T08:18:49.761Z"));
+  assert.equal(parseEngineRow("110 2026-09-30T08:18:49.757Z restore write").json, null);
+  assert.equal(parseEngineRow("no row here"), null);
+  const log = `${logcatOf(DOZE_ROWS.slice(0, 5))}\n${logcatOf(DOZE_ROWS.slice(5, 7), 9999)}\n--------- beginning of main`;
+  assert.equal(engineRowsFromLogcat(log).length, 7);
+  assert.equal(engineRowsFromLogcat(log, 5488).length, 5, "one process's rows");
+  const merged = mergeRows(engineRowsFromLogcat(logcatOf(DOZE_ROWS.slice(0, 10))), DOZE_ROWS.slice(5).map(parseEngineRow));
+  assert.equal(merged.length, DOZE_ROWS.length);
+  assert.deepEqual(merged.map((x) => x.seq), DOZE_ROWS.map((x) => Number(x.split(" ")[0])));
+});
+
+test("A-30 (f): a seam runs from the outgoing load's end to the incoming load's first playing; a press is not a seam", () => {
+  /* MUTATION: measure from the attach (drops the out-point's own time); count the load after a
+     remote pause as a seam; end a load on a stall it recovered from. */
+  const seams = episodeSeams(DOZE_ROWS.map(parseEngineRow));
+  const clean = seams.filter((s) => !s.commanded);
+  assert.deepEqual(clean.map((s) => s.gapMs), [74, 85, 91], "run 36688133433's three dozing seams");
+  assert.deepEqual(clean.map((s) => s.endFrom), ["time-control", "time-control", "time-control"]);
+  assert.deepEqual(clean.map((s) => s.via), ["attach", "attach", "attach"]);
+  assert.deepEqual(clean.map((s) => s.cold), ["other-source", "other-source", "other-source"]);
+  assert.deepEqual(clean.map((s) => s.readyMs), [52, 66, 66]);
+  assert.deepEqual(clean.map((s) => s.overshootMs), [241, 132, 225]);
+  assert.equal(clean[0].loadMs, 71, "attach to playing");
+  assert.equal(seams.filter((s) => s.commanded).length, 1, "the load after a remote pause (the resume after the tap pause has no load playing before it)");
+  // A natural end: no outPoint, the load ends on its own time-control, a same-source reuse follows.
+  const natural = [
+    '1 2026-09-30T00:00:00.000Z deck {"kind":"attach","token":1,"cold":"no-item"}',
+    '2 2026-09-30T00:00:00.500Z deck {"kind":"time-control","token":1,"status":"playing"}',
+    '3 2026-09-30T00:01:30.000Z deck {"kind":"time-control","token":1,"status":"waiting"}',
+    '4 2026-09-30T00:01:30.100Z deck {"kind":"time-control","token":1,"status":"playing"}',
+    '5 2026-09-30T00:01:31.000Z deck {"kind":"time-control","token":1,"status":"paused"}',
+    '6 2026-09-30T00:01:31.010Z deck {"kind":"reuse","token":2}',
+    '7 2026-09-30T00:01:31.020Z deck {"kind":"ready","token":2,"elapsedMs":9}',
+    '8 2026-09-30T00:01:31.060Z deck {"kind":"time-control","token":2,"status":"playing"}',
+  ].map(parseEngineRow);
+  const [n] = episodeSeams(natural);
+  assert.equal(n.gapMs, 60, "a stall that recovered is not the end; the pause after it is");
+  assert.equal(n.via, "reuse");
+  assert.equal(n.cold, "same-source");
+  assert.equal(n.readyMs, 9);
+  assert.equal(n.commanded, false);
+});
+
+test("A-30 (f): the numbers are nearest-rank over the clean seams, by kind; the gate is crossing every seam", () => {
+  /* MUTATION: include commanded seams in the numbers; pass a queue that stopped short; pass with
+     the screen on or a new pid. */
+  const seams = [
+    { gapMs: 80, via: "attach" }, { gapMs: 60, via: "reuse" }, { gapMs: 120, via: "attach" }, { gapMs: 70, via: "attach" },
+    { gapMs: 90, via: "attach" }, { gapMs: 50, via: "reuse" }, { gapMs: 400, via: "attach" }, { gapMs: 9000, via: "attach", commanded: true },
+  ];
+  const st = episodeSeamStats(seams);
+  assert.equal(st.count, 7);
+  assert.equal(st.commanded, 1);
+  assert.equal(st.minMs, 50);
+  assert.equal(st.medianMs, 80);
+  assert.equal(st.p95Ms, 400);
+  assert.equal(st.maxMs, 400);
+  assert.deepEqual(st.byKind["same-source"], { count: 2, minMs: 50, medianMs: 50, p95Ms: 60, maxMs: 60 });
+  assert.equal(st.byKind["cross-source"].count, 5);
+  const good = { drive: { answer: { ok: true } }, wake: "Asleep", pidBefore: "1", pidAfter: "1", last: { index: SEAMS_QUEUE.length - 1 }, seams };
+  assert.equal(verdictSeams(good).ok, true);
+  assert.equal(verdictSeams(good).recorded.p95Ms, 400, "recorded, never gated on the gap");
+  assert.match(verdictSeams({ ...good, last: { index: 4 } }).failures[0], /stopped at item 4/);
+  assert.match(verdictSeams({ ...good, wake: "Awake" }).failures[0], /screen did not go off/);
+  assert.match(verdictSeams({ ...good, pidAfter: "2" }).failures[0], /pid changed/);
+  assert.match(verdictSeams({ ...good, seams: seams.slice(0, 4) }).failures[0], /4 of the queue's 7 seams/);
+  assert.match(verdictSeams({ ...good, drive: { answer: { ok: false } } }).failures[0], /load did not play/);
+});
+
+test("A-30 (k): the engine's half reads the load, the stop and whether anything sounded, after the mark", () => {
+  /* MUTATION: read rows from before the load (an earlier item's stop would count); accept a pause
+     stop as the decision; miss a playing time-control on the failed load. */
+  const rows = [
+    '40 2026-09-30T00:00:00.000Z stop {"cause":"error","item":"old"}',
+    '41 2026-09-30T00:00:01.000Z deck {"kind":"attach","token":7,"cold":"other-source"}',
+    '42 2026-09-30T00:00:02.000Z stop {"cause":"pause","source":"tap"}',
+    '43 2026-09-30T00:00:07.500Z deck {"kind":"failed","token":7,"code":2001}',
+    '44 2026-09-30T00:00:07.501Z stop {"cause":"error","item":"a30-air-0"}',
+  ].map(parseEngineRow);
+  const f = airplaneFacts(rows, 40);
+  assert.equal(f.decisionMs, 6501);
+  assert.deepEqual(f.stop, { cause: "error", at: "2026-09-30T00:00:07.501Z" });
+  assert.deepEqual(f.deck, [{ kind: "failed", token: 7, code: 2001 }]);
+  assert.equal(f.sounded, false);
+  assert.equal(airplaneFacts(rows, 44).stop, null);
+  const late = airplaneFacts([rows[1], parseEngineRow('45 2026-09-30T00:00:21.000Z stop {"cause":"load-deadline"}')], 40);
+  assert.equal(late.decisionMs, 20000);
+  assert.equal(airplaneFacts([rows[1], parseEngineRow('46 2026-09-30T00:00:03.000Z deck {"kind":"time-control","token":7,"status":"playing"}')], 40).sounded, true);
+  assert.equal(AIRPLANE_QUEUE[0].audio_url, UNREACHABLE_EPISODE_URL);
+  assert.ok(UNREACHABLE_EPISODE_URL.startsWith("https://"), "the network, not an asset");
+  assert.equal(NATIVE_GATES.airplaneDecisionMs, NATIVE_GATES.loadDeadlineMs + 5000);
+  assert.match(read("src/main/java/ai/jwlabs/foura/audio/engine/ExoDeck.java"), /DEFAULT_LOAD_DEADLINE_SEC = 20;/,
+    "the gate is the deck's own deadline");
+});
+
+test("A-30 (k): both halves are gated, and the Foray must go through the relinquish", () => {
+  /* MUTATION: drop any one check; each failing input below turns red for its own reason. */
+  const copy = copyFacts("#   2 12:00:00.400 engineMode native (override)\n#   9 12:00:09.000 engineMode js (relinquished)\nengine=js reason=override");
+  const good = {
+    airplane: true, facts: { attachAt: "x", stop: { cause: "error" }, decisionMs: 6500, sounded: false },
+    after: { state: "idle", running: false, exoPlaying: false }, session: { state: "PAUSED" }, recovered: { item: "a26-0" },
+    laneBefore: "native", foray: { ok: true, failures: [] }, copy,
+  };
+  assert.equal(verdictAirplane(good).ok, true, JSON.stringify(verdictAirplane(good).failures));
+  const bad = (patch, re) => {
+    const v = verdictAirplane({ ...good, ...patch });
+    assert.equal(v.ok, false);
+    assert.ok(v.failures.some((f) => re.test(f)), `${re} not in ${JSON.stringify(v.failures)}`);
+  };
+  bad({ airplane: false }, /airplane mode did not engage/);
+  bad({ facts: { ...good.facts, attachAt: null } }, /never started loading/);
+  bad({ facts: { ...good.facts, stop: null } }, /did not stop the unreachable episode/);
+  bad({ facts: { ...good.facts, decisionMs: 25001 } }, /25001 ms after its load/);
+  bad({ facts: { ...good.facts, sounded: true } }, /reported playing/);
+  bad({ after: { state: "playing", running: true } }, /after the failure the engine is playing/);
+  bad({ session: { state: "PLAYING" } }, /still says PLAYING/);
+  bad({ recovered: null }, /bundled episode did not play/);
+  bad({ laneBefore: "js" }, /lane before the Foray was js/);
+  bad({ foray: { ok: false, failures: ["the line was neither spoken nor skipped within 15000 ms"] } }, /^foray: the line was neither spoken/);
+  bad({ foray: null }, /Foray half did not run/);
+  bad({ copy: copyFacts("#   2 12:00:00.400 engineMode native (override)") }, /no `engineMode js \(relinquished\)` row/);
+});
+
+test("A-30 (e): the first launch is the JS leg's verdict plus the native lane and a hosting engine", () => {
+  /* MUTATION: drop the lane check, or the engine check. */
+  const good = { launch: { ok: true, failures: [] }, status: { lane: "native" }, service: { hosting: true, legacyRunning: false } };
+  assert.equal(verdictFirstLaunch(good).ok, true);
+  assert.match(verdictFirstLaunch({ ...good, launch: { ok: false, failures: ["screencap returned no PNG"] } }).failures[0], /screencap/);
+  assert.match(verdictFirstLaunch({ ...good, status: { lane: "js" } }).failures[0], /lane is js, not native/);
+  assert.match(verdictFirstLaunch({ ...good, status: { error: "timeout" } }).failures[0], /could not be read: timeout/);
+  assert.match(verdictFirstLaunch({ ...good, service: null }).failures[0], /service is not running/);
+  assert.match(verdictFirstLaunch({ ...good, service: { hosting: false } }).failures[0], /not hosting/);
+  assert.equal(parseArgs(["first-launch", "--art", "d"]).scenario, "first-launch");
+  assert.equal(parseArgs(["airplane", "--art", "d"]).scenario, "airplane");
 });
