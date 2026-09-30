@@ -1,0 +1,35 @@
+Title-free excerpt of the founder's 2026-09-28 Copy (build web 674ae32bfc06eb58, native 2026092706), engine rows e#75-e#103 and the page rows between them. The Now Playing title and show and the episode id are replaced; nothing else is changed. It predates every M3 row, so each NE-38e verdict must read no-coverage on it.
+#1246 15:12:53.721 transport  play-restored from tap
+e#75   15:12:53.728 cmd        src=engine playEpisode source=tap cmdSeq=3
+e#76   15:12:53.813 session    src=engine activated activateMs=84ms ok=y token=— hint=n phase=active
+e#77   15:12:53.814 session    src=engine activate activateMs=84ms ok=y reason=—
+e#78   15:12:53.829 nowplaying src=engine "Episode title" / "Show title" / "—" state=playing artwork=y via=metadata rate=0
+e#79   15:12:55.974 deck       src=engine duration durationSec=8452.57142857143 token=1
+#1247 15:12:58.463 transport  pause from tap
+e#80   15:12:58.469 cmd        src=engine pause source=tap cmdSeq=4
+e#81   15:12:58.470 stop       src=engine source=tap positionSec=4176.972434309 item=episode-1 cause=pause state=playing
+e#82   15:12:58.472 nowplaying src=engine ... artwork=y rate=0 via=state state=paused
+e#83   15:13:02.732 session    src=engine notification hint=n phase=active port=BluetoothA2DPOutput oldDeviceUnavailable=n prevPort=Speaker forwarded=y withheld=name
+e#84   15:13:02.733 session    src=engine route port=BluetoothA2DPOutput oldDeviceUnavailable=n
+e#85   15:13:10.171 remote     src=engine play route=BluetoothA2DPOutput thread=main dupCandidate=n grace=y state=interrupted graceReason=remote-play bgRemainingMs=—
+e#86   15:13:10.172 grace      src=engine begin reason=remote-play task=ok bgRemainingMs=— low=— availMb=3334
+e#87   15:13:10.176 nowplaying src=engine ... artwork=y rate=0 via=state state=playing
+e#88   15:13:10.178 remote     src=engine play status=success
+e#89   15:13:15.188 remote     src=engine play route=BluetoothA2DPOutput thread=main dupCandidate=n grace=y state=loadingItem graceReason=remote-play bgRemainingMs=—
+e#90   15:13:15.189 remote     src=engine play status=success
+#1248 15:13:16.601 transport  play from tap
+e#91   15:13:16.606 cmd        src=engine play source=tap cmdSeq=5
+#1249 15:13:25.634 transport  play from tap
+e#92   15:13:25.636 cmd        src=engine play source=tap cmdSeq=6
+e#93   15:13:26.160 deck       src=engine duration durationSec=8452.57142857143 token=2
+e#94   15:13:29.317 session    src=engine notification reason=default hint=n phase=lostToInterruption type=began withheld=name
+e#95   15:13:29.318 session    src=engine interruption reason=default phase=began running=y
+e#96   15:13:29.318 stop       src=engine positionSec=4176.975954279 item=episode-1 cause=interruption state=loadingItem
+e#97   15:13:29.318 grace      src=engine end reason=remote-play heldMs=19146ms outcome=not-running
+e#98   15:13:29.319 nowplaying src=engine ... via=state rate=0 artwork=y state=paused
+#1250 15:13:42.732 transport  play from tap
+e#99   15:13:42.735 cmd        src=engine play source=tap cmdSeq=7
+e#100  15:13:43.505 session    src=engine activated activateMs=768ms ok=y token=— hint=n phase=active
+e#101  15:13:43.507 session    src=engine activate activateMs=768ms ok=y reason=—
+e#102  15:13:43.512 nowplaying src=engine ... artwork=y rate=0 state=playing via=state
+e#103  15:13:44.088 deck       src=engine duration durationSec=8452.57142857143 token=3
