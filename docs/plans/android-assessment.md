@@ -567,6 +567,30 @@ Rejected alternatives:
 - **Acceptance:** A-05 (j) in native mode: after `am kill`, dispatching `play` resumes 4a at the saved position.
   Gated.
 - **Device check:** Bluetooth car play after swiping the app away.
+- **Status (2026-09-29): done in its PR (#905), evidence in `STATE.md` (A-27 entry) and
+  `docs/android-emulator-measurements.md` §10.**
+  - **What was built.**
+    - `EngineStore` (foray-audio) is the service's output. It writes the shared rows into `@capacitor/preferences`'
+      own file (`CapacitorStorage`) as the exact `JSWriter` bytes, and the restore record into the engine's own
+      file as `ForayEngine.restore`. Every write is committed before it returns.
+    - `EngineCore.restoring` (JVM core) and `ForayEngineHost.coldBoot` are the Swift `ColdRestore` and
+      `ForayEngine.coldBoot`, with the same outcome tokens and the same `restore kind=cold-boot` row.
+    - Media3's playback resumption is the trigger. The empty session declares the two commands it needs only while
+      a record can be resumed. `onPlaybackResumption` answers with the recorded item and position, and applying the
+      answer is the cold boot.
+    - `ForayMediaButtonReceiver` ships disabled, so the JS lane never registers it. The native service switches it
+      on before its session is built.
+  - **Evidence.** The native leg (run 36665544656, job 109729315165) is green on (a)–(d) and (g)–(j), all gated.
+    (j) resumed 4a at the saved position after `am kill`, after a swipe then `am kill` (through the receiver), and
+    after a SIGKILL (through the restarted service's session).
+  - **Found.** The force-stop control does not hold on API 34: the receiver is still sent the key, and 4a plays.
+    This is A-67's to record.
+  - **Joined to A-28 (merged first).**
+    - The process's store is also the page bridge's records, so `engineRead("rows")` answers from the persisted
+      rows, and a "Delete my data" in any lane removes the rows and the restore record.
+    - The native lane's owner boots the service from the record before the page's first bridge call is answered.
+      That is NE-24's order, so the hello carries the restored queue and the undrained pending events.
+  - **Not executed.** The Bluetooth car check (D-A3).
 
 #### A-28 · Android bridge and page client — **M**
 - **Depends on:** A-26.

@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 /* The Android playback scenarios in NATIVE MODE (card A-26,
  * `docs/plans/android-assessment.md` §5.4): A-04/A-05's (a)–(d), (g), (h) and (i),
- * run against the native engine's `ForayPlaybackService` instead of the page's
- * player, on the CI emulator, over adb only.
+ * and since A-27 (j), run against the native engine's `ForayPlaybackService`
+ * instead of the page's player, on the CI emulator, over adb only.
  *
  * ── WHY A SECOND RUNNER ──────────────────────────────────────────────────────
  *
@@ -36,11 +36,11 @@
  *   node tools/mobile/android-native-playback.mjs <scenario> --art DIR [--pkg ai.jwlabs.foura]
  *
  * Scenarios: `play` (a), `background` (b), `transport` (c), `notification` (d),
- * `doze` (g), `focus` (h), `call` (i), `bridge` (A-28), `fallback` (A-29), and
- * `collect` / `summary`.
- * Every one is GATED here (the card: "must be green on (a)–(d), (g), (h) and
- * (i)"; A-28's: "the emulator native leg logs `engine mode native` in the Copy
- * paste"). Each
+ * `doze` (g), `focus` (h), `call` (i), `kill` (j, A-27), `bridge` (A-28),
+ * `fallback` (A-29), and `collect` / `summary`. Every one is GATED here (A-26:
+ * "must be green on (a)–(d), (g), (h) and (i)"; A-27: "(j) in native mode: after
+ * `am kill`, dispatching `play` resumes 4a at the saved position. Gated."; A-28's:
+ * "the emulator native leg logs `engine mode native` in the Copy paste"). Each
  * prints its verdict as JSON, writes `DIR/verdict-native-<scenario>.json`, and
  * exits 0 (pass), 1 (the verdict failed) or 2 (it could not run).
  *
@@ -105,10 +105,12 @@ import {
   foregroundService,
   intLine,
   killLine,
+  mediaButtonRoute,
   mediaControls,
   mediaSessions,
   pidOf,
   pngInfo,
+  receiverOf,
   uiNodes,
   wakefulness,
   DIAGNOSTICS_EXPRESSION,
@@ -151,6 +153,60 @@ export const LONG_QUEUE = Object.freeze(CLIPS.map((c, i) => engineItem(c, i)));
 export const DOZE_QUEUE = Object.freeze([...CLIPS, ...CLIPS].map((c, i) => engineItem(c, i, { prefix: "a26-doze" })));
 /** (d): the single episode, as the JS lane's (d) plays it. */
 export const EPISODE_QUEUE = Object.freeze([engineItem({ file: EPISODE.file, title: EPISODE.title }, 0, { prefix: "a26-ep", endSec: 90 })]);
+
+/** (j): two whole EPISODES, with no in- or out-point. A bounded item is a segment, and the
+ *  engine keeps no resume point for a segment (`persistPosition`), so the record a car's
+ *  PLAY resumes from would say nothing. The first is the CBR track: its seeks are exact
+ *  (A-25, measurements §8), so "at the saved position" can be judged to a second. The ids
+ *  are the leg's own, so each leg starts from 0: an id another leg left a position for would
+ *  resume from there, and the third leg would pause inside the near-end window. */
+export function killQueue(leg) {
+  return Object.freeze([CLIPS[0], CLIPS[1]].map((c, i) => Object.freeze({
+    id: `a27-${leg}-${i}`,
+    kind: "episode",
+    title: c.title,
+    show: SHOW,
+    audio_url: `${ASSET_BASE}${c.file}`,
+    duration_sec: 90,
+  })));
+}
+export const KILL_QUEUE = killQueue("kill");
+
+/** (j)'s legs, in order: how the process is ended, and what is gated. */
+export const KILL_LEGS = Object.freeze([
+  /* The card's: `am kill` only ends a process the system considers cached, and a paused Media3
+     service stays in the foreground for ten minutes, so this is the warm path (§7 found the same
+     on the JS lane). */
+  Object.freeze({ leg: "am-kill", gated: true }),
+  /* The swipe: the service hears onTaskRemoved (Media3's default stops a paused service), then
+     `am kill` ends the cached process, and nothing restarts it. The play reaches nobody but the
+     last media button receiver: ours, then Media3's playback resumption. The car-after-swipe
+     device check, on the emulator. */
+  Object.freeze({ leg: "swipe-am-kill", gated: true, viaReceiver: true }),
+  /* What the low-memory killer does. The system restarts the sticky service a second later,
+     and the play reaches its (empty) session: Media3's resumption again, by the session door. */
+  Object.freeze({ leg: "sigkill", gated: true }),
+  /* The negative control the plan names (A-67): recorded, never gated. */
+  Object.freeze({ leg: "force-stop", gated: false }),
+]);
+
+/** (j)'s numbers. */
+export const KILL = Object.freeze({
+  /** Played before the pause, so the saved playhead clears the position store's
+   *  MIN_RESUME_SEC (10 s: under it an episode resumes from 0) and stays clear of its
+   *  NEAR_END_SEC (30 s before the 90 s end). */
+  playBeforePauseMs: 18000,
+  /** The saved position must be at least this for the leg to measure anything. */
+  minSavedSec: 10,
+  /** After the kill, before the press: long enough for a SIGKILL to be reported. */
+  afterKillMs: 3000,
+  /** How long 4a has to be audible again after the press. */
+  resumeTimeoutMs: 20000,
+  /** "At the saved position": no earlier than this before it (an exact seek on CBR is never
+   *  early, A-25), and no later than the time since the press plus this. */
+  earlySec: 1,
+  lateSlackSec: 2,
+});
 
 /** The queue as the driver takes it: base64 of the JSON array (no shell quoting to get wrong). */
 export function queueArg(items) {
@@ -570,6 +626,58 @@ export function verdictCall({ phases }) {
   return { ok: failures.length === 0, failures, recorded: { before: rec("before"), ringing: rec("ringing"), inCall: rec("in-call"), ended: rec("ended"), endedLater: rec("ended+10s") } };
 }
 
+/** (j) one leg's reads, judged: did the play bring 4a back at the saved position. */
+export function killLegVerdict(leg) {
+  const failures = [];
+  const name = leg?.leg ?? "?";
+  const saved = leg?.saved ?? null;
+  if (!saved || !num(saved.offsetSec)) failures.push(`${name}: no saved position was read before the kill`);
+  else if (saved.offsetSec < KILL.minSavedSec) failures.push(`${name}: the saved position ${saved.offsetSec} s is under the ${KILL.minSavedSec} s resume floor, so the leg measured nothing`);
+  if (saved && saved.running !== false) failures.push(`${name}: the engine was not paused before the kill`);
+  if ((name === "sigkill" || name === "swipe-am-kill") && !leg.killed) {
+    failures.push(`${name}: the process (pid ${leg.pidBefore}) did not die, so the cold path was not exercised`);
+  }
+  if (name === "swipe-am-kill" && !(leg.receiverStarts > 0)) {
+    failures.push("swipe-am-kill: the media button receiver did not start the service, so the play did not come through it");
+  }
+  const r = leg?.resumed ?? null;
+  if (!leg?.pidAfterDispatch) failures.push(`${name}: no 4a process after the play: the press did not bring 4a back`);
+  if (!r) failures.push(`${name}: 4a was not playing within ${KILL.resumeTimeoutMs / 1000} s of the play`);
+  else if (saved && num(saved.offsetSec)) {
+    if (r.item !== saved.item) failures.push(`${name}: 4a resumed ${r.item}, not the saved ${saved.item}`);
+    const late = (num(r.afterMs) ? r.afterMs / 1000 : 0) + KILL.lateSlackSec;
+    if (!num(r.positionSec)) failures.push(`${name}: the resumed playhead could not be read`);
+    else if (r.positionSec < saved.offsetSec - KILL.earlySec || r.positionSec > saved.offsetSec + late) {
+      failures.push(`${name}: 4a resumed at ${r.positionSec} s, not at the saved ${saved.offsetSec} s (allowed ${-KILL.earlySec} s to +${late.toFixed(1)} s)`);
+    }
+  }
+  /* A process that died and came back must have come back through the record: the
+     service's cold boot painted it (the dump's coldBoot), not a fresh load. */
+  if (leg?.killed && r && r.coldBoot !== "painted") failures.push(`${name}: the process died, but the engine that played did not boot from the record (coldBoot ${r.coldBoot})`);
+  return failures;
+}
+
+/** (j) GATED in native mode (A-27): a paused 4a, on Home, ended four ways (`KILL_LEGS`),
+ *  then `cmd media_session dispatch play`. `am kill` (the card's), a swipe then `am kill`, and a
+ *  SIGKILL from the app's own uid must each resume 4a at the saved position. `am force-stop`
+ *  is the negative control: RECORDED, never gated (A-67). */
+export function verdictKill({ legs }) {
+  const failures = [];
+  const byName = (n) => (legs ?? []).find((l) => l.leg === n) ?? null;
+  for (const n of KILL_LEGS.filter((l) => l.gated).map((l) => l.leg)) {
+    const leg = byName(n);
+    if (!leg) failures.push(`the ${n} leg did not run`);
+    else failures.push(...killLegVerdict(leg));
+  }
+  const recorded = (legs ?? []).map((l) => ({
+    leg: l.leg, killed: l.killed, restartedBeforePlay: l.restartedBeforePlay ?? null,
+    savedSec: l.saved?.offsetSec ?? null, resumedSec: l.resumed?.positionSec ?? null, resumedAfterMs: l.resumed?.afterMs ?? null,
+    coldBoot: l.resumed?.coldBoot ?? null, receiverStarts: l.receiverStarts ?? null, lastReceiverBefore: l.routeBefore?.lastReceiver ?? null,
+    receivedBy: l.receivedBy ?? null, ourProcessAfterPlay: !!l.pidAfterDispatch,
+  }));
+  return { ok: failures.length === 0, failures, recorded };
+}
+
 export const SCENARIOS = Object.freeze([
   ["play", "(a) native: a clip plays in a mediaPlayback service, published"],
   ["background", "(b) native: Home, then screen off, 60 s"],
@@ -578,6 +686,7 @@ export const SCENARIOS = Object.freeze([
   ["doze", "(g) native: Doze, unplugged, rare bucket, 5 min"],
   ["focus", "(h) native: another app takes audio focus; pause, and resume after a transient loss"],
   ["call", "(i) native: a phone call; pause, and resume after it"],
+  ["kill", "(j) native: paused, on Home, the process ended; a media play resumes 4a at the saved position"],
   ["bridge", "(A-28) native: the page asks the engine; the Developer override; `engine mode native` in the Copy"],
   ["fallback", "(A-29) native: the engine throws at hello; the page falls back to js with a fault row; 3 strikes pin the JS lane"],
 ]);
@@ -983,6 +1092,98 @@ async function call(ctx) {
   return { ...v, measured: { number, emu, phases }, evidence: fs.readdirSync(ctx.art).filter((f) => f.startsWith("i-")) };
 }
 
+/** (j) paused on Home: the kill queue played long enough to leave a resume point, then paused
+ *  by the session's media key (the driver's pause if that did not land), then Home. */
+async function pausedOnHome(ctx, leg) {
+  await prepare(ctx);
+  loadQueue(ctx, killQueue(leg), 0);
+  await waitFor(ctx, isPlaying, 20000);
+  await sleep(KILL.playBeforePauseMs);
+  shell("cmd", "media_session", "dispatch", "pause");
+  let s = await waitFor(ctx, (x) => x?.running === false, GATES.pressTimeoutMs);
+  if (s?.running !== false) {
+    drive(ctx, "pause");
+    s = await waitFor(ctx, (x) => x?.running === false, GATES.pressTimeoutMs);
+  }
+  shell("input", "keyevent", "KEYCODE_HOME");
+  await sleep(2000);
+  const saved = engine(ctx);
+  return saved && { item: saved.item, index: saved.index, positionSec: saved.positionSec, offsetSec: saved.recordOffsetSec,
+    record: saved.record, running: saved.running, mediaButtonReceiver: saved.mediaButtonReceiver };
+}
+
+/** (j) one leg: end our paused process one way, press play, and read whether 4a came back where it was. */
+const RECEIVER_LINE = "media-button receiver start";
+
+function receiverStarts() {
+  return String(adb(["logcat", "-d", "-s", "ForayEngine"]).stdout).split(/\r?\n/).filter((l) => l.includes(RECEIVER_LINE)).length;
+}
+
+async function killLeg(ctx, leg, kill) {
+  const saved = await pausedOnHome(ctx, leg);
+  const pidBefore = pidOf(ctx.pkg);
+  const receiverBefore = receiverStarts();
+  const routeBefore = mediaButtonRoute(dumpTo(ctx, `j-${leg}-0-before-dumpsys-media_session.txt`, "dumpsys", "media_session"));
+  const killOut = await kill(pidBefore);
+  await sleep(KILL.afterKillMs);
+  const pidAfterKill = pidOf(ctx.pkg);
+  const killed = !!pidBefore && pidAfterKill !== pidBefore;
+  const routeAfterKill = mediaButtonRoute(dumpTo(ctx, `j-${leg}-1-after-kill-dumpsys-media_session.txt`, "dumpsys", "media_session"));
+  const pressedAt = Date.now();
+  const dispatch = shell("cmd", "media_session", "dispatch", "play").trim();
+  let resumed = null;
+  const deadline = pressedAt + KILL.resumeTimeoutMs;
+  while (Date.now() < deadline) {
+    const s = pidOf(ctx.pkg) ? engine(ctx) : null;
+    if (isPlaying(s)) {
+      resumed = { item: s.item, index: s.index, positionSec: s.positionSec, afterMs: s.at - pressedAt, coldBoot: s.coldBoot ?? null, record: s.record ?? null };
+      break;
+    }
+    await sleep(500);
+  }
+  const sessionsAfter = dumpTo(ctx, `j-${leg}-2-after-play-dumpsys-media_session.txt`, "dumpsys", "media_session");
+  const pidAfterDispatch = pidOf(ctx.pkg);
+  const receiver = receiverStarts() - receiverBefore;
+  save(ctx, `j-${leg}-3-engine-dump.txt`, shell("dumpsys", "activity", "service", SERVICE_COMPONENT.replace(PKG, ctx.pkg)));
+  return {
+    leg, saved, pidBefore, killOut: String(killOut ?? "").trim().slice(0, 200), pidAfterKill, killed,
+    restartedBeforePlay: killed && !!pidAfterKill, killedBy: killed ? killReason(pidBefore, ctx.pkg) : null,
+    routeBefore, routeAfterKill, dispatch: dispatch.slice(0, 200),
+    receivedBy: receiverOf(mediaSessions(sessionsAfter), mediaButtonRoute(sessionsAfter)), pidAfterDispatch, resumed,
+    receiverStarts: receiver,
+  };
+}
+
+/** (j) */
+async function kill(ctx) {
+  const legs = [];
+  try {
+    const how = {
+      "am-kill": () => shell("am", "kill", ctx.pkg),
+      "swipe-am-kill": async () => {
+        const removed = drive(ctx, "task-removed");
+        await sleep(2000);
+        return `task-removed ${JSON.stringify(removed.answer)}; am kill: ${shell("am", "kill", ctx.pkg).trim()}`;
+      },
+      sigkill: (pid) => (pid ? shell("run-as", ctx.pkg, "kill", "-9", pid) : "no pid"),
+      "force-stop": () => shell("am", "force-stop", ctx.pkg),
+    };
+    for (const { leg } of KILL_LEGS) legs.push(await killLeg(ctx, leg, how[leg]));
+  } finally {
+    /* A play that went to another media app leaves it playing over what comes next. */
+    for (const l of legs) {
+      for (const p of String(l.receivedBy?.pkg ?? "").split(", ")) {
+        if (p && p !== ctx.pkg) shell("am", "force-stop", p);
+      }
+    }
+    /* And ours: the last leg left 4a playing in a process the receiver started. The next
+       scenario (A-28's page door) starts from a stopped app, as a launch does. */
+    shell("am", "force-stop", ctx.pkg);
+  }
+  const v = verdictKill({ legs });
+  return { ...v, measured: { legs }, evidence: fs.readdirSync(ctx.art).filter((f) => f.startsWith("j-")) };
+}
+
 /** A-28: the page's door. See the header. */
 async function bridge(ctx) {
   ctx.endpoint = ctx.endpoint ?? DEVTOOLS_ENDPOINT;
@@ -1119,7 +1320,7 @@ function summary(ctx) {
   console.log(summaryMarkdown(verdicts));
 }
 
-const RUNNERS = { play, background, transport, notification, doze, focus, call, bridge, fallback, collect };
+const RUNNERS = { play, background, transport, notification, doze, focus, call, kill, bridge, fallback, collect };
 
 export function parseArgs(argv) {
   const [scenario, ...rest] = argv;

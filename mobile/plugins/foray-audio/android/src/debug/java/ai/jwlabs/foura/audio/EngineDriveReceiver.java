@@ -35,7 +35,13 @@ import java.util.List;
  *   adb shell am broadcast -n ai.jwlabs.foura/ai.jwlabs.foura.audio.EngineDriveReceiver \
  *       --es cmd load --es queue &lt;base64 JSON array of items&gt; --ei index 0
  *   adb shell am broadcast -n … --es cmd pause|play|next|previous
+ *   adb shell am broadcast -n … --es cmd task-removed
  * </pre>
+ *
+ * <p>{@code task-removed} (A-27) is the listener swiping 4a away, as the service hears it: the
+ * driver lets go of its binding and hands the service {@code onTaskRemoved}, Media3's own
+ * default (a paused player is paused and the service stops itself). Scenario (j) then ends the
+ * process and presses play, the device check "Bluetooth car play after swiping the app away".
  *
  * It binds {@code ForayPlaybackService} with a {@link MediaController}, the way a client of a
  * Media3 session service does (A-28's bridge will too), keeps that controller for the life of
@@ -175,6 +181,15 @@ public final class EngineDriveReceiver extends BroadcastReceiver {
             case "pause" -> verdicts.add(tap(service, new EngineContract.Command.Pause()));
             case "next" -> verdicts.add(tap(service, new EngineContract.Command.Next()));
             case "previous" -> verdicts.add(tap(service, new EngineContract.Command.Previous()));
+            case "task-removed" -> {
+                // Let go of the binding first: a bound service outlives its own stopSelf.
+                MediaController held = controller;
+                controller = null;
+                connecting = null;
+                if (held != null) held.release();
+                service.onTaskRemoved(null);
+                return "{\"ok\":true,\"failures\":[]}";
+            }
             default -> {
                 return "{\"ok\":false,\"failures\":[" + JSWriter.quote("unknown-cmd:" + cmd) + "]}";
             }

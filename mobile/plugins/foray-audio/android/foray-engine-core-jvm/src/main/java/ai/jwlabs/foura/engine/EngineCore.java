@@ -44,7 +44,7 @@ import java.util.Objects;
  * Swift core names ({@code cutSeamGap} / {@code releaseSeamGap} around every transport
  * action, {@code persistForay} at a pause, the bridge and spoken-line branches of
  * {@code load}, {@code onReady} and {@code onLoadFailure}). Rebuilding a core from the
- * restore record is A-27's.
+ * restore record ({@link #restoring}) came with A-27.
  *
  * <p>WHY IT IS SYNCHRONOUS WHERE THE JS AWAITS. An effect that has to wait (a load) is a
  * command now and an input later ({@code ready(token)}), and everything else in a turn
@@ -112,6 +112,72 @@ public final class EngineCore {
     /** {@code typeof id === "string" && id ? id : null}. */
     static String voice(String id) {
         return id == null || id.isEmpty() ? null : id;
+    }
+
+    /**
+     * What a cold boot rebuilt from the engine's private restore record (card A-27, the JVM
+     * twin of the Swift {@code EngineCore.ColdRestore}, NE-24; plan §4.5): the core, and the
+     * queue and index the host hands it as {@code lifecycle(coldLaunch(autoplay: false))},
+     * which paints the session paused and activates nothing (S-3).
+     */
+    public record ColdRestore(EngineCore core, List<EngineItem> queue, int index) {
+        public ColdRestore {
+            Objects.requireNonNull(core, "core");
+            queue = Collections.unmodifiableList(new ArrayList<>(queue));
+        }
+    }
+
+    /**
+     * A core rebuilt from a restore record, or null for a record there is nothing to play
+     * from: {@code relinquished} (the legacy lane owns playback, plan §4.6), {@code foray}
+     * (the tape is A-40's: until then Android never writes one), an empty queue, an index
+     * outside it, or an item this build cannot read (no id).
+     *
+     * <p>What the record carries and a core cannot learn from an input comes back here, as
+     * the Swift {@code restoring} brings it back: the listener's speed, where the current item
+     * was (as the stored position a cold start resumes from, through {@link ResumeRules}, the
+     * same rule the JS cold start applies), and the walked hops and pending events the page
+     * has not drained yet, with their sequence numbers, so a process death loses none of them
+     * and the next one written is numbered after them. The queue and index are NOT set here:
+     * they arrive through the one door, as {@code coldLaunch}, so the rows and the surface
+     * follow.
+     */
+    public static ColdRestore restoring(RestoreRecord record, EngineConfig config) {
+        if (record == null || record.mode() != RestoreRecord.Mode.EPISODE || record.queue().isEmpty()) return null;
+        if (record.index() < 0 || record.index() >= record.queue().size()) return null;
+        List<EngineItem> items = new ArrayList<>();
+        for (JsonNode node : record.queue()) {
+            EngineItem item = EngineItem.of(node);
+            if (item == null) return null;
+            items.add(item);
+        }
+        EngineItem current = items.get(record.index());
+        Map<String, ResumeRules.StoredPosition> positions = new HashMap<>();
+        if (record.offsetSec() > 0) {
+            positions.put(current.id, new ResumeRules.StoredPosition(record.offsetSec(), current.durationSec));
+        }
+        EngineCore core = new EngineCore(new EngineConfig(config.build(), config.holdPolicy(), record.rate()), positions);
+        List<PendingEvent> events = new ArrayList<>();
+        for (JsonNode node : record.pendingEvents()) {
+            PendingEvent event = PendingEvent.restored(node);
+            if (event != null) events.add(event);
+        }
+        int lastEvent = 0;
+        for (PendingEvent event : events) lastEvent = Math.max(lastEvent, event.seq());
+        core.state.pendingEvents = new ArrayList<>(events.subList(Math.max(0, events.size() - PENDING_EVENTS_CAP), events.size()));
+        core.state.lastEventSeq = lastEvent;
+        List<AdvanceEntry> advances = new ArrayList<>();
+        for (JsonNode node : record.advanceLog()) {
+            AdvanceEntry entry = AdvanceEntry.restored(node);
+            if (entry != null) advances.add(entry);
+        }
+        int lastAdvance = 0;
+        for (AdvanceEntry entry : advances) lastAdvance = Math.max(lastAdvance, entry.seq());
+        core.state.advanceLog = new ArrayList<>(advances.subList(Math.max(0, advances.size() - ADVANCE_LOG_CAP), advances.size()));
+        core.state.lastAdvanceSeq = lastAdvance;
+        String voiceId = voice(record.voiceId());
+        if (voiceId != null) core.state.voiceId = voiceId;
+        return new ColdRestore(core, items, record.index());
     }
 
     /**

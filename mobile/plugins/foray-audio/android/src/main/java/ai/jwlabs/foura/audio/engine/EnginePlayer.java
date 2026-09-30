@@ -1,6 +1,8 @@
 package ai.jwlabs.foura.audio.engine;
 
 import ai.jwlabs.foura.engine.EngineInput;
+import ai.jwlabs.foura.engine.EngineItem;
+import ai.jwlabs.foura.engine.JsonNode;
 import ai.jwlabs.foura.engine.MediaMapping;
 import android.net.Uri;
 import android.os.Looper;
@@ -52,6 +54,19 @@ import java.util.List;
  * one for "something after" when next works, all carrying the current item's metadata: the
  * engine holds the running order, and the session says only that a neighbour exists.
  *
+ * <h2>AN EMPTY SESSION THAT CAN RESUME SAYS SO (A-27)</h2>
+ *
+ * Media3's playback resumption runs only for a play into a session with no current item whose
+ * player can take one ({@code COMMAND_SET_MEDIA_ITEM}) and can play at all
+ * ({@code COMMAND_PLAY_PAUSE}). So while the engine has nothing loaded AND
+ * {@link Engine#canResume()} (its store holds a record a play can resume, and no input has
+ * reached the core yet), the idle state declares exactly those two. Media3 then asks the
+ * session's {@code onPlaybackResumption} for the playlist, sets it here
+ * ({@link #handleSetMediaItems}), which is {@link Engine#resume()}: the host's cold boot from
+ * the record, which paints the session paused at the recorded position. Media3's play that
+ * follows is an ordinary remote press. The items Media3 hands in are not played: the record is
+ * the truth, and the engine never plays a Media3 item.
+ *
  * <h2>EVERY PRESS COMPLETES AT ONCE</h2>
  *
  * The host runs the press synchronously (activation, load and play inside one turn), so by the
@@ -66,10 +81,18 @@ public final class EnginePlayer extends SimpleBasePlayer {
         ForayEngineHost.Surface surface();
 
         ForayEngineHost.Verdict remote(EngineInput.RemotePress press);
+
+        /** Nothing is loaded, and a play could resume the stored record (A-27). */
+        default boolean canResume() {
+            return false;
+        }
+
+        /** Restore from the stored record, if the engine is still cold (A-27's {@code coldBoot}). */
+        default void resume() {}
     }
 
     /** The media id every window carries: no URI, so a controller cannot start a second player from it. */
-    static final String MEDIA_ID = "foray-engine-current";
+    public static final String MEDIA_ID = "foray-engine-current";
 
     private final Engine engine;
 
@@ -97,6 +120,13 @@ public final class EnginePlayer extends SimpleBasePlayer {
                    "restart if past three seconds" second opinion. */
                 .setMaxSeekToPreviousPositionMs(0L);
         if (view == null || availability.clearsNowPlaying() || MediaMapping.NONE.equals(view.playbackState())) {
+            if (canResume()) {
+                /* A-27: the two commands Media3's playback resumption needs, and nothing else. */
+                state.setAvailableCommands(commandsFor(availability).buildUpon()
+                        .add(Player.COMMAND_PLAY_PAUSE)
+                        .add(Player.COMMAND_SET_MEDIA_ITEM)
+                        .build());
+            }
             return state
                     .setPlaylist(ImmutableList.of())
                     .setPlaybackState(Player.STATE_IDLE)
@@ -120,6 +150,37 @@ public final class EnginePlayer extends SimpleBasePlayer {
                 .setPlaybackState(stalled ? Player.STATE_BUFFERING : Player.STATE_READY)
                 .setPlayWhenReady(playing, Player.PLAY_WHEN_READY_CHANGE_REASON_USER_REQUEST)
                 .build();
+    }
+
+    private boolean canResume() {
+        try {
+            return engine.canResume();
+        } catch (RuntimeException e) {
+            return false;
+        }
+    }
+
+    /**
+     * The item {@code onPlaybackResumption} answers with (A-27): this facade's media id and the
+     * restored item's words, so a controller that shows the playlist before the play shows ours.
+     */
+    @NonNull
+    public static MediaItem resumptionItem(@NonNull EngineItem item) {
+        String title = text(item.node.get("title"));
+        String show = text(item.node.get("show"));
+        MediaMetadata.Builder metadata = new MediaMetadata.Builder()
+                .setTitle(title)
+                .setDisplayTitle(title)
+                .setArtist(show)
+                .setSubtitle(show)
+                .setIsBrowsable(false)
+                .setIsPlayable(true);
+        if (item.durationSec != null && item.durationSec > 0) metadata.setDurationMs(Math.round(item.durationSec * 1000));
+        return new MediaItem.Builder().setMediaId(MEDIA_ID).setMediaMetadata(metadata.build()).build();
+    }
+
+    private static String text(JsonNode node) {
+        return node == null ? null : node.stringValue();
     }
 
     /** {@code commandAvailability}'s set as Media3 player commands. Read-only commands always. */
@@ -203,6 +264,22 @@ public final class EnginePlayer extends SimpleBasePlayer {
     @Override
     protected ListenableFuture<?> handleSetPlayWhenReady(boolean playWhenReady) {
         return press(playWhenReady ? MediaMapping.RemoteCommand.PLAY : MediaMapping.RemoteCommand.PAUSE, null);
+    }
+
+    /**
+     * Declared only while the session is empty and can resume (A-27): Media3 applying what
+     * {@code onPlaybackResumption} answered. The engine restores from its own record; the items
+     * are not played (see the class comment).
+     */
+    @NonNull
+    @Override
+    protected ListenableFuture<?> handleSetMediaItems(@NonNull List<MediaItem> mediaItems, int startIndex, long startPositionMs) {
+        try {
+            engine.resume();
+        } catch (RuntimeException e) {
+            android.util.Log.w("ForayEngine", "resume failed", e);
+        }
+        return Futures.immediateVoidFuture();
     }
 
     @NonNull

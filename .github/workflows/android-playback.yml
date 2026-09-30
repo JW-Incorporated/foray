@@ -150,11 +150,20 @@
 # (engineHello / engineSend / engineRead on the Android plugin): the leg's last
 # scenario, `bridge`, goes through the page over DevTools and requires the
 # diagnostics Copy to log the native engine mode. The same boot, APK and click tracks
-# as the JS legs; its seven scenario steps are all GATED, and its JS-lane steps
+# as the JS legs; its nine scenario steps are all GATED, and its JS-lane steps
 # are skipped (the JS legs run those). One API level, because the engine is the
 # same Java on both and the fast image keeps it to one more job; its ceiling
-# covers the build, the boot and about twelve minutes of scenarios, five of them
-# (g)'s Doze.
+# covers the build, the boot and about fifteen minutes of scenarios, five of them
+# (g)'s Doze. A-26 measured the leg at 14 min 7 s with seven (run 36647752638).
+#
+# A-27 added (j): a paused 4a, on Home, ended four ways, then
+# `cmd media_session dispatch play`: `am kill` (the card's; the paused service is
+# still in the foreground, so the process lives), a swipe (the service's
+# onTaskRemoved) then `am kill`, and a SIGKILL from the app's own uid. Each must
+# resume 4a at the saved position (gated): the swipe through the media button
+# receiver and Media3's playback resumption from the engine's restore record, the
+# SIGKILL through the restarted service's session. `am force-stop` is the negative
+# control, recorded only. About three minutes.
 #
 # `fail-fast: false`, so a red leg never cancels the other's verdicts. Each leg
 # checks that the device it booted really is its API level before installing
@@ -625,6 +634,12 @@ jobs:
         if: ${{ matrix.mode == 'native' && !cancelled() && steps.launch.outcome == 'success' }}
         run: node tools/mobile/android-native-playback.mjs call --art "$ART"
 
+      - name: (j) native — paused, on Home, the process ended; a media play resumes 4a at the saved position
+        id: native-kill
+        if: ${{ matrix.mode == 'native' && !cancelled() && steps.launch.outcome == 'success' }}
+        run: node tools/mobile/android-native-playback.mjs kill --art "$ART"
+
+
       # A-28: the page's door. Since A-28 the page asks the Android engine
       # engineHello; this reads the stock lane (legacy), turns the Developer engine
       # setting to Native through the page, relaunches, and requires the Copy
@@ -656,7 +671,7 @@ jobs:
           mkdir -p "$ART"
           {
             if [ "${MODE:-js}" = "native" ]; then
-              echo "## Android playback scenarios, NATIVE engine (A-26), API ${API_LEVEL}"
+              echo "## Android playback scenarios, NATIVE engine (A-26, A-27), API ${API_LEVEL}"
               echo
               node tools/mobile/android-native-playback.mjs summary --art "$ART"
               echo

@@ -295,6 +295,12 @@ final class EngineOwnership implements EngineBridge.Owner {
             }
             if (bound != null) {
                 controller = bound;
+                /* A-27, NE-24's order: the engine boots from its restore record BEFORE the page's
+                   first bridge call is answered, so the hello's snapshot carries the restored
+                   queue and the page drains the pending events a process death left. Once per
+                   service, and a no-op after any input. */
+                ForayPlaybackService service = ForayPlaybackService.current();
+                if (service != null) service.restoreIfCold();
                 // The engine exists: the healthy marker's run-loop leg starts now (A-29).
                 core.engineBooted();
             } else {

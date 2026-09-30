@@ -650,7 +650,7 @@ public class ForayAudioPlugin extends Plugin {
     /** The bridge, built once per process on main, over the process's owner and log. */
     static EngineBridge bridgeOnMain(Context context) {
         if (engineBridge == null) {
-            engineBridge = new EngineBridge(EngineOwnership.shared(context), EngineLog.process(),
+            engineBridge = new EngineBridge(EngineOwnership.shared(context), ForayPlaybackService.processStore(context),
                 new HandlerTiming(Looper.getMainLooper()), EngineLane.DECLARED_CAPABILITIES,
                 ForayAudioPlugin::notifyEngineEvent);
         }

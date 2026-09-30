@@ -25,6 +25,10 @@ import {
   verdictBridge,
   DUMP_PREFIX,
   EPISODE_QUEUE,
+  KILL,
+  KILL_LEGS,
+  KILL_QUEUE,
+  killQueue,
   LONG_QUEUE,
   RECEIVER_COMPONENT,
   SCENARIOS,
@@ -43,6 +47,7 @@ import {
   verdictCall,
   verdictDoze,
   verdictFocus,
+  verdictKill,
   verdictNotification,
   verdictPlay,
   verdictPress,
@@ -206,12 +211,87 @@ test("A-26: small helpers and the CLI", () => {
   assert.equal(moved(S({ positionSec: 1 }), S({ item: "other", positionSec: 3 })), null, "a different item is not comparable");
   assert.equal(ourSession({ sessions: [{ package: "x", state: "PLAYING" }, { package: PKG, state: "PAUSED" }] }).state, "PAUSED");
   assert.deepEqual(SCENARIOS.map(([id]) => id),
-    ["play", "background", "transport", "notification", "doze", "focus", "call", "bridge", "fallback"],
-    "A-26's (a)-(d), (g), (h), (i), then A-28's page door, then A-29's fallback");
+    ["play", "background", "transport", "notification", "doze", "focus", "call", "kill", "bridge", "fallback"],
+    "A-26's (a)-(d), (g), (h), (i), A-27's (j), then A-28's page door, then A-29's fallback");
   assert.match(summaryMarkdown({ play: { ok: true } }), /\| \(a\) native[^|]*\| \*\*pass\*\* \|/);
   assert.equal(parseArgs(["play", "--art", "d"]).art, "d");
   assert.throws(() => parseArgs(["seams", "--art", "d"]), /first argument/);
   assert.throws(() => parseArgs(["play"]), /--art/);
+});
+
+test("A-27 (j): the kill queue is whole episodes the store keeps a resume point for", () => {
+  /* MUTATION: give the items an end_sec (a segment keeps no resume point, so the record says 0),
+     or pause before the position store's 10 s floor. */
+  assert.equal(KILL_QUEUE.length, 2);
+  for (const it of KILL_QUEUE) {
+    assert.equal(it.kind, "episode");
+    assert.ok(it.audio_url.startsWith(ASSET_BASE));
+    assert.equal("start_sec" in it, false, "no in-point");
+    assert.equal("end_sec" in it, false, "no out-point");
+  }
+  assert.ok(KILL_QUEUE[0].audio_url.endsWith("click-cbr.mp3"), "the exact-seek track");
+  const ids = KILL_LEGS.flatMap(({ leg }) => killQueue(leg).map((i) => i.id));
+  assert.equal(new Set(ids).size, ids.length, "each leg's own ids: no leg resumes from another's position");
+  const pausedAt = KILL.playBeforePauseMs / 1000;
+  assert.ok(pausedAt > KILL.minSavedSec + 2 && pausedAt < 90 - 30 - 5, "clear of MIN_RESUME_SEC and NEAR_END_SEC");
+  const java = fs.readFileSync(path.join(ROOT, "mobile/plugins/foray-audio/android/foray-engine-core-jvm/src/main/java/ai/jwlabs/foura/engine/EngineConstants.java"), "utf8");
+  const store = /class PositionStore \{[\s\S]*?MIN_RESUME_SEC = ([\d.]+);[\s\S]*?NEAR_END_SEC = ([\d.]+);/.exec(java);
+  assert.ok(store, "the position store's constants");
+  assert.equal(Number(store[1]), KILL.minSavedSec, "the runner's floor is the engine's");
+  assert.ok(pausedAt < 90 - Number(store[2]), "the pause is before the near-end rule");
+});
+
+const swap0 = (legs, name, o) => legs.map((l) => (l.leg === name ? { ...l, ...o } : l));
+
+test("A-27 (j): a kill-then-play must bring 4a back at the saved position; force-stop is only recorded", () => {
+  /* MUTATION: accept any resumed position; accept a SIGKILL that did not kill; gate the
+     force-stop control; accept a died-and-back engine that did not boot from the record. */
+  assert.deepEqual(KILL_LEGS.map((l) => [l.leg, l.gated]), [["am-kill", true], ["swipe-am-kill", true], ["sigkill", true], ["force-stop", false]]);
+  const saved = { item: "a27-kill-0", offsetSec: 18.4, positionSec: 18.4, running: false };
+  const leg = (name, o = {}) => ({ leg: name, saved, pidBefore: "100", pidAfterKill: name === "am-kill" ? "100" : null,
+    killed: name !== "am-kill", pidAfterDispatch: "200", receivedBy: { pkg: PKG }, receiverStarts: name === "swipe-am-kill" ? 1 : 0,
+    resumed: { item: "a27-kill-0", positionSec: 18.9, afterMs: 1500, coldBoot: name === "am-kill" ? null : "painted" }, ...o });
+  const good = [leg("am-kill"), leg("swipe-am-kill"), leg("sigkill"),
+    leg("force-stop", { resumed: null, pidAfterDispatch: null, receivedBy: { pkg: null } })];
+  const v = verdictKill({ legs: good });
+  assert.equal(v.ok, true, JSON.stringify(v.failures));
+  assert.equal(v.recorded.length, 4, "the control is recorded");
+  assert.equal(v.recorded[3].ourProcessAfterPlay, false);
+  assert.equal(verdictKill({ legs: swap0(good, "swipe-am-kill", { receiverStarts: 0 }) }).ok, false, "the swipe's play must come through the receiver");
+  assert.equal(verdictKill({ legs: swap0(good, "swipe-am-kill", { killed: false }) }).ok, false, "a swipe whose process lived measured nothing");
+
+  const swap = (name, o) => swap0(good, name, o);
+  assert.equal(verdictKill({ legs: swap("am-kill", { resumed: { ...good[0].resumed, positionSec: 0.4 } }) }).ok, false, "resumed from 0");
+  assert.equal(verdictKill({ legs: swap("am-kill", { resumed: { ...good[0].resumed, positionSec: 40 } }) }).ok, false, "resumed far ahead");
+  assert.equal(verdictKill({ legs: swap("sigkill", { killed: false }) }).ok, false, "a SIGKILL that did not kill measured nothing");
+  assert.equal(verdictKill({ legs: swap("sigkill", { resumed: { ...good[2].resumed, coldBoot: null } }) }).ok, false, "not through the record");
+  assert.equal(verdictKill({ legs: swap("sigkill", { resumed: null }) }).ok, false, "not playing");
+  assert.equal(verdictKill({ legs: swap("sigkill", { resumed: { ...good[2].resumed, item: "a27-kill-1" } }) }).ok, false, "the wrong item");
+  assert.equal(verdictKill({ legs: swap("am-kill", { saved: { ...saved, offsetSec: 3 } }) }).ok, false, "under the resume floor");
+  assert.equal(verdictKill({ legs: swap("am-kill", { saved: { ...saved, running: true } }) }).ok, false, "never paused");
+  assert.equal(verdictKill({ legs: good.filter((l) => l.leg !== "sigkill") }).ok, false, "a leg that did not run");
+  assert.equal(verdictKill({ legs: swap("force-stop", { resumed: good[0].resumed, pidAfterDispatch: "300" }) }).ok, true, "the control is never gated");
+  const later = swap("sigkill", { resumed: { ...good[2].resumed, positionSec: 18.4 + 6, afterMs: 5000 } });
+  assert.equal(verdictKill({ legs: later }).ok, true, "a slow resume may have played on for as long as it took");
+});
+
+test("A-27 (j): the dump fields the runner reads are the ones the Java writes", () => {
+  /* MUTATION: rename recordOffsetSec, coldBoot or mediaButtonReceiver in the service only. */
+  const service = read("src/main/java/ai/jwlabs/foura/audio/ForayPlaybackService.java");
+  for (const field of ["record", "recordOffsetSec", "coldBoot", "mediaButtonReceiver"]) {
+    assert.match(service, new RegExp(`JsonNode\\.member\\("${field}"`), field);
+  }
+  const host = read("src/main/java/ai/jwlabs/foura/audio/engine/ForayEngineHost.java");
+  assert.match(host, /PAINTED\("painted"\)/, "the token the verdict reads");
+  const manifest = read("src/main/AndroidManifest.xml");
+  assert.match(manifest, /android:name="ai\.jwlabs\.foura\.audio\.ForayMediaButtonReceiver"\s+android:enabled="false"\s+android:exported="true"/,
+    "the receiver ships off, and the service turns it on");
+  assert.match(manifest, /<action android:name="android\.intent\.action\.MEDIA_BUTTON" \/>/);
+  const driver = read("src/debug/java/ai/jwlabs/foura/audio/EngineDriveReceiver.java");
+  assert.match(driver, /case "task-removed" -> \{[\s\S]*?held\.release\(\);[\s\S]*?service\.onTaskRemoved\(null\);/,
+    "the swipe lets go of the binding, then is Media3's onTaskRemoved");
+  const receiver = read("src/main/java/ai/jwlabs/foura/audio/ForayMediaButtonReceiver.java");
+  assert.match(receiver, /"media-button receiver " \+ \(resumable \? "start" : "drop"\)/, "the logcat line the swipe leg counts");
 });
 
 /* ─────────── A-28: the page's door ─────────── */

@@ -61,7 +61,8 @@
              DECLARED SECOND ON PURPOSE: shell-invariants reads the FIRST <service> as the legacy
              one. Not exported: its clients are this app's own (a MediaController binds it by
              component, and Media3's notification and media-button PendingIntents run as this
-             app); A-27's playback resumption and A-50's Android Auto are what would open it.
+             app). A-27's playback resumption did not open it: the receiver below is exported,
+             and it starts this service as the same app. A-50's Android Auto is what would.
              The intent filter is the one Media3's SessionToken requires to bind. No
              stopWithTask: Media3's own onTaskRemoved stops it when nothing plays. -->
         <service
@@ -73,6 +74,24 @@
                 <action android:name="androidx.media3.session.MediaSessionService" />
             </intent-filter>
         </service>
+
+        <!-- A-27 (docs/plans/android-assessment.md §5.4): the media button receiver a car's PLAY
+             reaches after the native engine's process died. Media3's MediaButtonReceiver starts
+             the service above with the key event, and the session resumes from the engine's
+             restore record (onPlaybackResumption). EXPORTED because the system delivers media
+             button intents to it from outside the app. DISABLED IN THE MANIFEST ON PURPOSE:
+             Media3 hands a manifest receiver to every session the app builds, the JS lane's
+             included, and the JS lane has nothing to resume without its WebView.
+             ForayPlaybackService.onCreate switches it on (native mode only), and the engine's
+             store switches it off when nothing is left to resume, and on again after. -->
+        <receiver
+            android:name="ai.jwlabs.foura.audio.ForayMediaButtonReceiver"
+            android:enabled="false"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MEDIA_BUTTON" />
+            </intent-filter>
+        </receiver>
     </application>
 
 </manifest>

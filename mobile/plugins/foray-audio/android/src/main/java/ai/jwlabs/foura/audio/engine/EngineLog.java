@@ -18,7 +18,10 @@ import java.util.function.Consumer;
 import java.util.function.DoubleSupplier;
 
 /**
- * {@link EngineSeams.Output} until A-27, and the bridge's {@link EngineBridge.Records} since A-28.
+ * The engine's rows. Since A-27 the service's {@link EngineSeams.Output} and the bridge's
+ * {@link EngineBridge.Records} are {@link EngineStore}, which persists what must survive a process
+ * death and hands every write, row and listener to this log; this class alone is still both for
+ * the host's and the bridge's plain-JVM tests.
  *
  * <p>TWO RINGS. Every write is a text LINE, kept in a bounded ring (the service's {@code dump},
  * read by the native-mode scenario runner and by a device pass) and written to logcat under
@@ -29,9 +32,9 @@ import java.util.function.DoubleSupplier;
  * diagnostics Copy exactly as the iOS engine's do (player/diagnostic-log.js, NE-26).
  *
  * <p>SHARED ROWS, IN MEMORY. The engine's shared rows ({@code cp_pos:}, {@code cp_last_episode})
- * are kept here by key, as written, so {@code engineRead("rows")} answers the page's adopt (and its
- * ordered relinquish) with the engine's last word. Nothing is persisted: the position store, the
- * restore record and the pending-event log across a process death are A-27's {@code EngineStore}.
+ * are kept here by key, as written: {@code engineRead("rows")}'s answer when this log is the
+ * bridge's records. In the app the store answers it from the persisted rows (A-27), which
+ * outlive the process.
  *
  * <p>ONE PER PROCESS ({@link #process()}): the service writes into it, and the bridge reads it in
  * every lane, so a service recreated inside one process continues the same ring.

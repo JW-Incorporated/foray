@@ -251,6 +251,13 @@ that the window is the page's and not a second implementation's.
   The consequence is that media buttons are **not** routed after the process has
   died — which is media resumption, and there is nothing to resume without the
   WebView.
+  *Update, A-27 (2026-09-29):* the NATIVE lane now declares one
+  (`ForayMediaButtonReceiver`, forwarding to `ForayPlaybackService`, which is a
+  `MediaSessionService`), and resumes from the engine's restore record through
+  Media3's `onPlaybackResumption`. It ships **disabled** in the manifest, because
+  Media3 hands a manifest receiver to every session the app builds, this one
+  included: the native service switches it on, so the JS lane described here
+  still never registers it, and the reasoning above still holds for this lane.
 
 ### 4.4 The timeline is three windows, and it is the least obvious thing here
 

@@ -4,6 +4,7 @@ import ai.jwlabs.foura.audio.engine.EngineAudio;
 import ai.jwlabs.foura.audio.engine.EngineLog;
 import ai.jwlabs.foura.audio.engine.EnginePlayer;
 import ai.jwlabs.foura.audio.engine.EngineSeams;
+import ai.jwlabs.foura.audio.engine.EngineStore;
 import ai.jwlabs.foura.audio.engine.ExoDeck;
 import ai.jwlabs.foura.audio.engine.FocusMapping;
 import ai.jwlabs.foura.audio.engine.ForayEngineHost;
@@ -11,12 +12,14 @@ import ai.jwlabs.foura.audio.engine.HandlerTiming;
 import ai.jwlabs.foura.engine.DeckReading;
 import ai.jwlabs.foura.engine.EngineCommand;
 import ai.jwlabs.foura.engine.EngineConfig;
+import ai.jwlabs.foura.engine.EngineCore;
 import ai.jwlabs.foura.engine.EngineInput;
 import ai.jwlabs.foura.engine.EngineItem;
 import ai.jwlabs.foura.engine.EngineState;
 import ai.jwlabs.foura.engine.JSWriter;
 import ai.jwlabs.foura.engine.JsonNode;
 import ai.jwlabs.foura.engine.MediaMapping;
+import ai.jwlabs.foura.engine.RestoreRecord;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
@@ -27,6 +30,7 @@ import android.util.Log;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.OptIn;
+import androidx.media3.common.MediaItem;
 import androidx.media3.common.Player;
 import androidx.media3.common.util.UnstableApi;
 import androidx.media3.datasource.DefaultDataSource;
@@ -90,6 +94,21 @@ import java.util.concurrent.atomic.AtomicReference;
  * (the Media3 way: the service is created bound, and Media3 promotes it to the foreground when the
  * facade reports playing).
  *
+ * <h2>WHAT IT KEEPS, AND THE CAR'S PLAY AFTER A DEATH (A-27)</h2>
+ *
+ * The engine's writes go to {@link EngineStore}: the shared position rows in the page's
+ * Preferences file and the restore record in the engine's own, each committed before the write
+ * returns. When the process dies (a swipe, the low-memory killer, a crash) the session dies with
+ * it, and Android sends a media button PLAY to the last media button receiver: ours,
+ * {@link ForayMediaButtonReceiver}, switched on in {@link #onCreate} before the session is built.
+ * It starts this service with the key event; the session is empty and says it can resume
+ * ({@code EnginePlayer}), so Media3 asks {@code onPlaybackResumption} for a playlist, applies it
+ * (the host's {@code coldBoot} from the record: the recorded item, paused at the recorded
+ * position, nothing activated), and plays, which the engine does from that position. The iOS
+ * twin is NE-24's cold path; there the boot paints first because iOS has no resumption callback,
+ * and here Media3's own door is the trigger. A page that binds a cold service (A-28) boots from
+ * the same record through {@link #restoreIfCold}.
+ *
  * <h2>THE DUMP</h2>
  *
  * {@code adb shell dumpsys activity service ai.jwlabs.foura/ai.jwlabs.foura.audio.ForayPlaybackService}
@@ -123,6 +142,10 @@ public class ForayPlaybackService extends MediaSessionService {
     private final FocusMapping focus = new FocusMapping();
     /** The process's log (A-28): the page's bridge reads its ring and shared rows in every lane. */
     private final EngineLog log = EngineLog.process();
+    /** The process's store over that log (A-27): what the engine keeps across a process death. */
+    @Nullable private EngineStore store;
+    /** What the cold boot found, once it ran (the dump; null until then). */
+    @Nullable private ForayEngineHost.ColdBootOutcome coldBoot;
 
     /** The live service, or null. Main thread. */
     @Nullable
@@ -150,6 +173,9 @@ public class ForayPlaybackService extends MediaSessionService {
                 Log.w(TAG, "could not stop the legacy service", e);
             }
         }
+        /* A-27: on BEFORE the session is built, because Media3 reads the manifest's media button
+           receiver when it builds one, and hands it to the platform session then. */
+        ForayMediaButtonReceiver.setEnabled(this, true);
         try {
             attach(new ExoPlayer.Builder(this).build());
         } catch (RuntimeException e) {
@@ -161,6 +187,13 @@ public class ForayPlaybackService extends MediaSessionService {
                 .setChannelName(R.string.foray_playback_channel_name)
                 .setNotificationId(NOTIFICATION_ID)
                 .build());
+        /* A-27: the service owns its one session from the start, not from the first bind. After
+           a process death Android may restart this service on its own (START_STICKY), and a media
+           key can then reach the session directly, with no bind and no media button intent: a
+           session the service had not added would play with no notification and never be
+           promoted to the foreground. */
+        MediaSession s = session;
+        if (s != null) addSession(s);
         current = this;
     }
 
@@ -178,7 +211,9 @@ public class ForayPlaybackService extends MediaSessionService {
         config.diag = log::diag;
         config.sessionIsActive = () -> session != null;
         deck = new ExoDeck(built, config);
-        EngineSeams seams = new EngineSeams(deck, new SessionSeam(), new HandlerTiming(Looper.getMainLooper()), log);
+        EngineStore kept = processStore(this);
+        store = kept;
+        EngineSeams seams = new EngineSeams(deck, new SessionSeam(), new HandlerTiming(Looper.getMainLooper()), kept);
         ForayEngineHost engine = new ForayEngineHost(seams, new EngineConfig(buildName(this)));
         host = engine;
         EnginePlayer facade = new EnginePlayer(Looper.getMainLooper(), new EnginePlayer.Engine() {
@@ -191,6 +226,16 @@ public class ForayPlaybackService extends MediaSessionService {
             @Override
             public ForayEngineHost.Verdict remote(EngineInput.RemotePress press) {
                 return engine.remote(press);
+            }
+
+            @Override
+            public boolean canResume() {
+                return !engine.isTornDown() && !engine.hasHandledInput() && kept.restorable();
+            }
+
+            @Override
+            public void resume() {
+                restoreIfCold();
             }
         });
         player = facade;
@@ -259,6 +304,7 @@ public class ForayPlaybackService extends MediaSessionService {
         ExoPlayer p = exo;
         exo = null;
         deck = null;
+        store = null;
         if (p != null) {
             if (focusListener != null) p.removeListener(focusListener);
             focusListener = null;
@@ -268,6 +314,79 @@ public class ForayPlaybackService extends MediaSessionService {
                 Log.w(TAG, "releasing the player failed", e);
             }
         }
+    }
+
+    // ---- the cold path (A-27)
+
+    @Nullable private static EngineStore processStore;
+    /** The application the store was built over (a test's Robolectric application changes per test). */
+    @Nullable private static Context processStoreContext;
+
+    /**
+     * The process's store (A-27), over the process's log: the service's output and the page
+     * bridge's records, so {@code engineRead("rows")} answers with the persisted rows and a
+     * "Delete my data" in any lane removes what an earlier native session stored. When it stops
+     * (or starts again) holding a record a PLAY can resume, it switches the media button receiver.
+     * Main thread.
+     */
+    static EngineStore processStore(Context context) {
+        Context app = context.getApplicationContext() != null ? context.getApplicationContext() : context;
+        if (processStore == null || processStoreContext != app) {
+            processStore = new EngineStore(app, EngineLog.process(), resumable -> ForayMediaButtonReceiver.setEnabled(app, resumable));
+            processStoreContext = app;
+        }
+        return processStore;
+    }
+
+    /**
+     * The host's cold boot from the stored restore record, once, before any input: the Media3
+     * resumption's (through the facade), and A-28's page attach. Later calls are {@code LATE}
+     * and change nothing. Main thread.
+     */
+    @Nullable
+    ForayEngineHost.ColdBootOutcome restoreIfCold() {
+        ForayEngineHost engine = host;
+        EngineStore kept = store;
+        if (engine == null || kept == null) return null;
+        /* Once per service: a boot that found nothing (no record) leaves the core untouched, and
+           asking again would only repeat its row. */
+        if (coldBoot != null) return ForayEngineHost.ColdBootOutcome.LATE;
+        ForayEngineHost.ColdBootOutcome outcome = engine.coldBoot(kept.restoreRecord());
+        if (outcome != ForayEngineHost.ColdBootOutcome.LATE) coldBoot = outcome;
+        return outcome;
+    }
+
+    @Nullable
+    EngineStore store() {
+        return store;
+    }
+
+    /**
+     * Media3's playback resumption answer (A-27): the restored item, at the recorded position,
+     * or a failure when the store holds nothing a play can resume (Media3 then plays as asked,
+     * and the engine answers {@code noActionableNowPlayingItem}). Nothing is restored HERE: the
+     * boot runs when Media3 applies the answer ({@code EnginePlayer.handleSetMediaItems}), so a
+     * metadata-only ask ({@code isForPlayback} false) changes nothing.
+     */
+    ListenableFuture<MediaSession.MediaItemsWithStartPosition> resumption(boolean isForPlayback) {
+        EngineStore kept = store;
+        RestoreRecord record = kept == null ? null : kept.restoreRecord();
+        EngineCore.ColdRestore restored = record == null ? null : EngineCore.restoring(record, new EngineConfig(buildName(this)));
+        List<JsonNode.Member> fields = new ArrayList<>();
+        fields.add(JsonNode.member("kind", JsonNode.str(restored == null ? "none" : "answer")));
+        fields.add(JsonNode.member("forPlayback", JsonNode.bool(isForPlayback)));
+        fields.add(JsonNode.member("record", JsonNode.str(record == null ? "none" : record.mode().token)));
+        if (restored != null) {
+            fields.add(JsonNode.member("item", JsonNode.str(restored.queue().get(restored.index()).id)));
+            fields.add(JsonNode.member("offsetSec", JsonNode.num(record.offsetSec())));
+        }
+        log.diag(new EngineCommand.DiagEntry("resumption", fields));
+        if (restored == null) {
+            return Futures.immediateFailedFuture(new UnsupportedOperationException("no restorable record"));
+        }
+        MediaItem item = EnginePlayer.resumptionItem(restored.queue().get(restored.index()));
+        return Futures.immediateFuture(new MediaSession.MediaItemsWithStartPosition(
+                ImmutableList.of(item), 0, Math.round(record.offsetSec() * 1000)));
     }
 
     // ---- what a client (the page's bridge, the debug driver) calls, on main
@@ -397,6 +516,13 @@ public class ForayPlaybackService extends MediaSessionService {
             return Futures.immediateFuture(new SessionResult(verdict.ok()
                     ? SessionResult.RESULT_SUCCESS : SessionResult.RESULT_ERROR_INVALID_STATE));
         }
+
+        @NonNull
+        @Override
+        public ListenableFuture<MediaSession.MediaItemsWithStartPosition> onPlaybackResumption(@NonNull MediaSession s,
+                @NonNull MediaSession.ControllerInfo controller, boolean isForPlayback) {
+            return resumption(isForPlayback);
+        }
     }
 
     @Nullable
@@ -435,6 +561,12 @@ public class ForayPlaybackService extends MediaSessionService {
         m.add(JsonNode.member("engine", JsonNode.str("android-native")));
         m.add(JsonNode.member("hosting", JsonNode.bool(engine != null && !engine.isTornDown())));
         m.add(JsonNode.member("legacyRunning", JsonNode.bool(PlaybackKeepAliveService.isRunning())));
+        EngineStore kept = store;
+        RestoreRecord record = kept == null ? null : kept.restoreRecord();
+        m.add(JsonNode.member("record", record == null ? JsonNode.NULL : JsonNode.str(record.mode().token)));
+        m.add(JsonNode.member("recordOffsetSec", record == null ? JsonNode.NULL : JsonNode.num(record.offsetSec())));
+        m.add(JsonNode.member("coldBoot", coldBoot == null ? JsonNode.NULL : JsonNode.str(coldBoot.token)));
+        m.add(JsonNode.member("mediaButtonReceiver", JsonNode.bool(ForayMediaButtonReceiver.isEnabled(this))));
         if (engine != null) {
             EngineState st = engine.state();
             DeckReading reading = deck != null ? deck.reading() : DeckReading.idle();

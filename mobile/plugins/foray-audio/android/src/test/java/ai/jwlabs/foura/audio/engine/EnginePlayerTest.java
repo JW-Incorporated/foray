@@ -31,10 +31,25 @@ public class EnginePlayerTest {
     static final class FakeEngine implements EnginePlayer.Engine {
         ForayEngineHost.Surface surface;
         final List<EngineInput.RemotePress> presses = new ArrayList<>();
+        /** A-27: what {@code canResume} answers, and the surface a {@code resume} paints. */
+        boolean resumable;
+        ForayEngineHost.Surface painted;
+        int resumes;
 
         @Override
         public ForayEngineHost.Surface surface() {
             return surface;
+        }
+
+        @Override
+        public boolean canResume() {
+            return resumable;
+        }
+
+        @Override
+        public void resume() {
+            resumes++;
+            if (painted != null) surface = painted;
         }
 
         @Override
@@ -155,6 +170,37 @@ public class EnginePlayerTest {
         assertNull(e.presses.get(5).value());
         assertEquals("a scrub carries its time, in seconds", 42.0, e.presses.get(6).value(), 0.0005);
         assertTrue("pressed on main", e.presses.get(0).onMain());
+        p.release();
+    }
+
+    /**
+     * A-27: an empty session that can resume declares exactly Media3's two resumption commands;
+     * setting the answer's item is the engine's resume (the item itself is not played); and the
+     * state after it is the engine's painted one. TO SEE IT FAIL: declare them whenever idle, or
+     * play the handed item instead of resuming.
+     */
+    @Test
+    public void anEmptySessionThatCanResumeTakesTheAnswerAsAResume() {
+        FakeEngine e = new FakeEngine();
+        e.surface = idle();
+        EnginePlayer p = facade(e);
+        assertFalse(p.isCommandAvailable(Player.COMMAND_SET_MEDIA_ITEM));
+        e.resumable = true;
+        p.refresh();
+        assertTrue("Media3 resumes only a player that can take an item", p.isCommandAvailable(Player.COMMAND_SET_MEDIA_ITEM));
+        assertTrue("and can play", p.isCommandAvailable(Player.COMMAND_PLAY_PAUSE));
+        assertFalse("nothing else", p.isCommandAvailable(Player.COMMAND_CHANGE_MEDIA_ITEMS));
+        assertFalse(p.isCommandAvailable(Player.COMMAND_SEEK_TO_NEXT));
+
+        e.painted = episode(false, false, false);
+        e.resumable = false;
+        p.setMediaItem(androidx.media3.common.MediaItem.fromUri("https://elsewhere.example/other.mp3"), 5_000);
+        ShadowLooper.idleMainLooper();
+        assertEquals(1, e.resumes);
+        assertEquals("the engine's painted state, not the handed item", "An episode", String.valueOf(p.getMediaMetadata().title));
+        assertEquals(Player.STATE_READY, p.getPlaybackState());
+        assertFalse(p.getPlayWhenReady());
+        assertTrue("nothing was pressed", e.presses.isEmpty());
         p.release();
     }
 }
