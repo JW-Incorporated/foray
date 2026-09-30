@@ -699,6 +699,7 @@ Rejected alternatives:
       Developer setting Web to return the JS lane.
     - The JS legs pin Web in their first step, so they keep measuring the page's player, which is still the fallback
       lane.
+    - Run 36706526452 is green on all three legs (`docs/android-emulator-measurements.md` §12).
   - **Not executed (D-A3, D-A5).** The acceptance above (the Joey device pass on H-1, H-3, navigation prompts and the
     negative control) and the founder car drive did not run. D-A3 holds every device pass until A-42, and D-A5 approves
     no spend for the car phone. Both go to the post-A-42 pass through HUMAN-ACTIONS #127, which is not issued. The

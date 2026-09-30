@@ -32,6 +32,10 @@ A-31 flip (2026-09-30): android native default for episodes, backed by run 36693
   - The JS legs (A-04/A-05) pin the Web setting in their first step (`first-launch`), so they keep measuring the JS
     player, which is still the fallback lane.
 
+**Evidence.** Run 36706526452 (attempt 2) is green on all three legs. On a stock launch the Copy says
+`engine=native … caps=episode,continuation reason=build-default`, and the page's own play left the engine playing
+`a31-page-episode`. Web returned the JS lane. Details in `docs/android-emulator-measurements.md` §12.
+
 **Not executed (D-A3, D-A5).** The card's acceptance is the Joey device pass (H-1 pause and resume from the car, H-3
 a call, navigation prompts, the negative control) plus one founder Android car drive. The founder's ruling holds
 every device pass until A-42 (D-A3) and approves no spend for the car phone (D-A5), so neither ran. Both go to the
