@@ -37,6 +37,7 @@ public class ForayEngineHostNarrationTest {
         final FakeOutput speech = new FakeOutput();
         final FakeJingle jingle = new FakeJingle();
         final List<String> lines = new ArrayList<>();
+        final List<Boolean> awake = new ArrayList<>();
         final EngineLog log = new EngineLog(() -> 0, lines::add);
         final SpeechNarrator narrator;
         final InterludePlayer interlude;
@@ -53,6 +54,7 @@ public class ForayEngineHostNarrationTest {
             interlude = new InterludePlayer(ic);
             EngineConfig config = new EngineConfig("test").withForayTape(true, false).withInterludeAvailable(true);
             host = new ForayEngineHost(new EngineSeams(deck, session, timing, log, narrator, interlude), config);
+            host.setBeatAwake(awake::add);
             host.start();
         }
 
@@ -158,6 +160,38 @@ public class ForayEngineHostNarrationTest {
         assertEquals("the jingle's end starts the clip", 2, rig.deck.count(DeckCommand.Play.class));
         assertFalse(rig.host.state().inInterlude);
         assertTrue(rig.rows(), rig.rows().contains("\"kind\":\"ended\",\"why\":\"ended\""));
+    }
+
+    /**
+     * A-41 review: while a spoken line is the running playhead no deck plays (the synthesiser is
+     * TextToSpeech, in another process), so the host holds the CPU exactly as it does through the
+     * seam beat; a pause lets it go, a resume takes it back, and the next clip's load landing lets it
+     * go. TO SEE IT FAIL: key the host's lock on {@code inSeamGap} alone (the line runs with nothing
+     * holding the CPU, and with the screen off the phone may sleep before its first word).
+     */
+    @Test
+    public void aSpokenLineHoldsTheCpuWhileItIsTheRunningPlayhead() {
+        Rig rig = new Rig();
+        rig.playForay(clip(0, "a", 100, 200), spoken(1, "Up next, the second story."), clip(2, "c", 500, 600));
+        DeckCommand.Load first = rig.lastLoad();
+        rig.deck.emit(new DeckEvent.Ready(first.token(), first.startSec(), true, 1));
+        assertFalse("a playing clip needs no host lock", rig.host.holdsBeatWakeLock());
+        rig.deck.reading.positionSec = 200.0;
+        rig.timing.mono += 100_000;
+        rig.deck.emit(new DeckEvent.Ended(first.token()));
+        assertEquals("Up next, the second story.", rig.speech.line.text());
+        assertTrue(rig.host.state().isNarrationPlayhead());
+        assertTrue("the spoken line holds the CPU", rig.host.holdsBeatWakeLock());
+        rig.host.handle(new EngineInput.Command(EngineContract.Command.PAUSE, Vocabulary.Source.TAP));
+        assertFalse("a paused line lets it go", rig.host.holdsBeatWakeLock());
+        rig.host.handle(new EngineInput.Command(EngineContract.Command.PLAY, Vocabulary.Source.TAP));
+        assertTrue("a resumed line takes it back", rig.host.holdsBeatWakeLock());
+        rig.speech.end(SpeechNarrator.End.FINISHED);
+        DeckCommand.Load next = rig.lastLoad();
+        assertEquals("f1#2", next.itemId());
+        rig.deck.emit(new DeckEvent.Ready(next.token(), 500, true, 1));
+        assertFalse("the next clip playing lets it go", rig.host.holdsBeatWakeLock());
+        assertFalse(rig.host.state().isNarrationPlayhead());
     }
 
     /**

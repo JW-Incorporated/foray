@@ -29,9 +29,12 @@ import ai.jwlabs.foura.engine.MediaMapping;
 import ai.jwlabs.foura.engine.RestoreRecord;
 import android.app.Notification;
 import android.app.PendingIntent;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.pm.ServiceInfo;
+import android.media.AudioManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
@@ -42,6 +45,7 @@ import androidx.annotation.Nullable;
 import androidx.annotation.OptIn;
 import androidx.core.app.NotificationCompat;
 import androidx.core.app.ServiceCompat;
+import androidx.core.content.ContextCompat;
 import androidx.media3.common.MediaItem;
 import androidx.media3.common.Player;
 import androidx.media3.common.util.UnstableApi;
@@ -181,6 +185,8 @@ public class ForayPlaybackService extends MediaSessionService {
     @Nullable private EnginePlayer player;
     @Nullable private MediaSession session;
     @Nullable private Player.Listener focusListener;
+    /** A-41 review: headphones out while no deck plays (a spoken line, the jingle); see {@link FocusMapping}. */
+    @Nullable private BroadcastReceiver noisyReceiver;
     private final FocusMapping focus = new FocusMapping();
     /** The process's log (A-28): the page's bridge reads its ring and shared rows in every lane. */
     private final EngineLog log = EngineLog.process();
@@ -343,6 +349,46 @@ public class ForayPlaybackService extends MediaSessionService {
         };
         focusListener = listener;
         built.addListener(listener);
+        registerNoisyReceiver();
+    }
+
+    /**
+     * A-41 review, BECOMING NOISY WITH NO DECK PLAYING ({@link FocusMapping}): Media3's receiver is
+     * on only while a deck plays, so a spoken line or the jingle would go on out of the speaker
+     * after the headphones came out. This one feeds the lost route when the engine runs and the
+     * active deck does not play. Wrapped: a receiver that cannot register costs that pause, not
+     * the service.
+     */
+    private void registerNoisyReceiver() {
+        if (noisyReceiver != null) return;
+        BroadcastReceiver receiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                if (intent == null || !AudioManager.ACTION_AUDIO_BECOMING_NOISY.equals(intent.getAction())) return;
+                ForayEngineHost engine = host;
+                ExoPlayer p = exo;
+                if (engine == null) return;
+                feed(FocusMapping.onBecomingNoisyOffDeck(p != null && p.getPlayWhenReady(), engine.state().isRunning()));
+            }
+        };
+        try {
+            ContextCompat.registerReceiver(this, receiver, new IntentFilter(AudioManager.ACTION_AUDIO_BECOMING_NOISY),
+                    ContextCompat.RECEIVER_EXPORTED);
+            noisyReceiver = receiver;
+        } catch (RuntimeException e) {
+            Log.w(TAG, "could not register the becoming-noisy receiver; a spoken line will not pause on unplug", e);
+        }
+    }
+
+    private void unregisterNoisyReceiver() {
+        BroadcastReceiver receiver = noisyReceiver;
+        noisyReceiver = null;
+        if (receiver == null) return;
+        try {
+            unregisterReceiver(receiver);
+        } catch (RuntimeException e) {
+            Log.w(TAG, "unregistering the becoming-noisy receiver failed", e);
+        }
     }
 
     private ExoDeck.Config deckConfig() {
@@ -448,6 +494,7 @@ public class ForayPlaybackService extends MediaSessionService {
     }
 
     private void release() {
+        unregisterNoisyReceiver();
         ForayEngineHost engine = host;
         host = null;
         if (engine != null) engine.teardown();

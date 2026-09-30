@@ -24,6 +24,21 @@ public class FocusMappingTest {
         return events.get(0);
     }
 
+    /**
+     * A-41 review: headphones out while a spoken line or the jingle sounds (no deck playing, so
+     * Media3's own receiver is off) is a lost route; while the deck plays it is Media3's to report,
+     * and with the engine not running it is nothing. TO SEE IT FAIL: answer nothing off the deck (the
+     * line keeps talking out of the phone's speaker).
+     */
+    @Test
+    public void becomingNoisyWithNoDeckPlayingIsALostRouteWhileTheEngineRuns() {
+        EngineInput.SessionEvent lost = only(FocusMapping.onBecomingNoisyOffDeck(false, true));
+        assertTrue(lost instanceof EngineInput.SessionEvent.Route);
+        assertTrue(((EngineInput.SessionEvent.Route) lost).change().oldDeviceUnavailable());
+        assertTrue("the deck plays: Media3 reports it", FocusMapping.onBecomingNoisyOffDeck(true, true).isEmpty());
+        assertTrue("nothing runs: nothing to pause", FocusMapping.onBecomingNoisyOffDeck(false, false).isEmpty());
+    }
+
     @Test
     public void aTransientLossBeginsAnInterruptionAndItsGainEndsItWithShouldResume() {
         FocusMapping f = new FocusMapping();

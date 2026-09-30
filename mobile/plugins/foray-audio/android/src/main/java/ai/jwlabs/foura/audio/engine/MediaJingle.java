@@ -106,6 +106,10 @@ public final class MediaJingle implements InterludePlayer.Jingle {
                 made.prepare();
                 made.setOnCompletionListener(mp -> finished(true));
                 made.setOnErrorListener((mp, what, extra) -> {
+                    /* A-41 review: a MediaPlayer in its Error state takes no seekTo or start (they
+                       only raise another error), so it is let go here and the next start builds a
+                       fresh one, instead of every later seam's jingle failing on the dead player. */
+                    if (player == mp) release();
                     finished(false);
                     return true;
                 });
