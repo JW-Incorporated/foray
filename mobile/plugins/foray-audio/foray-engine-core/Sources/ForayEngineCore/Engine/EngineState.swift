@@ -52,8 +52,23 @@ public struct EngineState: Equatable {
     /// `_pausedByRoute`: a route went away (corner case #13); only a press or
     /// a known car route reappearing clears it.
     public var pausedByRoute = false
-    /// `_knownCarRoutes`.
-    public var knownCarRoutes: Set<String> = []
+
+    // MARK: route resume (NE-38rs; player/route-resume.js)
+
+    /// The routes our audio has been heard through (salted SHA-256 keys,
+    /// least recently used first), seeded from `EngineConfig.knownRoutes` and
+    /// persisted by the host in `ForayEngine.knownRoutes` whenever it changes.
+    public var knownRoutes = RouteResume.KnownRoutes()
+    /// route-resume.js's reducer: what last paused us, which route was lost
+    /// and when (wall clock), and whether the engine means to be playing.
+    public var routeResume = RouteResume.State(playing: false)
+    /// The reducer as it was before an uncommanded pause was blamed on the
+    /// system, so a route loss that follows within the 500 ms attribution
+    /// window is still the loss of a PLAYING route (plan §4.3: either order).
+    public var routeResumeBeforePause: RouteResumeSnapshot?
+    /// The route the deck became audible through, and when: it is known once
+    /// heard for `RouteResume.knownAfterMs`.
+    public var heardRoute: HeardRoute?
     /// For the 500 ms route attribution of an uncommanded pause (plan §4.3).
     public var lastRouteLostAtMono: Double?
     public var lastUncommandedPauseAtMono: Double?
@@ -394,5 +409,24 @@ public struct DeckPrepareReport: Equatable {
         self.token = token
         self.hit = hit
         self.stages = stages
+    }
+}
+
+/// NE-38rs: `EngineState.routeResume` before a system-blamed pause, and when.
+public struct RouteResumeSnapshot: Equatable {
+    public let state: RouteResume.State
+    public let atMono: Double
+}
+
+/// NE-38rs: the route a `.playing` deck is heard through (its hashed key), from
+/// when, and until when if the deck stopped (a pause, a stall, the system).
+public struct HeardRoute: Equatable {
+    public let key: String
+    public var sinceMono: Double
+    public var untilMono: Double?
+
+    /// How long it was heard, at `monoMs`.
+    public func heardMs(atMono monoMs: Double) -> Double {
+        (untilMono ?? monoMs) - sinceMono
     }
 }

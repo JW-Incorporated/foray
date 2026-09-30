@@ -20,8 +20,11 @@ final class EngineCoreTests: XCTestCase {
         var lastLoad: DeckToken?
         /// What the host read from `backgroundTimeRemaining` (nil: foreground).
         var bgRemainingMs: Double?
+        /// The current output route the host reads (NE-38rs; nil: none).
+        var route: RoutePort?
         /// The wall clock. It stands still unless a test moves it (NE-46: the
-        /// device slept, so uptime did not advance and the wall clock did).
+        /// device slept, so uptime did not advance and the wall clock did;
+        /// NE-38rs measures a loss's age on it).
         var wallMs: Double = 1_790_000_000_000
 
         init(config: EngineConfig = EngineConfig(build: "test"),
@@ -33,14 +36,14 @@ final class EngineCoreTests: XCTestCase {
         @discardableResult
         mutating func send(_ input: EngineInput, after ms: Double = 1000) -> [EngineCommand] {
             monoMs += ms
-            let now = EngineNow(wallMs: wallMs, monoMs: monoMs, deck: reading, bgRemainingMs: bgRemainingMs)
+            let now = EngineNow(wallMs: wallMs, monoMs: monoMs, deck: reading, bgRemainingMs: bgRemainingMs, route: route)
             var all = core.handle(input, now: now)
             if let id = all.compactMap(Host.activation).last {
                 all += core.handle(.sessionResult(SessionResult(requestId: id, ok: activationOK,
                                                                 error: activationOK ? nil : "cannot-interrupt-others",
                                                                 activateMs: 3)),
                                    now: EngineNow(wallMs: wallMs, monoMs: monoMs, deck: reading,
-                                                  bgRemainingMs: bgRemainingMs))
+                                                  bgRemainingMs: bgRemainingMs, route: route))
             }
             for command in all {
                 switch command {
@@ -81,9 +84,12 @@ final class EngineCoreTests: XCTestCase {
                                   JSONMember("audio_url", .string("https://cdn.example/\(id).mp3"))] + extra))!
     }
 
-    /// A host playing `ids[0]` (queued with the rest), confirmed audible.
-    func playing(_ ids: [String] = ["a"], config: EngineConfig = EngineConfig(build: "test")) -> Host {
+    /// A host playing `ids[0]` (queued with the rest), confirmed audible,
+    /// through `route` if one is given.
+    func playing(_ ids: [String] = ["a"], config: EngineConfig = EngineConfig(build: "test"),
+                 route: RoutePort? = nil) -> Host {
         var host = Host(config: config)
+        host.route = route
         host.send(.queue(.load(ids.map { EngineCoreTests.item($0) })))
         host.send(.queue(.playIndex(0, startSec: nil, source: .tap)))
         host.land()
@@ -350,9 +356,9 @@ final class EngineCoreTests: XCTestCase {
         host.send(.session(.interruptionBegan(reason: "default")))
         XCTAssertTrue(host.send(.session(.interruptionEnded(shouldResume: true))).contains(.graceBegin(.interruptionResume)))
 
-        var car = playing()
-        car.send(.session(.route(RouteChange(oldDeviceUnavailable: true, routeName: "Civic", isCarRoute: true))))
-        XCTAssertTrue(car.send(.session(.route(RouteChange(oldDeviceUnavailable: false, routeName: "Civic"))))
+        var car = playing(route: RouteResumeTests.carPlay)
+        car.send(.session(.route(RouteResumeTests.lost(RouteResumeTests.carPlay))))
+        XCTAssertTrue(car.send(.session(.route(RouteResumeTests.back(RouteResumeTests.carPlay))))
             .contains(.graceBegin(.routeResume)))
 
         var cold = Host()
@@ -425,10 +431,10 @@ final class EngineCoreTests: XCTestCase {
             XCTAssertLessThan(at, activate, "the row is written before the activation it waits on")
         }
 
-        var car = playing()
+        var car = playing(route: RouteResumeTests.carPlay)
         car.bgRemainingMs = 12_000
-        car.send(.session(.route(RouteChange(oldDeviceUnavailable: true, routeName: "Civic", isCarRoute: true))))
-        let back = car.send(.session(.route(RouteChange(oldDeviceUnavailable: false, routeName: "Civic"))))
+        car.send(.session(.route(RouteResumeTests.lost(RouteResumeTests.carPlay))))
+        let back = car.send(.session(.route(RouteResumeTests.back(RouteResumeTests.carPlay))))
         let route = try XCTUnwrap(rows("resume", in: back).first, "\(back)")
         XCTAssertEqual(route[field: "kind"], .string("route"))
         XCTAssertEqual(route[field: "grace"], .string("y"))

@@ -185,14 +185,20 @@ public struct EngineNow: Equatable, Sendable {
     /// the host at the moment the input is handled, as the deck's reading is:
     /// what `foray-tts.js`'s `state()` answers the JS manager.
     public var narrator: NarratorReading
+    /// The current output route, read by the host at the moment the input is
+    /// handled (NE-38rs): the route a `.playing` deck is heard through. Nil
+    /// when the host cannot say (the parity driver, most tests), and then no
+    /// route ever becomes known.
+    public var route: RoutePort?
 
     public init(wallMs: Double, monoMs: Double, deck: DeckReading = .idle, bgRemainingMs: Double? = nil,
-                narrator: NarratorReading = .unknown) {
+                narrator: NarratorReading = .unknown, route: RoutePort? = nil) {
         self.wallMs = wallMs
         self.monoMs = monoMs
         self.deck = deck
         self.bgRemainingMs = bgRemainingMs
         self.narrator = narrator
+        self.route = route
     }
 }
 

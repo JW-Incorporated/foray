@@ -90,6 +90,9 @@ final class EngineParityWrapperTests: XCTestCase {
     func testLexiconFamily() { assertParityFamily("lexicon", requireRunner: true) }
     func testSpeechRateFamily() { assertParityFamily("speech-rate", requireRunner: true) }
 
+    /// NE-38rs: route resume as the app links it.
+    func testRouteResumeFamily() { assertParityFamily("route-resume", requireRunner: true) }
+
     /// Every family in manifest.json, including any recorded after this file
     /// was written: executed or owed, nothing stale, nothing dropped.
     func testEveryManifestFamilyIsExecutedOrPending() throws {

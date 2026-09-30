@@ -206,7 +206,7 @@ final class ForayEngineHostTests: XCTestCase {
         let seen = world.log.entries.count
         let activations = world.session.activateCalls
         world.session.post(.interruptionEnded(shouldResume: true))
-        world.session.post(.route(RouteChange(oldDeviceUnavailable: false, routeName: "Car", isCarRoute: true)))
+        world.session.post(.route(RouteChange(oldDeviceUnavailable: false, portType: "CarAudio", portUID: "car-1")))
         world.session.post(.mediaServicesReset)
         XCTAssertEqual(world.session.activateCalls, activations)
         XCTAssertEqual(world.log.entries.count, seen)

@@ -316,8 +316,9 @@ final class DiagRingTests: XCTestCase {
     func testPrivateKeysLiveOutsideCapacitorStorageAndSharedRowsAreTheOwnedOnes() {
         XCTAssertEqual(EnginePrivateKey.allCases.map(\.rawValue), [
             "ForayEngine.modeOverride", "ForayEngine.strikes", "ForayEngine.sentinel",
-            "ForayEngine.stickyLegacyBuild", "ForayEngine.restore", "ForayEngine.holdPolicy"
-        ], "plan §4.6's list, which test/data-deletion.test.js purges by name")
+            "ForayEngine.stickyLegacyBuild", "ForayEngine.restore", "ForayEngine.holdPolicy",
+            "ForayEngine.knownRoutes"
+        ], "plan §4.6's list and NE-38rs's known routes, which test/data-deletion.test.js purges by name")
         for key in EnginePrivateKey.allCases {
             XCTAssertFalse(key.rawValue.hasPrefix(SharedRowStore.preferencesKeyPrefix), key.rawValue)
             XCTAssertTrue(EngineKeys.isPrivate(rawKey: key.rawValue))
