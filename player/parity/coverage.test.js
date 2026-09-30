@@ -563,11 +563,14 @@ test("every swift-pending id names a recorded case and is tagged with a card", (
    reach, a deadline mid-transition, NE-31s mapped to an XCTest);
    html-audio-backend owes nothing. NE-31j recorded the narration
    half: manager-foray (the overlay, the jingle's clock) and speech-rate (what
-   reaches the synthesiser). */
+   reaches the synthesiser). NE-39j recorded the M3 remainder into
+   manager-remainder (the warming rules, the position timer, the rate getter
+   and its snap line, player-core-7 and -9, audit round 2), so queue-manager
+   owes nothing now either. */
 const MANAGER_DECK_OWED = Object.freeze({
-  "queue-manager": { fixtured: ["manager-episode", "manager-foray", "speech-rate"], mustOwe: true, owed: [
-    { card: "NE-39j", family: "manager-remainder" },
-  ] },
+  "queue-manager": {
+    fixtured: ["manager-episode", "manager-foray", "speech-rate", "manager-remainder"], mustOwe: false, owed: [],
+  },
   "html-audio-backend": {
     fixtured: ["deck-episode", "deck", "prepare", "manager-episode", "manager-foray"], mustOwe: false, owed: [],
   },
@@ -615,14 +618,36 @@ test("every family a fixture, an unported entry or a pending id uses is charged 
   assert.deepStrictEqual(loose, [], "a family no capability names can hold owed work that no gate reads");
 });
 
+test("NE-39j: queue-manager owes unported.json nothing; manager-remainder is recorded, pending for NE-39s and owed whole to A-40", () => {
+  /* The card's acceptance: "queue-manager has zero unported entries; the cases
+     pass in JS and are pending for NE-39s" (run.test.js / record.mjs --check
+     hold the JS half). The family stays under `remainder`, which no build
+     advertises, until NE-39s ports it and deletes the pending lists; the JVM
+     owes it whole to A-40. MUTATION: put a queue-manager test back in
+     unported.json -> red; drop one manager-remainder id from
+     swift-pending.json -> red; move manager-remainder into jvm-pending runs -> red. */
+  assert.deepStrictEqual(Object.keys(DATA.unported["queue-manager"] ?? {}), [], "queue-manager owes unported.json nothing");
+  const cases = FIXTURES.filter((f) => f.family === "manager-remainder").flatMap((f) => f.doc.cases);
+  assert.ok(cases.length >= 20, `manager-remainder holds the remainder (${cases.length} cases)`);
+  for (const c of cases) {
+    assert.equal(DATA.pending[c.id], "NE-39s", `${c.id} is owed to NE-39s`);
+    assert.equal(c.setup?.target, "manager", `${c.id} drives the real manager`);
+    assert.ok(c.covers.every((cv) => cv.startsWith("queue-manager::")), `${c.id} stands for queue-manager tests`);
+  }
+  const jvm = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, "player/parity/jvm-pending.json"), "utf8"));
+  assert.equal(jvm.families["manager-remainder"], "A-40");
+  assert.ok(!jvm.runs.includes("manager-remainder"));
+  assert.ok(DATA.capabilities.remainder.includes("manager-remainder"));
+});
+
 test("capabilities.json holds the plan §6.6 map", () => {
   assert.deepStrictEqual(Object.keys(DATA.capabilities).filter((k) => !k.startsWith("//")), ["episode", "continuation", "restore", "foray", "remainder"]);
   assert.ok(DATA.capabilities.foray.includes("seam-gap"));
   assert.ok(DATA.capabilities.episode.includes("manager-episode"));
-  /* `remainder` (NE-14j) holds only the M3 manager remainder NE-39j owes, so the
+  /* `remainder` (NE-14j) holds the M3 manager remainder NE-39j recorded, so the
      episode and foray capabilities never wait on it; nothing may ever advertise
      it. MUTATION: add "remainder" to the advertised list -> the next test's
-     gate is red for as long as NE-39j owes anything. */
+     gate is red for as long as manager-remainder is pending (NE-39s). */
   // NE-45j parks prepare-narration here while NE-45s owes it (the M2 build
   // advertises foray, which may owe nothing); NE-45s moves it to foray.
   // NE-38rj parks route-resume here until NE-38rs ports it and moves it to episode.
