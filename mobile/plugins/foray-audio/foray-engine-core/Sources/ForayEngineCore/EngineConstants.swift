@@ -107,6 +107,8 @@ public enum EngineConstants {
         public static let holdPolicyKinds: [String] = ["forever", "none", "until"]
         /// `MODE_OVERRIDES`
         public static let modeOverrides: [String] = ["auto", "native", "web"]
+        /// `NARRATION_PUBLIC_BASE`
+        public static let narrationPublicBase: String = "https://audio.jwlabs.ai"
         /// `OWNED_PREFIXES`
         public static let ownedPrefixes: [String] = ["cp_pos:", "cp_foray:", "cp_last_episode"]
         /// `PAGE_MODES`
@@ -315,6 +317,14 @@ public enum EngineConstants {
         public static let episode: String = "episode"
         /// `TTS`
         public static let tts: String = "tts"
+    }
+
+    /// `player/route-resume.js`
+    public enum RouteResume {
+        /// `ROUTE_RESUME_BLUETOOTH_DEFAULT`
+        public static let routeResumeBluetoothDefault: Bool = false
+        /// `ROUTE_RESUME_MAX_LOST_SEC`
+        public static let routeResumeMaxLostSec: Double = 86400
     }
 
     /// `player/seam-gap.js`

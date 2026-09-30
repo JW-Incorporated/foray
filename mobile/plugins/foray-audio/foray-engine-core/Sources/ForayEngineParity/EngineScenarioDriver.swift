@@ -149,7 +149,7 @@ final class ScenarioWorld {
     /// ignored, so a case that needs narration or the interlude (NE-31s) says so.
     static let setupKeys: Set<String> = ["target", "positions", "positionEvents", "rate", "backend", "catalogue", "session",
                                          "seamGapSec", "view", "scheduler", "seamGapEvents", "forayBuild", "capabilities",
-                                         "tts", "interlude", "interludeEnabled", "voice", "narrationTicks"]
+                                         "tts", "interlude", "interludeEnabled", "voice", "narrationTicks", "preview"]
     /// runner.js `VIEW_KEYS`: what a Foray scenario may add to its checkpoints.
     static let viewKeys: Set<String> = ["outPoint", "seamGapRemainingMs", "timersLive", "positionSec",
                                         "narrationSec", "narrationPlayhead", "narrationTicks", "lastVoiceFallback", "wasPlaying"]
@@ -202,6 +202,12 @@ final class ScenarioWorld {
     var jingle: FakeJingle?
     /// Their answers, delivered when the step settles, before any load.
     var answers: [EngineInput] = []
+    /// NE-47: the preview deck (fakes.js `fakePreview`): the urls whose load
+    /// fails, the load in flight, and whether the preview is sounding.
+    let previewFailUrls: Set<String>
+    var previewToken: DeckToken?
+    var previewReadyToken: DeckToken?
+    var previewAudible = false
     /// What is audible besides the deck.
     var auditionSpeaking = false
     var narrationSpeaking = false
@@ -330,6 +336,16 @@ final class ScenarioWorld {
             for id in ids { if let text = id.stringValue { failing.insert(text) } }
         }
         failLoadFor = failing
+        var previewFailing: Set<String> = []
+        switch setup["preview"] {
+        case .undefined: break
+        case .object:
+            if case let .array(urls) = setup["preview"]["failUrls"] {
+                for url in urls { if let text = url.stringValue { previewFailing.insert(text) } }
+            }
+        default: throw HarnessError("E_BAD_CASE", "setup.preview is an object ({failUrls})")
+        }
+        previewFailUrls = previewFailing
         reading = DeckReading(positionSec: 0, durationSec: defaultDuration, audible: false, ended: false)
     }
 
@@ -958,6 +974,8 @@ final class ScenarioWorld {
                 auditionSpeaking = true
                 trackAudible()
                 ops.append(ScenarioWorld.speakOp(text, rate: EngineConstants.QueueManager.narrationRate, voiceId: voiceId))
+            case let .preview(previewCommand):
+                applyPreview(previewCommand)
             case let .narration(narration):
                 applyNarration(narration)
             case let .interlude(interlude):
@@ -1069,6 +1087,39 @@ final class ScenarioWorld {
         }
     }
 
+    /// The preview deck (NE-47; fakes.js `fakePreview`), command by command.
+    /// A load answers at once, ready or failed (`setup.preview.failUrls`),
+    /// when the step settles, as the JS fake's awaited load resolves; a play
+    /// is only ever for the load that answered ready.
+    private func applyPreview(_ command: DeckCommand) {
+        switch command {
+        case let .load(token, _, url, _, _, _):
+            let target = url ?? ""
+            previewToken = token
+            previewReadyToken = nil
+            previewAudible = false
+            ops.append("preview.load:\(target)")
+            if previewFailUrls.contains(target) {
+                answers.append(.preview(.failed(token: token, message: "preview did not load")))
+            } else {
+                previewReadyToken = token
+                answers.append(.preview(.ready(token: token, landedSec: 0, prerolled: true, elapsedMs: 0)))
+            }
+        case .play:
+            if previewToken == nil || previewReadyToken != previewToken { broke("preview-play-before-ready") }
+            previewAudible = true
+            trackAudible()
+            ops.append("preview.play")
+        case .unload:
+            previewToken = nil
+            previewReadyToken = nil
+            previewAudible = false
+            ops.append("preview.stop")
+        case .pause, .seek, .setRate, .setOutPoint, .prepare:
+            native("n.preview.\(command)")
+        }
+    }
+
     /// A load lands (or fails). A superseded load's answer is still delivered,
     /// as the JS fake resolves it: the core must be the one to ignore it.
     private func land(_ token: DeckToken, itemId: String, fail: Bool) {
@@ -1115,6 +1166,7 @@ final class ScenarioWorld {
 
     private func trackAudible() {
         let sources = (reading.audible ? 1 : 0) + (auditionSpeaking ? 1 : 0) + (narrationSpeaking ? 1 : 0)
+            + (previewAudible ? 1 : 0)
             + ((jingle?.active ?? false) ? 1 : 0)
         if sources > 1 { broke("two-audible-sources") }
         maxAudible = Swift.max(maxAudible, sources)

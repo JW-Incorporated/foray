@@ -299,6 +299,7 @@ public struct EngineCore {
         case let .timer(timer): onTimer(timer)
         case let .narrator(event): onNarrator(event)
         case let .interlude(event): onInterlude(event)
+        case let .preview(event): onPreview(event)
         }
     }
 
@@ -373,11 +374,13 @@ public struct EngineCore {
             break
         case .purge: stop(persist: false, source: source)
         case let .relinquish(cap): relinquish(cap: cap, source: source)
-        case let .audition(text, voiceId):
+        case let .audition(text, voiceId, url):
             // OQ-5: refused while running; otherwise the engine's own
-            // synthesiser speaks it after a SessionPolicy activation.
+            // synthesiser speaks it after a SessionPolicy activation. NE-47:
+            // with a `url` the rendered preview plays on the preview deck
+            // under that same activation, the tap's own.
             if state.isRunning || audibleNow { return refuse(.engineBusy) }
-            begin(.audition(text: text, voiceId: voiceId), source: .audition)
+            begin(.audition(text: text, voiceId: voiceId, url: url), source: .audition)
         case .setModeOverride, .probeSession:
             // The host's (EngineOwnership NE-17, SessionProbe NE-25c).
             break
@@ -572,6 +575,7 @@ public struct EngineCore {
     private mutating func stop(persist: Bool, source: EngineSource) {
         cutSeamGap("stop")
         defer { releaseSeamGap() }
+        stopPreview("stop")
         state.pausedByListener = true
         stopRow(persist ? .close : .dataDeletion, source: source)
         // CLOSING IS A FLUSH (audit round 2, player-3): the reducer's stop
@@ -658,6 +662,7 @@ public struct EngineCore {
         cutSeamGap("relinquish")
         state.gapParkedToken = nil
         state.gapCut = false
+        stopPreview("relinquish")
         stopRow(.relinquish, source: source)
         if state.isRunning {
             state.pausedByListener = true
@@ -741,7 +746,12 @@ public struct EngineCore {
     private mutating func begin(_ intent: DeferredIntent, source: EngineSource) {
         // A play reopens a closed player; an audition is not a play of the
         // queue and leaves the lock screen as the close left it (NE-18).
-        if case .audition = intent {} else { state.closed = false }
+        if case .audition = intent {} else {
+            state.closed = false
+            // NE-47: whatever starts now is the one thing that sounds; a
+            // voice preview still loading or playing is cut first.
+            stopPreview("play")
+        }
         if let reason = graceReason(for: intent, source: source) { beginGrace(reason) }
         spanRow(for: intent)
         let via: SessionPolicy.PlayVia
@@ -895,7 +905,14 @@ public struct EngineCore {
             guard let item = state.currentItem else { return refuse(.notLoaded) }
             dispatch(.play(item.ref))
         case let .walkHop(hop): walk(hop, source: source)
-        case let .audition(text, voiceId): out.append(.speak(text: text, voiceId: voiceId))
+        case let .audition(text, voiceId, url):
+            guard let url else {
+                // Spoken: a preview still sounding stops first (one voice
+                // at a time); with none, this is the audition as it always was.
+                stopPreview("audition")
+                return out.append(.speak(text: text, voiceId: voiceId))
+            }
+            loadPreview(url: url, text: text, voiceId: voiceId)
         }
     }
 
@@ -2651,6 +2668,7 @@ public struct EngineCore {
     /// every timer and grace span ends, and the core answers nothing more.
     /// The reducer's state is left as it was.
     private mutating func teardown() {
+        stopPreview("dispose")
         if state.narration != nil { stopNarration() }
         cutSeamGap("dispose")
         state.gapParkedToken = nil
@@ -2667,6 +2685,82 @@ public struct EngineCore {
         if state.grace != nil { endGrace(.relinquished) }
         diag("mode", [JSONMember("kind", .string("teardown"))])
         state.tornDown = true
+    }
+
+    // MARK: - The voice picker's rendered preview (NE-47; Spark §3.3)
+
+    /// The id a preview load carries: the deck logs it, nothing reads it.
+    public static let previewItemId = "audition-preview"
+
+    /// An audition that names a rendered `preview.m4a` loads it on the
+    /// PREVIEW deck, a deck of its own: the item a paused Foray holds on the
+    /// main deck is never touched, so its resume is exactly what it was. The
+    /// session is already active (the tap's own activation, `begin`), and
+    /// the play waits for the load's `.ready` like any deck's. A preview in
+    /// flight is replaced: the deck's new load supersedes the old one, whose
+    /// late answers name a token nobody holds.
+    private mutating func loadPreview(url: String, text: String, voiceId: String?) {
+        state.lastPreviewToken += 1
+        let token = state.lastPreviewToken
+        state.preview = AuditionPreview(token: token, text: text, voiceId: voiceId)
+        diag("audition", [JSONMember("kind", .string("preview-load")), JSONMember("token", .number(Double(token)))])
+        out.append(.preview(.load(token: token, itemId: EngineCore.previewItemId, url: url, startSec: 0,
+                                  preciseTiming: false)))
+    }
+
+    /// The preview deck's reports. Only the preview in flight is heard; a
+    /// report for any other token (a replaced preview, or one already cut)
+    /// is dropped.
+    private mutating func onPreview(_ event: DeckEvent) {
+        guard let preview = state.preview else { return }
+        switch event {
+        case let .ready(token, _, _, _):
+            guard token == preview.token, !preview.playing else { return }
+            // Audible: only on the session the audition's tap activated. An
+            // interruption since then (a call) took it, and a preview is not
+            // worth an activation nobody asked for: it is dropped, silently.
+            guard state.session == .active else { return stopPreview("no-session") }
+            state.preview?.playing = true
+            diag("audition", [JSONMember("kind", .string("preview-play")), JSONMember("token", .number(Double(token)))])
+            out.append(.preview(.play))
+        case let .failed(token, _, _):
+            guard token == preview.token else { return }
+            previewFailed(preview, reason: "failed")
+        case let .deadlineExceeded(token, _, _):
+            guard token == preview.token else { return }
+            previewFailed(preview, reason: "timeout")
+        case let .ended(token):
+            guard token == preview.token else { return }
+            state.preview = nil
+            diag("audition", [JSONMember("kind", .string("preview-ended")), JSONMember("token", .number(Double(token)))])
+        default:
+            // Its time control, stalls, duration and the rest describe a
+            // few seconds of a voice sample: nothing the engine acts on.
+            break
+        }
+    }
+
+    /// A preview that would not load (a 404, a dead host, its deadline) is
+    /// SPOKEN instead: the listener tapped to hear the voice and hears the
+    /// line, in the voice the page resolved (the Apple fallback). Only with
+    /// the session still active, as every audible command.
+    private mutating func previewFailed(_ preview: AuditionPreview, reason: String) {
+        state.preview = nil
+        let speaks = state.session == .active
+        diag("audition", [JSONMember("kind", .string("fallback")), JSONMember("reason", .string(reason)),
+                          JSONMember("spoken", .bool(speaks))])
+        guard speaks else { return }
+        out.append(.speak(text: preview.text, voiceId: preview.voiceId))
+    }
+
+    /// Cut the preview in flight, if any: something else is starting, the
+    /// player closed, or the engine is going away.
+    private mutating func stopPreview(_ why: String) {
+        guard let preview = state.preview else { return }
+        state.preview = nil
+        diag("audition", [JSONMember("kind", .string("preview-stop")), JSONMember("why", .string(why)),
+                          JSONMember("token", .number(Double(preview.token)))])
+        out.append(.preview(.unload))
     }
 
     // MARK: cp_foray (client.js `persistForayProgress`)

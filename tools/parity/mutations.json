@@ -55,6 +55,17 @@
       "jsTest": { "suite": "queue-manager", "name": "a rendered line is warmed across its seam, whatever the beat; a spoken one has no file to warm" },
       "family": "prepare-narration",
       "recordedBy": "NE-45j"
+    },
+    "route-listener": {
+      "why": "A listener's pause is never resumed when a car comes back (founder Q5, docs/DECISIONS.md 2026-09-25; route-resume.js routeResumeDecision). The mutant is main's EngineCore.onRoute guard before NE-38rs, `case .interrupted(_, true)`, which also matches a listener's own pause and resumes it.",
+      "patch": {
+        "file": "player/route-resume.js",
+        "find": "  if (pausedBy !== \"route\") return no(NOT_A_ROUTE_PAUSE[pausedBy] ?? \"not-paused\");",
+        "replace": "  if (pausedBy !== \"route\" && pausedBy !== \"listener\") return no(NOT_A_ROUTE_PAUSE[pausedBy] ?? \"not-paused\");"
+      },
+      "jsTest": { "suite": "route-resume", "name": "a listener's pause is never resumed, even when the car is then lost and comes back" },
+      "family": "route-resume",
+      "recordedBy": "NE-38rj"
     }
   }
 }

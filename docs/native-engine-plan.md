@@ -1794,7 +1794,7 @@ Read first: `CLAUDE.md`, this deck, the Tier 2 requirements, `docs/ios-native-pl
 - **Files:**
   - `player/route-resume.js` (new and pure). It is **not wired** into `queue-manager.js` or `client.js`: the web and Android JS lanes keep "a reconnect never resumes" (player-core-10).
   - `player/route-resume.test.js`
-  - `player/parity/fixtures/route-resume/*.json`, `manifest.json`, `capabilities.json` (charged to `episode`), `coverage.js` `COVERED_SUITES`
+  - `player/parity/fixtures/route-resume/*.json`, `manifest.json`, `capabilities.json` (an `episode` rule, but charged to the unadvertised `remainder` gate while it is owed: the M2 build advertises `episode`, which may owe nothing; NE-38rs moves it), `coverage.js` `COVERED_SUITES`
   - the books: `swift-pending.json` (`--port-card NE-38rs`) and `jvm-pending.json` (`families["route-resume"] = "A-61"`, `--jvm-card A-61`)
   - `tools/parity/gen-constants.mjs` (the two constants)
   - the floor in `test/suite-integrity.test.js`
@@ -1845,6 +1845,7 @@ Read first: `CLAUDE.md`, this deck, the Tier 2 requirements, `docs/ios-native-pl
   - `Engine/EngineStore.swift`: a private key, `ForayEngine.knownRoutes`
   - `mobile/ENGINE_DEFAULT.json` and the `EngineConfig` flag `routeResumeBluetooth: false`
   - the `ForayEngineParity` runner for `route-resume`
+  - `player/parity/capabilities.json`: move `route-resume` from `remainder` to `episode` (NE-38rj parked it there while owed), and the NE-38rj test in `coverage.test.js` with it
   - XCTests: `RouteResumeTests`, `AudioSessionOwnerTests`
 - **Ask:**
   - Replace the current branch with the policy.
@@ -1856,7 +1857,9 @@ Read first: `CLAUDE.md`, this deck, the Tier 2 requirements, `docs/ios-native-pl
 
     Never a name or a raw UID (DiagGate).
   - A resume is `begin(.routeResume, source: .autoresume)`, with grace, like a car's press.
+  - `lostSec` is measured on the wall clock (`Date()`), never on uptime (`ProcessInfo.systemUptime`, `DispatchTime`), which stops while the phone sleeps: a phone asleep overnight in a parked car would otherwise read a two-day loss as minutes old (route-resume.js, THE CLOCK). A negative age is refused.
   - Burn down `route-resume`. Opens with `hold`.
+  - The reference is `routeResumeDecision` plus the reducer `routeResumeStep` (replayed by `routeResumeReplay` in the `sequences` fixtures): the reducer is how `pausedBy` and the one-resume-per-loss rule are tracked, so `EngineCore` tracks them the same way.
 - **Acceptance:**
   - `route-resume` passes in the Swift runner, with nothing pending.
   - XCTests:
@@ -2004,6 +2007,7 @@ Read first: `CLAUDE.md`, this deck, the Tier 2 requirements, `docs/ios-native-pl
     - a 404 falls back to speech;
     - a no-`url` audition is byte-identical to today.
 - **Device check:** none until the picker ships rendered voices.
+- **Status (2026-09-29):** built on `engine/m3`. The contract admits `url` only as a plain path on `NARRATION_PUBLIC_BASE` (`https://audio.jwlabs.ai`, held equal to `render-profile.json`); the preview plays on a PREVIEW deck of its own (`EngineSeams.preview`, an `AVDeck` whose rows say `lane=preview`), so a paused Foray's item on the main deck is untouched; the next play, a stop, a relinquish or the teardown cut it. A load past `EngineBoot.previewLoadDeadlineSec` (6 s, `// MEASURE` from the `lane=preview` time-to-ready rows) or a failure is spoken instead, with an `audition kind=fallback` row. Fixtures: `manager-foray/audition-url-*` and seven `contract/send-request-*-audition-*` cases. `PreviewSpeaker` is now `SpeechNarrator` (NE-33); its audition path is unchanged.
 
 #### NE-39s · Swift burn-down; delete `swift-pending.json` and `unported.json`; the de-dup decision — **L**
 - **Milestone:** M3

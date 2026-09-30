@@ -100,7 +100,7 @@
       }
     },
     "opLog": {
-      "description": "Ordered op tokens. Backend tokens are queue-manager.test.js's FakeBackend grammar, unchanged: load:<id>@<s>, play, pause, seek:<s>, outPoint:<s|null>, rate:<r>, release. Other adapters are prefixed: tts.*, interlude.*, store.*. Native-only tokens are n.* and are stripped before comparison except in the prepare family.",
+      "description": "Ordered op tokens. Backend tokens are queue-manager.test.js's FakeBackend grammar, unchanged: load:<id>@<s>, play, pause, seek:<s>, outPoint:<s|null>, rate:<r>, release. Other adapters are prefixed: tts.*, interlude.*, store.*, preview.* (NE-47: the engine's preview deck, preview.load:<url>, preview.play, preview.stop). Native-only tokens are n.* and are stripped before comparison except in the prepare family.",
       "type": "array",
       "items": { "type": "string" }
     },
@@ -124,7 +124,8 @@
         "view": { "description": "NE-30j, manager target: extra checkpoint fields, opt-in (runner.js VIEW_KEYS).", "type": "array", "items": { "type": "string" } },
         "seamGapEvents": { "description": "NE-30j, manager target: the surface beat callback writes event.seamGap:<true|false> into the op log.", "type": "boolean" },
         "forayBuild": { "description": "NE-30j, manager target: a real curated Foray built as the page builds it ({id, data: frozen | committed, dropSources?, segments?: false}); a playForay or setQueueFromForay call with no args plays its hydrated document.", "type": "object" },
-        "capabilities": { "description": "NE-30j, engine target: what the reference engine advertises (default: episode, continuation, restore, foray).", "type": "array", "items": { "type": "string" } }
+        "capabilities": { "description": "NE-30j, engine target: what the reference engine advertises (default: episode, continuation, restore, foray).", "type": "array", "items": { "type": "string" } },
+        "preview": { "description": "NE-47, engine target: the preview deck a rendered audition plays on (fakes.js fakePreview). failUrls: urls whose load fails, so the audition is spoken instead.", "type": "object" }
       }
     },
     "verb": {

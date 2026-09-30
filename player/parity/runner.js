@@ -541,7 +541,9 @@ async function runDeckScenario(c, setup, ctx) {
    error unless the step says `refused: "<reason>"`). `deck` steps are the
    engine's deck events (`ended` with `reason`, `error`, `time`/`duration`
    with `sec`, `window`, `stall`, `flowing`). `clock` moves the manual
-   clock. A checkpoint records the manager view plus `nowMs` — T. */
+   clock. A checkpoint records the manager view plus `nowMs` — T.
+   `setup.preview` (NE-47) configures the preview deck a rendered audition
+   plays on: `{failUrls: [...]}` are urls whose load fails. */
 
 export const ENGINE_DECK_EVENTS = Object.freeze(["ended", "error", "time", "duration", "window", "stall", "flowing"]);
 
@@ -553,6 +555,8 @@ async function runEngineScenario(c, setup, ctx) {
     scheduler, now: () => 0, log,
     capabilities: setup.capabilities ?? ["episode", "continuation", "restore", "foray"],
     catalogue: setup.catalogue ?? {}, backend: setup.backend ?? {},
+    // NE-47: the preview deck's failing urls (fakes.js fakePreview).
+    preview: setup.preview ?? {},
     ...(setup.seamGapSec !== undefined ? { seamGapSec: setup.seamGapSec } : {}),
   });
   const { verbs } = closedSets();

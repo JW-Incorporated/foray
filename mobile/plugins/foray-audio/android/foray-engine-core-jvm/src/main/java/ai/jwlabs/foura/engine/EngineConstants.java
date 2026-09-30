@@ -133,6 +133,8 @@ public final class EngineConstants {
         public static final List<String> HOLD_POLICY_KINDS = Collections.unmodifiableList(Arrays.asList("forever", "none", "until"));
         /** {@code MODE_OVERRIDES} */
         public static final List<String> MODE_OVERRIDES = Collections.unmodifiableList(Arrays.asList("auto", "native", "web"));
+        /** {@code NARRATION_PUBLIC_BASE} */
+        public static final String NARRATION_PUBLIC_BASE = "https://audio.jwlabs.ai";
         /** {@code OWNED_PREFIXES} */
         public static final List<String> OWNED_PREFIXES = Collections.unmodifiableList(Arrays.asList("cp_pos:", "cp_foray:", "cp_last_episode"));
         /** {@code PAGE_MODES} */
@@ -363,6 +365,16 @@ public final class EngineConstants {
         public static final String EPISODE = "episode";
         /** {@code TTS} */
         public static final String TTS = "tts";
+    }
+
+    /** {@code player/route-resume.js} */
+    public static final class RouteResume {
+        private RouteResume() {}
+
+        /** {@code ROUTE_RESUME_BLUETOOTH_DEFAULT} */
+        public static final boolean ROUTE_RESUME_BLUETOOTH_DEFAULT = false;
+        /** {@code ROUTE_RESUME_MAX_LOST_SEC} */
+        public static final double ROUTE_RESUME_MAX_LOST_SEC = 86400.0;
     }
 
     /** {@code player/seam-gap.js} */

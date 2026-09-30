@@ -2848,6 +2848,10 @@ export const ENGINE_ROW_KINDS = Object.freeze([
      with `result=`) and a malformed hello. The 2026-09-26 paste showed
      `cmd x15` as a count, because the scan below never matched `row("cmd"`. */
   "cmd", "hello",
+  /* NE-47: the voice picker's rendered preview (audition: preview-load,
+     preview-play, preview-ended, preview-stop with why, and fallback with
+     reason failed|timeout and whether it was spoken). */
+  "audition",
 ]);
 
 const ENGINE_HEADER_KEYS = new Set(["seq", "at", "mono", "kind", "event", "dropped"]);
