@@ -344,6 +344,8 @@ test("a case new in a family the JVM runs is refused without --jvm-card and owed
   try {
     assert.equal(readJ(root, JVM).families["number-format"], undefined, "precondition: the JVM runs number-format");
     assert.equal(readJ(root, JVM).families["seam-gap"], "A-40", "precondition: seam-gap is owed whole");
+    // The real books may already owe cases (manager-episode's NE-39n case, to A-64): the test's own entry comes on top.
+    const baseCases = readJ(root, JVM).cases;
 
     const nf = readJ(root, NUMBER_FORMAT);
     nf.cases.push({ id: "number-format/brand-new-2.5", covers: [], call: "jsonNumber", args: [2.5] });
@@ -357,7 +359,7 @@ test("a case new in a family the JVM runs is refused without --jvm-card and owed
     const r = await record({ root, jvmCard: "A-23", log: quiet });
     assert.equal(r.ok, true, r.refusals.join("\n"));
     assert.deepStrictEqual(r.jvmOwed, { families: [], cases: ["number-format/brand-new-2.5"] });
-    assert.deepStrictEqual(readJ(root, JVM).cases, { "number-format/brand-new-2.5": "A-23" });
+    assert.deepStrictEqual(readJ(root, JVM).cases, { ...baseCases, "number-format/brand-new-2.5": "A-23" });
     assert.deepStrictEqual((await checkAll({ root })).problems, [], "the books a record writes are --check clean");
 
     // A case new in a family owed whole: the Swift runner holds it, the JVM books do not move.
@@ -374,7 +376,7 @@ test("a case new in a family the JVM runs is refused without --jvm-card and owed
     writeJ(root, NUMBER_FORMAT, nf);
     const dropped = await record({ root, lowerFloors: true, log: quiet });
     assert.equal(dropped.ok, true, dropped.refusals.join("\n"));
-    assert.deepStrictEqual(readJ(root, JVM).cases, {});
+    assert.deepStrictEqual(readJ(root, JVM).cases, baseCases);
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }
