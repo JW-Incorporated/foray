@@ -218,6 +218,8 @@ final class FakeNowPlaying: NowPlayingWriting {
 /// source it holds can: that is the re-entrant path the host must queue.
 final class FakeDeck: DeckDriving {
     let log: SeamLog
+    /// What its log lines start with: `deck`, or `preview` for NE-47's.
+    let name: String
     var onEvent: ((DeckEvent) -> Void)?
     var reading = DeckReading(positionSec: nil, durationSec: 3600, audible: false, ended: false)
     var answersReady = false
@@ -225,13 +227,16 @@ final class FakeDeck: DeckDriving {
     private(set) var lastToken: DeckToken?
     private(set) var invalidated = false
 
-    init(log: SeamLog) { self.log = log }
+    init(log: SeamLog, name: String = "deck") {
+        self.log = log
+        self.name = name
+    }
 
     var isObserved: Bool { onEvent != nil && !invalidated }
 
     func send(_ command: DeckCommand) {
         sent.append(command)
-        log.add("deck.\(command.logName)")
+        log.add("\(name).\(command.logName)")
         switch command {
         case let .load(token, _, _, startSec, _, _):
             lastToken = token
@@ -252,7 +257,7 @@ final class FakeDeck: DeckDriving {
     func invalidate() {
         invalidated = true
         onEvent = nil
-        log.add("deck.invalidate")
+        log.add("\(name).invalidate")
     }
 
     /// The deck reports something (on main, as AVDeck does).
@@ -518,10 +523,13 @@ final class FakeWorld {
     /// every jingle start `refused` and renders no silence, as the M1 world did.
     var interlude: InterludePlaying?
     var silence: SilenceRendering?
+    /// Nil unless a test gives the world one (NE-47): a preview's load is
+    /// then answered `failed` by the host, and the audition is spoken.
+    var preview: FakeDeck?
 
     var seams: EngineSeams {
         EngineSeams(session: session, background: background, remote: remote, nowPlaying: nowPlaying,
                     deck: deck, speaker: speaker, timing: timing, output: output, holdPolicy: holdPolicyStore,
-                    interlude: interlude, silence: silence)
+                    interlude: interlude, silence: silence, preview: preview)
     }
 }

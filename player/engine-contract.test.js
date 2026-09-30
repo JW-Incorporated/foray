@@ -26,7 +26,7 @@ import {
   OWNED_PREFIXES, PROTOCOL, COMMANDS, EVENTS, REFUSALS, BRIDGE_METHODS, CONTRACT_KINDS,
   SESSION_PHASES, SESSION_INPUTS, AUDIBLE_COMMANDS, STRIKE_LIMIT,
   contractSchemaDocument, validateContract, contractAccepts, decideMode, extrapolate,
-  ENGINE_PLATFORMS, HELLO_PLATFORMS,
+  ENGINE_PLATFORMS, HELLO_PLATFORMS, NARRATION_PUBLIC_BASE,
   sessionTransition, audibleStartViolations, decideEngineMode, engineModeTrace,
 } from "./engine-contract.js";
 import { SESSION_ERRORS } from "./engine-vocabulary.js";
@@ -332,4 +332,38 @@ test("the six NE-11j families are recorded, charged to the episode capability, a
   }
   const invariant = loadFixtures(ROOT, { family: "session-invariant" }).flatMap((f) => f.doc.cases);
   assert.ok(invariant.every((c) => c.authored === true), "session-invariant is authored end to end: the rule is the spec's, not the recorder's");
+});
+
+test("NE-47: an audition url is a rendered file on the narration host, and nowhere else", () => {
+  // The voice picker's preview plays `preview.m4a` from the bucket the render
+  // tools upload to (Spark §3.3, ruling D6). The host the contract admits is
+  // the render profile's own, so moving the bucket moves both or neither.
+  // MUTATION: change NARRATION_PUBLIC_BASE -> red; drop `pattern` from the
+  // audition's url -> the off-host, http, query and look-alike urls are
+  // accepted -> red; make `url` required -> the spoken audition is refused -> red.
+  const profile = JSON.parse(fs.readFileSync(path.join(ROOT, "tools/narration/render-profile.json"), "utf8"));
+  assert.equal(NARRATION_PUBLIC_BASE, profile.public_base, "the contract's narration host is the render profile's public base");
+  const send = (args) => ({ v: 1, cmdSeq: 1, cmd: "audition", source: "audition", args });
+  const text = "This is how I sound";
+  const key = `${NARRATION_PUBLIC_BASE}/n/${profile.id}/af_heart/preview.m4a`;
+  assert.equal(contractAccepts("sendRequest", send({ text, voiceId: null })), true, "no url: spoken, as before");
+  assert.equal(contractAccepts("sendRequest", send({ text, voiceId: "kokoro:af_heart", url: key })), true);
+  for (const url of [
+    key.replace("https:", "http:"),
+    `https://cdn.example.com/n/${profile.id}/af_heart/preview.m4a`,
+    `${key}?token=abc`,
+    `${key}#t=1`,
+    `https://audio.jwlabs.ai.evil.example/preview.m4a`,
+    `https://user:pw@audio.jwlabs.ai/preview.m4a`,
+    `https://audio.jwlabs.ai:8443/preview.m4a`,
+    `https://audio.jwlabs.ai/`,
+    `https://audio.jwlabs.ai/a b.m4a`,
+    `https://audio.jwlabs.ai/%2e%2e/preview.m4a`,
+    "",
+  ]) {
+    assert.equal(contractAccepts("sendRequest", send({ text, voiceId: null, url })), false, url);
+  }
+  for (const url of [null, 1, true, {}]) {
+    assert.equal(contractAccepts("sendRequest", send({ text, voiceId: null, url })), false, JSON.stringify(url));
+  }
 });

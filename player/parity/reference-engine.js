@@ -49,7 +49,7 @@ import {
 } from "../engine-contract.js";
 import { PlayerQueueManager } from "../queue-manager.js";
 import { PositionStore } from "../position-store.js";
-import { OpLog, FakeBackend, MemoryStore, fakeTts } from "./fakes.js";
+import { OpLog, FakeBackend, MemoryStore, fakeTts, fakePreview } from "./fakes.js";
 import { warmOffset, prefetchDecision, warmPromotion, prefetchWindowOpens } from "../deck-policy.js";
 import { PREFETCH_LEAD_SEC } from "../html-audio-backend.js";
 import { structuralCheck } from "../foray-structure.js";
@@ -205,6 +205,7 @@ const viaOf = (source) => (source === "remote" ? "remote" : source === "autoresu
  * @param {object} [opts.catalogue]       item_id -> episode row, a Foray's resolver table
  * @param {OpLog} [opts.log]              the shared op log
  * @param {object} [opts.backend]         FakeBackend options (failLoadFor, durationById, ...)
+ * @param {object} [opts.preview]         the preview deck's options (fakes.js fakePreview: failUrls)
  */
 export class ReferenceEngine {
   constructor({
@@ -212,7 +213,7 @@ export class ReferenceEngine {
     mode = "native", reason = "build-default", protocol = PROTOCOL,
     scheduler = realScheduler(), now = () => Date.now(),
     activation = () => ({ ok: true }),
-    catalogue = {}, log = new OpLog(), backend = {},
+    catalogue = {}, log = new OpLog(), backend = {}, preview = {},
     holdPolicy = DEFAULT_HOLD_POLICY, seamGapSec,
   } = {}) {
     this.log = log;
@@ -231,6 +232,9 @@ export class ReferenceEngine {
     this.storage = new MemoryStore();
     this.backend = new WarmingBackend({ log, ...backend });
     this.tts = fakeTts({ log });
+    /** NE-47: the deck a rendered voice preview plays on, apart from the main
+        deck, so a preview never touches the item a paused Foray holds. */
+    this.preview = fakePreview({ log, ...preview });
     this.positions = new PositionStore({
       storage: this.storage,
       now: () => new Date(this.now()),
@@ -362,7 +366,10 @@ export class ReferenceEngine {
     this._transition();
   }
 
-  dispose() { this.manager.dispose(); }
+  dispose() {
+    this._stopPreview();
+    this.manager.dispose();
+  }
 
   /* ---------- the snapshot (§5.3) ---------- */
 
@@ -488,6 +495,9 @@ export class ReferenceEngine {
       session is active, or the refusal reason when activation failed — in
       which case the caller must issue NO audible command. */
   _ensureSession(via) {
+    // Anything but an audition starting to play cuts a preview in flight
+    // (EngineCore.begin): one thing sounds at a time.
+    if (via !== "auditionTap") this._stopPreview();
     const t = this._session({ kind: "userPlay", via });
     if (!t.actions.includes("activate")) return null;
     const answer = this.activation() ?? { ok: true };
@@ -561,6 +571,7 @@ export class ReferenceEngine {
           if (!this.playing) return "not-loaded";
           if (this.playing.kind === "foray") {
             if (m.currentIndex >= m.queue.length - 1) return "no-next";
+            this._stopPreview();
             await m.skipToNext();
             return null;
           }
@@ -568,6 +579,7 @@ export class ReferenceEngine {
           return this._walk(source);
         case "previous":
           if (!this.playing || !this._currentItem()) return "no-previous";
+          this._stopPreview();
           await m.skipToPrevious();
           return null;
         case "seekBy": case "seekTo": {
@@ -579,9 +591,11 @@ export class ReferenceEngine {
         }
         case "jump":
           if (!this.playing || args.index >= m.queue.length) return "not-loaded";
+          this._stopPreview();
           await m.play(args.index);
           return null;
         case "stop":
+          this._stopPreview();
           await m.stop();
           this._session({ kind: args.persist === false ? "dataDeletion" : "close" });
           if (args.persist === false) this._purge();
@@ -605,13 +619,27 @@ export class ReferenceEngine {
           // Now Playing painted at rate 0 WITHOUT activation (S-3): no session edge.
           this._row({ kind: "nowplaying", restore: true });
           return null;
-        case "purge": this._purge(); return null;
+        case "purge": this._stopPreview(); this._purge(); return null;
         case "relinquish": await this._relinquish(args.cap); return null;
         case "audition": {
           if (this._running()) return "engine-busy";
           const failed = this._ensureSession("auditionTap");
           if (failed) return failed;
-          await this.tts.speak(args.text, { rate: 1, ...(args.voiceId ? { voice: args.voiceId } : {}) });
+          const speak = () => this.tts.speak(args.text, { rate: 1, ...(args.voiceId ? { voice: args.voiceId } : {}) });
+          // No url: spoken, exactly as before NE-47 (the Apple voice).
+          if (typeof args.url !== "string") { this._stopPreview(); await speak(); return null; }
+          /* NE-47 (Spark §3.3): the voice's RENDERED preview plays on the
+             preview deck, under the activation this tap just made. A file
+             that will not load is spoken instead: the listener always hears
+             the line. Either way the command itself succeeded. */
+          try {
+            await this.preview.load(args.url);
+          } catch {
+            this._row({ kind: "audition", event: "fallback" });
+            await speak();
+            return null;
+          }
+          this.preview.play();
           return null;
         }
         case "setModeOverride": this.modeOverride = args.mode; return null;
@@ -738,6 +766,9 @@ export class ReferenceEngine {
     }).catch(() => {});
   }
 
+  /** Cut a preview in flight (NE-47): logs `preview.stop` only when one is. */
+  _stopPreview() { this.preview.stop(); }
+
   _purge() {
     for (const k of [...this.storage.map.keys()]) {
       if (OWNED_PREFIXES.some((p) => k.startsWith(p))) this.storage.removeItem(k);
@@ -749,6 +780,7 @@ export class ReferenceEngine {
   /** §4.6's native side, in its order: stop with persistence, keep the session
       (no deactivate, no notify), go terminal, say so. */
   async _relinquish(cap) {
+    this._stopPreview();
     await this.manager.stop();
     this._session({ kind: "relinquish" });
     this.relinquished = true;

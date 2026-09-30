@@ -2007,6 +2007,7 @@ Read first: `CLAUDE.md`, this deck, the Tier 2 requirements, `docs/ios-native-pl
     - a 404 falls back to speech;
     - a no-`url` audition is byte-identical to today.
 - **Device check:** none until the picker ships rendered voices.
+- **Status (2026-09-29):** built on `engine/m3`. The contract admits `url` only as a plain path on `NARRATION_PUBLIC_BASE` (`https://audio.jwlabs.ai`, held equal to `render-profile.json`); the preview plays on a PREVIEW deck of its own (`EngineSeams.preview`, an `AVDeck` whose rows say `lane=preview`), so a paused Foray's item on the main deck is untouched; the next play, a stop, a relinquish or the teardown cut it. A load past `EngineBoot.previewLoadDeadlineSec` (6 s, `// MEASURE` from the `lane=preview` time-to-ready rows) or a failure is spoken instead, with an `audition kind=fallback` row. Fixtures: `manager-foray/audition-url-*` and seven `contract/send-request-*-audition-*` cases. `PreviewSpeaker` is now `SpeechNarrator` (NE-33); its audition path is unchanged.
 
 #### NE-39s · Swift burn-down; delete `swift-pending.json` and `unported.json`; the de-dup decision — **L**
 - **Milestone:** M3

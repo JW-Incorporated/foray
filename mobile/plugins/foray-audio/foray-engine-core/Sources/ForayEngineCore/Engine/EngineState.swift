@@ -187,6 +187,17 @@ public struct EngineState: Equatable {
     /// `_disposed`: the engine was torn down; the core answers nothing more.
     public var tornDown = false
 
+    // MARK: the voice picker's rendered preview (NE-47)
+
+    /// An audition that named a rendered `preview.m4a`, from its load on the
+    /// PREVIEW deck until it ends, fails or is cut. Nil otherwise, and always
+    /// nil for a spoken audition (the synthesiser owns that one).
+    public var preview: AuditionPreview?
+    /// The preview deck's own token counter: its loads never share a number
+    /// with the main deck's (`lastToken`), whose beat and failure checks
+    /// compare against it.
+    public var lastPreviewToken: DeckToken = 0
+
     /// `isNarrationPlayhead`: a spoken line is the playhead.
     public var isNarrationPlayhead: Bool { narration != nil }
 
@@ -287,6 +298,23 @@ public struct SpokenLine: Equatable {
     }
 }
 
+/// NE-47: a rendered voice preview in flight on the preview deck. The line
+/// and the voice ride along so a file that will not load can be SPOKEN
+/// instead, which is what the audition did before it had a url.
+public struct AuditionPreview: Equatable {
+    public let token: DeckToken
+    public let text: String
+    public let voiceId: String?
+    /// The loaded file started: `.play` was sent to the preview deck.
+    public var playing = false
+
+    public init(token: DeckToken, text: String, voiceId: String?) {
+        self.token = token
+        self.text = text
+        self.voiceId = voiceId
+    }
+}
+
 /// A play-ish intent waiting for its activation's answer.
 public struct PendingActivation: Equatable {
     public let requestId: Int
@@ -304,7 +332,9 @@ public enum DeferredIntent: Equatable {
     case routeResume
     case coldPlay
     case walkHop(EngineContract.Hop)
-    case audition(text: String, voiceId: String?)
+    /// OQ-5; NE-47: with a `url` the voice's rendered preview plays on the
+    /// preview deck, without one the line is spoken.
+    case audition(text: String, voiceId: String?, url: String? = nil)
 }
 
 public struct LastRemote: Equatable {

@@ -268,3 +268,37 @@ export function fakeInterlude({ log = new OpLog(), refuse = false } = {}) {
     release() { log.push("interlude.release"); },
   };
 }
+
+/**
+ * NE-47: the engine's PREVIEW deck, where an audition that names a rendered
+ * `preview.m4a` plays (the voice picker's preview, Spark §3.3). A deck of its
+ * own, so a preview never disturbs the item the main deck holds. Tokens are
+ * prefixed like every other adapter's: `preview.load:<url>` when a load is
+ * asked, `preview.play` when the loaded file starts, `preview.stop` when a
+ * preview in flight is cut. A load for a url in `failUrls` fails (a 404, a
+ * dead host, a load past its deadline: to the engine they are one failure).
+ */
+export function fakePreview({ log = new OpLog(), failUrls = [] } = {}) {
+  const failing = new Set(failUrls);
+  return {
+    log,
+    /** A preview is loading or sounding: what a stop has to cut. */
+    active: false,
+    async load(url) {
+      log.push(`preview.load:${url}`);
+      this.active = true;
+      if (failing.has(url)) {
+        this.active = false;
+        throw new Error("preview did not load");
+      }
+    },
+    play() { log.push("preview.play"); },
+    stop() {
+      if (!this.active) return;
+      this.active = false;
+      log.push("preview.stop");
+    },
+    /** The file ran out (natively the preview deck's `.ended`). */
+    finish() { this.active = false; },
+  };
+}

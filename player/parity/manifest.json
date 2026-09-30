@@ -103,7 +103,7 @@
     },
     "contract": {
       "files": {
-        "player/parity/fixtures/contract/contract.json": "53b83094473eac97c3efea0fcca59dcbb9b7e8a551d1a3b5e7e59e80eaa41a2a"
+        "player/parity/fixtures/contract/contract.json": "2e8b4e5eb0f916a7a4181eec3632473b11a22ff82b18a2ea764b88f7140a1b39"
       },
       "ids": [
         "contract/bridge-methods",
@@ -131,6 +131,8 @@
         "contract/send-request-valid-set-hold-until",
         "contract/send-request-valid-set-continuation",
         "contract/send-request-valid-stop-data-deletion",
+        "contract/send-request-valid-audition-spoken",
+        "contract/send-request-valid-audition-rendered",
         "contract/send-request-invalid-unknown-cmd",
         "contract/send-request-invalid-wrong-version",
         "contract/send-request-invalid-unknown-source",
@@ -140,6 +142,11 @@
         "contract/send-request-invalid-play-episode-without-row",
         "contract/send-request-invalid-negative-seq",
         "contract/send-request-invalid-override-unknown-mode",
+        "contract/send-request-invalid-audition-url-not-https",
+        "contract/send-request-invalid-audition-url-off-host",
+        "contract/send-request-invalid-audition-url-with-query",
+        "contract/send-request-invalid-audition-url-lookalike-host",
+        "contract/send-request-invalid-audition-url-null",
         "contract/send-response-valid-ok",
         "contract/send-response-valid-refused-no-next",
         "contract/send-response-valid-session-failed",
@@ -842,6 +849,7 @@
     },
     "manager-foray": {
       "files": {
+        "player/parity/fixtures/manager-foray/audition-url.json": "5da3b1546e82543c44560edd3e37468401e876ea0e9311bc3da6210cfe4be317",
         "player/parity/fixtures/manager-foray/audition.json": "9c1eed332cf0db001efc1de1e1b0c27f1bd50fef9c49202229d8312c9adcfb60",
         "player/parity/fixtures/manager-foray/jingle.json": "c9016c928cfc2dd0a8c3429124dbc5da2b6775b2161601a3aedaed4b74f4fff2",
         "player/parity/fixtures/manager-foray/narration.json": "dd05be479486a191ea10810cea5c9da26763ae2d4571551dade5b33439edb401",
@@ -850,6 +858,8 @@
         "player/parity/fixtures/manager-foray/tape.json": "bffeb969f00fbe7d2b5c1a7a8fcd450f2ddc43b04e53428eeb320ceffa38bf73"
       },
       "ids": [
+        "manager-foray/audition-url-plays-the-rendered-preview",
+        "manager-foray/audition-url-that-fails-is-spoken",
         "manager-foray/audition-is-refused-while-running",
         "manager-foray/the-jingle-starts-at-the-boundary-and-holds-the-tape",
         "manager-foray/no-jingle-before-the-first-item",

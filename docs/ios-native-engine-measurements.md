@@ -861,8 +861,8 @@ HUMAN-ACTIONS #128 (the M2 drive) and the NE-40 drive (G-6). It either applies
 each verdict's proposal or keeps the value with a dated reason. Nothing else
 waits on NE-38f.
 
-`grep -rn "// MEASURE" mobile/plugins/foray-audio` lists exactly these six
-constants.
+`grep -rn "// MEASURE" mobile/plugins/foray-audio` lists exactly these seven
+constants (the seventh, the voice preview's deadline, came with NE-47).
 
 | Value | Constant | Provisional | Evidence it rests on | Settled by (rows → NE-38e verdict) |
 |---|---|---|---|---|
@@ -872,6 +872,7 @@ constants.
 | Low background time | `ForayEngine.lowBackgroundRemainingMs` | **5 s**, unchanged | About one CDN load that goes wrong. The value only labels the row and decides nothing. | `grace low=y` against the span's outcome (`grace kind=end outcome= heldMs`) → `resume-latency` |
 | Pause hold (OQ-12) | `SessionPolicy.HoldPolicy.default` | **`.forever`**, unchanged (the §9a default) | #114 passed on `.forever`: after a day parked, the car's play resumed 4a. The HA #108 baseline shows a held session is necessary but not sufficient. The Developer "Pause hold: none" arm stays. | The H-1 block's rows against the H-1b block's (`hold=` in the Copy header, each car `remote play` and whether 4a resumed, `grace heldMs`) → G-5 (the founder's OQ-12 ruling) |
 | P-14 stall display | `EngineCore.bufferingWhileWaiting` | **buffering while `waitingToPlayAtSpecifiedRate`**, no debounce (as #866 ships it) | #866: the per-item Now Playing rate latch publishes a buffering stall honestly. | `deck kind=time-control status=waiting reason=` against `nowplaying via=rate` → `rate-latch` |
+| Voice preview load deadline (NE-47) | `EngineBoot.previewLoadDeadlineSec`, on the preview deck for both classes | **6 s**, new | A rendered `preview.m4a` is one sentence at 64 kbps (tens of KB), smaller than a line (8 s above), and a listener is waiting on a tap. A preview that misses it is spoken by the Apple voice at once, so a longer wait only lengthens a silence. No field rows yet: the page sends no preview url until the picker ships rendered voices. | `deck kind=ready elapsedMs lane=preview`, `deck kind=deadline lane=preview` and `audition kind=fallback reason=timeout` → `preview-load` |
 
 Two more provisional values are JS, not Swift, so the grep above does not list
 them. They are the route-resume reference's (`player/route-resume.js`,

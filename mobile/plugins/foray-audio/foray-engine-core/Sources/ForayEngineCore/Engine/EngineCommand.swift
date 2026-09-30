@@ -213,6 +213,10 @@ public enum EngineCommand: Equatable {
     case writeRestore(RestoreRecord?)
     /// Speak an audition line (OQ-5): audible, so it follows an activation.
     case speak(text: String, voiceId: String?)
+    /// The PREVIEW deck (NE-47): an audition's rendered `preview.m4a`. Only
+    /// `.load`, `.play` and `.unload` are ever sent; the play is audible, so
+    /// the invariant reads it as a `deckPlay` and it follows an activation.
+    case preview(DeckCommand)
     /// The narrating overlay (NE-31s): a line of the Foray's own narration.
     case narration(NarrationCommand)
     /// The interlude jingle (NE-31s).
@@ -259,6 +263,14 @@ public enum EngineCommand: Equatable {
         case .appendEvent: return "appendEvent"
         case .writeRestore: return "writeRestore"
         case .speak: return "speak"
+        case let .preview(command):
+            switch command {
+            // Audible exactly as the main deck's play is.
+            case .play: return "deckPlay"
+            case .load: return "previewLoad"
+            case .unload: return "previewUnload"
+            case .pause, .seek, .setRate, .setOutPoint, .prepare: return "preview"
+            }
         case let .narration(command):
             switch command {
             // Both make a line audible, so both are `speak` to the invariant.

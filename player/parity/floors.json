@@ -3,7 +3,7 @@
   "families": {
     "compare": 37,
     "continuation": 49,
-    "contract": 56,
+    "contract": 63,
     "deck": 77,
     "deck-episode": 58,
     "default-voice": 35,
@@ -17,7 +17,7 @@
     "interlude": 33,
     "lexicon": 17,
     "manager-episode": 44,
-    "manager-foray": 134,
+    "manager-foray": 136,
     "media": 43,
     "media-episode": 124,
     "number-format": 25,
