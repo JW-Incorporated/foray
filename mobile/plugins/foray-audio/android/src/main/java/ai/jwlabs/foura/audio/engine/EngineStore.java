@@ -14,6 +14,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.TreeMap;
+import java.util.function.Consumer;
 
 /**
  * Where everything the Android engine keeps is kept (card A-27, docs/plans/android-assessment.md
@@ -61,25 +62,33 @@ public final class EngineStore implements EngineSeams.Output {
     private final SharedPreferences shared;
     private final SharedPreferences own;
     private final EngineLog log;
-    private final Runnable onNothingToResume;
+    private final Consumer<Boolean> resumableChanged;
     private boolean recordRead;
     private RestoreRecord record;
+    /**
+     * What {@link #resumableChanged} was last told. It starts true: the service switched the
+     * receiver on when it was created, before this store existed.
+     */
+    private boolean resumable = true;
 
     /**
-     * @param onNothingToResume run when the store stops holding anything a PLAY could resume
-     *     (a relinquished or cleared record, a purge): the service switches the media button
-     *     receiver off then, so a dead lane never answers a car.
+     * @param resumableChanged told when the store starts or stops holding a record a PLAY
+     *     could resume: false at a relinquished or cleared record and at a purge (the service
+     *     switches the media button receiver off, so a dead lane never answers a car), true
+     *     again when the engine writes a record after that (a listener who deleted their data
+     *     and then played again is resumable again). Only on a change, so a write every few
+     *     seconds of play costs no PackageManager call.
      */
-    public EngineStore(Context context, EngineLog log, Runnable onNothingToResume) {
+    public EngineStore(Context context, EngineLog log, Consumer<Boolean> resumableChanged) {
         this(context.getSharedPreferences(SHARED_FILE, Context.MODE_PRIVATE),
-                context.getSharedPreferences(PRIVATE_FILE, Context.MODE_PRIVATE), log, onNothingToResume);
+                context.getSharedPreferences(PRIVATE_FILE, Context.MODE_PRIVATE), log, resumableChanged);
     }
 
-    EngineStore(SharedPreferences shared, SharedPreferences own, EngineLog log, Runnable onNothingToResume) {
+    EngineStore(SharedPreferences shared, SharedPreferences own, EngineLog log, Consumer<Boolean> resumableChanged) {
         this.shared = Objects.requireNonNull(shared, "shared");
         this.own = Objects.requireNonNull(own, "own");
         this.log = Objects.requireNonNull(log, "log");
-        this.onNothingToResume = onNothingToResume;
+        this.resumableChanged = resumableChanged;
     }
 
     public EngineLog log() {
@@ -209,7 +218,7 @@ public final class EngineStore implements EngineSeams.Output {
         record = null;
         recordRead = true;
         Collections.sort(removed);
-        nothingToResume();
+        setResumable(false);
         return removed;
     }
 
@@ -236,7 +245,7 @@ public final class EngineStore implements EngineSeams.Output {
         record = next;
         recordRead = true;
         log.writeRestore(next);
-        if (next == null || next.mode() == RestoreRecord.Mode.RELINQUISHED) nothingToResume();
+        setResumable(next != null && next.mode() != RestoreRecord.Mode.RELINQUISHED);
     }
 
     @Override
@@ -256,12 +265,14 @@ public final class EngineStore implements EngineSeams.Output {
         log.diag(entry);
     }
 
-    private void nothingToResume() {
-        if (onNothingToResume == null) return;
+    private void setResumable(boolean now) {
+        if (now == resumable) return;
+        resumable = now;
+        if (resumableChanged == null) return;
         try {
-            onNothingToResume.run();
+            resumableChanged.accept(now);
         } catch (RuntimeException ignored) {
-            // Switching a component off must never cost a write.
+            // Switching a component must never cost a write.
         }
     }
 

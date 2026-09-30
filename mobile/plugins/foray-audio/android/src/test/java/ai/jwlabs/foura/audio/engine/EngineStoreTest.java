@@ -35,7 +35,8 @@ import org.robolectric.annotation.Config;
 public class EngineStoreTest {
     private Context context;
     private final List<String> lines = new ArrayList<>();
-    private int nothingToResume;
+    /** What the store told the receiver switch, in order. */
+    private final List<Boolean> switched = new ArrayList<>();
 
     @Before
     public void setUp() {
@@ -49,7 +50,7 @@ public class EngineStoreTest {
     }
 
     private EngineStore store() {
-        return new EngineStore(context, new EngineLog(() -> 0, lines::add), () -> nothingToResume++);
+        return new EngineStore(context, new EngineLog(() -> 0, lines::add), switched::add);
     }
 
     /**
@@ -114,25 +115,31 @@ public class EngineStoreTest {
         assertEquals(written.serialized(), relaunched.restoreRecord().serialized());
         assertTrue(relaunched.restorable());
         assertTrue("the receiver asks without a service", EngineStore.restorable(context));
-        assertEquals(0, nothingToResume);
+        assertTrue("a record to resume changes nothing: the service switched the receiver on", switched.isEmpty());
     }
 
     /**
-     * Nothing to resume switches the car's way in off: a relinquished record, a cleared one, or a
-     * record this build cannot read. TO SEE IT FAIL: call the switch on every write, or never.
+     * Nothing to resume switches the car's way in off (a relinquished record, a cleared one), and
+     * a record written after that switches it back on (a listener who deleted their data and then
+     * played again). Only changes are told. TO SEE IT FAIL: call the switch on every write, never
+     * switch it back on, or never switch it off.
      */
     @Test
-    public void aRelinquishedOrClearedRecordLeavesNothingToResume() {
+    public void theReceiverSwitchFollowsWhetherThereIsSomethingToResume() {
         EngineStore store = store();
         store.writeRestore(ColdPathTest.record(754));
-        assertEquals(0, nothingToResume);
+        store.writeRestore(ColdPathTest.record(760));
+        assertTrue("writes while resumable tell nothing: " + switched, switched.isEmpty());
         store.writeRestore(RestoreRecord.relinquished("2026-09-24T12:00:00.000Z", "android-1"));
-        assertEquals(1, nothingToResume);
+        assertEquals(Arrays.asList(false), switched);
         assertFalse(store.restorable());
         assertFalse(EngineStore.restorable(context));
         store.writeRestore(null);
-        assertEquals(2, nothingToResume);
+        assertEquals("already off", Arrays.asList(false), switched);
         assertNull(prefs(EngineStore.PRIVATE_FILE).getString(EngineStore.KEY_RESTORE, null));
+        store.writeRestore(ColdPathTest.record(30));
+        assertEquals("played again after a deletion: on again", Arrays.asList(false, true), switched);
+        assertTrue(EngineStore.restorable(context));
 
         prefs(EngineStore.PRIVATE_FILE).edit().putString(EngineStore.KEY_RESTORE, "{\"v\":99}").commit();
         assertFalse("a record this build cannot trust is none", EngineStore.restorable(context));
@@ -162,7 +169,7 @@ public class EngineStoreTest {
         assertEquals("the page's rows stay", 2, left.size());
         assertEquals("1.5", left.get("cp_rate"));
         assertNull(store.restoreRecord());
-        assertEquals(1, nothingToResume);
+        assertEquals(Arrays.asList(false), switched);
         assertTrue(store.sharedRows(null).isEmpty());
     }
 }

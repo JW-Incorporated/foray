@@ -660,3 +660,43 @@ engine's ring (`session kind=interruption`, `stop cause=interruption`). They are
 
 **What this leg does not prove.** Anything a phone adds (§6.4 of `docs/research/mp1-background-audio.md`). It also
 does not prove the page's path into the engine, which is A-28's. The driver is a debug-only stand-in for that path.
+
+## 10. A-27: (j) in native mode, a play after the process ended
+
+**Run:** `android-playback` run 36665544656, job 109729315165, `android-playback (API 34, native engine)`, PR #905,
+head `e9dd10df`. The leg took 15 min 55 s, all nine native steps green. The evidence is the run's
+`foray-android-playback-api34-native` artefact: `verdict-native-kill.json`, the `j-*` media-session dumps and each
+leg's `j-<leg>-3-engine-dump.txt` (the engine's dump and rows just after the play), and `logcat.txt`.
+
+**The scenario.** Each leg plays its own two-episode queue (the CBR click track first; no in- or out-point, because
+the engine keeps no resume point for a segment) for 18 s. Then `cmd media_session dispatch pause`, Home, the process
+ended one way, and `cmd media_session dispatch play`. Before every play, `Last MediaButtonReceiver` was ours:
+`ForayMediaButtonReceiver`, switched on by the service.
+
+| Leg | Gated | Did the process die? | Way back | Saved → resumed | Play to audible |
+|---|---|---|---|---|---|
+| `am kill` (the card's) | yes | **no**, same pid. The paused Media3 service stays in the foreground for ten minutes (`DEFAULT_FOREGROUND_SERVICE_TIMEOUT_MS`), and `am kill` ends only a killable background process: what §7 found for the JS lane. | the live session (warm) | 18.307 s → 18.497 s | 87 ms |
+| swipe (the service's `onTaskRemoved`, Media3's default stops a paused service), then `am kill` | yes | **yes**, "kill background" (adj 700). Nothing restarted it. | **the media button receiver**: one `media-button receiver start restorable=true` line, the service started for the key, the empty session's `onPlaybackResumption` (`resumption kind=answer forPlayback=true`), `restore kind=cold-boot record=painted` | 18.321 s → 18.324 s | 612 ms (grace 204 ms) |
+| SIGKILL from the app's uid (what the low-memory killer does) | yes | **yes**, "has died: fg +50 FGS". The system restarted the sticky service a second later ("Scheduling restart of crashed service … in 1000ms"). | the restarted service's empty session, directly: the same resumption answer and cold boot, with no receiver | 18.450 s → 18.785 s | 636 ms |
+| `am force-stop` (the negative control) | no, recorded | yes, and nothing restarted it | **the media button receiver, again** | 18.405 s → 18.445 s | 594 ms |
+
+"Play to audible" is from the press to the first dump that showed the engine playing, so it includes up to one
+500 ms poll.
+
+**What this settles:**
+- A car's PLAY after the native engine's process died resumes 4a at the saved position on this image, whether the
+  death left a restarting service (SIGKILL) or nothing at all (the swipe). The swipe leg is the emulator's twin of
+  the card's device check, "Bluetooth car play after swiping the app away". The device check is **not executed**
+  (D-A3).
+- **The negative control does not hold.** After `am force-stop`, the play still reached our receiver, which started
+  the service, and 4a played. A-67 wrote this step as "`am force-stop`, then play → not 4a. **Recorded only.**" On
+  API 34, a force-stopped app's media button receiver is still sent the key (the system's `PendingIntentHolder`
+  sent it, and `ActivityManager` started the process "for broadcast"). This is recorded for A-67, which owns the
+  force-stop value. Nothing here gates on it.
+- A04-F1 (a remote play in the background never plays) does not occur in native mode on any of these paths.
+
+**Run before it.** Run 36663599593 (head `ec471191`) had three legs, and the verdict was green. Its evidence is why
+the swipe leg exists. `am kill` left the process alive. The SIGKILL leg came back through the sticky restart's
+session. Only the force-stop leg went through the receiver. That run's legs also shared item ids: the SIGKILL leg
+paused at 39.8 s, and the force-stop leg paused at 64.3 s, inside the near-end window, and resumed at 0. Each leg now
+has its own ids.

@@ -83,7 +83,7 @@
              Media3 hands a manifest receiver to every session the app builds, the JS lane's
              included, and the JS lane has nothing to resume without its WebView.
              ForayPlaybackService.onCreate switches it on (native mode only), and the engine's
-             store switches it off when nothing is left to resume. -->
+             store switches it off when nothing is left to resume, and on again after. -->
         <receiver
             android:name="ai.jwlabs.foura.audio.ForayMediaButtonReceiver"
             android:enabled="false"

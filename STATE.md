@@ -7,6 +7,64 @@ docs/. Completed workstreams move to their plan doc's retro section.
 
 ## Active workstreams
 
+### 2026-09-29 — `android/a-27-store-restore`: A-27, the store, the restore record and playback resumption
+
+Owned: foray-audio's `engine/EngineStore` and `ForayMediaButtonReceiver`, the cold path in `ForayEngineHost` and
+`ForayPlaybackService`, `EnginePlayer`'s resumption commands, the JVM core's `EngineCore.restoring` and the restored
+parsers, with their tests; the debug driver's `task-removed`; and (j) in `tools/mobile/android-native-playback.mjs`
+and the native leg of `android-playback.yml`. Card A-27 of `docs/plans/android-assessment.md` (Track A1), PR #905,
+into `android/native`.
+
+**What it does.** A head-unit PLAY after the native engine's process died resumes 4a at the saved position.
+- **The store.** `EngineStore` is the service's `EngineSeams.Output`, the twin of iOS NE-19.
+  - The shared rows go into `@capacitor/preferences`' own file (`CapacitorStorage`, under the bare row key), as the
+    exact `JSWriter` bytes.
+  - The restore record goes into the engine's own file, as iOS's `ForayEngine.restore`.
+  - Every write is `commit()`ed before it returns. `purge()` enumerates what it removed.
+- **The cold boot.** `EngineCore.restoring` and `ForayEngineHost.coldBoot` are the Swift `ColdRestore` and
+  `ForayEngine.coldBoot` (NE-24), with the same outcomes and row.
+- **The trigger.** Media3's playback resumption. The empty `EnginePlayer` declares `PLAY_PAUSE` + `SET_MEDIA_ITEM`
+  only while there is a record to resume. `onPlaybackResumption` answers with the recorded item and position, and
+  applying the answer is the cold boot. The service adds its session at `onCreate`.
+- **The receiver.** `ForayMediaButtonReceiver` ships `android:enabled="false"`, so the JS lane never registers it.
+  The native service switches it on before building its session. It starts the service only when there is a record
+  to resume.
+
+**Paths.** `.github/workflows/android-playback.yml` (the (j) step) is a governed path. It merges into `android/native`,
+and the orchestrator reviews it on the final `android/native` → `main` PR. Nothing is self-labelled.
+
+**CI** on head `e9dd10df`, all executed:
+- `android-build` run 36665544632: foray-audio 116 cases, 0 skipped. This card adds `ColdPathTest` 4,
+  `EngineStoreTest` 5, `PlaybackResumptionTest` 6 (one of them through a real Media3 controller) and
+  `EnginePlayerTest` +1. `foray-engine-core-jvm` has 91 cases (`ColdRestoreTest` 4). JVM parity is 989 passed,
+  0 pending. assembleDebug and assembleRelease pass.
+- `android-playback` run 36665544656: the native leg (job 109729315165, 15 min 55 s) is green on (a)–(d) and (g)–(j).
+  (j) resumed 4a at the saved position, within 0.34 s:
+  - after `am kill` (the process lived: the paused service is still in the foreground);
+  - after a swipe then `am kill`, through the receiver, in 612 ms;
+  - after a SIGKILL, through the sticky restart's session.
+  The numbers are in `docs/android-emulator-measurements.md` §10.
+- The first head (`ec471191`): `android-build` 36663599610 failed one assertion of this card's own test (a second
+  `restoreIfCold` after no record; it now boots once per service). `android-playback` 36663599593 was green, and its
+  evidence led to the swipe leg.
+
+**Found:**
+- The force-stop control does not hold on API 34: the receiver is still sent the key, and 4a plays. Recorded for
+  A-67.
+- **An A-26 side effect on Android 7–11 in the JS lane. Read from the Media3 1.11 source, not executed.** Below
+  API 31, `MediaSessionLegacyStub` gives every session a media button PendingIntent to the app's
+  `MediaSessionService`. Since A-26 that is `ForayPlaybackService`, so the JS lane's session registers it. After a
+  JS-lane process death, a media PLAY would start that service in the foreground with nothing to resume, and it
+  would never call `startForeground`. No emulator leg runs below API 34. For the orchestrator (A-26's area).
+
+**Executed locally:** the JDK 21 `javac` of the JVM core, foray-audio main, debug and test (android-36 `android.jar`,
+the A-25/A-26 jar set, no Gradle); `ColdRestoreTest`, `EngineCoreTest`, `RowsTest` and `EngineHandshakeTest`
+(47 of 47); `ColdPathTest` and `ForayEngineHostTest` (12 of 12); and `node --test` of the native runner (15), the
+workflow (14), `shell-invariants` (127), `app-name` + `suite-integrity` (421), and `record.mjs --check` (1836
+match).
+
+No device and no request to Joey (D-A3). The Bluetooth car check is **not executed**.
+
 ### 2026-09-29 — `android/a-26-playback-service`: A-26, the native engine's MediaSessionService shell
 
 Owned: foray-audio's `ForayPlaybackService` and the engine package's `ForayEngineHost`, `EnginePlayer`, `EngineSeams`,

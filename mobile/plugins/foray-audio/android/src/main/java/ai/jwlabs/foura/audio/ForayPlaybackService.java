@@ -208,7 +208,7 @@ public class ForayPlaybackService extends MediaSessionService {
         config.diag = log::diag;
         config.sessionIsActive = () -> session != null;
         deck = new ExoDeck(built, config);
-        EngineStore kept = new EngineStore(this, log, () -> ForayMediaButtonReceiver.setEnabled(this, false));
+        EngineStore kept = new EngineStore(this, log, resumable -> ForayMediaButtonReceiver.setEnabled(this, resumable));
         store = kept;
         EngineSeams seams = new EngineSeams(deck, new SessionSeam(), new HandlerTiming(Looper.getMainLooper()), kept);
         ForayEngineHost engine = new ForayEngineHost(seams, new EngineConfig(buildName(this)));

@@ -29,8 +29,8 @@ import androidx.media3.session.MediaButtonReceiver;
  * and the JS lane has nothing to resume without its WebView (docs/android-lock-screen.md §4.3). So
  * the JS lane must never register it: {@code ForayPlaybackService.onCreate} switches it on (native
  * mode only runs that service, A-20), BEFORE its session is built (Media3 reads the manifest when
- * a session is built), and the store switches it off again when nothing is left to resume (a
- * relinquished record, a purge).
+ * a session is built), and the store switches it off when nothing is left to resume (a
+ * relinquished or cleared record, a purge) and on again when a record is written after that.
  *
  * <h2>AND A PLAY IT CANNOT KEEP IS NOT TAKEN</h2>
  *
