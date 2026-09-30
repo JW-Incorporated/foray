@@ -47,6 +47,17 @@ service's two-player build, the debug driver's `foray`, and the native leg's `fo
 - `record.mjs --check`: 1836 match.
 - `node --test` of the native runner (36), the workflow (14), shell-invariants (129) and suite-integrity (400).
 
+**Executed in CI** (head `29e81477`):
+- android-build run 36731336880: android-shell green, with JVM parity at 1714 passed and 0 pending.
+- android-playback run 36731336922 (attempt 2): all three legs green.
+  - The native leg's `foray-seams`: 7 of 7 seams prepared on the pair, p95 513 ms, 10 swaps, screen off.
+  - The episode `seams` step: 7 of 7.
+
+  Details in `docs/android-emulator-measurements.md` §13.
+
+**Found, not fixed** (the same on iOS): a remote `changePlaybackPosition` or skip during a native Foray takes the
+episode seek path in source seconds, while Now Playing publishes the Foray clock. Moot until A-42 advertises `foray`.
+
 **Not executed:** the device check, a locked Foray on the Pixel with timed seams (D-A3).
 
 ### 2026-09-30 — `android/a-31-native-default`: A-31, the A1 flip (native default for Android episodes)

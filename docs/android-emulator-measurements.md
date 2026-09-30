@@ -821,3 +821,42 @@ Developer engine setting on Automatic, is the native lane. All three legs are gr
   (`androidx.media3.session.id.foray`). NEXT and PREVIOUS did reach it. The rerun passed (c) and every other step.
   The same leg passed (c) on run 36699722800 before this card. The native leg's attempt 1 never ran: Maven Central
   answered 403 to the Gradle build.
+
+## 13. A-40: the Foray tape on the deck pair, `foray-seams`
+
+Run 36731336922 (attempt 2), head `29e81477`. Card A-40 of `docs/plans/android-assessment.md` puts the Swift core's
+Foray tape on the JVM core and plays it on a deck pair: two `ExoDeck`s in `DeckPair`, the iOS NE-32 shape. The native
+leg gains the `foray-seams` step, which is A-05 (f) for a Foray: `playForay` through the debug driver's `foray`, 8
+segments of 8 s over the bundled clips, on Home with the screen off. The gate is p95 seam ≤ 1 s (`NATIVE_GATES.foraySeamP95Ms`),
+with every seam crossed and the pair swapping at least once. All three legs are green.
+
+- **`foray-seams`** (native leg, job 109959958541, 23 min 10 s for the leg).
+  - 7 seams crossed out of 7. Every one was **prepared**: the standby deck had the next segment ready at the
+    out-point, and the pair promoted it. None was unprepared.
+  - The gap from the out-point to the incoming deck playing: min 504, median 507, p95 **513**, max 513 ms. The
+    core's asked gap is the 0.5 s seam beat. Its `seam` rows read `observedGapMs` 500–501 on every seam, so the
+    audible gap over the beat is about 4–13 ms.
+  - The pair's dump at the end: `{active: 0, swaps: 10, available: true}`. The device was `Asleep` (screen off)
+    throughout.
+  - Out-point overshoot: 9 ms on the first seam, then 84–201 ms with the screen off. The overshoot is how late the
+    stop landed past the out-point. It is never early, which is the contract A-25 set. The later overshoots are
+    the screen-off delivery of the out-point message. The gap above is measured from the out-point's row. A-62
+    (warm seams) is the card that tightens it.
+- **The episode `seams` step, with the tape on.** Segment queues now play on the pair, so a handed-over segment has
+  no `attach` row. The runner reads the pair's `prepare kind=promote` row as the incoming load (`via: handover`).
+  Without that, the first run read only 4 of 7 seams.
+  - This run: 7 of 7. Three handovers (516, 520 and 519 ms), two same-source reuses (520 ms each), two cold
+    attaches (108 and 110 ms, no beat: they are episode boundaries).
+  - p95 520 ms.
+- **The earlier attempt** (run 36731336922 attempt 1 was cancelled at 40 min: "Render the A-05 narration fixtures"
+  hung, which is infra). The run before it, on `e61ff54f` (job 109934107177), passed `foray-seams` with 7 of 7
+  prepared: min 503, median 505, p95 507 ms, 10 swaps.
+- **The JS legs** (API 34, job 109960002603; API 36, job 109959960746) are unchanged and green.
+- **The JVM side** (android-build run 36731336880, android-shell): the JVM parity run passed 1714, 0 pending, 0
+  failed. foray-audio ran 167 test cases, 0 skipped, including `DeckPairTest`, `ForayEngineHostForayTest` and the
+  Robolectric `ExoDeckPairTest`.
+- **Not measured here.**
+  - VBR in-points. A-25 measured Media3's VBR seek maps as early, and the pair does not change that.
+  - A spoken bridge. The host has no synthesiser until A-41, so it answers a spoken line `failed` and the core steps
+    over it.
+  - The device check, a locked Foray on the Pixel (D-A3). No device passes happen until A-42.
