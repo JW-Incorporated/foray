@@ -58,6 +58,28 @@ import ForayEngineCore
 /// Their answers land when the step settles, before any load, as the JS
 /// awaits resolve. The silence node (flagged off) is checked too: it may
 /// start only while the transport runs with the session active.
+///
+/// THE MANAGER REMAINDER (NE-39s; NE-39j recorded it) adds, on the manager
+/// target, fakes.js's opt-in shapes of the same fakes:
+///   - `setup.backend.prefetch` (`true` or `"loses"`): the core's `.prepare`
+///     is the manager's ASK and is logged `prefetch:<id>@<s>`; a later load of
+///     that item at that offset is WARM (it lands at once), unless the race
+///     was lost (`"loses"`); a `deck: "window"` step is the deck's playhead
+///     watch reaching the prefetch lead (`.prepareWindow`);
+///   - `setup.backend.coldLoadMs` (manual clock only): a load that finds
+///     nothing warm waits that long on the scenario clock, and its `load:` op,
+///     like FakeBackend's, is written when it lands;
+///   - `setup.backend.slowFirstPlay`: the first play's confirmation waits for
+///     the next pause (SlowPlayBackend);
+///   - `setup.tts.pause: "held"` with a `tts: "releasePause"` step (the JS
+///     bridge's round trip; in process there is none, so the pause is
+///     effective at once and the release only has to find it held);
+///   - `setup.settledEvents`: `event.settled:<state>` after every top-level
+///     turn, the snapshot the surface paints from;
+///   - `setup.telemetry: ["rate.snapped"]`: the core's `rate kind=snapped`
+///     diagnostics row, written as the JS telemetry line
+///     `telemetry:rate.snapped requested=<JSON> applied=<r>`;
+///   - the `positionTimer` view: whether the periodic position writer is armed.
 public struct EngineScenarioDriver {
     /// A deliberately broken core, for the mutation tests (card NE-14s): the
     /// fault is injected into the core's OUTPUT, so what is proven is that the
@@ -154,10 +176,14 @@ final class ScenarioWorld {
     /// ignored, so a case that needs narration or the interlude (NE-31s) says so.
     static let setupKeys: Set<String> = ["target", "positions", "positionEvents", "rate", "backend", "catalogue", "session",
                                          "seamGapSec", "view", "scheduler", "seamGapEvents", "forayBuild", "capabilities",
-                                         "tts", "interlude", "interludeEnabled", "voice", "narrationTicks", "preview"]
+                                         "tts", "interlude", "interludeEnabled", "voice", "narrationTicks", "preview",
+                                         "settledEvents", "telemetry"]
+    /// runner.js `TELEMETRY_EVENTS`: the telemetry lines a scenario may record.
+    static let telemetryEvents: Set<String> = ["rate.snapped"]
     /// runner.js `VIEW_KEYS`: what a Foray scenario may add to its checkpoints.
     static let viewKeys: Set<String> = ["outPoint", "seamGapRemainingMs", "timersLive", "positionSec",
-                                        "narrationSec", "narrationPlayhead", "narrationTicks", "lastVoiceFallback", "wasPlaying"]
+                                        "narrationSec", "narrationPlayhead", "narrationTicks", "lastVoiceFallback", "wasPlaying",
+                                        "positionTimer"]
     /// The timers the JS manager runs on its injected scheduler (the ones a
     /// `clock` step moves and `timersLive` counts): the beat and the pulse.
     static let schedulerTimers: Set<EngineTimer> = [.seamBeat, .narrationTick]
@@ -236,6 +262,26 @@ final class ScenarioWorld {
     var disposing = false
     /// `loadAfterBeat`'s withheld loads.
     var deferredLoads: [DeckCommand] = []
+    /// NE-39s: FakeBackend's prefetch contract (`setup.backend.prefetch`):
+    /// nil without one, else whether the warm load loses its race.
+    let prefetchLoses: Bool?
+    /// The `<id>@<s>` keys asked for and not yet loaded (FakeBackend `_warmed`).
+    var warmed: Set<String> = []
+    /// `setup.backend.coldLoadMs`: what a load with nothing warm costs on the
+    /// manual clock, and the loads waiting it out (in issue order).
+    let coldLoadMs: Double
+    var coldLoads: [(command: DeckCommand, dueMs: Double)] = []
+    /// `setup.backend.slowFirstPlay`: the first play's confirmation, held
+    /// until the next pause.
+    var slowFirstPlay: Bool
+    var heldConfirmation: DeckToken?
+    /// `setup.settledEvents` and the turn depth (only a top-level turn settles).
+    let settledEvents: Bool
+    var feedDepth = 0
+    /// `setup.telemetry` and the value the last `setRate` was handed, as the
+    /// page handed it (a snapped row names the REQUEST, a string included).
+    let telemetry: Set<String>
+    var lastRateArg: JSValue = .undefined
 
     // What the scenario saw.
     var ops: [String] = []
@@ -366,6 +412,38 @@ final class ScenarioWorld {
         default: throw HarnessError("E_BAD_CASE", "setup.preview is an object ({failUrls})")
         }
         previewFailUrls = previewFailing
+        switch backend["prefetch"] {
+        case .undefined, .bool(false): prefetchLoses = nil
+        case .bool(true): prefetchLoses = false
+        case .string("loses"): prefetchLoses = true
+        default: throw HarnessError("E_BAD_CASE", "setup.backend.prefetch is true or \"loses\", got \(backend["prefetch"])")
+        }
+        if prefetchLoses != nil && engineTarget {
+            throw HarnessError("E_BAD_CASE", "setup.backend.prefetch is the manager target's; the engine target's standby deck always prepares")
+        }
+        switch backend["coldLoadMs"] {
+        case .undefined: coldLoadMs = 0
+        case let .number(ms) where ms.isFinite && ms > 0 && ms.rounded() == ms: coldLoadMs = ms
+        default: throw HarnessError("E_BAD_CASE", "setup.backend.coldLoadMs is a positive whole number of ms")
+        }
+        if coldLoadMs > 0 && (!manualClock || engineTarget || holdLoads) {
+            throw HarnessError("E_BAD_CASE", "setup.backend.coldLoadMs needs the manager target on setup.scheduler = \"manual\", without holdLoads")
+        }
+        slowFirstPlay = backend["slowFirstPlay"] == .bool(true)
+        settledEvents = setup["settledEvents"] == .bool(true)
+        var events: Set<String> = []
+        switch setup["telemetry"] {
+        case .undefined: break
+        case let .array(names):
+            for name in names {
+                guard let text = name.stringValue, ScenarioWorld.telemetryEvents.contains(text) else {
+                    throw HarnessError("E_BAD_CASE", "setup.telemetry is a list of \(ScenarioWorld.telemetryEvents.sorted().joined(separator: ", "))")
+                }
+                events.insert(text)
+            }
+        default: throw HarnessError("E_BAD_CASE", "setup.telemetry is a list of event names")
+        }
+        telemetry = events
         reading = DeckReading(positionSec: 0, durationSec: defaultDuration, audible: false, ended: false)
     }
 
@@ -437,8 +515,15 @@ final class ScenarioWorld {
         case "finishPrevious":
             guard let seq = fake.previous else { throw HarnessError("E_BAD_CASE", "no earlier utterance to finish") }
             feed(narratorEnd(.finished(seq: seq)))
+        case "releasePause":
+            // fakes.js `releasePause`: answer every held pause. In process the
+            // pause took effect when it was commanded; what is checked here is
+            // that the case's pause was actually made.
+            guard fake.heldPauses > 0 else { throw HarnessError("E_BAD_CASE", "no held tts pause to release") }
+            fake.heldPauses = 0
+            narrator = fake
         default:
-            throw HarnessError("E_BAD_CASE", "unknown tts event \(fields["tts"] ?? .null) (finish, silent)")
+            throw HarnessError("E_BAD_CASE", "unknown tts event \(fields["tts"] ?? .null) (finish, silent, releasePause)")
         }
     }
 
@@ -511,6 +596,7 @@ final class ScenarioWorld {
             }
             feed(.queue(.seek(sec: seconds, precise: arg(1)["precise"].isTruthy)))
         case "setRate":
+            lastRateArg = arg(0)
             feed(.queue(.setRate(arg(0).numberValue)))
         case "setVoice":
             feed(.command(.setVoice(voiceId: arg(0).stringValue), source: .tap))
@@ -612,6 +698,14 @@ final class ScenarioWorld {
         case "observedPause":
             reading.audible = false
             feed(.deck(.pausedUncommanded(token: deckToken ?? 0, atSec: reading.positionSec ?? 0)))
+        case "window":
+            // NE-39s: FakeBackend `openPrefetchWindow` (only a backend with the
+            // prefetch contract has one): the deck's playhead watch reaching
+            // the prefetch lead. Whether anything is warmed is the core's call.
+            guard prefetchLoses != nil else {
+                throw HarnessError("E_BAD_CASE", "deck \"window\" needs setup.backend.prefetch")
+            }
+            if let token = deckToken { feed(.deck(.prepareWindow(token: token))) }
         case "loaded", "loadFailed":
             let wanted = fields["id"]?.stringValue
             guard let at = heldLoads.firstIndex(where: { wanted == nil || $0.itemId == wanted }) else {
@@ -703,6 +797,11 @@ final class ScenarioWorld {
             deferredLoads = []
             for command in withheld { applyDeck(command) }
         }
+        // NE-39s: the cold loads whose cost the clock has now paid land, in
+        // due order (FakeBackend's awaited `schedule(coldLoadMs)`).
+        let landing = coldLoads.filter { $0.dueMs <= monoMs }.sorted { $0.dueMs < $1.dueMs }
+        coldLoads.removeAll { $0.dueMs <= monoMs }
+        for cold in landing { loadDeck(cold.command) }
         settle()
     }
 
@@ -901,6 +1000,12 @@ final class ScenarioWorld {
     /// answer to any activation it asked for. The audible-start rule is
     /// checked over the whole turn, from the session the turn began with.
     func feed(_ input: EngineInput) {
+        feedDepth += 1
+        defer {
+            feedDepth -= 1
+            // `onStateSettled`: after every top-level turn, the state it settled.
+            if feedDepth == 0 && settledEvents { ops.append("event.settled:\(core.state.stateType)") }
+        }
         let entry = core.state.session
         runningAtEntry = core.state.isRunning
         var names: [String] = []
@@ -1035,7 +1140,11 @@ final class ScenarioWorld {
                 }
             case let .diag(entry):
                 let sub = entry[field: "kind"]?.stringValue
-                if entry.kind == "beat", seamGapEvents, !engineTarget, sub == "begin" || sub == "end" {
+                if entry.kind == "rate", sub == "snapped", telemetry.contains("rate.snapped"), !engineTarget {
+                    // The manager's `rate.snapped requested=<JSON> applied=<r>`.
+                    let applied = entry[field: "applied"]?.numberValue.map(ScenarioWorld.number) ?? "null"
+                    ops.append("telemetry:rate.snapped requested=\(ScenarioWorld.jsonStringify(lastRateArg)) applied=\(applied)")
+                } else if entry.kind == "beat", seamGapEvents, !engineTarget, sub == "begin" || sub == "end" {
                     // The surface's beat callback (`onSeamGapChange`), as an op.
                     ops.append("event.seamGap:\(sub == "begin")")
                 } else {
@@ -1052,6 +1161,20 @@ final class ScenarioWorld {
     /// FakeBackend, command by command (and, on the engine target,
     /// WarmingBackend's standby deck).
     func applyDeck(_ command: DeckCommand) {
+        if case let .load(_, itemId, _, startSec, _, _) = command, !engineTarget, prefetchLoses != nil || coldLoadMs > 0 {
+            // FakeBackend `load`: a warm key is spent; a cold load waits its
+            // cost on the clock before it re-points the element (and logs).
+            let warm = warmed.remove("\(itemId)@\(ScenarioWorld.rounded(startSec))") != nil
+            if !warm && coldLoadMs > 0 {
+                coldLoads.append((command: command, dueMs: monoMs + coldLoadMs))
+                return
+            }
+        }
+        loadDeck(command)
+    }
+
+    /// FakeBackend, command by command, once a load is due to re-point it.
+    private func loadDeck(_ command: DeckCommand) {
         switch command {
         case let .load(token, itemId, url, startSec, _, _):
             if engineTarget {
@@ -1089,11 +1212,21 @@ final class ScenarioWorld {
             plays.append(deckItemId ?? "?")
             trackAudible()
             ops.append("play")
-            if let token = deckToken { confirmations.append(token) }
+            if slowFirstPlay, let token = deckToken {
+                // SlowPlayBackend: the first play settles only at the next pause.
+                slowFirstPlay = false
+                heldConfirmation = token
+            } else if let token = deckToken {
+                confirmations.append(token)
+            }
             if engineTarget { checkWindowAtStart() }
         case .pause:
             reading.audible = false
             ops.append("pause")
+            if let token = heldConfirmation {
+                heldConfirmation = nil
+                confirmations.append(token)
+            }
         case let .seek(toSec):
             reading.positionSec = toSec
             ops.append("seek:\(ScenarioWorld.rounded(toSec))")
@@ -1112,6 +1245,13 @@ final class ScenarioWorld {
             // FakeBackend's `release()` is the teardown's (`dispose`).
             if disposing && !engineTarget { ops.append("release") } else { native("n.deck.unload") }
         case let .prepare(itemId, url, startSec, _):
+            if !engineTarget, let loses = prefetchLoses {
+                // NE-39s: the manager's ASK (FakeBackend `prefetch`).
+                let key = "\(itemId)@\(ScenarioWorld.rounded(startSec))"
+                ops.append("prefetch:\(key)")
+                if !loses { warmed.insert(key) }
+                return
+            }
             guard engineTarget else { return native("n.deck.prepare:\(itemId)") }
             // WarmingBackend `prefetch`: the standby deck's own decision.
             let offset = JSMath.round(DeckPolicy.warmOffset(startSec))
@@ -1263,6 +1403,7 @@ final class ScenarioWorld {
             case "lastVoiceFallback": fields[key] = state.lastVoiceFallback.map { JSONValue.bool($0) } ?? .null
             case "wasPlaying":
                 if case let .interrupted(_, wasPlaying) = state.player { fields[key] = .bool(wasPlaying) } else { fields[key] = .null }
+            case "positionTimer": fields[key] = .bool(state.positionTimerArmed)
             default: break
             }
         }
@@ -1313,6 +1454,7 @@ final class ScenarioWorld {
         case .pause:
             guard fake.transport else { break }
             ops.append("tts.pause")
+            if fake.pauseHeld { fake.heldPauses += 1 }
             if !fake.pauseRejects && fake.word == .speaking { fake.word = .paused }
             if !fake.pauseRejects { narrationSpeaking = false }
         case let .resume(seq):
@@ -1380,6 +1522,19 @@ final class ScenarioWorld {
 
     /// `${n}`: ECMAScript Number::toString.
     static func number(_ value: Double) -> String { JSWriter.numberToString(value) }
+
+    /// `JSON.stringify(v)` for the scalars a `setRate` is handed (a template
+    /// literal prints `undefined` for an absent one).
+    static func jsonStringify(_ value: JSValue) -> String {
+        switch value {
+        case .undefined: return "undefined"
+        case .null: return "null"
+        case let .bool(flag): return flag ? "true" : "false"
+        case let .number(number): return number.isFinite ? self.number(number) : "null"
+        case let .string(text): return JSWriter.quote(text)
+        case .array, .object: return "[object]"
+        }
+    }
 }
 
 /// fakes.js `fakeTts` with NE-31j's opt-in shapes (`setup.tts`).
@@ -1391,6 +1546,9 @@ struct FakeNarrator {
     /// The bridge offers pause/resume/stop (a shell built before L-05 does not).
     let transport: Bool
     let pauseRejects: Bool
+    /// NE-39s: `pause: "held"`, a pause answered only by `tts: "releasePause"`.
+    let pauseHeld: Bool
+    var heldPauses = 0
     /// What `resume` answers, when the case says (`{accepted, fromStart, reason}`).
     let resumeAnswer: JSValue?
     /// The bridge answers `state()`.
@@ -1406,6 +1564,7 @@ struct FakeNarrator {
         onFinished = shape["onFinished"] != .bool(false)
         transport = shape["transport"] != .bool(false)
         pauseRejects = shape["pause"] == .string("rejects")
+        pauseHeld = shape["pause"] == .string("held")
         if case .object = shape["resume"] { resumeAnswer = shape["resume"] } else { resumeAnswer = nil }
         stateful = shape["state"] == .bool(true)
     }
