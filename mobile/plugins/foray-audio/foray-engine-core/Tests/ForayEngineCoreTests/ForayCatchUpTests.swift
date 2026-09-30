@@ -414,6 +414,160 @@ final class ForayCatchUpTests: XCTestCase {
         XCTAssertFalse(view.buffering, "the spoken line publishes its rate, not 0")
     }
 
+    // MARK: - NE-45s: a rendered line's seams are deck seams
+
+    static func seamRows(_ out: [EngineCommand]) -> [SeamRow] {
+        out.compactMap {
+            guard case let .diag(entry) = $0, entry.kind == SeamRow.kind else { return nil }
+            return SeamRow(DiagRow(seq: 0, wallMs: 0, monoMs: 0, kind: entry.kind, fields: entry.fields))
+        }
+    }
+
+    /// `prepare:<item>@<in-point>:<deadline class>` for every standby prepare.
+    static func prepares(_ out: [EngineCommand]) -> [String] {
+        out.compactMap {
+            if case let .deck(.prepare(itemId, _, startSec, deadlineClass)) = $0 {
+                return "\(itemId)@\(JSWriter.numberToString(startSec)):\(deadlineClass.rawValue)"
+            }
+            return nil
+        }
+    }
+
+    static let hitStages: [Vocabulary.Stage] = [.attach, .duration, .readiness, .seek, .preroll, .ready]
+
+    static func pulses(_ out: [EngineCommand]) -> Bool {
+        out.contains {
+            switch $0 {
+            case .narrationPulse, .timerArm(.narrationTick, _, _): return true
+            default: return false
+            }
+        }
+    }
+
+    /// THE CARD'S CASE, IN THE CORE: clip -> rendered line -> clip. The clip's
+    /// window prepares the LINE (it has a file, whatever the beat: the old
+    /// rule, `gapSec > 0`, left it cold), the line's load is the pair's hit,
+    /// the line's OWN window (from its duration: it has no out-point) prepares
+    /// the clip after it WHILE it plays, and that clip's load is a hit too.
+    /// Each seam packs one row with its kinds, `prepare=hit` and the silence
+    /// the listener heard, and the rendered line is never pulsed: the deck
+    /// has a position.
+    /// TO SEE IT FAIL: put `SeamGap.gapSec(...) > 0` back in
+    /// `warmNextSegment`, or keep its `.playing`-only guard (the line's window
+    /// then prepares nothing).
+    func testClipRenderedLineClipIsTwoPreparedSeamsWithTheirRowsAndNoPulse() throws {
+        var host = ForayCatchUpTests.host([ForayCatchUpTests.clip(0, "a", 100, 200), ForayCatchUpTests.rendered(1),
+                                           ForayCatchUpTests.clip(2, "b", 300, 400)])
+        host.land()
+        host.confirm()
+        let clipWindow = host.send(.deck(.prepareWindow(token: host.lastLoad ?? 0)), after: 0)
+        XCTAssertEqual(ForayCatchUpTests.prepares(clipWindow), ["f1#1@0:line"], "the line is prepared: \(clipWindow)")
+
+        var during: [EngineCommand] = []
+        let bridge = ForayCatchUpTests.endClip(&host)
+        XCTAssertEqual(ForayTapeTests.loads(bridge), ["f1#1@0"])
+        let lineToken = host.lastLoad ?? 0
+        during += host.send(.deck(.prepared(token: lineToken, hit: true, stages: ForayCatchUpTests.hitStages)), after: 0)
+        let lineLanded = host.send(.deck(.ready(token: lineToken, landedSec: 0, prerolled: true, elapsedMs: 0)), after: 40)
+        during += lineLanded
+        XCTAssertTrue(lineLanded.contains(.deck(.play)), "\(lineLanded)")
+        let intoLine = try XCTUnwrap(ForayCatchUpTests.seamRows(lineLanded).first, "the clip -> line seam packs a row: \(lineLanded)")
+        XCTAssertEqual(intoLine.from, .clip)
+        XCTAssertEqual(intoLine.to, .line)
+        XCTAssertEqual(intoLine.prepare, .hit)
+        XCTAssertEqual(intoLine.observedGapMs, 40, "out-point to the line's start")
+        XCTAssertEqual(intoLine.askedGapMs, 0, "a line is its own marker: no beat")
+        during += host.confirm()
+        XCTAssertEqual(host.core.state.stateType, "transitioning")
+
+        let lineWindow = host.send(.deck(.prepareWindow(token: lineToken)), after: 0)
+        during += lineWindow
+        XCTAssertEqual(ForayCatchUpTests.prepares(lineWindow), ["f1#2@300:clip"],
+                       "the clip after the line is prepared while the line plays: \(lineWindow)")
+        XCTAssertFalse(ForayCatchUpTests.pulses(during), "a rendered line is a deck item, never pulsed: \(during)")
+
+        let intoClip = ForayCatchUpTests.endClip(&host)
+        XCTAssertEqual(ForayTapeTests.loads(intoClip), ["f1#2@300"])
+        let clipToken = host.lastLoad ?? 0
+        host.send(.deck(.prepared(token: clipToken, hit: true, stages: ForayCatchUpTests.hitStages)), after: 0)
+        let clipLanded = host.send(.deck(.ready(token: clipToken, landedSec: 300, prerolled: true, elapsedMs: 0)), after: 30)
+        XCTAssertTrue(clipLanded.contains(.deck(.play)), "\(clipLanded)")
+        let outOfLine = try XCTUnwrap(ForayCatchUpTests.seamRows(clipLanded).first, "the line -> clip seam packs a row: \(clipLanded)")
+        XCTAssertEqual(outOfLine.from, .line)
+        XCTAssertEqual(outOfLine.to, .clip)
+        XCTAssertEqual(outOfLine.prepare, .hit)
+        XCTAssertEqual(outOfLine.observedGapMs, 30)
+        XCTAssertTrue(outOfLine.prepared)
+    }
+
+    /// A SPOKEN line leaves the deck idle, so the clip after it is prepared
+    /// at the line's START (queue-manager.js `_playTransitionBridge`,
+    /// NE-45j), not at a window: nothing is prepared before the line is
+    /// audible, and the clip's load at the line's end is a hit. The seam into
+    /// the line says `prepare=none` (a spoken line has no file).
+    /// TO SEE IT FAIL: drop the `line-start` warm from `narrationStarted`.
+    func testTheClipAfterASpokenLineIsPreparedAtTheLinesStartAndIsAHit() throws {
+        var host = ForayCatchUpTests.host([ForayCatchUpTests.clip(0, "a", 100, 200), ForayCatchUpTests.line(1, "a line"),
+                                           ForayCatchUpTests.clip(2, "b", 300, 400)])
+        host.land()
+        host.confirm()
+        let window = host.send(.deck(.prepareWindow(token: host.lastLoad ?? 0)), after: 0)
+        XCTAssertEqual(ForayCatchUpTests.prepares(window), [], "a spoken line has no file to prepare: \(window)")
+        let bridge = ForayCatchUpTests.endClip(&host)
+        guard let seq = NarrationOverlayTests.spokenSeq(bridge) else { return XCTFail("nothing spoken: \(bridge)") }
+        XCTAssertEqual(ForayCatchUpTests.prepares(bridge), [], "nothing is prepared before the line is audible")
+        let started = host.send(.narrator(.started(seq: seq, voiceFallback: false)), after: 0)
+        XCTAssertEqual(ForayCatchUpTests.prepares(started), ["f1#2@300:clip"], "\(started)")
+        let intoLine = try XCTUnwrap(ForayCatchUpTests.seamRows(started).first, "\(started)")
+        XCTAssertEqual([intoLine.from, intoLine.to], [.clip, .line])
+        XCTAssertEqual(intoLine.prepare, .unprepared)
+
+        let finished = host.send(.narrator(.finished(seq: seq)), after: 3_000)
+        XCTAssertEqual(ForayTapeTests.loads(finished), ["f1#2@300"], "\(finished)")
+        let clipToken = host.lastLoad ?? 0
+        host.send(.deck(.prepared(token: clipToken, hit: true, stages: ForayCatchUpTests.hitStages)), after: 0)
+        let landed = host.send(.deck(.ready(token: clipToken, landedSec: 300, prerolled: true, elapsedMs: 0)), after: 0)
+        let row = try XCTUnwrap(ForayCatchUpTests.seamRows(landed).first, "\(landed)")
+        XCTAssertEqual([row.from, row.to], [.line, .clip])
+        XCTAssertEqual(row.prepare, .hit, "the clip after a spoken line is prepare=hit")
+    }
+
+    /// A prepared line whose file FAILS (the standby's warm load 404s; the
+    /// DeckPair keeps that to itself) falls back to speech AT ITS TURN,
+    /// exactly as a cold one does: the clip before it plays on with no voice
+    /// over it, the line's own load at the out-point is the pair's miss and
+    /// fails again, and the script is spoken on a FRESH token (NE-37c). The
+    /// seam says `prepare=miss`, and the spoken line prepares the clip after it.
+    /// TO SEE IT FAIL: speak the fallback under the file's token, or start
+    /// speech from the `.prepared(hit: false)` report.
+    func testAPreparedLineWhoseFileFailsIsSpokenAtItsTurnAndNeverBefore() throws {
+        var host = ForayCatchUpTests.host([ForayCatchUpTests.clip(0, "a", 100, 200), ForayCatchUpTests.rendered(1),
+                                           ForayCatchUpTests.clip(2, "b", 300, 400)])
+        host.land()
+        host.confirm()
+        var early = host.send(.deck(.prepareWindow(token: host.lastLoad ?? 0)), after: 0)
+        XCTAssertEqual(ForayCatchUpTests.prepares(early), ["f1#1@0:line"])
+        early += host.send(.deck(.timeControl(token: host.lastLoad ?? 0, status: .playing, waitingReason: nil)), after: 5_000)
+        XCTAssertEqual(NarrationOverlayTests.speaks(early), [], "no voice while the clip still plays: \(early)")
+
+        let bridge = ForayCatchUpTests.endClip(&host)
+        let fileToken = host.lastLoad ?? 0
+        XCTAssertEqual(ForayTapeTests.loads(bridge), ["f1#1@0"], "the line's turn tries its file first")
+        XCTAssertEqual(NarrationOverlayTests.speaks(bridge), [])
+        let missed = host.send(.deck(.prepared(token: fileToken, hit: false, stages: [.attach, .deadline])), after: 0)
+        XCTAssertEqual(NarrationOverlayTests.speaks(missed), [], "a miss is not a failure: the cold load runs")
+        let fell = host.send(.deck(.failed(token: fileToken, message: "HTTP 404")), after: 0)
+        guard let seq = NarrationOverlayTests.spokenSeq(fell) else { return XCTFail("no fallback speak: \(fell)") }
+        XCTAssertGreaterThan(host.core.state.lastToken, fileToken, "the spoken line rides on a fresh token")
+        XCTAssertFalse(fell.contains { if case .emit(.error) = $0 { return true }; return false }, "\(fell)")
+        let started = host.send(.narrator(.started(seq: seq, voiceFallback: false)), after: 0)
+        let row = try XCTUnwrap(ForayCatchUpTests.seamRows(started).first, "\(started)")
+        XCTAssertEqual([row.from, row.to], [.clip, .line])
+        XCTAssertEqual(row.prepare, .miss, "prepared, and still not ready at its turn")
+        XCTAssertEqual(ForayCatchUpTests.prepares(started), ["f1#2@300:clip"],
+                       "the line is spoken now, so the clip after it is prepared at its start")
+    }
+
     /// A stall on one load never outlives the next load landing.
     /// TO SEE IT FAIL: drop `clearStallLatch()` from `onReady`.
     func testANewLoadLandingClearsTheLastLoadsStall() {

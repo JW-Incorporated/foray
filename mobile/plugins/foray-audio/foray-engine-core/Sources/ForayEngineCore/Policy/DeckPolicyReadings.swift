@@ -204,28 +204,69 @@ extension DeckPolicy {
     }
 
     /// `prefetchWindowOpens({available, outPointSec, armed, paused, atSec,
-    /// rate, leadSec, alreadyOpened = false})`: only while the player is
-    /// AUDIBLE, with an armed boundary, once per boundary, and within
-    /// `leadSec` of WALL clock (so a faster rate opens it earlier in the
-    /// episode).
+    /// rate, leadSec, alreadyOpened = false, durationSec = null})`: only
+    /// while the player is AUDIBLE, with a boundary, once per boundary, and
+    /// within `leadSec` of WALL clock (so a faster rate opens it earlier in
+    /// the episode).
+    ///
+    /// THE BOUNDARY (NE-45j, ported by NE-45s): an armed out-point when the
+    /// item has one. An item with NO out-point (a rendered narration line, or
+    /// an episode left to its natural end) ends where its file does, so its
+    /// boundary is `durationSec`, and an item shorter than the lead is inside
+    /// its window from its first tick. An out-point that exists but is not
+    /// armed is still no boundary: the duration never stands in for a slice's
+    /// own end.
     public static func prefetchWindowOpens(available: Bool, outPointSec: Double?, armed: Bool, paused: Bool,
                                            atSec: Double, rate: Double?, leadSec: Double,
-                                           alreadyOpened: Bool = false) -> Bool {
-        guard available, let outPointSec, armed, !paused, !alreadyOpened else { return false }
-        return !((outPointSec - atSec) / deckRate(rate) > leadSec)
+                                           alreadyOpened: Bool = false, durationSec: Double? = nil) -> Bool {
+        guard available, !paused, !alreadyOpened,
+              let boundarySec = windowBoundarySec(outPointSec: outPointSec, armed: armed, durationSec: durationSec)
+        else { return false }
+        return !((boundarySec - atSec) / deckRate(rate) > leadSec)
+    }
+
+    /// The boundary the prefetch window approaches (`prefetchWindowOpens`'s
+    /// `boundarySec`): the out-point when there is one (and only while it is
+    /// armed), else a finite, positive duration, else none.
+    public static func windowBoundarySec(outPointSec: Double?, armed: Bool, durationSec: Double?) -> Double? {
+        if let outPointSec { return armed ? outPointSec : nil }
+        guard let durationSec, durationSec.isFinite, durationSec > 0 else { return nil }
+        return durationSec
     }
 
     /// When, in WALL-CLOCK ms from now, the prefetch window will open for a
-    /// deck playing toward `outPointSec`: 0 when it is open already, nil when
-    /// it cannot open (the same guards as `prefetchWindowOpens`). The native
-    /// deck arms ONE timer for it instead of asking on every tick. Rounded up,
-    /// so the timer never fires before the window is open.
+    /// deck playing toward its boundary (`windowBoundarySec`): 0 when it is
+    /// open already, nil when it cannot open (the same guards as
+    /// `prefetchWindowOpens`, and a playhead already at or past the boundary).
+    /// The native deck arms ONE timer for it instead of asking on every tick.
+    /// Rounded up, so the timer never fires before the window is open.
     public static func prefetchWindowDelayMs(available: Bool, outPointSec: Double?, armed: Bool, paused: Bool,
                                              atSec: Double, rate: Double?, leadSec: Double,
-                                             alreadyOpened: Bool = false) -> Double? {
-        guard available, let outPointSec, outPointSec.isFinite, armed, !paused, !alreadyOpened,
-              atSec < outPointSec else { return nil }
-        let untilSec = (outPointSec - atSec) / deckRate(rate) - leadSec
+                                             alreadyOpened: Bool = false, durationSec: Double? = nil) -> Double? {
+        guard available, !paused, !alreadyOpened,
+              let boundarySec = windowBoundarySec(outPointSec: outPointSec, armed: armed, durationSec: durationSec),
+              boundarySec.isFinite, atSec < boundarySec else { return nil }
+        let untilSec = (boundarySec - atSec) / deckRate(rate) - leadSec
         return untilSec <= 0 ? 0 : (untilSec * 1000).rounded(.up)
+    }
+
+    /// `warmsAcross({from, to})` (NE-45j; card NE-45s ports it): is the item
+    /// AFTER `from` prepared on the standby deck? THE RULE IS THE FILE, NOT
+    /// THE BEAT. The next item is prepared when it has a file to fetch (a
+    /// clip, a rendered narration line); a spoken, script-only line has none
+    /// and prepares nothing; the Foray's last item (no `to`) prepares nothing.
+    /// Until NE-45s this question was `SeamGap.gapSec(...) > 0`, which left
+    /// every narration seam cold: clip -> line -> clip paid two cold loads.
+    ///
+    /// `toAudioUrl` is `to.audio_url` when there is a `to` (nil: none, or not
+    /// a string); JavaScript's `typeof ... === "string" && length > 0`.
+    public static func warmsAcross(hasFrom: Bool, hasTo: Bool, toAudioUrl: String?) -> Bool {
+        guard hasFrom, hasTo, let toAudioUrl else { return false }
+        return !toAudioUrl.isEmpty
+    }
+
+    /// `warmsAcross` over two queue items.
+    public static func warmsAcross(from: EngineItem?, to: EngineItem?) -> Bool {
+        warmsAcross(hasFrom: from != nil, hasTo: to != nil, toAudioUrl: to?.audioUrl)
     }
 }

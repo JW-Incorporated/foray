@@ -648,25 +648,28 @@ test("capabilities.json holds the plan §6.6 map", () => {
      episode and foray capabilities never wait on it; nothing may ever advertise
      it. MUTATION: add "remainder" to the advertised list -> the next test's
      gate is red for as long as manager-remainder is pending (NE-39s). */
-  // NE-45j parks prepare-narration here while NE-45s owes it (the M2 build
-  // advertises foray, which may owe nothing); NE-45s moves it to foray.
+  // NE-45j parked prepare-narration here while NE-45s owed it; NE-45s moved it to foray.
   // NE-38rj parked route-resume here; NE-38rs ported it and moved it to episode.
-  assert.deepStrictEqual(DATA.capabilities.remainder, ["compare", "manager-remainder", "prepare-narration"]);
+  assert.deepStrictEqual(DATA.capabilities.remainder, ["compare", "manager-remainder"]);
   assert.ok(!advertisedCapabilities(REPO_ROOT).has("remainder"), "the remainder is a bookkeeping gate, never a capability a build ships");
 });
 
-test("NE-45j: prepare-narration is authored against reference-engine, keeps its n.* tokens, and is owed whole to NE-45s and A-62", () => {
-  /* The card's acceptance: the family is recorded green in JS with its ids
-     pending for NE-45s. It is the prepare family's seams with a line in them,
-     so it is held to prepare's rules (authored, run on the engine target, T on
-     every checkpoint, n.* asserted), and it is parked under `remainder` rather
-     than `foray` only because foray ships and may owe nothing. MUTATION: drop
-     one prepare-narration id from swift-pending.json -> red; take
-     "prepare-narration" out of NATIVE_TOKEN_FAMILIES -> red. */
+test("NE-45j/NE-45s: prepare-narration is authored against reference-engine, keeps its n.* tokens, passes in Swift under foray, and is owed whole to A-62", () => {
+  /* NE-45j recorded the family green in JS with its ids pending for NE-45s;
+     NE-45s ported it (the Swift PrepareNarrationFamily runner, registered and
+     required in ParityFamilyTests and the iOS wrapper) and moved it from the
+     unadvertised `remainder` gate to `foray`, the capability whose rule it is,
+     so the advertised-capability gate now holds it to zero owed. It is the
+     prepare family's seams with a line in them, so it is held to prepare's
+     rules (authored, run on the engine target, T on every checkpoint, n.*
+     asserted). MUTATION: put one prepare-narration id back in
+     swift-pending.json -> red here and in the advertised gate; move the family
+     back under `remainder` -> red; take "prepare-narration" out of
+     NATIVE_TOKEN_FAMILIES -> red. */
   const files = FIXTURES.filter((f) => f.family === "prepare-narration");
   assert.ok(files.length > 0, "prepare-narration is recorded");
   const cases = files.flatMap((f) => f.doc.cases);
-  for (const c of cases) assert.equal(DATA.pending[c.id], "NE-45s", `${c.id} is owed to NE-45s`);
+  for (const c of cases) assert.equal(DATA.pending[c.id], undefined, `${c.id} is not owed: NE-45s ported it`);
   const seams = cases.filter((c) => c.setup?.target === "engine");
   assert.ok(seams.length > 0, "the family holds engine seams");
   for (const c of seams) {
@@ -678,7 +681,8 @@ test("NE-45j: prepare-narration is authored against reference-engine, keeps its 
     assert.ok(ops.some((o) => o.startsWith(token)), `the family asserts ${token}`);
   }
   assert.ok(NATIVE_TOKEN_FAMILIES.includes("prepare-narration"), "compare.js keeps its n.* tokens");
-  assert.ok(DATA.capabilities.remainder.includes("prepare-narration") && !DATA.capabilities.foray.includes("prepare-narration"));
+  assert.ok(DATA.capabilities.foray.includes("prepare-narration") && !DATA.capabilities.remainder.includes("prepare-narration"),
+    "NE-45s moved prepare-narration to foray");
   const jvm = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, "player/parity/jvm-pending.json"), "utf8"));
   assert.equal(jvm.families["prepare-narration"], "A-62", "the JVM owes it whole to A-62");
   assert.equal(jvm.families.prepare, "A-25", "prepare itself stays owed whole to A-25");

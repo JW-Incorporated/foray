@@ -19,7 +19,8 @@ enum DeckPairFamily {
         "discardFreesBuffer": DeckPairFamily.discardFreesBuffer,
         "playRefusalAction": DeckPairFamily.playRefusalAction,
         "unexplainedPauseAction": DeckPairFamily.unexplainedPauseAction,
-        "prefetchWindowOpens": DeckPairFamily.prefetchWindowOpens
+        "prefetchWindowOpens": DeckPairFamily.prefetchWindowOpens,
+        "warmsAcross": DeckPairFamily.warmsAcross
     ]
 
     private static func param(_ args: [JSValue]) -> JSValue? {
@@ -112,7 +113,10 @@ enum DeckPairFamily {
         return .returned(.string(answer.rawValue))
     }
 
-    /// `prefetchWindowOpens({available, outPointSec, armed, paused, atSec, rate, leadSec, alreadyOpened = false})`.
+    /// `prefetchWindowOpens({available, outPointSec, armed, paused, atSec, rate, leadSec, alreadyOpened = false,
+    /// durationSec = null})`. `durationSec` is read as JavaScript's
+    /// `Number.isFinite(d) && d > 0` reads it, through `windowBoundarySec`: a
+    /// number or none (a value of another type is not representable).
     static func prefetchWindowOpens(_ args: [JSValue]) throws -> CallOutcome {
         guard let s = param(args) else { return .threw("TypeError") }
         return .returned(.bool(DeckPolicy.prefetchWindowOpens(
@@ -122,6 +126,17 @@ enum DeckPairFamily {
             atSec: try number(s["atSec"], "prefetchWindowOpens's atSec"),
             rate: s["rate"].numberValue,
             leadSec: try number(s["leadSec"], "prefetchWindowOpens's leadSec"),
-            alreadyOpened: s["alreadyOpened"].isTruthy)))
+            alreadyOpened: s["alreadyOpened"].isTruthy,
+            durationSec: try ArgReading.optionalNumber(s["durationSec"], "prefetchWindowOpens's durationSec"))))
+    }
+
+    /// `warmsAcross({from = null, to = null} = {})` (NE-45j; card NE-45s):
+    /// `!from || !to` is truthiness, then `typeof to.audio_url === "string" &&
+    /// to.audio_url.length > 0`.
+    static func warmsAcross(_ args: [JSValue]) throws -> CallOutcome {
+        guard let s = ArgReading.objectParam(ArgReading.arg(args, 0), hasDefault: true) else { return .threw("TypeError") }
+        let to = s["to"]
+        return .returned(.bool(DeckPolicy.warmsAcross(hasFrom: s["from"].isTruthy, hasTo: to.isTruthy,
+                                                      toAudioUrl: to.isTruthy ? to["audio_url"].stringValue : nil)))
     }
 }

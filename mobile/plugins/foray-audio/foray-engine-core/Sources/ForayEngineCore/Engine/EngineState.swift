@@ -148,6 +148,10 @@ public struct EngineState: Equatable {
     /// the packed seam row; nil when the deck sent none (one deck, the
     /// parity driver), and the row then says what it said before NE-32.
     public var deckPrepare: DeckPrepareReport?
+    /// NE-45s: the seam an item's end crossed, until the next item is audible
+    /// (`EngineCore.packSeamRow`); nil between seams and after a transport
+    /// action cut one.
+    public var seamMark: SeamMark?
     /// Segments ADR-0007's ladder refused at load (the snapshot's `skippedSegments`).
     public var skippedSegments = 0
     /// The `cp_foray` write throttle: foray-progress.js `ForayProgressStore`'s
@@ -376,6 +380,26 @@ public struct LastRemote: Equatable {
 }
 
 /// What the DeckPair said about one load (NE-32; `DeckEvent.prepared`).
+/// NE-45s: a seam in flight, from the item's end to the next one's audible
+/// start: what it joins, which item it is waiting for, when it began, and the
+/// DeckPair's verdict on that item's load once there is one.
+public struct SeamMark: Equatable {
+    public var from: SeamRow.ItemKind
+    public var to: SeamRow.ItemKind
+    public var toItemId: String
+    public var endedAtMono: Double
+    public var prepare: SeamRow.Prepare?
+
+    public init(from: SeamRow.ItemKind, to: SeamRow.ItemKind, toItemId: String, endedAtMono: Double,
+                prepare: SeamRow.Prepare? = nil) {
+        self.from = from
+        self.to = to
+        self.toItemId = toItemId
+        self.endedAtMono = endedAtMono
+        self.prepare = prepare
+    }
+}
+
 public struct DeckPrepareReport: Equatable {
     public var token: DeckToken
     public var hit: Bool

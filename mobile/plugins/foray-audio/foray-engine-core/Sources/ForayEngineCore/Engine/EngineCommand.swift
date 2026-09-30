@@ -227,7 +227,9 @@ public enum EngineCommand: Equatable {
     case silenceStart(capMs: Double)
     case silenceStop
     /// The narration pulse: repaint the surface, whose clock for a spoken
-    /// line is the line's wall-time clock (no deck is playing it).
+    /// line is the line's wall-time clock (no deck is playing it). A SPOKEN
+    /// line only: a RENDERED line is an ordinary deck item (NE-45s), and the
+    /// deck's own position is its clock, so it is never pulsed.
     case narrationPulse(elapsedSec: Double)
     case emit(EngineEvent)
     case diag(DiagEntry)
