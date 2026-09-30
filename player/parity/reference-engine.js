@@ -644,6 +644,12 @@ export class ReferenceEngine {
         }
         case "setModeOverride": this.modeOverride = args.mode; return null;
         case "setHoldPolicy": this.holdPolicy = args.policy; return null;
+        /* NE-40 (DV-8): the native host stores the route-sharing choice for
+           the next launch; the reference keeps it and says so. */
+        case "setRouteSharing":
+          this.routeSharing = args.policy;
+          this._row({ kind: "session", event: "route-sharing", policy: args.policy, applies: "next-launch" });
+          return null;
         case "probeSession": this._row({ kind: "probe" }); return null;
         /* Developer only (NE-24, DV-7a): the native engine persists its
            restore record and exits at the next background entry while

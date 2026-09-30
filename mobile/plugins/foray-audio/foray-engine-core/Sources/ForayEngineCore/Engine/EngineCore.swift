@@ -85,6 +85,16 @@ public struct EngineConfig: Equatable {
     public var routeSalt: String
     /// NE-38rs: the known set the host read back from `ForayEngine.knownRoutes`.
     public var knownRoutes: [String]
+    /// NE-40, DV-8: the audio session's `.longFormAudio` route-sharing trial.
+    /// OFF, and it stays off in every shipping build: M1's car win (#114)
+    /// happened on the default route-sharing policy, so the default does not
+    /// change without a drive that says it should. The shipping boot turns it
+    /// on ONLY from the Developer row's stored choice (`setRouteSharing`,
+    /// `ForayEngine.routeSharing`, read at the next launch); nothing in
+    /// mobile/ENGINE_DEFAULT.json or the plist can. The core decides nothing
+    /// on it; the host builds the session owner with it, and the `build` row
+    /// and the Copy header say which policy the launch ran (`routeSharing=`).
+    public var routeSharingLongForm: Bool // MEASURE: DV-8 (the G-6 drive's optional .longFormAudio arm). Rows: build routeSharing=, session category routeSharing=.
 
     public init(build: String = "", holdPolicy: SessionPolicy.HoldPolicy = .default, rate: Double? = nil,
                 forayTapeEnabled: Bool = false, seamGapSec: Double = SeamGap.defaultGapSec,
@@ -93,7 +103,7 @@ public struct EngineConfig: Equatable {
                 silenceNodeEnabled: Bool = false, voiceId: String? = nil, speechDirect: Bool = false,
                 routeResumeBluetooth: Bool = RouteResume.bluetoothDefault, routeSalt: String = "",
                 knownRoutes: [String] = [], loadDeadlineMs: [DeckDeadlineClass: Double] = [:],
-                deckPairEnabled: Bool = false) {
+                deckPairEnabled: Bool = false, routeSharingLongForm: Bool = false) {
         self.build = build
         self.holdPolicy = holdPolicy
         self.rate = rate
@@ -111,6 +121,7 @@ public struct EngineConfig: Equatable {
         self.routeSalt = routeSalt
         self.knownRoutes = knownRoutes
         self.loadDeadlineMs = loadDeadlineMs
+        self.routeSharingLongForm = routeSharingLongForm
     }
 }
 
@@ -408,8 +419,9 @@ public struct EngineCore {
             // under that same activation, the tap's own.
             if state.isRunning || audibleNow { return refuse(.engineBusy) }
             begin(.audition(text: text, voiceId: voiceId, url: url), source: .audition)
-        case .setModeOverride, .probeSession:
-            // The host's (EngineOwnership NE-17, SessionProbe NE-25c).
+        case .setModeOverride, .probeSession, .setRouteSharing:
+            // The host's (EngineOwnership NE-17, SessionProbe NE-25c, the
+            // route-sharing store NE-40).
             break
         case .simulateTermination:
             // Developer only (NE-24, DV-7a). The record a cold boot restores
@@ -492,9 +504,11 @@ public struct EngineCore {
     /// so a deck audible while the machine says paused is paused here, by the
     /// deck's own word, never the reverse.
     private mutating func pause(source: EngineSource) {
+        // D-5 (NE-40): the cause FIRST, before the seam's cut silences a
+        // jingle or the silence node under it.
+        stopRow(.pause, source: source)
         cutSeamGap("pause")
         state.pausedByListener = true
-        stopRow(.pause, source: source)
         dispatch(.interruptionBegan)
         if audibleNow {
             diag("pause", [JSONMember("kind", .string("forced")),
@@ -605,11 +619,12 @@ public struct EngineCore {
     /// cause row, then the reducer's save and pause, then the session is
     /// released WITH notify: the listener closed the player.
     private mutating func stop(persist: Bool, source: EngineSource) {
+        // D-5 (NE-40): the cause first, before the cut silences a jingle.
+        stopRow(persist ? .close : .dataDeletion, source: source)
         cutSeamGap("stop")
         defer { releaseSeamGap() }
         stopPreview("stop")
         state.pausedByListener = true
-        stopRow(persist ? .close : .dataDeletion, source: source)
         // CLOSING IS A FLUSH (audit round 2, player-3): the reducer's stop
         // saves nothing, and a scrub made while paused is written by nothing
         // else, so the playhead is written first (client.js `stopAndClose`).
@@ -706,12 +721,13 @@ public struct EngineCore {
     /// interrupted is invited back), end grace, cancel timers, write the
     /// `{mode: "relinquished"}` record, and go terminal.
     private mutating func relinquish(cap: EngineContract.RelinquishCap, source: EngineSource) {
+        // D-5 (NE-40): the cause first, before the cut silences a jingle.
+        stopRow(.relinquish, source: source)
         // Nothing parked may start audio after the engine gave the process back.
         cutSeamGap("relinquish")
         state.gapParkedToken = nil
         state.gapCut = false
         stopPreview("relinquish")
-        stopRow(.relinquish, source: source)
         if state.isRunning {
             state.pausedByListener = true
             dispatch(.interruptionBegan)
@@ -1545,8 +1561,9 @@ public struct EngineCore {
         if transition.row == .micMuted || transition.row == .staleSuspension {
             return applySession(transition)
         }
-        cutSeamGap("interruption")
+        // D-5 (NE-40): the cause first, before the cut silences a jingle.
         stopRow(.interruption)
+        cutSeamGap("interruption")
         // A call or Siri clears a loss's eligibility (route-resume.js).
         routeResumeStep(.interruption)
         applySession(transition)
@@ -1633,8 +1650,9 @@ public struct EngineCore {
                            JSONMember("known", .bool(state.knownRoutes.contains(key)))])
             // A beat that outlived a lost route would start audio into a dead
             // route the moment its timer fired.
-            cutSeamGap("routeLost")
+            // D-5 (NE-40): the cause first, before the cut silences a jingle.
             stopRow(.routeChange)
+            cutSeamGap("routeLost")
             dispatch(.routeChanged(oldDeviceUnavailable: true))
             releaseSeamGap()
             // The clock stops with the route, so no later tick carries the
@@ -1832,16 +1850,19 @@ public struct EngineCore {
             narrationTick()
         case .silenceCap:
             // INTERLUDE_CEILING_SEC from the out-point: past it only grace covers.
+            // Its row first (D-5, NE-40): digital silence in a seam is not the
+            // listener's audio stopping, so it is not a `stop` row, but it is
+            // named before the command that ends it, like every silencer.
             guard state.silenceActive else { return }
             state.silenceActive = false
-            out.append(.silenceStop)
             diag("silence", [JSONMember("kind", .string("capped"))])
+            out.append(.silenceStop)
         case .graceExpired:
             guard state.grace != nil else { return }
             // The deterministic outcome (plan §4.4): end the task, say so,
             // and pause, as the listener's own pause would.
-            endGrace(.expired)
             stopRow(.graceExpired)
+            endGrace(.expired)
             state.pausedByListener = true
             dispatch(.interruptionBegan)
             applySession(SessionPolicy.transition(from: state.session, on: .pause, holdPolicy: state.holdPolicy))
@@ -2512,8 +2533,9 @@ public struct EngineCore {
         if let next {
             state.targetIndex = next.index
         } else {
-            endSeamGap("queueExhausted")
+            // D-5 (NE-40): the cause first, before the cut silences a jingle.
             stopRow(.finalEnd)
+            endSeamGap("queueExhausted")
         }
         dispatch(.skipToNext(next?.item.ref))
         if next == nil, state.stateType == "ended" {
@@ -2945,8 +2967,9 @@ public struct EngineCore {
         guard state.inInterlude else { return }
         state.inInterlude = false
         state.beatUntilMono = nil
-        out.append(.interlude(.stop))
+        // The row first (D-5, NE-40), then the command that silences the jingle.
         diag("interlude", [JSONMember("kind", .string("cut")), JSONMember("why", .string(why))])
+        out.append(.interlude(.stop))
     }
 
     // MARK: - The silence node (NE-31s commands; NE-34's node, flagged OFF)
@@ -2970,9 +2993,10 @@ public struct EngineCore {
     private mutating func stopSilence(_ why: String) {
         guard state.silenceActive else { return }
         state.silenceActive = false
+        // The row first (D-5, NE-40), then the command that ends the silence.
+        diag("silence", [JSONMember("kind", .string("stopped")), JSONMember("why", .string(why))])
         out.append(.timerCancel(.silenceCap))
         out.append(.silenceStop)
-        diag("silence", [JSONMember("kind", .string("stopped")), JSONMember("why", .string(why))])
     }
 
     // MARK: - Teardown (the page's `dispose()`)
@@ -2983,6 +3007,12 @@ public struct EngineCore {
     /// every timer and grace span ends, and the core answers nothing more.
     /// The reducer's state is left as it was.
     private mutating func teardown() {
+        // D-5 (NE-40): the engine going away while it plays is the audio
+        // handed back, so the cause is `relinquish`. The app's host never sends
+        // `.teardown` (ForayEngine.teardown() tears the host down after the
+        // core's own relinquish, which writes this row); the page's `dispose()`
+        // in the parity driver does.
+        stopRow(.relinquish)
         stopPreview("dispose")
         if state.narration != nil { stopNarration() }
         cutSeamGap("dispose")

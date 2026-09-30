@@ -1,6 +1,6 @@
 4a playback diagnostics — v3
 build web 67dbe3ce9009ef58 · native 1.0 (2026100601)
-engine=native v1.0.0 proto=1 caps=episode,continuation,restore,foray reason=build-default strikes=0 hold=forever build=2026100601 | web=67dbe3ce9009ef58
+engine=native v1.0.0 proto=1 caps=episode,continuation,restore,foray reason=build-default strikes=0 hold=forever routeSharing=default build=2026100601 | web=67dbe3ce9009ef58
 Local only. Nothing here is sent anywhere.
 
 SYNTHETIC M3 drive for tools/mobile/engine-report.mjs (card NE-38e): made up, title-free, printed through
@@ -8,7 +8,7 @@ player/diagnostic-log.js engineLineFor. Every M3 verdict reads a pass on it; the
 
 engine rows 67 of 2000, #1..#67
 
-e#1    16:00:00.000 build      src=engine v1.0.0 protocol=1 bundleVersion=2026100601 launch=foreground pitch=timeDomain hold=forever
+e#1    16:00:00.000 build      src=engine v1.0.0 protocol=1 bundleVersion=2026100601 launch=foreground pitch=timeDomain hold=forever routeSharing=default
 e#2    16:00:00.300 session    src=engine category ok=y hint=n phase=inactive why=boot routeSharing=default
 e#3    16:01:00.300 cmd        src=engine playEpisode source=tap cmdSeq=1
 e#4    16:01:00.340 session    src=engine activate activateMs=30ms ok=y reason=—

@@ -326,6 +326,20 @@ protocol KnownRoutesStoring: AnyObject {
     func saveKnownRoutes(_ stored: RouteResume.Stored?)
 }
 
+// MARK: - The route-sharing trial's private key (NE-40)
+
+/// Where the Developer row's route-sharing choice lives between launches: the
+/// engine-private `UserDefaults` key `ForayEngine.routeSharing` (EngineStore).
+/// The boot reads it once, before the session owner sets its category; the
+/// host writes it when `engineSend setRouteSharing` arrives. It changes
+/// nothing in the running process: the category is applied at construction,
+/// so the choice takes effect at the next launch (as the mode override does).
+protocol RouteSharingStoring: AnyObject {
+    /// Nil when nothing valid is stored: the default then stands.
+    func loadRouteSharing() -> EngineContract.RouteSharingPolicy?
+    func saveRouteSharing(_ policy: EngineContract.RouteSharingPolicy)
+}
+
 /// Every seam the host drives, in one value, so a test builds the whole world
 /// out of fakes and the boot path (NE-17, NE-24) out of the real conformers.
 struct EngineSeams {
@@ -343,6 +357,9 @@ struct EngineSeams {
     /// `ForayEngine.knownRoutes`. Nil (most tests): a fresh salt per engine
     /// and nothing persisted.
     var knownRoutes: KnownRoutesStoring? = nil
+    /// The Developer route-sharing trial's key (NE-40). Nil (most tests): a
+    /// `setRouteSharing` is answered and recorded, and nothing is persisted.
+    var routeSharing: RouteSharingStoring? = nil
     /// The seam's jingle (NE-34). Nil: every `interlude(.start)` is answered
     /// `ended(refused)` at once, and the boot leaves `interludeAvailable` off.
     var interlude: InterludePlaying? = nil

@@ -374,6 +374,10 @@ extension EngineContract {
         /// Developer only (NE-24, DV-7a): persist the restore record now, and
         /// exit at the next background entry while paused.
         case simulateTermination
+        /// Developer only (NE-40, DV-8): the route-sharing policy the NEXT
+        /// launch's audio session is built with. The host's to store; the
+        /// core decides nothing on it.
+        case setRouteSharing(EngineContract.RouteSharingPolicy)
 
         public var name: CommandName {
             switch self {
@@ -403,6 +407,7 @@ extension EngineContract {
             case .setHoldPolicy: return .setHoldPolicy
             case .probeSession: return .probeSession
             case .simulateTermination: return .simulateTermination
+            case .setRouteSharing: return .setRouteSharing
             }
         }
 
@@ -468,6 +473,8 @@ extension EngineContract {
             case .setHoldPolicy: return .setHoldPolicy(try a().required("policy", R.holdPolicy))
             case .probeSession: return .probeSession
             case .simulateTermination: return .simulateTermination
+            case .setRouteSharing:
+                return .setRouteSharing(try a().required("policy", R.token(EngineContract.RouteSharingPolicy.self)))
             }
         }
     }

@@ -525,6 +525,9 @@ final class FakeWorld {
     /// Nil unless a test gives the world one (NE-38rs): the host then keeps
     /// the known routes in memory only, with a fresh salt.
     var knownRoutesStore: KnownRoutesStoring?
+    /// Nil unless a test gives the world one (NE-40): a `setRouteSharing` is
+    /// then recorded in a row and persisted nowhere.
+    var routeSharingStore: RouteSharingStoring?
     /// Nil unless a test gives the world one (NE-34): the host then answers
     /// every jingle start `refused` and renders no silence, as the M1 world did.
     var interlude: InterludePlaying?
@@ -536,6 +539,7 @@ final class FakeWorld {
     var seams: EngineSeams {
         EngineSeams(session: session, background: background, remote: remote, nowPlaying: nowPlaying,
                     deck: deck, speaker: speaker, timing: timing, output: output, holdPolicy: holdPolicyStore,
-                    knownRoutes: knownRoutesStore, interlude: interlude, silence: silence, preview: preview)
+                    knownRoutes: knownRoutesStore, routeSharing: routeSharingStore, interlude: interlude,
+                    silence: silence, preview: preview)
     }
 }

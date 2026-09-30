@@ -317,8 +317,8 @@ final class DiagRingTests: XCTestCase {
         XCTAssertEqual(EnginePrivateKey.allCases.map(\.rawValue), [
             "ForayEngine.modeOverride", "ForayEngine.strikes", "ForayEngine.sentinel",
             "ForayEngine.stickyLegacyBuild", "ForayEngine.restore", "ForayEngine.holdPolicy",
-            "ForayEngine.knownRoutes"
-        ], "plan §4.6's list and NE-38rs's known routes, which test/data-deletion.test.js purges by name")
+            "ForayEngine.knownRoutes", "ForayEngine.routeSharing"
+        ], "plan §4.6's list, NE-38rs's known routes and NE-40's route-sharing trial, which test/data-deletion.test.js purges by name")
         for key in EnginePrivateKey.allCases {
             XCTAssertFalse(key.rawValue.hasPrefix(SharedRowStore.preferencesKeyPrefix), key.rawValue)
             XCTAssertTrue(EngineKeys.isPrivate(rawKey: key.rawValue))

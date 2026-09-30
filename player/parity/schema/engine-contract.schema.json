@@ -198,7 +198,8 @@
             "setModeOverride",
             "setHoldPolicy",
             "probeSession",
-            "simulateTermination"
+            "simulateTermination",
+            "setRouteSharing"
           ]
         },
         "args": { "type": "object" },
@@ -498,6 +499,22 @@
               }
             }
           }
+        },
+        {
+          "if": {
+            "properties": { "cmd": { "const": "setRouteSharing" } },
+            "required": ["cmd"]
+          },
+          "then": {
+            "required": ["args"],
+            "properties": {
+              "args": {
+                "type": "object",
+                "required": ["policy"],
+                "properties": { "policy": { "enum": ["default", "longFormAudio"] } }
+              }
+            }
+          }
         }
       ],
       "x-examples": {
@@ -537,6 +554,13 @@
             "cmd": "setHoldPolicy",
             "source": "tap",
             "args": { "policy": "until:60" }
+          },
+          "set-route-sharing-long-form": {
+            "v": 1,
+            "cmdSeq": 13,
+            "cmd": "setRouteSharing",
+            "source": "tap",
+            "args": { "policy": "longFormAudio" }
           },
           "set-continuation": {
             "v": 1,
@@ -608,6 +632,13 @@
             "cmd": "setModeOverride",
             "source": "tap",
             "args": { "mode": "legacy" }
+          },
+          "route-sharing-unknown-policy": {
+            "v": 1,
+            "cmdSeq": 5,
+            "cmd": "setRouteSharing",
+            "source": "tap",
+            "args": { "policy": "longForm" }
           },
           "audition-url-not-https": {
             "v": 1,

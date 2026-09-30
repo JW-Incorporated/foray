@@ -94,7 +94,7 @@ export const COMMANDS = Object.freeze([
   "setPageVisible",
   "ackAdvances", "ackEvents", "restoreBar", "purge",
   "relinquish", "audition", "setModeOverride", "setHoldPolicy", "probeSession",
-  "simulateTermination",
+  "simulateTermination", "setRouteSharing",
 ]);
 
 /** The `type` of every "engine" event (§5.4). Delivery is best effort: a page
@@ -135,6 +135,13 @@ export const RELINQUISH_CAPS = Object.freeze([...CAPABILITIES, "all"]);
 /** The Developer engine setting, 'Playback engine: Automatic / Native / Web'
     (NE-17), as setModeOverride's `mode` and the stored override. */
 export const MODE_OVERRIDES = Object.freeze(["auto", "native", "web"]);
+
+/** DV-8's trial (card NE-40): the audio session's route-sharing policy, as
+    setRouteSharing's `policy`, the stored Developer choice and the `build`
+    row's `routeSharing`. `default` is what every build ships (M1's car win
+    happened on it); `longFormAudio` is AVAudioSession's `.longFormAudio`,
+    tried only through the Developer row and only from the next launch. */
+export const ROUTE_SHARING_POLICIES = Object.freeze(["default", "longFormAudio"]);
 
 /** Snapshot `mode` (§5.3): what is loaded. */
 export const SNAPSHOT_MODES = Object.freeze(["none", "episode", "foray"]);
@@ -269,6 +276,7 @@ const COMMAND_ARGS = {
   }),
   setModeOverride: argsOf(["mode"], { mode: { enum: [...MODE_OVERRIDES] } }),
   setHoldPolicy: argsOf(["policy"], { policy: { type: "string", pattern: HOLD_POLICY_PATTERN } }),
+  setRouteSharing: argsOf(["policy"], { policy: { enum: [...ROUTE_SHARING_POLICIES] } }),
 };
 
 /* ---------- examples: the contract and snapshot parity families ---------- */
@@ -352,6 +360,7 @@ const EXAMPLES = {
       },
       "relinquish-foray": { v: 1, cmdSeq: 7, cmd: "relinquish", source: "tap", args: { cap: "foray" } },
       "set-hold-until": { v: 1, cmdSeq: 8, cmd: "setHoldPolicy", source: "tap", args: { policy: "until:60" } },
+      "set-route-sharing-long-form": { v: 1, cmdSeq: 13, cmd: "setRouteSharing", source: "tap", args: { policy: "longFormAudio" } },
       "set-continuation": {
         v: 1, cmdSeq: 9, cmd: "setContinuation", source: "restore",
         args: { planSeq: 3, autoAdvance: false, chain: [{ planSeq: 3, hopSeq: 1, nextId: "ep-2" }] },
@@ -373,6 +382,7 @@ const EXAMPLES = {
       "play-episode-without-row": { v: 1, cmdSeq: 5, cmd: "playEpisode", source: "tap", args: { item: { id: "ep-1" } } },
       "negative-seq": { v: 1, cmdSeq: -1, cmd: "play", source: "tap" },
       "override-unknown-mode": { v: 1, cmdSeq: 5, cmd: "setModeOverride", source: "tap", args: { mode: "legacy" } },
+      "route-sharing-unknown-policy": { v: 1, cmdSeq: 5, cmd: "setRouteSharing", source: "tap", args: { policy: "longForm" } },
       "audition-url-not-https": {
         v: 1, cmdSeq: 5, cmd: "audition", source: "audition",
         args: { text: "This is how I sound", voiceId: null, url: PREVIEW_URL.replace("https:", "http:") },

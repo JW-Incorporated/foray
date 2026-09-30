@@ -108,6 +108,7 @@ final class SessionPolicyTests: XCTestCase {
         XCTAssertEqual(EngineContract.PageMode.allCases.map(\.rawValue), C.pageModes)
         XCTAssertEqual(EngineContract.Capability.allCases.map(\.rawValue), C.capabilities)
         XCTAssertEqual(EngineContract.RelinquishCap.allCases.map(\.rawValue), C.relinquishCaps)
+        XCTAssertEqual(EngineContract.RouteSharingPolicy.allCases.map(\.rawValue), C.routeSharingPolicies)
         XCTAssertEqual(EngineContract.SnapshotMode.allCases.map(\.rawValue), C.snapshotModes)
         XCTAssertEqual(EngineContract.PlayerState.allCases.map(\.rawValue), C.playerStates)
         XCTAssertEqual(EngineContract.Kind.allCases.map(\.rawValue), C.contractKinds)

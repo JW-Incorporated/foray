@@ -2098,6 +2098,12 @@ Read first: `CLAUDE.md`, this deck, the Tier 2 requirements, `docs/ios-native-pl
   - The TestFlight build number is recorded in the HUMAN-ACTIONS item.
   - `engine-report.mjs` run on the script's sample paste lists every M3 verdict.
 - **Device check:** G-6. DV-7a passes. DV-7b is recorded. DV-11 and the regression drive pass per `engine-report`.
+- **As built (2026-09-30, PR #916 into `engine/m3`):**
+  - **The audit.** `StopCauseTests` (foray-engine-core) tables 32 stop paths from the 13 `EngineCore` functions that call `stopRow`, each with its adapter, and asserts the named cause, the ring's admission of it, one row per stop, and the row before the first silencing command. Every `StopCause` is emitted by a path or reserved: `seam-timeout` (a seam's next clip that never loads is its load's P-13 deadline, `load-deadline`) and `unknown` (never written). `shell-invariants` is red when a `stopRow(` call site has no `site:` in the table.
+  - **What it fixed.** Six paths (pause, close, relinquish, interruption, route loss, the ladder's last refusal) cut the seam, and so silenced a sounding jingle or the silence node, BEFORE their cause row; the row now comes first. Grace expiry writes its row before ending grace. `teardown()` while playing writes `relinquish` (the app's host never sends it; the page's `dispose()` does). The `silence capped`/`stopped` and `interlude cut` rows now precede their commands.
+  - **The trial.** `EngineConfig.routeSharingLongForm` (OFF, `// MEASURE: DV-8`). The Developer row **Route sharing: Default / Long-form (applies after restart)** sends `setRouteSharing {policy}` (a new contract command, `ROUTE_SHARING_POLICIES`); the host stores it in `ForayEngine.routeSharing` (privacy policy §1 and data safety list it), and the next boot builds `AudioSessionOwner` with it. The `build` row carries `routeSharing`, and the Copy header prints it after `hold=`. Pinned OFF by `RouteSharingTrialTests.testTheTrialDefaultsOff` and a shell invariant (no literal `true`, no ENGINE_DEFAULT key).
+  - **The script.** `docs/native-engine-m3-drive-test.md` and HUMAN-ACTIONS #129; the build number is "Claude adds here" until the post-merge TestFlight build exists. `engine-report.mjs` on `m3-drive-synthetic.txt` lists all ten M3 verdicts.
+  - **The merge** is PR #913 (`engine/m3` → `main`, draft; the founder merges it).
 
 #### NE-40d · DECISIONS entries for M3 (G-7) — **S**
 - **Milestone:** M3

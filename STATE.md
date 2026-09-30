@@ -7,6 +7,15 @@ docs/. Completed workstreams move to their plan doc's retro section.
 
 ## Active workstreams
 
+### 2026-09-30 — `engine/ne-40`: NE-40, the stop-cause audit, the `.longFormAudio` trial (OFF) and the M3 drive script
+
+**The audit (D-5).** `StopCauseTests.swift` (the engine core's tests) is the table of every path that stops audio: 32 paths from the 13 `EngineCore` functions that write a `stop` row, each naming its adapter (AVDeck, DeckPair, SpeechNarrator, InterludePlayer, SilenceNode, AudioSessionOwner, BackgroundGrace, the page, the car). Every `Vocabulary.StopCause` is emitted by a path or reserved (`seam-timeout`: a seam's next clip that never loads is its `load-deadline`; `unknown`: never written). A shell invariant is red when a `stopRow(` call site has no table entry.
+- **Fixed by it.** A pause, close, relinquish, interruption, lost route or the ladder's last refusal during a seam silenced the jingle or the silence node BEFORE writing its cause row; the row now comes first. Grace expiry writes its row before ending grace; the engine's teardown while playing now writes `relinquish`; the `silence` and `interlude cut` rows precede their commands.
+
+**The trial (DV-8).** `EngineConfig.routeSharingLongForm`, OFF. Only the Developer row **Route sharing** (`engineSend setRouteSharing`, a new contract command) turns it on, stored in the private key `ForayEngine.routeSharing` and applied at the next launch; the `build` row and the Copy header say `routeSharing=`. The privacy policy and data-safety text list the key.
+
+**The script.** `docs/native-engine-m3-drive-test.md` (G-6: DV-7a required, DV-7b the negative control) and HUMAN-ACTIONS #129. The build number is added once the post-merge TestFlight build exists.
+
 ### 2026-09-29 — `android/a-26-playback-service`: A-26, the native engine's MediaSessionService shell
 
 Owned: foray-audio's `ForayPlaybackService` and the engine package's `ForayEngineHost`, `EnginePlayer`, `EngineSeams`,

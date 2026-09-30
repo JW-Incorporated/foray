@@ -86,7 +86,7 @@ public enum EngineConstants {
         /// `CAPABILITIES`
         public static let capabilities: [String] = ["episode", "continuation", "restore", "foray"]
         /// `COMMANDS`
-        public static let commands: [String] = ["playEpisode", "playForay", "setContinuation", "play", "pause", "toggle", "next", "previous", "seekBy", "seekTo", "jump", "stop", "setRate", "setVoice", "setInterludeEnabled", "setPageVisible", "ackAdvances", "ackEvents", "restoreBar", "purge", "relinquish", "audition", "setModeOverride", "setHoldPolicy", "probeSession", "simulateTermination"]
+        public static let commands: [String] = ["playEpisode", "playForay", "setContinuation", "play", "pause", "toggle", "next", "previous", "seekBy", "seekTo", "jump", "stop", "setRate", "setVoice", "setInterludeEnabled", "setPageVisible", "ackAdvances", "ackEvents", "restoreBar", "purge", "relinquish", "audition", "setModeOverride", "setHoldPolicy", "probeSession", "simulateTermination", "setRouteSharing"]
         /// `CONTRACT_KINDS`
         public static let contractKinds: [String] = ["helloRequest", "helloResponse", "sendRequest", "sendResponse", "readRequest", "rowsResponse", "diagnosticsResponse", "snapshot", "event"]
         /// `DEFAULT_HOLD_POLICY`
@@ -125,6 +125,8 @@ public enum EngineConstants {
         public static let refusals: [String] = ["not-loaded", "no-next", "no-previous", "ended", "refused-structure", "capability-off", "session-failed:cannot-interrupt-others", "session-failed:cannot-start-playing", "session-failed:other", "engine-busy", "relinquished", "unknown-cmd"]
         /// `RELINQUISH_CAPS`
         public static let relinquishCaps: [String] = ["episode", "continuation", "restore", "foray", "all"]
+        /// `ROUTE_SHARING_POLICIES`
+        public static let routeSharingPolicies: [String] = ["default", "longFormAudio"]
         /// `SESSION_ACTIONS`
         public static let sessionActions: [String] = ["activate", "deactivate", "deactivate-notify", "reapply-category", "rebuild", "command-failed"]
         /// `SESSION_INPUTS`

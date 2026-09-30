@@ -45,7 +45,9 @@ extension AVAudioSession: AudioSessionAPI {
 ///   - BOOT: category `.playback`, mode `.spokenAudio`, no options, and NO
 ///     activation (S-3: painting a restored Now Playing entry must not
 ///     silence the listener's other app). `.longFormAudio` route sharing
-///     sits behind `Config.longFormAudio`, off until DV-8.
+///     sits behind `Config.longFormAudio`, which the boot sets from
+///     `EngineConfig.routeSharingLongForm` (NE-40): OFF unless the Developer
+///     row stored the DV-8 trial, and then only from the next launch.
 ///   - ACTIVATE only when asked (the core asks only for a user-caused play,
 ///     S-1), synchronously, timed: `activateMs` rides back to the core in the
 ///     same turn and into every `session` row; a device p95 over 100 ms is what
@@ -80,8 +82,9 @@ final class AudioSessionOwner: SessionControlling {
 
     struct Config {
         /// DV-8's `.longFormAudio` route-sharing trial. OFF: `.spokenAudio`
-        /// with default routing is Apple's podcast guidance, and the trial is
-        /// an M3 card (NE-40).
+        /// with default routing is Apple's podcast guidance, and M1's car win
+        /// happened on it. NE-40's Developer row turns it on for a drive
+        /// (`EngineConfig.routeSharingLongForm`, read at the boot).
         var longFormAudio: Bool
         /// Monotonic milliseconds, for `activateMs`.
         var monoMs: () -> Double

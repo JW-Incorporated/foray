@@ -1342,7 +1342,7 @@ export function formatReport(a) {
   L.push("");
 
   L.push("### Header check");
-  if (a.header.header) L.push(`\`engine=${a.header.header.engine}${a.header.header.version ? ` v${a.header.header.version}` : ""} reason=${a.header.header.reason ?? "?"} strikes=${a.header.header.strikes ?? "?"} hold=${a.header.header.hold ?? "?"} build=${a.header.header.build ?? "?"} web=${a.header.header.web ?? "?"}\``);
+  if (a.header.header) L.push(`\`engine=${a.header.header.engine}${a.header.header.version ? ` v${a.header.header.version}` : ""} reason=${a.header.header.reason ?? "?"} strikes=${a.header.header.strikes ?? "?"} hold=${a.header.header.hold ?? "?"}${a.header.header.routeSharing ? ` routeSharing=${a.header.header.routeSharing}` : ""} build=${a.header.header.build ?? "?"} web=${a.header.header.web ?? "?"}\``);
   for (const c of a.header.checks) L.push(`- ${tick(c.ok)} ${c.name}: ${c.detail}`);
   L.push("");
 

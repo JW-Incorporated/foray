@@ -40,7 +40,8 @@
           "setModeOverride",
           "setHoldPolicy",
           "probeSession",
-          "simulateTermination"
+          "simulateTermination",
+          "setRouteSharing"
         ]
       }
     },
@@ -365,6 +366,22 @@
       "expect": { "return": true }
     },
     {
+      "id": "contract/send-request-valid-set-route-sharing-long-form",
+      "covers": [],
+      "call": "contractAccepts",
+      "args": [
+        "sendRequest",
+        {
+          "v": 1,
+          "cmdSeq": 13,
+          "cmd": "setRouteSharing",
+          "source": "tap",
+          "args": { "policy": "longFormAudio" }
+        }
+      ],
+      "expect": { "return": true }
+    },
+    {
       "id": "contract/send-request-valid-set-continuation",
       "covers": [],
       "call": "contractAccepts",
@@ -534,6 +551,22 @@
           "cmd": "setModeOverride",
           "source": "tap",
           "args": { "mode": "legacy" }
+        }
+      ],
+      "expect": { "return": false }
+    },
+    {
+      "id": "contract/send-request-invalid-route-sharing-unknown-policy",
+      "covers": [],
+      "call": "contractAccepts",
+      "args": [
+        "sendRequest",
+        {
+          "v": 1,
+          "cmdSeq": 5,
+          "cmd": "setRouteSharing",
+          "source": "tap",
+          "args": { "policy": "longForm" }
         }
       ],
       "expect": { "return": false }
