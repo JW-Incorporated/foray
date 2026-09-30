@@ -1692,11 +1692,21 @@ public struct EngineCore {
     }
 
     /// The deck stopped being audible: the span ends here (kept, so a loss
-    /// that arrives just after the pause still counts what was heard).
+    /// that arrives just after the pause still counts what was heard). A span
+    /// that already reached `knownAfterMs` through the route that is STILL
+    /// current makes it known here: the next `.playing` (after a stall, or a
+    /// pause the listener undoes) starts a new span from zero, and the
+    /// position tick that `noteHeard` otherwise rides is 15 s apart. A span
+    /// whose route has already changed (the pause came first, plan §4.3) is
+    /// left for the loss to count.
     private mutating func stopHearing() {
         guard var heard = state.heardRoute, heard.untilMono == nil else { return }
         heard.untilMono = now.monoMs
         state.heardRoute = heard
+        if heard.heardMs(atMono: now.monoMs) >= RouteResume.knownAfterMs,
+           let route = now.route, heard.key == routeKey(route.portType, route.uid) {
+            state.knownRoutes.use(heard.key)
+        }
     }
 
     /// At the top of every turn: a span heard for `knownAfterMs` through the
