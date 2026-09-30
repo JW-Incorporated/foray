@@ -68,8 +68,9 @@ public final class EngineStore implements EngineSeams.Output, EngineBridge.Recor
     private boolean recordRead;
     private RestoreRecord record;
     /**
-     * What {@link #resumableChanged} was last told. It starts true: the service switched the
-     * receiver on when it was created, before this store existed.
+     * What {@link #resumableChanged} was last told. It starts true: in the native lane the service
+     * switched the receiver on when it was created, before this store existed (the service's
+     * callback checks the lane itself before it switches anything on, A-27 review).
      */
     private boolean resumable = true;
 

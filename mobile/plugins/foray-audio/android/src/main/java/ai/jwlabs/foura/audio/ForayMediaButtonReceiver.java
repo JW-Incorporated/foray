@@ -27,16 +27,19 @@ import androidx.media3.session.MediaButtonReceiver;
  * Declared {@code android:enabled="false"}. Media3 hands a manifest media button receiver to
  * EVERY session this app builds, the JS lane's {@code PlaybackKeepAliveService} session included,
  * and the JS lane has nothing to resume without its WebView (docs/android-lock-screen.md §4.3). So
- * the JS lane must never register it: {@code ForayPlaybackService.onCreate} switches it on (native
- * mode only runs that service, A-20), BEFORE its session is built (Media3 reads the manifest when
- * a session is built), and the store switches it off when nothing is left to resume (a
- * relinquished or cleared record, a purge) and on again when a record is written after that.
+ * the JS lane must never register it: {@code ForayPlaybackService.onCreate} switches it on when
+ * the process's lane is the native engine's, BEFORE its session is built (Media3 reads the
+ * manifest when a session is built); a process that decides the JS lane switches it off before the
+ * page's session exists (A-27 review: an earlier native process may have left it on); and the
+ * store switches it off when nothing is left to resume (a relinquished or cleared record, a
+ * purge) and on again when a record is written after that.
  *
  * <h2>AND A PLAY IT CANNOT KEEP IS NOT TAKEN</h2>
  *
  * Once started this way, the service MUST start playing within a few seconds, or Android kills it
  * ({@code ForegroundServiceDidNotStartInTimeException}). So {@link #shouldStartForegroundService}
- * starts it only when the store holds a record a PLAY can resume; otherwise the press is dropped
+ * starts it only when the store holds a record a PLAY can resume AND the process's lane is the
+ * native engine's (A-27 review: the record outlives the lane); otherwise the press is dropped
  * here, which is what the JS lane does today (nobody gets it), and a row says so in logcat.
  */
 @OptIn(markerClass = UnstableApi.class)
@@ -45,14 +48,25 @@ public class ForayMediaButtonReceiver extends MediaButtonReceiver {
 
     @Override
     protected boolean shouldStartForegroundService(@NonNull Context context, @NonNull Intent intent) {
-        boolean resumable;
-        try {
-            resumable = EngineStore.restorable(context);
-        } catch (RuntimeException e) {
-            resumable = false;
-        }
+        boolean resumable = answersColdPress(context);
         Log.i(TAG, "media-button receiver " + (resumable ? "start" : "drop") + " restorable=" + resumable);
         return resumable;
+    }
+
+    /**
+     * Whether a PLAY with no live session may start the native engine (A-27 review): the store
+     * holds a record a PLAY can resume, AND this process's lane is the native engine's
+     * ({@link EngineOwnership#engineLane}). The record outlives the lane (a Developer setting put
+     * back to Automatic, a build the crash-loop guard pinned to the JS lane), and the JS lane has
+     * nothing to resume without its WebView. {@link ForayPlaybackService} asks the same before it
+     * answers a media button start. Never throws.
+     */
+    static boolean answersColdPress(@NonNull Context context) {
+        try {
+            return EngineStore.restorable(context) && EngineOwnership.engineLane(context);
+        } catch (RuntimeException e) {
+            return false;
+        }
     }
 
     /** Switch the receiver on (the native engine is the lane) or off (nothing to resume). Never throws. */

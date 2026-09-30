@@ -544,4 +544,43 @@ public class OwnershipCoreTest {
         assertEquals("0", keys.map.get(OwnershipCore.KEY_STRIKES));
         assertTrue(p.rows().toString(), p.rows().stream().anyMatch(r -> r.contains("\"marker\":\"first-input\"")));
     }
+
+    /**
+     * A-27 review: the lane a door that is not a launch reads (a car's PLAY into a process with no
+     * page) is the lane decideOnce WOULD decide, read and never written: no strike counted, no
+     * sentinel moved, no row. After the process decides, it is that decision. TO SEE IT FAIL:
+     * make peekDecision call decideOnce (the sentinel is written and the strike counted by a press).
+     */
+    @Test
+    public void aPeekReadsTheLaneWithoutDecidingIt() {
+        MapKeys keys = new MapKeys();
+        keys.map.put(OwnershipCore.KEY_OVERRIDE, "native");
+        keys.map.put(OwnershipCore.KEY_STRIKES, "1");
+        keys.map.put(OwnershipCore.KEY_SENTINEL, "earlier");
+        Process p = new Process(keys, "L2");
+        EngineMode.Decision peeked = p.core.peekDecision();
+        assertTrue("the override's lane", peeked.isNative());
+        assertEquals("the uncleared sentinel counts in the answer", 2, peeked.strikes());
+        assertEquals("but nothing is written", 0, keys.writes);
+        assertEquals("1", keys.map.get(OwnershipCore.KEY_STRIKES));
+        assertEquals("earlier", keys.map.get(OwnershipCore.KEY_SENTINEL));
+        assertTrue("and no row", p.rows().isEmpty());
+        assertEquals("the same answer the decision then gives", peeked, p.core.decideOnce());
+        assertEquals("L2", keys.map.get(OwnershipCore.KEY_SENTINEL));
+
+        // After the decision, the decision: a change to the keys does not move this process.
+        keys.map.put(OwnershipCore.KEY_OVERRIDE, "web");
+        assertTrue(p.core.peekDecision().isNative());
+
+        // A third uncleared strike: the peek already says the JS lane, as the next launch will.
+        MapKeys looping = new MapKeys();
+        looping.map.put(OwnershipCore.KEY_OVERRIDE, "native");
+        looping.map.put(OwnershipCore.KEY_STRIKES, "2");
+        looping.map.put(OwnershipCore.KEY_SENTINEL, "earlier");
+        assertFalse(new Process(looping, "L3").core.peekDecision().isNative());
+        assertEquals(0, looping.writes);
+        // And the stock build, with nothing stored: the JS lane (A-20 keeps Android on js until A-31).
+        assertFalse(new Process(new MapKeys(), "L1").core.peekDecision().isNative());
+        assertEquals(OwnershipCore.stored(keys), p.core.stored());
+    }
 }

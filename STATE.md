@@ -7,6 +7,34 @@ docs/. Completed workstreams move to their plan doc's retro section.
 
 ## Active workstreams
 
+### 2026-09-30 — `android/a-27r-review`: A-27 review, the cold path is the native lane's alone
+
+Adversarial review of A-27 (#905, already merged into `android/native`). Owned: `ForayMediaButtonReceiver`,
+`ForayPlaybackService` (`onCreate`, a new `onStartCommand`), `EngineOwnership.engineLane`, `OwnershipCore.peekDecision`,
+and the native leg's (j).
+
+**Found and fixed.**
+- **The record outlived the lane.** The receiver and the service answered a car's PLAY from any restorable record,
+  whatever the process's lane. A listener who set the Developer engine back to Automatic, or a build the crash-loop guard
+  pinned to the JS lane, would have had the native engine booted from a stale record in a JS-lane process. Now:
+  - the receiver starts the service only for a record AND a native lane. The lane is read, never written
+    (`OwnershipCore.peekDecision`), so a press counts no strike;
+  - the service switches the receiver on only in the native lane;
+  - a JS-lane decision switches it off before the page's session is built.
+- **A media button start with nothing to play is declined.** This was an A-26 regression in the JS lane on API 26–30,
+  found by A-27 and handed on. Below API 31, Media3 gives every session a media button PendingIntent to the app's one
+  `MediaSessionService`. After a JS-lane process died, a PLAY started `ForayPlaybackService` in the foreground with nothing
+  to resume, and the app was killed for never calling `startForeground`. The service now keeps the start's promise for a
+  moment and stops, as Media3's own `stopSelfSafely` does.
+- **(j) now runs in the native lane.** It stores the Developer setting Native first and puts Automatic back in its
+  `finally`. Before, it drove the service from the stock JS lane, which the fix above correctly refuses.
+
+**Paths.** `.github/workflows/android-playback.yml` is unchanged; `tools/mobile/**` is governed and is reviewed on
+the final `android/native` → `main` PR.
+
+**Not executed.** No device, and no request to Joey (D-A3). No emulator runs below API 34, so the API 26–30 decline is
+covered by Robolectric only.
+
 ### 2026-09-29 — `android/a-27-store-restore`: A-27, the store, the restore record and playback resumption
 
 Owned: foray-audio's `engine/EngineStore` and `ForayMediaButtonReceiver`, the cold path in `ForayEngineHost` and

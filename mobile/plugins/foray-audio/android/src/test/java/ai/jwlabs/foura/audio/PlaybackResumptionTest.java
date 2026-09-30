@@ -4,11 +4,14 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
+import static org.robolectric.Shadows.shadowOf;
 
+import ai.jwlabs.foura.audio.engine.EngineLane;
 import ai.jwlabs.foura.audio.engine.EngineLog;
 import ai.jwlabs.foura.audio.engine.EnginePlayer;
 import ai.jwlabs.foura.audio.engine.EngineStore;
 import ai.jwlabs.foura.audio.engine.ForayEngineHost;
+import ai.jwlabs.foura.audio.engine.OwnershipCore;
 import ai.jwlabs.foura.engine.JsonNode;
 import ai.jwlabs.foura.engine.RestoreRecord;
 import ai.jwlabs.foura.engine.SessionPolicy;
@@ -26,6 +29,7 @@ import androidx.media3.test.utils.robolectric.RobolectricUtil;
 import com.google.common.util.concurrent.ListenableFuture;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.lang.reflect.Field;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.concurrent.ExecutionException;
@@ -54,16 +58,39 @@ public class PlaybackResumptionTest {
     private ServiceController<ForayPlaybackService> controller;
 
     @Before
-    public void setUp() {
+    public void setUp() throws Exception {
         context = ApplicationProvider.getApplicationContext();
         context.getSharedPreferences(EngineStore.PRIVATE_FILE, Context.MODE_PRIVATE).edit().clear().commit();
         context.getSharedPreferences(EngineStore.SHARED_FILE, Context.MODE_PRIVATE).edit().clear().commit();
+        resetOwner();
+        /* The native lane, as a listener who chose Native in the Developer drawer has it (the
+           stock build is the JS lane until A-31): the cold path is the native lane's alone. */
+        setOverride("native");
     }
 
     @After
-    public void tearDown() {
+    public void tearDown() throws Exception {
         if (controller != null) controller.destroy();
         controller = null;
+        resetOwner();
+    }
+
+    /** The Developer engine setting, as the owner stores it (EngineLane.PREFS, iOS's key). */
+    private void setOverride(String mode) {
+        context.getSharedPreferences(EngineLane.PREFS, Context.MODE_PRIVATE).edit()
+                .putString(OwnershipCore.KEY_OVERRIDE, mode).commit();
+    }
+
+    /** The process's owner is a static; each test is a new process. */
+    private static void resetOwner() throws Exception {
+        Field shared = EngineOwnership.class.getDeclaredField("shared");
+        shared.setAccessible(true);
+        shared.set(null, null);
+    }
+
+    private static Intent playKey() {
+        return new Intent(Intent.ACTION_MEDIA_BUTTON).putExtra(Intent.EXTRA_KEY_EVENT,
+                new KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_MEDIA_PLAY));
     }
 
     private ForayPlaybackService create() {
@@ -101,6 +128,73 @@ public class PlaybackResumptionTest {
         create();
         assertEquals(PackageManager.COMPONENT_ENABLED_STATE_ENABLED,
                 pm.getComponentEnabledSetting(ForayMediaButtonReceiver.component(context)));
+    }
+
+    /**
+     * A-27 review: the record outlives the lane. A listener who put the Developer engine back to
+     * Automatic (the stock JS lane) or to Web still has the record the native engine wrote, and a
+     * car's PLAY must not boot the native engine from it. TO SEE IT FAIL: drop the lane from
+     * {@code ForayMediaButtonReceiver.answersColdPress} or from the service's {@code onCreate}.
+     */
+    @Test
+    public void inTheJsLaneTheRecordAnswersNoPress() {
+        storeRecord(754);
+        ForayMediaButtonReceiver receiver = new ForayMediaButtonReceiver();
+        assertTrue("the native lane resumes it", receiver.shouldStartForegroundService(context, playKey()));
+        for (String mode : new String[] {"auto", "web"}) {
+            setOverride(mode);
+            assertFalse(mode + ": the JS lane's", receiver.shouldStartForegroundService(context, playKey()));
+        }
+        create();
+        assertFalse("a JS-lane process that starts the service never arms the receiver",
+                ForayMediaButtonReceiver.isEnabled(context));
+    }
+
+    /**
+     * A-27 review: a process that decides the JS lane switches off a receiver an earlier native
+     * process left on, before the page's own session is built (Media3 hands an enabled manifest
+     * receiver to every session). TO SEE IT FAIL: drop the switch from EngineOwnership.decideOnce.
+     */
+    @Test
+    public void aJsLaneDecisionSwitchesTheReceiverOff() {
+        ForayMediaButtonReceiver.setEnabled(context, true);
+        setOverride("auto");
+        assertEquals("legacy", EngineOwnership.shared(context).decideOnce().mode());
+        assertFalse(ForayMediaButtonReceiver.isEnabled(context));
+    }
+
+    /**
+     * A-27 review: a media button start the service cannot keep is declined, not left to die.
+     * Below API 31 Media3 gives every session (the JS lane's too) a media button PendingIntent to
+     * this service, so after a JS-lane process died a PLAY starts it in the foreground with nothing
+     * to resume; Media3 alone would never call startForeground, and API 26-30 kills the app. TO
+     * SEE IT FAIL: remove {@code onStartCommand}'s guard (the service is not stopped).
+     */
+    @Test
+    public void aMediaButtonStartWithNothingToResumeIsDeclined() {
+        setOverride("auto");
+        controller = Robolectric.buildService(ForayPlaybackService.class, playKey()).create().startCommand(0, 1);
+        ForayPlaybackService s = controller.get();
+        shadowOf(Looper.getMainLooper()).idle();
+        assertTrue("stopped, having kept the foreground start's promise", shadowOf(s).isStoppedBySelf());
+        String rows = String.join("\n", s.rows());
+        assertTrue(rows, rows.contains("\"kind\":\"decline-media-button\""));
+        assertEquals(0, s.host().activations());
+    }
+
+    /**
+     * The same start in the native lane with a record: Media3's, which resumes the record (the
+     * receiver's door, end to end in the service). TO SEE IT FAIL: decline every media button start.
+     */
+    @Test
+    public void aMediaButtonStartThatCanResumeIsMedia3s() throws Exception {
+        storeRecord(754);
+        controller = Robolectric.buildService(ForayPlaybackService.class, playKey()).create().startCommand(0, 1);
+        ForayPlaybackService s = controller.get();
+        RobolectricUtil.runMainLooperUntil(() -> s.host() != null && s.host().activations() > 0, 60_000, Clock.DEFAULT);
+        assertFalse(shadowOf(s).isStoppedBySelf());
+        assertEquals("a", s.host().state().currentItem().id);
+        assertEquals(754_000, s.exoPlayer().getCurrentPosition(), 1_000);
     }
 
     @Test

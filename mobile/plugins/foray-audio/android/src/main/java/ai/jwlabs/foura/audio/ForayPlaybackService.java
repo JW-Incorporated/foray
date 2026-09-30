@@ -20,9 +20,12 @@ import ai.jwlabs.foura.engine.JSWriter;
 import ai.jwlabs.foura.engine.JsonNode;
 import ai.jwlabs.foura.engine.MediaMapping;
 import ai.jwlabs.foura.engine.RestoreRecord;
+import android.app.Notification;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.ServiceInfo;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -30,6 +33,8 @@ import android.util.Log;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.OptIn;
+import androidx.core.app.NotificationCompat;
+import androidx.core.app.ServiceCompat;
 import androidx.media3.common.MediaItem;
 import androidx.media3.common.Player;
 import androidx.media3.common.util.UnstableApi;
@@ -174,8 +179,10 @@ public class ForayPlaybackService extends MediaSessionService {
             }
         }
         /* A-27: on BEFORE the session is built, because Media3 reads the manifest's media button
-           receiver when it builds one, and hands it to the platform session then. */
-        ForayMediaButtonReceiver.setEnabled(this, true);
+           receiver when it builds one, and hands it to the platform session then. Only when this
+           process's lane is the native engine's (A-27 review): a JS-lane process that starts this
+           service by another door never arms a car's PLAY for the native engine. */
+        if (EngineOwnership.engineLane(this)) ForayMediaButtonReceiver.setEnabled(this, true);
         try {
             attach(new ExoPlayer.Builder(this).build());
         } catch (RuntimeException e) {
@@ -276,6 +283,64 @@ public class ForayPlaybackService extends MediaSessionService {
         return session;
     }
 
+    /**
+     * A MEDIA BUTTON START THIS SERVICE CANNOT KEEP IS DECLINED, NOT LEFT TO CRASH (A-27 review).
+     *
+     * <p>A media button intent can start this service in the foreground with nothing to play:
+     * below API 31 Media3 hands EVERY session the app builds, the JS lane's
+     * {@code PlaybackKeepAliveService} one included, a media button PendingIntent to the app's one
+     * {@code MediaSessionService}, which since A-26 is this one; so after a JS-lane process died,
+     * a headset's or a car's PLAY lands here, in a process whose lane is the page's player and
+     * with no record. Media3 would ask {@code onPlaybackResumption}, fail, play nothing, and never
+     * call {@code startForeground}: on API 26 to 30 the system then kills the app for a
+     * foreground start that never happened. So a media button intent is passed to Media3 only
+     * when the engine can act on it ({@link #answersMediaButton}); otherwise the service keeps
+     * the start's promise for a moment (a foreground notification, taken down at once, as
+     * Media3's own {@code stopSelfSafely} does for a session it has no answer for) and stops.
+     * Nothing plays, which is what the JS lane did with that press before A-26.
+     */
+    @Override
+    public int onStartCommand(@Nullable Intent intent, int flags, int startId) {
+        if (intent != null && Intent.ACTION_MEDIA_BUTTON.equals(intent.getAction()) && !answersMediaButton()) {
+            declineMediaButtonStart();
+            return START_NOT_STICKY;
+        }
+        return super.onStartCommand(intent, flags, startId);
+    }
+
+    /**
+     * Whether a media button intent reaching this service can be acted on: the engine already
+     * handled an input (a notification button, a press into a session in use), or it is cold and
+     * a PLAY resumes the record in the native lane ({@link ForayMediaButtonReceiver#answersColdPress}).
+     */
+    boolean answersMediaButton() {
+        ForayEngineHost engine = host;
+        if (engine == null || engine.isTornDown()) return false;
+        if (engine.hasHandledInput()) return true;
+        return ForayMediaButtonReceiver.answersColdPress(this);
+    }
+
+    private void declineMediaButtonStart() {
+        log.diag(new EngineCommand.DiagEntry("owner", kind("decline-media-button")));
+        try {
+            PlaybackKeepAliveService.ensureChannel(this);
+            Notification notification = new NotificationCompat.Builder(this, PlaybackKeepAliveService.CHANNEL_ID)
+                    .setSmallIcon(android.R.drawable.ic_media_play)
+                    .setContentTitle(getString(R.string.foray_playback_notification_title))
+                    .setSilent(true)
+                    .build();
+            ServiceCompat.startForeground(this, NOTIFICATION_ID, notification,
+                    Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q
+                            ? ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK : 0);
+            ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE);
+        } catch (RuntimeException e) {
+            // Not startable in the foreground from here (API 31+, from the background): nothing to keep.
+            Log.w(TAG, "declining a media button start", e);
+        } finally {
+            stopSelf();
+        }
+    }
+
     @Override
     public void onDestroy() {
         if (current == this) current = null;
@@ -332,7 +397,9 @@ public class ForayPlaybackService extends MediaSessionService {
     static EngineStore processStore(Context context) {
         Context app = context.getApplicationContext() != null ? context.getApplicationContext() : context;
         if (processStore == null || processStoreContext != app) {
-            processStore = new EngineStore(app, EngineLog.process(), resumable -> ForayMediaButtonReceiver.setEnabled(app, resumable));
+            /* On again only in the native lane (A-27 review): a JS-lane process never arms it. */
+            processStore = new EngineStore(app, EngineLog.process(),
+                    resumable -> ForayMediaButtonReceiver.setEnabled(app, resumable && EngineOwnership.engineLane(app)));
             processStoreContext = app;
         }
         return processStore;

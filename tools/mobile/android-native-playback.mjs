@@ -657,12 +657,17 @@ export function killLegVerdict(leg) {
   return failures;
 }
 
-/** (j) GATED in native mode (A-27): a paused 4a, on Home, ended four ways (`KILL_LEGS`),
+/** (j) GATED in native mode (A-27), in the native LANE (A-27 review: the Developer setting is
+ *  Native for the scenario, `setup`): a paused 4a, on Home, ended four ways (`KILL_LEGS`),
  *  then `cmd media_session dispatch play`. `am kill` (the card's), a swipe then `am kill`, and a
  *  SIGKILL from the app's own uid must each resume 4a at the saved position. `am force-stop`
  *  is the negative control: RECORDED, never gated (A-67). */
-export function verdictKill({ legs }) {
+export function verdictKill({ legs, setup }) {
   const failures = [];
+  /* A-27 review: the scenario runs in the native lane (the Developer setting, stored first). */
+  for (const [i, s] of (setup ?? []).entries()) {
+    if (!s?.answer || s.answer.ok !== true) failures.push(`setup step ${i + 1} (the Developer setting, Native) was not taken: ${JSON.stringify(s)}`);
+  }
   const byName = (n) => (legs ?? []).find((l) => l.leg === n) ?? null;
   for (const n of KILL_LEGS.filter((l) => l.gated).map((l) => l.leg)) {
     const leg = byName(n);
@@ -1154,10 +1159,18 @@ async function killLeg(ctx, leg, kill) {
   };
 }
 
-/** (j) */
+/** (j). IN THE NATIVE LANE (A-27 review): the Developer engine setting is Native for the
+ *  scenario, and the app starts from stopped, so the page decides the native lane, as a listener
+ *  who chose it has. The cold path is the native lane's alone: a car's PLAY into a process whose
+ *  lane is the page's player (the stock JS lane the other native scenarios drive the service
+ *  from) is dropped by the receiver, whatever record the native engine left. */
 async function kill(ctx) {
   const legs = [];
+  const setup = [];
   try {
+    setup.push(drive(ctx, "override", ["--es", "mode", "native"]));
+    shell("am", "force-stop", ctx.pkg);
+    await sleep(1500);
     const how = {
       "am-kill": () => shell("am", "kill", ctx.pkg),
       "swipe-am-kill": async () => {
@@ -1177,11 +1190,13 @@ async function kill(ctx) {
       }
     }
     /* And ours: the last leg left 4a playing in a process the receiver started. The next
-       scenario (A-28's page door) starts from a stopped app, as a launch does. */
+       scenario (A-28's page door) starts from a stopped app, as a launch does, in the stock
+       lane: the setting goes back to Automatic (which also clears the strikes and the pin). */
+    drive(ctx, "override", ["--es", "mode", "auto"]);
     shell("am", "force-stop", ctx.pkg);
   }
-  const v = verdictKill({ legs });
-  return { ...v, measured: { legs }, evidence: fs.readdirSync(ctx.art).filter((f) => f.startsWith("j-")) };
+  const v = verdictKill({ legs, setup });
+  return { ...v, measured: { setup, legs }, evidence: fs.readdirSync(ctx.art).filter((f) => f.startsWith("j-")) };
 }
 
 /** A-28: the page's door. See the header. */
