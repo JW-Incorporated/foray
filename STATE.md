@@ -49,6 +49,16 @@ and (k) engine Foray. Card A-41 of `docs/plans/android-assessment.md` (Track A2)
 - CI run 36754688147 is green. The first android-build run failed only on `ParityBooksTest`'s precondition, which
   is fixed in the next commit.
 
+**Executed in CI** (head `df182eaf`, the fix):
+- android-build run 36758069690: android-shell green, with JVM parity at 1778 passed, 0 pending, 0 failed.
+  foray-audio ran 186 test cases, 0 skipped.
+- android-playback run 36758069597: all three legs green again.
+  - `foray-seams`: silence p95 503 ms, six jingles.
+  - (k): fell back in 3.0 s and was spoken 4.4 s after the out-point.
+- android-smoke, pr-hygiene and ios-build are green.
+- CI run 36758069648 is green after one `--failed` rerun of the iOS DeckPairSeamTests timing flake (1348 ms against
+  a 750 ms budget, Swift only, which this change does not touch).
+
 **Not executed:** the device check, the airplane-mode fallback on the Pixel (D-A3, until A-42).
 
 ### 2026-09-30 — `android/a-40-foray-tape`: A-40, the Foray tape on Android (the JVM core, the deck pair, the Foray families)

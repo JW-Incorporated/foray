@@ -899,6 +899,10 @@ The APK carries both bundled files at the assets root: `interlude-placeholder.wa
 - **(k)'s other halves are unchanged.** The engine stopped the unreachable episode 3094 ms after its attach. On
   the page's half, the page's player spoke its line 36 ms after the out-point.
 - **The JS legs** (API 34, job 110021816658; API 36, job 110021817001) are green.
+- **Repeated** on head `df182eaf` (run 36758069597, native job 110033292766), with all three legs green.
+  - `foray-seams`: silence median 7 ms, p95 503 ms; raw gap p95 3098 ms; six jingles of 3077–3092 ms.
+  - (k): the fallback 3043 ms after the out-point, spoken 4394 ms after it; the bundled line heard as a file; the
+    Foray landed.
 - **Not measured here:** the device check (the airplane-mode fallback on the Pixel, D-A3), and whether Android's
   engine honours the lexicon's `<phoneme>` markup. Android documents no phoneme attribute. The only authored IPA
   is `sake`.
