@@ -44,6 +44,9 @@ and the orchestrator reviews it on the final `android/native` → `main` PR. Not
   - after a swipe then `am kill`, through the receiver, in 612 ms;
   - after a SIGKILL, through the sticky restart's session.
   The numbers are in `docs/android-emulator-measurements.md` §10.
+- The final head (`9bdb6426`, which adds the receiver switching back on): `android-build` 36667521251
+  (foray-audio 116, core 91) and `android-playback` 36667521289 are green. The native job 109735290098 repeated (j)
+  within 0.02–0.29 s of the saved position, with the swipe through the receiver.
 - The first head (`ec471191`): `android-build` 36663599610 failed one assertion of this card's own test (a second
   `restoreIfCold` after no record; it now boots once per service). `android-playback` 36663599593 was green, and its
   evidence led to the swipe leg.
