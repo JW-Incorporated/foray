@@ -176,6 +176,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { NARRATION_FALLBACK_CAUSES } from "../../player/engine-vocabulary.js";
 import {
   CLIPS,
   EPISODE,
@@ -1038,7 +1039,12 @@ export function airplaneForayFacts(rows, sinceSeq) {
   const refused = later.find((r) => r.kind === "speaker" && REFUSALS.includes(r.json?.kind)) ?? null;
   const from = boundary ?? null;
   return {
-    fallback: fallback ? { reason: fallback.json.reason ?? null, at: fallback.json.at ?? null, iso: fallback.iso } : null,
+    /* A-64 (NE-39n): where the line was is `where` (it was `at`, the ring's wall clock, which the
+       gate withheld; an older paste still says `at`), and `cause` says why the file failed. */
+    fallback: fallback
+      ? { reason: fallback.json.reason ?? null, where: fallback.json.where ?? fallback.json.at ?? null,
+          cause: fallback.json.cause ?? null, iso: fallback.iso }
+      : null,
     boundaryAt: boundary?.iso ?? null,
     decisionMs: fallback && from ? fallback.at - from.at : null,
     spoken: spoke ? { iso: spoke.iso, engine: spoke.json.engine ?? null, ms: from ? spoke.at - from.at : null } : null,
@@ -1059,7 +1065,12 @@ export function verdictAirplaneForay({ drive, facts, renderedAudible, landed, la
   if (!renderedAudible) failures.push(`the bundled rendered line (${foray.items[1].id}) was never the audible item: it did not play as a file`);
   if (!facts?.fallback) failures.push("the network line did not fall back (no `narration kind=fallback` row)");
   else {
-    if (facts.fallback.at !== "bridge") failures.push(`the fallback was at ${facts.fallback.at}, not the bridge`);
+    if (facts.fallback.where !== "bridge") failures.push(`the fallback was at ${facts.fallback.where}, not the bridge`);
+    /* A-64: the row says why, in the closed set (which cause airplane mode reads as is the
+       device's to say, A-67's script; any closed token passes here). */
+    if (!NARRATION_FALLBACK_CAUSES.includes(facts.fallback.cause)) {
+      failures.push(`the fallback row's cause= is ${JSON.stringify(facts.fallback.cause)}, not one of ${NARRATION_FALLBACK_CAUSES.join("|")}`);
+    }
     if (!(facts.decisionMs <= NATIVE_GATES.airplaneDecisionMs)) {
       failures.push(`the line fell back ${facts.decisionMs} ms after the clip before it ran out; the deadline is ${NATIVE_GATES.airplaneDecisionMs} ms`);
     }

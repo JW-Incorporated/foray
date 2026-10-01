@@ -867,7 +867,7 @@ const AIR_FORAY_ROWS = [
   '53 2026-09-30T00:00:17.000Z outPoint {"kind":"stop","layer":"boundary","overshootMs":2,"rate":1,"token":3}',
   '54 2026-09-30T00:00:17.050Z deck {"kind":"attach","token":4,"cold":"other-source"}',
   '55 2026-09-30T00:00:20.300Z deck {"kind":"failed","token":4,"code":2001}',
-  '56 2026-09-30T00:00:20.301Z narration {"kind":"fallback","reason":"failed","at":"bridge"}',
+  '56 2026-09-30T00:00:20.301Z narration {"kind":"fallback","reason":"failed","where":"bridge","cause":"offline"}',
   '57 2026-09-30T00:00:20.420Z speaker {"kind":"line-started","engine":"com.google.android.tts"}',
   '58 2026-09-30T00:00:23.900Z narration {"kind":"ended","why":"finished"}',
 ].map(parseEngineRow);
@@ -876,7 +876,10 @@ test("A-41 (k): the engine's Foray facts are the fallback, the out-point before 
   /* MUTATION: time the fallback from the first out-point (the clip before the bundled line); read a
      line-started row from before the fallback; lose the refusal rows. */
   const f = airplaneForayFacts(AIR_FORAY_ROWS, 49);
-  assert.deepEqual(f.fallback, { reason: "failed", at: "bridge", iso: "2026-09-30T00:00:20.301Z" });
+  assert.deepEqual(f.fallback, { reason: "failed", where: "bridge", cause: "offline", iso: "2026-09-30T00:00:20.301Z" });
+  /* A-64: a paste from before the rename still reads where the line was (from `at`), with no cause. */
+  const old = airplaneForayFacts([parseEngineRow('56 2026-09-30T00:00:20.301Z narration {"kind":"fallback","reason":"failed","at":"bridge"}')], 49);
+  assert.deepEqual(old.fallback, { reason: "failed", where: "bridge", cause: null, iso: "2026-09-30T00:00:20.301Z" });
   assert.equal(f.boundaryAt, "2026-09-30T00:00:17.000Z");
   assert.equal(f.decisionMs, 3301);
   assert.deepEqual(f.spoken, { iso: "2026-09-30T00:00:20.420Z", engine: "com.google.android.tts", ms: 3420 });
@@ -916,7 +919,10 @@ test("A-41 (k): GATED on the bundled line heard as a file, the network one falli
     "the engine's own Foray is not the page's");
   bad({ renderedAudible: false }, /did not play as a file/);
   bad({ facts: { ...facts, fallback: null } }, /did not fall back/);
-  bad({ facts: { ...facts, fallback: { ...facts.fallback, at: "load" } } }, /at load, not the bridge/);
+  bad({ facts: { ...facts, fallback: { ...facts.fallback, where: "load" } } }, /at load, not the bridge/);
+  /* A-64 MUTATION: drop the cause check; a row with no cause, or one outside the set, passes. */
+  bad({ facts: { ...facts, fallback: { ...facts.fallback, cause: null } } }, /cause= is null/);
+  bad({ facts: { ...facts, fallback: { ...facts.fallback, cause: "load-deadline" } } }, /cause= is "load-deadline"/);
   bad({ facts: { ...facts, decisionMs: NATIVE_GATES.airplaneDecisionMs + 1 } }, /deadline is 25000 ms/);
   bad({ landed: false, facts: { ...facts, spoken: null } }, /neither spoken by the engine's synthesiser nor refused/);
   /* A-41 review MUTATION: a host with no speaker steps over the line and still lands; that is the
