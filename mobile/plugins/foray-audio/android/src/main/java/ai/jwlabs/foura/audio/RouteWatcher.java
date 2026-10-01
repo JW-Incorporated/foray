@@ -121,6 +121,12 @@ public final class RouteWatcher implements EngineSeams.RouteReading {
     public List<EngineInput.RouteChange> onAdded(@NonNull Iterable<Device> devices) {
         Device before = current();
         for (Device d : devices) {
+            /* Already attached: an ECHO, never an arrival. The platform answers a registration with
+               an added call for every device present (seed() already has them), and some builds
+               re-send the whole list on a port update. Re-tracking it would move it to the end of
+               the attachment order, so the route the heuristic reads could change, and a device
+               that never left would be reported as a route coming back. */
+            if (d == null || outputs.containsKey(d.slot())) continue;
             // Back again: a later removal of it is a new loss.
             if (d.slot().equals(lossReported)) lossReported = null;
             track(d);

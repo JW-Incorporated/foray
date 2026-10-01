@@ -299,4 +299,23 @@ public class RouteResumeHostTest {
         mono[0] += RouteWatcher.NOISY_AFTER_REMOVAL_MS + 1;
         assertNull("nothing tracked: a loss that names no port", w.onNoisy().portType());
     }
+
+    /**
+     * The registration's echo (and a build that re-sends the whole list on a port update) is not
+     * an arrival: devices already attached, in any order, change neither the route nor report
+     * one coming back. TO SEE IT FAIL: drop the already-attached skip from RouteWatcher.onAdded
+     * (re-tracking the wired headset last makes it the route and reports it back).
+     */
+    @Test
+    public void anEchoOfDevicesAlreadyAttachedIsNothing() {
+        RouteWatcher w = new RouteWatcher(() -> true, () -> 0);
+        RouteWatcher.Device wired = new RouteWatcher.Device(AudioDeviceInfo.TYPE_USB_HEADSET, 3, "card=1;device=0");
+        w.seed(java.util.Arrays.asList(SPEAKER, wired, CAR));
+        assertEquals(new EngineInput.RoutePort("a2dp", CAR_ADDRESS), w.currentRoute());
+        assertTrue(w.onAdded(java.util.Arrays.asList(CAR, wired, SPEAKER)).isEmpty());
+        assertEquals("the car is still the route", new EngineInput.RoutePort("a2dp", CAR_ADDRESS), w.currentRoute());
+        // A real arrival still is one.
+        RouteWatcher.Device other = new RouteWatcher.Device(AudioDeviceInfo.TYPE_BLUETOOTH_A2DP, 9, "8C:DE:52:44:55:66");
+        assertEquals(1, w.onAdded(java.util.Arrays.asList(CAR, other)).size());
+    }
 }
