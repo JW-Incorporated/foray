@@ -591,9 +591,11 @@ public final class EngineCore {
      * a deck audible while the machine says paused is paused here, by the deck's own word.
      */
     private void pause(Source source) {
+        // D-5 (A-67, NE-40): the cause FIRST, before the seam's cut silences a jingle or the
+        // silence node under it.
+        stopRow(StopCause.PAUSE, source);
         cutSeamGap("pause");
         state.pausedByListener = true;
-        stopRow(StopCause.PAUSE, source);
         dispatch(PlayerEvent.INTERRUPTION_BEGAN);
         if (audibleNow()) {
             diag("pause", m("kind", str("forced")), m("why", str("the deck was audible while the machine said paused")));
@@ -745,11 +747,12 @@ public final class EngineCore {
      * reducer's save and pause, then the session is released WITH notify.
      */
     private void stop(boolean persist, Source source) {
+        // D-5 (A-67, NE-40): the cause first, before the cut silences a jingle.
+        stopRow(persist ? StopCause.CLOSE : StopCause.DATA_DELETION, source);
         cutSeamGap("stop");
         try {
             stopPreview("stop");
             state.pausedByListener = true;
-            stopRow(persist ? StopCause.CLOSE : StopCause.DATA_DELETION, source);
             // CLOSING IS A FLUSH (audit round 2, player-3): the reducer's stop saves nothing, so
             // the playhead is written first. A data deletion writes nothing.
             if (persist) flushPosition();
@@ -843,12 +846,13 @@ public final class EngineCore {
      * {@code {mode: "relinquished"}} record, and go terminal.
      */
     private void relinquish(EngineContract.RelinquishCap cap, Source source) {
+        // D-5 (A-67, NE-40): the cause first, before the cut silences a jingle.
+        stopRow(StopCause.RELINQUISH, source);
         // Nothing parked may start audio after the engine gave the process back.
         cutSeamGap("relinquish");
         state.gapParkedToken = null;
         state.gapCut = false;
         stopPreview("relinquish");
-        stopRow(StopCause.RELINQUISH, source);
         if (state.isRunning()) {
             state.pausedByListener = true;
             dispatch(PlayerEvent.INTERRUPTION_BEGAN);
@@ -1760,8 +1764,9 @@ public final class EngineCore {
             applySession(transition);
             return;
         }
-        cutSeamGap("interruption");
+        // D-5 (A-67, NE-40): the cause first, before the cut silences a jingle.
         stopRow(StopCause.INTERRUPTION, null);
+        cutSeamGap("interruption");
         // A call or the assistant clears a loss's eligibility (route-resume.js).
         routeResumeStep(RouteResume.Event.INTERRUPTION);
         applySession(transition);
@@ -1844,9 +1849,10 @@ public final class EngineCore {
                     m("class", str(change.routeClass().token)),
                     m("key", key == null ? JsonNode.NULL : str(RouteResume.rowKey(key))),
                     m("known", JsonNode.bool(state.knownRoutes.contains(key))));
-            // A beat that outlived a lost route would start audio into a dead route.
-            cutSeamGap("routeLost");
+            // A beat that outlived a lost route would start audio into a dead route. D-5 (A-67,
+            // NE-40): the cause first, before the cut silences a jingle.
             stopRow(StopCause.ROUTE_CHANGE, null);
+            cutSeamGap("routeLost");
             dispatch(new PlayerEvent.RouteChanged(true));
             releaseSeamGap();
             // The clock stops with the route: write the Foray's position NOW.
@@ -2062,18 +2068,21 @@ public final class EngineCore {
                 narrationTick();
             }
             case SILENCE_CAP -> {
-                // INTERLUDE_CEILING_SEC from the out-point: past it only grace covers.
+                // INTERLUDE_CEILING_SEC from the out-point: past it only grace covers. Its row
+                // first (D-5, A-67, NE-40): digital silence in a seam is not the listener's audio
+                // stopping, so it is not a `stop` row, but it is named before the command that
+                // ends it, like every silencer.
                 if (!state.silenceActive) return;
                 state.silenceActive = false;
-                out.add(EngineCommand.SILENCE_STOP);
                 diag("silence", m("kind", str("capped")));
+                out.add(EngineCommand.SILENCE_STOP);
             }
             case GRACE_EXPIRED -> {
                 if (state.grace == null) return;
                 // The deterministic outcome (plan §4.4): end the span, say so, and pause, as the
                 // listener's own pause would.
-                endGrace(GraceOutcome.EXPIRED);
                 stopRow(StopCause.GRACE_EXPIRED, null);
+                endGrace(GraceOutcome.EXPIRED);
                 state.pausedByListener = true;
                 dispatch(PlayerEvent.INTERRUPTION_BEGAN);
                 applySession(SessionPolicy.transition(state.session, new SessionPolicy.Input.Simple(SessionPolicy.InputKind.PAUSE),
@@ -2723,8 +2732,9 @@ public final class EngineCore {
         if (next != null) {
             state.targetIndex = next.index();
         } else {
-            endSeamGap("queueExhausted");
+            // D-5 (A-67, NE-40): the cause first, before the cut silences a jingle.
             stopRow(StopCause.FINAL_END, null);
+            endSeamGap("queueExhausted");
         }
         dispatch(new PlayerEvent.SkipToNext(next == null ? null : next.item().ref()));
         if (next == null && state.stateType().equals("ended")) {
@@ -3168,8 +3178,9 @@ public final class EngineCore {
         if (!state.inInterlude) return;
         state.inInterlude = false;
         state.beatUntilMono = null;
-        out.add(new EngineCommand.Interlude(InterludeCommand.STOP));
+        // The row first (D-5, A-67, NE-40), then the command that silences the jingle.
         diag("interlude", m("kind", str("cut")), m("why", str(why)));
+        out.add(new EngineCommand.Interlude(InterludeCommand.STOP));
     }
 
     // ---- the silence node (flagged OFF)
@@ -3196,9 +3207,10 @@ public final class EngineCore {
     private void stopSilence(String why) {
         if (!state.silenceActive) return;
         state.silenceActive = false;
+        // The row first (D-5, A-67, NE-40), then the command that ends the silence.
+        diag("silence", m("kind", str("stopped")), m("why", str(why)));
         out.add(new EngineCommand.TimerCancel(EngineTimer.SILENCE_CAP));
         out.add(EngineCommand.SILENCE_STOP);
-        diag("silence", m("kind", str("stopped")), m("why", str(why)));
     }
 
     // ---- teardown (the page's `dispose()`)
@@ -3210,6 +3222,11 @@ public final class EngineCore {
      * more. The reducer's state is left as it was.
      */
     private void teardown() {
+        // D-5 (A-67, NE-40): the engine going away while it plays is the audio handed back, so the
+        // cause is `relinquish`. Android's host sends this when its service is destroyed with the
+        // core still live (ForayEngineHost.teardown: a stop by the system, Media3's stop after a
+        // swipe); after the core's own relinquish the host never does, because that wrote the row.
+        stopRow(StopCause.RELINQUISH, null);
         stopPreview("dispose");
         if (state.narration != null) stopNarration();
         cutSeamGap("dispose");

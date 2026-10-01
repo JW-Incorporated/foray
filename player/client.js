@@ -411,7 +411,10 @@ async function onEngineDecision(decision) {
    WHAT IS READ BACK. The pause hold is the engine's snapshot (`holdPolicy`).
    The route sharing has no snapshot field either: it is what the engine
    confirmed storing this process, else not known (the launch's own policy is
-   in the Copy header's `routeSharing=`, from the engine's build row).
+   in the Copy header's `routeSharing=`, from the engine's build row). It is an
+   AVAudioSession word with no Android counterpart, so an Android shell has no
+   such row (A-67: its engine stores nothing and refuses the command
+   `capability-off`).
    The engine setting has no snapshot field: it is what the engine confirmed
    storing this process (an ok reply), else what decided this launch — the
    engine's own hello reason `override` means the stored choice (native lane:
@@ -421,6 +424,16 @@ async function onEngineDecision(decision) {
 export const DEVELOPER_ENGINE_COMMANDS = Object.freeze([
   "setModeOverride", "setHoldPolicy", "simulateTermination", "probeSession", "setRouteSharing",
 ]);
+
+/** The Developer commands a native-lane shell takes: all five, less the
+    route sharing on Android, which has no such policy (A-67). */
+function nativeDeveloperCommands() {
+  let platform = null;
+  try { platform = typeof engineCapacitor?.getPlatform === "function" ? engineCapacitor.getPlatform() : null; } catch (_) { platform = null; }
+  return platform === "android"
+    ? DEVELOPER_ENGINE_COMMANDS.filter((cmd) => cmd !== "setRouteSharing")
+    : [...DEVELOPER_ENGINE_COMMANDS];
+}
 
 /** The override the engine last confirmed storing in this process. */
 let developerOverride = null;
@@ -451,7 +464,7 @@ function engineDeveloperStatus() {
     override: developerOverride ?? launchOverride(decision),
     holdPolicy: typeof hold === "string" ? hold : null,
     routeSharing: native ? developerRouteSharing : null,
-    commands: native ? [...DEVELOPER_ENGINE_COMMANDS] : ["setModeOverride"],
+    commands: native ? nativeDeveloperCommands() : ["setModeOverride"],
   };
 }
 

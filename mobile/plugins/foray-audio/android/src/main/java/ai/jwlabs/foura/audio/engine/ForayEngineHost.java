@@ -450,9 +450,27 @@ public final class ForayEngineHost {
     /**
      * Stop the deck, every timer and the listener, and refuse every later input. Runs by itself
      * when the core relinquishes; the service calls it at {@code onDestroy}.
+     *
+     * <p>A-67, THE SERVICE GOING AWAY IS A STOP WITH A CAUSE. When the core is still live (the
+     * service destroyed by the system, by Media3's stop after a swipe, by anything but the core's
+     * own relinquish), the core is told first ({@code lifecycle(teardown)}, NE-40's D-5 path): if it
+     * was playing it writes {@code stop cause=relinquish} BEFORE anything here silences the deck, the
+     * synthesiser or the jingle, then its own {@code mode kind=teardown} row. After the core's
+     * relinquish (the automatic call below) that row is already written, and the core is not asked
+     * again.
      */
     public void teardown() {
         if (tornDown) return;
+        if (started && core.state().session != SessionPolicy.Phase.RELINQUISHED && !core.state().tornDown) {
+            try {
+                // Interpreted like any turn (its deck unload, timer cancels, rows); anything a seam
+                // raises meanwhile is dropped with the inbox below.
+                runTurn(new EngineInput.Lifecycle(new EngineInput.LifecycleEvent.Teardown()));
+            } catch (RuntimeException ignored) {
+                // A teardown must complete whatever the last turn did.
+            }
+            if (tornDown) return;
+        }
         tornDown = true;
         for (EngineSeams.Cancellable t : timers.values()) t.cancel();
         timers.clear();

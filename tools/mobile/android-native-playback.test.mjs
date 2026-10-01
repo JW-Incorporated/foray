@@ -63,6 +63,9 @@ import {
   EPISODE_QUEUE,
   KILL,
   KILL_LEGS,
+  DV7A_LEGS,
+  DV7B_LEG,
+  dv7Twins,
   KILL_QUEUE,
   killQueue,
   LONG_QUEUE,
@@ -316,6 +319,38 @@ test("A-27 (j): a kill-then-play must bring 4a back at the saved position; force
   assert.equal(verdictKill({ legs: good, setup: [stored] }).ok, true);
   assert.equal(verdictKill({ legs: good, setup: [{ delivered: false, result: null, answer: null }] }).ok, false, "the setting was never stored");
   assert.equal(verdictKill({ legs: good, setup: [{ ...stored, answer: { ok: false, failures: ["bad-mode:x"] } }] }).ok, false);
+});
+
+test("A-67 (j): the legs read as the DV-7 twins: DV-7a gated through playback resumption, DV-7b's force-stop value recorded", () => {
+  /* MUTATION: count a leg whose process lived as through resumption; gate the force-stop control;
+     drop the DV-7a resumption requirement from verdictKill. */
+  assert.deepEqual([...DV7A_LEGS], ["am-kill", "swipe-am-kill", "sigkill"]);
+  assert.equal(DV7B_LEG, "force-stop");
+  assert.deepEqual([...DV7A_LEGS, DV7B_LEG], KILL_LEGS.map((l) => l.leg), "every (j) leg is one twin or the other");
+  const saved = { item: "a27-kill-0", offsetSec: 18.4, positionSec: 18.4, running: false };
+  const leg = (name, o = {}) => ({ leg: name, saved, pidBefore: "100", pidAfterKill: name === "am-kill" ? "100" : null,
+    killed: name !== "am-kill", pidAfterDispatch: "200", receivedBy: { pkg: PKG }, receiverStarts: name === "swipe-am-kill" ? 1 : 0,
+    resumed: { item: "a27-kill-0", positionSec: 18.9, afterMs: 1500, coldBoot: name === "am-kill" ? null : "painted" }, ...o });
+  /* API 34's force-stop value (A-27, measurements §10): the control does not hold, 4a plays. */
+  const legs = [leg("am-kill"), leg("swipe-am-kill"), leg("sigkill"), leg("force-stop", { receiverStarts: 1 })];
+  const t = dv7Twins(legs);
+  assert.equal(t.dv7a.allResumed, true);
+  assert.equal(t.dv7a.throughResumption, true);
+  assert.deepEqual(t.dv7a.legs.map((l) => [l.leg, l.throughResumption]), [["am-kill", false], ["swipe-am-kill", true], ["sigkill", true]],
+    "a cached process that lived is the warm path, not resumption");
+  assert.deepEqual(t.dv7b, { leg: "force-stop", died: true, fourAPlayed: true, ourProcessAfterPlay: true, receivedBy: PKG, receiverStarts: 1,
+    controlHolds: false });
+  const v = verdictKill({ legs });
+  assert.equal(v.ok, true, "DV-7b is recorded, never gated: " + JSON.stringify(v.failures));
+  assert.deepEqual(v.twins, t);
+  const held = dv7Twins(swap0(legs, "force-stop", { resumed: null, pidAfterDispatch: null, receivedBy: { pkg: "com.spotify.music" } })).dv7b;
+  assert.equal(held.controlHolds, true);
+  assert.equal(held.receivedBy, "com.spotify.music");
+  /* DV-7a needs one leg back through the record: with every death answered warm it fails. */
+  const warm = legs.map((l) => (l.leg === "force-stop" ? l : { ...l, resumed: { ...l.resumed, coldBoot: null } }));
+  assert.equal(dv7Twins(warm).dv7a.throughResumption, false);
+  assert.ok(verdictKill({ legs: warm }).failures.some((f) => f.startsWith("DV-7a:")));
+  assert.equal(dv7Twins([]).dv7b, null);
 });
 
 test("A-27 review (j): the scenario stores the stock (native) lane first and puts Automatic back, whatever happened", () => {

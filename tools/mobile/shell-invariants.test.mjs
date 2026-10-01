@@ -5354,6 +5354,71 @@ test("A-29: the lane is decided at launch with iOS's private keys, and the debug
  * under grace past NARRATION_SUSPEND_GAP_MS, the service hands the deck's deadlines to it, and
  * Media3's foreground decision reaches the fgs watch before Media3 acts on it. */
 
+test("A-67: every stopRow call site in the JVM core has a StopCauseTest entry, the Android audit names every cause, and the service's end is a stop with a cause", () => {
+  /* The D-5 audit on Android (docs/plans/android-assessment.md A-67, mirrors NE-40). StopCauseTest.java
+     (foray-engine-core-jvm) tables every path that stops audio, each naming the EngineCore METHOD that
+     writes its `stop` row (`"<site>"` as the third argument of a StopPath); a new `stopRow(` call in a
+     method the table does not name is a stop path nobody audited. StopPathAuditTest.java (foray-audio,
+     Robolectric) runs every ANDROID adapter's path through the real host. The host's teardown tells the
+     core first, so a service that dies while playing writes `stop cause=relinquish` before anything is
+     silenced, and nothing on Android arms or fires the grace expiry (Android has no background budget).
+     MUTATION: add a `stopRow(StopCause.ERROR, null)` to a method the table does not name; delete a
+     site from the table; give either disposition switch a `default`; drop the core teardown from
+     ForayEngineHost.teardown, or move it after `tornDown = true`; reference GRACE_EXPIRED in the
+     Android shell. Each fails here. */
+  const android = path.join(PLUGIN_DIR, "android");
+  const jvm = path.join(android, "foray-engine-core-jvm", "src");
+  const core = stripJavaComments(fs.readFileSync(path.join(jvm, "main", "java", "ai", "jwlabs", "foura", "engine", "EngineCore.java"), "utf8"));
+  const lines = core.split("\n");
+  const method = /^ {4}(?:(?:private|public|protected|static|final|synchronized)\s+)+[\w<>\[\],.? ]+?\s+(\w+)\(/;
+  const sites = new Set();
+  lines.forEach((line, i) => {
+    if (!/\bstopRow\(/.test(line) || /void stopRow\(/.test(line)) return;
+    for (let j = i; j >= 0; j--) {
+      const m = method.exec(lines[j]);
+      if (m) { sites.add(m[1]); return; }
+    }
+    assert.fail(`a stopRow( call at line ${i + 1} is outside any method`);
+  });
+  assert.equal(sites.size, 13, `the JVM core's stop sites: ${[...sites].join(", ")}`);
+  const table = fs.readFileSync(path.join(jvm, "test", "java", "ai", "jwlabs", "foura", "engine", "StopCauseTest.java"), "utf8");
+  const named = new Set([...table.matchAll(/new StopPath\("[^"]*",\s*"[^"]*",\s*"(\w+)"/g)].map((m) => m[1]));
+  for (const site of sites) assert.ok(named.has(site), `EngineCore.${site}() writes a stop row but StopCauseTest has no path with that site`);
+  for (const site of named) assert.ok(sites.has(site), `StopCauseTest names the site ${site}, which writes no stop row`);
+  /* The Swift table names the same thirteen (NE-40): the two cores audit the same paths. */
+  const swiftTable = fs.readFileSync(path.join(CORE_DIR, "Tests/ForayEngineCoreTests/StopCauseTests.swift"), "utf8");
+  const swiftSites = new Set([...swiftTable.matchAll(/site: "(\w+)"/g)].map((m) => m[1]));
+  assert.deepEqual([...sites].sort(), [...swiftSites].sort(), "the JVM core's stop sites are the Swift core's");
+  assert.match(table, /static Disposition disposition\(StopCause cause\) \{\s*return switch \(cause\) \{/);
+  assert.doesNotMatch(table.slice(table.indexOf("static Disposition disposition(")), /^\s*default\s*->/m, "exhaustive: a new cause does not compile");
+
+  const testDir = path.join(android, "src", "test", "java", "ai", "jwlabs", "foura", "audio", "engine");
+  const audit = fs.readFileSync(path.join(testDir, "StopPathAuditTest.java"), "utf8");
+  assert.match(audit, /static String androidDisposition\(StopCause cause\) \{\s*return switch \(cause\) \{/);
+  assert.doesNotMatch(audit.slice(audit.indexOf("static String androidDisposition(")), /^\s*default\s*->/m);
+  for (const adapter of ["onPlayerError", "AUDIO_FOCUS_LOSS", "TRANSIENT_AUDIO_FOCUS_LOSS", "CAN_DUCK", "BECOMING_NOISY",
+    "onTaskRemoved", "onDestroy", "Doze", "deadline", "RouteWatcher"]) {
+    assert.ok(audit.includes(adapter), `the Android audit does not cover ${adapter}`);
+  }
+
+  const engineDir = path.join(android, "src", "main", "java", "ai", "jwlabs", "foura", "audio", "engine");
+  const host = stripJavaComments(fs.readFileSync(path.join(engineDir, "ForayEngineHost.java"), "utf8"));
+  const teardown = host.slice(host.indexOf("public void teardown() {"));
+  const told = teardown.indexOf("runTurn(new EngineInput.Lifecycle(new EngineInput.LifecycleEvent.Teardown()));");
+  assert.ok(told > 0 && told < teardown.indexOf("tornDown = true;"), "the core hears the teardown before the host lets anything go");
+  assert.match(teardown, /if \(started && core\.state\(\)\.session != SessionPolicy\.Phase\.RELINQUISHED && !core\.state\(\)\.tornDown\)/,
+    "never after the core's own relinquish, which wrote the row");
+  for (const f of fs.readdirSync(engineDir).concat(fs.readdirSync(path.dirname(engineDir)).filter((n) => n.endsWith(".java")))) {
+    const file = fs.existsSync(path.join(engineDir, f)) ? path.join(engineDir, f) : path.join(path.dirname(engineDir), f);
+    if (!file.endsWith(".java")) continue;
+    assert.doesNotMatch(stripJavaComments(fs.readFileSync(file, "utf8")), /GRACE_EXPIRED/, `${f}: nothing on Android fires the grace expiry`);
+  }
+  const service = stripJavaComments(fs.readFileSync(path.join(path.dirname(engineDir), "ForayPlaybackService.java"), "utf8"));
+  const destroy = service.slice(service.indexOf("public void onDestroy() {"));
+  assert.ok(destroy.indexOf('serviceRow("destroy", null, host)') > 0 && destroy.indexOf('serviceRow("destroy", null, host)') < destroy.indexOf("release();"),
+    "the service names its end before the teardown");
+});
+
 test("A-65: no silence is rendered, the beat is BUFFERING, and the late-timer and fgs rows are wired", () => {
   /* MUTATION: render the silence node (anything but an empty case for SilenceStart), turn
      silenceNodeEnabled on in the service, drop silentSeam from the facade's BUFFERING test, write
@@ -5390,7 +5455,8 @@ test("A-65: no silence is rendered, the beat is BUFFERING, and the late-timer an
   assert.ok(body.indexOf("noteForegroundDecision(startInForegroundRequired);") > 0
     && body.indexOf("noteForegroundDecision(startInForegroundRequired);") < body.indexOf("super.onUpdateNotificationAsync("),
     "the watch hears Media3's decision before Media3 acts on it");
-  assert.match(service, /public void onTaskRemoved\(@Nullable Intent rootIntent\) \{\s*if \(keepsRunningOnTaskRemoved\(isPlaybackOngoing\(\), player\)\) return;\s*super\.onTaskRemoved\(rootIntent\);/);
+  /* A-67 names the swipe (`service kind=task-removed kept=`) before the rule decides; the rule is A-65's. */
+  assert.match(service, /public void onTaskRemoved\(@Nullable Intent rootIntent\) \{\s*boolean kept = keepsRunningOnTaskRemoved\(isPlaybackOngoing\(\), player\);\s*log\.diag\(serviceRow\("task-removed", kept, host\)\);\s*if \(kept\) return;\s*super\.onTaskRemoved\(rootIntent\);/);
 
   const watch = stripJavaComments(fs.readFileSync(path.join(engineDir, "ForegroundWatch.java"), "utf8"));
   assert.doesNotMatch(watch, /^import android\./m, "ForegroundWatch is pure JVM");

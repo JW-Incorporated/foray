@@ -255,3 +255,58 @@ ForayAudioShell.inspect():
 ```
 <paste here>
 ```
+
+## Part I: M3 parity on Android (A-67; only when issued with this pass)
+
+Route for this part (car or headset; Android Auto running? yes / no):
+
+| Step | What | Expected (short; the script has it in full) | Result | Note |
+|---|---|---|---|---|
+| 26 | A lost route, back after 10+ min | pause within 1 s; Android Auto resumes by itself, Bluetooth does not (the car's own play may); the lost/back rows | | |
+| 27 | A listener's pause, then the route off and on | stays paused; `pausedBy=listener decision=no` | | |
+| 28 | Foray 4 locked through two line seams; Next during a line | ~0.5 s seams, `prepare=hit`, gap 1.0 s or less; Next starts the next clip at its start | | |
+| 29 | Airplane mode during a line | next line in the phone's voice within ~3 s; `narration kind=fallback cause=offline` | | |
+| 30 | One hour native | plays the hour; battery % drop and 4a's share | | |
+| 31 | One hour web player, then back to Automatic | battery % drop and 4a's share; header native again | | |
+
+Battery: native hour __ % (4a __ %), web hour __ % (4a __ %).
+
+### Step 26 evidence (C)
+
+Seconds from the car connecting to its own play, if it sent one:
+
+```
+<paste here>
+```
+
+### Step 27 evidence (C)
+
+```
+<paste here>
+```
+
+### Step 28 evidence (C)
+
+```
+<paste here>
+```
+
+### Step 29 evidence (C)
+
+After airplane mode off, the clip: played by itself / needed one press of play (circle one)
+
+```
+<paste here>
+```
+
+### Step 30 evidence (C)
+
+```
+<paste here>
+```
+
+### Step 31 evidence (C after the hour, C after switching back)
+
+```
+<paste here>
+```

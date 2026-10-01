@@ -1446,13 +1446,54 @@ export function verdictKill({ legs, setup }) {
     if (!leg) failures.push(`the ${n} leg did not run`);
     else failures.push(...killLegVerdict(leg));
   }
+  const twins = dv7Twins(legs);
+  if (twins.dv7a.legs.length && !twins.dv7a.throughResumption) {
+    failures.push("DV-7a: no leg whose process died came back through playback resumption (the restore record)");
+  }
   const recorded = (legs ?? []).map((l) => ({
     leg: l.leg, killed: l.killed, restartedBeforePlay: l.restartedBeforePlay ?? null,
     savedSec: l.saved?.offsetSec ?? null, resumedSec: l.resumed?.positionSec ?? null, resumedAfterMs: l.resumed?.afterMs ?? null,
     coldBoot: l.resumed?.coldBoot ?? null, receiverStarts: l.receiverStarts ?? null, lastReceiverBefore: l.routeBefore?.lastReceiver ?? null,
     receivedBy: l.receivedBy ?? null, ourProcessAfterPlay: !!l.pidAfterDispatch,
   }));
-  return { ok: failures.length === 0, failures, recorded };
+  return { ok: failures.length === 0, failures, recorded, twins };
+}
+
+/** A-67: the legs that are the emulator's twin of iOS's DV-7a (the system ended 4a; a play brings it
+ *  back), GATED: a cached process `am kill`ed, a swipe then `am kill`, and the low-memory killer's
+ *  SIGKILL. iOS's DV-7a relaunches an app the system closed; Android's door is Media3's playback
+ *  resumption from the restore record, which a leg proves when its process died and the engine that
+ *  played booted from the record (`coldBoot: painted`). */
+export const DV7A_LEGS = Object.freeze(["am-kill", "swipe-am-kill", "sigkill"]);
+/** A-67: the leg that is the twin of DV-7b (the listener force-quit 4a; a play must not be 4a's), RECORDED only. */
+export const DV7B_LEG = "force-stop";
+
+/** A-67: (j)'s legs read as the two DV-7 twins. DV-7a: each twin leg resumed 4a, and at least one did
+ *  so through playback resumption after its process died. DV-7b: who the play reached after
+ *  `am force-stop` (the force-stop value), and whether the control held (no 4a process, nothing of
+ *  ours resumed). Pure. */
+export function dv7Twins(legs) {
+  const byName = (n) => (legs ?? []).find((l) => l?.leg === n) ?? null;
+  const ran = DV7A_LEGS.map(byName).filter(Boolean);
+  const dv7aLegs = ran.map((l) => ({
+    leg: l.leg, died: !!l.killed, resumed: !!l.resumed, positionSec: l.resumed?.positionSec ?? null,
+    throughResumption: !!l.killed && l.resumed?.coldBoot === "painted",
+  }));
+  const fs = byName(DV7B_LEG);
+  const dv7b = fs ? {
+    leg: fs.leg,
+    died: !!fs.killed,
+    fourAPlayed: !!fs.resumed,
+    ourProcessAfterPlay: !!fs.pidAfterDispatch,
+    receivedBy: fs.receivedBy?.pkg ?? null,
+    receiverStarts: fs.receiverStarts ?? null,
+    controlHolds: !fs.resumed && !fs.pidAfterDispatch,
+  } : null;
+  return {
+    dv7a: { legs: dv7aLegs, allResumed: dv7aLegs.length === DV7A_LEGS.length && dv7aLegs.every((l) => l.resumed),
+      throughResumption: dv7aLegs.some((l) => l.throughResumption) },
+    dv7b,
+  };
 }
 
 /* ── A-61: route resume, with a virtual output device ─────────────────────────
@@ -1506,7 +1547,7 @@ export const SCENARIOS = Object.freeze([
   ["doze", "(g) native: Doze, unplugged, rare bucket, 5 min"],
   ["focus", "(h) native: another app takes audio focus; pause, and resume after a transient loss"],
   ["call", "(i) native: a phone call; pause, and resume after it"],
-  ["kill", "(j) native: paused, on Home, the process ended; a media play resumes 4a at the saved position"],
+  ["kill", "(j) native (DV-7a/DV-7b twins, A-67): paused, on Home, the process ended; a media play resumes 4a at the saved position; after a force-stop it is recorded who plays"],
   ["airplane", "(k) native: airplane mode; an unloadable episode stops in time; the engine's Foray, handed over and then built by the page (A-42), plays a rendered line as a file and speaks the one that cannot load"],
   ["route", "(A-61) native: route resume with a virtual car-mode output: lost and back resumes once; after a listener's pause it stays paused"],
   ["bridge", "(A-28, A-31, A-42) stock launch: the native lane by default; the page's own episode and Foray plays are the engine's; the Developer setting Web returns the JS lane"],

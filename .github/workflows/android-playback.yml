@@ -204,6 +204,16 @@
 # fall back on the network one at its bridge in time and speak it, land on the
 # last clip, and the Copy must carry no `engineMode js (relinquished)` row.
 #
+# A-67, a FOURTH leg: `mode: native`, API 36, `only: kill`. The emulator's twins of
+# iOS's DV-7a and DV-7b are (j)'s legs: a paused 4a on Home, ended by `am kill`, a
+# swipe then `am kill`, or a SIGKILL, must come back for `cmd media_session dispatch
+# play` at the saved position, at least one of them through Media3's playback
+# resumption from the restore record (GATED); after `am force-stop`, who the play
+# reaches is the force-stop value (RECORDED, never gated). The plan asks for the
+# kill-then-play step green on both API levels, so this leg runs (j) alone on the
+# current image (every other native step is gated on `!matrix.only`), and collects
+# its evidence under its own artifact name.
+#
 # `fail-fast: false`, so a red leg never cancels the other's verdicts. Each leg
 # checks that the device it booted really is its API level before installing
 # anything, and uploads its own artifact. The differences between the legs are
@@ -256,6 +266,13 @@ jobs:
             image: system-images;android-34;google_apis;x86_64
             timeout: 40
             mode: native
+          # A-67: the DV-7 twins ((j) alone) in native mode on the current
+          # platform too, so the kill-then-play gate holds on both API levels.
+          - api: 36
+            image: system-images;android-36;google_apis;x86_64
+            timeout: 45
+            mode: native
+            only: kill
     # The ceiling for a hung boot or a hung scenario, which the boot step's own
     # 15-minute deadline would otherwise race. A-04's budget was 12 minutes; A-05
     # took the one-leg job to 19 min 54 s on API 34 (run 36573733303), five of
@@ -641,32 +658,32 @@ jobs:
 
       - name: (e) native — a first launch in the native lane, as a screenshot, with the engine up
         id: native-first-launch
-        if: ${{ matrix.mode == 'native' && !cancelled() && steps.launch.outcome == 'success' }}
+        if: ${{ matrix.mode == 'native' && (!matrix.only || matrix.only == 'first-launch') && !cancelled() && steps.launch.outcome == 'success' }}
         run: node tools/mobile/android-native-playback.mjs first-launch --art "$ART"
 
       - name: (a) native — the engine plays a clip, in a mediaPlayback service, published to the system
         id: native-play
-        if: ${{ matrix.mode == 'native' && !cancelled() && steps.launch.outcome == 'success' }}
+        if: ${{ matrix.mode == 'native' && (!matrix.only || matrix.only == 'play') && !cancelled() && steps.launch.outcome == 'success' }}
         run: node tools/mobile/android-native-playback.mjs play --art "$ART"
 
       - name: (b) native — Home, then the screen off, and the queue plays on for a minute
         id: native-background
-        if: ${{ matrix.mode == 'native' && !cancelled() && steps.launch.outcome == 'success' }}
+        if: ${{ matrix.mode == 'native' && (!matrix.only || matrix.only == 'background') && !cancelled() && steps.launch.outcome == 'success' }}
         run: node tools/mobile/android-native-playback.mjs background --art "$ART"
 
       - name: (c) native — media_session dispatch and KEYCODE_MEDIA presses reach the engine
         id: native-transport
-        if: ${{ matrix.mode == 'native' && !cancelled() && steps.launch.outcome == 'success' }}
+        if: ${{ matrix.mode == 'native' && (!matrix.only || matrix.only == 'transport') && !cancelled() && steps.launch.outcome == 'success' }}
         run: node tools/mobile/android-native-playback.mjs transport --art "$ART"
 
       - name: (d) native — the system controls show our title, show and 15/30, and their pause pauses
         id: native-notification
-        if: ${{ matrix.mode == 'native' && !cancelled() && steps.launch.outcome == 'success' }}
+        if: ${{ matrix.mode == 'native' && (!matrix.only || matrix.only == 'notification') && !cancelled() && steps.launch.outcome == 'success' }}
         run: node tools/mobile/android-native-playback.mjs notification --art "$ART"
 
       - name: (f) native — hidden episode seams, the screen off, every seam crossed (gaps recorded)
         id: native-seams
-        if: ${{ matrix.mode == 'native' && !cancelled() && steps.launch.outcome == 'success' }}
+        if: ${{ matrix.mode == 'native' && (!matrix.only || matrix.only == 'seams') && !cancelled() && steps.launch.outcome == 'success' }}
         run: node tools/mobile/android-native-playback.mjs seams --art "$ART"
 
       # A-40: the Foray tape. A Foray (the page's build of eight segments over the
@@ -676,32 +693,32 @@ jobs:
       # one process, p95 <= 1 s.
       - name: (f) native Foray — hidden Foray seams on the deck pair, the screen off, p95 at or under 1 s
         id: native-foray-seams
-        if: ${{ matrix.mode == 'native' && !cancelled() && steps.launch.outcome == 'success' }}
+        if: ${{ matrix.mode == 'native' && (!matrix.only || matrix.only == 'foray-seams') && !cancelled() && steps.launch.outcome == 'success' }}
         run: node tools/mobile/android-native-playback.mjs foray-seams --art "$ART"
 
       - name: (g) native — Doze, unplugged, in the rare bucket, and still playing after 5 minutes
         id: native-doze
-        if: ${{ matrix.mode == 'native' && !cancelled() && steps.launch.outcome == 'success' }}
+        if: ${{ matrix.mode == 'native' && (!matrix.only || matrix.only == 'doze') && !cancelled() && steps.launch.outcome == 'success' }}
         run: node tools/mobile/android-native-playback.mjs doze --art "$ART"
 
       - name: (h) native — another app takes audio focus; a transient loss pauses and resumes
         id: native-focus
-        if: ${{ matrix.mode == 'native' && !cancelled() && steps.launch.outcome == 'success' }}
+        if: ${{ matrix.mode == 'native' && (!matrix.only || matrix.only == 'focus') && !cancelled() && steps.launch.outcome == 'success' }}
         run: node tools/mobile/android-native-playback.mjs focus --art "$ART"
 
       - name: (i) native — a phone call rings, is answered and hangs up; pause, then resume
         id: native-call
-        if: ${{ matrix.mode == 'native' && !cancelled() && steps.launch.outcome == 'success' }}
+        if: ${{ matrix.mode == 'native' && (!matrix.only || matrix.only == 'call') && !cancelled() && steps.launch.outcome == 'success' }}
         run: node tools/mobile/android-native-playback.mjs call --art "$ART"
 
       - name: (j) native — paused, on Home, the process ended; a media play resumes 4a at the saved position
         id: native-kill
-        if: ${{ matrix.mode == 'native' && !cancelled() && steps.launch.outcome == 'success' }}
+        if: ${{ matrix.mode == 'native' && (!matrix.only || matrix.only == 'kill') && !cancelled() && steps.launch.outcome == 'success' }}
         run: node tools/mobile/android-native-playback.mjs kill --art "$ART"
 
       - name: (k) native — airplane mode; an unloadable episode stops in time; the engine's and the page's Forays fall back on the line that cannot load
         id: native-airplane
-        if: ${{ matrix.mode == 'native' && !cancelled() && steps.launch.outcome == 'success' }}
+        if: ${{ matrix.mode == 'native' && (!matrix.only || matrix.only == 'airplane') && !cancelled() && steps.launch.outcome == 'success' }}
         run: node tools/mobile/android-native-playback.mjs airplane --art "$ART"
 
       # A-61: route resume. The emulator has no Bluetooth and adb cannot add an
@@ -714,7 +731,7 @@ jobs:
       # mode the verdict records no-coverage.
       - name: (A-61) native — route resume, a virtual car-mode output lost and back resumes once; a listener's pause stays paused
         id: native-route
-        if: ${{ matrix.mode == 'native' && !cancelled() && steps.launch.outcome == 'success' }}
+        if: ${{ matrix.mode == 'native' && (!matrix.only || matrix.only == 'route') && !cancelled() && steps.launch.outcome == 'success' }}
         run: node tools/mobile/android-native-playback.mjs route --art "$ART"
 
       # A-28: the page's door, and since A-31 and A-42 the flips' proof. A stock
@@ -725,7 +742,7 @@ jobs:
       # through the page, returns the JS lane at the next launch.
       - name: (A-28, A-31, A-42) native — a stock launch is the native lane, the page's episode and Foray play on the engine, and Web returns the JS lane
         id: native-bridge
-        if: ${{ matrix.mode == 'native' && !cancelled() && steps.launch.outcome == 'success' }}
+        if: ${{ matrix.mode == 'native' && (!matrix.only || matrix.only == 'bridge') && !cancelled() && steps.launch.outcome == 'success' }}
         run: node tools/mobile/android-native-playback.mjs bridge --art "$ART"
 
       # A-29: ownership and fallback, last. The debug build's engine is told to
@@ -735,7 +752,7 @@ jobs:
       # JS lane by the crash-loop guard.
       - name: (A-29) native — the engine throws at hello; the page falls back to js with a fault row; three strikes pin the JS lane
         id: native-fallback
-        if: ${{ matrix.mode == 'native' && !cancelled() && steps.launch.outcome == 'success' }}
+        if: ${{ matrix.mode == 'native' && (!matrix.only || matrix.only == 'fallback') && !cancelled() && steps.launch.outcome == 'success' }}
         run: node tools/mobile/android-native-playback.mjs fallback --art "$ART"
 
       - name: Collect the native engine's dump, its logcat and the system's view

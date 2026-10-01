@@ -468,6 +468,23 @@ public class EngineBridgeTest {
         assertAccepted("snapshot", r.bridge.read(obj("what", JsonNode.str("snapshot"))));
     }
 
+    /**
+     * A-67: route sharing (NE-40's DV-8 trial) is an AVAudioSession policy with no Android
+     * counterpart: the bridge refuses it {@code capability-off}, with a {@code cmd} row, and the
+     * core never hears it. TO SEE IT FAIL: drop the SetRouteSharing refusal in dispatch (the reply
+     * is ok and the page would read back a choice nothing applies).
+     */
+    @Test
+    public void routeSharingIsRefusedOnAndroid() {
+        Rig r = nativeRig();
+        r.hello();
+        JsonNode reply = r.send("setRouteSharing", obj("policy", JsonNode.str("longFormAudio")));
+        assertEquals(JsonNode.FALSE, reply.get("ok"));
+        assertEquals("capability-off", reply.get("reason").stringValue());
+        assertTrue(r.rows("cmd").toString(), r.rows("cmd").stream().anyMatch(s -> s.contains("\"cmd\":\"setRouteSharing\"")
+                && s.contains("\"result\":\"capability-off\"")));
+    }
+
     /** The binary's claim, spelled once for the hello test above. */
     static final class EngineBridgeRulesJvm {
         static final String ADVERTISED = "[\"episode\",\"continuation\",\"restore\",\"foray\"]";
