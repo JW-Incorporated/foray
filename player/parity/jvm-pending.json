@@ -11,7 +11,7 @@
     "manager-foray/audition-url-plays-the-rendered-preview": "A-66",
     "manager-foray/audition-url-that-fails-is-spoken": "A-66"
   },
-  "families": { "manager-remainder": "A-63", "prepare-narration": "A-62" },
+  "families": { "manager-remainder": "A-63" },
   "runs": [
     "compare",
     "contract",
@@ -33,6 +33,7 @@
     "number-format",
     "outpoint",
     "prepare",
+    "prepare-narration",
     "queue-state",
     "rate",
     "resume-rules",

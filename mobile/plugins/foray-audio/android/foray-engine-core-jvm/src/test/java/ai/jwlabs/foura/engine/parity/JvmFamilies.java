@@ -155,9 +155,16 @@ public final class JvmFamilies {
      */
     public static final FamilyRunner ROUTE_RESUME = RouteResumeFamily.runner();
 
+    /*
+     * A-62: prepare across narration seams (DeckPolicy.warmsAcross and the duration window, main
+     * code, and EngineCore's warm over them): the prepare family's seams with a narration line in
+     * them, through the contract with the standby deck (the JVM twin of NE-45s).
+     */
+    public static final FamilyRunner PREPARE_NARRATION = ForayTapeFamilies.prepareNarration();
+
     /** Every registered runner. */
     public static final List<FamilyRunner> ALL = List.of(COMPARE, NUMBER_FORMAT, QUEUE_STATE, RATE, RESUME_RULES, TRANSPORT, ROWS,
             SESSION, SESSION_INVARIANT, MEDIA_EPISODE, MANAGER_EPISODE, DECK_EPISODE, OUTPOINT, DECK, CONTRACT, SNAPSHOT, HANDSHAKE,
             DIAG_TOKENS, ENGINE_MODE, SEAM_GAP, SEEK_POLICY, INTERLUDE, FORAY_CLOCK, FORAY_STRUCTURE, FORAY_PROGRESS, MEDIA,
-            MANAGER_FORAY, PREPARE, DEFAULT_VOICE, LEXICON, SPEECH_RATE, ROUTE_RESUME);
+            MANAGER_FORAY, PREPARE, PREPARE_NARRATION, DEFAULT_VOICE, LEXICON, SPEECH_RATE, ROUTE_RESUME);
 }

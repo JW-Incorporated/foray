@@ -30,6 +30,9 @@ import {
   ENGINE_STATUS_EXPRESSION,
   AIRPLANE_QUEUE,
   FORAY_SEAMS_FORAY,
+  itemSpanSec,
+  seamKindCounts,
+  seamKindOf,
   LANE_SCENARIOS,
   NATIVE_GATES,
   SEAMS_QUEUE,
@@ -953,9 +956,11 @@ test("A-40 (f): the Foray is the page's build of eight click-track segments, six
   const { forayId, title, items } = FORAY_SEAMS_FORAY;
   assert.equal(forayId, "a40-foray");
   assert.ok(title);
-  assert.equal(items.length, 8);
+  assert.equal(items.length, 11, "eight segments and (A-62) three rendered lines");
   assert.equal(new Set(items.map((i) => i.id)).size, items.length, "every id once (J-4's duplicate-id)");
-  for (const it of items) {
+  const segments = items.filter((it) => it.kind !== "tts");
+  assert.equal(segments.length, 8);
+  for (const it of segments) {
     assert.ok(it.audio_url.startsWith(ASSET_BASE), it.audio_url);
     assert.ok(CLIPS.some((c) => it.audio_url.endsWith(c.file)));
     assert.equal(it.kind, "episode");
@@ -966,6 +971,60 @@ test("A-40 (f): the Foray is the page's build of eight click-track segments, six
   const same = items.slice(1).filter((it, i) => it.audio_url === items[i].audio_url).length;
   assert.equal(same, 1, "one seam inside one source (a seek, no warm)");
   assert.ok(items.some((i) => i.audio_url.endsWith(CLIPS[2].file)), "one onto the VBR track with no seek table");
+});
+
+test("A-62 (f): the seam Foray carries three rendered lines on the bundled a05 files, so its seams are of three kinds", () => {
+  /* MUTATION: a line with no file (a spoken line prepares nothing, and the gate would read
+     prepare=none); a line on the network; two lines back to back (a line->line seam); a line first
+     or last. */
+  const { items } = FORAY_SEAMS_FORAY;
+  const lines = items.filter((it) => it.kind === "tts");
+  assert.equal(lines.length, 3);
+  for (const [i, it] of lines.entries()) {
+    assert.equal(it.audio_url, `${NARRATION_ASSET_BASE}${NARRATION_LINES[i].file}`, "a bundled rendered file");
+    assert.equal(it.duration_sec, NARRATION_LINES[i].sec);
+    assert.ok(it.script, "a script, for the fallback");
+  }
+  assert.notEqual(items[0].kind, "tts");
+  assert.notEqual(items[items.length - 1].kind, "tts");
+  assert.deepEqual(seamKindCounts(items), { "clip->line": 3, "line->clip": 3, "clip->clip": 4 });
+  assert.equal(seamKindOf(items[0], items[1]), "clip->line");
+  assert.equal(itemSpanSec(items[0]), 8);
+  assert.equal(itemSpanSec(items[1]), NARRATION_LINES[0].sec);
+});
+
+test("A-62 (f): a rendered line's seam opens at its natural end, and the seam row names its kind and the prepare", () => {
+  /* MUTATION: open a line's seam at a stall (waiting); open it on another token's pause; lose the
+     row's from/to/prepare; let a line's pause re-open a seam an out-point already opened. */
+  const rows = [
+    '40 2026-09-30T00:00:00.100Z deck {"kind":"time-control","token":1,"status":"playing"}',
+    '41 2026-09-30T00:00:08.000Z outPoint {"kind":"stop","layer":"boundary","overshootMs":3,"rate":1,"token":1}',
+    '42 2026-09-30T00:00:08.001Z deck {"kind":"time-control","token":1,"status":"paused"}',
+    '43 2026-09-30T00:00:08.020Z prepare {"kind":"promote","token":2}',
+    '44 2026-09-30T00:00:08.030Z seam {"observedGapMs":30,"askedGapMs":0,"prepared":true,"stages":["play"],"from":"clip","to":"line","prepare":"hit"}',
+    '45 2026-09-30T00:00:08.060Z deck {"kind":"time-control","token":2,"status":"playing"}',
+    '46 2026-09-30T00:00:10.000Z deck {"kind":"time-control","token":2,"status":"waiting","reason":"buffering"}',
+    '47 2026-09-30T00:00:10.200Z deck {"kind":"time-control","token":2,"status":"playing"}',
+    '48 2026-09-30T00:00:13.060Z deck {"kind":"time-control","token":2,"status":"paused"}',
+    '49 2026-09-30T00:00:13.061Z interlude {"kind":"started"}',
+    '50 2026-09-30T00:00:13.070Z prepare {"kind":"promote","token":3}',
+    '51 2026-09-30T00:00:16.070Z interlude {"kind":"ended","why":"ended"}',
+    '52 2026-09-30T00:00:16.080Z seam {"observedGapMs":3020,"askedGapMs":0,"prepared":true,"stages":["play"],"from":"line","to":"clip","prepare":"hit"}',
+    '53 2026-09-30T00:00:16.120Z deck {"kind":"time-control","token":3,"status":"playing"}',
+    '54 2026-09-30T00:00:24.120Z outPoint {"kind":"stop","layer":"boundary","overshootMs":2,"rate":1,"token":3}',
+    '55 2026-09-30T00:00:24.700Z seam {"observedGapMs":580,"askedGapMs":500,"prepared":false,"stages":["ready","play"],"from":"clip","to":"clip","prepare":"miss"}',
+    '56 2026-09-30T00:00:24.740Z deck {"kind":"time-control","token":4,"status":"playing"}',
+  ].map(parseEngineRow);
+  const seams = foraySeams(rows);
+  assert.equal(seams.length, 3, JSON.stringify(seams));
+  assert.deepEqual(seams.map((s) => s.kind), ["clip->line", "line->clip", "clip->clip"]);
+  assert.deepEqual(seams.map((s) => s.prepare), ["hit", "hit", "miss"]);
+  assert.deepEqual(seams.map((s) => s.gapMs), [60, 3060, 620], "a line's seam runs from its natural end, not from its stall");
+  assert.deepEqual(seams.map((s) => s.silenceMs), [60, 51, 620], "the jingle after a line is sound");
+  const st = foraySeamStats(seams);
+  assert.deepEqual(Object.keys(st.byKind).sort(), ["clip->clip", "clip->line", "line->clip"]);
+  assert.equal(st.byKind["line->clip"].p95Ms, 51);
+  assert.deepEqual(st.byKind["clip->clip"].prepare, { miss: 1 });
 });
 
 /* Rows in the shape the Android engine writes them: a handed-over seam, a same-source one, and one a press sat in. */
@@ -1038,10 +1097,15 @@ test("A-40 (f): GATED on every seam crossed, hidden, in one process, on the pair
   /* MUTATION: drop the p95 gate (a 1.2 s seam passes); pass with no handover; pass a Foray that
      stopped short or with another forayId; pass with the screen on. */
   const n = FORAY_SEAMS_FORAY.items.length;
-  /* A-41: the cross-source seams carry the 3 s jingle, which is sound: the gate is the silence. */
-  const seams = Array.from({ length: n - 1 }, (_, i) => (i === 3
-    ? { gapMs: 520 + i * 10, prepared: false, commanded: false, jingle: false, jingleMs: null, silenceMs: 520 + i * 10 }
-    : { gapMs: 3520 + i * 10, prepared: true, commanded: false, jingle: true, jingleMs: 3000, silenceMs: 520 + i * 10 }));
+  const items = FORAY_SEAMS_FORAY.items;
+  /* A-41: the cross-source seams carry the 3 s jingle, which is sound: the gate is the silence.
+     A-62: each seam names its kind, and a seam with a line in it was prepared. */
+  const seams = Array.from({ length: n - 1 }, (_, i) => ({
+    ...(i === 5
+      ? { gapMs: 520 + i * 10, prepared: false, commanded: false, jingle: false, jingleMs: null, silenceMs: 520 + i * 10 }
+      : { gapMs: 3520 + i * 10, prepared: true, commanded: false, jingle: true, jingleMs: 3000, silenceMs: 520 + i * 10 }),
+    kind: seamKindOf(items[i], items[i + 1]), prepare: i === 5 ? "none" : "hit",
+  }));
   const good = {
     drive: { answer: { ok: true } }, wake: "Asleep", pidBefore: "1", pidAfter: "1",
     last: { index: n - 1, forayId: FORAY_SEAMS_FORAY.forayId, interlude: { available: true, sounding: false } }, seams,
@@ -1051,15 +1115,20 @@ test("A-40 (f): GATED on every seam crossed, hidden, in one process, on the pair
   assert.equal(NATIVE_GATES.foraySeamP95Ms, 1000);
   const slow = seams.map((s, i) => (i === 2 ? { ...s, gapMs: 4200, silenceMs: 1200 } : s));
   assert.match(verdictForaySeams({ ...good, seams: slow }).failures[0], /p95 seam 1200 ms is over the 1000 ms bar/);
-  assert.equal(foraySeamStats(seams).gap.p95Ms, 3580, "the raw gaps, jingle included, are recorded");
-  assert.equal(foraySeamStats(seams).jingles, 6);
+  assert.equal(foraySeamStats(seams).gap.p95Ms, 3610, "the raw gaps, jingle included, are recorded");
+  assert.equal(foraySeamStats(seams).jingles, 9);
   assert.match(verdictForaySeams({ ...good, last: { ...good.last, interlude: { available: false } } }).failures[0], /no jingle player/);
   assert.match(verdictForaySeams({ ...good, seams: seams.map((s) => ({ ...s, jingle: false })) }).failures[0], /no seam carried the jingle/);
   assert.match(verdictForaySeams({ ...good, pair: { swaps: 0 } }).failures[0], /handed over no seam/);
   assert.match(verdictForaySeams({ ...good, last: { ...good.last, index: 3 } }).failures[0], /stopped at item 3/);
   assert.match(verdictForaySeams({ ...good, last: { ...good.last, forayId: null } }).failures[0], /not playing the Foray/);
   assert.match(verdictForaySeams({ ...good, wake: "Awake" }).failures[0], /screen did not go off/);
-  assert.match(verdictForaySeams({ ...good, seams: seams.slice(0, 4) }).failures[0], /4 of the Foray's 7 seams/);
+  assert.match(verdictForaySeams({ ...good, seams: seams.slice(0, 4) }).failures[0], /4 of the Foray's 10 seams/);
+  /* A-62: a seam with a line in it that loaded cold, and a kind the rows never named. */
+  const coldLine = seams.map((s) => (s.kind === "line->clip" ? { ...s, prepare: "miss" } : s));
+  assert.match(verdictForaySeams({ ...good, seams: coldLine }).failures.join("\n"), /3 seam\(s\) with a rendered line in them were not prepared/);
+  const unnamed = seams.map((s) => ({ ...s, kind: null }));
+  assert.match(verdictForaySeams({ ...good, seams: unnamed }).failures.join("\n"), /0 of the Foray's 3 clip->line seams were read with their kind/);
   assert.match(verdictForaySeams({ ...good, drive: { answer: { ok: false } } }).failures[0], /playForay did not play/);
 });
 

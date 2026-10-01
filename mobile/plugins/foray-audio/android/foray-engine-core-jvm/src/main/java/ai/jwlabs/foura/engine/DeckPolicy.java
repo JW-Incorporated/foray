@@ -652,27 +652,90 @@ public final class DeckPolicy {
 
     /**
      * {@code prefetchWindowOpens({available, outPointSec, armed, paused, atSec, rate, leadSec,
-     * alreadyOpened = false})}: only while the player is AUDIBLE, with an armed boundary, once
-     * per boundary, and within {@code leadSec} of WALL clock.
+     * alreadyOpened = false, durationSec = null})}: only while the player is AUDIBLE, with a
+     * boundary, once per boundary, and within {@code leadSec} of WALL clock (so a faster rate opens
+     * it earlier in the episode).
+     *
+     * <p>THE BOUNDARY (NE-45j; NE-45s ported it to Swift, card A-62 to the JVM): an armed out-point
+     * when the item has one. An item with NO out-point (a rendered narration line, or an episode
+     * left to its natural end) ends where its file does, so its boundary is {@code durationSec},
+     * and an item shorter than the lead is inside its window from its first tick. An out-point that
+     * exists but is not armed is still no boundary: the duration never stands in for a slice's own
+     * end ({@link #windowBoundarySec}).
      */
     public static boolean prefetchWindowOpens(boolean available, Double outPointSec, boolean armed, boolean paused, double atSec,
+            Double rate, double leadSec, boolean alreadyOpened, Double durationSec) {
+        if (!available || paused || alreadyOpened) return false;
+        Double boundarySec = windowBoundarySec(outPointSec, armed, durationSec);
+        if (boundarySec == null) return false;
+        return !((boundarySec - atSec) / deckRate(rate) > leadSec);
+    }
+
+    /** {@link #prefetchWindowOpens} with no duration: the out-point is the only boundary. */
+    public static boolean prefetchWindowOpens(boolean available, Double outPointSec, boolean armed, boolean paused, double atSec,
             Double rate, double leadSec, boolean alreadyOpened) {
-        if (!available || outPointSec == null || !armed || paused || alreadyOpened) return false;
-        return !((outPointSec - atSec) / deckRate(rate) > leadSec);
+        return prefetchWindowOpens(available, outPointSec, armed, paused, atSec, rate, leadSec, alreadyOpened, null);
     }
 
     /**
-     * When, in WALL-CLOCK ms from now, the prefetch window will open for a deck playing toward
-     * {@code outPointSec}: 0 when it is open already, null when it cannot open (the same guards as
-     * {@link #prefetchWindowOpens}). Rounded up, so the timer never fires before the window is open.
+     * The boundary the prefetch window approaches ({@link #prefetchWindowOpens}'s
+     * {@code boundarySec}): the out-point when there is one (and only while it is armed), else a
+     * finite, positive duration, else none. deck-policy.js's
+     * {@code outPointSec != null ? (armed ? outPointSec : null) : Number.isFinite(d) && d > 0 ? d : null}.
+     */
+    public static Double windowBoundarySec(Double outPointSec, boolean armed, Double durationSec) {
+        if (outPointSec != null) return armed ? outPointSec : null;
+        if (durationSec == null || !Rows.isFinite(durationSec) || !(durationSec > 0)) return null;
+        return durationSec;
+    }
+
+    /**
+     * When, in WALL-CLOCK ms from now, the prefetch window will open for a deck playing toward its
+     * boundary ({@link #windowBoundarySec}): 0 when it is open already, null when it cannot open
+     * (the same guards as {@link #prefetchWindowOpens}, and a playhead already at or past the
+     * boundary). The native deck arms ONE timer for it instead of asking on every tick. Rounded
+     * up, so the timer never fires before the window is open.
      */
     public static Double prefetchWindowDelayMs(boolean available, Double outPointSec, boolean armed, boolean paused, double atSec,
-            Double rate, double leadSec, boolean alreadyOpened) {
-        if (!available || outPointSec == null || !Rows.isFinite(outPointSec) || !armed || paused || alreadyOpened
-                || !(atSec < outPointSec)) {
-            return null;
-        }
-        double untilSec = (outPointSec - atSec) / deckRate(rate) - leadSec;
+            Double rate, double leadSec, boolean alreadyOpened, Double durationSec) {
+        if (!available || paused || alreadyOpened) return null;
+        Double boundarySec = windowBoundarySec(outPointSec, armed, durationSec);
+        if (boundarySec == null || !Rows.isFinite(boundarySec) || !(atSec < boundarySec)) return null;
+        double untilSec = (boundarySec - atSec) / deckRate(rate) - leadSec;
         return untilSec <= 0 ? 0.0 : Math.ceil(untilSec * 1000);
+    }
+
+    /** {@link #prefetchWindowDelayMs} with no duration: the out-point is the only boundary. */
+    public static Double prefetchWindowDelayMs(boolean available, Double outPointSec, boolean armed, boolean paused, double atSec,
+            Double rate, double leadSec, boolean alreadyOpened) {
+        return prefetchWindowDelayMs(available, outPointSec, armed, paused, atSec, rate, leadSec, alreadyOpened, null);
+    }
+
+    /**
+     * {@code warmsAcross({from, to})} (NE-45j; NE-45s's Swift port, card A-62's JVM one): is the
+     * item AFTER {@code from} prepared on the standby deck? THE RULE IS THE FILE, NOT THE BEAT. The
+     * next item is prepared when it has a file to fetch (a Foray's clip, a rendered narration line);
+     * a spoken, script-only line has none and prepares nothing; the Foray's last item (no
+     * {@code to}) prepares nothing. Until A-62 this question was {@code SeamGap.gapSec(...) > 0},
+     * which left every narration seam cold: clip, line, clip paid two cold loads.
+     *
+     * <p>A WHOLE EPISODE IS NEVER PREPARED (the M3 review, 2026-09-30): only a Foray's next slice
+     * ({@code toHasBounds}, {@link ItemBounds#make}) or a narration line ({@code toIsLine},
+     * {@code kind == "tts"}) is. M1's episode-to-episode continuation stays a cold load at the
+     * episode's own resume position; a warm at 0 would miss any episode resumed part-way, after
+     * fetching it.
+     *
+     * <p>{@code toAudioUrl} is {@code to.audio_url} when there is a {@code to} (null: none, or not
+     * a string); JavaScript's {@code typeof ... === "string" && length > 0}.
+     */
+    public static boolean warmsAcross(boolean hasFrom, boolean hasTo, String toAudioUrl, boolean toIsLine, boolean toHasBounds) {
+        if (!hasFrom || !hasTo || toAudioUrl == null || toAudioUrl.isEmpty()) return false;
+        return toIsLine || toHasBounds;
+    }
+
+    /** {@link #warmsAcross} over two queue items. */
+    public static boolean warmsAcross(EngineItem from, EngineItem to) {
+        return warmsAcross(from != null, to != null, to == null ? null : to.audioUrl, to != null && to.kind == PlayerItemKind.TTS,
+                to != null && to.bounds() != null);
     }
 }

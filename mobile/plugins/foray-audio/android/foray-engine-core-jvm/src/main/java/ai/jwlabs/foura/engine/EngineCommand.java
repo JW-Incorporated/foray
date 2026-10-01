@@ -84,7 +84,11 @@ public sealed interface EngineCommand permits EngineCommand.Deck, EngineCommand.
 
     record SilenceStop() implements EngineCommand {}
 
-    /** The surface's narration pulse ({@code onNarrationTick}): a repaint, not an act on the world. */
+    /**
+     * The surface's narration pulse ({@code onNarrationTick}): a repaint, not an act on the world. A
+     * SPOKEN line only: a RENDERED line is an ordinary deck item (A-62, NE-45s), and the deck's own
+     * position is its clock, so it is never pulsed.
+     */
     record NarrationPulse(double elapsedSec) implements EngineCommand {}
 
     /** What the core asks the synthesiser, by the utterance's {@code seq}. */

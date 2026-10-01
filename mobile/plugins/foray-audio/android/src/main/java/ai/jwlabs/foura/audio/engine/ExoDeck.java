@@ -165,8 +165,12 @@ import java.util.function.Consumer;
  * <p>The Foray tape plays through a {@link DeckPair} of two of these ({@link PairableDeck}). The
  * playing deck opens the PREFETCH WINDOW ({@code prepareWindow}) with one more one-shot timer,
  * {@code PREFETCH_LEAD_SEC} of wall clock before its boundary ({@code DeckPolicy.prefetchWindowDelayMs},
- * re-derived after every watch step), only while it is audible toward an armed boundary and only
- * when the pair has a standby deck to prepare ({@link #setPrepareWindowAvailable}). The standby
+ * re-derived after every watch step), only while it is audible toward a boundary and only when
+ * the pair has a standby deck to prepare ({@link #setPrepareWindowAvailable}). The boundary is an
+ * armed out-point, or (A-62, NE-45s) for an item with NO out-point (a rendered narration line, an
+ * episode left to its natural end) its duration ({@code DeckPolicy.windowBoundarySec}), so the clip
+ * after a rendered line is prepared while the line plays, and a line shorter than the lead opens
+ * its window at its first play. The standby
  * deck's load is an ordinary gated load under a negative token; at the handover it adopts the
  * core's token ({@link #adopt}). A lone deck never opens the window, and ignores {@code prepare}.
  */
@@ -475,15 +479,17 @@ public final class ExoDeck implements PairableDeck {
 
     /**
      * The prefetch window's one timer ({@code DeckPolicy.prefetchWindowDelayMs}), re-derived after
-     * every watch step: once per boundary, only while this deck is audible toward an armed boundary,
-     * and only with a standby deck. The AVDeck {@code rearmPrepareWindow}.
+     * every watch step: once per boundary, only while this deck is audible toward a boundary (an
+     * armed out-point, or the item's duration when it has none, A-62), and only with a standby deck.
+     * The AVDeck {@code rearmPrepareWindow}.
      */
     private void rearmPrepareWindow() {
         if (windowTimer != null) windowTimer.cancel();
         windowTimer = null;
         if (invalidated || token == null || stage != Stage.READY) return;
         Double delay = DeckPolicy.prefetchWindowDelayMs(prepareWindowAvailable, watch.outPointSec, watch.armed && !watch.fired,
-                !watch.playing, playheadSec(), watch.rate, EngineConstants.HtmlAudioBackend.PREFETCH_LEAD_SEC, windowOpened);
+                !watch.playing, playheadSec(), watch.rate, EngineConstants.HtmlAudioBackend.PREFETCH_LEAD_SEC, windowOpened,
+                durationSec());
         if (delay == null) return;
         if (delay <= 0) {
             windowOpened = true;
