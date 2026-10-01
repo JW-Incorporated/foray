@@ -129,7 +129,7 @@ final class ContractFamilies {
     }
 
     /**
-     * {@code diag-tokens}: the seven closed sets as the generator wrote them, read from the
+     * {@code diag-tokens}: the closed sets as the generator wrote them, read from the
      * ENUMS a Java emitter spells a token through (their declaration order is what has to match
      * the JS array), and {@code admitToken} against {@link TokenAdmission#admit}. A non-string
      * set or token is null here, and the port decides what null means.
@@ -144,6 +144,8 @@ final class ContractFamilies {
         reads.put("SOURCES", tokens(Vocabulary.Source.values()));
         reads.put("MODE_REASONS", tokens(Vocabulary.ModeReason.values()));
         reads.put("FAULT_KINDS", tokens(Vocabulary.FaultKind.values()));
+        // A-64 (mirrors NE-39n): the `cause=` of a `narration kind=fallback` row.
+        reads.put("NARRATION_FALLBACK_CAUSES", tokens(Vocabulary.NarrationFallbackCause.values()));
         Map<String, Call> calls = new LinkedHashMap<>();
         calls.put("admitToken", args -> {
             String set = arg(args, 0).asString();

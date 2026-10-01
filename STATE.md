@@ -43,7 +43,8 @@ NE-38 (#892) and NE-38e (#899) on `engine/m3`.
 **Not executed.** The device check (A-68 reads Joey's pastes; D-A3).
 
 **Left for later cards.** The gate now names two fields it withholds:
-- `at` on `narration fallback` and on an injected `mode` fault. The rename to `where` is A-64's (NE-39n).
+- `at` on `narration fallback` and on an injected `mode` fault. The rename to `where` is A-64's (NE-39n). (A-64 renamed
+  the `narration fallback` one; the injected `mode` fault's `at` is unchanged.)
 - A Foray item id with `#` on one `stop` row, which is A-67's to decide.
 
 ### 2026-09-30 — `android/a-42-native-forays`: A-42, the A2 flip (native Forays on Android)

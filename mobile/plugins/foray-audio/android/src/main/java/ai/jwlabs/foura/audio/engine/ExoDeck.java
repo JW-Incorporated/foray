@@ -12,6 +12,8 @@ import ai.jwlabs.foura.engine.EngineCommand;
 import ai.jwlabs.foura.engine.EngineConstants;
 import ai.jwlabs.foura.engine.JSWriter;
 import ai.jwlabs.foura.engine.JsonNode;
+import ai.jwlabs.foura.engine.NarrationFallbackCauseReading;
+import ai.jwlabs.foura.engine.Vocabulary;
 import android.content.Context;
 import android.net.Uri;
 import android.os.Looper;
@@ -31,13 +33,19 @@ import androidx.media3.common.util.UnstableApi;
 import androidx.media3.common.util.WakeLockManager;
 import androidx.media3.common.util.WifiLockManager;
 import androidx.media3.datasource.DataSource;
+import androidx.media3.datasource.DataSourceException;
+import androidx.media3.datasource.HttpDataSource;
 import androidx.media3.exoplayer.ExoPlayer;
 import androidx.media3.exoplayer.PlayerMessage;
 import androidx.media3.exoplayer.SeekParameters;
+import androidx.media3.exoplayer.analytics.AnalyticsListener;
+import androidx.media3.exoplayer.source.LoadEventInfo;
+import androidx.media3.exoplayer.source.MediaLoadData;
 import androidx.media3.exoplayer.source.MediaSource;
 import androidx.media3.exoplayer.source.ProgressiveMediaSource;
 import androidx.media3.extractor.DefaultExtractorsFactory;
 import androidx.media3.extractor.mp3.Mp3Extractor;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.EnumSet;
@@ -356,6 +364,21 @@ public final class ExoDeck implements PairableDeck {
     private final Clock clock;
     private final HandlerWrapper handler;
     private final Player.Listener playerListener = new PlayerListener();
+    /**
+     * A-64: the last LOAD error the player retried through for the current load (Media3's
+     * {@code LoadErrorHandlingPolicy} retries an I/O error before it fails the item), so a P-13
+     * deadline can say whether the server answered or the network was gone by then: the Android
+     * counterpart of the AVPlayerItem error log the iOS deadline reads (NE-39n).
+     */
+    private final AnalyticsListener loadErrors = new AnalyticsListener() {
+        @Override
+        public void onLoadError(@NonNull EventTime eventTime, @NonNull LoadEventInfo loadEventInfo,
+                @NonNull MediaLoadData mediaLoadData, @NonNull IOException error, boolean wasCanceled) {
+            if (!wasCanceled && stage == Stage.LOADING) lastLoadError = error;
+        }
+    };
+    @Nullable
+    private IOException lastLoadError;
     private final List<String> primitives = new ArrayList<>();
 
     private DeckDriving.Listener listener;
@@ -418,6 +441,7 @@ public final class ExoDeck implements PairableDeck {
         player.setRepeatMode(Player.REPEAT_MODE_OFF);
         player.setPlayWhenReady(false);
         player.addListener(playerListener);
+        player.addAnalyticsListener(loadErrors);
     }
 
     @Override
@@ -528,6 +552,7 @@ public final class ExoDeck implements PairableDeck {
         invalidated = true;
         listener = null;
         player.removeListener(playerListener);
+        player.removeAnalyticsListener(loadErrors);
         syncGateAwake();
     }
 
@@ -554,6 +579,8 @@ public final class ExoDeck implements PairableDeck {
             player.pause();
         }
         resetOutPoint();
+        // A load error seen under the last load is not this one's (A-64).
+        lastLoadError = null;
         Double idleSec = loadedUrl == null ? null : Math.max(0, (nowMs() - lastLiveMs) / 1000.0);
         String cold = coldReason(url, preciseTiming, idleSec);
         if (cold == null) {
@@ -585,7 +612,8 @@ public final class ExoDeck implements PairableDeck {
             record("no-url");
             clearPlayer();
             deckRow("failed", newToken, m("where", str("no-url")), classField());
-            emit(new DeckEvent.Failed(newToken, "no-url"));
+            // Nothing was fetched, so nothing says why: `other`, as on iOS.
+            emit(new DeckEvent.Failed(newToken, "no-url", Vocabulary.NarrationFallbackCause.OTHER));
             return;
         }
         MediaSource source = config.mediaSources.make(url, preciseTiming);
@@ -715,7 +743,13 @@ public final class ExoDeck implements PairableDeck {
                 m("loading", JsonNode.bool(player.isLoading())),
                 m("targetSec", sec(targetStartSec)),
                 m("bufferedAheadSec", sec(bufferedAheadSec())),
-                m("marks", new JsonNode.Obj(gateMarks)));
+                m("marks", new JsonNode.Obj(gateMarks)),
+                // A-64: the last load error by then (its Media3 code and HTTP status), the
+                // values the deadline's cause is read from, so a paste can check the mapping.
+                m("loadErrCode", codeNode(sourceReason(lastLoadError))),
+                m("loadStatus", codeNode(httpStatus(lastLoadError))));
+        // Why, as the core's closed token (A-64, mirrors NE-39n), read before the detach.
+        Vocabulary.NarrationFallbackCause cause = fallbackCause(null, lastLoadError, true);
         // Detach FIRST, and move the generation, so nothing that completes late can sound:
         // a URL that turns ready at 21 s must not start the wrong thing in the car.
         detach();
@@ -723,7 +757,7 @@ public final class ExoDeck implements PairableDeck {
         stage = Stage.FAILED;
         record("detach (deadline)");
         clearPlayer();
-        emit(new DeckEvent.DeadlineExceeded(stuck, afterMs));
+        emit(new DeckEvent.DeadlineExceeded(stuck, afterMs, cause));
         syncGateAwake();
     }
 
@@ -1041,9 +1075,57 @@ public final class ExoDeck implements PairableDeck {
                 m("positionSec", sec(positionSec())),
                 m("errCode", error == null ? JsonNode.NULL : JsonNode.num(error.errorCode)),
                 // Media3's code name, as a token. Not `errName`: DiagGate drops a key that names a name.
-                m("errToken", error == null ? JsonNode.NULL : tokenNode(error.getErrorCodeName())));
-        emit(new DeckEvent.Failed(token, message));
+                m("errToken", error == null ? JsonNode.NULL : tokenNode(error.getErrorCodeName())),
+                // A-64: the source's HTTP status, when the failure carries one.
+                m("httpStatus", codeNode(httpStatus(error))));
+        emit(new DeckEvent.Failed(token, message, fallbackCause(error, lastLoadError, false)));
         syncGateAwake();
+    }
+
+    // ---------------------------------------------------------------- the fallback's cause (A-64)
+
+    /**
+     * The {@code cause=} of the core's {@code narration kind=fallback} row (A-64, mirrors NE-39n's
+     * AVDeck.fallbackCause): the failure's {@code PlaybackException} code, the reason of the
+     * {@link DataSourceException} under it, the HTTP status of an
+     * {@link HttpDataSource.InvalidResponseCodeException} under it, and the same two of the last
+     * load error the player retried through, read by the core's pure
+     * {@link NarrationFallbackCauseReading} into one closed token. Every deck failure carries one;
+     * the core writes it only when the failure is a rendered line falling back.
+     */
+    static Vocabulary.NarrationFallbackCause fallbackCause(@Nullable PlaybackException error,
+            @Nullable IOException lastLoadError, boolean deadline) {
+        List<Integer> codes = new ArrayList<>();
+        if (error != null) codes.add(error.errorCode);
+        Integer reason = sourceReason(error);
+        if (reason != null) codes.add(reason);
+        Integer status = httpStatus(error);
+        Integer loadReason = sourceReason(lastLoadError);
+        if (loadReason != null) codes.add(loadReason);
+        if (status == null) status = httpStatus(lastLoadError);
+        return NarrationFallbackCauseReading.cause(codes, status, deadline);
+    }
+
+    /** The {@code reason} (a {@code PlaybackException} code) of the first {@link DataSourceException} in the chain, or null. */
+    @Nullable
+    static Integer sourceReason(@Nullable Throwable error) {
+        for (Throwable t = error; t != null; t = t.getCause() == t ? null : t.getCause()) {
+            if (t instanceof DataSourceException d) return d.reason;
+        }
+        return null;
+    }
+
+    /** The response code of the first {@link HttpDataSource.InvalidResponseCodeException} in the chain, or null. */
+    @Nullable
+    static Integer httpStatus(@Nullable Throwable error) {
+        for (Throwable t = error; t != null; t = t.getCause() == t ? null : t.getCause()) {
+            if (t instanceof HttpDataSource.InvalidResponseCodeException e) return e.responseCode;
+        }
+        return null;
+    }
+
+    private static JsonNode codeNode(@Nullable Integer code) {
+        return code == null ? JsonNode.NULL : JsonNode.num(code);
     }
 
     // ---------------------------------------------------------------- the out-point

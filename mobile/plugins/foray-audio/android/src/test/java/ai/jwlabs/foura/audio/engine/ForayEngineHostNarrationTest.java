@@ -131,8 +131,10 @@ public class ForayEngineHostNarrationTest {
         assertEquals("the rendered line loads on the deck, as a file", "f1#1", line.itemId());
         assertEquals("https://audio.test/n/line.m4a", line.url());
         assertEquals("nothing is spoken while the file may play", null, rig.speech.line);
-        rig.deck.emit(new DeckEvent.Failed(line.token(), "network"));
+        rig.deck.emit(new DeckEvent.Failed(line.token(), "network", Vocabulary.NarrationFallbackCause.OFFLINE));
         assertTrue(rig.rows(), rig.rows().contains("\"kind\":\"fallback\""));
+        // A-64 (NE-39n): the row says why the file failed, as the deck read it.
+        assertTrue(rig.rows(), rig.rows().contains("\"cause\":\"offline\""));
         assertEquals("the script is read instead", "Read me instead.", rig.speech.line.text());
         rig.speech.end(SpeechNarrator.End.FINISHED);
         assertEquals("f1#2", rig.lastLoad().itemId());
@@ -170,11 +172,13 @@ public class ForayEngineHostNarrationTest {
             JsonNode reason = row.get("reason");
             if (event != null && "fallback".equals(event.stringValue()) && reason != null && "timeout".equals(reason.stringValue())) {
                 stored = true;
-                /* The one field the gate withholds is `at` (where the line was): `at` is the DiagRow's
-                   wall clock, so the ring could never carry it (before A-60 it vanished without a word).
-                   NE-39n renames it `where` on iOS; its JVM port is A-64's. */
-                JsonNode dropped = row.get("dropped");
-                if (dropped != null) assertEquals("only `at` is withheld: " + row, "[\"at\"]", ai.jwlabs.foura.engine.JSWriter.stringify(dropped));
+                /* Nothing is withheld (A-64, mirrors NE-39n): where the line was is `where`, not `at`
+                   (the DiagRow's wall clock, which A-60's gate withheld), and the deadline's `cause`
+                   is admitted through the fallback's own set, not stopCause. */
+                assertEquals("nothing withheld: " + row, null, row.get("dropped"));
+                // A line after a clip loads at the seam, as the transition's bridge.
+                assertEquals("bridge", row.get("where") == null ? null : row.get("where").stringValue());
+                assertEquals("timeout", row.get("cause").stringValue());
             }
         }
         assertTrue("the page's ring has the fallback, sub-kind and all: " + rig.log.diagnosticRows(), stored);
