@@ -1027,6 +1027,33 @@ test("A-62 (f): a rendered line's seam opens at its natural end, and the seam ro
   assert.deepEqual(st.byKind["clip->clip"].prepare, { miss: 1 });
 });
 
+test("A-62 (f): a line's seam opens at the core's first row after the deck's end, which precedes the player's pause", () => {
+  /* Run 36796964815's order (f-foray-engine-rows.txt #279-#287): the core answers the line's
+     `ended` with the beat and the jingle, and the player's `time-control paused` comes 25 ms later.
+     MUTATION: open the seam only at the pause (the jingle is then outside it and its 3 s count as
+     silence, which is what that run's verdict did). */
+  const rows = [
+    '272 2026-10-01T00:47:16.453Z deck {"kind":"time-control","token":20,"status":"playing"}',
+    '279 2026-10-01T00:47:21.582Z beat {"kind":"begin"}',
+    '280 2026-10-01T00:47:21.582Z interlude {"kind":"started"}',
+    '281 2026-10-01T00:47:21.586Z prepare {"kind":"promote","token":21}',
+    '283 2026-10-01T00:47:21.607Z deck {"kind":"time-control","token":20,"status":"paused"}',
+    '284 2026-10-01T00:47:24.674Z interlude {"kind":"ended","why":"ended"}',
+    '285 2026-10-01T00:47:24.675Z beat {"kind":"end"}',
+    '286 2026-10-01T00:47:24.675Z seam {"observedGapMs":3093,"askedGapMs":0,"prepared":true,"stages":["play"],"from":"line","to":"clip","prepare":"hit"}',
+    '287 2026-10-01T00:47:24.681Z deck {"kind":"time-control","token":21,"status":"playing"}',
+  ].map(parseEngineRow);
+  const [seam, ...rest] = foraySeams(rows);
+  assert.equal(rest.length, 0);
+  assert.equal(seam.kind, "line->clip");
+  assert.equal(seam.gapMs, 3099);
+  assert.equal(seam.jingle, true);
+  assert.equal(seam.jingleMs, 3092);
+  assert.equal(seam.silenceMs, 7);
+  assert.equal(seam.fromToken, 20);
+  assert.equal(seam.toToken, 21);
+});
+
 /* Rows in the shape the Android engine writes them: a handed-over seam, a same-source one, and one a press sat in. */
 const FORAY_ROWS = [
   '10 2026-09-30T00:00:00.000Z deck {"kind":"attach","token":1,"cold":"no-item"}',

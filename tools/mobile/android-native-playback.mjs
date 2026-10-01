@@ -943,10 +943,14 @@ export function episodeSeamStats(seams) {
  * it: the gap the core measured (out-point to the play it commanded) and whether the standby deck
  * had the segment (`prepared`). A seam with a command between is `commanded`.
  *
- * A-62: a RENDERED line has no out-point. Its seam opens at its natural end, the playing load's
- * first `time-control paused` (a stall is `waiting`, and a press is a command), when no seam is
- * open already. The seam row's `from`, `to` and `prepare` (NE-45s) name the seam's kind
- * (`clip->line`, ...) and whether the standby deck had the item. Pure.
+ * A-62: a RENDERED line has no out-point. Its seam opens at its natural end, when no seam is open
+ * already, at the FIRST row that says the line is over: the core's answer to the deck's `ended`
+ * (`interlude started|skipped`, `beat begin`, the pair's `prepare promote`), or the playing load's
+ * `time-control paused` (a stall is `waiting`, and a press is a command). The core's rows come
+ * first: Media3 reports the end before the player's is-playing change (run 36796964815, where a
+ * seam opened at the pause missed the jingle that had already started). The seam row's `from`,
+ * `to` and `prepare` (NE-45s) name the seam's kind (`clip->line`, ...) and whether the standby
+ * deck had the item. Pure.
  */
 export function foraySeams(rows) {
   const seams = [];
@@ -967,6 +971,9 @@ export function foraySeams(rows) {
       open = opened(r, j.token, null);
       continue;
     }
+    const endsTheItem = (r.kind === "interlude" && (j.kind === "started" || j.kind === "skipped"))
+      || (r.kind === "beat" && j.kind === "begin") || (r.kind === "prepare" && j.kind === "promote");
+    if (endsTheItem && !open && playingToken != null) open = opened(r, playingToken, null);
     /* A-41: the jingle the seam carried, from the core's `interlude kind=started` to its end
        (`ended`, the host's `ceiling`, or a `cut`). Sound, not silence. */
     if (r.kind === "interlude" && open) {
