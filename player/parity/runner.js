@@ -556,8 +556,29 @@ async function runDeckScenario(c, setup, ctx) {
 
 export const ENGINE_DECK_EVENTS = Object.freeze(["ended", "error", "time", "duration", "window", "stall", "flowing"]);
 
+/** The engine target's remote surface (the M2 drive's car presses, 2026-10-01):
+    on iOS a lock-screen, car or headset press is the ENGINE's own command
+    (EngineCore.onRemote, plan §4.5), not the page's, so each surface method
+    sends the command the press stands for, from source `remote`. Through
+    `mediaSessionActions`, like the manager target's, so a remap reaches the
+    engine exactly as it reaches the page. A remote stop pauses natively (T-7)
+    where the JS surface closes, and the Swift driver runs no case of it; this
+    refuses it the same way. */
+function engineRemoteSurface(send) {
+  return {
+    play: () => send("play"),
+    pause: () => send("pause"),
+    stop: () => { throw new HarnessError("E_BAD_CASE", "a remote stop pauses natively (T-7) where the JS surface closes; no engine case runs it"); },
+    next: () => send("next"),
+    previous: () => send("previous"),
+    seekBy: (offset) => send("seekBy", { deltaSec: offset }),
+    seekTo: (position) => send("seekTo", { sec: position }),
+  };
+}
+
 async function runEngineScenario(c, setup, ctx) {
   const { ReferenceEngine } = await importModule(ctx.root, "player/parity/reference-engine.js");
+  const { mediaSessionActions } = await importModule(ctx.root, "player/media-session.js");
   const log = new OpLog();
   const scheduler = manualScheduler();
   const eng = new ReferenceEngine({
@@ -612,11 +633,22 @@ async function runEngineScenario(c, setup, ctx) {
         case "settle":
           for (let n = 0; n < (Number.isInteger(step.settle) && step.settle > 0 ? step.settle : 1); n++) await tick();
           break;
+        case "remote": {
+          if (!REMOTE_ACTIONS.includes(step.remote)) {
+            throw new HarnessError("E_BAD_CASE", `unknown remote action ${JSON.stringify(step.remote)} (have ${REMOTE_ACTIONS.join(", ")})`);
+          }
+          const send = (cmd, args) => eng.engineSend({ v: 1, cmdSeq: ++cmdSeq, cmd, source: "remote", ...(args !== undefined ? { args } : {}) });
+          const handler = new Map(mediaSessionActions(engineRemoteSurface(send))).get(step.remote);
+          if (!handler) throw new HarnessError("E_BAD_CASE", `the surface installs no "${step.remote}" handler, so the OS could never deliver this press`);
+          await ("details" in step ? handler(expandInputs(step.details, ctx)) : handler());
+          await tick();
+          break;
+        }
         case "checkpoint":
           checkpoint(step.checkpoint);
           break;
         default:
-          throw new HarnessError("E_BAD_CASE", `the engine target takes call, deck, clock, settle and checkpoint steps, not "${verb}"`);
+          throw new HarnessError("E_BAD_CASE", `the engine target takes call, deck, clock, settle, remote and checkpoint steps, not "${verb}"`);
       }
     }
     await tick();

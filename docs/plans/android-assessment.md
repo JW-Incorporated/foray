@@ -607,6 +607,9 @@ Rejected alternatives:
 - **Ask:** Port `EngineCore` for Forays: `playForay`, in-points, the gate, seams, and Foray transport. Play it
   through an ExoPlayer playlist of `MediaItem`s with `ClippingConfiguration` (gapless), or a two-deck pair,
   whichever passes the never-early out-point tests. Port SeamGap, Interlude, SeekPolicy and ForayClock.
+  Foray transport includes the remote handlers: the car's and the lock screen's skips and scrub step on the
+  Foray clock (`forayNudge` / `forayScrub`, `nudgeAction`, `scrubTarget`), never the episode seek (M2 drive
+  2026-10-01; `manager-foray/narration-skip-*`). The JVM `TransportPolicy.scrubTarget` already carries the rule.
 - **Acceptance:** The Foray parity families are 0 pending on the JVM. A-05 (f) in native mode shows p95 seam
   ≤ 1 s with the screen off.
 - **Device check:** a locked Foray on the Pixel with timed seams.

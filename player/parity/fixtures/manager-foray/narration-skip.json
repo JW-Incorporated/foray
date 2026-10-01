@@ -1,0 +1,2749 @@
+{
+  "family": "manager-foray",
+  "note": "M2 drive 2026-10-01 (Bug 2, the founder's \"skip backwards didn't work during the AI narration\"): the car's and the lock screen's back-15 / forward-30 / scrub inside a Foray, on the ENGINE target (reference-engine.js; EngineCore.onRemote natively). The press is the engine's own command from source remote (runner.js engineRemoteSurface), and every one is a step on the FORAY's clock: a target in a clip plays it at its offset, crossing items as needed; inside the SPOKEN line sounding, back says it again and forward goes on past it (nudgeAction); a scrub into it restarts it; a RENDERED line seeks like a clip, also in transitioning, where the reducer refuses a seek. Foray clock: s0 0-100, n1 (spoken, 32 s) 100-132, s1 132-232, n2 (rendered, 32 s) 232-264, s2 264-364. JVM: the family is owed whole to A-40 (Foray transport).",
+  "cases": [
+    {
+      "id": "manager-foray/narration-skip-spoken-start-back-crosses-into-the-clip",
+      "covers": [],
+      "authored": true,
+      "note": "AUTHORED (M2 drive 2026-10-01, e#770: 0.2 s into a ~32 s line): the car's back-15 at the START of a spoken line steps back on the Foray clock (100 -> 85) into the clip before it, reloaded at its own second 185. It used to be the EPISODE seek, refused in transitioning.",
+      "setup": { "target": "engine", "backend": { "durationById": { "n2": 32 } } },
+      "steps": [
+        {
+          "call": "playForay",
+          "args": {
+            "forayId": "f1",
+            "title": "A Foray",
+            "items": [
+              {
+                "type": "segment",
+                "id": "s0",
+                "audio_url": "https://cdn.test/a.mp3",
+                "start_sec": 100,
+                "end_sec": 200,
+                "duration_sec": 3600
+              },
+              {
+                "type": "narration",
+                "id": "n1",
+                "script": "The next clip picks up the same question from the other side of the table.",
+                "duration_sec": 32
+              },
+              {
+                "type": "segment",
+                "id": "s1",
+                "audio_url": "https://cdn.test/b.mp3",
+                "start_sec": 300,
+                "end_sec": 400,
+                "duration_sec": 3600
+              },
+              {
+                "type": "narration",
+                "id": "n2",
+                "audio_url": "https://cdn.test/n2.m4a",
+                "script": "Here the argument turns: what changes when the model has to run on a phone.",
+                "duration_sec": 32
+              },
+              {
+                "type": "segment",
+                "id": "s2",
+                "audio_url": "https://cdn.test/c.mp3",
+                "start_sec": 500,
+                "end_sec": 600,
+                "duration_sec": 3600
+              }
+            ],
+            "buildReport": {},
+            "isLocalFile": false,
+            "allowAdPad": false,
+            "voiceId": null
+          }
+        },
+        { "deck": "time", "sec": 200 },
+        { "deck": "ended", "reason": "outPoint" },
+        { "checkpoint": "line" },
+        { "clock": 200 },
+        { "remote": "seekbackward" },
+        { "checkpoint": "after" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "line",
+            "nowMs": 0,
+            "ops": [
+              "load:f1#0@100",
+              "rate:1",
+              "outPoint:200",
+              "play",
+              "tts.speak:The next clip picks up the same question from the other side of the table.@1",
+              "n.prepare:f1#2@300"
+            ],
+            "playhead": "n1",
+            "rate": 1,
+            "state": "transitioning"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "after",
+            "nowMs": 200,
+            "ops": ["tts.pause", "load:f1#0@185", "rate:1", "outPoint:200", "play"],
+            "playhead": "f1#0",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "end",
+            "nowMs": 200,
+            "ops": [],
+            "playhead": "f1#0",
+            "rate": 1,
+            "state": "playing"
+          }
+        ],
+        "ops": [
+          "load:f1#0@100",
+          "rate:1",
+          "outPoint:200",
+          "play",
+          "tts.speak:The next clip picks up the same question from the other side of the table.@1",
+          "n.prepare:f1#2@300",
+          "tts.pause",
+          "load:f1#0@185",
+          "rate:1",
+          "outPoint:200",
+          "play"
+        ]
+      }
+    },
+    {
+      "id": "manager-foray/narration-skip-spoken-middle-back-restarts-the-line",
+      "covers": [],
+      "authored": true,
+      "note": "AUTHORED (M2 drive 2026-10-01): Back-15 20 s into a 32 s spoken line lands inside it (120 -> 105): the synthesiser has no offset, so the line is said again from its first word (nudgeAction restart-line).",
+      "setup": { "target": "engine", "backend": { "durationById": { "n2": 32 } } },
+      "steps": [
+        {
+          "call": "playForay",
+          "args": {
+            "forayId": "f1",
+            "title": "A Foray",
+            "items": [
+              {
+                "type": "segment",
+                "id": "s0",
+                "audio_url": "https://cdn.test/a.mp3",
+                "start_sec": 100,
+                "end_sec": 200,
+                "duration_sec": 3600
+              },
+              {
+                "type": "narration",
+                "id": "n1",
+                "script": "The next clip picks up the same question from the other side of the table.",
+                "duration_sec": 32
+              },
+              {
+                "type": "segment",
+                "id": "s1",
+                "audio_url": "https://cdn.test/b.mp3",
+                "start_sec": 300,
+                "end_sec": 400,
+                "duration_sec": 3600
+              },
+              {
+                "type": "narration",
+                "id": "n2",
+                "audio_url": "https://cdn.test/n2.m4a",
+                "script": "Here the argument turns: what changes when the model has to run on a phone.",
+                "duration_sec": 32
+              },
+              {
+                "type": "segment",
+                "id": "s2",
+                "audio_url": "https://cdn.test/c.mp3",
+                "start_sec": 500,
+                "end_sec": 600,
+                "duration_sec": 3600
+              }
+            ],
+            "buildReport": {},
+            "isLocalFile": false,
+            "allowAdPad": false,
+            "voiceId": null
+          }
+        },
+        { "deck": "time", "sec": 200 },
+        { "deck": "ended", "reason": "outPoint" },
+        { "checkpoint": "line" },
+        { "clock": 20000 },
+        { "remote": "seekbackward" },
+        { "checkpoint": "after" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "line",
+            "nowMs": 0,
+            "ops": [
+              "load:f1#0@100",
+              "rate:1",
+              "outPoint:200",
+              "play",
+              "tts.speak:The next clip picks up the same question from the other side of the table.@1",
+              "n.prepare:f1#2@300"
+            ],
+            "playhead": "n1",
+            "rate": 1,
+            "state": "transitioning"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "after",
+            "nowMs": 20000,
+            "ops": [
+              "tts.pause",
+              "tts.speak:The next clip picks up the same question from the other side of the table.@1"
+            ],
+            "playhead": "n1",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "end",
+            "nowMs": 20000,
+            "ops": [],
+            "playhead": "n1",
+            "rate": 1,
+            "state": "playing"
+          }
+        ],
+        "ops": [
+          "load:f1#0@100",
+          "rate:1",
+          "outPoint:200",
+          "play",
+          "tts.speak:The next clip picks up the same question from the other side of the table.@1",
+          "n.prepare:f1#2@300",
+          "tts.pause",
+          "tts.speak:The next clip picks up the same question from the other side of the table.@1"
+        ]
+      }
+    },
+    {
+      "id": "manager-foray/narration-skip-spoken-end-back-restarts-the-line",
+      "covers": [],
+      "authored": true,
+      "note": "AUTHORED (M2 drive 2026-10-01): Back-15 31 s into the spoken line (131 -> 116) is still inside it: the line again from the top.",
+      "setup": { "target": "engine", "backend": { "durationById": { "n2": 32 } } },
+      "steps": [
+        {
+          "call": "playForay",
+          "args": {
+            "forayId": "f1",
+            "title": "A Foray",
+            "items": [
+              {
+                "type": "segment",
+                "id": "s0",
+                "audio_url": "https://cdn.test/a.mp3",
+                "start_sec": 100,
+                "end_sec": 200,
+                "duration_sec": 3600
+              },
+              {
+                "type": "narration",
+                "id": "n1",
+                "script": "The next clip picks up the same question from the other side of the table.",
+                "duration_sec": 32
+              },
+              {
+                "type": "segment",
+                "id": "s1",
+                "audio_url": "https://cdn.test/b.mp3",
+                "start_sec": 300,
+                "end_sec": 400,
+                "duration_sec": 3600
+              },
+              {
+                "type": "narration",
+                "id": "n2",
+                "audio_url": "https://cdn.test/n2.m4a",
+                "script": "Here the argument turns: what changes when the model has to run on a phone.",
+                "duration_sec": 32
+              },
+              {
+                "type": "segment",
+                "id": "s2",
+                "audio_url": "https://cdn.test/c.mp3",
+                "start_sec": 500,
+                "end_sec": 600,
+                "duration_sec": 3600
+              }
+            ],
+            "buildReport": {},
+            "isLocalFile": false,
+            "allowAdPad": false,
+            "voiceId": null
+          }
+        },
+        { "deck": "time", "sec": 200 },
+        { "deck": "ended", "reason": "outPoint" },
+        { "checkpoint": "line" },
+        { "clock": 31000 },
+        { "remote": "seekbackward" },
+        { "checkpoint": "after" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "line",
+            "nowMs": 0,
+            "ops": [
+              "load:f1#0@100",
+              "rate:1",
+              "outPoint:200",
+              "play",
+              "tts.speak:The next clip picks up the same question from the other side of the table.@1",
+              "n.prepare:f1#2@300"
+            ],
+            "playhead": "n1",
+            "rate": 1,
+            "state": "transitioning"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "after",
+            "nowMs": 31000,
+            "ops": [
+              "tts.pause",
+              "tts.speak:The next clip picks up the same question from the other side of the table.@1"
+            ],
+            "playhead": "n1",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "end",
+            "nowMs": 31000,
+            "ops": [],
+            "playhead": "n1",
+            "rate": 1,
+            "state": "playing"
+          }
+        ],
+        "ops": [
+          "load:f1#0@100",
+          "rate:1",
+          "outPoint:200",
+          "play",
+          "tts.speak:The next clip picks up the same question from the other side of the table.@1",
+          "n.prepare:f1#2@300",
+          "tts.pause",
+          "tts.speak:The next clip picks up the same question from the other side of the table.@1"
+        ]
+      }
+    },
+    {
+      "id": "manager-foray/narration-skip-spoken-start-forward-skips-the-line",
+      "covers": [],
+      "authored": true,
+      "note": "AUTHORED (M2 drive 2026-10-01): Forward-30 at the start of a 32 s spoken line lands inside it (100 -> 130): forward inside a spoken line goes on to the clip after it, at its in-point (nudgeAction skip-line, the page's own rule).",
+      "setup": { "target": "engine", "backend": { "durationById": { "n2": 32 } } },
+      "steps": [
+        {
+          "call": "playForay",
+          "args": {
+            "forayId": "f1",
+            "title": "A Foray",
+            "items": [
+              {
+                "type": "segment",
+                "id": "s0",
+                "audio_url": "https://cdn.test/a.mp3",
+                "start_sec": 100,
+                "end_sec": 200,
+                "duration_sec": 3600
+              },
+              {
+                "type": "narration",
+                "id": "n1",
+                "script": "The next clip picks up the same question from the other side of the table.",
+                "duration_sec": 32
+              },
+              {
+                "type": "segment",
+                "id": "s1",
+                "audio_url": "https://cdn.test/b.mp3",
+                "start_sec": 300,
+                "end_sec": 400,
+                "duration_sec": 3600
+              },
+              {
+                "type": "narration",
+                "id": "n2",
+                "audio_url": "https://cdn.test/n2.m4a",
+                "script": "Here the argument turns: what changes when the model has to run on a phone.",
+                "duration_sec": 32
+              },
+              {
+                "type": "segment",
+                "id": "s2",
+                "audio_url": "https://cdn.test/c.mp3",
+                "start_sec": 500,
+                "end_sec": 600,
+                "duration_sec": 3600
+              }
+            ],
+            "buildReport": {},
+            "isLocalFile": false,
+            "allowAdPad": false,
+            "voiceId": null
+          }
+        },
+        { "deck": "time", "sec": 200 },
+        { "deck": "ended", "reason": "outPoint" },
+        { "checkpoint": "line" },
+        { "remote": "seekforward" },
+        { "checkpoint": "after" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "line",
+            "nowMs": 0,
+            "ops": [
+              "load:f1#0@100",
+              "rate:1",
+              "outPoint:200",
+              "play",
+              "tts.speak:The next clip picks up the same question from the other side of the table.@1",
+              "n.prepare:f1#2@300"
+            ],
+            "playhead": "n1",
+            "rate": 1,
+            "state": "transitioning"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 2,
+            "name": "after",
+            "nowMs": 0,
+            "ops": [
+              "tts.pause",
+              "n.handover:f1#2@300",
+              "load:f1#2@300",
+              "rate:1",
+              "outPoint:400",
+              "play"
+            ],
+            "playhead": "f1#2",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 2,
+            "name": "end",
+            "nowMs": 0,
+            "ops": [],
+            "playhead": "f1#2",
+            "rate": 1,
+            "state": "playing"
+          }
+        ],
+        "ops": [
+          "load:f1#0@100",
+          "rate:1",
+          "outPoint:200",
+          "play",
+          "tts.speak:The next clip picks up the same question from the other side of the table.@1",
+          "n.prepare:f1#2@300",
+          "tts.pause",
+          "n.handover:f1#2@300",
+          "load:f1#2@300",
+          "rate:1",
+          "outPoint:400",
+          "play"
+        ]
+      }
+    },
+    {
+      "id": "manager-foray/narration-skip-spoken-middle-forward-crosses-into-the-next-clip",
+      "covers": [],
+      "authored": true,
+      "note": "AUTHORED (M2 drive 2026-10-01): Forward-30 10 s into the spoken line (110 -> 140) crosses into the next clip, 8 s in: its own second 308.",
+      "setup": { "target": "engine", "backend": { "durationById": { "n2": 32 } } },
+      "steps": [
+        {
+          "call": "playForay",
+          "args": {
+            "forayId": "f1",
+            "title": "A Foray",
+            "items": [
+              {
+                "type": "segment",
+                "id": "s0",
+                "audio_url": "https://cdn.test/a.mp3",
+                "start_sec": 100,
+                "end_sec": 200,
+                "duration_sec": 3600
+              },
+              {
+                "type": "narration",
+                "id": "n1",
+                "script": "The next clip picks up the same question from the other side of the table.",
+                "duration_sec": 32
+              },
+              {
+                "type": "segment",
+                "id": "s1",
+                "audio_url": "https://cdn.test/b.mp3",
+                "start_sec": 300,
+                "end_sec": 400,
+                "duration_sec": 3600
+              },
+              {
+                "type": "narration",
+                "id": "n2",
+                "audio_url": "https://cdn.test/n2.m4a",
+                "script": "Here the argument turns: what changes when the model has to run on a phone.",
+                "duration_sec": 32
+              },
+              {
+                "type": "segment",
+                "id": "s2",
+                "audio_url": "https://cdn.test/c.mp3",
+                "start_sec": 500,
+                "end_sec": 600,
+                "duration_sec": 3600
+              }
+            ],
+            "buildReport": {},
+            "isLocalFile": false,
+            "allowAdPad": false,
+            "voiceId": null
+          }
+        },
+        { "deck": "time", "sec": 200 },
+        { "deck": "ended", "reason": "outPoint" },
+        { "checkpoint": "line" },
+        { "clock": 10000 },
+        { "remote": "seekforward" },
+        { "checkpoint": "after" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "line",
+            "nowMs": 0,
+            "ops": [
+              "load:f1#0@100",
+              "rate:1",
+              "outPoint:200",
+              "play",
+              "tts.speak:The next clip picks up the same question from the other side of the table.@1",
+              "n.prepare:f1#2@300"
+            ],
+            "playhead": "n1",
+            "rate": 1,
+            "state": "transitioning"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 2,
+            "name": "after",
+            "nowMs": 10000,
+            "ops": ["tts.pause", "load:f1#2@308", "rate:1", "outPoint:400", "play"],
+            "playhead": "f1#2",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 2,
+            "name": "end",
+            "nowMs": 10000,
+            "ops": [],
+            "playhead": "f1#2",
+            "rate": 1,
+            "state": "playing"
+          }
+        ],
+        "ops": [
+          "load:f1#0@100",
+          "rate:1",
+          "outPoint:200",
+          "play",
+          "tts.speak:The next clip picks up the same question from the other side of the table.@1",
+          "n.prepare:f1#2@300",
+          "tts.pause",
+          "load:f1#2@308",
+          "rate:1",
+          "outPoint:400",
+          "play"
+        ]
+      }
+    },
+    {
+      "id": "manager-foray/narration-skip-spoken-end-forward-crosses-into-the-next-clip",
+      "covers": [],
+      "authored": true,
+      "note": "AUTHORED (M2 drive 2026-10-01): Forward-30 31 s into the spoken line (131 -> 161) lands 29 s into the next clip: 329.",
+      "setup": { "target": "engine", "backend": { "durationById": { "n2": 32 } } },
+      "steps": [
+        {
+          "call": "playForay",
+          "args": {
+            "forayId": "f1",
+            "title": "A Foray",
+            "items": [
+              {
+                "type": "segment",
+                "id": "s0",
+                "audio_url": "https://cdn.test/a.mp3",
+                "start_sec": 100,
+                "end_sec": 200,
+                "duration_sec": 3600
+              },
+              {
+                "type": "narration",
+                "id": "n1",
+                "script": "The next clip picks up the same question from the other side of the table.",
+                "duration_sec": 32
+              },
+              {
+                "type": "segment",
+                "id": "s1",
+                "audio_url": "https://cdn.test/b.mp3",
+                "start_sec": 300,
+                "end_sec": 400,
+                "duration_sec": 3600
+              },
+              {
+                "type": "narration",
+                "id": "n2",
+                "audio_url": "https://cdn.test/n2.m4a",
+                "script": "Here the argument turns: what changes when the model has to run on a phone.",
+                "duration_sec": 32
+              },
+              {
+                "type": "segment",
+                "id": "s2",
+                "audio_url": "https://cdn.test/c.mp3",
+                "start_sec": 500,
+                "end_sec": 600,
+                "duration_sec": 3600
+              }
+            ],
+            "buildReport": {},
+            "isLocalFile": false,
+            "allowAdPad": false,
+            "voiceId": null
+          }
+        },
+        { "deck": "time", "sec": 200 },
+        { "deck": "ended", "reason": "outPoint" },
+        { "checkpoint": "line" },
+        { "clock": 31000 },
+        { "remote": "seekforward" },
+        { "checkpoint": "after" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "line",
+            "nowMs": 0,
+            "ops": [
+              "load:f1#0@100",
+              "rate:1",
+              "outPoint:200",
+              "play",
+              "tts.speak:The next clip picks up the same question from the other side of the table.@1",
+              "n.prepare:f1#2@300"
+            ],
+            "playhead": "n1",
+            "rate": 1,
+            "state": "transitioning"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 2,
+            "name": "after",
+            "nowMs": 31000,
+            "ops": ["tts.pause", "load:f1#2@329", "rate:1", "outPoint:400", "play"],
+            "playhead": "f1#2",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 2,
+            "name": "end",
+            "nowMs": 31000,
+            "ops": [],
+            "playhead": "f1#2",
+            "rate": 1,
+            "state": "playing"
+          }
+        ],
+        "ops": [
+          "load:f1#0@100",
+          "rate:1",
+          "outPoint:200",
+          "play",
+          "tts.speak:The next clip picks up the same question from the other side of the table.@1",
+          "n.prepare:f1#2@300",
+          "tts.pause",
+          "load:f1#2@329",
+          "rate:1",
+          "outPoint:400",
+          "play"
+        ]
+      }
+    },
+    {
+      "id": "manager-foray/narration-skip-spoken-scrub-inside-the-line-restarts-it",
+      "covers": [],
+      "authored": true,
+      "note": "AUTHORED (M2 drive 2026-10-01): A lock-screen or car scrub (seekto, a Foray-clock second) inside the spoken line sounding says it again from the top; it used to be read as a second of the clip's file and refused.",
+      "setup": { "target": "engine", "backend": { "durationById": { "n2": 32 } } },
+      "steps": [
+        {
+          "call": "playForay",
+          "args": {
+            "forayId": "f1",
+            "title": "A Foray",
+            "items": [
+              {
+                "type": "segment",
+                "id": "s0",
+                "audio_url": "https://cdn.test/a.mp3",
+                "start_sec": 100,
+                "end_sec": 200,
+                "duration_sec": 3600
+              },
+              {
+                "type": "narration",
+                "id": "n1",
+                "script": "The next clip picks up the same question from the other side of the table.",
+                "duration_sec": 32
+              },
+              {
+                "type": "segment",
+                "id": "s1",
+                "audio_url": "https://cdn.test/b.mp3",
+                "start_sec": 300,
+                "end_sec": 400,
+                "duration_sec": 3600
+              },
+              {
+                "type": "narration",
+                "id": "n2",
+                "audio_url": "https://cdn.test/n2.m4a",
+                "script": "Here the argument turns: what changes when the model has to run on a phone.",
+                "duration_sec": 32
+              },
+              {
+                "type": "segment",
+                "id": "s2",
+                "audio_url": "https://cdn.test/c.mp3",
+                "start_sec": 500,
+                "end_sec": 600,
+                "duration_sec": 3600
+              }
+            ],
+            "buildReport": {},
+            "isLocalFile": false,
+            "allowAdPad": false,
+            "voiceId": null
+          }
+        },
+        { "deck": "time", "sec": 200 },
+        { "deck": "ended", "reason": "outPoint" },
+        { "checkpoint": "line" },
+        { "clock": 5000 },
+        { "remote": "seekto", "details": { "seekTime": 120 } },
+        { "checkpoint": "after" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "line",
+            "nowMs": 0,
+            "ops": [
+              "load:f1#0@100",
+              "rate:1",
+              "outPoint:200",
+              "play",
+              "tts.speak:The next clip picks up the same question from the other side of the table.@1",
+              "n.prepare:f1#2@300"
+            ],
+            "playhead": "n1",
+            "rate": 1,
+            "state": "transitioning"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "after",
+            "nowMs": 5000,
+            "ops": [
+              "tts.pause",
+              "tts.speak:The next clip picks up the same question from the other side of the table.@1"
+            ],
+            "playhead": "n1",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "end",
+            "nowMs": 5000,
+            "ops": [],
+            "playhead": "n1",
+            "rate": 1,
+            "state": "playing"
+          }
+        ],
+        "ops": [
+          "load:f1#0@100",
+          "rate:1",
+          "outPoint:200",
+          "play",
+          "tts.speak:The next clip picks up the same question from the other side of the table.@1",
+          "n.prepare:f1#2@300",
+          "tts.pause",
+          "tts.speak:The next clip picks up the same question from the other side of the table.@1"
+        ]
+      }
+    },
+    {
+      "id": "manager-foray/narration-skip-spoken-scrub-into-the-next-clip-reloads-it",
+      "covers": [],
+      "authored": true,
+      "note": "AUTHORED (M2 drive 2026-10-01): A scrub from inside a spoken line to Foray second 150 lands 18 s into the next clip: 318.",
+      "setup": { "target": "engine", "backend": { "durationById": { "n2": 32 } } },
+      "steps": [
+        {
+          "call": "playForay",
+          "args": {
+            "forayId": "f1",
+            "title": "A Foray",
+            "items": [
+              {
+                "type": "segment",
+                "id": "s0",
+                "audio_url": "https://cdn.test/a.mp3",
+                "start_sec": 100,
+                "end_sec": 200,
+                "duration_sec": 3600
+              },
+              {
+                "type": "narration",
+                "id": "n1",
+                "script": "The next clip picks up the same question from the other side of the table.",
+                "duration_sec": 32
+              },
+              {
+                "type": "segment",
+                "id": "s1",
+                "audio_url": "https://cdn.test/b.mp3",
+                "start_sec": 300,
+                "end_sec": 400,
+                "duration_sec": 3600
+              },
+              {
+                "type": "narration",
+                "id": "n2",
+                "audio_url": "https://cdn.test/n2.m4a",
+                "script": "Here the argument turns: what changes when the model has to run on a phone.",
+                "duration_sec": 32
+              },
+              {
+                "type": "segment",
+                "id": "s2",
+                "audio_url": "https://cdn.test/c.mp3",
+                "start_sec": 500,
+                "end_sec": 600,
+                "duration_sec": 3600
+              }
+            ],
+            "buildReport": {},
+            "isLocalFile": false,
+            "allowAdPad": false,
+            "voiceId": null
+          }
+        },
+        { "deck": "time", "sec": 200 },
+        { "deck": "ended", "reason": "outPoint" },
+        { "checkpoint": "line" },
+        { "clock": 5000 },
+        { "remote": "seekto", "details": { "seekTime": 150 } },
+        { "checkpoint": "after" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "line",
+            "nowMs": 0,
+            "ops": [
+              "load:f1#0@100",
+              "rate:1",
+              "outPoint:200",
+              "play",
+              "tts.speak:The next clip picks up the same question from the other side of the table.@1",
+              "n.prepare:f1#2@300"
+            ],
+            "playhead": "n1",
+            "rate": 1,
+            "state": "transitioning"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 2,
+            "name": "after",
+            "nowMs": 5000,
+            "ops": ["tts.pause", "load:f1#2@318", "rate:1", "outPoint:400", "play"],
+            "playhead": "f1#2",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 2,
+            "name": "end",
+            "nowMs": 5000,
+            "ops": [],
+            "playhead": "f1#2",
+            "rate": 1,
+            "state": "playing"
+          }
+        ],
+        "ops": [
+          "load:f1#0@100",
+          "rate:1",
+          "outPoint:200",
+          "play",
+          "tts.speak:The next clip picks up the same question from the other side of the table.@1",
+          "n.prepare:f1#2@300",
+          "tts.pause",
+          "load:f1#2@318",
+          "rate:1",
+          "outPoint:400",
+          "play"
+        ]
+      }
+    },
+    {
+      "id": "manager-foray/narration-skip-rendered-start-back-crosses-into-the-clip",
+      "covers": [],
+      "authored": true,
+      "note": "AUTHORED (M2 drive 2026-10-01): Back-15 at the start of a rendered line reached by its seam (232 -> 217) reloads the clip before it at 385.",
+      "setup": { "target": "engine", "backend": { "durationById": { "n2": 32 } } },
+      "steps": [
+        {
+          "call": "playForay",
+          "args": {
+            "forayId": "f1",
+            "title": "A Foray",
+            "items": [
+              {
+                "type": "segment",
+                "id": "s0",
+                "audio_url": "https://cdn.test/a.mp3",
+                "start_sec": 100,
+                "end_sec": 200,
+                "duration_sec": 3600
+              },
+              {
+                "type": "narration",
+                "id": "n1",
+                "script": "The next clip picks up the same question from the other side of the table.",
+                "duration_sec": 32
+              },
+              {
+                "type": "segment",
+                "id": "s1",
+                "audio_url": "https://cdn.test/b.mp3",
+                "start_sec": 300,
+                "end_sec": 400,
+                "duration_sec": 3600
+              },
+              {
+                "type": "narration",
+                "id": "n2",
+                "audio_url": "https://cdn.test/n2.m4a",
+                "script": "Here the argument turns: what changes when the model has to run on a phone.",
+                "duration_sec": 32
+              },
+              {
+                "type": "segment",
+                "id": "s2",
+                "audio_url": "https://cdn.test/c.mp3",
+                "start_sec": 500,
+                "end_sec": 600,
+                "duration_sec": 3600
+              }
+            ],
+            "buildReport": {},
+            "isLocalFile": false,
+            "allowAdPad": false,
+            "voiceId": null
+          }
+        },
+        { "call": "jump", "args": { "index": 2 } },
+        { "deck": "time", "sec": 400 },
+        { "deck": "ended", "reason": "outPoint" },
+        { "deck": "time", "sec": 0 },
+        { "checkpoint": "line" },
+        { "remote": "seekbackward" },
+        { "checkpoint": "after" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 3,
+            "name": "line",
+            "nowMs": 0,
+            "ops": [
+              "load:f1#0@100",
+              "rate:1",
+              "outPoint:200",
+              "play",
+              "pause",
+              "load:f1#2@300",
+              "rate:1",
+              "outPoint:400",
+              "play",
+              "rate:1",
+              "load:n2@0",
+              "play"
+            ],
+            "playhead": "n2",
+            "rate": 1,
+            "state": "transitioning"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 2,
+            "name": "after",
+            "nowMs": 0,
+            "ops": ["pause", "load:f1#2@385", "rate:1", "outPoint:400", "play"],
+            "playhead": "f1#2",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 2,
+            "name": "end",
+            "nowMs": 0,
+            "ops": [],
+            "playhead": "f1#2",
+            "rate": 1,
+            "state": "playing"
+          }
+        ],
+        "ops": [
+          "load:f1#0@100",
+          "rate:1",
+          "outPoint:200",
+          "play",
+          "pause",
+          "load:f1#2@300",
+          "rate:1",
+          "outPoint:400",
+          "play",
+          "rate:1",
+          "load:n2@0",
+          "play",
+          "pause",
+          "load:f1#2@385",
+          "rate:1",
+          "outPoint:400",
+          "play"
+        ]
+      }
+    },
+    {
+      "id": "manager-foray/narration-skip-rendered-middle-back-seeks-inside-the-line",
+      "covers": [],
+      "authored": true,
+      "note": "AUTHORED (M2 drive 2026-10-01): Back-15 20 s into a rendered line in transitioning (252 -> 237) stays inside it: the line is re-entered at 5 s (the reducer refuses a seek in transitioning, so the seek is a load at the offset).",
+      "setup": { "target": "engine", "backend": { "durationById": { "n2": 32 } } },
+      "steps": [
+        {
+          "call": "playForay",
+          "args": {
+            "forayId": "f1",
+            "title": "A Foray",
+            "items": [
+              {
+                "type": "segment",
+                "id": "s0",
+                "audio_url": "https://cdn.test/a.mp3",
+                "start_sec": 100,
+                "end_sec": 200,
+                "duration_sec": 3600
+              },
+              {
+                "type": "narration",
+                "id": "n1",
+                "script": "The next clip picks up the same question from the other side of the table.",
+                "duration_sec": 32
+              },
+              {
+                "type": "segment",
+                "id": "s1",
+                "audio_url": "https://cdn.test/b.mp3",
+                "start_sec": 300,
+                "end_sec": 400,
+                "duration_sec": 3600
+              },
+              {
+                "type": "narration",
+                "id": "n2",
+                "audio_url": "https://cdn.test/n2.m4a",
+                "script": "Here the argument turns: what changes when the model has to run on a phone.",
+                "duration_sec": 32
+              },
+              {
+                "type": "segment",
+                "id": "s2",
+                "audio_url": "https://cdn.test/c.mp3",
+                "start_sec": 500,
+                "end_sec": 600,
+                "duration_sec": 3600
+              }
+            ],
+            "buildReport": {},
+            "isLocalFile": false,
+            "allowAdPad": false,
+            "voiceId": null
+          }
+        },
+        { "call": "jump", "args": { "index": 2 } },
+        { "deck": "time", "sec": 400 },
+        { "deck": "ended", "reason": "outPoint" },
+        { "deck": "time", "sec": 20 },
+        { "checkpoint": "line" },
+        { "remote": "seekbackward" },
+        { "checkpoint": "after" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 3,
+            "name": "line",
+            "nowMs": 0,
+            "ops": [
+              "load:f1#0@100",
+              "rate:1",
+              "outPoint:200",
+              "play",
+              "pause",
+              "load:f1#2@300",
+              "rate:1",
+              "outPoint:400",
+              "play",
+              "rate:1",
+              "load:n2@0",
+              "play"
+            ],
+            "playhead": "n2",
+            "rate": 1,
+            "state": "transitioning"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 3,
+            "name": "after",
+            "nowMs": 0,
+            "ops": ["pause", "load:n2@5", "rate:1", "play"],
+            "playhead": "n2",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 3,
+            "name": "end",
+            "nowMs": 0,
+            "ops": [],
+            "playhead": "n2",
+            "rate": 1,
+            "state": "playing"
+          }
+        ],
+        "ops": [
+          "load:f1#0@100",
+          "rate:1",
+          "outPoint:200",
+          "play",
+          "pause",
+          "load:f1#2@300",
+          "rate:1",
+          "outPoint:400",
+          "play",
+          "rate:1",
+          "load:n2@0",
+          "play",
+          "pause",
+          "load:n2@5",
+          "rate:1",
+          "play"
+        ]
+      }
+    },
+    {
+      "id": "manager-foray/narration-skip-rendered-end-back-seeks-inside-the-line",
+      "covers": [],
+      "authored": true,
+      "note": "AUTHORED (M2 drive 2026-10-01): Back-15 31 s into a rendered line (263 -> 248): the line at 16 s.",
+      "setup": { "target": "engine", "backend": { "durationById": { "n2": 32 } } },
+      "steps": [
+        {
+          "call": "playForay",
+          "args": {
+            "forayId": "f1",
+            "title": "A Foray",
+            "items": [
+              {
+                "type": "segment",
+                "id": "s0",
+                "audio_url": "https://cdn.test/a.mp3",
+                "start_sec": 100,
+                "end_sec": 200,
+                "duration_sec": 3600
+              },
+              {
+                "type": "narration",
+                "id": "n1",
+                "script": "The next clip picks up the same question from the other side of the table.",
+                "duration_sec": 32
+              },
+              {
+                "type": "segment",
+                "id": "s1",
+                "audio_url": "https://cdn.test/b.mp3",
+                "start_sec": 300,
+                "end_sec": 400,
+                "duration_sec": 3600
+              },
+              {
+                "type": "narration",
+                "id": "n2",
+                "audio_url": "https://cdn.test/n2.m4a",
+                "script": "Here the argument turns: what changes when the model has to run on a phone.",
+                "duration_sec": 32
+              },
+              {
+                "type": "segment",
+                "id": "s2",
+                "audio_url": "https://cdn.test/c.mp3",
+                "start_sec": 500,
+                "end_sec": 600,
+                "duration_sec": 3600
+              }
+            ],
+            "buildReport": {},
+            "isLocalFile": false,
+            "allowAdPad": false,
+            "voiceId": null
+          }
+        },
+        { "call": "jump", "args": { "index": 2 } },
+        { "deck": "time", "sec": 400 },
+        { "deck": "ended", "reason": "outPoint" },
+        { "deck": "time", "sec": 31 },
+        { "checkpoint": "line" },
+        { "remote": "seekbackward" },
+        { "checkpoint": "after" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 3,
+            "name": "line",
+            "nowMs": 0,
+            "ops": [
+              "load:f1#0@100",
+              "rate:1",
+              "outPoint:200",
+              "play",
+              "pause",
+              "load:f1#2@300",
+              "rate:1",
+              "outPoint:400",
+              "play",
+              "rate:1",
+              "load:n2@0",
+              "play"
+            ],
+            "playhead": "n2",
+            "rate": 1,
+            "state": "transitioning"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 3,
+            "name": "after",
+            "nowMs": 0,
+            "ops": ["pause", "load:n2@16", "rate:1", "play"],
+            "playhead": "n2",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 3,
+            "name": "end",
+            "nowMs": 0,
+            "ops": [],
+            "playhead": "n2",
+            "rate": 1,
+            "state": "playing"
+          }
+        ],
+        "ops": [
+          "load:f1#0@100",
+          "rate:1",
+          "outPoint:200",
+          "play",
+          "pause",
+          "load:f1#2@300",
+          "rate:1",
+          "outPoint:400",
+          "play",
+          "rate:1",
+          "load:n2@0",
+          "play",
+          "pause",
+          "load:n2@16",
+          "rate:1",
+          "play"
+        ]
+      }
+    },
+    {
+      "id": "manager-foray/narration-skip-rendered-start-forward-seeks-inside-the-line",
+      "covers": [],
+      "authored": true,
+      "note": "AUTHORED (M2 drive 2026-10-01): Forward-30 at the start of a 32 s rendered line (232 -> 262) stays inside it, at 30 s: a rendered line seeks like a clip.",
+      "setup": { "target": "engine", "backend": { "durationById": { "n2": 32 } } },
+      "steps": [
+        {
+          "call": "playForay",
+          "args": {
+            "forayId": "f1",
+            "title": "A Foray",
+            "items": [
+              {
+                "type": "segment",
+                "id": "s0",
+                "audio_url": "https://cdn.test/a.mp3",
+                "start_sec": 100,
+                "end_sec": 200,
+                "duration_sec": 3600
+              },
+              {
+                "type": "narration",
+                "id": "n1",
+                "script": "The next clip picks up the same question from the other side of the table.",
+                "duration_sec": 32
+              },
+              {
+                "type": "segment",
+                "id": "s1",
+                "audio_url": "https://cdn.test/b.mp3",
+                "start_sec": 300,
+                "end_sec": 400,
+                "duration_sec": 3600
+              },
+              {
+                "type": "narration",
+                "id": "n2",
+                "audio_url": "https://cdn.test/n2.m4a",
+                "script": "Here the argument turns: what changes when the model has to run on a phone.",
+                "duration_sec": 32
+              },
+              {
+                "type": "segment",
+                "id": "s2",
+                "audio_url": "https://cdn.test/c.mp3",
+                "start_sec": 500,
+                "end_sec": 600,
+                "duration_sec": 3600
+              }
+            ],
+            "buildReport": {},
+            "isLocalFile": false,
+            "allowAdPad": false,
+            "voiceId": null
+          }
+        },
+        { "call": "jump", "args": { "index": 2 } },
+        { "deck": "time", "sec": 400 },
+        { "deck": "ended", "reason": "outPoint" },
+        { "deck": "time", "sec": 0 },
+        { "checkpoint": "line" },
+        { "remote": "seekforward" },
+        { "checkpoint": "after" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 3,
+            "name": "line",
+            "nowMs": 0,
+            "ops": [
+              "load:f1#0@100",
+              "rate:1",
+              "outPoint:200",
+              "play",
+              "pause",
+              "load:f1#2@300",
+              "rate:1",
+              "outPoint:400",
+              "play",
+              "rate:1",
+              "load:n2@0",
+              "play"
+            ],
+            "playhead": "n2",
+            "rate": 1,
+            "state": "transitioning"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 3,
+            "name": "after",
+            "nowMs": 0,
+            "ops": ["pause", "load:n2@30", "rate:1", "play", "n.prepare:f1#4@500"],
+            "playhead": "n2",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 3,
+            "name": "end",
+            "nowMs": 0,
+            "ops": [],
+            "playhead": "n2",
+            "rate": 1,
+            "state": "playing"
+          }
+        ],
+        "ops": [
+          "load:f1#0@100",
+          "rate:1",
+          "outPoint:200",
+          "play",
+          "pause",
+          "load:f1#2@300",
+          "rate:1",
+          "outPoint:400",
+          "play",
+          "rate:1",
+          "load:n2@0",
+          "play",
+          "pause",
+          "load:n2@30",
+          "rate:1",
+          "play",
+          "n.prepare:f1#4@500"
+        ]
+      }
+    },
+    {
+      "id": "manager-foray/narration-skip-rendered-middle-forward-crosses-into-the-next-clip",
+      "covers": [],
+      "authored": true,
+      "note": "AUTHORED (M2 drive 2026-10-01): Forward-30 10 s into a rendered line (242 -> 272) lands 8 s into the next clip: 508.",
+      "setup": { "target": "engine", "backend": { "durationById": { "n2": 32 } } },
+      "steps": [
+        {
+          "call": "playForay",
+          "args": {
+            "forayId": "f1",
+            "title": "A Foray",
+            "items": [
+              {
+                "type": "segment",
+                "id": "s0",
+                "audio_url": "https://cdn.test/a.mp3",
+                "start_sec": 100,
+                "end_sec": 200,
+                "duration_sec": 3600
+              },
+              {
+                "type": "narration",
+                "id": "n1",
+                "script": "The next clip picks up the same question from the other side of the table.",
+                "duration_sec": 32
+              },
+              {
+                "type": "segment",
+                "id": "s1",
+                "audio_url": "https://cdn.test/b.mp3",
+                "start_sec": 300,
+                "end_sec": 400,
+                "duration_sec": 3600
+              },
+              {
+                "type": "narration",
+                "id": "n2",
+                "audio_url": "https://cdn.test/n2.m4a",
+                "script": "Here the argument turns: what changes when the model has to run on a phone.",
+                "duration_sec": 32
+              },
+              {
+                "type": "segment",
+                "id": "s2",
+                "audio_url": "https://cdn.test/c.mp3",
+                "start_sec": 500,
+                "end_sec": 600,
+                "duration_sec": 3600
+              }
+            ],
+            "buildReport": {},
+            "isLocalFile": false,
+            "allowAdPad": false,
+            "voiceId": null
+          }
+        },
+        { "call": "jump", "args": { "index": 2 } },
+        { "deck": "time", "sec": 400 },
+        { "deck": "ended", "reason": "outPoint" },
+        { "deck": "time", "sec": 10 },
+        { "checkpoint": "line" },
+        { "remote": "seekforward" },
+        { "checkpoint": "after" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 3,
+            "name": "line",
+            "nowMs": 0,
+            "ops": [
+              "load:f1#0@100",
+              "rate:1",
+              "outPoint:200",
+              "play",
+              "pause",
+              "load:f1#2@300",
+              "rate:1",
+              "outPoint:400",
+              "play",
+              "rate:1",
+              "load:n2@0",
+              "play"
+            ],
+            "playhead": "n2",
+            "rate": 1,
+            "state": "transitioning"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 4,
+            "name": "after",
+            "nowMs": 0,
+            "ops": ["pause", "load:f1#4@508", "rate:1", "outPoint:600", "play"],
+            "playhead": "f1#4",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 4,
+            "name": "end",
+            "nowMs": 0,
+            "ops": [],
+            "playhead": "f1#4",
+            "rate": 1,
+            "state": "playing"
+          }
+        ],
+        "ops": [
+          "load:f1#0@100",
+          "rate:1",
+          "outPoint:200",
+          "play",
+          "pause",
+          "load:f1#2@300",
+          "rate:1",
+          "outPoint:400",
+          "play",
+          "rate:1",
+          "load:n2@0",
+          "play",
+          "pause",
+          "load:f1#4@508",
+          "rate:1",
+          "outPoint:600",
+          "play"
+        ]
+      }
+    },
+    {
+      "id": "manager-foray/narration-skip-rendered-end-forward-crosses-into-the-next-clip",
+      "covers": [],
+      "authored": true,
+      "note": "AUTHORED (M2 drive 2026-10-01): Forward-30 31 s into a rendered line (263 -> 293) lands 29 s into the next clip: 529.",
+      "setup": { "target": "engine", "backend": { "durationById": { "n2": 32 } } },
+      "steps": [
+        {
+          "call": "playForay",
+          "args": {
+            "forayId": "f1",
+            "title": "A Foray",
+            "items": [
+              {
+                "type": "segment",
+                "id": "s0",
+                "audio_url": "https://cdn.test/a.mp3",
+                "start_sec": 100,
+                "end_sec": 200,
+                "duration_sec": 3600
+              },
+              {
+                "type": "narration",
+                "id": "n1",
+                "script": "The next clip picks up the same question from the other side of the table.",
+                "duration_sec": 32
+              },
+              {
+                "type": "segment",
+                "id": "s1",
+                "audio_url": "https://cdn.test/b.mp3",
+                "start_sec": 300,
+                "end_sec": 400,
+                "duration_sec": 3600
+              },
+              {
+                "type": "narration",
+                "id": "n2",
+                "audio_url": "https://cdn.test/n2.m4a",
+                "script": "Here the argument turns: what changes when the model has to run on a phone.",
+                "duration_sec": 32
+              },
+              {
+                "type": "segment",
+                "id": "s2",
+                "audio_url": "https://cdn.test/c.mp3",
+                "start_sec": 500,
+                "end_sec": 600,
+                "duration_sec": 3600
+              }
+            ],
+            "buildReport": {},
+            "isLocalFile": false,
+            "allowAdPad": false,
+            "voiceId": null
+          }
+        },
+        { "call": "jump", "args": { "index": 2 } },
+        { "deck": "time", "sec": 400 },
+        { "deck": "ended", "reason": "outPoint" },
+        { "deck": "time", "sec": 31 },
+        { "checkpoint": "line" },
+        { "remote": "seekforward" },
+        { "checkpoint": "after" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 3,
+            "name": "line",
+            "nowMs": 0,
+            "ops": [
+              "load:f1#0@100",
+              "rate:1",
+              "outPoint:200",
+              "play",
+              "pause",
+              "load:f1#2@300",
+              "rate:1",
+              "outPoint:400",
+              "play",
+              "rate:1",
+              "load:n2@0",
+              "play"
+            ],
+            "playhead": "n2",
+            "rate": 1,
+            "state": "transitioning"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 4,
+            "name": "after",
+            "nowMs": 0,
+            "ops": ["pause", "load:f1#4@529", "rate:1", "outPoint:600", "play"],
+            "playhead": "f1#4",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 4,
+            "name": "end",
+            "nowMs": 0,
+            "ops": [],
+            "playhead": "f1#4",
+            "rate": 1,
+            "state": "playing"
+          }
+        ],
+        "ops": [
+          "load:f1#0@100",
+          "rate:1",
+          "outPoint:200",
+          "play",
+          "pause",
+          "load:f1#2@300",
+          "rate:1",
+          "outPoint:400",
+          "play",
+          "rate:1",
+          "load:n2@0",
+          "play",
+          "pause",
+          "load:f1#4@529",
+          "rate:1",
+          "outPoint:600",
+          "play"
+        ]
+      }
+    },
+    {
+      "id": "manager-foray/narration-skip-rendered-scrub-inside-the-line",
+      "covers": [],
+      "authored": true,
+      "note": "AUTHORED (M2 drive 2026-10-01): A scrub inside a rendered line in transitioning (Foray second 240) re-enters the line at 8 s.",
+      "setup": { "target": "engine", "backend": { "durationById": { "n2": 32 } } },
+      "steps": [
+        {
+          "call": "playForay",
+          "args": {
+            "forayId": "f1",
+            "title": "A Foray",
+            "items": [
+              {
+                "type": "segment",
+                "id": "s0",
+                "audio_url": "https://cdn.test/a.mp3",
+                "start_sec": 100,
+                "end_sec": 200,
+                "duration_sec": 3600
+              },
+              {
+                "type": "narration",
+                "id": "n1",
+                "script": "The next clip picks up the same question from the other side of the table.",
+                "duration_sec": 32
+              },
+              {
+                "type": "segment",
+                "id": "s1",
+                "audio_url": "https://cdn.test/b.mp3",
+                "start_sec": 300,
+                "end_sec": 400,
+                "duration_sec": 3600
+              },
+              {
+                "type": "narration",
+                "id": "n2",
+                "audio_url": "https://cdn.test/n2.m4a",
+                "script": "Here the argument turns: what changes when the model has to run on a phone.",
+                "duration_sec": 32
+              },
+              {
+                "type": "segment",
+                "id": "s2",
+                "audio_url": "https://cdn.test/c.mp3",
+                "start_sec": 500,
+                "end_sec": 600,
+                "duration_sec": 3600
+              }
+            ],
+            "buildReport": {},
+            "isLocalFile": false,
+            "allowAdPad": false,
+            "voiceId": null
+          }
+        },
+        { "call": "jump", "args": { "index": 2 } },
+        { "deck": "time", "sec": 400 },
+        { "deck": "ended", "reason": "outPoint" },
+        { "deck": "time", "sec": 3 },
+        { "checkpoint": "line" },
+        { "remote": "seekto", "details": { "seekTime": 240 } },
+        { "checkpoint": "after" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 3,
+            "name": "line",
+            "nowMs": 0,
+            "ops": [
+              "load:f1#0@100",
+              "rate:1",
+              "outPoint:200",
+              "play",
+              "pause",
+              "load:f1#2@300",
+              "rate:1",
+              "outPoint:400",
+              "play",
+              "rate:1",
+              "load:n2@0",
+              "play"
+            ],
+            "playhead": "n2",
+            "rate": 1,
+            "state": "transitioning"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 3,
+            "name": "after",
+            "nowMs": 0,
+            "ops": ["pause", "load:n2@8", "rate:1", "play"],
+            "playhead": "n2",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 3,
+            "name": "end",
+            "nowMs": 0,
+            "ops": [],
+            "playhead": "n2",
+            "rate": 1,
+            "state": "playing"
+          }
+        ],
+        "ops": [
+          "load:f1#0@100",
+          "rate:1",
+          "outPoint:200",
+          "play",
+          "pause",
+          "load:f1#2@300",
+          "rate:1",
+          "outPoint:400",
+          "play",
+          "rate:1",
+          "load:n2@0",
+          "play",
+          "pause",
+          "load:n2@8",
+          "rate:1",
+          "play"
+        ]
+      }
+    },
+    {
+      "id": "manager-foray/narration-skip-rendered-line-playing-back-is-a-seek",
+      "covers": [],
+      "authored": true,
+      "note": "AUTHORED (M2 drive 2026-10-01): A rendered line reached by a jump is playing, not transitioning: back-15 inside it is an ordinary seek in its own file (20 -> 5).",
+      "setup": { "target": "engine", "backend": { "durationById": { "n2": 32 } } },
+      "steps": [
+        {
+          "call": "playForay",
+          "args": {
+            "forayId": "f1",
+            "title": "A Foray",
+            "items": [
+              {
+                "type": "segment",
+                "id": "s0",
+                "audio_url": "https://cdn.test/a.mp3",
+                "start_sec": 100,
+                "end_sec": 200,
+                "duration_sec": 3600
+              },
+              {
+                "type": "narration",
+                "id": "n1",
+                "script": "The next clip picks up the same question from the other side of the table.",
+                "duration_sec": 32
+              },
+              {
+                "type": "segment",
+                "id": "s1",
+                "audio_url": "https://cdn.test/b.mp3",
+                "start_sec": 300,
+                "end_sec": 400,
+                "duration_sec": 3600
+              },
+              {
+                "type": "narration",
+                "id": "n2",
+                "audio_url": "https://cdn.test/n2.m4a",
+                "script": "Here the argument turns: what changes when the model has to run on a phone.",
+                "duration_sec": 32
+              },
+              {
+                "type": "segment",
+                "id": "s2",
+                "audio_url": "https://cdn.test/c.mp3",
+                "start_sec": 500,
+                "end_sec": 600,
+                "duration_sec": 3600
+              }
+            ],
+            "buildReport": {},
+            "isLocalFile": false,
+            "allowAdPad": false,
+            "voiceId": null
+          }
+        },
+        { "call": "jump", "args": { "index": 3 } },
+        { "deck": "time", "sec": 20 },
+        { "checkpoint": "line" },
+        { "remote": "seekbackward" },
+        { "checkpoint": "after" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 3,
+            "name": "line",
+            "nowMs": 0,
+            "ops": [
+              "load:f1#0@100",
+              "rate:1",
+              "outPoint:200",
+              "play",
+              "pause",
+              "load:n2@0",
+              "rate:1",
+              "play"
+            ],
+            "playhead": "n2",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 3,
+            "name": "after",
+            "nowMs": 0,
+            "ops": ["seek:5"],
+            "playhead": "n2",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 3,
+            "name": "end",
+            "nowMs": 0,
+            "ops": [],
+            "playhead": "n2",
+            "rate": 1,
+            "state": "playing"
+          }
+        ],
+        "ops": [
+          "load:f1#0@100",
+          "rate:1",
+          "outPoint:200",
+          "play",
+          "pause",
+          "load:n2@0",
+          "rate:1",
+          "play",
+          "seek:5"
+        ]
+      }
+    },
+    {
+      "id": "manager-foray/narration-skip-clip-back-stays-in-the-clip",
+      "covers": [],
+      "authored": true,
+      "note": "AUTHORED (M2 drive 2026-10-01): Back-15 50 s into a clip (182 -> 167) is a seek in the same clip: 335.",
+      "setup": { "target": "engine", "backend": { "durationById": { "n2": 32 } } },
+      "steps": [
+        {
+          "call": "playForay",
+          "args": {
+            "forayId": "f1",
+            "title": "A Foray",
+            "items": [
+              {
+                "type": "segment",
+                "id": "s0",
+                "audio_url": "https://cdn.test/a.mp3",
+                "start_sec": 100,
+                "end_sec": 200,
+                "duration_sec": 3600
+              },
+              {
+                "type": "narration",
+                "id": "n1",
+                "script": "The next clip picks up the same question from the other side of the table.",
+                "duration_sec": 32
+              },
+              {
+                "type": "segment",
+                "id": "s1",
+                "audio_url": "https://cdn.test/b.mp3",
+                "start_sec": 300,
+                "end_sec": 400,
+                "duration_sec": 3600
+              },
+              {
+                "type": "narration",
+                "id": "n2",
+                "audio_url": "https://cdn.test/n2.m4a",
+                "script": "Here the argument turns: what changes when the model has to run on a phone.",
+                "duration_sec": 32
+              },
+              {
+                "type": "segment",
+                "id": "s2",
+                "audio_url": "https://cdn.test/c.mp3",
+                "start_sec": 500,
+                "end_sec": 600,
+                "duration_sec": 3600
+              }
+            ],
+            "buildReport": {},
+            "isLocalFile": false,
+            "allowAdPad": false,
+            "voiceId": null
+          }
+        },
+        { "call": "jump", "args": { "index": 2 } },
+        { "deck": "time", "sec": 350 },
+        { "checkpoint": "clip" },
+        { "remote": "seekbackward" },
+        { "checkpoint": "after" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 2,
+            "name": "clip",
+            "nowMs": 0,
+            "ops": [
+              "load:f1#0@100",
+              "rate:1",
+              "outPoint:200",
+              "play",
+              "pause",
+              "load:f1#2@300",
+              "rate:1",
+              "outPoint:400",
+              "play"
+            ],
+            "playhead": "f1#2",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 2,
+            "name": "after",
+            "nowMs": 0,
+            "ops": ["seek:335"],
+            "playhead": "f1#2",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 2,
+            "name": "end",
+            "nowMs": 0,
+            "ops": [],
+            "playhead": "f1#2",
+            "rate": 1,
+            "state": "playing"
+          }
+        ],
+        "ops": [
+          "load:f1#0@100",
+          "rate:1",
+          "outPoint:200",
+          "play",
+          "pause",
+          "load:f1#2@300",
+          "rate:1",
+          "outPoint:400",
+          "play",
+          "seek:335"
+        ]
+      }
+    },
+    {
+      "id": "manager-foray/narration-skip-clip-start-back-crosses-into-the-spoken-line",
+      "covers": [],
+      "authored": true,
+      "note": "AUTHORED (M2 drive 2026-10-01): Back-15 5 s into the clip after a spoken line (137 -> 122) lands in the line: it is spoken from its first word.",
+      "setup": { "target": "engine", "backend": { "durationById": { "n2": 32 } } },
+      "steps": [
+        {
+          "call": "playForay",
+          "args": {
+            "forayId": "f1",
+            "title": "A Foray",
+            "items": [
+              {
+                "type": "segment",
+                "id": "s0",
+                "audio_url": "https://cdn.test/a.mp3",
+                "start_sec": 100,
+                "end_sec": 200,
+                "duration_sec": 3600
+              },
+              {
+                "type": "narration",
+                "id": "n1",
+                "script": "The next clip picks up the same question from the other side of the table.",
+                "duration_sec": 32
+              },
+              {
+                "type": "segment",
+                "id": "s1",
+                "audio_url": "https://cdn.test/b.mp3",
+                "start_sec": 300,
+                "end_sec": 400,
+                "duration_sec": 3600
+              },
+              {
+                "type": "narration",
+                "id": "n2",
+                "audio_url": "https://cdn.test/n2.m4a",
+                "script": "Here the argument turns: what changes when the model has to run on a phone.",
+                "duration_sec": 32
+              },
+              {
+                "type": "segment",
+                "id": "s2",
+                "audio_url": "https://cdn.test/c.mp3",
+                "start_sec": 500,
+                "end_sec": 600,
+                "duration_sec": 3600
+              }
+            ],
+            "buildReport": {},
+            "isLocalFile": false,
+            "allowAdPad": false,
+            "voiceId": null
+          }
+        },
+        { "call": "jump", "args": { "index": 2 } },
+        { "deck": "time", "sec": 305 },
+        { "checkpoint": "clip" },
+        { "remote": "seekbackward" },
+        { "checkpoint": "after" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 2,
+            "name": "clip",
+            "nowMs": 0,
+            "ops": [
+              "load:f1#0@100",
+              "rate:1",
+              "outPoint:200",
+              "play",
+              "pause",
+              "load:f1#2@300",
+              "rate:1",
+              "outPoint:400",
+              "play"
+            ],
+            "playhead": "f1#2",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "after",
+            "nowMs": 0,
+            "ops": [
+              "pause",
+              "tts.speak:The next clip picks up the same question from the other side of the table.@1"
+            ],
+            "playhead": "n1",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "end",
+            "nowMs": 0,
+            "ops": [],
+            "playhead": "n1",
+            "rate": 1,
+            "state": "playing"
+          }
+        ],
+        "ops": [
+          "load:f1#0@100",
+          "rate:1",
+          "outPoint:200",
+          "play",
+          "pause",
+          "load:f1#2@300",
+          "rate:1",
+          "outPoint:400",
+          "play",
+          "pause",
+          "tts.speak:The next clip picks up the same question from the other side of the table.@1"
+        ]
+      }
+    },
+    {
+      "id": "manager-foray/narration-skip-clip-end-forward-crosses-into-the-spoken-line",
+      "covers": [],
+      "authored": true,
+      "note": "AUTHORED (M2 drive 2026-10-01): Forward-30 5 s before a clip's out-point (95 -> 125) lands in the spoken line after it: it is spoken from its first word.",
+      "setup": { "target": "engine", "backend": { "durationById": { "n2": 32 } } },
+      "steps": [
+        {
+          "call": "playForay",
+          "args": {
+            "forayId": "f1",
+            "title": "A Foray",
+            "items": [
+              {
+                "type": "segment",
+                "id": "s0",
+                "audio_url": "https://cdn.test/a.mp3",
+                "start_sec": 100,
+                "end_sec": 200,
+                "duration_sec": 3600
+              },
+              {
+                "type": "narration",
+                "id": "n1",
+                "script": "The next clip picks up the same question from the other side of the table.",
+                "duration_sec": 32
+              },
+              {
+                "type": "segment",
+                "id": "s1",
+                "audio_url": "https://cdn.test/b.mp3",
+                "start_sec": 300,
+                "end_sec": 400,
+                "duration_sec": 3600
+              },
+              {
+                "type": "narration",
+                "id": "n2",
+                "audio_url": "https://cdn.test/n2.m4a",
+                "script": "Here the argument turns: what changes when the model has to run on a phone.",
+                "duration_sec": 32
+              },
+              {
+                "type": "segment",
+                "id": "s2",
+                "audio_url": "https://cdn.test/c.mp3",
+                "start_sec": 500,
+                "end_sec": 600,
+                "duration_sec": 3600
+              }
+            ],
+            "buildReport": {},
+            "isLocalFile": false,
+            "allowAdPad": false,
+            "voiceId": null
+          }
+        },
+        { "deck": "time", "sec": 195 },
+        { "checkpoint": "clip" },
+        { "remote": "seekforward" },
+        { "checkpoint": "after" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "clip",
+            "nowMs": 0,
+            "ops": ["load:f1#0@100", "rate:1", "outPoint:200", "play"],
+            "playhead": "f1#0",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "after",
+            "nowMs": 0,
+            "ops": [
+              "pause",
+              "tts.speak:The next clip picks up the same question from the other side of the table.@1",
+              "n.prepare:f1#2@300"
+            ],
+            "playhead": "n1",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "end",
+            "nowMs": 0,
+            "ops": [],
+            "playhead": "n1",
+            "rate": 1,
+            "state": "playing"
+          }
+        ],
+        "ops": [
+          "load:f1#0@100",
+          "rate:1",
+          "outPoint:200",
+          "play",
+          "pause",
+          "tts.speak:The next clip picks up the same question from the other side of the table.@1",
+          "n.prepare:f1#2@300"
+        ]
+      }
+    },
+    {
+      "id": "manager-foray/narration-skip-clip-back-is-clamped-at-the-foray-start",
+      "covers": [],
+      "authored": true,
+      "note": "AUTHORED (M2 drive 2026-10-01): Back-15 5 s into the first clip is clamped at the Foray's start: the clip's in-point, 100.",
+      "setup": { "target": "engine", "backend": { "durationById": { "n2": 32 } } },
+      "steps": [
+        {
+          "call": "playForay",
+          "args": {
+            "forayId": "f1",
+            "title": "A Foray",
+            "items": [
+              {
+                "type": "segment",
+                "id": "s0",
+                "audio_url": "https://cdn.test/a.mp3",
+                "start_sec": 100,
+                "end_sec": 200,
+                "duration_sec": 3600
+              },
+              {
+                "type": "narration",
+                "id": "n1",
+                "script": "The next clip picks up the same question from the other side of the table.",
+                "duration_sec": 32
+              },
+              {
+                "type": "segment",
+                "id": "s1",
+                "audio_url": "https://cdn.test/b.mp3",
+                "start_sec": 300,
+                "end_sec": 400,
+                "duration_sec": 3600
+              },
+              {
+                "type": "narration",
+                "id": "n2",
+                "audio_url": "https://cdn.test/n2.m4a",
+                "script": "Here the argument turns: what changes when the model has to run on a phone.",
+                "duration_sec": 32
+              },
+              {
+                "type": "segment",
+                "id": "s2",
+                "audio_url": "https://cdn.test/c.mp3",
+                "start_sec": 500,
+                "end_sec": 600,
+                "duration_sec": 3600
+              }
+            ],
+            "buildReport": {},
+            "isLocalFile": false,
+            "allowAdPad": false,
+            "voiceId": null
+          }
+        },
+        { "deck": "time", "sec": 105 },
+        { "checkpoint": "clip" },
+        { "remote": "seekbackward" },
+        { "checkpoint": "after" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "clip",
+            "nowMs": 0,
+            "ops": ["load:f1#0@100", "rate:1", "outPoint:200", "play"],
+            "playhead": "f1#0",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "after",
+            "nowMs": 0,
+            "ops": ["seek:100"],
+            "playhead": "f1#0",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "end",
+            "nowMs": 0,
+            "ops": [],
+            "playhead": "f1#0",
+            "rate": 1,
+            "state": "playing"
+          }
+        ],
+        "ops": ["load:f1#0@100", "rate:1", "outPoint:200", "play", "seek:100"]
+      }
+    },
+    {
+      "id": "manager-foray/narration-skip-clip-forward-is-clamped-before-the-foray-end",
+      "covers": [],
+      "authored": true,
+      "note": "AUTHORED (M2 drive 2026-10-01): Forward-30 5 s before the end of the last clip (359 -> 389) stops 1 s short of the Foray's end (363): 599.",
+      "setup": { "target": "engine", "backend": { "durationById": { "n2": 32 } } },
+      "steps": [
+        {
+          "call": "playForay",
+          "args": {
+            "forayId": "f1",
+            "title": "A Foray",
+            "items": [
+              {
+                "type": "segment",
+                "id": "s0",
+                "audio_url": "https://cdn.test/a.mp3",
+                "start_sec": 100,
+                "end_sec": 200,
+                "duration_sec": 3600
+              },
+              {
+                "type": "narration",
+                "id": "n1",
+                "script": "The next clip picks up the same question from the other side of the table.",
+                "duration_sec": 32
+              },
+              {
+                "type": "segment",
+                "id": "s1",
+                "audio_url": "https://cdn.test/b.mp3",
+                "start_sec": 300,
+                "end_sec": 400,
+                "duration_sec": 3600
+              },
+              {
+                "type": "narration",
+                "id": "n2",
+                "audio_url": "https://cdn.test/n2.m4a",
+                "script": "Here the argument turns: what changes when the model has to run on a phone.",
+                "duration_sec": 32
+              },
+              {
+                "type": "segment",
+                "id": "s2",
+                "audio_url": "https://cdn.test/c.mp3",
+                "start_sec": 500,
+                "end_sec": 600,
+                "duration_sec": 3600
+              }
+            ],
+            "buildReport": {},
+            "isLocalFile": false,
+            "allowAdPad": false,
+            "voiceId": null
+          }
+        },
+        { "call": "jump", "args": { "index": 4 } },
+        { "deck": "time", "sec": 595 },
+        { "checkpoint": "clip" },
+        { "remote": "seekforward" },
+        { "checkpoint": "after" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 4,
+            "name": "clip",
+            "nowMs": 0,
+            "ops": [
+              "load:f1#0@100",
+              "rate:1",
+              "outPoint:200",
+              "play",
+              "pause",
+              "load:f1#4@500",
+              "rate:1",
+              "outPoint:600",
+              "play"
+            ],
+            "playhead": "f1#4",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 4,
+            "name": "after",
+            "nowMs": 0,
+            "ops": ["seek:599"],
+            "playhead": "f1#4",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 4,
+            "name": "end",
+            "nowMs": 0,
+            "ops": [],
+            "playhead": "f1#4",
+            "rate": 1,
+            "state": "playing"
+          }
+        ],
+        "ops": [
+          "load:f1#0@100",
+          "rate:1",
+          "outPoint:200",
+          "play",
+          "pause",
+          "load:f1#4@500",
+          "rate:1",
+          "outPoint:600",
+          "play",
+          "seek:599"
+        ]
+      }
+    },
+    {
+      "id": "manager-foray/narration-skip-closing-spoken-line-forward-goes-nowhere",
+      "covers": [],
+      "authored": true,
+      "note": "AUTHORED (M2 drive 2026-10-01): Forward-30 at the start of a Foray's CLOSING spoken line (100 -> 130, still inside it) has nothing after it to skip to: nothing moves (the engine refuses it no-next). Back-15 20 s in (120 -> 105) then says it again from the top.",
+      "setup": { "target": "engine" },
+      "steps": [
+        {
+          "call": "playForay",
+          "args": {
+            "forayId": "f1",
+            "title": "A Foray",
+            "items": [
+              {
+                "type": "segment",
+                "id": "s0",
+                "audio_url": "https://cdn.test/a.mp3",
+                "start_sec": 100,
+                "end_sec": 200,
+                "duration_sec": 3600
+              },
+              {
+                "type": "narration",
+                "id": "n1",
+                "script": "The next clip picks up the same question from the other side of the table.",
+                "duration_sec": 32
+              }
+            ],
+            "buildReport": {},
+            "isLocalFile": false,
+            "allowAdPad": false,
+            "voiceId": null
+          }
+        },
+        { "deck": "time", "sec": 200 },
+        { "deck": "ended", "reason": "outPoint" },
+        { "checkpoint": "line" },
+        { "remote": "seekforward" },
+        { "checkpoint": "forward" },
+        { "clock": 20000 },
+        { "remote": "seekbackward" },
+        { "checkpoint": "back" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "line",
+            "nowMs": 0,
+            "ops": [
+              "load:f1#0@100",
+              "rate:1",
+              "outPoint:200",
+              "play",
+              "tts.speak:The next clip picks up the same question from the other side of the table.@1"
+            ],
+            "playhead": "n1",
+            "rate": 1,
+            "state": "transitioning"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "forward",
+            "nowMs": 0,
+            "ops": [],
+            "playhead": "n1",
+            "rate": 1,
+            "state": "transitioning"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "back",
+            "nowMs": 20000,
+            "ops": [
+              "tts.pause",
+              "tts.speak:The next clip picks up the same question from the other side of the table.@1"
+            ],
+            "playhead": "n1",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "end",
+            "nowMs": 20000,
+            "ops": [],
+            "playhead": "n1",
+            "rate": 1,
+            "state": "playing"
+          }
+        ],
+        "ops": [
+          "load:f1#0@100",
+          "rate:1",
+          "outPoint:200",
+          "play",
+          "tts.speak:The next clip picks up the same question from the other side of the table.@1",
+          "tts.pause",
+          "tts.speak:The next clip picks up the same question from the other side of the table.@1"
+        ]
+      }
+    }
+  ]
+}

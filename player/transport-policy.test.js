@@ -55,6 +55,11 @@ test("a seek with nothing loaded is written down as the next start; paused, load
 test("a Foray scrub reloads when it changes clip or nothing is loaded, and lands inside the item", (t) => cases(t));
 test("a Foray-clock offset lands inside the item, never on its out-point", (t) => cases(t));
 test("a spoken narration item has nothing to seek; a rendered one seeks in its own file", (t) => cases(t));
+/* M2 drive 2026-10-01 ("skip backwards didn't work during the AI narration").
+   TO SEE IT FAIL: drop `stateType === "transitioning"` from `reload` (a rendered
+   line in its seam asks the reducer for a seek it refuses), or answer
+   `restart: false` (the spoken line sounding does nothing, silently). */
+test("a Foray scrub inside a narration line: the spoken line sounding is said again, a rendered line reached by its seam reloads at the offset", (t) => cases(t));
 
 /* ---------- the remote stop ---------- */
 
