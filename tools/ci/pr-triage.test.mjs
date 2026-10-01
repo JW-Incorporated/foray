@@ -125,6 +125,20 @@ test("REST head/base shapes normalise, including fork detection", () => {
   assert.equal(p.crossRepo, true);
 });
 
+test("the row link is the PR page, never the REST endpoint (#309)", () => {
+  // The REST pull object carries both: `url` is the API endpoint and
+  // `html_url` the page. The founder-waiting table must link the page.
+  const rest = normalizePr({
+    number: 288,
+    url: "https://api.github.com/repos/o/r/pulls/288",
+    html_url: "https://github.com/o/r/pull/288",
+  });
+  assert.equal(rest.url, "https://github.com/o/r/pull/288");
+  // The GraphQL shape has no html_url; its url already is the page.
+  const gql = normalizePr({ number: 1, url: "https://github.com/o/r/pull/1" });
+  assert.equal(gql.url, "https://github.com/o/r/pull/1");
+});
+
 test("a same-repo PR is not cross-repo", () => {
   const p = normalizePr({
     head: { repo: { full_name: "JW-Incorporated/foray" } },
@@ -520,6 +534,24 @@ test("a conflicting PR is not queued to a founder — that is the author's job",
   assert.deepEqual(queue, []);
 });
 
+test("a conflicting PR that needs a founder leaves the queue but is reported as blocked (#312)", () => {
+  // Off the queue is right (a founder should not be handed a rebase); off the
+  // page is the #312 hole, because the author is usually a session that ended.
+  const { queue, blocked, actions } = planFounderQueue([
+    pr({ number: 288, files: [".github/workflows/ci.yml"], mergeable: "CONFLICTING" }),
+  ]);
+  assert.equal(queue.length, 0);
+  assert.equal(blocked.length, 1);
+  assert.equal(blocked[0].number, 288);
+  assert.equal(blocked[0].code, "DENIED_PATH");
+  assert.match(blocked[0].reason, /\.github/);
+  // Label behaviour is unchanged: nothing is added for a blocked PR.
+  assert.deepEqual(actions, []);
+  // A conflicting PR that would have merged on its own is nobody's founder
+  // business, so it is not blocked either.
+  assert.deepEqual(planFounderQueue([pr({ mergeable: "CONFLICTING" })]).blocked, []);
+});
+
 test("a held PR is not queued, a founder-decision PR is", () => {
   assert.equal(planFounderQueue([pr({ labels: ["hold"] })]).queue.length, 0);
   assert.equal(planFounderQueue([pr({ labels: ["founder-decision"] })]).queue.length, 1);
@@ -557,7 +589,7 @@ test("planTriage merges both planners and deduplicates actions", () => {
 });
 
 test("planTriage on no PRs is empty, not an error", () => {
-  assert.deepEqual(planTriage([]), { actions: [], notes: [], queue: [] });
+  assert.deepEqual(planTriage([]), { actions: [], notes: [], queue: [], blocked: [] });
   assert.deepEqual(planTriage(undefined).actions, []);
 });
 
@@ -583,6 +615,38 @@ test("the block renders a table row per queued PR with a link", () => {
   ]);
   assert.match(b, /\[#4\]\(https:\/\/x\/4\)/);
   assert.match(b, /\| T \| R \|/);
+});
+
+test("renderWaitingBlock lists blocked PRs under the table, with links (#312)", () => {
+  const b = renderWaitingBlock([], {
+    repo: "o/r",
+    blocked: [{ number: 5, title: "T", url: "https://github.com/o/r/pull/5", reason: "R" }],
+  });
+  assert.match(b, /Nothing is waiting on a founder right now/);
+  assert.match(b, /\*\*1 PR would be waiting on you but conflicts with main first \(label `merge-conflict`\):\*\*/);
+  assert.match(b, /^- \[#5\]\(https:\/\/github\.com\/o\/r\/pull\/5\) T — needs a rebase/m);
+  assert.ok(b.endsWith("\n" + BLOCK_END));
+  // Plural header, one line per PR, and the paragraph sits below the table.
+  const two = renderWaitingBlock([{ number: 1, title: "q", reason: "r" }], {
+    blocked: [
+      { number: 7, title: "a", url: "https://x/7" },
+      { number: 9, title: "b" }, // no url → bare #9, like the table's rule
+    ],
+  });
+  assert.match(two, /\*\*2 PRs would be waiting on you but conflict with main first/);
+  assert.match(two, /^- \[#7\]\(https:\/\/x\/7\) a — /m);
+  assert.match(two, /^- #9 b — /m);
+  assert.ok(two.indexOf("| q |") < two.indexOf("2 PRs would be waiting"));
+});
+
+test("no blocked PRs renders exactly today's block (#312)", () => {
+  const q = planFounderQueue([pr({ files: ["CLAUDE.md"] })]).queue;
+  assert.equal(renderWaitingBlock(q), renderWaitingBlock(q, { blocked: [] }));
+  assert.equal(renderWaitingBlock([]), renderWaitingBlock([], { blocked: [] }));
+  assert.doesNotMatch(renderWaitingBlock(q), /would be waiting on you/);
+  // And with blocked PRs the block is still byte-stable across renders.
+  const blocked = [{ number: 3, title: "t", url: "https://x/3" }];
+  assert.equal(renderWaitingBlock(q, { blocked }), renderWaitingBlock(q, { blocked }));
 });
 
 test("pipes and newlines in a PR title cannot break the table", () => {
