@@ -182,7 +182,7 @@ public final class EngineScenarioDriver {
         /** The {@code setup} keys this driver implements; any other is refused, never ignored. */
         static final Set<String> SETUP_KEYS = new HashSet<>(Arrays.asList("target", "positions", "positionEvents", "rate",
                 "backend", "catalogue", "session", "seamGapSec", "view", "scheduler", "seamGapEvents", "forayBuild", "capabilities",
-                "tts", "interlude", "interludeEnabled", "voice", "narrationTicks"));
+                "tts", "interlude", "interludeEnabled", "voice", "narrationTicks", "preview"));
         /** runner.js {@code VIEW_KEYS}: what a scenario may add to its checkpoints. */
         static final Set<String> VIEW_KEYS = new HashSet<>(Arrays.asList("outPoint", "seamGapRemainingMs", "timersLive", "positionSec",
                 "narrationSec", "narrationPlayhead", "narrationTicks", "lastVoiceFallback", "wasPlaying"));
@@ -232,6 +232,14 @@ public final class EngineScenarioDriver {
         FakeJingle jingle;
         /** Their answers, delivered when the step settles, before any load. */
         final List<EngineInput> answers = new ArrayList<>();
+        /**
+         * NE-47 (A-66): the preview deck (fakes.js {@code fakePreview}): the urls whose load fails,
+         * the load in flight, and whether the preview is sounding.
+         */
+        final Set<String> previewFailUrls = new HashSet<>();
+        Integer previewToken;
+        Integer previewReadyToken;
+        boolean previewAudible = false;
         /** What is audible besides the deck. */
         boolean auditionSpeaking = false;
         boolean narrationSpeaking = false;
@@ -378,6 +386,14 @@ public final class EngineScenarioDriver {
             List<Json> failing = JsArgs.at(backend, "failLoadFor").asList();
             if (failing != null) {
                 for (Json id : failing) if (id.asString() != null) failLoadFor.add(id.asString());
+            }
+            Json preview = JsArgs.at(setup, "preview");
+            if (!JsArgs.isUndefined(preview)) {
+                if (!(preview instanceof Json.Obj)) throw new HarnessError("E_BAD_CASE", "setup.preview is an object ({failUrls})");
+                List<Json> urls = JsArgs.at(preview, "failUrls").asList();
+                if (urls != null) {
+                    for (Json url : urls) if (url.asString() != null) previewFailUrls.add(url.asString());
+                }
             }
             reading = new DeckReading(0.0, defaultDuration, false, false);
         }
@@ -1107,6 +1123,7 @@ public final class EngineScenarioDriver {
                         trackAudible();
                         ops.add(speakOp(s.text(), EngineConstants.QueueManager.NARRATION_RATE, s.voiceId()));
                     }
+                    case EngineCommand.Preview p -> applyPreview(p.command());
                     case EngineCommand.Narration n -> applyNarration(n.command());
                     case EngineCommand.Interlude i -> applyInterlude(i.command());
                     case EngineCommand.SilenceStart s -> {
@@ -1279,8 +1296,46 @@ public final class EngineScenarioDriver {
             broke("settle-did-not-converge");
         }
 
+        /**
+         * The preview deck (NE-47, A-66; fakes.js {@code fakePreview}), command by command. A load
+         * answers at once, ready or failed ({@code setup.preview.failUrls}), when the step settles,
+         * as the JS fake's awaited load resolves; a play is only ever for the load that answered
+         * ready.
+         */
+        private void applyPreview(DeckCommand command) {
+            switch (command) {
+                case DeckCommand.Load load -> {
+                    String target = load.url() == null ? "" : load.url();
+                    previewToken = load.token();
+                    previewReadyToken = null;
+                    previewAudible = false;
+                    ops.add("preview.load:" + target);
+                    if (previewFailUrls.contains(target)) {
+                        answers.add(new EngineInput.Preview(new DeckEvent.Failed(load.token(), "preview did not load")));
+                    } else {
+                        previewReadyToken = load.token();
+                        answers.add(new EngineInput.Preview(new DeckEvent.Ready(load.token(), 0, true, 0)));
+                    }
+                }
+                case DeckCommand.Play p -> {
+                    if (previewToken == null || !previewToken.equals(previewReadyToken)) broke("preview-play-before-ready");
+                    previewAudible = true;
+                    trackAudible();
+                    ops.add("preview.play");
+                }
+                case DeckCommand.Unload u -> {
+                    previewToken = null;
+                    previewReadyToken = null;
+                    previewAudible = false;
+                    ops.add("preview.stop");
+                }
+                default -> nativeOp("n.preview." + EngineCommand.turnName(new EngineCommand.Deck(command)));
+            }
+        }
+
         private void trackAudible() {
             int sources = (reading.audible ? 1 : 0) + (auditionSpeaking ? 1 : 0) + (narrationSpeaking ? 1 : 0)
+                    + (previewAudible ? 1 : 0)
                     + (jingle != null && jingle.active ? 1 : 0);
             if (sources > 1) broke("two-audible-sources");
             maxAudible = Math.max(maxAudible, sources);

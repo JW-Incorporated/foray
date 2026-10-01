@@ -961,6 +961,7 @@ that settle it. Android uses iOS's values, because no emulator measurement argue
 | P-13, rendered line | `ExoDeck.DEFAULT_LINE_LOAD_DEADLINE_SEC` | 8 s | 8 s | `P13-line` | the same rows with `class=line` |
 | Same-source reuse limit | `ExoDeck.DEFAULT_REUSE_MAX_IDLE_SEC` | 600 s | 600 s | `reuse-idle` | `deck reuse idleSec=`, then `failed`/`deadline`/`stalled` on its token within 30 s; `deck attach cold=stale idleSec=` |
 | P-14 stall display | `EngineCore.BUFFERING_WHILE_WAITING` | on | on | `rate-latch` | `deck time-control status=waiting reason=` |
+| Voice preview load deadline (A-66, NE-47) | `ForayPlaybackService.PREVIEW_LOAD_DEADLINE_SEC`, on the preview deck for both classes | 6 s | 6 s | `preview-load` | `deck ready elapsedMs lane=preview`, `deck deadline lane=preview`, `audition fallback reason=timeout` |
 
 - **Which deadline a load gets.** The JVM core names a class on every `Load` and `Prepare` (`DeckDeadlineClass.of`): a
   `tts` item is a `line`, and everything else is a `clip`. The deck maps the class to seconds. `DeckPair`'s warm load

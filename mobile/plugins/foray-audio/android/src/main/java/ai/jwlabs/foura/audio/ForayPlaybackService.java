@@ -160,6 +160,15 @@ import java.util.concurrent.atomic.AtomicReference;
  * missing or differs, the core is built with {@code interludeAvailable} off and no seam waits on a
  * jingle. Both are released with the engine at its teardown. The dump says whether the synthesiser
  * answered ({@code speaker}) and whether the jingle is there ({@code interlude}).
+ *
+ * <h2>THE VOICE PREVIEW (A-66, mirrors NE-47)</h2>
+ *
+ * An audition that names a rendered {@code preview.m4a} plays on a THIRD player, the preview deck
+ * ({@link ExoDeck} over its own ExoPlayer, configured as the others by {@link EngineAudio}, so its
+ * play requests audio focus for the tap that asked), never on the pair, so a paused Foray's item is
+ * untouched. Its rows say {@code lane=preview}. A load that has not answered inside
+ * {@link #PREVIEW_LOAD_DEADLINE_SEC}, or that fails, is spoken by {@code TextToSpeech} instead. The
+ * page sends no url until the picker offers rendered voices, so until then this player loads nothing.
  */
 @OptIn(markerClass = UnstableApi.class)
 public class ForayPlaybackService extends MediaSessionService {
@@ -173,6 +182,15 @@ public class ForayPlaybackService extends MediaSessionService {
     static final String DUMP_PREFIX = "ForayEngine ";
     /** How many of the ring's rows the dump prints. */
     static final int DUMP_ROWS = 80;
+    /**
+     * A-66 (iOS {@code EngineBoot.previewLoadDeadlineSec}, NE-47): how long the voice preview's load
+     * may take before the audition is spoken instead, for every deadline class on the preview deck.
+     * PROVISIONAL, iOS's value: a listener tapped "preview" and is waiting, so this is well under the
+     * main deck's 20 s (P-13), and above the few seconds a cold 64 kbps {@code .m4a} of a sentence
+     * takes on a slow cellular link. The {@code lane=preview} deck rows carry the load's time to ready
+     * and any deadline; the first week of rendered-voice previews settles it.
+     */
+    static final double PREVIEW_LOAD_DEADLINE_SEC = 6; // MEASURE: verdict=preview-load (NE-47, A-66). Rows: deck kind=ready elapsedMs lane=preview, deck kind=deadline lane=preview, audition kind=fallback reason=timeout.
 
     @Nullable private static volatile ForayPlaybackService current;
 
@@ -180,6 +198,8 @@ public class ForayPlaybackService extends MediaSessionService {
     @Nullable private ExoPlayer exo;
     /** Every player the service built (one, or the pair's two), for the release. */
     private final List<ExoPlayer> players = new ArrayList<>();
+    /** A-66: the voice preview's player (its own deck), or null; released with the others. */
+    @Nullable private ExoPlayer previewPlayer;
     @Nullable private DeckDriving deck;
     /** The Foray tape's deck pair (A-40), or null with one deck. */
     @Nullable private DeckPair pair;
@@ -238,8 +258,9 @@ public class ForayPlaybackService extends MediaSessionService {
            service by another door never arms a car's PLAY for the native engine. */
         if (EngineOwnership.engineLane(this)) ForayMediaButtonReceiver.setEnabled(this, true);
         try {
-            // A-40: the Foray tape's deck pair, the second player the standby deck.
-            attach(new ExoPlayer.Builder(this).build(), new ExoPlayer.Builder(this).build());
+            // A-40: the Foray tape's deck pair, the second player the standby deck. A-66: the third is
+            // the voice preview's.
+            attach(new ExoPlayer.Builder(this).build(), new ExoPlayer.Builder(this).build(), new ExoPlayer.Builder(this).build());
         } catch (RuntimeException e) {
             Log.w(TAG, "could not build the native engine; the service holds no session", e);
             release();
@@ -273,6 +294,14 @@ public class ForayPlaybackService extends MediaSessionService {
      * listener on the deck that plays. With no standby it is one deck, as in A-26.
      */
     void attach(@NonNull ExoPlayer built, @Nullable ExoPlayer standby) {
+        attach(built, standby, null);
+    }
+
+    /**
+     * As {@link #attach(ExoPlayer, ExoPlayer)}, and with {@code preview} the voice preview's own
+     * deck (A-66); with none, a preview's load is answered failed and the audition is spoken.
+     */
+    void attach(@NonNull ExoPlayer built, @Nullable ExoPlayer standby, @Nullable ExoPlayer preview) {
         exo = built;
         players.add(built);
         EngineAudio.configure(built);
@@ -309,7 +338,15 @@ public class ForayPlaybackService extends MediaSessionService {
         RouteWatcher watcher = new RouteWatcher(this::inCarMode, timing::monoMs);
         routes = watcher;
         lastCarMode = inCarMode();
-        EngineSeams seams = new EngineSeams(deck, new SessionSeam(), timing, kept, narrator, interlude).withRoutes(watcher, kept);
+        /* A-66 (NE-47): the voice preview's deck, a player of its own whose rows say lane=preview. */
+        ExoDeck previewDeck = null;
+        if (preview != null) {
+            previewPlayer = preview;
+            EngineAudio.configure(preview);
+            previewDeck = new ExoDeck(preview, previewDeckConfig());
+        }
+        EngineSeams seams = new EngineSeams(deck, new SessionSeam(), timing, kept, narrator, interlude).withRoutes(watcher, kept)
+                .withPreview(previewDeck);
         // A-40: the Foray tape on (the core refuses playForay without it), over the pair when there is one.
         // A-41: the jingle only when its player exists.
         // A-61: the Bluetooth arm as mobile/ENGINE_DEFAULT.json's android block says (off); the host
@@ -516,6 +553,28 @@ public class ForayPlaybackService extends MediaSessionService {
     }
 
     /**
+     * A-66 (iOS's preview {@code AVDeck}, NE-47): the voice preview's deck. One deadline for every
+     * class ({@link #PREVIEW_LOAD_DEADLINE_SEC}), no same-source reuse (a preview is a few seconds of
+     * a voice, played once), and every row tagged {@code lane=preview}, so a Copy never mistakes them
+     * for the main deck's.
+     */
+    private ExoDeck.Config previewDeckConfig() {
+        ExoDeck.Config config = deckConfig();
+        config.loadDeadlineSec = PREVIEW_LOAD_DEADLINE_SEC;
+        config.lineLoadDeadlineSec = PREVIEW_LOAD_DEADLINE_SEC;
+        config.reusesSameSource = false;
+        config.diag = entry -> log.diag(previewLane(entry));
+        return config;
+    }
+
+    /** {@code entry} with {@code lane=preview} appended. */
+    static EngineCommand.DiagEntry previewLane(EngineCommand.DiagEntry entry) {
+        List<JsonNode.Member> fields = new ArrayList<>(entry.fields());
+        fields.add(JsonNode.member("lane", JsonNode.str("preview")));
+        return new EngineCommand.DiagEntry(entry.kind(), fields);
+    }
+
+    /**
      * A handover gave the player role to the other deck: the focus listener moves with it, so what
      * the ENGINE hears about focus is always the playing deck's. The outgoing deck, paused, loses
      * focus to the incoming one when that one plays, and that loss is nobody's interruption.
@@ -657,6 +716,15 @@ public class ForayPlaybackService extends MediaSessionService {
             }
         }
         players.clear();
+        ExoPlayer shown = previewPlayer;
+        previewPlayer = null;
+        if (shown != null) {
+            try {
+                shown.release();
+            } catch (RuntimeException e) {
+                Log.w(TAG, "releasing the preview player failed", e);
+            }
+        }
     }
 
     // ---- the cold path (A-27)
@@ -757,6 +825,12 @@ public class ForayPlaybackService extends MediaSessionService {
     @Nullable
     ExoPlayer exoPlayer() {
         return exo;
+    }
+
+    /** A-66: the voice preview's own player, or null. */
+    @Nullable
+    ExoPlayer previewPlayer() {
+        return previewPlayer;
     }
 
     FocusMapping focusMapping() {

@@ -404,6 +404,7 @@ public final class EngineCore {
             case EngineInput.Timer t -> onTimer(t.timer());
             case EngineInput.Narrator n -> onNarrator(n.event());
             case EngineInput.Interlude i -> onInterlude(i.event());
+            case EngineInput.Preview p -> onPreview(p.event());
         }
     }
 
@@ -486,12 +487,13 @@ public final class EngineCore {
             case EngineContract.Command.Relinquish c -> relinquish(c.cap(), source);
             case EngineContract.Command.Audition c -> {
                 // OQ-5: refused while running; otherwise the engine's own synthesiser speaks it
-                // after a SessionPolicy activation.
+                // after a SessionPolicy activation. NE-47 (A-66): with a `url` the rendered
+                // preview plays on the preview deck under that same activation, the tap's own.
                 if (state.isRunning() || audibleNow()) {
                     refuse(Refusal.ENGINE_BUSY);
                     return;
                 }
-                begin(new DeferredIntent.Audition(c.text(), c.voiceId()), Source.AUDITION);
+                begin(new DeferredIntent.Audition(c.text(), c.voiceId(), c.url()), Source.AUDITION);
             }
             case EngineContract.Command.SetHoldPolicy c -> state.holdPolicy = c.policy();
             // The host's (the session probe).
@@ -742,6 +744,7 @@ public final class EngineCore {
     private void stop(boolean persist, Source source) {
         cutSeamGap("stop");
         try {
+            stopPreview("stop");
             state.pausedByListener = true;
             stopRow(persist ? StopCause.CLOSE : StopCause.DATA_DELETION, source);
             // CLOSING IS A FLUSH (audit round 2, player-3): the reducer's stop saves nothing, so
@@ -833,6 +836,7 @@ public final class EngineCore {
         cutSeamGap("relinquish");
         state.gapParkedToken = null;
         state.gapCut = false;
+        stopPreview("relinquish");
         stopRow(StopCause.RELINQUISH, source);
         if (state.isRunning()) {
             state.pausedByListener = true;
@@ -942,7 +946,12 @@ public final class EngineCore {
      */
     private void begin(DeferredIntent intent, Source source) {
         // A play reopens a closed player; an audition is not a play of the queue.
-        if (!(intent instanceof DeferredIntent.Audition)) state.closed = false;
+        if (!(intent instanceof DeferredIntent.Audition)) {
+            state.closed = false;
+            // NE-47 (A-66): whatever starts now is the one thing that sounds; a voice preview
+            // still loading or playing is cut first.
+            stopPreview("play");
+        }
         GraceReason reason = graceReason(intent, source);
         if (reason != null) beginGrace(reason);
         spanRow(intent);
@@ -1122,7 +1131,16 @@ public final class EngineCore {
                 dispatch(new PlayerEvent.Play(item.ref()));
             }
             case DeferredIntent.WalkHop w -> walk(w.hop(), source);
-            case DeferredIntent.Audition a -> out.add(new EngineCommand.Speak(a.text(), a.voiceId()));
+            case DeferredIntent.Audition a -> {
+                if (a.url() == null) {
+                    // Spoken: a preview still sounding stops first (one voice at a time); with
+                    // none, this is the audition as it always was.
+                    stopPreview("audition");
+                    out.add(new EngineCommand.Speak(a.text(), a.voiceId()));
+                } else {
+                    loadPreview(a.url(), a.text(), a.voiceId());
+                }
+            }
         }
     }
 
@@ -3079,6 +3097,7 @@ public final class EngineCore {
      * more. The reducer's state is left as it was.
      */
     private void teardown() {
+        stopPreview("dispose");
         if (state.narration != null) stopNarration();
         cutSeamGap("dispose");
         state.gapParkedToken = null;
@@ -3095,6 +3114,87 @@ public final class EngineCore {
         if (state.grace != null) endGrace(GraceOutcome.RELINQUISHED);
         diag("mode", m("kind", str("teardown")));
         state.tornDown = true;
+    }
+
+    // ---- the voice picker's rendered preview (NE-47, A-66; Spark section 3.3)
+
+    /** The id a preview load carries: the deck logs it, nothing reads it. */
+    public static final String PREVIEW_ITEM_ID = "audition-preview";
+
+    /**
+     * An audition that names a rendered {@code preview.m4a} loads it on the PREVIEW deck, a deck
+     * of its own: the item a paused Foray holds on the main deck is never touched, so its resume
+     * is exactly what it was. The session is already active (the tap's own activation,
+     * {@link #begin}), and the play waits for the load's {@code ready} like any deck's. A preview
+     * in flight is replaced: the deck's new load supersedes the old one, whose late answers name a
+     * token nobody holds. The load names the LINE class (a preview is a small rendered file); the
+     * host's preview deck maps every class to its own deadline.
+     */
+    private void loadPreview(String url, String text, String voiceId) {
+        state.lastPreviewToken += 1;
+        int token = state.lastPreviewToken;
+        state.preview = new EngineState.AuditionPreview(token, text, voiceId);
+        diag("audition", m("kind", str("preview-load")), m("token", num(token)));
+        out.add(new EngineCommand.Preview(new DeckCommand.Load(token, PREVIEW_ITEM_ID, url, 0, false, DeckDeadlineClass.LINE)));
+    }
+
+    /**
+     * The preview deck's reports. Only the preview in flight is heard; a report for any other
+     * token (a replaced preview, or one already cut) is dropped.
+     */
+    private void onPreview(DeckEvent event) {
+        EngineState.AuditionPreview preview = state.preview;
+        if (preview == null) return;
+        switch (event) {
+            case DeckEvent.Ready e -> {
+                if (e.token() != preview.token || preview.playing) return;
+                // Audible: only on the session the audition's tap activated. An interruption
+                // since then (a call) took it, and a preview is not worth an activation nobody
+                // asked for: it is dropped, silently.
+                if (state.session != SessionPolicy.Phase.ACTIVE) {
+                    stopPreview("no-session");
+                    return;
+                }
+                preview.playing = true;
+                diag("audition", m("kind", str("preview-play")), m("token", num(e.token())));
+                out.add(new EngineCommand.Preview(DeckCommand.PLAY));
+            }
+            case DeckEvent.Failed e -> {
+                if (e.token() == preview.token) previewFailed(preview, "failed");
+            }
+            case DeckEvent.DeadlineExceeded e -> {
+                if (e.token() == preview.token) previewFailed(preview, "timeout");
+            }
+            case DeckEvent.Ended e -> {
+                if (e.token() != preview.token) return;
+                state.preview = null;
+                diag("audition", m("kind", str("preview-ended")), m("token", num(e.token())));
+            }
+            // Its time control, stalls, duration and the rest describe a few seconds of a voice
+            // sample: nothing the engine acts on.
+            default -> {}
+        }
+    }
+
+    /**
+     * A preview that would not load (a 404, a dead host, its deadline) is SPOKEN instead: the
+     * listener tapped to hear the voice and hears the line, in the voice the page resolved (the
+     * TextToSpeech fallback). Only with the session still active, as every audible command.
+     */
+    private void previewFailed(EngineState.AuditionPreview preview, String reason) {
+        state.preview = null;
+        boolean speaks = state.session == SessionPolicy.Phase.ACTIVE;
+        diag("audition", m("kind", str("fallback")), m("reason", str(reason)), m("spoken", JsonNode.bool(speaks)));
+        if (speaks) out.add(new EngineCommand.Speak(preview.text, preview.voiceId));
+    }
+
+    /** Cut the preview in flight, if any: something else is starting, the player closed, or the engine is going away. */
+    private void stopPreview(String why) {
+        EngineState.AuditionPreview preview = state.preview;
+        if (preview == null) return;
+        state.preview = null;
+        diag("audition", m("kind", str("preview-stop")), m("why", str(why)), m("token", num(preview.token)));
+        out.add(new EngineCommand.Preview(DeckCommand.UNLOAD));
     }
 
     // ---- cp_foray (client.js `persistForayProgress`)

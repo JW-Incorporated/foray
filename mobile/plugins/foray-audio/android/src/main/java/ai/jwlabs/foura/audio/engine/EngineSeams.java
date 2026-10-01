@@ -184,6 +184,14 @@ public final class EngineSeams {
     public final RouteReading routes;
     /** The known routes' private key (A-61), or null (most tests): a fresh salt per engine, and nothing persisted. */
     public final KnownRoutesStoring knownRoutes;
+    /**
+     * The PREVIEW deck (A-66, mirrors NE-47's {@code EngineSeams.preview}): the voice picker's
+     * rendered {@code preview.m4a} plays here, never on {@link #deck}, so a preview leaves the item a
+     * paused Foray holds exactly where it was. The service's is an {@link ExoDeck} of its own whose
+     * rows say {@code lane=preview}. Null (most tests): a preview's load is answered {@code failed}
+     * at once, and the audition is spoken instead, as it was before it had a url.
+     */
+    public final DeckDriving preview;
 
     public EngineSeams(DeckDriving deck, Session session, Timing timing, Output output) {
         this(deck, session, timing, output, null, null);
@@ -195,6 +203,11 @@ public final class EngineSeams {
 
     public EngineSeams(DeckDriving deck, Session session, Timing timing, Output output, Speaking speaker, InterludePlaying interlude,
                        RouteReading routes, KnownRoutesStoring knownRoutes) {
+        this(deck, session, timing, output, speaker, interlude, routes, knownRoutes, null);
+    }
+
+    public EngineSeams(DeckDriving deck, Session session, Timing timing, Output output, Speaking speaker, InterludePlaying interlude,
+                       RouteReading routes, KnownRoutesStoring knownRoutes, DeckDriving preview) {
         this.deck = java.util.Objects.requireNonNull(deck, "deck");
         this.session = java.util.Objects.requireNonNull(session, "session");
         this.timing = java.util.Objects.requireNonNull(timing, "timing");
@@ -203,10 +216,16 @@ public final class EngineSeams {
         this.interlude = interlude;
         this.routes = routes;
         this.knownRoutes = knownRoutes;
+        this.preview = preview;
     }
 
     /** These seams with route resume's two (A-61). */
     public EngineSeams withRoutes(RouteReading routes, KnownRoutesStoring knownRoutes) {
-        return new EngineSeams(deck, session, timing, output, speaker, interlude, routes, knownRoutes);
+        return new EngineSeams(deck, session, timing, output, speaker, interlude, routes, knownRoutes, preview);
+    }
+
+    /** These seams with the voice preview's deck (A-66). */
+    public EngineSeams withPreview(DeckDriving preview) {
+        return new EngineSeams(deck, session, timing, output, speaker, interlude, routes, knownRoutes, preview);
     }
 }
