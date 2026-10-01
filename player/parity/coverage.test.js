@@ -546,7 +546,8 @@ test("NE-39s: swift-pending.json and unported.json are deleted, stay deleted, an
      requires that." Nothing can be owed any more: a JS rule change carries its
      Swift port (engine-parity is red on the case until it does), and a new
      covered test is fixtured, mapped or excluded in the change that adds it.
-     jvm-pending.json STAYS: it is Android's book (A-63 retires it).
+     jvm-pending.json STAYS: it is Android's book, and since A-63 it holds
+     the JVM's "runs" only (nothing is owed there either).
      MUTATION: commit either file (even `{}`) -> red here, in record.mjs
      --check, and in the Swift loader; make loadParityData read one -> red. */
   assert.deepStrictEqual([...RETIRED_BOOKS], ["swift-pending.json", "unported.json"]);
@@ -659,8 +660,8 @@ test("NE-39s: manager-remainder runs in Swift whole, under foray; manager-await 
      wrappers REQUIRE the runner.
      MUTATION: mark a manager-remainder file jsOnly -> red; unregister
      ManagerRemainderFamily.runner or drop a wrapper's requirement -> red; move
-     manager-remainder into jvm-pending runs -> red; put it back under a
-     `remainder` capability -> red. */
+     manager-remainder out of jvm-pending runs, or owe it to an Android card
+     again -> red; put it back under a `remainder` capability -> red. */
   const files = FIXTURES.filter((f) => f.family === "manager-remainder");
   const cases = files.flatMap((f) => f.doc.cases);
   assert.equal(cases.length, 20, `manager-remainder holds the ported remainder (${cases.length} cases)`);
@@ -695,11 +696,35 @@ test("NE-39s: manager-remainder runs in Swift whole, under foray; manager-await 
   }
 
   const jvm = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, "player/parity/jvm-pending.json"), "utf8"));
-  // A-40 ported the Foray tape and re-booked the whole family to A-63 (the manager remainder, plan §5.7).
-  assert.equal(jvm.families["manager-remainder"], "A-63");
-  assert.ok(!jvm.runs.includes("manager-remainder"));
-  assert.equal(jvm.families["manager-await"], undefined, "a jsOnly family is owed to nobody");
+  // A-40 re-booked the whole family to A-63, and A-63 ported it (ForayTapeFamilies.managerRemainder).
+  assert.ok(jvm.runs.includes("manager-remainder"), "the JVM runs the manager remainder since A-63");
+  assert.ok(!jvm.runs.includes("manager-await"), "a jsOnly family is run by nobody");
+  const jvmRegistry = fs.readFileSync(path.join(REPO_ROOT,
+    "mobile/plugins/foray-audio/android/foray-engine-core-jvm/src/test/java/ai/jwlabs/foura/engine/parity/JvmFamilies.java"), "utf8");
+  assert.match(jvmRegistry, /MANAGER_REMAINDER = ForayTapeFamilies\.managerRemainder\(\)/, "the JVM registry runs manager-remainder");
   assert.ok(DATA.capabilities.foray.includes("manager-remainder") && DATA.capabilities.foray.includes("manager-await"));
+});
+
+test("A-63: the JVM runs every recorded family that is not jsOnly, and its books hold runs only", () => {
+  /* The card's acceptance: "The JVM runs every recorded engine family, and
+     `families` and `cases` are empty", and "`record.mjs --check` enforces that"
+     (jvm-pending.js; record.test.mjs proves the teeth). This pins the tree's own
+     state, so a later change that owes the JVM again is red here as well as in
+     --check, and the JVM registry is held to the same list.
+     MUTATION: put a "families" or "cases" key back (even {}) -> red; drop a
+     family from runs -> red; unregister a runner from JvmFamilies.ALL -> red. */
+  const jvm = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, "player/parity/jvm-pending.json"), "utf8"));
+  assert.deepStrictEqual(Object.keys(jvm).filter((k) => !k.startsWith("//")), ["runs"], "the JVM's books hold runs only");
+  const byFamily = {};
+  for (const f of FIXTURES) (byFamily[f.family] ??= []).push(f.doc.jsOnly === true);
+  const engineFamilies = Object.entries(byFamily).filter(([, v]) => !v.every(Boolean)).map(([f]) => f).sort();
+  assert.deepStrictEqual([...jvm.runs].sort(), engineFamilies, "runs is every recorded family that is not jsOnly");
+  const registry = fs.readFileSync(path.join(REPO_ROOT,
+    "mobile/plugins/foray-audio/android/foray-engine-core-jvm/src/test/java/ai/jwlabs/foura/engine/parity/JvmFamilies.java"), "utf8");
+  const all = /public static final List<FamilyRunner> ALL = List\.of\(([^;]*)\);/.exec(registry);
+  assert.ok(all, "JvmFamilies.ALL is declared where this test reads it");
+  assert.equal(all[1].split(",").map((x) => x.trim()).filter(Boolean).length, engineFamilies.length,
+    "JvmFamilies.ALL registers one runner per family in runs");
 });
 
 test("capabilities.json holds the plan §6.6 map", () => {
@@ -749,11 +774,10 @@ test("NE-45j/NE-45s/A-62: prepare-narration is authored against reference-engine
   assert.ok(DATA.capabilities.foray.includes("prepare-narration") && DATA.capabilities.remainder === undefined,
     "NE-45s moved prepare-narration to foray (and NE-39s retired the remainder gate)");
   const jvm = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, "player/parity/jvm-pending.json"), "utf8"));
-  assert.equal(jvm.families["prepare-narration"], undefined, "A-62 ported it: the JVM owes nothing of it");
   assert.ok(jvm.runs.includes("prepare-narration"), "the JVM runs it since A-62");
-  for (const c of cases) assert.equal(jvm.cases[c.id], undefined, `${c.id} is not owed on the JVM`);
-  assert.equal(jvm.families.prepare, undefined, "prepare itself the JVM runs since A-40 (A-25 handed it on)");
-  assert.ok(jvm.runs.includes("prepare"));
+  assert.ok(jvm.runs.includes("prepare"), "prepare itself the JVM runs since A-40 (A-25 handed it on)");
+  assert.equal(jvm.families, undefined, "nothing is owed on the JVM since A-63");
+  assert.equal(jvm.cases, undefined, "nothing is owed on the JVM since A-63");
 });
 
 test("every capability the engine advertises has zero pending and zero unported entries", () => {
@@ -876,8 +900,7 @@ test("NE-38rs: route-resume owes Swift nothing, is charged to episode, and the J
   assert.ok(DATA.capabilities.episode.includes("route-resume"), "a car resumes whatever was playing: an episode rule");
   assert.equal(DATA.capabilities.remainder, undefined, "NE-39s retired the remainder gate");
   const jvm = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, "player", "parity", "jvm-pending.json"), "utf8"));
-  assert.equal(jvm.families["route-resume"], undefined, "A-61 burned it down");
-  assert.ok(jvm.runs.includes("route-resume"));
+  assert.ok(jvm.runs.includes("route-resume"), "A-61 burned it down");
   for (const card of ["NE-38rj", "NE-38rs", "NE-07j", "NE-03"]) assert.match(card, CARD_RE);
   for (const bad of ["NE-3", "NE-38rsx", "later", "A-61"]) assert.doesNotMatch(bad, CARD_RE);
 });

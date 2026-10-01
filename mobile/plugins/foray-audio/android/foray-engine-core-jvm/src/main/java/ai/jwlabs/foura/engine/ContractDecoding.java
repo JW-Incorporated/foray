@@ -446,6 +446,10 @@ public final class ContractDecoding {
             case "simulateTermination" -> {
                 return new EngineContract.Command.SimulateTermination();
             }
+            case "setRouteSharing" -> {
+                return new EngineContract.Command.SetRouteSharing(
+                        need(name, args).required("policy", token(EngineConstants.EngineContract.ROUTE_SHARING_POLICIES)));
+            }
             default -> throw fail("/cmd", name + " is not a command");
         }
     }

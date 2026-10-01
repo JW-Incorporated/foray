@@ -90,6 +90,29 @@ import java.util.TreeSet;
  * audible source at a time; every grace begin has an end, and none is open when the scenario
  * ends; the silence node only while the transport runs. A broken one appends a {@code !...} token
  * to the op log (never stripped), so the case goes red with the evidence in its diff.
+ *
+ * <p>THE MANAGER REMAINDER (card A-63, the JVM twin of NE-39s; NE-39j recorded it) adds, on the
+ * manager target, fakes.js's opt-in shapes of the same fakes:
+ * <ul>
+ *   <li>{@code setup.backend.prefetch} ({@code true} or {@code "loses"}): the core's
+ *       {@code prepare} is the manager's ASK and is logged {@code prefetch:<id>@<s>}; a later load
+ *       of that item at that offset is WARM (it lands at once), unless the race was lost
+ *       ({@code "loses"}); a {@code deck: "window"} step is the deck's playhead watch reaching the
+ *       prefetch lead ({@link DeckEvent.PrepareWindow});</li>
+ *   <li>{@code setup.backend.coldLoadMs} (manual clock only): a load that finds nothing warm waits
+ *       that long on the scenario clock, and its {@code load:} op, like FakeBackend's, is written
+ *       when it lands;</li>
+ *   <li>{@code setup.backend.slowFirstPlay}: the first play's confirmation waits for the next
+ *       pause (SlowPlayBackend);</li>
+ *   <li>{@code setup.telemetry: ["rate.snapped"]}: the core's {@code rate kind=snapped}
+ *       diagnostics row, written as the JS telemetry line
+ *       {@code telemetry:rate.snapped requested=<JSON> applied=<r>};</li>
+ *   <li>the {@code positionTimer} view: whether the periodic position writer is armed.</li>
+ * </ul>
+ * Two of NE-39j's shapes are REFUSED, as the Swift driver refuses them, because what they model is
+ * the JS manager's awaits, which one synchronous native turn does not have (their cases are the
+ * jsOnly {@code manager-await} family): {@code setup.tts.pause: "held"} and
+ * {@code setup.settledEvents}.
  */
 public final class EngineScenarioDriver {
     /**
@@ -193,10 +216,16 @@ public final class EngineScenarioDriver {
         /** The {@code setup} keys this driver implements; any other is refused, never ignored. */
         static final Set<String> SETUP_KEYS = new HashSet<>(Arrays.asList("target", "positions", "positionEvents", "rate",
                 "backend", "catalogue", "session", "seamGapSec", "view", "scheduler", "seamGapEvents", "forayBuild", "capabilities",
-                "tts", "interlude", "interludeEnabled", "voice", "narrationTicks", "preview"));
+                "tts", "interlude", "interludeEnabled", "voice", "narrationTicks", "preview", "telemetry"));
+        /** NE-39j's shapes of the JS manager's awaits, refused with the reason (the jsOnly {@code manager-await} family). */
+        static final String AWAIT_ONLY = "it models the JS manager's awaits, which a synchronous native turn does not have"
+                + " (the jsOnly manager-await family)";
+        /** runner.js {@code TELEMETRY_EVENTS}: the telemetry lines a scenario may record. */
+        static final Set<String> TELEMETRY_EVENTS = Set.of("rate.snapped");
         /** runner.js {@code VIEW_KEYS}: what a scenario may add to its checkpoints. */
         static final Set<String> VIEW_KEYS = new HashSet<>(Arrays.asList("outPoint", "seamGapRemainingMs", "timersLive", "positionSec",
-                "narrationSec", "narrationPlayhead", "narrationTicks", "lastVoiceFallback", "wasPlaying"));
+                "narrationSec", "narrationPlayhead", "narrationTicks", "lastVoiceFallback", "wasPlaying",
+                "positionTimer"));
         /** The timers the JS manager runs on its injected scheduler: the beat and the pulse. */
         static final Set<EngineTimer> SCHEDULER_TIMERS = Set.of(EngineTimer.SEAM_BEAT, EngineTimer.NARRATION_TICK);
         /** A fixed wall clock (rows are stamped with it) and a monotonic one that moves a second per step. */
@@ -274,6 +303,28 @@ public final class EngineScenarioDriver {
         boolean disposing = false;
         /** {@code LOAD_AFTER_BEAT}'s withheld loads. */
         final List<DeckCommand> deferredLoads = new ArrayList<>();
+        /**
+         * A-63 (NE-39s): FakeBackend's prefetch contract ({@code setup.backend.prefetch}): null
+         * without one, else whether the warm load loses its race.
+         */
+        final Boolean prefetchLoses;
+        /** The {@code <id>@<s>} keys asked for and not yet loaded (FakeBackend {@code _warmed}). */
+        final Set<String> warmed = new HashSet<>();
+        /**
+         * {@code setup.backend.coldLoadMs}: what a load with nothing warm costs on the manual clock,
+         * and the loads waiting it out (in issue order).
+         */
+        final double coldLoadMs;
+        final List<ColdLoad> coldLoads = new ArrayList<>();
+        /** {@code setup.backend.slowFirstPlay}: the first play's confirmation, held until the next pause. */
+        boolean slowFirstPlay;
+        Integer heldConfirmation;
+        /**
+         * {@code setup.telemetry}, and the value the last {@code setRate} was handed, as the page
+         * handed it (a snapped row names the REQUEST, a string included).
+         */
+        final Set<String> telemetry;
+        Json lastRateArg = Json.UNDEFINED;
 
         // What the scenario saw.
         final List<String> ops = new ArrayList<>();
@@ -295,8 +346,17 @@ public final class EngineScenarioDriver {
 
         record Load(int token, String itemId) {}
 
+        record ColdLoad(DeckCommand command, double dueMs) {}
+
         World(Json setup, Mutation mutation, boolean forayTape, String caseId) {
             if (!(setup instanceof Json.Obj fields)) throw new HarnessError("E_BAD_CASE", "setup must be an object");
+            if (fields.fields().containsKey("settledEvents")) {
+                throw new HarnessError("E_BAD_CASE", "setup.settledEvents is refused: " + AWAIT_ONLY
+                        + "; the native snapshot follows every turn");
+            }
+            if ("held".equals(JsArgs.at(JsArgs.at(setup, "tts"), "pause").asString())) {
+                throw new HarnessError("E_BAD_CASE", "setup.tts.pause \"held\" is refused: " + AWAIT_ONLY);
+            }
             for (String key : fields.fields().keySet()) {
                 if (!SETUP_KEYS.contains(key)) {
                     throw new HarnessError("E_BAD_CASE", "setup." + key + " is not implemented by the JVM scenario driver");
@@ -422,6 +482,47 @@ public final class EngineScenarioDriver {
                     for (Json url : urls) if (url.asString() != null) previewFailUrls.add(url.asString());
                 }
             }
+            Json prefetch = JsArgs.at(backend, "prefetch");
+            if (JsArgs.isUndefined(prefetch) || isFalse(prefetch)) {
+                prefetchLoses = null;
+            } else if (prefetch instanceof Json.Bool) {
+                prefetchLoses = false;
+            } else if ("loses".equals(prefetch.asString())) {
+                prefetchLoses = true;
+            } else {
+                throw new HarnessError("E_BAD_CASE", "setup.backend.prefetch is true or \"loses\", got " + Json.show(prefetch));
+            }
+            if (prefetchLoses != null && engineTarget) {
+                throw new HarnessError("E_BAD_CASE",
+                        "setup.backend.prefetch is the manager target's; the engine target's standby deck always prepares");
+            }
+            Json cold = JsArgs.at(backend, "coldLoadMs");
+            if (JsArgs.isUndefined(cold)) {
+                coldLoadMs = 0;
+            } else if (cold instanceof Json.Num n && Double.isFinite(n.value()) && n.value() > 0 && Math.rint(n.value()) == n.value()) {
+                coldLoadMs = n.value();
+            } else {
+                throw new HarnessError("E_BAD_CASE", "setup.backend.coldLoadMs is a positive whole number of ms");
+            }
+            if (coldLoadMs > 0 && (!manualClock || engineTarget || holdLoads)) {
+                throw new HarnessError("E_BAD_CASE",
+                        "setup.backend.coldLoadMs needs the manager target on setup.scheduler = \"manual\", without holdLoads");
+            }
+            slowFirstPlay = JsArgs.isTrue(JsArgs.at(backend, "slowFirstPlay"));
+            Set<String> events = new HashSet<>();
+            Json names = JsArgs.at(setup, "telemetry");
+            if (!JsArgs.isUndefined(names)) {
+                if (names.asList() == null) throw new HarnessError("E_BAD_CASE", "setup.telemetry is a list of event names");
+                for (Json name : names.asList()) {
+                    String text = name.asString();
+                    if (text == null || !TELEMETRY_EVENTS.contains(text)) {
+                        throw new HarnessError("E_BAD_CASE", "setup.telemetry is a list of "
+                                + String.join(", ", new TreeSet<>(TELEMETRY_EVENTS)));
+                    }
+                    events.add(text);
+                }
+            }
+            telemetry = events;
             reading = new DeckReading(0.0, defaultDuration, false, false);
         }
 
@@ -506,6 +607,8 @@ public final class EngineScenarioDriver {
             } else if ("finishPrevious".equals(event)) {
                 if (fake.previous == null) throw new HarnessError("E_BAD_CASE", "no earlier utterance to finish");
                 feed(narratorEnd(new EngineInput.NarratorEvent.Finished(fake.previous)));
+            } else if ("releasePause".equals(event)) {
+                throw new HarnessError("E_BAD_CASE", "tts \"releasePause\" is refused: " + AWAIT_ONLY);
             } else {
                 throw new HarnessError("E_BAD_CASE", "unknown tts event " + Json.show(fields.get("tts")) + " (finish, silent)");
             }
@@ -584,7 +687,10 @@ public final class EngineScenarioDriver {
                     feed(new EngineInput.Queue(new EngineInput.QueueInput.Seek(seconds,
                             JsArgs.truthy(JsArgs.at(JsArgs.arg(args, 1), "precise")))));
                 }
-                case "setRate" -> feed(new EngineInput.Queue(new EngineInput.QueueInput.SetRate(JsArgs.arg(args, 0).asNumber())));
+                case "setRate" -> {
+                    lastRateArg = JsArgs.arg(args, 0);
+                    feed(new EngineInput.Queue(new EngineInput.QueueInput.SetRate(JsArgs.arg(args, 0).asNumber())));
+                }
                 case "setVoice" -> feed(new EngineInput.Command(new EngineContract.Command.SetVoice(JsArgs.arg(args, 0).asString()), tap));
                 case "setInterludeEnabled" -> {
                     // `on !== false`.
@@ -686,6 +792,13 @@ public final class EngineScenarioDriver {
                 case "observedPause" -> {
                     reading.audible = false;
                     feed(new EngineInput.Deck(new DeckEvent.PausedUncommanded(token, reading.positionSec != null ? reading.positionSec : 0)));
+                }
+                case "window" -> {
+                    // A-63 (NE-39s): FakeBackend `openPrefetchWindow` (only a backend with the
+                    // prefetch contract has one): the deck's playhead watch reaching the prefetch
+                    // lead. Whether anything is warmed is the core's call.
+                    if (prefetchLoses == null) throw new HarnessError("E_BAD_CASE", "deck \"window\" needs setup.backend.prefetch");
+                    if (deckToken != null) feed(new EngineInput.Deck(new DeckEvent.PrepareWindow(deckToken)));
                 }
                 case "loaded", "loadFailed" -> {
                     Json id = fields.get("id");
@@ -811,6 +924,13 @@ public final class EngineScenarioDriver {
                 deferredLoads.clear();
                 for (DeckCommand command : withheld) applyDeck(command);
             }
+            // A-63 (NE-39s): the cold loads whose cost the clock has now paid land, in due order
+            // (FakeBackend's awaited `schedule(coldLoadMs)`).
+            List<ColdLoad> landing = new ArrayList<>();
+            for (ColdLoad c : coldLoads) if (c.dueMs() <= monoMs) landing.add(c);
+            coldLoads.removeAll(landing);
+            landing.sort((a, b) -> Double.compare(a.dueMs(), b.dueMs()));
+            for (ColdLoad c : landing) loadDeck(c.command());
             settle();
         }
 
@@ -1200,7 +1320,13 @@ public final class EngineScenarioDriver {
                     case EngineCommand.Diag d -> {
                         JsonNode kindField = d.entry().field("kind");
                         String sub = kindField == null ? null : kindField.stringValue();
-                        if (d.entry().kind().equals("beat") && seamGapEvents && !engineTarget && ("begin".equals(sub) || "end".equals(sub))) {
+                        if (d.entry().kind().equals("rate") && "snapped".equals(sub) && telemetry.contains("rate.snapped") && !engineTarget) {
+                            // The manager's `rate.snapped requested=<JSON> applied=<r>`.
+                            JsonNode applied = d.entry().field("applied");
+                            Double value = applied == null ? null : applied.numberValue();
+                            ops.add("telemetry:rate.snapped requested=" + jsonStringify(lastRateArg) + " applied="
+                                    + (value == null ? "null" : number(value)));
+                        } else if (d.entry().kind().equals("beat") && seamGapEvents && !engineTarget && ("begin".equals(sub) || "end".equals(sub))) {
                             // The surface's beat callback (`onSeamGapChange`), as an op.
                             ops.add("event.seamGap:" + "begin".equals(sub));
                         } else {
@@ -1219,6 +1345,20 @@ public final class EngineScenarioDriver {
 
         /** FakeBackend, command by command (and, on the engine target, WarmingBackend's standby deck). */
         void applyDeck(DeckCommand command) {
+            if (command instanceof DeckCommand.Load load && !engineTarget && (prefetchLoses != null || coldLoadMs > 0)) {
+                // A-63 (NE-39s): FakeBackend `load`: a warm key is spent; a cold load waits its cost
+                // on the clock before it re-points the element (and logs).
+                boolean warm = warmed.remove(load.itemId() + "@" + rounded(load.startSec()));
+                if (!warm && coldLoadMs > 0) {
+                    coldLoads.add(new ColdLoad(command, monoMs + coldLoadMs));
+                    return;
+                }
+            }
+            loadDeck(command);
+        }
+
+        /** FakeBackend, command by command, once a load is due to re-point it. */
+        private void loadDeck(DeckCommand command) {
             switch (command) {
                 case DeckCommand.Load load -> {
                     if (engineTarget) {
@@ -1256,12 +1396,22 @@ public final class EngineScenarioDriver {
                     plays.add(deckItemId != null ? deckItemId : "?");
                     trackAudible();
                     ops.add("play");
-                    if (deckToken != null) confirmations.add(deckToken);
+                    if (slowFirstPlay && deckToken != null) {
+                        // SlowPlayBackend: the first play settles only at the next pause.
+                        slowFirstPlay = false;
+                        heldConfirmation = deckToken;
+                    } else if (deckToken != null) {
+                        confirmations.add(deckToken);
+                    }
                     if (engineTarget) checkWindowAtStart();
                 }
                 case DeckCommand.Pause p -> {
                     reading.audible = false;
                     ops.add("pause");
+                    if (heldConfirmation != null) {
+                        confirmations.add(heldConfirmation);
+                        heldConfirmation = null;
+                    }
                 }
                 case DeckCommand.Seek s -> {
                     reading.positionSec = s.toSec();
@@ -1289,6 +1439,13 @@ public final class EngineScenarioDriver {
                     }
                 }
                 case DeckCommand.Prepare p -> {
+                    if (!engineTarget && prefetchLoses != null) {
+                        // A-63 (NE-39s): the manager's ASK (FakeBackend `prefetch`).
+                        String key = p.itemId() + "@" + rounded(p.startSec());
+                        ops.add("prefetch:" + key);
+                        if (!prefetchLoses) warmed.add(key);
+                        return;
+                    }
                     if (!engineTarget) {
                         nativeOp("n.deck.prepare:" + p.itemId());
                         return;
@@ -1461,6 +1618,7 @@ public final class EngineScenarioDriver {
                     case "lastVoiceFallback" -> fields.put(key, state.lastVoiceFallback == null ? Json.NULL : Json.bool(state.lastVoiceFallback));
                     case "wasPlaying" -> fields.put(key, state.player instanceof PlayerQueueState.Interrupted i
                             ? Json.bool(i.wasPlaying()) : Json.NULL);
+                    case "positionTimer" -> fields.put(key, Json.bool(state.positionTimerArmed));
                     default -> throw new HarnessError("E_BAD_CASE", "unknown view key " + key);
                 }
             }
@@ -1602,6 +1760,22 @@ public final class EngineScenarioDriver {
         /** {@code `${n}`}: ECMAScript Number::toString. */
         static String number(double value) {
             return JSWriter.numberToString(value);
+        }
+
+        /**
+         * {@code JSON.stringify(v)} for the scalars a {@code setRate} is handed (a template literal
+         * prints {@code undefined} for an absent one).
+         */
+        static String jsonStringify(Json value) {
+            return switch (value) {
+                case Json.Undefined u -> "undefined";
+                case Json.Null n -> "null";
+                case Json.Bool b -> b.value() ? "true" : "false";
+                case Json.Num n -> Double.isFinite(n.value()) ? number(n.value()) : "null";
+                case Json.Str t -> JSWriter.quote(t.value());
+                case Json.Arr a -> "[object]";
+                case Json.Obj o -> "[object]";
+            };
         }
     }
 

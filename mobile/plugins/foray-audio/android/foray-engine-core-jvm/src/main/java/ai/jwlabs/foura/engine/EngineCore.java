@@ -497,8 +497,10 @@ public final class EngineCore {
                 begin(new DeferredIntent.Audition(c.text(), c.voiceId(), c.url()), Source.AUDITION);
             }
             case EngineContract.Command.SetHoldPolicy c -> state.holdPolicy = c.policy();
-            // The host's (the session probe).
+            // The host's (the session probe; the route-sharing store, NE-40, which Android has no
+            // counterpart for).
             case EngineContract.Command.ProbeSession c -> {}
+            case EngineContract.Command.SetRouteSharing c -> {}
             case EngineContract.Command.SimulateTermination c -> {
                 // Developer only: the record a cold boot restores from is written NOW.
                 if (state.queue.isEmpty()) {
@@ -760,6 +762,14 @@ public final class EngineCore {
             dispatch(PlayerEvent.STOP);
             narrationStopping = false;
             suppressSave = false;
+            // THE POSTCONDITION OF STOP IS SILENCE TOO (audit round 3, player-core-7; NE-39s, A-63
+            // ports it): from `interrupted` or `loadingItem` the reducer's stop emits no pause,
+            // because it believes nothing is audible, and in the #689 drift the deck is. pause()'s
+            // rule, by the deck's own word, never the reverse.
+            if (audibleNow()) {
+                diag("pause", m("kind", str("forced")), m("why", str("the deck was audible while the machine said stopped")));
+                deckCommand(DeckCommand.PAUSE);
+            }
             if (wasSpeaking) stopNarration();
             applySession(SessionPolicy.transition(state.session,
                     new SessionPolicy.Input.Simple(persist ? SessionPolicy.InputKind.CLOSE : SessionPolicy.InputKind.DATA_DELETION),

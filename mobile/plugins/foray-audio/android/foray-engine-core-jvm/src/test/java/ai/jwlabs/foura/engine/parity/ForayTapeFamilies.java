@@ -22,6 +22,8 @@ import java.util.List;
  *       SPOKEN line, at the line's start, and a same-source prepare on the standby written
  *       {@code n.prepare-seek:}), plus deck-policy.js's {@code warmsAcross} and the duration
  *       window.</li>
+ *   <li>{@code manager-remainder} (NE-39j recorded it, NE-39s ported it to Swift, card A-63 to the
+ *       JVM): the rest of queue-manager's rules, through the manager surface with the tape on.</li>
  * </ul>
  * A Foray a scenario plays is the PAGE's build (player/parity/scenario-builds.json).
  */
@@ -63,6 +65,34 @@ final class ForayTapeFamilies {
 
     static FamilyRunner prepareNarration() {
         return prepareNarration(null);
+    }
+
+    /**
+     * {@code manager-remainder} (card A-63, the JVM twin of the Swift ManagerRemainderFamily, NE-39s;
+     * NE-39j recorded it from the real {@code PlayerQueueManager}): the last of queue-manager's rules,
+     * driven through {@code EngineCore} with the Foray tape on, as {@code manager-foray} is.
+     * <ul>
+     *   <li>warming.json: the warming rules (queue-manager.js §11 as NE-45j rewrote them): the window
+     *       names the item its boundary advances to, at that item's in-point; a spoken line has no
+     *       file to warm and the clip after it is asked for at the line's start; the last item warms
+     *       nothing; a paused window warms nothing; and on the manual clock a warmed seam is the beat,
+     *       an unwarmed one is the load, and a lost race costs the load and never the segment.
+     *       {@code prefetch:<id>@<s>} is the core's {@code prepare} (the ASK), not the standby deck's
+     *       decision, which the {@code prepare} families assert.</li>
+     *   <li>transport.json: the rest (an unknown ref errors to idle, the rate getter and its snap
+     *       row, the position writer, stop's silence behind a paused machine (player-core-7), and a
+     *       play settling mid-skip-back keeping the restart).</li>
+     * </ul>
+     * What the driver adds for these cases (backend prefetch, cold loads, the slow first play,
+     * telemetry, the {@code positionTimer} view) is in {@link EngineScenarioDriver}'s header. The two
+     * NE-39j cases that pin the JS manager's awaits are the jsOnly {@code manager-await} family.
+     */
+    static FamilyRunner managerRemainder(EngineScenarioDriver.Mutation mutation) {
+        return new TapeRunner("manager-remainder", List.of("manager"), new EngineScenarioDriver(mutation, true));
+    }
+
+    static FamilyRunner managerRemainder() {
+        return managerRemainder(null);
     }
 
     /** Scenarios only, of the family's targets: a case aimed at another target is refused rather than run. */

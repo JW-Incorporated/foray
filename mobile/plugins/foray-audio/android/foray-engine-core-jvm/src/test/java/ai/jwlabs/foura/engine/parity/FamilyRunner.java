@@ -11,12 +11,12 @@ import java.util.Map;
  * Runs the cases of ONE fixture family against its JVM port (docs/native-engine-plan.md
  * §6.4; the Swift FamilyRunner protocol).
  *
- * <p>One implementation per family, registered in {@link JvmFamilies#ALL}. A family with
- * no runner is not an error in itself: jvm-pending.json must then owe it (the whole
- * family, or every one of its ids), and the suite fails on any id it does not. So a JS
- * card that records a new family never turns the JVM runner red once record.mjs has
- * handed it to a card, and a JVM card that forgets to register its runner does not go
- * quietly green either: its burned-down ids become "neither executed nor pending".
+ * <p>One implementation per family, registered in {@link JvmFamilies#ALL}. Until A-63 a
+ * family with no runner could be owed in jvm-pending.json; A-63 retired owing (the loader
+ * refuses a tree that owes), so a family with no runner is either jsOnly or every id of it is
+ * "neither executed nor pending" and the suite fails, and record.mjs --check is red on it too
+ * (it is not in "runs"). A JS change that records a new family carries its JVM runner in the
+ * same change.
  */
 public interface FamilyRunner {
     /** The fixture family (the directory name under player/parity/fixtures). */

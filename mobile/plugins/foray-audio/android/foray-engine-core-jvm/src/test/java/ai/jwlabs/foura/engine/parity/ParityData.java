@@ -16,7 +16,7 @@ import java.util.stream.Stream;
  * Everything one JVM parity run reads, from player/parity/ IN PLACE (docs/native-engine-plan.md
  * §6: "Fixtures are read in place"; nothing under foray-engine-core-jvm is a copy of a
  * fixture): the families and their ids (manifest.json), what each fixture file holds,
- * what the JVM owes (jvm-pending.json), the floors (floors.json), the families
+ * the families the JVM runs (jvm-pending.json "runs"; nothing may be owed since A-63), the floors (floors.json), the families
  * unported.json says tests will be recorded into, and every fixture file on disk.
  *
  * <p>Plain data with public mutable maps, so a test can change ONE thing (corrupt an
@@ -28,9 +28,13 @@ public final class ParityData {
     public final Map<String, List<String>> manifest = new TreeMap<>();
     /** family -> the fixture files manifest.json lists for it, as read. */
     public final Map<String, List<FixtureFile>> fixtures = new TreeMap<>();
-    /** jvm-pending.json "families": a whole family the JVM does not run yet -> the card that owes it. */
+    /**
+     * A whole family owed to an Android card. Retired from jvm-pending.json by A-63 (the loader
+     * refuses the key): empty on every real run, filled only by the harness tests that prove the
+     * suite's rules.
+     */
     public final Map<String, String> pendingFamilies = new TreeMap<>();
-    /** jvm-pending.json "cases": one case id owed inside a family the JVM does run -> its card. */
+    /** One case owed inside a family the JVM runs. Retired with "families" by A-63: empty on every real run. */
     public final Map<String, String> pendingCases = new TreeMap<>();
     /** jvm-pending.json "runs": the families the JVM has a runner for; must equal {@link JvmFamilies#ALL}'s. */
     public final TreeSet<String> runs = new TreeSet<>();
@@ -138,14 +142,14 @@ public final class ParityData {
         }
 
         Json pending = read(parityDir.resolve("jvm-pending.json"));
+        /* A-63 emptied the books and retired owing, as NE-39s retired swift-pending.json: the file
+           holds "runs" only, and a tree that owes anything again (even an empty "families" or
+           "cases") is refused, as the Swift loader refuses a retired list. The suite still keeps
+           books in memory (pendingFamilies / pendingCases), which only the harness tests fill. */
         for (String section : List.of("families", "cases")) {
-            Json m = pending.get(section);
-            if (m == null || m.asMap() == null) {
-                throw new HarnessError("E_BAD_CASE", "jvm-pending.json has no \"" + section + "\" object");
-            }
-            Map<String, String> into = section.equals("families") ? data.pendingFamilies : data.pendingCases;
-            for (Map.Entry<String, Json> e : m.asMap().entrySet()) {
-                into.put(e.getKey(), e.getValue().asString() == null ? "" : e.getValue().asString());
+            if (pending.get(section) != null) {
+                throw new HarnessError("E_BAD_CASE", "jvm-pending.json holds \"" + section + "\": A-63 retired owing (the JVM"
+                        + " runs every recorded family, and a JS rule change carries its JVM port). Delete the key");
             }
         }
         Json runList = pending.get("runs");

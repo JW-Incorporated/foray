@@ -39,8 +39,9 @@ public final class EngineBridgeRules {
      * THE CAPABILITIES THIS BINARY MAY ADVERTISE on Android: what it implements AND what the
      * JVM parity books let it claim. The gate is the Swift literal's (plan §6.6), read against
      * player/parity/jvm-pending.json instead of swift-pending.json: shell-invariants refuses an
-     * entry here any of whose families ({@code player/parity/capabilities.json}) the JVM still
-     * owes. So, since A-42 (the A2 flip), iOS's M2 four:
+     * entry here any of whose families ({@code player/parity/capabilities.json}) the JVM does not
+     * run (since A-63 nothing may be owed, so every such family is in the books' "runs"). So,
+     * since A-42 (the A2 flip), iOS's M2 four:
      * <ul>
      *   <li>{@code episode}: the core plays episodes (A-24), and {@code engine-mode} (the lane's
      *       once-per-process decision, with the crash-loop guard) is ported by A-29, so every
