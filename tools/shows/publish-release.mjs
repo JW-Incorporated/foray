@@ -7,7 +7,7 @@
    a real repo — see publish-release.test.mjs, which fakes `gh` entirely.
    `run-and-publish.mjs` is the thin orchestration script that calls these
    functions for real inside the Actions job. */
-import { join } from "node:path";
+import { basename, join } from "node:path";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { MAX_SHARD_ASSETS_PER_RELEASE, POINTER_SCHEMA_VERSION, RELEASE_TAG_PREFIX, REPO_SLUG } from "./config.mjs";
@@ -40,32 +40,81 @@ export function releaseTagFor(exportVersion) {
   return `${RELEASE_TAG_PREFIX}${safe}`;
 }
 
-/** True when a release already exists for this tag — the end-to-end
-    idempotency check the card asks for, independent of (and in addition
-    to) S-04a's own local state.json skip. Two signals matter: local
-    state.json can be lost (fresh checkout, cache eviction, a runner that
-    never persists data-local/) while the release still exists on GitHub,
-    and this is what stops a second run from creating a duplicate release
-    in that case — state.json alone is not the whole idempotency story.
+const GH_MAX_BUFFER = 64 * 1024 * 1024;
+const defaultSleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-    FAILS CLOSED: `gh release view` on a genuine absence exits non-zero
-    with a "release not found" message, which is the only case read as
-    `false`. Any other failure (auth, network, rate limit) throws instead
-    of being read as "safe to publish" — the fail-open shape that would
-    let a transient error produce a duplicate release. */
-export async function releaseExists(tag, { exec = execFileP, repo = REPO_SLUG } = {}) {
+/** The observed stderr of GitHub's upload throttle (OPS-02, issue #969,
+    runs 36852145618 / 36853224459): `HTTP 403: You have exceeded a
+    secondary rate limit. Please wait a few minutes before you try again.`
+    from uploads.github.com, after ~500 assets in one minute. It is a
+    RATE limit, not an auth failure — the same token had just created the
+    release and uploaded hundreds of assets — so it is the one 403 that
+    is retried, and it is retried after a long wait (the message's own
+    "a few minutes"), not the short generic backoff. */
+const SECONDARY_RATE_LIMIT = /secondary rate limit/i;
+export const RATE_LIMIT_WAIT_MS = 90_000;
+
+/** What GitHub holds for a tag right now: `absent` (no release at all),
+    `draft` (created, possibly with some assets, not yet published — the
+    shape an interrupted `publishRelease` leaves behind on purpose, see
+    its header), or `published`, plus the names of the assets already on
+    it. One `gh release view --json isDraft,assets` call; `gh` resolves a
+    draft by tag for a token with write access, which is what makes the
+    resume path work at all (OPS-02 verified `--json isDraft,assets`
+    against this repo: 4 assets on the 12 Sep release).
+
+    FAILS CLOSED, exactly as `releaseExists` always has: a genuine absence
+    (`release not found` / HTTP 404) is the only error read as `absent`.
+    Any other failure (auth, network, rate limit) throws
+    RELEASE_CHECK_FAILED instead of being read as "safe to publish" — the
+    fail-open shape that would let a transient error produce a duplicate
+    release. */
+export async function releaseState(tag, { exec = execFileP, repo = REPO_SLUG } = {}) {
+  let stdout;
   try {
-    await exec("gh", ["release", "view", tag, "--repo", repo]);
-    return true;
+    ({ stdout } = await exec("gh", [
+      "release", "view", tag,
+      "--repo", repo,
+      "--json", "isDraft,assets",
+      "--jq", "{isDraft: .isDraft, assets: [.assets[].name]}",
+    ]));
   } catch (err) {
     const text = `${err.stderr || err.message || ""}`;
-    if (/release not found|HTTP 404/i.test(text)) return false;
+    if (/release not found|HTTP 404/i.test(text)) return { state: "absent", assetNames: [] };
     throw new PublishError(
       "RELEASE_CHECK_FAILED",
       `could not determine whether release ${tag} exists: ${text.trim()}`,
       { tag },
     );
   }
+  const parsed = JSON.parse(String(stdout));
+  return {
+    state: parsed.isDraft === true ? "draft" : "published",
+    assetNames: Array.isArray(parsed.assets) ? parsed.assets.map(String) : [],
+  };
+}
+
+/** True when a PUBLISHED release already exists for this tag — the
+    end-to-end idempotency check the card asks for, independent of (and in
+    addition to) S-04a's own local state.json skip. Two signals matter:
+    local state.json can be lost (fresh checkout, cache eviction, a runner
+    that never persists data-local/) while the release still exists on
+    GitHub, and this is what stops a second run from creating a duplicate
+    release in that case — state.json alone is not the whole idempotency
+    story.
+
+    A DRAFT IS "NOT YET THERE". Since OPS-03 a release is created as a
+    draft, filled in chunks, then published, so a draft under this tag is
+    an upload that was interrupted part-way — reading it as "exists" here
+    would make `publishShardReleases` / run-and-publish.mjs SKIP a
+    half-full batch forever. Returning false sends the caller into
+    `publishRelease`, whose resume path uploads only what the draft is
+    missing and then publishes it.
+
+    Fails closed via `releaseState`: only a real absence is `false`
+    without a release; any other error throws. */
+export async function releaseExists(tag, opts = {}) {
+  return (await releaseState(tag, opts)).state === "published";
 }
 
 /** Lists the exact top-level (non-shard) files a release ships: manifest,
@@ -101,43 +150,119 @@ export function assetBaseUrlFor(tag, repo = REPO_SLUG) {
   return `https://github.com/${repo}/releases/download/${tag}`;
 }
 
-/** Creates the release and uploads every asset in one `gh release create`
-    call — uploading separately from creation would be two points of
-    partial failure (a release created with zero assets, e.g.) instead of
-    one atomic-from-the-caller's-view step. Returns the asset base URL the
-    pointer file needs: `.../releases/download/<tag>/<name>` is a stable,
-    directly-constructible URL shape that needs no further API call to
-    resolve per-asset — verified against a real release in this repo (see
+/** Publishes a release in three resumable steps — DRAFT, CHUNKED UPLOADS,
+    PUBLISH — instead of the one `gh release create <tag> <every asset>`
+    call this used to be:
+
+      1. `gh release create <tag> --draft --title --notes` with NO asset
+         paths (skipped when a draft under this tag already exists);
+      2. `gh release upload <tag> <chunk> --clobber`, `chunkSize` files
+         per call, only for the assets the draft does not already carry,
+         a `pauseMs` breath between chunks, and each chunk retried after
+         a failure up to `attempts` tries in total;
+      3. `gh release edit <tag> --draft=false`.
+
+    WHY (OPS-02's reading of the weekly run, issue #969). Every scheduled
+    run since 2026-09-20 died inside the monolithic create of batch 1
+    (900 shard paths), and for weeks nobody could read why: the one
+    FATAL line was cut at the log's 65,565-character cap before the exit
+    code. With OPS-01's lines the cause is `HTTP 403: You have exceeded a
+    secondary rate limit` from uploads.github.com after ~500 assets in
+    about a minute — `gh` uploads 5 in flight and bursts at ~500/min, and
+    the upload throttle is a per-minute window (two dispatches 9 minutes
+    apart each got ~500 through). A bigger retry budget cannot fix a
+    burst that always trips the limit, and the monolithic call is not
+    resumable either: on an upload error `gh release create` deletes its
+    own draft, so every run started again from zero. Small chunks with a
+    pause between them keep the sustained rate ~4x under the observed
+    cut (10 files / 5 s = 120/min; 1,298 shards ≈ 11-14 min, inside the
+    job's 40); the draft is created WITHOUT assets so an interrupted run
+    leaves a draft behind on purpose; and the next run (`releaseState` →
+    `draft`) diffs the draft's asset names against `assets`, uploads only
+    the missing ones, and publishes. A draft that already carries every
+    asset is just published. A `published` release is left alone with no
+    further call (`uploaded: 0`), which is also what keeps the callers'
+    `releaseExists` → SKIP branches cheap and idempotent.
+
+    THE RETRY. Any failed upload chunk is retried after `attempt * 5000`
+    ms (5 s, then 10 s); the one error that gets a longer wait is the
+    secondary-rate-limit 403 itself (`RATE_LIMIT_WAIT_MS`, 90 s — the
+    message says "wait a few minutes", and the budget is back within
+    minutes). `--clobber` on every upload is what makes the retry safe:
+    some files in the chunk may already be on the release. After the
+    last failed attempt the original error is rethrown unchanged, so
+    run-and-publish.mjs's OPS-01 FATAL lines print its real stderr. No
+    other 403 is reinterpreted as an auth failure here; `releaseState`
+    still fails closed on it before any write.
+
+    Returns the asset base URL the pointer file needs:
+    `.../releases/download/<tag>/<name>` is a stable, directly-
+    constructible URL shape that needs no further API call to resolve
+    per-asset — verified against a real release in this repo (see
     docs/DECISIONS.md's S-04b entry for the exact redirect chain).
 
-    Per Fable ruling FR-t_30a53ba2-1, `assets` is now always the 4
-    top-level files only (listReleaseAssets no longer includes shards/),
-    so this never approaches GitHub's 1,000-asset-per-release ceiling and
-    needs no batching — an earlier batched design (PR #718) was reverted
-    because the ceiling is per-release, not per-API-call, so batching
-    create+upload calls against the same tag cannot work around it. */
-export async function publishRelease({ tag, title, notes, assets, exec = execFileP, repo = REPO_SLUG }) {
+    THE 1,000-ASSET CEILING STILL STANDS. Chunking uploads against ONE
+    tag does not change how many assets that tag holds: GitHub's ceiling
+    is per-release (total assets attached), not per-API-call, which is
+    exactly the lesson of the reverted PR #718 — so `publishShardReleases`
+    still splits the ~1,298 shards across releases and
+    `MAX_SHARD_ASSETS_PER_RELEASE` still bounds every one of them; the
+    chunking here is only about the rate at which one release is filled.
+
+    `state` is an already-fetched `releaseState` result, so a caller that
+    just checked the tag itself (`publishShardReleases`) does not spend a
+    second `gh release view` per batch; without it this function checks.
+    `exec`, `sleep`, `chunkSize`, `attempts` and `pauseMs` are injectable
+    for publish-release.test.mjs, which fakes every `gh` call and both
+    sleeps. */
+export async function publishRelease({
+  tag, title, notes, assets, exec = execFileP, repo = REPO_SLUG,
+  chunkSize = 10, attempts = 3, sleep = defaultSleep, pauseMs = 5000, state,
+}) {
   if (!assets || assets.length === 0) {
     throw new PublishError("NO_ASSETS", "refusing to publish a release with zero assets");
   }
+  const st = state ?? await releaseState(tag, { exec, repo });
+  if (st.state === "published") {
+    return { tag, asset_base_url: assetBaseUrlFor(tag, repo), uploaded: 0, resumed: false };
+  }
   // maxBuffer: node's execFile default caps combined stdout+stderr at 1MB.
-  // Kept even though this call now only ever ships a handful of assets —
-  // cheap insurance against ERR_CHILD_PROCESS_STDOUT_MAXBUFFER masking a
+  // Cheap insurance against ERR_CHILD_PROCESS_STDOUT_MAXBUFFER masking a
   // real gh error behind a useless truncated command-line string (found
   // while verifying this pipeline against the real dump end-to-end,
   // t_30a53ba2). 64MB matches the maxBuffer run-and-publish.mjs's own
   // runBuild() already uses for the build step's stdout, for the same
   // reason.
-  await exec("gh", [
-    "release", "create", tag,
-    ...assets,
-    "--repo", repo,
-    "--title", title,
-    "--notes", notes,
-  ], { maxBuffer: 64 * 1024 * 1024 });
+  if (st.state === "absent") {
+    await exec("gh", [
+      "release", "create", tag,
+      "--draft",
+      "--repo", repo,
+      "--title", title,
+      "--notes", notes,
+    ], { maxBuffer: GH_MAX_BUFFER });
+  }
+  const missing = assets.filter((p) => !st.assetNames.includes(basename(p)));
+  for (let i = 0; i < missing.length; i += chunkSize) {
+    const chunk = missing.slice(i, i + chunkSize);
+    for (let attempt = 1; ; attempt++) {
+      try {
+        await exec("gh", ["release", "upload", tag, ...chunk, "--repo", repo, "--clobber"], { maxBuffer: GH_MAX_BUFFER });
+        break;
+      } catch (err) {
+        if (attempt >= attempts) throw err;
+        const text = `${err?.stderr || err?.message || ""}`;
+        await sleep(SECONDARY_RATE_LIMIT.test(text) ? Math.max(attempt * 5000, RATE_LIMIT_WAIT_MS) : attempt * 5000);
+      }
+    }
+    if (i + chunkSize < missing.length && pauseMs > 0) await sleep(pauseMs);
+  }
+  await exec("gh", ["release", "edit", tag, "--draft=false", "--repo", repo]);
   return {
     tag,
     asset_base_url: assetBaseUrlFor(tag, repo),
+    uploaded: missing.length,
+    resumed: st.state === "draft",
   };
 }
 
@@ -204,11 +329,15 @@ export function shardReleaseTagFor(baseTag, batchIndex) {
 }
 
 /** Publishes every shard batch as its own release, idempotently — each
-    batch's `releaseExists` check and `publishRelease` call mirror the
-    top-level release's own idempotency contract exactly (see
-    `releaseExists`'s doc comment), so a run interrupted after batch 1 but
-    before batch 2 resumes cleanly on the next run: batch 1's `gh release
-    view` succeeds and is skipped, batch 2 is created. Returns the ordered
+    batch's `releaseState` check (the same published-means-done rule as
+    `releaseExists`, see its doc comment) and `publishRelease` call mirror
+    the top-level release's own idempotency contract exactly, so a run
+    interrupted after batch 1 but before batch 2 resumes cleanly on the
+    next run: batch 1's `gh release view` says published and is skipped,
+    batch 2 is created — and (OPS-03) a batch left as a half-filled DRAFT
+    is not "existing": `publishRelease` is handed that state and resumes
+    the draft, uploading only its missing shards before publishing it.
+    One `gh release view` per batch either way. Returns the ordered
     `shard_releases` array `buildPointer` embeds in the pointer — ordered
     by batch index, which is also alphabetical key order (see
     `partitionShardBatches`), so a consumer never needs to sort it. */
@@ -223,17 +352,21 @@ export async function publishShardReleases({
     const firstKey = batch[0].key;
     const lastKey = batch[batch.length - 1].key;
     let assetBaseUrl;
-    if (await releaseExists(tag, { exec, repo })) {
+    const state = await releaseState(tag, { exec, repo });
+    if (state.state === "published") {
       log(`SKIP: shard release ${tag} already exists on GitHub — nothing new to publish`);
       assetBaseUrl = assetBaseUrlFor(tag, repo);
     } else {
+      if (state.state === "draft") {
+        log(`RESUME: shard release ${tag} is a stranded draft with ${state.assetNames.length}/${batch.length} shard assets — uploading the rest`);
+      }
       const assets = batch.map((e) => join(outDir, "shards", `${e.key}.json.gz`));
       const title = `Shows index shards — batch ${i + 1}/${batches.length} (${firstKey}\u2013${lastKey})`;
       const notes = [
         "Automated shows-index shard release (S-04c).",
         `keys: ${firstKey}\u2013${lastKey} (${batch.length} shards)`,
       ].join("\n");
-      ({ asset_base_url: assetBaseUrl } = await publishRelease({ tag, title, notes, assets, exec, repo }));
+      ({ asset_base_url: assetBaseUrl } = await publishRelease({ tag, title, notes, assets, exec, repo, state }));
       log(`PUBLISHED: ${tag} (${batch.length} shard assets, ${firstKey}\u2013${lastKey})`);
     }
     releases.push({ tag, asset_base_url: assetBaseUrl, first_key: firstKey, last_key: lastKey, count: batch.length });

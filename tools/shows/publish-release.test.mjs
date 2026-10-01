@@ -10,7 +10,7 @@ import { tmpdir } from "node:os";
 import { join, basename } from "node:path";
 import {
   assetBaseUrlFor, buildPointer, listReleaseAssets, partitionShardBatches, PublishError, publishRelease,
-  publishShardReleases, releaseExists, releaseTagFor, shardReleaseTagFor,
+  publishShardReleases, RATE_LIMIT_WAIT_MS, releaseExists, releaseState, releaseTagFor, shardReleaseTagFor,
 } from "./publish-release.mjs";
 
 test("releaseTagFor: sanitizes an HTTP-date export_version into a legal tag", () => {
@@ -28,10 +28,28 @@ test("releaseTagFor: throws on an export_version that sanitizes to nothing", () 
 test("releaseExists: true when gh release view succeeds", async () => {
   const exec = async (cmd, args) => {
     assert.equal(cmd, "gh");
-    assert.deepEqual(args, ["release", "view", "shows-index-v1", "--repo", "org/repo"]);
-    return { stdout: "ok" };
+    assert.deepEqual(args.slice(0, 3), ["release", "view", "shows-index-v1"]);
+    assert.ok(args.includes("--repo") && args.includes("org/repo") && args.includes("--json"));
+    return { stdout: JSON.stringify({ isDraft: false, assets: ["manifest.json"] }) };
   };
   assert.equal(await releaseExists("shows-index-v1", { exec, repo: "org/repo" }), true);
+});
+
+/* OPS-03: a draft is an interrupted upload, not a finished release — reading
+   it as "exists" would make publishShardReleases SKIP a half-full batch for
+   ever. MUTATION: `releaseExists` returning `state !== "absent"` -> red. */
+test("releaseExists: a draft is not an existing release", async () => {
+  const exec = async () => ({ stdout: JSON.stringify({ isDraft: true, assets: ["aa.json.gz"] }) });
+  assert.equal(await releaseExists("shows-index-v1", { exec }), false);
+});
+
+test("releaseState: absent on a real 'release not found'; draft/published carry the asset names", async () => {
+  const notFound = async () => { const e = new Error("failed"); e.stderr = "release not found"; throw e; };
+  assert.deepEqual(await releaseState("t", { exec: notFound }), { state: "absent", assetNames: [] });
+  const draft = async () => ({ stdout: '{"isDraft":true,"assets":["a.json.gz","b.json.gz"]}\n' });
+  assert.deepEqual(await releaseState("t", { exec: draft }), { state: "draft", assetNames: ["a.json.gz", "b.json.gz"] });
+  const published = async () => ({ stdout: '{"isDraft":false,"assets":[]}' });
+  assert.deepEqual(await releaseState("t", { exec: published }), { state: "published", assetNames: [] });
 });
 
 test("releaseExists: false ONLY on a real 'release not found'", async () => {
@@ -80,26 +98,160 @@ test("publishRelease: refuses to publish with zero assets", async () => {
   );
 });
 
-test("publishRelease: calls gh release create once with every asset, returns the asset base URL", async () => {
+/* OPS-03 (issue #969): publishRelease is draft -> chunked uploads -> publish.
+   `fakeGh` answers `view` from `viewState` (a thrown "release not found" when
+   null), records every call, and makes the first `uploadFails` upload calls
+   throw `uploadError`. `pauseMs: 0` in most tests keeps the between-chunk
+   pacing out of the sleep log; the pacing test asserts it on its own. */
+function fakeGh({ viewState = null, uploadFails = 0, uploadError } = {}) {
   const calls = [];
-  const exec = async (cmd, args) => { calls.push([cmd, args]); return { stdout: "" }; };
+  let failed = 0;
+  const exec = async (cmd, args) => {
+    assert.equal(cmd, "gh");
+    assert.equal(args[0], "release");
+    calls.push(args);
+    if (args[1] === "view") {
+      if (viewState === null) { const e = new Error("not found"); e.stderr = "release not found"; throw e; }
+      return { stdout: JSON.stringify(viewState) };
+    }
+    if (args[1] === "upload" && failed < uploadFails) {
+      failed++;
+      throw uploadError ?? Object.assign(new Error("Command failed: gh release upload"), { code: 1, stderr: "EOF" });
+    }
+    return { stdout: "" };
+  };
+  const verbs = () => calls.map((a) => a[1]);
+  const gz = (args) => args.filter((x) => x.endsWith(".json.gz"));
+  return { exec, calls, verbs, gz };
+}
+const recordingSleep = (log) => async (ms) => { log.push(ms); };
+
+/* MUTATIONS: drop `--draft` from the create call -> red (slice(0,4)); upload
+   everything in one call -> red (verbs + the [10,10,5] chunk sizes). */
+test("publishRelease: creates a draft with no assets, uploads in chunks of chunkSize, then publishes", async () => {
+  const gh = fakeGh();
+  const sleeps = [];
+  const assets = Array.from({ length: 25 }, (_, i) => `/tmp/out/shards/${String(i).padStart(2, "0")}.json.gz`);
   const result = await publishRelease({
-    tag: "shows-index-v1",
-    title: "Shows index v1",
-    notes: "notes",
-    assets: ["/tmp/manifest.json", "/tmp/top.json"],
-    exec,
-    repo: "org/repo",
+    tag: "shows-index-v1", title: "Shows index v1", notes: "notes", assets, exec: gh.exec, repo: "org/repo",
+    chunkSize: 10, sleep: recordingSleep(sleeps), pauseMs: 0,
   });
-  assert.equal(calls.length, 1);
-  assert.equal(calls[0][0], "gh");
-  assert.deepEqual(calls[0][1], [
-    "release", "create", "shows-index-v1",
-    "/tmp/manifest.json", "/tmp/top.json",
-    "--repo", "org/repo", "--title", "Shows index v1", "--notes", "notes",
-  ]);
-  assert.equal(result.tag, "shows-index-v1");
-  assert.equal(result.asset_base_url, "https://github.com/org/repo/releases/download/shows-index-v1");
+  assert.deepEqual(gh.verbs(), ["view", "create", "upload", "upload", "upload", "edit"]);
+
+  const create = gh.calls[1];
+  assert.deepEqual(create.slice(0, 4), ["release", "create", "shows-index-v1", "--draft"]);
+  for (const flag of ["--repo", "org/repo", "--title", "Shows index v1", "--notes", "notes"]) assert.ok(create.includes(flag), flag);
+  assert.equal(gh.gz(create).length, 0, "the draft is created with NO asset paths");
+
+  const uploads = gh.calls.filter((a) => a[1] === "upload");
+  assert.deepEqual(uploads.map((a) => gh.gz(a).length), [10, 10, 5]);
+  assert.deepEqual(uploads.flatMap((a) => gh.gz(a)), assets, "every asset exactly once, in order");
+  for (const u of uploads) {
+    assert.deepEqual(u.slice(0, 3), ["release", "upload", "shows-index-v1"]);
+    assert.ok(u.includes("--clobber") && u.includes("--repo") && u.includes("org/repo"));
+  }
+
+  assert.deepEqual(gh.calls[5], ["release", "edit", "shows-index-v1", "--draft=false", "--repo", "org/repo"]);
+  assert.deepEqual(sleeps, [], "no failures and pauseMs 0 -> nothing slept");
+  assert.deepEqual(result, {
+    tag: "shows-index-v1",
+    asset_base_url: "https://github.com/org/repo/releases/download/shows-index-v1",
+    uploaded: 25,
+    resumed: false,
+  });
+});
+
+/* The sustained-rate guard from OPS-02's verdict: gh bursts at ~500
+   uploads/min and GitHub cuts it off; 10 files per 5 s keeps the run at
+   ~120/min. MUTATION: pause after every chunk including the last -> red
+   ([5000,5000,5000]); never pause -> red. */
+test("publishRelease: pauses pauseMs between chunks and never after the last one", async () => {
+  const gh = fakeGh();
+  const sleeps = [];
+  const assets = Array.from({ length: 25 }, (_, i) => `/x/${i}.json.gz`);
+  await publishRelease({ tag: "t", title: "T", notes: "N", assets, exec: gh.exec, repo: "org/repo", chunkSize: 10, sleep: recordingSleep(sleeps) });
+  assert.deepEqual(sleeps, [5000, 5000], "the default pauseMs between 3 chunks");
+
+  const one = fakeGh();
+  const sleepsOne = [];
+  await publishRelease({ tag: "t", title: "T", notes: "N", assets: assets.slice(0, 10), exec: one.exec, repo: "org/repo", sleep: recordingSleep(sleepsOne) });
+  assert.deepEqual(sleepsOne, [], "a single chunk never pauses");
+});
+
+/* MUTATION: ignore `assetNames` (upload everything) -> red. */
+test("publishRelease: a stranded draft is resumed — only the missing assets are uploaded, then it is published", async () => {
+  const gh = fakeGh({ viewState: { isDraft: true, assets: ["a.json.gz", "b.json.gz"] } });
+  const result = await publishRelease({
+    tag: "t", title: "T", notes: "N", assets: ["/x/a.json.gz", "/x/b.json.gz", "/x/c.json.gz"],
+    exec: gh.exec, repo: "org/repo", sleep: recordingSleep([]), pauseMs: 0,
+  });
+  assert.deepEqual(gh.verbs(), ["view", "upload", "edit"], "no create for an existing draft");
+  assert.deepEqual(gh.gz(gh.calls[1]), ["/x/c.json.gz"]);
+  assert.ok(gh.calls[2].includes("--draft=false"));
+  assert.equal(result.resumed, true);
+  assert.equal(result.uploaded, 1);
+
+  // A draft that already carries every asset is just published.
+  const full = fakeGh({ viewState: { isDraft: true, assets: ["a.json.gz"] } });
+  const r2 = await publishRelease({ tag: "t", title: "T", notes: "N", assets: ["/x/a.json.gz"], exec: full.exec, repo: "org/repo" });
+  assert.deepEqual(full.verbs(), ["view", "edit"]);
+  assert.deepEqual([r2.uploaded, r2.resumed], [0, true]);
+});
+
+test("publishRelease: a published release is left alone", async () => {
+  const gh = fakeGh({ viewState: { isDraft: false, assets: ["a.json.gz"] } });
+  const result = await publishRelease({
+    tag: "t", title: "T", notes: "N", assets: ["/x/a.json.gz", "/x/z.json.gz"], exec: gh.exec, repo: "org/repo",
+  });
+  assert.deepEqual(gh.verbs(), ["view"], "no create, upload or edit against a published release");
+  assert.deepEqual(result, { tag: "t", asset_base_url: assetBaseUrlFor("t", "org/repo"), uploaded: 0, resumed: false });
+});
+
+/* MUTATION: no retry loop -> the first scenario rejects (red); retry for ever
+   -> the second never rejects (red). */
+test("publishRelease: an upload that fails twice and succeeds on the third try still publishes; with attempts 2 a third failure throws", async () => {
+  const sleeps = [];
+  const gh = fakeGh({ uploadFails: 2 });
+  const result = await publishRelease({
+    tag: "t", title: "T", notes: "N", assets: ["/x/a.json.gz"], exec: gh.exec, repo: "org/repo", sleep: recordingSleep(sleeps),
+  });
+  assert.deepEqual(gh.verbs(), ["view", "create", "upload", "upload", "upload", "edit"]);
+  assert.deepEqual(sleeps, [5000, 10000]);
+  assert.equal(result.uploaded, 1);
+
+  const boom = Object.assign(new Error("Command failed: gh release upload t /x/a.json.gz"), { code: 1, stderr: "EOF" });
+  const sleeps2 = [];
+  const gh2 = fakeGh({ uploadFails: Infinity, uploadError: boom });
+  await assert.rejects(
+    () => publishRelease({
+      tag: "t", title: "T", notes: "N", assets: ["/x/a.json.gz"], exec: gh2.exec, repo: "org/repo",
+      attempts: 2, sleep: recordingSleep(sleeps2),
+    }),
+    (err) => err === boom, // rethrown UNCHANGED, so run-and-publish's FATAL lines print its real stderr
+  );
+  assert.deepEqual(gh2.verbs(), ["view", "create", "upload", "upload"], "no edit: the draft stays for the next run to resume");
+  assert.deepEqual(sleeps2, [5000]);
+});
+
+/* The exact error OPS-02 read off runs 36852145618 / 36853224459. The
+   message itself says "wait a few minutes", and the budget was back within
+   minutes, so this one 403 waits RATE_LIMIT_WAIT_MS rather than 5 s.
+   MUTATION: treat it like any other failure -> [5000] (red). */
+test("publishRelease: the secondary-rate-limit 403 is retried after RATE_LIMIT_WAIT_MS, not the short backoff", async () => {
+  const limited = Object.assign(new Error("Command failed: gh release upload t"), {
+    code: 1,
+    stderr: "HTTP 403: You have exceeded a secondary rate limit. Please wait a few minutes before you try again. "
+      + "(https://uploads.github.com/repos/org/repo/releases/400881909/assets?label=&name=eh.json.gz)",
+  });
+  const sleeps = [];
+  const gh = fakeGh({ uploadFails: 1, uploadError: limited });
+  const result = await publishRelease({
+    tag: "t", title: "T", notes: "N", assets: ["/x/eh.json.gz"], exec: gh.exec, repo: "org/repo", sleep: recordingSleep(sleeps),
+  });
+  assert.equal(RATE_LIMIT_WAIT_MS, 90_000);
+  assert.deepEqual(sleeps, [RATE_LIMIT_WAIT_MS]);
+  assert.deepEqual(gh.verbs(), ["view", "create", "upload", "upload", "edit"]);
+  assert.equal(result.uploaded, 1);
 });
 
 test("assetBaseUrlFor: derives the same URL shape publishRelease returns, with no gh call needed", () => {
@@ -204,18 +356,26 @@ test("publishShardReleases: creates one release per batch and reports first/last
   assert.equal(releases[0].last_key, "cc");
   assert.equal(releases[0].count, 3);
   assert.equal(releases[0].asset_base_url, "https://github.com/org/repo/releases/download/shows-index-v1-shards-1");
-  const createCall = calls.find((a) => a[0] === "release" && a[1] === "create");
-  assert.ok(createCall, "gh release create must have been called");
-  assert.ok(createCall.includes(join("/tmp/out", "shards", "aa.json.gz")));
-  assert.ok(createCall.includes(join("/tmp/out", "shards", "bb.json.gz")));
-  assert.ok(createCall.includes(join("/tmp/out", "shards", "cc.json.gz")));
+  // OPS-03: draft -> one upload (3 assets < chunkSize 10) -> publish.
+  const batchCalls = calls.filter((a) => a[2] === "shows-index-v1-shards-1");
+  assert.deepEqual(
+    batchCalls.map((a) => [a[0], a[1]]),
+    [["release", "view"], ["release", "create"], ["release", "upload"], ["release", "edit"]],
+  );
+  const [, createCall, uploadCall, editCall] = batchCalls;
+  assert.ok(createCall.includes("--draft"));
+  assert.ok(!createCall.some((a) => a.endsWith(".json.gz")), "the draft is created with no shard paths");
+  assert.ok(uploadCall.includes(join("/tmp/out", "shards", "aa.json.gz")));
+  assert.ok(uploadCall.includes(join("/tmp/out", "shards", "bb.json.gz")));
+  assert.ok(uploadCall.includes(join("/tmp/out", "shards", "cc.json.gz")));
+  assert.ok(editCall.includes("--draft=false"));
 });
 
 test("publishShardReleases: an already-existing batch release is skipped, not re-uploaded", async () => {
   const created = [];
   const exec = async (cmd, args) => {
     if (args[0] === "release" && args[1] === "view") {
-      return { stdout: "exists" }; // every batch already exists
+      return { stdout: JSON.stringify({ isDraft: false, assets: ["aa.json.gz"] }) }; // every batch already published
     }
     if (args[0] === "release" && args[1] === "create") {
       created.push(args[2]);
