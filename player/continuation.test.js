@@ -19,7 +19,8 @@
 
    TO SEE ONE FAIL: look for Up Next's next row in `queued` rather than
    `rest || queued` in planAfterEnded (Up Next: the finished head plays again),
-   drop the `onChain` test (the list), make `canNext`
+   drop the `onChain` test (the list), search the tail before the list or
+   return `fromTail: true` for a list pick (the tail), make `canNext`
    return false when `autoAdvance` is false, or drop the in-loop watermark move
    in planAdvanceApply (replay) — each turns the named test red with the case
    id and the diff. */
@@ -37,6 +38,14 @@ test("then the chosen list, after the last row that played, only while the chain
 test("an unplayable row is passed over, and the end of both is the end", (t) => cases(t));
 test("nextAfterEnded moves the chain on to the pick, and the cursor only for a list row", (t) => cases(t));
 
+/* "Then more of what fits" (PQ-09, #691; DECISIONS 2026-09-14): the page's
+   `tail` is the third and last source, read only once Up Next and the list
+   are both spent. A queued row or a list row with a tail waiting still wins;
+   the tail skips what cannot play and the episode that just ended; an empty
+   tail is the end, exactly as before the tail existed. */
+test("then more of what fits: the tail plays after Up Next and the list, never before", (t) => cases(t));
+test("a tail pick moves the chain, leaves the cursor, and the chain carries fromTail", (t) => cases(t));
+
 /* The chain's recorded hops are checked twice: against the fixture (above),
    and here against nextAfterEnded walked one end at a time — the claim the
    engine relies on is that a hop is exactly what the page would have played
@@ -47,6 +56,7 @@ test("the chain is nextAfterEnded applied K times, in the order the ends would p
   const chainCases = loadFixtures(undefined, { family: "continuation" })
     .flatMap((fx) => fx.doc.cases)
     .filter((c) => c.call === "continuationChain" && c.covers.includes(`continuation::${t.name}`));
+  assert.ok(chainCases.some((c) => Array.isArray(c.args[0].tail) && c.args[0].tail.length), "a walked case reaches the tail");
   for (const c of chainCases) {
     const [state] = c.args;
     const hops = continuationChain(state);
@@ -56,12 +66,12 @@ test("the chain is nextAfterEnded applied K times, in the order the ends would p
     for (;;) {
       const step = nextAfterEnded(s, finished);
       if (!step.nextId) break;
-      walked.push([finished, step.nextId, step.fromList, step.state.queue]);
+      walked.push([finished, step.nextId, step.fromList, step.fromTail, step.state.queue]);
       s = { ...s, ...step.state };
       finished = step.nextId;
     }
     assert.deepEqual(
-      hops.map((h) => [h.finishedId, h.nextId, h.fromList, h.queueAfter]),
+      hops.map((h) => [h.finishedId, h.nextId, h.fromList, h.fromTail, h.queueAfter]),
       walked,
       `${c.id}: the chain disagrees with the end of each episode`,
     );
