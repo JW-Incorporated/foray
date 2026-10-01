@@ -1090,4 +1090,7 @@ button receiver is still sent the key. iOS's DV-7b expects "not 4a" because iOS 
 listener closed. Android's answer is that 4a plays. Nothing gates on it; whether that is acceptable is a product
 call for the A4 review (A-68), and Joey's step 16 is the device half.
 
-**API 34:** the full native leg's (j) on the PR's last run (its run id and verdict are in PR #957), with A-27's API 34 force-stop finding in §10
+**API 34:** the full native leg's (j) on PR #957's last head (`32247d32`): run 36833540258, job 110275544256,
+`android-playback (API 34, native engine)`, all 15 native steps green; (j) `twins.dv7a.throughResumption: true` (the
+swipe and SIGKILL legs died and came back `coldBoot: painted`), and the force-stop value `fourAPlayed: true`,
+`controlHolds: false`, as A-27's API 34 force-stop finding in §10.
