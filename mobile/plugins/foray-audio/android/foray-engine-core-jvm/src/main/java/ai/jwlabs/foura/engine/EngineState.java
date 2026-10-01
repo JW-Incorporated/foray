@@ -151,6 +151,11 @@ public final class EngineState {
     public String preparedItemId;
     /** The deck pair's report on the load in flight ({@code prepared}), for the packed seam row. */
     public DeckPrepareReport deckPrepare;
+    /**
+     * A-62 (NE-45s): the seam an item's end crossed, until the next item is audible
+     * ({@code EngineCore.packSeamRow}); null between seams and after a transport action cut one.
+     */
+    public SeamMark seamMark;
     /** Segments ADR-0007's ladder refused at load (the snapshot's {@code skippedSegments}). */
     public int skippedSegments = 0;
     /** The {@code cp_foray} write throttle. */
@@ -285,6 +290,17 @@ public final class EngineState {
 
     /** What the deck pair said about one load ({@code prepared}). */
     public record DeckPrepareReport(int token, boolean hit, List<Vocabulary.Stage> stages) {}
+
+    /**
+     * A-62 (NE-45s): a seam in flight, from the item's end to the next one's audible start: what it
+     * joins, which item it is waiting for, when it began, and the deck pair's verdict on that item's
+     * load once there is one (null until then).
+     */
+    public record SeamMark(SeamRow.ItemKind from, SeamRow.ItemKind to, String toItemId, double endedAtMono, SeamRow.Prepare prepare) {
+        public SeamMark withPrepare(SeamRow.Prepare verdict) {
+            return new SeamMark(from, to, toItemId, endedAtMono, verdict);
+        }
+    }
 
     /** A play-ish intent waiting for its activation's answer. */
     public record PendingActivation(int requestId, DeferredIntent intent, Vocabulary.Source source) {}

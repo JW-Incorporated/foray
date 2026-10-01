@@ -21,6 +21,7 @@ import ai.jwlabs.foura.engine.EngineState.DeckPrepareReport;
 import ai.jwlabs.foura.engine.EngineState.DeferredIntent;
 import ai.jwlabs.foura.engine.EngineState.PendingActivation;
 import ai.jwlabs.foura.engine.EngineState.PendingLoad;
+import ai.jwlabs.foura.engine.EngineState.SeamMark;
 import ai.jwlabs.foura.engine.EngineState.SpokenLine;
 import ai.jwlabs.foura.engine.Vocabulary.Source;
 import ai.jwlabs.foura.engine.Vocabulary.StopCause;
@@ -1361,12 +1362,20 @@ public final class EngineCore {
                     m("reason", str(e.reason())));
             case DeckEvent.Seeked e -> {}
             case DeckEvent.PrepareWindow e -> {
-                if (isLoadedToken(e.token())) warmNextSegment();
+                if (isLoadedToken(e.token())) warmNextSegment("window");
             }
             case DeckEvent.Prepared e -> {
                 // Only the load in flight is described; a stale report is dropped.
-                if (state.pendingLoad != null && state.pendingLoad.token() == e.token()) {
+                PendingLoad pending = state.pendingLoad;
+                if (pending != null && pending.token() == e.token()) {
                     state.deckPrepare = new DeckPrepareReport(e.token(), e.hit(), e.stages());
+                    // A-62 (NE-45s): the seam this load crosses says hit or miss, whichever way the
+                    // item then becomes audible (a line whose prepared file failed is still a miss
+                    // when it is spoken instead).
+                    SeamMark mark = state.seamMark;
+                    if (mark != null && mark.toItemId().equals(pending.itemId())) {
+                        state.seamMark = mark.withPrepare(e.hit() ? SeamRow.Prepare.HIT : SeamRow.Prepare.MISS);
+                    }
                 }
             }
         }
@@ -1402,7 +1411,11 @@ public final class EngineCore {
         // A deck item holds the playhead now: a spoken line it replaced is over.
         endSpokenLine();
         if (pending.bridge()) {
-            // A rendered bridge plays the moment it lands (`_playTransitionBridge`).
+            // A rendered bridge plays the moment it lands (`_playTransitionBridge`). A-62 (NE-45s):
+            // it is a deck seam like any other, so it packs a seam row.
+            DeckPrepareReport report = state.deckPrepare != null && state.deckPrepare.token() == token ? state.deckPrepare : null;
+            state.deckPrepare = null;
+            packSeamRow(null, report);
             startPlayback();
             return;
         }
@@ -1546,7 +1559,19 @@ public final class EngineCore {
                 Next next = nextItem(cursor(), true);
                 // A bridge marks its own seam, so no beat; but narration -> segment DOES get the
                 // jingle (§13): the founder's "between podcasts" mark comes after the line.
-                if (next != null) armInterlude(state.currentItem(), next.item());
+                if (next != null) {
+                    armInterlude(state.currentItem(), next.item());
+                    EngineItem from = state.currentItem();
+                    if (config.forayTapeEnabled() && from != null && isForaySeam(from, next.item())) {
+                        markSeam(from, next.item());
+                        // A-62 (NE-45s): a RENDERED line's end is a deck seam, and in the background
+                        // it holds the same span a clip's out-point does (a spoken line's end
+                        // already opened `narration-handover`, and a span is never begun twice).
+                        if (state.backgrounded) {
+                            beginGrace(next.item().id.equals(state.preparedItemId) ? GraceReason.SEAM : GraceReason.PREPARE_MISS);
+                        }
+                    }
+                }
                 dispatch(new PlayerEvent.ItemEnded(next == null ? null : next.item().ref(), false));
             }
             case PlayerQueueState.Playing p -> {
@@ -1560,6 +1585,13 @@ public final class EngineCore {
                         // Stamp the beat BEFORE dispatching: `itemEnded` issues the next load in
                         // this same turn, and the whole point is for that load to be inside it.
                         armSeamGap(from, next.item(), bridged);
+                        // A-62 (NE-45s): a Foray seam is remembered for its row: one with a beat (as
+                        // before) or a clip's end into a line (no beat, and no row before). An
+                        // episode's end in a plain queue, and a bridge after one, are not Foray
+                        // seams and write nothing (the Foray tape leaves episode paths unchanged).
+                        if (state.gapArmedAtMono != null || (bridged && isForaySeam(from, next.item()))) {
+                            markSeam(from, next.item());
+                        }
                         // And the jingle in the same instant (§13), after the beat so its deadline
                         // is the floor.
                         armInterlude(from, next.item());
@@ -2363,6 +2395,7 @@ public final class EngineCore {
         state.startingHop = null;
         state.closed = false;
         state.preparedItemId = null;
+        state.seamMark = null;
         state.skippedSegments = 0;
         state.forayFinishedWritten = false;
         state.forayThrottle.clear(args.forayId());
@@ -2423,31 +2456,66 @@ public final class EngineCore {
     }
 
     /**
-     * {@code _warmNextSegment}: the deck says the boundary is the prefetch lead away. Name the
-     * item that boundary will advance to and its in-point, so the standby deck can load it while
-     * this one is still audible. Only a running item approaches a boundary, and only the
-     * transitions that get a beat are warmed (the beat's own rule, CALLED, so the two cannot
-     * drift): a Foray's last item prepares nothing.
+     * {@code _warmNextSegment(at)}: name the item the next boundary will advance to and its
+     * in-point, so the standby deck can load it while this one is still audible. Two callers
+     * (queue-manager.js §11, NE-45j; NE-45s in Swift, card A-62 here):
+     * <ul>
+     *   <li>the deck's {@code prepareWindow} ({@code at = "window"}), the prefetch lead before the
+     *       boundary: the out-point, or the file's end for an item with none (a rendered line, an
+     *       episode's natural end);</li>
+     *   <li>the START of a SPOKEN line ({@code at = "line-start"}), because the synthesiser is
+     *       audible and the deck is idle.</li>
+     * </ul>
+     * WARMING FOLLOWS THE FILE, NOT THE BEAT ({@link DeckPolicy#warmsAcross}): the next item is
+     * prepared when it has a file (a clip, or a rendered line), whatever the beat says. It used to
+     * be {@code SeamGap.gapSec(...) > 0}, which warmed only clip-to-clip seams and left clip, line,
+     * clip two cold loads. A spoken line has no file and prepares nothing; a Foray's last item
+     * prepares nothing, since a Foray never chains. Only an AUDIBLE item approaches a boundary: a
+     * playing one, or a line bridging a seam ({@code transitioning}), and what follows it is
+     * counted the way {@code itemEnded} counts it from each state.
      */
-    private void warmNextSegment() {
-        if (!config.forayTapeEnabled() || !(state.player instanceof PlayerQueueState.Playing)) return;
+    private void warmNextSegment(String at) {
+        if (!config.forayTapeEnabled()) return;
         EngineItem from = state.currentItem();
         if (from == null) return;
-        Next next = nextItem(cursor(), false);
-        if (next == null) {
-            diag("prepare", m("kind", str("none")));
+        boolean bridging;
+        if (state.player instanceof PlayerQueueState.Playing) {
+            bridging = false;
+        } else if (state.player instanceof PlayerQueueState.Transitioning) {
+            bridging = true;
+        } else {
             return;
         }
-        double sec = SeamGap.gapSec(from.seam(), next.item().seam(), next.item().kind == PlayerItemKind.TTS, SeamGap.AUTO_ADVANCE,
-                config.seamGapSec());
-        if (!(sec > 0)) {
-            diag("prepare", m("kind", str("skipped")), m("item", str(next.item().id)));
+        Next next = nextItem(cursor(), bridging);
+        if (next == null) {
+            diag("prepare", m("kind", str("none")), m("where", str(at)));
+            return;
+        }
+        if (!DeckPolicy.warmsAcross(from, next.item())) {
+            diag("prepare", m("kind", str("skipped")), m("item", str(next.item().id)), m("where", str(at)));
             return;
         }
         state.preparedItemId = next.item().id;
         ItemBounds bounds = next.item().bounds();
         deckCommand(new DeckCommand.Prepare(next.item().id, next.item().audioUrl, bounds != null ? bounds.startSec() : 0,
                 DeckDeadlineClass.of(next.item())));
+    }
+
+    /**
+     * A seam that touches a Foray SEGMENT (a bounded slice): a Foray's line seams are always next
+     * to one, and a plain episode queue's (M1's bridges between whole episodes) never are.
+     */
+    static boolean isForaySeam(EngineItem from, EngineItem to) {
+        return from.bounds() != null || to.bounds() != null;
+    }
+
+    /**
+     * A-62 (NE-45s): the seam an item's end just crossed, remembered until the next item is
+     * audible, so every seam (clip to clip, clip to line, line to clip) packs ONE row with its kinds
+     * and whether the standby was ready.
+     */
+    private void markSeam(EngineItem from, EngineItem to) {
+        state.seamMark = new SeamMark(SeamRow.ItemKind.of(from), SeamRow.ItemKind.of(to), to.id, now.monoMs(), null);
     }
 
     // ---- the seam beat (queue-manager.js §10)
@@ -2526,24 +2594,48 @@ public final class EngineCore {
         DeckPrepareReport report = state.deckPrepare != null && state.loadedToken != null
                 && state.deckPrepare.token() == state.loadedToken ? state.deckPrepare : null;
         state.deckPrepare = null;
-        if (armedAt != null) {
-            boolean prepared = report != null ? report.hit()
-                    : state.preparedItemId != null && state.preparedItemId.equals(state.loadedId);
-            List<Vocabulary.Stage> stages = new ArrayList<>();
-            if (report != null) {
-                stages.addAll(report.stages());
-                stages.add(Vocabulary.Stage.PLAY);
-            } else {
-                stages.add(Vocabulary.Stage.READY);
-                stages.add(Vocabulary.Stage.PLAY);
-            }
-            Double bg = now.bgRemainingMs();
-            SeamRow row = new SeamRow(now.monoMs() - armedAt, state.gapAskedMs, prepared, state.grace != null,
-                    bg == null ? null : roundHalfAwayFromZero(bg), stages);
-            out.add(new EngineCommand.Diag(row.entry()));
-        }
+        packSeamRow(armedAt, report);
         stopSilence("landed");
         dispatch(PlayerEvent.ITEM_LOADED);
+        // §11 (NE-45j): a SPOKEN line leaves the deck idle, so what follows it is prepared now, at
+        // the line's start (`_loadItem`).
+        SpokenLine line = state.narration;
+        if (state.player instanceof PlayerQueueState.Playing && line != null && line.itemId.equals(state.loadedId)) {
+            warmNextSegment("line-start");
+        }
+    }
+
+    /**
+     * The packed {@code seam} row (plan §13 item 37; NE-45s, card A-62), written when the item after
+     * a seam becomes audible: a beat's seam ({@code armedAt}, stamped at the out-point) or any seam
+     * {@link #markSeam} remembered, a line's included, which has no beat and so no row before A-62.
+     * The row names the seam's kinds ({@code from}, {@code to}: clip or line) and {@code prepare}:
+     * {@code hit} (the standby was promoted), {@code miss} (it was prepared and the item still
+     * loaded cold) or {@code none} (nothing was prepared: one deck, a spoken line, a same-source
+     * seek on the playing deck).
+     */
+    private void packSeamRow(Double armedAt, DeckPrepareReport report) {
+        SeamMark mark = state.seamMark != null && state.seamMark.toItemId().equals(state.loadedId) ? state.seamMark : null;
+        state.seamMark = null;
+        Double start = armedAt != null ? armedAt : mark != null ? Double.valueOf(mark.endedAtMono()) : null;
+        if (start == null) return;
+        boolean spoken = state.narration != null && state.narration.itemId.equals(state.loadedId);
+        boolean prepared = report != null ? report.hit()
+                : !spoken && state.preparedItemId != null && state.preparedItemId.equals(state.loadedId);
+        List<Vocabulary.Stage> stages = new ArrayList<>();
+        if (report != null) {
+            stages.addAll(report.stages());
+            stages.add(Vocabulary.Stage.PLAY);
+        } else {
+            if (!spoken) stages.add(Vocabulary.Stage.READY);
+            stages.add(Vocabulary.Stage.PLAY);
+        }
+        Double bg = now.bgRemainingMs();
+        SeamRow.Prepare verdict = mark == null ? null : mark.prepare() != null ? mark.prepare() : SeamRow.Prepare.NONE;
+        SeamRow row = new SeamRow(now.monoMs() - start, armedAt != null ? state.gapAskedMs : 0, prepared, state.grace != null,
+                bg == null ? null : roundHalfAwayFromZero(bg), stages,
+                mark != null ? mark.from() : null, mark != null ? mark.to() : null, verdict);
+        out.add(new EngineCommand.Diag(row.entry()));
     }
 
     /**
@@ -2555,6 +2647,8 @@ public final class EngineCore {
         stopInterlude(why);
         stopSilence(why);
         setGapDeadline(null);
+        // A-62 (NE-45s): the seam the listener moved during is not a seam any more.
+        state.seamMark = null;
         if (state.gapParkedToken == null || state.gapCut) return;
         state.gapCut = true;
         if (state.seamTimerArmed) {
@@ -2759,7 +2853,16 @@ public final class EngineCore {
         if (voiceFallback) diag("narration", m("kind", str("voice-fallback")));
         // The line is audible: a span covering its start is over.
         if (state.grace != null) endGrace(GraceOutcome.PLAYING);
-        if (pending.bridge()) return;
+        if (pending.bridge()) {
+            // A-62 (NE-45s): a spoken bridge is a seam's audible start (its row says
+            // `to=line prepare=none`, or `miss` for a rendered line whose prepared file failed), and
+            // the deck is idle while it is spoken, so the clip after it is prepared NOW
+            // (`_playTransitionBridge`, and `_speakInsteadMidLine` for a file that failed while
+            // sounding).
+            packSeamRow(null, null);
+            warmNextSegment("line-start");
+            return;
+        }
         landed(item, pending.token());
     }
 

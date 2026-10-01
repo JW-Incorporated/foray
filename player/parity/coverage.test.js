@@ -715,7 +715,7 @@ test("capabilities.json holds the plan §6.6 map", () => {
   assert.ok(!advertisedCapabilities(REPO_ROOT).has("remainder"), "the remainder was a bookkeeping gate, never a capability a build ships");
 });
 
-test("NE-45j/NE-45s: prepare-narration is authored against reference-engine, keeps its n.* tokens, passes in Swift under foray, and is owed whole to A-62", () => {
+test("NE-45j/NE-45s/A-62: prepare-narration is authored against reference-engine, keeps its n.* tokens, passes in Swift under foray, and runs on the JVM", () => {
   /* NE-45j recorded the family green in JS with its ids pending for NE-45s;
      NE-45s ported it (the Swift PrepareNarrationFamily runner, registered and
      required in ParityFamilyTests and the iOS wrapper) and moved it from the
@@ -726,7 +726,11 @@ test("NE-45j/NE-45s: prepare-narration is authored against reference-engine, kee
      asserted). MUTATION: put one prepare-narration id back in
      swift-pending.json -> red here and in the advertised gate; move the family
      back under `remainder` -> red; take "prepare-narration" out of
-     NATIVE_TOKEN_FAMILIES -> red. */
+     NATIVE_TOKEN_FAMILIES -> red. A-62 ported it to the JVM
+     (ForayTapeFamilies.prepareNarration, registered in JvmFamilies.ALL) and
+     moved it from `families` to `runs` in jvm-pending.json, with no case
+     owed. MUTATION: book it back to A-62 -> red here (and the JVM runner
+     fails: a registered runner the books say is owed). */
   const files = FIXTURES.filter((f) => f.family === "prepare-narration");
   assert.ok(files.length > 0, "prepare-narration is recorded");
   const cases = files.flatMap((f) => f.doc.cases);
@@ -745,7 +749,9 @@ test("NE-45j/NE-45s: prepare-narration is authored against reference-engine, kee
   assert.ok(DATA.capabilities.foray.includes("prepare-narration") && DATA.capabilities.remainder === undefined,
     "NE-45s moved prepare-narration to foray (and NE-39s retired the remainder gate)");
   const jvm = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, "player/parity/jvm-pending.json"), "utf8"));
-  assert.equal(jvm.families["prepare-narration"], "A-62", "the JVM owes it whole to A-62");
+  assert.equal(jvm.families["prepare-narration"], undefined, "A-62 ported it: the JVM owes nothing of it");
+  assert.ok(jvm.runs.includes("prepare-narration"), "the JVM runs it since A-62");
+  for (const c of cases) assert.equal(jvm.cases[c.id], undefined, `${c.id} is not owed on the JVM`);
   assert.equal(jvm.families.prepare, undefined, "prepare itself the JVM runs since A-40 (A-25 handed it on)");
   assert.ok(jvm.runs.includes("prepare"));
 });

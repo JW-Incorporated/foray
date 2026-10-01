@@ -1,6 +1,7 @@
 package ai.jwlabs.foura.engine.parity;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import ai.jwlabs.foura.engine.EngineCommand;
@@ -85,6 +86,36 @@ public class ForayTapeScenarioTest {
             }
             assertEquals(family + " passes every case not owed to Track A4", s.cases() - owed, s.passed());
         }
+    }
+
+    /**
+     * A-62: {@code prepare-narration} (NE-45j's family, NE-45s's port) runs whole on the JVM and
+     * passes, with nothing owed: every id runs, none is in the books.
+     */
+    @Test
+    public void prepareNarrationRunsWholeAndPassesWithNothingOwed() {
+        ParityData data = fresh();
+        SuiteReport report = new ParitySuite(data).run();
+        ParitySuite.FamilySummary s = report.summary("prepare-narration");
+        assertTrue("prepare-narration has a JVM runner", s.hasRunner());
+        assertTrue("prepare-narration has cases", s.cases() >= 23);
+        assertEquals("runs every case", s.cases(), s.executed());
+        assertEquals("passes every case", s.cases(), s.passed());
+        assertFalse("the books owe it nothing", data.pendingFamilies.containsKey("prepare-narration"));
+        for (String id : data.pendingCases.keySet()) assertFalse(id + " is owed", id.startsWith("prepare-narration/"));
+    }
+
+    /**
+     * MUTATION (A-62, NE-45j's acceptance): warming back to the beat's rule (a prepare only from a
+     * playing item across a seam with a beat) turns the clip, line, clip case red: neither the line
+     * nor the clip after it is prepared any more.
+     */
+    @Test
+    public void warmingByTheBeatTurnsAClipLineClipCaseRed() {
+        String id = "prepare-narration/clip-line-clip-across-two-episodes-prepares-both-seams";
+        assertEquals(id + " passes as ported", Outcome.PASSED, new ParitySuite(fresh()).run().result(id).outcome());
+        CaseResult red = outcome(id, ForayTapeFamilies.prepareNarration(EngineScenarioDriver.Mutation.WARM_BY_THE_BEAT));
+        assertEquals(red.detail(), Outcome.FAILED, red.outcome());
     }
 
     /** MUTATION (NE-30s's): the next load starts AFTER the beat instead of inside it, and a seam-timing case goes red. */
@@ -202,7 +233,7 @@ public class ForayTapeScenarioTest {
     }
 
     /**
-     * Every manager-foray and prepare scenario keeps what no op log can show: the audible-start
+     * Every manager-foray, prepare and prepare-narration (A-62) scenario keeps what no op log can show: the audible-start
      * invariant on every turn (a spoken line, a jingle and the silence node included), plays only
      * on a ready deck, never two audible sources, and every grace span begun is ended.
      */
@@ -211,7 +242,7 @@ public class ForayTapeScenarioTest {
         ParityData data = fresh();
         Codec.Context context = new Codec.Context(data.repoRoot);
         int ran = 0;
-        for (String family : Arrays.asList("manager-foray", "prepare")) {
+        for (String family : Arrays.asList("manager-foray", "prepare", "prepare-narration")) {
             for (FixtureFile file : data.fixtures.get(family)) {
                 for (FixtureCase c : file.cases()) {
                     if (!"scenario".equals(c.kind())) continue;

@@ -60,6 +60,19 @@ import java.util.function.IntConsumer;
  *   <li>everything else goes to the deck that holds the player role; a rate goes to BOTH.</li>
  * </ul>
  *
+ * <h2>A NARRATION LINE IS AN ORDINARY DECK ITEM (A-62, NE-45s)</h2>
+ *
+ * A rendered line is prepared on the standby and promoted exactly like a clip, and so is the clip
+ * after it: the handover demotes the deck that held the clip WITHOUT dropping it, so when that
+ * clip's episode continues after the line the standby already holds the source and ExoDeck's
+ * same-source reuse turns the prepare into a seek there ({@code reuse=true} on the
+ * {@code prefetch} row). Behind a SPOKEN line the core prepares the next clip at the line's start:
+ * the deck that played the clip before it is paused at its out-point, the standby loads underneath
+ * the voice, and the handover at the line's end pauses a deck that is already silent. A prepared
+ * line whose file fails is a warm load that FAILED: nothing reaches the core then, and at the
+ * line's turn the load is a miss that runs as an ordinary (cold) load, which fails again and falls
+ * back to {@code TextToSpeech} exactly as a cold line does.
+ *
  * <h2>NEVER TWO AUDIBLE, AND ONE FOCUS HOLDER</h2>
  *
  * The roles swap only after the outgoing deck has been paused AND reads not audible; if it still
@@ -215,8 +228,15 @@ public final class DeckPair implements DeckDriving {
         double offset = DeckPolicy.warmOffset(startSec);
         DeckPolicy.PrefetchDecision decision = DeckPolicy.prefetchDecision(available, url, decks[activeIndex].loadedUrl(),
                 warmLoad == null ? null : warmLoad.warm, offset);
-        row("prefetch", JsonNode.member("decision", JsonNode.str(decision.token)));
-        if (decision != DeckPolicy.PrefetchDecision.START || url == null) return;
+        if (decision != DeckPolicy.PrefetchDecision.START || url == null) {
+            row("prefetch", JsonNode.member("decision", JsonNode.str(decision.token)));
+            return;
+        }
+        // `reuse`: the standby already holds this source (the deck a handover demoted), so ExoDeck
+        // prepares it by a seek, not a fetch (A-62, NE-45s).
+        row("prefetch", JsonNode.member("decision", JsonNode.str(decision.token)),
+                JsonNode.member("reuse", JsonNode.bool(url.equals(decks[standbyIndex()].loadedUrl()))),
+                JsonNode.member("class", JsonNode.str(deadlineClass.token)));
         // A warm load being replaced is forgotten; the standby's next load replaces its item.
         int token = nextWarmToken;
         nextWarmToken -= 1;

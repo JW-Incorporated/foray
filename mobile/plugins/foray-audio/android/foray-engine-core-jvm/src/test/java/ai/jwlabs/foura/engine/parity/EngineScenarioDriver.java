@@ -70,7 +70,12 @@ import java.util.TreeSet;
  * target (the prepare family, runner.js {@code runEngineScenario}) always runs on the manual clock
  * and drives the core through the CONTRACT (engineSend payloads), with a standby deck that
  * prepares and hands over as reference-engine.js's WarmingBackend does; its op log holds only the
- * deck's tokens and {@code n.prepare:} / {@code n.handover:}, which the prepare family asserts.
+ * deck's tokens and {@code n.prepare:} / {@code n.prepare-seek:} / {@code n.handover:}, which the
+ * prepare families assert. Since A-62 (NE-45s) the standby deck REMEMBERS its source (a handover
+ * demotes the outgoing deck without dropping what it holds, so a prepare of that source is a
+ * same-source seek, {@code n.prepare-seek:}), the window opens for an item with no out-point from
+ * its duration, and a load already inside its window at its first play opens it then
+ * (WarmingBackend {@code _windowAtStart}).
  *
  * <p>THE NARRATION OVERLAY runs against two more fakes in the JS fakes' grammar: a synthesiser
  * (fakes.js {@code fakeTts}, every shape: refuse, voiceFallback, {@code onFinished: false},
@@ -108,7 +113,13 @@ public final class EngineScenarioDriver {
         /** Every {@code didFinish} is taken as the CURRENT line's, whatever utterance it was about. */
         FINISHED_CLAIMS_CURRENT_LINE,
         /** The silence node started at the head of every turn that begins with the transport not running. */
-        SILENCE_WHILE_NOT_RUNNING
+        SILENCE_WHILE_NOT_RUNNING,
+        /**
+         * A-62: warming back to THE BEAT's rule (before NE-45j): a {@code prepare} reaches the
+         * standby deck only from a PLAYING item, and only across a seam that gets a beat
+         * ({@code SeamGap.gapSec(...) > 0}), so every seam with a narration line in it is cold.
+         */
+        WARM_BY_THE_BEAT
     }
 
     /**
@@ -225,6 +236,18 @@ public final class EngineScenarioDriver {
         /** The standby deck (reference-engine.js WarmingBackend), engine target only. */
         DeckPolicy.Warm warm;
         String currentUrl;
+        /**
+         * WarmingBackend {@code _standbyUrl} (NE-45j): the source the standby deck holds, what it
+         * last prepared or what the last handover demoted onto it.
+         */
+        String standbyUrl;
+        /** WarmingBackend {@code _loadCount} / {@code _windowCheckedFor}: one automatic window check per load, at its first play. */
+        int loadCount;
+        Integer windowCheckedFor;
+        /** WarmingBackend {@code rate}: the deck's own, for the window's wall clock. */
+        double deckRate = 1;
+        /** A window that opened at a play, fed to the core when that turn is over (the JS calls it from inside {@code play()}). */
+        Integer windowAtStart;
         /** The core's timers that are armed, and when each is due (monotonic). */
         final Map<EngineTimer, Double> timerDue = new EnumMap<>(EngineTimer.class);
         /** The synthesiser and the jingle player, null when not wired. */
@@ -318,7 +341,11 @@ public final class EngineScenarioDriver {
                 throw new HarnessError("E_BAD_CASE", "view \"narrationTicks\" needs setup.narrationTicks = true");
             }
             Json tts = JsArgs.at(setup, "tts");
-            if (JsArgs.isNullish(tts) || (tts instanceof Json.Bool b && !b.value())) {
+            if (JsArgs.isUndefined(tts) && engineTarget) {
+                // reference-engine.js always wires fakeTts (`this.tts = fakeTts({log})`), so on the
+                // engine target a spoken line is spoken without asking.
+                narrator = new FakeNarrator(new Json.Obj(Map.of()));
+            } else if (JsArgs.isNullish(tts) || (tts instanceof Json.Bool b && !b.value())) {
                 narrator = null;
             } else if (tts instanceof Json.Bool) {
                 narrator = new FakeNarrator(new Json.Obj(Map.of()));
@@ -850,9 +877,11 @@ public final class EngineScenarioDriver {
             switch (event) {
                 case "ended", "error", "time", "duration" -> deck(fields);
                 case "window" -> {
-                    // WarmingBackend `openPrefetchWindow`: only an armed out-point on an audible deck
-                    // has a boundary to approach.
-                    if (deckOutPoint != null && reading.audible && deckToken != null) {
+                    // WarmingBackend `openPrefetchWindow`: an audible deck with a boundary to
+                    // approach: an out-point or, for an item with none (a rendered line, an
+                    // episode's natural end), its duration (NE-45j).
+                    boolean hasDuration = reading.durationSec != null && Double.isFinite(reading.durationSec) && reading.durationSec > 0;
+                    if ((deckOutPoint != null || hasDuration) && reading.audible && deckToken != null) {
                         feed(new EngineInput.Deck(new DeckEvent.PrepareWindow(deckToken)));
                     }
                 }
@@ -1012,6 +1041,13 @@ public final class EngineScenarioDriver {
             for (SessionPolicy.Violation violation : SessionPolicy.audibleStartViolations(entry, names)) {
                 broke("audible-start:" + violation.cmd() + "@" + entry.token);
             }
+            // WarmingBackend `_windowAtStart`: a play that found its item already inside the window
+            // opens it, once per load, as its own event.
+            if (windowAtStart != null) {
+                int token = windowAtStart;
+                windowAtStart = null;
+                feed(new EngineInput.Deck(new DeckEvent.PrepareWindow(token)));
+            }
         }
 
         private List<EngineCommand> mutate(List<EngineCommand> output, SessionPolicy.Phase entry, boolean turnHead) {
@@ -1033,6 +1069,21 @@ public final class EngineScenarioDriver {
                 case SILENCE_WHILE_NOT_RUNNING -> {
                     if (turnHead && !runningAtEntry) changed.add(new EngineCommand.SilenceStart(Interlude.CEILING_SEC * 1000));
                     changed.addAll(output);
+                }
+                case WARM_BY_THE_BEAT -> {
+                    EngineState st = core.state();
+                    for (EngineCommand command : output) {
+                        if (command instanceof EngineCommand.Deck d && d.command() instanceof DeckCommand.Prepare p) {
+                            EngineItem from = st.currentItem();
+                            EngineItem to = null;
+                            for (EngineItem it : st.queue) if (it.id.equals(p.itemId())) to = it;
+                            boolean beat = st.player instanceof PlayerQueueState.Playing && from != null && to != null
+                                    && SeamGap.gapSec(from.seam(), to.seam(), to.kind == ai.jwlabs.foura.engine.PlayerItemKind.TTS,
+                                            SeamGap.AUTO_ADVANCE, core.config().seamGapSec()) > 0;
+                            if (!beat) continue;
+                        }
+                        changed.add(command);
+                    }
                 }
                 case LOAD_AFTER_BEAT, CANCEL_AS_FINISHED, FINISHED_CLAIMS_CURRENT_LINE -> changed.addAll(output);
             }
@@ -1158,9 +1209,15 @@ public final class EngineScenarioDriver {
                         // warm is a handover, said BEFORE the load.
                         double offset = JSMath.round(DeckPolicy.warmOffset(load.startSec()));
                         DeckPolicy.Promotion promotion = DeckPolicy.warmPromotion(warm, load.url(), offset, true, offset);
-                        if (promotion == DeckPolicy.Promotion.PROMOTE) ops.add("n.handover:" + load.itemId() + "@" + number(offset));
+                        if (promotion == DeckPolicy.Promotion.PROMOTE) {
+                            ops.add("n.handover:" + load.itemId() + "@" + number(offset));
+                            // The roles swap: the outgoing deck, and what it holds, is the standby
+                            // now (`handoverSteps` keeps the buffer).
+                            standbyUrl = currentUrl;
+                        }
                         warm = null;
                         currentUrl = load.url();
+                        loadCount += 1;
                     }
                     // A load re-points the element: paused, at the offset, no boundary.
                     deckItemId = load.itemId();
@@ -1183,6 +1240,7 @@ public final class EngineScenarioDriver {
                     trackAudible();
                     ops.add("play");
                     if (deckToken != null) confirmations.add(deckToken);
+                    if (engineTarget) checkWindowAtStart();
                 }
                 case DeckCommand.Pause p -> {
                     reading.audible = false;
@@ -1192,7 +1250,10 @@ public final class EngineScenarioDriver {
                     reading.positionSec = s.toSec();
                     ops.add("seek:" + rounded(s.toSec()));
                 }
-                case DeckCommand.SetRate r -> ops.add("rate:" + number(r.rate()));
+                case DeckCommand.SetRate r -> {
+                    if (Double.isFinite(r.rate()) && r.rate() > 0) deckRate = r.rate();
+                    ops.add("rate:" + number(r.rate()));
+                }
                 case DeckCommand.SetOutPoint o -> {
                     deckOutPoint = o.sec();
                     ops.add("outPoint:" + (o.sec() == null ? "null" : rounded(o.sec())));
@@ -1222,13 +1283,32 @@ public final class EngineScenarioDriver {
                             if (warm != null) warm = new DeckPolicy.Warm(p.itemId(), warm.url(), warm.offsetSec(), warm.ready(), warm.failed());
                         }
                         case START -> {
+                            // NE-45j: preparing the source the standby already holds is a
+                            // same-source SEEK there (ExoDeck's reuse, AVDeck `sameSourceIsSeek`),
+                            // not a fetch.
+                            boolean seek = standbyUrl != null && standbyUrl.equals(p.url());
                             warm = new DeckPolicy.Warm(p.itemId(), p.url() == null ? "" : p.url(), offset, true, false);
-                            ops.add("n.prepare:" + p.itemId() + "@" + number(offset));
+                            standbyUrl = p.url();
+                            ops.add((seek ? "n.prepare-seek:" : "n.prepare:") + p.itemId() + "@" + number(offset));
                         }
                         default -> {}
                     }
                 }
             }
+        }
+
+        /**
+         * WarmingBackend {@code _windowAtStart}, at a play: once per load, an item already inside its
+         * window (shorter than the lead, or started within it) opens it now. Fed when this turn is
+         * over ({@link #feed}).
+         */
+        private void checkWindowAtStart() {
+            if (windowCheckedFor != null && windowCheckedFor == loadCount) return;
+            windowCheckedFor = loadCount;
+            boolean opens = DeckPolicy.prefetchWindowOpens(true, deckOutPoint, deckOutPoint != null, false,
+                    reading.positionSec != null ? reading.positionSec : 0, deckRate,
+                    EngineConstants.HtmlAudioBackend.PREFETCH_LEAD_SEC, false, reading.durationSec);
+            if (opens && deckToken != null) windowAtStart = deckToken;
         }
 
         /**
