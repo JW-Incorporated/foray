@@ -1417,6 +1417,18 @@ const FLOORS = {
      warns about. That coupling is a feature: these tests fail if the committed
      thread stops being clean. */
   "tools/foray/check-narration.test.mjs": 49,
+  /* The publish-time network verifier for rendered narration (SPK-09, assessment
+     §3.4). Zero slack. The tool itself never runs in required CI (it refuses
+     under CI, like upload-narration); these tests drive `run()` with a fake
+     host, a fake ffprobe and a recording fs, and each of the seven checks
+     (status, content_type, content_length, cache_control, cors, sha256,
+     duration) has the one test that breaks exactly that header and asserts the
+     check is named -- drop a check from the tool and its test goes red. The
+     rest pin the Spark's safety edges: ffprobe absent is `skipped` not a
+     failure, the canary samples PUBLISHED lines first, politeness sleeps
+     before every request, nothing is written outside tmp, argv can carry no
+     token, and the CI refusal happens before a single read. */
+  "tools/foray/verify-narration-audio.test.mjs": 19,
   /* The narration pipeline's dry run (#247). Zero slack. Two of its tests are
      the only things standing between this repo and a paid API call: one asserts
      `synthesize()` refuses without a key, and one greps every `.mjs` in
