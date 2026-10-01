@@ -339,12 +339,19 @@ do not ship in a public web page — §7 says so plainly.
 Because it is an ordinary network request, **Supabase necessarily observes the IP
 address it came from**, as any server does.
 
+**Where the data is stored.** Our Supabase project (id `qjdllvqdcgacvujhclny`) is
+hosted in **AWS region `us-east-1` — US East (N. Virginia), United States**.
+Every event row described in this section, and the anonymous account that carries
+it, lives on servers in the United States. If you are outside the US, sending an
+event means that row crosses a border.
+
 Supabase processes this data under Supabase's standard data-processing
 agreement.
 
-> TODO(founder): the Supabase project's **region / hosting jurisdiction**. Not
-> known from the repo and not to be guessed; the lookup is tracked as
-> `HUMAN-ACTIONS.md` #129. Needed for the policy to state where data is stored.
+> TODO(founder): whether a **separate data-processing agreement** has been
+> signed with Supabase beyond their standard terms. The region half of this
+> question is answered above; the agreement half is not recorded anywhere in the
+> repo and is not to be guessed.
 
 > TODO(founder): **how long event rows are retained.** ADR-0005 anticipates a
 > retention job pruning stale anonymous ids with no events; it is not built. The

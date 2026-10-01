@@ -110,7 +110,12 @@ Applies to **User IDs**, **App interactions**, **Other user-generated content**
 and **Other actions** (the four "Yes" rows above).
 
 - **Is this data processed ephemerally?** **No.** Rows are stored in the `events`
-  table for later curation work.
+  table for later curation work. That table lives in our Supabase project
+  (id `qjdllvqdcgacvujhclny`), hosted in **AWS `us-east-1` — US East (N.
+  Virginia), United States**; `privacy-policy.md` §3 ("The anonymous account")
+  states the same fact to users. Neither store's form asks for the region, but
+  Play's and Apple's policy-link checks expect the published policy to name
+  where data is stored, so the two documents must keep saying the same thing.
 - **Is collection required or optional?** **Required** for App interactions,
   User IDs and Other actions — the app syncs without asking. **Optional** for
   Other user-generated content (the note): it is only sent if you type one, and
