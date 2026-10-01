@@ -95,6 +95,15 @@ public struct EngineConfig: Equatable {
     /// on it; the host builds the session owner with it, and the `build` row
     /// and the Copy header say which policy the launch ran (`routeSharing=`).
     public var routeSharingLongForm: Bool // MEASURE: DV-8 (the G-6 drive's optional .longFormAudio arm). Rows: build routeSharing=, session category routeSharing=.
+    /// P-7's CBR exemption (M2 drive, 2026-10-01): a clip whose source is
+    /// measured constant-bitrate (`seek_map: "cbr"`) loads and warms WITHOUT
+    /// precise timing, which on an MP3 reads the whole file before the clip
+    /// can start (`EngineItem.preciseTiming(approximateCBR:)`). OFF until the
+    /// Simulator row in docs/ios-native-engine-measurements.md §13 says an
+    /// approximate seek into an Info-tagged CBR file does byte arithmetic and
+    /// does not follow the Info frame's TOC (which on a 45-minute file is
+    /// seconds off). The shipping boot turns it on (EngineBoot) once it does.
+    public var approximateCBRClips: Bool
 
     public init(build: String = "", holdPolicy: SessionPolicy.HoldPolicy = .default, rate: Double? = nil,
                 forayTapeEnabled: Bool = false, seamGapSec: Double = SeamGap.defaultGapSec,
@@ -103,7 +112,8 @@ public struct EngineConfig: Equatable {
                 silenceNodeEnabled: Bool = false, voiceId: String? = nil, speechDirect: Bool = false,
                 routeResumeBluetooth: Bool = RouteResume.bluetoothDefault, routeSalt: String = "",
                 knownRoutes: [String] = [], loadDeadlineMs: [DeckDeadlineClass: Double] = [:],
-                deckPairEnabled: Bool = false, routeSharingLongForm: Bool = false) {
+                deckPairEnabled: Bool = false, routeSharingLongForm: Bool = false,
+                approximateCBRClips: Bool = false) {
         self.build = build
         self.holdPolicy = holdPolicy
         self.rate = rate
@@ -122,6 +132,7 @@ public struct EngineConfig: Equatable {
         self.knownRoutes = knownRoutes
         self.loadDeadlineMs = loadDeadlineMs
         self.routeSharingLongForm = routeSharingLongForm
+        self.approximateCBRClips = approximateCBRClips
     }
 }
 
@@ -1109,7 +1120,8 @@ public struct EngineCore {
         }
         state.pendingLoad = PendingLoad(token: token, itemId: item.id, startSec: startSec)
         deckCommand(.load(token: token, itemId: item.id, url: item.audioUrl, startSec: startSec,
-                          preciseTiming: bounds != nil, deadlineClass: DeckDeadlineClass(item)))
+                          preciseTiming: item.preciseTiming(approximateCBR: config.approximateCBRClips),
+                          deadlineClass: DeckDeadlineClass(item)))
     }
 
     /// `_savedPositionFor(item)`: where a COLD start begins, through the one
@@ -2340,7 +2352,8 @@ public struct EngineCore {
         }
         state.preparedItemId = next.item.id
         deckCommand(.prepare(itemId: next.item.id, url: next.item.audioUrl, startSec: next.item.bounds?.startSec ?? 0,
-                             deadlineClass: DeckDeadlineClass(next.item)))
+                             deadlineClass: DeckDeadlineClass(next.item),
+                             preciseTiming: next.item.preciseTiming(approximateCBR: config.approximateCBRClips)))
     }
 
     /// A seam that touches a Foray SEGMENT (a bounded slice): a Foray's line

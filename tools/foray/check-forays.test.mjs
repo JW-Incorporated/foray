@@ -1765,6 +1765,20 @@ test("a non-https audio_url is rejected", () => {
   assert.match(errorsFor(f).join("\n"), /must be https/);
 });
 
+test("seek_map is optional, and when present must be a measured value", () => {
+  /* MUTATION: drop the SEEK_MAPS check, or accept any string. */
+  const f = fx();
+  assert.deepEqual(errorsFor(f).filter((e) => /seek_map/.test(e)), []);
+  for (const ok of ["cbr", "vbr-toc", "vbr-notoc"]) {
+    f.sources.sources[0].seek_map = ok;
+    assert.deepEqual(errorsFor(f).filter((e) => /seek_map/.test(e)), [], ok);
+  }
+  for (const bad of ["CBR", "constant", "", true]) {
+    f.sources.sources[0].seek_map = bad;
+    assert.match(errorsFor(f).join("\n"), /seek_map` must be one of/, String(bad));
+  }
+});
+
 test("a missing dai_suspected is rejected", () => {
   const f = fx();
   delete f.sources.sources[0].dai_suspected;

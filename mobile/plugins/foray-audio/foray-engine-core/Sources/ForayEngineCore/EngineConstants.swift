@@ -199,6 +199,15 @@ public enum EngineConstants {
         public static let narrationCharsPerSec: Double = 17
         /// `NARRATION_FALLBACK_SEC`
         public static let narrationFallbackSec: Double = 8
+        /// `SEEK_MAP`
+        public enum SeekMap {
+            /// `SEEK_MAP.CBR`
+            public static let cbr: String = "cbr"
+            /// `SEEK_MAP.VBR_TOC`
+            public static let vbrToc: String = "vbr-toc"
+            /// `SEEK_MAP.VBR_NOTOC`
+            public static let vbrNotoc: String = "vbr-notoc"
+        }
         /// `SEGMENT`
         public static let segment: String = "segment"
     }

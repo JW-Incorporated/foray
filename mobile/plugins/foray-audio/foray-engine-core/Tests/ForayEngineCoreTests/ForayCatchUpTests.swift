@@ -185,7 +185,7 @@ final class ForayCatchUpTests: XCTestCase {
             out.compactMap {
                 switch $0 {
                 case let .deck(.load(_, itemId, _, _, _, deadlineClass)): return "load:\(itemId):\(deadlineClass.rawValue)"
-                case let .deck(.prepare(itemId, _, _, deadlineClass)): return "prepare:\(itemId):\(deadlineClass.rawValue)"
+                case let .deck(.prepare(itemId, _, _, deadlineClass, _)): return "prepare:\(itemId):\(deadlineClass.rawValue)"
                 default: return nil
                 }
             }
@@ -426,7 +426,7 @@ final class ForayCatchUpTests: XCTestCase {
     /// `prepare:<item>@<in-point>:<deadline class>` for every standby prepare.
     static func prepares(_ out: [EngineCommand]) -> [String] {
         out.compactMap {
-            if case let .deck(.prepare(itemId, _, startSec, deadlineClass)) = $0 {
+            if case let .deck(.prepare(itemId, _, startSec, deadlineClass, _)) = $0 {
                 return "\(itemId)@\(JSWriter.numberToString(startSec)):\(deadlineClass.rawValue)"
             }
             return nil

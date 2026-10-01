@@ -102,6 +102,10 @@ enum EngineBoot {
         // (provisional, measurements §12, verdict route-back); absent reads as
         // the core's default.
         config.routeResumeBluetooth = EngineBoot.routeResumeBluetooth(Bundle.main.infoDictionary)
+        // P-7's CBR exemption (`approximateCBRClips`) stays at the core's OFF
+        // until docs/ios-native-engine-measurements.md §13's Simulator row says
+        // an approximate seek ignores an Info frame's TOC. Turning it on is
+        // `config.approximateCBRClips = true` here, and nothing else.
         // NE-46: the deck's own P-13 deadlines, so a load deadline that fires
         // late while grace is held writes `grace kind=late timer=load-deadline`.
         config.loadDeadlineMs = [.clip: AVDeck.defaultLoadDeadlineSec * 1000,
