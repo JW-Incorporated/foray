@@ -10,7 +10,9 @@
         case is reported as Swift work the SAME change carries: NE-39s (M3)
         burned swift-pending.json and unported.json to nothing and deleted
         them, so nothing can be owed, --port-card and --classify are refused,
-        and a retired list back on disk is a --check problem.
+        and a retired list back on disk is a --check problem. A-63 did the
+        same to the JVM's books: jvm-pending.json holds "runs" only,
+        --jvm-card is refused, and books that owe are a --check problem.
      3. --mutate flips a named rule in a child process's loader only, and a
         mutant counts as killed only when BOTH the original JS test and the
         fixture family fail. A no-op "mutant" must survive, or "killed" would
@@ -166,14 +168,16 @@ test("recording a new case writes its expect and reports it as Swift work this c
     assert.equal(refused.ok, false, "a --port-card has nowhere to write");
     assert.match(refused.refusals.join("\n"), /--port-card "NE-28s" was retired with swift-pending\.json by NE-39s/);
 
-    // A-40: the JVM runs seam-gap too, so the new case is also handed to an Android card.
-    const r = await record({ root, jvmCard: "A-63", log: quiet });
+    // The JVM runs seam-gap too: the new case is JVM work this change carries (A-63), never owed.
+    const jvmBefore = fs.readFileSync(path.join(root, "player/parity/jvm-pending.json"), "utf8");
+    const r = await record({ root, log: quiet });
     assert.equal(r.ok, true, r.refusals.join("\n"));
     assert.deepStrictEqual(r.swiftAffected, ["seam-gap/brand-new"]);
+    assert.deepStrictEqual(r.jvmAffected, ["seam-gap/brand-new"]);
     for (const retired of ["swift-pending.json", "unported.json"]) {
       assert.equal(fs.existsSync(path.join(root, "player/parity", retired)), false, `record never writes ${retired}`);
     }
-    assert.equal(readJ(root, "player/parity/jvm-pending.json").cases["seam-gap/brand-new"], "A-63");
+    assert.equal(fs.readFileSync(path.join(root, "player/parity/jvm-pending.json"), "utf8"), jvmBefore, "record never writes the JVM's books");
     const rec = readJ(root, FIXTURE).cases.find((c) => c.id === "seam-gap/brand-new");
     assert.deepStrictEqual(rec.expect, { return: 1.25 });
     assert.ok(readJ(root, "player/parity/manifest.json").families["seam-gap"].ids.includes("seam-gap/brand-new"));
@@ -218,10 +222,11 @@ test("a JS change to a recorded (non-authored) case re-records it and reports it
     const mod = path.join(root, "player", "seam-gap.js");
     // A rule change: bridged seams get the beat too. Not an authored case.
     fs.writeFileSync(mod, fs.readFileSync(mod, "utf8").replace("  if (bridged) return 0;\n", ""));
-    // A-40: the JVM runs seam-gap too, so the re-recorded case is owed to an Android card as well.
-    const r = await record({ root, jvmCard: "A-63", log: quiet });
+    // The JVM runs seam-gap too: the re-recorded case is the JVM port this change carries (A-63).
+    const r = await record({ root, log: quiet });
     assert.equal(r.ok, true, r.refusals.join("\n"));
     assert.deepStrictEqual(r.swiftAffected, ["seam-gap/bridged-no-beat"]);
+    assert.deepStrictEqual(r.jvmAffected, ["seam-gap/bridged-no-beat"]);
     assert.equal(fs.existsSync(path.join(root, "player/parity/swift-pending.json")), false, "nothing is owed: no list to put it in");
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
@@ -266,11 +271,13 @@ test("recording one family never vouches for another: its authored cases are sti
     assert.equal(readJ(root, "player/parity/manifest.json").families[fam], undefined,
       "a seam-gap run must not write the probe family's ids into the manifest");
 
-    // A-22: a brand-new family is owed to the JVM too, whole, to --jvm-card.
-    const r = await record({ root, family: fam, jvmCard: "A-23", log: quiet });
+    // A-63: a brand-new family carries its JVM runner; until it is in "runs", --check says so.
+    const r = await record({ root, family: fam, log: quiet });
     assert.equal(r.ok, true, r.refusals.join("\n"));
     assert.deepStrictEqual([...r.swiftAffected].sort(), [`${fam}/max`, `${fam}/snap`], "the authored case is reported too");
-    assert.equal(readJ(root, "player/parity/jvm-pending.json").families[fam], "A-23", "the new family is owed to the JVM whole");
+    assert.match((await checkAll({ root })).problems.join("\n"), new RegExp(`jvm-pending: family ${fam} is recorded but the JVM does not run it`));
+    const books = readJ(root, "player/parity/jvm-pending.json");
+    writeJ(root, "player/parity/jvm-pending.json", { ...books, runs: [...books.runs, fam].sort() });
     assert.deepStrictEqual((await checkAll({ root })).problems, []);
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
@@ -330,116 +337,82 @@ test("NE-39s: a retired burn-down list back on disk is a --check problem, and --
   }
 });
 
-/* ---------- the JVM's books (A-22) ---------- */
+/* ---------- the JVM's books (A-22, retired to "runs" by A-63) ---------- */
 
-/* jvm-pending.json keeps the JVM parity runner's books the way swift-pending.json
-   kept the Swift one's until NE-39s, so a JS rule change never turns android-build red: it
-   hands an Android card a list. A family the JVM does not run is owed WHOLE, so
-   only a case new or changed in a family it does run (number-format today), or a
-   brand-new family, needs --jvm-card.
-   MUTATION: make jvmOwedBy return nothing, or drop the --jvm-card refusal -> the
-   first test fails; drop the jvm-pending checks from checkAll -> the second. */
+/* jvm-pending.json kept the JVM parity runner's books the way swift-pending.json
+   kept the Swift one's until NE-39s: a family the JVM did not run was owed whole,
+   and a JS rule change handed an Android card a list (--jvm-card). A-63 ported
+   the last owed family and case and retired owing: the file holds "runs" only,
+   every recorded family that is not jsOnly is in it, and a record never writes it.
+   MUTATION: accept --jvm-card again, or let record() write the books -> the first
+   test fails; drop the retired-key problem from loadJvmPending -> the second; drop
+   the partition loop from checkJvmPending -> the third. */
 const NUMBER_FORMAT = "player/parity/fixtures/number-format/number-format.json";
 const JVM = "player/parity/jvm-pending.json";
 
-/** The books with `names` moved from "runs" back to owed WHOLE (to A-41, the card that ported
- *  them): the "before" state these tests need. Since A-41 the JVM runs every recorded family, so a
- *  family owed whole with fixtures exists only in a scratch tree. */
-function oweWhole(books, names) {
-  const families = { ...books.families };
-  for (const name of names) families[name] = "A-41";
-  return { ...books, families, runs: books.runs.filter((f) => !names.includes(f)) };
-}
-
-test("a case new in a family the JVM runs is refused without --jvm-card and owed to it with one; a whole-owed family needs none", async () => {
+test("A-63: --jvm-card is refused, a record never writes the JVM's books, and a case new in a family the JVM runs is JVM work this change carries", async () => {
   const root = scratch();
   try {
-    assert.equal(readJ(root, JVM).families["number-format"], undefined, "precondition: the JVM runs number-format");
-    writeJ(root, JVM, oweWhole(readJ(root, JVM), ["default-voice"]));
-    assert.equal(readJ(root, JVM).families["default-voice"], "A-41", "precondition: default-voice is owed whole");
-    assert.deepStrictEqual((await checkAll({ root })).problems, [], "precondition: the scratch books are --check clean");
-    // The real books may already owe cases (manager-episode's NE-39n case, to A-64): the test's own entry comes on top.
-    const baseCases = readJ(root, JVM).cases;
+    assert.deepStrictEqual(Object.keys(readJ(root, JVM)).filter((k) => !k.startsWith("//")), ["runs"], "precondition: the books hold runs only");
+    assert.ok(readJ(root, JVM).runs.includes("number-format"), "precondition: the JVM runs number-format");
+    const before = fs.readFileSync(path.join(root, JVM), "utf8");
 
     const nf = readJ(root, NUMBER_FORMAT);
     nf.cases.push({ id: "number-format/brand-new-2.5", covers: [], call: "jsonNumber", args: [2.5] });
     writeJ(root, NUMBER_FORMAT, nf);
-    const refused = await record({ root, log: quiet });
-    assert.equal(refused.ok, false);
-    assert.match(refused.refusals.join("\n"), /pass --jvm-card <A-xx>[\s\S]*number-format\/brand-new-2\.5/);
-    const badCard = await record({ root, jvmCard: "NE-10s", log: quiet });
-    assert.match(badCard.refusals.join("\n"), /--jvm-card "NE-10s" is not an Android card id/);
+    for (const card of ["A-63", "NE-10s"]) {
+      const refused = await record({ root, jvmCard: card, log: quiet });
+      assert.equal(refused.ok, false);
+      assert.match(refused.refusals.join("\n"), new RegExp(`--jvm-card "${card}" was retired with the JVM's owed books by A-63`));
+    }
 
-    const r = await record({ root, jvmCard: "A-23", log: quiet });
+    const said = [];
+    const r = await record({ root, log: (m) => said.push(m) });
     assert.equal(r.ok, true, r.refusals.join("\n"));
-    assert.deepStrictEqual(r.jvmOwed, { families: [], cases: ["number-format/brand-new-2.5"] });
-    assert.deepStrictEqual(readJ(root, JVM).cases, { ...baseCases, "number-format/brand-new-2.5": "A-23" });
-    assert.deepStrictEqual((await checkAll({ root })).problems, [], "the books a record writes are --check clean");
-
-    // A case new in a family owed whole: the Swift runner holds it, the JVM books do not move.
-    const jvmBefore = fs.readFileSync(path.join(root, JVM), "utf8");
-    const DV = "player/parity/fixtures/default-voice/default-voice.json";
-    const dv = readJ(root, DV);
-    dv.cases.push({ id: "default-voice/brand-new-jvm", covers: [], read: "DEFAULT_VOICE_NAME" });
-    writeJ(root, DV, dv);
-    const owedWhole = await record({ root, log: quiet });
-    assert.equal(owedWhole.ok, true, owedWhole.refusals.join("\n"));
-    assert.equal(fs.readFileSync(path.join(root, JVM), "utf8"), jvmBefore);
-
-    // Deleting the case drops its entry, as swift-pending dropped a deleted id.
-    nf.cases.pop();
-    writeJ(root, NUMBER_FORMAT, nf);
-    const dropped = await record({ root, lowerFloors: true, log: quiet });
-    assert.equal(dropped.ok, true, dropped.refusals.join("\n"));
-    assert.deepStrictEqual(readJ(root, JVM).cases, baseCases);
+    assert.deepStrictEqual(r.jvmAffected, ["number-format/brand-new-2.5"]);
+    assert.ok(said.some((m) => /jvm: 1 id\(s\) new or changed; android-build's JVM runner holds this change to them/.test(m)), said.join("\n"));
+    assert.equal(fs.readFileSync(path.join(root, JVM), "utf8"), before, "the books do not move");
+    assert.deepStrictEqual((await checkAll({ root })).problems, [], "nothing is owed, so nothing is out of balance");
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }
 });
 
-test("--check is red on JVM books that name nothing, owe a jsOnly family, use a non-Android card, or owe a case twice", async () => {
+test("A-63: --check is red on JVM books that owe anything again: a families or cases key (even empty), or an unknown key", async () => {
   const root = scratch();
   try {
-    const jvm = oweWhole(readJ(root, JVM), ["default-voice"]);
-    writeJ(root, JVM, {
-      ...jvm,
-      cases: { "no-such/case": "A-23", "default-voice/name-is-samantha": "A-41", "number-format/zero": "NE-10s" },
-      families: { ...jvm.families, "no-such-family": "A-23", continuation: "A-40" },
-    });
-    const problems = (await checkAll({ root })).problems.join("\n");
-    assert.match(problems, /jvm-pending: no-such\/case names no fixture case/);
-    assert.match(problems, /jvm-pending: family no-such-family is not recorded: delete the entry/);
-    assert.match(problems, /jvm-pending: family continuation is jsOnly/);
-    assert.match(problems, /jvm-pending: default-voice\/name-is-samantha is owed on its own and with its whole family default-voice/);
-    assert.match(problems, /jvm-pending: number-format\/zero is tagged "NE-10s", not an Android card id/);
-    // A recorded family owed whole is not a problem.
-    assert.doesNotMatch(problems, /manager-remainder/);
+    const books = readJ(root, JVM);
+    assert.deepStrictEqual((await checkAll({ root })).problems, [], "precondition: the scratch tree is clean");
+    for (const key of ["families", "cases"]) {
+      for (const value of [{}, { "number-format/zero": "A-63" }]) {
+        writeJ(root, JVM, { ...books, [key]: value });
+        const problems = (await checkAll({ root })).problems.join("\n");
+        assert.match(problems, new RegExp(`jvm-pending: "${key}" is back: A-63 retired owing to the JVM`), `${key} = ${JSON.stringify(value)}`);
+        const r = await record({ root, log: quiet });
+        assert.equal(r.ok, false, "a record refuses books that owe, too");
+      }
+    }
+    writeJ(root, JVM, { ...books, owed: {} });
+    assert.match((await checkAll({ root })).problems.join("\n"), /jvm-pending: unknown key "owed"/);
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }
 });
 
-test("--check holds every recorded family to exactly one of the JVM's runs and its owed families", async () => {
-  /* MUTATION: drop the partition loop from checkJvmPending -> fails. Without
-     "runs" the JS side cannot tell a family the JVM runs from one nobody owes, so
-     a family recorded on a branch cut before jvm-pending.json existed would merge
-     with ci.yml green and only the non-required android-build red. */
+test("--check holds every recorded family that is not jsOnly to the JVM's runs, and runs to recorded, non-jsOnly families", async () => {
+  /* Without "runs" the JS side could not tell a family the JVM runs from one nobody
+     ports, so a family recorded with no JVM runner would merge with ci.yml green and
+     only the (non-required) android-build red. */
   const root = scratch();
   try {
-    // The before state of a porting card (A-41 ported both): default-voice and lexicon owed whole.
-    const jvm = oweWhole(readJ(root, JVM), ["default-voice", "lexicon"]);
-    // Preconditions, as data rather than a list a porting card must edit: the JVM runs
-    // compare, and owes default-voice and lexicon.
-    assert.ok(jvm.runs.includes("compare"), "precondition: the JVM runs compare");
-    assert.ok(jvm.families["default-voice"] && jvm.families.lexicon, "precondition: default-voice and lexicon are still owed whole");
-    const families = { ...jvm.families };
-    delete families["default-voice"];
-    writeJ(root, JVM, { ...jvm, families, runs: [...jvm.runs, "lexicon", "continuation", "no-such-family"] });
+    const jvm = readJ(root, JVM);
+    assert.ok(jvm.runs.includes("default-voice") && jvm.runs.includes("compare"), "precondition: the JVM runs default-voice and compare");
+    writeJ(root, JVM, { ...jvm, runs: [...jvm.runs.filter((f) => f !== "default-voice"), "continuation", "no-such-family"] });
     const problems = (await checkAll({ root })).problems.join("\n");
-    assert.match(problems, /jvm-pending: family default-voice is recorded but the JVM neither runs it nor owes it/);
-    assert.match(problems, /jvm-pending: family lexicon is both in "runs" and owed whole/);
+    assert.match(problems, /jvm-pending: family default-voice is recorded but the JVM does not run it: A-63 retired owing/);
     assert.match(problems, /jvm-pending: "runs" lists family continuation, which is jsOnly/);
     assert.match(problems, /jvm-pending: "runs" lists family no-such-family, which is not recorded/);
+    assert.doesNotMatch(problems, /family compare/);
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }

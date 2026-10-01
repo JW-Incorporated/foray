@@ -207,7 +207,8 @@ public final class EngineContract {
             Command.Pause, Command.Toggle, Command.Next, Command.Previous, Command.SeekBy, Command.SeekTo, Command.Jump,
             Command.Stop, Command.SetRate, Command.SetVoice, Command.SetInterludeEnabled, Command.SetPageVisible,
             Command.AckAdvances, Command.AckEvents, Command.RestoreBar, Command.Purge, Command.Relinquish, Command.Audition,
-            Command.SetModeOverride, Command.SetHoldPolicy, Command.ProbeSession, Command.SimulateTermination {
+            Command.SetModeOverride, Command.SetHoldPolicy, Command.ProbeSession, Command.SimulateTermination,
+            Command.SetRouteSharing {
 
         /**
          * {@code item} is the page's queue item (only its {@code id} is the contract's; the
@@ -296,6 +297,16 @@ public final class EngineContract {
 
         /** Developer only (NE-24): persist the restore record now; the host exits at the next background entry. */
         record SimulateTermination() implements Command {}
+
+        /**
+         * Developer only (NE-40, DV-8; ported by A-63 so the contract case is no longer owed): the
+         * route-sharing policy ({@code ROUTE_SHARING_POLICIES}: {@code default} or
+         * {@code longFormAudio}) the NEXT launch's audio session is built with. The host's to store;
+         * the core decides nothing on it. On Android it is an AVAudioSession word with no
+         * counterpart: the host accepts it and changes nothing (A-67 decides whether Android
+         * stores it).
+         */
+        record SetRouteSharing(String policy) implements Command {}
 
         Command PLAY = new Play();
         Command PAUSE = new Pause();

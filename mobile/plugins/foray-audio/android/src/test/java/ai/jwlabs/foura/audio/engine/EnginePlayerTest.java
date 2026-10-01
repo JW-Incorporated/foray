@@ -250,6 +250,74 @@ public class EnginePlayerTest {
     }
 
     /**
+     * A-63 (NE-39s's de-dup decision, DV-6 / OQ-7: record-only, no drop guard): a Media3
+     * media-button delivery reaches the core as a press, and the core's {@code remote} row records
+     * {@code dupCandidate} ({@code y} for the same command inside
+     * {@code EngineCore.REMOTE_DUPLICATE_WINDOW_MS}, 500 ms) and drops NOTHING: a car's or a
+     * headset's second next 200 ms after the first is handled like any press. The facade has no
+     * window of its own (the iOS native path's 500 ms window stays until NE-41; Android's legacy JS
+     * lane keeps foray-media-session.js's). TO SEE IT FAIL: drop a repeat in
+     * {@link EnginePlayer#press}, or skip the core's row for one.
+     */
+    @Test
+    public void aRepeatedMediaButtonIsRecordedAsADupCandidateAndStillHandled() {
+        ForayEngineHostTest.Rig r = new ForayEngineHostTest.Rig();
+        r.host.handle(ForayEngineHostTest.load("a", "b", "c"));
+        r.host.handle(ForayEngineHostTest.playIndex(0));
+        r.deck.emit(new ai.jwlabs.foura.engine.DeckEvent.Ready(r.deck.lastToken, 0, true, 5));
+        EnginePlayer p = new EnginePlayer(Looper.getMainLooper(), new EnginePlayer.Engine() {
+            @Override
+            public ForayEngineHost.Surface surface() {
+                return r.host.surface();
+            }
+
+            @Override
+            public ForayEngineHost.Verdict remote(EngineInput.RemotePress press) {
+                return r.host.remote(press);
+            }
+        });
+        p.refresh();
+        ShadowLooper.idleMainLooper();
+        assertTrue("a next exists", p.isCommandAvailable(Player.COMMAND_SEEK_TO_NEXT));
+
+        p.seekToNext();
+        ShadowLooper.idleMainLooper();
+        r.deck.emit(new ai.jwlabs.foura.engine.DeckEvent.Ready(r.deck.lastToken, 0, true, 5));
+        p.refresh();
+        ShadowLooper.idleMainLooper();
+        r.timing.mono += 200;
+        p.seekToNext();
+        ShadowLooper.idleMainLooper();
+
+        List<String> pressRows = new ArrayList<>();
+        List<String> statusRows = new ArrayList<>();
+        for (String row : r.rows("remote")) (row.contains("\"dupCandidate\"") ? pressRows : statusRows).add(row);
+        assertEquals("one core row per delivery: " + pressRows, 2, pressRows.size());
+        assertTrue(pressRows.get(0), pressRows.get(0).contains("\"cmd\":\"nextTrack\"") && pressRows.get(0).contains("\"dupCandidate\":\"n\""));
+        assertTrue("the repeat inside 500 ms is a candidate: " + pressRows.get(1),
+                pressRows.get(1).contains("\"cmd\":\"nextTrack\"") && pressRows.get(1).contains("\"dupCandidate\":\"y\""));
+        assertEquals("and both were handled: " + statusRows, 2, statusRows.size());
+        for (String row : statusRows) assertTrue(row, row.contains("\"status\":\"success\""));
+        List<String> loaded = new ArrayList<>();
+        for (ai.jwlabs.foura.engine.DeckCommand c : r.deck.sent) {
+            if (c instanceof ai.jwlabs.foura.engine.DeckCommand.Load l) loaded.add(l.itemId());
+        }
+        assertEquals("nothing was dropped: the second next moved on too", List.of("a", "b", "c"), loaded);
+
+        r.deck.emit(new ai.jwlabs.foura.engine.DeckEvent.Ready(r.deck.lastToken, 0, true, 5));
+        p.refresh();
+        ShadowLooper.idleMainLooper();
+        r.timing.mono += 100;
+        p.pause();
+        ShadowLooper.idleMainLooper();
+        String last = null;
+        for (String row : r.rows("remote")) if (row.contains("\"dupCandidate\"")) last = row;
+        assertTrue("another command, even inside the window, is never a candidate: " + last,
+                last.contains("\"cmd\":\"pause\"") && last.contains("\"dupCandidate\":\"n\""));
+        p.release();
+    }
+
+    /**
      * A-27: an empty session that can resume declares exactly Media3's two resumption commands;
      * setting the answer's item is the engine's resume (the item itself is not played); and the
      * state after it is the engine's painted one. TO SEE IT FAIL: declare them whenever idle, or

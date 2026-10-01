@@ -5183,7 +5183,7 @@ test("A-28: Android's plugin answers the engine's three methods through the brid
   /* MUTATION: drop @PluginMethod from one method, answer without the bridge, `call.reject(` in
      one, call the bridge off main; rename EVENT_NAME; deliver an event without the visibility
      guard; set BUILD_DEFAULT_NATIVE to disagree with ENGINE_DEFAULT (or list a capability its android block
-     does not); advertise `episode` while jvm-pending still owes engine-mode (A-29); drop
+     does not); advertise `episode` while jvm-pending owes anything (A-63 emptied it); drop
      "android" from HELLO_PLATFORMS or from durable-store's ENGINE_SHELL_PLATFORMS. Each fails. */
   const { BRIDGE_METHODS, CAPABILITIES, HELLO_PLATFORMS } = await import("../../player/engine-contract.js");
   const { ENGINE_EVENT } = await import("../../player/native-engine.js");
@@ -5220,28 +5220,28 @@ test("A-28: Android's plugin answers the engine's three methods through the brid
      only when no family listed under it is owed to an Android card, whole or by case. */
   const capabilities = readJson(path.join(ROOT, "player", "parity", "capabilities.json"));
   const jvm = readJson(path.join(ROOT, "player", "parity", "jvm-pending.json"));
-  const owedCases = Object.keys(jvm.cases ?? {});
-  /* A-61, the engine/m3 merge: iOS M3 (NE-38..NE-47) added families and cases under capabilities
-     Android already claims (`episode` since A-31, `foray` since A-42): whole families
-     (prepare-narration, manager-remainder) and new cases in families the JVM runs (the audition
-     URL, route sharing, the fallback's cause). The JVM plays both capabilities as it did at the
-     flips, and Track A4 (plan §5.7, cards A-60..A-68) is the card set that ports M3. So a claimed
-     capability may carry owed families and cases ONLY when a Track A4 card owes them; anything
-     owed to an earlier card still blocks the claim. The JVM runner keeps the books honest both
-     ways (an owed case that passes is red), and A-63 empties them.
-     MUTATION: owe a foray or episode family or case to a pre-A4 card (A-40), or widen TRACK_A4;
-     each fails. */
-  const TRACK_A4 = /^A-6[0-8]$/;
+  /* A-61's engine/m3 merge let a claimed capability carry families and cases owed to a Track A4
+     card (A-60..A-68) while A4 ported iOS M3. A-63 ported the last of them and retired owing: the
+     books hold "runs" only, so every family a claimed capability lists must be one the JVM runs
+     (or jsOnly), with no Track A4 allowance left.
+     MUTATION: put a "families" or "cases" key back in jvm-pending.json; drop a claimed
+     capability's family from "runs"; each fails. */
+  assert.equal(jvm.families, undefined, "jvm-pending.json owes no family since A-63");
+  assert.equal(jvm.cases, undefined, "jvm-pending.json owes no case since A-63");
+  const fixtureFamilies = new Map();
+  const fixturesDir = path.join(ROOT, "player", "parity", "fixtures");
+  for (const dir of fs.readdirSync(fixturesDir)) {
+    const files = fs.readdirSync(path.join(fixturesDir, dir)).filter((f) => f.endsWith(".json"));
+    if (!files.length) continue;
+    fixtureFamilies.set(dir, files.every((f) => readJson(path.join(fixturesDir, dir, f)).jsOnly === true));
+  }
   for (const cap of claimed) {
     assert.ok(CAPABILITIES.includes(cap), `ADVERTISED_CAPABILITIES names ${cap}, which engine-contract.js CAPABILITIES does not define`);
     for (const family of capabilities[cap] ?? []) {
-      const owner = jvm.families?.[family];
-      assert.ok(owner === undefined || TRACK_A4.test(owner), `Android advertises ${cap}, but the JVM still owes ${family} to ${owner}`);
-      const blocking = owedCases.filter((id) => id.startsWith(`${family}/`) && !TRACK_A4.test(jvm.cases[id]));
-      assert.deepEqual(blocking, [], `Android advertises ${cap}, but the JVM still owes cases in ${family} to a card before Track A4`);
+      if (!fixtureFamilies.has(family) || fixtureFamilies.get(family)) continue;
+      assert.ok(jvm.runs.includes(family), `Android advertises ${cap}, but the JVM does not run ${family}`);
     }
   }
-  assert.ok(!TRACK_A4.test("A-40") && !TRACK_A4.test("A-69") && TRACK_A4.test("A-61"), "Track A4 is A-60..A-68 (A-69 is the DECISIONS entry)");
 
   const engineDir = path.join(audioDir, "engine");
   const bridge = stripJavaComments(fs.readFileSync(path.join(engineDir, "EngineBridge.java"), "utf8"));

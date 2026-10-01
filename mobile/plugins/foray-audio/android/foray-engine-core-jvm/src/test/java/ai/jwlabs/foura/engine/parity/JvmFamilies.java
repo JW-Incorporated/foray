@@ -7,10 +7,12 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * The fixture families the JVM runs, one {@link FamilyRunner} each. Every other family
- * is owed in player/parity/jvm-pending.json. A porting card adds its family here and
- * burns its entry out of jvm-pending.json (moving it to "runs") in the same change; the
- * suite fails if it does one without the other.
+ * The fixture families the JVM runs, one {@link FamilyRunner} each, listed in
+ * player/parity/jvm-pending.json "runs" (the suite fails when the two disagree). Until A-63 a
+ * family could be owed there to the Android card that ports it; A-63 ported the last one
+ * (manager-remainder) and retired owing, so every recorded family that is not jsOnly has its
+ * runner here, and a JS change that records a new family or rule carries its JVM port in the
+ * same change.
  */
 public final class JvmFamilies {
     private JvmFamilies() {}
@@ -162,9 +164,16 @@ public final class JvmFamilies {
      */
     public static final FamilyRunner PREPARE_NARRATION = ForayTapeFamilies.prepareNarration();
 
+    /*
+     * A-63: the manager remainder (the last of queue-manager's rules, NE-39j's warming and transport
+     * cases) through EngineCore with the Foray tape on, the JVM twin of NE-39s. With it the JVM runs
+     * every recorded engine family, and jvm-pending.json holds "runs" only: nothing may be owed.
+     */
+    public static final FamilyRunner MANAGER_REMAINDER = ForayTapeFamilies.managerRemainder();
+
     /** Every registered runner. */
     public static final List<FamilyRunner> ALL = List.of(COMPARE, NUMBER_FORMAT, QUEUE_STATE, RATE, RESUME_RULES, TRANSPORT, ROWS,
             SESSION, SESSION_INVARIANT, MEDIA_EPISODE, MANAGER_EPISODE, DECK_EPISODE, OUTPOINT, DECK, CONTRACT, SNAPSHOT, HANDSHAKE,
             DIAG_TOKENS, ENGINE_MODE, SEAM_GAP, SEEK_POLICY, INTERLUDE, FORAY_CLOCK, FORAY_STRUCTURE, FORAY_PROGRESS, MEDIA,
-            MANAGER_FORAY, PREPARE, PREPARE_NARRATION, DEFAULT_VOICE, LEXICON, SPEECH_RATE, ROUTE_RESUME);
+            MANAGER_FORAY, PREPARE, PREPARE_NARRATION, DEFAULT_VOICE, LEXICON, SPEECH_RATE, ROUTE_RESUME, MANAGER_REMAINDER);
 }
