@@ -1,10 +1,11 @@
 # 4a — Privacy Policy
 
-**Status: DRAFT — not yet published, not yet reviewed by a lawyer.**
-Every `TODO(founder)` below is a fact only a founder can supply. Do not publish
-this to a store listing with any of them unresolved.
+**Status: DRAFT — not yet republished at the policy URL, not yet reviewed by a
+lawyer (see §9).** Each remaining `TODO(founder)` below is a fact only a founder
+can supply. Do not publish this to a store listing with any of them unresolved.
 
-Last updated: 2026-09-25 · Applies to: the **4a** web app
+Last updated: 2026-09-30 (the effective date is the "Last updated" date of the
+republished page at https://jwlabs.ai/4a/privacy/) · Applies to: the **4a** web app
 (https://jw-incorporated.github.io/foray/) and the iOS/Android app built from the
 same code. The app was formerly Foray. That is why the word is still in this URL
 and in the names of the local database and the cache bucket §1 describes:
@@ -336,9 +337,12 @@ do not ship in a public web page — §7 says so plainly.
 Because it is an ordinary network request, **Supabase necessarily observes the IP
 address it came from**, as any server does.
 
-> TODO(founder): the Supabase project's **region / hosting jurisdiction**, and
-> whether a data-processing agreement is in place. Needed for the policy to state
-> where data is stored, and required if EU users are in scope.
+Supabase processes this data under Supabase's standard data-processing
+agreement.
+
+> TODO(founder): the Supabase project's **region / hosting jurisdiction**. Not
+> known from the repo and not to be guessed; the lookup is tracked as
+> `HUMAN-ACTIONS.md` #129. Needed for the policy to state where data is stored.
 
 > TODO(founder): **how long event rows are retained.** ADR-0005 anticipates a
 > retention job pruning stale anonymous ids with no events; it is not built. The
@@ -492,9 +496,9 @@ not ask for, or knowingly collect, anyone's age. "Family mode" is only a local
 content filter that hides explicit-rated episodes — it collects nothing and sends
 nothing.
 
-> TODO(founder): the **target age rating** to declare in each store, and whether
-> to opt in to Google Play's Families policy. This is a listing decision, not a
-> code fact.
+**Age ratings and audience (founder ruling, 2026-09-30).** Apple: 12+. Google
+Play: the IARC questionnaire answered truthfully (we expect Teen). Target
+audience is 18+. 4a is **not** enrolled in Google Play's Families policy.
 
 ## 7. How to delete your data
 
@@ -569,9 +573,11 @@ The `foray-gen-<deploy_id>` Cache Storage buckets are not touched by the
 button: they hold the app shell and the catalogue files (§1), which are the
 same for every listener and say nothing about you.
 
-> TODO(founder): publish a **data-deletion URL** for the store listings. The
-> in-app control answers Play's "can users request deletion" question, but the
-> form also wants a public web page describing it — see `data-safety.md` § A8.
+**Data-deletion URL for the store listings:**
+https://jwlabs.ai/4a/privacy/#7 (this section; there is no separate page). The
+in-app control answers Play's "can users request deletion" question; this
+section is the public page describing it. You can also ask for deletion by
+writing to help@jwlabs.ai. See `data-safety.md` § A8.
 
 ## 8. Changes to this policy
 
@@ -583,20 +589,18 @@ declaration.
 
 ## 9. Who we are, and how to reach us
 
-> TODO(founder): the **legal entity name** to name as data controller.
+The data controller is **JW Labs LLC, a California limited liability
+company**. Privacy and deletion questions: **help@jwlabs.ai**.
 
-> TODO(founder): a **privacy contact address**. Both stores require a working
-> contact; Google Play's Data Safety form requires a privacy policy URL, and
-> Apple requires one in App Store Connect. No address is invented here.
+This policy is published at https://jwlabs.ai/4a/privacy/ and takes effect on
+the "Last updated" date shown at the top of that page.
 
-> TODO(founder): where this policy will be **publicly hosted** (a store listing
-> needs a URL, not a file in a repo), and its **effective date**.
+**Where 4a is offered.** At the first public release the listing is US-only (a
+store-country setting, reversible). If that changes, this policy changes with it
+before the new countries go live; it does not yet make promises tied to any
+non-US privacy law.
 
-> TODO(founder): the **geo-availability decision** — US-only listing versus
-> accepting GDPR obligations from day one. `docs/marketing/05-legal-risk-memo.md`
-> §5 sets out the trade; it is unresolved, and it changes what this policy must
-> promise (access, portability, erasure, a lawful basis).
-
-> TODO(founder): **legal review.** This draft is written from the code by an
-> engineer, not a lawyer. It is accurate about behaviour; it is not a
-> professional opinion about sufficiency under any particular law.
+**Legal review (status as of 2026-09-30).** Not lawyer-reviewed; scheduled for
+the monetization milestone. This draft is written from the code by an engineer,
+not a lawyer. It is accurate about behaviour; it is not a professional opinion
+about sufficiency under any particular law. This is not a publish blocker.
