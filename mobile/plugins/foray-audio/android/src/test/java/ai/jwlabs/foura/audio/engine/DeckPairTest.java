@@ -7,6 +7,7 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import ai.jwlabs.foura.engine.DeckCommand;
+import ai.jwlabs.foura.engine.DeckDeadlineClass;
 import ai.jwlabs.foura.engine.DeckEvent;
 import ai.jwlabs.foura.engine.DeckPolicy;
 import ai.jwlabs.foura.engine.DeckReading;
@@ -124,10 +125,15 @@ public class DeckPairTest {
 
         /** The deck's load became ready at {@code atSec} (prerolled). */
         void becomeReady(int token, double atSec) {
+            becomeReady(token, atSec, 90.0);
+        }
+
+        /** The deck's load of a file {@code duration} seconds long became ready at {@code atSec} (prerolled). */
+        void becomeReady(int token, double atSec, double duration) {
             ready = true;
             reading.positionSec = atSec;
-            reading.durationSec = 90.0;
-            emit(new DeckEvent.DurationLoaded(token, 90.0));
+            reading.durationSec = duration;
+            emit(new DeckEvent.DurationLoaded(token, duration));
             emit(new DeckEvent.Ready(token, atSec, true, 30));
         }
 
@@ -397,5 +403,132 @@ public class DeckPairTest {
         assertEquals(2, pair.swaps());
         assertEquals(Arrays.asList(1, 0), actives);
         assertEquals(Arrays.asList(3), a.adopted);
+    }
+
+    // ---- A-62 (NE-45s): a narration line is an ordinary deck item
+
+    private static final String URL_LINE = "https://cdn.test/n1.m4a";
+
+    private List<EngineCommand.DiagEntry> prefetchRows() {
+        List<EngineCommand.DiagEntry> found = new ArrayList<>();
+        for (EngineCommand.DiagEntry r : rows) {
+            JsonNode kind = r.field("kind");
+            if (r.kind().equals("prepare") && kind != null && "prefetch".equals(kind.stringValue())) found.add(r);
+        }
+        return found;
+    }
+
+    private JsonNode lastPrefetch(String field) {
+        List<EngineCommand.DiagEntry> found = prefetchRows();
+        assertFalse("a prefetch row: " + rows, found.isEmpty());
+        return found.get(found.size() - 1).field(field);
+    }
+
+    /**
+     * clip, RENDERED line, clip in ONE episode (A-62's port of the iOS NE-45s DeckPairTests case):
+     * the line is prepared and promoted exactly like a clip, and the handover demotes deck A WITHOUT
+     * dropping the episode, so the clip after the line is prepared on deck A ({@code reuse=true}:
+     * ExoDeck seeks the source it holds) and promoted in turn. Two swaps, two hits, and the second
+     * clip is never loaded cold. TO SEE IT FAIL: unload the outgoing deck in the handover, or refuse
+     * a prepare whose source the standby already holds.
+     */
+    @Test
+    public void aPreparedRenderedLineSwapsLikeAClipAndTheClipAfterItIsPreparedOnTheDemotedDeck() {
+        pair.send(new DeckCommand.Load(1, "s0", URL_A, 100, true));
+        a.becomeReady(1, 100);
+        pair.send(DeckCommand.PLAY);
+        pair.send(new DeckCommand.Prepare("n1", URL_LINE, 0, DeckDeadlineClass.LINE));
+        int lineWarm = b.lastLoadToken();
+        assertTrue(lineWarm < 0);
+        assertEquals(JsonNode.str("line"), lastPrefetch("class"));
+        assertEquals("the line is a fetch of its own file", JsonNode.bool(false), lastPrefetch("reuse"));
+        b.becomeReady(lineWarm, 0, 20);
+
+        // The out-point: the core loads the line; the pair answers with the standby.
+        pair.send(new DeckCommand.Load(2, "n1", URL_LINE, 0, false, DeckDeadlineClass.LINE));
+        DeckEvent.Prepared intoLine = prepared(2);
+        assertTrue("the rendered line was promoted: " + events, intoLine != null && intoLine.hit());
+        assertEquals(1, pair.swaps());
+        assertEquals(Arrays.asList(2), b.adopted);
+        assertEquals("the demoted deck still holds the episode", URL_A, a.loadedUrl());
+        pair.send(DeckCommand.PLAY);
+
+        // The line's window (from its duration): the clip after it, same episode.
+        pair.send(new DeckCommand.Prepare("s1", URL_A, 300));
+        int clipWarm = a.lastLoadToken();
+        assertTrue("deck A, the standby now, prepares the clip", clipWarm < 0);
+        assertEquals(JsonNode.str("clip"), lastPrefetch("class"));
+        assertEquals("a same-source prepare on the demoted deck", JsonNode.bool(true), lastPrefetch("reuse"));
+        a.becomeReady(clipWarm, 300);
+        pair.send(new DeckCommand.Load(3, "s1", URL_A, 300, true));
+        DeckEvent.Prepared outOfLine = prepared(3);
+        assertTrue(events.toString(), outOfLine != null && outOfLine.hit());
+        assertEquals(2, pair.swaps());
+        assertEquals(Arrays.asList(3), a.adopted);
+        assertEquals("the first clip and its prepare: the second clip never loads cold", 2, a.count("load"));
+        assertEquals(1, b.count("load"));
+        assertFalse(a.reading().audible && b.reading().audible);
+    }
+
+    /**
+     * Behind a SPOKEN line the core prepares the next clip at the line's start. Deck A, paused at its
+     * out-point, keeps the player role under the voice; the standby loads beneath it and nothing it
+     * reports reaches the core; at the line's end the clip's load is a hit, and the handover pauses
+     * a deck that is already silent. TO SEE IT FAIL: route the prepare to the deck with the player
+     * role.
+     */
+    @Test
+    public void aStandbyPreparedUnderASpokenLineIsPromotedAtTheLinesEnd() {
+        pair.send(new DeckCommand.Load(1, "s0", URL_A, 100, true));
+        a.becomeReady(1, 100);
+        pair.send(DeckCommand.PLAY);
+        a.reading.audible = false; // the out-point stopped deck A; the line is spoken, not loaded
+        int heard = events.size();
+        pair.send(new DeckCommand.Prepare("s1", URL_B, 300));
+        int warm = b.lastLoadToken();
+        assertTrue(warm < 0);
+        assertEquals("nothing on deck A moves under the voice", 1, a.count("load"));
+        assertEquals(1, a.count("play"));
+        b.becomeReady(warm, 300);
+        assertEquals("the standby's load is the pair's, not the core's: " + events, heard, events.size());
+
+        pair.send(new DeckCommand.Load(3, "s1", URL_B, 300, true));
+        DeckEvent.Prepared report = prepared(3);
+        assertTrue("the clip after a spoken line is prepare=hit: " + events, report != null && report.hit());
+        assertEquals(1, pair.swaps());
+        assertEquals("prepared once, never loaded cold", 1, b.count("load"));
+        assertFalse("no step of the handover plays", a.reading().audible || b.reading().audible);
+    }
+
+    /**
+     * A prepared line whose file FAILS on the standby: the pair writes {@code warm-failed} and tells
+     * the core NOTHING (so nothing speaks early). At the line's turn its load is a miss that runs
+     * cold on the player deck; that failure is the core's, which then speaks the line. TO SEE IT
+     * FAIL: forward the standby's {@code failed} to the core.
+     */
+    @Test
+    public void aPreparedLineWhoseFileFailsIsAMissThatLoadsColdAtItsTurn() {
+        pair.send(new DeckCommand.Load(1, "s0", URL_A, 100, true));
+        a.becomeReady(1, 100);
+        pair.send(DeckCommand.PLAY);
+        pair.send(new DeckCommand.Prepare("n1", URL_LINE, 0, DeckDeadlineClass.LINE));
+        int warm = b.lastLoadToken();
+        events.clear();
+        b.emit(new DeckEvent.Failed(warm, "HTTP 404"));
+        assertEquals("a warm load's failure never reaches the core", List.of(), events);
+        boolean warmFailed = false;
+        for (EngineCommand.DiagEntry r : rows) {
+            JsonNode kind = r.field("kind");
+            if (r.kind().equals("prepare") && kind != null && "warm-failed".equals(kind.stringValue())) warmFailed = true;
+        }
+        assertTrue("the pair writes warm-failed: " + rows, warmFailed);
+
+        pair.send(new DeckCommand.Load(2, "n1", URL_LINE, 0, false, DeckDeadlineClass.LINE));
+        DeckEvent.Prepared report = prepared(2);
+        assertTrue("prepared, and not ready at its turn: a miss", report != null && !report.hit());
+        assertEquals(0, pair.swaps());
+        assertEquals("the line loads cold on the player deck", Integer.valueOf(2), a.lastLoadToken());
+        a.emit(new DeckEvent.Failed(2, "HTTP 404"));
+        assertTrue("that failure is the core's: " + events, events.contains(new DeckEvent.Failed(2, "HTTP 404")));
     }
 }
