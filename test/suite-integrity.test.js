@@ -1032,6 +1032,7 @@ const FLOORS = {
      record. Without a test the fallback is the one artwork call site nothing
      would notice losing. */
   "test/starred-shows.test.js": 9,
+  "test/supabase-event-retention.test.js": 6, // HA #13 (2026-09-30): supabase/0004 retention jobs pinned (90-day events, anonymous-shell guards, not client-callable)
   "test/supabase-rls-verbs.test.js": 7, // round-3 L6 (2026-09-25): backend-rest-4/-5, data-integrity-10 — supabase/0003's policies pinned against the PostgREST verbs app.js uses, both ways
   /* "Up Next" listening queue, Stage 1 of docs/listening-queue-plan.md
      (kanban card t_f4da81f5). Floored because the queue's own decay path

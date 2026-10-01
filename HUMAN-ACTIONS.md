@@ -2,9 +2,20 @@
 
 <!-- ha-format: 2 -->
 
-> **27 open.** Closed items are in `HUMAN-ACTIONS-DONE.md` — you never need it.
+> **28 open.** Closed items are in `HUMAN-ACTIONS-DONE.md` — you never need it.
 > To close one: reply `done` (or `skip <why>`) to its card in the project's human-action channel.
 > Anything else you reply is forwarded to a thread on the card.
+
+## #130 🟡 [DECIDE] Apply the event-retention migration to the production Supabase project (~10 min)
+<!-- ha filed=2026-09-30 -->
+
+**Why:** The privacy policy promises event rows are deleted after 90 days and empty anonymous accounts are pruned. Nothing deletes anything until this migration runs on the live project.
+**Steps:**
+1. Open https://supabase.com/dashboard/project/qjdllvqdcgacvujhclny/sql/new
+2. Paste the whole file backend/migrations/supabase/0004_event_retention.sql from the foray repo, then click Run.
+3. Reply done, or paste the error text if Run failed.
+
+**Worked if:** `select jobname, active from cron.job where jobname like 'foray-prune-%';` returns 2 rows, both active = true.
 
 ## #129 🟡 [DECIDE] Read the Supabase project's region and paste it here (~2 min)
 <!-- ha filed=2026-09-30 -->
