@@ -326,7 +326,8 @@ public class ForayPlaybackService extends MediaSessionService {
         exo = built;
         players.add(built);
         EngineAudio.configure(built);
-        ExoDeck first = new ExoDeck(built, deckConfig());
+        ExoDeck.Config mainDeck = deckConfig();
+        ExoDeck first = new ExoDeck(built, mainDeck);
         if (standby != null) {
             players.add(standby);
             EngineAudio.configure(standby);
@@ -377,7 +378,7 @@ public class ForayPlaybackService extends MediaSessionService {
                 .withRouteResume(EngineLane.ROUTE_RESUME_BLUETOOTH, "", null));
         host = engine;
         // A-65: the deck's own P-13 deadlines, so a late one under grace writes `grace kind=late timer=load-deadline`.
-        engine.setLoadDeadlines(loadDeadlinesMs());
+        engine.setLoadDeadlines(loadDeadlinesMs(mainDeck));
         EnginePlayer facade = new EnginePlayer(Looper.getMainLooper(), new EnginePlayer.Engine() {
             @Override
             public ForayEngineHost.Surface surface() {
@@ -437,11 +438,15 @@ public class ForayPlaybackService extends MediaSessionService {
         registerDeviceCallback(watcher);
     }
 
-    /** A-65: {@link ExoDeck}'s P-13 deadline per class, in ms, as the decks this service builds run them. */
-    static Map<DeckDeadlineClass, Double> loadDeadlinesMs() {
+    /**
+     * A-65: the P-13 deadline per class, in ms, read off the config the main decks were BUILT with
+     * ({@link ExoDeck.Config#deadlineSec}), so the late-timer check can never drift from the
+     * deadline the deck really runs (a constant here would go stale the day {@link #deckConfig}
+     * sets its own).
+     */
+    static Map<DeckDeadlineClass, Double> loadDeadlinesMs(@NonNull ExoDeck.Config deckConfig) {
         Map<DeckDeadlineClass, Double> deadlines = new EnumMap<>(DeckDeadlineClass.class);
-        deadlines.put(DeckDeadlineClass.CLIP, ExoDeck.DEFAULT_LOAD_DEADLINE_SEC * 1000);
-        deadlines.put(DeckDeadlineClass.LINE, ExoDeck.DEFAULT_LINE_LOAD_DEADLINE_SEC * 1000);
+        for (DeckDeadlineClass c : DeckDeadlineClass.values()) deadlines.put(c, deckConfig.deadlineSec(c) * 1000);
         return deadlines;
     }
 

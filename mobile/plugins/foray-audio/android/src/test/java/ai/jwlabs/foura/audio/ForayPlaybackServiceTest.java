@@ -8,7 +8,9 @@ import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
 import ai.jwlabs.foura.audio.engine.EnginePlayer;
+import ai.jwlabs.foura.audio.engine.ExoDeck;
 import ai.jwlabs.foura.audio.engine.ForayEngineHost;
+import ai.jwlabs.foura.engine.DeckDeadlineClass;
 import ai.jwlabs.foura.engine.EngineInput;
 import ai.jwlabs.foura.engine.EngineItem;
 import ai.jwlabs.foura.engine.MediaMapping;
@@ -31,6 +33,7 @@ import androidx.media3.session.SessionCommands;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.List;
+import java.util.Map;
 import org.junit.After;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -228,21 +231,41 @@ public class ForayPlaybackServiceTest {
     /**
      * A-65: Media3's foreground decisions reach the watch through {@code onUpdateNotificationAsync}'s
      * flag; the step from foreground to not writes {@code fgs kind=left} (here with an idle engine:
-     * no Foray, not running), and the dump says the last decision. TO SEE IT FAIL: drop the
-     * service's call into the watch.
+     * no Foray, not running), and the dump says the last decision. Driven through the override
+     * itself, the call Media3 makes, so dropping the service's call into the watch fails here (the
+     * shell invariant A-65 pins that it runs before Media3 acts).
      */
     @Test
     public void leavingTheForegroundWritesTheFgsRow() {
         ForayPlaybackService s = create();
-        s.noteForegroundDecision(true);
+        assertNotNull(s.onUpdateNotificationAsync(s.session(), true));
         assertTrue(s.foregroundRequired());
         StringWriter out = new StringWriter();
         s.dump(null, new PrintWriter(out), new String[0]);
         assertTrue(out.toString(), out.toString().contains("\"foregroundRequired\":true"));
-        s.noteForegroundDecision(false);
+        assertNotNull(s.onUpdateNotificationAsync(s.session(), false));
         assertFalse(s.foregroundRequired());
         String rows = String.join("\n", s.rows());
         assertTrue(rows, rows.contains(" fgs {\"kind\":\"left\",\"foray\":\"n\",\"running\":\"n\",\"inSeam\":\"n\",\"spoken\":\"n\"}"));
+    }
+
+    /**
+     * A-65 review: the late-timer check's P-13 deadlines are read off the deck config, not copied
+     * from its defaults, so a config that sets its own seconds is what the check measures against.
+     * TO SEE IT FAIL: return the ExoDeck DEFAULT_* constants again.
+     */
+    @Test
+    public void theLateCheckReadsTheDeadlinesTheDeckRuns() {
+        ExoDeck.Config config = new ExoDeck.Config();
+        config.loadDeadlineSec = 12;
+        config.lineLoadDeadlineSec = 3;
+        Map<DeckDeadlineClass, Double> deadlines = ForayPlaybackService.loadDeadlinesMs(config);
+        assertEquals(12_000.0, deadlines.get(DeckDeadlineClass.CLIP), 0);
+        assertEquals(3_000.0, deadlines.get(DeckDeadlineClass.LINE), 0);
+        assertEquals("every class has one", DeckDeadlineClass.values().length, deadlines.size());
+        Map<DeckDeadlineClass, Double> defaults = ForayPlaybackService.loadDeadlinesMs(new ExoDeck.Config());
+        assertEquals(ExoDeck.DEFAULT_LOAD_DEADLINE_SEC * 1000, defaults.get(DeckDeadlineClass.CLIP), 0);
+        assertEquals(ExoDeck.DEFAULT_LINE_LOAD_DEADLINE_SEC * 1000, defaults.get(DeckDeadlineClass.LINE), 0);
     }
 
     /**
