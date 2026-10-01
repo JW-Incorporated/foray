@@ -11,12 +11,14 @@ import ai.jwlabs.foura.audio.engine.EngineStore;
 import ai.jwlabs.foura.audio.engine.ExoDeck;
 import ai.jwlabs.foura.audio.engine.FocusMapping;
 import ai.jwlabs.foura.audio.engine.ForayEngineHost;
+import ai.jwlabs.foura.audio.engine.ForegroundWatch;
 import ai.jwlabs.foura.audio.engine.HandlerTiming;
 import ai.jwlabs.foura.audio.engine.InterludePlayer;
 import ai.jwlabs.foura.audio.engine.MediaJingle;
 import ai.jwlabs.foura.audio.engine.SpeechLexicon;
 import ai.jwlabs.foura.audio.engine.SpeechNarrator;
 import ai.jwlabs.foura.audio.engine.TtsOutput;
+import ai.jwlabs.foura.engine.DeckDeadlineClass;
 import ai.jwlabs.foura.engine.DeckReading;
 import ai.jwlabs.foura.engine.EngineCommand;
 import ai.jwlabs.foura.engine.EngineConfig;
@@ -69,7 +71,9 @@ import com.google.common.util.concurrent.ListenableFuture;
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
 import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
@@ -160,6 +164,21 @@ import java.util.concurrent.atomic.AtomicReference;
  * missing or differs, the core is built with {@code interludeAvailable} off and no seam waits on a
  * jingle. Both are released with the engine at its teardown. The dump says whether the synthesiser
  * answered ({@code speaker}) and whether the jingle is there ({@code interlude}).
+ *
+ * <h2>THE FOREGROUND THROUGH A SILENT SEAM (A-65)</h2>
+ *
+ * A process that runs this foreground service is not suspended; the Android risk in a Foray's
+ * silent seam is the service LEAVING the foreground, which Media3 decides from the facade alone
+ * (play-when-ready on, READY or BUFFERING; {@link EnginePlayer#keepsServiceInForeground}). The
+ * facade keeps saying so through the seam beat and a spoken line, and no silence is rendered (the
+ * silence node stays off, as on iOS, NE-46). Two rows would show it failed: the host's
+ * {@code grace kind=late ... inSeam=} (NE-46's detector, mirrored; the deck's P-13 deadlines are
+ * handed to it here) and this service's {@code fgs kind=left} ({@link ForegroundWatch}), written
+ * from Media3's own decision in {@link #onUpdateNotificationAsync}. And a swipe from Recents
+ * (Media3's {@code onTaskRemoved}, which keeps the service only while the player
+ * {@code isPlaying()}) keeps it too while the facade still says play-when-ready through a seam beat
+ * or a stall ({@link #keepsRunningOnTaskRemoved}), so the beat's BUFFERING does not make a swipe
+ * stop a Foray a READY clip would have kept.
  */
 @OptIn(markerClass = UnstableApi.class)
 public class ForayPlaybackService extends MediaSessionService {
@@ -205,6 +224,8 @@ public class ForayPlaybackService extends MediaSessionService {
     @Nullable private EngineStore store;
     /** What the cold boot found, once it ran (the dump; null until then). */
     @Nullable private ForayEngineHost.ColdBootOutcome coldBoot;
+    /** A-65: Media3's foreground decisions, and the {@code fgs kind=left} row. */
+    private final ForegroundWatch foreground = new ForegroundWatch();
 
     /** The live service, or null. Main thread. */
     @Nullable
@@ -318,6 +339,8 @@ public class ForayPlaybackService extends MediaSessionService {
                 .withForayTape(true, standby != null).withInterludeAvailable(interlude != null)
                 .withRouteResume(EngineLane.ROUTE_RESUME_BLUETOOTH, "", null));
         host = engine;
+        // A-65: the deck's own P-13 deadlines, so a late one under grace writes `grace kind=late timer=load-deadline`.
+        engine.setLoadDeadlines(loadDeadlinesMs());
         EnginePlayer facade = new EnginePlayer(Looper.getMainLooper(), new EnginePlayer.Engine() {
             @Override
             public ForayEngineHost.Surface surface() {
@@ -370,6 +393,14 @@ public class ForayPlaybackService extends MediaSessionService {
         built.addListener(listener);
         registerNoisyReceiver();
         registerDeviceCallback(watcher);
+    }
+
+    /** A-65: {@link ExoDeck}'s P-13 deadline per class, in ms, as the decks this service builds run them. */
+    static Map<DeckDeadlineClass, Double> loadDeadlinesMs() {
+        Map<DeckDeadlineClass, Double> deadlines = new EnumMap<>(DeckDeadlineClass.class);
+        deadlines.put(DeckDeadlineClass.CLIP, ExoDeck.DEFAULT_LOAD_DEADLINE_SEC * 1000);
+        deadlines.put(DeckDeadlineClass.LINE, ExoDeck.DEFAULT_LINE_LOAD_DEADLINE_SEC * 1000);
+        return deadlines;
     }
 
     /**
@@ -610,6 +641,47 @@ public class ForayPlaybackService extends MediaSessionService {
         } finally {
             stopSelf();
         }
+    }
+
+    /**
+     * A-65: every notification update carries Media3's foreground decision; the watch writes
+     * {@code fgs kind=left} when it turns from foreground to not with an engine behind it. Media3's
+     * own update runs unchanged.
+     */
+    @NonNull
+    @Override
+    public ListenableFuture<Void> onUpdateNotificationAsync(@NonNull MediaSession session, boolean startInForegroundRequired) {
+        noteForegroundDecision(startInForegroundRequired);
+        return super.onUpdateNotificationAsync(session, startInForegroundRequired);
+    }
+
+    /** One foreground decision into the watch, and its row into the log. Main thread. */
+    void noteForegroundDecision(boolean startInForegroundRequired) {
+        ForayEngineHost engine = host;
+        EngineState st = engine == null || engine.isTornDown() ? null : engine.state();
+        EngineCommand.DiagEntry row = foreground.onDecision(startInForegroundRequired, st);
+        if (row != null) log.diag(row);
+    }
+
+    /** Whether Media3 last said this service runs in the foreground (the dump, the tests). */
+    boolean foregroundRequired() {
+        return foreground.inForeground();
+    }
+
+    /**
+     * A-65: a swipe from Recents. Media3 stops the service unless playback is ongoing AND the player
+     * {@code isPlaying()}, which a seam beat or a stall (BUFFERING) is not; the facade still says
+     * play-when-ready there, so the Foray goes on as it would through a READY clip.
+     */
+    @Override
+    public void onTaskRemoved(@Nullable Intent rootIntent) {
+        if (keepsRunningOnTaskRemoved(isPlaybackOngoing(), player)) return;
+        super.onTaskRemoved(rootIntent);
+    }
+
+    /** {@link #onTaskRemoved}'s rule: in the foreground, and the facade still engaged (play-when-ready, READY or BUFFERING). */
+    static boolean keepsRunningOnTaskRemoved(boolean playbackOngoing, @Nullable Player facade) {
+        return playbackOngoing && facade != null && EnginePlayer.keepsServiceInForeground(facade);
     }
 
     @Override
@@ -979,6 +1051,8 @@ public class ForayPlaybackService extends MediaSessionService {
             m.add(JsonNode.member("exoPlaying", JsonNode.bool(p.isPlaying())));
         }
         m.add(JsonNode.member("isPlaybackOngoing", JsonNode.bool(isPlaybackOngoing())));
+        // A-65: Media3's last foreground decision, as the watch heard it.
+        m.add(JsonNode.member("foregroundRequired", JsonNode.bool(foreground.inForeground())));
         return JSWriter.stringify(new JsonNode.Obj(m));
     }
 

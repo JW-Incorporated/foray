@@ -39,10 +39,10 @@ import java.util.List;
  *       down).</li>
  *   <li>The words: {@code MediaMapping.sessionView}'s metadata (title, artist, album, the first
  *       artwork), written into both Media3 pairs, as {@code WebViewPlayer} does.</li>
- *   <li>The state: {@code playing} is READY with play-when-ready on; a stall or a load in
- *       flight (the view's rate 0 while playing) is BUFFERING, which keeps the controls saying
- *       pause and stops the lock screen's clock; {@code paused} is READY, play-when-ready off;
- *       {@code none} is an empty timeline, IDLE.</li>
+ *   <li>The state: {@code playing} is READY with play-when-ready on; a stall, a load in
+ *       flight (the view's rate 0 while playing) or a Foray's seam beat (A-65) is BUFFERING,
+ *       which keeps the controls saying pause and stops the lock screen's clock; {@code paused}
+ *       is READY, play-when-ready off; {@code none} is an empty timeline, IDLE.</li>
  *   <li>The clock: the view's position state (the episode's own), which Media3 extrapolates at
  *       the rate given, so the host publishes a surface per turn, not per second.</li>
  *   <li>The speed: the listener's ({@link #publishedSpeed}), while playing and while buffering
@@ -68,6 +68,25 @@ import java.util.List;
  * the record, which paints the session paused at the recorded position. Media3's play that
  * follows is an ordinary remote press. The items Media3 hands in are not played: the record is
  * the truth, and the engine never plays a Media3 item.
+ *
+ * <h2>THE FOREGROUND THROUGH A SILENT SEAM (A-65)</h2>
+ *
+ * Android does not suspend a process that runs a foreground {@code MediaSessionService}; the risk
+ * is the service leaving the foreground while nothing sounds. Media3 decides that from THIS player
+ * alone ({@link #keepsServiceInForeground}): play-when-ready on, and READY or BUFFERING. So no
+ * silence is rendered (the silence node stays off, NE-46's provisional decision); instead, while the
+ * engine runs a Foray, every span in which no deck plays still reads as play-when-ready on:
+ * <ul>
+ *   <li>the seam beat ({@code Surface.silentSeam}: the jingle, or nothing) is BUFFERING, the clock
+ *       standing still on the next item's start until it is audible;</li>
+ *   <li>a spoken line (a bridge, or a rendered line's fallback, {@code TextToSpeech} in another
+ *       process) is BUFFERING until the synthesiser starts it (the core's {@code buffering}: a
+ *       bridge still loading), then READY at 1x, the rate its playhead really moves at (A-41).
+ *       READY keeps the foreground exactly as BUFFERING does, and it keeps {@code isPlaying()}
+ *       true, which Media3's {@code onTaskRemoved} reads.</li>
+ * </ul>
+ * If the service ever leaves the foreground mid-Foray anyway, the service writes
+ * {@code fgs kind=left} ({@link ForegroundWatch}).
  *
  * <h2>EVERY PRESS COMPLETES AT ONCE</h2>
  *
@@ -139,8 +158,10 @@ public final class EnginePlayer extends SimpleBasePlayer {
         boolean playing = MediaMapping.PLAYING.equals(view.playbackState());
         /* The view's rate is 0 while playing only when the clock must stand still: a stall, or a
            load in flight. That is BUFFERING, the one Media3 state that keeps play-when-ready (the
-           controls still say pause) and stops extrapolating the playhead. */
-        boolean stalled = playing && (surface.buffering() || (position != null && position.playbackRate() == 0));
+           controls still say pause) and stops extrapolating the playhead. A-65: so is the seam beat,
+           in which no item sounds, so the service stays in the foreground through it. */
+        boolean stalled = playing && (surface.buffering() || surface.silentSeam()
+                || (position != null && position.playbackRate() == 0));
         float speed = publishedSpeed(surface);
         int before = availability.isEnabled(MediaMapping.RemoteCommand.PREVIOUS_TRACK) ? 1 : 0;
         int after = availability.isEnabled(MediaMapping.RemoteCommand.NEXT_TRACK) ? 1 : 0;
@@ -169,6 +190,18 @@ public final class EnginePlayer extends SimpleBasePlayer {
     static float publishedSpeed(@NonNull ForayEngineHost.Surface surface) {
         double rate = surface.listeningRate();
         return rate > 0 && Double.isFinite(rate) ? (float) rate : 1f;
+    }
+
+    /**
+     * Media3's rule for keeping a {@code MediaSessionService} in the foreground, read off a player as
+     * Media3 reads it (media3-session 1.11.0, {@code MediaNotificationManager.isAnySessionUserEngaged}):
+     * play-when-ready on, and READY or BUFFERING. Media3 also keeps the foreground for
+     * {@code DEFAULT_FOREGROUND_SERVICE_TIMEOUT_MS} (10 min) after this turns false; A-65 does not
+     * lean on that grace.
+     */
+    public static boolean keepsServiceInForeground(@NonNull Player player) {
+        int state = player.getPlaybackState();
+        return player.getPlayWhenReady() && (state == Player.STATE_READY || state == Player.STATE_BUFFERING);
     }
 
     private boolean canResume() {

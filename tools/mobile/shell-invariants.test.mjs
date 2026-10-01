@@ -5344,3 +5344,50 @@ test("A-29: the lane is decided at launch with iOS's private keys, and the debug
   const hello = bridge.slice(bridge.indexOf("public JsonNode hello(JsonNode payload) {"), bridge.indexOf("// ---- engineSend"));
   assert.match(hello, /catch \(RuntimeException e\) \{\s*owner\.engineFaulted\("hello", e\);\s*return EngineBridgeRules\.legacyHello\(Vocabulary\.ModeReason\.DOWNGRADE\);/);
 });
+
+/* ─────────── A-65: keep-alive across silent seams (the Android twin of NE-46) ───────────
+ *
+ * docs/plans/android-assessment.md §5.7, card A-65. SilentSeamKeepAliveTest, LateTimerHostTest,
+ * ForegroundWatchTest and EnginePlayerTest (foray-audio, Robolectric/JUnit) prove the behaviour;
+ * these pin the decision's shape where no JVM test looks: no silence is rendered on Android, the
+ * facade's BUFFERING covers the seam beat, the late-timer row is the host's and is written only
+ * under grace past NARRATION_SUSPEND_GAP_MS, the service hands the deck's deadlines to it, and
+ * Media3's foreground decision reaches the fgs watch before Media3 acts on it. */
+
+test("A-65: no silence is rendered, the beat is BUFFERING, and the late-timer and fgs rows are wired", () => {
+  /* MUTATION: render the silence node (anything but an empty case for SilenceStart), turn
+     silenceNodeEnabled on in the service, drop silentSeam from the facade's BUFFERING test, write
+     the late row without grace or at another threshold, drop setLoadDeadlines from the service, or
+     call the watch after super.onUpdateNotificationAsync. Each fails here. */
+  const android = path.join(PLUGIN_DIR, "android");
+  const audioDir = path.join(android, "src", "main", "java", "ai", "jwlabs", "foura", "audio");
+  const engineDir = path.join(audioDir, "engine");
+  const host = stripJavaComments(fs.readFileSync(path.join(engineDir, "ForayEngineHost.java"), "utf8"));
+  assert.match(host, /case EngineCommand\.SilenceStart s -> \{\}/, "the silence node renders nothing on Android");
+  assert.match(host, /case EngineCommand\.SilenceStop s -> \{\}/);
+  const lateRow = host.slice(host.indexOf("private void lateRow("), host.indexOf("public static boolean inSeamBeat("));
+  assert.match(lateRow, /EngineCommand\.GraceReason reason = st\.grace;\s*if \(reason == null\) return;/, "the row is written only under grace");
+  assert.match(lateRow, /EngineConstants\.QueueManager\.NARRATION_SUSPEND_GAP_MS/, "the threshold is NARRATION_SUSPEND_GAP_MS");
+  assert.match(lateRow, /if \(!\(lateMs > gap\)\) return;/, "strictly more than the gap");
+  assert.match(host, /new Surface\(availability, view, st\.buffering, seq, st\.rate, view != null && inSeamBeat\(st\)\)/,
+    "the surface marks the seam beat");
+
+  const facade = stripJavaComments(fs.readFileSync(path.join(engineDir, "EnginePlayer.java"), "utf8"));
+  assert.match(facade, /boolean stalled = playing && \(surface\.buffering\(\) \|\| surface\.silentSeam\(\)/, "the beat is BUFFERING");
+  assert.match(facade, /player\.getPlayWhenReady\(\) && \(state == Player\.STATE_READY \|\| state == Player\.STATE_BUFFERING\)/,
+    "keepsServiceInForeground is Media3 1.11's rule");
+
+  const service = stripJavaComments(fs.readFileSync(path.join(audioDir, "ForayPlaybackService.java"), "utf8"));
+  assert.doesNotMatch(service, /withSilenceNode|silenceNodeEnabled\s*[=(]\s*true/, "the service never turns the silence node on");
+  assert.match(service, /engine\.setLoadDeadlines\(loadDeadlinesMs\(\)\);/);
+  const update = service.slice(service.indexOf("public ListenableFuture<Void> onUpdateNotificationAsync("));
+  const body = update.slice(0, update.indexOf("\n    }"));
+  assert.ok(body.indexOf("noteForegroundDecision(startInForegroundRequired);") > 0
+    && body.indexOf("noteForegroundDecision(startInForegroundRequired);") < body.indexOf("super.onUpdateNotificationAsync("),
+    "the watch hears Media3's decision before Media3 acts on it");
+  assert.match(service, /public void onTaskRemoved\(@Nullable Intent rootIntent\) \{\s*if \(keepsRunningOnTaskRemoved\(isPlaybackOngoing\(\), player\)\) return;\s*super\.onTaskRemoved\(rootIntent\);/);
+
+  const watch = stripJavaComments(fs.readFileSync(path.join(engineDir, "ForegroundWatch.java"), "utf8"));
+  assert.doesNotMatch(watch, /^import android\./m, "ForegroundWatch is pure JVM");
+  assert.match(watch, /new EngineCommand\.DiagEntry\("fgs", fields\)/);
+});

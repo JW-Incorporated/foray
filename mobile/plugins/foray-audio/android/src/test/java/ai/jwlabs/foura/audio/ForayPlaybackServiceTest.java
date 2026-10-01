@@ -8,6 +8,7 @@ import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
 import ai.jwlabs.foura.audio.engine.EnginePlayer;
+import ai.jwlabs.foura.audio.engine.ForayEngineHost;
 import ai.jwlabs.foura.engine.EngineInput;
 import ai.jwlabs.foura.engine.EngineItem;
 import ai.jwlabs.foura.engine.MediaMapping;
@@ -159,6 +160,66 @@ public class ForayPlaybackServiceTest {
         audio.removeOutputDevice(car, true);
         Shadows.shadowOf(Looper.getMainLooper()).idle();
         assertEquals("speaker", watcher.currentRoute().portType());
+    }
+
+    /**
+     * A-65: Media3's foreground decisions reach the watch through {@code onUpdateNotificationAsync}'s
+     * flag; the step from foreground to not writes {@code fgs kind=left} (here with an idle engine:
+     * no Foray, not running), and the dump says the last decision. TO SEE IT FAIL: drop the
+     * service's call into the watch.
+     */
+    @Test
+    public void leavingTheForegroundWritesTheFgsRow() {
+        ForayPlaybackService s = create();
+        s.noteForegroundDecision(true);
+        assertTrue(s.foregroundRequired());
+        StringWriter out = new StringWriter();
+        s.dump(null, new PrintWriter(out), new String[0]);
+        assertTrue(out.toString(), out.toString().contains("\"foregroundRequired\":true"));
+        s.noteForegroundDecision(false);
+        assertFalse(s.foregroundRequired());
+        String rows = String.join("
+", s.rows());
+        assertTrue(rows, rows.contains(" fgs {\"kind\":\"left\",\"foray\":\"n\",\"running\":\"n\",\"inSeam\":\"n\",\"spoken\":\"n\"}"));
+    }
+
+    /**
+     * A-65: a swipe from Recents keeps the service while it is in the foreground and the facade
+     * still says play-when-ready, READY or BUFFERING (a seam beat, a stall), where Media3's own rule
+     * wants {@code isPlaying()}; out of the foreground, or paused, Media3's rule stands.
+     */
+    @Test
+    public void aSwipeKeepsTheServiceWhileTheFacadeStillSaysPlay() {
+        ForayPlaybackService s = create();
+        assertFalse("idle", ForayPlaybackService.keepsRunningOnTaskRemoved(true, s.session().getPlayer()));
+        MediaMapping.CommandSnapshot snap = new MediaMapping.CommandSnapshot(MediaMapping.CommandSnapshot.Mode.FORAY,
+                false, true, true, false);
+        MediaMapping.View v = new MediaMapping.View();
+        v.item = new MediaMapping.Item("episode", "A clip", "A show");
+        v.durationSec = 900.0;
+        v.positionSec = 120.0;
+        v.playing = true;
+        v.buffering = true;
+        v.foray = true;
+        ForayEngineHost.Surface stalled = new ForayEngineHost.Surface(
+                MediaMapping.commandAvailability(snap, MediaMapping.SeekSteps.DEFAULT), MediaMapping.sessionView(v), true, 1, 1.0, true);
+        EnginePlayer facade = new EnginePlayer(Looper.getMainLooper(), new EnginePlayer.Engine() {
+            @Override
+            public ForayEngineHost.Surface surface() {
+                return stalled;
+            }
+
+            @Override
+            public ForayEngineHost.Verdict remote(EngineInput.RemotePress press) {
+                return new ForayEngineHost.Verdict(Collections.<String>emptyList(), false);
+            }
+        });
+        assertEquals(Player.STATE_BUFFERING, facade.getPlaybackState());
+        assertFalse("Media3's own rule would stop it: not isPlaying()", facade.isPlaying());
+        assertTrue(ForayPlaybackService.keepsRunningOnTaskRemoved(true, facade));
+        assertFalse("not in the foreground: Media3's rule stands", ForayPlaybackService.keepsRunningOnTaskRemoved(false, facade));
+        assertFalse(ForayPlaybackService.keepsRunningOnTaskRemoved(true, null));
+        facade.release();
     }
 
     @Test
