@@ -30,7 +30,15 @@
  *   parse, so a malformed row cannot throw). An equal timestamp is not new.
  *   A row without `published_at` cannot be placed and is ignored.
  * - A check is due when there has been none, or at least CHECK_INTERVAL_MS
- *   (6 h) have passed — `>=`, so a check at exactly the interval runs.
+ *   (6 h) have passed — `>=`, so a check at exactly the interval runs. A
+ *   missing `now` means the wall clock; a `now` that cannot be read means
+ *   due: the cheap failure is one extra check, the dear one is a show whose
+ *   alerts never run again.
+ * - The watermark and the latest never move BACKWARDS. A page can shrink or
+ *   reorder (an episode unpublished, a transient API answer); if `latest`
+ *   followed it down, `markSeen` would lower the watermark and the episode
+ *   would be "new" again when it came back — a phantom badge here, a
+ *   duplicate notification once the native tasks mirror this rule.
  * - `markSeen` moves the watermark to the latest seen and zeroes the count;
  *   opening the show page is where app.js calls it (PQ-26).
  * - `alertText` is the notification: the show's title over the newest
@@ -53,6 +61,15 @@ function datedRows(rows) {
   return (Array.isArray(rows) ? rows : []).filter(
     (r) => isObject(r) && typeof r.published_at === "string" && r.published_at !== ""
   );
+}
+
+/** The later of two ISO stamps (either may be absent). */
+function laterOf(a, b) {
+  const aOk = typeof a === "string" && a !== "";
+  const bOk = typeof b === "string" && b !== "";
+  if (!aOk) return bOk ? b : null;
+  if (!bOk) return a;
+  return b > a ? b : a;
 }
 
 /** The newest `published_at` among the rows, or null when none carries one. */
@@ -80,7 +97,8 @@ export function dueForCheck(record, now) {
   if (!checkedAt) return true;
   const then = Date.parse(checkedAt);
   if (!Number.isFinite(then)) return true;
-  const at = typeof now === "number" ? now : Date.parse(now);
+  const at = typeof now === "number" ? now : now == null ? Date.now() : Date.parse(now);
+  if (!Number.isFinite(at)) return true;
   return at - then >= CHECK_INTERVAL_MS;
 }
 
@@ -95,15 +113,16 @@ export function newSince(rows, record) {
  *  and the watermark seeded on a first check. */
 export function afterCheck(record, rows, now) {
   const base = isObject(record) ? record : {};
-  const latest = latestOf(rows);
+  // Never backwards: a page that lost or reordered a row does not lower the latest.
+  const latest = laterOf(latestOf(rows), base.latest_published_at);
   const hadWatermark = typeof base.seen_published_at === "string" && base.seen_published_at !== "";
   const at = typeof now === "number" ? new Date(now) : new Date(now ?? Date.now());
   return {
     ...base,
     checked_at: at.toISOString(),
-    latest_published_at: latest ?? base.latest_published_at ?? null,
+    latest_published_at: latest,
     unseen_count: hadWatermark ? newSince(rows, base).length : 0,
-    seen_published_at: hadWatermark ? base.seen_published_at : latest ?? null
+    seen_published_at: hadWatermark ? base.seen_published_at : latest
   };
 }
 
@@ -113,7 +132,8 @@ export function markSeen(record) {
   return {
     ...base,
     unseen_count: 0,
-    seen_published_at: base.latest_published_at ?? base.seen_published_at ?? null
+    // Catches up to the latest, and never steps back below what was already seen.
+    seen_published_at: laterOf(base.latest_published_at, base.seen_published_at)
   };
 }
 

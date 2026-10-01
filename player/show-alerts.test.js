@@ -72,6 +72,41 @@ test("a check is due when never checked, and at exactly 6 h — not one millisec
   assert.equal(dueForCheck(checked, T0_MS + CHECK_INTERVAL_MS + 1), true, "past it");
   // An unparseable stamp is treated as never checked, never as "checked forever".
   assert.equal(dueForCheck({ ...freshFollow(), checked_at: "not a date" }, T0_MS), true);
+  // An ISO `now` reads the same as its number.
+  assert.equal(dueForCheck(checked, new Date(T0_MS + CHECK_INTERVAL_MS).toISOString()), true);
+});
+
+test("a missing `now` is the wall clock and an unreadable one means due — never \"not due\", which would silence a show's alerts for good (mutation: drop `if (!Number.isFinite(at)) return true;` in dueForCheck)", () => {
+  const checked = { ...freshFollow(), checked_at: T0 };
+  assert.equal(dueForCheck(checked, "garbage"), true, "unreadable now -> due");
+  assert.equal(dueForCheck(checked, NaN), true, "NaN now -> due");
+  const justNow = { ...freshFollow(), checked_at: new Date().toISOString() };
+  assert.equal(dueForCheck(justNow), false, "no now -> wall clock, and a check a moment ago is not due");
+  const longAgo = { ...freshFollow(), checked_at: "2020-01-01T00:00:00.000Z" };
+  assert.equal(dueForCheck(longAgo), true, "no now -> wall clock, and an old check is due");
+});
+
+test("the latest and the watermark never move backwards — a page that lost a row does not make that row new again when it returns (mutation: `laterOf(latestOf(rows), base.latest_published_at)` -> `latestOf(rows) ?? base.latest_published_at ?? null` in afterCheck)", () => {
+  const e1 = row("e1", "2026-09-10T00:00:00.000Z");
+  const e2 = row("e2", "2026-09-29T00:00:00.000Z");
+  let rec = afterCheck(freshFollow(), [e1], T0_MS); // watermark e1
+  rec = afterCheck(rec, [e2, e1], T0_MS + CHECK_INTERVAL_MS); // e2 arrives: 1 new
+  assert.equal(rec.unseen_count, 1);
+  rec = markSeen(rec); // the listener saw e2
+  assert.equal(rec.seen_published_at, e2.published_at);
+  // The next page has lost e2 (unpublished, or a transient answer).
+  rec = afterCheck(rec, [e1], T0_MS + 2 * CHECK_INTERVAL_MS);
+  assert.equal(rec.latest_published_at, e2.published_at, "the latest does not follow a shrunk page down");
+  assert.equal(rec.unseen_count, 0);
+  rec = markSeen(rec);
+  assert.equal(rec.seen_published_at, e2.published_at, "markSeen does not lower the watermark");
+  // e2 comes back: it was seen, so it is not new.
+  rec = afterCheck(rec, [e2, e1], T0_MS + 3 * CHECK_INTERVAL_MS);
+  assert.equal(rec.unseen_count, 0, "a row already seen is never new again");
+  assert.deepEqual(newSince([e2, e1], rec), []);
+  // And markSeen on a record whose latest somehow trails its watermark keeps the watermark.
+  const trailing = { ...freshFollow(), seen_published_at: e2.published_at, latest_published_at: e1.published_at, unseen_count: 1 };
+  assert.equal(markSeen(trailing).seen_published_at, e2.published_at);
 });
 
 test("a fresh follow's first check seeds the watermark to the newest row and reports 0 new — following is not a backlog (mutation: `hadWatermark ? base.seen_published_at : latest ?? null` -> `base.seen_published_at ?? null` in afterCheck, i.e. drop the seed)", () => {
