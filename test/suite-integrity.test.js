@@ -2124,7 +2124,7 @@ const FLOORS = {
      is what reports, once a week, which ones nobody read, which touched the
      denied boundary, and whether a floor in THIS file fell. A test deleted
      here is an unread merge that stops being counted. */
-  "tools/audit/merge-audit.test.mjs": 15, // OPS-08: + the workflow-shape test (two comments on #129)
+  "tools/audit/merge-audit.test.mjs": 16, // OPS-08: + the workflow-shape test (two comments on #129); + the comment-size compaction test
 };
 
 test("no suite is floored twice", () => {
