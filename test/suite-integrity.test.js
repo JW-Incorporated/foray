@@ -2000,7 +2000,7 @@ const FLOORS = {
      independent release-already-exists check that catches a lost
      state.json). */
   "tools/shows/publish-release.test.mjs": 19, // audit round 3 (L8): +1, POINTER_SCHEMA_VERSION; 18 -> 19
-  "tools/shows/run-and-publish.test.mjs": 6,
+  "tools/shows/run-and-publish.test.mjs": 10, // OPS-01: +3 describeExecError (FATAL lines carry code/signal/stderr/stdout); 6 -> 10 (true count: 7 existing + 3)
   /* Fresh-context review finding (2026-09-05): runBuild spawns
      import-dump.mjs as a real child process, and Node does NOT
      auto-inherit process.execArgv (e.g. --experimental-sqlite) into a
