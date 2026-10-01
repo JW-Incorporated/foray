@@ -138,8 +138,14 @@ Lots. The whiskey hour is counted with the fourteen, and its one genuinely preci
 passage — a building-materials specialist who turns out to know the cask trade — is
 used only as a second segment on a beat that stays thin without it.
 
+> **RULED, HA #22 (2026-09-30): SYSK-register general-interest tape is IN, as thin,
+> never strong. The counts stand** (2 strong / 21 thin / 40 empty after #279, see
+> `alcohol-forms-coverage-2.md`). The SYSK-out reading below is no longer live; it is
+> kept as the record of the question. The strong gate in §1a is unchanged: the register
+> can reach thin and not strong.
+
 **Whether a general-interest show of the SYSK register belongs in this Foray at all
-is a founder call, not mine**, and it is worth making explicitly, because it moves
+was a founder call, not mine**, and it is worth making explicitly, because it moves
 the counts. If the register is ruled **out**, eleven of the fifteen thin verdicts go
 back to empty and the report reads **1 strong / 4 thin / 58 empty**. If it is ruled
 **in** as thin tape, the counts stand as reported. Nothing in this report grades it

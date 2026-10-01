@@ -3492,3 +3492,58 @@ test("rendered narration: the helpers agree with the player about what carries a
   assert.deepEqual(narrationAudioProblems(renderedUrl("am_echo"), { voice: "am_echo" }), []);
   assert.match(narrationAudioProblems("not a url").join(), /is not a URL/);
 });
+
+/* ------------------------------------------------ the running order's mode
+   HA #22 (2026-09-30): a Foray record may carry `mode: "foray" | "narration-led"`.
+   Absent means "foray" so every committed record stays valid. The narration-led
+   mode ("Primer") bounds the narrator at 75 % of delivered seconds; Foray mode's
+   25/35/40 stay reported-not-gated, exactly as before. */
+
+const manyBridges = (n, sec = 150) =>
+  withBridges(Array.from({ length: n }, (_, i) => ({ at: 1, item: bridge({ id: `nar-${i}`, duration_sec: sec }) })));
+const shareErrors = (f) => errorsFor(f).filter((e) => /bound for a narration-led mode/.test(e));
+
+/* Mutation: make forayModeOf return a hard-coded "narration-led" (or drop the
+   `mode:` line from the report). The committed Forays would then report the
+   wrong mode and the surface would say "Primer" over every Foray. */
+test("a record with no `mode` is a Foray, the report says so, and the committed data is unchanged", () => {
+  assert.equal(boundary(fx()).mode, undefined, "the fixture must stay mode-less, or this proves nothing about the default");
+  assert.deepEqual(errorsFor(fx()), []);
+  assert.equal(checkForays(fx()).report.forays[0].mode, "foray");
+  for (const r of checkForays(live).report.forays) assert.equal(r.mode, "foray", `${r.id} reported a mode its record never declared`);
+});
+
+/* Mutation: delete the FORAY_MODES.includes check. A typo ("narration_led")
+   would then be accepted and silently treated as no Primer bound at all. */
+test("an unknown `mode` is rejected, and the narration-led value is accepted", () => {
+  const bad = fx();
+  boundary(bad).mode = "narration_led";
+  assert.match(errorsFor(bad).join("\n"), /foray "boundary-1": `mode` must be one of "foray", "narration-led" when present; got "narration_led"/);
+  const ok = fx();
+  boundary(ok).mode = "narration-led";
+  assert.deepEqual(errorsFor(ok), []);
+  assert.equal(checkForays(ok).report.forays[0].mode, "narration-led");
+});
+
+/* Mutation: change PRIMER_NARRATION_SHARE_MAX to 0.99 and the 70-bridge case
+   stops failing; drop the mode test (`forayMode === ...`) and the Foray-mode
+   control starts failing. The share is asserted from the report, not trusted
+   from the message, so the case really is over 0.75 and the control really is
+   under it. */
+test("a narration-led running order may not be more than 75 % narrator; a Foray-mode one is not gated", () => {
+  const over = manyBridges(70);
+  boundary(over).mode = "narration-led";
+  const r = checkForays(over).report.forays[0];
+  assert.ok(r.narration_share > 0.75, `setup: ${r.narration_share} is not over 0.75`);
+  assert.equal(shareErrors(over).length, 1, errorsFor(over).join("\n"));
+  assert.match(shareErrors(over)[0], /narration is 7\d\.\d % of the running order, past the 75 % bound/);
+
+  const under = manyBridges(30);
+  boundary(under).mode = "narration-led";
+  assert.ok(checkForays(under).report.forays[0].narration_share < 0.75, "setup: control is not under 0.75");
+  assert.deepEqual(shareErrors(under), []);
+
+  const foray = manyBridges(70); // same narrator share, no mode: Foray mode reports it, never gates it
+  assert.ok(checkForays(foray).report.forays[0].narration_share > 0.75);
+  assert.deepEqual(shareErrors(foray), []);
+});

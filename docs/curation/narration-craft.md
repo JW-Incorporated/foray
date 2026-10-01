@@ -9,7 +9,10 @@ A parallel document owns *voice* — timbre, warmth, whether there are several v
 what a 2026 TTS engine can actually deliver. This one owns *words*. Where the two
 touch, this document defers.
 
-**Status:** proposed. Nothing here has been voiced; no API was called to write it.
+**Status:** proposed, with the HA #22 founder rulings of 2026-09-30 applied (a second
+product mode, density numbers, merge-then-split, U5 accepted, SYSK-register tape in as
+thin) and marked **ruled** where they land: §0, §2e, §4e, §5d, §5e, §5f, §6d, §9.
+Nothing here has been voiced; no API was called to write it.
 Every second-figure below is derived from a word count, and the word count is the
 figure to trust — see §2a.
 
@@ -40,11 +43,13 @@ that document names the file.
 | Narration item (Patch, Carry, long Marker) | **not** a transition; the 8 s budget and the payback rule do not apply | our ruling (§2b) |
 | Carry soft max | **150 s** → `needs_review`, must state what the extra minute does | invention |
 | Carry hard max | **180 s.** The narrator is never the longest item in the Foray | invention |
-| Consecutive narration items | at most **2**, and adjacent empty beats in one chain **merge into one item** | invention (§2e) |
+| Consecutive narration items | at most **2**, and adjacent empty beats in one chain **merge into one item**, absorbing neighbours up to the 180 s hard max before splitting at a claim boundary. **Lifted for chain beats in narration-led mode** (every available thin cut is interleaved) | invention (§2e); **ruled HA #22** |
 | Narration anti-uniformity | no 3 consecutive narration items within ±20 % of each other | inference (§8b) |
 | Tape-to-narration **inside a covered beat** | **≥ 90/10**, ceiling 85/15 | resolves the open question in `segment-length-rules.md` §2b |
 | Whole-Foray narration share | **target ≤ 25 %, ceiling 35 %** | invention, derived in §4 |
-| The essay line | **> 40 % is an essay with clips.** Not a Foray | invention |
+| The essay line | **> 40 % is an essay with clips.** Not a Foray. **Waived for narration-led mode only** (below) | invention; waiver **ruled HA #22** |
+| **Product mode** | every running order carries `mode: "foray" \| "narration-led"` (default `foray`). Foray mode keeps 25 / 35 / 40 unchanged. **Narration-led** (working listener label **"Primer"**, never "Foray"): narrator **≤ 75 %** of delivered seconds, the 40 % line waived, `narration-architecture.md` §§5–7 editorial gate mandatory, and the surface says which mode the listener is getting (§4e) | **ruled HA #22** |
+| Numbers | **at most one numeric fact per sentence; per item at most one per 20 s, minimum three**; a two-ended range with the unit spoken once is **one** numeric expression (§5d) | **ruled HA #22** |
 | Enforcement | over-ceiling is fixed by **cutting beats, not words** — fan stops first, never chain links | invention (§4c) |
 | Cost handle | **240 chars per strong beat, 780 per thin beat, 1,360 per carried beat** | derived from §4b (§4d) |
 
@@ -357,6 +362,17 @@ narrated Foray; it is a lecture with occasional guests.
 > exceed the 180 s hard max. Above the max, split at the most natural claim boundary
 > and accept two items.
 
+> **Ruled, HA #22 (2026-09-30) — merge first, split only when forced.** A chain that
+> holds a **Carry-by-design** beat (§2d) **absorbs its neighbours first**, up to the
+> 180 s hard max, and only if it is still over **splits at the most natural claim
+> boundary**. Three consequences, none of which may be traded away to make a number
+> fit: the Carry-by-design claim **never straddles a split**, and is **never shaved
+> or padded** to land on one; the 150 s `needs_review` soft max stays exactly as it
+> is; and a Carry-by-default neighbour is the one that gives way, because it is
+> provisional by definition (§2d). This resolves the collision between §2d ("may
+> never be dropped, may not be padded") and this section ("above the max, split"):
+> the design claim is the fixed point and the merge boundary moves around it.
+
 The reasoning is borrowed wholesale from `segment-length-rules.md` §6a, which merges
 same-episode segments because, in that document's words, "the listener's ears say
 'this is one continuous recording' while the content jumps." Two adjacent narration
@@ -370,6 +386,19 @@ glitch. One item that moves through both claims is strictly better, and it is ch
 > second must be shorter than the first. A third means the Foray has run out of tape
 > for a stretch long enough that the honest actions are the §4c ones: drop fan stops,
 > or ship shorter.
+
+> **Ruled, HA #22 — the cap is mode-conditional.** In **Foray mode** the cap stays and
+> §4c's remedy applies unchanged. In **narration-led mode** the two-consecutive cap is
+> **lifted for chain beats**, on the condition that makes it safe to lift: **every
+> available thin cut is interleaved** between the chain's narration items, so the
+> listener hears tape in the gaps the cap was written to force. The lifted cap is
+> not a licence for a four-minute lecture; it is the statement that a chain with no
+> legal Foray-mode assembly (`narration-architecture.md` §9c, collision 2) is
+> assembled by interleaving rather than by dropping links. The 180 s hard max, the
+> 150 s soft max and fan threads are **not** affected. `check-narration.mjs`
+> implements this as `capLifted` (narration-led **and** `structure: "chain"`), and
+> lifts the "second item shorter" test with it, because both depend on
+> consecutiveness and that schema cannot see the tape between items.
 
 > **Anti-uniformity.** No three consecutive narration items within ±20 % of each
 > other, mirroring `segment-length-rules.md`'s D5. Uniformity is a defect there on
@@ -764,7 +793,7 @@ crisis. Answered separately, two of the three are easy.
 |---|---|---|---|---|
 | **R-beat** | tape : narration **inside a covered beat** | **90 / 10** | 85 / 15 | the format's identity |
 | **R-foray** | narration as a share of **total runtime** | **≤ 25 %** | **35 %** | the Foray's honesty about its own coverage |
-| **R-essay** | the line past which it is a different product | — | **40 %** | whether to ship at all |
+| **R-essay** | the line past which it is a different product | — | **40 %** (Foray mode). **Waived for narration-led mode**, which has its own bound of **75 %** (§4e) | whether to ship at all |
 
 **R-beat is 90/10 and this document does not move it.** Where tape exists it carries
 the beat, and the machinery around it is a Frame in and a Hinge out — 120–305
@@ -977,6 +1006,40 @@ being run *after* generation. That is fixable for free.
 of Forays. Those belong to the parallel cost work, and the input it needs from here
 is the character range above plus the sentence that the ceiling row is not a plan.
 
+### 4e. Narration-led mode — the second product, and what it is bound by (ruled HA #22)
+
+§4a says that past 40 % the narrator carries the argument and the tape illustrates
+it, "a radio feature… and not this one." The founders' ruling of 2026-09-30 on the
+alcohol subject (`narration-architecture.md` §10a, option B) is that for **a subject
+whose education sits where the tape is not**, that is the product to make, provided
+it is named as what it is. So there are **two modes**, and a running order says
+which one it is in a `mode` field (`"foray"` | `"narration-led"`, default `"foray"`,
+so existing data stays valid).
+
+| | **Foray mode** | **Narration-led mode** |
+|---|---|---|
+| listener-facing name | Foray | working label **"Primer"**; **never "Foray"** — a copy decision this label may be renamed under `copyRules`, but the rename may not reintroduce "Foray" |
+| R-beat (inside a covered beat) | 90 / 10, ceiling 85 / 15 | unchanged |
+| R-foray | target ≤ 25 %, ceiling 35 % | **replaced by the bound below** |
+| R-essay (40 %) | the line | **waived, for this mode only** |
+| the bound | — | **narrator ≤ 75 % of delivered seconds** (enforced by `check-forays.mjs` for any record with `mode: "narration-led"`) |
+| editorial gate | §6 R1–R3 | **mandatory and stronger**: `narration-architecture.md` §§5–7 (parent-checks-child contract, two-tier fetched-span source rule, numbers diffed against spans) on every Patch and Carry |
+| consecutive cap (§2e) | stays; §4c's remedy applies | lifted for chain beats, thin cuts interleaved |
+| the surface | says "Foray" | says which mode: the running order's `mode` is what the listener-facing label is read from, and the label is never the word "Foray" |
+
+**What the bound is for.** 75 % is not a target; it is the line past which tape is a
+garnish and the honest product is an essay, which the mode does not claim to be.
+Written in full on today's coverage, the alcohol subject is **63.8 %** narrator
+(`narration-architecture.md` §10), so the bound has 11 points of room. The gate is the price of the
+waiver: a narration-led running order that cannot pass §§5–7 is not shipped, and
+the answer to an `unwritable` beat (§6d) is unchanged.
+
+**The thing to keep straight.** Narration-led mode does not repeal anything in
+Foray mode. A Foray over the 35 % ceiling is still under-sourced and still fixed by
+cutting beats; it does not become a Primer by being relabelled. The mode is chosen
+**before** the script is written, from the subject and the coverage report, and a
+running order does not change mode to fit its own ratio.
+
 ---
 
 ## 5. The words
@@ -1064,9 +1127,19 @@ reason it earns one:
 | rhythm | any narration item over 20 s contains **at least one sentence under 6 words** | anti-uniformity at the sentence scale; the reasoning in `segment-length-rules.md` §2d is about texture, and prose has texture too |
 | voice | **active** | Everett's fifth. Also: the passive is how an unattributed claim hides — "it is thought that" has no subject on purpose |
 | openers | no sentence begins with a long participial phrase | Everett's second: "move descriptive phrases to sentence endings instead" |
-| numbers | **one number per sentence, at most three per narration item** | a spoken number cannot be re-read |
+| numbers | **a density rule (ruled HA #22):** at most **one numeric fact per sentence**; per item at most **one per 20 s of item, minimum three**; a **two-ended range in one sentence with the unit spoken once is one numeric expression** | a spoken number cannot be re-read — which is about spacing, not counting. The old flat "three per narration item" was written for a transition and starved a 145 s Carry (`narration-architecture.md` §9c): a 143.7 s item now carries seven, spaced |
 | number form | written as spoken — "about eighteen hours", "eighteen-oh-one", not "18 hrs" or "1801" | correctness for the ear and for the engine; a numeral is an instruction to a TTS voice that we have not tested |
 | precision | round unless the precision is the point | "roughly two centuries" is honest; "204 years" is a false claim about our own confidence |
+
+**How the density rule is read and enforced.** An item's allowance is
+`max(3, floor(seconds / 20))`: 60 s and under carries three, 80 s four, 115 s five,
+145.6 s seven. The per-sentence limit counts the *distinct quantitative claims* a
+sentence rests on, so "between sixty-three and seventy degrees Celsius" (one claim,
+one declared `numeric_facts` entry) is one fact and two different figures in one
+breath are two. `check-narration.mjs` enforces both (N18 for the item, N24 for the
+sentence). It cannot see two figures taken from the *same* claim in one sentence;
+that stays a reviewer's read. Cut figures stay in the record with `spoken: false`
+as before, now only when they exceed the density allowance.
 
 ### 5e. Uncertainty — four calibrated forms, and the rule that governs them
 
@@ -1102,6 +1175,15 @@ argue". Each has the grammatical shape of U2 or U3 with the attribution deleted,
 which means it manufactures authority out of nothing while sounding careful. **This
 is the fluency failure in a single phrase**, and it is the highest-yield thing to
 grep a script for.
+
+> **Ruled, HA #22 — U5 is accepted as the substitute for on-air naming, if it is
+> specific.** Evidence-class attribution stands in for the spoken citation provided
+> it **names a specific class**: *"genomic work"*, *"excise records"*, *"a brewing
+> text of 1516"*. It may **never name a crowd** — *"many believe"*, *"it is widely
+> held"*, *"researchers say"* are the banned hedges under a new coat. **A Carry that
+> cannot be calibrated that specifically is `unwritable` (§6d)** and stays unwritten;
+> there is no vaguer U5 to fall back to. (The founder's ruling removes the "is it
+> acceptable at all" question; it does not lower the bar the paragraph below sets.)
 
 **U5 and the banned list are one word apart, so the line has to be written down.**
 *"Many historians believe"* has the grammatical shape of an attribution with the
@@ -1158,7 +1240,10 @@ does them.**
 - **Calibrate, through §5e's U5.** *"Genomic work reads it as…"* names the class of
   evidence, which is what a listener can act on, and it is checkable against the
   accompanying text. An assertion with no calibration and no source is the same
-  defect as before.
+  defect as before. **Ruled HA #22: this is the accepted substitute for on-air
+  naming, and only while the class is specific** (*"excise records"*, *"a brewing
+  text of 1516"*; never a crowd). A Carry that cannot name its class that closely is
+  `unwritable` (§6d).
 - **Attribute tape.** Naming the speaker and show of adjacent tape is a different
   rule (§3d, `segment-length-rules.md` X2) and is untouched.
 
@@ -1353,6 +1438,11 @@ among the options.** The escalation, in order:
    (beats 22 and 27). A beat whose claim cannot be written *or* sourced may be a beat
    whose claim is wrong, and that is a finding worth recording rather than a script
    worth faking.
+
+4. **(HA #22) The calibration is the problem.** A Carry whose evidence class cannot be
+   named specifically (§5e's U5: *"excise records"*, not *"many believe"*) is
+   unwritable on that ground alone, whatever the literature holds. It is the same
+   verdict as an unsourceable claim and gets the same escalation.
 
 > **The rule, stated to match the one it mirrors.** A beat that comes back empty stays
 > empty. **A beat that comes back unwritable stays unwritten.**
@@ -1948,14 +2038,17 @@ have one.
 is
    not shippable as one Foray.** §4b is arithmetic, but 25 / 35 / 40 are judgement, and
    they decide how many Forays exist and what they cost.
-3. **The SYSK register question that `grilling-history-coverage.md` §2b already put
-to
-   the founder, now with a narration price on it.** Ruling that register out returns
-   beats 7, 19 and 30 to empty, which converts three thin beats into three carried ones:
-   **about +1,740 characters of narration**, minus the tape those cuts would have
-   supplied, which also shrinks the Carry budget the ratio allows. So the ruling costs
-   narration twice. That is a reason to make it explicitly, not a reason to decide it
-   either way.
+3. ~~**The SYSK register question** that `grilling-history-coverage.md` §2b already put
+   to the founder, now with a narration price on it.~~ **Ruled, HA #22 (2026-09-30):
+   SYSK-register general-interest tape is IN, as thin, never strong.** The counts
+   stand (alcohol: 2 strong / 21 thin / 40 empty after #279), so beats 7, 19 and 30
+   of the barbecue spine and the eleven alcohol beats that rest on the register stay
+   thin and the roughly +1,740 characters it would have cost do not arise. Authority
+   test 2 in `alcohol-forms-coverage.md` §1a is unchanged: the register can reach
+   thin, not strong.
+
+**Items 1 and 2 above are untouched by HA #22:** it ruled the product-mode split
+(§4e) and left Foray mode at 25 / 35 / 40.
 
 **Asks of the coverage report, recorded not made.** This document edits no spine and no
 coverage report.

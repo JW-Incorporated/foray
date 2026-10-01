@@ -3381,8 +3381,9 @@ What it *would* enforce, for the record, and the shared constants it owns:
   bare domain, or `p./pp. N` may reach a spoken line.
 - **§5d**: no digit in a spoken line (numbers are written as spoken); mean
   sentence length 12–15 words; longest sentence ≤ 25 words; a rhythm rule
-  requiring one sentence under 6 words in any beat over 20 s; at most
-  `NUMERIC_FACTS_PER_ITEM_MAX = 3` numeric facts per item.
+  requiring one sentence under 6 words in any beat over 20 s; numeric facts as a
+  density rule (HA #22): at most `NUMERIC_FACTS_PER_SENTENCE_MAX = 1` per sentence
+  (N24) and per item `numericFactsCap(sec) = max(3, floor(sec / 20))` (N18).
 - `BANNED_HEDGES` (`some say`, `it is believed`, `many historians believe`,
   `legend has it`, `it is often said`, `experts think`, `some argue`,
   `it is thought that`), `BANNED_ADJECTIVES` (`remarkable`, `fascinating`,
@@ -3390,7 +3391,9 @@ What it *would* enforce, for the record, and the shared constants it owns:
   `BANNED_OPENERS` (`it turns out`, `as it happens`, `interestingly`,
   `of course`, `now` — sentence-initially only).
 - **N16/N17**: at most `NARRATION_ITEMS_PER_THREAD_MAX = 2` narration items per
-  thread, and the second of two consecutive must be shorter.
+  thread, and the second of two consecutive must be shorter. Lifted for `chain`
+  threads when the arc's `mode` is `narration-led` (HA #22); `mode` defaults to
+  `foray` and any other value is an error.
 - **N22/N23**: one establisher per key, and every assumed key must be established
   earlier or declared as a `requires` start criterion.
 

@@ -2,7 +2,7 @@
 
 <!-- ha-format: 2 -->
 
-> **27 open.** Closed items are in `HUMAN-ACTIONS-DONE.md` — you never need it.
+> **19 open.** Closed items are in `HUMAN-ACTIONS-DONE.md` — you never need it.
 > To close one: reply `done` (or `skip <why>`) to its card in the project's human-action channel.
 > Anything else you reply is forwarded to a thread on the card.
 
@@ -16,21 +16,6 @@
 3. Reply with that value.
 
 **Worked if:** you replied with the region, and the privacy policy section 3 names it.
-
-## #46 🔴 [BLOCKING] Nightly content has been stalled since 2026-09-14 — its Cloud routine is switched off (~5 min)
-<!-- ha filed=2026-09-13 kind=default -->
-
-**Why:** The original problem here — the two workflows not firing — is gone: both have run on schedule every day since 2026-09-13. They are red **on purpose**. The Cloud routine that turns each night's digest into a PR, `foray-nightly-enrich`, has been **disabled since its last run on 2026-09-13** (around the 2026-09-13 pause). So the 2026-09-14 digest (40 episodes) was never consumed, and every `nightly-refresh` run since has stopped at its overwrite guard (`OVERWRITE_WOULD_LOSE`) rather than throw those episodes away; `nightly-watch` then reports that run as failed. Nothing in the code is wrong and no secret is missing — this needs your decision, because turning the routine back on spends your Claude usage. Verified 2026-09-22 from the run logs of all eight failed runs and the routine's own state.
-
-**Steps:**
-1. Decide whether nightly content should resume. If yes, tell Claude "re-enable foray-nightly-enrich" (routine `trig_019yeYEFW8mZLHDXGQL3vD5x`), or switch it back on yourself in your claude.ai scheduled routines.
-2. Clear the stranded 2026-09-14 digest, one of two ways:
-   - **Accept losing those 40 episodes (quick):** Actions → `nightly-refresh` → Run workflow, tick **overwrite_unmerged_digest**. The next scan starts fresh.
-   - **Keep them:** tell Claude "recover the 2026-09-14 nightly digest". It re-cuts the scan back to the 14th and opens `nightly/2026-09-14-recovery`, which is the branch name the guard looks for.
-
-**Worked if:** the next scheduled `nightly-refresh` run is green, a `nightly/<date>` PR opens the same day, and `nightly-watch` is green that evening.
-
-**Spark note (2026-09-28):** under the Spark direction (`docs/DECISIONS.md` 2026-09-28) the nightly step moves to the Spark (Phase 5). Step 2, dropping or recovering the stranded 2026-09-14 digest, must be decided before the first Spark nightly runs, even if the routine stays off until then.
 
 ## #128 🟡 [DECIDE] Drive a Foray in the car on the first TestFlight build after `engine/m2` merges (~2 drives)
 <!-- ha filed=2026-09-28 kind=default -->
@@ -133,16 +118,6 @@
 
 **Worked if:** the runbook's relay check on the Spark answers one test request.
 
-## #124 🟢 [UPGRADE] Note: R2 storage will pass the 10 GB free tier at about 650–700 Forays (~1 min)
-<!-- ha filed=2026-09-28 kind=default -->
-
-**Why:** You asked to be told before R2 costs money. Each Foray adds about 14 MB of narration (Heart + Echo), and old files are never deleted, because phones may still point at them. Past 10 GB it costs about $0.015 per GB a month: roughly $0.06 a month at 1,000 Forays and about $2 a month at 10,000. Downloads stay free.
-
-**Steps:**
-1. Reply `ok` to accept, or name the cap you want instead.
-
-**Worked if:** you replied.
-
 ## #125 🟡 [DECIDE] Approve the privacy-policy rewrite for streamed narration, when its PR opens (~15 min)
 <!-- ha filed=2026-09-28 kind=default -->
 
@@ -220,18 +195,6 @@
 4. Reply `done` (or paste any SQL error) here.
 
 **Worked if:** RLS is on for every table the migration lists, the app still syncs events and interests, and Delete my data removes the `learning_cursor` rows (check in the Table editor after a test deletion).
-
-## #109 🟡 [DECIDE] Mirror the approved privacy wording in the store listings, if they carry it (~10 min)
-<!-- ha filed=2026-09-24 kind=default -->
-
-**Why:** You approved the privacy-policy reconciliation on 2026-09-24 ("Approved", round-2 finding `persist-3`), and PR #749 applies it to `docs/legal/privacy-policy.md` and `docs/legal/data-safety.md`. You update the store listings yourself, so any copy of these sentences in App Store Connect or the Play Console is still the old wording. None of the form ANSWERS changed; Search history is still "No" on both. Only the wording changed.
-
-**Steps:**
-1. Wherever the privacy policy is published or pasted for either store, use the new text. Three changes, all in `docs/legal/privacy-policy.md`: §5 now says `connect-src` names **three** origins (the app, Supabase, and our API on Vercel, which receives the Shows search text with your IP address and user-agent); §4.3 gains the paragraph naming **Vercel** as the processor that answers Shows searches ("4a does not log the query"); the `cp_diag` row lists the search, now-playing, remote-command and native-session rows.
-2. If the Play Data safety form or App Store Connect's App Privacy notes repeat the old "miss-only" sentence (a search that misses the local catalogue is looked up off-device), replace it with the sentence in `docs/legal/data-safety.md`'s two search-history rows: every settled Shows search is sent to 4a's API (Vercel) and is not logged as a search-history event.
-3. If neither store carries these sentences, reply `skip none carried`.
-
-**Worked if:** no store-facing text says "two origins" or "miss-only", and the published policy names Vercel.
 
 ## #44 🟡 [DECIDE] Add the founders as Play testers, so Play actually emails you (R-08)
 <!-- ha filed=2026-09-11 kind=default -->
