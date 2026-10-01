@@ -420,7 +420,7 @@ Reason tokens: `not-loaded`, `no-next`, `no-previous`, `ended`, `refused-structu
    - `exclusions.json`, closed reasons: `webview-only`, `dom-only`, `text-pin`, `js-module-shape`
    - `unported.json`, JS tests that have no fixture or XCTest yet, each tagged with a card; burn-down only. **Deleted by NE-39s.**
    - `swift-pending.json`, burn-down only. **Deleted by NE-39s.**
-   - `jvm-pending.json`, burn-down only: the Android JVM port's books (A-22, `docs/plans/android-assessment.md` §5.4). A family the JVM does not run is owed whole, a family it runs is listed in `runs`, and `--check` holds every recorded family to exactly one of the two; `record.mjs --jvm-card` hands a case new in a family it runs, or a new family, to an Android card. Rules in `player/parity/jvm-pending.js`.
+   - `jvm-pending.json`: the Android JVM port's books (A-22, `docs/plans/android-assessment.md` §5.4). **Owing retired by A-63:** the file holds `runs` only (every recorded family that is not jsOnly), `--check` is red on a `families` or `cases` key (even empty) or on a recorded family missing from `runs`, and `record.mjs --jvm-card` is refused. A JS change that records a new family or changes a case the JVM runs carries its JVM port in the same change. Rules in `player/parity/jvm-pending.js`.
    - `capabilities.json`
    - `floors.json`
 2. **Case format.** Pure calls `{id, covers[], call, args, expect}`. Scenarios `{setup, steps[], expect}`, with the closed verbs `call`, `settle`, `clock`, `deck`, `tts`, `interlude`, `session`, `lifecycle`, `remote` and `checkpoint`. Macros `$seg`, `$ep`, `$tts`, `$foray`. The op-log grammar is unchanged. Native-only `n.*` tokens are stripped, **except in the `prepare` family, which asserts them**.
@@ -1711,7 +1711,7 @@ Read first: `CLAUDE.md`, this deck, the Tier 2 requirements, `docs/ios-native-pl
 > NE-47 ─────────────┘
 > ```
 >
-> **The Android twin** of this track is Track A4 in `docs/plans/android-assessment.md` §5.7 (A-60..A-69). A JS card here that records a new family also books that family in `player/parity/jvm-pending.json`, owed to its A4 card (`record.mjs --jvm-card`), so the JVM runner stays consistent.
+> **The Android twin** of this track is Track A4 in `docs/plans/android-assessment.md` §5.7 (A-60..A-69). A JS card here that records a new family also books that family in `player/parity/jvm-pending.json`, owed to its A4 card (`record.mjs --jvm-card`), so the JVM runner stays consistent. **Since A-63 nothing can be owed there:** a JS card that records a new family, or changes a case in a family the JVM runs, carries its JVM port (and the `runs` entry) in the same change; `--jvm-card` is refused.
 
 #### NE-38 · Provisional field values now, and the rows that settle them — **M**
 - **Milestone:** M3
