@@ -275,7 +275,16 @@ public final class EngineContract {
 
         record Relinquish(RelinquishCap cap) implements Command {}
 
-        record Audition(String text, String voiceId) implements Command {}
+        /**
+         * OQ-5; NE-47 (A-66): {@code url} is the voice's rendered preview on the narration host
+         * (null: the line is spoken, as before it existed).
+         */
+        record Audition(String text, String voiceId, String url) implements Command {
+            /** A spoken audition (no rendered preview). */
+            public Audition(String text, String voiceId) {
+                this(text, voiceId, null);
+            }
+        }
 
         /** The Developer engine setting ({@code MODE_OVERRIDES}): the bridge's, in every lane, never the core's. */
         record SetModeOverride(String mode) implements Command {}

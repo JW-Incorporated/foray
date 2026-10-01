@@ -22,7 +22,7 @@ import java.util.Objects;
  */
 public sealed interface EngineInput permits EngineInput.Command, EngineInput.Queue, EngineInput.Remote, EngineInput.Deck,
         EngineInput.SessionAnswer, EngineInput.Session, EngineInput.Lifecycle, EngineInput.Timer, EngineInput.Narrator,
-        EngineInput.Interlude {
+        EngineInput.Interlude, EngineInput.Preview {
 
     /** A page command (engineSend), with where it came from. */
     record Command(EngineContract.Command command, Vocabulary.Source source) implements EngineInput {
@@ -52,6 +52,14 @@ public sealed interface EngineInput permits EngineInput.Command, EngineInput.Que
 
     /** The jingle player. */
     record Interlude(InterludeEvent event) implements EngineInput {}
+
+    /**
+     * The PREVIEW deck (NE-47, A-66): the voice picker's rendered {@code preview.m4a}, on a deck of
+     * its own so a preview never touches the item the main deck holds. Its events speak the main
+     * deck's vocabulary; the core reads only the load's answer ({@code ready}, {@code failed},
+     * {@code deadlineExceeded}) and the file's {@code ended}, for the token it issued.
+     */
+    record Preview(DeckEvent event) implements EngineInput {}
 
     /** How the synthesiser answered {@code resume(seq)}. */
     sealed interface NarrationResumeAnswer permits NarrationResumeAnswer.Continued, NarrationResumeAnswer.FromStart,

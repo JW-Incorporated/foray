@@ -82,6 +82,29 @@ public class ForayPlaybackServiceTest {
         assertEquals(C.USAGE_MEDIA, s.exoPlayer().getAudioAttributes().usage);
     }
 
+    /**
+     * A-66 (mirrors NE-47): the voice preview plays on a player of its own, never one of the pair's,
+     * configured as the deck's (speech, focus handled), and every row its deck writes says
+     * {@code lane=preview}. TO SEE IT FAIL: build the preview over the pair's player, skip
+     * EngineAudio.configure on it, or drop the lane.
+     */
+    @Test
+    public void theVoicePreviewHasAPlayerOfItsOwnConfiguredAsTheDecks() {
+        ForayPlaybackService s = create();
+        assertNotNull(s.previewPlayer());
+        assertFalse("not the deck's player", s.previewPlayer() == s.exoPlayer());
+        assertEquals(C.AUDIO_CONTENT_TYPE_SPEECH, s.previewPlayer().getAudioAttributes().contentType);
+        assertEquals(C.USAGE_MEDIA, s.previewPlayer().getAudioAttributes().usage);
+        assertEquals(6.0, ForayPlaybackService.PREVIEW_LOAD_DEADLINE_SEC, 0);
+        ai.jwlabs.foura.engine.EngineCommand.DiagEntry laned = ForayPlaybackService.previewLane(new ai.jwlabs.foura.engine.EngineCommand.DiagEntry(
+                "deck", List.of(ai.jwlabs.foura.engine.JsonNode.member("kind", ai.jwlabs.foura.engine.JsonNode.str("ready")))));
+        assertEquals("ready", laned.field("kind").stringValue());
+        assertEquals("preview", laned.field("lane").stringValue());
+        controller.destroy();
+        controller = null;
+        assertNull("released with the others", s.previewPlayer());
+    }
+
     @Test
     public void theFifteenThirtyPairAreTheSessionsButtonsAndRemotePresses() {
         ForayPlaybackService s = create();

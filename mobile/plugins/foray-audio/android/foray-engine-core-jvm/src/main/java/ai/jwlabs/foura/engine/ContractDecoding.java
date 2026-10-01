@@ -137,6 +137,32 @@ public final class ContractDecoding {
         return policy;
     }
 
+    /**
+     * NE-47 (A-66), {@code pattern: ^https://audio\.jwlabs\.ai/[A-Za-z0-9._~/-]+$}: an
+     * audition's rendered preview, a file on the narration host
+     * ({@link EngineConstants.EngineContract#NARRATION_PUBLIC_BASE}, the page's own constant)
+     * whose path is only the characters of a content key. Checked by character, not by URL
+     * parsing, so a query, a fragment, credentials, a port, a percent-escape or a look-alike
+     * host is refused exactly where the page's regular expression refuses it.
+     */
+    static String narrationUrl(JsonNode node, String path) throws ContractError {
+        String text = string(node, path);
+        String base = EngineConstants.EngineContract.NARRATION_PUBLIC_BASE + "/";
+        if (!text.startsWith(base)) throw fail(path, "is not a file on the narration host");
+        String rest = text.substring(base.length());
+        if (rest.isEmpty()) throw fail(path, "is not a plain object path on the narration host");
+        for (int i = 0; i < rest.length(); i++) {
+            if (!isNarrationPathChar(rest.charAt(i))) throw fail(path, "is not a plain object path on the narration host");
+        }
+        return text;
+    }
+
+    /** {@code [A-Za-z0-9._~/-]}, ASCII only (a surrogate half is neither, so it is refused). */
+    static boolean isNarrationPathChar(char c) {
+        return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9')
+                || c == '.' || c == '_' || c == '~' || c == '/' || c == '-';
+    }
+
     /** {@code type: object}, whatever it holds. */
     static JsonNode object(JsonNode node, String path) throws ContractError {
         if (!(node instanceof JsonNode.Obj)) throw fail(path, "must be an object");
@@ -404,7 +430,8 @@ public final class ContractDecoding {
             case "audition" -> {
                 Obj o = need(name, args);
                 return new EngineContract.Command.Audition(o.required("text", ContractDecoding::nonEmptyString),
-                        o.requiredNullable("voiceId", ContractDecoding::string));
+                        o.requiredNullable("voiceId", ContractDecoding::string),
+                        o.optional("url", ContractDecoding::narrationUrl));
             }
             case "setModeOverride" -> {
                 return new EngineContract.Command.SetModeOverride(

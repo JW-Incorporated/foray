@@ -1,5 +1,7 @@
 package ai.jwlabs.foura.audio.engine;
 
+import ai.jwlabs.foura.engine.DeckCommand;
+import ai.jwlabs.foura.engine.DeckEvent;
 import ai.jwlabs.foura.engine.EngineCommand;
 import ai.jwlabs.foura.engine.EngineConfig;
 import ai.jwlabs.foura.engine.EngineContract;
@@ -368,6 +370,8 @@ public final class ForayEngineHost {
         if (seams.interlude != null) {
             seams.interlude.setOnEnded(reason -> handle(new EngineInput.Interlude(new EngineInput.InterludeEvent.Ended(reason))));
         }
+        // The voice preview's deck (A-66, NE-47): its load's answer and its end.
+        if (seams.preview != null) seams.preview.setListener(event -> handle(new EngineInput.Preview(event)));
         publishSurface();
     }
 
@@ -383,6 +387,10 @@ public final class ForayEngineHost {
         graceReason = null;
         seams.deck.setListener(null);
         seams.deck.invalidate();
+        if (seams.preview != null) {
+            seams.preview.setListener(null);
+            seams.preview.invalidate();
+        }
         // Nothing sounds past a teardown: the synthesiser and the jingle go with the deck.
         if (seams.speaker != null) {
             seams.speaker.setListener(null);
@@ -587,8 +595,24 @@ public final class ForayEngineHost {
             case EngineCommand.SilenceStop s -> {}
             // The surface is re-read after every turn; a pulse needs nothing more.
             case EngineCommand.NarrationPulse p -> {}
+            case EngineCommand.Preview p -> preview(p.command());
         }
         return Collections.emptyList();
+    }
+
+    /**
+     * The voice preview's deck (A-66, mirrors NE-47's {@code interpretPreview}): it plays what the
+     * core asks of it. Its ExoPlayer handles audio focus as the main deck's does, so the preview's
+     * play requests focus for the tap that asked (the core sends it only after that tap's
+     * activation). With no deck wired, a load is answered {@code failed}, queued behind this turn,
+     * so the core speaks the line instead: an audition is never silent for want of a deck.
+     */
+    private void preview(DeckCommand command) {
+        if (seams.preview != null) {
+            seams.preview.send(command);
+        } else if (command instanceof DeckCommand.Load load) {
+            handle(new EngineInput.Preview(new DeckEvent.Failed(load.token(), "no preview deck")));
+        }
     }
 
     /**

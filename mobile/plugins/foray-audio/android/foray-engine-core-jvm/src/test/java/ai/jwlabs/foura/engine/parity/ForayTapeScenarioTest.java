@@ -76,7 +76,8 @@ public class ForayTapeScenarioTest {
             assertTrue(family + " has cases", s.cases() > 0);
             assertEquals(family + " runs every case", s.cases(), s.executed());
             /* A-61: the engine/m3 merge brought iOS M3 cases the JVM books to a Track A4 card
-               (manager-foray's audition by URL, owed to A-66); every other case passes. */
+               (manager-foray's audition by URL was owed to A-66, which now runs it); every other
+               case passes. */
             int owed = 0;
             for (String id : data.pendingCases.keySet()) {
                 if (id.startsWith(family + "/")) {
@@ -246,7 +247,7 @@ public class ForayTapeScenarioTest {
             for (FixtureFile file : data.fixtures.get(family)) {
                 for (FixtureCase c : file.cases()) {
                     if (!"scenario".equals(c.kind())) continue;
-                    // A-61: a case the books owe to a Track A4 card (the audition by URL, A-66) is its card's to run.
+                    // A-61: a case the books owe to a Track A4 card is its card's to run (A-66 ran the audition by URL).
                     if (data.pendingCases.containsKey(c.id())) continue;
                     EngineScenarioDriver.Run run = new EngineScenarioDriver(null, true).run(c, context);
                     assertEquals(c.id(), List.of(), run.violations());
