@@ -201,8 +201,7 @@ public class ForayPlaybackServiceTest {
         assertTrue(out.toString(), out.toString().contains("\"foregroundRequired\":true"));
         s.noteForegroundDecision(false);
         assertFalse(s.foregroundRequired());
-        String rows = String.join("
-", s.rows());
+        String rows = String.join("\n", s.rows());
         assertTrue(rows, rows.contains(" fgs {\"kind\":\"left\",\"foray\":\"n\",\"running\":\"n\",\"inSeam\":\"n\",\"spoken\":\"n\"}"));
     }
 
