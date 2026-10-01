@@ -244,6 +244,37 @@ export const DENIED_PREFIXES = [
   // credential. It imports only node: builtins, so the file alone is the surface.
   // Change frequency: near zero once Phase 1 has uploaded.
   "tools/narration/upload-narration.mjs",
+  // The Spark (SPK-01, 2026-10-01; docs/plans/spark-central-narration-
+  // assessment.md §3.5 "Path policy" and §8 "credential blast radius"). Every
+  // file under tools/spark/ runs ON THE SPARK, as the service user that holds
+  // the R2 write token and the GitHub token, from systemd timers, out of the
+  // checkout at the founder-moved `spark-live` tag. That is the
+  // tools/events-server.mjs argument (unread code with real credentials on a
+  // machine we own) with the machine always on and unattended. Denied as a
+  // directory, before the first file exists, so the agent, its unit files, its
+  // bootstrap and backup scripts and the generate-queue it reads (§3.5 "The
+  // catalogue queue spends money") are governed from birth rather than one
+  // entry at a time as each arrives. Change frequency: Phase 3 writes it, then
+  // a handful of commits a month.
+  "tools/spark/",
+  // The Spark watchdog (SPK, 2026-10-01; assessment §3.5 "Heartbeat +
+  // spark-watch.yml"). spark-watch.yml runs it hourly with `issues: write` and
+  // it decides, from a secret-free heartbeat, whether the founder's only Spark
+  // alarm is raised or closed. Same argument as tools/release/watch-release.mjs
+  // (the tools/release/ entry above): a one-line neuter silences the alarm with no human in the
+  // loop, and `tools/` is allowlisted. Denied by name now so the file lands
+  // governed when the heartbeat card writes it.
+  "tools/ops/spark-watch.mjs",
+  // The headless relay answerer (SPK, 2026-10-01; assessment §3.5 "Headless
+  // relay answerer is a prompt-injection target"). It spawns `claude -p` on the
+  // founder's own subscription, fed prompts built from podcast transcripts and
+  // web search results, on the box that holds the R2 and GitHub tokens. The
+  // design runs it with NO tools as a user that can read none of the credential
+  // files; an unread change here is exactly how that stops being true (one
+  // flag re-enables Bash). It spends the founder's subscription, which is what
+  // the catalogue-queue rule above protects. `tools/generation/relay.mjs` (the
+  // queue/transport module, no credentials, no spend) stays allowlisted.
+  "tools/generation/answer-relay.mjs",
 ];
 
 /* DENIED by NAME, anywhere under a directory (ci-release-5). A prefix list

@@ -19,7 +19,7 @@ Qwen agents are capable coders, but they must not be given judgement, ambiguity,
 - product, UX or copy judgement, or a choice between designs;
 - security, credentials, auth, RLS, or spend (keys, caps, outbound traffic to third-party hosts);
 - Swift, Java or other native code, or a measurement on a device;
-- a **DENIED** path in `tools/ci/path-policy.mjs`: `.github/`, `.claude/`, `CLAUDE.md`, `docs/DECISIONS.md`, `docs/adr/`, `docs/roles.md`, `backend/src/`, `tools/ci/`, `tools/release/`, the listed `tools/mobile/*` files, `mobile/**/package.json`, `Package.swift`, `*.gradle` and the other DENIED_PATTERNS. Unlisted paths such as `api/`, `index.html` and `backend/migrations/` also wait for a human merge;
+- a **DENIED** path in `tools/ci/path-policy.mjs`: `.github/`, `.claude/`, `CLAUDE.md`, `docs/DECISIONS.md`, `docs/adr/`, `docs/roles.md`, `backend/src/`, `tools/ci/`, `tools/release/`, `tools/spark/` (everything that runs on the Spark), `tools/narration/upload-narration.mjs`, `tools/ops/spark-watch.mjs`, `tools/generation/answer-relay.mjs`, the listed `tools/mobile/*` files, `mobile/**/package.json`, `Package.swift`, `*.gradle` and the other DENIED_PATTERNS. Unlisted paths such as `api/`, `index.html` and `backend/migrations/` also wait for a human merge;
 - prompt or LLM design;
 - a cross-cutting refactor;
 - diagnosing from field records (CI logs, run reports, probe data) or curating data by hand.
