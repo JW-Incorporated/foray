@@ -1921,6 +1921,14 @@ const FLOORS = {
      `absence` nor `overwrite` could — "did today's scheduled nightly-refresh
      run itself succeed", independent of any digest/PR state. */
   "tools/refresh/watch-nightly.test.mjs": 71,
+  /* #760 / OPS-14: the nightly's mechanical halves as two commands. The suite
+     injects a recording exec and asserts the exact ORDERED arg arrays — merge →
+     vitest → switch → add → diff --cached → commit → push → pr — with `now`
+     pinned to a different day than the digest, because every past nightly
+     incident was an ordering or string bug (a branch named after today, a
+     third staged file, a PR on red tests). 15 is the true count at landing;
+     each test names the mutation that kills it. */
+  "tools/refresh/nightly-runner.test.mjs": 15,
   /* S-01's other half: proves the actual bash in nightly-refresh.yml's
      "Publish digest to refresh-digest branch" step, not a JS reimplementation
      of it. Extracts the real `run:` block, shims `gh`/`jq`, and round-trips a
