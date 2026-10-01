@@ -53,6 +53,7 @@ import { dirname, join, resolve as resolvePath } from "node:path";
 import {
   probeEpisode,
   summariseShow,
+  summariseSamples,
   isPlausibleAudioSize,
   undersizedSamples,
   AD_FREE_FLOOR,
@@ -304,7 +305,7 @@ export function fetchNoteOf(row) {
     verdict exactly as it found it. */
 export function deriveRow(base, { note = null, decodes = null, grids = null } = {}) {
   const samples = base.samples || [];
-  const summary = summariseShow(samples.map((x) => x.ratio));
+  const summary = summariseSamples(samples);
   const undersized = undersizedSamples(samples);
   const inserted = insertedSamples(samples);
   const unmeasured = unmeasuredSamples(samples);
@@ -1245,6 +1246,10 @@ export function dispositionOf(verdict, { inserted = 0, undersized = 0, unmeasure
      one line down; catching a host assembling a different file per request is
      an answer, and an answer outranks "could not tell". */
   if (varying > 0) return "drop";
+  /* `suspect`: undersized against a COMPUTED length (ad-inflation.mjs, HA #24).
+     Fail closed like `injected`; a clean decode on a corroborated row can still
+     override it via `decodeOverride`. */
+  if (verdict === "suspect") return "drop";
   if (verdict === "unknown") return "unresolved";
   if (verdict === "injected") return "drop";
   if (inserted > 0) return "drop";

@@ -70,7 +70,36 @@ export const NARRATION_HARD_MAX_SEC = 180;
    narration items PER THREAD. On an all-empty thread the two coincide, which is
    every thread in alcohol Act I. Named for what it measures, not for what §2e says. */
 export const NARRATION_ITEMS_PER_THREAD_MAX = 2;
-export const NUMERIC_FACTS_PER_ITEM_MAX = 3;
+/* HA #22 (2026-09-30), narration-craft.md §5d: the numbers cap is a DENSITY
+   rule. Its stated reason, "a spoken number cannot be re-read", is about spacing,
+   not counting. So: at most one numeric fact per sentence, and per item at most
+   one per 20 s of item, with a floor of three so a short item is not starved.
+   A two-ended range in one sentence with the unit spoken once is ONE numeric
+   expression (it is declared as one numeric_facts entry). */
+export const NUMERIC_FACTS_MIN_CAP = 3;
+export const NUMERIC_FACT_SPACING_SEC = 20;
+export const NUMERIC_FACTS_PER_SENTENCE_MAX = 1;
+/** The most numeric facts an item of `sec` seconds may carry: one per 20 s, never fewer than three. */
+export function numericFactsCap(sec) {
+  return Math.max(NUMERIC_FACTS_MIN_CAP, Math.floor(sec / NUMERIC_FACT_SPACING_SEC));
+}
+
+/* HA #22, narration-craft.md §0 / narration-architecture.md §10a: a running order
+   carries `mode`. "foray" keeps 25/35/40 and §2e's consecutive cap; "narration-led"
+   (working listener label "Primer", never "Foray") waives R-essay's 40 % line,
+   bounds the narrator at 75 % of delivered seconds, and lifts the consecutive
+   cap for chain threads. Absent means "foray", so existing data stays valid.
+   The string literals live HERE so check-forays.mjs can compare against the
+   constants (fixture-coverage.test.mjs scans that file for `mode` literals). */
+export const FORAY_MODE_FORAY = "foray";
+export const FORAY_MODE_NARRATION_LED = "narration-led";
+export const FORAY_MODES = Object.freeze([FORAY_MODE_FORAY, FORAY_MODE_NARRATION_LED]);
+export const DEFAULT_FORAY_MODE = FORAY_MODE_FORAY;
+export const PRIMER_NARRATION_SHARE_MAX = 0.75;
+/** A running order's mode, defaulting absent to "foray". An unknown value is returned as-is so the caller can reject it. */
+export function forayModeOf(record) {
+  return record?.mode === undefined ? DEFAULT_FORAY_MODE : record.mode;
+}
 export const SENTENCE_MEAN_WORDS = [12, 15];
 export const SENTENCE_MAX_WORDS = 25;
 export const SHORT_SENTENCE_WORDS = 6;
@@ -325,6 +354,13 @@ export function checkForay(foray) {
   foray = { ...foray, beats };
   const byId = new Map(beats.map((b) => [b.beat_id, b]));
 
+  /* HA #22 — the running order's mode. Absent is "foray"; anything else must be
+     one of the two, because a typo would silently buy Foray-mode rules for a
+     Primer or, worse, the reverse. */
+  const mode = forayModeOf(foray?.arc);
+  if (!FORAY_MODES.includes(mode))
+    errors.push(at(`arc: mode ${JSON.stringify(mode)} is not one of ${FORAY_MODES.join(", ")}`));
+
   /* ---- level 3: beats ---- */
   for (const beat of foray.beats) {
     const id = beat?.beat_id ?? "(no beat_id)";
@@ -517,6 +553,23 @@ export function checkForay(foray) {
             at(`${id}: ${c.claim_id} is spoken and quantitative but appears in no numeric_facts entry`)
           );
       }
+
+      /* N24 — §5d (density form): at most one numeric fact per sentence. A
+         sentence's load is the number of DISTINCT declared-quantitative claims it
+         cites, so a two-ended range (one claim, one declared entry) is one
+         expression, as the ruling says. Not seen: two figures from the SAME
+         claim in one sentence; the declaration is per claim and the reviewer's
+         read of the script owns that. */
+      const declared = new Set(nf.map((e) => String(e ?? "").split(":")[0]));
+      for (const [i, s] of arr(beat?.sentences).entries()) {
+        const cited = new Set(arr(s?.claims).filter((cid) => declared.has(cid)));
+        if (cited.size > NUMERIC_FACTS_PER_SENTENCE_MAX)
+          errors.push(
+            at(
+              `${id} sentence ${i + 1}: ${cited.size} numeric facts (${[...cited].join(", ")}) against §5d's cap of ${NUMERIC_FACTS_PER_SENTENCE_MAX} per sentence`
+            )
+          );
+      }
     }
 
     /* N21 — §5d sentence rules, per beat. */
@@ -647,9 +700,13 @@ export function checkForay(foray) {
       /* N18 — §5d's cap, applied across the merged item rather than the beat,
          because the item is what a listener hears without a break. */
       const facts = beats.flatMap((b) => b.numeric_facts ?? []);
-      if (facts.length > NUMERIC_FACTS_PER_ITEM_MAX)
+      const factsCap = numericFactsCap(sec);
+      if (facts.length > factsCap)
         errors.push(
-          at(`${iw}: ${facts.length} numeric facts against §5d's cap of ${NUMERIC_FACTS_PER_ITEM_MAX}`)
+          at(
+            `${iw}: ${facts.length} numeric facts against §5d's cap of ${factsCap} ` +
+              `(one per ${NUMERIC_FACT_SPACING_SEC} s of item, minimum ${NUMERIC_FACTS_MIN_CAP}; this item is ${sec.toFixed(1)} s)`
+          )
         );
 
       /* Every beat in the thread belongs to exactly one item, or the merge lost
@@ -674,16 +731,23 @@ export function checkForay(foray) {
        narration item, so the item count IS the consecutive count. */
     /* §2b: a narration item is a Patch, a Carry, or a Marker over 12 s. A shorter
        Marker is a transition item and must not be counted here. */
+    /* HA #22 (3): in narration-led mode the consecutive cap is lifted for CHAIN
+       beats, because every available thin cut is interleaved between the
+       narration items and this schema cannot see the tape that separates them,
+       so neither N16 nor N17 can know the items are consecutive. A fan thread in
+       narration-led mode, and every thread in foray mode, keep both, and in foray
+       mode §4c's remedy (drop fan stops, or ship shorter) applies. */
+    const capLifted = mode === FORAY_MODE_NARRATION_LED && thread?.structure === "chain";
     const narrationItems = measured.filter(
       (m) => ["patch", "carry"].includes(m.mode) || (m.mode === "marker" && m.sec > 12)
     );
-    if (narrationItems.length > NARRATION_ITEMS_PER_THREAD_MAX)
+    if (!capLifted && narrationItems.length > NARRATION_ITEMS_PER_THREAD_MAX)
       errors.push(
         at(`${tid}: ${narrationItems.length} narration items against §2e's cap of ${NARRATION_ITEMS_PER_THREAD_MAX}`)
       );
 
     /* N17 — §2e: the second of two consecutive narration items is shorter. */
-    for (let i = 1; i < measured.length; i++) {
+    for (let i = 1; !capLifted && i < measured.length; i++) {
       if (measured[i].sec >= measured[i - 1].sec)
         errors.push(
           at(

@@ -7,6 +7,10 @@ docs/. Completed workstreams move to their plan doc's retro section.
 
 ## Active workstreams
 
+### 2026-09-30 — nightly pipeline PAUSED until Spark Phase 5 (founder ruling, HA #46)
+
+`nightly-refresh` and `nightly-watch` are **disabled** (`gh workflow disable`), routine `foray-nightly-enrich` stays off. Founder chose: no nightly content until the Spark takes over, and **drop** the stranded 2026-09-14 digest (40 episodes). When nightly resumes: `gh workflow enable nightly-refresh`, `gh workflow enable nightly-watch`, and make the first run a manual dispatch with **overwrite_unmerged_digest** ticked, or it stops at OVERWRITE_WOULD_LOSE again.
+
 ### 2026-09-29 — `android/a-26-playback-service`: A-26, the native engine's MediaSessionService shell
 
 Owned: foray-audio's `ForayPlaybackService` and the engine package's `ForayEngineHost`, `EnginePlayer`, `EngineSeams`,
