@@ -123,6 +123,7 @@ const FLOORS = {
      now playing ribbon". The POINTER to the last ordinary episode — position is
      not stored here, `cp_pos:` has owned that since #26, and two of these tests
      exist only to pin that separation. */
+  "player/download-store.test.js": 13, // PQ-16 (#29)
   "player/episode-progress.test.js": 23, // 2026-09-22 audit theme L: `episodeProgress`, the one reading of a stored position (played / in-progress / sampled / unplayed) that Jump back in and the episode rows share, on position-store's own thresholds; 19 -> 23
   /* 2026-09-22 (audit L2, founder report 3): which build wrote a diagnostics
      record — the web deploy id on both hosts and the native build number in the
@@ -253,6 +254,11 @@ const FLOORS = {
      that keeps a scroll through a long episode description from throwing the
      sheet away. Every test names the mutation that kills it, and each was run. */
   "player/sheet-drag-dismiss.test.js": 17, // audit round 2, L2 (2026-09-23): claimsTouch, who owns the finger (touch-2); 15 -> 17 //
+  /* Swipe-left-to-remove on an Up Next row (#762). The same pure gesture
+     shape as the two above, floored for the same reason: the direction lock,
+     the 96 px distance, the flick and the rule that a scroll can never become
+     a removal ARE the product decision. Each test names its mutation. */
+  "player/queue-swipe.test.js": 8, // PQ-05 (#762)
   /* The other half of the same report: the sheet is WIRED, opens at the top,
      scrolls inside itself, and is a full-height overlay whose `[hidden]`
      attribute still hides it. A source-text suite (client.js builds DOM at
