@@ -14,7 +14,10 @@ docs/. Completed workstreams move to their plan doc's retro section.
 
 **The trial (DV-8).** `EngineConfig.routeSharingLongForm`, OFF. Only the Developer row **Route sharing** (`engineSend setRouteSharing`, a new contract command) turns it on, stored in the private key `ForayEngine.routeSharing` and applied at the next launch; the `build` row and the Copy header say `routeSharing=`. The privacy policy and data-safety text list the key.
 
-**The script.** `docs/native-engine-m3-drive-test.md` (G-6: DV-7a required, DV-7b the negative control) and HUMAN-ACTIONS #129. The build number is added once the post-merge TestFlight build exists.
+**The script.** `docs/native-engine-m3-drive-test.md` (G-6: DV-7a required, DV-7b the negative control) and HUMAN-ACTIONS #130. The build number is added once the post-merge TestFlight build exists.
+### 2026-09-30 — nightly pipeline PAUSED until Spark Phase 5 (founder ruling, HA #46)
+
+`nightly-refresh` and `nightly-watch` are **disabled** (`gh workflow disable`), routine `foray-nightly-enrich` stays off. Founder chose: no nightly content until the Spark takes over, and **drop** the stranded 2026-09-14 digest (40 episodes). When nightly resumes: `gh workflow enable nightly-refresh`, `gh workflow enable nightly-watch`, and make the first run a manual dispatch with **overwrite_unmerged_digest** ticked, or it stops at OVERWRITE_WOULD_LOSE again.
 
 ### 2026-09-29 — `android/a-26-playback-service`: A-26, the native engine's MediaSessionService shell
 
