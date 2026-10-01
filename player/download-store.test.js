@@ -156,6 +156,7 @@ test("evictionPlan: an id with no position is evictable, and a never-played down
   const v = threeOverCap();
   assert.deepEqual(evictionPlan(v, { b: { sec: 600, durationSec: 3600 }, c: { sec: 600, durationSec: 3600 } }), ["a"],
     "mutation: treat a missing position as in progress -> []");
+  assert.deepEqual(evictionPlan(v, null), ["a"], "no positions at all (null) is the same as none known — never a throw");
   // Never played: `updated_at` (when the download finished) is the LRU key.
   const never = threeOverCap();
   never.items.a.last_played_at = null;

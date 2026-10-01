@@ -248,11 +248,12 @@ function lruKey(rec) {
  */
 export function evictionPlan(value, positions = {}) {
   const base = normaliseDownloads(value);
+  const pos = positions && typeof positions === "object" ? positions : {};
   const cap = base.settings.capBytes;
   let used = usedBytes(base);
   if (used <= cap) return [];
   const candidates = Object.entries(base.items)
-    .filter(([id, rec]) => rec.status === "done" && !isInProgress(positions[id], rec))
+    .filter(([id, rec]) => rec.status === "done" && !isInProgress(pos[id], rec))
     .sort(([ia, a], [ib, b]) => {
       const ka = lruKey(a), kb = lruKey(b);
       return ka < kb ? -1 : ka > kb ? 1 : ia < ib ? -1 : ia > ib ? 1 : 0;
