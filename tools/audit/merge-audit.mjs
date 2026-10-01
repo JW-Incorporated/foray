@@ -214,12 +214,32 @@ export function headline(audit) {
 }
 
 /**
- * The comment body. Headline first, then the number that matters in bold,
- * then the ledger, floors, the kill switch, and `_audit ok_` as the LAST line,
- * so a truncated or half-rendered body is distinguishable from a complete one
- * by looking at its tail.
+ * GitHub rejects an issue comment longer than 65,536 characters (422), and
+ * the workflow's retry cannot make a too-long body shorter: the week would end
+ * as "FAILED before it could report", on exactly the busy week the ledger is
+ * for. The first real week (2026-09-24 → 10-01) rendered 164 PRs to 40,186
+ * characters with one governed row of 3,436, so the cap is one busy week
+ * away. `BODY_BUDGET_CHARS` leaves headroom under the cap; `renderReport`
+ * compacts the table rather than exceed it (see there).
  */
-export function renderReport({ since, until, audit, drops, freeze }) {
+export const COMMENT_MAX_CHARS = 65536;
+export const BODY_BUDGET_CHARS = 60000;
+/** How many governed paths a compacted row still lists before "… +N more". */
+export const GOVERNED_PATHS_SHOWN = 8;
+
+function tableRow(r) {
+  return `| [#${r.number}](${r.url}) | ${cell(r.title)} | ${cell(r.author)} | ${cell(r.mergedBy)} | ${r.files} | ${r.humanReviewed ? "yes" : "**none**"} | ${r.governed.length ? r.governed.map(cell).join("<br>") : "—"} |`;
+}
+
+const byNumber = (rows) => rows.map((r) => `#${r.number}`).join(", ");
+
+/**
+ * The body, from an explicit split of the rows: `table` gets a line each,
+ * `reviewedByNumber` (level 1 below) and `didNotFit` (level 2) are listed by
+ * number only, each under a sentence that says why. With everything in
+ * `table` and both lists empty this is the plain, uncompacted report.
+ */
+function renderBody({ since, until, audit, drops, freeze, table, reviewedByNumber, didNotFit }) {
   const lines = [
     `## Weekly merge audit — ${day(since)} → ${day(until)}`,
     "",
@@ -228,13 +248,66 @@ export function renderReport({ since, until, audit, drops, freeze }) {
     "| PR | title | author | merged by | files | human review | governed paths |",
     "| --- | --- | --- | --- | --- | --- | --- |",
   ];
-  for (const r of audit.rows) {
+  for (const r of table) lines.push(tableRow(r));
+  if (!audit.rows.length) lines.push("| — | no PRs merged in this window | | | | | |");
+  if (reviewedByNumber.length) {
     lines.push(
-      `| [#${r.number}](${r.url}) | ${cell(r.title)} | ${cell(r.author)} | ${cell(r.mergedBy)} | ${r.files} | ${r.humanReviewed ? "yes" : "**none**"} | ${r.governed.length ? r.governed.map(cell).join("<br>") : "—"} |`
+      "",
+      `_Compacted: the full ledger would exceed GitHub's comment limit. ${reviewedByNumber.length} PR(s) with a human review and no governed path are listed by number only:_ ${byNumber(reviewedByNumber)}`
     );
   }
-  if (!audit.rows.length) lines.push("| — | no PRs merged in this window | | | | | |");
+  if (didNotFit.length) {
+    lines.push(
+      "",
+      `**${didNotFit.length} PR(s) that NEED a read did not fit in the table above — by number, read them from the PR list:** ${byNumber(didNotFit)}`
+    );
+  }
   lines.push("", "### Floors");
+  return finishBody(lines, { drops, freeze });
+}
+
+/**
+ * The comment body. Headline first, then the number that matters in bold,
+ * then the ledger, floors, the kill switch, and `_audit ok_` as the LAST line,
+ * so a truncated or half-rendered body is distinguishable from a complete one
+ * by looking at its tail.
+ *
+ * Size: a body within `maxChars` is rendered in full and byte-for-byte as
+ * before. Over it, two levels, each only as far as needed, and the headline's
+ * three counts never change:
+ *   1. rows that have a human review AND no governed path (the ones the
+ *      ledger exists to count, not to read) collapse into one by-number line,
+ *      and a row's governed list is capped at `GOVERNED_PATHS_SHOWN` paths;
+ *   2. if that still does not fit, table rows move from the bottom into a
+ *      second, bold by-number line that says they NEED a read.
+ * Numbers autolink in a same-repo comment, so nothing is lost, only its row.
+ */
+export function renderReport({ since, until, audit, drops, freeze, maxChars = BODY_BUDGET_CHARS }) {
+  const base = { since, until, audit, drops, freeze };
+  const full = renderBody({ ...base, table: audit.rows, reviewedByNumber: [], didNotFit: [] });
+  if (full.length <= maxChars) return full;
+
+  // Level 1.
+  const needsALine = (r) => !r.humanReviewed || r.governed.length > 0;
+  const capPaths = (r) =>
+    r.governed.length > GOVERNED_PATHS_SHOWN
+      ? { ...r, governed: [...r.governed.slice(0, GOVERNED_PATHS_SHOWN), `… +${r.governed.length - GOVERNED_PATHS_SHOWN} more`] }
+      : r;
+  const table = audit.rows.filter(needsALine).map(capPaths);
+  const reviewedByNumber = audit.rows.filter((r) => !needsALine(r));
+  let body = renderBody({ ...base, table, reviewedByNumber, didNotFit: [] });
+  if (body.length <= maxChars) return body;
+
+  // Level 2: shed rows from the bottom (the highest numbers) until it fits.
+  const didNotFit = [];
+  while (table.length && body.length > maxChars) {
+    didNotFit.unshift(table.pop());
+    body = renderBody({ ...base, table, reviewedByNumber, didNotFit });
+  }
+  return body;
+}
+
+function finishBody(lines, { drops, freeze }) {
   if (drops?.length) {
     for (const d of drops) lines.push(`- \`${d.suite}\`: ${d.before} → ${d.after === null ? "removed" : d.after}`);
   } else {

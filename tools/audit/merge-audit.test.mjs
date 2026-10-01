@@ -16,6 +16,9 @@ import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
 
 import {
+  BODY_BUDGET_CHARS,
+  COMMENT_MAX_CHARS,
+  GOVERNED_PATHS_SHOWN,
   auditMergedPrs,
   floorDrops,
   governedReason,
@@ -248,6 +251,63 @@ test('renderReport: the headline counts, the table, the floors, the freeze line 
   for (const v of ["off", "0", "false", undefined]) {
     assert.ok(renderReport({ since: SINCE, until: UNTIL, audit: auditMergedPrs([], window), drops: [], freeze: v }).includes("AUTOMERGE_FREEZE is not set"), String(v));
   }
+});
+
+test("renderReport: a ledger that would exceed GitHub's comment limit compacts instead of overflowing", () => {
+  /* GitHub 422s an issue comment over 65,536 chars; the workflow's retry cannot
+     shorten it, so the week would end "FAILED before it could report". The real
+     2026-09-24 → 10-01 week was 164 PRs / 40,186 chars. MUTATION: drop the
+     `full.length <= maxChars` fallback -> the long body exceeds the cap here. */
+  const long = "a title long enough that two hundred and fifty of these rows, plus the governed ones, do not fit in one comment".repeat(2);
+  const reviewed = Array.from({ length: 250 }, (_, i) =>
+    pr({ number: 1000 + i, title: long, reviews: [{ state: "APPROVED", user: { login: "r" } }] })
+  );
+  const unread = Array.from({ length: 80 }, (_, i) =>
+    pr({
+      number: 2000 + i,
+      title: long,
+      files: Array.from({ length: 30 }, (_, k) => `.github/workflows/w${k}.yml`),
+    })
+  );
+  const audit = auditMergedPrs([...reviewed, ...unread], window);
+  const args = { since: SINCE, until: UNTIL, audit, drops: [], freeze: "" };
+
+  // The fixture really is over the cap when nothing compacts it.
+  const full = renderReport({ ...args, maxChars: Infinity });
+  assert.ok(full.length > COMMENT_MAX_CHARS, `fixture must overflow: ${full.length}`);
+  assert.ok(!full.includes("Compacted:"));
+
+  // Level 1: reviewed, un-governed rows by number; every unread row keeps its line.
+  const body = renderReport(args);
+  assert.ok(body.length <= BODY_BUDGET_CHARS, `compacted body is ${body.length}`);
+  assert.ok(body.length <= COMMENT_MAX_CHARS);
+  assert.ok(body.includes("**330 PRs merged, 80 with zero human review, 80 touching a governed path.**"), "the counts never change");
+  assert.ok(body.includes("Compacted: the full ledger would exceed GitHub's comment limit. 250 PR(s)"));
+  for (const r of unread) assert.ok(body.includes(`| [#${r.number}](`), `unread #${r.number} keeps its row`);
+  for (const r of reviewed) assert.ok(!body.includes(`| [#${r.number}](`) && body.includes(`#${r.number}`), `reviewed #${r.number} is listed by number`);
+  assert.ok(body.includes(`.github/workflows/w${GOVERNED_PATHS_SHOWN - 1}.yml<br>… +${30 - GOVERNED_PATHS_SHOWN} more |`), "governed paths are capped, not dropped silently");
+  assert.ok(!body.includes("did not fit"));
+  assert.ok(body.trimEnd().endsWith("_audit ok_"));
+
+  // Level 2: when the rows that NEED a read do not fit either, the bottom of
+  // the table moves into a bold by-number line, and nothing is lost.
+  const many = Array.from({ length: 1200 }, (_, i) => pr({ number: 5000 + i, title: long }));
+  const big = auditMergedPrs(many, window);
+  const body2 = renderReport({ ...args, audit: big });
+  assert.ok(body2.length <= BODY_BUDGET_CHARS, `level-2 body is ${body2.length}`);
+  assert.ok(body2.includes("**1200 PRs merged, 1200 with zero human review, 0 touching a governed path.**"));
+  const didNotFit = body2.match(/\*\*(\d+) PR\(s\) that NEED a read did not fit/);
+  assert.ok(didNotFit && Number(didNotFit[1]) > 0, "the shed rows are counted and named");
+  const inTable = (body2.match(/^\| \[#\d+\]\(/gm) ?? []).length;
+  assert.equal(inTable + Number(didNotFit[1]), 1200, "every row is either in the table or in the did-not-fit line");
+  for (const r of many) assert.ok(body2.includes(`#${r.number}`), `#${r.number} appears somewhere`);
+  // The table keeps the LOWEST numbers (the oldest, closest to falling off next week's window).
+  assert.ok(body2.includes("| [#5000](") && !body2.includes("| [#6199]("));
+  assert.ok(body2.trimEnd().endsWith("_audit ok_"));
+
+  // A small ledger is untouched by any of this.
+  const small = renderReport({ ...args, audit: auditMergedPrs([pr()], window) });
+  assert.ok(!small.includes("Compacted:") && !small.includes("did not fit"));
 });
 
 test("renderFailure: says FAILED, names the step, keeps the first line of the message, and never says audit ok", () => {
