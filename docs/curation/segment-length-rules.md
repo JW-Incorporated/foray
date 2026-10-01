@@ -686,6 +686,7 @@ Four things about this, one of them contentious:
   the founders may prefer: a longer Foray also has more genuine topic ground to
   cover, so the same rate may be right. If the founders reject the taper, set
   N = 6 everywhere and the rest of the scheme is unaffected.
+  Ruled 2026-09-30: taper kept, N unchanged; revisit after the narrated re-assembly.
 - **It is an assembly-time rule, not an extraction-time rule.** No single
   segment can violate it. It belongs wherever a Foray is assembled from the
   segment pool (`data/ladders.json`, task A8), not in

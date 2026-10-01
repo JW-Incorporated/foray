@@ -2,24 +2,20 @@
 
 <!-- ha-format: 2 -->
 
-> **32 open.** Closed items are in `HUMAN-ACTIONS-DONE.md` — you never need it.
+> **20 open.** Closed items are in `HUMAN-ACTIONS-DONE.md` — you never need it.
 > To close one: reply `done` (or `skip <why>`) to its card in the project's human-action channel.
 > Anything else you reply is forwarded to a thread on the card.
 
-## #46 🔴 [BLOCKING] Nightly content has been stalled since 2026-09-14 — its Cloud routine is switched off (~5 min)
-<!-- ha filed=2026-09-13 kind=default -->
+## #129 🟡 [DECIDE] Read the Supabase project's region and paste it here (~2 min)
+<!-- ha filed=2026-09-30 -->
 
-**Why:** The original problem here — the two workflows not firing — is gone: both have run on schedule every day since 2026-09-13. They are red **on purpose**. The Cloud routine that turns each night's digest into a PR, `foray-nightly-enrich`, has been **disabled since its last run on 2026-09-13** (around the 2026-09-13 pause). So the 2026-09-14 digest (40 episodes) was never consumed, and every `nightly-refresh` run since has stopped at its overwrite guard (`OVERWRITE_WOULD_LOSE`) rather than throw those episodes away; `nightly-watch` then reports that run as failed. Nothing in the code is wrong and no secret is missing — this needs your decision, because turning the routine back on spends your Claude usage. Verified 2026-09-22 from the run logs of all eight failed runs and the routine's own state.
-
+**Why:** The privacy policy must say where user data is stored, and the region is not in the repo. Without it the policy republish (HA #13 ruling) cannot finish.
 **Steps:**
-1. Decide whether nightly content should resume. If yes, tell Claude "re-enable foray-nightly-enrich" (routine `trig_019yeYEFW8mZLHDXGQL3vD5x`), or switch it back on yourself in your claude.ai scheduled routines.
-2. Clear the stranded 2026-09-14 digest, one of two ways:
-   - **Accept losing those 40 episodes (quick):** Actions → `nightly-refresh` → Run workflow, tick **overwrite_unmerged_digest**. The next scan starts fresh.
-   - **Keep them:** tell Claude "recover the 2026-09-14 nightly digest". It re-cuts the scan back to the 14th and opens `nightly/2026-09-14-recovery`, which is the branch name the guard looks for.
+1. Open https://supabase.com/dashboard/project/qjdllvqdcgacvujhclny/settings/general
+2. Copy the value under Region (for example "East US (North Virginia)").
+3. Reply with that value.
 
-**Worked if:** the next scheduled `nightly-refresh` run is green, a `nightly/<date>` PR opens the same day, and `nightly-watch` is green that evening.
-
-**Spark note (2026-09-28):** under the Spark direction (`docs/DECISIONS.md` 2026-09-28) the nightly step moves to the Spark (Phase 5). Step 2, dropping or recovering the stranded 2026-09-14 digest, must be decided before the first Spark nightly runs, even if the routine stays off until then.
+**Worked if:** you replied with the region, and the privacy policy section 3 names it.
 
 ## #129 🟡 [DECIDE] Drive the M3 test on the first TestFlight build after `engine/m3` merges (~2 drives)
 <!-- ha filed=2026-09-30 kind=default -->
@@ -138,16 +134,6 @@
 
 **Worked if:** the runbook's relay check on the Spark answers one test request.
 
-## #124 🟢 [UPGRADE] Note: R2 storage will pass the 10 GB free tier at about 650–700 Forays (~1 min)
-<!-- ha filed=2026-09-28 kind=default -->
-
-**Why:** You asked to be told before R2 costs money. Each Foray adds about 14 MB of narration (Heart + Echo), and old files are never deleted, because phones may still point at them. Past 10 GB it costs about $0.015 per GB a month: roughly $0.06 a month at 1,000 Forays and about $2 a month at 10,000. Downloads stay free.
-
-**Steps:**
-1. Reply `ok` to accept, or name the cap you want instead.
-
-**Worked if:** you replied.
-
 ## #125 🟡 [DECIDE] Approve the privacy-policy rewrite for streamed narration, when its PR opens (~15 min)
 <!-- ha filed=2026-09-28 kind=default -->
 
@@ -183,18 +169,6 @@
 4. Paste each Developer → Playback diagnostics → Copy into the `docs/field-records/` template the script names.
 
 **Worked if:** a filled Android device-pass record for a build carrying A-42 is in `docs/field-records/`.
-
-## #118 🟢 [UPGRADE] Remove the retired events server from your Windows Startup folder (~2 min)
-<!-- ha filed=2026-09-25 kind=default -->
-
-**Why:** `ForayEventsServer.vbs` in your Startup folder starts `tools/events-server.mjs` from the old `commute-curator` checkout at every login. Nothing uses it (events go to Supabase), it listens on every network interface on port 8787 with no auth, and the repo copy has now been deleted (round-3 audit security-9). Only you can remove the Startup entry.
-
-**Steps:**
-1. Press Win+R, type `shell:startup`, press Enter.
-2. Delete `ForayEventsServer.vbs`.
-3. In Task Manager → Details, end the `node.exe` whose command line is `node tools\events-server.mjs` (or just sign out and back in).
-
-**Worked if:** `netstat -ano | findstr :8787` prints nothing after your next login.
 
 ## #117 🟢 [UPGRADE] On a phone, check six player fixes from audit round 3 that no machine here can hear (~20 min)
 <!-- ha filed=2026-09-25 kind=default -->
@@ -238,18 +212,6 @@
 
 **Worked if:** RLS is on for every table the migration lists, the app still syncs events and interests, and Delete my data removes the `learning_cursor` rows (check in the Table editor after a test deletion).
 
-## #109 🟡 [DECIDE] Mirror the approved privacy wording in the store listings, if they carry it (~10 min)
-<!-- ha filed=2026-09-24 kind=default -->
-
-**Why:** You approved the privacy-policy reconciliation on 2026-09-24 ("Approved", round-2 finding `persist-3`), and PR #749 applies it to `docs/legal/privacy-policy.md` and `docs/legal/data-safety.md`. You update the store listings yourself, so any copy of these sentences in App Store Connect or the Play Console is still the old wording. None of the form ANSWERS changed; Search history is still "No" on both. Only the wording changed.
-
-**Steps:**
-1. Wherever the privacy policy is published or pasted for either store, use the new text. Three changes, all in `docs/legal/privacy-policy.md`: §5 now says `connect-src` names **three** origins (the app, Supabase, and our API on Vercel, which receives the Shows search text with your IP address and user-agent); §4.3 gains the paragraph naming **Vercel** as the processor that answers Shows searches ("4a does not log the query"); the `cp_diag` row lists the search, now-playing, remote-command and native-session rows.
-2. If the Play Data safety form or App Store Connect's App Privacy notes repeat the old "miss-only" sentence (a search that misses the local catalogue is looked up off-device), replace it with the sentence in `docs/legal/data-safety.md`'s two search-history rows: every settled Shows search is sent to 4a's API (Vercel) and is not logged as a search-history event.
-3. If neither store carries these sentences, reply `skip none carried`.
-
-**Worked if:** no store-facing text says "two origins" or "miss-only", and the published policy names Vercel.
-
 ## #44 🟡 [DECIDE] Add the founders as Play testers, so Play actually emails you (R-08)
 <!-- ha filed=2026-09-11 kind=default -->
 
@@ -269,25 +231,6 @@ has no tester
 **Worked if:** the next `release.yml` run on `main` (a `v*` tag or *Run
 workflow*) produces **one App Store email and one Play email for the same
 build number** in your inbox. That is R-07's third acceptance item an
-
-## #40 🟡 [DECIDE] Download one Enhanced iPhone voice, then re-listen to the narration test
-<!-- ha filed=2026-09-11 kind=default -->
-
-**Why:** #29 came back with two results, and the second one has been
-misread. The locked-screen question passed. The other observation was that the voice
-was "much worse than the original test" — the original being the Kokoro fixture. That
-was taken as evidence about on-device TTS. It was not: `ForayTtsPlugi
-
-**Steps:**
-1. On the iPhone, open **Settings → Accessibility → Spoken Content → Voices → English**.
-2. Pick a voice and tap the **download arrow** beside it. Any Enhanced or Premium voice
-3. Write down the exact names of every voice that now shows as downloaded. That is the
-4. Open **4a**, tap the menu, and choose **Narration voice**. Find the voice you
-5. **Report:** does it sound meaningfully better than what you heard on 2026-09-05?
-
-**Worked if:** there is a written note saying which voice was downloaded and whether the
-narration sounded better with it. Both halves are needed — "sounds better" without the
-voice name cannot be reproduced, and th
 
 ## #34 🟡 [DECIDE] Type the new App Store Connect listing name into Apple's dashboard
 <!-- ha filed=2026-09-11 kind=default -->
@@ -327,46 +270,6 @@ lists this WARN on a re-run of Advisors → Security.
 
 ---
 
-## #31 🟡 [DECIDE] Before phase 2 is scheduled: build the four App Store Guideline 1.2 UGC-moderation requirements
-<!-- ha filed=2026-09-11 kind=default -->
-
-**Why:** `docs/curation/generation-architecture.md` §1.3 already says this in
-the engineering docs: *"The moment a stranger's prompt produces content other users can
-hear, 4a hosts user-generated content and App Store Guideline 1.2 applies: content
-filtering, a mechanism to report objectionable content, a wa
-
-**Steps:**
-1. Read docs/curation/generation-architecture.md §1.3: phase 2 is the moment any user's prompt (not just Wyatt/Joey's) produces a Foray other users can hear.
-2. The four required App Store Guideline 1.2 pieces, none of which exist yet: (1) content filtering on generated Forays.
-3. (2) a mechanism for a user to report objectionable content.
-4. (3) a way to block abusive users.
-5. (4) published developer contact information in the app/store listing.
-6. Decide who builds each of the four, and file/update a kanban card scoping them before phase 2 is scheduled on the roadmap.
-7. Reply with the ruling (e.g. 'build all four before phase 2 starts', or a different sequencing) so this item can close.
-
-**Worked if:** (not stated in the legacy item -- needs a real Worked-if)
-
-## #28 🟡 [DECIDE] Run the new AMD/Vulkan transcription path on your actual RX 6700 XT and report the numbers
-<!-- ha filed=2026-09-11 kind=default -->
-
-**Why:** `tools/transcribe` §3 only ever worked for NVIDIA cards
-— CUDA is NVIDIA-proprietary, and `faster-whisper`/`ctranslate2` (the whole
-CPU/CUDA stack) has no AMD support at all, not even a slow one. Your RX 6700
-XT could not use the GPU path that existed before this change; it would
-either error outrig
-
-**Steps:**
-1. Follow `tools/transcribe/README.md` §3b exactly — download a
-2. **Confirm the GPU actually engaged.** The run's console output should
-3. Paste the JSON line the script prints at the end (starts with
-4. If it errors, paste the exact error — most likely failure modes are (a)
-
-**Worked if:** you have a real `realtime_multiple` number for your RX 6700
-XT on at least one model size, and the Vulkan device line confirms the GPU
-(not the CPU) produced it.
-
----
-
 ## #26 🟡 [DECIDE] Publish the Play Store listing from `docs/store/play/`
 <!-- ha filed=2026-09-11 kind=default -->
 
@@ -389,71 +292,6 @@ click-t
 warnings on Main store listing or App content, and `4a` resolves in a Play search
 or on its own store URL.
 
-## #24 🟡 [DECIDE] Amend ADR-0008: a ranged GET can be lied to as well, and 5,461 transcripts rest on that
-<!-- ha filed=2026-09-11 kind=default -->
-
-**Why:** ADR-0008 §"What is actually measured, and how" says, in as
-many words: *"**HEAD requests lie** on ad-inserting hosts: they return the
-ad-free master's `Content-Length` while a real GET delivers the assembled file.
-The first version of this scan used HEAD, reported 18 of 18 shows byte-stable,
-and was
-
-**Steps:**
-1. **Does ADR-0008 get amended, and by whom?** `docs/adr/` is a governed path, so
-2. **What do we spend to settle the other four flightcast shows?** ~~Six~~
-3. **Do we now distrust the ranged GET everywhere, or only where it has been
-4. **Around the House with Eric G carries 313 s of undeclared audio, and
-
-**Worked if:** (not stated in the legacy item -- needs a real Worked-if)
-
-## #22 🟡 [DECIDE] Rule on the alcohol Foray's product mode, and on three narration rules that collide
-<!-- ha filed=2026-09-11 kind=keyword -->
-
-**Why:** (not stated in the legacy item -- needs a real Why)
-
-**Steps:**
-1. Read docs/curation/alcohol-forms-coverage.md §1: rule whether SYSK-register general-interest shows count as usable tape for this Foray.
-2. If OUT: the report becomes 1 strong / 4 thin / 58 empty. If IN as thin: it stays 1 strong / 15 thin / 47 empty. State which.
-3. Read docs/curation/narration-craft.md §2d (Carry-by-default vs Carry-by-design) and §2e (merge rule for chained empty beats) -- these collide for this narration-heavy Foray.
-4. Rule: when a Carry-by-design beat (never droppable) sits in a chain that would exceed the 180s hard max, does it force an early split or absorb neighbors first.
-5. Write the ruling into docs/DECISIONS.md with a date, in its own PR carrying founder-approved (docs/DECISIONS.md is on DENIED_PREFIXES).
-
-**Worked if:** one of A, B or C is written into `docs/DECISIONS.md` with a date.
-That file is on `DENIED_PREFIXES`, so the entry needs a separate PR carrying the
-`founder-approved` label; it was deliberately not add
-
-## #20 🟡 [DECIDE] Revoke one leaked anonymous Supabase session, and delete one CI artifact
-<!-- ha filed=2026-09-11 kind=default -->
-
-**Why:** The `ios-shell-evidence` artifact of run
-
-**Steps:**
-1. In the Supabase dashboard for project **`qjdllvqdcgacvujhclny`**, open
-2. **Then** delete the artifact: open
-3. While you are in the dashboard, it is worth confirming that **anonymous sign-in
-
-**Worked if:** requesting a token refresh with that `refresh_token` returns an
-error rather than a new session, and the run page shows no `ios-shell-evidence`
-artifact.
-
----
-
-## #17 🟡 [DECIDE] Decide: does the app ship with data frozen at build time?
-<!-- ha filed=2026-09-11 kind=keyword -->
-
-**Why:** The app bundles `data/*.json` — the session, the discover pool, the taxonomy, the Foray running orders. That is what makes it work offline in a cell dead zone, which is the founding constraint. But **the bundle is a snapshot taken when the app was built, and nothing in the app refreshes it.** The we
-
-**Steps:**
-1. Read GitHub issue #40 (MP6: data freshness) -- design already written: bundle a snapshot, fetch fresh data/*.json on launch, cached-fresh -> bundled -> error precedence.
-2. Decide: does the first public store release ship with #40's fetch-refresh built (data updates without a store release), or ship frozen (bundle only, fast-follow later).
-3. If frozen for v1: confirm that's acceptable given the app's offline-first promise, and note the fast-follow timeline.
-4. If #40 is required before release: it needs the CSP connect-src widened to the Pages data origin (docs/mobile-shell.md §3) plus a kanban card.
-5. Reply with the ruling so this item and GitHub issue #40 can both be closed/marked DONE.
-
-**Worked if:** #40 says whether it gates the first public release, and the status below says DONE.
-
----
-
 ## #14 🟡 [DECIDE] Delete the empty anonymous accounts a client cannot delete itself
 <!-- ha filed=2026-09-11 kind=default -->
 
@@ -466,36 +304,6 @@ artifact.
 4. While in there: consider a **retention job** for anonymous accounts with no events at all (item 13, step 4, needs a number for the policy either way). The same sweep can collect shells from before thi
 
 **Worked if:** calling the RPC as an ordinary anonymous user removes that user from `auth.users` and returns success, and calling it cannot remove anybody else's (test it twice, with two different anonymous tokens).
-
-## #13 🟡 [DECIDE] Six facts only you can supply before the privacy policy can be published
-<!-- ha filed=2026-09-11 kind=default -->
-
-**Why:** `docs/legal/privacy-policy.md` and `docs/legal/data-safety.md` now exist and are written **from the code**, not from a template — the Data Safety and App Privacy forms can be filled in by copying verified answers. Everything derivable from the software is answered. What is left is six facts no agent
-
-**Steps:**
-1. **Legal entity name** to name as data controller. (`privacy-policy.md` §9.)
-2. **A privacy contact address.** Both stores require a working contact, and Play's Data Safety form requires a public privacy-policy URL. Nothing was invented.
-3. **The Supabase project's region / hosting jurisdiction**, and whether a data-processing agreement exists. Needed to say where data is stored, and required if EU users are in scope. (§3.)
-4. **Retention:** how long event rows are kept. Nothing in the code ever deletes one, and no retention job exists (ADR-0005 anticipated one).
-5. See the pre-migration item text at commit 275b35e7c023aea1b9b94f28b9f2596ea4502d0b (legacy HUMAN-ACTIONS.md, item #13).
-
-**Worked if:** `docs/legal/privacy-policy.md` contains no `TODO(founder)` markers, and the answers in `docs/legal/data-safety.md` can be pasted into both forms without a judgement call left in them.
-
----
-
-## #8 🟡 [DECIDE] Listen to Foray #2, and rule on one number the cut budget cost us
-<!-- ha filed=2026-09-11 kind=keyword -->
-
-**Why:** (not stated in the legacy item -- needs a real Why)
-
-**Steps:**
-1. **Listen to it end to end.** Play it at
-2. **Then rule on the cut budget.** The rolling cut budget (rule D1, "no more
-
-**Worked if:** you say one of exactly three things — "publish it", "publish it
-and raise N", or "here is what I heard that the rules missed".
-
----
 
 ## #1 🟡 [DECIDE] Make `path-policy` a required check on `main`
 <!-- ha filed=2026-09-11 kind=default -->

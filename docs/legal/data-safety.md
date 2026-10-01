@@ -244,19 +244,22 @@ drawn.
     to Play only in that a deletion control that fires accidentally is its own
     kind of data-loss complaint.
 - **Independent security review?** **No.** None has been done. Do not check it.
-- **Committed to Play Families policy?** > TODO(founder) — a listing decision.
-  The app is general-audience and collects no age (policy §6).
+- **Committed to Play Families policy?** **No** (founder ruling, 2026-09-30).
+  The app is general-audience, target audience 18+, and collects no age
+  (policy §6). Answer the IARC questionnaire truthfully (expect Teen); Apple
+  age rating is 12+.
 
 ## A8. Data deletion + policy URLs
 
 The **in-app** half of this is now built (see A7). The form additionally wants a
 **public URL** describing deletion, which is a hosting task, not a code one.
 
-> TODO(founder): the **privacy policy URL** and the **data-deletion URL** the form
-> requires. `privacy-policy.md` must be hosted somewhere public first — a path in
-> a GitHub repo is not an acceptable answer for a store listing. Its §7 is already
-> written as the deletion page: it describes the control, the order it works in,
-> and what it cannot reach.
+**Privacy policy URL:** https://jwlabs.ai/4a/privacy/
+**Data-deletion URL:** https://jwlabs.ai/4a/privacy/#7 (that page's section 7
+anchor; no separate page — founder ruling, 2026-09-30). `privacy-policy.md` §7
+is written as the deletion page: it describes the control, the order it works
+in, and what it cannot reach. The page must be republished from this file
+before the form is submitted.
 
 ---
 
@@ -329,10 +332,12 @@ Applies to **User ID**, **Product Interaction** and **Other User Content**.
   `app.js:trySyncEvents()` for the event insert, `app.js:sbDeleteOwnRows()` for
   the deletion — and `package.json` declares no dependencies and no build
   step). So no SDK manifest is inherited **today**.
-  - > TODO(founder): if the native shell ever adds the Supabase Swift SDK or any
-    Capacitor plugin, each needs its own manifest entry. `docs/marketing/05-legal-risk-memo.md`
-    flagged a Supabase-SDK manifest as a checklist item; that item is **not
-    applicable to the current code** and would only become applicable then.
+  - The native shell does bundle Capacitor plugins. Whether Xcode's aggregated
+    `PrivacyInfo.xcprivacy` covers all of them is tracked in GitHub issue #948.
+    If the native shell ever adds the Supabase Swift SDK, it needs its own
+    manifest entry; `docs/marketing/05-legal-risk-memo.md` flagged a
+    Supabase-SDK manifest as a checklist item, which is **not applicable to
+    the current code**.
   - **Required Reason APIs:** the client uses none of the categories Apple
     requires a declared reason for (no file-timestamp, disk-space, active-keyboard
     or user-defaults access from native code). A Capacitor shell should be
@@ -375,7 +380,6 @@ Applies to **User ID**, **Product Interaction** and **Other User Content**.
     needs a service-role key. If a reviewer reads 5.1.1(v) as requiring the
     account record itself to go, the remaining work is server-side
     (`HUMAN-ACTIONS.md` #14), not client-side.
-  - > TODO(founder): confirm this reading, or just build the control.
 
 ---
 
