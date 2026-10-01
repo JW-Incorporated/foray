@@ -213,6 +213,38 @@ even when the answer is always a founder.
 > discovery for phase 2 and it belongs in `HUMAN-ACTIONS.md` the day phase 2 is scheduled — not the
 > day it ships.
 
+**Ruled 2026-09-30 (DECISIONS #31).** All four exist before any non-founder-prompted Foray is
+hearable by anyone but its prompter. Interim: founder-only prompting, and `hold` on catalogue Forays
+(D7/D9). Order:
+
+1. **Developer contact now.** It shares one address with the privacy contact, `help@jwlabs.ai`.
+2. **Output-side content filter** extending `backend/src/generation/safetyCheck.ts`, before any
+   non-founder prompt is accepted, even a private one.
+3. **Report + block as one card**, before the first *shared* non-founder Foray.
+
+A private-to-prompter Foray is not UGC and may ship first. Engineering builds all four; this is a
+phase-2 precondition, not scheduled work.
+
+#### Kanban cards (text, 2026-09-30)
+
+The repo keeps no file-based board; cards live in the external kanban and are referenced from
+`STATE.md` by id. Card text is therefore recorded here, next to the ruling it implements, to be
+pasted into the board.
+
+- **Card: UGC gate, step 1 (contact).** Publish `help@jwlabs.ai` as the developer and privacy
+  contact (support page, App Store listing, privacy policy). Done when the address resolves from
+  all three places.
+- **Card: UGC gate, step 2 (filter).** Extend `safetyCheck.ts` to check generated *output* (script
+  and Foray metadata), not only the prompt. Must land before any non-founder prompt, even private.
+  Done when a failing output blocks playback and is logged, with a test that breaks it.
+- **Card: UGC gate, step 3 (report + block).** One card: a report-content action and a block-user
+  action on every shared Foray. Must land before the first shared non-founder Foray. Done when both
+  work end to end and reach a human queue.
+- **Card: Foray #2 re-assembly (DECISIONS #8).** After Spark Phase 2 renders the bridges for
+  `capital-types-1`, re-assemble with the four held-back segments (FAM-3, YC-4, CALM-2, GR-4;
+  387 s). Run `node tools/foray/check-forays.mjs`; if D1 still fails at N = 8/6/5, revisit N,
+  otherwise keep it. First ear is the car drive, HA #128.
+
 ### 1.4 Playback starts before generation finishes.
 
 The listener presses play when Act 1 is complete. Acts 2..N are built while Act 1 plays. See §6 for

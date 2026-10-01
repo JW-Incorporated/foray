@@ -38,6 +38,9 @@ import {
   spokenLineErrors,
   inferredTier,
   numberTokens,
+  numericFactsCap,
+  forayModeOf,
+  FORAY_MODES,
   scriptSeconds,
   NARRATION_CHARS_PER_SEC,
 } from "./check-narration.mjs";
@@ -381,13 +384,56 @@ test("an item past the hard max fails, and past the soft max needs a recorded re
   failsWith(g, /past the 150 s soft max and needs needs_review/, "a soft-max item shipped without a reason");
 });
 
-/* Mutation: raise NUMERIC_FACTS_PER_ITEM_MAX to 99. The cap is §5d's and it
-   applies across the MERGED item, because the item is what a listener hears
-   without a break. */
-test("numeric facts are capped across the merged item, not the beat", () => {
+/* Mutation: in numericFactsCap, return a flat 3 (the pre-HA-#22 cap). Then the
+   "seven are allowed" half fails, because T2-A is 145.6 s and a density cap lets
+   it carry floor(145.6 / 20) = 7 spaced facts. The other half pins that it is
+   still a cap: mutate `>` to `>=`+99 or raise the cap and the eighth passes.
+   The cap applies across the MERGED item, because the item is what a listener
+   hears without a break. */
+test("numeric facts are capped by density across the merged item: one per 20 s, minimum three", () => {
   const f = base();
-  beat(f, "beat-06").numeric_facts.push("C6.12:a fourth figure");
-  failsWith(f, /T2-A: 4 numeric facts against §5d's cap of 3/, "a fourth spoken figure accepted");
+  const item = f.threads[0].items.find((i) => i.item_id === "T2-A");
+  assert.deepEqual(item.beats, ["beat-06", "beat-07"], "setup: T2-A is the merged pair");
+  const already = beat(f, "beat-06").numeric_facts.length + beat(f, "beat-07").numeric_facts.length;
+  assert.equal(already, 3, "setup: T2-A starts at the old cap");
+
+  for (let i = already; i < 7; i++) beat(f, "beat-06").numeric_facts.push(`C6.12:spaced figure ${i}`);
+  const errs = checkForay(f).errors.filter((e) => /numeric facts against/.test(e));
+  assert.deepEqual(errs, [], "a 145.6 s item was denied the seven facts the density rule allows");
+
+  beat(f, "beat-06").numeric_facts.push("C6.12:an eighth figure");
+  failsWith(f, /T2-A: 8 numeric facts against §5d's cap of 7 \(one per 20 s of item, minimum 3; this item is 145\.\d s\)/, "an eighth spoken figure accepted");
+});
+
+/* Mutation: drop the Math.max in numericFactsCap (return Math.floor(sec / 20)).
+   A 30 s Patch would then be allowed ONE fact, and T2-B at 115 s five. This is
+   the "minimum three" half of the ruling, asserted on the raw function because
+   no committed item is short enough to reach it. */
+test("numericFactsCap: one per 20 s, never fewer than three", () => {
+  assert.deepEqual([0, 10, 59.9, 60].map(numericFactsCap), [3, 3, 3, 3]);
+  assert.deepEqual([79.9, 80, 115.4, 145.6, 179.9].map(numericFactsCap), [3, 4, 5, 7, 8]);
+});
+
+/* Mutation: delete the N24 block, or make `cited` count claim_id occurrences
+   instead of DISTINCT quantitative claims. The first lets a sentence carry two
+   figures; the second fails the committed range sentences (beat-07: "between
+   sixty-three and seventy degrees" is one claim, one declared entry, ONE
+   numeric expression per HA #22 (4)). */
+test("a sentence carries at most one numeric fact, and a two-ended range is one", () => {
+  const f = base();
+  const range = sentence(f, "beat-07", (s) => /sixty-three and seventy/.test(s.text));
+  assert.deepEqual(range.claims, ["C7.5"], "setup: the range sentence rests on one claim");
+  clean(f, "the committed range sentences (one claim, one declared entry) must pass");
+
+  // Two DIFFERENT quantitative claims in one sentence is two numeric facts.
+  const g = base();
+  const second = structuredClone(claim(g, "beat-07", "C7.5"));
+  second.claim_id = "C7.99";
+  beat(g, "beat-07").claims.push(second);
+  beat(g, "beat-07").numeric_facts.push("C7.99:a second figure in the same breath");
+  sentence(g, "beat-07", (s) => /sixty-three and seventy/.test(s.text)).claims = ["C7.5", "C7.99"];
+  failsWith(g, /beat-07 sentence \d+: 2 numeric facts \(C7\.5, C7\.99\) against §5d's cap of 1 per sentence/, "two figures in one sentence accepted");
+  assert.equal(checkForay(g).errors.filter((e) => /per sentence/.test(e)).length, 1, "exactly one sentence is over");
 });
 
 /* Mutation: restore `quantitative` to a regex for the literal word
@@ -449,6 +495,41 @@ test("a thread may not hold more narration items than §2e allows", () => {
   const f = base();
   f.threads[0].items.push({ item_id: "T2-C", mode: "carry", beats: ["beat-09"], seam_sentences: [] });
   failsWith(f, /3 narration items against §2e's cap of 2/, "a third narration item accepted");
+});
+
+/* HA #22 (3). Mutations, each run: (a) set `capLifted` to false -> the Primer
+   case fails; (b) drop the `thread?.structure === "chain"` clause (always lift
+   in narration-led) -> the fan control fails; (c) make capLifted ignore `mode`
+   -> the Foray-mode control fails. The third item reuses beat-09, so the setup
+   also carries a placement error and a not-shorter item; the assertions look
+   only at the two rules under test. */
+test("narration-led lifts the consecutive cap for a chain thread; Foray mode and fan threads keep it", () => {
+  const withThird = (mode, structure) => {
+    const f = base();
+    if (mode !== undefined) f.arc.mode = mode;
+    f.threads[0].structure = structure;
+    f.threads[0].items.push({ item_id: "T2-C", mode: "carry", beats: ["beat-09"], seam_sentences: [] });
+    return checkForay(f).errors.filter((e) => /narration items against §2e|must be shorter than/.test(e));
+  };
+  assert.match(withThird(undefined, "chain").join("\n"), /3 narration items against §2e's cap of 2/, "Foray mode (default) lost its cap");
+  assert.match(withThird("foray", "chain").join("\n"), /3 narration items against §2e's cap of 2/, "explicit foray mode lost its cap");
+  assert.deepEqual(withThird("narration-led", "chain"), [], "Primer did not lift the cap for a chain");
+  assert.match(withThird("narration-led", "fan").join("\n"), /3 narration items against §2e's cap of 2/, "Primer lifted the cap for a fan");
+});
+
+/* Mutation: delete the mode check at the top of checkForay. */
+test("the arc's mode defaults to foray and an unknown mode is rejected", () => {
+  assert.equal(forayModeOf(base().arc), "foray");
+  assert.deepEqual([...FORAY_MODES], ["foray", "narration-led"]);
+  clean(base(), "no arc.mode must stay valid");
+  for (const ok of FORAY_MODES) {
+    const f = base();
+    f.arc.mode = ok;
+    clean(f, `mode ${ok} must be accepted`);
+  }
+  const f = base();
+  f.arc.mode = "primer";
+  failsWith(f, /arc: mode "primer" is not one of foray, narration-led/, "an unknown mode accepted");
 });
 
 /* Mutation: change the classification to include every Marker regardless of
