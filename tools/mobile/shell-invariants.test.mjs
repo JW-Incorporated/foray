@@ -5379,7 +5379,12 @@ test("A-65: no silence is rendered, the beat is BUFFERING, and the late-timer an
 
   const service = stripJavaComments(fs.readFileSync(path.join(audioDir, "ForayPlaybackService.java"), "utf8"));
   assert.doesNotMatch(service, /withSilenceNode|silenceNodeEnabled\s*[=(]\s*true/, "the service never turns the silence node on");
-  assert.match(service, /engine\.setLoadDeadlines\(loadDeadlinesMs\(\)\);/);
+  /* A-65 review: the deadlines are read off the config the main deck was built with, not copied from
+     ExoDeck's defaults (MUTATION: hand loadDeadlinesMs a fresh Config, or the DEFAULT_* constants). */
+  assert.match(service, /ExoDeck\.Config mainDeck = deckConfig\(\);\s*ExoDeck first = new ExoDeck\(built, mainDeck\);/);
+  assert.match(service, /engine\.setLoadDeadlines\(loadDeadlinesMs\(mainDeck\)\);/);
+  assert.match(service, /deadlines\.put\(c, deckConfig\.deadlineSec\(c\) \* 1000\)/);
+  assert.doesNotMatch(service, /DEFAULT_(?:LINE_)?LOAD_DEADLINE_SEC \* 1000/);
   const update = service.slice(service.indexOf("public ListenableFuture<Void> onUpdateNotificationAsync("));
   const body = update.slice(0, update.indexOf("\n    }"));
   assert.ok(body.indexOf("noteForegroundDecision(startInForegroundRequired);") > 0
