@@ -23,6 +23,7 @@ import ai.jwlabs.foura.engine.Vocabulary;
 import android.content.Context;
 import android.media.AudioManager;
 import androidx.annotation.OptIn;
+import androidx.media3.common.audio.AudioManagerCompat;
 import androidx.media3.common.util.UnstableApi;
 import androidx.test.core.app.ApplicationProvider;
 import java.util.ArrayList;
@@ -94,9 +95,15 @@ public class AuditionPreviewHostTest {
         throw new AssertionError("no click-cbr.mp3");
     }
 
-    private static ShadowAudioManager audio() {
+    /**
+     * The last focus request Media3 made. Media3 1.11 asks through its own AudioManager
+     * ({@code AudioManagerCompat.getAudioManager}, made on a background thread and cached by
+     * application context), so that one is read first, then the context's.
+     */
+    private static ShadowAudioManager.AudioFocusRequest lastFocusRequest() {
         Context context = ApplicationProvider.getApplicationContext();
-        return shadowOf(context.getSystemService(AudioManager.class));
+        ShadowAudioManager.AudioFocusRequest viaMedia3 = shadowOf(AudioManagerCompat.getAudioManager(context)).getLastAudioFocusRequest();
+        return viaMedia3 != null ? viaMedia3 : shadowOf(context.getSystemService(AudioManager.class)).getLastAudioFocusRequest();
     }
 
     /**
@@ -116,14 +123,14 @@ public class AuditionPreviewHostTest {
         })) {
             EngineAudio.configure(preview.player);
             Rig rig = new Rig(preview.deck);
-            assertNull("nothing asked for focus before the tap", audio().getLastAudioFocusRequest());
+            assertNull("nothing asked for focus before the tap", lastFocusRequest());
             // The host does not check the url (the contract does, at the bridge): a local file stands in for the CDN.
             ForayEngineHost.Verdict verdict = rig.audition(cbr().uri().toString());
             assertTrue(verdict.failures().toString(), verdict.ok());
             assertEquals("the tap's one activation", 1, rig.session.activations);
             preview.runUntil(() -> preview.player.isPlaying() || rig.spoken() != null);
             assertTrue("the preview plays (not a fallback): " + rig.rows(), preview.player.isPlaying());
-            ShadowAudioManager.AudioFocusRequest focus = audio().getLastAudioFocusRequest();
+            ShadowAudioManager.AudioFocusRequest focus = lastFocusRequest();
             assertNotNull("the preview's player asked for focus as it played", focus);
             assertEquals(AudioManager.AUDIOFOCUS_GAIN, focus.audioFocusRequest.getFocusGain());
             assertEquals("still one activation: the tap's covers the play", 1, rig.session.activations);
