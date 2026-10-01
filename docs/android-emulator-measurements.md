@@ -1022,3 +1022,44 @@ JVM parity 1778 passed, 0 pending):
     NE-39n renames it `where` on iOS; the JVM port of that rename is A-64's.
   - One `stop` row withheld `item`, a Foray item id with `#`, which is not a token. It is the same on iOS; A-67's
     stop-cause audit is where that is decided.
+
+## 17. A-62: prepare across narration seams, `foray-seams` with rendered lines
+
+Card A-62 mirrors iOS NE-45s on the Media3 deck pair. Warming follows the FILE, not the beat: a rendered line is
+prepared on the standby deck and handed over like a clip, and so is the clip after it. The line's own prefetch window
+opens from its duration (it has no out-point). Every seam writes one `seam` row naming its kind and whether the
+standby had the item.
+
+**The scenario.** The native `foray-seams` Foray (A-40's eight 8 s click-track segments) now carries the three
+rendered `a05/` lines (5, 6 and 7 s, AAC). It has ten seams: four clip->clip, three clip->line and three
+line->clip. A line has no out-point, so its seam opens at the core's first row after the deck's `ended`
+(`beat begin`, `interlude started|skipped`, `prepare promote`), or at the player's pause, whichever comes first.
+Media3 reports the end before the is-playing change. Run 36796964815 opened at the pause and so counted the jingle
+after each line as 3 s of silence.
+
+**Gated:** p95 silence ≤ 1 s (the A-40 bar; a jingle's span is sound), every kind crossed as often as the Foray has
+it, and every seam with a line in it `prepare=hit`.
+
+**Run 36799524357** (head `ad3746e6`, native job 110170503663), screen off, one process:
+
+| Seam kind | n | Silence p50 | Silence p95 | prepare |
+|---|---|---|---|---|
+| clip->line | 3 | 7 ms | 9 ms | hit 3 |
+| line->clip | 3 | 5 ms | 8 ms | hit 3 |
+| clip->clip | 4 | 10 ms | 507 ms | hit 3, none 1 |
+| all | 10 | | 507 ms (max 507) | |
+
+- The 507 ms seam is the same-source seek (items 5 to 6): no warm (`prefetch decision=same-episode`), the 0.5 s beat
+  and a reuse.
+- Six seams carried the jingle (each line->clip, and the cross-source clip->clip seams). The raw gaps, with the
+  jingle in them, are p95 3095 ms.
+- Each line was prepared in the clip window before it (`prefetch ... class=line`, ready in 70-80 ms), and the clip
+  after each line was prepared at the line's first play (`class=clip`). No `prefetch` row said `reuse=true` here:
+  the clip after each line comes from another source.
+- `engine-report.mjs` over `f-foray-engine-rows.txt`: `seam-kinds` reads clip->clip 4 (hit 3, none 1), clip->line 3
+  (hit 3) and line->clip 3 (hit 3), `incomplete` only because the saved rows start mid-ring. `P13-line` passes (cold
+  time-to-ready p95 85 ms) and `narration-fallback` passes (3 rendered-line loads, 0 fallbacks).
+
+**Robolectric** (android-build run 36799524361): `NarrationSeamTest` runs the real JVM core through `ForayEngineHost`
+over a `DeckPair` of two ExoDecks on local files: clip, an 8 s rendered WAV line, clip. Two handovers, one cold attach
+(the first clip's), both seam rows `prepare=hit`, never two players sounding.

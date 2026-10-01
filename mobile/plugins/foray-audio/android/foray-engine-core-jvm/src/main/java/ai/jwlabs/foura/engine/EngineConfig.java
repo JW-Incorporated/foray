@@ -23,7 +23,8 @@ import java.util.Objects;
  *   <li>{@code seamGapSec}: {@code SEAM_GAP_SEC} (0.5 s), passed straight through;
  *       {@link SeamGap} owns what a nonsense length means (no beat).</li>
  *   <li>{@code deckPairEnabled}: the core decides nothing on it; the host reads it to choose
- *       which deck it builds (the pair opens the prefetch window, a single deck never does).</li>
+ *       which deck it builds (the pair opens the prefetch window, a single deck never does; the
+ *       core also prepares at a spoken line's start, A-62, which a single deck ignores).</li>
  *   <li>{@code narrationFollowsListenerRate}: OQ-3 ("1x for now"): OFF, a spoken line is uttered
  *       at {@code NARRATION_RATE} whatever the listener's speed.</li>
  *   <li>{@code narrationPulse}: a surface listens to the narration pulse (the app always does;

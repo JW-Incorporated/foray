@@ -935,6 +935,16 @@ A-61, A-62, A-64, A-66 (+ NE-39j) ─ A-63 ─ A-67 ─ A-68 ─ A-69 (gated)
   - Robolectric: clip → rendered line → clip has no cold load on the second clip.
   - A-05 (f) in native mode: p95 seam ≤ 1 s with the screen off (the A-40 bar), split by seam kind, with the run id.
 - **Device check:** A-67's script, rendered-Foray block.
+- **Status (2026-10-01): done in its PR (#927). The evidence is in `STATE.md` (A-62 entry) and
+  `docs/android-emulator-measurements.md` §17.**
+  - **The iOS reference was code, not plan text.** NE-45s (#902) and the M3 review's "a whole episode is never
+    prepared" (94b01a59) are on `engine/m3`; the JVM port follows them.
+  - **The books.** `prepare-narration` runs on the JVM, 23 of 23, and nothing is owed (`families` to `runs`).
+  - **Robolectric.** `NarrationSeamTest` runs the real core over the deck pair of two real ExoDecks: clip, rendered
+    line, clip. Both seams are handovers, and the second clip has no cold load.
+  - **The emulator.** The native `foray-seams` Foray now has three rendered lines. Run 36799524357 measured p95
+    507 ms of silence over 10 seams, every seam with a line in it `prepare=hit`.
+  - **Not executed:** the device check (D-A3).
 
 #### A-63 · The manager remainder, de-dup, and an empty JVM book (mirrors NE-39s) — **L**
 - **Depends on:** A-61, A-62, A-64, A-66, NE-39j. Every M3 family must be booked before the book can empty.

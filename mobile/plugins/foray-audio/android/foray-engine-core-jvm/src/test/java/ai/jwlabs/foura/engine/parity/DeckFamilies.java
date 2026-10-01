@@ -135,7 +135,12 @@ final class DeckFamilies {
 
     // ================================================================ deck
 
-    static FamilyRunner deck() {
+    /**
+     * deck-policy.js's calls the {@code deck} family's module files make, and (A-62) the
+     * {@code prepare-narration} family's {@code policy.json}: {@code warmsAcross} and the duration
+     * window, through the same readers (the Swift {@code DeckPairFamily.calls}).
+     */
+    static Map<String, Call> deckCalls() {
         Map<String, Call> calls = new LinkedHashMap<>();
         // deck-readings.json: the single deck's guards.
         calls.put("deckRate", args -> ret(Json.num(DeckPolicy.deckRate(arg(args, 0).asNumber()))));
@@ -160,7 +165,12 @@ final class DeckFamilies {
         calls.put("playRefusalAction", DeckFamilies::playRefusalAction);
         calls.put("unexplainedPauseAction", DeckFamilies::unexplainedPauseAction);
         calls.put("prefetchWindowOpens", DeckFamilies::prefetchWindowOpens);
-        FamilyRunner.Pure pure = new FamilyRunner.Pure("deck", MODULE, Map.of(), calls);
+        calls.put("warmsAcross", DeckFamilies::warmsAcross);
+        return calls;
+    }
+
+    static FamilyRunner deck() {
+        FamilyRunner.Pure pure = new FamilyRunner.Pure("deck", MODULE, Map.of(), deckCalls());
         return new FamilyRunner() {
             @Override
             public String family() {
@@ -258,7 +268,12 @@ final class DeckFamilies {
         return ret(Json.str(answer.token));
     }
 
-    /** {@code prefetchWindowOpens({available, outPointSec, armed, paused, atSec, rate, leadSec, alreadyOpened = false})}. */
+    /**
+     * {@code prefetchWindowOpens({available, outPointSec, armed, paused, atSec, rate, leadSec, alreadyOpened = false,
+     * durationSec = null})}. {@code durationSec} is read as JavaScript's {@code Number.isFinite(d) && d > 0} reads
+     * it, through {@link DeckPolicy#windowBoundarySec}: a number or none (a value of another type is not
+     * representable).
+     */
     private static Outcome prefetchWindowOpens(List<Json> args) {
         Json s = param(args);
         if (s == null) return TYPE_ERROR;
@@ -266,6 +281,24 @@ final class DeckFamilies {
                 JsArgs.optionalNumber(at(s, "outPointSec"), "prefetchWindowOpens's outPointSec"),
                 JsArgs.truthy(at(s, "armed")), JsArgs.truthy(at(s, "paused")),
                 number(at(s, "atSec"), "prefetchWindowOpens's atSec"), at(s, "rate").asNumber(),
-                number(at(s, "leadSec"), "prefetchWindowOpens's leadSec"), JsArgs.truthy(at(s, "alreadyOpened")))));
+                number(at(s, "leadSec"), "prefetchWindowOpens's leadSec"), JsArgs.truthy(at(s, "alreadyOpened")),
+                JsArgs.optionalNumber(at(s, "durationSec"), "prefetchWindowOpens's durationSec"))));
+    }
+
+    /**
+     * {@code warmsAcross({from = null, to = null} = {})} (NE-45j; card A-62): {@code !from || !to} is truthiness,
+     * then {@code typeof to.audio_url === "string" && to.audio_url.length > 0}, then {@code to.kind === TTS ||
+     * itemBounds({startSec: to.start_sec, endSec: to.end_sec}) != null} (a whole episode is never prepared).
+     */
+    private static Outcome warmsAcross(List<Json> args) {
+        Json s = JsArgs.objectParam(arg(args, 0), true);
+        if (s == null) return TYPE_ERROR;
+        Json to = at(s, "to");
+        boolean hasTo = JsArgs.truthy(to);
+        ai.jwlabs.foura.engine.ItemBounds bounds = hasTo
+                ? ai.jwlabs.foura.engine.ItemBounds.make(at(to, "start_sec").asNumber(), at(to, "end_sec").asNumber()) : null;
+        return ret(Json.bool(DeckPolicy.warmsAcross(JsArgs.truthy(at(s, "from")), hasTo,
+                hasTo ? at(to, "audio_url").asString() : null,
+                hasTo && "tts".equals(at(to, "kind").asString()), bounds != null)));
     }
 }

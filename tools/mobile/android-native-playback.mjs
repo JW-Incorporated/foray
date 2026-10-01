@@ -135,7 +135,15 @@
  *     bundled asset), which is sound, not silence: the gated number is the
  *     SILENCE (the gap less the jingle's span, from its `interlude
  *     kind=started` row to its end row), the raw gap is recorded beside it,
- *     and the jingle must have sounded on at least one seam.
+ *     and the jingle must have sounded on at least one seam. Since A-62 (NE-45s
+ *     on the Media3 deck) the Foray carries three RENDERED narration lines (the
+ *     job's bundled `a05/` tone files), so its ten seams are of three kinds,
+ *     clip->clip, clip->line and line->clip, read from the packed `seam` row's
+ *     `from`/`to`/`prepare`. A line has no out-point: its seam opens at its
+ *     natural end (the line's `time-control paused`). Gated besides: every kind
+ *     crossed as often as the Foray has it, and every seam with a line in it
+ *     `prepare=hit` (the line, and the clip after it, prepared on the standby
+ *     deck: no cold load). The numbers are recorded split by kind.
  *   - (k) `airplane`: two halves, both gated. The ENGINE's: in airplane mode an
  *     episode whose file cannot load is stopped by the engine (a `stop` row with
  *     cause `error` or `load-deadline`) within the deck's load deadline plus
@@ -681,28 +689,64 @@ function foraySegment(clip, i, startSec, endSec) {
   });
 }
 
-/** A-40 (f): eight 8 s segments over the three click tracks. Six seams cross sources (the deck
+/** A-41 (k): where the job puts the rendered-narration fixtures in the APK (the JS leg's `a05/`),
+ *  as the deck reads an asset. */
+export const NARRATION_ASSET_BASE = "asset:///public/a05/";
+
+/** A-62 (f): one RENDERED narration line of the seam Foray, in the shape the page's build gives the
+ *  engine: a `tts` item with its bundled file, its script and its length. */
+function forayLine(i, line) {
+  return Object.freeze({
+    id: `a40-foray#${i}`, kind: "tts", audio_url: `${NARRATION_ASSET_BASE}${line.file}`, title: "", script: line.script,
+    duration_sec: line.sec, duration_source: "rendered",
+  });
+}
+
+/** A-40 (f): eight 8 s segments over the three click tracks. Six clip seams cross sources (the deck
  *  pair's handover: the standby deck prerolls the next segment while this one plays), one stays
- *  inside one source (item 3 to 4: no warm, the playing deck seeks in its held source), and one
- *  lands on the VBR track with no seek table. About 70 s. */
+ *  inside one source (items 5 to 6: no warm, the playing deck seeks in its held source), and one
+ *  lands on the VBR track with no seek table. A-62: three RENDERED lines (5, 6 and 7 s) sit between
+ *  clips, so the ten seams are four clip->clip, three clip->line and three line->clip; each line,
+ *  and each clip after one, is prepared on the standby deck (NE-45s). About 90 s. */
 export const FORAY_SEAMS_FORAY = Object.freeze({
   forayId: "a40-foray",
   title: "A-40 Foray seams",
   items: Object.freeze([
     foraySegment(CLIPS[0], 0, 0, 8),
-    foraySegment(CLIPS[1], 1, 0, 8),
-    foraySegment(CLIPS[2], 2, 0, 8),
-    foraySegment(CLIPS[0], 3, 20, 28),
-    foraySegment(CLIPS[0], 4, 40, 48),
-    foraySegment(CLIPS[1], 5, 30, 38),
-    foraySegment(CLIPS[2], 6, 20, 28),
-    foraySegment(CLIPS[0], 7, 60, 68),
+    forayLine(1, NARRATION_LINES[0]),
+    foraySegment(CLIPS[1], 2, 0, 8),
+    foraySegment(CLIPS[2], 3, 0, 8),
+    forayLine(4, NARRATION_LINES[1]),
+    foraySegment(CLIPS[0], 5, 20, 28),
+    foraySegment(CLIPS[0], 6, 40, 48),
+    foraySegment(CLIPS[1], 7, 30, 38),
+    forayLine(8, NARRATION_LINES[2]),
+    foraySegment(CLIPS[2], 9, 20, 28),
+    foraySegment(CLIPS[0], 10, 60, 68),
   ]),
 });
 
-/** A-41 (k): where the job puts the rendered-narration fixtures in the APK (the JS leg's `a05/`),
- *  as the deck reads an asset. */
-export const NARRATION_ASSET_BASE = "asset:///public/a05/";
+/** A-62 (f): the seam kind between two Foray items, as the core's `seam` row names it. */
+export function seamKindOf(from, to) {
+  const k = (it) => (it?.kind === "tts" ? "line" : "clip");
+  return `${k(from)}->${k(to)}`;
+}
+
+/** A-62 (f): how many seams of each kind a Foray has. */
+export function seamKindCounts(items) {
+  const counts = {};
+  for (let i = 1; i < (items ?? []).length; i += 1) {
+    const kind = seamKindOf(items[i - 1], items[i]);
+    counts[kind] = (counts[kind] ?? 0) + 1;
+  }
+  return counts;
+}
+
+/** An item's length on the Foray clock: a slice's span, or a line's duration. */
+export function itemSpanSec(it) {
+  if (typeof it?.end_sec === "number") return it.end_sec - (it.start_sec ?? 0);
+  return typeof it?.duration_sec === "number" ? it.duration_sec : 0;
+}
 
 /** A-41 (k): one rendered line of a Foray, in the shape the page's build gives the engine: a `tts`
  *  item with its file and its script (so a file that fails can be spoken instead). */
@@ -898,21 +942,39 @@ export function episodeSeamStats(seams) {
  * load (the incoming segment, on the deck the pair handed the role to, or the same deck's
  * same-source seek). The engine's own packed `seam` row, written between the two, is kept beside
  * it: the gap the core measured (out-point to the play it commanded) and whether the standby deck
- * had the segment (`prepared`). A seam with a command between is `commanded`. Pure.
+ * had the segment (`prepared`). A seam with a command between is `commanded`.
+ *
+ * A-62: a RENDERED line has no out-point. Its seam opens at its natural end, when no seam is open
+ * already, at the FIRST row that says the line is over: the core's answer to the deck's `ended`
+ * (`interlude started|skipped`, `beat begin`, the pair's `prepare promote`), or the playing load's
+ * `time-control paused` (a stall is `waiting`, and a press is a command). The core's rows come
+ * first: Media3 reports the end before the player's is-playing change (run 36796964815, where a
+ * seam opened at the pause missed the jingle that had already started). The seam row's `from`,
+ * `to` and `prepare` (NE-45s) name the seam's kind (`clip->line`, ...) and whether the standby
+ * deck had the item. Pure.
  */
 export function foraySeams(rows) {
   const seams = [];
   let open = null;
+  let playingToken = null;
+  const opened = (r, token, overshootMs) => ({
+    fromToken: token, endAt: r.at, overshootMs, seamRow: null, commanded: false,
+    jingleAt: null, jingleEndAt: null, jingleEnd: null,
+  });
   for (const r of rows ?? []) {
     const j = r.json ?? {};
     if (commanded(r) && open) open.commanded = true;
     if (r.kind === "outPoint" && j.kind === "stop") {
-      open = {
-        fromToken: j.token, endAt: r.at, overshootMs: typeof j.overshootMs === "number" ? j.overshootMs : null, seamRow: null, commanded: false,
-        jingleAt: null, jingleEndAt: null, jingleEnd: null,
-      };
+      open = opened(r, j.token, typeof j.overshootMs === "number" ? j.overshootMs : null);
       continue;
     }
+    if (r.kind === "deck" && j.kind === "time-control" && j.status === "paused" && !open && playingToken != null && j.token === playingToken) {
+      open = opened(r, j.token, null);
+      continue;
+    }
+    const endsTheItem = (r.kind === "interlude" && (j.kind === "started" || j.kind === "skipped"))
+      || (r.kind === "beat" && j.kind === "begin") || (r.kind === "prepare" && j.kind === "promote");
+    if (endsTheItem && !open && playingToken != null) open = opened(r, playingToken, null);
     /* A-41: the jingle the seam carried, from the core's `interlude kind=started` to its end
        (`ended`, the host's `ceiling`, or a `cut`). Sound, not silence. */
     if (r.kind === "interlude" && open) {
@@ -928,9 +990,12 @@ export function foraySeams(rows) {
         observedGapMs: typeof j.observedGapMs === "number" ? j.observedGapMs : null,
         askedGapMs: typeof j.askedGapMs === "number" ? j.askedGapMs : null,
         prepared: j.prepared === true, stages: Array.isArray(j.stages) ? j.stages : [],
+        from: typeof j.from === "string" ? j.from : null, to: typeof j.to === "string" ? j.to : null,
+        prepare: typeof j.prepare === "string" ? j.prepare : null,
       };
       continue;
     }
+    if (r.kind === "deck" && j.kind === "time-control" && j.status === "playing") playingToken = j.token;
     if (r.kind === "deck" && j.kind === "time-control" && j.status === "playing" && open && j.token !== open.fromToken) {
       const gapMs = r.at - open.endAt;
       const jingleMs = open.jingleAt != null ? (open.jingleEndAt ?? r.at) - open.jingleAt : null;
@@ -940,11 +1005,20 @@ export function foraySeams(rows) {
         silenceMs: jingleMs != null ? Math.max(0, gapMs - jingleMs) : gapMs,
         observedGapMs: open.seamRow?.observedGapMs ?? null, askedGapMs: open.seamRow?.askedGapMs ?? null,
         prepared: open.seamRow?.prepared ?? null, stages: open.seamRow?.stages ?? [], commanded: open.commanded, at: r.iso,
+        kind: open.seamRow?.from && open.seamRow?.to ? `${open.seamRow.from}->${open.seamRow.to}` : null,
+        prepare: open.seamRow?.prepare ?? null,
       });
       open = null;
     }
   }
   return seams;
+}
+
+/** `Object.groupBy`, which the job's Node may predate. */
+function groupBy(list, keyOf) {
+  const out = {};
+  for (const x of list) (out[keyOf(x)] ??= []).push(x);
+  return out;
 }
 
 /** A-40 (f): the numbers, over the seams no command touched: all, and prepared (handed over) vs not.
@@ -965,6 +1039,11 @@ export function foraySeamStats(seams) {
     gap: stat(clean, (s) => s.gapMs),
     jingles: clean.filter((s) => s.jingle === true).length,
     jingle: stat(clean.filter((s) => s.jingle === true), (s) => s.jingleMs),
+    /* A-62: split by seam kind (the seam row's from->to), each with its prepare verdicts. */
+    byKind: Object.fromEntries(Object.entries(groupBy(clean, (s) => s.kind ?? "unknown")).map(([k, list]) => [k, {
+      ...stat(list),
+      prepare: Object.fromEntries(Object.entries(groupBy(list, (s) => s.prepare ?? "unknown")).map(([p, l]) => [p, l.length])),
+    }])),
   };
 }
 
@@ -987,6 +1066,16 @@ export function verdictForaySeams({ drive, wake, pidBefore, pidAfter, last, seam
   if (!pair || !(pair.swaps > 0)) failures.push(`the deck pair handed over no seam (${JSON.stringify(pair)})`);
   if (last?.interlude?.available !== true) failures.push(`the engine has no jingle player (interlude ${JSON.stringify(last?.interlude ?? null)}): the asset did not ship or is not the pinned one`);
   else if (!(stats.jingles > 0)) failures.push("no seam carried the jingle (no `interlude kind=started` row inside a seam)");
+  /* A-62: every kind the Foray has was crossed as often as it has it (the seam rows name it), and
+     no seam with a rendered line in it loaded cold. */
+  for (const [kind, want] of Object.entries(seamKindCounts(foray.items))) {
+    const got = stats.byKind[kind]?.count ?? 0;
+    if (got < want) failures.push(`${got} of the Foray's ${want} ${kind} seams were read with their kind (the seam row's from/to)`);
+  }
+  const cold = (seams ?? []).filter((s) => !s.commanded && typeof s.kind === "string" && s.kind.includes("line") && s.prepare !== "hit");
+  if (cold.length) {
+    failures.push(`${cold.length} seam(s) with a rendered line in them were not prepared (prepare=${cold.map((s) => `${s.kind}:${s.prepare}`).join(",")})`);
+  }
   return { ok: failures.length === 0, failures, recorded: stats };
 }
 
@@ -1413,7 +1502,7 @@ export const SCENARIOS = Object.freeze([
   ["transport", "(c) native: media_session dispatch + KEYCODE_MEDIA_*"],
   ["notification", "(d) native: system controls: title, show, 15/30, tap pause"],
   ["seams", "(f) native: hidden episode seams, screen off (recorded; gated on crossing every seam)"],
-  ["foray-seams", "(f) native Foray (A-40): hidden Foray seams on the deck pair, screen off, p95 <= 1 s"],
+  ["foray-seams", "(f) native Foray (A-40, A-62): hidden clip and rendered-line seams on the deck pair, screen off, p95 <= 1 s"],
   ["doze", "(g) native: Doze, unplugged, rare bucket, 5 min"],
   ["focus", "(h) native: another app takes audio focus; pause, and resume after a transient loss"],
   ["call", "(i) native: a phone call; pause, and resume after it"],
@@ -2205,7 +2294,7 @@ async function foraySeamsScenario(ctx) {
   await sleep(2000);
   const wake = wakefulness(dumpTo(ctx, "f-foray-dumpsys-power.txt", "dumpsys", "power"));
   const items = FORAY_SEAMS_FORAY.items;
-  const lengthMs = items.reduce((sum, it) => sum + (it.end_sec - it.start_sec) * 1000, 0);
+  const lengthMs = items.reduce((sum, it) => sum + itemSpanSec(it) * 1000, 0);
   const deadline = Date.now() + lengthMs + NATIVE_GATES.seamsSlackMs;
   const curve = [];
   let last = engine(ctx);
