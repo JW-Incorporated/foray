@@ -330,27 +330,6 @@ filtering, a mechanism to report objectionable content, a wa
 
 **Worked if:** (not stated in the legacy item -- needs a real Worked-if)
 
-## #28 🟡 [DECIDE] Run the new AMD/Vulkan transcription path on your actual RX 6700 XT and report the numbers
-<!-- ha filed=2026-09-11 kind=default -->
-
-**Why:** `tools/transcribe` §3 only ever worked for NVIDIA cards
-— CUDA is NVIDIA-proprietary, and `faster-whisper`/`ctranslate2` (the whole
-CPU/CUDA stack) has no AMD support at all, not even a slow one. Your RX 6700
-XT could not use the GPU path that existed before this change; it would
-either error outrig
-
-**Steps:**
-1. Follow `tools/transcribe/README.md` §3b exactly — download a
-2. **Confirm the GPU actually engaged.** The run's console output should
-3. Paste the JSON line the script prints at the end (starts with
-4. If it errors, paste the exact error — most likely failure modes are (a)
-
-**Worked if:** you have a real `realtime_multiple` number for your RX 6700
-XT on at least one model size, and the Vulkan device line confirms the GPU
-(not the CPU) produced it.
-
----
-
 ## #26 🟡 [DECIDE] Publish the Play Store listing from `docs/store/play/`
 <!-- ha filed=2026-09-11 kind=default -->
 
@@ -405,22 +384,6 @@ and was
 **Worked if:** one of A, B or C is written into `docs/DECISIONS.md` with a date.
 That file is on `DENIED_PREFIXES`, so the entry needs a separate PR carrying the
 `founder-approved` label; it was deliberately not add
-
-## #20 🟡 [DECIDE] Revoke one leaked anonymous Supabase session, and delete one CI artifact
-<!-- ha filed=2026-09-11 kind=default -->
-
-**Why:** The `ios-shell-evidence` artifact of run
-
-**Steps:**
-1. In the Supabase dashboard for project **`qjdllvqdcgacvujhclny`**, open
-2. **Then** delete the artifact: open
-3. While you are in the dashboard, it is worth confirming that **anonymous sign-in
-
-**Worked if:** requesting a token refresh with that `refresh_token` returns an
-error rather than a new session, and the run page shows no `ios-shell-evidence`
-artifact.
-
----
 
 ## #17 🟡 [DECIDE] Decide: does the app ship with data frozen at build time?
 <!-- ha filed=2026-09-11 kind=keyword -->
