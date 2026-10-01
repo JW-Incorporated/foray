@@ -211,6 +211,55 @@ public class EnginePlayerTest {
         p.release();
     }
 
+    /** A Foray between two clips (A-65): the core's view says playing (the beat reads as playing), and the host marks the beat. */
+    static ForayEngineHost.Surface forayBeat(boolean silentSeam) {
+        MediaMapping.CommandSnapshot snap = new MediaMapping.CommandSnapshot(MediaMapping.CommandSnapshot.Mode.FORAY,
+                false, true, true, false);
+        MediaMapping.View v = new MediaMapping.View();
+        v.item = new MediaMapping.Item("episode", "A clip", "A show");
+        v.forayTitle = "A Foray";
+        v.durationSec = 900.0;
+        v.positionSec = 120.0;
+        v.playbackRate = 1.0;
+        v.playing = false;
+        v.inSeamGap = true;
+        v.foray = true;
+        return new ForayEngineHost.Surface(MediaMapping.commandAvailability(snap, MediaMapping.SeekSteps.DEFAULT),
+                MediaMapping.sessionView(v), false, 1, 1.0, silentSeam);
+    }
+
+    /**
+     * Card A-65: the seam beat is BUFFERING with play-when-ready on, the state Media3 keeps the
+     * service in the foreground for and the one that stops the lock screen's clock (it would run on
+     * through the beat as READY). A paused facade is the one that lets the foreground go. TO SEE IT
+     * FAIL: drop {@code silentSeam} from the facade's stall test (the beat reads READY and the clock
+     * runs), or report the beat paused.
+     */
+    @Test
+    public void theSeamBeatIsBufferingWithPlayWhenReadySoTheServiceStaysInTheForeground() {
+        FakeEngine e = new FakeEngine();
+        e.surface = forayBeat(true);
+        EnginePlayer p = facade(e);
+        assertEquals(MediaMapping.PLAYING, e.surface.view().playbackState());
+        assertEquals("the beat is BUFFERING", Player.STATE_BUFFERING, p.getPlaybackState());
+        assertTrue("with play-when-ready on", p.getPlayWhenReady());
+        assertFalse("the clock stands still", p.isPlaying());
+        assertTrue(EnginePlayer.keepsServiceInForeground(p));
+
+        e.surface = forayBeat(false);
+        p.refresh();
+        assertEquals("the same view outside a beat is READY", Player.STATE_READY, p.getPlaybackState());
+        assertTrue(EnginePlayer.keepsServiceInForeground(p));
+
+        e.surface = episode(false, false, false);
+        p.refresh();
+        assertFalse("paused: play-when-ready off, the foreground may go", EnginePlayer.keepsServiceInForeground(p));
+        e.surface = idle();
+        p.refresh();
+        assertFalse("nothing loaded: IDLE", EnginePlayer.keepsServiceInForeground(p));
+        p.release();
+    }
+
     /** A surface with no listening rate (a test's, or a host's before its first turn) publishes 1x, never 0. */
     @Test
     public void aSurfaceWithNoListeningRatePublishesOneX() {

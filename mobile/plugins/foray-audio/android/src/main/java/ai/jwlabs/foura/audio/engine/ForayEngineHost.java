@@ -1,9 +1,11 @@
 package ai.jwlabs.foura.audio.engine;
 
 import ai.jwlabs.foura.engine.DeckCommand;
+import ai.jwlabs.foura.engine.DeckDeadlineClass;
 import ai.jwlabs.foura.engine.DeckEvent;
 import ai.jwlabs.foura.engine.EngineCommand;
 import ai.jwlabs.foura.engine.EngineConfig;
+import ai.jwlabs.foura.engine.EngineConstants;
 import ai.jwlabs.foura.engine.EngineContract;
 import ai.jwlabs.foura.engine.EngineCore;
 import ai.jwlabs.foura.engine.EngineInput;
@@ -111,6 +113,26 @@ import java.util.Objects;
  * playhead ({@code isNarrationPlayhead} and running), and goes with a pause, a stop or the next
  * item's load landing.
  *
+ * <h2>A SILENT SEAM KEEPS THE SERVICE IN THE FOREGROUND (A-65)</h2>
+ *
+ * Android does not suspend a process that runs a foreground {@code MediaSessionService}; its risk
+ * is the service LEAVING the foreground while nothing sounds, and Media3 keeps it there only while
+ * the session's player has play-when-ready on and is READY or BUFFERING. So no silence is rendered
+ * (the silence node stays off, as on iOS): the {@link Surface} says when the Foray is in its seam
+ * beat ({@link Surface#silentSeam}), and the facade reports that as BUFFERING with play-when-ready
+ * on ({@link EnginePlayer}), the clock standing still until the next item is audible.
+ *
+ * <p>THE LATE-TIMER ROW (NE-46's detector, mirrored). Every one-shot timer the host arms is kept in
+ * a ledger with its due time on both clocks; when one fires, and when the deck's P-13 load deadline
+ * fires, the host compares the due time with now BEFORE the input is handled (so the seam and the
+ * grace span it may close are still what the timer found). More than
+ * {@code NARRATION_SUSPEND_GAP_MS} late while a grace span is held writes
+ * {@code grace kind=late timer= lateMs= inSeam=y|n reason= clock=mono|wall}, iOS's row without
+ * {@code bgRemainingMs} (a mediaPlayback foreground service has no background budget). The row
+ * decides nothing. On Android the monotonic clock is {@code elapsedRealtime}, which keeps counting
+ * in deep sleep, so a timer the sleeping CPU held back is late on it; the wall clock is kept for the
+ * row's iOS shape.
+ *
  * <h2>TERMINAL</h2>
  *
  * When a turn leaves the core relinquished, the host tears down the deck, every timer and the
@@ -138,10 +160,18 @@ public final class ForayEngineHost {
      * {@code availability.clearsNowPlaying()}). {@code seq} counts surfaces, so a reader can tell
      * two identical ones apart. {@code listeningRate} (A-60) is the listener's speed
      * ({@code EngineState.rate}), which the session publishes whatever the view's clock is doing:
-     * the view's rate is 0 through a stall, and the listener's speed is not.
+     * the view's rate is 0 through a stall, and the listener's speed is not. {@code silentSeam}
+     * (A-65) is the seam beat ({@link #inSeamBeat}): no item of the Foray sounds and its clock stands
+     * still, which the facade reports as BUFFERING so the service stays in the foreground.
      */
     public record Surface(MediaMapping.CommandAvailability availability, MediaMapping.SessionView view,
-                          boolean buffering, int seq, double listeningRate) {
+                          boolean buffering, int seq, double listeningRate, boolean silentSeam) {
+        /** A surface outside a seam beat. */
+        public Surface(MediaMapping.CommandAvailability availability, MediaMapping.SessionView view,
+                       boolean buffering, int seq, double listeningRate) {
+            this(availability, view, buffering, seq, listeningRate, false);
+        }
+
         /** A surface whose listening speed is the view's running rate (1 when the clock stands still). */
         public Surface(MediaMapping.CommandAvailability availability, MediaMapping.SessionView view, boolean buffering, int seq) {
             this(availability, view, buffering, seq, viewRate(view));
@@ -204,6 +234,17 @@ public final class ForayEngineHost {
     private int activations;
     /** The known routes the store last heard (A-61), persisted when a turn changes them. */
     private List<String> storedKnownRoutes;
+    /**
+     * A-65 (NE-46's ledger): when each armed ONE-SHOT timer is due, {@code {mono, wall}}, from its
+     * arm until it fires or is cancelled. Repeating timers are not kept.
+     */
+    private final Map<EngineTimer, double[]> timerDue = new EnumMap<>(EngineTimer.class);
+    /** A-65: the deck's P-13 deadline in ms by class ({@link #setLoadDeadlines}); empty: none is checked. */
+    private Map<DeckDeadlineClass, Double> loadDeadlineMs = Collections.emptyMap();
+    /** A-65: the newest load the host sent the deck: its token, its P-13 class and the wall clock then. */
+    private Integer lastLoadToken;
+    private DeckDeadlineClass lastLoadClass;
+    private double lastLoadWallMs;
 
     public ForayEngineHost(EngineSeams seams, EngineConfig config, Map<String, ResumeRules.StoredPosition> positions) {
         this.seams = Objects.requireNonNull(seams, "seams");
@@ -312,6 +353,17 @@ public final class ForayEngineHost {
         return Collections.unmodifiableSet(timers.keySet());
     }
 
+    /**
+     * A-65: the deck's own P-13 deadlines, in ms by class (the service's {@code ExoDeck} config), so a
+     * {@code deadlineExceeded} that arrives late while grace is held writes
+     * {@code grace kind=late timer=load-deadline}. Without them (the plain-JVM tests) no load deadline
+     * is checked, as iOS's headless core does with an empty {@code loadDeadlineMs}.
+     */
+    public void setLoadDeadlines(Map<DeckDeadlineClass, Double> deadlines) {
+        loadDeadlineMs = deadlines == null || deadlines.isEmpty()
+                ? Collections.<DeckDeadlineClass, Double>emptyMap() : new EnumMap<>(deadlines);
+    }
+
     /** Holds the CPU awake through the seam beat; see THE BEAT HOLDS THE CPU. */
     public interface BeatAwake {
         void setStayAwake(boolean stayAwake);
@@ -351,7 +403,11 @@ public final class ForayEngineHost {
     public void start() {
         if (started || tornDown) return;
         started = true;
-        seams.deck.setListener(event -> handle(new EngineInput.Deck(event)));
+        seams.deck.setListener(event -> {
+            // A-65: a P-13 deadline is measured as it arrives, before the turn it starts.
+            if (event instanceof DeckEvent.DeadlineExceeded d) noteLateDeadline(d);
+            handle(new EngineInput.Deck(event));
+        });
         if (seams.speaker != null) {
             seams.speaker.setListener(new EngineSeams.SpeakingListener() {
                 @Override
@@ -400,6 +456,7 @@ public final class ForayEngineHost {
         tornDown = true;
         for (EngineSeams.Cancellable t : timers.values()) t.cancel();
         timers.clear();
+        timerDue.clear();
         graceReason = null;
         seams.deck.setListener(null);
         seams.deck.invalidate();
@@ -567,7 +624,15 @@ public final class ForayEngineHost {
     /** Every command has a case: a command the host drops is a stuck player. */
     private List<String> interpret(EngineCommand command) {
         switch (command) {
-            case EngineCommand.Deck d -> seams.deck.send(d.command());
+            case EngineCommand.Deck d -> {
+                if (d.command() instanceof DeckCommand.Load load) {
+                    // A-65: the load a later deadline belongs to, its class and the wall clock now.
+                    lastLoadToken = load.token();
+                    lastLoadClass = load.deadlineClass() == null ? DeckDeadlineClass.CLIP : load.deadlineClass();
+                    lastLoadWallMs = seams.timing.wallMs();
+                }
+                seams.deck.send(d.command());
+            }
             case EngineCommand.SessionActivate a -> {
                 // Synchronous, and answered before the next command in this list.
                 EngineSeams.Activation answer = seams.session.activate();
@@ -584,6 +649,7 @@ public final class ForayEngineHost {
             case EngineCommand.TimerCancel t -> {
                 EngineSeams.Cancellable live = timers.remove(t.timer());
                 if (live != null) live.cancel();
+                timerDue.remove(t.timer());
             }
             case EngineCommand.WritePosition w -> seams.output.writePosition(w.write());
             case EngineCommand.WriteRow w -> seams.output.writeRow(w.row());
@@ -716,6 +782,11 @@ public final class ForayEngineHost {
     private void arm(EngineTimer timer, double afterMs, boolean repeating) {
         EngineSeams.Cancellable previous = timers.remove(timer);
         if (previous != null) previous.cancel();
+        if (repeating) {
+            timerDue.remove(timer);
+        } else {
+            timerDue.put(timer, new double[] {seams.timing.monoMs() + afterMs, seams.timing.wallMs() + afterMs});
+        }
         timers.put(timer, seams.timing.schedule(afterMs, repeating, () -> timerFired(timer, repeating)));
     }
 
@@ -725,8 +796,70 @@ public final class ForayEngineHost {
         if (!repeating) {
             EngineSeams.Cancellable spent = timers.remove(timer);
             if (spent != null) spent.cancel();
+            // A-65: how late it fired, measured before its input is handled (or queued).
+            double[] due = timerDue.remove(timer);
+            if (due != null) lateRow(timer.token, seams.timing.monoMs() - due[0], seams.timing.wallMs() - due[1]);
         }
         handle(new EngineInput.Timer(timer));
+    }
+
+    // ---- the late-timer row (A-65, NE-46's detector)
+
+    /** The {@code timer=} of a late P-13 load deadline (the deck runs it, not the core): iOS's token. */
+    public static final String LOAD_DEADLINE_TIMER = "load-deadline";
+
+    /**
+     * The deck's P-13 deadline for the newest load, against the deadline the deck runs for its class:
+     * the deck's own {@code afterMs} (elapsedRealtime) and the wall clock since the load was sent.
+     */
+    private void noteLateDeadline(DeckEvent.DeadlineExceeded event) {
+        if (tornDown || lastLoadToken == null || event.token() != lastLoadToken || lastLoadClass == null) return;
+        Double deadlineMs = loadDeadlineMs.get(lastLoadClass);
+        if (deadlineMs == null) return;
+        lateRow(LOAD_DEADLINE_TIMER, event.afterMs() - deadlineMs, seams.timing.wallMs() - lastLoadWallMs - deadlineMs);
+    }
+
+    /**
+     * {@code grace kind=late timer= lateMs= inSeam=y|n reason= clock=mono|wall}, when a grace span is
+     * held and the timer is more than {@code NARRATION_SUSPEND_GAP_MS} late on either clock (the
+     * larger reading; {@code clock} says which one saw it). The Swift {@code EngineCore.lateRow}
+     * (NE-46, #901), written by the host here because on Android the timers are the host's, and with
+     * no {@code bgRemainingMs} (Android has no background budget).
+     */
+    private void lateRow(String timer, double monoLateMs, double wallLateMs) {
+        EngineState st = core.state();
+        EngineCommand.GraceReason reason = st.grace;
+        if (reason == null) return;
+        double gap = EngineConstants.QueueManager.NARRATION_SUSPEND_GAP_MS;
+        double mono = Double.isFinite(monoLateMs) ? monoLateMs : Double.NEGATIVE_INFINITY;
+        double wall = Double.isFinite(wallLateMs) ? wallLateMs : Double.NEGATIVE_INFINITY;
+        double lateMs = Math.max(mono, wall);
+        if (!(lateMs > gap)) return;
+        List<JsonNode.Member> fields = new ArrayList<>();
+        fields.add(JsonNode.member("kind", JsonNode.str("late")));
+        fields.add(JsonNode.member("timer", JsonNode.str(timer)));
+        fields.add(JsonNode.member("lateMs", JsonNode.num(Math.round(lateMs))));
+        fields.add(JsonNode.member("inSeam", JsonNode.str(inSilentSeam(st) ? "y" : "n")));
+        fields.add(JsonNode.member("reason", JsonNode.str(reason.token)));
+        fields.add(JsonNode.member("clock", JsonNode.str(mono > gap ? "mono" : "wall")));
+        seams.output.diag(new EngineCommand.DiagEntry("grace", fields));
+    }
+
+    /** The seam beat: a beat is running, or its landed load waits out the beat's remainder. */
+    public static boolean inSeamBeat(EngineState st) {
+        return st.inSeamGap() || st.gapParkedToken != null;
+    }
+
+    /**
+     * Between an out-point and the next item's audible start (the Swift {@code inSilentSeam}, NE-46):
+     * the seam beat, or a grace span that is a seam's ({@code seam}, {@code prepare-miss}, or the
+     * handover after a spoken line).
+     */
+    public static boolean inSilentSeam(EngineState st) {
+        if (inSeamBeat(st)) return true;
+        EngineCommand.GraceReason grace = st.grace;
+        return grace == EngineCommand.GraceReason.SEAM || grace == EngineCommand.GraceReason.PREPARE_MISS
+                || grace == EngineCommand.GraceReason.NARRATION_HANDOVER;
     }
 
     // ---- the surface
@@ -739,7 +872,8 @@ public final class ForayEngineHost {
             MediaMapping.View mv = core.mediaView(seams.deck.reading(), seams.timing.monoMs());
             if (mv != null) view = MediaMapping.sessionView(mv);
         }
-        return new Surface(availability, view, core.state().buffering, seq, core.state().rate);
+        EngineState st = core.state();
+        return new Surface(availability, view, st.buffering, seq, st.rate, view != null && inSeamBeat(st));
     }
 
     private void publishSurface() {
