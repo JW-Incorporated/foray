@@ -123,6 +123,8 @@ const FLOORS = {
      now playing ribbon". The POINTER to the last ordinary episode — position is
      not stored here, `cp_pos:` has owned that since #26, and two of these tests
      exist only to pin that separation. */
+  "player/download-store.test.js": 13, // PQ-16 (#29)
+  "player/download-bridge.test.js": 10, // PQ-17 (#29) // integration review: a resolved answer without ok reads as ok: true; 9 -> 10
   "player/episode-progress.test.js": 23, // 2026-09-22 audit theme L: `episodeProgress`, the one reading of a stored position (played / in-progress / sampled / unplayed) that Jump back in and the episode rows share, on position-store's own thresholds; 19 -> 23
   /* 2026-09-22 (audit L2, founder report 3): which build wrote a diagnostics
      record — the web deploy id on both hosts and the native build number in the
@@ -214,9 +216,24 @@ const FLOORS = {
      page slept. The suite READS its fixtures (player/parity/fixtures/continuation,
      whose case count is floored in player/parity/floors.json), so a deleted test
      here is a rule nothing asserts any more. */
-  "player/continuation.test.js": 11,
+  "player/continuation.test.js": 13, // PQ-09 (#691): the tail — "then more of what fits" plays only after Up Next and the list, a tail pick moves the chain and not the cursor, and the K-times walk carries fromTail; 11 -> 13
+  /* The tail — what plays once Up Next and the list are both spent (founder
+     ruling 2026-09-14: keep playing "more of what fits"). Floored at its full
+     count because what it holds is the exploration floor INSIDE continuous
+     playback (README default Q18: every third tail pick is the stretch
+     subject, never borrowed when the stretch slot is empty) — a deleted test
+     here is the one place that share stops being asserted. */
+  "player/tail-fill.test.js": 8, // PQ-10 (#691)
+  /* New-episode alerts for followed shows (README default Q20: on when you
+     follow, a per-show switch). Floored at its full count because the nine
+     cases are the whole rule set the page (PQ-26) and both native refresh
+     tasks (PQ-28/29) mirror — the first-check seed ("following is not a
+     backlog") and the equal-timestamp edge are each one character from their
+     opposite and invisible in a passing badge. */
+  "player/show-alerts.test.js": 12, // PQ-25 (#761); 9 -> 11 // PQ-25 review (2026-09-30): a missing/unreadable `now` never reads as "not due" (that would silence a show for good), and the latest/watermark never move backwards when a page shrinks (no phantom "new" when a row returns) // integration review: an unreadable now stamps the wall clock instead of throwing; 11 -> 12
   "player/queue-manager.test.js": 205, // Phase 2 review (2026-09-28): a file that failed by deadline and errors LATE (during the fallback speak() or mid-utterance) no longer stops the line read in its place, and a second error never speaks it twice; plus a rendered line chained straight after a SPOKEN one gets the listener's rate, and a tap deferred during the spoken line lands on it (the bridge path's `resetRateForTTS` runs before the load, so it is decided by the target item); 200 -> 205 // Phase 2 player card (founder rulings D1-D11, 2026-09-28): a rendered line whose file fails is spoken from its script on the load, bridge and sounding paths (first-item and jump cases included), rendered narration follows the listener's rate while a spoken line stays 1x and defers a tap, and the next narration file is warmed one ahead, kept across a resume and dropped on a skip or stop; 175 -> 200 // audit round 3 integration: the real post-merge count, 163 -> 175 // NE-14s: a concurrent double skip lands on the final target and starts it once (the manager awaits only effects that are really asynchronous); 162 -> 163 // NE-14j: an OS should-resume steps back INTERRUPTION_REWIND_SEC in place, a listener's own resume does not, and the step back never crosses a segment's in-point; 159 -> 162 // fix/narration-1x (2026-09-24, founder: "1x for now"): synthesized narration speaks at NARRATION_RATE whatever the listener's rate, on both call paths, and its deadline follows; 147 -> 159 // audit round 2 (2026-09-23, L1): onStateSettled fires after every handled event, a spoken line past its deadline is treated as finished, should-resume never resumes a listener's pause; 144 -> 147 // 2026-09-22 audit (L2): the position timer arms on the ELEMENT playing too (founder report 1); the suite was already at 143 against 132, so this also closes that slack; 132 -> 144 // client audit (2026-09-12): `_resumeNarration` reads the transport — fromStart, refused, and no-answer; 129 -> 132 // L-05 (2026-09-12): pause/resume/stop for spoken narration; 115 -> 129 // +1: L-03 position-increases acceptance (2026-09-10)
   "player/queue-state.test.js": 58, // 2026-09-22 audit (L2): `elementResumed` — interrupted -> playing with no audio effect, and nothing from any other state; 56 -> 58
+  "player/queue-order.test.js": 9, // PQ-01 (#762): Play next, Clear and move-to arithmetic; integration review: Play next on the row already next is the same reference (no write, no repaint); 8 -> 9
   "player/seam-gap.test.js": 16,
   /* The SegmentStrip (#128) — the element that makes a Foray legible as
      something other than a playlist. Floored with no slack because what it
@@ -239,6 +256,18 @@ const FLOORS = {
      that keeps a scroll through a long episode description from throwing the
      sheet away. Every test names the mutation that kills it, and each was run. */
   "player/sheet-drag-dismiss.test.js": 17, // audit round 2, L2 (2026-09-23): claimsTouch, who owns the finger (touch-2); 15 -> 17 //
+  /* Drag an Up Next row by its handle to reorder it (#762). The third pure
+     gesture module, floored like the two above it: the lock distance, the
+     midpoint rule against the layout read at press time (including the
+     upward correction the module header explains), and the L2 rule that only
+     a claimed drag released over another slot ever commits — on pointerup,
+     never on the click after. Every test names its mutation; each was run. */
+  "player/queue-drag.test.js": 9, // PQ-03 (#762)
+  /* Swipe-left-to-remove on an Up Next row (#762). The same pure gesture
+     shape as the two above, floored for the same reason: the direction lock,
+     the 96 px distance, the flick and the rule that a scroll can never become
+     a removal ARE the product decision. Each test names its mutation. */
+  "player/queue-swipe.test.js": 8, // PQ-05 (#762)
   /* The other half of the same report: the sheet is WIRED, opens at the top,
      scrolls inside itself, and is a full-height overlay whose `[hidden]`
      attribute still hides it. A source-text suite (client.js builds DOM at
