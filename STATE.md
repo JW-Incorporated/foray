@@ -7,6 +7,28 @@ docs/. Completed workstreams move to their plan doc's retro section.
 
 ## Active workstreams
 
+### 2026-10-01 — `android/a-67-stop-cause-audit`: A-67, the stop-cause audit and the A4 script (Android M3)
+
+Owned: the JVM `EngineCore`'s stop order and `StopCauseTest`, `StopPathAuditTest` (Robolectric),
+`ForayEngineHost.teardown`, the service's `service` rows, the bridge's `setRouteSharing` refusal, the native API 36
+(j) leg of `android-playback`, and `docs/android-device-pass.md` Part I. Card A-67 of
+`docs/plans/android-assessment.md` (Track A4), PR #957, into `android/native`. It mirrors NE-40 (#916, on `engine/m3`,
+in `android/native` since A-61).
+
+**What changed.**
+- Every stop writes its cause row before anything is silenced, on the JVM core (NE-40's D-5 order) and through every
+  Android adapter.
+- A service destroyed while playing now writes `stop cause=relinquish`.
+- The DV-7a twin is gated on API 34 and API 36. The force-stop value (DV-7b): the control does not hold on either
+  level.
+- The A4 device-pass section is written, not issued (D-A3, #127).
+- The M3 drive's HUMAN-ACTIONS number is #130, because main's #129 is the Supabase region.
+
+**Executed in CI:** android-build 36832171942 (android-shell green: Robolectric and the JVM core, parity 0 owed);
+android-playback API 36 native job 110271348252 green; API 34: the full native leg's (j) on the PR's last run (its run id and verdict are in PR #957), with A-27's API 34 force-stop finding in §10.
+
+**Not executed.** Joey's A4 pass (D-A3).
+
 ### 2026-10-01 — `android/a-65-silent-seams`: A-65, keep-alive across silent seams (Android M3)
 
 Owned: `EnginePlayer`'s seam-beat state and `keepsServiceInForeground`, `ForayEngineHost`'s `Surface.silentSeam` and late-timer

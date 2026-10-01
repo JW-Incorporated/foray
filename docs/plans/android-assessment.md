@@ -1030,6 +1030,38 @@ A-61, A-62, A-64, A-66 (+ NE-39j) ─ A-63 ─ A-67 ─ A-68 ─ A-69 (gated)
   - The kill-then-play step is green in native mode on both API legs (run id).
   - The force-stop value is recorded.
 - **Device check:** Joey's A4 pass, after A-42.
+- **Status (2026-10-01, card PR #957 into `android/native`):** built. The iOS reference was code, not plan text: NE-40
+  (#916) is on `engine/m3` and came into `android/native` with A-61.
+  - **The JVM core, NE-40's D-5 order.** The `stop` row now comes before the seam's cut in `pause`, `stop`,
+    `relinquish`, an interruption, a lost route, the ladder's last refusal and grace expiry (the gap the A-63 review
+    left open). The `interlude cut` and `silence stopped|capped` rows come before their commands, and `teardown()`
+    while playing writes `stop cause=relinquish`. `StopCauseTest` (JVM) is NE-40's table path for path: 32 paths over
+    the same 13 `stopRow` sites as Swift (the shell invariant A-67 holds the two lists equal), with an exhaustive
+    `disposition` switch.
+  - **The Android shell.** `StopPathAuditTest` (Robolectric) feeds each Android adapter to the real host as the
+    service does. The adapters are ExoPlayer errors (also through a real `ExoDeck`), the deck's deadline and
+    uncommanded pause, focus loss (permanent, transient, and a duck as a pause, also on a real ExoPlayer and
+    AudioManager), BECOMING_NOISY on and off the deck, the device callback, the line deadline, Doze,
+    `onTaskRemoved` and the service's stop. Each writes one cause row before the host silences anything.
+    `grace-expired` (no background budget) and `media-services-reset` (no Android signal) never happen on Android.
+  - **What the audit fixed.** A service destroyed while playing wrote no stop row: `ForayEngineHost.teardown` now
+    tells a live core first. The service names a swipe and its own end (`service kind=task-removed kept= running=`,
+    `service kind=destroy running=`).
+  - **Route sharing (NE-40's DV-8 trial) has no Android counterpart:** the bridge refuses `setRouteSharing`
+    `capability-off`, and on Android `client.js` offers no row.
+  - **The DV-7 twins.** `android-playback` gained a native API 36 leg running (j) alone. (j)'s verdict reports
+    `twins`: DV-7a is gated (`am kill`, a swipe then `am kill`, and a SIGKILL each resume 4a at the saved position,
+    at least one through Media3's playback resumption from the restore record). DV-7b is recorded (the force-stop
+    value).
+    - API 36 (run 36832171909, job 110271348252) is green; the swipe and SIGKILL legs died and came back through the
+      record.
+    - **The force-stop value: the control does not hold on API 36 either.** After `am force-stop` the play reached
+      our media button receiver and 4a played (`controlHolds: false`). API 34 found the same under A-27.
+    - API 34: the full native leg's (j) on the PR's last run (its run id and verdict are in PR #957), with A-27's API 34 force-stop finding in §10.
+  - **The A4 section** is `docs/android-device-pass.md` Part I (steps 26–31), with rows in the record template.
+    **Not issued:** the orchestrator issues it through #127 (D-A3).
+  - **Found on the main merge.** Main's HUMAN-ACTIONS #129 (the Supabase region) and engine/m3's #129 (the M3 drive)
+    collided. The M3 drive is now #130 here, and its script and the iOS plan line say so.
 
 #### A-68 · Settle the Android values (mirrors NE-38f) — **S**
 - **Depends on:** A-60, A-67, and Joey's pastes (#127)
