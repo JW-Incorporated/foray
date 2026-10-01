@@ -106,6 +106,46 @@ public class ForayPlaybackServiceTest {
         assertNull("released with the others", s.previewPlayer());
     }
 
+    /**
+     * A-66 review: Media3 keeps a paused deck's focus, so the preview's play takes it, and the deck
+     * reports a permanent loss. While the preview wants to sound, that loss is ours and reaches no
+     * core; with the preview silent the same report is another app's, an interruption as before. TO
+     * SEE IT FAIL: feed every loss from the deck's focus listener.
+     */
+    @Test
+    public void theDecksLossToOurOwnPreviewIsNoInterruption() {
+        ForayPlaybackService s = create();
+        Player.Listener focus = s.focusListener();
+        assertNotNull(focus);
+        androidx.media3.exoplayer.ExoPlayer preview = s.previewPlayer();
+        assertNotNull(preview);
+        // The process log is shared and bounded: read only the rows this test adds.
+        List<String> before = s.rows();
+        preview.setMediaItem(androidx.media3.common.MediaItem.fromUri("file:///nonexistent/preview.m4a"));
+        preview.prepare();
+        preview.play();
+        assertTrue(s.previewWantsFocus());
+        focus.onPlayWhenReadyChanged(false, Player.PLAY_WHEN_READY_CHANGE_REASON_AUDIO_FOCUS_LOSS);
+        String added = String.join("\n", since(before, s.rows()));
+        assertFalse("no interruption: " + added, added.contains("\"kind\":\"interruption\""));
+        assertTrue(added, added.contains("\"kind\":\"lost-to-preview\""));
+
+        preview.stop();
+        preview.clearMediaItems();
+        assertFalse(s.previewWantsFocus());
+        before = s.rows();
+        focus.onPlayWhenReadyChanged(false, Player.PLAY_WHEN_READY_CHANGE_REASON_AUDIO_FOCUS_LOSS);
+        added = String.join("\n", since(before, s.rows()));
+        assertTrue("another app's loss is still an interruption: " + added, added.contains("\"kind\":\"interruption\""));
+    }
+
+    /** The rows of {@code after} that follow the last row of {@code before} (the ring may have dropped its oldest). */
+    private static List<String> since(List<String> before, List<String> after) {
+        if (before.isEmpty()) return after;
+        int at = after.lastIndexOf(before.get(before.size() - 1));
+        return at < 0 ? after : after.subList(at + 1, after.size());
+    }
+
     @Test
     public void theFifteenThirtyPairAreTheSessionsButtonsAndRemotePresses() {
         ForayPlaybackService s = create();

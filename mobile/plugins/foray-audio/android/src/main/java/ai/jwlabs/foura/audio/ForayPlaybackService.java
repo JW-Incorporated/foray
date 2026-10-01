@@ -417,6 +417,11 @@ public class ForayPlaybackService extends MediaSessionService {
         Player.Listener listener = new Player.Listener() {
             @Override
             public void onPlayWhenReadyChanged(boolean playWhenReady, int reason) {
+                /* A-66 review: our own voice preview took the focus this paused deck still held. */
+                if (FocusMapping.isLossToOwnPreview(playWhenReady, reason, previewWantsFocus())) {
+                    log.diag(new EngineCommand.DiagEntry("focus", kind("lost-to-preview")));
+                    return;
+                }
                 feed(focus.onPlayWhenReadyChanged(playWhenReady, reason));
             }
 
@@ -897,6 +902,22 @@ public class ForayPlaybackService extends MediaSessionService {
     @Nullable
     ExoPlayer exoPlayer() {
         return exo;
+    }
+
+    /**
+     * A-66 review: the preview player has asked to sound (play-when-ready on, a source held), which is
+     * when Media3 requests focus for it, and so when a permanent loss on the deck is the preview's
+     * doing ({@link FocusMapping#isLossToOwnPreview}).
+     */
+    boolean previewWantsFocus() {
+        ExoPlayer p = previewPlayer;
+        return p != null && p.getPlayWhenReady() && p.getPlaybackState() != Player.STATE_IDLE;
+    }
+
+    /** The deck's focus listener (tests drive Media3's reports through it). */
+    @Nullable
+    Player.Listener focusListener() {
+        return focusListener;
     }
 
     /** A-66: the voice preview's own player, or null. */

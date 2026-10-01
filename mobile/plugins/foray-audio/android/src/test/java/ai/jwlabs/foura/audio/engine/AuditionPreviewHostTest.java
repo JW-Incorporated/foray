@@ -181,6 +181,29 @@ public class AuditionPreviewHostTest {
         assertEquals("the preview deck was never told to play", 0, preview.count(DeckCommand.Play.class));
     }
 
+    /**
+     * A-66 review: a preview that ran out is unloaded by the host, because Media3 holds its
+     * AUDIOFOCUS_GAIN through STATE_ENDED and lets it go only at IDLE; the core (NE-47's) sends
+     * nothing at an end. Nothing is spoken and the main deck is untouched. TO SEE IT FAIL: drop the
+     * host's unload after the preview's {@code ended}.
+     */
+    @Test
+    public void aPreviewThatRanOutIsUnloadedSoItsFocusGoes() {
+        FakeDeck preview = new FakeDeck();
+        Rig rig = new Rig(preview);
+        assertTrue(rig.audition(NARRATION_URL).ok());
+        DeckCommand.Load load = (DeckCommand.Load) preview.sent.get(0);
+        preview.emit(new DeckEvent.Ready(load.token(), 0, true, 2));
+        assertEquals(1, preview.count(DeckCommand.Play.class));
+        assertEquals("nothing after the play yet", 0, preview.count(DeckCommand.Unload.class));
+        preview.emit(new DeckEvent.Ended(load.token()));
+        assertNull(rig.host.state().preview);
+        assertEquals("the ended preview is unloaded: " + preview.sent, 1, preview.count(DeckCommand.Unload.class));
+        assertTrue(preview.sent.get(preview.sent.size() - 1) instanceof DeckCommand.Unload);
+        assertNull(rig.spoken());
+        assertTrue("the main deck is not the preview's: " + rig.deck.sent, rig.deck.sent.isEmpty());
+    }
+
     /** With no preview deck wired, the load is answered failed behind the turn and the line is spoken: never silent. */
     @Test
     public void withNoPreviewDeckTheAuditionIsSpoken() {
