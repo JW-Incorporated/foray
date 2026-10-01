@@ -17,7 +17,7 @@
 
 **Worked if:** you replied with the region, and the privacy policy section 3 names it.
 
-## #129 🟡 [DECIDE] Drive the M3 test on the first TestFlight build after `engine/m3` merges (~2 drives)
+## #130 🟡 [DECIDE] Drive the M3 test on the first TestFlight build after `engine/m3` merges (~2 drives)
 <!-- ha filed=2026-09-30 kind=default -->
 
 **Why:** M3 makes the car-resume rules final: 4a relaunching after iOS closed it (DV-7a), a car switched off and on, and the provisional timings. Only your car can show them; the pastes settle the values.
