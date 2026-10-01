@@ -1,6 +1,7 @@
 package ai.jwlabs.foura.audio.engine;
 
 import ai.jwlabs.foura.engine.DeckCommand;
+import ai.jwlabs.foura.engine.DeckDeadlineClass;
 import ai.jwlabs.foura.engine.DeckEvent;
 import ai.jwlabs.foura.engine.DeckPolicy;
 import ai.jwlabs.foura.engine.DeckPolicy.OutPointEvent;
@@ -8,8 +9,11 @@ import ai.jwlabs.foura.engine.DeckPolicy.OutPointLayer;
 import ai.jwlabs.foura.engine.DeckPolicy.OutPointOp;
 import ai.jwlabs.foura.engine.DeckReading;
 import ai.jwlabs.foura.engine.EngineCommand;
+import ai.jwlabs.foura.engine.EngineConstants;
 import ai.jwlabs.foura.engine.JSWriter;
 import ai.jwlabs.foura.engine.JsonNode;
+import ai.jwlabs.foura.engine.NarrationFallbackCauseReading;
+import ai.jwlabs.foura.engine.Vocabulary;
 import android.content.Context;
 import android.net.Uri;
 import android.os.Looper;
@@ -29,13 +33,19 @@ import androidx.media3.common.util.UnstableApi;
 import androidx.media3.common.util.WakeLockManager;
 import androidx.media3.common.util.WifiLockManager;
 import androidx.media3.datasource.DataSource;
+import androidx.media3.datasource.DataSourceException;
+import androidx.media3.datasource.HttpDataSource;
 import androidx.media3.exoplayer.ExoPlayer;
 import androidx.media3.exoplayer.PlayerMessage;
 import androidx.media3.exoplayer.SeekParameters;
+import androidx.media3.exoplayer.analytics.AnalyticsListener;
+import androidx.media3.exoplayer.source.LoadEventInfo;
+import androidx.media3.exoplayer.source.MediaLoadData;
 import androidx.media3.exoplayer.source.MediaSource;
 import androidx.media3.exoplayer.source.ProgressiveMediaSource;
 import androidx.media3.extractor.DefaultExtractorsFactory;
 import androidx.media3.extractor.mp3.Mp3Extractor;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.EnumSet;
@@ -76,13 +86,18 @@ import java.util.function.Consumer;
  * position the player lands on, and readiness is one state. So this deck never emits
  * {@code notReady}; a load that does not become READY ends at the deadline or as a failure.
  *
- * <h2>THE LOAD DEADLINE (P-13)</h2>
+ * <h2>THE LOAD DEADLINE (P-13), PER CLASS (A-60)</h2>
  *
- * <p>{@link Config#loadDeadlineSec} after the load started, a load that is not READY is
- * detached ({@code stop()} + {@code clearMediaItems()}, and the generation moves so nothing
- * that completes late can sound) and reported as {@code deadlineExceeded}. The timers run on
- * the player's own {@link Clock}, so a Robolectric test's {@code FakeClock} fires them in
- * virtual time.
+ * <p>{@link Config#deadlineSec} of the load's {@link DeckDeadlineClass} after the load started
+ * (a clip or an episode {@link Config#loadDeadlineSec}, a rendered narration line
+ * {@link Config#lineLoadDeadlineSec}: the core names the class, the deck owns the seconds), a
+ * load that is not READY is detached ({@code stop()} + {@code clearMediaItems()}, and the
+ * generation moves so nothing that completes late can sound) and reported as
+ * {@code deadlineExceeded}. The core reads a line's deadline aloud from its script
+ * ({@code TextToSpeech}). The class rides on the {@code attach}, {@code reuse}, {@code ready},
+ * {@code deadline} and no-url {@code failed} rows as {@code class=}. The timers run on the
+ * player's own {@link Clock}, so a Robolectric test's {@code FakeClock} fires them in virtual
+ * time.
  *
  * <h2>SAME SOURCE IS A SEEK, NOT A LOAD ({@code DeckPolicy.sameSourceIsSeek})</h2>
  *
@@ -152,16 +167,45 @@ import java.util.function.Consumer;
  * failed, the deadline, an unload or {@link #invalidate()}. The deadline bounds how long that
  * is. The locks are released AFTER {@code ready} is delivered, so a host that plays inside
  * that callback has Media3's own lock posted before this one is let go.
+ *
+ * <h2>ONE OF A PAIR (A-40)</h2>
+ *
+ * <p>The Foray tape plays through a {@link DeckPair} of two of these ({@link PairableDeck}). The
+ * playing deck opens the PREFETCH WINDOW ({@code prepareWindow}) with one more one-shot timer,
+ * {@code PREFETCH_LEAD_SEC} of wall clock before its boundary ({@code DeckPolicy.prefetchWindowDelayMs},
+ * re-derived after every watch step), only while it is audible toward a boundary and only when
+ * the pair has a standby deck to prepare ({@link #setPrepareWindowAvailable}). The boundary is an
+ * armed out-point, or (A-62, NE-45s) for an item with NO out-point (a rendered narration line, an
+ * episode left to its natural end) its duration ({@code DeckPolicy.windowBoundarySec}), so the clip
+ * after a rendered line is prepared while the line plays, and a line shorter than the lead opens
+ * its window at its first play. The standby
+ * deck's load is an ordinary gated load under a negative token; at the handover it adopts the
+ * core's token ({@link #adopt}). A lone deck never opens the window, and ignores {@code prepare}.
  */
 @OptIn(markerClass = UnstableApi.class)
-public final class ExoDeck implements DeckDriving {
+public final class ExoDeck implements PairableDeck {
     private static final String TAG = "ForayEngine.ExoDeck";
 
     /**
-     * P-13: how long a load may take to reach READY before the deck gives up. PROVISIONAL,
-     * and the same number as AVDeck's: NE-38 sets both from the field's time-to-ready rows.
+     * P-13, CLIP OR EPISODE ({@link DeckDeadlineClass#CLIP}): how long a load may take to reach
+     * READY before the deck gives up. PROVISIONAL (card A-60, mirroring NE-38;
+     * docs/android-emulator-measurements.md §16), 20 s, AVDeck's number: the iOS Simulator's cold
+     * first loads took 1.5-19.6 s, and the emulator's loads of the bundled click tracks take
+     * 0.1-0.3 s (§11, §13), which says nothing about a third-party CDN. Settled by the
+     * {@code deck kind=ready elapsedMs marks} rows of cold loads and every
+     * {@code deck kind=deadline step= class=clip} row (NE-38e verdict {@code P13-clip}; A-68
+     * applies or declines its proposal from Joey's pastes).
      */
-    public static final double DEFAULT_LOAD_DEADLINE_SEC = 20; // MEASURE: NE-38 (OQ-4, DV-5).
+    public static final double DEFAULT_LOAD_DEADLINE_SEC = 20; // MEASURE: verdict=P13-clip (NE-38e). Rows: deck kind=ready elapsedMs marks, deck kind=deadline step= class=clip.
+
+    /**
+     * P-13, A RENDERED NARRATION LINE ({@link DeckDeadlineClass#LINE}). PROVISIONAL (card A-60,
+     * mirroring NE-38), 8 s, AVDeck's number: a line is about 160 KB, and a line whose file does
+     * not load in time is read aloud from its script by {@code TextToSpeech} on a fresh token, so
+     * a longer wait only lengthens a silence in the car. Settled by the same rows with
+     * {@code class=line} (NE-38e verdict {@code P13-line}, A-68).
+     */
+    public static final double DEFAULT_LINE_LOAD_DEADLINE_SEC = 8; // MEASURE: verdict=P13-line (NE-38e). Rows: deck kind=ready elapsedMs class=line, deck kind=deadline step= class=line.
 
     /** A stop this close to the item's end is the end, not an uncommanded pause. */
     public static final double END_SLACK_SEC = 0.5;
@@ -172,8 +216,18 @@ public final class ExoDeck implements DeckDriving {
      */
     public static final double PAUSE_SETTLE_SEC = 0.25;
 
-    /** How long a held source may have been idle and still be reused (AVDeck's reasoning, AVDeck's number). */
-    public static final double DEFAULT_REUSE_MAX_IDLE_SEC = 600; // MEASURE: NE-38, from the attach/reuse rows.
+    /**
+     * Same-source reuse (#866's rule): how long a held source may have been idle and still be
+     * reused, a {@code seekTo} in the prepared source, instead of a cold {@code setMediaSource}.
+     * PROVISIONAL (card A-60, mirroring NE-38), 600 s, AVDeck's number and reasoning: a source
+     * held for hours can report ready over a connection the host has long closed, and a cold
+     * load is the known-good path. Measured on {@code elapsedRealtime}, a clock that runs while
+     * the phone sleeps. Settled by a {@code deck kind=reuse idleSec=} followed within 30 s by
+     * {@code failed}, {@code deadline} or {@code stalled} on that token (the risk of a longer
+     * limit), and by the {@code deck kind=attach cold=stale idleSec=} rows (what this limit
+     * cost): NE-38e verdict {@code reuse-idle}, A-68.
+     */
+    public static final double DEFAULT_REUSE_MAX_IDLE_SEC = 600; // MEASURE: verdict=reuse-idle (NE-38e). Rows: deck kind=reuse idleSec= then failed/deadline/stalled within 30 s, deck kind=attach cold=stale idleSec=.
 
     /**
      * How far below the boundary a layer's report may read and still be the boundary: the
@@ -229,7 +283,15 @@ public final class ExoDeck implements DeckDriving {
 
     /** What the deck is configured with. Every field has a production default but {@link #mediaSources}. */
     public static final class Config {
+        /** P-13 for a clip or an episode ({@link #DEFAULT_LOAD_DEADLINE_SEC}). */
         public double loadDeadlineSec = DEFAULT_LOAD_DEADLINE_SEC;
+        /** P-13 for a rendered narration line ({@link #DEFAULT_LINE_LOAD_DEADLINE_SEC}). */
+        public double lineLoadDeadlineSec = DEFAULT_LINE_LOAD_DEADLINE_SEC;
+
+        /** The P-13 deadline, in seconds, of a load of this class: the core names the class, the deck owns the seconds. */
+        public double deadlineSec(DeckDeadlineClass deadlineClass) {
+            return deadlineClass == DeckDeadlineClass.LINE ? lineLoadDeadlineSec : loadDeadlineSec;
+        }
         /**
          * Whether the engine's audio session is active (the session owner, A-26). The core's
          * audible-start invariant means a play should never arrive without one; this is the
@@ -306,6 +368,21 @@ public final class ExoDeck implements DeckDriving {
     private final Clock clock;
     private final HandlerWrapper handler;
     private final Player.Listener playerListener = new PlayerListener();
+    /**
+     * A-64: the last LOAD error the player retried through for the current load (Media3's
+     * {@code LoadErrorHandlingPolicy} retries an I/O error before it fails the item), so a P-13
+     * deadline can say whether the server answered or the network was gone by then: the Android
+     * counterpart of the AVPlayerItem error log the iOS deadline reads (NE-39n).
+     */
+    private final AnalyticsListener loadErrors = new AnalyticsListener() {
+        @Override
+        public void onLoadError(@NonNull EventTime eventTime, @NonNull LoadEventInfo loadEventInfo,
+                @NonNull MediaLoadData mediaLoadData, @NonNull IOException error, boolean wasCanceled) {
+            if (!wasCanceled && stage == Stage.LOADING) lastLoadError = error;
+        }
+    };
+    @Nullable
+    private IOException lastLoadError;
     private final List<String> primitives = new ArrayList<>();
 
     private DeckDriving.Listener listener;
@@ -317,6 +394,8 @@ public final class ExoDeck implements DeckDriving {
     private boolean hasMetadata;
     private boolean durationReported;
     private long loadStartedAtMs;
+    /** The current load's P-13 class (A-60): which deadline it runs under, and the {@code class=} of its rows. */
+    private DeckDeadlineClass deadlineClass = DeckDeadlineClass.CLIP;
     private Timer deadline;
     private double rate = 1;
     /** True from a commanded play until a commanded pause, the end, or an observed stop. */
@@ -344,6 +423,12 @@ public final class ExoDeck implements DeckDriving {
     private PlayerMessage boundaryMessage;
     private Timer watchdog;
 
+    /** A-40: this deck may open the prefetch window (the pair's playing deck with a standby to warm). */
+    private boolean prepareWindowAvailable;
+    /** The prefetch window's one timer, and whether it opened for the current boundary. */
+    private Timer windowTimer;
+    private boolean windowOpened;
+
     public ExoDeck(@NonNull ExoPlayer player, @NonNull Config config) {
         if (config.mediaSources == null) throw new IllegalArgumentException("ExoDeck needs Config.mediaSources");
         if (config.gateAwake == null && config.context == null) {
@@ -360,6 +445,7 @@ public final class ExoDeck implements DeckDriving {
         player.setRepeatMode(Player.REPEAT_MODE_OFF);
         player.setPlayWhenReady(false);
         player.addListener(playerListener);
+        player.addAnalyticsListener(loadErrors);
     }
 
     @Override
@@ -372,15 +458,74 @@ public final class ExoDeck implements DeckDriving {
         checkThread();
         if (invalidated) return;
         switch (command) {
-            case DeckCommand.Load c -> load(c.token(), c.url(), c.startSec(), c.preciseTiming());
+            case DeckCommand.Load c -> load(c.token(), c.url(), c.startSec(), c.preciseTiming(), c.deadlineClass());
             case DeckCommand.Play c -> play();
             case DeckCommand.Pause c -> pause();
             case DeckCommand.Seek c -> seek(c.toSec());
             case DeckCommand.SetRate c -> setRate(c.rate());
             case DeckCommand.SetOutPoint c -> setOutPoint(c.sec());
             case DeckCommand.Unload c -> unload();
+            // A lone deck has no standby to warm; the DeckPair intercepts prepare before a deck sees it.
+            case DeckCommand.Prepare c -> record("prepare (no standby)");
         }
         syncGateAwake();
+    }
+
+    // ---------------------------------------------------------------- one of a pair (A-40)
+
+    @Override
+    public boolean isReady() {
+        return !invalidated && stage == Stage.READY && token != null;
+    }
+
+    @Override
+    @Nullable
+    public String loadedUrl() {
+        return loadedUrl;
+    }
+
+    @Override
+    public void setPrepareWindowAvailable(boolean available) {
+        if (available == prepareWindowAvailable) return;
+        prepareWindowAvailable = available;
+        rearmPrepareWindow();
+    }
+
+    @Override
+    public void adopt(int newToken) {
+        checkThread();
+        if (invalidated || token == null) return;
+        record("adopt " + newToken);
+        token = newToken;
+        watch.token = newToken;
+        if (pendingSeek != null) pendingSeek = new PendingSeek(pendingSeek.generation, newToken);
+    }
+
+    /**
+     * The prefetch window's one timer ({@code DeckPolicy.prefetchWindowDelayMs}), re-derived after
+     * every watch step: once per boundary, only while this deck is audible toward a boundary (an
+     * armed out-point, or the item's duration when it has none, A-62), and only with a standby deck.
+     * The AVDeck {@code rearmPrepareWindow}.
+     */
+    private void rearmPrepareWindow() {
+        if (windowTimer != null) windowTimer.cancel();
+        windowTimer = null;
+        if (invalidated || token == null || stage != Stage.READY) return;
+        Double delay = DeckPolicy.prefetchWindowDelayMs(prepareWindowAvailable, watch.outPointSec, watch.armed && !watch.fired,
+                !watch.playing, playheadSec(), watch.rate, EngineConstants.HtmlAudioBackend.PREFETCH_LEAD_SEC, windowOpened,
+                durationSec());
+        if (delay == null) return;
+        if (delay <= 0) {
+            windowOpened = true;
+            emit(new DeckEvent.PrepareWindow(token));
+            return;
+        }
+        int gen = generation;
+        windowTimer = new Timer(() -> {
+            windowTimer = null;
+            if (gen == generation) rearmPrepareWindow();
+        });
+        handler.postDelayed(windowTimer, (long) Math.ceil(delay));
     }
 
     /**
@@ -408,9 +553,12 @@ public final class ExoDeck implements DeckDriving {
         unload();
         cancelWatchdog();
         cancelBoundary();
+        if (windowTimer != null) windowTimer.cancel();
+        windowTimer = null;
         invalidated = true;
         listener = null;
         player.removeListener(playerListener);
+        player.removeAnalyticsListener(loadErrors);
         syncGateAwake();
     }
 
@@ -427,7 +575,7 @@ public final class ExoDeck implements DeckDriving {
 
     // ---------------------------------------------------------------- load
 
-    private void load(int newToken, String url, double startSec, boolean preciseTiming) {
+    private void load(int newToken, String url, double startSec, boolean preciseTiming, DeckDeadlineClass newClass) {
         // Whatever was sounding stops BEFORE the new source attaches: a play-when-ready player
         // would start the new one by itself the moment it buffered, before the gate.
         intendsToPlay = false;
@@ -437,15 +585,18 @@ public final class ExoDeck implements DeckDriving {
             player.pause();
         }
         resetOutPoint();
+        // A load error seen under the last load is not this one's (A-64).
+        lastLoadError = null;
         Double idleSec = loadedUrl == null ? null : Math.max(0, (nowMs() - lastLiveMs) / 1000.0);
         String cold = coldReason(url, preciseTiming, idleSec);
         if (cold == null) {
-            reuse(newToken, startSec, idleSec);
+            reuse(newToken, startSec, idleSec, newClass);
             return;
         }
         detach();
         generation += 1;
         token = newToken;
+        deadlineClass = newClass == null ? DeckDeadlineClass.CLIP : newClass;
         stage = Stage.LOADING;
         targetStartSec = Math.max(0, startSec);
         hasMetadata = false;
@@ -466,8 +617,9 @@ public final class ExoDeck implements DeckDriving {
             stage = Stage.FAILED;
             record("no-url");
             clearPlayer();
-            deckRow("failed", newToken, m("where", str("no-url")));
-            emit(new DeckEvent.Failed(newToken, "no-url"));
+            deckRow("failed", newToken, m("where", str("no-url")), classField());
+            // Nothing was fetched, so nothing says why: `other`, as on iOS.
+            emit(new DeckEvent.Failed(newToken, "no-url", Vocabulary.NarrationFallbackCause.OTHER));
             return;
         }
         MediaSource source = config.mediaSources.make(url, preciseTiming);
@@ -482,7 +634,8 @@ public final class ExoDeck implements DeckDriving {
                 m("host", hostNode(uri.getHost())),
                 // Why this load did not keep the held source (`no-item` when there was none).
                 m("cold", str(cold)),
-                m("idleSec", sec(idleSec)));
+                m("idleSec", sec(idleSec)),
+                classField());
         player.setMediaSource(source, msOf(targetStartSec));
         player.prepare();
     }
@@ -506,12 +659,13 @@ public final class ExoDeck implements DeckDriving {
     }
 
     /** Same source: keep the source and its buffer, and run the same gate (the next READY) under the new token. */
-    private void reuse(int newToken, double startSec, Double idleSec) {
+    private void reuse(int newToken, double startSec, Double idleSec, DeckDeadlineClass newClass) {
         double fromSec = positionSec();
         cancelDeadline();
         cancelPauseSuspicion();
         generation += 1;
         token = newToken;
+        deadlineClass = newClass == null ? DeckDeadlineClass.CLIP : newClass;
         stage = Stage.LOADING;
         targetStartSec = Math.max(0, startSec);
         reachedEnd = false;
@@ -530,7 +684,8 @@ public final class ExoDeck implements DeckDriving {
                 m("startSec", sec(targetStartSec)),
                 m("fromSec", sec(fromSec)),
                 m("bufferedAheadSec", sec(bufferedAheadSec())),
-                m("idleSec", sec(idleSec)));
+                m("idleSec", sec(idleSec)),
+                classField());
         // Media3 masks a seek from READY or ENDED as BUFFERING at once, so the READY that
         // completes the gate is the one after this seek, never the one before it.
         player.seekTo(msOf(targetStartSec));
@@ -554,7 +709,8 @@ public final class ExoDeck implements DeckDriving {
                 m("elapsedMs", JsonNode.num(elapsed)),
                 m("attempts", JsonNode.num(0)),
                 m("marks", new JsonNode.Obj(gateMarks)),
-                m("bufferedAheadSec", sec(bufferedAheadSec())));
+                m("bufferedAheadSec", sec(bufferedAheadSec())),
+                classField());
         emit(new DeckEvent.Ready(token, landed, true, elapsed));
         // AFTER the event: a play the host sends inside it posts Media3's own lock first.
         syncGateAwake();
@@ -573,7 +729,7 @@ public final class ExoDeck implements DeckDriving {
     private void armDeadline(int gen) {
         cancelDeadline();
         deadline = new Timer(() -> deadlineFired(gen));
-        handler.postDelayed(deadline, Math.round(config.loadDeadlineSec * 1000));
+        handler.postDelayed(deadline, Math.round(config.deadlineSec(deadlineClass) * 1000));
     }
 
     private void deadlineFired(int gen) {
@@ -585,13 +741,21 @@ public final class ExoDeck implements DeckDriving {
         deckRow("deadline", stuck,
                 m("afterMs", JsonNode.num(afterMs)),
                 m("step", str(gateStep)),
+                // A-60: which deadline ran out (P13-clip or P13-line).
+                classField(),
                 m("reuse", JsonNode.bool(reusedItem)),
                 m("durationKnown", JsonNode.bool(durationReported)),
                 m("playerState", str(stateToken(player.getPlaybackState()))),
                 m("loading", JsonNode.bool(player.isLoading())),
                 m("targetSec", sec(targetStartSec)),
                 m("bufferedAheadSec", sec(bufferedAheadSec())),
-                m("marks", new JsonNode.Obj(gateMarks)));
+                m("marks", new JsonNode.Obj(gateMarks)),
+                // A-64: the last load error by then (its Media3 code and HTTP status), the
+                // values the deadline's cause is read from, so a paste can check the mapping.
+                m("loadErrCode", codeNode(sourceReason(lastLoadError))),
+                m("loadStatus", codeNode(httpStatus(lastLoadError))));
+        // Why, as the core's closed token (A-64, mirrors NE-39n), read before the detach.
+        Vocabulary.NarrationFallbackCause cause = fallbackCause(null, lastLoadError, true);
         // Detach FIRST, and move the generation, so nothing that completes late can sound:
         // a URL that turns ready at 21 s must not start the wrong thing in the car.
         detach();
@@ -599,7 +763,7 @@ public final class ExoDeck implements DeckDriving {
         stage = Stage.FAILED;
         record("detach (deadline)");
         clearPlayer();
-        emit(new DeckEvent.DeadlineExceeded(stuck, afterMs));
+        emit(new DeckEvent.DeadlineExceeded(stuck, afterMs, cause));
         syncGateAwake();
     }
 
@@ -916,9 +1080,58 @@ public final class ExoDeck implements DeckDriving {
                 m("step", str(gateStep)),
                 m("positionSec", sec(positionSec())),
                 m("errCode", error == null ? JsonNode.NULL : JsonNode.num(error.errorCode)),
-                m("errName", error == null ? JsonNode.NULL : tokenNode(error.getErrorCodeName())));
-        emit(new DeckEvent.Failed(token, message));
+                // Media3's code name, as a token. Not `errName`: DiagGate drops a key that names a name.
+                m("errToken", error == null ? JsonNode.NULL : tokenNode(error.getErrorCodeName())),
+                // A-64: the source's HTTP status, when the failure carries one.
+                m("httpStatus", codeNode(httpStatus(error))));
+        emit(new DeckEvent.Failed(token, message, fallbackCause(error, lastLoadError, false)));
         syncGateAwake();
+    }
+
+    // ---------------------------------------------------------------- the fallback's cause (A-64)
+
+    /**
+     * The {@code cause=} of the core's {@code narration kind=fallback} row (A-64, mirrors NE-39n's
+     * AVDeck.fallbackCause): the failure's {@code PlaybackException} code, the reason of the
+     * {@link DataSourceException} under it, the HTTP status of an
+     * {@link HttpDataSource.InvalidResponseCodeException} under it, and the same two of the last
+     * load error the player retried through, read by the core's pure
+     * {@link NarrationFallbackCauseReading} into one closed token. Every deck failure carries one;
+     * the core writes it only when the failure is a rendered line falling back.
+     */
+    static Vocabulary.NarrationFallbackCause fallbackCause(@Nullable PlaybackException error,
+            @Nullable IOException lastLoadError, boolean deadline) {
+        List<Integer> codes = new ArrayList<>();
+        if (error != null) codes.add(error.errorCode);
+        Integer reason = sourceReason(error);
+        if (reason != null) codes.add(reason);
+        Integer status = httpStatus(error);
+        Integer loadReason = sourceReason(lastLoadError);
+        if (loadReason != null) codes.add(loadReason);
+        if (status == null) status = httpStatus(lastLoadError);
+        return NarrationFallbackCauseReading.cause(codes, status, deadline);
+    }
+
+    /** The {@code reason} (a {@code PlaybackException} code) of the first {@link DataSourceException} in the chain, or null. */
+    @Nullable
+    static Integer sourceReason(@Nullable Throwable error) {
+        for (Throwable t = error; t != null; t = t.getCause() == t ? null : t.getCause()) {
+            if (t instanceof DataSourceException d) return d.reason;
+        }
+        return null;
+    }
+
+    /** The response code of the first {@link HttpDataSource.InvalidResponseCodeException} in the chain, or null. */
+    @Nullable
+    static Integer httpStatus(@Nullable Throwable error) {
+        for (Throwable t = error; t != null; t = t.getCause() == t ? null : t.getCause()) {
+            if (t instanceof HttpDataSource.InvalidResponseCodeException e) return e.responseCode;
+        }
+        return null;
+    }
+
+    private static JsonNode codeNode(@Nullable Integer code) {
+        return code == null ? JsonNode.NULL : JsonNode.num(code);
     }
 
     // ---------------------------------------------------------------- the out-point
@@ -933,6 +1146,7 @@ public final class ExoDeck implements DeckDriving {
         DeckPolicy.OutPointStep result = DeckPolicy.outPointStep(watch, event);
         watch = result.state();
         for (OutPointOp op : result.ops()) apply(op);
+        rearmPrepareWindow();
     }
 
     private void apply(OutPointOp op) {
@@ -1015,6 +1229,9 @@ public final class ExoDeck implements DeckDriving {
     private void resetOutPoint() {
         cancelBoundary();
         cancelWatchdog();
+        if (windowTimer != null) windowTimer.cancel();
+        windowTimer = null;
+        windowOpened = false;
         double heldRate = watch.rate;
         watch = new DeckPolicy.OutPointWatch();
         watch.rate = heldRate;
@@ -1110,6 +1327,16 @@ public final class ExoDeck implements DeckDriving {
     private void record(String op) {
         primitives.add(op);
         if (primitives.size() > PRIMITIVE_CAP) primitives.remove(0);
+    }
+
+    /** The current load's {@code class=} (A-60), on its attach, reuse, ready, deadline and no-url rows. */
+    private JsonNode.Member classField() {
+        return m("class", str(deadlineClass.token));
+    }
+
+    /** The class of the load the deck holds (the tests). */
+    public DeckDeadlineClass deadlineClass() {
+        return deadlineClass;
     }
 
     private void deckRow(String kind, int rowToken, JsonNode.Member... fields) {

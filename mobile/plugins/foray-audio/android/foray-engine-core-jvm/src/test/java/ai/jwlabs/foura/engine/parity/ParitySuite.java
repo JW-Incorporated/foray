@@ -22,7 +22,10 @@ import java.util.regex.Pattern;
  * is what says the fixtures are right; this says whether the JVM agrees with them.
  *
  * <p>THE BOOKS, which are the point of the card. {@code owed} is the case's own entry
- * in jvm-pending.json {@code cases}, else its family's entry in {@code families}:
+ * in jvm-pending.json {@code cases}, else its family's entry in {@code families}. A-63
+ * emptied both and retired them (the loader refuses a tree that owes, as the Swift loader
+ * refuses a retired swift-pending.json), so on every real run nothing is owed and the
+ * owed rows below are reached only by the harness tests that prove them:
  *
  * <pre>
  *   executed &amp; matched &amp; not owed   -&gt; passed

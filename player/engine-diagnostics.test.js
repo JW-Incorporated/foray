@@ -160,6 +160,24 @@ test("native mode with only the ring to go on: version and protocol from the bui
   assert.match(engineHeaderLine({ decision: { mode: "native", reason: "native", hello: {} }, rows: relaunched }), / hold=forever /);
 });
 
+test("NE-40: the header says which route sharing the launch ran, from the newest build row, and only when it says one", () => {
+  /* DV-8's trial is read from the Copy: `routeSharing=longFormAudio` is the
+     arm, `default` the control. A build row without the field (an older
+     build, the Android engine) prints nothing rather than a guess.
+     MUTATION 1: read the OLDEST build row. The relaunch assertion fails.
+     MUTATION 2: print `routeSharing=?` when the row has none. The last fails. */
+  const build = (seq, routeSharing) => erow(seq, T0 + seq, "build", {
+    engineVersion: "1.0.0", protocol: 1, bundleVersion: "2026100101", launch: "foreground", pitch: "timeDomain", hold: "forever",
+    ...(routeSharing ? { routeSharing } : {}),
+  });
+  const decision = { mode: "native", reason: "native", hello: {} };
+  assert.equal(engineHeaderLine({ decision, rows: [build(1, "default")] }),
+    "engine=native v1.0.0 proto=1 caps=? reason=native strikes=? hold=forever routeSharing=default build=2026100101 | web=?");
+  assert.match(engineHeaderLine({ decision, rows: [build(1, "default"), build(2, "longFormAudio")] }),
+    / hold=forever routeSharing=longFormAudio build=2026100101 /, "the relaunch after the Developer tap runs the trial");
+  assert.doesNotMatch(engineHeaderLine({ decision, rows: [build(1)] }), /routeSharing/);
+});
+
 test("JS mode: the header reads engine=js with the reason, and keeps strikes when the engine's rows carry them", () => {
   /* A crash-loop downgrade is a JS page with strikes behind it.
      MUTATION 1: print the native fields in JS mode (`v? proto=?`). The first
@@ -221,6 +239,9 @@ test("each engine kind the card names has its line: session, remote, mode, seam,
     "e#10   12:00:01.234 seam       src=engine NEVER AUDIBLE asked 500ms prepared=n grace=n bgRemainingMs=— stages=prepare");
   assert.equal(engineLineFor(erow(11, at, "grace", { event: "begin", reason: "seam", task: "ok", bgRemainingMs: null })),
     "e#11   12:00:01.234 grace      src=engine begin reason=seam task=ok bgRemainingMs=—");
+  /* NE-46: the late-timer row the silence node's enable rule reads. */
+  assert.equal(engineLineFor(erow(11, at, "grace", { event: "late", timer: "seam-beat", lateMs: 6000, inSeam: "y", bgRemainingMs: 25000, reason: "seam", clock: "wall" })),
+    "e#11   12:00:01.234 grace      src=engine late reason=seam timer=seam-beat lateMs=6000ms inSeam=y bgRemainingMs=25000ms clock=wall");
   assert.equal(engineLineFor(erow(12, at, "probe", { event: "speech-then-play", ok: true, activateMs: 40 })),
     "e#12   12:00:01.234 probe      src=engine speech-then-play ok=y activateMs=40ms");
   assert.equal(engineLineFor(erow(13, at, "lifecycle", { event: "didEnterBackground", state: "playing" })),
@@ -522,13 +543,13 @@ test("the decision: the client's own when it has one; not-ios and no-method need
   const ios = fakeCapacitor();
   assert.deepEqual(pageEngineDecision({ engine: { decision: NATIVE_DECISION }, capacitor: ios }), NATIVE_DECISION);
   assert.deepEqual(pageEngineDecision({ capacitor: null }), { mode: "js", reason: "not-ios", hello: null });
-  /* A-20 (docs/plans/android-assessment.md): Android is an engine platform
-     now, but the page does not ask it until A-28 (HELLO_PLATFORMS), so the
-     header's `not-ios` becomes `no-method` — still the JS player, no hello.
-     MUTATION: add "android" to HELLO_PLATFORMS -> `undecided` -> red. */
+  /* A-28 (docs/plans/android-assessment.md): the page asks an Android shell
+     too (HELLO_PLATFORMS), so before its hello settles the header says
+     `undecided`, as on iOS — not a guessed `no-method`.
+     MUTATION: drop "android" from HELLO_PLATFORMS -> `no-method` -> red. */
   const android = fakeCapacitor({ platform: "android" });
-  assert.deepEqual(pageEngineDecision({ capacitor: android }), { mode: "js", reason: "no-method", hello: null });
-  assert.equal(engineBridgePresent(android), false, "the page does not ask an Android shell yet");
+  assert.deepEqual(pageEngineDecision({ capacitor: android }), { mode: "js", reason: "undecided", hello: null });
+  assert.equal(engineBridgePresent(android), true, "the page asks an Android shell since A-28");
   assert.deepEqual(pageEngineDecision({ capacitor: fakeCapacitor({ plugin: false }) }), { mode: "js", reason: "no-method", hello: null });
   assert.deepEqual(pageEngineDecision({ capacitor: ios }), { mode: "js", reason: "undecided", hello: null });
   assert.equal(engineBridgePresent(ios), true);
@@ -538,13 +559,13 @@ test("the decision: the client's own when it has one; not-ios and no-method need
   assert.equal(view.snapshot.holdPolicy, "none");
 });
 
-test("no engine to ask (the web, Android): no bridge call, and the header says why", async () => {
+test("no engine client to ask (the web; an engine shell before its client exists): no bridge call, and the header says why", async () => {
   /* MUTATION: read whenever a Capacitor exists. The Android call count fails. */
   const android = fakeCapacitor({ platform: "android" });
   const text = await engineDiagnosticReport({ record: () => pageRecord(1, () => T0), engine: null, capacitor: android });
   assert.equal(android.calls.length, 0);
-  // A-20: Android is an engine platform the page does not ask yet: no-method.
-  assert.match(text.split("\n")[2], /^engine=js reason=no-method /);
+  // A-28: Android is asked engineHello now, so with no decision yet the header says so.
+  assert.match(text.split("\n")[2], /^engine=js reason=undecided /);
   assert.doesNotMatch(text, /^engine rows/m);
   const web = await engineDiagnosticReport({ record: () => pageRecord(1, () => T0), engine: null, capacitor: null });
   assert.match(web.split("\n")[2], /^engine=js reason=not-ios /);

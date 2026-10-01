@@ -1,0 +1,55 @@
+package ai.jwlabs.foura.audio.engine;
+
+import ai.jwlabs.foura.engine.EngineContract;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+
+/**
+ * THE LANE'S BUILD-TIME INPUTS on Android (cards A-28 and A-29, docs/plans/android-assessment.md
+ * §5.4): the build's default, what it declares, and where the Developer engine setting lives.
+ * Pure. The decision itself is {@code EngineMode.decide} (the {@code engine-mode} family, ported by
+ * A-29), made once per process by {@link OwnershipCore} with the crash-loop sentinel, the strikes
+ * and the sticky pin.
+ *
+ * <p>SINCE A-31 (the A1 flip) the native lane is the build's default for episodes, and SINCE
+ * A-42 (the A2 flip) for Forays: {@link #BUILD_DEFAULT_NATIVE} is true and the build declares
+ * {@code episode}, {@code continuation}, {@code restore} and {@code foray} (iOS's M2 four), as
+ * mobile/ENGINE_DEFAULT.json's {@code android} block says, and shell-invariants holds the two
+ * together. The Developer engine setting's Web, the crash-loop guard and a terminal relinquish
+ * still put a process on the JS player.
+ */
+public final class EngineLane {
+    private EngineLane() {}
+
+    /**
+     * mobile/ENGINE_DEFAULT.json {@code android.mode == "native"}: true since A-31 (episodes) and A-42 (Forays). No build step
+     * writes it (iOS's plist injector has no Android half); shell-invariants pins this literal to
+     * the file instead.
+     */
+    public static final boolean BUILD_DEFAULT_NATIVE = true;
+
+    /**
+     * mobile/ENGINE_DEFAULT.json {@code android.capabilities}: what a native launch of this build
+     * DECLARES. The bridge advertises the intersection with what the binary may claim
+     * ({@code EngineBridgeRules.ADVERTISED_CAPABILITIES}). Pinned to the file like the mode.
+     */
+    public static final List<String> DECLARED_CAPABILITIES = Collections.unmodifiableList(Arrays.asList("episode", "continuation", "restore", "foray"));
+
+    /**
+     * mobile/ENGINE_DEFAULT.json {@code android.routeResumeBluetooth} (A-61): route resume's
+     * Bluetooth arm, OFF as on iOS (NE-38rs). Reading a Bluetooth device's class, to tell a car from
+     * headphones, needs {@code BLUETOOTH_CONNECT}, which is not requested (D-A9: no). Pinned to the
+     * file like the mode; an absent key in the file is the core's default (off).
+     */
+    public static final boolean ROUTE_RESUME_BLUETOOTH = false;
+
+    /** Where the Developer engine setting is stored (SharedPreferences), and its key: iOS's names. */
+    public static final String PREFS = "ForayEngine";
+    public static final String OVERRIDE_KEY = "ForayEngine.modeOverride";
+
+    /** A stored override, read as the JS reads {@code MODE_OVERRIDES.includes(v) ? v : "auto"}. */
+    public static String storedOverride(String raw) {
+        return raw != null && EngineContract.MODE_OVERRIDES.contains(raw) ? raw : "auto";
+    }
+}

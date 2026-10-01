@@ -43,6 +43,17 @@ import java.util.List;
  *       resume by itself, corner case #13).</li>
  * </ul>
  *
+ * <h2>BECOMING NOISY WITH NO DECK PLAYING (A-41 review)</h2>
+ *
+ * Media3 listens for {@code ACTION_AUDIO_BECOMING_NOISY} only while its player has play-when-ready
+ * on. A Foray is audible with no deck playing in two places: a SPOKEN line ({@code TextToSpeech}, in
+ * another process) and the seam's JINGLE ({@code MediaPlayer}), both with the outgoing deck paused at
+ * its out-point. Headphones pulled out there would leave the line or the jingle on the phone's
+ * speaker, where iOS (whose route change is the session's, not a player's) pauses. So the service
+ * keeps its own receiver and asks {@link #onBecomingNoisyOffDeck}: the lost route is fed only when
+ * the engine is running and the deck is NOT playing (when it is, Media3's receiver already answers
+ * through {@link #onPlayWhenReadyChanged}, and the core's pause makes a second report not running).
+ *
  * <h2>WHAT IS NOT AN END</h2>
  *
  * The suppression also lifts when the player goes IDLE (an unload releases focus: Media3's
@@ -77,7 +88,7 @@ public final class FocusMapping {
                 return one(new EngineInput.SessionEvent.InterruptionBegan(REASON));
             }
             case Player.PLAY_WHEN_READY_CHANGE_REASON_AUDIO_BECOMING_NOISY:
-                return one(new EngineInput.SessionEvent.Route(new EngineInput.RouteChange(true, null, false, null)));
+                return one(new EngineInput.SessionEvent.Route(new EngineInput.RouteChange(true)));
             default:
                 return Collections.emptyList();
         }
@@ -97,6 +108,32 @@ public final class FocusMapping {
         transientOpen = false;
         if (playbackState == Player.STATE_IDLE) return Collections.emptyList();
         return one(new EngineInput.SessionEvent.InterruptionEnded(true));
+    }
+
+    /**
+     * The service's own {@code ACTION_AUDIO_BECOMING_NOISY} receiver (see BECOMING NOISY WITH NO
+     * DECK PLAYING): a lost route when the engine is running ({@code EngineState.isRunning}) and the
+     * active deck's play-when-ready is off, and nothing otherwise.
+     */
+    public static List<EngineInput.SessionEvent> onBecomingNoisyOffDeck(boolean deckPlayWhenReady, boolean engineRunning) {
+        if (deckPlayWhenReady || !engineRunning) return Collections.emptyList();
+        return one(new EngineInput.SessionEvent.Route(new EngineInput.RouteChange(true)));
+    }
+
+    /**
+     * A-66 review, THE VOICE PREVIEW TAKES FOCUS FROM A PAUSED FORAY. Media3 keeps a paused player's
+     * focus (it abandons only at {@code STATE_IDLE}), and the preview's own ExoPlayer requests
+     * {@code AUDIOFOCUS_GAIN} when it plays. So an audition tapped with a Foray paused hands the deck
+     * a permanent {@code AUDIOFOCUS_LOSS}, which Media3 reports as play-when-ready's reason changing
+     * to {@link Player#PLAY_WHEN_READY_CHANGE_REASON_AUDIO_FOCUS_LOSS} (the reason alone changing is
+     * enough for the callback). That is this app's own preview, not another app: fed to the core it
+     * would be an interruption with no end, moving the paused Foray to interrupted and the session off
+     * active. True when the loss is the preview's: the preview player wants to sound
+     * ({@code previewWantsFocus}). The deck has let its focus go either way, and its next play asks
+     * afresh, as a listener's press does.
+     */
+    public static boolean isLossToOwnPreview(boolean playWhenReady, int reason, boolean previewWantsFocus) {
+        return !playWhenReady && reason == Player.PLAY_WHEN_READY_CHANGE_REASON_AUDIO_FOCUS_LOSS && previewWantsFocus;
     }
 
     private static List<EngineInput.SessionEvent> one(EngineInput.SessionEvent event) {

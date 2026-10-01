@@ -16,7 +16,7 @@ import ForayEngineCore
 /// still run when the fixture tree cannot be found (and a wrapper then fails
 /// for THAT reason, not for a smoke case). The real runner is `ParitySuite`
 /// (NE-05): it reads `player/parity/fixtures` in place, runs each family
-/// through its `FamilyRunner`, keeps the `swift-pending.json` books and writes
+/// through its `FamilyRunner`, keeps the books (nothing owed since NE-39s) and writes
 /// `parity-report.json`.
 public enum ParityRunner {
     /// A call the runner does not know is a FAILURE, never a skip: a renamed

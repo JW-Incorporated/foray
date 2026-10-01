@@ -466,8 +466,11 @@ jobs:
 
           mutant="$RUNNER_TEMP/jvm-parity-mutant"
           rm -rf "$mutant"
-          mkdir -p "$mutant/player"
+          mkdir -p "$mutant/player" "$mutant/data"
           cp -R ../../player/parity "$mutant/player/parity"
+          # A-40: the Foray families read the committed Forays ($foray, forays.js) from the
+          # repo root, so the copy carries data/forays.json beside player/parity.
+          cp ../../data/forays.json "$mutant/data/forays.json"
           node -e '
             const fs = require("fs");
             const file = process.argv[1];
@@ -577,6 +580,18 @@ jobs:
           unzip -p "$ART/app-debug.apk" assets/capacitor.plugins.json | tee "$ART/capacitor.plugins.json"
           grep -qF 'ai.jwlabs.foura.audio.ForayAudioPlugin' "$ART/capacitor.plugins.json" \
             || { echo "Capacitor did not register ForayAudioPlugin — the @CapacitorPlugin annotation was not found"; exit 1; }
+          # A-41: the native engine's two bundled files, read in place from the repo
+          # by foray-audio's build.gradle: the seam jingle (InterludePlayer plays it
+          # only when it hashes to its pin, so the bytes are checked here too) and the
+          # pronunciation lexicon (SpeechLexicon).
+          grep -qE 'assets/interlude-placeholder\.wav$' "$ART/apk-listing.txt" \
+            || { echo "the engine's jingle is not in the APK (foray-audio build.gradle's assets.srcDirs)"; exit 1; }
+          grep -qE 'assets/hard-terms\.json$' "$ART/apk-listing.txt" \
+            || { echo "the engine's lexicon is not in the APK (foray-audio build.gradle's assets.srcDirs)"; exit 1; }
+          JINGLE_SHA=$(unzip -p "$ART/app-debug.apk" assets/interlude-placeholder.wav | sha256sum | cut -d' ' -f1)
+          [ "$JINGLE_SHA" = "$(sha256sum "$GITHUB_WORKSPACE/player/assets/interlude-placeholder.wav" | cut -d' ' -f1)" ] \
+            || { echo "the APK's jingle is not the repo's bytes ($JINGLE_SHA)"; exit 1; }
+          echo "the APK carries the engine's jingle (sha256 $JINGLE_SHA) and lexicon"
 
       - name: assembleRelease, which is how lintVitalRelease gets run
         # The release configuration is a different compile (R8, resource

@@ -26,7 +26,7 @@ import {
   OWNED_PREFIXES, PROTOCOL, COMMANDS, EVENTS, REFUSALS, BRIDGE_METHODS, CONTRACT_KINDS,
   SESSION_PHASES, SESSION_INPUTS, AUDIBLE_COMMANDS, STRIKE_LIMIT,
   contractSchemaDocument, validateContract, contractAccepts, decideMode, extrapolate,
-  ENGINE_PLATFORMS, HELLO_PLATFORMS,
+  ENGINE_PLATFORMS, HELLO_PLATFORMS, NARRATION_PUBLIC_BASE,
   sessionTransition, audibleStartViolations, decideEngineMode, engineModeTrace,
 } from "./engine-contract.js";
 import { SESSION_ERRORS } from "./engine-vocabulary.js";
@@ -187,24 +187,28 @@ test("decideMode: native only on iOS with the method, a well-formed native hello
   assert.equal(decideMode({ platform: "web", methodPresent: true, hello: native }).reason, "not-ios");
 });
 
-test("decideMode (A-20): Android drives a native engine only on protocol 1; the page does not ask it yet, so it stays js", () => {
-  /* docs/plans/android-assessment.md A-20. The contract lets an Android shell
-     answer engineHello exactly as iOS does; HELLO_PLATFORMS keeps the page from
-     asking until A-28, so today's Android is methodPresent false: `no-method`,
-     the JS player, nothing to relinquish — the lane it always had, where the
-     token used to be `not-ios`.
+test("decideMode (A-20, A-28): Android drives a native engine only on protocol 1, and the page asks it since A-28", () => {
+  /* docs/plans/android-assessment.md A-20 and A-28. The contract lets an
+     Android shell answer engineHello exactly as iOS does, and since A-28 the
+     page asks it (HELLO_PLATFORMS): its plugin has the three methods. An
+     Android engine that answers legacy (the stock answer until A-31, and the
+     Developer setting's Web since) is `engine-legacy`: the JS player, nothing
+     to relinquish.
      MUTATION: keep `platform !== "ios"` in decideMode -> the native case is
-     js/not-ios -> red. Add "android" to HELLO_PLATFORMS -> red below. */
+     js/not-ios -> red. Drop "android" from HELLO_PLATFORMS -> red below. */
   const native = contractSchemaDocument().$defs.helloResponse["x-examples"].valid.native;
   const android = (methodPresent, hello) => decideMode({ platform: "android", methodPresent, hello });
   assert.deepStrictEqual(android(true, native), { mode: "native", reason: "native", relinquish: false });
   assert.deepStrictEqual(android(true, { ...native, protocol: 2 }), { mode: "js", reason: "protocol-mismatch", relinquish: true });
   assert.deepStrictEqual(android(true, { mode: "legacy", reason: "not-built" }), { mode: "js", reason: "engine-legacy", relinquish: false });
   assert.deepStrictEqual(android(true, null), { mode: "js", reason: "no-hello", relinquish: true });
-  // Today's Android: the page never asks, so no method — and still js.
+  // A stock Android launch: the engine's legacy answer, and still js.
+  assert.deepStrictEqual(android(true, { mode: "legacy", reason: "build-default", protocol: 1 }),
+    { mode: "js", reason: "engine-legacy", relinquish: false });
+  // A binary built before A-28 has no method: js, nothing to relinquish.
   assert.deepStrictEqual(android(false, null), { mode: "js", reason: "no-method", relinquish: false });
   assert.deepStrictEqual([...ENGINE_PLATFORMS], ["ios", "android"]);
-  assert.deepStrictEqual([...HELLO_PLATFORMS], ["ios"], "A-28 adds android here, with the plugin's engine methods");
+  assert.deepStrictEqual([...HELLO_PLATFORMS], ["ios", "android"], "A-28 added android, with the plugin's engine methods");
   assert.ok(Object.isFrozen(ENGINE_PLATFORMS) && Object.isFrozen(HELLO_PLATFORMS));
 });
 
@@ -318,10 +322,13 @@ test("the six NE-11j families are recorded, charged to the episode capability, a
   // wrappers, tools/mobile/shell-invariants.test.mjs) must now execute them.
   // The episode capability requires zero pending in these families, so an id
   // that drifted back to "owed" is a gate problem, not a bookkeeping one.
-  // A later JS rule change re-adds its ids here through record.mjs
-  // --port-card; this test then names the card that must burn them down.
-  // MUTATION: re-add one of these ids to swift-pending.json -> red.
-  const pending = readParity("swift-pending.json");
+  // NE-39s retired swift-pending.json: nothing can be owed any more, so a
+  // later JS rule change carries its Swift port and engine-parity holds it.
+  // The list is read only if it has come back (coverage.test.js and
+  // record.mjs --check are red on that by themselves).
+  // MUTATION: commit swift-pending.json owing one of these ids -> red.
+  const pendingFile = path.join(ROOT, "player/parity/swift-pending.json");
+  const pending = fs.existsSync(pendingFile) ? readParity("swift-pending.json") : {};
   const manifest = readParity("manifest.json");
   const episode = readParity("capabilities.json").episode;
   for (const fam of NE11J_FAMILIES) {
@@ -332,4 +339,38 @@ test("the six NE-11j families are recorded, charged to the episode capability, a
   }
   const invariant = loadFixtures(ROOT, { family: "session-invariant" }).flatMap((f) => f.doc.cases);
   assert.ok(invariant.every((c) => c.authored === true), "session-invariant is authored end to end: the rule is the spec's, not the recorder's");
+});
+
+test("NE-47: an audition url is a rendered file on the narration host, and nowhere else", () => {
+  // The voice picker's preview plays `preview.m4a` from the bucket the render
+  // tools upload to (Spark §3.3, ruling D6). The host the contract admits is
+  // the render profile's own, so moving the bucket moves both or neither.
+  // MUTATION: change NARRATION_PUBLIC_BASE -> red; drop `pattern` from the
+  // audition's url -> the off-host, http, query and look-alike urls are
+  // accepted -> red; make `url` required -> the spoken audition is refused -> red.
+  const profile = JSON.parse(fs.readFileSync(path.join(ROOT, "tools/narration/render-profile.json"), "utf8"));
+  assert.equal(NARRATION_PUBLIC_BASE, profile.public_base, "the contract's narration host is the render profile's public base");
+  const send = (args) => ({ v: 1, cmdSeq: 1, cmd: "audition", source: "audition", args });
+  const text = "This is how I sound";
+  const key = `${NARRATION_PUBLIC_BASE}/n/${profile.id}/af_heart/preview.m4a`;
+  assert.equal(contractAccepts("sendRequest", send({ text, voiceId: null })), true, "no url: spoken, as before");
+  assert.equal(contractAccepts("sendRequest", send({ text, voiceId: "kokoro:af_heart", url: key })), true);
+  for (const url of [
+    key.replace("https:", "http:"),
+    `https://cdn.example.com/n/${profile.id}/af_heart/preview.m4a`,
+    `${key}?token=abc`,
+    `${key}#t=1`,
+    `https://audio.jwlabs.ai.evil.example/preview.m4a`,
+    `https://user:pw@audio.jwlabs.ai/preview.m4a`,
+    `https://audio.jwlabs.ai:8443/preview.m4a`,
+    `https://audio.jwlabs.ai/`,
+    `https://audio.jwlabs.ai/a b.m4a`,
+    `https://audio.jwlabs.ai/%2e%2e/preview.m4a`,
+    "",
+  ]) {
+    assert.equal(contractAccepts("sendRequest", send({ text, voiceId: null, url })), false, url);
+  }
+  for (const url of [null, 1, true, {}]) {
+    assert.equal(contractAccepts("sendRequest", send({ text, voiceId: null, url })), false, JSON.stringify(url));
+  }
 });

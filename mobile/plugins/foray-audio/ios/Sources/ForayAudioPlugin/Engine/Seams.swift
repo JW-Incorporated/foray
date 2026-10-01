@@ -69,6 +69,13 @@ protocol SessionControlling: AnyObject {
     func rebuild()
     /// Interruptions, route changes and media-services resets, on main.
     func observe(_ handler: @escaping (SessionEvent) -> Void) -> EngineObservation
+    /// The current output route, read for every input (`EngineNow.route`,
+    /// NE-38rs). Nil when the seam cannot say (the default).
+    var currentRoute: RoutePort? { get }
+}
+
+extension SessionControlling {
+    var currentRoute: RoutePort? { nil }
 }
 
 // MARK: - Background time and the app's lifecycle (BackgroundGrace, NE-16g)
@@ -307,6 +314,32 @@ protocol HoldPolicyStoring: AnyObject {
     func save(_ policy: SessionPolicy.HoldPolicy)
 }
 
+// MARK: - The known routes' private key (NE-38rs)
+
+/// Where route resume's known set lives between launches: the engine-private
+/// `UserDefaults` key `ForayEngine.knownRoutes` (EngineStore), never under
+/// `CapacitorStorage.`, with the install's salt beside the salted keys. The
+/// host reads it once at construction and writes it whenever a turn changed
+/// the core's set; nil removes the key (an empty set, a data deletion).
+protocol KnownRoutesStoring: AnyObject {
+    func loadKnownRoutes() -> RouteResume.Stored?
+    func saveKnownRoutes(_ stored: RouteResume.Stored?)
+}
+
+// MARK: - The route-sharing trial's private key (NE-40)
+
+/// Where the Developer row's route-sharing choice lives between launches: the
+/// engine-private `UserDefaults` key `ForayEngine.routeSharing` (EngineStore).
+/// The boot reads it once, before the session owner sets its category; the
+/// host writes it when `engineSend setRouteSharing` arrives. It changes
+/// nothing in the running process: the category is applied at construction,
+/// so the choice takes effect at the next launch (as the mode override does).
+protocol RouteSharingStoring: AnyObject {
+    /// Nil when nothing valid is stored: the default then stands.
+    func loadRouteSharing() -> EngineContract.RouteSharingPolicy?
+    func saveRouteSharing(_ policy: EngineContract.RouteSharingPolicy)
+}
+
 /// Every seam the host drives, in one value, so a test builds the whole world
 /// out of fakes and the boot path (NE-17, NE-24) out of the real conformers.
 struct EngineSeams {
@@ -320,11 +353,24 @@ struct EngineSeams {
     var output: EngineOutput
     /// Optional so a world without persistence (most tests) needs no store.
     var holdPolicy: HoldPolicyStoring? = nil
+    /// The known routes and their salt (NE-38rs), in the private key
+    /// `ForayEngine.knownRoutes`. Nil (most tests): a fresh salt per engine
+    /// and nothing persisted.
+    var knownRoutes: KnownRoutesStoring? = nil
+    /// The Developer route-sharing trial's key (NE-40). Nil (most tests): a
+    /// `setRouteSharing` is answered and recorded, and nothing is persisted.
+    var routeSharing: RouteSharingStoring? = nil
     /// The seam's jingle (NE-34). Nil: every `interlude(.start)` is answered
     /// `ended(refused)` at once, and the boot leaves `interludeAvailable` off.
     var interlude: InterludePlaying? = nil
     /// The silence node (NE-34), built only when `silenceNodeEnabled` is on.
     var silence: SilenceRendering? = nil
+    /// The PREVIEW deck (NE-47): the voice picker's rendered `preview.m4a`
+    /// plays here, never on `deck`, so a preview leaves the item a paused
+    /// Foray holds exactly where it was. Nil (every older test world): a
+    /// preview's load is answered `.failed` at once, and the audition is
+    /// spoken instead, as it was before it had a url.
+    var preview: DeckDriving? = nil
     /// Ends the process: Developer "Simulate system termination" (NE-24,
     /// DV-7a) and nothing else. The boot supplies the real one; nil (every
     /// test world) records the decision in the row and exits nothing.

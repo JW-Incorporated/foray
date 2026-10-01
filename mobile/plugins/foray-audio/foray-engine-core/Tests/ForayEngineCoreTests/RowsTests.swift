@@ -192,6 +192,23 @@ final class RowsTests: XCTestCase {
                        [.attach, .readiness, .preroll, .ready, .play, .playing])
         XCTAssertNil(DiagRow.parse(String(line.dropLast(3))))
         XCTAssertNil(SeamRow(DiagRow(seq: 1, wallMs: 0, monoMs: 0, kind: "remote", fields: seam.fields)))
+        XCTAssertNil(SeamRow(row)?.from, "a row from before NE-45s reads with no kinds")
+    }
+
+    /// NE-45s: the seam's kinds and the prepare verdict are appended AFTER the
+    /// pre-NE-45s fields (a reader of the old order is unchanged), read back,
+    /// and `prepare=none` is the token engine-report.mjs's `seam-kinds` reads.
+    /// TO SEE IT FAIL: write `.unprepared` under its Swift name.
+    func testTheSeamRowCarriesItsKindsAndThePrepareVerdict() throws {
+        let seam = SeamRow(observedGapMs: 60, askedGapMs: 0, prepared: false, grace: true, bgRemainingMs: 25_000,
+                           stages: [.play], from: .clip, to: .line, prepare: .unprepared)
+        let line = seam.row(seq: 7, wallMs: RowsTests.t0, monoMs: 5).line()
+        XCTAssertTrue(line.hasSuffix(",\"stages\":[\"play\"],\"from\":\"clip\",\"to\":\"line\",\"prepare\":\"none\"}"), line)
+        XCTAssertEqual(SeamRow(try XCTUnwrap(DiagRow.parse(line))), seam)
+        let admitted = try XCTUnwrap(DiagGate.admit(seam.entry))
+        XCTAssertNil(admitted[field: DiagGate.droppedField], "every NE-45s field is a token the gate admits")
+        XCTAssertEqual(SeamRow.Prepare.allCases.map(\.rawValue), ["hit", "miss", "none"])
+        XCTAssertEqual(SeamRow.ItemKind.allCases.map(\.rawValue), ["clip", "line"])
     }
 
     /// A field may not shadow the header: a reader keeps the LAST of a repeated

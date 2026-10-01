@@ -36,6 +36,10 @@ public class EngineCoreTest {
         boolean activationOK = true;
         Integer lastLoad;
         Double bgRemainingMs;
+        /** The current output route the host reads (A-61; null: none). */
+        EngineInput.RoutePort route;
+        /** The wall clock. It stands still unless a test moves it (A-61 measures a loss's age on it). */
+        double wallMs = WALL_MS;
 
         Host() {
             this(new EngineConfig("test"));
@@ -57,12 +61,12 @@ public class EngineCoreTest {
         /** One turn, {@code afterMs} on the monotonic clock after the last. */
         List<EngineCommand> send(EngineInput input, double afterMs) {
             monoMs += afterMs;
-            List<EngineCommand> all = new ArrayList<>(core.handle(input, new EngineNow(WALL_MS, monoMs, reading, bgRemainingMs)));
+            List<EngineCommand> all = new ArrayList<>(core.handle(input, now()));
             Integer id = null;
             for (EngineCommand c : all) if (c instanceof EngineCommand.SessionActivate a) id = a.requestId();
             if (id != null) {
                 all.addAll(core.handle(new EngineInput.SessionAnswer(new EngineInput.SessionResult(id, activationOK,
-                        activationOK ? null : "cannot-interrupt-others", 3.0)), new EngineNow(WALL_MS, monoMs, reading, bgRemainingMs)));
+                        activationOK ? null : "cannot-interrupt-others", 3.0)), now()));
             }
             for (EngineCommand c : all) {
                 if (!(c instanceof EngineCommand.Deck d)) continue;
@@ -80,6 +84,10 @@ public class EngineCoreTest {
                 }
             }
             return all;
+        }
+
+        EngineNow now() {
+            return new EngineNow(wallMs, monoMs, reading, bgRemainingMs, NarratorReading.UNKNOWN, route);
         }
 
         List<EngineCommand> send(EngineContract.Command command) {
@@ -252,7 +260,7 @@ public class EngineCoreTest {
         assertEquals(SessionPolicy.Phase.RELINQUISHED, host.core.state().session);
         for (EngineInput input : Arrays.<EngineInput>asList(
                 new EngineInput.Session(new EngineInput.SessionEvent.InterruptionEnded(true)),
-                new EngineInput.Session(new EngineInput.SessionEvent.Route(new EngineInput.RouteChange(false, null, false))),
+                new EngineInput.Session(new EngineInput.SessionEvent.Route(new EngineInput.RouteChange(false))),
                 new EngineInput.Session(new EngineInput.SessionEvent.MediaServicesReset()),
                 new EngineInput.Remote(new EngineInput.RemotePress(MediaMapping.RemoteCommand.PLAY)),
                 new EngineInput.Deck(new DeckEvent.Ready(1, 0, true, 0)),
@@ -287,7 +295,7 @@ public class EngineCoreTest {
         assertCauseFirst(Vocabulary.StopCause.INTERRUPTION,
                 playing().send(new EngineInput.Session(new EngineInput.SessionEvent.InterruptionBegan("default"))));
         assertCauseFirst(Vocabulary.StopCause.ROUTE_CHANGE, playing().send(new EngineInput.Session(
-                new EngineInput.SessionEvent.Route(new EngineInput.RouteChange(true, null, false)))));
+                new EngineInput.SessionEvent.Route(new EngineInput.RouteChange(true)))));
         assertCauseFirst(Vocabulary.StopCause.CLOSE, playing().send(new EngineContract.Command.Stop(true)));
         assertCauseFirst(Vocabulary.StopCause.MEDIA_SERVICES_RESET,
                 playing().send(new EngineInput.Session(new EngineInput.SessionEvent.MediaServicesReset())));
@@ -594,16 +602,18 @@ public class EngineCoreTest {
         assertTrue(host.send(session(new EngineInput.SessionEvent.InterruptionEnded(true)))
                 .contains(new EngineCommand.GraceBegin(GraceReason.INTERRUPTION_RESUME)));
 
-        Host car = playing();
-        car.send(session(new EngineInput.SessionEvent.Route(new EngineInput.RouteChange(true, "Civic", true))));
-        List<EngineCommand> back = car.send(session(new EngineInput.SessionEvent.Route(new EngineInput.RouteChange(false, "Civic", false))));
+        Host car = RouteResumeTest.playingThrough(RouteResumeTest.CAR, RouteResumeTest.config());
+        car.send(session(new EngineInput.SessionEvent.Route(RouteResumeTest.lost(RouteResumeTest.CAR, RouteResume.RouteClass.CAR))));
+        List<EngineCommand> back = car.send(session(new EngineInput.SessionEvent.Route(
+                RouteResumeTest.back(RouteResumeTest.CAR, RouteResume.RouteClass.CAR))));
         assertTrue(back.toString(), back.contains(new EngineCommand.GraceBegin(GraceReason.ROUTE_RESUME)));
         assertTrue("the known car resumes: " + back, index(back, EngineCoreTest::isLoad) >= 0);
 
-        Host phones = playing();
-        phones.send(session(new EngineInput.SessionEvent.Route(new EngineInput.RouteChange(true, "AirPods", false))));
+        // Headphones (A-61: an `other` route, known or not) plugged back in never resume.
+        Host phones = RouteResumeTest.playingThrough(RouteResumeTest.WIRED, RouteResumeTest.config());
+        phones.send(session(new EngineInput.SessionEvent.Route(RouteResumeTest.lost(RouteResumeTest.WIRED, RouteResume.RouteClass.OTHER))));
         List<EngineCommand> plugged = phones.send(session(new EngineInput.SessionEvent.Route(
-                new EngineInput.RouteChange(false, "AirPods", false))));
+                RouteResumeTest.back(RouteResumeTest.WIRED, RouteResume.RouteClass.OTHER))));
         assertEquals("headphones plugged in never resume: " + plugged, -1, index(plugged, EngineCoreTest::isLoad));
         assertEquals(-1, index(plugged, c -> c instanceof EngineCommand.SessionActivate));
         assertEquals(-1, index(plugged, c -> c instanceof EngineCommand.GraceBegin));
@@ -669,10 +679,11 @@ public class EngineCoreTest {
         int at = index(resumed, c -> c instanceof EngineCommand.Diag d && d.entry().kind().equals("resume"));
         if (activate >= 0) assertTrue("the row is written before the activation it waits on", at < activate);
 
-        Host car = playing();
+        Host car = RouteResumeTest.playingThrough(RouteResumeTest.CAR, RouteResumeTest.config());
         car.bgRemainingMs = 12_000.0;
-        car.send(session(new EngineInput.SessionEvent.Route(new EngineInput.RouteChange(true, "Civic", true))));
-        List<EngineCommand> back = car.send(session(new EngineInput.SessionEvent.Route(new EngineInput.RouteChange(false, "Civic", false))));
+        car.send(session(new EngineInput.SessionEvent.Route(RouteResumeTest.lost(RouteResumeTest.CAR, RouteResume.RouteClass.CAR))));
+        List<EngineCommand> back = car.send(session(new EngineInput.SessionEvent.Route(
+                RouteResumeTest.back(RouteResumeTest.CAR, RouteResume.RouteClass.CAR))));
         EngineCommand.DiagEntry route = rows("resume", back).get(0);
         assertEquals(JsonNode.str("route"), route.field("kind"));
         assertEquals(JsonNode.str("y"), route.field("grace"));
@@ -721,7 +732,7 @@ public class EngineCoreTest {
         host.send(new EngineInput.Deck(new DeckEvent.PausedUncommanded(host.lastLoad, 3)));
         assertFalse(host.core.state().pausedByRoute);
         List<EngineCommand> route = host.send(
-                session(new EngineInput.SessionEvent.Route(new EngineInput.RouteChange(true, null, false))), 200);
+                session(new EngineInput.SessionEvent.Route(new EngineInput.RouteChange(true))), 200);
         assertTrue(route.toString(),
                 rows("session", route).stream().anyMatch(e -> JsonNode.str("route-attributed").equals(e.field("kind"))));
         assertEquals(-1, index(host.send(session(new EngineInput.SessionEvent.InterruptionEnded(true))), EngineCoreTest::isLoad));
@@ -848,5 +859,57 @@ public class EngineCoreTest {
         assertTrue("silent before released", pause < release);
         List<EngineCommand> again = host.send(EngineContract.Command.PLAY);
         assertEquals(again.toString(), 1, again.stream().filter(c -> c instanceof EngineCommand.SessionActivate).count());
+    }
+
+    // ---- A-42: a remote press in a Foray is on the Foray's clock
+
+    /** A clip of a built Foray ({@code f1#<index>}), as ForayTapeScenarioTest.clip. */
+    static JsonNode forayClip(int index, double start, double end) {
+        return obj("id", JsonNode.str("f1#" + index), "kind", JsonNode.str("episode"),
+                "audio_url", JsonNode.str("https://cdn.test/c" + index + ".mp3"),
+                "start_sec", JsonNode.num(start), "end_sec", JsonNode.num(end), "duration_sec", JsonNode.num(3600));
+    }
+
+    /** What the deck is told after {@code press}, in a three-clip Foray (100 s each) playing clip 0 at source {@code atSec}. */
+    static List<DeckCommand> deckAfterRemoteInAForay(double atSec, EngineInput.RemotePress press) {
+        Host host = new Host(new EngineConfig("test").withForayTape(true, false));
+        host.send(new EngineContract.Command.PlayForay("f1", "Three",
+                List.of(forayClip(0, 100, 200), forayClip(1, 300, 400), forayClip(2, 500, 600)),
+                new JsonNode.Obj(List.of()), null, false, false, null));
+        host.land();
+        host.confirm();
+        assertTrue("the Foray is playing clip 0", host.core.state().isRunning() && host.core.state().currentIndex == 0);
+        host.reading.positionSec = atSec;
+        List<DeckCommand> deck = new ArrayList<>();
+        for (EngineCommand c : host.send(new EngineInput.Remote(press))) {
+            if (c instanceof EngineCommand.Deck d) deck.add(d.command());
+        }
+        return deck;
+    }
+
+    /**
+     * A lock-screen or car press in a Foray is on the FORAY's clock, the one the surface publishes
+     * ({@code forayMediaView}), as client.js's forayMediaSurface routes it (foraySeek, nudgeBy). A
+     * scrub to 150 s is 50 s into the second clip (source 350); a 30 s skip from clip 0's source
+     * second 190 (Foray 90) is 20 s into the second clip (source 320). MUTATION: send the remote
+     * changePlaybackPosition or skip down the episode path (A-40's onRemote): the scrub seeks clip
+     * 0's source to 150, and the skip to 220, past its 200 s out-point into the rest of the episode.
+     */
+    @Test
+    public void aRemoteScrubOrSkipInAForayIsOnTheForayClock() {
+        List<DeckCommand> scrub = deckAfterRemoteInAForay(110,
+                new EngineInput.RemotePress(MediaMapping.RemoteCommand.CHANGE_PLAYBACK_POSITION, 150.0, null, true));
+        assertTrue("a scrub to Foray 150 s loads the second clip at source 350: " + scrub, scrub.stream().anyMatch(
+                c -> c instanceof DeckCommand.Load l && l.itemId().equals("f1#1") && Math.abs(l.startSec() - 350) < 0.01));
+        assertFalse("never clip 0's source second 150: " + scrub, scrub.stream().anyMatch(c -> c instanceof DeckCommand.Seek));
+        List<DeckCommand> skip = deckAfterRemoteInAForay(190,
+                new EngineInput.RemotePress(MediaMapping.RemoteCommand.SKIP_FORWARD, null, null, true));
+        assertTrue("a 30 s skip from Foray 90 s loads the second clip at source 320: " + skip, skip.stream().anyMatch(
+                c -> c instanceof DeckCommand.Load l && l.itemId().equals("f1#1") && Math.abs(l.startSec() - 320) < 0.01));
+        assertFalse("never past clip 0's out-point: " + skip, skip.stream().anyMatch(c -> c instanceof DeckCommand.Seek));
+        List<DeckCommand> back = deckAfterRemoteInAForay(150,
+                new EngineInput.RemotePress(MediaMapping.RemoteCommand.SKIP_BACKWARD, null, null, true));
+        assertTrue("a 15 s skip back inside clip 0 is a seek on its source (Foray 50 s -> source 135): " + back, back.stream().anyMatch(
+                c -> c instanceof DeckCommand.Seek s && Math.abs(s.toSec() - 135) < 0.01));
     }
 }

@@ -134,16 +134,26 @@ test("a REJECTED hello resolves 'js' with a relinquish; an UNIMPLEMENTED one (an
   assert.ok(isUnimplemented({ code: "UNIMPLEMENTED" }));
   assert.ok(!isUnimplemented(new Error("the plugin crashed")));
 
-  /* A-20 (docs/plans/android-assessment.md): an Android shell's bridge has
-     ForayAudio on it, and Android is an engine platform in the contract now,
-     but the page does not ask it (HELLO_PLATFORMS) until A-28: no hello, no
-     relinquish, `no-method` — and still js. Even a plugin that WOULD answer
-     native is not asked. MUTATION: take methodPresent from bridge.available
-     alone -> `no-hello` and a relinquish sent to Android -> red. */
-  const android = fakeCapacitor({ platform: "android", hello: nativeHello() });
-  const c = await createNativeEngine({ capacitor: android, scheduler: manualScheduler() }).engineModeReady;
+  /* A-28 (docs/plans/android-assessment.md): the page asks an Android shell
+     engineHello, exactly as it asks iOS. A binary built before A-28 answers
+     UNIMPLEMENTED, which is `no-method` with nothing relinquished; a legacy
+     answer (the A-28 binary's stock one, and the Developer setting's Web since
+     A-31) is the JS player with nothing relinquished; and a native answer on
+     protocol 1 (the stock answer since A-31) is the native lane. MUTATION: drop "android" from HELLO_PLATFORMS -> no hello is
+     asked and the native case is `no-method` -> red. */
+  const oldAndroid = fakeCapacitor({ platform: "android", hello: "unimplemented" });
+  const c = await createNativeEngine({ capacitor: oldAndroid, scheduler: manualScheduler() }).engineModeReady;
   assert.deepStrictEqual([c.mode, c.reason, c.relinquish], ["js", "no-method", false]);
-  assert.deepStrictEqual(android.calls, [], "the page asks an Android shell nothing");
+  assert.deepStrictEqual(oldAndroid.sends(), [], "nothing is relinquished to a binary without the method");
+  const stock = fakeCapacitor({ platform: "android", hello: { mode: "legacy", reason: "build-default", protocol: 1 } });
+  const s = await createNativeEngine({ capacitor: stock, scheduler: manualScheduler() }).engineModeReady;
+  assert.deepStrictEqual([s.mode, s.reason, s.relinquish], ["js", "engine-legacy", false]);
+  assert.deepStrictEqual(s.engine, { mode: "legacy", reason: "build-default" }, "the engine's own answer is kept for the Developer row");
+  assert.deepStrictEqual(stock.sends(), []);
+  const android = fakeCapacitor({ platform: "android", hello: nativeHello() });
+  const n = await createNativeEngine({ capacitor: android, scheduler: manualScheduler() }).engineModeReady;
+  assert.deepStrictEqual([n.mode, n.reason, n.relinquish], ["native", "native", false]);
+  assert.deepStrictEqual(android.calls.map((x) => x.method), ["engineHello"], "one hello, nothing else");
 });
 
 test("a protocol mismatch or an unreadable hello relinquishes; a clear legacy answer does not", async () => {
@@ -161,8 +171,8 @@ test("a protocol mismatch or an unreadable hello relinquishes; a clear legacy an
   }
 });
 
-test("off iOS, or with no plugin, no hello is attempted at all", async () => {
-  for (const capacitor of [fakeCapacitor({ platform: "android" }), fakeCapacitor({ platform: "web" }), null]) {
+test("off an engine shell, or with no plugin, no hello is attempted at all", async () => {
+  for (const capacitor of [fakeCapacitor({ platform: "web" }), null]) {
     const d = await createNativeEngine({ capacitor, scheduler: manualScheduler() }).engineModeReady;
     assert.equal(d.mode, "js");
     if (capacitor) assert.deepStrictEqual(capacitor.calls, []);

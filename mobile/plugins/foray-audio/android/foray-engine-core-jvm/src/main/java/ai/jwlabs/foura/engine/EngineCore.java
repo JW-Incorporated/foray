@@ -4,17 +4,25 @@ import ai.jwlabs.foura.engine.EngineCommand.AdvanceEntry;
 import ai.jwlabs.foura.engine.EngineCommand.DiagEntry;
 import ai.jwlabs.foura.engine.EngineCommand.GraceOutcome;
 import ai.jwlabs.foura.engine.EngineCommand.GraceReason;
+import ai.jwlabs.foura.engine.EngineCommand.InterludeCommand;
+import ai.jwlabs.foura.engine.EngineCommand.NarrationCommand;
 import ai.jwlabs.foura.engine.EngineCommand.PendingEvent;
 import ai.jwlabs.foura.engine.EngineContract.Refusal;
+import ai.jwlabs.foura.engine.EngineInput.InterludeEvent;
 import ai.jwlabs.foura.engine.EngineInput.LifecycleEvent;
+import ai.jwlabs.foura.engine.EngineInput.NarrationResumeAnswer;
+import ai.jwlabs.foura.engine.EngineInput.NarratorEvent;
 import ai.jwlabs.foura.engine.EngineInput.QueueInput;
 import ai.jwlabs.foura.engine.EngineInput.RemotePress;
 import ai.jwlabs.foura.engine.EngineInput.RouteChange;
 import ai.jwlabs.foura.engine.EngineInput.SessionEvent;
 import ai.jwlabs.foura.engine.EngineInput.SessionResult;
+import ai.jwlabs.foura.engine.EngineState.DeckPrepareReport;
 import ai.jwlabs.foura.engine.EngineState.DeferredIntent;
 import ai.jwlabs.foura.engine.EngineState.PendingActivation;
 import ai.jwlabs.foura.engine.EngineState.PendingLoad;
+import ai.jwlabs.foura.engine.EngineState.SeamMark;
+import ai.jwlabs.foura.engine.EngineState.SpokenLine;
 import ai.jwlabs.foura.engine.Vocabulary.Source;
 import ai.jwlabs.foura.engine.Vocabulary.StopCause;
 import java.util.ArrayList;
@@ -26,25 +34,30 @@ import java.util.Map;
 import java.util.Objects;
 
 /**
- * THE ENGINE'S FUNCTIONAL CORE for episodes (card A-24; docs/native-engine-plan.md §4.2):
- * {@code handle(input, now) -> [EngineCommand]}, pure, on one owned state. The JVM twin of
- * {@code EngineCore} in ForayEngineCore (Engine/EngineCore.swift, NE-14s), and like it the
- * port of {@code PlayerQueueManager} (player/queue-manager.js) around the reducer A-23
- * brought to parity, with the three things the web manager does not own and the native
- * engine does: the audio session ({@link SessionPolicy}), grace spans, and the deck as a
- * request and a response instead of a promise. The {@code manager-episode} fixtures the
- * JS records are its contract: the same steps, driven through this core by the JVM
- * scenario driver, must produce the same op log.
+ * THE ENGINE'S FUNCTIONAL CORE (card A-24 for episodes, A-40 for Forays;
+ * docs/native-engine-plan.md §4.2): {@code handle(input, now) -> [EngineCommand]}, pure, on one
+ * owned state. The JVM twin of {@code EngineCore} in ForayEngineCore
+ * (Engine/EngineCore.swift, NE-14s / NE-30s / NE-31s), and like it the port of
+ * {@code PlayerQueueManager} (player/queue-manager.js) around the reducer A-23 brought to parity,
+ * with the three things the web manager does not own and the native engine does: the audio
+ * session ({@link SessionPolicy}), grace spans, and the deck as a request and a response instead
+ * of a promise. The {@code manager-episode}, {@code manager-foray} and {@code prepare} fixtures
+ * the JS records are its contract: the same steps, driven through this core by the JVM scenario
+ * driver, must produce the same op log.
  *
- * <p>THE EPISODE SUBSET, AND WHERE THE REST GOES. The Swift core carries the Foray tape
- * (the seam beat, ADR-0007's load-time ladder, rendered bridges, {@code cp_foray}) behind
- * {@code forayTapeEnabled}, and the narrating overlay and the jingle beside it. With the
- * tape OFF every one of those paths is a no-op or unreachable, and that is exactly the
- * core ported here: A-40 adds the tape and A-41 the overlay, each at the call sites the
- * Swift core names ({@code cutSeamGap} / {@code releaseSeamGap} around every transport
- * action, {@code persistForay} at a pause, the bridge and spoken-line branches of
- * {@code load}, {@code onReady} and {@code onLoadFailure}). Rebuilding a core from the
- * restore record is A-27's.
+ * <p>THE FORAY TAPE (A-40), behind {@link EngineConfig#forayTapeEnabled}, exactly as the Swift
+ * core carries it: {@code playForay} with its structural check (J-4) and a resume point on the
+ * Foray clock; ADR-0007's load-time ladder ({@link SeekPolicy#segmentLoadGate}) when a segment's
+ * copy reports its duration; the seam beat ({@link SeamGap}), stamped at the out-point as an
+ * ABSOLUTE deadline so the next load happens inside it, and cut by every transport action; the
+ * standby deck's {@code prepare}; the Foray transport (previous by the Foray clock, a scrub and a
+ * nudge on it); the packed {@code seam} row; and the {@code cp_foray} cadence. The narrating
+ * overlay (a spoken line through the synthesiser, rendered bridges on the deck, the §14 fallback
+ * to the script) and the jingle ({@link Interlude}) are the same core's rules, ported with it; the
+ * host's synthesiser and jingle player are A-41's, and until then the host answers a spoken line
+ * as a bridge with no synthesiser does (the JS {@code _speakNarration} throwing). With the tape
+ * OFF every one of those paths is a no-op or unreachable, and the core is A-24's episode engine
+ * exactly (the {@code manager-episode} family runs so).
  *
  * <p>WHY IT IS SYNCHRONOUS WHERE THE JS AWAITS. An effect that has to wait (a load) is a
  * command now and an input later ({@code ready(token)}), and everything else in a turn
@@ -54,8 +67,9 @@ import java.util.Objects;
  * through {@code begin}, which asks {@link SessionPolicy}; an intent that needs the
  * session emits {@code sessionActivate} and PARKS until the host feeds the answer back in
  * the same turn, so a failed activation ends in {@code commandFailed} with nothing
- * audible. {@code startPlayback} refuses outright without an active session, as the
- * backstop the {@code session-invariant} rule checks every scenario turn against.
+ * audible. {@code startPlayback} refuses outright without an active session, and a spoken line
+ * and a jingle are refused the same way, as the backstop the {@code session-invariant} rule checks
+ * every scenario turn against.
  *
  * <p>A relinquished or torn-down core is terminal: {@link #handle} returns nothing.
  *
@@ -70,6 +84,19 @@ public final class EngineCore {
     public static final int PENDING_EVENTS_CAP = 512;
     /** Walked hops the page has not acked; the chain the page sends is K = 8 long. */
     public static final int ADVANCE_LOG_CAP = 64;
+    /**
+     * P-14, the stall display (plan §4.3; #866), the Swift {@code EngineCore.bufferingWhileWaiting}
+     * (NE-38): the surface shows {@code buffering} from the moment the deck reports waiting (a
+     * {@code deck kind=time-control status=waiting reason=} row) until it reports playing again,
+     * with no debounce. PROVISIONAL (card A-60): on Android the session derives its speed from
+     * the facade ({@code EnginePlayer}), which publishes the listening speed while playing and 0
+     * only while buffering, so iOS's rate-0 latch cannot recur as such. Settled by the
+     * {@code time-control} rows (NE-38e verdict {@code rate-latch}, A-68); false would show a
+     * stall as playing.
+     */
+    public static final boolean BUFFERING_WHILE_WAITING = true; // MEASURE: verdict=rate-latch (NE-38e). Rows: deck kind=time-control status=waiting reason=.
+    /** DiagGate's {@code tokenMax}: the longest free token a row carries as itself. */
+    static final int DIAG_TOKEN_MAX = 64;
 
     private final EngineState state;
     private final EngineConfig config;
@@ -87,6 +114,8 @@ public final class EngineCore {
     private boolean deckMovedThisTurn = false;
     /** {@code stop({persist: false})} is data deletion: its reducer save is skipped. */
     private boolean suppressSave = false;
+    /** {@code _narrationStopping} (L-05): the pause a stop's reducer emits must not pause a synthesiser the stop then stops. */
+    private boolean narrationStopping = false;
 
     public EngineCore(EngineConfig config, Map<String, ResumeRules.StoredPosition> positions) {
         this.config = Objects.requireNonNull(config, "config");
@@ -94,6 +123,9 @@ public final class EngineCore {
         state.holdPolicy = config.holdPolicy();
         state.rate = PlaybackRate.normalize(config.rate());
         state.positions = new HashMap<>(positions);
+        state.interludeEnabled = config.interludeEnabled();
+        state.voiceId = voice(config.voiceId());
+        state.knownRoutes = new RouteResume.KnownRoutes(config.knownRoutes());
     }
 
     public EngineCore(EngineConfig config) {
@@ -115,11 +147,77 @@ public final class EngineCore {
     }
 
     /**
-     * {@code canNext} (plan §5.5): the queue has a next item, or the continuation chain is
-     * non-empty, REGARDLESS of {@code autoAdvance}. A Foray never chains.
+     * What a cold boot rebuilt from the engine's private restore record (card A-27, the JVM
+     * twin of the Swift {@code EngineCore.ColdRestore}, NE-24; plan §4.5): the core, and the
+     * queue and index the host hands it as {@code lifecycle(coldLaunch(autoplay: false))},
+     * which paints the session paused and activates nothing (S-3).
+     */
+    public record ColdRestore(EngineCore core, List<EngineItem> queue, int index) {
+        public ColdRestore {
+            Objects.requireNonNull(core, "core");
+            queue = Collections.unmodifiableList(new ArrayList<>(queue));
+        }
+    }
+
+    /**
+     * A core rebuilt from a restore record, or null for a record there is nothing to play
+     * from: {@code relinquished} (the legacy lane owns playback, plan §4.6), {@code foray}
+     * (as on iOS: a cold boot restores an episode, and a Foray is resumed from its
+     * {@code cp_foray} row by the page), an empty queue, an index outside it, or an item this
+     * build cannot read (no id).
+     *
+     * <p>What the record carries and a core cannot learn from an input comes back here, as
+     * the Swift {@code restoring} brings it back: the listener's speed, where the current item
+     * was (as the stored position a cold start resumes from, through {@link ResumeRules}), and
+     * the walked hops and pending events the page has not drained yet, with their sequence
+     * numbers. The queue and index are NOT set here: they arrive through the one door, as
+     * {@code coldLaunch}, so the rows and the surface follow.
+     */
+    public static ColdRestore restoring(RestoreRecord record, EngineConfig config) {
+        if (record == null || record.mode() != RestoreRecord.Mode.EPISODE || record.queue().isEmpty()) return null;
+        if (record.index() < 0 || record.index() >= record.queue().size()) return null;
+        List<EngineItem> items = new ArrayList<>();
+        for (JsonNode node : record.queue()) {
+            EngineItem item = EngineItem.of(node);
+            if (item == null) return null;
+            items.add(item);
+        }
+        EngineItem current = items.get(record.index());
+        Map<String, ResumeRules.StoredPosition> positions = new HashMap<>();
+        if (record.offsetSec() > 0) {
+            positions.put(current.id, new ResumeRules.StoredPosition(record.offsetSec(), current.durationSec));
+        }
+        EngineCore core = new EngineCore(config.withRate(record.rate()), positions);
+        List<PendingEvent> events = new ArrayList<>();
+        for (JsonNode node : record.pendingEvents()) {
+            PendingEvent event = PendingEvent.restored(node);
+            if (event != null) events.add(event);
+        }
+        int lastEvent = 0;
+        for (PendingEvent event : events) lastEvent = Math.max(lastEvent, event.seq());
+        core.state.pendingEvents = new ArrayList<>(events.subList(Math.max(0, events.size() - PENDING_EVENTS_CAP), events.size()));
+        core.state.lastEventSeq = lastEvent;
+        List<AdvanceEntry> advances = new ArrayList<>();
+        for (JsonNode node : record.advanceLog()) {
+            AdvanceEntry entry = AdvanceEntry.restored(node);
+            if (entry != null) advances.add(entry);
+        }
+        int lastAdvance = 0;
+        for (AdvanceEntry entry : advances) lastAdvance = Math.max(lastAdvance, entry.seq());
+        core.state.advanceLog = new ArrayList<>(advances.subList(Math.max(0, advances.size() - ADVANCE_LOG_CAP), advances.size()));
+        core.state.lastAdvanceSeq = lastAdvance;
+        String voiceId = voice(record.voiceId());
+        if (voiceId != null) core.state.voiceId = voiceId;
+        return new ColdRestore(core, items, record.index());
+    }
+
+    /**
+     * {@code canNext} (plan §5.5): the queue has a next item (a narration line counts,
+     * NE-39n: Next lands on it), or the continuation chain is non-empty, REGARDLESS of
+     * {@code autoAdvance}. A Foray never chains.
      */
     public boolean canNext() {
-        return nextItem(cursor(), true) != null || (state.forayId == null && !state.chain.isEmpty());
+        return nextItem(cursor(), false) != null || (state.forayId == null && !state.chain.isEmpty());
     }
 
     /** Previous restarts the item in place, so it exists whenever one does. */
@@ -127,10 +225,25 @@ public final class EngineCore {
         return state.currentItem() != null;
     }
 
+    /** {@code seamGapRemainingMs}: what is left of the seam beat at {@code monoMs}, 0 when no beat is running. */
+    public double seamGapRemainingMs(double monoMs) {
+        Double until = state.gapUntilMono;
+        return until == null ? 0 : Math.max(0, until - monoMs);
+    }
+
+    /**
+     * {@code narrationElapsedSec}: the spoken line's wall-time clock at {@code monoMs}, null while
+     * the playhead is not a spoken line.
+     */
+    public Double narrationElapsedSec(double monoMs) {
+        SpokenLine line = state.narration;
+        return line == null ? null : line.elapsedSec(monoMs);
+    }
+
     /**
      * The Snapshot v1 fields (plan §5.3) that decide which remote commands work, fed to
      * {@link MediaMapping#commandAvailability}. {@code mode} is {@code none} when nothing is
-     * current or the listener closed the player.
+     * current or the listener closed the player; a Foray reads as {@code foray}.
      */
     public MediaMapping.CommandSnapshot commandSnapshot() {
         MediaMapping.CommandSnapshot.Mode mode;
@@ -145,16 +258,23 @@ public final class EngineCore {
                 state.autoAdvance);
     }
 
+    /** {@link #mediaView(DeckReading, Double)} with no clock: a spoken line's playhead is then unknown. */
+    public MediaMapping.View mediaView(DeckReading reading) {
+        return mediaView(reading, null);
+    }
+
     /**
-     * {@code mediaSessionView}'s input for the current EPISODE, as the page's
+     * {@code mediaSessionView}'s input for the current item, as the page's
      * {@code episodeMediaView} gathers it (player/client.js), or null when there is nothing
      * to show. The playhead and duration are the deck's while it holds this item, else the
      * position the next play will start from; {@code playing} is the transport running, and
-     * a load in flight is {@code buffering}. The Foray view is A-40's.
+     * a load in flight is {@code buffering}. A Foray is described on the FORAY's clock
+     * ({@link #forayMediaView}); {@code monoMs} is what a spoken line's playhead is read at.
      */
-    public MediaMapping.View mediaView(DeckReading reading) {
+    public MediaMapping.View mediaView(DeckReading reading, Double monoMs) {
         EngineItem item = state.currentItem();
         if (state.closed || item == null) return null;
+        if (state.forayId != null) return forayMediaView(item, reading, monoMs);
         boolean loaded = item.id.equals(state.loadedId);
         ResumeRules.StoredPosition stored = state.positions.get(item.id);
         Double position = loaded ? reading.positionSec : null;
@@ -168,18 +288,78 @@ public final class EngineCore {
         boolean loading = state.player instanceof PlayerQueueState.LoadingItem
                 || state.player instanceof PlayerQueueState.Transitioning;
         MediaMapping.View view = new MediaMapping.View();
-        view.item = new MediaMapping.Item(string(item.node.get("kind")), string(item.node.get("title")),
-                string(item.node.get("show")));
+        view.item = mediaItem(item);
         view.showArtworkUrl = string(item.node.get("artwork_url"));
         view.durationSec = duration;
         view.positionSec = position;
         view.playbackRate = state.rate;
         view.buffering = state.buffering || loading;
         view.playing = state.isRunning();
-        view.inSeamGap = false;
+        view.inSeamGap = state.inSeamGap();
         view.ended = state.stateType().equals("ended");
         view.foray = false;
         return view;
+    }
+
+    /**
+     * client.js {@code mediaViewFields}'s FORAY branch (the Swift {@code forayMediaView},
+     * NE-37c): the item and the one after it (a line's "Up next:"), the Foray's title and "clip n
+     * of N"; the FORAY's clock (its runtime as the duration, the playhead on it); and
+     * {@code buffering} as the deck's stall latch plus a clip load in flight, and a bridge only
+     * while it is still loading.
+     */
+    MediaMapping.View forayMediaView(EngineItem item, DeckReading reading, Double monoMs) {
+        int index = Math.max(0, state.currentIndex);
+        EngineItem next = index + 1 < state.queue.size() ? state.queue.get(index + 1) : null;
+        List<ForayItem> items = forayItems();
+        List<Double> starts = ForayClock.segmentStarts(items);
+        SpokenLine line = state.narration;
+        boolean speaking = line != null && line.itemId.equals(item.id) && item.id.equals(state.loadedId);
+        Double playhead;
+        if (speaking) {
+            playhead = monoMs == null ? null : line.elapsedSec(monoMs);
+        } else if (item.id.equals(state.loadedId)) {
+            playhead = reading.positionSec;
+        } else if (state.pendingLoad != null && state.pendingLoad.itemId().equals(item.id)) {
+            playhead = state.pendingLoad.startSec();
+        } else {
+            playhead = null;
+        }
+        double position;
+        if (playhead != null && Double.isFinite(playhead)) {
+            position = ForayClock.forayElapsed(items, (double) index, playhead);
+        } else {
+            position = index < starts.size() ? starts.get(index) : 0;
+        }
+        boolean loading;
+        if (state.player instanceof PlayerQueueState.LoadingItem) {
+            loading = true;
+        } else if (state.player instanceof PlayerQueueState.Transitioning) {
+            loading = state.pendingLoad != null;
+        } else {
+            loading = false;
+        }
+        MediaMapping.View view = new MediaMapping.View();
+        view.item = mediaItem(item);
+        view.nextItem = next == null ? null : mediaItem(next);
+        view.forayTitle = state.forayTitle != null ? state.forayTitle : "";
+        view.index = (double) index;
+        view.total = (double) state.queue.size();
+        view.showArtworkUrl = string(item.node.get("artwork_url"));
+        view.durationSec = ForayClock.forayRuntimeSec(items);
+        view.positionSec = position;
+        // THE RATE THE PLAYHEAD REALLY MOVES AT: a SPOKEN line runs at 1x on the wall clock.
+        view.playbackRate = speaking ? 1.0 : state.rate;
+        view.buffering = state.buffering || loading;
+        view.playing = state.isRunning();
+        view.inSeamGap = state.inSeamGap();
+        view.ended = state.stateType().equals("ended");
+        view.foray = true;
+        return view;
+    }
+
+    private static MediaMapping.Item mediaItem(EngineItem item) {
+        return new MediaMapping.Item(string(item.node.get("kind")), string(item.node.get("title")), string(item.node.get("show")));
     }
 
     // ---- the one door
@@ -190,6 +370,7 @@ public final class EngineCore {
         deck = at.deck().copy();
         out = new ArrayList<>();
         deckMovedThisTurn = false;
+        noteHeard();
         if (input instanceof EngineInput.SessionAnswer answer) {
             onSessionResult(answer.result());
         } else {
@@ -203,7 +384,10 @@ public final class EngineCore {
             }
             route(input);
         }
-        if (state.session != SessionPolicy.Phase.RELINQUISHED && !state.tornDown) settleTurn();
+        if (state.session != SessionPolicy.Phase.RELINQUISHED && !state.tornDown) {
+            settleRouteResume();
+            settleTurn();
+        }
         List<EngineCommand> result = Collections.unmodifiableList(out);
         out = new ArrayList<>();
         return result;
@@ -219,12 +403,17 @@ public final class EngineCore {
             case EngineInput.Session s -> onSession(s.event());
             case EngineInput.Lifecycle l -> onLifecycle(l.event());
             case EngineInput.Timer t -> onTimer(t.timer());
+            case EngineInput.Narrator n -> onNarrator(n.event());
+            case EngineInput.Interlude i -> onInterlude(i.event());
+            case EngineInput.Preview p -> onPreview(p.event());
         }
     }
 
     // ---- page commands
 
     private void onCommand(EngineContract.Command command, Source source) {
+        String press = pressName(command);
+        if (press != null) routePress(press);
         switch (command) {
             case EngineContract.Command.PlayEpisode c -> {
                 EngineItem episode = EngineItem.of(c.item());
@@ -238,11 +427,23 @@ public final class EngineCore {
                 state.queue = new ArrayList<>(Collections.singletonList(episode));
                 state.currentIndex = -1;
                 state.forayId = null;
+                state.forayTitle = null;
                 state.lastEpisodeRow = c.lastEpisodeRow();
                 state.lastEpisodeRowWritten = false;
                 state.startingHop = null;
                 playIndex(0, c.startSec(), source);
             }
+            case EngineContract.Command.PlayForay c -> {
+                // Off (M1) the page relinquishes before a Foray; the bridge refuses one while
+                // `foray` is not advertised, and a core with the tape off says the same.
+                if (!config.forayTapeEnabled()) {
+                    refuse(Refusal.CAPABILITY_OFF);
+                    return;
+                }
+                playForay(c, source);
+            }
+            // The Developer engine setting is the bridge's (it works in every lane); nothing here.
+            case EngineContract.Command.SetModeOverride c -> {}
             case EngineContract.Command.SetContinuation c -> {
                 state.planSeq = c.planSeq();
                 state.autoAdvance = c.autoAdvance();
@@ -254,8 +455,8 @@ public final class EngineCore {
             case EngineContract.Command.Toggle c -> toggle(source);
             case EngineContract.Command.Next c -> next(source);
             case EngineContract.Command.Previous c -> previous(source);
-            case EngineContract.Command.SeekBy c -> seekBy(c.deltaSec(), source);
-            case EngineContract.Command.SeekTo c -> seekTo(c.sec(), source);
+            case EngineContract.Command.SeekBy c -> nudge(c.deltaSec(), source);
+            case EngineContract.Command.SeekTo c -> scrub(c.sec(), source);
             case EngineContract.Command.Jump c -> playIndex(c.index(), null, source);
             case EngineContract.Command.Stop c -> stop(c.persist(), source);
             case EngineContract.Command.SetRate c -> setRate(c.rate());
@@ -287,16 +488,19 @@ public final class EngineCore {
             case EngineContract.Command.Relinquish c -> relinquish(c.cap(), source);
             case EngineContract.Command.Audition c -> {
                 // OQ-5: refused while running; otherwise the engine's own synthesiser speaks it
-                // after a SessionPolicy activation.
+                // after a SessionPolicy activation. NE-47 (A-66): with a `url` the rendered
+                // preview plays on the preview deck under that same activation, the tap's own.
                 if (state.isRunning() || audibleNow()) {
                     refuse(Refusal.ENGINE_BUSY);
                     return;
                 }
-                begin(new DeferredIntent.Audition(c.text(), c.voiceId()), Source.AUDITION);
+                begin(new DeferredIntent.Audition(c.text(), c.voiceId(), c.url()), Source.AUDITION);
             }
             case EngineContract.Command.SetHoldPolicy c -> state.holdPolicy = c.policy();
-            // The host's (the session probe).
+            // The host's (the session probe; the route-sharing store, NE-40, which Android has no
+            // counterpart for).
             case EngineContract.Command.ProbeSession c -> {}
+            case EngineContract.Command.SetRouteSharing c -> {}
             case EngineContract.Command.SimulateTermination c -> {
                 // Developer only: the record a cold boot restores from is written NOW.
                 if (state.queue.isEmpty()) {
@@ -311,6 +515,9 @@ public final class EngineCore {
     }
 
     private void onQueue(QueueInput input) {
+        // The manager surface's own presses (route-resume.js "press"): a play and a seek.
+        if (input instanceof QueueInput.PlayIndex) routePress("play");
+        else if (input instanceof QueueInput.Seek) routePress("seek");
         switch (input) {
             case QueueInput.Load q -> {
                 // `loadQueue(items)`: the queue is replaced, nothing loads.
@@ -319,11 +526,26 @@ public final class EngineCore {
                 state.forayId = null;
                 state.closed = false;
             }
+            case QueueInput.LoadForay q -> {
+                // `setQueueFromForay(foray, opts)` with the page's build: the same replacement,
+                // plus the options the load-time ladder reads.
+                state.queue = new ArrayList<>(q.items());
+                state.currentIndex = -1;
+                state.forayId = null;
+                state.closed = false;
+                state.forayIsLocalFile = q.isLocalFile();
+                state.forayAllowAdPad = q.allowAdPad();
+            }
             case QueueInput.PlayIndex q -> playIndex(q.index(), q.startSec(), q.source());
             case QueueInput.SetRate q -> setRate(q.rate());
-            // The manager's own `seek`: straight to the reducer, which holds it for a load in
-            // flight and refuses it with nothing loaded.
-            case QueueInput.Seek q -> dispatch(new PlayerEvent.Seek(q.sec(), q.precise()));
+            case QueueInput.Seek q -> {
+                // The manager's own `seek`: straight to the reducer, which holds it for a load in
+                // flight and refuses it with nothing loaded. A transport action, so it cuts a
+                // running beat (the parked load starts at the new second).
+                cutSeamGap("seek");
+                dispatch(new PlayerEvent.Seek(q.sec(), q.precise()));
+                releaseSeamGap();
+            }
         }
     }
 
@@ -334,7 +556,9 @@ public final class EngineCore {
             refuse(Refusal.NOT_LOADED);
             return;
         }
+        cutSeamGap("play");
         begin(new DeferredIntent.PlayIndex(index, startSec), source);
+        releaseSeamGap();
     }
 
     /**
@@ -352,11 +576,13 @@ public final class EngineCore {
             playIndex(0, null, source);
             return;
         }
+        cutSeamGap("resume");
         if (state.isRunning()) {
             dispatch(new PlayerEvent.Play(item.ref()));
         } else {
             begin(DeferredIntent.RESUME, source);
         }
+        releaseSeamGap();
     }
 
     /**
@@ -365,8 +591,11 @@ public final class EngineCore {
      * a deck audible while the machine says paused is paused here, by the deck's own word.
      */
     private void pause(Source source) {
-        state.pausedByListener = true;
+        // D-5 (A-67, NE-40): the cause FIRST, before the seam's cut silences a jingle or the
+        // silence node under it.
         stopRow(StopCause.PAUSE, source);
+        cutSeamGap("pause");
+        state.pausedByListener = true;
         dispatch(PlayerEvent.INTERRUPTION_BEGAN);
         if (audibleNow()) {
             diag("pause", m("kind", str("forced")), m("why", str("the deck was audible while the machine said paused")));
@@ -375,6 +604,9 @@ public final class EngineCore {
         applySession(SessionPolicy.transition(state.session, new SessionPolicy.Input.Simple(SessionPolicy.InputKind.PAUSE),
                 state.holdPolicy));
         armHoldTimerIfPaused();
+        releaseSeamGap();
+        // A pause is a moment the resume point becomes the thing read back next time.
+        persistForay(true);
     }
 
     /** TOGGLE FROM NATIVE TRUTH: {@code running} is the belief OR the deck's own word (#689). */
@@ -390,10 +622,17 @@ public final class EngineCore {
         }
     }
 
-    /** Next: the queue's next item (bridges stepped over), else the first continuation hop. */
+    /**
+     * Next: the queue's next item, a narration line included (NE-39n, ported here with the
+     * Next half of A-64), else the first continuation hop. The JS reference is
+     * queue-manager.js {@code _skipToNext}; from a clip whose next item is a line, Next lands
+     * on the line; from a line, on the item after it.
+     */
     private void next(Source source) {
-        if (nextItem(cursor(), true) != null) {
+        if (nextItem(cursor(), false) != null) {
+            cutSeamGap("skipToNext");
             begin(DeferredIntent.SKIP_NEXT, source);
+            releaseSeamGap();
             return;
         }
         // A Foray is ONE queue: its last item's next is nothing, never a hop.
@@ -406,15 +645,55 @@ public final class EngineCore {
 
     /**
      * Previous RESTARTS the item in place ({@code skipToPrevious}); walking back to
-     * {@code previousHop} is the page's call and arrives as a playEpisode. The Foray clock's
-     * "the clip before" is A-40's.
+     * {@code previousHop} is the page's call and arrives as a playEpisode. In a Foray the Foray
+     * clock decides ({@code previousAction}): inside the first {@code RESTART_WINDOW_SEC} of a
+     * clip it goes to the one before, otherwise it restarts this one.
      */
     private void previous(Source source) {
-        if (state.currentItem() == null) {
+        EngineItem item = state.currentItem();
+        if (item == null) {
             refuse(Refusal.NO_PREVIOUS);
             return;
         }
+        if (forayTransport()) {
+            int index = state.currentIndex;
+            List<Double> starts = ForayClock.segmentStarts(forayItems());
+            double start = index >= 0 && index < starts.size() ? starts.get(index) : 0;
+            if (TransportPolicy.previousAction(index, forayPositionSec(item), start) == TransportPolicy.Previous.ITEM_BEFORE) {
+                playIndex(index - 1, null, source);
+                return;
+            }
+        }
+        cutSeamGap("skipToPrevious");
         begin(DeferredIntent.SKIP_PREVIOUS, source);
+        releaseSeamGap();
+    }
+
+    /**
+     * A nudge ({@code seekBy}, a lock-screen or car skip) on the clock the listener sees: the
+     * Foray's in a Foray ({@link #forayNudge}), else the episode's ({@link #seekBy}).
+     */
+    private void nudge(double deltaSec, Source source) {
+        if (forayTransport()) {
+            forayNudge(deltaSec, source);
+        } else {
+            seekBy(deltaSec, source);
+        }
+    }
+
+    /**
+     * A scrub ({@code seekTo}, a lock-screen or car {@code changePlaybackPosition}) on the clock
+     * the listener sees. In a Foray the surface publishes the FORAY's clock, so a scrub to 20:00
+     * of a 50-minute Foray is 20:00 of the Foray ({@link #forayScrub}), never second 1200 of the
+     * clip's source episode, which would seek past the clip's out-point into a stranger's audio
+     * (A-42; found in A-40 and moot until Android advertised {@code foray}).
+     */
+    private void scrub(double sec, Source source) {
+        if (forayTransport()) {
+            forayScrub(sec, source);
+        } else {
+            seekTo(sec, source);
+        }
     }
 
     /**
@@ -434,7 +713,9 @@ public final class EngineCore {
             state.pendingStartSec = target;
             return;
         }
+        cutSeamGap("seek");
         dispatch(new PlayerEvent.Seek(target, false));
+        releaseSeamGap();
     }
 
     /**
@@ -466,32 +747,61 @@ public final class EngineCore {
      * reducer's save and pause, then the session is released WITH notify.
      */
     private void stop(boolean persist, Source source) {
-        state.pausedByListener = true;
+        // D-5 (A-67, NE-40): the cause first, before the cut silences a jingle.
         stopRow(persist ? StopCause.CLOSE : StopCause.DATA_DELETION, source);
-        // CLOSING IS A FLUSH (audit round 2, player-3): the reducer's stop saves nothing, so
-        // the playhead is written first. A data deletion writes nothing.
-        if (persist) flushPosition();
-        state.closed = true;
-        suppressSave = !persist;
-        dispatch(PlayerEvent.STOP);
-        suppressSave = false;
-        applySession(SessionPolicy.transition(state.session,
-                new SessionPolicy.Input.Simple(persist ? SessionPolicy.InputKind.CLOSE : SessionPolicy.InputKind.DATA_DELETION),
-                state.holdPolicy));
-        if (!persist) {
-            state.positions.clear();
-            state.eventMarks.clear();
-            state.pendingEvents.clear();
-            state.advanceLog.clear();
-            state.lastEpisodeRow = null;
-            state.pendingStartSec = null;
-            out.add(new EngineCommand.WriteRestore(null));
+        cutSeamGap("stop");
+        try {
+            stopPreview("stop");
+            state.pausedByListener = true;
+            // CLOSING IS A FLUSH (audit round 2, player-3): the reducer's stop saves nothing, so
+            // the playhead is written first. A data deletion writes nothing.
+            if (persist) flushPosition();
+            state.closed = true;
+            suppressSave = !persist;
+            // L-05: "Stopping a Foray must also stop speech", in ONE call: the reducer's pause is
+            // held off so a pause never precedes the stop.
+            boolean wasSpeaking = state.narration != null;
+            narrationStopping = wasSpeaking;
+            dispatch(PlayerEvent.STOP);
+            narrationStopping = false;
+            suppressSave = false;
+            // THE POSTCONDITION OF STOP IS SILENCE TOO (audit round 3, player-core-7; NE-39s, A-63
+            // ports it): from `interrupted` or `loadingItem` the reducer's stop emits no pause,
+            // because it believes nothing is audible, and in the #689 drift the deck is. pause()'s
+            // rule, by the deck's own word, never the reverse.
+            if (audibleNow()) {
+                diag("pause", m("kind", str("forced")), m("why", str("the deck was audible while the machine said stopped")));
+                deckCommand(DeckCommand.PAUSE);
+            }
+            if (wasSpeaking) stopNarration();
+            applySession(SessionPolicy.transition(state.session,
+                    new SessionPolicy.Input.Simple(persist ? SessionPolicy.InputKind.CLOSE : SessionPolicy.InputKind.DATA_DELETION),
+                    state.holdPolicy));
+            if (!persist) {
+                // Delete my data forgets the routes too (the host removes ForayEngine.knownRoutes
+                // when the set is empty; A-61, NE-38rs).
+                state.knownRoutes = new RouteResume.KnownRoutes();
+                state.routeResume = new RouteResume.State(false);
+                state.routeResumeBeforePause = null;
+                state.heardRoute = null;
+                state.positions.clear();
+                state.eventMarks.clear();
+                state.pendingEvents.clear();
+                state.advanceLog.clear();
+                state.lastEpisodeRow = null;
+                state.pendingStartSec = null;
+                out.add(new EngineCommand.WriteRestore(null));
+            }
+        } finally {
+            releaseSeamGap();
         }
     }
 
     /**
      * {@code setRate(rate)}: snapped onto the ladder, remembered, and handed to the deck at
-     * once (it holds it and re-applies it on every play). A snapped value says so.
+     * once (it holds it and re-applies it on every play). A snapped value says so. A SPOKEN
+     * LINE IS NOT SPED UP (corner case #18): a tap while one is audible is kept and reaches the
+     * deck when the line ends ({@code restoreRate}); a RENDERED line follows the listener (D2).
      */
     private void setRate(Double requested) {
         PlaybackRate.Snap snap = PlaybackRate.snap(requested);
@@ -500,7 +810,18 @@ public final class EngineCore {
                     m("applied", num(snap.applied())));
         }
         state.rate = snap.applied();
+        if (config.forayTapeEnabled() && state.narration != null && narrationIsAudible()) {
+            state.pendingRate = snap.applied();
+            diag("rate", m("kind", str("deferred")), m("applied", num(snap.applied())));
+            return;
+        }
         deckCommand(new DeckCommand.SetRate(snap.applied()));
+    }
+
+    /** {@code _narrationIsAudible()}: read from the item, since {@code transitioning} covers a bridge loading too. */
+    private boolean narrationIsAudible() {
+        EngineItem current = state.currentItem();
+        return state.stateType().equals("transitioning") || (current != null && current.kind == PlayerItemKind.TTS);
     }
 
     /**
@@ -525,7 +846,13 @@ public final class EngineCore {
      * {@code {mode: "relinquished"}} record, and go terminal.
      */
     private void relinquish(EngineContract.RelinquishCap cap, Source source) {
+        // D-5 (A-67, NE-40): the cause first, before the cut silences a jingle.
         stopRow(StopCause.RELINQUISH, source);
+        // Nothing parked may start audio after the engine gave the process back.
+        cutSeamGap("relinquish");
+        state.gapParkedToken = null;
+        state.gapCut = false;
+        stopPreview("relinquish");
         if (state.isRunning()) {
             state.pausedByListener = true;
             dispatch(PlayerEvent.INTERRUPTION_BEGAN);
@@ -533,6 +860,8 @@ public final class EngineCore {
             persistPosition();
         }
         if (audibleNow()) deckCommand(DeckCommand.PAUSE);
+        // The synthesiser outlives nothing the engine gave back.
+        if (state.narration != null) stopNarration();
         deckCommand(DeckCommand.UNLOAD);
         if (state.grace != null) endGrace(GraceOutcome.RELINQUISHED);
         if (state.positionTimerArmed) {
@@ -573,6 +902,9 @@ public final class EngineCore {
                 m("state", str(state.stateType())));
         int rowAt = out.size();
         out.add(new EngineCommand.Diag(new DiagEntry("remote", concat(fields, graceFields()))));
+        // Any press after a loss clears it: the listener (or the car) has taken charge
+        // (route-resume.js "press").
+        routePress(remotePressName(press.command()));
         try {
             MediaMapping.SeekSteps steps = MediaMapping.SeekSteps.DEFAULT;
             switch (press.command()) {
@@ -581,13 +913,16 @@ public final class EngineCore {
                 case TOGGLE_PLAY_PAUSE -> toggle(Source.REMOTE);
                 case NEXT_TRACK -> next(Source.REMOTE);
                 case PREVIOUS_TRACK -> previous(Source.REMOTE);
-                case SKIP_FORWARD -> seekBy(press.value() != null ? press.value() : steps.forwardSec(), Source.REMOTE);
-                case SKIP_BACKWARD -> seekBy(-(press.value() != null ? press.value() : steps.backwardSec()), Source.REMOTE);
+                // A-42: a press is on the clock the surface PUBLISHED, which in a Foray is the
+                // Foray's (forayMediaView), so it takes the page's own path: client.js's
+                // forayMediaSurface steps with nudgeBy and scrubs with foraySeek.
+                case SKIP_FORWARD -> nudge(press.value() != null ? press.value() : steps.forwardSec(), Source.REMOTE);
+                case SKIP_BACKWARD -> nudge(-(press.value() != null ? press.value() : steps.backwardSec()), Source.REMOTE);
                 case CHANGE_PLAYBACK_POSITION -> {
                     if (press.value() == null) {
                         refuse(Refusal.NOT_LOADED);
                     } else {
-                        seekTo(press.value(), Source.REMOTE);
+                        scrub(press.value(), Source.REMOTE);
                     }
                 }
                 case STOP -> {
@@ -626,7 +961,12 @@ public final class EngineCore {
      */
     private void begin(DeferredIntent intent, Source source) {
         // A play reopens a closed player; an audition is not a play of the queue.
-        if (!(intent instanceof DeferredIntent.Audition)) state.closed = false;
+        if (!(intent instanceof DeferredIntent.Audition)) {
+            state.closed = false;
+            // NE-47 (A-66): whatever starts now is the one thing that sounds; a voice preview
+            // still loading or playing is cut first.
+            stopPreview("play");
+        }
         GraceReason reason = graceReason(intent, source);
         if (reason != null) beginGrace(reason);
         spanRow(intent);
@@ -726,11 +1066,15 @@ public final class EngineCore {
             if (parked.intent() instanceof DeferredIntent.InterruptionResume) {
                 dispatch(new PlayerEvent.InterruptionEnded(false));
             }
+            releaseSeamGap();
             return;
         }
         state.activatedInProcess = true;
         cancelHoldTimer();
         run(parked.intent(), parked.source());
+        // A beat cut by the action that asked for this activation is released only now, after
+        // that action issued its own load.
+        releaseSeamGap();
     }
 
     /** The intent itself, once the session allows sound. */
@@ -763,7 +1107,8 @@ public final class EngineCore {
                 dispatch(new PlayerEvent.Play(item.ref()), LoadOffsets.explicitAt(explicit));
             }
             case DeferredIntent.SkipNext s -> {
-                Next next = nextItem(cursor(), true);
+                // The next item, a line included (NE-39n; `next(source)`).
+                Next next = nextItem(cursor(), false);
                 if (next == null) {
                     refuse(Refusal.NO_NEXT);
                     return;
@@ -774,11 +1119,9 @@ public final class EngineCore {
                 dispatch(new PlayerEvent.SkipToNext(next.item().ref()));
             }
             case DeferredIntent.SkipPrevious s -> {
-                // "Restart" must mean zero, or the save the reducer emits first would make the
-                // reload resume exactly where the press left. From idle (a failed load) or
-                // ended the reducer has no item in focus, so name the item this engine holds
-                // and it takes its fresh-play branch (player-core-1; fixture
-                // manager-episode/previous-after-a-failed-load-reloads-the-clip).
+                // "Restart" must mean zero. From idle (a failed load) or ended the reducer has no
+                // item in focus, so name the item this engine holds and it takes its fresh-play
+                // branch (player-core-1).
                 if (state.player instanceof PlayerQueueState.Idle || state.player instanceof PlayerQueueState.Ended) {
                     EngineItem held = state.currentItem();
                     if (held == null) return;
@@ -803,7 +1146,16 @@ public final class EngineCore {
                 dispatch(new PlayerEvent.Play(item.ref()));
             }
             case DeferredIntent.WalkHop w -> walk(w.hop(), source);
-            case DeferredIntent.Audition a -> out.add(new EngineCommand.Speak(a.text(), a.voiceId()));
+            case DeferredIntent.Audition a -> {
+                if (a.url() == null) {
+                    // Spoken: a preview still sounding stops first (one voice at a time); with
+                    // none, this is the audition as it always was.
+                    stopPreview("audition");
+                    out.add(new EngineCommand.Speak(a.text(), a.voiceId()));
+                } else {
+                    loadPreview(a.url(), a.text(), a.voiceId());
+                }
+            }
         }
     }
 
@@ -824,7 +1176,15 @@ public final class EngineCore {
         switch (effect) {
             case PlayerEffect.LoadItem e -> load(e.item(), offsets);
             case PlayerEffect.StartPlayback e -> startPlayback();
-            case PlayerEffect.PausePlayback e -> deckCommand(DeckCommand.PAUSE);
+            case PlayerEffect.PausePlayback e -> {
+                // L-05: every pause surface arrives here, so a spoken line pauses its
+                // SYNTHESISER, not a deck that is not playing it.
+                if (state.narration != null) {
+                    pauseNarration();
+                } else {
+                    deckCommand(DeckCommand.PAUSE);
+                }
+            }
             case PlayerEffect.SavePosition e -> {
                 if (!suppressSave) persistPosition();
             }
@@ -833,15 +1193,31 @@ public final class EngineCore {
             case PlayerEffect.SetOutPoint e -> deckCommand(new DeckCommand.SetOutPoint(e.seconds()));
             case PlayerEffect.ResetRateForTTS e -> {
                 // Founder ruling D2, 2026-09-28: a RENDERED line plays at the LISTENER's rate; a
-                // SPOKEN line has no deck under it. Decided by the item this effect is for.
+                // SPOKEN line has no deck under it. DECIDED BY THE ITEM THIS EFFECT IS FOR, not
+                // by the line now loaded.
                 EngineItem target = focusItem();
-                if (target != null && target.isSynthNarration()) return;
+                if (target != null) {
+                    if (target.isSynthNarration()) return;
+                } else if (state.narration != null) {
+                    return;
+                }
                 deckCommand(new DeckCommand.SetRate(state.rate));
             }
-            case PlayerEffect.RestoreRate e -> deckCommand(new DeckCommand.SetRate(state.rate));
-            // Without the Foray tape every bridge is stepped over the way a bridge that failed to
-            // load is: a missing line never stalls the queue (corner case #12). A-40 plays them.
-            case PlayerEffect.PlayTransitionTTS e -> advancePastBridgeFailure();
+            case PlayerEffect.RestoreRate e -> {
+                if (state.narration != null) return;
+                state.pendingRate = null;
+                deckCommand(new DeckCommand.SetRate(state.rate));
+            }
+            case PlayerEffect.PlayTransitionTTS e -> {
+                // With the Foray tape on a bridge plays: a RENDERED one on the deck, a SPOKEN one
+                // through the synthesiser. With the tape off every bridge is stepped over the way
+                // a bridge that failed to load is: a missing line never stalls the queue (#12).
+                if (config.forayTapeEnabled()) {
+                    playTransitionBridge();
+                } else {
+                    advancePastBridgeFailure();
+                }
+            }
             case PlayerEffect.EmitTelemetry e -> {}
         }
     }
@@ -854,6 +1230,8 @@ public final class EngineCore {
     private void load(QueueItemRef ref, LoadOffsets offsets) {
         EngineItem item = find(ref.id());
         if (item == null) {
+            // Drop the beat's deadline with the item it belonged to.
+            endSeamGap("unknownRef");
             dispatch(new PlayerEvent.Error("loadItem: unknown ref " + ref.id()));
             return;
         }
@@ -911,8 +1289,18 @@ public final class EngineCore {
         if (index >= 0) state.currentIndex = index;
         state.lastToken += 1;
         int token = state.lastToken;
+        // §14: a rendered line already being SPOKEN because its file failed, paused and now
+        // resumed, is a spoken line for this load: it continues the utterance instead of
+        // retrying the file mid-sentence. A restart (`forced`) tries the file again.
+        boolean resumingFallback = offsets.forced() == null && item.id.equals(state.fallbackSpokenId)
+                && item.id.equals(state.loadedId) && state.narration != null && state.narration.paused;
+        if (config.forayTapeEnabled() && (item.isSynthNarration() || resumingFallback)) {
+            // §7 item 1: a script-only line has no file for a deck; it is SPOKEN.
+            loadSpokenLine(item, token, offsets.forced() != null);
+            return;
+        }
         state.pendingLoad = new PendingLoad(token, item.id, startSec);
-        deckCommand(new DeckCommand.Load(token, item.id, item.audioUrl, startSec, bounds != null));
+        deckCommand(new DeckCommand.Load(token, item.id, item.audioUrl, startSec, bounds != null, DeckDeadlineClass.of(item)));
     }
 
     /**
@@ -927,13 +1315,20 @@ public final class EngineCore {
 
     /**
      * {@code startPlayback}. The session backstop: without an active session this refuses
-     * and says so, whatever path got here. A play that did start stamps the page's
-     * {@code lastEpisodeRow} (it "actually plays" now) and the restore record.
+     * and says so, whatever path got here. A spoken line's first start is already under way;
+     * a start after a pause CONTINUES the same utterance. A play that did start stamps the
+     * page's {@code lastEpisodeRow} (it "actually plays" now) and the restore record.
      */
     private void startPlayback() {
         if (state.session != SessionPolicy.Phase.ACTIVE) {
             diag("fault", m("kind", str("no-session")), m("session", str(state.session.token)));
             out.add(new EngineCommand.CommandFailed(Refusal.SESSION_FAILED_OTHER.token));
+            return;
+        }
+        SpokenLine line = state.narration;
+        if (line != null) {
+            if (line.paused) out.add(new EngineCommand.Narration(new NarrationCommand.Resume(line.seq)));
+            writeRestore();
             return;
         }
         deckCommand(DeckCommand.PLAY);
@@ -982,9 +1377,9 @@ public final class EngineCore {
     private void onDeck(DeckEvent event) {
         switch (event) {
             case DeckEvent.Ready e -> onReady(e.token());
-            case DeckEvent.Failed e -> onLoadFailure(e.token(), e.message(), StopCause.ERROR);
+            case DeckEvent.Failed e -> onLoadFailure(e.token(), e.message(), StopCause.ERROR, e.cause());
             case DeckEvent.DeadlineExceeded e ->
-                    onLoadFailure(e.token(), "no ready inside " + e.afterMs() + " ms", StopCause.LOAD_DEADLINE);
+                    onLoadFailure(e.token(), "no ready inside " + e.afterMs() + " ms", StopCause.LOAD_DEADLINE, e.cause());
             case DeckEvent.Ended e -> onEnded(e.token());
             case DeckEvent.TimeControl e -> onTimeControl(e.token(), e.status());
             case DeckEvent.PausedUncommanded e -> onUncommandedPause(e.token());
@@ -998,6 +1393,23 @@ public final class EngineCore {
             case DeckEvent.Refused e -> diag("deck", m("kind", str("refused")), m("command", str(e.command())),
                     m("reason", str(e.reason())));
             case DeckEvent.Seeked e -> {}
+            case DeckEvent.PrepareWindow e -> {
+                if (isLoadedToken(e.token())) warmNextSegment("window");
+            }
+            case DeckEvent.Prepared e -> {
+                // Only the load in flight is described; a stale report is dropped.
+                PendingLoad pending = state.pendingLoad;
+                if (pending != null && pending.token() == e.token()) {
+                    state.deckPrepare = new DeckPrepareReport(e.token(), e.hit(), e.stages());
+                    // A-62 (NE-45s): the seam this load crosses says hit or miss, whichever way the
+                    // item then becomes audible (a line whose prepared file failed is still a miss
+                    // when it is spoken instead).
+                    SeamMark mark = state.seamMark;
+                    if (mark != null && mark.toItemId().equals(pending.itemId())) {
+                        state.seamMark = mark.withPrepare(e.hit() ? SeamRow.Prepare.HIT : SeamRow.Prepare.MISS);
+                    }
+                }
+            }
         }
     }
 
@@ -1015,13 +1427,53 @@ public final class EngineCore {
             diag("deck", m("kind", str("superseded")), m("token", num(token)));
             return;
         }
+        // THE LISTENER CAN MOVE DURING A RENDERED BRIDGE'S LOAD (audit round 3, player-core-2):
+        // the bridge plays only if the machine is still transitioning to it.
+        if (pending.bridge() && !stillOn(pending)) {
+            state.pendingLoad = null;
+            diag("bridge", m("kind", str("landed-after-leaving")), m("token", num(token)));
+            return;
+        }
         state.pendingLoad = null;
         state.loadedId = pending.itemId();
         state.loadedToken = token;
         state.startingHop = null;
         // A new load owns the deck: the last one's stall is not this one's.
         clearStallLatch();
-        dispatch(PlayerEvent.ITEM_LOADED);
+        // A deck item holds the playhead now: a spoken line it replaced is over.
+        endSpokenLine();
+        if (pending.bridge()) {
+            // A rendered bridge plays the moment it lands (`_playTransitionBridge`). A-62 (NE-45s):
+            // it is a deck seam like any other, so it packs a seam row.
+            DeckPrepareReport report = state.deckPrepare != null && state.deckPrepare.token() == token ? state.deckPrepare : null;
+            state.deckPrepare = null;
+            packSeamRow(null, report);
+            startPlayback();
+            return;
+        }
+        EngineItem item = config.forayTapeEnabled() ? find(pending.itemId()) : null;
+        if (item == null) {
+            dispatch(PlayerEvent.ITEM_LOADED);
+            return;
+        }
+        landed(item, token);
+    }
+
+    /** What follows a load that landed (a deck's {@code ready}, or a spoken line's {@code started}): ADR-0007's gate, then the beat. */
+    private void landed(EngineItem item, int token) {
+        // ADR-0007's rung 3 runs HERE and nowhere earlier: the first moment the duration of the
+        // copy the listener actually received exists. An APPROXIMATE copy is never audible.
+        SeekPolicy.LoadGate gate = SeekPolicy.segmentLoadGate(item.needsDriftCheck(), item.daiSuspected(),
+                item.referenceDurationSec(), item.adPadSec(), deck.durationSec, state.forayIsLocalFile, state.forayAllowAdPad);
+        if (!gate.ok()) {
+            refuseAtLoad(item, gate.reason() != null ? gate.reason() : "");
+            return;
+        }
+        if (gate.note() != null) diag("gate", m("kind", str("noted")), m("item", str(item.id)));
+        // The seam beat is spent HERE, between a loaded-and-positioned asset and the
+        // `itemLoaded` that arms the out-point and starts it. A load that FAILED never reaches
+        // this line: an error never waits out a beat.
+        awaitSeamGap(token);
     }
 
     /**
@@ -1030,6 +1482,11 @@ public final class EngineCore {
      * for a hop, C-6), then the reducer's error (idle, pause).
      */
     private void onLoadFailure(int token, String message, StopCause cause) {
+        onLoadFailure(token, message, cause, Vocabulary.NarrationFallbackCause.OTHER);
+    }
+
+    /** {@code fallbackCause}: the deck's reading of the failure, written only on a §14 fallback row. */
+    private void onLoadFailure(int token, String message, StopCause cause, Vocabulary.NarrationFallbackCause fallbackCause) {
         PendingLoad pending = state.pendingLoad;
         boolean isPending = pending != null && pending.token() == token;
         boolean isHeld = pending == null && isLoadedToken(token);
@@ -1037,9 +1494,19 @@ public final class EngineCore {
             diag("deck", m("kind", str("superseded-failure")), m("token", num(token)));
             return;
         }
+        if (fallBackToScript(token, isPending, cause, fallbackCause)) return;
+        if (pending != null && pending.bridge() && pending.token() == token) {
+            // A bridge that will not load never stalls the queue (corner case #12).
+            state.pendingLoad = null;
+            diag("bridge", m("kind", str("load-failed")), m("item", str(pending.itemId())));
+            advancePastBridgeFailure();
+            return;
+        }
         String itemId = pending != null ? pending.itemId() : state.loadedId != null ? state.loadedId : "?";
         state.pendingLoad = null;
         stopRow(cause, null);
+        // Drop the beat's deadline with the item it belonged to: a failed seam reports at once.
+        endSeamGap("loadFailed");
         if (state.startingHop != null) {
             state.startingHop = null;
             out.add(new EngineCommand.Emit(new EngineCommand.EngineEvent.Error("chain-start", message)));
@@ -1047,6 +1514,58 @@ public final class EngineCore {
             out.add(new EngineCommand.Emit(new EngineCommand.EngineEvent.Error("load", message)));
         }
         dispatch(new PlayerEvent.Error("loadItem(" + itemId + ") failed: " + message));
+    }
+
+    /**
+     * §14 (queue-manager.js, Phase 2; founder rulings D1-D11, 2026-09-28): a RENDERED narration
+     * line whose FILE fails is read aloud from its script instead, in all three places a file can
+     * fail ({@code load}, {@code bridge}, {@code playing}), only while the machine is still ON that
+     * line. The spoken line gets a FRESH token, so a late report about the failed file is dropped
+     * as {@code superseded-failure}. A line with no script, and a clip, fail exactly as before.
+     *
+     * <p>The row carries {@code cause=} (A-64, mirrors NE-39n): the deck's closed reading of why
+     * the file failed ({@code timeout}, {@code http-4xx}, {@code http-5xx}, {@code offline},
+     * {@code decode}, {@code other}; {@link NarrationFallbackCauseReading}), so a drive's paste
+     * says whether the fallback was the network, the narration host or the file. {@code reason=}
+     * stays as it was ({@code timeout} for the load deadline, else {@code failed});
+     * {@code where=} is {@code load}, {@code bridge} or {@code playing}.
+     */
+    private boolean fallBackToScript(int token, boolean isPending, StopCause cause, Vocabulary.NarrationFallbackCause why) {
+        if (!config.forayTapeEnabled()) return false;
+        String itemId;
+        String at;
+        if (isPending) {
+            PendingLoad pending = state.pendingLoad;
+            if (pending == null || pending.token() != token || pending.spokenSeq() != null) return false;
+            itemId = pending.itemId();
+            at = pending.bridge() ? "bridge" : "load";
+        } else {
+            if (state.narration != null) return false;
+            itemId = state.loadedId;
+            at = "playing";
+        }
+        if (itemId == null) return false;
+        EngineItem item = find(itemId);
+        EngineItem focus = focusItem();
+        if (item == null || !item.canSpeakInstead() || focus == null || !focus.id.equals(item.id)) return false;
+        boolean onIt = switch (at) {
+            case "load" -> state.player instanceof PlayerQueueState.LoadingItem;
+            case "bridge" -> state.player instanceof PlayerQueueState.Transitioning;
+            default -> state.player instanceof PlayerQueueState.Playing || state.player instanceof PlayerQueueState.Transitioning;
+        };
+        if (!onIt) return false;
+        diag("narration", m("kind", str("fallback")), m("reason", str(cause == StopCause.LOAD_DEADLINE ? "timeout" : "failed")),
+                // `where`, not `at`: `at` is the ring row's wall clock (DiagGate.HEADER_KEYS), so
+                // the gate withheld a field of that name and the paste never said whether the
+                // load, a bridge or a sounding line fell back (NE-39n review, ported by A-64).
+                m("where", str(at)),
+                m("cause", str((why != null ? why : Vocabulary.NarrationFallbackCause.OTHER).token)));
+        // A file that failed mid-line: silence the deck under it first.
+        if (at.equals("playing")) deckCommand(DeckCommand.PAUSE);
+        state.lastToken += 1;
+        // `load` lands like any loaded line; a bridge, and a line already playing, play on.
+        speakLine(item, state.lastToken, !at.equals("load"), true);
+        return true;
     }
 
     /** {@code _handleBackendItemEnded}: the item ran out. */
@@ -1059,9 +1578,10 @@ public final class EngineCore {
     }
 
     /**
-     * {@code _handleBackendItemEnded}: resolve what "next" means, then feed exactly one
-     * {@code itemEnded}: the queue's next item, or the next continuation hop when
-     * {@code autoAdvance} is on, or the end.
+     * {@code _handleBackendItemEnded}: the item the playhead is on ended (the deck's
+     * {@code ended}, or a spoken line's {@code didFinish} or deadline). Resolve what "next"
+     * means, then feed exactly one {@code itemEnded}: the queue's next item, or the next
+     * continuation hop when {@code autoAdvance} is on, or the end.
      */
     private void itemEnded() {
         // The stall latch belongs to the item that ended.
@@ -1069,6 +1589,21 @@ public final class EngineCore {
         switch (state.player) {
             case PlayerQueueState.Transitioning t -> {
                 Next next = nextItem(cursor(), true);
+                // A bridge marks its own seam, so no beat; but narration -> segment DOES get the
+                // jingle (§13): the founder's "between podcasts" mark comes after the line.
+                if (next != null) {
+                    armInterlude(state.currentItem(), next.item());
+                    EngineItem from = state.currentItem();
+                    if (config.forayTapeEnabled() && from != null && isForaySeam(from, next.item())) {
+                        markSeam(from, next.item());
+                        // A-62 (NE-45s): a RENDERED line's end is a deck seam, and in the background
+                        // it holds the same span a clip's out-point does (a spoken line's end
+                        // already opened `narration-handover`, and a span is never begun twice).
+                        if (state.backgrounded) {
+                            beginGrace(next.item().id.equals(state.preparedItemId) ? GraceReason.SEAM : GraceReason.PREPARE_MISS);
+                        }
+                    }
+                }
                 dispatch(new PlayerEvent.ItemEnded(next == null ? null : next.item().ref(), false));
             }
             case PlayerQueueState.Playing p -> {
@@ -1077,7 +1612,29 @@ public final class EngineCore {
                 Next next = nextItem(cursor(), false);
                 if (next != null) {
                     boolean bridged = next.item().kind == PlayerItemKind.TTS;
+                    EngineItem from = state.currentItem();
+                    if (config.forayTapeEnabled() && from != null) {
+                        // Stamp the beat BEFORE dispatching: `itemEnded` issues the next load in
+                        // this same turn, and the whole point is for that load to be inside it.
+                        armSeamGap(from, next.item(), bridged);
+                        // A-62 (NE-45s): a Foray seam is remembered for its row: one with a beat (as
+                        // before) or a clip's end into a line (no beat, and no row before). An
+                        // episode's end in a plain queue, and a bridge after one, are not Foray
+                        // seams and write nothing (the Foray tape leaves episode paths unchanged).
+                        if (state.gapArmedAtMono != null || (bridged && isForaySeam(from, next.item()))) {
+                            markSeam(from, next.item());
+                        }
+                        // And the jingle in the same instant (§13), after the beat so its deadline
+                        // is the floor.
+                        armInterlude(from, next.item());
+                        // The span runs from the out-point until the next item is audible.
+                        if (state.backgrounded) {
+                            beginGrace(next.item().id.equals(state.preparedItemId) ? GraceReason.SEAM : GraceReason.PREPARE_MISS);
+                        }
+                    }
                     dispatch(new PlayerEvent.ItemEnded(next.item().ref(), bridged));
+                    // A silent seam (a beat with no jingle in it) may render digital silence (off).
+                    startSilence();
                     return;
                 }
                 if (state.autoAdvance && state.forayId == null && !state.chain.isEmpty()) {
@@ -1090,6 +1647,7 @@ public final class EngineCore {
                 }
                 stopRow(state.forayId != null ? StopCause.FINAL_END : StopCause.ENDED, null);
                 dispatch(new PlayerEvent.ItemEnded(null, false));
+                markForayFinished();
                 applySession(SessionPolicy.transition(state.session,
                         new SessionPolicy.Input.Simple(SessionPolicy.InputKind.FINAL_END), state.holdPolicy));
             }
@@ -1103,9 +1661,15 @@ public final class EngineCore {
             case PLAYING -> {
                 state.buffering = false;
                 if (state.grace != null) endGrace(GraceOutcome.PLAYING);
+                // Our audio is audible (route-resume.js "playing"), heard through the current route.
+                routeResumeStep(RouteResume.Event.PLAYING);
+                startHearing();
             }
-            case WAITING -> state.buffering = true;
-            case PAUSED -> {}
+            case WAITING -> {
+                if (BUFFERING_WHILE_WAITING) state.buffering = true;
+                stopHearing();
+            }
+            case PAUSED -> stopHearing();
         }
     }
 
@@ -1117,6 +1681,7 @@ public final class EngineCore {
     private void onUncommandedPause(int token) {
         if (!isLoadedToken(token)) return;
         state.lastUncommandedPauseAtMono = now.monoMs();
+        stopHearing();
         deck.audible = false;
         boolean routeAttributed = false;
         if (state.lastRouteLostAtMono != null) {
@@ -1135,24 +1700,34 @@ public final class EngineCore {
     private void reconcile(boolean unexplainedPause, boolean routeAttributed) {
         if (state.player instanceof PlayerQueueState.Interrupted interrupted) {
             EngineItem current = state.currentItem();
-            if (!audibleNow() || current == null || !current.id.equals(state.loadedId) || !interrupted.item().id().equals(current.id)) {
+            if (state.narration != null || !audibleNow() || current == null || !current.id.equals(state.loadedId)
+                    || !interrupted.item().id().equals(current.id)) {
                 return;
             }
             dispatch(PlayerEvent.ELEMENT_RESUMED);
             return;
         }
         if (!(state.player instanceof PlayerQueueState.Playing)) return;
+        // A spoken line is "playing" with nothing in the deck producing it: the deck's silence
+        // says nothing about it.
+        if (state.narration != null) return;
         if (deck.audible) return;
         if (deck.ended) {
             diag("reconcile", m("kind", str("skipped-ended")));
             return;
         }
         stopRow(routeAttributed ? StopCause.ROUTE_CHANGE : StopCause.SYSTEM_PAUSE, null);
+        // Route resume (A-61, NE-38rs): a pause the route is blamed for was already the loss's
+        // (onRoute stepped it). One blamed on the system is the system's, unless a route loss
+        // follows inside the attribution window, which restores the reducer from this snapshot
+        // (either order).
+        if (!routeAttributed) {
+            if (unexplainedPause) state.routeResumeBeforePause = new EngineState.RouteResumeSnapshot(state.routeResume, now.monoMs());
+            routeResumeStep(RouteResume.Event.SYSTEM);
+        }
         // The OS took the audio; the listener did not press anything.
         state.pausedByListener = false;
-        // WHO took it decides whether a should-resume may bring it back: a foreground
-        // reconcile finding the deck stopped is the #263 route case, which corner case #13
-        // says never resumes by itself.
+        // WHO took it decides whether a should-resume may bring it back (#263, corner case #13).
         if (routeAttributed || !unexplainedPause) state.pausedByRoute = true;
         dispatch(PlayerEvent.INTERRUPTION_BEGAN);
     }
@@ -1171,9 +1746,14 @@ public final class EngineCore {
     /**
      * Interruptions by REASON (plan §4.4): a muted built-in mic and a stale
      * {@code appWasSuspended} are rows, not stops; anything else takes the session and
-     * pauses, with its cause row first.
+     * pauses, with its cause row first. A SPOKEN line the synthesiser says is still speaking
+     * makes the event late, and nothing is touched.
      */
     private void onInterruptionBegan(String raw) {
+        if (state.narration != null && state.isPlaying() && now.narrator() == NarratorReading.SPEAKING) {
+            diag("session", m("kind", str("interruption")), m("phase", str("began")), m("late", str("narration-speaking")));
+            return;
+        }
         Vocabulary.InterruptionReason reason = SessionPolicy.interruptionReason(raw);
         boolean running = state.isRunning() || audibleNow();
         SessionPolicy.Transition transition = SessionPolicy.transition(state.session,
@@ -1184,9 +1764,14 @@ public final class EngineCore {
             applySession(transition);
             return;
         }
+        // D-5 (A-67, NE-40): the cause first, before the cut silences a jingle.
         stopRow(StopCause.INTERRUPTION, null);
+        cutSeamGap("interruption");
+        // A call or the assistant clears a loss's eligibility (route-resume.js).
+        routeResumeStep(RouteResume.Event.INTERRUPTION);
         applySession(transition);
         dispatch(PlayerEvent.INTERRUPTION_BEGAN);
+        releaseSeamGap();
     }
 
     /**
@@ -1227,34 +1812,192 @@ public final class EngineCore {
     }
 
     /**
-     * {@code routeChanged(...)} (corner case #13): a lost route pauses and is not resumable by
-     * a later call; a route reappearing resumes only a car this engine has seen before, never
-     * headphones being plugged in.
+     * {@code routeChanged(...)} (corner case #13): a lost route pauses and is not resumable by a
+     * later call. A route coming back resumes ONLY under the founder's Q5 rule (A-61, the Swift
+     * NE-38rs, {@link RouteResume}): the last pause was the loss of THAT route (same salted key),
+     * the route is known (our audio was heard through it for a second), the loss is under 24 h old
+     * on the wall clock, and it is a car (car mode on Android; Bluetooth only behind
+     * {@code routeResumeBluetooth}, OFF). A listener's pause, a call, the assistant or a system
+     * pause never resumes. Every loss and every return writes a {@code route} row with the
+     * decision, and the row's key is 8 hex of the salted hash, never an address or a name.
      */
     private void onRoute(RouteChange change) {
-        if (change.isCarRoute() && change.routeName() != null) state.knownCarRoutes.add(change.routeName());
         diag("session", m("kind", str("route")), m("oldDeviceUnavailable", JsonNode.bool(change.oldDeviceUnavailable())),
                 m("port", change.portType() == null ? JsonNode.NULL : str(change.portType())));
+        String key = routeKey(change.portType(), change.portUID());
         if (change.oldDeviceUnavailable()) {
+            // Heard through the route that just went away for long enough? The deck may already
+            // have stopped (either order), so the span ends where it stopped, not now.
+            EngineState.HeardRoute heard = state.heardRoute;
+            if (heard != null && heard.key().equals(key) && heard.heardMs(now.monoMs()) >= RouteResume.KNOWN_AFTER_MS) {
+                state.knownRoutes = state.knownRoutes.use(heard.key());
+            }
+            state.heardRoute = null;
             state.lastRouteLostAtMono = now.monoMs();
             state.pausedByRoute = true;
             Double paused = state.lastUncommandedPauseAtMono;
             if (paused != null && now.monoMs() - paused >= 0 && now.monoMs() - paused <= ROUTE_ATTRIBUTION_MS) {
                 // The deck's pause came first and was reconciled as the system's; the route is why.
                 diag("session", m("kind", str("route-attributed")), m("to", str("pause")));
+                EngineState.RouteResumeSnapshot before = state.routeResumeBeforePause;
+                if (before != null && before.atMono() == paused) state.routeResume = before.state();
             }
+            state.routeResumeBeforePause = null;
+            routeResumeStep(new RouteResume.Event.Lost(change.portType(), key, change.routeClass(), wallSec()));
+            diag("route", m("kind", str("lost")),
+                    m("port", change.portType() == null ? JsonNode.NULL : str(change.portType())),
+                    m("class", str(change.routeClass().token)),
+                    m("key", key == null ? JsonNode.NULL : str(RouteResume.rowKey(key))),
+                    m("known", JsonNode.bool(state.knownRoutes.contains(key))));
+            // A beat that outlived a lost route would start audio into a dead route. D-5 (A-67,
+            // NE-40): the cause first, before the cut silences a jingle.
             stopRow(StopCause.ROUTE_CHANGE, null);
+            cutSeamGap("routeLost");
             dispatch(new PlayerEvent.RouteChanged(true));
-        } else {
-            dispatch(new PlayerEvent.RouteChanged(false));
-        }
-        if (change.oldDeviceUnavailable() || change.routeName() == null || !state.knownCarRoutes.contains(change.routeName())
-                || state.currentItem() == null) {
+            releaseSeamGap();
+            // The clock stops with the route: write the Foray's position NOW.
+            persistForay(true);
             return;
         }
-        if (!(state.player instanceof PlayerQueueState.Interrupted i) || !i.wasPlaying()) return;
-        diag("session", m("kind", str("route-resume")), m("knownCar", JsonNode.TRUE));
-        begin(DeferredIntent.ROUTE_RESUME, Source.AUTORESUME);
+        dispatch(new PlayerEvent.RouteChanged(false));
+        state.heardRoute = null;
+        boolean known = state.knownRoutes.contains(key);
+        RouteResume.PausedBy pausedBy = state.routeResume.pausedBy();
+        RouteResume.Loss loss = state.routeResume.lost();
+        Double lostSec = loss == null || loss.atSec() == null ? null : wallSec() - loss.atSec();
+        RouteResume.Decision decision = routeResumeStep(new RouteResume.Event.Back(change.portType(), key, change.routeClass(),
+                known, wallSec()));
+        if (decision == null) decision = new RouteResume.Decision(false, RouteResume.Why.NOT_PAUSED);
+        if (decision.resume() && state.currentItem() == null) {
+            // Nothing to resume (not expected: a loss arms only while playing).
+            decision = new RouteResume.Decision(false, RouteResume.Why.NO_ITEM);
+        }
+        diag("route", m("kind", str("back")),
+                m("port", change.portType() == null ? JsonNode.NULL : str(change.portType())),
+                m("class", str(change.routeClass().token)),
+                m("key", key == null ? JsonNode.NULL : str(RouteResume.rowKey(key))),
+                m("known", JsonNode.bool(known)),
+                m("lostSec", Rows.finiteOrNull(lostSec == null ? null : roundHalfAwayFromZero(lostSec * 10) / 10)),
+                m("pausedBy", str(pausedBy.token)),
+                m("decision", str(decision.resume() ? "resume" : "no")),
+                m("why", str(decision.why())));
+        if (decision.resume()) {
+            // Like a car's press: grace from this moment, then the activation.
+            begin(DeferredIntent.ROUTE_RESUME, Source.AUTORESUME);
+        } else if (audibleNow() && state.isRunning() && key != null) {
+            // Playing on through a route that just arrived (a car connecting while the phone
+            // plays): heard through it from now.
+            state.heardRoute = new EngineState.HeardRoute(key, now.monoMs(), null);
+        }
+    }
+
+    // ---- route resume's bookkeeping (A-61, the Swift NE-38rs)
+
+    /**
+     * Wall-clock seconds: a loss's age must keep counting while the phone sleeps (route-resume.js
+     * THE CLOCK), which uptime does not.
+     */
+    private double wallSec() {
+        return now.wallMs() / 1000;
+    }
+
+    /** A port's salted key, or null for a port with no address. */
+    private String routeKey(String portType, String uid) {
+        return RouteResume.hashedKey(portType, uid, config.routeSalt());
+    }
+
+    /** One event through route-resume.js's reducer; the decision a {@code back} asked for, else null. */
+    private RouteResume.Decision routeResumeStep(RouteResume.Event event) {
+        RouteResume.Step result = RouteResume.step(state.routeResume, event, config.routeResumeBluetooth());
+        state.routeResume = result.state();
+        return result.decision();
+    }
+
+    /** A press: "pause", "play", or any other name (a skip, a seek). */
+    private void routePress(String command) {
+        routeResumeStep(new RouteResume.Event.Press(command));
+    }
+
+    /** What a page command is as a press, if it is one. A toggle is whichever way it will go (the same truth {@code toggle} reads). */
+    private String pressName(EngineContract.Command command) {
+        return switch (command) {
+            case EngineContract.Command.PlayEpisode c -> "play";
+            case EngineContract.Command.PlayForay c -> "play";
+            case EngineContract.Command.Play c -> "play";
+            case EngineContract.Command.Jump c -> "play";
+            case EngineContract.Command.Pause c -> "pause";
+            case EngineContract.Command.Stop c -> "pause";
+            case EngineContract.Command.Purge c -> "pause";
+            case EngineContract.Command.Toggle c -> state.isRunning() || audibleNow() ? "pause" : "play";
+            case EngineContract.Command.Next c -> "next";
+            case EngineContract.Command.Previous c -> "previous";
+            case EngineContract.Command.SeekBy c -> "seek";
+            case EngineContract.Command.SeekTo c -> "seek";
+            default -> null;
+        };
+    }
+
+    /** A remote command as a press (a remote stop is a pause, T-7). */
+    private String remotePressName(MediaMapping.RemoteCommand command) {
+        return switch (command) {
+            case PLAY -> "play";
+            case PAUSE, STOP -> "pause";
+            case TOGGLE_PLAY_PAUSE -> state.isRunning() || audibleNow() ? "pause" : "play";
+            default -> remoteToken(command);
+        };
+    }
+
+    /** The deck became audible (playing for the loaded token): the route it is heard through starts (or continues) a heard span. */
+    private void startHearing() {
+        EngineInput.RoutePort route = now.route();
+        String key = route == null ? null : routeKey(route.portType(), route.uid());
+        if (key == null) {
+            state.heardRoute = null;
+            return;
+        }
+        EngineState.HeardRoute heard = state.heardRoute;
+        if (heard != null && heard.key().equals(key) && heard.untilMono() == null) return;
+        state.heardRoute = new EngineState.HeardRoute(key, now.monoMs(), null);
+    }
+
+    /**
+     * The deck stopped being audible: the span ends here (kept, so a loss that arrives just after
+     * the pause still counts what was heard). A span that already reached
+     * {@code KNOWN_AFTER_MS} through the route that is STILL current makes it known here (the
+     * NE-38rs review: the next playing starts a new span from zero, and the position tick that
+     * {@link #noteHeard} otherwise rides is seconds apart). A span whose route has already
+     * changed (the pause came first, plan §4.3) is left for the loss to count.
+     */
+    private void stopHearing() {
+        EngineState.HeardRoute heard = state.heardRoute;
+        if (heard == null || heard.untilMono() != null) return;
+        EngineState.HeardRoute ended = new EngineState.HeardRoute(heard.key(), heard.sinceMono(), now.monoMs());
+        state.heardRoute = ended;
+        EngineInput.RoutePort route = now.route();
+        if (ended.heardMs(now.monoMs()) >= RouteResume.KNOWN_AFTER_MS && route != null
+                && ended.key().equals(routeKey(route.portType(), route.uid()))) {
+            state.knownRoutes = state.knownRoutes.use(ended.key());
+        }
+    }
+
+    /** At the top of every turn: a span heard for {@code KNOWN_AFTER_MS} through the route that is still current makes that route known. */
+    private void noteHeard() {
+        EngineState.HeardRoute heard = state.heardRoute;
+        EngineInput.RoutePort route = now.route();
+        if (heard == null || heard.untilMono() != null || !now.deck().audible || route == null) return;
+        if (heard.heardMs(now.monoMs()) < RouteResume.KNOWN_AFTER_MS) return;
+        if (!heard.key().equals(routeKey(route.portType(), route.uid()))) return;
+        state.knownRoutes = state.knownRoutes.use(heard.key());
+    }
+
+    /**
+     * At the end of every turn: an intent to play that did not survive the turn (a refused
+     * activation, a failed load, the queue's end) is the system's pause to the reducer, so it can
+     * never be a route's.
+     */
+    private void settleRouteResume() {
+        if (!state.routeResume.playing() || state.pendingActivation != null || state.isRunning() || audibleNow()) return;
+        routeResumeStep(RouteResume.Event.SYSTEM);
     }
 
     /**
@@ -1266,6 +2009,7 @@ public final class EngineCore {
         SessionPolicy.Transition transition = SessionPolicy.transition(state.session,
                 new SessionPolicy.Input.Simple(SessionPolicy.InputKind.MEDIA_SERVICES_RESET), state.holdPolicy);
         stopRow(StopCause.MEDIA_SERVICES_RESET, null);
+        routeResumeStep(RouteResume.Event.SYSTEM);
         applySession(transition);
         dispatch(PlayerEvent.INTERRUPTION_BEGAN);
         dispatch(new PlayerEvent.InterruptionEnded(false));
@@ -1290,7 +2034,11 @@ public final class EngineCore {
                     return;
                 }
                 state.currentIndex = e.index();
-                if (e.autoplay()) begin(DeferredIntent.COLD_PLAY, Source.RESTORE);
+                if (e.autoplay()) {
+                    // The car's play that relaunched us: a press (route-resume.js).
+                    routePress("play");
+                    begin(DeferredIntent.COLD_PLAY, Source.RESTORE);
+                }
             }
             case LifecycleEvent.Background e -> {
                 state.backgrounded = true;
@@ -1307,13 +2055,34 @@ public final class EngineCore {
 
     private void onTimer(EngineTimer timer) {
         switch (timer) {
-            case POSITION_TICK -> persistIfDue();
+            case POSITION_TICK -> {
+                persistIfDue();
+                persistForay(false);
+            }
+            case SEAM_BEAT -> {
+                state.seamTimerArmed = false;
+                finishSeamGap();
+            }
+            case NARRATION_TICK -> {
+                state.narrationTickArmed = false;
+                narrationTick();
+            }
+            case SILENCE_CAP -> {
+                // INTERLUDE_CEILING_SEC from the out-point: past it only grace covers. Its row
+                // first (D-5, A-67, NE-40): digital silence in a seam is not the listener's audio
+                // stopping, so it is not a `stop` row, but it is named before the command that
+                // ends it, like every silencer.
+                if (!state.silenceActive) return;
+                state.silenceActive = false;
+                diag("silence", m("kind", str("capped")));
+                out.add(EngineCommand.SILENCE_STOP);
+            }
             case GRACE_EXPIRED -> {
                 if (state.grace == null) return;
                 // The deterministic outcome (plan §4.4): end the span, say so, and pause, as the
                 // listener's own pause would.
-                endGrace(GraceOutcome.EXPIRED);
                 stopRow(StopCause.GRACE_EXPIRED, null);
+                endGrace(GraceOutcome.EXPIRED);
                 state.pausedByListener = true;
                 dispatch(PlayerEvent.INTERRUPTION_BEGAN);
                 applySession(SessionPolicy.transition(state.session, new SessionPolicy.Input.Simple(SessionPolicy.InputKind.PAUSE),
@@ -1370,12 +2139,15 @@ public final class EngineCore {
 
     /**
      * {@code _persistPosition}: the playhead the DECK holds for the current item. A segment
-     * has no resume point worth keeping; an item the deck does not hold has no playhead to
-     * write (#689), and one is never fabricated.
+     * has no resume point worth keeping; a spoken line has no position; an item the deck does
+     * not hold has no playhead to write (#689), and one is never fabricated.
      */
     private void persistPosition() {
         EngineItem item = state.currentItem();
         if (item == null || item.bounds() != null) return;
+        // A spoken line has nothing in the deck: the deck's playhead is left over from the item
+        // before it, and an utterance has no position.
+        if (state.narration != null && item.id.equals(state.loadedId)) return;
         if (!item.id.equals(state.loadedId)) {
             diag("position", m("kind", str("refused")), m("item", str(item.id)),
                     m("about", state.loadedId == null ? JsonNode.NULL : str(state.loadedId)));
@@ -1401,19 +2173,20 @@ public final class EngineCore {
 
     /**
      * client.js {@code flushPositions} (corner case #17, #689): leaving the foreground or
-     * being terminated writes the playhead NOW, playing or paused. The store writes it
-     * synchronously (A-27), so the row is stored before the handler returns.
+     * being terminated writes the playhead NOW, playing or paused, and the Foray's row with it.
+     * The store writes it synchronously (A-27), so the row is stored before the handler returns.
      */
     private void flushPosition() {
         if (state.currentItem() == null) return;
         persistPosition();
+        persistForay(true);
     }
 
     /** {@code _persistIfDue}: the periodic write, while playing, when the playhead has moved enough. */
     private void persistIfDue() {
         if (!(state.player instanceof PlayerQueueState.Playing)) return;
         EngineItem item = state.currentItem();
-        if (item == null || item.bounds() != null || !item.id.equals(state.loadedId)) return;
+        if (item == null || item.bounds() != null || !item.id.equals(state.loadedId) || state.narration != null) return;
         if (!ResumeRules.positionTickDue(state.lastPersisted, item.id, deck.positionSec)) return;
         persistPosition();
     }
@@ -1552,6 +2325,7 @@ public final class EngineCore {
             }
             case DeckCommand.SetRate c -> {}
             case DeckCommand.SetOutPoint c -> {}
+            case DeckCommand.Prepare c -> {}
         }
     }
 
@@ -1584,30 +2358,550 @@ public final class EngineCore {
         if (state.isRunning()) cancelHoldTimer();
     }
 
-    // ---- teardown (the page's `dispose()`)
+    // ---- Forays (A-40; the Swift NE-30s)
 
     /**
-     * The engine itself goes away: the deck is released, every timer and grace span ends, and
-     * the core answers nothing more. The reducer's state is left as it was.
+     * A Foray the ENGINE was handed ({@code playForay}): its transport runs on the Foray clock.
+     * A queue loaded through the manager's own surface (a parity scenario's {@code playForay})
+     * keeps the manager's transport.
      */
-    private void teardown() {
-        state.pendingLoad = null;
-        state.pendingActivation = null;
-        deckCommand(DeckCommand.UNLOAD);
-        if (state.positionTimerArmed) {
-            state.positionTimerArmed = false;
-            out.add(new EngineCommand.TimerCancel(EngineTimer.POSITION_TICK));
+    private boolean forayTransport() {
+        return config.forayTapeEnabled() && state.forayId != null;
+    }
+
+    /** The queue as the Foray clock reads it. */
+    private List<ForayItem> forayItems() {
+        List<ForayItem> items = new ArrayList<>(state.queue.size());
+        for (EngineItem item : state.queue) items.add(item.forayItem());
+        return items;
+    }
+
+    /**
+     * Where the listener is on the Foray clock (client.js {@code forayPlayhead}): the deck's
+     * playhead once it holds the item, the second a load in flight will land on, else unknown
+     * (null), which a write never guesses.
+     */
+    private Double forayPositionSec(EngineItem item) {
+        Double playhead;
+        SpokenLine line = state.narration;
+        if (line != null && line.itemId.equals(item.id) && item.id.equals(state.loadedId)) {
+            // A spoken line's clock is wall time since it started (L-03).
+            playhead = line.elapsedSec(now.monoMs());
+        } else if (item.id.equals(state.loadedId)) {
+            playhead = deck.positionSec;
+        } else if (state.pendingLoad != null && state.pendingLoad.itemId().equals(item.id)) {
+            playhead = state.pendingLoad.startSec();
+        } else {
+            playhead = null;
         }
-        cancelHoldTimer();
-        if (state.grace != null) endGrace(GraceOutcome.RELINQUISHED);
-        diag("mode", m("kind", str("teardown")));
-        state.tornDown = true;
+        if (playhead == null || !Double.isFinite(playhead)) return null;
+        return ForayClock.forayElapsed(forayItems(), (double) state.currentIndex, playhead);
+    }
+
+    /**
+     * {@code playForay {forayId, title, items, buildReport, startElapsedSec?, isLocalFile,
+     * allowAdPad, voiceId}} (plan §5.2). The page built the queue (A-1); the engine RE-VALIDATES
+     * its structure (J-4) and refuses it whole, before anything is audible, when any item is not
+     * what {@code buildForayQueue} guarantees. A resume point on the Foray clock lands inside its
+     * clip ({@code segmentAtElapsed}, {@code sourceOffsetFor}).
+     */
+    private void playForay(EngineContract.Command.PlayForay args, Source source) {
+        List<EngineItem> items = new ArrayList<>();
+        for (JsonNode node : args.items()) {
+            EngineItem item = EngineItem.of(node);
+            if (item != null) items.add(item);
+        }
+        List<ForayItem> built = new ArrayList<>();
+        for (EngineItem item : items) built.add(item.forayItem());
+        StructuralCheck.Verdict verdict = StructuralCheck.check(built);
+        if (items.size() != args.items().size() || !verdict.ok()) {
+            diag("foray", m("kind", str("refused-structure")), m("problems", num(verdict.problems().size())));
+            refuse(Refusal.REFUSED_STRUCTURE);
+            return;
+        }
+        // LEAVING IS A FLUSH: whatever was playing writes where it got to.
+        flushPosition();
+        state.queue = items;
+        state.currentIndex = -1;
+        state.forayId = args.forayId();
+        state.forayTitle = args.title();
+        state.forayIsLocalFile = args.isLocalFile();
+        state.forayAllowAdPad = args.allowAdPad();
+        state.lastEpisodeRow = null;
+        state.lastEpisodeRowWritten = false;
+        state.startingHop = null;
+        state.closed = false;
+        state.preparedItemId = null;
+        state.seamMark = null;
+        state.skippedSegments = 0;
+        state.forayFinishedWritten = false;
+        state.forayThrottle.clear(args.forayId());
+        Double elapsed = args.startElapsedSec();
+        if (elapsed != null) {
+            ForayClock.Position at = ForayClock.segmentAtElapsed(forayItems(), elapsed);
+            if (at != null && at.index() >= 0 && at.index() < items.size()) {
+                Double offset = TransportPolicy.sourceOffset(items.get(at.index()).transportItem(), at.into());
+                playIndex(at.index(), offset, source);
+                return;
+            }
+        }
+        playIndex(0, null, source);
+    }
+
+    /**
+     * A scrub on the Foray clock ({@code seekTo} in a Foray): which clip it lands in and where,
+     * then {@code scrubTarget}: another clip, or a Foray with nothing loaded, is a load at the
+     * offset; the same clip is a seek. A spoken line has no offset to seek to.
+     */
+    private void forayScrub(double elapsed, Source source) {
+        ForayClock.Position at = ForayClock.segmentAtElapsed(forayItems(), elapsed);
+        if (at == null || at.index() < 0 || at.index() >= state.queue.size()) {
+            refuse(Refusal.NOT_LOADED);
+            return;
+        }
+        EngineItem item = state.queue.get(at.index());
+        TransportPolicy.Scrub scrub = TransportPolicy.scrubTarget(at.index(), at.into(), item.transportItem(),
+                (double) state.currentIndex, state.stateType());
+        if (scrub.reload()) {
+            playIndex(at.index(), scrub.offset(), source);
+            return;
+        }
+        if (scrub.offset() == null) return;
+        cutSeamGap("seek");
+        dispatch(new PlayerEvent.Seek(scrub.offset(), true));
+        releaseSeamGap();
+    }
+
+    /**
+     * A ↺15 / 30↻ nudge in a Foray: a step on the Foray clock, stopped short of the total
+     * ({@code skipTarget(foray: true)}), then an ordinary scrub.
+     */
+    private void forayNudge(double deltaSec, Source source) {
+        EngineItem item = state.currentItem();
+        if (item == null) {
+            refuse(Refusal.NOT_LOADED);
+            return;
+        }
+        Double position = forayPositionSec(item);
+        if (position == null) {
+            List<Double> starts = ForayClock.segmentStarts(forayItems());
+            position = starts.get(Math.max(0, state.currentIndex));
+        }
+        Double target = TransportPolicy.skipTarget(true, position, deltaSec, ForayClock.forayRuntimeSec(forayItems()));
+        if (target == null) return;
+        forayScrub(target, source);
+    }
+
+    /**
+     * {@code _warmNextSegment(at)}: name the item the next boundary will advance to and its
+     * in-point, so the standby deck can load it while this one is still audible. Two callers
+     * (queue-manager.js §11, NE-45j; NE-45s in Swift, card A-62 here):
+     * <ul>
+     *   <li>the deck's {@code prepareWindow} ({@code at = "window"}), the prefetch lead before the
+     *       boundary: the out-point, or the file's end for an item with none (a rendered line, an
+     *       episode's natural end);</li>
+     *   <li>the START of a SPOKEN line ({@code at = "line-start"}), because the synthesiser is
+     *       audible and the deck is idle.</li>
+     * </ul>
+     * WARMING FOLLOWS THE FILE, NOT THE BEAT ({@link DeckPolicy#warmsAcross}): the next item is
+     * prepared when it has a file (a clip, or a rendered line), whatever the beat says. It used to
+     * be {@code SeamGap.gapSec(...) > 0}, which warmed only clip-to-clip seams and left clip, line,
+     * clip two cold loads. A spoken line has no file and prepares nothing; a Foray's last item
+     * prepares nothing, since a Foray never chains. Only an AUDIBLE item approaches a boundary: a
+     * playing one, or a line bridging a seam ({@code transitioning}), and what follows it is
+     * counted the way {@code itemEnded} counts it from each state.
+     */
+    private void warmNextSegment(String at) {
+        if (!config.forayTapeEnabled()) return;
+        EngineItem from = state.currentItem();
+        if (from == null) return;
+        boolean bridging;
+        if (state.player instanceof PlayerQueueState.Playing) {
+            bridging = false;
+        } else if (state.player instanceof PlayerQueueState.Transitioning) {
+            bridging = true;
+        } else {
+            return;
+        }
+        Next next = nextItem(cursor(), bridging);
+        if (next == null) {
+            diag("prepare", m("kind", str("none")), m("where", str(at)));
+            return;
+        }
+        if (!DeckPolicy.warmsAcross(from, next.item())) {
+            diag("prepare", m("kind", str("skipped")), m("item", str(next.item().id)), m("where", str(at)));
+            return;
+        }
+        state.preparedItemId = next.item().id;
+        ItemBounds bounds = next.item().bounds();
+        deckCommand(new DeckCommand.Prepare(next.item().id, next.item().audioUrl, bounds != null ? bounds.startSec() : 0,
+                DeckDeadlineClass.of(next.item())));
+    }
+
+    /**
+     * A seam that touches a Foray SEGMENT (a bounded slice): a Foray's line seams are always next
+     * to one, and a plain episode queue's (M1's bridges between whole episodes) never are.
+     */
+    static boolean isForaySeam(EngineItem from, EngineItem to) {
+        return from.bounds() != null || to.bounds() != null;
+    }
+
+    /**
+     * A-62 (NE-45s): the seam an item's end just crossed, remembered until the next item is
+     * audible, so every seam (clip to clip, clip to line, line to clip) packs ONE row with its kinds
+     * and whether the standby was ready.
+     */
+    private void markSeam(EngineItem from, EngineItem to) {
+        state.seamMark = new SeamMark(SeamRow.ItemKind.of(from), SeamRow.ItemKind.of(to), to.id, now.monoMs(), null);
+    }
+
+    // ---- the seam beat (queue-manager.js §10)
+
+    /** {@code _setGapDeadline}: the one writer of the deadline, so the {@code beat} row can never disagree with {@code inSeamGap}. */
+    private void setGapDeadline(Double until) {
+        boolean was = state.gapUntilMono != null;
+        state.gapUntilMono = until;
+        if (until == null) state.gapArmedAtMono = null;
+        if (was != (until != null)) diag("beat", m("kind", str(until != null ? "begin" : "end")));
+    }
+
+    /**
+     * {@code _armSeamGap(from, to, bridged)}: at the moment the out-point (or a natural end)
+     * fires, decide whether this transition is a seam and stamp the ABSOLUTE deadline. The beat
+     * is wall clock: it does not scale with the listener's rate.
+     */
+    private void armSeamGap(EngineItem from, EngineItem to, boolean bridged) {
+        double sec = SeamGap.gapSec(from.seam(), to.seam(), bridged, SeamGap.AUTO_ADVANCE, config.seamGapSec());
+        if (!(sec > 0)) return;
+        setGapDeadline(now.monoMs() + sec * 1000);
+        state.gapArmedAtMono = now.monoMs();
+        state.gapAskedMs = sec * 1000;
+    }
+
+    /**
+     * {@code _awaitSeamGap(seq)}: hold what remains of the beat, then start the item, if this
+     * load still owns the player. Nothing remaining starts it now: a slow load costs
+     * max(gap, load), never gap + load.
+     */
+    private void awaitSeamGap(int token) {
+        double remaining = seamGapRemainingMs(now.monoMs());
+        if (remaining <= 0) {
+            Double armedAt = state.gapArmedAtMono;
+            // A jingle still claiming to sound once the whole deadline is spent loses to the tape.
+            stopInterlude("spent");
+            setGapDeadline(null);
+            seamLanded(armedAt);
+            return;
+        }
+        state.gapParkedToken = token;
+        state.gapCut = false;
+        state.seamTimerArmed = true;
+        out.add(new EngineCommand.TimerArm(EngineTimer.SEAM_BEAT, remaining, false));
+    }
+
+    /**
+     * The parked wait's {@code finish}: the beat ran out, or the action that cut it has issued
+     * its own load. Idempotent. A newer load means this one is abandoned quietly; otherwise
+     * {@code itemLoaded}, which the reducer reads by state.
+     */
+    private void finishSeamGap() {
+        Integer token = state.gapParkedToken;
+        if (token == null) return;
+        state.gapParkedToken = null;
+        if (state.seamTimerArmed) {
+            state.seamTimerArmed = false;
+            out.add(new EngineCommand.TimerCancel(EngineTimer.SEAM_BEAT));
+        }
+        state.gapCut = false;
+        Double armedAt = state.gapArmedAtMono;
+        // §13: the deadline ran out with the jingle still sounding (the ceiling): the jingle loses.
+        stopInterlude("ceiling");
+        setGapDeadline(null);
+        if (state.lastToken != token) {
+            diag("beat", m("kind", str("superseded")));
+            return;
+        }
+        seamLanded(armedAt);
+    }
+
+    /** The load the beat held becomes audible: the packed {@code seam} row when it was a real seam, then {@code itemLoaded}. */
+    private void seamLanded(Double armedAt) {
+        // The deck pair's own report on this load, when it sent one, is the truth about the
+        // standby deck (a prepare ASKED is not a prepare HIT).
+        DeckPrepareReport report = state.deckPrepare != null && state.loadedToken != null
+                && state.deckPrepare.token() == state.loadedToken ? state.deckPrepare : null;
+        state.deckPrepare = null;
+        packSeamRow(armedAt, report);
+        stopSilence("landed");
+        dispatch(PlayerEvent.ITEM_LOADED);
+        // §11 (NE-45j): a SPOKEN line leaves the deck idle, so what follows it is prepared now, at
+        // the line's start (`_loadItem`).
+        SpokenLine line = state.narration;
+        if (state.player instanceof PlayerQueueState.Playing && line != null && line.itemId.equals(state.loadedId)) {
+            warmNextSegment("line-start");
+        }
+    }
+
+    /**
+     * The packed {@code seam} row (plan §13 item 37; NE-45s, card A-62), written when the item after
+     * a seam becomes audible: a beat's seam ({@code armedAt}, stamped at the out-point) or any seam
+     * {@link #markSeam} remembered, a line's included, which has no beat and so no row before A-62.
+     * The row names the seam's kinds ({@code from}, {@code to}: clip or line) and {@code prepare}:
+     * {@code hit} (the standby was promoted), {@code miss} (it was prepared and the item still
+     * loaded cold) or {@code none} (nothing was prepared: one deck, a spoken line, a same-source
+     * seek on the playing deck).
+     */
+    private void packSeamRow(Double armedAt, DeckPrepareReport report) {
+        SeamMark mark = state.seamMark != null && state.seamMark.toItemId().equals(state.loadedId) ? state.seamMark : null;
+        state.seamMark = null;
+        Double start = armedAt != null ? armedAt : mark != null ? Double.valueOf(mark.endedAtMono()) : null;
+        if (start == null) return;
+        boolean spoken = state.narration != null && state.narration.itemId.equals(state.loadedId);
+        boolean prepared = report != null ? report.hit()
+                : !spoken && state.preparedItemId != null && state.preparedItemId.equals(state.loadedId);
+        List<Vocabulary.Stage> stages = new ArrayList<>();
+        if (report != null) {
+            stages.addAll(report.stages());
+            stages.add(Vocabulary.Stage.PLAY);
+        } else {
+            if (!spoken) stages.add(Vocabulary.Stage.READY);
+            stages.add(Vocabulary.Stage.PLAY);
+        }
+        Double bg = now.bgRemainingMs();
+        SeamRow.Prepare verdict = mark == null ? null : mark.prepare() != null ? mark.prepare() : SeamRow.Prepare.NONE;
+        SeamRow row = new SeamRow(now.monoMs() - start, armedAt != null ? state.gapAskedMs : 0, prepared, state.grace != null,
+                bg == null ? null : roundHalfAwayFromZero(bg), stages,
+                mark != null ? mark.from() : null, mark != null ? mark.to() : null, verdict);
+        out.add(new EngineCommand.Diag(row.entry()));
+    }
+
+    /**
+     * {@code _cutSeamGap(why)}: EVERY transport action ends a running beat. The clock stops now;
+     * the parked wait is left parked until {@code releaseSeamGap}, after the action's own load.
+     */
+    private void cutSeamGap(String why) {
+        // §13: a jingle is the beat with sound in it, so whatever cuts the beat silences it.
+        stopInterlude(why);
+        stopSilence(why);
+        setGapDeadline(null);
+        // A-62 (NE-45s): the seam the listener moved during is not a seam any more.
+        state.seamMark = null;
+        if (state.gapParkedToken == null || state.gapCut) return;
+        state.gapCut = true;
+        if (state.seamTimerArmed) {
+            state.seamTimerArmed = false;
+            out.add(new EngineCommand.TimerCancel(EngineTimer.SEAM_BEAT));
+        }
+        diag("beat", m("kind", str("cut")), m("why", str(why)));
+    }
+
+    /**
+     * {@code _releaseSeamGap}: let a cut wait go, now that {@code lastToken} tells the truth. A
+     * parked activation's action has not run yet: its answer releases it.
+     */
+    private void releaseSeamGap() {
+        if (state.gapParkedToken == null || !state.gapCut || state.pendingActivation != null) return;
+        finishSeamGap();
+    }
+
+    /** {@code _endSeamGap(why)}: cut and release, for the paths that end a seam without being a transport action. */
+    private void endSeamGap(String why) {
+        cutSeamGap(why);
+        releaseSeamGap();
+    }
+
+    // ---- ADR-0007 at load, and rendered bridges
+
+    /** The ladder refused the copy in hand: the segment is never audible. A {@code skipped} event and row, and the Foray moves on. */
+    private void refuseAtLoad(EngineItem item, String reason) {
+        state.skippedSegments += 1;
+        int index = indexOf(item.id);
+        if (index < 0) index = state.currentIndex;
+        diag("skip", m("kind", str("ladder")), m("item", str(item.id)), m("index", num(index)));
+        out.add(new EngineCommand.Emit(new EngineCommand.EngineEvent.Skipped(item.id, index, reason)));
+        skipUnplayableSegment();
+    }
+
+    /**
+     * {@code _skipUnplayableSegment}: still {@code loadingItem}, so {@code skipToNext} replaces
+     * the in-flight target. With something left the beat's deadline is KEPT (the replacement
+     * spends what remains of it); with nothing left the Foray ends instead of looping.
+     */
+    private void skipUnplayableSegment() {
+        Next next = nextItem(cursor(), false);
+        if (next != null) {
+            state.targetIndex = next.index();
+        } else {
+            // D-5 (A-67, NE-40): the cause first, before the cut silences a jingle.
+            stopRow(StopCause.FINAL_END, null);
+            endSeamGap("queueExhausted");
+        }
+        dispatch(new PlayerEvent.SkipToNext(next == null ? null : next.item().ref()));
+        if (next == null && state.stateType().equals("ended")) {
+            markForayFinished();
+            applySession(SessionPolicy.transition(state.session,
+                    new SessionPolicy.Input.Simple(SessionPolicy.InputKind.FINAL_END), state.holdPolicy));
+        }
+    }
+
+    /**
+     * {@code _playTransitionBridge}: the reducer is {@code transitioning} onto a narration
+     * bridge. A RENDERED one (a file) plays on the deck from 0 the moment it lands; a SPOKEN one
+     * is handed to the synthesiser. One that is missing, or fails to load or to speak, is
+     * stepped over so the queue never stalls.
+     */
+    private void playTransitionBridge() {
+        if (!(state.player instanceof PlayerQueueState.Transitioning transitioning)) {
+            diag("bridge", m("kind", str("without-transitioning")));
+            return;
+        }
+        int index = indexOf(transitioning.to().id());
+        if (index < 0) {
+            advancePastBridgeFailure();
+            return;
+        }
+        EngineItem bridge = state.queue.get(index);
+        state.currentIndex = index;
+        state.lastToken += 1;
+        int token = state.lastToken;
+        if (bridge.isSynthNarration()) {
+            speakLine(bridge, token, true, false);
+            return;
+        }
+        state.pendingLoad = new PendingLoad(token, bridge.id, 0, true, null, false);
+        deckCommand(new DeckCommand.Load(token, bridge.id, bridge.audioUrl, 0, false, DeckDeadlineClass.of(bridge)));
     }
 
     /** {@code _advancePastBridgeFailure}: the item after the bridge, bridges skipped. */
     private void advancePastBridgeFailure() {
         Next next = nextItem(cursor(), true);
         dispatch(new PlayerEvent.ItemEnded(next == null ? null : next.item().ref(), false));
+    }
+
+    // ---- the narrating overlay (queue-manager.js §7 and L-03/L-05)
+
+    /** The multiplier a line is uttered at: {@code NARRATION_RATE} (1x, OQ-3), unless it follows the listener. */
+    private double utteranceRate() {
+        return config.narrationFollowsListenerRate() ? state.rate : EngineConstants.QueueManager.NARRATION_RATE;
+    }
+
+    /**
+     * {@code _loadItem} for a script-only line. RE-ENTERING A PAUSED UTTERANCE IS A RESUME, NOT
+     * A RESTART (L-05): a re-entry into the line the playhead is already on, with the line
+     * paused and no restart asked for, speaks nothing and lets {@code startPlayback} continue
+     * the same utterance.
+     */
+    private void loadSpokenLine(EngineItem item, int token, boolean restart) {
+        SpokenLine line = state.narration;
+        if (!restart && item.id.equals(state.loadedId) && line != null && line.itemId.equals(item.id) && line.paused) {
+            state.pendingLoad = null;
+            diag("narration", m("kind", str("resuming-in-place")));
+            landed(item, token);
+            return;
+        }
+        speakLine(item, token, false, false);
+    }
+
+    /**
+     * {@code _speakNarration}: ask the synthesiser for utterance {@code seq}. Like a deck load it
+     * is a request now and an answer later ({@code started} or {@code failed} for that seq), and
+     * the playhead moves only on {@code started}.
+     */
+    private void speakLine(EngineItem item, int token, boolean bridge, boolean fallback) {
+        state.speakSeq += 1;
+        int seq = state.speakSeq;
+        state.pendingLoad = new PendingLoad(token, item.id, 0, bridge, seq, fallback);
+        // The audible-start backstop (plan §4.4), as `startPlayback`'s.
+        if (state.session != SessionPolicy.Phase.ACTIVE) {
+            diag("fault", m("kind", str("no-session")), m("at", str("narration")), m("session", str(state.session.token)));
+            onLoadFailure(token, "no active session for narration", StopCause.ERROR);
+            return;
+        }
+        String script = string(item.node.get("script"));
+        out.add(new EngineCommand.Narration(new NarrationCommand.Speak(seq, script == null ? "" : script, state.voiceId,
+                utteranceRate())));
+    }
+
+    private void onNarrator(NarratorEvent event) {
+        if (!config.forayTapeEnabled()) return;
+        switch (event) {
+            case NarratorEvent.Started e -> {
+                narrationStarted(e.seq(), e.voiceFallback());
+                // A spoken line of ours is audible (route-resume.js "playing").
+                if (state.narration != null && state.narration.seq == e.seq()) routeResumeStep(RouteResume.Event.PLAYING);
+            }
+            case NarratorEvent.Failed e -> {
+                PendingLoad pending = state.pendingLoad;
+                if (pending == null || pending.spokenSeq() == null || pending.spokenSeq() != e.seq()) {
+                    diag("narration", m("kind", str("superseded-failure")), m("seq", num(e.seq())));
+                    return;
+                }
+                // A failed speak is not a voice-fallback report.
+                state.lastVoiceFallback = null;
+                // The existing "a load failed" path: a bridge is stepped over, a line the
+                // listener asked for is the page's error.
+                onLoadFailure(pending.token(), "foray-tts: speak refused", StopCause.ERROR);
+            }
+            case NarratorEvent.Finished e -> finishLine(e.seq(), "finished");
+            case NarratorEvent.Cancelled e -> {
+                // A stop, a replacement, or the session taken from under the line: NEVER an
+                // advance (L-05, "stop never advances").
+                diag("narration", m("kind", str("cancelled")),
+                        m("current", JsonNode.bool(state.narration != null && state.narration.seq == e.seq())));
+            }
+            case NarratorEvent.Resumed e -> narrationResumed(e.seq(), e.answer());
+        }
+    }
+
+    /**
+     * The synthesiser accepted utterance {@code seq}: the line IS the playhead now. A
+     * {@code _loadItem} line then takes the gate and the beat like any landed load; a bridge is
+     * already {@code transitioning} and plays on.
+     */
+    private void narrationStarted(int seq, boolean voiceFallback) {
+        PendingLoad pending = state.pendingLoad;
+        EngineItem item = pending != null && pending.spokenSeq() != null && pending.spokenSeq() == seq ? find(pending.itemId()) : null;
+        if (item == null) {
+            // SUPERSEDED WHILE speak() WAS IN FLIGHT (audit round 3, player-core-4/7): silence it,
+            // unless a newer speak() already replaced it. A repeated `started` for the line
+            // already playing is not a stale one.
+            if (state.narration == null || state.narration.seq != seq) abandonSpeech(seq);
+            diag("narration", m("kind", str("superseded")), m("seq", num(seq)));
+            return;
+        }
+        // THE LISTENER CAN MOVE WHILE THE LINE'S speak() IS IN FLIGHT: the line starts only if
+        // the machine is still loading or transitioning to it.
+        if (!stillOn(pending)) {
+            state.pendingLoad = null;
+            abandonSpeech(seq);
+            diag("narration", m("kind", str("left-while-speaking")), m("seq", num(seq)));
+            return;
+        }
+        state.pendingLoad = null;
+        state.lastVoiceFallback = voiceFallback;
+        state.loadedId = pending.itemId();
+        state.loadedToken = pending.token();
+        state.startingHop = null;
+        // A spoken line is the playhead: no deck stall describes it.
+        clearStallLatch();
+        state.narration = new SpokenLine(seq, item.id, now.monoMs());
+        // §14: remembered only for a rendered line spoken INSTEAD of its file.
+        state.fallbackSpokenId = pending.fallback() ? item.id : null;
+        startNarrationTicker();
+        if (voiceFallback) diag("narration", m("kind", str("voice-fallback")));
+        // The line is audible: a span covering its start is over.
+        if (state.grace != null) endGrace(GraceOutcome.PLAYING);
+        if (pending.bridge()) {
+            // A-62 (NE-45s): a spoken bridge is a seam's audible start (its row says
+            // `to=line prepare=none`, or `miss` for a rendered line whose prepared file failed), and
+            // the deck is idle while it is spoken, so the clip after it is prepared NOW
+            // (`_playTransitionBridge`, and `_speakInsteadMidLine` for a file that failed while
+            // sounding).
+            packSeamRow(null, null);
+            warmNextSegment("line-start");
+            return;
+        }
+        landed(item, pending.token());
     }
 
     /**
@@ -1619,6 +2913,463 @@ public final class EngineCore {
         if (!state.buffering) return;
         state.buffering = false;
         diag("deck", m("kind", str("stall-cleared")));
+    }
+
+    /**
+     * Is the machine still on the line {@code pending} is speaking? Still {@code loadingItem}
+     * for a line it loads, still {@code transitioning} for a bridge, and {@code playing} for a
+     * rendered line read from its script after its file failed while sounding (§14).
+     */
+    private boolean stillOn(PendingLoad pending) {
+        EngineItem focus = focusItem();
+        if (focus == null || !focus.id.equals(pending.itemId())) return false;
+        return switch (state.player) {
+            case PlayerQueueState.LoadingItem l -> !pending.bridge();
+            case PlayerQueueState.Transitioning t -> pending.bridge();
+            case PlayerQueueState.Playing p -> pending.bridge() && pending.fallback();
+            default -> false;
+        };
+    }
+
+    /**
+     * {@code _abandonSpeech(mine)}: a speak() whose line the player has left is told to stop,
+     * unless a NEWER speak() has been issued since, which already replaced it.
+     */
+    private void abandonSpeech(int seq) {
+        if (seq != state.speakSeq) return;
+        out.add(new EngineCommand.Narration(new NarrationCommand.Stop(seq)));
+    }
+
+    /**
+     * {@code _endSynthNarration}: a deck item holds the playhead. A line that did not finish is
+     * dropped, so the synthesiser never keeps an utterance nobody will continue.
+     */
+    private void endSpokenLine() {
+        SpokenLine line = state.narration;
+        if (line == null) return;
+        state.narration = null;
+        state.fallbackSpokenId = null;
+        stopNarrationTicker();
+        if (!line.finished) out.add(new EngineCommand.Narration(new NarrationCommand.Discard(line.seq)));
+    }
+
+    /**
+     * {@code _onTtsFinished}: advance past the line EXACTLY ONCE. The event must name the line
+     * the playhead is on, and each line advances at most once, by {@code didFinish} or by its
+     * deadline. Returns whether it advanced.
+     */
+    private boolean finishLine(int seq, String why) {
+        SpokenLine line = state.narration;
+        if (line == null) {
+            diag("narration", m("kind", str("stray-end")), m("why", str(why)));
+            return false;
+        }
+        if (line.seq != seq) {
+            diag("narration", m("kind", str("stale-end")), m("why", str(why)));
+            return false;
+        }
+        if (state.advancedSpeakSeq != null && state.advancedSpeakSeq == seq) {
+            diag("narration", m("kind", str("duplicate-end")), m("why", str(why)));
+            return false;
+        }
+        state.advancedSpeakSeq = seq;
+        if (why.equals("finished")) line.finished = true;
+        stopNarrationTicker();
+        diag("narration", m("kind", str("ended")), m("why", str(why)));
+        // Grace at narration end: the synthesiser has stopped rendering and the next item is not
+        // audible yet.
+        if (state.backgrounded && state.isRunning()) beginGrace(GraceReason.NARRATION_HANDOVER);
+        itemEnded();
+        return true;
+    }
+
+    /** {@code _pauseNarration}: hold the line at a word; its clock freezes. Idempotent, because the reducer is not. */
+    private void pauseNarration() {
+        SpokenLine line = state.narration;
+        if (narrationStopping || line == null || line.paused) return;
+        line.paused = true;
+        line.pausedAtMono = now.monoMs();
+        stopNarrationTicker();
+        out.add(new EngineCommand.Narration(new NarrationCommand.Pause(line.seq)));
+    }
+
+    /**
+     * The synthesiser's answer to {@code resume(seq)}: the clock continues from where it froze,
+     * restarts with a line re-spoken from its first word, or (refused) stays frozen with the
+     * line paused, so the next play tries the resume again.
+     */
+    private void narrationResumed(int seq, NarrationResumeAnswer answer) {
+        SpokenLine line = state.narration;
+        if (line == null || line.seq != seq || !line.paused) {
+            diag("narration", m("kind", str("resume-stale")), m("seq", num(seq)));
+            return;
+        }
+        switch (answer) {
+            case NarrationResumeAnswer.Refused r -> {
+                diag("narration", m("kind", str("resume-refused")));
+                if (state.grace != null) endGrace(GraceOutcome.NOT_RUNNING);
+                return;
+            }
+            case NarrationResumeAnswer.FromStart f -> line.startedAtMono = now.monoMs();
+            case NarrationResumeAnswer.Continued c -> line.startedAtMono += frozenFor(line);
+            case NarrationResumeAnswer.NoAnswer n -> line.startedAtMono += frozenFor(line);
+        }
+        line.paused = false;
+        line.pausedAtMono = null;
+        startNarrationTicker();
+        if (state.grace != null) endGrace(GraceOutcome.PLAYING);
+    }
+
+    private double frozenFor(SpokenLine line) {
+        return line.pausedAtMono == null ? 0 : Math.max(0, now.monoMs() - line.pausedAtMono);
+    }
+
+    /** {@code _stopNarration}: silence the line at once. The line stays the playhead; its clock is no longer paused. */
+    private void stopNarration() {
+        SpokenLine line = state.narration;
+        if (line == null) return;
+        line.paused = false;
+        line.pausedAtMono = null;
+        stopNarrationTicker();
+        out.add(new EngineCommand.Narration(new NarrationCommand.Stop(line.seq)));
+    }
+
+    /** {@code _startNarrationTicker}: one pulse {@code NARRATION_TICK_MS} out, re-armed by each pulse, only while a surface listens. */
+    private void startNarrationTicker() {
+        stopNarrationTicker();
+        SpokenLine line = state.narration;
+        if (!config.narrationPulse() || line == null) return;
+        double afterMs = EngineConstants.QueueManager.NARRATION_TICK_MS;
+        line.tickDueAtMono = now.monoMs() + afterMs;
+        state.narrationTickArmed = true;
+        out.add(new EngineCommand.TimerArm(EngineTimer.NARRATION_TICK, afterMs, false));
+    }
+
+    private void stopNarrationTicker() {
+        if (!state.narrationTickArmed) return;
+        state.narrationTickArmed = false;
+        out.add(new EngineCommand.TimerCancel(EngineTimer.NARRATION_TICK));
+    }
+
+    /**
+     * {@code _tickNarration}. The pulse repaints the surface. A pulse that lands
+     * {@code NARRATION_SUSPEND_GAP_MS} late means the process was SUSPENDED: the slept time never
+     * counts towards the deadline and the synthesiser is asked. Past the deadline the line is
+     * finished, once, through the same guards; a pulse that cannot advance keeps the ticker alive.
+     */
+    private void narrationTick() {
+        SpokenLine line = state.narration;
+        if (line == null) return;
+        double late = line.tickDueAtMono == null ? 0 : now.monoMs() - line.tickDueAtMono;
+        out.add(new EngineCommand.NarrationPulse(line.elapsedSec(now.monoMs())));
+        if (late > EngineConstants.QueueManager.NARRATION_SUSPEND_GAP_MS) {
+            diag("narration", m("kind", str("suspended")), m("lateMs", num(roundHalfAwayFromZero(late))));
+            line.startedAtMono += late;
+            startNarrationTicker();
+            reconcileNarrationInterrupted("narration.suspended");
+            return;
+        }
+        double deadline = narrationDeadlineSec(state.currentItem(), utteranceRate());
+        if (deadline > 0 && line.elapsedSec(now.monoMs()) > deadline) {
+            diag("narration", m("kind", str("deadline")), m("limitSec", num(roundHalfAwayFromZero(deadline))));
+            if (finishLine(line.seq, "deadline")) return;
+            SpokenLine current = state.narration;
+            if (current == null || (state.advancedSpeakSeq != null && state.advancedSpeakSeq == current.seq)) return;
+        }
+        startNarrationTicker();
+    }
+
+    /**
+     * {@code narrationDeadlineSec(item, rate)}: the line's runtime at the speed it is SPOKEN at
+     * (stretched only when slower than 1x) times {@code NARRATION_DEADLINE_FACTOR}, plus the
+     * margin. Zero (no deadline) for a line that carries no runtime.
+     */
+    public static double narrationDeadlineSec(EngineItem item, double rate) {
+        Double runtime = item == null ? null : item.durationSec;
+        if (runtime == null || !Double.isFinite(runtime) || !(runtime > 0)) return 0;
+        double slow = Double.isFinite(rate) && rate > 0 && rate < 1 ? 1 / rate : 1;
+        return runtime * slow * EngineConstants.QueueManager.NARRATION_DEADLINE_FACTOR
+                + EngineConstants.QueueManager.NARRATION_DEADLINE_MARGIN_SEC;
+    }
+
+    /**
+     * {@code _reconcileNarrationInterrupted}: there is no element to ask, so the SYNTHESISER is
+     * asked. Still speaking: nothing is touched. Anything else is the session taken from under
+     * the line: {@code interrupted}, the clock frozen by the pause, never an advance.
+     */
+    private void reconcileNarrationInterrupted(String why) {
+        if (now.narrator() == NarratorReading.SPEAKING) {
+            diag("reconcile", m("kind", str("skipped-narration-speaking")), m("why", str(why)));
+            return;
+        }
+        if (!state.isPlaying()) return;
+        diag("reconcile", m("kind", str("narration-interrupted")), m("why", str(why)), m("tts", str(now.narrator().token)));
+        stopRow(StopCause.SYSTEM_PAUSE, null);
+        state.pausedByListener = false;
+        cutSeamGap("reconcile");
+        dispatch(PlayerEvent.INTERRUPTION_BEGAN);
+        releaseSeamGap();
+    }
+
+    // ---- the interlude jingle (queue-manager.js §13)
+
+    /**
+     * {@code _armInterlude(from, to)}: at the same instant as the beat and after it, start the
+     * jingle and stretch the deadline to its ceiling, so the jingle ABSORBS the next segment's
+     * load. The rule is {@link Interlude#eligible}; the clock is the beat's.
+     */
+    private void armInterlude(EngineItem from, EngineItem to) {
+        if (!config.forayTapeEnabled() || !config.interludeAvailable() || !state.interludeEnabled || to == null) return;
+        if (!Interlude.eligible(from == null ? null : from.forayItem().interlude(), to.forayItem().interlude())) {
+            diag("interlude", m("kind", str("skipped")));
+            return;
+        }
+        // The audible-start invariant: nothing sounds without the session.
+        if (state.session != SessionPolicy.Phase.ACTIVE) {
+            diag("fault", m("kind", str("no-session")), m("at", str("interlude")));
+            return;
+        }
+        out.add(new EngineCommand.Interlude(InterludeCommand.START));
+        state.inInterlude = true;
+        state.beatUntilMono = state.gapUntilMono;
+        setGapDeadline(Math.max(state.gapUntilMono != null ? state.gapUntilMono : 0, now.monoMs() + Interlude.CEILING_SEC * 1000));
+        diag("interlude", m("kind", str("started")));
+    }
+
+    /**
+     * {@code _onInterludeEnded(reason)}: shrink the seam back to the beat's own deadline. A wait
+     * parked on the ceiling finishes now if the beat is spent, or is re-timed to what the beat
+     * still owes; a load not yet landed just holds the remainder when it does.
+     */
+    private void onInterlude(InterludeEvent event) {
+        switch (event) {
+            case InterludeEvent.Ended e -> {
+                if (!state.inInterlude) {
+                    diag("interlude", m("kind", str("stray-end")));
+                    return;
+                }
+                state.inInterlude = false;
+                Double beatUntil = state.beatUntilMono;
+                state.beatUntilMono = null;
+                diag("interlude", m("kind", str("ended")), m("why", str(isDiagToken(e.reason()) ? e.reason() : "other")));
+                double remaining = beatUntil == null ? 0 : Math.max(0, beatUntil - now.monoMs());
+                if (state.gapParkedToken != null && !state.gapCut) {
+                    if (state.seamTimerArmed) {
+                        state.seamTimerArmed = false;
+                        out.add(new EngineCommand.TimerCancel(EngineTimer.SEAM_BEAT));
+                    }
+                    if (remaining <= 0) {
+                        finishSeamGap();
+                        return;
+                    }
+                    setGapDeadline(beatUntil);
+                    state.seamTimerArmed = true;
+                    out.add(new EngineCommand.TimerArm(EngineTimer.SEAM_BEAT, remaining, false));
+                    return;
+                }
+                if (state.gapCut) return; // parked; `releaseSeamGap` owns it
+                setGapDeadline(remaining > 0 ? beatUntil : null);
+            }
+        }
+    }
+
+    /** {@code _stopInterlude(why)}: silence a sounding jingle without reporting an end. Idempotent. */
+    private void stopInterlude(String why) {
+        if (!state.inInterlude) return;
+        state.inInterlude = false;
+        state.beatUntilMono = null;
+        // The row first (D-5, A-67, NE-40), then the command that silences the jingle.
+        diag("interlude", m("kind", str("cut")), m("why", str(why)));
+        out.add(new EngineCommand.Interlude(InterludeCommand.STOP));
+    }
+
+    // ---- the silence node (flagged OFF)
+
+    /**
+     * Digital silence across a silent seam, so the process keeps rendering while the next load
+     * happens. Hard-capped at {@code INTERLUDE_CEILING_SEC} from the out-point.
+     */
+    private void startSilence() {
+        if (!config.forayTapeEnabled() || !config.silenceNodeEnabled() || state.silenceActive || !state.inSeamGap()
+                || state.inInterlude) {
+            return;
+        }
+        double sec = Interlude.silenceNodeSec(0.0, state.isRunning(), state.session == SessionPolicy.Phase.ACTIVE);
+        if (!(sec > 0)) {
+            diag("silence", m("kind", str("refused")));
+            return;
+        }
+        state.silenceActive = true;
+        out.add(new EngineCommand.SilenceStart(sec * 1000));
+        out.add(new EngineCommand.TimerArm(EngineTimer.SILENCE_CAP, sec * 1000, false));
+    }
+
+    private void stopSilence(String why) {
+        if (!state.silenceActive) return;
+        state.silenceActive = false;
+        // The row first (D-5, A-67, NE-40), then the command that ends the silence.
+        diag("silence", m("kind", str("stopped")), m("why", str(why)));
+        out.add(new EngineCommand.TimerCancel(EngineTimer.SILENCE_CAP));
+        out.add(EngineCommand.SILENCE_STOP);
+    }
+
+    // ---- teardown (the page's `dispose()`)
+
+    /**
+     * The engine itself goes away: the line is stopped, the beat's clock and the jingle are cut,
+     * the parked wait is DROPPED (never released: nothing may start after this), the deck and the
+     * jingle player are released, every timer and grace span ends, and the core answers nothing
+     * more. The reducer's state is left as it was.
+     */
+    private void teardown() {
+        // D-5 (A-67, NE-40): the engine going away while it plays is the audio handed back, so the
+        // cause is `relinquish`. Android's host sends this when its service is destroyed with the
+        // core still live (ForayEngineHost.teardown: a stop by the system, Media3's stop after a
+        // swipe); after the core's own relinquish the host never does, because that wrote the row.
+        stopRow(StopCause.RELINQUISH, null);
+        stopPreview("dispose");
+        if (state.narration != null) stopNarration();
+        cutSeamGap("dispose");
+        state.gapParkedToken = null;
+        state.gapCut = false;
+        state.pendingLoad = null;
+        state.pendingActivation = null;
+        deckCommand(DeckCommand.UNLOAD);
+        if (config.forayTapeEnabled() && config.interludeAvailable()) out.add(new EngineCommand.Interlude(InterludeCommand.RELEASE));
+        if (state.positionTimerArmed) {
+            state.positionTimerArmed = false;
+            out.add(new EngineCommand.TimerCancel(EngineTimer.POSITION_TICK));
+        }
+        cancelHoldTimer();
+        if (state.grace != null) endGrace(GraceOutcome.RELINQUISHED);
+        diag("mode", m("kind", str("teardown")));
+        state.tornDown = true;
+    }
+
+    // ---- the voice picker's rendered preview (NE-47, A-66; Spark section 3.3)
+
+    /** The id a preview load carries: the deck logs it, nothing reads it. */
+    public static final String PREVIEW_ITEM_ID = "audition-preview";
+
+    /**
+     * An audition that names a rendered {@code preview.m4a} loads it on the PREVIEW deck, a deck
+     * of its own: the item a paused Foray holds on the main deck is never touched, so its resume
+     * is exactly what it was. The session is already active (the tap's own activation,
+     * {@link #begin}), and the play waits for the load's {@code ready} like any deck's. A preview
+     * in flight is replaced: the deck's new load supersedes the old one, whose late answers name a
+     * token nobody holds. The load names the LINE class (a preview is a small rendered file); the
+     * host's preview deck maps every class to its own deadline.
+     */
+    private void loadPreview(String url, String text, String voiceId) {
+        state.lastPreviewToken += 1;
+        int token = state.lastPreviewToken;
+        state.preview = new EngineState.AuditionPreview(token, text, voiceId);
+        diag("audition", m("kind", str("preview-load")), m("token", num(token)));
+        out.add(new EngineCommand.Preview(new DeckCommand.Load(token, PREVIEW_ITEM_ID, url, 0, false, DeckDeadlineClass.LINE)));
+    }
+
+    /**
+     * The preview deck's reports. Only the preview in flight is heard; a report for any other
+     * token (a replaced preview, or one already cut) is dropped.
+     */
+    private void onPreview(DeckEvent event) {
+        EngineState.AuditionPreview preview = state.preview;
+        if (preview == null) return;
+        switch (event) {
+            case DeckEvent.Ready e -> {
+                if (e.token() != preview.token || preview.playing) return;
+                // Audible: only on the session the audition's tap activated. An interruption
+                // since then (a call) took it, and a preview is not worth an activation nobody
+                // asked for: it is dropped, silently.
+                if (state.session != SessionPolicy.Phase.ACTIVE) {
+                    stopPreview("no-session");
+                    return;
+                }
+                preview.playing = true;
+                diag("audition", m("kind", str("preview-play")), m("token", num(e.token())));
+                out.add(new EngineCommand.Preview(DeckCommand.PLAY));
+            }
+            case DeckEvent.Failed e -> {
+                if (e.token() == preview.token) previewFailed(preview, "failed");
+            }
+            case DeckEvent.DeadlineExceeded e -> {
+                if (e.token() == preview.token) previewFailed(preview, "timeout");
+            }
+            case DeckEvent.Ended e -> {
+                if (e.token() != preview.token) return;
+                state.preview = null;
+                diag("audition", m("kind", str("preview-ended")), m("token", num(e.token())));
+            }
+            // Its time control, stalls, duration and the rest describe a few seconds of a voice
+            // sample: nothing the engine acts on.
+            default -> {}
+        }
+    }
+
+    /**
+     * A preview that would not load (a 404, a dead host, its deadline) is SPOKEN instead: the
+     * listener tapped to hear the voice and hears the line, in the voice the page resolved (the
+     * TextToSpeech fallback). Only with the session still active, as every audible command.
+     */
+    private void previewFailed(EngineState.AuditionPreview preview, String reason) {
+        state.preview = null;
+        boolean speaks = state.session == SessionPolicy.Phase.ACTIVE;
+        diag("audition", m("kind", str("fallback")), m("reason", str(reason)), m("spoken", JsonNode.bool(speaks)));
+        if (speaks) out.add(new EngineCommand.Speak(preview.text, preview.voiceId));
+    }
+
+    /** Cut the preview in flight, if any: something else is starting, the player closed, or the engine is going away. */
+    private void stopPreview(String why) {
+        EngineState.AuditionPreview preview = state.preview;
+        if (preview == null) return;
+        state.preview = null;
+        diag("audition", m("kind", str("preview-stop")), m("why", str(why)), m("token", num(preview.token)));
+        out.add(new EngineCommand.Preview(DeckCommand.UNLOAD));
+    }
+
+    // ---- cp_foray (client.js `persistForayProgress`)
+
+    /**
+     * The Foray's resume row. {@code force} is the set of moments a resume point becomes the
+     * thing read back next time (a pause, a close, the app leaving the foreground); otherwise it
+     * is the position tick, throttled to one write per 5 s of Foray clock. An unknown playhead
+     * writes NOTHING: an unknown position must never overwrite a known one.
+     */
+    private void persistForay(boolean force) {
+        if (!forayTransport()) return;
+        String forayId = state.forayId;
+        EngineItem item = state.currentItem();
+        if (forayId == null || item == null || state.stateType().equals("ended") || !item.id.equals(state.loadedId)) return;
+        Double elapsed = forayPositionSec(item);
+        String stamp = Rows.timestamp(now.wallMs());
+        if (elapsed == null || stamp == null) return;
+        List<ForayItem> items = forayItems();
+        List<Double> starts = ForayClock.segmentStarts(items);
+        double start = state.currentIndex >= 0 && state.currentIndex < starts.size() ? starts.get(state.currentIndex) : 0;
+        Rows.ForayProgressInput input = new Rows.ForayProgressInput(forayId, state.forayTitle, elapsed,
+                ForayClock.forayRuntimeSec(items), (double) state.currentIndex, string(item.node.get("segment_id")),
+                Math.max(0, elapsed - start));
+        Rows.StoredRow row = state.forayThrottle.due(input, force, stamp);
+        if (row == null) return;
+        out.add(new EngineCommand.WriteRow(row));
+        state.forayThrottle.recorded(forayId, elapsed, true);
+    }
+
+    /** Reaching the end MARKS the row finished, once: a finished Foray says "Played", never "0 min left". */
+    private void markForayFinished() {
+        if (!forayTransport() || state.forayFinishedWritten || state.forayId == null || state.queue.isEmpty()) return;
+        String stamp = Rows.timestamp(now.wallMs());
+        if (stamp == null) return;
+        EngineItem last = state.queue.get(state.queue.size() - 1);
+        List<ForayItem> items = forayItems();
+        double total = ForayClock.forayRuntimeSec(items);
+        Rows.ForayProgressInput input = new Rows.ForayProgressInput(state.forayId, state.forayTitle, total, total,
+                (double) (state.queue.size() - 1), string(last.node.get("segment_id")), ForayClock.itemRuntimeSec(last.forayItem()));
+        Rows.StoredRow row = state.forayThrottle.due(input, true, stamp);
+        if (row == null) return;
+        out.add(new EngineCommand.WriteRow(row));
+        state.forayThrottle.recorded(state.forayId, total, true);
+        state.forayFinishedWritten = true;
     }
 
     // ---- queue lookups
@@ -1672,6 +3423,18 @@ public final class EngineCore {
         static LoadOffsets rewinding(boolean rewind) {
             return new LoadOffsets(null, null, rewind);
         }
+    }
+
+    /** DiagGate {@code isToken}: 1..64 of {@code [0-9A-Za-z._:-]}, the shape a free token must have to be a row's value. */
+    static boolean isDiagToken(String text) {
+        if (text == null || text.isEmpty() || text.codePointCount(0, text.length()) > DIAG_TOKEN_MAX) return false;
+        for (int i = 0; i < text.length(); i++) {
+            char c = text.charAt(i);
+            boolean ok = (c >= '0' && c <= '9') || (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || c == '.' || c == '_'
+                    || c == ':' || c == '-';
+            if (!ok) return false;
+        }
+        return true;
     }
 
     /** Swift's {@code rounded()}: to nearest, a tie away from zero. */

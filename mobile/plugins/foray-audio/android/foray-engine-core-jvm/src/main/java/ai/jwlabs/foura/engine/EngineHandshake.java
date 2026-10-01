@@ -16,8 +16,8 @@ import java.util.Map;
  * APK. The parity runner (A-22) and the ported policies (A-23 on) come in their own
  * cards.
  *
- * <p>Nothing calls it on Android yet: {@code engineHello} is not answered there until
- * A-31, and {@code mobile/ENGINE_DEFAULT.json} keeps Android on {@code legacy}.
+ * <p>Since A-28 the Android plugin answers {@code engineHello} through the bridge, and since
+ * A-31 {@code mobile/ENGINE_DEFAULT.json} makes Android's stock lane native for episodes.
  */
 public final class EngineHandshake {
     private EngineHandshake() {}

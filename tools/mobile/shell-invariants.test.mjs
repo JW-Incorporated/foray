@@ -110,6 +110,13 @@ const ROOT = path.resolve(HERE, "..", "..");
 const MOBILE = path.join(ROOT, "mobile");
 
 const readJson = (p) => JSON.parse(fs.readFileSync(p, "utf8"));
+/* NE-39s retired player/parity/swift-pending.json: nothing can be owed, so the
+   Swift-port pins below read it only if it has come back (coverage.test.js and
+   record.mjs --check are red on that by themselves) and see nothing owed. */
+const retiredSwiftPending = () => {
+  const file = path.join(ROOT, "player/parity/swift-pending.json");
+  return fs.existsSync(file) ? readJson(file) : {};
+};
 const rootPkg = readJson(path.join(ROOT, "package.json"));
 const capConfig = readJson(path.join(MOBILE, "capacitor.config.json"));
 
@@ -2629,7 +2636,19 @@ test("A-25: the ExoPlayer deck sits behind DeckDriving, holds its wake mode, and
   const strip = (src) =>
     src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "").replace(/"(?:[^"\\n]|\.)*"/g, '""');
   const deck = strip(fs.readFileSync(path.join(engineDir, "ExoDeck.java"), "utf8"));
-  assert.match(deck, /class ExoDeck implements DeckDriving\b/);
+  /* A-40: one of the Foray tape's deck pair, PairableDeck is DeckDriving plus what the pair asks. */
+  assert.match(deck, /class ExoDeck implements (DeckDriving|PairableDeck)\b/);
+  const pairable = strip(fs.readFileSync(path.join(engineDir, "PairableDeck.java"), "utf8"));
+  assert.match(pairable, /interface PairableDeck extends DeckDriving\b/);
+  assert.doesNotMatch(pairable, /import androidx\.media3\./, "the pair's seam names no Media3 type: fakes stand behind it too");
+  /* A-40: the deck pair ROUTES; it never starts audio of its own. The one play it sends is the
+     core's own, forwarded to the deck that holds the player role (NEVER TWO AUDIBLE: the
+     handover pauses the outgoing deck and plays nothing). MUTATION: send DeckCommand.PLAY from
+     the handover, or import Media3 into the pair; each fails here. */
+  const pair = strip(fs.readFileSync(path.join(engineDir, "DeckPair.java"), "utf8"));
+  assert.doesNotMatch(pair, /DeckCommand\.PLAY\b/, "the pair never commands a play of its own");
+  assert.doesNotMatch(pair, /import androidx\.media3\./, "the pair is routing, not a player");
+  assert.match(pair, /case PAUSE_OUTGOING -> \{\s*[^}]*outgoing\.send\(DeckCommand\.PAUSE\);/, "the handover pauses the outgoing deck");
   assert.match(deck, /setWakeMode\(C\.WAKE_MODE_NETWORK\)/, "the deck must hold the network wake mode");
   /* The wake mode holds nothing while play-when-ready is off, which is the whole gate: the deck
      holds its own CPU and Wi-Fi locks from the attach until the gate ends, or a screen-off seam
@@ -2738,15 +2757,15 @@ test("NE-01: foray-audio links the core by path, keeps ONE product, and its test
   assert.match(fs.readFileSync(wrapper, "utf8"), /ParityRunner\.run\(/, "the Simulator-side parity wrapper runs nothing");
 });
 
-test("NE-01: engineHello is iOS-only, answers from the core and always resolves", () => {
+test("NE-01: engineHello answers from the core and always resolves (iOS; Android since A-28 is pinned below)", () => {
   /* The first of the engine's three bridge methods (§5.1). NE-01 stubbed it
      as `{mode: "legacy", reason: "not-built"}`; since NE-20 the answer is the
      bridge's, and every answer (legacy or native) is still built by
      ForayEngineCore (`EngineBridgeRules`), which is what makes the app build
-     prove the plugin links the nested package. Android never gains it (§4.1).
+     prove the plugin links the nested package. Android gained the method in
+     A-28 (docs/plans/android-assessment.md §5.4); its half is the A-28 test.
      MUTATION: drop the CAPPluginMethod line, make the body `call.reject(...)`,
-     build the answer in the plugin, or add `engineHello` to the Java; each
-     fails. */
+     or build the answer in the plugin; each fails. */
   const swift = fs.readFileSync(AUDIO_SWIFT, "utf8");
   const declared = [...swift.matchAll(/CAPPluginMethod\(name:\s*"(\w+)"/g)].map((m) => m[1]);
   assert.ok(declared.includes("engineHello"), "ForayAudioPlugin.swift does not declare engineHello as a CAPPluginMethod");
@@ -2763,11 +2782,6 @@ test("NE-01: engineHello is iOS-only, answers from the core and always resolves"
   assert.match(core, /notBuiltMode\s*=\s*"legacy"/);
   assert.match(core, /notBuiltReason\s*=\s*"not-built"/);
 
-  const java = fs.readFileSync(
-    path.join(PLUGIN_DIR, "android/src/main/java/ai/jwlabs/foura/audio/ForayAudioPlugin.java"),
-    "utf8"
-  );
-  assert.doesNotMatch(java, /\bengineHello\b/, "the engine's bridge methods are iOS only; Android never gains them");
 });
 
 test("NE-01: the Preferences pin is test-only, cannot reach the app's package graph, and cannot compile out in silence", () => {
@@ -2868,7 +2882,8 @@ test("NE-01: the page never configures a Preferences group, so the engine's Capa
  *
  * docs/native-engine-plan.md §6.4 and card NE-05. `ForayEngineParity` reads
  * `player/parity/` IN PLACE, runs each family through its FamilyRunner, keeps
- * the swift-pending books and writes parity-report.json; a thin XCTest wrapper
+ * the books (swift-pending.json until NE-39s retired it; nothing is owed since)
+ * and writes parity-report.json; a thin XCTest wrapper
  * in the core's own tests and another in ForayAudioPluginTests (the step
  * ios-kit already runs, the zero-.github fallback) turn the results into one
  * XCTFail per case. The Swift is executed by CI only; these pins keep what
@@ -3081,7 +3096,7 @@ test("NE-12s: both wrappers require the media-episode runner, the registry holds
   assert.ok(all, "ParityFamilies.all is missing");
   assert.ok(all[1].includes("MediaEpisodeFamily.runner"), "ParityFamilies.all has no MediaEpisodeFamily.runner");
 
-  const pending = JSON.parse(fs.readFileSync(path.join(ROOT, "player/parity/swift-pending.json"), "utf8"));
+  const pending = retiredSwiftPending();
   assert.deepEqual(Object.keys(pending).filter((id) => id.startsWith("media-episode/")), [],
     "media-episode is ported (NE-12s): no id of it may be pending");
   const manifest = JSON.parse(fs.readFileSync(path.join(ROOT, "player/parity/manifest.json"), "utf8"));
@@ -3129,7 +3144,7 @@ test("NE-14s: both wrappers require the deck-episode and manager-episode runners
     assert.ok(all[1].includes(runner), `ParityFamilies.all has no ${runner}`);
   }
 
-  const pending = JSON.parse(fs.readFileSync(path.join(ROOT, "player/parity/swift-pending.json"), "utf8"));
+  const pending = retiredSwiftPending();
   const owed = Object.keys(pending).filter((id) =>
     ["manager-episode/", "deck-episode/", "session-invariant/", "transport/"].some((prefix) => id.startsWith(prefix)));
   assert.deepEqual(owed, [], "manager-episode, deck-episode, session-invariant and transport are ported (NE-14s): none may be pending");
@@ -3664,7 +3679,7 @@ test("NE-19: only EngineStore touches UserDefaults in the engine, its shared wri
   assert.match(lifecycle, /case \.terminating:\s*flushPosition\(\)/, "willTerminate flushes the playhead");
 });
 
-test("NE-19: the engine's private keys are §4.6's six, outside CapacitorStorage., the ones Delete my data purges, and the ring is a capped file in Application Support", () => {
+test("NE-19: the engine's private keys are §4.6's six, NE-38rs's known routes and NE-40's route-sharing trial, outside CapacitorStorage., the ones Delete my data purges, and the ring is a capped file in Application Support", () => {
   /* NE-27's privacy text will enumerate these keys, and test/data-deletion
      .test.js purges them BY NAME; a key the Swift writes that the deletion
      list does not name is a key a deletion forgets.
@@ -3677,7 +3692,8 @@ test("NE-19: the engine's private keys are §4.6's six, outside CapacitorStorage
   assert.ok(fake, "test/data-deletion.test.js's fakeEngine private map is missing");
   const jsKeys = [...fake[1].matchAll(/\["(ForayEngine\.\w+)"/g)].map((m) => m[1]);
   assert.deepEqual(swiftKeys, ["ForayEngine.modeOverride", "ForayEngine.strikes", "ForayEngine.sentinel",
-    "ForayEngine.stickyLegacyBuild", "ForayEngine.restore", "ForayEngine.holdPolicy"], "plan §4.6's list");
+    "ForayEngine.stickyLegacyBuild", "ForayEngine.restore", "ForayEngine.holdPolicy",
+    "ForayEngine.knownRoutes", "ForayEngine.routeSharing"], "plan §4.6's list, plus NE-38rs's known routes and NE-40's route-sharing trial");
   assert.deepEqual(swiftKeys, jsKeys, "the Swift private keys and the deletion test's list differ");
   for (const key of swiftKeys) assert.ok(!key.startsWith("CapacitorStorage."), key);
   assert.match(keys, /privatePrefix = "ForayEngine\."/);
@@ -3979,7 +3995,7 @@ test("NE-32: DeckPair ships off, never touches a player, and the out-point's thr
      with anything but `config.schedule(.watchdog`; let the pair play a deck in
      the handover. Each fails here. */
   const core = stripSwiftComments(fs.readFileSync(path.join(CORE_DIR, "Sources/ForayEngineCore/Engine/EngineCore.swift"), "utf8"));
-  assert.match(core, /deckPairEnabled: Bool = false\)/, "EngineConfig.deckPairEnabled defaults OFF in the core (EngineBoot turns it on, NE-37)");
+  assert.match(core, /deckPairEnabled: Bool = false[,)]/, "EngineConfig.deckPairEnabled defaults OFF in the core (EngineBoot turns it on, NE-37)");
 
   const boot = stripSwiftComments(fs.readFileSync(path.join(ENGINE_DIR, "EngineBoot.swift"), "utf8"));
   assert.match(boot, /config\.deckPairEnabled\s*\?\s*DeckPair\.make\(/, "the boot builds a DeckPair only behind the flag");
@@ -4123,6 +4139,85 @@ test("NE-34: the jingle and the silence node sound only with the session, stop t
   const teardown = swiftFuncBody(host, "teardown") ?? "";
   assert.match(teardown, /seams\.interlude\?\.release\(\)/);
   assert.match(teardown, /seams\.silence\?\.stop\(\)/);
+});
+
+test("NE-40: every stopRow call site in the engine core has a StopCauseTests entry, and the .longFormAudio trial ships OFF", () => {
+  /* The D-5 audit (plan §14 NE-40). StopCauseTests.swift is the table of every
+     stop path, each naming the EngineCore function that writes its `stop` row
+     (`site: "<func>"`); a new `stopRow(` call in a function the table does not
+     name is a stop path nobody audited. And the DV-8 trial: EngineConfig's
+     `routeSharingLongForm` defaults false, the shipping boot sets it ONLY from
+     the Developer row's stored choice, and nothing else (ENGINE_DEFAULT, the
+     plist, a literal `true`) can turn it on.
+     MUTATION: add a `stopRow(.error)` to a function the table does not name;
+     delete a `site:` from the table; default `routeSharingLongForm` to true;
+     write `config.routeSharingLongForm = true` in EngineBoot; make
+     `routeSharingLongForm(_:)` answer anything but `stored == .longFormAudio`;
+     add a routeSharing key to ENGINE_DEFAULT.json. Each fails here. */
+  const core = stripSwiftComments(fs.readFileSync(CORE_ENGINE_SWIFT, "utf8"));
+  const lines = core.split("\n");
+  const sites = new Set();
+  lines.forEach((line, i) => {
+    if (!/\bstopRow\(/.test(line) || /func stopRow\(/.test(line)) return;
+    for (let j = i; j >= 0; j--) {
+      const m = /\bfunc (\w+)\(/.exec(lines[j]);
+      if (m) { sites.add(m[1]); return; }
+    }
+    assert.fail(`a stopRow( call at line ${i + 1} is outside any func`);
+  });
+  assert.ok(sites.size >= 13, `found ${sites.size} stop sites: ${[...sites].join(", ")}`);
+  const table = fs.readFileSync(path.join(CORE_DIR, "Tests/ForayEngineCoreTests/StopCauseTests.swift"), "utf8");
+  const named = new Set([...table.matchAll(/site: "(\w+)"/g)].map((m) => m[1]));
+  for (const site of sites) assert.ok(named.has(site), `EngineCore.${site}() writes a stop row but StopCauseTests has no path with site: "${site}"`);
+  for (const site of named) assert.ok(sites.has(site), `StopCauseTests names site: "${site}", which writes no stop row`);
+  assert.match(table, /static func disposition\(_ cause: Vocabulary\.StopCause\) -> Disposition \{\s*switch cause \{/);
+  assert.doesNotMatch(swiftFuncBody(table, "disposition") ?? "", /default:/, "the disposition switch stays exhaustive: a new cause is a compile error");
+
+  assert.match(core, /routeSharingLongForm: Bool = false/, "EngineConfig.routeSharingLongForm defaults OFF");
+  const boot = stripSwiftComments(fs.readFileSync(path.join(ENGINE_DIR, "EngineBoot.swift"), "utf8"));
+  assert.doesNotMatch(boot, /routeSharingLongForm\s*=\s*true|longFormAudio:\s*true/, "the shipping boot never turns the trial on by itself");
+  assert.match(swiftFuncBody(boot, "routeSharingLongForm") ?? "", /^\{\s*stored == \.longFormAudio\s*\}$/, "only the stored Developer choice turns it on");
+  assert.match(boot, /let longForm = EngineBoot\.routeSharingLongForm\(store\.loadRouteSharing\(\)\)/);
+  assert.match(boot, /config\.routeSharingLongForm = longForm/);
+  assert.match(boot, /AudioSessionOwner\.Config\(longFormAudio: longForm,/, "the session owner is built with the same reading");
+  assert.ok(boot.indexOf("let longForm =") < boot.indexOf("store.diagnostics.build(BuildRow("), "read before the build row, which says it");
+  assert.match(boot, /routeSharing: longForm \? EngineContract\.RouteSharingPolicy\.longFormAudio : \.standard/, "the build row says which policy the launch ran");
+  assert.doesNotMatch(fs.readFileSync(path.join(ROOT, "mobile", "ENGINE_DEFAULT.json"), "utf8"), /routeSharing|longForm/i, "no build default can turn the trial on");
+});
+
+test("NE-46: the silence node stays off, its header states the enable rule, and the late-timer detector runs before the input", () => {
+  /* The provisional decision (plan §14 NE-46): `silenceNodeEnabled` stays
+     false, and only a drive paste with a `grace kind=late inSeam=y` row can
+     justify a one-line flip. MUTATION: default the flag to true, set it true
+     in EngineBoot, drop the rule from SilenceNode's header, move
+     noteLateness after route(input) (the seam and the span it closes are
+     gone by then), compare against anything but NARRATION_SUSPEND_GAP_MS, or
+     stop feeding the deck's deadlines to the core. Each fails here. */
+  const coreSrc = stripSwiftComments(fs.readFileSync(path.join(CORE_DIR, "Sources/ForayEngineCore/Engine/EngineCore.swift"), "utf8"));
+  assert.match(coreSrc, /silenceNodeEnabled: Bool = false/, "EngineConfig.silenceNodeEnabled defaults OFF");
+  const boot = stripSwiftComments(fs.readFileSync(path.join(ENGINE_DIR, "EngineBoot.swift"), "utf8"));
+  assert.doesNotMatch(boot, /silenceNodeEnabled\s*=\s*true/, "the shipping boot never turns the silence node on without the NE-46 evidence");
+  assert.match(boot, /config\.loadDeadlineMs = \[\.clip: AVDeck\.defaultLoadDeadlineSec \* 1000,\s*\.line: AVDeck\.defaultLineLoadDeadlineSec \* 1000\]/,
+    "the core measures a late load deadline against the deck's own P-13 deadlines");
+  const header = fs.readFileSync(path.join(ENGINE_DIR, "SilenceNode.swift"), "utf8");
+  for (const needle of ["THE DECISION (card NE-46", "2.5.4", "grace kind=late inSeam=y", "NARRATION_SUSPEND_GAP_MS", "one-line PR", "App Review note"]) {
+    assert.ok(header.includes(needle), `SilenceNode.swift's header no longer states the NE-46 rule (${needle})`);
+  }
+  const handle = swiftFuncBody(coreSrc, "handle") ?? "";
+  assert.ok(handle.indexOf("noteLateness(input)") >= 0 && handle.indexOf("noteLateness(input)") < handle.indexOf("route(input)"),
+    "lateness is measured before the input is handled");
+  assert.match(handle, /ledgerTimers\(\)/, "every turn's timer arms and cancels reach the ledger");
+  const late = swiftFuncBody(coreSrc, "lateRow") ?? "";
+  assert.match(late, /let gap = EngineConstants\.QueueManager\.narrationSuspendGapMs[\s\S]*lateMs > gap/, "the threshold is NARRATION_SUSPEND_GAP_MS");
+  /* Uptime stops while the device sleeps: the lateness is the larger of the
+     monotonic and the wall-clock readings. MUTATION: drop the wall half. */
+  assert.match(late, /Swift\.max\(mono, wall\)/, "a suspension followed by sleep is late only on the wall clock");
+  const ledger = swiftFuncBody(coreSrc, "ledgerTimers") ?? "";
+  assert.match(ledger, /timerDueWall\[timer\] = repeating \? nil : now\.wallMs \+ afterMs/, "the ledger keeps the wall-clock due time");
+  assert.match(late, /guard let reason = state\.grace/, "only while grace is held");
+  for (const field of ["\"late\"", "\"timer\"", "\"lateMs\"", "\"inSeam\"", "\"bgRemainingMs\""]) {
+    assert.ok(late.includes(field), `the grace late row lost ${field}`);
+  }
 });
 
 test("NE-25c: one synthesizer configuration, a platform-free probe reached only through probeSession, and a smoke on the production pieces", () => {
@@ -4562,7 +4657,7 @@ test("NE-24: the AppDelegate's line is the plugin's public cold path, the boot p
 
 test("NE-20: the bridge's method and event names are engine-contract.js's, the plugin hops to main and always resolves, and nothing leaves a hidden page", async () => {
   /* MUTATION: rename a CAPPluginMethod or drop one; `call.reject(` in any of
-     the three; call the bridge off main; add engineSend to the Java; rename
+     the three; call the bridge off main; rename
      the event (`EngineBridgeRules.eventName`) or ENGINE_EVENT; add an event
      type the contract does not list; import UIKit into EngineBridge.swift;
      deliver an engine or diag event without the visibility guard; advertise
@@ -4585,10 +4680,7 @@ test("NE-20: the bridge's method and event names are engine-contract.js's, the p
       `${method} must resolve with the bridge's answer`);
     assert.doesNotMatch(body, /\.reject\(/, `${method} must never reject (the plugin's every-method-resolves rule)`);
   }
-  const java = fs.readFileSync(path.join(PLUGIN_DIR, "android/src/main/java/ai/jwlabs/foura/audio/ForayAudioPlugin.java"), "utf8");
-  for (const method of BRIDGE_METHODS) {
-    assert.doesNotMatch(java, new RegExp(String.raw`\b${method}\b`), `${method} is iOS only; Android never gains it`);
-  }
+  /* Android's half (A-28) is pinned by the A-28 test at the end of this file. */
 
   const contract = stripSwiftComments(fs.readFileSync(path.join(CORE_DIR, "Sources/ForayEngineCore/Contract/EngineContract.swift"), "utf8"));
   const caseNames = (enumName) => {
@@ -4735,11 +4827,48 @@ function engineDefaultRefusal(engineDefault, stateText) {
   }
   const caps = engineDefault.capabilities ?? [];
   /* NE-37, the M2 flip: `foray` joins M1's three. Narration and the interlude
-     are families of `foray` (player/parity/capabilities.json), and
-     `remainder` is a bookkeeping gate no build may ship. */
+     are families of `foray` (player/parity/capabilities.json); `remainder`
+     was a bookkeeping gate no build could ship, retired by NE-39s. */
   const allowed = ["episode", "continuation", "restore", "foray"];
   const extra = caps.filter((c) => !allowed.includes(c));
   if (extra.length) return `the M2 native default may advertise only ${allowed.join(", ")}; it also lists ${extra.join(", ")}`;
+  return null;
+}
+
+/* A-31 (docs/plans/android-assessment.md §5.4, the A1 flip): Android's
+   block may say `native` only when STATE.md records the flip as a line of its
+   own, naming the A-30 run whose every native-mode verdict was green and
+   quoting the founder's ruling it rests on:
+     A-31 flip (<date>): android native default for episodes ... run <id> ... "<the ruling, quoted>" ...
+   The same shape as OQ-9's record: the default and the permission are two
+   edits a reviewer sees in two files. The A1 default may advertise only
+   episode and continuation.
+
+   A-42 (§5.5, the A2 flip) is the same rule for Forays: the block may also
+   declare `foray` and `restore` (iOS's M2 four) only when STATE.md records
+   its own line, naming the run whose every native-mode verdict (the page's
+   own Foray on the engine included) was green:
+     A-42 flip (<date>): android native Forays ... run <id> ... "<the ruling, quoted>" ...
+   The binary's claim (EngineBridgeRules.ADVERTISED_CAPABILITIES) is gated on
+   the JVM books separately, in the A-28 test below. */
+const A31_FLIP_RE = /^A-31 flip \(\d{4}-\d{2}-\d{2}\): android native default for episodes\b.*\brun \d{6,}\b.*"[^"]+"/m;
+const A42_FLIP_RE = /^A-42 flip \(\d{4}-\d{2}-\d{2}\): android native Forays\b.*\brun \d{6,}\b.*"[^"]+"/m;
+
+/** Why Android's `engineDefault` may not ship with `stateText`, or null when it may. */
+function androidDefaultRefusal(engineDefault, stateText) {
+  if (engineDefault?.mode !== "native") return null;
+  if (!A31_FLIP_RE.test(stateText)) {
+    return 'mobile/ENGINE_DEFAULT.json says android "native", but STATE.md records no line "A-31 flip (<date>): android native default for episodes ... run <id> ..." carrying the ruling in double quotes';
+  }
+  const caps = engineDefault.capabilities ?? [];
+  const a2 = caps.includes("foray") || caps.includes("restore");
+  if (a2 && !A42_FLIP_RE.test(stateText)) {
+    return 'mobile/ENGINE_DEFAULT.json declares android foray/restore, but STATE.md records no line "A-42 flip (<date>): android native Forays ... run <id> ..." carrying the ruling in double quotes';
+  }
+  const allowed = a2 ? ["episode", "continuation", "restore", "foray"] : ["episode", "continuation"];
+  const extra = caps.filter((c) => !allowed.includes(c));
+  if (extra.length) return `the ${a2 ? "A2" : "A1"} Android default may advertise only ${allowed.join(", ")}; it also lists ${extra.join(", ")}`;
+  if (!caps.includes("episode")) return "the Android native default is native for episodes: it must declare episode";
   return null;
 }
 
@@ -4758,16 +4887,57 @@ test("NE-27: ENGINE_DEFAULT says native only when STATE.md records the OQ-9 answ
   assert.equal(engineDefaultRefusal({ mode: "native", capabilities: ["episode", "continuation", "restore", "foray"] }, record), null);
   assert.match(engineDefaultRefusal({ mode: "native", capabilities: ["episode", "remainder"] }, record) ?? "", /remainder/);
   assert.match(engineDefaultRefusal({ mode: "native", capabilities: ["foray", "narration"] }, record) ?? "", /narration/);
+  /* A-31's record, the same way. MUTATION: commit android "native" with
+     STATE.md's A-31 flip line deleted, without its run id or its quoted
+     ruling, or with foray (A-42's) in the block -> red. */
+  const flip = 'A-31 flip (2026-09-30): android native default for episodes, backed by run 36693793704, "move to native engine".';
+  assert.equal(androidDefaultRefusal({ mode: "js", capabilities: [] }, ""), null, "a js default needs no record");
+  assert.match(androidDefaultRefusal({ mode: "native", capabilities: ["episode"] }, "") ?? "", /A-31 flip/);
+  assert.match(androidDefaultRefusal({ mode: "native", capabilities: ["episode"] }, flip.replace(" run 36693793704", "")) ?? "", /A-31 flip/);
+  assert.match(androidDefaultRefusal({ mode: "native", capabilities: ["episode"] }, flip.replace(/"[^"]+"/, "unquoted")) ?? "", /A-31 flip/);
+  assert.match(androidDefaultRefusal({ mode: "native", capabilities: ["episode"] }, "  " + flip) ?? "", /A-31 flip/, "the record is a line of its own");
+  assert.equal(androidDefaultRefusal({ mode: "native", capabilities: ["episode", "continuation"] }, flip), null);
+  assert.match(androidDefaultRefusal({ mode: "native", capabilities: ["episode", "continuation", "foray"] }, flip) ?? "", /A-42 flip/);
+  assert.match(androidDefaultRefusal({ mode: "native", capabilities: ["episode", "restore"] }, flip) ?? "", /A-42 flip/);
+  assert.match(androidDefaultRefusal({ mode: "native", capabilities: ["continuation"] }, flip) ?? "", /must declare episode/);
+  /* A-42's record, the same way. MUTATION: declare foray (or restore) with STATE.md's A-42 flip
+     line deleted, without its run id or its quoted ruling, or not on a line of its own; list
+     anything past the four; or drop the A-31 line it builds on -> red. */
+  const a2 = ["episode", "continuation", "restore", "foray"];
+  const flip2 = 'A-42 flip (2026-09-30): android native Forays, backed by run 36760000000, "fully operational".';
+  const both = `${flip}\n${flip2}`;
+  assert.equal(androidDefaultRefusal({ mode: "native", capabilities: a2 }, both), null);
+  assert.match(androidDefaultRefusal({ mode: "native", capabilities: a2 }, flip2) ?? "", /A-31 flip/, "A-42 builds on A-31's record");
+  assert.match(androidDefaultRefusal({ mode: "native", capabilities: a2 }, `${flip}\n${flip2.replace(" run 36760000000", "")}`) ?? "", /A-42 flip/);
+  assert.match(androidDefaultRefusal({ mode: "native", capabilities: a2 }, `${flip}\n${flip2.replace(/"[^"]+"/, "unquoted")}`) ?? "", /A-42 flip/);
+  assert.match(androidDefaultRefusal({ mode: "native", capabilities: a2 }, `${flip}\n  ${flip2}`) ?? "", /A-42 flip/, "the record is a line of its own");
+  assert.match(androidDefaultRefusal({ mode: "native", capabilities: [...a2, "remainder"] }, both) ?? "", /remainder/);
+  assert.match(androidDefaultRefusal({ mode: "native", capabilities: ["continuation", "foray"] }, both) ?? "", /must declare episode/);
 
   /* Per platform since A-20 (docs/plans/android-assessment.md): the OQ-9 rule
-     reads the `ios` block. The `android` block is js (the legacy lane) until
-     A-31 flips it, after the Android engine is fully operational, Joey's device
-     pass and a founder car drive; A-31 replaces this pin with its own record.
-     MUTATION: commit android "native" -> red. */
+     reads the `ios` block. The `android` block has its own record since A-31
+     (the A1 flip): androidDefaultRefusal, above. */
   const committed = JSON.parse(fs.readFileSync(ENGINE_DEFAULT_JSON, "utf8"));
-  const refusal = engineDefaultRefusal(committed.ios, fs.readFileSync(STATE_MD, "utf8").replace(/\r\n/g, "\n"));
+  const stateText = fs.readFileSync(STATE_MD, "utf8").replace(/\r\n/g, "\n");
+  const refusal = engineDefaultRefusal(committed.ios, stateText);
   assert.equal(refusal, null, refusal ?? "");
-  assert.deepEqual(committed.android, { mode: "js", capabilities: [] }, "android stays js until A-31");
+  const androidRefusal = androidDefaultRefusal(committed.android, stateText);
+  assert.equal(androidRefusal, null, androidRefusal ?? "");
+  /* A-61 added the android block's `routeResumeBluetooth` (off, D-A9) and its "//" note. */
+  const androidBlock = Object.fromEntries(Object.entries(committed.android).filter(([k]) => !k.startsWith("//")));
+  assert.deepEqual(androidBlock, { mode: "native", capabilities: ["episode", "continuation", "restore", "foray"], routeResumeBluetooth: false },
+    "A-42: Android's default is native for episodes and Forays, iOS's M2 four; A-61: route resume's Bluetooth arm off");
+  /* A-42: a default that grants `foray` needs a service that plays one. The Android service turns
+     the Foray tape on (A-40) over the deck pair whenever it has a standby deck, and the jingle
+     only when its player exists (A-41); it never turns on the held flags. MUTATION: build the
+     service's core without the tape (or with it off) while ENGINE_DEFAULT grants foray. */
+  const service = stripJavaComments(fs.readFileSync(path.join(PLUGIN_DIR, "android", "src", "main", "java", "ai", "jwlabs", "foura",
+    "audio", "ForayPlaybackService.java"), "utf8"));
+  assert.equal(/\.withForayTape\(true, standby != null\)/.test(service), (committed.android.capabilities ?? []).includes("foray"),
+    "ENGINE_DEFAULT.json grants android foray exactly when ForayPlaybackService builds its core with the Foray tape on");
+  for (const held of ["silenceNodeEnabled", "narrationFollowsListenerRate"]) {
+    assert.doesNotMatch(service, new RegExp(held), `the service must leave ${held} at the core's default (off)`);
+  }
 
   /* NE-37, the M2 flip: a default that grants `foray` needs a boot that plays
      one. The core's flags stay OFF (headless tests and the parity driver build
@@ -4942,10 +5112,12 @@ test("A-26: the native engine's MediaSessionService is a Media3 service over the
      - in native mode it replaces the legacy service: the plugin's start() refuses while it hosts;
      - the adb driver is DEBUG-ONLY: src/debug, never src/main, never the main manifest;
      - the host and its seams are pure JVM (their turn discipline is unit-tested without Android);
-     - and Android stays on the JS lane (ENGINE_DEFAULT android: js) until A-31.
+     - and (since A-31) Android's default is the native lane, held by the NE-27 test to its
+       STATE.md record.
      MUTATION: extend Service instead; declare it first; export it; drop the intent filter; build
      the deck's player without speech attributes or with handleAudioFocus false; move the receiver
-     into src/main; drop the plugin's guard; flip ENGINE_DEFAULT android to native. Each fails here. */
+     into src/main; drop the plugin's guard; make ENGINE_DEFAULT android native without episode, or
+     declare episode in a js block. Each fails here. */
   const android = path.join(PLUGIN_DIR, "android");
   const strip = (src) => src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");
   const audioDir = path.join(android, "src", "main", "java", "ai", "jwlabs", "foura", "audio");
@@ -4969,7 +5141,7 @@ test("A-26: the native engine's MediaSessionService is a Media3 service over the
   const facade = strip(fs.readFileSync(path.join(engineDir, "EnginePlayer.java"), "utf8"));
   assert.match(facade, /class EnginePlayer extends SimpleBasePlayer\b/);
   assert.doesNotMatch(facade, /\.setUri\(|\.play\(\)/, "the facade plays nothing and names no URI a controller could play");
-  for (const f of ["ForayEngineHost.java", "EngineSeams.java"]) {
+  for (const f of ["ForayEngineHost.java", "EngineSeams.java", "EngineBridge.java", "EngineLane.java", "OwnershipCore.java", "EngineFaults.java"]) {
     assert.doesNotMatch(strip(fs.readFileSync(path.join(engineDir, f), "utf8")), /^import android\./m, `${f} is pure JVM`);
   }
 
@@ -4995,5 +5167,298 @@ test("A-26: the native engine's MediaSessionService is a Media3 service over the
     "start() refuses the legacy service while the native engine hosts, before it asks for one");
 
   const defaults = readJson(path.join(MOBILE, "ENGINE_DEFAULT.json"));
-  assert.equal(defaults.android.mode, "js", "Android stays on the JS lane until A-31");
+  assert.equal(defaults.android.mode === "native", (defaults.android.capabilities ?? []).includes("episode"),
+    "A-31: Android's native default is the episode engine, and only a native block declares episode");
+});
+
+/* ─────────── A-28: the Android bridge (engineHello, engineSend, engineRead, the "engine" event) ───────────
+ *
+ * docs/plans/android-assessment.md §5.4, card A-28. EngineBridgeTest (foray-audio, JUnit) and
+ * EngineBridgeRulesTest (the JVM core) prove what the bridge answers; these pin what no JVM test
+ * can see: the names the page and the Java must agree on, the plugin's thread discipline, the
+ * lane's default held to mobile/ENGINE_DEFAULT.json, and the capability gate against the JVM
+ * parity books. */
+
+test("A-28: Android's plugin answers the engine's three methods through the bridge, on main, always resolving; the lane says what ENGINE_DEFAULT says", async () => {
+  /* MUTATION: drop @PluginMethod from one method, answer without the bridge, `call.reject(` in
+     one, call the bridge off main; rename EVENT_NAME; deliver an event without the visibility
+     guard; set BUILD_DEFAULT_NATIVE to disagree with ENGINE_DEFAULT (or list a capability its android block
+     does not); advertise `episode` while jvm-pending owes anything (A-63 emptied it); drop
+     "android" from HELLO_PLATFORMS or from durable-store's ENGINE_SHELL_PLATFORMS. Each fails. */
+  const { BRIDGE_METHODS, CAPABILITIES, HELLO_PLATFORMS } = await import("../../player/engine-contract.js");
+  const { ENGINE_EVENT } = await import("../../player/native-engine.js");
+  const { ENGINE_SHELL_PLATFORMS } = await import("../../player/durable-store.js");
+  assert.ok(HELLO_PLATFORMS.includes("android"), "the page asks an Android shell engineHello since A-28");
+  assert.deepEqual([...ENGINE_SHELL_PLATFORMS], [...HELLO_PLATFORMS], "the store defers exactly where the page asks");
+
+  const audioDir = path.join(PLUGIN_DIR, "android", "src", "main", "java", "ai", "jwlabs", "foura", "audio");
+  const plugin = stripJavaComments(fs.readFileSync(path.join(audioDir, "ForayAudioPlugin.java"), "utf8"));
+  const verbs = { engineHello: "hello", engineSend: "send", engineRead: "read" };
+  assert.deepEqual(Object.keys(verbs), [...BRIDGE_METHODS]);
+  for (const method of BRIDGE_METHODS) {
+    const at = plugin.search(new RegExp(String.raw`@PluginMethod\s+public void ${method}\(PluginCall call\) \{`));
+    assert.ok(at >= 0, `ForayAudioPlugin.java has no @PluginMethod ${method}(PluginCall)`);
+    const body = plugin.slice(at, plugin.indexOf("\n    }", at));
+    assert.match(body, /JsonNode payload = enginePayload\(call\);/, `${method} reads the options as the core's JSON`);
+    assert.match(body, new RegExp(String.raw`engineCall\(call, bridge -> bridge\.${verbs[method]}\(payload\)`), `${method} answers through the bridge`);
+    assert.doesNotMatch(body, /\.reject\(/, `${method} must never reject`);
+  }
+  const engineCall = plugin.slice(plugin.indexOf("private void engineCall("), plugin.indexOf("static EngineBridge bridgeOnMain("));
+  assert.match(engineCall, /new Handler\(Looper\.getMainLooper\(\)\)\.post\(/, "the bridge is called on main");
+  assert.match(engineCall, /EngineOwnership\.shared\(context\)\.whenReady\(/, "a call waits for the lane's engine");
+  assert.equal((engineCall.match(/call\.resolve\(jsObject\(/g) || []).length, 2, "the answer and the fallback both resolve");
+  assert.doesNotMatch(engineCall, /\.reject\(/);
+  assert.match(plugin, /notifyListeners\(EngineBridgeRules\.EVENT_NAME, jsObject\(event\)\)/, "engine events ride on the one event name");
+
+  const coreDir = path.join(PLUGIN_DIR, "android", "foray-engine-core-jvm", "src", "main", "java", "ai", "jwlabs", "foura", "engine");
+  const rules = stripJavaComments(fs.readFileSync(path.join(coreDir, "EngineBridgeRules.java"), "utf8"));
+  assert.equal(/EVENT_NAME = "(\w+)"/.exec(rules)?.[1], ENGINE_EVENT, "the Java event name and native-engine.js ENGINE_EVENT disagree");
+  const advertised = /ADVERTISED_CAPABILITIES = Collections\.unmodifiableList\(\s*new ArrayList<>\(([^;]*)\)\);/.exec(rules);
+  assert.ok(advertised, "EngineBridgeRules.java must declare ADVERTISED_CAPABILITIES where this test reads it");
+  const claimed = [...advertised[1].matchAll(/"([^"]+)"/g)].map((m) => m[1]);
+  /* THE JVM'S CAPABILITY GATE (plan §6.6, read against the JVM books): a capability is claimed
+     only when no family listed under it is owed to an Android card, whole or by case. */
+  const capabilities = readJson(path.join(ROOT, "player", "parity", "capabilities.json"));
+  const jvm = readJson(path.join(ROOT, "player", "parity", "jvm-pending.json"));
+  /* A-61's engine/m3 merge let a claimed capability carry families and cases owed to a Track A4
+     card (A-60..A-68) while A4 ported iOS M3. A-63 ported the last of them and retired owing: the
+     books hold "runs" only, so every family a claimed capability lists must be one the JVM runs
+     (or jsOnly), with no Track A4 allowance left.
+     MUTATION: put a "families" or "cases" key back in jvm-pending.json; drop a claimed
+     capability's family from "runs"; each fails. */
+  assert.equal(jvm.families, undefined, "jvm-pending.json owes no family since A-63");
+  assert.equal(jvm.cases, undefined, "jvm-pending.json owes no case since A-63");
+  const fixtureFamilies = new Map();
+  const fixturesDir = path.join(ROOT, "player", "parity", "fixtures");
+  for (const dir of fs.readdirSync(fixturesDir)) {
+    const files = fs.readdirSync(path.join(fixturesDir, dir)).filter((f) => f.endsWith(".json"));
+    if (!files.length) continue;
+    fixtureFamilies.set(dir, files.every((f) => readJson(path.join(fixturesDir, dir, f)).jsOnly === true));
+  }
+  for (const cap of claimed) {
+    assert.ok(CAPABILITIES.includes(cap), `ADVERTISED_CAPABILITIES names ${cap}, which engine-contract.js CAPABILITIES does not define`);
+    for (const family of capabilities[cap] ?? []) {
+      if (!fixtureFamilies.has(family) || fixtureFamilies.get(family)) continue;
+      assert.ok(jvm.runs.includes(family), `Android advertises ${cap}, but the JVM does not run ${family}`);
+    }
+  }
+
+  const engineDir = path.join(audioDir, "engine");
+  const bridge = stripJavaComments(fs.readFileSync(path.join(engineDir, "EngineBridge.java"), "utf8"));
+  const bodyOf = (name) => {
+    const at = bridge.indexOf(`private void ${name}(`);
+    assert.ok(at >= 0, `EngineBridge.java has no ${name}`);
+    return bridge.slice(at, bridge.indexOf("\n    }", at));
+  };
+  assert.match(bodyOf("engineEmitted"), /if \(!coalescer\.visible\(\)\) return;\s*deliver\.accept\(/, "an engine event leaves only to a visible page");
+  assert.match(bodyOf("liveRow"), /if \(!coalescer\.visible\(\) \|\| !EngineBridgeRules\.LIVE_DIAG_KINDS\.contains\(kind\)\) return;\s*deliver\.accept\(/);
+  assert.match(bodyOf("transitioned"), /if \(coalescer\.visible\(\)\) deliver\.accept\(EngineBridgeRules\.modeChangedEvent/);
+  assert.match(bodyOf("apply"), /case EMIT -> deliver\.accept\(EngineBridgeRules\.snapshotEvent\(snapshot\(\)\)\)/, "a snapshot event leaves only on the coalescer's word");
+  assert.equal((bridge.match(/\bdeliver\.accept\(/g) || []).length, 4, "every deliver.accept( is one of the four above");
+
+  /* THE LANE says what ENGINE_DEFAULT says: A-31 flipped both to native for episodes. */
+  const lane = stripJavaComments(fs.readFileSync(path.join(engineDir, "EngineLane.java"), "utf8"));
+  const defaults = readJson(path.join(MOBILE, "ENGINE_DEFAULT.json"));
+  assert.equal(/BUILD_DEFAULT_NATIVE = (true|false);/.exec(lane)?.[1], String(defaults.android.mode === "native"),
+    "EngineLane.BUILD_DEFAULT_NATIVE must say what ENGINE_DEFAULT.json's android block says");
+  const declared = /DECLARED_CAPABILITIES = ([^;]*);/.exec(lane)?.[1] ?? "";
+  const declaredList = /emptyList\(\)/.test(declared) ? [] : [...declared.matchAll(/"([^"]+)"/g)].map((m) => m[1]);
+  assert.deepEqual(declaredList, defaults.android.capabilities ?? [], "EngineLane.DECLARED_CAPABILITIES must be ENGINE_DEFAULT.json's android capabilities");
+  assert.match(lane, /OVERRIDE_KEY = "ForayEngine\.modeOverride"/, "the Developer setting is stored under iOS's key");
+
+  /* A-61: route resume's Bluetooth arm, OFF on Android as on iOS (NE-38rs), and D-A9's "no": no
+     plugin asks for BLUETOOTH_CONNECT, the permission that reading a device's class would need.
+     The service builds its core with the lane's literal, which says what the file says.
+     MUTATION: android.routeResumeBluetooth true in ENGINE_DEFAULT.json, the literal true, the
+     service passing `true`, or a <uses-permission> for BLUETOOTH_CONNECT; each fails here. */
+  assert.equal(defaults.android.routeResumeBluetooth, false, "ENGINE_DEFAULT.json's android block keeps the Bluetooth arm off (D-A9)");
+  assert.equal(/ROUTE_RESUME_BLUETOOTH = (true|false);/.exec(lane)?.[1], String(defaults.android.routeResumeBluetooth === true),
+    "EngineLane.ROUTE_RESUME_BLUETOOTH must say what ENGINE_DEFAULT.json's android block says");
+  const service = stripJavaComments(fs.readFileSync(path.join(audioDir, "ForayPlaybackService.java"), "utf8"));
+  assert.match(service, /\.withRouteResume\(EngineLane\.ROUTE_RESUME_BLUETOOTH,/, "the service's core takes the arm from the lane");
+  for (const plugin of ["foray-audio", "foray-tts", "foray-vault"]) {
+    const manifest = fs.readFileSync(path.join(MOBILE, "plugins", plugin, "android", "src", "main", "AndroidManifest.xml"), "utf8");
+    assert.doesNotMatch(manifest, /BLUETOOTH_CONNECT/, `${plugin} asks for BLUETOOTH_CONNECT (D-A9: no)`);
+  }
+});
+
+/* ─────────── A-29: ownership and fallback (the Android subset of NE-17) ───────────
+ *
+ * docs/plans/android-assessment.md §5.4, card A-29. OwnershipCoreTest (foray-audio, JUnit) and
+ * the engine-mode family (the JVM parity runner) prove the rules; these pin what no JVM test can
+ * see: the lane is decided at launch and the Activity's pause is a healthy marker, the owner's
+ * keys are iOS's names, and the emulator's fault can never be armed in a release build. */
+
+test("A-29: the lane is decided at launch with iOS's private keys, and the debug fault is armed only in a debuggable build", async () => {
+  /* MUTATION: drop `launched()` from load(), or `backgrounded()` from handleOnPause; rename a
+     private key; arm EngineFaults without the FLAG_DEBUGGABLE guard, or from anywhere but the
+     owner; write the fault key from main code; move the driver out of src/debug. Each fails. */
+  const android = path.join(PLUGIN_DIR, "android");
+  const audioDir = path.join(android, "src", "main", "java", "ai", "jwlabs", "foura", "audio");
+  const engineDir = path.join(audioDir, "engine");
+  const plugin = stripJavaComments(fs.readFileSync(path.join(audioDir, "ForayAudioPlugin.java"), "utf8"));
+  const load = plugin.slice(plugin.indexOf("public void load() {"), plugin.indexOf("\n    }", plugin.indexOf("public void load() {")));
+  assert.match(load, /EngineOwnership\.shared\(getContext\(\)\)\.launched\(\);/, "load() decides the lane (and boots a native engine) at launch");
+  const pause = plugin.slice(plugin.indexOf("protected void handleOnPause() {"));
+  assert.match(pause.slice(0, pause.indexOf("\n    }")), /EngineOwnership\.shared\(getContext\(\)\)\.backgrounded\(\);/,
+    "the Activity's pause is the resign-or-background healthy marker");
+
+  const core = stripJavaComments(fs.readFileSync(path.join(engineDir, "OwnershipCore.java"), "utf8"));
+  assert.match(core, /KEY_OVERRIDE = EngineLane\.OVERRIDE_KEY;/);
+  assert.match(core, /KEY_STRIKES = "ForayEngine\.strikes";/);
+  assert.match(core, /KEY_SENTINEL = "ForayEngine\.sentinel";/);
+  assert.match(core, /KEY_STICKY = "ForayEngine\.stickyLegacyBuild";/);
+  assert.match(core, /HEALTHY_RUN_LOOP_MS = 5_000;/);
+  assert.match(core, /PAGE_HEALTH_MS = 10_000;/);
+  const { HELLO_TIMEOUT_MS } = await import("../../player/native-engine.js");
+  assert.ok(15_000 > HELLO_TIMEOUT_MS, "the engine's watchdog is longer than the page's own hello bound");
+  assert.match(core, /HELLO_WATCHDOG_MS = 15_000;/);
+  for (const f of ["OwnershipCore.java", "EngineFaults.java"]) {
+    assert.doesNotMatch(fs.readFileSync(path.join(engineDir, f), "utf8"), /^import android\./m, `${f} is pure JVM`);
+  }
+
+  /* THE FAULT IS A DEBUG-ONLY MUTATION. */
+  const mainFiles = [];
+  const walk = (dir) => {
+    for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+      const p = path.join(dir, e.name);
+      if (e.isDirectory()) walk(p);
+      else if (e.name.endsWith(".java")) mainFiles.push(p);
+    }
+  };
+  walk(path.join(android, "src", "main"));
+  const arming = mainFiles.filter((f) => /EngineFaults\.arm\(/.test(stripJavaComments(fs.readFileSync(f, "utf8"))));
+  assert.deepEqual(arming.map((f) => path.basename(f)), ["EngineOwnership.java"], "only the owner arms the fault in main code");
+  const owner = stripJavaComments(fs.readFileSync(path.join(audioDir, "EngineOwnership.java"), "utf8"));
+  const armAt = owner.indexOf("EngineFaults.arm(");
+  const guard = owner.lastIndexOf("if (debuggable())", armAt);
+  assert.ok(guard >= 0 && armAt - guard < 400, "EngineFaults.arm runs only inside `if (debuggable())`");
+  assert.match(owner, /private boolean debuggable\(\) \{\s*return \(app\.getApplicationInfo\(\)\.flags & ApplicationInfo\.FLAG_DEBUGGABLE\) != 0;/);
+  const writers = mainFiles.filter((f) => /DEBUG_FAULT_KEY\s*,/.test(stripJavaComments(fs.readFileSync(f, "utf8")).replace(/getString\(DEBUG_FAULT_KEY,/g, "")));
+  assert.deepEqual(writers, [], "no main code writes the debug fault key");
+  const receiver = fs.readFileSync(path.join(android, "src", "debug", "java", "ai", "jwlabs", "foura", "audio", "EngineDriveReceiver.java"), "utf8");
+  assert.match(receiver, /putString\(EngineOwnership\.DEBUG_FAULT_KEY, fault\)/, "the debug driver is what arms the next launch");
+
+  /* The bridge answers a hello the engine threw on with legacy/downgrade, after the owner gave the process back. */
+  const bridge = stripJavaComments(fs.readFileSync(path.join(engineDir, "EngineBridge.java"), "utf8"));
+  const hello = bridge.slice(bridge.indexOf("public JsonNode hello(JsonNode payload) {"), bridge.indexOf("// ---- engineSend"));
+  assert.match(hello, /catch \(RuntimeException e\) \{\s*owner\.engineFaulted\("hello", e\);\s*return EngineBridgeRules\.legacyHello\(Vocabulary\.ModeReason\.DOWNGRADE\);/);
+});
+
+/* ─────────── A-65: keep-alive across silent seams (the Android twin of NE-46) ───────────
+ *
+ * docs/plans/android-assessment.md §5.7, card A-65. SilentSeamKeepAliveTest, LateTimerHostTest,
+ * ForegroundWatchTest and EnginePlayerTest (foray-audio, Robolectric/JUnit) prove the behaviour;
+ * these pin the decision's shape where no JVM test looks: no silence is rendered on Android, the
+ * facade's BUFFERING covers the seam beat, the late-timer row is the host's and is written only
+ * under grace past NARRATION_SUSPEND_GAP_MS, the service hands the deck's deadlines to it, and
+ * Media3's foreground decision reaches the fgs watch before Media3 acts on it. */
+
+test("A-67: every stopRow call site in the JVM core has a StopCauseTest entry, the Android audit names every cause, and the service's end is a stop with a cause", () => {
+  /* The D-5 audit on Android (docs/plans/android-assessment.md A-67, mirrors NE-40). StopCauseTest.java
+     (foray-engine-core-jvm) tables every path that stops audio, each naming the EngineCore METHOD that
+     writes its `stop` row (`"<site>"` as the third argument of a StopPath); a new `stopRow(` call in a
+     method the table does not name is a stop path nobody audited. StopPathAuditTest.java (foray-audio,
+     Robolectric) runs every ANDROID adapter's path through the real host. The host's teardown tells the
+     core first, so a service that dies while playing writes `stop cause=relinquish` before anything is
+     silenced, and nothing on Android arms or fires the grace expiry (Android has no background budget).
+     MUTATION: add a `stopRow(StopCause.ERROR, null)` to a method the table does not name; delete a
+     site from the table; give either disposition switch a `default`; drop the core teardown from
+     ForayEngineHost.teardown, or move it after `tornDown = true`; reference GRACE_EXPIRED in the
+     Android shell. Each fails here. */
+  const android = path.join(PLUGIN_DIR, "android");
+  const jvm = path.join(android, "foray-engine-core-jvm", "src");
+  const core = stripJavaComments(fs.readFileSync(path.join(jvm, "main", "java", "ai", "jwlabs", "foura", "engine", "EngineCore.java"), "utf8"));
+  const lines = core.split("\n");
+  const method = /^ {4}(?:(?:private|public|protected|static|final|synchronized)\s+)+[\w<>\[\],.? ]+?\s+(\w+)\(/;
+  const sites = new Set();
+  lines.forEach((line, i) => {
+    if (!/\bstopRow\(/.test(line) || /void stopRow\(/.test(line)) return;
+    for (let j = i; j >= 0; j--) {
+      const m = method.exec(lines[j]);
+      if (m) { sites.add(m[1]); return; }
+    }
+    assert.fail(`a stopRow( call at line ${i + 1} is outside any method`);
+  });
+  assert.equal(sites.size, 13, `the JVM core's stop sites: ${[...sites].join(", ")}`);
+  const table = fs.readFileSync(path.join(jvm, "test", "java", "ai", "jwlabs", "foura", "engine", "StopCauseTest.java"), "utf8");
+  const named = new Set([...table.matchAll(/new StopPath\("[^"]*",\s*"[^"]*",\s*"(\w+)"/g)].map((m) => m[1]));
+  for (const site of sites) assert.ok(named.has(site), `EngineCore.${site}() writes a stop row but StopCauseTest has no path with that site`);
+  for (const site of named) assert.ok(sites.has(site), `StopCauseTest names the site ${site}, which writes no stop row`);
+  /* The Swift table names the same thirteen (NE-40): the two cores audit the same paths. */
+  const swiftTable = fs.readFileSync(path.join(CORE_DIR, "Tests/ForayEngineCoreTests/StopCauseTests.swift"), "utf8");
+  const swiftSites = new Set([...swiftTable.matchAll(/site: "(\w+)"/g)].map((m) => m[1]));
+  assert.deepEqual([...sites].sort(), [...swiftSites].sort(), "the JVM core's stop sites are the Swift core's");
+  assert.match(table, /static Disposition disposition\(StopCause cause\) \{\s*return switch \(cause\) \{/);
+  assert.doesNotMatch(table.slice(table.indexOf("static Disposition disposition(")), /^\s*default\s*->/m, "exhaustive: a new cause does not compile");
+
+  const testDir = path.join(android, "src", "test", "java", "ai", "jwlabs", "foura", "audio", "engine");
+  const audit = fs.readFileSync(path.join(testDir, "StopPathAuditTest.java"), "utf8");
+  assert.match(audit, /static String androidDisposition\(StopCause cause\) \{\s*return switch \(cause\) \{/);
+  assert.doesNotMatch(audit.slice(audit.indexOf("static String androidDisposition(")), /^\s*default\s*->/m);
+  for (const adapter of ["onPlayerError", "AUDIO_FOCUS_LOSS", "TRANSIENT_AUDIO_FOCUS_LOSS", "CAN_DUCK", "BECOMING_NOISY",
+    "onTaskRemoved", "onDestroy", "Doze", "deadline", "RouteWatcher"]) {
+    assert.ok(audit.includes(adapter), `the Android audit does not cover ${adapter}`);
+  }
+
+  const engineDir = path.join(android, "src", "main", "java", "ai", "jwlabs", "foura", "audio", "engine");
+  const host = stripJavaComments(fs.readFileSync(path.join(engineDir, "ForayEngineHost.java"), "utf8"));
+  const teardown = host.slice(host.indexOf("public void teardown() {"));
+  const told = teardown.indexOf("runTurn(new EngineInput.Lifecycle(new EngineInput.LifecycleEvent.Teardown()));");
+  assert.ok(told > 0 && told < teardown.indexOf("tornDown = true;"), "the core hears the teardown before the host lets anything go");
+  assert.match(teardown, /if \(started && core\.state\(\)\.session != SessionPolicy\.Phase\.RELINQUISHED && !core\.state\(\)\.tornDown\)/,
+    "never after the core's own relinquish, which wrote the row");
+  for (const f of fs.readdirSync(engineDir).concat(fs.readdirSync(path.dirname(engineDir)).filter((n) => n.endsWith(".java")))) {
+    const file = fs.existsSync(path.join(engineDir, f)) ? path.join(engineDir, f) : path.join(path.dirname(engineDir), f);
+    if (!file.endsWith(".java")) continue;
+    assert.doesNotMatch(stripJavaComments(fs.readFileSync(file, "utf8")), /GRACE_EXPIRED/, `${f}: nothing on Android fires the grace expiry`);
+  }
+  const service = stripJavaComments(fs.readFileSync(path.join(path.dirname(engineDir), "ForayPlaybackService.java"), "utf8"));
+  const destroy = service.slice(service.indexOf("public void onDestroy() {"));
+  assert.ok(destroy.indexOf('serviceRow("destroy", null, host)') > 0 && destroy.indexOf('serviceRow("destroy", null, host)') < destroy.indexOf("release();"),
+    "the service names its end before the teardown");
+});
+
+test("A-65: no silence is rendered, the beat is BUFFERING, and the late-timer and fgs rows are wired", () => {
+  /* MUTATION: render the silence node (anything but an empty case for SilenceStart), turn
+     silenceNodeEnabled on in the service, drop silentSeam from the facade's BUFFERING test, write
+     the late row without grace or at another threshold, drop setLoadDeadlines from the service, or
+     call the watch after super.onUpdateNotificationAsync. Each fails here. */
+  const android = path.join(PLUGIN_DIR, "android");
+  const audioDir = path.join(android, "src", "main", "java", "ai", "jwlabs", "foura", "audio");
+  const engineDir = path.join(audioDir, "engine");
+  const host = stripJavaComments(fs.readFileSync(path.join(engineDir, "ForayEngineHost.java"), "utf8"));
+  assert.match(host, /case EngineCommand\.SilenceStart s -> \{\}/, "the silence node renders nothing on Android");
+  assert.match(host, /case EngineCommand\.SilenceStop s -> \{\}/);
+  const lateRow = host.slice(host.indexOf("private void lateRow("), host.indexOf("public static boolean inSeamBeat("));
+  assert.match(lateRow, /EngineCommand\.GraceReason reason = st\.grace;\s*if \(reason == null\) return;/, "the row is written only under grace");
+  assert.match(lateRow, /EngineConstants\.QueueManager\.NARRATION_SUSPEND_GAP_MS/, "the threshold is NARRATION_SUSPEND_GAP_MS");
+  assert.match(lateRow, /if \(!\(lateMs > gap\)\) return;/, "strictly more than the gap");
+  assert.match(host, /new Surface\(availability, view, st\.buffering, seq, st\.rate, view != null && inSeamBeat\(st\)\)/,
+    "the surface marks the seam beat");
+
+  const facade = stripJavaComments(fs.readFileSync(path.join(engineDir, "EnginePlayer.java"), "utf8"));
+  assert.match(facade, /boolean stalled = playing && \(surface\.buffering\(\) \|\| surface\.silentSeam\(\)/, "the beat is BUFFERING");
+  assert.match(facade, /player\.getPlayWhenReady\(\) && \(state == Player\.STATE_READY \|\| state == Player\.STATE_BUFFERING\)/,
+    "keepsServiceInForeground is Media3 1.11's rule");
+
+  const service = stripJavaComments(fs.readFileSync(path.join(audioDir, "ForayPlaybackService.java"), "utf8"));
+  assert.doesNotMatch(service, /withSilenceNode|silenceNodeEnabled\s*[=(]\s*true/, "the service never turns the silence node on");
+  /* A-65 review: the deadlines are read off the config the main deck was built with, not copied from
+     ExoDeck's defaults (MUTATION: hand loadDeadlinesMs a fresh Config, or the DEFAULT_* constants). */
+  assert.match(service, /ExoDeck\.Config mainDeck = deckConfig\(\);\s*ExoDeck first = new ExoDeck\(built, mainDeck\);/);
+  assert.match(service, /engine\.setLoadDeadlines\(loadDeadlinesMs\(mainDeck\)\);/);
+  assert.match(service, /deadlines\.put\(c, deckConfig\.deadlineSec\(c\) \* 1000\)/);
+  assert.doesNotMatch(service, /DEFAULT_(?:LINE_)?LOAD_DEADLINE_SEC \* 1000/);
+  const update = service.slice(service.indexOf("public ListenableFuture<Void> onUpdateNotificationAsync("));
+  const body = update.slice(0, update.indexOf("\n    }"));
+  assert.ok(body.indexOf("noteForegroundDecision(startInForegroundRequired);") > 0
+    && body.indexOf("noteForegroundDecision(startInForegroundRequired);") < body.indexOf("super.onUpdateNotificationAsync("),
+    "the watch hears Media3's decision before Media3 acts on it");
+  /* A-67 names the swipe (`service kind=task-removed kept=`) before the rule decides; the rule is A-65's. */
+  assert.match(service, /public void onTaskRemoved\(@Nullable Intent rootIntent\) \{\s*boolean kept = keepsRunningOnTaskRemoved\(isPlaybackOngoing\(\), player\);\s*log\.diag\(serviceRow\("task-removed", kept, host\)\);\s*if \(kept\) return;\s*super\.onTaskRemoved\(rootIntent\);/);
+
+  const watch = stripJavaComments(fs.readFileSync(path.join(engineDir, "ForegroundWatch.java"), "utf8"));
+  assert.doesNotMatch(watch, /^import android\./m, "ForegroundWatch is pure JVM");
+  assert.match(watch, /new EngineCommand\.DiagEntry\("fgs", fields\)/);
 });

@@ -20,6 +20,12 @@ final class EngineCoreTests: XCTestCase {
         var lastLoad: DeckToken?
         /// What the host read from `backgroundTimeRemaining` (nil: foreground).
         var bgRemainingMs: Double?
+        /// The current output route the host reads (NE-38rs; nil: none).
+        var route: RoutePort?
+        /// The wall clock. It stands still unless a test moves it (NE-46: the
+        /// device slept, so uptime did not advance and the wall clock did;
+        /// NE-38rs measures a loss's age on it).
+        var wallMs: Double = 1_790_000_000_000
 
         init(config: EngineConfig = EngineConfig(build: "test"),
              positions: [String: ResumeRules.StoredPosition] = [:]) {
@@ -30,18 +36,18 @@ final class EngineCoreTests: XCTestCase {
         @discardableResult
         mutating func send(_ input: EngineInput, after ms: Double = 1000) -> [EngineCommand] {
             monoMs += ms
-            let now = EngineNow(wallMs: 1_790_000_000_000, monoMs: monoMs, deck: reading, bgRemainingMs: bgRemainingMs)
+            let now = EngineNow(wallMs: wallMs, monoMs: monoMs, deck: reading, bgRemainingMs: bgRemainingMs, route: route)
             var all = core.handle(input, now: now)
             if let id = all.compactMap(Host.activation).last {
                 all += core.handle(.sessionResult(SessionResult(requestId: id, ok: activationOK,
                                                                 error: activationOK ? nil : "cannot-interrupt-others",
                                                                 activateMs: 3)),
-                                   now: EngineNow(wallMs: 1_790_000_000_000, monoMs: monoMs, deck: reading,
-                                                  bgRemainingMs: bgRemainingMs))
+                                   now: EngineNow(wallMs: wallMs, monoMs: monoMs, deck: reading,
+                                                  bgRemainingMs: bgRemainingMs, route: route))
             }
             for command in all {
                 switch command {
-                case let .deck(.load(token, _, _, startSec, _)):
+                case let .deck(.load(token, _, _, startSec, _, _)):
                     lastLoad = token
                     reading.positionSec = startSec
                     reading.audible = false
@@ -78,9 +84,12 @@ final class EngineCoreTests: XCTestCase {
                                   JSONMember("audio_url", .string("https://cdn.example/\(id).mp3"))] + extra))!
     }
 
-    /// A host playing `ids[0]` (queued with the rest), confirmed audible.
-    func playing(_ ids: [String] = ["a"], config: EngineConfig = EngineConfig(build: "test")) -> Host {
+    /// A host playing `ids[0]` (queued with the rest), confirmed audible,
+    /// through `route` if one is given.
+    func playing(_ ids: [String] = ["a"], config: EngineConfig = EngineConfig(build: "test"),
+                 route: RoutePort? = nil) -> Host {
         var host = Host(config: config)
+        host.route = route
         host.send(.queue(.load(ids.map { EngineCoreTests.item($0) })))
         host.send(.queue(.playIndex(0, startSec: nil, source: .tap)))
         host.land()
@@ -347,9 +356,9 @@ final class EngineCoreTests: XCTestCase {
         host.send(.session(.interruptionBegan(reason: "default")))
         XCTAssertTrue(host.send(.session(.interruptionEnded(shouldResume: true))).contains(.graceBegin(.interruptionResume)))
 
-        var car = playing()
-        car.send(.session(.route(RouteChange(oldDeviceUnavailable: true, routeName: "Civic", isCarRoute: true))))
-        XCTAssertTrue(car.send(.session(.route(RouteChange(oldDeviceUnavailable: false, routeName: "Civic"))))
+        var car = playing(route: RouteResumeTests.carPlay)
+        car.send(.session(.route(RouteResumeTests.lost(RouteResumeTests.carPlay))))
+        XCTAssertTrue(car.send(.session(.route(RouteResumeTests.back(RouteResumeTests.carPlay))))
             .contains(.graceBegin(.routeResume)))
 
         var cold = Host()
@@ -422,10 +431,10 @@ final class EngineCoreTests: XCTestCase {
             XCTAssertLessThan(at, activate, "the row is written before the activation it waits on")
         }
 
-        var car = playing()
+        var car = playing(route: RouteResumeTests.carPlay)
         car.bgRemainingMs = 12_000
-        car.send(.session(.route(RouteChange(oldDeviceUnavailable: true, routeName: "Civic", isCarRoute: true))))
-        let back = car.send(.session(.route(RouteChange(oldDeviceUnavailable: false, routeName: "Civic"))))
+        car.send(.session(.route(RouteResumeTests.lost(RouteResumeTests.carPlay))))
+        let back = car.send(.session(.route(RouteResumeTests.back(RouteResumeTests.carPlay))))
         let route = try XCTUnwrap(rows("resume", in: back).first, "\(back)")
         XCTAssertEqual(route[field: "kind"], .string("route"))
         XCTAssertEqual(route[field: "grace"], .string("y"))
@@ -461,7 +470,7 @@ final class EngineCoreTests: XCTestCase {
         XCTAssertEqual(host.core.state.session, .active)
         host.send(.session(.interruptionBegan(reason: "default")))
         let resumed = host.send(.session(.interruptionEnded(shouldResume: true)))
-        XCTAssertTrue(resumed.contains { if case let .deck(.load(_, _, _, startSec, _)) = $0 { return startSec == 41 }; return false },
+        XCTAssertTrue(resumed.contains { if case let .deck(.load(_, _, _, startSec, _, _)) = $0 { return startSec == 41 }; return false },
                       "\(resumed)")
     }
 
@@ -537,7 +546,7 @@ final class EngineCoreTests: XCTestCase {
         let pended = idle.send(try EngineCoreTests.command("seekTo", .object([JSONMember("sec", .number(600))])))
         XCTAssertNil(pended.firstIndex { if case .deck = $0 { return true }; return false }, "nothing loaded: nothing to seek")
         XCTAssertTrue(idle.send(.command(.play, source: .tap))
-            .contains { if case let .deck(.load(_, _, _, startSec, _)) = $0 { return startSec == 600 }; return false })
+            .contains { if case let .deck(.load(_, _, _, startSec, _, _)) = $0 { return startSec == 600 }; return false })
 
         var loading = Host()
         loading.send(.queue(.load([EngineCoreTests.item("a")])))
@@ -565,7 +574,7 @@ final class EngineCoreTests: XCTestCase {
         host.send(.queue(.load([EngineCoreTests.item("a")])))
         let started = host.send(.queue(.playIndex(0, startSec: nil, source: .tap)))
         XCTAssertTrue(started.contains {
-            if case let .deck(.load(_, _, _, startSec, _)) = $0 { return startSec == 2280 }
+            if case let .deck(.load(_, _, _, startSec, _, _)) = $0 { return startSec == 2280 }
             return false
         }, "the cold load resumes: \(started)")
         let nudged = host.send(try EngineCoreTests.command("seekBy", .object([JSONMember("deltaSec", .number(-15))])))
@@ -599,7 +608,7 @@ final class EngineCoreTests: XCTestCase {
             return false
         }
         let loadB = left.firstIndex {
-            if case let .deck(.load(_, itemId, _, _, _)) = $0 { return itemId == "b" }
+            if case let .deck(.load(_, itemId, _, _, _, _)) = $0 { return itemId == "b" }
             return false
         }
         XCTAssertNotNil(wrote, "the scrub is what was kept: \(left)")
@@ -690,7 +699,7 @@ final class EngineCoreTests: XCTestCase {
         var on = playing()
         on.send(try continuation(autoAdvance: true, [EngineCoreTests.hop(1, next: "b"), EngineCoreTests.hop(2, next: "c")]))
         let walked = on.send(.deck(.ended(token: on.lastLoad!)))
-        XCTAssertTrue(walked.contains { if case let .deck(.load(_, itemId, _, _, _)) = $0 { return itemId == "b" }; return false })
+        XCTAssertTrue(walked.contains { if case let .deck(.load(_, itemId, _, _, _, _)) = $0 { return itemId == "b" }; return false })
         XCTAssertTrue(walked.contains { if case .emit(.advanced) = $0 { return true }; return false })
         XCTAssertEqual(on.core.state.advanceLog.map(\.hop.nextId), ["b"])
         XCTAssertEqual(on.core.state.chain.map(\.nextId), ["c"])

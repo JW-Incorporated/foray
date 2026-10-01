@@ -2326,9 +2326,9 @@ test("REPORT 1: a route that DISAPPEARED pauses the transport and writes where i
 });
 
 /** The Android Capacitor shell, as far as the page's boot reads it: platform
-    `android`, so there is no native engine (durable-store.js's
-    `deferredPrefixesFor` is iOS-only) and the page's own player owns the
-    session events. The Preferences tier answers empty. */
+    `android`, whose engine answers the page's engineHello `legacy` (A-28's
+    stock answer while ENGINE_DEFAULT said `android: js`, and the Developer
+    setting's Web since A-31), so the page's own player owns the session events. The Preferences tier answers empty. */
 function androidShell() {
   return {
     getPlatform: () => "android",
@@ -2336,6 +2336,7 @@ function androidShell() {
     nativePromise: async (plugin, method) => {
       if (plugin === "Preferences" && method === "keys") return { keys: [] };
       if (plugin === "Preferences" && method === "get") return { value: null };
+      if (plugin === "ForayAudio" && method === "engineHello") return { mode: "legacy", reason: "build-default", protocol: 1 };
       return {};
     },
   };

@@ -146,12 +146,73 @@
 # leg drives `ForayPlaybackService` (the Media3 MediaSessionService that hosts the
 # engine) through the DEBUG build's `EngineDriveReceiver` over `adb shell am
 # broadcast`, and reads the engine from the service's own `dumpsys` line:
-# `tools/mobile/android-native-playback.mjs`. The same boot, APK and click tracks
-# as the JS legs; its seven scenario steps are all GATED, and its JS-lane steps
+# `tools/mobile/android-native-playback.mjs`. Since A-28 the page has that door
+# (engineHello / engineSend / engineRead on the Android plugin): the leg's last
+# scenario, `bridge`, goes through the page over DevTools and requires the
+# diagnostics Copy to log the native engine mode. The same boot, APK and click tracks
+# as the JS legs; its nine scenario steps are all GATED, and its JS-lane steps
 # are skipped (the JS legs run those). One API level, because the engine is the
 # same Java on both and the fast image keeps it to one more job; its ceiling
-# covers the build, the boot and about twelve minutes of scenarios, five of them
-# (g)'s Doze.
+# covers the build, the boot and about fifteen minutes of scenarios, five of them
+# (g)'s Doze. A-26 measured the leg at 14 min 7 s with seven (run 36647752638).
+#
+# A-27 added (j): a paused 4a, on Home, ended four ways, then
+# `cmd media_session dispatch play`: `am kill` (the card's; the paused service is
+# still in the foreground, so the process lives), a swipe (the service's
+# onTaskRemoved) then `am kill`, and a SIGKILL from the app's own uid. Each must
+# resume 4a at the saved position (gated): the swipe through the media button
+# receiver and Media3's playback resumption from the engine's restore record, the
+# SIGKILL through the restarted service's session. `am force-stop` is the negative
+# control, recorded only. About three minutes.
+#
+# A-30 made the leg the native LANE's, and added three steps. Every engine
+# scenario now stores the Developer engine setting Native first and runs in a
+# process whose lane is native (the page, the owner, the media button receiver
+# and the service are the ones A-31's flip ships); every engine dump it reads must
+# say `nativeLane: true`, or it fails. The new steps: (e) a first launch in the
+# native lane (the JS leg's screenshot and insets through the page, plus the lane
+# and the engine hosting); (f) the hidden EPISODE seams, a seven-seam queue played
+# to its end with the screen off, each gap read from the engine's own rows
+# (recorded, and gated only on crossing every seam in one process); and (k) in
+# airplane mode, an episode that cannot load stopped by the engine within the
+# deck's load deadline with a bundled one playing after, and a Foray tapped in the
+# native lane relinquished to the page's player, whose rendered line falls back in
+# time (both gated). The leg took 21 min 42 s with all thirteen steps (run
+# 36693793704), against 17 min 43 s before (run 36688133433), so the 40-minute
+# ceiling holds. The numbers are in `docs/android-emulator-measurements.md` §11.
+#
+# A-31, the A1 flip: `mobile/ENGINE_DEFAULT.json` android is `native` for
+# episodes, so a STOCK launch is the native lane. The native leg's engine
+# scenarios now store the Developer setting Automatic (the stock lane) rather
+# than Native, and (e) requires the Developer row on Automatic. `bridge` reads a
+# stock launch as `native / build-default` with `episode` advertised, plays an
+# episode through the page's own `ForayPlayer.play` and requires the ENGINE to be
+# playing it, then sets the Developer setting to Web and requires the JS lane
+# after a relaunch. The JS legs' first step, (e), stores Web through the debug
+# driver and relaunches, so they keep measuring the page's own player (still the
+# lane Web, the crash-loop guard and a relinquish fall back to), gated on the
+# lane reading `js`.
+#
+# A-42, the A2 flip: `mobile/ENGINE_DEFAULT.json` android declares `foray` (and
+# `restore`: iOS's M2 four), so a Foray the page plays is the ENGINE's. `bridge`
+# now also plays a Foray through the page's own `ForayPlayer.playForay` and
+# requires the engine to hold it (its `forayId`), cross a seam of it, and the
+# page's lane to stay native. (k)'s page half is no longer the JS leg's (k) on a
+# relinquished Foray: the page builds A-41's airplane Foray (a clip, a bundled
+# rendered line, a clip, a network line, a clip) over the APK's assets and plays
+# it, in airplane mode, and the engine must play the bundled line as a file,
+# fall back on the network one at its bridge in time and speak it, land on the
+# last clip, and the Copy must carry no `engineMode js (relinquished)` row.
+#
+# A-67, a FOURTH leg: `mode: native`, API 36, `only: kill`. The emulator's twins of
+# iOS's DV-7a and DV-7b are (j)'s legs: a paused 4a on Home, ended by `am kill`, a
+# swipe then `am kill`, or a SIGKILL, must come back for `cmd media_session dispatch
+# play` at the saved position, at least one of them through Media3's playback
+# resumption from the restore record (GATED); after `am force-stop`, who the play
+# reaches is the force-stop value (RECORDED, never gated). The plan asks for the
+# kill-then-play step green on both API levels, so this leg runs (j) alone on the
+# current image (every other native step is gated on `!matrix.only`), and collects
+# its evidence under its own artifact name.
 #
 # `fail-fast: false`, so a red leg never cancels the other's verdicts. Each leg
 # checks that the device it booted really is its API level before installing
@@ -205,6 +266,13 @@ jobs:
             image: system-images;android-34;google_apis;x86_64
             timeout: 40
             mode: native
+          # A-67: the DV-7 twins ((j) alone) in native mode on the current
+          # platform too, so the kill-then-play gate holds on both API levels.
+          - api: 36
+            image: system-images;android-36;google_apis;x86_64
+            timeout: 45
+            mode: native
+            only: kill
     # The ceiling for a hung boot or a hung scenario, which the boot step's own
     # 15-minute deadline would otherwise race. A-04's budget was 12 minutes; A-05
     # took the one-leg job to 19 min 54 s on API 34 (run 36573733303), five of
@@ -586,41 +654,106 @@ jobs:
       # ── A-26: the native engine's leg (`matrix.mode == 'native'`). The same
       # discipline as the JS scenarios: one step each, each after a launch
       # whatever the one before did, none of them silenced, and every one GATED.
+      # A-30: every engine scenario runs in the native LANE (see the header).
+
+      - name: (e) native — a first launch in the native lane, as a screenshot, with the engine up
+        id: native-first-launch
+        if: ${{ matrix.mode == 'native' && (!matrix.only || matrix.only == 'first-launch') && !cancelled() && steps.launch.outcome == 'success' }}
+        run: node tools/mobile/android-native-playback.mjs first-launch --art "$ART"
 
       - name: (a) native — the engine plays a clip, in a mediaPlayback service, published to the system
         id: native-play
-        if: ${{ matrix.mode == 'native' && !cancelled() && steps.launch.outcome == 'success' }}
+        if: ${{ matrix.mode == 'native' && (!matrix.only || matrix.only == 'play') && !cancelled() && steps.launch.outcome == 'success' }}
         run: node tools/mobile/android-native-playback.mjs play --art "$ART"
 
       - name: (b) native — Home, then the screen off, and the queue plays on for a minute
         id: native-background
-        if: ${{ matrix.mode == 'native' && !cancelled() && steps.launch.outcome == 'success' }}
+        if: ${{ matrix.mode == 'native' && (!matrix.only || matrix.only == 'background') && !cancelled() && steps.launch.outcome == 'success' }}
         run: node tools/mobile/android-native-playback.mjs background --art "$ART"
 
       - name: (c) native — media_session dispatch and KEYCODE_MEDIA presses reach the engine
         id: native-transport
-        if: ${{ matrix.mode == 'native' && !cancelled() && steps.launch.outcome == 'success' }}
+        if: ${{ matrix.mode == 'native' && (!matrix.only || matrix.only == 'transport') && !cancelled() && steps.launch.outcome == 'success' }}
         run: node tools/mobile/android-native-playback.mjs transport --art "$ART"
 
       - name: (d) native — the system controls show our title, show and 15/30, and their pause pauses
         id: native-notification
-        if: ${{ matrix.mode == 'native' && !cancelled() && steps.launch.outcome == 'success' }}
+        if: ${{ matrix.mode == 'native' && (!matrix.only || matrix.only == 'notification') && !cancelled() && steps.launch.outcome == 'success' }}
         run: node tools/mobile/android-native-playback.mjs notification --art "$ART"
+
+      - name: (f) native — hidden episode seams, the screen off, every seam crossed (gaps recorded)
+        id: native-seams
+        if: ${{ matrix.mode == 'native' && (!matrix.only || matrix.only == 'seams') && !cancelled() && steps.launch.outcome == 'success' }}
+        run: node tools/mobile/android-native-playback.mjs seams --art "$ART"
+
+      # A-40: the Foray tape. A Foray (the page's build of eight segments over the
+      # click tracks) handed to the engine through the debug driver's playForay
+      # (written before the page's bridge could: it refused one until A-42),
+      # played hidden on the deck pair. Gated: every seam crossed, screen off,
+      # one process, p95 <= 1 s.
+      - name: (f) native Foray — hidden Foray seams on the deck pair, the screen off, p95 at or under 1 s
+        id: native-foray-seams
+        if: ${{ matrix.mode == 'native' && (!matrix.only || matrix.only == 'foray-seams') && !cancelled() && steps.launch.outcome == 'success' }}
+        run: node tools/mobile/android-native-playback.mjs foray-seams --art "$ART"
 
       - name: (g) native — Doze, unplugged, in the rare bucket, and still playing after 5 minutes
         id: native-doze
-        if: ${{ matrix.mode == 'native' && !cancelled() && steps.launch.outcome == 'success' }}
+        if: ${{ matrix.mode == 'native' && (!matrix.only || matrix.only == 'doze') && !cancelled() && steps.launch.outcome == 'success' }}
         run: node tools/mobile/android-native-playback.mjs doze --art "$ART"
 
       - name: (h) native — another app takes audio focus; a transient loss pauses and resumes
         id: native-focus
-        if: ${{ matrix.mode == 'native' && !cancelled() && steps.launch.outcome == 'success' }}
+        if: ${{ matrix.mode == 'native' && (!matrix.only || matrix.only == 'focus') && !cancelled() && steps.launch.outcome == 'success' }}
         run: node tools/mobile/android-native-playback.mjs focus --art "$ART"
 
       - name: (i) native — a phone call rings, is answered and hangs up; pause, then resume
         id: native-call
-        if: ${{ matrix.mode == 'native' && !cancelled() && steps.launch.outcome == 'success' }}
+        if: ${{ matrix.mode == 'native' && (!matrix.only || matrix.only == 'call') && !cancelled() && steps.launch.outcome == 'success' }}
         run: node tools/mobile/android-native-playback.mjs call --art "$ART"
+
+      - name: (j) native — paused, on Home, the process ended; a media play resumes 4a at the saved position
+        id: native-kill
+        if: ${{ matrix.mode == 'native' && (!matrix.only || matrix.only == 'kill') && !cancelled() && steps.launch.outcome == 'success' }}
+        run: node tools/mobile/android-native-playback.mjs kill --art "$ART"
+
+      - name: (k) native — airplane mode; an unloadable episode stops in time; the engine's and the page's Forays fall back on the line that cannot load
+        id: native-airplane
+        if: ${{ matrix.mode == 'native' && (!matrix.only || matrix.only == 'airplane') && !cancelled() && steps.launch.outcome == 'success' }}
+        run: node tools/mobile/android-native-playback.mjs airplane --art "$ART"
+
+      # A-61: route resume. The emulator has no Bluetooth and adb cannot add an
+      # audio output, so the debug driver hands the service's RouteWatcher a
+      # VIRTUAL A2DP device, added and removed as the platform's
+      # AudioDeviceCallback would, with BECOMING_NOISY as the service hears it;
+      # car mode is the real one (`cmd uimode car yes`). Gated: in car mode the
+      # car's loss pauses and its return resumes exactly once, and after a
+      # listener's pause the same loss and return resume nothing. Without car
+      # mode the verdict records no-coverage.
+      - name: (A-61) native — route resume, a virtual car-mode output lost and back resumes once; a listener's pause stays paused
+        id: native-route
+        if: ${{ matrix.mode == 'native' && (!matrix.only || matrix.only == 'route') && !cancelled() && steps.launch.outcome == 'success' }}
+        run: node tools/mobile/android-native-playback.mjs route --art "$ART"
+
+      # A-28: the page's door, and since A-31 and A-42 the flips' proof. A stock
+      # launch is the native lane (`engine=native … reason=build-default`,
+      # `episode` and `foray` in the caps, an `engineMode native` row); an episode
+      # the page plays with its own ForayPlayer.play, and a Foray it plays with
+      # ForayPlayer.playForay, are the engine's; the Developer setting Web,
+      # through the page, returns the JS lane at the next launch.
+      - name: (A-28, A-31, A-42) native — a stock launch is the native lane, the page's episode and Foray play on the engine, and Web returns the JS lane
+        id: native-bridge
+        if: ${{ matrix.mode == 'native' && (!matrix.only || matrix.only == 'bridge') && !cancelled() && steps.launch.outcome == 'success' }}
+        run: node tools/mobile/android-native-playback.mjs bridge --art "$ART"
+
+      # A-29: ownership and fallback, last. The debug build's engine is told to
+      # throw at engineHello; over three native launches the page must fall back
+      # to its own player with a fault row and a page-health strike each (and the
+      # legacy service must start), and the fourth launch must be pinned to the
+      # JS lane by the crash-loop guard.
+      - name: (A-29) native — the engine throws at hello; the page falls back to js with a fault row; three strikes pin the JS lane
+        id: native-fallback
+        if: ${{ matrix.mode == 'native' && (!matrix.only || matrix.only == 'fallback') && !cancelled() && steps.launch.outcome == 'success' }}
+        run: node tools/mobile/android-native-playback.mjs fallback --art "$ART"
 
       - name: Collect the native engine's dump, its logcat and the system's view
         if: ${{ matrix.mode == 'native' && !cancelled() && (steps.launch.outcome == 'success' || steps.launch.outcome == 'failure') }}
@@ -634,12 +767,14 @@ jobs:
           mkdir -p "$ART"
           {
             if [ "${MODE:-js}" = "native" ]; then
-              echo "## Android playback scenarios, NATIVE engine (A-26), API ${API_LEVEL}"
+              echo "## Android playback scenarios, NATIVE engine (A-26..A-30), API ${API_LEVEL}"
               echo
               node tools/mobile/android-native-playback.mjs summary --art "$ART"
               echo
-              echo "**This leg** drives ForayPlaybackService (the native engine, A-21..A-26) through"
-              echo "the debug build's EngineDriveReceiver, because the page's way in is A-28's."
+              echo "**This leg** runs in the stock lane, which is native since A-31 (the Developer"
+              echo "engine setting, Automatic), and drives ForayPlaybackService through the debug"
+              echo "build's EngineDriveReceiver; the first-launch, airplane, bridge and fallback steps"
+              echo "also go through the page, and bridge plays an episode with the page's own play."
             else
               echo "## Android playback scenarios (A-04, A-05), API ${API_LEVEL}"
               echo

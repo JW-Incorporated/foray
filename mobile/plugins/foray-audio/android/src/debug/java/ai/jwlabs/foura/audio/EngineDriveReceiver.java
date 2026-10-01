@@ -1,15 +1,20 @@
 package ai.jwlabs.foura.audio;
 
+import ai.jwlabs.foura.audio.engine.EngineFaults;
+import ai.jwlabs.foura.audio.engine.EngineLane;
 import ai.jwlabs.foura.audio.engine.ForayEngineHost;
+import ai.jwlabs.foura.audio.engine.OwnershipCore;
 import ai.jwlabs.foura.engine.EngineContract;
 import ai.jwlabs.foura.engine.EngineInput;
 import ai.jwlabs.foura.engine.EngineItem;
 import ai.jwlabs.foura.engine.JSWriter;
+import ai.jwlabs.foura.engine.JsonNode;
 import ai.jwlabs.foura.engine.Vocabulary;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.util.Base64;
 import android.util.Log;
 import androidx.annotation.OptIn;
@@ -31,7 +36,27 @@ import java.util.List;
  *   adb shell am broadcast -n ai.jwlabs.foura/ai.jwlabs.foura.audio.EngineDriveReceiver \
  *       --es cmd load --es queue &lt;base64 JSON array of items&gt; --ei index 0
  *   adb shell am broadcast -n … --es cmd pause|play|next|previous
+ *   adb shell am broadcast -n … --es cmd task-removed
+ *   adb shell am broadcast -n … --es cmd foray --es foray &lt;base64 JSON {forayId, title, items}&gt;
+ *   adb shell am broadcast -n … --es cmd route --es op added|removed|noisy --ei type 8 --es address …
  * </pre>
+ *
+ * <p>{@code route} (A-61) is a virtual output device for route resume: the service's
+ * {@code RouteWatcher} hears it added or removed as it hears a real one from the platform's
+ * {@code AudioDeviceCallback}, and {@code noisy} is the BECOMING_NOISY broadcast as the service
+ * hears it. The watcher, the core's policy and the store are the real ones.
+ *
+ * <p>{@code foray} (A-40) is the contract's {@code playForay} with the page's BUILD of a Foray
+ * (the items as {@code buildForayQueue} emits them): the Foray tape's (f) scenario drives the
+ * engine's deck pair with it, written before the page's bridge could (it refused {@code playForay}
+ * until A-42 advertised {@code foray}; the page's own Foray is the native leg's {@code bridge} and
+ * (k) since). It goes through the core like any page command: the structural check, the session,
+ * the beat and the pair are the real ones.
+ *
+ * <p>{@code task-removed} (A-27) is the listener swiping 4a away, as the service hears it: the
+ * driver lets go of its binding and hands the service {@code onTaskRemoved}, Media3's own
+ * default (a paused player is paused and the service stops itself). Scenario (j) then ends the
+ * process and presses play, the device check "Bluetooth car play after swiping the app away".
  *
  * It binds {@code ForayPlaybackService} with a {@link MediaController}, the way a client of a
  * Media3 session service does (A-28's bridge will too), keeps that controller for the life of
@@ -42,6 +67,18 @@ import java.util.List;
  * <p>It decides nothing and bypasses nothing: every input goes through
  * {@code ForayEngineHost.handle}, so the audible-start invariant, the session and the deck are
  * exactly the ones a real client would get.
+ *
+ * <p>A-29 adds three commands that bind nothing (the lane's fallback scenario sets them up before
+ * the app is launched, and reads them after):
+ * <pre>
+ *   adb shell am broadcast -n … --es cmd fault --es fault hello-throws|none
+ *   adb shell am broadcast -n … --es cmd override --es mode auto|native|web
+ *   adb shell am broadcast -n … --es cmd keys
+ * </pre>
+ * {@code fault} arms the engine's debug mutation for the next launch ({@code EngineFaults}: the
+ * engine throws while answering engineHello). {@code override} is the Developer engine setting,
+ * through the owner (so strikes and the sticky pin clear, exactly as the page's row does).
+ * {@code keys} answers the engine-private keys as stored.
  */
 @OptIn(markerClass = UnstableApi.class)
 public final class EngineDriveReceiver extends BroadcastReceiver {
@@ -52,8 +89,15 @@ public final class EngineDriveReceiver extends BroadcastReceiver {
 
     @Override
     public void onReceive(Context context, Intent intent) {
-        PendingResult pending = goAsync();
         Context app = context.getApplicationContext();
+        String owned = ownerCommand(app, intent);
+        if (owned != null) {
+            Log.i(TAG, "cmd=" + intent.getStringExtra("cmd") + " " + owned);
+            setResultCode(1);
+            setResultData(owned);
+            return;
+        }
+        PendingResult pending = goAsync();
         Runnable drive = () -> {
             String answer;
             try {
@@ -87,6 +131,47 @@ public final class EngineDriveReceiver extends BroadcastReceiver {
         }, ContextCompat.getMainExecutor(app));
     }
 
+    /**
+     * A-29's commands, which touch the lane's keys and never the service: the answer, or null for
+     * a command that drives the engine. On main (a receiver's onReceive).
+     */
+    private static String ownerCommand(Context app, Intent intent) {
+        String cmd = intent.getStringExtra("cmd");
+        if (cmd == null) return null;
+        SharedPreferences prefs = app.getSharedPreferences(EngineLane.PREFS, Context.MODE_PRIVATE);
+        switch (cmd) {
+            case "fault" -> {
+                String fault = intent.getStringExtra("fault");
+                boolean known = EngineFaults.HELLO.equals(fault);
+                SharedPreferences.Editor e = prefs.edit();
+                if (known) e.putString(EngineOwnership.DEBUG_FAULT_KEY, fault);
+                else e.remove(EngineOwnership.DEBUG_FAULT_KEY);
+                boolean ok = e.commit();
+                return "{\"ok\":" + ok + ",\"fault\":" + (known ? JSWriter.quote(fault) : "null") + "}";
+            }
+            case "override" -> {
+                String mode = intent.getStringExtra("mode");
+                if (mode == null || !EngineContract.MODE_OVERRIDES.contains(mode)) {
+                    return "{\"ok\":false,\"failures\":[" + JSWriter.quote("bad-mode:" + mode) + "]}";
+                }
+                EngineOwnership.shared(app).setModeOverride(mode);
+                return "{\"ok\":true,\"override\":" + JSWriter.quote(mode) + "}";
+            }
+            case "keys" -> {
+                StringBuilder out = new StringBuilder("{\"ok\":true");
+                for (String key : new String[] {OwnershipCore.KEY_OVERRIDE, OwnershipCore.KEY_STRIKES, OwnershipCore.KEY_SENTINEL,
+                        OwnershipCore.KEY_STICKY, EngineOwnership.DEBUG_FAULT_KEY}) {
+                    String v = prefs.getString(key, null);
+                    out.append(',').append(JSWriter.quote(key)).append(':').append(v == null ? "null" : JSWriter.quote(v));
+                }
+                return out.append('}').toString();
+            }
+            default -> {
+                return null;
+            }
+        }
+    }
+
     /** One input, on main. */
     private static String run(Intent intent) {
         ForayPlaybackService service = ForayPlaybackService.current();
@@ -107,10 +192,54 @@ public final class EngineDriveReceiver extends BroadcastReceiver {
                             new EngineInput.QueueInput.PlayIndex(index, null, Vocabulary.Source.TAP))));
                 }
             }
+            case "foray" -> {
+                String b64 = intent.getStringExtra("foray");
+                if (b64 == null) return "{\"ok\":false,\"failures\":[\"no-foray\"]}";
+                JsonNode foray = JsonNode.parse(new String(Base64.decode(b64, Base64.DEFAULT), StandardCharsets.UTF_8));
+                JsonNode rawItems = foray.get("items");
+                List<JsonNode> items = rawItems == null || rawItems.arrayValue() == null ? new ArrayList<>() : rawItems.arrayValue();
+                JsonNode id = foray.get("forayId");
+                JsonNode title = foray.get("title");
+                verdicts.add(tap(service, new EngineContract.Command.PlayForay(id == null || id.stringValue() == null ? "" : id.stringValue(),
+                        title == null ? null : title.stringValue(), items, new JsonNode.Obj(new ArrayList<>()), null, false, false,
+                        null)));
+            }
             case "play" -> verdicts.add(tap(service, new EngineContract.Command.Play()));
             case "pause" -> verdicts.add(tap(service, new EngineContract.Command.Pause()));
             case "next" -> verdicts.add(tap(service, new EngineContract.Command.Next()));
             case "previous" -> verdicts.add(tap(service, new EngineContract.Command.Previous()));
+            case "route" -> {
+                // A-61: a VIRTUAL output device, handed to route resume's watcher exactly as the
+                // service's AudioDeviceCallback hands it a real one (the emulator has no Bluetooth,
+                // and adb cannot add an audio output); `noisy` is BECOMING_NOISY as FocusMapping
+                // reports it (a loss that names no port, which the watcher names).
+                RouteWatcher watcher = service.routeWatcher();
+                if (watcher == null) return "{\"ok\":false,\"failures\":[\"no-watcher\"]}";
+                String address = intent.getStringExtra("address");
+                RouteWatcher.Device device = new RouteWatcher.Device(
+                        intent.getIntExtra("type", android.media.AudioDeviceInfo.TYPE_BLUETOOTH_A2DP),
+                        intent.getIntExtra("id", 6101), address == null ? "" : address);
+                String op = intent.getStringExtra("op");
+                if ("added".equals(op)) {
+                    service.feedRoutes(watcher.onAdded(java.util.Collections.singletonList(device)));
+                } else if ("removed".equals(op)) {
+                    service.feedRoutes(watcher.onRemoved(java.util.Collections.singletonList(device)));
+                } else if ("noisy".equals(op)) {
+                    service.becomingNoisy();
+                } else {
+                    return "{\"ok\":false,\"failures\":[" + JSWriter.quote("unknown-op:" + op) + "]}";
+                }
+                return "{\"ok\":true,\"failures\":[]}";
+            }
+            case "task-removed" -> {
+                // Let go of the binding first: a bound service outlives its own stopSelf.
+                MediaController held = controller;
+                controller = null;
+                connecting = null;
+                if (held != null) held.release();
+                service.onTaskRemoved(null);
+                return "{\"ok\":true,\"failures\":[]}";
+            }
             default -> {
                 return "{\"ok\":false,\"failures\":[" + JSWriter.quote("unknown-cmd:" + cmd) + "]}";
             }

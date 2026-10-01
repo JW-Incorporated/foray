@@ -567,6 +567,30 @@ Rejected alternatives:
 - **Acceptance:** A-05 (j) in native mode: after `am kill`, dispatching `play` resumes 4a at the saved position.
   Gated.
 - **Device check:** Bluetooth car play after swiping the app away.
+- **Status (2026-09-29): done in its PR (#905), evidence in `STATE.md` (A-27 entry) and
+  `docs/android-emulator-measurements.md` §10.**
+  - **What was built.**
+    - `EngineStore` (foray-audio) is the service's output. It writes the shared rows into `@capacitor/preferences`'
+      own file (`CapacitorStorage`) as the exact `JSWriter` bytes, and the restore record into the engine's own
+      file as `ForayEngine.restore`. Every write is committed before it returns.
+    - `EngineCore.restoring` (JVM core) and `ForayEngineHost.coldBoot` are the Swift `ColdRestore` and
+      `ForayEngine.coldBoot`, with the same outcome tokens and the same `restore kind=cold-boot` row.
+    - Media3's playback resumption is the trigger. The empty session declares the two commands it needs only while
+      a record can be resumed. `onPlaybackResumption` answers with the recorded item and position, and applying the
+      answer is the cold boot.
+    - `ForayMediaButtonReceiver` ships disabled, so the JS lane never registers it. The native service switches it
+      on before its session is built.
+  - **Evidence.** The native leg (run 36665544656, job 109729315165) is green on (a)–(d) and (g)–(j), all gated.
+    (j) resumed 4a at the saved position after `am kill`, after a swipe then `am kill` (through the receiver), and
+    after a SIGKILL (through the restarted service's session).
+  - **Found.** The force-stop control does not hold on API 34: the receiver is still sent the key, and 4a plays.
+    This is A-67's to record.
+  - **Joined to A-28 (merged first).**
+    - The process's store is also the page bridge's records, so `engineRead("rows")` answers from the persisted
+      rows, and a "Delete my data" in any lane removes the rows and the restore record.
+    - The native lane's owner boots the service from the record before the page's first bridge call is answered.
+      That is NE-24's order, so the hello carries the restored queue and the undrained pending events.
+  - **Not executed.** The Bluetooth car check (D-A3).
 
 #### A-28 · Android bridge and page client — **M**
 - **Depends on:** A-26.
@@ -576,6 +600,27 @@ Rejected alternatives:
 - **Acceptance:** Node tests for the Android handshake. The emulator native leg logs `engine mode native` in the
   Copy paste.
 - **Device check:** none until A-31.
+- **Status (2026-09-29): done in its PR, evidence in `STATE.md` (A-28 entry).**
+  - **The bridge.** `EngineBridge` (foray-audio, pure JVM) is the iOS NE-20 bridge on the JVM: hello, send and read
+    always answer, an invalid send is `unknown-cmd`, a `cmd` row with its source before anything no-ops (D-4),
+    `seqGap`, the refusal row (L02), the relinquish hand-back, and events coalesced to ≤ 1 Hz and withheld from a
+    hidden page. The payload shapes, Snapshot v1 and the coalescer are the core's (`EngineBridgeRules`), and the
+    decoder is `ContractDecoding`, so `contract`, `snapshot`, `handshake` and `diag-tokens` moved to `runs` in
+    `jvm-pending.json`. The plugin's three `@PluginMethod`s hop to main and always resolve.
+  - **The lane.** `EngineOwnership` (Android) decides once per process from `EngineLane`: the build default
+    (`ENGINE_DEFAULT` android `js`, pinned) and the Developer engine setting (`ForayEngine.modeOverride`, iOS's
+    key). In the native lane it binds `ForayPlaybackService` with a `MediaController` before answering. The
+    crash-loop sentinel and the hello watchdog stay A-29's.
+  - **The page.** `HELLO_PLATFORMS` and the store's `ENGINE_SHELL_PLATFORMS` gained `android`. A stock launch is
+    `engine-legacy`, which is the JS player with nothing relinquished. The page's visibility is the engine's
+    lifecycle on Android (`setPageVisible` also feeds `background` / `foreground`).
+  - **Capabilities.** The binary advertises only `continuation`. `episode` waits on `engine-mode` (A-29), and a
+    shell invariant holds the literal to the JVM books. So a native lane relinquishes an episode tap to the JS
+    player (the new `engineCan("episode")` guard in `ForayPlayer.play`, which never runs on iOS), as a Foray tap
+    does without `foray`.
+  - **The emulator.** The native leg's last scenario, `bridge`, reads the stock lane over DevTools and turns the
+    Developer setting to Native through the page. It then relaunches and requires `engine=native … reason=override`
+    and an `engineMode native` row in the Copy.
 
 #### A-29 · Ownership and fallback (a subset of NE-17) — **M**
 - **Depends on:** A-28.
@@ -584,6 +629,30 @@ Rejected alternatives:
 - **Acceptance:** Parity families for ownership are green on the JVM. An emulator mutation (engine throws at
   hello) falls back to `js` with a diagnostics row.
 - **Device check:** none.
+- **Status (2026-09-30): done in its PR, evidence in `STATE.md` (A-29 entry).**
+  - **The family.** `EngineMode` (JVM core) is the Swift `EngineMode` on the JVM: `decide` and `trace`. `engine-mode`
+    moved to `runs` in `jvm-pending.json` (31 cases, all passing), and `EngineModeFamilyTest` turns named cases red
+    under four mutations (a strike per launch, a pin that outlives its build, an override over the crash loop, a
+    page-health strike the healthy marker erases).
+  - **The owner.** `OwnershipCore` (foray-audio, pure JVM) holds every rule; `EngineOwnership` moves values in and out
+    and binds the service. The lane is decided at the plugin's `load()` (one strike accounting per process), over
+    iOS's private keys, with the sentinel written before a native boot. In the native lane the service is bound at
+    launch, so the engine exists before the page's hello, as on iOS.
+  - **Healthy markers:** the engine's first completed turn, 5 s after the bind, or the Activity's pause.
+  - **The watchdog:** armed by the page load (the plugin's `load()`, always before the page's scripts): 10 s → a
+    page-health strike, 15 s with the engine idle → a relinquish (deferred while it runs).
+  - **The fallback.** A hello the engine throws on is a fault row, a page-health strike and a terminal relinquish; the
+    page is answered `legacy / downgrade` and runs the JS player, and the legacy service may start again. A second
+    relinquish is refused.
+  - **The emulator.** The native leg's last scenario, `fallback`, arms the debug fault (`EngineFaults`, armed only in a
+    debuggable build) with the Developer setting on Native, then launches four times: launches 1–3 fall back to `js`
+    with the fault row, the downgrade row and strikes 1, 2, 3 (and on launch 1 the legacy service starts); launch 4 is
+    `legacy / crash-loop` with the pin set to the versionCode.
+  - **Capabilities.** `episode` joins `continuation` in what the binary may advertise; nothing declares it until the
+    flip card, so the stock and override lanes are unchanged.
+  - **Not here.** The cold path's service start (A-27's media button receiver and playback resumption) does not consult
+    the owner yet: a process started by a car's PLAY with no Activity decides at its first page. That is A-30's to
+    wire once A-27 is on `android/native`.
 
 #### A-30 · Native-mode emulator scenarios green — **S**
 - **Depends on:** A-27, A-29.
@@ -591,6 +660,23 @@ Rejected alternatives:
   episodes.
 - **Acceptance:** One run id with every native-mode verdict green.
 - **Device check:** none.
+- **Status (2026-09-30): done in its PR (#914), evidence in `STATE.md` (A-30 entry) and
+  `docs/android-emulator-measurements.md` §11.**
+  - **One run.** Run 36693793704 (job 109816863446) is green on all thirteen native steps, each gated: (e), (a)–(d),
+    (f), (g)–(k), the A-28 page door and the A-29 fallback. The two JS legs in the same run are green too.
+  - **The native lane.** Every engine scenario now runs in the native lane: the Developer setting is Native and the
+    process is fresh. Each engine dump it reads must say `nativeLane: true`, a new field of the service's dump.
+  - **The new steps.**
+    - (e): a first launch in that lane, through the page.
+    - (k): gated on both halves. The engine stops an unloadable episode in airplane mode (3.3 s, `stop cause=error`),
+      and a bundled one plays after. A Foray relinquishes to the page's player, whose rendered line is spoken in time.
+  - **Episode seams, recorded as (f).** Seven seams with the screen off: min 80, median 97, p95 126 ms. Same-source
+    seams took 80 and 111 ms. The whole episode's natural end took 97 ms.
+  - **Handed on.** A-29's "the cold path's service start does not consult the owner" was already done by the A-27
+    review (#912): the receiver reads the lane with `peekDecision`.
+  - **For A-31.** The page's native lane still relinquishes an episode tap, because nothing declares `episode` until
+    the flip. So the leg hands episodes to the engine through the debug driver. When A-31 declares the capability,
+    (a)–(d) can go through the page's own play.
 
 #### A-31 · A1 flip: native default for Android episodes — **S**
 - **Depends on:** A-30, the Joey device pass on the native build, and one founder Android car drive (D-A5).
@@ -599,6 +685,25 @@ Rejected alternatives:
 - **Acceptance:** The device-pass record in `docs/field-records/` is green on H-1 (pause and resume from the car),
   H-3 (call), navigation prompts, and the negative control.
 - **Device check:** Joey's pass plus the car drive.
+- **Status (2026-09-30): the engineering flip is done in its PR, evidence in `STATE.md` (A-31 entry). The device
+  acceptance is NOT EXECUTED.**
+  - **The flip.** `ENGINE_DEFAULT.json` android is `native` with `episode` and `continuation`. `EngineLane`'s two
+    literals say the same, and a stock launch is the native lane (`build-default`). It rests on A-30's all-green run
+    36693793704. shell-invariants replaces "android stays js until A-31" with a record rule: the dated `A-31 flip` line
+    in `STATE.md` must name a run id and quote the founder's ruling. The block may declare only `episode` and
+    `continuation` until A-42.
+  - **The emulator.**
+    - The native leg's engine scenarios run in the stock lane (Automatic).
+    - `bridge` reads a stock launch as `native / build-default` with `episode` advertised. It plays an episode through
+      the page's own `ForayPlayer.play` and requires the engine to be the one playing it. Then it requires the
+      Developer setting Web to return the JS lane.
+    - The JS legs pin Web in their first step, so they keep measuring the page's player, which is still the fallback
+      lane.
+    - Run 36706526452 is green on all three legs (`docs/android-emulator-measurements.md` §12).
+  - **Not executed (D-A3, D-A5).** The acceptance above (the Joey device pass on H-1, H-3, navigation prompts and the
+    negative control) and the founder car drive did not run. D-A3 holds every device pass until A-42, and D-A5 approves
+    no spend for the car phone. Both go to the post-A-42 pass through HUMAN-ACTIONS #127, which is not issued. The
+    DECISIONS entry (G-7) is a separate founder-approved PR.
 
 ### 5.5 Track A2: native Forays (mirrors iOS M2)
 
@@ -610,6 +715,44 @@ Rejected alternatives:
 - **Acceptance:** The Foray parity families are 0 pending on the JVM. A-05 (f) in native mode shows p95 seam
   ≤ 1 s with the screen off.
 - **Device check:** a locked Foray on the Pixel with timed seams.
+- **Status (2026-09-30): done in its PR (#919), evidence in `STATE.md` (A-40 entry) and
+  `docs/android-emulator-measurements.md` §13.**
+  - **The core.** `EngineCore` (JVM) now carries the Swift core's Foray tape (NE-30s) behind
+    `EngineConfig.forayTapeEnabled`:
+    - `playForay` with J-4's `StructuralCheck`, and a resume point on the Foray clock;
+    - ADR-0007's ladder at load (`SeekPolicy`);
+    - the seam beat (`SeamGap`), stamped at the out-point as an absolute deadline and cut by every transport action;
+    - the standby deck's `prepare`;
+    - the Foray transport (previous, scrub and nudge on `ForayClock`);
+    - the packed `seam` row and the `cp_foray` cadence (`ForayProgressRules`);
+    - the narrating overlay's and the jingle's RULES (NE-31s): rendered and spoken bridges, the §14 fallback,
+      and `Interlude`.
+  - **The books.** `seam-gap`, `seek-policy`, `interlude`, `foray-clock`, `foray-structure`, `foray-progress`,
+    `media`, `manager-foray` and `prepare` moved to `runs` in `jvm-pending.json`, 0 owed.
+    - `interlude` was A-41's. Its policy is the tape's, so it came along, and A-41 no longer owes it.
+    - `manager-remainder` has no fixtures on main. It is re-booked to A-63, whose card already ports what A-40
+      leaves.
+    - `ForayTapeScenarioTest` turns named cases red under the four Foray mutations: the load after the beat,
+      cancel read as finish, a finish claiming the current line, and silence while not running.
+  - **THE TAPE'S SHAPE IS A DECK PAIR** (A-62 builds on it). `DeckPair` (foray-audio) holds two `ExoDeck`s, the
+    iOS NE-32 shape and policy.
+    - The playing deck opens the prefetch window `PREFETCH_LEAD_SEC` before its out-point, and the standby deck
+      prerolls the next segment at its in-point.
+    - `warmPromotion` promotes it at the boundary. The handover pauses the outgoing deck before the roles swap,
+      and plays nothing.
+    - The clipped playlist was rejected. A `ClippingConfiguration` is fixed when the source is built, but the
+      core arms the out-point after the load. The pair keeps A-25's never-early out-point on each deck.
+    - Both players handle focus, and the service's focus listener follows the playing deck.
+  - **The host** answers a spoken line `failed` at once (no synthesiser until A-41), so the core steps over it.
+    The jingle and the silence node are off. The page's bridge still refuses `playForay` until A-42 advertises
+    `foray`.
+  - **The emulator.** A new native step, `foray-seams`, runs an 8-segment Foray through the debug driver's
+    `playForay`, hidden on the pair. It is gated on p95 seam ≤ 1 s, with every seam crossed, the screen off and
+    one process.
+  - **Not solved: VBR in-points.** A-25 measured Media3's VBR seek maps as early. The standby loads with precise
+    timing, but the MP3 extractor's index seeking is a fallback, so a VBR file with a TOC is still sought by its
+    TOC.
+  - **Not executed:** the device check (D-A3).
 
 #### A-41 · Rendered narration files, TTS fallback seam, interludes — **L**
 - **Depends on:** A-40, narration Phase 4.
@@ -618,10 +761,54 @@ Rejected alternatives:
 - **Acceptance:** The narration, interlude and tts-bridge parity families are green. A-05 (k) is green in native
   mode.
 - **Device check:** airplane-mode fallback on the Pixel.
+- **Status (2026-09-30): done in its PR (#921), evidence in `STATE.md` (A-41 entry) and
+  `docs/android-emulator-measurements.md` §14.**
+  - **Narration Phase 4 was not waited on.** That phase is the on-device model's removal (A-10's trigger). It is
+    not a prerequisite for playing rendered files, and iOS M2 shipped rendered narration without it. Kokoro/ORT
+    stay (A-10).
+  - **The books.** `default-voice`, `lexicon` and `speech-rate` (the speech families NE-33 recorded) run on the
+    JVM (`SpeechRules`, `SpeechFamilies`). `interlude` was already A-40's. `jvm-pending.json` now owes only
+    `manager-remainder` (A-63), which has no fixtures on main.
+  - **Rendered narration is a file.** The core already loaded a rendered line on the deck like a segment. The
+    emulator now shows it: a bundled `.m4a` line plays as the deck's audible item.
+  - **The TTS fallback seam.** `SpeechNarrator` wraps Android `TextToSpeech` (`TtsOutput`, in the service's
+    process) behind `EngineSeams.Speaking`. It speaks three things: a spoken line, a rendered line whose file
+    failed or missed its deadline (§14), and the audition.
+    - Voices follow `SpeechRules`: the requested voice, else the Samantha rule, else the synthesiser's best
+      offline voice.
+    - Hard terms are marked up with the bundled lexicon, the legacy lane's SSML.
+    - Android has no pause. A resume continues from the last word boundary (`continued`), or re-speaks the line
+      (`fromStart`).
+  - **Interludes.** `InterludePlayer` (the NE-34 rules) runs over a `MediaPlayer` on the bundled, hash-pinned
+    jingle. The service turns `interludeAvailable` on only when the asset shipped. foray-audio's `build.gradle`
+    ships `player/assets/` and the lexicon directory in place, so there is one copy of each.
+  - **The emulator** (run 36754688003, all three legs green):
+    - `foray-seams` now gates the silence, because the jingle is sound. Six jingles, silence p95 507 ms.
+    - (k) runs the engine's own Foray in airplane mode:
+      - the bundled line was heard as a file;
+      - the network line fell back at its bridge 3.1 s after the out-point;
+      - the engine's TTS spoke its script (`com.google.android.tts`);
+      - the Foray landed on its last clip.
+  - **Not executed:** the device check (D-A3).
 
 #### A-42 · A2 flip: native Forays on Android — **S**
 - **Depends on:** A-41, a device pass, and a founder car drive.
 - **Ask and acceptance:** The same shape as A-31, for Forays.
+- **Status (2026-09-30): the engineering flip is done in its PR, evidence in `STATE.md` (A-42 entry). The device
+  acceptance is NOT EXECUTED.**
+  - **The flip.** `ENGINE_DEFAULT.json` android declares iOS's M2 four: `episode`, `continuation`, `restore` and
+    `foray`. `EngineLane` and `EngineBridgeRules.ADVERTISED_CAPABILITIES` say the same, so a Foray tapped on the page
+    plays on the engine. shell-invariants requires a dated `A-42 flip` line in `STATE.md` (a run id and the quoted
+    ruling) for `foray` or `restore`, and pins the service's tape to the grant.
+  - **Found in A-40, fixed here:** a lock-screen or car scrub or skip in a native Foray took the episode path in
+    source seconds. The JVM core now routes it on the Foray's clock, as the page does. The Swift core has the same
+    routing; that is iOS's.
+  - **The emulator.** `bridge` plays a Foray through the page's own `ForayPlayer.playForay` and requires the engine to
+    play it across a seam, unrelinquished. (k)'s page half is the page's own airplane Foray on the engine. Run
+    36775164730 is green on all three legs (`docs/android-emulator-measurements.md` §15).
+  - **Not executed (D-A3, D-A5).** The device-pass record (H-1, H-3, navigation prompts, the negative control) and the
+    founder car drive did not run. A-42 is the point D-A3 names, so the orchestrator may now issue #127; the car drive
+    needs spend D-A5 does not approve. The DECISIONS entry (G-7) is a separate founder-approved PR.
 
 ### 5.6 Track A3: Android Auto (only when store launch returns to scope)
 
@@ -646,7 +833,7 @@ Rejected alternatives:
 *Added 2026-09-29.* The founder, 2026-09-29: *"keep progressing towards milestone 3 for both iPhone and android"*. iOS M3 was re-planned the same day (`docs/native-engine-plan.md` §7 M3 and §14 Track M3: NE-38..NE-40d, NE-45..NE-47). The cards below mirror it for the JVM core (`foray-engine-core-jvm`) and the Media3 deck and service (A-25, A-26). They follow A-42, so M3's rules land on Android only after Android plays Forays natively.
 
 **The same rules as iOS M3:**
-- **JS stays the reference.** Every iOS M3 JS card (NE-38rj, NE-45j, NE-39j, NE-39n, NE-47) books its new family or ids in `player/parity/jvm-pending.json` to the A4 card below (`record.mjs --jvm-card A-6x`), so the JVM runner's `runs`/`families` books stay consistent (`record.mjs --check`).
+- **JS stays the reference.** Every iOS M3 JS card (NE-38rj, NE-45j, NE-39j, NE-39n, NE-47) books its new family or ids in `player/parity/jvm-pending.json` to the A4 card below (`record.mjs --jvm-card A-6x`), so the JVM runner's `runs`/`families` books stay consistent (`record.mjs --check`). **A-63 retired owing:** the file holds `runs` only and `--jvm-card` is refused, so from then on a JS change carries its JVM port in the same change.
 - **Field values ship provisional and marked `// MEASURE`**, with the row that settles each one. Android uses the same values as iOS unless an emulator measurement says otherwise.
 - **No device pass before the Android engine is fully operational** (D-A3). The human steps are written HUMAN-ACTIONS-ready and issued through #127 after A-42. No engineering card waits on them.
 
@@ -688,6 +875,17 @@ A-61, A-62, A-64, A-66 (+ NE-39j) ─ A-63 ─ A-67 ─ A-68 ─ A-69 (gated)
     - DiagGate admits the rows.
   - `engine-report.mjs` gives the new verdicts over an emulator paste (the A-05 artifacts), with the run id.
 - **Device check:** none. A-68 reads Joey's pastes.
+- **Status (2026-09-30): done in its PR (#926). The evidence is in `STATE.md` (A-60 entry) and
+  `docs/android-emulator-measurements.md` §16.**
+  - **The values.** 20 s, 8 s, 600 s and the P-14 stall display are each tagged `// MEASURE: verdict=<id>`. The core
+    names `DeckDeadlineClass` on every load and prepare.
+  - **The published speed.** The facade carries the listening speed. Media3 publishes 0 only while buffering.
+  - **What the card did not name.** Android Copies could not feed any NE-38e verdict: the Android ring dropped every
+    row's sub-kind. `DiagGate` is now ported to the JVM core, and `EngineLog` applies it as iOS's `DiagRing` does.
+  - **The verdicts.** NE-38e's tool is on `engine/m3`, not yet on this branch. It was run merged with A-60's
+    Android reader over run 36786830313's native artifacts: `P13-clip`, `P13-line`, `reuse-idle` and
+    `narration-fallback` have coverage and pass on bundled assets, which settles nothing.
+  - **Not executed:** the device check (A-68, D-A3).
 
 #### A-61 · Route resume on the JVM core, from Android's device callbacks (mirrors NE-38rs) — **M**
 - **Depends on:** A-42, NE-38rj (the `route-resume` family, owed to A-61 in `jvm-pending.json`)
@@ -714,33 +912,60 @@ A-61, A-62, A-64, A-66 (+ NE-39j) ─ A-63 ─ A-67 ─ A-68 ─ A-69 (gated)
     - the keys survive a store reload.
   - An `android-playback` step adds and removes a virtual device, where the emulator allows it. Otherwise it is recorded as no-coverage.
 - **Device check:** A-67's script, route block.
+- **Status (2026-09-30, A-61 PR):** done on `android/native`, with engine/m3 merged in for NE-38rj's family (a cherry-pick of #894 alone conflicts; engine/m3 goes to main as #913 anyway). NE-38rs (#904, #908) is the iOS reference, ported line for line:
+  - `RouteResume.java` is route-resume.js's decision, reducer and replay, plus the salted SHA-256 keys (`MessageDigest`), the LRU set of 8 and the stored form (`{"v":1,"salt":…,"keys":[…]}`, the Swift bytes). The `route-resume` family is in the JVM's `runs`.
+  - `EngineCore.onRoute` follows NE-38rs: presses, interruptions, system pauses and playing feed the reducer; a route is known after 1 s heard through it (`EngineNow.route`); the loss's age is wall-clock; `route kind=lost|back … decision= why=` rows carry 8 hex of the key, never an address.
+  - The host (`RouteWatcher` in the service) keys a device by its `SESSION_PORTS` token and its address; BECOMING_NOISY stays the pause and names the route that is going, and the removal after it adds nothing. The class is `car` in car UI mode (entering it reports the current route again, so a car whose projection starts after its Bluetooth resumes then), `bluetooth` for A2DP, SCO and LE, `other` otherwise. `BLUETOOTH_CONNECT` is not requested (D-A9), and `mobile/ENGINE_DEFAULT.json` android carries `routeResumeBluetooth: false`.
+  - `EngineStore` keeps `ForayEngine.knownRoutes`; a purge takes it with every other private key.
+  - The engine/m3 merge brought M3 cases the JVM does not pass yet, booked to their A4 cards in `jvm-pending.json` `cases`: the audition by URL (5 `contract` cases and 2 `manager-foray` scenarios) to A-66, route sharing (`contract/send-request-valid-set-route-sharing-long-form`) to A-67, and `diag-tokens/narration-fallback-cause-tokens` to A-64. prepare-narration (A-62) and manager-remainder (A-63) stay owed whole.
+  - The capability gate (shell-invariants, A-28) now lets a claimed capability (`episode`, `foray`) carry owed families and cases only when a Track A4 card (A-60..A-68) owes them. Anything owed to an earlier card still blocks. A-63 empties the books (done: the allowance is gone, and nothing may be owed).
+  - Emulator: the native leg's `route` step drives a VIRTUAL A2DP device through the debug driver (the emulator has no Bluetooth, and adb cannot add an output) in real car mode (`cmd uimode car yes`); without car mode it records no-coverage.
+  - Open for the device pass (A-67): a resume that starts the foreground service from the background after a long loss, on Android 12+.
 
 #### A-62 · Prepare across narration seams on the Media3 deck (mirrors NE-45s) — **M**
-- **Depends on:** A-42, NE-45j (its new `prepare` ids are `cases` owed to A-62 once A-40 has ported the family: A-25 handed `prepare` to A-40, because its cases run the Foray tape through the engine)
+- **Depends on:** A-42, NE-45j (it recorded its cases as a sibling family, `prepare-narration`, which `jvm-pending.json` owes whole to A-62; `prepare` itself stays owed whole to A-40, because A-25 handed it on: its cases run the Foray tape through the engine)
 - **Human-gated:** no.
-- **Files:** the Foray tape from A-40 (an ExoPlayer playlist with `ClippingConfiguration`, or a deck pair, whichever A-40 chose), the JVM `DeckPolicy.warmsAcross`, the packed `seam` rows, and Robolectric tests.
+- **Files:** the Foray tape from A-40 (A-40 chose the DECK PAIR: `DeckPair` over two `ExoDeck`s), the JVM `DeckPolicy.warmsAcross`, the packed `seam` rows, and Robolectric tests.
 - **Ask:** Port `warmsAcross`. A rendered line is a `MediaItem` like a clip.
   - **Playlist:** ExoPlayer already buffers the next item, so the work is to keep rendered lines in the playlist and to prepare the clip after a *spoken* line at the line's start. A spoken line is a playlist boundary where the player idles while `TextToSpeech` speaks. That needs a second player, or Media3's `PreloadManager`.
   - **Deck pair:** port NE-45s as written.
   - Seam rows name `from=`, `to=` and `prepare=`.
 - **Acceptance:**
-  - `prepare` has nothing pending on the JVM.
+  - `prepare-narration` has nothing pending on the JVM (the JVM runs it, and `families` no longer names it).
   - Robolectric: clip → rendered line → clip has no cold load on the second clip.
   - A-05 (f) in native mode: p95 seam ≤ 1 s with the screen off (the A-40 bar), split by seam kind, with the run id.
 - **Device check:** A-67's script, rendered-Foray block.
+- **Status (2026-10-01): done in its PR (#927). The evidence is in `STATE.md` (A-62 entry) and
+  `docs/android-emulator-measurements.md` §17.**
+  - **The iOS reference was code, not plan text.** NE-45s (#902) and the M3 review's "a whole episode is never
+    prepared" (94b01a59) are on `engine/m3`; the JVM port follows them.
+  - **The books.** `prepare-narration` runs on the JVM, 23 of 23, and nothing is owed (`families` to `runs`).
+  - **Robolectric.** `NarrationSeamTest` runs the real core over the deck pair of two real ExoDecks: clip, rendered
+    line, clip. Both seams are handovers, and the second clip has no cold load.
+  - **The emulator.** The native `foray-seams` Foray now has three rendered lines. Run 36799524357 measured p95
+    507 ms of silence over 10 seams, every seam with a line in it `prepare=hit`.
+  - **Not executed:** the device check (D-A3).
 
 #### A-63 · The manager remainder, de-dup, and an empty JVM book (mirrors NE-39s) — **L**
 - **Depends on:** A-61, A-62, A-64, A-66, NE-39j. Every M3 family must be booked before the book can empty.
 - **Human-gated:** no.
 - **Files:** the JVM runners for `manager-remainder` and any other family still owed, `player/parity/jvm-pending.json`, and `EngineCore` (the JVM port).
 - **Ask:**
-  - Port whatever of `manager-remainder` A-40 left, and every id still owed.
+  - Port whatever of `manager-remainder` A-40 left (all of it: A-40 re-booked the whole family to A-63), and every id still owed.
   - When `families` and `cases` are both empty, keep `jvm-pending.json` with `runs` only, and make `record.mjs --check` require empty books from then on.
   - **De-dup:** record `dupCandidate` on Media3 media-button deliveries, record-only (NE-39s's provisional decision). Android's legacy JS lane keeps its own window.
 - **Acceptance:**
   - The JVM runs every recorded engine family, and `families` and `cases` are empty (run id).
   - `record.mjs --check` enforces that.
 - **Device check:** none.
+- **Status (2026-09-30, card PR into `android/native`):** built. The iOS reference was code, not plan text: NE-39j (#903) and NE-39s (#909) had both landed on `engine/m3`, which `android/native` already holds, so the card's "external blocker" note was stale.
+  - **The manager remainder runs on the JVM, whole:** `ForayTapeFamilies.managerRemainder` (registered as `JvmFamilies.MANAGER_REMAINDER`) drives the 20 cases through `EngineCore` with the Foray tape on, as the Swift `ManagerRemainderFamily` does. `EngineScenarioDriver` learned NE-39j's manager-target shapes from the Swift driver: backend `prefetch` (`true`/`"loses"`; the core's `prepare` logged as the ask `prefetch:<id>@<s>`, a warm key landing at once), `deck: "window"` (`DeckEvent.PrepareWindow`), `coldLoadMs` on the manual clock (the `load:` op written when it lands), `slowFirstPlay`, `telemetry: ["rate.snapped"]` (from the `rate kind=snapped` row) and the `positionTimer` view. It refuses `settledEvents`, `tts.pause: "held"` and `tts: "releasePause"` with the reason (the jsOnly `manager-await` family).
+  - **The one core gap NE-39s found is ported:** `EngineCore.stop` pauses a deck that is audible while the machine says stopped (player-core-7), with a `pause kind=forced` row, as `pause()` already did.
+  - **The last owed case:** `contract/send-request-valid-set-route-sharing-long-form` (booked to A-67 by A-61). The contract decodes `setRouteSharing` (`EngineContract.Command.SetRouteSharing`, the policy read against `ROUTE_SHARING_POLICIES`), and the core and host change nothing on it: route sharing is an AVAudioSession word with no Android counterpart. Whether Android's Developer row stores it stays A-67's.
+  - **The books:** `jvm-pending.json` holds `runs` only (34 families, every recorded family that is not jsOnly). `player/parity/jvm-pending.js` makes a `families` or `cases` key a problem (even `{}`), `record.mjs --check` holds every recorded non-jsOnly family to `runs`, `record.mjs` refuses `--jvm-card` and never writes the books, and `ParityData.load` (JVM) refuses a tree that owes. `ParitySuiteTest` now requires a runner and zero owed for every family that is not jsOnly. The shell-invariants capability gate dropped its Track A4 allowance: every family a claimed capability lists must be in `runs`.
+  - **Executed in CI:** android-build run 36819481872 (android-shell green): JVM parity `manager-remainder` 20 of 20 on its first run, `contract` 65 of 65, totals 1886 passed, 0 failed, 0 owed (`not-ported` 0, `pending` 0). android-playback run 36819481965, native leg included, green.
+  - **De-dup (DV-6), record-only:** nothing changed in the shell, by design. Every Media3 delivery (`EnginePlayer`'s handlers, the session's custom commands) is one `RemotePress`, and the core's `remote` row records `dupCandidate` and drops nothing. `EnginePlayerTest.aRepeatedMediaButtonIsRecordedAsADupCandidateAndStillHandled` pins it over a real `ForayEngineHost`: a second next 200 ms after the first is `dupCandidate=y` and still moves on. The legacy JS lane keeps `foray-media-session.js`'s `REMOTE_DUPLICATE_WINDOW_MS`.
+  - **Review (2026-09-30):** the docs that still told a JS card to book the JVM (`docs/native-engine-plan.md` §6 and the Track A4 preamble, this section's "same rules", `STATE.md`'s A-22 entry) now say owing is retired. Left for A-67, which mirrors NE-40: NE-40's D-5 order in `EngineCore.stop` (the `stop` cause row BEFORE the seam-gap cut, so a jingle's cut never precedes its cause) is not on the JVM yet; no fixture pins the row order, so parity is green either way.
 
 #### A-64 · Next over narration, and the fallback's cause, on the JVM (mirrors NE-39n) — **S**
 - **Depends on:** A-42, NE-39n
@@ -749,6 +974,8 @@ A-61, A-62, A-64, A-66 (+ NE-39j) ─ A-63 ─ A-67 ─ A-68 ─ A-69 (gated)
 - **Ask:** Port NE-39n's ruling: the engine's Next lands on the next item, a narration line included. Map the causes to the same tokens.
 - **Acceptance:** the NE-39n cases pass on the JVM. Robolectric maps each `PlaybackException` class to its cause.
 - **Device check:** A-67's script.
+- **Status (2026-09-30, M3 integration PR):** the Next half is done. The main merge put `manager-episode` in the JVM's `runs`, and NE-39n had re-recorded `manager-episode/every-effect-has-a-handler`, so `EngineCore.java` now flips the same three `skipBridges` calls (`canNext`, `next`, `SkipNext`) as the Swift core and the case passes; nothing is owed. The fallback-cause half (the `PlaybackException` mapping) is still open.
+- **Status (2026-09-30, card PR into `android/native`):** the fallback-cause half is done. `DeckEvent.Failed` and `DeadlineExceeded` carry the deck's `NarrationFallbackCause`; the pure `NarrationFallbackCauseReading` (JVM core) maps Media3's codes in the Swift precedence (an HTTP status, then `IO_NETWORK_CONNECTION_FAILED` → `offline`, then the deadline or a connection/generic timeout → `timeout`, then every `PARSING_*`/`DECODER_*`/`DECODING_*` → `decode`, else `other`); `ExoDeck.fallbackCause` reads the failure's code, its `DataSourceException` reason and `InvalidResponseCodeException` status, and for a deadline the last load error the player retried through (an `AnalyticsListener`, the counterpart of the iOS error log). The core's row says `where=` (not `at`, the ring's wall clock) and `cause=`; `DiagGate` admits a `narration` row's `cause` through `narrationFallbackCause`. `diag-tokens/narration-fallback-cause-tokens` is no longer owed. One divergence, `// MEASURE`: Media3 folds "no network" and "the host would not connect" into one code, so a dead host reads `offline` here where iOS keeps `cannotFindHost` as `other`.
 
 #### A-65 · Keep-alive across silent seams: the Android twin of the silence-node decision (mirrors NE-46) — **S**
 - **Depends on:** A-60
@@ -763,6 +990,14 @@ A-61, A-62, A-64, A-66 (+ NE-39j) ─ A-63 ─ A-67 ─ A-68 ─ A-69 (gated)
   - A timer 6 s late writes the row.
   - A-05 (g) Doze stays green in native mode.
 - **Device check:** A-68 reads the rows.
+- **Status (2026-10-01, card PR into `android/native`):** done. NE-46 (#901) is merged on `engine/m3` and came into `android/native` with A-61, so the iOS reference was code (`EngineCore.noteLateness`/`lateRow`, `LateTimerTests`).
+  - **Media3's rule, read from its source** (media3-session 1.11.0, `MediaNotificationManager.isAnySessionUserEngaged`): the service stays in the foreground while the session player has play-when-ready on and is READY or BUFFERING, plus `DEFAULT_FOREGROUND_SERVICE_TIMEOUT_MS` (10 min) after that turns false. `EnginePlayer.keepsServiceInForeground` is that rule.
+  - **The decision as built.** No silence is rendered (the host's `SilenceStart`/`SilenceStop` stay empty; the service never turns the node on). The host's `Surface` gains `silentSeam` (the seam beat: `inSeamGap` or a load parked on the beat), and the facade reports it as BUFFERING with play-when-ready on, so the lock screen's clock stands still through the beat instead of running ahead. A spoken line (a bridge or a rendered line's fallback) is BUFFERING until the synthesiser starts it (the core's own `buffering`) and then READY at 1x, as A-41 built it. **One deviation from the card's text:** the card said BUFFERING through the whole spoken line. READY keeps the foreground exactly as BUFFERING does (the rule above), while BUFFERING would freeze the lock screen's clock for the whole line and make `isPlaying()` false, and Media3's `onTaskRemoved` then stops the service on a swipe from Recents. Play-when-ready stays on through the line either way, which is what the policy needs.
+  - **A swipe in a seam beat.** Media3's default `onTaskRemoved` keeps the service only while `isPlaying()`, which a BUFFERING beat or stall is not. `ForayPlaybackService.onTaskRemoved` therefore also keeps it while it is in the foreground and the facade still says play-when-ready (READY or BUFFERING). A paused service still stops (the `swipe-am-kill` leg is unchanged). This is a stop path for A-67's audit.
+  - **The late-timer row** is the HOST's on Android (`ForayEngineHost.lateRow`), because the timers and the deck's deadlines are the host's. Its ledger of one-shot due times is on both clocks, written at `arm`, cleared at cancel and teardown. The P-13 deadline is checked against `ExoDeck`'s per-class seconds, which the service hands in (`setLoadDeadlines`). The rule and the tokens are iOS's: more than `NARRATION_SUSPEND_GAP_MS` late (strict), only under grace, and measured before the input is handled. The row is `grace kind=late timer= lateMs= inSeam=y|n reason= clock=mono|wall`, without `bgRemainingMs` (Android has no background budget). Android's `monoMs` is `elapsedRealtime`, so a timer that deep sleep held back (Handler timers run on uptime) is late on the monotonic clock.
+  - **`fgs kind=left foray=y|n running=y|n inSeam=y|n spoken=y|n`** (`ForegroundWatch`) is written from Media3's own decision (`onUpdateNotificationAsync`'s `startInForegroundRequired`) on each step from foreground to not. `foray=y running=y` is the case A-65 exists for. `running=n` is a paused or finished engine reaching Media3's timeout, which is expected. The dump prints `foregroundRequired`.
+  - **Tests** (CI only): `SilentSeamKeepAliveTest` (Robolectric) drives the real host, narrator and jingle player into the real facade on a clock that fires timers when due. It checks the rule every 100 ms through a 3 s beat (the jingle, the next clip loading, then parked), a 3 s spoken line, and a rendered line's 3 s spoken fallback. `LateTimerHostTest` covers a beat 6 s late under grace (row, before the seam lands), 4 s and exactly 5 s late (no row), no grace (no row), a wall-only delay (`clock=wall`), a P-13 deadline 6 s late (`timer=load-deadline`), and a cancelled timer. The other new tests are `ForegroundWatchTest`, `EnginePlayerTest` (the beat is BUFFERING) and `ForayPlaybackServiceTest` (the fgs row and the swipe rule). The shell invariant `A-65` pins the shape.
+  - **For A-68.** `engine-report.mjs`'s `suspension-in-seam` reads `grace late ... inSeam=y` as written here. Its `no-coverage` test for "a seam held in the background" wants `bgRemainingMs` on `grace begin`, which Android rows never carry, so an Android paste needs that clause read differently, or an `fgs` reading added. The Doze leg (A-05 (g)) is unchanged; its native run is in the PR.
 
 #### A-66 · Audition by URL on the Media3 deck (mirrors NE-47) — **S**
 - **Depends on:** A-42, NE-47
@@ -774,6 +1009,7 @@ A-61, A-62, A-64, A-66 (+ NE-39j) ─ A-63 ─ A-67 ─ A-68 ─ A-69 (gated)
   - A failed preview falls back to `TextToSpeech`.
 - **Acceptance:** the contract cases pass on the JVM. Robolectric covers the refusal and the fallback.
 - **Device check:** none until the picker ships rendered voices.
+- **Status (2026-09-30, card PR into `android/native`):** built, mirroring NE-47 as merged on `engine/m3` (#897). `ContractDecoding.narrationUrl` admits `url` only as a plain path on `NARRATION_PUBLIC_BASE`, character by character as the page's pattern reads it. The JVM core has NE-47's preview deck: `EngineCommand.Preview` / `EngineInput.Preview`, `EngineState.preview` and `lastPreviewToken`, `loadPreview` (a `LINE`-class load), `onPreview`, `previewFailed` (spoken by `TextToSpeech` while the session is active, with an `audition kind=fallback reason=failed|timeout` row) and `stopPreview` (the next play, a spoken audition, a stop, a relinquish and the teardown cut it). The host interprets `Preview` on `EngineSeams.preview`, which answers `failed` when no deck is wired. The service builds a third ExoPlayer for it, configured by `EngineAudio`, so its play requests audio focus for the tap. Its rows say `lane=preview`, and its deadline is `ForayPlaybackService.PREVIEW_LOAD_DEADLINE_SEC`, 6 s, iOS's value, `// MEASURE`. The 5 `contract` cases and the 2 `manager-foray` scenarios are no longer owed (`jvm-pending.json`). Tests: `AuditionPreviewTest` (JVM core, the Swift `AuditionPreviewTests`) and `AuditionPreviewHostTest` (Robolectric: a real `ExoDeck` preview requests `AUDIOFOCUS_GAIN`; `engine-busy` while an episode plays; a 404, a deadline or a missing deck is spoken; the bridge refuses an off-host url).
 
 #### A-67 · Stop-cause audit and the A4 script (mirrors NE-40) — **M**
 - **Depends on:** A-63, A-65
@@ -794,6 +1030,38 @@ A-61, A-62, A-64, A-66 (+ NE-39j) ─ A-63 ─ A-67 ─ A-68 ─ A-69 (gated)
   - The kill-then-play step is green in native mode on both API legs (run id).
   - The force-stop value is recorded.
 - **Device check:** Joey's A4 pass, after A-42.
+- **Status (2026-10-01, card PR #957 into `android/native`):** built. The iOS reference was code, not plan text: NE-40
+  (#916) is on `engine/m3` and came into `android/native` with A-61.
+  - **The JVM core, NE-40's D-5 order.** The `stop` row now comes before the seam's cut in `pause`, `stop`,
+    `relinquish`, an interruption, a lost route, the ladder's last refusal and grace expiry (the gap the A-63 review
+    left open). The `interlude cut` and `silence stopped|capped` rows come before their commands, and `teardown()`
+    while playing writes `stop cause=relinquish`. `StopCauseTest` (JVM) is NE-40's table path for path: 32 paths over
+    the same 13 `stopRow` sites as Swift (the shell invariant A-67 holds the two lists equal), with an exhaustive
+    `disposition` switch.
+  - **The Android shell.** `StopPathAuditTest` (Robolectric) feeds each Android adapter to the real host as the
+    service does. The adapters are ExoPlayer errors (also through a real `ExoDeck`), the deck's deadline and
+    uncommanded pause, focus loss (permanent, transient, and a duck as a pause, also on a real ExoPlayer and
+    AudioManager), BECOMING_NOISY on and off the deck, the device callback, the line deadline, Doze,
+    `onTaskRemoved` and the service's stop. Each writes one cause row before the host silences anything.
+    `grace-expired` (no background budget) and `media-services-reset` (no Android signal) never happen on Android.
+  - **What the audit fixed.** A service destroyed while playing wrote no stop row: `ForayEngineHost.teardown` now
+    tells a live core first. The service names a swipe and its own end (`service kind=task-removed kept= running=`,
+    `service kind=destroy running=`).
+  - **Route sharing (NE-40's DV-8 trial) has no Android counterpart:** the bridge refuses `setRouteSharing`
+    `capability-off`, and on Android `client.js` offers no row.
+  - **The DV-7 twins.** `android-playback` gained a native API 36 leg running (j) alone. (j)'s verdict reports
+    `twins`: DV-7a is gated (`am kill`, a swipe then `am kill`, and a SIGKILL each resume 4a at the saved position,
+    at least one through Media3's playback resumption from the restore record). DV-7b is recorded (the force-stop
+    value).
+    - API 36 (run 36832171909, job 110271348252) is green; the swipe and SIGKILL legs died and came back through the
+      record.
+    - **The force-stop value: the control does not hold on API 36 either.** After `am force-stop` the play reached
+      our media button receiver and 4a played (`controlHolds: false`). API 34 found the same under A-27.
+    - API 34: the full native leg's (j) on the PR's last run (its run id and verdict are in PR #957), with A-27's API 34 force-stop finding in §10.
+  - **The A4 section** is `docs/android-device-pass.md` Part I (steps 26–31), with rows in the record template.
+    **Not issued:** the orchestrator issues it through #127 (D-A3).
+  - **Found on the main merge.** Main's HUMAN-ACTIONS #129 (the Supabase region) and engine/m3's #129 (the M3 drive)
+    collided. The M3 drive is now #130 here, and its script and the iOS plan line say so.
 
 #### A-68 · Settle the Android values (mirrors NE-38f) — **S**
 - **Depends on:** A-60, A-67, and Joey's pastes (#127)

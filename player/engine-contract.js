@@ -94,7 +94,7 @@ export const COMMANDS = Object.freeze([
   "setPageVisible",
   "ackAdvances", "ackEvents", "restoreBar", "purge",
   "relinquish", "audition", "setModeOverride", "setHoldPolicy", "probeSession",
-  "simulateTermination",
+  "simulateTermination", "setRouteSharing",
 ]);
 
 /** The `type` of every "engine" event (§5.4). Delivery is best effort: a page
@@ -135,6 +135,13 @@ export const RELINQUISH_CAPS = Object.freeze([...CAPABILITIES, "all"]);
 /** The Developer engine setting, 'Playback engine: Automatic / Native / Web'
     (NE-17), as setModeOverride's `mode` and the stored override. */
 export const MODE_OVERRIDES = Object.freeze(["auto", "native", "web"]);
+
+/** DV-8's trial (card NE-40): the audio session's route-sharing policy, as
+    setRouteSharing's `policy`, the stored Developer choice and the `build`
+    row's `routeSharing`. `default` is what every build ships (M1's car win
+    happened on it); `longFormAudio` is AVAudioSession's `.longFormAudio`,
+    tried only through the Developer row and only from the next launch. */
+export const ROUTE_SHARING_POLICIES = Object.freeze(["default", "longFormAudio"]);
 
 /** Snapshot `mode` (§5.3): what is loaded. */
 export const SNAPSHOT_MODES = Object.freeze(["none", "episode", "foray"]);
@@ -187,6 +194,22 @@ export function parseHoldPolicy(policy) {
 /* ====================================================================== */
 
 const HOLD_POLICY_PATTERN = "^(forever|none|until:[1-9][0-9]{0,5})$";
+
+/** The narration host (Spark ruling D6): the public `foray-narration` bucket's
+    custom domain, where every rendered narration file and each voice's
+    `preview.m4a` live (tools/narration/render-profile.json `public_base`,
+    which engine-contract.test.js holds this equal to). NE-47: an audition's
+    `url` must be a file here. The engine reads it as
+    `EngineConstants.EngineContract.narrationPublicBase`. */
+export const NARRATION_PUBLIC_BASE = "https://audio.jwlabs.ai";
+
+/** NE-47: an audition `url`. https, ON the narration host, and a plain
+    object path: the characters of a content key and nothing else, so no
+    query or fragment (a token or a cache-buster), no credentials, no port,
+    no percent-escapes and no second host smuggled after an `@`. The engine
+    checks exactly these characters (ContractDecoding.swift `narrationUrl`),
+    so the page and the engine accept and refuse the same urls. */
+const NARRATION_URL_PATTERN = `^${NARRATION_PUBLIC_BASE.replace(/[.]/g, "\\.")}/[A-Za-z0-9._~/-]+$`;
 
 /** The public kinds a payload can be validated as, in the order the schema
     file lists them. */
@@ -241,9 +264,19 @@ const COMMAND_ARGS = {
   ackAdvances: argsOf(["upToSeq"], { upToSeq: nonNegInt }),
   ackEvents: argsOf(["upToSeq"], { upToSeq: nonNegInt }),
   relinquish: argsOf(["cap"], { cap: { enum: [...RELINQUISH_CAPS] } }),
-  audition: argsOf(["text", "voiceId"], { text: { type: "string", minLength: 1 }, voiceId: nullable(str) }),
+  /* NE-47 (Spark §3.3): `url`, when present, is the chosen voice's RENDERED
+     preview (`preview.m4a` on the narration host). The engine plays it on a
+     deck and falls back to speaking `text` in `voiceId` if it will not load;
+     with no `url` the audition is spoken, exactly as before. The page sends
+     one only once the picker offers rendered voices. */
+  audition: argsOf(["text", "voiceId"], {
+    text: { type: "string", minLength: 1 },
+    voiceId: nullable(str),
+    url: { type: "string", pattern: NARRATION_URL_PATTERN },
+  }),
   setModeOverride: argsOf(["mode"], { mode: { enum: [...MODE_OVERRIDES] } }),
   setHoldPolicy: argsOf(["policy"], { policy: { type: "string", pattern: HOLD_POLICY_PATTERN } }),
+  setRouteSharing: argsOf(["policy"], { policy: { enum: [...ROUTE_SHARING_POLICIES] } }),
 };
 
 /* ---------- examples: the contract and snapshot parity families ---------- */
@@ -274,6 +307,10 @@ const SNAPSHOT_IDLE = {
 };
 
 const without = (o, k) => { const c = { ...o }; delete c[k]; return c; };
+
+/** A rendered voice preview as the picker will name it (NE-47): the per-voice
+    `preview.m4a` under the render profile's prefix (Spark §3.2). */
+const PREVIEW_URL = `${NARRATION_PUBLIC_BASE}/n/kokoro-fp32-aac64-v1/af_heart/preview.m4a`;
 
 /** `{valid: {slug: payload}, invalid: {slug: payload}}` per public kind. Each
     one is a case in the contract family (the snapshot's in the snapshot
@@ -323,11 +360,17 @@ const EXAMPLES = {
       },
       "relinquish-foray": { v: 1, cmdSeq: 7, cmd: "relinquish", source: "tap", args: { cap: "foray" } },
       "set-hold-until": { v: 1, cmdSeq: 8, cmd: "setHoldPolicy", source: "tap", args: { policy: "until:60" } },
+      "set-route-sharing-long-form": { v: 1, cmdSeq: 13, cmd: "setRouteSharing", source: "tap", args: { policy: "longFormAudio" } },
       "set-continuation": {
         v: 1, cmdSeq: 9, cmd: "setContinuation", source: "restore",
         args: { planSeq: 3, autoAdvance: false, chain: [{ planSeq: 3, hopSeq: 1, nextId: "ep-2" }] },
       },
       "stop-data-deletion": { v: 1, cmdSeq: 10, cmd: "stop", source: "tap", args: { persist: false } },
+      "audition-spoken": { v: 1, cmdSeq: 11, cmd: "audition", source: "audition", args: { text: "This is how I sound", voiceId: null } },
+      "audition-rendered": {
+        v: 1, cmdSeq: 12, cmd: "audition", source: "audition",
+        args: { text: "This is how I sound", voiceId: "kokoro:af_heart", url: PREVIEW_URL },
+      },
     },
     invalid: {
       "unknown-cmd": { v: 1, cmdSeq: 5, cmd: "fastForward", source: "tap" },
@@ -339,6 +382,26 @@ const EXAMPLES = {
       "play-episode-without-row": { v: 1, cmdSeq: 5, cmd: "playEpisode", source: "tap", args: { item: { id: "ep-1" } } },
       "negative-seq": { v: 1, cmdSeq: -1, cmd: "play", source: "tap" },
       "override-unknown-mode": { v: 1, cmdSeq: 5, cmd: "setModeOverride", source: "tap", args: { mode: "legacy" } },
+      "route-sharing-unknown-policy": { v: 1, cmdSeq: 5, cmd: "setRouteSharing", source: "tap", args: { policy: "longForm" } },
+      "audition-url-not-https": {
+        v: 1, cmdSeq: 5, cmd: "audition", source: "audition",
+        args: { text: "This is how I sound", voiceId: null, url: PREVIEW_URL.replace("https:", "http:") },
+      },
+      "audition-url-off-host": {
+        v: 1, cmdSeq: 5, cmd: "audition", source: "audition",
+        args: { text: "This is how I sound", voiceId: null, url: "https://cdn.example.com/n/v1/af_heart/preview.m4a" },
+      },
+      "audition-url-with-query": {
+        v: 1, cmdSeq: 5, cmd: "audition", source: "audition",
+        args: { text: "This is how I sound", voiceId: null, url: `${PREVIEW_URL}?token=abc` },
+      },
+      "audition-url-lookalike-host": {
+        v: 1, cmdSeq: 5, cmd: "audition", source: "audition",
+        args: { text: "This is how I sound", voiceId: null, url: "https://audio.jwlabs.ai.example.com/preview.m4a" },
+      },
+      "audition-url-null": {
+        v: 1, cmdSeq: 5, cmd: "audition", source: "audition", args: { text: "This is how I sound", voiceId: null, url: null },
+      },
     },
   },
   sendResponse: {
@@ -705,12 +768,17 @@ export function helloRequest(pageBuild) {
     name because it is on the wire of every Copy paste since NE-26. */
 export const ENGINE_PLATFORMS = Object.freeze(["ios", "android"]);
 
-/** The platforms whose shell the PAGE asks engineHello (A-20's flag). Only
-    iOS today: Android's ForayAudio plugin has no engine methods until A-28,
-    which adds "android" here. Until then the page never asks an Android shell,
-    so `methodPresent` is false there and decideMode answers `no-method` — the
-    JS player, nothing to relinquish, exactly the lane Android always had. */
-export const HELLO_PLATFORMS = Object.freeze(["ios"]);
+/** The platforms whose shell the PAGE asks engineHello (A-20's flag). iOS,
+    and Android since A-28 (docs/plans/android-assessment.md §5.4), whose
+    ForayAudio plugin answers the three engine methods. Until A-31 the Android
+    engine answered `{mode: "legacy", reason: "build-default"}` by default, so
+    decideMode answered `engine-legacy` — the JS player, nothing to relinquish;
+    since A-31 (mobile/ENGINE_DEFAULT.json `android: native`) a stock launch is
+    the native lane for episodes, since A-42 for Forays too, and the Developer
+    setting's Web is the legacy answer. An
+    Android binary built before A-28 rejects the call UNIMPLEMENTED, which
+    native-engine.js reads as `no-method`. */
+export const HELLO_PLATFORMS = Object.freeze(["ios", "android"]);
 
 /** Why decideMode answered what it did, one token per outcome. */
 export const HANDSHAKE_REASONS = Object.freeze([
@@ -724,8 +792,9 @@ export const HANDSHAKE_REASONS = Object.freeze([
  *     platform       Capacitor.getPlatform(): one of ENGINE_PLATFORMS ("ios",
  *                    "android") may have an engine; anything else is `not-ios`
  *     methodPresent  whether the plugin answers engineHello at all (an older
- *                    binary does not, and neither does any Android binary
- *                    before A-28: the page does not ask — HELLO_PLATFORMS)
+ *                    binary does not: an Android binary before A-28 rejects
+ *                    it UNIMPLEMENTED; a platform outside HELLO_PLATFORMS is
+ *                    never asked)
  *     hello          engineHello's answer, or null for a timeout (5 s) or a
  *                    rejection
  *

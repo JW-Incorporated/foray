@@ -3,41 +3,49 @@
    what the reference says, and refuses to write down anything else.
 
    USAGE
-     node tools/parity/record.mjs [--family F] --port-card NE-xx [--jvm-card A-xx]
+     node tools/parity/record.mjs [--family F]
          Run every case against the real JS module and write each non-authored
-         `expect`. Every case that is NEW, or whose expect CHANGED, is added to
-         swift-pending.json tagged with --port-card — a JS rule change therefore
-         never turns the Swift runner red; it hands the Swift card a list.
-         The JVM keeps its own books, jvm-pending.json (A-22; player/parity/
-         jvm-pending.js). A family the JVM does not run yet is owed there WHOLE,
-         so a case new or changed in it owes the JVM nothing more. A case new or
-         changed in a family the JVM DOES run, or a brand-new family, is handed
-         to the Android card named by --jvm-card (docs/plans/android-assessment.md
-         §5.4-5.5 name the card that ports each family), for the same reason.
+         `expect`. Every case that is NEW, or whose expect CHANGED, is reported
+         as Swift work THIS change carries. Until NE-39s (M3) such a case went
+         into swift-pending.json tagged with a --port-card, and a later Swift PR
+         burned it down; NE-39s burned the list to nothing and deleted it (and
+         unported.json with it), so nothing can be owed any more: the Swift
+         runner (engine-parity) is red on the case until its port lands in the
+         same change. --port-card is refused.
+         The JVM's books, jvm-pending.json (A-22; player/parity/jvm-pending.js),
+         went the same way at A-63: the JVM runs every recorded family, the file
+         holds "runs" only, and --jvm-card is refused. A case new or changed in
+         a family the JVM runs is reported as JVM work this change carries (the
+         JVM runner in android-build is red on it until the port lands), and a
+         brand-new family carries its JVM runner and its "runs" entry, or
+         --check is red.
          A `jsOnly` fixture family (schema; plan §5.5 C-2, the continuation
-         hops the page computes and the engine only walks) is recorded the same
-         way but owed to no card: its ids never enter swift-pending.
+         hops the page computes and the engine only walks; NE-39s's
+         manager-await) is recorded the same way and is Swift's to run never.
          Refuses (writes nothing, exits 1) when:
            - JS disagrees with an `authored: true` case (a spec value, not ours
              to overwrite — change the spec on purpose, by hand, or fix the JS);
            - a case cannot run (harness error);
-           - ids would change and no --port-card was given;
-           - the JVM would be owed something new and no --jvm-card was given;
+           - a --port-card is given (retired with swift-pending.json, NE-39s);
+           - a --jvm-card is given (retired with the JVM's owed books, A-63);
            - a family's case count would fall below its floor (--lower-floors).
      node tools/parity/record.mjs --check [--family F] [--json]
          Re-run and compare; change nothing. Red on any recorded or authored
          expect that differs, any unrecorded case, a manifest that no longer
-         matches the bytes on disk, or a pending id that names no case.
+         matches the bytes on disk, a retired burn-down list
+         (swift-pending.json, unported.json) back on disk, or JVM books that
+         owe anything (A-63: a "families" or "cases" key, or a recorded family
+         that is not jsOnly and not in "runs").
          checkAll() below is what npm test runs (record.test.mjs).
      node tools/parity/record.mjs --mutate [rule ...]
          For each named rule in mutations.json (default: all), flip it in a
          child process's loader and require that BOTH its original JS test and
          its fixture family fail. Exit 1 if any mutant survives.
      node tools/parity/record.mjs --classify
-         Put every covered-suite test that is accounted for nowhere into
-         unported.json with its suite's default card and family (coverage.js
-         COVERED_SUITES). The guard stays red until a person does this, by
-         design: classifying is a decision, even when the default is right.
+         RETIRED by NE-39s: it parked unaccounted covered-suite tests in
+         unported.json, which no longer exists. It now refuses and exits 1; a
+         new covered test is fixtured, mapped to an XCTest, or excluded with a
+         reason, in the change that adds it.
      node tools/parity/record.mjs --counts
          Print per-suite and per-family counts (the numbers no card types). */
 
@@ -50,10 +58,10 @@ import {
 } from "../../player/parity/runner.js";
 import { compare, formatDiffs } from "../../player/parity/compare.js";
 import {
-  computeManifest, loadParityData, classify, counts, COVERED_SUITES, CARD_RE, suiteFile,
+  computeManifest, loadParityData, classify, counts, suiteFile, retiredBooksOnDisk,
 } from "../../player/parity/coverage.js";
 import {
-  JVM_CARD_RE, JVM_PENDING_FILE, loadJvmPending, unportedFamilies, checkJvmPending, jvmOwedBy, nextJvmPending,
+  JVM_PENDING_FILE, JVM_OWING_RETIRED, loadJvmPending, checkJvmPending,
 } from "../../player/parity/jvm-pending.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -137,7 +145,7 @@ export async function checkAll({ root = REPO_ROOT, family = null, manifest = tru
   for (const r of await evaluate(root, fixtures)) {
     cases++;
     if (r.error) { failed++; problems.push(`${r.c.id}: cannot run — ${r.error.message}`); continue; }
-    if (!("expect" in r.c)) { failed++; problems.push(`${r.c.id}: unrecorded (run record.mjs --port-card <card>)`); continue; }
+    if (!("expect" in r.c)) { failed++; problems.push(`${r.c.id}: unrecorded (run record.mjs)`); continue; }
     const diffs = compare(r.c.expect, r.actual, { family: r.fx.family, tolerance: r.c.tolerance });
     if (diffs.length) {
       failed++;
@@ -159,27 +167,20 @@ export async function checkAll({ root = REPO_ROOT, family = null, manifest = tru
       }
       if (JSON.stringify(w.ids) !== JSON.stringify(h.ids)) problems.push(`manifest: family ${f}'s case ids differ from the fixtures on disk`);
     }
-    const ids = new Set(Object.values(want.families).flatMap((f) => f.ids));
-    const jsOnlyIds = new Set(all.filter((f) => f.doc.jsOnly === true).flatMap((f) => f.doc.cases.map((c) => c.id)));
-    for (const [id, card] of Object.entries(data.pending)) {
-      if (id.startsWith("//")) continue;
-      if (!ids.has(id)) problems.push(`swift-pending: ${id} names no fixture case`);
-      if (jsOnlyIds.has(id)) problems.push(`swift-pending: ${id} is in a jsOnly family; no Swift card can owe it`);
-      if (!CARD_RE.test(card)) problems.push(`swift-pending: ${id} is tagged ${JSON.stringify(card)}, not a card id`);
+    // NE-39s: the Swift books are retired. A list that comes back would owe
+    // again, and nothing reads it: the Swift loader refuses to run on it.
+    for (const f of retiredBooksOnDisk(root)) {
+      problems.push(`${f} is back on disk: NE-39s retired it (nothing may be owed; a JS rule change carries its Swift port). Delete it`);
     }
-    // The JVM's books (A-22): every entry names a recorded case or family (or one
-    // unported.json will record into), none is jsOnly, and every tag is an A- card.
+    // The JVM's books (A-22; A-63 emptied them and retired owing): "runs" only,
+    // and every recorded family that is not jsOnly is in it.
     let jvm = null;
     try { jvm = loadJvmPending(root); } catch (e) { problems.push(`jvm-pending: cannot read ${JVM_PENDING_FILE}: ${e.message}`); }
     if (jvm) {
-      const familyOf = new Map();
-      for (const [f, entry] of Object.entries(want.families)) for (const id of entry.ids) familyOf.set(id, f);
       const byFam = {};
       for (const fx of all) (byFam[fx.family] ??= []).push(fx.doc.jsOnly === true);
       const jsOnlyFamilies = new Set(Object.entries(byFam).filter(([, v]) => v.every(Boolean)).map(([f]) => f));
-      problems.push(...checkJvmPending(jvm, {
-        familyOf, families: new Set(Object.keys(want.families)), jsOnlyFamilies, unported: unportedFamilies(data.unported),
-      }));
+      problems.push(...checkJvmPending(jvm, { families: new Set(Object.keys(want.families)), jsOnlyFamilies }));
     }
   }
   return { problems, cases, failed };
@@ -188,15 +189,24 @@ export async function checkAll({ root = REPO_ROOT, family = null, manifest = tru
 /* ---------- record ---------- */
 
 /**
- * Record. Returns `{ok, refusals, written, pendingAdded}`; writes only when ok.
+ * Record. Returns `{ok, refusals, written, swiftAffected, jvmAffected}`; writes
+ * only when ok. `swiftAffected`: the ids new or changed in families Swift runs,
+ * which the engine-parity job now holds this change to (NE-39s: nothing is
+ * owed). `jvmAffected`: those of them in families the JVM runs, which the JVM
+ * runner in android-build holds this change to (A-63: nothing is owed there
+ * either, and jvm-pending.json is never written).
  */
 export async function record({ root = REPO_ROOT, family = null, portCard = null, jvmCard = null, lowerFloors = false, log = console.log } = {}) {
   const all = loadFixtures(root);
   const refusals = validateFixtures(all).map((p) => `schema: ${p}`);
   const fixtures = family ? all.filter((f) => f.family === family) : all;
   if (family && !fixtures.length) refusals.push(`no fixtures for family "${family}"`);
-  if (portCard != null && !CARD_RE.test(portCard)) refusals.push(`--port-card ${JSON.stringify(portCard)} is not a card id (NE-05, NE-14s, ...)`);
-  if (jvmCard != null && !JVM_CARD_RE.test(jvmCard)) refusals.push(`--jvm-card ${JSON.stringify(jvmCard)} is not an Android card id (A-23, A-40, ...)`);
+  if (portCard != null) {
+    refusals.push(`--port-card ${JSON.stringify(portCard)} was retired with swift-pending.json by NE-39s (M3): nothing may be owed, so the Swift port lands in this change and engine-parity checks it`);
+  }
+  if (jvmCard != null) {
+    refusals.push(`--jvm-card ${JSON.stringify(jvmCard)} was retired with the JVM's owed books by A-63: ${JVM_OWING_RETIRED} (android-build's JVM runner checks it)`);
+  }
 
   const data = loadParityData(root);
   const knownIds = new Set(Object.values(data.manifest.families ?? {}).flatMap((f) => f.ids ?? []));
@@ -230,34 +240,14 @@ export async function record({ root = REPO_ROOT, family = null, portCard = null,
       affectedFamily.set(r.c.id, r.fx.family);
     }
   }
-  // Before either card check, so a missing --port-card and a missing --jvm-card are
-  // both reported by one run rather than one after the other.
-  const evaluationRefused = refusals.length > 0;
-  if (affected.length && !portCard && !refusals.length) {
-    refusals.push(
-      `${affected.length} case(s) are new or changed and must be handed to a Swift card: pass --port-card <card>.\n  ` +
-      affected.slice(0, 10).join("\n  ")
-    );
-  }
 
-  /* The JVM's books (A-22). A family the JVM does not run is owed there whole, so
-     only a case new or changed in a family it DOES run, or a new family, needs a
-     card; any other record run passes no --jvm-card and changes nothing there. */
+  /* The JVM's books (A-22). A-63 retired owing: a record run never writes
+     jvm-pending.json, and a brand-new family's missing "runs" entry is --check's
+     to report (the change carries its JVM runner). Books that owe anything are
+     refused here as they are in --check. */
   let jvm = null;
-  let jvmOwed = { families: [], cases: [] };
   try { jvm = loadJvmPending(root); } catch (e) { refusals.push(`cannot read ${JVM_PENDING_FILE}: ${e.message}`); }
-  if (jvm) {
-    refusals.push(...jvm.problems);
-    jvmOwed = jvmOwedBy(jvm, affected.map((id) => ({ id, family: affectedFamily.get(id) })));
-    const n = jvmOwed.families.length + jvmOwed.cases.length;
-    if (n && !jvmCard && !evaluationRefused) {
-      refusals.push(
-        `the JVM runner (A-22) would be owed ${n} new thing(s) and must be handed to an Android card: pass --jvm-card <A-xx> ` +
-        `(docs/plans/android-assessment.md §5.4-5.5 name the card that ports each family).\n  ` +
-        [...jvmOwed.families.map((f) => `family ${f} (new)`), ...jvmOwed.cases].slice(0, 10).join("\n  ")
-      );
-    }
-  }
+  if (jvm) refusals.push(...jvm.problems);
 
   // Floors: raise-only unless --lower-floors says, in the command, that a
   // family really lost cases.
@@ -271,7 +261,7 @@ export async function record({ root = REPO_ROOT, family = null, portCard = null,
     floors.families[fam] = lowerFloors ? n : Math.max(old, n);
   }
 
-  if (refusals.length) return { ok: false, refusals, written: [], pendingAdded: [] };
+  if (refusals.length) return { ok: false, refusals, written: [], swiftAffected: [], jvmAffected: [] };
 
   const written = [];
   for (const fx of dirty) {
@@ -280,17 +270,16 @@ export async function record({ root = REPO_ROOT, family = null, portCard = null,
     written.push(fx.file);
   }
 
-  const pending = { ...data.pending };
-  for (const id of affected) pending[id] = portCard;
   const manifest = computeManifest(root);
   // A --family run records ONE family, so it may only vouch for that one. The
   // manifest is what the next run reads as "already recorded" (knownIds above),
-  // and an authored case is only handed to swift-pending the first time it is
-  // NOT known — so writing another family's unrecorded ids in here made them
-  // look recorded, and that family's own run then left its authored cases out
-  // of swift-pending (found by NE-07j: recording queue-state first dropped the
-  // four authored rate cases). Every other family keeps the entry it had, or
-  // stays absent, and --check keeps saying "record it" until someone does.
+  // and an authored case is only reported (to the Swift side, and to the JVM's
+  // books) the first time it is NOT known — so writing another family's
+  // unrecorded ids in here made them look recorded, and that family's own run
+  // then left its authored cases out (found by NE-07j: recording queue-state
+  // first dropped the four authored rate cases). Every other family keeps the
+  // entry it had, or stays absent, and --check keeps saying "record it" until
+  // someone does.
   if (family) {
     for (const f of Object.keys(manifest.families)) {
       if (f === family) continue;
@@ -298,21 +287,7 @@ export async function record({ root = REPO_ROOT, family = null, portCard = null,
       else delete manifest.families[f];
     }
   }
-  const liveIds = new Set(Object.values(manifest.families).flatMap((f) => f.ids));
-  for (const id of Object.keys(pending)) {
-    if (!id.startsWith("//") && !liveIds.has(id)) {
-      log(`swift-pending: dropping ${id} — its case was deleted`);
-      delete pending[id];
-    }
-  }
-  writeParity(root, "swift-pending.json", sortKeys(pending));
   writeParity(root, "manifest.json", manifest);
-  const jvmNext = nextJvmPending(jvm, {
-    owed: jvmOwed, card: jvmCard, liveIds, liveFamilies: new Set(Object.keys(manifest.families)),
-    unported: unportedFamilies(data.unported),
-  });
-  for (const d of jvmNext.dropped) log(`jvm-pending: dropping ${d} — it no longer exists`);
-  writeParity(root, JVM_PENDING_FILE, jvmNext.doc);
 
   const { status } = classify(root);
   const c = counts(status, loadFixtures(root));
@@ -326,12 +301,20 @@ export async function record({ root = REPO_ROOT, family = null, portCard = null,
   writeParity(root, "floors.json", floors);
 
   log(formatCounts(c));
-  if (affected.length) log(`\nswift-pending: ${affected.length} id(s) tagged ${portCard}`);
-  if (jvmOwed.families.length + jvmOwed.cases.length) {
-    log(`jvm-pending: ${jvmOwed.families.length} family(ies) and ${jvmOwed.cases.length} id(s) tagged ${jvmCard}`);
+  if (affected.length) {
+    log(`\nswift: ${affected.length} id(s) new or changed; engine-parity holds this change to them (nothing is owed since NE-39s)`);
+  }
+  const runs = new Set(jvm?.runs ?? []);
+  const jvmAffected = affected.filter((id) => runs.has(affectedFamily.get(id)));
+  if (jvmAffected.length) {
+    log(`jvm: ${jvmAffected.length} id(s) new or changed; android-build's JVM runner holds this change to them (nothing is owed since A-63)`);
+  }
+  const unrun = [...new Set(affected.map((id) => affectedFamily.get(id)).filter((f) => !runs.has(f)))].sort();
+  if (unrun.length) {
+    log(`jvm: ${unrun.join(", ")} recorded with no JVM runner: register one and list it in jvm-pending.json "runs" (--check is red until then)`);
   }
   if (jsOnlyAffected.length) log(`js-only: ${jsOnlyAffected.length} id(s) recorded, owed to no Swift card`);
-  return { ok: true, refusals: [], written, pendingAdded: affected, jsOnlyRecorded: jsOnlyAffected, jvmOwed };
+  return { ok: true, refusals: [], written, swiftAffected: affected, jvmAffected, jsOnlyRecorded: jsOnlyAffected };
 }
 
 export function formatCounts(c) {
@@ -344,27 +327,14 @@ export function formatCounts(c) {
   return lines.join("\n");
 }
 
-/* ---------- --classify ---------- */
+/* ---------- --classify (retired) ---------- */
 
-/** Add every unaccounted covered-suite test to unported.json with its suite's
-    default card and family. Returns the entries added. */
-export function classifyNew({ root = REPO_ROOT } = {}) {
-  const data = loadParityData(root);
-  const { status } = classify(root, data);
-  const added = [];
-  const unported = structuredClone(data.unported);
-  for (const [stem, names] of Object.entries(status)) {
-    for (const [name, st] of Object.entries(names)) {
-      if (st.covered.length || st.xctest || st.facade || st.excluded || st.unported) continue;
-      const cfg = COVERED_SUITES[stem];
-      (unported[stem] ??= {})[name] = { card: cfg.card, family: cfg.family };
-      added.push(`${stem}::${name}`);
-    }
-  }
-  for (const stem of Object.keys(unported)) if (!stem.startsWith("//")) unported[stem] = sortKeys(unported[stem]);
-  writeParity(root, "unported.json", sortKeys(unported));
-  return added;
-}
+/** NE-39s retired unported.json, the list --classify wrote into. The option
+    stays only to say so: a covered test that is accounted for nowhere is
+    fixtured, mapped to an XCTest or excluded, in the change that adds it. */
+export const CLASSIFY_RETIRED =
+  "--classify is retired: NE-39s deleted unported.json, so nothing can be owed. Fixture the test (a case's covers[]), " +
+  "map it to an XCTest (xctest.json) or exclude it with a reason (exclusions.json) in this change";
 
 /* ---------- --mutate ---------- */
 
@@ -480,9 +450,8 @@ export async function main(argv, { root = REPO_ROOT, log = console.log, err = co
     return 0;
   }
   if (opts.mode === "classify") {
-    const added = classifyNew({ root });
-    log(`--classify: ${added.length} test(s) added to unported.json`);
-    return 0;
+    err(CLASSIFY_RETIRED);
+    return 1;
   }
   if (opts.mode === "mutate") {
     const rules = loadMutations();
@@ -498,7 +467,7 @@ export async function main(argv, { root = REPO_ROOT, log = console.log, err = co
   }
   const r = await record({ root, family: opts.family, portCard: opts.portCard, jvmCard: opts.jvmCard, lowerFloors: opts.lowerFloors, log });
   if (!r.ok) { err(`record refused:\n${r.refusals.join("\n")}`); return 1; }
-  log(`recorded: ${r.written.length} file(s) rewritten, ${r.pendingAdded.length} id(s) now swift-pending`);
+  log(`recorded: ${r.written.length} file(s) rewritten, ${r.swiftAffected.length} id(s) new or changed for Swift`);
   return 0;
 }
 

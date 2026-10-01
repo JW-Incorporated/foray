@@ -7,10 +7,12 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * The fixture families the JVM runs, one {@link FamilyRunner} each. Every other family
- * is owed in player/parity/jvm-pending.json. A porting card adds its family here and
- * burns its entry out of jvm-pending.json (moving it to "runs") in the same change; the
- * suite fails if it does one without the other.
+ * The fixture families the JVM runs, one {@link FamilyRunner} each, listed in
+ * player/parity/jvm-pending.json "runs" (the suite fails when the two disagree). Until A-63 a
+ * family could be owed there to the Android card that ports it; A-63 ported the last one
+ * (manager-remainder) and retired owing, so every recorded family that is not jsOnly has its
+ * runner here, and a JS change that records a new family or rule carries its JVM port in the
+ * same change.
  */
 public final class JvmFamilies {
     private JvmFamilies() {}
@@ -105,7 +107,73 @@ public final class JvmFamilies {
     public static final FamilyRunner OUTPOINT = DeckFamilies.outpoint();
     public static final FamilyRunner DECK = DeckFamilies.deck();
 
+    /*
+     * A-28: the contract the Android bridge speaks (ContractDecoding, main code): every
+     * payload's accept / refuse answer, the page's decideMode and extrapolate, and the
+     * diagnostics rows' closed vocabularies (TokenAdmission).
+     */
+    public static final FamilyRunner CONTRACT = ContractFamilies.contract();
+    public static final FamilyRunner SNAPSHOT = ContractFamilies.snapshot();
+    public static final FamilyRunner HANDSHAKE = ContractFamilies.handshake();
+    public static final FamilyRunner DIAG_TOKENS = ContractFamilies.diagTokens();
+
+    /*
+     * A-29: the lane's once-per-process decision and its strike rules across launches
+     * (EngineMode, main code), which foray-audio's EngineOwnership wraps.
+     */
+    public static final FamilyRunner ENGINE_MODE = EngineModeFamily.runner();
+
+    /*
+     * A-40: the Foray tape (EngineCore with forayTapeEnabled, main code) and its policies: the
+     * seam beat (SeamGap), ADR-0007's ladder (SeekPolicy), the jingle's rule (Interlude), the
+     * Foray clock (ForayClock), J-4's structural check (StructuralCheck), the Foray's resume
+     * rules (ForayProgressRules), the Foray half of the lock screen (media), and the tape's
+     * scenarios through the manager surface (manager-foray) and the contract with the standby
+     * deck (prepare).
+     */
+    public static final FamilyRunner SEAM_GAP = ForayFamilies.seamGap();
+    public static final FamilyRunner SEEK_POLICY = ForayFamilies.seekPolicy();
+    public static final FamilyRunner INTERLUDE = ForayFamilies.interlude();
+    public static final FamilyRunner FORAY_CLOCK = ForayFamilies.forayClock();
+    public static final FamilyRunner FORAY_STRUCTURE = ForayFamilies.forayStructure();
+    public static final FamilyRunner FORAY_PROGRESS = ForayProgressFamily.runner();
+    public static final FamilyRunner MEDIA = ForayFamilies.media();
+    public static final FamilyRunner MANAGER_FORAY = ForayTapeFamilies.managerForay();
+    public static final FamilyRunner PREPARE = ForayTapeFamilies.prepare();
+
+    /*
+     * A-41: the narrator's rules (SpeechRules, main code): the default voice (the founder's Samantha
+     * ruling, player/default-voice.js), the pronunciation lexicon's matcher (foray-tts.js
+     * buildIpaOverrides), and what reaches the synthesiser (the text, the voice, 1x whatever the
+     * listener's speed) through EngineCore with the Foray tape on.
+     */
+    public static final FamilyRunner DEFAULT_VOICE = SpeechFamilies.defaultVoice();
+    public static final FamilyRunner LEXICON = SpeechFamilies.lexicon();
+    public static final FamilyRunner SPEECH_RATE = SpeechFamilies.speechRate();
+
+    /*
+     * A-61: route resume (RouteResume, main code): route-resume.js's decision, its reducer and the
+     * replay the family records, the policy EngineCore.onRoute runs (the JVM twin of NE-38rs).
+     */
+    public static final FamilyRunner ROUTE_RESUME = RouteResumeFamily.runner();
+
+    /*
+     * A-62: prepare across narration seams (DeckPolicy.warmsAcross and the duration window, main
+     * code, and EngineCore's warm over them): the prepare family's seams with a narration line in
+     * them, through the contract with the standby deck (the JVM twin of NE-45s).
+     */
+    public static final FamilyRunner PREPARE_NARRATION = ForayTapeFamilies.prepareNarration();
+
+    /*
+     * A-63: the manager remainder (the last of queue-manager's rules, NE-39j's warming and transport
+     * cases) through EngineCore with the Foray tape on, the JVM twin of NE-39s. With it the JVM runs
+     * every recorded engine family, and jvm-pending.json holds "runs" only: nothing may be owed.
+     */
+    public static final FamilyRunner MANAGER_REMAINDER = ForayTapeFamilies.managerRemainder();
+
     /** Every registered runner. */
     public static final List<FamilyRunner> ALL = List.of(COMPARE, NUMBER_FORMAT, QUEUE_STATE, RATE, RESUME_RULES, TRANSPORT, ROWS,
-            SESSION, SESSION_INVARIANT, MEDIA_EPISODE, MANAGER_EPISODE, DECK_EPISODE, OUTPOINT, DECK);
+            SESSION, SESSION_INVARIANT, MEDIA_EPISODE, MANAGER_EPISODE, DECK_EPISODE, OUTPOINT, DECK, CONTRACT, SNAPSHOT, HANDSHAKE,
+            DIAG_TOKENS, ENGINE_MODE, SEAM_GAP, SEEK_POLICY, INTERLUDE, FORAY_CLOCK, FORAY_STRUCTURE, FORAY_PROGRESS, MEDIA,
+            MANAGER_FORAY, PREPARE, PREPARE_NARRATION, DEFAULT_VOICE, LEXICON, SPEECH_RATE, ROUTE_RESUME, MANAGER_REMAINDER);
 }

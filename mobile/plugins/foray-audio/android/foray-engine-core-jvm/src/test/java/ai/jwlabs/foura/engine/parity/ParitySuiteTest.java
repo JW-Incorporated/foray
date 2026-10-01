@@ -59,19 +59,18 @@ public class ParitySuiteTest {
             fail(why.toString());
         }
 
-        /* A-22's acceptance, as data rather than as a list of family names (a porting
-           card must not have to edit this test): every case of a family the JVM runs is
-           executed (its books above say passed or honestly pending), every other family
-           that is not JS-only is owed in full, and something actually passed. */
+        /* A-22's acceptance, tightened by A-63's, as data rather than as a list of family
+           names: every family that is not JS-only has a JVM runner (A-63: "the JVM runs every
+           recorded engine family"), every case of it is executed, NOTHING is owed (A-63 emptied
+           the books, and the loader refuses a jvm-pending.json that owes again), and something
+           actually passed. */
         int passed = 0;
         for (FamilySummary s : report.families()) {
             if (s.jsOnly()) continue;
-            if (s.hasRunner()) {
-                assertEquals(s.family() + " has a JVM runner, so every case in it must be run", s.cases(), s.executed());
-                passed += s.passed();
-            } else {
-                assertEquals(s.family() + " has no JVM runner, so every case in it must be owed", s.cases(), s.owed());
-            }
+            assertTrue(s.family() + " is recorded and not JS-only, so the JVM runs it (nothing may be owed since A-63)", s.hasRunner());
+            assertEquals(s.family() + " has a JVM runner, so every case in it must be run", s.cases(), s.executed());
+            assertEquals(s.family() + " owes nothing since A-63", 0, s.owed());
+            passed += s.passed();
         }
         assertTrue("the JVM runner passed nothing: a runner that executes nothing proves nothing", passed > 0);
         assertEquals(passed, report.count(Outcome.PASSED));

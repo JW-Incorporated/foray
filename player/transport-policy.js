@@ -16,15 +16,15 @@
    `Number(offset || 0)`). Main's audit round 2 then changed some of these
    rules in client.js (player-4, player-5, player-11, p-car-5); they reached
    this file when main was merged into engine/m1, as JS changes re-recorded in
-   the `transport` family and handed to NE-09 through swift-pending.json — the
-   route "JS IS THE REFERENCE" below prescribes. The web and Android suites that
+   the `transport` family and handed to NE-09 through swift-pending.json (the
+   list NE-39s retired) — the route "JS IS THE REFERENCE" below prescribes. The web and Android suites that
    boot the real client.js (transport-reconcile, media-session, foray-playback)
    are the proof; `transport-policy.test.js` pins the rules themselves, from the
    `transport` fixture family, which is also the Swift port's test list.
 
    JS IS THE REFERENCE (plan §6). A change to a rule here is a JS PR that
-   re-records `player/parity/fixtures/transport/`, which hands the changed case
-   ids to swift-pending.json; the Swift port follows. Never edit the Swift side
+   re-records `player/parity/fixtures/transport/`, with the Swift port in the
+   same change (since NE-39s nothing can be owed). Never edit the Swift side
    first.
 
    Every answer is a closed token or plain data, so a fixture can record it and

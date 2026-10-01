@@ -9,14 +9,17 @@
 > asks Joey for anything before that.
 
 This is the Android device check for Track A0 of `docs/plans/android-assessment.md`,
-plus the native-mode checks of A-27, A-40 and A-41. It is written for **Joey's Pixel
+plus the native-mode checks of A-27, A-40 and A-41, and (Part I, card A-67) the M3-parity
+checks of Track A4: route resume, a rendered Foray with the screen off, airplane mode during a
+line, and an hour of battery in each lane. It is written for **Joey's Pixel
 10 Pro**. Every step says what should happen, so the tester only writes **pass** or
 **fail** and pastes the evidence. The record goes in a copy of
 `docs/field-records/android-device-pass-TEMPLATE.md`.
 
 **Time.** About 30 minutes of doing, plus two waits in Part E (2 and 10 minutes),
 which the script uses to fill in the record. The optional PC block (Part H) adds about
-10 minutes at the end.
+10 minutes at the end. Part I (M3 parity) adds about 20 minutes of doing, a 10-minute wait
+and two hours of battery playback, and can run on another day with the same build.
 
 ## Filled in when issued
 
@@ -34,6 +37,8 @@ blank, stop: the pass is not issued yet.
 | **Foray 2**, a different narrated Foray, not yet played on this phone (step 19) | |
 | **Foray 3**, a third narrated Foray, not yet played on this phone (step 20) | |
 | The row the Android engine writes when a narration file fails and the phone's voice takes over (step 19) | |
+| **Foray 4** for Part I: at least two rendered narrator lines BETWEEN clips (clip, line, clip, line, clip); may be Foray 1 if it has them | |
+| Part I is issued with this pass (A-60..A-67 on the build under test), or held for a later build | |
 
 Notes for the issuing session:
 
@@ -78,7 +83,12 @@ Notes for the issuing session:
   engine. (Part H is the one exception: it switches to the web player on purpose.)
 - **Every stop must be explained.** No `stop` row in a Copy may read `cause=unknown`
   (the engine prints it as `stop … src=engine cause=unknown`). If one does, mark the
-  step fail even if you heard nothing wrong.
+  step fail even if you heard nothing wrong. The causes an Android Copy can show (A-67's
+  audit): `pause`, `close`, `data-deletion`, `relinquish` (the engine handed playback back,
+  or its service ended while playing, right after a `service kind=destroy` row), `ended`,
+  `final-end`, `system-pause`, `route-change`, `interruption` (a call, another app, a
+  navigation prompt), `load-deadline` and `error`. `grace-expired`, `media-services-reset`,
+  `seam-timeout` and `unknown` never happen on Android; any of them is a fail.
 - **D = the two `adb` reads (PC only).** With the phone on USB, run both and paste the
   output under the step's number. If no PC is at hand, write "no PC" and move on.
 
@@ -296,6 +306,71 @@ replaces the Play install.
     *Expected:* the Play build is back, and its Copy header reads `engine=native`
     again. **C**.
 
+## Part I: M3 parity on Android (card A-67; about 20 min, a 10-minute wait, two battery hours)
+
+Run Part I on the **Play build** (after step 22 if you skipped Part H, or after step 25),
+and only if "Filled in when issued" says it is issued with this pass. It checks what Track
+A4 of `docs/plans/android-assessment.md` added to the Android engine: route resume
+(A-61), prepared rendered lines (A-62), Next over narration and the fallback's cause
+(A-64), and what an hour of native playback costs (iOS's DV-11). Take each **C** with the
+phone still, after the step. Write the route (car or headset, and whether Android Auto was
+running) next to every Part I result.
+
+26. **A lost route, and its return after 10 minutes.** Play an episode through the car
+    or the Bluetooth headset for at least 10 seconds (4a learns a route only after it has
+    played through it for a second). With it playing, switch the car or headset **off**.
+    *Expected:* 4a pauses within a second; nothing comes out of the phone's speaker. Wait
+    **at least 10 minutes** with the phone locked. Switch the car or headset back **on**,
+    and do not touch the phone.
+    *Expected, with Android Auto running on the car's screen:* 4a resumes by itself within
+    about 5 seconds, and its notification is back. *Expected without Android Auto (a
+    Bluetooth car or a headset):* 4a does **not** resume by itself, because Android's
+    Bluetooth arm is off (D-A9). If the car sends its own play when it connects, 4a plays
+    then: write how many seconds after connecting. In **C**: the loss is
+    `route kind=lost port=… class=… key=<8 hex> known=true` with a `stop … cause=route-change`
+    row; the return is `route kind=back … pausedBy=route` with `decision=resume
+    why=route-back` (Android Auto) or `decision=no why=bluetooth-off` (Bluetooth), then the
+    car's own `remote … cmd=play` row if it sent one. No address and no device name appear
+    in any row. **C**.
+27. **A listener's pause stays paused.** Play through the car or headset again for 10
+    seconds, then pause **in the app**. Switch the car or headset off, wait 30 seconds, and
+    switch it on.
+    *Expected:* 4a **stays paused**, whatever the car is (with or without Android Auto).
+    The return row reads `route kind=back … pausedBy=listener decision=no
+    why=listener-paused`. If the car sent its own play when it connected and 4a played,
+    write fail only if no `remote … cmd=play` row came before the audio. **C**.
+28. **A rendered Foray, screen off, through two line seams.** Open **Foray 4**, press
+    play, and **lock the phone within 2 seconds**. Listen, locked, through at least two
+    clip → narrator line → clip seams. During one narrator line, press **Next** on the car
+    or headset.
+    *Expected:* every seam is about half a second of silence; no line is skipped or cut
+    short; after Next the next clip starts at its own beginning (A-64). In **C**: each
+    seam with a line in it has a `seam … from=clip to=line` or `from=line to=clip` row
+    reading `prepare=hit` and `gap` **1.0 s or less** (A-62), and no `stop` row until you
+    stop. **C**.
+29. **Airplane mode during a line.** Play **Foray 4** again (or carry on), and while the
+    narrator is speaking a line, turn **airplane mode on**. Leave it on through the next
+    seam and the next narrator line, then turn it off.
+    *Expected:* the line playing finishes (its file is usually already on the phone); the
+    next narrator line is read by **the phone's own voice** within about 3 seconds instead
+    of silence; the clip after it plays within about 30 seconds of airplane mode going off,
+    or after one press of play (write which). In **C**: a `narration kind=fallback …
+    cause=offline` row (A-64; `cause=timeout` if the phone was still looking for the
+    network), and any `stop` row reads `load-deadline` or `error`, never `unknown`. **C**.
+30. **One hour of battery, native.** Charge above 80% and unplug. Settings → Battery →
+    Battery usage: note 4a's share and the battery %. Play a long queue (several episodes
+    in Up Next, or Forays one after another) for **60 minutes**, screen off, on the phone
+    speaker or the headset, the same one you will use in step 31.
+    *Expected:* it plays the whole hour. Write the battery % drop and 4a's share of it.
+    **C** (its header must read `engine=native`).
+31. **One hour of battery, the web player.** ☰ → Developer → **Playback engine** until it
+    reads **Web (applies after restart)**; swipe 4a away in Recents and reopen it (the
+    Copy header now reads `engine=js`). Repeat step 30 for **60 minutes** with the same
+    queue, route and volume. Then set **Playback engine** back to **Automatic**, swipe 4a
+    away and reopen it.
+    *Expected:* write the battery % drop and 4a's share; the last Copy's header reads
+    `engine=native` again. **C** after the hour, and **C** after switching back.
+
 ## When you are done
 
 Copy `docs/field-records/android-device-pass-TEMPLATE.md` to
@@ -350,7 +425,15 @@ The A-14 acceptance is "reviewed against the scenario list in §3–§4, with ev
 | A-41 device check (native) | airplane-mode narration fallback | 19 |
 | `docs/android-lock-screen.md` §8.1 | reads 1–6 over `chrome://inspect`, `adb` and the lock screen | 24 |
 | Delete my data (the vault) | clean relaunch, no vault or sync errors | 22 |
+| A-61 device check (Track A4) | route lost and back: the rows, the car-mode resume, the Bluetooth arm off; a listener's pause stays paused; a resume from the background after a long loss (Android 12+) | 26, 27 |
+| A-62 device check (Track A4) | a rendered Foray, screen off, prepared across line seams | 28 |
+| A-64 device check (Track A4) | Next over a narrator line; the fallback's cause | 28, 29 |
+| A-67 device check (Track A4) | every stop explained with Android's causes; airplane mode during a line; an hour of battery in each lane (DV-11) | every C, 29, 30, 31 |
 
-Not covered, on purpose: Android Auto (A3, deferred by D-A7), navigation prompts and a
-full drive (the founder's car drive under D-A5, not approved), and OEM battery managers
+The emulator twins of iOS's DV-7a and DV-7b (a play after the system ended 4a resumes it;
+after a force-stop who plays is recorded) are A-67's, run in CI on both API levels
+(`android-playback`, native (j)); step 16 is their device half.
+
+Not covered, on purpose: Android Auto (A3, deferred by D-A7; step 26 records it only if the
+car runs it anyway), navigation prompts and a full drive (the founder's car drive under D-A5, not approved), and OEM battery managers
 (a Pixel has none of Samsung's; D-A5).

@@ -187,7 +187,7 @@ export function rootEntries(xml) {
     if (key.next >= closeTok) throw new PlistError(`root key "${name}" has no value`);
     const value = parseElement(toks, key.next);
     if (value.name === "key") throw new PlistError(`root key "${name}" has no value`);
-    entries.push({ key: name, value });
+    entries.push({ key: name, value, keyStart: key.start });
     i = value.next;
   }
   return { rootDict, entries };
@@ -496,8 +496,9 @@ export function injectNonExemptEncryption(xml, value = false) {
  * THE SOURCE OF TRUTH is `mobile/ENGINE_DEFAULT.json`, PER PLATFORM since A-20
  * (docs/plans/android-assessment.md): {"ios": {...}, "android": {...}}. This
  * script writes the `ios` block ({"mode": "js"} until NE-27 flipped it); the
- * `android` block stays "js" (the legacy lane) until A-31 flips it, and
- * nothing reads it before the Android engine exists (A-26..A-28). Each block
+ * `android` block was "js" (the legacy lane) until A-31 flipped it to native
+ * for episodes and A-42 for Forays, and no build step writes it: `EngineLane.java` carries it as
+ * literals that shell-invariants holds to this file. Each block
  * carries its mode next to the capabilities the build advertises
  * (`ForayEngineCapabilities`; `player/parity/coverage.js` refuses a
  * capability whose fixtures are still pending). Both CI invocations of this
@@ -510,6 +511,11 @@ export function injectNonExemptEncryption(xml, value = false) {
  * file, and a plist left over from an earlier build must follow the file. */
 export const ENGINE_DEFAULT_KEY = "ForayEngineDefault";
 export const ENGINE_CAPABILITIES_KEY = "ForayEngineCapabilities";
+/** NE-38rs: route resume's Bluetooth arm (`EngineConfig.routeResumeBluetooth`,
+ *  read by EngineBoot). Written only when the block names
+ *  `routeResumeBluetooth`, and removed when it does not, so the plist always
+ *  says exactly what the block says; absent, the engine's default (OFF). */
+export const ENGINE_ROUTE_RESUME_BLUETOOTH_KEY = "ForayEngineRouteResumeBluetooth";
 /** `EngineMode.BuildDefault` in the Swift; `decideEngineMode`'s buildDefault. */
 export const ENGINE_DEFAULT_MODES = Object.freeze(["js", "native"]);
 
@@ -522,18 +528,23 @@ export const ENGINE_DEFAULT_FILE = path.resolve(
  *  required (A-20). Only `ios` is written into a plist, by this script. */
 export const ENGINE_DEFAULT_PLATFORMS = Object.freeze(["ios", "android"]);
 
-/** One platform's block, validated: {mode, capabilities?}. STRICT: an unknown
- *  key, a mode outside the two words, or a capability that is not a plain
- *  token is a typo, and a typo here is a build that plays through the wrong
- *  engine with every check green. Keys starting with "//" are comments. */
+/** One platform's block, validated: {mode, capabilities?, routeResumeBluetooth?}.
+ *  STRICT: an unknown key, a mode outside the two words, a capability that is
+ *  not a plain token, or a flag that is not a boolean is a typo, and a typo
+ *  here is a build that plays through the wrong engine with every check
+ *  green. Keys starting with "//" are comments. `routeResumeBluetooth`
+ *  (NE-38rs) is in the result only when the block names it. */
 export function validateEngineDefault(doc, where = "ENGINE_DEFAULT.json") {
   if (!doc || typeof doc !== "object" || Array.isArray(doc)) {
     throw new PlistError(`${where} must be an object like {"mode": "js"}`);
   }
   for (const key of Object.keys(doc)) {
-    if (key !== "mode" && key !== "capabilities" && !key.startsWith("//")) {
+    if (key !== "mode" && key !== "capabilities" && key !== "routeResumeBluetooth" && !key.startsWith("//")) {
       throw new PlistError(`${where} has an unknown key ${JSON.stringify(key)}`);
     }
+  }
+  if (doc.routeResumeBluetooth !== undefined && typeof doc.routeResumeBluetooth !== "boolean") {
+    throw new PlistError(`${where} "routeResumeBluetooth" must be true or false, got ${JSON.stringify(doc.routeResumeBluetooth)}`);
   }
   if (!ENGINE_DEFAULT_MODES.includes(doc.mode)) {
     throw new PlistError(
@@ -552,7 +563,9 @@ export function validateEngineDefault(doc, where = "ENGINE_DEFAULT.json") {
   if (new Set(capabilities).size !== capabilities.length) {
     throw new PlistError(`${where} lists a capability twice`);
   }
-  return { mode: doc.mode, capabilities: [...capabilities] };
+  const out = { mode: doc.mode, capabilities: [...capabilities] };
+  if (doc.routeResumeBluetooth !== undefined) out.routeResumeBluetooth = doc.routeResumeBluetooth;
+  return out;
 }
 
 /** `mobile/ENGINE_DEFAULT.json`, parsed and validated, every platform:
@@ -609,12 +622,14 @@ function singleRootEntry(entries, key) {
   return hits[0] ?? null;
 }
 
-/** What the plist says: `{mode, capabilities}`, each null when absent. A value
- *  of the wrong type throws rather than reading as absent. */
+/** What the plist says: `{mode, capabilities}`, each null when absent, plus
+ *  `routeResumeBluetooth` only when the plist has that key. A value of the
+ *  wrong type throws rather than reading as absent. */
 export function engineDefault(xml) {
   const { entries } = rootEntries(xml);
   const modeHit = singleRootEntry(entries, ENGINE_DEFAULT_KEY);
   const capsHit = singleRootEntry(entries, ENGINE_CAPABILITIES_KEY);
+  const btHit = singleRootEntry(entries, ENGINE_ROUTE_RESUME_BLUETOOTH_KEY);
   let mode = null;
   if (modeHit) {
     if (modeHit.value.name !== "string") {
@@ -629,7 +644,14 @@ export function engineDefault(xml) {
     }
     capabilities = arrayStrings(xml, capsHit.value, ENGINE_CAPABILITIES_KEY);
   }
-  return { mode, capabilities };
+  const out = { mode, capabilities };
+  if (btHit) {
+    if (btHit.value.name !== "true" && btHit.value.name !== "false") {
+      throw new PlistError(`${ENGINE_ROUTE_RESUME_BLUETOOTH_KEY} is a <${btHit.value.name}>, not a boolean`);
+    }
+    out.routeResumeBluetooth = btHit.value.name === "true";
+  }
+  return out;
 }
 
 /** Assert the plist says exactly `def`, and throw if it does not. The same
@@ -641,7 +663,8 @@ export function assertEngineDefault(xml, def) {
     got.mode === def.mode &&
     Array.isArray(got.capabilities) &&
     got.capabilities.length === def.capabilities.length &&
-    got.capabilities.every((c, i) => c === def.capabilities[i]);
+    got.capabilities.every((c, i) => c === def.capabilities[i]) &&
+    got.routeResumeBluetooth === def.routeResumeBluetooth;
   if (!same) {
     throw new PlistError(
       `the plist's engine default reads ${JSON.stringify(got)}, not ${JSON.stringify(def)}. ` +
@@ -695,9 +718,35 @@ export function injectEngineDefault(xml, def) {
     out = out.slice(0, hit.value.start) + value + out.slice(hit.value.end);
     changes.push(`replaced ${key}`);
   }
+  /* NE-38rs: the Bluetooth arm mirrors the block: written when it names one,
+     removed when it does not (a plist left from an earlier block must follow
+     the file, as the other two keys do). */
+  {
+    const key = ENGINE_ROUTE_RESUME_BLUETOOTH_KEY;
+    const { rootDict, entries } = rootEntries(out);
+    const indent = rootIndent(out, entries);
+    const hit = singleRootEntry(entries, key);
+    const want = checked.routeResumeBluetooth;
+    const value = want === undefined ? null : `<${want}/>`;
+    if (!hit && value) {
+      let at = rootDict.closeStart;
+      while (at > 0 && (out[at - 1] === " " || out[at - 1] === "\t")) at--;
+      out = out.slice(0, at) + `${indent}<key>${key}</key>\n${indent}${value}\n` + out.slice(at);
+      changes.push(`added ${key}`);
+    } else if (hit && !value) {
+      const from = out.lastIndexOf("\n", hit.keyStart) + 1;
+      const lineEnd = out.indexOf("\n", hit.value.end);
+      out = out.slice(0, from) + out.slice(lineEnd < 0 ? hit.value.end : lineEnd + 1);
+      changes.push(`removed ${key}`);
+    } else if (hit && hit.value.name !== String(want)) {
+      out = out.slice(0, hit.value.start) + value + out.slice(hit.value.end);
+      changes.push(`replaced ${key}`);
+    }
+  }
   /* THE ANTI-FAILS-GREEN CHECK, as for the other two edits. */
   assertEngineDefault(out, checked);
-  const summary = `${ENGINE_DEFAULT_KEY} = ${checked.mode}, ${ENGINE_CAPABILITIES_KEY} = ${JSON.stringify(checked.capabilities)}`;
+  const summary = `${ENGINE_DEFAULT_KEY} = ${checked.mode}, ${ENGINE_CAPABILITIES_KEY} = ${JSON.stringify(checked.capabilities)}` +
+    (checked.routeResumeBluetooth === undefined ? "" : `, ${ENGINE_ROUTE_RESUME_BLUETOOTH_KEY} = ${checked.routeResumeBluetooth}`);
   return changes.length
     ? { xml: out, changed: true, reason: `${changes.join(", ")}: ${summary}` }
     : { xml, changed: false, reason: `already ${summary}` };
@@ -971,7 +1020,8 @@ if (isMain) {
       }
       /* The ios-build log's evidence line: `ForayEngineDefault=js`. */
       const engine = assertEngineDefault(src, def);
-      console.log(`${file}: ${ENGINE_DEFAULT_KEY}=${engine.mode} ${ENGINE_CAPABILITIES_KEY}=${JSON.stringify(engine.capabilities)}`);
+      console.log(`${file}: ${ENGINE_DEFAULT_KEY}=${engine.mode} ${ENGINE_CAPABILITIES_KEY}=${JSON.stringify(engine.capabilities)}` +
+        (engine.routeResumeBluetooth === undefined ? "" : ` ${ENGINE_ROUTE_RESUME_BLUETOOTH_KEY}=${engine.routeResumeBluetooth}`));
       /* NE-24's evidence line: the AppDelegate existed beside the plist at
          injection time, and it calls the cold path first. */
       const delegate = appDelegatePathFor(file);

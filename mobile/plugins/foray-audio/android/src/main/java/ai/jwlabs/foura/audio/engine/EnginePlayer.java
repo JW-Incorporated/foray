@@ -1,6 +1,8 @@
 package ai.jwlabs.foura.audio.engine;
 
 import ai.jwlabs.foura.engine.EngineInput;
+import ai.jwlabs.foura.engine.EngineItem;
+import ai.jwlabs.foura.engine.JsonNode;
 import ai.jwlabs.foura.engine.MediaMapping;
 import android.net.Uri;
 import android.os.Looper;
@@ -37,12 +39,14 @@ import java.util.List;
  *       down).</li>
  *   <li>The words: {@code MediaMapping.sessionView}'s metadata (title, artist, album, the first
  *       artwork), written into both Media3 pairs, as {@code WebViewPlayer} does.</li>
- *   <li>The state: {@code playing} is READY with play-when-ready on; a stall or a load in
- *       flight (the view's rate 0 while playing) is BUFFERING, which keeps the controls saying
- *       pause and stops the lock screen's clock; {@code paused} is READY, play-when-ready off;
- *       {@code none} is an empty timeline, IDLE.</li>
+ *   <li>The state: {@code playing} is READY with play-when-ready on; a stall, a load in
+ *       flight (the view's rate 0 while playing) or a Foray's seam beat (A-65) is BUFFERING,
+ *       which keeps the controls saying pause and stops the lock screen's clock; {@code paused}
+ *       is READY, play-when-ready off; {@code none} is an empty timeline, IDLE.</li>
  *   <li>The clock: the view's position state (the episode's own), which Media3 extrapolates at
  *       the rate given, so the host publishes a surface per turn, not per second.</li>
+ *   <li>The speed: the listener's ({@link #publishedSpeed}), while playing and while buffering
+ *       alike; Media3 publishes 0 for the buffering itself (A-60).</li>
  * </ul>
  *
  * <h2>THE TIMELINE IS A NEIGHBOURHOOD, AS IN {@code WebViewPlayer}</h2>
@@ -51,6 +55,38 @@ import java.util.List;
  * wheel's next a no-op. One window for "something before" when previous works, one for now,
  * one for "something after" when next works, all carrying the current item's metadata: the
  * engine holds the running order, and the session says only that a neighbour exists.
+ *
+ * <h2>AN EMPTY SESSION THAT CAN RESUME SAYS SO (A-27)</h2>
+ *
+ * Media3's playback resumption runs only for a play into a session with no current item whose
+ * player can take one ({@code COMMAND_SET_MEDIA_ITEM}) and can play at all
+ * ({@code COMMAND_PLAY_PAUSE}). So while the engine has nothing loaded AND
+ * {@link Engine#canResume()} (its store holds a record a play can resume, and no input has
+ * reached the core yet), the idle state declares exactly those two. Media3 then asks the
+ * session's {@code onPlaybackResumption} for the playlist, sets it here
+ * ({@link #handleSetMediaItems}), which is {@link Engine#resume()}: the host's cold boot from
+ * the record, which paints the session paused at the recorded position. Media3's play that
+ * follows is an ordinary remote press. The items Media3 hands in are not played: the record is
+ * the truth, and the engine never plays a Media3 item.
+ *
+ * <h2>THE FOREGROUND THROUGH A SILENT SEAM (A-65)</h2>
+ *
+ * Android does not suspend a process that runs a foreground {@code MediaSessionService}; the risk
+ * is the service leaving the foreground while nothing sounds. Media3 decides that from THIS player
+ * alone ({@link #keepsServiceInForeground}): play-when-ready on, and READY or BUFFERING. So no
+ * silence is rendered (the silence node stays off, NE-46's provisional decision); instead, while the
+ * engine runs a Foray, every span in which no deck plays still reads as play-when-ready on:
+ * <ul>
+ *   <li>the seam beat ({@code Surface.silentSeam}: the jingle, or nothing) is BUFFERING, the clock
+ *       standing still on the next item's start until it is audible;</li>
+ *   <li>a spoken line (a bridge, or a rendered line's fallback, {@code TextToSpeech} in another
+ *       process) is BUFFERING until the synthesiser starts it (the core's {@code buffering}: a
+ *       bridge still loading), then READY at 1x, the rate its playhead really moves at (A-41).
+ *       READY keeps the foreground exactly as BUFFERING does, and it keeps {@code isPlaying()}
+ *       true, which Media3's {@code onTaskRemoved} reads.</li>
+ * </ul>
+ * If the service ever leaves the foreground mid-Foray anyway, the service writes
+ * {@code fgs kind=left} ({@link ForegroundWatch}).
  *
  * <h2>EVERY PRESS COMPLETES AT ONCE</h2>
  *
@@ -66,10 +102,18 @@ public final class EnginePlayer extends SimpleBasePlayer {
         ForayEngineHost.Surface surface();
 
         ForayEngineHost.Verdict remote(EngineInput.RemotePress press);
+
+        /** Nothing is loaded, and a play could resume the stored record (A-27). */
+        default boolean canResume() {
+            return false;
+        }
+
+        /** Restore from the stored record, if the engine is still cold (A-27's {@code coldBoot}). */
+        default void resume() {}
     }
 
     /** The media id every window carries: no URI, so a controller cannot start a second player from it. */
-    static final String MEDIA_ID = "foray-engine-current";
+    public static final String MEDIA_ID = "foray-engine-current";
 
     private final Engine engine;
 
@@ -97,6 +141,13 @@ public final class EnginePlayer extends SimpleBasePlayer {
                    "restart if past three seconds" second opinion. */
                 .setMaxSeekToPreviousPositionMs(0L);
         if (view == null || availability.clearsNowPlaying() || MediaMapping.NONE.equals(view.playbackState())) {
+            if (canResume()) {
+                /* A-27: the two commands Media3's playback resumption needs, and nothing else. */
+                state.setAvailableCommands(commandsFor(availability).buildUpon()
+                        .add(Player.COMMAND_PLAY_PAUSE)
+                        .add(Player.COMMAND_SET_MEDIA_ITEM)
+                        .build());
+            }
             return state
                     .setPlaylist(ImmutableList.of())
                     .setPlaybackState(Player.STATE_IDLE)
@@ -107,9 +158,11 @@ public final class EnginePlayer extends SimpleBasePlayer {
         boolean playing = MediaMapping.PLAYING.equals(view.playbackState());
         /* The view's rate is 0 while playing only when the clock must stand still: a stall, or a
            load in flight. That is BUFFERING, the one Media3 state that keeps play-when-ready (the
-           controls still say pause) and stops extrapolating the playhead. */
-        boolean stalled = playing && (surface.buffering() || (position != null && position.playbackRate() == 0));
-        float speed = position != null && position.playbackRate() > 0 ? (float) position.playbackRate() : 1f;
+           controls still say pause) and stops extrapolating the playhead. A-65: so is the seam beat,
+           in which no item sounds, so the service stays in the foreground through it. */
+        boolean stalled = playing && (surface.buffering() || surface.silentSeam()
+                || (position != null && position.playbackRate() == 0));
+        float speed = publishedSpeed(surface);
         int before = availability.isEnabled(MediaMapping.RemoteCommand.PREVIOUS_TRACK) ? 1 : 0;
         int after = availability.isEnabled(MediaMapping.RemoteCommand.NEXT_TRACK) ? 1 : 0;
         return state
@@ -120,6 +173,66 @@ public final class EnginePlayer extends SimpleBasePlayer {
                 .setPlaybackState(stalled ? Player.STATE_BUFFERING : Player.STATE_READY)
                 .setPlayWhenReady(playing, Player.PLAY_WHEN_READY_CHANGE_REASON_USER_REQUEST)
                 .build();
+    }
+
+    /**
+     * THE PUBLISHED SPEED (card A-60, the Android side of #866's rate latch). The facade's
+     * playback parameters carry the LISTENER'S speed at all times, never the view's clock rate:
+     * the view's rate is 0 through a stall or a load, and that 0 is said by the state instead
+     * (BUFFERING). Media3's session derives what it publishes from the player
+     * ({@code MediaSessionLegacyStub.createPlaybackStateCompat}, 1.11.0: the platform
+     * {@code PlaybackState}'s speed is {@code isPlaying() ? speed : 0}, and the speed itself rides
+     * in its extras), so a lock screen or a car reads the listening speed while playing and 0
+     * only while buffering or paused, and nothing can latch 0 behind a playing clock: iOS's
+     * rate-0 latch cannot recur as such. A non-positive or non-finite speed (never the core's) is
+     * published as 1.
+     */
+    static float publishedSpeed(@NonNull ForayEngineHost.Surface surface) {
+        double rate = surface.listeningRate();
+        return rate > 0 && Double.isFinite(rate) ? (float) rate : 1f;
+    }
+
+    /**
+     * Media3's rule for keeping a {@code MediaSessionService} in the foreground, read off a player as
+     * Media3 reads it (media3-session 1.11.0, {@code MediaNotificationManager.isAnySessionUserEngaged}):
+     * play-when-ready on, and READY or BUFFERING. Media3 also keeps the foreground for
+     * {@code DEFAULT_FOREGROUND_SERVICE_TIMEOUT_MS} (10 min) after this turns false; A-65 does not
+     * lean on that grace.
+     */
+    public static boolean keepsServiceInForeground(@NonNull Player player) {
+        int state = player.getPlaybackState();
+        return player.getPlayWhenReady() && (state == Player.STATE_READY || state == Player.STATE_BUFFERING);
+    }
+
+    private boolean canResume() {
+        try {
+            return engine.canResume();
+        } catch (RuntimeException e) {
+            return false;
+        }
+    }
+
+    /**
+     * The item {@code onPlaybackResumption} answers with (A-27): this facade's media id and the
+     * restored item's words, so a controller that shows the playlist before the play shows ours.
+     */
+    @NonNull
+    public static MediaItem resumptionItem(@NonNull EngineItem item) {
+        String title = text(item.node.get("title"));
+        String show = text(item.node.get("show"));
+        MediaMetadata.Builder metadata = new MediaMetadata.Builder()
+                .setTitle(title)
+                .setDisplayTitle(title)
+                .setArtist(show)
+                .setSubtitle(show)
+                .setIsBrowsable(false)
+                .setIsPlayable(true);
+        if (item.durationSec != null && item.durationSec > 0) metadata.setDurationMs(Math.round(item.durationSec * 1000));
+        return new MediaItem.Builder().setMediaId(MEDIA_ID).setMediaMetadata(metadata.build()).build();
+    }
+
+    private static String text(JsonNode node) {
+        return node == null ? null : node.stringValue();
     }
 
     /** {@code commandAvailability}'s set as Media3 player commands. Read-only commands always. */
@@ -203,6 +316,22 @@ public final class EnginePlayer extends SimpleBasePlayer {
     @Override
     protected ListenableFuture<?> handleSetPlayWhenReady(boolean playWhenReady) {
         return press(playWhenReady ? MediaMapping.RemoteCommand.PLAY : MediaMapping.RemoteCommand.PAUSE, null);
+    }
+
+    /**
+     * Declared only while the session is empty and can resume (A-27): Media3 applying what
+     * {@code onPlaybackResumption} answered. The engine restores from its own record; the items
+     * are not played (see the class comment).
+     */
+    @NonNull
+    @Override
+    protected ListenableFuture<?> handleSetMediaItems(@NonNull List<MediaItem> mediaItems, int startIndex, long startPositionMs) {
+        try {
+            engine.resume();
+        } catch (RuntimeException e) {
+            android.util.Log.w("ForayEngine", "resume failed", e);
+        }
+        return Futures.immediateVoidFuture();
     }
 
     @NonNull
