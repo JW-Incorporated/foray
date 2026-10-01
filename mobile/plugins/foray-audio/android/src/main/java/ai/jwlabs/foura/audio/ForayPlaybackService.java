@@ -744,18 +744,40 @@ public class ForayPlaybackService extends MediaSessionService {
      */
     @Override
     public void onTaskRemoved(@Nullable Intent rootIntent) {
-        if (keepsRunningOnTaskRemoved(isPlaybackOngoing(), player)) return;
+        boolean kept = keepsRunningOnTaskRemoved(isPlaybackOngoing(), player);
+        /* A-67: the swipe is named before anything it causes. Kept, it stops nothing. Not kept,
+           Media3 pauses the facade (one remote pause, `stop cause=pause`, when the engine was
+           running) and stops the service (`service kind=destroy`, then the teardown). */
+        log.diag(serviceRow("task-removed", kept, host));
+        if (kept) return;
         super.onTaskRemoved(rootIntent);
     }
 
+    /**
+     * A-67: {@code service kind=<event> kept=y|n running=y|n}, the service's own word on a swipe or
+     * its destruction, so a Copy says why the engine's audio stopped when the core's own row
+     * ({@code stop cause=pause} from Media3's pause, {@code stop cause=relinquish} from the teardown)
+     * cannot. {@code kept} is null for a destruction.
+     */
+    static EngineCommand.DiagEntry serviceRow(@NonNull String event, @Nullable Boolean kept, @Nullable ForayEngineHost engine) {
+        boolean running = engine != null && !engine.isTornDown() && engine.state().isRunning();
+        List<JsonNode.Member> fields = kind(event);
+        if (kept != null) fields.add(JsonNode.member("kept", JsonNode.str(kept ? "y" : "n")));
+        fields.add(JsonNode.member("running", JsonNode.str(running ? "y" : "n")));
+        return new EngineCommand.DiagEntry("service", fields);
+    }
+
     /** {@link #onTaskRemoved}'s rule: in the foreground, and the facade still engaged (play-when-ready, READY or BUFFERING). */
-    static boolean keepsRunningOnTaskRemoved(boolean playbackOngoing, @Nullable Player facade) {
+    public static boolean keepsRunningOnTaskRemoved(boolean playbackOngoing, @Nullable Player facade) {
         return playbackOngoing && facade != null && EnginePlayer.keepsServiceInForeground(facade);
     }
 
     @Override
     public void onDestroy() {
         if (current == this) current = null;
+        /* A-67: the service's end is a stop path: named here, then the host's teardown has the core
+           write `stop cause=relinquish` (when it was running) before anything is silenced. */
+        if (host != null) log.diag(serviceRow("destroy", null, host));
         release();
         super.onDestroy();
     }

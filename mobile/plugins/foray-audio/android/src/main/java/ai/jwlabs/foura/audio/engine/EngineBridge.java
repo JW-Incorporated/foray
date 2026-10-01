@@ -258,6 +258,10 @@ public final class EngineBridge {
             owner.setModeOverride(m.mode());
             return null;
         }
+        // A-67 (NE-40's DV-8 trial): route sharing is an AVAudioSession policy with no Android
+        // counterpart. Nothing is stored, and the page is told so rather than shown a choice that
+        // nothing applies (client.js offers no such row on Android).
+        if (command instanceof EngineContract.Command.SetRouteSharing) return EngineContract.Refusal.CAPABILITY_OFF.token;
         ForayEngineHost engine = liveEngine();
         if (engine == null) {
             // "Delete my data" works in every lane too: what an earlier native session stored is

@@ -1063,3 +1063,31 @@ it, and every seam with a line in it `prepare=hit`.
 **Robolectric** (android-build run 36799524361): `NarrationSeamTest` runs the real JVM core through `ForayEngineHost`
 over a `DeckPair` of two ExoDecks on local files: clip, an 8 s rendered WAV line, clip. Two handovers, one cold attach
 (the first clip's), both seam rows `prepare=hit`, never two players sounding.
+
+## 18. A-67: the DV-7 twins on both API levels, and the force-stop value
+
+Card A-67 turns (j)'s four legs (§10) into the emulator's twins of iOS's DV-7a and DV-7b (NE-40's M3 drive).
+`verdictKill` now reports `twins`:
+- **DV-7a, gated.** `am kill`, a swipe then `am kill`, and a SIGKILL each resume 4a at the saved position, and at
+  least one leg whose process died comes back through Media3's playback resumption (`coldBoot: painted`).
+- **DV-7b, recorded.** Who the play reaches after `am force-stop`, whether 4a played, and whether the control held.
+
+A fourth matrix leg runs (j) alone in native mode on API 36 (`only: kill`), so the gate holds on both levels.
+
+**API 36** (run 36832171909, job 110271348252, `android-playback (API 36, native engine)`, head `b3662d18`; the leg
+took 8 min, (j) 2 min 7 s):
+
+| Leg | Died? | Way back | Saved → resumed | Play to audible |
+|---|---|---|---|---|
+| `am kill` | no (the paused service is still in the foreground) | the live session (warm) | 18.091 s → 18.382 s | 84 ms |
+| swipe, then `am kill` | yes | the media button receiver, then resumption, `coldBoot: painted` | 18.348 s → 18.348 s | 680 ms |
+| SIGKILL | yes, and the sticky service restarted before the play | the restarted session, then resumption, `painted` | 18.493 s → 18.774 s | 647 ms |
+| `am force-stop` (DV-7b) | yes | **the media button receiver again**, then resumption, `painted` | 18.434 s → 18.747 s | 1169 ms |
+
+**The force-stop value.** The control does not hold on API 36 either (`controlHolds: false`, `receivedBy:
+ai.jwlabs.foura`, one receiver start). §10 recorded the same on API 34. On these images a force-stopped app's media
+button receiver is still sent the key. iOS's DV-7b expects "not 4a" because iOS does not relaunch an app the
+listener closed. Android's answer is that 4a plays. Nothing gates on it; whether that is acceptable is a product
+call for the A4 review (A-68), and Joey's step 16 is the device half.
+
+**API 34:** the full native leg's (j) on the PR's last run (its run id and verdict are in PR #957), with A-27's API 34 force-stop finding in §10

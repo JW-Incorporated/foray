@@ -181,7 +181,7 @@ function legs() {
     .split(/\n(?= {10}- )/)
     .map((chunk) => {
       const field = (k) => new RegExp(`^ {10}(?:- | {2})${k}: (.+)$`, "m").exec(chunk)?.[1]?.trim() ?? null;
-      return { api: Number(field("api")), image: field("image"), timeout: Number(field("timeout")), mode: field("mode") };
+      return { api: Number(field("api")), image: field("image"), timeout: Number(field("timeout")), mode: field("mode"), only: field("only") };
     });
 }
 
@@ -398,11 +398,19 @@ test("A-26: a third leg runs the native engine's scenarios, every one gated, and
      (A-30: "required-green on (a)-(e) and (g)-(k)"). MUTATION: run a JS scenario on the native leg (drop its
      `matrix.mode == 'js'`) -> the A-04 test above fails. */
   const { SCENARIOS: NATIVE } = await import("./android-native-playback.mjs");
+  /* A-67 added a second native leg: (j) alone, the DV-7 twins, on API 36, so the kill-then-play
+     gate holds on both API levels. MUTATION: drop it, give it no `only` (every native step would
+     run on the slow image), or point `only` at a scenario that does not exist -> fails. */
   const native = legs().filter((l) => l.mode === "native");
-  assert.equal(native.length, 1, "one native leg");
+  assert.equal(native.length, 2, "the full native leg, and the DV-7 twins on the current image");
   assert.equal(native[0].api, 34, "the fast image");
   assert.equal(native[0].image, "system-images;android-34;google_apis;x86_64");
-  assert.ok(native[0].timeout > 30 && native[0].timeout <= 45, "room for the build, the boot and ~12 min of scenarios, not unbounded");
+  assert.equal(native[0].only, null, "the fast native leg runs every native scenario");
+  assert.equal(native[1].api, 36);
+  assert.equal(native[1].image, "system-images;android-36;google_apis;x86_64");
+  assert.equal(native[1].only, "kill", "A-67: the API 36 native leg runs (j) alone");
+  for (const n of native) assert.ok(n.timeout > 30 && n.timeout <= 45, "room for the build, the boot and the scenarios, not unbounded");
+  assert.equal(legs().filter((l) => l.mode === "js" && l.only !== null).length, 0, "the JS legs run everything");
   assert.equal(legs().filter((l) => l.mode !== "js" && l.mode !== "native").length, 0, "every leg names its mode");
   assert.match(PYML, /^ {6}MODE: \$\{\{ matrix\.mode \}\}$/m);
   const steps = PLY.split(/\n(?= {6}- (?:name|uses):)/).filter((c) => /node tools\/mobile\/android-native-playback\.mjs (?!collect|summary)/.test(c));
@@ -417,7 +425,8 @@ test("A-26: a third leg runs the native engine's scenarios, every one gated, and
     assert.ok(s, `no step runs the native ${id} scenario`);
     const c = code(s);
     assert.match(c, new RegExp(`^ {8}id: native-${id}$`, "m"));
-    assert.match(c, /^ {8}if: \$\{\{ matrix\.mode == 'native' && !cancelled\(\) && steps\.launch\.outcome == 'success' \}\}$/m, `native ${id} runs after a launch whatever came before`);
+    const gate = `        if: \${{ matrix.mode == 'native' && (!matrix.only || matrix.only == '${id}') && !cancelled() && steps.launch.outcome == 'success' }}`;
+    assert.ok(c.split(/\r?\n/).includes(gate), `native ${id} runs after a launch whatever came before, on a native leg that runs it`);
     assert.equal(/^ {8}run: (.+)$/m.exec(c)?.[1], `node tools/mobile/android-native-playback.mjs ${id} --art "$ART"`, `native ${id}'s verdict is its step's`);
     const at = PLY.indexOf(`android-native-playback.mjs ${id} `);
     assert.ok(at > last, `native ${id} is in the card's order`);

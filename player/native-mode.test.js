@@ -800,6 +800,22 @@ test("DEVELOPER (native lane): all five rows; each command goes out as one engin
   assert.ok(sent.every((r) => r.source === "tap"), "a Developer row is a tap");
 });
 
+test("DEVELOPER (Android native lane, A-67): no Route sharing row, and its command is never sent", async (t) => {
+  /* Route sharing is an AVAudioSession word (NE-40, DV-8) with no Android
+     counterpart: the Android engine stores nothing for it (EngineBridge refuses
+     it capability-off), so the page offers no row that would read back a
+     choice nothing applies. KILLING MUTATION: drop the android filter in
+     nativeDeveloperCommands -> five rows here, and the send reaches the engine. */
+  const h = await bootNative(t, { platform: "android" });
+  assert.equal(await h.client.whenEngineReady(), "native");
+  const st = h.client.engineDeveloperStatus();
+  assert.deepEqual(st.commands, ["setModeOverride", "setHoldPolicy", "simulateTermination", "probeSession"]);
+  const before = cmds(h.ref).length;
+  assert.equal(await h.client.engineDeveloperSend("setRouteSharing", { policy: "longFormAudio" }), null, "not sent");
+  assert.equal(cmds(h.ref).length, before);
+  assert.equal(h.client.engineDeveloperStatus().routeSharing, null);
+});
+
 test("DEVELOPER: only the four commands go through engineDeveloperSend", async (t) => {
   /* KILLING MUTATION: drop the `commands.includes(cmd)` check — a transport
      command would reach the engine through a Developer path. */
