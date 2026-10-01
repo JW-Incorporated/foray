@@ -2130,7 +2130,7 @@ const FLOORS = {
      dirty tree, an open or closed-unmerged PR, a branch with no PR, a detached
      head not on main -- or a proof that the dry run mutates nothing. A test
      deleted here is a keep-* that could become a remove. */
-  "tools/dev/worktree-gc.test.mjs": 17,
+  "tools/dev/worktree-gc.test.mjs": 19,
 };
 
 test("no suite is floored twice", () => {

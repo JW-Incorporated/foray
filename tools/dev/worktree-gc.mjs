@@ -25,7 +25,8 @@
  * and `git status --porcelain` is empty. Everything else is kept and named:
  * an OPEN PR, a CLOSED-unmerged PR (its work may exist nowhere else), a
  * branch with no PR at all, a dirty tree even when its PR merged, and a
- * detached head that is not reachable from `origin/main`. PRs squash-merge
+ * detached head that is not reachable from `origin/main`, and a tree whose
+ * `git status` itself fails (unreadable is not clean). PRs squash-merge
  * here, so "ancestor of origin/main" is useless for branches (only 6 of 246
  * were) — the PR state is the truth. Detached heads have no PR, so for them
  * ancestry IS the test: a detached checkout of a commit that is on main holds
@@ -45,6 +46,10 @@
  *
  * Windows: every process is `spawnSync(cmd, argsArray)`; `gh.exe` on win32;
  * never a shell string, so a path with spaces (`Vibe Coding`) is one argument.
+ *
+ * `--json`: stdout is exactly one JSON document ({ repo, apply, entries, plan,
+ * strayFiles, applied? }); every human line, including the dry-run summary
+ * and the --apply log, goes to stderr so the document stays parseable.
  */
 
 import nodeFs from "node:fs";
@@ -55,6 +60,8 @@ import { pathToFileURL } from "node:url";
 export const DEFAULT_REPO = "JW-Incorporated/foray";
 export const PR_LIST_LIMIT = 1000;
 export const STRAY_DIR = ".claude/worktrees";
+/** Prefix `run` stores in `statusByPath` when `git status` itself failed: the tree is unreadable, never "clean". */
+export const STATUS_UNREADABLE = "!! status unreadable: ";
 
 /** Verdicts in the order the table prints them: what goes first is what --apply touches. */
 export const VERDICT_ORDER = [
@@ -146,6 +153,12 @@ export function classify(entries, { prsByBranch = {}, statusByPath = {}, existsB
     }
     if (e.prunable) return verdict("prune", `git marks it prunable; \`git worktree prune\` drops the registration${named ? ` (${named})` : ""}.`);
     const status = String(statusByPath[e.path] ?? "").trim();
+    if (status.startsWith(STATUS_UNREADABLE)) {
+      return verdict(
+        "keep-dirty",
+        `${status.slice(STATUS_UNREADABLE.length)}; a tree whose status cannot be read is never removed${named ? ` even though ${named} ${merged.length ? "merged" : "exists"}` : ""}.`,
+      );
+    }
     if (status !== "") {
       const n = status.split(/\r?\n/).length;
       return verdict(
@@ -330,7 +343,9 @@ export function run(argv = [], { exec = defaultExec, fs = nodeFs, cwd = process.
     existsByPath[e.path] = fs.existsSync(e.path);
     if (existsByPath[e.path] && !e.prunable) {
       const st = exec("git", ["-C", e.path, "status", "--porcelain"]);
-      statusByPath[e.path] = st.status === 0 ? st.stdout : "";
+      // A failed status is NOT a clean tree: keep it and say why.
+      statusByPath[e.path] =
+        st.status === 0 ? st.stdout : `${STATUS_UNREADABLE}git status exited ${st.status}: ${String(st.stderr ?? "").trim().split(/\r?\n/)[0] || "no stderr"}`;
     }
     if (e.detached && e.head && !(e.head in ancestorByHead)) {
       const mb = exec("git", ["merge-base", "--is-ancestor", e.head, "origin/main"]);
@@ -344,65 +359,81 @@ export function run(argv = [], { exec = defaultExec, fs = nodeFs, cwd = process.
   const strayDir = path.join(cwd, STRAY_DIR);
   const strays = strayFiles(strayDir, fs);
 
-  if (json) {
-    out += JSON.stringify({ repo, apply, entries: classified, plan: p, strayFiles: strays }, null, 2) + "\n";
-  } else {
+  // Under --json stdout is ONE JSON document and nothing else; the human lines go to stderr.
+  const say = (s) => {
+    if (json) err += s;
+    else out += s;
+  };
+  const emitJson = (applied) => {
+    out += JSON.stringify({ repo, apply, entries: classified, plan: p, strayFiles: strays, ...(applied ? { applied } : {}) }, null, 2) + "\n";
+  };
+
+  if (!json) {
     out += renderTable(classified, cwd);
     out += "\n" + renderCounts(p.counts, classified.length);
     if (strays.length) out += `${strays.length} stray regular file${strays.length === 1 ? "" : "s"} directly under ${STRAY_DIR}/: ${strays.join(", ")}\n`;
   }
 
   if (!apply) {
-    out +=
+    say(
       `Nothing changed. Re-run with --apply to remove ${p.removeWorktrees.length} worktrees, ` +
-      `delete ${p.deleteBranches.length} branches, prune, and delete ${strays.length} stray files under ${STRAY_DIR}/.\n`;
+        `delete ${p.deleteBranches.length} branches, prune, and delete ${strays.length} stray files under ${STRAY_DIR}/.\n`,
+    );
+    if (json) emitJson(null);
     return { code: 0, out, err };
   }
 
   // --apply. Only now does a mutating command run, and only on the plan.
+  const applied = { removedWorktrees: [], refusedWorktrees: [], deletedBranches: [], keptBranches: [], pruned: false, deletedFiles: [], skippedFiles: [] };
   const failedPaths = new Set();
   const byPath = new Map(classified.map((c) => [c.path, c]));
   for (const wt of p.removeWorktrees) {
     const r = exec("git", ["worktree", "remove", wt]);
     if (r.status === 0) {
-      out += `removed worktree ${shortenPath(wt, cwd)}\n`;
+      applied.removedWorktrees.push(wt);
+      say(`removed worktree ${shortenPath(wt, cwd)}\n`);
     } else {
       failedPaths.add(wt);
-      out += `SKIPPED ${shortenPath(wt, cwd)}: git worktree remove refused (${r.status}): ${String(r.stderr).trim()}\n`;
+      applied.refusedWorktrees.push(wt);
+      say(`SKIPPED ${shortenPath(wt, cwd)}: git worktree remove refused (${r.status}): ${String(r.stderr).trim()}\n`);
     }
   }
   const stillCheckedOut = new Set([...failedPaths].map((wt) => byPath.get(wt)?.branch).filter(Boolean));
-  let deletedBranches = 0;
   for (const b of p.deleteBranches) {
     if (stillCheckedOut.has(b)) {
-      out += `kept branch ${b}: its worktree was not removed\n`;
+      applied.keptBranches.push(b);
+      say(`kept branch ${b}: its worktree was not removed\n`);
       continue;
     }
     const r = exec("git", ["branch", "-D", b]);
     if (r.status === 0) {
-      deletedBranches++;
-      out += `deleted branch ${b}\n`;
+      applied.deletedBranches.push(b);
+      say(`deleted branch ${b}\n`);
     } else {
-      out += `SKIPPED branch ${b}: git branch -D refused (${r.status}): ${String(r.stderr).trim()}\n`;
+      applied.keptBranches.push(b);
+      say(`SKIPPED branch ${b}: git branch -D refused (${r.status}): ${String(r.stderr).trim()}\n`);
     }
   }
   const pr = exec("git", ["worktree", "prune"]);
-  out += pr.status === 0 ? "pruned\n" : `SKIPPED prune: git worktree prune refused (${pr.status}): ${String(pr.stderr).trim()}\n`;
-  let deletedFiles = 0;
+  applied.pruned = pr.status === 0;
+  say(pr.status === 0 ? "pruned\n" : `SKIPPED prune: git worktree prune refused (${pr.status}): ${String(pr.stderr).trim()}\n`);
   for (const name of strays) {
     const f = path.join(strayDir, name);
     try {
       fs.unlinkSync(f);
-      deletedFiles++;
-      out += `deleted stray file ${STRAY_DIR}/${name}\n`;
+      applied.deletedFiles.push(name);
+      say(`deleted stray file ${STRAY_DIR}/${name}\n`);
     } catch (e) {
-      out += `SKIPPED stray file ${STRAY_DIR}/${name}: ${e.message}\n`;
+      applied.skippedFiles.push(name);
+      say(`SKIPPED stray file ${STRAY_DIR}/${name}: ${e.message}\n`);
     }
   }
-  out +=
+  say(
     `Done: removed ${p.removeWorktrees.length - failedPaths.size} of ${p.removeWorktrees.length} worktrees` +
-    (failedPaths.size ? ` (${failedPaths.size} refused, left alone)` : "") +
-    `, deleted ${deletedBranches} branches, pruned, deleted ${deletedFiles} stray files.\n`;
+      (failedPaths.size ? ` (${failedPaths.size} refused, left alone)` : "") +
+      `, deleted ${applied.deletedBranches.length} branches, pruned, deleted ${applied.deletedFiles.length} stray files.\n`,
+  );
+  if (json) emitJson(applied);
   return { code: failedPaths.size ? 1 : 0, out, err };
 }
 

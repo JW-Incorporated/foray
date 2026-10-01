@@ -358,12 +358,15 @@ test("--apply: a refused `git worktree remove` is printed and skipped, never for
 });
 
 test("--json prints the classified entries, the plan and the stray files as one document", () => {
+  // Mutation: append the "Nothing changed." line to stdout under --json -> JSON.parse throws.
   const { exec, fs } = scenario();
   const r = run(["--json"], { exec, fs, cwd: MAIN });
   assert.equal(r.code, 0, r.err);
-  const doc = JSON.parse(r.out.slice(0, r.out.indexOf("\nNothing changed.")));
+  const doc = JSON.parse(r.out);
+  assert.match(r.err, /^Nothing changed\. Re-run with --apply to remove 2 worktrees/m, "the human summary goes to stderr");
   assert.equal(doc.repo, "JW-Incorporated/foray");
   assert.equal(doc.apply, false);
+  assert.equal(doc.applied, undefined, "a dry run reports nothing applied");
   assert.deepEqual(
     doc.entries.map((e) => e.verdict),
     ["keep-main", "remove", "keep-dirty", "remove-detached", "prune"],
@@ -374,6 +377,49 @@ test("--json prints the classified entries, the plan and the stray files as one 
   assert.deepEqual(doc.strayFiles, ["leftover.patch", "nul"]);
   assert.deepEqual(exec.mutating(), []);
   assert.deepEqual(fs.calls, []);
+});
+
+test("--json --apply: stdout is still one document, now carrying what was applied; the log goes to stderr", () => {
+  const { exec, fs } = scenario({ failRemove: [MERGED] });
+  const r = run(["--json", "--apply"], { exec, fs, cwd: MAIN });
+  assert.equal(r.code, 1);
+  const doc = JSON.parse(r.out);
+  assert.equal(doc.apply, true);
+  assert.deepEqual(doc.applied, {
+    removedWorktrees: [DETACHED],
+    refusedWorktrees: [MERGED],
+    deletedBranches: [],
+    keptBranches: ["feat/merged-one"],
+    pruned: true,
+    deletedFiles: ["leftover.patch", "nul"],
+    skippedFiles: [],
+  });
+  assert.match(r.err, /SKIPPED \.claude\/worktrees\/merged-one: git worktree remove refused/);
+  assert.match(r.err, /Done: removed 1 of 2 worktrees \(1 refused, left alone\)/);
+});
+
+test("CLI: a tree whose `git status` fails is kept as unreadable, never read as clean and removed", () => {
+  // Mutation: store "" for a failed status -> merged-one reads "remove" and --apply removes it.
+  const { exec, fs } = scenario();
+  const broken = fakeExec([
+    [`git -C ${MERGED} status --porcelain`, { status: 128, stdout: "", stderr: "fatal: not a git repository: .git\nmore\n" }],
+  ]);
+  const routed = (cmd, args) => (cmd === "git" && args[0] === "-C" && args[1] === MERGED ? broken(cmd, args) : exec(cmd, args));
+  const dry = run(["--json"], { exec: routed, fs, cwd: MAIN });
+  assert.equal(dry.code, 0, dry.err);
+  const doc = JSON.parse(dry.out);
+  const row = doc.entries.find((e) => e.path === MERGED);
+  assert.equal(row.verdict, "keep-dirty");
+  assert.match(row.why, /git status exited 128: fatal: not a git repository: \.git; a tree whose status cannot be read is never removed even though #10 merged\./);
+  assert.deepEqual(doc.plan.removeWorktrees, [DETACHED]);
+  assert.deepEqual(doc.plan.deleteBranches, []);
+  const { exec: exec2, fs: fs2 } = scenario();
+  const routed2 = (cmd, args) => (cmd === "git" && args[0] === "-C" && args[1] === MERGED ? broken(cmd, args) : exec2(cmd, args));
+  const applied = run(["--apply"], { exec: routed2, fs: fs2, cwd: MAIN });
+  assert.equal(applied.code, 0, applied.out);
+  assert.ok(!exec2.calls.some((c) => c[1] === "worktree" && c[2] === "remove" && c[3] === MERGED), "the unreadable tree is never removed");
+  assert.ok(!exec2.calls.some((c) => c[1] === "branch" && c[2] === "-D" && c[3] === "feat/merged-one"));
+  assert.match(applied.out, /^keep-dirty\s+feat\/merged-one/m);
 });
 
 test("CLI: a refused `gh pr list` stops the run with the paging fallback named, and nothing changes", () => {
