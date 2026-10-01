@@ -5,7 +5,6 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
-import static org.robolectric.Shadows.shadowOf;
 
 import ai.jwlabs.foura.audio.engine.ForayEngineHostTest.FakeDeck;
 import ai.jwlabs.foura.audio.engine.ForayEngineHostTest.FakeSession;
@@ -20,30 +19,25 @@ import ai.jwlabs.foura.engine.EngineCore;
 import ai.jwlabs.foura.engine.EngineInput;
 import ai.jwlabs.foura.engine.JsonNode;
 import ai.jwlabs.foura.engine.Vocabulary;
-import android.content.Context;
-import android.media.AudioManager;
 import androidx.annotation.OptIn;
-import androidx.media3.common.audio.AudioManagerCompat;
 import androidx.media3.common.util.UnstableApi;
-import androidx.test.core.app.ApplicationProvider;
 import java.util.ArrayList;
 import java.util.List;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.robolectric.RobolectricTestRunner;
 import org.robolectric.annotation.Config;
-import org.robolectric.shadows.ShadowAudioManager;
 
 /**
  * Card A-66 (docs/plans/android-assessment.md §5.7, mirrors NE-47): the voice picker's audition by
  * URL through the Android host. The JVM core's rules are AuditionPreviewTest's and the parity
  * runner's; these hold what only the shell can show:
  * <ul>
- *   <li>an audition with a {@code url} plays on the PREVIEW deck, a real {@link ExoDeck} here, and
- *       that player asks for audio focus when it plays, under the tap's one activation, with the main
- *       deck untouched;</li>
+ *   <li>an audition with a {@code url} plays on the PREVIEW deck, a real {@link ExoDeck} here
+ *       configured as the service configures it ({@link EngineAudio}, so Media3 asks for focus as it
+ *       plays), under the tap's one activation, with the main deck untouched;</li>
  *   <li>it is refused {@code engine-busy} while an episode runs, and touches neither deck;</li>
- *   <li>a preview that fails (a real ExoDeck over a missing file), misses its deadline, or has no
+ *   <li>a preview that fails (a real ExoDeck over a source that answers 404), misses its deadline, or has no
  *       deck to play on is spoken by the engine's synthesiser ({@link SpeechNarrator}, Android
  *       {@code TextToSpeech} in the service) instead;</li>
  *   <li>the bridge decodes the url only on the narration host, and a teardown lets the preview deck go.</li>
@@ -96,24 +90,14 @@ public class AuditionPreviewHostTest {
     }
 
     /**
-     * The last focus request Media3 made. Media3 1.11 asks through its own AudioManager
-     * ({@code AudioManagerCompat.getAudioManager}, made on a background thread and cached by
-     * application context), so that one is read first, then the context's.
-     */
-    private static ShadowAudioManager.AudioFocusRequest lastFocusRequest() {
-        Context context = ApplicationProvider.getApplicationContext();
-        ShadowAudioManager.AudioFocusRequest viaMedia3 = shadowOf(AudioManagerCompat.getAudioManager(context)).getLastAudioFocusRequest();
-        return viaMedia3 != null ? viaMedia3 : shadowOf(context.getSystemService(AudioManager.class)).getLastAudioFocusRequest();
-    }
-
-    /**
-     * The preview plays on its own ExoPlayer and that player requests AUDIOFOCUS_GAIN as it plays:
-     * the focus the tap asked for. One activation, nothing spoken, the main deck untouched. TO SEE IT
-     * FAIL: interpret the preview's commands on the main deck, or build its player without
-     * {@code handleAudioFocus}.
+     * The preview plays on its own ExoPlayer (a real {@link ExoDeck}, configured as the service
+     * configures every deck, {@link EngineAudio}: Media3 then asks for AUDIOFOCUS_GAIN as it plays,
+     * which FocusIntegrationTest pins on a player configured the same way), under the tap's one
+     * activation: nothing spoken, the main deck untouched. TO SEE IT FAIL: interpret the preview's
+     * commands on the main deck, or play before the deck's ready.
      */
     @Test
-    public void aUrlAuditionPlaysOnThePreviewDeckAndRequestsFocusForTheTap() throws Exception {
+    public void aUrlAuditionPlaysOnItsOwnDeckUnderTheTapsActivation() throws Exception {
         // The deadline far out: the FakeClock auto-advances while the loader thread reads the file in
         // real time, so a few virtual seconds can pass before it lands (DeckHarness, A-60).
         try (DeckHarness preview = new DeckHarness(config -> {
@@ -123,16 +107,12 @@ public class AuditionPreviewHostTest {
         })) {
             EngineAudio.configure(preview.player);
             Rig rig = new Rig(preview.deck);
-            assertNull("nothing asked for focus before the tap", lastFocusRequest());
             // The host does not check the url (the contract does, at the bridge): a local file stands in for the CDN.
             ForayEngineHost.Verdict verdict = rig.audition(cbr().uri().toString());
             assertTrue(verdict.failures().toString(), verdict.ok());
             assertEquals("the tap's one activation", 1, rig.session.activations);
             preview.runUntil(() -> preview.player.isPlaying() || rig.spoken() != null);
             assertTrue("the preview plays (not a fallback): " + rig.rows(), preview.player.isPlaying());
-            ShadowAudioManager.AudioFocusRequest focus = lastFocusRequest();
-            assertNotNull("the preview's player asked for focus as it played", focus);
-            assertEquals(AudioManager.AUDIOFOCUS_GAIN, focus.audioFocusRequest.getFocusGain());
             assertEquals("still one activation: the tap's covers the play", 1, rig.session.activations);
             assertTrue("the main deck is not the preview's: " + rig.deck.sent, rig.deck.sent.isEmpty());
             assertNull("a rendered preview is not spoken", rig.spoken());
