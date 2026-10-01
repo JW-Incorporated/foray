@@ -1042,7 +1042,9 @@ public struct EngineCore {
     /// `_loadItem(ref)`: where the load starts, decided in the JS order, then
     /// one `.load` with a fresh token. The index moves NOW (after the outgoing
     /// save already ran); the loaded id moves only when `.ready` comes back.
-    private mutating func load(_ ref: QueueItemRef, offsets: LoadOffsets) {
+    /// `attempt` is §16's: 1 for every load the reducer asks for, higher only
+    /// for a Foray clip's retry (`retryOrSkipClip`).
+    private mutating func load(_ ref: QueueItemRef, offsets: LoadOffsets, attempt: Int = 1) {
         guard let item = state.queue.first(where: { $0.id == ref.id }) else {
             // Drop the beat's deadline with the item it belonged to.
             endSeamGap("unknownRef")
@@ -1107,7 +1109,7 @@ public struct EngineCore {
             // SPOKEN (NE-31s).
             return loadSpokenLine(item, token: token, restart: offsets.forced != nil)
         }
-        state.pendingLoad = PendingLoad(token: token, itemId: item.id, startSec: startSec)
+        state.pendingLoad = PendingLoad(token: token, itemId: item.id, startSec: startSec, attempt: attempt)
         deckCommand(.load(token: token, itemId: item.id, url: item.audioUrl, startSec: startSec,
                           preciseTiming: bounds != nil, deadlineClass: DeckDeadlineClass(item)))
     }
@@ -1286,6 +1288,10 @@ public struct EngineCore {
             diag("bridge", [JSONMember("kind", .string("load-failed")), JSONMember("item", .string(pending.itemId))])
             return advancePastBridgeFailure()
         }
+        // §16: a Foray clip is retried once, then stepped over, never left idle.
+        if isPending, let pending = state.pendingLoad, retryOrSkipClip(pending, cause: cause, why: fallbackCause) {
+            return
+        }
         let itemId = state.pendingLoad?.itemId ?? state.loadedId ?? "?"
         state.pendingLoad = nil
         stopRow(cause)
@@ -1299,6 +1305,69 @@ public struct EngineCore {
             out.append(.emit(.error(code: "load", message: message)))
         }
         dispatch(.error("loadItem(\(itemId)) failed: \(message)"))
+    }
+
+    /// §16 (queue-manager.js `_retryOrSkipClip`; the M2 car drive,
+    /// 2026-10-01): a Foray CLIP's load failed (its P-13 deadline, or the
+    /// deck's `.failed`) while the listener is still on it. It used to stop
+    /// the Foray here, idle and silent with the clip on the lock screen, and
+    /// every press of play then loaded the clip again from nothing.
+    ///
+    ///   - The first failure loads the SAME clip at the SAME in-point again
+    ///     (`deck kind=retry`). That is what lets the deck keep what the first
+    ///     attempt fetched: AVDeck continues a load that was getting somewhere
+    ///     (`deck kind=continue`) instead of starting a cold one.
+    ///   - A failure of that retry steps over the clip the way the ladder's
+    ///     refusal does (`skip kind=load`, the `skipped` event the page
+    ///     already shows, `skipUnplayableSegment`): the next item, a narration
+    ///     line included, or the end of the Foray.
+    ///   - Paused during the load (`interrupted`), the retry still runs,
+    ///     quietly, so the listener's play finds the clip; a failed retry while
+    ///     paused is today's stop, because stepping on would start the next
+    ///     item behind the pause.
+    ///
+    /// `EngineConstants.QueueManager.forayClipLoadAttempts` counts the loads
+    /// and `forayClipMaxSilenceSec` is the silence that bounds. Anything that
+    /// is not a clip (a plain episode, a narration line, a bridge), or a load
+    /// the player has moved off, returns false: the caller's stop, exactly as
+    /// before. No `stopRow`: neither a retry nor a step is a stop (a step onto
+    /// nothing is `skipUnplayableSegment`'s own `final-end`).
+    private mutating func retryOrSkipClip(_ pending: PendingLoad, cause: Vocabulary.StopCause,
+                                          why: Vocabulary.NarrationFallbackCause) -> Bool {
+        guard config.forayTapeEnabled, !pending.bridge, pending.spokenSeq == nil,
+              let item = state.queue.first(where: { $0.id == pending.itemId }),
+              item.kind != .tts, item.bounds != nil, focusItem?.id == item.id else { return false }
+        let waiting: Bool
+        switch state.player {
+        case .loadingItem: waiting = true
+        case .interrupted: waiting = false
+        default: return false
+        }
+        // `why`, not `cause`: outside a `narration` row DiagGate admits a
+        // `cause` only as a stop cause, and neither row is a stop.
+        let fields = [JSONMember("item", .string(item.id)),
+                      JSONMember("why", .string(cause.rawValue)),
+                      JSONMember("fileCause", .string(why.rawValue)),
+                      JSONMember("waiting", .bool(waiting))]
+        if Double(pending.attempt) < EngineConstants.QueueManager.forayClipLoadAttempts {
+            diag("deck", [JSONMember("kind", .string("retry")), JSONMember("token", .number(Double(pending.token))),
+                          JSONMember("attempt", .number(Double(pending.attempt + 1)))] + fields)
+            state.pendingLoad = nil
+            // The same in-point: an explicit offset inside the slice, spent by
+            // this one load.
+            load(item.ref, offsets: LoadOffsets(explicit: pending.startSec), attempt: pending.attempt + 1)
+            return true
+        }
+        guard waiting else { return false }
+        state.pendingLoad = nil
+        state.skippedSegments += 1
+        let index = state.queue.firstIndex(where: { $0.id == item.id }) ?? state.currentIndex
+        diag("skip", [JSONMember("kind", .string("load")), JSONMember("index", .number(Double(index))),
+                      JSONMember("attempts", .number(Double(pending.attempt)))] + fields)
+        out.append(.emit(.skipped(itemId: item.id, index: index,
+                                  reason: "did not load in \(pending.attempt) attempts (\(why.rawValue))")))
+        skipUnplayableSegment()
+        return true
     }
 
     /// §14 (queue-manager.js, Phase 2; founder rulings D1-D11, 2026-09-28):

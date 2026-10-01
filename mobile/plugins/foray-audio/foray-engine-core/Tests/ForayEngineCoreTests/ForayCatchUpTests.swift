@@ -314,6 +314,11 @@ final class ForayCatchUpTests: XCTestCase {
         var host = Host(config: ForayCatchUpTests.tape)
         let first = host.send(try EngineCoreTests.command("playForay", ForayTapeTests.forayArgs(ForayTapeTests.twoClips)))
         XCTAssertEqual(ForayTapeTests.loads(first), ["f1#0@100"])
+        // §16: a Foray clip's failed load is retried, and a failed retry is
+        // stepped over, unless the listener paused during it: then the second
+        // failure is the stop (idle) this test starts from.
+        host.send(try EngineCoreTests.command("pause"), after: 0)
+        host.send(.deck(.failed(token: host.lastLoad ?? 0, message: "missing file")), after: 0)
         host.send(.deck(.failed(token: host.lastLoad ?? 0, message: "missing file")), after: 0)
         XCTAssertEqual(host.core.state.stateType, "idle", "precondition: a failed load is not the end")
         let retried = host.send(try EngineCoreTests.command("previous"))

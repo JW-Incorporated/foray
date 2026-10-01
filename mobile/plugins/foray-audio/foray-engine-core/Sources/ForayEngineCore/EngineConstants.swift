@@ -293,6 +293,10 @@ public enum EngineConstants {
 
     /// `player/queue-manager.js`
     public enum QueueManager {
+        /// `FORAY_CLIP_LOAD_ATTEMPTS`
+        public static let forayClipLoadAttempts: Double = 2
+        /// `FORAY_CLIP_MAX_SILENCE_SEC`
+        public static let forayClipMaxSilenceSec: Double = 40
         /// `NARRATION_DEADLINE_FACTOR`
         public static let narrationDeadlineFactor: Double = 1.5
         /// `NARRATION_DEADLINE_MARGIN_SEC`
