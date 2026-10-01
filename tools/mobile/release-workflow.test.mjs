@@ -150,6 +150,27 @@ test("ios and android jobs both depend on version and both run the privacy tripw
   assert.match(WF, /node --test test\/release-gates\.test\.js/);
 });
 
+test("ios and android refuse a re-run before spending a minute (the version job would replay attempt 1's build number)", () => {
+  // OPS-04. "Re-run failed jobs" does not re-execute `version`; its cached
+  // outputs are replayed, so attempt 2 would archive under a build number the
+  // stores already saw. The refusal has to sit in the platform jobs (a guard in
+  // `version` would be skipped along with the job) and has to be the FIRST
+  // step — ahead of checkout — so a re-run costs seconds, not macOS minutes.
+  // MUTATION: delete the step from one job -> red for that job.
+  for (const job of ["ios", "android"]) {
+    const src = block(WF, job, 2);
+    assert.ok(src, `${job} job not found`);
+    const steps = src.split(/\n(?= {6}- (?:name|uses):)/).filter((c) => /^\s*- (?:name|uses):/.test(c));
+    const first = steps.find((c) => /^\s*- name:/.test(c));
+    assert.ok(first, `${job}: no named step`);
+    assert.equal(steps.indexOf(first), 0, `${job}: the re-run refusal must be the first step, before checkout`);
+    assert.match(first, /if: github\.run_attempt != '1'/, `${job}: the refusal is conditioned on run_attempt`);
+    assert.match(first, /exit 1/, `${job}: the refusal fails the job`);
+    assert.match(first, /gh workflow run release\.yml/, `${job}: the error names the fresh dispatch`);
+    assert.match(steps[1] ?? "", /actions\/checkout@v4/, `${job}: checkout still follows the refusal`);
+  }
+});
+
 test("ios job runs on macos-latest and android on ubuntu-latest", () => {
   assert.match(WF, /runs-on: macos-latest/);
   assert.match(WF, /runs-on: ubuntu-latest/);
