@@ -420,6 +420,79 @@ test("tools/narration/upload-narration.mjs is denied: it holds the founder's R2 
   assert.deepEqual(imports.filter((s) => !s.startsWith("node:")), [], "the uploader imports only node: builtins");
 });
 
+/* ------------------------------------------------- SPK-01: the Spark package */
+
+test("SPK-01: tools/spark/ is denied as a directory, before its first file exists", () => {
+  /* Everything under it runs on the Spark as the service user holding the R2
+     and GitHub tokens, from systemd timers, at the `spark-live` tag
+     (assessment §3.5 / §8). Denied as a prefix so the agent, its unit files and
+     whatever lands beside them are governed from birth.
+     MUTATION: drop "tools/spark/" from DENIED_PREFIXES -> `tools/` is
+     allowlisted, both paths below come back `denied: []`, and this goes red. */
+  assert.ok(DENIED_PREFIXES.includes("tools/spark/"));
+  for (const f of ["tools/spark/agent.mjs", "tools/spark/systemd/foray-agent.service"]) {
+    // pathProblem() is the well-formedness check and must pass these (they are
+    // ordinary relative paths); the deny verdict is pathPolicy().denied.
+    assert.equal(pathProblem(f), null, f);
+    const p = pathPolicy([f]);
+    assert.equal(p.denied.length, 1, f);
+    assert.equal(p.denied[0].prefix, "tools/spark/", f);
+  }
+});
+
+test("SPK-01: the deny covers the queue the Spark spends money from, and a sibling dir does not inherit it", () => {
+  /* §3.5 "The catalogue queue spends money": *generate* entries live under the
+     DENIED tools/spark/ precisely so a green agent PR cannot enqueue LLM spend.
+     The prefix must also be a directory match, not a string match: a future
+     `tools/sparkline/` is not the Spark. */
+  assert.equal(pathPolicy(["tools/spark/queue.json"]).denied.length, 1);
+  assert.equal(pathPolicy(["tools/spark/backup.sh"]).denied.length, 1);
+  assert.equal(pathPolicy(["tools/sparkline/chart.mjs"]).denied.length, 0);
+});
+
+test("SPK-01: the narration uploader stays denied and the renderer stays allowed", () => {
+  /* The uploader is the one process that reads the R2 write token; the
+     renderer and the stamper hold no credentials and must keep landing under
+     the `tools/` allowlist, or every voice-profile tweak needs a human merge.
+     MUTATION: add "tools/narration/" to DENIED_PREFIXES -> the second and third
+     assertions go red. */
+  assert.ok(DENIED_PREFIXES.includes("tools/narration/upload-narration.mjs"));
+  assert.equal(pathPolicy(["tools/narration/upload-narration.mjs"]).denied.length, 1);
+  assert.equal(pathProblem("tools/narration/render-foray.py"), null);
+  assert.equal(pathPolicy(["tools/narration/render-foray.py"]).denied.length, 0);
+  assert.equal(pathPolicy(["tools/narration/stamp-narration.mjs"]).denied.length, 0);
+});
+
+test("SPK-01: tools/ops/spark-watch.mjs is denied — it raises or closes the founder's Spark alarm", () => {
+  /* The watch-release.mjs argument: run hourly from a workflow with
+     `issues: write`, a one-line neuter silences the only alarm. Denied by name
+     before the heartbeat card writes it.
+     MUTATION: drop the entry -> denied: [] and red. */
+  assert.ok(DENIED_PREFIXES.includes("tools/ops/spark-watch.mjs"));
+  const p = pathPolicy(["tools/ops/spark-watch.mjs"]);
+  assert.equal(p.denied.length, 1);
+  assert.equal(p.denied[0].prefix, "tools/ops/spark-watch.mjs");
+  // By name, not by directory: the rest of tools/ops/ is ordinary tooling.
+  assert.equal(pathPolicy(["tools/ops/some-other-tool.mjs"]).denied.length, 0);
+});
+
+test("SPK-01: the relay answerer is denied (it spawns `claude -p` on the founder's subscription); relay.mjs is not", () => {
+  /* §3.5 "Headless relay answerer is a prompt-injection target": untrusted
+     transcript text goes into a `claude -p` call on the credential-holding box,
+     and the no-tools / no-credential-read posture is one unread flag away from
+     gone. relay.mjs is the queue/transport module with neither spend nor
+     credentials and stays on the allowlist.
+     MUTATION: drop "tools/generation/answer-relay.mjs" -> first block red;
+     widen it to "tools/generation/" -> the relay.mjs assertion goes red. */
+  assert.ok(DENIED_PREFIXES.includes("tools/generation/answer-relay.mjs"));
+  const p = pathPolicy(["tools/generation/answer-relay.mjs"]);
+  assert.equal(p.denied.length, 1);
+  assert.equal(p.denied[0].prefix, "tools/generation/answer-relay.mjs");
+  assert.equal(pathProblem("tools/generation/relay.mjs"), null);
+  assert.equal(pathPolicy(["tools/generation/relay.mjs"]).denied.length, 0);
+  assert.equal(pathPolicy(["tools/generation/relay.test.mjs"]).denied.length, 0);
+});
+
 test("tools/mobile/inject-app-icon.mjs is denied, not merely acknowledged", () => {
   /* IT SITS ON THE OTHER SIDE OF A LINE ITS NEIGHBOUR DOES NOT.
      `inject-background-audio.mjs` WAS acknowledged (until round 3 denied it as release-job code): an

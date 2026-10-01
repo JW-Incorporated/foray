@@ -1205,7 +1205,7 @@ const FLOORS = {
      that `deploy-manifest.json` and `sw.js` are on ALLOWED_PREFIXES. Removing
      either entry restores the state in which every nightly PR sat green and
      unmerged, and nothing else in the repo would say so. */
-  "tools/ci/path-policy.test.mjs": 112, // narration render review (2026-09-28): tools/narration/upload-narration.mjs is denied, it reads the founder's R2 write token, and imports only node: builtins; 111 -> 112 // round-3 review: the two rename tests now run the gatherers' own jq (and pr-hygiene's shape through normalizePr), the mobile walk is inverted (not app source => denied or acknowledged), every file a signing job executes is denied (composites, npm scripts, imports followed), the gate scan reads .github/actions, npmrc/capacitor.config code denied by name, and a founder's arming of an outside PR survives disarm; 105 -> 111 // round-3 L7: +15 -- security-1 (fork/foreign authors never arm; --author required; automerge-nightly passes it), ci-release-2 (renames out of CLAUDE.md and tools/ci/ denied; every gatherer reads previous_filename; truncation counts entries), ci-release-5 (mobile build manifests denied by prefix and by name); 90 -> 105 // 2026-09-22: +1 (and the one-test slack closed) -- tools/release/ is denied; 88 -> 90
+  "tools/ci/path-policy.test.mjs": 117, // SPK-01 (2026-10-01): +5 -- tools/spark/ denied as a directory (governed from birth), the relay answerer and the Spark watchdog denied by name, the renderer/stamper/relay.mjs stay allowlisted; 112 -> 117 // narration render review (2026-09-28): tools/narration/upload-narration.mjs is denied, it reads the founder's R2 write token, and imports only node: builtins; 111 -> 112 // round-3 review: the two rename tests now run the gatherers' own jq (and pr-hygiene's shape through normalizePr), the mobile walk is inverted (not app source => denied or acknowledged), every file a signing job executes is denied (composites, npm scripts, imports followed), the gate scan reads .github/actions, npmrc/capacitor.config code denied by name, and a founder's arming of an outside PR survives disarm; 105 -> 111 // round-3 L7: +15 -- security-1 (fork/foreign authors never arm; --author required; automerge-nightly passes it), ci-release-2 (renames out of CLAUDE.md and tools/ci/ denied; every gatherer reads previous_filename; truncation counts entries), ci-release-5 (mobile build manifests denied by prefix and by name); 90 -> 105 // 2026-09-22: +1 (and the one-test slack closed) -- tools/release/ is denied; 88 -> 90
   /* The LF-checkout guard on the deploy manifest. Small, and every test is one
      branch of a function whose whole job is to refuse. The load-bearing one is
      the binary exclusion: both committed icons really do carry `\r\n` bytes, so
@@ -1417,6 +1417,18 @@ const FLOORS = {
      warns about. That coupling is a feature: these tests fail if the committed
      thread stops being clean. */
   "tools/foray/check-narration.test.mjs": 49,
+  /* The publish-time network verifier for rendered narration (SPK-09, assessment
+     §3.4). Zero slack. The tool itself never runs in required CI (it refuses
+     under CI, like upload-narration); these tests drive `run()` with a fake
+     host, a fake ffprobe and a recording fs, and each of the seven checks
+     (status, content_type, content_length, cache_control, cors, sha256,
+     duration) has the one test that breaks exactly that header and asserts the
+     check is named -- drop a check from the tool and its test goes red. The
+     rest pin the Spark's safety edges: ffprobe absent is `skipped` not a
+     failure, the canary samples PUBLISHED lines first, politeness sleeps
+     before every request, nothing is written outside tmp, argv can carry no
+     token, and the CI refusal happens before a single read. */
+  "tools/foray/verify-narration-audio.test.mjs": 19,
   /* The narration pipeline's dry run (#247). Zero slack. Two of its tests are
      the only things standing between this repo and a paid API call: one asserts
      `synthesize()` refuses without a key, and one greps every `.mjs` in
