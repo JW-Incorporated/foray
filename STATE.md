@@ -7,6 +7,30 @@ docs/. Completed workstreams move to their plan doc's retro section.
 
 ## Active workstreams
 
+### 2026-10-01 — `android/a-65-silent-seams`: A-65, keep-alive across silent seams (Android M3)
+
+Owned: `EnginePlayer`'s seam-beat state and `keepsServiceInForeground`, `ForayEngineHost`'s `Surface.silentSeam` and late-timer
+ledger, `ForegroundWatch` (new), and `ForayPlaybackService`'s `onUpdateNotificationAsync`/`onTaskRemoved` overrides. Card
+A-65 of `docs/plans/android-assessment.md` (Track A4), PR #940, into `android/native`. It mirrors NE-46 (#901, on
+`engine/m3`, in `android/native` since A-61).
+
+**What changed.**
+- **No silence is rendered.** Media3 1.11 keeps the service in the foreground while the player says play-when-ready
+  with READY or BUFFERING. The seam beat is now BUFFERING with play-when-ready on, so the clock stands still. A spoken
+  line stays READY at 1x once it sounds, which deviates from the card's text; the plan's A-65 status says why.
+- **A swipe from Recents** keeps the service while it is in the foreground and the facade says play (a beat or a
+  stall), where Media3 wanted `isPlaying()`. A paused service still stops.
+- **Rows.** `grace kind=late timer= lateMs= inSeam= reason= clock=` comes from the host, under grace, past 5 s, with no
+  `bgRemainingMs`. `fgs kind=left foray= running= inSeam= spoken=` comes from Media3's own decision.
+
+**Executed in CI** (head `64056683`): android-build 36813406492 green (android-shell: foray-audio 243 cases, JVM core
+168, JVM parity unchanged); android-playback 36813406632 green on all three legs, native (g) Doze `pass`;
+android-smoke and CI green.
+
+**Executed locally:** `shell-invariants.test.mjs` (A-65, A-26), `test/suite-integrity.test.js` 404/404.
+
+**Not executed.** The device check (A-68 reads the rows; D-A3).
+
 ### 2026-10-01 — `android/a-62-prepare-across-narration`: A-62, prepare across narration seams (Android M3)
 
 Owned: `DeckPolicy.warmsAcross` and the duration window, `EngineCore`'s warm, `SeamMark` and packed `seam` row in
