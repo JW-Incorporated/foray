@@ -261,6 +261,23 @@ test("renderFailure: says FAILED, names the step, keeps the first line of the me
   assert.ok(renderFailure("boom", {}).includes("at step `unknown`: boom"));
 });
 
+/* ───────────────────────────── the workflow's shape ─────────────────────── */
+
+test("merge-audit.yml comments on issue 129 on success and on failure", () => {
+  /* #129's hard requirement is that a week is never SILENT: the ledger is one
+     comment on #129, and a run that died before it could render one still
+     leaves a comment that says FAILED. Two `gh issue comment 129` calls, one of
+     them under `if: failure()`. MUTATION: drop the failure step, or point either
+     comment at another issue -> red here. */
+  const yml = fs.readFileSync(fileURLToPath(new URL("../../.github/workflows/merge-audit.yml", import.meta.url)), "utf8");
+  const comments = yml.match(/gh issue comment 129\b/g) ?? [];
+  assert.equal(comments.length, 2, "one comment on success, one on failure — both on #129");
+  assert.ok(yml.includes("if: failure()"), "the failure comment runs under `if: failure()`");
+  // And the one the issue reads is the body the script wrote.
+  assert.ok(yml.includes("--body-file body.md"));
+  assert.ok(yml.includes("Treat this week as unaudited."));
+});
+
 /* ───────────────────────────────────── CLI ──────────────────────────────── */
 
 function tmpWith(files) {
