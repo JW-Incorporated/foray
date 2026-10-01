@@ -241,7 +241,13 @@ public class RouteResumeTest {
         assertNotNull(hashed);
         List<EngineCommand.DiagEntry> rows = routeRows(all);
         assertEquals(2, rows.size());
-        for (EngineCommand.DiagEntry row : rows) assertEquals(JsonNode.str(hashed.substring(0, 8)), row.field("key"));
+        for (EngineCommand.DiagEntry row : rows) {
+            assertEquals(JsonNode.str(hashed.substring(0, 8)), row.field("key"));
+            // A-60's DiagGate admits every field of a route row (the ring and a paste keep all of it).
+            EngineCommand.DiagEntry admitted = DiagGate.admit(row);
+            assertNotNull(admitted);
+            assertNull("the gate withheld part of a route row: " + admitted, admitted.field(DiagGate.DROPPED_FIELD));
+        }
         assertEquals("the set holds the salted hash, never the address",
                 Collections.singletonList(hashed), car.core.state().knownRoutes.keys());
     }
