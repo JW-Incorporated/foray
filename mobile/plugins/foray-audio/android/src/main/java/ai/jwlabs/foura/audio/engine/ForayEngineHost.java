@@ -371,8 +371,24 @@ public final class ForayEngineHost {
             seams.interlude.setOnEnded(reason -> handle(new EngineInput.Interlude(new EngineInput.InterludeEvent.Ended(reason))));
         }
         // The voice preview's deck (A-66, NE-47): its load's answer and its end.
-        if (seams.preview != null) seams.preview.setListener(event -> handle(new EngineInput.Preview(event)));
+        if (seams.preview != null) seams.preview.setListener(this::onPreviewEvent);
         publishSurface();
+    }
+
+    /**
+     * The preview deck's report, to the core, and then (A-66 review) A PREVIEW THAT RAN OUT IS
+     * UNLOADED, so its focus goes. Media3 holds {@code AUDIOFOCUS_GAIN} through
+     * {@code STATE_ENDED}: its {@code AudioFocusManager} abandons only at {@code STATE_IDLE}. The
+     * core forgets an ended preview and sends nothing (it is iOS's NE-47 core, where an AVPlayer
+     * at its end holds nothing), so without this the silent preview player kept the device's media
+     * focus until something else asked for it. Host-side only, so the parity books see no new
+     * command. Only when the core holds no preview: a newer one loading on this deck is never cut.
+     */
+    private void onPreviewEvent(DeckEvent event) {
+        handle(new EngineInput.Preview(event));
+        if (event instanceof DeckEvent.Ended && !tornDown && core.state().preview == null && seams.preview != null) {
+            seams.preview.send(DeckCommand.UNLOAD);
+        }
     }
 
     /**

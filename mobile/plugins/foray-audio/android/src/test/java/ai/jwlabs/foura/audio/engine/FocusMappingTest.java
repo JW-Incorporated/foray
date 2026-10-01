@@ -81,6 +81,21 @@ public class FocusMappingTest {
         assertTrue(f.onSuppressionChanged(NONE, READY).isEmpty());
     }
 
+    /**
+     * A-66 review: a permanent loss while our own voice preview wants to sound is the preview's
+     * doing (it asked for AUDIOFOCUS_GAIN), not another app's; anything else is as before. TO SEE IT
+     * FAIL: drop the preview test, or widen it past the permanent loss.
+     */
+    @Test
+    public void aPermanentLossToOurOwnPreviewIsNoInterruption() {
+        int loss = Player.PLAY_WHEN_READY_CHANGE_REASON_AUDIO_FOCUS_LOSS;
+        assertTrue(FocusMapping.isLossToOwnPreview(false, loss, true));
+        assertFalse("another app's loss, no preview sounding", FocusMapping.isLossToOwnPreview(false, loss, false));
+        assertFalse("becoming noisy is still a lost route",
+                FocusMapping.isLossToOwnPreview(false, Player.PLAY_WHEN_READY_CHANGE_REASON_AUDIO_BECOMING_NOISY, true));
+        assertFalse(FocusMapping.isLossToOwnPreview(true, loss, true));
+    }
+
     @Test
     public void becomingNoisyIsALostRoute() {
         FocusMapping f = new FocusMapping();
