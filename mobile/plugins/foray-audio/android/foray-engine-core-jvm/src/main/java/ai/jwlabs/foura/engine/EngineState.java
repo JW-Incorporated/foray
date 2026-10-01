@@ -210,6 +210,20 @@ public final class EngineState {
     /** {@code _disposed}: the engine was torn down; the core answers nothing more. */
     public boolean tornDown = false;
 
+    // ---- the voice picker's rendered preview (NE-47, A-66)
+
+    /**
+     * An audition that named a rendered {@code preview.m4a}, from its load on the PREVIEW deck
+     * until it ends, fails or is cut. Null otherwise, and always null for a spoken audition (the
+     * synthesiser owns that one).
+     */
+    public AuditionPreview preview;
+    /**
+     * The preview deck's own token counter: its loads never share a number with the main deck's
+     * ({@link #lastToken}), whose beat and failure checks compare against it.
+     */
+    public int lastPreviewToken = 0;
+
     /** The item {@code currentIndex} points at, or null. */
     public EngineItem currentItem() {
         return currentIndex >= 0 && currentIndex < queue.size() ? queue.get(currentIndex) : null;
@@ -292,6 +306,25 @@ public final class EngineState {
     public record DeckPrepareReport(int token, boolean hit, List<Vocabulary.Stage> stages) {}
 
     /**
+     * NE-47 (A-66): a rendered voice preview in flight on the preview deck. The line and the
+     * voice ride along so a file that will not load can be SPOKEN instead, which is what the
+     * audition did before it had a url. Mutable; the core alone writes it.
+     */
+    public static final class AuditionPreview {
+        public final int token;
+        public final String text;
+        public final String voiceId;
+        /** The loaded file started: {@code play} was sent to the preview deck. */
+        public boolean playing;
+
+        public AuditionPreview(int token, String text, String voiceId) {
+            this.token = token;
+            this.text = text;
+            this.voiceId = voiceId;
+        }
+    }
+
+    /**
      * A-62 (NE-45s): a seam in flight, from the item's end to the next one's audible start: what it
      * joins, which item it is waiting for, when it began, and the deck pair's verdict on that item's
      * load once there is one (null until then).
@@ -325,7 +358,15 @@ public final class EngineState {
 
         record WalkHop(EngineContract.Hop hop) implements DeferredIntent {}
 
-        record Audition(String text, String voiceId) implements DeferredIntent {}
+        /**
+         * OQ-5; NE-47 (A-66): with a {@code url} the voice's rendered preview plays on the preview
+         * deck, without one the line is spoken.
+         */
+        record Audition(String text, String voiceId, String url) implements DeferredIntent {
+            public Audition(String text, String voiceId) {
+                this(text, voiceId, null);
+            }
+        }
 
         DeferredIntent RESUME = new Resume();
         DeferredIntent SKIP_NEXT = new SkipNext();

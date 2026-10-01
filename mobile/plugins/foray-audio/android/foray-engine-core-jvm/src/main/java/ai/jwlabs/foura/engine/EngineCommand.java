@@ -25,7 +25,7 @@ public sealed interface EngineCommand permits EngineCommand.Deck, EngineCommand.
         EngineCommand.TimerArm, EngineCommand.TimerCancel, EngineCommand.WritePosition, EngineCommand.WriteRow,
         EngineCommand.AppendEvent, EngineCommand.WriteRestore, EngineCommand.Speak, EngineCommand.Emit, EngineCommand.Diag,
         EngineCommand.CommandFailed, EngineCommand.Narration, EngineCommand.Interlude, EngineCommand.SilenceStart,
-        EngineCommand.SilenceStop, EngineCommand.NarrationPulse {
+        EngineCommand.SilenceStop, EngineCommand.NarrationPulse, EngineCommand.Preview {
 
     record Deck(DeckCommand command) implements EngineCommand {}
 
@@ -65,6 +65,13 @@ public sealed interface EngineCommand permits EngineCommand.Deck, EngineCommand.
 
     /** Speak an audition line (OQ-5): audible, so it follows an activation. */
     record Speak(String text, String voiceId) implements EngineCommand {}
+
+    /**
+     * The PREVIEW deck (NE-47, A-66): an audition's rendered {@code preview.m4a}. Only
+     * {@code load}, {@code play} and {@code unload} are ever sent; the play is audible, so the
+     * invariant reads it as a {@code deckPlay} and it follows an activation.
+     */
+    record Preview(DeckCommand command) implements EngineCommand {}
 
     record Emit(EngineEvent event) implements EngineCommand {}
 
@@ -171,6 +178,17 @@ public sealed interface EngineCommand permits EngineCommand.Deck, EngineCommand.
             case SilenceStart x -> "silenceStart";
             case SilenceStop x -> "silenceStop";
             case NarrationPulse x -> "narrationPulse";
+            case Preview p -> switch (p.command()) {
+                // Audible exactly as the main deck's play is.
+                case DeckCommand.Play x -> "deckPlay";
+                case DeckCommand.Load x -> "previewLoad";
+                case DeckCommand.Unload x -> "previewUnload";
+                case DeckCommand.Pause x -> "preview";
+                case DeckCommand.Seek x -> "preview";
+                case DeckCommand.SetRate x -> "preview";
+                case DeckCommand.SetOutPoint x -> "preview";
+                case DeckCommand.Prepare x -> "preview";
+            };
         };
     }
 
