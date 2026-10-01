@@ -490,13 +490,24 @@
       "resolved_host": "episodes.captivate.fm",
       "checked_at": "2026-07-26T19:21:28.049Z",
       "ad_inflation": {
-        "verdict": "unknown",
+        "verdict": "excess-audio",
         "median_ratio": 0.758,
         "episodes_probed": 5,
         "measured_at": "2026-08-23T04:24:10.666Z",
         "method": "2-byte ranged GET; tools/transcribe/ad-inflation.mjs",
         "undersized_samples": 4,
-        "note": "delivered bytes fall short of the feed-declared length, so the declared length does not describe the file we receive and the ratio cannot answer the ad question",
+        "decode": {
+          "verdict": "excess-audio",
+          "episode": "From Drips to Disasters: Stop Water Damage Before It Starts!",
+          "decoded_sec": 2593.33,
+          "declared_sec": 2280,
+          "transcript_end_sec": 2279.2,
+          "beyond_declared_sec": 313.33,
+          "beyond_transcript_sec": 314.13,
+          "source": "data/decode-and-compare.json (id: around-the-house)",
+          "ruling": "HA #24, 2026-09-30"
+        },
+        "note": "ratio 0.758 was unknown (the declared length is computed, ~192.03 kbps x duration, so the ratio cannot answer the ad question); a full decode then found 2593.33s of audio against a feed declaring 2280s and a transcript ending at 2279.2s, i.e. +313s the transcript does not describe. Detail in data/decode-and-compare.json. The show stays in the catalog.",
         "samples": [
           {
             "item_id": "around-the-house-eric-g--healthy-home",

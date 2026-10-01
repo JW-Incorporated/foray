@@ -2086,7 +2086,7 @@ const FLOORS = {
      show on one observation while never acquitting one on a host already caught
      under-declaring. */
   "tools/transcribe/decode-compare.test.mjs": 31,
-  "tools/transcribe/ad-inflation.test.mjs": 43,
+  "tools/transcribe/ad-inflation.test.mjs": 46,
   /* The transcription work order. Zero slack, because what it guards is not
      logic but a PROMISE MADE TO A MACHINE THAT IS ALREADY RUNNING: a worker box
      consumes data/transcription-queue.json in rank order, so any change that
