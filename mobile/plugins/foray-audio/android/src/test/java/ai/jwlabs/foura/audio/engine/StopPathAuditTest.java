@@ -235,9 +235,15 @@ public class StopPathAuditTest {
         return parts.length >= 3 ? parts[2] : "";
     }
 
+    /** A diag line's JSON body, or null for a line that is not one (the store's writes are text: {@code position item= sec=}). */
     static JsonNode bodyOf(String line) {
         String[] parts = line.split(" ", 4);
-        return parts.length == 4 ? JsonNode.parse(parts[3]) : null;
+        if (parts.length != 4 || !parts[3].startsWith("{")) return null;
+        try {
+            return JsonNode.parse(parts[3]);
+        } catch (RuntimeException e) {
+            return null;
+        }
     }
 
     /** One Android stop path: what starts it, the cause it must write (null: it is NOT a stop), and the row that says so when it is not. */
