@@ -303,6 +303,9 @@ public struct PendingLoad: Equatable {
     /// script because its file failed (`_beginSynthNarration(item,
     /// {fallback: true})`).
     public var fallback = false
+    /// §16 (queue-manager.js `_loadItem`'s `attempt`): 1 for every load the
+    /// reducer asks for, 2 for a Foray clip's retry (`retryOrSkipClip`).
+    public var attempt = 1
 }
 
 /// A spoken line the playhead is on (NE-31s): queue-manager.js

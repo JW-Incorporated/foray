@@ -14,7 +14,9 @@
     "§14: a LATE error from a file that timed out does not stop the line being read in its place": "xctest:ForayCatchUpTests/testLateReportsAboutAFailedFileNeverStopItsSpokenLine",
     "§14: an error from the failed file while the fallback's speak() is in flight does not stop it": "xctest:ForayCatchUpTests/testLateReportsAboutAFailedFileNeverStopItsSpokenLine",
     "§14: a second error while a sounding line is already falling back does not speak it twice": "xctest:ForayCatchUpTests/testAFileThatFailsWhileSoundingIsSpokenOnceFromItsFirstWord",
-    "§14: a failing load the listener has already skipped past is not spoken": "xctest:ForayCatchUpTests/testAFailingLoadTheListenerSkippedPastIsNotSpoken"
+    "§14: a failing load the listener has already skipped past is not spoken": "xctest:ForayCatchUpTests/testAFailingLoadTheListenerSkippedPastIsNotSpoken",
+    "§16: a plain episode whose load fails is not retried (today's stop)": "xctest:ClipLoadRetryTests/testAPlainEpisodeWhoseLoadFailsIsNotRetried",
+    "§16: the Foray clip's silence bound is the attempts times the hidden-page deadline": "xctest:AVDeckTests/testTheClipSilenceBoundIsTheAttemptsTimesTheClipDeadline"
   },
   "html-audio-backend": {
     "a first load that stalls without erroring also degrades rather than hanging": "xctest:AVDeckTests/testANeverReadyUrlHitsTheDeadlineWithNoPreroll",

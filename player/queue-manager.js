@@ -231,7 +231,30 @@
    Capability-checked like `prefetch`: a backend without it (every fake, the
    native engine) behaves exactly as before. How the element is handled in a
    hidden page, and why, is `html-audio-backend.js` §"narration warm".
-*/
+
+   ── 16. A FORAY CLIP THAT WILL NOT LOAD RETRIES, THEN MOVES ON ─────────────
+   The M2 car drive (2026-10-01): a clip's load passed its 20 s deadline, the
+   catch below dispatched `E.error`, and the Foray sat idle and silent with the
+   clip still on the lock screen. Every press of play then started the same
+   clip again from nothing. Now a Foray CLIP (a bounded, non-narration item)
+   whose load fails, by deadline or by error, is retried ONCE at the same
+   in-point (`foray.segment.retry`), and a retry that fails too steps over the
+   clip like a ladder refusal (`foray.segment.skipped.atLoad`, which the page
+   already shows) onto the next item, a narration line included.
+   `FORAY_CLIP_LOAD_ATTEMPTS` counts the attempts; `FORAY_CLIP_MAX_SILENCE_SEC`
+   is the silence that bounds.
+
+   The retry asks for the SAME source at the SAME in-point on purpose: that is
+   what lets the deck keep what the first attempt fetched. The web lane's
+   element seeks in the buffer it has (`sameSourceIsSeek`), and the native
+   deck continues a load that was getting somewhere instead of starting a cold
+   one (AVDeck `continueInFlight`).
+
+   Only while the listener is on the clip: a retry also runs when they paused
+   during the load (it fetches quietly, and their play then finds the clip
+   ready), but a failed retry while paused is today's stop, because stepping
+   to the next item would start it playing. A plain episode, a narration line
+   (§14) and a bridge fail exactly as before. */
 
 import { reduce, S, E, itemRef, itemBounds, TTS, END_NATURAL, END_OUT_POINT } from "./queue-state.js";
 import { SINGLE_ITEM, assertStrategy } from "./queue-strategy.js";
@@ -355,6 +378,29 @@ export const NARRATION_DEADLINE_MARGIN_SEC = 10;
     is the web lane's alone until the native prefetch card (after M2) decides
     its own. */
 const NARRATION_WARM_MIN_LEAD_SEC = 20;
+
+/** §16: how many loads a Foray clip gets before it is stepped over: the first,
+    then one retry at the same in-point. Two, because the drive that found the
+    bug got the clip ready on the THIRD cold load at 20.16 s, and the second
+    had already fetched 44 MB of it when it was thrown away: a retry that
+    keeps that work is the cheap win, and a third wait is a minute of silence
+    in a car. PROVISIONAL.
+    // MEASURE: verdict=P13-clip (NE-38e). Rows: deck kind=deadline progressed=, deck kind=retry, deck kind=continue, skip kind=load. */
+export const FORAY_CLIP_LOAD_ATTEMPTS = 2;
+
+/** §16: THE LONGEST A LISTENER HEARS NOTHING on a Foray clip that will not
+    load, before the Foray either plays it or moves on: every attempt's P-13
+    deadline back to back, `FORAY_CLIP_LOAD_ATTEMPTS` x 20 s (the native
+    deck's `AVDeck.defaultLoadDeadlineSec`, and this lane's
+    `LOAD_SETTLE_TIMEOUT_HIDDEN_MS`; a visible page's 10 s deadline halves
+    it). The seam beat and the jingle run INSIDE the first load (§10, §13), so
+    they add nothing. A listener's own play during the wait starts a fresh
+    count; that is their press, not the engine sitting idle. Written down,
+    not enforced: tests pin it to both deadlines (queue-manager.test.js,
+    engine-report.test.mjs), so a deadline or an attempt count that moves
+    without it is red.
+    // MEASURE: verdict=P13-clip (NE-38e). Rows: the gap from a clip's deck kind=attach to its ready or skip kind=load. */
+export const FORAY_CLIP_MAX_SILENCE_SEC = 40;
 
 const nonEmptyStr = (s) => typeof s === "string" && s.trim().length > 0;
 const isNum = (n) => typeof n === "number" && Number.isFinite(n);
@@ -1673,7 +1719,9 @@ export class PlayerQueueManager {
     }
   }
 
-  async _loadItem(ref) {
+  /** `attempt` is §16's: 1 for every load the reducer asks for, and higher
+      only for a Foray clip's retry (`_retryOrSkipClip`). */
+  async _loadItem(ref, { attempt = 1 } = {}) {
     /* A NEWER TRANSITION ALREADY CHOSE ANOTHER TARGET (audit round 3,
        player-core-9). `_handle` sets the state synchronously and then awaits
        its effects one by one, so a second skip reduced during the first skip's
@@ -1823,6 +1871,10 @@ export class PlayerQueueManager {
     const resumingFallback = forced == null && this._fallbackSpokenId === item.id
       && this._loadedId === item.id && this._loadedIsSynth && this._narrationPaused;
 
+    /* §16: set only when the BACKEND's load of this item rejected, so the
+       catch retries a clip for that and nothing else (a throw after the item
+       landed is not the file failing to load). */
+    let backendLoadFailed = false;
     try {
       if (this._isSynthNarration(item) || resumingFallback) {
         /* §7 item 1: a script-only narration item has no file for the backend
@@ -1869,7 +1921,8 @@ export class PlayerQueueManager {
         /* §14: a rendered narration line whose file fails is spoken from its
            script instead — this is the first-line and jump-to-line case, which
            used to STOP the Foray through the catch below. */
-        const loadErr = await this._loadRenderedOrCatch(item, startOffset, seq);
+        const loadErr = await this._loadRenderedOrCatch(item, startOffset, seq)
+          .catch((e) => { backendLoadFailed = true; throw e; });
         if (loadErr) {
           /* Not the current load any more, or the listener moved the player
              during it (a pause, a stop): exactly what the catch below has
@@ -1934,6 +1987,8 @@ export class PlayerQueueManager {
       if (this._loadSeq !== seq) {
         return this._emit(`load.superseded ${ref.id} — failed after a newer load took over: ${err?.message ?? err}`);
       }
+      // §16: a Foray clip is retried once, then stepped over, never left idle.
+      if (backendLoadFailed && (await this._retryOrSkipClip(item, ref, startOffset, attempt, err))) return;
       // Drop the deadline with the item it belonged to. `_awaitSeamGap` is the
       // only other place that clears it and this path never reaches it, so
       // without this a failed seam leaves a live deadline that the NEXT load —
@@ -1942,6 +1997,41 @@ export class PlayerQueueManager {
       this._endSeamGap("loadFailed");
       await this._handle(E.error(`loadItem(${ref.id}) failed: ${err?.message ?? err}`));
     }
+  }
+
+  /**
+   * §16: a Foray CLIP's load failed (its deadline, or an error) while the
+   * listener is still on it. The first failure loads the SAME clip again at the
+   * SAME in-point, which is what lets the deck keep what it already fetched;
+   * a failure of that retry steps over the clip the way a ladder refusal does
+   * (`_skipUnplayableSegment`: the next item, a narration line included, or the
+   * end), with the line the page already shows. Paused during the load
+   * (`interrupted`), the retry still runs, quietly, but a failed retry is
+   * today's stop: stepping on would start the next item playing.
+   *
+   * Anything that is not a clip (a plain episode, a narration line, a bridge),
+   * or a load the player has moved off, returns false: the caller's error,
+   * exactly as before.
+   *
+   * @returns {Promise<boolean>} true when the failure was handled here
+   */
+  async _retryOrSkipClip(item, ref, startOffset, attempt, err) {
+    if (!item || item.kind === TTS || !boundsOf(item)) return false;
+    if (!sameItemRef(focusOf(this.state), ref)) return false;
+    const waiting = this.state.type === "loadingItem";
+    if (!waiting && this.state.type !== "interrupted") return false;
+    const why = narrationFallbackReason(err);
+    if (attempt < FORAY_CLIP_LOAD_ATTEMPTS) {
+      this._emit(`foray.segment.retry ${item.id} attempt=${attempt + 1} reason=${why}`);
+      // The same in-point: an explicit offset is spent by the very next load.
+      this._startOffsetNext = startOffset;
+      await this._loadItem(ref, { attempt: attempt + 1 });
+      return true;
+    }
+    if (!waiting) return false;
+    this._emit(`foray.segment.skipped.atLoad ${item.id}: did not load in ${attempt} attempts (${why})`);
+    await this._skipUnplayableSegment();
+    return true;
   }
 
   /** Is this a §7-item-1 script-only narration item — TTS-kind, a non-empty
