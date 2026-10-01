@@ -17,7 +17,8 @@ import ForayEngineCore
 ///                engines"). The engine writes NO other `CapacitorStorage.`
 ///                key: `writeShared` refuses one outside OWNED_PREFIXES.
 ///   PRIVATE      `ForayEngine.*` (`EnginePrivateKey`): the restore record,
-///                strikes, sentinel, override, sticky build and hold policy.
+///                strikes, sentinel, override, sticky build, hold policy and
+///                route resume's known routes (NE-38rs).
 ///                Outside the prefix, so DurableStore never hydrates, mirrors
 ///                or clobbers them (NE-23), plus the diagnostics ring, which
 ///                is a file (`EngineDiagnostics`).
@@ -110,6 +111,33 @@ final class EngineStore: EngineOutput {
         RestoreRecord.parse(string(.restore))
     }
 
+    // MARK: - Route resume's known routes (NE-38rs)
+
+    /// `ForayEngine.knownRoutes`, or nil for none or a value this build
+    /// cannot trust (`RouteResume.Stored.parse`).
+    func loadKnownRoutes() -> RouteResume.Stored? {
+        RouteResume.Stored.parse(string(.knownRoutes))
+    }
+
+    /// Written synchronously; nil (an empty set) removes the key.
+    func saveKnownRoutes(_ stored: RouteResume.Stored?) {
+        set(stored?.serialized, for: .knownRoutes)
+    }
+
+    // MARK: - The route-sharing trial (NE-40)
+
+    /// `ForayEngine.routeSharing`, or nil for none or a value this build
+    /// cannot read (the default then stands; never a guess).
+    func loadRouteSharing() -> EngineContract.RouteSharingPolicy? {
+        string(.routeSharing).flatMap(EngineContract.RouteSharingPolicy.init(rawValue:))
+    }
+
+    /// Written synchronously, like the mode override: a Developer tap followed
+    /// by a force-quit must not lose the choice to a write-behind.
+    func saveRouteSharing(_ policy: EngineContract.RouteSharingPolicy) {
+        set(policy.rawValue, for: .routeSharing)
+    }
+
     // MARK: - Lifecycle and deletion
 
     /// Persist `UserDefaults`' in-memory copy now: at `didEnterBackground`
@@ -180,3 +208,9 @@ final class EngineStore: EngineOutput {
     // `flush()` above is the protocol's too: the host calls it right after the
     // core has handled `didEnterBackground` / `willTerminate`.
 }
+
+/// NE-38rs: the host persists the known routes through the store.
+extension EngineStore: KnownRoutesStoring {}
+
+/// NE-40: and the Developer route-sharing trial.
+extension EngineStore: RouteSharingStoring {}

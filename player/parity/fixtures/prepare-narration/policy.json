@@ -1,0 +1,358 @@
+{
+  "family": "prepare-narration",
+  "module": "player/deck-policy.js",
+  "note": "NE-45j's pure half: warmsAcross (the next item is prepared when it has a file, whatever the beat) and prefetchWindowOpens with durationSec (an item with no out-point opens its window the lead before its duration ends; one shorter than the lead opens at its start). Port card NE-45s (DeckPolicy.swift); JVM A-62.",
+  "cases": [
+    {
+      "id": "prepare-narration/warms-clip-to-clip",
+      "covers": [],
+      "call": "warmsAcross",
+      "args": [
+        {
+          "from": {
+            "id": "s0",
+            "kind": "episode",
+            "audio_url": "https://cdn.test/a.mp3",
+            "start_sec": 100,
+            "end_sec": 200
+          },
+          "to": {
+            "id": "s1",
+            "kind": "episode",
+            "audio_url": "https://cdn.test/b.mp3",
+            "start_sec": 300,
+            "end_sec": 400
+          }
+        }
+      ],
+      "expect": { "return": true }
+    },
+    {
+      "id": "prepare-narration/warms-clip-to-rendered-line",
+      "covers": [],
+      "note": "A seam with a line in it gets no beat (seam-gap.js), and is prepared anyway: the rule is the file, not the beat.",
+      "call": "warmsAcross",
+      "args": [
+        {
+          "from": {
+            "id": "s0",
+            "kind": "episode",
+            "audio_url": "https://cdn.test/a.mp3",
+            "start_sec": 100,
+            "end_sec": 200
+          },
+          "to": {
+            "id": "n1",
+            "kind": "tts",
+            "audio_url": "https://cdn.test/n1.m4a",
+            "script": "A line."
+          }
+        }
+      ],
+      "expect": { "return": true }
+    },
+    {
+      "id": "prepare-narration/warms-rendered-line-to-clip",
+      "covers": [],
+      "call": "warmsAcross",
+      "args": [
+        {
+          "from": {
+            "id": "n1",
+            "kind": "tts",
+            "audio_url": "https://cdn.test/n1.m4a",
+            "script": "A line."
+          },
+          "to": {
+            "id": "s1",
+            "kind": "episode",
+            "audio_url": "https://cdn.test/b.mp3",
+            "start_sec": 300,
+            "end_sec": 400
+          }
+        }
+      ],
+      "expect": { "return": true }
+    },
+    {
+      "id": "prepare-narration/warms-spoken-line-to-clip",
+      "covers": [],
+      "note": "Whether is the file; WHEN (at the spoken line's start) is the manager's.",
+      "call": "warmsAcross",
+      "args": [
+        {
+          "from": { "id": "n1", "kind": "tts", "audio_url": null, "script": "A line." },
+          "to": {
+            "id": "s1",
+            "kind": "episode",
+            "audio_url": "https://cdn.test/b.mp3",
+            "start_sec": 300,
+            "end_sec": 400
+          }
+        }
+      ],
+      "expect": { "return": true }
+    },
+    {
+      "id": "prepare-narration/warms-natural-end-to-clip",
+      "covers": [],
+      "call": "warmsAcross",
+      "args": [
+        {
+          "from": { "id": "e1", "kind": "episode", "audio_url": "https://cdn.test/e.mp3" },
+          "to": {
+            "id": "s1",
+            "kind": "episode",
+            "audio_url": "https://cdn.test/b.mp3",
+            "start_sec": 300,
+            "end_sec": 400
+          }
+        }
+      ],
+      "expect": { "return": true }
+    },
+    {
+      "id": "prepare-narration/spoken-line-is-not-warmed",
+      "covers": [],
+      "note": "No file: the synthesiser speaks it.",
+      "call": "warmsAcross",
+      "args": [
+        {
+          "from": {
+            "id": "s0",
+            "kind": "episode",
+            "audio_url": "https://cdn.test/a.mp3",
+            "start_sec": 100,
+            "end_sec": 200
+          },
+          "to": { "id": "n1", "kind": "tts", "audio_url": null, "script": "A line." }
+        }
+      ],
+      "expect": { "return": false }
+    },
+    {
+      "id": "prepare-narration/empty-url-is-not-warmed",
+      "covers": [],
+      "call": "warmsAcross",
+      "args": [
+        {
+          "from": {
+            "id": "s0",
+            "kind": "episode",
+            "audio_url": "https://cdn.test/a.mp3",
+            "start_sec": 100,
+            "end_sec": 200
+          },
+          "to": { "id": "n1", "kind": "tts", "audio_url": "", "script": "A line." }
+        }
+      ],
+      "expect": { "return": false }
+    },
+    {
+      "id": "prepare-narration/a-whole-episode-is-not-warmed",
+      "covers": [],
+      "note": "M3 review: a plain episode queue's next episode (no bounds, not a line) is never prepared. M1's continuation loads it cold at its own resume position, as before NE-45j (seamGapSec never warmed one).",
+      "call": "warmsAcross",
+      "args": [
+        {
+          "from": {
+            "id": "s0",
+            "kind": "episode",
+            "audio_url": "https://cdn.test/a.mp3",
+            "start_sec": 100,
+            "end_sec": 200
+          },
+          "to": { "id": "e2", "kind": "episode", "audio_url": "https://cdn.test/e2.mp3" }
+        }
+      ],
+      "expect": { "return": false }
+    },
+    {
+      "id": "prepare-narration/an-episode-after-an-episode-is-not-warmed",
+      "covers": [],
+      "note": "The M1 shape: an episode's natural end opens a window (its duration), and the next whole episode is still not prepared.",
+      "call": "warmsAcross",
+      "args": [
+        {
+          "from": { "id": "e1", "kind": "episode", "audio_url": "https://cdn.test/e.mp3" },
+          "to": { "id": "e2", "kind": "episode", "audio_url": "https://cdn.test/e2.mp3" }
+        }
+      ],
+      "expect": { "return": false }
+    },
+    {
+      "id": "prepare-narration/the-last-item-warms-nothing",
+      "covers": [],
+      "note": "A Foray does not chain.",
+      "call": "warmsAcross",
+      "args": [
+        {
+          "from": {
+            "id": "s0",
+            "kind": "episode",
+            "audio_url": "https://cdn.test/a.mp3",
+            "start_sec": 100,
+            "end_sec": 200
+          },
+          "to": null
+        }
+      ],
+      "expect": { "return": false }
+    },
+    {
+      "id": "prepare-narration/window-from-duration-shut-outside-the-lead",
+      "covers": [],
+      "note": "No out-point: the boundary is the 30 s duration, and 13 s of wall clock out is outside the 12 s lead.",
+      "call": "prefetchWindowOpens",
+      "args": [
+        {
+          "available": true,
+          "outPointSec": null,
+          "armed": false,
+          "paused": false,
+          "rate": 1,
+          "leadSec": 12,
+          "alreadyOpened": false,
+          "durationSec": 30,
+          "atSec": 17
+        }
+      ],
+      "expect": { "return": false }
+    },
+    {
+      "id": "prepare-narration/window-from-duration-open-inside-the-lead",
+      "covers": [],
+      "call": "prefetchWindowOpens",
+      "args": [
+        {
+          "available": true,
+          "outPointSec": null,
+          "armed": false,
+          "paused": false,
+          "rate": 1,
+          "leadSec": 12,
+          "alreadyOpened": false,
+          "durationSec": 30,
+          "atSec": 18
+        }
+      ],
+      "expect": { "return": true }
+    },
+    {
+      "id": "prepare-narration/window-from-duration-at-a-natural-end",
+      "covers": [],
+      "call": "prefetchWindowOpens",
+      "args": [
+        {
+          "available": true,
+          "outPointSec": null,
+          "armed": false,
+          "paused": false,
+          "rate": 1,
+          "leadSec": 12,
+          "alreadyOpened": false,
+          "durationSec": 3600,
+          "atSec": 3590
+        }
+      ],
+      "expect": { "return": true }
+    },
+    {
+      "id": "prepare-narration/window-shorter-than-the-lead-opens-at-the-start",
+      "covers": [],
+      "note": "An item shorter than the lead warms at its start.",
+      "call": "prefetchWindowOpens",
+      "args": [
+        {
+          "available": true,
+          "outPointSec": null,
+          "armed": false,
+          "paused": false,
+          "rate": 1,
+          "leadSec": 12,
+          "alreadyOpened": false,
+          "durationSec": 8,
+          "atSec": 0
+        }
+      ],
+      "expect": { "return": true }
+    },
+    {
+      "id": "prepare-narration/window-from-duration-is-wall-clock-at-2x",
+      "covers": [],
+      "note": "20 s of file at 2x is 10 s of wall clock: open.",
+      "call": "prefetchWindowOpens",
+      "args": [
+        {
+          "available": true,
+          "outPointSec": null,
+          "armed": false,
+          "paused": false,
+          "rate": 2,
+          "leadSec": 12,
+          "alreadyOpened": false,
+          "durationSec": 3600,
+          "atSec": 3580
+        }
+      ],
+      "expect": { "return": true }
+    },
+    {
+      "id": "prepare-narration/window-no-duration-no-boundary",
+      "covers": [],
+      "call": "prefetchWindowOpens",
+      "args": [
+        {
+          "available": true,
+          "outPointSec": null,
+          "armed": false,
+          "paused": false,
+          "rate": 1,
+          "leadSec": 12,
+          "alreadyOpened": false,
+          "durationSec": null,
+          "atSec": 0
+        }
+      ],
+      "expect": { "return": false }
+    },
+    {
+      "id": "prepare-narration/window-duration-never-stands-in-for-an-unarmed-out-point",
+      "covers": [],
+      "call": "prefetchWindowOpens",
+      "args": [
+        {
+          "available": true,
+          "outPointSec": 200,
+          "armed": false,
+          "paused": false,
+          "rate": 1,
+          "leadSec": 12,
+          "alreadyOpened": false,
+          "durationSec": 5,
+          "atSec": 0
+        }
+      ],
+      "expect": { "return": false }
+    },
+    {
+      "id": "prepare-narration/window-from-duration-shut-while-paused",
+      "covers": [],
+      "call": "prefetchWindowOpens",
+      "args": [
+        {
+          "available": true,
+          "outPointSec": null,
+          "armed": false,
+          "paused": true,
+          "rate": 1,
+          "leadSec": 12,
+          "alreadyOpened": false,
+          "durationSec": 8,
+          "atSec": 0
+        }
+      ],
+      "expect": { "return": false }
+    }
+  ]
+}

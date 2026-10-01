@@ -198,7 +198,8 @@
             "setModeOverride",
             "setHoldPolicy",
             "probeSession",
-            "simulateTermination"
+            "simulateTermination",
+            "setRouteSharing"
           ]
         },
         "args": { "type": "object" },
@@ -455,7 +456,11 @@
                 "required": ["text", "voiceId"],
                 "properties": {
                   "text": { "type": "string", "minLength": 1 },
-                  "voiceId": { "type": ["string", "null"] }
+                  "voiceId": { "type": ["string", "null"] },
+                  "url": {
+                    "type": "string",
+                    "pattern": "^https://audio\\.jwlabs\\.ai/[A-Za-z0-9._~/-]+$"
+                  }
                 }
               }
             }
@@ -491,6 +496,22 @@
                     "pattern": "^(forever|none|until:[1-9][0-9]{0,5})$"
                   }
                 }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": { "cmd": { "const": "setRouteSharing" } },
+            "required": ["cmd"]
+          },
+          "then": {
+            "required": ["args"],
+            "properties": {
+              "args": {
+                "type": "object",
+                "required": ["policy"],
+                "properties": { "policy": { "enum": ["default", "longFormAudio"] } }
               }
             }
           }
@@ -534,6 +555,13 @@
             "source": "tap",
             "args": { "policy": "until:60" }
           },
+          "set-route-sharing-long-form": {
+            "v": 1,
+            "cmdSeq": 13,
+            "cmd": "setRouteSharing",
+            "source": "tap",
+            "args": { "policy": "longFormAudio" }
+          },
           "set-continuation": {
             "v": 1,
             "cmdSeq": 9,
@@ -551,6 +579,24 @@
             "cmd": "stop",
             "source": "tap",
             "args": { "persist": false }
+          },
+          "audition-spoken": {
+            "v": 1,
+            "cmdSeq": 11,
+            "cmd": "audition",
+            "source": "audition",
+            "args": { "text": "This is how I sound", "voiceId": null }
+          },
+          "audition-rendered": {
+            "v": 1,
+            "cmdSeq": 12,
+            "cmd": "audition",
+            "source": "audition",
+            "args": {
+              "text": "This is how I sound",
+              "voiceId": "kokoro:af_heart",
+              "url": "https://audio.jwlabs.ai/n/kokoro-fp32-aac64-v1/af_heart/preview.m4a"
+            }
           }
         },
         "invalid": {
@@ -586,6 +632,64 @@
             "cmd": "setModeOverride",
             "source": "tap",
             "args": { "mode": "legacy" }
+          },
+          "route-sharing-unknown-policy": {
+            "v": 1,
+            "cmdSeq": 5,
+            "cmd": "setRouteSharing",
+            "source": "tap",
+            "args": { "policy": "longForm" }
+          },
+          "audition-url-not-https": {
+            "v": 1,
+            "cmdSeq": 5,
+            "cmd": "audition",
+            "source": "audition",
+            "args": {
+              "text": "This is how I sound",
+              "voiceId": null,
+              "url": "http://audio.jwlabs.ai/n/kokoro-fp32-aac64-v1/af_heart/preview.m4a"
+            }
+          },
+          "audition-url-off-host": {
+            "v": 1,
+            "cmdSeq": 5,
+            "cmd": "audition",
+            "source": "audition",
+            "args": {
+              "text": "This is how I sound",
+              "voiceId": null,
+              "url": "https://cdn.example.com/n/v1/af_heart/preview.m4a"
+            }
+          },
+          "audition-url-with-query": {
+            "v": 1,
+            "cmdSeq": 5,
+            "cmd": "audition",
+            "source": "audition",
+            "args": {
+              "text": "This is how I sound",
+              "voiceId": null,
+              "url": "https://audio.jwlabs.ai/n/kokoro-fp32-aac64-v1/af_heart/preview.m4a?token=abc"
+            }
+          },
+          "audition-url-lookalike-host": {
+            "v": 1,
+            "cmdSeq": 5,
+            "cmd": "audition",
+            "source": "audition",
+            "args": {
+              "text": "This is how I sound",
+              "voiceId": null,
+              "url": "https://audio.jwlabs.ai.example.com/preview.m4a"
+            }
+          },
+          "audition-url-null": {
+            "v": 1,
+            "cmdSeq": 5,
+            "cmd": "audition",
+            "source": "audition",
+            "args": { "text": "This is how I sound", "voiceId": null, "url": null }
           }
         }
       }

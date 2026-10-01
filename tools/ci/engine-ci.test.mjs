@@ -44,7 +44,7 @@ test("the three engine inputs the card names are engine paths", () => {
      job that checks the fixtures. */
   for (const f of [
     "player/parity/fixtures/seam-gap/cases.json",
-    "player/parity/swift-pending.json",
+    "player/parity/manifest.json",
     "mobile/plugins/foray-audio/foray-engine-core/Sources/ForayEngineCore/Policy/SeamGap.swift",
     "mobile/plugins/foray-audio/foray-engine-core/Package.swift",
     "tools/parity/record.mjs",

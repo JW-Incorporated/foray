@@ -387,8 +387,10 @@ async function onEngineDecision(decision) {
    The four rows the M1 car test drives (docs/native-engine-m1-car-test.md):
    'Playback engine: Automatic / Native / Web (applies after restart)' (NE-17),
    'Pause hold: forever / none' (NE-16), 'Simulate system termination' (NE-24)
-   and the session probe (NE-25c). app.js draws them; this file is the only
-   thing that may send their commands, and it sends nothing else for them.
+   and the session probe (NE-25c), and the M3 drive's fifth (NE-40, DV-8):
+   'Route sharing: Default / Long-form (applies after restart)'. app.js draws
+   them; this file is the only thing that may send their commands, and it
+   sends nothing else for them.
 
    WHICH ROWS EXIST. None off the iOS shell (the web, Android: `engine` is
    null) and none on a shell whose binary has no engine methods (`no-method`).
@@ -398,6 +400,9 @@ async function onEngineDecision(decision) {
    launch. The other three need a running engine, so only the native lane.
 
    WHAT IS READ BACK. The pause hold is the engine's snapshot (`holdPolicy`).
+   The route sharing has no snapshot field either: it is what the engine
+   confirmed storing this process, else not known (the launch's own policy is
+   in the Copy header's `routeSharing=`, from the engine's build row).
    The engine setting has no snapshot field: it is what the engine confirmed
    storing this process (an ok reply), else what decided this launch — the
    engine's own hello reason `override` means the stored choice (native lane:
@@ -405,11 +410,14 @@ async function onEngineDecision(decision) {
    and anything else (a crash-loop pin, no answer) is not known, never a
    guess. */
 export const DEVELOPER_ENGINE_COMMANDS = Object.freeze([
-  "setModeOverride", "setHoldPolicy", "simulateTermination", "probeSession",
+  "setModeOverride", "setHoldPolicy", "simulateTermination", "probeSession", "setRouteSharing",
 ]);
 
 /** The override the engine last confirmed storing in this process. */
 let developerOverride = null;
+/** The route sharing the engine last confirmed storing in this process
+    (NE-40): "default" | "longFormAudio", or null before any tap. */
+let developerRouteSharing = null;
 
 /** "auto" | "native" | "web", or null when the launch does not say. */
 function launchOverride(decision) {
@@ -433,6 +441,7 @@ function engineDeveloperStatus() {
     lane: native ? "native" : "js",
     override: developerOverride ?? launchOverride(decision),
     holdPolicy: typeof hold === "string" ? hold : null,
+    routeSharing: native ? developerRouteSharing : null,
     commands: native ? [...DEVELOPER_ENGINE_COMMANDS] : ["setModeOverride"],
   };
 }
@@ -440,13 +449,14 @@ function engineDeveloperStatus() {
 /** One Developer row's command, through the page's engine client. Resolves
     the engine's `{ok, reason?, snapshot}`, or null when there was nothing to
     send it to: no engine, a lane that does not take it, or a command that is
-    not one of the four. Never rejects. */
+    not one of the five. Never rejects. */
 async function engineDeveloperSend(cmd, args) {
   const status = engineDeveloperStatus();
   if (!status || !status.commands.includes(cmd)) return null;
   try {
     const reply = await engine.send(cmd, args, { source: "tap" });
     if (cmd === "setModeOverride" && reply?.ok) developerOverride = args.mode;
+    if (cmd === "setRouteSharing" && reply?.ok) developerRouteSharing = args.policy;
     return reply ?? null;
   } catch (_) {
     return null;
@@ -5573,11 +5583,14 @@ const ForayPlayer = {
     foray.error = null;
     const nextIndex = manager.currentIndex + 1;
     /* THE NEXT CLIP, NOT THE NEXT NON-NARRATION ITEM (audit round 3,
-       player-core-6). `skipToNext` steps over every `kind: "tts"` item — the
+       player-core-6). `skipToNext` stepped over every `kind: "tts"` item — the
        Swift transition-bridge rule — and in a Foray a narration line is
        authored content: Next used to jump past it while the page highlighted
        it, and from the clip before a closing line it ended the Foray unheard.
-       `play(index)`, the way `forayPrevious` already moves. */
+       `play(index)`, the way `forayPrevious` already moves. Since NE-39n
+       (2026-09-29) `skipToNext` agrees — Next is the next item, a line
+       included — so the engine's own Next (the car, the iPhone lock screen)
+       lands where this does. */
     await moveForay(nextIndex, () => manager.play(nextIndex));
     render();
   },

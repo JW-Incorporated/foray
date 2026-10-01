@@ -12,7 +12,8 @@
    the belief is the engine's snapshot, re-read on return — and each test below
    is named in facades.json by the reconcile tests whose page-side rule it
    carries. Rules the Swift engine reimplements are not mapped here; they are
-   owed to the engine's own cards in unported.json. */
+   fixtured or mapped to XCTests (unported.json, where they were once owed, was
+   retired by NE-39s). */
 
 import test from "node:test";
 import assert from "node:assert/strict";
