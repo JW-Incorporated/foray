@@ -2,7 +2,7 @@ import Foundation
 import ForayEngineCore
 
 /// The `diag-tokens` family against `Vocabulary` (ForayEngineCore/Diag):
-/// the seven closed sets as the generator wrote them (NE-04), and
+/// the closed sets as the generator wrote them (NE-04), and
 /// `Vocabulary.admit` against player/engine-vocabulary.js `admitToken`
 /// (card NE-10s, which owns the port the family's ids were tagged with).
 ///
@@ -28,7 +28,9 @@ public enum DiagTokensFamily {
             "STOP_CAUSES": DiagTokensFamily.strings(Vocabulary.StopCause.allCases.map(\.rawValue)),
             "SOURCES": DiagTokensFamily.strings(Vocabulary.Source.allCases.map(\.rawValue)),
             "MODE_REASONS": DiagTokensFamily.strings(Vocabulary.ModeReason.allCases.map(\.rawValue)),
-            "FAULT_KINDS": DiagTokensFamily.strings(Vocabulary.FaultKind.allCases.map(\.rawValue))
+            "FAULT_KINDS": DiagTokensFamily.strings(Vocabulary.FaultKind.allCases.map(\.rawValue)),
+            // NE-39n: the `cause=` of a `narration kind=fallback` row.
+            "NARRATION_FALLBACK_CAUSES": DiagTokensFamily.strings(Vocabulary.NarrationFallbackCause.allCases.map(\.rawValue))
         ],
         calls: [
             "admitToken": { args in

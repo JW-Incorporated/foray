@@ -54,6 +54,20 @@ extension AVDeck: PairableDeck {}
 /// say so (docs/ios-native-engine-measurements.md §10.3). The pair only ever
 /// sends `DeckCommand`s.
 ///
+/// A NARRATION LINE IS AN ORDINARY DECK ITEM (NE-45s). A rendered line is
+/// prepared on the standby and promoted exactly like a clip, and so is the
+/// clip after it: the handover demotes the deck that held the clip WITHOUT
+/// dropping it, so when that clip's episode continues after the line the
+/// standby already holds the source and AVDeck's `sameSourceIsSeek` turns the
+/// prepare into a seek there (`reuse=y` on the `prefetch` row). Behind a
+/// SPOKEN line the core prepares the next clip at the line's start: the deck
+/// that played the clip before it is paused at its out-point, the standby
+/// loads underneath the voice, and the handover at the line's end pauses a
+/// deck that is already silent. A prepared line whose file fails is a warm
+/// load that FAILED: nothing reaches the core then, and at the line's turn
+/// the load is a miss that runs as an ordinary (cold) load, which fails again
+/// and falls back to speech exactly as a cold line does (NE-37c).
+///
 /// STAND-DOWN. An uncommanded pause of the playing deck while a warm load is
 /// IN FLIGHT stands warming down for good (`unexplainedPauseAction`): the one
 /// window in which a second player could have taken the session. From then
@@ -140,10 +154,10 @@ final class DeckPair: DeckDriving {
         dispatchPrecondition(condition: .onQueue(.main))
         guard !invalidated else { return }
         switch command {
-        case let .load(token, itemId, url, startSec, preciseTiming):
+        case let .load(token, itemId, url, startSec, preciseTiming, _):
             load(command, token: token, itemId: itemId, url: url, startSec: startSec, preciseTiming: preciseTiming)
-        case let .prepare(itemId, url, startSec):
-            prepare(itemId: itemId, url: url, startSec: startSec)
+        case let .prepare(itemId, url, startSec, deadlineClass):
+            prepare(itemId: itemId, url: url, startSec: startSec, deadlineClass: deadlineClass)
         case let .setRate(newRate):
             // Both decks: the standby primes at the rate it will play at.
             // AVDeck refuses a non-positive rate itself, and says so.
@@ -181,13 +195,19 @@ final class DeckPair: DeckDriving {
 
     // MARK: - Prepare
 
-    private func prepare(itemId: String, url: String?, startSec: Double) {
+    private func prepare(itemId: String, url: String?, startSec: Double, deadlineClass: DeckDeadlineClass) {
         let offset = DeckPolicy.warmOffset(startSec)
         let decision = DeckPolicy.prefetchDecision(
             available: available, url: url, currentUrl: decks[activeIndex].loadedURL,
             warm: warmLoad?.warm, offsetSec: offset)
-        row("prefetch", [JSONMember("decision", .string(decision.rawValue))])
-        guard decision == .start, let url else { return }
+        guard decision == .start, let url else {
+            return row("prefetch", [JSONMember("decision", .string(decision.rawValue))])
+        }
+        // `reuse`: the standby already holds this source (the deck a handover
+        // demoted), so AVDeck prepares it by a seek, not a fetch (NE-45s).
+        row("prefetch", [JSONMember("decision", .string(decision.rawValue)),
+                         JSONMember("reuse", .bool(decks[standbyIndex].loadedURL == url)),
+                         JSONMember("class", .string(deadlineClass.rawValue))])
         // A warm load being replaced is forgotten; the standby's next load
         // replaces its item (`discardFreesBuffer("replaced")` is false: no
         // separate media work).
@@ -201,8 +221,11 @@ final class DeckPair: DeckDriving {
         standby.send(.setRate(rate))
         // Precise timing: a prepared item is the next SEGMENT of a Foray, and
         // P-7's provisional rule is precise for bounded segments. A precise
-        // asset promoted for an approximate ask is never worse.
-        standby.send(.load(token: token, itemId: itemId, url: url, startSec: offset, preciseTiming: true))
+        // asset promoted for an approximate ask is never worse. The warm load
+        // runs under the item's own P-13 class (NE-38): a prepared line gives
+        // up at a line's deadline, exactly as its own load would.
+        standby.send(.load(token: token, itemId: itemId, url: url, startSec: offset, preciseTiming: true,
+                           deadlineClass: deadlineClass))
     }
 
     // MARK: - Load: promote or degrade
@@ -350,7 +373,7 @@ private extension DeckEvent {
     var deckToken: DeckToken? {
         switch self {
         case let .durationLoaded(token, _), let .ready(token, _, _, _), let .notReady(token, _, _),
-             let .deadlineExceeded(token, _), let .failed(token, _), let .timeControl(token, _, _),
+             let .deadlineExceeded(token, _, _), let .failed(token, _, _), let .timeControl(token, _, _),
              let .pausedUncommanded(token, _), let .seeked(token, _, _), let .stalled(token),
              let .ended(token), let .prepareWindow(token), let .prepared(token, _, _):
             return token

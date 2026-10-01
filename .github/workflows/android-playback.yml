@@ -704,6 +704,19 @@ jobs:
         if: ${{ matrix.mode == 'native' && !cancelled() && steps.launch.outcome == 'success' }}
         run: node tools/mobile/android-native-playback.mjs airplane --art "$ART"
 
+      # A-61: route resume. The emulator has no Bluetooth and adb cannot add an
+      # audio output, so the debug driver hands the service's RouteWatcher a
+      # VIRTUAL A2DP device, added and removed as the platform's
+      # AudioDeviceCallback would, with BECOMING_NOISY as the service hears it;
+      # car mode is the real one (`cmd uimode car yes`). Gated: in car mode the
+      # car's loss pauses and its return resumes exactly once, and after a
+      # listener's pause the same loss and return resume nothing. Without car
+      # mode the verdict records no-coverage.
+      - name: (A-61) native — route resume, a virtual car-mode output lost and back resumes once; a listener's pause stays paused
+        id: native-route
+        if: ${{ matrix.mode == 'native' && !cancelled() && steps.launch.outcome == 'success' }}
+        run: node tools/mobile/android-native-playback.mjs route --art "$ART"
+
       # A-28: the page's door, and since A-31 and A-42 the flips' proof. A stock
       # launch is the native lane (`engine=native … reason=build-default`,
       # `episode` and `foray` in the caps, an `engineMode native` row); an episode

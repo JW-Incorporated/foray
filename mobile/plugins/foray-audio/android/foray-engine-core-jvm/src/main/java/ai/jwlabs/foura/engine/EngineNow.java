@@ -12,12 +12,20 @@ import java.util.Objects;
  * only goes into the {@code remote}, {@code resume} and {@code cold-play} rows. (On
  * Android the service's foreground state stands in for iOS's background budget; A-26
  * decides what the host reports here.) {@code narrator}: the synthesiser's own word (A-40
- * ported the narrating overlay's rules; {@code unknown} until a host has one).
+ * ported the narrating overlay's rules; {@code unknown} until a host has one). {@code route}: the
+ * current output route (A-61, the Swift {@code EngineNow.route} of NE-38rs), the route a playing
+ * deck is heard through; null when the host cannot say (the parity driver, most tests), and then
+ * no route ever becomes known.
  */
-public record EngineNow(double wallMs, double monoMs, DeckReading deck, Double bgRemainingMs, NarratorReading narrator) {
+public record EngineNow(double wallMs, double monoMs, DeckReading deck, Double bgRemainingMs, NarratorReading narrator,
+                        EngineInput.RoutePort route) {
     public EngineNow {
         Objects.requireNonNull(deck, "deck");
         Objects.requireNonNull(narrator, "narrator");
+    }
+
+    public EngineNow(double wallMs, double monoMs, DeckReading deck, Double bgRemainingMs, NarratorReading narrator) {
+        this(wallMs, monoMs, deck, bgRemainingMs, narrator, null);
     }
 
     public EngineNow(double wallMs, double monoMs, DeckReading deck, Double bgRemainingMs) {

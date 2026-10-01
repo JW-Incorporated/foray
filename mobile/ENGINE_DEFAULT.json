@@ -2,10 +2,14 @@
   "//": "Per platform since A-20 (docs/plans/android-assessment.md). ios: the plist injector (tools/mobile/inject-background-audio.mjs) writes ForayEngineDefault and ForayEngineCapabilities from this block; native since NE-27b, foray since NE-37 (the M2 flip). android: native for episodes since A-31 (the A1 flip) and for Forays since A-42 (the A2 flip; STATE.md carries both record lines), with restore, the same four as ios; held to EngineLane.java's literals by shell-invariants.",
   "ios": {
     "mode": "native",
-    "capabilities": ["episode", "continuation", "restore", "foray"]
+    "capabilities": ["episode", "continuation", "restore", "foray"],
+    "//routeResumeBluetooth": "NE-38rs: route resume's Bluetooth arm (EngineConfig.routeResumeBluetooth, written to the plist as ForayEngineRouteResumeBluetooth). OFF, provisional (docs/ios-native-engine-measurements.md §12, NE-38e verdict route-back). The founder's car is A2DP and sends its own play 7.4 s after connecting (2026-09-28 paste e#83 -> e#85), and AirPods are A2DP too; CarPlay resumes whatever this says.",
+    "routeResumeBluetooth": false
   },
   "android": {
     "mode": "native",
-    "capabilities": ["episode", "continuation", "restore", "foray"]
+    "capabilities": ["episode", "continuation", "restore", "foray"],
+    "//routeResumeBluetooth": "A-61: route resume's Bluetooth arm, OFF as on iOS (EngineLane.ROUTE_RESUME_BLUETOOTH, which shell-invariants holds to this value). Telling a car's Bluetooth from headphones would need the BLUETOOTH_CONNECT runtime permission, which is not requested (D-A9: no); car mode (Android Auto) is the car class.",
+    "routeResumeBluetooth": false
   }
 }

@@ -36,6 +36,10 @@ public class EngineCoreTest {
         boolean activationOK = true;
         Integer lastLoad;
         Double bgRemainingMs;
+        /** The current output route the host reads (A-61; null: none). */
+        EngineInput.RoutePort route;
+        /** The wall clock. It stands still unless a test moves it (A-61 measures a loss's age on it). */
+        double wallMs = WALL_MS;
 
         Host() {
             this(new EngineConfig("test"));
@@ -57,12 +61,12 @@ public class EngineCoreTest {
         /** One turn, {@code afterMs} on the monotonic clock after the last. */
         List<EngineCommand> send(EngineInput input, double afterMs) {
             monoMs += afterMs;
-            List<EngineCommand> all = new ArrayList<>(core.handle(input, new EngineNow(WALL_MS, monoMs, reading, bgRemainingMs)));
+            List<EngineCommand> all = new ArrayList<>(core.handle(input, now()));
             Integer id = null;
             for (EngineCommand c : all) if (c instanceof EngineCommand.SessionActivate a) id = a.requestId();
             if (id != null) {
                 all.addAll(core.handle(new EngineInput.SessionAnswer(new EngineInput.SessionResult(id, activationOK,
-                        activationOK ? null : "cannot-interrupt-others", 3.0)), new EngineNow(WALL_MS, monoMs, reading, bgRemainingMs)));
+                        activationOK ? null : "cannot-interrupt-others", 3.0)), now()));
             }
             for (EngineCommand c : all) {
                 if (!(c instanceof EngineCommand.Deck d)) continue;
@@ -80,6 +84,10 @@ public class EngineCoreTest {
                 }
             }
             return all;
+        }
+
+        EngineNow now() {
+            return new EngineNow(wallMs, monoMs, reading, bgRemainingMs, NarratorReading.UNKNOWN, route);
         }
 
         List<EngineCommand> send(EngineContract.Command command) {
@@ -252,7 +260,7 @@ public class EngineCoreTest {
         assertEquals(SessionPolicy.Phase.RELINQUISHED, host.core.state().session);
         for (EngineInput input : Arrays.<EngineInput>asList(
                 new EngineInput.Session(new EngineInput.SessionEvent.InterruptionEnded(true)),
-                new EngineInput.Session(new EngineInput.SessionEvent.Route(new EngineInput.RouteChange(false, null, false))),
+                new EngineInput.Session(new EngineInput.SessionEvent.Route(new EngineInput.RouteChange(false))),
                 new EngineInput.Session(new EngineInput.SessionEvent.MediaServicesReset()),
                 new EngineInput.Remote(new EngineInput.RemotePress(MediaMapping.RemoteCommand.PLAY)),
                 new EngineInput.Deck(new DeckEvent.Ready(1, 0, true, 0)),
@@ -287,7 +295,7 @@ public class EngineCoreTest {
         assertCauseFirst(Vocabulary.StopCause.INTERRUPTION,
                 playing().send(new EngineInput.Session(new EngineInput.SessionEvent.InterruptionBegan("default"))));
         assertCauseFirst(Vocabulary.StopCause.ROUTE_CHANGE, playing().send(new EngineInput.Session(
-                new EngineInput.SessionEvent.Route(new EngineInput.RouteChange(true, null, false)))));
+                new EngineInput.SessionEvent.Route(new EngineInput.RouteChange(true)))));
         assertCauseFirst(Vocabulary.StopCause.CLOSE, playing().send(new EngineContract.Command.Stop(true)));
         assertCauseFirst(Vocabulary.StopCause.MEDIA_SERVICES_RESET,
                 playing().send(new EngineInput.Session(new EngineInput.SessionEvent.MediaServicesReset())));
@@ -594,16 +602,18 @@ public class EngineCoreTest {
         assertTrue(host.send(session(new EngineInput.SessionEvent.InterruptionEnded(true)))
                 .contains(new EngineCommand.GraceBegin(GraceReason.INTERRUPTION_RESUME)));
 
-        Host car = playing();
-        car.send(session(new EngineInput.SessionEvent.Route(new EngineInput.RouteChange(true, "Civic", true))));
-        List<EngineCommand> back = car.send(session(new EngineInput.SessionEvent.Route(new EngineInput.RouteChange(false, "Civic", false))));
+        Host car = RouteResumeTest.playingThrough(RouteResumeTest.CAR, RouteResumeTest.config());
+        car.send(session(new EngineInput.SessionEvent.Route(RouteResumeTest.lost(RouteResumeTest.CAR, RouteResume.RouteClass.CAR))));
+        List<EngineCommand> back = car.send(session(new EngineInput.SessionEvent.Route(
+                RouteResumeTest.back(RouteResumeTest.CAR, RouteResume.RouteClass.CAR))));
         assertTrue(back.toString(), back.contains(new EngineCommand.GraceBegin(GraceReason.ROUTE_RESUME)));
         assertTrue("the known car resumes: " + back, index(back, EngineCoreTest::isLoad) >= 0);
 
-        Host phones = playing();
-        phones.send(session(new EngineInput.SessionEvent.Route(new EngineInput.RouteChange(true, "AirPods", false))));
+        // Headphones (A-61: an `other` route, known or not) plugged back in never resume.
+        Host phones = RouteResumeTest.playingThrough(RouteResumeTest.WIRED, RouteResumeTest.config());
+        phones.send(session(new EngineInput.SessionEvent.Route(RouteResumeTest.lost(RouteResumeTest.WIRED, RouteResume.RouteClass.OTHER))));
         List<EngineCommand> plugged = phones.send(session(new EngineInput.SessionEvent.Route(
-                new EngineInput.RouteChange(false, "AirPods", false))));
+                RouteResumeTest.back(RouteResumeTest.WIRED, RouteResume.RouteClass.OTHER))));
         assertEquals("headphones plugged in never resume: " + plugged, -1, index(plugged, EngineCoreTest::isLoad));
         assertEquals(-1, index(plugged, c -> c instanceof EngineCommand.SessionActivate));
         assertEquals(-1, index(plugged, c -> c instanceof EngineCommand.GraceBegin));
@@ -669,10 +679,11 @@ public class EngineCoreTest {
         int at = index(resumed, c -> c instanceof EngineCommand.Diag d && d.entry().kind().equals("resume"));
         if (activate >= 0) assertTrue("the row is written before the activation it waits on", at < activate);
 
-        Host car = playing();
+        Host car = RouteResumeTest.playingThrough(RouteResumeTest.CAR, RouteResumeTest.config());
         car.bgRemainingMs = 12_000.0;
-        car.send(session(new EngineInput.SessionEvent.Route(new EngineInput.RouteChange(true, "Civic", true))));
-        List<EngineCommand> back = car.send(session(new EngineInput.SessionEvent.Route(new EngineInput.RouteChange(false, "Civic", false))));
+        car.send(session(new EngineInput.SessionEvent.Route(RouteResumeTest.lost(RouteResumeTest.CAR, RouteResume.RouteClass.CAR))));
+        List<EngineCommand> back = car.send(session(new EngineInput.SessionEvent.Route(
+                RouteResumeTest.back(RouteResumeTest.CAR, RouteResume.RouteClass.CAR))));
         EngineCommand.DiagEntry route = rows("resume", back).get(0);
         assertEquals(JsonNode.str("route"), route.field("kind"));
         assertEquals(JsonNode.str("y"), route.field("grace"));
@@ -721,7 +732,7 @@ public class EngineCoreTest {
         host.send(new EngineInput.Deck(new DeckEvent.PausedUncommanded(host.lastLoad, 3)));
         assertFalse(host.core.state().pausedByRoute);
         List<EngineCommand> route = host.send(
-                session(new EngineInput.SessionEvent.Route(new EngineInput.RouteChange(true, null, false))), 200);
+                session(new EngineInput.SessionEvent.Route(new EngineInput.RouteChange(true))), 200);
         assertTrue(route.toString(),
                 rows("session", route).stream().anyMatch(e -> JsonNode.str("route-attributed").equals(e.field("kind"))));
         assertEquals(-1, index(host.send(session(new EngineInput.SessionEvent.InterruptionEnded(true))), EngineCoreTest::isLoad));

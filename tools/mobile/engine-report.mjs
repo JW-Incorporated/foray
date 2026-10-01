@@ -25,6 +25,12 @@
  *   6. fault counts (implicit-activation, externally-owned) and stop cause=unknown
  *   7. the M1 exit readings (§7): sessionActivated failed, silent remote plays,
  *      interruptions that never ended (possible takeovers)
+ *   8. the M3 verdicts (NE-38e; plan §14 Track M3): pass / fail / no-coverage
+ *      for each value M3 ships provisionally (`// MEASURE`), with the readings
+ *      NE-38f settles it from: P13-clip and P13-line (cold time-to-ready, the
+ *      deadline rows, a proposal that is printed and never applied),
+ *      reuse-idle, rate-latch, resume-latency, route-back, seam-kinds,
+ *      suspension-in-seam, narration-fallback and dup
  *
  * THE RULES ARE CONSERVATIVE ON PURPOSE. A verdict is `pass` only when rows in
  * the paste show the thing happening; the absence of a failure row is never a
@@ -42,6 +48,8 @@
 import { readFileSync, realpathSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
+import { NARRATION_FALLBACK_CAUSES } from "../../player/engine-vocabulary.js";
+
 /** DiagRing.capacity (NE-19). */
 export const RING_CAPACITY = 2000;
 /** A press or a resume is confirmed audible only by a row inside this window. */
@@ -58,7 +66,8 @@ export const ROUTE_STOP_WINDOW_MS = 2_000;
 const DAY_MS = 86_400_000; // a Copy line is a time of day
 const PLAY_CMDS = new Set(["play", "togglePlayPause"]);
 /** Values the tool keeps as strings even when they look like numbers. */
-const STRING_KEYS = new Set(["bundleVersion", "build", "engineVersion", "token", "item", "nextId"]);
+/* `key` is NE-38rs's 8-hex route key: "12345678" is a key, not a number. */
+const STRING_KEYS = new Set(["bundleVersion", "build", "engineVersion", "token", "item", "nextId", "key"]);
 
 export const DV_TITLES = Object.freeze({
   "DV-1": "Car's play after a paused wait resumes 4a (H-1, H-1b)",
@@ -740,6 +749,614 @@ export function m1Exit(parsed) {
   return { activationFailed, pageFailed, silentPlays, neverEnded };
 }
 
+// ─────────────────────────── the M3 verdicts ───────────────────────────
+/*
+ * NE-38e (plan §14 Track M3, re-planned 2026-09-29). M3 ships every value that
+ * needs the founder's field rows as a PROVISIONAL value tagged `// MEASURE:
+ * verdict=<id>`; each verdict below reads the rows that settle one, and NE-38f
+ * settles the value from a drive's paste. The same conservative rule as the DV
+ * table, said with its own word: a verdict is `pass` only when rows show the
+ * thing, and a paste without those rows is `no-coverage`, never a pass (a Copy
+ * from a build before the rows existed must not settle anything).
+ *
+ * THE ROW GRAMMAR each verdict reads (DiagGate writes a row's own `kind` field
+ * as `event`, so `deck kind=ready` is a `deck` row whose event is `ready`):
+ *   deck attach   token= cold=<why not reused> idleSec= class=clip|line   (AVDeck, #866, NE-38)
+ *   deck reuse    token= idleSec= class=
+ *   deck ready    token= reuse=y|n elapsedMs= marks={…} class=
+ *   deck deadline token= afterMs= step= class= reuse= …the access fields
+ *   deck access|stalled|failed token= … wwan=<media requests over cellular>
+ *   nowplaying    … via= state= rate= elapsedSec= buffering= engineState= listenRate=
+ *   deck time-control token= status=playing|waiting|paused reason= positionSec=  (#866)
+ *   grace begin   reason= low=y|n bgRemainingMs=
+ *   grace end|expired outcome= reason= heldMs=
+ *   grace late    timer= lateMs= inSeam=y|n bgRemainingMs=                    (NE-46)
+ *   route lost|back port= key= known= lostSec= pausedBy= decision=resume|no why=   (NE-38rs)
+ *   seam          … from=clip|line to=clip|line prepare=hit|miss|none          (NE-45s)
+ *   narration fallback reason= where= cause=<NARRATION_FALLBACK_CAUSES>        (NE-39n)
+ *   remote <cmd>  dupCandidate=y|n …                                           (T-8, DV-6)
+ * `prepare` (NE-45s): `hit` the standby held the next item and it was
+ * promoted, `miss` a prepare was issued and the seam still loaded cold, `none`
+ * nothing was prepared.
+ */
+
+export const M3_TITLES = Object.freeze({
+  "P13-clip": "Clip load deadline (P-13) against cold time-to-ready",
+  "P13-line": "Rendered-line load deadline (P-13) against cold time-to-ready",
+  "reuse-idle": "Same-source reuse idle limit: the risk and the cost",
+  "rate-latch": "Now Playing never shows rate 0 while the clock runs (#866)",
+  "resume-latency": "Grace held until sound: remote-play and route-resume, cold vs reuse",
+  "route-back": "A car route comes back: the decision and the car's own play",
+  "seam-kinds": "Seams by kind (clip/line), prepare hit/miss/none",
+  "suspension-in-seam": "No suspension inside a silent seam (NE-46)",
+  "narration-fallback": "Rendered-line fallbacks, counted by cause",
+  "dup": "One press, one delivery: the de-dup decision (DV-6, NE-39s)",
+});
+
+/** The values the verdicts judge, as M3 ships them. A test pins each one to
+    its Swift constant, so a change there without one here is red:
+    AVDeck.defaultLoadDeadlineSec and AVDeck.defaultLineLoadDeadlineSec. */
+export const P13_CURRENT_SEC = Object.freeze({ clip: 20, line: 8 });
+/** AVDeck.defaultReuseMaxIdleSec. */
+export const REUSE_MAX_IDLE_SEC = 600;
+/** A reuse is in trouble when a failed, deadline or stalled row follows it on its token within this long. */
+export const REUSE_TROUBLE_WINDOW_MS = 30_000;
+/** rate-latch: a rate-0 span while playing longer than this, with the clock advancing, is the #866 regression. */
+export const RATE_LATCH_MAX_MS = 3_000;
+/** rate-latch: the clock advanced when elapsedSec moved at least this far across the span. */
+export const RATE_LATCH_MIN_ADVANCE_SEC = 1;
+/** route-back: the car's own play counts as its answer to a route coming back only this soon after it. */
+export const ROUTE_BACK_PRESS_WINDOW_MS = 30_000;
+/** EngineCore.remoteDuplicateWindowMs: a same-command press inside it is recorded as dupCandidate=y. */
+export const REMOTE_DUPLICATE_WINDOW_MS = 500;
+/** dup: presses of one command closer than this are the ones a de-dup decision is about. Two presses
+    further apart are two presses, so a drive without a closer pair says nothing either way. */
+export const DUP_JUDGE_WINDOW_MS = 1_000;
+/** dup: closer than this is faster than a hand presses a car's button twice, so it is one press
+    delivered twice. Provisional, from the NE-39s evidence (the car's repeated plays are seconds
+    apart); NE-38f revisits it with the first close pair a drive records. */
+export const DUP_MACHINE_GAP_MS = 150;
+
+const RESUME_GRACE_REASONS = ["remote-play", "route-resume"];
+/** The grace spans that cover a silent seam in the background (GraceReason, NE-30s/NE-31s). */
+const SEAM_GRACE_REASONS = new Set(["seam", "prepare-miss", "narration-handover"]);
+const DECK_TROUBLE = new Set(["failed", "deadline", "stalled"]);
+
+function m3Verdict(id, status, why, rows = []) {
+  return { id, title: M3_TITLES[id], verdict: status, why, rows: cite(rows) };
+}
+
+/** n, p50, p95 and max of a list of numbers (anything else dropped). */
+export function stats(values) {
+  const s = values.filter((v) => typeof v === "number" && Number.isFinite(v)).sort((a, b) => a - b);
+  return { n: s.length, p50: percentile(s, 50), p95: percentile(s, 95), max: s.length ? s[s.length - 1] : null };
+}
+
+const statsText = (s) => (s.n ? `n ${s.n}, p50 ${msText(s.p50)}, p95 ${msText(s.p95)}, max ${msText(s.max)}` : "n 0");
+
+function countBy(list, keyOf) {
+  const out = {};
+  for (const x of list) {
+    const k = keyOf(x);
+    out[k] = (out[k] ?? 0) + 1;
+  }
+  return out;
+}
+const countsText = (o) => Object.entries(o).map(([k, n]) => `${k} ${n}`).join(", ") || "none";
+const yn = (v) => (v == null ? "—" : v === true ? "y" : v === false ? "n" : String(v));
+
+/** A deck token is unique within one boot: each row's `<boot>:<token>` key, or null. */
+function tokenKeys(rows) {
+  let boot = 0;
+  return rows.map((r) => {
+    if (r.kind === "build") boot++;
+    return r.f.token == null ? null : `${boot}:${r.f.token}`;
+  });
+}
+
+/**
+ * P-13's proposal from cold time-to-ready: p95 x 2, rounded up to whole
+ * seconds, and never below the observed max (also rounded up). Printed for
+ * NE-38f, never applied. null with no loads.
+ */
+export function deadlineProposalSec(s) {
+  if (!s || !s.n) return null;
+  return Math.max(Math.ceil((s.p95 * 2) / 1000), Math.ceil(s.max / 1000));
+}
+
+/**
+ * Cold loads per deadline class, split by network, and every deadline row.
+ * A cold load is a token with a `ready` row that is not a reuse (reuse=n, or
+ * an `attach` row on the token and no `reuse` one). A load with no `class=`
+ * (a row from before NE-38) reads as `clip`: before Spark Phase 1 no rendered
+ * line reached a deck, and the count of such loads is printed with the
+ * numbers. The network is the first `wwan=` on the token (`deck access`,
+ * `stalled`, `failed` or `deadline`): >0 is cellular, 0 Wi-Fi, none unknown.
+ */
+export function loadTimes(parsed) {
+  const rows = parsed.engineRows;
+  const keys = tokenKeys(rows);
+  const loads = new Map();
+  const deadlines = [];
+  rows.forEach((r, i) => {
+    if (r.kind !== "deck") return;
+    if (r.event === "deadline") deadlines.push(r);
+    const k = keys[i];
+    if (k == null) return;
+    const e = loads.get(k) ?? { key: k, attach: null, reuse: null, ready: null, wwan: null };
+    if (r.event === "attach" && !e.attach) e.attach = r;
+    else if (r.event === "reuse" && !e.reuse) e.reuse = r;
+    else if (r.event === "ready" && !e.ready) e.ready = r;
+    if (e.wwan == null && num(r.f.wwan) != null) e.wwan = r.f.wwan;
+    loads.set(k, e);
+  });
+  const classOf = (e) => e.ready?.f.class ?? e.attach?.f.class ?? null;
+  const cold = [...loads.values()].filter((e) => e.ready && e.ready.f.reuse !== true && !e.reuse
+    && (e.attach || e.ready.f.reuse === false));
+  const elapsed = (list) => stats(list.map((e) => num(e.ready.f.elapsedMs)));
+  const out = {};
+  for (const cls of ["clip", "line"]) {
+    const mine = cold.filter((e) => (classOf(e) ?? "clip") === cls);
+    const all = elapsed(mine);
+    out[cls] = {
+      cold: mine,
+      classless: mine.filter((e) => classOf(e) == null).length,
+      all,
+      byNet: {
+        cellular: elapsed(mine.filter((e) => e.wwan != null && e.wwan > 0)),
+        wifi: elapsed(mine.filter((e) => e.wwan === 0)),
+        unknown: elapsed(mine.filter((e) => e.wwan == null)),
+      },
+      deadlines: deadlines.filter((r) => (r.f.class ?? "clip") === cls),
+      proposalSec: deadlineProposalSec(all),
+      currentSec: P13_CURRENT_SEC[cls],
+    };
+  }
+  return out;
+}
+
+function p13Verdict(cls, d) {
+  const id = `P13-${cls}`;
+  const cur = d.currentSec;
+  const readies = d.cold.map((e) => e.ready);
+  const summary = d.all.n
+    ? `cold time-to-ready ${statsText(d.all)}${d.classless ? ` (${d.classless} without class=, read as clip)` : ""}; `
+      + `proposal ${d.proposalSec} s (p95 x 2, never below max; current ${cur} s; printed, never applied)`
+    : "no cold load of this class became ready";
+  if (!d.all.n && !d.deadlines.length) {
+    return m3Verdict(id, "no-coverage", `no \`deck ready\` after a cold \`deck attach\` with class=${cls}, and no \`deck deadline\` with class=${cls}`);
+  }
+  if (d.deadlines.length) {
+    const list = d.deadlines.map((r) => `#${r.seq} step=${r.f.step ?? "?"} class=${r.f.class ?? "—"} afterMs=${msText(num(r.f.afterMs))}`);
+    return m3Verdict(id, "fail", `${d.deadlines.length} loads hit the ${cur} s deadline (${list.join("; ")}); ${summary}`, [...d.deadlines, ...readies]);
+  }
+  if (d.proposalSec > cur) {
+    return m3Verdict(id, "fail", `cold loads leave less than 2x headroom under ${cur} s: ${summary}`, readies);
+  }
+  return m3Verdict(id, "pass", summary, readies);
+}
+
+/** Every reuse with its idleSec and whether trouble followed on its token, and every cold=stale attach. */
+export function reuseIdle(parsed) {
+  const rows = parsed.engineRows;
+  const keys = tokenKeys(rows);
+  const reuses = [];
+  const stale = [];
+  rows.forEach((r, i) => {
+    if (r.kind !== "deck") return;
+    if (r.event === "attach" && r.f.cold === "stale") stale.push({ row: r, idleSec: num(r.f.idleSec) });
+    if (r.event !== "reuse") return;
+    let trouble = null;
+    for (let j = i + 1; j < rows.length && rows[j].t - r.t <= REUSE_TROUBLE_WINDOW_MS; j++) {
+      const x = rows[j];
+      if (x.kind === "deck" && keys[j] === keys[i] && DECK_TROUBLE.has(x.event)) { trouble = x; break; }
+    }
+    reuses.push({ row: r, idleSec: num(r.f.idleSec), trouble });
+  });
+  return { reuses, stale };
+}
+
+const idleText = (v) => (v == null ? "—" : `${v}s`);
+
+function reuseVerdict(ri) {
+  const cost = ri.stale.length
+    ? `${ri.stale.length} cold=stale loads (idleSec ${ri.stale.map((x) => idleText(x.idleSec)).join(", ")}) are what the ${REUSE_MAX_IDLE_SEC} s limit cost`
+    : `no cold=stale load (the ${REUSE_MAX_IDLE_SEC} s limit cost nothing here)`;
+  if (!ri.reuses.length) return m3Verdict("reuse-idle", "no-coverage", `no \`deck reuse\` row; ${cost}`, ri.stale.map((x) => x.row));
+  const bad = ri.reuses.filter((x) => x.trouble);
+  if (bad.length) {
+    return m3Verdict("reuse-idle", "fail", `${bad.length} of ${ri.reuses.length} reuses were followed on their token within ${REUSE_TROUBLE_WINDOW_MS / 1000} s by trouble: `
+      + bad.map((x) => `#${x.row.seq} idleSec=${idleText(x.idleSec)} then ${x.trouble.event} #${x.trouble.seq} after ${x.trouble.t - x.row.t}ms`).join("; ")
+      + `; ${cost}`, bad.flatMap((x) => [x.row, x.trouble]));
+  }
+  const idles = ri.reuses.map((x) => x.idleSec).filter((v) => v != null);
+  return m3Verdict("reuse-idle", "pass", `${ri.reuses.length} reuses${idles.length ? ` (idleSec max ${Math.max(...idles)}s)` : ""}, none followed by failed, deadline or stalled within ${REUSE_TROUBLE_WINDOW_MS / 1000} s; ${cost}`,
+    [...ri.reuses.map((x) => x.row), ...ri.stale.map((x) => x.row)]);
+}
+
+/**
+ * The rate-0 spans: a `nowplaying` row with engineState=playing and rate=0, up
+ * to the next nowplaying row of the same boot (a relaunch ends a span, since
+ * the restored row's elapsedSec says nothing about the rate before it). A span
+ * LATCHED when it lasted longer than RATE_LATCH_MAX_MS and either
+ *   - the clock ran: elapsedSec moved forward across it by at least
+ *     RATE_LATCH_MIN_ADVANCE_SEC (with buffering=y, at least half the span's
+ *     wall time too, since an honest stall stands still) and no further than
+ *     the span could play (a longer jump is a seek, which says nothing about
+ *     the rate); or
+ *   - the deck said so: its latest `deck time-control` row read
+ *     status=playing for longer than RATE_LATCH_MAX_MS inside the span.
+ * buffering=y is judged too, because it is the #866 latch itself: the core's
+ * `buffering` stuck on after a stall that landed behind the deck's `playing`,
+ * so the lock screen sat at rate 0 while audio played. An honest stall is
+ * buffering=y with the deck waiting and the clock still. A span with no later
+ * nowplaying row (open, to the end of its boot) is judged by the deck rule only.
+ */
+export function rateLatch(parsed) {
+  const rows = parsed.engineRows;
+  const nps = [];
+  const tcs = [];
+  const bootEnd = [];
+  let boot = 0;
+  for (const r of rows) {
+    if (r.kind === "build") {
+      if (bootEnd[boot] === undefined) bootEnd[boot] = r.t;
+      boot++;
+    }
+    if (r.kind === "nowplaying" && "engineState" in r.f) nps.push({ r, boot });
+    if (isEvent(r, "deck", "time-control") && typeof r.f.status === "string") tcs.push({ r, boot });
+  }
+  const lastT = rows.length ? rows[rows.length - 1].t : null;
+  /** The longest stretch of [from, to] in which the deck's latest time-control row (this boot) said playing. */
+  const deckPlaying = (from, to, b) => {
+    let status = null;
+    let since = from;
+    let best = { ms: 0, row: null };
+    let row = null;
+    for (const { r, boot: rb } of tcs) {
+      if (rb !== b) continue;
+      if (r.t <= from) { status = r.f.status; row = r; continue; }
+      if (r.t >= to) break;
+      if (status === "playing" && r.t - since > best.ms) best = { ms: r.t - since, row };
+      status = r.f.status;
+      row = r;
+      since = r.t;
+    }
+    if (status === "playing" && to - since > best.ms) best = { ms: to - since, row };
+    return best;
+  };
+  const spans = [];
+  nps.forEach(({ r, boot: b }, k) => {
+    if (r.f.engineState !== "playing" || num(r.f.rate) !== 0) return;
+    const buffering = r.f.buffering === true;
+    if (!buffering && r.f.buffering !== false) return;
+    const after = nps[k + 1];
+    const next = after && after.boot === b ? after.r : null;
+    const endT = next ? next.t : (bootEnd[b] ?? lastT);
+    const durationMs = endT - r.t;
+    let advanceSec = null;
+    let clockRan = false;
+    if (next) {
+      const a = num(r.f.elapsedSec);
+      const z = num(next.f.elapsedSec);
+      advanceSec = a != null && z != null ? Math.round((z - a) * 1000) / 1000 : null;
+      const speed = Math.max(num(r.f.listenRate) ?? 1, 1);
+      const floor = buffering ? Math.max(RATE_LATCH_MIN_ADVANCE_SEC, durationMs / 2000) : RATE_LATCH_MIN_ADVANCE_SEC;
+      clockRan = advanceSec != null && advanceSec >= floor && advanceSec <= (durationMs / 1000) * speed * 1.1 + 2;
+    }
+    const deck = deckPlaying(r.t, endT, b);
+    const deckRan = deck.ms > RATE_LATCH_MAX_MS;
+    spans.push({
+      row: r, next, buffering, durationMs, advanceSec, deckPlayingMs: deck.ms, deckRow: deckRan ? deck.row : null,
+      latched: durationMs > RATE_LATCH_MAX_MS && (clockRan || deckRan), open: !next,
+    });
+  });
+  const running = nps.map((x) => x.r).filter((r) => r.f.engineState === "playing" && r.f.buffering === false && (num(r.f.rate) ?? 0) > 0);
+  return { rows: nps.map((x) => x.r), spans, running };
+}
+
+const spanText = (s) => `#${s.row.seq}→${s.next ? `#${s.next.seq}` : "end"} ${s.durationMs}ms buffering=${s.buffering ? "y" : "n"}`
+  + `${s.advanceSec == null ? "" : `, elapsedSec +${s.advanceSec}`}${s.deckPlayingMs ? `, deck playing ${s.deckPlayingMs}ms${s.deckRow ? ` (#${s.deckRow.seq})` : ""}` : ""}`;
+
+function rateLatchVerdict(rl) {
+  if (!rl.rows.length) return m3Verdict("rate-latch", "no-coverage", "no `nowplaying` row carries engineState= (the #866 rows)");
+  const latched = rl.spans.filter((s) => s.latched);
+  if (latched.length) {
+    return m3Verdict("rate-latch", "fail", `${latched.length} spans published rate=0 while playing for over ${RATE_LATCH_MAX_MS / 1000} s with the clock running or the deck playing: `
+      + latched.map(spanText).join("; "),
+    latched.flatMap((s) => [s.row, s.next, s.deckRow]));
+  }
+  if (!rl.running.length) {
+    return m3Verdict("rate-latch", "no-coverage", `${rl.rows.length} nowplaying rows, none with engineState=playing buffering=n rate>0: the lock screen was never shown running`, rl.rows.slice(0, 1));
+  }
+  const open = rl.spans.filter((s) => s.open).length;
+  return m3Verdict("rate-latch", "pass", `${rl.running.length} Now Playing writes running; ${rl.spans.length} rate-0 spans while playing, none over ${RATE_LATCH_MAX_MS / 1000} s with the clock running or the deck playing`
+    + (open ? ` (${open} open at the end of a boot, judged by the deck rows only)` : ""), [rl.running[0], ...rl.spans.map((s) => s.row)]);
+}
+
+/**
+ * The grace spans of a remote play and a route resume: begin to its end (or
+ * expiry), and whether the load inside was `cold` (a deck attach) or `reuse`
+ * (a deck reuse). A span with neither row is unclassified (a Copy from before
+ * #866's deck rows) and is listed, not counted.
+ */
+export function resumeSpans(parsed) {
+  const rows = parsed.engineRows;
+  const spans = [];
+  rows.forEach((r, i) => {
+    if (!isEvent(r, "grace", "begin") || !RESUME_GRACE_REASONS.includes(r.f.reason)) return;
+    let end = null;
+    let load = null;
+    for (let j = i + 1; j < rows.length; j++) {
+      const x = rows[j];
+      if (x.kind === "build" || isEvent(x, "grace", "begin")) break;
+      if (x.kind === "grace" && (x.event === "end" || x.event === "expired")) { end = x; break; }
+      if (!load && x.kind === "deck" && (x.event === "attach" || x.event === "reuse")) load = x;
+    }
+    spans.push({
+      begin: r, end, load,
+      via: load ? (load.event === "reuse" ? "reuse" : "cold") : null,
+      reason: r.f.reason,
+      low: r.f.low === true,
+      outcome: end ? (end.f.outcome ?? end.event) : null,
+      heldMs: end ? num(end.f.heldMs) : null,
+    });
+  });
+  return spans;
+}
+
+/** heldMs of the spans that ended playing, by reason and cold/reuse. */
+export function resumeBuckets(spans) {
+  const out = {};
+  for (const reason of RESUME_GRACE_REASONS) {
+    for (const via of ["cold", "reuse"]) {
+      out[`${reason} ${via}`] = stats(spans.filter((s) => s.reason === reason && s.via === via && s.outcome === "playing").map((s) => s.heldMs));
+    }
+  }
+  return out;
+}
+
+function resumeVerdict(spans) {
+  const expired = spans.filter((s) => s.outcome === "expired");
+  const lows = spans.filter((s) => s.low);
+  const lowNote = lows.length ? `; low=y on ${lows.length} (${lows.map((s) => `#${s.begin.seq} → ${s.outcome ?? "open"}`).join(", ")})` : "";
+  if (expired.length) {
+    return m3Verdict("resume-latency", "fail", `${expired.length} remote-play/route-resume spans expired before sound (`
+      + expired.map((s) => `#${s.begin.seq} ${s.reason} ${s.via ?? "unclassified"} heldMs=${msText(s.heldMs)}`).join("; ") + `)${lowNote}`,
+    expired.flatMap((s) => [s.begin, s.end]));
+  }
+  const heard = spans.filter((s) => s.via && s.outcome === "playing");
+  if (!heard.length) {
+    const why = spans.length
+      ? `${spans.length} remote-play/route-resume spans, none both classified by a \`deck attach\`/\`reuse\` row and ended playing (${spans.map((s) => `#${s.begin.seq} ${s.via ?? "unclassified"} → ${s.outcome ?? "open"}`).join(", ")})`
+      : "no `grace begin` with reason remote-play or route-resume";
+    return m3Verdict("resume-latency", "no-coverage", why + lowNote, spans.map((s) => s.begin));
+  }
+  const buckets = Object.entries(resumeBuckets(spans)).filter(([, s]) => s.n).map(([k, s]) => `${k} heldMs ${statsText(s)}`);
+  return m3Verdict("resume-latency", "pass", `${heard.length} spans heard; ${buckets.join("; ")}${lowNote}`, heard.flatMap((s) => [s.begin, s.end]));
+}
+
+/** After row i, within windowMs: a row that measured sound (true), one that says it failed (false), or null. */
+function soundAfter(rows, i, windowMs) {
+  for (let j = i + 1; j < rows.length && rows[j].t - rows[i].t <= windowMs; j++) {
+    if (audibleSignal(rows[j])) return { audible: true, row: rows[j] };
+    const silent = silentSignal(rows[j]);
+    if (silent) return { audible: false, row: rows[j], why: silent };
+  }
+  return { audible: null, row: null };
+}
+
+/** Every `route back` with its decision, and the ms until the next remote play (the car's own press). */
+export function routeBacks(parsed) {
+  const rows = parsed.engineRows;
+  return rows.map((r, i) => ({ r, i })).filter(({ r }) => isEvent(r, "route", "back")).map(({ r, i }) => {
+    let press = null;
+    for (let j = i + 1; j < rows.length; j++) {
+      const x = rows[j];
+      if (x.kind === "build" || x.kind === "route") break;
+      if (x.kind === "remote" && PLAY_CMDS.has(x.f.cmd)) { press = x; break; }
+    }
+    const decision = r.f.decision ?? null;
+    return {
+      row: r, decision, why: r.f.why ?? null, known: r.f.known ?? null, lostSec: num(r.f.lostSec),
+      pausedBy: r.f.pausedBy ?? null, port: r.f.port ?? null,
+      press, pressMs: press ? press.t - r.t : null,
+      heard: decision === "resume" ? soundAfter(rows, i, RESUME_WINDOW_MS) : null,
+    };
+  });
+}
+
+const backText = (b) => `#${b.row.seq} ${b.port ?? "?"} decision=${b.decision ?? "—"}${b.why ? ` why=${b.why}` : ""} known=${yn(b.known)}`
+  + ` lostSec=${b.lostSec ?? "—"} pausedBy=${b.pausedBy ?? "—"} → car play ${b.pressMs == null ? "none" : `${b.pressMs}ms`}`;
+
+function routeBackVerdict(backs) {
+  if (!backs.length) return m3Verdict("route-back", "no-coverage", "no `route back` row (NE-38rs)");
+  const inWindow = (b) => b.pressMs != null && b.pressMs <= ROUTE_BACK_PRESS_WINDOW_MS;
+  const wrong = backs.filter((b) => b.decision === "resume" && b.pausedBy !== "route");
+  const silent = backs.filter((b) => b.decision === "resume" && b.pausedBy === "route" && b.heard?.audible === false);
+  const missed = backs.filter((b) => b.decision === "no" && b.why === "bluetooth-off" && b.pausedBy === "route" && b.known === true && !inWindow(b));
+  const problems = [
+    wrong.length ? `${wrong.length} resumed a pause the route did not cause (Q5: ${wrong.map((b) => `#${b.row.seq} pausedBy=${b.pausedBy ?? "—"}`).join(", ")})` : null,
+    silent.length ? `${silent.length} resumed silently (${silent.map((b) => `#${b.row.seq}: ${b.heard.why}`).join(", ")})` : null,
+    missed.length ? `${missed.length} known Bluetooth routes came back after a route pause and the car sent no play within ${ROUTE_BACK_PRESS_WINDOW_MS / 1000} s, so the Bluetooth arm is needed (${missed.map((b) => `#${b.row.seq}`).join(", ")})` : null,
+  ].filter(Boolean);
+  const each = backs.map(backText).join("; ");
+  if (problems.length) {
+    return m3Verdict("route-back", "fail", `${problems.join("; ")}. Rows: ${each}`, [...wrong, ...silent, ...missed].flatMap((b) => [b.row, b.heard?.row, b.press]));
+  }
+  return m3Verdict("route-back", "pass", `${backs.length} routes came back, no misfire and no missed resume: ${each}`, backs.flatMap((b) => [b.row, b.press]));
+}
+
+const SEAM_KIND_ORDER = ["clip→clip", "clip→line", "line→clip"];
+
+/** The packed seam rows that carry from=/to= (NE-45s), split by kind. */
+export function seamKinds(parsed) {
+  const seams = parsed.engineRows.filter((r) => r.kind === "seam" && typeof r.f.from === "string" && typeof r.f.to === "string");
+  const groups = {};
+  for (const r of seams) (groups[`${r.f.from}→${r.f.to}`] ??= []).push(r);
+  const rank = (k) => (SEAM_KIND_ORDER.includes(k) ? SEAM_KIND_ORDER.indexOf(k) : SEAM_KIND_ORDER.length);
+  const kinds = Object.keys(groups).sort((a, b) => rank(a) - rank(b) || a.localeCompare(b));
+  const table = kinds.map((kind) => {
+    const list = groups[kind];
+    return {
+      kind, n: list.length, rows: list,
+      gap: stats(list.map((r) => num(r.f.observedGapMs))),
+      neverAudible: list.filter((r) => num(r.f.observedGapMs) == null),
+      prepare: countBy(list, (r) => r.f.prepare ?? "—"),
+    };
+  });
+  return { seams, table };
+}
+
+function seamKindsVerdict(sk, ring) {
+  if (!sk.seams.length) return m3Verdict("seam-kinds", "no-coverage", "no `seam` row carries from=/to= (NE-45s)");
+  const never = sk.seams.filter((r) => num(r.f.observedGapMs) == null);
+  const missed = sk.seams.filter((r) => r.f.prepare === "miss");
+  const unprepared = sk.seams.filter((r) => r.f.from === "line" && r.f.to === "clip" && r.f.prepare !== "hit" && r.f.prepare !== "miss");
+  const table = sk.table.map((g) => `${g.kind} gap ${statsText(g.gap)}, prepare ${countsText(g.prepare)}`).join("; ");
+  if (never.length || missed.length || unprepared.length) {
+    return m3Verdict("seam-kinds", "fail", [
+      never.length ? `${never.length} never audible` : null,
+      missed.length ? `${missed.length} prepare=miss (prepared, and still loaded cold)` : null,
+      unprepared.length ? `${unprepared.length} line→clip seams not prepared (the M2 leftover NE-45 fixes)` : null,
+    ].filter(Boolean).join("; ") + `. ${table}`, [...never, ...missed, ...unprepared]);
+  }
+  if (!ring.complete) {
+    return m3Verdict("seam-kinds", "incomplete", `the ring lost rows (${ring.evicted} older rows evicted, ${ring.missing} seq gaps), so an early seam may be gone; ${table}`, sk.seams.slice(0, 1));
+  }
+  return m3Verdict("seam-kinds", "pass", `${sk.seams.length} seams, none never audible, no prepare miss, every line→clip prepared: ${table}`, [sk.seams[0], sk.seams[sk.seams.length - 1]]);
+}
+
+/**
+ * NE-46's detector rows, and whether this paste could have shown one: the
+ * build must carry the detector (a `grace late` row, or a `deck` row with
+ * `class=`, which NE-38 ships in the same M3 build) and a silent seam must
+ * have been held in the background (a `grace begin` of a seam reason with a
+ * bgRemainingMs).
+ */
+export function seamSuspensions(parsed) {
+  const rows = parsed.engineRows;
+  const late = rows.filter((r) => isEvent(r, "grace", "late"));
+  return {
+    late,
+    inSeam: late.filter((r) => r.f.inSeam === true),
+    detector: late.length > 0 || rows.some((r) => r.kind === "deck" && typeof r.f.class === "string"),
+    backgroundSeams: rows.filter((r) => isEvent(r, "grace", "begin") && SEAM_GRACE_REASONS.has(r.f.reason) && num(r.f.bgRemainingMs) != null),
+  };
+}
+
+const lateText = (r) => `#${r.seq} timer=${r.f.timer ?? "?"} lateMs=${msText(num(r.f.lateMs))} inSeam=${yn(r.f.inSeam)} bgRemainingMs=${msText(num(r.f.bgRemainingMs))}`;
+
+function suspensionVerdict(s) {
+  if (s.inSeam.length) {
+    return m3Verdict("suspension-in-seam", "fail", `${s.inSeam.length} timers fired late inside a silent seam despite grace (${s.inSeam.map(lateText).join("; ")}): NE-46's rule for turning the silence node on is met`, s.inSeam);
+  }
+  if (!s.detector) return m3Verdict("suspension-in-seam", "no-coverage", "no row shows the build carries NE-46's detector (no `grace late`, no `deck` row with class=)");
+  if (!s.backgroundSeams.length) return m3Verdict("suspension-in-seam", "no-coverage", "no silent seam held in the background (`grace begin` reason=seam|prepare-miss|narration-handover with bgRemainingMs)");
+  return m3Verdict("suspension-in-seam", "pass", `${s.backgroundSeams.length} background seams under grace, no \`grace late inSeam=y\``
+    + (s.late.length ? ` (${s.late.length} late timers outside a seam)` : ""), [s.backgroundSeams[0], ...s.late]);
+}
+
+/** The `narration fallback` rows by cause, and the rendered lines the deck loaded. */
+export function narrationFallbacks(parsed) {
+  const rows = parsed.engineRows;
+  const fallbacks = rows.filter((r) => isEvent(r, "narration", "fallback"));
+  const withCause = fallbacks.filter((r) => r.f.cause != null);
+  return {
+    fallbacks,
+    withCause,
+    byCause: countBy(withCause, (r) => String(r.f.cause)),
+    unmapped: withCause.filter((r) => r.f.cause === "other" || !NARRATION_FALLBACK_CAUSES.includes(r.f.cause)),
+    lineLoads: rows.filter((r) => r.kind === "deck" && r.f.class === "line" && (r.event === "attach" || r.event === "reuse")),
+  };
+}
+
+function fallbackVerdict(nf) {
+  const old = nf.fallbacks.length - nf.withCause.length;
+  const oldNote = old ? `; ${old} fallbacks without cause= (before NE-39n) not counted` : "";
+  if (nf.unmapped.length) {
+    return m3Verdict("narration-fallback", "fail", `${nf.unmapped.length} fallbacks with an unmapped cause (${nf.unmapped.map((r) => `#${r.seq} cause=${r.f.cause}`).join(", ")}): a mapping for NE-39n to extend from the deck row beside it; by cause: ${countsText(nf.byCause)}${oldNote}`, nf.unmapped);
+  }
+  if (!nf.withCause.length && !nf.lineLoads.length) {
+    return m3Verdict("narration-fallback", "no-coverage", `no rendered line reached a deck (\`deck attach|reuse class=line\`) and no \`narration fallback\` with cause=${oldNote}`, nf.fallbacks);
+  }
+  return m3Verdict("narration-fallback", "pass", `${nf.lineLoads.length} rendered-line loads, ${nf.withCause.length} fallbacks, every cause mapped; by cause: ${countsText(nf.byCause)}${oldNote}`,
+    [...nf.withCause, ...nf.lineLoads.slice(0, 1)]);
+}
+
+/** The press rows (the ones that carry dupCandidate) and the ms between presses of one command. */
+export function pressGaps(parsed) {
+  const presses = [];
+  const pairs = [];
+  const last = new Map();
+  for (const r of parsed.engineRows) {
+    if (r.kind === "build") last.clear();
+    if (r.kind !== "remote" || !("dupCandidate" in r.f)) continue;
+    presses.push(r);
+    const cmd = r.f.cmd ?? "?";
+    const prev = last.get(cmd);
+    if (prev) pairs.push({ cmd, prev, row: r, gapMs: r.t - prev.t });
+    last.set(cmd, r);
+  }
+  const gapsByCmd = {};
+  for (const p of pairs) (gapsByCmd[p.cmd] ??= []).push(p.gapMs);
+  return {
+    presses,
+    pairs,
+    dups: presses.filter((r) => r.f.dupCandidate === true),
+    gaps: Object.fromEntries(Object.entries(gapsByCmd).map(([cmd, g]) => [cmd, { min: Math.min(...g), ...stats(g) }])),
+  };
+}
+
+function dupVerdict(pg) {
+  if (!pg.presses.length) return m3Verdict("dup", "no-coverage", "no remote press row (dupCandidate=)");
+  const gaps = Object.entries(pg.gaps).map(([cmd, g]) => `${cmd} min ${msText(g.min)} over ${g.n}`).join(", ") || "no command pressed twice";
+  const head = `${pg.presses.length} presses, dupCandidate=y ${pg.dups.length}; between presses of one command: ${gaps}`;
+  const machine = pg.pairs.filter((p) => p.gapMs < DUP_MACHINE_GAP_MS);
+  if (machine.length) {
+    return m3Verdict("dup", "fail", `${machine.length} presses of one command under ${DUP_MACHINE_GAP_MS} ms apart (${machine.map((p) => `#${p.prev.seq}→#${p.row.seq} ${p.cmd} ${p.gapMs}ms`).join(", ")}): one press delivered twice, which record-only lets through (NE-39s: the drop guard); ${head}`,
+      machine.flatMap((p) => [p.prev, p.row]));
+  }
+  const close = pg.pairs.filter((p) => p.gapMs <= DUP_JUDGE_WINDOW_MS);
+  if (!close.length) {
+    return m3Verdict("dup", "no-coverage", `no two presses of one command within ${DUP_JUDGE_WINDOW_MS} ms, so nothing tells a double delivery from a second press; ${head}`, pg.presses.slice(0, 1));
+  }
+  return m3Verdict("dup", "pass", `${close.length} pairs within ${DUP_JUDGE_WINDOW_MS} ms, the closest ${Math.min(...close.map((p) => p.gapMs))}ms: a hand's pace, not a double delivery, so record-only holds; ${head}`,
+    close.flatMap((p) => [p.prev, p.row]));
+}
+
+/** Everything the M3 verdicts read, and the verdicts, in M3_TITLES order. */
+export function m3Readings(parsed) {
+  const ring = ringCompleteness(parsed);
+  const loads = loadTimes(parsed);
+  const reuse = reuseIdle(parsed);
+  const rate = rateLatch(parsed);
+  const resume = resumeSpans(parsed);
+  const backs = routeBacks(parsed);
+  const seams = seamKinds(parsed);
+  const late = seamSuspensions(parsed);
+  const narration = narrationFallbacks(parsed);
+  const dup = pressGaps(parsed);
+  const list = [
+    p13Verdict("clip", loads.clip),
+    p13Verdict("line", loads.line),
+    reuseVerdict(reuse),
+    rateLatchVerdict(rate),
+    resumeVerdict(resume),
+    routeBackVerdict(backs),
+    seamKindsVerdict(seams, ring),
+    suspensionVerdict(late),
+    fallbackVerdict(narration),
+    dupVerdict(dup),
+  ];
+  return { verdicts: list, loads, reuse, rate, resume, backs, seams, late, narration, dup };
+}
+
+/** The M3 verdict table alone. */
+export function m3Verdicts(parsed) {
+  return m3Readings(parsed).verdicts;
+}
+
 /** Everything, as data. */
 export function analyze(text, opts = {}) {
   const parsed = parsePaste(text);
@@ -756,6 +1373,7 @@ export function analyze(text, opts = {}) {
     seams: seamDistribution(parsed),
     faults: faultCounts(parsed),
     exit: m1Exit(parsed),
+    m3: m3Readings(parsed),
   };
 }
 
@@ -778,7 +1396,7 @@ export function formatReport(a) {
   L.push("");
 
   L.push("### Header check");
-  if (a.header.header) L.push(`\`engine=${a.header.header.engine}${a.header.header.version ? ` v${a.header.header.version}` : ""} reason=${a.header.header.reason ?? "?"} strikes=${a.header.header.strikes ?? "?"} hold=${a.header.header.hold ?? "?"} build=${a.header.header.build ?? "?"} web=${a.header.header.web ?? "?"}\``);
+  if (a.header.header) L.push(`\`engine=${a.header.header.engine}${a.header.header.version ? ` v${a.header.header.version}` : ""} reason=${a.header.header.reason ?? "?"} strikes=${a.header.header.strikes ?? "?"} hold=${a.header.header.hold ?? "?"}${a.header.header.routeSharing ? ` routeSharing=${a.header.header.routeSharing}` : ""} build=${a.header.header.build ?? "?"} web=${a.header.header.web ?? "?"}\``);
   for (const c of a.header.checks) L.push(`- ${tick(c.ok)} ${c.name}: ${c.detail}`);
   L.push("");
 
@@ -842,12 +1460,83 @@ export function formatReport(a) {
   L.push(`- remote play handled with no audio: ${e.silentPlays.length}${e.silentPlays.length ? ` (${e.silentPlays.map((x) => `#${x.row.seq}`).join(" ")})` : ""}`);
   L.push(`- interruptions that never ended (possible takeovers; each must match "another app played after 4a" in the drive note): ${e.neverEnded.length}`
     + (e.neverEnded.length ? ` (${e.neverEnded.map((x) => `#${x.began.seq}`).join(" ")})` : ""));
+  L.push("");
+  m3Section(a.m3, L);
   return L.join("\n") + "\n";
+}
+
+const shownRows = (rows) => (rows.length > 8 ? [...rows.slice(0, 8), `+${rows.length - 8}`] : rows);
+
+/** The M3 verdict table, and the readings NE-38f settles the values from. */
+function m3Section(m, L) {
+  L.push("### M3 verdicts (NE-38e)");
+  L.push("| Verdict | Result | Why | Rows |");
+  L.push("|---|---|---|---|");
+  for (const v of m.verdicts) {
+    L.push(`| ${v.id} ${v.title} | ${v.verdict === "fail" ? "**fail**" : v.verdict} | ${v.why.replace(/\|/g, "\\|")} | ${shownRows(v.rows).join(" ") || "—"} |`);
+  }
+  L.push("");
+
+  L.push("### M3 readings");
+  L.push("P-13 cold time-to-ready (`deck ready elapsedMs` after `deck attach cold=`), by class and network:");
+  L.push("");
+  L.push("| Class | All | Cellular (wwan>0) | Wi-Fi | Network unknown | Deadlines | Proposal (never applied) |");
+  L.push("|---|---|---|---|---|---|---|");
+  for (const cls of ["clip", "line"]) {
+    const d = m.loads[cls];
+    L.push(`| ${cls} | ${statsText(d.all)} | ${statsText(d.byNet.cellular)} | ${statsText(d.byNet.wifi)} | ${statsText(d.byNet.unknown)} | ${d.deadlines.length} | `
+      + `${d.proposalSec == null ? "—" : `${d.proposalSec} s`} (current ${d.currentSec} s) |`);
+  }
+  const deadlines = [...m.loads.clip.deadlines, ...m.loads.line.deadlines].sort((x, y) => x.seq - y.seq);
+  for (const r of deadlines) {
+    L.push(`- deadline #${r.seq} step=${r.f.step ?? "?"} class=${r.f.class ?? "—"} afterMs=${msText(num(r.f.afterMs))} reuse=${yn(r.f.reuse)} wwan=${r.f.wwan ?? "—"}`);
+  }
+  L.push("");
+
+  L.push(`Reuse (limit ${REUSE_MAX_IDLE_SEC} s): ${m.reuse.reuses.length} reuses, ${m.reuse.stale.length} cold=stale loads`);
+  for (const x of m.reuse.reuses) {
+    L.push(`- reuse #${x.row.seq} idleSec=${idleText(x.idleSec)} class=${x.row.f.class ?? "—"}`
+      + (x.trouble ? ` → **${x.trouble.event}** #${x.trouble.seq} after ${x.trouble.t - x.row.t}ms` : ` → nothing within ${REUSE_TROUBLE_WINDOW_MS / 1000} s`));
+  }
+  for (const x of m.reuse.stale) L.push(`- cold=stale #${x.row.seq} idleSec=${idleText(x.idleSec)}`);
+  L.push("");
+
+  L.push("Grace held until sound (heldMs of the spans that ended playing):");
+  for (const [k, st] of Object.entries(resumeBuckets(m.resume))) L.push(`- ${k}: ${statsText(st)}`);
+  for (const s of m.resume.filter((x) => x.outcome !== "playing" || !x.via || x.low)) {
+    L.push(`- #${s.begin.seq} ${s.reason} ${s.via ?? "unclassified"} low=${s.low ? "y" : "n"} → ${s.outcome ?? "open"} heldMs=${msText(s.heldMs)}`);
+  }
+  L.push("");
+
+  L.push(`Now Playing rate-0 spans while playing: ${m.rate.spans.length} (buffering=y ${m.rate.spans.filter((x) => x.buffering).length})`);
+  for (const s of m.rate.spans) L.push(`- ${spanText(s)}${s.latched ? " **LATCHED**" : ""}`);
+  L.push("");
+
+  L.push(`Route back: ${m.backs.length}`);
+  for (const b of m.backs) L.push(`- ${backText(b)}`);
+  L.push("");
+
+  L.push("Seams by kind:");
+  if (!m.seams.table.length) L.push("- no seam row carries from=/to=");
+  for (const g of m.seams.table) {
+    L.push(`- ${g.kind}: gap ${statsText(g.gap)}; prepare ${countsText(g.prepare)}${g.neverAudible.length ? `; **${g.neverAudible.length} never audible**` : ""}`);
+  }
+  L.push("");
+
+  L.push(`Late timers (NE-46): ${m.late.late.length}, inside a seam ${m.late.inSeam.length}; background seams under grace ${m.late.backgroundSeams.length}`);
+  for (const r of m.late.late) L.push(`- ${lateText(r)}`);
+  L.push("");
+
+  L.push(`Narration fallback by cause: ${countsText(m.narration.byCause)}; rendered-line loads ${m.narration.lineLoads.length}`);
+  L.push("");
+
+  L.push(`Presses: ${m.dup.presses.length}, dupCandidate=y ${m.dup.dups.length}`);
+  for (const [cmd, g] of Object.entries(m.dup.gaps)) L.push(`- ${cmd}: ms between presses min ${msText(g.min)}, p50 ${msText(g.p50)}, over ${g.n} pairs`);
 }
 
 /** Did this paste fail anything `--strict` should stop on? */
 export function strictFailed(a) {
-  return !a.header.ok || a.verdicts.some((v) => v.verdict === "fail");
+  return !a.header.ok || a.verdicts.some((v) => v.verdict === "fail") || a.m3.verdicts.some((v) => v.verdict === "fail");
 }
 
 function toJson(a) {
@@ -861,6 +1550,17 @@ function toJson(a) {
     exit: {
       activationFailed: cite(a.exit.activationFailed), pageFailedLines: a.exit.pageFailed.map((x) => x.line),
       silentPlays: a.exit.silentPlays.map((x) => `#${x.row.seq}`), neverEnded: a.exit.neverEnded.map((x) => `#${x.began.seq}`),
+    },
+    m3: {
+      verdicts: a.m3.verdicts,
+      loads: Object.fromEntries(Object.entries(a.m3.loads).map(([cls, d]) => [cls, {
+        all: d.all, byNet: d.byNet, classless: d.classless, deadlines: cite(d.deadlines),
+        proposalSec: d.proposalSec, currentSec: d.currentSec,
+      }])),
+      resume: resumeBuckets(a.m3.resume),
+      seams: a.m3.seams.table.map((g) => ({ kind: g.kind, n: g.n, gap: g.gap, prepare: g.prepare, neverAudible: cite(g.neverAudible) })),
+      narrationByCause: a.m3.narration.byCause,
+      pressGaps: a.m3.dup.gaps,
     },
   }, null, 2);
 }

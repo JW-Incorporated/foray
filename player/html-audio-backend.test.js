@@ -3111,3 +3111,62 @@ test("narration warm: without an Audio constructor (node --test) it is simply un
   assert.equal(b.warmNarration(narrItem()), false);
   assert.ok(log.some((l) => /prefetch\.narration\.unavailable n1: no spare element/.test(l)));
 });
+
+/* ---------- NE-45j: the web lane prepares nothing across a narration seam ----------
+
+   NE-45j moved the warming rule from the beat to the file (deck-policy.js
+   `warmsAcross`) and added a warm at a spoken line's START. Both are for the
+   native standby deck. On the web the handover stays PARKED (§"prefetch"):
+   this pins that no segment warm reaches the production-configured backend,
+   neither from a window nor from the line-start path. The §15 narration warm
+   (a spare element fetching the next LINE's file) is a separate mechanism and
+   is not what this pins. */
+
+function narrationSeamWired(line) {
+  __resetInstanceForTests();
+  const el = new FakeAudio();
+  const log = [];
+  const backend = new HtmlAudioBackend({ element: el, telemetry: (t) => log.push(t) });
+  const asked = [];
+  const realPrefetch = backend.prefetch.bind(backend);
+  backend.prefetch = (i, o) => { asked.push(i.id); return realPrefetch(i, o); };
+  const spoken = [];
+  const tts = {
+    async speak(text) { spoken.push(text); return { ok: true }; },
+    onFinished() { return () => {}; },
+  };
+  const m = new PlayerQueueManager({ backend, tts, seamGapSec: 0.01 });
+  m.loadQueue([
+    { id: "s0", kind: "episode", start_sec: 100, end_sec: 200, audio_url: "https://cdn.example/a.mp3" },
+    line,
+    { id: "s1", kind: "episode", start_sec: 300, end_sec: 400, audio_url: "https://cdn.example/a.mp3" },
+  ]);
+  return { m, backend, el, log, asked, spoken };
+}
+
+test("NE-45j: the web lane prepares nothing across a narration seam — prefetch stays parked", async () => {
+  for (const line of [
+    { id: "spoken", kind: "tts", audio_url: null, script: "A spoken line." },
+    { id: "rendered", kind: "tts", audio_url: "https://cdn.example/line.m4a", script: "A rendered line." },
+  ]) {
+    const { m, backend, el, log, asked, spoken } = narrationSeamWired(line);
+    assert.equal(backend.canPrefetch, false, "precondition: the production backend's handover is parked");
+    await m.play(0);
+    // The clip's window would be here, and a line's after it.
+    el.currentTime = 199;
+    el._fire("timeupdate");
+    await backend.onItemEnded("outPoint");
+    for (let n = 0; n < 5; n++) await new Promise((r) => setImmediate(r));
+    assert.equal(m.state.type, "transitioning", `${line.id}: precondition: the line is playing`);
+    if (line.audio_url == null) assert.deepEqual(spoken, ["A spoken line."], "precondition: the spoken line started");
+    else {
+      assert.equal(el.src, line.audio_url, "precondition: the rendered line is on the element");
+      el.currentTime = Math.max(0, el.duration - 1);
+      el._fire("timeupdate");
+    }
+    assert.deepEqual(asked, [], `${line.id}: no warm reached the backend`);
+    assert.deepEqual(log.filter((l) => /^prefetch\.(window|unavailable|skipped|started|ready)/.test(l)), [],
+      `${line.id}: no segment prefetch was attempted`);
+    m.dispose();
+  }
+});

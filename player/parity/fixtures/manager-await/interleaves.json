@@ -1,0 +1,155 @@
+{
+  "family": "manager-await",
+  "note": "NE-39s: two queue-manager rules that exist because the JS manager awaits: a load parked on the synthesiser's pause round trip (player-core-9) and onStateSettled counted per `_handle` frame (audit round 2, player-1). Recorded from the real PlayerQueueManager by NE-39j (as manager-remainder cases) and moved here by NE-39s. JS ONLY (schema jsOnly): the native engine handles one input per synchronous turn, so neither interleave exists there, and no Swift or JVM card owes these ids. The native form of each rule is an XCTest, named in its case's note. tools/parity/mutations.json's stale-load rule is killed here.",
+  "jsOnly": true,
+  "cases": [
+    {
+      "id": "manager-await/a-skip-load-a-newer-skip-replaced-is-dropped",
+      "covers": [
+        "queue-manager::a skip's load that a newer skip already replaced is dropped, not run after it (player-core-9)"
+      ],
+      "note": "Two Nexts from a spoken line: the first waits on the synthesiser's pause, the second's load runs meanwhile, and the first's load, when its pause answers, is stale and dropped. The newest target is the last load, and the index agrees. JS ONLY (NE-39s): the first Next's load is PARKED on the synthesiser's pause, a bridge round trip, and the rule is that a parked load a newer target replaced never runs. A native turn issues its load in the same turn as its event, so no load is ever parked behind a newer one; the native form (the second Next's load supersedes the first's in flight, which then plays nothing) is ForayCatchUpTests/testTwoNextsFromASpokenLineLoadTheNewestTargetAndTheFirstLoadPlaysNothing.",
+      "setup": { "target": "manager", "tts": { "pause": "held" } },
+      "steps": [
+        {
+          "call": "loadQueue",
+          "args": [
+            [
+              { "$tts": ["nar-1", { "audio_url": null, "script": "the opening line" }] },
+              {
+                "$seg": [
+                  "s1",
+                  100,
+                  200,
+                  { "audio_url": "https://cdn.example/a.mp3", "rate": 1 }
+                ]
+              },
+              {
+                "$seg": [
+                  "s2",
+                  400,
+                  500,
+                  { "audio_url": "https://cdn.example/a.mp3", "rate": 1 }
+                ]
+              }
+            ]
+          ]
+        },
+        { "call": "play", "args": [0] },
+        { "checkpoint": "speaking" },
+        { "call": "skipToNext", "await": false },
+        { "settle": 1 },
+        { "call": "skipToNext", "await": false },
+        { "settle": 1 },
+        { "tts": "releasePause" },
+        { "settle": 3 },
+        { "checkpoint": "after" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "speaking",
+            "ops": ["tts.speak:the opening line@1"],
+            "playhead": "nar-1",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 2,
+            "name": "after",
+            "ops": ["tts.pause", "load:s2@400", "rate:1", "outPoint:500", "play"],
+            "playhead": "s2",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 2,
+            "name": "end",
+            "ops": [],
+            "playhead": "s2",
+            "rate": 1,
+            "state": "playing"
+          }
+        ],
+        "ops": [
+          "tts.speak:the opening line@1",
+          "tts.pause",
+          "load:s2@400",
+          "rate:1",
+          "outPoint:500",
+          "play"
+        ]
+      }
+    },
+    {
+      "id": "manager-await/the-settled-hook-fires-after-every-handled-event",
+      "covers": [
+        "queue-manager::ROUND 2 player-1: onStateSettled fires after EVERY handled event, with the settled state"
+      ],
+      "note": "The surface repaints on the settled state after every event, the natural end of an episode included, which produces no media event after it. JS ONLY (NE-39s): the hook fires at the end of every `_handle` frame, and a play's frame ends only after its awaited load, so the count and the states are the JS manager's awaits. The engine's snapshot is re-read after every input the host handled (`onTransition`), the deck's reports included; the native form is ForayEngineHostTests/testTheSurfaceIsToldAfterEveryInputTheNaturalEndIncluded.",
+      "setup": { "target": "manager", "settledEvents": true },
+      "steps": [
+        { "call": "loadQueue", "args": [[{ "$ep": ["a"] }]] },
+        { "call": "play", "args": [0] },
+        { "checkpoint": "playing" },
+        { "deck": "ended", "reason": "natural" },
+        { "checkpoint": "ended" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "playing",
+            "ops": [
+              "load:a@0",
+              "rate:1",
+              "play",
+              "event.settled:playing",
+              "event.settled:playing"
+            ],
+            "playhead": "a",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "ended",
+            "ops": ["event.settled:ended"],
+            "playhead": "a",
+            "rate": 1,
+            "state": "ended"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "end",
+            "ops": [],
+            "playhead": "a",
+            "rate": 1,
+            "state": "ended"
+          }
+        ],
+        "ops": [
+          "load:a@0",
+          "rate:1",
+          "play",
+          "event.settled:playing",
+          "event.settled:playing",
+          "event.settled:ended"
+        ]
+      }
+    }
+  ]
+}

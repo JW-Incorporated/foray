@@ -38,7 +38,13 @@ import java.util.List;
  *   adb shell am broadcast -n … --es cmd pause|play|next|previous
  *   adb shell am broadcast -n … --es cmd task-removed
  *   adb shell am broadcast -n … --es cmd foray --es foray &lt;base64 JSON {forayId, title, items}&gt;
+ *   adb shell am broadcast -n … --es cmd route --es op added|removed|noisy --ei type 8 --es address …
  * </pre>
+ *
+ * <p>{@code route} (A-61) is a virtual output device for route resume: the service's
+ * {@code RouteWatcher} hears it added or removed as it hears a real one from the platform's
+ * {@code AudioDeviceCallback}, and {@code noisy} is the BECOMING_NOISY broadcast as the service
+ * hears it. The watcher, the core's policy and the store are the real ones.
  *
  * <p>{@code foray} (A-40) is the contract's {@code playForay} with the page's BUILD of a Foray
  * (the items as {@code buildForayQueue} emits them): the Foray tape's (f) scenario drives the
@@ -202,6 +208,29 @@ public final class EngineDriveReceiver extends BroadcastReceiver {
             case "pause" -> verdicts.add(tap(service, new EngineContract.Command.Pause()));
             case "next" -> verdicts.add(tap(service, new EngineContract.Command.Next()));
             case "previous" -> verdicts.add(tap(service, new EngineContract.Command.Previous()));
+            case "route" -> {
+                // A-61: a VIRTUAL output device, handed to route resume's watcher exactly as the
+                // service's AudioDeviceCallback hands it a real one (the emulator has no Bluetooth,
+                // and adb cannot add an audio output); `noisy` is BECOMING_NOISY as FocusMapping
+                // reports it (a loss that names no port, which the watcher names).
+                RouteWatcher watcher = service.routeWatcher();
+                if (watcher == null) return "{\"ok\":false,\"failures\":[\"no-watcher\"]}";
+                String address = intent.getStringExtra("address");
+                RouteWatcher.Device device = new RouteWatcher.Device(
+                        intent.getIntExtra("type", android.media.AudioDeviceInfo.TYPE_BLUETOOTH_A2DP),
+                        intent.getIntExtra("id", 6101), address == null ? "" : address);
+                String op = intent.getStringExtra("op");
+                if ("added".equals(op)) {
+                    service.feedRoutes(watcher.onAdded(java.util.Collections.singletonList(device)));
+                } else if ("removed".equals(op)) {
+                    service.feedRoutes(watcher.onRemoved(java.util.Collections.singletonList(device)));
+                } else if ("noisy".equals(op)) {
+                    service.becomingNoisy();
+                } else {
+                    return "{\"ok\":false,\"failures\":[" + JSWriter.quote("unknown-op:" + op) + "]}";
+                }
+                return "{\"ok\":true,\"failures\":[]}";
+            }
             case "task-removed" -> {
                 // Let go of the binding first: a bound service outlives its own stopSelf.
                 MediaController held = controller;

@@ -912,9 +912,18 @@ A-61, A-62, A-64, A-66 (+ NE-39j) ─ A-63 ─ A-67 ─ A-68 ─ A-69 (gated)
     - the keys survive a store reload.
   - An `android-playback` step adds and removes a virtual device, where the emulator allows it. Otherwise it is recorded as no-coverage.
 - **Device check:** A-67's script, route block.
+- **Status (2026-09-30, A-61 PR):** done on `android/native`, with engine/m3 merged in for NE-38rj's family (a cherry-pick of #894 alone conflicts; engine/m3 goes to main as #913 anyway). NE-38rs (#904, #908) is the iOS reference, ported line for line:
+  - `RouteResume.java` is route-resume.js's decision, reducer and replay, plus the salted SHA-256 keys (`MessageDigest`), the LRU set of 8 and the stored form (`{"v":1,"salt":…,"keys":[…]}`, the Swift bytes). The `route-resume` family is in the JVM's `runs`.
+  - `EngineCore.onRoute` follows NE-38rs: presses, interruptions, system pauses and playing feed the reducer; a route is known after 1 s heard through it (`EngineNow.route`); the loss's age is wall-clock; `route kind=lost|back … decision= why=` rows carry 8 hex of the key, never an address.
+  - The host (`RouteWatcher` in the service) keys a device by its `SESSION_PORTS` token and its address; BECOMING_NOISY stays the pause and names the route that is going, and the removal after it adds nothing. The class is `car` in car UI mode (entering it reports the current route again, so a car whose projection starts after its Bluetooth resumes then), `bluetooth` for A2DP, SCO and LE, `other` otherwise. `BLUETOOTH_CONNECT` is not requested (D-A9), and `mobile/ENGINE_DEFAULT.json` android carries `routeResumeBluetooth: false`.
+  - `EngineStore` keeps `ForayEngine.knownRoutes`; a purge takes it with every other private key.
+  - The engine/m3 merge brought M3 cases the JVM does not pass yet, booked to their A4 cards in `jvm-pending.json` `cases`: the audition by URL (5 `contract` cases and 2 `manager-foray` scenarios) to A-66, route sharing (`contract/send-request-valid-set-route-sharing-long-form`) to A-67, and `diag-tokens/narration-fallback-cause-tokens` to A-64. prepare-narration (A-62) and manager-remainder (A-63) stay owed whole.
+  - The capability gate (shell-invariants, A-28) now lets a claimed capability (`episode`, `foray`) carry owed families and cases only when a Track A4 card (A-60..A-68) owes them. Anything owed to an earlier card still blocks. A-63 empties the books.
+  - Emulator: the native leg's `route` step drives a VIRTUAL A2DP device through the debug driver (the emulator has no Bluetooth, and adb cannot add an output) in real car mode (`cmd uimode car yes`); without car mode it records no-coverage.
+  - Open for the device pass (A-67): a resume that starts the foreground service from the background after a long loss, on Android 12+.
 
 #### A-62 · Prepare across narration seams on the Media3 deck (mirrors NE-45s) — **M**
-- **Depends on:** A-42, NE-45j (its new `prepare` ids are `cases` owed to A-62 once A-40 has ported the family: A-25 handed `prepare` to A-40, because its cases run the Foray tape through the engine)
+- **Depends on:** A-42, NE-45j (it recorded its cases as a sibling family, `prepare-narration`, which `jvm-pending.json` owes whole to A-62; `prepare` itself stays owed whole to A-40, because A-25 handed it on: its cases run the Foray tape through the engine)
 - **Human-gated:** no.
 - **Files:** the Foray tape from A-40 (A-40 chose the DECK PAIR: `DeckPair` over two `ExoDeck`s), the JVM `DeckPolicy.warmsAcross`, the packed `seam` rows, and Robolectric tests.
 - **Ask:** Port `warmsAcross`. A rendered line is a `MediaItem` like a clip.
@@ -922,7 +931,7 @@ A-61, A-62, A-64, A-66 (+ NE-39j) ─ A-63 ─ A-67 ─ A-68 ─ A-69 (gated)
   - **Deck pair:** port NE-45s as written.
   - Seam rows name `from=`, `to=` and `prepare=`.
 - **Acceptance:**
-  - `prepare` has nothing pending on the JVM.
+  - `prepare-narration` has nothing pending on the JVM (the JVM runs it, and `families` no longer names it).
   - Robolectric: clip → rendered line → clip has no cold load on the second clip.
   - A-05 (f) in native mode: p95 seam ≤ 1 s with the screen off (the A-40 bar), split by seam kind, with the run id.
 - **Device check:** A-67's script, rendered-Foray block.
@@ -947,6 +956,7 @@ A-61, A-62, A-64, A-66 (+ NE-39j) ─ A-63 ─ A-67 ─ A-68 ─ A-69 (gated)
 - **Ask:** Port NE-39n's ruling: the engine's Next lands on the next item, a narration line included. Map the causes to the same tokens.
 - **Acceptance:** the NE-39n cases pass on the JVM. Robolectric maps each `PlaybackException` class to its cause.
 - **Device check:** A-67's script.
+- **Status (2026-09-30, M3 integration PR):** the Next half is done. The main merge put `manager-episode` in the JVM's `runs`, and NE-39n had re-recorded `manager-episode/every-effect-has-a-handler`, so `EngineCore.java` now flips the same three `skipBridges` calls (`canNext`, `next`, `SkipNext`) as the Swift core and the case passes; nothing is owed. The fallback-cause half (the `PlaybackException` mapping) is still open.
 
 #### A-65 · Keep-alive across silent seams: the Android twin of the silence-node decision (mirrors NE-46) — **S**
 - **Depends on:** A-60

@@ -88,7 +88,7 @@ public final class FocusMapping {
                 return one(new EngineInput.SessionEvent.InterruptionBegan(REASON));
             }
             case Player.PLAY_WHEN_READY_CHANGE_REASON_AUDIO_BECOMING_NOISY:
-                return one(new EngineInput.SessionEvent.Route(new EngineInput.RouteChange(true, null, false, null)));
+                return one(new EngineInput.SessionEvent.Route(new EngineInput.RouteChange(true)));
             default:
                 return Collections.emptyList();
         }
@@ -117,7 +117,7 @@ public final class FocusMapping {
      */
     public static List<EngineInput.SessionEvent> onBecomingNoisyOffDeck(boolean deckPlayWhenReady, boolean engineRunning) {
         if (deckPlayWhenReady || !engineRunning) return Collections.emptyList();
-        return one(new EngineInput.SessionEvent.Route(new EngineInput.RouteChange(true, null, false, null)));
+        return one(new EngineInput.SessionEvent.Route(new EngineInput.RouteChange(true)));
     }
 
     private static List<EngineInput.SessionEvent> one(EngineInput.SessionEvent event) {

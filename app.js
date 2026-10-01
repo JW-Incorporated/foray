@@ -15137,6 +15137,14 @@ function holdPolicyWord(policy) {
   return m ? `${m[1]} min` : "not known";
 }
 
+/** The word after "Route sharing:" for the policy the engine confirmed
+    storing ("default" | "longFormAudio"), or "not known" before a tap. */
+function routeSharingWord(policy) {
+  if (policy === "longFormAudio") return "Long-form";
+  if (policy === "default") return "Default";
+  return "not known";
+}
+
 const ENGINE_DEV_ROWS = [
   {
     id: "engine-mode-override", cmd: "setModeOverride",
@@ -15158,6 +15166,18 @@ const ENGINE_DEV_ROWS = [
       btn.setAttribute("aria-checked", String(st.holdPolicy === "forever"));
     },
     next(st) { return { policy: st.holdPolicy === "forever" ? "none" : "forever" }; },
+  },
+  {
+    /* NE-40 (DV-8): the M3 drive's optional `.longFormAudio` arm. Stored by
+       the engine and applied at the NEXT launch, like the engine setting; the
+       Copy header's `routeSharing=` says which policy a launch ran. */
+    id: "engine-route-sharing", cmd: "setRouteSharing",
+    paint(btn, st) {
+      const word = routeSharingWord(st.routeSharing);
+      setControlLabel(btn, `Route sharing: ${word} (applies after restart)`,
+        `Route sharing: ${word}, applies after restart`);
+    },
+    next(st) { return { policy: st.routeSharing === "longFormAudio" ? "default" : "longFormAudio" }; },
   },
   {
     id: "engine-simulate-termination", cmd: "simulateTermination", oneShot: true,
