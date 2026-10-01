@@ -147,7 +147,7 @@ export function normalizePr(raw = {}) {
   return {
     number: Number(raw.number),
     title: raw.title ?? "",
-    url: raw.url ?? raw.html_url ?? "",
+    url: raw.html_url ?? raw.url ?? "",
     headRefName: raw.headRefName ?? raw.head?.ref ?? "",
     baseRefName: raw.baseRefName ?? raw.base?.ref ?? "",
     draft: Boolean(raw.draft ?? raw.isDraft),

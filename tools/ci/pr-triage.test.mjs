@@ -125,6 +125,20 @@ test("REST head/base shapes normalise, including fork detection", () => {
   assert.equal(p.crossRepo, true);
 });
 
+test("the row link is the PR page, never the REST endpoint (#309)", () => {
+  // The REST pull object carries both: `url` is the API endpoint and
+  // `html_url` the page. The founder-waiting table must link the page.
+  const rest = normalizePr({
+    number: 288,
+    url: "https://api.github.com/repos/o/r/pulls/288",
+    html_url: "https://github.com/o/r/pull/288",
+  });
+  assert.equal(rest.url, "https://github.com/o/r/pull/288");
+  // The GraphQL shape has no html_url; its url already is the page.
+  const gql = normalizePr({ number: 1, url: "https://github.com/o/r/pull/1" });
+  assert.equal(gql.url, "https://github.com/o/r/pull/1");
+});
+
 test("a same-repo PR is not cross-repo", () => {
   const p = normalizePr({
     head: { repo: { full_name: "JW-Incorporated/foray" } },
