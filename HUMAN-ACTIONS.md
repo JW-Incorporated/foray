@@ -2,7 +2,7 @@
 
 <!-- ha-format: 2 -->
 
-> **31 open.** Closed items are in `HUMAN-ACTIONS-DONE.md` — you never need it.
+> **27 open.** Closed items are in `HUMAN-ACTIONS-DONE.md` — you never need it.
 > To close one: reply `done` (or `skip <why>`) to its card in the project's human-action channel.
 > Anything else you reply is forwarded to a thread on the card.
 
@@ -168,18 +168,6 @@
 
 **Worked if:** a filled Android device-pass record for a build carrying A-42 is in `docs/field-records/`.
 
-## #118 🟢 [UPGRADE] Remove the retired events server from your Windows Startup folder (~2 min)
-<!-- ha filed=2026-09-25 kind=default -->
-
-**Why:** `ForayEventsServer.vbs` in your Startup folder starts `tools/events-server.mjs` from the old `commute-curator` checkout at every login. Nothing uses it (events go to Supabase), it listens on every network interface on port 8787 with no auth, and the repo copy has now been deleted (round-3 audit security-9). Only you can remove the Startup entry.
-
-**Steps:**
-1. Press Win+R, type `shell:startup`, press Enter.
-2. Delete `ForayEventsServer.vbs`.
-3. In Task Manager → Details, end the `node.exe` whose command line is `node tools\events-server.mjs` (or just sign out and back in).
-
-**Worked if:** `netstat -ano | findstr :8787` prints nothing after your next login.
-
 ## #117 🟢 [UPGRADE] On a phone, check six player fixes from audit round 3 that no machine here can hear (~20 min)
 <!-- ha filed=2026-09-25 kind=default -->
 
@@ -254,25 +242,6 @@ has no tester
 workflow*) produces **one App Store email and one Play email for the same
 build number** in your inbox. That is R-07's third acceptance item an
 
-## #40 🟡 [DECIDE] Download one Enhanced iPhone voice, then re-listen to the narration test
-<!-- ha filed=2026-09-11 kind=default -->
-
-**Why:** #29 came back with two results, and the second one has been
-misread. The locked-screen question passed. The other observation was that the voice
-was "much worse than the original test" — the original being the Kokoro fixture. That
-was taken as evidence about on-device TTS. It was not: `ForayTtsPlugi
-
-**Steps:**
-1. On the iPhone, open **Settings → Accessibility → Spoken Content → Voices → English**.
-2. Pick a voice and tap the **download arrow** beside it. Any Enhanced or Premium voice
-3. Write down the exact names of every voice that now shows as downloaded. That is the
-4. Open **4a**, tap the menu, and choose **Narration voice**. Find the voice you
-5. **Report:** does it sound meaningfully better than what you heard on 2026-09-05?
-
-**Worked if:** there is a written note saying which voice was downloaded and whether the
-narration sounded better with it. Both halves are needed — "sounds better" without the
-voice name cannot be reproduced, and th
-
 ## #34 🟡 [DECIDE] Type the new App Store Connect listing name into Apple's dashboard
 <!-- ha filed=2026-09-11 kind=default -->
 
@@ -330,27 +299,6 @@ filtering, a mechanism to report objectionable content, a wa
 
 **Worked if:** (not stated in the legacy item -- needs a real Worked-if)
 
-## #28 🟡 [DECIDE] Run the new AMD/Vulkan transcription path on your actual RX 6700 XT and report the numbers
-<!-- ha filed=2026-09-11 kind=default -->
-
-**Why:** `tools/transcribe` §3 only ever worked for NVIDIA cards
-— CUDA is NVIDIA-proprietary, and `faster-whisper`/`ctranslate2` (the whole
-CPU/CUDA stack) has no AMD support at all, not even a slow one. Your RX 6700
-XT could not use the GPU path that existed before this change; it would
-either error outrig
-
-**Steps:**
-1. Follow `tools/transcribe/README.md` §3b exactly — download a
-2. **Confirm the GPU actually engaged.** The run's console output should
-3. Paste the JSON line the script prints at the end (starts with
-4. If it errors, paste the exact error — most likely failure modes are (a)
-
-**Worked if:** you have a real `realtime_multiple` number for your RX 6700
-XT on at least one model size, and the Vulkan device line confirms the GPU
-(not the CPU) produced it.
-
----
-
 ## #26 🟡 [DECIDE] Publish the Play Store listing from `docs/store/play/`
 <!-- ha filed=2026-09-11 kind=default -->
 
@@ -405,22 +353,6 @@ and was
 **Worked if:** one of A, B or C is written into `docs/DECISIONS.md` with a date.
 That file is on `DENIED_PREFIXES`, so the entry needs a separate PR carrying the
 `founder-approved` label; it was deliberately not add
-
-## #20 🟡 [DECIDE] Revoke one leaked anonymous Supabase session, and delete one CI artifact
-<!-- ha filed=2026-09-11 kind=default -->
-
-**Why:** The `ios-shell-evidence` artifact of run
-
-**Steps:**
-1. In the Supabase dashboard for project **`qjdllvqdcgacvujhclny`**, open
-2. **Then** delete the artifact: open
-3. While you are in the dashboard, it is worth confirming that **anonymous sign-in
-
-**Worked if:** requesting a token refresh with that `refresh_token` returns an
-error rather than a new session, and the run page shows no `ios-shell-evidence`
-artifact.
-
----
 
 ## #17 🟡 [DECIDE] Decide: does the app ship with data frozen at build time?
 <!-- ha filed=2026-09-11 kind=keyword -->
