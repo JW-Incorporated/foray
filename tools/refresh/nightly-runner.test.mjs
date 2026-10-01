@@ -17,6 +17,7 @@
 
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
@@ -362,4 +363,25 @@ test("CLI: an unknown command exits 2 with usage, and the real script dispatches
   }
   assert.equal(status, EXIT.USAGE);
   assert.equal(out, "EDITS_MISSING data-local/definitely-not-here.json\n");
+});
+
+/* ------------------------------------------------------------------- prompt */
+
+test("the runner prompt calls fetch-digest and finish and names the digest-date rule", () => {
+  // Nothing executes the prompt, so this is the only thing that notices when a
+  // later edit of docs/agents/runner-prompts/foray-nightly.md drifts back to the
+  // hand steps (OPS-17, #760). Mutation: delete `--suffix recovery` from step 2's
+  // recovery block — the agent re-cuts a stranded digest and names the branch
+  // after today, and the overwrite guard in nightly-refresh.yml stays red.
+  const prompt = readFileSync(path.join(REPO, "docs", "agents", "runner-prompts", "foray-nightly.md"), "utf8");
+  for (const needle of ["nightly-runner.mjs fetch-digest", "nightly-runner.mjs finish --date", "--suffix recovery"]) {
+    assert.ok(prompt.includes(needle), `prompt names ${JSON.stringify(needle)}`);
+  }
+  // The old hand steps survive only as reference, inside a <details> block: the
+  // first mention of the by-hand branch command must come after the first
+  // <details>, or an agent following the steps in order would run it.
+  const handBranch = prompt.indexOf('git switch -c "nightly/$(date -u +%F)"');
+  const firstDetails = prompt.indexOf("<details>");
+  assert.ok(firstDetails >= 0, "the prompt has a <details> block");
+  assert.ok(handBranch === -1 || handBranch > firstDetails, `hand branch command at ${handBranch} is before the first <details> at ${firstDetails}`);
 });
