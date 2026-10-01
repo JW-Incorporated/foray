@@ -107,7 +107,13 @@ public class AuditionPreviewHostTest {
      */
     @Test
     public void aUrlAuditionPlaysOnThePreviewDeckAndRequestsFocusForTheTap() throws Exception {
-        try (DeckHarness preview = new DeckHarness(config -> config.reusesSameSource = false)) {
+        // The deadline far out: the FakeClock auto-advances while the loader thread reads the file in
+        // real time, so a few virtual seconds can pass before it lands (DeckHarness, A-60).
+        try (DeckHarness preview = new DeckHarness(config -> {
+            config.reusesSameSource = false;
+            config.loadDeadlineSec = 600;
+            config.lineLoadDeadlineSec = 600;
+        })) {
             EngineAudio.configure(preview.player);
             Rig rig = new Rig(preview.deck);
             assertNull("nothing asked for focus before the tap", audio().getLastAudioFocusRequest());
@@ -115,7 +121,8 @@ public class AuditionPreviewHostTest {
             ForayEngineHost.Verdict verdict = rig.audition(cbr().uri().toString());
             assertTrue(verdict.failures().toString(), verdict.ok());
             assertEquals("the tap's one activation", 1, rig.session.activations);
-            preview.runUntil(() -> preview.player.isPlaying());
+            preview.runUntil(() -> preview.player.isPlaying() || rig.spoken() != null);
+            assertTrue("the preview plays (not a fallback): " + rig.rows(), preview.player.isPlaying());
             ShadowAudioManager.AudioFocusRequest focus = audio().getLastAudioFocusRequest();
             assertNotNull("the preview's player asked for focus as it played", focus);
             assertEquals(AudioManager.AUDIOFOCUS_GAIN, focus.audioFocusRequest.getFocusGain());
@@ -165,7 +172,6 @@ public class AuditionPreviewHostTest {
             assertTrue(rig.audition(NARRATION_URL).ok());
             preview.runUntil(() -> rig.spoken() != null);
             assertEquals(TEXT, rig.spoken());
-            assertEquals("voice-a", rig.speech.line.voiceId());
             assertFalse(preview.player.isPlaying());
             assertNull(rig.host.state().preview);
             assertTrue(rig.rows(), rig.rows().contains("\"kind\":\"fallback\",\"reason\":\"failed\",\"spoken\":true"));

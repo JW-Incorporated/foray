@@ -1077,9 +1077,28 @@ test("A-40 (f): the debug driver's foray is the contract's playForay, and the se
   const service = read("src/main/java/ai/jwlabs/foura/audio/ForayPlaybackService.java");
   assert.match(service, /JsonNode\.member\("pair", new JsonNode\.Obj\(pm\)\)/);
   assert.match(service, /JsonNode\.member\("forayId", /);
-  assert.match(service, /attach\(new ExoPlayer\.Builder\(this\)\.build\(\), new ExoPlayer\.Builder\(this\)\.build\(\)\)/,
+  // A-66: a third player, the voice preview's, may follow the pair.
+  assert.match(service, /attach\(new ExoPlayer\.Builder\(this\)\.build\(\), new ExoPlayer\.Builder\(this\)\.build\(\)(, new ExoPlayer\.Builder\(this\)\.build\(\))?\)/,
     "the service builds the Foray tape's deck pair");
   assert.match(service, /withForayTape\(true, standby != null\)/, "the engine is built with the tape on");
+});
+
+test("A-66: the voice preview plays on a third player of its own, focus handled, its rows laned, released at teardown", () => {
+  /* MUTATION: build the preview deck over one of the pair's players (a preview would touch a paused
+     Foray's item); skip EngineAudio.configure on it (its play would not ask for focus); drop the
+     lane tag, the preview's release, or the host's hand-off and teardown of the preview seam. */
+  const service = read("src/main/java/ai/jwlabs/foura/audio/ForayPlaybackService.java");
+  assert.match(service, /attach\(new ExoPlayer\.Builder\(this\)\.build\(\), new ExoPlayer\.Builder\(this\)\.build\(\), new ExoPlayer\.Builder\(this\)\.build\(\)\)/,
+    "the service builds a third player for the preview");
+  assert.match(service, /EngineAudio\.configure\(preview\);\s*previewDeck = new ExoDeck\(preview, previewDeckConfig\(\)\);/);
+  assert.match(service, /\.withPreview\(previewDeck\)/);
+  assert.match(service, /JsonNode\.member\("lane", JsonNode\.str\("preview"\)\)/);
+  assert.match(service, /PREVIEW_LOAD_DEADLINE_SEC = 6; \/\/ MEASURE: verdict=preview-load/);
+  assert.match(service, /shown\.release\(\);/, "the preview's player is released with the others");
+  const host = read("src/main/java/ai/jwlabs/foura/audio/engine/ForayEngineHost.java");
+  assert.match(host, /case EngineCommand\.Preview p -> preview\(p\.command\(\)\);/);
+  assert.match(host, /seams\.preview\.send\(command\);/);
+  assert.match(host, /seams\.preview\.invalidate\(\);/, "the teardown lets the preview deck go");
 });
 
 test("A-41: the service builds the engine's synthesiser and jingle, and its dump says whether each is there", () => {
