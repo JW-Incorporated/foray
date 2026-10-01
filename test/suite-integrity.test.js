@@ -239,6 +239,13 @@ const FLOORS = {
      that keeps a scroll through a long episode description from throwing the
      sheet away. Every test names the mutation that kills it, and each was run. */
   "player/sheet-drag-dismiss.test.js": 17, // audit round 2, L2 (2026-09-23): claimsTouch, who owns the finger (touch-2); 15 -> 17 //
+  /* Drag an Up Next row by its handle to reorder it (#762). The third pure
+     gesture module, floored like the two above it: the lock distance, the
+     midpoint rule against the layout read at press time (including the
+     upward correction the module header explains), and the L2 rule that only
+     a claimed drag released over another slot ever commits — on pointerup,
+     never on the click after. Every test names its mutation; each was run. */
+  "player/queue-drag.test.js": 9, // PQ-03 (#762)
   /* The other half of the same report: the sheet is WIRED, opens at the top,
      scrolls inside itself, and is a full-height overlay whose `[hidden]`
      attribute still hides it. A source-text suite (client.js builds DOM at
