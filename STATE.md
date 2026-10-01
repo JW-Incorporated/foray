@@ -7,6 +7,40 @@ docs/. Completed workstreams move to their plan doc's retro section.
 
 ## Active workstreams
 
+### 2026-10-01 — `android/a-62-prepare-across-narration`: A-62, prepare across narration seams (Android M3)
+
+Owned: `DeckPolicy.warmsAcross` and the duration window, `EngineCore`'s warm, `SeamMark` and packed `seam` row in
+`foray-engine-core-jvm`, `ExoDeck`'s prefetch window, `DeckPair`'s `prefetch` row, the JVM `prepare-narration` runner,
+and the native `foray-seams` scenario. Card A-62 of `docs/plans/android-assessment.md` (Track A4), PR #927, into
+`android/native`. It mirrors NE-45s (#902) and the M3 review fix 94b01a59 on `engine/m3`.
+
+**What changed.**
+- **Warming follows the file, not the beat.** The next item is prepared when it has a file and is a Foray slice or a
+  narration line (`warmsAcross`), from a playing item and from a line bridging a seam. A whole episode is never
+  prepared. Behind a SPOKEN line, the clip after it is prepared at the line's start.
+- **A rendered line's window.** `ExoDeck` opens the prefetch window for an item with no out-point from its duration,
+  so a line shorter than the 12 s lead prepares the next clip at its first play.
+- **One row per seam.** `seam ... from=clip|line to=clip|line prepare=hit|miss|none`; a line seam had no row before.
+  `DeckPair`'s `prefetch` row adds `reuse` and `class`.
+- **The books.** `prepare-narration` moved from `families` (A-62) to `runs`; nothing is owed.
+
+**Executed in CI** (head `ad3746e6`):
+- android-build run 36799524361: android-shell green. foray-audio 206 cases (+1, `NarrationSeamTest`); the JVM core
+  149 (+9: `NarrationSeamCoreTest`, the family and its `WARM_BY_THE_BEAT` mutation in `ForayTapeScenarioTest`). JVM
+  parity: `prepare-narration` 23 of 23, totals 1857 passed, 0 failed.
+- android-playback run 36799524357: all three legs green (native job 110170503663). `foray-seams`: 10 seams, p95
+  507 ms of silence; clip->line p95 9 ms, line->clip 8 ms, clip->clip 507 ms; every line seam `prepare=hit`.
+- CI (36799524397), ios-build (ios-kit, ios-gate, ios-shell, engine-parity) and android-smoke are green.
+- The first run (36796964815) failed the native (f): the parser opened a line's seam at the player's pause, after the
+  jingle had started. Fixed in `ad3746e6`, and replayed over that run's own rows.
+
+**Executed locally:** `record.mjs --check` (1946 cases), `node --test` for `coverage.test.js`, `record.test.mjs`,
+`test/suite-integrity.test.js`, `android-native-playback.test.mjs`, `android-playback-workflow.test.mjs`,
+`shell-invariants.test.mjs`; `engine-report.mjs` over `f-foray-engine-rows.txt` (`seam-kinds` reads all three
+kinds, `incomplete` only because the saved rows start mid-ring).
+
+**Not executed.** The device check (A-67's rendered-Foray block; D-A3).
+
 ### 2026-09-30 — `android/a-60-provisional-field-values`: A-60, provisional field values and their rows (Android M3)
 
 Owned: `ExoDeck`'s P-13 and reuse constants and its `class=` rows, `DeckDeadlineClass` and `DiagGate` in
