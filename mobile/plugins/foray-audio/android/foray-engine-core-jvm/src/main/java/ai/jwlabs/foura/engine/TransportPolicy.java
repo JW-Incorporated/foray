@@ -233,18 +233,27 @@ public final class TransportPolicy {
         return inside;
     }
 
-    /** {@code scrubTarget(...)}'s answer. {@code reload}: the target needs its own load. */
-    public record Scrub(double index, boolean reload, Double offset) {}
+    /**
+     * {@code scrubTarget(...)}'s answer. {@code reload}: the target needs its own load (another
+     * item, nothing loaded, or a rendered line in {@code transitioning}, where the reducer refuses
+     * a seek). {@code restart}: it lands in the SPOKEN line already sounding, which has no offset,
+     * so the line is said again from the top.
+     */
+    public record Scrub(double index, boolean reload, boolean restart, Double offset) {}
 
     /**
      * {@code scrubTarget({at, item, currentIndex, stateType})}, once the Foray clock has said
      * where it lands. {@code at.index !== currentIndex}: a null {@code currentIndex} is
-     * never the same index.
+     * never the same index. M2 drive 2026-10-01: a line reached by its seam is
+     * {@code transitioning}, so a same-index answer is never a seek there.
      */
     public static Scrub scrubTarget(double atIndex, Double into, Item item, Double currentIndex, String stateType) {
+        Double offset = sourceOffset(item, into);
         boolean sameIndex = currentIndex != null && currentIndex == atIndex;
-        boolean reload = !sameIndex || "ended".equals(stateType) || "idle".equals(stateType);
-        return new Scrub(atIndex, reload, sourceOffset(item, into));
+        boolean elsewhere = !sameIndex || "ended".equals(stateType) || "idle".equals(stateType);
+        boolean restart = !elsewhere && offset == null;
+        boolean reload = elsewhere || (!restart && "transitioning".equals(stateType));
+        return new Scrub(atIndex, reload, restart, offset);
     }
 
     // ---- remote stop

@@ -5653,7 +5653,11 @@ const ForayPlayer = {
       currentIndex: manager.currentIndex, stateType: manager.state?.type ?? null,
     });
     if (!scrub) return;
-    if (scrub.reload) {
+    /* A scrub into the SPOKEN line already sounding has no offset to seek to:
+       it says the line again from the top (M2 drive 2026-10-01). */
+    if (scrub.restart) {
+      await manager.skipToPrevious();
+    } else if (scrub.reload) {
       foray.error = null;
       /* The offset rides on the load (races-1) — see `playForay`. */
       await moveForay(scrub.index, () => manager.play(scrub.index, scrub.offset != null ? { startOffset: scrub.offset } : undefined));

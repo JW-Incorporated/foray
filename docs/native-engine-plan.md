@@ -262,6 +262,7 @@ active             --close|finalEnd|dataDeletion-->       inactive          [dea
 
 - **`RemoteSurface`** is the only registrant in native mode (through `RemoteCommandRegistering`).
   - It registers play, pause, toggle, next/previous, `skipBackward [15]`, `skipForward [30]` (both from `EngineConstants`) and `changePlaybackPosition`. `stopCommand` is registered and disabled; a remote stop is a pause (T-7).
+  - **In a Foray, both skips and `changePlaybackPosition` are on the Foray's clock**, exactly as the page's own `seekBy` / `seekTo` commands are (`EngineCore.seekBy` / `seekTo` route to `forayNudge` / `forayScrub` first). Inside the spoken line sounding, back says it again and forward goes on past it (`nudgeAction`); a scrub into it restarts it; a rendered line in `transitioning` is re-entered at the offset, because the reducer refuses a seek there (`scrubTarget`). M2 drive 2026-10-01 found the car's skips going to the episode seek and refused inside every line; `manager-foray/narration-skip-*` and `ForayNarrationSkipTests` pin it.
   - Every `remote` row records the command, the returned status, `route=<portType>` (`carAudio`, `bluetoothA2DP`, ...), `dupCandidate`, `grace=` and the thread.
 - **`NowPlayingPublisher`** writes the `MediaMapping` output at every transition and every seek.
   - `PlaybackRate` is the true rate while playing, and 0 while paused or interrupted. `playbackState` is never used.
