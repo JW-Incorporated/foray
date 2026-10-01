@@ -1197,6 +1197,18 @@ test("A-66: the voice preview plays on a third player of its own, focus handled,
   assert.match(host, /seams\.preview\.invalidate\(\);/, "the teardown lets the preview deck go");
 });
 
+test("A-66 review: the preview's focus is its own: an ended preview lets it go, and its taking is no interruption", () => {
+  /* MUTATION: drop the host's unload after the preview's ended (Media3 holds AUDIOFOCUS_GAIN through
+     STATE_ENDED, so the silent preview would keep the device's focus); feed the deck's permanent loss
+     to the core while our own preview is the one that took it (a paused Foray would turn interrupted). */
+  const host = read("src/main/java/ai/jwlabs/foura/audio/engine/ForayEngineHost.java");
+  assert.match(host, /event instanceof DeckEvent\.Ended && !tornDown && core\.state\(\)\.preview == null[^\n]*\)\s*\{\s*seams\.preview\.send\(DeckCommand\.UNLOAD\);/);
+  const service = read("src/main/java/ai/jwlabs/foura/audio/ForayPlaybackService.java");
+  assert.match(service, /if \(FocusMapping\.isLossToOwnPreview\(playWhenReady, reason, previewWantsFocus\(\)\)\) \{[\s\S]{0,160}?return;\s*\}\s*feed\(focus\.onPlayWhenReadyChanged\(playWhenReady, reason\)\);/);
+  const focus = read("src/main/java/ai/jwlabs/foura/audio/engine/FocusMapping.java");
+  assert.match(focus, /return !playWhenReady && reason == Player\.PLAY_WHEN_READY_CHANGE_REASON_AUDIO_FOCUS_LOSS && previewWantsFocus;/);
+});
+
 test("A-41: the service builds the engine's synthesiser and jingle, and its dump says whether each is there", () => {
   /* MUTATION: build the host without the speaker or the jingle (A-40's refuse-at-once shape);
      hard-code interludeAvailable (a seam would wait on a jingle that never sounds); drop the dump's
