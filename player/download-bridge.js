@@ -134,7 +134,14 @@ export function createDownloadBridge({ bridge, onEvent, setTimeoutFn = setTimeou
       Promise.resolve()
         .then(() => bridge.nativePromise(DOWNLOADS_PLUGIN, method, options))
         .then(
-          (result) => settle(result && typeof result === "object" ? result : { ok: true, result }),
+          /* A resolved nativePromise IS success (Capacitor rejects on error), so
+             an answer with no `ok` of its own — a plugin that returns its rows or
+             `{}` — reads as `ok: true`; one that says `ok: false` is believed. */
+          (result) => settle(
+            result && typeof result === "object"
+              ? (result.ok === undefined ? { ok: true, ...result } : result)
+              : { ok: true, result },
+          ),
           (err) => settle({ ok: false, reason: String(err?.message ?? err) }),
         );
     });

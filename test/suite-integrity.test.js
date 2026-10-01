@@ -124,7 +124,7 @@ const FLOORS = {
      not stored here, `cp_pos:` has owned that since #26, and two of these tests
      exist only to pin that separation. */
   "player/download-store.test.js": 13, // PQ-16 (#29)
-  "player/download-bridge.test.js": 9, // PQ-17 (#29)
+  "player/download-bridge.test.js": 10, // PQ-17 (#29) // integration review: a resolved answer without ok reads as ok: true; 9 -> 10
   "player/episode-progress.test.js": 23, // 2026-09-22 audit theme L: `episodeProgress`, the one reading of a stored position (played / in-progress / sampled / unplayed) that Jump back in and the episode rows share, on position-store's own thresholds; 19 -> 23
   /* 2026-09-22 (audit L2, founder report 3): which build wrote a diagnostics
      record — the web deploy id on both hosts and the native build number in the

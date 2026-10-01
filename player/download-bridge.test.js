@@ -192,3 +192,19 @@ test("USER_AGENT is `4a/<build> (+https://jw-incorporated.github.io/foray/)`, bu
   // This test runs with no `window`, so the build token is the fallback.
   assert.equal(USER_AGENT, "4a/dev (+https://jw-incorporated.github.io/foray/)");
 });
+
+test("a resolved answer with no ok of its own reads as ok: true; an explicit ok: false is believed", async () => {
+  /* Capacitor resolves on success and rejects on error; a plugin that answers
+     `list()` with its rows and no `ok` field has succeeded. Callers branch on
+     `ok`, so the wire fills it in — and never overrides a plugin that says
+     `ok: false` itself. MUTATION: settle `result` as-is and the first two
+     asserts fail. */
+  const answers = { list: { items: [{ id: "e1" }] }, usage: {}, cancel: { ok: false, reason: "unknown-id" } };
+  const bridge = { nativePromise: async (_plugin, method) => answers[method] };
+  const dl = createDownloadBridge({ bridge, setTimeoutFn: () => {} });
+  const list = await dl.list();
+  assert.equal(list.ok, true);
+  assert.deepEqual(list.items, [{ id: "e1" }]);
+  assert.equal((await dl.usage()).ok, true);
+  assert.deepEqual(await dl.cancel({ id: "x" }), { ok: false, reason: "unknown-id" });
+});
