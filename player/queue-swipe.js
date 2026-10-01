@@ -97,7 +97,9 @@ export function startSwipe(x, y, t) {
  * swipe that drifts up or down a little keeps the row, and a rejected scroll
  * that drifts left stays a scroll. When ONE sample carries both axes past the
  * lock the larger travel wins and a tie goes to the scroller, because
- * refusing a removal costs a second swipe while a wrong removal costs a row.
+ * refusing a removal costs a second swipe while a wrong removal costs a row;
+ * and when the larger travel is RIGHTWARD it cannot win (only leftward
+ * counts), so the vertical axis past the lock takes it for the scroller.
  *
  * MUTATION TO BREAK THE LOCK: drop the vertical branch and
  * `a gesture that moves vertically first is rejected for good` fails.
@@ -116,14 +118,20 @@ export function moveSwipe(state, x, y, t) {
   if (!claimed) {
     const ax = Math.abs(x - state.startX);
     const ay = Math.abs(y - state.startY);
-    if (ay > SWIPE_LOCK_PX && ay >= ax) {
-      rejected = true;
-    } else if (state.startX - x > SWIPE_LOCK_PX) {
-      /* Horizontal AND leftward. A rightward sample past the lock decides
-         nothing: it neither claims (rule 2) nor rejects, so a finger that
-         wanders right and then pulls left can still remove the row. */
+    if (state.startX - x > SWIPE_LOCK_PX && ax > ay) {
+      /* Horizontal, leftward, and the larger travel: the swipe wins. */
       claimed = true;
+    } else if (ay > SWIPE_LOCK_PX) {
+      /* The vertical axis is past the lock and the swipe did not win it —
+         either vertical travel was the larger (a tie included), or the
+         horizontal travel was rightward, which can never claim (rule 2). The
+         list is scrolling; reject. Checking this AFTER the claim is what makes
+         a diagonal leftward pull with the larger horizontal travel a swipe. */
+      rejected = true;
     }
+    /* Otherwise — under the lock on both axes, or a purely rightward sample
+       past it — nothing is decided: a finger that wanders right along the row
+       and then pulls left can still remove it. */
   }
   if (rejected) {
     return { ...state, rejected: true, dx: 0 };
@@ -151,8 +159,11 @@ export function releaseVelocity(state) {
 
 /**
  * `pointerup`/`pointercancel`: the gesture is over. Returns the DECISION
- * `{ remove, offsetPx }` — `offsetPx` is the raw leftward travel, so the
- * caller can animate the row from where the finger left it.
+ * `{ remove, offsetPx }` — `offsetPx` is the raw leftward travel of a CLAIMED
+ * swipe, so the caller can animate the row from where the finger left it. A
+ * gesture that never claimed the row (a tap under the lock, a scroll) reports
+ * `offsetPx: 0`, the same figure `swipeOffset` painted for it, so the
+ * spring-back never starts from a position the row was never drawn at.
  *
  * `remove = claimed && !rejected && (dx >= 96 || (velocity >= 0.6 && dx >= 32))`.
  *
@@ -161,7 +172,7 @@ export function releaseVelocity(state) {
  */
 export function endSwipe(state) {
   if (!state || !state.active || !state.claimed || state.rejected) {
-    return { remove: false, offsetPx: state ? state.dx : 0 };
+    return { remove: false, offsetPx: 0 };
   }
   const offsetPx = state.dx;
   if (offsetPx >= REMOVE_DISTANCE_PX) return { remove: true, offsetPx };

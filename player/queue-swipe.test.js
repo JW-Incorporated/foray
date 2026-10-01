@@ -47,6 +47,14 @@ test("a gesture that moves vertically first is rejected for good", () => {
      to the scroller. */
   assert.equal(gesture(200, 100, 0, [[180, 112, 16]]).state.claimed, true);
   assert.equal(gesture(200, 100, 0, [[188, 112, 16]]).state.rejected, true);
+  /* Both axes past the lock, the larger travel RIGHTWARD: the horizontal axis
+     cannot claim (only leftward counts), the vertical axis is past the lock,
+     so the scroller has it — and a 120 px leftward pull that follows is still
+     a scroll. (Review fix: the first cut left this sample undecided and the
+     pull then removed the row.) */
+  const diag = gesture(200, 100, 0, [[220, 112, 16], [100, 112, 60]]);
+  assert.equal(diag.state.rejected, true);
+  assert.deepEqual(diag.result, { remove: false, offsetPx: 0 });
 });
 
 test("a gesture that moves horizontally first claims the row", () => {
@@ -57,10 +65,14 @@ test("a gesture that moves horizontally first claims the row", () => {
   assert.equal(state.claimed, true);
   assert.equal(state.rejected, false);
   assert.equal(offset, 20);
-  /* Under the lock nothing moves: a tap is a tap. */
+  /* Under the lock nothing moves: a tap is a tap — and its release reports
+     the same 0 the paint showed, not the 4 px of raw travel, so the caller's
+     spring-back never starts from a position the row was never drawn at.
+     MUTATION: return `state.dx` for an unclaimed state from endSwipe(). */
   const tap = gesture(200, 100, 0, [[196, 100, 16]]);
   assert.equal(tap.state.claimed, false);
   assert.equal(tap.offset, 0);
+  assert.deepEqual(tap.result, { remove: false, offsetPx: 0 });
 });
 
 test("a rightward drag never claims and never removes", () => {
