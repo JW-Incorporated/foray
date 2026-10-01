@@ -216,7 +216,6 @@ const FLOORS = {
      whose case count is floored in player/parity/floors.json), so a deleted test
      here is a rule nothing asserts any more. */
   "player/continuation.test.js": 13, // PQ-09 (#691): the tail — "then more of what fits" plays only after Up Next and the list, a tail pick moves the chain and not the cursor, and the K-times walk carries fromTail; 11 -> 13
-  "player/continuation.test.js": 11,
   /* The tail — what plays once Up Next and the list are both spent (founder
      ruling 2026-09-14: keep playing "more of what fits"). Floored at its full
      count because what it holds is the exploration floor INSIDE continuous
