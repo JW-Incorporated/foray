@@ -2111,6 +2111,12 @@ const FLOORS = {
   "tools/corpus/embeddings.test.mjs": 39,
   "tools/corpus/search.test.mjs": 25,
   "tools/corpus/backfill.test.mjs": 26,
+  /* The weekly merge audit (#129, OPS-07). Floored at its full count because it
+     is the only check of its class: auto-merge lands bot PRs unread, and this
+     is what reports, once a week, which ones nobody read, which touched the
+     denied boundary, and whether a floor in THIS file fell. A test deleted
+     here is an unread merge that stops being counted. */
+  "tools/audit/merge-audit.test.mjs": 14,
 };
 
 test("no suite is floored twice", () => {
