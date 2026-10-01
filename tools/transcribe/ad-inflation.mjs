@@ -188,6 +188,60 @@ export function summariseShow(ratios) {
   };
 }
 
+/* ---------------------------------------- a computed length is a placeholder
+
+   OWNER RULING HA #24 (2026-09-30), recorded in ADR-0008's Amendment. Around the
+   House with Eric G declares lengths of duration x a round 192,000 bps
+   (192.03 kbps on four of five episodes) and delivers a QUARTER FEWER bytes --
+   ratio 0.758, `unknown`. The decode then found +313 s of audio its own
+   transcript does not describe. "Smaller than declared" had been read as the
+   mild problem (a stale length); on a declaration that is arithmetic rather than
+   a file size it is not mild, because the denominator was never a measurement.
+   Such a show is `suspect`, which `dispositionOf` treats as a drop. */
+
+/** Round bitrates a publisher's tooling multiplies a duration by. */
+export const PLACEHOLDER_BITRATES_BPS = [64000, 96000, 112000, 128000, 160000, 192000, 224000, 256000, 320000];
+
+/** Relative distance from a round bitrate that still counts as "computed".
+    Around the House sits at 0.017% (192,033 bps); 0.1% leaves room for the
+    feed's own rounding of `itunes:duration` and no more. */
+export const PLACEHOLDER_TOLERANCE = 0.001;
+
+/** Said on the record beside the verdict, as UNDERSIZED_REASON is. */
+export const SUSPECT_REASON =
+  'delivered bytes fall short of a feed-declared length that is arithmetic ' +
+  '(duration x a round bitrate), not a file size, so the declaration was never a ' +
+  'measurement and the show is suspect rather than merely unmeasured';
+
+/** Is this sample's declared length duration x a round bitrate?
+    Needs `duration_sec` on the sample; without it the answer is false (we do
+    not guess a duration). */
+export function isComputedBitrateLength(sample) {
+  const bytes = sample && sample.declared_bytes;
+  const sec = sample && sample.duration_sec;
+  if (!(typeof bytes === 'number' && bytes > 0) || !(typeof sec === 'number' && sec > 0)) return false;
+  const bps = (bytes * 8) / sec;
+  return PLACEHOLDER_BITRATES_BPS.some((r) => Math.abs(bps - r) / r <= PLACEHOLDER_TOLERANCE);
+}
+
+/** Under-sized samples whose declared length is a computed placeholder. */
+export function suspectUndersizedSamples(samples) {
+  return (samples || []).filter(
+    (x) => typeof x.ratio === 'number' && x.ratio < AD_FREE_FLOOR && isComputedBitrateLength(x),
+  ).length;
+}
+
+/** `summariseShow` over a show's samples, upgrading the under-sized `unknown`
+    to `suspect` when any under-sized sample carries a placeholder length.
+    Only that one verdict moves: `injected` and `ad-free` are untouched. */
+export function summariseSamples(samples) {
+  const s = summariseShow((samples || []).map((x) => x.ratio));
+  if (s.verdict === 'unknown' && s.reason === UNDERSIZED_REASON && suspectUndersizedSamples(samples) > 0) {
+    return { ...s, verdict: 'suspect', reason: SUSPECT_REASON };
+  }
+  return s;
+}
+
 /* ------------------------------------------------------------- the request */
 
 /** A probe that hangs holds up the whole sequential scan, and the gate already
@@ -476,11 +530,12 @@ async function main() {
         declared_bytes: p.declared_bytes,
         delivered_bytes: p.delivered_bytes,
         ratio: p.ratio == null ? null : Math.round(p.ratio * 1000) / 1000,
+        ...(Number.isFinite(it.duration_sec) ? { duration_sec: it.duration_sec } : {}),
         ...(p.error ? { error: p.error, status: p.status } : {}),
       });
     }
 
-    const s = summariseShow(samples.map((x) => x.ratio));
+    const s = summariseSamples(samples);
     /* Counted even when the median lands in the band: a single under-sized
        episode means this feed declares lengths it does not deliver, which is
        worth seeing next to a verdict of 'injected' that was computed from the

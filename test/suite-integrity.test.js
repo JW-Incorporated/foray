@@ -254,6 +254,11 @@ const FLOORS = {
      a claimed drag released over another slot ever commits — on pointerup,
      never on the click after. Every test names its mutation; each was run. */
   "player/queue-drag.test.js": 9, // PQ-03 (#762)
+  /* Swipe-left-to-remove on an Up Next row (#762). The same pure gesture
+     shape as the two above, floored for the same reason: the direction lock,
+     the 96 px distance, the flick and the rule that a scroll can never become
+     a removal ARE the product decision. Each test names its mutation. */
+  "player/queue-swipe.test.js": 8, // PQ-05 (#762)
   /* The other half of the same report: the sheet is WIRED, opens at the top,
      scrolls inside itself, and is a full-height overlay whose `[hidden]`
      attribute still hides it. A source-text suite (client.js builds DOM at
@@ -2101,7 +2106,7 @@ const FLOORS = {
      show on one observation while never acquitting one on a host already caught
      under-declaring. */
   "tools/transcribe/decode-compare.test.mjs": 31,
-  "tools/transcribe/ad-inflation.test.mjs": 43,
+  "tools/transcribe/ad-inflation.test.mjs": 46,
   /* The transcription work order. Zero slack, because what it guards is not
      logic but a PROMISE MADE TO A MACHINE THAT IS ALREADY RUNNING: a worker box
      consumes data/transcription-queue.json in rank order, so any change that
