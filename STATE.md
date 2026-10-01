@@ -764,7 +764,8 @@ would go red, on whichever Android PR came next. (Added in review.)
 
 `record.mjs` keeps them the same way it keeps `swift-pending`. A case that is new or changed in a family the JVM runs,
 or a brand-new family, needs `--jvm-card A-xx`. Anything in a family that is owed whole needs no JVM card, so iOS and JS
-PRs are unaffected. `--check` validates the file.
+PRs are unaffected. `--check` validates the file. (Superseded by A-63: the books hold `runs` only, `--jvm-card` is
+refused, and a JS change carries its JVM port in the same change. See `player/parity/jvm-pending.js`.)
 
 **What runs today.**
 - `number-format`: `JSWriter.jsonNumber` is main code. It is ECMA Number::toString with a shortest-digit search,
