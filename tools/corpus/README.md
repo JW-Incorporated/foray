@@ -341,7 +341,10 @@ committed instead:
 - `docs/research/corpus/corpus-index.json` — **generated** from that file plus
   the DB by `export-index`: urls, `content_sha256`, chunk/token counts, fetch
   status, local archive paths, and the same digests, machine-readable for
-  agents.
+  agents. `fetch.status` is one of `ingested | thin | failed | unfetched`:
+  a 2xx capture with chunks is `ingested` unless its `estimated_tokens` fall
+  under `THIN_TOKEN_FLOOR` (100), in which case it is `thin` — it landed, but
+  landed empty, and must not be cited as evidence (#255).
 
 `export-index.mjs` has no code path that reads `chunks.text`, and its parser
 rejects a digest long enough to be pasted source text (2500 chars) — the same

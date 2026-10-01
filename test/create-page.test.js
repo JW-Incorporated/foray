@@ -482,7 +482,16 @@ function holdSearchData(m) {
   const gate = new Promise((r) => { release = r; });
   m.ctx.loadSearchData = () => gate;
   m.evalIn("searchDataWanted = true; state.semantic = null;");
-  return () => { release(); return new Promise((r) => setTimeout(r, 5)); };
+  return async () => {
+    release();
+    let settled = false;
+    for (let i = 0; i < 5000; i++) {
+      await new Promise((r) => setImmediate(r));
+      if (m.evalIn("createBuildPending") === false) { settled = true; break; }
+    }
+    if (!settled) throw new Error("the build never settled: createBuildPending stayed true after 5000 ticks");
+    for (let i = 0; i < 20; i++) await new Promise((r) => setImmediate(r));
+  };
 }
 
 test("races-3: a build that finishes after the listener left Create does not yank them to the playlist — it is saved, and that is all", async () => {
