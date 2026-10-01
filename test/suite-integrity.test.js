@@ -2103,7 +2103,7 @@ const FLOORS = {
   "tools/corpus/extract.test.mjs": 21,
   "tools/corpus/db.test.mjs": 20,
   "tools/corpus/manifest.test.mjs": 24,
-  "tools/corpus/export-index.test.mjs": 24,
+  "tools/corpus/export-index.test.mjs": 26, // OPS-09 (#255): a capture under THIN_TOKEN_FLOOR is "thin", and the committed index agrees with its own totals; 24 -> 26
   "tools/corpus/chunk.test.mjs": 16,
   "tools/corpus/ftsquery.test.mjs": 21,
   "tools/corpus/eval.test.mjs": 28,

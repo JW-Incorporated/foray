@@ -15,7 +15,8 @@
   },
   "totals": {
     "sources": 54,
-    "ingested": 54,
+    "ingested": 53,
+    "thin": 1,
     "chunks": 558,
     "estimated_tokens": 344872,
     "redistribution_allowed": 17,
@@ -1354,7 +1355,7 @@
       "read_first": false,
       "why_it_matters": "Crowdsourced blind Elo leaderboard for TTS naturalness, with V2 adding conversational/podcast-style content. *Why it matters:* the open benchmark for picking a narrator voice model.",
       "fetch": {
-        "status": "ingested",
+        "status": "thin",
         "fetched_at": "2026-08-12T16:47:23.610Z",
         "http_status": 200,
         "content_sha256": "239667ad6c8e662860e3216900fcf5f0c88c482298e06acafecf26550503263c",
