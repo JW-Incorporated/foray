@@ -60,7 +60,8 @@ export function moveTo(ids, id, toIndex) {
 
 /** `id` placed directly after `currentId` when that row is in the list,
     else at the head; `id` leaves its old place first and is added when it
-    was not queued. Returns `ids` itself when `id` is the playing row. */
+    was not queued. Returns `ids` itself when `id` is the playing row, or is
+    already the row right after it (or at the head with nothing playing). */
 export function playNextOrder(ids, id, currentId) {
   if (id === currentId || typeof id !== "string" || !id) return ids;
   const list = cleanIds(ids);
@@ -68,6 +69,9 @@ export function playNextOrder(ids, id, currentId) {
   const at = typeof currentId === "string" && currentId ? rest.indexOf(currentId) : -1;
   const to = at < 0 ? 0 : at + 1;
   rest.splice(to, 0, id);
+  /* Already exactly there (and the input was clean): the same reference, so the
+     caller skips the cp_queue write and the repaint, as the header promises. */
+  if (ids.length === list.length && rest.length === list.length && rest.every((x, i) => x === list[i])) return ids;
   return rest;
 }
 

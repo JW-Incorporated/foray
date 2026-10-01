@@ -89,3 +89,18 @@ test("non-string entries are dropped before any rule runs", () => {
   assert.deepEqual(clearOrder(["a", 0, "b"], "b"), ["b"]);
   assert.deepEqual(clearOrder("not-an-array", "a"), []);
 });
+
+test("Play next on the row already next returns the same reference", () => {
+  /* The header's contract: `next !== ids` is how app.js decides whether to
+     write cp_queue and repaint Up Next. A row that is already right after the
+     playing one — or already at the head with nothing playing — is the
+     no-op case, and it must come back as the SAME array, not an equal one.
+     MUTATION: return `rest` unconditionally and both `assert.equal`s fail. */
+  const ids = ["a", "b", "c"];
+  assert.equal(playNextOrder(ids, "b", "a"), ids);
+  assert.equal(playNextOrder(ids, "a", null), ids);
+  // A dirty input is still cleaned, even when the order would not change.
+  assert.deepEqual(playNextOrder(["a", 7, "b"], "b", "a"), ["a", "b"]);
+  // And a real move is still a new array.
+  assert.notEqual(playNextOrder(ids, "c", "a"), ids);
+});
