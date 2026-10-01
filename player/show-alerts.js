@@ -116,7 +116,11 @@ export function afterCheck(record, rows, now) {
   // Never backwards: a page that lost or reordered a row does not lower the latest.
   const latest = laterOf(latestOf(rows), base.latest_published_at);
   const hadWatermark = typeof base.seen_published_at === "string" && base.seen_published_at !== "";
-  const at = typeof now === "number" ? new Date(now) : new Date(now ?? Date.now());
+  /* A `now` that cannot be read (a malformed string, NaN) stamps the wall
+     clock rather than throwing out of a feed check — the same "cheap failure"
+     rule `dueForCheck` applies, in the other direction. */
+  let at = typeof now === "number" ? new Date(now) : new Date(now ?? Date.now());
+  if (Number.isNaN(at.getTime())) at = new Date();
   return {
     ...base,
     checked_at: at.toISOString(),

@@ -174,3 +174,20 @@ test("a row without published_at is ignored — never new, never the latest (mut
   // A fresh follow whose first page is all undated gets no watermark yet.
   assert.equal(afterCheck(freshFollow(), [{ id: "x" }], T0_MS).seen_published_at, null);
 });
+
+test("afterCheck with an unreadable now stamps the wall clock rather than throwing", () => {
+  /* `new Date("garbage").toISOString()` throws a RangeError; a feed check
+     must never die on its clock argument. The record is still stamped (with
+     the wall clock), the latest and the watermark still move as usual.
+     MUTATION: drop the `Number.isNaN(at.getTime())` guard and this throws. */
+  const rows = [{ published_at: "2026-09-30T10:00:00.000Z", title: "x" }];
+  const before = Date.now();
+  const rec = afterCheck({ show_id: "s" }, rows, "not a time");
+  const stamped = Date.parse(rec.checked_at);
+  assert.ok(Number.isFinite(stamped) && stamped >= before - 1000, "checked_at is a real recent stamp");
+  assert.equal(rec.latest_published_at, "2026-09-30T10:00:00.000Z");
+  assert.equal(rec.seen_published_at, "2026-09-30T10:00:00.000Z");
+  assert.equal(rec.unseen_count, 0);
+  const nan = afterCheck({ show_id: "s" }, rows, NaN);
+  assert.ok(Number.isFinite(Date.parse(nan.checked_at)));
+});
