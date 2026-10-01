@@ -166,6 +166,11 @@ jobs:
       # which turns the run red AFTER the FAILED body is on the issue.
       - name: Judge the week
         id: audit
+        # The repo variable reaches the shell through `env`, never spliced into
+        # the script by `${{ }}` (the same shape as release.yml's RUN_ATTEMPT):
+        # an expression inside `run:` is pasted as text before bash parses it.
+        env:
+          AUTOMERGE_FREEZE: ${{ vars.AUTOMERGE_FREEZE }}
         run: |
           set -uo pipefail
           code=0
@@ -175,7 +180,7 @@ jobs:
             --floors-after after.js \
             --since "$SINCE" \
             --until "$UNTIL" \
-            --freeze "${{ vars.AUTOMERGE_FREEZE }}" \
+            --freeze "$AUTOMERGE_FREEZE" \
             --out body.md || code=$?
           echo "code=$code" >> "$GITHUB_OUTPUT"
           if [ -s body.md ]; then { cat body.md; echo; } >> "$GITHUB_STEP_SUMMARY"; fi
@@ -186,6 +191,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
+          AUDIT_CODE: ${{ steps.audit.outputs.code }}
         run: |
           set -euo pipefail
           retry() {
@@ -198,8 +204,8 @@ jobs:
           }
           retry gh issue comment 129 --repo "$REPO" --body-file body.md
           echo "posted=true" >> "$GITHUB_OUTPUT"
-          if [ "${{ steps.audit.outputs.code }}" != "0" ]; then
-            echo "::error::the audit FAILED (exit ${{ steps.audit.outputs.code }}); its FAILED body is on #129"
+          if [ "$AUDIT_CODE" != "0" ]; then
+            echo "::error::the audit FAILED (exit $AUDIT_CODE); its FAILED body is on #129"
             exit 1
           fi
 
