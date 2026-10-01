@@ -317,4 +317,71 @@ public class ForayPlaybackServiceTest {
         assertNull(s.session());
         assertNull(s.host());
     }
+
+    /**
+     * A-67 review: THE SERVICE'S OWN STOP, END TO END. StopPathAuditTest drives
+     * {@code ForayEngineHost.teardown} directly; this one destroys the real service with the engine
+     * running, so the ring (as the gate admits it) must hold {@code service event=destroy running=y},
+     * then {@code stop cause=relinquish}, then {@code mode event=teardown}, in that order. TO SEE IT
+     * FAIL: drop {@code engine.teardown()} from the service's release (or release the players
+     * first, so the host is torn down by nothing), drop the core turn from the host's teardown, or
+     * drop the service's destroy row.
+     */
+    @Test
+    public void destroyingTheServiceWhileTheEngineRunsNamesItThenWritesTheRelinquishCause() {
+        ForayPlaybackService s = create();
+        ForayEngineHost host = s.host();
+        assertTrue(host.handle(new EngineInput.Queue(new EngineInput.QueueInput.Load(Collections.singletonList(a67Item())))).ok());
+        assertTrue(host.handle(new EngineInput.Queue(new EngineInput.QueueInput.PlayIndex(0, null,
+                ai.jwlabs.foura.engine.Vocabulary.Source.TAP))).ok());
+        assertTrue("the engine runs before the service goes", host.state().isRunning());
+        controller.destroy();
+        controller = null;
+        List<ai.jwlabs.foura.engine.JsonNode> rows = ai.jwlabs.foura.audio.engine.EngineLog.process().diagnosticRows();
+        int service = -1;
+        for (int i = 0; i < rows.size(); i++) if (rowIs(rows.get(i), "service", "event", "destroy")) service = i;
+        assertTrue("a service event=destroy row: " + rows, service >= 0);
+        assertEquals("it says the engine was running", ai.jwlabs.foura.engine.JsonNode.str("y"), rows.get(service).get("running"));
+        int stop = -1;
+        int teardown = -1;
+        for (int i = service + 1; i < rows.size(); i++) {
+            if (stop < 0 && rowIs(rows.get(i), "stop", "cause", "relinquish")) stop = i;
+            if (teardown < 0 && rowIs(rows.get(i), "mode", "event", "teardown")) teardown = i;
+        }
+        assertTrue("stop cause=relinquish after the service row: " + rows.subList(service, rows.size()), stop > service);
+        assertTrue("then the core's teardown row: " + rows.subList(service, rows.size()), teardown > stop);
+        assertTrue(host.isTornDown());
+    }
+
+    /**
+     * A-67 review: a swipe is named before anything it causes, kept or not. Idle and out of the
+     * foreground, Media3's rule stands: {@code service event=task-removed kept=n running=n}. TO SEE
+     * IT FAIL: drop the row from onTaskRemoved.
+     */
+    @Test
+    public void aSwipeIsNamedInTheRing() {
+        ForayPlaybackService s = create();
+        s.onTaskRemoved(null);
+        List<ai.jwlabs.foura.engine.JsonNode> rows = ai.jwlabs.foura.audio.engine.EngineLog.process().diagnosticRows();
+        ai.jwlabs.foura.engine.JsonNode last = null;
+        for (ai.jwlabs.foura.engine.JsonNode row : rows) if (rowIs(row, "service", "event", "task-removed")) last = row;
+        assertNotNull("a service event=task-removed row: " + rows, last);
+        assertEquals(ai.jwlabs.foura.engine.JsonNode.str("n"), last.get("kept"));
+        assertEquals(ai.jwlabs.foura.engine.JsonNode.str("n"), last.get("running"));
+    }
+
+    private static boolean rowIs(ai.jwlabs.foura.engine.JsonNode row, String kind, String field, String value) {
+        return ai.jwlabs.foura.engine.JsonNode.str(kind).equals(row.get("kind"))
+                && ai.jwlabs.foura.engine.JsonNode.str(value).equals(row.get(field));
+    }
+
+    private static EngineItem a67Item() {
+        return EngineItem.of(new ai.jwlabs.foura.engine.JsonNode.Obj(List.of(
+                ai.jwlabs.foura.engine.JsonNode.member("id", ai.jwlabs.foura.engine.JsonNode.str("a67")),
+                ai.jwlabs.foura.engine.JsonNode.member("kind", ai.jwlabs.foura.engine.JsonNode.str("episode")),
+                ai.jwlabs.foura.engine.JsonNode.member("title", ai.jwlabs.foura.engine.JsonNode.str("A clip")),
+                ai.jwlabs.foura.engine.JsonNode.member("show", ai.jwlabs.foura.engine.JsonNode.str("A show")),
+                ai.jwlabs.foura.engine.JsonNode.member("audio_url", ai.jwlabs.foura.engine.JsonNode.str("https://cdn.example/a67.mp3")),
+                ai.jwlabs.foura.engine.JsonNode.member("duration_sec", ai.jwlabs.foura.engine.JsonNode.num(90)))));
+    }
 }
