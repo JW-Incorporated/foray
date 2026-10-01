@@ -21,7 +21,8 @@ import java.util.Set;
  *   <li>A field whose value belongs to a closed vocabulary is admitted ONLY through
  *       {@link Vocabulary#SETS}, exactly (a {@code cause}, a {@code source}, a seam's
  *       {@code stages}, a {@code mode} row's {@code reason}, an interruption's {@code reason}, a
- *       session {@code error}). A misspelt token is dropped, never "fixed".
+ *       session {@code error}, a {@code narration} row's fallback {@code cause}). A misspelt
+ *       token is dropped, never "fixed".
  *   <li>Every other string must be a TOKEN: ASCII letters, digits and {@code ._:-}, at most 64
  *       characters. That excludes every URL, sentence, e-mail and device name with a space in it.
  *   <li>A {@code route} or {@code port} is a PORT TYPE: letters and digits only.
@@ -119,6 +120,11 @@ public final class DiagGate {
 
     /** Rule 1: the closed set a field is admitted through, if any. */
     public static String vocabularySet(String kind, String event, String key) {
+        // A `narration` row's `cause` is the fallback's (A-64, mirrors NE-39n: `narration
+        // kind=fallback cause=offline`), not a stop cause. Before the generic `cause` below, or
+        // every fallback cause (none is a stop cause) is dropped at the ring and the paste never
+        // says why a line fell back.
+        if ("narration".equals(kind) && "cause".equals(key)) return "narrationFallbackCause";
         switch (key) {
             case "cause":
                 return "stopCause";

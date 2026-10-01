@@ -1344,9 +1344,9 @@ public final class EngineCore {
     private void onDeck(DeckEvent event) {
         switch (event) {
             case DeckEvent.Ready e -> onReady(e.token());
-            case DeckEvent.Failed e -> onLoadFailure(e.token(), e.message(), StopCause.ERROR);
+            case DeckEvent.Failed e -> onLoadFailure(e.token(), e.message(), StopCause.ERROR, e.cause());
             case DeckEvent.DeadlineExceeded e ->
-                    onLoadFailure(e.token(), "no ready inside " + e.afterMs() + " ms", StopCause.LOAD_DEADLINE);
+                    onLoadFailure(e.token(), "no ready inside " + e.afterMs() + " ms", StopCause.LOAD_DEADLINE, e.cause());
             case DeckEvent.Ended e -> onEnded(e.token());
             case DeckEvent.TimeControl e -> onTimeControl(e.token(), e.status());
             case DeckEvent.PausedUncommanded e -> onUncommandedPause(e.token());
@@ -1437,6 +1437,11 @@ public final class EngineCore {
      * for a hop, C-6), then the reducer's error (idle, pause).
      */
     private void onLoadFailure(int token, String message, StopCause cause) {
+        onLoadFailure(token, message, cause, Vocabulary.NarrationFallbackCause.OTHER);
+    }
+
+    /** {@code fallbackCause}: the deck's reading of the failure, written only on a §14 fallback row. */
+    private void onLoadFailure(int token, String message, StopCause cause, Vocabulary.NarrationFallbackCause fallbackCause) {
         PendingLoad pending = state.pendingLoad;
         boolean isPending = pending != null && pending.token() == token;
         boolean isHeld = pending == null && isLoadedToken(token);
@@ -1444,7 +1449,7 @@ public final class EngineCore {
             diag("deck", m("kind", str("superseded-failure")), m("token", num(token)));
             return;
         }
-        if (fallBackToScript(token, isPending, cause)) return;
+        if (fallBackToScript(token, isPending, cause, fallbackCause)) return;
         if (pending != null && pending.bridge() && pending.token() == token) {
             // A bridge that will not load never stalls the queue (corner case #12).
             state.pendingLoad = null;
@@ -1472,8 +1477,15 @@ public final class EngineCore {
      * fail ({@code load}, {@code bridge}, {@code playing}), only while the machine is still ON that
      * line. The spoken line gets a FRESH token, so a late report about the failed file is dropped
      * as {@code superseded-failure}. A line with no script, and a clip, fail exactly as before.
+     *
+     * <p>The row carries {@code cause=} (A-64, mirrors NE-39n): the deck's closed reading of why
+     * the file failed ({@code timeout}, {@code http-4xx}, {@code http-5xx}, {@code offline},
+     * {@code decode}, {@code other}; {@link NarrationFallbackCauseReading}), so a drive's paste
+     * says whether the fallback was the network, the narration host or the file. {@code reason=}
+     * stays as it was ({@code timeout} for the load deadline, else {@code failed});
+     * {@code where=} is {@code load}, {@code bridge} or {@code playing}.
      */
-    private boolean fallBackToScript(int token, boolean isPending, StopCause cause) {
+    private boolean fallBackToScript(int token, boolean isPending, StopCause cause, Vocabulary.NarrationFallbackCause why) {
         if (!config.forayTapeEnabled()) return false;
         String itemId;
         String at;
@@ -1498,7 +1510,11 @@ public final class EngineCore {
         };
         if (!onIt) return false;
         diag("narration", m("kind", str("fallback")), m("reason", str(cause == StopCause.LOAD_DEADLINE ? "timeout" : "failed")),
-                m("at", str(at)));
+                // `where`, not `at`: `at` is the ring row's wall clock (DiagGate.HEADER_KEYS), so
+                // the gate withheld a field of that name and the paste never said whether the
+                // load, a bridge or a sounding line fell back (NE-39n review, ported by A-64).
+                m("where", str(at)),
+                m("cause", str((why != null ? why : Vocabulary.NarrationFallbackCause.OTHER).token)));
         // A file that failed mid-line: silence the deck under it first.
         if (at.equals("playing")) deckCommand(DeckCommand.PAUSE);
         state.lastToken += 1;

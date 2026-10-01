@@ -35,10 +35,38 @@ public sealed interface DeckEvent permits DeckEvent.DurationLoaded, DeckEvent.Re
     /** An interrupted seek or an unfinished preroll; the deck retries itself. */
     record NotReady(int token, int attempt, String cause) implements DeckEvent {}
 
-    /** The load did not become ready inside its deadline. */
-    record DeadlineExceeded(int token, int afterMs) implements DeckEvent {}
+    /**
+     * The load did not become ready inside its deadline (P-13). {@code cause} is the deck's
+     * reading of WHY (A-64, mirrors NE-39n): {@code timeout} unless a load error it saw by then
+     * says the server answered or the network was gone ({@link NarrationFallbackCauseReading}).
+     */
+    record DeadlineExceeded(int token, int afterMs, Vocabulary.NarrationFallbackCause cause) implements DeckEvent {
+        public DeadlineExceeded {
+            if (cause == null) cause = Vocabulary.NarrationFallbackCause.TIMEOUT;
+        }
 
-    record Failed(int token, String message) implements DeckEvent {}
+        /** A deadline with no reading of its own: {@code timeout}. */
+        public DeadlineExceeded(int token, int afterMs) {
+            this(token, afterMs, Vocabulary.NarrationFallbackCause.TIMEOUT);
+        }
+    }
+
+    /**
+     * The item failed. {@code cause} is the deck's mapping of the failure (Media3's
+     * {@code PlaybackException} code, its source's HTTP status) to a closed token (A-64, mirrors
+     * NE-39n; ExoDeck.fallbackCause through {@link NarrationFallbackCauseReading}); the core writes
+     * it on a {@code narration kind=fallback} row and nowhere else.
+     */
+    record Failed(int token, String message, Vocabulary.NarrationFallbackCause cause) implements DeckEvent {
+        public Failed {
+            if (cause == null) cause = Vocabulary.NarrationFallbackCause.OTHER;
+        }
+
+        /** A failure with no reading of its own: {@code other}. */
+        public Failed(int token, String message) {
+            this(token, message, Vocabulary.NarrationFallbackCause.OTHER);
+        }
+    }
 
     /** A command the deck would not run ({@code play} before {@code ready}). */
     record Refused(String command, String reason) implements DeckEvent {}

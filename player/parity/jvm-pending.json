@@ -7,7 +7,6 @@
     "contract/send-request-invalid-audition-url-off-host": "A-66",
     "contract/send-request-invalid-audition-url-with-query": "A-66",
     "contract/send-request-valid-set-route-sharing-long-form": "A-67",
-    "diag-tokens/narration-fallback-cause-tokens": "A-64",
     "manager-foray/audition-url-plays-the-rendered-preview": "A-66",
     "manager-foray/audition-url-that-fails-is-spoken": "A-66"
   },
