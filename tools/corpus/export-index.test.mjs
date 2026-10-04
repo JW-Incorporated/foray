@@ -21,6 +21,7 @@ import {
   INDEX_SCHEMA,
   MAX_DIGEST_CHARS,
   MAX_FACT_CHARS,
+  THIN_TOKEN_FLOOR,
 } from "./export-index.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -208,6 +209,38 @@ test("buildIndex: joins fetch facts to authored digests", async () => {
   assert.equal(unfetched.local_archive, null);
 });
 
+test('buildIndex: a capture under THIN_TOKEN_FLOOR tokens is "thin", not "ingested" (#255)', async () => {
+  const db = seeded();
+  const src = db.prepare("SELECT * FROM sources ORDER BY id").all();
+  const fetcher = {
+    async fetchUrl(url) {
+      return { ok: true, status: 200, finalUrl: url, contentType: "text/plain", body: Buffer.from("# T\n\n" + "Sentence of real content. ".repeat(60)), notes: [] };
+    },
+  };
+  await ingestSource(db, fetcher, src[0], { corpusRoot: ARCHIVE });
+  await ingestSource(db, fetcher, src[1], { corpusRoot: ARCHIVE });
+  /* Both fetches are 2xx with chunks — "ok" by the old rule. Pin the token
+   * counts to the two real sources that define the floor: 037 (16 tokens, a
+   * loading spinner) and 027 (186 tokens, a paper abstract). */
+  db.prepare("UPDATE documents SET token_count = 16 WHERE source_id = ?").run(src[0].id);
+  db.prepare("UPDATE documents SET token_count = 186 WHERE source_id = ?").run(src[1].id);
+
+  const index = buildIndex(db, parseDigests(digestsFor(db)));
+  const thin = index.sources.find((s) => s.id === src[0].id);
+  const real = index.sources.find((s) => s.id === src[1].id);
+  assert.ok(16 < THIN_TOKEN_FLOOR && THIN_TOKEN_FLOOR <= 186, "the floor sits between the spinner and the abstract");
+  assert.equal(thin.fetch.status, "thin");
+  assert.equal(thin.fetch.estimated_tokens, 16);
+  assert.equal(real.fetch.status, "ingested");
+  assert.equal(index.totals.ingested, 1);
+  assert.equal(index.totals.thin, 1);
+  assert.deepEqual(
+    Object.keys(index.totals),
+    ["sources", "ingested", "thin", "chunks", "estimated_tokens", "redistribution_allowed", "redistribution_denied"],
+    "thin sits immediately after ingested; every other key keeps its place"
+  );
+});
+
 test("buildIndex: no chunk text, no source prose, ever reaches the index", async () => {
   const db = seeded();
   const src = db.prepare("SELECT * FROM sources ORDER BY id").all();
@@ -324,6 +357,29 @@ test("committed index publishes an evidenced verdict for every source", () => {
     assert.ok(s.digest.length <= MAX_DIGEST_CHARS, `source ${s.id} digest is oversized`);
     assert.ok(s.key_facts.length >= 1, `source ${s.id} has no key facts`);
   }
+});
+
+test('committed index: no "ingested" source sits under the thin floor, and the totals agree', () => {
+  const index = JSON.parse(fs.readFileSync(INDEX_PATH, "utf8"));
+  let ingested = 0;
+  let thin = 0;
+  for (const s of index.sources) {
+    const tokens = s.fetch.estimated_tokens ?? 0;
+    if (s.fetch.status === "ingested") {
+      ingested += 1;
+      assert.ok(tokens >= THIN_TOKEN_FLOOR, `source ${s.id} is "ingested" on ${tokens} tokens — that is a thin capture (#255)`);
+    } else if (s.fetch.status === "thin") {
+      thin += 1;
+      assert.ok(tokens < THIN_TOKEN_FLOOR, `source ${s.id} is "thin" on ${tokens} tokens, at or over the floor`);
+    }
+  }
+  assert.equal(index.totals.ingested, ingested, "totals.ingested disagrees with the sources");
+  assert.equal(index.totals.thin, thin, "totals.thin disagrees with the sources");
+  assert.equal(
+    Object.keys(index.totals).indexOf("thin"),
+    Object.keys(index.totals).indexOf("ingested") + 1,
+    "thin follows ingested in the committed totals, as serializeIndex emits it"
+  );
 });
 
 test("committed index carries no local-only absolute paths", () => {

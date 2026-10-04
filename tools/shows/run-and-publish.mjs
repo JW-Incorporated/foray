@@ -210,13 +210,45 @@ export async function runAndPublish(argv, {
   return { published, pointerChanged: true, tag, reason: published ? "published" : "reconciled-existing-release" };
 }
 
+/** Turns a thrown error — most usefully an execFile rejection from a
+    failed `gh` call — into the lines the workflow log should carry, one
+    fact per line (OPS-01). The 2026-09-20 run (35507245541) died with a
+    single `FATAL: Command failed: gh release create <tag> <100 paths…>`
+    line that the log cut after the paths, so the exit code and stderr
+    never appeared. The command head is capped at `maxArgs` tokens and
+    stderr/stdout are tail-truncated to `tailChars` so the facts survive
+    the log's line limit. Diagnostic only: nothing here changes what the
+    run does, only what it says when it fails. */
+export function describeExecError(err, { maxArgs = 6, tailChars = 4000 } = {}) {
+  const lines = [];
+  let head;
+  if (typeof err?.cmd === "string") {
+    const tokens = err.cmd.split(/\s+/).filter(Boolean);
+    head = `Command failed: ${tokens.slice(0, maxArgs).join(" ")}`;
+    if (tokens.length > maxArgs) head += ` … (+${tokens.length - maxArgs} more args)`;
+  } else {
+    head = String(err?.message ?? err).split("\n")[0];
+  }
+  lines.push(`FATAL: ${head}`);
+  if (err?.code !== undefined && err.code !== null) lines.push(`FATAL_CODE: ${err.code}`);
+  if (err?.signal) lines.push(`FATAL_SIGNAL: ${err.signal}`);
+  if (err?.killed === true) lines.push("FATAL_KILLED: true");
+  const tail = (s) => {
+    const t = String(s).trim();
+    return t ? t.slice(-tailChars) : "(empty)";
+  };
+  if ("stderr" in Object(err)) lines.push(`FATAL_STDERR: ${tail(err.stderr)}`);
+  if ("stdout" in Object(err)) lines.push(`FATAL_STDOUT: ${tail(err.stdout)}`);
+  return lines;
+}
+
 async function main() {
   await runAndPublish(process.argv.slice(2));
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   main().catch((e) => {
-    console.error("FATAL:", e instanceof Error ? e.message : e);
+    for (const line of describeExecError(e)) console.error(line);
     process.exit(1);
   });
 }

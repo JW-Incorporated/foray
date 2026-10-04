@@ -16,7 +16,7 @@ import assert from "node:assert/strict";
 import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { runAndPublish } from "./run-and-publish.mjs";
+import { describeExecError, runAndPublish } from "./run-and-publish.mjs";
 
 /** Writes a minimal but real S-04a build output tree (state.json +
     manifest.json + top/id-map/changed.json + one shard) so listReleaseAssets
@@ -328,4 +328,36 @@ test("a run that publishes the top-level release but not the shard batch (interr
   } finally {
     await rm(root, { recursive: true, force: true });
   }
+});
+
+/* OPS-01 — the FATAL line carries the facts. The 2026-09-20 shows-import
+   run (35507245541) died with one `FATAL: Command failed: gh release
+   create <tag> <100 shard paths>` line that the Actions log cut after the
+   paths; the exit code and stderr never appeared. describeExecError puts
+   each fact on its own short line so none of them can be truncated away. */
+function fakeExecFailure(overrides = {}) {
+  return Object.assign(
+    new Error("Command failed: gh release create t a b c d e f g h\nsome stderr"),
+    { cmd: "gh release create t a b c d e f g h", code: 1, signal: null, killed: false, stderr: "some stderr", stdout: "created" },
+    overrides,
+  );
+}
+
+test("describeExecError: an execFile failure prints code, signal, stderr and stdout on their own lines", () => {
+  const lines = describeExecError(fakeExecFailure());
+  // 12 tokens in the cmd; maxArgs = 6 keeps `gh release create t a b` and counts the rest.
+  assert.equal(lines[0], "FATAL: Command failed: gh release create t a b … (+6 more args)");
+  assert.ok(lines.includes("FATAL_CODE: 1"), `missing FATAL_CODE in ${JSON.stringify(lines)}`);
+  assert.ok(lines.includes("FATAL_STDERR: some stderr"), `missing FATAL_STDERR in ${JSON.stringify(lines)}`);
+  assert.ok(lines.includes("FATAL_STDOUT: created"), `missing FATAL_STDOUT in ${JSON.stringify(lines)}`);
+  assert.ok(!lines.some((l) => l.startsWith("FATAL_SIGNAL")), `signal was null; got ${JSON.stringify(lines)}`);
+});
+
+test("describeExecError: an empty stderr is said out loud", () => {
+  const lines = describeExecError(fakeExecFailure({ stderr: "" }));
+  assert.ok(lines.includes("FATAL_STDERR: (empty)"), `expected (empty) marker in ${JSON.stringify(lines)}`);
+});
+
+test("describeExecError: a non-exec error keeps its first message line only", () => {
+  assert.deepEqual(describeExecError(new Error("boom\nsecond")), ["FATAL: boom"]);
 });
