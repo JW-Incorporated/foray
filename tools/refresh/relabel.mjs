@@ -49,7 +49,8 @@ export class RelabelError extends Error {
 }
 
 /** Looks up every entry and validates every override, touching nothing.
-    Throws RelabelError (missing ids, ALL named) or TopicError (from
+    Throws RelabelError (missing ids, then entries with no `topics`, ALL
+    named in each case) or TopicError (from
     episodeTopics) before returning; on success returns one
     `{ item, id, old, next }` per entry for applyRelabel to write. */
 export function planRelabel(items, entries, nodeIds) {
@@ -57,6 +58,17 @@ export function planRelabel(items, entries, nodeIds) {
   const missing = entries.filter((e) => !byId.has(e?.id)).map((e) => JSON.stringify(e?.id));
   if (missing.length) {
     throw new RelabelError("MISSING_IDS", `not in discover.json: ${missing.join(", ")} — nothing written`);
+  }
+  /* NO TOPICS IS NOT "KEEP THE SHOW'S". episodeTopics reads an absent or null
+     override as "no override" and hands back the show seed, which is right for
+     merge.mjs; here applyRelabel would then stamp that inherited label
+     `topics_source: "episode"`, claiming a judgement nobody made. A dropped or
+     misspelled `topics` key in a hand-written batch must fail the whole batch.
+     A present-but-wrong value (a string, an empty list) still goes to
+     episodeTopics, whose refusal is the nightly's own. */
+  const noTopics = entries.filter((e) => e.topics === undefined || e.topics === null).map((e) => JSON.stringify(e.id));
+  if (noTopics.length) {
+    throw new RelabelError("TOPICS_MISSING", `no topics given for: ${noTopics.join(", ")} — nothing written`);
   }
   return entries.map((e) => {
     const item = byId.get(e.id);

@@ -90,7 +90,12 @@ test("refuses an unknown taxonomy id and writes nothing", () => {
      the nightly would refuse. A batch whose SECOND entry is bad must leave the
      first entry unwritten too.
      KILLED BY: `const next = e.topics;` in place of the episodeTopics call in
-     planRelabel — the bogus id is then written into the pool. */
+     planRelabel — the bogus id is then written into the pool.
+     A batch entry with NO topics (key dropped, misspelled `topic`, or null) is
+     refused too: episodeTopics reads that as "keep the show's label", and the
+     item would then be stamped "episode" for a judgement nobody made.
+     KILLED BY: deleting the TOPICS_MISSING guard in planRelabel — the run then
+     exits 0 and restamps sysk--a's inherited label as per-episode. */
   withFixture(({ run, raw, batch }) => {
     const before = raw();
     const r = run("--from", batch([
@@ -100,6 +105,15 @@ test("refuses an unknown taxonomy id and writes nothing", () => {
     assert.equal(r.status, 1);
     assert.match(r.stderr, /not taxonomy node ids: "science\/not-a-node"/);
     assert.equal(raw(), before, "a refused batch must not write");
+
+    const r2 = run("--from", batch([
+      { id: "sysk--a" },
+      { id: "sysk--b", topic: ["nature/earth-science"] },
+      { id: "eng--c", topics: null },
+    ]));
+    assert.equal(r2.status, 1, r2.stdout);
+    assert.match(r2.stderr, /no topics given for: "sysk--a", "sysk--b", "eng--c"/, "every entry without topics is named");
+    assert.equal(raw(), before, "a batch entry with no topics must not write");
   });
 });
 
