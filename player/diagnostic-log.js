@@ -2848,6 +2848,16 @@ export const ENGINE_ROW_KINDS = Object.freeze([
      with `result=`) and a malformed hello. The 2026-09-26 paste showed
      `cmd x15` as a count, because the scan below never matched `row("cmd"`. */
   "cmd", "hello",
+  /* NE-47: the voice picker's rendered preview (audition: preview-load,
+     preview-play, preview-ended, preview-stop with why, and fallback with
+     reason failed|timeout and whether it was spoken). */
+  "audition",
+  /* NE-38rs: route resume (founder Q5). A route going away while it played
+     (route kind=lost port= class= key=<8 hex> known=) and coming back
+     (route kind=back ... lostSec= pausedBy= decision=resume|no why=). The key
+     is 8 hex of a salted hash, never a name or a UID. NE-38e's route-back
+     verdict reads these. */
+  "route",
 ]);
 
 const ENGINE_HEADER_KEYS = new Set(["seq", "at", "mono", "kind", "event", "dropped"]);
@@ -2959,7 +2969,9 @@ const ENGINE_LINES = {
     `asked ${ms(r.askedGapMs)}`,
     ...engineFields(r, ["prepared", "grace", "bgRemainingMs", "stages"], ["observedGapMs", "askedGapMs"]),
   ],
-  grace: (r) => [r.event ?? "?", ...engineFields(r, ["reason", "task", "bgRemainingMs"])],
+  /* NE-46: a `late` row reads timer, lateMs and inSeam before the budget, the
+     card's own order (`grace late timer= lateMs= inSeam=y|n bgRemainingMs=`). */
+  grace: (r) => [r.event ?? "?", ...engineFields(r, ["reason", "task", "timer", "lateMs", "inSeam", "bgRemainingMs"])],
   /* L01: the command's name first, then who sent it and its place in the
      page's count; `result=` is the engine's refusal (Lane B writes a second
      row only then) and `seqGap` a count that skipped. An unparseable payload
@@ -3001,8 +3013,14 @@ function newestEngineRow(rows, kind, pick = () => true) {
 /**
  * The engine header line (card NE-26):
  *
- *   engine=native v<ver> proto=<n> caps=<list> reason=<r> strikes=<n> hold=<policy> build=<CFBundleVersion> | web=<build-stamp>
+ *   engine=native v<ver> proto=<n> caps=<list> reason=<r> strikes=<n> hold=<policy> [routeSharing=<p>] build=<CFBundleVersion> | web=<build-stamp>
  *   engine=js reason=<r> [strikes=<n>] build=<CFBundleVersion> | web=<build-stamp>
+ *
+ * `routeSharing` (NE-40, DV-8) is the audio session's route-sharing policy the
+ * engine's `build` row says this launch ran (`default`, or `longFormAudio`
+ * while the Developer trial is on). It is printed only when that row carries
+ * it: an older build's row, and the Android engine's, do not, and a missing
+ * value is left out rather than guessed.
  *
  * ONE LINE, key=value, because it is read twice: by a founder on a phone, and by
  * tools/mobile/engine-report.mjs (NE-26r), whose header check is exactly
@@ -3055,8 +3073,9 @@ export function engineHeaderLine(engine, running = null) {
   const caps = Array.isArray(hello?.capabilities)
     ? (hello.capabilities.length ? hello.capabilities.join(",") : "none")
     : "?";
+  const sharing = typeof buildRow?.routeSharing === "string" ? ` routeSharing=${buildRow.routeSharing}` : "";
   return `engine=native v${ver} proto=${proto} caps=${caps} reason=${why}` +
-    ` strikes=${strikes ?? "?"} hold=${hold} build=${bundle} | ${web}`;
+    ` strikes=${strikes ?? "?"} hold=${hold}${sharing} build=${bundle} | ${web}`;
 }
 
 /** The median of a sorted list, or null. */

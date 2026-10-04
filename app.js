@@ -10760,6 +10760,37 @@ function orderedRowCtx(ctx) {
   return ORDERED_ROW_CTX.test(String(ctx || ""));
 }
 
+/* A FEW WORDS OF WHAT THE EPISODE IS ABOUT, under the title (founder,
+   2026-10-03, with an Apple Podcasts screenshot: "episodes show a few lines of
+   the description to give you a hint what it's about. This is super helpful").
+   A list of titles alone — "#2560 - David Grusch" — tells a listener nothing;
+   the publisher's first sentences do.
+
+   The text is the publisher's own `description` when the row has it (feed
+   episodes, via fullCatalogueRowToEpRowItem) and the row's `hook` otherwise:
+   for a curated-pool episode that is 4a's one-liner, and for a stored snapshot
+   it is the description's first 280 characters (EPISODE_SNAP_HOOK_MAX). Plain
+   text in, plain text out — the notes' linkifier (episodeDescriptionHtml) is
+   for the episode page, where a link has room to be tapped; in a row every
+   pixel is already the title's tap target. Whitespace is collapsed so a
+   chapter list does not arrive as one word per line, and styles.css clamps
+   `.ep-hook` to two lines; the character cap here only keeps a 4,000-character
+   description out of the DOM for every row of a long list. */
+const EP_ROW_SNIPPET_MAX = 220;
+function episodeRowSnippet(item) {
+  const raw = typeof item?.description === "string" && item.description.trim()
+    ? item.description
+    : (typeof item?.hook === "string" ? item.hook : "");
+  const text = raw.replace(/\s+/g, " ").trim();
+  if (!text) return "";
+  /* A hook that only repeats the title says nothing twice. */
+  if (text.toLowerCase() === String(item?.title || "").trim().toLowerCase()) return "";
+  if (text.length <= EP_ROW_SNIPPET_MAX) return text;
+  const cut = text.slice(0, EP_ROW_SNIPPET_MAX);
+  const atWord = cut.lastIndexOf(" ");
+  return (atWord > EP_ROW_SNIPPET_MAX / 2 ? cut.slice(0, atWord) : cut).replace(/[\s,;:.\-–—]+$/, "") + "…";
+}
+
 function epRow(item, idx, ctx, nextIdx) {
   const inApp = playBtn(item, ctx);
   const unavailable = inApp ? "" : notPlayableNote();
@@ -10768,10 +10799,12 @@ function epRow(item, idx, ctx, nextIdx) {
   const progHtml = prog && prog.label
     ? `<span class="ep-progress${prog.state === "played" ? " is-played" : ""}">${esc(prog.label)}</span>`
     : "";
+  const snippet = episodeRowSnippet(item);
   return `<div class="ep-row">
     ${orderedRowCtx(ctx) ? `<span class="q-num ${idx === nextIdx ? "next" : ""}">${idx + 1}</span>` : ""}
     <div class="info">
       <div class="t"><a class="ep-title-link" href="#/episode/${esc(encodeURIComponent(item.id))}">${esc(item.title)}</a>${explicitBadge(item.explicit)}</div>
+      ${snippet ? `<p class="ep-hook">${esc(snippet)}</p>` : ""}
       <div class="s">${joinMeta(showNameLink(item.show, item.show_id), fmtDur(episodeMinutes(item)), esc(dateStr), progHtml)}</div>
     </div>
     ${inApp}${starBtn(item.id)}${upNextBtn(item.id, item)}${unavailable}
@@ -15137,6 +15170,14 @@ function holdPolicyWord(policy) {
   return m ? `${m[1]} min` : "not known";
 }
 
+/** The word after "Route sharing:" for the policy the engine confirmed
+    storing ("default" | "longFormAudio"), or "not known" before a tap. */
+function routeSharingWord(policy) {
+  if (policy === "longFormAudio") return "Long-form";
+  if (policy === "default") return "Default";
+  return "not known";
+}
+
 const ENGINE_DEV_ROWS = [
   {
     id: "engine-mode-override", cmd: "setModeOverride",
@@ -15158,6 +15199,18 @@ const ENGINE_DEV_ROWS = [
       btn.setAttribute("aria-checked", String(st.holdPolicy === "forever"));
     },
     next(st) { return { policy: st.holdPolicy === "forever" ? "none" : "forever" }; },
+  },
+  {
+    /* NE-40 (DV-8): the M3 drive's optional `.longFormAudio` arm. Stored by
+       the engine and applied at the NEXT launch, like the engine setting; the
+       Copy header's `routeSharing=` says which policy a launch ran. */
+    id: "engine-route-sharing", cmd: "setRouteSharing",
+    paint(btn, st) {
+      const word = routeSharingWord(st.routeSharing);
+      setControlLabel(btn, `Route sharing: ${word} (applies after restart)`,
+        `Route sharing: ${word}, applies after restart`);
+    },
+    next(st) { return { policy: st.routeSharing === "longFormAudio" ? "default" : "longFormAudio" }; },
   },
   {
     id: "engine-simulate-termination", cmd: "simulateTermination", oneShot: true,

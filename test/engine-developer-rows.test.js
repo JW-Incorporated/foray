@@ -129,6 +129,7 @@ function fakeEngine({ status = null, answer = () => ({ ok: true }), hold = false
       if (reply && reply.ok && eng.status) {
         if (cmd === "setHoldPolicy") eng.status = { ...eng.status, holdPolicy: args.policy };
         if (cmd === "setModeOverride") eng.status = { ...eng.status, override: args.mode };
+        if (cmd === "setRouteSharing") eng.status = { ...eng.status, routeSharing: args.policy };
       }
       return reply;
     },
@@ -323,6 +324,33 @@ test("Pause hold: a tap sends setHoldPolicy through the player and paints the en
   await h.row("engine-hold-policy").click();
   assert.deepStrictEqual(plain(eng.sends[1]), { cmd: "setHoldPolicy", args: { policy: "forever" } }, "and back");
   assert.strictEqual(h.row("engine-hold-policy").textContent, "Pause hold: forever");
+});
+
+test("NE-40 Route sharing: the row appears with setRouteSharing, starts not known, and a tap toggles the trial for the next launch", async () => {
+  /* The M3 drive's optional `.longFormAudio` arm (DV-8). The engine stores it
+     and applies it at the next launch; the row reads back what the engine
+     confirmed storing.
+     KILLING MUTATION 1: send `{ policy: "longFormAudio" }` regardless — the
+     trial could never be turned off from the phone. KILLING MUTATION 2: paint
+     "Default" before any tap — the row would claim a value nobody read. */
+  const eng = fakeEngine({ status: nativeStatus({ commands: [...ALL, "setRouteSharing"], routeSharing: null }) });
+  const h = await mount({ engine: eng });
+  h.openDrawer();
+  const row = () => h.row("engine-route-sharing");
+  assert.strictEqual(row().textContent, "Route sharing: not known (applies after restart)");
+  await row().click();
+  assert.deepStrictEqual(plain(eng.sends), [{ cmd: "setRouteSharing", args: { policy: "longFormAudio" } }]);
+  assert.strictEqual(row().textContent, "Route sharing: Long-form (applies after restart)");
+  await row().click();
+  assert.deepStrictEqual(plain(eng.sends[1]), { cmd: "setRouteSharing", args: { policy: "default" } }, "and back");
+  assert.strictEqual(row().textContent, "Route sharing: Default (applies after restart)");
+});
+
+test("NE-40 Route sharing: no row on a build whose engine does not take setRouteSharing", async () => {
+  const eng = fakeEngine({ status: nativeStatus() });
+  const h = await mount({ engine: eng });
+  h.openDrawer();
+  assert.strictEqual(h.row("engine-route-sharing"), null);
 });
 
 test("Playback engine: a tap steps Automatic -> Native -> Web -> Automatic through setModeOverride", async () => {

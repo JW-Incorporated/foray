@@ -447,7 +447,7 @@ final class EngineOwnershipTests: XCTestCase {
         let diags = launch.world.output.diags.count
         let seen = launch.world.log.entries.count
         launch.world.session.post(.interruptionEnded(shouldResume: true))
-        launch.world.session.post(.route(RouteChange(oldDeviceUnavailable: true, routeName: "Car", isCarRoute: true)))
+        launch.world.session.post(.route(RouteChange(oldDeviceUnavailable: true, portType: "CarAudio", portUID: "car-1")))
         launch.world.session.post(.mediaServicesReset)
         launch.world.background.post(.foreground)
         launch.lifecycle.post()

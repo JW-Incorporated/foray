@@ -115,11 +115,12 @@ public final class EngineCore {
     }
 
     /**
-     * {@code canNext} (plan §5.5): the queue has a next item, or the continuation chain is
-     * non-empty, REGARDLESS of {@code autoAdvance}. A Foray never chains.
+     * {@code canNext} (plan §5.5): the queue has a next item (a narration line counts,
+     * NE-39n: Next lands on it), or the continuation chain is non-empty, REGARDLESS of
+     * {@code autoAdvance}. A Foray never chains.
      */
     public boolean canNext() {
-        return nextItem(cursor(), true) != null || (state.forayId == null && !state.chain.isEmpty());
+        return nextItem(cursor(), false) != null || (state.forayId == null && !state.chain.isEmpty());
     }
 
     /** Previous restarts the item in place, so it exists whenever one does. */
@@ -390,9 +391,14 @@ public final class EngineCore {
         }
     }
 
-    /** Next: the queue's next item (bridges stepped over), else the first continuation hop. */
+    /**
+     * Next: the queue's next item, a narration line included (NE-39n, ported here with the
+     * Next half of A-64), else the first continuation hop. The JS reference is
+     * queue-manager.js {@code _skipToNext}; from a clip whose next item is a line, Next lands
+     * on the line; from a line, on the item after it.
+     */
     private void next(Source source) {
-        if (nextItem(cursor(), true) != null) {
+        if (nextItem(cursor(), false) != null) {
             begin(DeferredIntent.SKIP_NEXT, source);
             return;
         }
@@ -763,7 +769,8 @@ public final class EngineCore {
                 dispatch(new PlayerEvent.Play(item.ref()), LoadOffsets.explicitAt(explicit));
             }
             case DeferredIntent.SkipNext s -> {
-                Next next = nextItem(cursor(), true);
+                // The next item, a line included (NE-39n; `next(source)`).
+                Next next = nextItem(cursor(), false);
                 if (next == null) {
                     refuse(Refusal.NO_NEXT);
                     return;
