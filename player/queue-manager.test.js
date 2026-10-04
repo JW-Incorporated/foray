@@ -3783,6 +3783,47 @@ test("§14: a media error during the first line's load does not stop the player 
   assert.ok(log.includes(`narration.fallback reason=unsupported at=load item=nar-1 host=${N_HOST}`));
 });
 
+test("§16: a media error during a Foray clip's load (web lane) is retried, not reported idle first", async () => {
+  /* The §14 ordering trap, for a clip: html-audio-backend's persistent `error`
+     listener calls `onError` BEFORE the load rejects. Reported as `E.error`, the
+     player was idle by the time `_retryOrSkipClip` looked, so a web clip with a
+     media error stopped the Foray. Here the clip errors on BOTH attempts: one
+     retry, then the step to the next clip.
+     MUTATION THAT KILLS THIS: delete the `_clipLoadInFlight` branch of
+     `_onBackendError` (idle, `player.error`, one load). */
+  const { m, backend, log } = make({
+    backendClass: FlakyBackend,
+    backend: { errors: { "foray-1#1": "load failed (code 4) for foray-1#1" }, errorEventFor: ["foray-1#1"] },
+  });
+  await m.playForay(foray([fseg(), fseg({ item_id: "ep-other", start_sec: 400, end_sec: 500 }),
+    fseg({ start_sec: 700, end_sec: 800 })]), { resolveItem });
+  backend.currentTime = 210;
+  backend.calls.length = 0;
+  await backend.onItemEnded("outPoint");
+  await tick();
+  assert.deepEqual(backend.loads(), ["load:foray-1#1", "load:foray-1#1", "load:foray-1#2"], `got ${backend.calls}`);
+  assert.equal(m.state.type, "playing", `not idle: ${log.join(" | ")}`);
+  assert.equal(m.currentIndex, 2);
+  assert.ok(log.some((l) => /^foray\.segment\.error\.leftToLoad foray-1#1/.test(l)), `got ${log}`);
+  assert.ok(!log.some((l) => /player\.error/.test(l)), `got ${log}`);
+});
+
+test("§16: a media error on a plain episode's load still stops the player (not a clip)", async () => {
+  /* MUTATION THAT KILLS THIS: set `_clipLoadInFlight` for every backend load
+     (drop the `_isForayClip` test in `_loadRenderedOrCatch`) — the early report
+     is swallowed and `foray.segment.error.leftToLoad a` appears. */
+  const { m, backend, log } = make({
+    backendClass: FlakyBackend,
+    backend: { errors: { a: "load failed (code 4) for a" }, errorEventFor: ["a"] },
+  });
+  m.loadQueue([ep("a"), ep("b")]);
+  await m.play(0);
+  await tick();
+  assert.equal(m.state.type, "idle");
+  assert.deepEqual(backend.loads(), ["load:a"]);
+  assert.ok(!log.some((l) => /leftToLoad/.test(l)), `got ${log}`);
+});
+
 test("§14: jumping onto a line whose file fails speaks it (the jump case)", async () => {
   const tts = fakeTts();
   const { m, log } = make({

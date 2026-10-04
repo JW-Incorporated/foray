@@ -770,6 +770,10 @@ export class PlayerQueueManager {
     /** §14: `{ id, seq }` while a RENDERED narration load that can fall back to
         its script is in flight, else `null` — see `_onBackendError`. */
     this._narrationLoadInFlight = null;
+    /** §16: `{ id, seq }` while a Foray CLIP's backend load is in flight, else
+        `null`, so the element's early `error` report is left to the load's own
+        rejection, which retries or steps over — see `_onBackendError`. */
+    this._clipLoadInFlight = null;
     /** §14: `{ id, seq }` while a FALLBACK `speak()` is in flight — the file
         has already failed and the line is on its way to speech — else `null`.
         See `_onBackendError`. */
@@ -2016,7 +2020,7 @@ export class PlayerQueueManager {
    * @returns {Promise<boolean>} true when the failure was handled here
    */
   async _retryOrSkipClip(item, ref, startOffset, attempt, err) {
-    if (!item || item.kind === TTS || !boundsOf(item)) return false;
+    if (!this._isForayClip(item)) return false;
     if (!sameItemRef(focusOf(this.state), ref)) return false;
     const waiting = this.state.type === "loadingItem";
     if (!waiting && this.state.type !== "interrupted") return false;
@@ -2032,6 +2036,13 @@ export class PlayerQueueManager {
     this._emit(`foray.segment.skipped.atLoad ${item.id}: did not load in ${attempt} attempts (${why})`);
     await this._skipUnplayableSegment();
     return true;
+  }
+
+  /** §16: a Foray CLIP, the item a failed load retries and then steps over:
+      bounded (a slice of an episode) and not a narration line. A plain
+      episode has no bounds; a line and a bridge are TTS-kind. */
+  _isForayClip(item) {
+    return item != null && item.kind !== TTS && boundsOf(item) != null;
   }
 
   /** Is this a §7-item-1 script-only narration item — TTS-kind, a non-empty
@@ -2066,8 +2077,22 @@ export class PlayerQueueManager {
    */
   async _loadRenderedOrCatch(item, startOffset, seq) {
     if (!this._canSpeakInstead(item)) {
-      await this.backend.load(item, { startOffset });
-      return null;
+      if (!this._isForayClip(item)) {
+        await this.backend.load(item, { startOffset });
+        return null;
+      }
+      /* §16: the same ordering trap as a narration line's, for a clip. The
+         element's persistent `error` listener reports a media error BEFORE
+         this load rejects; reported as `E.error`, the player was idle by the
+         time `_retryOrSkipClip` looked, so the web lane never retried. */
+      const marker = { id: item.id, seq };
+      this._clipLoadInFlight = marker;
+      try {
+        await this.backend.load(item, { startOffset });
+        return null;
+      } finally {
+        if (this._clipLoadInFlight === marker) this._clipLoadInFlight = null;
+      }
     }
     const marker = { id: item.id, seq };
     this._narrationLoadInFlight = marker;
@@ -2098,7 +2123,9 @@ export class PlayerQueueManager {
    *   1. a rendered narration load that can fall back is IN FLIGHT: the
    *      element's persistent `error` listener fires before the load's own, so
    *      reporting here would stop the player before the load's rejection
-   *      could fall back. The load decides; nothing is dispatched here.
+   *      could fall back. The load decides; nothing is dispatched here. A
+   *      Foray clip's load (§16) is the same case: its rejection retries or
+   *      steps over the clip, and that is lost if this has gone idle first.
    *   2. the element's file has ALREADY been given up on — a fallback
    *      `speak()` is in flight, or the line is being spoken instead of its
    *      file. A load that failed by DEADLINE leaves the element pointed at
@@ -2116,6 +2143,13 @@ export class PlayerQueueManager {
     const inFlight = this._narrationLoadInFlight;
     if (inFlight && inFlight.seq === this._loadSeq) {
       this._emit(`narration.error.leftToLoad ${inFlight.id} — its own load's failure decides`);
+      return undefined;
+    }
+    /* §16, the same trap for a Foray clip: its load's rejection follows and
+       either retries, steps over, or dispatches the `E.error` this would have. */
+    const clipLoad = this._clipLoadInFlight;
+    if (clipLoad && clipLoad.seq === this._loadSeq) {
+      this._emit(`foray.segment.error.leftToLoad ${clipLoad.id} — its own load's failure decides`);
       return undefined;
     }
     const pending = this._narrationFallbackPending;
