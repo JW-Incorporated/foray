@@ -47,7 +47,7 @@
     },
     "continuation": {
       "files": {
-        "player/parity/fixtures/continuation/continuation.json": "e571360141d9848d8cc6b076d20327bf4da6b4398f438788ccbcbdd7437ef7c8"
+        "player/parity/fixtures/continuation/continuation.json": "d59686fd73a50d3601eb1f967340b64a71a06f40635bfba03cb95cffda205904"
       },
       "ids": [
         "continuation/plan-queue-head-not-row-after-finished",
@@ -98,7 +98,14 @@
         "continuation/applied-null-is-empty",
         "continuation/applied-corrupt-is-empty",
         "continuation/applied-string-is-empty",
-        "continuation/applied-valid-kept"
+        "continuation/applied-valid-kept",
+        "continuation/tail-after-list-exhausted",
+        "continuation/tail-only-when-queue-and-list-empty",
+        "continuation/tail-waits-for-the-list",
+        "continuation/tail-skips-unplayable-and-finished",
+        "continuation/tail-empty-is-the-end",
+        "continuation/next-after-ended-tail-pick-moves-chain-not-cursor",
+        "continuation/chain-walks-into-the-tail"
       ]
     },
     "contract": {
