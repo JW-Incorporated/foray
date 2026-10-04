@@ -1080,7 +1080,7 @@ const FLOORS = {
      #276/show-pages shape: silently wrong is the failure mode, not a crash.
      Every test names its mutation; see the suite header for the full list
      of what each test pins. */
-  "test/up-next-queue.test.js": 20, // audit round 2, lane L3 (2026-09-23): the page is a live view of cp_queue, .is-current, the row mark, one unnamed sentence, no + Up Next on an archived part, addToQueue refuses the unplayable, the cap never prunes a queued key, fullPool memoised; 13 -> 20 //
+  "test/up-next-queue.test.js": 26, // PQ-02 (#762): Play next lands after the playing row, adds/refuses like addToQueue, Clear keeps the playing row, the controls render, the episode page's Play next; 20 -> 26 (exact: the 21st test had landed unfloored) // audit round 2, lane L3 (2026-09-23): the page is a live view of cp_queue, .is-current, the row mark, one unnamed sentence, no + Up Next on an archived part, addToQueue refuses the unplayable, the cap never prunes a queued key, fullPool memoised; 13 -> 20 //
   /* Library screen (#/library, `docs/ux/foray-mockup.jsx`'s LibraryScreen,
      kanban card t_a1e7a69c). Floored for the same reason up-next-queue is:
      the four sections' decay path (an aged-out saved/history id, an empty
@@ -1284,7 +1284,7 @@ const FLOORS = {
      writes reset), and firing only when ALL required checks were missing — plus
      the duplicate-dispatch guard, which 85% of dispatched CI runs needed.
      85 -> 97. */
-  "tools/ci/pr-triage.test.mjs": 120, // round-3 review: +9 -- a founder-armed outside PR is not disarmed (the bot's is, and freeze/hold/governed paths still win), and the sweep re-decides on fresh facts right before it arms (recheckArm, the recheck CLI, pr-hygiene runs it before any merge); automerge-nightly passes --armed-by; 111 -> 120 // round-3 L7: security-1 (the sweep never arms a fork or foreign author, and disarms one), ci-release-2/-7 (renames and truncation reach the sweep), ci-release-9/-10/-17 (per-PR groups + comment re-read, dispatch guard reads conclusions, open PRs paginated); 97 -> 111
+  "tools/ci/pr-triage.test.mjs": 124, // OPS-06 (#312): +3 -- a conflicting founder PR leaves the queue but is reported as blocked, rendered under the table with links, and an empty blocked list renders exactly the old block; 121 -> 124 // OPS-05 (#309): +1 -- the row link is the PR page, never the REST endpoint; 120 -> 121 // round-3 review: +9 -- a founder-armed outside PR is not disarmed (the bot's is, and freeze/hold/governed paths still win), and the sweep re-decides on fresh facts right before it arms (recheckArm, the recheck CLI, pr-hygiene runs it before any merge); automerge-nightly passes --armed-by; 111 -> 120 // round-3 L7: security-1 (the sweep never arms a fork or foreign author, and disarms one), ci-release-2/-7 (renames and truncation reach the sweep), ci-release-9/-10/-17 (per-PR groups + comment re-read, dispatch guard reads conclusions, open PRs paginated); 97 -> 111
   "tools/ci/run-suites.test.mjs": 37, // tests-4 (round-3 audit): +1 -- the root group carries --test-timeout; 36 -> 37
   /* NE-25a's click tracks, read without a decoder: the bytes are the ones the
      descriptor names, the WAV is sample-exact, "CBR" and "no TOC" mean what
@@ -1981,9 +1981,10 @@ const FLOORS = {
      vitest → switch → add → diff --cached → commit → push → pr — with `now`
      pinned to a different day than the digest, because every past nightly
      incident was an ordering or string bug (a branch named after today, a
-     third staged file, a PR on red tests). 15 is the true count at landing;
+     third staged file, a PR on red tests). 16 is the true count at landing
+     (15 at OPS-14, +1 prompt-shape test from OPS-17);
      each test names the mutation that kills it. */
-  "tools/refresh/nightly-runner.test.mjs": 15,
+  "tools/refresh/nightly-runner.test.mjs": 17, // OPS-17 review: +1 -- the live prompt steps match finish (no stale "step 7", restore after TESTS_FAILED, GIT_FAILED stops); 16 -> 17
   /* S-01's other half: proves the actual bash in nightly-refresh.yml's
      "Publish digest to refresh-digest branch" step, not a JS reimplementation
      of it. Extracts the real `run:` block, shims `gh`/`jq`, and round-trips a
@@ -2062,7 +2063,7 @@ const FLOORS = {
      both idempotency paths (S-04a's own state.json skip, and the
      independent release-already-exists check that catches a lost
      state.json). */
-  "tools/shows/publish-release.test.mjs": 19, // audit round 3 (L8): +1, POINTER_SCHEMA_VERSION; 18 -> 19
+  "tools/shows/publish-release.test.mjs": 28, // OPS-03 review: +2 -- a starter (half-uploaded) asset reads as missing, and a stranded draft BATCH resumes in publishShardReleases (the #969 fix at the call site); 26 -> 28 // OPS-03: draft -> chunked uploads -> publish, resume, retry, rate-limit wait, pacing, releaseState; 19 -> 26 (true count)
   "tools/shows/run-and-publish.test.mjs": 10, // OPS-01: +3 describeExecError (FATAL lines carry code/signal/stderr/stdout); 6 -> 10 (true count: 7 existing + 3)
   /* Fresh-context review finding (2026-09-05): runBuild spawns
      import-dump.mjs as a real child process, and Node does NOT
@@ -2185,6 +2186,12 @@ const FLOORS = {
      denied boundary, and whether a floor in THIS file fell. A test deleted
      here is an unread merge that stops being counted. */
   "tools/audit/merge-audit.test.mjs": 16, // OPS-08: + the workflow-shape test (two comments on #129); + the comment-size compaction test
+  /* The worktree collector (OPS-12). It runs `git worktree remove` on the
+     founder's machine. Every test here is a thing it must NOT remove -- a
+     dirty tree, an open or closed-unmerged PR, a branch with no PR, a detached
+     head not on main -- or a proof that the dry run mutates nothing. A test
+     deleted here is a keep-* that could become a remove. */
+  "tools/dev/worktree-gc.test.mjs": 27, // OPS-12 review (2026-10-04): +8 -- keep-unpushed (tip not in the merged head), the CLI asks git for containment, fork PRs ignored, prototype-named branches, locked trees, strays found from the main tree not cwd, a refused branch -D or prune exits 1, --repo without a value; 19 -> 27
   "tools/poll/tiers.test.mjs": 9, // PKG-05 (S-10): new -- cadence tiers (seed, correction, success/failure, dead)
 };
 

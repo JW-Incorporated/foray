@@ -198,7 +198,9 @@ public class ExoDeckTest {
         List<Boolean> awake = new ArrayList<>();
         List<Boolean> heldAtReady = new ArrayList<>();
         GatedDataSource.Gate gate = new GatedDataSource.Gate(0);
+        ExoDeck.Config[] config = new ExoDeck.Config[1];
         try (DeckHarness h = new DeckHarness(GatedDataSource.factory(gate), c -> {
+            config[0] = c;
             c.gateAwake = awake::add;
             c.loadDeadlineSec = 3;
         })) {
@@ -214,9 +216,22 @@ public class ExoDeckTest {
             assertEquals("the deadline lets it go", List.of(true, false), awake);
 
             gate.open();
+            // From here the case is about the lock across READY, not the deadline, so the deadline
+            // moves out of reach. The bytes come from a REAL loader thread while the harness's
+            // FakeClock auto-advances in virtual time whenever the main looper idles; on a busy
+            // runner three virtual seconds passed before the thread delivered, the deadline fired,
+            // and READY never came: TimeoutException at the await below after a full minute of
+            // wall time (android-build runs 36672347357, 36822330713, 37226434493). The deck reads
+            // config.loadDeadlineSec when it arms each load (ExoDeck.armDeadline), so this applies
+            // to load 2 onward. A deadline that still fires now fails at once, by name.
+            config[0].loadDeadlineSec = 600;
             int from = h.events.size();
             h.deck.send(load(2, CBR, 5.0));
             assertEquals(List.of(true, false, true), awake);
+            h.runUntil(() -> h.find(DeckEvent.Ready.class, from) != null
+                    || h.find(DeckEvent.DeadlineExceeded.class, from) != null);
+            assertNull("load 2 hit its deadline instead of becoming ready",
+                    h.find(DeckEvent.DeadlineExceeded.class, from));
             h.await(DeckEvent.Ready.class, from);
             assertEquals("still held while ready is delivered (a play inside it posts Media3's lock first)",
                     List.of(true), heldAtReady);
