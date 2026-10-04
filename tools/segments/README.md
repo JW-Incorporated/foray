@@ -682,6 +682,58 @@ all; the denominator shrank because 1,914 transcripts stopped being counted as
 anchorable. An honest 8,833 is worth more than a hopeful 10,747.
 
 
+## `ad_*` fields on `data/segment-sources.json`
+
+ADR-0008's PADDABLE tier, per episode. A source row whose `id` has probes in
+`data/ad-pad-probes.json` (one row per observation of that episode's delivered
+file, appended by `probe-ad-pad.mjs`) carries seven stamped fields:
+
+| field | unit | meaning |
+|---|---|---|
+| `ad_delta_sec` | seconds, 0.1 s | `delta_max`: the largest delivered-minus-reference delta across the usable probes |
+| `ad_delta_probes` | count | N, the usable probes the pad rests on (always ≥ 2) |
+| `ad_delta_spread_sec` | seconds, 0.1 s | `delta_max − delta_min`: the margin |
+| `ad_pad_sec` | seconds, 0.1 s | `max(0, delta_max) + spread`: how early the player seeks |
+| `ad_tier` | `PADDABLE` or `LOCATE-REQUIRED` | PADDABLE when `ad_pad_sec ≤ ANCHOR_TIME_TOLERANCE_SEC` (120 s, `merge-segments.mjs`) |
+| `ad_pad_method` | `ranged-get`, `decode` or `mixed` | the instrument behind the usable probes |
+| `ad_pad_measured_at` | ISO 8601 timestamp | the latest usable probe's `probed_at` |
+
+The reference every delta is measured against is the row's own `duration_sec`
+(`check-forays.mjs` holds it within 2 s of each segment's
+`reference_duration_sec`). The arithmetic is `ad-pad.mjs`'s `padFromProbes`;
+its refusals leave the row exactly as it was:
+
+- **N ≥ 2.** One probe has no spread, and a margin of nothing is not an upper
+  bound. A row with fewer than two usable probes is refused (`n<2`).
+- **An untrusted ranged GET poisons the set.** On a host in
+  `RANGED_GET_UNTRUSTED_HOSTS` (`tools/transcribe/ad-inflation.mjs`,
+  HUMAN-ACTIONS #24) a ranged request is served the ad-free master's length, so
+  its `Content-Range` total is a declaration, not a measurement — and every
+  other probe from that host is equally spoofed. The episode is refused, not
+  thinned. The consumers of that trust rule here are `ad-pad.mjs` and
+  `probe-ad-pad.mjs`.
+- An undersized delivery (`undersized`) and a row with no `duration_sec` are
+  refused too.
+
+**`stamp-ad-pad.mjs` is the only writer** of these seven fields.
+
+```bash
+node tools/segments/stamp-ad-pad.mjs            # write every ledger-named row
+node tools/segments/stamp-ad-pad.mjs --dry-run  # print the stamped/refused lines, write nothing
+node tools/segments/stamp-ad-pad.mjs --check    # exit 1 on any field the ledger no longer reproduces
+```
+
+`AD_PAD_LEDGER` and `SEGMENT_SOURCES` override the two paths. A ledger
+`item_id` with no source row is reported and never invented; a row the ledger
+does not name is never touched, so the hand-authored `ad_*` rows keep every
+value. `--check` mirrors the writer: it compares the seven fields on every
+ledger-named row the writer would stamp (numbers after rounding to 0.1 s,
+`ad_pad_measured_at` exactly), and skips a row the writer would refuse.
+
+`ad_free_ratio` is a **legacy, read-only** field from the ad-inflation scan.
+Nothing in `tools/segments/` writes, removes or validates it.
+
+
 ## `merge-segments.mjs`
 
 The merge stage of the extraction pipeline: it distrusts the agent, validates

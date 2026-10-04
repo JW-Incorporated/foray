@@ -1,0 +1,706 @@
+{
+  "family": "manager-foray",
+  "note": "§16 of queue-manager.js (the M2 car drive, 2026-10-01): a Foray CLIP whose load fails, by deadline or by error, is loaded again ONCE at the same in-point, and a retry that fails too steps over the clip to the next item instead of leaving the Foray idle and silent. Paused during the load, the retry runs quietly and the listener's play finds the clip; a failed retry while paused stops as before. A plain episode is never retried. The deck keeping what the first attempt fetched (AVDeck continueInFlight) is the deck's, pinned by AVDeckTests.",
+  "cases": [
+    {
+      "id": "manager-foray/a-clip-whose-load-fails-once-is-retried-and-plays",
+      "covers": [
+        "queue-manager::§16: a Foray clip whose load fails once is loaded again at the same in-point, and plays"
+      ],
+      "note": "The seam's load fails (the deck's deadline); the same clip at the same in-point is loaded again, lands, and plays. No pause, no idle, no step.",
+      "setup": {
+        "target": "manager",
+        "catalogue": {
+          "ep-static": {
+            "id": "ep-static",
+            "audio_url": "https://cdn.example/static.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Static",
+            "show": "Indie"
+          },
+          "ep-other": {
+            "id": "ep-other",
+            "audio_url": "https://cdn.example/other.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Other",
+            "show": "Indie"
+          }
+        },
+        "backend": { "holdLoads": true }
+      },
+      "steps": [
+        {
+          "call": "playForay",
+          "args": [
+            {
+              "id": "foray-1",
+              "title": "Fire",
+              "items": [
+                {
+                  "type": "segment",
+                  "item_id": "ep-static",
+                  "start_sec": 100,
+                  "end_sec": 210,
+                  "why": "he explains it plainly"
+                },
+                {
+                  "type": "segment",
+                  "item_id": "ep-other",
+                  "start_sec": 400,
+                  "end_sec": 500,
+                  "why": "he explains it plainly"
+                },
+                {
+                  "type": "segment",
+                  "item_id": "ep-static",
+                  "start_sec": 700,
+                  "end_sec": 800,
+                  "why": "he explains it plainly"
+                }
+              ]
+            }
+          ],
+          "await": false
+        },
+        { "deck": "loaded", "id": "foray-1#0" },
+        { "settle": 1 },
+        { "checkpoint": "playing" },
+        { "deck": "time", "sec": 210 },
+        { "deck": "ended", "reason": "outPoint" },
+        { "checkpoint": "seam" },
+        { "deck": "loadFailed", "id": "foray-1#1" },
+        { "checkpoint": "retrying" },
+        { "deck": "loaded", "id": "foray-1#1" },
+        { "settle": 1 },
+        { "checkpoint": "retried" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "playing",
+            "ops": ["load:foray-1#0@100", "rate:1", "outPoint:210", "play"],
+            "playhead": "foray-1#0",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": true,
+            "index": 1,
+            "name": "seam",
+            "ops": ["load:foray-1#1@400"],
+            "playhead": "foray-1#0",
+            "rate": 1,
+            "state": "loadingItem"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": true,
+            "index": 1,
+            "name": "retrying",
+            "ops": ["load:foray-1#1@400"],
+            "playhead": "foray-1#0",
+            "rate": 1,
+            "state": "loadingItem"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "retried",
+            "ops": ["rate:1", "outPoint:500", "play"],
+            "playhead": "foray-1#1",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "end",
+            "ops": [],
+            "playhead": "foray-1#1",
+            "rate": 1,
+            "state": "playing"
+          }
+        ],
+        "ops": [
+          "load:foray-1#0@100",
+          "rate:1",
+          "outPoint:210",
+          "play",
+          "load:foray-1#1@400",
+          "load:foray-1#1@400",
+          "rate:1",
+          "outPoint:500",
+          "play"
+        ]
+      }
+    },
+    {
+      "id": "manager-foray/a-clip-that-fails-twice-is-stepped-over",
+      "covers": [
+        "queue-manager::§16: a Foray clip that fails twice is stepped over to the next item, never left idle"
+      ],
+      "note": "The seam's load and its retry both fail: the clip is stepped over (the ladder's path) and the next clip loads and plays. The car drive's Foray sat idle here.",
+      "setup": {
+        "target": "manager",
+        "catalogue": {
+          "ep-static": {
+            "id": "ep-static",
+            "audio_url": "https://cdn.example/static.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Static",
+            "show": "Indie"
+          },
+          "ep-other": {
+            "id": "ep-other",
+            "audio_url": "https://cdn.example/other.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Other",
+            "show": "Indie"
+          }
+        },
+        "backend": { "holdLoads": true }
+      },
+      "steps": [
+        {
+          "call": "playForay",
+          "args": [
+            {
+              "id": "foray-1",
+              "title": "Fire",
+              "items": [
+                {
+                  "type": "segment",
+                  "item_id": "ep-static",
+                  "start_sec": 100,
+                  "end_sec": 210,
+                  "why": "he explains it plainly"
+                },
+                {
+                  "type": "segment",
+                  "item_id": "ep-other",
+                  "start_sec": 400,
+                  "end_sec": 500,
+                  "why": "he explains it plainly"
+                },
+                {
+                  "type": "segment",
+                  "item_id": "ep-static",
+                  "start_sec": 700,
+                  "end_sec": 800,
+                  "why": "he explains it plainly"
+                }
+              ]
+            }
+          ],
+          "await": false
+        },
+        { "deck": "loaded", "id": "foray-1#0" },
+        { "settle": 1 },
+        { "checkpoint": "playing" },
+        { "deck": "time", "sec": 210 },
+        { "deck": "ended", "reason": "outPoint" },
+        { "checkpoint": "seam" },
+        { "deck": "loadFailed", "id": "foray-1#1" },
+        { "deck": "loadFailed", "id": "foray-1#1" },
+        { "checkpoint": "stepped" },
+        { "deck": "loaded", "id": "foray-1#2" },
+        { "settle": 1 },
+        { "checkpoint": "next-plays" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "playing",
+            "ops": ["load:foray-1#0@100", "rate:1", "outPoint:210", "play"],
+            "playhead": "foray-1#0",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": true,
+            "index": 1,
+            "name": "seam",
+            "ops": ["load:foray-1#1@400"],
+            "playhead": "foray-1#0",
+            "rate": 1,
+            "state": "loadingItem"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": true,
+            "index": 2,
+            "name": "stepped",
+            "ops": ["load:foray-1#1@400", "load:foray-1#2@700"],
+            "playhead": "foray-1#0",
+            "rate": 1,
+            "state": "loadingItem"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 2,
+            "name": "next-plays",
+            "ops": ["rate:1", "outPoint:800", "play"],
+            "playhead": "foray-1#2",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 2,
+            "name": "end",
+            "ops": [],
+            "playhead": "foray-1#2",
+            "rate": 1,
+            "state": "playing"
+          }
+        ],
+        "ops": [
+          "load:foray-1#0@100",
+          "rate:1",
+          "outPoint:210",
+          "play",
+          "load:foray-1#1@400",
+          "load:foray-1#1@400",
+          "load:foray-1#2@700",
+          "rate:1",
+          "outPoint:800",
+          "play"
+        ]
+      }
+    },
+    {
+      "id": "manager-foray/a-retry-keeps-the-in-point-of-a-resume-inside-the-clip",
+      "covers": [
+        "queue-manager::§16: the retry asks for the in-point the failed load asked for (a resume inside the clip)"
+      ],
+      "note": "Paused 50 s into a clip, the listener's play loads it in place (@150); that load fails, and the retry asks for @150 again, never the clip's start.",
+      "setup": {
+        "target": "manager",
+        "catalogue": {
+          "ep-static": {
+            "id": "ep-static",
+            "audio_url": "https://cdn.example/static.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Static",
+            "show": "Indie"
+          },
+          "ep-other": {
+            "id": "ep-other",
+            "audio_url": "https://cdn.example/other.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Other",
+            "show": "Indie"
+          }
+        },
+        "backend": { "holdLoads": true }
+      },
+      "steps": [
+        {
+          "call": "playForay",
+          "args": [
+            {
+              "id": "foray-1",
+              "title": "Fire",
+              "items": [
+                {
+                  "type": "segment",
+                  "item_id": "ep-static",
+                  "start_sec": 100,
+                  "end_sec": 210,
+                  "why": "he explains it plainly"
+                },
+                {
+                  "type": "segment",
+                  "item_id": "ep-other",
+                  "start_sec": 400,
+                  "end_sec": 500,
+                  "why": "he explains it plainly"
+                },
+                {
+                  "type": "segment",
+                  "item_id": "ep-static",
+                  "start_sec": 700,
+                  "end_sec": 800,
+                  "why": "he explains it plainly"
+                }
+              ]
+            }
+          ],
+          "await": false
+        },
+        { "deck": "loaded", "id": "foray-1#0" },
+        { "settle": 1 },
+        { "deck": "time", "sec": 150 },
+        { "call": "pause" },
+        { "checkpoint": "paused" },
+        { "call": "resume", "await": false },
+        { "deck": "loadFailed", "id": "foray-1#0" },
+        { "checkpoint": "retrying" },
+        { "deck": "loaded", "id": "foray-1#0" },
+        { "settle": 1 },
+        { "checkpoint": "resumed" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "paused",
+            "ops": ["load:foray-1#0@100", "rate:1", "outPoint:210", "play", "pause"],
+            "playhead": "foray-1#0",
+            "rate": 1,
+            "state": "interrupted"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "retrying",
+            "ops": ["load:foray-1#0@150", "load:foray-1#0@150"],
+            "playhead": "foray-1#0",
+            "rate": 1,
+            "state": "loadingItem"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "resumed",
+            "ops": ["rate:1", "outPoint:210", "play"],
+            "playhead": "foray-1#0",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "end",
+            "ops": [],
+            "playhead": "foray-1#0",
+            "rate": 1,
+            "state": "playing"
+          }
+        ],
+        "ops": [
+          "load:foray-1#0@100",
+          "rate:1",
+          "outPoint:210",
+          "play",
+          "pause",
+          "load:foray-1#0@150",
+          "load:foray-1#0@150",
+          "rate:1",
+          "outPoint:210",
+          "play"
+        ]
+      }
+    },
+    {
+      "id": "manager-foray/a-paused-clip-load-is-retried-quietly-and-play-finds-it",
+      "covers": [
+        "queue-manager::§16: paused during a clip's load, a failed load is retried quietly and the play that follows finds it"
+      ],
+      "note": "A pause during the seam's load, then the load fails: the retry is issued while paused (nothing plays), lands, and the listener's play re-enters the clip at its in-point.",
+      "setup": {
+        "target": "manager",
+        "catalogue": {
+          "ep-static": {
+            "id": "ep-static",
+            "audio_url": "https://cdn.example/static.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Static",
+            "show": "Indie"
+          },
+          "ep-other": {
+            "id": "ep-other",
+            "audio_url": "https://cdn.example/other.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Other",
+            "show": "Indie"
+          }
+        },
+        "backend": { "holdLoads": true }
+      },
+      "steps": [
+        {
+          "call": "playForay",
+          "args": [
+            {
+              "id": "foray-1",
+              "title": "Fire",
+              "items": [
+                {
+                  "type": "segment",
+                  "item_id": "ep-static",
+                  "start_sec": 100,
+                  "end_sec": 210,
+                  "why": "he explains it plainly"
+                },
+                {
+                  "type": "segment",
+                  "item_id": "ep-other",
+                  "start_sec": 400,
+                  "end_sec": 500,
+                  "why": "he explains it plainly"
+                }
+              ]
+            }
+          ],
+          "await": false
+        },
+        { "deck": "loaded", "id": "foray-1#0" },
+        { "settle": 1 },
+        { "checkpoint": "playing" },
+        { "deck": "time", "sec": 210 },
+        { "deck": "ended", "reason": "outPoint" },
+        { "checkpoint": "seam" },
+        { "call": "pause" },
+        { "checkpoint": "paused" },
+        { "deck": "loadFailed", "id": "foray-1#1" },
+        { "checkpoint": "retrying-paused" },
+        { "deck": "loaded", "id": "foray-1#1" },
+        { "settle": 1 },
+        { "checkpoint": "landed-paused" },
+        { "call": "resume", "await": false },
+        { "deck": "loaded", "id": "foray-1#1" },
+        { "settle": 1 },
+        { "checkpoint": "resumed" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "playing",
+            "ops": ["load:foray-1#0@100", "rate:1", "outPoint:210", "play"],
+            "playhead": "foray-1#0",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": true,
+            "index": 1,
+            "name": "seam",
+            "ops": ["load:foray-1#1@400"],
+            "playhead": "foray-1#0",
+            "rate": 1,
+            "state": "loadingItem"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "paused",
+            "ops": [],
+            "playhead": "foray-1#0",
+            "rate": 1,
+            "state": "interrupted"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "retrying-paused",
+            "ops": ["load:foray-1#1@400"],
+            "playhead": "foray-1#0",
+            "rate": 1,
+            "state": "interrupted"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "landed-paused",
+            "ops": [],
+            "playhead": "foray-1#1",
+            "rate": 1,
+            "state": "interrupted"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "resumed",
+            "ops": ["load:foray-1#1@400", "rate:1", "outPoint:500", "play"],
+            "playhead": "foray-1#1",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "end",
+            "ops": [],
+            "playhead": "foray-1#1",
+            "rate": 1,
+            "state": "playing"
+          }
+        ],
+        "ops": [
+          "load:foray-1#0@100",
+          "rate:1",
+          "outPoint:210",
+          "play",
+          "load:foray-1#1@400",
+          "load:foray-1#1@400",
+          "load:foray-1#1@400",
+          "rate:1",
+          "outPoint:500",
+          "play"
+        ]
+      }
+    },
+    {
+      "id": "manager-foray/a-paused-clip-whose-retry-fails-stops-as-before",
+      "covers": [
+        "queue-manager::§16: paused during a clip's load, a retry that fails too stops as before (stepping on would start the next item)"
+      ],
+      "note": "Paused during the seam's load, the load and its retry both fail: today's stop (idle, on the clip), never a step that would start the next clip behind the pause.",
+      "setup": {
+        "target": "manager",
+        "catalogue": {
+          "ep-static": {
+            "id": "ep-static",
+            "audio_url": "https://cdn.example/static.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Static",
+            "show": "Indie"
+          },
+          "ep-other": {
+            "id": "ep-other",
+            "audio_url": "https://cdn.example/other.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Other",
+            "show": "Indie"
+          }
+        },
+        "backend": { "holdLoads": true }
+      },
+      "steps": [
+        {
+          "call": "playForay",
+          "args": [
+            {
+              "id": "foray-1",
+              "title": "Fire",
+              "items": [
+                {
+                  "type": "segment",
+                  "item_id": "ep-static",
+                  "start_sec": 100,
+                  "end_sec": 210,
+                  "why": "he explains it plainly"
+                },
+                {
+                  "type": "segment",
+                  "item_id": "ep-other",
+                  "start_sec": 400,
+                  "end_sec": 500,
+                  "why": "he explains it plainly"
+                },
+                {
+                  "type": "segment",
+                  "item_id": "ep-static",
+                  "start_sec": 700,
+                  "end_sec": 800,
+                  "why": "he explains it plainly"
+                }
+              ]
+            }
+          ],
+          "await": false
+        },
+        { "deck": "loaded", "id": "foray-1#0" },
+        { "settle": 1 },
+        { "checkpoint": "playing" },
+        { "deck": "time", "sec": 210 },
+        { "deck": "ended", "reason": "outPoint" },
+        { "checkpoint": "seam" },
+        { "call": "pause" },
+        { "deck": "loadFailed", "id": "foray-1#1" },
+        { "deck": "loadFailed", "id": "foray-1#1" },
+        { "checkpoint": "stopped" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "playing",
+            "ops": ["load:foray-1#0@100", "rate:1", "outPoint:210", "play"],
+            "playhead": "foray-1#0",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": true,
+            "index": 1,
+            "name": "seam",
+            "ops": ["load:foray-1#1@400"],
+            "playhead": "foray-1#0",
+            "rate": 1,
+            "state": "loadingItem"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "stopped",
+            "ops": ["load:foray-1#1@400", "pause"],
+            "playhead": "foray-1#0",
+            "rate": 1,
+            "state": "idle"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "end",
+            "ops": [],
+            "playhead": "foray-1#0",
+            "rate": 1,
+            "state": "idle"
+          }
+        ],
+        "ops": [
+          "load:foray-1#0@100",
+          "rate:1",
+          "outPoint:210",
+          "play",
+          "load:foray-1#1@400",
+          "load:foray-1#1@400",
+          "pause"
+        ]
+      }
+    }
+  ]
+}

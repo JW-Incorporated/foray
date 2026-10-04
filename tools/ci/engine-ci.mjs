@@ -61,14 +61,37 @@ export const ENGINE_PREFIXES = [
  *  wrappers read player/parity/ in place), the generator that writes
  *  EngineConstants.swift, every SwiftPM manifest and lockfile, the mobile/
  *  lockfile ios-kit installs @capacitor/preferences from for the Preferences
- *  pin, and the job's own definition. Over-inclusion costs a macOS run;
- *  under-inclusion lets a red Swift build merge behind a green gate. */
+ *  pin, the web jingle InterludeSeamTests reads from the checkout and pins by
+ *  SHA-256 (re-export it, any byte, and ios-kit goes red), and the job's own
+ *  definition. Over-inclusion costs a macOS run; under-inclusion lets a red
+ *  Swift build merge behind a green gate — and, since ios-kit itself is gated
+ *  on this list (2026-10-04), lets the break surface first as a red dispatched
+ *  ios-kit that refuses a TestFlight.
+ *
+ *  ENGINE_PREFIXES is spread in first, so every engine path is a Swift path:
+ *  classifyChanges reports swift=true whenever engine=true, and narrowing this
+ *  list must keep that true (engine-ci.test.mjs pins it).
+ *
+ *  data/forays.json IS READ BY ios-kit AND IS DELIBERATELY NOT HERE (nor in
+ *  ENGINE_PREFIXES). The parity harness reads it for two things only: the
+ *  `$foray: "<id>"` lookup (a Foray's raw record; the build the Swift runner
+ *  checks comes from player/parity/foray-builds.json, an engine path) and
+ *  committedForays' "at least two". Both are computed over the same file by
+ *  player/parity/run.test.js (NE-29s: every committed case, expanded from
+ *  data/forays.json and run over the table) in `npm test`, on every PR, in a
+ *  REQUIRED job — so a publish that deletes a Foray a case names, or breaks an
+ *  authored expect, is red there first. Listing it would put ~15 minutes of
+ *  macOS (and, in ENGINE_PREFIXES, a parity run) on every Foray publish to
+ *  re-check what Node already checked. Accepted residual: a publish whose new
+ *  data exposes a latent Swift/JS divergence the fixtures already reach, which
+ *  surfaces on the next engine or Swift PR (engine-parity has the same gap). */
 export const SWIFT_PREFIXES = [
   ...ENGINE_PREFIXES,
   "ios/",
   "mobile/plugins/",
   "mobile/package.json",
   "mobile/package-lock.json",
+  "player/assets/interlude-placeholder.wav",
 ];
 
 const SWIFT_BASENAMES = new Set(["Package.swift", "Package.resolved"]);
@@ -301,17 +324,32 @@ export function latestActionsRun(checkRuns, name) {
   return mine.reduce((a, b) => (Number(b.id) > Number(a.id) ? b : a));
 }
 
+/** A newest run that concluded `skipped` tested nothing: since ci.yml's
+ *  ios-kit runs only when engine-paths says a Swift or engine input changed
+ *  (2026-10-04), a push to main that touched neither leaves ios-kit SKIPPED on
+ *  that SHA. For a release that is the same as no run at all — never a pass,
+ *  and something release-checks may ask ci.yml to replace. */
+export const isSkippedRun = (run) => Boolean(run) && run.status === "completed" && run.conclusion === "skipped";
+
 /** `runsByName` maps each required check to its newest run (or null).
  *  `missingIsFinal` turns "no such check on this SHA yet" from a wait into a
- *  refusal, once CI has had long enough to have created it. */
+ *  refusal, once CI has had long enough to have created it.
+ *
+ *  A SKIPPED newest run is judged like a missing one: a wait inside the grace,
+ *  a refusal after it, and never a pass. It cannot be a refusal on sight,
+ *  because release-checks dispatches ci.yml over it (releaseDispatchPlan) and
+ *  then polls at once, before the dispatched run's ios-kit has a check run:
+ *  the skipped run is still the newest, and refusing then would refuse every
+ *  release the dispatch exists to rescue. The rule is unchanged — the newest
+ *  run by id must be `success` — so the dispatched run decides. */
 export function releaseChecksVerdict(runsByName, { missingIsFinal = false } = {}) {
   const lines = [];
   let pending = false;
   let red = false;
   for (const name of RELEASE_REQUIRED_CHECKS) {
     const run = runsByName[name];
-    if (!run) {
-      lines.push(`${name}: no check run on this SHA`);
+    if (!run || isSkippedRun(run)) {
+      lines.push(run ? `${name}: skipped on this SHA (nothing tested it)` : `${name}: no check run on this SHA`);
       if (missingIsFinal) red = true;
       else pending = true;
     } else if (run.status !== "completed") {
@@ -349,14 +387,19 @@ export function releaseChecksVerdict(runsByName, { missingIsFinal = false } = {}
  *  short-circuited green.
  *
  *  It dispatches when ANY required check is missing, and never over a run
- *  that exists (a red or in-flight one
- *  is the gate's to judge, not to replace). It refuses to dispatch from any ref
+ *  that exists (a red, cancelled or in-flight one
+ *  is the gate's to judge, not to replace). A newest run that concluded
+ *  `skipped` COUNTS AS MISSING (2026-10-04): ci.yml now runs ios-kit only when
+ *  a Swift or engine input changed, so a content-only push to main leaves a
+ *  skipped ios-kit on its tip, and without this that tip could never ship. The
+ *  verdict still needs the newest run — the dispatched one — to be `success`.
+ *  It refuses to dispatch from any ref
  *  but the default branch (a dispatch elsewhere diffs against main and may
  *  skip ios-kit), and when the branch has moved past the SHA being released (a
  *  dispatch runs on the branch tip, so it would test a different commit). */
 export function releaseDispatchPlan({ byName = {}, refName, defaultBranch, branchHeadSha, sha }) {
-  const missing = RELEASE_REQUIRED_CHECKS.filter((n) => !byName[n]);
-  if (!missing.length) return { dispatch: false, reason: "every required check has a run on this SHA" };
+  const missing = RELEASE_REQUIRED_CHECKS.filter((n) => !byName[n] || isSkippedRun(byName[n]));
+  if (!missing.length) return { dispatch: false, reason: "every required check has a run on this SHA that was not skipped" };
   if (!defaultBranch || refName !== defaultBranch) {
     return {
       dispatch: false,

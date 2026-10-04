@@ -90,6 +90,22 @@ test("a segment carries what the load-time ladder will need", () => {
   assert.equal(items[0].needs_drift_check, true, "a DAI segment is on probation until the audio is in hand");
 });
 
+test("a segment carries its source's measured seek_map, and nothing else gets through", () => {
+  /* The native engine reads "cbr" to skip precise timing (tools/audio/mp3-probe.mjs).
+     An unmeasured source must build as null, never as "cbr". MUTATION: copy
+     episode.seek_map through unchecked, or default it to "cbr". */
+  const at = (seek_map) => {
+    CATALOGUE["static-ep"].seek_map = seek_map;
+    try { return build([seg()]).items[0].seek_map; } finally { delete CATALOGUE["static-ep"].seek_map; }
+  };
+  assert.equal(at(undefined), null);
+  assert.equal(at("cbr"), "cbr");
+  assert.equal(at("vbr-toc"), "vbr-toc");
+  assert.equal(at("vbr-notoc"), "vbr-notoc");
+  assert.equal(at("CBR"), null);
+  assert.equal(at(true), null);
+});
+
 test("a non-DAI segment is settled at build time and never re-gated", () => {
   const { items } = build([seg()]);
   assert.equal(items[0].needs_drift_check, false);

@@ -664,14 +664,20 @@ test("episodesForShow: a show with an id-matched title needs no alias and is una
 /* 4. data/catalog-client.json STAYS IN SYNC WITH data/catalog.json      */
 /* ==================================================================== */
 
-test("catalog-client.json is derived from catalog.json via the committed build script", () => {
+test("catalog-client.json is derived from catalog.json via the committed build script", async () => {
   /* Pins that the checked-in derived file is not stale — CI has no separate
      "regenerate and diff" step, so a hand-edited or out-of-date
      catalog-client.json would otherwise ship silently.
 
      MUTATION: edit data/catalog-client.json by hand after a catalog.json
      change without re-running the build script. This fails on the byte
-     comparison. */
+     comparison.
+
+     + label_scope (docs/roadmap/catalogue-personalization.md PKG-02): the
+     projection must carry it so Similar shows and the playlist generators
+     can refuse a general show's inherited label.
+     MUTATION: remove "label_scope" from CLIENT_SHOW_FIELDS. This fails on the
+     includes() assertion below. */
   const { execFileSync } = require("node:child_process");
   const out = execFileSync(
     process.execPath,
@@ -679,9 +685,12 @@ test("catalog-client.json is derived from catalog.json via the committed build s
     { cwd: ROOT, encoding: "utf8" },
   );
   assert.ok(out.includes("up to date"), out);
+  const { pathToFileURL } = require("node:url");
+  const { CLIENT_SHOW_FIELDS } = await import(pathToFileURL(path.join(ROOT, "tools", "build-catalog-client.mjs")).href);
+  assert.ok(CLIENT_SHOW_FIELDS.includes("label_scope"), "CLIENT_SHOW_FIELDS must project label_scope");
 });
 
-test("catalog-client.json carries exactly the six fields renderShow() reads, plus Family mode's show rating, for every show", () => {
+test("catalog-client.json carries exactly the six fields renderShow() reads, plus Family mode's show rating and label_scope, for every show", () => {
   /* The whitelist is the decision, so it is pinned literally — same pattern as
      playlist-durability.test.js's PLAYLIST_PART_FIELDS pin.
 
@@ -690,8 +699,10 @@ test("catalog-client.json carries exactly the six fields renderShow() reads, plu
      projected shape grows past what this test allows. */
   const client = readJson("data/catalog-client.json");
   /* + "explicit" (audit round 3, data-integrity-4): Family mode decides an
-     unrated episode by its show's catalogue rating (founder Q1 default). */
-  const expectedKeys = ["show_id", "title", "artwork_url", "editorial_note", "taxonomy_node_ids", "episode_count", "explicit"].sort();
+     unrated episode by its show's catalogue rating (founder Q1 default).
+     + "label_scope" (catalogue-personalization PKG-02): "general" marks a
+     broad show whose labels must not be inherited; null until PKG-03. */
+  const expectedKeys = ["show_id", "title", "artwork_url", "editorial_note", "taxonomy_node_ids", "episode_count", "explicit", "label_scope"].sort();
   for (const show of client.shows) {
     assert.deepStrictEqual(Object.keys(show).sort(), expectedKeys, `show ${show.show_id} has an unexpected field set`);
   }
