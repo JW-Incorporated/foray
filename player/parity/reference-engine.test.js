@@ -193,20 +193,53 @@ test("the handover changes WHEN, never WHAT: stripped of n.* the op log is the p
   eng.dispose();
 });
 
-test("WarmingBackend opens the window only while audible with an armed out-point, and warms an item once", () => {
+test("WarmingBackend opens the window only while audible with a boundary, and warms an item once", () => {
   const log = new OpLog();
-  const b = new WarmingBackend({ log });
+  const b = new WarmingBackend({ log, durationById: { x: Number.NaN } });
   let opened = 0;
   b.onPrefetchWindow = () => opened++;
-  assert.equal(b.openPrefetchWindow(), false, "no out-point armed");
+  b._loadedId = "x";
+  b.paused = false;
+  assert.equal(b.openPrefetchWindow(), false, "no out-point armed and no duration: no boundary");
+  b.paused = true;
   b.setOutPoint(200);
   assert.equal(b.openPrefetchWindow(), false, "paused: a silent page is the throttled state");
   b.play();
+  const atPlay = opened;
   assert.equal(b.openPrefetchWindow(), true);
-  assert.equal(opened, 1);
+  assert.equal(opened, atPlay + 1);
   b.prefetch({ id: "x", audio_url: "https://cdn.test/x.mp3" }, { startOffset: 300 });
   b.prefetch({ id: "x", audio_url: "https://cdn.test/x.mp3" }, { startOffset: 300 });
   assert.deepStrictEqual(log.ops.filter((o) => o.startsWith("n.")), ["n.prepare:x@300"]);
+});
+
+test("NE-45j: with no out-point the window is the duration's, a short item opens it at its start, and the standby keeps its source", async () => {
+  // MUTATION: drop `_windowAtStart` from play() -> the 8 s line opens nothing;
+  // forget the demoted source at a handover -> n.prepare, not n.prepare-seek.
+  const log = new OpLog();
+  const b = new WarmingBackend({ log, durationById: { line: 20, short: 8 } });
+  let opened = 0;
+  b.onPrefetchWindow = () => opened++;
+  await b.load({ id: "a1", audio_url: "https://cdn.test/a.mp3" }, { startOffset: 100 });
+  b.setOutPoint(200);
+  b.play();
+  assert.equal(opened, 0, "a 100 s slice is not inside its window at its start");
+  b.prefetch({ id: "line", audio_url: "https://cdn.test/line.m4a" });
+  await b.load({ id: "line", audio_url: "https://cdn.test/line.m4a" }, { startOffset: 0 });
+  b.play();
+  assert.equal(opened, 0, "a 20 s line is not inside a 12 s lead at its start");
+  assert.equal(b.openPrefetchWindow(), true, "a line has no out-point; its window is its duration's");
+  b.prefetch({ id: "a2", audio_url: "https://cdn.test/a.mp3" }, { startOffset: 300 });
+  assert.deepStrictEqual(log.ops.filter((o) => o.startsWith("n.")), [
+    "n.prepare:line@0", "n.handover:line@0", "n.prepare-seek:a2@300",
+  ], "the standby still held a.mp3 from before the line");
+  const before = opened;
+  await b.load({ id: "short", audio_url: "https://cdn.test/short.m4a" }, { startOffset: 0 });
+  b.play();
+  assert.equal(opened, before + 1, "an 8 s line is inside its window from its first tick");
+  b.pause();
+  b.play();
+  assert.equal(opened, before + 1, "once per load, not once per play");
 });
 
 /* ---------- the session ---------- */

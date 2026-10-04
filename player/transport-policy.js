@@ -16,15 +16,15 @@
    `Number(offset || 0)`). Main's audit round 2 then changed some of these
    rules in client.js (player-4, player-5, player-11, p-car-5); they reached
    this file when main was merged into engine/m1, as JS changes re-recorded in
-   the `transport` family and handed to NE-09 through swift-pending.json — the
-   route "JS IS THE REFERENCE" below prescribes. The web and Android suites that
+   the `transport` family and handed to NE-09 through swift-pending.json (the
+   list NE-39s retired) — the route "JS IS THE REFERENCE" below prescribes. The web and Android suites that
    boot the real client.js (transport-reconcile, media-session, foray-playback)
    are the proof; `transport-policy.test.js` pins the rules themselves, from the
    `transport` fixture family, which is also the Swift port's test list.
 
    JS IS THE REFERENCE (plan §6). A change to a rule here is a JS PR that
-   re-records `player/parity/fixtures/transport/`, which hands the changed case
-   ids to swift-pending.json; the Swift port follows. Never edit the Swift side
+   re-records `player/parity/fixtures/transport/`, with the Swift port in the
+   same change (since NE-39s nothing can be owed). Never edit the Swift side
    first.
 
    Every answer is a closed token or plain data, so a fixture can record it and
@@ -323,18 +323,36 @@ export function sourceOffsetFor(item, into) {
  * refuses a seek in `ended` — so a scrub back into the last clip reloads it,
  * the same as a scrub into any other clip does (audit 2026-09-22).
  *
+ * A NARRATION LINE REACHED BY ITS SEAM IS `transitioning`, AND THE REDUCER
+ * REFUSES EVERY SEEK THERE (M2 drive 2026-10-01, the founder's "skip backwards
+ * didn't work during the AI narration"). `handleSeek` keeps that refusal for
+ * the between-episode bridge it was written for, so a Foray never asks it: a
+ * scrub that stays inside a RENDERED line in `transitioning` re-enters the
+ * line at the offset (a load, like another clip), which is a seek in its own
+ * file as far as the listener can hear.
+ *
+ * `restart`: the scrub lands in the SPOKEN line already sounding. Speech has
+ * no offset (`sourceOffsetFor` is null), so the only honest answer is the line
+ * again from its first word — the manager's restart (`skipToPrevious`), never
+ * a seek nobody can perform and never nothing, which is what this used to
+ * answer (`offset: null, reload: false`: a press that did nothing, silently).
+ * A spoken line ELSEWHERE is an ordinary reload, which speaks it from the top.
+ *
  * @param {object} s
  * @param {{index:number, into:number}|null} s.at  where the Foray clock landed
  * @param {object|null} s.item       the playable item at `at.index`
  * @param {number} s.currentIndex    the manager's current index
  * @param {string|null} s.stateType  the manager's state type
- * @returns {{index:number, reload:boolean, offset:number|null}|null}
+ * @returns {{index:number, reload:boolean, restart:boolean, offset:number|null}|null}
  *   null when the clock found nowhere to land
  */
 export function scrubTarget({ at, item, currentIndex, stateType }) {
   if (!at) return null;
-  const reload = at.index !== currentIndex || stateType === "ended" || stateType === "idle";
-  return { index: at.index, reload, offset: sourceOffsetFor(item, at.into) };
+  const offset = sourceOffsetFor(item, at.into);
+  const elsewhere = at.index !== currentIndex || stateType === "ended" || stateType === "idle";
+  const restart = !elsewhere && offset === null;
+  const reload = elsewhere || (!restart && stateType === "transitioning");
+  return { index: at.index, reload, restart, offset };
 }
 
 /**

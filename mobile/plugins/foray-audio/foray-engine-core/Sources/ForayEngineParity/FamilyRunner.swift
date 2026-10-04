@@ -2,13 +2,12 @@ import Foundation
 
 /// Runs the cases of ONE fixture family against its Swift port (plan §6.4).
 ///
-/// One conformer per family, registered in `ParityFamilies.all`. A family
-/// with no conformer is not an error in itself: its cases must then all be in
-/// `swift-pending.json` (owed by the card that ports it), and the suite fails
-/// on any that are not. So a JS card that records a new family never turns
-/// Swift red, and a Swift card that forgets to register its runner does not
-/// go quietly green either: its burned-down ids become "neither executed nor
-/// pending".
+/// One conformer per family, registered in `ParityFamilies.all`. Until
+/// NE-39s a family with no conformer could be owed in `swift-pending.json`;
+/// that list is deleted, so a family with no conformer is either jsOnly (its
+/// files say so) or every id of it is "neither executed nor pending" and the
+/// suite fails. A JS card that records a new family therefore carries its
+/// Swift runner in the same change.
 public protocol FamilyRunner {
     /// The fixture family (the directory name under `player/parity/fixtures`).
     var family: String { get }
@@ -101,8 +100,8 @@ public struct MultiModuleFamilyRunner: FamilyRunner {
     }
 }
 
-/// The registry: every family Swift can run today. A new port adds its
-/// runner here and deletes its ids from `swift-pending.json` in the same PR.
+/// The registry: every family Swift runs. A new family's runner is added
+/// here in the change that records it (NE-39s: nothing can be owed).
 public enum ParityFamilies {
     public static var all: [FamilyRunner] {
         [CompareFamily.runner, SeamGapFamily.runner, QueueStateFamily.runner, RateFamily.runner, ResumeRulesFamily.runner, TransportFamily.runner,
@@ -112,7 +111,8 @@ public enum ParityFamilies {
          DeckEpisodeFamily.runner, ManagerEpisodeFamily.runner,
          InterludeFamily.runner, SeekPolicyFamily.runner, OutpointFamily.runner,
          ForayClockFamily.runner, ForayProgressFamily.runner, ForayStructureFamily.runner, MediaFamily.runner,
-         DeckFamily.runner, ManagerForayFamily.runner, PrepareFamily.runner,
-         DefaultVoiceFamily.runner, LexiconFamily.runner, SpeechRateFamily.runner]
+         DeckFamily.runner, ManagerForayFamily.runner, PrepareFamily.runner, PrepareNarrationFamily.runner,
+         DefaultVoiceFamily.runner, LexiconFamily.runner, SpeechRateFamily.runner,
+         RouteResumeFamily.runner, ManagerRemainderFamily.runner]
     }
 }

@@ -7,8 +7,10 @@
         a hand-edited expect — and it runs in npm test (the first test below
         IS `record.mjs --check` over the real tree, in-process).
      2. Recording never overwrites an authored case, and every new or changed
-        case lands in swift-pending.json tagged with the port card — so a JS PR
-        hands the Swift card a list instead of turning its runner red.
+        case is reported as Swift work the SAME change carries: NE-39s (M3)
+        burned swift-pending.json and unported.json to nothing and deleted
+        them, so nothing can be owed, --port-card and --classify are refused,
+        and a retired list back on disk is a --check problem.
      3. --mutate flips a named rule in a child process's loader only, and a
         mutant counts as killed only when BOTH the original JS test and the
         fixture family fail. A no-op "mutant" must survive, or "killed" would
@@ -23,8 +25,9 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { checkAll, record, runMutation, loadMutations, stableJson, main } from "./record.mjs";
+import { checkAll, record, runMutation, loadMutations, stableJson, main, CLASSIFY_RETIRED } from "./record.mjs";
 import { loadFixtures } from "../../player/parity/runner.js";
+import { CARD_RE } from "../../player/parity/coverage.js";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 
@@ -63,7 +66,14 @@ function scratch() {
     fs.mkdirSync(path.dirname(path.join(root, rel)), { recursive: true });
     fs.copyFileSync(path.join(ROOT, rel), path.join(root, rel));
   };
-  const modules = withImports(loadFixtures(ROOT).map((fx) => fx.doc.module).filter(Boolean));
+  /* The engine target (prepare, prepare-narration) names no `module`: it runs
+     player/parity/reference-engine.js, so that file's imports are seeded too
+     (NE-45j: it reads PREFETCH_LEAD_SEC from html-audio-backend.js, which no
+     fixture's module reaches). */
+  const modules = withImports([
+    ...loadFixtures(ROOT).map((fx) => fx.doc.module).filter(Boolean),
+    "player/parity/reference-engine.js",
+  ]);
   for (const rel of ["player/package.json", "player/seam-gap.test.js", ...modules]) copy(rel);
   /* NE-29j: `$foray: "<id>"` reads the committed Foray from data/, and the
      committed-Foray adapter (player/parity/forays.js) builds it against the
@@ -130,32 +140,38 @@ test("JS that disagrees with an authored case is refused, and nothing is written
     const mod = path.join(root, "player", "seam-gap.js");
     fs.writeFileSync(mod, fs.readFileSync(mod, "utf8").replace("export const SEAM_GAP_SEC = 0.5;", "export const SEAM_GAP_SEC = 2.5;"));
     const before = fs.readFileSync(path.join(root, FIXTURE), "utf8");
-    const pendingBefore = fs.readFileSync(path.join(root, "player/parity/swift-pending.json"), "utf8");
-    const r = await record({ root, portCard: "NE-28s", log: quiet });
+    const manifestBefore = fs.readFileSync(path.join(root, "player/parity/manifest.json"), "utf8");
+    const r = await record({ root, log: quiet });
     assert.equal(r.ok, false);
     assert.ok(r.refusals.some((x) => /seam-gap\/rule-is-0\.5s is AUTHORED/.test(x)), r.refusals.join("\n"));
     assert.equal(fs.readFileSync(path.join(root, FIXTURE), "utf8"), before, "the fixture is untouched");
-    assert.equal(fs.readFileSync(path.join(root, "player/parity/swift-pending.json"), "utf8"), pendingBefore);
+    assert.equal(fs.readFileSync(path.join(root, "player/parity/manifest.json"), "utf8"), manifestBefore);
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }
 });
 
-test("recording a new case writes its expect and adds its id to swift-pending.json with the port card", async () => {
+test("recording a new case writes its expect and reports it as Swift work this change carries; a --port-card is refused (NE-39s)", async () => {
+  /* NE-39s deleted swift-pending.json: a new case is no longer handed to a
+     later Swift card, it is engine-parity's to run in this change. MUTATION:
+     let record() write swift-pending.json again -> the file assertion fails;
+     accept --port-card again -> the refusal assertion fails. */
   const root = scratch();
   try {
     const doc = readJ(root, FIXTURE);
     doc.cases.push({ id: "seam-gap/brand-new", covers: [], call: "seamGapSec", args: [{ from: { $seg: ["a"] }, to: { $seg: ["b"] }, gapSec: 1.25 }] });
     writeJ(root, FIXTURE, doc);
 
-    const refused = await record({ root, log: quiet });
-    assert.equal(refused.ok, false, "a new id without --port-card is refused");
-    assert.match(refused.refusals.join("\n"), /pass --port-card/);
+    const refused = await record({ root, portCard: "NE-28s", log: quiet });
+    assert.equal(refused.ok, false, "a --port-card has nowhere to write");
+    assert.match(refused.refusals.join("\n"), /--port-card "NE-28s" was retired with swift-pending\.json by NE-39s/);
 
-    const r = await record({ root, portCard: "NE-28s", log: quiet });
+    const r = await record({ root, log: quiet });
     assert.equal(r.ok, true, r.refusals.join("\n"));
-    assert.deepStrictEqual(r.pendingAdded, ["seam-gap/brand-new"]);
-    assert.equal(readJ(root, "player/parity/swift-pending.json")["seam-gap/brand-new"], "NE-28s");
+    assert.deepStrictEqual(r.swiftAffected, ["seam-gap/brand-new"]);
+    for (const retired of ["swift-pending.json", "unported.json"]) {
+      assert.equal(fs.existsSync(path.join(root, "player/parity", retired)), false, `record never writes ${retired}`);
+    }
     const rec = readJ(root, FIXTURE).cases.find((c) => c.id === "seam-gap/brand-new");
     assert.deepStrictEqual(rec.expect, { return: 1.25 });
     assert.ok(readJ(root, "player/parity/manifest.json").families["seam-gap"].ids.includes("seam-gap/brand-new"));
@@ -170,7 +186,7 @@ test("recording a new case writes its expect and adds its id to swift-pending.js
    only walked by the engine, so their family is ported by nobody. Without the
    flag the recorder would hand its ids to some Swift card forever, and the
    capability gate would never let "continuation" ship. */
-test("a jsOnly family records with no port card, owes swift-pending nothing, and must be jsOnly throughout", async () => {
+test("a jsOnly family records as Swift work for nobody, and must be jsOnly throughout", async () => {
   const root = scratch();
   const CONT = "player/parity/fixtures/continuation/continuation.json";
   try {
@@ -178,21 +194,15 @@ test("a jsOnly family records with no port card, owes swift-pending nothing, and
     assert.equal(doc.jsOnly, true, "precondition: the continuation family is JS-only");
     doc.cases.push({ id: "continuation/brand-new", covers: [], call: "canNext", args: [{ chain: [{}] }] });
     writeJ(root, CONT, doc);
-    const pendingBefore = fs.readFileSync(path.join(root, "player/parity/swift-pending.json"), "utf8");
 
     const r = await record({ root, log: quiet });
     assert.equal(r.ok, true, r.refusals.join("\n"));
-    assert.deepStrictEqual(r.pendingAdded, []);
+    assert.deepStrictEqual(r.swiftAffected, []);
     assert.deepStrictEqual(r.jsOnlyRecorded, ["continuation/brand-new"]);
-    assert.equal(fs.readFileSync(path.join(root, "player/parity/swift-pending.json"), "utf8"), pendingBefore);
     assert.deepStrictEqual(readJ(root, CONT).cases.at(-1).expect, { return: true });
     assert.deepStrictEqual((await checkAll({ root })).problems, []);
 
-    // A pending entry naming a JS-only case is a stale promise no card can keep.
-    writeJ(root, "player/parity/swift-pending.json", { ...readJ(root, "player/parity/swift-pending.json"), "continuation/brand-new": "NE-14s" });
-    assert.ok((await checkAll({ root })).problems.some((p) => /continuation\/brand-new is in a jsOnly family/.test(p)));
-
-    // Half a family JS-only would hide its ported half from swift-pending.
+    // Half a family JS-only would hide its ported half from the Swift runner.
     writeJ(root, "player/parity/fixtures/continuation/second.json", { family: "continuation", module: "player/continuation.js", cases: [{ id: "continuation/second", covers: [], read: "CHAIN_HOPS" }] });
     assert.ok((await checkAll({ root })).problems.some((p) => /jsOnly disagrees with another file of family "continuation"/.test(p)));
   } finally {
@@ -200,18 +210,16 @@ test("a jsOnly family records with no port card, owes swift-pending nothing, and
   }
 });
 
-test("a JS change to a recorded (non-authored) case re-records it and puts it back in swift-pending", async () => {
+test("a JS change to a recorded (non-authored) case re-records it and reports it for the Swift port in the same change", async () => {
   const root = scratch();
   try {
-    // Pretend the Swift side already burned the family down.
-    writeJ(root, "player/parity/swift-pending.json", {});
     const mod = path.join(root, "player", "seam-gap.js");
     // A rule change: bridged seams get the beat too. Not an authored case.
     fs.writeFileSync(mod, fs.readFileSync(mod, "utf8").replace("  if (bridged) return 0;\n", ""));
-    const r = await record({ root, portCard: "NE-28s", log: quiet });
+    const r = await record({ root, log: quiet });
     assert.equal(r.ok, true, r.refusals.join("\n"));
-    assert.deepStrictEqual(r.pendingAdded, ["seam-gap/bridged-no-beat"]);
-    assert.deepStrictEqual(readJ(root, "player/parity/swift-pending.json"), { "seam-gap/bridged-no-beat": "NE-28s" });
+    assert.deepStrictEqual(r.swiftAffected, ["seam-gap/bridged-no-beat"]);
+    assert.equal(fs.existsSync(path.join(root, "player/parity/swift-pending.json")), false, "nothing is owed: no list to put it in");
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }
@@ -220,7 +228,7 @@ test("a JS change to a recorded (non-authored) case re-records it and puts it ba
 test("re-recording an unchanged tree changes no byte", async () => {
   const root = scratch();
   try {
-    const files = ["player/parity/manifest.json", "player/parity/swift-pending.json", "player/parity/jvm-pending.json", "player/parity/floors.json", FIXTURE];
+    const files = ["player/parity/manifest.json", "player/parity/jvm-pending.json", "player/parity/floors.json", FIXTURE];
     const before = files.map((f) => fs.readFileSync(path.join(root, f), "utf8"));
     const r = await record({ root, log: quiet });
     assert.equal(r.ok, true, r.refusals.join("\n"));
@@ -230,13 +238,13 @@ test("re-recording an unchanged tree changes no byte", async () => {
   }
 });
 
-test("recording one family never vouches for another: its authored cases still reach swift-pending on their own run", async () => {
+test("recording one family never vouches for another: its authored cases are still reported on their own run", async () => {
   /* NE-07j found this. `--family queue-state` wrote the WHOLE tree's manifest,
      including the not-yet-recorded rate family's ids; the rate run then read
      those ids as already recorded, and an authored case (which never needs a
-     re-record, so is pending only when its id is new) was left out of
-     swift-pending. The Swift runner fails on an id that is neither executed
-     nor pending, so that is a red Swift build handed to the port card.
+     re-record, so is reported only when its id is new) was left out of what
+     the record handed on: to swift-pending then, to the Swift runner's change
+     and the JVM's books now (NE-39s).
      MUTATION: drop the `if (family)` block after computeManifest in record(). */
   const root = scratch();
   try {
@@ -256,11 +264,9 @@ test("recording one family never vouches for another: its authored cases still r
       "a seam-gap run must not write the probe family's ids into the manifest");
 
     // A-22: a brand-new family is owed to the JVM too, whole, to --jvm-card.
-    const r = await record({ root, family: fam, portCard: "NE-09", jvmCard: "A-23", log: quiet });
+    const r = await record({ root, family: fam, jvmCard: "A-23", log: quiet });
     assert.equal(r.ok, true, r.refusals.join("\n"));
-    assert.deepStrictEqual([...r.pendingAdded].sort(), [`${fam}/max`, `${fam}/snap`]);
-    const pending = readJ(root, "player/parity/swift-pending.json");
-    assert.equal(pending[`${fam}/max`], "NE-09", "the authored case is owed to the port card too");
+    assert.deepStrictEqual([...r.swiftAffected].sort(), [`${fam}/max`, `${fam}/snap`], "the authored case is reported too");
     assert.equal(readJ(root, "player/parity/jvm-pending.json").families[fam], "A-23", "the new family is owed to the JVM whole");
     assert.deepStrictEqual((await checkAll({ root })).problems, []);
   } finally {
@@ -274,22 +280,48 @@ test("a family that loses cases is refused unless --lower-floors says so", async
     const doc = readJ(root, FIXTURE);
     doc.cases.pop();
     writeJ(root, FIXTURE, doc);
-    const r = await record({ root, portCard: "NE-28s", log: quiet });
+    const r = await record({ root, log: quiet });
     assert.equal(r.ok, false);
     assert.match(r.refusals.join("\n"), /below its floor/);
-    const lowered = await record({ root, portCard: "NE-28s", lowerFloors: true, log: quiet });
+    const lowered = await record({ root, lowerFloors: true, log: quiet });
     assert.equal(lowered.ok, true, lowered.refusals.join("\n"));
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }
 });
 
-test("a --port-card that is not a card id is refused", async () => {
+test("NE-39s: any --port-card is refused, a card id or not, and nothing is written", async () => {
   const root = scratch();
   try {
-    const r = await record({ root, portCard: "later", log: quiet });
-    assert.equal(r.ok, false);
-    assert.match(r.refusals.join("\n"), /not a card id/);
+    const manifestBefore = fs.readFileSync(path.join(root, "player/parity/manifest.json"), "utf8");
+    for (const card of ["later", "NE-39s"]) {
+      const r = await record({ root, portCard: card, log: quiet });
+      assert.equal(r.ok, false);
+      assert.match(r.refusals.join("\n"), /was retired with swift-pending\.json by NE-39s/);
+    }
+    assert.equal(fs.readFileSync(path.join(root, "player/parity/manifest.json"), "utf8"), manifestBefore);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("NE-39s: a retired burn-down list back on disk is a --check problem, and --classify is refused", async () => {
+  /* The lists are gone for good: one that comes back would owe again, and no
+     gate reads it (coverage.js loads both as empty; the Swift loader refuses to
+     run). MUTATION: drop the retiredBooksOnDisk loop from checkAll -> red; let
+     --classify write unported.json again -> red. */
+  const root = scratch();
+  try {
+    assert.deepStrictEqual((await checkAll({ root })).problems, [], "precondition: the scratch tree is clean");
+    for (const retired of ["swift-pending.json", "unported.json"]) {
+      writeJ(root, `player/parity/${retired}`, {});
+      assert.ok((await checkAll({ root })).problems.some((p) => p.startsWith(`${retired} is back on disk: NE-39s retired it`)), retired);
+      fs.rmSync(path.join(root, "player/parity", retired));
+    }
+    const said = [];
+    assert.equal(await main(["--classify"], { root, log: quiet, err: (m) => said.push(m) }), 1);
+    assert.deepStrictEqual(said, [CLASSIFY_RETIRED]);
+    assert.equal(fs.existsSync(path.join(root, "player/parity/unported.json")), false);
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }
@@ -298,7 +330,7 @@ test("a --port-card that is not a card id is refused", async () => {
 /* ---------- the JVM's books (A-22) ---------- */
 
 /* jvm-pending.json keeps the JVM parity runner's books the way swift-pending.json
-   keeps the Swift one's, so a JS rule change never turns android-build red: it
+   kept the Swift one's until NE-39s, so a JS rule change never turns android-build red: it
    hands an Android card a list. A family the JVM does not run is owed WHOLE, so
    only a case new or changed in a family it does run (number-format today), or a
    brand-new family, needs --jvm-card.
@@ -312,37 +344,39 @@ test("a case new in a family the JVM runs is refused without --jvm-card and owed
   try {
     assert.equal(readJ(root, JVM).families["number-format"], undefined, "precondition: the JVM runs number-format");
     assert.equal(readJ(root, JVM).families["seam-gap"], "A-40", "precondition: seam-gap is owed whole");
+    // The real books may already owe cases (manager-episode's NE-39n case, to A-64): the test's own entry comes on top.
+    const baseCases = readJ(root, JVM).cases;
 
     const nf = readJ(root, NUMBER_FORMAT);
     nf.cases.push({ id: "number-format/brand-new-2.5", covers: [], call: "jsonNumber", args: [2.5] });
     writeJ(root, NUMBER_FORMAT, nf);
-    const refused = await record({ root, portCard: "NE-10s", log: quiet });
+    const refused = await record({ root, log: quiet });
     assert.equal(refused.ok, false);
     assert.match(refused.refusals.join("\n"), /pass --jvm-card <A-xx>[\s\S]*number-format\/brand-new-2\.5/);
-    const badCard = await record({ root, portCard: "NE-10s", jvmCard: "NE-10s", log: quiet });
+    const badCard = await record({ root, jvmCard: "NE-10s", log: quiet });
     assert.match(badCard.refusals.join("\n"), /--jvm-card "NE-10s" is not an Android card id/);
 
-    const r = await record({ root, portCard: "NE-10s", jvmCard: "A-23", log: quiet });
+    const r = await record({ root, jvmCard: "A-23", log: quiet });
     assert.equal(r.ok, true, r.refusals.join("\n"));
     assert.deepStrictEqual(r.jvmOwed, { families: [], cases: ["number-format/brand-new-2.5"] });
-    assert.deepStrictEqual(readJ(root, JVM).cases, { "number-format/brand-new-2.5": "A-23" });
+    assert.deepStrictEqual(readJ(root, JVM).cases, { ...baseCases, "number-format/brand-new-2.5": "A-23" });
     assert.deepStrictEqual((await checkAll({ root })).problems, [], "the books a record writes are --check clean");
 
-    // A case new in a family owed whole: the Swift card is handed it, the JVM books do not move.
+    // A case new in a family owed whole: the Swift runner holds it, the JVM books do not move.
     const jvmBefore = fs.readFileSync(path.join(root, JVM), "utf8");
     const sg = readJ(root, FIXTURE);
     sg.cases.push({ id: "seam-gap/brand-new-jvm", covers: [], call: "seamGapSec", args: [{ from: { $seg: ["a"] }, to: { $seg: ["b"] }, gapSec: 1.5 }] });
     writeJ(root, FIXTURE, sg);
-    const owedWhole = await record({ root, portCard: "NE-28s", log: quiet });
+    const owedWhole = await record({ root, log: quiet });
     assert.equal(owedWhole.ok, true, owedWhole.refusals.join("\n"));
     assert.equal(fs.readFileSync(path.join(root, JVM), "utf8"), jvmBefore);
 
-    // Deleting the case drops its entry, as swift-pending drops a deleted id.
+    // Deleting the case drops its entry, as swift-pending dropped a deleted id.
     nf.cases.pop();
     writeJ(root, NUMBER_FORMAT, nf);
-    const dropped = await record({ root, portCard: "NE-10s", lowerFloors: true, log: quiet });
+    const dropped = await record({ root, lowerFloors: true, log: quiet });
     assert.equal(dropped.ok, true, dropped.refusals.join("\n"));
-    assert.deepStrictEqual(readJ(root, JVM).cases, {});
+    assert.deepStrictEqual(readJ(root, JVM).cases, baseCases);
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }
@@ -359,11 +393,11 @@ test("--check is red on JVM books that name nothing, owe a jsOnly family, use a 
     });
     const problems = (await checkAll({ root })).problems.join("\n");
     assert.match(problems, /jvm-pending: no-such\/case names no fixture case/);
-    assert.match(problems, /jvm-pending: family no-such-family is neither recorded nor named in unported\.json/);
+    assert.match(problems, /jvm-pending: family no-such-family is not recorded: delete the entry/);
     assert.match(problems, /jvm-pending: family continuation is jsOnly/);
     assert.match(problems, /jvm-pending: seam-gap\/rule-is-0\.5s is owed on its own and with its whole family seam-gap/);
     assert.match(problems, /jvm-pending: number-format\/zero is tagged "NE-10s", not an Android card id/);
-    // And a family unported.json will record into may be owed ahead of its fixtures.
+    // A recorded family owed whole is not a problem.
     assert.doesNotMatch(problems, /manager-remainder/);
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
@@ -397,14 +431,14 @@ test("--check holds every recorded family to exactly one of the JVM's runs and i
 
 /* ---------- --mutate ---------- */
 
-test("the four named mutation rules exist, and each anchor occurs exactly once in its file", () => {
+test("the seven named mutation rules exist, and each anchor occurs exactly once in its file", () => {
   const rules = loadMutations();
-  assert.deepStrictEqual(Object.keys(rules), ["seam-gap", "never-early", "15/30", "pause-silence"]);
+  assert.deepStrictEqual(Object.keys(rules), ["seam-gap", "never-early", "15/30", "pause-silence", "warm-across", "route-listener", "stale-load"]);
   for (const [name, r] of Object.entries(rules)) {
     const src = fs.readFileSync(path.join(ROOT, r.patch.file), "utf8");
     assert.equal(src.split(r.patch.find).length - 1, 1, `${name}: anchor drifted in ${r.patch.file}`);
     assert.notEqual(r.patch.find, r.patch.replace, name);
-    assert.match(r.recordedBy, /^NE-\d{2}[a-z]?$/, name);
+    assert.match(r.recordedBy, CARD_RE, name);
   }
 });
 
@@ -444,6 +478,46 @@ test("--mutate on the pause-silence rule fails both the original JS test and the
      pause-silences-an-audible-element scenario loses its `pause`. MUTATION:
      delete that scenario -> "fixture: ... still pass". */
   const r = runMutation("pause-silence", loadMutations()["pause-silence"], { root: ROOT });
+  assert.equal(r.js, "killed", r.detail.join("\n"));
+  assert.equal(r.fixture, "killed", r.detail.join("\n"));
+  assert.equal(r.killed, true);
+});
+
+test("--mutate on the warm-across rule fails both the original JS test and the prepare-narration family", () => {
+  /* NE-45j's acceptance: --mutate back to the beat rule turns a clip -> line
+     case red. The mutant warms only a segment-to-segment seam, so the rendered
+     line after a clip is not prepared (queue-manager.test.js) and neither the
+     authored clip -> line -> clip seams nor the warmsAcross rows hold.
+     MUTATION: drop every clip -> line case from prepare-narration ->
+     "fixture: ... still pass". */
+  const r = runMutation("warm-across", loadMutations()["warm-across"], { root: ROOT });
+  assert.equal(r.js, "killed", r.detail.join("\n"));
+  assert.equal(r.fixture, "killed", r.detail.join("\n"));
+  assert.equal(r.killed, true);
+});
+
+test("--mutate on the route-listener rule fails both the original JS test and the route-resume family", () => {
+  /* NE-38rj's acceptance: the founder's Q5 rule (a listener's pause is never
+     resumed) is held by a case, not only by a sentence. The mutant is main's
+     EngineCore.onRoute guard before NE-38rs, which lets a listener's pause
+     through; the authored decide-listener-paused case turns red, as does
+     route-resume.test.js. MUTATION: drop that authored case and the replay
+     case beside it -> "fixture: ... still pass". */
+  const r = runMutation("route-listener", loadMutations()["route-listener"], { root: ROOT });
+  assert.equal(r.js, "killed", r.detail.join("\n"));
+  assert.equal(r.fixture, "killed", r.detail.join("\n"));
+  assert.equal(r.killed, true);
+});
+
+test("--mutate on the stale-load rule fails both the original JS test and the manager-await family", () => {
+  /* NE-39j recorded player-core-9 as a manager-remainder case; NE-39s moved it
+     to the jsOnly manager-await family (a load parked on the synthesiser's
+     pause exists only where that pause is awaited), so the case still holds the
+     rule beside queue-manager.test.js: without the stale-target check the first
+     skip's load (s1) runs after the second's (s2), and the recorded op log
+     loses its single load:s2@400. MUTATION: drop the
+     a-skip-load-a-newer-skip-replaced-is-dropped case -> "fixture: ... still pass". */
+  const r = runMutation("stale-load", loadMutations()["stale-load"], { root: ROOT });
   assert.equal(r.js, "killed", r.detail.join("\n"));
   assert.equal(r.fixture, "killed", r.detail.join("\n"));
   assert.equal(r.killed, true);

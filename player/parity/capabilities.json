@@ -1,5 +1,5 @@
 {
-  "//": "Plan §6.6. A capability the engine advertises (mobile/ENGINE_DEFAULT.json, or the Swift `advertisedCapabilities` literal) requires zero swift-pending cases and zero unported tests in every family listed under it; coverage.test.js enforces that. Every family a fixture or an unported entry uses must appear under some capability, so no family can hold owed work that no gate reads. `compare` (NE-05) is the comparator's own table, not a rule of the product: it sits under EVERY capability because each one's verdicts are only as good as the Swift comparator that produced them. `remainder` (NE-14j) is the M3 manager remainder NE-39j records (plan §6 families table: about 70 queue-manager scenarios, milestone M3): it is charged here, not to episode or foray, because those capabilities ship in M1 and M2 and must not wait on M3 work. No build advertises it — engine-contract.js CAPABILITIES does not even allow it in a hello — and NE-39s empties it and deletes the lists. `foray-data` (NE-30j) is the page's build of real Forays, JS only (schema jsOnly): charged to foray so the family is gated like every other, and it can never hold a pending id.",
+  "//": "Plan §6.6. A capability the engine advertises (mobile/ENGINE_DEFAULT.json, or the Swift `advertisedCapabilities` literal) has every family listed under it executed and passing in Swift; since NE-39s nothing can be owed (swift-pending.json and unported.json are deleted), so a family is either ported or JS only. Every family a fixture uses must appear under some capability. `compare` (NE-05) is the comparator's own table, not a rule of the product: it sits under EVERY capability because each one's verdicts are only as good as the Swift comparator that produced them. `remainder` (NE-14j) was the unadvertised bookkeeping gate M3's owed families waited under (prepare-narration until NE-45s, route-resume until NE-38rs, manager-remainder until NE-39s); NE-39s ported the last of them and retired the gate with swift-pending.json and unported.json. `manager-remainder` (NE-39j recorded it, NE-39s ported it) is charged to foray: its runner drives the core with the Foray tape on, and its warming rules are the Foray seams'. `manager-await` (NE-39s) is JS only (schema jsOnly): two rules of the JS manager's awaits that a synchronous native turn does not have, charged to foray beside the family they came from. `foray-data` (NE-30j) is the page's build of real Forays, JS only (schema jsOnly): charged to foray so the family is gated like every other, and it can never hold a pending id.",
   "episode": [
     "compare",
     "queue-state",
@@ -17,7 +17,8 @@
     "diag-tokens",
     "media-episode",
     "manager-episode",
-    "deck-episode"
+    "deck-episode",
+    "route-resume"
   ],
   "continuation": [
     "compare",
@@ -42,13 +43,12 @@
     "manager-foray",
     "deck",
     "prepare",
+    "prepare-narration",
     "speech-rate",
     "lexicon",
     "default-voice",
-    "foray-data"
-  ],
-  "remainder": [
-    "compare",
-    "manager-remainder"
+    "foray-data",
+    "manager-remainder",
+    "manager-await"
   ]
 }

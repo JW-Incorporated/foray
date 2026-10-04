@@ -15,7 +15,7 @@
     },
     "note": { "description": "Free text for a human reader. Never read by a runner.", "type": "string" },
     "jsOnly": {
-      "description": "true: the family pins a JS rule that is deliberately never ported to Swift (plan §5.5 C-2: continuation hops are computed by the page, and the engine only walks them). record.mjs records it without a --port-card and never adds its ids to swift-pending.json; a pending entry naming one is a --check problem. The Swift runner skips these files by this flag rather than counting their ids as owed. Every file of a family must agree.",
+      "description": "true: the family pins a JS rule that is deliberately never ported to Swift: plan §5.5 C-2's continuation hops (computed by the page, only walked by the engine), and since NE-39s manager-await (the JS manager's awaits: a load parked on the synthesiser's pause, onStateSettled per _handle frame, which a synchronous native turn does not have; each case's note names the XCTest holding the native form). The Swift and JVM runners skip these files by this flag and no book may owe their ids. Every file of a family must agree.",
       "type": "boolean"
     },
     "cases": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/case" } }
@@ -23,7 +23,7 @@
   "$defs": {
     "family": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
     "caseId": {
-      "description": "<family>/<slug>. Unique across every fixture file. Never reused for a different rule: swift-pending.json and parity-report.json refer to cases by id.",
+      "description": "<family>/<slug>. Unique across every fixture file. Never reused for a different rule: parity-report.json and jvm-pending.json refer to cases by id (as swift-pending.json did until NE-39s).",
       "type": "string",
       "pattern": "^[a-z][a-z0-9-]*/[a-z0-9][a-z0-9.-]*$"
     },
@@ -100,7 +100,7 @@
       }
     },
     "opLog": {
-      "description": "Ordered op tokens. Backend tokens are queue-manager.test.js's FakeBackend grammar, unchanged: load:<id>@<s>, play, pause, seek:<s>, outPoint:<s|null>, rate:<r>, release. Other adapters are prefixed: tts.*, interlude.*, store.*. Native-only tokens are n.* and are stripped before comparison except in the prepare family.",
+      "description": "Ordered op tokens. Backend tokens are queue-manager.test.js's FakeBackend grammar, unchanged: load:<id>@<s>, play, pause, seek:<s>, outPoint:<s|null>, rate:<r>, release. Other adapters are prefixed: tts.*, interlude.*, store.*, preview.* (NE-47: the engine's preview deck, preview.load:<url>, preview.play, preview.stop). NE-39j, manager target: prefetch:<id>@<s> (the manager's ask to warm the next item, setup.backend.prefetch), event.settled:<state> (setup.settledEvents), telemetry:<line> (setup.telemetry). Native-only tokens are n.* and are stripped before comparison except in the prepare family.",
       "type": "array",
       "items": { "type": "string" }
     },
@@ -111,20 +111,23 @@
         "target": { "description": "What the scenario drives. JS drivers exist for: manager, deck (NE-28j: the outpoint family over deck-policy.js outPointStep and a driven clock), and engine (NE-30j: the prepare family over player/parity/reference-engine.js with the warm handover on; call steps are engine commands, deck steps its deck events, and every checkpoint carries nowMs, the T of an audible start).", "enum": ["manager", "deck", "engine"] },
         "positionEvents": { "description": "NE-14j: the manager's position store is the real PositionStore, and its onSave writes event.position:<id>@<seconds>:<duration> into the op log (plan §5.5 pendingEvents).", "type": "boolean" },
         "scheduler": { "enum": ["instant", "manual"] },
-        "backend": { "type": "object" },
+        "backend": { "description": "FakeBackend options (fakes.js): failLoadFor, durationById, duration, holdLoads, loadTurns; NE-39j, manager target: prefetch (true, or \"loses\": the web lane's prefetch contract, whose ask is the op prefetch:<id>@<s>, and a deck \"window\" step to open it), coldLoadMs (a load with nothing warm waits that long on the manual clock), slowFirstPlay (the first play settles only at the next pause).", "type": "object" },
         "catalogue": { "description": "The Foray resolver's table: item_id -> episode row.", "type": "object" },
         "positions": { "description": "Seed saved positions: id -> seconds.", "type": "object" },
         "rate": { "type": "number" },
         "seamGapSec": { "$ref": "#/$defs/input" },
-        "tts": { "description": "The narration bridge (fakes.js fakeTts). An object opts into NE-31j's shapes: refuse, voiceFallback, onFinished: false, transport: false, pause: rejects, resume: {answer}, state: true.", "type": ["boolean", "object"] },
+        "tts": { "description": "The narration bridge (fakes.js fakeTts). An object opts into NE-31j's shapes: refuse, voiceFallback, onFinished: false, transport: false, pause: rejects, resume: {answer}, state: true; NE-39j: pause: held (answered by a tts releasePause step).", "type": ["boolean", "object"] },
         "voice": { "description": "NE-31j, manager target: the listener's chosen narration voice the manager is constructed with (null: the synthesiser picks).", "type": ["string", "null"] },
         "narrationTicks": { "description": "NE-31j, manager target: wire the surface's narration pulse (onNarrationTick), counted for the narrationTicks view. The manager runs its narration ticker, and so its deadline, only when a surface listens.", "type": "boolean" },
         "interlude": { "type": ["boolean", "object"] },
         "interludeEnabled": { "type": "boolean" },
         "view": { "description": "NE-30j, manager target: extra checkpoint fields, opt-in (runner.js VIEW_KEYS).", "type": "array", "items": { "type": "string" } },
+        "settledEvents": { "description": "NE-39j, manager target: the surface's settled-state hook (onStateSettled) writes event.settled:<state> into the op log after every handled event.", "type": "boolean" },
+        "telemetry": { "description": "NE-39j, manager target: telemetry lines recorded as telemetry:<line>, by event name from the closed runner.js TELEMETRY_EVENTS (rate.snapped).", "type": "array", "items": { "type": "string" } },
         "seamGapEvents": { "description": "NE-30j, manager target: the surface beat callback writes event.seamGap:<true|false> into the op log.", "type": "boolean" },
         "forayBuild": { "description": "NE-30j, manager target: a real curated Foray built as the page builds it ({id, data: frozen | committed, dropSources?, segments?: false}); a playForay or setQueueFromForay call with no args plays its hydrated document.", "type": "object" },
-        "capabilities": { "description": "NE-30j, engine target: what the reference engine advertises (default: episode, continuation, restore, foray).", "type": "array", "items": { "type": "string" } }
+        "capabilities": { "description": "NE-30j, engine target: what the reference engine advertises (default: episode, continuation, restore, foray).", "type": "array", "items": { "type": "string" } },
+        "preview": { "description": "NE-47, engine target: the preview deck a rendered audition plays on (fakes.js fakePreview). failUrls: urls whose load fails, so the audition is spoken instead.", "type": "object" }
       }
     },
     "verb": {
@@ -132,7 +135,7 @@
       "enum": ["call", "settle", "clock", "deck", "tts", "interlude", "session", "lifecycle", "remote", "checkpoint"]
     },
     "step": {
-      "description": "Exactly one verb key, plus that verb's own fields (args, await, reason, message, sec, audible, id, shouldResume, routeName, isCarRoute, items, index, autoplay, details; for the deck target, outPointSec, rate and token, and the ended event; NE-30j: a call step may carry returns, a runner.js RETURN_PROJECTIONS name, and on the engine target refused; NE-31j: a manager-target clock step may carry every (advance in steps of that many ms, an awake page), and the tts verb takes finish or silent).",
+      "description": "Exactly one verb key, plus that verb's own fields (args, await, reason, message, sec, audible, id, shouldResume, routeName, isCarRoute, items, index, autoplay, details; for the deck target, outPointSec, rate and token, and the ended event; NE-30j: a call step may carry returns, a runner.js RETURN_PROJECTIONS name, and on the engine target refused; NE-31j: a manager-target clock step may carry every (advance in steps of that many ms, an awake page), and the tts verb takes finish or silent; NE-39j: it also takes releasePause, and a manager-target deck step may be window).",
       "type": "object",
       "minProperties": 1
     },

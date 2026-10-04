@@ -665,9 +665,9 @@ final class TwoDeckPrerollTests: XCTestCase {
         switch hit.event {
         case let .ready(_, landed, prerolled, elapsed):
             return Ready(landedSec: landed, prerolled: prerolled, elapsedMs: elapsed, atMs: hit.atMs)
-        case let .failed(_, message):
+        case let .failed(_, message, _):
             XCTFail("\(name) load \(token) failed: \(message)", file: file, line: line)
-        case let .deadlineExceeded(_, afterMs):
+        case let .deadlineExceeded(_, afterMs, _):
             XCTFail("\(name) load \(token) hit the deadline after \(afterMs) ms", file: file, line: line)
         default:
             break
@@ -706,7 +706,7 @@ final class TwoDeckPrerollTests: XCTestCase {
 
     private static func isTerminal(_ event: DeckEvent, _ token: DeckToken) -> Bool {
         switch event {
-        case .ready(token, _, _, _), .failed(token, _), .deadlineExceeded(token, _):
+        case .ready(token, _, _, _), .failed(token, _, _), .deadlineExceeded(token, _, _):
             return true
         default:
             return false

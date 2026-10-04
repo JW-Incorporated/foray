@@ -146,17 +146,17 @@ final class AVDeckTests: XCTestCase {
         -> (landedSec: Double, prerolled: Bool, elapsedMs: Int)? {
         let hit = waitFor("ready(token: \(token))", file: file, line: line) {
             if case .ready(token, _, _, _) = $0 { return true }
-            if case .failed(token, _) = $0 { return true }
-            if case .deadlineExceeded(token, _) = $0 { return true }
+            if case .failed(token, _, _) = $0 { return true }
+            if case .deadlineExceeded(token, _, _) = $0 { return true }
             return false
         }
         switch hit {
         case let .ready(_, landed, prerolled, elapsed)?:
             return (landed, prerolled, elapsed)
-        case let .failed(_, message)?:
+        case let .failed(_, message, _)?:
             XCTFail("load \(token) failed: \(message)", file: file, line: line)
             return nil
-        case let .deadlineExceeded(_, afterMs)?:
+        case let .deadlineExceeded(_, afterMs, _)?:
             XCTFail("load \(token) hit the deadline after \(afterMs) ms; events: \(events)", file: file, line: line)
             return nil
         default:
@@ -301,7 +301,7 @@ final class AVDeckTests: XCTestCase {
         XCTAssertEqual(readies.count, 1, "the superseded load still reported ready: \(events)")
         let late = events.filter {
             switch $0 {
-            case .ready(1, _, _, _), .durationLoaded(1, _), .notReady(1, _, _), .failed(1, _), .deadlineExceeded(1, _):
+            case .ready(1, _, _, _), .durationLoaded(1, _), .notReady(1, _, _), .failed(1, _, _), .deadlineExceeded(1, _, _):
                 return true
             default:
                 return false
@@ -481,13 +481,15 @@ final class AVDeckTests: XCTestCase {
         XCTAssertFalse(events.contains(where: settled), "the deadline fired early: \(events)")
         timers.advance(ms: 1)
         let hit = events.first {
-            if case .deadlineExceeded(7, _) = $0 { return true }
+            if case .deadlineExceeded(7, _, _) = $0 { return true }
             return false
         }
-        guard case let .deadlineExceeded(_, afterMs)? = hit else {
+        guard case let .deadlineExceeded(_, afterMs, cause)? = hit else {
             return XCTFail("no deadlineExceeded(token: 7) at the deadline; events: \(events)")
         }
         XCTAssertEqual(afterMs, Int(deadlineMs))
+        // NE-39n: a deadline with nothing in the error log reads `timeout`.
+        XCTAssertEqual(cause, .timeout)
         // The row says WHERE it was stuck: the duration never loaded.
         let row = try XCTUnwrap(diags.last { $0.kind == "deck" && $0[field: "kind"] == .string("deadline") },
                                 "no deck kind=deadline row: \(diags)")
@@ -495,6 +497,7 @@ final class AVDeckTests: XCTestCase {
         XCTAssertEqual(row[field: "step"], .string("duration"))
         XCTAssertEqual(row[field: "durationKnown"], .bool(false))
         XCTAssertEqual(row[field: "afterMs"], .number(deadlineMs))
+        XCTAssertEqual(row[field: "class"], .string("clip"), "a load with no class is a clip's (NE-38)")
         XCTAssertNil(DiagGate.admit(row)?[field: DiagGate.droppedField], "the gate dropped part of \(row)")
         XCTAssertFalse(deck.primitives.contains { $0.hasPrefix("preroll") }, "\(deck.primitives)")
         XCTAssertFalse(events.contains { if case .ready = $0 { return true }; return false })
@@ -505,9 +508,105 @@ final class AVDeckTests: XCTestCase {
         XCTAssertEqual(deck.player.rate, 0)
     }
 
-    /// The deadline's production value is the plan's provisional 20 s.
-    func testTheProvisionalDeadlineIsTwentySeconds() {
+    /// The provisional field values (card NE-38; measurements §12): P-13 is
+    /// 20 s for a clip and 8 s for a rendered line, and a held item is reused
+    /// for up to 600 s idle. A change to any of them is NE-38f's, from the
+    /// field's rows, and moves this pin and the measurements table together.
+    func testTheProvisionalDeadlinesAreTwentySecondsForAClipAndEightForALine() {
         XCTAssertEqual(AVDeck.defaultLoadDeadlineSec, 20)
+        XCTAssertEqual(AVDeck.defaultLineLoadDeadlineSec, 8)
+        XCTAssertEqual(AVDeck.defaultReuseMaxIdleSec, 600)
+        let config = AVDeck.Config(sessionIsActive: { true })
+        XCTAssertEqual(config.deadlineSec(for: .clip), 20)
+        XCTAssertEqual(config.deadlineSec(for: .line), 8)
+    }
+
+    /// NE-38: a RENDERED LINE whose file never answers gives up at the line's
+    /// 8 s, not a clip's 20 s, and the `deadline` row says `class=line` (the
+    /// row NE-38e's `P13-line` verdict reads). The core then reads the line
+    /// aloud on a fresh token (ForayCatchUpTests
+    /// `testARenderedLinesDeadlineFallsBackToSpeechOnAFreshToken`). Virtual
+    /// time, for the reason `testANeverReadyUrlHitsTheDeadlineWithNoPreroll`
+    /// gives. TO SEE IT FAIL: arm `config.loadDeadlineSec` for every class in
+    /// `armDeadline`, or drop `classField` from the deadline row.
+    func testARenderedLineThatNeverLoadsHitsTheLineDeadlineAtEightSeconds() throws {
+        let loader = NeverAnsweringLoader()
+        stallingLoader = loader
+        let timers = VirtualDeckTimers()
+        deck.send(.unload)
+        deck = makeDeck(deadlineSec: AVDeck.defaultLoadDeadlineSec, timers: timers) { url, precise in
+            let asset = AVDeck.defaultAsset(url, precise)
+            asset.resourceLoader.setDelegate(loader, queue: loader.queue)
+            return asset
+        }
+        let never = try XCTUnwrap(URL(string: "foray-never://deck.test/line.mp3"))
+        deck.send(.load(token: 9, itemId: "f1#0", url: never.absoluteString, startSec: 0, preciseTiming: false,
+                        deadlineClass: .line))
+        XCTAssertEqual(timers.pending.map { $0.sec }, [AVDeck.defaultLineLoadDeadlineSec], "one deadline, the line's 8 s")
+        let attach = try XCTUnwrap(diags.last { $0.kind == "deck" && $0[field: "kind"] == .string("attach") },
+                                   "no attach row: \(diags)")
+        XCTAssertEqual(attach[field: "class"], .string("line"))
+
+        XCTAssertTrue(spin(until: { loader.requests > 0 }), "the stalling loader was never asked; the test proved nothing")
+        let settled: (DeckEvent) -> Bool = {
+            switch $0 {
+            case .ready, .failed, .deadlineExceeded: return true
+            default: return false
+            }
+        }
+        XCTAssertFalse(events.contains(where: settled), "the never-answering load settled by itself: \(events)")
+        let deadlineMs = AVDeck.defaultLineLoadDeadlineSec * 1000
+        timers.advance(ms: deadlineMs - 1)
+        XCTAssertFalse(events.contains(where: settled), "the line's deadline fired early: \(events)")
+        timers.advance(ms: 1)
+        let hit = events.first {
+            if case .deadlineExceeded(9, _, _) = $0 { return true }
+            return false
+        }
+        guard case let .deadlineExceeded(_, afterMs, cause)? = hit else {
+            return XCTFail("no deadlineExceeded(token: 9) at 8 s; events: \(events)")
+        }
+        XCTAssertEqual(afterMs, Int(deadlineMs))
+        // NE-39n: a line's deadline with nothing in the error log reads
+        // `timeout`, the cause its fallback row will carry.
+        XCTAssertEqual(cause, .timeout)
+        let row = try XCTUnwrap(diags.last { $0.kind == "deck" && $0[field: "kind"] == .string("deadline") },
+                                "no deck kind=deadline row: \(diags)")
+        XCTAssertEqual(row[field: "class"], .string("line"))
+        XCTAssertEqual(row[field: "afterMs"], .number(deadlineMs))
+        XCTAssertNil(DiagGate.admit(row)?[field: DiagGate.droppedField], "the gate dropped part of \(row)")
+        XCTAssertNil(deck.player.currentItem, "the deadline must detach the item")
+    }
+
+    /// NE-38: NO BEHAVIOUR CHANGES FOR A CLIP. A clip load that lands 19 s
+    /// after it started (virtual time: the clock is moved to 19 s before the
+    /// real load can land) is ready, not timed out, and its deadline is gone
+    /// once it is: time well past 20 s then fires nothing. The `ready` row
+    /// carries `class=clip` and the elapsed 19 s (NE-38e's `P13-clip`).
+    /// TO SEE IT FAIL: arm the line's deadline for every load, or keep the
+    /// deadline armed past `.ready`.
+    func testAClipLoadThatLandsAtNineteenSecondsDoesNotTimeOut() throws {
+        let timers = VirtualDeckTimers()
+        deck.send(.unload)
+        deck = makeDeck(deadlineSec: AVDeck.defaultLoadDeadlineSec, timers: timers)
+        deck.send(.loadURL(token: 5, url: try fixture("click-cbr", "mp3"), startSec: 3, preciseTiming: true))
+        XCTAssertEqual(timers.pending.map { $0.sec }, [AVDeck.defaultLoadDeadlineSec], "one deadline, the clip's 20 s")
+        // Every deck callback hops to main, so nothing has landed yet: the
+        // load is still in flight when 19 s pass.
+        timers.advance(ms: 19_000)
+        XCTAssertFalse(events.contains { if case .deadlineExceeded = $0 { return true }; return false },
+                       "a clip timed out before 20 s: \(events)")
+        guard let ready = readyEvent(5) else { return }
+        XCTAssertGreaterThanOrEqual(ready.elapsedMs, 19_000, "the load landed after the 19 s passed")
+        timers.advance(ms: 60_000)
+        XCTAssertFalse(events.contains { if case .deadlineExceeded = $0 { return true }; return false },
+                       "a deadline fired after the clip was ready: \(events)")
+        XCTAssertTrue(timers.pending.isEmpty, "the deadline outlived the ready: \(timers.pending.map { $0.sec })")
+        let row = try XCTUnwrap(diags.last { $0.kind == "deck" && $0[field: "kind"] == .string("ready") },
+                                "no deck kind=ready row: \(diags)")
+        XCTAssertEqual(row[field: "class"], .string("clip"))
+        XCTAssertEqual(row[field: "elapsedMs"], .number(Double(ready.elapsedMs)))
+        XCTAssertNil(DiagGate.admit(row)?[field: DiagGate.droppedField], "the gate dropped part of \(row)")
     }
 
     // MARK: - Observation
@@ -695,6 +794,42 @@ final class AVDeckTests: XCTestCase {
             XCTAssertNil(deck.player.currentItem)
             XCTAssertEqual(deck.reading, .idle)
         }
+    }
+
+    /// NE-39n (3): the `cause=` of the core's `narration kind=fallback` row,
+    /// mapped from a synthetic deck failure: the NSError AVFoundation hands
+    /// `fail` (the outer error and its `NSUnderlyingErrorKey`) and the item's
+    /// last error-log event, the same fields the `failed` and `deadline` rows
+    /// print. One synthetic failure per cause, plus the precedence (a server's
+    /// status first, then offline, then timeout, then decode).
+    /// TO SEE IT FAIL: stop reading `NSUnderlyingErrorKey` in `fallbackCause`
+    /// (airplane mode arrives as AVFoundation's -11800 over NSURLError -1009,
+    /// and reads `other`).
+    func testFallbackCauseMapsEachCauseFromASyntheticNSError() {
+        func wrapped(_ domain: String, _ code: Int) -> NSError {
+            NSError(domain: AVFoundationErrorDomain, code: -11800,
+                    userInfo: [NSUnderlyingErrorKey: NSError(domain: domain, code: code)])
+        }
+        let cases: [(String, Error?, (status: Int, domain: String)?, Bool, Vocabulary.NarrationFallbackCause)] = [
+            ("the P-13 deadline, nothing logged", nil, nil, true, .timeout),
+            ("the URL loader timed out", wrapped(NSURLErrorDomain, NSURLErrorTimedOut), nil, false, .timeout),
+            ("a missing file", wrapped("CoreMediaErrorDomain", -12938), (404, "CoreMediaErrorDomain"), false, .http4xx),
+            ("a deadline after a 403", nil, (403, "CoreMediaErrorDomain"), true, .http4xx),
+            ("the host failing", wrapped("CoreMediaErrorDomain", -12345), (503, "CoreMediaErrorDomain"), false, .http5xx),
+            ("airplane mode", wrapped(NSURLErrorDomain, NSURLErrorNotConnectedToInternet), nil, false, .offline),
+            ("the radio lost mid-line", wrapped(NSURLErrorDomain, NSURLErrorNetworkConnectionLost), nil, false, .offline),
+            ("a deadline while offline", nil, (NSURLErrorNotConnectedToInternet, NSURLErrorDomain), true, .offline),
+            ("not audio", NSError(domain: AVFoundationErrorDomain, code: AVError.Code.fileFormatNotRecognized.rawValue),
+             nil, false, .decode),
+            ("no error at all", nil, nil, false, .other),
+            ("an unmapped status", wrapped(NSOSStatusErrorDomain, -12345), nil, false, .other),
+            ("a 404 while the radio drops: the server answered", wrapped(NSURLErrorDomain, NSURLErrorNotConnectedToInternet),
+             (404, "CoreMediaErrorDomain"), false, .http4xx)
+        ]
+        for (name, error, log, deadline, expected) in cases {
+            XCTAssertEqual(AVDeck.fallbackCause(error: error, log: log, deadline: deadline), expected, name)
+        }
+        XCTAssertEqual(Set(cases.map { $0.4 }), Set(Vocabulary.NarrationFallbackCause.allCases), "every cause is mapped")
     }
 
     /// The host reads the deck before every input. Idle reads nothing; a load

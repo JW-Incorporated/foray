@@ -7,6 +7,14 @@ docs/. Completed workstreams move to their plan doc's retro section.
 
 ## Active workstreams
 
+### 2026-09-30 — `engine/ne-40`: NE-40, the stop-cause audit, the `.longFormAudio` trial (OFF) and the M3 drive script
+
+**The audit (D-5).** `StopCauseTests.swift` (the engine core's tests) is the table of every path that stops audio: 32 paths from the 13 `EngineCore` functions that write a `stop` row, each naming its adapter (AVDeck, DeckPair, SpeechNarrator, InterludePlayer, SilenceNode, AudioSessionOwner, BackgroundGrace, the page, the car). Every `Vocabulary.StopCause` is emitted by a path or reserved (`seam-timeout`: a seam's next clip that never loads is its `load-deadline`; `unknown`: never written). A shell invariant is red when a `stopRow(` call site has no table entry.
+- **Fixed by it.** A pause, close, relinquish, interruption, lost route or the ladder's last refusal during a seam silenced the jingle or the silence node BEFORE writing its cause row; the row now comes first. Grace expiry writes its row before ending grace; the engine's teardown while playing now writes `relinquish`; the `silence` and `interlude cut` rows precede their commands.
+
+**The trial (DV-8).** `EngineConfig.routeSharingLongForm`, OFF. Only the Developer row **Route sharing** (`engineSend setRouteSharing`, a new contract command) turns it on, stored in the private key `ForayEngine.routeSharing` and applied at the next launch; the `build` row and the Copy header say `routeSharing=`. The privacy policy and data-safety text list the key.
+
+**The script.** `docs/native-engine-m3-drive-test.md` (G-6: DV-7a required, DV-7b the negative control) and HUMAN-ACTIONS #130. The build number is added once the post-merge TestFlight build exists.
 ### 2026-09-30 — nightly pipeline PAUSED until Spark Phase 5 (founder ruling, HA #46)
 
 `nightly-refresh` and `nightly-watch` are **disabled** (`gh workflow disable`), routine `foray-nightly-enrich` stays off. Founder chose: no nightly content until the Spark takes over, and **drop** the stranded 2026-09-14 digest (40 episodes). When nightly resumes: `gh workflow enable nightly-refresh`, `gh workflow enable nightly-watch`, and make the first run a manual dispatch with **overwrite_unmerged_digest** ticked, or it stops at OVERWRITE_WOULD_LOSE again.
@@ -173,6 +181,26 @@ No device, and no request to Joey (D-A3).
 - The work is on branch `engine/m3`, cut from `main` at `32989b5c`, with one PR per card into it. NE-40 merges it to `main`.
 
 **Owned while it runs:** `mobile/plugins/foray-audio/**` (engine) and the parity families `route-resume`, `prepare` and `manager-remainder`.
+
+### 2026-09-29 — `engine/ne-46-silence-late-timer`: NE-46, the silence node stays off; the late-timer row
+
+**The decision (provisional, M3).** `EngineConfig.silenceNodeEnabled` stays `false`. Four reasons: App Review 2.5.4 (R21); no suspension inside a seam has been observed (the M1 car test #114, the 2026-09-28 paste); BackgroundGrace holds a task across every silent span; NE-45 shrinks silent spans to the beat. `SilenceNode.swift`'s header states it, and an XCTest (`LateTimerTests.testTheSilenceNodeFlagDefaultsToFalse`) and a shell invariant pin it.
+- **The detector.** `EngineCore.noteLateness`, before each input is handled: a one-shot engine timer (the seam beat, the silence cap, the narration tick, from a ledger of the turn's own `timerArm`/`timerCancel`) or the deck's load deadline (`afterMs` against `EngineConfig.loadDeadlineMs`, which the boot fills from `AVDeck`'s P-13 values) that arrives more than `NARRATION_SUSPEND_GAP_MS` (5 s) late while grace is held writes `grace kind=late timer= lateMs= inSeam=y|n bgRemainingMs= reason= clock=mono|wall`. It decides nothing. Lateness is the larger of the uptime and the wall-clock readings: uptime (and the host's dispatch timers) stops while the device sleeps, so a suspension on a locked phone that then slept is late only on the wall clock (`clock=wall`).
+- **The rule for turning it on.** Only if a drive paste shows at least one `grace kind=late inSeam=y` row (NE-38e verdict `suspension-in-seam`). The change is then a one-line flag PR (`config.silenceNodeEnabled = true` in `EngineBoot`) that cites the paste, and the NE-34 App Review note must already be in the submission notes.
+
+**Device check (human, not blocking):** the `grace` rows of #128 and of the NE-40 drive, read by `engine-report.mjs`'s `suspension-in-seam` verdict. No new on-device step.
+
+### 2026-09-29 — `engine/ne-39n-next-fallback-cause`: NE-39n, Next lands on a narration line; the fallback's cause
+
+**The Next decision (provisional ruling, M3).** Next goes to the NEXT ITEM, a narration line included, on every surface: the page's button, the web lock screen, the car and the iPhone lock screen. From a clip whose next item is a line, Next lands on the line. From a line, it lands on the item after it.
+- **JS citation (the reference):** `player/queue-manager.js` `_skipToNext` now reads `this._nextItem(this._cursor(), false)`, so it no longer steps over `kind: "tts"`. It now agrees with `player/client.js` `forayNext` (`play(index + 1)`, audit round 3 player-core-6). The web lock screen's `nexttrack` already routed there (`media-session.js` §2, client.js `next: () => ForayPlayer.forayNext()`).
+- **Why:** the engine's `next` (the car, the lock screen) stepped over authored lines that the phone's own button played. From the clip before a closing line, it ended the Foray unheard.
+- **Pinned by:** `manager-foray/remote-nexttrack-onto-a-line` and `manager-foray/remote-nexttrack-from-a-line` (in `manager-foray`, not `media`, because only the Foray-tape driver reads the page's build of a Foray with a line), `manager-foray/next-lands-on-a-bridge` and `manager-foray/next-from-a-bridge-lands-on-the-item-after-it`, and `manager-episode/every-effect-has-a-handler` (re-recorded). Swift: `EngineCore.next(source:)`, `.skipNext` and `canNext` use `skipBridges: false`. The end-of-item and bridge-failure paths still step over bridges, as the JS does.
+- **Undo:** if the founder rules otherwise, flip `_skipToNext` first, re-record, then flip the three Swift sites.
+
+**The fallback's cause.** The `narration kind=fallback` row gains `cause=`, one of `timeout`, `http-4xx`, `http-5xx`, `offline`, `decode` or `other` (the JS vocabulary set `narrationFallbackCause`, then generated into Swift and Java). AVDeck reads it from the same fields its `failed` and `deadline` rows print, through the core's pure `NarrationFallbackCauseReading`. The code tables are provisional (`// MEASURE`): an unmapped failure is `other`, and the deck row beside it holds the codes to extend the table from.
+
+**Device check (human, not blocking):** NE-40's rendered-Foray block. Press Next during a line and see the next clip start at its in-point. Turn on airplane mode during a line: the paste shows `narration kind=fallback ... cause=offline`.
 
 ### 2026-09-29 — `android/a-23-pure-policies`: A-23, the pure policies (episode subset) on the JVM
 
