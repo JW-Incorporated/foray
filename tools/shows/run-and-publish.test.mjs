@@ -15,7 +15,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 import { describeExecError, runAndPublish } from "./run-and-publish.mjs";
 
 /** Writes a minimal but real S-04a build output tree (state.json +
@@ -39,25 +39,51 @@ async function seedBuildOutput({ buildOutDir, statePath, exportVersion, checksum
   return manifest;
 }
 
-function fakeGhRegistry() {
-  // Mirrors a real GitHub repo's release list across the two calls this
-  // test makes: `gh release view <tag>` and `gh release create <tag> ...`.
+function fakeGhRegistry({ published = [] } = {}) {
+  // Mirrors a real GitHub repo's release list across the four calls the
+  // publish path makes since OPS-03: `gh release view <tag> --json
+  // isDraft,assets`, `gh release create <tag> --draft` (no assets),
+  // `gh release upload <tag> <files>` and `gh release edit <tag>
+  // --draft=false`. `created` still records each tag exactly once, at its
+  // create call — the acceptance test below counts it. `published`
+  // pre-seeds tags that a PRIOR run already published.
   const created = new Set();
+  const releases = new Map(published.map((tag) => [tag, { draft: false, assets: [] }]));
   const ghExec = async (cmd, args) => {
     assert.equal(cmd, "gh");
-    if (args[0] === "release" && args[1] === "view") {
-      const tag = args[2];
-      if (created.has(tag)) return { stdout: "exists" };
+    assert.equal(args[0], "release");
+    const [, verb, tag] = args;
+    if (verb === "view") {
+      const r = releases.get(tag);
+      // The shape the real call's --jq projection prints: [{ name, state }].
+      if (r) return { stdout: JSON.stringify({ isDraft: r.draft, assets: r.assets.map((name) => ({ name, state: "uploaded" })) }) };
       const e = new Error("not found"); e.stderr = "release not found"; throw e;
     }
-    if (args[0] === "release" && args[1] === "create") {
-      const tag = args[2];
+    if (verb === "create") {
+      // Real gh refuses a second release under a tag that already has one
+      // (draft or not); a fake that accepted it would hide a duplicate create.
+      if (releases.has(tag)) {
+        const e = new Error("Command failed: gh release create"); e.stderr = `a release with tag ${tag} already exists`; throw e;
+      }
       created.add(tag);
+      releases.set(tag, { draft: args.includes("--draft"), assets: [] });
       return { stdout: "created" };
+    }
+    if (verb === "upload") {
+      const r = releases.get(tag);
+      assert.ok(r, `upload to a release that was never created: ${tag}`);
+      for (const a of args.slice(3)) if (/\.json(\.gz)?$/.test(a)) r.assets.push(basename(a));
+      return { stdout: "" };
+    }
+    if (verb === "edit") {
+      const r = releases.get(tag);
+      assert.ok(r, `edit of a release that was never created: ${tag}`);
+      if (args.includes("--draft=false")) r.draft = false;
+      return { stdout: "" };
     }
     throw new Error(`unexpected gh invocation: ${args.join(" ")}`);
   };
-  return { ghExec, created };
+  return { ghExec, created, releases };
 }
 
 test("acceptance: two runs against the same dump version publish exactly one release", async () => {
@@ -293,21 +319,9 @@ test("a run that publishes the top-level release but not the shard batch (interr
   const pointerPath = join(root, "shows-index-pointer.json");
   const log = () => {};
 
-  // Pre-seed GitHub with the top-level release already existing, but no
-  // shard batch release yet.
-  const created = new Set(["shows-index-local-abc123"]);
-  const ghExec = async (cmd, args) => {
-    if (args[0] === "release" && args[1] === "view") {
-      const tag = args[2];
-      if (created.has(tag)) return { stdout: "exists" };
-      const e = new Error("not found"); e.stderr = "release not found"; throw e;
-    }
-    if (args[0] === "release" && args[1] === "create") {
-      created.add(args[2]);
-      return { stdout: "created" };
-    }
-    throw new Error(`unexpected gh invocation: ${args.join(" ")}`);
-  };
+  // Pre-seed GitHub with the top-level release already PUBLISHED, but no
+  // shard batch release yet (same view/create/upload/edit fake as above).
+  const { ghExec, created } = fakeGhRegistry({ published: ["shows-index-local-abc123"] });
 
   try {
     await seedBuildOutput({ buildOutDir, statePath, exportVersion: "local:abc123", checksum: "abc123" });

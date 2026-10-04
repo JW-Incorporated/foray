@@ -2059,7 +2059,7 @@ const FLOORS = {
      both idempotency paths (S-04a's own state.json skip, and the
      independent release-already-exists check that catches a lost
      state.json). */
-  "tools/shows/publish-release.test.mjs": 19, // audit round 3 (L8): +1, POINTER_SCHEMA_VERSION; 18 -> 19
+  "tools/shows/publish-release.test.mjs": 28, // OPS-03 review: +2 -- a starter (half-uploaded) asset reads as missing, and a stranded draft BATCH resumes in publishShardReleases (the #969 fix at the call site); 26 -> 28 // OPS-03: draft -> chunked uploads -> publish, resume, retry, rate-limit wait, pacing, releaseState; 19 -> 26 (true count)
   "tools/shows/run-and-publish.test.mjs": 10, // OPS-01: +3 describeExecError (FATAL lines carry code/signal/stderr/stdout); 6 -> 10 (true count: 7 existing + 3)
   /* Fresh-context review finding (2026-09-05): runBuild spawns
      import-dump.mjs as a real child process, and Node does NOT
