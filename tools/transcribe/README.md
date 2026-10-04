@@ -604,6 +604,12 @@ answers unranged requests chunked and therefore cannot be asked this question at
 all. This narrows the blast radius of the finding above; it does not clear
 anybody, for the same reason The Secret To Success is still `unresolved`.
 
+**The rule in code.** `RANGED_GET_UNTRUSTED_HOSTS` and `rangedGetTrusted()` in
+`ad-inflation.mjs` name the origins whose `Content-Range` total is a declaration
+(host-only, per the 2026-09-30 ruling on HUMAN-ACTIONS #24 and the ADR-0008
+amendment). Anything that sizes an ad pad from a probe asks it first: the planned
+`tools/segments/ad-pad.mjs` and `tools/segments/probe-ad-pad.mjs` (DAI-02, DAI-04).
+
 ### The other two answers
 
 **Art Bell: the file served today is clean, and the original question is now
