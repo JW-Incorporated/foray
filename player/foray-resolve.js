@@ -331,7 +331,9 @@ export function hydrateForayItems(foray, { segments, sources } = {}) {
       reference_duration_sec: seg.reference_duration_sec ?? null,
       start_anchor: seg.start_anchor ?? null,
       end_anchor: seg.end_anchor ?? null,
-      ad_pad_sec: seg.ad_pad_sec ?? null,
+      /* The pad is per EPISODE (ADR-0008 decision 2), so its home is the source
+         row; a segment-level value, if ever written, wins. */
+      ad_pad_sec: isNum(seg.ad_pad_sec) ? seg.ad_pad_sec : (isNum(src?.ad_pad_sec) ? src.ad_pad_sec : null),
       why: seg.why ?? "",
       /* what a running order reads */
       show: src.show ?? "",

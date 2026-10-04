@@ -946,3 +946,97 @@ drives' scripts already produce all of them):
   - `testARenderedLinesDeadlineFallsBackToSpeechOnAFreshToken`: the 8 s
     deadline is followed by the script, spoken on a fresh token, with
     `narration kind=fallback reason=timeout`.
+
+## 13. Precise timing on real clip sources (M2 drive, 2026-10-01)
+
+**What happened.** Build 2026093002, cellular, 1.5x, the Foray
+`beyond-the-algorithm-engineering-production-ai-s-e6533b` (Practical AI clips
+via pscrb.fm → dts.podtrac.com → audio.transistor.fm). Every clip loads with
+`precise=y` (P-7), every episode with `precise=n` (a Volts episode was ready in
+1.76 s):
+
+| Clip (in-point / file) | File bytes (Content-Range total) | Result |
+|---|---|---|
+| Building Durable AI Agents, 1551.9 s / 2798 s | 44,818,279 | ready 7.8 s (duration step 4.2 s) |
+| Future of AI Infrastructure, 959.6 s / 3004 s | 48,106,607 | ready 11.2 s (duration step 7.1 s) |
+| Federated learning (part 2), 1427.7 s / 2725 s | 43,855,107 | deadline at 21 s, duration unknown; retry: duration 17.5 s, then deadline with **43,855,107 bytes read** and still not ready; third try ready in 20.2 s |
+
+The byte count of the failed retry IS the file's size to the byte. A precise
+MP3 load reads the whole file before it is ready.
+
+**The files are not what the first hypothesis said.** The guess was VBR with no
+usable TOC. `tools/audio/mp3-probe.mjs` (64 KB ranged GET + four 16 KB windows
+inside the file; `--scan` streams one file through memory and keeps nothing)
+says otherwise. All 11 clip sources of that Foray are **constant-bitrate**:
+
+- 9 Transistor files: CBR 128 kbit/s (one 192), each behind a LAME 3.100 or
+  Lavc **Info** frame (frames, bytes, a 100-entry TOC). ID3v2 tags are 44-288 KB.
+- 1 engineered.network file (Causality): CBR 64 kbit/s, no header frame, a 2.66 MB ID3v2 tag.
+- Every host honours Range (206). The redirect chain is 2-3 hops.
+- `--scan` of the failing file: 104,304 frames, every one 128 kbit/s, no resync, 2724.676 s.
+- `seek_map` describes the file a host delivered on the day it was probed. On a
+  host that stitches ads per request (`dai_suspected`), a stitched ad at another
+  bitrate would break "cbr". The Practical AI files show no stitching today: the
+  Content-Range total of the failing file is its Info frame's byte count plus its
+  ID3v2 and ID3v1 tags, to the byte. Re-run `--sources --write` with
+  `tools/foray/verify-source-audio.mjs`.
+
+**Every source in `data/segment-sources.json`, classified** (`--sources --write`,
+2026-10-01; the result is each row's `seek_map`): of 98 sources, **66 CBR**, **31 VBR with a Xing TOC**, **0 VBR without a TOC**, and 1 unclassified. By clip, 77 of the 99 clips in the seven committed Forays are on CBR sources: five Forays are all-CBR, `capital-types-1` is 19 CBR + 3 VBR, and `geology-plates-1` is all VBR. The only VBR
+sources are Geology Bites (anchor.fm / CloudFront) and one Squarespace file, and
+every one of them carries a Xing TOC. One source is an M4A (moov first), which
+the probe cannot classify and which keeps precise timing (an MP4 sample table
+makes precise cheap).
+
+**What precise timing costs, and buys, per file type.** Apple: "Getting the
+exact duration of an asset may require significant processing overhead. Using
+an approximate duration is typically a cheaper operation and sufficient for
+playback" (AVFoundation Programming Guide, *Using Assets*). An MP3 has no packet
+index, so "precise" means walking every frame header, over the network the whole
+file, whatever header the file carries. What approximate costs instead:
+
+| File type | Precise | Approximate landing (measured or modelled) |
+|---|---|---|
+| CBR, no header frame | whole-file read | exact to a frame. §7.3: 0 to -4.9 ms, the same as precise |
+| CBR behind an Info frame (every Practical AI source) | whole-file read (the drive) | **unmeasured on iOS.** By byte arithmetic it is within one 26 ms frame (`--scan`: -25 ms at 1427.7 s). If AVFoundation follows the Info TOC instead, the TOC is quantised to 1/256 of the file: modelled on these files' real TOCs, -1.5 s, +0.65 s and -3.7 s at the three drive in-points, and -16 to +10.5 s across the files |
+| VBR + Xing TOC (Geology Bites) | whole-file read | §7.3: -221 / +36 ms on a 90 s file. Modelled on a real 2103 s file with its TOC: -3.3, -3.1, -7.7, -4.2 s at 73, 600, 1200, 1800 s, always early (padding direction, but a sentence or two) |
+| VBR, no TOC | whole-file read | §7.3: -396 / -576 ms locally; Media3 (Android): 7.7-20 s early. No such source in the registry |
+
+**Data, not only time.** That Foray's 11 clips are 1,471 s of audio, about 23 MB
+at their bitrates. Precise timing downloads the 11 whole files: **490.5 MB** on
+cellular for one listen.
+
+**Lead time.** NE-45s prepares a clip at the start of the spoken line before it.
+In this Foray those lines are 15-60 words, about 4-15 s at the founder's 1.5x
+(most 4-7 s). Precise loads took 7.8 s, 11.2 s and 20+ s, so preparing earlier
+does not close the gap, and an approximate load (about 1.8 s) does.
+
+**What changed (staged OFF).** `EngineItem.preciseTiming(approximateCBR:)` is the
+one rule; `prepare` now carries the core's flag instead of DeckPair's hard-coded
+`true`; foray-queue.js carries `seek_map` onto the built item. The exemption is
+`EngineConfig.approximateCBRClips`, **off in the core and in EngineBoot**,
+because the Info-frame row above is the one cell nobody has measured on iOS, and
+its downside is a clip starting seconds off.
+
+**The row that decides it** (`InOutPointMeasurementTests
+.testWhetherAnApproximateSeekFollowsAnInfoFramesTOC`, every ios-kit run, job
+summary "NE-25a (3)", log prefix `NE-25a-info`). click-cbr.mp3's frames go
+behind a LAME-style Info frame, once with the TOC it should carry and once with
+every entry pushed 7/256 of the file later. Following the TOC lands the skewed
+file about +2.2 to +2.3 s late (modelled: 2238 / 2154 / 2314 ms at 19.65 / 49.65
+/ 69.65 s); byte arithmetic lands both files where click-cbr.mp3 lands. If
+approximate on the skewed file reads near 0 ms, turn the exemption on
+(`config.approximateCBRClips = true` in EngineBoot). If it reads near +2.3 s,
+leave it off and take the other route: start precise loads earlier (at the
+previous clip, not the line before), accept the data cost, or settle VBR/Info
+files server-side (a per-clip byte index).
+
+**Measured (ios-kit run 36903416379, 2026-10-01, `NE-25a-info` rows): byte
+arithmetic.** Approximate on `click-cbr-info-toc-skewed+7.mp3` landed
+`landingErrorSec` 0 / 0 (7e-15) / 0 at 19.65 / 49.65 / 69.65 s, the same as
+the correctly tagged file and nowhere near the modelled +2.2 to +2.3 s.
+AVFoundation ignores an Info frame's TOC on a CBR file. **The exemption is
+ON in EngineBoot from 2026-10-04** (`config.approximateCBRClips = true`); the
+core's default stays off, so the parity drivers and any other host are
+unchanged. Still to confirm on a device over a real CDN (DV-5): the drive
+that follows this build should show clip loads near the episodes' ~1.8 s.

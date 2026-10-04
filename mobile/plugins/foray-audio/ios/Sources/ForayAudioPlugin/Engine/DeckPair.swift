@@ -156,8 +156,9 @@ final class DeckPair: DeckDriving {
         switch command {
         case let .load(token, itemId, url, startSec, preciseTiming, _):
             load(command, token: token, itemId: itemId, url: url, startSec: startSec, preciseTiming: preciseTiming)
-        case let .prepare(itemId, url, startSec, deadlineClass):
-            prepare(itemId: itemId, url: url, startSec: startSec, deadlineClass: deadlineClass)
+        case let .prepare(itemId, url, startSec, deadlineClass, preciseTiming):
+            prepare(itemId: itemId, url: url, startSec: startSec, deadlineClass: deadlineClass,
+                    preciseTiming: preciseTiming)
         case let .setRate(newRate):
             // Both decks: the standby primes at the rate it will play at.
             // AVDeck refuses a non-positive rate itself, and says so.
@@ -195,7 +196,8 @@ final class DeckPair: DeckDriving {
 
     // MARK: - Prepare
 
-    private func prepare(itemId: String, url: String?, startSec: Double, deadlineClass: DeckDeadlineClass) {
+    private func prepare(itemId: String, url: String?, startSec: Double, deadlineClass: DeckDeadlineClass,
+                         preciseTiming: Bool) {
         let offset = DeckPolicy.warmOffset(startSec)
         let decision = DeckPolicy.prefetchDecision(
             available: available, url: url, currentUrl: decks[activeIndex].loadedURL,
@@ -219,12 +221,14 @@ final class DeckPair: DeckDriving {
         let standby = decks[standbyIndex]
         standby.prepareWindowAvailable = false
         standby.send(.setRate(rate))
-        // Precise timing: a prepared item is the next SEGMENT of a Foray, and
-        // P-7's provisional rule is precise for bounded segments. A precise
-        // asset promoted for an approximate ask is never worse. The warm load
-        // runs under the item's own P-13 class (NE-38): a prepared line gives
-        // up at a line's deadline, exactly as its own load would.
-        standby.send(.load(token: token, itemId: itemId, url: url, startSec: offset, preciseTiming: true,
+        // Precise timing is the core's (`EngineItem.preciseTiming(approximateCBR:)`,
+        // P-7): the asset this item's own load would make, so with the CBR
+        // exemption on a CBR clip warms in the seconds an approximate load
+        // takes instead of reading the whole file (M2 drive 2026-10-01). A promotion does not re-check the flag: the
+        // prepare and the load name the same item, so they agree. The warm
+        // load runs under the item's own P-13 class (NE-38): a prepared line
+        // gives up at a line's deadline, exactly as its own load would.
+        standby.send(.load(token: token, itemId: itemId, url: url, startSec: offset, preciseTiming: preciseTiming,
                            deadlineClass: deadlineClass))
     }
 

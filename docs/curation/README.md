@@ -55,6 +55,14 @@ depth-based learning paths.
   selects *against* the shows we can anchor. Note this sits alongside, not
   against, `search-coverage-gaps.md`: promotion is still the fix for most
   topics; sourcing is the fix for non-Anglophone ones.
+- **[ugc-moderation-runbook.md](ugc-moderation-runbook.md)** — App Store
+  Guideline 1.2 for phase 2 (any-user Forays): content filtering, reports,
+  takedown, blocking and contact, and the order they are owed under the
+  2026-09-30 HA #31 ruling (a private-to-prompter Foray is not UGC; the
+  output-side filter comes before any non-founder prompt; report + block come
+  before the first shared one). Follows D9's `generation_jobs` queue, not the
+  superseded HTTP-service design. Includes the takedown steps for a catalogue
+  Foray (`draft` delists; only deleting the row removes it).
 
 Background these build on: `docs/brief/03_CURATION_SPEC.md` (the original,
 excellent — but single-user — curation design) and the product principles in

@@ -102,6 +102,15 @@ enum EngineBoot {
         // (provisional, measurements §12, verdict route-back); absent reads as
         // the core's default.
         config.routeResumeBluetooth = EngineBoot.routeResumeBluetooth(Bundle.main.infoDictionary)
+        // P-7's CBR exemption: ON. docs/ios-native-engine-measurements.md §13's
+        // Simulator row (ios-kit run 36903416379, 2026-10-01) put an approximate
+        // seek into the Info-TOC-skewed+7 file 0 ms off at 19.65 / 49.65 /
+        // 69.65 s, where following the TOC would land it +2.2 to +2.3 s late:
+        // AVFoundation does CBR byte arithmetic and ignores the Info TOC. So a
+        // clip on a measured-CBR source (`seek_map: "cbr"`) loads approximate
+        // and no longer downloads its whole MP3 first (M2 drive: 43,855,107 B
+        // for one clip). VBR and unmeasured sources stay precise.
+        config.approximateCBRClips = true
         // NE-46: the deck's own P-13 deadlines, so a load deadline that fires
         // late while grace is held writes `grace kind=late timer=load-deadline`.
         config.loadDeadlineMs = [.clip: AVDeck.defaultLoadDeadlineSec * 1000,

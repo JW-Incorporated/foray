@@ -15,6 +15,7 @@ import { mkdtempSync, writeFileSync, rmSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { FORAY_CLIP_LOAD_ATTEMPTS, FORAY_CLIP_MAX_SILENCE_SEC } from "../../player/queue-manager.js";
 
 import {
   parsePaste, analyze, verdicts, formatReport, percentile, seamDistribution, headerCheck,
@@ -563,6 +564,28 @@ test("P13-clip fails on a deadline row (with its step and class) and on under 2x
   assert.equal(m3(paste([bootRow(), attachRow(1), readyRow(1, 9_900)]), "P13-clip").verdict, "pass", "19.8 s rounds up to 20 s, not over");
 });
 
+test("P13-clip, §16: a retried clip's continued load is not a cold load, and the ladder is counted", () => {
+  /* The 2026-10-01 drive's shape, fixed: token 2's deadline lapses with its
+     duration in, the core retries (its row names the old token), the deck
+     continues the load as token 3, which lands 4 s later counting from the
+     first attach (24 s); token 4 misses twice and is stepped over. MUTATION:
+     drop `&& !e.cont` from the cold filter (token 3's 24 s becomes a cold
+     load and the proposal jumps to 48 s). */
+  const v = m3(paste([
+    bootRow(), attachRow(1), readyRow(1, 2000),
+    attachRow(2), deadlineRow(2, { durationKnown: true, progressed: true }),
+    deck("retry", 2, { index: 2, attempt: 2, why: "load-deadline", fileCause: "timeout", waiting: true }),
+    deck("continue", 3, { fromToken: 2, heldMs: 20000, step: "readiness", durationKnown: true, class: "clip" }),
+    readyRow(3, 24_000),
+    attachRow(4), deadlineRow(4), deck("retry", 4, { index: 3, attempt: 2, why: "load-deadline", waiting: true }),
+    attachRow(5), deadlineRow(5),
+    { kind: "skip", event: "load", index: 3, attempts: 2, why: "load-deadline", waiting: true },
+  ]), "P13-clip");
+  assert.equal(v.verdict, "fail", "a deadline is still a P-13 fail");
+  assert.match(v.why, /cold time-to-ready n 1, p50 2000ms/);
+  assert.match(v.why, /§16: 2 retried, 1 continued a load in flight, 1 stepped over/);
+});
+
 test("P13-line: rendered-line loads judge the 8 s line deadline; clip loads leave it no-coverage", () => {
   const line = (t, ms) => [attachRow(t, { class: "line" }), readyRow(t, ms, { class: "line" })];
   assert.equal(m3(paste([bootRow(), ...line(1, 640), ...line(2, 910)]), "P13-line").verdict, "pass");
@@ -796,6 +819,9 @@ test("the values the M3 verdicts judge are the ones the Swift sources ship (// M
   assert.match(avdeck, /defaultLoadDeadlineSec[^\n]*MEASURE: verdict=P13-clip/);
   assert.match(avdeck, /defaultLineLoadDeadlineSec[^\n]*MEASURE: verdict=P13-line/);
   assert.match(avdeck, /defaultReuseMaxIdleSec[^\n]*MEASURE: verdict=reuse-idle/);
+  // §16: the Foray clip's silence bound is every attempt's clip deadline,
+  // against the deadline AVDeck ships (queue-manager.js FORAY_CLIP_MAX_SILENCE_SEC).
+  assert.equal(FORAY_CLIP_MAX_SILENCE_SEC, FORAY_CLIP_LOAD_ATTEMPTS * P13_CURRENT_SEC.clip);
   const core = src("foray-engine-core/Sources/ForayEngineCore/Engine/EngineCore.swift");
   assert.equal(constant(core, "remoteDuplicateWindowMs"), REMOTE_DUPLICATE_WINDOW_MS);
   assert.match(core, /bufferingWhileWaiting[^\n]*MEASURE: verdict=rate-latch/);
