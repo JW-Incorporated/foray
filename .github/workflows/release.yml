@@ -249,8 +249,8 @@ jobs:
     # Its own job on ubuntu-latest, parallel with `version`, so the wait costs
     # no macOS time. It waits for checks still running on this SHA (a manual
     # dispatch minutes after a merge is the ordinary case) and REFUSES on
-    # anything but success: red, cancelled, skipped, missing after a grace, or
-    # still running at the timeout. Only the iOS upload depends on it; the
+    # anything but success: red, cancelled, skipped or missing after a grace,
+    # or still running at the timeout. Only the iOS upload depends on it; the
     # Android bundle does not ship Swift.
     #
     # The decision is tools/ci/engine-ci.mjs `release-checks` (a DENIED path,
@@ -264,10 +264,21 @@ jobs:
     # `actions: write` is for that one dispatch; a dispatch on the default
     # branch runs ios-kit and engine-parity IN FULL (engine-ci.mjs
     # releaseDispatchPlan explains why), and the rule stays "green on this SHA".
+    # Since ci.yml runs ios-kit only when a Swift or engine path changed, a
+    # content-only tip of main carries a SKIPPED ios-kit, and the plan counts
+    # skipped as missing: it dispatches, and the dispatched run must go green.
+    #
+    # IT WAITS OUT A BUSY macOS QUEUE (2026-10-04). Release run 37228218257's
+    # dispatched ios-kit sat QUEUED for 40+ minutes and the 40-minute default
+    # refused the TestFlight. RELEASE_CHECKS_TIMEOUT_MIN is 120 (queue plus a
+    # ~15-minute ios-kit), and the job's own timeout sits above it so the
+    # script's refusal, which names what it last saw, always beats the
+    # runner's kill. The missing-check grace keeps its default: a check run
+    # that never appears is still refused in minutes, not hours.
     needs: guard
     if: needs.guard.outputs.allowed == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 50
+    timeout-minutes: 130
     permissions:
       contents: read
       checks: read
@@ -285,6 +296,7 @@ jobs:
           REF_NAME: ${{ github.ref_name }}
           DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
           GITHUB_TOKEN: ${{ github.token }}
+          RELEASE_CHECKS_TIMEOUT_MIN: "120"
         run: node tools/ci/engine-ci.mjs release-checks "$SHA"
 
   ios:

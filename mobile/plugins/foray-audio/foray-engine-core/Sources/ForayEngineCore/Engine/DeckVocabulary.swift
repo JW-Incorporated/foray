@@ -59,7 +59,14 @@ public enum DeckCommand: Equatable, Sendable {
     /// beat, which is the audible seam either way.
     /// `deadlineClass` as on `.load`: the standby deck's warm load runs
     /// under the same deadline the item's own load would (NE-38).
-    case prepare(itemId: String, url: String?, startSec: Double, deadlineClass: DeckDeadlineClass = .clip)
+    /// `preciseTiming` as on `.load`: the core sends the item's own
+    /// (`EngineItem.preciseTiming(approximateCBR:)`), so a warm load is the
+    /// asset the item's load would make. A rendered line (unbounded) therefore
+    /// warms approximate, as it loads; a clip warms precise unless P-7's CBR
+    /// exemption is on and its source is CBR. It defaults to true, the deck's
+    /// only behaviour before the core named it.
+    case prepare(itemId: String, url: String?, startSec: Double, deadlineClass: DeckDeadlineClass = .clip,
+                 preciseTiming: Bool = true)
 }
 
 /// Which P-13 load deadline a load runs under (card NE-38;

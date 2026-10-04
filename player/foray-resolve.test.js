@@ -211,6 +211,36 @@ test("hydrate fills timestamps from segments and the show from sources", () => {
   assert.equal(items[0].why, "why line");
 });
 
+/* DAI-05: the ad pad is measured per EPISODE (ADR-0008 decision 2), so the
+   stamper writes it on the segment-sources row, and hydrate is the one place it
+   can reach the queue from. */
+test("hydrate carries the source row's ad_pad_sec when the segment has none", () => {
+  const f = fixture({ sources: [src("ep-a", { ad_pad_sec: 99.5 })] });
+  const { items } = hydrateForayItems(f.foray, { segments: f.segments, sources: f.sources });
+  assert.equal(items[0].ad_pad_sec, 99.5);
+  assert.equal(items[1].ad_pad_sec, 99.5);
+});
+
+test("a segment-level ad_pad_sec wins over the source's", () => {
+  const f = fixture({
+    segments: [seg("s1", { ad_pad_sec: 40 }), seg("s2", { start_sec: 300, end_sec: 360 })],
+    sources: [src("ep-a", { ad_pad_sec: 99.5 })],
+  });
+  const { items } = hydrateForayItems(f.foray, { segments: f.segments, sources: f.sources });
+  assert.equal(items[0].ad_pad_sec, 40);
+  assert.equal(items[1].ad_pad_sec, 99.5);
+});
+
+test("a source pad hydrates by type: 0 stays 0, a string is null, NaN is null", () => {
+  const padOf = (ad_pad_sec) => {
+    const f = fixture({ items: [item("s1")], sources: [src("ep-a", { ad_pad_sec })] });
+    return hydrateForayItems(f.foray, { segments: f.segments, sources: f.sources }).items[0].ad_pad_sec;
+  };
+  assert.equal(padOf(0), 0);
+  assert.equal(padOf("7"), null);
+  assert.equal(padOf(NaN), null);
+});
+
 test("hydrate keeps the authored slot and label for the running order", () => {
   const f = fixture({ items: [item("s1", { slot: "two", label: "ORI-7" })] });
   const { items } = hydrateForayItems(f.foray, { segments: f.segments, sources: f.sources });

@@ -103,6 +103,23 @@ test("Swift paths: any .swift, any SwiftPM manifest or lockfile, and what ios-ki
   }
 });
 
+test("the web jingle InterludeSeamTests pins by hash is a Swift path; data/forays.json deliberately is not", () => {
+  /* InterludeSeamTests.testTheAppsJingleIsTheWebAssetByHash reads
+     player/assets/interlude-placeholder.wav from the checkout and pins its
+     SHA-256, and ios-kit now runs only when a Swift path changed.
+     MUTATION: delete "player/assets/interlude-placeholder.wav" from
+     SWIFT_PREFIXES -> a re-exported jingle skips ios-kit and passes ios-gate,
+     and the red first shows on a dispatched release ios-kit. MUTATION: add
+     "data/forays.json" to SWIFT_PREFIXES -> every Foray publish waits ~15
+     minutes of macOS for what npm test's NE-29s already checked (the choice is
+     stated over SWIFT_PREFIXES). */
+  assert.equal(isSwiftPath("player/assets/interlude-placeholder.wav"), true);
+  assert.equal(classifyChanges(["player/assets/interlude-placeholder.wav"]).swift, true);
+  assert.equal(isSwiftPath("player/assets/other.wav"), false, "only the pinned asset, not the web player's assets");
+  assert.equal(isSwiftPath("data/forays.json"), false);
+  assert.equal(isEnginePath("data/forays.json"), false);
+});
+
 test("every engine path is a Swift path (ios-kit runs everything engine-parity does)", () => {
   /* MUTATION: build SWIFT_PREFIXES without spreading ENGINE_PREFIXES -> a
      fixture-only PR short-circuits ios-gate while ios-kit's plugin wrapper,
@@ -445,7 +462,9 @@ test("release-checks: both green ships", () => {
 test("release-checks: red parity refuses, whatever ios-kit says", () => {
   /* MUTATION: `ok = runs.some(success)` -> green ios-kit carries red parity
      onto the founder's phone. The acceptance line is exactly this case. */
-  for (const c of ["failure", "cancelled", "skipped", "timed_out", "neutral"]) {
+  // `skipped` is not in this list: it waits like a missing run, then refuses
+  // (the skipped-run test below).
+  for (const c of ["failure", "cancelled", "timed_out", "neutral"]) {
     const v = releaseChecksVerdict({
       "engine-parity": run(1, "engine-parity", "completed", c),
       "ios-kit": run(2, "ios-kit", "completed", "success"),
@@ -494,17 +513,70 @@ test("release dispatch: an auto-merged tip with NO checks gets ci.yml dispatched
   assert.match(half.reason, /ios-kit missing/);
 });
 
-test("release dispatch: never over a run that exists, red or in flight — that is the gate's to judge", () => {
+test("release dispatch: never over a run that exists, red, cancelled or in flight — that is the gate's to judge", () => {
   /* MUTATION: dispatch whenever a check is not green -> a red ios-kit gets a
      fresh run raced against it, and a flaky pass can paper over a real red. */
   const sha = "a".repeat(40);
-  for (const [status, conclusion] of [["completed", "failure"], ["in_progress", null], ["completed", "success"]]) {
+  for (const [status, conclusion] of [
+    ["completed", "failure"],
+    ["completed", "cancelled"],
+    ["completed", "timed_out"],
+    ["in_progress", null],
+    ["queued", null],
+    ["completed", "success"],
+  ]) {
     const plan = releaseDispatchPlan({
       byName: { "engine-parity": run(1, "engine-parity", status, conclusion), "ios-kit": run(2, "ios-kit", status, conclusion) },
       refName: "main", defaultBranch: "main", branchHeadSha: sha, sha,
     });
     assert.equal(plan.dispatch, false, `${status}/${conclusion}`);
   }
+});
+
+test("release dispatch: a newest run that was SKIPPED counts as missing, so ci.yml is dispatched over it", () => {
+  /* 2026-10-04: ci.yml runs ios-kit only when engine-paths says a Swift or
+     engine input changed, so a content-only push to main leaves ios-kit
+     SKIPPED on that tip. MUTATION: count only an absent run as missing
+     (`!byName[n]`) -> the plan sees "every check has a run", never dispatches,
+     and the release is refused for a skipped ios-kit on every content-only tip. */
+  const sha = "d".repeat(40);
+  const parityGreen = run(1, "engine-parity", "completed", "success");
+  const plan = releaseDispatchPlan({
+    byName: { "engine-parity": parityGreen, "ios-kit": run(2, "ios-kit", "completed", "skipped") },
+    refName: "main", defaultBranch: "main", branchHeadSha: sha, sha,
+  });
+  assert.equal(plan.dispatch, true, plan.reason);
+  assert.match(plan.reason, /ios-kit missing/);
+  // A skipped run is still only "missing": off the default branch, or once main has moved, no dispatch.
+  const skippedKit = { "engine-parity": parityGreen, "ios-kit": run(2, "ios-kit", "completed", "skipped") };
+  assert.equal(releaseDispatchPlan({ byName: skippedKit, refName: "v1.4.0", defaultBranch: "main", branchHeadSha: sha, sha }).dispatch, false);
+  assert.equal(releaseDispatchPlan({ byName: skippedKit, refName: "main", defaultBranch: "main", branchHeadSha: "e".repeat(40), sha }).dispatch, false);
+});
+
+test("release-checks: a skipped newest run waits like a missing one, refuses after the grace, and only the replacement's success ships", () => {
+  /* release-checks dispatches over a skipped ios-kit and polls AT ONCE, before
+     the dispatched run's ios-kit has a check run, so the skipped run is still
+     the newest. MUTATION: judge `skipped` as red on sight (drop isSkippedRun
+     from the verdict) -> the first poll refuses and the dispatch rescues
+     nothing. MUTATION: take skipped runs out of the wait and accept them as
+     success (`if (!run)` plus `conclusion === "success" || "skipped"`) -> a
+     SHA nobody compiled ships. */
+  const parity = run(1, "engine-parity", "completed", "success");
+  const skipped = run(5, "ios-kit", "completed", "skipped");
+  const waiting = releaseChecksVerdict({ "engine-parity": parity, "ios-kit": skipped });
+  assert.deepEqual([waiting.done, waiting.ok], [false, false], "a skipped run inside the grace is a wait");
+  assert.match(waiting.message, /ios-kit: skipped/);
+  const final = releaseChecksVerdict({ "engine-parity": parity, "ios-kit": skipped }, { missingIsFinal: true });
+  assert.deepEqual([final.done, final.ok], [true, false], "a skipped run after the grace is a refusal, never a pass");
+  // The dispatched run has the higher id, so latestActionsRun hands it to the verdict.
+  const green = latestActionsRun([skipped, run(9, "ios-kit", "completed", "success")], "ios-kit");
+  assert.equal(green.id, 9);
+  assert.deepEqual((({ done, ok }) => [done, ok])(releaseChecksVerdict({ "engine-parity": parity, "ios-kit": green })), [true, true]);
+  const red = latestActionsRun([skipped, run(9, "ios-kit", "completed", "failure")], "ios-kit");
+  assert.deepEqual((({ done, ok }) => [done, ok])(releaseChecksVerdict({ "engine-parity": parity, "ios-kit": red })), [true, false]);
+  // A skipped engine-parity (it never skips by design) is held to the same rule.
+  const skippedParity = releaseChecksVerdict({ "engine-parity": run(1, "engine-parity", "completed", "skipped"), "ios-kit": run(2, "ios-kit", "completed", "success") }, { missingIsFinal: true });
+  assert.deepEqual([skippedParity.done, skippedParity.ok], [true, false]);
 });
 
 test("release dispatch: only from the default branch, and only while it still points at the SHA", () => {

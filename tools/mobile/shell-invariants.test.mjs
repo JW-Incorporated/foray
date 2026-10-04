@@ -4178,6 +4178,20 @@ test("NE-40: every stopRow call site in the engine core has a StopCauseTests ent
   assert.doesNotMatch(fs.readFileSync(path.join(ROOT, "mobile", "ENGINE_DEFAULT.json"), "utf8"), /routeSharing|longForm/i, "no build default can turn the trial on");
 });
 
+test("P-7: the shipping boot turns the CBR exemption ON; the core default stays OFF", () => {
+  /* docs/ios-native-engine-measurements.md §13: an approximate seek into an
+     Info-TOC-skewed CBR file landed 0 ms off (ios-kit run 36903416379), so
+     iOS does byte arithmetic and a measured-CBR clip may load approximate
+     instead of downloading its whole MP3 (43.9 MB for one clip on the M2
+     drive). MUTATION: delete `config.approximateCBRClips = true` from
+     EngineBoot -> every clip loads precise again; default the core's flag to
+     true -> the parity hosts change behaviour. Each fails here. */
+  const boot = stripSwiftComments(fs.readFileSync(path.join(ENGINE_DIR, "EngineBoot.swift"), "utf8"));
+  assert.match(boot, /config.approximateCBRClips = true/, "EngineBoot turns the measured CBR exemption on");
+  const coreSrc = stripSwiftComments(fs.readFileSync(path.join(CORE_DIR, "Sources/ForayEngineCore/Engine/EngineCore.swift"), "utf8"));
+  assert.match(coreSrc, /approximateCBRClips: Bool = false/, "EngineConfig.approximateCBRClips defaults OFF in the core");
+});
+
 test("NE-46: the silence node stays off, its header states the enable rule, and the late-timer detector runs before the input", () => {
   /* The provisional decision (plan §14 NE-46): `silenceNodeEnabled` stays
      false, and only a drive paste with a `grace kind=late inSeam=y` row can

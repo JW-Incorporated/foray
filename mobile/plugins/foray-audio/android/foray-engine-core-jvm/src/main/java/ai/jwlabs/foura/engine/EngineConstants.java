@@ -231,6 +231,19 @@ public final class EngineConstants {
         public static final double NARRATION_CHARS_PER_SEC = 17.0;
         /** {@code NARRATION_FALLBACK_SEC} */
         public static final double NARRATION_FALLBACK_SEC = 8.0;
+
+        /** {@code SEEK_MAP} */
+        public static final class SeekMap {
+            private SeekMap() {}
+
+            /** {@code SEEK_MAP.CBR} */
+            public static final String CBR = "cbr";
+            /** {@code SEEK_MAP.VBR_TOC} */
+            public static final String VBR_TOC = "vbr-toc";
+            /** {@code SEEK_MAP.VBR_NOTOC} */
+            public static final String VBR_NOTOC = "vbr-notoc";
+        }
+
         /** {@code SEGMENT} */
         public static final String SEGMENT = "segment";
     }
@@ -339,6 +352,12 @@ public final class EngineConstants {
     public static final class QueueManager {
         private QueueManager() {}
 
+        /** {@code FORAY_CLIP_LOAD_ATTEMPTS} */
+        public static final double FORAY_CLIP_LOAD_ATTEMPTS = 2.0;
+        /** {@code FORAY_CLIP_LOAD_MAX_STEPS} */
+        public static final double FORAY_CLIP_LOAD_MAX_STEPS = 1.0;
+        /** {@code FORAY_CLIP_MAX_SILENCE_SEC} */
+        public static final double FORAY_CLIP_MAX_SILENCE_SEC = 40.0;
         /** {@code NARRATION_DEADLINE_FACTOR} */
         public static final double NARRATION_DEADLINE_FACTOR = 1.5;
         /** {@code NARRATION_DEADLINE_MARGIN_SEC} */
