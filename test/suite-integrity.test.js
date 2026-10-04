@@ -2103,6 +2103,7 @@ const FLOORS = {
      under-declaring. */
   "tools/transcribe/decode-compare.test.mjs": 31,
   "tools/transcribe/ad-inflation.test.mjs": 49, // DAI-01: the ranged-GET trust rule (HUMAN-ACTIONS #24); 46 -> 49
+  "tools/transcribe/anchor-match.test.mjs": 10, // DAI-11: new -- fuzzy anchor location over ASR cues (G-41 locate step, pure half)
   /* The transcription work order. Zero slack, because what it guards is not
      logic but a PROMISE MADE TO A MACHINE THAT IS ALREADY RUNNING: a worker box
      consumes data/transcription-queue.json in rank order, so any change that
