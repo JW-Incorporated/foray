@@ -10,6 +10,7 @@ Issue #182 / #134. `data/segments.json` is a **pool**; `data/forays.json` is a
 | `fixture-coverage.test.mjs` | G-21c fixture-before-emit: every shape in the checker's `ACCEPTED_SHAPES` is carried by a committed Foray in `data/`, and the checker's source holds no vocabulary literal the enumeration omits; `KNOWN_UNCOVERED` lists today's gaps and can only shrink | no |
 | `rendered-fixture.test.mjs` | Holds `fixtures/rendered/` (one real draft stamped with centrally rendered narration) to what it claims, and proves the player reads its stamped lines as files | no |
 | `verify-source-audio.mjs` | Re-verifies every `audio_url` with a 2-byte ranged GET | **yes — manual only** |
+| `verify-narration-audio.mjs` | Verifies rendered narration in the public bucket after an upload (`--manifest`) and as a nightly canary over `data/forays.json` (`--canary N`): HEAD 200, `audio/mp4`, bytes, `immutable`, CORS for `capacitor://localhost`, sha256, ffprobe duration within 50 ms. Refuses under CI; run from the Spark wrapper or by hand (SPK-09) | **yes — Spark / manual only** |
 
 Dependency-free ESM, like the rest of `tools/`. No install step.
 
@@ -125,6 +126,8 @@ node tools/foray/check-forays.mjs           # human output, exit 1 on violation
 node tools/foray/check-forays.mjs --json    # machine-readable
 node --test "tools/foray/*.test.mjs"        # what CI runs
 node tools/foray/verify-source-audio.mjs    # live 206 check, manual
+node tools/foray/verify-narration-audio.mjs --manifest out/   # rendered narration in the bucket, after upload-narration
+node tools/foray/verify-narration-audio.mjs --canary 12       # nightly canary over data/forays.json, published first
 ```
 
 CI reaches the checker through the test file, not through `ci.yml`:
