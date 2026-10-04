@@ -30,6 +30,7 @@ import {
   pollUntilDone,
   latestActionsRun,
   releaseChecksVerdict,
+  releaseDispatchPlan,
   RELEASE_REQUIRED_CHECKS,
 } from "./engine-ci.mjs";
 
@@ -476,6 +477,51 @@ test("release-checks: in flight waits; red beats in flight; missing waits, then 
   const missing = { "engine-parity": null, "ios-kit": run(2, "ios-kit", "completed", "success") };
   assert.deepEqual((({ done, ok }) => [done, ok])(releaseChecksVerdict(missing)), [false, false]);
   assert.deepEqual((({ done, ok }) => [done, ok])(releaseChecksVerdict(missing, { missingIsFinal: true })), [true, false]);
+});
+
+test("release dispatch: an auto-merged tip with NO checks gets ci.yml dispatched on main", () => {
+  /* Releases 36917371425 / 36945055191 (2026-10-01/02): automerge-nightly's
+     GITHUB_TOKEN merges create no push run, so both required checks were
+     ABSENT and the gate could only refuse. MUTATION: return dispatch:false
+     unconditionally -> the first assertion fails and every auto-merged tip of
+     main is unreleasable again. */
+  const sha = "09a23a5fe138b974a0b10aee067fd6f0618e0dc0";
+  const plan = releaseDispatchPlan({ byName: { "engine-parity": null, "ios-kit": null }, refName: "main", defaultBranch: "main", branchHeadSha: sha, sha });
+  assert.equal(plan.dispatch, true, plan.reason);
+  // One of the two missing is enough: a release must not wait on a run nobody will start.
+  const half = releaseDispatchPlan({ byName: { "engine-parity": run(1, "engine-parity", "completed", "success"), "ios-kit": null }, refName: "main", defaultBranch: "main", branchHeadSha: sha, sha });
+  assert.equal(half.dispatch, true);
+  assert.match(half.reason, /ios-kit missing/);
+});
+
+test("release dispatch: never over a run that exists, red or in flight — that is the gate's to judge", () => {
+  /* MUTATION: dispatch whenever a check is not green -> a red ios-kit gets a
+     fresh run raced against it, and a flaky pass can paper over a real red. */
+  const sha = "a".repeat(40);
+  for (const [status, conclusion] of [["completed", "failure"], ["in_progress", null], ["completed", "success"]]) {
+    const plan = releaseDispatchPlan({
+      byName: { "engine-parity": run(1, "engine-parity", status, conclusion), "ios-kit": run(2, "ios-kit", status, conclusion) },
+      refName: "main", defaultBranch: "main", branchHeadSha: sha, sha,
+    });
+    assert.equal(plan.dispatch, false, `${status}/${conclusion}`);
+  }
+});
+
+test("release dispatch: only from the default branch, and only while it still points at the SHA", () => {
+  /* MUTATION: drop the ref check -> a tag release dispatches on the tag, where
+     changedFiles diffs against main and an empty diff SKIPS ios-kit, which the
+     gate then refuses. Drop the head check -> main moved on and the dispatch
+     tests a different commit than the one being shipped. */
+  const sha = "b".repeat(40);
+  const none = { "engine-parity": null, "ios-kit": null };
+  assert.equal(releaseDispatchPlan({ byName: none, refName: "v1.4.0", defaultBranch: "main", branchHeadSha: sha, sha }).dispatch, false);
+  assert.equal(releaseDispatchPlan({ byName: none, refName: "main", defaultBranch: undefined, branchHeadSha: sha, sha }).dispatch, false);
+  const moved = releaseDispatchPlan({ byName: none, refName: "main", defaultBranch: "main", branchHeadSha: "c".repeat(40), sha });
+  assert.equal(moved.dispatch, false);
+  assert.match(moved.reason, /different commit/);
+  assert.equal(releaseDispatchPlan({ byName: none, refName: "main", defaultBranch: "main", branchHeadSha: null, sha }).dispatch, false, "an unknown head is not a match");
+  // Case and an abbreviated SHA still match the full head.
+  assert.equal(releaseDispatchPlan({ byName: none, refName: "main", defaultBranch: "main", branchHeadSha: sha, sha: "BBBBBBB" }).dispatch, true);
 });
 
 test("CLI: release-checks refuses a malformed SHA before touching the network", () => {
