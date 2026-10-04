@@ -33,7 +33,7 @@ import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
-import { episodeTopics, topicKey, uniformTopicShows, substantialShows, TopicError, MAX_TOPICS } from "./topics.mjs";
+import { episodeTopics, topicKey, topicSource, uniformTopicShows, substantialShows, TopicError, MAX_TOPICS } from "./topics.mjs";
 import { pendingRecord } from "./backfill-show.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -467,4 +467,48 @@ test("merge writes an episode's minute count from its seconds when it has them (
     edits: { "sysk--kola": EDIT },
   });
   assert.equal(unmeasured.items[0].duration_min, 45, "no seconds: the listing's minutes stand");
+});
+
+// ------------------------------------------- topic provenance (PKG-01) --
+
+test("topicSource is 'show' for an absent override and 'episode' for a present one", () => {
+  /* Absent means exactly what episodeTopics means by absent (undefined/null), so
+     the label and its provenance can never disagree about whether an override
+     was authored.
+     KILLED BY: `return "episode";` as the body of topicSource. */
+  assert.equal(topicSource(undefined), "show");
+  assert.equal(topicSource(null), "show");
+  assert.equal(topicSource(["nature/earth-science"]), "episode");
+});
+
+test("merge writes topics_source 'episode' when edits.json carries topics, 'show' otherwise", () => {
+  /* Through the real script: an inherited label and a judged one are otherwise
+     indistinguishable on a written item, and that difference is what the
+     generated-playlist and Similar-shows builders need (#547).
+     KILLED BY: deleting the `topics_source: topicSource(edit.topics),` line in
+     merge.mjs — the key is then absent on both items. */
+  const { status, items } = runMerge({
+    resolved: [resolvedFromBackfill({ id: "sysk--a" }), resolvedFromBackfill({ id: "sysk--b", apple_track_id: 12 })],
+    edits: {
+      "sysk--a": { ...EDIT, topics: ["nature/earth-science"] },
+      "sysk--b": EDIT,
+    },
+  });
+  assert.equal(status, 0);
+  assert.deepEqual(items.map((i) => [i.id, i.topics_source]), [["sysk--a", "episode"], ["sysk--b", "show"]]);
+});
+
+test("merge writes explicit: null when the resolved episode has no flag", () => {
+  /* The key is always present so "unrated" is a stated value, not a missing
+     key (#560 §6.3); a rated episode keeps its flag.
+     KILLED BY: reverting `explicit: ep.explicit ?? null,` to `explicit: ep.explicit,`
+     in merge.mjs — JSON.stringify then drops the undefined key. */
+  const { status, items } = runMerge({
+    resolved: [resolvedFromBackfill({ id: "sysk--a", explicit: undefined }), resolvedFromBackfill({ id: "sysk--b", apple_track_id: 12, explicit: true })],
+    edits: { "sysk--a": EDIT, "sysk--b": EDIT },
+  });
+  assert.equal(status, 0);
+  assert.ok("explicit" in items[0], "an unflagged episode must still carry the explicit key");
+  assert.equal(items[0].explicit, null);
+  assert.equal(items[1].explicit, true);
 });

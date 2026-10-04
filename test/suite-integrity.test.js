@@ -573,7 +573,7 @@ const FLOORS = {
      it protects is gameable in exactly one direction: a misspelled `food/bakin`
      reads as "has a child" to the root-dumping report and silently erases a
      root-only pair, so a deleted gate would make the number look better. */
-  "test/data-topic-integrity.test.js": 12,
+  "test/data-topic-integrity.test.js": 14, // PKG-01 (2026-10-04): +2, every discover item carries topics_source and an explicit key; 12 -> 14
   /* The code citations in the two store-submission documents. Same argument as
      data-deletion above and the same stakes: what this suite guards is whether a
      document going to a store reviewer describes the code that shipped. It is
@@ -1941,7 +1941,12 @@ const FLOORS = {
      (a comment-only edit to scan.mjs; one new nightly episode) were confirmed to
      stay green. Each test names its own mutation. */
   "tools/refresh/fold-breadth-topics.test.mjs": 5, // PKG-08 (2026-10-04): breadth-classification topics folded into data/catalog-breadth.json as taxonomy_node_ids (high/medium and not needs_review only, unknown nodes dropped), --check byte-stable, and a REAL DATA pin that every row carries the array and every id resolves; new, zero slack
-  "tools/refresh/merge-topics.test.mjs": 18, // audit round 2 (L6), honesty-1: merge writes duration_min from duration_sec when it has them (the suite already stood at 17 against 16, so this closes that slack too); 16 -> 18
+  "tools/refresh/merge-topics.test.mjs": 21, // audit round 2 (L6), honesty-1: merge writes duration_min from duration_sec when it has them (the suite already stood at 17 against 16, so this closes that slack too); 16 -> 18. PKG-01 (2026-10-04): +3, topicSource and merge writing topics_source + an always-present explicit key; 18 -> 21
+  /* PKG-01 (#547, #560 §6.3): the one-shot that stamped topics_source and an
+     always-present explicit key onto every discover item merged before
+     merge.mjs wrote them. Runs the real script against a temp fixture; each
+     test names its mutation. */
+  "tools/refresh/backfill-provenance.test.mjs": 3,
   /* REMOVED 2026-09-24 (issue #701): `tools/refresh/manifest-step.test.mjs`,
      floored at 9 here, and the module it tested. The nightly's deploy-manifest
      step existed only because the stamp was committed (HUMAN-ACTIONS #37); the

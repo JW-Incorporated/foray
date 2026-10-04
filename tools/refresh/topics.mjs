@@ -120,6 +120,20 @@ export function episodeTopics({ showTopics, editTopics, nodeIds, id = "?" } = {}
   return [...new Set(editTopics)];
 }
 
+/** Where an episode's topics came from: `"show"` when no per-episode override
+    was authored (the item carries its show's `taxonomy_node_ids`), `"episode"`
+    when the curating agent judged this episode itself.
+
+    WHY IT IS RECORDED. Once written, an inherited label and a judged one look
+    identical on a discover item, and the difference is exactly what a playlist
+    or Similar-shows builder needs: a broad show's inherited label says nothing
+    about the episode (#547, #560 §6.3). It mirrors episodeTopics' own test for
+    "absent" (undefined/null), so the two can never disagree about whether an
+    override was present. */
+export function topicSource(editTopics) {
+  return editTopics === undefined || editTopics === null ? "show" : "episode";
+}
+
 /** Shows whose every episode carries the SAME topic set — the measurement that
     opened #292, committed so it can be re-run rather than re-derived.
 
