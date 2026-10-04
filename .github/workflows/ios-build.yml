@@ -337,6 +337,31 @@ jobs:
           node tools/mobile/inject-background-audio.mjs "$INFO_PLIST" --check --encryption false
           cp "$INFO_PLIST" "$ART/Info.plist"
 
+      - name: Add the privacy manifest (Required Reason APIs), and have Apple's parser check it
+        # Issue #948. App Store Connect rejects a SUBMISSION whose binary uses a
+        # Required Reason API that no PrivacyInfo.xcprivacy declares (ITMS-91053);
+        # TestFlight only emails a warning, so a build can reach testers and still
+        # be unsubmittable. `cap add ios` generates no manifest. This writes one
+        # (UserDefaults CA92.1, system boot time 35F9.1, file timestamp C617.1, and
+        # the collected data types of docs/legal/data-safety.md Part B) and adds it
+        # to the app target's Copy Bundle Resources phase in project.pbxproj -- a
+        # file the project does not reference never reaches App.app. Not a SwiftPM
+        # resource: that breaks the signed archive (see inject-interlude above).
+        # The evidence for each category lives in tools/mobile/inject-privacy-
+        # manifest.mjs and its test re-greps the plugin Swift on every run.
+        #
+        # Same three confirmations as the plist steps above: the function re-parses
+        # its own pbxproj edit, `plutil -lint` (Apple's parser) reads both files,
+        # and `--check` reads them back. The BUILT bundle is checked after the
+        # device build below.
+        run: |
+          set -euo pipefail
+          node tools/mobile/inject-privacy-manifest.mjs "$IOS_DIR/App"
+          plutil -lint "$IOS_DIR/App/App/PrivacyInfo.xcprivacy"
+          plutil -lint "$IOS_DIR/App/App.xcodeproj/project.pbxproj"
+          node tools/mobile/inject-privacy-manifest.mjs "$IOS_DIR/App" --check
+          cp "$IOS_DIR/App/App/PrivacyInfo.xcprivacy" "$ART/PrivacyInfo.xcprivacy"
+
       - name: Put the REAL app icon in the generated asset catalog
         # WHY THIS STEP EXISTS. Nothing wired 4a's icon into the bundle: `cap add
         # ios` generates Capacitor's placeholder AppIcon.appiconset and this
@@ -535,6 +560,19 @@ jobs:
           set -euo pipefail
           node tools/mobile/ios-embedded-frameworks.mjs verify \
             "$DD_DEV/Build/Products/Release-iphoneos/App.app" | tee "$ART/embedded-frameworks.txt"
+
+      - name: Assert the privacy manifest really reached the BUILT bundle
+        # The second opinion on #948, and a different claim from `--check` above:
+        # that one says the project LISTS the manifest; this one says Xcode COPIED
+        # it to the root of the arm64/Release App.app (the same assembly an archive
+        # makes) and that it still says what we declare. The copy lands in the
+        # uploaded evidence so #948 can be closed on an artifact, not a belief.
+        # Xcode's "Generate Privacy Report" stays a human step on a Mac.
+        run: |
+          set -euo pipefail
+          APP="$DD_DEV/Build/Products/Release-iphoneos/App.app"
+          node tools/mobile/inject-privacy-manifest.mjs --bundle "$APP" | tee "$ART/privacy-manifest-bundle.txt"
+          cp "$APP/PrivacyInfo.xcprivacy" "$ART/built-PrivacyInfo.xcprivacy"
 
       # ── the two measurements ────────────────────────────────────────────────
 
