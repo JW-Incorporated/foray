@@ -55,10 +55,16 @@ function fakeGhRegistry({ published = [] } = {}) {
     const [, verb, tag] = args;
     if (verb === "view") {
       const r = releases.get(tag);
-      if (r) return { stdout: JSON.stringify({ isDraft: r.draft, assets: r.assets }) };
+      // The shape the real call's --jq projection prints: [{ name, state }].
+      if (r) return { stdout: JSON.stringify({ isDraft: r.draft, assets: r.assets.map((name) => ({ name, state: "uploaded" })) }) };
       const e = new Error("not found"); e.stderr = "release not found"; throw e;
     }
     if (verb === "create") {
+      // Real gh refuses a second release under a tag that already has one
+      // (draft or not); a fake that accepted it would hide a duplicate create.
+      if (releases.has(tag)) {
+        const e = new Error("Command failed: gh release create"); e.stderr = `a release with tag ${tag} already exists`; throw e;
+      }
       created.add(tag);
       releases.set(tag, { draft: args.includes("--draft"), assets: [] });
       return { stdout: "created" };

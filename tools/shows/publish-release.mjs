@@ -49,19 +49,35 @@ const defaultSleep = (ms) => new Promise((r) => setTimeout(r, ms));
     from uploads.github.com, after ~500 assets in one minute. It is a
     RATE limit, not an auth failure — the same token had just created the
     release and uploaded hundreds of assets — so it is the one 403 that
-    is retried, and it is retried after a long wait (the message's own
-    "a few minutes"), not the short generic backoff. */
-const SECONDARY_RATE_LIMIT = /secondary rate limit/i;
-export const RATE_LIMIT_WAIT_MS = 90_000;
+    is retried, and it is retried after a long, growing wait (GitHub's
+    guidance for a secondary limit: wait at least a minute, then back off
+    exponentially), not the short generic backoff. The primary limit's
+    wording (`API rate limit exceeded`) and a bare 429 are treated the
+    same way: neither clears in 5 s. */
+const RATE_LIMITED = /secondary rate limit|API rate limit exceeded|HTTP 429/i;
+/** The waits before retry 1, 2, 3, 4 of a rate-limited chunk: 1, 2, 4, 8
+    minutes — 15 minutes in all, which still fits the job's 40-minute
+    timeout behind a ~3-minute build and a ~20-minute paced upload. */
+export const RATE_LIMIT_WAITS_MS = [60_000, 120_000, 240_000, 480_000];
 
 /** What GitHub holds for a tag right now: `absent` (no release at all),
     `draft` (created, possibly with some assets, not yet published — the
     shape an interrupted `publishRelease` leaves behind on purpose, see
     its header), or `published`, plus the names of the assets already on
     it. One `gh release view --json isDraft,assets` call; `gh` resolves a
-    draft by tag for a token with write access, which is what makes the
-    resume path work at all (OPS-02 verified `--json isDraft,assets`
-    against this repo: 4 assets on the 12 Sep release).
+    draft by tag for a token with write access (a 404 on the tag endpoint
+    falls back to scanning the release list for a draft with that
+    tag_name), which is what makes the resume path work at all (OPS-02
+    verified `--json isDraft,assets` against this repo: 4 assets on the
+    12 Sep release).
+
+    ONLY `state == "uploaded"` ASSETS COUNT. A job killed mid-upload can
+    leave an asset record in GitHub's `starter` state: the name is taken
+    but the bytes never arrived. Counting it as present would skip it on
+    resume and publish a release with a broken shard; leaving it out sends
+    it back through `gh release upload --clobber`, which replaces it. An
+    asset whose state is not reported is likewise treated as missing —
+    re-uploading is the safe direction.
 
     FAILS CLOSED, exactly as `releaseExists` always has: a genuine absence
     (`release not found` / HTTP 404) is the only error read as `absent`.
@@ -76,8 +92,8 @@ export async function releaseState(tag, { exec = execFileP, repo = REPO_SLUG } =
       "release", "view", tag,
       "--repo", repo,
       "--json", "isDraft,assets",
-      "--jq", "{isDraft: .isDraft, assets: [.assets[].name]}",
-    ]));
+      "--jq", "{isDraft: .isDraft, assets: [.assets[] | {name: .name, state: .state}]}",
+    ], { maxBuffer: GH_MAX_BUFFER }));
   } catch (err) {
     const text = `${err.stderr || err.message || ""}`;
     if (/release not found|HTTP 404/i.test(text)) return { state: "absent", assetNames: [] };
@@ -90,7 +106,9 @@ export async function releaseState(tag, { exec = execFileP, repo = REPO_SLUG } =
   const parsed = JSON.parse(String(stdout));
   return {
     state: parsed.isDraft === true ? "draft" : "published",
-    assetNames: Array.isArray(parsed.assets) ? parsed.assets.map(String) : [],
+    assetNames: Array.isArray(parsed.assets)
+      ? parsed.assets.filter((a) => a && a.state === "uploaded").map((a) => String(a.name))
+      : [],
   };
 }
 
@@ -174,9 +192,10 @@ export function assetBaseUrlFor(tag, repo = REPO_SLUG) {
     burst that always trips the limit, and the monolithic call is not
     resumable either: on an upload error `gh release create` deletes its
     own draft, so every run started again from zero. Small chunks with a
-    pause between them keep the sustained rate ~4x under the observed
-    cut (10 files / 5 s = 120/min; 1,298 shards ≈ 11-14 min, inside the
-    job's 40); the draft is created WITHOUT assets so an interrupted run
+    pause between them keep the sustained rate under GitHub's documented
+    80 content-creating requests per minute even if an upload took no
+    time at all (10 files per 7.5 s pause = 80/min at most; ~6x under the
+    observed cut; 1,298 shards ≈ 17-22 min, inside the job's 40); the draft is created WITHOUT assets so an interrupted run
     leaves a draft behind on purpose; and the next run (`releaseState` →
     `draft`) diffs the draft's asset names against `assets`, uploads only
     the missing ones, and publishes. A draft that already carries every
@@ -184,11 +203,13 @@ export function assetBaseUrlFor(tag, repo = REPO_SLUG) {
     further call (`uploaded: 0`), which is also what keeps the callers'
     `releaseExists` → SKIP branches cheap and idempotent.
 
-    THE RETRY. Any failed upload chunk is retried after `attempt * 5000`
-    ms (5 s, then 10 s); the one error that gets a longer wait is the
-    secondary-rate-limit 403 itself (`RATE_LIMIT_WAIT_MS`, 90 s — the
-    message says "wait a few minutes", and the budget is back within
-    minutes). `--clobber` on every upload is what makes the retry safe:
+    THE RETRY. A failed upload chunk is retried after `n * 5000` ms (5 s,
+    then 10 s) up to `attempts` tries in all. A RATE-LIMITED failure (the
+    secondary-limit 403 itself, `API rate limit exceeded`, HTTP 429) has
+    its own budget, `rateLimitAttempts` tries, and waits
+    `RATE_LIMIT_WAITS_MS` (1, 2, 4, 8 minutes) — the message says "wait a
+    few minutes", and two runs 9 minutes apart each got ~500 through, so
+    the window clears within minutes. `--clobber` on every upload is what makes the retry safe:
     some files in the chunk may already be on the release. After the
     last failed attempt the original error is rethrown unchanged, so
     run-and-publish.mjs's OPS-01 FATAL lines print its real stderr. No
@@ -209,15 +230,25 @@ export function assetBaseUrlFor(tag, repo = REPO_SLUG) {
     `MAX_SHARD_ASSETS_PER_RELEASE` still bounds every one of them; the
     chunking here is only about the rate at which one release is filled.
 
+    A STRANDED DRAFT RESUMES ONLY UNDER THE SAME TAG. Tags come from the
+    dump's export_version, which changes weekly, so a run that dies part-way
+    is resumed by re-dispatching `shows-import` the same week; next
+    Sunday's scheduled run builds a new tag and leaves the old draft
+    unpublished (harmless — no pointer ever names a draft — and deletable by
+    hand from the Releases page).
+
     `state` is an already-fetched `releaseState` result, so a caller that
     just checked the tag itself (`publishShardReleases`) does not spend a
     second `gh release view` per batch; without it this function checks.
-    `exec`, `sleep`, `chunkSize`, `attempts` and `pauseMs` are injectable
-    for publish-release.test.mjs, which fakes every `gh` call and both
-    sleeps. */
+    `log` gets a RETRY line per retried chunk and an UPLOADED progress line
+    every 10 chunks, so the Action's log shows how far a run got. `exec`,
+    `sleep`, `chunkSize`, `attempts`, `rateLimitAttempts` and `pauseMs`
+    are injectable for publish-release.test.mjs, which fakes every `gh`
+    call and every sleep. */
 export async function publishRelease({
   tag, title, notes, assets, exec = execFileP, repo = REPO_SLUG,
-  chunkSize = 10, attempts = 3, sleep = defaultSleep, pauseMs = 5000, state,
+  chunkSize = 10, attempts = 3, rateLimitAttempts = RATE_LIMIT_WAITS_MS.length + 1,
+  sleep = defaultSleep, pauseMs = 7500, state, log = () => {},
 }) {
   if (!assets || assets.length === 0) {
     throw new PublishError("NO_ASSETS", "refusing to publish a release with zero assets");
@@ -243,18 +274,33 @@ export async function publishRelease({
     ], { maxBuffer: GH_MAX_BUFFER });
   }
   const missing = assets.filter((p) => !st.assetNames.includes(basename(p)));
+  const chunks = Math.ceil(missing.length / chunkSize);
   for (let i = 0; i < missing.length; i += chunkSize) {
     const chunk = missing.slice(i, i + chunkSize);
-    for (let attempt = 1; ; attempt++) {
+    const n = i / chunkSize + 1;
+    let failures = 0;
+    let limited = 0;
+    for (;;) {
       try {
         await exec("gh", ["release", "upload", tag, ...chunk, "--repo", repo, "--clobber"], { maxBuffer: GH_MAX_BUFFER });
         break;
       } catch (err) {
-        if (attempt >= attempts) throw err;
         const text = `${err?.stderr || err?.message || ""}`;
-        await sleep(SECONDARY_RATE_LIMIT.test(text) ? Math.max(attempt * 5000, RATE_LIMIT_WAIT_MS) : attempt * 5000);
+        let wait;
+        if (RATE_LIMITED.test(text)) {
+          limited++;
+          if (limited >= rateLimitAttempts) throw err;
+          wait = RATE_LIMIT_WAITS_MS[Math.min(limited, RATE_LIMIT_WAITS_MS.length) - 1];
+        } else {
+          failures++;
+          if (failures >= attempts) throw err;
+          wait = failures * 5000;
+        }
+        log(`RETRY: ${tag} chunk ${n}/${chunks} in ${Math.round(wait / 1000)} s — ${text.trim().split(/\r?\n/)[0].slice(0, 160)}`);
+        await sleep(wait);
       }
     }
+    if (n % 10 === 0 || n === chunks) log(`UPLOADED: ${tag} ${Math.min(i + chunkSize, missing.length)}/${missing.length}`);
     if (i + chunkSize < missing.length && pauseMs > 0) await sleep(pauseMs);
   }
   await exec("gh", ["release", "edit", tag, "--draft=false", "--repo", repo]);
@@ -366,7 +412,7 @@ export async function publishShardReleases({
         "Automated shows-index shard release (S-04c).",
         `keys: ${firstKey}\u2013${lastKey} (${batch.length} shards)`,
       ].join("\n");
-      ({ asset_base_url: assetBaseUrl } = await publishRelease({ tag, title, notes, assets, exec, repo, state }));
+      ({ asset_base_url: assetBaseUrl } = await publishRelease({ tag, title, notes, assets, exec, repo, state, log }));
       log(`PUBLISHED: ${tag} (${batch.length} shard assets, ${firstKey}\u2013${lastKey})`);
     }
     releases.push({ tag, asset_base_url: assetBaseUrl, first_key: firstKey, last_key: lastKey, count: batch.length });
