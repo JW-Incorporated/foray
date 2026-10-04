@@ -1030,3 +1030,13 @@ approximate on the skewed file reads near 0 ms, turn the exemption on
 leave it off and take the other route: start precise loads earlier (at the
 previous clip, not the line before), accept the data cost, or settle VBR/Info
 files server-side (a per-clip byte index).
+
+**Measured (ios-kit run 36903416379, 2026-10-01, `NE-25a-info` rows): byte
+arithmetic.** Approximate on `click-cbr-info-toc-skewed+7.mp3` landed
+`landingErrorSec` 0 / 0 (7e-15) / 0 at 19.65 / 49.65 / 69.65 s, the same as
+the correctly tagged file and nowhere near the modelled +2.2 to +2.3 s.
+AVFoundation ignores an Info frame's TOC on a CBR file. **The exemption is
+ON in EngineBoot from 2026-10-04** (`config.approximateCBRClips = true`); the
+core's default stays off, so the parity drivers and any other host are
+unchanged. Still to confirm on a device over a real CDN (DV-5): the drive
+that follows this build should show clip loads near the episodes' ~1.8 s.
