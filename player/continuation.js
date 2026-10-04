@@ -21,6 +21,9 @@
  *   playList        the ordered row list the play started from, or null
  *   playChainId     the episode the chain is on (started from the list, or advanced to)
  *   playListCursor  the last row of playList that actually played
+ *   tail            "then more of what fits" (PQ-09, #691): the ids the page
+ *                   built from today's deal, in order, played only once Up
+ *                   Next AND the list have nothing left — never before either
  *   isPlayable      a predicate over ids, OR an array of the playable ids
  *                   (the fixture form: a function cannot be written to JSON)
  *   items           id -> item, as a function or an object map
@@ -63,7 +66,8 @@ function itemLookup(state) {
 }
 
 /**
- * What plays after `finishedId`, with no writes: `{ nextId, rest, fromList }`.
+ * What plays after `finishedId`, with no writes:
+ * `{ nextId, rest, fromList, fromTail }`.
  * `rest` is Up Next with the finished episode removed (or null when it was not
  * queued) — the caller saves it. Shared by the end of an episode and by the
  * steering wheel's and the sheet's ⏭, which must agree on what "next" is.
@@ -79,27 +83,41 @@ function itemLookup(state) {
  * ended belongs to this chain (`playChainId`: started from the list, or by an
  * advance), so an episode started from somewhere with no list (a timestamp,
  * the restored bar) does not resume a list from an earlier visit.
+ *
+ * THEN MORE OF WHAT FITS (PQ-09, #691; DECISIONS 2026-09-14). Only when Up
+ * Next and the list have both run out does the `tail` play: its first
+ * playable id that is not the episode that just ended. The tail is the page's
+ * (built from today's deal by `player/tail-fill.js`); this rule only reads it,
+ * and a pick from it says so with `fromTail` so the why-line and the ledger
+ * can tell it from a list row. An empty tail is the end, as before.
  */
 export function planAfterEnded(state, finishedId) {
   const isPlayable = playableTest(state);
   const queued = idList(state?.queue);
   const rest = queued.includes(finishedId) ? queued.filter((x) => x !== finishedId) : null;
   const queuedNext = (rest || queued).find((id) => isPlayable(id));
-  if (queuedNext) return { nextId: queuedNext, rest, fromList: false };
+  if (queuedNext) return { nextId: queuedNext, rest, fromList: false, fromTail: false };
   const list = idList(state?.playList);
   const onChain = Boolean(finishedId) && finishedId === state?.playChainId;
   const anchor = list.includes(finishedId) ? finishedId : (onChain ? state?.playListCursor : null);
   const i = anchor ? list.indexOf(anchor) : -1;
   const listNext = i >= 0 ? list.slice(i + 1).find((id) => isPlayable(id)) : null;
-  return { nextId: listNext || null, rest, fromList: Boolean(listNext) };
+  if (listNext) return { nextId: listNext, rest, fromList: true, fromTail: false };
+  const tailNext = idList(state?.tail).find((id) => id !== finishedId && isPlayable(id));
+  if (tailNext) return { nextId: tailNext, rest, fromList: false, fromTail: true };
+  return { nextId: null, rest, fromList: false, fromTail: false };
 }
 
 /**
- * The plan, plus the state it leaves: `{ nextId, rest, fromList, state }`,
- * where `state` is `{queue, playList, playChainId, playListCursor}` after the
- * finished episode leaves Up Next and the chain moves on to the pick. app.js
- * writes exactly that (Up Next only when `rest` says it changed); a chain is
- * this, applied K times.
+ * The plan, plus the state it leaves:
+ * `{ nextId, rest, fromList, fromTail, state }`, where `state` is
+ * `{queue, playList, playChainId, playListCursor}` after the finished episode
+ * leaves Up Next and the chain moves on to the pick — plus `tail` when the
+ * state has one, with a tail pick taken out of it (so the chain never serves
+ * it twice). app.js writes exactly that (Up Next only when `rest` says it
+ * changed); a chain is this, applied K times. A tail pick moves the chain on
+ * to it and leaves the list cursor where it was: the tail is after the list,
+ * not part of it.
  */
 export function nextAfterEnded(state, finishedId) {
   const plan = planAfterEnded(state, finishedId);
@@ -109,9 +127,11 @@ export function nextAfterEnded(state, finishedId) {
     playChainId: state?.playChainId ?? null,
     playListCursor: state?.playListCursor ?? null,
   };
+  if (Array.isArray(state?.tail)) after.tail = state.tail;
   if (plan.nextId) {
     after.playChainId = plan.nextId;
     if (plan.fromList) after.playListCursor = plan.nextId;
+    if (plan.fromTail) after.tail = idList(state?.tail).filter((id) => id !== plan.nextId);
   }
   return { ...plan, state: after };
 }
@@ -130,10 +150,12 @@ export function lastEpisodeRow(item) {
  * The next `K` hops after `state.currentId`, in the order the end of each
  * episode would play them — `nextAfterEnded` applied K times, never anything
  * it would not pick. Each hop is
- *   {hopSeq, finishedId, nextId, fromList, queueAfter, item, lastEpisodeRow}
+ *   {hopSeq, finishedId, nextId, fromList, fromTail, queueAfter, item, lastEpisodeRow}
  * `hopSeq` counts from 1 within the chain; `queueAfter` is Up Next once that
  * hop's finished episode has left it, which is what the page saves when it
- * applies the hop.
+ * applies the hop. The stepped state carries the tail too, so a walk into it
+ * takes each tail pick out as it goes (`$defs.hop` in engine-contract.js has
+ * no additionalProperties, so the extra `fromTail` field rides along).
  *
  * A pick with no item ENDS the chain: app.js's `startChained` returns without
  * playing when `liveEpisode` has nothing, and the engine cannot play what it
@@ -155,6 +177,7 @@ export function continuationChain(state, K = CHAIN_HOPS) {
       finishedId: finished,
       nextId: step.nextId,
       fromList: step.fromList,
+      fromTail: step.fromTail,
       queueAfter: step.state.queue,
       item,
       lastEpisodeRow: lastEpisodeRow(item),
