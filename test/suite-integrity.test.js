@@ -2051,6 +2051,7 @@ const FLOORS = {
      both sides, and a recomputation of all seven committed verdicts from the
      byte counts filed beside them. */
   "tools/segments/ad-pad.test.mjs": 13, // DAI-02: new -- ADR-0008 pad arithmetic over a same-episode probe ledger
+  "tools/segments/stamp-ad-pad.test.mjs": 8, // DAI-03: new -- the only writer of the stamped ad_* fields, and its --check
   "tools/segments/measure-suspects.test.mjs": 57,
   /* The audit of that scan's own acquittals (#323 follow-up). It re-asks every
      `measured_clean` show — 5,381 timed transcripts, half the anchorable corpus
@@ -2103,6 +2104,7 @@ const FLOORS = {
      under-declaring. */
   "tools/transcribe/decode-compare.test.mjs": 31,
   "tools/transcribe/ad-inflation.test.mjs": 49, // DAI-01: the ranged-GET trust rule (HUMAN-ACTIONS #24); 46 -> 49
+  "tools/transcribe/anchor-match.test.mjs": 10, // DAI-11: new -- fuzzy anchor location over ASR cues (G-41 locate step, pure half)
   /* The transcription work order. Zero slack, because what it guards is not
      logic but a PROMISE MADE TO A MACHINE THAT IS ALREADY RUNNING: a worker box
      consumes data/transcription-queue.json in rank order, so any change that
