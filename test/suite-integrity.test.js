@@ -284,6 +284,10 @@ const FLOORS = {
      opposite ends of their row, and one finger drives the drag (+6). */
   "player/now-playing-sheet.test.js": 30, // audit round 2, L2 (2026-09-23): the touchmove claim, the live region as a sibling, Stop order, sheet motion, panel motion, the drawer lock in CSS; 24 -> 30 //
   "player/seek-policy.test.js": 33,
+  /* DAI-10 (docs/roadmap/dai.md): ADR-0008's locate-step arithmetic -- the
+     search window is delta_max + margin wide, the margin never below the
+     spread, and a located span may grow by a mid-roll but never shrink. */
+  "player/locate-window.test.js": 12,
   /* NE-38rj: the route-resume reference (founder Q5), fixture-first: each test
      runs the route-resume cases that name it, and the last pins that neither
      queue-manager.js nor client.js imports the module. */
