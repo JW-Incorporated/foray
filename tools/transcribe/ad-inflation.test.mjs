@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import {
+import { RANGED_GET_UNTRUSTED_HOSTS, rangedGetTrusted,
   parseContentRangeTotal, inflationRatio, classify, summariseShow,
   probeEpisode, selectTargets, isPlausibleAudioSize, isRetryableStatus,
   applyVerdicts, adFreeShows,
@@ -712,4 +712,29 @@ test('suspect moves only the undersized unknown: injected and ad-free are untouc
   const clean = { declared_bytes: 54729590, duration_sec: 2280, ratio: 1.0 };
   assert.equal(summariseSamples([clean, clean]).verdict, 'ad-free');
   assert.equal(summariseSamples([ATH, { ...clean, ratio: 1.2 }, { ...clean, ratio: 1.3 }]).verdict, 'injected');
+});
+
+test('rangedGetTrusted admits an ordinary CDN host', () => {
+  // DAI-01. MUTATION: return false unconditionally -> red.
+  assert.equal(rangedGetTrusted('https://media.transistor.fm/a/b.mp3'), true);
+  assert.equal(rangedGetTrusted('www.buzzsprout.com'), true);
+});
+
+test('rangedGetTrusted refuses the flightcast origins, by URL, bare host, host:port and subdomain', () => {
+  // DAI-01 (HUMAN-ACTIONS #24). MUTATION: drop the endsWith branch -> the
+  // subdomain case goes red; empty RANGED_GET_UNTRUSTED_HOSTS -> all four red.
+  assert.deepEqual([...RANGED_GET_UNTRUSTED_HOSTS], ['atelier.flightcast.com', 'episode.flightcast.com']);
+  for (const u of ['https://episode.flightcast.com/x.mp3', 'atelier.flightcast.com', 'episode.flightcast.com:443', 'cdn.atelier.flightcast.com', 'HTTPS://Atelier.Flightcast.com/y']) {
+    assert.equal(rangedGetTrusted(u), false, u);
+  }
+  // A look-alike that merely contains the name is not the origin.
+  assert.equal(rangedGetTrusted('notatelier.flightcast.com.example.org'), true);
+});
+
+test('rangedGetTrusted refuses what it cannot name', () => {
+  // DAI-01. MUTATION: return true from the catch -> 'not a url ::' goes red;
+  // drop the hostname regex -> 'localhost' goes red.
+  for (const u of ['', '   ', null, undefined, 42, 'not a url ::', 'localhost', 'example.com.', 'http://[::1]/a']) {
+    assert.equal(rangedGetTrusted(u), false, String(u));
+  }
 });
