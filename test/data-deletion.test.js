@@ -2017,6 +2017,8 @@ function fakeEngine({ rows = {}, purgeOk = true } = {}) {
       ["ForayEngine.modeOverride", "native"], ["ForayEngine.strikes", "0"],
       ["ForayEngine.sentinel", "launch-1"], ["ForayEngine.stickyLegacyBuild", ""],
       ["ForayEngine.restore", '{"v":1,"mode":"episode"}'], ["ForayEngine.holdPolicy", "forever"],
+      ["ForayEngine.knownRoutes", '{"v":1,"salt":"00112233445566778899aabbccddeeff","keys":[]}'],
+      ["ForayEngine.routeSharing", "longFormAudio"],
       ["Application Support/foray-engine/diag.jsonl", "remote route=carAudio"],
     ]),
     async send(cmd) {

@@ -110,7 +110,7 @@
     },
     "contract": {
       "files": {
-        "player/parity/fixtures/contract/contract.json": "53b83094473eac97c3efea0fcca59dcbb9b7e8a551d1a3b5e7e59e80eaa41a2a"
+        "player/parity/fixtures/contract/contract.json": "e2d988902254b0508b983187b70e7bdd5b45bbfef5db3214e115d16c9e6c554f"
       },
       "ids": [
         "contract/bridge-methods",
@@ -136,8 +136,11 @@
         "contract/send-request-valid-play-episode",
         "contract/send-request-valid-relinquish-foray",
         "contract/send-request-valid-set-hold-until",
+        "contract/send-request-valid-set-route-sharing-long-form",
         "contract/send-request-valid-set-continuation",
         "contract/send-request-valid-stop-data-deletion",
+        "contract/send-request-valid-audition-spoken",
+        "contract/send-request-valid-audition-rendered",
         "contract/send-request-invalid-unknown-cmd",
         "contract/send-request-invalid-wrong-version",
         "contract/send-request-invalid-unknown-source",
@@ -147,6 +150,12 @@
         "contract/send-request-invalid-play-episode-without-row",
         "contract/send-request-invalid-negative-seq",
         "contract/send-request-invalid-override-unknown-mode",
+        "contract/send-request-invalid-route-sharing-unknown-policy",
+        "contract/send-request-invalid-audition-url-not-https",
+        "contract/send-request-invalid-audition-url-off-host",
+        "contract/send-request-invalid-audition-url-with-query",
+        "contract/send-request-invalid-audition-url-lookalike-host",
+        "contract/send-request-invalid-audition-url-null",
         "contract/send-response-valid-ok",
         "contract/send-response-valid-refused-no-next",
         "contract/send-response-valid-session-failed",
@@ -366,7 +375,7 @@
     },
     "diag-tokens": {
       "files": {
-        "player/parity/fixtures/diag-tokens/diag-tokens.json": "38389e9831b3e46b921b8aad8d959749d5a527aeff9f0377638743525db1366e"
+        "player/parity/fixtures/diag-tokens/diag-tokens.json": "d4eb1dbc5470109cdd303066f17d093f9901fd84b8770ca53d90128a0b822d3d"
       },
       "ids": [
         "diag-tokens/set-names",
@@ -377,6 +386,7 @@
         "diag-tokens/source-tokens",
         "diag-tokens/mode-reason-tokens",
         "diag-tokens/fault-kind-tokens",
+        "diag-tokens/narration-fallback-cause-tokens",
         "diag-tokens/admit-stage-ready",
         "diag-tokens/admit-session-error-other",
         "diag-tokens/admit-interruption-reason-app-was-suspended",
@@ -386,6 +396,8 @@
         "diag-tokens/admit-mode-reason-no-plist-key",
         "diag-tokens/admit-mode-reason-not-built",
         "diag-tokens/admit-fault-kind-implicit-activation",
+        "diag-tokens/admit-narration-fallback-cause-offline",
+        "diag-tokens/admit-narration-fallback-cause-status-is-not-a-token",
         "diag-tokens/admit-wrong-set",
         "diag-tokens/admit-case-folded",
         "diag-tokens/admit-padded",
@@ -792,10 +804,19 @@
         "lexicon/bundled-lexicon-sake"
       ]
     },
+    "manager-await": {
+      "files": {
+        "player/parity/fixtures/manager-await/interleaves.json": "4047495a682ace04a6ecb5f095dd5065bb825ac64ad68cb912499a7038eb42d4"
+      },
+      "ids": [
+        "manager-await/a-skip-load-a-newer-skip-replaced-is-dropped",
+        "manager-await/the-settled-hook-fires-after-every-handled-event"
+      ]
+    },
     "manager-episode": {
       "files": {
         "player/parity/fixtures/manager-episode/last-episode-row.json": "a21f5bf2c1cc037c4d84285d9d3dbb9f6ad0b5b87a6c3f36c8e2943cfb5fa454",
-        "player/parity/fixtures/manager-episode/scenarios.json": "c56575541a249556027900a148a952fc5420f047ad1c7378677de26efb8f6263"
+        "player/parity/fixtures/manager-episode/scenarios.json": "3c14b3eaaf40bf256f5ed0760be99db8f557ae9b5b50e848294deb75d6ad5a2c"
       },
       "ids": [
         "manager-episode/last-episode-row-full-snapshot",
@@ -846,13 +867,18 @@
     },
     "manager-foray": {
       "files": {
+        "player/parity/fixtures/manager-foray/audition-url.json": "5da3b1546e82543c44560edd3e37468401e876ea0e9311bc3da6210cfe4be317",
         "player/parity/fixtures/manager-foray/audition.json": "9c1eed332cf0db001efc1de1e1b0c27f1bd50fef9c49202229d8312c9adcfb60",
         "player/parity/fixtures/manager-foray/jingle.json": "c9016c928cfc2dd0a8c3429124dbc5da2b6775b2161601a3aedaed4b74f4fff2",
-        "player/parity/fixtures/manager-foray/narration.json": "bd2cd5bceee72c4d448cd00b4ff748960c7c595b985e7afdf78f7bcadae02332",
+        "player/parity/fixtures/manager-foray/narration-skip.json": "8e9192d2b9043c262692080d655aef3589c38b0410dc1122eca3091ead18507f",
+        "player/parity/fixtures/manager-foray/narration.json": "dd05be479486a191ea10810cea5c9da26763ae2d4571551dade5b33439edb401",
         "player/parity/fixtures/manager-foray/real-forays.json": "ce2d584ca45514c92c7a0b9095d4566d40429fb180f17faa352c202c4c88b6f4",
+        "player/parity/fixtures/manager-foray/remote-next.json": "e5eaf96acf68a5bc0092e6eaee63115a002ae278232026f3e8380f838c6c6765",
         "player/parity/fixtures/manager-foray/tape.json": "bffeb969f00fbe7d2b5c1a7a8fcd450f2ddc43b04e53428eeb320ceffa38bf73"
       },
       "ids": [
+        "manager-foray/audition-url-plays-the-rendered-preview",
+        "manager-foray/audition-url-that-fails-is-spoken",
         "manager-foray/audition-is-refused-while-running",
         "manager-foray/the-jingle-starts-at-the-boundary-and-holds-the-tape",
         "manager-foray/no-jingle-before-the-first-item",
@@ -869,9 +895,32 @@
         "manager-foray/no-interlude-wired-leaves-the-seam-alone",
         "manager-foray/teardown-during-the-jingle-silences-and-releases-it",
         "manager-foray/pause-under-a-slow-load-cuts-the-jingle-at-once",
+        "manager-foray/narration-skip-spoken-start-back-crosses-into-the-clip",
+        "manager-foray/narration-skip-spoken-middle-back-restarts-the-line",
+        "manager-foray/narration-skip-spoken-end-back-restarts-the-line",
+        "manager-foray/narration-skip-spoken-start-forward-skips-the-line",
+        "manager-foray/narration-skip-spoken-middle-forward-crosses-into-the-next-clip",
+        "manager-foray/narration-skip-spoken-end-forward-crosses-into-the-next-clip",
+        "manager-foray/narration-skip-spoken-scrub-inside-the-line-restarts-it",
+        "manager-foray/narration-skip-spoken-scrub-into-the-next-clip-reloads-it",
+        "manager-foray/narration-skip-rendered-start-back-crosses-into-the-clip",
+        "manager-foray/narration-skip-rendered-middle-back-seeks-inside-the-line",
+        "manager-foray/narration-skip-rendered-end-back-seeks-inside-the-line",
+        "manager-foray/narration-skip-rendered-start-forward-seeks-inside-the-line",
+        "manager-foray/narration-skip-rendered-middle-forward-crosses-into-the-next-clip",
+        "manager-foray/narration-skip-rendered-end-forward-crosses-into-the-next-clip",
+        "manager-foray/narration-skip-rendered-scrub-inside-the-line",
+        "manager-foray/narration-skip-rendered-line-playing-back-is-a-seek",
+        "manager-foray/narration-skip-clip-back-stays-in-the-clip",
+        "manager-foray/narration-skip-clip-start-back-crosses-into-the-spoken-line",
+        "manager-foray/narration-skip-clip-end-forward-crosses-into-the-spoken-line",
+        "manager-foray/narration-skip-clip-back-is-clamped-at-the-foray-start",
+        "manager-foray/narration-skip-clip-forward-is-clamped-before-the-foray-end",
+        "manager-foray/narration-skip-closing-spoken-line-forward-goes-nowhere",
         "manager-foray/an-episode-then-a-bridge-plays-the-bridge",
         "manager-foray/a-missing-bridge-never-stalls-the-queue",
-        "manager-foray/next-steps-over-a-bridge",
+        "manager-foray/next-lands-on-a-bridge",
+        "manager-foray/next-from-a-bridge-lands-on-the-item-after-it",
         "manager-foray/a-bridge-starts-at-zero",
         "manager-foray/rendered-narration-plays-at-1x-with-no-out-point",
         "manager-foray/a-script-only-line-is-spoken-not-loaded",
@@ -937,6 +986,8 @@
         "manager-foray/foray-2-1.5x-holds-through-every-seam",
         "manager-foray/foray-2-2x-mid-foray-survives-every-later-seam",
         "manager-foray/foray-2-the-beat-is-wall-clock-at-2x",
+        "manager-foray/remote-nexttrack-onto-a-line",
+        "manager-foray/remote-nexttrack-from-a-line",
         "manager-foray/a-segment-loads-at-its-in-point",
         "manager-foray/the-out-point-is-armed-before-play",
         "manager-foray/a-whole-episode-arms-nothing",
@@ -984,6 +1035,34 @@
         "manager-foray/a-zero-beat-is-no-beat",
         "manager-foray/a-three-segment-foray-with-a-call-in-the-middle",
         "manager-foray/a-load-in-flight-is-not-an-external-stop"
+      ]
+    },
+    "manager-remainder": {
+      "files": {
+        "player/parity/fixtures/manager-remainder/transport.json": "a0381f383cc4878322b20291fc5366e51c4ab16c41e3b72dfdd1a87e5b7c9b4a",
+        "player/parity/fixtures/manager-remainder/warming.json": "462ef49b1d5e27d193352f50736acdddb6f9eef7db3b75ae4798168309a928c4"
+      },
+      "ids": [
+        "manager-remainder/an-unknown-ref-errors-to-idle-rather-than-hanging",
+        "manager-remainder/the-position-timer-runs-only-while-playing",
+        "manager-remainder/the-rate-getter-reports-the-chosen-speed",
+        "manager-remainder/a-snapped-rate-says-so",
+        "manager-remainder/stop-is-silence-behind-a-paused-machine",
+        "manager-remainder/a-play-settling-mid-skip-back-keeps-the-restart",
+        "manager-remainder/the-window-warms-the-next-segment-at-its-in-point",
+        "manager-remainder/each-window-warms-what-its-boundary-advances-to",
+        "manager-remainder/the-last-item-warms-nothing",
+        "manager-remainder/a-rendered-line-is-warmed-across-its-seam",
+        "manager-remainder/a-spoken-line-has-no-file-to-warm",
+        "manager-remainder/with-no-beat-the-next-clip-is-still-warmed",
+        "manager-remainder/the-clip-after-a-spoken-line-is-warmed-when-the-line-starts",
+        "manager-remainder/during-a-rendered-line-the-window-warms-the-clip-after-it",
+        "manager-remainder/an-episode-left-to-its-natural-end-warms-the-item-after-it",
+        "manager-remainder/a-rendered-line-failing-while-sounding-warms-the-clip-as-speech-takes-over",
+        "manager-remainder/a-window-while-paused-warms-nothing",
+        "manager-remainder/a-warmed-seam-is-the-beat",
+        "manager-remainder/an-unwarmed-seam-is-the-load",
+        "manager-remainder/losing-the-race-costs-the-load-and-never-the-segment"
       ]
     },
     "media": {
@@ -1275,6 +1354,37 @@
         "prepare/at-2x-the-beat-is-still-500ms-of-wall-clock"
       ]
     },
+    "prepare-narration": {
+      "files": {
+        "player/parity/fixtures/prepare-narration/policy.json": "629095884107f2cf64517fbd75484cb6e85a5d53b1e0a3cc935e2e6d16d6f9ef",
+        "player/parity/fixtures/prepare-narration/seams.json": "e3b18c68dd554b5a2ec56461ed15461a0da42595573ac68173d3a0c1a81fd35b"
+      },
+      "ids": [
+        "prepare-narration/warms-clip-to-clip",
+        "prepare-narration/warms-clip-to-rendered-line",
+        "prepare-narration/warms-rendered-line-to-clip",
+        "prepare-narration/warms-spoken-line-to-clip",
+        "prepare-narration/warms-natural-end-to-clip",
+        "prepare-narration/spoken-line-is-not-warmed",
+        "prepare-narration/empty-url-is-not-warmed",
+        "prepare-narration/a-whole-episode-is-not-warmed",
+        "prepare-narration/an-episode-after-an-episode-is-not-warmed",
+        "prepare-narration/the-last-item-warms-nothing",
+        "prepare-narration/window-from-duration-shut-outside-the-lead",
+        "prepare-narration/window-from-duration-open-inside-the-lead",
+        "prepare-narration/window-from-duration-at-a-natural-end",
+        "prepare-narration/window-shorter-than-the-lead-opens-at-the-start",
+        "prepare-narration/window-from-duration-is-wall-clock-at-2x",
+        "prepare-narration/window-no-duration-no-boundary",
+        "prepare-narration/window-duration-never-stands-in-for-an-unarmed-out-point",
+        "prepare-narration/window-from-duration-shut-while-paused",
+        "prepare-narration/clip-line-clip-in-one-episode-prepares-the-second-clip-by-a-seek",
+        "prepare-narration/clip-line-clip-across-two-episodes-prepares-both-seams",
+        "prepare-narration/a-spoken-line-prepares-nothing-and-the-clip-after-it-is-prepared-at-its-start",
+        "prepare-narration/a-line-shorter-than-the-lead-prepares-the-next-clip-at-its-start",
+        "prepare-narration/a-line-that-ends-the-foray-prepares-nothing"
+      ]
+    },
     "queue-state": {
       "files": {
         "player/parity/fixtures/queue-state/queue-state.json": "4df9d1b0e362130491fad057544179b395cf733e891cfb0a5d641126edc8da51"
@@ -1529,6 +1639,62 @@
         "resume-rules/first-save-at-zero-emits",
         "resume-rules/after-a-zero-event-emits-again",
         "resume-rules/null-last-is-none"
+      ]
+    },
+    "route-resume": {
+      "files": {
+        "player/parity/fixtures/route-resume/policy.json": "890e7f8537117561ec6967370c27af273c07650735e904385651bdaaa94216d4",
+        "player/parity/fixtures/route-resume/sequences.json": "7f80d4e12d108f4033ce9c15ad43ff6f7f9737d356a7f982a132004ad3daa810"
+      },
+      "ids": [
+        "route-resume/max-lost-is-24h",
+        "route-resume/bluetooth-arm-default-off",
+        "route-resume/class-caraudio",
+        "route-resume/class-bluetootha2dpoutput",
+        "route-resume/class-bluetoothhfp",
+        "route-resume/class-bluetoothle",
+        "route-resume/class-headphones",
+        "route-resume/class-speaker",
+        "route-resume/class-airplay",
+        "route-resume/class-usbaudio",
+        "route-resume/class-none",
+        "route-resume/key-port-and-uid",
+        "route-resume/key-no-uid",
+        "route-resume/key-no-port",
+        "route-resume/decide-known-car-back",
+        "route-resume/decide-listener-paused",
+        "route-resume/decide-interrupted",
+        "route-resume/decide-system-paused",
+        "route-resume/decide-not-paused",
+        "route-resume/decide-no-loss",
+        "route-resume/decide-different-car",
+        "route-resume/decide-no-uid",
+        "route-resume/decide-unknown-car",
+        "route-resume/decide-bluetooth-arm-off",
+        "route-resume/decide-bluetooth-arm-default",
+        "route-resume/decide-bluetooth-arm-on",
+        "route-resume/decide-headphones",
+        "route-resume/decide-exactly-24h",
+        "route-resume/decide-25h",
+        "route-resume/decide-age-unknown",
+        "route-resume/car-lost-and-back",
+        "route-resume/listener-pause-then-car-lost-and-back",
+        "route-resume/call-during-the-loss",
+        "route-resume/system-pause-during-the-loss",
+        "route-resume/press-after-the-loss",
+        "route-resume/play-press-after-the-loss",
+        "route-resume/unknown-car",
+        "route-resume/bluetooth-arm-off",
+        "route-resume/bluetooth-arm-on",
+        "route-resume/headphones",
+        "route-resume/lost-25h-ago",
+        "route-resume/different-car-back",
+        "route-resume/second-back-after-a-resume",
+        "route-resume/back-while-load-pending",
+        "route-resume/lost-again-after-a-resume",
+        "route-resume/lost-while-already-paused",
+        "route-resume/lost-after-a-call",
+        "route-resume/unknown-event"
       ]
     },
     "rows": {
@@ -1982,7 +2148,7 @@
     },
     "transport": {
       "files": {
-        "player/parity/fixtures/transport/transport.json": "4f9dc490e507f9a78e0009b4dad83082940c6bb563d297ffb22a82a267b2838f"
+        "player/parity/fixtures/transport/transport.json": "395b28405e800f93e93772bd60f4dac1a95778147cd378faf6cd887fa61c3fae"
       },
       "ids": [
         "transport/restart-window-4s",
@@ -2070,6 +2236,12 @@
         "transport/scrub-paused-same-clip",
         "transport/scrub-to-the-end-lands-inside",
         "transport/scrub-into-spoken-narration",
+        "transport/scrub-spoken-line-sounding-in-its-seam-restarts",
+        "transport/scrub-spoken-line-paused-restarts",
+        "transport/scrub-other-spoken-line-reloads",
+        "transport/scrub-rendered-line-in-its-seam-reloads-at-the-offset",
+        "transport/scrub-rendered-line-playing-seeks",
+        "transport/scrub-back-from-a-line-into-the-clip-reloads",
         "transport/scrub-nowhere",
         "transport/offset-inside",
         "transport/offset-at-the-end",

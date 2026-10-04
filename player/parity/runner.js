@@ -108,7 +108,7 @@ export function validateFixtures(fixtures, schema = loadSchema()) {
   const jsOnlyOf = new Map();
   for (const { family, file, doc } of fixtures) {
     /* A family is ported or it is not; half a family marked JS-only would hide
-       its ported half from swift-pending (plan §5.5 C-2). */
+       its ported half from the Swift runner (plan §5.5 C-2). */
     const jsOnly = doc.jsOnly === true;
     if ("jsOnly" in doc && typeof doc.jsOnly !== "boolean") problems.push(`${file}: jsOnly must be a boolean`);
     if (jsOnlyOf.has(family) && jsOnlyOf.get(family) !== jsOnly) problems.push(`${file}: jsOnly disagrees with another file of family "${family}"`);
@@ -329,10 +329,18 @@ function managerView(m) {
       lastVoiceFallback   the synthesiser's own "I spoke in another voice"
                           (null: nothing has spoken)
       wasPlaying          the interrupted state's wasPlaying (null in any other
-                          state): whether one press, or should-resume, resumes */
+                          state): whether one press, or should-resume, resumes
+
+    NE-39j:
+
+      positionTimer       true while the periodic position writer is armed (the
+                          resume row's clock, queue-manager.js `_syncTimer`):
+                          it runs while playing and never while paused, so a
+                          paused player writes nothing on a timer */
 export const VIEW_KEYS = Object.freeze([
   "outPoint", "seamGapRemainingMs", "timersLive", "positionSec",
   "narrationSec", "narrationPlayhead", "narrationTicks", "lastVoiceFallback", "wasPlaying",
+  "positionTimer",
 ]);
 
 function extraView(keys, { m, backend, scheduler, ticks }) {
@@ -351,6 +359,7 @@ function extraView(keys, { m, backend, scheduler, ticks }) {
       out.narrationTicks = ticks.count;
     } else if (k === "lastVoiceFallback") out.lastVoiceFallback = m.lastVoiceFallback ?? null;
     else if (k === "wasPlaying") out.wasPlaying = m.state?.type === "interrupted" ? m.state.wasPlaying === true : null;
+    else if (k === "positionTimer") out.positionTimer = m._timer != null;
     else throw new HarnessError("E_BAD_CASE", `unknown view key ${JSON.stringify(k)} (one of ${VIEW_KEYS.join(", ")})`);
   }
   return out;
@@ -541,18 +550,43 @@ async function runDeckScenario(c, setup, ctx) {
    error unless the step says `refused: "<reason>"`). `deck` steps are the
    engine's deck events (`ended` with `reason`, `error`, `time`/`duration`
    with `sec`, `window`, `stall`, `flowing`). `clock` moves the manual
-   clock. A checkpoint records the manager view plus `nowMs` — T. */
+   clock. A checkpoint records the manager view plus `nowMs` — T.
+   `setup.preview` (NE-47) configures the preview deck a rendered audition
+   plays on: `{failUrls: [...]}` are urls whose load fails. */
 
 export const ENGINE_DECK_EVENTS = Object.freeze(["ended", "error", "time", "duration", "window", "stall", "flowing"]);
 
+/** The engine target's remote surface (the M2 drive's car presses, 2026-10-01):
+    on iOS a lock-screen, car or headset press is the ENGINE's own command
+    (EngineCore.onRemote, plan §4.5), not the page's, so each surface method
+    sends the command the press stands for, from source `remote`. Through
+    `mediaSessionActions`, like the manager target's, so a remap reaches the
+    engine exactly as it reaches the page. A remote stop pauses natively (T-7)
+    where the JS surface closes, and the Swift driver runs no case of it; this
+    refuses it the same way. */
+function engineRemoteSurface(send) {
+  return {
+    play: () => send("play"),
+    pause: () => send("pause"),
+    stop: () => { throw new HarnessError("E_BAD_CASE", "a remote stop pauses natively (T-7) where the JS surface closes; no engine case runs it"); },
+    next: () => send("next"),
+    previous: () => send("previous"),
+    seekBy: (offset) => send("seekBy", { deltaSec: offset }),
+    seekTo: (position) => send("seekTo", { sec: position }),
+  };
+}
+
 async function runEngineScenario(c, setup, ctx) {
   const { ReferenceEngine } = await importModule(ctx.root, "player/parity/reference-engine.js");
+  const { mediaSessionActions } = await importModule(ctx.root, "player/media-session.js");
   const log = new OpLog();
   const scheduler = manualScheduler();
   const eng = new ReferenceEngine({
     scheduler, now: () => 0, log,
     capabilities: setup.capabilities ?? ["episode", "continuation", "restore", "foray"],
     catalogue: setup.catalogue ?? {}, backend: setup.backend ?? {},
+    // NE-47: the preview deck's failing urls (fakes.js fakePreview).
+    preview: setup.preview ?? {},
     ...(setup.seamGapSec !== undefined ? { seamGapSec: setup.seamGapSec } : {}),
   });
   const { verbs } = closedSets();
@@ -599,11 +633,22 @@ async function runEngineScenario(c, setup, ctx) {
         case "settle":
           for (let n = 0; n < (Number.isInteger(step.settle) && step.settle > 0 ? step.settle : 1); n++) await tick();
           break;
+        case "remote": {
+          if (!REMOTE_ACTIONS.includes(step.remote)) {
+            throw new HarnessError("E_BAD_CASE", `unknown remote action ${JSON.stringify(step.remote)} (have ${REMOTE_ACTIONS.join(", ")})`);
+          }
+          const send = (cmd, args) => eng.engineSend({ v: 1, cmdSeq: ++cmdSeq, cmd, source: "remote", ...(args !== undefined ? { args } : {}) });
+          const handler = new Map(mediaSessionActions(engineRemoteSurface(send))).get(step.remote);
+          if (!handler) throw new HarnessError("E_BAD_CASE", `the surface installs no "${step.remote}" handler, so the OS could never deliver this press`);
+          await ("details" in step ? handler(expandInputs(step.details, ctx)) : handler());
+          await tick();
+          break;
+        }
         case "checkpoint":
           checkpoint(step.checkpoint);
           break;
         default:
-          throw new HarnessError("E_BAD_CASE", `the engine target takes call, deck, clock, settle and checkpoint steps, not "${verb}"`);
+          throw new HarnessError("E_BAD_CASE", `the engine target takes call, deck, clock, settle, remote and checkpoint steps, not "${verb}"`);
       }
     }
     await tick();
@@ -624,9 +669,11 @@ async function runScenario(c, ctx) {
   const { mediaSessionActions } = await importModule(ctx.root, "player/media-session.js");
 
   const log = new OpLog();
-  const backend = new FakeBackend({ log, ...(setup.backend ?? {}) });
-  const store = await positionStoreFor(setup, log, ctx);
   const scheduler = setup.scheduler === "manual" ? manualScheduler() : instantScheduler();
+  /* NE-39j. The backend is handed the scenario's scheduler, so a cold load
+     (setup.backend.coldLoadMs) costs time on the same clock the beat runs on. */
+  const backend = new FakeBackend({ log, ...(setup.backend ?? {}), scheduler });
+  const store = await positionStoreFor(setup, log, ctx);
   const tts = setup.tts ? fakeTts({ log, ...(typeof setup.tts === "object" ? setup.tts : {}) }) : null;
   const interlude = setup.interlude ? fakeInterlude({ log, ...(typeof setup.interlude === "object" ? setup.interlude : {}) }) : null;
   const built = setup.forayBuild ? await forayBuildFor(setup.forayBuild, ctx) : null;
@@ -639,6 +686,7 @@ async function runScenario(c, ctx) {
      ticker — and so its deadline — only when a surface listens. Counted, not
      logged: how often a page repaints is not an act on the outside world. */
   const ticks = setup.narrationTicks === true ? { count: 0 } : null;
+  const telemetry = telemetryFor(setup.telemetry, log);
 
   __resetInstanceForTests();
   const m = new PlayerQueueManager({
@@ -651,6 +699,10 @@ async function runScenario(c, ctx) {
     ...(setup.interludeEnabled !== undefined ? { interludeEnabled: setup.interludeEnabled } : {}),
     ...(setup.voice !== undefined ? { voice: setup.voice } : {}),
     ...(ticks ? { onNarrationTick: () => { ticks.count++; } } : {}),
+    /* NE-39j (audit round 2, player-1). The surface's settled-state hook, as an
+       op: the page repaints on it, and the engine's snapshot is taken on it. */
+    ...(setup.settledEvents === true ? { onStateSettled: (st) => log.push(`event.settled:${st?.type ?? null}`) } : {}),
+    ...(telemetry ? { telemetry } : {}),
   });
 
   const { verbs } = closedSets();
@@ -749,6 +801,15 @@ async function runScenario(c, ctx) {
               throw new HarnessError("E_BAD_CASE", `no held load${step.id ? ` for "${step.id}"` : ""} to settle`);
             }
           }
+          /* NE-39j. The deck's playhead watch reaching PREFETCH_LEAD_SEC before
+             the boundary: only a backend built with setup.backend.prefetch
+             has one. */
+          else if (step.deck === "window") {
+            if (typeof backend.openPrefetchWindow !== "function") {
+              throw new HarnessError("E_BAD_CASE", `deck "window" needs setup.backend.prefetch`);
+            }
+            backend.openPrefetchWindow();
+          }
           else throw new HarnessError("E_BAD_CASE", `unknown deck event "${step.deck}"`);
           await tick();
           break;
@@ -773,7 +834,11 @@ async function runScenario(c, ctx) {
              then say so). */
           if (step.tts === "finish") tts.finish();
           else if (step.tts === "silent") tts.silence();
-          else throw new HarnessError("E_BAD_CASE", `unknown tts event "${step.tts}" (finish, silent)`);
+          /* NE-39j. A held pause (setup.tts.pause = "held") is answered. */
+          else if (step.tts === "releasePause") {
+            if (!tts.releasePause()) throw new HarnessError("E_BAD_CASE", "no held tts pause to release");
+          }
+          else throw new HarnessError("E_BAD_CASE", `unknown tts event "${step.tts}" (finish, silent, releasePause)`);
           await tick();
           break;
         case "interlude":
@@ -825,6 +890,25 @@ async function runScenario(c, ctx) {
     __resetInstanceForTests();
   }
   return encode({ checkpoints, ops });
+}
+
+/** NE-39j. The telemetry lines a scenario may record, by event name: a
+    closed list, because telemetry is mostly English for a person, and English
+    is a text-pin, not a rule. An event here is a machine-readable line whose
+    presence IS the rule: `rate.snapped requested=<JSON> applied=<r>` is what
+    makes a stale stored rate discoverable (product principle 2), and the
+    native engine writes the same fact as its `rate kind=snapped` diagnostics
+    row (EngineCore.setRate). Recorded as `telemetry:<the line>`. */
+export const TELEMETRY_EVENTS = Object.freeze(["rate.snapped"]);
+
+function telemetryFor(names, log) {
+  if (names === undefined) return null;
+  if (!Array.isArray(names) || !names.every((n) => TELEMETRY_EVENTS.includes(n))) {
+    throw new HarnessError("E_BAD_CASE", `setup.telemetry is a list of ${TELEMETRY_EVENTS.join(", ")}`);
+  }
+  return (line) => {
+    if (typeof line === "string" && names.some((n) => line === n || line.startsWith(`${n} `))) log.push(`telemetry:${line}`);
+  };
 }
 
 /** The scenario's position store. By default the MemoryStore (`store.save:`

@@ -2,6 +2,24 @@
 
 Per-topic ADRs live in `docs/adr/`. This file is the chronological record.
 
+## 2026-10-03 (every episode row shows a few lines of its description)
+
+Wyatt, 2026-10-03, with an Apple Podcasts screenshot of a show page: "episodes
+show a few lines of the description to give you a hint what it's about. This is
+super helpful. Please implement the same on 4a wherever appropriate."
+
+- `epRow()` draws an `.ep-hook` line between the title and the metadata line:
+  the publisher's `description` when the row carries it (feed episodes), else
+  the row's `hook` (4a's one-liner for the curated pool; the stored 280-character
+  prefix for a snapshot). Plain text, escaped, whitespace collapsed, cut at a
+  word boundary at 220 characters; `styles.css` clamps it to two lines. A hook
+  that only repeats the title is not drawn.
+- "Wherever appropriate" = every list built from `epRow`: a show's episodes,
+  search results, Saved, History, playlist and subject detail pages. Not Up Next
+  (`upNextRow`), which Apple also keeps to titles, and not Foray part rows, which
+  already carry their own why-line.
+- Pinned by `test/episode-row-snippet.test.js`.
+
 ## 2026-09-30 (founder rulings on six open owner items, delegated to Fable: HA #31, #24, #22, #17, #13, #8)
 
 The owner (Joey), 2026-09-30: "Fables decision is my decision." Two Fable agents

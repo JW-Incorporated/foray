@@ -10,6 +10,10 @@ import Foundation
 ///                  cold path) or `foreground` (DV-7a/DV-7b)
 ///   pitch          the decks' `audioTimePitchAlgorithm` (§4.3)
 ///   hold           `pauseHoldPolicy` (§4.4), the setting OQ-12 decides from
+///   routeSharing   the audio session's route-sharing policy this launch was
+///                  built with (NE-40, DV-8): `default`, or `longFormAudio`
+///                  while the Developer trial is on. The Copy header repeats
+///                  it (`routeSharing=`), so a paste says which arm it is.
 ///
 /// And the phone it booted on (L09, L28; docs/diagnostics/log-gaps-2026-09-26.md),
 /// each written only when the boot could read it:
@@ -33,6 +37,7 @@ public struct BuildRow: Equatable {
     public var launch: Launch
     public var pitchAlgorithm: String
     public var holdPolicy: SessionPolicy.HoldPolicy
+    public var routeSharing: EngineContract.RouteSharingPolicy?
     public var hw: String?
     public var os: String?
     public var lowPower: Bool?
@@ -42,6 +47,7 @@ public struct BuildRow: Equatable {
     public init(engineVersion: String, protocolVersion: Int = EngineHandshake.protocolVersion,
                 bundleVersion: String, launch: Launch, pitchAlgorithm: String = "timeDomain",
                 holdPolicy: SessionPolicy.HoldPolicy,
+                routeSharing: EngineContract.RouteSharingPolicy? = nil,
                 hw: String? = nil, os: String? = nil, lowPower: Bool? = nil,
                 thermal: String? = nil, availMb: Int? = nil) {
         self.engineVersion = engineVersion
@@ -50,6 +56,7 @@ public struct BuildRow: Equatable {
         self.launch = launch
         self.pitchAlgorithm = pitchAlgorithm
         self.holdPolicy = holdPolicy
+        self.routeSharing = routeSharing
         self.hw = hw
         self.os = os
         self.lowPower = lowPower
@@ -66,6 +73,7 @@ public struct BuildRow: Equatable {
             JSONMember("pitch", .string(pitchAlgorithm)),
             JSONMember("hold", .string(holdPolicy.text))
         ]
+        if let routeSharing { fields.append(JSONMember("routeSharing", .string(routeSharing.rawValue))) }
         // Only what the boot could read: an absent key is "not measured",
         // never a guessed value.
         if let hw { fields.append(JSONMember("hw", .string(hw))) }

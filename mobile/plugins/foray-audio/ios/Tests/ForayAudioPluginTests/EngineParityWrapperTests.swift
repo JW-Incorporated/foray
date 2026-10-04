@@ -82,11 +82,19 @@ final class EngineParityWrapperTests: XCTestCase {
     func testDeckFamily() { assertParityFamily("deck", requireRunner: true) }
     func testManagerForayFamily() { assertParityFamily("manager-foray", requireRunner: true) }
     func testPrepareFamily() { assertParityFamily("prepare", requireRunner: true) }
+    /// NE-45s: the prepare seams with a narration line in them.
+    func testPrepareNarrationFamily() { assertParityFamily("prepare-narration", requireRunner: true) }
 
     /// NE-33: the default voice, the lexicon and the speech rate as the app links them.
     func testDefaultVoiceFamily() { assertParityFamily("default-voice", requireRunner: true) }
     func testLexiconFamily() { assertParityFamily("lexicon", requireRunner: true) }
     func testSpeechRateFamily() { assertParityFamily("speech-rate", requireRunner: true) }
+
+    /// NE-38rs: route resume as the app links it.
+    func testRouteResumeFamily() { assertParityFamily("route-resume", requireRunner: true) }
+
+    /// NE-39s: the manager remainder as the app links it.
+    func testManagerRemainderFamily() { assertParityFamily("manager-remainder", requireRunner: true) }
 
     /// Every family in manifest.json, including any recorded after this file
     /// was written: executed or owed, nothing stale, nothing dropped.

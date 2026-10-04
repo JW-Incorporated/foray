@@ -17,8 +17,9 @@ public enum Comparator {
     /// compare.js `NATIVE_TOKEN_PREFIX`.
     public static let nativeTokenPrefix = "n."
     /// compare.js `NATIVE_TOKEN_FAMILIES`: the families whose op logs KEEP
-    /// `n.*` tokens (plan §6.2: the prepare family asserts them).
-    public static let nativeTokenFamilies = ["prepare"]
+    /// `n.*` tokens (plan §6.2: the prepare family asserts them, and NE-45j's
+    /// prepare-narration with it).
+    public static let nativeTokenFamilies = ["prepare", "prepare-narration"]
 
     public struct Difference: Equatable, CustomStringConvertible {
         /// `$`, `$.return`, `$.ops[2]`: the same spelling compare.js uses.

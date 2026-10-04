@@ -190,6 +190,8 @@ is marked to be left out of them.
 | `ForayEngine.stickyLegacyBuild` | The app's build number, when three failed starts switched it to the web view's player, so the next update tries the native player again | **No** |
 | `ForayEngine.restore` | What the player needs to carry on after iOS closed the app in the background — so a car's play button still works: the episodes it was playing and could play next (id, title, show name, artwork and audio addresses — the same details `cp_episode_snaps` keeps), where in them it was, your speed, and any positions and automatic "next episode" steps it recorded while the app was closed and has not yet added to your on-device listening record. Overwritten as you listen | **No** |
 | `ForayEngine.holdPolicy` | A **Developer** setting: how long the paused player keeps its claim on the phone's audio | **No** |
+| `ForayEngine.routeSharing` | A **Developer** setting: whether the player asks the phone to route its audio as long-form audio (a trial) or the usual way. Absent until the setting is used | **No** |
+| `ForayEngine.knownRoutes` | The audio outputs (a car's CarPlay or Bluetooth, headphones) the native player has played through, at most 8, so that when a car it knows is switched off mid-episode and on again it can carry on by itself. Each is kept only as a one-way scrambled code of the output's type and its device id, mixed with a random value made on this phone; never a car's or a device's name, and never the id itself | **No** |
 | `Application Support/foray-engine/diag.jsonl` (a file, not a key) | The native player's diagnostic record, capped at the most recent 2,000 rows: the same kinds of row as `cp_diag` — the audio session, interruptions, remote and car button presses, now-playing, resumes, and the *type* of audio route (for example `carAudio`) — under the same rules: no audio, no URLs, no account id, and no device or car names. The only free text is what the lock screen was shown — the now-playing title, artist and album fields, which are catalogue names such as the episode and show — each cut to 40 characters. A copy of each row, without that free text, goes to the iPhone's own system log, which stays on the phone like every app's. **Playback diagnostics** → Copy includes these rows | **No** — it is never transmitted, and it is marked to be left out of phone backups |
 
 **Delete my data** reaches these too, in any iPhone app that has the native
@@ -338,12 +340,19 @@ do not ship in a public web page — §7 says so plainly.
 Because it is an ordinary network request, **Supabase necessarily observes the IP
 address it came from**, as any server does.
 
+**Where the data is stored.** Our Supabase project (id `qjdllvqdcgacvujhclny`) is
+hosted in **AWS region `us-east-1` — US East (N. Virginia), United States**.
+Every event row described in this section, and the anonymous account that carries
+it, lives on servers in the United States. If you are outside the US, sending an
+event means that row crosses a border.
+
 Supabase processes this data under Supabase's standard data-processing
 agreement.
 
-> TODO(founder): the Supabase project's **region / hosting jurisdiction**. Not
-> known from the repo and not to be guessed; the lookup is tracked as
-> `HUMAN-ACTIONS.md` #129. Needed for the policy to state where data is stored.
+> TODO(founder): whether a **separate data-processing agreement** has been
+> signed with Supabase beyond their standard terms. The region half of this
+> question is answered above; the agreement half is not recorded anywhere in the
+> repo and is not to be guessed.
 
 > TODO(founder): **how long event rows are retained.** ADR-0005 anticipates a
 > retention job pruning stale anonymous ids with no events; it is not built. The
