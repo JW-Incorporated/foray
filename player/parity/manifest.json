@@ -862,17 +862,23 @@
       "files": {
         "player/parity/fixtures/manager-foray/audition-url.json": "5da3b1546e82543c44560edd3e37468401e876ea0e9311bc3da6210cfe4be317",
         "player/parity/fixtures/manager-foray/audition.json": "9c1eed332cf0db001efc1de1e1b0c27f1bd50fef9c49202229d8312c9adcfb60",
+        "player/parity/fixtures/manager-foray/clip-load.json": "5b5ada8de456dc92c9a3b10a32ba6e05c26dcf3ebe6bfb17ff1959af82d192ca",
         "player/parity/fixtures/manager-foray/jingle.json": "c9016c928cfc2dd0a8c3429124dbc5da2b6775b2161601a3aedaed4b74f4fff2",
         "player/parity/fixtures/manager-foray/narration-skip.json": "8e9192d2b9043c262692080d655aef3589c38b0410dc1122eca3091ead18507f",
         "player/parity/fixtures/manager-foray/narration.json": "dd05be479486a191ea10810cea5c9da26763ae2d4571551dade5b33439edb401",
         "player/parity/fixtures/manager-foray/real-forays.json": "ce2d584ca45514c92c7a0b9095d4566d40429fb180f17faa352c202c4c88b6f4",
         "player/parity/fixtures/manager-foray/remote-next.json": "e5eaf96acf68a5bc0092e6eaee63115a002ae278232026f3e8380f838c6c6765",
-        "player/parity/fixtures/manager-foray/tape.json": "bffeb969f00fbe7d2b5c1a7a8fcd450f2ddc43b04e53428eeb320ceffa38bf73"
+        "player/parity/fixtures/manager-foray/tape.json": "ad87d4a2fda1dc1ce8322c179669b77bb4d3c0f4f0f7a5ae23faf9c9f5f04b2a"
       },
       "ids": [
         "manager-foray/audition-url-plays-the-rendered-preview",
         "manager-foray/audition-url-that-fails-is-spoken",
         "manager-foray/audition-is-refused-while-running",
+        "manager-foray/a-clip-whose-load-fails-once-is-retried-and-plays",
+        "manager-foray/a-clip-that-fails-twice-is-stepped-over",
+        "manager-foray/a-retry-keeps-the-in-point-of-a-resume-inside-the-clip",
+        "manager-foray/a-paused-clip-load-is-retried-quietly-and-play-finds-it",
+        "manager-foray/a-paused-clip-whose-retry-fails-stops-as-before",
         "manager-foray/the-jingle-starts-at-the-boundary-and-holds-the-tape",
         "manager-foray/no-jingle-before-the-first-item",
         "manager-foray/the-jingle-follows-narration-into-the-tape",

@@ -511,6 +511,7 @@ const FLOORS = {
      and the published privacy policy and Play declaration both now rest on them.
      A deleted test here is a false statement in a store submission. */
   "test/data-deletion.test.js": 88, // audit round 3 (lane L1): app-1-2 single-flight sync and signup (x2), app-1-10 per-chunk markSynced, app-1-4 transient refresh keeps the account (x2), app-3-6 the retry after a local-incomplete run (x4); 79 -> 88 // NE-23: in native mode the deletion stops and purges the engine before the page's own purge (its private keys go, cp_engine_applied is the page's to clear), and an engine that refuses is not a clear device; 77 -> 79 // persist-6: Delete my data finds the token in the vault and empties it, a sync signs up into the vault only, and never refreshes or signs up against a vault it could not read; 68 -> 73 // audit round 2 (L5): the deletion as a transaction — refreshed token saved (persist-1 x2), in-flight sync gated and waited out (persist-8 x2), no cp_playlists/onboarding after the re-render (persist-2), shard cache cleared (persist-4), diagnostics forgotten (persist-5), device-only cost stated (persist-7); 60 -> 68 // 2026-09-22 audit: "Delete everything" is red under ui-v2 and the drawer item is not gold; 57 -> 58 // 2026-09-22 audit (theme J, R11): the foray_events queue is purged with everything else, a queue that will not clear is not called clear, a store with no queue is not a success, no status line speaks storage jargon or a count, every store the code opens sits in a deleted-or-kept ledger, and the policy says so; 51 -> 57
+  "test/event-sync-mapping.test.js": 5, // PKG-17 (docs/roadmap/catalogue-personalization.md): exact wire rows for picked (contract archetype or null), saved, thumbs (no node -> null, episode_slug absent not null), session_shown -> session_built, and a local-only-only batch marked synced with no POST; the Not-sent -> null and per-chunk cases live in legal-citations and data-deletion (app-1-10)
   /** The field record's surface (#264) — see the note beside the two `player/`
       halves above. */
   "test/diagnostics-surface.test.js": 24, // NE-26 (docs/native-engine-plan.md): Copy takes the merged record, one engine read per press, and shows it; opening repaints with it; a late merge never paints over a Clear; a failed merge falls back to the page's own; the clipboard is asked inside the tap (ClipboardItem with a promise); 19 -> 24
@@ -1333,7 +1334,7 @@ const FLOORS = {
      test/show-index.test.js, pins the same file from the CLIENT side; both are
      needed because the sort order is a contract between two files and either
      side can break it alone. */
-  "tools/build-show-index.test.mjs": 9,
+  "tools/build-show-index.test.mjs": 10, // PKG-11a (docs/roadmap/shows-search.md, 2026-10-04): +1 — a curated row carries its breadth twin's chart_rank joined on apple_collection_id, and null without a twin; 9 -> 10
   "tools/popularity-signal-probe.test.mjs": 6, // PKG-12 (P-10, docs/roadmap/shows-search.md): the top.json position probe — the String() join for breadth and curated rows, would_lead_by_top_position, the validator, the pi_id-order flag, one polite GET for top.json alone, the 5xx retry
   /* The Windows entrypoint-guard class (machinery audit finding 3). A main-
      module check written as ``import.meta.url === `file://${process.argv[1]}` ``
@@ -1911,6 +1912,7 @@ const FLOORS = {
      All 19 mutations run against it were killed, and two false-alarm probes
      (a comment-only edit to scan.mjs; one new nightly episode) were confirmed to
      stay green. Each test names its own mutation. */
+  "tools/refresh/fold-breadth-topics.test.mjs": 5, // PKG-08 (2026-10-04): breadth-classification topics folded into data/catalog-breadth.json as taxonomy_node_ids (high/medium and not needs_review only, unknown nodes dropped), --check byte-stable, and a REAL DATA pin that every row carries the array and every id resolves; new, zero slack
   "tools/refresh/merge-topics.test.mjs": 18, // audit round 2 (L6), honesty-1: merge writes duration_min from duration_sec when it has them (the suite already stood at 17 against 16, so this closes that slack too); 16 -> 18
   /* REMOVED 2026-09-24 (issue #701): `tools/refresh/manifest-step.test.mjs`,
      floored at 9 here, and the module it tested. The nightly's deploy-manifest
@@ -2129,6 +2131,7 @@ const FLOORS = {
   "tools/corpus/embeddings.test.mjs": 39,
   "tools/corpus/search.test.mjs": 25,
   "tools/corpus/backfill.test.mjs": 26,
+  "tools/poll/tiers.test.mjs": 9, // PKG-05 (S-10): new -- cadence tiers (seed, correction, success/failure, dead)
 };
 
 test("no suite is floored twice", () => {

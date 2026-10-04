@@ -3902,12 +3902,12 @@
               "outPoint:210",
               "play",
               "load:foray-1#1@400",
-              "pause"
+              "load:foray-1#1@400"
             ],
             "playhead": "foray-1#0",
             "rate": 1,
             "seamGapRemainingMs": 0,
-            "state": "idle",
+            "state": "ended",
             "timersLive": 0
           },
           {
@@ -3919,7 +3919,7 @@
             "playhead": "foray-1#0",
             "rate": 1,
             "seamGapRemainingMs": 0,
-            "state": "idle",
+            "state": "ended",
             "timersLive": 0
           }
         ],
@@ -3929,7 +3929,7 @@
           "outPoint:210",
           "play",
           "load:foray-1#1@400",
-          "pause"
+          "load:foray-1#1@400"
         ]
       }
     },
