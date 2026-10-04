@@ -788,11 +788,12 @@ therefore yields:
 |---|---|
 | `title` | the episode title (`clean(item.title)`) |
 | `artist` | the show name (`clean(item.show)`) |
-| `album` | **empty** — `albumOf("", 0, 0)` has neither a collection title nor a part counter |
+| `album` | **"4a"**, the app's name — `albumOf("", 0, 0)` has neither a collection title nor a part counter, and an album with neither falls back to the app's name (founder ruling 2026-10-04, issue #1006); before that ruling it was empty |
 | `artwork` | the show's artwork, falling back to the app's |
 
 So the lock screen and the car show **no indication that a playlist is playing,
-and no "part N of M"** — that album line exists only for Forays. Whether a
+and no "part N of M"**: the album line reads "4a", the same as any single
+episode, and a collection name with a counter exists only for Forays. Whether a
 playlist should behave like a collection there is an open product question
 (§6.10); it is adjacent to feedback F15.
 
@@ -1026,7 +1027,7 @@ Cost if added: ~16 B a part, ~0.8 KB across a full 50-playlist store.
 | `strongPrefix` | `search-engine.js` | The prefix of the ranking ending at the last bar-clearer. |
 | `diversify` | `search-engine.js` | Per-show cap with backfill and the listened-show penalty. |
 | `suggestAdjacentTopics` | `search-engine.js` | Catalogue-backed suggestions for the honest-empty state. |
-| `mediaMetadata` / `albumOf` | `player/media-session.js` | The three Now Playing strings; album is empty for a playlist part. |
+| `mediaMetadata` / `albumOf` | `player/media-session.js` | The three Now Playing strings; album is the app's name ("4a") for a playlist part (issue #1006). |
 | `syncMediaSession` | `player/client.js` | Chooses the Foray or single-episode metadata branch. |
 
 ### 7.2 Glossary
