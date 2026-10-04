@@ -103,6 +103,26 @@ test("CLI: prints RUN_OF_DAY and exits 0; refuses with exit 1 and an ::error::",
   assert.equal(runCli(["nope"], io).code, 2);
 });
 
+test("CLI: the FIRST release of a UTC day — a one-line runs file — is run-of-day 1, not refused", () => {
+  /* Runs 36917371425 (2026-10-01) and 36945055191 (2026-10-02) were each the
+     first release of their UTC day, so release.yml's runs-today.jsonl held ONE
+     line. JSON.parse accepts a lone object, the envelope branch read its
+     missing `workflow_runs` as [], and both releases were refused with "run N
+     is not among release.yml's runs". The two-line case above never had this
+     shape. MUTATION: restore `runs = Array.isArray(doc) ? doc :
+     (doc?.workflow_runs ?? [])` -> exit 1 here, and the assertion fails. */
+  const files = {
+    one: `${JSON.stringify({ id: 36945055191, created_at: "2026-10-02T00:15:19Z" })}\n`,
+    junk: JSON.stringify({ total_count: 0 }),
+  };
+  const io = { readFile: (p) => files[p] };
+  const r = runCli(["run-of-day", "--runs", "one", "--run-id", "36945055191", "--day", "2026-10-02"], io);
+  assert.equal(r.code, 0, r.err);
+  assert.equal(r.out, "RUN_OF_DAY=1\n");
+  // An envelope with no runs, or any other object without an id, is still no runs: refused, never guessed.
+  assert.equal(runCli(["run-of-day", "--runs", "junk", "--run-id", "1", "--day", DAY], io).code, 1);
+});
+
 test("release.yml computes the slot with this script, from its own day, and not from run_number", () => {
   /* MUTATION: put back `RUN_OF_DAY=$(( (${{ github.run_number }} - 1) % 99 + 1 ))`. */
   const wf = fs.readFileSync(path.join(ROOT, ".github/workflows/release.yml"), "utf8");
