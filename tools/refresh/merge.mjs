@@ -39,7 +39,7 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { resolve as resolvePath } from "node:path";
 import copyRules from "../../backend/src/copy/rules.js";
-import { episodeTopics } from "./topics.mjs";
+import { episodeTopics, topicSource } from "./topics.mjs";
 import { minutesFromSeconds } from "../check-durations.mjs";
 
 const root = new URL("../../", import.meta.url);
@@ -144,8 +144,14 @@ for (const ep of resolved) {
        (#292). Already validated in the preflight above; this call is the one that
        chooses. */
     topics: episodeTopics({ showTopics: ep.topics, editTopics: edit.topics, nodeIds, id: ep.id }),
+    /* Provenance of the line above (#547): "show" = inherited seed, "episode" =
+       the agent's own override. tools/refresh/backfill-provenance.mjs stamped
+       the items merged before this field existed. */
+    topics_source: topicSource(edit.topics),
     hook: edit.hook,
-    explicit: ep.explicit,
+    /* Always present: `null` = unrated, so a reader can tell "no flag" from "key
+       missing" (#560 §6.3). Family Mode already treats null as unrated. */
+    explicit: ep.explicit ?? null,
   };
   discover.items.push(item);
   tagsDoc.tags[ep.id] = edit.tags;

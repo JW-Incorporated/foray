@@ -19,6 +19,14 @@
  * re-classification, where a stale `top-topics.json` had been reporting 13
  * solved topics as unsolved for a month.
  *
+ * TOPIC PROVENANCE (PKG-01; #547, #560 §6.3). The last two tests pin that every
+ * discover item says where its topics came from (`topics_source`) and carries
+ * an `explicit` key. They are real-data tests that pass on today's data by
+ * construction; the kill is: delete one item's `topics_source` (or
+ * `explicit`) key in data/discover.json locally — the matching test goes red,
+ * and `node tools/refresh/backfill-provenance.mjs --check` exits 1 on the same
+ * edit.
+ *
  * The floor for this suite lives in test/suite-integrity.test.js.
  */
 
@@ -152,5 +160,23 @@ test("data/ladders.json node refs resolve", () => {
     }
   };
   scan(ladders, "ladders");
+  assert.deepEqual(bad, [], report(bad));
+});
+
+test("every discover item carries topics_source in {show, episode}", () => {
+  /* KILLED BY: deleting `topics_source` from one item in data/discover.json, or
+     dropping the `topics_source:` line from merge.mjs's item literal (the next
+     nightly item then lands without it). */
+  const { items } = read("discover.json");
+  const bad = items.filter((i) => i.topics_source !== "show" && i.topics_source !== "episode").map((i) => `${i.id}:${i.topics_source}`);
+  assert.deepEqual(bad, [], report(bad));
+});
+
+test("every discover item carries an explicit key (true, false or null)", () => {
+  /* KILLED BY: deleting `explicit` from one item in data/discover.json, or
+     reverting merge.mjs to `explicit: ep.explicit,` (an unflagged episode then
+     lands with no key). */
+  const { items } = read("discover.json");
+  const bad = items.filter((i) => !("explicit" in i) || ![true, false, null].includes(i.explicit)).map((i) => i.id);
   assert.deepEqual(bad, [], report(bad));
 });

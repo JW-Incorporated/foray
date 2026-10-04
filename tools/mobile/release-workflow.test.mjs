@@ -345,6 +345,23 @@ test("2026-10-04: ios-checks may dispatch ci.yml, and tells release-checks which
   assert.ok(s.includes("DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}"), "DEFAULT_BRANCH is not passed to release-checks");
 });
 
+test("2026-10-04: ios-checks waits out a busy macOS queue, and the script's refusal beats the runner's kill", () => {
+  /* Release run 37228218257's dispatched ios-kit sat QUEUED 40+ minutes and the
+     40-minute default refused the TestFlight. MUTATION: drop
+     RELEASE_CHECKS_TIMEOUT_MIN -> the 40-minute default refuses again; leave
+     the job at timeout-minutes 50 -> the runner kills the step at 50 minutes
+     with no verdict line; set the grace too -> a check run that never appears
+     waits hours instead of minutes. */
+  const job = rjob("ios-checks", "ios");
+  const jobTimeout = Number(/^ {4}timeout-minutes: (\d+)$/m.exec(job)?.[1]);
+  const s = step(WF, "engine-parity and ios-kit are green on this exact SHA") ?? "";
+  const scriptTimeout = Number(/RELEASE_CHECKS_TIMEOUT_MIN: "(\d+)"/.exec(s)?.[1]);
+  assert.equal(scriptTimeout, 120, "release-checks must wait 120 minutes for a queued ios-kit");
+  assert.equal(jobTimeout, 130);
+  assert.ok(jobTimeout > scriptTimeout, "the job must outlive the script's own timeout");
+  assert.doesNotMatch(s, /RELEASE_CHECKS_MISSING_GRACE_MIN/, "the missing-check grace keeps its default");
+});
+
 test("NE-06: the summary names a refusal, so a skipped iOS is not mistaken for a credential gap", () => {
   /* MUTATION: drop IOS_CHECKS from the summary -> a refused release reads
      "iOS not reached", which the header teaches readers to take as a missing

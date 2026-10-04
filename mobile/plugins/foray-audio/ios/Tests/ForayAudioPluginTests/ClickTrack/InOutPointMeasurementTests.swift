@@ -237,6 +237,110 @@ final class InOutPointMeasurementTests: XCTestCase {
             state: deck.stateDescription())
     }
 
+    // MARK: - (3) does an approximate seek follow an Info frame's TOC? (measurements §13)
+
+    /// THE QUESTION P-7's CBR EXEMPTION WAITS ON (M2 drive, 2026-10-01). Every
+    /// Practical AI clip source is CBR 128 kbps behind a LAME/Lavc "Info"
+    /// frame, which carries a 100-entry TOC like a VBR file's Xing frame. A
+    /// precise load reads the whole file (the drive: 43.9 MB, 21 s, not
+    /// ready). An approximate one lands within a frame IF AVFoundation does
+    /// CBR byte arithmetic, and seconds off IF it follows the Info TOC: that
+    /// TOC is quantised to 1/256 of the file, 10.6 s on a 45-minute episode.
+    ///
+    /// click-cbr.mp3 has no header frame, so §7.3's CBR rows cannot say. Here
+    /// its frames go behind an Info frame built the way LAME builds one, once
+    /// with the TOC it should carry and once with every entry pushed 7/256 of
+    /// the file LATER. If approximate seeks follow the TOC, the skewed file
+    /// lands about +2.5 s late (7/256 of 180 KB at 2 KB/s); if they do byte
+    /// arithmetic, both files land where click-cbr.mp3 does. Precise is the
+    /// control. Reported, not asserted (beyond "the rig measured something"):
+    /// the row decides `EngineConfig.approximateCBRClips`.
+    func testWhetherAnApproximateSeekFollowsAnInfoFramesTOC() throws {
+        let descriptor = try ClickTrackDescriptor.load()
+        guard let fixture = descriptor.fixtures.first(where: { $0.kind == "mp3-cbr" }) else {
+            return XCTFail("no mp3-cbr fixture in the descriptor")
+        }
+        let cbr = try Data(contentsOf: descriptor.url(of: fixture))
+        var rows: [[String]] = []
+        var notes: [String] = []
+        var preciseLandings = 0
+        for (name, skew) in [("info-toc", 0), ("info-toc-skewed+7", 7)] {
+            let url = FileManager.default.temporaryDirectory.appendingPathComponent("click-cbr-\(name).mp3")
+            try Self.infoTagged(cbr, tocSkew: skew).write(to: url)
+            defer { try? FileManager.default.removeItem(at: url) }
+            let delay = try streamDelay(url, descriptor: descriptor)
+            guard let delaySec = delay.delaySec else {
+                notes.append("\(name): no click heard playing from zero: \(delay.state)")
+                continue
+            }
+            notes.append("\(name): delay \(ms(delaySec)) ms from the stream's first sample")
+            for precise in [true, false] {
+                for requested in [19.65, 49.65, 69.65] {
+                    do {
+                        let trial = try measureInPoint(url, fixture: "click-cbr-\(name).mp3", precise: precise,
+                                                       requestedSec: requested, delaySec: delaySec, descriptor: descriptor)
+                        MeasurementReport.json(trial, tag: "NE-25a-info")
+                        if precise, trial.landingErrorSec != nil { preciseLandings += 1 }
+                        rows.append([name, trial.mode, String(format: "%.2f", requested),
+                                     ms(trial.landingErrorSec) + (trial.ambiguous ? " (ambiguous)" : ""),
+                                     String(format: "%.3f", trial.timing.durationSec),
+                                     msValue(trial.timing.totalMs), ms(trial.residualSec)])
+                    } catch {
+                        rows.append([name, precise ? "precise" : "approximate", String(format: "%.2f", requested),
+                                     "load failed: \(error)", "-", "-", "-"])
+                    }
+                }
+            }
+        }
+        MeasurementReport.table(
+            title: "NE-25a (3): does an approximate seek follow an Info frame's TOC? (P-7's CBR exemption)",
+            columns: ["file", "timing", "in-point s", "landing error ms", "duration s (asset)", "ready total ms",
+                      "ruler residual ms"],
+            rows: rows,
+            notes: notes + [
+                "click-cbr.mp3 (CBR 16 kbit/s, 16 kHz mono) behind a 32 kbit/s Info frame (frames, bytes, TOC), the smallest MPEG-2 frame the tag fits in, as LAME does for a low-bitrate CBR file.",
+                "info-toc-skewed+7: every TOC entry after the first is 7/256 of the file later than the frame it should point at. Following the TOC lands about +2.5 s late; byte arithmetic lands as info-toc does.",
+                "Reading it: approximate info-toc-skewed+7 near 0 ms => AVFoundation does CBR arithmetic, and EngineConfig.approximateCBRClips can turn on. Near +2500 ms => it follows the TOC, and the exemption must stay off (an Info TOC is up to 1/256 of the file off: 10.6 s at 45 minutes).",
+            ],
+            tag: "NE-25a-info")
+        XCTAssertGreaterThan(preciseLandings, 0, "the precise control measured nothing: the Info-tagged file is broken, not the question answered")
+    }
+
+    /// click-cbr.mp3 (MPEG-2 Layer III, 16 kHz mono, 72-byte frames) behind a
+    /// LAME-style Info frame: frame count, byte count and a 100-entry TOC,
+    /// entry i = the byte of the frame at i% of the stream, in 256ths of the
+    /// file, plus `tocSkew` for every entry after the first (capped at 255).
+    static func infoTagged(_ cbr: Data, tocSkew: Int) -> Data {
+        let frameBytes = 72
+        let frames = cbr.count / frameBytes
+        // 32 kbit/s at 16 kHz: 72 * 32000 / 16000 = 144 bytes, room for
+        // 4 (header) + 9 (mono side info) + 120 (the tag).
+        let headerSize = 144
+        let total = headerSize + cbr.count
+        var tag = Data(count: headerSize)
+        tag[0] = cbr[0]
+        tag[1] = cbr[1]
+        tag[2] = (4 << 4) | (cbr[2] & 0x0C)
+        tag[3] = cbr[3]
+        var at = 4 + 9
+        func put(_ bytes: [UInt8]) {
+            for byte in bytes { tag[at] = byte; at += 1 }
+        }
+        func u32(_ value: Int) -> [UInt8] {
+            [UInt8((value >> 24) & 0xFF), UInt8((value >> 16) & 0xFF), UInt8((value >> 8) & 0xFF), UInt8(value & 0xFF)]
+        }
+        put(Array("Info".utf8))
+        put(u32(0x7))
+        put(u32(frames))
+        put(u32(total))
+        for i in 0..<100 {
+            let byte = headerSize + (i * frames / 100) * frameBytes
+            let entry = (byte * 256) / total + (i == 0 ? 0 : tocSkew)
+            put([UInt8(min(255, entry))])
+        }
+        return tag + cbr
+    }
+
     // MARK: - (2) out-point overshoot, three layers, 1x and 2x, never early
 
     struct OutPointTrial: Encodable {

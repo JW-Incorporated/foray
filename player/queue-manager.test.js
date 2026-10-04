@@ -8,7 +8,9 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   PlayerQueueManager, NARRATION_RATE, narrationFallbackReason, audioHostOf, __resetInstanceForTests,
+  FORAY_CLIP_LOAD_ATTEMPTS, FORAY_CLIP_MAX_SILENCE_SEC,
 } from "./queue-manager.js";
+import { LOAD_SETTLE_TIMEOUT_HIDDEN_MS } from "./deck-policy.js";
 import { SINGLE_ITEM, PICKED_FIRST, CONTINUE_TAIL } from "./queue-strategy.js";
 import { forayRuntimeSec } from "./foray-queue.js";
 import { INTERLUDE_CEILING_SEC } from "./interlude.js";
@@ -1868,9 +1870,249 @@ test("a load that FAILS at a seam reports immediately — an error must not wait
   );
   h.backend.currentTime = 210;
   await h.backend.onItemEnded("outPoint");   // resolves without advancing the clock
-  assert.equal(h.m.state.type, "idle");
-  assert.ok(h.log.some((t) => /player\.error/.test(t)), `got ${h.log}`);
+  /* §16 (M2 drive 2026-10-01): a Foray clip that will not load is retried once
+     and then stepped over; it was the LAST clip, so the Foray ends. All of it
+     without the clock moving: neither the retry nor the step waits out the
+     beat. It used to stop here, idle, with the clip on the lock screen. */
+  assert.equal(h.m.state.type, "ended");
+  assert.deepEqual(h.backend.loads().filter((l) => l === "load:foray-1#1"), ["load:foray-1#1", "load:foray-1#1"],
+    `one retry, got ${h.backend.calls}`);
+  assert.ok(h.log.some((t) => /foray\.segment\.skipped\.atLoad foray-1#1/.test(t)), `got ${h.log}`);
+  assert.ok(!h.log.some((t) => /player\.error/.test(t)), `a Foray clip is stepped over, never an error: ${h.log}`);
   assert.equal(scheduler.live, 0);
+});
+
+/* ---------- §16: a Foray clip that will not load retries, then moves on ----------
+
+   The M2 car drive, 2026-10-01: the third clip's load passed its 20 s deadline,
+   the manager went idle, and the Foray sat silent with the clip on the lock
+   screen; each press of play then loaded it again from nothing. */
+
+/** A load that fails the first `failTimes[id]` times it is asked for `id`, as a
+    deadline does (the backend's own "did not settle" message). */
+class ClipLapseBackend extends FakeBackend {
+  constructor(opts = {}) {
+    super(opts);
+    this.failsLeft = new Map(Object.entries(opts.failTimes ?? {}));
+  }
+  async load(item, o) {
+    await super.load(item, o);
+    const left = this.failsLeft.get(item.id) ?? 0;
+    if (left > 0) {
+      this.failsLeft.set(item.id, left - 1);
+      throw new Error(`load of ${item.id} did not settle within 20000ms`);
+    }
+  }
+}
+
+/** Loads that wait for the test to land or fail them, oldest first, so a pause
+    can arrive while one is in flight. */
+class HeldBackend extends FakeBackend {
+  constructor(opts) { super(opts); this.held = []; }
+  load(item, o) {
+    super.load(item, o);
+    return new Promise((resolve, reject) => this.held.push({ id: item.id, resolve, reject }));
+  }
+  async land() { this.held.shift().resolve(); await tick(); }
+  async lapse() { this.held.shift().reject(new Error("load did not settle within 20000ms")); await tick(); }
+}
+
+const threeClips = () => foray([
+  fseg(), fseg({ item_id: "ep-other", start_sec: 400, end_sec: 500 }), fseg({ start_sec: 700, end_sec: 800 }),
+]);
+
+test("§16: a Foray clip whose load fails once is loaded again at the same in-point, and plays", async () => {
+  /* MUTATION: `FORAY_CLIP_LOAD_ATTEMPTS = 1` — the clip is stepped over on its
+     first failure and the third clip plays instead. */
+  const h = make({ backendClass: ClipLapseBackend, backend: { failTimes: { "foray-1#1": 1 } } });
+  await h.m.playForay(threeClips(), { resolveItem });
+  h.backend.currentTime = 210;
+  h.backend.calls.length = 0;
+  await h.backend.onItemEnded("outPoint");
+  await tick();
+  assert.deepEqual(h.backend.calls, ["load:foray-1#1@400", "load:foray-1#1@400", "rate:1", "outPoint:500", "play"]);
+  assert.equal(h.m.state.type, "playing");
+  assert.equal(h.m.currentIndex, 1);
+  assert.ok(h.log.some((t) => /^foray\.segment\.retry foray-1#1 attempt=2 reason=timeout$/.test(t)), `got ${h.log}`);
+  assert.ok(!h.log.some((t) => /skipped\.atLoad|player\.error/.test(t)), `got ${h.log}`);
+});
+
+test("§16: a Foray clip that fails twice is stepped over to the next item, never left idle", async () => {
+  /* MUTATION: make `_retryOrSkipClip` return false where it steps over — the
+     Foray goes idle on the clip, the car drive's bug. */
+  const h = make({ backend: { failLoadFor: ["foray-1#1"] } });
+  await h.m.playForay(threeClips(), { resolveItem });
+  h.backend.currentTime = 210;
+  h.backend.calls.length = 0;
+  await h.backend.onItemEnded("outPoint");
+  await tick();
+  assert.deepEqual(h.backend.calls,
+    ["load:foray-1#1@400", "load:foray-1#1@400", "load:foray-1#2@700", "rate:1", "outPoint:800", "play"]);
+  assert.equal(h.m.state.type, "playing");
+  assert.equal(h.m.currentIndex, 2);
+  assert.ok(h.log.some((t) => /^foray\.segment\.skipped\.atLoad foray-1#1: did not load in 2 attempts \(failed\)$/.test(t)),
+    `the page's line (client.js onTelemetry), got ${h.log}`);
+  assert.ok(!h.log.some((t) => /player\.error/.test(t)), `got ${h.log}`);
+});
+
+test("§16: a SECOND clip in a row that will not load stops the Foray instead of running through it", async () => {
+  /* The car in a dead zone: an offline load fails at once, so stepping over
+     every clip would end the Foray in seconds and mark it Played. Clip 2 fails
+     twice and is stepped over; clip 3 fails twice and STOPS (idle, on clip 3,
+     the page's error), with nothing after it loaded.
+     MUTATION (run 2026-10-04, red; so is deleting the guard): `FORAY_CLIP_LOAD_MAX_STEPS = 2` (clip 3 is stepped over too and
+     the Foray ends). */
+  const h = make({ backend: { failLoadFor: ["foray-1#1", "foray-1#2"] } });
+  await h.m.playForay(foray([fseg(), fseg({ item_id: "ep-other", start_sec: 400, end_sec: 500 }),
+    fseg({ start_sec: 700, end_sec: 800 }), fseg({ start_sec: 900, end_sec: 1000 })]), { resolveItem });
+  h.backend.currentTime = 210;
+  h.backend.calls.length = 0;
+  await h.backend.onItemEnded("outPoint");
+  await tick();
+  assert.deepEqual(h.backend.loads(), ["load:foray-1#1", "load:foray-1#1", "load:foray-1#2", "load:foray-1#2"],
+    `clip 4 is never reached: ${h.backend.calls}`);
+  assert.equal(h.m.state.type, "idle");
+  assert.equal(h.m.currentIndex, 2, "stopped on the second clip that failed");
+  assert.ok(h.log.some((t) => /^foray\.segment\.skipped\.atLoad foray-1#1:/.test(t)), `got ${h.log}`);
+  assert.ok(h.log.some((t) => /^foray\.segment\.notStepped foray-1#2: 1 clip\(s\) in a row/.test(t)), `got ${h.log}`);
+  assert.ok(h.log.some((t) => /player\.error/.test(t)), `the page's error: ${h.log}`);
+});
+
+test("§16: a clip that lands between two that will not load resets the run", async () => {
+  /* Clip 2 fails and is stepped over, clip 3 plays, clip 4 fails: that is two
+     slow files, not the network, so clip 4 is stepped over too (to the end).
+     MUTATION (run 2026-10-04, red): drop `this._clipLoadSteps = 0` where a clip lands (clip 4 stops
+     the Foray idle instead of ending it). */
+  const h = make({ backend: { failLoadFor: ["foray-1#1", "foray-1#3"] } });
+  await h.m.playForay(foray([fseg(), fseg({ item_id: "ep-other", start_sec: 400, end_sec: 500 }),
+    fseg({ start_sec: 700, end_sec: 800 }), fseg({ start_sec: 900, end_sec: 1000 })]), { resolveItem });
+  h.backend.currentTime = 210;
+  await h.backend.onItemEnded("outPoint");
+  await tick();
+  assert.equal(h.m.state.type, "playing");
+  assert.equal(h.m.currentIndex, 2, "clip 3 plays after clip 2 was stepped over");
+  h.backend.currentTime = 800;
+  await h.backend.onItemEnded("outPoint");
+  await tick();
+  assert.equal(h.m.state.type, "ended", `clip 4 was stepped over to the end: ${h.log}`);
+  assert.ok(!h.log.some((t) => /notStepped|player\.error/.test(t)), `got ${h.log}`);
+});
+
+test("§16: paused during a clip's load, a failed load is retried quietly and the play that follows finds it", async () => {
+  /* The car's own play/pause during the wait. The retry runs while paused
+     (nothing plays), lands, and the listener's play re-enters the clip at its
+     in-point. MUTATION: require `loadingItem` for the retry — the failure
+     stops the Foray (idle) instead. */
+  const h = make({ backendClass: HeldBackend });
+  const started = h.m.playForay(foray([fseg(), fseg({ item_id: "ep-other", start_sec: 400, end_sec: 500 })]), { resolveItem });
+  await tick();
+  await h.backend.land();
+  await started;
+  h.backend.currentTime = 210;
+  const seam = h.backend.onItemEnded("outPoint");
+  await tick();
+  await h.m.pause();
+  assert.equal(h.m.state.type, "interrupted");
+  h.backend.calls.length = 0;
+  await h.backend.lapse();
+  assert.deepEqual(h.backend.calls, ["load:foray-1#1@400"], "retried while paused");
+  assert.equal(h.m.state.type, "interrupted", "a retry never starts anything");
+  await h.backend.land();
+  await seam;
+  assert.ok(!h.backend.calls.includes("play"), `paused stays silent: ${h.backend.calls}`);
+  const resumed = h.m.resume();
+  await tick();
+  await h.backend.land();
+  await resumed;
+  assert.equal(h.m.state.type, "playing");
+  assert.equal(h.m.currentIndex, 1);
+  assert.deepEqual(h.backend.calls.slice(-4), ["load:foray-1#1@400", "rate:1", "outPoint:500", "play"]);
+});
+
+test("§16: paused during a clip's load, a retry that fails too stops as before (stepping on would start the next item)", async () => {
+  /* MUTATION: drop `if (!waiting) return false` — the paused Foray steps to
+     the next clip, which starts loading (and would play) behind a pause. */
+  const h = make({ backendClass: HeldBackend });
+  const started = h.m.playForay(threeClips(), { resolveItem });
+  await tick();
+  await h.backend.land();
+  await started;
+  h.backend.currentTime = 210;
+  const seam = h.backend.onItemEnded("outPoint");
+  await tick();
+  await h.m.pause();
+  await h.backend.lapse();
+  await h.backend.lapse();
+  await seam;
+  assert.equal(h.m.state.type, "idle");
+  assert.equal(h.m.currentIndex, 1, "still on the clip that failed");
+  assert.ok(h.log.some((t) => /player\.error/.test(t)), `got ${h.log}`);
+  assert.ok(!h.backend.calls.some((c) => c.startsWith("load:foray-1#2")), `nothing loads behind the pause: ${h.backend.calls}`);
+});
+
+test("§16: a retry of a jump into a clip loads at the jump, not the clip's start", async () => {
+  /* A jump 30 s into the second clip (`play(1, { startOffset })`, a Foray
+     scrub's load). That offset is ONE-SHOT, spent by the first load, so the
+     retry must carry it itself or it lands back at the clip's start.
+     MUTATION (run 2026-10-04, red): drop `this._startOffsetNext = startOffset`
+     in `_retryOrSkipClip` (the retry loads @400). */
+  const h = make({ backendClass: HeldBackend });
+  const started = h.m.playForay(threeClips(), { resolveItem });
+  await tick();
+  await h.backend.land();
+  await started;
+  h.backend.calls.length = 0;
+  const jumped = h.m.play(1, { startOffset: 430 });
+  await tick();
+  await h.backend.lapse();
+  await h.backend.land();
+  await jumped;
+  assert.deepEqual(h.backend.loads(), ["load:foray-1#1", "load:foray-1#1"], `got ${h.backend.calls}`);
+  assert.deepEqual(h.backend.calls.filter((c) => c.startsWith("load:")), ["load:foray-1#1@430", "load:foray-1#1@430"]);
+  assert.equal(h.m.state.type, "playing");
+  assert.equal(h.m.currentIndex, 1);
+});
+
+test("§16: the retry asks for the in-point the failed load asked for (a resume inside the clip)", async () => {
+  /* A listener paused 50 s into a clip; their play's load fails, and the
+     retry must land where they were, not back at the clip's start. This one
+     does not need the carried offset (the resume point is re-read from the
+     saved position), so it pins the outcome, not that line: the jump test
+     above is the one the mutation turns red (run 2026-10-04: dropping
+     `this._startOffsetNext = startOffset` left this test green). */
+  const h = make({ backendClass: HeldBackend });
+  const started = h.m.playForay(threeClips(), { resolveItem });
+  await tick();
+  await h.backend.land();
+  await started;
+  h.backend.currentTime = 150;
+  await h.m.pause();
+  h.backend.calls.length = 0;
+  const resumed = h.m.resume();
+  await tick();
+  await h.backend.lapse();
+  await h.backend.land();
+  await resumed;
+  assert.deepEqual(h.backend.calls, ["load:foray-1#0@150", "load:foray-1#0@150", "rate:1", "outPoint:210", "play"]);
+  assert.equal(h.m.state.type, "playing");
+});
+
+test("§16: a plain episode whose load fails is not retried (today's stop)", async () => {
+  /* MUTATION: drop the `!boundsOf(item)` guard — the episode loads twice. */
+  const h = make({ backend: { failLoadFor: ["a"] } });
+  h.m.loadQueue([ep("a"), ep("b")]);
+  await h.m.play(0);
+  await tick();
+  assert.equal(h.m.state.type, "idle");
+  assert.deepEqual(h.backend.loads(), ["load:a"]);
+  assert.ok(!h.log.some((t) => /foray\.segment/.test(t)), `got ${h.log}`);
+});
+
+test("§16: the Foray clip's silence bound is the attempts times the hidden-page deadline", () => {
+  /* The native half of the pin is engine-report.test.mjs (AVDeck's 20 s) and
+     AVDeckTests. MUTATION: `FORAY_CLIP_LOAD_ATTEMPTS = 3` without moving the bound. */
+  assert.equal(FORAY_CLIP_MAX_SILENCE_SEC, FORAY_CLIP_LOAD_ATTEMPTS * (LOAD_SETTLE_TIMEOUT_HIDDEN_MS / 1000));
+  assert.equal(FORAY_CLIP_LOAD_ATTEMPTS, 2);
 });
 
 /* ---------- supersession: the bug a synchronous fake cannot show ----------
@@ -3607,6 +3849,47 @@ test("§14: a media error during the first line's load does not stop the player 
   assert.equal(tts.calls.length, 1);
   assert.ok(log.some((l) => /^narration\.error\.leftToLoad nar-1/.test(l)));
   assert.ok(log.includes(`narration.fallback reason=unsupported at=load item=nar-1 host=${N_HOST}`));
+});
+
+test("§16: a media error during a Foray clip's load (web lane) is retried, not reported idle first", async () => {
+  /* The §14 ordering trap, for a clip: html-audio-backend's persistent `error`
+     listener calls `onError` BEFORE the load rejects. Reported as `E.error`, the
+     player was idle by the time `_retryOrSkipClip` looked, so a web clip with a
+     media error stopped the Foray. Here the clip errors on BOTH attempts: one
+     retry, then the step to the next clip.
+     MUTATION THAT KILLS THIS (run 2026-10-04, red): delete the `_clipLoadInFlight` branch of
+     `_onBackendError` (idle, `player.error`, one load). */
+  const { m, backend, log } = make({
+    backendClass: FlakyBackend,
+    backend: { errors: { "foray-1#1": "load failed (code 4) for foray-1#1" }, errorEventFor: ["foray-1#1"] },
+  });
+  await m.playForay(foray([fseg(), fseg({ item_id: "ep-other", start_sec: 400, end_sec: 500 }),
+    fseg({ start_sec: 700, end_sec: 800 })]), { resolveItem });
+  backend.currentTime = 210;
+  backend.calls.length = 0;
+  await backend.onItemEnded("outPoint");
+  await tick();
+  assert.deepEqual(backend.loads(), ["load:foray-1#1", "load:foray-1#1", "load:foray-1#2"], `got ${backend.calls}`);
+  assert.equal(m.state.type, "playing", `not idle: ${log.join(" | ")}`);
+  assert.equal(m.currentIndex, 2);
+  assert.ok(log.some((l) => /^foray\.segment\.error\.leftToLoad foray-1#1/.test(l)), `got ${log}`);
+  assert.ok(!log.some((l) => /player\.error/.test(l)), `got ${log}`);
+});
+
+test("§16: a media error on a plain episode's load still stops the player (not a clip)", async () => {
+  /* MUTATION THAT KILLS THIS (run 2026-10-04, red): set `_clipLoadInFlight` for every backend load
+     (drop the `_isForayClip` test in `_loadRenderedOrCatch`) — the early report
+     is swallowed and `foray.segment.error.leftToLoad a` appears. */
+  const { m, backend, log } = make({
+    backendClass: FlakyBackend,
+    backend: { errors: { a: "load failed (code 4) for a" }, errorEventFor: ["a"] },
+  });
+  m.loadQueue([ep("a"), ep("b")]);
+  await m.play(0);
+  await tick();
+  assert.equal(m.state.type, "idle");
+  assert.deepEqual(backend.loads(), ["load:a"]);
+  assert.ok(!log.some((l) => /leftToLoad/.test(l)), `got ${log}`);
 });
 
 test("§14: jumping onto a line whose file fails speaks it (the jump case)", async () => {
