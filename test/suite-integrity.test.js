@@ -573,7 +573,7 @@ const FLOORS = {
      it protects is gameable in exactly one direction: a misspelled `food/bakin`
      reads as "has a child" to the root-dumping report and silently erases a
      root-only pair, so a deleted gate would make the number look better. */
-  "test/data-topic-integrity.test.js": 12,
+  "test/data-topic-integrity.test.js": 14, // PKG-01 (2026-10-04): +2, every discover item carries topics_source and an explicit key; 12 -> 14
   /* The code citations in the two store-submission documents. Same argument as
      data-deletion above and the same stakes: what this suite guards is whether a
      document going to a store reviewer describes the code that shipped. It is
@@ -1364,6 +1364,7 @@ const FLOORS = {
      needed because the sort order is a contract between two files and either
      side can break it alone. */
   "tools/build-show-index.test.mjs": 10, // PKG-11a (docs/roadmap/shows-search.md, 2026-10-04): +1 — a curated row carries its breadth twin's chart_rank joined on apple_collection_id, and null without a twin; 9 -> 10
+  "tools/popularity-signal-probe.test.mjs": 6, // PKG-12 (P-10, docs/roadmap/shows-search.md): the top.json position probe — the String() join for breadth and curated rows, would_lead_by_top_position, the validator, the pi_id-order flag, one polite GET for top.json alone, the 5xx retry
   /* The Windows entrypoint-guard class (machinery audit finding 3). A main-
      module check written as ``import.meta.url === `file://${process.argv[1]}` ``
      can never be true on Windows, so the script's CLI silently does nothing and
@@ -1941,7 +1942,12 @@ const FLOORS = {
      (a comment-only edit to scan.mjs; one new nightly episode) were confirmed to
      stay green. Each test names its own mutation. */
   "tools/refresh/fold-breadth-topics.test.mjs": 5, // PKG-08 (2026-10-04): breadth-classification topics folded into data/catalog-breadth.json as taxonomy_node_ids (high/medium and not needs_review only, unknown nodes dropped), --check byte-stable, and a REAL DATA pin that every row carries the array and every id resolves; new, zero slack
-  "tools/refresh/merge-topics.test.mjs": 18, // audit round 2 (L6), honesty-1: merge writes duration_min from duration_sec when it has them (the suite already stood at 17 against 16, so this closes that slack too); 16 -> 18
+  "tools/refresh/merge-topics.test.mjs": 21, // audit round 2 (L6), honesty-1: merge writes duration_min from duration_sec when it has them (the suite already stood at 17 against 16, so this closes that slack too); 16 -> 18. PKG-01 (2026-10-04): +3, topicSource and merge writing topics_source + an always-present explicit key; 18 -> 21
+  /* PKG-01 (#547, #560 §6.3): the one-shot that stamped topics_source and an
+     always-present explicit key onto every discover item merged before
+     merge.mjs wrote them. Runs the real script against a temp fixture; each
+     test names its mutation. */
+  "tools/refresh/backfill-provenance.test.mjs": 3,
   /* REMOVED 2026-09-24 (issue #701): `tools/refresh/manifest-step.test.mjs`,
      floored at 9 here, and the module it tested. The nightly's deploy-manifest
      step existed only because the stamp was committed (HUMAN-ACTIONS #37); the
@@ -2054,6 +2060,7 @@ const FLOORS = {
      REAL node subprocess (no fake exec anywhere) to prove the forwarding
      actually reaches the child's argv. */
   "tools/shows/run-and-publish-execargv.test.mjs": 1,
+  "tools/foraycorpus-export/config.test.mjs": 4, // PKG-01 (docs/roadmap/corpus.md): corpus-export package scaffold, config + identity scan
   /* The breadth prioritiser and its yield report (#114). Floored for the same
      reason politeness.test.mjs is, and the reason is not hypothetical here
      either: the first draft of `rank-breadth.mjs` had a seed hash that produced
@@ -2081,6 +2088,7 @@ const FLOORS = {
      both sides, and a recomputation of all seven committed verdicts from the
      byte counts filed beside them. */
   "tools/segments/ad-pad.test.mjs": 13, // DAI-02: new -- ADR-0008 pad arithmetic over a same-episode probe ledger
+  "tools/segments/probe-ad-pad.test.mjs": 8, // DAI-04: new -- the pad ledger's collector (same-episode ranged-GET probes, 24 h gap)
   "tools/segments/stamp-ad-pad.test.mjs": 8, // DAI-03: new -- the only writer of the stamped ad_* fields, and its --check
   "tools/segments/measure-suspects.test.mjs": 57,
   /* The audit of that scan's own acquittals (#323 follow-up). It re-asks every

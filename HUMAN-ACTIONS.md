@@ -2,20 +2,79 @@
 
 <!-- ha-format: 2 -->
 
-> **20 open.** Closed items are in `HUMAN-ACTIONS-DONE.md` — you never need it.
+> **23 open.** Closed items are in `HUMAN-ACTIONS-DONE.md` — you never need it.
 > To close one: reply `done` (or `skip <why>`) to its card in the project's human-action channel.
 > Anything else you reply is forwarded to a thread on the card.
 
-## #129 🟡 [DECIDE] Read the Supabase project's region and paste it here (~2 min)
-<!-- ha filed=2026-09-30 -->
+## #134 🟡 [DECIDE] G6 — Re-confirm D1's liveness/count/recency filter, and settle the language question
+<!-- ha filed=2026-10-04 kind=default -->
 
-**Why:** The privacy policy must say where user data is stored, and the region is not in the repo. Without it the policy republish (HA #13 ruling) cannot finish.
+**Why:** The shows pipeline's filter D1 shipped as a default (`dead != 1`, `episodeCount >= 3`, updated within 24 months), with the language column stored but never applied, pending "re-confirm with Joey's export in hand". `tools/shows/filter.mjs` (S-04a) names this open gate in its own header. Gate G6 of the shows-pipeline plan (`docs/roadmap/shows-search.md`); the plan gives it no default, so it is your call.
+
 **Steps:**
-1. Open https://supabase.com/dashboard/project/qjdllvqdcgacvujhclny/settings/general
-2. Copy the value under Region (for example "East US (North Virginia)").
-3. Reply with that value.
+1. Once G7 (Joey's export, #135) lands, ask Claude to run S-04's importer against it and produce fresh per-filter counts.
+2. Review those counts and confirm or adjust the liveness thresholds.
+3. Decide whether English becomes a catalogue-level filter (non-English shows leave the list entirely) or stays a tape-level concern only (ADR-0008 flags this as unsettled); see `docs/product/suggested-shows-requirements.md` §4.3.
 
-**Worked if:** you replied with the region, and the privacy policy section 3 names it.
+**Worked if:** a decision is recorded here and card S-17 (unclaimed) applies it.
+
+## #135 🟡 [DECIDE] G7 — Joey's PodcastIndex export: format, location, cadence (D3)
+<!-- ha filed=2026-10-04 kind=default -->
+
+**Why:** Every shows-pipeline card from S-04a on builds against the **public** PodcastIndex dump as a stand-in. The source is one config value (`DUMP_URL` in `tools/shows/config.mjs`), so swapping in Joey's own export is cheap once it exists. Nothing is blocked today, but G6 (#134) cannot be settled until this lands. Gate G7 of the shows-pipeline plan; no default, so it is a question for you and Joey.
+
+**Steps:**
+1. With Joey, decide the export's format (SQLite, CSV or Parquet, keeping the dump's column names), where it lands, and how often it refreshes. If Joey's corpus export (the corpus package, `docs/roadmap/corpus.md`) is meant to be this export, say that instead.
+2. Say which here.
+
+**Worked if:** card S-16 can start: swap the source URL and check the column contract.
+
+## #137 🟡 [DECIDE] Search listening test (P-07): five searches on your phone (~10 min)
+<!-- ha filed=2026-10-04 kind=default -->
+
+**Why:** The search deck (`docs/search-parity-plan.md`) ends with P-07. The question is not a number: it is whether you find the show you meant without thinking about it. Every search fix so far was measured by a machine; none has been judged on your phone. Each miss you find becomes a test case.
+
+**Steps:**
+1. Use the next TestFlight build after 2026093002 (ruled default). Claude writes its number here when it uploads; any later build is fine.
+2. Open the Shows page. Do five searches for shows you would actually look for, your choice. Type each one; do not paste.
+3. For each, note: what you typed, the show you meant, its position in the list (1 = top) or "not found", and whether you found it without thinking (yes or no).
+4. After the fifth: Developer → Playback diagnostics → Copy. (Each search writes one `search` line with timings and hit counts, never the words you typed, so the words come from your notes.)
+5. Paste your notes and the Copy here. Claude files them as `docs/field-records/<date>-search-p07.md` from `docs/field-records/TEMPLATE-search-p07.md` (or fill the template yourself).
+
+**Worked if:** the record has five rows. Every "no" becomes a `PARITY_CASES` or `SCAN_REACH_CASES` entry in `tools/search-probe.mjs` through a follow-up task.
+
+## #138 🟡 [DECIDE] Get a read-only key for the transcripts bucket from Joey, and put it in one file on the PC and on hermes-vm (~15 min, with Joey)
+<!-- ha filed=2026-10-04 kind=default -->
+
+**Why:** The corpus package (`docs/roadmap/corpus.md`, G-16) copies the transcript farm's bodies from the R2 bucket `foray-transcriptions` to the generation machine, so Forays can draw on every transcript the farm has made. Reading the bucket needs an S3 key pair. Ruled at the default (`docs/roadmap/README.md` question 3): Joey issues it with Object Read on that one bucket, and you keep it outside the repo. `data-local/.cf-token` is a Cloudflare API token, not an S3 pair, and does not work for this. The Spark gets its own token in #121; this one is for the PC and hermes-vm. Not urgent: the sync tool that reads it (corpus PKG-13) is not built yet.
+
+**Steps:**
+1. Joey: Cloudflare (the account that owns `foray-transcriptions`) → **R2** → **Manage R2 API Tokens** → **Create API token**. Name `foray-corpus-read`. Permissions **Object Read only**. **Apply to specific buckets only** → `foray-transcriptions`. Create, and pass Wyatt the Access Key ID, the Secret Access Key and the S3 endpoint (`https://<account id>.r2.cloudflarestorage.com`) through a password manager, not a chat.
+2. Wyatt, on the PC: in `C:\Users\wjduv\.foray` (made in #120; make it if it is missing), save a file named `r2-credentials` (Notepad: **Save as type** → **All files**, no `.txt`) with these four lines, your values after the first three `=` signs:
+   ```
+   R2_ACCESS_KEY_ID=
+   R2_SECRET_ACCESS_KEY=
+   R2_S3_ENDPOINT=
+   R2_BUCKET=foray-transcriptions
+   ```
+3. On hermes-vm: the same four lines in `~/.foray/r2-credentials`, then `chmod 600 ~/.foray/r2-credentials`.
+4. Do **not** paste the key into any chat, issue or PR. Reply `done` only.
+
+**Worked if:** once `tools/foraycorpus-export/sync-r2.mjs` lands, `node tools/foraycorpus-export/sync-r2.mjs --dry-run` on the PC prints `objects_seen` above 0 without asking you for anything.
+
+## #139 🟡 [DECIDE] Get hermes-vm ready to run the weekly corpus export (~20 min)
+<!-- ha filed=2026-10-04 kind=default -->
+
+**Why:** Ruled at the default (`docs/roadmap/README.md` question 2; corpus Q2, G-16): the corpus exporter runs weekly by cron on **hermes-vm** as the read-only database role `wyatt_readonly`, and publishes show and episode metadata (never transcript text) as GitHub Releases, with a pointer file committed by PR, the way the shows import already does. Not GitHub Actions with Tailscale. Only you place credentials on hermes-vm. Not urgent: the exporter (corpus PKG-08) and its publish step (PKG-32) are not built yet. The first live run (PKG-10) waits on steps 1–3.
+
+**Steps:**
+1. On hermes-vm, check that the `wyatt_readonly` role reaches `foraycorpus` (100.79.104.9, tailnet only), for example `psql "<connection string>" -c "select 1"` if `psql` is installed.
+2. Put that connection string in `~/.foray/foraycorpus.env` as one line, `FORAYCORPUS_DATABASE_URL=<connection string>`, then `chmod 600 ~/.foray/foraycorpus.env`.
+3. Run `gh auth login` on hermes-vm with a fine-grained token for `JW-Incorporated/foray` only: **Contents: Read and write** and **Pull requests: Read and write**, nothing else, 90 days. The export uses it to create the Release and open the pointer PR. Set a reminder to renew it.
+4. Later: when PKG-32 lands, Claude writes the exact cron line here and you add it with `crontab -e`.
+5. Reply `done` after steps 1–3. Do not paste the connection string or the token anywhere.
+
+**Worked if:** `gh auth status` on hermes-vm shows the token, and the first live dry run (corpus PKG-10) connects from hermes-vm without asking you for anything.
 
 ## #130 🟡 [DECIDE] Drive the M3 test on the first TestFlight build after `engine/m3` merges (~2 drives)
 <!-- ha filed=2026-09-30 kind=default -->
@@ -32,23 +91,6 @@
 7. Parked, after each block: Developer → Playback diagnostics → Copy; paste here with the route.
 
 **Worked if:** after the simulated termination the car's play starts 4a (`launch=background`), and a paused 4a stays paused when the car comes back.
-
-## #128 🟡 [DECIDE] Drive a Foray in the car on the first TestFlight build after `engine/m2` merges (~2 drives)
-<!-- ha filed=2026-09-28 kind=default -->
-
-**Why:** M2 moves Forays onto the iPhone's own player (clips, narration, jingle), as M1 did for episodes, which your car resumed on 2026-09-28. Only your car can show that a Foray survives seams, long pauses, calls and car buttons.
-
-**Steps:**
-1. Use build **2026092903** (or later). TestFlight → 4a → Automatic Updates off.
-2. In the car, play a Foray with narration. Listen through at least two clip → narration → clip seams.
-3. Pause from the car. Leave it 10+ minutes (or park). Press the car's play.
-4. Take or make a phone call mid-Foray; hang up.
-5. Press skip-back 15 and skip-forward 30 from the car, once each.
-6. Check the car shows the title and a moving progress bar.
-7. Parked: Developer → Playback diagnostics → Copy; paste here with the route.
-8. If a Foray will not play or keeps stopping: Developer → Playback engine → Web, then restart 4a. Episodes and Forays go back to the web player. Say so here.
-
-**Worked if:** every seam plays; after the pause and the call 4a resumes by itself or on one press; 15/30 move; title and progress bar show.
 
 ## #119 🔴 [BLOCKING] Create the public narration bucket `foray-narration` at `audio.jwlabs.ai` (~30 min)
 <!-- ha filed=2026-09-28 kind=default -->
