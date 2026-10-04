@@ -541,8 +541,9 @@ test("release-checks: a skipped newest run waits like a missing one, refuses aft
      the dispatched run's ios-kit has a check run, so the skipped run is still
      the newest. MUTATION: judge `skipped` as red on sight (drop isSkippedRun
      from the verdict) -> the first poll refuses and the dispatch rescues
-     nothing. MUTATION: treat `skipped` as success -> a SHA nobody compiled
-     ships. */
+     nothing. MUTATION: take skipped runs out of the wait and accept them as
+     success (`if (!run)` plus `conclusion === "success" || "skipped"`) -> a
+     SHA nobody compiled ships. */
   const parity = run(1, "engine-parity", "completed", "success");
   const skipped = run(5, "ios-kit", "completed", "skipped");
   const waiting = releaseChecksVerdict({ "engine-parity": parity, "ios-kit": skipped });
