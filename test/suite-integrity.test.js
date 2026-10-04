@@ -1911,6 +1911,7 @@ const FLOORS = {
      All 19 mutations run against it were killed, and two false-alarm probes
      (a comment-only edit to scan.mjs; one new nightly episode) were confirmed to
      stay green. Each test names its own mutation. */
+  "tools/refresh/fold-breadth-topics.test.mjs": 5, // PKG-08 (2026-10-04): breadth-classification topics folded into data/catalog-breadth.json as taxonomy_node_ids (high/medium and not needs_review only, unknown nodes dropped), --check byte-stable, and a REAL DATA pin that every row carries the array and every id resolves; new, zero slack
   "tools/refresh/merge-topics.test.mjs": 18, // audit round 2 (L6), honesty-1: merge writes duration_min from duration_sec when it has them (the suite already stood at 17 against 16, so this closes that slack too); 16 -> 18
   /* REMOVED 2026-09-24 (issue #701): `tools/refresh/manifest-step.test.mjs`,
      floored at 9 here, and the module it tested. The nightly's deploy-manifest
