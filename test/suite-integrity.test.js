@@ -145,8 +145,9 @@ const FLOORS = {
      `source_id`) so a running order can link a beat to its show page, and
      F-103's `resolveCites`, which denormalises a narration beat's citations
      against the same two documents rather than having them shipped twice in
-     data/forays.json; 63 -> 69. */
-  "player/foray-resolve.test.js": 69,
+     data/forays.json; 63 -> 69. DAI-05: the per-episode ad pad hydrates from
+     the source row (carried, segment wins, typed); 69 -> 72. */
+  "player/foray-resolve.test.js": 72,
   /* The Foray directory (FD-03, 2026-09-10): the mechanism that lets a phone see
      a new Foray without a store build. Floored with zero slack because each of
      its three rules — never block first paint, never adopt an unvalidated set,
