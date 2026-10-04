@@ -47,7 +47,13 @@ process.on("unhandledRejection", () => {});
    `advanceQueueOnEnded` finds no rules and, correctly, plays and removes
    nothing (test/up-next-autoadvance.test.js does the same). */
 let CONTINUATION = null;
-before(async () => { CONTINUATION = await import("../player/continuation.js"); });
+/* Play next / Clear's ORDER is player/queue-order.js's (PQ-01), published by
+   client.js as `window.forayQueueOrder` — published here the same way. */
+let QUEUE_ORDER = null;
+before(async () => {
+  CONTINUATION = await import("../player/continuation.js");
+  QUEUE_ORDER = await import("../player/queue-order.js");
+});
 
 function makeEl(tag) {
   return {
@@ -149,6 +155,7 @@ function mount({ seed = {}, boot = false } = {}) {
   ctx.window = ctx;
   ctx.globalThis = ctx;
   ctx.forayContinuation = CONTINUATION;
+  ctx.forayQueueOrder = QUEUE_ORDER;
   vm.createContext(ctx);
   vm.runInContext(SEARCH_SRC, ctx, { filename: "search-engine.js" });
   vm.runInContext(APP_SRC, ctx, { filename: "app.js" });
@@ -614,4 +621,116 @@ test("fullPool is memoised on the documents it reads (audit round 2, perf-10)", 
   m.ctx.fullPool();
   assert.strictEqual(calls, 5, "a replaced document rebuilds");
   assert.deepStrictEqual([...m.state.poolIds], ["p-1", "p-2"], "and membership is rebuilt with it (#276)");
+});
+
+/* ==================================================================== */
+/* 10. PLAY NEXT + CLEAR UP NEXT (#762, PQ-02)                           */
+/* ==================================================================== */
+
+/** A list of playable ids, nothing booted: Play next is about the list. */
+function mountQueue(ids, current) {
+  const m = mount({ seed: { cp_queue: JSON.stringify(ids) } });
+  m.state.session = { session_id: "s", episodes: {}, cards: [] };
+  m.state.poolIds = new Set();
+  seedPlayable(m, ids);
+  m.ctx.window.ForayPlayer = { currentEpisodeId: () => current, isCurrent: (id) => id === current };
+  return m;
+}
+
+/** A button the click-binding tests can press, recording what is painted. */
+function fakeButton(dataset) {
+  const painted = [];
+  const btn = {
+    dataset, _bound: false, onClick: null,
+    addEventListener: (_t, fn) => { btn.onClick = fn; },
+    setAttribute: () => {}, removeAttribute: () => {}, getAttribute: () => null,
+    getBoundingClientRect: () => ({ top: 100 }),
+    classList: { add: () => {}, remove: () => {}, toggle: () => {} },
+    set textContent(v) { painted.push(v); }, get textContent() { return ""; },
+    focus() {},
+    painted,
+  };
+  return btn;
+}
+const CLICK = { preventDefault() {}, stopPropagation() {} };
+
+test("Play next from a row lands the episode right after the playing one (PQ-02, #762)", () => {
+  /* MUTATION (run, red): make playNextInQueue call `addToQueue(id)` instead of
+     the queue-order rule -> "c" is already queued, so cp_queue stays
+     ["a","b","c"] and the first assertion fails. */
+  const m = mountQueue(["a", "b", "c"], "a");
+  assert.strictEqual(m.ctx.playNextInQueue("c"), true, "the list changed");
+  assert.deepStrictEqual(m.queueRaw(), ["a", "c", "b"], "c goes directly after the playing a; nothing else moves");
+  /* Already next: playNextOrder hands back the same list, so nothing is written. */
+  assert.strictEqual(m.ctx.playNextInQueue("c"), false, "a second Play next on the same row changes nothing");
+  assert.deepStrictEqual(m.queueRaw(), ["a", "c", "b"]);
+});
+
+test("Play next on an unqueued playable episode adds it, and refuses an unplayable one (PQ-02, #762)", () => {
+  /* MUTATION (run, red): drop `!liveEpisode(id)` from playNextInQueue's first
+     line -> "z-unplayable" lands in cp_queue and the last assertion fails. */
+  const m = mountQueue(["a"], "a");
+  m.state.itemIndex.z = { id: "z", title: "Z", show: "S", audio_url: "https://x.test/z.mp3", topics: [] };
+  m.state.itemIndex["z-unplayable"] = { id: "z-unplayable", title: "Silent", show: "S", audio_url: null, topics: [] };
+  assert.strictEqual(m.ctx.playNextInQueue("z"), true);
+  assert.deepStrictEqual(m.queueRaw(), ["a", "z"], "an episode not yet queued is added right after the playing one");
+  assert.ok(m.ctx.episodeSnaps().z, "and remembered, like addToQueue does, so its row can be drawn later");
+  assert.strictEqual(m.ctx.playNextInQueue("z-unplayable"), false, "4a cannot play it, so it is refused");
+  assert.deepStrictEqual(m.queueRaw(), ["a", "z"], "cp_queue unchanged by the refusal");
+});
+
+test("Clear keeps the playing row and announces the count (PQ-02, #762)", () => {
+  /* MUTATION (run, red): in clearQueue, `const left = [];` (ignore the playing
+     row) -> cp_queue is [] and the announcement says 3, both red. */
+  const m = mountQueue(["a", "b", "c"], "b");
+  const clear = fakeButton({});
+  m.ctx.bindUpNextReorder({ querySelectorAll: (sel) => (sel === "#up-next-clear" ? [clear] : []) });
+  assert.ok(clear.onClick, "the Clear control is bound by the Up Next page's binder");
+  clear.onClick(CLICK);
+  assert.deepStrictEqual(m.queueRaw(), ["b"], "everything but the playing row is gone");
+  const said = m.body.children.map((c) => c.textContent).filter(Boolean).pop() || "";
+  assert.match(said, /Removed 2 episodes from Up Next\./, `the screen reader hears the count: "${said}"`);
+});
+
+test("#/queue renders Clear only with two or more rows, and a Play next per row, disabled on the row after the playing one (PQ-02, #762)", () => {
+  /* MUTATION (run, red): drop `ids[curIdx + 1] === id` from upNextRow's
+     playNextDisabled (leave `false`) -> b's Play next is enabled. MUTATION 2:
+     render Clear for any non-empty list -> the one-row page shows it. */
+  const m = mountQueue(["a", "b", "c"], "a");
+  m.ctx.renderQueue();
+  const html = m.view();
+  const controls = [...html.matchAll(/<button type="button" class="reorder playnext" data-playnext="([^"]+)" (disabled)?/g)]
+    .map((x) => [x[1], !!x[2]]);
+  assert.deepStrictEqual(controls, [["a", true], ["b", true], ["c", false]],
+    "one Play next per row; off on the playing row and on the row already next");
+  assert.ok(html.includes('id="up-next-clear"'), "three rows: Clear is offered");
+
+  const one = mountQueue(["a"], null);
+  one.ctx.renderQueue();
+  assert.ok(!one.view().includes('id="up-next-clear"'), "one row: no Clear");
+  assert.match(one.view(), /data-playnext="a" disabled/, "nothing playing: row 1 is already next");
+});
+
+test("#/episode renders Play next beside + Up Next, and its click goes through playNextInQueue (PQ-02, #762)", async () => {
+  /* MUTATION (run, red): bind bindUpNext's [data-playnext] to `addToQueue(id)`
+     instead of `playNextInQueue(id)` -> the episode lands at the END,
+     ["x","y",id], and the order assertion fails. */
+  const m = await mountBooted();
+  const item = readJson("data/discover.json").items.find((it) => it.audio_url);
+  m.ctx.renderEpisode(item.id);
+  const html = m.view();
+  const up = html.indexOf(`data-upnext="${m.ctx.esc(item.id)}"`);
+  const next = html.indexOf(`data-playnext="${m.ctx.esc(item.id)}"`);
+  assert.ok(up >= 0 && next > up, "Play next renders right after + Up Next in the episode actions");
+  assert.match(html, /aria-label="Play next">Play next<\/button>/);
+
+  seedPlayable(m, ["x", "y"]);
+  m.ctx.lsSet("cp_queue", ["x", "y"]);
+  m.ctx.window.ForayPlayer = { currentEpisodeId: () => "x" };
+  const pn = fakeButton({ playnext: item.id });
+  const upBtn = fakeButton({ upnext: item.id });
+  m.ctx.bindUpNext({ querySelectorAll: (sel) => (sel === "[data-playnext]" ? [pn] : sel.startsWith("[data-upnext=") ? [upBtn] : []) });
+  pn.onClick(CLICK);
+  assert.deepStrictEqual(m.queueRaw(), ["x", item.id, "y"], "the episode plays right after the one playing");
+  assert.ok(upBtn.painted.includes("✓ Up Next"), `its + Up Next is painted from the queue: ${upBtn.painted.join(" ")}`);
 });

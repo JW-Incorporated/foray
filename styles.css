@@ -348,7 +348,7 @@ html, body {
    and fails on one that is neither here nor ≥44px by its own size, so the
    next new control cannot be missed the same way. */
 :where(
-  .topbar button, button.star, .play-btn, button.up-next, button.reorder, button.up-next-remove,
+  .topbar button, button.star, .play-btn, button.up-next, button.reorder, button.up-next-remove, button.up-next-clear,
   .fy-thumb, .fp-grab-zone .fp-close, .fp-rate, .fp-stop, .fp-openep,
   .voice-row-audition, .fy-chip,
   button.show-star, .fy-sheet-cancel, .fy-sheet-go, .interest-reset, .shell-notice button,
@@ -357,7 +357,7 @@ html, body {
   position: relative;
 }
 :where(
-  .topbar button, button.star, .play-btn, button.up-next, button.reorder, button.up-next-remove,
+  .topbar button, button.star, .play-btn, button.up-next, button.reorder, button.up-next-remove, button.up-next-clear,
   .fy-thumb, .fp-grab-zone .fp-close, .fp-rate, .fp-stop, .fp-openep,
   .voice-row-audition, .fy-chip,
   button.show-star, .fy-sheet-cancel, .fy-sheet-go, .interest-reset, .shell-notice button,
@@ -1473,6 +1473,17 @@ button.reorder {
 }
 button.reorder:disabled { opacity: 0.35; cursor: default; }
 button.reorder:not(:disabled):active { transform: scale(0.94); }
+/* Play next (#762, PQ-02) sits in the arrows' group and shares their 40px
+   height, disabled look and hit area (it IS a button.reorder); it carries a
+   word, not a glyph, so it is a capsule as wide as "Next" rather than a circle. */
+button.reorder.playnext {
+  width: auto;
+  min-width: 40px;
+  padding: 0 12px;
+  border-radius: var(--radius-pill);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
 
 button.up-next-remove {
   flex: none;
@@ -1485,6 +1496,22 @@ button.up-next-remove {
   font-size: var(--fs-md);
   cursor: pointer;
   padding: 0;
+}
+/* Clear (#762, PQ-02): the Up Next page head's one action, pushed to its right
+   edge, in the ✕'s tokens — muted, not loud, because it empties the list. Only
+   drawn with two or more rows; the playing row survives it. */
+button.up-next-clear {
+  flex: none;
+  margin-left: auto;
+  min-height: 40px;
+  padding: 0 14px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  color: var(--text-dim);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  cursor: pointer;
 }
 
 /* ---------- in-app player (#25) ---------- */
@@ -3832,6 +3859,11 @@ body.ui-v2 button.reorder {
    one destructive control on the row. `--faint` is for disabled states and
    decorative rules only; test/ui-tokens.test.js holds that. */
 body.ui-v2 button.up-next-remove {
+  border-color: var(--line);
+  background: var(--surface2);
+  color: var(--muted);
+}
+body.ui-v2 button.up-next-clear {
   border-color: var(--line);
   background: var(--surface2);
   color: var(--muted);
