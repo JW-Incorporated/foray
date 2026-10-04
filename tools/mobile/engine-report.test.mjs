@@ -574,12 +574,12 @@ test("P13-clip, §16: a retried clip's continued load is not a cold load, and th
   const v = m3(paste([
     bootRow(), attachRow(1), readyRow(1, 2000),
     attachRow(2), deadlineRow(2, { durationKnown: true, progressed: true }),
-    deck("retry", 2, { item: "f1#2", attempt: 2, why: "load-deadline", fileCause: "timeout", waiting: true }),
+    deck("retry", 2, { index: 2, attempt: 2, why: "load-deadline", fileCause: "timeout", waiting: true }),
     deck("continue", 3, { fromToken: 2, heldMs: 20000, step: "readiness", durationKnown: true, class: "clip" }),
     readyRow(3, 24_000),
-    attachRow(4), deadlineRow(4), deck("retry", 4, { item: "f1#3", attempt: 2, why: "load-deadline", waiting: true }),
+    attachRow(4), deadlineRow(4), deck("retry", 4, { index: 3, attempt: 2, why: "load-deadline", waiting: true }),
     attachRow(5), deadlineRow(5),
-    { kind: "skip", event: "load", item: "f1#3", index: 3, attempts: 2, why: "load-deadline", waiting: true },
+    { kind: "skip", event: "load", index: 3, attempts: 2, why: "load-deadline", waiting: true },
   ]), "P13-clip");
   assert.equal(v.verdict, "fail", "a deadline is still a P-13 fail");
   assert.match(v.why, /cold time-to-ready n 1, p50 2000ms/);

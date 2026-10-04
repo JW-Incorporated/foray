@@ -1363,8 +1363,11 @@ public struct EngineCore {
         default: return false
         }
         // `why`, not `cause`: outside a `narration` row DiagGate admits a
-        // `cause` only as a stop cause, and neither row is a stop.
-        let fields = [JSONMember("item", .string(item.id)),
+        // `cause` only as a stop cause, and neither row is a stop. The clip is
+        // named by its queue `index`, not its id: a Foray item id carries a
+        // `#` (`f1#1`), which is not a token, so DiagGate would withhold it.
+        let index = state.queue.firstIndex(where: { $0.id == item.id }) ?? state.currentIndex
+        let fields = [JSONMember("index", .number(Double(index))),
                       JSONMember("why", .string(cause.rawValue)),
                       JSONMember("fileCause", .string(why.rawValue)),
                       JSONMember("waiting", .bool(waiting))]
@@ -1380,8 +1383,7 @@ public struct EngineCore {
         guard waiting else { return false }
         state.pendingLoad = nil
         state.skippedSegments += 1
-        let index = state.queue.firstIndex(where: { $0.id == item.id }) ?? state.currentIndex
-        diag("skip", [JSONMember("kind", .string("load")), JSONMember("index", .number(Double(index))),
+        diag("skip", [JSONMember("kind", .string("load")),
                       JSONMember("attempts", .number(Double(pending.attempt)))] + fields)
         out.append(.emit(.skipped(itemId: item.id, index: index,
                                   reason: "did not load in \(pending.attempt) attempts (\(why.rawValue))")))

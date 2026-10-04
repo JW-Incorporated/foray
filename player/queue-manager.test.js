@@ -2007,11 +2007,36 @@ test("§16: paused during a clip's load, a retry that fails too stops as before 
   assert.ok(!h.backend.calls.some((c) => c.startsWith("load:foray-1#2")), `nothing loads behind the pause: ${h.backend.calls}`);
 });
 
+test("§16: a retry of a jump into a clip loads at the jump, not the clip's start", async () => {
+  /* A jump 30 s into the second clip (`play(1, { startOffset })`, a Foray
+     scrub's load). That offset is ONE-SHOT, spent by the first load, so the
+     retry must carry it itself or it lands back at the clip's start.
+     MUTATION (run 2026-10-04, red): drop `this._startOffsetNext = startOffset`
+     in `_retryOrSkipClip` (the retry loads @400). */
+  const h = make({ backendClass: HeldBackend });
+  const started = h.m.playForay(threeClips(), { resolveItem });
+  await tick();
+  await h.backend.land();
+  await started;
+  h.backend.calls.length = 0;
+  const jumped = h.m.play(1, { startOffset: 430 });
+  await tick();
+  await h.backend.lapse();
+  await h.backend.land();
+  await jumped;
+  assert.deepEqual(h.backend.loads(), ["load:foray-1#1", "load:foray-1#1"], `got ${h.backend.calls}`);
+  assert.deepEqual(h.backend.calls.filter((c) => c.startsWith("load:")), ["load:foray-1#1@430", "load:foray-1#1@430"]);
+  assert.equal(h.m.state.type, "playing");
+  assert.equal(h.m.currentIndex, 1);
+});
+
 test("§16: the retry asks for the in-point the failed load asked for (a resume inside the clip)", async () => {
   /* A listener paused 50 s into a clip; their play's load fails, and the
-     retry must land where they were, not back at the clip's start.
-     MUTATION: drop `this._startOffsetNext = startOffset` in `_retryOrSkipClip`
-     (the retry loads @100). */
+     retry must land where they were, not back at the clip's start. This one
+     does not need the carried offset (the resume point is re-read from the
+     saved position), so it pins the outcome, not that line: the jump test
+     above is the one the mutation turns red (run 2026-10-04: dropping
+     `this._startOffsetNext = startOffset` left this test green). */
   const h = make({ backendClass: HeldBackend });
   const started = h.m.playForay(threeClips(), { resolveItem });
   await tick();

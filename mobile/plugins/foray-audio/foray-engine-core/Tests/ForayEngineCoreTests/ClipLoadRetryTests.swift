@@ -85,7 +85,9 @@ final class ClipLoadRetryTests: XCTestCase {
         XCTAssertNil(admitted[field: DiagGate.droppedField], "the ring keeps the whole row: \(admitted)")
         XCTAssertEqual(admitted[field: "attempt"], .number(2))
         XCTAssertEqual(admitted[field: "why"], .string("load-deadline"))
-        XCTAssertEqual(admitted[field: "item"], .string("f1#1"))
+        // The queue index, not the id: `f1#1` is not a token, and the gate
+        // withheld it (`dropped: ["item"]`) the first time this ran in CI.
+        XCTAssertEqual(admitted[field: "index"], .number(1))
 
         host.land()
         host.confirm()
@@ -118,6 +120,28 @@ final class ClipLoadRetryTests: XCTestCase {
         host.confirm()
         XCTAssertEqual(host.core.state.stateType, "playing")
         XCTAssertEqual(host.core.state.loadedId, "f1#2")
+    }
+
+    /// A JUMP INTO A CLIP (a Foray scrub's load, 30 s into clip 2) whose load
+    /// misses its deadline is retried AT THE JUMP, not the clip's in-point. The
+    /// explicit offset is one-shot, spent by the first load, so the retry has
+    /// to carry it. queue-manager.test.js "§16: a retry of a jump into a clip
+    /// loads at the jump, not the clip's start" maps here.
+    /// TO SEE IT FAIL: `load(item.ref, offsets: LoadOffsets(), ...)` in
+    /// `retryOrSkipClip` (the retry loads `f1#1@300`).
+    func testARetryLoadsAtTheSameOffsetAsTheLoadThatFailed() throws {
+        var host = Host(config: ForayTapeTests.tape)
+        host.send(try EngineCoreTests.command("playForay", ForayTapeTests.forayArgs(ClipLoadRetryTests.threeClips)))
+        host.land()
+        host.confirm()
+        let jump = host.send(.queue(.playIndex(1, startSec: 330, source: .tap)), after: 0)
+        XCTAssertEqual(ForayTapeTests.loads(jump), ["f1#1@330"], "\(jump)")
+        let retry = host.send(.deck(.deadlineExceeded(token: host.lastLoad ?? 0, afterMs: 20_000)), after: 20_000)
+        XCTAssertEqual(ForayTapeTests.loads(retry), ["f1#1@330"], "\(retry)")
+        host.land()
+        host.confirm()
+        XCTAssertEqual(host.core.state.stateType, "playing")
+        XCTAssertEqual(host.core.state.loadedId, "f1#1")
     }
 
     /// An ERROR (the deck's `.failed`) is retried the same way as a deadline:
