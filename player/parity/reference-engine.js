@@ -53,9 +53,9 @@ import { OpLog, FakeBackend, MemoryStore, fakeTts, fakePreview } from "./fakes.j
 import { warmOffset, prefetchDecision, warmPromotion, prefetchWindowOpens } from "../deck-policy.js";
 import { PREFETCH_LEAD_SEC } from "../html-audio-backend.js";
 import { structuralCheck } from "../foray-structure.js";
-import { segmentAtElapsed, forayElapsed } from "../foray-resolve.js";
+import { segmentAtElapsed, forayElapsed, segmentStarts } from "../foray-resolve.js";
 import { forayRuntimeSec } from "../foray-queue.js";
-import { sourceOffsetFor, scrubTarget, skipTarget } from "../transport-policy.js";
+import { sourceOffsetFor, scrubTarget, skipTarget, nudgeAction, NUDGE } from "../transport-policy.js";
 
 /** A queue `buildForayQueue` already built — what the PAGE sends (plan §3
     A-1; NE-35): every item has a `kind` and none has an authored `type`. A
@@ -584,7 +584,11 @@ export class ReferenceEngine {
           return null;
         case "seekBy": case "seekTo": {
           if (!this.playing || !this._currentItem()) return "not-loaded";
-          if (this.playing.kind === "foray" && this.playing.built) return this._forayScrub(cmd, args);
+          /* A Foray's seeks are on the FORAY's clock whichever way its queue
+             was built (EngineCore.forayTransport: any `playForay`), so a
+             parity case that hands authored items runs the same transport as
+             the Swift core it is compared with. */
+          if (this.playing.kind === "foray") return cmd === "seekTo" ? this._forayScrub(args.sec) : this._forayNudge(args.deltaSec);
           const at = cmd === "seekTo" ? args.sec : Math.max(0, this.backend.currentTime + args.deltaSec);
           await m.seek(at, { precise: true });
           return null;
@@ -685,7 +689,7 @@ export class ReferenceEngine {
   async _playBuiltForay(args) {
     const m = this.manager;
     if (!structuralCheck(args.items).ok) return "refused-structure";
-    this.playing = { kind: "foray", forayId: args.forayId, title: args.title, built: true };
+    this.playing = { kind: "foray", forayId: args.forayId, title: args.title };
     // The load-time ladder's options, as setQueueFromForay would have set them.
     m._forayOptions = { isLocalFile: Boolean(args.isLocalFile), allowAdPad: Boolean(args.allowAdPad) };
     m.loadQueue(args.items);
@@ -697,20 +701,58 @@ export class ReferenceEngine {
     return null;
   }
 
-  /** `seekTo` / `seekBy` inside a page-built Foray: on the FORAY's clock, as
-      EngineCore.forayScrub / forayNudge read them. */
-  async _forayScrub(cmd, args) {
+  /** Where the listener is on the Foray clock (EngineCore.forayPositionSec,
+      client.js `forayPlayhead`): a SPOKEN line's wall clock (the element is
+      still holding the clip before it, frozen), the element's playhead once
+      it holds the item, else unknown (null). */
+  _forayPositionSec() {
+    const m = this.manager;
+    const item = m.queue[m.currentIndex];
+    if (!item || m.playheadItemId !== item.id) return null;
+    const playhead = m.isNarrationPlayhead === true ? m.narrationElapsedSec : this.backend.currentTime;
+    if (typeof playhead !== "number" || !Number.isFinite(playhead)) return null;
+    return forayElapsed(m.queue, m.currentIndex, playhead);
+  }
+
+  /** A ↺15 / 30↻ nudge in a Foray (EngineCore.forayNudge), the page's own
+      `nudgeBy` rule: a step on the Foray clock, stopped short of the total
+      (`skipTarget(foray: true)`); INSIDE the spoken line now sounding, back
+      says it again and forward goes on past it (`nudgeAction`); anywhere else
+      it is an ordinary scrub. M2 drive 2026-10-01: none of this ever ran for
+      the car, whose skips reached the EPISODE seek and were refused inside
+      every narration line. */
+  async _forayNudge(deltaSec) {
     const m = this.manager;
     const items = m.queue;
-    const target = cmd === "seekTo" ? args.sec : skipTarget({
-      foray: true, offsetSec: args.deltaSec, durationSec: forayRuntimeSec(items),
-      positionSec: forayElapsed(items, m.currentIndex, this.backend.currentTime),
-    });
+    const position = this._forayPositionSec() ?? (segmentStarts(items)[Math.max(0, m.currentIndex)] ?? 0);
+    const target = skipTarget({ foray: true, positionSec: position, offsetSec: deltaSec, durationSec: forayRuntimeSec(items) });
     if (target == null) return null;
     const at = segmentAtElapsed(items, target);
+    const action = nudgeAction({
+      offsetSec: Number(deltaSec || 0),
+      landsInCurrentItem: Boolean(at) && at.index === m.currentIndex,
+      narrationPlayhead: m.isNarrationPlayhead === true,
+      onLastItem: m.currentIndex >= items.length - 1,
+    });
+    if (action === NUDGE.RESTART_LINE) { await m.skipToPrevious(); return null; }
+    if (action === NUDGE.SKIP_LINE) { await m.skipToNext(); return null; }
+    if (action === NUDGE.NONE) return "no-next";
+    return this._forayScrub(target);
+  }
+
+  /** A scrub on the Foray clock (EngineCore.forayScrub): which item it lands
+      in and where (`segmentAtElapsed`), then `scrubTarget`: another item, a
+      Foray with nothing loaded, or a rendered line in `transitioning` (where
+      the reducer refuses a seek) is a load at the offset; the spoken line now
+      sounding is said again from the top; the same clip is a seek. */
+  async _forayScrub(elapsedSec) {
+    const m = this.manager;
+    const items = m.queue;
+    const at = segmentAtElapsed(items, elapsedSec);
     const scrub = scrubTarget({ at, item: at ? items[at.index] : null, currentIndex: m.currentIndex, stateType: m.state?.type ?? null });
     if (!scrub) return "not-loaded";
-    if (scrub.reload) await m.play(scrub.index, scrub.offset != null ? { startOffset: scrub.offset } : undefined);
+    if (scrub.restart) await m.skipToPrevious();
+    else if (scrub.reload) await m.play(scrub.index, scrub.offset != null ? { startOffset: scrub.offset } : undefined);
     else if (scrub.offset != null) await m.seek(scrub.offset, { precise: true });
     return null;
   }

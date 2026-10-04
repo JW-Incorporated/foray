@@ -671,6 +671,22 @@ HUMAN-ACTIONS item 24.
    a pure function of numbers already committed. Re-downloading 250 MB to
    re-apply arithmetic is not politeness this repo spends.
 
+5. **A ranged GET's Content-Range is a declaration, not a measurement**
+   (owner ruling HA #24, 2026-09-30; ADR-0008 Amendment). On a host caught
+   serving the master to a ranged GET its byte evidence admits nothing.
+   Distrust is per `resolved_host`, verdicts per show (one caught decode
+   condemns; `MIN_SAMPLES_FOR_AD_FREE` = 2 clean decodes admit); the probe grid
+   is a standing admission step for every newly `measured_clean` show. The wide
+   reading (distrust every ranged GET) is rejected. The code side is
+   `decodeOverride` in `tools/segments/measure-suspects.mjs`.
+6. **Undersized against a computed length is `suspect`, not `unknown`.** A
+   declared length equal to duration x a round bitrate (Around the House:
+   192.03 kbps on four of five episodes) is arithmetic, not a file size, so a
+   ratio below `AD_FREE_FLOOR` against it is not the mild "stale length" case.
+   `ad-inflation.mjs` `summariseSamples` returns `suspect` and
+   `measure-suspects.mjs` `dispositionOf` drops it. That show's +313 s decode is
+   recorded in `data/dai-classification.json` as verdict `excess-audio`.
+
 ### One thing that was built and deleted
 
 The plan was for a single decode to calibrate a **bitrate residual screen** —

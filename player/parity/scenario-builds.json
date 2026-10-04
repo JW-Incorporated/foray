@@ -1120,6 +1120,245 @@
         {"id":"foray-1#1","ord":1,"kind":"episode","audio_url":"https://cdn.example/static.mp3","start_sec":100,"end_sec":210,"authored_end_sec":210,"ad_pad_applied_sec":0,"source_item_id":"ep-static","dai_suspected":false,"reference_duration_sec":null,"ad_pad_sec":null,"needs_drift_check":false,"start_anchor":null,"end_anchor":null,"why":"he explains it plainly","title":"Static","show":"Indie"}
       ]
     },
+    "manager-foray/narration-skip-clip-back-is-clamped-at-the-foray-start@0": {
+      "isLocalFile": false, "allowAdPad": false, "warnings": 0,
+      "skipped": [],
+      "items": [
+        {"id":"f1#0","ord":0,"kind":"episode","audio_url":"https://cdn.test/a.mp3","start_sec":100,"end_sec":200,"authored_end_sec":200,"ad_pad_applied_sec":0,"source_item_id":"s0","dai_suspected":false,"reference_duration_sec":null,"ad_pad_sec":null,"needs_drift_check":false,"start_anchor":null,"end_anchor":null,"why":"","title":"","show":""},
+        {"id":"n1","ord":1,"kind":"tts","audio_url":null,"title":"","script":"The next clip picks up the same question from the other side of the table.","duration_sec":32,"duration_source":"measured"},
+        {"id":"f1#2","ord":2,"kind":"episode","audio_url":"https://cdn.test/b.mp3","start_sec":300,"end_sec":400,"authored_end_sec":400,"ad_pad_applied_sec":0,"source_item_id":"s1","dai_suspected":false,"reference_duration_sec":null,"ad_pad_sec":null,"needs_drift_check":false,"start_anchor":null,"end_anchor":null,"why":"","title":"","show":""},
+        {"id":"n2","ord":3,"kind":"tts","audio_url":"https://cdn.test/n2.m4a","title":"","script":"Here the argument turns: what changes when the model has to run on a phone.","duration_sec":32,"duration_source":"measured"},
+        {"id":"f1#4","ord":4,"kind":"episode","audio_url":"https://cdn.test/c.mp3","start_sec":500,"end_sec":600,"authored_end_sec":600,"ad_pad_applied_sec":0,"source_item_id":"s2","dai_suspected":false,"reference_duration_sec":null,"ad_pad_sec":null,"needs_drift_check":false,"start_anchor":null,"end_anchor":null,"why":"","title":"","show":""}
+      ]
+    },
+    "manager-foray/narration-skip-clip-back-stays-in-the-clip@0": {
+      "isLocalFile": false, "allowAdPad": false, "warnings": 0,
+      "skipped": [],
+      "items": [
+        {"id":"f1#0","ord":0,"kind":"episode","audio_url":"https://cdn.test/a.mp3","start_sec":100,"end_sec":200,"authored_end_sec":200,"ad_pad_applied_sec":0,"source_item_id":"s0","dai_suspected":false,"reference_duration_sec":null,"ad_pad_sec":null,"needs_drift_check":false,"start_anchor":null,"end_anchor":null,"why":"","title":"","show":""},
+        {"id":"n1","ord":1,"kind":"tts","audio_url":null,"title":"","script":"The next clip picks up the same question from the other side of the table.","duration_sec":32,"duration_source":"measured"},
+        {"id":"f1#2","ord":2,"kind":"episode","audio_url":"https://cdn.test/b.mp3","start_sec":300,"end_sec":400,"authored_end_sec":400,"ad_pad_applied_sec":0,"source_item_id":"s1","dai_suspected":false,"reference_duration_sec":null,"ad_pad_sec":null,"needs_drift_check":false,"start_anchor":null,"end_anchor":null,"why":"","title":"","show":""},
+        {"id":"n2","ord":3,"kind":"tts","audio_url":"https://cdn.test/n2.m4a","title":"","script":"Here the argument turns: what changes when the model has to run on a phone.","duration_sec":32,"duration_source":"measured"},
+        {"id":"f1#4","ord":4,"kind":"episode","audio_url":"https://cdn.test/c.mp3","start_sec":500,"end_sec":600,"authored_end_sec":600,"ad_pad_applied_sec":0,"source_item_id":"s2","dai_suspected":false,"reference_duration_sec":null,"ad_pad_sec":null,"needs_drift_check":false,"start_anchor":null,"end_anchor":null,"why":"","title":"","show":""}
+      ]
+    },
+    "manager-foray/narration-skip-clip-end-forward-crosses-into-the-spoken-line@0": {
+      "isLocalFile": false, "allowAdPad": false, "warnings": 0,
+      "skipped": [],
+      "items": [
+        {"id":"f1#0","ord":0,"kind":"episode","audio_url":"https://cdn.test/a.mp3","start_sec":100,"end_sec":200,"authored_end_sec":200,"ad_pad_applied_sec":0,"source_item_id":"s0","dai_suspected":false,"reference_duration_sec":null,"ad_pad_sec":null,"needs_drift_check":false,"start_anchor":null,"end_anchor":null,"why":"","title":"","show":""},
+        {"id":"n1","ord":1,"kind":"tts","audio_url":null,"title":"","script":"The next clip picks up the same question from the other side of the table.","duration_sec":32,"duration_source":"measured"},
+        {"id":"f1#2","ord":2,"kind":"episode","audio_url":"https://cdn.test/b.mp3","start_sec":300,"end_sec":400,"authored_end_sec":400,"ad_pad_applied_sec":0,"source_item_id":"s1","dai_suspected":false,"reference_duration_sec":null,"ad_pad_sec":null,"needs_drift_check":false,"start_anchor":null,"end_anchor":null,"why":"","title":"","show":""},
+        {"id":"n2","ord":3,"kind":"tts","audio_url":"https://cdn.test/n2.m4a","title":"","script":"Here the argument turns: what changes when the model has to run on a phone.","duration_sec":32,"duration_source":"measured"},
+        {"id":"f1#4","ord":4,"kind":"episode","audio_url":"https://cdn.test/c.mp3","start_sec":500,"end_sec":600,"authored_end_sec":600,"ad_pad_applied_sec":0,"source_item_id":"s2","dai_suspected":false,"reference_duration_sec":null,"ad_pad_sec":null,"needs_drift_check":false,"start_anchor":null,"end_anchor":null,"why":"","title":"","show":""}
+      ]
+    },
+    "manager-foray/narration-skip-clip-forward-is-clamped-before-the-foray-end@0": {
+      "isLocalFile": false, "allowAdPad": false, "warnings": 0,
+      "skipped": [],
+      "items": [
+        {"id":"f1#0","ord":0,"kind":"episode","audio_url":"https://cdn.test/a.mp3","start_sec":100,"end_sec":200,"authored_end_sec":200,"ad_pad_applied_sec":0,"source_item_id":"s0","dai_suspected":false,"reference_duration_sec":null,"ad_pad_sec":null,"needs_drift_check":false,"start_anchor":null,"end_anchor":null,"why":"","title":"","show":""},
+        {"id":"n1","ord":1,"kind":"tts","audio_url":null,"title":"","script":"The next clip picks up the same question from the other side of the table.","duration_sec":32,"duration_source":"measured"},
+        {"id":"f1#2","ord":2,"kind":"episode","audio_url":"https://cdn.test/b.mp3","start_sec":300,"end_sec":400,"authored_end_sec":400,"ad_pad_applied_sec":0,"source_item_id":"s1","dai_suspected":false,"reference_duration_sec":null,"ad_pad_sec":null,"needs_drift_check":false,"start_anchor":null,"end_anchor":null,"why":"","title":"","show":""},
+        {"id":"n2","ord":3,"kind":"tts","audio_url":"https://cdn.test/n2.m4a","title":"","script":"Here the argument turns: what changes when the model has to run on a phone.","duration_sec":32,"duration_source":"measured"},
+        {"id":"f1#4","ord":4,"kind":"episode","audio_url":"https://cdn.test/c.mp3","start_sec":500,"end_sec":600,"authored_end_sec":600,"ad_pad_applied_sec":0,"source_item_id":"s2","dai_suspected":false,"reference_duration_sec":null,"ad_pad_sec":null,"needs_drift_check":false,"start_anchor":null,"end_anchor":null,"why":"","title":"","show":""}
+      ]
+    },
+    "manager-foray/narration-skip-clip-start-back-crosses-into-the-spoken-line@0": {
+      "isLocalFile": false, "allowAdPad": false, "warnings": 0,
+      "skipped": [],
+      "items": [
+        {"id":"f1#0","ord":0,"kind":"episode","audio_url":"https://cdn.test/a.mp3","start_sec":100,"end_sec":200,"authored_end_sec":200,"ad_pad_applied_sec":0,"source_item_id":"s0","dai_suspected":false,"reference_duration_sec":null,"ad_pad_sec":null,"needs_drift_check":false,"start_anchor":null,"end_anchor":null,"why":"","title":"","show":""},
+        {"id":"n1","ord":1,"kind":"tts","audio_url":null,"title":"","script":"The next clip picks up the same question from the other side of the table.","duration_sec":32,"duration_source":"measured"},
+        {"id":"f1#2","ord":2,"kind":"episode","audio_url":"https://cdn.test/b.mp3","start_sec":300,"end_sec":400,"authored_end_sec":400,"ad_pad_applied_sec":0,"source_item_id":"s1","dai_suspected":false,"reference_duration_sec":null,"ad_pad_sec":null,"needs_drift_check":false,"start_anchor":null,"end_anchor":null,"why":"","title":"","show":""},
+        {"id":"n2","ord":3,"kind":"tts","audio_url":"https://cdn.test/n2.m4a","title":"","script":"Here the argument turns: what changes when the model has to run on a phone.","duration_sec":32,"duration_source":"measured"},
+        {"id":"f1#4","ord":4,"kind":"episode","audio_url":"https://cdn.test/c.mp3","start_sec":500,"end_sec":600,"authored_end_sec":600,"ad_pad_applied_sec":0,"source_item_id":"s2","dai_suspected":false,"reference_duration_sec":null,"ad_pad_sec":null,"needs_drift_check":false,"start_anchor":null,"end_anchor":null,"why":"","title":"","show":""}
+      ]
+    },
+    "manager-foray/narration-skip-closing-spoken-line-forward-goes-nowhere@0": {
+      "isLocalFile": false, "allowAdPad": false, "warnings": 0,
+      "skipped": [],
+      "items": [
+        {"id":"f1#0","ord":0,"kind":"episode","audio_url":"https://cdn.test/a.mp3","start_sec":100,"end_sec":200,"authored_end_sec":200,"ad_pad_applied_sec":0,"source_item_id":"s0","dai_suspected":false,"reference_duration_sec":null,"ad_pad_sec":null,"needs_drift_check":false,"start_anchor":null,"end_anchor":null,"why":"","title":"","show":""},
+        {"id":"n1","ord":1,"kind":"tts","audio_url":null,"title":"","script":"The next clip picks up the same question from the other side of the table.","duration_sec":32,"duration_source":"measured"}
+      ]
+    },
+    "manager-foray/narration-skip-rendered-end-back-seeks-inside-the-line@0": {
+      "isLocalFile": false, "allowAdPad": false, "warnings": 0,
+      "skipped": [],
+      "items": [
+        {"id":"f1#0","ord":0,"kind":"episode","audio_url":"https://cdn.test/a.mp3","start_sec":100,"end_sec":200,"authored_end_sec":200,"ad_pad_applied_sec":0,"source_item_id":"s0","dai_suspected":false,"reference_duration_sec":null,"ad_pad_sec":null,"needs_drift_check":false,"start_anchor":null,"end_anchor":null,"why":"","title":"","show":""},
+        {"id":"n1","ord":1,"kind":"tts","audio_url":null,"title":"","script":"The next clip picks up the same question from the other side of the table.","duration_sec":32,"duration_source":"measured"},
+        {"id":"f1#2","ord":2,"kind":"episode","audio_url":"https://cdn.test/b.mp3","start_sec":300,"end_sec":400,"authored_end_sec":400,"ad_pad_applied_sec":0,"source_item_id":"s1","dai_suspected":false,"reference_duration_sec":null,"ad_pad_sec":null,"needs_drift_check":false,"start_anchor":null,"end_anchor":null,"why":"","title":"","show":""},
+        {"id":"n2","ord":3,"kind":"tts","audio_url":"https://cdn.test/n2.m4a","title":"","script":"Here the argument turns: what changes when the model has to run on a phone.","duration_sec":32,"duration_source":"measured"},
+        {"id":"f1#4","ord":4,"kind":"episode","audio_url":"https://cdn.test/c.mp3","start_sec":500,"end_sec":600,"authored_end_sec":600,"ad_pad_applied_sec":0,"source_item_id":"s2","dai_suspected":false,"reference_duration_sec":null,"ad_pad_sec":null,"needs_drift_check":false,"start_anchor":null,"end_anchor":null,"why":"","title":"","show":""}
+      ]
+    },
+    "manager-foray/narration-skip-rendered-end-forward-crosses-into-the-next-clip@0": {
+      "isLocalFile": false, "allowAdPad": false, "warnings": 0,
+      "skipped": [],
+      "items": [
+        {"id":"f1#0","ord":0,"kind":"episode","audio_url":"https://cdn.test/a.mp3","start_sec":100,"end_sec":200,"authored_end_sec":200,"ad_pad_applied_sec":0,"source_item_id":"s0","dai_suspected":false,"reference_duration_sec":null,"ad_pad_sec":null,"needs_drift_check":false,"start_anchor":null,"end_anchor":null,"why":"","title":"","show":""},
+        {"id":"n1","ord":1,"kind":"tts","audio_url":null,"title":"","script":"The next clip picks up the same question from the other side of the table.","duration_sec":32,"duration_source":"measured"},
+        {"id":"f1#2","ord":2,"kind":"episode","audio_url":"https://cdn.test/b.mp3","start_sec":300,"end_sec":400,"authored_end_sec":400,"ad_pad_applied_sec":0,"source_item_id":"s1","dai_suspected":false,"reference_duration_sec":null,"ad_pad_sec":null,"needs_drift_check":false,"start_anchor":null,"end_anchor":null,"why":"","title":"","show":""},
+        {"id":"n2","ord":3,"kind":"tts","audio_url":"https://cdn.test/n2.m4a","title":"","script":"Here the argument turns: what changes when the model has to run on a phone.","duration_sec":32,"duration_source":"measured"},
+        {"id":"f1#4","ord":4,"kind":"episode","audio_url":"https://cdn.test/c.mp3","start_sec":500,"end_sec":600,"authored_end_sec":600,"ad_pad_applied_sec":0,"source_item_id":"s2","dai_suspected":false,"reference_duration_sec":null,"ad_pad_sec":null,"needs_drift_check":false,"start_anchor":null,"end_anchor":null,"why":"","title":"","show":""}
+      ]
+    },
+    "manager-foray/narration-skip-rendered-line-playing-back-is-a-seek@0": {
+      "isLocalFile": false, "allowAdPad": false, "warnings": 0,
+      "skipped": [],
+      "items": [
+        {"id":"f1#0","ord":0,"kind":"episode","audio_url":"https://cdn.test/a.mp3","start_sec":100,"end_sec":200,"authored_end_sec":200,"ad_pad_applied_sec":0,"source_item_id":"s0","dai_suspected":false,"reference_duration_sec":null,"ad_pad_sec":null,"needs_drift_check":false,"start_anchor":null,"end_anchor":null,"why":"","title":"","show":""},
+        {"id":"n1","ord":1,"kind":"tts","audio_url":null,"title":"","script":"The next clip picks up the same question from the other side of the table.","duration_sec":32,"duration_source":"measured"},
+        {"id":"f1#2","ord":2,"kind":"episode","audio_url":"https://cdn.test/b.mp3","start_sec":300,"end_sec":400,"authored_end_sec":400,"ad_pad_applied_sec":0,"source_item_id":"s1","dai_suspected":false,"reference_duration_sec":null,"ad_pad_sec":null,"needs_drift_check":false,"start_anchor":null,"end_anchor":null,"why":"","title":"","show":""},
+        {"id":"n2","ord":3,"kind":"tts","audio_url":"https://cdn.test/n2.m4a","title":"","script":"Here the argument turns: what changes when the model has to run on a phone.","duration_sec":32,"duration_source":"measured"},
+        {"id":"f1#4","ord":4,"kind":"episode","audio_url":"https://cdn.test/c.mp3","start_sec":500,"end_sec":600,"authored_end_sec":600,"ad_pad_applied_sec":0,"source_item_id":"s2","dai_suspected":false,"reference_duration_sec":null,"ad_pad_sec":null,"needs_drift_check":false,"start_anchor":null,"end_anchor":null,"why":"","title":"","show":""}
+      ]
+    },
+    "manager-foray/narration-skip-rendered-middle-back-seeks-inside-the-line@0": {
+      "isLocalFile": false, "allowAdPad": false, "warnings": 0,
+      "skipped": [],
+      "items": [
+        {"id":"f1#0","ord":0,"kind":"episode","audio_url":"https://cdn.test/a.mp3","start_sec":100,"end_sec":200,"authored_end_sec":200,"ad_pad_applied_sec":0,"source_item_id":"s0","dai_suspected":false,"reference_duration_sec":null,"ad_pad_sec":null,"needs_drift_check":false,"start_anchor":null,"end_anchor":null,"why":"","title":"","show":""},
+        {"id":"n1","ord":1,"kind":"tts","audio_url":null,"title":"","script":"The next clip picks up the same question from the other side of the table.","duration_sec":32,"duration_source":"measured"},
+        {"id":"f1#2","ord":2,"kind":"episode","audio_url":"https://cdn.test/b.mp3","start_sec":300,"end_sec":400,"authored_end_sec":400,"ad_pad_applied_sec":0,"source_item_id":"s1","dai_suspected":false,"reference_duration_sec":null,"ad_pad_sec":null,"needs_drift_check":false,"start_anchor":null,"end_anchor":null,"why":"","title":"","show":""},
+        {"id":"n2","ord":3,"kind":"tts","audio_url":"https://cdn.test/n2.m4a","title":"","script":"Here the argument turns: what changes when the model has to run on a phone.","duration_sec":32,"duration_source":"measured"},
+        {"id":"f1#4","ord":4,"kind":"episode","audio_url":"https://cdn.test/c.mp3","start_sec":500,"end_sec":600,"authored_end_sec":600,"ad_pad_applied_sec":0,"source_item_id":"s2","dai_suspected":false,"reference_duration_sec":null,"ad_pad_sec":null,"needs_drift_check":false,"start_anchor":null,"end_anchor":null,"why":"","title":"","show":""}
+      ]
+    },
+    "manager-foray/narration-skip-rendered-middle-forward-crosses-into-the-next-clip@0": {
+      "isLocalFile": false, "allowAdPad": false, "warnings": 0,
+      "skipped": [],
+      "items": [
+        {"id":"f1#0","ord":0,"kind":"episode","audio_url":"https://cdn.test/a.mp3","start_sec":100,"end_sec":200,"authored_end_sec":200,"ad_pad_applied_sec":0,"source_item_id":"s0","dai_suspected":false,"reference_duration_sec":null,"ad_pad_sec":null,"needs_drift_check":false,"start_anchor":null,"end_anchor":null,"why":"","title":"","show":""},
+        {"id":"n1","ord":1,"kind":"tts","audio_url":null,"title":"","script":"The next clip picks up the same question from the other side of the table.","duration_sec":32,"duration_source":"measured"},
+        {"id":"f1#2","ord":2,"kind":"episode","audio_url":"https://cdn.test/b.mp3","start_sec":300,"end_sec":400,"authored_end_sec":400,"ad_pad_applied_sec":0,"source_item_id":"s1","dai_suspected":false,"reference_duration_sec":null,"ad_pad_sec":null,"needs_drift_check":false,"start_anchor":null,"end_anchor":null,"why":"","title":"","show":""},
+        {"id":"n2","ord":3,"kind":"tts","audio_url":"https://cdn.test/n2.m4a","title":"","script":"Here the argument turns: what changes when the model has to run on a phone.","duration_sec":32,"duration_source":"measured"},
+        {"id":"f1#4","ord":4,"kind":"episode","audio_url":"https://cdn.test/c.mp3","start_sec":500,"end_sec":600,"authored_end_sec":600,"ad_pad_applied_sec":0,"source_item_id":"s2","dai_suspected":false,"reference_duration_sec":null,"ad_pad_sec":null,"needs_drift_check":false,"start_anchor":null,"end_anchor":null,"why":"","title":"","show":""}
+      ]
+    },
+    "manager-foray/narration-skip-rendered-scrub-inside-the-line@0": {
+      "isLocalFile": false, "allowAdPad": false, "warnings": 0,
+      "skipped": [],
+      "items": [
+        {"id":"f1#0","ord":0,"kind":"episode","audio_url":"https://cdn.test/a.mp3","start_sec":100,"end_sec":200,"authored_end_sec":200,"ad_pad_applied_sec":0,"source_item_id":"s0","dai_suspected":false,"reference_duration_sec":null,"ad_pad_sec":null,"needs_drift_check":false,"start_anchor":null,"end_anchor":null,"why":"","title":"","show":""},
+        {"id":"n1","ord":1,"kind":"tts","audio_url":null,"title":"","script":"The next clip picks up the same question from the other side of the table.","duration_sec":32,"duration_source":"measured"},
+        {"id":"f1#2","ord":2,"kind":"episode","audio_url":"https://cdn.test/b.mp3","start_sec":300,"end_sec":400,"authored_end_sec":400,"ad_pad_applied_sec":0,"source_item_id":"s1","dai_suspected":false,"reference_duration_sec":null,"ad_pad_sec":null,"needs_drift_check":false,"start_anchor":null,"end_anchor":null,"why":"","title":"","show":""},
+        {"id":"n2","ord":3,"kind":"tts","audio_url":"https://cdn.test/n2.m4a","title":"","script":"Here the argument turns: what changes when the model has to run on a phone.","duration_sec":32,"duration_source":"measured"},
+        {"id":"f1#4","ord":4,"kind":"episode","audio_url":"https://cdn.test/c.mp3","start_sec":500,"end_sec":600,"authored_end_sec":600,"ad_pad_applied_sec":0,"source_item_id":"s2","dai_suspected":false,"reference_duration_sec":null,"ad_pad_sec":null,"needs_drift_check":false,"start_anchor":null,"end_anchor":null,"why":"","title":"","show":""}
+      ]
+    },
+    "manager-foray/narration-skip-rendered-start-back-crosses-into-the-clip@0": {
+      "isLocalFile": false, "allowAdPad": false, "warnings": 0,
+      "skipped": [],
+      "items": [
+        {"id":"f1#0","ord":0,"kind":"episode","audio_url":"https://cdn.test/a.mp3","start_sec":100,"end_sec":200,"authored_end_sec":200,"ad_pad_applied_sec":0,"source_item_id":"s0","dai_suspected":false,"reference_duration_sec":null,"ad_pad_sec":null,"needs_drift_check":false,"start_anchor":null,"end_anchor":null,"why":"","title":"","show":""},
+        {"id":"n1","ord":1,"kind":"tts","audio_url":null,"title":"","script":"The next clip picks up the same question from the other side of the table.","duration_sec":32,"duration_source":"measured"},
+        {"id":"f1#2","ord":2,"kind":"episode","audio_url":"https://cdn.test/b.mp3","start_sec":300,"end_sec":400,"authored_end_sec":400,"ad_pad_applied_sec":0,"source_item_id":"s1","dai_suspected":false,"reference_duration_sec":null,"ad_pad_sec":null,"needs_drift_check":false,"start_anchor":null,"end_anchor":null,"why":"","title":"","show":""},
+        {"id":"n2","ord":3,"kind":"tts","audio_url":"https://cdn.test/n2.m4a","title":"","script":"Here the argument turns: what changes when the model has to run on a phone.","duration_sec":32,"duration_source":"measured"},
+        {"id":"f1#4","ord":4,"kind":"episode","audio_url":"https://cdn.test/c.mp3","start_sec":500,"end_sec":600,"authored_end_sec":600,"ad_pad_applied_sec":0,"source_item_id":"s2","dai_suspected":false,"reference_duration_sec":null,"ad_pad_sec":null,"needs_drift_check":false,"start_anchor":null,"end_anchor":null,"why":"","title":"","show":""}
+      ]
+    },
+    "manager-foray/narration-skip-rendered-start-forward-seeks-inside-the-line@0": {
+      "isLocalFile": false, "allowAdPad": false, "warnings": 0,
+      "skipped": [],
+      "items": [
+        {"id":"f1#0","ord":0,"kind":"episode","audio_url":"https://cdn.test/a.mp3","start_sec":100,"end_sec":200,"authored_end_sec":200,"ad_pad_applied_sec":0,"source_item_id":"s0","dai_suspected":false,"reference_duration_sec":null,"ad_pad_sec":null,"needs_drift_check":false,"start_anchor":null,"end_anchor":null,"why":"","title":"","show":""},
+        {"id":"n1","ord":1,"kind":"tts","audio_url":null,"title":"","script":"The next clip picks up the same question from the other side of the table.","duration_sec":32,"duration_source":"measured"},
+        {"id":"f1#2","ord":2,"kind":"episode","audio_url":"https://cdn.test/b.mp3","start_sec":300,"end_sec":400,"authored_end_sec":400,"ad_pad_applied_sec":0,"source_item_id":"s1","dai_suspected":false,"reference_duration_sec":null,"ad_pad_sec":null,"needs_drift_check":false,"start_anchor":null,"end_anchor":null,"why":"","title":"","show":""},
+        {"id":"n2","ord":3,"kind":"tts","audio_url":"https://cdn.test/n2.m4a","title":"","script":"Here the argument turns: what changes when the model has to run on a phone.","duration_sec":32,"duration_source":"measured"},
+        {"id":"f1#4","ord":4,"kind":"episode","audio_url":"https://cdn.test/c.mp3","start_sec":500,"end_sec":600,"authored_end_sec":600,"ad_pad_applied_sec":0,"source_item_id":"s2","dai_suspected":false,"reference_duration_sec":null,"ad_pad_sec":null,"needs_drift_check":false,"start_anchor":null,"end_anchor":null,"why":"","title":"","show":""}
+      ]
+    },
+    "manager-foray/narration-skip-spoken-end-back-restarts-the-line@0": {
+      "isLocalFile": false, "allowAdPad": false, "warnings": 0,
+      "skipped": [],
+      "items": [
+        {"id":"f1#0","ord":0,"kind":"episode","audio_url":"https://cdn.test/a.mp3","start_sec":100,"end_sec":200,"authored_end_sec":200,"ad_pad_applied_sec":0,"source_item_id":"s0","dai_suspected":false,"reference_duration_sec":null,"ad_pad_sec":null,"needs_drift_check":false,"start_anchor":null,"end_anchor":null,"why":"","title":"","show":""},
+        {"id":"n1","ord":1,"kind":"tts","audio_url":null,"title":"","script":"The next clip picks up the same question from the other side of the table.","duration_sec":32,"duration_source":"measured"},
+        {"id":"f1#2","ord":2,"kind":"episode","audio_url":"https://cdn.test/b.mp3","start_sec":300,"end_sec":400,"authored_end_sec":400,"ad_pad_applied_sec":0,"source_item_id":"s1","dai_suspected":false,"reference_duration_sec":null,"ad_pad_sec":null,"needs_drift_check":false,"start_anchor":null,"end_anchor":null,"why":"","title":"","show":""},
+        {"id":"n2","ord":3,"kind":"tts","audio_url":"https://cdn.test/n2.m4a","title":"","script":"Here the argument turns: what changes when the model has to run on a phone.","duration_sec":32,"duration_source":"measured"},
+        {"id":"f1#4","ord":4,"kind":"episode","audio_url":"https://cdn.test/c.mp3","start_sec":500,"end_sec":600,"authored_end_sec":600,"ad_pad_applied_sec":0,"source_item_id":"s2","dai_suspected":false,"reference_duration_sec":null,"ad_pad_sec":null,"needs_drift_check":false,"start_anchor":null,"end_anchor":null,"why":"","title":"","show":""}
+      ]
+    },
+    "manager-foray/narration-skip-spoken-end-forward-crosses-into-the-next-clip@0": {
+      "isLocalFile": false, "allowAdPad": false, "warnings": 0,
+      "skipped": [],
+      "items": [
+        {"id":"f1#0","ord":0,"kind":"episode","audio_url":"https://cdn.test/a.mp3","start_sec":100,"end_sec":200,"authored_end_sec":200,"ad_pad_applied_sec":0,"source_item_id":"s0","dai_suspected":false,"reference_duration_sec":null,"ad_pad_sec":null,"needs_drift_check":false,"start_anchor":null,"end_anchor":null,"why":"","title":"","show":""},
+        {"id":"n1","ord":1,"kind":"tts","audio_url":null,"title":"","script":"The next clip picks up the same question from the other side of the table.","duration_sec":32,"duration_source":"measured"},
+        {"id":"f1#2","ord":2,"kind":"episode","audio_url":"https://cdn.test/b.mp3","start_sec":300,"end_sec":400,"authored_end_sec":400,"ad_pad_applied_sec":0,"source_item_id":"s1","dai_suspected":false,"reference_duration_sec":null,"ad_pad_sec":null,"needs_drift_check":false,"start_anchor":null,"end_anchor":null,"why":"","title":"","show":""},
+        {"id":"n2","ord":3,"kind":"tts","audio_url":"https://cdn.test/n2.m4a","title":"","script":"Here the argument turns: what changes when the model has to run on a phone.","duration_sec":32,"duration_source":"measured"},
+        {"id":"f1#4","ord":4,"kind":"episode","audio_url":"https://cdn.test/c.mp3","start_sec":500,"end_sec":600,"authored_end_sec":600,"ad_pad_applied_sec":0,"source_item_id":"s2","dai_suspected":false,"reference_duration_sec":null,"ad_pad_sec":null,"needs_drift_check":false,"start_anchor":null,"end_anchor":null,"why":"","title":"","show":""}
+      ]
+    },
+    "manager-foray/narration-skip-spoken-middle-back-restarts-the-line@0": {
+      "isLocalFile": false, "allowAdPad": false, "warnings": 0,
+      "skipped": [],
+      "items": [
+        {"id":"f1#0","ord":0,"kind":"episode","audio_url":"https://cdn.test/a.mp3","start_sec":100,"end_sec":200,"authored_end_sec":200,"ad_pad_applied_sec":0,"source_item_id":"s0","dai_suspected":false,"reference_duration_sec":null,"ad_pad_sec":null,"needs_drift_check":false,"start_anchor":null,"end_anchor":null,"why":"","title":"","show":""},
+        {"id":"n1","ord":1,"kind":"tts","audio_url":null,"title":"","script":"The next clip picks up the same question from the other side of the table.","duration_sec":32,"duration_source":"measured"},
+        {"id":"f1#2","ord":2,"kind":"episode","audio_url":"https://cdn.test/b.mp3","start_sec":300,"end_sec":400,"authored_end_sec":400,"ad_pad_applied_sec":0,"source_item_id":"s1","dai_suspected":false,"reference_duration_sec":null,"ad_pad_sec":null,"needs_drift_check":false,"start_anchor":null,"end_anchor":null,"why":"","title":"","show":""},
+        {"id":"n2","ord":3,"kind":"tts","audio_url":"https://cdn.test/n2.m4a","title":"","script":"Here the argument turns: what changes when the model has to run on a phone.","duration_sec":32,"duration_source":"measured"},
+        {"id":"f1#4","ord":4,"kind":"episode","audio_url":"https://cdn.test/c.mp3","start_sec":500,"end_sec":600,"authored_end_sec":600,"ad_pad_applied_sec":0,"source_item_id":"s2","dai_suspected":false,"reference_duration_sec":null,"ad_pad_sec":null,"needs_drift_check":false,"start_anchor":null,"end_anchor":null,"why":"","title":"","show":""}
+      ]
+    },
+    "manager-foray/narration-skip-spoken-middle-forward-crosses-into-the-next-clip@0": {
+      "isLocalFile": false, "allowAdPad": false, "warnings": 0,
+      "skipped": [],
+      "items": [
+        {"id":"f1#0","ord":0,"kind":"episode","audio_url":"https://cdn.test/a.mp3","start_sec":100,"end_sec":200,"authored_end_sec":200,"ad_pad_applied_sec":0,"source_item_id":"s0","dai_suspected":false,"reference_duration_sec":null,"ad_pad_sec":null,"needs_drift_check":false,"start_anchor":null,"end_anchor":null,"why":"","title":"","show":""},
+        {"id":"n1","ord":1,"kind":"tts","audio_url":null,"title":"","script":"The next clip picks up the same question from the other side of the table.","duration_sec":32,"duration_source":"measured"},
+        {"id":"f1#2","ord":2,"kind":"episode","audio_url":"https://cdn.test/b.mp3","start_sec":300,"end_sec":400,"authored_end_sec":400,"ad_pad_applied_sec":0,"source_item_id":"s1","dai_suspected":false,"reference_duration_sec":null,"ad_pad_sec":null,"needs_drift_check":false,"start_anchor":null,"end_anchor":null,"why":"","title":"","show":""},
+        {"id":"n2","ord":3,"kind":"tts","audio_url":"https://cdn.test/n2.m4a","title":"","script":"Here the argument turns: what changes when the model has to run on a phone.","duration_sec":32,"duration_source":"measured"},
+        {"id":"f1#4","ord":4,"kind":"episode","audio_url":"https://cdn.test/c.mp3","start_sec":500,"end_sec":600,"authored_end_sec":600,"ad_pad_applied_sec":0,"source_item_id":"s2","dai_suspected":false,"reference_duration_sec":null,"ad_pad_sec":null,"needs_drift_check":false,"start_anchor":null,"end_anchor":null,"why":"","title":"","show":""}
+      ]
+    },
+    "manager-foray/narration-skip-spoken-scrub-inside-the-line-restarts-it@0": {
+      "isLocalFile": false, "allowAdPad": false, "warnings": 0,
+      "skipped": [],
+      "items": [
+        {"id":"f1#0","ord":0,"kind":"episode","audio_url":"https://cdn.test/a.mp3","start_sec":100,"end_sec":200,"authored_end_sec":200,"ad_pad_applied_sec":0,"source_item_id":"s0","dai_suspected":false,"reference_duration_sec":null,"ad_pad_sec":null,"needs_drift_check":false,"start_anchor":null,"end_anchor":null,"why":"","title":"","show":""},
+        {"id":"n1","ord":1,"kind":"tts","audio_url":null,"title":"","script":"The next clip picks up the same question from the other side of the table.","duration_sec":32,"duration_source":"measured"},
+        {"id":"f1#2","ord":2,"kind":"episode","audio_url":"https://cdn.test/b.mp3","start_sec":300,"end_sec":400,"authored_end_sec":400,"ad_pad_applied_sec":0,"source_item_id":"s1","dai_suspected":false,"reference_duration_sec":null,"ad_pad_sec":null,"needs_drift_check":false,"start_anchor":null,"end_anchor":null,"why":"","title":"","show":""},
+        {"id":"n2","ord":3,"kind":"tts","audio_url":"https://cdn.test/n2.m4a","title":"","script":"Here the argument turns: what changes when the model has to run on a phone.","duration_sec":32,"duration_source":"measured"},
+        {"id":"f1#4","ord":4,"kind":"episode","audio_url":"https://cdn.test/c.mp3","start_sec":500,"end_sec":600,"authored_end_sec":600,"ad_pad_applied_sec":0,"source_item_id":"s2","dai_suspected":false,"reference_duration_sec":null,"ad_pad_sec":null,"needs_drift_check":false,"start_anchor":null,"end_anchor":null,"why":"","title":"","show":""}
+      ]
+    },
+    "manager-foray/narration-skip-spoken-scrub-into-the-next-clip-reloads-it@0": {
+      "isLocalFile": false, "allowAdPad": false, "warnings": 0,
+      "skipped": [],
+      "items": [
+        {"id":"f1#0","ord":0,"kind":"episode","audio_url":"https://cdn.test/a.mp3","start_sec":100,"end_sec":200,"authored_end_sec":200,"ad_pad_applied_sec":0,"source_item_id":"s0","dai_suspected":false,"reference_duration_sec":null,"ad_pad_sec":null,"needs_drift_check":false,"start_anchor":null,"end_anchor":null,"why":"","title":"","show":""},
+        {"id":"n1","ord":1,"kind":"tts","audio_url":null,"title":"","script":"The next clip picks up the same question from the other side of the table.","duration_sec":32,"duration_source":"measured"},
+        {"id":"f1#2","ord":2,"kind":"episode","audio_url":"https://cdn.test/b.mp3","start_sec":300,"end_sec":400,"authored_end_sec":400,"ad_pad_applied_sec":0,"source_item_id":"s1","dai_suspected":false,"reference_duration_sec":null,"ad_pad_sec":null,"needs_drift_check":false,"start_anchor":null,"end_anchor":null,"why":"","title":"","show":""},
+        {"id":"n2","ord":3,"kind":"tts","audio_url":"https://cdn.test/n2.m4a","title":"","script":"Here the argument turns: what changes when the model has to run on a phone.","duration_sec":32,"duration_source":"measured"},
+        {"id":"f1#4","ord":4,"kind":"episode","audio_url":"https://cdn.test/c.mp3","start_sec":500,"end_sec":600,"authored_end_sec":600,"ad_pad_applied_sec":0,"source_item_id":"s2","dai_suspected":false,"reference_duration_sec":null,"ad_pad_sec":null,"needs_drift_check":false,"start_anchor":null,"end_anchor":null,"why":"","title":"","show":""}
+      ]
+    },
+    "manager-foray/narration-skip-spoken-start-back-crosses-into-the-clip@0": {
+      "isLocalFile": false, "allowAdPad": false, "warnings": 0,
+      "skipped": [],
+      "items": [
+        {"id":"f1#0","ord":0,"kind":"episode","audio_url":"https://cdn.test/a.mp3","start_sec":100,"end_sec":200,"authored_end_sec":200,"ad_pad_applied_sec":0,"source_item_id":"s0","dai_suspected":false,"reference_duration_sec":null,"ad_pad_sec":null,"needs_drift_check":false,"start_anchor":null,"end_anchor":null,"why":"","title":"","show":""},
+        {"id":"n1","ord":1,"kind":"tts","audio_url":null,"title":"","script":"The next clip picks up the same question from the other side of the table.","duration_sec":32,"duration_source":"measured"},
+        {"id":"f1#2","ord":2,"kind":"episode","audio_url":"https://cdn.test/b.mp3","start_sec":300,"end_sec":400,"authored_end_sec":400,"ad_pad_applied_sec":0,"source_item_id":"s1","dai_suspected":false,"reference_duration_sec":null,"ad_pad_sec":null,"needs_drift_check":false,"start_anchor":null,"end_anchor":null,"why":"","title":"","show":""},
+        {"id":"n2","ord":3,"kind":"tts","audio_url":"https://cdn.test/n2.m4a","title":"","script":"Here the argument turns: what changes when the model has to run on a phone.","duration_sec":32,"duration_source":"measured"},
+        {"id":"f1#4","ord":4,"kind":"episode","audio_url":"https://cdn.test/c.mp3","start_sec":500,"end_sec":600,"authored_end_sec":600,"ad_pad_applied_sec":0,"source_item_id":"s2","dai_suspected":false,"reference_duration_sec":null,"ad_pad_sec":null,"needs_drift_check":false,"start_anchor":null,"end_anchor":null,"why":"","title":"","show":""}
+      ]
+    },
+    "manager-foray/narration-skip-spoken-start-forward-skips-the-line@0": {
+      "isLocalFile": false, "allowAdPad": false, "warnings": 0,
+      "skipped": [],
+      "items": [
+        {"id":"f1#0","ord":0,"kind":"episode","audio_url":"https://cdn.test/a.mp3","start_sec":100,"end_sec":200,"authored_end_sec":200,"ad_pad_applied_sec":0,"source_item_id":"s0","dai_suspected":false,"reference_duration_sec":null,"ad_pad_sec":null,"needs_drift_check":false,"start_anchor":null,"end_anchor":null,"why":"","title":"","show":""},
+        {"id":"n1","ord":1,"kind":"tts","audio_url":null,"title":"","script":"The next clip picks up the same question from the other side of the table.","duration_sec":32,"duration_source":"measured"},
+        {"id":"f1#2","ord":2,"kind":"episode","audio_url":"https://cdn.test/b.mp3","start_sec":300,"end_sec":400,"authored_end_sec":400,"ad_pad_applied_sec":0,"source_item_id":"s1","dai_suspected":false,"reference_duration_sec":null,"ad_pad_sec":null,"needs_drift_check":false,"start_anchor":null,"end_anchor":null,"why":"","title":"","show":""},
+        {"id":"n2","ord":3,"kind":"tts","audio_url":"https://cdn.test/n2.m4a","title":"","script":"Here the argument turns: what changes when the model has to run on a phone.","duration_sec":32,"duration_source":"measured"},
+        {"id":"f1#4","ord":4,"kind":"episode","audio_url":"https://cdn.test/c.mp3","start_sec":500,"end_sec":600,"authored_end_sec":600,"ad_pad_applied_sec":0,"source_item_id":"s2","dai_suspected":false,"reference_duration_sec":null,"ad_pad_sec":null,"needs_drift_check":false,"start_anchor":null,"end_anchor":null,"why":"","title":"","show":""}
+      ]
+    },
     "manager-foray/next-during-a-beat-never-starts-early@0": {
       "isLocalFile": false, "allowAdPad": false, "warnings": 0,
       "skipped": [],

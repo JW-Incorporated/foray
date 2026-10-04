@@ -7,7 +7,7 @@ value (`// MEASURE`). This drive is what settles them (NE-38f), and it is the
 first drive where DV-7a is **required**: 4a must come back for the car's play
 after iOS itself closed the app.
 
-This file is the script. HUMAN-ACTIONS #129 asks for the drive and links here.
+This file is the script. HUMAN-ACTIONS #130 asks for the drive and links here.
 Nothing in M3's engineering waits for it (the re-plan of 2026-09-29), and it
 does not wait for the M2 drive (#128) either: if both are pending, this one
 covers #128's Foray blocks too.
@@ -16,7 +16,7 @@ covers #128's Foray blocks too.
 
 **One build: Claude adds here.** It is the first TestFlight build from `main`
 after `engine/m3` merges (PR #913). The number goes here and into
-HUMAN-ACTIONS #129 once the build exists. Every Copy from the drive must name
+HUMAN-ACTIONS #130 once the build exists. Every Copy from the drive must name
 that build.
 
 ## Before it can be run
@@ -42,7 +42,7 @@ These are preconditions, not steps for the founder.
 - **Record the route in every block**: CarPlay, the car's Bluetooth, AirPods or
   the speaker.
 - **One Copy per block, taken parked.** Menu → **Developer** → **Playback
-  diagnostics** → **Copy**. Paste each Copy into HUMAN-ACTIONS #129's thread
+  diagnostics** → **Copy**. Paste each Copy into HUMAN-ACTIONS #130's thread
   (the M3 issue), one comment per block, headed with the block's number and
   the route.
 - **Every Copy starts with the engine header**:

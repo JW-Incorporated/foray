@@ -68,6 +68,8 @@ Sources:
 
 None of the four exist in the current build — this is a known, named gap, not a discovered one, and it is a submission-blocking rejection risk the moment a phase-2 build reaches App Review. It is a phase-2 precondition, not a phase-1 action item: **do not build the moderation system now**, but do not schedule phase 2 without it either. Track it explicitly in `HUMAN-ACTIONS.md` (item added the day phase 2 is scheduled) rather than letting it live only in the engineering doc.
 
+**Ruled 2026-09-30 (DECISIONS #31) — sequencing.** All four exist before any non-founder-prompted Foray is hearable by anyone but its prompter. Interim: founder-only prompting, `hold` on catalogue Forays. Order: (1) developer contact now, sharing one address with the privacy contact, `help@jwlabs.ai`; (2) an output-side filter extending `backend/src/generation/safetyCheck.ts` before any non-founder prompt, even a private one; (3) report + block as one card before the first *shared* non-founder Foray. A private-to-prompter Foray is not UGC and may ship first. Engineering builds all four; it remains a phase-2 precondition, not scheduled work.
+
 Source: [App Review Guidelines §1.2 (User Generated Content) — Apple Developer](https://developer.apple.com/app-store/review/guidelines/#user-generated-content)
 
 **2026 rejection trends worth noting generically:** the fastest-growing rejection category is privacy (missing AI-data-sharing consent screens, missing `PrivacyInfo.xcprivacy` manifests for bundled third-party SDKs like Supabase's), plus incomplete/placeholder-content submissions. Both are process items, not architecture risks.
@@ -169,6 +171,10 @@ Sources:
 
 ### Do before phase 2 is scheduled (any-user prompting)
 - [ ] Build the four Guideline 1.2 UGC-moderation requirements before any stranger-prompted Foray can reach another user: content filtering, a report-objectionable-content mechanism, a user-blocking mechanism, and published developer contact info (see Section 2). Confirm the corresponding `HUMAN-ACTIONS.md` item is filed and open before phase 2 work is scheduled, not after.
+  - [ ] Ruled 2026-09-30, in order: publish developer contact (`help@jwlabs.ai`, shared with the privacy contact) now.
+  - [ ] Output-side filter extending `backend/src/generation/safetyCheck.ts` before any non-founder prompt, even a private one.
+  - [ ] Report + block as one card before the first shared non-founder Foray.
+  - Until all four exist: founder-only prompting and `hold` on catalogue Forays. A private-to-prompter Foray is not UGC and may ship first.
 
 ### Do at monetization (multi-user, revenue)
 - [ ] Get a real (paid, attorney-assisted) trademark clearance search before formally registering "CommutePilot" as a mark.

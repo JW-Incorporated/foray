@@ -377,12 +377,8 @@ public struct EngineCore {
         case .toggle: toggle(source: source)
         case .next: next(source: source)
         case .previous: previous(source: source)
-        case let .seekBy(deltaSec):
-            if forayTransport { return forayNudge(deltaSec, source: source) }
-            seekBy(deltaSec, source: source)
-        case let .seekTo(sec):
-            if forayTransport { return forayScrub(to: sec, source: source) }
-            seekTo(sec, source: source)
+        case let .seekBy(deltaSec): seekBy(deltaSec, source: source)
+        case let .seekTo(sec): seekTo(sec, source: source)
         case let .jump(index): playIndex(index, startSec: nil, source: source)
         case let .stop(persist): stop(persist: persist, source: source)
         case let .setRate(rate): setRate(rate)
@@ -589,7 +585,18 @@ public struct EngineCore {
     /// clamps an episode seek, then `seekAction`: with nothing loaded to seek
     /// in, the target is WRITTEN DOWN as the next play's own start; paused,
     /// loading and playing are the reducer's.
+    ///
+    /// IN A FORAY EVERY SEEK IS ON THE FORAY'S CLOCK, WHOEVER ASKS (M2 drive
+    /// 2026-10-01). The page's `seekTo` command always came here as a Foray
+    /// scrub, but the lock screen's and the car's (`changePlaybackPosition`,
+    /// `onRemote`) did not: they reached the episode seek below, which read
+    /// the Foray-clock second the lock screen shows (NE-37c) as a second of
+    /// the clip's source file, and dispatched a `.seek` the reducer refuses
+    /// in `.transitioning`, the state every narration line reached by its
+    /// seam plays in. client.js installs `ForayPlayer.foraySeek` for the same
+    /// press; this is that rule.
     private mutating func seekTo(_ sec: Double, source: EngineSource) {
+        if forayTransport { return forayScrub(to: sec, source: source) }
         guard let item = state.currentItem else { return refuse(.notLoaded) }
         guard let target = TransportPolicy.clampEpisodeTarget(sec, duration: deck.durationSec ?? item.durationSec) else { return }
         if TransportPolicy.seekAction(restored: false, stateType: state.stateType) == .pend {
@@ -606,7 +613,19 @@ public struct EngineCore {
     /// will land on, never the fresh item's 0 (audit round 2, p-impatient-1:
     /// ↺15 during a cold resume must not send the resume point to 0:00);
     /// otherwise the pended start.
+    ///
+    /// IN A FORAY A NUDGE IS A STEP ON THE FORAY'S CLOCK, WHOEVER ASKS (M2
+    /// drive 2026-10-01, the founder's "skip backwards didn't work during the
+    /// AI narration"). The car's back-15 / forward-30 (`onRemote`) used to
+    /// come straight here, to the EPISODE nudge: during a spoken line it
+    /// stepped from the clip's frozen playhead (or a line load's 0) in the
+    /// clip's own seconds and asked the reducer for a `.seek`, which
+    /// `.transitioning` refuses, so every press inside a line did nothing.
+    /// client.js installs its `nudgeBy` (the Foray clock, `nudgeAction`) for
+    /// the same press; so does this engine now, for the page's command and
+    /// the car's alike.
     private mutating func seekBy(_ deltaSec: Double, source: EngineSource) {
+        if forayTransport { return forayNudge(deltaSec, source: source) }
         guard let item = state.currentItem else { return refuse(.notLoaded) }
         let loading = state.loadedId != item.id && state.pendingLoad?.itemId == item.id ? state.pendingLoad?.startSec : nil
         let position = (state.loadedId == item.id ? deck.positionSec : nil) ?? loading ?? state.pendingStartSec ?? 0
@@ -2345,16 +2364,25 @@ public struct EngineCore {
         playIndex(0, startSec: nil, source: source)
     }
 
-    /// A scrub on the Foray clock (`seekTo` in a Foray): which clip it lands
-    /// in and where (`segmentAtElapsed`), then `scrubTarget`: another clip, or
-    /// a Foray with nothing loaded, is a load at the offset; the same clip is
-    /// a seek. A spoken line has no offset to seek to.
+    /// A scrub on the Foray clock (`seekTo` in a Foray, from the page, the
+    /// lock screen or the car): which item it lands in and where
+    /// (`segmentAtElapsed`), then `scrubTarget` (reference-engine.js
+    /// `_forayScrub`, client.js `foraySeek`):
+    ///
+    ///   - another item, a Foray with nothing loaded, or a RENDERED line in
+    ///     `.transitioning` (where the reducer refuses every seek) is a load
+    ///     at the offset; a spoken line elsewhere loads from its first word;
+    ///   - the SPOKEN line already sounding is said again from the top (the
+    ///     manager's restart): speech has no offset, and this used to answer
+    ///     nothing at all, silently;
+    ///   - the same clip, or a rendered line that is `.playing`, is a seek.
     private mutating func forayScrub(to elapsed: Double, source: EngineSource) {
         guard let at = ForayClock.segmentAtElapsed(forayItems, elapsed: elapsed),
               state.queue.indices.contains(at.index) else { return refuse(.notLoaded) }
         let item = state.queue[at.index]
         let scrub = TransportPolicy.scrubTarget(atIndex: Double(at.index), into: at.into, item: item.transportItem,
                                                 currentIndex: Double(state.currentIndex), stateType: state.stateType)
+        if scrub.restart { return restartCurrentItem(source: source) }
         if scrub.reload { return playIndex(at.index, startSec: scrub.offset, source: source) }
         guard let offset = scrub.offset else { return }
         cutSeamGap("seek")
@@ -2362,15 +2390,43 @@ public struct EngineCore {
         releaseSeamGap()
     }
 
-    /// A ↺15 / 30↻ nudge in a Foray: a step on the Foray clock, stopped short
-    /// of the total (`skipTarget(foray: true)`), then an ordinary scrub.
+    /// A back-15 / forward-30 nudge in a Foray (client.js `nudgeBy`,
+    /// reference-engine.js `_forayNudge`): a step on the Foray clock, stopped
+    /// short of the total (`skipTarget(foray: true)`). INSIDE the spoken line
+    /// now sounding the synthesiser has no offset, so `nudgeAction` says what
+    /// the press does: back says the line again, forward goes on to the item
+    /// after it, and forward from the closing line has nothing to go to
+    /// (refused `no-next`, never a silent nothing). Anywhere else it is an
+    /// ordinary scrub.
     private mutating func forayNudge(_ deltaSec: Double, source: EngineSource) {
         guard let item = state.currentItem else { return refuse(.notLoaded) }
+        let starts = ForayClock.segmentStarts(forayItems)
         let position = forayPositionSec(of: item)
-            ?? ForayClock.segmentStarts(forayItems)[Swift.max(0, state.currentIndex)]
+            ?? (starts.indices.contains(state.currentIndex) ? starts[state.currentIndex] : 0)
         guard let target = TransportPolicy.skipTarget(foray: true, positionSec: position, offsetSec: deltaSec,
                                                       durationSec: ForayClock.forayRuntimeSec(forayItems)) else { return }
-        forayScrub(to: target, source: source)
+        let at = ForayClock.segmentAtElapsed(forayItems, elapsed: target)
+        // `isNarrationPlayhead` (`_loadedIsSynth`): the spoken line IS what
+        // the playhead is on, not a speak() still in flight.
+        let speaking = state.narration.map { $0.itemId == item.id && state.loadedId == item.id } ?? false
+        switch TransportPolicy.nudgeAction(offsetSec: deltaSec, landsInCurrentItem: at?.index == state.currentIndex,
+                                           narrationPlayhead: speaking,
+                                           onLastItem: state.currentIndex >= state.queue.count - 1) {
+        case .restartLine: restartCurrentItem(source: source)
+        case .skipLine: next(source: source)
+        case .nothing: refuse(.noNext)
+        case .seek: forayScrub(to: target, source: source)
+        }
+    }
+
+    /// The manager's restart of the item the playhead is on
+    /// (`skipToPrevious`): from its first word for a line, its in-point for a
+    /// clip. Not `previous(source:)`, whose Foray rule goes to the item
+    /// BEFORE inside the restart window.
+    private mutating func restartCurrentItem(source: EngineSource) {
+        cutSeamGap("skipToPrevious")
+        begin(.skipPrevious, source: source)
+        releaseSeamGap()
     }
 
     /// `_warmNextSegment(at)`: name the item the next boundary will advance

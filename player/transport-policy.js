@@ -323,18 +323,36 @@ export function sourceOffsetFor(item, into) {
  * refuses a seek in `ended` — so a scrub back into the last clip reloads it,
  * the same as a scrub into any other clip does (audit 2026-09-22).
  *
+ * A NARRATION LINE REACHED BY ITS SEAM IS `transitioning`, AND THE REDUCER
+ * REFUSES EVERY SEEK THERE (M2 drive 2026-10-01, the founder's "skip backwards
+ * didn't work during the AI narration"). `handleSeek` keeps that refusal for
+ * the between-episode bridge it was written for, so a Foray never asks it: a
+ * scrub that stays inside a RENDERED line in `transitioning` re-enters the
+ * line at the offset (a load, like another clip), which is a seek in its own
+ * file as far as the listener can hear.
+ *
+ * `restart`: the scrub lands in the SPOKEN line already sounding. Speech has
+ * no offset (`sourceOffsetFor` is null), so the only honest answer is the line
+ * again from its first word — the manager's restart (`skipToPrevious`), never
+ * a seek nobody can perform and never nothing, which is what this used to
+ * answer (`offset: null, reload: false`: a press that did nothing, silently).
+ * A spoken line ELSEWHERE is an ordinary reload, which speaks it from the top.
+ *
  * @param {object} s
  * @param {{index:number, into:number}|null} s.at  where the Foray clock landed
  * @param {object|null} s.item       the playable item at `at.index`
  * @param {number} s.currentIndex    the manager's current index
  * @param {string|null} s.stateType  the manager's state type
- * @returns {{index:number, reload:boolean, offset:number|null}|null}
+ * @returns {{index:number, reload:boolean, restart:boolean, offset:number|null}|null}
  *   null when the clock found nowhere to land
  */
 export function scrubTarget({ at, item, currentIndex, stateType }) {
   if (!at) return null;
-  const reload = at.index !== currentIndex || stateType === "ended" || stateType === "idle";
-  return { index: at.index, reload, offset: sourceOffsetFor(item, at.into) };
+  const offset = sourceOffsetFor(item, at.into);
+  const elsewhere = at.index !== currentIndex || stateType === "ended" || stateType === "idle";
+  const restart = !elsewhere && offset === null;
+  const reload = elsewhere || (!restart && stateType === "transitioning");
+  return { index: at.index, reload, restart, offset };
 }
 
 /**
