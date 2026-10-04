@@ -2,6 +2,32 @@
 
 Per-topic ADRs live in `docs/adr/`. This file is the chronological record.
 
+## 2026-10-04 (an empty Now Playing album shows "4a" — issue #1006)
+
+Wyatt, 2026-10-04, verbatim (recorded on issue #1006): "when there is no album
+info to serve to a car/ wherever, we should populate that field with "4a"".
+
+- `albumOf(forayTitle, index, total)` in `player/media-session.js` (the
+  reference) and its ports `MediaMapping.swift` / `MediaMapping.java` returned
+  `""` when there was neither a Foray title nor a clip counter: a plain episode,
+  a playlist part, a narration line with no Foray around it. It now returns the
+  app's name, read from the existing `APP_NAME` constant (`EngineConstants.
+  MediaSession` on the native side, generated from the JS), never a new literal.
+  An album with a Foray title and/or a counter is unchanged.
+- Title and artist are unchanged. The rule "4a never credits anything a
+  listener hears" is about the credits and still holds; album is the
+  collection field, and with no collection the app is the true answer. The
+  `media-session.js` header (§1b) now says so.
+- **Why this does not reopen 2026-09-23's "4a / unknown / unknown"** (below):
+  that complaint was "4a" shown as the SONG with placeholder artist and album
+  because nothing was published. The song is still the episode, the artist is
+  still the show; only an album that was blank now reads "4a".
+- Visible effects: the car, lock screen and Bluetooth show "4a" under a single
+  episode; the Android notification's subtext, which was hidden for an empty
+  album (`PlaybackKeepAliveService`), now shows "4a" (intended). This replaces
+  the `media-session.js` §1b line "single-episode playback keeps an empty album
+  because a single episode is not a collection".
+
 ## 2026-10-03 (every episode row shows a few lines of its description)
 
 Wyatt, 2026-10-03, with an Apple Podcasts screenshot of a show page: "episodes
