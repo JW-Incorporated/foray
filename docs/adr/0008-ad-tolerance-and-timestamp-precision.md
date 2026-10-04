@@ -32,6 +32,37 @@ rejections and the rank/injection correlation), `docs/curation/catalogue-broaden
 digested in `docs/research/corpus/digests.md` entries 9, 48, 19 and 15 — 15
 (Chromaprint) is the fingerprint route named in §4 below.
 
+### Amendment — 2026-09-30: a ranged GET's Content-Range is a declaration, not a measurement
+
+Recorded on the owner's 2026-09-30 ruling (HA #24; `docs/DECISIONS.md`). The
+**Decision section below is unchanged**, and "No conclusion in this ADR rests on
+a HEAD request" stands as written. What this adds is the same finding about the
+instrument that replaced HEAD.
+
+1. **The ranged GET can be lied to in the same way.** Its `Content-Range` total
+   is what the server says the object is, not a count of bytes that arrived. On
+   a host caught serving the master file to a ranged GET while the assembled
+   file goes to an unranged client request — `atelier.flightcast.com`, found by
+   the probe grid in PR #323 — the ranged GET's byte evidence **admits
+   nothing**, however clean it looks. (All five DOAC samples read within 0.5 s of
+   the feed's duration while the delivered file carried 114 s more.)
+2. **Distrust is per `resolved_host`; verdicts are per show.** A host caught
+   once is distrusted for every show it serves. A show's own verdict is still its
+   own: one caught decode condemns it, and `MIN_SAMPLES_FOR_AD_FREE` (2) clean
+   decodes admit it. One clean decode is not enough on such a host.
+3. **The probe grid is a standing admission step** for every newly
+   `measured_clean` show, not a one-off: four requests, no body, and it can only
+   condemn (two lengths for one URL mean two resources). Agreement admits
+   nothing by itself.
+4. **The wide reading is rejected:** distrusting every ranged GET on every host
+   would void the evidence that cleared shows like Being an Engineer (41 of 41
+   at ratio 1.0000). The ranged GET stays the cheap screen everywhere a host
+   has not been caught.
+
+Implementation and rules: `tools/transcribe/README.md` §5 ("a ranged GET can lie
+too", rules 1–4) and the `decodeOverride` rules in
+`tools/segments/measure-suspects.mjs`.
+
 ## Context
 
 ### What is actually measured, and how
