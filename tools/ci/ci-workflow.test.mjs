@@ -231,8 +231,11 @@ test("ios-kit runs only when a Swift or engine path changed, on every event, and
      push and PR runs the 15-minute Mac job again, whatever changed; drop
      `!cancelled()` -> a failed engine-paths skips ios-kit on every event;
      compare `== 'true'` instead of `!= 'false'` -> the EMPTY outputs of a failed
-     engine-paths skip it too; drop the engine clause -> an engine input no
-     longer guarantees the macOS host run. */
+     engine-paths skip it too. The engine clause is a SAFEGUARD WITH NO EFFECT
+     TODAY: SWIFT_PREFIXES spreads ENGINE_PREFIXES (engine-ci.test.mjs pins
+     "every engine path is a Swift path"), so engine=true implies swift=true and
+     dropping `|| ...engine != 'false'` changes no run; only this text pin goes
+     red. It starts to matter only if someone narrows SWIFT_PREFIXES. */
   const job = codeOf("ios-kit");
   assert.match(job, /^ {4}needs: engine-paths$/m);
   assert.match(

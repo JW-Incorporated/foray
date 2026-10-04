@@ -157,10 +157,18 @@ jobs:
     # It is not a required check; the required `ios-gate` already encodes "no
     # Swift path changed = nothing to wait for" and passes in seconds then, so
     # a content PR's ios-kit was buying nothing but queue. SWIFT_PREFIXES
-    # (tools/ci/engine-ci.mjs) is deliberately wide — every SwiftPM manifest,
-    # the parity fixtures, mobile/'s lockfile, this file — and engine inputs
-    # are named too, so a parity change still gets its macOS host run beside
-    # engine-parity's Linux one.
+    # (tools/ci/engine-ci.mjs) is meant to name every file this job reads —
+    # every SwiftPM manifest, the parity fixtures, mobile/'s lockfile, the web
+    # jingle InterludeSeamTests pins by hash, this file — and it spreads
+    # ENGINE_PREFIXES, so a parity change still gets its macOS host run beside
+    # engine-parity's Linux one. That makes the `engine != 'false'` clause
+    # below a safeguard with no effect today (engine=true implies swift=true);
+    # it matters only if SWIFT_PREFIXES is ever narrowed. ONE KNOWN READ IS
+    # LEFT OUT ON PURPOSE: the parity harness's `$foray` lookup and
+    # committedForays count read data/forays.json, and listing it would put
+    # this job on every Foray publish; npm test's NE-29s (player/parity/
+    # run.test.js, a required job) checks the same reads on every PR. The
+    # reasoning and the accepted residual are over SWIFT_PREFIXES.
     #
     # The changed-path list is `changedFiles` in engine-ci.mjs, and every "could
     # not tell" there is "everything changed". A dispatch ON the default branch

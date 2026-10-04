@@ -1292,7 +1292,7 @@ const FLOORS = {
      changed", the parity family table, ios-gate's success-only verdict, and
      release refusal on a red engine-parity or ios-kit. Every test names its
      mutation; each was run. Zero slack: these become required checks. */
-  "tools/ci/engine-ci.test.mjs": 40, // 2026-10-04 (ios-kit path gate): +2 -- a skipped newest run counts as missing for the dispatch plan; the verdict waits on a skipped run, refuses after the grace, and ships only the replacement's success; 38 -> 40 // 2026-10-04: +3 -- release-checks dispatches ci.yml on an auto-merged tip with no checks, never over an existing run, only from the default branch at the released SHA; 35 -> 38
+  "tools/ci/engine-ci.test.mjs": 41, // 2026-10-04 (ios-kit path gate, review): +1 -- the web jingle InterludeSeamTests pins is a Swift path, data/forays.json deliberately is not; 40 -> 41 // 2026-10-04 (ios-kit path gate): +2 -- a skipped newest run counts as missing for the dispatch plan; the verdict waits on a skipped run, refuses after the grace, and ships only the replacement's success; 38 -> 40 // 2026-10-04: +3 -- release-checks dispatches ci.yml on an auto-merged tip with no checks, never over an existing run, only from the default branch at the released SHA; 35 -> 38
   /* The deck-drift rule (machinery audit finding 6). Decks whose PRs edit the
      deck in the same commit had a 0% false-claim rate; the drift is all in the
      ones where the marker floats free of the merge, and it runs both ways — one

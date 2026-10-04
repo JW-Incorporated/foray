@@ -103,6 +103,23 @@ test("Swift paths: any .swift, any SwiftPM manifest or lockfile, and what ios-ki
   }
 });
 
+test("the web jingle InterludeSeamTests pins by hash is a Swift path; data/forays.json deliberately is not", () => {
+  /* InterludeSeamTests.testTheAppsJingleIsTheWebAssetByHash reads
+     player/assets/interlude-placeholder.wav from the checkout and pins its
+     SHA-256, and ios-kit now runs only when a Swift path changed.
+     MUTATION: delete "player/assets/interlude-placeholder.wav" from
+     SWIFT_PREFIXES -> a re-exported jingle skips ios-kit and passes ios-gate,
+     and the red first shows on a dispatched release ios-kit. MUTATION: add
+     "data/forays.json" to SWIFT_PREFIXES -> every Foray publish waits ~15
+     minutes of macOS for what npm test's NE-29s already checked (the choice is
+     stated over SWIFT_PREFIXES). */
+  assert.equal(isSwiftPath("player/assets/interlude-placeholder.wav"), true);
+  assert.equal(classifyChanges(["player/assets/interlude-placeholder.wav"]).swift, true);
+  assert.equal(isSwiftPath("player/assets/other.wav"), false, "only the pinned asset, not the web player's assets");
+  assert.equal(isSwiftPath("data/forays.json"), false);
+  assert.equal(isEnginePath("data/forays.json"), false);
+});
+
 test("every engine path is a Swift path (ios-kit runs everything engine-parity does)", () => {
   /* MUTATION: build SWIFT_PREFIXES without spreading ENGINE_PREFIXES -> a
      fixture-only PR short-circuits ios-gate while ios-kit's plugin wrapper,

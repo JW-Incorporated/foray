@@ -61,14 +61,37 @@ export const ENGINE_PREFIXES = [
  *  wrappers read player/parity/ in place), the generator that writes
  *  EngineConstants.swift, every SwiftPM manifest and lockfile, the mobile/
  *  lockfile ios-kit installs @capacitor/preferences from for the Preferences
- *  pin, and the job's own definition. Over-inclusion costs a macOS run;
- *  under-inclusion lets a red Swift build merge behind a green gate. */
+ *  pin, the web jingle InterludeSeamTests reads from the checkout and pins by
+ *  SHA-256 (re-export it, any byte, and ios-kit goes red), and the job's own
+ *  definition. Over-inclusion costs a macOS run; under-inclusion lets a red
+ *  Swift build merge behind a green gate — and, since ios-kit itself is gated
+ *  on this list (2026-10-04), lets the break surface first as a red dispatched
+ *  ios-kit that refuses a TestFlight.
+ *
+ *  ENGINE_PREFIXES is spread in first, so every engine path is a Swift path:
+ *  classifyChanges reports swift=true whenever engine=true, and narrowing this
+ *  list must keep that true (engine-ci.test.mjs pins it).
+ *
+ *  data/forays.json IS READ BY ios-kit AND IS DELIBERATELY NOT HERE (nor in
+ *  ENGINE_PREFIXES). The parity harness reads it for two things only: the
+ *  `$foray: "<id>"` lookup (a Foray's raw record; the build the Swift runner
+ *  checks comes from player/parity/foray-builds.json, an engine path) and
+ *  committedForays' "at least two". Both are computed over the same file by
+ *  player/parity/run.test.js (NE-29s: every committed case, expanded from
+ *  data/forays.json and run over the table) in `npm test`, on every PR, in a
+ *  REQUIRED job — so a publish that deletes a Foray a case names, or breaks an
+ *  authored expect, is red there first. Listing it would put ~15 minutes of
+ *  macOS (and, in ENGINE_PREFIXES, a parity run) on every Foray publish to
+ *  re-check what Node already checked. Accepted residual: a publish whose new
+ *  data exposes a latent Swift/JS divergence the fixtures already reach, which
+ *  surfaces on the next engine or Swift PR (engine-parity has the same gap). */
 export const SWIFT_PREFIXES = [
   ...ENGINE_PREFIXES,
   "ios/",
   "mobile/plugins/",
   "mobile/package.json",
   "mobile/package-lock.json",
+  "player/assets/interlude-placeholder.wav",
 ];
 
 const SWIFT_BASENAMES = new Set(["Package.swift", "Package.resolved"]);
