@@ -19,6 +19,13 @@
 // the download was 44,961,612. So this uses a 2-byte ranged GET and reads the
 // true total out of Content-Range -- one tiny request per episode, no download.
 //
+// A RANGED GET CAN BE LIED TO AS WELL. `atelier.flightcast.com` serves the
+// master's length to ranged requests and the assembled file to unranged client
+// requests (README section "a ranged GET can lie too", HUMAN-ACTIONS #24, the
+// ADR-0008 amendment of 2026-09-30). `rangedGetTrusted()` below is the rule;
+// nothing that sizes a pad may read a `Content-Range` total from a host on
+// `RANGED_GET_UNTRUSTED_HOSTS`.
+//
 // Ground truth (episodes downloaded in full, 2026-08-15):
 //   Stuff You Should Know 1.27 / 1.17 | Odd Lots 1.15 / 1.14
 //   This Podcast Will Kill You 1.10 / 1.10 | Being an Engineer 1.000 / 1.000
@@ -117,6 +124,38 @@ export const AD_FREE_THRESHOLD = 1.01;
  * the same container/tag noise and nothing larger.
  */
 export const AD_FREE_FLOOR = 0.99;
+
+/**
+ * Origins whose ranged GET cannot be trusted for a size (README section "a
+ * ranged GET can lie too"; HUMAN-ACTIONS #24, ruled 2026-09-30: distrust is
+ * per host, and host-only, not every ranged GET everywhere). On these a ranged
+ * request is served the ad-free master's length while an unranged client
+ * request gets the assembled file, so a `Content-Range` total from them is a
+ * declaration, not a measurement.
+ */
+export const RANGED_GET_UNTRUSTED_HOSTS = Object.freeze(["atelier.flightcast.com", "episode.flightcast.com"]);
+
+/**
+ * May a `Content-Range` total from this URL (or bare host, or host:port) be
+ * read as a measurement? `false` for the untrusted origins and their
+ * subdomains, and `false` for anything this cannot name: a non-string, an
+ * empty string, an unparseable value, a single-label host such as
+ * `localhost`, a trailing dot, or an IPv6 literal (the hostname regex refuses
+ * the brackets). Ports are stripped by the URL parse. Pure; no network.
+ */
+export function rangedGetTrusted(urlOrHost) {
+  if (typeof urlOrHost !== "string" || urlOrHost.trim() === "") return false;
+  const s = urlOrHost.trim().toLowerCase();
+  let url;
+  try {
+    url = new URL(s.includes("://") ? s : `https://${s}`);
+  } catch {
+    return false;
+  }
+  const host = url.hostname;
+  if (!/^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/.test(host)) return false;
+  return !RANGED_GET_UNTRUSTED_HOSTS.some((h) => host === h || host.endsWith(`.${h}`));
+}
 
 /** Said out loud on the record, because an unexplained "unknown" is
     indistinguishable from a failed fetch, and the two want different follow-up:
