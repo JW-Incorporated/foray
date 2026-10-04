@@ -660,7 +660,7 @@ export function renderWaitingBlock(queue, opts = {}) {
   if (blocked.length) {
     const n = blocked.length;
     lines.push(
-      `**${n} PR${n === 1 ? "" : "s"} would be waiting on you but conflict${n === 1 ? "s" : ""} with main first (label \`merge-conflict\`):**`
+      `**${n} PR${n === 1 ? "" : "s"} would be waiting on you but conflict${n === 1 ? "s" : ""} with main first (label \`${CONFLICT_LABEL}\`):**`
     );
     for (const item of blocked) {
       const link = item.url ? `[#${item.number}](${item.url})` : `#${item.number}`;

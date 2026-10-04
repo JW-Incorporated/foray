@@ -128,6 +128,8 @@ test("REST head/base shapes normalise, including fork detection", () => {
 test("the row link is the PR page, never the REST endpoint (#309)", () => {
   // The REST pull object carries both: `url` is the API endpoint and
   // `html_url` the page. The founder-waiting table must link the page.
+  // Mutation that turns this red: restore `url: raw.url ?? raw.html_url ?? ""`
+  // in normalizePr.
   const rest = normalizePr({
     number: 288,
     url: "https://api.github.com/repos/o/r/pulls/288",
@@ -537,6 +539,9 @@ test("a conflicting PR is not queued to a founder — that is the author's job",
 test("a conflicting PR that needs a founder leaves the queue but is reported as blocked (#312)", () => {
   // Off the queue is right (a founder should not be handed a rebase); off the
   // page is the #312 hole, because the author is usually a session that ended.
+  // Mutation that turns this red: delete the `blocked.push({...})` block in
+  // planFounderQueue (blocked stays []). Dropping `decision.needsFounder &&`
+  // from its condition turns the last assertion red.
   const { queue, blocked, actions } = planFounderQueue([
     pr({ number: 288, files: [".github/workflows/ci.yml"], mergeable: "CONFLICTING" }),
   ]);
@@ -618,6 +623,8 @@ test("the block renders a table row per queued PR with a link", () => {
 });
 
 test("renderWaitingBlock lists blocked PRs under the table, with links (#312)", () => {
+  // Mutation that turns this red: delete the `if (blocked.length) {...}`
+  // paragraph in renderWaitingBlock (or make its condition `false`).
   const b = renderWaitingBlock([], {
     repo: "o/r",
     blocked: [{ number: 5, title: "T", url: "https://github.com/o/r/pull/5", reason: "R" }],
@@ -640,6 +647,9 @@ test("renderWaitingBlock lists blocked PRs under the table, with links (#312)", 
 });
 
 test("no blocked PRs renders exactly today's block (#312)", () => {
+  // Mutation that turns this red: make the paragraph unconditional
+  // (`if (true)`), i.e. always print the header -- an empty blocked list would
+  // then churn HUMAN-ACTIONS.md on every sweep.
   const q = planFounderQueue([pr({ files: ["CLAUDE.md"] })]).queue;
   assert.equal(renderWaitingBlock(q), renderWaitingBlock(q, { blocked: [] }));
   assert.equal(renderWaitingBlock([]), renderWaitingBlock([], { blocked: [] }));
