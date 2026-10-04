@@ -82,7 +82,7 @@
 **Why:** M3 makes the car-resume rules final: 4a relaunching after iOS closed it (DV-7a), a car switched off and on, and the provisional timings. Only your car can show them; the pastes settle the values.
 
 **Steps:**
-1. Use build **Claude adds here** (or later). TestFlight → 4a → Automatic Updates off.
+1. Use build **2026100402** (or later). It also carries the clip-load retry (#981), approximate loads for CBR clips (#980) and skip during narration (#979), so the M2 failures are re-tested here. TestFlight → 4a → Automatic Updates off.
 2. Follow `docs/native-engine-m3-drive-test.md`: step 0, then the 10-minute desk pre-flight.
 3. DV-7a: play, pause, Developer → Simulate system termination, then lock the phone (4a closes itself). Press the car's play.
 4. DV-7b: force-quit 4a from the app switcher, then press the car's play. Note who plays.
