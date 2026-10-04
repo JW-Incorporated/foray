@@ -311,6 +311,19 @@ test("NE-06: ios-checks is behind the guard, reads checks, and waits on Linux", 
   assert.doesNotMatch(rjob("ios", "android"), /if:\s*always\(\)/, "an always() on ios would build a refused SHA");
 });
 
+test("2026-10-04: ios-checks may dispatch ci.yml, and tells release-checks which branch it is on", () => {
+  /* An auto-merged tip of main has no CI run (GITHUB_TOKEN pushes create none),
+     so release-checks dispatches ci.yml when both checks are absent
+     (engine-ci.mjs releaseDispatchPlan). MUTATION: drop `actions: write` -> the
+     dispatch is a 403 and every auto-merged tip is refused again; drop REF_NAME
+     or DEFAULT_BRANCH -> the plan cannot tell it is on main and never dispatches. */
+  const job = rjob("ios-checks", "ios");
+  assert.match(job, /^ {6}actions: write$/m);
+  const s = step(WF, "engine-parity and ios-kit are green on this exact SHA") ?? "";
+  assert.ok(s.includes("REF_NAME: ${{ github.ref_name }}"), "REF_NAME is not passed to release-checks");
+  assert.ok(s.includes("DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}"), "DEFAULT_BRANCH is not passed to release-checks");
+});
+
 test("NE-06: the summary names a refusal, so a skipped iOS is not mistaken for a credential gap", () => {
   /* MUTATION: drop IOS_CHECKS from the summary -> a refused release reads
      "iOS not reached", which the header teaches readers to take as a missing
