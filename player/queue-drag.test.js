@@ -206,3 +206,30 @@ test("a single-row list never commits", () => {
   assert.equal(down.offsetPx, 880);
   assert.deepEqual(endRowDrag(down), { commit: false, from: 0, to: 0 });
 });
+
+/* ---------- the list scrolling under the finger ---------- */
+
+/* Integration review (2026-10-04): autoscroll moves the list while the finger
+   holds still, so the slot must follow the LIST, not the viewport. Eight
+   56 px rows, row 0 pressed at y=28 with the page at scrollY 0; the finger
+   parks on the bottom edge (y=200, between row 3 and row 4 on the screen)
+   while the page scrolls.
+   MUTATION: set `scrolled` to 0 in `moveRowDrag` and the slot stays at 3 and
+   the offset at 172, so every assertion after the first fails. */
+test("a list that scrolls under a held finger moves the slot and the row with it", () => {
+  const tops = [0, 56, 112, 168, 224, 280, 336, 392];
+  let s = startRowDrag({ index: 0, y: 28, t: 0, rowTops: tops, scrollY: 0 });
+  s = moveRowDrag(s, 200, 16, 0);
+  assert.equal(s.over, 3, "before any scroll: finger past row 3's midpoint (196)");
+  assert.equal(s.offsetPx, 172);
+  // The page autoscrolls 112 px; the finger has not moved on the screen.
+  s = moveRowDrag(s, 200, 32, 112);
+  assert.equal(s.over, 5, "list y 312 is past row 5's midpoint (308)");
+  assert.equal(s.offsetPx, 284, "the row is translated by finger travel PLUS the scroll, so it stays under the finger");
+  assert.deepEqual(endRowDrag(s), { commit: true, from: 0, to: 5 });
+  // Scrolling back up with the finger still parked brings the slot back.
+  s = moveRowDrag(s, 200, 48, 0);
+  assert.equal(s.over, 3);
+  // A caller that never passes scrollY gets the viewport rule unchanged.
+  assert.equal(moveRowDrag(startRowDrag({ index: 0, y: 28, t: 0, rowTops: tops }), 200, 16).over, 3);
+});

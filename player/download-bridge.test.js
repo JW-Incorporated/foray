@@ -19,7 +19,7 @@ import assert from "node:assert/strict";
 
 import {
   DOWNLOADS_PLUGIN, USER_AGENT, CALL_TIMEOUT_MS, DOWNLOAD_EVENTS, SITE_URL,
-  createDownloadBridge,
+  createDownloadBridge, userAgentFor,
 } from "./download-bridge.js";
 
 /** A bridge that records every `nativePromise` call and answers `answer`. */
@@ -189,8 +189,46 @@ test("removeAll, list and usage exist, take no arguments and reach the plugin by
 test("USER_AGENT is `4a/<build> (+https://jw-incorporated.github.io/foray/)`, build \"dev\" off a stamped host", () => {
   assert.equal(SITE_URL, "https://jw-incorporated.github.io/foray/");
   assert.match(USER_AGENT, /^4a\/[^\s()]+ \(\+https:\/\/jw-incorporated\.github\.io\/foray\/\)$/);
-  // This test runs with no `window`, so the build token is the fallback.
+  // The default, before the caller knows the build (userAgentFor below).
   assert.equal(USER_AGENT, "4a/dev (+https://jw-incorporated.github.io/foray/)");
+});
+
+/* Integration review (2026-10-04): the deadline used to outlive the answer —
+   every settled call left a ten-second timer behind (this very suite took
+   10 s to exit because of it), and the page will `list()` on every resume.
+   MUTATION: drop the `clearTimeoutFn(timer)` line in `call` and the
+   `cleared` assertion fails. */
+test("an answered call clears its deadline; the timer is not left running", async () => {
+  const pending = new Map();
+  const cleared = [];
+  let next = 100;
+  const setTimeoutFn = (fn, ms) => { const h = next++; pending.set(h, { fn, ms }); return h; };
+  const clearTimeoutFn = (h) => { cleared.push(h); pending.delete(h); };
+  const { bridge } = fakeBridge({ answer: { ok: true, bytes: 5 } });
+  const dl = createDownloadBridge({ bridge, setTimeoutFn, clearTimeoutFn });
+  const r = await dl.usage();
+  assert.deepEqual(r, { ok: true, bytes: 5 });
+  assert.deepEqual(cleared, [100], "the deadline armed for this call is cleared once it answers");
+  assert.equal(pending.size, 0, "no timer is left armed");
+  // A rejection settles the same way.
+  const rejecting = createDownloadBridge({ bridge: { nativePromise: () => Promise.reject("busy") }, setTimeoutFn, clearTimeoutFn });
+  assert.deepEqual(await rejecting.list(), { ok: false, reason: "busy" });
+  assert.deepEqual(cleared, [100, 101]);
+  assert.equal(pending.size, 0);
+});
+
+/* MUTATION: return `4a/${String(build)} (+${SITE_URL})` unsanitised in
+   `userAgentFor` and the "1.4 (37)" assertion fails; drop the `|| "dev"`
+   fallback and the empty-build assertions fail. */
+test("userAgentFor composes the build into one product token, and an absent build is dev", () => {
+  assert.equal(userAgentFor("37"), "4a/37 (+https://jw-incorporated.github.io/foray/)");
+  assert.equal(userAgentFor(37), "4a/37 (+https://jw-incorporated.github.io/foray/)");
+  // A marketing version with a build in parentheses is still ONE token.
+  assert.equal(userAgentFor("1.4 (37)"), "4a/1.4-37 (+https://jw-incorporated.github.io/foray/)");
+  for (const none of [null, undefined, "", "  ", "()", NaN, {}]) {
+    assert.equal(userAgentFor(none), "4a/dev (+https://jw-incorporated.github.io/foray/)", String(none));
+  }
+  assert.equal(USER_AGENT, userAgentFor(null));
 });
 
 test("a resolved answer with no ok of its own reads as ok: true; an explicit ok: false is believed", async () => {

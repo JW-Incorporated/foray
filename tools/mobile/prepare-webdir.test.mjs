@@ -1966,10 +1966,20 @@ test("REAL REPO: the sliced bundle, its budgets and the headroom that is left", 
          decides. So the honest options were a measured raise or a tranche
          that cannot land; this is the raise, written in.
 
-         WHAT 2.8 MB BUYS: ~102 KB over the branch at 2.70 MB — ~50 player
-         cards at the measured ~2 KB each, or ~30 nights of item-tags — and it
-         still fires ~200 KB before the 3 MB cap, so the alarm arrives with
-         time to act. If this goes red again and the cause is item-tags, the
+         RE-MEASURED 2026-10-04 at the merge of main into the branch (LF,
+         minified, as CI measures it): main alone is 2,829,212 B — 1.9 KB
+         under 2.7 MB, so main would fire this line on its own within a card
+         or two. The tranche on top is 2,846,594 B: +17.4 KB, all of it the
+         seven new modules (queue-order 1.0, queue-drag 1.6, queue-swipe 1.5,
+         tail-fill 1.7, download-store 6.6, download-bridge 2.1, show-alerts
+         2.1 KB) plus continuation.js +0.4 KB and seven preload lines in
+         index.html +0.4 KB. Nothing else moved; the growth is real and is
+         exactly these cards.
+
+         WHAT 2.8 MB BUYS: ~87 KB over the branch today — ~40 player cards at
+         the measured ~2 KB each, or ~25 nights of item-tags — and it still
+         fires ~205 KB before the 3 MB cap, so the alarm arrives with time to
+         act. If this goes red again and the cause is item-tags, the
          2026-09-04 instruction stands: build the df sidecar, do not raise it.
          If the cause is feature code again, the next lever is the one named
          above (the Kokoro probe's ~66 KB), argued with the founder first. */

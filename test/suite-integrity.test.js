@@ -123,8 +123,8 @@ const FLOORS = {
      now playing ribbon". The POINTER to the last ordinary episode — position is
      not stored here, `cp_pos:` has owned that since #26, and two of these tests
      exist only to pin that separation. */
-  "player/download-store.test.js": 13, // PQ-16 (#29)
-  "player/download-bridge.test.js": 10, // PQ-17 (#29) // integration review: a resolved answer without ok reads as ok: true; 9 -> 10
+  "player/download-store.test.js": 16, // PQ-16 (#29) // integration review (2026-10-04): the iPhone path is percent-encoded into its file:// URL (Application Support has a space; URL(string:) is nil for it on iOS 15/16), a late progress tick never un-finishes a done row, and reportFromEvent maps the bridge events onto record statuses; 13 -> 16
+  "player/download-bridge.test.js": 12, // PQ-17 (#29) // integration review: a resolved answer without ok reads as ok: true; 9 -> 10 // integration review (2026-10-04): an answered call clears its deadline, and userAgentFor(build) replaces the never-set window.__forayBuild; 10 -> 12
   "player/episode-progress.test.js": 23, // 2026-09-22 audit theme L: `episodeProgress`, the one reading of a stored position (played / in-progress / sampled / unplayed) that Jump back in and the episode rows share, on position-store's own thresholds; 19 -> 23
   /* 2026-09-22 (audit L2, founder report 3): which build wrote a diagnostics
      record — the web deploy id on both hosts and the native build number in the
@@ -263,7 +263,7 @@ const FLOORS = {
      upward correction the module header explains), and the L2 rule that only
      a claimed drag released over another slot ever commits — on pointerup,
      never on the click after. Every test names its mutation; each was run. */
-  "player/queue-drag.test.js": 9, // PQ-03 (#762)
+  "player/queue-drag.test.js": 10, // PQ-03 (#762) // integration review (2026-10-04): the slot and the row follow the LIST when it scrolls under a held finger (autoscroll), not the viewport; 9 -> 10
   /* Swipe-left-to-remove on an Up Next row (#762). The same pure gesture
      shape as the two above, floored for the same reason: the direction lock,
      the 96 px distance, the flick and the rule that a scroll can never become

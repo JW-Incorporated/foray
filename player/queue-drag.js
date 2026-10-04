@@ -43,6 +43,18 @@
  * row 2's place). The `+ 1` on the upward branch in `moveRowDrag` is that
  * correction — see `an upward drag displaces a row only past its midpoint` in
  * the test file, which is the test that owns it.
+ *
+ * THE LIST SCROLLS UNDER A HELD FINGER (integration review, 2026-10-04).
+ * `autoscrollDelta` exists so a row can be carried past the bottom of the
+ * screen — and the moment the page scrolls, `rowTops` (read in viewport
+ * coordinates at press) and the finger's `clientY` stop sharing an origin: a
+ * finger parked on the bottom edge while the list scrolls 300 px reads as
+ * "still over the same slot" forever, so the row could never be carried past
+ * what was visible at press, which is the one case autoscroll is for. Both
+ * `startRowDrag` and `moveRowDrag` therefore take the scroller's offset
+ * (`scrollY`, default 0) and every slot is computed in LIST coordinates,
+ * `y + (scrollY - startScrollY)`; `offsetPx` is in the same coordinates, so
+ * the row's `translateY` keeps it under the finger while the list moves.
  */
 
 /** How far, in CSS px, the finger must travel from the press before the row
@@ -124,12 +136,15 @@ function slotAt(rowTops, fromIndex, y) {
  * @param {number} press.y          pointer y in CSS px
  * @param {number} press.t          timestamp in ms
  * @param {number[]} press.rowTops  top edge of every row, list order, N >= 1
+ * @param {number} [press.scrollY]  the scroller's offset at the press (e.g.
+ *        `window.scrollY`); see "THE LIST SCROLLS UNDER A HELD FINGER"
  */
-export function startRowDrag({ index, y, t, rowTops }) {
+export function startRowDrag({ index, y, t, rowTops, scrollY = 0 }) {
   return {
     index,
     fromIndex: index,
     startY: y,
+    startScrollY: Number.isFinite(scrollY) ? scrollY : 0,
     y,
     t,
     rowTops: [...rowTops],
@@ -148,14 +163,22 @@ export function startRowDrag({ index, y, t, rowTops }) {
  * or not, so the caller can decide for itself whether to paint under the
  * lock; `endRowDrag` is what refuses to commit an unclaimed gesture.
  *
+ * `scrollY` is the scroller's offset now (default 0, i.e. it never moved):
+ * the finger is placed in list coordinates by how far the list has scrolled
+ * since the press, and so is `offsetPx`.
+ *
  * MUTATION TO BREAK THIS: change `>=` to `>` on the lock comparison and
  * `the handle lock opens at 6 px, not 5` fails.
+ * MUTATION TO BREAK THE SCROLL: set `scrolled` to 0 and `a list that scrolls
+ * under a held finger moves the slot and the row with it` fails.
  */
-export function moveRowDrag(state, y, t) {
+export function moveRowDrag(state, y, t, scrollY = 0) {
   if (!state) return state;
-  const offsetPx = y - state.startY;
+  const scrolled = (Number.isFinite(scrollY) ? scrollY : 0) - (state.startScrollY || 0);
+  const listY = y + scrolled;
+  const offsetPx = listY - state.startY;
   const claimed = state.claimed || Math.abs(offsetPx) >= HANDLE_LOCK_PX;
-  const over = slotAt(state.rowTops, state.fromIndex, y);
+  const over = slotAt(state.rowTops, state.fromIndex, listY);
   return { ...state, y, t, offsetPx, claimed, over };
 }
 

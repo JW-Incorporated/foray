@@ -45,15 +45,23 @@
  * bridge has it, else its thinner primitive `nativeCallback(plugin,
  * "addListener", { eventName })`, else nothing (a page with no event path
  * still works — it can `list()` on resume). Every event reaches the caller as
- * `onEvent(name, payload)`, so `download-store.js`'s `applyProgress` sees the
- * event name it already keys on.
+ * `onEvent(name, payload)`, untouched; `download-store.js`'s
+ * `reportFromEvent(name, payload)` turns it into the record status
+ * `applyProgress` keys on (`downloadFailed`'s own `status` is the HTTP one).
  *
  * THE USER AGENT. Downloads leave the WebView, so the request would otherwise
  * carry whatever `URLSession`/`DownloadManager` sends by default. The plugin
  * is told to send `4a/<build> (+https://jw-incorporated.github.io/foray/)`: a
  * podcast host reading its logs sees the app's name and a URL that explains
- * it, which is the courtesy every well-behaved podcast client extends. The
- * build is `window.__forayBuild` when a host sets it, else `"dev"`. */
+ * it, which is the courtesy every well-behaved podcast client extends.
+ *
+ * WHERE THE BUILD COMES FROM (integration review, 2026-10-04). The plan named
+ * a `window.__forayBuild` global; nothing in this repo sets one, so reading it
+ * was a path that could only ever answer "dev". The app's real build arrives
+ * ASYNCHRONOUSLY, from `@capacitor/app`'s `getInfo` (`player/build-stamp.js`),
+ * after this module has evaluated — so a constant cannot carry it. Hence
+ * `userAgentFor(build)`: the caller that enqueues (PQ-18) passes the build
+ * build-stamp read, and `USER_AGENT` is only the default, `4a/dev`. */
 
 /** The plugin's registered name on both platforms (PQ-20 iOS, PQ-22 Android). */
 export const DOWNLOADS_PLUGIN = "ForayDownloads";
@@ -67,19 +75,22 @@ export const DOWNLOAD_EVENTS = Object.freeze(["downloadProgress", "downloadDone"
 /** The page the UA points a curious host at. */
 export const SITE_URL = "https://jw-incorporated.github.io/foray/";
 
-function buildToken() {
-  try {
-    const b = typeof window !== "undefined" ? window.__forayBuild : undefined;
-    const s = typeof b === "string" ? b.trim() : typeof b === "number" && Number.isFinite(b) ? String(b) : "";
-    return s || "dev";
-  } catch (_) {
-    return "dev";
-  }
+/** `4a/<build> (+https://jw-incorporated.github.io/foray/)` for the build
+    `player/build-stamp.js` read (a string or a number), else `4a/dev`. A UA
+    product token is one word, so anything outside `[A-Za-z0-9._-]` (the
+    space and parentheses of a "1.4 (37)" version string) becomes one `-`,
+    and a token left empty is `dev`.
+    MUTATION TO BREAK THIS: return `4a/${String(build)} (+${SITE_URL})`
+    unsanitised and `userAgentFor composes the build into one product token`
+    fails. */
+export function userAgentFor(build) {
+  const raw = typeof build === "string" ? build : typeof build === "number" && Number.isFinite(build) ? String(build) : "";
+  const token = raw.trim().replace(/[^A-Za-z0-9._-]+/g, "-").replace(/^-+|-+$/g, "");
+  return `4a/${token || "dev"} (+${SITE_URL})`;
 }
 
-/** `4a/<build> (+https://jw-incorporated.github.io/foray/)` — build from
-    `window.__forayBuild`, else `"dev"`. */
-export const USER_AGENT = `4a/${buildToken()} (+${SITE_URL})`;
+/** The default UA, before the caller knows the build: `4a/dev (+…)`. */
+export const USER_AGENT = userAgentFor(null);
 
 /** Subscribe `fn` to one plugin event — the `listen(fn)` helper of
     `native-engine.js` (lines 116–124), copied exactly, parameterised by name.
@@ -106,6 +117,9 @@ function listen(cap, eventName, fn) {
  *        receives `downloadProgress` / `downloadDone` / `downloadFailed`
  * @param {Function} [args.setTimeoutFn]   injected so a test can fire the
  *        deadline without waiting ten seconds
+ * @param {Function} [args.clearTimeoutFn] its pair: the deadline is cleared
+ *        the moment the plugin answers, so a call that settled in 40 ms does
+ *        not hold a ten-second timer (one per `list()` on every resume)
  * @returns {null | {
  *   enqueue(opts: {id: string, url: string, userAgent: string, allowCellular: boolean}): Promise<object>,
  *   cancel(opts: {id: string}): Promise<object>,
@@ -116,20 +130,24 @@ function listen(cap, eventName, fn) {
  *   fileSrc(opts: {path: string}): string,
  * }}
  */
-export function createDownloadBridge({ bridge, onEvent, setTimeoutFn = setTimeout } = {}) {
+export function createDownloadBridge({ bridge, onEvent, setTimeoutFn = setTimeout, clearTimeoutFn = clearTimeout } = {}) {
   if (typeof bridge?.nativePromise !== "function") return null;
 
-  /** One native call, raced against the deadline; resolves, never rejects. */
+  /** One native call, raced against the deadline; resolves, never rejects.
+      MUTATION TO BREAK THE CLEAR: drop the `clearTimeoutFn(timer)` line and
+      `an answered call clears its deadline` fails. */
   function call(method, options) {
     return new Promise((resolve) => {
       let settled = false;
+      let timer = null;
       const settle = (value) => {
         if (settled) return;
         settled = true;
+        try { if (timer != null) clearTimeoutFn(timer); } catch (_) { /* a timer we cannot clear only fires into a settled call */ }
         resolve(value);
       };
       try {
-        setTimeoutFn(() => settle({ ok: false, reason: "timeout" }), CALL_TIMEOUT_MS);
+        timer = setTimeoutFn(() => settle({ ok: false, reason: "timeout" }), CALL_TIMEOUT_MS);
       } catch (_) { /* a host with no timer still gets the plugin's answer */ }
       Promise.resolve()
         .then(() => bridge.nativePromise(DOWNLOADS_PLUGIN, method, options))

@@ -19,7 +19,7 @@ import assert from "node:assert/strict";
 import {
   KEY, DEFAULT_CAP_BYTES, STATUSES,
   readDownloads, writeDownloads, applyProgress, markPlayed, markMissing,
-  evictionPlan, playSource, localPlayable, usageLine,
+  evictionPlan, playSource, localPlayable, usageLine, reportFromEvent,
 } from "./download-store.js";
 import { NEAR_END_SEC, MIN_RESUME_SEC } from "./position-store.js";
 
@@ -109,6 +109,53 @@ test("applyProgress: `done` without a path is refused (identity); with one it la
   assert.equal(applyProgress(v2, { status: "queued" }), v2, "no id is refused (identity)");
 });
 
+/* Integration review (2026-10-04): progress and completion travel different
+   paths (PQ-22 polls every 2 s; a broadcast reports completion), so a tick
+   can land after `done`.
+   MUTATION: delete the `IN_FLIGHT` guard line in `applyProgress` and the
+   first assertion fails (the row reads "downloading" with its path still set). */
+test("a late progress tick after done is refused; a missing file still moves a done row", () => {
+  const v0 = { settings: {}, items: {} };
+  const v1 = applyProgress(v0, { id: "e1", status: "done", bytes: 10 * MB, path: "/files/e1.mp3", now: "2026-09-10T00:01:00Z" });
+  assert.equal(applyProgress(v1, { id: "e1", status: "downloading", bytes: 9 * MB, total: 10 * MB }), v1, "a late downloading tick is identity");
+  assert.equal(applyProgress(v1, { id: "e1", status: "queued" }), v1, "so is a late queued");
+  // Only in-flight statuses are refused: the file can still go missing.
+  assert.equal(applyProgress(v1, { id: "e1", status: "missing" }).items.e1.status, "missing");
+  // And an episode with no done row downloads as before.
+  assert.equal(applyProgress(v0, { id: "e2", status: "downloading", bytes: 1, total: 2 }).items.e2.status, "downloading");
+});
+
+/* Integration review (2026-10-04): the bridge forwards (name, payload) and
+   nothing mapped that onto a record status; `downloadFailed`'s `status` is
+   the HTTP one, which `applyProgress` would drop as unknown.
+   MUTATION: return `status: p.status` for `downloadFailed` and the 403 and
+   500 assertions fail; return `null` for `downloadProgress` and the first does. */
+test("reportFromEvent maps each bridge event to a record status, end to end through applyProgress", () => {
+  const now = "2026-09-10T00:00:00Z";
+  assert.deepEqual(reportFromEvent("downloadProgress", { id: "e1", bytes: 43, total: 100 }, { now }),
+    { id: "e1", status: "downloading", bytes: 43, total: 100, now });
+  const done1 = reportFromEvent("downloadDone", { id: "e1", path: "/files/e1.bin", bytes: 100 }, { webSrc: "https://localhost/_capacitor_file_/files/e1.bin", now });
+  assert.deepEqual(done1, { id: "e1", status: "done", path: "/files/e1.bin", bytes: 100, total: 100, webSrc: "https://localhost/_capacitor_file_/files/e1.bin", now });
+  assert.deepEqual(reportFromEvent("downloadFailed", { id: "e2", reason: "forbidden", status: 403 }, { now }),
+    { id: "e2", status: "unplayable-here", reason: "forbidden", now }, "403: the host refuses this device (PQ-20/22)");
+  assert.deepEqual(reportFromEvent("downloadFailed", { id: "e3", status: 500 }, { now }),
+    { id: "e3", status: "failed", reason: "http 500", now }, "anything else is a retryable failure, reason from the HTTP status");
+  assert.equal(reportFromEvent("downloadFailed", { id: "e4", reason: "unplayable-here" }).status, "unplayable-here");
+  assert.equal(reportFromEvent("downloadPaused", { id: "e1" }), null, "an unknown event is null");
+  assert.equal(reportFromEvent("downloadDone", { path: "/x" }), null, "no id is null");
+  assert.equal(reportFromEvent("downloadDone", null), null);
+  // End to end: the three events drive one record the way the page will.
+  let v = { settings: {}, items: {} };
+  v = applyProgress(v, reportFromEvent("downloadProgress", { id: "e1", bytes: 43, total: 100 }, { now }));
+  assert.equal(v.items.e1.status, "downloading");
+  v = applyProgress(v, done1);
+  assert.equal(v.items.e1.status, "done");
+  assert.equal(v.items.e1.webSrc, "https://localhost/_capacitor_file_/files/e1.bin");
+  v = applyProgress(v, reportFromEvent("downloadFailed", { id: "e2", status: 403 }, { now }));
+  assert.equal(v.items.e2.status, "unplayable-here");
+  assert.equal(v.items.e2.reason, "http 403");
+});
+
 /* ---------- eviction ---------- */
 
 test("evictionPlan removes the oldest last_played_at first, one at a time, until the done bytes fit", () => {
@@ -177,6 +224,25 @@ test("playSource on ios: a done record plays file:// + path, isLocalFile true", 
     "mutation: drop the `file://` prefix -> a bare path AVDeck cannot load");
   // An already-schemed path is not doubled.
   assert.equal(playSource(item, { ...rec, path: "file:///files/e1.mp3" }, { platform: "ios" }).audio_url, "file:///files/e1.mp3");
+});
+
+/* Integration review (2026-10-04). PQ-20's store is
+   `Library/Application Support/foray-downloads/` — a space in every real
+   iPhone path — and AVDeck parses `audio_url` with `URL(string:)`, which
+   returns nil for a raw space on iOS 15/16 (the app's floor). The fixture
+   paths above have no space, which is how this hid.
+   MUTATION: make `fileUrl` return `"file://" + path` and this fails. */
+test("playSource percent-encodes the iPhone path (Application Support has a space), segment by segment", () => {
+  const item = { id: "e1", audio_url: "https://cdn/e1.mp3" };
+  const path = "/var/mobile/Containers/Data/Application/ABC-123/Library/Application Support/foray-downloads/3f9a.bin";
+  const src = playSource(item, { ...done(MB), path }, { platform: "ios" });
+  assert.equal(src.audio_url,
+    "file:///var/mobile/Containers/Data/Application/ABC-123/Library/Application%20Support/foray-downloads/3f9a.bin");
+  assert.equal(src.isLocalFile, true);
+  // A `#` or `?` in a segment is part of the name, not a fragment or a query.
+  assert.equal(playSource(item, { ...done(MB), path: "/d/a#b?c.bin" }, { platform: "ios" }).audio_url, "file:///d/a%23b%3Fc.bin");
+  // The round trip is the path: decoding the URL's path gives the file back.
+  assert.equal(decodeURIComponent(new URL(src.audio_url).pathname), path);
 });
 
 test("playSource on android: a done record plays the bridge's webSrc, isLocalFile true", () => {

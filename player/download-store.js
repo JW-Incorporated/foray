@@ -56,6 +56,7 @@ export const STATUSES = ["queued", "downloading", "done", "failed", "unplayable-
 
 const STATUS_SET = new Set(STATUSES);
 const KEEPS_REASON = new Set(["failed", "unplayable-here"]);
+const IN_FLIGHT = new Set(["queued", "downloading"]);
 
 /* ---------- small, local helpers ---------- */
 
@@ -157,13 +158,27 @@ export function writeDownloads(storage, value) {
     row with nowhere to play from is the one shape the player cannot act on,
     so it never enters the record. `failed` / `unplayable-here` keep their
     `reason`; every other status clears it, so a retried download does not
-    carry last week's error. */
+    carry last week's error.
+
+    A LATE TICK NEVER UN-FINISHES A FILE (integration review, 2026-10-04).
+    Progress and completion arrive on different paths — PQ-22 polls
+    `DownloadManager` every 2 s while a broadcast receiver reports completion,
+    and iOS delivers `URLSession` callbacks on their own queue — so a
+    `downloading` tick can land AFTER `done`. Taken at face value it would
+    flip "Downloaded ✓" back to "Downloading 100%" for good (no second `done`
+    follows), stop the file counting against the cap and stream an episode
+    that is on disk. So `queued`/`downloading` for a `done` row is refused
+    (identity). A real re-download goes through Remove first, which deletes
+    the row.
+    MUTATION TO BREAK THIS: delete the `IN_FLIGHT` guard line and `a late
+    progress tick after done is refused` fails. */
 export function applyProgress(value, report = {}) {
   const { id, status, bytes, total, path, webSrc, reason, now } = report;
   if (!isStr(id) || !STATUS_SET.has(status)) return value;
   if (status === "done" && !isStr(path)) return value;
   const base = normaliseDownloads(value);
   const prev = base.items[id] || null;
+  if (prev && prev.status === "done" && IN_FLIGHT.has(status)) return value;
   const next = {
     status,
     bytes: Number.isFinite(bytes) ? nonNegOrZero(bytes) : (prev ? prev.bytes : 0),
@@ -179,6 +194,45 @@ export function applyProgress(value, report = {}) {
   // A finished file is its own total: the usage line should not read 0 of null.
   if (status === "done" && next.total == null && next.bytes > 0) next.total = next.bytes;
   return { ...base, items: { ...base.items, [id]: next } };
+}
+
+/**
+ * One `download-bridge.js` event → the report `applyProgress` takes, or null
+ * for an event this build does not know or a payload with no id.
+ *
+ * WHY THIS EXISTS (integration review, 2026-10-04). The bridge forwards
+ * `onEvent(name, payload)` and `applyProgress` keys on a record `status`, and
+ * nothing joined the two: `downloadProgress` carries no status at all, and
+ * `downloadFailed`'s `status` is the HTTP status (403), not a record status —
+ * spread straight into `applyProgress` it is an unknown status and the
+ * failure is silently dropped. The mapping is a rule, so it lives here,
+ * beside the record it feeds, rather than in app.js:
+ *
+ *   downloadProgress {id, bytes, total}   → downloading
+ *   downloadDone     {id, path, bytes}    → done (the file is its own total;
+ *                                            `webSrc` is the caller's
+ *                                            `bridge.fileSrc({path})`)
+ *   downloadFailed   {id, reason, status} → unplayable-here when the host
+ *                                            refused this device (HTTP 403, the
+ *                                            plan's PQ-20/22 rule) or the
+ *                                            plugin says so; else failed. The
+ *                                            reason is the plugin's, or
+ *                                            "http <status>".
+ *
+ * MUTATION TO BREAK THIS: map `downloadFailed` to `status: p.status` and
+ * `reportFromEvent maps each bridge event to a record status` fails.
+ */
+export function reportFromEvent(name, payload, { webSrc, now } = {}) {
+  const p = payload && typeof payload === "object" ? payload : {};
+  if (!isStr(p.id)) return null;
+  if (name === "downloadProgress") return { id: p.id, status: "downloading", bytes: p.bytes, total: p.total, now };
+  if (name === "downloadDone") return { id: p.id, status: "done", path: p.path, bytes: p.bytes, total: p.bytes, webSrc, now };
+  if (name === "downloadFailed") {
+    const refused = p.status === 403 || p.reason === "unplayable-here";
+    const reason = strOrNull(p.reason) ?? (Number.isFinite(p.status) ? `http ${p.status}` : null);
+    return { id: p.id, status: refused ? "unplayable-here" : "failed", reason, now };
+  }
+  return null;
 }
 
 /** The episode was played from its download: it moves to the back of the
@@ -270,9 +324,29 @@ export function evictionPlan(value, positions = {}) {
 /* ---------- what the player opens ---------- */
 
 /**
+ * A filesystem path as a `file://` URL, each segment percent-encoded; a path
+ * that is already a `file://` URL is taken as given.
+ *
+ * WHY ENCODE (integration review, 2026-10-04). The store PQ-20 writes lives
+ * under `Library/Application Support/foray-downloads/` — a path with a SPACE
+ * in it on every iPhone. AVDeck builds its URL with `URL(string:)`, which on
+ * iOS 15 and 16 (the app's floor is iOS 15: `Package.swift`
+ * `.iOS(.v15)`) returns nil for a string with a raw space, so the load fails
+ * as "no-url" and the downloaded copy never plays. iOS 17 encodes it
+ * silently, which is exactly how a phone on 17 would hide this from a device
+ * check. `#` and `?` would cut the path short on any version.
+ * MUTATION TO BREAK THIS: return `"file://" + path` and `playSource
+ * percent-encodes the iPhone path` fails.
+ */
+function fileUrl(path) {
+  if (path.startsWith("file://")) return path;
+  return "file://" + path.split("/").map((seg) => encodeURIComponent(seg)).join("/");
+}
+
+/**
  * The source to hand the engine for this item. A `done` record with a path
  * plays from the file: on iOS the native engine takes any absolute URL with a
- * scheme (AVDeck.swift), so it is `file://` + path; elsewhere the WebView
+ * scheme (AVDeck.swift), so it is the path as a `file://` URL (`fileUrl`, encoded); elsewhere the WebView
  * cannot read the files dir directly and plays the bridge's `webSrc` (the URL
  * the Android shell serves the file at). Anything else — no record, not
  * done, no path, a platform whose local URL the record cannot supply — is the
@@ -282,9 +356,7 @@ export function evictionPlan(value, positions = {}) {
 export function playSource(item, record, { platform } = {}) {
   const remote = { audio_url: item ? item.audio_url : undefined, isLocalFile: false };
   if (!record || record.status !== "done" || !isStr(record.path)) return remote;
-  const local = platform === "ios"
-    ? (record.path.startsWith("file://") ? record.path : "file://" + record.path)
-    : record.webSrc;
+  const local = platform === "ios" ? fileUrl(record.path) : record.webSrc;
   if (!isStr(local)) return remote;
   return { audio_url: local, isLocalFile: true };
 }
