@@ -200,9 +200,12 @@ jobs:
           # tools/release/build-number.mjs.
           CREATED_AT=$(gh api "repos/$REPO/actions/runs/$RUN_ID" --jq '.created_at')
           DAY="${CREATED_AT%%T*}"
-          # The runs listing lags a just-created run (seen twice, both on the
-          # first release of a UTC day: "run N is not among release.yml's runs").
-          # Re-list until this run appears, up to ~2 minutes. build-number.mjs
+          # The runs listing can lag a just-created run, so re-list until this
+          # run appears, up to ~2 minutes. (The two "run N is not among
+          # release.yml's runs" refusals of 2026-10-01/02, both on the first
+          # release of a UTC day, were NOT lag: this loop had found the run, and
+          # build-number.mjs misread a ONE-line runs file as an empty envelope.
+          # Fixed there; its test names the mutation.) build-number.mjs
           # still refuses if it never does: a count that cannot see its own run
           # may also be missing earlier ones, and guessing low is a red upload.
           for attempt in 1 2 3 4 5 6 7 8; do
@@ -247,6 +250,14 @@ jobs:
     # The decision is tools/ci/engine-ci.mjs `release-checks` (a DENIED path,
     # tested in engine-ci.test.mjs). github.sha goes through env:, the same
     # hygiene as the guard step above.
+    #
+    # IT DISPATCHES ci.yml WHEN THE CHECKS ARE ABSENT (2026-10-04, after
+    # releases 36917371425 and 36945055191 were both refused for "no check run
+    # on this SHA"). A merge by automerge-nightly is a GITHUB_TOKEN push, which
+    # creates no workflow run, so an auto-merged tip of main has no CI at all.
+    # `actions: write` is for that one dispatch; a dispatch on the default
+    # branch runs ios-kit and engine-parity IN FULL (engine-ci.mjs
+    # releaseDispatchPlan explains why), and the rule stays "green on this SHA".
     needs: guard
     if: needs.guard.outputs.allowed == 'true'
     runs-on: ubuntu-latest
@@ -254,6 +265,7 @@ jobs:
     permissions:
       contents: read
       checks: read
+      actions: write
     steps:
       - uses: actions/checkout@v4
 
@@ -264,6 +276,8 @@ jobs:
       - name: engine-parity and ios-kit are green on this exact SHA
         env:
           SHA: ${{ github.sha }}
+          REF_NAME: ${{ github.ref_name }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
           GITHUB_TOKEN: ${{ github.token }}
         run: node tools/ci/engine-ci.mjs release-checks "$SHA"
 
