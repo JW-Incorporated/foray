@@ -816,6 +816,12 @@ public struct EngineCore {
         // taken charge (route-resume.js "press").
         routePress(remotePressName(press.command))
         let steps = MediaMapping.SeekSteps()
+        // A skip or a scrub goes through `seekBy` / `seekTo`, which are the
+        // nudge and scrub helpers: in a Foray they step on the FORAY's clock
+        // (`forayNudge` / `forayScrub`), the clock Now Playing publishes, never
+        // the clip's source seconds (#924; the JVM's A-42). Pinned from a clip
+        // by `manager-foray/remote-clock-*` and from a line by
+        // `manager-foray/narration-skip-*`.
         switch press.command {
         case .play: play(source: .remote)
         case .pause: pause(source: .remote)

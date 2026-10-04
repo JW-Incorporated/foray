@@ -874,6 +874,7 @@
         "player/parity/fixtures/manager-foray/narration-skip.json": "8e9192d2b9043c262692080d655aef3589c38b0410dc1122eca3091ead18507f",
         "player/parity/fixtures/manager-foray/narration.json": "dd05be479486a191ea10810cea5c9da26763ae2d4571551dade5b33439edb401",
         "player/parity/fixtures/manager-foray/real-forays.json": "ce2d584ca45514c92c7a0b9095d4566d40429fb180f17faa352c202c4c88b6f4",
+        "player/parity/fixtures/manager-foray/remote-clock.json": "4d5ae3f61ddd232c3caf220b01fdf8bd20f2b465f1659753216ee9a637fc1e3f",
         "player/parity/fixtures/manager-foray/remote-next.json": "e5eaf96acf68a5bc0092e6eaee63115a002ae278232026f3e8380f838c6c6765",
         "player/parity/fixtures/manager-foray/tape.json": "ad87d4a2fda1dc1ce8322c179669b77bb4d3c0f4f0f7a5ae23faf9c9f5f04b2a"
       },
@@ -992,6 +993,10 @@
         "manager-foray/foray-2-1.5x-holds-through-every-seam",
         "manager-foray/foray-2-2x-mid-foray-survives-every-later-seam",
         "manager-foray/foray-2-the-beat-is-wall-clock-at-2x",
+        "manager-foray/remote-clock-scrub-inside-a-clip-seeks-its-own-source-second",
+        "manager-foray/remote-clock-scrub-past-the-clips-out-point-loads-the-later-clip",
+        "manager-foray/remote-clock-scrub-back-from-a-later-clip-loads-the-first",
+        "manager-foray/remote-clock-forward-from-a-clips-tail-steps-into-the-rendered-line",
         "manager-foray/remote-nexttrack-onto-a-line",
         "manager-foray/remote-nexttrack-from-a-line",
         "manager-foray/a-segment-loads-at-its-in-point",
