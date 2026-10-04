@@ -1665,7 +1665,9 @@ function syncForaySegment() {
   // A jump we asked for is still in flight and the manager has not moved yet.
   // Leave it; the load will land or fail, and either way we hear about it.
   if (foray.pendingFrom != null && index === foray.pendingFrom) return;
-  foray.error = null;
+  // An error raised ON the item the Foray moved to is that item's (§16, see
+  // `onTelemetry`): only an earlier item's error is left behind by the move.
+  if (foray.errorAt !== index) foray.error = null;
   setForayIndex(index, { pending: false });
 }
 
@@ -4011,6 +4013,12 @@ function onTelemetry(m) {
      with the audio in hand. */
   if (foray && /player\.error|segment\.skipped\.atLoad/i.test(m)) {
     foray.error = m;
+    /* WHICH ITEM IT IS ABOUT (§16). A clip that will not load is stepped over
+       onto the next, and when THAT one stops the Foray its error can arrive
+       before any render has caught `foray.index` up to it. Without the index,
+       `syncForaySegment` then read the move as "audio moved past the error"
+       and wiped the one line saying why the Foray stopped. */
+    foray.errorAt = manager?.currentIndex ?? -1;
     notifyForay();
   }
   /* The ordinary-episode half (persona audit #4): a media error or a refused

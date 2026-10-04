@@ -112,11 +112,17 @@
                      `state.breadthShowCache` / `#/show/:id` path a breadth
                      result from the endpoint already does.
      2  chart_rank   Apple's PER-GENRE top-chart position 1-200, or the empty
-                     string for a curated row (which has none and needs none).
-                     Per-genre, from the 2026-07-09 harvest: NOT comparable
-                     across genres, which is why search-engine.js's
+                     string when there is none (a curated row with no breadth
+                     twin). Per-genre, from the 2026-07-09 harvest: NOT
+                     comparable across genres, which is why search-engine.js's
                      `popularityBand` buckets it rather than scoring it.
      3  curated      "1" for a curated row, "0" for a breadth one.
+
+   P-09 data half (PKG-11a): curated rows carry their Apple chart rank when a
+   breadth twin exists; `popularityBand` ignores it until PKG-13. The twin is
+   joined on `apple_collection_id` (both catalogues carry it) and the rank is
+   NOT cut by `--max-rank` — the cut decides which BREADTH rows ship, and a
+   curated row ships regardless.
 
    A column added or reordered here without the same change in
    `parseShowIndex` misreads every row silently, so change the two together —
@@ -197,12 +203,21 @@ export function mergeShowIndexRows(curated, breadth, { maxRank = BUILD_MAX_RANK 
   const rows = [];
   const seen = new Set();
 
+  /* Every breadth row, `in_curated` or not — the curated shows' twins are
+     exactly the `in_curated` rows the loop below skips, so filtering here
+     would join nothing. */
+  const rankByAppleId = new Map();
+  for (const row of breadth.shows) {
+    const rank = Number(row?.chart_rank);
+    if (Number.isFinite(rank) && rank > 0) rankByAppleId.set(String(row?.apple_collection_id), rank);
+  }
+
   for (const show of curated.shows) {
     const id = sanitizeCell(show?.show_id);
     const title = sanitizeCell(show?.title);
     if (!id || !title || seen.has(id)) continue;
     seen.add(id);
-    rows.push({ title, id, chart_rank: null, curated: true });
+    rows.push({ title, id, chart_rank: rankByAppleId.get(String(show?.apple_collection_id)) ?? null, curated: true });
   }
 
   for (const show of breadth.shows) {

@@ -14,8 +14,9 @@ import ForayEngineCore
 ///
 ///   - AVDeck / DeckPair: `.ended` (the out-point or the file's end, the last
 ///     item), `.failed` (a load, or the held item mid-play), `.deadlineExceeded`
-///     (P-13, including a seam's next clip that never loads: that IS the seam
-///     timeout), `.pausedUncommanded` (the system stopped the deck);
+///     (P-13; a Foray clip's is retried once and then stepped over, §16, so
+///     only a seam's LAST clip ends anything: `final-end`),
+///     `.pausedUncommanded` (the system stopped the deck);
 ///   - SpeechNarrator (the fallback voice): `.failed` for a line, `.finished`
 ///     for the last line, and the line's own deadline and suspension pulses;
 ///   - InterludePlayer and SilenceNode: stopped by a transport action's cut
@@ -33,8 +34,9 @@ import ForayEngineCore
 /// audit entry.
 ///
 /// TWO CAUSES ARE NEVER EMITTED, on purpose (`reserved`): `seam-timeout` (a
-/// seam's next clip that never becomes ready is its load's P-13 deadline, and
-/// says `load-deadline`, which carries the class and the token) and `unknown`
+/// seam's next clip that never becomes ready is its load's P-13 deadline,
+/// retried and then stepped over, §16: `deck kind=retry`, `skip kind=load`,
+/// never a stop of its own) and `unknown`
 /// (the vocabulary's residue: a paste that shows one names a defect). The
 /// switch in `disposition` has no `default`, so a cause the vocabulary gains
 /// is a compile error here until it is audited.
@@ -145,8 +147,14 @@ final class StopCauseTests: XCTestCase {
             host.send(.queue(.playIndex(0, startSec: nil, source: .tap)))
             return host.send(.deck(.deadlineExceeded(token: host.lastLoad ?? 0, afterMs: 20000)))
         },
-        StopPath(name: "a seam's next clip never becomes ready (the seam timeout)", origin: "DeckPair .deadlineExceeded", site: "onLoadFailure", cause: .loadDeadline) {
+        // §16 (the M2 drive, 2026-10-01): a Foray clip that never becomes
+        // ready is NOT a stop any more. Its first deadline retries it (no
+        // row, `ClipLoadRetryTests`), and the retry's deadline steps over it;
+        // with nothing after it the Foray has ended, and that is the stop.
+        StopPath(name: "a seam's last clip never becomes ready, twice (the seam timeout)", origin: "DeckPair .deadlineExceeded", site: "skipUnplayableSegment", cause: .finalEnd) {
             var host = StopCauseTests.inSeam(config: StopCauseTests.tape)
+            let retry = host.send(.deck(.deadlineExceeded(token: host.lastLoad ?? 0, afterMs: 20000)))
+            XCTAssertNil(StopCauseTests.stopRowIndex(retry), "the first deadline retries, it does not stop: \(retry)")
             return host.send(.deck(.deadlineExceeded(token: host.lastLoad ?? 0, afterMs: 20000)))
         },
         StopPath(name: "the system stops the deck (uncommanded pause)", origin: "AVDeck .pausedUncommanded", site: "reconcile", cause: .systemPause) {
@@ -234,7 +242,7 @@ final class StopCauseTests: XCTestCase {
              .loadDeadline, .error, .relinquish, .dataDeletion, .close, .mediaServicesReset:
             return .emitted
         case .seamTimeout:
-            return .reserved(why: "a seam's next clip that never becomes ready is its load's P-13 deadline: load-deadline")
+            return .reserved(why: "a seam's next clip that never becomes ready is retried, then stepped over (§16): deck kind=retry, skip kind=load")
         case .unknown:
             return .reserved(why: "the residue: a paste that shows one names a defect, never a path")
         }
