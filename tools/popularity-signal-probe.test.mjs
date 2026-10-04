@@ -105,7 +105,18 @@ test("would_lead_by_top_position is false when a higher row has a smaller positi
 
 test("validateReport rejects a report missing pointer_age_hours or any of the four queries", () => {
   /* MUTATION: delete the `pointer_age_hours` check from `validateReport`.
-     The first stripped report validates clean and this fails. */
+     The first stripped report validates clean and this fails.
+     MUTATION: delete `["american", "This American Life"],` from
+     `PINNED_QUERIES`. The literal list below no longer matches and this fails
+     (the loop is over the literal, not the module's list, so dropping a query
+     from the probe cannot also drop it from this check). */
+  const FOUR = [
+    ["history", "Dan Carlin's Hardcore History"],
+    ["daily", "The Daily"],
+    ["money", "Planet Money"],
+    ["american", "This American Life"],
+  ]; // the same four test/show-search-ranking.test.js pins
+  assert.deepStrictEqual(PINNED_QUERIES.map((pair) => [...pair]), FOUR, "PINNED_QUERIES drifted from the four pinned queries");
   const report = buildReport({
     SearchEngine,
     indexText: "The Daily\t1200361736\t1\t0\nPlanet Money\tplanet-money\t\t1\n",
@@ -128,7 +139,7 @@ test("validateReport rejects a report missing pointer_age_hours or any of the fo
   delete noAge.pointer_age_hours;
   assert.ok(validateReport(noAge).some((e) => e.includes("pointer_age_hours")), "missing pointer_age_hours accepted");
 
-  for (const [q] of PINNED_QUERIES) {
+  for (const [q] of FOUR) {
     const noQuery = structuredClone(report);
     delete noQuery.queries[q];
     assert.ok(validateReport(noQuery).some((e) => e.includes(`queries.${q}`)), `missing query "${q}" accepted`);
