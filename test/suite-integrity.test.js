@@ -1076,7 +1076,7 @@ const FLOORS = {
      #276/show-pages shape: silently wrong is the failure mode, not a crash.
      Every test names its mutation; see the suite header for the full list
      of what each test pins. */
-  "test/up-next-queue.test.js": 20, // audit round 2, lane L3 (2026-09-23): the page is a live view of cp_queue, .is-current, the row mark, one unnamed sentence, no + Up Next on an archived part, addToQueue refuses the unplayable, the cap never prunes a queued key, fullPool memoised; 13 -> 20 //
+  "test/up-next-queue.test.js": 26, // PQ-02 (#762): Play next lands after the playing row, adds/refuses like addToQueue, Clear keeps the playing row, the controls render, the episode page's Play next; 20 -> 26 (exact: the 21st test had landed unfloored) // audit round 2, lane L3 (2026-09-23): the page is a live view of cp_queue, .is-current, the row mark, one unnamed sentence, no + Up Next on an archived part, addToQueue refuses the unplayable, the cap never prunes a queued key, fullPool memoised; 13 -> 20 //
   /* Library screen (#/library, `docs/ux/foray-mockup.jsx`'s LibraryScreen,
      kanban card t_a1e7a69c). Floored for the same reason up-next-queue is:
      the four sections' decay path (an aged-out saved/history id, an empty
@@ -1280,7 +1280,7 @@ const FLOORS = {
      writes reset), and firing only when ALL required checks were missing — plus
      the duplicate-dispatch guard, which 85% of dispatched CI runs needed.
      85 -> 97. */
-  "tools/ci/pr-triage.test.mjs": 120, // round-3 review: +9 -- a founder-armed outside PR is not disarmed (the bot's is, and freeze/hold/governed paths still win), and the sweep re-decides on fresh facts right before it arms (recheckArm, the recheck CLI, pr-hygiene runs it before any merge); automerge-nightly passes --armed-by; 111 -> 120 // round-3 L7: security-1 (the sweep never arms a fork or foreign author, and disarms one), ci-release-2/-7 (renames and truncation reach the sweep), ci-release-9/-10/-17 (per-PR groups + comment re-read, dispatch guard reads conclusions, open PRs paginated); 97 -> 111
+  "tools/ci/pr-triage.test.mjs": 124, // OPS-06 (#312): +3 -- a conflicting founder PR leaves the queue but is reported as blocked, rendered under the table with links, and an empty blocked list renders exactly the old block; 121 -> 124 // OPS-05 (#309): +1 -- the row link is the PR page, never the REST endpoint; 120 -> 121 // round-3 review: +9 -- a founder-armed outside PR is not disarmed (the bot's is, and freeze/hold/governed paths still win), and the sweep re-decides on fresh facts right before it arms (recheckArm, the recheck CLI, pr-hygiene runs it before any merge); automerge-nightly passes --armed-by; 111 -> 120 // round-3 L7: security-1 (the sweep never arms a fork or foreign author, and disarms one), ci-release-2/-7 (renames and truncation reach the sweep), ci-release-9/-10/-17 (per-PR groups + comment re-read, dispatch guard reads conclusions, open PRs paginated); 97 -> 111
   "tools/ci/run-suites.test.mjs": 37, // tests-4 (round-3 audit): +1 -- the root group carries --test-timeout; 36 -> 37
   /* NE-25a's click tracks, read without a decoder: the bytes are the ones the
      descriptor names, the WAV is sample-exact, "CBR" and "no TOC" mean what

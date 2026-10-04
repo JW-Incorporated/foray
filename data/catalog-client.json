@@ -4,7 +4,7 @@
     {
       "show_id": "lex-fridman-podcast",
       "title": "Lex Fridman Podcast",
-      "artwork_url": null,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts115/v4/3e/e3/9c/3ee39c89-de08-47a6-7f3d-3849cef6d255/mza_16657851278549137484.png/600x600bb.jpg",
       "editorial_note": "Marathon technical interviews with the actual scientists and founders building fusion reactors, AI, and everything adjacent.",
       "taxonomy_node_ids": [],
       "episode_count": null,
@@ -14,7 +14,7 @@
     {
       "show_id": "titans-of-nuclear",
       "title": "Titans of Nuclear",
-      "artwork_url": null,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts113/v4/8f/c0/fb/8fc0fb3a-89f7-cfc7-e596-2fd3988a255b/mza_435383747906350604.jpg/600x600bb.jpg",
       "editorial_note": "The widest bench in fusion/fission podcasting -- a new reactor architecture or company nearly every episode.",
       "taxonomy_node_ids": [
         "engineering/energy-fusion"
@@ -39,7 +39,7 @@
     {
       "show_id": "cleantechies-podcast",
       "title": "CleanTechies Podcast",
-      "artwork_url": null,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/30/a8/ad/30a8add4-53ad-7c34-1338-2ba77775cc8a/mza_1890398681110635913.jpg/600x600bb.jpg",
       "editorial_note": "Shorter founder interviews across the clean-energy startup landscape, fusion included.",
       "taxonomy_node_ids": [
         "engineering/energy-fusion"
@@ -51,7 +51,7 @@
     {
       "show_id": "catalyst-shayle-kann",
       "title": "Catalyst with Shayle Kann",
-      "artwork_url": null,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts112/v4/85/b4/75/85b475a8-93d1-ccdf-be5e-3399f4b322b2/mza_4579948121520406325.jpeg/600x600bb.jpg",
       "editorial_note": "Energy-transition analyst digs into the engineering and market mechanics of new power technologies.",
       "taxonomy_node_ids": [
         "engineering/energy-fusion"
@@ -63,7 +63,7 @@
     {
       "show_id": "lab-to-market-leadership",
       "title": "Lab to Market Leadership",
-      "artwork_url": null,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/b7/61/cc/b761cc9f-7ad2-39bf-f055-214edfab8a9a/mza_9718301860875244049.jpg/600x600bb.jpg",
       "editorial_note": "How deep-tech founders take a lab result to a company -- fusion and hard-tech leadership stories.",
       "taxonomy_node_ids": [
         "engineering/energy-fusion",
@@ -76,7 +76,7 @@
     {
       "show_id": "cbc-ideas",
       "title": "CBC Ideas",
-      "artwork_url": null,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/94/fe/a5/94fea51f-9e41-b60f-b5f2-3549407ef6fc/mza_4140352385670983274.jpg/600x600bb.jpg",
       "editorial_note": "CBC's long-running ideas documentary strand -- occasionally lands on fusion, energy, and technology with a narrative, current-affairs voice.",
       "taxonomy_node_ids": [
         "engineering/energy-fusion"
@@ -88,7 +88,7 @@
     {
       "show_id": "stuff-you-should-know",
       "title": "Stuff You Should Know",
-      "artwork_url": null,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/aa/82/91/aa82912f-23ee-6f6a-583c-a4e993164d0e/mza_12111158076643383507.jpg/600x600bb.jpg",
       "editorial_note": "Reliable general-audience explainer show -- easy entry points into metallurgy, materials, and technology history topics.",
       "taxonomy_node_ids": [
         "science/materials",
@@ -101,7 +101,7 @@
     {
       "show_id": "materialism-podcast",
       "title": "Materialism: A Materials Science Podcast",
-      "artwork_url": null,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts126/v4/14/4b/6a/144b6aa5-03ea-0e07-eb69-c80e069a52ae/mza_13610307441121266719.jpg/600x600bb.jpg",
       "editorial_note": "The dedicated materials-science show -- history, commercialization, and characterization of the stuff things are made of.",
       "taxonomy_node_ids": [
         "science/materials"
@@ -113,7 +113,7 @@
     {
       "show_id": "inside-chips",
       "title": "Inside Chips (Semiconductor Engineering)",
-      "artwork_url": null,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/dc/9a/bf/dc9abfbc-ce8b-094f-1a50-e9d2b4a69816/mza_15244253184536318128.png/600x600bb.jpg",
       "editorial_note": "B2B semiconductor-fab panel talk -- precision process control that rhymes with reactor-grade manufacturing.",
       "taxonomy_node_ids": [
         "engineering/precision-mfg"
@@ -125,7 +125,7 @@
     {
       "show_id": "mtdcnc-podcast",
       "title": "MTDCNC Podcast",
-      "artwork_url": null,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/2f/c2/3b/2fc23bf0-4faa-2f41-a4bf-779df0f16e8d/mza_12518032609716077037.jpg/600x600bb.jpg",
       "editorial_note": "UK precision-machining trade show -- interviews with the people who design, build, and operate CNC and aerospace-grade equipment.",
       "taxonomy_node_ids": [
         "engineering/precision-mfg",
@@ -138,7 +138,7 @@
     {
       "show_id": "being-an-engineer",
       "title": "Being an Engineer",
-      "artwork_url": null,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/f9/ea/7e/f9ea7e14-28a4-07e0-7727-ba24527dfb7c/mza_2694726557793121439.jpg/600x600bb.jpg",
       "editorial_note": "Product-engineering war stories, CAD to tooling to production, on everything from medical devices to a coffee tamper.",
       "taxonomy_node_ids": [
         "engineering/precision-mfg",
@@ -152,7 +152,7 @@
     {
       "show_id": "fall-of-civilizations",
       "title": "Fall of Civilizations Podcast",
-      "artwork_url": null,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts113/v4/0a/06/85/0a0685c1-86d4-6f5d-27e4-75e1771d0bae/mza_3060333100547218575.jpg/600x600bb.jpg",
       "editorial_note": "The benchmark long-form documentary history show -- multi-hour rise-and-fall sagas with real engineering and military detail.",
       "taxonomy_node_ids": [
         "history/military-ancient",
@@ -165,7 +165,7 @@
     {
       "show_id": "the-rest-is-history",
       "title": "The Rest Is History",
-      "artwork_url": null,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/bf/89/a5/bf89a586-3f77-bf37-7ba3-b75f1bca7bfa/mza_1664785978944494824.jpg/600x600bb.jpg",
       "editorial_note": "Sandbrook and Holland's conversational history juggernaut -- broad chronological coverage, strong narrative pacing.",
       "taxonomy_node_ids": [
         "history/technology",
@@ -178,7 +178,7 @@
     {
       "show_id": "conan-obrien-needs-a-friend",
       "title": "Conan O'Brien Needs a Friend",
-      "artwork_url": null,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/c6/02/8a/c6028ab7-bffd-db83-53e4-34a4ea9bef21/mza_16944101310108746053.jpg/600x600bb.jpg",
       "editorial_note": "Conan's real-friendship-with-guests premise -- consistently the warmest, easiest hang in the catalog.",
       "taxonomy_node_ids": [
         "comedy/casual-hangs"
@@ -190,7 +190,7 @@
     {
       "show_id": "smartless",
       "title": "SmartLess",
-      "artwork_url": null,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/b1/93/5f/b1935f9f-35be-9144-e813-626bd8dabfb4/mza_4132654708551836825.jpg/600x600bb.jpg",
       "editorial_note": "Bateman, Hayes, and Arnett's surprise-guest hang -- low pressure, high chemistry.",
       "taxonomy_node_ids": [
         "comedy/casual-hangs"
@@ -202,7 +202,7 @@
     {
       "show_id": "my-brother-my-brother-and-me",
       "title": "My Brother, My Brother and Me",
-      "artwork_url": null,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/6e/a7/35/6ea7353b-0692-99b1-12a0-7b33fa475aa8/mza_13316954681377313409.jpg/600x600bb.jpg",
       "editorial_note": "Three real brothers answering advice questions with pure absurdism -- zero stakes, guaranteed laughs.",
       "taxonomy_node_ids": [
         "comedy/casual-hangs"
@@ -1862,7 +1862,7 @@
     {
       "show_id": "happiness-lab",
       "title": "The Happiness Lab with Dr. Laurie Santos",
-      "artwork_url": null,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/67/02/d7/6702d7b4-5dff-4a0a-8e91-54be0a8a7660/mza_15418537704194950179.jpg/600x600bb.jpg",
       "editorial_note": "Yale psychologist Laurie Santos turns happiness research into practical, myth-busting takes on feeling better.",
       "taxonomy_node_ids": [
         "health/mental",
@@ -1875,7 +1875,7 @@
     {
       "show_id": "ten-percent-happier",
       "title": "10% Happier with Dan Harris",
-      "artwork_url": null,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/79/04/87/79048703-d88c-acc2-c319-a8f2534b9ae5/mza_15018160844227259170.jpg/600x600bb.jpg",
       "editorial_note": "Dan Harris interviews clinicians and researchers on anxiety, meditation, and the science of a steadier mind.",
       "taxonomy_node_ids": [
         "health/mental",
@@ -1888,7 +1888,7 @@
     {
       "show_id": "feel-better-live-more",
       "title": "Feel Better, Live More with Dr Rangan Chatterjee",
-      "artwork_url": null,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/82/14/44/8214441d-06f9-5beb-79d6-2c95ed1448cc/mza_2571811512276130369.jpg/600x600bb.jpg",
       "editorial_note": "GP Rangan Chatterjee hosts long-form conversations with doctors and scientists on sleep, stress, and healthy habits.",
       "taxonomy_node_ids": [
         "health/mental",
@@ -1901,7 +1901,7 @@
     {
       "show_id": "the-psychology-podcast",
       "title": "The Psychology Podcast",
-      "artwork_url": null,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/cf/5a/f0/cf5af016-6056-30f0-be09-f29351430893/mza_3453059785950812097.jpeg/600x600bb.jpg",
       "editorial_note": "Scott Barry Kaufman's long-running interviews with the researchers behind mindset, emotion, and personality science.",
       "taxonomy_node_ids": [
         "psychology"
@@ -1913,7 +1913,7 @@
     {
       "show_id": "maintenance-phase",
       "title": "Maintenance Phase",
-      "artwork_url": null,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/d3/23/3c/d3233ce4-e1e6-710c-141a-dad45b263c7d/mza_17331100152243008221.jpg/600x600bb.jpg",
       "editorial_note": "Aubrey Gordon and Michael Hobbes debunk the junk science behind diets, wellness fads, and nutrition panics.",
       "taxonomy_node_ids": [
         "health/nutrition"
@@ -1925,7 +1925,7 @@
     {
       "show_id": "zoe-science-nutrition",
       "title": "ZOE Science & Nutrition",
-      "artwork_url": null,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/83/21/fa/8321fa07-c424-c95e-25f8-b99d952b074e/mza_11331013497668602482.jpeg/600x600bb.jpg",
       "editorial_note": "Jonathan Wolf and Tim Spector translate nutrition and gut-microbiome research into practical eating guidance.",
       "taxonomy_node_ids": [
         "health/nutrition"
@@ -1937,7 +1937,7 @@
     {
       "show_id": "foundmyfitness",
       "title": "FoundMyFitness",
-      "artwork_url": null,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/89/9a/d4/899ad444-4dc0-7a0c-e244-ed8f869d4f09/mza_4758067400065032137.jpg/600x600bb.jpg",
       "editorial_note": "Biochemist Rhonda Patrick digs into the primary research on exercise, nutrition, and healthy ageing.",
       "taxonomy_node_ids": [
         "health/nutrition",
@@ -1950,7 +1950,7 @@
     {
       "show_id": "sigma-nutrition-radio",
       "title": "Sigma Nutrition Radio",
-      "artwork_url": null,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/7d/ed/21/7ded21c8-f97e-982f-dcae-cff69d126da2/mza_7834073134319015021.png/600x600bb.jpg",
       "editorial_note": "Rigorous, evidence-first interviews on nutrition science, separating what studies show from wellness marketing.",
       "taxonomy_node_ids": [
         "health/nutrition"
@@ -1962,7 +1962,7 @@
     {
       "show_id": "mel-robbins-podcast",
       "title": "The Mel Robbins Podcast",
-      "artwork_url": null,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/ab/66/a5/ab66a5f5-b52b-c70a-227b-0721bd9dc660/mza_13546984924981879479.jpg/600x600bb.jpg",
       "editorial_note": "Mel Robbins pairs motivational solo episodes with expert guests on habits, confidence, and everyday change.",
       "taxonomy_node_ids": [
         "education/self-improvement",
@@ -1975,7 +1975,7 @@
     {
       "show_id": "happier-gretchen-rubin",
       "title": "Happier with Gretchen Rubin",
-      "artwork_url": null,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/7a/cd/f2/7acdf2b4-c0e2-4923-7930-f1b98f789008/mza_9514614093854378662.jpg/600x600bb.jpg",
       "editorial_note": "Gretchen Rubin and Elizabeth Craft test practical habit and happiness strategies drawn from her research.",
       "taxonomy_node_ids": [
         "education/self-improvement"
@@ -1987,7 +1987,7 @@
     {
       "show_id": "good-inside-dr-becky",
       "title": "Good Inside with Dr. Becky",
-      "artwork_url": null,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/ce/43/fd/ce43fdee-824d-b97c-3642-959e971579c2/mza_9334100872530662650.jpg/600x600bb.jpg",
       "editorial_note": "Clinical psychologist Becky Kennedy answers hard parenting questions with sturdy, research-grounded guidance.",
       "taxonomy_node_ids": [
         "kids-family/parenting",
@@ -2000,7 +2000,7 @@
     {
       "show_id": "ask-lisa-parenting",
       "title": "Ask Lisa: The Psychology of Parenting",
-      "artwork_url": null,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/de/93/f5/de93f5ba-6a68-c538-c6c5-77580d0db2f9/mza_15813436693341770060.jpg/600x600bb.jpg",
       "editorial_note": "Clinical psychologist Lisa Damour and Reena Ninan bring science-backed answers to real questions about raising tweens and teens.",
       "taxonomy_node_ids": [
         "kids-family/parenting",
@@ -2301,7 +2301,7 @@
     {
       "show_id": "this-american-life",
       "title": "This American Life",
-      "artwork_url": null,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/f2/74/1f/f2741f77-1c20-b058-a845-f261c819fe80/mza_557469201745576820.png/600x600bb.jpg",
       "editorial_note": "Ira Glass and team build each week around a theme, mixing reported stories with personal narrative.",
       "taxonomy_node_ids": [
         "personal-journals",
@@ -2314,7 +2314,7 @@
     {
       "show_id": "snap-judgment",
       "title": "Snap Judgment",
-      "artwork_url": null,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/93/d2/cb/93d2cb73-60f2-4b07-fea3-6f1af6287017/mza_2091129752091434879.png/600x600bb.jpg",
       "editorial_note": "Glynn Washington hosts cinematic first-person stories, scored like radio drama, from storytellers worldwide.",
       "taxonomy_node_ids": [
         "science/storytelling",
@@ -2327,7 +2327,7 @@
     {
       "show_id": "the-moth",
       "title": "The Moth",
-      "artwork_url": null,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/16/39/63/1639632d-7ad2-d87b-d4f7-d0ec95eff386/mza_8915289722686017414.jpg/600x600bb.jpg",
       "editorial_note": "True stories told live without notes, from the institution that helped define the form.",
       "taxonomy_node_ids": [
         "science/storytelling",
@@ -2340,7 +2340,7 @@
     {
       "show_id": "ear-hustle",
       "title": "Ear Hustle",
-      "artwork_url": null,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/e8/94/86/e8948649-c36e-a0d8-3dca-555d1410987e/mza_1316723170820495850.png/600x600bb.jpg",
       "editorial_note": "Earlonne Woods and Nigel Poor report daily life inside San Quentin, told by those living it.",
       "taxonomy_node_ids": [
         "society",
@@ -2353,7 +2353,7 @@
     {
       "show_id": "storycorps",
       "title": "StoryCorps",
-      "artwork_url": null,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/04/57/3c/04573c66-db41-64d7-f93a-02c9508b6efc/mza_11979259119697604586.jpg/600x600bb.jpg",
       "editorial_note": "Short, intimate conversations between everyday people, drawn from the largest archive of American voices.",
       "taxonomy_node_ids": [
         "personal-journals",
@@ -2366,7 +2366,7 @@
     {
       "show_id": "heavyweight",
       "title": "Heavyweight",
-      "artwork_url": null,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/a7/f4/11/a7f411fa-7d05-708c-b9e6-fbb79f16687f/mza_5278700449379998361.jpg/600x600bb.jpg",
       "editorial_note": "Jonathan Goldstein helps people return to a moment from their past they wish had gone differently.",
       "taxonomy_node_ids": [
         "personal-journals",
@@ -2379,7 +2379,7 @@
     {
       "show_id": "death-sex-money",
       "title": "Death, Sex & Money",
-      "artwork_url": null,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/ab/25/c8/ab25c89d-f0ff-b241-4432-1ef06521b765/mza_16562465962407518091.jpg/600x600bb.jpg",
       "editorial_note": "Anna Sale hosts frank conversations about the things we think about but rarely say aloud.",
       "taxonomy_node_ids": [
         "personal-journals",
@@ -2392,7 +2392,7 @@
     {
       "show_id": "where-should-we-begin",
       "title": "Where Should We Begin? with Esther Perel",
-      "artwork_url": null,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/9f/80/bc/9f80bcc7-3890-b83d-825d-80bfce6540a1/mza_11092217466841030628.jpg/600x600bb.jpg",
       "editorial_note": "Therapist Esther Perel opens her office for real, one-time counseling sessions with anonymous couples.",
       "taxonomy_node_ids": [
         "relationships",
@@ -2405,7 +2405,7 @@
     {
       "show_id": "modern-love",
       "title": "Modern Love",
-      "artwork_url": null,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/08/87/de/0887de16-2eb2-b99b-78b9-ca12fce8cf5d/mza_2798548197053957784.jpeg/600x600bb.jpg",
       "editorial_note": "Anna Martin hosts essays and interviews about love in its complicated forms, from the Times column.",
       "taxonomy_node_ids": [
         "relationships",
@@ -2418,7 +2418,7 @@
     {
       "show_id": "we-can-do-hard-things",
       "title": "We Can Do Hard Things",
-      "artwork_url": null,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/25/04/1c/25041c54-a94b-4c84-3d79-129f8f0bdc27/mza_10132198868361967560.jpeg/600x600bb.jpg",
       "editorial_note": "Glennon Doyle, Abby Wambach and Amanda Doyle talk honestly about hard things, with warmth and candor.",
       "taxonomy_node_ids": [
         "relationships",
@@ -2431,7 +2431,7 @@
     {
       "show_id": "dear-sugars",
       "title": "Dear Sugars",
-      "artwork_url": null,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts126/v4/13/86/7f/13867f22-67b6-49d0-9b74-8eaa458aab0d/mza_10920335765348487691.jpg/600x600bb.jpg",
       "editorial_note": "Cheryl Strayed and Steve Almond answer letters with radical empathy and hard-won personal honesty.",
       "taxonomy_node_ids": [
         "relationships",
@@ -2444,7 +2444,7 @@
     {
       "show_id": "dear-prudence",
       "title": "Dear Prudence",
-      "artwork_url": null,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts122/v4/a2/a3/43/a2a34350-9b6b-6ffe-6444-8d24974e9350/mza_12136493384835430246.jpeg/600x600bb.jpg",
       "editorial_note": "Slate advice columnists answer listener letters on family, friendship and love with humor and candor.",
       "taxonomy_node_ids": [
         "relationships",
@@ -2457,7 +2457,7 @@
     {
       "show_id": "wow-in-the-world",
       "title": "Wow in the World",
-      "artwork_url": null,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/4c/b0/4a/4cb04a06-4e0a-d534-2a28-3f2fb37fa14e/mza_14610475686329584932.jpeg/600x600bb.jpg",
       "editorial_note": "Guy Raz and Mindy Thomas guide kids and grown-ups through real science with jokes, sound effects and wonder.",
       "taxonomy_node_ids": [
         "kids-family/education"
@@ -2469,7 +2469,7 @@
     {
       "show_id": "story-pirates",
       "title": "Story Pirates",
-      "artwork_url": null,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/06/40/0d/06400df3-052b-e503-1cd7-783cfe435d32/mza_2584487554373114557.jpg/600x600bb.jpg",
       "editorial_note": "A comedy troupe turns stories written by real kids into sketches, songs and full-cast performances.",
       "taxonomy_node_ids": [
         "kids-family/stories"
@@ -2481,7 +2481,7 @@
     {
       "show_id": "circle-round",
       "title": "Circle Round",
-      "artwork_url": null,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/54/38/74/543874b1-821b-9e11-6f5d-965d2f0c5245/mza_218851255204087494.jpg/600x600bb.jpg",
       "editorial_note": "WBUR adapts folktales from around the world into music-rich radio plays for kids, each with a conversation starter.",
       "taxonomy_node_ids": [
         "kids-family/stories"
@@ -2493,7 +2493,7 @@
     {
       "show_id": "welcome-to-night-vale",
       "title": "Welcome to Night Vale",
-      "artwork_url": null,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/c2/4a/51/c24a5124-d015-8ca7-27f4-3985a345f5b0/mza_10525284149020137113.jpg/600x600bb.jpg",
       "editorial_note": "Community radio for a small desert town where every conspiracy is real; self-contained broadcasts make any episode a doorway in.",
       "taxonomy_node_ids": [
         "fiction",
@@ -2506,7 +2506,7 @@
     {
       "show_id": "the-magnus-archives",
       "title": "The Magnus Archives",
-      "artwork_url": null,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts115/v4/01/2b/f6/012bf6cf-da73-11a8-4666-d65ad58dcea5/mza_1748774726906212092.jpg/600x600bb.jpg",
       "editorial_note": "A horror anthology framed as recorded statements to a paranormal institute, where standalone cases slowly reveal a larger dread.",
       "taxonomy_node_ids": [
         "fiction",
@@ -2519,7 +2519,7 @@
     {
       "show_id": "old-gods-of-appalachia",
       "title": "Old Gods of Appalachia",
-      "artwork_url": null,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/aa/c8/c6/aac8c647-6073-0a38-cb68-47298fc73ab7/mza_990133593394875927.jpeg/600x600bb.jpg",
       "editorial_note": "Eldritch horror set in an alternate Appalachia, narrated with the cadence of front-porch folklore.",
       "taxonomy_node_ids": [
         "fiction",
@@ -2532,7 +2532,7 @@
     {
       "show_id": "levar-burton-reads",
       "title": "LeVar Burton Reads",
-      "artwork_url": null,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts126/v4/5b/a9/12/5ba9124a-eb6d-6fcc-bd8e-75de88b73517/mza_5106699898373276155.jpg/600x600bb.jpg",
       "editorial_note": "LeVar Burton performs a hand-picked short story each episode, so every one stands entirely on its own.",
       "taxonomy_node_ids": [
         "fiction",
@@ -2545,7 +2545,7 @@
     {
       "show_id": "twenty-thousand-hertz",
       "title": "Twenty Thousand Hertz",
-      "artwork_url": null,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/ad/dd/64/addd64d2-c2b1-4ff2-aa5f-0f5cc723f92b/mza_10710679716941336906.jpeg/600x600bb.jpg",
       "editorial_note": "Dallas Taylor tells the stories behind the world's most recognizable sounds, from film scores to everyday noises.",
       "taxonomy_node_ids": [
         "culture/design",
@@ -2558,7 +2558,7 @@
     {
       "show_id": "design-matters",
       "title": "Design Matters with Debbie Millman",
-      "artwork_url": null,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts115/v4/f5/a1/92/f5a192ba-e932-ca00-c014-6426d73931e1/mza_11459321327818220529.jpg/600x600bb.jpg",
       "editorial_note": "The long-running interview show where Debbie Millman talks with designers, writers and artists about how they make meaning.",
       "taxonomy_node_ids": [
         "culture/design"
@@ -2570,7 +2570,7 @@
     {
       "show_id": "the-great-women-artists",
       "title": "The Great Women Artists",
-      "artwork_url": null,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts123/v4/d0/26/25/d0262588-a167-62f2-7bda-b3aac3ff060c/mza_4412767758174259078.jpg/600x600bb.jpg",
       "editorial_note": "Art historian Katy Hessel interviews artists, curators and writers about the women who reshaped art.",
       "taxonomy_node_ids": [
         "culture/art"
@@ -2582,7 +2582,7 @@
     {
       "show_id": "dissect",
       "title": "Dissect",
-      "artwork_url": null,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/3e/d8/f5/3ed8f5f4-4113-9049-ddf9-6900d2d2969d/mza_6863756797238193337.jpg/600x600bb.jpg",
       "editorial_note": "Cole Cuchna spends a whole season on one album, taking it apart song by song to show how it works.",
       "taxonomy_node_ids": [
         "music/theory-production"
@@ -2594,7 +2594,7 @@
     {
       "show_id": "broken-record",
       "title": "Broken Record with Rick Rubin, Malcolm Gladwell, Bruce Headlam and Justin Richmond",
-      "artwork_url": null,
+      "artwork_url": "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/e1/e2/8e/e1e28ee7-c7ed-9a91-dbdf-0bac03b6fa38/mza_12090824434324250279.jpg/600x600bb.jpg",
       "editorial_note": "Musicians sit down with Rick Rubin and company to talk craft, inspiration and the making of the work.",
       "taxonomy_node_ids": [
         "music"

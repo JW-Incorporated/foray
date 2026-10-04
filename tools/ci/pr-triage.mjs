@@ -147,7 +147,7 @@ export function normalizePr(raw = {}) {
   return {
     number: Number(raw.number),
     title: raw.title ?? "",
-    url: raw.url ?? raw.html_url ?? "",
+    url: raw.html_url ?? raw.url ?? "",
     headRefName: raw.headRefName ?? raw.head?.ref ?? "",
     baseRefName: raw.baseRefName ?? raw.base?.ref ?? "",
     draft: Boolean(raw.draft ?? raw.isDraft),
@@ -525,12 +525,19 @@ export function planMergeability(prs, opts = {}) {
  * path makes, so the queue cannot disagree with the gate.
  *
  * -> { queue: [{ number, title, url, reason, code, labels, updatedAt }],
- *      actions: [...] }
+ *      actions: [...],
+ *      blocked: [{ number, title, url, reason, code }] }
+ *
+ * `blocked` is the founder's business that cannot reach the queue yet: a PR
+ * that would need a founder but conflicts with main first. It is reported, not
+ * queued, so the queue and the label keep meaning "mergeable the moment you
+ * say so" while the PR stays visible (#312).
  */
 export function planFounderQueue(prs, opts = {}) {
   const { freeze = "" } = opts;
   const queue = [];
   const actions = [];
+  const blocked = [];
 
   for (const raw of prs ?? []) {
     const pr = normalizePr(raw);
@@ -545,6 +552,19 @@ export function planFounderQueue(prs, opts = {}) {
     const conflicting = pr.mergeable === "CONFLICTING" || pr.state === "dirty";
     const wanted = decision.needsFounder && !conflicting;
     const labelled = pr.labels.includes(QUEUE_LABEL);
+
+    // ...but the author is usually an agent session that has ended (#312:
+    // #288 and #300 both went DIRTY while waiting and vanished from the
+    // block). Off the queue, correctly; off the page, no. Report it.
+    if (decision.needsFounder && conflicting) {
+      blocked.push({
+        number: pr.number,
+        title: pr.title,
+        url: pr.url,
+        reason: decision.reason,
+        code: decision.code,
+      });
+    }
 
     if (wanted) {
       queue.push({
@@ -569,7 +589,8 @@ export function planFounderQueue(prs, opts = {}) {
     }
   }
   queue.sort((a, b) => a.number - b.number);
-  return { queue, actions };
+  blocked.sort((a, b) => a.number - b.number);
+  return { queue, actions, blocked };
 }
 
 /** Both planners, one call. Actions are deduplicated and ordered stably. */
@@ -583,7 +604,7 @@ export function planTriage(prs, opts = {}) {
     seen.add(key);
     return true;
   });
-  return { actions, notes: m.notes, queue: q.queue };
+  return { actions, notes: m.notes, queue: q.queue, blocked: q.blocked };
 }
 
 /* --------------------------------------------------------------- rendering */
@@ -595,7 +616,7 @@ export function planTriage(prs, opts = {}) {
  * ignore it.
  */
 export function renderWaitingBlock(queue, opts = {}) {
-  const { repo = "JW-Incorporated/foray", queueLabel = QUEUE_LABEL } = opts;
+  const { repo = "JW-Incorporated/foray", queueLabel = QUEUE_LABEL, blocked = [] } = opts;
   const filter = `https://github.com/${repo}/pulls?q=is%3Apr+is%3Aopen+label%3A${encodeURIComponent(queueLabel)}`;
   const lines = [
     BLOCK_BEGIN,
@@ -630,6 +651,24 @@ export function renderWaitingBlock(queue, opts = {}) {
       "did for `STATE.md`, and it converts a recurring merge into a one-line diff.",
       ""
     );
+  }
+  // The PRs that WOULD be here but conflict with main first (#312). They are
+  // out of the queue on purpose — a founder should not be handed a rebase —
+  // but their author is usually a session that has ended, so without this
+  // paragraph a conflict made them less visible than before it happened.
+  // Both branches above end on an empty line, so this starts on one too.
+  if (blocked.length) {
+    const n = blocked.length;
+    lines.push(
+      `**${n} PR${n === 1 ? "" : "s"} would be waiting on you but conflict${n === 1 ? "s" : ""} with main first (label \`${CONFLICT_LABEL}\`):**`
+    );
+    for (const item of blocked) {
+      const link = item.url ? `[#${item.number}](${item.url})` : `#${item.number}`;
+      lines.push(
+        `- ${link} ${cell(item.title)} — needs a rebase by whoever picks it up; the author was probably a session that has ended.`
+      );
+    }
+    lines.push("");
   }
   lines.push(BLOCK_END);
   return lines.join("\n");
@@ -906,7 +945,7 @@ export function runCli(argv, io = {}) {
   }
 
   if (command === "plan") {
-    const { actions, notes, queue } = planTriage(prs, {
+    const { actions, notes, queue, blocked } = planTriage(prs, {
       freeze: opts.freeze,
       autoUpdate: !opts.noAutoUpdate,
       sweep: Boolean(opts.sweep),
@@ -935,7 +974,7 @@ export function runCli(argv, io = {}) {
               `The full list is in the 6-hourly sweep's summary and at the ` +
               `\`needs-founder\` filter.`,
           ]
-        : [renderWaitingBlock(queue, { repo: opts.repo })]),
+        : [renderWaitingBlock(queue, { repo: opts.repo, blocked })]),
     ].join("\n");
     $.log(report);
     if (opts.summary) $.append(opts.summary, report + "\n");
@@ -943,8 +982,8 @@ export function runCli(argv, io = {}) {
   }
 
   // waiting
-  const { queue } = planFounderQueue(prs, { freeze: opts.freeze });
-  const block = renderWaitingBlock(queue, { repo: opts.repo });
+  const { queue, blocked } = planFounderQueue(prs, { freeze: opts.freeze });
+  const block = renderWaitingBlock(queue, { repo: opts.repo, blocked });
   const file = opts.file ?? "HUMAN-ACTIONS.md";
 
   if (opts.print || (!opts.write && !opts.check)) {
