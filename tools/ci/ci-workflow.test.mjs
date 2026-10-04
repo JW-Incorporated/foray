@@ -223,17 +223,23 @@ test("NE-06: ios-gate runs on every event and waits on ios-kit through the teste
   assert.match(job, /timeout-minutes: \d+/);
 });
 
-test("NE-06: ios-kit runs on a dispatch when a Swift path changed, and never skips for a failed classifier", () => {
-  /* MUTATION: restore `if: github.event_name != 'workflow_dispatch'` -> a
-     Swift PR updated by pr-hygiene has no ios-kit on its new head and ios-gate
-     goes red for want of a run; drop `!cancelled()` -> a failed engine-paths
-     skips ios-kit on every PR. */
+test("ios-kit runs only when a Swift or engine path changed, on every event, and never skips for a failed classifier", () => {
+  /* 2026-10-04: a content PR's ios-kit bought nothing (the required ios-gate
+     passes in seconds when no Swift path changed) and saturated the macOS
+     queue until a release's dispatched ios-kit sat queued 40+ minutes.
+     MUTATION: restore `github.event_name != 'workflow_dispatch' || ...` -> every
+     push and PR runs the 15-minute Mac job again, whatever changed; drop
+     `!cancelled()` -> a failed engine-paths skips ios-kit on every event;
+     compare `== 'true'` instead of `!= 'false'` -> the EMPTY outputs of a failed
+     engine-paths skip it too; drop the engine clause -> an engine input no
+     longer guarantees the macOS host run. */
   const job = codeOf("ios-kit");
   assert.match(job, /^ {4}needs: engine-paths$/m);
   assert.match(
     job,
-    /^ {4}if: \$\{\{ !cancelled\(\) && \(github\.event_name != 'workflow_dispatch' \|\| needs\.engine-paths\.outputs\.swift != 'false'\) \}\}$/m
+    /^ {4}if: \$\{\{ !cancelled\(\) && \(needs\.engine-paths\.outputs\.swift != 'false' \|\| needs\.engine-paths\.outputs\.engine != 'false'\) \}\}$/m
   );
+  assert.doesNotMatch(job, /event_name/, "the condition is about what changed, not which event fired");
   // G-1a's "a macOS swift test of the core in ios-kit" (landed by NE-01; kept).
   assert.match(job, /swift test --package-path mobile\/plugins\/foray-audio\/foray-engine-core/);
 });

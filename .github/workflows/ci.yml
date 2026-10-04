@@ -110,8 +110,8 @@ jobs:
     # NE-06 (docs/native-engine-plan.md §6.8, G-1b). ONE place that answers
     # "did this event touch the native engine's inputs, or any Swift?", read by
     # the three jobs below that gate on it: `engine-parity` short-circuits
-    # when no engine path changed, `ios-kit` runs on a pr-hygiene dispatch only
-    # when a Swift path changed, and `ios-gate` waits for ios-kit only then.
+    # when no engine path changed, `ios-kit` runs only when a Swift or engine
+    # path changed, and `ios-gate` waits for ios-kit only then.
     # One classifier, so the three can never disagree about what changed.
     #
     # The logic is tools/ci/engine-ci.mjs (a DENIED path, tested in
@@ -148,20 +148,33 @@ jobs:
     # state machine + intent grammar tests can run on a CI Mac — the only
     # Mac this project currently has.
     #
-    # Skipped on `workflow_dispatch` UNLESS A SWIFT PATH CHANGED. The dispatch
-    # exists so pr-hygiene can re-report the REQUIRED checks on a PR head it
-    # just updated, and macOS runner minutes bill at 10x, so a content PR's
-    # auto-update still costs no Mac. But NE-06's required `ios-gate` reads
-    # this job's verdict on the SAME run, and a Swift PR's updated head would
-    # otherwise have no ios-kit at all: its gate would go red for want of a
-    # run, stranding the PR the dispatch exists to un-strand. A push or PR
-    # runs it normally, whatever changed.
+    # RUNS ONLY WHEN A SWIFT OR ENGINE PATH CHANGED, on every event
+    # (2026-10-04; until then push and pull_request ran it whatever changed,
+    # and only a dispatch skipped). WHY: this is a ~15-minute macOS job, and
+    # with a burst of PRs the macOS queue saturates. Measured 2026-10-04:
+    # release run 37228218257's dispatched ios-kit sat QUEUED for 40+ minutes
+    # behind content PRs' ios-kits, and release-checks refused the TestFlight.
+    # It is not a required check; the required `ios-gate` already encodes "no
+    # Swift path changed = nothing to wait for" and passes in seconds then, so
+    # a content PR's ios-kit was buying nothing but queue. SWIFT_PREFIXES
+    # (tools/ci/engine-ci.mjs) is deliberately wide — every SwiftPM manifest,
+    # the parity fixtures, mobile/'s lockfile, this file — and engine inputs
+    # are named too, so a parity change still gets its macOS host run beside
+    # engine-parity's Linux one.
+    #
+    # The changed-path list is `changedFiles` in engine-ci.mjs, and every "could
+    # not tell" there is "everything changed". A dispatch ON the default branch
+    # is "unknown" by design, so release-checks' dispatch on main (and anyone's
+    # manual run there) still runs this job IN FULL. A push to main that skipped
+    # it leaves a `skipped` check run on that SHA, which release-checks counts as
+    # missing and dispatches over (engine-ci.mjs releaseDispatchPlan).
     #
     # `!cancelled()` rather than a bare condition: without it a failed
-    # `engine-paths` would skip this job on push and pull_request too, and a
-    # skipped job looks like a pass. Only an explicit "false" skips it.
+    # `engine-paths` would skip this job, and a skipped job looks like a pass.
+    # A failed engine-paths leaves both outputs EMPTY, and empty is not
+    # 'false': only an explicit "false" from BOTH skips it.
     needs: engine-paths
-    if: ${{ !cancelled() && (github.event_name != 'workflow_dispatch' || needs.engine-paths.outputs.swift != 'false') }}
+    if: ${{ !cancelled() && (needs.engine-paths.outputs.swift != 'false' || needs.engine-paths.outputs.engine != 'false') }}
     runs-on: macos-latest
     timeout-minutes: 45
     steps:

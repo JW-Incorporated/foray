@@ -301,17 +301,32 @@ export function latestActionsRun(checkRuns, name) {
   return mine.reduce((a, b) => (Number(b.id) > Number(a.id) ? b : a));
 }
 
+/** A newest run that concluded `skipped` tested nothing: since ci.yml's
+ *  ios-kit runs only when engine-paths says a Swift or engine input changed
+ *  (2026-10-04), a push to main that touched neither leaves ios-kit SKIPPED on
+ *  that SHA. For a release that is the same as no run at all — never a pass,
+ *  and something release-checks may ask ci.yml to replace. */
+export const isSkippedRun = (run) => Boolean(run) && run.status === "completed" && run.conclusion === "skipped";
+
 /** `runsByName` maps each required check to its newest run (or null).
  *  `missingIsFinal` turns "no such check on this SHA yet" from a wait into a
- *  refusal, once CI has had long enough to have created it. */
+ *  refusal, once CI has had long enough to have created it.
+ *
+ *  A SKIPPED newest run is judged like a missing one: a wait inside the grace,
+ *  a refusal after it, and never a pass. It cannot be a refusal on sight,
+ *  because release-checks dispatches ci.yml over it (releaseDispatchPlan) and
+ *  then polls at once, before the dispatched run's ios-kit has a check run:
+ *  the skipped run is still the newest, and refusing then would refuse every
+ *  release the dispatch exists to rescue. The rule is unchanged — the newest
+ *  run by id must be `success` — so the dispatched run decides. */
 export function releaseChecksVerdict(runsByName, { missingIsFinal = false } = {}) {
   const lines = [];
   let pending = false;
   let red = false;
   for (const name of RELEASE_REQUIRED_CHECKS) {
     const run = runsByName[name];
-    if (!run) {
-      lines.push(`${name}: no check run on this SHA`);
+    if (!run || isSkippedRun(run)) {
+      lines.push(run ? `${name}: skipped on this SHA (nothing tested it)` : `${name}: no check run on this SHA`);
       if (missingIsFinal) red = true;
       else pending = true;
     } else if (run.status !== "completed") {
@@ -349,14 +364,19 @@ export function releaseChecksVerdict(runsByName, { missingIsFinal = false } = {}
  *  short-circuited green.
  *
  *  It dispatches when ANY required check is missing, and never over a run
- *  that exists (a red or in-flight one
- *  is the gate's to judge, not to replace). It refuses to dispatch from any ref
+ *  that exists (a red, cancelled or in-flight one
+ *  is the gate's to judge, not to replace). A newest run that concluded
+ *  `skipped` COUNTS AS MISSING (2026-10-04): ci.yml now runs ios-kit only when
+ *  a Swift or engine input changed, so a content-only push to main leaves a
+ *  skipped ios-kit on its tip, and without this that tip could never ship. The
+ *  verdict still needs the newest run — the dispatched one — to be `success`.
+ *  It refuses to dispatch from any ref
  *  but the default branch (a dispatch elsewhere diffs against main and may
  *  skip ios-kit), and when the branch has moved past the SHA being released (a
  *  dispatch runs on the branch tip, so it would test a different commit). */
 export function releaseDispatchPlan({ byName = {}, refName, defaultBranch, branchHeadSha, sha }) {
-  const missing = RELEASE_REQUIRED_CHECKS.filter((n) => !byName[n]);
-  if (!missing.length) return { dispatch: false, reason: "every required check has a run on this SHA" };
+  const missing = RELEASE_REQUIRED_CHECKS.filter((n) => !byName[n] || isSkippedRun(byName[n]));
+  if (!missing.length) return { dispatch: false, reason: "every required check has a run on this SHA that was not skipped" };
   if (!defaultBranch || refName !== defaultBranch) {
     return {
       dispatch: false,
