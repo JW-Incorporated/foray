@@ -1,0 +1,5 @@
+{
+  "version": 1,
+  "notes": "Same-episode delivery probes for ADR-0008's pad (docs/roadmap/dai.md DAI-02). Each row is one observation of one episode's delivered file: a ranged-get row records the feed-declared and the delivered byte length (and the host that answered); a decode row records a fully decoded duration. A pad needs N >= 2 usable rows for the same item_id: tools/segments/ad-pad.mjs computes pad = max(0, delta_max) + spread from them. Rows are appended by tools/segments/probe-ad-pad.mjs and consumed by tools/segments/stamp-ad-pad.mjs, which writes the stamped ad_* fields onto data/segment-sources.json. A ranged-get row from a host on RANGED_GET_UNTRUSTED_HOSTS (tools/transcribe/ad-inflation.mjs) is evidence of the declaration only and poisons that episode's set.",
+  "probes": []
+}

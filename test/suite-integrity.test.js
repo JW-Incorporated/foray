@@ -2047,6 +2047,7 @@ const FLOORS = {
      (deliberately NOT the median the verdict uses), the insert threshold from
      both sides, and a recomputation of all seven committed verdicts from the
      byte counts filed beside them. */
+  "tools/segments/ad-pad.test.mjs": 13, // DAI-02: new -- ADR-0008 pad arithmetic over a same-episode probe ledger
   "tools/segments/measure-suspects.test.mjs": 57,
   /* The audit of that scan's own acquittals (#323 follow-up). It re-asks every
      `measured_clean` show — 5,381 timed transcripts, half the anchorable corpus
