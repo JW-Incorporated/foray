@@ -108,15 +108,30 @@ test("the cut drops breadth rows ranked worse than max-rank, and never drops a c
      including a curated row whose breadth twin's chart_rank (PKG-11a) is
      outside it.
 
-     MUTATION: apply the rank filter before the `in_curated`/curated split (or
-     to the curated loop as well). Every curated row has `chart_rank`
-     undefined, so they would all be dropped and the first assertion fails. */
+     The keeper's twin (apple_collection_id 3, `in_curated`) ranks
+     BUILD_MAX_RANK + 1, one outside the cut, so this fixture catches the cut
+     leaking into the curated loop by EITHER route, without leaning on the
+     real-data tests below:
+
+     MUTATIONS: (a) apply the rank filter before the `in_curated`/curated split
+     (or to the curated loop as well) on the catalogue row's own `chart_rank`.
+     catalog.json rows carry no `chart_rank` field, so the keeper reads NaN, is
+     dropped, and the first assertion fails. (b) the PKG-11a version: add
+     `if ((rankByAppleId.get(String(show?.apple_collection_id)) ?? 0) > maxRank) continue;`
+     to the curated loop. The keeper's joined rank is BUILD_MAX_RANK + 1, so it
+     is dropped and the first assertion fails. */
   const rows = mergeShowIndexRows(
-    { shows: [cur("keeper", "Curated Keeper")] },
-    { shows: [bre(1, "Inside Cut", 5), bre(2, "Outside Cut", BUILD_MAX_RANK + 1)] },
+    { shows: [{ show_id: "keeper", title: "Curated Keeper", apple_collection_id: 3 }] },
+    { shows: [
+      bre(1, "Inside Cut", 5),
+      bre(2, "Outside Cut", BUILD_MAX_RANK + 1),
+      bre(3, "Curated Keeper", BUILD_MAX_RANK + 1, { in_curated: true }),
+    ] },
     { maxRank: BUILD_MAX_RANK }
   );
-  assert.ok(rows.some((r) => r.id === "keeper"), "a curated row has no chart_rank and must survive the cut");
+  const keeper = rows.find((r) => r.id === "keeper");
+  assert.ok(keeper, "a curated row whose twin ranks outside the cut must still survive it");
+  assert.strictEqual(keeper.chart_rank, BUILD_MAX_RANK + 1, "and it keeps the twin's uncut rank");
   assert.ok(rows.some((r) => r.id === "1"));
   assert.ok(!rows.some((r) => r.id === "2"));
 });

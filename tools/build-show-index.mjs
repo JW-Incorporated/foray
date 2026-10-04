@@ -116,13 +116,13 @@
                      twin). Per-genre, from the 2026-07-09 harvest: NOT
                      comparable across genres, which is why search-engine.js's
                      `popularityBand` buckets it rather than scoring it.
+     3  curated      "1" for a curated row, "0" for a breadth one.
 
    P-09 data half (PKG-11a): curated rows carry their Apple chart rank when a
    breadth twin exists; `popularityBand` ignores it until PKG-13. The twin is
    joined on `apple_collection_id` (both catalogues carry it) and the rank is
    NOT cut by `--max-rank` — the cut decides which BREADTH rows ship, and a
    curated row ships regardless.
-     3  curated      "1" for a curated row, "0" for a breadth one.
 
    A column added or reordered here without the same change in
    `parseShowIndex` misreads every row silently, so change the two together —
