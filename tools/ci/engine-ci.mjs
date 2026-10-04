@@ -330,6 +330,50 @@ export function releaseChecksVerdict(runsByName, { missingIsFinal = false } = {}
   return { done: true, ok: true, message };
 }
 
+/** Should release-checks dispatch ci.yml so the checks it needs exist?
+ *
+ *  WHY THIS EXISTS (releases 36917371425 and 36945055191, 2026-10-01/02). Both
+ *  were refused with "engine-parity: no check run on this SHA; ios-kit: no
+ *  check run on this SHA" — not red, ABSENT. ci.yml runs on `push` to main, but
+ *  a merge made by automerge-nightly uses the workflow's GITHUB_TOKEN, and a
+ *  push made with that token creates no workflow run (GitHub's anti-recursion
+ *  rule — the same one ci.yml's header names for pr-hygiene). So every auto-
+ *  merged tip of main has no CI at all, and this gate, waiting for checks that
+ *  will never be created, could only ever refuse it.
+ *
+ *  The gate's rule does not change: green on THIS SHA. What changes is that
+ *  the release now asks for those runs. `workflow_dispatch` is the documented
+ *  exception to the anti-recursion rule, and a dispatch ON THE DEFAULT BRANCH
+ *  is "unknown" to `changedFiles` above, so engine-paths reports everything
+ *  changed and both ios-kit and engine-parity run IN FULL — never a
+ *  short-circuited green.
+ *
+ *  It dispatches when ANY required check is missing, and never over a run
+ *  that exists (a red or in-flight one
+ *  is the gate's to judge, not to replace). It refuses to dispatch from any ref
+ *  but the default branch (a dispatch elsewhere diffs against main and may
+ *  skip ios-kit), and when the branch has moved past the SHA being released (a
+ *  dispatch runs on the branch tip, so it would test a different commit). */
+export function releaseDispatchPlan({ byName = {}, refName, defaultBranch, branchHeadSha, sha }) {
+  const missing = RELEASE_REQUIRED_CHECKS.filter((n) => !byName[n]);
+  if (!missing.length) return { dispatch: false, reason: "every required check has a run on this SHA" };
+  if (!defaultBranch || refName !== defaultBranch) {
+    return {
+      dispatch: false,
+      reason: `${missing.join(", ")} missing, but this release runs from '${refName}', not '${defaultBranch}'; a dispatch there would not run them in full`,
+    };
+  }
+  const head = String(branchHeadSha ?? "").toLowerCase();
+  const want = String(sha ?? "").toLowerCase();
+  if (!head || !want || !(head === want || (want.length < 40 && head.startsWith(want)))) {
+    return {
+      dispatch: false,
+      reason: `${missing.join(", ")} missing, but ${defaultBranch} is at ${head.slice(0, 12) || "unknown"}, not ${want.slice(0, 12)}; a dispatch would test a different commit`,
+    };
+  }
+  return { dispatch: true, reason: `${missing.join(", ")} missing on ${want.slice(0, 12)}; dispatching ci.yml on ${defaultBranch}` };
+}
+
 /* ─────────────────────────────── GitHub API ───────────────────────────────── */
 
 function githubGetter(env = process.env) {
@@ -346,6 +390,26 @@ function githubGetter(env = process.env) {
     });
     if (!res.ok) throw new Error(`GET ${route} -> ${res.status}`);
     return res.json();
+  };
+}
+
+/** POST, for the one write this file makes: release-checks' ci.yml dispatch. */
+function githubPoster(env = process.env) {
+  const token = env.GITHUB_TOKEN || env.GH_TOKEN;
+  const api = env.GITHUB_API_URL || "https://api.github.com";
+  if (!token) throw new Error("GITHUB_TOKEN is not set");
+  return async (route, body) => {
+    const res = await fetch(`${api}${route}`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: "application/vnd.github+json",
+        "X-GitHub-Api-Version": "2022-11-28",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) throw new Error(`POST ${route} -> ${res.status}`);
   };
 }
 
@@ -424,17 +488,35 @@ async function main(argv) {
       return 2;
     }
     const get = githubGetter(env);
+    const repo = env.GITHUB_REPOSITORY;
+    const fetchChecks = async () => {
+      const byName = {};
+      for (const name of RELEASE_REQUIRED_CHECKS) {
+        const body = await get(`/repos/${repo}/commits/${sha}/check-runs?check_name=${name}&per_page=100`);
+        byName[name] = latestActionsRun(body.check_runs, name);
+      }
+      return byName;
+    };
+    /* An auto-merged tip of main has no CI run (see releaseDispatchPlan); ask
+       for one before waiting. Any failure here falls through to the wait,
+       which refuses on missing checks exactly as before — never a pass. */
+    try {
+      const defaultBranch = env.DEFAULT_BRANCH;
+      const branchHeadSha = defaultBranch
+        ? (await get(`/repos/${repo}/commits/${encodeURIComponent(defaultBranch)}`))?.sha
+        : null;
+      const plan = releaseDispatchPlan({ byName: await fetchChecks(), refName: env.REF_NAME, defaultBranch, branchHeadSha, sha });
+      console.log(`release-checks: ${plan.reason}`);
+      if (plan.dispatch) {
+        await githubPoster(env)(`/repos/${repo}/actions/workflows/ci.yml/dispatches`, { ref: defaultBranch });
+      }
+    } catch (e) {
+      console.log(`release-checks: could not dispatch ci.yml (${e instanceof Error ? e.message : e}); waiting for checks as before`);
+    }
     const started = Date.now();
     const missingGraceMs = minutes(env.RELEASE_CHECKS_MISSING_GRACE_MIN, 10);
     const verdict = await pollUntilDone({
-      fetchOnce: async () => {
-        const byName = {};
-        for (const name of RELEASE_REQUIRED_CHECKS) {
-          const body = await get(`/repos/${env.GITHUB_REPOSITORY}/commits/${sha}/check-runs?check_name=${name}&per_page=100`);
-          byName[name] = latestActionsRun(body.check_runs, name);
-        }
-        return byName;
-      },
+      fetchOnce: fetchChecks,
       decide: (byName) => releaseChecksVerdict(byName, { missingIsFinal: Date.now() - started >= missingGraceMs }),
       sleep,
       timeoutMs: minutes(env.RELEASE_CHECKS_TIMEOUT_MIN, 40),
