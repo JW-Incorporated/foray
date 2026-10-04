@@ -1279,6 +1279,9 @@ public struct EngineCore {
             referenceDurationSec: item.referenceDurationSec, adPadSec: item.adPadSec,
             observedDuration: deck.durationSec, isLocalFile: state.forayIsLocalFile,
             allowAdPad: state.forayAllowAdPad)
+        // §16: a clip that loaded ends a run of clips that would not (before
+        // the gate, as queue-manager.js resets it before `_segmentGate`).
+        if item.kind != .tts, item.bounds != nil { state.clipLoadSteps = 0 }
         if !gate.ok { return refuseAtLoad(item, reason: gate.reason ?? "") }
         if gate.note != nil {
             diag("gate", [JSONMember("kind", .string("noted")), JSONMember("item", .string(item.id))])
@@ -1346,7 +1349,11 @@ public struct EngineCore {
     ///     item behind the pause.
     ///
     /// `EngineConstants.QueueManager.forayClipLoadAttempts` counts the loads
-    /// and `forayClipMaxSilenceSec` is the silence that bounds. Anything that
+    /// and `forayClipMaxSilenceSec` is the silence that bounds. A SECOND clip
+    /// in a row that will not load is not stepped over
+    /// (`forayClipLoadMaxSteps`, `state.clipLoadSteps`): that is the network,
+    /// and stepping on would run through the rest of the Foray, end it and
+    /// mark it Played, so it is the caller's stop. Anything that
     /// is not a clip (a plain episode, a narration line, a bridge), or a load
     /// the player has moved off, returns false: the caller's stop, exactly as
     /// before. No `stopRow`: neither a retry nor a step is a stop (a step onto
@@ -1381,6 +1388,11 @@ public struct EngineCore {
             return true
         }
         guard waiting else { return false }
+        // A second clip in a row that will not load is the network, not the
+        // clip (`forayClipLoadMaxSteps`): the caller's stop, rather than a run
+        // through the rest of the Foray that ends it and marks it Played.
+        if Double(state.clipLoadSteps) >= EngineConstants.QueueManager.forayClipLoadMaxSteps { return false }
+        state.clipLoadSteps += 1
         state.pendingLoad = nil
         state.skippedSegments += 1
         diag("skip", [JSONMember("kind", .string("load")),
@@ -2356,6 +2368,7 @@ public struct EngineCore {
         state.preparedItemId = nil
         state.seamMark = nil
         state.skippedSegments = 0
+        state.clipLoadSteps = 0
         state.forayFinishedWritten = false
         state.forayThrottle.clear(forayId: args.forayId)
         if let elapsed = args.startElapsedSec, let at = ForayClock.segmentAtElapsed(forayItems, elapsed: elapsed),

@@ -17,6 +17,8 @@
     "§14: a failing load the listener has already skipped past is not spoken": "xctest:ForayCatchUpTests/testAFailingLoadTheListenerSkippedPastIsNotSpoken",
     "§16: a plain episode whose load fails is not retried (today's stop)": "xctest:ClipLoadRetryTests/testAPlainEpisodeWhoseLoadFailsIsNotRetried",
     "§16: a retry of a jump into a clip loads at the jump, not the clip's start": "xctest:ClipLoadRetryTests/testARetryLoadsAtTheSameOffsetAsTheLoadThatFailed",
+    "§16: a SECOND clip in a row that will not load stops the Foray instead of running through it": "xctest:ClipLoadRetryTests/testASecondClipInARowThatWillNotLoadStopsTheForay",
+    "§16: a clip that lands between two that will not load resets the run": "xctest:ClipLoadRetryTests/testAClipThatLandsBetweenTwoFailuresResetsTheRun",
     "§16: the Foray clip's silence bound is the attempts times the hidden-page deadline": "xctest:AVDeckTests/testTheClipSilenceBoundIsTheAttemptsTimesTheClipDeadline"
   },
   "html-audio-backend": {

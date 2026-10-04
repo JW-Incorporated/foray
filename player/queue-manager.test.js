@@ -1955,6 +1955,49 @@ test("§16: a Foray clip that fails twice is stepped over to the next item, neve
   assert.ok(!h.log.some((t) => /player\.error/.test(t)), `got ${h.log}`);
 });
 
+test("§16: a SECOND clip in a row that will not load stops the Foray instead of running through it", async () => {
+  /* The car in a dead zone: an offline load fails at once, so stepping over
+     every clip would end the Foray in seconds and mark it Played. Clip 2 fails
+     twice and is stepped over; clip 3 fails twice and STOPS (idle, on clip 3,
+     the page's error), with nothing after it loaded.
+     MUTATION (run 2026-10-04, red; so is deleting the guard): `FORAY_CLIP_LOAD_MAX_STEPS = 2` (clip 3 is stepped over too and
+     the Foray ends). */
+  const h = make({ backend: { failLoadFor: ["foray-1#1", "foray-1#2"] } });
+  await h.m.playForay(foray([fseg(), fseg({ item_id: "ep-other", start_sec: 400, end_sec: 500 }),
+    fseg({ start_sec: 700, end_sec: 800 }), fseg({ start_sec: 900, end_sec: 1000 })]), { resolveItem });
+  h.backend.currentTime = 210;
+  h.backend.calls.length = 0;
+  await h.backend.onItemEnded("outPoint");
+  await tick();
+  assert.deepEqual(h.backend.loads(), ["load:foray-1#1", "load:foray-1#1", "load:foray-1#2", "load:foray-1#2"],
+    `clip 4 is never reached: ${h.backend.calls}`);
+  assert.equal(h.m.state.type, "idle");
+  assert.equal(h.m.currentIndex, 2, "stopped on the second clip that failed");
+  assert.ok(h.log.some((t) => /^foray\.segment\.skipped\.atLoad foray-1#1:/.test(t)), `got ${h.log}`);
+  assert.ok(h.log.some((t) => /^foray\.segment\.notStepped foray-1#2: 1 clip\(s\) in a row/.test(t)), `got ${h.log}`);
+  assert.ok(h.log.some((t) => /player\.error/.test(t)), `the page's error: ${h.log}`);
+});
+
+test("§16: a clip that lands between two that will not load resets the run", async () => {
+  /* Clip 2 fails and is stepped over, clip 3 plays, clip 4 fails: that is two
+     slow files, not the network, so clip 4 is stepped over too (to the end).
+     MUTATION (run 2026-10-04, red): drop `this._clipLoadSteps = 0` where a clip lands (clip 4 stops
+     the Foray idle instead of ending it). */
+  const h = make({ backend: { failLoadFor: ["foray-1#1", "foray-1#3"] } });
+  await h.m.playForay(foray([fseg(), fseg({ item_id: "ep-other", start_sec: 400, end_sec: 500 }),
+    fseg({ start_sec: 700, end_sec: 800 }), fseg({ start_sec: 900, end_sec: 1000 })]), { resolveItem });
+  h.backend.currentTime = 210;
+  await h.backend.onItemEnded("outPoint");
+  await tick();
+  assert.equal(h.m.state.type, "playing");
+  assert.equal(h.m.currentIndex, 2, "clip 3 plays after clip 2 was stepped over");
+  h.backend.currentTime = 800;
+  await h.backend.onItemEnded("outPoint");
+  await tick();
+  assert.equal(h.m.state.type, "ended", `clip 4 was stepped over to the end: ${h.log}`);
+  assert.ok(!h.log.some((t) => /notStepped|player\.error/.test(t)), `got ${h.log}`);
+});
+
 test("§16: paused during a clip's load, a failed load is retried quietly and the play that follows finds it", async () => {
   /* The car's own play/pause during the wait. The retry runs while paused
      (nothing plays), lands, and the listener's play re-enters the clip at its
@@ -3814,7 +3857,7 @@ test("§16: a media error during a Foray clip's load (web lane) is retried, not 
      player was idle by the time `_retryOrSkipClip` looked, so a web clip with a
      media error stopped the Foray. Here the clip errors on BOTH attempts: one
      retry, then the step to the next clip.
-     MUTATION THAT KILLS THIS: delete the `_clipLoadInFlight` branch of
+     MUTATION THAT KILLS THIS (run 2026-10-04, red): delete the `_clipLoadInFlight` branch of
      `_onBackendError` (idle, `player.error`, one load). */
   const { m, backend, log } = make({
     backendClass: FlakyBackend,
@@ -3834,7 +3877,7 @@ test("§16: a media error during a Foray clip's load (web lane) is retried, not 
 });
 
 test("§16: a media error on a plain episode's load still stops the player (not a clip)", async () => {
-  /* MUTATION THAT KILLS THIS: set `_clipLoadInFlight` for every backend load
+  /* MUTATION THAT KILLS THIS (run 2026-10-04, red): set `_clipLoadInFlight` for every backend load
      (drop the `_isForayClip` test in `_loadRenderedOrCatch`) — the early report
      is swallowed and `foray.segment.error.leftToLoad a` appears. */
   const { m, backend, log } = make({

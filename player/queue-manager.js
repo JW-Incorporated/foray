@@ -242,7 +242,10 @@
    clip like a ladder refusal (`foray.segment.skipped.atLoad`, which the page
    already shows) onto the next item, a narration line included.
    `FORAY_CLIP_LOAD_ATTEMPTS` counts the attempts; `FORAY_CLIP_MAX_SILENCE_SEC`
-   is the silence that bounds.
+   is the silence that bounds. One step at a time, though: a SECOND clip in a
+   row that will not load stops the Foray as before (`FORAY_CLIP_LOAD_MAX_STEPS`),
+   because that is the network, and stepping on would run through the rest of
+   the Foray in seconds, end it, and mark it Played.
 
    The retry asks for the SAME source at the SAME in-point on purpose: that is
    what lets the deck keep what the first attempt fetched. The web lane's
@@ -401,6 +404,17 @@ export const FORAY_CLIP_LOAD_ATTEMPTS = 2;
     without it is red.
     // MEASURE: verdict=P13-clip (NE-38e). Rows: the gap from a clip's deck kind=attach to its ready or skip kind=load. */
 export const FORAY_CLIP_MAX_SILENCE_SEC = 40;
+
+/** §16: THE MOST CLIPS IN A ROW a Foray steps over for not loading. The next
+    clip in that run that will not load either STOPS the Foray (`E.error`, the
+    page's "Couldn't load — press play to try again") instead of stepping on.
+    One, because two clips in a row each failing twice is no longer one slow
+    file: it is most likely the network (a car in a dead zone), and
+    stepping on would run through every remaining clip in seconds (an offline
+    load fails at once), end the Foray, and mark it Played. The run resets when
+    a clip lands, and with every new Foray.
+    // MEASURE: verdict=P13-clip (NE-38e). Rows: skip kind=load, then a stop cause=load-deadline or load-failed. */
+export const FORAY_CLIP_LOAD_MAX_STEPS = 1;
 
 const nonEmptyStr = (s) => typeof s === "string" && s.trim().length > 0;
 const isNum = (n) => typeof n === "number" && Number.isFinite(n);
@@ -774,6 +788,9 @@ export class PlayerQueueManager {
         `null`, so the element's early `error` report is left to the load's own
         rejection, which retries or steps over — see `_onBackendError`. */
     this._clipLoadInFlight = null;
+    /** §16: clips stepped over in a row for not loading
+        (`FORAY_CLIP_LOAD_MAX_STEPS`); 0 again when a clip lands. */
+    this._clipLoadSteps = 0;
     /** §14: `{ id, seq }` while a FALLBACK `speak()` is in flight — the file
         has already failed and the line is on its way to speech — else `null`.
         See `_onBackendError`. */
@@ -910,6 +927,7 @@ export class PlayerQueueManager {
       );
     }
     this._forayOptions = { isLocalFile: Boolean(opts.isLocalFile), allowAdPad: Boolean(opts.allowAdPad) };
+    this._clipLoadSteps = 0;
     this.loadQueue(report.items);
     this._emit(
       `queue.foray.${report.id}.n=${report.items.length}` +
@@ -1957,6 +1975,8 @@ export class PlayerQueueManager {
           }
           this._loadedId = item.id;
           this._endSynthNarration();
+          // §16: a clip that loaded ends a run of clips that would not.
+          if (this._isForayClip(item)) this._clipLoadSteps = 0;
         }
       }
       // The ladder's rung 3 runs HERE and nowhere earlier: this is the first
@@ -2011,7 +2031,8 @@ export class PlayerQueueManager {
    * (`_skipUnplayableSegment`: the next item, a narration line included, or the
    * end), with the line the page already shows. Paused during the load
    * (`interrupted`), the retry still runs, quietly, but a failed retry is
-   * today's stop: stepping on would start the next item playing.
+   * today's stop: stepping on would start the next item playing. So is the
+   * failed retry of a second clip in a row (`FORAY_CLIP_LOAD_MAX_STEPS`).
    *
    * Anything that is not a clip (a plain episode, a narration line, a bridge),
    * or a load the player has moved off, returns false: the caller's error,
@@ -2033,6 +2054,13 @@ export class PlayerQueueManager {
       return true;
     }
     if (!waiting) return false;
+    // A second clip in a row that will not load is the network, not the
+    // clip: stop here rather than run through the rest of the Foray.
+    if (this._clipLoadSteps >= FORAY_CLIP_LOAD_MAX_STEPS) {
+      this._emit(`foray.segment.notStepped ${item.id}: ${this._clipLoadSteps} clip(s) in a row did not load (${why})`);
+      return false;
+    }
+    this._clipLoadSteps += 1;
     this._emit(`foray.segment.skipped.atLoad ${item.id}: did not load in ${attempt} attempts (${why})`);
     await this._skipUnplayableSegment();
     return true;

@@ -224,5 +224,76 @@ final class ClipLoadRetryTests: XCTestCase {
     func testTheAttemptsAndTheSilenceBoundAreTheReferences() {
         XCTAssertEqual(EngineConstants.QueueManager.forayClipLoadAttempts, 2)
         XCTAssertEqual(EngineConstants.QueueManager.forayClipMaxSilenceSec, 40)
+        XCTAssertEqual(EngineConstants.QueueManager.forayClipLoadMaxSteps, 1)
+    }
+
+    static let fourClips = threeClips + [ForayTapeTests.clip(3, "d", 700, 800)]
+
+    /// A Foray of four clips playing its first, then its end: clip 2's load
+    /// (`f1#1@300`) in flight.
+    static func inSeamOfFour() throws -> Host {
+        var host = Host(config: ForayTapeTests.tape)
+        host.send(try EngineCoreTests.command("playForay", ForayTapeTests.forayArgs(fourClips)))
+        host.land()
+        host.confirm()
+        host.reading.audible = false
+        host.reading.ended = true
+        let seam = host.send(.deck(.ended(token: host.lastLoad ?? 0)), after: 0)
+        XCTAssertEqual(ForayTapeTests.loads(seam), ["f1#1@300"], "\(seam)")
+        return host
+    }
+
+    /// Fails the load in flight on both of its attempts; the second turn's out.
+    static func failTwice(_ host: inout Host) -> [EngineCommand] {
+        host.send(.deck(.deadlineExceeded(token: host.lastLoad ?? 0, afterMs: 20_000)), after: 20_000)
+        return host.send(.deck(.deadlineExceeded(token: host.lastLoad ?? 0, afterMs: 20_000)), after: 20_000)
+    }
+
+    /// A SECOND CLIP IN A ROW THAT WILL NOT LOAD STOPS THE FORAY (the car in a
+    /// dead zone: an offline load fails at once, and stepping over every clip
+    /// would end the Foray in seconds and mark it Played). Clip 2 is stepped
+    /// over; clip 3 stops it, idle on clip 3, with the stop row and the page's
+    /// error, and clip 4 is never loaded. queue-manager.test.js "§16: a SECOND
+    /// clip in a row that will not load stops the Foray instead of running
+    /// through it" maps here.
+    /// TO SEE IT FAIL: drop the `forayClipLoadMaxSteps` guard in
+    /// `retryOrSkipClip` (clip 3 is stepped over and clip 4 loads).
+    func testASecondClipInARowThatWillNotLoadStopsTheForay() throws {
+        var host = try ClipLoadRetryTests.inSeamOfFour()
+        let step = ClipLoadRetryTests.failTwice(&host)
+        XCTAssertEqual(ForayTapeTests.loads(step), ["f1#2@500"], "clip 2 is stepped over: \(step)")
+        XCTAssertEqual(host.core.state.clipLoadSteps, 1)
+        let stop = ClipLoadRetryTests.failTwice(&host)
+        XCTAssertEqual(ForayTapeTests.loads(stop), [], "clip 4 is never loaded: \(stop)")
+        XCTAssertEqual(host.core.state.stateType, "idle")
+        XCTAssertEqual(host.core.state.currentIndex, 2, "stopped on the second clip that failed")
+        XCTAssertTrue(ClipLoadRetryTests.hasStopRow(stop), "\(stop)")
+        XCTAssertTrue(ClipLoadRetryTests.hasError(stop), "\(stop)")
+        XCTAssertEqual(host.core.state.skippedSegments, 1)
+    }
+
+    /// A clip that lands between two that will not load resets the run: two
+    /// slow files are not the network, so the second is stepped over too (to
+    /// the end of the Foray). queue-manager.test.js "§16: a clip that lands
+    /// between two that will not load resets the run" maps here.
+    /// TO SEE IT FAIL: drop `state.clipLoadSteps = 0` in `landed` (clip 4
+    /// stops the Foray idle instead of ending it).
+    func testAClipThatLandsBetweenTwoFailuresResetsTheRun() throws {
+        var host = try ClipLoadRetryTests.inSeamOfFour()
+        let step = ClipLoadRetryTests.failTwice(&host)
+        XCTAssertEqual(ForayTapeTests.loads(step), ["f1#2@500"], "\(step)")
+        host.land()
+        host.confirm()
+        XCTAssertEqual(host.core.state.stateType, "playing")
+        XCTAssertEqual(host.core.state.clipLoadSteps, 0, "a clip landed")
+        host.reading.audible = false
+        host.reading.ended = true
+        let seam = host.send(.deck(.ended(token: host.lastLoad ?? 0)), after: 0)
+        XCTAssertEqual(ForayTapeTests.loads(seam), ["f1#3@700"], "\(seam)")
+        let end = ClipLoadRetryTests.failTwice(&host)
+        XCTAssertEqual(ForayTapeTests.loads(end), [], "\(end)")
+        XCTAssertFalse(ClipLoadRetryTests.hasError(end), "stepped over, not stopped: \(end)")
+        XCTAssertEqual(host.core.state.stateType, "ended")
+        XCTAssertEqual(host.core.state.skippedSegments, 2)
     }
 }
