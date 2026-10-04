@@ -1074,7 +1074,7 @@
     "media": {
       "files": {
         "player/parity/fixtures/media/committed.json": "0904f44351c437b8b09f6d116be8b4a8b193c99feb29671e66a7f8df89eddebe",
-        "player/parity/fixtures/media/media-mapping.json": "ed9b8eda0f101de423576d87852955a85e0bf0b56e20dbf4d106cb5368e256b3",
+        "player/parity/fixtures/media/media-mapping.json": "1b3dc1e092fce7211356df98c5e52ab9788304648a143c51db77e53fa6fc95e3",
         "player/parity/fixtures/media/remote.json": "7788989d8cbcc5ee17085e448ca44ae917014441c6d4447d8ff60aeff0998bba"
       },
       "ids": [
@@ -1102,6 +1102,7 @@
         "media/foray-clock-what-engineers-actually-do-all-day-e08236",
         "media/narration-up-next",
         "media/narration-last-shows-foray",
+        "media/narration-no-foray-album-is-app-name",
         "media/narration-last-no-foray",
         "media/narration-credit-foray",
         "media/jingle-credit-foray",
@@ -1126,7 +1127,7 @@
     "media-episode": {
       "files": {
         "player/parity/fixtures/media-episode/media-actions.json": "334f3d62f2e5f8f67f87d3f6c0915e512e6bce29baf07261f0e5295b1836967b",
-        "player/parity/fixtures/media-episode/media-mapping.json": "b4af7d2bd34911c8240ac2f3b5ceaf53fb94c46304b643f9fe1ce64547d977e9"
+        "player/parity/fixtures/media-episode/media-mapping.json": "5d254e32b9c0e040a594b03be24a81bf43b26af0414e79a61afc09a45ea8a0a5"
       },
       "ids": [
         "media-episode/actions-complete-surface",
@@ -1191,7 +1192,9 @@
         "media-episode/counter-first",
         "media-episode/counter-last",
         "media-episode/counter-index-past-end-clamped",
-        "media-episode/zero-total-no-title-empty-album",
+        "media-episode/zero-total-no-title-album-is-app-name",
+        "media-episode/no-collection-album-is-app-name",
+        "media-episode/whitespace-foray-title-album-is-app-name",
         "media-episode/zero-total-with-title-album-is-title",
         "media-episode/counter-without-title-is-a-sentence",
         "media-episode/missing-show-empty-artist",

@@ -16,8 +16,8 @@ import java.util.Set;
  * {@code media} family that pins it for Forays is A-40's.
  *
  * <p>THE RULES ARE THE JS FILE'S, AND SO ARE THEIR REASONS (title = the episode, artist =
- * the SHOW, album = the Foray plus "clip N of M"; "4a" never credits anything a listener
- * hears; a finished Foray shows no transport; the seek pair is the founder's and never the
+ * the SHOW, album = the Foray plus "clip N of M", or the app's name when there is no
+ * collection; "4a" never credits anything a listener hears; a finished Foray shows no transport; the seek pair is the founder's and never the
  * platform's offset; a car scrub with no time is not a seek to zero). This file restates
  * none of them.
  *
@@ -225,6 +225,7 @@ public final class MediaMapping {
      * {@code albumOf(forayTitle, index, total)}: "The history of grilling · clip 12 of 32",
      * worded exactly as the mini bar words it. The counter needs a non-negative integer
      * index and a positive integer total; an index past the end reads as the last clip.
+     * With neither a title nor a counter it is {@code APP_NAME}, never "" (issue #1006).
      */
     static String albumOf(String forayTitle, Double index, Double total) {
         String counter = "";
@@ -235,7 +236,7 @@ public final class MediaMapping {
         if (!forayTitle.isEmpty()) return forayTitle;
         // `n.charAt(0).toUpperCase() + n.slice(1)`: the counter alone is a sentence.
         if (!counter.isEmpty()) return "C" + counter.substring(1);
-        return "";
+        return APP_NAME;
     }
 
     // ---- position and playback state

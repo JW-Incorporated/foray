@@ -1889,7 +1889,7 @@ const FLOORS = {
      shared build steps into. Registered the same day both suites were
      written, per R-02's own precedent for this map. */
   "tools/mobile/release-ci.test.mjs": 15,
-  "tools/mobile/release-workflow.test.mjs": 40, // 2026-10-04 (ios-kit path gate): +1 -- ios-checks waits 120 minutes (RELEASE_CHECKS_TIMEOUT_MIN) inside a 130-minute job, grace at its default; 39 -> 40 // 2026-10-04: +1 -- ios-checks holds actions: write and passes REF_NAME/DEFAULT_BRANCH for the ci.yml dispatch; 38 -> 39 // round-3 review: +3 -- no secret-holding step writes under $ART, each signing step holds only its own credentials, and altool's log reaches $ART only as a redacted copy from a secret-free step; 35 -> 38 // ci-release-13 (round-3 audit): +2 -- the release composite uploads its logs dir always, and nothing secret is written under it; 33 -> 35 // NE-17: +1 -- the release archive keeps the bare injector run and its --check (ForayEngineDefault), with no --engine-default override // NE-06: +3 -- ios needs ios-checks (release-checks on github.sha via env), ios-checks is guarded and reads checks on Linux, and the summary names a refusal // +4 (2026-09-13): the release composite is a THIRD build path — it patches the ONNX Runtime plist before archiving, archives from the patched tree, and reads the archive back before export/upload
+  "tools/mobile/release-workflow.test.mjs": 41, // OPS-04: +1 -- ios and android refuse a re-run (run_attempt != 1) as their first step, before checkout; 40 -> 41 // 2026-10-04 (ios-kit path gate): +1 -- ios-checks waits 120 minutes (RELEASE_CHECKS_TIMEOUT_MIN) inside a 130-minute job, grace at its default; 39 -> 40 // 2026-10-04: +1 -- ios-checks holds actions: write and passes REF_NAME/DEFAULT_BRANCH for the ci.yml dispatch; 38 -> 39 // round-3 review: +3 -- no secret-holding step writes under $ART, each signing step holds only its own credentials, and altool's log reaches $ART only as a redacted copy from a secret-free step; 35 -> 38 // ci-release-13 (round-3 audit): +2 -- the release composite uploads its logs dir always, and nothing secret is written under it; 33 -> 35 // NE-17: +1 -- the release archive keeps the bare injector run and its --check (ForayEngineDefault), with no --engine-default override // NE-06: +3 -- ios needs ios-checks (release-checks on github.sha via env), ios-checks is guarded and reads checks on Linux, and the summary names a refusal // +4 (2026-09-13): the release composite is a THIRD build path — it patches the ONNX Runtime plist before archiving, archives from the patched tree, and reads the archive back before export/upload
 
   /* The launch verdict (the `android-smoke` job's brain). ZERO SLACK. This is the
      only thing in the repo that can judge a RUNNING Android app, and its risk is
@@ -1972,6 +1972,15 @@ const FLOORS = {
      `absence` nor `overwrite` could — "did today's scheduled nightly-refresh
      run itself succeed", independent of any digest/PR state. */
   "tools/refresh/watch-nightly.test.mjs": 71,
+  /* #760 / OPS-14: the nightly's mechanical halves as two commands. The suite
+     injects a recording exec and asserts the exact ORDERED arg arrays — merge →
+     vitest → switch → add → diff --cached → commit → push → pr — with `now`
+     pinned to a different day than the digest, because every past nightly
+     incident was an ordering or string bug (a branch named after today, a
+     third staged file, a PR on red tests). 16 is the true count at landing
+     (15 at OPS-14, +1 prompt-shape test from OPS-17);
+     each test names the mutation that kills it. */
+  "tools/refresh/nightly-runner.test.mjs": 17, // OPS-17 review: +1 -- the live prompt steps match finish (no stale "step 7", restore after TESTS_FAILED, GIT_FAILED stops); 16 -> 17
   /* S-01's other half: proves the actual bash in nightly-refresh.yml's
      "Publish digest to refresh-digest branch" step, not a JS reimplementation
      of it. Extracts the real `run:` block, shims `gh`/`jq`, and round-trips a
@@ -2050,8 +2059,8 @@ const FLOORS = {
      both idempotency paths (S-04a's own state.json skip, and the
      independent release-already-exists check that catches a lost
      state.json). */
-  "tools/shows/publish-release.test.mjs": 19, // audit round 3 (L8): +1, POINTER_SCHEMA_VERSION; 18 -> 19
-  "tools/shows/run-and-publish.test.mjs": 6,
+  "tools/shows/publish-release.test.mjs": 28, // OPS-03 review: +2 -- a starter (half-uploaded) asset reads as missing, and a stranded draft BATCH resumes in publishShardReleases (the #969 fix at the call site); 26 -> 28 // OPS-03: draft -> chunked uploads -> publish, resume, retry, rate-limit wait, pacing, releaseState; 19 -> 26 (true count)
+  "tools/shows/run-and-publish.test.mjs": 10, // OPS-01: +3 describeExecError (FATAL lines carry code/signal/stderr/stdout); 6 -> 10 (true count: 7 existing + 3)
   /* Fresh-context review finding (2026-09-05): runBuild spawns
      import-dump.mjs as a real child process, and Node does NOT
      auto-inherit process.execArgv (e.g. --experimental-sqlite) into a
@@ -2159,7 +2168,7 @@ const FLOORS = {
   "tools/corpus/extract.test.mjs": 21,
   "tools/corpus/db.test.mjs": 20,
   "tools/corpus/manifest.test.mjs": 24,
-  "tools/corpus/export-index.test.mjs": 24,
+  "tools/corpus/export-index.test.mjs": 26, // OPS-09 (#255): a capture under THIN_TOKEN_FLOOR is "thin", and the committed index agrees with its own totals; 24 -> 26
   "tools/corpus/chunk.test.mjs": 16,
   "tools/corpus/ftsquery.test.mjs": 21,
   "tools/corpus/eval.test.mjs": 28,
@@ -2167,6 +2176,18 @@ const FLOORS = {
   "tools/corpus/embeddings.test.mjs": 39,
   "tools/corpus/search.test.mjs": 25,
   "tools/corpus/backfill.test.mjs": 26,
+  /* The weekly merge audit (#129, OPS-07). Floored at its full count because it
+     is the only check of its class: auto-merge lands bot PRs unread, and this
+     is what reports, once a week, which ones nobody read, which touched the
+     denied boundary, and whether a floor in THIS file fell. A test deleted
+     here is an unread merge that stops being counted. */
+  "tools/audit/merge-audit.test.mjs": 16, // OPS-08: + the workflow-shape test (two comments on #129); + the comment-size compaction test
+  /* The worktree collector (OPS-12). It runs `git worktree remove` on the
+     founder's machine. Every test here is a thing it must NOT remove -- a
+     dirty tree, an open or closed-unmerged PR, a branch with no PR, a detached
+     head not on main -- or a proof that the dry run mutates nothing. A test
+     deleted here is a keep-* that could become a remove. */
+  "tools/dev/worktree-gc.test.mjs": 27, // OPS-12 review (2026-10-04): +8 -- keep-unpushed (tip not in the merged head), the CLI asks git for containment, fork PRs ignored, prototype-named branches, locked trees, strays found from the main tree not cwd, a refused branch -D or prune exits 1, --repo without a value; 19 -> 27
   "tools/poll/tiers.test.mjs": 9, // PKG-05 (S-10): new -- cadence tiers (seed, correction, success/failure, dead)
 };
 

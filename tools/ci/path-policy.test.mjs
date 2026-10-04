@@ -238,6 +238,13 @@ const ACKNOWLEDGED_UNDENIED_GATES = {
   // Drives the PR-hygiene labelling sweep (needs-founder queue etc.) — it
   // reads/labels PRs, it does not gate what auto-merges or what CI asserts.
   "tools/ci/pr-triage.mjs": "PR labelling/triage only; does not gate auto-merge or CI checks",
+  // #129 / OPS-08: merge-audit.yml runs it with `issues: write` only. It reads
+  // files the workflow gathered and renders ONE comment on #129; it never
+  // merges, labels, dispatches or writes to the tree, and holds no secret. A
+  // neutered copy could only make the weekly ledger lie — which is exactly
+  // what the ledger's reader (a person, once a week) is there to notice, and
+  // the PR that neutered it would itself appear in the ledger it broke.
+  "tools/audit/merge-audit.mjs": "read-only report, no secret, posts a comment",
   // release.yml calls `marketing-version` (tag-name-vs-tracked-version check)
   // and `pair` (the MARKETING_VERSION/BUILD_NUMBER both stores ship). Unlike
   // release-ci.mjs (denied above), a neutered version.mjs cannot bypass the
