@@ -7,6 +7,12 @@ docs/. Completed workstreams move to their plan doc's retro section.
 
 ## Active workstreams
 
+### 2026-10-04 — corpus supply package (`docs/roadmap/corpus.md`, G-03, G-10…G-16, G-19)
+
+foray-db / transcript farm → R2 → foray. Owned paths: `tools/foraycorpus-export/**`, `data/dai-measurements.json`, `data/episode-topics.json`, `data/corpus-catalogue-pointer.json`. Other sessions route around them; the shared files are one `FLOORS` line each in `test/suite-integrity.test.js` and a paragraph each in `tools/foraycorpus-export/README.md`. On main today: nothing yet (PKG-01, the package scaffold, is PR #1001).
+- **Human gates (G-16), ruled at the `docs/roadmap/README.md` defaults:** the R2 read key, HUMAN-ACTIONS #138 (question 3: Joey issues Object Read on `foray-transcriptions`, kept at `~/.foray/r2-credentials`); the export host, #139 (question 2: weekly cron on hermes-vm as `wyatt_readonly`, GitHub Releases plus a pointer PR); the outbound probes, #140, closed as go (question 4: 2-byte ranged GETs under ForayBot, at least 1.2 s per host, never alongside Joey's crawler).
+- **What waits on them:** PKG-15 (first live sync) on #138; PKG-10 (live dry run) and PKG-32's cron on #139. The scaffolding (PKG-01…09, 11…14, 16, 17) needs none of them.
+
 ### 2026-09-30 — `engine/ne-40`: NE-40, the stop-cause audit, the `.longFormAudio` trial (OFF) and the M3 drive script
 
 **The audit (D-5).** `StopCauseTests.swift` (the engine core's tests) is the table of every path that stops audio: 32 paths from the 13 `EngineCore` functions that write a `stop` row, each naming its adapter (AVDeck, DeckPair, SpeechNarrator, InterludePlayer, SilenceNode, AudioSessionOwner, BackgroundGrace, the page, the car). Every `Vocabulary.StopCause` is emitted by a path or reserved (`seam-timeout`: a seam's next clip that never loads is its `load-deadline`; `unknown`: never written). A shell invariant is red when a `stopRow(` call site has no table entry.
