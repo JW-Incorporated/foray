@@ -1072,7 +1072,9 @@ public struct EngineCore {
     /// `_loadItem(ref)`: where the load starts, decided in the JS order, then
     /// one `.load` with a fresh token. The index moves NOW (after the outgoing
     /// save already ran); the loaded id moves only when `.ready` comes back.
-    private mutating func load(_ ref: QueueItemRef, offsets: LoadOffsets) {
+    /// `attempt` is §16's: 1 for every load the reducer asks for, higher only
+    /// for a Foray clip's retry (`retryOrSkipClip`).
+    private mutating func load(_ ref: QueueItemRef, offsets: LoadOffsets, attempt: Int = 1) {
         guard let item = state.queue.first(where: { $0.id == ref.id }) else {
             // Drop the beat's deadline with the item it belonged to.
             endSeamGap("unknownRef")
@@ -1137,7 +1139,7 @@ public struct EngineCore {
             // SPOKEN (NE-31s).
             return loadSpokenLine(item, token: token, restart: offsets.forced != nil)
         }
-        state.pendingLoad = PendingLoad(token: token, itemId: item.id, startSec: startSec)
+        state.pendingLoad = PendingLoad(token: token, itemId: item.id, startSec: startSec, attempt: attempt)
         deckCommand(.load(token: token, itemId: item.id, url: item.audioUrl, startSec: startSec,
                           preciseTiming: item.preciseTiming(approximateCBR: config.approximateCBRClips),
                           deadlineClass: DeckDeadlineClass(item)))
@@ -1289,6 +1291,9 @@ public struct EngineCore {
             referenceDurationSec: item.referenceDurationSec, adPadSec: item.adPadSec,
             observedDuration: deck.durationSec, isLocalFile: state.forayIsLocalFile,
             allowAdPad: state.forayAllowAdPad)
+        // §16: a clip that loaded ends a run of clips that would not (before
+        // the gate, as queue-manager.js resets it before `_segmentGate`).
+        if item.kind != .tts, item.bounds != nil { state.clipLoadSteps = 0 }
         if !gate.ok { return refuseAtLoad(item, reason: gate.reason ?? "") }
         if gate.note != nil {
             diag("gate", [JSONMember("kind", .string("noted")), JSONMember("item", .string(item.id))])
@@ -1317,6 +1322,10 @@ public struct EngineCore {
             diag("bridge", [JSONMember("kind", .string("load-failed")), JSONMember("item", .string(pending.itemId))])
             return advancePastBridgeFailure()
         }
+        // §16: a Foray clip is retried once, then stepped over, never left idle.
+        if isPending, let pending = state.pendingLoad, retryOrSkipClip(pending, cause: cause, why: fallbackCause) {
+            return
+        }
         let itemId = state.pendingLoad?.itemId ?? state.loadedId ?? "?"
         state.pendingLoad = nil
         stopRow(cause)
@@ -1330,6 +1339,80 @@ public struct EngineCore {
             out.append(.emit(.error(code: "load", message: message)))
         }
         dispatch(.error("loadItem(\(itemId)) failed: \(message)"))
+    }
+
+    /// §16 (queue-manager.js `_retryOrSkipClip`; the M2 car drive,
+    /// 2026-10-01): a Foray CLIP's load failed (its P-13 deadline, or the
+    /// deck's `.failed`) while the listener is still on it. It used to stop
+    /// the Foray here, idle and silent with the clip on the lock screen, and
+    /// every press of play then loaded the clip again from nothing.
+    ///
+    ///   - The first failure loads the SAME clip at the SAME in-point again
+    ///     (`deck kind=retry`). That is what lets the deck keep what the first
+    ///     attempt fetched: AVDeck continues a load that was getting somewhere
+    ///     (`deck kind=continue`) instead of starting a cold one.
+    ///   - A failure of that retry steps over the clip the way the ladder's
+    ///     refusal does (`skip kind=load`, the `skipped` event the page
+    ///     already shows, `skipUnplayableSegment`): the next item, a narration
+    ///     line included, or the end of the Foray.
+    ///   - Paused during the load (`interrupted`), the retry still runs,
+    ///     quietly, so the listener's play finds the clip; a failed retry while
+    ///     paused is today's stop, because stepping on would start the next
+    ///     item behind the pause.
+    ///
+    /// `EngineConstants.QueueManager.forayClipLoadAttempts` counts the loads
+    /// and `forayClipMaxSilenceSec` is the silence that bounds. A SECOND clip
+    /// in a row that will not load is not stepped over
+    /// (`forayClipLoadMaxSteps`, `state.clipLoadSteps`): that is the network,
+    /// and stepping on would run through the rest of the Foray, end it and
+    /// mark it Played, so it is the caller's stop. Anything that
+    /// is not a clip (a plain episode, a narration line, a bridge), or a load
+    /// the player has moved off, returns false: the caller's stop, exactly as
+    /// before. No `stopRow`: neither a retry nor a step is a stop (a step onto
+    /// nothing is `skipUnplayableSegment`'s own `final-end`).
+    private mutating func retryOrSkipClip(_ pending: PendingLoad, cause: Vocabulary.StopCause,
+                                          why: Vocabulary.NarrationFallbackCause) -> Bool {
+        guard config.forayTapeEnabled, !pending.bridge, pending.spokenSeq == nil,
+              let item = state.queue.first(where: { $0.id == pending.itemId }),
+              item.kind != .tts, item.bounds != nil, focusItem?.id == item.id else { return false }
+        let waiting: Bool
+        switch state.player {
+        case .loadingItem: waiting = true
+        case .interrupted: waiting = false
+        default: return false
+        }
+        // `why`, not `cause`: outside a `narration` row DiagGate admits a
+        // `cause` only as a stop cause, and neither row is a stop. The clip is
+        // named by its queue `index`, not its id: a Foray item id carries a
+        // `#` (`f1#1`), which is not a token, so DiagGate would withhold it.
+        let index = state.queue.firstIndex(where: { $0.id == item.id }) ?? state.currentIndex
+        let fields = [JSONMember("index", .number(Double(index))),
+                      JSONMember("why", .string(cause.rawValue)),
+                      JSONMember("fileCause", .string(why.rawValue)),
+                      JSONMember("waiting", .bool(waiting))]
+        if Double(pending.attempt) < EngineConstants.QueueManager.forayClipLoadAttempts {
+            diag("deck", [JSONMember("kind", .string("retry")), JSONMember("token", .number(Double(pending.token))),
+                          JSONMember("attempt", .number(Double(pending.attempt + 1)))] + fields)
+            state.pendingLoad = nil
+            // The same in-point: an explicit offset inside the slice, spent by
+            // this one load.
+            load(item.ref, offsets: LoadOffsets(explicit: pending.startSec), attempt: pending.attempt + 1)
+            return true
+        }
+        guard waiting else { return false }
+        // A second clip in a row that will not load is the network, not the
+        // clip (`forayClipLoadMaxSteps`): the caller's stop, rather than a run
+        // through the rest of the Foray that ends it and marks it Played.
+        if Double(state.clipLoadSteps) >= EngineConstants.QueueManager.forayClipLoadMaxSteps { return false }
+        state.clipLoadSteps += 1
+        state.pendingLoad = nil
+        state.skippedSegments += 1
+        diag("skip", [JSONMember("kind", .string("load")),
+                      JSONMember("attempts", .number(Double(pending.attempt)))] + fields)
+        out.append(.emit(.skipped(itemId: item.id, index: index,
+                                  reason: "did not load in \(pending.attempt) attempts (\(why.rawValue))")))
+        skipUnplayableSegment()
+        return true
     }
 
     /// §14 (queue-manager.js, Phase 2; founder rulings D1-D11, 2026-09-28):
@@ -2297,6 +2380,7 @@ public struct EngineCore {
         state.preparedItemId = nil
         state.seamMark = nil
         state.skippedSegments = 0
+        state.clipLoadSteps = 0
         state.forayFinishedWritten = false
         state.forayThrottle.clear(forayId: args.forayId)
         if let elapsed = args.startElapsedSec, let at = ForayClock.segmentAtElapsed(forayItems, elapsed: elapsed),

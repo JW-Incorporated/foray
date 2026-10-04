@@ -352,6 +352,12 @@ public final class EngineConstants {
     public static final class QueueManager {
         private QueueManager() {}
 
+        /** {@code FORAY_CLIP_LOAD_ATTEMPTS} */
+        public static final double FORAY_CLIP_LOAD_ATTEMPTS = 2.0;
+        /** {@code FORAY_CLIP_LOAD_MAX_STEPS} */
+        public static final double FORAY_CLIP_LOAD_MAX_STEPS = 1.0;
+        /** {@code FORAY_CLIP_MAX_SILENCE_SEC} */
+        public static final double FORAY_CLIP_MAX_SILENCE_SEC = 40.0;
         /** {@code NARRATION_DEADLINE_FACTOR} */
         public static final double NARRATION_DEADLINE_FACTOR = 1.5;
         /** {@code NARRATION_DEADLINE_MARGIN_SEC} */
