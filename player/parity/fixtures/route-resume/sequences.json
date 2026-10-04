@@ -1,0 +1,508 @@
+{
+  "family": "route-resume",
+  "module": "player/route-resume.js",
+  "note": "NE-38rj: the bookkeeping around the decision, replayed (routeResumeReplay): what last paused us, which route was lost and when, and that one resume spends a loss. Each case is a list of engine events from a playing start unless it says otherwise; the result is one decision per `back`, and the count of resumes.",
+  "cases": [
+    {
+      "id": "route-resume/car-lost-and-back",
+      "covers": ["route-resume::a known car lost while playing and back again resumes, once"],
+      "note": "Founder Q5: the car switched off at work, and on again after a day (#114 is about 9-10 h).",
+      "call": "routeResumeReplay",
+      "args": [
+        [
+          { "on": "lost", "port": "CarAudio", "key": "CarAudio|car-1", "atSec": 100 },
+          {
+            "on": "back",
+            "port": "CarAudio",
+            "key": "CarAudio|car-1",
+            "known": true,
+            "atSec": 34300
+          },
+          { "on": "playing" }
+        ]
+      ],
+      "expect": {
+        "return": {
+          "decisions": [{ "event": 1, "resume": true, "why": "route-back" }],
+          "resumes": 1
+        }
+      }
+    },
+    {
+      "id": "route-resume/listener-pause-then-car-lost-and-back",
+      "covers": [
+        "route-resume::a listener's pause is never resumed, even when the car is then lost and comes back"
+      ],
+      "note": "The listener paused, then switched the car off and on: never resumed.",
+      "call": "routeResumeReplay",
+      "args": [
+        [
+          { "on": "press", "command": "pause" },
+          { "on": "lost", "port": "CarAudio", "key": "CarAudio|car-1", "atSec": 100 },
+          {
+            "on": "back",
+            "port": "CarAudio",
+            "key": "CarAudio|car-1",
+            "known": true,
+            "atSec": 400
+          }
+        ]
+      ],
+      "expect": {
+        "return": {
+          "decisions": [{ "event": 2, "resume": false, "why": "listener-paused" }],
+          "resumes": 0
+        }
+      }
+    },
+    {
+      "id": "route-resume/call-during-the-loss",
+      "covers": ["route-resume::a call, Siri or a system pause during the loss clears it"],
+      "call": "routeResumeReplay",
+      "args": [
+        [
+          { "on": "lost", "port": "CarAudio", "key": "CarAudio|car-1", "atSec": 100 },
+          { "on": "interruption" },
+          {
+            "on": "back",
+            "port": "CarAudio",
+            "key": "CarAudio|car-1",
+            "known": true,
+            "atSec": 400
+          }
+        ]
+      ],
+      "expect": {
+        "return": {
+          "decisions": [{ "event": 2, "resume": false, "why": "interrupted" }],
+          "resumes": 0
+        }
+      }
+    },
+    {
+      "id": "route-resume/system-pause-during-the-loss",
+      "covers": ["route-resume::a call, Siri or a system pause during the loss clears it"],
+      "call": "routeResumeReplay",
+      "args": [
+        [
+          { "on": "lost", "port": "CarAudio", "key": "CarAudio|car-1", "atSec": 100 },
+          { "on": "system" },
+          {
+            "on": "back",
+            "port": "CarAudio",
+            "key": "CarAudio|car-1",
+            "known": true,
+            "atSec": 400
+          }
+        ]
+      ],
+      "expect": {
+        "return": {
+          "decisions": [{ "event": 2, "resume": false, "why": "system-paused" }],
+          "resumes": 0
+        }
+      }
+    },
+    {
+      "id": "route-resume/press-after-the-loss",
+      "covers": ["route-resume::a press after the loss clears it, whatever the press was"],
+      "note": "A skip on the lock screen while the car is off: the listener has taken charge.",
+      "call": "routeResumeReplay",
+      "args": [
+        [
+          { "on": "lost", "port": "CarAudio", "key": "CarAudio|car-1", "atSec": 100 },
+          { "on": "press", "command": "skip-forward" },
+          {
+            "on": "back",
+            "port": "CarAudio",
+            "key": "CarAudio|car-1",
+            "known": true,
+            "atSec": 400
+          }
+        ]
+      ],
+      "expect": {
+        "return": {
+          "decisions": [{ "event": 2, "resume": false, "why": "listener-paused" }],
+          "resumes": 0
+        }
+      }
+    },
+    {
+      "id": "route-resume/play-press-after-the-loss",
+      "covers": ["route-resume::a press after the loss clears it, whatever the press was"],
+      "note": "The listener played on the phone speaker and paused again before the car came back.",
+      "call": "routeResumeReplay",
+      "args": [
+        [
+          { "on": "lost", "port": "CarAudio", "key": "CarAudio|car-1", "atSec": 100 },
+          { "on": "press", "command": "play" },
+          { "on": "playing" },
+          { "on": "press", "command": "pause" },
+          {
+            "on": "back",
+            "port": "CarAudio",
+            "key": "CarAudio|car-1",
+            "known": true,
+            "atSec": 400
+          }
+        ]
+      ],
+      "expect": {
+        "return": {
+          "decisions": [{ "event": 4, "resume": false, "why": "listener-paused" }],
+          "resumes": 0
+        }
+      }
+    },
+    {
+      "id": "route-resume/unknown-car",
+      "covers": ["route-resume::a car our audio never played through does not resume"],
+      "call": "routeResumeReplay",
+      "args": [
+        [
+          { "on": "lost", "port": "CarAudio", "key": "CarAudio|car-1", "atSec": 100 },
+          {
+            "on": "back",
+            "port": "CarAudio",
+            "key": "CarAudio|car-1",
+            "known": false,
+            "atSec": 400
+          }
+        ]
+      ],
+      "expect": {
+        "return": {
+          "decisions": [{ "event": 1, "resume": false, "why": "unknown-route" }],
+          "resumes": 0
+        }
+      }
+    },
+    {
+      "id": "route-resume/bluetooth-arm-off",
+      "covers": [
+        "route-resume::Bluetooth resumes only with the arm on; headphones and other ports never"
+      ],
+      "note": "The founder's car is A2DP and sends its own play; with the arm off the engine waits for it.",
+      "call": "routeResumeReplay",
+      "args": [
+        [
+          {
+            "on": "lost",
+            "port": "BluetoothA2DPOutput",
+            "key": "BluetoothA2DPOutput|bt-car-1",
+            "atSec": 100
+          },
+          {
+            "on": "back",
+            "port": "BluetoothA2DPOutput",
+            "key": "BluetoothA2DPOutput|bt-car-1",
+            "known": true,
+            "atSec": 400
+          },
+          { "on": "press", "command": "play" }
+        ],
+        { "bluetoothArm": false }
+      ],
+      "expect": {
+        "return": {
+          "decisions": [{ "event": 1, "resume": false, "why": "bluetooth-off" }],
+          "resumes": 0
+        }
+      }
+    },
+    {
+      "id": "route-resume/bluetooth-arm-on",
+      "covers": [
+        "route-resume::Bluetooth resumes only with the arm on; headphones and other ports never"
+      ],
+      "call": "routeResumeReplay",
+      "args": [
+        [
+          {
+            "on": "lost",
+            "port": "BluetoothA2DPOutput",
+            "key": "BluetoothA2DPOutput|bt-car-1",
+            "atSec": 100
+          },
+          {
+            "on": "back",
+            "port": "BluetoothA2DPOutput",
+            "key": "BluetoothA2DPOutput|bt-car-1",
+            "known": true,
+            "atSec": 400
+          }
+        ],
+        { "bluetoothArm": true }
+      ],
+      "expect": {
+        "return": {
+          "decisions": [{ "event": 1, "resume": true, "why": "route-back" }],
+          "resumes": 1
+        }
+      }
+    },
+    {
+      "id": "route-resume/headphones",
+      "covers": [
+        "route-resume::Bluetooth resumes only with the arm on; headphones and other ports never"
+      ],
+      "note": "Wired headphones pulled and plugged back in: other, never resumed, arm or no arm.",
+      "call": "routeResumeReplay",
+      "args": [
+        [
+          {
+            "on": "lost",
+            "port": "Headphones",
+            "key": "Headphones|wired-1",
+            "atSec": 100
+          },
+          {
+            "on": "back",
+            "port": "Headphones",
+            "key": "Headphones|wired-1",
+            "known": true,
+            "atSec": 130
+          }
+        ],
+        { "bluetoothArm": true }
+      ],
+      "expect": {
+        "return": {
+          "decisions": [{ "event": 1, "resume": false, "why": "not-a-car" }],
+          "resumes": 0
+        }
+      }
+    },
+    {
+      "id": "route-resume/lost-25h-ago",
+      "covers": [
+        "route-resume::a loss older than 24 h does not resume; one exactly 24 h old does"
+      ],
+      "call": "routeResumeReplay",
+      "args": [
+        [
+          { "on": "lost", "port": "CarAudio", "key": "CarAudio|car-1", "atSec": 100 },
+          {
+            "on": "back",
+            "port": "CarAudio",
+            "key": "CarAudio|car-1",
+            "known": true,
+            "atSec": 90100
+          }
+        ]
+      ],
+      "expect": {
+        "return": {
+          "decisions": [{ "event": 1, "resume": false, "why": "lost-too-long" }],
+          "resumes": 0
+        }
+      }
+    },
+    {
+      "id": "route-resume/different-car-back",
+      "covers": [
+        "route-resume::only the route that was lost resumes: a different car, or a port with no UID, does not"
+      ],
+      "note": "Another car comes back first, then the one that was lost: only the lost one resumes.",
+      "call": "routeResumeReplay",
+      "args": [
+        [
+          { "on": "lost", "port": "CarAudio", "key": "CarAudio|car-1", "atSec": 100 },
+          {
+            "on": "back",
+            "port": "CarAudio",
+            "key": "CarAudio|car-2",
+            "known": true,
+            "atSec": 400
+          },
+          {
+            "on": "back",
+            "port": "CarAudio",
+            "key": "CarAudio|car-1",
+            "known": true,
+            "atSec": 500
+          }
+        ]
+      ],
+      "expect": {
+        "return": {
+          "decisions": [
+            { "event": 1, "resume": false, "why": "other-route" },
+            { "event": 2, "resume": true, "why": "route-back" }
+          ],
+          "resumes": 1
+        }
+      }
+    },
+    {
+      "id": "route-resume/second-back-after-a-resume",
+      "covers": [
+        "route-resume::one resume per loss: a second back, or a duplicate back while the resume's load is pending, finds nothing"
+      ],
+      "call": "routeResumeReplay",
+      "args": [
+        [
+          { "on": "lost", "port": "CarAudio", "key": "CarAudio|car-1", "atSec": 100 },
+          {
+            "on": "back",
+            "port": "CarAudio",
+            "key": "CarAudio|car-1",
+            "known": true,
+            "atSec": 400
+          },
+          { "on": "playing" },
+          {
+            "on": "back",
+            "port": "CarAudio",
+            "key": "CarAudio|car-1",
+            "known": true,
+            "atSec": 900
+          }
+        ]
+      ],
+      "expect": {
+        "return": {
+          "decisions": [
+            { "event": 1, "resume": true, "why": "route-back" },
+            { "event": 3, "resume": false, "why": "not-paused" }
+          ],
+          "resumes": 1
+        }
+      }
+    },
+    {
+      "id": "route-resume/back-while-load-pending",
+      "covers": [
+        "route-resume::one resume per loss: a second back, or a duplicate back while the resume's load is pending, finds nothing"
+      ],
+      "note": "The route notification arrives twice, and the car's own play lands, all before the resume's load plays: exactly one resume.",
+      "call": "routeResumeReplay",
+      "args": [
+        [
+          { "on": "lost", "port": "CarAudio", "key": "CarAudio|car-1", "atSec": 100 },
+          {
+            "on": "back",
+            "port": "CarAudio",
+            "key": "CarAudio|car-1",
+            "known": true,
+            "atSec": 400
+          },
+          {
+            "on": "back",
+            "port": "CarAudio",
+            "key": "CarAudio|car-1",
+            "known": true,
+            "atSec": 400.5
+          },
+          { "on": "press", "command": "play" },
+          { "on": "playing" }
+        ]
+      ],
+      "expect": {
+        "return": {
+          "decisions": [
+            { "event": 1, "resume": true, "why": "route-back" },
+            { "event": 2, "resume": false, "why": "not-paused" }
+          ],
+          "resumes": 1
+        }
+      }
+    },
+    {
+      "id": "route-resume/lost-again-after-a-resume",
+      "covers": [
+        "route-resume::one resume per loss: a second back, or a duplicate back while the resume's load is pending, finds nothing"
+      ],
+      "note": "A resume spends the loss, not the route: the next drive's loss arms again.",
+      "call": "routeResumeReplay",
+      "args": [
+        [
+          { "on": "lost", "port": "CarAudio", "key": "CarAudio|car-1", "atSec": 100 },
+          {
+            "on": "back",
+            "port": "CarAudio",
+            "key": "CarAudio|car-1",
+            "known": true,
+            "atSec": 400
+          },
+          { "on": "playing" },
+          { "on": "lost", "port": "CarAudio", "key": "CarAudio|car-1", "atSec": 2000 },
+          {
+            "on": "back",
+            "port": "CarAudio",
+            "key": "CarAudio|car-1",
+            "known": true,
+            "atSec": 2300
+          }
+        ]
+      ],
+      "expect": {
+        "return": {
+          "decisions": [
+            { "event": 1, "resume": true, "why": "route-back" },
+            { "event": 4, "resume": true, "why": "route-back" }
+          ],
+          "resumes": 2
+        }
+      }
+    },
+    {
+      "id": "route-resume/lost-while-already-paused",
+      "covers": ["route-resume::a route lost while already paused never arms a resume"],
+      "note": "Nothing was playing when the car went away.",
+      "call": "routeResumeReplay",
+      "args": [
+        [
+          { "on": "lost", "port": "CarAudio", "key": "CarAudio|car-1", "atSec": 100 },
+          {
+            "on": "back",
+            "port": "CarAudio",
+            "key": "CarAudio|car-1",
+            "known": true,
+            "atSec": 400
+          }
+        ],
+        { "playing": false }
+      ],
+      "expect": {
+        "return": {
+          "decisions": [{ "event": 1, "resume": false, "why": "not-paused" }],
+          "resumes": 0
+        }
+      }
+    },
+    {
+      "id": "route-resume/lost-after-a-call",
+      "covers": ["route-resume::a route lost while already paused never arms a resume"],
+      "note": "A call paused us; the car then went away and came back.",
+      "call": "routeResumeReplay",
+      "args": [
+        [
+          { "on": "interruption" },
+          { "on": "lost", "port": "CarAudio", "key": "CarAudio|car-1", "atSec": 100 },
+          {
+            "on": "back",
+            "port": "CarAudio",
+            "key": "CarAudio|car-1",
+            "known": true,
+            "atSec": 400
+          }
+        ]
+      ],
+      "expect": {
+        "return": {
+          "decisions": [{ "event": 2, "resume": false, "why": "interrupted" }],
+          "resumes": 0
+        }
+      }
+    },
+    {
+      "id": "route-resume/unknown-event",
+      "covers": ["route-resume::an event the reducer does not know is refused"],
+      "call": "routeResumeReplay",
+      "args": [[{ "on": "teleport" }]],
+      "expect": { "throws": { "name": "TypeError" } }
+    }
+  ]
+}

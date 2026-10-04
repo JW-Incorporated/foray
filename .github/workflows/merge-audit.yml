@@ -1,0 +1,232 @@
+# The weekly merge audit — issue #129, OPS-07/OPS-08 in docs/roadmap/ops-hygiene.md.
+#
+# WHY THIS WORKFLOW EXISTS
+# Auto-merge lands bot PRs on green under the ALLOWED prefixes with no human
+# read. Removing that human gate raised the bar on everything upstream of it,
+# and the cheapest thing upstream is a weekly ledger: every PR that merged,
+# which of them nobody read, which touched a governed path, whether a test
+# floor in test/suite-integrity.test.js fell in the same week, and whether the
+# AUTOMERGE_FREEZE kill switch is still thrown.
+#
+# WHAT IT IS
+# A keyless Action (founder Q1, 2026-09-25: an Action, not a Cloud routine).
+# It holds no secret beyond the job's own GITHUB_TOKEN, writes nothing to the
+# repo, and posts ONE comment per run on the ONE evolving issue, #129. The
+# judgement is tools/audit/merge-audit.mjs, which makes no requests of its own:
+# this file gathers the inputs with `gh api`, hands them over as files, and
+# posts what the script rendered. That split is what keeps every line of the
+# audit testable with inline fixtures, and keeps the audit out of the paths it
+# audits.
+#
+# FAILURE IS LOUD (#129's hard requirement)
+# A false all-clear here is worse than no audit, because this is the only check
+# of its class. So: a run that cannot gather, cannot judge or cannot post MUST
+# still leave a comment that says FAILED. The script writes a FAILED body on
+# any error and the comment step posts it; if the run dies before even that,
+# the last step posts a one-line "treat this week as unaudited". A missing
+# comment would read as "nothing to report", which is the one outcome this
+# workflow may never produce.
+#
+# NOTHING HERE MERGES, LABELS, DISPATCHES OR RE-RUNS ANYTHING.
+
+name: merge-audit
+
+on:
+  schedule:
+    # Mondays 07:17 UTC — off the top of the hour, where GitHub's scheduling
+    # contention lives, and after nightly-refresh's 06:40 so the week's last
+    # nightly PR has had its chance to land before the ledger is cut.
+    - cron: "17 7 * * 1"
+  workflow_dispatch: {}
+
+# Its own group (see release-watch.yml for why groups are never shared): a
+# dispatch during the scheduled run queues behind it rather than racing it to
+# the same comment.
+concurrency:
+  group: merge-audit
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  # The ledger's inputs: merged PRs, their files, their reviews.
+  pull-requests: read
+  # The one comment on #129. Issues only — no contents write, no PR write.
+  issues: write
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      # Full history: `git rev-list --before=$SINCE origin/main` needs to walk
+      # back a week to find the floors file as it stood when the window opened.
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # No `npm ci`: merge-audit.mjs imports only node builtins and
+      # tools/ci/path-policy.mjs, which is import-safe by design.
+      - name: Gather the week's merged PRs, their files and reviews, and both floors files
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+
+          # The retry helper, as in release-watch.yml: 4 attempts, 5s/15s/45s.
+          retry() {
+            local n=1 max=4 delay=5
+            until "$@"; do
+              if [ $n -ge $max ]; then return 1; fi
+              echo "attempt $n/$max failed, retrying in ${delay}s..." >&2
+              sleep $delay; n=$((n + 1)); delay=$((delay * 3))
+            done
+          }
+          # fetch <out> <gh api args...>: the redirect is INSIDE the retry so a
+          # `--paginate` call that died on page 3 is re-run from an empty file
+          # rather than appending page 1 twice. A gather that fails after its
+          # retries fails the JOB — "I could not tell" is not a ledger.
+          fetch() {
+            local out=$1; shift
+            local n=1 max=4 delay=5
+            until gh api "$@" > "$out"; do
+              if [ $n -ge $max ]; then return 1; fi
+              echo "attempt $n/$max failed, retrying in ${delay}s..." >&2
+              sleep $delay; n=$((n + 1)); delay=$((delay * 3))
+            done
+          }
+
+          SINCE=$(date -u -d '7 days ago' +%FT%TZ)
+          UNTIL=$(date -u +%FT%TZ)
+          echo "SINCE=$SINCE" >> "$GITHUB_ENV"
+          echo "UNTIL=$UNTIL" >> "$GITHUB_ENV"
+          echo "window: $SINCE -> $UNTIL"
+
+          # Every closed PR, newest-updated first, kept when merged inside the
+          # window. `--paginate --jq` prints ONE JSON array per page, so the
+          # pages are slurped and added rather than parsed as one document
+          # (the same shape tools/ci/pr-triage.mjs reads).
+          fetch merged.jsonl --paginate \
+            "repos/$REPO/pulls?state=closed&sort=updated&direction=desc&per_page=100" \
+            --jq '[.[] | select(.merged_at != null and .merged_at >= "'"$SINCE"'")]'
+          jq -s 'add // [] | unique_by(.number)' merged.jsonl > merged.json
+          echo "merged in window: $(jq 'length' merged.json) PR(s)"
+
+          # `merged_by` — one of the three things the audit counts as a human
+          # read — is NOT in the list payload, only in each PR's own object.
+          # Fetching that per PR would be a third REST call per PR, and a busy
+          # week here is 200+ merges against GITHUB_TOKEN's 1,000 requests/hour.
+          # So one paginated GraphQL query indexes mergedBy for every merged PR
+          # (~9 pages). GraphQL spells the bot "github-actions"; REST spells it
+          # "github-actions[bot]", which is what isFounderLogin() excludes — so
+          # a Bot's login gets its REST suffix back here.
+          fetch mergedby.jsonl graphql --paginate -F owner="${REPO%/*}" -F name="${REPO#*/}" -f query='
+            query($owner: String!, $name: String!, $endCursor: String) {
+              repository(owner: $owner, name: $name) {
+                pullRequests(states: MERGED, orderBy: {field: UPDATED_AT, direction: DESC}, first: 100, after: $endCursor) {
+                  pageInfo { hasNextPage endCursor }
+                  nodes { number mergedBy { login __typename } }
+                }
+              }
+            }' \
+            --jq '[.data.repository.pullRequests.nodes[] | {key: (.number | tostring), value: (if .mergedBy == null then null elif .mergedBy.__typename == "Bot" then (.mergedBy.login + "[bot]") else .mergedBy.login end)}]'
+          jq -s 'add // [] | from_entries' mergedby.jsonl > mergedby.json
+
+          # Per PR: its changed paths and its reviews, as the audit expects them.
+          : > prs.jsonl
+          for n in $(jq -r '.[].number' merged.json); do
+            fetch "files-$n.jsonl" --paginate "repos/$REPO/pulls/$n/files" --jq '[.[].filename]'
+            fetch "reviews-$n.jsonl" --paginate "repos/$REPO/pulls/$n/reviews" \
+              --jq '[.[] | {state, user: {login: .user.login}}]'
+            jq -c --argjson n "$n" \
+              --slurpfile files "files-$n.jsonl" --slurpfile reviews "reviews-$n.jsonl" --slurpfile by mergedby.json \
+              '.[] | select(.number == $n)
+               | . + {merged_by: {login: $by[0][($n | tostring)]},
+                      files: ($files | add // []),
+                      reviews: ($reviews | add // [])}' \
+              merged.json >> prs.jsonl
+          done
+          jq -s '.' prs.jsonl > prs.json
+
+          # The floors file at the start and the end of the window. A floor
+          # lowered in the same PR that removed the tests is invisible to CI
+          # by construction; this diff is where it shows.
+          BASE=$(git rev-list -1 --before="$SINCE" origin/main)
+          echo "floors before: origin/main@$BASE"
+          git show "$BASE:test/suite-integrity.test.js" > before.js
+          cp test/suite-integrity.test.js after.js
+
+      # The script writes body.md on success AND on failure (a FAILED body
+      # naming the step), so the comment step always has something to post
+      # that is not "audit ok". Its exit code is carried to the comment step,
+      # which turns the run red AFTER the FAILED body is on the issue.
+      - name: Judge the week
+        id: audit
+        # The repo variable reaches the shell through `env`, never spliced into
+        # the script by `${{ }}` (the same shape as release.yml's RUN_ATTEMPT):
+        # an expression inside `run:` is pasted as text before bash parses it.
+        env:
+          AUTOMERGE_FREEZE: ${{ vars.AUTOMERGE_FREEZE }}
+        run: |
+          set -uo pipefail
+          code=0
+          node tools/audit/merge-audit.mjs \
+            --prs prs.json \
+            --floors-before before.js \
+            --floors-after after.js \
+            --since "$SINCE" \
+            --until "$UNTIL" \
+            --freeze "$AUTOMERGE_FREEZE" \
+            --out body.md || code=$?
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+          if [ -s body.md ]; then { cat body.md; echo; } >> "$GITHUB_STEP_SUMMARY"; fi
+          exit 0
+
+      - name: Post the ledger as one comment on issue 129
+        id: report
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          AUDIT_CODE: ${{ steps.audit.outputs.code }}
+        run: |
+          set -euo pipefail
+          retry() {
+            local n=1 max=4 delay=5
+            until "$@"; do
+              if [ $n -ge $max ]; then return 1; fi
+              echo "attempt $n/$max failed, retrying in ${delay}s..." >&2
+              sleep $delay; n=$((n + 1)); delay=$((delay * 3))
+            done
+          }
+          retry gh issue comment 129 --repo "$REPO" --body-file body.md
+          echo "posted=true" >> "$GITHUB_OUTPUT"
+          if [ "$AUDIT_CODE" != "0" ]; then
+            echo "::error::the audit FAILED (exit $AUDIT_CODE); its FAILED body is on #129"
+            exit 1
+          fi
+
+      # The run died before the FAILED body could be posted (a gather that
+      # failed its retries, a floors file git could not show, a comment that
+      # would not post). Say so, in one line, on the same issue — never a
+      # silent week.
+      - name: Say so on issue 129 when the run died before it could report
+        if: failure() && steps.report.outputs.posted != 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          retry() {
+            local n=1 max=4 delay=5
+            until "$@"; do
+              if [ $n -ge $max ]; then return 1; fi
+              echo "attempt $n/$max failed, retrying in ${delay}s..." >&2
+              sleep $delay; n=$((n + 1)); delay=$((delay * 3))
+            done
+          }
+          retry gh issue comment 129 --repo "$REPO" \
+            --body "Weekly merge audit FAILED before it could report — ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}. Treat this week as unaudited."

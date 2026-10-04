@@ -955,7 +955,7 @@
           "stateType": "playing"
         }
       ],
-      "expect": { "return": { "index": 1, "offset": 130, "reload": false } }
+      "expect": { "return": { "index": 1, "offset": 130, "reload": false, "restart": false } }
     },
     {
       "id": "transport/scrub-other-clip-reloads",
@@ -971,7 +971,7 @@
           "stateType": "playing"
         }
       ],
-      "expect": { "return": { "index": 1, "offset": 130, "reload": true } }
+      "expect": { "return": { "index": 1, "offset": 130, "reload": true, "restart": false } }
     },
     {
       "id": "transport/scrub-finished-foray-reloads",
@@ -988,7 +988,7 @@
           "stateType": "ended"
         }
       ],
-      "expect": { "return": { "index": 1, "offset": 130, "reload": true } }
+      "expect": { "return": { "index": 1, "offset": 130, "reload": true, "restart": false } }
     },
     {
       "id": "transport/scrub-idle-reloads",
@@ -1004,7 +1004,7 @@
           "stateType": "idle"
         }
       ],
-      "expect": { "return": { "index": 1, "offset": 130, "reload": true } }
+      "expect": { "return": { "index": 1, "offset": 130, "reload": true, "restart": false } }
     },
     {
       "id": "transport/scrub-paused-same-clip",
@@ -1020,7 +1020,7 @@
           "stateType": "paused"
         }
       ],
-      "expect": { "return": { "index": 1, "offset": 130, "reload": false } }
+      "expect": { "return": { "index": 1, "offset": 130, "reload": false, "restart": false } }
     },
     {
       "id": "transport/scrub-to-the-end-lands-inside",
@@ -1037,12 +1037,13 @@
           "stateType": "playing"
         }
       ],
-      "expect": { "return": { "index": 1, "offset": 209.75, "reload": false } }
+      "expect": { "return": { "index": 1, "offset": 209.75, "reload": false, "restart": false } }
     },
     {
       "id": "transport/scrub-into-spoken-narration",
       "covers": [
-        "transport-policy::a Foray scrub reloads when it changes clip or nothing is loaded, and lands inside the item"
+        "transport-policy::a Foray scrub reloads when it changes clip or nothing is loaded, and lands inside the item",
+        "transport-reconcile::M2 drive 2026-10-01: a scrub into the SPOKEN line sounding says it again, never nothing"
       ],
       "call": "scrubTarget",
       "args": [
@@ -1053,7 +1054,120 @@
           "stateType": "playing"
         }
       ],
-      "expect": { "return": { "index": 1, "offset": null, "reload": false } }
+      "expect": { "return": { "index": 1, "offset": null, "reload": false, "restart": true } }
+    },
+    {
+      "id": "transport/scrub-spoken-line-sounding-in-its-seam-restarts",
+      "covers": [
+        "transport-policy::a Foray scrub inside a narration line: the spoken line sounding is said again, a rendered line reached by its seam reloads at the offset"
+      ],
+      "note": "M2 drive 2026-10-01: a spoken line reached by its seam is transitioning; a scrub that stays inside it says it again from the top (restart), never a seek the reducer refuses.",
+      "call": "scrubTarget",
+      "args": [
+        {
+          "at": { "index": 1, "into": 12 },
+          "item": { "$tts": ["n1", { "duration_sec": 30 }] },
+          "currentIndex": 1,
+          "stateType": "transitioning"
+        }
+      ],
+      "expect": { "return": { "index": 1, "offset": null, "reload": false, "restart": true } }
+    },
+    {
+      "id": "transport/scrub-spoken-line-paused-restarts",
+      "covers": [
+        "transport-policy::a Foray scrub inside a narration line: the spoken line sounding is said again, a rendered line reached by its seam reloads at the offset"
+      ],
+      "note": "A paused spoken line (interrupted): the scrub inside it restarts it too; there is no offset to wait at.",
+      "call": "scrubTarget",
+      "args": [
+        {
+          "at": { "index": 1, "into": 12 },
+          "item": { "$tts": ["n1", { "duration_sec": 30 }] },
+          "currentIndex": 1,
+          "stateType": "interrupted"
+        }
+      ],
+      "expect": { "return": { "index": 1, "offset": null, "reload": false, "restart": true } }
+    },
+    {
+      "id": "transport/scrub-other-spoken-line-reloads",
+      "covers": [
+        "transport-policy::a Foray scrub inside a narration line: the spoken line sounding is said again, a rendered line reached by its seam reloads at the offset"
+      ],
+      "note": "A spoken line that is not the one sounding is an ordinary reload, which speaks it from the top (offset null).",
+      "call": "scrubTarget",
+      "args": [
+        {
+          "at": { "index": 1, "into": 12 },
+          "item": { "$tts": ["n1", { "duration_sec": 30 }] },
+          "currentIndex": 0,
+          "stateType": "playing"
+        }
+      ],
+      "expect": { "return": { "index": 1, "offset": null, "reload": true, "restart": false } }
+    },
+    {
+      "id": "transport/scrub-rendered-line-in-its-seam-reloads-at-the-offset",
+      "covers": [
+        "transport-policy::a Foray scrub inside a narration line: the spoken line sounding is said again, a rendered line reached by its seam reloads at the offset",
+        "transport-reconcile::M2 drive 2026-10-01: ↺15 inside a RENDERED line reached by its seam seeks inside it, not refused"
+      ],
+      "note": "M2 drive 2026-10-01 / M3: a RENDERED line reached by its seam is transitioning, where the reducer refuses every seek; a scrub inside it re-enters the line at the offset.",
+      "call": "scrubTarget",
+      "args": [
+        {
+          "at": { "index": 1, "into": 12 },
+          "item": {
+            "$tts": [
+              "n1",
+              { "audio_url": "https://example.invalid/n1.mp3", "duration_sec": 30 }
+            ]
+          },
+          "currentIndex": 1,
+          "stateType": "transitioning"
+        }
+      ],
+      "expect": { "return": { "index": 1, "offset": 12, "reload": true, "restart": false } }
+    },
+    {
+      "id": "transport/scrub-rendered-line-playing-seeks",
+      "covers": [
+        "transport-policy::a Foray scrub inside a narration line: the spoken line sounding is said again, a rendered line reached by its seam reloads at the offset"
+      ],
+      "note": "A rendered line reached by Next or a jump is playing: a scrub inside it is an ordinary seek in its own file.",
+      "call": "scrubTarget",
+      "args": [
+        {
+          "at": { "index": 1, "into": 12 },
+          "item": {
+            "$tts": [
+              "n1",
+              { "audio_url": "https://example.invalid/n1.mp3", "duration_sec": 30 }
+            ]
+          },
+          "currentIndex": 1,
+          "stateType": "playing"
+        }
+      ],
+      "expect": { "return": { "index": 1, "offset": 12, "reload": false, "restart": false } }
+    },
+    {
+      "id": "transport/scrub-back-from-a-line-into-the-clip-reloads",
+      "covers": [
+        "transport-policy::a Foray scrub inside a narration line: the spoken line sounding is said again, a rendered line reached by its seam reloads at the offset"
+      ],
+      "note": "Back out of a line in its seam into the clip before it: another item, a reload at the clip's own offset.",
+      "call": "scrubTarget",
+      "args": [
+        {
+          "at": { "index": 0, "into": 95 },
+          "item": { "$seg": ["a", 100, 210] },
+          "currentIndex": 1,
+          "stateType": "transitioning"
+        }
+      ],
+      "expect": { "return": { "index": 0, "offset": 195, "reload": true, "restart": false } }
     },
     {
       "id": "transport/scrub-nowhere",

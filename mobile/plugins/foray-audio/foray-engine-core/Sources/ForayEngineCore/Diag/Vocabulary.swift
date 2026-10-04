@@ -107,8 +107,18 @@ public enum Vocabulary {
         case externallyOwned = "externally-owned"
     }
 
+    /// `narrationFallbackCause`
+    public enum NarrationFallbackCause: String, CaseIterable, Sendable {
+        case timeout = "timeout"
+        case http4xx = "http-4xx"
+        case http5xx = "http-5xx"
+        case offline = "offline"
+        case decode = "decode"
+        case other = "other"
+    }
+
     /// Every set's name, in the JS declaration order.
-    public static let setNames: [String] = ["stage", "sessionError", "sessionErrorDetail", "interruptionReason", "stopCause", "source", "modeReason", "faultKind"]
+    public static let setNames: [String] = ["stage", "sessionError", "sessionErrorDetail", "interruptionReason", "stopCause", "source", "modeReason", "faultKind", "narrationFallbackCause"]
 
     /// Every set's tokens, by set name, in the JS declaration order.
     public static let sets: [String: [String]] = [
@@ -120,5 +130,6 @@ public enum Vocabulary {
         "source": Source.allCases.map(\.rawValue),
         "modeReason": ModeReason.allCases.map(\.rawValue),
         "faultKind": FaultKind.allCases.map(\.rawValue),
+        "narrationFallbackCause": NarrationFallbackCause.allCases.map(\.rawValue),
     ]
 }

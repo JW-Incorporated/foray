@@ -1,0 +1,77 @@
+4a playback diagnostics — v3
+build web 67dbe3ce9009ef58 · native 1.0 (2026100601)
+engine=native v1.0.0 proto=1 caps=episode,continuation,restore,foray reason=build-default strikes=0 hold=forever routeSharing=default build=2026100601 | web=67dbe3ce9009ef58
+Local only. Nothing here is sent anywhere.
+
+SYNTHETIC M3 drive for tools/mobile/engine-report.mjs (card NE-38e): made up, title-free, printed through
+player/diagnostic-log.js engineLineFor. Every M3 verdict reads a pass on it; the test pins that.
+
+engine rows 67 of 2000, #1..#67
+
+e#1    16:00:00.000 build      src=engine v1.0.0 protocol=1 bundleVersion=2026100601 launch=foreground pitch=timeDomain hold=forever routeSharing=default
+e#2    16:00:00.300 session    src=engine category ok=y hint=n phase=inactive why=boot routeSharing=default
+e#3    16:01:00.300 cmd        src=engine playEpisode source=tap cmdSeq=1
+e#4    16:01:00.340 session    src=engine activate activateMs=30ms ok=y reason=—
+e#5    16:01:00.350 deck       src=engine attach token=1 startSec=812 precise=y host=cdn.example cold=no-item idleSec=— class=clip
+e#6    16:01:00.370 nowplaying src=engine "Episode A" / "Show A" / "—" via=metadata artwork=y state=playing rate=0 elapsedSec=812 durationSec=3600 buffering=n engineState=loadingItem listenRate=1
+e#7    16:01:01.270 deck       src=engine access token=1 host=cdn.example bytes=812000 transferMs=900ms requests=3 wwan=0 observedKbps=4200 stalls=0 serverChanges=0
+e#8    16:01:02.190 deck       src=engine ready token=1 landedSec=0 targetSec=0 prerolled=y reuse=n elapsedMs=1840ms attempts=1 marks={"duration":920,"readiness":1790} bufferedAheadSec=12 likelyToKeepUp=y class=clip
+e#9    16:01:02.200 deck       src=engine time-control token=1 status=playing reason=— step=ready positionSec=812 bufferedAheadSec=20 likelyToKeepUp=y rate=1
+e#10   16:01:02.210 nowplaying src=engine "Episode A" / "Show A" / "—" via=state artwork=y state=playing rate=0 elapsedSec=812 durationSec=3600 buffering=n engineState=playing listenRate=1
+e#11   16:01:03.410 nowplaying src=engine "Episode A" / "Show A" / "—" via=rate artwork=y state=playing rate=1 elapsedSec=813.2 durationSec=3600 buffering=n engineState=playing listenRate=1
+e#12   16:11:03.410 route      src=engine lost port=BluetoothA2DPOutput key=1a2b3c4d known=y
+e#13   16:11:03.430 stop       src=engine cause=route-change source=route item=episode-a positionSec=1412.4 state=playing
+e#14   16:11:03.440 nowplaying src=engine "Episode A" / "Show A" / "—" via=state artwork=y state=paused rate=0 elapsedSec=1412.4 durationSec=3600 buffering=n engineState=interrupted listenRate=1
+e#15   16:51:03.440 route      src=engine back port=BluetoothA2DPOutput key=1a2b3c4d known=y lostSec=2400 pausedBy=route decision=no why=bluetooth-off
+e#16   16:51:10.840 remote     src=engine play route=BluetoothA2DPOutput thread=main dupCandidate=n grace=y state=interrupted graceReason=remote-play
+e#17   16:51:10.842 grace      src=engine begin reason=remote-play task=ok bgRemainingMs=28000ms low=n availMb=3100
+e#18   16:51:10.847 session    src=engine activate activateMs=41ms ok=y reason=—
+e#19   16:51:10.852 deck       src=engine attach token=2 startSec=1412.4 precise=y host=cdn.example cold=stale idleSec=2400 class=clip
+e#20   16:51:12.452 deck       src=engine access token=2 host=cdn.example bytes=812000 transferMs=900ms requests=3 wwan=14 observedKbps=4200 stalls=0 serverChanges=0
+e#21   16:51:14.752 deck       src=engine ready token=2 landedSec=0 targetSec=0 prerolled=y reuse=n elapsedMs=3900ms attempts=1 marks={"duration":1950,"readiness":3850} bufferedAheadSec=12 likelyToKeepUp=y class=clip
+e#22   16:51:14.772 deck       src=engine time-control token=2 status=playing reason=— step=ready positionSec=1412.4 bufferedAheadSec=20 likelyToKeepUp=y rate=1
+e#23   16:51:14.782 grace      src=engine end reason=remote-play outcome=playing heldMs=4250ms
+e#24   16:51:14.792 nowplaying src=engine "Episode A" / "Show A" / "—" via=rate artwork=y state=playing rate=1 elapsedSec=1412.4 durationSec=3600 buffering=n engineState=playing listenRate=1
+e#25   16:55:14.792 remote     src=engine pause route=BluetoothA2DPOutput thread=main dupCandidate=n grace=n state=playing
+e#26   16:55:14.802 stop       src=engine cause=pause source=remote item=episode-a positionSec=1652.6 state=playing
+e#27   16:55:14.812 nowplaying src=engine "Episode A" / "Show A" / "—" via=state artwork=y state=paused rate=0 elapsedSec=1652.6 durationSec=3600 buffering=n engineState=interrupted listenRate=1
+e#28   16:58:14.812 remote     src=engine play route=BluetoothA2DPOutput thread=main dupCandidate=n grace=y state=interrupted graceReason=remote-play
+e#29   16:58:14.814 grace      src=engine begin reason=remote-play task=ok bgRemainingMs=29000ms low=n availMb=3100
+e#30   16:58:14.819 deck       src=engine reuse token=3 startSec=1652.6 fromSec=1650.6 bufferedAheadSec=30 idleSec=180 class=clip
+e#31   16:58:15.239 deck       src=engine ready token=3 landedSec=0 targetSec=0 prerolled=y reuse=y elapsedMs=420ms attempts=1 marks={"duration":210,"readiness":370} bufferedAheadSec=12 likelyToKeepUp=y class=clip
+e#32   16:58:15.259 deck       src=engine time-control token=3 status=playing reason=— step=ready positionSec=1652.6 bufferedAheadSec=20 likelyToKeepUp=y rate=1
+e#33   16:58:15.459 grace      src=engine end reason=remote-play outcome=playing heldMs=650ms
+e#34   16:58:15.469 nowplaying src=engine "Episode A" / "Show A" / "—" via=rate artwork=y state=playing rate=1 elapsedSec=1652.6 durationSec=3600 buffering=n engineState=playing listenRate=1
+e#35   16:58:45.469 remote     src=engine nextTrack route=BluetoothA2DPOutput thread=main dupCandidate=n grace=n state=playing
+e#36   16:58:46.169 remote     src=engine nextTrack route=BluetoothA2DPOutput thread=main dupCandidate=n grace=n state=playing
+e#37   17:00:46.169 cmd        src=engine playForay source=tap cmdSeq=2
+e#38   17:00:46.209 deck       src=engine attach token=4 startSec=300 precise=y host=cdn.example cold=other-source idleSec=— class=clip
+e#39   17:00:47.009 deck       src=engine access token=4 host=cdn.example bytes=812000 transferMs=900ms requests=3 wwan=5 observedKbps=4200 stalls=0 serverChanges=0
+e#40   17:00:48.409 deck       src=engine ready token=4 landedSec=0 targetSec=0 prerolled=y reuse=n elapsedMs=2200ms attempts=1 marks={"duration":1100,"readiness":2150} bufferedAheadSec=12 likelyToKeepUp=y class=clip
+e#41   17:00:48.419 deck       src=engine time-control token=4 status=playing reason=— step=ready positionSec=300 bufferedAheadSec=20 likelyToKeepUp=y rate=1
+e#42   17:00:48.429 nowplaying src=engine "A Foray" / "clip 1 of 3" / "—" via=metadata artwork=y state=playing rate=1 elapsedSec=0 durationSec=900 buffering=n engineState=playing listenRate=1
+e#43   17:01:18.429 deck       src=engine attach token=5 startSec=0 precise=y host=cdn.example cold=no-item idleSec=— class=line
+e#44   17:01:18.729 deck       src=engine access token=5 host=cdn.example bytes=812000 transferMs=900ms requests=3 wwan=2 observedKbps=4200 stalls=0 serverChanges=0
+e#45   17:01:19.069 deck       src=engine ready token=5 landedSec=0 targetSec=0 prerolled=y reuse=n elapsedMs=640ms attempts=1 marks={"duration":320,"readiness":590} bufferedAheadSec=12 likelyToKeepUp=y class=line
+e#46   17:04:39.069 grace      src=engine begin reason=seam task=ok bgRemainingMs=26000ms low=n availMb=3100
+e#47   17:04:39.589 seam       src=engine gap 520ms asked 500ms prepared=y grace=y bgRemainingMs=26000ms stages=outPoint>promote>playing from=clip to=line prepare=hit
+e#48   17:04:39.594 grace      src=engine end reason=seam outcome=playing heldMs=530ms
+e#49   17:04:39.604 nowplaying src=engine "A Foray" / "narration" / "—" via=metadata artwork=y state=playing rate=1 elapsedSec=200.5 durationSec=900 buffering=n engineState=playing listenRate=1
+e#50   17:04:41.604 deck       src=engine reuse token=6 startSec=1820 fromSec=1818 bufferedAheadSec=30 idleSec=40 class=clip
+e#51   17:04:41.984 deck       src=engine ready token=6 landedSec=0 targetSec=0 prerolled=y reuse=y elapsedMs=380ms attempts=1 marks={"duration":190,"readiness":330} bufferedAheadSec=12 likelyToKeepUp=y class=clip
+e#52   17:04:56.984 grace      src=engine begin reason=seam task=ok bgRemainingMs=25000ms low=n availMb=3100
+e#53   17:04:57.524 seam       src=engine gap 540ms asked 500ms prepared=y grace=y bgRemainingMs=26000ms stages=outPoint>promote>playing from=line to=clip prepare=hit
+e#54   17:04:57.529 grace      src=engine end reason=seam outcome=playing heldMs=545ms
+e#55   17:04:57.539 nowplaying src=engine "A Foray" / "clip 2 of 3" / "—" via=metadata artwork=y state=playing rate=1 elapsedSec=216.1 durationSec=900 buffering=n engineState=playing listenRate=1
+e#56   17:05:37.539 grace      src=engine late bgRemainingMs=24000ms timer=narration-tick lateMs=6200ms inSeam=n
+e#57   17:06:37.539 deck       src=engine attach token=7 startSec=0 precise=y host=cdn.example cold=no-item idleSec=— class=line
+e#58   17:06:37.789 deck       src=engine access token=7 host=cdn.example bytes=812000 transferMs=900ms requests=3 wwan=1 observedKbps=4200 stalls=0 serverChanges=0
+e#59   17:06:38.089 deck       src=engine failed token=7 where=item step=readiness positionSec=0 errDomain=CoreMediaErrorDomain errCode=-12938 host=cdn.example bytes=0 transferMs=120ms requests=1 wwan=1 observedKbps=— stalls=0 serverChanges=0 logHost=cdn.example logStatus=404 logDomain=CoreMediaErrorDomain
+e#60   17:09:58.089 grace      src=engine begin reason=seam task=ok bgRemainingMs=24000ms low=n availMb=3100
+e#61   17:09:58.649 seam       src=engine gap 560ms asked 500ms prepared=n grace=y bgRemainingMs=26000ms stages=outPoint>promote>playing from=clip to=line prepare=none
+e#62   17:09:58.654 grace      src=engine end reason=seam outcome=playing heldMs=565ms
+e#63   17:09:58.659 narration  src=engine fallback reason=failed where=load cause=http-4xx
+e#64   17:10:10.659 seam       src=engine gap 610ms asked 500ms prepared=y grace=y bgRemainingMs=26000ms stages=outPoint>promote>playing from=line to=clip prepare=hit
+e#65   17:10:10.669 nowplaying src=engine "A Foray" / "clip 3 of 3" / "—" via=metadata artwork=y state=playing rate=1 elapsedSec=430.2 durationSec=900 buffering=n engineState=playing listenRate=1
+e#66   17:12:10.669 remote     src=engine pause route=BluetoothA2DPOutput thread=main dupCandidate=n grace=n state=playing
+e#67   17:12:10.679 stop       src=engine cause=pause source=remote item=foray-clip-3 positionSec=2402.7 state=playing

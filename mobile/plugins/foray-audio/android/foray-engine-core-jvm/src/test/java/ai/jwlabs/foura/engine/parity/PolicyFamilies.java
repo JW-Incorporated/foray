@@ -320,7 +320,7 @@ final class PolicyFamilies {
         TransportPolicy.Scrub scrub = TransportPolicy.scrubTarget(index, at(atArg, "into").asNumber(), transportItem(at(s, "item")),
                 at(s, "currentIndex").asNumber(), at(s, "stateType").asString());
         return ret(obj("index", Json.num(scrub.index()), "reload", scrub.reload() ? Json.TRUE : Json.FALSE,
-                "offset", numberOrNull(scrub.offset())));
+                "restart", scrub.restart() ? Json.TRUE : Json.FALSE, "offset", numberOrNull(scrub.offset())));
     }
 
     /** {@code interruptionResumeOffset({ playheadSec, startSec = null })}: any non-number is "no number". */

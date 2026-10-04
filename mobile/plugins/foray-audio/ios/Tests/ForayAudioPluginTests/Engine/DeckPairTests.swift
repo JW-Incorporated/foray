@@ -34,7 +34,7 @@ final class DeckPairTests: XCTestCase {
             sent.append(command)
             journal.entries.append("\(name).\(command.logName)")
             switch command {
-            case let .load(_, _, url, startSec, _):
+            case let .load(_, _, url, startSec, _, _):
                 loadedURL = url
                 isReady = false
                 reading = DeckReading(positionSec: startSec, durationSec: nil, audible: false, ended: false)
@@ -63,7 +63,7 @@ final class DeckPairTests: XCTestCase {
         /// The load the pair issued on this deck most recently.
         var lastLoadToken: DeckToken? {
             for command in sent.reversed() {
-                if case let .load(token, _, _, _, _) = command { return token }
+                if case let .load(token, _, _, _, _, _) = command { return token }
             }
             return nil
         }
@@ -154,6 +154,128 @@ final class DeckPairTests: XCTestCase {
         pair.send(.prepare(itemId: "b", url: urlB, startSec: 300))
         pair.send(.prepare(itemId: "b", url: urlB, startSec: 300))
         XCTAssertEqual(b.count("load"), 1, "already warm")
+    }
+
+    /// NE-38: a prepared LINE warms under the line's P-13 class, the class
+    /// its own load would have had, so a hung warm line gives up at 8 s like
+    /// the line itself; and a load that misses the warm one reaches the
+    /// player deck with its class intact. (A clip's prepare keeps `.clip`:
+    /// `testAPrepareLoadsTheStandbyAtItsInPointAndTheCoreHearsNothingOfIt`.)
+    /// TO SEE IT FAIL: drop `deadlineClass:` from the standby's `.load` in
+    /// `prepare`.
+    func testAPreparedLineWarmsUnderTheLineDeadlineClass() {
+        pair.send(.load(token: 1, itemId: "a", url: urlA, startSec: 100, preciseTiming: true))
+        a.becomeReady(1, atSec: 100)
+        pair.send(.play)
+        pair.send(.prepare(itemId: "f1#1", url: urlB, startSec: 0, deadlineClass: .line))
+        let warm = b.lastLoadToken ?? 0
+        XCTAssertLessThan(warm, 0)
+        XCTAssertEqual(b.sent.last, .load(token: warm, itemId: "f1#1", url: urlB, startSec: 0, preciseTiming: true,
+                                          deadlineClass: .line))
+        let load = DeckCommand.load(token: 2, itemId: "f1#2", url: urlC, startSec: 0, preciseTiming: false,
+                                    deadlineClass: .line)
+        pair.send(load)
+        XCTAssertEqual(a.sent.last, load, "the missed load keeps its class on the player deck")
+    }
+
+    // MARK: - NE-45s: a narration line is an ordinary deck item
+
+    private let urlLine = "https://cdn.test/n1.m4a"
+
+    private func prefetchRows() -> [DiagEntry] {
+        rows.filter { $0.kind == "prepare" && $0[field: "kind"] == .string("prefetch") }
+    }
+
+    /// clip -> RENDERED line -> clip in ONE episode: the line is prepared and
+    /// promoted exactly like a clip, and the handover demotes deck A WITHOUT
+    /// dropping the episode, so the clip after the line is prepared on deck A
+    /// (`reuse=y`: AVDeck seeks the source it holds) and promoted in turn. Two
+    /// swaps, two hits, and the second clip is never loaded cold.
+    /// TO SEE IT FAIL: unload the outgoing deck in the handover, or refuse a
+    /// prepare whose source the standby already holds.
+    func testAPreparedRenderedLineSwapsLikeAClipAndTheClipAfterItIsPreparedOnTheDemotedDeck() {
+        pair.send(.load(token: 1, itemId: "s0", url: urlA, startSec: 100, preciseTiming: true))
+        a.becomeReady(1, atSec: 100)
+        pair.send(.play)
+        pair.send(.prepare(itemId: "n1", url: urlLine, startSec: 0, deadlineClass: .line))
+        let lineWarm = b.lastLoadToken ?? 0
+        XCTAssertLessThan(lineWarm, 0)
+        XCTAssertEqual(prefetchRows().last?[field: "class"], .string("line"))
+        XCTAssertEqual(prefetchRows().last?[field: "reuse"], .bool(false), "the line is a fetch of its own file")
+        b.becomeReady(lineWarm, atSec: 0, duration: 20)
+
+        // The out-point: the core loads the line; the pair answers with the standby.
+        pair.send(.load(token: 2, itemId: "n1", url: urlLine, startSec: 0, preciseTiming: false, deadlineClass: .line))
+        XCTAssertEqual(prepared(2)?.hit, true, "the rendered line was promoted: \(events)")
+        XCTAssertEqual(pair.swaps, 1)
+        XCTAssertEqual(b.adopted, [2])
+        XCTAssertEqual(a.loadedURL, urlA, "the demoted deck still holds the episode")
+        pair.send(.play)
+
+        // The line's window (from its duration): the clip after it, same episode.
+        pair.send(.prepare(itemId: "s1", url: urlA, startSec: 300))
+        let clipWarm = a.lastLoadToken ?? 0
+        XCTAssertLessThan(clipWarm, 0, "deck A, the standby now, prepares the clip")
+        XCTAssertEqual(prefetchRows().last?[field: "reuse"], .bool(true), "a same-source prepare on the demoted deck")
+        a.becomeReady(clipWarm, atSec: 300)
+        pair.send(.load(token: 3, itemId: "s1", url: urlA, startSec: 300, preciseTiming: true))
+        XCTAssertEqual(prepared(3)?.hit, true, "\(events)")
+        XCTAssertEqual(pair.swaps, 2)
+        XCTAssertEqual(a.adopted, [3])
+        XCTAssertEqual(a.count("load"), 2, "the first clip and its prepare: the second clip never loads cold")
+        XCTAssertEqual(b.count("load"), 1)
+        XCTAssertFalse(a.reading.audible && b.reading.audible)
+    }
+
+    /// Behind a SPOKEN line the core prepares the next clip at the line's
+    /// start. Deck A, paused at its out-point, keeps the player role under the
+    /// voice; the standby loads beneath it and nothing it reports reaches the
+    /// core; at the line's end the clip's load is a hit, and the handover
+    /// pauses a deck that is already silent.
+    /// TO SEE IT FAIL: route the prepare to the deck with the player role.
+    func testAStandbyPreparedUnderASpokenLineIsPromotedAtTheLinesEnd() {
+        pair.send(.load(token: 1, itemId: "s0", url: urlA, startSec: 100, preciseTiming: true))
+        a.becomeReady(1, atSec: 100)
+        pair.send(.play)
+        a.reading.audible = false // the out-point stopped deck A; the line is spoken, not loaded
+        let heard = events.count
+        pair.send(.prepare(itemId: "s1", url: urlB, startSec: 300))
+        let warm = b.lastLoadToken ?? 0
+        XCTAssertLessThan(warm, 0)
+        XCTAssertEqual(a.count("load"), 1, "nothing on deck A moves under the voice")
+        XCTAssertEqual(a.count("play"), 1)
+        b.becomeReady(warm, atSec: 300)
+        XCTAssertEqual(events.count, heard, "the standby's load is the pair's, not the core's: \(events)")
+
+        pair.send(.load(token: 3, itemId: "s1", url: urlB, startSec: 300, preciseTiming: true))
+        XCTAssertEqual(prepared(3)?.hit, true, "the clip after a spoken line is prepare=hit: \(events)")
+        XCTAssertEqual(pair.swaps, 1)
+        XCTAssertEqual(b.count("load"), 1, "prepared once, never loaded cold")
+        XCTAssertFalse(a.reading.audible || b.reading.audible, "no step of the handover plays")
+    }
+
+    /// A prepared line whose file FAILS on the standby: the pair writes
+    /// `warm-failed` and tells the core NOTHING (so nothing speaks early).
+    /// At the line's turn its load is a miss that runs cold on the player
+    /// deck; that failure is the core's, which then speaks the line (NE-37c).
+    /// TO SEE IT FAIL: forward the standby's `.failed` to the core.
+    func testAPreparedLineWhoseFileFailsIsAMissThatLoadsColdAtItsTurn() {
+        pair.send(.load(token: 1, itemId: "s0", url: urlA, startSec: 100, preciseTiming: true))
+        a.becomeReady(1, atSec: 100)
+        pair.send(.play)
+        pair.send(.prepare(itemId: "n1", url: urlLine, startSec: 0, deadlineClass: .line))
+        let warm = b.lastLoadToken ?? 0
+        events = []
+        b.onEvent?(.failed(token: warm, message: "HTTP 404"))
+        XCTAssertEqual(events, [], "a warm load's failure never reaches the core")
+        XCTAssertTrue(rows.contains { $0.kind == "prepare" && $0[field: "kind"] == .string("warm-failed") })
+
+        pair.send(.load(token: 2, itemId: "n1", url: urlLine, startSec: 0, preciseTiming: false, deadlineClass: .line))
+        XCTAssertEqual(prepared(2)?.hit, false, "prepared, and not ready at its turn: a miss")
+        XCTAssertEqual(pair.swaps, 0)
+        XCTAssertEqual(a.lastLoadToken, 2, "the line loads cold on the player deck")
+        a.onEvent?(.failed(token: 2, message: "HTTP 404"))
+        XCTAssertTrue(events.contains(.failed(token: 2, message: "HTTP 404")), "that failure is the core's: \(events)")
     }
 
     // MARK: - the boundary
