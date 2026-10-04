@@ -2059,6 +2059,7 @@ const FLOORS = {
      REAL node subprocess (no fake exec anywhere) to prove the forwarding
      actually reaches the child's argv. */
   "tools/shows/run-and-publish-execargv.test.mjs": 1,
+  "tools/foraycorpus-export/config.test.mjs": 4, // PKG-01 (docs/roadmap/corpus.md): corpus-export package scaffold, config + identity scan
   /* The breadth prioritiser and its yield report (#114). Floored for the same
      reason politeness.test.mjs is, and the reason is not hypothetical here
      either: the first draft of `rank-breadth.mjs` had a seed hash that produced
