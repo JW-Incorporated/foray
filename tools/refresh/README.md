@@ -27,6 +27,7 @@ scan.mjs ──▶ fresh-pending.json ──▶ resolve.mjs ──▶ resolved.j
 | `classify-dai.mjs` | ✅ | **One-shot, not nightly.** Classifies shows, stamps `dai_suspected` |
 | `backfill-audio.mjs` | ✅ | **One-shot, not nightly.** Backfills audio onto pre-#21 items |
 | `backfill-show.mjs` | ✅ | **One-shot, not nightly.** Emits a pending file for a NEWLY CURATED show |
+| `fold-breadth-topics.mjs` | ✅ | **One-shot, not nightly.** Folds `breadth-classification.json` topics into `catalog-breadth.json` as `taxonomy_node_ids` (high/medium, not `needs_review`); re-run after `tools/harvest-catalog.mjs`; `--check` for drift |
 
 ## Audio provenance (issue #21)
 
