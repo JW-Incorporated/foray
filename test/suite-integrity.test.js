@@ -2142,7 +2142,7 @@ const FLOORS = {
      dirty tree, an open or closed-unmerged PR, a branch with no PR, a detached
      head not on main -- or a proof that the dry run mutates nothing. A test
      deleted here is a keep-* that could become a remove. */
-  "tools/dev/worktree-gc.test.mjs": 19,
+  "tools/dev/worktree-gc.test.mjs": 27, // OPS-12 review (2026-10-04): +8 -- keep-unpushed (tip not in the merged head), the CLI asks git for containment, fork PRs ignored, prototype-named branches, locked trees, strays found from the main tree not cwd, a refused branch -D or prune exits 1, --repo without a value; 19 -> 27
 };
 
 test("no suite is floored twice", () => {

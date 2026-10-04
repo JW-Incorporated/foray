@@ -21,16 +21,30 @@
  * drive it with canned output and a recording fake; no test runs git.
  *
  * THE RULE IS "ONLY THE MERGED AND CLEAN"
- * A worktree is removed only when its branch has a PR whose state is MERGED
- * and `git status --porcelain` is empty. Everything else is kept and named:
- * an OPEN PR, a CLOSED-unmerged PR (its work may exist nowhere else), a
- * branch with no PR at all, a dirty tree even when its PR merged, and a
- * detached head that is not reachable from `origin/main`, and a tree whose
- * `git status` itself fails (unreadable is not clean). PRs squash-merge
- * here, so "ancestor of origin/main" is useless for branches (only 6 of 246
- * were) — the PR state is the truth. Detached heads have no PR, so for them
- * ancestry IS the test: a detached checkout of a commit that is on main holds
- * nothing.
+ * A worktree is removed only when its branch has a same-repo PR whose state is
+ * MERGED, the local tip is that PR's head commit (or an ancestor of it), and
+ * `git status --porcelain` is empty. Everything else is kept and named: an
+ * OPEN PR, a CLOSED-unmerged PR (its work may exist nowhere else), a branch
+ * with no PR at all, a merged branch whose local tip has commits the PR never
+ * had (`keep-unpushed`), a dirty tree even when its PR merged, a locked
+ * worktree, a detached head that is not reachable from `origin/main`, and a
+ * tree whose `git status` itself fails (unreadable is not clean). PRs
+ * squash-merge here, so "ancestor of origin/main" is useless for branches
+ * (only 6 of 246 were) — the PR state plus its head commit is the truth. A PR
+ * from a fork is ignored: its `headRefName` is the fork's branch name and says
+ * nothing about a local branch that happens to share it. Detached heads have
+ * no PR, so for them ancestry IS the test: a detached checkout of a commit
+ * that is on main holds nothing.
+ *
+ * `git branch -D` (which is `--delete --force`) is unavoidable: after a squash
+ * merge the branch is never an ancestor of main, so `-d` refuses every one.
+ * The guard that stands in for `-d` is the head check above — a branch is
+ * deleted only when every commit on it is in a PR that merged.
+ *
+ * Two things `git status --porcelain` cannot see, so OPS-13 should know them:
+ * `git worktree remove` also deletes the tree's IGNORED files (a stray
+ * `.env.local`, ignored notes), and a detached tree's own HEAD reflog (commits
+ * made while detached and then checked out away from) goes with it.
  *
  * `git worktree remove` is run WITHOUT `--force`. If git refuses (modified or
  * untracked files it saw and we did not), the refusal is printed and the entry
@@ -38,7 +52,8 @@
  * force, and nothing is ever `rm -rf`'d.
  *
  * PR LOOKUP
- * ONE `gh pr list --state all --limit 1000 --json number,state,headRefName`,
+ * ONE `gh pr list --state all --limit 1000 --json
+ * number,state,headRefName,headRefOid,isCrossRepository`, fork PRs dropped,
  * grouped by `headRefName`. If that ever returns exactly the limit, older PRs
  * may be missing and a merged branch would read as "no PR" and be KEPT — the
  * safe direction — and the tool says so. If gh refuses the call, the run
@@ -46,6 +61,15 @@
  *
  * Windows: every process is `spawnSync(cmd, argsArray)`; `gh.exe` on win32;
  * never a shell string, so a path with spaces (`Vibe Coding`) is one argument.
+ *
+ * Stray files are looked for under the MAIN worktree's `.claude/worktrees/`
+ * (the first `git worktree list` entry), never under the caller's cwd, so a
+ * run from a subdirectory or a linked worktree finds the same files and a run
+ * from an unrelated directory deletes nothing of its own.
+ *
+ * Exit: 0 clean; 1 when --apply skipped anything (a refused remove, branch -D
+ * or prune, an undeletable stray file) so the operator looks; 2 usage or a
+ * failed read before anything changed.
  *
  * `--json`: stdout is exactly one JSON document ({ repo, apply, entries, plan,
  * strayFiles, applied? }); every human line, including the dry-run summary
@@ -68,8 +92,10 @@ export const VERDICT_ORDER = [
   "remove",
   "remove-detached",
   "prune",
+  "keep-locked",
   "keep-dirty",
   "keep-open-pr",
+  "keep-unpushed",
   "keep-closed-pr",
   "keep-no-pr",
   "keep-detached",
@@ -79,9 +105,10 @@ export const VERDICT_ORDER = [
 /* ------------------------------------------------------------- parse */
 
 /**
- * `git worktree list --porcelain` -> [{ path, head, branch, detached, bare, prunable }].
+ * `git worktree list --porcelain` -> [{ path, head, branch, detached, bare, prunable, locked }].
  * Records are separated by blank lines. Lines: `worktree <path>`, `HEAD <sha>`,
- * `branch refs/heads/<name>`, `detached`, `bare`, `prunable <reason>`.
+ * `branch refs/heads/<name>`, `detached`, `bare`, `prunable <reason>`,
+ * `locked <reason>`.
  */
 export function parseWorktreeList(porcelainText) {
   const out = [];
@@ -98,7 +125,7 @@ export function parseWorktreeList(porcelainText) {
     }
     if (line.startsWith("worktree ")) {
       flush();
-      cur = { path: line.slice("worktree ".length), head: null, branch: null, detached: false, bare: false, prunable: false };
+      cur = { path: line.slice("worktree ".length), head: null, branch: null, detached: false, bare: false, prunable: false, locked: false };
       continue;
     }
     if (!cur) continue;
@@ -107,6 +134,7 @@ export function parseWorktreeList(porcelainText) {
     else if (line === "detached") cur.detached = true;
     else if (line === "bare") cur.bare = true;
     else if (line === "prunable" || line.startsWith("prunable ")) cur.prunable = true;
+    else if (line === "locked" || line.startsWith("locked ")) cur.locked = true;
   }
   flush();
   return out;
@@ -125,22 +153,29 @@ function prList(prs, state) {
 /**
  * entries -> entries.map(e => ({ ...e, verdict, why })), first match wins:
  *   keep-main        index 0
+ *   keep-locked      `git worktree lock`ed (git refuses to remove or prune it)
  *   prune            directory missing, or git says prunable
  *   keep-dirty       `git status --porcelain` non-empty
  *   keep-open-pr     any PR OPEN
- *   remove           a branch, some PR MERGED, tree clean
+ *   remove           a branch, some PR MERGED whose head is the local tip (or
+ *                    `containedByPath[path]`: the tip is an ancestor of it), tree clean
+ *   keep-unpushed    some PR MERGED, but the local tip has commits it never had
  *   keep-closed-pr   only CLOSED PRs
  *   remove-detached  detached and an ancestor of origin/main
  *   keep-detached    detached, not an ancestor (or unknown)
  *   keep-no-pr       a branch with no PR
  *
- * `prsByBranch[branch]` -> [{ number, state }]; `statusByPath[path]` -> the
- * porcelain status text; `existsByPath[path]` -> boolean; `ancestorByHead[head]`
- * -> boolean. A missing fact is read in the safe direction (keep).
+ * `prsByBranch[branch]` -> [{ number, state, headRefOid }]; `statusByPath[path]`
+ * -> the porcelain status text; `existsByPath[path]` -> boolean;
+ * `ancestorByHead[head]` -> boolean; `containedByPath[path]` -> boolean (the
+ * local tip is an ancestor of a merged PR's head). A missing fact is read in
+ * the safe direction (keep). Lookups are own-property only, so a branch named
+ * `constructor` or `toString` is a branch, not Object.prototype.
  */
-export function classify(entries, { prsByBranch = {}, statusByPath = {}, existsByPath = {}, ancestorByHead = {} } = {}) {
+export function classify(entries, { prsByBranch = {}, statusByPath = {}, existsByPath = {}, ancestorByHead = {}, containedByPath = {} } = {}) {
+  const own = (o, k) => (o && Object.hasOwn(o, k) ? o[k] : undefined);
   return entries.map((e, i) => {
-    const prs = e.branch ? prsByBranch[e.branch] ?? [] : [];
+    const prs = e.branch ? own(prsByBranch, e.branch) ?? [] : [];
     const merged = prList(prs, "MERGED");
     const open = prList(prs, "OPEN");
     const closed = prList(prs, "CLOSED");
@@ -148,11 +183,12 @@ export function classify(entries, { prsByBranch = {}, statusByPath = {}, existsB
     const verdict = (v, why) => ({ ...e, verdict: v, why });
 
     if (i === 0) return verdict("keep-main", "The main working tree is never removed.");
-    if (existsByPath[e.path] !== true) {
+    if (e.locked) return verdict("keep-locked", `It is locked (\`git worktree unlock\` first if it should go)${named ? `; ${named}` : ""}.`);
+    if (own(existsByPath, e.path) !== true) {
       return verdict("prune", `Its directory is missing; \`git worktree prune\` drops the registration${named ? ` (${named})` : ""}.`);
     }
     if (e.prunable) return verdict("prune", `git marks it prunable; \`git worktree prune\` drops the registration${named ? ` (${named})` : ""}.`);
-    const status = String(statusByPath[e.path] ?? "").trim();
+    const status = String(own(statusByPath, e.path) ?? "").trim();
     if (status.startsWith(STATUS_UNREADABLE)) {
       return verdict(
         "keep-dirty",
@@ -167,10 +203,18 @@ export function classify(entries, { prsByBranch = {}, statusByPath = {}, existsB
       );
     }
     if (open.length) return verdict("keep-open-pr", `${open.join(", ")} is OPEN.`);
-    if (e.branch && merged.length) return verdict("remove", `${merged.join(", ")} MERGED and the tree is clean.`);
+    if (e.branch && merged.length) {
+      const mergedPrs = prs.filter((p) => p?.state === "MERGED");
+      const tipIsHead = mergedPrs.some((p) => p.headRefOid && p.headRefOid === e.head);
+      if (tipIsHead || own(containedByPath, e.path) === true) {
+        return verdict("remove", `${merged.join(", ")} MERGED, the local tip ${short(e.head)} is in it, and the tree is clean.`);
+      }
+      const heads = mergedPrs.map((p) => `#${p.number} at ${short(p.headRefOid)}`).join(", ");
+      return verdict("keep-unpushed", `Local tip ${short(e.head)} is not in what merged (${heads}); it may hold commits that exist nowhere else.`);
+    }
     if (closed.length) return verdict("keep-closed-pr", `${closed.join(", ")} was CLOSED without merging; the work may exist nowhere else.`);
     if (e.detached) {
-      if (ancestorByHead[e.head] === true) {
+      if (own(ancestorByHead, e.head) === true) {
         return verdict("remove-detached", `Detached at ${short(e.head)}, which is an ancestor of origin/main.`);
       }
       return verdict("keep-detached", `Detached at ${short(e.head)}, which is not an ancestor of origin/main.`);
@@ -249,16 +293,26 @@ function repoFromOrigin(exec) {
   }
 }
 
-function groupPrs(json) {
-  const byBranch = {};
+export const PR_FIELDS = "number,state,headRefName,headRefOid,isCrossRepository";
+
+/** gh pr list JSON -> { byBranch, total, forks }. A fork's PR never speaks for a local branch. */
+export function groupPrs(json) {
+  const byBranch = Object.create(null);
   const list = JSON.parse(json);
   if (!Array.isArray(list)) throw new Error("gh pr list did not return an array");
+  let forks = 0;
   for (const p of list) {
     const b = p?.headRefName;
     if (!b) continue;
-    (byBranch[b] ??= []).push({ number: p.number, state: p.state });
+    if (p.isCrossRepository !== false) {
+      // A fork PR (or one whose origin gh did not report) says nothing about a
+      // local branch that shares its name: skip it, which reads as "no PR".
+      forks += 1;
+      continue;
+    }
+    (byBranch[b] ??= []).push({ number: p.number, state: p.state, headRefOid: p.headRefOid ?? null });
   }
-  return { byBranch, total: list.length };
+  return { byBranch, total: list.length, forks };
 }
 
 function shortenPath(p, cwd) {
@@ -304,6 +358,10 @@ export function run(argv = [], { exec = defaultExec, fs = nodeFs, cwd = process.
       return { code: 2, out: "", err: `unknown flag ${a}\n${USAGE}` };
     }
   }
+  if (argv.includes("--repo")) {
+    const v = argValue(argv, "--repo");
+    if (!v || v.startsWith("-")) return { code: 2, out: "", err: `--repo needs an owner/name value\n${USAGE}` };
+  }
   const repo = argValue(argv, "--repo") ?? repoFromOrigin(exec) ?? DEFAULT_REPO;
   let out = "";
   let err = "";
@@ -315,7 +373,7 @@ export function run(argv = [], { exec = defaultExec, fs = nodeFs, cwd = process.
   if (entries.length === 0) return { code: 2, out: "", err: "git worktree list returned nothing; is this a git checkout?\n" };
 
   // 2. ONE PR listing, grouped by head branch.
-  const pl = exec("gh", ["pr", "list", "--repo", repo, "--state", "all", "--limit", String(PR_LIST_LIMIT), "--json", "number,state,headRefName"]);
+  const pl = exec("gh", ["pr", "list", "--repo", repo, "--state", "all", "--limit", String(PR_LIST_LIMIT), "--json", PR_FIELDS]);
   if (pl.status !== 0) {
     return {
       code: 2,
@@ -335,10 +393,13 @@ export function run(argv = [], { exec = defaultExec, fs = nodeFs, cwd = process.
     err += `warning: gh pr list returned ${prs.total} PRs, the limit; older merged branches may read as "no PR" and be kept.\n`;
   }
 
-  // 3. Per-tree facts: existence, status, ancestry for detached heads.
-  const existsByPath = {};
-  const statusByPath = {};
-  const ancestorByHead = {};
+  // 3. Per-tree facts: existence, status, ancestry for detached heads, and for
+  // a clean merged branch whose tip is not a merged PR's head, whether the tip
+  // is at least an ancestor of one (then the branch holds nothing extra).
+  const existsByPath = Object.create(null);
+  const statusByPath = Object.create(null);
+  const ancestorByHead = Object.create(null);
+  const containedByPath = Object.create(null);
   entries.forEach((e, i) => {
     existsByPath[e.path] = fs.existsSync(e.path);
     if (existsByPath[e.path] && !e.prunable) {
@@ -351,13 +412,22 @@ export function run(argv = [], { exec = defaultExec, fs = nodeFs, cwd = process.
       const mb = exec("git", ["merge-base", "--is-ancestor", e.head, "origin/main"]);
       ancestorByHead[e.head] = mb.status === 0;
     }
+    const mergedPrs = (e.branch && Object.hasOwn(prs.byBranch, e.branch) ? prs.byBranch[e.branch] : []).filter((x) => x.state === "MERGED");
+    const clean = typeof statusByPath[e.path] === "string" && statusByPath[e.path].trim() === "";
+    if (i > 0 && e.head && clean && mergedPrs.length && !mergedPrs.some((x) => x.headRefOid === e.head)) {
+      // A missing object (the PR head was never fetched) exits 128: not contained, kept.
+      containedByPath[e.path] = mergedPrs.some(
+        (x) => x.headRefOid && exec("git", ["merge-base", "--is-ancestor", e.head, x.headRefOid]).status === 0,
+      );
+    }
     if (progress && (i + 1) % 25 === 0) progress(`  …inspected ${i + 1}/${entries.length} worktrees\n`);
   });
 
-  const classified = classify(entries, { prsByBranch: prs.byBranch, statusByPath, existsByPath, ancestorByHead });
+  const classified = classify(entries, { prsByBranch: prs.byBranch, statusByPath, existsByPath, ancestorByHead, containedByPath });
   const p = plan(classified);
-  const strayDir = path.join(cwd, STRAY_DIR);
-  const strays = strayFiles(strayDir, fs);
+  // The main worktree's .claude/worktrees/, never the caller's cwd (see header).
+  const strayDir = path.join(entries[0].path, STRAY_DIR);
+  const strays = entries[0].bare ? [] : strayFiles(strayDir, fs);
 
   // Under --json stdout is ONE JSON document and nothing else; the human lines go to stderr.
   const say = (s) => {
@@ -431,10 +501,15 @@ export function run(argv = [], { exec = defaultExec, fs = nodeFs, cwd = process.
   say(
     `Done: removed ${p.removeWorktrees.length - failedPaths.size} of ${p.removeWorktrees.length} worktrees` +
       (failedPaths.size ? ` (${failedPaths.size} refused, left alone)` : "") +
-      `, deleted ${applied.deletedBranches.length} branches, pruned, deleted ${applied.deletedFiles.length} stray files.\n`,
+      `, deleted ${applied.deletedBranches.length} branches` +
+      (applied.pruned ? ", pruned" : ", prune refused") +
+      `, deleted ${applied.deletedFiles.length} stray files.\n`,
   );
   if (json) emitJson(applied);
-  return { code: failedPaths.size ? 1 : 0, out, err };
+  // Anything skipped is a non-zero exit, so the operator reads the SKIPPED lines.
+  const branchRefused = applied.keptBranches.some((b) => !stillCheckedOut.has(b));
+  const anySkipped = failedPaths.size > 0 || branchRefused || !applied.pruned || applied.skippedFiles.length > 0;
+  return { code: anySkipped ? 1 : 0, out, err };
 }
 
 if (process.argv[1] && pathToFileURL(process.argv[1]).href === import.meta.url) {
