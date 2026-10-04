@@ -2128,6 +2128,7 @@ const FLOORS = {
   "tools/corpus/embeddings.test.mjs": 39,
   "tools/corpus/search.test.mjs": 25,
   "tools/corpus/backfill.test.mjs": 26,
+  "tools/poll/tiers.test.mjs": 9, // PKG-05 (S-10): new -- cadence tiers (seed, correction, success/failure, dead)
 };
 
 test("no suite is floored twice", () => {
