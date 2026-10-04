@@ -2182,6 +2182,12 @@ const FLOORS = {
      denied boundary, and whether a floor in THIS file fell. A test deleted
      here is an unread merge that stops being counted. */
   "tools/audit/merge-audit.test.mjs": 16, // OPS-08: + the workflow-shape test (two comments on #129); + the comment-size compaction test
+  /* The worktree collector (OPS-12). It runs `git worktree remove` on the
+     founder's machine. Every test here is a thing it must NOT remove -- a
+     dirty tree, an open or closed-unmerged PR, a branch with no PR, a detached
+     head not on main -- or a proof that the dry run mutates nothing. A test
+     deleted here is a keep-* that could become a remove. */
+  "tools/dev/worktree-gc.test.mjs": 27, // OPS-12 review (2026-10-04): +8 -- keep-unpushed (tip not in the merged head), the CLI asks git for containment, fork PRs ignored, prototype-named branches, locked trees, strays found from the main tree not cwd, a refused branch -D or prune exits 1, --repo without a value; 19 -> 27
   "tools/poll/tiers.test.mjs": 9, // PKG-05 (S-10): new -- cadence tiers (seed, correction, success/failure, dead)
 };
 
