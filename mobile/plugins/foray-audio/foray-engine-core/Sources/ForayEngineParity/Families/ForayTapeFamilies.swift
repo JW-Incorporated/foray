@@ -11,7 +11,13 @@ import ForayEngineCore
 ///     (real-forays.json), driven through `EngineCore` with the Foray tape on;
 ///   - `prepare`: seams at the AUDIBLE level ("item N+1 audible at T with
 ///     offset O"), through the engine CONTRACT with the standby deck, the
-///     `n.prepare:` / `n.handover:` tokens asserted.
+///     `n.prepare:` / `n.handover:` tokens asserted;
+///   - `prepare-narration` (NE-45j recorded it, NE-45s ports it): the same
+///     audible seams with a narration line in them (a rendered line prepared
+///     and handed over like a clip, the clip after it prepared from the
+///     line's duration or, behind a SPOKEN line, at the line's start, and a
+///     same-source prepare on the standby written `n.prepare-seek:`), plus
+///     deck-policy.js's `warmsAcross` and the duration window.
 ///
 /// A Foray a scenario plays is the PAGE's build (`buildForayQueue`), read from
 /// player/parity/scenario-builds.json: the engine never builds one (plan §3
@@ -33,6 +39,24 @@ public enum PrepareFamily {
     public static func makeRunner(mutation: EngineScenarioDriver.Mutation? = nil) -> FamilyRunner {
         ForayTapeRunner(family: "prepare", targets: ["engine"],
                         driver: EngineScenarioDriver(mutation: mutation, forayTape: true))
+    }
+}
+
+/// `prepare-narration` (card NE-45s), routed by the fixture FILE's module:
+/// `policy.json` is player/deck-policy.js (`warmsAcross`, and
+/// `prefetchWindowOpens` with `durationSec`, through the same readers the
+/// `deck` family's deck-pair cases use), and `seams.json` names none, so its
+/// cases are engine-target scenarios through the contract, as `prepare`'s are.
+public enum PrepareNarrationFamily {
+    public static let runner = makeRunner()
+
+    public static func makeRunner(mutation: EngineScenarioDriver.Mutation? = nil) -> FamilyRunner {
+        ModuleRoutedRunner(family: "prepare-narration", routes: [
+            DeckFamily.module: PureFamilyRunner(family: "prepare-narration", module: DeckFamily.module, reads: [:],
+                                                calls: DeckPairFamily.calls),
+            ModuleRoutedRunner.scenarios: ForayTapeRunner(family: "prepare-narration", targets: ["engine"],
+                                                          driver: EngineScenarioDriver(mutation: mutation, forayTape: true))
+        ])
     }
 }
 

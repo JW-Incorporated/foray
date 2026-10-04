@@ -151,20 +151,43 @@ public struct SessionResult: Equatable {
 }
 
 /// An `AVAudioSession.routeChangeNotification`, as far as the rules read it.
+/// The port is the one that MATTERS: the one that went away on a loss, the
+/// one that arrived otherwise (AudioSessionOwner's classifier fills it).
 public struct RouteChange: Equatable {
     /// `.oldDeviceUnavailable`: headphones out, the car switched off.
     public var oldDeviceUnavailable: Bool
-    /// The route's name: what "a known car" is remembered by (corner case #13).
-    public var routeName: String?
-    public var isCarRoute: Bool
-    /// The port type, for the `session` row (never the name: plan §10).
+    /// The port type (`CarAudio`, `BluetoothA2DPOutput`): the `session` and
+    /// `route` rows carry it, and `RouteResume.routeClass` reads it.
     public var portType: String?
+    /// The port's UID (`AVAudioSessionPortDescription.uid`), what a known
+    /// route is remembered by (NE-38rs), never its name: two cars of one model
+    /// share a name, and a name is often its owner's. The core hashes it with
+    /// the install's salt before anything keeps or writes it; it never
+    /// reaches a row (plan §10, DiagGate).
+    public var portUID: String?
+    /// The port's class (`RouteResume.routeClass`): car, bluetooth or other.
+    public var routeClass: RouteResume.RouteClass
 
-    public init(oldDeviceUnavailable: Bool, routeName: String? = nil, isCarRoute: Bool = false, portType: String? = nil) {
+    public init(oldDeviceUnavailable: Bool, portType: String? = nil, portUID: String? = nil,
+                routeClass: RouteResume.RouteClass? = nil) {
         self.oldDeviceUnavailable = oldDeviceUnavailable
-        self.routeName = routeName
-        self.isCarRoute = isCarRoute
         self.portType = portType
+        self.portUID = portUID
+        self.routeClass = routeClass ?? RouteResume.routeClass(portType)
+    }
+}
+
+/// Where our audio goes right now (the current route's first output), as the
+/// host reads it for every input (`EngineNow.route`): the route a `.playing`
+/// deck is heard through, which is how a route becomes known (NE-38rs).
+public struct RoutePort: Equatable, Sendable {
+    public var portType: String
+    /// Hashed before it is kept; never a row.
+    public var uid: String?
+
+    public init(portType: String, uid: String?) {
+        self.portType = portType
+        self.uid = uid
     }
 }
 
@@ -286,4 +309,10 @@ public enum EngineInput: Equatable {
     case narrator(NarratorEvent)
     /// The interlude jingle (NE-31s).
     case interlude(InterludeEvent)
+    /// The PREVIEW deck (NE-47): the voice picker's rendered `preview.m4a`,
+    /// on a deck of its own so a preview never touches the item the main
+    /// deck holds. Its events speak the main deck's vocabulary; the core
+    /// reads only the load's answer (`.ready`, `.failed`,
+    /// `.deadlineExceeded`) and the file's `.ended`, for the token it issued.
+    case preview(DeckEvent)
 }

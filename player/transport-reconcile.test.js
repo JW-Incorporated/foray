@@ -3287,6 +3287,51 @@ test("ROUND 2 player-11: a nudge inside a SPOKEN line restarts it (back) or skip
   restore();
 });
 
+test("M2 drive 2026-10-01: ↺15 inside a RENDERED line reached by its seam seeks inside it, not refused", async (t) => {
+  /* Every narration test above starts ON the line (`startIndex`), which is
+     `playing`. A line reached by the clip before it ending is `transitioning`,
+     and the reducer refuses every seek there, so ↺15 / 30↻ inside it did
+     nothing ("skip backwards didn't work during the AI narration").
+     KILLING MUTATION: drop `|| (!restart && stateType === "transitioning")`
+     from `scrubTarget`'s `reload` (transport-policy.js). */
+  const { client, doc, audio, restore } = await bootClient(t);
+  await client.playForay(forayWithLine({ rendered: true, lineSec: 30 }), { startIndex: 0 });
+  await settle();
+  audio.currentTime = 200.01;                                // the clip's out-point
+  audio.fire("timeupdate");
+  await settle();
+  await settle();
+  assert.equal(client.forayStatus().index, 1, "precondition: the line, reached by its seam");
+  audio.currentTime = 20;
+  audio.fire("timeupdate");
+  await sheet(doc).back.click();
+  await settle();
+  await settle();
+  assert.equal(client.forayStatus().index, 1, "still the line");
+  assert.ok(Math.abs(audio.currentTime - 5) < 0.01, `↺15 from 20 s into the line lands at 5 s, got ${audio.currentTime}s`);
+  restore();
+});
+
+test("M2 drive 2026-10-01: a scrub into the SPOKEN line sounding says it again, never nothing", async (t) => {
+  /* `scrubTarget` answered `{reload: false, offset: null}` for the spoken line
+     already sounding, and `foraySeek` did nothing with it: a lock-screen or car
+     scrub inside a line was dropped silently. KILLING MUTATION: answer
+     `restart: false` from `scrubTarget`. */
+  const speech = fakeSpeech();
+  const { client, restore } = await bootClient(t, { speech });
+  t.after(() => client.stopForDataDeletion().catch(() => {}));
+  await client.playForay(forayWithLine({ rendered: false, lineSec: 60, lineFirst: true }), { startIndex: 0 });
+  await settle();
+  await settle();
+  assert.equal(speech.spoken.length, 1, "precondition: the line is being spoken");
+  await client.foraySeek(30);
+  await settle();
+  await settle();
+  assert.equal(speech.spoken.length, 2, "the scrub inside the line speaks it again from the top");
+  assert.equal(client.forayStatus().index, 0, "and stays on it");
+  restore();
+});
+
 test("ROUND 2 review: 30↻ inside the Foray's LAST spoken line does not claim to have skipped it", async (t) => {
   /* `forayNext` returns early on the last item, so the live region said
      "Narration skipped" while the line kept playing. KILLING MUTATION: drop

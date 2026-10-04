@@ -73,6 +73,7 @@ public enum EngineContract {
         case setHoldPolicy
         case probeSession
         case simulateTermination
+        case setRouteSharing
     }
 
     /// `EVENTS`: the `type` of every "engine" event (§5.4).
@@ -133,6 +134,15 @@ public enum EngineContract {
         case restore
         case foray
         case all
+    }
+
+    /// `ROUTE_SHARING_POLICIES` (card NE-40, DV-8): the audio session's
+    /// route-sharing policy, as `setRouteSharing`'s `policy`, the Developer
+    /// row's stored choice and the `build` row's `routeSharing`. `standard`
+    /// is spelled `default` on the wire (a Swift keyword otherwise).
+    public enum RouteSharingPolicy: String, CaseIterable, Sendable {
+        case standard = "default"
+        case longFormAudio
     }
 
     /// `SNAPSHOT_MODES`: what is loaded. `.nothing` is spelled `none` on the

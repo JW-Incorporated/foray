@@ -124,6 +124,34 @@ enum ContractRead {
         return policy
     }
 
+    /// NE-47, `pattern: ^https://audio\.jwlabs\.ai/[A-Za-z0-9._~/-]+$`: an
+    /// audition's rendered preview, a file on the narration host
+    /// (`EngineConstants.EngineContract.narrationPublicBase`, the page's own
+    /// constant) whose path is only the characters of a content key. Checked
+    /// by character, not by URL parsing, so a query, a fragment, credentials,
+    /// a port, a percent-escape or a look-alike host is refused exactly where
+    /// the page's regular expression refuses it.
+    static func narrationUrl(_ node: JSONNode, _ path: String) throws -> String {
+        let text = try string(node, path)
+        let base = EngineConstants.EngineContract.narrationPublicBase + "/"
+        guard text.unicodeScalars.starts(with: base.unicodeScalars) else {
+            throw fail(path, "is not a file on the narration host")
+        }
+        let rest = text.unicodeScalars.dropFirst(base.unicodeScalars.count)
+        guard !rest.isEmpty, rest.allSatisfy(isNarrationPathScalar) else {
+            throw fail(path, "is not a plain object path on the narration host")
+        }
+        return text
+    }
+
+    /// `[A-Za-z0-9._~/-]`, ASCII only.
+    static func isNarrationPathScalar(_ scalar: Unicode.Scalar) -> Bool {
+        switch scalar {
+        case "A"..."Z", "a"..."z", "0"..."9", ".", "_", "~", "/", "-": return true
+        default: return false
+        }
+    }
+
     /// `type: object`, whatever it holds.
     static func object(_ node: JSONNode, _ path: String) throws -> JSONNode {
         guard case .object = node else { throw ContractRead.fail(path, "must be an object") }
@@ -336,7 +364,9 @@ extension EngineContract {
         case restoreBar
         case purge
         case relinquish(cap: RelinquishCap)
-        case audition(text: String, voiceId: String?)
+        /// OQ-5; NE-47: `url` is the voice's rendered preview on the
+        /// narration host (absent: the line is spoken, as before it existed).
+        case audition(text: String, voiceId: String?, url: String? = nil)
         case setModeOverride(EngineMode.Override)
         case setHoldPolicy(SessionPolicy.HoldPolicy)
         /// Developer only (NE-25c).
@@ -344,6 +374,10 @@ extension EngineContract {
         /// Developer only (NE-24, DV-7a): persist the restore record now, and
         /// exit at the next background entry while paused.
         case simulateTermination
+        /// Developer only (NE-40, DV-8): the route-sharing policy the NEXT
+        /// launch's audio session is built with. The host's to store; the
+        /// core decides nothing on it.
+        case setRouteSharing(EngineContract.RouteSharingPolicy)
 
         public var name: CommandName {
             switch self {
@@ -373,6 +407,7 @@ extension EngineContract {
             case .setHoldPolicy: return .setHoldPolicy
             case .probeSession: return .probeSession
             case .simulateTermination: return .simulateTermination
+            case .setRouteSharing: return .setRouteSharing
             }
         }
 
@@ -432,11 +467,14 @@ extension EngineContract {
             case .audition:
                 let o = try a()
                 return .audition(text: try o.required("text", R.nonEmptyString),
-                                 voiceId: try o.requiredNullable("voiceId", R.string))
+                                 voiceId: try o.requiredNullable("voiceId", R.string),
+                                 url: try o.optional("url", R.narrationUrl))
             case .setModeOverride: return .setModeOverride(try a().required("mode", R.token(EngineMode.Override.self)))
             case .setHoldPolicy: return .setHoldPolicy(try a().required("policy", R.holdPolicy))
             case .probeSession: return .probeSession
             case .simulateTermination: return .simulateTermination
+            case .setRouteSharing:
+                return .setRouteSharing(try a().required("policy", R.token(EngineContract.RouteSharingPolicy.self)))
             }
         }
     }

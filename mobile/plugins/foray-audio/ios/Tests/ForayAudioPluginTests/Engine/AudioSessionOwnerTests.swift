@@ -252,20 +252,38 @@ final class AudioSessionOwnerTests: XCTestCase {
     }
 
     /// A lost device reports the LOST port (the car switching off), a new one
-    /// the NEW port (the car connecting); nothing else reaches the rules.
-    /// TO SEE IT FAIL: report the current port for a lost device, or forward
-    /// a category change.
+    /// the NEW port (the car connecting), each with its UID and its class
+    /// (NE-38rs: car, bluetooth, other); nothing else reaches the rules.
+    /// TO SEE IT FAIL: report the current port for a lost device, drop the
+    /// UID, classify by anything but the port type, or forward a category
+    /// change.
     func testRouteChangesReportTheRightPortAndOnlyDeviceChangesForward() {
-        let car = AudioSessionOwner.Port(type: AVAudioSession.Port.carAudio.rawValue, name: "My Car")
-        let speaker = AudioSessionOwner.Port(type: AVAudioSession.Port.builtInSpeaker.rawValue, name: "Speaker")
+        let car = AudioSessionOwner.Port(type: AVAudioSession.Port.carAudio.rawValue, uid: "car-uid-1")
+        let speaker = AudioSessionOwner.Port(type: AVAudioSession.Port.builtInSpeaker.rawValue, uid: "Speaker")
+        let a2dp = AudioSessionOwner.Port(type: AVAudioSession.Port.bluetoothA2DP.rawValue, uid: "8C:DE:52:11:22:33-tacl")
         XCTAssertEqual(
             AudioSessionOwner.routeChange(reasonRaw: AVAudioSession.RouteChangeReason.oldDeviceUnavailable.rawValue,
                                           current: speaker, previous: car),
-            RouteChange(oldDeviceUnavailable: true, routeName: "My Car", isCarRoute: true, portType: AVAudioSession.Port.carAudio.rawValue))
+            RouteChange(oldDeviceUnavailable: true, portType: AVAudioSession.Port.carAudio.rawValue, portUID: "car-uid-1",
+                        routeClass: .car))
         XCTAssertEqual(
             AudioSessionOwner.routeChange(reasonRaw: AVAudioSession.RouteChangeReason.newDeviceAvailable.rawValue,
                                           current: car, previous: speaker),
-            RouteChange(oldDeviceUnavailable: false, routeName: "My Car", isCarRoute: true, portType: AVAudioSession.Port.carAudio.rawValue))
+            RouteChange(oldDeviceUnavailable: false, portType: AVAudioSession.Port.carAudio.rawValue, portUID: "car-uid-1",
+                        routeClass: .car))
+        XCTAssertEqual(
+            AudioSessionOwner.routeChange(reasonRaw: AVAudioSession.RouteChangeReason.oldDeviceUnavailable.rawValue,
+                                          current: speaker, previous: a2dp),
+            RouteChange(oldDeviceUnavailable: true, portType: "BluetoothA2DPOutput", portUID: "8C:DE:52:11:22:33-tacl",
+                        routeClass: .bluetooth))
+        XCTAssertEqual(
+            AudioSessionOwner.routeChange(reasonRaw: AVAudioSession.RouteChangeReason.newDeviceAvailable.rawValue,
+                                          current: speaker, previous: nil)?.routeClass, .other)
+        XCTAssertEqual(
+            AudioSessionOwner.routeChange(reasonRaw: AVAudioSession.RouteChangeReason.oldDeviceUnavailable.rawValue,
+                                          current: speaker, previous: nil),
+            RouteChange(oldDeviceUnavailable: true, portType: nil, portUID: nil, routeClass: .other),
+            "no previous route: no port, no UID, never a car")
         for other in [AVAudioSession.RouteChangeReason.categoryChange, .override, .routeConfigurationChange] {
             XCTAssertNil(AudioSessionOwner.routeChange(reasonRaw: other.rawValue, current: car, previous: speaker))
         }
@@ -280,11 +298,11 @@ final class AudioSessionOwnerTests: XCTestCase {
     func testEveryRouteRowCarriesBothPortTypesAndNeverAName() throws {
         let carAudio = AVAudioSession.Port.carAudio.rawValue
         let speakerType = AVAudioSession.Port.builtInSpeaker.rawValue
-        let car = AudioSessionOwner.Port(type: carAudio, name: "Wyatts Car")
-        let speaker = AudioSessionOwner.Port(type: speakerType, name: "Speaker")
+        let car = AudioSessionOwner.Port(type: carAudio, uid: "Wyatts-Car-UID")
+        let speaker = AudioSessionOwner.Port(type: speakerType, uid: "Speaker")
         let both = AudioSessionOwner.routePorts(current: car, previous: speaker)
         XCTAssertEqual(both, [JSONMember("port", .string(carAudio)), JSONMember("prevPort", .string(speakerType))])
-        XCTAssertFalse(JSWriter.stringify(.object(both)).contains("Wyatts"), "a port NAME reached a row")
+        XCTAssertFalse(JSWriter.stringify(.object(both)).contains("Wyatts"), "a port's UID reached a row")
         XCTAssertEqual(AudioSessionOwner.routePorts(current: nil, previous: nil),
                        [JSONMember("port", .null), JSONMember("prevPort", .null)])
 
@@ -315,6 +333,39 @@ final class AudioSessionOwnerTests: XCTestCase {
             XCTAssertEqual(admitted[field: "port"], .string(carAudio))
             XCTAssertEqual(admitted[field: "prevPort"], .null)
         }
+        observation.cancel()
+    }
+
+    /// NE-38rs: the owner hands the core the port's UID (on the route change,
+    /// and as `currentRoute` for every input), and writes it into NO row of
+    /// its own: an arrival and a category change are both written down with
+    /// port types only.
+    /// TO SEE IT FAIL: add the UID to `routePorts`, or make `currentRoute`
+    /// drop it (the core could then never know a route).
+    func testTheOwnerPassesTheUIDToTheCoreAndNeverIntoARow() throws {
+        let uid = "8C:DE:52:11:22:33-tacl"
+        let a2dp = AudioSessionOwner.Port(type: AVAudioSession.Port.bluetoothA2DP.rawValue, uid: uid)
+        let api = FakeSessionAPI()
+        api.ports = [a2dp]
+        let center = NotificationCenter()
+        let owner = makeOwner(api, center: center)
+        XCTAssertEqual(owner.currentRoute, RoutePort(portType: "BluetoothA2DPOutput", uid: uid))
+        var events: [SessionEvent] = []
+        let observation = owner.observe { events.append($0) }
+        for reason in [AVAudioSession.RouteChangeReason.newDeviceAvailable, .categoryChange] {
+            post(center, AVAudioSession.routeChangeNotification, object: api,
+                 [AVAudioSessionRouteChangeReasonKey: reason.rawValue], fromBackground: false)
+        }
+        spin(until: { self.sessionRows("notification").filter { $0[field: "name"] == .string("route") }.count >= 2 })
+        XCTAssertEqual(events, [.route(RouteChange(oldDeviceUnavailable: false, portType: "BluetoothA2DPOutput",
+                                                   portUID: uid, routeClass: .bluetooth))])
+        XCTAssertFalse(rows.isEmpty)
+        for row in rows {
+            let text = JSWriter.stringify(.object(row.fields))
+            XCTAssertFalse(text.contains(uid) || text.contains("8C:DE"), "the raw UID reached a row: \(text)")
+        }
+        api.ports = []
+        XCTAssertNil(owner.currentRoute, "no output: no route")
         observation.cancel()
     }
 
@@ -349,7 +400,7 @@ final class AudioSessionOwnerTests: XCTestCase {
     /// thread), or drop a token from `NotificationObservation`.
     func testNotificationsArriveOnMainAndCancelRemovesThem() {
         let api = FakeSessionAPI()
-        api.ports = [AudioSessionOwner.Port(type: AVAudioSession.Port.carAudio.rawValue, name: "My Car")]
+        api.ports = [AudioSessionOwner.Port(type: AVAudioSession.Port.carAudio.rawValue, uid: "car-uid-1")]
         let center = NotificationCenter()
         let owner = makeOwner(api, center: center)
         _ = owner.activate()
@@ -371,7 +422,8 @@ final class AudioSessionOwnerTests: XCTestCase {
         spin(until: { events.count >= 3 })
 
         XCTAssertEqual(events, [
-            .route(RouteChange(oldDeviceUnavailable: false, routeName: "My Car", isCarRoute: true, portType: AVAudioSession.Port.carAudio.rawValue)),
+            .route(RouteChange(oldDeviceUnavailable: false, portType: AVAudioSession.Port.carAudio.rawValue,
+                               portUID: "car-uid-1", routeClass: .car)),
             .interruptionBegan(reason: "default"),
             .mediaServicesReset
         ])
@@ -438,7 +490,7 @@ final class AudioSessionOwnerTests: XCTestCase {
     func testAnInterruptionRowSaysWhetherOtherAudioWasPlayingAndWhere() {
         let api = FakeSessionAPI()
         api.otherAudio = true
-        api.ports = [AudioSessionOwner.Port(type: "BluetoothA2DPOutput", name: "Wyatt's Car")]
+        api.ports = [AudioSessionOwner.Port(type: "BluetoothA2DPOutput", uid: "Wyatt's Car")]
         let center = NotificationCenter()
         let owner = makeOwner(api, center: center)
         _ = owner.activate()
@@ -457,7 +509,7 @@ final class AudioSessionOwnerTests: XCTestCase {
         for row in interruptionRows {
             XCTAssertEqual(row[field: "otherAudio"], .bool(true))
             XCTAssertEqual(row[field: "port"], .string("BluetoothA2DPOutput"))
-            XCTAssertFalse(row.fields.contains { $0.value == .string("Wyatt's Car") }, "a route name reached a row")
+            XCTAssertFalse(row.fields.contains { $0.value == .string("Wyatt's Car") }, "a route UID reached a row")
         }
         observation.cancel()
     }
