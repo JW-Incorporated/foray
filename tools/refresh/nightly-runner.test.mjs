@@ -377,6 +377,12 @@ test("the runner prompt calls fetch-digest and finish and names the digest-date 
   for (const needle of ["nightly-runner.mjs fetch-digest", "nightly-runner.mjs finish --date", "--suffix recovery"]) {
     assert.ok(prompt.includes(needle), `prompt names ${JSON.stringify(needle)}`);
   }
+  // `--suffix recovery` also appears in step 5's general note, so pin it in
+  // step 2's recovery block itself, where the stranded date is named (review:
+  // without this the mutation above survived).
+  const step2 = prompt.slice(prompt.indexOf("2. **Fetch the digest"), prompt.indexOf("3. **If `fetch-digest`"));
+  assert.ok(step2.length > 0, "step 2 is where the plan put it");
+  assert.match(step2, /--date <the stranded digest's\s+date> --suffix recovery/);
   // The old hand steps survive only as reference, inside a <details> block: the
   // first mention of the by-hand branch command must come after the first
   // <details>, or an agent following the steps in order would run it.
@@ -384,4 +390,25 @@ test("the runner prompt calls fetch-digest and finish and names the digest-date 
   const firstDetails = prompt.indexOf("<details>");
   assert.ok(firstDetails >= 0, "the prompt has a <details> block");
   assert.ok(handBranch === -1 || handBranch > firstDetails, `hand branch command at ${handBranch} is before the first <details> at ${firstDetails}`);
+});
+
+test("the runner prompt's live steps match finish's real exit behaviour (OPS-17 review)", () => {
+  // The steps an agent follows are the prompt minus its <details> reference
+  // blocks. Two things there were wrong against the code and are pinned here:
+  // (1) "step 7" survived the renumbering, though `finish` is step 5 now;
+  // (2) TESTS_FAILED (6) comes AFTER merge.mjs has written the data files, so
+  //     re-running without restoring them reads every item as already present
+  //     and stops at NOTHING_ADDED (4) with the fixes unapplied.
+  // Mutations: put `in step 7` back in step 2 -> red; delete the
+  // `git restore data/discover.json data/item-tags.json` line -> red; drop the
+  // `GIT_FAILED` bullet -> red.
+  const prompt = readFileSync(path.join(REPO, "docs", "agents", "runner-prompts", "foray-nightly.md"), "utf8");
+  const live = prompt.replace(/<details>[\s\S]*?<\/details>/g, "");
+  assert.doesNotMatch(live, /\bstep 7\b/, "no live reference to a step 7");
+  assert.match(live, /git restore data\/discover\.json data\/item-tags\.json/);
+  assert.match(live, /GIT_FAILED/);
+  // And every exit code the live steps name is one finish/fetch-digest really has.
+  for (const [code, name] of [[3, "STALE"], [4, "NOTHING"], [5, "MERGE_FAILED"], [6, "TESTS_FAILED"], [7, "UNEXPECTED_FILES"], [1, "FAILED"]]) {
+    assert.equal(EXIT[name], code, `EXIT.${name}`);
+  }
 });

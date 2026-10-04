@@ -6,7 +6,7 @@ This is the versioned prompt for the nightly content-refresh agent. It runs
 **judgment half**: turn a resolved digest into published episodes via a PR.
 Be conservative — a broken deploy is far worse than a skipped night.
 
-Version 3 (2026-09-25): the mechanical halves are one command each, `tools/refresh/nightly-runner.mjs` (issue #760). Steps 1-3 and 5-7 call it; step 4, the judgement, is unchanged.
+Version 3 (2026-09-25): the mechanical halves are one command each, `tools/refresh/nightly-runner.mjs` (issue #760). Steps 2-3 and 5 call it (they were hand steps 1-3 and 5-7 before version 3); step 4, the judgement, is unchanged.
 The host that runs this prompt is pending: it is moving off the Cloud routine to the Spark (#760 → `docs/plans/spark-central-narration-assessment.md` §5 Phase 5).
 
 Read `CLAUDE.md` first; the copy rules and product principles there are binding.
@@ -31,7 +31,7 @@ from its show's label) and run the committed merge. See
    It pulls `origin/refresh-digest:resolved.json` into `data-local/resolved.json`
    and prints one verdict line. Exit 0 with `DIGEST_OK date=<YYYY-MM-DD> ...`
    means continue; the `date` it prints is the digest's date and is the date
-   you use in step 7. **Any other exit code: stop and open no PR.**
+   you use in step 5. **Any other exit code: stop and open no PR.**
    - exit 3 `DIGEST_STALE` — the `nightly-refresh` Action has not published
      today, so the digest is yesterday's and every item in it is already in
      `discover.json`. Say so in your run output so a human notices.
@@ -45,7 +45,7 @@ from its show's label) and run the committed merge. See
    node tools/refresh/scan.mjs --window-hours 72
    node tools/refresh/resolve.mjs
    ```
-   then continue from step 4, and in step 7 pass `--date <the stranded digest's
+   then continue from step 4, and in step 5 pass `--date <the stranded digest's
    date> --suffix recovery`. That branch name, `nightly/<digest date>-recovery`,
    is load bearing: the overwrite guard in `nightly-refresh.yml` clears itself
    only when a PR matching the stranded digest's date appears (#293 got this
@@ -133,17 +133,26 @@ from its show's label) and run the committed merge. See
    `backend`'s `copyRules` + `poolIntegrity` tests, then creates
    `nightly/<date>`, stages exactly `data/discover.json` and
    `data/item-tags.json`, commits `Nightly refresh: +N episodes (<date>)`,
-   pushes, and opens the PR. Exit 0 prints `PR_OPENED <url>`. On any other exit
-   it has changed nothing you need to undo:
+   pushes, and opens the PR. Exit 0 prints `PR_OPENED <url>`. Exits 2, 4 and 5
+   have changed nothing; the others stop part-way, so read which:
    - 5 `MERGE_FAILED` — a copy-rule or `topics` failure in `edits.json`. Nothing
      was written. A `not taxonomy node ids: "…"` line is a `topics` typo —
      correct the id against `data/taxonomy.json`, or delete the `topics` key to
      fall back to the show's label. Fix the hook, tags or `topics` (or drop the
      item) and re-run.
-   - 6 `TESTS_FAILED` — fix or drop the offenders and re-run.
+   - 6 `TESTS_FAILED` — `merge.mjs` already WROTE the two data files before the
+     tests ran. Put them back first:
+     `git restore data/discover.json data/item-tags.json`, then fix or drop the
+     offenders in `edits.json` and re-run `finish`. Without the restore the
+     re-run finds every item already in the pool and stops at 4
+     `NOTHING_ADDED` with your fixes never applied.
    - 4 `NOTHING_ADDED` — every item was already in the pool. Stop; no PR.
    - 7 `UNEXPECTED_FILES` — you are on an old checkout that still stamps
      `deploy-manifest.json` or `sw.js`. Stop and re-sync `main`.
+   - 1 `GIT_FAILED <step>` or `PR_FAILED` — a git or gh call failed after the
+     branch was created (it may already be pushed). Do not re-run `finish` and
+     do not open a second PR by hand; stop and put the verdict line and its
+     output in your run output for a daytime human.
    **Do NOT merge the PR yourself.** `automerge-nightly.yml` enables auto-merge
    on `nightly/*` PRs whose changed files are all on `ALLOWED_PREFIXES` — both
    of yours are — so it merges once the required checks (`backend`,

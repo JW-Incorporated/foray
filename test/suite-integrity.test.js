@@ -1941,7 +1941,7 @@ const FLOORS = {
      third staged file, a PR on red tests). 16 is the true count at landing
      (15 at OPS-14, +1 prompt-shape test from OPS-17);
      each test names the mutation that kills it. */
-  "tools/refresh/nightly-runner.test.mjs": 16,
+  "tools/refresh/nightly-runner.test.mjs": 17, // OPS-17 review: +1 -- the live prompt steps match finish (no stale "step 7", restore after TESTS_FAILED, GIT_FAILED stops); 16 -> 17
   /* S-01's other half: proves the actual bash in nightly-refresh.yml's
      "Publish digest to refresh-digest branch" step, not a JS reimplementation
      of it. Extracts the real `run:` block, shims `gh`/`jq`, and round-trips a
