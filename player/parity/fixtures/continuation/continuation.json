@@ -20,7 +20,9 @@
         },
         "b"
       ],
-      "expect": { "return": { "fromList": false, "nextId": "a", "rest": ["a", "c"] } }
+      "expect": {
+        "return": { "fromList": false, "fromTail": false, "nextId": "a", "rest": ["a", "c"] }
+      }
     },
     {
       "id": "continuation/plan-queue-last-row-finished-plays-head",
@@ -38,7 +40,9 @@
         },
         "c"
       ],
-      "expect": { "return": { "fromList": false, "nextId": "a", "rest": ["a", "b"] } }
+      "expect": {
+        "return": { "fromList": false, "fromTail": false, "nextId": "a", "rest": ["a", "b"] }
+      }
     },
     {
       "id": "continuation/plan-queue-finished-head-leaves-for-the-next-row",
@@ -57,7 +61,9 @@
         },
         "a"
       ],
-      "expect": { "return": { "fromList": false, "nextId": "b", "rest": ["b", "c"] } }
+      "expect": {
+        "return": { "fromList": false, "fromTail": false, "nextId": "b", "rest": ["b", "c"] }
+      }
     },
     {
       "id": "continuation/plan-finish-elsewhere-plays-queue-head",
@@ -75,7 +81,9 @@
         },
         "unrelated"
       ],
-      "expect": { "return": { "fromList": false, "nextId": "a", "rest": null } }
+      "expect": {
+        "return": { "fromList": false, "fromTail": false, "nextId": "a", "rest": null }
+      }
     },
     {
       "id": "continuation/plan-queue-removed-while-playing",
@@ -93,7 +101,9 @@
         },
         "b"
       ],
-      "expect": { "return": { "fromList": false, "nextId": "a", "rest": null } }
+      "expect": {
+        "return": { "fromList": false, "fromTail": false, "nextId": "a", "rest": null }
+      }
     },
     {
       "id": "continuation/plan-list-next-row",
@@ -111,7 +121,7 @@
         },
         "a"
       ],
-      "expect": { "return": { "fromList": true, "nextId": "b", "rest": null } }
+      "expect": { "return": { "fromList": true, "fromTail": false, "nextId": "b", "rest": null } }
     },
     {
       "id": "continuation/plan-list-resumes-after-cursor",
@@ -129,7 +139,7 @@
         },
         "x"
       ],
-      "expect": { "return": { "fromList": true, "nextId": "e2", "rest": [] } }
+      "expect": { "return": { "fromList": true, "fromTail": false, "nextId": "e2", "rest": [] } }
     },
     {
       "id": "continuation/plan-off-chain-does-not-resume-list",
@@ -147,7 +157,9 @@
         },
         "from-a-timestamp"
       ],
-      "expect": { "return": { "fromList": false, "nextId": null, "rest": null } }
+      "expect": {
+        "return": { "fromList": false, "fromTail": false, "nextId": null, "rest": null }
+      }
     },
     {
       "id": "continuation/plan-queue-unplayable-falls-to-list",
@@ -165,7 +177,9 @@
         },
         "e1"
       ],
-      "expect": { "return": { "fromList": true, "nextId": "e2", "rest": null } }
+      "expect": {
+        "return": { "fromList": true, "fromTail": false, "nextId": "e2", "rest": null }
+      }
     },
     {
       "id": "continuation/plan-unplayable-list-row-passed-over",
@@ -181,7 +195,7 @@
         },
         "a"
       ],
-      "expect": { "return": { "fromList": true, "nextId": "b", "rest": null } }
+      "expect": { "return": { "fromList": true, "fromTail": false, "nextId": "b", "rest": null } }
     },
     {
       "id": "continuation/plan-last-queued-stops",
@@ -197,7 +211,7 @@
         },
         "a"
       ],
-      "expect": { "return": { "fromList": false, "nextId": null, "rest": [] } }
+      "expect": { "return": { "fromList": false, "fromTail": false, "nextId": null, "rest": [] } }
     },
     {
       "id": "continuation/plan-last-list-row-stops",
@@ -213,14 +227,18 @@
         },
         "b"
       ],
-      "expect": { "return": { "fromList": false, "nextId": null, "rest": null } }
+      "expect": {
+        "return": { "fromList": false, "fromTail": false, "nextId": null, "rest": null }
+      }
     },
     {
       "id": "continuation/plan-empty-state",
       "covers": ["continuation::an unplayable row is passed over, and the end of both is the end"],
       "call": "planAfterEnded",
       "args": [{}, "a"],
-      "expect": { "return": { "fromList": false, "nextId": null, "rest": null } }
+      "expect": {
+        "return": { "fromList": false, "fromTail": false, "nextId": null, "rest": null }
+      }
     },
     {
       "id": "continuation/next-queue-pick-moves-chain-not-cursor",
@@ -241,6 +259,7 @@
       "expect": {
         "return": {
           "fromList": false,
+          "fromTail": false,
           "nextId": "x",
           "rest": null,
           "state": {
@@ -271,6 +290,7 @@
       "expect": {
         "return": {
           "fromList": true,
+          "fromTail": false,
           "nextId": "e2",
           "rest": null,
           "state": {
@@ -301,6 +321,7 @@
       "expect": {
         "return": {
           "fromList": false,
+          "fromTail": false,
           "nextId": "b",
           "rest": ["b"],
           "state": {
@@ -331,6 +352,7 @@
       "expect": {
         "return": {
           "fromList": false,
+          "fromTail": false,
           "nextId": null,
           "rest": [],
           "state": {
@@ -410,6 +432,7 @@
           {
             "finishedId": "e1",
             "fromList": false,
+            "fromTail": false,
             "hopSeq": 1,
             "item": {
               "artwork_url": "https://img.test/x.jpg",
@@ -434,6 +457,7 @@
           {
             "finishedId": "x",
             "fromList": false,
+            "fromTail": false,
             "hopSeq": 2,
             "item": {
               "artwork_url": "https://img.test/y.jpg",
@@ -458,6 +482,7 @@
           {
             "finishedId": "y",
             "fromList": true,
+            "fromTail": false,
             "hopSeq": 3,
             "item": {
               "artwork_url": "https://img.test/e2.jpg",
@@ -482,6 +507,7 @@
           {
             "finishedId": "e2",
             "fromList": true,
+            "fromTail": false,
             "hopSeq": 4,
             "item": {
               "artwork_url": "https://img.test/e3.jpg",
@@ -556,6 +582,7 @@
           {
             "finishedId": "e1",
             "fromList": true,
+            "fromTail": false,
             "hopSeq": 1,
             "item": {
               "artwork_url": "https://img.test/e2.jpg",
@@ -580,6 +607,7 @@
           {
             "finishedId": "e2",
             "fromList": true,
+            "fromTail": false,
             "hopSeq": 2,
             "item": {
               "artwork_url": "https://img.test/e3.jpg",
@@ -654,6 +682,7 @@
           {
             "finishedId": "b",
             "fromList": false,
+            "fromTail": false,
             "hopSeq": 1,
             "item": {
               "artwork_url": "https://img.test/a.jpg",
@@ -678,6 +707,7 @@
           {
             "finishedId": "a",
             "fromList": false,
+            "fromTail": false,
             "hopSeq": 2,
             "item": {
               "artwork_url": "https://img.test/c.jpg",
@@ -824,6 +854,7 @@
           {
             "finishedId": "p0",
             "fromList": true,
+            "fromTail": false,
             "hopSeq": 1,
             "item": {
               "artwork_url": "https://img.test/p1.jpg",
@@ -848,6 +879,7 @@
           {
             "finishedId": "p1",
             "fromList": true,
+            "fromTail": false,
             "hopSeq": 2,
             "item": {
               "artwork_url": "https://img.test/p2.jpg",
@@ -872,6 +904,7 @@
           {
             "finishedId": "p2",
             "fromList": true,
+            "fromTail": false,
             "hopSeq": 3,
             "item": {
               "artwork_url": "https://img.test/p3.jpg",
@@ -896,6 +929,7 @@
           {
             "finishedId": "p3",
             "fromList": true,
+            "fromTail": false,
             "hopSeq": 4,
             "item": {
               "artwork_url": "https://img.test/p4.jpg",
@@ -920,6 +954,7 @@
           {
             "finishedId": "p4",
             "fromList": true,
+            "fromTail": false,
             "hopSeq": 5,
             "item": {
               "artwork_url": "https://img.test/p5.jpg",
@@ -944,6 +979,7 @@
           {
             "finishedId": "p5",
             "fromList": true,
+            "fromTail": false,
             "hopSeq": 6,
             "item": {
               "artwork_url": "https://img.test/p6.jpg",
@@ -968,6 +1004,7 @@
           {
             "finishedId": "p6",
             "fromList": true,
+            "fromTail": false,
             "hopSeq": 7,
             "item": {
               "artwork_url": "https://img.test/p7.jpg",
@@ -992,6 +1029,7 @@
           {
             "finishedId": "p7",
             "fromList": true,
+            "fromTail": false,
             "hopSeq": 8,
             "item": {
               "artwork_url": "https://img.test/p8.jpg",
@@ -1076,6 +1114,7 @@
           {
             "finishedId": "p0",
             "fromList": true,
+            "fromTail": false,
             "hopSeq": 1,
             "item": {
               "artwork_url": "https://img.test/p1.jpg",
@@ -1100,6 +1139,7 @@
           {
             "finishedId": "p1",
             "fromList": true,
+            "fromTail": false,
             "hopSeq": 2,
             "item": {
               "artwork_url": "https://img.test/p2.jpg",
@@ -1165,6 +1205,7 @@
           {
             "finishedId": "e1",
             "fromList": true,
+            "fromTail": false,
             "hopSeq": 1,
             "item": {
               "artwork_url": "https://img.test/e2.jpg",
@@ -1335,6 +1376,7 @@
             {
               "finishedId": "z",
               "fromList": false,
+              "fromTail": false,
               "hopSeq": 1,
               "item": {
                 "artwork_url": "https://img.test/a.jpg",
@@ -1360,6 +1402,7 @@
             {
               "finishedId": "a",
               "fromList": false,
+              "fromTail": false,
               "hopSeq": 2,
               "item": {
                 "artwork_url": "https://img.test/b.jpg",
@@ -1431,6 +1474,7 @@
             {
               "finishedId": "z",
               "fromList": false,
+              "fromTail": false,
               "hopSeq": 1,
               "item": {
                 "artwork_url": "https://img.test/a.jpg",
@@ -1456,6 +1500,7 @@
             {
               "finishedId": "a",
               "fromList": false,
+              "fromTail": false,
               "hopSeq": 2,
               "item": {
                 "artwork_url": "https://img.test/b.jpg",
@@ -1518,6 +1563,7 @@
             {
               "finishedId": "z",
               "fromList": false,
+              "fromTail": false,
               "hopSeq": 1,
               "item": {
                 "artwork_url": "https://img.test/a.jpg",
@@ -2148,6 +2194,319 @@
       "call": "normalizeApplied",
       "args": [{ "advance": { "planSeq": 5, "hopSeq": 2 }, "event": 3, "extra": true }],
       "expect": { "return": { "advance": { "hopSeq": 2, "planSeq": 5 }, "event": 3 } }
+    },
+    {
+      "id": "continuation/tail-after-list-exhausted",
+      "covers": [
+        "continuation::then more of what fits: the tail plays after Up Next and the list, never before"
+      ],
+      "note": "The list's last row ends with Up Next empty: the tail's first playable id plays, and says fromTail.",
+      "call": "planAfterEnded",
+      "args": [
+        {
+          "queue": [],
+          "playList": ["a", "b"],
+          "playChainId": "b",
+          "playListCursor": "b",
+          "tail": ["t1", "t2"],
+          "isPlayable": ["a", "b", "t1", "t2"]
+        },
+        "b"
+      ],
+      "expect": {
+        "return": { "fromList": false, "fromTail": true, "nextId": "t1", "rest": null }
+      }
+    },
+    {
+      "id": "continuation/tail-only-when-queue-and-list-empty",
+      "covers": [
+        "continuation::then more of what fits: the tail plays after Up Next and the list, never before"
+      ],
+      "note": "A queued row wins over a waiting tail (and over the list): the tail is never before Up Next.",
+      "call": "planAfterEnded",
+      "args": [
+        {
+          "queue": ["x"],
+          "playList": ["a", "b"],
+          "playChainId": "a",
+          "playListCursor": "a",
+          "tail": ["t1"],
+          "isPlayable": ["x", "a", "b", "t1"]
+        },
+        "a"
+      ],
+      "expect": {
+        "return": { "fromList": false, "fromTail": false, "nextId": "x", "rest": null }
+      }
+    },
+    {
+      "id": "continuation/tail-waits-for-the-list",
+      "covers": [
+        "continuation::then more of what fits: the tail plays after Up Next and the list, never before"
+      ],
+      "note": "Up Next empty but the list has a row left: the list row plays, and a list pick never says fromTail.",
+      "call": "planAfterEnded",
+      "args": [
+        {
+          "queue": [],
+          "playList": ["a", "b"],
+          "playChainId": "a",
+          "playListCursor": "a",
+          "tail": ["t1"],
+          "isPlayable": ["a", "b", "t1"]
+        },
+        "a"
+      ],
+      "expect": { "return": { "fromList": true, "fromTail": false, "nextId": "b", "rest": null } }
+    },
+    {
+      "id": "continuation/tail-skips-unplayable-and-finished",
+      "covers": [
+        "continuation::then more of what fits: the tail plays after Up Next and the list, never before"
+      ],
+      "note": "The tail passes over an id that cannot play, and the episode that just ended even when it is still listed there.",
+      "call": "planAfterEnded",
+      "args": [
+        {
+          "queue": [],
+          "playList": null,
+          "playChainId": "z",
+          "playListCursor": null,
+          "tail": ["silent", "z", "t2"],
+          "isPlayable": ["z", "t2"]
+        },
+        "z"
+      ],
+      "expect": {
+        "return": { "fromList": false, "fromTail": true, "nextId": "t2", "rest": null }
+      }
+    },
+    {
+      "id": "continuation/tail-empty-is-the-end",
+      "covers": [
+        "continuation::then more of what fits: the tail plays after Up Next and the list, never before"
+      ],
+      "note": "Up Next, the list and the tail all spent: nothing plays, exactly as before the tail existed.",
+      "call": "planAfterEnded",
+      "args": [
+        {
+          "queue": [],
+          "playList": ["a", "b"],
+          "playChainId": "b",
+          "playListCursor": "b",
+          "tail": [],
+          "isPlayable": ["a", "b"]
+        },
+        "b"
+      ],
+      "expect": {
+        "return": { "fromList": false, "fromTail": false, "nextId": null, "rest": null }
+      }
+    },
+    {
+      "id": "continuation/next-after-ended-tail-pick-moves-chain-not-cursor",
+      "covers": [
+        "continuation::a tail pick moves the chain, leaves the cursor, and the chain carries fromTail"
+      ],
+      "note": "A tail pick moves playChainId on to it, leaves playListCursor on the list's last row, and leaves the tail with the pick taken out.",
+      "call": "nextAfterEnded",
+      "args": [
+        {
+          "queue": [],
+          "playList": ["a", "b"],
+          "playChainId": "b",
+          "playListCursor": "b",
+          "tail": ["t1", "t2"],
+          "isPlayable": ["a", "b", "t1", "t2"]
+        },
+        "b"
+      ],
+      "expect": {
+        "return": {
+          "fromList": false,
+          "fromTail": true,
+          "nextId": "t1",
+          "rest": null,
+          "state": {
+            "playChainId": "t1",
+            "playList": ["a", "b"],
+            "playListCursor": "b",
+            "queue": [],
+            "tail": ["t2"]
+          }
+        }
+      }
+    },
+    {
+      "id": "continuation/chain-walks-into-the-tail",
+      "covers": [
+        "continuation::a tail pick moves the chain, leaves the cursor, and the chain carries fromTail",
+        "continuation::the chain is nextAfterEnded applied K times, in the order the ends would play"
+      ],
+      "note": "Up Next, then the list, then the tail, in that order; each tail pick leaves the tail so the chain ends when it is spent rather than serving a pick twice.",
+      "call": "continuationChain",
+      "args": [
+        {
+          "queue": ["x"],
+          "playList": ["e1", "e2"],
+          "playChainId": "e1",
+          "playListCursor": "e1",
+          "tail": ["t1", "t2"],
+          "isPlayable": ["x", "e1", "e2", "t1", "t2"],
+          "items": {
+            "x": {
+              "id": "x",
+              "title": "Episode x",
+              "show": "A Show",
+              "artwork_url": "https://img.test/x.jpg",
+              "audio_url": "https://audio.test/x.mp3",
+              "duration_min": 42,
+              "topics": ["history"]
+            },
+            "e1": {
+              "id": "e1",
+              "title": "Episode e1",
+              "show": "A Show",
+              "artwork_url": "https://img.test/e1.jpg",
+              "audio_url": "https://audio.test/e1.mp3",
+              "duration_min": 42,
+              "topics": ["history"]
+            },
+            "e2": {
+              "id": "e2",
+              "title": "Episode e2",
+              "show": "A Show",
+              "artwork_url": "https://img.test/e2.jpg",
+              "audio_url": "https://audio.test/e2.mp3",
+              "duration_min": 42,
+              "topics": ["history"]
+            },
+            "t1": {
+              "id": "t1",
+              "title": "Episode t1",
+              "show": "A Show",
+              "artwork_url": "https://img.test/t1.jpg",
+              "audio_url": "https://audio.test/t1.mp3",
+              "duration_min": 42,
+              "topics": ["history"]
+            },
+            "t2": {
+              "id": "t2",
+              "title": "Episode t2",
+              "show": "A Show",
+              "artwork_url": "https://img.test/t2.jpg",
+              "audio_url": "https://audio.test/t2.mp3",
+              "duration_min": 42,
+              "topics": ["history"]
+            }
+          },
+          "currentId": "e1"
+        }
+      ],
+      "expect": {
+        "return": [
+          {
+            "finishedId": "e1",
+            "fromList": false,
+            "fromTail": false,
+            "hopSeq": 1,
+            "item": {
+              "artwork_url": "https://img.test/x.jpg",
+              "audio_url": "https://audio.test/x.mp3",
+              "duration_min": 42,
+              "id": "x",
+              "show": "A Show",
+              "title": "Episode x",
+              "topics": ["history"]
+            },
+            "lastEpisodeRow": {
+              "artwork_url": "https://img.test/x.jpg",
+              "audio_url": "https://audio.test/x.mp3",
+              "duration_min": 42,
+              "id": "x",
+              "show": "A Show",
+              "title": "Episode x"
+            },
+            "nextId": "x",
+            "queueAfter": ["x"]
+          },
+          {
+            "finishedId": "x",
+            "fromList": true,
+            "fromTail": false,
+            "hopSeq": 2,
+            "item": {
+              "artwork_url": "https://img.test/e2.jpg",
+              "audio_url": "https://audio.test/e2.mp3",
+              "duration_min": 42,
+              "id": "e2",
+              "show": "A Show",
+              "title": "Episode e2",
+              "topics": ["history"]
+            },
+            "lastEpisodeRow": {
+              "artwork_url": "https://img.test/e2.jpg",
+              "audio_url": "https://audio.test/e2.mp3",
+              "duration_min": 42,
+              "id": "e2",
+              "show": "A Show",
+              "title": "Episode e2"
+            },
+            "nextId": "e2",
+            "queueAfter": []
+          },
+          {
+            "finishedId": "e2",
+            "fromList": false,
+            "fromTail": true,
+            "hopSeq": 3,
+            "item": {
+              "artwork_url": "https://img.test/t1.jpg",
+              "audio_url": "https://audio.test/t1.mp3",
+              "duration_min": 42,
+              "id": "t1",
+              "show": "A Show",
+              "title": "Episode t1",
+              "topics": ["history"]
+            },
+            "lastEpisodeRow": {
+              "artwork_url": "https://img.test/t1.jpg",
+              "audio_url": "https://audio.test/t1.mp3",
+              "duration_min": 42,
+              "id": "t1",
+              "show": "A Show",
+              "title": "Episode t1"
+            },
+            "nextId": "t1",
+            "queueAfter": []
+          },
+          {
+            "finishedId": "t1",
+            "fromList": false,
+            "fromTail": true,
+            "hopSeq": 4,
+            "item": {
+              "artwork_url": "https://img.test/t2.jpg",
+              "audio_url": "https://audio.test/t2.mp3",
+              "duration_min": 42,
+              "id": "t2",
+              "show": "A Show",
+              "title": "Episode t2",
+              "topics": ["history"]
+            },
+            "lastEpisodeRow": {
+              "artwork_url": "https://img.test/t2.jpg",
+              "audio_url": "https://audio.test/t2.mp3",
+              "duration_min": 42,
+              "id": "t2",
+              "show": "A Show",
+              "title": "Episode t2"
+            },
+            "nextId": "t2",
+            "queueAfter": []
+          }
+        ]
+      }
     }
   ]
 }
