@@ -1076,7 +1076,7 @@ const FLOORS = {
      #276/show-pages shape: silently wrong is the failure mode, not a crash.
      Every test names its mutation; see the suite header for the full list
      of what each test pins. */
-  "test/up-next-queue.test.js": 20, // audit round 2, lane L3 (2026-09-23): the page is a live view of cp_queue, .is-current, the row mark, one unnamed sentence, no + Up Next on an archived part, addToQueue refuses the unplayable, the cap never prunes a queued key, fullPool memoised; 13 -> 20 //
+  "test/up-next-queue.test.js": 26, // PQ-02 (#762): Play next lands after the playing row, adds/refuses like addToQueue, Clear keeps the playing row, the controls render, the episode page's Play next; 20 -> 26 (exact: the 21st test had landed unfloored) // audit round 2, lane L3 (2026-09-23): the page is a live view of cp_queue, .is-current, the row mark, one unnamed sentence, no + Up Next on an archived part, addToQueue refuses the unplayable, the cap never prunes a queued key, fullPool memoised; 13 -> 20 //
   /* Library screen (#/library, `docs/ux/foray-mockup.jsx`'s LibraryScreen,
      kanban card t_a1e7a69c). Floored for the same reason up-next-queue is:
      the four sections' decay path (an aged-out saved/history id, an empty
