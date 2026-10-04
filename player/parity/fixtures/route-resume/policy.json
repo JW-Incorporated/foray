@@ -1,0 +1,418 @@
+{
+  "family": "route-resume",
+  "module": "player/route-resume.js",
+  "note": "NE-38rj: the founder's Q5 rule (docs/DECISIONS.md 2026-09-25) as a pure decision. A known car route that comes back resumes only when the last pause was THAT route going away; a listener's pause, a call, Siri or a system pause never resumes. Keys are routeKey(portType, uid) unhashed (the engine hashes them). Ported by NE-38rs (iOS) and A-61 (JVM).",
+  "cases": [
+    {
+      "id": "route-resume/max-lost-is-24h",
+      "covers": [
+        "route-resume::the rule values: a loss resumes for 24 h, and the Bluetooth arm is off"
+      ],
+      "authored": true,
+      "note": "// MEASURE, provisional: a day at work (#114) is about 9-10 h, a night parked about 14 h.",
+      "read": "ROUTE_RESUME_MAX_LOST_SEC",
+      "expect": { "value": 86400 }
+    },
+    {
+      "id": "route-resume/bluetooth-arm-default-off",
+      "covers": [
+        "route-resume::the rule values: a loss resumes for 24 h, and the Bluetooth arm is off"
+      ],
+      "authored": true,
+      "note": "// MEASURE, provisional OFF: the founder's A2DP car sends its own play 7.4 s after connecting (2026-09-28 paste e#83 -> e#85), and AirPods are A2DP too.",
+      "read": "ROUTE_RESUME_BLUETOOTH_DEFAULT",
+      "expect": { "value": false }
+    },
+    {
+      "id": "route-resume/class-caraudio",
+      "covers": [
+        "route-resume::the port classes: CarPlay is a car; A2DP, HFP and LE are Bluetooth; everything else is other"
+      ],
+      "call": "routeClass",
+      "args": ["CarAudio"],
+      "expect": { "return": "car" }
+    },
+    {
+      "id": "route-resume/class-bluetootha2dpoutput",
+      "covers": [
+        "route-resume::the port classes: CarPlay is a car; A2DP, HFP and LE are Bluetooth; everything else is other"
+      ],
+      "call": "routeClass",
+      "args": ["BluetoothA2DPOutput"],
+      "expect": { "return": "bluetooth" }
+    },
+    {
+      "id": "route-resume/class-bluetoothhfp",
+      "covers": [
+        "route-resume::the port classes: CarPlay is a car; A2DP, HFP and LE are Bluetooth; everything else is other"
+      ],
+      "call": "routeClass",
+      "args": ["BluetoothHFP"],
+      "expect": { "return": "bluetooth" }
+    },
+    {
+      "id": "route-resume/class-bluetoothle",
+      "covers": [
+        "route-resume::the port classes: CarPlay is a car; A2DP, HFP and LE are Bluetooth; everything else is other"
+      ],
+      "call": "routeClass",
+      "args": ["BluetoothLE"],
+      "expect": { "return": "bluetooth" }
+    },
+    {
+      "id": "route-resume/class-headphones",
+      "covers": [
+        "route-resume::the port classes: CarPlay is a car; A2DP, HFP and LE are Bluetooth; everything else is other"
+      ],
+      "call": "routeClass",
+      "args": ["Headphones"],
+      "expect": { "return": "other" }
+    },
+    {
+      "id": "route-resume/class-speaker",
+      "covers": [
+        "route-resume::the port classes: CarPlay is a car; A2DP, HFP and LE are Bluetooth; everything else is other"
+      ],
+      "call": "routeClass",
+      "args": ["Speaker"],
+      "expect": { "return": "other" }
+    },
+    {
+      "id": "route-resume/class-airplay",
+      "covers": [
+        "route-resume::the port classes: CarPlay is a car; A2DP, HFP and LE are Bluetooth; everything else is other"
+      ],
+      "call": "routeClass",
+      "args": ["AirPlay"],
+      "expect": { "return": "other" }
+    },
+    {
+      "id": "route-resume/class-usbaudio",
+      "covers": [
+        "route-resume::the port classes: CarPlay is a car; A2DP, HFP and LE are Bluetooth; everything else is other"
+      ],
+      "call": "routeClass",
+      "args": ["USBAudio"],
+      "expect": { "return": "other" }
+    },
+    {
+      "id": "route-resume/class-none",
+      "covers": [
+        "route-resume::the port classes: CarPlay is a car; A2DP, HFP and LE are Bluetooth; everything else is other"
+      ],
+      "call": "routeClass",
+      "args": [null],
+      "expect": { "return": "other" }
+    },
+    {
+      "id": "route-resume/key-port-and-uid",
+      "covers": [
+        "route-resume::a route's key is its port type and UID, never its name, and a port with no UID has none"
+      ],
+      "call": "routeKey",
+      "args": ["CarAudio", "8C:DE:52:11:22:33-tacl"],
+      "expect": { "return": "CarAudio|8C:DE:52:11:22:33-tacl" }
+    },
+    {
+      "id": "route-resume/key-no-uid",
+      "covers": [
+        "route-resume::a route's key is its port type and UID, never its name, and a port with no UID has none"
+      ],
+      "call": "routeKey",
+      "args": ["BluetoothA2DPOutput", ""],
+      "expect": { "return": null }
+    },
+    {
+      "id": "route-resume/key-no-port",
+      "covers": [
+        "route-resume::a route's key is its port type and UID, never its name, and a port with no UID has none"
+      ],
+      "call": "routeKey",
+      "args": [null, "uid-1"],
+      "expect": { "return": null }
+    },
+    {
+      "id": "route-resume/decide-known-car-back",
+      "covers": ["route-resume::a known car lost while playing and back again resumes, once"],
+      "call": "routeResumeDecision",
+      "args": [
+        {
+          "pausedBy": "route",
+          "lost": { "port": "CarAudio", "key": "CarAudio|car-1" },
+          "back": { "port": "CarAudio", "key": "CarAudio|car-1" },
+          "known": true,
+          "lostAgoSec": 600,
+          "bluetoothArm": false
+        }
+      ],
+      "expect": { "return": { "resume": true, "why": "route-back" } }
+    },
+    {
+      "id": "route-resume/decide-listener-paused",
+      "covers": [
+        "route-resume::a listener's pause is never resumed, even when the car is then lost and comes back"
+      ],
+      "authored": true,
+      "note": "Q5: a pause the listener made stays paused, even with every other condition met.",
+      "call": "routeResumeDecision",
+      "args": [
+        {
+          "pausedBy": "listener",
+          "lost": { "port": "CarAudio", "key": "CarAudio|car-1" },
+          "back": { "port": "CarAudio", "key": "CarAudio|car-1" },
+          "known": true,
+          "lostAgoSec": 600,
+          "bluetoothArm": false
+        }
+      ],
+      "expect": { "return": { "resume": false, "why": "listener-paused" } }
+    },
+    {
+      "id": "route-resume/decide-interrupted",
+      "covers": ["route-resume::a call, Siri or a system pause during the loss clears it"],
+      "call": "routeResumeDecision",
+      "args": [
+        {
+          "pausedBy": "interruption",
+          "lost": { "port": "CarAudio", "key": "CarAudio|car-1" },
+          "back": { "port": "CarAudio", "key": "CarAudio|car-1" },
+          "known": true,
+          "lostAgoSec": 600,
+          "bluetoothArm": false
+        }
+      ],
+      "expect": { "return": { "resume": false, "why": "interrupted" } }
+    },
+    {
+      "id": "route-resume/decide-system-paused",
+      "covers": ["route-resume::a call, Siri or a system pause during the loss clears it"],
+      "call": "routeResumeDecision",
+      "args": [
+        {
+          "pausedBy": "system",
+          "lost": { "port": "CarAudio", "key": "CarAudio|car-1" },
+          "back": { "port": "CarAudio", "key": "CarAudio|car-1" },
+          "known": true,
+          "lostAgoSec": 600,
+          "bluetoothArm": false
+        }
+      ],
+      "expect": { "return": { "resume": false, "why": "system-paused" } }
+    },
+    {
+      "id": "route-resume/decide-not-paused",
+      "covers": [
+        "route-resume::one resume per loss: a second back, or a duplicate back while the resume's load is pending, finds nothing"
+      ],
+      "call": "routeResumeDecision",
+      "args": [
+        {
+          "pausedBy": "none",
+          "lost": { "port": "CarAudio", "key": "CarAudio|car-1" },
+          "back": { "port": "CarAudio", "key": "CarAudio|car-1" },
+          "known": true,
+          "lostAgoSec": 600,
+          "bluetoothArm": false
+        }
+      ],
+      "expect": { "return": { "resume": false, "why": "not-paused" } }
+    },
+    {
+      "id": "route-resume/decide-no-loss",
+      "covers": [
+        "route-resume::only the route that was lost resumes: a different car, or a port with no UID, does not"
+      ],
+      "call": "routeResumeDecision",
+      "args": [
+        {
+          "pausedBy": "route",
+          "lost": null,
+          "back": { "port": "CarAudio", "key": "CarAudio|car-1" },
+          "known": true,
+          "lostAgoSec": 600,
+          "bluetoothArm": false
+        }
+      ],
+      "expect": { "return": { "resume": false, "why": "no-loss" } }
+    },
+    {
+      "id": "route-resume/decide-different-car",
+      "covers": [
+        "route-resume::only the route that was lost resumes: a different car, or a port with no UID, does not"
+      ],
+      "call": "routeResumeDecision",
+      "args": [
+        {
+          "pausedBy": "route",
+          "lost": { "port": "CarAudio", "key": "CarAudio|car-1" },
+          "back": { "port": "CarAudio", "key": "CarAudio|car-2" },
+          "known": true,
+          "lostAgoSec": 600,
+          "bluetoothArm": false
+        }
+      ],
+      "expect": { "return": { "resume": false, "why": "other-route" } }
+    },
+    {
+      "id": "route-resume/decide-no-uid",
+      "covers": [
+        "route-resume::only the route that was lost resumes: a different car, or a port with no UID, does not"
+      ],
+      "note": "A port with no UID has a null key, and null never matches null.",
+      "call": "routeResumeDecision",
+      "args": [
+        {
+          "pausedBy": "route",
+          "lost": { "port": "CarAudio", "key": null },
+          "back": { "port": "CarAudio", "key": null },
+          "known": true,
+          "lostAgoSec": 600,
+          "bluetoothArm": false
+        }
+      ],
+      "expect": { "return": { "resume": false, "why": "no-loss" } }
+    },
+    {
+      "id": "route-resume/decide-unknown-car",
+      "covers": ["route-resume::a car our audio never played through does not resume"],
+      "call": "routeResumeDecision",
+      "args": [
+        {
+          "pausedBy": "route",
+          "lost": { "port": "CarAudio", "key": "CarAudio|car-1" },
+          "back": { "port": "CarAudio", "key": "CarAudio|car-1" },
+          "known": false,
+          "lostAgoSec": 600,
+          "bluetoothArm": false
+        }
+      ],
+      "expect": { "return": { "resume": false, "why": "unknown-route" } }
+    },
+    {
+      "id": "route-resume/decide-bluetooth-arm-off",
+      "covers": [
+        "route-resume::Bluetooth resumes only with the arm on; headphones and other ports never"
+      ],
+      "call": "routeResumeDecision",
+      "args": [
+        {
+          "pausedBy": "route",
+          "lost": { "port": "BluetoothA2DPOutput", "key": "BluetoothA2DPOutput|bt-car-1" },
+          "back": { "port": "BluetoothA2DPOutput", "key": "BluetoothA2DPOutput|bt-car-1" },
+          "known": true,
+          "lostAgoSec": 600,
+          "bluetoothArm": false
+        }
+      ],
+      "expect": { "return": { "resume": false, "why": "bluetooth-off" } }
+    },
+    {
+      "id": "route-resume/decide-bluetooth-arm-default",
+      "covers": [
+        "route-resume::Bluetooth resumes only with the arm on; headphones and other ports never"
+      ],
+      "note": "No arm given: ROUTE_RESUME_BLUETOOTH_DEFAULT.",
+      "call": "routeResumeDecision",
+      "args": [
+        {
+          "pausedBy": "route",
+          "lost": { "port": "BluetoothA2DPOutput", "key": "BluetoothA2DPOutput|bt-car-1" },
+          "back": { "port": "BluetoothA2DPOutput", "key": "BluetoothA2DPOutput|bt-car-1" },
+          "known": true,
+          "lostAgoSec": 600
+        }
+      ],
+      "expect": { "return": { "resume": false, "why": "bluetooth-off" } }
+    },
+    {
+      "id": "route-resume/decide-bluetooth-arm-on",
+      "covers": [
+        "route-resume::Bluetooth resumes only with the arm on; headphones and other ports never"
+      ],
+      "call": "routeResumeDecision",
+      "args": [
+        {
+          "pausedBy": "route",
+          "lost": { "port": "BluetoothA2DPOutput", "key": "BluetoothA2DPOutput|bt-car-1" },
+          "back": { "port": "BluetoothA2DPOutput", "key": "BluetoothA2DPOutput|bt-car-1" },
+          "known": true,
+          "lostAgoSec": 600,
+          "bluetoothArm": true
+        }
+      ],
+      "expect": { "return": { "resume": true, "why": "route-back" } }
+    },
+    {
+      "id": "route-resume/decide-headphones",
+      "covers": [
+        "route-resume::Bluetooth resumes only with the arm on; headphones and other ports never"
+      ],
+      "call": "routeResumeDecision",
+      "args": [
+        {
+          "pausedBy": "route",
+          "lost": { "port": "Headphones", "key": "Headphones|wired-1" },
+          "back": { "port": "Headphones", "key": "Headphones|wired-1" },
+          "known": true,
+          "lostAgoSec": 600,
+          "bluetoothArm": true
+        }
+      ],
+      "expect": { "return": { "resume": false, "why": "not-a-car" } }
+    },
+    {
+      "id": "route-resume/decide-exactly-24h",
+      "covers": [
+        "route-resume::a loss older than 24 h does not resume; one exactly 24 h old does"
+      ],
+      "call": "routeResumeDecision",
+      "args": [
+        {
+          "pausedBy": "route",
+          "lost": { "port": "CarAudio", "key": "CarAudio|car-1" },
+          "back": { "port": "CarAudio", "key": "CarAudio|car-1" },
+          "known": true,
+          "lostAgoSec": 86400,
+          "bluetoothArm": false
+        }
+      ],
+      "expect": { "return": { "resume": true, "why": "route-back" } }
+    },
+    {
+      "id": "route-resume/decide-25h",
+      "covers": [
+        "route-resume::a loss older than 24 h does not resume; one exactly 24 h old does"
+      ],
+      "call": "routeResumeDecision",
+      "args": [
+        {
+          "pausedBy": "route",
+          "lost": { "port": "CarAudio", "key": "CarAudio|car-1" },
+          "back": { "port": "CarAudio", "key": "CarAudio|car-1" },
+          "known": true,
+          "lostAgoSec": 90000,
+          "bluetoothArm": false
+        }
+      ],
+      "expect": { "return": { "resume": false, "why": "lost-too-long" } }
+    },
+    {
+      "id": "route-resume/decide-age-unknown",
+      "covers": [
+        "route-resume::a loss older than 24 h does not resume; one exactly 24 h old does"
+      ],
+      "call": "routeResumeDecision",
+      "args": [
+        {
+          "pausedBy": "route",
+          "lost": { "port": "CarAudio", "key": "CarAudio|car-1" },
+          "back": { "port": "CarAudio", "key": "CarAudio|car-1" },
+          "known": true,
+          "lostAgoSec": -5,
+          "bluetoothArm": false
+        }
+      ],
+      "expect": { "return": { "resume": false, "why": "loss-age-unknown" } }
+    }
+  ]
+}

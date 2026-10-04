@@ -37,7 +37,7 @@ import { buildForayQueue } from "../foray-queue.js";
 export const SCENARIO_BUILDS_FILE = "player/parity/scenario-builds.json";
 
 /** The families whose scenarios play a Foray the page built. */
-export const SCENARIO_BUILD_FAMILIES = Object.freeze(["manager-episode", "manager-foray", "prepare", "speech-rate"]);
+export const SCENARIO_BUILD_FAMILIES = Object.freeze(["manager-episode", "manager-foray", "prepare", "prepare-narration", "speech-rate"]);
 
 /** The calls that hand a Foray to be built. */
 const BUILD_CALLS = new Set(["playForay", "setQueueFromForay"]);

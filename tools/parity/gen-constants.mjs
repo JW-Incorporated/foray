@@ -112,6 +112,9 @@ export const SOURCES = Object.freeze([
       F: "the reducer's effect constructors (functions), ported as PlayerEffect and pinned by the queue-state family",
     },
   },
+  // NE-38rj: route resume's two provisional values (// MEASURE), for NE-38rs's
+  // RouteResume port and A-61's.
+  { module: "player/route-resume.js", namespace: "RouteResume" },
   { module: "player/seam-gap.js", namespace: "SeamGap" },
   { module: "player/seek-policy.js", namespace: "SeekPolicy" },
   // The card's own spelling (plan §14 NE-04): `Transport.restartWindowSec`.

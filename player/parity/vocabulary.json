@@ -69,6 +69,7 @@
       "page-health",
       "downgrade"
     ],
-    "faultKind": ["implicit-activation", "externally-owned"]
+    "faultKind": ["implicit-activation", "externally-owned"],
+    "narrationFallbackCause": ["timeout", "http-4xx", "http-5xx", "offline", "decode", "other"]
   }
 }

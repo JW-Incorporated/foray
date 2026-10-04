@@ -33,7 +33,8 @@ public enum EngineBridgeRules {
     /// the parity gate lets it claim. `player/parity/coverage.js`
     /// `advertisedCapabilities` reads this literal, and `coverage.test.js`
     /// refuses any entry whose families still owe swift-pending or unported
-    /// work (plan §6.6). So:
+    /// work (plan §6.6; both lists are deleted since NE-39s, so nothing can
+    /// owe). So:
     ///   - `episode` (NE-27b, the M1 flip): the core plays episodes (NE-14s),
     ///     and NE-14k emptied `manager-episode` / `deck-episode` of the 42
     ///     unported transport-reconcile tests, so every family it lists owes

@@ -52,8 +52,23 @@ public struct EngineState: Equatable {
     /// `_pausedByRoute`: a route went away (corner case #13); only a press or
     /// a known car route reappearing clears it.
     public var pausedByRoute = false
-    /// `_knownCarRoutes`.
-    public var knownCarRoutes: Set<String> = []
+
+    // MARK: route resume (NE-38rs; player/route-resume.js)
+
+    /// The routes our audio has been heard through (salted SHA-256 keys,
+    /// least recently used first), seeded from `EngineConfig.knownRoutes` and
+    /// persisted by the host in `ForayEngine.knownRoutes` whenever it changes.
+    public var knownRoutes = RouteResume.KnownRoutes()
+    /// route-resume.js's reducer: what last paused us, which route was lost
+    /// and when (wall clock), and whether the engine means to be playing.
+    public var routeResume = RouteResume.State(playing: false)
+    /// The reducer as it was before an uncommanded pause was blamed on the
+    /// system, so a route loss that follows within the 500 ms attribution
+    /// window is still the loss of a PLAYING route (plan §4.3: either order).
+    public var routeResumeBeforePause: RouteResumeSnapshot?
+    /// The route the deck became audible through, and when: it is known once
+    /// heard for `RouteResume.knownAfterMs`.
+    public var heardRoute: HeardRoute?
     /// For the 500 ms route attribution of an uncommanded pause (plan §4.3).
     public var lastRouteLostAtMono: Double?
     public var lastUncommandedPauseAtMono: Double?
@@ -133,6 +148,10 @@ public struct EngineState: Equatable {
     /// the packed seam row; nil when the deck sent none (one deck, the
     /// parity driver), and the row then says what it said before NE-32.
     public var deckPrepare: DeckPrepareReport?
+    /// NE-45s: the seam an item's end crossed, until the next item is audible
+    /// (`EngineCore.packSeamRow`); nil between seams and after a transport
+    /// action cut one.
+    public var seamMark: SeamMark?
     /// Segments ADR-0007's ladder refused at load (the snapshot's `skippedSegments`).
     public var skippedSegments = 0
     /// The `cp_foray` write throttle: foray-progress.js `ForayProgressStore`'s
@@ -187,6 +206,17 @@ public struct EngineState: Equatable {
     /// `_disposed`: the engine was torn down; the core answers nothing more.
     public var tornDown = false
 
+    // MARK: the voice picker's rendered preview (NE-47)
+
+    /// An audition that named a rendered `preview.m4a`, from its load on the
+    /// PREVIEW deck until it ends, fails or is cut. Nil otherwise, and always
+    /// nil for a spoken audition (the synthesiser owns that one).
+    public var preview: AuditionPreview?
+    /// The preview deck's own token counter: its loads never share a number
+    /// with the main deck's (`lastToken`), whose beat and failure checks
+    /// compare against it.
+    public var lastPreviewToken: DeckToken = 0
+
     /// `isNarrationPlayhead`: a spoken line is the playhead.
     public var isNarrationPlayhead: Bool { narration != nil }
 
@@ -196,6 +226,24 @@ public struct EngineState: Equatable {
     public var pageVisible = true
     /// BackgroundGrace: `held(reason)` from begin to end.
     public var grace: GraceReason?
+    /// NE-46, the late-timer detector: when each armed ONE-SHOT engine timer
+    /// is due on the monotonic clock (the turn's `monoMs` plus its
+    /// `afterMs`), kept from the `.timerArm` the core emitted until it fires
+    /// or is cancelled. A timer that arrives more than
+    /// `NARRATION_SUSPEND_GAP_MS` after this while grace is held writes
+    /// `grace kind=late`. Repeating timers are not kept.
+    public var timerDueMono: [EngineTimer: Double] = [:]
+    /// The same due times on the WALL clock: uptime stops while the device
+    /// sleeps, so a suspension followed by sleep is late only on this one.
+    public var timerDueWall: [EngineTimer: Double] = [:]
+    /// NE-46: the P-13 class of the newest `.load` (the one `lastToken`
+    /// names), so a late `.deadlineExceeded` for it can be measured against
+    /// its own deadline (`EngineConfig.loadDeadlineMs`).
+    public var lastLoadClass: DeckDeadlineClass?
+    /// NE-46: the wall clock when that `.load` was commanded. The deck's
+    /// `afterMs` is on uptime, which stops while the device sleeps; this is
+    /// the other half of the two-clock check.
+    public var lastLoadWallMs: Double?
     /// The last remote press, for `dupCandidate` (recorded, never dropped).
     public var lastRemote: LastRemote?
 
@@ -287,6 +335,23 @@ public struct SpokenLine: Equatable {
     }
 }
 
+/// NE-47: a rendered voice preview in flight on the preview deck. The line
+/// and the voice ride along so a file that will not load can be SPOKEN
+/// instead, which is what the audition did before it had a url.
+public struct AuditionPreview: Equatable {
+    public let token: DeckToken
+    public let text: String
+    public let voiceId: String?
+    /// The loaded file started: `.play` was sent to the preview deck.
+    public var playing = false
+
+    public init(token: DeckToken, text: String, voiceId: String?) {
+        self.token = token
+        self.text = text
+        self.voiceId = voiceId
+    }
+}
+
 /// A play-ish intent waiting for its activation's answer.
 public struct PendingActivation: Equatable {
     public let requestId: Int
@@ -304,7 +369,9 @@ public enum DeferredIntent: Equatable {
     case routeResume
     case coldPlay
     case walkHop(EngineContract.Hop)
-    case audition(text: String, voiceId: String?)
+    /// OQ-5; NE-47: with a `url` the voice's rendered preview plays on the
+    /// preview deck, without one the line is spoken.
+    case audition(text: String, voiceId: String?, url: String? = nil)
 }
 
 public struct LastRemote: Equatable {
@@ -313,6 +380,26 @@ public struct LastRemote: Equatable {
 }
 
 /// What the DeckPair said about one load (NE-32; `DeckEvent.prepared`).
+/// NE-45s: a seam in flight, from the item's end to the next one's audible
+/// start: what it joins, which item it is waiting for, when it began, and the
+/// DeckPair's verdict on that item's load once there is one.
+public struct SeamMark: Equatable {
+    public var from: SeamRow.ItemKind
+    public var to: SeamRow.ItemKind
+    public var toItemId: String
+    public var endedAtMono: Double
+    public var prepare: SeamRow.Prepare?
+
+    public init(from: SeamRow.ItemKind, to: SeamRow.ItemKind, toItemId: String, endedAtMono: Double,
+                prepare: SeamRow.Prepare? = nil) {
+        self.from = from
+        self.to = to
+        self.toItemId = toItemId
+        self.endedAtMono = endedAtMono
+        self.prepare = prepare
+    }
+}
+
 public struct DeckPrepareReport: Equatable {
     public var token: DeckToken
     public var hit: Bool
@@ -322,5 +409,24 @@ public struct DeckPrepareReport: Equatable {
         self.token = token
         self.hit = hit
         self.stages = stages
+    }
+}
+
+/// NE-38rs: `EngineState.routeResume` before a system-blamed pause, and when.
+public struct RouteResumeSnapshot: Equatable {
+    public let state: RouteResume.State
+    public let atMono: Double
+}
+
+/// NE-38rs: the route a `.playing` deck is heard through (its hashed key), from
+/// when, and until when if the deck stopped (a pause, a stall, the system).
+public struct HeardRoute: Equatable {
+    public let key: String
+    public var sinceMono: Double
+    public var untilMono: Double?
+
+    /// How long it was heard, at `monoMs`.
+    public func heardMs(atMono monoMs: Double) -> Double {
+        (untilMono ?? monoMs) - sinceMono
     }
 }
