@@ -818,13 +818,19 @@ final class ScenarioWorld {
             try advance(fields["clock"])
         case "settle":
             settle()
+        case "remote":
+            // The car's and the lock screen's presses (runner.js
+            // `engineRemoteSurface`, M2 drive 2026-10-01): into EngineCore's
+            // own remote handlers, as on the manager target.
+            try remote(fields, context: context)
+            settle()
         case "checkpoint":
             guard let name = fields["checkpoint"]?.stringValue else {
                 throw HarnessError("E_BAD_CASE", "a checkpoint needs a name")
             }
             checkpoint(name)
         default:
-            throw HarnessError("E_BAD_CASE", "the engine target takes call, deck, clock, settle and checkpoint steps, not \"\(verb)\"")
+            throw HarnessError("E_BAD_CASE", "the engine target takes call, deck, clock, settle, remote and checkpoint steps, not \"\(verb)\"")
         }
     }
 

@@ -2,6 +2,103 @@
 
 Per-topic ADRs live in `docs/adr/`. This file is the chronological record.
 
+## 2026-10-03 (every episode row shows a few lines of its description)
+
+Wyatt, 2026-10-03, with an Apple Podcasts screenshot of a show page: "episodes
+show a few lines of the description to give you a hint what it's about. This is
+super helpful. Please implement the same on 4a wherever appropriate."
+
+- `epRow()` draws an `.ep-hook` line between the title and the metadata line:
+  the publisher's `description` when the row carries it (feed episodes), else
+  the row's `hook` (4a's one-liner for the curated pool; the stored 280-character
+  prefix for a snapshot). Plain text, escaped, whitespace collapsed, cut at a
+  word boundary at 220 characters; `styles.css` clamps it to two lines. A hook
+  that only repeats the title is not drawn.
+- "Wherever appropriate" = every list built from `epRow`: a show's episodes,
+  search results, Saved, History, playlist and subject detail pages. Not Up Next
+  (`upNextRow`), which Apple also keeps to titles, and not Foray part rows, which
+  already carry their own why-line.
+- Pinned by `test/episode-row-snippet.test.js`.
+
+## 2026-09-30 (founder rulings on six open owner items, delegated to Fable: HA #31, #24, #22, #17, #13, #8)
+
+The owner (Joey), 2026-09-30: "Fables decision is my decision." Two Fable agents
+read the evidence and ruled; each ruling below is the owner's. HUMAN-ACTIONS
+#31, #24, #22, #17, #13 and #8 are closed on them.
+
+### Guideline 1.2 gates phase 2 (HA #31)
+- All four of content filtering, report-content, block-user and a published
+  developer contact exist before any non-founder-prompted Foray is hearable by
+  anyone but its prompter (`generation-architecture.md` section 1.3).
+- Interim is the shipped state: founder-only prompting, `hold` on every catalogue
+  Foray (D7/D9 of the 2026-09-28 entry).
+- Order: developer contact now (one address, shared with HA #13); an output-side
+  filter extending `safetyCheck.ts` before any non-founder prompt, even private;
+  report + block as one card before the first shared non-founder Foray. A
+  private-to-prompter Foray is not UGC and may ship first.
+- Engineering builds all four; the kanban card is a phase-2 precondition, not
+  scheduled work.
+
+### ADR-0008 amended: a ranged GET can be lied to (HA #24)
+- ADR-0008 gains an Amendment block: a `Content-Range` total is a declaration,
+  not a measurement; on a host caught serving the master to a ranged GET its byte
+  evidence admits nothing. The decision section is unchanged.
+- Distrust is per resolved host, verdicts per show (one caught decode condemns,
+  two clean decodes admit); the probe grid runs on every newly `measured_clean`
+  show. The wide reading (every ranged GET unverified) is rejected.
+- Spend: $0, no paid API. One settlement pass of at most 20 enclosure downloads
+  (~1.5 GB), deleted after decode: The Secret To Success first, then by transcript
+  count. The rest stay `unresolved`. Open set is 14 flightcast shows / 5,715
+  transcripts (PR #326 added ten after the item was filed).
+- Around the House with Eric G's +313 s goes into `dai-classification.json` as
+  excess-audio; the show stays listed. `undersized_samples` on a computed-bitrate
+  length reads `suspect`.
+
+### Alcohol Foray: narration-led mode, SYSK in as thin, merge-then-split (HA #22)
+- Product mode B: a second mode, `narration-led` (working label "Primer", never
+  "Foray"): narrator <= 75 %, R-essay 40 % line waived for it only, the
+  `narration-architecture.md` sections 5-7 gate mandatory, mode flagged in the
+  running order. Foray mode keeps 25/35/40.
+- SYSK-register tape is admissible as thin, never strong; counts stand
+  (2/21/40 after #279).
+- A chain holding a Carry-by-design beat absorbs neighbours to the 180 s max, then
+  splits at a claim boundary; the design claim is never split, shaved or padded.
+  Primer lifts the two-consecutive cap for chain beats; Foray mode keeps it.
+- The section 5d numbers cap becomes density (one per sentence, one per 20 s,
+  minimum three per item); a two-ended range is one number; U5 class-of-evidence
+  attribution is accepted if specific, else the beat is unwritable.
+
+### v1 ships the catalogue frozen; Forays are already live (HA #17, issue #40)
+- The first public store release ships with the catalogue (discover slice,
+  session, taxonomy, item-tags, semantic-index) frozen at build time. Forays
+  already refresh from the live origin (FD-06, 2026-09-11), so #40 does not gate
+  release; `connect-src` needs no change (the data origin is already listed).
+- Fast-follow: a "catalogue directory" on the same pointer mechanism with #40's
+  TTL and cached-fresh -> bundled precedence, due before the first Spark nightly
+  runs. While frozen: dispatch `release.yml` within 7 days of any merged nightly.
+
+### Privacy-policy facts and choices (HA #13)
+- Controller: JW Labs LLC (California LLC), as already published at
+  jwlabs.ai/4a/privacy/; contact help@jwlabs.ai. Policy URL that page; deletion
+  URL its section 7.
+- Event rows are deleted 90 days after recording; derived state lives with the
+  account; empty anonymous auth rows prune at 90 days (retires HA #14 by policy).
+  The policy states this only in the PR that ships the job.
+- Age: Apple 12+, Play per IARC (expect Teen); target audience 18+; Play Families:
+  no. US-only listing at first public release. Legal review at the monetization
+  milestone, stated as a dated status line, not a publish blocker.
+- Supabase region is read from the dashboard, never guessed (HA #129); the
+  standard Supabase DPA is named.
+
+### Foray #2 stays published; the cut budget N does not move (HA #8)
+- "Publish it." `capital-types-1` (D1 5/6, 51:22) stays published; N stays 8/6/5
+  with the taper. The desk listen is dropped under the 2026-09-24 "Drop it"
+  precedent (HA-DONE #2); the first ear is the car drive, HA #128.
+- The four segments D1 held back (387 s) return by re-assembly once Spark Phase 2
+  renders this Foray's bridges (a bridge is not a D1 start but advances the
+  clock), not by moving N. N is revisited only if that bridged re-assembly still
+  fails D1.
+
 ## 2026-09-28 (the Spark direction: narration is rendered centrally and streamed; D1–D11 ruled at their defaults)
 
 Wyatt, 2026-09-28, answering the eleven decisions in

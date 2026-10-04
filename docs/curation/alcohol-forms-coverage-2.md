@@ -916,7 +916,17 @@ plausibly close a thirty-point gap, but that is a judgement and #22 wants a meas
 Read §11 as *"the catalogue action was worth doing and did not answer the funding
 question"*, which is what #279 was scoped to find out.
 
-**One inheritance to declare.** The headline 2 / 21 / 40 rests on #278 §9a's undecided
+> **Ruled, HA #22 (2026-09-30), added after this pass:** the SYSK register is **IN, as
+> thin, never strong; the counts stand at 2 / 21 / 40.** The inheritance described next
+> is therefore settled in favour of the headline, and #22's funding question has been
+> re-run against these counts in `narration-architecture.md` §10b: tape 2,400.4 s,
+> **63.8 % narrator written in full**, Foray mode still unfundable (25 % target
+> −225.7 s over before one empty beat is carried; 35 % ceiling carries 3 of 40), and
+> the narration-led mode ("Primer", bound ≤ 75 %) clears with 11 points of margin.
+> The paragraph above that says nobody has re-run the arithmetic is true of this
+> document at the time it was written.
+
+**One inheritance to declare.** The headline 2 / 21 / 40 rested on #278 §9a's then-undecided
 founder call: the SYSK register decides 11 of the 15 thin verdicts this pass inherits,
 and under a SYSK-out reading the same gate gives roughly **2 / 12 / 49**. #278 recorded
 that as open and it is still open, so the counts here carry it too.

@@ -439,6 +439,8 @@ forays ok
 | L7 | payback: `duration ≥ 4 × (bridge + 1) + 4` | the shortest segment is 72.74 s, which permits a bridge up to 16.2 s, above the spec's 8 s cap, so **every segment satisfies L7 whatever the bridges say** | pass by construction |
 | X1/X2/M5/M6 | seam marking and attribution | no bridge records exist yet | deferred |
 
+**D1 checker comparison, settled 2026-09-30:** the checker has always been `<=` (fails only on `worst.count > budget`, since #188 / `c35437e8`), so exactly N starts passes; the window itself is strict `<`.
+
 ### D1 failed three times, and here is what it cost
 
 It failed on the first assembly (26 segments, 58:49), again after two segments
@@ -995,6 +997,11 @@ auto-advanced seam — an edit marked but not explained.
 
 ### 11c. Three other things that are still not true
 
+- **Ruled 2026-09-30 (DECISIONS #8): it stays published.** Cut budget N is unchanged at 8/6/5
+  with the taper. The desk listen is dropped (the 2026-09-24 "Drop it" precedent); the first ear
+  is the car drive, HA #128. The four held-back segments (FAM-3, YC-4, CALM-2, GR-4; 387 s) return
+  by re-assembly once Spark Phase 2 renders this Foray's bridges; N is revisited only if that
+  bridged re-assembly still fails D1.
 - **Nobody has heard it.** `HUMAN-ACTIONS.md` #8 is still open, and it is the
   item that asks a founder to listen end to end and then rule on the cut budget.
   Publishing on the founder's instruction did not perform that listening, and §9

@@ -481,6 +481,7 @@ const FLOORS = {
      exact current count: this is a small, deliberately-scoped regression
      suite (title link + PR #357 unchanged-controls checks), so any change to
      its size is worth a second look. */
+  "test/episode-row-snippet.test.js": 8, // 2026-10-03, founder (Apple Podcasts screenshot): every episode row shows two lines of the description under its title; new, zero slack
   "test/episode-row-links.test.js": 4, // review of visual pass 1 (2026-09-23): the bannerHtml test was deleted WITH bannerHtml — the function had no caller since the U-11 cutover, and a test on unreachable markup is not coverage (test/card-anatomy.test.js asserts it stays gone); 5 -> 4
   /* The Foray running order's rows (founder report 2026-09-12): every beat
      links to its show page, the curation-code gutter is gone, and a narration
@@ -2098,7 +2099,7 @@ const FLOORS = {
      show on one observation while never acquitting one on a host already caught
      under-declaring. */
   "tools/transcribe/decode-compare.test.mjs": 31,
-  "tools/transcribe/ad-inflation.test.mjs": 43,
+  "tools/transcribe/ad-inflation.test.mjs": 46,
   /* The transcription work order. Zero slack, because what it guards is not
      logic but a PROMISE MADE TO A MACHINE THAT IS ALREADY RUNNING: a worker box
      consumes data/transcription-queue.json in rank order, so any change that

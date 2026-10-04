@@ -82,7 +82,14 @@ import { TRANSCRIPT_SOURCES } from "../segments/merge-segments.mjs";
  * mode budgets to) as `MODE_CHAR_BANDS`; a second copy of the six keys here
  * is exactly the kind of drift `copyRules` above exists to prevent — two
  * lists of "the modes" that could disagree about a seventh. */
-import { MODE_CHAR_BANDS, narratorStructureErrors } from "./check-narration.mjs";
+import {
+  MODE_CHAR_BANDS,
+  narratorStructureErrors,
+  FORAY_MODES,
+  FORAY_MODE_NARRATION_LED,
+  PRIMER_NARRATION_SHARE_MAX,
+  forayModeOf,
+} from "./check-narration.mjs";
 const NARRATION_MODES = new Set(Object.keys(MODE_CHAR_BANDS));
 
 const { BANNED, INTERNAL_VOCABULARY, titleStyleProblems, TITLE_CASE_PROBLEM, wordCount, MAX_WHY_LINE_WORDS } = copyRules;
@@ -840,6 +847,12 @@ export function checkForays(files, { renderedNarrationOnPublished = RENDERED_NAR
     const W = (m) => warn(`foray "${fid}": ${m}`);
 
     if (!FORAY_KINDS.includes(foray.kind)) E(`\`kind\` must be ${FORAY_KINDS.map((k) => JSON.stringify(k)).join(" or ")} (#134); got ${JSON.stringify(foray.kind)}`);
+    /* HA #22 (2026-09-30): the running order's product mode. Optional, absent
+     * means "foray", so every committed record stays valid unchanged. Compared
+     * through the constants exported by check-narration.mjs, never a literal
+     * here (fixture-coverage.test.mjs scans this file for `mode` literals). */
+    const forayMode = forayModeOf(foray);
+    if (!FORAY_MODES.includes(forayMode)) E(`\`mode\` must be one of ${FORAY_MODES.map((m) => JSON.stringify(m)).join(", ")} when present; got ${JSON.stringify(foray.mode)}`);
     if (!FORAY_STATUSES.includes(foray.status)) E(`\`status\` must be ${FORAY_STATUSES.map((s) => JSON.stringify(s)).join(" or ")}`);
     /* `title` is deliberately not checked here — the copy loop below already
      * rejects a missing one, and checking it twice reported it twice. */
@@ -1493,6 +1506,16 @@ export function checkForays(files, { renderedNarrationOnPublished = RENDERED_NAR
     const runtime = tapeRuntime + narrationRuntime + jingleRuntime;
     const mean = tapeRuntime / durations.length;
 
+    /* HA #22: a narration-led running order ("Primer") may be mostly narrator,
+     * but not more than 75 % of what the listener hears. Foray mode's 25/35/40
+     * stay reported-not-gated (see narration_share below), exactly as before. */
+    if (forayMode === FORAY_MODE_NARRATION_LED && runtime > 0 && narrationRuntime / runtime > PRIMER_NARRATION_SHARE_MAX) {
+      E(
+        `narration is ${((narrationRuntime / runtime) * 100).toFixed(1)} % of the running order, past the ` +
+          `${PRIMER_NARRATION_SHARE_MAX * 100} % bound for a narration-led mode (narration-craft.md §4e, HA #22)`
+      );
+    }
+
     /* ---- D1's start list, on the listener's clock ------------------------
      *
      * IS A NARRATION ITEM A SEGMENT START? NO — and this is a ruling, so here is
@@ -1831,6 +1854,8 @@ export function checkForays(files, { renderedNarrationOnPublished = RENDERED_NAR
          of it, so the two can be compared without recomputing either. On a Foray
          with no narration they are equal, `narration_sec` is 0, and every
          existing assertion on this shape holds. */
+      /* HA #22: the surface reads this to say which mode a listener is getting. */
+      mode: forayMode,
       runtime_sec: +runtime.toFixed(2),
       tape_runtime_sec: +tapeRuntime.toFixed(2),
       narration_items: narrations.length,
@@ -1899,7 +1924,7 @@ if (invokedDirectly) {
   } else {
     for (const f of report.forays) {
       console.log(
-        `${f.id} (${f.status}): ${f.segments} segments, ${(f.runtime_sec / 60).toFixed(1)} min, mean ${f.mean_sec} s` +
+        `${f.id} (${f.status}): ${f.segments} segments, ${(f.runtime_sec / 60).toFixed(1)} min, mean ${f.mean_sec} s, ${f.mode} mode` +
           (f.narration_items
             ? `\n  ${f.narration_items} narration item(s), ${(f.narration_sec / 60).toFixed(1)} min ` +
               `(${(f.narration_share * 100).toFixed(1)} % of the Foray; ${(f.tape_runtime_sec / 60).toFixed(1)} min is tape)`

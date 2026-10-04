@@ -166,6 +166,7 @@ public enum TransportFamily {
         return .returned(.object([
             "index": .number(scrub.index),
             "reload": .bool(scrub.reload),
+            "restart": .bool(scrub.restart),
             "offset": ArgReading.numberOrNull(scrub.offset)
         ]))
     }
