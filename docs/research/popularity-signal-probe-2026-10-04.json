@@ -1,0 +1,799 @@
+{
+  "generated_at": "2026-10-04T20:34:10.313Z",
+  "pointer_release_tag": "shows-index-sat-12-sep-2026-23-24-31-gmt",
+  "pointer_published_at": "2026-09-15T06:20:47.348Z",
+  "pointer_age_hours": 470.2,
+  "top_json": {
+    "url": "https://github.com/JW-Incorporated/foray/releases/download/shows-index-sat-12-sep-2026-23-24-31-gmt/top.json",
+    "rows": 2219,
+    "rows_with_itunes_id": 2219,
+    "curated_rows": 219,
+    "curated_block_order": {
+      "rows": 219,
+      "pi_id_inversions": 7,
+      "ordered_by_pi_id": false
+    },
+    "non_curated_block_order": {
+      "rows": 2000,
+      "pi_id_inversions": 0,
+      "ordered_by_pi_id": true
+    },
+    "position_semantics": "0-based index in top.json; curated block first, then the top non-curated by popularityScore; positions compare only within one block"
+  },
+  "coverage": {
+    "index_rows": 10113,
+    "breadth_rows": 9893,
+    "curated_rows": 220,
+    "breadth_rows_with_top_position": 147,
+    "curated_rows_with_top_position": 214,
+    "pct_breadth": 1.49
+  },
+  "queries": {
+    "history": {
+      "top25": [
+        [
+          1,
+          "Ancient History Fangirl",
+          "curated",
+          null,
+          11
+        ],
+        [
+          2,
+          "Dan Carlin's Hardcore History",
+          "curated",
+          null,
+          123
+        ],
+        [
+          3,
+          "Distillations | Science History Institute",
+          "curated",
+          null,
+          124
+        ],
+        [
+          4,
+          "Music History Monday",
+          "curated",
+          null,
+          97
+        ],
+        [
+          5,
+          "Our Fake History",
+          "curated",
+          null,
+          2
+        ],
+        [
+          6,
+          "The Engineering History Podcast",
+          "curated",
+          null,
+          218
+        ],
+        [
+          7,
+          "The History of Ancient Greece",
+          "curated",
+          null,
+          109
+        ],
+        [
+          8,
+          "The History of WWII Podcast",
+          "curated",
+          null,
+          53
+        ],
+        [
+          9,
+          "The Maritime History Podcast",
+          "curated",
+          null,
+          206
+        ],
+        [
+          10,
+          "The Rest Is History",
+          "curated",
+          null,
+          174
+        ],
+        [
+          11,
+          "The Unauthorized History of the Pacific War",
+          "curated",
+          null,
+          190
+        ],
+        [
+          12,
+          "History That Doesn't Suck",
+          "breadth",
+          6,
+          null
+        ],
+        [
+          13,
+          "A History of Rock Music in 500 Songs",
+          "breadth",
+          2,
+          null
+        ],
+        [
+          14,
+          "American History Tellers",
+          "breadth",
+          5,
+          null
+        ],
+        [
+          15,
+          "Bedrock: Earth's Earliest History",
+          "breadth",
+          7,
+          null
+        ],
+        [
+          16,
+          "Boring History for Sleep",
+          "breadth",
+          4,
+          null
+        ],
+        [
+          17,
+          "Boring History For Sleep | Gentle Storytelling And Ambient Sounds (Official)",
+          "breadth",
+          3,
+          null
+        ],
+        [
+          18,
+          "Jewish History Nerds",
+          "breadth",
+          4,
+          null
+        ],
+        [
+          19,
+          "Opinionated History of Mathematics",
+          "breadth",
+          2,
+          null
+        ],
+        [
+          20,
+          "Takin' A Walk - Music History with Buzz Knight",
+          "breadth",
+          8,
+          null
+        ],
+        [
+          21,
+          "The History of Chemistry",
+          "breadth",
+          5,
+          null
+        ],
+        [
+          22,
+          "Unpacking Israeli History",
+          "breadth",
+          2,
+          null
+        ],
+        [
+          23,
+          "History Daily",
+          "breadth",
+          20,
+          null
+        ],
+        [
+          24,
+          "History for the Curious - The Jewish History Podcast",
+          "breadth",
+          18,
+          null
+        ],
+        [
+          25,
+          "History Hyenas with Chris Distefano and Yannis Pappas",
+          "breadth",
+          36,
+          null
+        ]
+      ],
+      "intended": {
+        "title": "Dan Carlin's Hardcore History",
+        "rank_today": 2,
+        "top_position": 123,
+        "match_tier": "boundary",
+        "catalog_tier": "curated",
+        "same_tier_rows_above": 1,
+        "same_tier_rows_above_with_position": 1,
+        "best_position_above": [
+          "Ancient History Fangirl",
+          11
+        ]
+      },
+      "would_lead_by_top_position": false
+    },
+    "daily": {
+      "top25": [
+        [
+          1,
+          "Software Engineering Daily",
+          "curated",
+          null,
+          1
+        ],
+        [
+          2,
+          "Daily Dose of Dana",
+          "breadth",
+          6,
+          null
+        ],
+        [
+          3,
+          "AI Business Daily",
+          "breadth",
+          4,
+          null
+        ],
+        [
+          4,
+          "BirdNote Daily",
+          "breadth",
+          7,
+          null
+        ],
+        [
+          5,
+          "Curious Kids Every Day: A Daily Educational Podcast",
+          "breadth",
+          5,
+          null
+        ],
+        [
+          6,
+          "CyberWire Daily",
+          "breadth",
+          6,
+          null
+        ],
+        [
+          7,
+          "Gita For Daily Living",
+          "breadth",
+          6,
+          null
+        ],
+        [
+          8,
+          "Kinda Funny Games Daily: Video Games News Podcast",
+          "breadth",
+          1,
+          null
+        ],
+        [
+          9,
+          "Locked On Cubs - Daily Podcast On The Chicago Cubs",
+          "breadth",
+          9,
+          null
+        ],
+        [
+          10,
+          "Motivation Daily by Motiversity",
+          "breadth",
+          8,
+          null
+        ],
+        [
+          11,
+          "Netflix Is A Daily Joke",
+          "breadth",
+          8,
+          null
+        ],
+        [
+          12,
+          "Pastor Rick's Daily Hope",
+          "breadth",
+          2,
+          null
+        ],
+        [
+          13,
+          "Pray As You Go - Daily Prayer",
+          "breadth",
+          4,
+          null
+        ],
+        [
+          14,
+          "Ross Tucker Football Podcast: Daily NFL Podcast",
+          "breadth",
+          8,
+          null
+        ],
+        [
+          15,
+          "The AI Daily Brief: Artificial Intelligence News and Analysis",
+          "breadth",
+          5,
+          null
+        ],
+        [
+          16,
+          "The Athletic NBA Daily",
+          "breadth",
+          6,
+          null
+        ],
+        [
+          17,
+          "The Daily",
+          "breadth",
+          1,
+          null
+        ],
+        [
+          18,
+          "The Daily Dharma",
+          "breadth",
+          10,
+          null
+        ],
+        [
+          19,
+          "The Great Detectives of Old Time Radio| Daily Mystery Dramas",
+          "breadth",
+          6,
+          null
+        ],
+        [
+          20,
+          "The Powers That Be: Daily",
+          "breadth",
+          8,
+          null
+        ],
+        [
+          21,
+          "DAILY AUDIO BIBLE",
+          "breadth",
+          38,
+          null
+        ],
+        [
+          22,
+          "Daily Comedy News with Johnny Mac - a daily briefing on comedians, and the comedy industry",
+          "breadth",
+          33,
+          null
+        ],
+        [
+          23,
+          "Daily Dad Jokes",
+          "breadth",
+          26,
+          null
+        ],
+        [
+          24,
+          "Daily Devotional: GoOD Mornings with CurlyNikki",
+          "breadth",
+          17,
+          null
+        ],
+        [
+          25,
+          "Daily Easy English Expression Podcast",
+          "breadth",
+          34,
+          null
+        ]
+      ],
+      "intended": {
+        "title": "The Daily",
+        "rank_today": 17,
+        "top_position": null,
+        "match_tier": "boundary",
+        "catalog_tier": "breadth",
+        "same_tier_rows_above": 15,
+        "same_tier_rows_above_with_position": 0,
+        "best_position_above": null
+      },
+      "would_lead_by_top_position": false
+    },
+    "money": {
+      "top25": [
+        [
+          1,
+          "Death, Sex & Money",
+          "curated",
+          null,
+          156
+        ],
+        [
+          2,
+          "Planet Money",
+          "curated",
+          null,
+          87
+        ],
+        [
+          3,
+          "Money For Couples with Ramit Sethi",
+          "breadth",
+          8,
+          null
+        ],
+        [
+          4,
+          "Money Guy Show",
+          "breadth",
+          4,
+          null
+        ],
+        [
+          5,
+          "Money Made Simple Strategy",
+          "breadth",
+          9,
+          null
+        ],
+        [
+          6,
+          "Money Rehab with Nicole Lapin",
+          "breadth",
+          7,
+          null
+        ],
+        [
+          7,
+          "All the Hacks: Money, Points & Life",
+          "breadth",
+          7,
+          null
+        ],
+        [
+          8,
+          "Death, Sex & Money",
+          "breadth",
+          8,
+          156
+        ],
+        [
+          9,
+          "Financial Coaching for Women: How To Budget, Manage Money, Pay Off Debt, Save Money, Paycheck Plans",
+          "breadth",
+          5,
+          null
+        ],
+        [
+          10,
+          "The Money Mondays",
+          "breadth",
+          8,
+          null
+        ],
+        [
+          11,
+          "Your Next Dollar: Money Management for High Earners",
+          "breadth",
+          9,
+          null
+        ],
+        [
+          12,
+          "Money Moves with Jill Schlesinger",
+          "breadth",
+          26,
+          null
+        ],
+        [
+          13,
+          "Money Talks from The Economist",
+          "breadth",
+          19,
+          null
+        ],
+        [
+          14,
+          "Afford Anything | Get Smarter With Money",
+          "breadth",
+          28,
+          null
+        ],
+        [
+          15,
+          "BiggerPockets Money Podcast",
+          "breadth",
+          21,
+          null
+        ],
+        [
+          16,
+          "Budget Effect: How to Budget, How to Pay off Debt, Save Money, Live on a Budget, Improve your Money Mindset on a single incom",
+          "breadth",
+          13,
+          null
+        ],
+        [
+          17,
+          "Cars & Money",
+          "breadth",
+          35,
+          null
+        ],
+        [
+          18,
+          "CNBC's \"Fast Money\"",
+          "breadth",
+          15,
+          null
+        ],
+        [
+          19,
+          "Even Money: NFL Betting Podcast",
+          "breadth",
+          23,
+          null
+        ],
+        [
+          20,
+          "Jill on Money with Jill Schlesinger",
+          "breadth",
+          23,
+          null
+        ],
+        [
+          21,
+          "Kosher Money",
+          "breadth",
+          16,
+          null
+        ],
+        [
+          22,
+          "Mad Money w/ Jim Cramer",
+          "breadth",
+          12,
+          null
+        ],
+        [
+          23,
+          "R&B Money",
+          "breadth",
+          12,
+          null
+        ],
+        [
+          24,
+          "Suze Orman's Women & Money (And Everyone Smart Enough To Listen)",
+          "breadth",
+          27,
+          null
+        ],
+        [
+          25,
+          "The CJ Moneyway Show",
+          "breadth",
+          41,
+          null
+        ]
+      ],
+      "intended": {
+        "title": "Planet Money",
+        "rank_today": 2,
+        "top_position": 87,
+        "match_tier": "boundary",
+        "catalog_tier": "curated",
+        "same_tier_rows_above": 1,
+        "same_tier_rows_above_with_position": 1,
+        "best_position_above": [
+          "Death, Sex & Money",
+          156
+        ]
+      },
+      "would_lead_by_top_position": true
+    },
+    "american": {
+      "top25": [
+        [
+          1,
+          "This American Life",
+          "curated",
+          null,
+          79
+        ],
+        [
+          2,
+          "American History Tellers",
+          "breadth",
+          5,
+          null
+        ],
+        [
+          3,
+          "American Potential",
+          "breadth",
+          3,
+          null
+        ],
+        [
+          4,
+          "American Scandal",
+          "breadth",
+          7,
+          null
+        ],
+        [
+          5,
+          "Letters from an American",
+          "breadth",
+          7,
+          null
+        ],
+        [
+          6,
+          "This American Life",
+          "breadth",
+          4,
+          79
+        ],
+        [
+          7,
+          "American Afterlife",
+          "breadth",
+          30,
+          null
+        ],
+        [
+          8,
+          "American Alchemy with Jesse Michels",
+          "breadth",
+          19,
+          null
+        ],
+        [
+          9,
+          "American English Podcast",
+          "breadth",
+          15,
+          null
+        ],
+        [
+          10,
+          "American History Hit",
+          "breadth",
+          36,
+          null
+        ],
+        [
+          11,
+          "American Power",
+          "breadth",
+          11,
+          null
+        ],
+        [
+          12,
+          "Campus Files: Scandals, Secrets & Crimes at American Universities",
+          "breadth",
+          30,
+          null
+        ],
+        [
+          13,
+          "Founding Fathers: An American Dream",
+          "breadth",
+          43,
+          null
+        ],
+        [
+          14,
+          "Health vs Hype with the American Medical Association",
+          "breadth",
+          19,
+          null
+        ],
+        [
+          15,
+          "Inside American Soccer with Tom Bogert and Tab Ramos",
+          "breadth",
+          46,
+          null
+        ],
+        [
+          16,
+          "Our American Stories",
+          "breadth",
+          44,
+          null
+        ],
+        [
+          17,
+          "Ringside: An American Dairy Goat Podcast",
+          "breadth",
+          39,
+          null
+        ],
+        [
+          18,
+          "Show Archives – Armed American Radio |",
+          "breadth",
+          29,
+          null
+        ],
+        [
+          19,
+          "The American Birding Podcast",
+          "breadth",
+          13,
+          null
+        ],
+        [
+          20,
+          "The American Over",
+          "breadth",
+          16,
+          null
+        ],
+        [
+          21,
+          "The Order of the Tile: Secrets from the American Mahjong Table",
+          "breadth",
+          50,
+          null
+        ],
+        [
+          22,
+          "American Diplomat",
+          "breadth",
+          68,
+          1235
+        ],
+        [
+          23,
+          "American Futbol",
+          "breadth",
+          52,
+          null
+        ],
+        [
+          24,
+          "American Girl Women",
+          "breadth",
+          87,
+          null
+        ],
+        [
+          25,
+          "American Girl: The Smart Girl's Podcast",
+          "breadth",
+          63,
+          null
+        ]
+      ],
+      "intended": {
+        "title": "This American Life",
+        "rank_today": 1,
+        "top_position": 79,
+        "match_tier": "boundary",
+        "catalog_tier": "curated",
+        "same_tier_rows_above": 0,
+        "same_tier_rows_above_with_position": 0,
+        "best_position_above": null
+      },
+      "would_lead_by_top_position": true
+    }
+  }
+}

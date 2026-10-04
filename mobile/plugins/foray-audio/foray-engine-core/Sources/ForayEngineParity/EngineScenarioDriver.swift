@@ -1244,7 +1244,7 @@ final class ScenarioWorld {
             reading = DeckReading(positionSec: nil, durationSec: nil, audible: false, ended: false)
             // FakeBackend's `release()` is the teardown's (`dispose`).
             if disposing && !engineTarget { ops.append("release") } else { native("n.deck.unload") }
-        case let .prepare(itemId, url, startSec, _):
+        case let .prepare(itemId, url, startSec, _, _):
             if !engineTarget, let loses = prefetchLoses {
                 // NE-39s: the manager's ASK (FakeBackend `prefetch`).
                 let key = "\(itemId)@\(ScenarioWorld.rounded(startSec))"

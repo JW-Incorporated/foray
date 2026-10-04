@@ -200,9 +200,12 @@ jobs:
           # tools/release/build-number.mjs.
           CREATED_AT=$(gh api "repos/$REPO/actions/runs/$RUN_ID" --jq '.created_at')
           DAY="${CREATED_AT%%T*}"
-          # The runs listing lags a just-created run (seen twice, both on the
-          # first release of a UTC day: "run N is not among release.yml's runs").
-          # Re-list until this run appears, up to ~2 minutes. build-number.mjs
+          # The runs listing can lag a just-created run, so re-list until this
+          # run appears, up to ~2 minutes. (The two "run N is not among
+          # release.yml's runs" refusals of 2026-10-01/02, both on the first
+          # release of a UTC day, were NOT lag: this loop had found the run, and
+          # build-number.mjs misread a ONE-line runs file as an empty envelope.
+          # Fixed there; its test names the mutation.) build-number.mjs
           # still refuses if it never does: a count that cannot see its own run
           # may also be missing earlier ones, and guessing low is a red upload.
           for attempt in 1 2 3 4 5 6 7 8; do
@@ -240,20 +243,40 @@ jobs:
     # Its own job on ubuntu-latest, parallel with `version`, so the wait costs
     # no macOS time. It waits for checks still running on this SHA (a manual
     # dispatch minutes after a merge is the ordinary case) and REFUSES on
-    # anything but success: red, cancelled, skipped, missing after a grace, or
-    # still running at the timeout. Only the iOS upload depends on it; the
+    # anything but success: red, cancelled, skipped or missing after a grace,
+    # or still running at the timeout. Only the iOS upload depends on it; the
     # Android bundle does not ship Swift.
     #
     # The decision is tools/ci/engine-ci.mjs `release-checks` (a DENIED path,
     # tested in engine-ci.test.mjs). github.sha goes through env:, the same
     # hygiene as the guard step above.
+    #
+    # IT DISPATCHES ci.yml WHEN THE CHECKS ARE ABSENT (2026-10-04, after
+    # releases 36917371425 and 36945055191 were both refused for "no check run
+    # on this SHA"). A merge by automerge-nightly is a GITHUB_TOKEN push, which
+    # creates no workflow run, so an auto-merged tip of main has no CI at all.
+    # `actions: write` is for that one dispatch; a dispatch on the default
+    # branch runs ios-kit and engine-parity IN FULL (engine-ci.mjs
+    # releaseDispatchPlan explains why), and the rule stays "green on this SHA".
+    # Since ci.yml runs ios-kit only when a Swift or engine path changed, a
+    # content-only tip of main carries a SKIPPED ios-kit, and the plan counts
+    # skipped as missing: it dispatches, and the dispatched run must go green.
+    #
+    # IT WAITS OUT A BUSY macOS QUEUE (2026-10-04). Release run 37228218257's
+    # dispatched ios-kit sat QUEUED for 40+ minutes and the 40-minute default
+    # refused the TestFlight. RELEASE_CHECKS_TIMEOUT_MIN is 120 (queue plus a
+    # ~15-minute ios-kit), and the job's own timeout sits above it so the
+    # script's refusal, which names what it last saw, always beats the
+    # runner's kill. The missing-check grace keeps its default: a check run
+    # that never appears is still refused in minutes, not hours.
     needs: guard
     if: needs.guard.outputs.allowed == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 50
+    timeout-minutes: 130
     permissions:
       contents: read
       checks: read
+      actions: write
     steps:
       - uses: actions/checkout@v4
 
@@ -264,7 +287,10 @@ jobs:
       - name: engine-parity and ios-kit are green on this exact SHA
         env:
           SHA: ${{ github.sha }}
+          REF_NAME: ${{ github.ref_name }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
           GITHUB_TOKEN: ${{ github.token }}
+          RELEASE_CHECKS_TIMEOUT_MIN: "120"
         run: node tools/ci/engine-ci.mjs release-checks "$SHA"
 
   ios:

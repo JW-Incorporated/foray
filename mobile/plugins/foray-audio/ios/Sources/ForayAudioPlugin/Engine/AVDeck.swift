@@ -91,6 +91,26 @@ import os
 /// load 16 s to its duration and past the 20 s deadline). A failed item, a
 /// different URL or a different timing option is still a cold load.
 ///
+/// ── A LOAD THAT IS GETTING SOMEWHERE IS NOT THROWN AWAY (§16) ─────────────
+///
+/// The M2 car drive (2026-10-01): a Foray clip's precise load passed its 20 s
+/// deadline with its duration in and 44 MB fetched, was detached, and each
+/// press of play then started the clip cold from nothing (`cold=no-item`,
+/// `cold=not-ready`). Two changes, both for a PRECISE load only (a Foray clip;
+/// a whole episode and a rendered line load approximate and keep M1's
+/// car-proven cold reload unchanged), and both only when the load has made
+/// progress (its duration is in, or the access log shows bytes):
+///   - a same-source `.load` while the load is still in flight CONTINUES it
+///     (`continueInFlight`, a `deck kind=continue` row): the new token, the
+///     new start, a fresh deadline, and the same item, asset and gate;
+///   - its deadline LAPSES rather than detaching first: `.deadlineExceeded`
+///     is delivered with the item still attached, and the core's retry of the
+///     same clip in that turn (queue-manager.js §16, `deck kind=retry`) is such
+///     a same-source load. Anything else (no retry, another item, an unload)
+///     and the item is detached exactly as before, after the event.
+/// A load with no progress is detached and its asset forgotten as before, so
+/// its retry is a fresh connection.
+///
 /// ── ROWS (the `deck` rows in the ring) ────────────────────────────────────
 ///
 /// The core writes a row for the duration, a not-ready and a refusal. What
@@ -253,6 +273,14 @@ final class AVDeck: DeckDriving {
         /// cache would otherwise hand the same one back (NE-37c review). A
         /// lone deck makes a new asset for every cold load already.
         var assetFailed: (AVURLAsset) -> Void
+        /// §16: whether the current load has made progress, in place of the
+        /// item's own reading (`loadProgressed`). nil in production. A
+        /// Simulator test's stand-in for an asset that has fetched part of a
+        /// file but is not ready, which no deterministic fixture can be: a
+        /// loader that never answers makes no progress, and one that answers
+        /// becomes ready. What a progressing load then DOES (lapse, continue,
+        /// detach) is the real code either way.
+        var forcesLoadProgress: Bool? = nil
 
         init(
             loadDeadlineSec: Double = AVDeck.defaultLoadDeadlineSec,
@@ -406,6 +434,12 @@ final class AVDeck: DeckDriving {
     /// ready, commanded, or observed playing or stopping. What
     /// `reuseMaxIdleSec` is measured from.
     private var lastLiveMs: Double = 0
+    /// §16, set ONLY while a progressing precise load's `.deadlineExceeded`
+    /// is being delivered (see `deadlineFired`): the token whose deadline
+    /// passed and the gate stage it was in. The core answers in that same turn,
+    /// on main; a same-source retry continues the load (`continueInFlight`),
+    /// and anything else leaves it to be detached exactly as before.
+    private var lapsed: (token: DeckToken, stage: Stage)?
 
     /// NE-32: the out-point watch (`DeckPolicy.outPointStep`'s state), the
     /// boundary observer (layer 2), the watchdog's one timer (layer 3), and
@@ -554,6 +588,10 @@ final class AVDeck: DeckDriving {
         // Every out-point layer and timer of the previous load goes, whether
         // this load keeps the item or not (a load drops the out-point).
         resetOutPoint()
+        if continuesInFlight(urlString, preciseTiming: preciseTiming) {
+            continueInFlight(token: newToken, startSec: startSec, deadlineClass: newClass)
+            return
+        }
         let idleSec = item == nil ? nil : max(0, (config.idleClockMs() - lastLiveMs) / 1000)
         let cold = coldReason(urlString, preciseTiming: preciseTiming, idleSec: idleSec)
         if cold == nil {
@@ -637,6 +675,68 @@ final class AVDeck: DeckDriving {
     /// The held item is live now (see `lastLiveMs`).
     private func noteLive() {
         lastLiveMs = config.idleClockMs()
+    }
+
+    // MARK: - §16: continue a load that is getting somewhere
+
+    /// Progress, by the item's own word: the duration is in, or bytes arrived.
+    static func progressed(durationKnown: Bool, bytes: Int64) -> Bool {
+        durationKnown || bytes > 0
+    }
+
+    /// Every byte the attached item's access log says it fetched.
+    private var bytesFetched: Int64 {
+        item?.accessLog()?.events.reduce(Int64(0)) { $0 + max(0, $1.numberOfBytesTransferred) } ?? 0
+    }
+
+    private var loadProgressed: Bool {
+        config.forcesLoadProgress ?? Self.progressed(durationKnown: durationKnown, bytes: bytesFetched)
+    }
+
+    /// Does a `.load` of `url` continue the load in flight (see the header)?
+    /// The same item still on the player, the same URL, PRECISE timing on
+    /// both, no error, still loading or gating (or lapsed at its deadline),
+    /// and progress made.
+    private func continuesInFlight(_ url: String?, preciseTiming: Bool) -> Bool {
+        guard preciseTiming, loadedPreciseTiming, let item, player.currentItem === item,
+              let url, url == loadedURL, item.status != .failed, item.error == nil else { return false }
+        let inFlight = lapsed != nil || stage == .loading || stage == .gating
+        return inFlight && loadProgressed
+    }
+
+    /// The load in flight takes the new token, start and class, and a fresh
+    /// deadline; the item, its asset, its observers (whose callbacks read the
+    /// token when they fire) and the gate's progress are kept. A gate seek or
+    /// preroll already running re-seeks itself when the start moved
+    /// (`gateSeekCompleted`); a load still waiting for its duration or
+    /// statuses moves on from the next observation, or now if they are in.
+    /// `heldMs` is how long the item has been loading since its attach.
+    private func continueInFlight(token newToken: DeckToken, startSec: Double, deadlineClass newClass: DeckDeadlineClass) {
+        let fromToken = token
+        if let held = lapsed {
+            stage = held.stage
+            lapsed = nil
+        }
+        deadline?.cancel()
+        deadline = nil
+        pauseSuspicion?.cancel()
+        pauseSuspicion = nil
+        token = newToken
+        deadlineClass = newClass
+        targetStartSec = max(0, startSec)
+        reachedEnd = false
+        noteLive()
+        armDeadline(generation: generation)
+        record("continue")
+        deckRow("continue", newToken, [
+            JSONMember("fromToken", fromToken.map { JSONNode.number(Double($0)) } ?? .null),
+            JSONMember("heldMs", .number(Double(msSinceLoadStarted()))),
+            JSONMember("step", .string(gateStep)),
+            JSONMember("durationKnown", .bool(durationKnown)),
+            JSONMember("startSec", Self.secNode(targetStartSec)),
+            classField
+        ] + accessFields())
+        if stage == .loading { advanceIfReady() }
     }
 
     /// Same source: keep the item and its buffer, and run the SAME gate under
@@ -872,6 +972,7 @@ final class AVDeck: DeckDriving {
     private func deadlineFired(generation gen: Int) {
         guard gen == generation, stage == .loading || stage == .gating, let token else { return }
         let afterMs = msSinceLoadStarted()
+        let progressed = loadProgressed
         // Where it was stuck, read BEFORE the detach drops the item: the step,
         // what AVFoundation said, how much it had fetched and from where.
         deckRow("deadline", token, [
@@ -886,11 +987,35 @@ final class AVDeck: DeckDriving {
             JSONMember("attempts", .number(Double(gateAttempts))),
             JSONMember("targetSec", Self.secNode(targetStartSec)),
             JSONMember("bufferedAheadSec", Self.secNode(bufferedAhead(of: targetStartSec))),
-            JSONMember("marks", .object(gateMarks))
+            JSONMember("marks", .object(gateMarks)),
+            // §16: whether a retry of this source in the core's answer keeps it.
+            JSONMember("progressed", .bool(progressed))
         ] + accessFields() + errorLogFields())
         // Why, as the core's closed token (NE-39n), read while the item and
         // its error log are still attached.
         let cause = Self.fallbackCause(error: nil, log: lastErrorLogEvent(), deadline: true)
+        if loadedPreciseTiming && progressed {
+            // §16: LAPSED, NOT LOST. The event goes out with the item still
+            // attached and the deck reading as failed (no playhead, no play,
+            // no seek), so the core sees exactly what it always saw; nothing
+            // asynchronous can land meanwhile (this is main, and so is every
+            // callback). A same-source retry in the core's turn continues the
+            // load and clears `lapsed`; so does any load or unload, which
+            // replaces the item itself. Otherwise it is detached as before.
+            deadline = nil
+            lapsed = (token: token, stage: stage)
+            stage = .failed
+            record("lapse (deadline)")
+            emit(.deadlineExceeded(token: token, afterMs: afterMs, cause: cause))
+            guard lapsed != nil else { return }
+            lapsed = nil
+            if let asset { config.assetFailed(asset) }
+            detachItem()
+            generation += 1
+            record("detach (deadline)")
+            player.replaceCurrentItem(with: nil)
+            return
+        }
         // A hung asset stays hung: the next load of this source gets a new one.
         if let asset { config.assetFailed(asset) }
         // Detach FIRST, and move the generation, so nothing that completes
@@ -1093,6 +1218,8 @@ final class AVDeck: DeckDriving {
     }
 
     private func detachItem() {
+        // A lapsed load (§16) is replaced or dropped with its item.
+        lapsed = nil
         deadline?.cancel()
         deadline = nil
         pauseSuspicion?.cancel()

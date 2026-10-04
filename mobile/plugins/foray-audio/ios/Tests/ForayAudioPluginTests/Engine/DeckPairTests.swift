@@ -144,6 +144,27 @@ final class DeckPairTests: XCTestCase {
         XCTAssertEqual(events.count, 2, "only deck A's durationLoaded and ready reached the core: \(events)")
     }
 
+    /// P-7 after the M2 drive (2026-10-01): the standby warms with the timing
+    /// the CORE named for the item (`EngineItem.preciseTiming`), so a CBR clip
+    /// warms approximate instead of reading its whole file; and a warm load
+    /// promoted at the boundary is that same asset. A prepare that names no
+    /// flag stays precise (`testAPrepareLoadsTheStandbyAtItsInPointAndTheCoreHearsNothingOfIt`).
+    /// TO SEE IT FAIL: hard-code `preciseTiming: true` on the standby's `.load`
+    /// in `prepare` again.
+    func testAPrepareWarmsTheStandbyWithTheTimingTheCoreNamed() {
+        pair.send(.load(token: 1, itemId: "a", url: urlA, startSec: 100, preciseTiming: false))
+        a.becomeReady(1, atSec: 100)
+        pair.send(.play)
+        pair.send(.prepare(itemId: "b", url: urlB, startSec: 300, preciseTiming: false))
+        let warm = b.lastLoadToken ?? 0
+        XCTAssertLessThan(warm, 0)
+        XCTAssertEqual(b.sent.last, .load(token: warm, itemId: "b", url: urlB, startSec: 300, preciseTiming: false))
+        b.becomeReady(warm, atSec: 300)
+        pair.send(.load(token: 2, itemId: "b", url: urlB, startSec: 300, preciseTiming: false))
+        XCTAssertEqual(b.adopted, [2], "the approximate warm load is promoted for the approximate ask")
+        XCTAssertEqual(b.count("load"), 1, "and nothing is refetched")
+    }
+
     /// `prefetchDecision`: the same source the player holds is a seek, not a
     /// refetch; an item already warm is not fetched twice; no url, nothing.
     func testTheStandbyIsNotWarmedForTheSameEpisodeTwiceOrWithoutAUrl() {

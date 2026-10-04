@@ -1,0 +1,17 @@
+{
+  "name": "foray-corpus-export",
+  "private": true,
+  "type": "module",
+  "description": "Foray side of the corpus supply (G-10/G-11, docs/roadmap/corpus.md): exports Joey's foraycorpus PostgreSQL catalogue into versioned artifacts and mirrors the foray-transcriptions R2 bucket into data-local/transcripts/. Dependencies are scoped to this directory (same pattern as tools/corpus) so the repo root stays dependency-free. Credentials come from the environment or R2_CREDENTIALS_FILE, never from the tree.",
+  "engines": {
+    "node": ">=22.5"
+  },
+  "//test": "tools/ci/run-suites.mjs discovers this package (it has a package.json with a test script) and invokes it as `npm test -- <files>`, which is why no file pattern is baked in: with arguments it runs exactly the suites CI discovered, and with none it falls back to node --test's own recursive discovery from this directory. The script MUST keep forwarding its arguments (end in `node --test`): one that ignored them would be planned, floored and reported as executed while the named suite never ran. config.test.mjs asserts this.",
+  "scripts": {
+    "test": "node --test"
+  },
+  "dependencies": {
+    "pg": "^8.13.1",
+    "@aws-sdk/client-s3": "^3.600.0"
+  }
+}

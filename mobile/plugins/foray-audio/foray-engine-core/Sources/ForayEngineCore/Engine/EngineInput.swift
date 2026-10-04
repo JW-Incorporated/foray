@@ -59,6 +59,27 @@ public struct EngineItem: Equatable {
     /// `item.ad_pad_sec ?? undefined`: null is no pad.
     public var adPadSec: Double? { node["ad_pad_sec"]?.numberValue }
 
+    /// P-7, the ONE rule for whether a load (and its warm prepare) asks
+    /// AVFoundation for precise timing: a bounded segment does, unless the
+    /// CBR exemption is on (`EngineConfig.approximateCBRClips`) and its source
+    /// is measured constant-bitrate (`seek_map == "cbr"`, written by
+    /// tools/audio/mp3-probe.mjs and carried by foray-queue.js).
+    ///
+    /// Why CBR can be exempt: on an MP3, `AVURLAssetPreferPreciseDurationAndTimingKey`
+    /// makes AVFoundation walk every frame, which over the network is the
+    /// WHOLE FILE (M2 drive 2026-10-01: a 21 s attempt pulled all 43,855,107
+    /// bytes of a 2725 s clip source and was still not ready; the other clips
+    /// took 7.8 s and 11.2 s). On CBR, byte arithmetic lands within one frame
+    /// (26 ms), as precise does (docs/ios-native-engine-measurements.md §7.3:
+    /// CBR approximate 0 to -4.9 ms, a file with no header frame). Whether
+    /// AVFoundation does that arithmetic or follows an Info frame's TOC is
+    /// §13's Simulator row, and the reason the exemption is a flag. A VBR or
+    /// unmeasured source keeps precise either way.
+    public func preciseTiming(approximateCBR: Bool) -> Bool {
+        guard bounds != nil else { return false }
+        return !(approximateCBR && node["seek_map"]?.stringValue == EngineConstants.ForayQueue.SeekMap.cbr)
+    }
+
     /// `_isSynthNarration(item)`: a `tts` item with a non-empty `script` and
     /// no file. It is SPOKEN (NE-31s), never loaded on a deck; a narration item
     /// with a file (a rendered bridge) plays on the deck like any other audio.

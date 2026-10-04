@@ -50,6 +50,9 @@ export const CLIENT_SHOW_FIELDS = [
      rated clean here, so the client needs this one curation field. true /
      false / null, as data/catalog.json has it. */
   "explicit",
+  /* "general" on a broad show whose labels describe the show, not each episode
+     (docs/roadmap/catalogue-personalization.md PKG-02/03); null until set. */
+  "label_scope",
 ];
 
 export function projectShow(show) {

@@ -141,7 +141,9 @@ test("every index row carries an id in the shape backend/src/catalog/breadthCata
       assert.ok(/^[0-9]+$/.test(row.show_id), `breadth id ${row.show_id} is not a decimal collection id`);
       assert.ok(row.chart_rank >= 1, `breadth row ${row.title} has no chart_rank`);
     } else {
-      assert.strictEqual(row.chart_rank, null, `curated row ${row.title} should carry no chart_rank`);
+      /* PKG-11a: a curated row carries its breadth twin's Apple rank, or none. */
+      assert.ok(row.chart_rank === null || (row.chart_rank >= 1 && row.chart_rank <= 200),
+        `curated row ${row.title} carries a chart_rank outside 1-200`);
     }
   }
 });
