@@ -818,26 +818,39 @@ export function deadlineProposalSec(s) {
  * line reached a deck, and the count of such loads is printed with the
  * numbers. The network is the first `wwan=` on the token (`deck access`,
  * `stalled`, `failed` or `deadline`): >0 is cellular, 0 Wi-Fi, none unknown.
+ *
+ * §16 (queue-manager.js; the M2 drive, 2026-10-01): a Foray clip that misses
+ * its deadline is retried once (`deck kind=retry`, the core's row), the deck
+ * keeps a progressing load for that retry (`deck kind=continue`), and a retry
+ * that misses too is stepped over (`skip kind=load`). A continued token is
+ * not a cold load (its `ready` counts from the first attach), so it is left
+ * out of the cold numbers and counted instead, with the retries and the steps,
+ * on the clip class.
  */
 export function loadTimes(parsed) {
   const rows = parsed.engineRows;
   const keys = tokenKeys(rows);
   const loads = new Map();
   const deadlines = [];
+  const retries = [];
+  const steps = [];
   rows.forEach((r, i) => {
+    if (r.kind === "skip" && r.event === "load") steps.push(r);
     if (r.kind !== "deck") return;
     if (r.event === "deadline") deadlines.push(r);
+    if (r.event === "retry") return void retries.push(r);
     const k = keys[i];
     if (k == null) return;
-    const e = loads.get(k) ?? { key: k, attach: null, reuse: null, ready: null, wwan: null };
+    const e = loads.get(k) ?? { key: k, attach: null, reuse: null, ready: null, cont: null, wwan: null };
     if (r.event === "attach" && !e.attach) e.attach = r;
+    else if (r.event === "continue" && !e.cont) e.cont = r;
     else if (r.event === "reuse" && !e.reuse) e.reuse = r;
     else if (r.event === "ready" && !e.ready) e.ready = r;
     if (e.wwan == null && num(r.f.wwan) != null) e.wwan = r.f.wwan;
     loads.set(k, e);
   });
   const classOf = (e) => e.ready?.f.class ?? e.attach?.f.class ?? null;
-  const cold = [...loads.values()].filter((e) => e.ready && e.ready.f.reuse !== true && !e.reuse
+  const cold = [...loads.values()].filter((e) => e.ready && e.ready.f.reuse !== true && !e.reuse && !e.cont
     && (e.attach || e.ready.f.reuse === false));
   const elapsed = (list) => stats(list.map((e) => num(e.ready.f.elapsedMs)));
   const out = {};
@@ -856,6 +869,9 @@ export function loadTimes(parsed) {
       deadlines: deadlines.filter((r) => (r.f.class ?? "clip") === cls),
       proposalSec: deadlineProposalSec(all),
       currentSec: P13_CURRENT_SEC[cls],
+      retries: cls === "clip" ? retries : [],
+      continued: [...loads.values()].filter((e) => e.cont && (e.cont.f.class ?? "clip") === cls).map((e) => e.cont),
+      steps: cls === "clip" ? steps : [],
     };
   }
   return out;
@@ -869,17 +885,21 @@ function p13Verdict(cls, d) {
     ? `cold time-to-ready ${statsText(d.all)}${d.classless ? ` (${d.classless} without class=, read as clip)` : ""}; `
       + `proposal ${d.proposalSec} s (p95 x 2, never below max; current ${cur} s; printed, never applied)`
     : "no cold load of this class became ready";
+  const ladder = d.retries.length || d.continued.length || d.steps.length
+    ? `; §16: ${d.retries.length} retried, ${d.continued.length} continued a load in flight, ${d.steps.length} stepped over`
+    : "";
   if (!d.all.n && !d.deadlines.length) {
     return m3Verdict(id, "no-coverage", `no \`deck ready\` after a cold \`deck attach\` with class=${cls}, and no \`deck deadline\` with class=${cls}`);
   }
   if (d.deadlines.length) {
     const list = d.deadlines.map((r) => `#${r.seq} step=${r.f.step ?? "?"} class=${r.f.class ?? "—"} afterMs=${msText(num(r.f.afterMs))}`);
-    return m3Verdict(id, "fail", `${d.deadlines.length} loads hit the ${cur} s deadline (${list.join("; ")}); ${summary}`, [...d.deadlines, ...readies]);
+    return m3Verdict(id, "fail", `${d.deadlines.length} loads hit the ${cur} s deadline (${list.join("; ")}); ${summary}${ladder}`,
+      [...d.deadlines, ...d.retries, ...d.continued, ...d.steps, ...readies]);
   }
   if (d.proposalSec > cur) {
-    return m3Verdict(id, "fail", `cold loads leave less than 2x headroom under ${cur} s: ${summary}`, readies);
+    return m3Verdict(id, "fail", `cold loads leave less than 2x headroom under ${cur} s: ${summary}${ladder}`, readies);
   }
-  return m3Verdict(id, "pass", summary, readies);
+  return m3Verdict(id, "pass", summary + ladder, readies);
 }
 
 /** Every reuse with its idleSec and whether trouble followed on its token, and every cold=stale attach. */

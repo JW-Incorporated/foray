@@ -801,6 +801,14 @@
       "reason": "webview-only",
       "why": "The ordering trap between html-audio-backend.js's persistent `error` listener and a load's own rejection: the listener fires first, so the page must leave the report to the load. AVDeck reports one `.failed` (or `.deadlineExceeded`) per load token and nothing else, and the core decides the fallback from that one event (fallBackToScript; fixture manager-foray/a-first-line-whose-file-fails-is-spoken)."
     },
+    "§16: a media error during a Foray clip's load (web lane) is retried, not reported idle first": {
+      "reason": "webview-only",
+      "why": "The same ordering trap as §14's, for a Foray clip: html-audio-backend.js's persistent `error` listener fires before the load's own rejection, so the page leaves the report to the load (`_clipLoadInFlight`). AVDeck reports one `.failed` (or `.deadlineExceeded`) per load token and nothing else, and the core retries or steps over from that one event (retryOrSkipClip; ClipLoadRetryTests.testAClipWhoseLoadFailsIsRetriedToo, fixture manager-foray/clip-load)."
+    },
+    "§16: a media error on a plain episode's load still stops the player (not a clip)": {
+      "reason": "webview-only",
+      "why": "The other half of the §16 ordering-trap fix: only a Foray clip's load holds back html-audio-backend.js's early `error` report, so a plain episode's media error still stops through `_onBackendError`. AVDeck has no early report to hold back; the core's plain-episode stop is ClipLoadRetryTests.testAPlainEpisodeWhoseLoadFailsIsNotRetried."
+    },
     "§14: a refused play() of a rendered line falls back too": {
       "reason": "webview-only",
       "why": "An HTMLMediaElement `play()` promise rejected by the browser's autoplay policy. AVPlayer has no play promise and the engine's session is active before any play (plan §4.4); a file that fails while sounding is AVDeck's `.failed`, which falls back the same way (fixture manager-foray/a-line-that-fails-while-sounding-is-spoken-from-its-first-word)."
