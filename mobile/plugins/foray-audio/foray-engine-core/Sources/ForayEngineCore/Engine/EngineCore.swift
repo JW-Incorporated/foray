@@ -607,7 +607,7 @@ public struct EngineCore {
     /// seam plays in. client.js installs `ForayPlayer.foraySeek` for the same
     /// press; this is that rule.
     private mutating func seekTo(_ sec: Double, source: EngineSource) {
-        if forayTransport && source != .remote { return forayScrub(to: sec, source: source) }
+        if forayTransport { return forayScrub(to: sec, source: source) }
         guard let item = state.currentItem else { return refuse(.notLoaded) }
         guard let target = TransportPolicy.clampEpisodeTarget(sec, duration: deck.durationSec ?? item.durationSec) else { return }
         if TransportPolicy.seekAction(restored: false, stateType: state.stateType) == .pend {
@@ -636,7 +636,7 @@ public struct EngineCore {
     /// the same press; so does this engine now, for the page's command and
     /// the car's alike.
     private mutating func seekBy(_ deltaSec: Double, source: EngineSource) {
-        if forayTransport && source != .remote { return forayNudge(deltaSec, source: source) }
+        if forayTransport { return forayNudge(deltaSec, source: source) }
         guard let item = state.currentItem else { return refuse(.notLoaded) }
         let loading = state.loadedId != item.id && state.pendingLoad?.itemId == item.id ? state.pendingLoad?.startSec : nil
         let position = (state.loadedId == item.id ? deck.positionSec : nil) ?? loading ?? state.pendingStartSec ?? 0
