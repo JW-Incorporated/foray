@@ -51,6 +51,34 @@
       }
     },
     {
+      "id": "media/narration-no-foray-album-is-app-name",
+      "covers": [
+        "media-session::no collection and no counter: album is the app's name, never empty (#1006)",
+        "media-session::#1006 leaves title and artist alone: 4a is still never a credit"
+      ],
+      "call": "mediaMetadata",
+      "args": [
+        {
+          "item": { "kind": "tts", "id": "n" },
+          "nextItem": {
+            "kind": "episode",
+            "title": "Episode 09: Did Cooking Make Us Human?",
+            "show": "Origin Stories",
+            "start_sec": 10,
+            "end_sec": 120
+          }
+        }
+      ],
+      "expect": {
+        "return": {
+          "album": "4a",
+          "artist": "Episode 09: Did Cooking Make Us Human?",
+          "artwork": [{ "sizes": "512x512", "src": "icon-512.png", "type": "image/png" }],
+          "title": "Up next: Episode 09: Did Cooking Make Us Human?"
+        }
+      }
+    },
+    {
       "id": "media/narration-last-no-foray",
       "covers": [
         "media-session::a narration item with nothing after it shows the FORAY, never its own slug"
@@ -59,7 +87,7 @@
       "args": [{ "item": { "kind": "tts", "title": "bridge-3" } }],
       "expect": {
         "return": {
-          "album": "",
+          "album": "4a",
           "artist": "",
           "artwork": [{ "sizes": "512x512", "src": "icon-512.png", "type": "image/png" }],
           "title": "4a"
@@ -118,13 +146,14 @@
     {
       "id": "media/jingle-no-foray",
       "covers": [
-        "media-session::a jingle item is credited to its Foray, never to a publisher and never to us (F-89 + L-06)"
+        "media-session::a jingle item is credited to its Foray, never to a publisher and never to us (F-89 + L-06)",
+        "media-session::no collection and no counter: album is the app's name, never empty (#1006)"
       ],
       "call": "mediaMetadata",
       "args": [{ "item": { "kind": "jingle", "id": "j" } }],
       "expect": {
         "return": {
-          "album": "",
+          "album": "4a",
           "artist": "",
           "artwork": [{ "sizes": "512x512", "src": "icon-512.png", "type": "image/png" }],
           "title": "4a"
@@ -192,12 +221,12 @@
         "media-session::F15's own inputs: a narration line with no next item never says 4a in the CREDIT"
       ],
       "authored": true,
-      "note": "F15 exactly as the founder met it in the car, the one display that said '4a / 4a': the credit is empty, never the app; the title still falls back to the app's name (a blank lock screen is worse). Authored: 4a is never the artist of anything audible.",
+      "note": "F15 exactly as the founder met it in the car, the one display that said '4a / 4a': the credit is empty, never the app; the title still falls back to the app's name (a blank lock screen is worse), and so does the album, which is the collection field and not a credit (founder ruling 2026-10-04, issue #1006). Authored: 4a is never the artist of anything audible.",
       "call": "mediaMetadata",
       "args": [{ "item": { "kind": "tts", "title": "bridge-3" }, "forayTitle": "" }],
       "expect": {
         "return": {
-          "album": "",
+          "album": "4a",
           "artist": "",
           "artwork": [{ "sizes": "512x512", "src": "icon-512.png", "type": "image/png" }],
           "title": "4a"
@@ -216,7 +245,7 @@
       ],
       "expect": {
         "return": {
-          "album": "",
+          "album": "4a",
           "artist": "",
           "artwork": [{ "sizes": "512x512", "src": "icon-512.png", "type": "image/png" }],
           "title": "4a"

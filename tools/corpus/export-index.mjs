@@ -28,6 +28,14 @@ export const MAX_FACT_CHARS = 400;
 
 export const INDEX_SCHEMA = "foray.research-corpus-index/1";
 
+/* A capture that landed but landed EMPTY is "thin", not "ingested" (#255).
+ * status is the field a reader checks first, and "ingested" reads as success;
+ * source 037 (TTS Arena V2) came back as 16 tokens of loading spinner and was
+ * still "ingested", so the narrator-voice work cited it before opening it.
+ * The floor sits between 037 (16 tokens, a spinner) and 027 (186 tokens, a
+ * real paper abstract), and far under the corpus median of 2,912 tokens. */
+export const THIN_TOKEN_FLOOR = 100;
+
 const HEADING_RE = /^##\s+(\d+)\.\s+(.+?)\s*$/;
 const FIELD_RE = /^-\s+([a-z-]+):\s*(.*?)\s*$/;
 const BULLET_RE = /^-\s+(.*?)\s*$/;
@@ -194,7 +202,9 @@ export function buildIndex(db, entries, { generatedAt = new Date().toISOString()
       read_first: Boolean(r.read_first),
       why_it_matters: r.why_it_matters ?? null,
       fetch: {
-        status: ok ? "ingested" : r.http_status === null ? "unfetched" : "failed",
+        status: !ok
+          ? (r.http_status === null ? "unfetched" : "failed")
+          : (Number(r.token_count ?? 0) < THIN_TOKEN_FLOOR ? "thin" : "ingested"),
         fetched_at: r.fetched_at ?? null,
         http_status: r.http_status ?? null,
         content_sha256: r.content_hash ?? null,
@@ -212,6 +222,7 @@ export function buildIndex(db, entries, { generatedAt = new Date().toISOString()
   });
 
   const ingested = sources.filter((s) => s.fetch.status === "ingested");
+  const thin = sources.filter((s) => s.fetch.status === "thin");
   return {
     schema: INDEX_SCHEMA,
     generated_at: generatedAt,
@@ -233,6 +244,7 @@ export function buildIndex(db, entries, { generatedAt = new Date().toISOString()
     totals: {
       sources: sources.length,
       ingested: ingested.length,
+      thin: thin.length,
       chunks: sources.reduce((n, s) => n + s.fetch.chunks, 0),
       estimated_tokens: sources.reduce((n, s) => n + (s.fetch.estimated_tokens ?? 0), 0),
       redistribution_allowed: sources.filter((s) => s.license.redistribution === "allow").length,

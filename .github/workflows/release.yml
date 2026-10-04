@@ -51,6 +51,12 @@
 # The fix for a failed release is a FRESH dispatch,
 # never a re-run — which is all release-trigger.yml ever does
 # (docs/release-reliability-plan.md, "BUILD NUMBER COLLIDES ON A RE-RUN").
+# OPS-04: a re-run is now REFUSED, not merely discouraged. The first step of
+# both `ios` and `android` fails when `github.run_attempt` is not '1', before
+# checkout and before any macOS minute, and its error names the fresh
+# dispatch. The step lives in the platform jobs, not in `version`, because the
+# whole problem is that `version` does not re-execute on "Re-run failed jobs"
+# — a guard there would never run; its outputs are replayed around it.
 #
 # This job does NOT push a version bump to `main` on `workflow_dispatch` with
 # a non-`none` `bump` input. `main` here is protected by the `protect-main`
@@ -301,6 +307,18 @@ jobs:
       state: ${{ steps.ios.outputs.state }}
       uploaded: ${{ steps.ios.outputs.uploaded }}
     steps:
+      # OPS-04: "Re-run failed jobs" replays the `version` job's cached outputs,
+      # so attempt 2 would archive under the build number attempt 1 already
+      # uploaded (or tried to). Refuse before a macOS minute is spent; the
+      # android job carries the same step. See the header, "THE VERSION JOB".
+      - name: A re-run replays attempt 1's build number; dispatch a fresh run instead
+        if: github.run_attempt != '1'
+        env:
+          RUN_ATTEMPT: ${{ github.run_attempt }}
+        run: |
+          echo "::error::run attempt $RUN_ATTEMPT would ship the build number attempt 1 already used (the version job does not re-execute on a re-run). Dispatch a fresh run: gh workflow run release.yml --ref main -f bump=none"
+          exit 1
+
       - uses: actions/checkout@v4
         # Full history (blobless: commits and trees only, cheap). The bundle's seed
         # pointer is dated by the newest commit that touched a stamp input
@@ -337,6 +355,15 @@ jobs:
       uploaded: ${{ steps.android.outputs.uploaded }}
       signed: ${{ steps.android.outputs.signed }}
     steps:
+      # OPS-04: same refusal as the ios job's first step — see it for why.
+      - name: A re-run replays attempt 1's build number; dispatch a fresh run instead
+        if: github.run_attempt != '1'
+        env:
+          RUN_ATTEMPT: ${{ github.run_attempt }}
+        run: |
+          echo "::error::run attempt $RUN_ATTEMPT would ship the build number attempt 1 already used (the version job does not re-execute on a re-run). Dispatch a fresh run: gh workflow run release.yml --ref main -f bump=none"
+          exit 1
+
       - uses: actions/checkout@v4
         # Full history (blobless: commits and trees only, cheap). The bundle's seed
         # pointer is dated by the newest commit that touched a stamp input

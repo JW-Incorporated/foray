@@ -6,7 +6,8 @@ import Foundation
 ///
 /// THE RULES ARE THE JS FILE'S, AND SO ARE THEIR REASONS. Its header is where
 /// each one is argued (title = the episode, artist = the SHOW, album = the
-/// Foray plus "clip N of M"; "4a" never credits anything a listener hears; a
+/// Foray plus "clip N of M", or the app's name when there is no collection;
+/// "4a" never credits anything a listener hears; a
 /// finished Foray shows no transport; the seek pair is the founder's 15/30 and
 /// never the platform's offset; a car scrub with no time is not a seek to
 /// zero). This file restates none of them. The `media-episode` parity family
@@ -223,7 +224,8 @@ public enum MediaMapping {
     /// `albumOf(forayTitle, index, total)`: "The history of grilling · clip 12
     /// of 32", worded exactly as the mini bar words it. `forayTitle` is already
     /// clean. The counter needs a non-negative integer index and a positive
-    /// integer total, and an index past the end reads as the last clip.
+    /// integer total, and an index past the end reads as the last clip. With
+    /// neither a title nor a counter it is `appName`, never "" (issue #1006).
     static func albumOf(_ forayTitle: String, index: Double?, total: Double?) -> String {
         var counter = ""
         if let index, let total, isInteger(index), index >= 0, isInteger(total), total > 0 {
@@ -233,7 +235,7 @@ public enum MediaMapping {
         if !forayTitle.isEmpty { return forayTitle }
         // `n.charAt(0).toUpperCase() + n.slice(1)`: the counter alone is a sentence.
         if !counter.isEmpty { return "C" + counter.dropFirst() }
-        return ""
+        return appName
     }
 
     // MARK: - Position and playback state

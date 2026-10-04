@@ -172,7 +172,8 @@ test("an index past the end is clamped rather than reported as clip 40 of 32", (
 });
 
 test("a zero total suppresses the counter — single-episode playback has no parts", () => {
-  assert.equal(mediaMetadata({ item: SEG, forayTitle: "", index: 0, total: 0 }).album, "");
+  // No parts and no Foray: the album is the app's name (issue #1006), not "".
+  assert.equal(mediaMetadata({ item: SEG, forayTitle: "", index: 0, total: 0 }).album, APP_NAME);
   assert.equal(mediaMetadata({ item: SEG, forayTitle: "A Foray", index: 0, total: 0 }).album, "A Foray");
 });
 
@@ -198,7 +199,7 @@ test("with nothing at all the display still says something true", () => {
   const m = mediaMetadata();
   assert.equal(m.title, "4a");
   assert.equal(m.artist, "");
-  assert.equal(m.album, "");
+  assert.equal(m.album, APP_NAME);
 });
 
 test("whitespace-only strings count as missing, not as content", () => {
@@ -313,10 +314,44 @@ test("a SEGMENT keeps Apple Podcasts parity untouched: title=episode, artist=sho
   assert.equal(m.album, "The history of grilling · clip 12 of 32");
 });
 
-// TO SEE IT FAIL: give single-episode playback a non-empty album (e.g. by
-// defaulting `total` to 1). A single episode is not a collection.
-test("single-episode play keeps an empty album (L-06)", () => {
-  assert.equal(mediaMetadata({ item: SEG, forayTitle: "", index: 0, total: 0 }).album, "");
+// FOUNDER RULING 2026-10-04 (issue #1006): "when there is no album info to
+// serve to a car/ wherever, we should populate that field with \"4a\"". Was
+// "single-episode play keeps an empty album (L-06)"; the ruling replaced it.
+// TO SEE IT FAIL: put `return "";` back as `albumOf`'s last line (the first
+// test goes red), or default `total` to 1 (a single episode would read
+// "Clip 1 of 1": the same test goes red).
+test("no collection and no counter: album is the app's name, never empty (#1006)", () => {
+  // A plain episode, a playlist part: no Foray title, no part counter.
+  assert.equal(mediaMetadata({ item: SEG, forayTitle: "", index: 0, total: 0 }).album, APP_NAME);
+  assert.equal(mediaMetadata({ item: SEG }).album, APP_NAME);
+  // A narration line and a jingle with no Foray around them.
+  assert.equal(mediaMetadata({ item: { kind: "tts", id: "n" }, nextItem: SEG }).album, APP_NAME);
+  assert.equal(mediaMetadata({ item: { kind: "jingle", id: "j" } }).album, APP_NAME);
+  // Whitespace is no title.
+  assert.equal(mediaMetadata({ item: SEG, forayTitle: "   ", index: 0, total: 0 }).album, APP_NAME);
+  // The value is the exported constant, not a second copy of the string.
+  assert.equal(APP_NAME, "4a");
+});
+
+// TO SEE IT FAIL: return `APP_NAME` before the Foray / counter branches of
+// `albumOf` (or append it to them): every assertion here goes red.
+test("an album that has a collection or a counter is unchanged by #1006", () => {
+  assert.equal(mediaMetadata({ item: SEG, forayTitle: "The history of grilling", index: 11, total: 32 }).album,
+    "The history of grilling · clip 12 of 32");
+  assert.equal(mediaMetadata({ item: SEG, forayTitle: "A Foray", index: 0, total: 0 }).album, "A Foray");
+  assert.equal(mediaMetadata({ item: SEG, forayTitle: "", index: 2, total: 9 }).album, "Clip 3 of 9");
+});
+
+// TO SEE IT FAIL: make `albumOf`'s fallback leak into a credit (e.g. use
+// `albumOf(...)` as the segment branch's `artist`). The ruling is about album
+// only; "4a" still never credits anything a listener hears.
+test("#1006 leaves title and artist alone: 4a is still never a credit", () => {
+  const seg = mediaMetadata({ item: SEG });
+  assert.equal(seg.title, SEG.title);
+  assert.equal(seg.artist, SEG.show);
+  const tts = mediaMetadata({ item: { kind: "tts", id: "n" }, nextItem: SEG });
+  assert.notEqual(tts.artist, APP_NAME);
+  assert.notEqual(tts.title, APP_NAME);
 });
 
 // TO SEE IT FAIL: delete the `report(...)` call from `createMediaSession`'s
