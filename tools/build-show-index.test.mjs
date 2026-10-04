@@ -77,20 +77,61 @@ test("a breadth row marked in_curated is dropped, and a curated id always wins a
   assert.strictEqual(rows.find((r) => r.id === "lex-fridman-podcast").curated, true);
 });
 
+test("a curated row carries its breadth twin's chart_rank joined on apple_collection_id, and null without a twin", () => {
+  /* P-09 data half (PKG-11a, docs/roadmap/shows-search.md). The twin is the
+     `in_curated: true` breadth row the breadth loop SKIPS, so the join has to
+     read every breadth row, not only the ones that ship as breadth. A curated
+     show with no twin keeps the empty column. The curated `apple_collection_id`
+     is a number in catalog.json and the twin's is too, but the Map is keyed by
+     `String(...)`, so a string-typed id on one side still joins — pinned by
+     the mixed types below. Ranking is unchanged: `popularityBand` returns 0
+     for every curated row until PKG-13.
+
+     MUTATION: replace `rankByAppleId.get(String(show?.apple_collection_id)) ?? null`
+     with `null` (drop the Map lookup). "Twinned Show" reads null and this goes
+     red. */
+  const rows = mergeShowIndexRows(
+    { shows: [
+      { show_id: "twinned-show", title: "Twinned Show", apple_collection_id: 555 },
+      { show_id: "lonely-show", title: "Lonely Show", apple_collection_id: 777 },
+    ] },
+    { shows: [bre("555", "Twinned Show", 14, { in_curated: true })] }
+  );
+  assert.strictEqual(rows.find((r) => r.id === "twinned-show").chart_rank, 14);
+  assert.strictEqual(rows.find((r) => r.id === "lonely-show").chart_rank, null);
+  assert.ok(!rows.some((r) => r.id === "555"), "the twin itself still does not ship as a breadth row");
+});
+
 test("the cut drops breadth rows ranked worse than max-rank, and never drops a curated row", () => {
   /* The committed cut is BUILD_MAX_RANK — see the module header for the
-     measurement that chose it. Curated rows carry no chart_rank at all and
-     must survive the cut regardless.
+     measurement that chose it. Curated rows must survive the cut regardless —
+     including a curated row whose breadth twin's chart_rank (PKG-11a) is
+     outside it.
 
-     MUTATION: apply the rank filter before the `in_curated`/curated split (or
-     to the curated loop as well). Every curated row has `chart_rank`
-     undefined, so they would all be dropped and the first assertion fails. */
+     The keeper's twin (apple_collection_id 3, `in_curated`) ranks
+     BUILD_MAX_RANK + 1, one outside the cut, so this fixture catches the cut
+     leaking into the curated loop by EITHER route, without leaning on the
+     real-data tests below:
+
+     MUTATIONS: (a) apply the rank filter before the `in_curated`/curated split
+     (or to the curated loop as well) on the catalogue row's own `chart_rank`.
+     catalog.json rows carry no `chart_rank` field, so the keeper reads NaN, is
+     dropped, and the first assertion fails. (b) the PKG-11a version: add
+     `if ((rankByAppleId.get(String(show?.apple_collection_id)) ?? 0) > maxRank) continue;`
+     to the curated loop. The keeper's joined rank is BUILD_MAX_RANK + 1, so it
+     is dropped and the first assertion fails. */
   const rows = mergeShowIndexRows(
-    { shows: [cur("keeper", "Curated Keeper")] },
-    { shows: [bre(1, "Inside Cut", 5), bre(2, "Outside Cut", BUILD_MAX_RANK + 1)] },
+    { shows: [{ show_id: "keeper", title: "Curated Keeper", apple_collection_id: 3 }] },
+    { shows: [
+      bre(1, "Inside Cut", 5),
+      bre(2, "Outside Cut", BUILD_MAX_RANK + 1),
+      bre(3, "Curated Keeper", BUILD_MAX_RANK + 1, { in_curated: true }),
+    ] },
     { maxRank: BUILD_MAX_RANK }
   );
-  assert.ok(rows.some((r) => r.id === "keeper"), "a curated row has no chart_rank and must survive the cut");
+  const keeper = rows.find((r) => r.id === "keeper");
+  assert.ok(keeper, "a curated row whose twin ranks outside the cut must still survive it");
+  assert.strictEqual(keeper.chart_rank, BUILD_MAX_RANK + 1, "and it keeps the twin's uncut rank");
   assert.ok(rows.some((r) => r.id === "1"));
   assert.ok(!rows.some((r) => r.id === "2"));
 });
@@ -186,7 +227,9 @@ test("the committed index carries every curated show and only in-cut breadth sho
   assert.strictEqual(curatedRows.length, curated.shows.length,
     "every curated show must be in the index");
   for (const r of rows) {
-    if (r.curated) assert.strictEqual(r.chart_rank, null);
+    /* A curated row's rank is its breadth twin's (PKG-11a) — Apple's 1-200,
+       never cut — or null without a twin. */
+    if (r.curated) assert.ok(r.chart_rank === null || (r.chart_rank >= 1 && r.chart_rank <= 200), `${r.title} has a rank outside 1-200`);
     else assert.ok(r.chart_rank >= 1 && r.chart_rank <= BUILD_MAX_RANK, `${r.title} is out of cut`);
   }
   assert.strictEqual(new Set(rows.map((r) => r.id)).size, rows.length, "ids are unique");
