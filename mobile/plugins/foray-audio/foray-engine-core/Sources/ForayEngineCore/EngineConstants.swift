@@ -199,6 +199,15 @@ public enum EngineConstants {
         public static let narrationCharsPerSec: Double = 17
         /// `NARRATION_FALLBACK_SEC`
         public static let narrationFallbackSec: Double = 8
+        /// `SEEK_MAP`
+        public enum SeekMap {
+            /// `SEEK_MAP.CBR`
+            public static let cbr: String = "cbr"
+            /// `SEEK_MAP.VBR_TOC`
+            public static let vbrToc: String = "vbr-toc"
+            /// `SEEK_MAP.VBR_NOTOC`
+            public static let vbrNotoc: String = "vbr-notoc"
+        }
         /// `SEGMENT`
         public static let segment: String = "segment"
     }
@@ -293,6 +302,12 @@ public enum EngineConstants {
 
     /// `player/queue-manager.js`
     public enum QueueManager {
+        /// `FORAY_CLIP_LOAD_ATTEMPTS`
+        public static let forayClipLoadAttempts: Double = 2
+        /// `FORAY_CLIP_LOAD_MAX_STEPS`
+        public static let forayClipLoadMaxSteps: Double = 1
+        /// `FORAY_CLIP_MAX_SILENCE_SEC`
+        public static let forayClipMaxSilenceSec: Double = 40
         /// `NARRATION_DEADLINE_FACTOR`
         public static let narrationDeadlineFactor: Double = 1.5
         /// `NARRATION_DEADLINE_MARGIN_SEC`

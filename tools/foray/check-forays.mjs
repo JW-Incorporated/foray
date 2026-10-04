@@ -66,6 +66,7 @@ import {
   SEGMENT,
   NARRATION,
   JINGLE,
+  SEEK_MAP,
 } from "../../player/foray-queue.js";
 
 /* The pool's own provenance enum, imported from the file that WRITES the pool
@@ -398,6 +399,11 @@ export const SEGMENT_BOUNDARIES = Object.freeze(["turn", "sentence", "claim-only
 /** `segment-sources[].source` — only the tier-2 mint stamps a source row;
     a curated row carries no `source` field at all. */
 export const SOURCE_PROVENANCE = Object.freeze(["generation-tier-2"]);
+/** `segment-sources[].seek_map` — what an approximate seek into the delivered
+    file can rely on, measured by `tools/audio/mp3-probe.mjs --sources`. Only
+    "cbr" changes playback (the native engine drops precise timing for it).
+    Owned by the builder that carries it onto the queue item. */
+export const SEEK_MAPS = new Set(Object.values(SEEK_MAP));
 
 /**
  * The shapes this checker accepts — G-21c's enumeration. Keys name the field
@@ -791,6 +797,14 @@ export function checkForays(files, { renderedNarrationOnPublished = RENDERED_NAR
     }
     if (typeof s.dai_suspected !== "boolean") {
       err(`segment-sources "${s.id}": \`dai_suspected\` must be a boolean — it gates seek precision (#30), and a missing flag reads as falsy`);
+    }
+    /* `seek_map` is measured by tools/audio/mp3-probe.mjs and read by the native
+     * engine: "cbr" turns OFF AVFoundation's precise timing for this source's
+     * clips (it reads the whole file and buys nothing on CBR). A typo there
+     * would silently keep the slow path, or — worse, if the engine ever keyed on
+     * a looser match — drop precision on a VBR file. Absent is fine (precise). */
+    if (s.seek_map !== undefined && !SEEK_MAPS.has(s.seek_map)) {
+      err(`segment-sources "${s.id}": \`seek_map\` must be one of ${[...SEEK_MAPS].join(", ")} (or absent)`);
     }
   }
   report.sources = sources.size;

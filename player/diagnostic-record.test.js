@@ -244,25 +244,28 @@ async function bootClient(t, { hangIdb = false, deployId = null } = {}) {
 
 /** Two segments from DIFFERENT episodes: the seam is a real cross-episode load,
     which is the shape both field reports were on. */
-function crossEpisodeForay() {
+function crossEpisodeForay({ third = false } = {}) {
   const foray = {
     id: "f264", kind: "deep-dive", title: "A Foray", status: "published",
     slots: [{ id: "one", title: "Slot one" }],
     items: [
       { type: "segment", slot: "one", label: "L1", role: "explanation", segment_id: "sa" },
       { type: "segment", slot: "one", label: "L2", role: "explanation", segment_id: "sb" },
+      ...(third ? [{ type: "segment", slot: "one", label: "L3", role: "explanation", segment_id: "sc" }] : []),
     ],
   };
   const segments = indexSegments({
     segments: [
       { id: "sa", item_id: "ep-a", start_sec: 100, end_sec: 200, reference_duration_sec: 3600, why: "w", topic: "food/grilling-bbq", confidence: "high" },
       { id: "sb", item_id: "ep-b", start_sec: 500, end_sec: 600, reference_duration_sec: 3600, why: "w", topic: "food/grilling-bbq", confidence: "high" },
+      { id: "sc", item_id: "ep-c", start_sec: 300, end_sec: 400, reference_duration_sec: 3600, why: "w", topic: "food/grilling-bbq", confidence: "high" },
     ],
   });
   const sources = indexSources({
     sources: [
       { id: "ep-a", show: "Show A", title: "Ep A", audio_url: "https://cdn.test/a.mp3", duration_sec: 3600, dai_suspected: false },
       { id: "ep-b", show: "Show B", title: "Ep B", audio_url: "https://cdn.test/b.mp3", duration_sec: 3600, dai_suspected: false },
+      { id: "ep-c", show: "Show C", title: "Ep C", audio_url: "https://cdn.test/c.mp3", duration_sec: 3600, dai_suspected: false },
     ],
   });
   return resolveForay(foray, { segments, sources });
@@ -551,10 +554,15 @@ test("A WRONG RESUME leaves a row saying nothing was written, and why", async (t
      all, which is why "it restarted the segment" could not be diagnosed.
 
      MUTATION: record only successful resume writes. The row disappears and this
-     fails. */
+     fails.
+
+     §16: B alone is retried and stepped over (from the last clip, onto the
+     end); the Foray stops on a failed clip only when a second in a row fails
+     too, so B and C both fail here and it stops on C. */
   const { client, audio, doc, rows, restore } = await bootClient(t);
   audio.loadPlan.set("https://cdn.test/b.mp3", "error");
-  await client.playForay(crossEpisodeForay(), { startIndex: 0 });
+  audio.loadPlan.set("https://cdn.test/c.mp3", "error");
+  await client.playForay(crossEpisodeForay({ third: true }), { startIndex: 0 });
   await settle();
   crossTheBoundary(audio);
   await beat();

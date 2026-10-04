@@ -154,6 +154,10 @@ public struct EngineState: Equatable {
     public var seamMark: SeamMark?
     /// Segments ADR-0007's ladder refused at load (the snapshot's `skippedSegments`).
     public var skippedSegments = 0
+    /// §16 (queue-manager.js `_clipLoadSteps`): Foray clips stepped over IN A
+    /// ROW for not loading (`forayClipLoadMaxSteps`); 0 again when a clip
+    /// lands, and with every new Foray.
+    public var clipLoadSteps = 0
     /// The `cp_foray` write throttle: foray-progress.js `ForayProgressStore`'s
     /// gate, its 5 s clock throttle per Foray, and the refused-write count.
     var forayThrottle = ResumeRules.ForayWriteThrottle()
@@ -303,6 +307,9 @@ public struct PendingLoad: Equatable {
     /// script because its file failed (`_beginSynthNarration(item,
     /// {fallback: true})`).
     public var fallback = false
+    /// §16 (queue-manager.js `_loadItem`'s `attempt`): 1 for every load the
+    /// reducer asks for, 2 for a Foray clip's retry (`retryOrSkipClip`).
+    public var attempt = 1
 }
 
 /// A spoken line the playhead is on (NE-31s): queue-manager.js
